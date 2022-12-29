@@ -97,7 +97,7 @@ struct BaseRunner : public WireBase {
           // Capture if not global as we need to copy it!
           SHLOG_TRACE("BaseRunner: adding variable to requirements: {}, wire {}", avail.name, wire->name);
           SHVar ctxVar{};
-          ctxVar.valueType = ContextVar;
+          ctxVar.valueType = SHType::ContextVar;
           ctxVar.payload.stringValue = avail.name;
           auto &p = _vars.emplace_back();
           p = ctxVar;
@@ -265,13 +265,13 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     auto inputCopy = input;
   run_wire_loop:
     auto runRes = runSubWire(wire.get(), context, inputCopy);
-    if (unlikely(runRes.state == Failed)) {
+    if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
       // meaning there was an exception while
       // running the sub wire, stop the parent too
       context->stopFlow(runRes.output);
       return runRes.output;
     } else {
-      if (runRes.state == Restarted) {
+      if (runRes.state == SHRunWireOutputState::Restarted) {
         inputCopy = context->getFlowStorage();
         context->continueFlow();
         SH_SUSPEND(context, 0.0);
@@ -281,7 +281,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         goto run_wire_loop;
       } else {
         // we don't want to propagate a (Return)
-        if (unlikely(runRes.state == Stopped)) {
+        if (unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
           context->continueFlow();
         }
 
@@ -308,13 +308,13 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     } else if constexpr (WIRE_MODE == RunWireMode::Inline) {
       // Run within the root flow
       auto runRes = runSubWire(wire.get(), context, input);
-      if (unlikely(runRes.state == Failed)) {
+      if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
         // When an error happens during inline execution, propagate the error to the parent wire
         context->cancelFlow("Wire failed");
         return runRes.output;
       } else {
         // we don't want to propagate a (Return)
-        if (unlikely(runRes.state == Stopped)) {
+        if (unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
           context->continueFlow();
         }
 

@@ -216,7 +216,7 @@ struct SendKeyEventBase {
   }
 
   void setParam(int index, const SHVar &value) {
-    if (value.valueType == None) {
+    if (value.valueType == SHType::None) {
       _windowVarName.clear();
     } else {
       _windowVarName = value.payload.stringValue;

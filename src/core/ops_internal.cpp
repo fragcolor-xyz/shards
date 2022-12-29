@@ -38,7 +38,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     }
   } break;
   case SHType::Bytes:
-    os << "<" << var.payload.bytesSize << " Bytes>" << std::dec;
+    os << "<" << var.payload.bytesSize << " SHType::Bytes>" << std::dec;
     break;
   case SHType::Array:
     os << "Array: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.arrayValue.elements) << " size: " << std::dec
@@ -189,7 +189,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     }
     os << "]";
     break;
-  case Table: {
+  case SHType::Table: {
     os << "{";
     auto &t = var.payload.tableValue;
     bool first = true;

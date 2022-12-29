@@ -255,7 +255,7 @@ public:
 
   void warmup(SHContext *ctx) {
     assert(!_cp);
-    if (_v.valueType == ContextVar) {
+    if (_v.valueType == SHType::ContextVar) {
       assert(!_cp);
       _cp = SH_CORE::referenceVariable(ctx, _v.payload.stringValue);
     } else {
@@ -266,7 +266,7 @@ public:
 
   void cleanup() {
     if (_cp) {
-      if (_v.valueType == ContextVar) {
+      if (_v.valueType == SHType::ContextVar) {
         SH_CORE::releaseVariable(_cp);
       }
       _cp = nullptr;
@@ -289,7 +289,7 @@ public:
 
   const SHVar &get() const { return const_cast<TParamVar *>(this)->get(); }
 
-  bool isVariable() const { return _v.valueType == ContextVar; }
+  bool isVariable() const { return _v.valueType == SHType::ContextVar; }
 
   const char *variableName() const {
     if (isVariable())

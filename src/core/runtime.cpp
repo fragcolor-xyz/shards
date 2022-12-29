@@ -764,13 +764,13 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
   }
 
   switch (inputType.basicType) {
-  case Object: {
+  case SHType::Object: {
     if (inputType.object.vendorId != receiverType.object.vendorId || inputType.object.typeId != receiverType.object.typeId) {
       return false;
     }
     break;
   }
-  case Enum: {
+  case SHType::Enum: {
     // special case: any enum
     if (receiverType.enumeration.vendorId == 0 && receiverType.enumeration.typeId == 0)
       return true;
@@ -781,7 +781,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
     }
     break;
   }
-  case Seq: {
+  case SHType::Seq: {
     if (strict) {
       if (inputType.seqTypes.len > 0 && receiverType.seqTypes.len > 0) {
         // all input types must be in receiver, receiver can have more ofc
@@ -812,7 +812,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
     }
     break;
   }
-  case Table: {
+  case SHType::Table: {
     if (strict) {
       // Table is a complicated one
       // We use it as many things.. one of it as structured data
@@ -936,7 +936,7 @@ void validateConnection(ValidationContext &ctx) {
   auto inputInfos = ctx.bottom->inputTypes(ctx.bottom);
   auto inputMatches = false;
   // validate our generic input
-  if (inputInfos.len == 1 && inputInfos.elements[0].basicType == None) {
+  if (inputInfos.len == 1 && inputInfos.elements[0].basicType == SHType::None) {
     // in this case a None always matches
     inputMatches = true;
   } else {
@@ -1032,11 +1032,11 @@ void validateConnection(ValidationContext &ctx) {
     auto blockHasValidOutputTypes =
         flowStopper || std::any_of(otypes.begin(), otypes.end(), [&](const auto &t) {
           return t.basicType == SHType::Any ||
-                 (t.basicType == Seq && t.seqTypes.len == 1 && t.seqTypes.elements[0].basicType == SHType::Any &&
-                  ctx.previousOutputType.basicType == Seq) || // any seq
-                 (t.basicType == Table &&
+                 (t.basicType == SHType::Seq && t.seqTypes.len == 1 && t.seqTypes.elements[0].basicType == SHType::Any &&
+                  ctx.previousOutputType.basicType == SHType::Seq) || // any seq
+                 (t.basicType == SHType::Table &&
                   // TODO find Any in table types
-                  ctx.previousOutputType.basicType == Table) || // any table
+                  ctx.previousOutputType.basicType == SHType::Table) || // any table
                  t == ctx.previousOutputType;
         });
     if (!blockHasValidOutputTypes) {
@@ -1277,7 +1277,7 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
     // If first shard is a plain None, mark this wire has None input
     // But make sure we have no (Input) shards
     auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
-    if (inTypes.len == 1 && inTypes.elements[0].basicType == None) {
+    if (inTypes.len == 1 && inTypes.elements[0].basicType == SHType::None) {
       wire->inputType = SHTypeInfo{};
       wire->inputTypeForceNone = true;
     } else {
@@ -1323,7 +1323,7 @@ SHComposeResult composeWire(const SHSeq wire, SHValidationCallback callback, voi
 
 void freeDerivedInfo(SHTypeInfo info) {
   switch (info.basicType) {
-  case Seq: {
+  case SHType::Seq: {
     for (uint32_t i = 0; info.seqTypes.len > i; i++) {
       freeDerivedInfo(info.seqTypes.elements[i]);
     }
@@ -1335,7 +1335,7 @@ void freeDerivedInfo(SHTypeInfo info) {
     }
     shards::arrayFree(info.setTypes);
   } break;
-  case Table: {
+  case SHType::Table: {
     for (uint32_t i = 0; info.table.types.len > i; i++) {
       freeDerivedInfo(info.table.types.elements[i]);
     }
@@ -1353,22 +1353,22 @@ void freeDerivedInfo(SHTypeInfo info) {
 SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo) {
   // We need to guess a valid SHTypeInfo for this var in order to validate
   // Build a SHTypeInfo for the var
-  // this is not complete at all, missing Array and ContextVar for example
+  // this is not complete at all, missing Array and SHType::ContextVar for example
   SHTypeInfo varType{};
   varType.basicType = value.valueType;
   varType.innerType = value.innerType;
   switch (value.valueType) {
-  case Object: {
+  case SHType::Object: {
     varType.object.vendorId = value.payload.objectVendorId;
     varType.object.typeId = value.payload.objectTypeId;
     break;
   }
-  case Enum: {
+  case SHType::Enum: {
     varType.enumeration.vendorId = value.payload.enumVendorId;
     varType.enumeration.typeId = value.payload.enumTypeId;
     break;
   }
-  case Seq: {
+  case SHType::Seq: {
     std::unordered_set<SHTypeInfo> types;
     for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
       auto derived = deriveTypeInfo(value.payload.seqValue.elements[i], data, expInfo);
@@ -1380,7 +1380,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
     varType.fixedSize = value.payload.seqValue.len;
     break;
   }
-  case Table: {
+  case SHType::Table: {
     auto &t = value.payload.tableValue;
     SHTableIterator tit;
     t.api->tableGetIterator(t, &tit);
@@ -1427,11 +1427,11 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
 SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
   // We need to guess a valid SHTypeInfo for this var in order to validate
   // Build a SHTypeInfo for the var
-  // this is not complete at all, missing Array and ContextVar for example
+  // this is not complete at all, missing Array and SHType::ContextVar for example
   SHTypeInfo varType;
   memcpy(&varType, &other, sizeof(SHTypeInfo));
   switch (varType.basicType) {
-  case Seq: {
+  case SHType::Seq: {
     varType.seqTypes = {};
     for (uint32_t i = 0; i < other.seqTypes.len; i++) {
       auto cloned = cloneTypeInfo(other.seqTypes.elements[i]);
@@ -1447,7 +1447,7 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
     }
     break;
   }
-  case Table: {
+  case SHType::Table: {
     varType.table = {};
     for (uint32_t i = 0; i < other.table.types.len; i++) {
       auto cloned = cloneTypeInfo(other.table.types.elements[i]);
@@ -1472,22 +1472,22 @@ constexpr int MAX_DERIVED_TYPE_HASH_RECURSION = 100;
 uint64_t _deriveTypeHash(const SHVar &value);
 
 void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
-  // this is not complete at all, missing Array and ContextVar for example
+  // this is not complete at all, missing Array and SHType::ContextVar for example
   XXH3_64bits_update(state, &var.valueType, sizeof(var.valueType));
   XXH3_64bits_update(state, &var.innerType, sizeof(var.innerType));
 
   switch (var.valueType) {
-  case Object: {
+  case SHType::Object: {
     XXH3_64bits_update(state, &var.payload.objectVendorId, sizeof(var.payload.objectVendorId));
     XXH3_64bits_update(state, &var.payload.objectTypeId, sizeof(var.payload.objectTypeId));
     break;
   }
-  case Enum: {
+  case SHType::Enum: {
     XXH3_64bits_update(state, &var.payload.enumVendorId, sizeof(var.payload.enumVendorId));
     XXH3_64bits_update(state, &var.payload.enumTypeId, sizeof(var.payload.enumTypeId));
     break;
   }
-  case Seq: {
+  case SHType::Seq: {
     std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       auto typeHash = _deriveTypeHash(var.payload.seqValue.elements[i]);
@@ -1499,7 +1499,7 @@ void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
       XXH3_64bits_update(state, &hash, sizeof(uint64_t));
     }
   } break;
-  case Table: {
+  case SHType::Table: {
     // this is unsafe because allocates on the stack
     // but we need to sort hashes
     std::vector<std::pair<uint64_t, SHString>, stack_allocator<std::pair<uint64_t, SHString>>> hashes;
@@ -1570,15 +1570,15 @@ void updateTypeHash(const SHTypeInfo &t, XXH3_state_s *state) {
   XXH3_64bits_update(state, &t.innerType, sizeof(t.innerType));
 
   switch (t.basicType) {
-  case Object: {
+  case SHType::Object: {
     XXH3_64bits_update(state, &t.object.vendorId, sizeof(t.object.vendorId));
     XXH3_64bits_update(state, &t.object.typeId, sizeof(t.object.typeId));
   } break;
-  case Enum: {
+  case SHType::Enum: {
     XXH3_64bits_update(state, &t.enumeration.vendorId, sizeof(t.enumeration.vendorId));
     XXH3_64bits_update(state, &t.enumeration.typeId, sizeof(t.enumeration.typeId));
   } break;
-  case Seq: {
+  case SHType::Seq: {
     // this is unsafe because allocates on the stack, but faster...
     std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
     bool recursive = false;
@@ -1596,7 +1596,7 @@ void updateTypeHash(const SHTypeInfo &t, XXH3_state_s *state) {
       XXH3_64bits_update(state, &hash, sizeof(hash));
     }
   } break;
-  case Table: {
+  case SHType::Table: {
     if (t.table.keys.len == t.table.types.len) {
       std::vector<std::pair<uint64_t, SHString>, stack_allocator<std::pair<uint64_t, SHString>>> hashes;
       for (uint32_t i = 0; i < t.table.types.len; i++) {
@@ -1832,16 +1832,16 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
     auto state = shardsActivation<std::vector<ShardPtr>, false, false>(wire->shards, context, wireInput, wire->previousOutput);
     switch (state) {
     case SHWireState::Return:
-      return {context->getFlowStorage(), Stopped};
+      return {context->getFlowStorage(), SHRunWireOutputState::Stopped};
     case SHWireState::Restart:
-      return {context->getFlowStorage(), Restarted};
+      return {context->getFlowStorage(), SHRunWireOutputState::Restarted};
     case SHWireState::Error:
       // shardsActivation handles error logging and such
       assert(context->failed());
-      return {wire->previousOutput, Failed};
+      return {wire->previousOutput, SHRunWireOutputState::Failed};
     case SHWireState::Stop:
       assert(!context->failed());
-      return {context->getFlowStorage(), Stopped};
+      return {context->getFlowStorage(), SHRunWireOutputState::Stopped};
     case SHWireState::Rebase:
       // Handled inside shardsActivation
       SHLOG_FATAL("invalid state");
@@ -1856,10 +1856,10 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
 #endif
   catch (...) {
     // shardsActivation handles error logging and such
-    return {wire->previousOutput, Failed};
+    return {wire->previousOutput, SHRunWireOutputState::Failed};
   }
 
-  return {wire->previousOutput, Running};
+  return {wire->previousOutput, SHRunWireOutputState::Running};
 }
 
 #ifndef __EMSCRIPTEN__
@@ -1940,19 +1940,19 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
     }
 
     auto runRes = runWire(wire, &context, wire->rootTickInput);
-    if (unlikely(runRes.state == Failed)) {
+    if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
       SHLOG_DEBUG("Wire {} failed", wire->name);
       wire->state = SHWire::State::Failed;
       context.stopFlow(runRes.output);
       break;
-    } else if (unlikely(runRes.state == Stopped)) {
+    } else if (unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
       SHLOG_DEBUG("Wire {} stopped", wire->name);
       context.stopFlow(runRes.output);
       // also replace the previous output with actual output
       // as it's likely coming from flowStorage of context!
       wire->previousOutput = runRes.output;
       break;
-    } else if (unlikely(runRes.state == Restarted)) {
+    } else if (unlikely(runRes.state == SHRunWireOutputState::Restarted)) {
       // must clone over rootTickInput!
       // restart overwrites rootTickInput on purpose
       cloneVar(wire->rootTickInput, context.getFlowStorage());
@@ -2009,14 +2009,14 @@ Globals &GetGlobals() {
 
 NO_INLINE void _destroyVarSlow(SHVar &var) {
   switch (var.valueType) {
-  case Seq: {
+  case SHType::Seq: {
     // notice we use .cap! because we make sure to 0 new empty elements
     for (size_t i = var.payload.seqValue.cap; i > 0; i--) {
       destroyVar(var.payload.seqValue.elements[i - 1]);
     }
     shards::arrayFree(var.payload.seqValue);
   } break;
-  case Table: {
+  case SHType::Table: {
     assert(var.payload.tableValue.api == &GetGlobals().TableInterface);
     assert(var.payload.tableValue.opaque);
     auto map = (SHMap *)var.payload.tableValue.opaque;
@@ -2035,13 +2035,13 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
 
 NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
   switch (src.valueType) {
-  case Seq: {
+  case SHType::Seq: {
     uint32_t srcLen = src.payload.seqValue.len;
 
     // try our best to re-use memory
-    if (dst.valueType != Seq) {
+    if (dst.valueType != SHType::Seq) {
       destroyVar(dst);
-      dst.valueType = Seq;
+      dst.valueType = SHType::Seq;
     }
 
     if (src.payload.seqValue.elements == dst.payload.seqValue.elements)
@@ -2053,12 +2053,12 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       cloneVar(dst.payload.seqValue.elements[i], subsrc);
     }
   } break;
-  case Path:
-  case ContextVar:
-  case String: {
+  case SHType::Path:
+  case SHType::ContextVar:
+  case SHType::String: {
     auto srcSize = src.payload.stringLen > 0 || src.payload.stringValue == nullptr ? src.payload.stringLen
                                                                                    : uint32_t(strlen(src.payload.stringValue));
-    if ((dst.valueType != String && dst.valueType != ContextVar) || dst.payload.stringCapacity < srcSize) {
+    if ((dst.valueType != SHType::String && dst.valueType != SHType::ContextVar) || dst.payload.stringCapacity < srcSize) {
       destroyVar(dst);
       // allocate a 0 terminator too
       dst.payload.stringValue = new char[srcSize + 1];
@@ -2074,7 +2074,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     // fill the optional len field
     dst.payload.stringLen = srcSize;
   } break;
-  case Image: {
+  case SHType::Image: {
     auto spixsize = 1;
     auto dpixsize = 1;
     if ((src.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
@@ -2089,9 +2089,9 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     size_t srcImgSize = src.payload.imageValue.height * src.payload.imageValue.width * src.payload.imageValue.channels * spixsize;
     size_t dstCapacity =
         dst.payload.imageValue.height * dst.payload.imageValue.width * dst.payload.imageValue.channels * dpixsize;
-    if (dst.valueType != Image || srcImgSize > dstCapacity) {
+    if (dst.valueType != SHType::Image || srcImgSize > dstCapacity) {
       destroyVar(dst);
-      dst.valueType = Image;
+      dst.valueType = SHType::Image;
       dst.payload.imageValue.data = new uint8_t[srcImgSize];
     }
 
@@ -2105,12 +2105,12 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
 
     memcpy(dst.payload.imageValue.data, src.payload.imageValue.data, srcImgSize);
   } break;
-  case Audio: {
+  case SHType::Audio: {
     size_t srcSize = src.payload.audioValue.nsamples * src.payload.audioValue.channels * sizeof(float);
     size_t dstCapacity = dst.payload.audioValue.nsamples * dst.payload.audioValue.channels * sizeof(float);
-    if (dst.valueType != Audio || srcSize > dstCapacity) {
+    if (dst.valueType != SHType::Audio || srcSize > dstCapacity) {
       destroyVar(dst);
-      dst.valueType = Audio;
+      dst.valueType = SHType::Audio;
       dst.payload.audioValue.samples = new float[src.payload.audioValue.nsamples * src.payload.audioValue.channels];
     }
 
@@ -2123,9 +2123,9 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
 
     memcpy(dst.payload.audioValue.samples, src.payload.audioValue.samples, srcSize);
   } break;
-  case Table: {
+  case SHType::Table: {
     SHMap *map;
-    if (dst.valueType == Table) {
+    if (dst.valueType == SHType::Table) {
       if (src.payload.tableValue.opaque == dst.payload.tableValue.opaque)
         return;
       assert(dst.payload.tableValue.api == &GetGlobals().TableInterface);
@@ -2133,7 +2133,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       map->clear();
     } else {
       destroyVar(dst);
-      dst.valueType = Table;
+      dst.valueType = SHType::Table;
       dst.payload.tableValue.api = &GetGlobals().TableInterface;
       map = new SHMap();
       dst.payload.tableValue.opaque = map;
@@ -2172,10 +2172,10 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       (*set).emplace(v);
     }
   } break;
-  case Bytes: {
-    if (dst.valueType != Bytes || dst.payload.bytesCapacity < src.payload.bytesSize) {
+  case SHType::Bytes: {
+    if (dst.valueType != SHType::Bytes || dst.payload.bytesCapacity < src.payload.bytesSize) {
       destroyVar(dst);
-      dst.valueType = Bytes;
+      dst.valueType = SHType::Bytes;
       dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
       dst.payload.bytesCapacity = src.payload.bytesSize;
     }
@@ -2191,9 +2191,9 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     auto srcLen = src.payload.arrayValue.len;
 
     // try our best to re-use memory
-    if (dst.valueType != Array) {
+    if (dst.valueType != SHType::Array) {
       destroyVar(dst);
-      dst.valueType = Array;
+      dst.valueType = SHType::Array;
     }
 
     if (src.payload.arrayValue.elements == dst.payload.arrayValue.elements)
@@ -2259,12 +2259,12 @@ void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
       bool potential = false;
       for (uint32_t j = 0; j < types.len; j++) {
         const auto &type = types.elements[j];
-        if (type.basicType == ShardRef || type.basicType == SHType::Wire) {
+        if (type.basicType == SHType::ShardRef || type.basicType == SHType::Wire) {
           potential = true;
-        } else if (type.basicType == Seq) {
+        } else if (type.basicType == SHType::Seq) {
           const auto &stypes = type.seqTypes;
           for (uint32_t k = 0; k < stypes.len; k++) {
-            if (stypes.elements[k].basicType == ShardRef) {
+            if (stypes.elements[k].basicType == SHType::ShardRef) {
               potential = true;
             }
           }
@@ -2284,12 +2284,12 @@ void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
   case 3: {
     // Var
     auto var = std::get<SHVar>(coll);
-    if (var.valueType == ShardRef) {
+    if (var.valueType == SHType::ShardRef) {
       _gatherShards(var.payload.shardValue, out);
     } else if (var.valueType == SHType::Wire) {
       auto wire = SHWire::sharedFromRef(var.payload.wireValue);
       _gatherShards(wire.get(), out);
-    } else if (var.valueType == Seq) {
+    } else if (var.valueType == SHType::Seq) {
       auto bs = var.payload.seqValue;
       for (uint32_t i = 0; i < bs.len; i++) {
         _gatherShards(bs.elements[i], out);

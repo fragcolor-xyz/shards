@@ -1230,7 +1230,7 @@ struct Run {
             _argsArray.clear();
             // add any arguments we have
             auto argsVar = _arguments.get();
-            if (argsVar.valueType == Seq) {
+            if (argsVar.valueType == SHType::Seq) {
               for (auto &arg : argsVar) {
                 if (arg.payload.stringLen > 0) {
                   _argsArray.emplace_back(arg.payload.stringValue);
@@ -1254,7 +1254,7 @@ struct Run {
             _data.args.push_back(_moduleFileName.c_str());
             // add any arguments we have
             auto argsVar = _arguments.get();
-            if (argsVar.valueType == Seq) {
+            if (argsVar.valueType == SHType::Seq) {
               for (auto &arg : argsVar) {
                 if (arg.payload.stringLen > 0) {
                   _data.args.emplace_back(arg.payload.stringValue);

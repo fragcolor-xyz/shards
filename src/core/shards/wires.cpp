@@ -68,7 +68,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   if (!wire) {
     if (wireref->valueType == SHType::Wire) {
       wire = SHWire::sharedFromRef(wireref->payload.wireValue);
-    } else if (wireref->valueType == String) {
+    } else if (wireref->valueType == SHType::String) {
       SHLOG_DEBUG("WireBase: Resolving wire {}", wireref->payload.stringValue);
       wire = GetGlobals().GlobalWires[wireref->payload.stringValue];
     } else {
@@ -272,7 +272,7 @@ struct Wait : public WireBase {
       auto vwire = wireref.get();
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == String) {
+      } else if (vwire.valueType == SHType::String) {
         SHLOG_DEBUG("Wait: Resolving wire {}", vwire.payload.stringValue);
         wire = GetGlobals().GlobalWires[vwire.payload.stringValue];
       } else {
@@ -340,7 +340,7 @@ struct StopWire : public WireBase {
   }
 
   void composed(const SHWire *wire, const SHComposeResult *result) {
-    if (!wire && wireref->valueType == None && _inputType != result->outputType) {
+    if (!wire && wireref->valueType == SHType::None && _inputType != result->outputType) {
       SHLOG_ERROR("Stop input and wire output type mismatch, Stop input must "
                   "be the same type of the wire's output (regular flow), "
                   "wire: {} expected: {}",
@@ -395,7 +395,7 @@ struct StopWire : public WireBase {
       auto vwire = wireref.get();
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == String) {
+      } else if (vwire.valueType == SHType::String) {
         SHLOG_DEBUG("Stop: Resolving wire {}", vwire.payload.stringValue);
         wire = GetGlobals().GlobalWires[vwire.payload.stringValue];
       } else {
@@ -464,7 +464,7 @@ struct Resume : public WireBase {
           // Capture if not global as we need to copy it!
           SHLOG_TRACE("Start/Resume: adding variable to requirements: {}, wire {}", avail.name, wire->name);
           SHVar ctxVar{};
-          ctxVar.valueType = ContextVar;
+          ctxVar.valueType = SHType::ContextVar;
           ctxVar.payload.stringValue = avail.name;
           auto &p = _vars.emplace_back();
           p = ctxVar;
@@ -661,7 +661,7 @@ struct Recur : public WireBase {
     for (auto &shared : data.shared) {
       if (!shared.global) {
         SHVar ctxVar{};
-        ctxVar.valueType = ContextVar;
+        ctxVar.valueType = SHType::ContextVar;
         ctxVar.payload.stringValue = shared.name;
         auto &p = _vars.emplace_back();
         p = ctxVar;
@@ -707,7 +707,7 @@ struct Recur : public WireBase {
     // (Do self)
     // Run within the root flow
     auto runRes = runSubWire(_wire, context, input);
-    if (unlikely(runRes.state == Failed)) {
+    if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
       // meaning there was an exception while
       // running the sub wire, stop the parent too
       context->stopFlow(runRes.output);
@@ -787,7 +787,7 @@ template <class T> struct BaseLoader : public BaseRunner {
     } else {
       // Run within the root flow
       const auto runRes = runSubWire(wire.get(), context, input);
-      if (likely(runRes.state != Failed)) {
+      if (likely(runRes.state != SHRunWireOutputState::Failed)) {
         return runRes.output;
       }
     }
@@ -827,7 +827,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
     switch (index) {
     case 0: {
       cleanup(); // stop current
-      if (value.valueType == Object) {
+      if (value.valueType == SHType::Object) {
         _provider = (SHWireProvider *)value.payload.objectValue;
       } else {
         _provider = nullptr;
@@ -1024,7 +1024,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     if (unlikely(!wire))
       return input;
 
-    if (_wireHash.valueType == None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
+    if (_wireHash.valueType == SHType::None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
       // Compose and hash in a thread
       await(
           context,
@@ -1072,7 +1072,7 @@ struct CapturingSpawners : public WireBase {
           // Capture if not global as we need to copy it!
           SHLOG_TRACE("CapturingSpawners: adding variable to requirements: {}, wire {}", avail.name, wire->name);
           SHVar ctxVar{};
-          ctxVar.valueType = ContextVar;
+          ctxVar.valueType = SHType::ContextVar;
           ctxVar.payload.stringValue = avail.name;
           auto &p = _vars.emplace_back();
           p = ctxVar;

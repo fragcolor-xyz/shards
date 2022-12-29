@@ -241,7 +241,7 @@ public:
   IterableArray(const seq_type &seq) : _seq(seq), _owned(false) {}
 
   // implicit converter
-  IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == Seq); }
+  IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == SHType::Seq); }
 
   IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(_seq, s); }
 
@@ -269,7 +269,7 @@ public:
   }
 
   IterableArray &operator=(SHVar &var) {
-    assert(var.valueType == Seq);
+    assert(var.valueType == SHType::Seq);
     _seq = var.payload.seqValue;
     _owned = false;
     return *this;

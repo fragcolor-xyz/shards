@@ -76,7 +76,7 @@ struct Pop {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static inline Parameters Params{{"Sequence",
                                    SHCCSTR("A variables sequence of pairs [value "
-                                           "pop-epoch-time-ms] with types [Any Int]"),
+                                           "pop-epoch-time-ms] with types [Any SHType::Int]"),
                                    {VPSeqType, CoreInfo::NoneType}}};
 
   SHOptionalString help() {
@@ -99,14 +99,14 @@ struct Pop {
 
     for (auto info : data.shared) {
       if (strcmp(info.name, _pseq.variableName()) == 0) {
-        if (info.exposedType.basicType != Seq || info.exposedType.seqTypes.len != 2)
+        if (info.exposedType.basicType != SHType::Seq || info.exposedType.seqTypes.len != 2)
           throw ComposeError("Time.Pop expected a sequence of pairs");
 
         if (!info.isMutable)
           throw ComposeError("Time.Pop expects a mutable sequence variable");
 
         if (info.exposedType.seqTypes.elements[1] != CoreInfo::IntType)
-          throw ComposeError("Time.Pop expects a pair of [Any Int] values");
+          throw ComposeError("Time.Pop expects a pair of [Any SHType::Int] values");
 
         return info.exposedType.seqTypes.elements[0];
       }

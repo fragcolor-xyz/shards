@@ -548,7 +548,7 @@ private:
     void before_stop(SHWire *wire) {
       // Collect fitness last result
       auto fitnessVar = wire->finishedOutput;
-      if (fitnessVar.valueType == Float) {
+      if (fitnessVar.valueType == SHType::Float) {
         self.fitness = fitnessVar.payload.floatValue;
       }
     }
@@ -632,12 +632,12 @@ struct Mutant {
     case 2: {
       destroyShards();
       _mutations = value;
-      if (_mutations.valueType == Seq) {
+      if (_mutations.valueType == SHType::Seq) {
         for (auto &mut : _mutations) {
-          if (mut.valueType == ShardRef) {
+          if (mut.valueType == SHType::ShardRef) {
             auto blk = mut.payload.shardValue;
             blk->owned = true;
-          } else if (mut.valueType == Seq) {
+          } else if (mut.valueType == SHType::Seq) {
             for (auto &bv : mut) {
               auto blk = bv.payload.shardValue;
               blk->owned = true;
@@ -670,12 +670,12 @@ struct Mutant {
   }
 
   void cleanupMutations() const {
-    if (_mutations.valueType == Seq) {
+    if (_mutations.valueType == SHType::Seq) {
       for (auto &mut : _mutations) {
-        if (mut.valueType == ShardRef) {
+        if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
           blk->cleanup(blk);
-        } else if (mut.valueType == Seq) {
+        } else if (mut.valueType == SHType::Seq) {
           for (auto &bv : mut) {
             auto blk = bv.payload.shardValue;
             blk->cleanup(blk);
@@ -686,13 +686,13 @@ struct Mutant {
   }
 
   void warmupMutations(SHContext *ctx) const {
-    if (_mutations.valueType == Seq) {
+    if (_mutations.valueType == SHType::Seq) {
       for (auto &mut : _mutations) {
-        if (mut.valueType == ShardRef) {
+        if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
           if (blk->warmup)
             blk->warmup(blk, ctx);
-        } else if (mut.valueType == Seq) {
+        } else if (mut.valueType == SHType::Seq) {
           for (auto &bv : mut) {
             auto blk = bv.payload.shardValue;
             if (blk->warmup)
@@ -709,13 +709,13 @@ struct Mutant {
   }
 
   void destroyShards() {
-    if (_mutations.valueType == Seq) {
+    if (_mutations.valueType == SHType::Seq) {
       for (auto &mut : _mutations) {
-        if (mut.valueType == ShardRef) {
+        if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
           blk->cleanup(blk);
           blk->destroy(blk);
-        } else if (mut.valueType == Seq) {
+        } else if (mut.valueType == SHType::Seq) {
           for (auto &bv : mut) {
             auto blk = bv.payload.shardValue;
             blk->cleanup(blk);
@@ -733,7 +733,7 @@ struct Mutant {
   SHTypeInfo compose(const SHInstanceData &data) {
     auto inner = mutant();
     // validate parameters
-    if (_mutations.valueType == Seq && inner) {
+    if (_mutations.valueType == SHType::Seq && inner) {
       auto dataCopy = data;
       int idx = 0;
       auto innerParams = inner->parameters(inner);
@@ -742,7 +742,7 @@ struct Mutant {
           break;
         TypeInfo ptype(inner->getParam(inner, idx), data);
         dataCopy.inputType = ptype;
-        if (mut.valueType == ShardRef) {
+        if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
           if (blk->compose) {
             auto res0 = blk->compose(blk, dataCopy);
@@ -755,7 +755,7 @@ struct Mutant {
                                 "mutation wire's output.");
             }
           }
-        } else if (mut.valueType == Seq) {
+        } else if (mut.valueType == SHType::Seq) {
           auto res = composeWire(
               mut.payload.seqValue, [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {},
               nullptr, dataCopy);
@@ -886,7 +886,7 @@ inline void Evolve::gatherMutants(SHWire *wire, std::vector<MutantInfo> &out) {
       auto mutator = reinterpret_cast<const ShardWrapper<Mutant> *>(info.shard);
       auto &minfo = out.emplace_back(mutator->shard);
       auto mutant = mutator->shard.mutant();
-      if (mutator->shard._indices.valueType == Seq) {
+      if (mutator->shard._indices.valueType == SHType::Seq) {
         for (auto &idx : mutator->shard._indices) {
           auto i = int(idx.payload.intValue);
           minfo.originalParams.emplace_back(i, mutant->getParam(mutant, i));
@@ -914,7 +914,7 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0, cons
       }
       // check if we have mutant params and cross them over
       auto &indices = cmuts->shard.get()._indices;
-      if (indices.valueType == Seq) {
+      if (indices.valueType == SHType::Seq) {
         for (auto &idx : indices) {
           const auto i = int(idx.payload.intValue);
           const auto r = Random::nextDouble();
@@ -954,11 +954,11 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
     if (info.shard.get().mutant()) {
       auto mutant = info.shard.get().mutant();
       auto &indices = mutator._indices;
-      if (mutant->mutate && (indices.valueType == None || rand() < 0.5)) {
+      if (mutant->mutate && (indices.valueType == SHType::None || rand() < 0.5)) {
         // In the case the shard has `mutate`
-        auto table = options.valueType == Table ? options.payload.tableValue : SHTable();
+        auto table = options.valueType == SHType::Table ? options.payload.tableValue : SHTable();
         mutant->mutate(mutant, table);
-      } else if (indices.valueType == Seq) {
+      } else if (indices.valueType == SHType::Seq) {
         auto &iseq = indices.payload.seqValue;
         // do stuff on the param
         // select a random one
@@ -966,15 +966,15 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
         auto current = mutant->getParam(mutant, int(iseq.elements[rparam].payload.intValue));
         // if we have mutation shards use them
         // if not use default operation
-        if (mutator._mutations.valueType == Seq && uint32_t(rparam) < mutator._mutations.payload.seqValue.len) {
+        if (mutator._mutations.valueType == SHType::Seq && uint32_t(rparam) < mutator._mutations.payload.seqValue.len) {
           // we need to warmup / cleanup in this case
           // mutant mini wire also currently is not composed! FIXME?
           mutator.warmupMutations(&ctx);
           auto mblks = mutator._mutations.payload.seqValue.elements[rparam];
-          if (mblks.valueType == ShardRef) {
+          if (mblks.valueType == SHType::ShardRef) {
             auto blk = mblks.payload.shardValue;
             current = blk->activate(blk, &ctx, &current);
-          } else if (mblks.valueType == Seq) {
+          } else if (mblks.valueType == SHType::Seq) {
             auto blks = mblks.payload.seqValue;
             SHVar out{};
             activateShards(blks, &ctx, current, out);
@@ -1050,7 +1050,7 @@ struct DShard {
       return shards::Var(_name);
     case 1: {
       SHVar res{};
-      res.valueType = Seq;
+      res.valueType = SHType::Seq;
       const auto nparams = _wrappedParams.size();
       res.payload.seqValue.elements = nparams > 0 ? &_wrappedParams.front() : nullptr;
       res.payload.seqValue.len = nparams;

@@ -267,7 +267,7 @@ struct BufferedConsumer {
     assert(len > 0);
     if (len > 1) {
       SHVar res{};
-      res.valueType = Seq;
+      res.valueType = SHType::Seq;
       res.payload.seqValue.elements = &buffer[0];
       res.payload.seqValue.len = buffer.size();
       return res;
@@ -325,7 +325,7 @@ struct Consume : public Consumers {
       if (_bufferSize == 1) {
         return _outType;
       } else {
-        _seqType.basicType = Seq;
+        _seqType.basicType = SHType::Seq;
         _seqType.seqTypes.elements = &_outType;
         _seqType.seqTypes.len = 1;
         return _seqType;
@@ -400,7 +400,7 @@ struct Listen : public Consumers {
       if (_bufferSize == 1) {
         return _outType;
       } else {
-        _seqType.basicType = Seq;
+        _seqType.basicType = SHType::Seq;
         _seqType.seqTypes.elements = &_outType;
         _seqType.seqTypes.len = 1;
         return _seqType;

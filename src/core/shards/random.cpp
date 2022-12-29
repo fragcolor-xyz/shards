@@ -28,7 +28,7 @@ template <Type &OUTTYPE, SHType SHTYPE> struct Rand : public RandBase {
 
   SHExposedTypesInfo requiredVariables() {
     SHVar variable = _max;
-    if (variable.valueType == ContextVar) {
+    if (variable.valueType == SHType::ContextVar) {
       _requiredInfo =
           ExposedInfo(ExposedInfo::Variable(variable.payload.stringValue, SHCCSTR("The required variable."), OUTTYPE));
       return SHExposedTypesInfo(_requiredInfo);
@@ -42,12 +42,12 @@ template <Type &OUTTYPE, SHType SHTYPE> struct Rand : public RandBase {
 
     auto max = _max.get();
     if constexpr (SHTYPE == SHType::Int) {
-      if (max.valueType == None)
+      if (max.valueType == SHType::None)
         res.payload.intValue = _uintdis(_gen);
       else
         res.payload.intValue = _uintdis(_gen) % max.payload.intValue;
     } else if constexpr (SHTYPE == SHType::Float) {
-      if (max.valueType == None)
+      if (max.valueType == SHType::None)
         res.payload.floatValue = _udis(_gen);
       else
         res.payload.floatValue = _udis(_gen) * max.payload.floatValue;

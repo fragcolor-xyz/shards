@@ -187,7 +187,7 @@ struct Join {
     _buffer.append(input.payload.seqValue.elements[0].payload.stringValue, SHSTRLEN(input.payload.seqValue.elements[0]));
 
     for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
-      assert(input.payload.seqValue.elements[i].valueType == String);
+      assert(input.payload.seqValue.elements[i].valueType == SHType::String);
       _buffer.append(_separator);
       _buffer.append(input.payload.seqValue.elements[i].payload.stringValue, SHSTRLEN(input.payload.seqValue.elements[i]));
     }

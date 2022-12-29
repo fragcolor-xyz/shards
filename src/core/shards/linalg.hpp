@@ -40,7 +40,7 @@ template <typename TOp> struct VectorBinaryOperation {
         return opType;
     }
 
-    if (rhs != Seq && lhs.basicType != Seq) {
+    if (rhs != SHType::Seq && lhs.basicType != SHType::Seq) {
       opType = OpType::Direct;
       resultType = lhs;
     }
@@ -66,7 +66,7 @@ template <typename TOp> struct VectorUnaryOperation {
         return opType;
     }
 
-    if (a.basicType != Seq) {
+    if (a.basicType != SHType::Seq) {
       opType = OpType::Direct;
       resultType = a;
     }
@@ -137,7 +137,7 @@ struct NormalizeOp {
 };
 
 struct Normalize : public UnaryOperation<VectorUnaryOperation<NormalizeOp>> {
-  // Normalize also supports Float seqs
+  // Normalize also supports SHType::Float seqs
   static SHTypesInfo inputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatVectorsOrFloatSeq; }
 
@@ -149,8 +149,8 @@ struct Normalize : public UnaryOperation<VectorUnaryOperation<NormalizeOp>> {
   SHVar getParam(int index) { return Var(op.op.positiveOnly); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1 &&
-        data.inputType.seqTypes.elements[0].basicType == Float) {
+    if (data.inputType.basicType == SHType::Seq && data.inputType.seqTypes.len == 1 &&
+        data.inputType.seqTypes.elements[0].basicType == SHType::Float) {
       OVERRIDE_ACTIVATE(data, activateFloatSeq);
       return data.inputType;
     } else {

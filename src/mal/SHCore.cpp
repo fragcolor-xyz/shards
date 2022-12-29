@@ -899,7 +899,7 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
     WRAP_TO_CONST(var);
   } else if (const malString *v = DYNAMIC_CAST(malString, arg)) {
     SHVar strVar{};
-    strVar.valueType = String;
+    strVar.valueType = SHType::String;
     auto &s = v->ref();
     strVar.payload.stringValue = s.c_str();
     WRAP_TO_CONST(strVar);
@@ -907,21 +907,21 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
     auto value = v->value();
     SHVar var{};
     if (v->isInteger()) {
-      var.valueType = Int;
+      var.valueType = SHType::Int;
       var.payload.intValue = value;
     } else {
-      var.valueType = Float;
+      var.valueType = SHType::Float;
       var.payload.floatValue = value;
     }
     WRAP_TO_CONST(var);
   } else if (arg == mal::trueValue()) {
     SHVar var{};
-    var.valueType = Bool;
+    var.valueType = SHType::Bool;
     var.payload.boolValue = true;
     WRAP_TO_CONST(var);
   } else if (arg == mal::falseValue()) {
     SHVar var{};
-    var.valueType = Bool;
+    var.valueType = SHType::Bool;
     var.payload.boolValue = false;
     WRAP_TO_CONST(var);
   } else if (malSHVar *v = DYNAMIC_CAST(malSHVar, arg)) {
@@ -951,7 +951,7 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
       // key is either a quoted string or a keyword (starting with ':')
       shMap[k[0] == '"' ? unescape(k) : k.substr(1)] = shv->value();
     }
-    var.valueType = Table;
+    var.valueType = SHType::Table;
     var.payload.tableValue.api = &shards::GetGlobals().TableInterface;
     var.payload.tableValue.opaque = &shMap;
     WRAP_TO_CONST(var);
@@ -984,7 +984,7 @@ malSHVarPtr varify(const malValuePtr &arg) {
   } else if (malString *v = DYNAMIC_CAST(malString, arg)) {
     auto &s = v->ref();
     SHVar var{};
-    var.valueType = String;
+    var.valueType = SHType::String;
     var.payload.stringValue = s.c_str();
     // notice, we don't clone in this case
     auto svar = new malSHVar(var, false);
@@ -995,10 +995,10 @@ malSHVarPtr varify(const malValuePtr &arg) {
     auto value = v->value();
     SHVar var{};
     if (v->isInteger()) {
-      var.valueType = Int;
+      var.valueType = SHType::Int;
       var.payload.intValue = value;
     } else {
-      var.valueType = Float;
+      var.valueType = SHType::Float;
       var.payload.floatValue = value;
     }
     auto res = new malSHVar(var, false);
@@ -1006,7 +1006,7 @@ malSHVarPtr varify(const malValuePtr &arg) {
     return malSHVarPtr(res);
   } else if (malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
     SHVar tmp{};
-    tmp.valueType = Seq;
+    tmp.valueType = SHType::Seq;
     tmp.payload.seqValue = {};
     auto count = v->count();
     std::vector<malSHVarPtr> vars;
@@ -1035,7 +1035,7 @@ malSHVarPtr varify(const malValuePtr &arg) {
       shMap[k[0] == '"' ? unescape(k) : k.substr(1)] = shv->value();
     }
     SHVar tmp{};
-    tmp.valueType = Table;
+    tmp.valueType = SHType::Table;
     tmp.payload.tableValue.api = &shards::GetGlobals().TableInterface;
     tmp.payload.tableValue.opaque = &shMap;
     SHVar var{};
@@ -1048,14 +1048,14 @@ malSHVarPtr varify(const malValuePtr &arg) {
     return malSHVarPtr(mvar);
   } else if (arg == mal::trueValue()) {
     SHVar var{};
-    var.valueType = Bool;
+    var.valueType = SHType::Bool;
     var.payload.boolValue = true;
     auto v = new malSHVar(var, false);
     v->line = arg->line;
     return malSHVarPtr(v);
   } else if (arg == mal::falseValue()) {
     SHVar var{};
-    var.valueType = Bool;
+    var.valueType = SHType::Bool;
     var.payload.boolValue = false;
     auto v = new malSHVar(var, false);
     v->line = arg->line;
@@ -1075,7 +1075,7 @@ malSHVarPtr varify(const malValuePtr &arg) {
   } else if (malShard *v = DYNAMIC_CAST(malShard, arg)) {
     auto shard = v->value();
     SHVar var{};
-    var.valueType = ShardRef;
+    var.valueType = SHType::ShardRef;
     var.payload.shardValue = shard;
     auto bvar = new malSHVar(var, false);
     v->consume();
@@ -1168,7 +1168,7 @@ void setShardParameters(malShard *malshard, malValueIter begin, malValueIter end
 
 malValuePtr newEnum(int32_t vendor, int32_t type, SHEnum value) {
   SHVar var{};
-  var.valueType = Enum;
+  var.valueType = SHType::Enum;
   var.payload.enumVendorId = vendor;
   var.payload.enumTypeId = type;
   var.payload.enumValue = value;
@@ -1246,7 +1246,7 @@ std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
   while (begin != end) {
     auto next = *begin++;
     if (auto *v = DYNAMIC_CAST(malSHVar, next)) {
-      if (v->value().valueType == ContextVar) {
+      if (v->value().valueType == SHType::ContextVar) {
         if (state == Get) {
           res.emplace_back(makeVarShard(v, "Get"));
         } else if (state == Set) {
@@ -1738,7 +1738,7 @@ BUILTIN("path") {
   ARG(malString, value);
   auto &s = value->ref();
   SHVar var{};
-  var.valueType = Path;
+  var.valueType = SHType::Path;
   var.payload.stringValue = s.c_str();
   auto mvar = new malSHVar(var, false);
   mvar->reference(value);
@@ -1751,7 +1751,7 @@ BUILTIN("enum") {
   ARG(malNumber, value1);
   ARG(malNumber, value2);
   SHVar var{};
-  var.valueType = Enum;
+  var.valueType = SHType::Enum;
   var.payload.enumVendorId = static_cast<int32_t>(value0->value());
   var.payload.enumTypeId = static_cast<int32_t>(value1->value());
   var.payload.enumValue = static_cast<SHEnum>(value2->value());
@@ -1762,7 +1762,7 @@ BUILTIN("string") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   SHVar var{};
-  var.valueType = String;
+  var.valueType = SHType::String;
   auto &s = value->ref();
   var.payload.stringValue = s.c_str();
   auto mvar = new malSHVar(var, false);
@@ -1774,7 +1774,7 @@ BUILTIN("bytes") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   SHVar var{};
-  var.valueType = Bytes;
+  var.valueType = SHType::Bytes;
   auto &s = value->ref();
   var.payload.bytesValue = (uint8_t *)s.data();
   var.payload.bytesSize = s.size();
@@ -1787,7 +1787,7 @@ BUILTIN("context-var") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   SHVar var{};
-  var.valueType = ContextVar;
+  var.valueType = SHType::ContextVar;
   auto &s = value->ref();
   var.payload.stringValue = s.c_str();
   auto mvar = new malSHVar(var, false);
@@ -1918,7 +1918,7 @@ BUILTIN("int") {
   CHECK_ARGS_IS(1);
   ARG(malNumber, value);
   SHVar var{};
-  var.valueType = Int;
+  var.valueType = SHType::Int;
   var.payload.intValue = value->value();
   return malValuePtr(new malSHVar(var, false));
 }
@@ -1939,7 +1939,7 @@ BUILTIN("float") {
   CHECK_ARGS_IS(1);
   ARG(malNumber, value);
   SHVar var{};
-  var.valueType = Float;
+  var.valueType = SHType::Float;
   var.payload.floatValue = value->value();
   return malValuePtr(new malSHVar(var, false));
 }

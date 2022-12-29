@@ -70,7 +70,7 @@ public:
 class IntValue : public SHVarValue {
 public:
   IntValue(int64_t value, const token::Token &token, const std::shared_ptr<Environment> &env) : SHVarValue(token, env) {
-    _var.valueType = Int;
+    _var.valueType = SHType::Int;
     _var.payload.intValue = value;
   }
 };
@@ -78,7 +78,7 @@ public:
 class FloatValue : public SHVarValue {
 public:
   FloatValue(double value, const token::Token &token, const std::shared_ptr<Environment> &env) : SHVarValue(token, env) {
-    _var.valueType = Float;
+    _var.valueType = SHType::Float;
     _var.payload.floatValue = value;
   }
 };
@@ -87,7 +87,7 @@ class StringValue : public SHVarValue {
 public:
   StringValue(std::string value, const token::Token &token, const std::shared_ptr<Environment> &env)
       : SHVarValue(token, env), _storage(value) {
-    _var.valueType = String;
+    _var.valueType = SHType::String;
     _var.payload.stringValue = _storage.c_str();
   }
 
@@ -98,7 +98,7 @@ private:
 class BoolValue : public SHVarValue {
 public:
   BoolValue(bool value, const token::Token &token, const std::shared_ptr<Environment> &env) : SHVarValue(token, env) {
-    _var.valueType = Bool;
+    _var.valueType = SHType::Bool;
     _var.payload.boolValue = value;
   }
 };
@@ -106,17 +106,17 @@ public:
 class ShardValue : public SHVarValue {
 public:
   ShardValue(ShardPtr value, const token::Token &token, const std::shared_ptr<Environment> &env) : SHVarValue(token, env) {
-    _var.valueType = ShardRef;
+    _var.valueType = SHType::ShardRef;
     _var.payload.shardValue = value;
     _shard = std::shared_ptr<Shard>(value, [this](Shard *blk) {
       // Make sure we are not consumed (inside a wire or another shard)
-      if (_var.valueType == ShardRef)
+      if (_var.valueType == SHType::ShardRef)
         blk->destroy(blk);
     });
   }
 
   void consume() {
-    if (_var.valueType != ShardRef) {
+    if (_var.valueType != SHType::ShardRef) {
       throw EvalException("Attempt to use an already consumed shard", _token.line);
     }
     _var = {};

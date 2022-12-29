@@ -201,25 +201,25 @@ constexpr bool hasDispatchType(DispatchType a, DispatchType b) { return (uint8_t
 template <DispatchType DispatchType, typename T, typename... TArgs> void dispatchType(SHType type, T v, TArgs &&...args) {
   if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes)) {
     switch (type) {
-    case Int:
+    case SHType::Int:
       return v.template apply<SHType::Int>(std::forward<TArgs>(args)...);
       break;
-    case Int2:
+    case SHType::Int2:
       return v.template apply<SHType::Int2>(std::forward<TArgs>(args)...);
       break;
-    case Int3:
+    case SHType::Int3:
       return v.template apply<SHType::Int3>(std::forward<TArgs>(args)...);
       break;
-    case Int4:
+    case SHType::Int4:
       return v.template apply<SHType::Int4>(std::forward<TArgs>(args)...);
       break;
-    case Int8:
+    case SHType::Int8:
       return v.template apply<SHType::Int8>(std::forward<TArgs>(args)...);
       break;
-    case Int16:
+    case SHType::Int16:
       return v.template apply<SHType::Int16>(std::forward<TArgs>(args)...);
       break;
-    case Color:
+    case SHType::Color:
       return v.template apply<SHType::Color>(std::forward<TArgs>(args)...);
       break;
     default:
@@ -228,16 +228,16 @@ template <DispatchType DispatchType, typename T, typename... TArgs> void dispatc
   }
   if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes)) {
     switch (type) {
-    case Float:
+    case SHType::Float:
       return v.template apply<SHType::Float>(std::forward<TArgs>(args)...);
       break;
-    case Float2:
+    case SHType::Float2:
       return v.template apply<SHType::Float2>(std::forward<TArgs>(args)...);
       break;
-    case Float3:
+    case SHType::Float3:
       return v.template apply<SHType::Float3>(std::forward<TArgs>(args)...);
       break;
-    case Float4:
+    case SHType::Float4:
       return v.template apply<SHType::Float4>(std::forward<TArgs>(args)...);
       break;
     default:

@@ -8,22 +8,22 @@ namespace Math {
 namespace LinAlg {
 
 void CrossOp::apply(SHVar &output, const SHVar &input, const SHVar &operand) {
-  if (operand.valueType != Float3)
-    throw ActivationError("LinAlg.Cross works only with Float3 types.");
+  if (operand.valueType != SHType::Float3)
+    throw ActivationError("LinAlg.Cross works only with SHType::Float3 types.");
 
   switch (input.valueType) {
-  case Float3: {
+  case SHType::Float3: {
     const SHInt3 mask1 = {1, 2, 0};
     const SHInt3 mask2 = {2, 0, 1};
     auto a1 = shufflevector(input.payload.float3Value, mask1);
     auto a2 = shufflevector(input.payload.float3Value, mask2);
     auto b1 = shufflevector(operand.payload.float3Value, mask1);
     auto b2 = shufflevector(operand.payload.float3Value, mask2);
-    output.valueType = Float3;
+    output.valueType = SHType::Float3;
     output.payload.float3Value = a1 * b2 - a2 * b1;
   } break;
   default:
-    throw ActivationError("LinAlg.Cross works only with Float3 types.");
+    throw ActivationError("LinAlg.Cross works only with SHType::Float3 types.");
   }
 }
 
@@ -32,19 +32,19 @@ void DotOp::apply(SHVar &output, const SHVar &input, const SHVar &operand) {
     throw ActivationError("LinAlg.Dot works only with same input and operand types.");
 
   switch (input.valueType) {
-  case Float2: {
-    output.valueType = Float;
+  case SHType::Float2: {
+    output.valueType = SHType::Float;
     output.payload.floatValue = input.payload.float2Value[0] * operand.payload.float2Value[0];
     output.payload.floatValue += input.payload.float2Value[1] * operand.payload.float2Value[1];
   } break;
-  case Float3: {
-    output.valueType = Float;
+  case SHType::Float3: {
+    output.valueType = SHType::Float;
     output.payload.floatValue = input.payload.float3Value[0] * operand.payload.float3Value[0];
     output.payload.floatValue += input.payload.float3Value[1] * operand.payload.float3Value[1];
     output.payload.floatValue += input.payload.float3Value[2] * operand.payload.float3Value[2];
   } break;
-  case Float4: {
-    output.valueType = Float;
+  case SHType::Float4: {
+    output.valueType = SHType::Float;
     output.payload.floatValue = input.payload.float4Value[0] * operand.payload.float4Value[0];
     output.payload.floatValue += input.payload.float4Value[1] * operand.payload.float4Value[1];
     output.payload.floatValue += input.payload.float4Value[2] * operand.payload.float4Value[2];
@@ -60,8 +60,8 @@ void NormalizeOp::apply(SHVar &output, const SHVar &input) {
   lenOp.apply(len, input);
 
   switch (input.valueType) {
-  case Float2: {
-    output.valueType = Float2;
+  case SHType::Float2: {
+    output.valueType = SHType::Float2;
     if (len.payload.floatValue > 0 || !positiveOnly) {
       SHFloat2 vlen = {len.payload.floatValue, len.payload.floatValue};
       output.payload.float2Value = input.payload.float2Value / vlen;
@@ -73,8 +73,8 @@ void NormalizeOp::apply(SHVar &output, const SHVar &input) {
       output.payload.float2Value = input.payload.float2Value;
     }
   } break;
-  case Float3: {
-    output.valueType = Float3;
+  case SHType::Float3: {
+    output.valueType = SHType::Float3;
     if (len.payload.floatValue > 0 || !positiveOnly) {
       SHFloat3 vlen = {float(len.payload.floatValue), float(len.payload.floatValue), float(len.payload.floatValue)};
       output.payload.float3Value = input.payload.float3Value / vlen;
@@ -86,8 +86,8 @@ void NormalizeOp::apply(SHVar &output, const SHVar &input) {
       output.payload.float3Value = input.payload.float3Value;
     }
   } break;
-  case Float4: {
-    output.valueType = Float4;
+  case SHType::Float4: {
+    output.valueType = SHType::Float4;
     if (len.payload.floatValue > 0 || !positiveOnly) {
       SHFloat4 vlen = {float(len.payload.floatValue), float(len.payload.floatValue), float(len.payload.floatValue),
                        float(len.payload.floatValue)};
@@ -149,7 +149,7 @@ SHVar Normalize::activateFloatSeq(SHContext *context, const SHVar &input) {
 
 SHVar MatMul::activate(SHContext *context, const SHVar &input) {
   auto &operand = _operand.get();
-  // expect SeqSeq as in 2x 2D arrays or Seq1 Mat @ Vec
+  // expect SeqSeq as in 2x 2D arrays or SHType::Seq1 Mat @ Vec
   if (_opType == SeqSeq) {
 #define MATMUL_OP(_v1_, _v2_, _n_)                                                                             \
   shards::arrayResize(_result.payload.seqValue, _n_);                                                          \
@@ -160,16 +160,16 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
   for (auto i = 0; i < _n_; i++) {                                                                             \
     _result.payload.seqValue.elements[i].valueType = _v2_;                                                     \
   }
-    _result.valueType = Seq;
+    _result.valueType = SHType::Seq;
     switch (input.payload.seqValue.elements[0].valueType) {
-    case Float2: {
-      MATMUL_OP(double2x2, Float2, 2);
+    case SHType::Float2: {
+      MATMUL_OP(double2x2, SHType::Float2, 2);
     } break;
-    case Float3: {
-      MATMUL_OP(float3x3, Float3, 3);
+    case SHType::Float3: {
+      MATMUL_OP(float3x3, SHType::Float3, 3);
     } break;
-    case Float4: {
-      MATMUL_OP(float4x4, Float4, 4);
+    case SHType::Float4: {
+      MATMUL_OP(float4x4, SHType::Float4, 4);
     } break;
     default:
       throw ActivationError("Invalid value type for MatMul");
@@ -184,21 +184,21 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
   *c = linalg::mul(*a, *b);                                                                                  \
   _result.valueType = _v2_;
     switch (input.payload.seqValue.elements[0].valueType) {
-    case Float2: {
-      MATMUL_OP(double2x2, Float2, 2, double2, float2Value);
+    case SHType::Float2: {
+      MATMUL_OP(double2x2, SHType::Float2, 2, double2, float2Value);
     } break;
-    case Float3: {
-      MATMUL_OP(float3x3, Float3, 3, float3, float3Value);
+    case SHType::Float3: {
+      MATMUL_OP(float3x3, SHType::Float3, 3, float3, float3Value);
     } break;
-    case Float4: {
-      MATMUL_OP(float4x4, Float4, 4, float4, float4Value);
+    case SHType::Float4: {
+      MATMUL_OP(float4x4, SHType::Float4, 4, float4, float4Value);
     } break;
     default:
       throw ActivationError("Invalid value type for MatMul");
     }
     return _result;
   } else {
-    throw ActivationError("MatMul expects either Mat (Seq of FloatX) @ Mat or "
+    throw ActivationError("MatMul expects either Mat (SHType::Seq of FloatX) @ Mat or "
                           "Mat @ Vec (FloatX)");
   }
 }
@@ -212,27 +212,27 @@ SHVar Transpose::activate(SHContext *context, const SHVar &input) {
 
   size_t width = 0;
   switch (input.payload.seqValue.elements[0].valueType) {
-  case Float2:
+  case SHType::Float2:
     width = 2;
     break;
-  case Float3:
+  case SHType::Float3:
     width = 3;
     break;
-  case Float4:
+  case SHType::Float4:
     width = 4;
     break;
   default:
     break;
   }
 
-  _result.valueType = Seq;
+  _result.valueType = SHType::Seq;
   shards::arrayResize(_result.payload.seqValue, width);
 
   double v1{}, v2{}, v3{}, v4{};
   for (size_t w = 0; w < width; w++) {
     switch (height) {
     case 2:
-      _result.payload.seqValue.elements[w].valueType = Float2;
+      _result.payload.seqValue.elements[w].valueType = SHType::Float2;
       switch (width) {
       case 2:
         v1 = input.payload.seqValue.elements[0].payload.float2Value[w];
@@ -253,7 +253,7 @@ SHVar Transpose::activate(SHContext *context, const SHVar &input) {
       _result.payload.seqValue.elements[w].payload.float2Value[1] = v2;
       break;
     case 3:
-      _result.payload.seqValue.elements[w].valueType = Float3;
+      _result.payload.seqValue.elements[w].valueType = SHType::Float3;
       switch (width) {
       case 2:
         v1 = input.payload.seqValue.elements[0].payload.float2Value[w];
@@ -278,7 +278,7 @@ SHVar Transpose::activate(SHContext *context, const SHVar &input) {
       _result.payload.seqValue.elements[w].payload.float3Value[2] = v3;
       break;
     case 4:
-      _result.payload.seqValue.elements[w].valueType = Float4;
+      _result.payload.seqValue.elements[w].valueType = SHType::Float4;
       switch (width) {
       case 2:
         v1 = input.payload.seqValue.elements[0].payload.float2Value[w];
