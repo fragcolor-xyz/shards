@@ -50,13 +50,13 @@ public:
 
   MPMCChannel &subscribe() {
     // we automatically cleanup based on the closed flag of the inner channel
-    std::scoped_lock<std::mutex> lock(submutex);
+    std::scoped_lock<std::mutex> lock(subMutex);
     return subscribers.emplace_back(_noCopy);
   }
 
 protected:
   friend struct Broadcast;
-  std::mutex submutex;
+  std::mutex subMutex;
   std::list<MPMCChannel> subscribers;
   bool _noCopy = false;
 };
@@ -121,7 +121,7 @@ struct Base {
 };
 
 struct Produce : public Base {
-  MPMCChannel *_mpchannel;
+  MPMCChannel *_mpChannel;
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -130,19 +130,19 @@ struct Produce : public Base {
   static SHParametersInfo parameters() { return producerParams; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &vchannel = Globals::get(_name);
-    switch (vchannel.index()) {
+    auto &vChannel = Globals::get(_name);
+    switch (vChannel.index()) {
     case 0: {
-      vchannel.emplace<MPMCChannel>(_noCopy);
-      auto &channel = std::get<MPMCChannel>(vchannel);
+      vChannel.emplace<MPMCChannel>(_noCopy);
+      auto &channel = std::get<MPMCChannel>(vChannel);
       // no cloning here, this is potentially dangerous if the type is dynamic
       channel.type = data.inputType;
-      _mpchannel = &channel;
+      _mpChannel = &channel;
     } break;
     case 1: {
-      auto &channel = std::get<MPMCChannel>(vchannel);
+      auto &channel = std::get<MPMCChannel>(vChannel);
       verifyInputType(channel, data);
-      _mpchannel = &channel;
+      _mpChannel = &channel;
     } break;
     default:
       throw SHException("Produce/Consume channel type expected.");
@@ -151,14 +151,14 @@ struct Produce : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_mpchannel);
+    assert(_mpChannel);
 
     SHVar tmp{};
 
     // try to get from recycle bin
-    // this might fail but we don't care//
-    // if it fails will just allocate a brand new
-    _mpchannel->recycle.pop(tmp);
+    // this might fail but we don't care
+    // if it fails will just initialize a new variable
+    _mpChannel->recycle.pop(tmp);
 
     if (_noCopy) {
       tmp = input;
@@ -169,14 +169,14 @@ struct Produce : public Base {
     }
 
     // enqueue for the stealing
-    _mpchannel->data.push(tmp);
+    _mpChannel->data.push(tmp);
 
     return input;
   }
 };
 
 struct Broadcast : public Base {
-  BroadcastChannel *_mpchannel;
+  BroadcastChannel *_mpChannel;
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -185,23 +185,23 @@ struct Broadcast : public Base {
   static SHParametersInfo parameters() { return producerParams; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &vchannel = Globals::get(_name);
-    switch (vchannel.index()) {
+    auto &vChannel = Globals::get(_name);
+    switch (vChannel.index()) {
     case 0: {
       SHLOG_TRACE("Creating broadcast channel: {}", _name);
 
-      vchannel.emplace<BroadcastChannel>(_noCopy);
-      auto &channel = std::get<BroadcastChannel>(vchannel);
+      vChannel.emplace<BroadcastChannel>(_noCopy);
+      auto &channel = std::get<BroadcastChannel>(vChannel);
       // no cloning here, this is potentially dangerous if the type is dynamic
       channel.type = data.inputType;
-      _mpchannel = &channel;
+      _mpChannel = &channel;
     } break;
     case 2: {
       SHLOG_TRACE("Subscribing to broadcast channel: {}", _name);
 
-      auto &channel = std::get<BroadcastChannel>(vchannel);
+      auto &channel = std::get<BroadcastChannel>(vChannel);
       verifyInputType(channel, data);
-      _mpchannel = &channel;
+      _mpChannel = &channel;
     } break;
     default:
       throw SHException("Broadcast: channel type expected.");
@@ -210,15 +210,15 @@ struct Broadcast : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_mpchannel);
+    assert(_mpChannel);
 
     // we need to support subscriptions during run-time
     // so we need to lock this operation
     // furthermore we allow multiple broadcasters so the erase needs this
-    std::scoped_lock<std::mutex> lock(_mpchannel->submutex);
-    for (auto it = _mpchannel->subscribers.begin(); it != _mpchannel->subscribers.end();) {
+    std::scoped_lock<std::mutex> lock(_mpChannel->subMutex);
+    for (auto it = _mpChannel->subscribers.begin(); it != _mpChannel->subscribers.end();) {
       if (it->closed) {
-        it = _mpchannel->subscribers.erase(it);
+        it = _mpChannel->subscribers.erase(it);
       } else {
         SHVar tmp{};
 
@@ -278,7 +278,7 @@ struct BufferedConsumer {
 };
 
 struct Consumers : public Base {
-  MPMCChannel *_mpchannel;
+  MPMCChannel *_mpChannel;
   BufferedConsumer _storage;
   int64_t _bufferSize = 1;
   int64_t _current = 1;
@@ -309,18 +309,18 @@ struct Consumers : public Base {
     // reset buffer counter
     _current = _bufferSize;
     // cleanup storage
-    if (_mpchannel)
-      _storage.recycle(_mpchannel);
+    if (_mpChannel)
+      _storage.recycle(_mpChannel);
   }
 };
 
 struct Consume : public Consumers {
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &vchannel = Globals::get(_name);
-    switch (vchannel.index()) {
+    auto &vChannel = Globals::get(_name);
+    switch (vChannel.index()) {
     case 1: {
-      auto &channel = std::get<MPMCChannel>(vchannel);
-      _mpchannel = &channel;
+      auto &channel = std::get<MPMCChannel>(vChannel);
+      _mpChannel = &channel;
       _outType = channel.type;
       if (_bufferSize == 1) {
         return _outType;
@@ -337,20 +337,21 @@ struct Consume : public Consumers {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_mpchannel);
+    assert(_mpChannel);
 
     // send previous values to recycle
-    _storage.recycle(_mpchannel);
+    _storage.recycle(_mpChannel);
 
     // reset buffer
     _current = _bufferSize;
 
-    // everytime we are scheduled we try to pop a value
+    // blocking; and
+    // everytime we are resumed we try to pop a value
     while (_current--) {
       SHVar output{};
-      while (!_mpchannel->data.pop(output)) {
+      while (!_mpChannel->data.pop(output)) {
         // check also for channel completion
-        if (_mpchannel->closed) {
+        if (_mpChannel->closed) {
           if (!_storage.empty()) {
             return _storage;
           } else {
@@ -370,32 +371,32 @@ struct Consume : public Consumers {
 };
 
 struct Listen : public Consumers {
-  BroadcastChannel *_bchannel;
+  BroadcastChannel *_bChannel;
 
   void destroy() {
-    if (_mpchannel) {
-      _mpchannel->closed = true;
+    if (_mpChannel) {
+      _mpChannel->closed = true;
       // also try clear here, to make broadcast removal faster
       SHVar tmp{};
-      while (_mpchannel->data.pop(tmp)) {
+      while (_mpChannel->data.pop(tmp)) {
         destroyVar(tmp);
       }
-      while (_mpchannel->recycle.pop(tmp)) {
+      while (_mpChannel->recycle.pop(tmp)) {
         destroyVar(tmp);
       }
     }
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &vchannel = Globals::get(_name);
-    switch (vchannel.index()) {
+    auto &vChannel = Globals::get(_name);
+    switch (vChannel.index()) {
     case 2: {
       SHLOG_TRACE("Listening broadcast channel: {}", _name);
 
-      auto &channel = std::get<BroadcastChannel>(vchannel);
+      auto &channel = std::get<BroadcastChannel>(vChannel);
       auto &sub = channel.subscribe();
-      _bchannel = &channel;
-      _mpchannel = &sub;
+      _bChannel = &channel;
+      _mpChannel = &sub;
       _outType = channel.type;
       if (_bufferSize == 1) {
         return _outType;
@@ -412,21 +413,22 @@ struct Listen : public Consumers {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_bchannel);
-    assert(_mpchannel);
+    assert(_bChannel);
+    assert(_mpChannel);
 
     // send previous values to recycle
-    _storage.recycle(_mpchannel);
+    _storage.recycle(_mpChannel);
 
     // reset buffer
     _current = _bufferSize;
 
-    // everytime we are scheduled we try to pop a value
+    // blocking; and
+    // everytime we are resumed we try to pop a value
     while (_current--) {
       SHVar output{};
-      while (!_mpchannel->data.pop(output)) {
+      while (!_mpChannel->data.pop(output)) {
         // check also for channel completion
-        if (_bchannel->closed) {
+        if (_bChannel->closed) {
           if (!_storage.empty()) {
             return _storage;
           } else {
@@ -446,7 +448,7 @@ struct Listen : public Consumers {
 };
 
 struct Complete : public Base {
-  ChannelShared *_mpchannel;
+  ChannelShared *_mpChannel;
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -455,15 +457,15 @@ struct Complete : public Base {
   static SHParametersInfo parameters() { return consumerParams; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &vchannel = Globals::get(_name);
-    switch (vchannel.index()) {
+    auto &vChannel = Globals::get(_name);
+    switch (vChannel.index()) {
     case 1: {
-      auto &channel = std::get<MPMCChannel>(vchannel);
-      _mpchannel = &channel;
+      auto &channel = std::get<MPMCChannel>(vChannel);
+      _mpChannel = &channel;
     } break;
     case 2: {
-      auto &channel = std::get<BroadcastChannel>(vchannel);
-      _mpchannel = &channel;
+      auto &channel = std::get<BroadcastChannel>(vChannel);
+      _mpChannel = &channel;
     } break;
     default:
       throw SHException("Expected a valid channel.");
@@ -472,9 +474,9 @@ struct Complete : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_mpchannel);
+    assert(_mpChannel);
 
-    if (_mpchannel->closed.exchange(true)) {
+    if (_mpChannel->closed.exchange(true)) {
       SHLOG_INFO("Complete called on an already closed channel: {}", _name);
     }
 
