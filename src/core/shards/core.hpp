@@ -3469,7 +3469,7 @@ struct Once {
         // let's cheat in this case and stop triggering this call
         self->inlineShardId = InlineShard::NoopShard;
       } else {
-        next = next + dsleep;
+        next = (current - (current - next)) + dsleep;
       }
     }
 
