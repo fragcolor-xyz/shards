@@ -12,11 +12,11 @@
 #include "context_xr_gfx_data.hpp"
 
 
-/*
+
 #if GFX_WINDOWS
 #define VK_USE_PLATFORM_WIN32_KHR //[t] TODO: Guus, if I uncomment this, all of vulkan shits the bed with 359 errors. Why?
 #endif
-*/
+
 
 
 #include <Vulkan-Headers/include/vulkan/vulkan.hpp>
@@ -168,14 +168,18 @@ namespace gfx {
 
     void createMirrorSurface() {
       spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface()...");
-      #if VK_USE_PLATFORM_WIN32_KHR //[t] NOTE: I replaced "GFX_WINDOWS" with VK_USE_PLATFORM_WIN32_KHR, and disabled the GFX_WINDOWS define from up top because it was giving an error. 
-      vk::Win32SurfaceCreateInfoKHR surfInfo;
+      //[t] NOTE: I replaced "GFX_WINDOWS" with VK_USE_PLATFORM_WIN32_KHR, 
+      // and disabled the GFX_WINDOWS define from up top because it was giving an error. 
+      #if defined(VK_USE_PLATFORM_WIN32_KHR)
+      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: trying: surfInfo.setHwnd(HWND(window.getNativeWindowHandle()));");
       surfInfo.setHwnd(HWND(window.getNativeWindowHandle()));
+      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: passed window.getNativeWindowHandle()");
       mirrorSurface = wgpuVulkanShared->instance.createWin32SurfaceKHR(surfInfo, nullptr, wgpuVulkanShared->loader);
       if (!mirrorSurface)
         spdlog::error("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: error at mirrorSurface = wgpuVulkanShared->instance.createWin32SurfaceKHR(surfInfo, nullptr, wgpuVulkanShared->loader);");
         throw std::runtime_error("Failed to create surface");
       #else
+      spdlog::error("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: error at `#if VK_USE_PLATFORM_WIN32_KHR`, went into else. \"Platform surface not implemented\".");
       static_assert("Platform surface not implemented");
       #endif
 
@@ -515,6 +519,7 @@ namespace gfx {
       std::vector<std::shared_ptr<IContextMainOutput>> mainOutputs = 
       { 
         openXRSystem.createHeadset(wgpuVulkanShared, true), 
+        //[t] TODO: UNCOMMENT FOR MIRROR VIEW:
         std::make_shared<OpenXRMirrorView>(wgpuVulkanShared, window) 
       };
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createMainOutput: returning mainOutputs: Headset and mirrorView.");
