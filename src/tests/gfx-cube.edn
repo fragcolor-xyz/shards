@@ -54,4 +54,4 @@
 
 (schedule Root test-wire)
 ;(run Root timestep 100)
-(run Root timestep)
+(run Root timestep 999999999)
