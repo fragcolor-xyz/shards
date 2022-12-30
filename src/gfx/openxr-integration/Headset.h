@@ -89,7 +89,7 @@ private:
   std::vector<XrView> eyePoses;
   std::vector<XrCompositionLayerProjectionView> eyeRenderInfos;
 
-  std::vector<XrSwapchain*> swapchainArr;// = nullptr;
+  std::vector<XrSwapchain> swapchainArr;// = nullptr;
   std::vector<RenderTarget*> swapchainRenderTargets;
   //std::vector<gfx::WgpuHandle<WGPUTextureView>> swapchainRTTextureViews;
   std::vector<WGPUTextureView> swapchainRTTextureViews;

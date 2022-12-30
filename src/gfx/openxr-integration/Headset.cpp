@@ -416,14 +416,18 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       swapchainCreateInfo.usageFlags
       );
         
-
-      result = xrCreateSwapchain(session, &swapchainCreateInfo, swapchainArr.at(i)); // [t] &swapchain.handle?
+      XrSwapchain xrSwapchain;
+      result = xrCreateSwapchain(session, &swapchainCreateInfo, &xrSwapchain); 
+      swapchainArr.at(i) = xrSwapchain;// [t] &swapchain.handle? ^
+      if(swapchainArr.at(i) == nullptr)
+        spdlog::error("[log][t] Headset::Headset: error at swapchainarr");
       if (XR_FAILED(result)) 
       { 
         util::error(Error::GenericOpenXR);
         valid = false;
+        
+        spdlog::error("[log][t] Headset::Headset: error at xrCreateSwapchain(session, &swapchainCreateInfo, swapchainArr.at(i)); result: {}, i: {}, swapchainNumber: {}, XrSessionState: {} -> transitioning to XR_SESSION_STATE_UNKNOWN", result, i, swapchainNumber, sessionState);
         XrSessionState sessionState = XR_SESSION_STATE_UNKNOWN;
-        spdlog::error("[log][t] Headset::Headset: error at xrCreateSwapchain(session, &swapchainCreateInfo, swapchainArr.at(i)); result: {}, i: {}, swapchainNumber: {}, sessionState: {}", result, i, swapchainNumber, sessionState);
         return;
       }
 
@@ -434,7 +438,7 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       // [t] But we need to use this xrEnumerateSwapchainImages magic to create 2 swapchainImages,
       // [t] one swapchain image for each multiview image layer
       uint32_t swapchainImageCount; 
-      result = xrEnumerateSwapchainImages(*(swapchainArr.at(i)), 0u, &swapchainImageCount, nullptr);
+      result = xrEnumerateSwapchainImages(swapchainArr.at(i), 0u, &swapchainImageCount, nullptr);
       if (XR_FAILED(result))
       {
         util::error(Error::GenericOpenXR);
@@ -457,7 +461,7 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       //[t] because the graphicsBinding vk instance is set to our already set up gfxWgpuVulkanShared->instance
 
       XrSwapchainImageBaseHeader* data = reinterpret_cast<XrSwapchainImageBaseHeader*>(swapchainImages.data());
-      result = xrEnumerateSwapchainImages(*(swapchainArr.at(i)), static_cast<uint32_t>(swapchainImages.size()), &swapchainImageCount, data);
+      result = xrEnumerateSwapchainImages(swapchainArr.at(i), static_cast<uint32_t>(swapchainImages.size()), &swapchainImageCount, data);
       if (XR_FAILED(result))
       {
         util::error(Error::GenericOpenXR);
@@ -512,9 +516,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
     // Associate this eye with the swapchain
     const XrViewConfigurationView& eyeImageInfo = eyeImageInfos.at(eyeIndex);
     if(swapchainArr.size() == 1)
-      eyeRenderInfo.subImage.swapchain = *(swapchainArr.at(eyeIndex));//multiview, 1 swapchain, 2 swapchainImages
+      eyeRenderInfo.subImage.swapchain = swapchainArr.at(eyeIndex);//multiview, 1 swapchain, 2 swapchainImages
     else
-      eyeRenderInfo.subImage.swapchain = *(swapchainArr.at(eyeIndex));//multipass, 2 swapchains
+      eyeRenderInfo.subImage.swapchain = swapchainArr.at(eyeIndex);//multipass, 2 swapchains
     eyeRenderInfo.subImage.imageArrayIndex = static_cast<uint32_t>(eyeIndex);
     eyeRenderInfo.subImage.imageRect.offset = { 0, 0 };
     eyeRenderInfo.subImage.imageRect.extent = { static_cast<int32_t>(eyeImageInfo.recommendedImageRectWidth),
@@ -532,7 +536,7 @@ Headset::~Headset()
   // Clean up OpenXR
   xrEndSession(session);
   for(size_t i=0; i< swapchainArr.size(); i++)
-    xrDestroySwapchain(*(swapchainArr.at(i)));
+    xrDestroySwapchain(swapchainArr.at(i));
 
   for (const RenderTarget* swapchainRenderTarget: swapchainRenderTargets)
   {
@@ -859,11 +863,13 @@ Headset::BeginFrameResult Headset::acquireSwapchainForFrame(uint32_t eyeIndex, u
   }
   //[t] Acquire the multiview swapchain image, or one of the 2 multipass swapchains
   XrSwapchainImageAcquireInfo swapchainImageAcquireInfo{ XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO };
-  XrResult result = xrAcquireSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageAcquireInfo, &swapchainImageIndex); 
+  XrSwapchain swapchain = swapchainArr.at(eyeIndex);
+  //XrResult result = xrAcquireSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageAcquireInfo, &swapchainImageIndex); 
+  XrResult result = xrAcquireSwapchainImage(swapchain, &swapchainImageAcquireInfo, &swapchainImageIndex); 
   if (XR_FAILED(result))
   {
     util::error(Error::GenericOpenXR);
-    spdlog::error("[log][t] Headset::acquireSwapchainForFrame: error at xrAcquireSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageAcquireInfo, &swapchainImageIndex);");
+    spdlog::error("[log][t] Headset::acquireSwapchainForFrame: error at xrAcquireSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageAcquireInfo, &swapchainImageIndex); Result: {}, eyeIndex: {}, swapchainImageIndex: {}", result, eyeIndex, swapchainImageIndex);
     return BeginFrameResult::Error;
   }
 
@@ -873,7 +879,9 @@ Headset::BeginFrameResult Headset::acquireSwapchainForFrame(uint32_t eyeIndex, u
   // Wait for the swapchain image
   XrSwapchainImageWaitInfo swapchainImageWaitInfo{ XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO };
   swapchainImageWaitInfo.timeout = XR_INFINITE_DURATION;
-  result = xrWaitSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageWaitInfo);
+  //result = xrWaitSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageWaitInfo);
+  result = xrWaitSwapchainImage(swapchain, &swapchainImageWaitInfo);
+  
   if (XR_FAILED(result))
   {
     util::error(Error::GenericOpenXR);
@@ -895,7 +903,7 @@ void Headset::releaseSwapchain(uint32_t eyeIndex) const
   }
   // Release the swapchain image
   XrSwapchainImageReleaseInfo swapchainImageReleaseInfo{ XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
-  XrResult result = xrReleaseSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageReleaseInfo);
+  XrResult result = xrReleaseSwapchainImage(swapchainArr.at(eyeIndex), &swapchainImageReleaseInfo);
   if (XR_FAILED(result))
   {
     return;
