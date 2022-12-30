@@ -11,9 +11,9 @@
 
 #include "context_xr_gfx_data.hpp"
 
+#include <Vulkan-Headers/include/vulkan/vulkan_handles.hpp>
 
-
-#if GFX_WINDOWS
+#if defined(GFX_WINDOWS)
 #define VK_USE_PLATFORM_WIN32_KHR //[t] TODO: Guus, if I uncomment this, all of vulkan shits the bed with 359 errors. Why?
 #endif
 
@@ -168,13 +168,13 @@ namespace gfx {
 
     void createMirrorSurface() {
       spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface()...");
-      //[t] NOTE: I replaced "GFX_WINDOWS" with VK_USE_PLATFORM_WIN32_KHR, 
-      // and disabled the GFX_WINDOWS define from up top because it was giving an error. 
-      #if defined(VK_USE_PLATFORM_WIN32_KHR)
+      #if defined(GFX_WINDOWS)
+      //vk::Win32SurfaceCreateInfoKHR surfInfo;
+      vk::Win32SurfaceCreateInfoKHR surfInfo;
       spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: trying: surfInfo.setHwnd(HWND(window.getNativeWindowHandle()));");
       surfInfo.setHwnd(HWND(window.getNativeWindowHandle()));
       spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: passed window.getNativeWindowHandle()");
-      mirrorSurface = wgpuVulkanShared->instance.createWin32SurfaceKHR(surfInfo, nullptr, wgpuVulkanShared->loader);
+      mirrorSurface = wgpuVulkanShared->vkInstance.createWin32SurfaceKHR(surfInfo, nullptr, wgpuVulkanShared->vkLoader);
       if (!mirrorSurface)
         spdlog::error("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: error at mirrorSurface = wgpuVulkanShared->instance.createWin32SurfaceKHR(surfInfo, nullptr, wgpuVulkanShared->loader);");
         throw std::runtime_error("Failed to create surface");
