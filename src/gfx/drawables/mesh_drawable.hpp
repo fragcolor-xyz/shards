@@ -37,9 +37,6 @@ public:
   DrawableProcessorConstructor getProcessor() const override;
 
   void pipelineHashCollect(detail::PipelineHashCollector &pipelineHashCollector) const override;
-
-  // DrawableGeneration generation;
-  // DrawableGeneration getGeneration() const override { return generation; }
 };
 } // namespace gfx
 
