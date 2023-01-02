@@ -525,9 +525,21 @@ struct RendererImpl final : public ContextData {
 
     for (auto &drawGroup : pipelineDrawables.drawGroups) {
       if (drawGroup.key.clipRect) {
-        auto &clipRect = drawGroup.key.clipRect.value();
-        wgpuRenderPassEncoderSetScissorRect(passEncoder, clipRect.x, clipRect.y, clipRect.z - clipRect.x,
-                                            clipRect.w - clipRect.y);
+        auto clipRect = drawGroup.key.clipRect.value();
+
+        int2 viewportMin = int2(viewData.viewport.x, viewData.viewport.y);
+        int2 viewportMax = int2(viewData.viewport.getX1(), viewData.viewport.getY1());
+
+        // Clamp to viewport
+        clipRect.x = linalg::clamp(clipRect.x, viewportMin.x, viewportMax.x);
+        clipRect.y = linalg::clamp(clipRect.y, viewportMin.y, viewportMax.y);
+        clipRect.z = linalg::clamp(clipRect.z, viewportMin.x, viewportMax.x);
+        clipRect.w = linalg::clamp(clipRect.w, viewportMin.y, viewportMax.y);
+        int w = clipRect.z - clipRect.x;
+        int h = clipRect.w - clipRect.y;
+        if (w == 0 || h == 0)
+          continue; // Discard draw call instead, wgpu doesn't allow w/h == 0
+        wgpuRenderPassEncoderSetScissorRect(passEncoder, clipRect.x, clipRect.y, w, h);
       } else {
         wgpuRenderPassEncoderSetScissorRect(passEncoder, viewData.viewport.x, viewData.viewport.y, viewData.viewport.width,
                                             viewData.viewport.height);
