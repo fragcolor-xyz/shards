@@ -24,11 +24,13 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     Hash128 groupHash;
     const IDrawable *drawable{};
+    size_t queueIndex{}; // Original index in the queue
     MeshContextData *mesh{};
     std::optional<int4> clipRect{};
     shards::pmr::vector<TextureContextData *> textures;
     ParameterStorage parameters; // TODO: Load values directly into buffer
-    CachedDrawable *cachedData;
+    CachedDrawable *cachedData;  // Reference to cached data for this drawable
+    float projectedDepth{};      // Projected view depth, only calculated when sorting by depth
 
     DrawableData() = default;
     DrawableData(allocator_type allocator) : textures(allocator), parameters(allocator) {}
@@ -99,7 +101,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   SharedBufferPool viewBufferPool;
   WGPUSupportedLimits limits{};
 
-  std::shared_mutex cacheLock;
+  std::shared_mutex drawableCacheLock;
   std::unordered_map<UniqueId, CachedDrawablePtr> drawableCache;
   size_t frameCounter{};
 
@@ -135,7 +137,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     this->frameCounter = frameCounter;
     drawBufferPool.reset();
     viewBufferPool.reset();
+
+    drawableCacheLock.lock();
     clearOldCacheItemsIn(drawableCache, frameCounter, 16);
+    drawableCacheLock.unlock();
   }
 
   void buildPipeline(PipelineBuilder &builder) override {
@@ -165,27 +170,36 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     }
   }
 
-  void generateDrawableData(DrawableData &data, Context &context, const CachedPipeline &cachedPipeline,
-                            const IDrawable *drawable) {
+  void generateDrawableData(DrawableData &data, Context &context, const CachedPipeline &cachedPipeline, const IDrawable *drawable,
+                            const ViewData &viewData, size_t frameCounter, bool needProjectedDepth = false) {
     ZoneScoped;
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
 
     // Lookup/init cached data
-    cacheLock.lock_shared();
+    drawableCacheLock.lock_shared();
     auto it = drawableCache.find(meshDrawable.getId());
     if (it == drawableCache.end()) {
-      cacheLock.unlock_shared();
-      cacheLock.lock();
+      drawableCacheLock.unlock_shared();
+      drawableCacheLock.lock();
       it = drawableCache.emplace(meshDrawable.getId(), std::make_shared<CachedDrawable>()).first;
-      cacheLock.unlock();
+      drawableCacheLock.unlock();
     } else {
-      cacheLock.unlock_shared();
+      drawableCacheLock.unlock_shared();
     }
 
     // Update cached data
     data.cachedData = it->second.get();
     data.cachedData->touchWithNewTransform(meshDrawable.transform, frameCounter);
+    if (meshDrawable.previousTransform) {
+      data.cachedData->previousTransform = meshDrawable.previousTransform.value();
+    }
+
+    // Optionally compute projected depth based on transform center
+    if (needProjectedDepth) {
+      float4 projected = mul(viewData.cachedView.viewProjectionTransform, mul(meshDrawable.transform, float4(0, 0, 0, 1)));
+      data.projectedDepth = projected.z;
+    }
 
     data.drawable = drawable;
 
@@ -376,9 +390,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     // - Build mesh data
     // - Collect parameters & texture bindings
     // - Generate batch keys
-    auto generateDrawableData = [=, &drawables = context.drawables, &cachedPipeline](size_t index) {
+    bool needProjectedDepth = context.sortMode == SortMode::BackToFront;
+    auto generateDrawableData = [=, &cachedPipeline](size_t index) {
       auto &drawableData = collector->get().emplace_back();
-      this->generateDrawableData(drawableData, context.context, cachedPipeline, drawables[index]);
+      this->generateDrawableData(drawableData, context.context, cachedPipeline, context.drawables[index], context.viewData, context.frameCounter, needProjectedDepth);
     };
     auto generateDrawableDataTask =
         subflow
@@ -408,7 +423,12 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       if (context.sortMode == SortMode::Batch) {
         auto comparison = [](const DrawableData *left, const DrawableData *right) { return left->groupHash < right->groupHash; };
-        std::sort(prepareData->drawableData.begin(), prepareData->drawableData.end(), comparison);
+        std::stable_sort(prepareData->drawableData.begin(), prepareData->drawableData.end(), comparison);
+      } else if (context.sortMode == SortMode::BackToFront) {
+        auto compareBackToFront = [](const DrawableData *left, const DrawableData *right) {
+          return left->projectedDepth > right->projectedDepth;
+        };
+        std::stable_sort(prepareData->drawableData.begin(), prepareData->drawableData.end(), compareBackToFront);
       }
 
       prepareData->groups.emplace(allocator);

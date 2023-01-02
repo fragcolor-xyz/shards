@@ -482,6 +482,7 @@ struct RendererImpl final : public ContextData {
           .subflow = subflow,
           .viewData = viewData,
           .drawables = group.drawables,
+          .frameCounter = frameCounter,
           .sortMode = sortMode,
       };
       auto prepareData = group.pipeline->drawableProcessor->prepare(prepareContext);

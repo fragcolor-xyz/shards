@@ -32,6 +32,9 @@ struct DrawablePrepareContext {
   // The drawables
   const std::vector<const IDrawable *> &drawables;
 
+  // Global current frame number
+  size_t frameCounter;
+
   // Sorting mode for drawables, set on the pipeline step
   SortMode sortMode;
 };
