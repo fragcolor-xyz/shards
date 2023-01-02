@@ -69,6 +69,19 @@ struct PipelineCache {
   void clear() { map.clear(); }
 };
 
+// Checks values in a map for the lastTouched member
+// if not used in `frameThreshold` frames, remove it
+template <typename T> void clearOldCacheItemsIn(T &iterable, size_t frameCounter, size_t frameThreshold) {
+  for (auto it = iterable.begin(); it != iterable.end();) {
+    auto &value = it->second;
+    if ((frameCounter - value->lastTouched) > frameThreshold) {
+      it = iterable.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 template <typename TCache, typename K, typename TInit>
 typename TCache::mapped_type &getCacheEntry(TCache &cache, const K &key, TInit &&init) {
   auto it = cache.find(key);

@@ -4,6 +4,7 @@
 #include "drawables/mesh_drawable.hpp"
 #include "../drawable_processor.hpp"
 #include "../renderer_types.hpp"
+#include "../renderer_cache.hpp"
 #include "../shader/types.hpp"
 #include "../texture_placeholder.hpp"
 #include "drawable_processor_helpers.hpp"
@@ -12,24 +13,6 @@
 #include <tracy/Tracy.hpp>
 
 namespace gfx::detail {
-
-struct CachedDrawable {
-  float4x4 previousTransform = linalg::identity;
-  float4x4 currentTransform = linalg::identity;
-
-  size_t lastTouched{};
-
-  void touchWithNewTransform(const float4x4 &transform, size_t frameCounter) {
-    if (frameCounter > lastTouched) {
-      previousTransform = currentTransform;
-      currentTransform = transform;
-
-      lastTouched = frameCounter;
-    }
-  }
-};
-
-typedef std::shared_ptr<CachedDrawable> CachedDrawablePtr;
 
 static std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
   return std::make_shared<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
@@ -45,6 +28,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     std::optional<int4> clipRect{};
     shards::pmr::vector<TextureContextData *> textures;
     ParameterStorage parameters; // TODO: Load values directly into buffer
+    CachedDrawable *cachedData;
 
     DrawableData() = default;
     DrawableData(allocator_type allocator) : textures(allocator), parameters(allocator) {}
@@ -92,8 +76,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     PrepareData(allocator_type allocator) : referencedContextData(allocator), drawBuffers(allocator), viewBuffers(allocator) {}
   };
 
-  static inline std::mutex test{};
-
   struct SharedBufferPool {
   private:
     WGPUBufferPool bufferPool;
@@ -116,6 +98,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   SharedBufferPool drawBufferPool;
   SharedBufferPool viewBufferPool;
   WGPUSupportedLimits limits{};
+
+  std::shared_mutex cacheLock;
+  std::unordered_map<UniqueId, CachedDrawablePtr> drawableCache;
+  size_t frameCounter{};
 
   MeshDrawableProcessor(Context &context)
       : drawBufferPool(getDrawBufferInitializer(context)), viewBufferPool(getViewBufferInitializer(context)) {
@@ -146,8 +132,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   void reset(size_t frameCounter) override {
     ZoneScoped;
+    this->frameCounter = frameCounter;
     drawBufferPool.reset();
     viewBufferPool.reset();
+    clearOldCacheItemsIn(drawableCache, frameCounter, 16);
   }
 
   void buildPipeline(PipelineBuilder &builder) override {
@@ -182,6 +170,22 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     ZoneScoped;
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
+
+    // Lookup/init cached data
+    cacheLock.lock_shared();
+    auto it = drawableCache.find(meshDrawable.getId());
+    if (it == drawableCache.end()) {
+      cacheLock.unlock_shared();
+      cacheLock.lock();
+      it = drawableCache.emplace(meshDrawable.getId(), std::make_shared<CachedDrawable>()).first;
+      cacheLock.unlock();
+    } else {
+      cacheLock.unlock_shared();
+    }
+
+    // Update cached data
+    data.cachedData = it->second.get();
+    data.cachedData->touchWithNewTransform(meshDrawable.transform, frameCounter);
 
     data.drawable = drawable;
 
@@ -233,6 +237,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         FeatureCallbackContext{
             .context = context,
             .drawable = drawable,
+            .cachedDrawable = data.cachedData,
         },
         cachedPipeline, parameters);
 
@@ -286,7 +291,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       check(prepareData->viewBuffers);
 
       if (!everythingMapped) {
-        std::scoped_lock<std::mutex> _lock(test);
         wgpuDevicePoll(context.wgpuDevice, false, nullptr);
         // Repeat
         return 0;

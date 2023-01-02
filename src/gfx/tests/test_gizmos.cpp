@@ -68,7 +68,7 @@ TEST_CASE("Wireframe", "[Gizmos]") {
     editorQueue->clear();
 
     queue->add(drawable);
-    wr.overlayWireframe(*editorQueue.get(), drawable);
+    wr.overlayWireframe(*editorQueue.get(), *drawable.get());
 
     renderer.render(view, steps);
   };

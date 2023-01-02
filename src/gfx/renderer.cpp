@@ -522,6 +522,10 @@ struct RendererImpl final : public ContextData {
     auto encodeRenderCommands = [&](tf::Subflow &subflow) {
       ZoneScopedN("encodeRenderCommands");
 
+      auto &viewport = viewData.viewport;
+      wgpuRenderPassEncoderSetViewport(evaluateContext.encoder, (float)viewport.x, (float)viewport.y, (float)viewport.width,
+                                       (float)viewport.height, 0.0f, 1.0f);
+
       for (auto &it : pipelineGroupsMerged) {
         PipelineGroup &group = it.second;
         DrawableEncodeContext encodeCtx{
@@ -657,22 +661,9 @@ struct RendererImpl final : public ContextData {
     TracyPlot("Drawables Processed", int64_t(frameStats.numDrawables));
   }
 
-  // Checks values in a map for the lastTouched member
-  // if not used in `frameThreshold` frames, remove it
-  template <typename T> void clearOldCacheItemsIn(T &iterable, size_t frameThreshold) {
-    for (auto it = iterable.begin(); it != iterable.end();) {
-      auto &value = it->second;
-      if ((frameCounter - value->lastTouched) > frameThreshold) {
-        it = iterable.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  }
-
   void clearOldCacheItems() {
-    clearOldCacheItemsIn(pipelineCache.map, 16);
-    clearOldCacheItemsIn(viewCache, 4);
+    clearOldCacheItemsIn(pipelineCache.map, frameCounter, 16);
+    clearOldCacheItemsIn(viewCache, frameCounter, 4);
   }
 
   void ensureMainOutputCleared() {

@@ -6,6 +6,7 @@
 #include <gfx/params.hpp>
 #include <gfx/shader/blocks.hpp>
 #include <gfx/pipeline_builder.hpp>
+#include <gfx/renderer_types.hpp>
 #include <memory>
 
 namespace gfx {
@@ -37,11 +38,11 @@ struct Velocity {
     feature->pipelineModifier = std::make_shared<PipelineModifier>();
     // TODO: Move to drawableprocessor
     feature->drawableParameterGenerators.emplace_back([](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
-      // collector.setParam("previousWorld", ctx.cachedDrawable->previousTransform);
+      collector.setParam("previousWorld", ctx.cachedDrawable->previousTransform);
     });
 
     feature->viewParameterGenerators.emplace_back([](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
-      // collector.setParam("previousView", ctx.cachedView->previousViewTransform);
+      collector.setParam("previousView", ctx.cachedView->previousViewTransform);
     });
 
     {

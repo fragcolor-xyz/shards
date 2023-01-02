@@ -283,6 +283,23 @@ using WGPUBufferPool = SizedItemPool<PooledWGPUBuffer>;
 // Transient local memory allocators for async workers
 typedef detail::TWorkerThreadData<detail::WorkerMemory> WorkerMemories;
 
+struct CachedDrawable {
+  float4x4 previousTransform = linalg::identity;
+  float4x4 currentTransform = linalg::identity;
+
+  size_t lastTouched{};
+
+  void touchWithNewTransform(const float4x4 &transform, size_t frameCounter) {
+    if (frameCounter > lastTouched) {
+      previousTransform = currentTransform;
+      currentTransform = transform;
+
+      lastTouched = frameCounter;
+    }
+  }
+};
+typedef std::shared_ptr<CachedDrawable> CachedDrawablePtr;
+
 } // namespace gfx::detail
 
 #endif /* CA95E36A_DF18_4EE1_B394_4094F976B20E */
