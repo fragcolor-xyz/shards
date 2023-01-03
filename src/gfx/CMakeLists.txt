@@ -30,7 +30,6 @@ add_library(gfx
   render_target.cpp
   pipeline_builder.cpp
   pipeline_step.cpp
-  uuid.cpp
   context_xr_gfx_data.hpp
   context_xr_gfx.hpp
   openxr-integration/Context_XR.h
