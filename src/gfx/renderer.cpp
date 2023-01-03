@@ -385,10 +385,9 @@ struct RendererImpl final : public ContextData {
         collector(size_t(drawable->getProcessor())); // Hash processor to be sure it's tied to the pipeline grouping
         collector(stepSharedHash);
         collector.hashObject(*drawable);
-        Hash128 pipelineHash = collector.getDigest();
-
         for (auto stepFeature : features)
           collector.hashObject(*stepFeature);
+        Hash128 pipelineHash = collector.getDigest();
 
         auto &entry = getCacheEntry(workerData.pipelineGroups, pipelineHash, [&](const Hash128 &hash) {
           // Setup new PipelineGroup with features from step that apply

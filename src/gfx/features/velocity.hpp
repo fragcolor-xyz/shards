@@ -36,7 +36,6 @@ struct Velocity {
 
     FeaturePtr feature = std::make_shared<Feature>();
     feature->pipelineModifier = std::make_shared<PipelineModifier>();
-    // TODO: Move to drawableprocessor
     feature->drawableParameterGenerators.emplace_back([](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
       collector.setParam("previousWorld", ctx.cachedDrawable->previousTransform);
     });
