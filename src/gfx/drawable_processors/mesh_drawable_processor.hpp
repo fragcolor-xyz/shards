@@ -391,7 +391,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     // - Collect parameters & texture bindings
     // - Generate batch keys
     bool needProjectedDepth = context.sortMode == SortMode::BackToFront;
-    auto generateDrawableData = [=, &cachedPipeline](size_t index) {
+    auto generateDrawableData = [=, this, &cachedPipeline](size_t index) {
       auto &drawableData = collector->get().emplace_back();
       this->generateDrawableData(drawableData, context.context, cachedPipeline, context.drawables[index], context.viewData, context.frameCounter, needProjectedDepth);
     };
@@ -556,7 +556,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
             }
           });
     };
+
     auto createDrawBindGroupsTask = subflow.emplace(createDrawBindGroups).succeed(sortAndGroupTask);
+    (void)createDrawBindGroupsTask;
 
     return prepareData;
   }

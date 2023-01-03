@@ -42,7 +42,7 @@ private:
 inline void GraphicsFuture::wait() {
   using namespace std::chrono_literals;
 
-  auto rethrowException = [=]() {
+  auto rethrowException = [&]() {
     if (executor->thrownException) {
       std::exception_ptr ex{};
       std::swap(ex, executor->thrownException);
@@ -57,7 +57,7 @@ inline void GraphicsFuture::wait() {
     rethrowException();
   }
 #else
-  executor->executor.loop_until([&]() { return future.wait_for(0ms) == std::future_status::ready || excutor->thrownException; });
+  executor->executor.loop_until([&]() { return future.wait_for(0ms) == std::future_status::ready || executor->thrownException; });
   rethrowException();
 #endif
 }
@@ -137,7 +137,8 @@ public:
     size_t arrayLen = sizeof(std::optional<T>) * executor.getNumWorkers();
     auto &elemAllocator = reinterpret_cast<shards::pmr::PolymorphicAllocator<T> &>(allocator);
     perWorker = reinterpret_cast<std::optional<T> *>(elemAllocator.allocate(arrayLen));
-    memset(perWorker, 0, arrayLen);
+    for (size_t i = 0; i < executor.getNumWorkers(); i++)
+      std::construct_at(perWorker + i);
   }
   TLazyWorkerThreadData(TLazyWorkerThreadData &&other, allocator_type allocator)
       : perWorker(other.perWorker), executor(other.executor), memories(other.memories) {
@@ -151,6 +152,11 @@ public:
   TLazyWorkerThreadData &operator=(TLazyWorkerThreadData &&other) {
     perWorker = other.perWorker;
     other.perWorker = nullptr;
+  }
+  ~TLazyWorkerThreadData() {
+    for (size_t i = 0; i < executor.getNumWorkers(); i++)
+      std::destroy_at(perWorker + i);
+
   }
 
   T &get() {

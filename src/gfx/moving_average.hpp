@@ -37,7 +37,7 @@ template <typename T = float> struct MovingAverage {
     if (length == 0)
       return T(0);
     T sum(0);
-    for (int i = 0; i < length; i++) {
+    for (size_t i = 0; i < length; i++) {
       sum += buffer[i];
     }
     return T(sum / double(length));
@@ -47,7 +47,7 @@ template <typename T = float> struct MovingAverage {
     T maxValue = init;
     if (length == 0)
       return maxValue;
-    for (int i = 0; i < length; i++) {
+    for (size_t i = 0; i < length; i++) {
       maxValue = std::max<T>(maxValue, buffer[i]);
     }
     return maxValue;

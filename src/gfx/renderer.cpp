@@ -328,7 +328,7 @@ struct RendererImpl final : public ContextData {
     if (!step.drawQueue)
       throw std::runtime_error("No draw queue assigned to drawable step");
 
-    node.encode = [=](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step, viewData); };
+    node.encode = [=, this](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step, viewData); };
   }
 
   void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const RenderDrawablesStep &step,
@@ -538,6 +538,7 @@ struct RendererImpl final : public ContextData {
       }
     };
     auto encodeRenderCommandsTask = flow.emplace(encodeRenderCommands).succeed(buildPipelinesAndDrawDataTask);
+    (void)encodeRenderCommandsTask;
 
     // Insert generated pipelines into cache and touch used pipeline frame counters
     auto updateCache = [&]() {
@@ -553,6 +554,7 @@ struct RendererImpl final : public ContextData {
       }
     };
     auto updateCacheTask = flow.emplace(updateCache).succeed(buildPipelinesAndDrawDataTask);
+    (void)updateCacheTask;
 
     executor.run(flow).wait();
   }

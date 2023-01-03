@@ -276,7 +276,7 @@ struct RenderGraphBuilder {
 
           auto it1 = nameLookup.find(arg.name);
           if (it1 == nameLookup.end()) {
-            if (frameIndex == ~0)
+            if (frameIndex == size_t(~0))
               frameIndex = frames.size();
             it1 = nameLookup.insert_or_assign(arg.name, frameIndex).first;
           } else {
@@ -285,7 +285,7 @@ struct RenderGraphBuilder {
         },
         output);
 
-    assert(frameIndex != ~0);
+    assert(frameIndex != size_t(~0));
     if (frameIndex >= frames.size()) {
       // Initialize frame info
       auto &frame = frames.emplace_back();

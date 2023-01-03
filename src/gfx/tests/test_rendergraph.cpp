@@ -203,9 +203,6 @@ TEST_CASE("Velocity", "[RenderGraph]") {
     auto outputSize = testRenderer->getOutputSize();
     rt->resizeConditional(outputSize);
 
-    Rect mainViewport = viewStack.getOutput().viewport;
-    Rect subViewport = Rect(int2(mainViewport.width / 2, mainViewport.x), mainViewport.getSize() / 2);
-
     drawable->transform = getTransform(t);
     drawable1->transform = getWaveTransform(t, 0);
     drawable2->transform = getWaveTransform(t, 1);
