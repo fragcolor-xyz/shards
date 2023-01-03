@@ -143,6 +143,9 @@ struct IsAlmost {
     if (_value.valueType != data.inputType.basicType)
       throw SHException("Input and value types must match.");
 
+    if (_threshold <= 0.0 || _threshold >= 1.0)
+      throw SHException("Threshold must be stricly between 0 and 1.");
+
     return data.inputType;
   }
 
@@ -165,13 +168,6 @@ private:
     }
 
     switch (lhs.valueType) {
-    case SHType::Int:
-    case SHType::Int2:
-    case SHType::Int3:
-    case SHType::Int4:
-    case SHType::Int8:
-    case SHType::Int16:
-      return lhs == rhs;
     case SHType::Float:
       return isAlmost(lhs.payload.floatValue, rhs.payload.floatValue);
     case SHType::Float2:
@@ -201,19 +197,13 @@ private:
       return almost;
     }
     default:
-      return false;
+      return lhs == rhs;
     }
   }
 
   bool isAlmost(double lhs, double rhs) { return __builtin_fabs(lhs - rhs) <= _threshold; }
 
   static inline Types MathTypes{{
-      CoreInfo::IntType,
-      CoreInfo::Int2Type,
-      CoreInfo::Int3Type,
-      CoreInfo::Int4Type,
-      CoreInfo::Int8Type,
-      CoreInfo::Int16Type,
       CoreInfo::FloatType,
       CoreInfo::Float2Type,
       CoreInfo::Float3Type,
@@ -223,7 +213,7 @@ private:
   static inline Parameters _params = {
       {"Value", SHCCSTR("The value to test against for almost equality."), MathTypes},
       {"Abort", SHCCSTR("If we should abort the process on failure."), {CoreInfo::BoolType}},
-      {"Threshold", SHCCSTR("The smallest difference to be considered equal."), {CoreInfo::FloatType}}};
+      {"Threshold", SHCCSTR("The smallest difference to be considered equal. Should be stricly in the ]0, 1[ range."), {CoreInfo::FloatType}}};
 
   bool _aborting;
   SHFloat _threshold{FLT_EPSILON};

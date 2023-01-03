@@ -7,4 +7,5 @@ However, if the assertion fails, the program
 Since this shard can precisely control the conditions under which a program is allowed to run or is to be aborted, it's effective for writing (inline) unit test cases with it.
 
 !!! note "See also"
+    - [`Assert.IsAlmost`](../IsAlmost)
     - [`Assert.IsNot`](../IsNot)
