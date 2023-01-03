@@ -538,10 +538,11 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   SHInstanceData instanceData{};
 
 private:
+  SHMesh() = default;
+
   std::list<std::shared_ptr<SHFlow>> _flows;
   std::vector<std::string> _errors;
   std::vector<SHWire *> _failedWires;
-  SHMesh() = default;
 };
 
 namespace shards {

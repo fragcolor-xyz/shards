@@ -1006,7 +1006,6 @@ private:
        SHCCSTR("If the variable is or should be available to all of the wires "
                "in the same mesh."),
        {CoreInfo::BoolType}}};
-  bool _isTable;
 };
 
 struct Assoc : public VariableBase {

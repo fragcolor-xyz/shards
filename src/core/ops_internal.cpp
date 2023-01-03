@@ -48,7 +48,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     SHEnumInfo *enumInfo = findEnumInfo(var.payload.enumVendorId, var.payload.enumTypeId);
     if (enumInfo) {
       const char *label = "<invalid>";
-      if (var.payload.enumValue >= 0 && var.payload.enumValue < enumInfo->labels.len) {
+      if (var.payload.enumValue >= 0 && var.payload.enumValue < SHEnum(enumInfo->labels.len)) {
         label = enumInfo->labels.elements[var.payload.enumValue];
       }
       os << enumInfo->name << "." << label;
