@@ -263,7 +263,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     for (auto &baseParam : cachedPipeline.baseDrawParameters.textures) {
       int32_t targetSlot = mapTextureBinding(baseParam.first.c_str());
       if (targetSlot >= 0 && !data.textures[targetSlot]) {
-        baseParam.second.texture->createContextDataConditional(context);
         data.textures[targetSlot] = baseParam.second.texture->contextData.get();
       }
     }
@@ -360,27 +359,34 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     // Prepare mesh & texture buffers
     // TODO: Remove context data
-    auto createContextDataTask = subflow.emplace([=, &drawables = context.drawables, &context = context.context]() {
-      for (auto &drawable : drawables) {
-        const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
-        meshDrawable.mesh->createContextDataConditional(context);
-
-        for (auto &texParam : meshDrawable.parameters.texture) {
-          auto texture = texParam.second.texture;
-          if (texture)
-            texture->createContextDataConditional(context);
-        }
-
-        auto material = meshDrawable.material;
-        if (material) {
-          for (auto &texParam : material->parameters.texture) {
-            auto texture = texParam.second.texture;
-            if (texture)
-              texture->createContextDataConditional(context);
+    auto createContextDataTask = subflow.emplace(
+        [=, &cachedPipeline = context.cachedPipeline, &drawables = context.drawables, &context = context.context]() {
+          for (auto &baseParam : cachedPipeline.baseDrawParameters.textures) {
+            if (baseParam.second.texture) {
+              baseParam.second.texture->createContextDataConditional(context);
+            }
           }
-        }
-      }
-    });
+
+          for (auto &drawable : drawables) {
+            const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
+            meshDrawable.mesh->createContextDataConditional(context);
+
+            for (auto &texParam : meshDrawable.parameters.texture) {
+              auto texture = texParam.second.texture;
+              if (texture)
+                texture->createContextDataConditional(context);
+            }
+
+            auto material = meshDrawable.material;
+            if (material) {
+              for (auto &texParam : material->parameters.texture) {
+                auto texture = texParam.second.texture;
+                if (texture)
+                  texture->createContextDataConditional(context);
+              }
+            }
+          }
+        });
 
     // Setup collectors
     auto *collector = rootTaskAllocator->new_object<TLazyWorkerThreadData<shards::pmr::list<DrawableData>>>(
@@ -393,7 +399,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     bool needProjectedDepth = context.sortMode == SortMode::BackToFront;
     auto generateDrawableData = [=, this, &cachedPipeline](size_t index) {
       auto &drawableData = collector->get().emplace_back();
-      this->generateDrawableData(drawableData, context.context, cachedPipeline, context.drawables[index], context.viewData, context.frameCounter, needProjectedDepth);
+      this->generateDrawableData(drawableData, context.context, cachedPipeline, context.drawables[index], context.viewData,
+                                 context.frameCounter, needProjectedDepth);
     };
     auto generateDrawableDataTask =
         subflow
