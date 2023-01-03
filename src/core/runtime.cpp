@@ -146,6 +146,10 @@ namespace reflection {
 extern void registerShards();
 }
 
+namespace Events {
+extern void registerShards();
+}
+
 #ifdef SHARDS_WITH_EXTRA_SHARDS
 extern void shInitExtras();
 #endif
@@ -273,6 +277,7 @@ void registerCoreShards() {
   Http::registerShards();
   edn::registerShards();
   reflection::registerShards();
+  Events::registerShards();
 
 #ifdef SHARDS_DESKTOP
   // registerOSShards();
