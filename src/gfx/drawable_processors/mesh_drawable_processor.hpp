@@ -14,10 +14,6 @@
 
 namespace gfx::detail {
 
-static std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
-  return std::make_shared<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
-}();
-
 struct MeshDrawableProcessor final : public IDrawableProcessor {
   struct DrawableData {
     using allocator_type = shards::pmr::PolymorphicAllocator<>;
@@ -104,6 +100,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   std::shared_mutex drawableCacheLock;
   std::unordered_map<UniqueId, CachedDrawablePtr> drawableCache;
   size_t frameCounter{};
+
+  std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
+    return std::make_shared<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
+  }();
 
   MeshDrawableProcessor(Context &context)
       : drawBufferPool(getDrawBufferInitializer(context)), viewBufferPool(getViewBufferInitializer(context)) {

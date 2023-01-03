@@ -2,6 +2,11 @@
 #include "context.hpp"
 
 namespace gfx {
+
+// For now this uses a global mutex
+// can be ridden of once ContextData is moved to context/renderer storage
+std::recursive_mutex ContextData::globalMutex;
+
 void ContextData::bindToContext(Context &context) {
   assert(!this->context);
   this->context = &context;
@@ -15,10 +20,14 @@ void ContextData::unbindFromContext() {
 }
 
 void ContextData::releaseContextDataConditional() {
+  ContextData::globalMutex.lock();
+
   if (context) {
     releaseContextData();
     unbindFromContext();
   }
+
+  ContextData::globalMutex.unlock();
 }
 
 } // namespace gfx
