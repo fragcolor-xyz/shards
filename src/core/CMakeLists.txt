@@ -21,6 +21,7 @@ set(core_SOURCES
   shards/imaging.cpp
   shards/wasm.cpp
   shards/http.cpp
+  shards/events.cpp
 )
 
 set(os_SOURCES
