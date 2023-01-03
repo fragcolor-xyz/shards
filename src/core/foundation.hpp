@@ -457,6 +457,9 @@ struct Globals {
 
   std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
 
+  std::unordered_map<std::string_view, entt::dispatcher> Dispatchers;
+  entt::registry Registry;
+
   SHTableInterface TableInterface{
       .tableGetIterator =
           [](SHTable table, SHTableIterator *outIter) {
