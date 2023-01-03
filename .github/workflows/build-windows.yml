@@ -193,7 +193,7 @@ jobs:
       - name: Checkout glTF-Sample-Models
         # Match with test step below
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: KhronosGroup/glTF-Sample-Models
           path: external/glTF-Sample-Models
