@@ -300,7 +300,7 @@ struct LoadImage : public FileBase {
     if (!bytesInput) {
       // need a proper filename in this case
       if (!getFilename(context, filename)) {
-        throw ActivationError("File not found!");
+        throw ActivationError(fmt::format("File not found: {}!", filename));
       }
     }
 
@@ -342,7 +342,7 @@ struct LoadImage : public FileBase {
       }
 
       if (!_output.payload.imageValue.data) {
-        throw ActivationError("Failed to load image file");
+        throw ActivationError(fmt::format("Failed to load image file {}", filename));
       }
     }
     _output.payload.imageValue.width = uint16_t(x);
