@@ -10,11 +10,9 @@ license: CC-BY-SA-4.0
 
     Click [here](#overview) to skip the tutorial and jump to the overview.
 
-!!! note
-
-    Our documentation follows the [Microsoft Style Guide](https://docs.microsoft.com/en-us/style-guide/welcome/). Do refer to it if you are unsure of the documentation style!
-
 Eager to help contribute to our ever-growing library of documentation? Here is how to get started!
+
+Our documentation follows the [Microsoft Style Guide](https://docs.microsoft.com/en-us/style-guide/welcome/). Do refer to it if you are unsure of the documentation style!
 
 In order to start writing documentation for Fragcolor, ensure that you have [readied your development environment](../getting-started.md) first. Once done, we can proceed with the setting up of our documentation site generator.
 
