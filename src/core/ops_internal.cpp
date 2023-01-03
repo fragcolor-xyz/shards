@@ -611,3 +611,44 @@ bool operator==(const SHTypeInfo &a, const SHTypeInfo &b) {
     return true;
   }
 }
+
+ALWAYS_INLINE inline bool _almostEqual(const double a, const double b, const double e) { return __builtin_fabs(a - b) <= e; }
+
+bool _almostEqual(const SHVar &lhs, const SHVar &rhs, double e) {
+  if (lhs.valueType != rhs.valueType) {
+    return false;
+  }
+
+  switch (lhs.valueType) {
+  case SHType::Float:
+    return _almostEqual(lhs.payload.floatValue, rhs.payload.floatValue, e);
+  case SHType::Float2:
+    return (_almostEqual(lhs.payload.float2Value[0], rhs.payload.float2Value[0], e) &&
+            _almostEqual(lhs.payload.float2Value[1], rhs.payload.float2Value[1], e));
+  case SHType::Float3:
+    return (_almostEqual(lhs.payload.float3Value[0], rhs.payload.float3Value[0], e) &&
+            _almostEqual(lhs.payload.float3Value[1], rhs.payload.float3Value[1], e) &&
+            _almostEqual(lhs.payload.float3Value[2], rhs.payload.float3Value[2], e));
+  case SHType::Float4:
+    return (_almostEqual(lhs.payload.float4Value[0], rhs.payload.float4Value[0], e) &&
+            _almostEqual(lhs.payload.float4Value[1], rhs.payload.float4Value[1], e) &&
+            _almostEqual(lhs.payload.float4Value[2], rhs.payload.float4Value[2], e) &&
+            _almostEqual(lhs.payload.float4Value[3], rhs.payload.float4Value[3], e));
+  case SHType::Seq: {
+    if (lhs.payload.seqValue.len != rhs.payload.seqValue.len) {
+      return false;
+    }
+
+    auto almost = true;
+    for (uint32_t i = 0; i < lhs.payload.seqValue.len; i++) {
+      auto &suba = lhs.payload.seqValue.elements[i];
+      auto &subb = rhs.payload.seqValue.elements[i];
+      almost = almost && _almostEqual(suba, subb, e);
+    }
+
+    return almost;
+  }
+  default:
+    return lhs == rhs;
+  }
+}

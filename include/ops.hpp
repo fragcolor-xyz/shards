@@ -487,6 +487,8 @@ inline bool operator==(const SHExposedTypeInfo &a, const SHExposedTypeInfo &b) {
 
 inline bool operator!=(const SHExposedTypeInfo &a, const SHExposedTypeInfo &b) { return !(a == b); }
 
+bool _almostEqual(const SHVar &lhs, const SHVar &rhs, double e);
+
 namespace shards {
 SHVar hash(const SHVar &var);
 } // namespace shards

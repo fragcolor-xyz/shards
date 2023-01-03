@@ -150,7 +150,7 @@ struct IsAlmost {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!isAlmost(input, _value)) {
+    if (!_almostEqual(input, _value, _threshold)) {
       SHLOG_ERROR("Failed assertion IsAlmost, input: {} expected: {}", input, _value);
       if (_aborting)
         abort();
@@ -162,47 +162,6 @@ struct IsAlmost {
   }
 
 private:
-  bool isAlmost(const SHVar &lhs, const SHVar &rhs) {
-    if (lhs.valueType != rhs.valueType) {
-      return false;
-    }
-
-    switch (lhs.valueType) {
-    case SHType::Float:
-      return isAlmost(lhs.payload.floatValue, rhs.payload.floatValue);
-    case SHType::Float2:
-      return (isAlmost(lhs.payload.float2Value[0], rhs.payload.float2Value[0]) &&
-              isAlmost(lhs.payload.float2Value[1], rhs.payload.float2Value[1]));
-    case SHType::Float3:
-      return (isAlmost(lhs.payload.float3Value[0], rhs.payload.float3Value[0]) &&
-              isAlmost(lhs.payload.float3Value[1], rhs.payload.float3Value[1]) &&
-              isAlmost(lhs.payload.float3Value[2], rhs.payload.float3Value[2]));
-    case SHType::Float4:
-      return (isAlmost(lhs.payload.float4Value[0], rhs.payload.float4Value[0]) &&
-              isAlmost(lhs.payload.float4Value[1], rhs.payload.float4Value[1]) &&
-              isAlmost(lhs.payload.float4Value[2], rhs.payload.float4Value[2]) &&
-              isAlmost(lhs.payload.float4Value[3], rhs.payload.float4Value[3]));
-    case SHType::Seq: {
-      if (lhs.payload.seqValue.len != rhs.payload.seqValue.len) {
-        return false;
-      }
-
-      auto almost = true;
-      for (uint32_t i = 0; i < lhs.payload.seqValue.len; i++) {
-        auto &suba = lhs.payload.seqValue.elements[i];
-        auto &subb = rhs.payload.seqValue.elements[i];
-        almost = almost && isAlmost(suba, subb);
-      }
-
-      return almost;
-    }
-    default:
-      return lhs == rhs;
-    }
-  }
-
-  bool isAlmost(double lhs, double rhs) { return __builtin_fabs(lhs - rhs) <= _threshold; }
-
   static inline Types MathTypes{{
       CoreInfo::FloatType,
       CoreInfo::Float2Type,

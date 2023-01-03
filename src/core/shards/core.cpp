@@ -1414,6 +1414,20 @@ RUNTIME_SHARD_outputTypes(IsValidNumber);
 RUNTIME_SHARD_activate(IsValidNumber);
 RUNTIME_SHARD_END(IsValidNumber);
 
+// Register IsAlmost
+RUNTIME_CORE_SHARD_FACTORY(IsAlmost);
+RUNTIME_SHARD_help(IsAlmost);
+RUNTIME_SHARD_inputTypes(IsAlmost);
+RUNTIME_SHARD_inputHelp(IsAlmost);
+RUNTIME_SHARD_outputTypes(IsAlmost);
+RUNTIME_SHARD_outputHelp(IsAlmost);
+RUNTIME_SHARD_parameters(IsAlmost);
+RUNTIME_SHARD_setParam(IsAlmost);
+RUNTIME_SHARD_getParam(IsAlmost);
+RUNTIME_SHARD_compose(IsAlmost);
+RUNTIME_SHARD_activate(IsAlmost);
+RUNTIME_SHARD_END(IsAlmost);
+
 // Register Set
 RUNTIME_CORE_SHARD_FACTORY(Set);
 RUNTIME_SHARD_cleanup(Set);
