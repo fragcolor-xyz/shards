@@ -333,6 +333,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   bool pure{false};
 
   std::string name;
+  entt::id_type id{entt::null};
 
   std::optional<SHCoro> coro;
 #ifdef SH_USE_TSAN
