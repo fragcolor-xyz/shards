@@ -229,3 +229,5 @@ option(TRACY_ENABLE "Enable profiling" OFF)
 set(TRACY_MANUAL_LIFETIME ON CACHE BOOL "" FORCE)
 set(TRACY_DELAYED_INIT ON CACHE BOOL "" FORCE)
 add_subdirectory(tracy)
+
+add_subdirectory(Vulkan-Headers)

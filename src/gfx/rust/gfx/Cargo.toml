@@ -8,15 +8,21 @@ crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
 default = []
+vulkan = ["wgpu", "ash"]
+wgpu = ["wgpu-native", "wgpu-hal", "wgpu-core", "wgpu-types"]
 tracy = ["profiling/profile-with-tracy", "tracy-client"]
 
 [dependencies]
 wgpu-native = { path = "../wgpu-native", optional = true }
+wgpu-hal = { path = "../wgpu/wgpu-hal", optional=true }
+wgpu-core = { path = "../wgpu/wgpu-core", optional=true }
+wgpu-types = { path = "../wgpu/wgpu-types", optional=true }
+ash = { version = "0.37", optional=true }
+log = "0.4.17"
 profiling = { version = "1", default-features = false }
 tracy-client = { version = "0.15.0", optional = true}
 
 [patch.crates-io]
-inplace_it = { git = "https://github.com/NotIntMan/inplace_it.git", rev = "3f479a3" } # Until inplace_it gets updated to 0.3.4 in wgpu-hal
 naga = { path = "../naga" }
 profiling = { path = "../profiling" } # Until updates tracy-client to 0.15.0 (https://github.com/aclysma/profiling/pull/44)
 tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
@@ -27,6 +33,10 @@ naga = { path = "../naga" }
 [patch."https://github.com/gfx-rs/wgpu"]
 wgpu-types = { path = "../wgpu/wgpu-types" }
 wgpu-core = { path = "../wgpu/wgpu-core" }
+wgpu-hal = { path = "../wgpu/wgpu-hal" }
+
+[build-dependencies]
+bindgen = "0.61.0"
 
 [workspace]
 members = []
