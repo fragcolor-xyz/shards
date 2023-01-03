@@ -5,9 +5,8 @@
   (Pause 0.1))
 
 (defloop receive
-  (Events.Receive "RandomInts") 
-  ; (ExpectIntSeq)
-  (Log))
+  (Events.Receive "RandomInts") (ExpectSeq)
+  (ForEach (-> (ExpectInt) (Log))))
 
 (defloop updater
   (Events.Update "RandomInts")
