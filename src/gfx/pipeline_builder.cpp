@@ -13,9 +13,10 @@ namespace gfx {
 
 static auto logger = getLogger();
 
-void alignBufferLayout(size_t &inOutSize, const BufferBindingBuilder &builder, const WGPULimits &deviceLimits) {
+size_t alignBufferLayout(size_t inSize, const BufferBindingBuilder &builder, const WGPULimits &deviceLimits) {
   if (builder.bufferType == BufferType::Storage)
-    inOutSize = alignTo(inOutSize, deviceLimits.minStorageBufferOffsetAlignment);
+    return alignTo(inSize, deviceLimits.minStorageBufferOffsetAlignment);
+  return inSize;
 }
 
 static void describeShaderBindings(const std::vector<BufferBindingBuilder *> &bindings, bool isFinal,
@@ -34,7 +35,7 @@ static void describeShaderBindings(const std::vector<BufferBindingBuilder *> &bi
 
     // Align the struct to storage buffer offset requriements
     UniformBufferLayout &layout = shaderBinding.layout;
-    alignBufferLayout(layout.maxAlignment, *builder, deviceLimits);
+    layout.maxAlignment = alignBufferLayout(layout.maxAlignment, *builder, deviceLimits);
 
     shaderBinding.type = builder->bufferType;
     if (freq == BindingFrequency::Draw)
@@ -65,7 +66,7 @@ static void describeBindGroup(const std::vector<BufferBindingBuilder *> &builder
     }
 
     bufferBinding.minBindingSize = builder->layoutBuilder.getCurrentFinalLayout().size;
-    alignBufferLayout(bufferBinding.minBindingSize, *builder, limits);
+    bufferBinding.minBindingSize = uint64_t(alignBufferLayout(size_t(bufferBinding.minBindingSize), *builder, limits));
   }
 }
 
