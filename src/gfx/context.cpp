@@ -380,10 +380,12 @@ void Context::endFrame() {
   frameState = ContextFrameState::Ok;
 }
 
-void Context::sync() {
+void Context::poll(bool wait) {
   ZoneScoped;
 #ifdef WEBGPU_NATIVE
-  wgpuDevicePoll(wgpuDevice, true, nullptr);
+  wgpuDevicePoll(wgpuDevice, wait, nullptr);
+#else
+  emscripten_sleep(0);
 #endif
 }
 

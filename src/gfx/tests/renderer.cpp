@@ -99,7 +99,7 @@ TestFrame TestRenderer::getTestFrame() {
 
   auto mapBufferCallback = [](WGPUBufferMapAsyncStatus status, void *userdata) {};
   wgpuBufferMapAsync(tempBuffer, WGPUMapMode_Read, 0, desc.size, mapBufferCallback, nullptr);
-  context->sync();
+  context->poll();
 
   uint8_t *bufferData = (uint8_t *)wgpuBufferGetMappedRange(tempBuffer, 0, desc.size);
   TestFrame testFrame(bufferData, rtSize, TestFrameFormat::RGBA8, bufferPitch, false);

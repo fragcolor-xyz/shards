@@ -135,7 +135,7 @@ struct RendererImpl final : public ContextData {
   }
 
   virtual void releaseContextData() override {
-    context.sync();
+    context.poll();
 
     // Flush in-flight frame resources
     for (size_t i = 0; i < maxBufferedFrames; i++) {

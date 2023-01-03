@@ -99,7 +99,8 @@ public:
   // Returns false while device is lost an can not be rerequestd
   bool beginFrame();
   void endFrame();
-  void sync();
+
+  void poll(bool wait = true);
 
   // When entering background, releases all graphics resources and pause rendering
   void suspend();

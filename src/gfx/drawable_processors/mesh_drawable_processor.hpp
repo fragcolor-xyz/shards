@@ -304,7 +304,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       check(prepareData->viewBuffers);
 
       if (!everythingMapped) {
-        wgpuDevicePoll(context.wgpuDevice, false, nullptr);
+        context.poll(false);
         // Repeat
         return 0;
       } else {
