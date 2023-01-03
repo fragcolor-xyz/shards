@@ -609,7 +609,18 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   TTableVar(const TTableVar &other) : SHVar() { SH_CORE::cloneVar(*this, other); }
 
+  TTableVar(const SHVar &other) : SHVar() {
+    assert(other.valueType == SHType::Table);
+    SH_CORE::cloneVar(*this, other);
+  }
+
   TTableVar &operator=(const TTableVar &other) {
+    SH_CORE::cloneVar(*this, other);
+    return *this;
+  }
+
+  TTableVar &operator=(const SHVar &other) {
+    assert(other.valueType == SHType::Table);
     SH_CORE::cloneVar(*this, other);
     return *this;
   }
