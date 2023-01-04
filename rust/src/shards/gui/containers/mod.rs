@@ -55,7 +55,7 @@ struct DockArea {
   exposing: ExposedTypes,
   headers: Vec<ParamVar>,
   shards: Vec<ShardsVar>,
-  tabs: egui_dock::Tree<(ParamVar, ShardsVar)>
+  tabs: egui_dock::Tree<(ParamVar, ShardsVar)>,
 }
 
 struct Scope {

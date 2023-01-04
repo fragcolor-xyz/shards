@@ -41,14 +41,12 @@ lazy_static! {
     )
       .into(),
   ];
-  static ref DOCKAREA_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Contents"),
-      cstr!("The UI contents containing tabs."),
-      &SHARDS_OR_NONE_TYPES[..],
-    )
-      .into(),
-  ];
+  static ref DOCKAREA_PARAMETERS: Parameters = vec![(
+    cstr!("Contents"),
+    cstr!("The UI contents containing tabs."),
+    &SHARDS_OR_NONE_TYPES[..],
+  )
+    .into(),];
 }
 
 impl Default for Tab {
@@ -261,14 +259,14 @@ impl Shard for DockArea {
     match index {
       0 => {
         let seq = Seq::try_from(value)?;
-        for tab_spec in seq.iter().rev().filter_map(|s| {
+        let tab_specs = seq.iter().rev().filter_map(|s| {
           if let Ok(r) = ShardRef::try_from(s) {
             if r.name() == TAB_NAME {
               let mut title = ParamVar::default();
               title.set_param(&r.get_parameter(0));
-              let mut shard = ShardsVar::default();
-              match shard.set_param(&s) {
-                Ok(_) => Some(Ok((title, shard))),
+              let mut contents = ShardsVar::default();
+              match contents.set_param(&s) {
+                Ok(_) => Some(Ok((title, contents))),
                 Err(err) => Some(Err(err)),
               }
             } else {
@@ -277,7 +275,8 @@ impl Shard for DockArea {
           } else {
             None
           }
-        }) {
+        });
+        for tab_spec in tab_specs {
           let (title, contents) = tab_spec?;
           self.headers.push(title);
           self.shards.push(contents);
