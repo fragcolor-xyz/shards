@@ -21,9 +21,7 @@ Pre-requisites:
 
 ## Navigating the Docs
 
-Documentation exists under the `/docs` folder of the Shards repository.
-
-Here is a general guide of the folders within it:
+Documentation exists under the `/docs` folder of the Shards repository. We will list down notable folders that you will want to take note of.
 
 For Shards API Documentation:
 
