@@ -98,9 +98,7 @@ struct IsAlmost {
   }
 
   static SHTypesInfo inputTypes() { return MathTypes; }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The input can be of any decimal type or a sequence of such decimal type.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any number type or a sequence of such types."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The output will be the input (passthrough)."); }
@@ -117,7 +115,10 @@ struct IsAlmost {
       _aborting = inValue.payload.boolValue;
       break;
     case 2:
-      _threshold = inValue.payload.floatValue;
+      if (inValue.valueType == SHType::Float)
+        _threshold = inValue.payload.floatValue;
+      else
+        _threshold = double(inValue.payload.intValue);
       break;
     default:
       break;
@@ -143,8 +144,8 @@ struct IsAlmost {
     if (_value.valueType != data.inputType.basicType)
       throw SHException("Input and value types must match.");
 
-    if (_threshold <= 0.0 || _threshold >= 1.0)
-      throw SHException("Threshold must be stricly between 0 and 1.");
+    if (_threshold <= 0.0)
+      throw SHException("Threshold must be greater than 0.");
 
     return data.inputType;
   }
@@ -167,12 +168,19 @@ private:
       CoreInfo::Float2Type,
       CoreInfo::Float3Type,
       CoreInfo::Float4Type,
+      CoreInfo::IntType,
+      CoreInfo::Int2Type,
+      CoreInfo::Int3Type,
+      CoreInfo::Int4Type,
+      CoreInfo::Int8Type,
+      CoreInfo::Int16Type,
       CoreInfo::AnySeqType,
   }};
-  static inline Parameters _params = {
-      {"Value", SHCCSTR("The value to test against for almost equality."), MathTypes},
-      {"Abort", SHCCSTR("If we should abort the process on failure."), {CoreInfo::BoolType}},
-      {"Threshold", SHCCSTR("The smallest difference to be considered equal. Should be stricly in the ]0, 1[ range."), {CoreInfo::FloatType}}};
+  static inline Parameters _params = {{"Value", SHCCSTR("The value to test against for almost equality."), MathTypes},
+                                      {"Abort", SHCCSTR("If we should abort the process on failure."), {CoreInfo::BoolType}},
+                                      {"Threshold",
+                                       SHCCSTR("The smallest difference to be considered equal. Should be greater than zero."),
+                                       {CoreInfo::FloatType, CoreInfo::IntType}}};
 
   bool _aborting;
   SHFloat _threshold{FLT_EPSILON};

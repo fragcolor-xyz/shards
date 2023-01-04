@@ -547,17 +547,15 @@ struct IsValidNumber {
 };
 
 struct IsAlmost {
-  SHOptionalString help() {
-    return SHCCSTR("Checks whether the input is almost equal to a given value.");
-  }
+  SHOptionalString help() { return SHCCSTR("Checks whether the input is almost equal to a given value."); }
 
   static SHTypesInfo inputTypes() { return MathTypes; }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The input can be of any decimal type or a sequence of such decimal type.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any number type or a sequence of such types."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("true if the input is almost equal to the given value; otherwise, false."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("true if the input is almost equal to the given value; otherwise, false.");
+  }
 
   SHParametersInfo parameters() { return _params; }
 
@@ -568,7 +566,10 @@ struct IsAlmost {
       cloneVar(_value, inValue);
       break;
     case 1:
-      _threshold = inValue.payload.floatValue;
+      if (inValue.valueType == SHType::Float)
+        _threshold = inValue.payload.floatValue;
+      else
+        _threshold = double(inValue.payload.intValue);
       break;
     default:
       break;
@@ -590,17 +591,15 @@ struct IsAlmost {
     if (_value.valueType != data.inputType.basicType)
       throw SHException("Input and value types must match.");
 
-    if (_threshold <= 0.0 || _threshold >= 1.0)
-      throw SHException("Threshold must be stricly between 0 and 1.");
+    if (_threshold <= 0.0)
+      throw SHException("Threshold must be greater than 0.");
 
     return CoreInfo::BoolType;
   }
 
   void destroy() { destroyVar(_value); }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    return Var(_almostEqual(input, _value, _threshold));
-  }
+  SHVar activate(SHContext *context, const SHVar &input) { return Var(_almostEqual(input, _value, _threshold)); }
 
 private:
   static inline Types MathTypes{{
@@ -608,11 +607,18 @@ private:
       CoreInfo::Float2Type,
       CoreInfo::Float3Type,
       CoreInfo::Float4Type,
+      CoreInfo::IntType,
+      CoreInfo::Int2Type,
+      CoreInfo::Int3Type,
+      CoreInfo::Int4Type,
+      CoreInfo::Int8Type,
+      CoreInfo::Int16Type,
       CoreInfo::AnySeqType,
   }};
-  static inline Parameters _params = {
-      {"Value", SHCCSTR("The value to test against for almost equality."), MathTypes},
-      {"Threshold", SHCCSTR("The smallest difference to be considered equal. Should be stricly in the ]0, 1[ range."), {CoreInfo::FloatType}}};
+  static inline Parameters _params = {{"Value", SHCCSTR("The value to test against for almost equality."), MathTypes},
+                                      {"Threshold",
+                                       SHCCSTR("The smallest difference to be considered equal. Should be greater than zero."),
+                                       {CoreInfo::FloatType, CoreInfo::IntType}}};
 
   SHFloat _threshold{FLT_EPSILON};
   SHVar _value{};
