@@ -433,10 +433,16 @@ public:
 
   SHMesh *value() const { return m_mesh.get(); }
 
-  void schedule(malSHWire *wire) {
+  void schedule(malSHWire *wire, bool compose = true) {
     auto cp = SHWire::sharedFromRef(wire->value());
-    m_mesh->schedule(cp);
+    m_mesh->schedule(cp, Var::Empty, compose);
     reference(wire);
+  }
+
+  void preCompose(malSHWire *wire, bool compose = true) {
+    auto cp = SHWire::sharedFromRef(wire->value());
+    m_mesh->preCompose(cp, Var::Empty);
+    // reference(wire); // don't reference in this case..?
   }
 
   virtual bool doIsEqualTo(const malValue *rhs) const { return m_mesh == static_cast<const malSHMesh *>(rhs)->m_mesh; }
@@ -1512,6 +1518,22 @@ BUILTIN("schedule") {
   ARG(malSHMesh, mesh);
   ARG(malSHWire, wire);
   mesh->schedule(wire);
+  return mal::nilValue();
+}
+
+BUILTIN("schedule-fast") {
+  CHECK_ARGS_IS(2);
+  ARG(malSHMesh, mesh);
+  ARG(malSHWire, wire);
+  mesh->schedule(wire, false);
+  return mal::nilValue();
+}
+
+BUILTIN("pre-compose") {
+  CHECK_ARGS_IS(2);
+  ARG(malSHMesh, mesh);
+  ARG(malSHWire, wire);
+  mesh->preCompose(wire);
   return mal::nilValue();
 }
 
