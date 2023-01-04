@@ -378,6 +378,44 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   ~SHMesh() { terminate(); }
 
+  void preCompose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
+    SHLOG_TRACE("Pre-composing wire {}", wire->name);
+
+    if (wire->warmedUp) {
+      SHLOG_ERROR("Attempted to Pre-composing a wire multiple times, wire: {}", wire->name);
+      throw shards::SHException("Multiple wire Pre-composing");
+    }
+
+    // this is to avoid recursion during compose
+    visitedWires.clear();
+
+    wire->mesh = shared_from_this();
+    wire->isRoot = true;
+    // remove when done here
+    DEFER(wire->isRoot = false);
+
+    // compose the wire
+    SHInstanceData data = instanceData;
+    data.wire = wire.get();
+    data.inputType = shards::deriveTypeInfo(input, data);
+    auto validation = shards::composeWire(
+        wire.get(),
+        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+          auto blk = const_cast<Shard *>(errorShard);
+          if (!nonfatalWarning) {
+            throw shards::ComposeError(std::string(errorTxt) + ", input shard: " + std::string(blk->name(blk)));
+          } else {
+            SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
+          }
+        },
+        this, data);
+    shards::arrayFree(validation.exposedInfo);
+    shards::arrayFree(validation.requiredInfo);
+    shards::freeDerivedInfo(data.inputType);
+
+    SHLOG_TRACE("Wire {} Pre-composing", wire->name);
+  }
+
   struct EmptyObserver {
     void before_compose(SHWire *wire) {}
     void before_tick(SHWire *wire) {}
@@ -395,16 +433,17 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       throw shards::SHException("Multiple wire schedule");
     }
 
-    // this is to avoid recursion during compose
-    visitedWires.clear();
-
     wire->mesh = shared_from_this();
-    wire->isRoot = true;
-    // remove when done here
-    DEFER(wire->isRoot = false);
 
     observer.before_compose(wire.get());
     if (compose) {
+      // this is to avoid recursion during compose
+      visitedWires.clear();
+
+      wire->isRoot = true;
+      // remove when done here
+      DEFER(wire->isRoot = false);
+
       // compose the wire
       SHInstanceData data = instanceData;
       data.wire = wire.get();

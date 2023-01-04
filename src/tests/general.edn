@@ -1196,7 +1196,8 @@
 
 (prn "Doing normal run")
 
-(schedule Root testWire)
+(pre-compose Root testWire)
+(schedule-fast Root testWire)
 (if (run Root 0.1) nil (throw "Root tick failed"))
 ;; For now Mesh holds ref...
 (def Root (Mesh))
