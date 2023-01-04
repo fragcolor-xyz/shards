@@ -3,90 +3,43 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Start Documenting
+# Write Documentation
 
 !!! note
-    This guide is for new users unfamiliar with the installation process. 
 
-    Click [here](#overview) to skip the tutorial and jump to the overview.
+    Our documentation follows the [Microsoft Style Guide](https://docs.microsoft.com/en-us/style-guide/welcome/). Do refer to it if you are unsure of the documentation style!
 
-Eager to help contribute to our ever-growing library of documentation? Here is how to get started!
+In this chapter, you will be learning how to write documentation for Fragcolor.
 
-Our documentation follows the [Microsoft Style Guide](https://docs.microsoft.com/en-us/style-guide/welcome/). Do refer to it if you are unsure of the documentation style!
+Pre-requisites:
 
-In order to start writing documentation for Fragcolor, ensure that you have [readied your development environment](../getting-started.md) first. Once done, we can proceed with the setting up of our documentation site generator.
+- [Readied the Development Environment](../getting-started.md)
 
-## Python
+- [Cloned the Repository](../contributing-changes/#cloning-the-repository)
 
-Python needs to be installed for the site generator to work. Download Python [here](https://www.python.org/downloads/) and follow the instructions given by the installer. Remember to add Python to PATH during the installation!
+- [Installed MkDocs](./start-documenting.md)
 
-![Add Python to PATH](assets/install-py-add-to-path.png)
+## Navigating the Docs
 
-By adding Python to PATH, it allows your terminals to be able to find and use Python. Try typing `Python` in any terminal to check if the installation process is successful.
+Documentation exists under the `/docs` folder of the Shards repository.
 
-=== "Command"
+Here is a general guide of the folders within it:
 
-    ```
-    Python
-    ```
+For Shards API Documentation:
 
-=== "Result"
+- details: Holds the files containing the details of each shard
 
-    ![Python was installed successfully](assets/install-py-results.png)
+- samples: Contains the code and output of the examples for each shard
 
+- docs/reference: Contains the pages for the "Reference" category of the site
 
-## MkDocs
+![A shard's API page and their associated folders.](assets/docs-folders.png)
 
-MkDocs is a static site generator that allows you to write documentation in markdown. 
+For the other documentation pages:
 
-??? help "What is Markdown?"
-    It is a formatting language used to stylize plain text. Take a look at how this segment is written in markdown!
+- docs/contribute: Contains the pages for the "Contribute" category of the site
 
-    ![How markdown works.](assets/what-is-markdown.png)
+- docs/learn: Contains the pages for the "Learn" category of the site
 
-We will install MkDocs using the Package Installer for Python (pip). Run the following command in your terminal:
-
-=== "Command"
-
-    ```
-    pip install mkdocs
-    ```
-
-Once done, you can check if your installation was successful by running the following command:
-
-=== "Command"
-
-    ```
-    mkdocs
-    ```
-
-=== "Result"
-
-    ![Check MkDocs installation.](assets/mkdocs-installation-results.png)
-
-
-We will next install a theme for MkDocs with the command:
-
-=== "Command"
-
-    ```
-    pip install mkdocs-material
-    ```
-
-You are now ready to start writing documentation! We will learn how Fragcolor's documentation is written in the next chapter.
-
-## Overview ##
-
-1. Download [Python](https://www.python.org/downloads/) and add it to PATH.
-
-2. Install MkDocs.
-```
-pip install mkdocs
-```
-
-3. Install Material for MkDocs.
-```
-pip install mkdocs-material
-```
 
 --8<-- "includes/license.md"

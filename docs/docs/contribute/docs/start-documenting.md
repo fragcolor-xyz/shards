@@ -10,13 +10,11 @@ license: CC-BY-SA-4.0
 
     Click [here](#overview) to skip the tutorial and jump to the overview.
 
-!!! note
+Pre-requisites:
 
-    Our documentation follows the [Microsoft Style Guide](https://docs.microsoft.com/en-us/style-guide/welcome/). Do refer to it if you are unsure of the documentation style!
+- [Readied the development environment](../getting-started.md)
 
-Eager to help contribute to our ever-growing library of documentation? Here is how to get started!
-
-In order to start writing documentation for Fragcolor, ensure that you have [readied your development environment](../getting-started.md) first. Once done, we can proceed with the setting up of our documentation site generator.
+Eager to help contribute to our ever-growing library of documentation? In this chapter, we will set up the documentation site generator so that you can start writing documentation.
 
 ## Python
 
@@ -46,7 +44,7 @@ MkDocs is a static site generator that allows you to write documentation in mark
 
     ![How markdown works.](assets/what-is-markdown.png)
 
-We will install MkDocs using the Package Installer for Python (pip). Run the following command in your terminal:
+Install MkDocs using the Package Installer for Python (pip). Run the following command in your terminal:
 
 === "Command"
 
@@ -54,7 +52,7 @@ We will install MkDocs using the Package Installer for Python (pip). Run the fol
     pip install mkdocs
     ```
 
-Once done, you can check if your installation was successful by running the following command:
+Once done, you can check if your installation is successful with the command:
 
 === "Command"
 
@@ -67,7 +65,7 @@ Once done, you can check if your installation was successful by running the foll
     ![Check MkDocs installation.](assets/mkdocs-installation-results.png)
 
 
-We will next install a theme for MkDocs with the command:
+Next, install a theme for MkDocs with the command:
 
 === "Command"
 
