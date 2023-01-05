@@ -8,6 +8,7 @@ use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
 use crate::types::Type;
+use crate::types::Var;
 use crate::types::FRAG_CC;
 
 struct Area {
@@ -46,9 +47,28 @@ shenum_types! {
   static ref SEQ_OF_ANCHOR_TYPES: Vec<Type>;
 }
 
+struct DockArea {
+  instance: ParamVar,
+  requiring: ExposedTypes,
+  contents: ParamVar,
+  parents: ParamVar,
+  exposing: ExposedTypes,
+  headers: Vec<ParamVar>,
+  shards: Vec<ShardsVar>,
+  tabs: egui_dock::Tree<(ParamVar, ShardsVar)>,
+}
+
 struct Scope {
   parents: ParamVar,
   requiring: ExposedTypes,
+  contents: ShardsVar,
+  exposing: ExposedTypes,
+}
+
+struct Tab {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  title: ParamVar,
   contents: ShardsVar,
   exposing: ExposedTypes,
 }
@@ -117,6 +137,7 @@ struct CentralPanel {
 }
 
 mod area;
+mod docking;
 mod panels;
 mod scope;
 mod window;
@@ -124,6 +145,7 @@ mod window;
 pub fn registerShards() {
   registerShard::<Area>();
   registerEnumType(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
+  docking::registerShards();
   registerShard::<Scope>();
   registerShard::<Window>();
   registerEnumType(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());

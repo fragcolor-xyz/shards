@@ -94,7 +94,7 @@ impl Shard for Columns {
         let seq = Seq::try_from(value)?;
         for shard in seq.iter() {
           let mut s = ShardsVar::default();
-          s.set_param(&shard).unwrap();
+          s.set_param(&shard)?;
           self.shards.push(s);
         }
         Ok(self.contents.set_param(value))

@@ -925,6 +925,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_dock"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f37e5eba9330fb607e0fcb8dae0b6ed0ea23d3645841cc53b8ead5d544600486"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "egui_extras"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3331,6 +3340,7 @@ dependencies = [
  "egui",
  "egui-gfx",
  "egui_commonmark",
+ "egui_dock",
  "egui_extras",
  "egui_memory_editor",
  "enum-map",
