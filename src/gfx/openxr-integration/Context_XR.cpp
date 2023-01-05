@@ -945,7 +945,7 @@ XrViewConfigurationType Context_XR::getXrViewType() const
 
 XrInstance Context_XR::getXrInstance() const
 {
-  spdlog::info("[log][t] Context_XR::getXrInstance()");
+  //spdlog::info("[log][t] Context_XR::getXrInstance()"); 
   return xrInstance;
 }
 

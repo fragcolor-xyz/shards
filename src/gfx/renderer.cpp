@@ -143,9 +143,11 @@ struct RendererImpl final : public ContextData {
         WGPUTextureView view = contextMainOutputs.at(j).wgpuTextureView;//[t] made this an array
         WGPUTextureFormat format = contextMainOutput->getFormat();
         int2 resolution = contextMainOutput->getSize();
+        /*
         printf("[updateMainOutputFromContext] contextMainOutput->getSize(): ");
-        printf("%d",resolution[0]);//god I hate printing in c. Like, it's not the 80's any more...
+        printf("%d",resolution[0]);
         printf("%d",resolution[1]);
+        */
 
         auto currentDesc = mainOutput.at(i).payload.at(j).texture->getDesc();//[t] made this an array
         bool needUpdate = currentDesc.externalTexture != view || currentDesc.resolution != resolution || currentDesc.format.pixelFormat != format;
