@@ -1289,6 +1289,8 @@ template <typename T> struct WireDoppelgangerPool {
   void release(std::shared_ptr<T> wire) { _avail.emplace(wire); }
 
 private:
+  WireDoppelgangerPool() = delete;
+
   struct Writer {
     std::stringstream &stream;
     Writer(std::stringstream &stream) : stream(stream) {}
