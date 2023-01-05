@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <SDL_stdinc.h>
 #include "context_xr_gfx.hpp"
+#include "context_xr_gfx_data.hpp"
 //#include <openxr-integration/OpenXRSystem.h>
 
 

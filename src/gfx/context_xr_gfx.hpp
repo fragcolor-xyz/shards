@@ -14,7 +14,7 @@
 #include <Vulkan-Headers/include/vulkan/vulkan_handles.hpp>
 
 #if defined(GFX_WINDOWS)
-#define VK_USE_PLATFORM_WIN32_KHR //[t] TODO: Guus, if I uncomment this, all of vulkan shits the bed with 359 errors. Why?
+//#define VK_USE_PLATFORM_WIN32_KHR //[t] TODO: Guus, if I uncomment this, all of vulkan shits the bed with 359 errors. Why?
 #endif
 
 
@@ -30,7 +30,7 @@
 
 namespace gfx {
   
-
+  
 
   //[t] TODO: should move this out of this file. This struct is JUST for Mirror View. 
   // [t] This file should be for gfx vk/wgpu context backend shared by the xr headset and also mirror view.
@@ -168,7 +168,7 @@ namespace gfx {
 
     void createMirrorSurface() {
       spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface()...");
-      #if defined(GFX_WINDOWS)
+      #if defined(VK_USE_PLATFORM_WIN32_KHR)
       //vk::Win32SurfaceCreateInfoKHR surfInfo;
       vk::Win32SurfaceCreateInfoKHR surfInfo;
       spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: trying: surfInfo.setHwnd(HWND(window.getNativeWindowHandle()));");
@@ -520,7 +520,7 @@ namespace gfx {
       { 
         openXRSystem.createHeadset(wgpuVulkanShared, true), 
         //[t] TODO: UNCOMMENT FOR MIRROR VIEW:
-        std::make_shared<OpenXRMirrorView>(wgpuVulkanShared, window) 
+        //std::make_shared<OpenXRMirrorView>(wgpuVulkanShared, window) 
       };
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createMainOutput: returning mainOutputs: Headset and mirrorView.");
       return mainOutputs;

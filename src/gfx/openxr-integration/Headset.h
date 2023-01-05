@@ -12,7 +12,7 @@
 #include <vector>
 
 
-//#include "context.hpp"
+#include "context.hpp"
 #include "context_xr.h"
 #include "context_xr_gfx_data.hpp"
 

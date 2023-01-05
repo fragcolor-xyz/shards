@@ -1,5 +1,5 @@
 #pragma once
-//#include "context.hpp"
+#include "context.hpp"
 //#include "context_xr_gfx.hpp"
 #include "context_xr.h"
 #include "Headset.h"
