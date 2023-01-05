@@ -117,6 +117,8 @@ struct RendererImpl final : public ContextData {
   //[t] so now we hace 2 mainOutputs (a vector of mainOutputs) (xr headset, xr mirror view), and some of them have more than one (a vector of) WGPUTextureView's (xr eyes)
   void updateMainOutputFromContext() {
     std::vector<std::weak_ptr<IContextMainOutput>> contextMainOutputArr = context.getMainOutput();
+
+    mainOutput.resize(contextMainOutputArr.size());
     for(size_t i=0; i<contextMainOutputArr.size(); i++)
     {
       std::shared_ptr<IContextMainOutput> contextMainOutput = contextMainOutputArr.at(i).lock();
@@ -145,7 +147,7 @@ struct RendererImpl final : public ContextData {
         printf("[updateMainOutputFromContext] contextMainOutput->getSize(): ");
         printf("%d",resolution[0]);//god I hate printing in c. Like, it's not the 80's any more...
         printf("%d",resolution[1]);
-    
+
         auto currentDesc = mainOutput.at(i).payload.at(j).texture->getDesc();//[t] made this an array
         bool needUpdate = currentDesc.externalTexture != view || currentDesc.resolution != resolution || currentDesc.format.pixelFormat != format;
         if (needUpdate) {
@@ -185,13 +187,13 @@ struct RendererImpl final : public ContextData {
     outDrawData.setParam("invProj", viewData.cachedView.invProjectionTransform);
     outDrawData.setParam("viewport", float4(float(viewData.viewport.x), float(viewData.viewport.y),
                                             float(viewData.viewport.width), float(viewData.viewport.height)));
-  } 
+  }
 
   std::vector<TexturePtr> renderGraphOutputs;
   //"view" is the camera information
   void renderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
     //TODO: do a for loop here for the whole function for two texture views
-    // also get the eye info 
+    // also get the eye info
     for(size_t mo=0; mo<mainOutput.size(); mo++){
       for(size_t t=0; t<mainOutput.at(mo).payload.size(); t++){
         ViewData viewData{
@@ -200,7 +202,7 @@ struct RendererImpl final : public ContextData {
         };
 
         ViewStack::Output viewStackOutput = viewStack.getOutput();
-        viewData.viewport = viewStackOutput.viewport;  
+        viewData.viewport = viewStackOutput.viewport;
         viewData.renderTarget = viewStackOutput.renderTarget;
         if (viewData.renderTarget) {
           viewData.renderTarget->resizeConditional(viewStackOutput.referenceSize);
@@ -212,8 +214,8 @@ struct RendererImpl final : public ContextData {
 
         if(mainOutput.at(mo).payload.at(t).useMatrix){
           viewData.cachedView.touchWithNewTransform(
-            *std::move(mainOutput.at(mo).payload.at(t).eyeViewMatrix), 
-            *std::move(mainOutput.at(mo).payload.at(t).eyeProjectionMatrix), 
+            *std::move(mainOutput.at(mo).payload.at(t).eyeViewMatrix),
+            *std::move(mainOutput.at(mo).payload.at(t).eyeProjectionMatrix),
             frameCounter);
         }
         else{
@@ -239,7 +241,7 @@ struct RendererImpl final : public ContextData {
 
   void buildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps, int2 referenceOutputSize,
                         CachedRenderGraph &out) {
-    
+
     RenderGraphBuilder builder;
 
     builder.setReferenceOutputSize(referenceOutputSize);

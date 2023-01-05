@@ -12,7 +12,7 @@ RenderTarget::RenderTarget(WGPUDevice wgpuDevice,
                            uint32_t layerCount)
 : wgpuDevice(wgpuDevice), image(image)
 {
-  valid = false; 
+  valid = false;
   WGPUTextureDescriptor textureDesc{
       .usage = WGPUTextureUsage::WGPUTextureUsage_CopyDst | WGPUTextureUsage::WGPUTextureUsage_RenderAttachment,
       .dimension = WGPUTextureDimension_2D,
@@ -29,7 +29,7 @@ RenderTarget::RenderTarget(WGPUDevice wgpuDevice,
       .baseMipLevel = 0,
       .mipLevelCount = 1,
       .baseArrayLayer = 0,
-      .arrayLayerCount = layerCount,//[t] TODO: is this equivalent to vukan: imageViewCreateInfo.subresourceRange.layerCount = layerCount;
+      .arrayLayerCount = 1,//[t] TODO: is this equivalent to vukan: imageViewCreateInfo.subresourceRange.layerCount = layerCount;
       .aspect = WGPUTextureAspect_All,
   };
 
@@ -39,13 +39,13 @@ RenderTarget::RenderTarget(WGPUDevice wgpuDevice,
   };
   WGPUExternalTextureDescriptor extDesc{
       .nextInChain = &extDescVk.chain,
-  }; 
+  };
 
   textureView = wgpuCreateExternalTextureView(wgpuDevice, &textureDesc, &viewDesc, &extDesc);
-  assert(textureView);  
+  assert(textureView);
   valid = true;
 
- 
+
 
   // VK version
   /*
