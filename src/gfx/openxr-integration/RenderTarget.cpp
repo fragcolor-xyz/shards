@@ -29,7 +29,7 @@ RenderTarget::RenderTarget(WGPUDevice wgpuDevice,
       .baseMipLevel = 0,
       .mipLevelCount = 1,
       .baseArrayLayer = 0,
-      .arrayLayerCount = 1,//[t] TODO: is this equivalent to vukan: imageViewCreateInfo.subresourceRange.layerCount = layerCount;
+      .arrayLayerCount = layerCount,//[t] TODO: is this equivalent to vukan: imageViewCreateInfo.subresourceRange.layerCount = layerCount;
       .aspect = WGPUTextureAspect_All,
   };
 

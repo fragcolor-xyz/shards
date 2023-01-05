@@ -51,11 +51,11 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
   xrContext = _xrContext;
   if (!xrContext->isValid())
   {
-    spdlog::error("[[[[[[[[[[[[log][t] OpenXRSystem::InitOpenXR: error at xrContext.");
+    spdlog::error("[log][t] OpenXRSystem::InitOpenXR: error at xrContext.");
   }
   if (!_xrContext->isValid())
   {
-    spdlog::error("[[[[[[[[[[[[log][t] OpenXRSystem::InitOpenXR: error at _xrContext.");
+    spdlog::error("[log][t] OpenXRSystem::InitOpenXR: error at _xrContext.");
   }
   this->gfxWgpuVulkanShared = _gfxWgpuVulkanShared;
   const VkDevice device = gfxWgpuVulkanShared->vkDevice;
@@ -374,8 +374,15 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
   // [t] Either creates one swapchain with 2 layers / swapchain images, or two swapchains with one image each.
   // [t] Either way it's 2 render targets.
   {
-    // [guus] Force use only 1 swapchain for now
     uint32_t swapchainNumber = 1u;
+    uint32_t swapchainImageCount = static_cast<uint32_t>(eyeCount);//2u
+    if(isMultipass){
+      //swapchainNumber = static_cast<uint32_t>(eyeCount);//2u;
+      // [guus] Force use only 1 swapchain for now
+      swapchainNumber = 1u;
+      swapchainImageCount = 1u;
+    }
+    spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainNumber: {}, swapchainImageCount: {}", swapchainNumber, swapchainImageCount);
 
     swapchainArr.resize(swapchainNumber);
 
@@ -394,7 +401,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       // [t] arraySize is the number of array layers in the image or 1 for a simple 2D image,
       // [t] 2 for 2 layers for multiview
       // [guus] Avoid using array images, doesn't seem to work well with OpenXR => wgpu
-      swapchainCreateInfo.arraySize = 1;
+      // [t] So swapchainImageCount should remain in multipass mode ( = 1u), until we figure out multiview (singlepass)
+      swapchainCreateInfo.arraySize = swapchainImageCount;
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainCreateInfo.arraySize: {}", swapchainCreateInfo.arraySize);
       swapchainCreateInfo.faceCount = 1u;
       swapchainCreateInfo.mipCount = 1u;
       //[t] TODO: is this needed:
@@ -443,6 +452,7 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
         spdlog::error("[log][t] Headset::Headset: error at xrEnumerateSwapchainImages(*(swapchainArr.at(i)), 0u, &swapchainImageCount, nullptr);");
         return;
       }
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainImageCount: {}", swapchainImageCount);
 
       //[t] xr - vk
 
@@ -481,13 +491,14 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
         //[t] depthImageView can be null
         //[t] 2u is the layer count for multiview. The results of rendering with gl_ViewIndex (see other comment on gl_ViewIndex).
         // [guus] Don't use layers for now, see previous comment
-        // uint32_t layerCount = 2u;
-        // if(isMultipass)
-        //   layerCount = 1u;
+        // [t] layerCount should remain 1u unless we use singlepass (multiview)
+        uint32_t layerCount = 2u;
+        if(isMultipass)
+           layerCount = 1u;
+        spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: layerCount: {}, swapchainRenderTargets.size(): {}", layerCount, swapchainRenderTargets.size());
         //renderTarget = new RenderTarget(device, image, depthImageView, eyeResolution, colorFormat_wgpu, renderPass, layerCount);
-        //[t] TODO: guus: can we really use wgpuDevice here if openxr is so far set up with vkDevice?
-        renderTarget = new RenderTarget(gfxWgpuVulkanShared->wgpuDevice, image, depthImageView, eyeResolution, colorFormat_wgpu, 1);
-        //[t] TODO: Also, the vulkan code I've been using uses VKFormat instead of WGPUTextureFormat colorFormat_wgpu
+        renderTarget = new RenderTarget(gfxWgpuVulkanShared->wgpuDevice, image, depthImageView, eyeResolution, colorFormat_wgpu, layerCount);
+        //[t] TODO: Also, the vulkan code I've been using VKFormat instead of WGPUTextureFormat colorFormat_wgpu
 
         if (!renderTarget->isValid())
         {
@@ -513,10 +524,19 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
 
     // Associate this eye with the swapchain
     const XrViewConfigurationView &eyeImageInfo = eyeImageInfos.at(eyeIndex);
-
-    // [guus] Forced to displace one swapchain on both eyes for now
-    eyeRenderInfo.subImage.swapchain = swapchainArr[0];
-    eyeRenderInfo.subImage.imageArrayIndex = 0;
+    if(swapchainArr.size() == 1){ 
+      eyeRenderInfo.subImage.swapchain = swapchainArr.at(0);//swapchainArr.at(eyeIndex);//multiview, 1 swapchain, 2 swapchainImages
+    }
+    else{
+      eyeRenderInfo.subImage.swapchain = swapchainArr.at(eyeIndex);//multipass, 2 swapchains
+    }
+    
+    if(isMultipass){
+      eyeRenderInfo.subImage.imageArrayIndex = 0; 
+    }
+    else{// singlepass multiview
+      eyeRenderInfo.subImage.imageArrayIndex = static_cast<uint32_t>(eyeIndex);
+    }
 
     eyeRenderInfo.subImage.imageRect.offset = { 0, 0 };
     eyeRenderInfo.subImage.imageRect.extent = { static_cast<int32_t>(eyeImageInfo.recommendedImageRectWidth),

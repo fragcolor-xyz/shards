@@ -117,7 +117,6 @@ struct RendererImpl final : public ContextData {
   //[t] so now we hace 2 mainOutputs (a vector of mainOutputs) (xr headset, xr mirror view), and some of them have more than one (a vector of) WGPUTextureView's (xr eyes)
   void updateMainOutputFromContext() {
     std::vector<std::weak_ptr<IContextMainOutput>> contextMainOutputArr = context.getMainOutput();
-
     mainOutput.resize(contextMainOutputArr.size());
     for(size_t i=0; i<contextMainOutputArr.size(); i++)
     {
