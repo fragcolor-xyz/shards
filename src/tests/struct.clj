@@ -33,7 +33,9 @@
   (ExpectInt)
   (Assert.Is 20 true)
   .bseq (Take 2)
-  (Assert.Is 3.14 true)
+  ; note float/double conversion loses precision, so we compare with an epsilon (~1e-7)
+  (ExpectFloat) (Math.Subtract 3.14) (Math.Abs) (IsLessEqual 0.00000011)
+  (Assert.Is true true)
 
   (Const ["Hello structured data" 2])
   (Pack "s i32")

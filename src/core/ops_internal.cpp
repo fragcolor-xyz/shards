@@ -611,3 +611,87 @@ bool operator==(const SHTypeInfo &a, const SHTypeInfo &b) {
     return true;
   }
 }
+
+ALWAYS_INLINE inline bool _almostEqual(const float a, const float b, const double e) { return __builtin_fabsf(a - b) <= e; }
+ALWAYS_INLINE inline bool _almostEqual(const double a, const double b, const double e) { return __builtin_fabs(a - b) <= e; }
+ALWAYS_INLINE inline bool _almostEqual(const int32_t a, const int32_t b, const double e) { return __builtin_abs(a - b) <= e; }
+ALWAYS_INLINE inline bool _almostEqual(const int64_t a, const int64_t b, const double e) { return __builtin_llabs(a - b) <= e; }
+
+bool _almostEqual(const SHVar &lhs, const SHVar &rhs, double e) {
+  if (lhs.valueType != rhs.valueType) {
+    return false;
+  }
+
+  switch (lhs.valueType) {
+  case SHType::Float:
+    return _almostEqual(lhs.payload.floatValue, rhs.payload.floatValue, e);
+  case SHType::Float2:
+    return (_almostEqual(lhs.payload.float2Value[0], rhs.payload.float2Value[0], e) &&
+            _almostEqual(lhs.payload.float2Value[1], rhs.payload.float2Value[1], e));
+  case SHType::Float3:
+    return (_almostEqual(lhs.payload.float3Value[0], rhs.payload.float3Value[0], e) &&
+            _almostEqual(lhs.payload.float3Value[1], rhs.payload.float3Value[1], e) &&
+            _almostEqual(lhs.payload.float3Value[2], rhs.payload.float3Value[2], e));
+  case SHType::Float4:
+    return (_almostEqual(lhs.payload.float4Value[0], rhs.payload.float4Value[0], e) &&
+            _almostEqual(lhs.payload.float4Value[1], rhs.payload.float4Value[1], e) &&
+            _almostEqual(lhs.payload.float4Value[2], rhs.payload.float4Value[2], e) &&
+            _almostEqual(lhs.payload.float4Value[3], rhs.payload.float4Value[3], e));
+  case SHType::Int:
+    return _almostEqual(lhs.payload.intValue, rhs.payload.intValue, e);
+  case SHType::Int2:
+    return (_almostEqual(lhs.payload.int2Value[0], rhs.payload.int2Value[0], e) &&
+            _almostEqual(lhs.payload.int2Value[1], rhs.payload.int2Value[1], e));
+  case SHType::Int3:
+    return (_almostEqual(lhs.payload.int3Value[0], rhs.payload.int3Value[0], e) &&
+            _almostEqual(lhs.payload.int3Value[1], rhs.payload.int3Value[1], e) &&
+            _almostEqual(lhs.payload.int3Value[2], rhs.payload.int3Value[2], e));
+  case SHType::Int4:
+    return (_almostEqual(lhs.payload.int4Value[0], rhs.payload.int4Value[0], e) &&
+            _almostEqual(lhs.payload.int4Value[1], rhs.payload.int4Value[1], e) &&
+            _almostEqual(lhs.payload.int4Value[2], rhs.payload.int4Value[2], e) &&
+            _almostEqual(lhs.payload.int4Value[3], rhs.payload.int4Value[3], e));
+  case SHType::Int8:
+    return (_almostEqual(lhs.payload.int8Value[0], rhs.payload.int8Value[0], e) &&
+            _almostEqual(lhs.payload.int8Value[1], rhs.payload.int8Value[1], e) &&
+            _almostEqual(lhs.payload.int8Value[2], rhs.payload.int8Value[2], e) &&
+            _almostEqual(lhs.payload.int8Value[3], rhs.payload.int8Value[3], e) &&
+            _almostEqual(lhs.payload.int8Value[4], rhs.payload.int8Value[4], e) &&
+            _almostEqual(lhs.payload.int8Value[5], rhs.payload.int8Value[5], e) &&
+            _almostEqual(lhs.payload.int8Value[6], rhs.payload.int8Value[6], e) &&
+            _almostEqual(lhs.payload.int8Value[7], rhs.payload.int8Value[7], e));
+  case SHType::Int16:
+    return (_almostEqual(lhs.payload.int16Value[0], rhs.payload.int16Value[0], e) &&
+            _almostEqual(lhs.payload.int16Value[1], rhs.payload.int16Value[1], e) &&
+            _almostEqual(lhs.payload.int16Value[2], rhs.payload.int16Value[2], e) &&
+            _almostEqual(lhs.payload.int16Value[3], rhs.payload.int16Value[3], e) &&
+            _almostEqual(lhs.payload.int16Value[4], rhs.payload.int16Value[4], e) &&
+            _almostEqual(lhs.payload.int16Value[5], rhs.payload.int16Value[5], e) &&
+            _almostEqual(lhs.payload.int16Value[6], rhs.payload.int16Value[6], e) &&
+            _almostEqual(lhs.payload.int16Value[7], rhs.payload.int16Value[7], e) &&
+            _almostEqual(lhs.payload.int16Value[8], rhs.payload.int16Value[8], e) &&
+            _almostEqual(lhs.payload.int16Value[9], rhs.payload.int16Value[9], e) &&
+            _almostEqual(lhs.payload.int16Value[10], rhs.payload.int16Value[10], e) &&
+            _almostEqual(lhs.payload.int16Value[11], rhs.payload.int16Value[11], e) &&
+            _almostEqual(lhs.payload.int16Value[12], rhs.payload.int16Value[12], e) &&
+            _almostEqual(lhs.payload.int16Value[13], rhs.payload.int16Value[13], e) &&
+            _almostEqual(lhs.payload.int16Value[14], rhs.payload.int16Value[14], e) &&
+            _almostEqual(lhs.payload.int16Value[15], rhs.payload.int16Value[15], e));
+  case SHType::Seq: {
+    if (lhs.payload.seqValue.len != rhs.payload.seqValue.len) {
+      return false;
+    }
+
+    auto almost = true;
+    for (uint32_t i = 0; i < lhs.payload.seqValue.len; i++) {
+      auto &suba = lhs.payload.seqValue.elements[i];
+      auto &subb = rhs.payload.seqValue.elements[i];
+      almost = almost && _almostEqual(suba, subb, e);
+    }
+
+    return almost;
+  }
+  default:
+    return lhs == rhs;
+  }
+}

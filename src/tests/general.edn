@@ -152,6 +152,16 @@
    (Assert.Is (- 11 10) true)
    (Log)
 
+   ; double precision
+   3.141592653589793238
+   (Is 3.141592653589793) ; 16 digits
+   (Assert.Is true true)
+   (Log)   
+   3.141592653589793238
+   (Is 3.14159265358979) ; 15 digits
+   (Assert.Is false true)
+   (Log)
+
    (Float4 10.3 3.6 2.1 1.1)
    (Math.Multiply (Float4 2 2 2 2))
    (Assert.Is (Float4 (* 10.3 2) (* 3.6 2) (* 2.1 2) (* 1.1 2)) true)

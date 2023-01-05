@@ -546,6 +546,84 @@ struct IsValidNumber {
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(std::isnormal(input.payload.floatValue)); }
 };
 
+struct IsAlmost {
+  SHOptionalString help() { return SHCCSTR("Checks whether the input is almost equal to a given value."); }
+
+  static SHTypesInfo inputTypes() { return MathTypes; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any number type or a sequence of such types."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("true if the input is almost equal to the given value; otherwise, false.");
+  }
+
+  SHParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const SHVar &inValue) {
+    switch (index) {
+    case 0:
+      destroyVar(_value);
+      cloneVar(_value, inValue);
+      break;
+    case 1:
+      if (inValue.valueType == SHType::Float)
+        _threshold = inValue.payload.floatValue;
+      else
+        _threshold = double(inValue.payload.intValue);
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _value;
+    case 1:
+      return Var(_threshold);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (_value.valueType != data.inputType.basicType)
+      throw SHException("Input and value types must match.");
+
+    if (_threshold <= 0.0)
+      throw SHException("Threshold must be greater than 0.");
+
+    return CoreInfo::BoolType;
+  }
+
+  void destroy() { destroyVar(_value); }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return Var(_almostEqual(input, _value, _threshold)); }
+
+private:
+  static inline Types MathTypes{{
+      CoreInfo::FloatType,
+      CoreInfo::Float2Type,
+      CoreInfo::Float3Type,
+      CoreInfo::Float4Type,
+      CoreInfo::IntType,
+      CoreInfo::Int2Type,
+      CoreInfo::Int3Type,
+      CoreInfo::Int4Type,
+      CoreInfo::Int8Type,
+      CoreInfo::Int16Type,
+      CoreInfo::AnySeqType,
+  }};
+  static inline Parameters _params = {{"Value", SHCCSTR("The value to test against for almost equality."), MathTypes},
+                                      {"Threshold",
+                                       SHCCSTR("The smallest difference to be considered equal. Should be greater than zero."),
+                                       {CoreInfo::FloatType, CoreInfo::IntType}}};
+
+  SHFloat _threshold{FLT_EPSILON};
+  SHVar _value{};
+};
+
 struct NaNTo0 {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatOrFloatSeq; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatOrFloatSeq; }
@@ -3407,6 +3485,7 @@ RUNTIME_CORE_SHARD_TYPE(Fail);
 RUNTIME_CORE_SHARD_TYPE(Restart);
 RUNTIME_CORE_SHARD_TYPE(Return);
 RUNTIME_CORE_SHARD_TYPE(IsValidNumber);
+RUNTIME_CORE_SHARD_TYPE(IsAlmost);
 RUNTIME_CORE_SHARD_TYPE(Set);
 RUNTIME_CORE_SHARD_TYPE(Ref);
 RUNTIME_CORE_SHARD_TYPE(Update);
