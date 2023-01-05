@@ -21,12 +21,12 @@ Here are some of the data types found in Shards:
 | `Bool`      | Evaluates to either `true` or `false`.                 | `true`, `false`   |
 | `Float`     | A numerical value with a decimal point.                | `2.53`, `-9.124`  |
 | `Int`       | A numerical value with no decimals. Read as "integer". | `2`, `-9`         |
-| `Sequence`  | A collection of values.                                | `[-3.2, "abc", 9]`|
+| `Sequence`  | A collection of values.                                | `[2.5, -9.1, 9.7]`|
 | `String`    | Characters enclosed by double quotes.                  | "A string!"       |
 | `Wire`      | A sequence of shards.                                  |                   |
 
 !!! note
-    The input and output of a shard can be made up of multiple data types. This is done by encapsulating the different types within a sequence. For example `["a string", 1.04, true]` is a sequence made up of a string, a float, and a boolean value.
+    A shard can have multiple data types as its input and output. For example, the shard `Math.Add` can have its input and output as an `Int`, or it can have its input and output as a `Float`.
 
 For the full list of data types and more in-depth reading, check out the `Types` documentation page [here](../../../reference/shards/types/).
 
