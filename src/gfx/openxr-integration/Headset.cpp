@@ -403,7 +403,7 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       // [guus] Avoid using array images, doesn't seem to work well with OpenXR => wgpu
       // [t] So swapchainImageCount should remain in multipass mode ( = 1u), until we figure out multiview (singlepass)
       swapchainCreateInfo.arraySize = swapchainImageCount;
-      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainCreateInfo.arraySize: {}", swapchainCreateInfo.arraySize);
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainCreateInfo.arraySize: {}, i: {}", swapchainCreateInfo.arraySize, i);
       swapchainCreateInfo.faceCount = 1u;
       swapchainCreateInfo.mipCount = 1u;
       //[t] TODO: is this needed:
@@ -443,39 +443,39 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       // [t] Multiview has 2 layers, one per eye, set in swapchainCreateInfo.arraySize above.
       // [t] But we need to use this xrEnumerateSwapchainImages magic to create 2 swapchainImages,
       // [t] one swapchain image for each multiview image layer
-      uint32_t swapchainImageCount;
-      result = xrEnumerateSwapchainImages(swapchainArr.at(i), 0u, &swapchainImageCount, nullptr);
+      uint32_t swapchainEnumerateImageCount;
+      //https://registry.khronos.org/OpenXR/specs/1.0/man/html/xrEnumerateSwapchainImages.html
+      result = xrEnumerateSwapchainImages(swapchainArr.at(i), 0u, &swapchainEnumerateImageCount, nullptr);
       if (XR_FAILED(result))
       {
         util::error(Error::GenericOpenXR);
         valid = false;
-        spdlog::error("[log][t] Headset::Headset: error at xrEnumerateSwapchainImages(*(swapchainArr.at(i)), 0u, &swapchainImageCount, nullptr);");
+        spdlog::error("[log][t] Headset::Headset: error at xrEnumerateSwapchainImages(*(swapchainArr.at(i)), 0u, &swapchainEnumerateImageCount, nullptr);");
         return;
       }
-      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainImageCount: {}", swapchainImageCount);
-
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainEnumerateImageCount: {}", swapchainEnumerateImageCount);
+ 
       //[t] xr - vk
 
       //[t] Retrieve the swapchain images, which can be one per layer of multiview
       std::vector<XrSwapchainImageVulkanKHR> swapchainImages;
-      swapchainImages.resize(swapchainImageCount);
+      swapchainImages.resize(swapchainEnumerateImageCount);
       for (XrSwapchainImageVulkanKHR& swapchainImage : swapchainImages)
       {
         swapchainImage.type = XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR;
       }
 
-      //[t] TODO: So at this point, I believe the vk swapchain image should be the one set up for the WGPUVulkanShared vkInstance
-      //[t] because the graphicsBinding vk instance is set to our already set up gfxWgpuVulkanShared->instance
-
       XrSwapchainImageBaseHeader* data = reinterpret_cast<XrSwapchainImageBaseHeader*>(swapchainImages.data());
-      result = xrEnumerateSwapchainImages(swapchainArr.at(i), static_cast<uint32_t>(swapchainImages.size()), &swapchainImageCount, data);
+      result = xrEnumerateSwapchainImages(swapchainArr.at(i), static_cast<uint32_t>(swapchainImages.size()), &swapchainEnumerateImageCount, data);
       if (XR_FAILED(result))
       {
         util::error(Error::GenericOpenXR);
         valid = false;
-        spdlog::error("[log][t] Headset::Headset: error at xrEnumerateSwapchainImages(*(swapchainArr.at(i)), static_cast<uint32_t>(swapchainImages.size()), &swapchainImageCount, data);");
+        spdlog::error("[log][t] Headset::Headset: error at xrEnumerateSwapchainImages(*(swapchainArr.at(i)), static_cast<uint32_t>(swapchainImages.size()), &swapchainEnumerateImageCount, data);");
         return;
       }
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainEnumerateImageCount II: {}", swapchainEnumerateImageCount);
+ 
 
       //[t] create the xr vk render target(s). Each RenderTarget and VKImage here,
       //[t] represents one of the 2 array layers in the swapchaincreateinfo (multiview).
@@ -746,12 +746,12 @@ std::vector<WGPUTextureView> Headset::requestFrame() {
 
   swapchainRTTextureViews.clear();
 
-  //TODO: try multipass, but, read dscription of acquireSwapchainForFrame, not sure you can call it twice per "frame"
+  //TODO: try multipass with 2 swapchains, but, read dscription of acquireSwapchainForFrame, not sure you can call it twice per "frame"
   /*
     // for multipass, have 2 swapchains
     uint32_t swapchainNumber = 1;
     if(isMultipass){
-      swapchainNumber = 2u;
+      swapchainNumber = 2u; 
     }
 
     for(size_t eyeIndex=0; eyeIndex< swapchainNumber; eyeIndex++)

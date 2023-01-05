@@ -518,17 +518,16 @@ namespace gfx {
       //TODO: headset with both eyes
       //TODO: also mirrorview
       OpenXRSystem& openXRSystem = OpenXRSystem::getInstance();
-      std::shared_ptr<gfx::ContextWindowOutput> contextWindowOutput = std::make_shared<ContextWindowOutput>(
-                                                  wgpuVulkanShared->wgpuInstance, 
-                                                  wgpuVulkanShared->wgpuAdapter, 
-                                                  wgpuVulkanShared->wgpuDevice, 
-                                                  wgpuSurface, 
-                                                  window);
       std::vector<std::shared_ptr<IContextMainOutput>> mainOutputs = 
       { 
         openXRSystem.createHeadset(wgpuVulkanShared, true)
         //[t] TODO: UNCOMMENT FOR MIRROR VIEW / Window:
-        //, contextWindowOutput
+        //,std::make_shared<ContextWindowOutput>(
+        //                                      wgpuVulkanShared->wgpuInstance, 
+        //                                      wgpuVulkanShared->wgpuAdapter, 
+        //                                      wgpuVulkanShared->wgpuDevice, 
+        //                                      wgpuSurface, 
+        //                                      window)
       };
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createMainOutput: returning mainOutputs: Headset and mirrorView.");
       return mainOutputs;
