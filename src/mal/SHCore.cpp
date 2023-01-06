@@ -2109,10 +2109,8 @@ BUILTIN("shard-info") {
     for (uint32_t i = 0; i < params.len; i++) {
       malHash::Map pmap;
       pmap[":name"] = mal::string(params.elements[i].name);
-      if (params.elements[i].help.string)
-        pmap[":help"] = mal::string(params.elements[i].help.string);
-      else
-        pmap[":help"] = mal::string(getString(params.elements[i].help.crc));
+      auto &help = params.elements[i].help;
+      pmap[":help"] = mal::string(help.string ? help.string : getString(help.crc));
       std::stringstream ss;
       docsFormatter.format(ss, params.elements[i].valueTypes);
       pmap[":types"] = mal::string(ss.str());
