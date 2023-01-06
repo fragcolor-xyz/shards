@@ -2078,14 +2078,28 @@ BUILTIN("enums") {
   return mal::list(items);
 }
 
-static DocsFriendlyFormatter docsFormatter{.ignoreNone = true};
-
 static bool containsNone(const SHTypesInfo &types) {
   for (size_t i = 0; i < types.len; i++) {
     if (types.elements[i].basicType == SHType::None)
       return true;
   }
   return false;
+}
+
+static malValuePtr richTypeInfo(const SHTypesInfo &types, bool ignoreNone = true) {
+  malValueVec vec;
+  for (uint32_t j = 0; j < types.len; j++) {
+    auto &type = types.elements[j];
+    if (ignoreNone && type.basicType == SHType::None)
+      continue;
+    malHash::Map map;
+    std::stringstream ss;
+    ss << type;
+    map[":name"] = mal::string(ss.str());
+    map[":type"] = mal::number(double(type.basicType), true);
+    vec.emplace_back(mal::hash(map));
+  }
+  return mal::list(vec.begin(), vec.end());
 }
 
 BUILTIN("shard-info") {
@@ -2111,9 +2125,7 @@ BUILTIN("shard-info") {
       pmap[":name"] = mal::string(params.elements[i].name);
       auto &help = params.elements[i].help;
       pmap[":help"] = mal::string(help.string ? help.string : getString(help.crc));
-      std::stringstream ss;
-      docsFormatter.format(ss, params.elements[i].valueTypes);
-      pmap[":types"] = mal::string(ss.str());
+      pmap[":types"] = richTypeInfo(params.elements[i].valueTypes);
       pmap[":optional"] = mal::boolean(containsNone(params.elements[i].valueTypes));
       {
         std::ostringstream ss;
@@ -2129,17 +2141,13 @@ BUILTIN("shard-info") {
     map[":parameters"] = mal::list(pvec.begin(), pvec.end());
 
     {
-      std::stringstream ss;
-      ss << shard->inputTypes(shard);
-      map[":inputTypes"] = mal::string(ss.str());
+      map[":inputTypes"] = richTypeInfo(shard->inputTypes(shard));
       auto help = shard->inputHelp(shard);
       map[":inputHelp"] = mal::string(help.string ? help.string : getString(help.crc));
     }
 
     {
-      std::stringstream ss;
-      ss << shard->outputTypes(shard);
-      map[":outputTypes"] = mal::string(ss.str());
+      map[":outputTypes"] = richTypeInfo(shard->outputTypes(shard));
       auto help = shard->outputHelp(shard);
       map[":outputHelp"] = mal::string(help.string ? help.string : getString(help.crc));
     }
