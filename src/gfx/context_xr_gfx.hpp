@@ -522,12 +522,12 @@ namespace gfx {
       { 
         openXRSystem.createHeadset(wgpuVulkanShared, true)
         //[t] TODO: UNCOMMENT FOR MIRROR VIEW / Window:
-        //,std::make_shared<ContextWindowOutput>(
-        //                                      wgpuVulkanShared->wgpuInstance, 
-        //                                      wgpuVulkanShared->wgpuAdapter, 
-        //                                      wgpuVulkanShared->wgpuDevice, 
-        //                                      wgpuSurface, 
-        //                                      window)
+        ,std::make_shared<ContextWindowOutput>(
+                                              wgpuVulkanShared->wgpuInstance, 
+                                              wgpuVulkanShared->wgpuAdapter, 
+                                              wgpuVulkanShared->wgpuDevice, 
+                                              wgpuSurface, 
+                                              window)
       };
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createMainOutput: returning mainOutputs: Headset and mirrorView.");
       return mainOutputs;

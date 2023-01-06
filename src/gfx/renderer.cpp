@@ -114,7 +114,7 @@ struct RendererImpl final : public ContextData {
   size_t alignToMinUniformOffset(size_t size) const { return alignTo(size, deviceLimits.limits.minUniformBufferOffsetAlignment); }
   size_t alignToArrayBounds(size_t size, size_t elementAlign) const { return alignTo(size, elementAlign); }
 
-  //[t] so now we hace 2 mainOutputs (a vector of mainOutputs) (xr headset, xr mirror view), and some of them have more than one (a vector of) WGPUTextureView's (xr eyes)
+  //[t] so now we have 2 mainOutputs (a vector of mainOutputs) (xr headset, xr mirror view), and some of them have more than one (a vector of) WGPUTextureView's (xr eyes)
   void updateMainOutputFromContext() {
     std::vector<std::weak_ptr<IContextMainOutput>> contextMainOutputArr = context.getMainOutput();
     mainOutput.resize(contextMainOutputArr.size());
@@ -126,14 +126,23 @@ struct RendererImpl final : public ContextData {
       if (mainOutput.at(i).payload.size() <1) {
         mainOutput.at(i).payload.resize(contextMainOutputs.size());
       }
-      for(size_t t = 0; t<mainOutput.size(); t++){
+      //for(size_t t = 0; t<mainOutput.size(); t++){
+      for(size_t t = 0; t<contextMainOutputs.size(); t++){
+        if(mainOutput.at(i).payload.size() <= t){
+          spdlog::error("[[[[[[[[[[[log][t] renderer.cpp::updateMainOutputFromContext(): error at (mainOutput.at(i:{}]).payload.size():{} <= t:{}.", i, mainOutput.at(i).payload.size(), t);
+          continue;
+        }
         if(!mainOutput.at(i).payload.at(t).texture){
           mainOutput.at(i).payload.at(t).texture = std::make_shared<Texture>();
+          if(contextMainOutputs.size() <= i){
+            spdlog::error("[[[[[[[[[[[log][t] renderer.cpp::updateMainOutputFromContext(): error at contextMainOutputs.size():{} <= i:{}.", contextMainOutputs.size(), i);
+            continue;
+          }
           if(contextMainOutputs.at(i).useMatrix){
             mainOutput.at(i).payload.at(t).useMatrix = contextMainOutputs.at(i).useMatrix;
             mainOutput.at(i).payload.at(t).eyeViewMatrix = contextMainOutputs.at(i).eyeViewMatrix;
             mainOutput.at(i).payload.at(t).eyeProjectionMatrix = contextMainOutputs.at(i).eyeProjectionMatrix;
-            printf("[updateMainOutputFromContext] assigning matrixes");
+            spdlog::info("[updateMainOutputFromContext] assigned matrixes");
           }
         }
       }
@@ -641,12 +650,12 @@ struct RendererImpl final : public ContextData {
   void beginFrame() {
     // This registers ContextData so that releaseContextData is called when GPU resources are invalidated
     if (!isBoundToContext())
-      initializeContextData();
+      initializeContextData();//
 
     swapBuffers();
 
     if (shouldUpdateMainOutputFromContext) {
-      updateMainOutputFromContext();
+      updateMainOutputFromContext();//[t] here crash
     }
 
     frameStats.reset();

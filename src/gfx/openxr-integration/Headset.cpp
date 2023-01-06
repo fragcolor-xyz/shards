@@ -453,7 +453,7 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
         spdlog::error("[log][t] Headset::Headset: error at xrEnumerateSwapchainImages(*(swapchainArr.at(i)), 0u, &swapchainEnumerateImageCount, nullptr);");
         return;
       }
-      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainEnumerateImageCount: {}", swapchainEnumerateImageCount);
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: xrEnumerateSwapchainImages(): swapchainEnumerateImageCount: {}", swapchainEnumerateImageCount);
  
       //[t] xr - vk
 
@@ -474,7 +474,7 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
         spdlog::error("[log][t] Headset::Headset: error at xrEnumerateSwapchainImages(*(swapchainArr.at(i)), static_cast<uint32_t>(swapchainImages.size()), &swapchainEnumerateImageCount, data);");
         return;
       }
-      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainEnumerateImageCount II: {}", swapchainEnumerateImageCount);
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: xrEnumerateSwapchainImages(): swapchainEnumerateImageCount II: {}", swapchainEnumerateImageCount);
  
 
       //[t] create the xr vk render target(s). Each RenderTarget and VKImage here,

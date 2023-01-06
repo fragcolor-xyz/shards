@@ -631,8 +631,10 @@ public:
     for (auto &frame : graph.frames) {
       if (frame.outputIndex.has_value()) {
         size_t outputIndex = frame.outputIndex.value();
-        if (outputIndex >= outputs.size())
+        if (outputIndex >= outputs.size()){
+          spdlog::error("[gfx/render_graph.hpp] error: outputIndex:{} >= outputs.size():{}", outputIndex, outputs.size());
           throw std::logic_error("Missing output");
+        }
 
         outFrameTextures.push_back(outputs[outputIndex]);
       } else if (frame.textureOverride) {
