@@ -27,6 +27,7 @@ use crate::SHType_Enum;
 
 shenum! {
   struct UIProperty {
+    [description("")]
     const RemainingSpace = 0x0;
   }
   struct UIPropertyInfo {}
