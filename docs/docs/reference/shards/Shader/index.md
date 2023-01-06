@@ -183,3 +183,5 @@ In addition they will also capture any variables referenced that are defined in 
 !!! info "Partial support"
 
     Currently, only values that are read from parent Wires are supported. Trying to update a variable defined in a parent Wire will have no effect on that variable.
+
+--8<-- "includes/license.md"
