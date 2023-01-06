@@ -85,6 +85,9 @@ struct MainWindow : public Base {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
+    // Require extra stack space for the wire containing the main window
+    data.wire->stackSize = std::max<size_t>(data.wire->stackSize, 512 * 1024);
+
     if (data.onWorkerThread) {
       throw ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
                          "within an Await shard)");
