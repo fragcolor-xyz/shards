@@ -439,9 +439,9 @@ public:
     reference(wire);
   }
 
-  void preCompose(malSHWire *wire, bool compose = true) {
+  void compose(malSHWire *wire, bool compose = true) {
     auto cp = SHWire::sharedFromRef(wire->value());
-    m_mesh->preCompose(cp, Var::Empty);
+    m_mesh->compose(cp, Var::Empty);
     // reference(wire); // don't reference in this case..?
   }
 
@@ -1533,7 +1533,7 @@ BUILTIN("pre-compose") {
   CHECK_ARGS_IS(2);
   ARG(malSHMesh, mesh);
   ARG(malSHWire, wire);
-  mesh->preCompose(wire);
+  mesh->compose(wire);
   return mal::nilValue();
 }
 
