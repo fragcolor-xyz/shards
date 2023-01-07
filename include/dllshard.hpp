@@ -346,7 +346,8 @@ inline void registerShard(const char *fullName, SHShardConstructor constructor, 
   Core::registerShard(fullName, constructor);
 }
 
-inline void abortWire(SHContext *ctx, const char *msg) { Core::abortWire(ctx, msg); }
+void abortWire(SHContext *ctx, const char *msg) { Core::abortWire(ctx, msg); }
+void abortWire(SHContext *ctx, std::string_view msg) { Core::abortWire(ctx, msg.data()); }
 }; // namespace shards
 
 #endif
