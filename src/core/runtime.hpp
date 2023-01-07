@@ -378,7 +378,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   ~SHMesh() { terminate(); }
 
-  void preCompose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
+  void compose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
     SHLOG_TRACE("Pre-composing wire {}", wire->name);
 
     if (wire->warmedUp) {
