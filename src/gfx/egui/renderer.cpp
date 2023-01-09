@@ -145,10 +145,12 @@ struct EguiRendererImpl {
   TextureManager textures;
   std::vector<egui::TextureId> pendingTextureFrees;
   std::vector<MeshDrawable> drawables;
+  std::vector<FeaturePtr> uiFeatures;
 
   MeshFormat meshFormat;
 
   EguiRendererImpl() {
+    uiFeatures.push_back(EguiColorFeature::create());
     meshFormat = {
         .primitiveType = PrimitiveType::TriangleList,
         .windingOrder = WindingOrder::CCW,
@@ -166,54 +168,58 @@ struct EguiRendererImpl {
     }
     pendingTextureFrees.clear();
   }
+
+  void render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue) {
+    meshPool.reset();
+    processPendingTextureFrees();
+
+    // Update textures before render
+    auto &textureUpdates = output.textureUpdates;
+    for (size_t i = 0; i < textureUpdates.numSets; i++) {
+      auto &textureSet = textureUpdates.sets[i];
+      SPDLOG_LOGGER_INFO(logger, "textureSet {}", (uint64_t)textureSet.id);
+      textures.set(textureSet);
+    }
+
+    // Update meshes & generate drawables
+    drawables.resize(output.numPrimitives);
+    for (size_t i = 0; i < output.numPrimitives; i++) {
+      auto &prim = output.primitives[i];
+
+      MeshPtr mesh = meshPool.allocateBuffer(prim.numVertices);
+      mesh->update(meshFormat, prim.vertices, prim.numVertices * sizeof(egui::Vertex), prim.indices,
+                   prim.numIndices * sizeof(uint32_t));
+
+      MeshDrawable &drawable = drawables[i];
+      drawable.mesh = mesh;
+      drawable.transform = rootTransform;
+      drawable.features = uiFeatures;
+      TexturePtr texture = textures.get(prim.textureId);
+      if (texture) {
+        drawable.parameters.set("color", texture);
+        if (texture->getFormat().pixelFormat == WGPUTextureFormat_R8Unorm) {
+          drawable.parameters.set("flags", uint32_t(0x1));
+        }
+      }
+
+      // drawable.clipRect = int4(prim.clipRect.min.x, prim.clipRect.min.y, prim.clipRect.max.x, prim.clipRect.max.y);
+
+      drawQueue->add(drawable);
+    }
+
+    // Store texture id's to free
+    // these are executed at the start the next time render() is called
+    for (size_t i = 0; i < textureUpdates.numFrees; i++) {
+      auto &id = textureUpdates.frees[i];
+      addPendingTextureFree(id);
+    }
+  }
 };
 
 EguiRenderer::EguiRenderer() { impl = std::make_shared<EguiRendererImpl>(); }
 
 void EguiRenderer::render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue) {
-  impl->meshPool.reset();
-  impl->processPendingTextureFrees();
-
-  // Update textures before render
-  auto &textureUpdates = output.textureUpdates;
-  for (size_t i = 0; i < textureUpdates.numSets; i++) {
-    auto &textureSet = textureUpdates.sets[i];
-    SPDLOG_LOGGER_INFO(logger, "textureSet {}", (uint64_t)textureSet.id);
-    impl->textures.set(textureSet);
-  }
-
-  // Update meshes & generate drawables
-  auto &drawables = impl->drawables;
-  impl->drawables.resize(output.numPrimitives);
-  for (size_t i = 0; i < output.numPrimitives; i++) {
-    auto &prim = output.primitives[i];
-
-    MeshPtr mesh = impl->meshPool.allocateBuffer(prim.numVertices);
-    mesh->update(impl->meshFormat, prim.vertices, prim.numVertices * sizeof(egui::Vertex), prim.indices,
-                 prim.numIndices * sizeof(uint32_t));
-
-    MeshDrawable &drawable = drawables[i];
-    drawable.mesh = mesh;
-    drawable.transform = rootTransform;
-    TexturePtr texture = impl->textures.get(prim.textureId);
-    if (texture) {
-      drawable.parameters.set("color", texture);
-      if (texture->getFormat().pixelFormat == WGPUTextureFormat_R8Unorm) {
-        drawable.parameters.set("flags", uint32_t(0x1));
-      }
-    }
-
-    drawable.clipRect = int4(prim.clipRect.min.x, prim.clipRect.min.y, prim.clipRect.max.x, prim.clipRect.max.y);
-
-    drawQueue->add(drawable);
-  }
-
-  // Store texture id's to free
-  // these are executed at the start the next time render() is called
-  for (size_t i = 0; i < textureUpdates.numFrees; i++) {
-    auto &id = textureUpdates.frees[i];
-    impl->addPendingTextureFree(id);
-  }
+  impl->render(output, rootTransform, drawQueue);
 }
 
 void EguiRenderer::renderNoTransform(const egui::FullOutput &output, const gfx::DrawQueuePtr &drawQueue) {
@@ -221,7 +227,9 @@ void EguiRenderer::renderNoTransform(const egui::FullOutput &output, const gfx::
 }
 
 EguiRenderer *EguiRenderer::create() { return new EguiRenderer(); }
+
 void EguiRenderer::destroy(EguiRenderer *renderer) { delete renderer; }
+
 float EguiRenderer::getDrawScale(Window &window) {
   float2 drawScaleVec = window.getUIScale();
   return std::max<float>(drawScaleVec.x, drawScaleVec.y);

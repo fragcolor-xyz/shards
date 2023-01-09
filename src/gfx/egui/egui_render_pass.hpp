@@ -7,26 +7,33 @@
 #include "../features/transform.hpp"
 
 namespace gfx {
-struct EguiRenderPass {
-  static PipelineStepPtr createPipelineStep(DrawQueuePtr queue) {
-    auto drawableStep = makePipelineStep(RenderDrawablesStep{
-        .drawQueue = queue,
-        .sortMode = SortMode::Queue,
-        .features =
-            std::vector<FeaturePtr>{
-                createFeature(true),
-            },
-    });
-    return drawableStep;
-  }
-
-  static FeaturePtr createFeature(bool writeUiPosition) {
+struct EguiTransformFeature {
+  static FeaturePtr create() {
     using namespace shader::blocks;
-    auto uiFeature = std::make_shared<Feature>();
+    auto feature = std::make_shared<Feature>();
+    auto code = makeCompoundBlock();
+
+    code->appendLine("var vp = ", ReadBuffer("viewport", shader::FieldTypes::Float4, "view"));
+    code->appendLine("var p1 = ", ReadInput("position"), " * (1.0 / vp.zw)");
+    code->appendLine("p1.y = -p1.y;");
+    code->appendLine("p1 = p1 * 2.0 + vec2<f32>(-1.0, 1.0)");
+    code->appendLine("var p4 = vec4<f32>(p1.xy, 0.0, 1.0)");
+    code->appendLine(WriteOutput("position", shader::FieldTypes::Float4, "p4"));
+
+    feature->shaderEntryPoints.emplace_back("uiBaseTransform", ProgrammableGraphicsStage::Vertex, std::move(code));
+
+    return feature;
+  }
+};
+
+struct EguiColorFeature {
+  static FeaturePtr create() {
+    using namespace shader::blocks;
+    auto feature = std::make_shared<Feature>();
     auto code = makeCompoundBlock();
 
     code->append(Header(R"(
-fn linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
+fn egui_linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
   let srgb_bytes = srgb * 255.0;
   let cutoff = srgb_bytes < vec3<f32>(10.31475);
   let lower = srgb_bytes / vec3<f32>(3294.6);
@@ -34,19 +41,13 @@ fn linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
   return select(higher, lower, cutoff);
 })"));
 
-    if (writeUiPosition) {
-      code->appendLine("var vp = ", ReadBuffer("viewport", shader::FieldTypes::Float4, "view"));
-      code->appendLine("var p1 = ", ReadInput("position"), " * (1.0 / vp.zw)");
-      code->appendLine("p1.y = -p1.y;");
-      code->appendLine("p1 = p1 * 2.0 + vec2<f32>(-1.0, 1.0)");
-      code->appendLine("var p4 = vec4<f32>(p1.xy, 0.0, 1.0)");
-      code->appendLine(WriteOutput("position", shader::FieldTypes::Float4, "p4"));
-    }
-
     code->appendLine("var color = ", ReadInput("color"));
-    code->appendLine(WriteOutput("color", shader::FieldTypes::Float4, "vec4<f32>(linear_from_srgb(color.xyz), color.a)"));
+    code->appendLine(WriteOutput("color", shader::FieldTypes::Float4, "vec4<f32>(egui_linear_from_srgb(color.xyz), color.a)"));
 
-    uiFeature->shaderEntryPoints.emplace_back("baseTransform", ProgrammableGraphicsStage::Vertex, std::move(code));
+    auto &writeVertColor =
+        feature->shaderEntryPoints.emplace_back("writeUiColor", ProgrammableGraphicsStage::Vertex, std::move(code));
+    // NOTE: Override BaseColor's writeColor
+    writeVertColor.dependencies.emplace_back("writeColor");
 
     shader::FieldType flagsFieldType = shader::FieldType(ShaderFieldBaseType::UInt32, 1);
     code = makeCompoundBlock();
@@ -55,19 +56,38 @@ fn linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
     code->appendLine("var isFont = ", ReadBuffer("flags", flagsFieldType), " & 1u");
     code->append("if(isFont != 0u) { texColor = vec4<f32>(texColor.xxx, texColor.x); }\n");
     code->appendLine(WriteOutput("color", shader::FieldTypes::Float4, "color * texColor"));
-    uiFeature->shaderEntryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment, std::move(code));
 
-    uiFeature->textureParams.emplace_back("color");
-    uiFeature->shaderParams.emplace_back("flags", flagsFieldType, uint32_t(0));
+    auto &writeFragColor =
+        feature->shaderEntryPoints.emplace_back("writeUiColor", ProgrammableGraphicsStage::Fragment, std::move(code));
+    // NOTE: Override BaseColor's writeColor
+    writeFragColor.dependencies.emplace_back("writeColor");
 
-    uiFeature->state.set_depthWrite(false);
-    uiFeature->state.set_depthCompare(WGPUCompareFunction_Always);
-    uiFeature->state.set_culling(false);
-    uiFeature->state.set_blend(BlendState{
+    feature->textureParams.emplace_back("color");
+    feature->shaderParams.emplace_back("flags", flagsFieldType, uint32_t(0));
+
+    feature->state.set_blend(BlendState{
         .color = BlendComponent::AlphaPremultiplied,
         .alpha = BlendComponent::Opaque,
     });
-    return uiFeature;
+    feature->state.set_depthWrite(false);
+    feature->state.set_depthCompare(WGPUCompareFunction_Always);
+    feature->state.set_culling(false);
+    return feature;
+  }
+};
+
+struct EguiRenderPass {
+  static PipelineStepPtr createPipelineStep(DrawQueuePtr queue) {
+    auto drawableStep = makePipelineStep(RenderDrawablesStep{
+        .drawQueue = queue,
+        .sortMode = SortMode::Queue,
+        .features =
+            std::vector<FeaturePtr>{
+                EguiTransformFeature::create(),
+                EguiColorFeature::create(),
+            },
+    });
+    return drawableStep;
   }
 };
 } // namespace gfx
