@@ -60,11 +60,15 @@ For the other documentation pages:
 
 ## Pages and Levels
 
-The root directory for our site is located at `/docs/docs`, with `docs/docs/index.md` being the file for our homepage. Subsequent directories are placed within folders.
+The root directory for our site is located at `/docs/docs`, with `index.md` being the file for our homepage. Subsequent directories are placed within folders.
+
+![A level in the doc's hierarchy.](assets/docs-hierarchy.png)
 
 Each level contains:
 
 - An `index.md` file as the landing page
+
+- An (optional) `assets` folder to hold media used in that level
 
 - A `.pages` file to organize the order of our pages
 
@@ -75,20 +79,53 @@ Each level contains:
 
         ![Using ... to automatically list pages.](assets/editing-ref-pages-dots.png)
 
-- An (optional) `asset` folder to hold media used in that level
-
 ## Generating Documentation for the Shards API
 
-You might have noticed that the `/docs/docs/reference/shards` folder is conspicuously empty. This is to allow for the faster previewing of your static site without having to load all the pages for the Shards API.
+You might have observed that the `/docs/docs/reference/shards` folder is conspicuously empty. This is to allow for the faster previewing of your static site without having to load all the pages for the Shards API.
 
-To generate the documentation for the Shards API, run the `generate.edn` file by launching your MinGW terminal and inputting the following command:
+To generate the documentation for the Shards API:
 
-    ./build/Debug/shards ./docs/generate.edn
+1. Launch your MinGW terminal
+
+2. Navigate to where your Shards repository is located using the command `cd $(cygpath -u '(X)')`, where (X) is the directory of your folder.
+
+        cd $(cygpath -u '(X)')
+
+    If your repository is located at `C:\Fragcolor\Shards`, the command used in the MinGW terminal would be `cd $(cygpath -u 'C:\Fragcolor\Shards')`.
+
+ 3. Input the following command:
+
+        ./build/Debug/shards ./docs/generate.edn
 
 !!! note
     The **Debug** version of Shards must be used for the generating of the Shards API pages.
 
 Once done, you will notice that the directory is now filled with folders and Markdown files of various shards.
+
+## Generating Log Files for Examples
+
+You might have noticed that the "Output" segment for your code examples is empty. This is due to how a `.log` file is required for each example to show as its output.
+
+To generate the `.log` files for your code examples:
+
+1. Launch your MinGW terminal
+
+2. Navigate to where your Shards repository is located using the command `cd $(cygpath -u '(X)')`, where (X) is the directory of your folder.
+
+        cd $(cygpath -u '(X)')
+
+    If your repository is located at `C:\Fragcolor\Shards`, the command used in the MinGW terminal would be `cd $(cygpath -u 'C:\Fragcolor\Shards')`.
+
+ 3. Input the following command:
+
+        ./run-samples.sh --release
+
+!!! warning "Segmentation fault"
+    If the error for "Segmentation fault" appears, run the following command before trying Step 3 again.
+
+        export GFX_BACKEND=D3D12
+
+Once the script is done, you will notice new `.log` files within your "Samples" folder. These will be shown in your documentation as the "Output" of your code examples.
 
 ## Updating the Shards API Docs
 

@@ -65,12 +65,24 @@ Once done, you can check if your installation is successful with the command:
     ![Check MkDocs installation.](assets/mkdocs-installation-results.png)
 
 
-Next, install a theme for MkDocs with the command:
+Finally, install the following by running the given commands:
 
-=== "Command"
+1. Material for MkDoc - A theme for MkDocs
 
     ```
     pip install mkdocs-material
+    ```
+
+2. Awesome Pages Plugin - Adds navigation customization
+
+    ```
+    pip install mkdocs-awesome-pages-plugin
+    ```
+
+3. mkdocs-macros - Allows for custom macros and variables
+
+    ```
+    pip install mkdocs-macros-plugin
     ```
 
 You are now ready to start writing documentation! We will learn how Fragcolor's documentation is written in the next chapter.
@@ -87,6 +99,16 @@ pip install mkdocs
 3. Install Material for MkDocs.
 ```
 pip install mkdocs-material
+```
+
+4. Install the Awesome Pages Plugin.
+```
+pip install mkdocs-awesome-pages-plugin
+```
+
+3. Install mkdocs-macros.
+```
+pip install mkdocs-macros-plugin
 ```
 
 --8<-- "includes/license.md"
