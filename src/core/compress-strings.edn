@@ -11,11 +11,7 @@
 
 (prn payload)
 
-(def Root (Mesh))
-
-(def compress
-  (Wire
-   "compress"
+(defwire compress-wire
    payload
    (ToBytes) >= .source
    (Count .source) (Log "uncompressed size")
@@ -30,9 +26,8 @@
                 ",\n" (AppendTo .code)))
    "};\n" (AppendTo .code)
    "shccstrings.hpp"
-   (FS.Write .code :Overwrite true)))
+   (FS.Write .code :Overwrite true))
 
-(prepare compress)
-(start compress)
-(tick compress)
-(stop compress)
+(defmesh root)
+(schedule root compress-wire)
+(run root)
