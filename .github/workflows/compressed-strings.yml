@@ -1,0 +1,97 @@
+name: Compress strings
+
+on:
+  workflow_dispatch:
+    inputs:
+      create-pull-request:
+        description: Create a PR with the changes?
+        required: false
+        default: false
+        type: boolean
+      rust-cache:
+        description: Use existing rust cache?
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      create-pull-request:
+        required: false
+        default: true
+        type: boolean
+      rust-cache:
+        required: false
+        default: true
+        type: boolean
+
+# Required for <compare> and <=> support
+env:
+  CC: gcc-11
+  CXX: g++-11
+
+jobs:
+  compress-string:
+    name: Build & compress strings
+    runs-on: ubuntu-22.04
+    outputs:
+      create-pull-request: ${{ steps.setup.outputs.create-pull-request }}
+      rust-cache: ${{ steps.setup.outputs.rust-cache }}
+    steps:
+      - name: Setup
+        id: setup
+        run: |
+          echo "create-pull-request=${{ github.event.inputs.create-pull-request || inputs.create-pull-request }}" >> $GITHUB_OUTPUT
+          echo "rust-cache=${{ github.event.inputs.rust-cache || inputs.rust-cache }}" >> $GITHUB_OUTPUT
+      - name: Checkout shards
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/shards
+          fetch-depth: 1
+          submodules: recursive
+      - name: Set up dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential git cmake clang ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils
+          ./bootstrap
+          rustup toolchain install nightly
+          rustup default nightly
+      - uses: Swatinem/rust-cache@v2
+        if: ${{ steps.setup.outputs.rust-cache == 'true'}}
+        with:
+          shared-key: Debug-Linux
+      - name: Build
+        run: |
+          mkdir -p build
+          cd build
+
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
+          ninja shards
+      - name: Compress strings
+        env:
+          RUST_BACKTRACE: 1
+        run: |
+          cd build
+          chmod +x shards
+          ./shards ../src/core/compress-strings.edn
+
+          cd ..
+          ./format
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: shccstrings
+          path: src/core/shccstrings.hpp
+      - name: Create a PR
+        uses: peter-evans/create-pull-request@v4
+        with:
+          add-paths: |
+            src/core/shccstrings.hpp
+          branch: compress-strings
+          branch-suffix: short-commit-hash
+          labels: |
+            Project: Documentation
+          assignees: ${{ github.actor }}
+          reviewers: |
+            guusw
+            Kryptos-FR
