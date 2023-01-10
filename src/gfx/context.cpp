@@ -149,14 +149,17 @@ bool Context::beginFrame() {
       bool internalsNull = true;
       do{
         textureViewArr = mainOutput.at(i)->requestFrame(); 
+        
         internalsNull = true;
         //[t] check if all the textures exist
         for(size_t a=0; a< textureViewArr.size(); a++){
           if(!textureViewArr.at(a)){
+            spdlog::info("[[[[[[[[[[[[[[[[[[log][t] Context::beginFrame(): check if all the textures exist: mainOutput.size(): {}; mainOutput.at(i: {})->requestFrame(); textureViewArr.size(): {}; textureViewArr.at(a: {}) == false; so break;", mainOutput.size(), i, textureViewArr.size(), a);
             internalsNull = true;
             break;
           }
           else{
+            spdlog::info("[[[[[[[[[[[[[[[[[[log][t] Context::beginFrame(): check if all the textures exist: mainOutput.size(): {}; mainOutput.at(i: {})->requestFrame(); textureViewArr.size(): {}; textureViewArr.at(a: {}) == true", mainOutput.size(), i, textureViewArr.size(), a);
             internalsNull = false;
           }
         }

@@ -120,6 +120,9 @@ struct IContextBackend {
   virtual std::shared_ptr<DeviceRequest> requestDevice() = 0;
 
   // Requires a prior call to createSurface
+  // [t] note: "createMainOutput(window);" despite sounding like we're 
+  // making one window output here, we're potentially creating multiple outputs 
+  // (e.g. xr eyes + window)
   virtual std::vector<std::shared_ptr<IContextMainOutput>> createMainOutput(Window &window) = 0;
 };
 

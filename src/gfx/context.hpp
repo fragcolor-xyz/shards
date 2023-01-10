@@ -32,8 +32,10 @@ struct IContextMainOutput {
   // Return the texture format of the images
   virtual WGPUTextureFormat getFormat() const = 0;
   // Requests a new swapchain image to render to. Is an array because can contain e.g. multiple xr eyes
+  // Usually called by context.
   virtual std::vector<WGPUTextureView> requestFrame() = 0;
-  // Returns the currently request frame's texture view
+  // Returns the currently request frame's texture view. 
+  // Usually called by Renderer.
   virtual std::vector<IContextCurrentFramePayload> getCurrentFrame() const = 0;
   // Return the previously requested swapchain image to the chain and allow it to be displayed
   virtual void present() = 0;

@@ -525,9 +525,11 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
     // Associate this eye with the swapchain
     const XrViewConfigurationView &eyeImageInfo = eyeImageInfos.at(eyeIndex);
     if(swapchainArr.size() == 1){ 
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: Associate eye {} render info with swapchain: swapchainArr.size() == 1 -> swapchainArr.at(0); eyeRenderInfos.size(): {}", eyeIndex, eyeRenderInfos.size());
       eyeRenderInfo.subImage.swapchain = swapchainArr.at(0);//swapchainArr.at(eyeIndex);//multiview, 1 swapchain, 2 swapchainImages
     }
     else{
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: Associate eye {} render info with swapchain: eyeRenderInfos.size(): {}, eyeIndex: {}", eyeIndex, eyeRenderInfos.size(), eyeIndex);
       eyeRenderInfo.subImage.swapchain = swapchainArr.at(eyeIndex);//multipass, 2 swapchains
     }
     
@@ -820,6 +822,7 @@ std::vector<gfx::IContextCurrentFramePayload> Headset::getCurrentFrame() const {
     payload.at(eyeIndex).useMatrix = true;
     payload.at(eyeIndex).eyeViewMatrix = getEyeViewMatrix(eyeIndex);
     payload.at(eyeIndex).eyeProjectionMatrix = getEyeProjectionMatrix(eyeIndex);
+    spdlog::info("[[[[[[[[[[[[[log][t] IContextMainOutput::Headset::getCurrentFrame(): creating payoad from headset's swapchainRTTextureViews.size(): {}; payload.at(eyeIndex: {})",swapchainRTTextureViews.size(), eyeIndex);
   }
   if(frame<debugs){
     spdlog::info("[log][t] IContextMainOutput::Headset::getCurrentFrame: End.");

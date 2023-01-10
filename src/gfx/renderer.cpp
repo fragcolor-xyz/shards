@@ -116,40 +116,47 @@ struct RendererImpl final : public ContextData {
 
   //[t] so now we have 2 mainOutputs (a vector of mainOutputs) (xr headset, xr mirror view), and some of them have more than one (a vector of) WGPUTextureView's (xr eyes)
   void updateMainOutputFromContext() {
-    std::vector<std::weak_ptr<IContextMainOutput>> contextMainOutputArr = context.getMainOutput();
+    std::vector<std::weak_ptr<IContextMainOutput>> contextMainOutputArr = context.getMainOutput(); //[t] can have count: headset (with 2 texture views) + window (1 tex v)
     mainOutput.resize(contextMainOutputArr.size());
+    spdlog::info("[[[[[[[[[[[log][t] renderer.cpp::updateMainOutputFromContext(): mainOutput and contextMainOutputArr .size(): {}",mainOutput.size());
     for(size_t i=0; i<contextMainOutputArr.size(); i++)
     {
       std::shared_ptr<IContextMainOutput> contextMainOutput = contextMainOutputArr.at(i).lock();
-      std::vector<IContextCurrentFramePayload> contextMainOutputs = contextMainOutput->getCurrentFrame();
+      std::vector<IContextCurrentFramePayload> contextMainOutputTextureViewPayload = contextMainOutput->getCurrentFrame();
+      spdlog::info("[[[[[[[[[[[log][t] renderer.cpp::updateMainOutputFromContext(): contextMainOutput[i:{}]->getCurrentFrame() --> contextMainOutputTextureViewPayload.size(): {}",i,contextMainOutputTextureViewPayload.size());
 
-      if (mainOutput.at(i).payload.size() <1) {
-        mainOutput.at(i).payload.resize(contextMainOutputs.size());
+      if (mainOutput.at(i).payload.size() != contextMainOutputTextureViewPayload.size()) {
+        mainOutput.at(i).payload.resize(contextMainOutputTextureViewPayload.size());
       }
+      
       //for(size_t t = 0; t<mainOutput.size(); t++){
-      for(size_t t = 0; t<contextMainOutputs.size(); t++){
-        if(mainOutput.at(i).payload.size() <= t){
-          spdlog::error("[[[[[[[[[[[log][t] renderer.cpp::updateMainOutputFromContext(): error at (mainOutput.at(i:{}]).payload.size():{} <= t:{}.", i, mainOutput.at(i).payload.size(), t);
-          continue;
-        }
+      for(size_t t = 0; t<contextMainOutputTextureViewPayload.size(); t++){
+        
         if(!mainOutput.at(i).payload.at(t).texture){
+          
           mainOutput.at(i).payload.at(t).texture = std::make_shared<Texture>();
-          if(contextMainOutputs.size() <= i){
-            spdlog::error("[[[[[[[[[[[log][t] renderer.cpp::updateMainOutputFromContext(): error at contextMainOutputs.size():{} <= i:{}.", contextMainOutputs.size(), i);
+          if(contextMainOutputTextureViewPayload.size() <= t){
+            spdlog::error("[[[[[[[[[[[log][t] renderer.cpp::updateMainOutputFromContext(): error at contextMainOutputs.size():{} <= i:{}.", contextMainOutputTextureViewPayload.size(), i);
+            
+            
+            
+            
             continue;
           }
-          if(contextMainOutputs.at(i).useMatrix){
-            mainOutput.at(i).payload.at(t).useMatrix = contextMainOutputs.at(i).useMatrix;
-            mainOutput.at(i).payload.at(t).eyeViewMatrix = contextMainOutputs.at(i).eyeViewMatrix;
-            mainOutput.at(i).payload.at(t).eyeProjectionMatrix = contextMainOutputs.at(i).eyeProjectionMatrix;
+
+          if(contextMainOutputTextureViewPayload.at(t).useMatrix){
+            mainOutput.at(i).payload.at(t).useMatrix = contextMainOutputTextureViewPayload.at(t).useMatrix;
+            mainOutput.at(i).payload.at(t).eyeViewMatrix = contextMainOutputTextureViewPayload.at(t).eyeViewMatrix;
+            mainOutput.at(i).payload.at(t).eyeProjectionMatrix = contextMainOutputTextureViewPayload.at(t).eyeProjectionMatrix;
             spdlog::info("[updateMainOutputFromContext] assigned matrixes");
           }
+          
         }
       }
 
-      for(size_t j = 0; j<contextMainOutputs.size(); j++)
+      for(size_t j = 0; j<contextMainOutputTextureViewPayload.size(); j++)
       {
-        WGPUTextureView view = contextMainOutputs.at(j).wgpuTextureView;//[t] made this an array
+        WGPUTextureView view = contextMainOutputTextureViewPayload.at(j).wgpuTextureView;//[t] made this an array
         WGPUTextureFormat format = contextMainOutput->getFormat();
         int2 resolution = contextMainOutput->getSize();
         /*
@@ -202,25 +209,29 @@ struct RendererImpl final : public ContextData {
   std::vector<TexturePtr> renderGraphOutputs;
   //"view" is the camera information
   void renderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
-    //TODO: do a for loop here for the whole function for two texture views
+    ViewData viewData{
+        .view = *view.get(),
+        .cachedView = getCachedView(view),
+    };
+
+    ViewStack::Output viewStackOutput = viewStack.getOutput();
+    viewData.viewport = viewStackOutput.viewport;
+    viewData.renderTarget = viewStackOutput.renderTarget;
+    if (viewData.renderTarget) {
+      viewData.renderTarget->resizeConditional(viewStackOutput.referenceSize);
+    }
+
+    int2 viewSize = viewStackOutput.viewport.getSize();
+    if (viewSize.x == 0 || viewSize.y == 0)
+      return; // Skip rendering
+
+    // Match with attached outputs in buildRenderGraph
+    renderGraphOutputs.clear(); 
+
+    //[t] doing a for loop here for the whole function for two texture views
     // also get the eye info
     for(size_t mo=0; mo<mainOutput.size(); mo++){
       for(size_t t=0; t<mainOutput.at(mo).payload.size(); t++){
-        ViewData viewData{
-            .view = *view.get(),
-            .cachedView = getCachedView(view),
-        };
-
-        ViewStack::Output viewStackOutput = viewStack.getOutput();
-        viewData.viewport = viewStackOutput.viewport;
-        viewData.renderTarget = viewStackOutput.renderTarget;
-        if (viewData.renderTarget) {
-          viewData.renderTarget->resizeConditional(viewStackOutput.referenceSize);
-        }
-
-        int2 viewSize = viewStackOutput.viewport.getSize();
-        if (viewSize.x == 0 || viewSize.y == 0)
-          return; // Skip rendering
 
         if(mainOutput.at(mo).payload.at(t).useMatrix){
           viewData.cachedView.touchWithNewTransform(
@@ -229,24 +240,25 @@ struct RendererImpl final : public ContextData {
             frameCounter);
         }
         else{
-                                  //[t]view->view is the camera's view matrix.. :)
+                                  //[t] view->view is the camera's view matrix.. :)
           viewData.cachedView.touchWithNewTransform(view->view, view->getProjectionMatrix(float2(viewSize)), frameCounter);
         }
 
-        // Match with attached outputs in buildRenderGraph
-        renderGraphOutputs.clear();
-        if (viewData.renderTarget) {
+        if (viewData.renderTarget) { 
           for (auto &attachment : viewData.renderTarget->attachments) {
             renderGraphOutputs.push_back(attachment.second);
+            spdlog::info("[[[[[[[[[log][t] renderer.cpp: viewData.renderTarget: viewData.renderTarget->attachments.size(): {}; ", viewData.renderTarget->attachments.size());
           }
         } else {
           renderGraphOutputs.push_back(mainOutput.at(mo).payload.at(t).texture);//[t]
+          spdlog::info("[[[[[[[[log][t] renderer.cpp: viewData.renderTarget ELSE: mainOutput.at(mo: {}).payload.at(t: {}).texture; renderGraphOutputs.size(): {}", mo, t, renderGraphOutputs.size());
         }
-
-        const RenderGraph &renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize);
-        renderGraphEvaluator.evaluate(renderGraph, renderGraphOutputs, context, frameCounter);
+        
       }
     }
+    spdlog::info("[[[[[[[[[[[[log][t] renderer.cpp: renderGraphOutputs.size(): {}", renderGraphOutputs.size());
+    const RenderGraph &renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize);
+    renderGraphEvaluator.evaluate(renderGraph, renderGraphOutputs, context, frameCounter);
   }
 
   void buildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps, int2 referenceOutputSize,

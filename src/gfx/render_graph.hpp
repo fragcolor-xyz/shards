@@ -632,7 +632,7 @@ public:
       if (frame.outputIndex.has_value()) {
         size_t outputIndex = frame.outputIndex.value();
         if (outputIndex >= outputs.size()){
-          spdlog::error("[gfx/render_graph.hpp] error: outputIndex:{} >= outputs.size():{}", outputIndex, outputs.size());
+          spdlog::error("[gfx/render_graph.hpp][getFrameTextures()] error: outputIndex: {} >= outputs.size(): {}", outputIndex, outputs.size());
           throw std::logic_error("Missing output");
         }
 
