@@ -17,7 +17,7 @@ struct Context {
   static constexpr uint32_t TypeId = 'HLPc';
   static inline shards::Type Type = shards::Type::Object(gfx::VendorId, TypeId);
 
-  static inline const char *contextVarName = "Gizmos.Context";
+  static inline const char contextVarName[] = "Gizmos.Context";
   static inline SHExposedTypeInfo contextExposedType =
       shards::ExposedInfo::Variable(contextVarName, SHCCSTR("The helper context."), Context::Type);
   static inline shards::ExposedInfo contextExposedTypes = shards::ExposedInfo(contextExposedType);
@@ -55,7 +55,7 @@ struct BaseConsumer {
     }
   }
 
-  void composeCheckMainThread(const SHInstanceData &data) {
+  void composeCheckGfxThread(const SHInstanceData &data) {
     if (data.onWorkerThread) {
       throw shards::ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
                                  "within an Await shard)");
@@ -79,7 +79,7 @@ struct BaseConsumer {
   void cleanup(SHContext *context) { baseConsumerCleanup(); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckMainThread(data);
+    composeCheckGfxThread(data);
     composeCheckContext(data);
     return shards::CoreInfo::NoneType;
   }

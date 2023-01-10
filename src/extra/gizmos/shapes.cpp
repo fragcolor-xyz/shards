@@ -33,7 +33,7 @@ struct LineShard : public BaseConsumer {
 
   SHTypeInfo compose(SHInstanceData &data) {
     composeCheckContext(data);
-    composeCheckMainThread(data);
+    composeCheckGfxThread(data);
 
     if (_a->valueType == SHType::None)
       throw ComposeError("A is required");
@@ -78,7 +78,7 @@ struct CircleShard : public BaseConsumer {
 
   SHTypeInfo compose(SHInstanceData &data) {
     composeCheckContext(data);
-    composeCheckMainThread(data);
+    composeCheckGfxThread(data);
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -131,7 +131,7 @@ struct RectShard : public BaseConsumer {
 
   SHTypeInfo compose(SHInstanceData &data) {
     composeCheckContext(data);
-    composeCheckMainThread(data);
+    composeCheckGfxThread(data);
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -182,7 +182,7 @@ struct BoxShard : public BaseConsumer {
 
   SHTypeInfo compose(SHInstanceData &data) {
     composeCheckContext(data);
-    composeCheckMainThread(data);
+    composeCheckGfxThread(data);
 
     if (_center->valueType == SHType::None)
       throw ComposeError("A is required");
@@ -227,7 +227,7 @@ struct PointShard : public BaseConsumer {
 
   SHTypeInfo compose(SHInstanceData &data) {
     composeCheckContext(data);
-    composeCheckMainThread(data);
+    composeCheckGfxThread(data);
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");

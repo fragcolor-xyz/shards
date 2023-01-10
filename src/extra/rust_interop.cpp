@@ -5,33 +5,33 @@
 #include <foundation.hpp>
 
 using namespace shards::input;
-using shards::Var;
 using namespace gfx;
+using namespace shards;
 using GFXTypes = gfx::Types;
 
-SHTypeInfo *gfx_getMainWindowGlobalsType() {
-  static SHTypeInfo type = gfx::MainWindowGlobals::Type;
+SHTypeInfo *gfx_getGraphicsContextType() {
+  static SHTypeInfo type = gfx::GraphicsContext::Type;
   return &type;
 }
 
-const char *gfx_getMainWindowGlobalsVarName() { return gfx::Base::mainWindowGlobalsVarName; }
+const char *gfx_getGraphicsContextVarName() { return gfx::GraphicsContext::VariableName; }
 
 SHTypeInfo *gfx_getQueueType() {
   static SHTypeInfo type = GFXTypes::DrawQueue;
   return &type;
 }
 
-SHVar gfx_MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+SHVar gfx_GraphicsContext_getDefaultQueue(const SHVar &graphicsContext) {
+  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
   return Var::Object(&globals->shDrawQueue, SHTypeInfo(GFXTypes::DrawQueue).object.vendorId,
                      SHTypeInfo(GFXTypes::DrawQueue).object.typeId);
 }
-Context *gfx_MainWindowGlobals_getContext(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+Context *gfx_GraphicsContext_getContext(const SHVar &graphicsContext) {
+  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
   return globals->context.get();
 }
-Renderer *gfx_MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+Renderer *gfx_GraphicsContext_getRenderer(const SHVar &graphicsContext) {
+  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
   return globals->renderer.get();
 }
 
@@ -40,8 +40,8 @@ DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var) {
   return &shDrawQueue->queue;
 }
 
-gfx::int4 gfx_getEguiMappedRegion(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+gfx::int4 gfx_getEguiMappedRegion(const SHVar &graphicsContext) {
+  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
 
   auto &inputStack = globals->inputStack;
   InputStack::Item inputStackOutput = inputStack.getTop();
@@ -52,8 +52,8 @@ gfx::int4 gfx_getEguiMappedRegion(const SHVar &mainWindowGlobals) {
   return result;
 }
 
-gfx::int4 gfx_getViewport(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+gfx::int4 gfx_getViewport(const SHVar &graphicsContext) {
+  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
 
   auto &viewStack = globals->renderer->getViewStack();
   auto viewStackOutput = viewStack.getOutput();
@@ -62,9 +62,9 @@ gfx::int4 gfx_getViewport(const SHVar &mainWindowGlobals) {
   return int4(viewportRect.x, viewportRect.y, viewportRect.getX1(), viewportRect.getY1());
 }
 
-const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals,
+const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &graphicsContext,
                                            float scalingFactor) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
 
   static std::vector<SDL_Event> noEvents{};
   const std::vector<SDL_Event> *eventsPtr = &noEvents;

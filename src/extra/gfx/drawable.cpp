@@ -125,7 +125,7 @@ struct DrawableShard {
 };
 
 // MainWindow is only required if Queue is not specified
-struct DrawShard : public BaseConsumer {
+struct DrawShard {
   static inline shards::Types SingleDrawableTypes = shards::Types{Types::Drawable, Types::TreeDrawable};
   static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
   static inline shards::Types DrawableTypes{Types::Drawable, Types::TreeDrawable, DrawableSeqType};
@@ -142,8 +142,11 @@ struct DrawShard : public BaseConsumer {
   }
 
   ParamVar _queueVar{};
+  RequiredGraphicsContext _graphicsContext{};
 
-  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo{}; }
+  bool isQueueSet() const {
+    return _queueVar->valueType != SHType::None;
+  }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -165,22 +168,32 @@ struct DrawShard : public BaseConsumer {
   }
 
   void warmup(SHContext *shContext) {
-    baseConsumerWarmup(shContext, false);
     _queueVar.warmup(shContext);
+
+    if (!isQueueSet()) {
+      _graphicsContext.warmup(shContext);
+    }
   }
 
   void cleanup() {
-    baseConsumerCleanup();
+    _graphicsContext.cleanup();
     _queueVar.cleanup();
   }
 
+  SHExposedTypesInfo requiredVariables() {
+    static auto requiredWithContext = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo());
+
+    // Context is only required when accessing the default queue
+    if (isQueueSet())
+      return requiredWithContext;
+    else
+      return SHExposedTypesInfo{};
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_queueVar->valueType != SHType::None) {
-      // Use the specified queue
-    } else {
+    if (!isQueueSet()) {
       // Use default global queue (check main thread)
-      composeCheckMainThread(data);
-      composeCheckMainWindowGlobals(data);
+      composeCheckGfxThread(data);
     }
 
     if (data.inputType.basicType == SHType::Seq) {
@@ -193,14 +206,14 @@ struct DrawShard : public BaseConsumer {
 
   DrawQueue &getDrawQueue() {
     SHVar queueVar = _queueVar.get();
-    if (queueVar.payload.objectValue) {
-      return *(reinterpret_cast<SHDrawQueue *>(queueVar.payload.objectValue))->queue.get();
+    if (isQueueSet()) {
+      return *varAsObjectChecked<SHDrawQueue>(queueVar, Types::DrawQueue)->queue.get();
     } else {
-      return *getMainWindowGlobals().getDrawQueue().get();
+      return *_graphicsContext->getDrawQueue().get();
     }
   }
 
-  template <typename T> void addDrawableToQueue(T& drawable) { getDrawQueue().add(drawable); }
+  template <typename T> void addDrawableToQueue(T &drawable) { getDrawQueue().add(drawable); }
 
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
     assert(input.valueType == SHType::Object);

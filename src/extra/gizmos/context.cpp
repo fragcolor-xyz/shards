@@ -8,7 +8,7 @@
 namespace shards {
 namespace Gizmos {
 using namespace gfx;
-struct GizmosContextShard : public gfx::BaseConsumer {
+struct GizmosContextShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Provides a context for rendering gizmos"); }
@@ -21,6 +21,7 @@ struct GizmosContextShard : public gfx::BaseConsumer {
   PARAM(ShardsVar, _content, "Content", "Content", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(GizmosContextShard, PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content));
 
+  RequiredGraphicsContext _graphicsContext;
   Context _context{};
   SHVar *_contextVarRef{};
 
@@ -28,7 +29,7 @@ struct GizmosContextShard : public gfx::BaseConsumer {
   bool _mouseButtonState{};
 
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context, true);
+    _graphicsContext.warmup(context);
 
     // Reference context variable
     _contextVarRef = referenceVariable(context, Context::contextVarName);
@@ -39,16 +40,20 @@ struct GizmosContextShard : public gfx::BaseConsumer {
   void cleanup() {
     withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] { PARAM_CLEANUP(); });
 
-    baseConsumerCleanup();
+    _graphicsContext.cleanup();
 
     if (_contextVarRef) {
       releaseVariable(_contextVarRef);
     }
   }
 
+  SHExposedTypesInfo requiredVariables() {
+    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo());
+    return e;
+  }
+
   SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckMainThread(data);
-    composeCheckMainWindowGlobals(data);
+    composeCheckGfxThread(data);
 
     std::vector<SHExposedTypeInfo> exposed(PtrIterator(data.shared.elements),
                                            PtrIterator(data.shared.elements + data.shared.len));
@@ -91,12 +96,11 @@ struct GizmosContextShard : public gfx::BaseConsumer {
     _context.queue = static_cast<SHDrawQueue *>(queueVar.payload.objectValue)->queue;
     assert(_context.queue);
 
-    gfx::Context &gfxContext = getContext();
-    gfx::MainWindowGlobals &mainWindowGlobals = getMainWindowGlobals();
-    gfx::Window &window = getWindow();
+    gfx::Context &gfxContext = _graphicsContext->getContext();
+    gfx::Window &window = _graphicsContext->getWindow();
     int2 outputSize = gfxContext.getMainOutputSize();
 
-    handleGizmoInputEvents(mainWindowGlobals.events);
+    handleGizmoInputEvents(_graphicsContext->events);
 
     float2 drawableScale = float2(window.getDrawableSize()) / float2(window.getSize());
 
