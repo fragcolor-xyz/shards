@@ -2279,7 +2279,7 @@ SHARDS_API __cdecl void shLispDestroy(void *env) {
   delete penv;
 }
 
-SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output = nullptr) {
+SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output) {
   auto penv = (malEnvPtr *)env;
   try {
     malValuePtr res;
@@ -2302,7 +2302,7 @@ SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output =
     return false;
   }
 }
-};
+}
 
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
   obs = std::make_shared<Observer>();
