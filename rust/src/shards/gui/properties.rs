@@ -27,7 +27,7 @@ use crate::SHType_Enum;
 
 shenum! {
   struct UIProperty {
-    [description("")]
+    [description("Return the remaining space within an UI widget.")]
     const RemainingSpace = 0x0;
   }
   struct UIPropertyInfo {}
