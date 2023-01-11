@@ -49,15 +49,25 @@ struct PlotLine {
 
 shenum! {
   struct MarkerShape {
+    [description("Display a point as a circle.")]
     const Circle = 0;
+    [description("Display a point as a diamond.")]
     const Diamond = 1;
+    [description("Display a point as a square.")]
     const Square = 2;
+    [description("Display a point as a cross.")]
     const Cross = 3;
+    [description("Display a point as a plus sign.")]
     const Plus = 4;
+    [description("Display a point as an arrow pointing upwards.")]
     const Up = 5;
+    [description("Display a point as an arrow pointing downwards.")]
     const Down = 6;
+    [description("Display a point as an arrow pointing to the left.")]
     const Left = 7;
+    [description("Display a point as an arrow pointing to the right.")]
     const Right = 8;
+    [description("Display a point as an asterisk.")]
     const Asterisk = 9;
   }
   struct MarkerShapeInfo {}

@@ -23,14 +23,23 @@ struct Area {
 
 shenum! {
   struct Anchor {
+    [description("Top left corner.")]
     const TopLeft = 0x00;
+    [description("Middle left.")]
     const Left = 0x10;
+    [description("Bottom left corner.")]
     const BottomLeft = 0x20;
+    [description("Top middle.")]
     const Top = 0x01;
+    [description("Center.")]
     const Center = 0x11;
+    [description("Bottom middle.")]
     const Bottom = 0x21;
+    [description("Top right corner.")]
     const TopRight = 0x02;
+    [description("Middle right.")]
     const Right = 0x12;
+    [description("Bottom right corner.")]
     const BottomRight = 0x22;
   }
 
@@ -89,9 +98,13 @@ struct Window {
 
 shenum! {
   struct WindowFlags {
+    [description("Do not display the title bar.")]
     const NoTitleBar = 1 << 0;
+    [description("Do not allow resizing the window.")]
     const NoResize = 1 << 1;
+    [description("Do not display scrollbars.")]
     const NoScrollbars = 1 << 2;
+    [description("Do not display the collapse button.")]
     const NoCollapse = 1 << 3;
   }
   struct WindowFlagsInfo {}

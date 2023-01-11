@@ -3460,6 +3460,7 @@ macro_rules! shenum {
     $(#[$outer:meta])*
     $vis:vis struct $SHEnum:ident {
       $(
+        [description($desc:literal)]
         $(#[$inner:ident $($args:tt)*])*
         const $EnumValue:ident = $value:expr;
       )+
@@ -3484,6 +3485,7 @@ macro_rules! shenum {
     __impl_shenuminfo! {
       $SHEnum {
         $(
+          [description($desc)]
           $(#[$inner $($args)*])*
           $EnumValue = $value;
         )*
@@ -3536,6 +3538,7 @@ macro_rules! __impl_shenuminfo {
   (
     $SHEnum:ident {
       $(
+        [description($desc:literal)]
         $(#[$attr:ident $($args:tt)*])*
         $EnumValue:ident = $value:expr;
       )*
@@ -3560,11 +3563,9 @@ macro_rules! __impl_shenuminfo {
         )*
 
         let mut descriptions = $crate::types::OptionalStrings::new();
-        for _ in 0..labels.len() {
-          descriptions.push($crate::types::OptionalString(shccstr!("")));
-        }
-        // $(
-        // )*
+        $(
+          descriptions.push($crate::types::OptionalString(shccstr!($desc)));
+        )*
 
         Self {
           name: cstr!(std::stringify!($SHEnum)),

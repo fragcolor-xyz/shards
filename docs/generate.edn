@@ -30,6 +30,33 @@
     .f (ToString))
    true))
 
+(defn print-type-info [buffer]
+  (-> (ExpectTable)
+      (| (Take "name") (ExpectString) >= .p_type_name)
+      (| (Take "type") (ExpectInt) >= .p_type_type)
+      "[`" >> buffer .p_type_name >> buffer "`](" >> buffer
+      .p_type_type
+      (Match
+       [2; Enum
+        (-> "../../../enums/" >> buffer
+            .p_type_name >> buffer)
+        15 ; ShardRef
+        (-> "../../types/#shard" >> buffer)
+        54 ; ContextVar
+        (-> "../../types/#contextvar" >> buffer)
+        56 ; Seq
+        (-> "../../types/#seq" >> buffer)
+        57 ; Table
+        (-> "../../types/#table" >> buffer)
+        59 ; Object
+        (-> "../../types/#object" >> buffer)
+        61 ; Set
+        (-> "../../types/#set" >> buffer)
+        nil
+        (-> "../../types/#" >> buffer
+            .p_type_name (String.ToLower) >> buffer)])
+      ")" >> buffer))
+
 ;; dumps the generated content to the final file
 (defn dump-shard [name]
   (Wire
@@ -62,12 +89,14 @@
    "|------|---------------------|-------------|---------|------|\r\n" >> .o
 
    "| `<input>` ||" >> .o
-   .inputHelp >> .o " | " >> .o "| `" >> .o
-   .inputTypes >> .o "` |\r\n" >> .o
+   .inputHelp >> .o " | " >> .o "| " >> .o
+   .inputTypes (ForEach (print-type-info .o))
+   " |\r\n" >> .o
 
    "| `<output>` ||" >> .o
-   .outputHelp >> .o " | " >> .o "| `" >> .o
-   .outputTypes >> .o "` |\r\n" >> .o
+   .outputHelp >> .o " | " >> .o "| " >> .o
+   .outputTypes (ForEach (print-type-info .o))
+   " |\r\n" >> .o
 
    (When
     (-> (Count .parameters) (IsMore 0))
@@ -76,7 +105,7 @@
      (ForEach
       (-> (ExpectTable)
           (| (Take "name") >= .p_name)
-          (| (Take "types") >= .p_types)
+          (| (Take "types") >= (ExpectSeq) .p_types)
           (| (Take "help") >= .p_help)
           (| (Take "default") >= .p_default)
           (| (Take "optional") (ExpectBool) >= .p_optional)
@@ -86,8 +115,9 @@
                           (-> "` | " >> .o))
           " | " >> .o .p_help >> .o
           " | `" >> .o .p_default >> .o
-          "` | `" >> .o .p_types >> .o
-          "` |\r\n" >> .o))))
+          "` | " >> .o
+          .p_types (ForEach (print-type-info .o))
+          " |\r\n" >> .o))))
 
    "\r\n</div>\r\n" >> .o
    "\r\n" >> .o
