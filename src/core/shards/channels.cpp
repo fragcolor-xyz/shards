@@ -75,6 +75,7 @@ struct Produce : public Base {
       _mpChannel = &channel;
     } break;
     default:
+      SHLOG_ERROR("Channel type expected for channel {}.", _name);
       throw SHException("Produce/Consume channel type expected.");
     }
     return data.inputType;
@@ -262,6 +263,7 @@ struct Consume : public Consumers {
       }
     };
     default:
+      SHLOG_ERROR("Channel type expected for channel {}.", _name);
       throw SHException("Produce/Consume channel type expected.");
     }
   }
