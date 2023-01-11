@@ -253,7 +253,7 @@ using Max = BigInt::BinaryOperation<BigIntBinaryOperation<MaxOp>>;
     SHVar activate(SHContext *context, const SHVar &input) {   \
       cpp_int bia = from_var(input);                           \
       auto op = getOperand();                                  \
-      if (op.valueType != SHType::Int)                                 \
+      if (op.valueType != SHType::Int)                         \
         throw ActivationError("Pow operand should be an Int"); \
       cpp_int bres = __OP__(bia, op.payload.intValue);         \
       return to_var(bres, _buffer);                            \

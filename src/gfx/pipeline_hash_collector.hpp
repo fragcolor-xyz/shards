@@ -99,6 +99,6 @@ struct PipelineHashCollector {
   std::optional<Hash128> getReferenceHash(UniqueId id);
   std::optional<Hash128> insertReferenceHash(UniqueId id, Hash128);
 };
-} // namespace gfx
+} // namespace gfx::detail
 
 #endif /* BAF72001_29B7_424A_AD7D_70C476A48508 */

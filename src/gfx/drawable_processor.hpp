@@ -19,7 +19,7 @@ struct DrawablePrepareContext {
 
   Context &context;
 
-  WorkerMemory& workerMemory;
+  WorkerMemory &workerMemory;
 
   const CachedPipeline &cachedPipeline;
 

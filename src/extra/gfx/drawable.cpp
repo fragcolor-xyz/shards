@@ -200,7 +200,7 @@ struct DrawShard : public BaseConsumer {
     }
   }
 
-  template <typename T> void addDrawableToQueue(T& drawable) { getDrawQueue().add(drawable); }
+  template <typename T> void addDrawableToQueue(T &drawable) { getDrawQueue().add(drawable); }
 
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
     assert(input.valueType == SHType::Object);

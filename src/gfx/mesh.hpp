@@ -103,7 +103,7 @@ public:
   UniqueId getId() const { return id; }
   MeshPtr clone() const;
 
-  void pipelineHashCollect(detail::PipelineHashCollector&) const;
+  void pipelineHashCollect(detail::PipelineHashCollector &) const;
 
 protected:
   void calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize);

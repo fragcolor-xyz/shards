@@ -41,7 +41,9 @@ struct FieldType {
   FieldType(ShaderFieldBaseType baseType) : baseType(baseType), numComponents(1) {}
   FieldType(ShaderFieldBaseType baseType, size_t numComponents, size_t matrixDimension = 1)
       : baseType(baseType), numComponents(numComponents), matrixDimension(matrixDimension) {}
-  bool operator==(const FieldType &other) const { return baseType == other.baseType && numComponents == other.numComponents && matrixDimension == other.matrixDimension; }
+  bool operator==(const FieldType &other) const {
+    return baseType == other.baseType && numComponents == other.numComponents && matrixDimension == other.matrixDimension;
+  }
   bool operator!=(const FieldType &other) const { return !(*this == other); }
 
   size_t getByteSize() const;

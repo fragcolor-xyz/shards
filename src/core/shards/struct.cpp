@@ -240,7 +240,8 @@ struct Pack : public StructBase {
         break;
       case Tags::i16Array:
         ensureType(seq.elements[idx], SHType::Seq);
-        writeMany<int16_t, SHType::Int>(seq.elements[idx].payload.seqValue, &SHVarPayload::intValue, member.offset, member.arrlen);
+        writeMany<int16_t, SHType::Int>(seq.elements[idx].payload.seqValue, &SHVarPayload::intValue, member.offset,
+                                        member.arrlen);
         break;
       case Tags::i16:
         ensureType(seq.elements[idx], SHType::Int);
@@ -248,7 +249,8 @@ struct Pack : public StructBase {
         break;
       case Tags::i32Array:
         ensureType(seq.elements[idx], SHType::Seq);
-        writeMany<int32_t, SHType::Int>(seq.elements[idx].payload.seqValue, &SHVarPayload::intValue, member.offset, member.arrlen);
+        writeMany<int32_t, SHType::Int>(seq.elements[idx].payload.seqValue, &SHVarPayload::intValue, member.offset,
+                                        member.arrlen);
         break;
       case Tags::i32:
         ensureType(seq.elements[idx], SHType::Int);
@@ -256,7 +258,8 @@ struct Pack : public StructBase {
         break;
       case Tags::i64Array:
         ensureType(seq.elements[idx], SHType::Seq);
-        writeMany<int64_t, SHType::Int>(seq.elements[idx].payload.seqValue, &SHVarPayload::intValue, member.offset, member.arrlen);
+        writeMany<int64_t, SHType::Int>(seq.elements[idx].payload.seqValue, &SHVarPayload::intValue, member.offset,
+                                        member.arrlen);
         break;
       case Tags::i64:
         ensureType(seq.elements[idx], SHType::Int);
@@ -264,7 +267,8 @@ struct Pack : public StructBase {
         break;
       case Tags::f32Array:
         ensureType(seq.elements[idx], SHType::Seq);
-        writeMany<float, SHType::Float>(seq.elements[idx].payload.seqValue, &SHVarPayload::floatValue, member.offset, member.arrlen);
+        writeMany<float, SHType::Float>(seq.elements[idx].payload.seqValue, &SHVarPayload::floatValue, member.offset,
+                                        member.arrlen);
         break;
       case Tags::f32:
         ensureType(seq.elements[idx], SHType::Float);
@@ -272,7 +276,8 @@ struct Pack : public StructBase {
         break;
       case Tags::f64Array:
         ensureType(seq.elements[idx], SHType::Seq);
-        writeMany<double, SHType::Float>(seq.elements[idx].payload.seqValue, &SHVarPayload::floatValue, member.offset, member.arrlen);
+        writeMany<double, SHType::Float>(seq.elements[idx].payload.seqValue, &SHVarPayload::floatValue, member.offset,
+                                         member.arrlen);
         break;
       case Tags::f64:
         ensureType(seq.elements[idx], SHType::Float);

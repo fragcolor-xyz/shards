@@ -192,7 +192,8 @@ inline void validateDrawableInputTableEntry(const char *key, const SHTypeInfo &t
     }
 
     if (expectedTypeIt->second != type) {
-      throw formatException("Unexpected input type for key: {}. expected {}, got {}", key, (SHTypeInfo&)expectedTypeIt->second, type);
+      throw formatException("Unexpected input type for key: {}. expected {}, got {}", key, (SHTypeInfo &)expectedTypeIt->second,
+                            type);
     }
   }
 }

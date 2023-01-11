@@ -146,7 +146,7 @@ LOGIC_OP(IsLessEqual, <=);
   struct NAME : public BaseOpsBin {                                                       \
     SHVar activate(SHContext *context, const SHVar &input) {                              \
       const auto &value = _operand.get();                                                 \
-      if (input.valueType == SHType::Seq && value.valueType == SHType::Seq) {                             \
+      if (input.valueType == SHType::Seq && value.valueType == SHType::Seq) {             \
         auto vlen = value.payload.seqValue.len;                                           \
         auto ilen = input.payload.seqValue.len;                                           \
         if (ilen > vlen)                                                                  \
@@ -157,21 +157,21 @@ LOGIC_OP(IsLessEqual, <=);
           }                                                                               \
         }                                                                                 \
         return shards::Var::False;                                                        \
-      } else if (input.valueType == SHType::Seq && value.valueType != SHType::Seq) {                      \
+      } else if (input.valueType == SHType::Seq && value.valueType != SHType::Seq) {      \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                       \
           if (input.payload.seqValue.elements[i] OP value) {                              \
             return shards::Var::True;                                                     \
           }                                                                               \
         }                                                                                 \
         return shards::Var::False;                                                        \
-      } else if (input.valueType != SHType::Seq && value.valueType == SHType::Seq) {                      \
+      } else if (input.valueType != SHType::Seq && value.valueType == SHType::Seq) {      \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                       \
           if (input OP value.payload.seqValue.elements[i]) {                              \
             return shards::Var::True;                                                     \
           }                                                                               \
         }                                                                                 \
         return shards::Var::False;                                                        \
-      } else if (input.valueType != SHType::Seq && value.valueType != SHType::Seq) {                      \
+      } else if (input.valueType != SHType::Seq && value.valueType != SHType::Seq) {      \
         if (input OP value) {                                                             \
           return shards::Var::True;                                                       \
         }                                                                                 \
@@ -186,7 +186,7 @@ LOGIC_OP(IsLessEqual, <=);
   struct NAME : public BaseOpsBin {                                                          \
     SHVar activate(SHContext *context, const SHVar &input) {                                 \
       const auto &value = _operand.get();                                                    \
-      if (input.valueType == SHType::Seq && value.valueType == SHType::Seq) {                                \
+      if (input.valueType == SHType::Seq && value.valueType == SHType::Seq) {                \
         auto vlen = value.payload.seqValue.len;                                              \
         auto ilen = input.payload.seqValue.len;                                              \
         if (ilen > vlen)                                                                     \
@@ -197,21 +197,21 @@ LOGIC_OP(IsLessEqual, <=);
           }                                                                                  \
         }                                                                                    \
         return shards::Var::True;                                                            \
-      } else if (input.valueType == SHType::Seq && value.valueType != SHType::Seq) {                         \
+      } else if (input.valueType == SHType::Seq && value.valueType != SHType::Seq) {         \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                          \
           if (!(input.payload.seqValue.elements[i] OP value)) {                              \
             return shards::Var::False;                                                       \
           }                                                                                  \
         }                                                                                    \
         return shards::Var::True;                                                            \
-      } else if (input.valueType != SHType::Seq && value.valueType == SHType::Seq) {                         \
+      } else if (input.valueType != SHType::Seq && value.valueType == SHType::Seq) {         \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                          \
           if (!(input OP value.payload.seqValue.elements[i])) {                              \
             return shards::Var::False;                                                       \
           }                                                                                  \
         }                                                                                    \
         return shards::Var::True;                                                            \
-      } else if (input.valueType != SHType::Seq && value.valueType != SHType::Seq) {                         \
+      } else if (input.valueType != SHType::Seq && value.valueType != SHType::Seq) {         \
         if (!(input OP value)) {                                                             \
           return shards::Var::False;                                                         \
         }                                                                                    \

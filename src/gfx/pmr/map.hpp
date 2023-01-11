@@ -6,7 +6,8 @@
 
 #if !HAVE_CXX_17_MEMORY_RESOURCE
 namespace shards::pmr {
-template <typename K, typename V, typename Less = std::less<K>> using map = std::map<K, V, Less, PolymorphicAllocator<std::pair<const K, V>>>;
+template <typename K, typename V, typename Less = std::less<K>>
+using map = std::map<K, V, Less, PolymorphicAllocator<std::pair<const K, V>>>;
 }
 #endif
 

@@ -134,17 +134,17 @@ template <SHType Type> struct TVectorTypeTraits {};
 
 #define EXPAND(_x) _x
 #define STRINGIFY(_x) EXPAND(#_x)
-#define VECTOR_TYPE_TRAITS(_SHType, _Dimension, _NumberType)                \
+#define VECTOR_TYPE_TRAITS(_SHType, _Dimension, _NumberType)                        \
   template <> struct TVectorTypeTraits<SHType::_SHType> : public VectorTypeTraits { \
-    typedef TNumberTypeTraits<_NumberType>::TInner TInner;                  \
-    TVectorTypeTraits() {                                                   \
-      dimension = _Dimension;                                               \
-      isInteger = std::is_integral<TInner>::value;                          \
+    typedef TNumberTypeTraits<_NumberType>::TInner TInner;                          \
+    TVectorTypeTraits() {                                                           \
+      dimension = _Dimension;                                                       \
+      isInteger = std::is_integral<TInner>::value;                                  \
       shType = SHType::_SHType;                                                     \
-      type = shards::CoreInfo::_SHType##Type;                               \
-      numberType = _NumberType;                                             \
-      name = STRINGIFY(_SHType);                                            \
-    }                                                                       \
+      type = shards::CoreInfo::_SHType##Type;                                       \
+      numberType = _NumberType;                                                     \
+      name = STRINGIFY(_SHType);                                                    \
+    }                                                                               \
   };
 
 VECTOR_TYPE_TRAITS(Color, 4, NumberType::UInt8);

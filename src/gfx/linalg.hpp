@@ -9,14 +9,12 @@ namespace gfx {
 using namespace linalg::aliases;
 
 // Returns the byte size of a tighlty packed matrix based on input parameter
-template<typename T, int M, int N>
-inline constexpr size_t getPackedMatrixSize(const linalg::mat<T, M, N> &_unused) {
+template <typename T, int M, int N> inline constexpr size_t getPackedMatrixSize(const linalg::mat<T, M, N> &_unused) {
   return sizeof(T) * M * N;
 }
 
 // tighlty packs the matrix into dst
-template<typename T, int M, int N>
-inline void packMatrix(const linalg::mat<T, M, N> &mat, T *dst) {
+template <typename T, int M, int N> inline void packMatrix(const linalg::mat<T, M, N> &mat, T *dst) {
   for (int i = 0; i < M; i++) {
     memcpy(&dst[i * M], &mat[i].x, sizeof(T) * N);
   }

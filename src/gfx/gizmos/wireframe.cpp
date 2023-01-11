@@ -97,7 +97,7 @@ MeshPtr WireframeMeshGenerator::generate() {
 
 WireframeRenderer::WireframeRenderer(bool showBackfaces) { wireframeFeature = features::Wireframe::create(showBackfaces); }
 
-void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable& drawable) {
+void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable) {
   if (MeshDrawable *meshDrawable = dynamic_cast<MeshDrawable *>(&drawable)) {
     Mesh *meshPtr = meshDrawable->mesh.get();
     auto it = meshCache.find(meshPtr);

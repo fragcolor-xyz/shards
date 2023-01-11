@@ -106,7 +106,7 @@ struct GeneratorContext : public IGeneratorContext {
 
   TempVariableAllocator tempVariableAllocator;
 
-  std::string& getOutput();
+  std::string &getOutput();
 
   void write(const StringView &str);
 

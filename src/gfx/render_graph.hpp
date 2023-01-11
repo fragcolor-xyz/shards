@@ -434,7 +434,8 @@ struct RenderGraphBuilder {
           if (sizeMismatch)
             err += fmt::format(" (size {}=>{})", frames[frameIndex].size, targetSize);
           if (formatMismatch)
-            err += fmt::format(" (fmt {}=>{})", magic_enum::enum_name(frames[frameIndex].format), magic_enum::enum_name(targetFormat));
+            err += fmt::format(" (fmt {}=>{})", magic_enum::enum_name(frames[frameIndex].format),
+                               magic_enum::enum_name(targetFormat));
           throw std::logic_error(err);
         }
 
@@ -454,9 +455,9 @@ struct RenderGraphBuilder {
       if (forceOverwrite)
         needsClearValue = true;
       else if (loadRequired && !isWrittenTo(frameIndex, nodeIndex)) {
-        SPDLOG_LOGGER_DEBUG(logger,
-                           "Forcing clear with default values for frame {} accessed by node {}, since it's not written to before",
-                           frameIndex, nodeIndex);
+        SPDLOG_LOGGER_DEBUG(
+            logger, "Forcing clear with default values for frame {} accessed by node {}, since it's not written to before",
+            frameIndex, nodeIndex);
         needsClearValue = true;
       }
 

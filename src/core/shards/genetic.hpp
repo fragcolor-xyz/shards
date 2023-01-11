@@ -307,13 +307,12 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each(
-                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
-                [](auto &i) {
-                  // Evaluate our brain wire
-                  auto wire = SHWire::sharedFromRef(i->wire.payload.wireValue);
-                  i->mesh->schedule(wire);
-                });
+            flow.for_each(_era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
+                          [](auto &i) {
+                            // Evaluate our brain wire
+                            auto wire = SHWire::sharedFromRef(i->wire.payload.wireValue);
+                            i->mesh->schedule(wire);
+                          });
 
             _exec->run(flow).get();
           }
@@ -321,12 +320,11 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each(
-                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
-                [](auto &i) {
-                  if (!i->mesh->empty())
-                    i->mesh->tick();
-                });
+            flow.for_each(_era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
+                          [](auto &i) {
+                            if (!i->mesh->empty())
+                              i->mesh->tick();
+                          });
 
             _exec
                 ->run_until(flow,
@@ -344,20 +342,19 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each(
-                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
-                [](auto &i) {
-                  // reset fitness
-                  i->fitness = -std::numeric_limits<float>::max();
-                  // avoid scheduling if errors
-                  if (!i->mesh->errors().empty())
-                    return;
-                  // compute the fitness
-                  TickObserver obs{*i};
-                  auto fitwire = SHWire::sharedFromRef(i->fitnessWire.payload.wireValue);
-                  auto wire = SHWire::sharedFromRef(i->wire.payload.wireValue);
-                  i->mesh->schedule(obs, fitwire, wire->finishedOutput);
-                });
+            flow.for_each(_era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
+                          [](auto &i) {
+                            // reset fitness
+                            i->fitness = -std::numeric_limits<float>::max();
+                            // avoid scheduling if errors
+                            if (!i->mesh->errors().empty())
+                              return;
+                            // compute the fitness
+                            TickObserver obs{*i};
+                            auto fitwire = SHWire::sharedFromRef(i->fitnessWire.payload.wireValue);
+                            auto wire = SHWire::sharedFromRef(i->wire.payload.wireValue);
+                            i->mesh->schedule(obs, fitwire, wire->finishedOutput);
+                          });
 
             _exec->run(flow).get();
           }
@@ -365,14 +362,13 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each(
-                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
-                [](auto &i) {
-                  if (!i->mesh->empty()) {
-                    TickObserver obs{*i};
-                    i->mesh->tick(obs);
-                  }
-                });
+            flow.for_each(_era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
+                          [](auto &i) {
+                            if (!i->mesh->empty()) {
+                              TickObserver obs{*i};
+                              i->mesh->tick(obs);
+                            }
+                          });
 
             _exec
                 ->run_until(flow,

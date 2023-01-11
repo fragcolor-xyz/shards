@@ -52,9 +52,7 @@ TEST_CASE("Taskflow No Threads", "[MT]") {
   c.succeed(b);
 
   auto task = executor.run(flow);
-  executor.loop_until([&]() {
-    return task.wait_for(0ms) == std::future_status::ready;
-  });
+  executor.loop_until([&]() { return task.wait_for(0ms) == std::future_status::ready; });
 
   CHECK(counter == 201);
 }

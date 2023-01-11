@@ -32,5 +32,4 @@ NamedShaderParam::NamedShaderParam(std::string name, const FieldType &type, Para
 NamedShaderParam::NamedShaderParam(std::string name, ParamVariant defaultValue)
     : type(getParamVariantType(defaultValue)), name(name), defaultValue(defaultValue) {}
 
-
 } // namespace gfx

@@ -350,17 +350,18 @@ struct FeatureShard {
 
       captured->wire.warmup(context);
 
-      feature.drawableParameterGenerators.emplace_back([captured = captured](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
-        ContextUserData *contextUserData = ctx.context.userData.get<ContextUserData>();
-        SHContext *SHContext = contextUserData->shardsContext;
+      feature.drawableParameterGenerators.emplace_back(
+          [captured = captured](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
+            ContextUserData *contextUserData = ctx.context.userData.get<ContextUserData>();
+            SHContext *SHContext = contextUserData->shardsContext;
 
-        SHVar input{};
-        SHVar output{};
-        SHWireState result = captured->wire.activate(SHContext, input, output);
-        assert(result == SHWireState::Continue);
+            SHVar input{};
+            SHVar output{};
+            SHWireState result = captured->wire.activate(SHContext, input, output);
+            assert(result == SHWireState::Continue);
 
-        applyDrawData(ctx, collector, output);
-      });
+            applyDrawData(ctx, collector, output);
+          });
     };
 
     if (isWire(input)) {

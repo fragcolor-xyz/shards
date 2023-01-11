@@ -23,9 +23,9 @@ struct TransformUpdaterCollector {
   std::set<MeshTreeDrawable *> visited;
 #endif
 
-  std::function<void(const DrawablePtr&)> collector = [](const DrawablePtr&) {};
+  std::function<void(const DrawablePtr &)> collector = [](const DrawablePtr &) {};
 
-  void update(MeshTreeDrawable& root) {
+  void update(MeshTreeDrawable &root) {
     queue.push_back(Node{float4x4(linalg::identity), &root});
 
     while (!queue.empty()) {

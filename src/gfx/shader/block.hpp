@@ -50,8 +50,7 @@ template <typename T> struct ConvertToBlock<T, typename std::enable_if<!std::is_
 struct Header : public Block {
   BlockPtr inner;
 
-  template <typename T>
-  Header(T &&inner) : inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+  template <typename T> Header(T &&inner) : inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
 
   void apply(IGeneratorContext &context) const;
   BlockPtr clone() { return std::make_unique<Header>(inner->clone()); }

@@ -4,7 +4,8 @@
 #include "runtime.hpp"
 
 namespace shards {
-inline void mergeIntoRequiredVariables(ExposedInfo &outInfo, const ParamVar &paramVar, const SHTypeInfo& type, bool isMutable = false) {
+inline void mergeIntoRequiredVariables(ExposedInfo &outInfo, const ParamVar &paramVar, const SHTypeInfo &type,
+                                       bool isMutable = false) {
   if (paramVar.isVariable())
     outInfo.push_back(ExposedInfo::Variable(paramVar.variableName(), SHCCSTR("The required variable"), type, isMutable));
 }
