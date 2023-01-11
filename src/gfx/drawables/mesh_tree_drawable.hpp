@@ -5,10 +5,6 @@
 #include <cassert>
 #include <set>
 
-#ifndef NDEBUG
-#define GFX_TRANSFORM_UPDATER_TRACK_VISITED 1
-#endif
-
 namespace gfx {
 // Transform tree of drawable objects
 struct MeshTreeDrawable final : public IDrawable {
@@ -27,12 +23,8 @@ public:
   DrawablePtr clone() const override;
   DrawableProcessorConstructor getProcessor() const override;
 
-  template <typename T> static inline void foreach (Ptr &item, T && callback) {
-    callback(item);
-    for (auto &child : item->children) {
-      MeshTreeDrawable::foreach (child, callback);
-    }
-  }
+  // Visits each MeshTreeDrawable in this tree and calls callback on it
+  template <typename T> static inline void foreach (Ptr &item, T && callback);
 
   UniqueId getId() const override { return id; }
 
@@ -40,6 +32,25 @@ public:
 
   bool expand(shards::pmr::vector<const IDrawable *> &outDrawables) const override;
 };
+
+template <typename T> void MeshTreeDrawable::foreach (Ptr &item, T && callback) {
+  struct Node {
+    Ptr node;
+  };
+  std::vector<Node> queue{{item}};
+
+  while (!queue.empty()) {
+    Node node = queue.back();
+    queue.pop_back();
+
+    callback(node.node);
+
+    for (auto &child : node.node->children) {
+      queue.push_back(Node{child});
+    }
+  }
+}
+
 } // namespace gfx
 
 #endif /* D4C41EFB_5953_4831_9CB1_B6CCD9650575 */
