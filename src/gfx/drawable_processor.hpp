@@ -52,11 +52,11 @@ struct IDrawableProcessor : public IPipelineModifier {
   virtual void reset(size_t frameCounter) = 0;
 
   // Hook for modifying the built pipeline for the referenceDrawable.
-  // Whenver a group of objects is grouped under new pipeline, this function is called once before building.
+  // Whenever a group of objects is grouped under new pipeline, this function is called once before building.
   virtual void buildPipeline(PipelineBuilder &builder) override = 0;
 
   // Request to prepare draw data (buffers/bindings/etc.)
-  // the returned value is passed to encode
+  // the returned value is passed to encode through DrawableEncodeContext
   virtual TransientPtr prepare(DrawablePrepareContext &context) = 0;
 
   // Called to encode the render commands

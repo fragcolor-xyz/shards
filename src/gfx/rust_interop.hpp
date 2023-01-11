@@ -5,7 +5,6 @@
 #include "context.hpp"
 #include "window.hpp"
 #include "fwd.hpp"
-#include <SDL_events.h>
 
 namespace gfx {
 struct Context;

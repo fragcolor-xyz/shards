@@ -297,6 +297,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       check(prepareData->viewBuffers);
 
       if (!everythingMapped) {
+        // Don't block, just check for buffer mapping callbacks
         context.poll(false);
       } else {
         break;

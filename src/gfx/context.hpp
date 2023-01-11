@@ -97,6 +97,9 @@ public:
   bool beginFrame();
   void endFrame();
 
+  // Wait=true corresponds to wgt::Maintain::Wait in wgpu::Device::poll (https://docs.rs/wgpu/latest/wgpu/struct.Device.html)
+  // which will wait for the most recently submitted command buffer
+  // if wait is false it will just check for callbacks to run
   void poll(bool wait = true);
 
   // When entering background, releases all graphics resources and pause rendering

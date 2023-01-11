@@ -4,7 +4,7 @@
 namespace gfx {
 
 // For now this uses a global mutex
-// can be ridden of once ContextData is moved to context/renderer storage
+// We can get rid of this once ContextData is moved to context/renderer storage
 std::recursive_mutex ContextData::globalMutex;
 
 void ContextData::bindToContext(Context &context) {

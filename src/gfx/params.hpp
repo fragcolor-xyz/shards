@@ -7,7 +7,6 @@
 #include <memory>
 #include <stdint.h>
 #include <string>
-#include <map>
 #include <variant>
 
 namespace gfx {

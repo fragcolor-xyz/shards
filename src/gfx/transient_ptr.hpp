@@ -6,7 +6,7 @@
 namespace gfx::detail {
 // A wrapper to store opaque values passed around between renderer components
 // The pointers should be allocated using a transient allocator, since this class does not free the memory
-// It is only able optionally run destructors on objects by calling destroy()
+// It is only able to optionally run destructors on objects by calling destroy()
 //
 // The point of this is to allow a specialized render component to return data, e.g.:
 //   TransientPtr someFunction() { return new SomeObject(); }
@@ -14,7 +14,7 @@ namespace gfx::detail {
 //   void someOtherFunction(TransientPtr ptr) {
 //     SomeObject& myObject = ptr.Get<SomeObject>();
 //   }
-// After that the called can run: ptr.destroy()
+// After that the caller can run: ptr.destroy()
 struct TransientPtr {
 private:
   using Deleter = void (*)(void *);
