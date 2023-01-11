@@ -10,7 +10,7 @@ namespace Gizmos {
 using linalg::aliases::float3;
 using linalg::aliases::float4x4;
 
-struct TranslationGizmo : public BaseConsumer {
+struct TranslationGizmo : public Base {
   static SHTypesInfo inputTypes() {
     static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable, gfx::Types::TreeDrawable}};
     return inputTypes;
@@ -24,8 +24,6 @@ struct TranslationGizmo : public BaseConsumer {
   gfx::gizmos::TranslationGizmo _gizmo{};
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &helperContext = getContext();
-
     float4x4 inputMat;
     std::function<void(float4x4 & mat)> applyOutputMat;
 
@@ -67,9 +65,9 @@ struct TranslationGizmo : public BaseConsumer {
 
     // Scale based on screen distance
     float3 gizmoLocation = gfx::extractTranslation(_gizmo.transform);
-    _gizmo.scale = helperContext.gizmoContext.renderer.getSize(gizmoLocation);
+    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getSize(gizmoLocation);
 
-    helperContext.gizmoContext.updateGizmo(_gizmo);
+    _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
 
     if (applyOutputMat)
       applyOutputMat(_gizmo.transform);
@@ -79,17 +77,16 @@ struct TranslationGizmo : public BaseConsumer {
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    baseConsumerWarmup(context);
+    baseWarmup(context);
   }
 
   void cleanup() {
     PARAM_CLEANUP();
-    baseConsumerCleanup();
+    baseCleanup();
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckGfxThread(data);
-    composeCheckContext(data);
+    gfx::composeCheckGfxThread(data);
     return outputTypes().elements[0];
   }
 };

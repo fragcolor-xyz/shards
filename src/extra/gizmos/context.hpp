@@ -13,76 +13,33 @@ namespace shards {
 // Gizmos, grids, lines, etc.
 namespace Gizmos {
 
-struct Context {
+struct GizmoContext {
   static constexpr uint32_t TypeId = 'HLPc';
-  static inline shards::Type Type = shards::Type::Object(gfx::VendorId, TypeId);
-
-  static inline const char contextVarName[] = "Gizmos.Context";
-  static inline SHExposedTypeInfo contextExposedType =
-      shards::ExposedInfo::Variable(contextVarName, SHCCSTR("The helper context."), Context::Type);
-  static inline shards::ExposedInfo contextExposedTypes = shards::ExposedInfo(contextExposedType);
+  static inline SHTypeInfo Type{SHType::Object, {.object = {.vendorId = gfx::VendorId, .typeId = TypeId}}};
+  static inline const char VariableName[] = "Gizmos.Context";
+  static inline const SHOptionalString VariableDescription = SHCCSTR("The gizmo context.");
+  static inline SHExposedTypeInfo VariableInfo = shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
 
   gfx::DrawQueuePtr queue;
-  gfx::gizmos::Context gizmoContext;
+  gfx::gizmos::Context gfxGizmoContext;
   gfx::WireframeRenderer wireframeRenderer;
 };
 
-struct BaseConsumer {
-  SHVar *_contextVar{nullptr};
+typedef shards::RequiredContextVariable<GizmoContext, GizmoContext::Type, GizmoContext::VariableName> RequiredGizmoContext;
 
-  Context &getContext() {
-    Context *contextPtr = reinterpret_cast<Context *>(_contextVar->payload.objectValue);
-    if (!contextPtr) {
-      throw shards::ActivationError("Context not set");
-    }
-    return *contextPtr;
+struct Base {
+  RequiredGizmoContext _gizmoContext;
+
+  void baseWarmup(SHContext *context) { _gizmoContext.warmup(context); }
+  void baseCleanup() { _gizmoContext.cleanup(); }
+  SHExposedTypesInfo baseRequiredVariables() {
+    static auto e = exposedTypesOf(RequiredGizmoContext::getExposedTypeInfo());
+    return e;
   }
 
-  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(Context::contextExposedTypes); }
-
-  void baseConsumerWarmup(SHContext *context, bool contextRequired = true) {
-    assert(!_contextVar);
-    _contextVar = shards::referenceVariable(context, Context::contextVarName);
-    if (contextRequired) {
-      assert(_contextVar->valueType == SHType::Object);
-    }
-  }
-
-  void baseConsumerCleanup() {
-    if (_contextVar) {
-      shards::releaseVariable(_contextVar);
-      _contextVar = nullptr;
-    }
-  }
-
-  void composeCheckGfxThread(const SHInstanceData &data) {
-    if (data.onWorkerThread) {
-      throw shards::ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
-                                 "within an Await shard)");
-    }
-  }
-
-  void composeCheckContext(const SHInstanceData &data) {
-    bool variableFound = false;
-    for (uint32_t i = 0; i < data.shared.len; i++) {
-      if (strcmp(data.shared.elements[i].name, Context::contextVarName) == 0) {
-        variableFound = true;
-      }
-    }
-
-    if (!variableFound)
-      throw shards::ComposeError("Context required, but not found");
-  }
-
-  void warmup(SHContext *context) { baseConsumerWarmup(context); }
-
-  void cleanup(SHContext *context) { baseConsumerCleanup(); }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckGfxThread(data);
-    composeCheckContext(data);
-    return shards::CoreInfo::NoneType;
-  }
+  void warmup(SHContext *context) { baseWarmup(context); }
+  void cleanup() { baseCleanup(); }
+  SHExposedTypesInfo requiredVariables() { return baseRequiredVariables(); }
 };
 
 } // namespace Gizmos

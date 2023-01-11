@@ -25,24 +25,26 @@ struct GizmosContextShard {
   RequiredGraphicsContext _graphicsContext;
   Inputs::RequiredInputContext _inputContext;
 
-  Context _context{};
+  GizmoContext _gizmoContext{};
   SHVar *_contextVarRef{};
 
   int2 _cursorPosition{};
   bool _mouseButtonState{};
+
+  ExposedInfo _exposedInfo;
 
   void warmup(SHContext *context) {
     _graphicsContext.warmup(context);
     _inputContext.warmup(context);
 
     // Reference context variable
-    _contextVarRef = referenceVariable(context, Context::contextVarName);
+    _contextVarRef = referenceVariable(context, GizmoContext::VariableName);
 
-    withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] { PARAM_WARMUP(context); });
+    withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] { PARAM_WARMUP(context); });
   }
 
   void cleanup() {
-    withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] { PARAM_CLEANUP(); });
+    withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] { PARAM_CLEANUP(); });
 
     _graphicsContext.cleanup();
     _inputContext.cleanup();
@@ -53,16 +55,13 @@ struct GizmosContextShard {
   }
 
   SHExposedTypesInfo requiredVariables() {
-    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), Inputs::RequiredInputContext::getExposedTypeInfo());
+    static auto e =
+        exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), Inputs::RequiredInputContext::getExposedTypeInfo());
     return e;
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckGfxThread(data);
-
-    std::vector<SHExposedTypeInfo> exposed(PtrIterator(data.shared.elements),
-                                           PtrIterator(data.shared.elements + data.shared.len));
-    exposed.push_back(ExposedInfo::ProtectedVariable(Context::contextVarName, SHCCSTR("Helper context"), Context::Type));
+    gfx::composeCheckGfxThread(data);
 
     if (!_queue.isVariable())
       throw ComposeError("Queue not set");
@@ -70,9 +69,11 @@ struct GizmosContextShard {
     if (!_view.isVariable())
       throw ComposeError("View not set");
 
+    _exposedInfo = ExposedInfo(data.shared);
+    _exposedInfo.push_back(GizmoContext::VariableInfo);
+
     SHInstanceData contentInstanceData = data;
-    contentInstanceData.shared.elements = exposed.data();
-    contentInstanceData.shared.len = exposed.size();
+    contentInstanceData.shared = SHExposedTypesInfo(_exposedInfo);
     return _content.compose(contentInstanceData).outputType;
   }
 
@@ -98,12 +99,12 @@ struct GizmosContextShard {
     ViewPtr view = static_cast<SHView *>(viewVar.payload.objectValue)->view;
 
     assert(queueVar.payload.objectValue);
-    _context.queue = static_cast<SHDrawQueue *>(queueVar.payload.objectValue)->queue;
-    assert(_context.queue);
+    _gizmoContext.queue = static_cast<SHDrawQueue *>(queueVar.payload.objectValue)->queue;
+    assert(_gizmoContext.queue);
 
-    gfx::Context &gfxContext = _graphicsContext->getContext();
+    gfx::gizmos::Context &gfxGizmoContext = _gizmoContext.gfxGizmoContext;
     gfx::Window &window = _graphicsContext->getWindow();
-    int2 outputSize = gfxContext.getMainOutputSize();
+    int2 outputSize = _graphicsContext->context->getMainOutputSize();
 
     handleGizmoInputEvents(_inputContext->events);
 
@@ -115,10 +116,10 @@ struct GizmosContextShard {
     gizmoInput.viewSize = float2(outputSize);
 
     SHVar _shardsOutput{};
-    withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] {
-      _context.gizmoContext.begin(gizmoInput, view);
+    withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] {
+      gfxGizmoContext.begin(gizmoInput, view);
       _content.activate(shContext, input, _shardsOutput);
-      _context.gizmoContext.end(_context.queue);
+      gfxGizmoContext.end(_gizmoContext.queue);
     });
 
     return _shardsOutput;
