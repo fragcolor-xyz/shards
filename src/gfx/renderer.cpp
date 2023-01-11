@@ -256,7 +256,7 @@ struct RendererImpl final : public ContextData {
         
       }
     }
-    spdlog::info("[[[[[[[[[[[[log][t] renderer.cpp: renderGraphOutputs.size(): {}", renderGraphOutputs.size());
+    spdlog::info("[[[[[[[[[[[[log][t] renderer.cpp: renderGraphOutputs.size(): {}", renderGraphOutputs.size()); 
     const RenderGraph &renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize);
     renderGraphEvaluator.evaluate(renderGraph, renderGraphOutputs, context, frameCounter);
   }
@@ -684,7 +684,9 @@ struct RendererImpl final : public ContextData {
   }
 
   void endFrame() {
-    viewStack.pop(); // Main output
+    for(size_t mo=0; mo<mainOutput.size(); mo++){
+      viewStack.pop(); // Main output
+    }
     viewStack.reset();
 
     ensureMainOutputCleared();
