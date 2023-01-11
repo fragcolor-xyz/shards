@@ -140,24 +140,32 @@ struct MainWindow final {
     _graphicsContextVar->payload.objectValue = _graphicsContext.get();
     _graphicsContextVar->valueType = SHType::Object;
 
-    _graphicsContextVar = referenceVariable(context, InputContext::VariableName);
-    _graphicsContextVar->payload.objectTypeId = SHTypeInfo(InputContext::Type).object.typeId;
-    _graphicsContextVar->payload.objectVendorId = SHTypeInfo(InputContext::Type).object.vendorId;
-    _graphicsContextVar->payload.objectValue = _inputContext.get();
-    _graphicsContextVar->valueType = SHType::Object;
+    _inputContextVar = referenceVariable(context, InputContext::VariableName);
+    _inputContextVar->payload.objectTypeId = SHTypeInfo(InputContext::Type).object.typeId;
+    _inputContextVar->payload.objectVendorId = SHTypeInfo(InputContext::Type).object.vendorId;
+    _inputContextVar->payload.objectValue = _inputContext.get();
+    _inputContextVar->valueType = SHType::Object;
 
     _shards.warmup(context);
   }
 
   void cleanup() {
     _graphicsContext.reset();
+    _inputContext.reset();
     _shards.cleanup();
 
     if (_graphicsContextVar) {
       if (_graphicsContextVar->refcount > 1) {
-        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to GFX.Context", _graphicsContextVar->refcount - 1);
+        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _graphicsContextVar->refcount - 1, GraphicsContext::VariableName);
       }
       releaseVariable(_graphicsContextVar);
+    }
+
+    if (_inputContextVar) {
+      if (_inputContextVar->refcount > 1) {
+        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _inputContextVar->refcount - 1, InputContext::VariableName);
+      }
+      releaseVariable(_inputContextVar);
     }
   }
 
