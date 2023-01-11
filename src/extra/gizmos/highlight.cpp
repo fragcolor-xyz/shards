@@ -5,7 +5,7 @@ namespace Gizmos {
 
 using namespace gfx;
 
-struct HighlightShard : public BaseConsumer {
+struct HighlightShard : public Base {
   // TODO: Merge with DrawShard type
   static inline shards::Types SingleDrawableTypes = shards::Types{gfx::Types::Drawable, gfx::Types::TreeDrawable};
   static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
@@ -25,15 +25,13 @@ struct HighlightShard : public BaseConsumer {
   }
 
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
-    Context &helperContext = getContext();
-
     SHTypeInfo inputType = shards::Type::Object(input.payload.objectVendorId, input.payload.objectTypeId);
     if (gfx::Types::Drawable == inputType) {
       SHDrawable *dPtr = static_cast<SHDrawable *>(input.payload.objectValue);
-      helperContext.wireframeRenderer.overlayWireframe(*helperContext.queue.get(), dPtr->drawable);
+      _gizmoContext->wireframeRenderer.overlayWireframe(*_gizmoContext->queue.get(), dPtr->drawable);
     } else if (gfx::Types::TreeDrawable == inputType) {
       SHTreeDrawable *dhPtr = static_cast<SHTreeDrawable *>(input.payload.objectValue);
-      helperContext.wireframeRenderer.overlayWireframe(*helperContext.queue.get(), *dhPtr->drawable.get());
+      _gizmoContext->wireframeRenderer.overlayWireframe(*_gizmoContext->queue.get(), *dhPtr->drawable.get());
     }
 
     return SHVar{};
@@ -49,8 +47,8 @@ struct HighlightShard : public BaseConsumer {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { throw ActivationError("Unsupported input type"); }
-  void warmup(SHContext *shContext) { baseConsumerWarmup(shContext); }
-  void cleanup() { baseConsumerCleanup(); }
+  void warmup(SHContext *shContext) { baseWarmup(shContext); }
+  void cleanup() { baseCleanup(); }
 };
 
 void registerHighlightShards() { REGISTER_SHARD("Gizmos.Highlight", HighlightShard); }
