@@ -19,15 +19,13 @@ struct GraphicsContext {
   static constexpr uint32_t TypeId = 'mwnd';
   static inline SHTypeInfo Type{SHType::Object, {.object = {.vendorId = VendorId, .typeId = TypeId}}};
   static inline const char VariableName[] = "GFX.Context";
-  static inline const SHOptionalString VariableDescription = SHCCSTR("The graphics context");
+  static inline const SHOptionalString VariableDescription = SHCCSTR("The graphics context.");
   static inline SHExposedTypeInfo VariableInfo =
-      shards::ExposedInfo::Variable(VariableName, VariableDescription, Type);
+      shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
 
   std::shared_ptr<Context> context;
   std::shared_ptr<Window> window;
   std::shared_ptr<Renderer> renderer;
-  std::vector<SDL_Event> events;
-  shards::input::InputStack inputStack;
 
   double time;
   float deltaTime;

@@ -86,6 +86,17 @@ template <typename... TArgs> constexpr auto exposedTypesOf(TArgs... args) {
       ...);
   return result;
 }
+
+inline void mergeIntoExposedInfo(ExposedInfo &outInfo, const ParamVar &paramVar, const SHTypeInfo &type, bool isMutable = false) {
+  if (paramVar.isVariable())
+    outInfo.push_back(ExposedInfo::Variable(paramVar.variableName(), SHCCSTR("The required variable"), type, isMutable));
+}
+
+inline void mergeIntoExposedInfo(ExposedInfo &outInfo, const ShardsVar &shardsVar) {
+  for (auto &info : shardsVar.composeResult().requiredInfo)
+    outInfo.push_back(info);
+}
+
 } // namespace shards
 
 #endif /* A16CC8A4_FBC4_4500_BE1D_F565963C9C16 */

@@ -4,6 +4,7 @@
 #include <gfx/window.hpp>
 #include <object_var_util.hpp>
 #include <params.hpp>
+#include "../inputs.hpp"
 
 namespace shards {
 namespace Gizmos {
@@ -22,6 +23,8 @@ struct GizmosContextShard {
   PARAM_IMPL(GizmosContextShard, PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content));
 
   RequiredGraphicsContext _graphicsContext;
+  Inputs::RequiredInputContext _inputContext;
+
   Context _context{};
   SHVar *_contextVarRef{};
 
@@ -30,6 +33,7 @@ struct GizmosContextShard {
 
   void warmup(SHContext *context) {
     _graphicsContext.warmup(context);
+    _inputContext.warmup(context);
 
     // Reference context variable
     _contextVarRef = referenceVariable(context, Context::contextVarName);
@@ -41,6 +45,7 @@ struct GizmosContextShard {
     withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] { PARAM_CLEANUP(); });
 
     _graphicsContext.cleanup();
+    _inputContext.cleanup();
 
     if (_contextVarRef) {
       releaseVariable(_contextVarRef);
@@ -48,7 +53,7 @@ struct GizmosContextShard {
   }
 
   SHExposedTypesInfo requiredVariables() {
-    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo());
+    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), Inputs::RequiredInputContext::getExposedTypeInfo());
     return e;
   }
 
@@ -100,7 +105,7 @@ struct GizmosContextShard {
     gfx::Window &window = _graphicsContext->getWindow();
     int2 outputSize = gfxContext.getMainOutputSize();
 
-    handleGizmoInputEvents(_graphicsContext->events);
+    handleGizmoInputEvents(_inputContext->events);
 
     float2 drawableScale = float2(window.getDrawableSize()) / float2(window.getSize());
 

@@ -16,6 +16,10 @@ using namespace shards;
 
 namespace gfx {
 
+Context &GraphicsContext::getContext() { return *context.get(); }
+Window &GraphicsContext::getWindow() { return *window.get(); }
+SDL_Window *GraphicsContext::getSdlWindow() { return getWindow().window; }
+
 struct RenderShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }

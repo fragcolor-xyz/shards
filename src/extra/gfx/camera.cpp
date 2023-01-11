@@ -4,9 +4,11 @@
 #include <gfx/math.hpp>
 #include <gfx/window.hpp>
 #include <gfx/fmt.hpp>
+#include "../inputs.hpp"
 #include "../gfx.hpp"
 
 using namespace shards;
+using namespace shards::Inputs;
 
 namespace gfx {
 
@@ -27,6 +29,7 @@ struct FreeCameraShard {
              PARAM_IMPL_FOR(_lookSpeed));
 
   RequiredGraphicsContext _graphicsContext;
+  RequiredInputContext _inputContext;
 
   // Mouse/Right stick rotation input and mouse X/Y movement (drag)
   struct PointerInputState {
@@ -77,7 +80,7 @@ struct FreeCameraShard {
     _inputState.pointer.prevPosition = _inputState.pointer.position;
     _inputState.mouseWheel = 0.0f;
 
-    for (auto &event : _graphicsContext->events) {
+    for (auto &event : _inputContext->events) {
       switch (event.type) {
       case SDL_KEYDOWN:
       case SDL_KEYUP:
@@ -212,10 +215,12 @@ struct FreeCameraShard {
   void cleanup() {
     PARAM_CLEANUP();
     _graphicsContext.cleanup();
+    _inputContext.cleanup();
   }
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     _graphicsContext.warmup(context);
+    _inputContext.warmup(context);
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -224,7 +229,7 @@ struct FreeCameraShard {
   }
 
   SHExposedTypesInfo requiredVariables() {
-    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo());
+    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), RequiredInputContext::getExposedTypeInfo());
     return e;
   }
 };
