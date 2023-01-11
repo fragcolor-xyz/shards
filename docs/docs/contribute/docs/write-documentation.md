@@ -35,9 +35,9 @@ For Shards API Documentation:
 
 For the other documentation pages:
 
-- `docs/docs/contribute`: Contains the pages for the "Contribute" category of the site
+- `/docs/docs/contribute`: Contains the pages for the "Contribute" category of the site
 
-- `docs/docs/learn`: Contains the pages for the "Learn" category of the site
+- `/docs/docs/learn`: Contains the pages for the "Learn" category of the site
 
 ## Previewing the Docs
 
@@ -85,7 +85,7 @@ You might have observed that the `/docs/docs/reference/shards` folder is conspic
 
 To generate the documentation for the Shards API:
 
-1. Launch your MinGW terminal
+1. Launch your MinGW terminal.
 
 2. Navigate to where your Shards repository is located using the command `cd $(cygpath -u '(X)')`, where (X) is the directory of your folder.
 
@@ -104,11 +104,11 @@ Once done, you will notice that the directory is now filled with folders and Mar
 
 ## Generating Log Files for Examples
 
-You might have noticed that the "Output" segment for your code examples is empty. This is due to how a `.log` file is required for each example to show as its output.
+Did you realize that the "Output" segments for your code examples are empty too? This is due to how a `.log` file is required for each example to show its output.
 
 To generate the `.log` files for your code examples:
 
-1. Launch your MinGW terminal
+1. Launch your MinGW terminal.
 
 2. Navigate to where your Shards repository is located using the command `cd $(cygpath -u '(X)')`, where (X) is the directory of your folder.
 
@@ -121,11 +121,15 @@ To generate the `.log` files for your code examples:
         ./run-samples.sh --release
 
 !!! warning "Segmentation fault"
-    If the error for "Segmentation fault" appears, run the following command before trying Step 3 again.
+    If the error for "Segmentation fault" appears, run the command below before attempting Step 3 again.
 
         export GFX_BACKEND=D3D12
 
-Once the script is done, you will notice new `.log` files within your "Samples" folder. These will be shown in your documentation as the "Output" of your code examples.
+When the script is done, you will notice new `.log` files within your "Samples" folder. These will be shown in your documentation as the "Output" of your code examples.
+
+![The results with the .edn.log file.](assets/editing-examples-log-md.png)
+
+![The log file will populate the "Output" segment.](assets/editing-examples-site-output.png)
 
 ## Updating the Shards API Docs
 
@@ -137,13 +141,13 @@ As you have seen from the segment on [navigating the docs](#navigating-the-docs)
 
 3. `/docs/docs/reference` folder
 
-Each segment will require a different approach for editing. The following are the steps required to work with each segment:
+Each segment will require a different approach for making changes. The following are the steps required to work with each segment:
 
 ### Details
 
 1. Navigate to the `/docs/details` folder.
 
-2. Search for the .md file with the shard's name.
+2. Search for the .md file with the shard's name. We will be using the `Msg` shard in this example.
 
     ![Finding the .md file for a shard's details.](assets/editing-details-directory.png)
 
@@ -204,7 +208,7 @@ Firstly, locate the struct of the shard you wish to make amendments to. For this
 
     ![The .cpp file exists in the "src/core/shards" folder.](assets/editing-ref-directory.png)
 
-2. Search for where the shards are being registered and check the struct of the shard. In this example, the `String.Join` shard has a struct named `Join`.
+2. Search for where the shards are being registered and check the struct of the shard. In this example, `String.Join` has a struct named `Join`.
 
     ![Check for the struct being registered to the shard.](assets/editing-ref-cpp-registershard.png)
 
@@ -246,5 +250,21 @@ Material for MkDocs allows you to add fancier stuff to your documentation, such 
 !!! note
 
     This is an admonition created with Material for MkDocs!
+
+Great job reaching the end of the tutorial! We hope this has been useful in helping you start your documentation writing endeavors.
+
+## Overview ##
+
+1. `/docs/docs/contribute`: "Contribute" pages
+
+2. `/docs/docs/learn`: "Learn" pages
+
+3. `/docs/docs/reference`: API "Reference" pages
+
+4. `/docs/details`: API Details
+
+5. `/docs/samples`: API Examples
+
+6. `/src/core/shards`: API Basic/Input/Output/Parameters Description
 
 --8<-- "includes/license.md"
