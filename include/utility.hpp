@@ -614,6 +614,11 @@ template <class SH_CORE> struct TTableVar : public SHVar {
     SH_CORE::cloneVar(*this, other);
   }
 
+  TTableVar(SHVar &&other) : SHVar() {
+    assert(other.valueType == SHType::Table);
+    std::swap(*this, *reinterpret_cast<TTableVar*>(&other));
+  }
+
   TTableVar &operator=(const TTableVar &other) {
     SH_CORE::cloneVar(*this, other);
     return *this;
@@ -706,7 +711,7 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
     value.valueType = SHType::None;
   }
 
-  void clear() { SH_CORE::seqResize(payload.seqValue, 0); }
+  void clear() { SH_CORE::seqResize(&payload.seqValue, 0); }
 
   template <typename T> T &get(int index) {
     static_assert(sizeof(T) == sizeof(SHVar), "Invalid T size, should be sizeof(SHVar)");
