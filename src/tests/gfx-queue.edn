@@ -53,7 +53,6 @@
     .queue-1 (GFX.ClearQueue)
     .drawable-0 (GFX.Draw :Queue .queue-0)
     .drawable-1 (GFX.Draw :Queue .queue-1)
-    .drawable-2 (GFX.Draw :Queue .non-existing-variable)
 
     (GFX.Render :Steps .render-steps :View .view))))
 
