@@ -19,6 +19,7 @@ set(extra_SOURCES
   gfx/texture.cpp
   gfx/view.cpp
   gfx/steps.cpp
+  vui/vui.cpp
   gui.cpp
   rust_interop.cpp
   gizmos/context.cpp
