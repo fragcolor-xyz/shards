@@ -16,12 +16,22 @@
 using namespace shards;
 
 namespace gfx {
+enum class BuiltinFeatureId { Transform, BaseColor, VertexColorFromNormal, Wireframe, Velocity };
+}
+
+ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::Transform, SHCCSTR("Add basic world/view/projection transform"));
+ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::BaseColor,
+          SHCCSTR("Add basic color from vertex color and (optional) color texture"));
+ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::VertexColorFromNormal, SHCCSTR("Outputs color from vertex color"));
+ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::Wireframe, SHCCSTR("Modifies the main color to visualize vertex edges"));
+ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::Velocity,
+          SHCCSTR("Outputs object velocity into the velocity global & output"));
+
+namespace gfx {
 using shards::Mat4;
 
 struct BuiltinFeatureShard {
-  enum class Id { Transform, BaseColor, VertexColorFromNormal, Wireframe, Velocity };
-
-  DECL_ENUM_INFO(Id, BuiltinFeatureId, 'feid');
+  DECL_ENUM_INFO(BuiltinFeatureId, BuiltinFeatureId, 'feid');
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
@@ -29,13 +39,13 @@ struct BuiltinFeatureShard {
   static inline Parameters params{{"Id", SHCCSTR("Builtin feature id."), {BuiltinFeatureIdEnumInfo::Type}}};
   static SHParametersInfo parameters() { return params; }
 
-  Id _id{};
+  BuiltinFeatureId _id{};
   FeaturePtr *_feature{};
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _id = Id(value.payload.enumValue);
+      _id = BuiltinFeatureId(value.payload.enumValue);
       break;
     }
   }
@@ -59,19 +69,19 @@ struct BuiltinFeatureShard {
   void warmup(SHContext *context) {
     _feature = Types::FeatureObjectVar.New();
     switch (_id) {
-    case Id::Transform:
+    case BuiltinFeatureId::Transform:
       *_feature = features::Transform::create();
       break;
-    case Id::BaseColor:
+    case BuiltinFeatureId::BaseColor:
       *_feature = features::BaseColor::create();
       break;
-    case Id::VertexColorFromNormal:
+    case BuiltinFeatureId::VertexColorFromNormal:
       *_feature = features::DebugColor::create("normal", ProgrammableGraphicsStage::Vertex);
       break;
-    case Id::Wireframe:
+    case BuiltinFeatureId::Wireframe:
       *_feature = features::Wireframe::create();
       break;
-    case Id::Velocity:
+    case BuiltinFeatureId::Velocity:
       *_feature = features::Velocity::create();
       break;
     }

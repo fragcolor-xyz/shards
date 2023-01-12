@@ -73,4 +73,8 @@ When a value is prefixed with an `&ampersand`, this means that a variable / [Con
 
 See the [Types](./types) page for more information about types.
 
+When placed within `{ curly brackets }`, this means that a [Table](./types/#table) of those types as values is accepted.
+
+When a value is prefixed with an `&ampersand`, this means that a variable / [ContextVar](./types/#contextvar) of that type is accepted.
+
 --8<-- "includes/license.md"

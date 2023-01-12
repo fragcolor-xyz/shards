@@ -67,7 +67,7 @@ For example, **Any** as the allowed data type for input and `:Value` parameter o
 
 Type **Sequence** is a collection of values that can be accessed directly via indexes (since items are indexed by contiguous integers).
 
-It is also called a vector or an array. A **Sequence**'s items are accessible by index. Example of an **Sequence** type would be: `[43 6 1]`.
+It is also called a vector or an array. A **Sequence**'s items are accessible by index. Example of a **Sequence** type would be: `[43 6 1]`.
 
 ## Audio
 
