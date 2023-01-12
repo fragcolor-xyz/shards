@@ -193,7 +193,7 @@ impl Shard for ScrollArea {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       egui::ScrollArea::new([
         self.horizontal.get().try_into()?,
         self.vertical.get().try_into()?,

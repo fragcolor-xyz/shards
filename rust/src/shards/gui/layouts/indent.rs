@@ -158,7 +158,7 @@ impl Shard for Indent {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.indent(EguiId::new(self, 0), |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })

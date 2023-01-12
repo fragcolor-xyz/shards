@@ -222,7 +222,7 @@ impl Shard for CSVWrite {
       .from_writer(Vec::new());
     let input: Seq = input.try_into()?;
     for row in input.iter() {
-      let row: Seq = row.try_into()?;
+      let row: Seq = row.as_ref().try_into()?;
       let mut record = Vec::new();
       for field in row.iter() {
         let field: &str = field.as_ref().try_into()?;

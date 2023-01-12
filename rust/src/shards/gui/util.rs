@@ -103,7 +103,7 @@ pub(crate) fn get_current_context<'a>(
 }
 
 pub(crate) fn get_current_parent<'a>(
-  parents_stack_var: Var,
+  parents_stack_var: &Var,
 ) -> Result<Option<&'a mut egui::Ui>, &'a str> {
   let seq: Seq = parents_stack_var.try_into()?;
   if !seq.is_empty() {

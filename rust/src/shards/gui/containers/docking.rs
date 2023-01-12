@@ -182,7 +182,7 @@ impl Shard for Tab {
       return Ok(false.into());
     }
 
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)?;
 
       // Always passthrough the input
@@ -400,7 +400,7 @@ impl Shard for DockArea {
 
     let dock = egui_dock::DockArea::new(&mut self.tabs).style(style);
 
-    let parents_stack_var = *self.parents.get();
+    let parents_stack_var = self.parents.get();
     let mut viewer = MyTabViewer::new(context, input);
     viewer.warmup();
     if let Some(ui) = util::get_current_parent(parents_stack_var)? {

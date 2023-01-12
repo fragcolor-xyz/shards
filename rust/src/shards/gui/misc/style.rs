@@ -121,7 +121,7 @@ impl Shard for Style {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let mut style = if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    let mut style = if let Some(ui) = util::get_current_parent(self.parents.get())? {
       (**ui.style()).clone()
     } else {
       let gui_ctx = util::get_current_context(&self.instance)?;
@@ -431,7 +431,7 @@ impl Shard for Style {
       style.explanation_tooltips
     );
 
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.set_style(style);
     } else {
       let gui_ctx = util::get_current_context(&self.instance)?;

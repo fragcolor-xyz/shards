@@ -3339,7 +3339,7 @@ impl ShardsVar {
 
     self.param = value.into(); // clone it
 
-    if let Ok(s) = Seq::try_from(self.param.0) {
+    if let Ok(s) = Seq::try_from(self.param.0.as_ref()) {
       for shard in s.iter() {
         self.shards.push(shard.try_into()?);
       }
@@ -3987,24 +3987,6 @@ impl TryFrom<&Var> for Seq {
 
   #[inline(always)]
   fn try_from(v: &Var) -> Result<Self, Self::Error> {
-    if v.valueType != SHType_Seq {
-      Err("Expected Seq variable, but casting failed.")
-    } else {
-      unsafe {
-        Ok(Seq {
-          s: v.payload.__bindgen_anon_1.seqValue,
-          owned: false,
-        })
-      }
-    }
-  }
-}
-
-impl TryFrom<Var> for Seq {
-  type Error = &'static str;
-
-  #[inline(always)]
-  fn try_from(v: Var) -> Result<Self, Self::Error> {
     if v.valueType != SHType_Seq {
       Err("Expected Seq variable, but casting failed.")
     } else {

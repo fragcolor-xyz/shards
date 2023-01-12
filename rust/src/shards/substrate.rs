@@ -537,7 +537,7 @@ impl Shard for SHEncode {
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let values: Seq = input.try_into()?;
-    let hints: Seq = self.hints.0.try_into()?;
+    let hints: Seq = self.hints.0.as_ref().try_into()?;
 
     if values.len() != hints.len() {
       return Err("Invalid input length");
@@ -628,8 +628,8 @@ impl Shard for SHDecode {
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let bytes: &[u8] = input.try_into()?;
-    let types: Seq = self.types.0.try_into()?;
-    let hints: Seq = self.hints.0.try_into()?;
+    let types: Seq = self.types.0.as_ref().try_into()?;
+    let hints: Seq = self.hints.0.as_ref().try_into()?;
     let mut offset = 0;
     self.output.clear();
     for (t, h) in types.iter().zip(hints.iter()) {

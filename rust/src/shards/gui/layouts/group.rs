@@ -155,7 +155,7 @@ impl Shard for Group {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.group(|ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })

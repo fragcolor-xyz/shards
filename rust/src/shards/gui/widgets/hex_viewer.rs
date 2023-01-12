@@ -132,7 +132,7 @@ impl Shard for HexViewer {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     use egui_memory_editor::MemoryEditor;
 
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       let mem = unsafe {
         let (data, len) = match input.valueType {
           SHType_Bytes => (

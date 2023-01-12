@@ -196,7 +196,7 @@ impl Shard for GetProperty {
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       match self.get_ui_property()? {
         UIProperty::RemainingSpace => {
           let target_size = ui.available_size();

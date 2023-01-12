@@ -209,7 +209,7 @@ impl Shard for Grid {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       let mut grid = egui::Grid::new(EguiId::new(self, 0));
 
       let striped = self.striped.get();
@@ -320,7 +320,7 @@ impl Shard for NextRow {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.end_row();
 
       // Always passthrough the input
