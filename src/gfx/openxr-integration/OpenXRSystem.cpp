@@ -4,12 +4,14 @@
 const OpenXRSystem::HeadsetType OpenXRSystem::defaultHeadset = {};
 
 
-
+#define LOG_T
 
 
 //[t] checkXRDeviceReady can be called at any time to check if a certain headset is connected.
 bool OpenXRSystem::checkXRDeviceReady(HeadsetType heasetType = defaultHeadset){
+  #ifdef LOG_T
   spdlog::info("[log][t] OpenXRSystem::checkXRDeviceReady: xr eye information: heasetType.viewType: {0}, heasetType.environmentBlendMode: {1}, heasetType.xrFormFactor {2}",heasetType.viewType, heasetType.environmentBlendMode, heasetType.xrFormFactor);
+  #endif
   return context_xr->checkXRDeviceReady(heasetType.viewType, 
                                     heasetType.environmentBlendMode, 
                                     heasetType.xrFormFactor);
@@ -20,8 +22,9 @@ bool OpenXRSystem::checkXRDeviceReady(HeadsetType heasetType = defaultHeadset){
 //[t] But we're using this weird wgpuVulkanShared loader thingy that requires to be set up before calling any vulkan functions from the xr code...
 int OpenXRSystem::InitOpenXR(bool isMultipass, HeadsetType headsetType)
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] OpenXRSystem::InitOpenXR...");
-
+  #endif
   //context_xr = new Context_XR(wgpuUVulkanShared); 
   context_xr = std::make_shared<Context_XR>(); 
   if (!context_xr->isValid())
@@ -38,7 +41,6 @@ int OpenXRSystem::InitOpenXR(bool isMultipass, HeadsetType headsetType)
   //context_xr->getVulkanExtensionsFromOpenXRInstance();
   
   
-
   //[t] Create Mirror View in / with the gfx context
   //[t] from context.cpp?
 
@@ -49,7 +51,9 @@ int OpenXRSystem::InitOpenXR(bool isMultipass, HeadsetType headsetType)
   //          for queue, surface, to know if we can render & present
   //    So if context.cpp Context::deviceObtained() passed.
 
+  #ifdef LOG_T
   spdlog::info("[log][t] OpenXRSystem::InitOpenXR... End.");
+  #endif
   return EXIT_SUCCESS;
 }
 
@@ -86,7 +90,9 @@ bool OpenXRSystem::CheckXrGraphicsRequirementsVulkanKHR(){
 //std::shared_ptr<gfx::Headset> OpenXRSystem::createHeadset(bool isMultipass, std::shared_ptr<gfx::WGPUVulkanShared> gfxContext)
 std::shared_ptr<gfx::IContextMainOutput> OpenXRSystem::createHeadset(std::shared_ptr<gfx::WGPUVulkanShared> wgpuUVulkanShared, bool isMultipass)
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] OpenXRSystem::createHeadset(wgpuUVulkanShared, bool isMultipass[{}])...",isMultipass);
+  #endif
   this->isMultipass = isMultipass;
 
   if(context_xr == nullptr)
@@ -104,7 +110,9 @@ std::shared_ptr<gfx::IContextMainOutput> OpenXRSystem::createHeadset(std::shared
     return nullptr;
   }
 
+  #ifdef LOG_T
   spdlog::info("[log][t] OpenXRSystem::createHeadset(). End.");
+  #endif
   return headset;
 }
 
@@ -227,7 +235,9 @@ int OpenXRSystem::somethingSomethingMakeFrames(){
 }*/
 
 OpenXRSystem::~OpenXRSystem(){
+  #ifdef LOG_T
   spdlog::info("[log][t] OpenXRSystem::~OpenXRSystem()");
+  #endif
 }
 
 

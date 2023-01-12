@@ -30,264 +30,10 @@
 
 //#include "openxr-integration/Headset.h"
 
+#define LOG_T
+
 namespace gfx {
   
-  
-  /*
-  //[t] TODO: should move this out of this file. This struct is JUST for Mirror View. 
-  // [t] This file should be for gfx vk/wgpu context backend shared by the xr headset and also mirror view.
-  // [t] Although the xr headset itself also needs swapchains and view textures, so this was very confusing because it's similar but also very different from the xr boilerplates
-  struct OpenXRMirrorView:public IContextMainOutput
-  {
-    Window &window;
-
-    std::shared_ptr<WGPUVulkanShared> wgpuVulkanShared;//[t] created by ContextXrGfxBackend, passed as param to the construtor here
-
-    // Temporary mirror surface on the window
-    vk::SurfaceKHR mirrorSurface;
-    vk::SwapchainKHR mirrorSwapchain;
-    std::vector<vk::Image> mirrorSwapchainImages;
-    std::vector<WgpuHandle<WGPUTextureView>> mirrorTextureViews;
-    
-    vk::Fence fence;
-
-    uint32_t currentImageIndex{};
-    int2 currentSize;
-    WGPUTextureFormat currentFormat = WGPUTextureFormat_Undefined;
-    WGPUTextureView currentView{};  
-
-    uint32_t frame = 0;
-    uint32_t debugs = 3;             
-
-    OpenXRMirrorView(std::shared_ptr<WGPUVulkanShared> &wgpuVulkanShared, Window &window)
-        : window(window), wgpuVulkanShared(wgpuVulkanShared) {
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::OpenXRMirrorView(std::shared_ptr<WGPUVulkanShared> &wgpuVulkanShared, Window &window).");
-      createMirrorSurface(); 
-      createMirrorSwapchain();
-
-      fence = wgpuVulkanShared->vkDevice.createFence(vk::FenceCreateInfo(), nullptr, wgpuVulkanShared->vkLoader);
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::OpenXRMirrorView: End.");
-    }
-
-    void createMirrorSwapchain(VkSwapchainKHR oldSwapchain = nullptr) {
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSwapchain(VkSwapchainKHR oldSwapchain = nullptr).");
-      assert(mirrorSurface);
-
-      auto &vkLoader = wgpuVulkanShared->vkLoader;
-
-      currentSize = window.getDrawableSize();
-
-      auto surfaceFormats = wgpuVulkanShared->vkPhysicalDevice.getSurfaceFormatsKHR(mirrorSurface, vkLoader);
-      std::optional<vk::SurfaceFormatKHR> selectedFormatOption;
-      for (auto &format : surfaceFormats) {
-        if (format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
-          switch (format.format) {
-          case vk::Format::eB8G8R8A8Srgb:
-            currentFormat = WGPUTextureFormat_BGRA8UnormSrgb;
-            selectedFormatOption = format;
-            break;
-          default:
-            continue;
-          }
-        }
-        if (selectedFormatOption)
-          break;
-      }
-
-      if (!selectedFormatOption){
-        spdlog::error("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSwapchain: error at No supported surface formats found.");
-        throw std::runtime_error("No supported surface formats found");
-      }
-      auto selectedFormat = selectedFormatOption.value();
-
-      // Check src\gfx\rust\wgpu\wgpu-hal\src\vulkan\device.rs for reference
-      vk::SwapchainCreateInfoKHR scInfo;
-      scInfo.setSurface(mirrorSurface);
-      scInfo.setMinImageCount(3);
-      scInfo.setImageFormat(selectedFormat.format);
-      scInfo.setImageColorSpace(selectedFormat.colorSpace);
-      scInfo.setImageExtent(vk::Extent2D(currentSize.x, currentSize.y));
-      scInfo.setImageArrayLayers(1);
-      scInfo.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst);
-      scInfo.setImageSharingMode(vk::SharingMode::eExclusive);
-      scInfo.setPreTransform(vk::SurfaceTransformFlagBitsKHR::eIdentity);
-      scInfo.setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque);
-      scInfo.setPresentMode(vk::PresentModeKHR::eImmediate);
-      scInfo.setClipped(true);
-      scInfo.setOldSwapchain(oldSwapchain);
-      // [t] ReCreate Swapchain
-      mirrorSwapchain = wgpuVulkanShared->vkDevice.createSwapchainKHR(scInfo, nullptr, vkLoader);
-
-      if (oldSwapchain)
-        wgpuVulkanShared->vkDevice.destroySwapchainKHR(oldSwapchain, nullptr, vkLoader);
-
-      if (!mirrorSwapchain){
-        spdlog::error("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSwapchain: error at Failed to create swapchain.");
-        throw std::runtime_error("Failed to create swapchain");
-      }
-
-      // [t] Retrieve the new swapchain images
-      mirrorSwapchainImages = wgpuVulkanShared->vkDevice.getSwapchainImagesKHR(mirrorSwapchain, vkLoader); 
-
-      mirrorTextureViews.clear();
-      for (auto &swapchainImage : mirrorSwapchainImages) {
-        WGPUTextureDescriptor textureDesc{
-            .usage = WGPUTextureUsage::WGPUTextureUsage_CopyDst | WGPUTextureUsage::WGPUTextureUsage_RenderAttachment,
-            .dimension = WGPUTextureDimension_2D,
-            .size = WGPUExtent3D{.width = uint32_t(currentSize.x), .height = uint32_t(currentSize.y), .depthOrArrayLayers = 1},
-            .format = currentFormat,
-            .mipLevelCount = 1,
-            .sampleCount = 1,
-            .viewFormatCount = 0,
-        };
-
-        WGPUTextureViewDescriptor viewDesc{
-            .format = textureDesc.format,
-            .dimension = WGPUTextureViewDimension_2D,
-            .baseMipLevel = 0,
-            .mipLevelCount = 1,
-            .baseArrayLayer = 0,
-            .arrayLayerCount = 1,
-            .aspect = WGPUTextureAspect_All,
-        };
-
-        WGPUExternalTextureDescriptorVK extDescVk{
-            .chain = {.sType = WGPUSType(WGPUNativeSTypeEx_ExternalTextureDescriptorVK)},
-            .image = swapchainImage,
-        };
-        WGPUExternalTextureDescriptor extDesc{
-            .nextInChain = &extDescVk.chain,
-        }; 
-    
-        WGPUTextureView textureView = wgpuCreateExternalTextureView(wgpuVulkanShared->wgpuDevice, &textureDesc, &viewDesc, &extDesc);
-        assert(textureView);  
-  
-        mirrorTextureViews.emplace_back(toWgpuHandle(textureView));
-      }
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSwapchain: End.");
-    }
-
-
-    void createMirrorSurface() {
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface()...");
-      #if defined(VK_USE_PLATFORM_WIN32_KHR)
-      //vk::Win32SurfaceCreateInfoKHR surfInfo;
-      vk::Win32SurfaceCreateInfoKHR surfInfo;
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: trying: surfInfo.setHwnd(HWND(window.getNativeWindowHandle()));");
-      surfInfo.setHwnd(HWND(window.getNativeWindowHandle()));
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: passed window.getNativeWindowHandle()");
-      mirrorSurface = wgpuVulkanShared->vkInstance.createWin32SurfaceKHR(surfInfo, nullptr, wgpuVulkanShared->vkLoader);
-      if (!mirrorSurface)
-        spdlog::error("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: error at mirrorSurface = wgpuVulkanShared->instance.createWin32SurfaceKHR(surfInfo, nullptr, wgpuVulkanShared->loader);");
-        throw std::runtime_error("Failed to create surface");
-      #else
-      spdlog::error("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: error at `#if VK_USE_PLATFORM_WIN32_KHR`, went into else. \"Platform surface not implemented\".");
-      static_assert("Platform surface not implemented");
-      #endif
-
-      auto result =
-          wgpuVulkanShared->vkPhysicalDevice.getSurfaceSupportKHR(wgpuVulkanShared->queueFamilyIndex, mirrorSurface, wgpuVulkanShared->vkLoader);
-      if (!result){
-        spdlog::error("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: error at Unsupported surface.");
-        throw std::runtime_error("Unsupported surface");
-      }
-      spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::createMirrorSurface: End.");
-    }
-
-    const int2 &getSize() const override { return currentSize; }
-
-    WGPUTextureFormat getFormat() const override { return currentFormat; }
-
-    std::vector<WGPUTextureView> requestFrame() override {
-      if(frame<debugs){
-        frame++;
-        spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::requestFrame().");
-      }
-      assert(!currentView); 
-      std::vector<WGPUTextureView> views;
-      vk::ResultValue<uint32_t> result =
-          wgpuVulkanShared->vkDevice.acquireNextImageKHR(mirrorSwapchain, UINT64_MAX, {}, fence, wgpuVulkanShared->vkLoader);
-      if (result.result == vk::Result::eSuccess) {
-        vk::Result waitResult = wgpuVulkanShared->vkDevice.waitForFences(fence, true, UINT64_MAX, wgpuVulkanShared->vkLoader);
-        assert(waitResult == vk::Result::eSuccess);
-
-        wgpuVulkanShared->vkDevice.resetFences(fence, wgpuVulkanShared->vkLoader);
-
-        currentImageIndex = result.value;  
-        currentView = mirrorTextureViews[currentImageIndex];
-        views = {currentView};
-        if(frame<debugs){
-        
-          spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::requestFrame: End.");
-        }
-        return views;
-      } else {
-        if(frame<debugs){
-         
-          spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::requestFrame: End.");
-        }
-        return views;
-      }
-    }
-
-    std::vector<IContextCurrentFramePayload> getCurrentFrame() const override {
-      
-      //if(frame<debugs){
-      //  
-      //  spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::getCurrentFrame().");
-      //}
-      assert(currentView);
-      std::vector<gfx::IContextCurrentFramePayload> payload;
-      size_t mirrorViews = 1;
-      payload.resize(mirrorViews);
-      for(size_t mv = 0; mv<mirrorViews; mv++){
-        payload.at(mv).wgpuTextureView = currentView;
-      }
-      //std::vector<IContextCurrentFramePayload> views = {currentView};
-      
-      //if(frame<debugs){
-      //  
-      //  spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::getCurrentFrame; End.");
-      //}
-      return payload;
-    }
-
-
-    void present() override {
-      if(frame<debugs){
-        
-        spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::present().");
-      }
-      WGPUExternalPresentVK wgpuPresent{};
-      wgpuPrepareExternalPresentVK(wgpuVulkanShared->wgpuQueue, &wgpuPresent);
-
-      vk::Semaphore waitSemaphore = wgpuPresent.waitSemaphore ? VkSemaphore(wgpuPresent.waitSemaphore) : nullptr;
-
-      vk::PresentInfoKHR presentInfo;
-      presentInfo.setSwapchainCount(1);
-      presentInfo.setPSwapchains(&mirrorSwapchain);
-      presentInfo.setPImageIndices(&currentImageIndex);
-      presentInfo.setPWaitSemaphores(&waitSemaphore);
-      presentInfo.setWaitSemaphoreCount(1);
-
-      // presentInfo.setWaitSemaphores(const vk::ArrayProxyNoTemporaries<const vk::Semaphore> &waitSemaphores_)
-      vk::Result result = wgpuVulkanShared->vkQueue.presentKHR(&presentInfo, wgpuVulkanShared->vkLoader);
-      assert(result == vk::Result::eSuccess);
-
-      // Increment image
-      currentView = nullptr;
-      if(frame<debugs){
-        
-        spdlog::info("[log][t] IContextMainOutput::ContextXrGfxBackend::present: end.");
-      }
-    }
-  };*/
-
-
-
-
-
-
   //[t] This really confused me because it's kinda only made for mirror views
   //[t] but it needs t be general purpose / shared between headset and mirror view,
   //[t] but it's different from the boilerplates I studied,
@@ -311,9 +57,9 @@ namespace gfx {
     //[t] Some comments would have REALLY helped here explaining a bit what the ideas are.
     WGPUInstance createInstance() override 
     { 
+      #ifdef LOG_T
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createInstance().");
-      
-      
+      #endif
       //[t] xr system 
       {
         OpenXRSystem& openXRSystem = OpenXRSystem::getInstance();
@@ -386,13 +132,17 @@ namespace gfx {
         openXRSystem.GetVulkanExtensionsFromOpenXRInstance();
       }
 
+      #ifdef LOG_T
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createInstance: End.");
+      #endif
       return wgpuVulkanShared->wgpuInstance;
     }
 
     WGPUSurface createSurface(Window &window, void *overrideNativeWindowHandle) override
     {
+      #ifdef LOG_T
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createSurface().");
+      #endif
       void *surfaceHandle = overrideNativeWindowHandle;
 
     #if GFX_APPLE
@@ -434,7 +184,9 @@ namespace gfx {
     }
 
     void deviceCreated(WGPUDevice inDevice) {
+      #ifdef LOG_T
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::deviceCreated().");
+      #endif
       wgpuVulkanShared->wgpuDevice = inDevice;
       wgpuVulkanShared->wgpuQueue = wgpuDeviceGetQueue(wgpuVulkanShared->wgpuDevice);
 
@@ -460,11 +212,15 @@ namespace gfx {
       wgpuVulkanShared->queueIndex = propsVk.queueIndex;
       wgpuVulkanShared->queueFamilyIndex = propsVk.queueFamilyIndex;
 
+      #ifdef LOG_T
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::deviceCreated: VkDevice, vkQueue created. End.");
+      #endif
     }
 
     std::shared_ptr<DeviceRequest> requestDevice() override {
+      #ifdef LOG_T
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::requestDevice().");
+      #endif
       std::vector<const char *> requiredExtensions = {};
 
       //[t] xr system 
@@ -494,8 +250,9 @@ namespace gfx {
       };
       
       std::shared_ptr<DeviceRequest> devReq = DeviceRequest::create(wgpuVulkanShared->wgpuAdapter, deviceDesc, DeviceRequest::Callbacks{cb});
+      #ifdef LOG_T
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::requestDevice() returning DeviceRequest.");
-
+      #endif
       
 
       return devReq;
@@ -509,7 +266,9 @@ namespace gfx {
     //[t] TODO: figure out how to modify this to create not only the OpenXRMirrorView but also (link to) the headset views?
     //[t] NODE: this is tied to createSurface( as well
     std::vector<std::shared_ptr<IContextMainOutput>> createMainOutput(Window &window) override { 
+      #ifdef LOG_T
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createMainOutput(): Creating Headset and mirrorView.");
+      #endif
       // return std::make_shared<ContextWindowOutput>(wgpuInstance, wgpuAdapter, wgpuDevice, wgpuSurface, window);
       // return std::make_shared<OpenXRMirrorView>(wgpuInstance, wgpuAdapter, wgpuDevice, window);
       //return std::make_shared<OpenXRMirrorView>(wgpuVulkanShared.wgpuInstance, wgpuVulkanShared.wgpuAdapter, wgpuVulkanShared.wgpuDevice, window);
@@ -521,15 +280,17 @@ namespace gfx {
       std::vector<std::shared_ptr<IContextMainOutput>> mainOutputs = 
       { 
         openXRSystem.createHeadset(wgpuVulkanShared, true)
-        //[t] TODO: UNCOMMENT FOR MIRROR VIEW / Window:
-        ,std::make_shared<ContextWindowOutput>(
-                                              wgpuVulkanShared->wgpuInstance, 
-                                              wgpuVulkanShared->wgpuAdapter, 
-                                              wgpuVulkanShared->wgpuDevice, 
-                                              wgpuSurface, 
-                                              window)
+        //[t] UNCOMMENT FOR MIRROR VIEW / Window:
+        //,std::make_shared<ContextWindowOutput>(
+        //                                      wgpuVulkanShared->wgpuInstance, 
+        //                                      wgpuVulkanShared->wgpuAdapter, 
+        //                                      wgpuVulkanShared->wgpuDevice, 
+        //                                      wgpuSurface, 
+        //                                      window)
       };
+      #ifdef LOG_T
       spdlog::info("[log][t] IContextBackend::ContextXrGfxBackend::createMainOutput: returning mainOutputs: Headset and mirrorView: {}.",mainOutputs.size());
+      #endif
       return mainOutputs;
     } 
 

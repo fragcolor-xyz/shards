@@ -5,6 +5,7 @@
 
 #include <sstream>
 
+#define LOG_T
 #ifdef DEBUG_XR
   #include <array>
   #include <iostream>
@@ -14,7 +15,9 @@
                        
 Context_XR::Context_XR()
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::Context_XR: Creating Context...");
+  #endif
   //wgpuUVulkanShared = _wgpuUVulkanShared;
 
   // Get all supported OpenXR instance extensions
@@ -46,7 +49,9 @@ Context_XR::Context_XR()
       spdlog::error("[log][t] Context_XR::Context_XR: error at xrEnumerateInstanceExtensionProperties(nullptr, instanceExtensionCount, &instanceExtensionCount, supportedOpenXRInstanceExtensions.data())");
       return;
     }
+    #ifdef LOG_T
     spdlog::info("[log][t] Context_XR::Context_XR: Context created. vaid: {}", valid);
+    #endif
   }
 
   // Create an OpenXR instance
@@ -429,8 +434,9 @@ bool Context_XR::checkXRDeviceReady(
 
 void Context_XR::getVulkanExtensionsFromOpenXRInstance()
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance()...");
-
+  #endif
   std::vector<const char*> vulkanInstanceExtensions;
   
   //[t] The folloing are extension checks for vulkan instance from system and from openxr
@@ -524,17 +530,20 @@ void Context_XR::getVulkanExtensionsFromOpenXRInstance()
       return;
     }
   }
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::getVulkanExtensionsFromOpenXRInstance() End. valid == {0};",valid);
+  #endif
 }
 
 Context_XR::~Context_XR()
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::~Context_XR();");
-
+  #endif
   // Clean up OpenXR
-#ifdef DEBUG_XR
+  #ifdef DEBUG_XR
   xrDestroyDebugUtilsMessengerEXT(xrDebugUtilsMessenger);
-#endif
+  #endif
 
   xrDestroyInstance(xrInstance);
 
@@ -542,20 +551,21 @@ Context_XR::~Context_XR()
   // Clean up Vulkan
   //vkDestroyDevice(vkDevice, nullptr);
 
-#ifdef DEBUG_XR
+  #ifdef DEBUG_XR
   if (wgpuUVulkanShared->vkInstance)
   {
     vkDestroyDebugUtilsMessengerEXT(wgpuUVulkanShared->vkInstance, vkDebugUtilsMessenger, nullptr);
   }
-#endif
+  #endif
 
   //vkDestroyInstance(wgpuUVulkanShared->vkInstance, nullptr);
   
 }
 
 bool Context_XR::CreatePhysicalDevice(){
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::CreatePhysicalDevice()");
-
+  #endif
   // Retrieve the vulkan physical device from OpenXR
   XrResult result = xrGetVulkanGraphicsDeviceKHR(xrInstance, systemId, wgpuUVulkanShared->vkInstance, &physicalDevice); 
   if (XR_FAILED(result)) 
@@ -566,13 +576,16 @@ bool Context_XR::CreatePhysicalDevice(){
   }
 
   wgpuUVulkanShared->vkPhysicalDevice = physicalDevice;
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::CreatePhysicalDevice: end.");
+  #endif
   return true;
 }
 
 std::vector<const char*> Context_XR::GetVulkanXrExtensions(){
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::GetVulkanXrExtensions()");
+  #endif
   // Get the required Vulkan device extensions from OpenXR
   std::vector<const char*> vulkanDeviceExtensions;
   {
@@ -624,8 +637,9 @@ std::vector<const char*> Context_XR::GetVulkanXrExtensions(){
       }
     }
   }*/
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::GetVulkanXrExtensions: end. Returning vulkanDeviceExtensions.");
+  #endif
   return vulkanDeviceExtensions;
 }
 
@@ -925,7 +939,9 @@ bool Context_XR::createDevice(bool isMultipass)//VkSurfaceKHR mirrorSurface)//mi
 
 void Context_XR::sync() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::sync()");
+  #endif
   //vkDeviceWaitIdle(vkDevice);
   //wgpuUVulkanShared->vkDevice.waitIdle(wgpuUVulkanShared->vkDevice, wgpuUVulkanShared->vkLoader);
   wgpuUVulkanShared->vkDevice.waitIdle(wgpuUVulkanShared->vkLoader);
@@ -933,13 +949,17 @@ void Context_XR::sync() const
 
 bool Context_XR::isValid() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::isValid() valid[{0}] created[{1}]", valid, created);
+  #endif
   return valid && created;
 }
 
 XrViewConfigurationType Context_XR::getXrViewType() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::getXrViewType(): {}", viewType);
+  #endif
   return viewType;
 }
 
@@ -951,42 +971,56 @@ XrInstance Context_XR::getXrInstance() const
 
 XrSystemId Context_XR::getXrSystemId() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::getXrSystemId(): {}", systemId);
+  #endif
   return systemId;
 }
 
 VkInstance Context_XR::getVkInstance() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::getVkInstance()");
+  #endif
   return wgpuUVulkanShared->vkInstance;
 }
 
 VkPhysicalDevice Context_XR::getVkPhysicalDevice() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::getVkPhysicalDevice()");
+  #endif
   return physicalDevice;
 }
 
 uint32_t Context_XR::getVkDrawQueueFamilyIndex() const
 {
+  #ifdef LOG_T
   spdlog::info("[t] Context_XR::getVkDrawQueueFamilyIndex()");
+  #endif
   return drawQueueFamilyIndex;
 }
 
 VkDevice Context_XR::getVkDevice() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::getVkDevice()");
+  #endif
   return vkDevice;
 }
 
 VkQueue Context_XR::getVkDrawQueue() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::getVkDrawQueue()");
+  #endif
   return drawQueue;
 }
 
 VkQueue Context_XR::getVkPresentQueue() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context_XR::getVkPresentQueue()");
+  #endif
   return presentQueue;
 }

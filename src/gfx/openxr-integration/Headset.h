@@ -22,7 +22,7 @@
 
 #include "RenderTarget.h"
 
-
+#define LOG_T
 
 class RenderTarget;
 
@@ -62,8 +62,11 @@ public:
   RenderTarget* getRenderTarget(size_t swapchainImageIndex) const;
 
 private:
+  #ifdef LOG_T
   uint32_t frame = 0; 
-  uint32_t debugs = 3;    
+  uint32_t debugs = 3;   
+  #endif
+  bool isMultipass = false; 
 
   bool valid = true;
   bool exitRequested = false;

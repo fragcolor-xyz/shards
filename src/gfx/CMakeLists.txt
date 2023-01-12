@@ -45,7 +45,7 @@ add_library(gfx
   openxr-integration/shaders/Basic.vert
   openxr-integration/shaders/Cube.frag
   openxr-integration/shaders/Grid.frag
-  
+  openxr-integration/Input_XR.hpp
 )
 
 target_compile_features(gfx PUBLIC cxx_std_20)

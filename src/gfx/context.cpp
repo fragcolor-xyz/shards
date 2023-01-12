@@ -26,6 +26,8 @@
 extern "C" void gfxTracyInit();
 #endif
 
+#define LOG_T
+
 namespace gfx {
 static void gfxTracyInitOnce() {
 #ifdef TRACY_ENABLE
@@ -154,12 +156,16 @@ bool Context::beginFrame() {
         //[t] check if all the textures exist
         for(size_t a=0; a< textureViewArr.size(); a++){
           if(!textureViewArr.at(a)){
+            #ifdef LOG_T
             spdlog::info("[[[[[[[[[[[[[[[[[[log][t] Context::beginFrame(): check if all the textures exist: mainOutput.size(): {}; mainOutput.at(i: {})->requestFrame(); textureViewArr.size(): {}; textureViewArr.at(a: {}) == false; so break;", mainOutput.size(), i, textureViewArr.size(), a);
+            #endif
             internalsNull = true;
             break;
           }
           else{
+            #ifdef LOG_T
             spdlog::info("[[[[[[[[[[[[[[[[[[log][t] Context::beginFrame(): check if all the textures exist: mainOutput.size(): {}; mainOutput.at(i: {})->requestFrame(); textureViewArr.size(): {}; textureViewArr.at(a: {}) == true", mainOutput.size(), i, textureViewArr.size(), a);
+            #endif
             internalsNull = false;
           }
         }
@@ -360,8 +366,9 @@ void Context::releaseAdapter() {
 }
 
 void Context::initCommon() {
+  #ifdef LOG_T
   spdlog::info("[log][t] Context::initCommon()");
-
+  #endif
   gfxTracyInitOnce();
 
   ZoneScoped;
@@ -403,14 +410,18 @@ void Context::initCommon() {
   }
   #endif
   
+  #ifdef LOG_T
   spdlog::info("[log][t] Context::initCommon: Creating backend: ContextXrGfxBackend.");
+  #endif
   //[t] Context_XR.cpp Context_XR and context_xr_gfx.cpp ContextXrGfxBackend, are both used by the headset.cpp, to create an openxr instance and openxr swapchains.
 
   backend = std::make_shared<ContextXrGfxBackend>();   
   wgpuInstance = backend->createInstance(); 
   
   
+  #ifdef LOG_T
   spdlog::info("[log][t] Context::initCommon: Creating window/surface.");
+  #endif
   //[t] create mirror view with the context_xr_gfx.cpp
   //[t] and check if MirrorView was successful at CreateMirrorSurface()
   //[t] Setup surface
@@ -421,7 +432,9 @@ void Context::initCommon() {
   
   requestDevice(); 
   //openXRSystem.createHeadset() moved into ContextXrGfxBackend's createMainOutput()
+  #ifdef LOG_T
   spdlog::info("[log][t] Context::initCommon: End.");
+  #endif
 }
 
 

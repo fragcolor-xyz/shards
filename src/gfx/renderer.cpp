@@ -33,6 +33,8 @@
 
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
+#define LOG_T
+
 using namespace gfx::detail;
 
 namespace gfx {
@@ -118,13 +120,16 @@ struct RendererImpl final : public ContextData {
   void updateMainOutputFromContext() {
     std::vector<std::weak_ptr<IContextMainOutput>> contextMainOutputArr = context.getMainOutput(); //[t] can have count: headset (with 2 texture views) + window (1 tex v)
     mainOutput.resize(contextMainOutputArr.size());
+    #ifdef LOG_T
     spdlog::info("[[[[[[[[[[[log][t] renderer.cpp::updateMainOutputFromContext(): mainOutput and contextMainOutputArr .size(): {}",mainOutput.size());
+    #endif
     for(size_t i=0; i<contextMainOutputArr.size(); i++)
     {
       std::shared_ptr<IContextMainOutput> contextMainOutput = contextMainOutputArr.at(i).lock();
       std::vector<IContextCurrentFramePayload> contextMainOutputTextureViewPayload = contextMainOutput->getCurrentFrame();
+      #ifdef LOG_T
       spdlog::info("[[[[[[[[[[[log][t] renderer.cpp::updateMainOutputFromContext(): contextMainOutput[i:{}]->getCurrentFrame() --> contextMainOutputTextureViewPayload.size(): {}",i,contextMainOutputTextureViewPayload.size());
-
+      #endif
       if (mainOutput.at(i).payload.size() != contextMainOutputTextureViewPayload.size()) {
         mainOutput.at(i).payload.resize(contextMainOutputTextureViewPayload.size());
       }
@@ -148,7 +153,9 @@ struct RendererImpl final : public ContextData {
             mainOutput.at(i).payload.at(t).useMatrix = contextMainOutputTextureViewPayload.at(t).useMatrix;
             mainOutput.at(i).payload.at(t).eyeViewMatrix = contextMainOutputTextureViewPayload.at(t).eyeViewMatrix;
             mainOutput.at(i).payload.at(t).eyeProjectionMatrix = contextMainOutputTextureViewPayload.at(t).eyeProjectionMatrix;
+            #ifdef LOG_T
             spdlog::info("[updateMainOutputFromContext] assigned matrixes");
+            #endif
           }
           
         }
@@ -247,16 +254,22 @@ struct RendererImpl final : public ContextData {
         if (viewData.renderTarget) { 
           for (auto &attachment : viewData.renderTarget->attachments) {
             renderGraphOutputs.push_back(attachment.second);
+            #ifdef LOG_T
             spdlog::info("[[[[[[[[[log][t] renderer.cpp: viewData.renderTarget: viewData.renderTarget->attachments.size(): {}; ", viewData.renderTarget->attachments.size());
+            #endif
           }
         } else {
           renderGraphOutputs.push_back(mainOutput.at(mo).payload.at(t).texture);//[t]
+          #ifdef LOG_T
           spdlog::info("[[[[[[[[log][t] renderer.cpp: viewData.renderTarget ELSE: mainOutput.at(mo: {}).payload.at(t: {}).texture; renderGraphOutputs.size(): {}", mo, t, renderGraphOutputs.size());
+          #endif
         }
         
       }
     }
+    #ifdef LOG_T
     spdlog::info("[[[[[[[[[[[[log][t] renderer.cpp: renderGraphOutputs.size(): {}", renderGraphOutputs.size()); 
+    #endif
     const RenderGraph &renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize);
     renderGraphEvaluator.evaluate(renderGraph, renderGraphOutputs, context, frameCounter);
   }

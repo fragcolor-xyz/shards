@@ -47,7 +47,10 @@ constexpr VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
 
 Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WGPUVulkanShared> _gfxWgpuVulkanShared, bool isMultipass)
 {
+  this->isMultipass = isMultipass;
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::Headset(xrContext, gfxWgpuVulkanShared)...");
+  #endif
   xrContext = _xrContext;
   if (!xrContext->isValid())
   {
@@ -143,16 +146,18 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       return;
     }
   }*/
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::Headset: vukan context for openxr");
+  #endif
   // vukan context for openxr
 
   const XrInstance xrInstance = xrContext->getXrInstance();
   const XrSystemId xrSystemId = xrContext->getXrSystemId();
   const VkPhysicalDevice vkPhysicalDevice = gfxWgpuVulkanShared->vkPhysicalDevice;
   const uint32_t vkDrawQueueFamilyIndex = gfxWgpuVulkanShared->queueFamilyIndex;
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::Headset: Create an xr session with Vulkan graphics binding.");
+  #endif
   // Create an xr session with Vulkan graphics binding
   XrGraphicsBindingVulkanKHR graphicsBinding{ XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR };
   graphicsBinding.device = device;
@@ -174,8 +179,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
     spdlog::error("[log][t] Headset::Headset: error at xrCreateSession(xrInstance, &sessionCreateInfo, &session);");
     return;
   }
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::Headset: Create an xr play space.");
+  #endif
   // Create an xr play space
   XrReferenceSpaceCreateInfo referenceSpaceCreateInfo{ XR_TYPE_REFERENCE_SPACE_CREATE_INFO };
   referenceSpaceCreateInfo.referenceSpaceType = spaceType;
@@ -190,8 +196,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
   }
 
   const XrViewConfigurationType viewType = xrContext->getXrViewType();
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::Headset: Get xr eye information.");
+  #endif
   // Get the number of eyes
   result = xrEnumerateViewConfigurationViews(xrInstance, xrSystemId, viewType, 0u,
                                              reinterpret_cast<uint32_t*>(&eyeCount), nullptr);
@@ -202,8 +209,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
     spdlog::error("[log][t] Headset::Headset: error at xrEnumerateViewConfigurationViews(xrInstance, xrSystemId, viewType, 0u, reinterpret_cast<uint32_t*>(&eyeCount), nullptr); result: {0}, eyeCount: {1}, viewType: {2}",result, eyeCount, viewType);
     return;
   }
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::Headset: Get xr eye image info.");
+  #endif
   // Get the eye image info per eye
   eyeImageInfos.resize(eyeCount);
   for (XrViewConfigurationView& eyeInfo : eyeImageInfos)
@@ -222,8 +230,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
     spdlog::error("[log][t] Headset::Headset: error at xrEnumerateViewConfigurationViews(xrInstance, xrSystemId, viewType, static_cast<uint32_t>(eyeImageInfos.size()), reinterpret_cast<uint32_t*>(&eyeCount), eyeImageInfos.data());");
     return;
   }
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::Headset: Allocate the eye poses.");
+  #endif
   // Allocate the eye poses
   eyePoses.resize(eyeCount);
   for (XrView& eyePose : eyePoses)
@@ -231,8 +240,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
     eyePose.type = XR_TYPE_VIEW;
     eyePose.next = nullptr;
   }
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::Headset: Verify that the desired color format is supported.");
+  #endif
   // Verify that the desired color format is supported
   {
     uint32_t formatCount = 0u;
@@ -368,8 +378,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       return;
     }
   }*/
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::Headset: Create xr swapchains and render targets.");
+  #endif
   // Create xr swapchains and render targets
   // [t] Either creates one swapchain with 2 layers / swapchain images, or two swapchains with one image each.
   // [t] Either way it's 2 render targets.
@@ -382,8 +393,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       swapchainNumber = 1u;
       swapchainImageCount = 1u;
     }
-    spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainNumber: {}, swapchainImageCount: {}", swapchainNumber, swapchainImageCount);
-
+    #ifdef LOG_T
+    spdlog::info("[[[[[[[[[[[log][t] Headset::Headset: swapchainNumber: {}, swapchainImageCount: {}", swapchainNumber, swapchainImageCount);
+    #endif
     swapchainArr.resize(swapchainNumber);
 
     for(size_t i=0; i< swapchainNumber; i++)
@@ -403,13 +415,16 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
       // [guus] Avoid using array images, doesn't seem to work well with OpenXR => wgpu
       // [t] So swapchainImageCount should remain in multipass mode ( = 1u), until we figure out multiview (singlepass)
       swapchainCreateInfo.arraySize = swapchainImageCount;
-      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: swapchainCreateInfo.arraySize: {}, i: {}", swapchainCreateInfo.arraySize, i);
+      #ifdef LOG_T
+      spdlog::info("[[[[[[[[[[[log][t] Headset::Headset: swapchainCreateInfo.arraySize: {}, i: {}", swapchainCreateInfo.arraySize, i);
+      #endif
       swapchainCreateInfo.faceCount = 1u;
       swapchainCreateInfo.mipCount = 1u;
       //[t] TODO: is this needed:
       swapchainCreateInfo.usageFlags = XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-
+      #ifdef LOG_T
       spdlog::info("[log][t] Headset::Headset: swapchainCreateInfo: swapchainCreateInfo.format: {}\r\n, swapchainCreateInfo.sampleCount: {}\r\n, swapchainCreateInfo.width: {}\r\n, swapchainCreateInfo.height: {}\r\n, swapchainCreateInfo.arraySize (this is in case you have subimages inside each swapchain): {}\r\n, swapchainCreateInfo.faceCount: {}\r\n, swapchainCreateInfo.mipCount: {}\r\n, swapchainCreateInfo.usageFlags: XR_SWAPCHAIN_USAGE_SAMPLED_BIT[{}] | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT[{}]: {}\r\n",
+      #endif
       swapchainCreateInfo.format,
       swapchainCreateInfo.sampleCount,
       swapchainCreateInfo.width,
@@ -453,8 +468,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
         spdlog::error("[log][t] Headset::Headset: error at xrEnumerateSwapchainImages(*(swapchainArr.at(i)), 0u, &swapchainEnumerateImageCount, nullptr);");
         return;
       }
-      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: xrEnumerateSwapchainImages(): swapchainEnumerateImageCount: {}", swapchainEnumerateImageCount);
- 
+      #ifdef LOG_T
+      spdlog::info("[[[[[[[[[log][t] Headset::Headset: xrEnumerateSwapchainImages(): swapchainEnumerateImageCount: {}", swapchainEnumerateImageCount);
+      #endif
       //[t] xr - vk
 
       //[t] Retrieve the swapchain images, which can be one per layer of multiview
@@ -474,8 +490,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
         spdlog::error("[log][t] Headset::Headset: error at xrEnumerateSwapchainImages(*(swapchainArr.at(i)), static_cast<uint32_t>(swapchainImages.size()), &swapchainEnumerateImageCount, data);");
         return;
       }
-      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: xrEnumerateSwapchainImages(): swapchainEnumerateImageCount II: {}", swapchainEnumerateImageCount);
- 
+      #ifdef LOG_T
+      spdlog::info("[[[[[[[[[[[[[[log][t] Headset::Headset: xrEnumerateSwapchainImages(): swapchainEnumerateImageCount II: {}", swapchainEnumerateImageCount);
+      #endif
 
       //[t] create the xr vk render target(s). Each RenderTarget and VKImage here,
       //[t] represents one of the 2 array layers in the swapchaincreateinfo (multiview).
@@ -495,7 +512,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
         uint32_t layerCount = 2u;
         if(isMultipass)
            layerCount = 1u;
-        spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: layerCount: {}, swapchainRenderTargets.size(): {}", layerCount, swapchainRenderTargets.size());
+        #ifdef LOG_T
+        spdlog::info("[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: layerCount: {}, swapchainRenderTargets.size(): {}", layerCount, swapchainRenderTargets.size());
+        #endif
         //renderTarget = new RenderTarget(device, image, depthImageView, eyeResolution, colorFormat_wgpu, renderPass, layerCount);
         renderTarget = new RenderTarget(gfxWgpuVulkanShared->wgpuDevice, image, depthImageView, eyeResolution, colorFormat_wgpu, layerCount);
         //[t] TODO: Also, the vulkan code I've been using VKFormat instead of WGPUTextureFormat colorFormat_wgpu
@@ -512,8 +531,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
 
     }
   }
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::Headset: Create the eye render infos / projectionLayerViews.");
+  #endif
   //[t] Create the eye render infos / projectionLayerViews. These should be the same regardless if single pass or multipass
   eyeRenderInfos.resize(eyeCount);
   for (size_t eyeIndex = 0u; eyeIndex < eyeRenderInfos.size(); ++eyeIndex)
@@ -525,11 +545,15 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
     // Associate this eye with the swapchain
     const XrViewConfigurationView &eyeImageInfo = eyeImageInfos.at(eyeIndex);
     if(swapchainArr.size() == 1){ 
-      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: Associate eye {} render info with swapchain: swapchainArr.size() == 1 -> swapchainArr.at(0); eyeRenderInfos.size(): {}", eyeIndex, eyeRenderInfos.size());
+      #ifdef LOG_T
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: Associate eye {} render info with swapchain: swapchainArr.size() == 1 -> swapchainArr.at(0); eyeRenderInfos.size(): {}", eyeIndex, eyeRenderInfos.size());
+      #endif
       eyeRenderInfo.subImage.swapchain = swapchainArr.at(0);//swapchainArr.at(eyeIndex);//multiview, 1 swapchain, 2 swapchainImages
     }
     else{
-      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: Associate eye {} render info with swapchain: eyeRenderInfos.size(): {}, eyeIndex: {}", eyeIndex, eyeRenderInfos.size(), eyeIndex);
+      #ifdef LOG_T
+      spdlog::info("[[[[[[[[[[[[[[[[[[[[[[[[[[[log][t] Headset::Headset: Associate eye {} render info with swapchain: eyeRenderInfos.size(): {}, eyeIndex: {}", eyeIndex, eyeRenderInfos.size(), eyeIndex);
+      #endif
       eyeRenderInfo.subImage.swapchain = swapchainArr.at(eyeIndex);//multipass, 2 swapchains
     }
     
@@ -552,7 +576,9 @@ Headset::Headset(std::shared_ptr<Context_XR> _xrContext, std::shared_ptr<gfx::WG
 
 Headset::~Headset()
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::~Headset().");
+  #endif
   // Clean up OpenXR
   xrEndSession(session);
   for(size_t i=0; i< swapchainArr.size(); i++)
@@ -582,15 +608,18 @@ Headset::~Headset()
 //[t] this is common setup for each frame. Followed by acquireSwapchainForFrame, render, releaseSwapchain, and endFrame
 Headset::BeginFrameResult Headset::beginFrame()
 {
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::beginFrame().");
     spdlog::info("[log][t] Headset::beginFrame: xrContext->getXrInstance().");
   }
+  #endif
   const XrInstance instance = xrContext->getXrInstance();
-
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::beginFrame: Poll OpenXR events while().");
   }
+  #endif
   // Poll OpenXR events
   XrEventDataBuffer buffer;
   buffer.type = XR_TYPE_EVENT_DATA_BUFFER;
@@ -608,9 +637,11 @@ Headset::BeginFrameResult Headset::beginFrame()
 
       if (event->state == XR_SESSION_STATE_READY)
       {
+        #ifdef LOG_T
         if(frame<debugs){
           spdlog::info("[log][t] Headset::beginFrame: XR_SESSION_STATE_READY.");
         }
+        #endif
         if (!beginSession())
         {
           return BeginFrameResult::Error;
@@ -618,9 +649,11 @@ Headset::BeginFrameResult Headset::beginFrame()
       }
       else if (event->state == XR_SESSION_STATE_STOPPING)
       {
+        #ifdef LOG_T
         if(frame<debugs){
           spdlog::info("[log][t] Headset::beginFrame: XR_SESSION_STATE_STOPPING.");
         }
+        #endif
         if (!endSession())
         {
           return BeginFrameResult::Error;
@@ -628,9 +661,11 @@ Headset::BeginFrameResult Headset::beginFrame()
       }
       else if (event->state == XR_SESSION_STATE_LOSS_PENDING || event->state == XR_SESSION_STATE_EXITING)
       {
+        #ifdef LOG_T
         if(frame<debugs){
           spdlog::info("[log][t] Headset::beginFrame: XR_SESSION_STATE_LOSS_PENDING || XR_SESSION_STATE_EXITING.");
         }
+        #endif
         exitRequested = true;
         return BeginFrameResult::SkipFully;
       }
@@ -643,9 +678,11 @@ Headset::BeginFrameResult Headset::beginFrame()
   if (sessionState != XR_SESSION_STATE_READY && sessionState != XR_SESSION_STATE_SYNCHRONIZED &&
       sessionState != XR_SESSION_STATE_VISIBLE && sessionState != XR_SESSION_STATE_FOCUSED)
   {
+    #ifdef LOG_T
     if(frame<debugs){
       spdlog::info("[log][t] Headset::beginFrame: Skipping frame because not ready, or not synchronized or not visible or not focused.");
     }
+    #endif
     // If we are not ready, synchronized, visible or focused, we skip all processing of this frame
     // This means no waiting, no beginning or ending of the frame at all
     return BeginFrameResult::SkipFully;
@@ -662,9 +699,11 @@ Headset::BeginFrameResult Headset::beginFrame()
     return BeginFrameResult::Error;
   }
 
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::beginFrame: Begin the new frame xrBeginFrame().");
   }
+  #endif
   // Begin the new frame
   XrFrameBeginInfo frameBeginInfo{ XR_TYPE_FRAME_BEGIN_INFO };
   result = xrBeginFrame(session, &frameBeginInfo);
@@ -677,15 +716,18 @@ Headset::BeginFrameResult Headset::beginFrame()
 
   if (!frameState.shouldRender)
   {
+    #ifdef LOG_T
     if(frame<debugs){
       spdlog::info("[log][t] Headset::beginFrame: Let the host know that we don't want to render this frame. We do still need to end the frame however.");
     }
+    #endif
     // Let the host know that we don't want to render this frame
     // We do still need to end the frame however
     return BeginFrameResult::SkipRender;
   }
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::beginFrame: Update the eye poses.");
+  #endif
   // Update the eye poses
   viewState.type = XR_TYPE_VIEW_STATE;
   uint32_t viewCount;
@@ -707,10 +749,11 @@ Headset::BeginFrameResult Headset::beginFrame()
     spdlog::error("[log][t] Headset::beginFrame: error at viewCount != eyeCount");
     return BeginFrameResult::Error;
   }
-
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::beginFrame: Update the eye render infos, view and projection matrices.");
   }
+  #endif
   // Update the eye render infos, view and projection matrices
   for (size_t eyeIndex = 0u; eyeIndex < eyeCount; ++eyeIndex)
   {
@@ -725,19 +768,21 @@ Headset::BeginFrameResult Headset::beginFrame()
     eyeViewMatrices.at(eyeIndex) = util::glmToLinalgFloat4x4(util::poseToMatrix(pose));
     eyeProjectionMatrices.at(eyeIndex) = util::glmToLinalgFloat4x4(util::createProjectionMatrix(eyeRenderInfo.fov, 0.1f, 250.0f));
   }
-
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::beginFrame: End. Request acquiring of current swapchain image, then after request full rendering of the frame on this swapchain, then afterwards releaseSwapchain() and endFrame().");
   }
+  #endif
   // Request acquiring of current swapchain image, then after request full rendering of the frame on this swapchain, then afterwards releaseSwapchain() and endFrame()
   return BeginFrameResult::RenderFully;
 }
 
 std::vector<WGPUTextureView> Headset::requestFrame() {
+  #ifdef LOG_T
   if(frame<debugs){
-    frame++;
     spdlog::info("[log][t] IContextMainOutput::Headset::requestFrame().");
   }
+  #endif
   Headset::BeginFrameResult frameResult = beginFrame();
   if (frameResult == Headset::BeginFrameResult::Error)
   {
@@ -748,41 +793,44 @@ std::vector<WGPUTextureView> Headset::requestFrame() {
 
   swapchainRTTextureViews.clear();
 
-  //TODO: try multipass with 2 swapchains, but, read dscription of acquireSwapchainForFrame, not sure you can call it twice per "frame"
-  /*
-    // for multipass, have 2 swapchains
-    uint32_t swapchainNumber = 1;
-    if(isMultipass){
-      swapchainNumber = 2u; 
+  // for multipass, have 2 swapchains
+  uint32_t swapchainNumber = 1;
+  if(this->isMultipass){
+    //[t] TODO: try multipass with 2 swapchains, but, read dscription of acquireSwapchainForFrame, not sure you can call it twice per "frame"
+    swapchainNumber = 1u; 
+  }
+  swapchainRTTextureViews.resize(swapchainNumber);
+  for(uint32_t eyeIndex=0; eyeIndex< swapchainNumber; eyeIndex++){
+    uint32_t swapchainImageIndex;
+    frameResult = acquireSwapchainForFrame(eyeIndex, swapchainImageIndex);
+
+    if (frameResult == Headset::BeginFrameResult::Error)
+    {
+      std::vector<WGPUTextureView> err;
+      spdlog::error("[log][t] Headset::requestFrame: error at acquireSwapchainForFrame(eyeIndex, swapchainImageIndex);");
+      return err;
+    }
+    else{
+      frameResult = Headset::BeginFrameResult::RenderFully;
     }
 
-    for(size_t eyeIndex=0; eyeIndex< swapchainNumber; eyeIndex++)
-  */
-
-  uint32_t eyeCount = 1;
-  swapchainRTTextureViews.resize(eyeCount);
-  uint32_t eyeIndex= 0;
-  uint32_t swapchainImageIndex;
-  frameResult = acquireSwapchainForFrame(eyeIndex, swapchainImageIndex);
-
-  if (frameResult == Headset::BeginFrameResult::Error)
-  {
-    std::vector<WGPUTextureView> err;
-    spdlog::error("[log][t] Headset::requestFrame: error at acquireSwapchainForFrame(eyeIndex, swapchainImageIndex);");
-    return err;
+    swapchainRTTextureViews.at(eyeIndex) = getRenderTarget(swapchainImageIndex)->getRTTextureView();// of swapchainRTTextureViews matching internal swapchain index
+    #ifdef LOG_T
+    if(frame<debugs){
+      spdlog::info("[[[[[[[[[[log][t] IContextMainOutput::Headset::requestFrame: headset swapchainRTTextureViews.size(): {}, eyeIndex: {}, swapchainImageIndex: {}", swapchainRTTextureViews.size(), eyeIndex, swapchainImageIndex);
+    }
+    #endif
   }
-  else{
-    frameResult = Headset::BeginFrameResult::RenderFully;
-  }
-
-  swapchainRTTextureViews.at(eyeIndex) = getRenderTarget(swapchainImageIndex)->getRTTextureView();// of swapchainRTTextureViews matching internal swapchain index
-
 
   VkExtent2D vke2d = getEyeResolution(0u);
   linalgint2size = linalg::aliases::int2(vke2d.width, vke2d.height);
+
+  #ifdef LOG_T
   if(frame<debugs){
-    spdlog::info("[log][t] IContextMainOutput::Headset::requestFrame: End.");
+      frame++;
+      spdlog::info("[log][t] IContextMainOutput::Headset::requestFrame: End.");
   }
+  #endif
   return swapchainRTTextureViews;
 
   /*
@@ -810,9 +858,11 @@ WGPUTextureFormat Headset::getFormat() const {
 }
 
 std::vector<gfx::IContextCurrentFramePayload> Headset::getCurrentFrame() const {
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] IContextMainOutput::Headset::getCurrentFrame().");
   }
+  #endif
   //assert(currentView);
   //return currentView;
   std::vector<gfx::IContextCurrentFramePayload> payload;
@@ -822,19 +872,25 @@ std::vector<gfx::IContextCurrentFramePayload> Headset::getCurrentFrame() const {
     payload.at(eyeIndex).useMatrix = true;
     payload.at(eyeIndex).eyeViewMatrix = getEyeViewMatrix(eyeIndex);
     payload.at(eyeIndex).eyeProjectionMatrix = getEyeProjectionMatrix(eyeIndex);
+    #ifdef LOG_T
     spdlog::info("[[[[[[[[[[[[[log][t] IContextMainOutput::Headset::getCurrentFrame(): creating payoad from headset's swapchainRTTextureViews.size(): {}; payload.at(eyeIndex: {})",swapchainRTTextureViews.size(), eyeIndex);
+    #endif
   }
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] IContextMainOutput::Headset::getCurrentFrame: End.");
   }
+  #endif
   return payload;
 }
 
 //[t] called from context; see: backend = std::make_shared<ContextXrGfxBackend>()
 void Headset::present() {
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] IContextMainOutput::Headset::present().");
   }
+  #endif
   /*
   WGPUExternalPresentVK wgpuPresent{};
   wgpuPrepareExternalPresentVK(gfxWgpuVulkanShared->wgpuQueue, &wgpuPresent);
@@ -861,9 +917,11 @@ void Headset::present() {
   }
   //[t] end xr frame
   endFrame();
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] IContextMainOutput::Headset::present: End.");
   }
+  #endif
 }
 
 //[t] it's rendered per swapchain (and we should have one swapchain for single pass),
@@ -874,14 +932,17 @@ void Headset::present() {
 // So I don't know if we can send  textures to the renderer at the same time
 Headset::BeginFrameResult Headset::acquireSwapchainForFrame(uint32_t eyeIndex, uint32_t& swapchainImageIndex)
 {
+  #ifdef LOG_T
   if(frame<debugs){
-    spdlog::info("[log][t] Headset::acquireSwapchainForFrame(eyeIndex{0}, swapchainImageIndex{1}).", eyeIndex, swapchainImageIndex);
+    spdlog::info("[log][t] Headset::acquireSwapchainForFrame(eyeIndex {0}, swapchainImageIndex {1}).", eyeIndex, swapchainImageIndex);
   }
+  #endif
   //[t] MULTIPASS from here
-
+  #ifdef LOG_T
   if(frame<debugs){
-    spdlog::info("[log][t] Headset::acquireSwapchainForFrame: Acquire the multiview swapchain image, or one of the 2 multipass swapchains.");
+    spdlog::info("[log][t] Headset::acquireSwapchainForFrame: Acquire one of the 2 multipass swapchains (if multi pass), or the multiview swapchain image (if single pass).");
   }
+  #endif
   //[t] Acquire the multiview swapchain image, or one of the 2 multipass swapchains
   XrSwapchainImageAcquireInfo swapchainImageAcquireInfo{ XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO };
   XrSwapchain swapchain = swapchainArr.at(eyeIndex);
@@ -893,10 +954,11 @@ Headset::BeginFrameResult Headset::acquireSwapchainForFrame(uint32_t eyeIndex, u
     spdlog::error("[log][t] Headset::acquireSwapchainForFrame: error at xrAcquireSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageAcquireInfo, &swapchainImageIndex); Result: {}, eyeIndex: {}, swapchainImageIndex: {}", result, eyeIndex, swapchainImageIndex);
     return BeginFrameResult::Error;
   }
-
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::acquireSwapchainForFrame: Wait for the swapchain image.");
   }
+  #endif
   // Wait for the swapchain image
   XrSwapchainImageWaitInfo swapchainImageWaitInfo{ XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO };
   swapchainImageWaitInfo.timeout = XR_INFINITE_DURATION;
@@ -909,19 +971,22 @@ Headset::BeginFrameResult Headset::acquireSwapchainForFrame(uint32_t eyeIndex, u
     spdlog::error("[log][t] Headset::acquireSwapchainForFrame: error at xrWaitSwapchainImage(*(swapchainArr.at(eyeIndex)), &swapchainImageWaitInfo);");
     return BeginFrameResult::Error;
   }
-
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::acquireSwapchainForFrame: End. Request full rendering of the frame on this swapchain, then afterwards releaseSwapchain() and endFrame().");
   }
+  #endif
   // Request full rendering of the frame on this swapchain, then afterwards releaseSwapchain() and endFrame()
   return BeginFrameResult::RenderFully;
 }
 
 void Headset::releaseSwapchain(uint32_t eyeIndex) const
 {
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::releaseSwapchain(eyeIndex{}). Release XR Swapchain.",eyeIndex);
   }
+  #endif
   // Release the swapchain image
   XrSwapchainImageReleaseInfo swapchainImageReleaseInfo{ XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
   XrResult result = xrReleaseSwapchainImage(swapchainArr.at(eyeIndex), &swapchainImageReleaseInfo);
@@ -929,16 +994,20 @@ void Headset::releaseSwapchain(uint32_t eyeIndex) const
   {
     return;
   }
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::releaseSwapchain: End. Released XR Swapchain.");
   }
+  #endif
 }
 
 void Headset::endFrame() const
 {
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::endFrame(). End XR Frame.");
   }
+  #endif
   // End the frame
   XrCompositionLayerProjection compositionLayerProjection{ XR_TYPE_COMPOSITION_LAYER_PROJECTION };
   compositionLayerProjection.space = space;
@@ -964,9 +1033,11 @@ void Headset::endFrame() const
   {
     return;
   }
+  #ifdef LOG_T
   if(frame<debugs){
     spdlog::info("[log][t] Headset::endFrame(). End. Ended XR Frame.");
   }
+  #endif
 }
 
 
@@ -1022,7 +1093,9 @@ RenderTarget* Headset::getRenderTarget(size_t swapchainImageIndex) const
 
 bool Headset::beginSession() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::beginSession().");
+  #endif
   // Start the session
   XrSessionBeginInfo sessionBeginInfo{ XR_TYPE_SESSION_BEGIN_INFO };
   sessionBeginInfo.primaryViewConfigurationType = xrContext->getXrViewType();
@@ -1034,14 +1107,18 @@ bool Headset::beginSession() const
     return false;
   }
 
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::beginSession(). End.");
+  #endif
   return true;
 }
 
 bool Headset::endSession() const
 {
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::endSession().");
   // End the session
+  #endif
   const XrResult result = xrEndSession(session);
   if (XR_FAILED(result))
   {
@@ -1049,7 +1126,8 @@ bool Headset::endSession() const
     spdlog::error("[log][t] Headset::endSession: error at xrEndSession(session).");
     return false;
   }
-
+  #ifdef LOG_T
   spdlog::info("[log][t] Headset::endSession(). End.");
+  #endif
   return true;
 }
