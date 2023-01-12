@@ -4,7 +4,6 @@
 #include "linalg.hpp"
 #include "context.hpp"
 #include "window.hpp"
-#include "texture.hpp"
 #include "fwd.hpp"
 
 namespace gfx {

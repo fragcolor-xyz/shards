@@ -5,6 +5,8 @@
 #include "gfx_wgpu.hpp"
 #include "isb.hpp"
 #include "linalg.hpp"
+#include "unique_id.hpp"
+#include "fwd.hpp"
 #include <variant>
 #include <optional>
 #include <string>
@@ -42,7 +44,7 @@ struct SamplerState {
   WGPUAddressMode addressModeW = WGPUAddressMode::WGPUAddressMode_Repeat;
   WGPUFilterMode filterMode = WGPUFilterMode::WGPUFilterMode_Linear;
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(addressModeU);
     hasher(addressModeV);
     hasher(addressModeW);
@@ -99,8 +101,11 @@ struct TextureDesc {
 /// <div rustbindgen opaque></div>
 struct Texture final : public TWithContextData<TextureContextData> {
 private:
+  UniqueId id = getNextId();
   TextureDesc desc = TextureDesc::getDefault();
   std::string label;
+
+  friend struct gfx::UpdateUniqueId<Texture>;
 
 public:
   Texture() = default;
@@ -121,14 +126,18 @@ public:
   const TextureFormat &getFormat() const { return desc.format; }
   int2 getResolution() const { return desc.resolution; }
 
-  std::shared_ptr<Texture> clone();
+  TexturePtr clone() const;
+
+  UniqueId getId() const { return id; }
 
   /// <div rustbindgen hide></div>
-  static std::shared_ptr<Texture> makeRenderAttachment(WGPUTextureFormat format, std::string &&label);
+  static TexturePtr makeRenderAttachment(WGPUTextureFormat format, std::string &&label);
 
 protected:
   void initContextData(Context &context, TextureContextData &contextData);
   void updateContextData(Context &context, TextureContextData &contextData);
+
+  static UniqueId getNextId();
 };
 
 } // namespace gfx

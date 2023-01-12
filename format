@@ -39,5 +39,7 @@ FormatFolderRecursiveAsync src/mal
 FormatFolderRecursiveAsync src/tests
 FormatFolderRecursiveAsync src/gfx
 FormatFolderRecursiveAsync src/extra
+FormatFolderRecursiveAsync src/input
+FormatFolderRecursiveAsync src/log
 AsyncWait
 echo "Formatted ${#PIDs[@]} files"

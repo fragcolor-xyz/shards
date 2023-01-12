@@ -190,8 +190,8 @@ struct Read {
       return CoreInfo::StringType;
   }
 
-  static inline ParamsInfo params =
-      ParamsInfo(ParamsInfo::Param("Bytes", SHCCSTR("If the output should be SHType::Bytes instead of SHType::String."), CoreInfo::BoolType));
+  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
+      "Bytes", SHCCSTR("If the output should be SHType::Bytes instead of SHType::String."), CoreInfo::BoolType));
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   void setParam(int index, const SHVar &value) {

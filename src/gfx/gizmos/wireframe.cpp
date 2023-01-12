@@ -1,5 +1,5 @@
 #include "features/wireframe.hpp"
-#include "drawable.hpp"
+#include "drawables/mesh_drawable.hpp"
 #include "linalg.hpp"
 #include "mesh.hpp"
 #include "transform_updater.hpp"
@@ -97,31 +97,31 @@ MeshPtr WireframeMeshGenerator::generate() {
 
 WireframeRenderer::WireframeRenderer(bool showBackfaces) { wireframeFeature = features::Wireframe::create(showBackfaces); }
 
-void WireframeRenderer::overlayWireframe(DrawQueue &queue, DrawablePtr drawable) {
-  Mesh *meshPtr = drawable->mesh.get();
-  auto it = meshCache.find(meshPtr);
-  if (it == meshCache.end()) {
+void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable) {
+  if (MeshDrawable *meshDrawable = dynamic_cast<MeshDrawable *>(&drawable)) {
+    Mesh *meshPtr = meshDrawable->mesh.get();
+    auto it = meshCache.find(meshPtr);
+    if (it == meshCache.end()) {
+      WireframeMeshGenerator meshGenerator;
+      meshGenerator.mesh = meshDrawable->mesh;
+      MeshCacheEntry entry{
+          .wireMesh = meshGenerator.generate(),
+          .weakMesh = meshDrawable->mesh,
+      };
+
+      it = meshCache.insert_or_assign(meshPtr, entry).first;
+    }
+
+    auto clone = std::static_pointer_cast<MeshDrawable>(meshDrawable->clone());
     WireframeMeshGenerator meshGenerator;
-    meshGenerator.mesh = drawable->mesh;
-    MeshCacheEntry entry{
-        .wireMesh = meshGenerator.generate(),
-        .weakMesh = drawable->mesh,
-    };
-
-    it = meshCache.insert_or_assign(meshPtr, entry).first;
+    meshGenerator.mesh = meshDrawable->mesh;
+    clone->mesh = it->second.wireMesh;
+    clone->features.push_back(wireframeFeature);
+    queue.add(clone);
+  } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(&drawable)) {
+    TransformUpdaterCollector collector;
+    collector.collector = [&](DrawablePtr drawable) { overlayWireframe(queue, *drawable.get()); };
+    collector.update(*treeDrawable);
   }
-
-  auto clone = drawable->clone();
-  WireframeMeshGenerator meshGenerator;
-  meshGenerator.mesh = drawable->mesh;
-  clone->mesh = it->second.wireMesh;
-  clone->features.push_back(wireframeFeature);
-  queue.add(clone);
-}
-
-void WireframeRenderer::overlayWireframe(DrawQueue &queue, DrawableHierarchyPtr drawableHierarchy) {
-  TransformUpdaterCollector collector;
-  collector.collector = [&](DrawablePtr drawable) { overlayWireframe(queue, drawable); };
-  collector.update(drawableHierarchy);
 }
 } // namespace gfx

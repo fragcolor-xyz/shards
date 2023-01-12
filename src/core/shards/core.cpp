@@ -949,7 +949,8 @@ struct Erase : SeqUser {
             valid = true;
             break;
           } else {
-            auto msg = "Take indices variable " + std::string(info.name) + " expected to be either SHType::Seq, SHType::Int or String";
+            auto msg =
+                "Take indices variable " + std::string(info.name) + " expected to be either SHType::Seq, SHType::Int or String";
             throw SHException(msg);
           }
         }

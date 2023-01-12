@@ -6,7 +6,12 @@
 #include <chrono>
 #include <memory>
 #include <set>
+
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
+// Remove define from winspool.h
+#ifdef MAX_PRIORITY
+#undef MAX_PRIORITY
+#endif
 #include <taskflow/taskflow.hpp>
 #endif
 
@@ -1354,40 +1359,37 @@ struct ParallelBase : public CapturingSpawners {
           // multithreaded
           tf::Taskflow flow;
 
-          flow.for_each_dynamic(
-              _wires.begin(), _wires.end(),
-              [this, input, len](auto &cref) {
-                // skip if failed, ended or not relevant yet
-                if (cref->done || cref->index >= len) {
-                  return;
-                }
+          flow.for_each(_wires.begin(), _wires.end(), [this, input, len](auto &cref) {
+            // skip if failed, ended or not relevant yet
+            if (cref->done || cref->index >= len) {
+              return;
+            }
 
-                // Prepare and start if no callc was called
-                if (!cref->wire->coro) {
-                  if (!cref->mesh) {
-                    cref->mesh = SHMesh::make();
-                  }
-                  cref->wire->mesh = cref->mesh;
+            // Prepare and start if no callc was called
+            if (!cref->wire->coro) {
+              if (!cref->mesh) {
+                cref->mesh = SHMesh::make();
+              }
+              cref->wire->mesh = cref->mesh;
 
-                  // capture variables if needed
-                  for (auto &v : _vars) {
-                    auto &var = v.get();
-                    cloneVar(cref->wire->variables[v.variableName()], var);
-                  }
+              // capture variables if needed
+              for (auto &v : _vars) {
+                auto &var = v.get();
+                cloneVar(cref->wire->variables[v.variableName()], var);
+              }
 
-                  // Notice we don't share our flow!
-                  // let the wire create one by passing null
-                  shards::prepare(cref->wire.get(), nullptr);
-                  shards::start(cref->wire.get(), getInput(cref, input));
-                }
+              // Notice we don't share our flow!
+              // let the wire create one by passing null
+              shards::prepare(cref->wire.get(), nullptr);
+              shards::start(cref->wire.get(), getInput(cref, input));
+            }
 
-                // Tick the wire on the flow that this wire created
-                SHDuration now = SHClock::now().time_since_epoch();
-                shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
-                // also tick the mesh
-                cref->mesh->tick();
-              },
-              _coros);
+            // Tick the wire on the flow that this wire created
+            SHDuration now = SHClock::now().time_since_epoch();
+            shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
+            // also tick the mesh
+            cref->mesh->tick();
+          });
 
           _exec->run(flow).get();
 

@@ -9,16 +9,17 @@
 #include <stdint.h>  // ints
 
 #if defined(__cplusplus) && !defined(RUST_BINDGEN)
-#define SH_ENUM_CLASS enum class
+#define SH_ENUM_CLASS class
 #define SH_ENUM_DECL
 #else
-#define SH_ENUM_CLASS enum
+#define SH_ENUM_CLASS
 #define SH_ENUM_DECL enum
 #endif
 
+#define SH_USE_ENUMS 1
 // All the available types
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-SH_ENUM_CLASS SHType : uint8_t {
+enum SH_ENUM_CLASS SHType : uint8_t {
   // Blittables
   None,
   Any,
@@ -55,7 +56,7 @@ SH_ENUM_CLASS SHType : uint8_t {
   Audio,
 };
 
-SH_ENUM_CLASS SHWireState : uint8_t {
+enum SH_ENUM_CLASS SHWireState : uint8_t {
   Continue, // Nothing happened, continue
   Return,   // Control flow, end this wire/flow and return previous output
   Rebase,   // Continue but put the local wire initial input as next input
@@ -583,7 +584,7 @@ struct SHVar {
 #endif
 } __attribute__((aligned(16)));
 
-SH_ENUM_CLASS SHRunWireOutputState { Running, Restarted, Stopped, Failed };
+enum SH_ENUM_CLASS SHRunWireOutputState { Running, Restarted, Stopped, Failed };
 
 struct SHRunWireOutput {
   struct SHVar output;
@@ -824,7 +825,7 @@ typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, SHValida
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
-                                               struct SHVar *output);
+                                                       struct SHVar *output);
 #else
 typedef SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
                                           struct SHVar *output);
@@ -832,7 +833,7 @@ typedef SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *conte
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
-                                                     struct SHVar *output, struct SHVar *outHash);
+                                                             struct SHVar *output, struct SHVar *outHash);
 #else
 typedef SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
                                                 struct SHVar *output, struct SHVar *outHash);

@@ -39,8 +39,8 @@ struct Transform {
       }
     });
 
-    feature->shaderEntryPoints.emplace_back(
-        "initLocalPosition", ProgrammableGraphicsStage::Vertex, WriteGlobal("localPosition", FieldTypes::Float4, std::move(vec4Pos)));
+    feature->shaderEntryPoints.emplace_back("initLocalPosition", ProgrammableGraphicsStage::Vertex,
+                                            WriteGlobal("localPosition", FieldTypes::Float4, std::move(vec4Pos)));
 
     auto &entry = feature->shaderEntryPoints.emplace_back("initWorldPosition", ProgrammableGraphicsStage::Vertex,
                                                           WriteGlobal("worldPosition", FieldTypes::Float4,

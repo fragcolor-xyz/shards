@@ -10,7 +10,7 @@ void Header::apply(IGeneratorContext &context) const {
   context.pushHeaderScope();
   inner->apply(context);
   context.popHeaderScope();
-  }
+}
 
 DefaultInterpolation::DefaultInterpolation() {
   matchPrefixes = {

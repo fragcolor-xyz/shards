@@ -311,7 +311,7 @@ struct FeatureShard {
     return variant;
   }
 
-  static void applyDrawData(const FeatureCallbackContext &ctx, IDrawDataCollector &collector, const SHVar &input) {
+  static void applyDrawData(const FeatureCallbackContext &ctx, IParameterCollector &collector, const SHVar &input) {
     checkType(input.valueType, SHType::Table, ":DrawData wire output");
     const SHTable &inputTable = input.payload.tableValue;
 
@@ -360,17 +360,18 @@ struct FeatureShard {
 
       captured->wire.warmup(context);
 
-      feature.drawData.emplace_back([captured = captured](const FeatureCallbackContext &ctx, IDrawDataCollector &collector) {
-        ContextUserData *contextUserData = ctx.context.userData.get<ContextUserData>();
-        SHContext *SHContext = contextUserData->shardsContext;
+      feature.drawableParameterGenerators.emplace_back(
+          [captured = captured](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
+            ContextUserData *contextUserData = ctx.context.userData.get<ContextUserData>();
+            SHContext *SHContext = contextUserData->shardsContext;
 
-        SHVar input{};
-        SHVar output{};
-        SHWireState result = captured->wire.activate(SHContext, input, output);
-        assert(result == SHWireState::Continue);
+            SHVar input{};
+            SHVar output{};
+            SHWireState result = captured->wire.activate(SHContext, input, output);
+            assert(result == SHWireState::Continue);
 
-        applyDrawData(ctx, collector, output);
-      });
+            applyDrawData(ctx, collector, output);
+          });
     };
 
     if (isWire(input)) {
@@ -385,11 +386,15 @@ struct FeatureShard {
     }
   }
 
-  void applyShaderFieldType(SHContext *context, shader::FieldType &fieldType, const SHTable &inputTable) {
+  // Returns true if the type is explicitly specified, otherwise false
+  bool applyShaderFieldType(SHContext *context, shader::FieldType &fieldType, const SHTable &inputTable) {
+    bool isExplicitlySet = false;
+
     SHVar typeVar;
     if (getFromTable(context, inputTable, "Type", typeVar)) {
       checkEnumType(typeVar, Types::ShaderFieldBaseTypeEnumInfo::Type, ":Type");
       fieldType.baseType = ShaderFieldBaseType(typeVar.payload.enumValue);
+      isExplicitlySet = true;
     } else {
       // Default type if not specified:
       fieldType.baseType = ShaderFieldBaseType::Float32;
@@ -399,10 +404,13 @@ struct FeatureShard {
     if (getFromTable(context, inputTable, "Dimension", dimVar)) {
       checkType(dimVar.valueType, SHType::Int, ":Dimension");
       fieldType.numComponents = size_t(typeVar.payload.intValue);
+      isExplicitlySet = true;
     } else {
       // Default size if not specified:
       fieldType.numComponents = 1;
     }
+
+    return isExplicitlySet;
   }
 
   void applyParam(SHContext *context, Feature &feature, const SHVar &input) {
@@ -419,7 +427,8 @@ struct FeatureShard {
       throw formatException(":Params Entry requires a :Name");
     }
 
-    applyShaderFieldType(context, param.type, inputTable);
+    bool haveType = false;
+    haveType = haveType || applyShaderFieldType(context, param.type, inputTable);
 
     SHVar defaultVar;
     if (getFromTable(context, inputTable, "Default", defaultVar)) {
@@ -427,6 +436,11 @@ struct FeatureShard {
 
       // Derive type from default value
       param.type = getParamVariantType(param.defaultValue);
+      haveType = true;
+    }
+
+    if (!haveType) {
+      throw formatException("Shader parameter \"{}\" should have a type or default value", param.name);
     }
 
     // TODO: Also handle texture params here

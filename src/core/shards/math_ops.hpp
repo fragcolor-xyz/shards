@@ -244,7 +244,8 @@ template <DispatchType DispatchType, typename T, typename... TArgs> void dispatc
       break;
     }
   }
-  throw std::out_of_range(fmt::format("dispatchType<{}>({})", magic_enum::enum_flags_name(DispatchType), magic_enum::enum_name(type)));
+  throw std::out_of_range(
+      fmt::format("dispatchType<{}>({})", magic_enum::enum_flags_name(DispatchType), magic_enum::enum_name(type)));
 }
 
 #define MATH_BINARY_OPERATION(__name, __op)                                            \

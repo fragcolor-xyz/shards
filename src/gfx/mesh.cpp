@@ -1,11 +1,17 @@
 #include "mesh.hpp"
 #include "context.hpp"
 #include "math.hpp"
+#include "renderer_cache.hpp"
 #include <cassert>
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
 
 namespace gfx {
+
+UniqueId Mesh::getNextId() {
+  static UniqueIdGenerator gen(UniqueIdTag::Mesh);
+  return gen.getNext();
+}
 
 size_t MeshFormat::getVertexSize() const {
   size_t vertexSize = 0;
@@ -63,6 +69,12 @@ void Mesh::calculateElementCounts(size_t vertexDataLength, size_t indexDataLengt
 void Mesh::update() {
   // This causes the GPU data to be recreated the next time it is requested
   updateData = true;
+}
+
+MeshPtr Mesh::clone() const {
+  auto result = cloneSelfWithId(this, getNextId());
+  result->contextData.reset();
+  return result;
 }
 
 void Mesh::initContextData(Context &context, MeshContextData &contextData) {

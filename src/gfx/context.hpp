@@ -13,6 +13,7 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include <shared_mutex>
 
 namespace gfx {
 struct ContextCreationOptions {
@@ -37,9 +38,20 @@ struct ContextData;
 struct ContextMainOutput;
 struct DeviceRequest;
 struct AdapterRequest;
+namespace detail {
+struct GraphicsExecutor;
+}
 
 /// <div rustbindgen opaque></div>
 struct Context {
+public:
+  WGPUInstance wgpuInstance = nullptr;
+  WGPUAdapter wgpuAdapter = nullptr;
+  WGPUDevice wgpuDevice = nullptr;
+  WGPUQueue wgpuQueue = nullptr;
+
+  TypedUserData userData;
+
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;
   std::shared_ptr<AdapterRequest> adapterRequest;
@@ -48,15 +60,11 @@ private:
   ContextFrameState frameState = ContextFrameState::Ok;
   bool suspended = false;
 
-public:
-  WGPUInstance wgpuInstance = nullptr;
-  WGPUAdapter wgpuAdapter = nullptr;
-  WGPUDevice wgpuDevice = nullptr;
-  WGPUQueue wgpuQueue = nullptr;
   ContextCreationOptions options;
 
+  // TODO: Remove
   std::unordered_map<ContextData *, std::weak_ptr<ContextData>> contextDatas;
-  TypedUserData userData;
+  std::shared_mutex contextDataLock;
 
 public:
   Context();
@@ -88,7 +96,11 @@ public:
   // Returns false while device is lost an can not be rerequestd
   bool beginFrame();
   void endFrame();
-  void sync();
+
+  // Wait=true corresponds to wgt::Maintain::Wait in wgpu::Device::poll (https://docs.rs/wgpu/latest/wgpu/struct.Device.html)
+  // which will wait for the most recently submitted command buffer
+  // if wait is false it will just check for callbacks to run
+  void poll(bool wait = true);
 
   // When entering background, releases all graphics resources and pause rendering
   void suspend();

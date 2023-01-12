@@ -1,6 +1,7 @@
 #include "shapes.hpp"
 #include <gfx/geom.hpp>
 #include <gfx/mesh_utils.hpp>
+#include <gfx/drawables/mesh_drawable.hpp>
 #include <gfx/view.hpp>
 
 namespace gfx {
@@ -280,7 +281,7 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
     };
     lineMesh->update(fmt, lineVertices.data(), lineVertices.size() * sizeof(LineVertex), nullptr, 0);
 
-    auto drawable = std::make_shared<Drawable>(lineMesh);
+    auto drawable = std::make_shared<MeshDrawable>(lineMesh);
     drawable->features.push_back(screenSpaceSizeFeature);
     queue->add(drawable);
   }
@@ -296,7 +297,7 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
     };
     solidMesh->update(fmt, solidVertices.data(), solidVertices.size() * sizeof(SolidVertex), nullptr, 0);
 
-    auto drawable = std::make_shared<Drawable>(solidMesh);
+    auto drawable = std::make_shared<MeshDrawable>(solidMesh);
     queue->add(drawable);
   }
 }
@@ -334,13 +335,13 @@ void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, flo
   assert(capMesh);
   auto geom = generateHandleGeometry(origin, direction, radius, length, 0.35f, capRatio, extendBodyToCapCenter);
 
-  DrawablePtr body = std::make_shared<Drawable>(handleBodyMesh);
+  MeshDrawable::Ptr body = std::make_shared<MeshDrawable>(handleBodyMesh);
   body->transform = linalg::mul(geom.bodyTransform, cylinderAdjustment);
   body->parameters.set("baseColor", bodyColor);
   body->features.push_back(gizmoLightingFeature);
   drawables.push_back(body);
 
-  DrawablePtr cap = std::make_shared<Drawable>(capMesh);
+  MeshDrawable::Ptr cap = std::make_shared<MeshDrawable>(capMesh);
   cap->transform = linalg::mul(geom.capTransform, capPreTransform);
   cap->parameters.set("baseColor", capColor);
   cap->features.push_back(gizmoLightingFeature);

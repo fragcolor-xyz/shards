@@ -49,6 +49,8 @@ public:
   /// Flushes rendering and cleans up all cached data kept by the renderer
   /// <div rustbindgen hide></div>
   void cleanup();
+
+  void dumpStats();
 };
 
 } // namespace gfx

@@ -5,7 +5,7 @@
 #include <catch2/catch_all.hpp>
 #include <gfx/fwd.hpp>
 #include <gfx/context.hpp>
-#include <gfx/drawable.hpp>
+#include <gfx/drawables/mesh_drawable.hpp>
 #include <gfx/features/velocity.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/paths.hpp>
@@ -35,14 +35,14 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
 
   DrawQueuePtr queue0 = std::make_shared<DrawQueue>();
   float4x4 transform;
-  DrawablePtr drawable;
+  MeshDrawable::Ptr drawable;
 
   std::shared_ptr<RenderTarget> rt = std::make_shared<RenderTarget>("testTarget");
   rt->configure("color", WGPUTextureFormat::WGPUTextureFormat_RGBA8Unorm);
   rt->configure("depth", WGPUTextureFormat::WGPUTextureFormat_Depth32Float);
 
   transform = linalg::identity;
-  drawable = std::make_shared<Drawable>(cubeMesh, transform);
+  drawable = std::make_shared<MeshDrawable>(cubeMesh, transform);
   drawable->parameters.set("baseColor", float4(1, 0, 1, 1));
   queue0->add(drawable);
 
@@ -121,13 +121,13 @@ TEST_CASE("Velocity", "[RenderGraph]") {
 
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
   float4x4 transform;
-  DrawablePtr drawable;
+  MeshDrawable::Ptr drawable;
 
   std::shared_ptr<RenderTarget> rt = std::make_shared<RenderTarget>("testTarget");
   rt->configure("velocity", WGPUTextureFormat::WGPUTextureFormat_RG8Snorm);
 
   transform = linalg::identity;
-  drawable = std::make_shared<Drawable>(cubeMesh, transform);
+  drawable = std::make_shared<MeshDrawable>(cubeMesh, transform);
 
   auto getTransform = [](double time) {
     float yWave = std::cos(time / pi2) * 0.5f;
@@ -147,10 +147,10 @@ TEST_CASE("Velocity", "[RenderGraph]") {
     return linalg::mul(linalg::translation_matrix(t), linalg::scaling_matrix(float3(0.25f)));
   };
 
-  DrawablePtr drawable1 = std::make_shared<Drawable>(cubeMesh, getWaveTransform(0.0f, 0));
+  MeshDrawable::Ptr drawable1 = std::make_shared<MeshDrawable>(cubeMesh, getWaveTransform(0.0f, 0));
   queue->add(drawable1);
 
-  DrawablePtr drawable2 = std::make_shared<Drawable>(cubeMesh, getWaveTransform(0.0f, 1));
+  MeshDrawable::Ptr drawable2 = std::make_shared<MeshDrawable>(cubeMesh, getWaveTransform(0.0f, 1));
   queue->add(drawable2);
 
   PipelineSteps stepsRT{
@@ -203,9 +203,6 @@ TEST_CASE("Velocity", "[RenderGraph]") {
     auto outputSize = testRenderer->getOutputSize();
     rt->resizeConditional(outputSize);
 
-    Rect mainViewport = viewStack.getOutput().viewport;
-    Rect subViewport = Rect(int2(mainViewport.width / 2, mainViewport.x), mainViewport.getSize() / 2);
-
     drawable->transform = getTransform(t);
     drawable1->transform = getWaveTransform(t, 0);
     drawable2->transform = getWaveTransform(t, 1);
@@ -245,7 +242,7 @@ TEST_CASE("Multiple IO", "[RenderGraph]") {
   DrawQueuePtr queue = std::make_shared<DrawQueue>();
 
   auto transform = linalg::identity;
-  auto drawable = std::make_shared<Drawable>(cubeMesh, transform);
+  auto drawable = std::make_shared<MeshDrawable>(cubeMesh, transform);
   drawable->parameters.set("baseColor", float4(0, 1, 0, 1));
   queue->add(drawable);
 

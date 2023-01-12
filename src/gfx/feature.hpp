@@ -6,6 +6,8 @@
 #include "linalg.hpp"
 #include "params.hpp"
 #include "shader/types.hpp"
+#include "shader/entry_point.hpp"
+#include "pipeline_hash_collector.hpp"
 #include "unique_id.hpp"
 #include <functional>
 #include <memory>
@@ -30,7 +32,7 @@ struct BlendComponent {
   WGPUBlendFactor srcFactor{};
   WGPUBlendFactor dstFactor{};
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(srcFactor);
     hasher(dstFactor);
     hasher(operation);
@@ -53,7 +55,7 @@ struct BlendState {
   BlendComponent alpha;
 
   operator const WGPUBlendState &() const { return *reinterpret_cast<const WGPUBlendState *>(this); }
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(color);
     hasher(alpha);
   }
@@ -123,7 +125,7 @@ public:
     return hash;
   }
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
 #define PIPELINE_STATE(_name, _type) hasher(_name);
 #include "pipeline_states.def"
   }
@@ -144,7 +146,7 @@ struct NamedShaderParam {
                    ParamVariant defaultValue = ParamVariant());
   NamedShaderParam(std::string name, ParamVariant defaultValue);
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(type);
     hasher(name);
     hasher(flags);
@@ -158,7 +160,7 @@ struct NamedTextureParam {
   NamedTextureParam() = default;
   NamedTextureParam(std::string name) : name(name) {}
 
-  template <typename T> void hashStatic(T &hasher) const {
+  template <typename T> void getPipelineHash(T &hasher) const {
     hasher(name);
     hasher(flags);
   }
@@ -167,15 +169,15 @@ struct NamedTextureParam {
 struct FeatureCallbackContext {
   Context &context;
   const View *view = nullptr;
-  const Drawable *drawable = nullptr;
+  const IDrawable *drawable = nullptr;
   const detail::CachedDrawable *cachedDrawable = nullptr;
   const detail::CachedView *cachedView = nullptr;
 };
 
 typedef std::function<bool(const FeatureCallbackContext &)> FeatureFilterCallback;
 
-struct IDrawDataCollector;
-typedef std::function<void(const FeatureCallbackContext &, IDrawDataCollector &)> FeatureDrawDataFunction;
+struct IParameterCollector;
+typedef std::function<void(const FeatureCallbackContext &, IParameterCollector &)> FeatureParameterGenerator;
 
 extern UniqueIdGenerator featureIdGenerator;
 struct Feature {
@@ -185,9 +187,9 @@ struct Feature {
   // Pipeline state flags
   FeaturePipelineState state;
   // Per drawable draw data
-  std::vector<FeatureDrawDataFunction> drawData;
+  std::vector<FeatureParameterGenerator> drawableParameterGenerators;
   // Per view draw data
-  std::vector<FeatureDrawDataFunction> viewData;
+  std::vector<FeatureParameterGenerator> viewParameterGenerators;
   // Shader parameters read from per-instance buffer
   std::vector<NamedShaderParam> shaderParams;
   // Texture parameters
@@ -198,6 +200,10 @@ struct Feature {
   PipelineModifierPtr pipelineModifier;
 
   virtual ~Feature() = default;
+
+  UniqueId getId() const { return id; }
+
+  void pipelineHashCollect(detail::PipelineHashCollector &) const;
 };
 typedef std::shared_ptr<Feature> FeaturePtr;
 
