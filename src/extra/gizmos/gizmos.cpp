@@ -88,7 +88,7 @@ struct TranslationGizmo : public BaseConsumer {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckMainThread(data);
+    composeCheckGfxThread(data);
     composeCheckContext(data);
     return outputTypes().elements[0];
   }

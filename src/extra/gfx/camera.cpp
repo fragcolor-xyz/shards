@@ -10,7 +10,7 @@ using namespace shards;
 
 namespace gfx {
 
-struct FreeCameraShard : public gfx::BaseConsumer {
+struct FreeCameraShard {
   static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
   static SHOptionalString help() { return SHCCSTR("Provides editor free camera controls"); }
@@ -25,6 +25,8 @@ struct FreeCameraShard : public gfx::BaseConsumer {
                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_IMPL(FreeCameraShard, PARAM_IMPL_FOR(_flySpeed), PARAM_IMPL_FOR(_scrollSpeed), PARAM_IMPL_FOR(_panSpeed),
              PARAM_IMPL_FOR(_lookSpeed));
+
+  RequiredGraphicsContext _graphicsContext;
 
   // Mouse/Right stick rotation input and mouse X/Y movement (drag)
   struct PointerInputState {
@@ -72,12 +74,10 @@ struct FreeCameraShard : public gfx::BaseConsumer {
 
   // Update tracked buttons and pointers
   void updateInputState() {
-    auto &globals = getMainWindowGlobals();
-
     _inputState.pointer.prevPosition = _inputState.pointer.position;
     _inputState.mouseWheel = 0.0f;
 
-    for (auto &event : globals.events) {
+    for (auto &event : _graphicsContext->events) {
       switch (event.type) {
       case SDL_KEYDOWN:
       case SDL_KEYUP:
@@ -120,7 +120,7 @@ struct FreeCameraShard : public gfx::BaseConsumer {
       }
     }
 
-    _inputState.deltaTime = globals.deltaTime;
+    _inputState.deltaTime = _graphicsContext->deltaTime;
   }
 
   // Generates CameraInputs from an input state
@@ -211,17 +211,21 @@ struct FreeCameraShard : public gfx::BaseConsumer {
 
   void cleanup() {
     PARAM_CLEANUP();
-    baseConsumerCleanup();
+    _graphicsContext.cleanup();
   }
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    baseConsumerWarmup(context);
+    _graphicsContext.warmup(context);
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckMainThread(data);
-    composeCheckMainWindowGlobals(data);
+    composeCheckGfxThread(data);
     return outputTypes().elements[0];
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo());
+    return e;
   }
 };
 

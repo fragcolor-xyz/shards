@@ -9,13 +9,14 @@
 #include <gfx/view.hpp>
 #include <gfx/steps/defaults.hpp>
 #include <magic_enum.hpp>
+#include <exposed_type_utils.hpp>
 #include <params.hpp>
 
 using namespace shards;
 
 namespace gfx {
 
-struct RenderShard : public BaseConsumer {
+struct RenderShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
@@ -28,6 +29,7 @@ struct RenderShard : public BaseConsumer {
   };
   static SHParametersInfo parameters() { return params; }
 
+  RequiredGraphicsContext _graphicsContext;
   ParamVar _steps{};
   ParamVar _view{};
   ParamVar _views{};
@@ -63,8 +65,13 @@ struct RenderShard : public BaseConsumer {
     }
   }
 
+  SHExposedTypesInfo requiredVariables() {
+    static auto e = exposedTypesOf(decltype(_graphicsContext)::getExposedTypeInfo());
+    return e;
+  }
+
   void cleanup() {
-    baseConsumerCleanup();
+    _graphicsContext.cleanup();
     _steps.cleanup();
     _view.cleanup();
     _views.cleanup();
@@ -72,7 +79,7 @@ struct RenderShard : public BaseConsumer {
   }
 
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context);
+    _graphicsContext.warmup(context);
     _steps.warmup(context);
     _view.warmup(context);
     _views.warmup(context);
@@ -91,7 +98,7 @@ struct RenderShard : public BaseConsumer {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckMainThread(data);
+    composeCheckGfxThread(data);
     validateViewParameters();
     return CoreInfo::NoneType;
   }
@@ -129,7 +136,7 @@ struct RenderShard : public BaseConsumer {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
             if (!arg.drawQueue)
-              arg.drawQueue = getMainWindowGlobals().getDrawQueue();
+              arg.drawQueue = _graphicsContext->getDrawQueue();
           }
         },
         step);
@@ -157,8 +164,7 @@ struct RenderShard : public BaseConsumer {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    MainWindowGlobals &globals = getMainWindowGlobals();
-    globals.renderer->render(updateAndCollectViews(), collectPipelineSteps());
+    _graphicsContext->renderer->render(updateAndCollectViews(), collectPipelineSteps());
     return SHVar{};
   }
 };

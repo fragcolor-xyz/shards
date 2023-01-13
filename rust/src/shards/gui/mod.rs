@@ -53,7 +53,7 @@ static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
 lazy_static! {
-  static ref GFX_GLOBALS_TYPE: Type = unsafe { *shardsc::gfx_getMainWindowGlobalsType() };
+  static ref GFX_GLOBALS_TYPE: Type = unsafe { *shardsc::gfx_getGraphicsContextType() };
   static ref GFX_QUEUE_TYPE: Type = unsafe { *shardsc::gfx_getQueueType() };
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);

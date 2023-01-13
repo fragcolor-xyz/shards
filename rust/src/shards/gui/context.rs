@@ -53,7 +53,7 @@ impl Default for EguiContext {
 
     let mut mw_globals = ParamVar::default();
     unsafe {
-      let gfx_globals_var_name = shardsc::gfx_getMainWindowGlobalsVarName() as shardsc::SHString;
+      let gfx_globals_var_name = shardsc::gfx_getGraphicsContextVarName() as shardsc::SHString;
       mw_globals.set_name(CStr::from_ptr(gfx_globals_var_name).to_str().unwrap());
     }
 

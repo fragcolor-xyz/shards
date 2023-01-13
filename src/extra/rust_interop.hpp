@@ -16,20 +16,20 @@ extern "C" {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
 
-// gfx::MainWindowGlobals::Type
-SHTypeInfo *gfx_getMainWindowGlobalsType();
-const char *gfx_getMainWindowGlobalsVarName();
+// gfx::GraphicsContext::Type
+SHTypeInfo *gfx_getGraphicsContextType();
+const char *gfx_getGraphicsContextVarName();
 SHTypeInfo *gfx_getQueueType();
 
-SHVar gfx_MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals);
-gfx::Context *gfx_MainWindowGlobals_getContext(const SHVar &mainWindowGlobals);
-gfx::Renderer *gfx_MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals);
+SHVar gfx_GraphicsContext_getDefaultQueue(const SHVar &graphicsContext);
+gfx::Context *gfx_GraphicsContext_getContext(const SHVar &graphicsContext);
+gfx::Renderer *gfx_GraphicsContext_getRenderer(const SHVar &graphicsContext);
 
 gfx::DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var);
 
-gfx::int4 gfx_getEguiMappedRegion(const SHVar &mainWindowGlobals);
-gfx::int4 gfx_getViewport(const SHVar &mainWindowGlobals);
-const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals,
+gfx::int4 gfx_getEguiMappedRegion(const SHVar &graphicsContext);
+gfx::int4 gfx_getViewport(const SHVar &graphicsContext);
+const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &graphicsContext,
                                            float scalingFactor);
 }
 

@@ -79,7 +79,7 @@ struct ViewShard {
   }
 };
 
-struct RegionShard : public BaseConsumer {
+struct RegionShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Renders within a region of the screen and/or to a render target"); }
@@ -87,14 +87,21 @@ struct RegionShard : public BaseConsumer {
   PARAM(ShardsVar, _content, "Content", "The code to run inside this region", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(RegionShard, PARAM_IMPL_FOR(_content));
 
+  RequiredGraphicsContext _graphicsContext;
+
   void cleanup() {
     PARAM_CLEANUP();
-    baseConsumerCleanup();
+    _graphicsContext.cleanup();
   }
 
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context);
+    _graphicsContext.warmup(context);
     PARAM_WARMUP(context);
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo());
+    return e;
   }
 
   SHTypeInfo compose(SHInstanceData &data) { return _content.compose(data).outputType; }
@@ -137,9 +144,8 @@ struct RegionShard : public BaseConsumer {
       viewItem.referenceSize = int2(linalg::floor(float2(regionSize)));
     }
 
-    auto &mwg = getMainWindowGlobals();
-    ViewStack &viewStack = mwg.renderer->getViewStack();
-    input::InputStack &inputStack = mwg.inputStack;
+    ViewStack &viewStack = _graphicsContext->renderer->getViewStack();
+    input::InputStack &inputStack = _graphicsContext->inputStack;
 
     viewStack.push(std::move(viewItem));
     inputStack.push(std::move(inputItem));
