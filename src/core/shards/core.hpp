@@ -11,7 +11,7 @@
 #include "shards.hpp"
 #include "common_types.hpp"
 #include "number_types.hpp"
-#include "variables.hpp"
+#include "exposed_type_utils.hpp"
 #include "common_types.hpp"
 #include "inlined.hpp"
 #include <cassert>
@@ -96,7 +96,7 @@ struct BaseOpsBin {
 
   SHExposedTypesInfo requiredVariables() {
     _requiredVariables.clear();
-    mergeIntoRequiredVariables(_requiredVariables, _operand, CoreInfo::AnyType);
+    mergeIntoExposedInfo(_requiredVariables, _operand, CoreInfo::AnyType);
     return SHExposedTypesInfo(_requiredVariables);
   }
 

@@ -6,6 +6,7 @@
 #include "params.hpp"
 #include "linalg_shim.hpp"
 #include "shards_utils.hpp"
+#include "../inputs.hpp"
 
 using namespace shards;
 
@@ -79,7 +80,7 @@ struct ViewShard {
   }
 };
 
-struct RegionShard : public BaseConsumer {
+struct RegionShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Renders within a region of the screen and/or to a render target"); }
@@ -87,14 +88,24 @@ struct RegionShard : public BaseConsumer {
   PARAM(ShardsVar, _content, "Content", "The code to run inside this region", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(RegionShard, PARAM_IMPL_FOR(_content));
 
-  void cleanup() {
-    PARAM_CLEANUP();
-    baseConsumerCleanup();
-  }
+  RequiredGraphicsContext _graphicsContext;
+  Inputs::RequiredInputContext _inputContext;
 
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context);
+    _graphicsContext.warmup(context);
+    _inputContext.warmup(context);
     PARAM_WARMUP(context);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    _graphicsContext.cleanup();
+    _inputContext.cleanup();
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), Inputs::RequiredInputContext::getExposedTypeInfo());
+    return e;
   }
 
   SHTypeInfo compose(SHInstanceData &data) { return _content.compose(data).outputType; }
@@ -137,9 +148,8 @@ struct RegionShard : public BaseConsumer {
       viewItem.referenceSize = int2(linalg::floor(float2(regionSize)));
     }
 
-    auto &mwg = getMainWindowGlobals();
-    ViewStack &viewStack = mwg.renderer->getViewStack();
-    input::InputStack &inputStack = mwg.inputStack;
+    ViewStack &viewStack = _graphicsContext->renderer->getViewStack();
+    input::InputStack &inputStack = _inputContext->inputStack;
 
     viewStack.push(std::move(viewItem));
     inputStack.push(std::move(inputItem));

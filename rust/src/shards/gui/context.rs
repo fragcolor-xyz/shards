@@ -6,7 +6,8 @@ use super::EguiContext;
 use super::CONTEXTS_NAME;
 use super::EGUI_CTX_TYPE;
 use super::EGUI_UI_SEQ_TYPE;
-use super::GFX_GLOBALS_TYPE;
+use super::GFX_CONTEXT_TYPE;
+use super::INPUT_CONTEXT_TYPE;
 use super::GFX_QUEUE_VAR_TYPES;
 use super::HELP_OUTPUT_EQUAL_INPUT;
 use super::PARENTS_UI_NAME;
@@ -51,12 +52,6 @@ impl Default for EguiContext {
     let mut ctx = ParamVar::default();
     ctx.set_name(CONTEXTS_NAME);
 
-    let mut mw_globals = ParamVar::default();
-    unsafe {
-      let gfx_globals_var_name = shardsc::gfx_getMainWindowGlobalsVarName() as shardsc::SHString;
-      mw_globals.set_name(CStr::from_ptr(gfx_globals_var_name).to_str().unwrap());
-    }
-
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
 
@@ -66,7 +61,18 @@ impl Default for EguiContext {
       requiring: Vec::new(),
       queue: ParamVar::default(),
       contents: ShardsVar::default(),
-      main_window_globals: mw_globals,
+      graphics_context: unsafe {
+        let mut var = ParamVar::default();
+        let name = shardsc::gfx_getGraphicsContextVarName() as shardsc::SHString;
+        var.set_name(CStr::from_ptr(name).to_str().unwrap());
+        var
+      },
+      input_context: unsafe {
+        let mut var = ParamVar::default();
+        let name = shardsc::gfx_getInputContextVarName() as shardsc::SHString;
+        var.set_name(CStr::from_ptr(name).to_str().unwrap());
+        var
+      },
       parents,
       renderer: egui_gfx::Renderer::new(),
       input_translator: egui_gfx::InputTranslator::new(),
@@ -132,11 +138,20 @@ impl Shard for EguiContext {
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
 
-    // Add GFX.MainWindow to the list of required variables
+    // Add Graphics context to the list of required variables
     let exp_info = ExposedInfo {
-      exposedType: *GFX_GLOBALS_TYPE,
-      name: self.main_window_globals.get_name(),
-      help: cstr!("The exposed main window.").into(),
+      exposedType: *GFX_CONTEXT_TYPE,
+      name: self.graphics_context.get_name(),
+      help: cstr!("The graphics context.").into(),
+      ..ExposedInfo::default()
+    };
+    self.requiring.push(exp_info);
+
+    // Add Input context to the list of required variables
+    let exp_info = ExposedInfo {
+      exposedType: *INPUT_CONTEXT_TYPE,
+      name: self.input_context.get_name(),
+      help: cstr!("The input context.").into(),
       ..ExposedInfo::default()
     };
     self.requiring.push(exp_info);
@@ -194,7 +209,8 @@ impl Shard for EguiContext {
     self.instance.warmup(ctx);
     self.queue.warmup(ctx);
     self.contents.warmup(ctx)?;
-    self.main_window_globals.warmup(ctx);
+    self.graphics_context.warmup(ctx);
+    self.input_context.warmup(ctx);
     self.parents.warmup(ctx);
 
     // Initialize the parents stack in the root UI.
@@ -213,7 +229,8 @@ impl Shard for EguiContext {
 
   fn cleanup(&mut self) -> Result<(), &str> {
     self.parents.cleanup();
-    self.main_window_globals.cleanup();
+    self.graphics_context.cleanup();
+    self.input_context.cleanup();
     self.contents.cleanup();
     self.queue.cleanup();
     self.instance.cleanup();
@@ -234,7 +251,8 @@ impl Shard for EguiContext {
     let raw_input = unsafe {
       let inputs = shardsc::gfx_getEguiWindowInputs(
         self.input_translator.as_mut_ptr() as *mut shardsc::gfx_EguiInputTranslator,
-        self.main_window_globals.get(),
+        self.graphics_context.get(),
+        self.input_context.get(),
         1.0,
       ) as *const egui_gfx::egui_Input;
       egui_gfx::translate_raw_input(&*inputs)

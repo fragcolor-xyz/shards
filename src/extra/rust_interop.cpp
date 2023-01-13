@@ -1,37 +1,43 @@
 #include "rust_interop.hpp"
 #include "gfx/shards_types.hpp"
 #include "gfx.hpp"
+#include "inputs.hpp"
 #include <gfx/renderer.hpp>
 #include <foundation.hpp>
 
 using namespace shards::input;
-using shards::Var;
 using namespace gfx;
+using namespace shards;
 using GFXTypes = gfx::Types;
 
-SHTypeInfo *gfx_getMainWindowGlobalsType() {
-  static SHTypeInfo type = gfx::MainWindowGlobals::Type;
+SHTypeInfo *gfx_getGraphicsContextType() {
+  static SHTypeInfo type = gfx::GraphicsContext::Type;
   return &type;
 }
+const char *gfx_getGraphicsContextVarName() { return gfx::GraphicsContext::VariableName; }
 
-const char *gfx_getMainWindowGlobalsVarName() { return gfx::Base::mainWindowGlobalsVarName; }
+SHTypeInfo *gfx_getInputContextType() {
+  static SHTypeInfo type = Inputs::InputContext::Type;
+  return &type;
+}
+const char *gfx_getInputContextVarName() { return Inputs::InputContext::VariableName; }
 
 SHTypeInfo *gfx_getQueueType() {
   static SHTypeInfo type = GFXTypes::DrawQueue;
   return &type;
 }
 
-SHVar gfx_MainWindowGlobals_getDefaultQueue(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+SHVar gfx_GraphicsContext_getDefaultQueue(const SHVar &graphicsContext) {
+  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
   return Var::Object(&globals->shDrawQueue, SHTypeInfo(GFXTypes::DrawQueue).object.vendorId,
                      SHTypeInfo(GFXTypes::DrawQueue).object.typeId);
 }
-Context *gfx_MainWindowGlobals_getContext(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+Context *gfx_GraphicsContext_getContext(const SHVar &graphicsContext) {
+  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
   return globals->context.get();
 }
-Renderer *gfx_MainWindowGlobals_getRenderer(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+Renderer *gfx_GraphicsContext_getRenderer(const SHVar &graphicsContext) {
+  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
   return globals->renderer.get();
 }
 
@@ -40,10 +46,10 @@ DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var) {
   return &shDrawQueue->queue;
 }
 
-gfx::int4 gfx_getEguiMappedRegion(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+gfx::int4 gfx_getEguiMappedRegion(const SHVar &inputContextVar) {
+  Inputs::InputContext *inputContext = varAsObjectChecked<Inputs::InputContext>(inputContextVar, Inputs::InputContext::Type);
 
-  auto &inputStack = globals->inputStack;
+  auto &inputStack = inputContext->inputStack;
   InputStack::Item inputStackOutput = inputStack.getTop();
 
   int4 result{};
@@ -52,32 +58,33 @@ gfx::int4 gfx_getEguiMappedRegion(const SHVar &mainWindowGlobals) {
   return result;
 }
 
-gfx::int4 gfx_getViewport(const SHVar &mainWindowGlobals) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+gfx::int4 gfx_getViewport(const SHVar &graphicsContextVar) {
+  GraphicsContext *graphicsContext = varAsObjectChecked<GraphicsContext>(graphicsContextVar, GraphicsContext::Type);
 
-  auto &viewStack = globals->renderer->getViewStack();
+  auto &viewStack = graphicsContext->renderer->getViewStack();
   auto viewStackOutput = viewStack.getOutput();
 
   gfx::Rect viewportRect = viewStackOutput.viewport;
   return int4(viewportRect.x, viewportRect.y, viewportRect.getX1(), viewportRect.getY1());
 }
 
-const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &mainWindowGlobals,
-                                           float scalingFactor) {
-  MainWindowGlobals *globals = varAsObjectChecked<MainWindowGlobals>(mainWindowGlobals, MainWindowGlobals::Type);
+const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &graphicsContextVar,
+                                           const SHVar &inputContextVar, float scalingFactor) {
+  GraphicsContext *graphicsContext = varAsObjectChecked<GraphicsContext>(graphicsContextVar, GraphicsContext::Type);
+  Inputs::InputContext *inputContext = varAsObjectChecked<Inputs::InputContext>(inputContextVar, Inputs::InputContext::Type);
 
   static std::vector<SDL_Event> noEvents{};
   const std::vector<SDL_Event> *eventsPtr = &noEvents;
   int4 mappedWindowRegion;
 
-  auto &viewStack = globals->renderer->getViewStack();
+  auto &viewStack = graphicsContext->renderer->getViewStack();
   auto viewStackOutput = viewStack.getOutput();
 
   // Get viewport size from view stack
   int2 viewportSize = viewStackOutput.viewport.getSize();
 
   // Get events based on input stack
-  auto &inputStack = globals->inputStack;
+  auto &inputStack = inputContext->inputStack;
   InputStack::Item inputStackOutput = inputStack.getTop();
   if (inputStackOutput.windowMapping) {
     auto &windowMapping = inputStackOutput.windowMapping.value();
@@ -86,7 +93,7 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, WindowSubRegion>) {
             mappedWindowRegion = arg.region;
-            eventsPtr = &globals->events;
+            eventsPtr = &inputContext->events;
           }
         },
         windowMapping);
@@ -94,9 +101,9 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
 
   return translator->translateFromInputEvents(EguiInputTranslatorArgs{
       .events = *eventsPtr,
-      .window = *globals->window.get(),
-      .time = globals->time,
-      .deltaTime = globals->deltaTime,
+      .window = *graphicsContext->window.get(),
+      .time = graphicsContext->time,
+      .deltaTime = graphicsContext->deltaTime,
       .viewportSize = viewportSize,
       .mappedWindowRegion = mappedWindowRegion,
       .scalingFactor = scalingFactor,

@@ -4,11 +4,12 @@
 #include <gfx/window.hpp>
 #include <object_var_util.hpp>
 #include <params.hpp>
+#include "../inputs.hpp"
 
 namespace shards {
 namespace Gizmos {
 using namespace gfx;
-struct GizmosContextShard : public gfx::BaseConsumer {
+struct GizmosContextShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Provides a context for rendering gizmos"); }
@@ -21,38 +22,46 @@ struct GizmosContextShard : public gfx::BaseConsumer {
   PARAM(ShardsVar, _content, "Content", "Content", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(GizmosContextShard, PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content));
 
-  Context _context{};
+  RequiredGraphicsContext _graphicsContext;
+  Inputs::RequiredInputContext _inputContext;
+
+  GizmoContext _gizmoContext{};
   SHVar *_contextVarRef{};
 
   int2 _cursorPosition{};
   bool _mouseButtonState{};
 
+  ExposedInfo _exposedInfo;
+
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context, true);
+    _graphicsContext.warmup(context);
+    _inputContext.warmup(context);
 
     // Reference context variable
-    _contextVarRef = referenceVariable(context, Context::contextVarName);
+    _contextVarRef = referenceVariable(context, GizmoContext::VariableName);
 
-    withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] { PARAM_WARMUP(context); });
+    withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] { PARAM_WARMUP(context); });
   }
 
   void cleanup() {
-    withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] { PARAM_CLEANUP(); });
+    withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] { PARAM_CLEANUP(); });
 
-    baseConsumerCleanup();
+    _graphicsContext.cleanup();
+    _inputContext.cleanup();
 
     if (_contextVarRef) {
       releaseVariable(_contextVarRef);
     }
   }
 
-  SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckMainThread(data);
-    composeCheckMainWindowGlobals(data);
+  SHExposedTypesInfo requiredVariables() {
+    static auto e =
+        exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), Inputs::RequiredInputContext::getExposedTypeInfo());
+    return e;
+  }
 
-    std::vector<SHExposedTypeInfo> exposed(PtrIterator(data.shared.elements),
-                                           PtrIterator(data.shared.elements + data.shared.len));
-    exposed.push_back(ExposedInfo::ProtectedVariable(Context::contextVarName, SHCCSTR("Helper context"), Context::Type));
+  SHTypeInfo compose(SHInstanceData &data) {
+    gfx::composeCheckGfxThread(data);
 
     if (!_queue.isVariable())
       throw ComposeError("Queue not set");
@@ -60,9 +69,11 @@ struct GizmosContextShard : public gfx::BaseConsumer {
     if (!_view.isVariable())
       throw ComposeError("View not set");
 
+    _exposedInfo = ExposedInfo(data.shared);
+    _exposedInfo.push_back(GizmoContext::VariableInfo);
+
     SHInstanceData contentInstanceData = data;
-    contentInstanceData.shared.elements = exposed.data();
-    contentInstanceData.shared.len = exposed.size();
+    contentInstanceData.shared = SHExposedTypesInfo(_exposedInfo);
     return _content.compose(contentInstanceData).outputType;
   }
 
@@ -88,15 +99,14 @@ struct GizmosContextShard : public gfx::BaseConsumer {
     ViewPtr view = static_cast<SHView *>(viewVar.payload.objectValue)->view;
 
     assert(queueVar.payload.objectValue);
-    _context.queue = static_cast<SHDrawQueue *>(queueVar.payload.objectValue)->queue;
-    assert(_context.queue);
+    _gizmoContext.queue = static_cast<SHDrawQueue *>(queueVar.payload.objectValue)->queue;
+    assert(_gizmoContext.queue);
 
-    gfx::Context &gfxContext = getContext();
-    gfx::MainWindowGlobals &mainWindowGlobals = getMainWindowGlobals();
-    gfx::Window &window = getWindow();
-    int2 outputSize = gfxContext.getMainOutputSize();
+    gfx::gizmos::Context &gfxGizmoContext = _gizmoContext.gfxGizmoContext;
+    gfx::Window &window = _graphicsContext->getWindow();
+    int2 outputSize = _graphicsContext->context->getMainOutputSize();
 
-    handleGizmoInputEvents(mainWindowGlobals.events);
+    handleGizmoInputEvents(_inputContext->events);
 
     float2 drawableScale = float2(window.getDrawableSize()) / float2(window.getSize());
 
@@ -106,10 +116,10 @@ struct GizmosContextShard : public gfx::BaseConsumer {
     gizmoInput.viewSize = float2(outputSize);
 
     SHVar _shardsOutput{};
-    withObjectVariable(*_contextVarRef, &_context, Context::Type, [&] {
-      _context.gizmoContext.begin(gizmoInput, view);
+    withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] {
+      gfxGizmoContext.begin(gizmoInput, view);
       _content.activate(shContext, input, _shardsOutput);
-      _context.gizmoContext.end(_context.queue);
+      gfxGizmoContext.end(_gizmoContext.queue);
     });
 
     return _shardsOutput;
