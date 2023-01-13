@@ -13,11 +13,11 @@ In this chapter, you will be learning how to write documentation for Fragcolor.
 
 Pre-requisites:
 
-- [Readied the Development Environment](../getting-started.md)
+- [Ready the Development Environment](../getting-started.md)
 
-- [Built Shards](../../contribute/code/build-shards.md)
+- [Build Shards](../../contribute/code/build-shards.md)
 
-- [Installed MkDocs](./start-documenting.md)
+- [Install MkDocs](./start-documenting.md)
 
 ## Navigating the Docs
 
@@ -25,19 +25,21 @@ Documentation exists under the `/docs` folder of the Shards repository. We will 
 
 For Shards API Documentation:
 
-- `/docs/docs/reference`: Contains the pages for the "Reference" category of the site
+- `/docs/docs/reference`: contains the pages for the "Reference" category of the site.
 
-- `/docs/details`: Holds the files containing the details of each shard
+- `/docs/details`: holds the files containing the details of each shard.
 
-- `/docs/samples`: Contains the code and output of the examples for each shard
+- `/docs/samples`: contains the code and output of the examples for each shard.
+
+Content from the three folders above are combined to make up each API documentation page.
 
 ![A shard's API page and their associated folders.](assets/docs-folders.png)
 
 For the other documentation pages:
 
-- `/docs/docs/contribute`: Contains the pages for the "Contribute" category of the site
+- `/docs/docs/contribute`: contains the pages for the "Contribute" category of the site.
 
-- `/docs/docs/learn`: Contains the pages for the "Learn" category of the site
+- `/docs/docs/learn`: contains the pages for the "Learn" category of the site.
 
 ## Previewing the Docs
 
@@ -98,7 +100,7 @@ To generate the documentation for the Shards API:
         ./build/Debug/shards ./docs/generate.edn
 
 !!! note
-    The **Debug** version of Shards must be used for the generating of the Shards API pages.
+    The **Debug** version of Shards should be used for the generating of the Shards API pages.
 
 Once done, you will notice that the directory is now filled with folders and Markdown files of various shards.
 
@@ -118,12 +120,7 @@ To generate the `.log` files for your code examples:
 
  3. Input the following command:
 
-        ./run-samples.sh --release
-
-!!! warning "Segmentation fault"
-    If the error for "Segmentation fault" appears, run the command below before attempting Step 3 again.
-
-        export GFX_BACKEND=D3D12
+        ./run-samples.sh
 
 When the script is done, you will notice new `.log` files within your "Samples" folder. These will be shown in your documentation as the "Output" of your code examples.
 
@@ -147,11 +144,14 @@ Each segment will require a different approach for making changes. The following
 
 1. Navigate to the `/docs/details` folder.
 
-2. Search for the .md file with the shard's name. We will be using the `Msg` shard in this example.
+2. Search for the `.md` file with the shard's name. We will be using the `Msg` shard in this example.
+
+    !!! note
+        If the file does not exist, create a new `.md` file with the shard's name (e.g. `Msg.md`).
 
     ![Finding the .md file for a shard's details.](assets/editing-details-directory.png)
 
-3. Amend the text within the .md file.
+3. Amend the text within the `.md` file.
 
     ![The details within the .md file.](assets/editing-details-md.png)
 
@@ -217,7 +217,7 @@ Firstly, locate the struct of the shard you wish to make amendments to. For this
 
 3. Navigate to the struct in the same file to access the `help()` function. The basic description of the shard is located in the return statement and can be edited from there.
 
-    ![The basic description of the shard is located in the `help()` function.](assets/editing-ref-cpp-struct-help.png) 
+    ![The basic description of the shard is located in the `help()` function.](assets/editing-re) 
 
 #### Input and Output
 
