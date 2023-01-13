@@ -62,10 +62,6 @@ struct MouseDelta : public Base {
     return CoreInfo::Float2Type;
   }
 
-  void warmup(SHContext *context) { baseWarmup(context); }
-
-  void cleanup() { baseCleanup(); }
-
   SHVar activate(SHContext *context, const SHVar &input) {
     int2 windowSize = getWindow().getSize();
 
@@ -91,10 +87,6 @@ struct MousePos : public Base {
     return CoreInfo::Float2Type;
   }
 
-  void warmup(SHContext *context) { baseWarmup(context); }
-
-  void cleanup() { baseCleanup(); }
-
   SHVar activate(SHContext *context, const SHVar &input) {
     int2 windowSize = getWindow().getSize();
 
@@ -113,10 +105,6 @@ struct WindowSize : public Base {
     gfx::composeCheckGfxThread(data);
     return CoreInfo::Float2Type;
   }
-
-  void warmup(SHContext *context) { baseWarmup(context); }
-
-  void cleanup() { baseCleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     int2 windowSize = getWindow().getSize();
