@@ -11,22 +11,26 @@
 
     ; Create view
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
-   (GFX.View :View .view-transform) >= .view)
+   (GFX.View :View .view-transform) >= .view
+
+   ; Initial panel transforms
+   (Float3 0.0) (Math.Translation) >= .panel-t-0
+   (Float3 0.0) (Math.Translation) >= .panel-t-1)
+
   (GFX.MainWindow
    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
    :Contents
    (->
-
-    (VUI.Context (->
-                  (VUI.Panel (->
-                              (UI.CentralPanel (->
-                                                "First panel" (UI.Label)))))
-                  ;
-                  (VUI.Panel (->
-                              (UI.CentralPanel (->
-                                                "Some other panel" (UI.Label)))))
-                  ;
-                  ))
+    (VUI.Context
+     (->
+      (VUI.Panel :Transform .panel-t-0 :Size (Float2 200 300) :Contents
+                 (->
+                  (UI.CentralPanel (->
+                                    "First panel" (UI.Label)))))
+      (VUI.Panel :Transform .panel-t-1 :Size (Float2 400 300) :Contents
+                 (->
+                  (UI.CentralPanel (->
+                                    "Some other panel" (UI.Label)))))))
 
     (GFX.Render :Steps .render-steps :View .view))))
 

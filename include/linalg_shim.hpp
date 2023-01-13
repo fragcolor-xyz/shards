@@ -6,6 +6,8 @@
 
 #include <linalg.h>
 #include <vector>
+#include <shards.h>
+
 namespace shards {
 struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
   using linalg::aliases::float4x4::mat;
