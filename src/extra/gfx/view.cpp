@@ -6,6 +6,7 @@
 #include "params.hpp"
 #include "linalg_shim.hpp"
 #include "shards_utils.hpp"
+#include "../inputs.hpp"
 
 using namespace shards;
 
@@ -88,19 +89,22 @@ struct RegionShard {
   PARAM_IMPL(RegionShard, PARAM_IMPL_FOR(_content));
 
   RequiredGraphicsContext _graphicsContext;
+  Inputs::RequiredInputContext _inputContext;
+
+  void warmup(SHContext *context) {
+    _graphicsContext.warmup(context);
+    _inputContext.warmup(context);
+    PARAM_WARMUP(context);
+  }
 
   void cleanup() {
     PARAM_CLEANUP();
     _graphicsContext.cleanup();
-  }
-
-  void warmup(SHContext *context) {
-    _graphicsContext.warmup(context);
-    PARAM_WARMUP(context);
+    _inputContext.cleanup();
   }
 
   SHExposedTypesInfo requiredVariables() {
-    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo());
+    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), Inputs::RequiredInputContext::getExposedTypeInfo());
     return e;
   }
 
@@ -145,7 +149,7 @@ struct RegionShard {
     }
 
     ViewStack &viewStack = _graphicsContext->renderer->getViewStack();
-    input::InputStack &inputStack = _graphicsContext->inputStack;
+    input::InputStack &inputStack = _inputContext->inputStack;
 
     viewStack.push(std::move(viewItem));
     inputStack.push(std::move(inputItem));

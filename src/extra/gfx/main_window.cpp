@@ -3,13 +3,12 @@
 #include <gfx/loop.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>
+#include "../inputs.hpp"
 
 using namespace shards;
-namespace gfx {
+using shards::Inputs::InputContext;
 
-Context &GraphicsContext::getContext() { return *context.get(); }
-Window &GraphicsContext::getWindow() { return *window.get(); }
-SDL_Window *GraphicsContext::getSdlWindow() { return getWindow().window; }
+namespace gfx {
 
 struct MainWindow final {
   static inline Parameters params{
@@ -34,10 +33,16 @@ struct MainWindow final {
   Window _window;
   ShardsVar _shards;
 
+  std::shared_ptr<InputContext> _inputContext;
+  SHVar *_inputContextVar{};
+
   std::shared_ptr<GraphicsContext> _graphicsContext;
   SHVar *_graphicsContextVar{};
+
   std::shared_ptr<ContextUserData> _contextUserData;
   ::gfx::Loop _loop;
+
+  ExposedInfo _exposedVariables;
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -92,13 +97,12 @@ struct MainWindow final {
     }
 
     _graphicsContext = std::make_shared<GraphicsContext>();
+    _inputContext = std::make_shared<InputContext>();
 
-    // twice to actually own the data and release...
-    IterableExposedInfo rshared(data.shared);
-    IterableExposedInfo shared(rshared);
-    shared.push_back(ExposedInfo::ProtectedVariable(GraphicsContext::VariableName, GraphicsContext::VariableDescription,
-                                                    GraphicsContext::Type));
-    data.shared = shared;
+    _exposedVariables = ExposedInfo(data.shared);
+    _exposedVariables.push_back(GraphicsContext::VariableInfo);
+    _exposedVariables.push_back(InputContext::VariableInfo);
+    data.shared = SHExposedTypesInfo(_exposedVariables);
 
     _shards.compose(data);
 
@@ -136,6 +140,12 @@ struct MainWindow final {
     _graphicsContextVar->payload.objectValue = _graphicsContext.get();
     _graphicsContextVar->valueType = SHType::Object;
 
+    _graphicsContextVar = referenceVariable(context, InputContext::VariableName);
+    _graphicsContextVar->payload.objectTypeId = SHTypeInfo(InputContext::Type).object.typeId;
+    _graphicsContextVar->payload.objectVendorId = SHTypeInfo(InputContext::Type).object.vendorId;
+    _graphicsContextVar->payload.objectValue = _inputContext.get();
+    _graphicsContextVar->valueType = SHType::Object;
+
     _shards.warmup(context);
   }
 
@@ -157,7 +167,7 @@ struct MainWindow final {
     auto &renderer = _graphicsContext->renderer;
     auto &context = _graphicsContext->context;
     auto &window = _graphicsContext->window;
-    auto &events = _graphicsContext->events;
+    auto &events = _inputContext->events;
 
     // Store shards context for current activation in user data
     // this is used by callback chains that need to resolve variables, etc.
@@ -182,7 +192,7 @@ struct MainWindow final {
     }
 
     // Push root input region
-    auto &inputStack = _graphicsContext->inputStack;
+    auto &inputStack = _inputContext->inputStack;
     inputStack.reset();
     inputStack.push(input::InputStack::Item{
         .windowMapping = input::WindowSubRegion::fromEntireWindow(*window.get()),
