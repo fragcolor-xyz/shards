@@ -9,4 +9,4 @@
   (Msg "main tick"))
 
 (schedule main time)
-(run main 0.1 20)
+(if (run main 0.1 20) nil (throw "Root tick failed"))

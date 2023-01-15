@@ -16,4 +16,4 @@
 (schedule main send)
 (schedule main receive)
 (schedule main updater)
-(run main 0.05 100)
+(if (run main 0.05 100) nil (throw "Root tick failed"))
