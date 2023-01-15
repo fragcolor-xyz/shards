@@ -634,27 +634,27 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   TTableVar(std::initializer_list<std::pair<std::string_view, SHVar>> pairs) : TTableVar() {
     for (auto &kv : pairs) {
-      auto &rdst = (*this)[kv.first];
-      SH_CORE::cloneVar(rdst, kv.second);
+      auto &rDst = (*this)[kv.first];
+      SH_CORE::cloneVar(rDst, kv.second);
     }
   }
 
   TTableVar(const TTableVar &others, std::initializer_list<std::pair<std::string_view, SHVar>> pairs) : TTableVar() {
     const auto &table = others.payload.tableValue;
     ForEach(table, [&](auto &key, auto &val) {
-      auto &rdst = (*this)[key];
-      SH_CORE::cloneVar(rdst, val);
+      auto &rDst = (*this)[key];
+      SH_CORE::cloneVar(rDst, val);
     });
 
     for (auto &kv : pairs) {
-      auto &rdst = (*this)[kv.first];
-      SH_CORE::cloneVar(rdst, kv.second);
+      auto &rDst = (*this)[kv.first];
+      SH_CORE::cloneVar(rDst, kv.second);
     }
   }
 
   TTableVar &operator=(TTableVar &&other) {
     std::swap(*this, other);
-    memset(&other, 0x0, sizeof(SHVar));
+    SH_CORE::destroyVar(other);
     return *this;
   }
 
@@ -690,7 +690,7 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   TSeqVar &operator=(TSeqVar &&other) {
     std::swap(*this, other);
-    memset(&other, 0x0, sizeof(SHVar));
+    SH_CORE::destroyVar(other);
     return *this;
   }
 
