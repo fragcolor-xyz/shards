@@ -9,4 +9,4 @@
 (schedule two (wire-template))
 (schedule three (wire-template))
 
-(run-many [one two three] 0.1 20)
+(if (run-many [one two three] 0.1 20) nil (throw "Root tick failed"))
