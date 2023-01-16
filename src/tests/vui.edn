@@ -4,13 +4,19 @@
   (Setup
    0.0 >= .time
 
+   (GFX.DrawQueue) >= .queue
+
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
+   (Float3 0 0 0) (Math.Translation) >= .transform-0
+   {:Mesh .mesh :Params {:baseColor (Float4 1 0 1 1)}} (GFX.Drawable :Transform .transform-0) >> .drawables
+
     ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Features .features} (GFX.DrawablePass) >> .render-steps
+   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
 
     ; Create view
-   {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+   {:Position (Float3 0 1 400) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
    (GFX.View :View .view-transform) >= .view
 
    ; Initial panel transforms
@@ -21,18 +27,21 @@
    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
    :Contents
    (->
-    (VUI.Context
+    .queue (GFX.ClearQueue)
+    (VUI.Context :Queue .queue :View .view :Contents
      (->
-      (VUI.Panel :Transform .panel-t-0 :Size (Float2 200 300) :Contents
+      (VUI.Panel :Transform .panel-t-0 :Size (Float2 100 100) :Contents
                  (->
                   (UI.CentralPanel (->
                                     "First panel" (UI.Label)))))
-      (VUI.Panel :Transform .panel-t-1 :Size (Float2 400 300) :Contents
+      (VUI.Panel :Transform .panel-t-1 :Size (Float2 100 100) :Contents
                  (->
                   (UI.CentralPanel (->
                                     "Some other panel" (UI.Label)))))))
 
+    .drawables (GFX.Draw .queue)
+
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule Root test-wire)
-(if (run Root timestep 100) nil (throw "Root tick failed"))
+(if (run Root timestep) nil (throw "Root tick failed"))

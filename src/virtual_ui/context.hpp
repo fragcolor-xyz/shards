@@ -29,6 +29,12 @@ struct Context {
   PanelPtr lastFocusedPanel;
   PanelPtr focusedPanel;
 
+  // Points per world space unit
+  float virtualPointScale = 200.0f;
+
+  // Resolution of rendered UI, in actual pixels per virtual UI pixel
+  float pixelsPerPoint = 4.0f;
+
   struct PointerInput {
     input::InputBufferIterator iterator;
     gfx::ViewRay ray;

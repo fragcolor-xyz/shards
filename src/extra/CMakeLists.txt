@@ -44,7 +44,7 @@ target_link_libraries(shards-extra SDL2)
 
 target_link_libraries(shards-extra
   shards-core
-  stb gfx gfx-gltf gfx-egui input
+  stb gfx gfx-gltf gfx-egui input virtual-ui
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio
   nlohmann_json

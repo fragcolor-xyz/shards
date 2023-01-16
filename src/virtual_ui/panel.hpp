@@ -16,17 +16,10 @@ struct PanelGeometry {
   gfx::float3 getTopLeft() const { return center - right * size.x * 0.5f + up * size.y * 0.5f; }
 };
 
-typedef void (*PanelRenderCallback)(void *Context, const egui::FullOutput &output);
-
 struct Panel {
-  gfx::float2 size = gfx::float2(1024, 1024);
-  gfx::float2 alignment = gfx::float2(0.5f);
-  gfx::float4x4 transform = linalg::identity;
-
   virtual ~Panel() = default;
-  virtual void render(void* context, const egui::Input &inputs, PanelRenderCallback render) = 0;
-
-  PanelGeometry getGeometry() const;
+  virtual const egui::FullOutput& render(const egui::Input &inputs) = 0;
+  virtual PanelGeometry getGeometry() const = 0;
 };
 } // namespace shards::vui
 

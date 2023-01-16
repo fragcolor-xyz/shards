@@ -1,7 +1,10 @@
 #include "vui.hpp"
 #include "../gfx.hpp"
 #include "../inputs.hpp"
+#include "gfx/egui/egui_types.hpp"
+#include "gfx/linalg.hpp"
 #include "linalg_shim.hpp"
+#include "object_var_util.hpp"
 #include "params.hpp"
 #include "../egui/context.hpp"
 #include <gfx/renderer.hpp>
@@ -25,11 +28,11 @@ struct VUIContextShard {
 
   input::InputBuffer _inputBuffer;
 
-  PARAM(ShardsVar, _contents, "Contents", "The list of UI panels to render.", {CoreInfo::ShardsOrNone});
-  PARAM(ShardsVar, _scale, "Scale", "The scale of world units to UI units.", {CoreInfo::FloatType});
   PARAM_PARAMVAR(_queue, "Queue", "The draw queue to insert draw commands into.", {Type::VariableOf(gfx::Types::DrawQueue)});
   PARAM_PARAMVAR(_view, "View", "The view that is being used to render.", {Type::VariableOf(gfx::Types::View)});
-  PARAM_IMPL(VUIContextShard, PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_scale), PARAM_IMPL_FOR(_queue));
+  PARAM(ShardsVar, _contents, "Contents", "The list of UI panels to render.", {CoreInfo::ShardsOrNone});
+  PARAM_VAR(_scale, "Scale", "The scale of world units to UI units.", {CoreInfo::FloatType});
+  PARAM_IMPL(VUIContextShard, PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_scale));
 
   VUIContextShard() { _scale = Var(1.0f / 1000.0f); }
 
@@ -48,6 +51,8 @@ struct VUIContextShard {
   void warmup(SHContext *context);
 
   void cleanup() {
+    PARAM_CLEANUP()
+
     _contents.cleanup();
     _graphicsContext.cleanup();
     _inputContext.cleanup();
@@ -88,10 +93,15 @@ struct VUIContextShard {
     for (auto &event : _inputContext->events)
       _inputBuffer.push_back(event);
 
-    gfx::float2 inputToViewScale{1.0f};
-    gfx::SizedView sizedView(view.view, gfx::float2(viewStackTop.viewport.getSize()));
-    _vuiContext.context.prepareInputs(_inputBuffer, inputToViewScale, sizedView);
-    _vuiContext.context.evaluate(queue.queue, _graphicsContext->time, _graphicsContext->deltaTime);
+    _vuiContext.activationContext = shContext;
+    _vuiContext.context.virtualPointScale = _scale.payload.floatValue;
+    withObjectVariable(*_vuiContextVar, &_vuiContext, VUIContext::Type, [&]() {
+      gfx::float2 inputToViewScale{1.0f};
+      gfx::SizedView sizedView(view.view, gfx::float2(viewStackTop.viewport.getSize()));
+      _vuiContext.context.prepareInputs(_inputBuffer, inputToViewScale, sizedView);
+      _vuiContext.context.evaluate(queue.queue, _graphicsContext->time, _graphicsContext->deltaTime);
+    });
+    _vuiContext.activationContext = nullptr;
 
     SHVar output{};
     return output;
@@ -109,7 +119,7 @@ struct VUIPanelShard {
   Shard *_uiShard{};
   EguiContext _eguiContext;
   ExposedInfo _exposedTypes;
-  std::optional<Panel> _panel;
+  std::shared_ptr<Panel> _panel;
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
@@ -132,7 +142,8 @@ struct VUIPanelShard {
     ensureEguiContext();
     egui_warmup(_eguiContext, context);
 
-    _panel.emplace(*this);
+    _panel = std::make_shared<Panel>(*this);
+    _context->context.panels.emplace_back(_panel);
   }
 
   void cleanup() {
@@ -165,61 +176,58 @@ struct VUIPanelShard {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    preRender(shContext);
     throw ActivationError("Invalid activation, VUIPanel can not be used directly");
   }
 
-  // Updates panel geometry from variables
-  void preRender(SHContext *shContext) { _panel->transform = toFloat4x4(_transform.get()); }
-
   // This evaluates the egui contents for this panel
-  void render(void *context, const egui::Input &inputs, vui::PanelRenderCallback renderCallback) {
+  virtual const egui::FullOutput &render(const egui::Input &inputs) {
     SHVar output{};
-    const char *error = egui_activate(_eguiContext, inputs, _contents.shards(), (SHContext *)context, SHVar{}, output);
+    const char *error = egui_activate(_eguiContext, inputs, _contents.shards(), _context->activationContext, SHVar{}, output);
     if (error)
       throw ActivationError(fmt::format("egui activation error: {}", error));
 
-    const egui::FullOutput &_eguiOutput = *egui_getOutput(_eguiContext);
-    renderCallback(context, _eguiOutput);
+    const egui::FullOutput &eguiOutput = *egui_getOutput(_eguiContext);
+    return eguiOutput;
   }
 
-  // Updates variables based on any panel movement that might have happened
-  void postRender(SHContext *shContext) {
-    if (_transform.isVariable())
-      cloneVar(_transform.get(), Mat4(_panel->transform));
+  vui::PanelGeometry getGeometry() const {
+    gfx::float4x4 transform = toFloat4x4(_transform.get());
+    gfx::float2 alignment{0.5f};
 
-    if (_size.isVariable())
-      cloneVar(_size.get(), toVar(_panel->size));
+    vui::PanelGeometry result;
+    result.anchor = gfx::extractTranslation(transform);
+    result.up = transform.y.xyz();
+    result.right = transform.x.xyz();
+    result.size = toFloat2(_size.get());
+    result.center =
+        result.anchor + result.right * (0.5f - alignment.x) * result.size.x + result.up * (0.5f - alignment.y) * result.size.y;
+    return result;
   }
 };
 
+const egui::FullOutput &Panel::render(const egui::Input &inputs) { return panelShard.render(inputs); }
+vui::PanelGeometry Panel::getGeometry() const { return panelShard.getGeometry(); }
+
 void VUIContextShard::warmup(SHContext *context) {
   _vuiContextVar = referenceVariable(context, VUIContext::VariableName);
-  _vuiContextVar->payload.objectTypeId = SHTypeInfo(VUIContext::Type).object.typeId;
-  _vuiContextVar->payload.objectVendorId = SHTypeInfo(VUIContext::Type).object.vendorId;
-  _vuiContextVar->payload.objectValue = &_vuiContext;
-  _vuiContextVar->valueType = SHType::Object;
 
   _inputContext.warmup(context);
   _graphicsContext.warmup(context);
-  _contents.warmup(context);
+
+  withObjectVariable(*_vuiContextVar, &_vuiContext, VUIContext::Type, [&]() { PARAM_WARMUP(context); });
 
   // Collect VUI.Panel shards similar to UI dock does
-  _panels.clear();
-  auto contentShards = _contents.shards();
-  for (size_t i = 0; i < contentShards.len; i++) {
-    ShardPtr shard = contentShards.elements[i];
+  // _panels.clear();
+  // auto contentShards = _contents.shards();
+  // for (size_t i = 0; i < contentShards.len; i++) {
+  //   ShardPtr shard = contentShards.elements[i];
 
-    if (std::string(VUI_PANEL_SHARD_NAME) == shard->name(shard)) {
-      using ShardWrapper = shards::ShardWrapper<VUIPanelShard>;
-      VUIPanelShard &vuiPanel = reinterpret_cast<ShardWrapper *>(shard)->shard;
-      _panels.emplace_back(&vuiPanel);
-    }
-  }
-}
-
-void Panel::render(void *context, const egui::Input &inputs, vui::PanelRenderCallback renderCallback) {
-  panelShard.render(context, inputs, renderCallback);
+  //   if (std::string(VUI_PANEL_SHARD_NAME) == shard->name(shard)) {
+  //     using ShardWrapper = shards::ShardWrapper<VUIPanelShard>;
+  //     VUIPanelShard &vuiPanel = reinterpret_cast<ShardWrapper *>(shard)->shard;
+  //     _panels.emplace_back(&vuiPanel);
+  //   }
+  // }
 }
 
 void registerShards() {

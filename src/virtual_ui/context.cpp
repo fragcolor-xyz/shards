@@ -1,4 +1,5 @@
 #include "context.hpp"
+#include "gfx/egui/egui_types.hpp"
 #include <spdlog/spdlog.h>
 #include <gfx/linalg.hpp>
 #include <gfx/view_raycast.hpp>
@@ -49,20 +50,21 @@ void Context::prepareInputs(input::InputBuffer &input, gfx::float2 inputToViewSc
     for (size_t panelIndex = 0; panelIndex < panels.size(); panelIndex++) {
       auto &panel = panels[panelIndex];
 
-      float3 planePoint = extractTranslation(panel->transform);
-      float3 planeNormal = panel->transform.z.xyz();
+      auto geom = panel->getGeometry();
+
+      float3 planePoint = geom.center;
+      float3 planeNormal = linalg::cross(geom.right, geom.up);
 
       float dist{};
       if (gfx::intersectPlane(evt.ray.origin, evt.ray.direction, planePoint, planeNormal, dist) && dist < evt.hitDistance) {
 
         float3 hitPoint = evt.ray.origin + evt.ray.direction * dist;
 
-        auto geom = panel->getGeometry();
         float3 topLeft = geom.getTopLeft();
         float fX = linalg::dot(hitPoint, geom.right) - linalg::dot(topLeft, geom.right);
         float fY = -(linalg::dot(hitPoint, geom.up) - linalg::dot(topLeft, geom.up));
-        if (fX >= 0.0f && fX <= panel->size.x) {
-          if (fY >= 0.0f && fY <= panel->size.y) {
+        if (fX >= 0.0f && fX <= geom.size.x) {
+          if (fY >= 0.0f && fY <= geom.size.y) {
             evt.hitDistance = dist;
             evt.panelCoord = float2(fX, fY);
             focusedPanel = evt.hitPanel = panel;
@@ -128,9 +130,8 @@ void Context::evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime) {
   bool panelFocusChanged = lastFocusedPanel != focusedPanel;
 
   for (auto &panel : panels) {
-    // Points per world space unit
-    float virtualPointScale = 200.0f;
-    float pixelsPerPoint = 4.0f;
+
+    auto geometry = panel->getGeometry();
 
     eguiInputTranslator.begin(time, deltaTime);
 
@@ -205,7 +206,7 @@ void Context::evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime) {
 
     egui::Input input = *eguiInputTranslator.getOutput();
     input.screenRect.min = egui::Pos2{};
-    input.screenRect.max = egui::toPos2(panel->size * virtualPointScale);
+    input.screenRect.max = egui::toPos2(geometry.size * virtualPointScale);
     input.pixelsPerPoint = pixelsPerPoint;
 
     RenderContext ctx{
@@ -214,7 +215,8 @@ void Context::evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime) {
         .cached = getCachedPanel(panel),
         .scaling = virtualPointScale,
     };
-    panel->render(&ctx, input, (PanelRenderCallback)&renderPanel);
+    const egui::FullOutput &output = panel->render(input);
+    renderPanel(ctx, output);
   }
 }
 

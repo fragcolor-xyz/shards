@@ -14,7 +14,8 @@ struct Panel : public shards::vui::Panel {
   struct VUIPanelShard &panelShard;
 
   Panel(VUIPanelShard &panelShard) : panelShard(panelShard) {}
-  void render(void *context, const egui::Input &inputs, vui::PanelRenderCallback render);
+  virtual const egui::FullOutput &render(const egui::Input &inputs);
+  virtual vui::PanelGeometry getGeometry() const;
 };
 
 struct VUIContext {
@@ -24,6 +25,7 @@ struct VUIContext {
   static inline const SHOptionalString VariableDescription = SHCCSTR("The virtual UI context.");
   static inline SHExposedTypeInfo VariableInfo = shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
 
+  SHContext *activationContext{};
   vui::Context context;
   std::vector<Panel> panels;
 };
