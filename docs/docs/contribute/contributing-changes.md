@@ -13,7 +13,7 @@ Also, all these steps are valid for code contributions too.
 
 *For comprehensive coverage of git/ GitHub workflow, check out GitHub's excellent [Quickstart Tutorial](https://docs.github.com/en/get-started/quickstart/hello-world).*
 
-## Clone the Repo
+## Cloning the Repository
 
 To begin, you'll need a copy of the project's repository on your local machine.
 

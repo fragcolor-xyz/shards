@@ -5,56 +5,24 @@ license: CC-BY-SA-4.0
 
 # Start Documenting
 
-## Documentation requirements
+!!! note
+    This guide is for new users unfamiliar with the installation process. 
 
-At Fragcolor, we use the following to generate and maintain the [documentation website](https://docs.fragcolor.xyz/).
+    Click [here](#overview) to skip the tutorial and jump to the overview.
 
-- MkDocs & MkDocs Material - Documentation static site generator
-- Python - Prerequisite for MkDocs & MkDocs Material
-- git & GitHub - Document version control & contribution workflow
-- VS Code - Code & document editor
+Pre-requisites:
 
-We follow the [Microsoft Style Guide](https://docs.microsoft.com/en-us/style-guide/welcome/) to standardize our documentation.
+- [Readied the development environment](../getting-started.md)
 
-## Documentation build environment
+Eager to help contribute to our ever-growing library of documentation? In this chapter, we will set up the documentation site generator so that you can start writing documentation.
 
-### Git & GitHub
+## Python
 
-Git is a version control system that we can use to track and manage changes to our markdown files.
+Python needs to be installed for the site generator to work. Download Python [here](https://www.python.org/downloads/) and follow the instructions given by the installer. Remember to add Python to PATH during the installation!
 
-*Git comes pre-installed on most Mac & Linux machines. If it's not on your machine, you can get the relevant git package [here](https://git-scm.com/download).*
+![Add Python to PATH](assets/install-py-add-to-path.png)
 
-For Windows, download and install git from [here](https://git-scm.com/download/win).
-
-Choose your favorite editor as the default git editor. Git will use this editor when there's a need to resolve merge conflicts.
-
-![Choose default git Editor](assets/install-git_default-editor.png)
-
-Keep the other installation defaults.
-
-You'll can download/ clone the documentation repository via the HTTPS protocol. But you'll need an active [GitHub](https://github.com/) account to fork the documentation repository or contribute to it.
-
-### Python
-
-Python is a pre-requisite for both MkDocs and MkDocs Material.
-
-*Python comes pre-installed on most Mac & Linux machines. If it's not on your machine you can get the relevant Python package [here](https://www.python.org/downloads/).*
-
-For windows, you can grab the latest Python release installer [here](https://www.python.org/downloads/windows/).
-
-Download the installer and follow the on-screen instructions after starting the installation. 
-
-Remember to add Python to Path during the installation.
-
-![Add Python to PATH](assets/install-py_add-to-path.png)
-
-Disable the Path Length Limit so that your installation can use nested paths.
-
-![Disable path length limit](assets/install-py_disable-pll.png)
-
-Keep the other default installation settings.
-
-Type `Python` or `Py` in the terminal to confirm Python installation and version.
+By adding Python to PATH, it allows your terminals to be able to find and use Python. Try typing `Python` in any terminal to check if the installation process is successful.
 
 === "Command"
 
@@ -64,40 +32,19 @@ Type `Python` or `Py` in the terminal to confirm Python installation and version
 
 === "Result"
 
-    ![Python was installed successfully](assets/install-py_installed.png)
+    ![Python was installed successfully](assets/install-py-results.png)
 
-Type `where py` in the terminal to see the Python installation path.
 
-=== "Command"
+## MkDocs
 
-    ```
-    where py
-    ```
+MkDocs is a static site generator that allows you to write documentation in markdown. 
 
-=== "Result"
+??? help "What is Markdown?"
+    It is a formatting language used to stylize plain text. Take a look at how this segment is written in markdown!
 
-    ![Show where Python is installed](assets/install-py_where-py.png)
+    ![How markdown works.](assets/what-is-markdown.png)
 
-Type `pip` to confirm PIP installation and version.
-*PIP is Python Installation Package and installs as part of Python.*
-
-=== "Command"
-
-    ```
-    pip
-    ```
-
-=== "Result"
-
-    ![Show where Python is installed](assets/install-py_pip-installed.png)
-
-*For more details, refer to the official Python installation [documentation](https://docs.python.org/3/using/windows.html#installation-steps).*
-
-### MkDocs
-
-MkDocs allows you to write documentation in markdown and then serve it as a static site. 
-
-Install MkDocs using the `pip` tool.
+Install MkDocs using the Package Installer for Python (pip). Run the following command in your terminal:
 
 === "Command"
 
@@ -105,41 +52,63 @@ Install MkDocs using the `pip` tool.
     pip install mkdocs
     ```
 
-=== "Result"
-
-    ![Install MkDocs](assets/install-mk_install.png)
-
-Then you can check the version of MkDocs installation by using the following command.
+Once done, you can check if your installation is successful with the command:
 
 === "Command"
 
     ```
-    mkdocs --version
+    mkdocs
     ```
 
 === "Result"
 
-    ![Check MkDocs installation](assets/install-mk_installed.png)
+    ![Check MkDocs installation.](assets/mkdocs-installation-results.png)
 
-*For more details, refer to the official MkDocs installation [documentation](https://www.mkdocs.org/user-guide/installation/#installing-mkdocs).*
 
-### MkDocs Material
+Finally, install the following by running the given commands:
 
-MkDocs Material is a Material Design theme for MkDocs.
-
-Install MkDocs Material using the `'pip` tool.
-
-=== "Command"
+1. Material for MkDoc - A theme for MkDocs
 
     ```
     pip install mkdocs-material
     ```
 
-=== "Result"
+2. Awesome Pages Plugin - Adds navigation customization
 
-    ![Install MkDocs-Material](assets/install-mkmat_install.png)
+    ```
+    pip install mkdocs-awesome-pages-plugin
+    ```
 
-*For more details, refer to the official MkDocs getting-started [documentation](https://squidfunk.github.io/mkdocs-material/getting-started/).*
+3. mkdocs-macros - Allows for custom macros and variables
 
+    ```
+    pip install mkdocs-macros-plugin
+    ```
+
+You are now ready to start writing documentation! We will learn how Fragcolor's documentation is written in the next chapter.
+
+## Overview ##
+
+1. Download [Python](https://www.python.org/downloads/) and add it to PATH.
+
+2. Install MkDocs.
+```
+pip install mkdocs
+```
+
+3. Install Material for MkDocs.
+```
+pip install mkdocs-material
+```
+
+4. Install the Awesome Pages Plugin.
+```
+pip install mkdocs-awesome-pages-plugin
+```
+
+3. Install mkdocs-macros.
+```
+pip install mkdocs-macros-plugin
+```
 
 --8<-- "includes/license.md"
