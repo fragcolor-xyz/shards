@@ -11,6 +11,7 @@
 #include <vector>
 #include <memory>
 #include <map>
+#include <float.h>
 
 namespace gfx {
 struct ShapeRenderer;
