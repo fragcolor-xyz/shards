@@ -16,13 +16,21 @@ Every shard has a role and is usually named after it. For example, the shard `Ma
 
 Shards can be grouped up to form another shard. 
 
-For example, you might have a `meow` shard that prints a "meow" to the user's screen. 
+For example, you might have a `meow` shard that prints a "meow" to the user's screen, and a `mew` shard that prints a "mew" instead. 
 
-![The meow shard.](assets/meow-shard.png)
+![The meow and mew shards.](assets/meow-mew-shard.png)
 
-If you wanted to create a `meow-a-lot` shard, you could simply create a shard that contains a mixture of `meow` and `mew` shards.
+If you wanted your program to be able to make cat noises, you might have a bunch of `meow` and `mew` shards... which could end up being rather cluttered:
 
-![The meow-a-lot shard.](assets/meow-a-lot-shard.png)
+![A gathering of meow and mew shards.](assets/ungrouped-shards.png)
+
+To keep our work organized, we can group shards up to form a new shard. In our example, we can create a new `meows` shard that is made up of a few `meow` shards, and create a `mews` shard for our `mew` shards.
+
+![Grouping shards up to for a new shard.](assets/grouping-shards-up.png)
+
+When our shards are grouped up into logical segments, our program becomes more readable and orderly.
+
+![Grouping shards up into new shards helps to keep the program organized.](assets/grouped-shards.png)
 
 ## The Wire
 In the flow of a Shards program, each shard is queued for execution and will be run in the order they are presented in. The order goes from left to right, top to bottom.
@@ -35,49 +43,27 @@ Wires can be set to be loopable. This is called a **Looped Wire**.
 
 ![A Looped Wire.](assets/what-is-a-looped-wire.png)
 
-You may look at this and wonder if the `meow-a-lot` shard from before is a Wire too, since it has shards queued within it.
+You may look at this and wonder - is this the same as grouping shards together? When shards are grouped up to form a new shard, they are still executed from left to right, top to bottom after all.
 
 The answer is... no! A Wire is not the same as a shard containing shards. 
 
-Even though they might both behave like a *function* in traditional coding, they are not the same.
+A Wire queues shards for a **purpose**, while grouping shards up are for **organization**. In the earlier example, we were trying to create a program that makes cat noises. We can achieve that by queueing our shards in a Wire named `make-cat-noises`.
 
-??? "What are functions?"
+![The meows and mews shards are queued up in a Wire that makes cat noises.](assets/shards-in-wire.png)
+
+Whenever we want our program to produce cat noises, we would call the `make-cat-noises` Wire. A Wire is similar to what we call a *function* in traditional programming languages.
+
+??? "What is a function?"
     It is a block of code that can be reused over and over again.
     
     It allows you to reuse code without writing out the same block of code each time by calling the function's name instead.
 
-## To Wire or not?
 
-An easy way to understand the difference is to think of Wires as being "alive". Their states are always maintained while your code is running, and they continue to exist even after they have completed their jobs. 
+Think of shards as the different components of your program, while Wires are the lifeblood connecting the many different shards in your program, creating a Flow.
 
-On the other hand, when you call a shard, they will only exist in that moment to complete their jobs. Once done, their state is lost and they cease to exist.
+By mastering the usage of Wires, the possibilities of what you can achieve are endless!
 
-Let us look at a simple example of how Wires and shards can be used.
-
-![The feed-food Wire.](assets/feed-food-wire.png)
-
-We have a `feed-food` Wire that has a `food` variable with a starting value of 10. 
-
-??? "Variables"
-    Variables are containers that store values. You define a variable with a name, and assign a value to it. The value can then be retrieved by calling the variable with its assigned name.
-
-Every time the Wire is called, it deducts 1 food from the total. Since the Wire maintains its state even after it has been executed, the `food` value is maintained, and the value continues to fall each time the Wire is called.
-
-It also takes in a `hunger` variable as input, reduces it by 1 IF `food` is greater than 0, and returns it as an output.
-
-Next up, we have the `hungry-cat` Looped Wire. 
-
-![The hungry-cat Looped Wire.](assets/hungry-cat-loop.png)
-
-`hungry-cat` starts with `hunger` at 0, which increases as the loop runs. 
-
-It then executes `feed-food` which reduces `hunger` by 1 if the `food` variable within it is still more than 0. The loop continues running until the `feed-food` Wire runs out of `food`. The hungry cat will then start to `meow-a-lot` as it gets hungry.
-
-Since `meow-a-lot` does not require a state to be tracked, it works as a shard whose only purpose is to meow... a lot.
-
-Meanwhile, `feed-food` has to track the amount of `food` left, and thus works well as a Wire whose state persists after every run.
-
-The `hungry-cat` also has to track its `hunger`, and is thus defined as a Wire. It is made loopable so that it can continue running even after the Wire has completed its execution.
+![Wires are the lifeblood of your Shards program.](assets/hungry-cat-loop.png)
 
 ## The Mesh
 
