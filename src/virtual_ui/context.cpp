@@ -12,6 +12,8 @@ using shards::input::ConsumeEventFilter;
 namespace shards::vui {
 
 void Context::prepareInputs(input::InputBuffer &input, gfx::float2 inputToViewScale, const gfx::SizedView &sizedView) {
+  this->sizedView = sizedView;
+
   pointerInputs.clear();
   otherEvents.clear();
   for (auto it = input.begin(); it; ++it) {
@@ -132,33 +134,6 @@ struct RenderContext {
   float pixelsPerPoint;
 };
 
-static void renderPanel(const RenderContext &ctx, const egui::FullOutput &output) {
-  EguiRenderer &renderer = ctx.cached->renderer;
-  PanelPtr panel = ctx.panel;
-
-  float uiToWorldScale = 1.0f / ctx.scaling;
-
-  float4x4 rootTransform = linalg::identity;
-  PanelGeometry geom = panel->getGeometry().scaled(uiToWorldScale);
-
-  // Geometry comes in in UI coordinates, and it's also scaled by pixelsPerPoint passed to egui
-  //  so it needs to be scaled by `1.0f / (scale * pixelsPerPoint)`
-  rootTransform = linalg::mul(linalg::scaling_matrix(float3(1.0f / (ctx.scaling * ctx.pixelsPerPoint))), rootTransform);
-
-  // Derive rotation matrix from panel right/up
-  float4x4 rotationMat;
-  rotationMat.x = float4(geom.right, 0);
-  rotationMat.y = float4(-geom.up, 0); // Render UI as using Y+ is down
-  rotationMat.z = float4(linalg::cross(geom.right, geom.up), 0);
-  rotationMat.w = float4(0, 0, 0, 1);
-  rootTransform = linalg::mul(rotationMat, rootTransform);
-
-  // Place drawable at top-left corner of panel UI
-  rootTransform = linalg::mul(linalg::translation_matrix(geom.getTopLeft()), rootTransform);
-
-  renderer.render(output, rootTransform, ctx.queue);
-}
-
 void Context::evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime) {
   bool panelFocusChanged = lastFocusedPanel != focusedPanel;
 
@@ -233,24 +208,63 @@ void Context::evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime) {
       }
     }
     eguiInputTranslator.end();
-
-    auto geometry = panel->getGeometry();
-
-    egui::Input input = *eguiInputTranslator.getOutput();
-    input.screenRect.min = egui::Pos2{};
-    input.screenRect.max = egui::toPos2(geometry.size);
-    input.pixelsPerPoint = pixelsPerPoint;
-
-    RenderContext ctx{
-        .panel = panel,
-        .queue = queue,
-        .cached = getCachedPanel(panel),
-        .scaling = virtualPointScale,
-        .pixelsPerPoint = pixelsPerPoint,
-    };
-    const egui::FullOutput &output = panel->render(input);
-    renderPanel(ctx, output);
+    renderPanel(queue, panel, *eguiInputTranslator.getOutput());
   }
+}
+
+// Check size of panel in view to determine resolution to render at
+float Context::computeRenderResolution(PanelPtr panel) const {
+  PanelGeometry uiGeometry = panel->getGeometry();
+  PanelGeometry worldGeometry = uiGeometry.scaled(1.0f / virtualPointScale);
+
+  auto project = [&](float3 v) {
+    float4 tmp = linalg::mul(sizedView.viewProj, float4(v, 1.0f));
+    return ((tmp.xyz() / tmp.w) * float3(0.5f) + float3(0.5f)) * float3(sizedView.size, 1.0f);
+  };
+
+  float3 projTL = project(worldGeometry.getTopLeft());
+  float3 projTR = project(worldGeometry.getTopLeft() + worldGeometry.right * worldGeometry.size.x);
+  float sizeX = linalg::distance(projTL, projTR);
+
+  float res = sizeX / uiGeometry.size.x;
+  res = std::round(res / resolutionGranularity) * resolutionGranularity;
+  return linalg::clamp(res, minResolution, maxResolution);
+}
+
+void Context::renderPanel(gfx::DrawQueuePtr queue, PanelPtr panel, egui::Input input) {
+  auto geometry = panel->getGeometry();
+
+  input.screenRect.min = egui::Pos2{};
+  input.screenRect.max = egui::toPos2(geometry.size);
+
+  input.pixelsPerPoint = computeRenderResolution(panel);
+
+  const egui::FullOutput &output = panel->render(input);
+
+  std::shared_ptr<ContextCachedPanel> cachedPanel = getCachedPanel(panel);
+  EguiRenderer &renderer = cachedPanel->renderer;
+
+  float uiToWorldScale = 1.0f / virtualPointScale;
+
+  float4x4 rootTransform = linalg::identity;
+  PanelGeometry geom = panel->getGeometry().scaled(uiToWorldScale);
+
+  // Geometry comes in in UI coordinates, and it's also scaled by pixelsPerPoint passed to egui
+  //  so it needs to be scaled by `1.0f / (scale * pixelsPerPoint)`
+  rootTransform = linalg::mul(linalg::scaling_matrix(float3(1.0f / (virtualPointScale * input.pixelsPerPoint))), rootTransform);
+
+  // Derive rotation matrix from panel right/up
+  float4x4 rotationMat;
+  rotationMat.x = float4(geom.right, 0);
+  rotationMat.y = float4(-geom.up, 0); // Render UI as using Y+ is down
+  rotationMat.z = float4(linalg::cross(geom.right, geom.up), 0);
+  rotationMat.w = float4(0, 0, 0, 1);
+  rootTransform = linalg::mul(rotationMat, rootTransform);
+
+  // Place drawable at top-left corner of panel UI
+  rootTransform = linalg::mul(linalg::translation_matrix(geom.getTopLeft()), rootTransform);
+
+  renderer.render(output, rootTransform, queue);
 }
 
 std::shared_ptr<ContextCachedPanel> Context::getCachedPanel(PanelPtr panel) {

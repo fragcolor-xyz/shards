@@ -29,11 +29,22 @@ struct Context {
   PanelPtr lastFocusedPanel;
   PanelPtr focusedPanel;
 
+  gfx::SizedView sizedView;
+
   // Points per world space unit
   float virtualPointScale = 200.0f;
 
   // Resolution of rendered UI, in actual pixels per virtual UI pixel
   float pixelsPerPoint = 2.0f;
+
+  // Minimum resolution to render UI at from a distance
+  const float minResolution = 0.25f;
+
+  // Maxmimum resolution to render UI at up close
+  const float maxResolution = 8.0f;
+
+  // Steps that resolution switches at
+  const float resolutionGranularity = 0.25f;
 
   struct PointerInput {
     input::InputBufferIterator iterator;
@@ -57,7 +68,12 @@ struct Context {
   // Renders all the UI
   void evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime);
 
+private:
   std::shared_ptr<ContextCachedPanel> getCachedPanel(PanelPtr panel);
+
+  void renderPanel(gfx::DrawQueuePtr queue, PanelPtr panel, egui::Input baseInput);
+
+  float computeRenderResolution(PanelPtr panel) const;
 };
 } // namespace shards::vui
 

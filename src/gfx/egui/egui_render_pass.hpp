@@ -70,7 +70,7 @@ fn egui_linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
         .alpha = BlendComponent::Opaque,
     });
     feature->state.set_depthWrite(false);
-    feature->state.set_depthCompare(WGPUCompareFunction_Always);
+    feature->state.set_depthCompare(WGPUCompareFunction_Less);
     feature->state.set_culling(false);
     return feature;
   }

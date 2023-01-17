@@ -172,6 +172,7 @@ struct DrawablePassShard {
     :OutputScale (SHType::Float2 1.0 1.0)
     :Queue <queue>
     :Features [<feature> <feature> ...]
+    :Sort <mode>
   }
 */
 
@@ -200,6 +201,11 @@ struct DrawablePassShard {
     step.drawQueue = *varAsObjectChecked<DrawQueuePtr>(input, Types::DrawQueue);
   }
 
+  void applySorting(SHContext *context, RenderDrawablesStep &step, const SHVar &input) {
+    checkEnumType(input, Types::SortModeEnumInfo::Type, "DrawablePass Sort");
+    step.sortMode = (gfx::SortMode)input.payload.enumValue;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     RenderDrawablesStep &step = std::get<RenderDrawablesStep>(*_step->get());
 
@@ -207,6 +213,13 @@ struct DrawablePassShard {
     const SHTable &inputTable = input.payload.tableValue;
 
     shared::applyAll(context, step, inputTable);
+
+    SHVar sortVar;
+    if (getFromTable(context, inputTable, "Sort", sortVar))
+      applySorting(context, step, sortVar);
+    else {
+      step.sortMode = SortMode::Batch;
+    }
 
     SHVar queueVar;
     if (getFromTable(context, inputTable, "Queue", queueVar))

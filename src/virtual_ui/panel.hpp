@@ -27,6 +27,11 @@ struct PanelGeometry {
     gfx::float2 halfSize = size * 0.5f;
     return center - right * halfSize.x + up * halfSize.y;
   }
+
+  gfx::float3 getBottomRight() const {
+    gfx::float2 halfSize = size * 0.5f;
+    return center + right * halfSize.x - up * halfSize.y;
+  }
 };
 
 struct Panel {

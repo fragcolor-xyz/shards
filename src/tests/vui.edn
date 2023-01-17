@@ -13,7 +13,7 @@
     ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+   {:Features .features :Queue .queue :Sort SortMode.Queue} (GFX.DrawablePass) >> .render-steps
 
    ; Initial panel transforms
    15.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp
@@ -58,13 +58,22 @@
                                                 "Wide panel" (UI.Label)
                                                 (Setup
                                                  (LoadImage "../../assets/ShardsLogo.png") (GFX.Texture) >= .button-texture)
-                                                .button-texture (UI.ImageButton :Scale (Float2 0.1))
+                                                (UI.Horizontal (->
+                                                                .button-texture (UI.ImageButton :Scale (Float2 0.01))
+                                                                .button-texture (UI.ImageButton :Scale (Float2 0.01))
+                                                                .button-texture (UI.ImageButton :Scale (Float2 0.01))))
                                                 ;
                                                 ))))
                   ;
                   ))
 
     .drawables (GFX.Draw .queue)
+
+    ;; (UI .queue (->
+    ;;             (UI.LeftPanel :Contents (->
+    ;;                            "Left Panel" (UI.Label)
+    ;;                            (UI.Button :Label "Button")))))
+
 
     (GFX.Render :Steps .render-steps :View .view))))
 

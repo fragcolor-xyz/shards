@@ -197,6 +197,7 @@ void registerShards() {
   REGISTER_ENUM(Types::CompareFunctionEnumInfo);
   REGISTER_ENUM(Types::ColorMaskEnumInfo);
   REGISTER_ENUM(Types::TextureTypeEnumInfo);
+  REGISTER_ENUM(Types::SortModeEnumInfo);
 
   registerMainWindowShards();
   registerMeshShards();

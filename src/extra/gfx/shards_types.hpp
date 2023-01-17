@@ -156,6 +156,13 @@ struct Container {
   };
   DECL_ENUM_INFO(TextureType_, TextureType, '_e9');
 
+  enum class SortMode_ : uint8_t {
+    Batch = uint8_t(SortMode::Batch),
+    Queue = uint8_t(SortMode::Queue),
+    BackToFront = uint8_t(SortMode::BackToFront),
+  };
+  DECL_ENUM_INFO(SortMode_, SortMode, '_e10');
+
   OBJECT('feat', "GFX.Feature", Feature, FeaturePtr)
   static inline Type FeatureSeq = Type::SeqOf(Feature);
 
