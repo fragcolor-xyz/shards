@@ -2,6 +2,7 @@
 
 (defloop
   time
+  (Once (-> (Msg "0")))
   (Once (-> (Msg "1")) :Every 0.1)
   (Once (-> (Msg "2")) :Every 0.2)
   (Once (-> (Msg "3")) :Every 0.4)
