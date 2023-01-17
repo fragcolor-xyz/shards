@@ -3379,6 +3379,7 @@ struct Once {
   SHTime current;
   SHTimeDiff next;
   SHDuration dsleep;
+  int _logCounter;
 
   ShardsVar _blks;
   ExposedInfo _requiredInfo{};
@@ -3400,6 +3401,7 @@ struct Once {
     current = SHClock::now();
     dsleep = SHDuration(_repeatTime);
     next = current + SHDuration(0.0);
+    _logCounter = 1; // set to 1 to avoid first log spam
   }
 
   static inline Parameters params{{"Action", SHCCSTR("The shard or sequence of shards to execute."), {CoreInfo::Shards}},
@@ -3453,12 +3455,10 @@ struct Once {
   SHExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
-    if (_repeat) {
-      // monitor and reset timer if expired
-      current = SHClock::now();
-      if (current >= next) {
-        _done = false;
-      }
+    // monitor and reset timer if expired
+    current = SHClock::now();
+    if (current >= next) {
+      _done = false;
     }
 
     if (unlikely(!_done)) {
@@ -3469,7 +3469,17 @@ struct Once {
         // let's cheat in this case and stop triggering this call
         self->inlineShardId = InlineShard::NoopShard;
       } else {
-        next = (current - (current - next)) + dsleep;
+        SHDuration realSleepTime = next - current;
+        if (unlikely(realSleepTime.count() <= 0.0)) {
+          // tick took too long!!! (Also happens the first time we activate)
+          if (_logCounter % 1000 == 0)
+            SHLOG_WARNING("Once shard took too long to execute, skipping sleep time, behind: {}", realSleepTime.count());
+          _logCounter++;
+          next = current + dsleep;
+        } else {
+          _logCounter = 0;
+          next = next + dsleep;
+        }
       }
     }
 
