@@ -20,7 +20,10 @@ struct EguiTransformFeature {
     code->appendLine("var p4 = vec4<f32>(p1.xy, 0.0, 1.0)");
     code->appendLine(WriteOutput("position", shader::FieldTypes::Float4, "p4"));
 
-    feature->shaderEntryPoints.emplace_back("uiBaseTransform", ProgrammableGraphicsStage::Vertex, std::move(code));
+    auto &transform =
+        feature->shaderEntryPoints.emplace_back("writeUiTransform", ProgrammableGraphicsStage::Vertex, std::move(code));
+    // NOTE: Override Transform's writePosition
+    transform.dependencies.emplace_back("writePosition");
 
     return feature;
   }
@@ -84,7 +87,6 @@ struct EguiRenderPass {
         .features =
             std::vector<FeaturePtr>{
                 EguiTransformFeature::create(),
-                EguiColorFeature::create(),
             },
     });
     return drawableStep;

@@ -1,20 +1,20 @@
-#include "gfx/shards_types.hpp"
+#include "../gfx/shards_types.hpp"
 #include <foundation.hpp>
 #include <shards_macros.hpp>
 #include <common_types.hpp>
 #include <params.hpp>
-#include "gfx/egui/egui_render_pass.hpp"
+#include <gfx/egui/egui_render_pass.hpp>
 
 using namespace gfx;
 
-namespace shards {
-namespace Gui {
+namespace shards::egui {
 using gfx::Types;
+using shards::CoreInfo;
 
 struct UIPassShard {
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::PipelineStep; }
+  static SHTypesInfo outputTypes() { return gfx::Types::PipelineStep; }
 
   PARAM_PARAMVAR(_queue, "Queue", "The queue to draw from (Optional). Uses the default queue if not specified",
                  {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)});
@@ -48,5 +48,4 @@ struct UIPassShard {
 };
 
 void registerShards() { REGISTER_SHARD("GFX.UIPass", UIPassShard); }
-} // namespace Gui
-} // namespace shards
+} // namespace shards::egui

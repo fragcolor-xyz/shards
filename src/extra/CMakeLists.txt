@@ -20,7 +20,7 @@ set(extra_SOURCES
   gfx/view.cpp
   gfx/steps.cpp
   vui/vui.cpp
-  gui.cpp
+  egui/pass.cpp
   rust_interop.cpp
   gizmos/context.cpp
   gizmos/gizmos.cpp

@@ -8,7 +8,6 @@
 #include <float.h>
 
 using namespace gfx;
-using shards::input::ConsumeEventFilter;
 namespace shards::vui {
 
 void Context::prepareInputs(input::InputBuffer &input, gfx::float2 inputToViewScale, const gfx::SizedView &sizedView) {

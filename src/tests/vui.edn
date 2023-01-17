@@ -5,6 +5,7 @@
    0.0 >= .time
 
    (GFX.DrawQueue) >= .queue
+   (GFX.DrawQueue) >= .screen-ui-queue
 
    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
    (Float3 0 0 0) (Math.Translation) >= .transform-0
@@ -14,6 +15,7 @@
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
    {:Features .features :Queue .queue :Sort SortMode.Queue} (GFX.DrawablePass) >> .render-steps
+   (GFX.UIPass .screen-ui-queue) >> .render-steps
 
    ; Initial panel transforms
    15.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp
@@ -36,44 +38,48 @@
     .view-transform (FreeCamera :FlySpeed 10.0) > .view-transform
 
     .queue (GFX.ClearQueue)
-    (VUI.Context :Queue .queue :View .view :Scale 100.0 :Contents
-                 (->
-                  (VUI.Panel :Transform .panel-t-0 :Size (Float2 100 100) :Contents
-                             (->
-                              (UI.CentralPanel (->
-                                                "First panel" (UI.Label)
-                                                (UI.Button :Label "Button")
-                                                ;
-                                                ))))
-                  (VUI.Panel :Transform .panel-t-1 :Size (Float2 100 100) :Contents
-                             (->
-                              (UI.CentralPanel (->
-                                                "Some other panel" (UI.Label)
-                                                (UI.Button :Label "Button")
-                                                ;
-                                                ))))
-                  (VUI.Panel :Transform .panel-t-2 :Size (Float2 300 60) :Contents
-                             (->
-                              (UI.CentralPanel (->
-                                                "Wide panel" (UI.Label)
-                                                (Setup
-                                                 (LoadImage "../../assets/ShardsLogo.png") (GFX.Texture) >= .button-texture)
-                                                (UI.Horizontal (->
-                                                                .button-texture (UI.ImageButton :Scale (Float2 0.01))
-                                                                .button-texture (UI.ImageButton :Scale (Float2 0.01))
-                                                                .button-texture (UI.ImageButton :Scale (Float2 0.01))))
-                                                ;
-                                                ))))
-                  ;
-                  ))
+    (VUI.Context
+     :Queue .queue :View .view :Scale 100.0 :Contents
+     (->
+      (VUI.Panel
+       :Transform .panel-t-0 :Size (Float2 100 100) :Contents
+       (->
+        (UI.CentralPanel
+         (->
+          "First panel" (UI.Label)
+          (UI.Button :Label "Button")))))
+      (VUI.Panel
+       :Transform .panel-t-1 :Size (Float2 100 100) :Contents
+       (->
+        (UI.CentralPanel
+         (->
+          "Some other panel" (UI.Label)
+          (UI.Button :Label "Button")))))
+      (VUI.Panel
+       :Transform .panel-t-2 :Size (Float2 300 60) :Contents
+       (->
+        (UI.CentralPanel
+         (->
+          "Wide panel" (UI.Label)
+          (Setup
+           (LoadImage "../../assets/ShardsLogo.png") (GFX.Texture) >= .button-texture)
+          (UI.Horizontal (->
+                          .button-texture (UI.ImageButton :Scale (Float2 0.01))
+                          .button-texture (UI.ImageButton :Scale (Float2 0.01))
+                          .button-texture (UI.ImageButton :Scale (Float2 0.01))))))))
+      ;
+      ))
 
     .drawables (GFX.Draw .queue)
 
-    ;; (UI .queue (->
-    ;;             (UI.LeftPanel :Contents (->
-    ;;                            "Left Panel" (UI.Label)
-    ;;                            (UI.Button :Label "Button")))))
-
+    .screen-ui-queue (GFX.ClearQueue)
+    (UI .screen-ui-queue
+        (->
+         (UI.LeftPanel
+          :Contents
+          (->
+           "Left Panel" (UI.Label)
+           (UI.Button :Label "Button")))))
 
     (GFX.Render :Steps .render-steps :View .view))))
 

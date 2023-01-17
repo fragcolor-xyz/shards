@@ -46,6 +46,10 @@ namespace Gizmos {
 extern void registerShards();
 }
 
+namespace egui {
+extern void registerShards();
+}
+
 namespace VUI {
 extern void registerShards();
 }
@@ -63,7 +67,7 @@ void shInitExtras() {
   Inputs::registerShards();
   Audio::registerShards();
   DSP::registerShards();
-  Gui::registerShards();
+  egui::registerShards();
   VUI::registerShards();
 
 #ifdef _WIN32
