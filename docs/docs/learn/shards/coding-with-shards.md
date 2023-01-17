@@ -32,7 +32,9 @@ For the full list of data types and more in-depth reading, check out the `Types`
 
 ## Variables
 
-To better work with data across your code, we can assign them to data containers known as *variables*. Imagine a scenario where you have a float `3.141592653589793` that you need to reuse in code multiple times. Instead of typing the entire float out each time, you could assign it to a variable called `.pi-value` and simply use that variable whenever its needed.
+To better work with data across your code, we can assign them to data containers known as *variables*.
+
+Imagine a scenario where you have a float `3.141592653589793` that you need to reuse in code multiple times. Instead of typing the entire float out each time, you could assign it to a variable called `.pi-value` and simply use that variable whenever its needed.
 
 === "Without Variables"
 
@@ -119,9 +121,9 @@ For example, `Math.Add` has the parameter `Operand` which is defined by the user
 
 In code form, parameters are defined by the user within the brackets of the shard itself, after the shard's name. The above examples will appear as `5 (Math.Add 1)` and `5 (Math.Add 3)` in code. 
  
-Some shards have multiple parameters. When specifying values for multiple parameters, you will have to prepend your values with the parameter they are for.
+Some shards have multiple parameters. When specifying values for multiple parameters, you will have to prepend your values with the parameter they are for if some parameters are skipped.
 
-For example, the `Repeat` shard has four parameters: `Action`, `Times`, `Forever`, `Until`.
+Let us take a look at the `Repeat` shard which has four parameters: `Action`, `Times`, `Forever`, `Until`.
 
 We can utilize the `Repeat` shard with its different parameters as shown:
 
@@ -187,7 +189,7 @@ We can utilize the `Repeat` shard with its different parameters as shown:
     6. We assigned `.x` to have a value of 0 at the start.
 
 !!! note "`->`"
-    When using shards for a parameter (e.g.`Action`), you must always place `->` before the first shard.
+    When using shards for a parameter (e.g., `Action`), you must always place `->` before the first shard.
 
     [`->`](../../../reference/functions/misc/) is a shard container used to group multiple shards together.
 
@@ -213,7 +215,7 @@ To find out more about the input/output/parameter of a shard, you can search for
 
 A Wire is made up of a sequence of shards, queued for execution from left to right, top to bottom.
 
-To create a Wire, we use `defwire`
+To create a Wire, we use `defwire`. Wires are created with a purpose, and they should be named to reflect their function.
 
 === "Creating a Wire"
     
@@ -223,10 +225,26 @@ To create a Wire, we use `defwire`
     )
     ```
 
-<!-- defwire -->
-<!-- defmesh -->
-<!-- ## Scope -->
-<!-- Debugging -->
-<!-- Log --> 
+## The Mesh
+
+Wires are queued for execution within a Mesh, from left to right, top to bottom.
+
+To learn more about manipulating the flow of execution, check out the chapter on The Flow [here](./the-flow.md).
+
+## Scope
+
+// explain the difference between global and local scope
+
+## Debugging
+
+// introduce the (Log) shard as a way to debug your code
+
+## Writing a sample program
+
+// Bring all the concepts learned together
+
+## Pop Quiz
+
+// a mini quiz to test the reader's understanding
 
 --8<-- "includes/license.md"
