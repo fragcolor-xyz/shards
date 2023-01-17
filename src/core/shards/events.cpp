@@ -75,19 +75,20 @@ struct Receive : Base {
   void warmup(SHContext *context) {
     assert(_dispatcher);
     auto current = context->wireStack.back();
-    if(_connection)
+    if (_connection)
       _connection.release();
     _connection = _dispatcher->get().sink<OwnedVar>(current->id).connect<&Receive::onEvent>(this);
   }
 
   void cleanup() {
     assert(_dispatcher);
-    if(_connection)
+    if (_connection)
       _connection.release();
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _eventsOut = std::move(_events);
+    std::swap(_eventsOut, _events);
+    _events.clear();
     return Var(_eventsOut);
   }
 };
