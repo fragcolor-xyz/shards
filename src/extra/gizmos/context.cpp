@@ -108,10 +108,10 @@ struct GizmosContextShard {
 
     handleGizmoInputEvents(_inputContext->events);
 
-    float2 drawableScale = float2(window.getDrawableSize()) / float2(window.getSize());
+    float2 inputScale = window.getInputScale();
 
     gfx::gizmos::InputState gizmoInput;
-    gizmoInput.cursorPosition = float2(_cursorPosition) * drawableScale;
+    gizmoInput.cursorPosition = float2(_cursorPosition) * inputScale;
     gizmoInput.pressed = _mouseButtonState;
     gizmoInput.viewSize = float2(outputSize);
 

@@ -61,19 +61,23 @@ struct Context {
   std::optional<PointerInput> lastPointerInput;
 
   // Prepare input raycast
+  //  needs to be called before evaluate
   //  inputToViewScale is used to convert coordinates from pointer events to view coordinates
   void prepareInputs(input::InputBuffer &input, gfx::float2 inputToViewScale, const gfx::SizedView &sizedView);
 
-  void renderDebug(gfx::ShapeRenderer &sr);
-
   // Renders all the UI
+  //  prepareInputs needs to be called before evaluate
   void evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime);
+
+  // Render debug vizualizations to the target shape renderer
+  void renderDebug(gfx::ShapeRenderer &sr);
 
 private:
   std::shared_ptr<ContextCachedPanel> getCachedPanel(PanelPtr panel);
 
   void renderPanel(gfx::DrawQueuePtr queue, PanelPtr panel, egui::Input baseInput);
 
+  // Computes the render scale to render the given panel at, taking it's projected screen area into account
   float computeRenderResolution(PanelPtr panel) const;
 };
 } // namespace shards::vui

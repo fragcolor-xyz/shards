@@ -169,7 +169,8 @@ struct EguiRendererImpl {
     pendingTextureFrees.clear();
   }
 
-  void render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue) {
+  void render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue,
+              bool clipGeometry) {
     meshPool.reset();
     processPendingTextureFrees();
 
@@ -202,7 +203,8 @@ struct EguiRendererImpl {
         }
       }
 
-      // drawable.clipRect = int4(prim.clipRect.min.x, prim.clipRect.min.y, prim.clipRect.max.x, prim.clipRect.max.y);
+      if (clipGeometry)
+        drawable.clipRect = int4(prim.clipRect.min.x, prim.clipRect.min.y, prim.clipRect.max.x, prim.clipRect.max.y);
 
       drawQueue->add(drawable);
     }
@@ -218,8 +220,9 @@ struct EguiRendererImpl {
 
 EguiRenderer::EguiRenderer() { impl = std::make_shared<EguiRendererImpl>(); }
 
-void EguiRenderer::render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue) {
-  impl->render(output, rootTransform, drawQueue);
+void EguiRenderer::render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue,
+                          bool clipGeometry) {
+  impl->render(output, rootTransform, drawQueue, clipGeometry);
 }
 
 void EguiRenderer::renderNoTransform(const egui::FullOutput &output, const gfx::DrawQueuePtr &drawQueue) {

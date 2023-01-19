@@ -16,7 +16,8 @@ struct EguiRenderer {
 
   EguiRenderer();
 
-  void render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue);
+  // clipGeometry controls settings of screen space clip rectangles based on egui
+  void render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue, bool clipGeometry = true);
   void renderNoTransform(const egui::FullOutput &output, const gfx::DrawQueuePtr &drawQueue);
 
   static EguiRenderer *create();

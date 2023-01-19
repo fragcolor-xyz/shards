@@ -10,6 +10,11 @@
 using namespace gfx;
 namespace shards::vui {
 
+// Associated panel data
+struct ContextCachedPanel {
+  gfx::EguiRenderer renderer;
+};
+
 void Context::prepareInputs(input::InputBuffer &input, gfx::float2 inputToViewScale, const gfx::SizedView &sizedView) {
   this->sizedView = sizedView;
 
@@ -39,12 +44,6 @@ void Context::prepareInputs(input::InputBuffer &input, gfx::float2 inputToViewSc
       otherEvents.push_back(it);
     }
   }
-
-  struct PanelInput {
-    std::vector<egui::InputEvent> inputEvents;
-  };
-
-  std::vector<egui::InputEvent> panelEvents;
 
   float uiToWorldScale = 1.0f / virtualPointScale;
 
@@ -97,7 +96,6 @@ void Context::renderDebug(gfx::ShapeRenderer &sr) {
     auto geom = panel->getGeometry().scaled(uiToWorldScale);
     float4 c = panel == focusedPanel ? float4(0, 1, 0, 1) : float4(0.8, 0.8, 0.8, 1.0);
     sr.addRect(geom.center, geom.right, geom.up, geom.size, c, 2);
-    // panel->transform
   }
 
   bool pointerEventVisualized = false;
@@ -120,10 +118,6 @@ void Context::renderDebug(gfx::ShapeRenderer &sr) {
     visualizePointerInput(lastPointerInput.value(), float4(0.5f, 0.5f, 0.5f, 1.0f));
   }
 }
-
-struct ContextCachedPanel {
-  gfx::EguiRenderer renderer;
-};
 
 struct RenderContext {
   PanelPtr panel;
@@ -263,7 +257,9 @@ void Context::renderPanel(gfx::DrawQueuePtr queue, PanelPtr panel, egui::Input i
   // Place drawable at top-left corner of panel UI
   rootTransform = linalg::mul(linalg::translation_matrix(geom.getTopLeft()), rootTransform);
 
-  renderer.render(output, rootTransform, queue);
+  // NOTE: clipping disabled since we're rendering in world space
+  // TODO(guusw): geometry needs to be clipped using stencil or rendered to texture first
+  renderer.render(output, rootTransform, queue, false);
 }
 
 std::shared_ptr<ContextCachedPanel> Context::getCachedPanel(PanelPtr panel) {

@@ -41,7 +41,7 @@ struct VUIContextShard {
 
   VUIContextShard() {
     _scale = Var(1000.0f);
-    _debug = Var(true);
+    _debug = Var(false);
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -105,9 +105,8 @@ struct VUIContextShard {
     _vuiContext.activationContext = shContext;
     _vuiContext.context.virtualPointScale = _scale.payload.floatValue;
     withObjectVariable(*_vuiContextVar, &_vuiContext, VUIContext::Type, [&]() {
-      gfx::float2 inputToViewScale{1.0f};
       gfx::SizedView sizedView(view.view, gfx::float2(viewStackTop.viewport.getSize()));
-      _vuiContext.context.prepareInputs(_inputBuffer, inputToViewScale, sizedView);
+      _vuiContext.context.prepareInputs(_inputBuffer, _graphicsContext->window->getInputScale(), sizedView);
       _vuiContext.context.evaluate(queue.queue, _graphicsContext->time, _graphicsContext->deltaTime);
     });
     _vuiContext.activationContext = nullptr;
@@ -235,19 +234,6 @@ void VUIContextShard::warmup(SHContext *context) {
   _graphicsContext.warmup(context);
 
   withObjectVariable(*_vuiContextVar, &_vuiContext, VUIContext::Type, [&]() { PARAM_WARMUP(context); });
-
-  // Collect VUI.Panel shards similar to UI dock does
-  // _panels.clear();
-  // auto contentShards = _contents.shards();
-  // for (size_t i = 0; i < contentShards.len; i++) {
-  //   ShardPtr shard = contentShards.elements[i];
-
-  //   if (std::string(VUI_PANEL_SHARD_NAME) == shard->name(shard)) {
-  //     using ShardWrapper = shards::ShardWrapper<VUIPanelShard>;
-  //     VUIPanelShard &vuiPanel = reinterpret_cast<ShardWrapper *>(shard)->shard;
-  //     _panels.emplace_back(&vuiPanel);
-  //   }
-  // }
 }
 
 void registerShards() {
