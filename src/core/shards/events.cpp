@@ -62,6 +62,7 @@ struct Receive : Base {
   entt::connection _connection;
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   void onEvent(OwnedVar &event) { _events.push_back(event); }
 
@@ -69,7 +70,7 @@ struct Receive : Base {
     Base::compose(data);
     assert(_dispatcher);
     _dispatcher->get().sink<OwnedVar>().connect<&Receive::onEvent>(this);
-    return data.inputType;
+    return CoreInfo::AnySeqType;
   }
 
   void warmup(SHContext *context) {
