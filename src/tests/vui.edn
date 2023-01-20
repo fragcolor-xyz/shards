@@ -38,7 +38,8 @@
     .view-transform (FreeCamera :FlySpeed 10.0) > .view-transform
 
     .queue (GFX.ClearQueue)
-    (VUI.Context
+    
+    20.23 (VUI.Context
      :Queue .queue :View .view :Scale 100.0 :Contents
      (->
       (VUI.Panel
@@ -46,6 +47,7 @@
        (->
         (UI.CentralPanel
          (->
+          (ToString) (UI.Label)
           "First panel" (UI.Label)
           (UI.Button :Label "Button")))))
       (VUI.Panel
@@ -53,6 +55,7 @@
        (->
         (UI.CentralPanel
          (->
+          (ToString) (UI.Label)
           "Some other panel" (UI.Label)
           (UI.Button :Label "Button")))))
       (VUI.Panel
@@ -60,6 +63,7 @@
        (->
         (UI.CentralPanel
          (->
+          (ToString) (UI.Label)
           "Wide panel" (UI.Label)
           (Setup
            (LoadImage "../../assets/ShardsLogo.png") (GFX.Texture) >= .button-texture)
@@ -84,4 +88,4 @@
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule Root test-wire)
-(if (run Root timestep 400) nil (throw "Root tick failed"))
+(if (run Root timestep 100) nil (throw "Root tick failed"))

@@ -44,8 +44,9 @@ struct VUIContextShard {
     _debug = Var(false);
   }
 
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
   static SHOptionalString help() {
     return SHCCSTR("Creates a context for virtual UI panels to make sure input is correctly handled between them");
   }
@@ -86,7 +87,7 @@ struct VUIContextShard {
     if (_view->valueType == SHType::None)
       throw ComposeError("View is required");
 
-    return shards::CoreInfo::NoneType;
+    return data.inputType;
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
@@ -103,6 +104,7 @@ struct VUIContextShard {
 
     // Evaluate all UI panels
     _vuiContext.activationContext = shContext;
+    _vuiContext.activationInput = input;
     _vuiContext.context.virtualPointScale = _scale.payload.floatValue;
     withObjectVariable(*_vuiContextVar, &_vuiContext, VUIContext::Type, [&]() {
       gfx::SizedView sizedView(view.view, gfx::float2(viewStackTop.viewport.getSize()));
@@ -122,8 +124,7 @@ struct VUIContextShard {
       _debugRenderer->end(queue.queue);
     }
 
-    SHVar output{};
-    return output;
+    return input;
   }
 };
 
@@ -201,7 +202,7 @@ struct VUIPanelShard {
   // This evaluates the egui contents for this panel
   virtual const egui::FullOutput &render(const egui::Input &inputs) {
     SHVar output{};
-    const char *error = egui_hostActivate(_eguiHost, inputs, _contents.shards(), _context->activationContext, SHVar{}, output);
+    const char *error = egui_hostActivate(_eguiHost, inputs, _contents.shards(), _context->activationContext, _context->activationInput, output);
     if (error)
       throw ActivationError(fmt::format("egui activation error: {}", error));
 

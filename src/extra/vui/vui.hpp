@@ -26,6 +26,7 @@ struct VUIContext {
   static inline SHExposedTypeInfo VariableInfo = shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
 
   SHContext *activationContext{};
+  SHVar activationInput{};
   vui::Context context;
   std::vector<Panel> panels;
 };
