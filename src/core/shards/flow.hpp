@@ -830,19 +830,6 @@ struct Match {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    for (auto &case_ : _pcases) {
-      if (case_.valueType != SHType::None) {
-        // must compare deeply
-        // also pass vector to ensure we get context var info (even if we don't use it)
-        std::vector<SHExposedTypeInfo> types;
-        TypeInfo cinfo(case_, data, &types);
-        if (cinfo != data.inputType) {
-          SHLOG_ERROR("Match - case type does not match input type: {} != {}", SHTypeInfo(cinfo), data.inputType);
-          throw ComposeError("Match: each case must match the input type!, found a mismatch.");
-        }
-      }
-    }
-
     SHTypeInfo firstOutput{};
     bool first = true;
     for (auto &action : _actions) {
