@@ -1652,7 +1652,7 @@ BUILTIN("stop") {
 
 bool run(SHMesh *mesh, SHWire *wire, double sleepTime, int times, bool dec) {
   SHDuration dsleep(sleepTime);
-  auto logTicks = 1;
+  auto logTicks = 0;
 
   if (mesh) {
     auto now = SHClock::now();
@@ -1685,11 +1685,13 @@ bool run(SHMesh *mesh, SHWire *wire, double sleepTime, int times, bool dec) {
         SHDuration realSleepTime = next - now;
         if (unlikely(realSleepTime.count() <= 0.0)) {
           // tick took too long!!!
-          if(logTicks++ % 1000 == 0)
+          if (++logTicks >= 1000) {
+            logTicks = 0;
             SHLOG_WARNING("Mesh tick took too long: {}ms", -realSleepTime.count() * 1000.0);
+          }
           next = now + dsleep;
         } else {
-          logTicks = 0;
+          ++logTicks;
           next = next + dsleep;
           shards::sleep(realSleepTime.count());
         }
@@ -1780,9 +1782,7 @@ BUILTIN("run-many") {
 
   std::vector<std::future<bool>> futures;
   for (auto mesh : meshes) {
-    auto fut = std::async(std::launch::async, [=]() {
-      return run(mesh, nullptr, sleepTime, times, dec);
-    });
+    auto fut = std::async(std::launch::async, [=]() { return run(mesh, nullptr, sleepTime, times, dec); });
     futures.push_back(std::move(fut));
   }
 

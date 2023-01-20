@@ -3401,7 +3401,7 @@ struct Once {
     current = SHClock::now();
     dsleep = SHDuration(_repeatTime);
     next = current + SHDuration(0.0);
-    _logCounter = 1; // set to 1 to avoid first log spam
+    _logCounter = 0;
   }
 
   static inline Parameters params{{"Action", SHCCSTR("The shard or sequence of shards to execute."), {CoreInfo::Shards}},
@@ -3471,13 +3471,14 @@ struct Once {
       } else {
         SHDuration realSleepTime = next - current;
         if (unlikely(realSleepTime.count() <= 0.0)) {
-          // tick took too long!!! (Also happens the first time we activate)
-          if (_logCounter % 1000 == 0)
+          // tick took too long!!!
+          if (++_logCounter >= 1000) {
+            _logCounter = 0;
             SHLOG_WARNING("Once shard took too long to execute, skipping sleep time, behind: {}", realSleepTime.count());
-          _logCounter++;
+          }
           next = current + dsleep;
         } else {
-          _logCounter = 0;
+          ++_logCounter;
           next = next + dsleep;
         }
       }
