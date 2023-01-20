@@ -252,18 +252,6 @@
   0.0 >= .spikeball-x-1
   (float2 .spikeball-x-1 .spikeball-y-1) >= .spikeball-position-1
 
-  ;; ---------- spikeball-2 -------------
-  1.0 >= .spikeball-velocity-2
-  0.0 >= .spikeball-y-2
-  0.0 >= .spikeball-x-2
-  (float2 .spikeball-x-2 .spikeball-y-2) >= .spikeball-position-2
-
-  ;; ---------- SpikeBall_3 -------------
-  1.0 >= .spikeball-velocity-3
-  0.0 >= .spikeball-y-3
-  0.0 >= .spikeball-x-3
-  (float2 .spikeball-x-3 .spikeball-y-3) >= .spikeball-position-3
-
   0.5 >= .spikeball-acceleration)
 
 ;;------------- Spiked CanonBall Animation -------------
@@ -298,10 +286,6 @@
 
 (defloop spikeball-1
   (randomise-spikeball .spikeball-x-1 .spikeball-y-1 .spikeball-velocity-1 .spikeball-position-1 2))
-(defloop spikeball-2
-  (randomise-spikeball .spikeball-x-2 .spikeball-y-2 .spikeball-velocity-2 .spikeball-position-2 3))
-(defloop spikeball-3
-  (randomise-spikeball .spikeball-x-3 .spikeball-y-3 .spikeball-velocity-3 .spikeball-position-3 4))
 
 
 ;; --------- Game Elements ------------
@@ -317,20 +301,7 @@
   .Y (Math.Add 10.0)
   >= .scoringUpper-y-limit
   .Y (Math.Subtract 10.0)
-  >= .scoringLower-y-limit
-
-  ;; ---------- Damage Limits ------------
-  .X (Math.Add 50.0)
-  >= .damageUpper-x-limit
-  .X (Math.Subtract 50.0)
-  >= .damageLower-x-limit
-
-  .Y (Math.Add 5.0)
-  >= .damageUpper-y-limit
-  .Y (Math.Subtract 5.0)
-  >= .damageLower-y-limit
-
-  false >= .damaged)
+  >= .scoringLower-y-limit)
 
 ;; --------- Scoring ----------
 (defshards score-collision [coinx coiny]
@@ -368,97 +339,8 @@
         :Action (->
                  .score (Math.Add 1)
                  > .score
-                 true > .score-effect-play
                  false > .scored)))
 
-;; ------------- spikeBall-collision-logic --------------
-(defshards spikeBall-collision-logic [spikeBall-x spikeBall-y]
-
-  spikeBall-x
-  (If :Predicate (-> (IsLess .damageUpper-x-limit)
-                     (And)
-                     spikeBall-x (IsMore .damageLower-x-limit)
-                     (And)
-                     spikeBall-y (IsLess .damageUpper-y-limit)
-                     (And)
-                     spikeBall-y (IsMore .damageLower-y-limit))
-
-      :Then (-> .damaged
-                (When :Predicate (Is false)
-                      :Action (->
-                               true > .damaged
-                               (Log "damaged: "))))))
-
-;; -------------- Damaging --------------
-(defshards damaging []
-
-  .X (Math.Add 120.0)
-  > .damageUpper-x-limit
-  .X (Math.Subtract 120.0)
-  > .damageLower-x-limit
-
-  .Y (Math.Add 15.0)
-  > .damageUpper-y-limit
-  .Y (Math.Subtract 15.0)
-  > .damageLower-y-limit
-
-  (spikeBall-collision-logic .spikeball-x-1 .spikeball-y-1)
-  (spikeBall-collision-logic .spikeball-x-2 .spikeball-y-2)
-  (spikeBall-collision-logic .spikeball-x-3 .spikeball-y-3)
-
-  .damaged
-  (When :Predicate (Is true)
-        :Action (->
-                 .score (Math.Subtract 1)
-                 > .score
-                 false > .damaged)))
-
-
-;; ------------- innitialize effects -------------
-(defshards initialize-effects []
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_1.png") >> .score-effect-array
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_2.png") >> .score-effect-array
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_3.png") >> .score-effect-array
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_4.png") >> .score-effect-array
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_5.png") >> .score-effect-array
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_6.png") >> .score-effect-array
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_7.png") >> .score-effect-array
-  (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_8.png") >> .score-effect-array
-  (Count .score-effect-array) (Math.Subtract 1) >= .score-effect-array-index-max
-  0 >= .score-effect-array-index
-  0.02 >=  .score-effect-animation-speed ;; Reduce number to increase animation speed
-  false >= .score-effect-play
-
-  0.0 >= .score-effect-position-x
-  0.0 >= .score-effect-position-y
-  (float2 .score-effect-position-x .score-effect-position-y) >= .score-effect-position)
-
-;; ------------ ScoreEffect Animation Position ------------
-(defshards scoreEffect-animation-position []
-  .Y (Math.Add -15.0)
-  > .score-effect-position-y
-
-  .X
-  > .score-effect-position-x
-
-  (float2 .score-effect-position-x .score-effect-position-y)
-  > .score-effect-position)
-
-;; ------------ ScoreEffect Animation ------------
-(defloop scoreEffect-animation-logic
-
-  .score-effect-play
-  (When :Predicate (Is true)
-        :Action (->
-                 .score-effect-array-index (Math.Add 1)
-                 > .score-effect-array-index
-                 (When :Predicate (IsMore .score-effect-array-index-max)
-                       :Action (->
-                                0 > .score-effect-array-index
-                                false > .score-effect-play))))
-
-
-  (Pause .score-effect-animation-speed))
 
 
 ;; ------ UI Style --------
@@ -477,8 +359,7 @@
    (initialize-character)
    (initialize-coin)
    (initialize-game-elements)
-   (initialize-spiked-canonballs)
-   (initialize-effects))
+   (initialize-spiked-canonballs))
 
   (coin-gravity-logic .coiny-1 .coinx-1 .coin-velocity-1 .coin-position-1)
   (coin-gravity-logic .coiny-2 .coinx-2 .coin-velocity-2 .coin-position-2)
@@ -486,7 +367,6 @@
   (run-logic)
   (gravity-logic)
   (scoring)
-  (damaging)
 
   (Step idle-animation)
   (Step walking-animation)
@@ -497,14 +377,7 @@
 
   (Step spiked-canonball-animation)
   (spikeball-gravity-logic .spikeball-y-1 .spikeball-velocity-1 .spikeball-position-1 .spikeball-x-1)
-  (spikeball-gravity-logic .spikeball-y-2 .spikeball-velocity-2 .spikeball-position-2 .spikeball-x-2)
-  (spikeball-gravity-logic .spikeball-y-3 .spikeball-velocity-3 .spikeball-position-3 .spikeball-x-3)
   (Step  spikeball-1)
-  (Step  spikeball-2)
-  (Step  spikeball-3)
-
-  (scoreEffect-animation-position)
-  (Step scoreEffect-animation-logic)
 
   (GFX.MainWindow
    :Title "MainWindow" :Width 1920 :Height 1080
@@ -533,8 +406,6 @@
                                                    :Passthrough false))]
                                     :Passthrough false)))
 
-         ;; -------- coins ui area -----------
-         
          (UI.Area :Position .coin-position-1
                   :Anchor Anchor.Top
                   :Contents (->
@@ -544,28 +415,11 @@
                   :Anchor Anchor.Top
                   :Contents (->
                              LoadTexture .coin-image-array (Take .coin-image-index) (UI.Image :Scale (float2 0.2))))
-         ;; --------- spikeball ui area ----------
-         
+
          (UI.Area :Position .spikeball-position-1
                   :Anchor Anchor.Top
                   :Contents (->
-                             LoadTexture .spikeball-array (Take .spikeball-index) (UI.Image :Scale (float2 0.15))))
-
-         (UI.Area :Position .spikeball-position-2
-                  :Anchor Anchor.Top
-                  :Contents (->
-                             LoadTexture .spikeball-array (Take .spikeball-index) (UI.Image :Scale (float2 0.15))))
-
-         (UI.Area :Position .spikeball-position-3
-                  :Anchor Anchor.Top
-                  :Contents (->
-                             LoadTexture .spikeball-array (Take .spikeball-index) (UI.Image :Scale (float2 0.15))))
-
-         ;; ----------------- Visual Effects  -------------------
-         (UI.Area :Position .score-effect-position
-                  :Anchor Anchor.Top
-                  :Contents (->
-                             LoadTexture .score-effect-array (Take .score-effect-array-index) (UI.Image :Scale (float2 0.15))))
+                             .spikeball-array (Take .spikeball-index) (UI.Image :Scale (float2 0.15))))
 
          (UI.Area :Position (float2 -40 20)
                   :Anchor Anchor.TopRight
