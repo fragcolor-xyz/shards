@@ -1660,6 +1660,7 @@ struct Spawn : public CapturingSpawners {
       cloneVar(c->wire->variables[v.variableName()], var);
     }
 
+    c->wire->preserveInput = true; // avoid mesh ticks to mutate the input
     mesh->schedule(c->wire, input, false);
     return Var(c->wire); // notice this is "weak"
   }

@@ -496,7 +496,11 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       for (auto it = _flows.begin(); it != _flows.end();) {
         auto &flow = *it;
         observer.before_tick(flow->wire);
-        shards::tick(flow->wire, now, input);
+        if (flow->wire->preserveInput) {
+          shards::tick(flow->wire, now);
+        } else {
+          shards::tick(flow->wire, now, input);
+        }
         if (unlikely(!shards::isRunning(flow->wire))) {
           if (flow->wire->finishedError.size() > 0) {
             _errors.emplace_back(flow->wire->finishedError);
