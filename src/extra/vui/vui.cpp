@@ -141,7 +141,7 @@ struct VUIPanelShard {
   ExposedInfo _exposedTypes;
   std::shared_ptr<Panel> _panel;
 
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString help() { return SHCCSTR("Defines a virtual UI panel"); }
 
