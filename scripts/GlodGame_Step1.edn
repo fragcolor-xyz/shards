@@ -1,16 +1,9 @@
-(defshards Innitialize_Character []
-  (LoadImage "GlodImages/Character1.png") = .Character_Image)
 
 (defloop main-wire
   (Setup
-   (Innitialize_Character))
   
   (GFX.MainWindow
    :Title "MainWindow" :Width 1920 :Height 1080
-   :Contents (-> (Setup
-                  (GFX.DrawQueue) >= .ui-draw-queue
-                  (GFX.UIPass .ui-draw-queue) >> .render-steps)
-                 .ui-draw-queue (GFX.ClearQueue)
                  
                  (UI
                   .ui-draw-queue

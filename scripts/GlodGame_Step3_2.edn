@@ -1,53 +1,54 @@
-(defshards LoadTexture [name]
-  (LoadImage name)
-  (GFX.Texture))
-
-(defshards initialize-character []
-  (LoadTexture "GlodImages/Character1_Jumping_Left.png") = .character-jumping-left
-  (LoadTexture "GlodImages/Character1_Jumping_Right.png") = .character-jumping-right
+(defshards innitialize-character []
+  (LoadImage "GlodImages/Character1_Jumping_Left.png") = .character-jumping-left
+  (LoadImage "GlodImages/Character1_Jumping_Right.png") = .character-jumping-right
 
   0 >= .character-state
   0 >= .character-direction
 
+  0.0 >= .X
+  620.0 >= .Y
+  (float2 .X .Y) >= .character-position
+  0.0 >= .character-x-velocity
+
   ;; ---------- Character Idle Array (Facing Left) ----------
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") >> .idle-left-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png") >> .idle-left-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png") >> .idle-left-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png") >> .idle-left-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png") >> .idle-left-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png") >> .idle-left-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png") >> .idle-left-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") >> .idle-left-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png") >> .idle-left-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png") >> .idle-left-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png") >> .idle-left-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png") >> .idle-left-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png") >> .idle-left-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png") >> .idle-left-image-array
 
   ;; ---------- Character Idle Array (Facing Right) ----------------
-  (LoadTexture "GlodImages/Character_Idle/Idle_Right/Character1_Idle_1.png") >> .idle-right-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Right/Character1_Idle_2.png") >> .idle-right-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Right/Character1_Idle_3.png") >> .idle-right-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Right/Character1_Idle_4.png") >> .idle-right-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Right/Character1_Idle_5.png") >> .idle-right-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Right/Character1_Idle_6.png") >> .idle-right-image-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Right/Character1_Idle_7.png") >> .idle-right-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Right/Character1_Idle_1.png") >> .idle-right-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Right/Character1_Idle_2.png") >> .idle-right-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Right/Character1_Idle_3.png") >> .idle-right-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Right/Character1_Idle_4.png") >> .idle-right-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Right/Character1_Idle_5.png") >> .idle-right-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Right/Character1_Idle_6.png") >> .idle-right-image-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Right/Character1_Idle_7.png") >> .idle-right-image-array
 
   0 >= .idle-image-index
   (Count .idle-left-image-array) (Math.Subtract 1) >= .idle-image-index-max
   0.08 >= .idle-animation-speed
 
   ;; -------------- Walking Array (Facing Left) -----------------
-  (LoadTexture "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_1.png") >> .walking-left-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_2.png") >> .walking-left-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_3.png") >> .walking-left-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_4.png") >> .walking-left-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_5.png") >> .walking-left-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_6.png") >> .walking-left-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_7.png") >> .walking-left-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_1.png") >> .walking-left-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_2.png") >> .walking-left-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_3.png") >> .walking-left-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_4.png") >> .walking-left-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_5.png") >> .walking-left-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_6.png") >> .walking-left-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Left/Character1_Walking_Left_7.png") >> .walking-left-image-array
 
   ;; ----------- Walking Array (Facing Right) ---------------
-  (LoadTexture "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_1.png") >> .walking-right-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_2.png") >> .walking-right-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_3.png") >> .walking-right-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_4.png") >> .walking-right-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_5.png") >> .walking-right-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_6.png") >> .walking-right-image-array
-  (LoadTexture "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_7.png") >> .walking-right-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_1.png") >> .walking-right-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_2.png") >> .walking-right-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_3.png") >> .walking-right-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_4.png") >> .walking-right-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_5.png") >> .walking-right-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_6.png") >> .walking-right-image-array
+  (LoadImage "GlodImages/Character_Walking/Walking_Right/Character1_Walking_Right_7.png") >> .walking-right-image-array
 
   (Count .walking-left-image-array) (Math.Subtract 1) >= .walking-image-index-max
   0 >= .walking-image-index
@@ -69,6 +70,10 @@
         :Action (-> 0 > .walking-image-index))
   (Pause .walking-animation-speed))
 
+(defshards LoadTexture [name]
+  (LoadImage name)
+  (GFX.Texture))
+
 ;; ------- Button Inputs ----------
 (defshards button-inputs []
   (Inputs.KeyDown
@@ -76,14 +81,16 @@
    :Action (->
             (Msg "left")
             1 > .character-state
-            0 > .character-direction))
+            0 > .character-direction
+            -5.0 > .character-x-velocity))
 
   (Inputs.KeyDown
    :Key "right"
    :Action (->
             (Msg "right")
             2 > .character-state
-            1 > .character-direction))
+            1 > .character-direction
+            5.0 > .character-x-velocity))
 
   (Inputs.KeyDown
    :Key "up"
@@ -93,15 +100,36 @@
 
   (Inputs.KeyUp
    :Key "left"
-   :Action (-> 0 > .character-state))
+   :Action (-> 
+            0 > .character-state
+            0.0 > .character-x-velocity))
 
   (Inputs.KeyUp
    :Key "right"
-   :Action (-> 0 > .character-state)))
+   :Action (-> 
+            0 > .character-state 
+            0.0 > .character-x-velocity)))
 
+;; ------------ Character Run Logic ----------------
+(defshards run-logic []
+  .X (Math.Add .character-x-velocity)
+  > .X
+
+  (float2 .X .Y) > .character-position
+
+  (clamp .X -600.0 600.0))
+
+;; ---------- character-boundary ------------
+
+(defshards clamp [var min max]
+  var (Max min) (Min max) > var)
+
+;;---------- main-wire ------------
 (defloop main-wire
   (Setup
-   (initialize-character))
+   (innitialize-character))
+
+  (run-logic)
 
   (Step idle-animation)
   (Step walking-animation)
@@ -117,19 +145,19 @@
        (UI
         .ui-draw-queue
         (->
-         (UI.Area :Position (float2 0 0)
-                  :Anchor Anchor.Center
+         (UI.Area :Position .character-position
+                  :Anchor Anchor.Top
                   :Contents (->
                              .character-state
                              (Match [0 (-> .character-direction
-                                           (Match [0 (-> .idle-left-image-array (Take .idle-image-index) (UI.Image :Scale (float2 0.2)))
-                                                   1 (-> .idle-right-image-array (Take .idle-image-index) (UI.Image :Scale (float2 0.2)))]
+                                           (Match [0 (-> LoadTexture .idle-left-image-array (Take .idle-image-index) (UI.Image :Scale (float2 0.2)))
+                                                   1 (-> LoadTexture .idle-right-image-array (Take .idle-image-index) (UI.Image :Scale (float2 0.2)))]
                                                   :Passthrough false))
-                                     1 (-> .walking-left-image-array (Take .walking-image-index) (UI.Image :Scale (float2 0.2)))
-                                     2 (-> .walking-right-image-array (Take .walking-image-index) (UI.Image :Scale (float2 0.2)))
+                                     1 (-> LoadTexture .walking-left-image-array (Take .walking-image-index) (UI.Image :Scale (float2 0.2)))
+                                     2 (-> LoadTexture .walking-right-image-array (Take .walking-image-index) (UI.Image :Scale (float2 0.2)))
                                      3 (->  .character-direction
-                                            (Match [0 (-> .character-jumping-left (UI.Image :Scale (float2 0.2)))
-                                                    1 (-> .character-jumping-right (UI.Image :Scale (float2 0.2)))]
+                                            (Match [0 (-> LoadTexture .character-jumping-left (UI.Image :Scale (float2 0.2)))
+                                                    1 (-> LoadTexture .character-jumping-right (UI.Image :Scale (float2 0.2)))]
                                                    :Passthrough false))]
                                     :Passthrough false)))))
 
