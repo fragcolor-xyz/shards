@@ -4,17 +4,18 @@
 #include <shards.h>
 #include <gfx/egui/egui_types.hpp>
 
-typedef void *EguiContext;
+typedef void *EguiHost;
 
 extern "C" {
-EguiContext egui_createContext();
-void egui_destroyContext(EguiContext);
-void egui_getExposedTypeInfo(EguiContext, SHExposedTypesInfo &outTypes);
-void egui_warmup(EguiContext, SHContext *shContext);
-void egui_cleanup(EguiContext);
-const char *egui_activate(EguiContext eguiContext, const egui::Input &eguiInput, const Shards &shards, SHContext *shContext,
+EguiHost egui_createHost();
+void egui_destroyHost(EguiHost);
+
+void egui_hostGetExposedTypeInfo(EguiHost, SHExposedTypesInfo &outTypes);
+void egui_hostWarmup(EguiHost, SHContext *shContext);
+void egui_hostCleanup(EguiHost);
+const char *egui_hostActivate(EguiHost, const egui::Input &eguiInput, const Shards &shards, SHContext *shContext,
                           const SHVar &input, SHVar &output);
-const egui::FullOutput *egui_getOutput(const EguiContext eguiContext);
+const egui::FullOutput *egui_hostGetOutput(const EguiHost);
 }
 
 #endif /* ED3C732D_AC03_4B15_8EC8_BB15262E26DA */

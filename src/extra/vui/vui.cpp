@@ -136,7 +136,7 @@ struct VUIPanelShard {
 
   RequiredVUIContext _context;
   Shard *_uiShard{};
-  EguiContext _eguiContext;
+  EguiHost _eguiHost;
   ExposedInfo _exposedTypes;
   std::shared_ptr<Panel> _panel;
 
@@ -149,17 +149,17 @@ struct VUIPanelShard {
     return e;
   }
 
-  void ensureEguiContext() {
-    if (!_eguiContext)
-      _eguiContext = egui_createContext();
+  void ensureEguiHost() {
+    if (!_eguiHost)
+      _eguiHost = egui_createHost();
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     _context.warmup(context);
 
-    ensureEguiContext();
-    egui_warmup(_eguiContext, context);
+    ensureEguiHost();
+    egui_hostWarmup(_eguiHost, context);
 
     _panel = std::make_shared<Panel>(*this);
     _context->context.panels.emplace_back(_panel);
@@ -169,20 +169,20 @@ struct VUIPanelShard {
     PARAM_CLEANUP();
     _context.cleanup();
 
-    if (_eguiContext) {
-      egui_cleanup(_eguiContext);
-      egui_destroyContext(_eguiContext);
-      _eguiContext = nullptr;
+    if (_eguiHost) {
+      egui_hostCleanup(_eguiHost);
+      egui_destroyHost(_eguiHost);
+      _eguiHost = nullptr;
     }
 
     _panel.reset();
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    ensureEguiContext();
+    ensureEguiHost();
 
     SHExposedTypesInfo eguiExposedTypes{};
-    egui_getExposedTypeInfo(_eguiContext, eguiExposedTypes);
+    egui_hostGetExposedTypeInfo(_eguiHost, eguiExposedTypes);
 
     _exposedTypes = ExposedInfo(data.shared);
     mergeIntoExposedInfo(_exposedTypes, eguiExposedTypes);
@@ -201,11 +201,11 @@ struct VUIPanelShard {
   // This evaluates the egui contents for this panel
   virtual const egui::FullOutput &render(const egui::Input &inputs) {
     SHVar output{};
-    const char *error = egui_activate(_eguiContext, inputs, _contents.shards(), _context->activationContext, SHVar{}, output);
+    const char *error = egui_hostActivate(_eguiHost, inputs, _contents.shards(), _context->activationContext, SHVar{}, output);
     if (error)
       throw ActivationError(fmt::format("egui activation error: {}", error));
 
-    const egui::FullOutput &eguiOutput = *egui_getOutput(_eguiContext);
+    const egui::FullOutput &eguiOutput = *egui_hostGetOutput(_eguiHost);
     return eguiOutput;
   }
 

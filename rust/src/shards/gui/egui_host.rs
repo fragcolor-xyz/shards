@@ -34,7 +34,7 @@ use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use std::ffi::CStr;
 
-struct UIContext {
+pub struct EguiHost {
   context: Option<egui::Context>,
   full_output: Option<NativeFullOutput>,
   instance: ParamVar,
@@ -42,8 +42,8 @@ struct UIContext {
   exposed: Vec<ExposedInfo>,
 }
 
-impl UIContext {
-  pub fn default() -> Self {
+impl Default for EguiHost {
+  fn default() -> Self {
     let mut instance = ParamVar::default();
     instance.set_name(CONTEXTS_NAME);
 
@@ -81,6 +81,12 @@ impl UIContext {
       exposed: exposed,
     }
   }
+}
+
+impl EguiHost {
+  pub fn get_context(&self) -> &egui::Context {
+    self.context.as_ref().expect("No UI context")
+  }
 
   pub fn get_exposed_info(&self) -> &Vec<ExposedInfo> {
     &self.exposed
@@ -117,7 +123,7 @@ impl UIContext {
     contents: &Shards,
     context: &Context,
     input: &Var,
-  ) -> Result<Var, &str> {
+  ) -> Result<Var, &'static str> {
     let gui_ctx = if let Some(gui_ctx) = &self.context {
       gui_ctx
     } else {
@@ -195,43 +201,43 @@ impl UIContext {
 mod native {
   use egui_gfx::{egui_FullOutput, egui_Input};
 
-  use super::UIContext;
+  use super::EguiHost;
   use crate::{
     shardsc::{self, SHVar, Shards},
     types::{Context, Var},
   };
 
   #[no_mangle]
-  unsafe extern "C" fn egui_createContext() -> *mut UIContext {
-    Box::into_raw(Box::new(UIContext::default()))
+  unsafe extern "C" fn egui_createHost() -> *mut EguiHost {
+    Box::into_raw(Box::new(EguiHost::default()))
   }
 
   #[no_mangle]
-  unsafe extern "C" fn egui_destroyContext(ptr: *mut UIContext) {
+  unsafe extern "C" fn egui_destroyHost(ptr: *mut EguiHost) {
     drop(Box::from_raw(ptr))
   }
 
   #[no_mangle]
-  unsafe extern "C" fn egui_getExposedTypeInfo(
-    ptr: *mut UIContext,
+  unsafe extern "C" fn egui_hostGetExposedTypeInfo(
+    ptr: *mut EguiHost,
     out_info: *mut shardsc::SHExposedTypesInfo,
   ) {
     (*out_info) = (&(*ptr).exposed).into();
   }
 
   #[no_mangle]
-  unsafe extern "C" fn egui_warmup(ptr: *mut UIContext, ctx: &Context) {
+  unsafe extern "C" fn egui_hostWarmup(ptr: *mut EguiHost, ctx: &Context) {
     (*ptr).warmup(&ctx).unwrap();
   }
 
   #[no_mangle]
-  unsafe extern "C" fn egui_cleanup(ptr: *mut UIContext) {
+  unsafe extern "C" fn egui_hostCleanup(ptr: *mut EguiHost) {
     (*ptr).cleanup().unwrap();
   }
 
   #[no_mangle]
-  unsafe extern "C" fn egui_activate(
-    ptr: *mut UIContext,
+  unsafe extern "C" fn egui_hostActivate(
+    ptr: *mut EguiHost,
     egui_input: *const egui_Input,
     contents: &Shards,
     context: &Context,
@@ -248,7 +254,11 @@ mod native {
   }
 
   #[no_mangle]
-  unsafe extern "C" fn egui_getOutput(ptr: *const UIContext) -> *const egui_FullOutput {
-    &(*ptr).full_output.as_ref().expect("Expected egui output").full_output
+  unsafe extern "C" fn egui_hostGetOutput(ptr: *const EguiHost) -> *const egui_FullOutput {
+    &(*ptr)
+      .full_output
+      .as_ref()
+      .expect("Expected egui output")
+      .full_output
   }
 }
