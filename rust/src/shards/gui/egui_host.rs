@@ -1,8 +1,3 @@
-use egui_gfx::egui_FullOutput;
-use egui_gfx::egui_Input;
-use egui_gfx::make_native_full_output;
-use egui_gfx::NativeFullOutput;
-
 use super::util;
 use super::EguiContext;
 use super::CONTEXTS_NAME;
@@ -32,6 +27,10 @@ use crate::types::Var;
 use crate::types::WireState;
 use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
+use egui_gfx::egui_FullOutput;
+use egui_gfx::egui_Input;
+use egui_gfx::make_native_full_output;
+use egui_gfx::NativeFullOutput;
 use std::ffi::CStr;
 
 pub struct EguiHost {
