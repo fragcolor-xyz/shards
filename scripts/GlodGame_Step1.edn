@@ -23,21 +23,23 @@
    :Key "up"
    :Action (Msg "up")))
 
-(defshards Button_Inputs []
+(defshards LoadTexture [name]
+  (LoadImage name)
+  (GFX.Texture))
+
+(defshards button-inputs []
   (Inputs.KeyDown
    :Key "left"
-   :Action (->
+   :Action ( ->
             (Msg "left")))
 
   (Inputs.KeyDown
    :Key "right"
-   :Action (->
-            (Msg "right")))
+   :Action (Msg "right"))
 
   (Inputs.KeyDown
    :Key "up"
-   :Action (->
-            (Msg "up"))))
+   :Action (Msg "up")))
 
 (defloop main-wire
   (Setup
