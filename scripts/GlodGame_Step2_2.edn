@@ -3,7 +3,7 @@
   (LoadImage "GlodImages/Character1_Left.png") = .character-left
   (LoadImage "GlodImages/Character1_Right.png") = .character-right
   (LoadImage "GlodImages/Character1_Jumping.png") = .character-jumping
-  0 >= character-state)
+  0 >= .character-state)
 
 (defshards LoadTexture [name]
   (LoadImage name)
@@ -12,16 +12,21 @@
 (defshards button-inputs []
   (Inputs.KeyDown
    :Key "left"
-   :Action ( ->
-            (Msg "left")))
+   :Action (-> 
+            (Msg "left")
+            1 >= .character-state))
 
   (Inputs.KeyDown
    :Key "right"
-   :Action (Msg "right"))
+   :Action (-> 
+            (Msg "right")
+            2 >= .character-state))
 
   (Inputs.KeyDown
    :Key "up"
-   :Action (Msg "up")))
+   :Action ( -> 
+            (Msg "up")
+            3 >= .character-state)))
 
 (defloop main-wire
   (Setup
@@ -41,11 +46,13 @@
          (UI.Area :Position (float2 0 0)
                   :Anchor Anchor.Center
                   :Contents (->
-                             LoadTexture .character-image (UI.Image :Scale (float2 0.2))
-                             LoadTexture .character-left (UI.Image :Scale (float2 0.2))
-                             LoadTexture .character-right (UI.Image :Scale (float2 0.2))
-                             LoadTexture .character-jumping (UI.Image :Scale (float2 0.2))))))
-       
+                             .character-state
+                             (Match [0 (-> LoadTexture .character-image (UI.Image :Scale (float2 0.2)))
+                                     1 (-> LoadTexture .character-left (UI.Image :Scale (float2 0.2)))
+                                     2 (-> LoadTexture .character-right (UI.Image :Scale (float2 0.2)))
+                                     3 (-> LoadTexture .character-jumping (UI.Image :Scale (float2 0.2)))]
+                                    :Passthrough false)))))
+
        (button-inputs)
 
        (GFX.Render :Steps .render-steps))))
