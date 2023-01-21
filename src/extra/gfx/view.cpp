@@ -104,7 +104,8 @@ struct RegionShard {
   }
 
   SHExposedTypesInfo requiredVariables() {
-    static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), Inputs::RequiredInputContext::getExposedTypeInfo());
+    static auto e =
+        exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), Inputs::RequiredInputContext::getExposedTypeInfo());
     return e;
   }
 

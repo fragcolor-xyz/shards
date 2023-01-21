@@ -14,7 +14,7 @@ void egui_hostGetExposedTypeInfo(EguiHost, SHExposedTypesInfo &outTypes);
 void egui_hostWarmup(EguiHost, SHContext *shContext);
 void egui_hostCleanup(EguiHost);
 const char *egui_hostActivate(EguiHost, const egui::Input &eguiInput, const Shards &shards, SHContext *shContext,
-                          const SHVar &input, SHVar &output);
+                              const SHVar &input, SHVar &output);
 const egui::FullOutput *egui_hostGetOutput(const EguiHost);
 }
 

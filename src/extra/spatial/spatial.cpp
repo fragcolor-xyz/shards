@@ -34,8 +34,8 @@ struct SpatialUIContextShard {
   PARAM(ShardsVar, _contents, "Contents", "The list of UI panels to render.", {CoreInfo::ShardsOrNone});
   PARAM_VAR(_scale, "Scale", "The scale of how many UI units per world unit.", {CoreInfo::FloatType});
   PARAM_VAR(_debug, "Debug", "Visualize panel outlines and pointer input being sent to panels.", {CoreInfo::BoolType});
-  PARAM_IMPL(SpatialUIContextShard, PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_scale),
-             PARAM_IMPL_FOR(_debug));
+  PARAM_IMPL(SpatialUIContextShard, PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_contents),
+             PARAM_IMPL_FOR(_scale), PARAM_IMPL_FOR(_debug));
 
   SpatialUIContextShard() {
     _scale = Var(1000.0f);
@@ -66,7 +66,8 @@ struct SpatialUIContextShard {
 
     if (_spatialContextVar) {
       if (_spatialContextVar->refcount > 1) {
-        SHLOG_ERROR("Spatial.UI: Found {} dangling reference(s) to {}", _spatialContextVar->refcount - 1, SpatialContext::VariableName);
+        SHLOG_ERROR("Spatial.UI: Found {} dangling reference(s) to {}", _spatialContextVar->refcount - 1,
+                    SpatialContext::VariableName);
       }
       releaseVariable(_spatialContextVar);
     }
@@ -200,7 +201,8 @@ struct SpatialPanelShard {
   // This evaluates the egui contents for this panel
   virtual const egui::FullOutput &render(const egui::Input &inputs) {
     SHVar output{};
-    const char *error = egui_hostActivate(_eguiHost, inputs, _contents.shards(), _context->activationContext, _context->activationInput, output);
+    const char *error =
+        egui_hostActivate(_eguiHost, inputs, _contents.shards(), _context->activationContext, _context->activationInput, output);
     if (error)
       throw ActivationError(fmt::format("egui activation error: {}", error));
 

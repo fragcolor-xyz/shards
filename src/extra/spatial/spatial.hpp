@@ -31,7 +31,8 @@ struct SpatialContext {
   std::vector<Panel> panels;
 };
 
-typedef shards::RequiredContextVariable<SpatialContext, SpatialContext::Type, SpatialContext::VariableName> RequiredSpatialContext;
+typedef shards::RequiredContextVariable<SpatialContext, SpatialContext::Type, SpatialContext::VariableName>
+    RequiredSpatialContext;
 
 } // namespace shards::Spatial
 

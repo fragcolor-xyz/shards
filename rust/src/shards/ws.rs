@@ -1,5 +1,5 @@
 use crate::{
-  core::{run_blocking, registerShard, BlockingShard},
+  core::{registerShard, run_blocking, BlockingShard},
   types::{
     ClonedVar, Context, ExposedInfo, ExposedTypes, ParamVar, Parameters, Type, Types, Var,
     ANYS_TYPES, FRAG_CC, NONE_TYPES, STRING_TYPES,

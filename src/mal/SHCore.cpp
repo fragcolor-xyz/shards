@@ -460,16 +460,14 @@ private:
 
 class malSHVar : public malValue, public malRoot {
 public:
-  malSHVar(const SHVar &var, bool owned) : m_owned(owned) {
-    m_var = var;
-  }
+  malSHVar(const SHVar &var, bool owned) : m_owned(owned) { m_var = var; }
 
   malSHVar(const malSHVar &that, const malValuePtr &meta) : malValue(meta), m_owned(true) {
     m_var = SHVar();
     shards::cloneVar(m_var, that.m_var);
   }
 
-  static malSHVar* newCloned(const SHVar& var) {
+  static malSHVar *newCloned(const SHVar &var) {
     SHVar clonedVar{};
     cloneVar(clonedVar, var);
     return new malSHVar(clonedVar, true);
@@ -1082,7 +1080,7 @@ malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
     providerVar->line = arg->line;
     return malSHVarPtr(providerVar);
   } else if (malShard *v = DYNAMIC_CAST(malShard, arg)) {
-    auto shard = v->value(); 
+    auto shard = v->value();
     SHVar var{};
     var.valueType = SHType::ShardRef;
     var.payload.shardValue = shard;

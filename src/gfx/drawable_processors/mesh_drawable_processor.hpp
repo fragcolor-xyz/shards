@@ -283,7 +283,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   void waitForBufferMap(Context &context, PrepareData *prepareData) {
     do {
       bool everythingMapped = true;
-      auto check = [&](auto& buffers) {
+      auto check = [&](auto &buffers) {
         for (auto &drawBuffer : buffers) {
           if (drawBuffer.mappingStatus == WGPUBufferMapAsyncStatus_Unknown)
             everythingMapped = false;
