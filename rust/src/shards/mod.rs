@@ -28,6 +28,8 @@ pub mod curve25519;
 
 pub mod chachapoly;
 
+pub mod editor;
+
 pub mod gui;
 
 pub mod date;
