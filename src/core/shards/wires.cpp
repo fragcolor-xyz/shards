@@ -1808,7 +1808,7 @@ struct Branch {
 
     auto dataCopy = data;
     dataCopy.wire = wire.get();
-    dataCopy.inputType = data.inputType;
+    dataCopy.inputType = {}; // ticked wires don't have inputs
 
     // Branch needs to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable

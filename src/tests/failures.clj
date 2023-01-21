@@ -110,7 +110,7 @@
   .msg2 (Log))
 
 (defloop cDead
-  (Fail))
+  "Failed" (Fail))
 
 (defloop c
   "Hello" = .msg1
