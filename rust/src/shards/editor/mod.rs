@@ -15,5 +15,8 @@ mod index_impls;
 /// Implements the different nodes
 pub(crate) mod node_templates;
 pub(crate) use node_templates::*;
+/// Implements the node factory to create new nodes
+pub(crate) mod node_factory;
+pub(crate) use node_factory::*;
 /// Implements some utilities
 mod util;

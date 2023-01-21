@@ -39,10 +39,6 @@ impl<NodeData> Graph<NodeData> {
 
 impl<Data> Node<Data> {
   pub fn new(id: NodeId, label: String, data: Data) -> Self {
-    Self {
-      id,
-      label,
-      data,
-    }
+    Self { id, label, data }
   }
 }
