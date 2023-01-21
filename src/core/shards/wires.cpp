@@ -1340,7 +1340,7 @@ struct ParallelBase : public CapturingSpawners {
 
             // Tick the wire on the flow that this wire created
             SHDuration now = SHClock::now().time_since_epoch();
-            shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
+            shards::tick(cref->wire->context->flow->wire, now);
 
             if (!isRunning(cref->wire.get())) {
               if (cref->wire->state == SHWire::State::Ended) {
@@ -1392,7 +1392,7 @@ struct ParallelBase : public CapturingSpawners {
 
             // Tick the wire on the flow that this wire created
             SHDuration now = SHClock::now().time_since_epoch();
-            shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
+            shards::tick(cref->wire->context->flow->wire, now);
             // also tick the mesh
             cref->mesh->tick();
           });
@@ -1660,8 +1660,8 @@ struct Spawn : public CapturingSpawners {
       cloneVar(c->wire->variables[v.variableName()], var);
     }
 
-    c->wire->preserveInput = true; // avoid mesh ticks to mutate the input
     mesh->schedule(c->wire, input, false);
+
     return Var(c->wire); // notice this is "weak"
   }
 
@@ -1732,7 +1732,7 @@ struct StepMany : public TryMany {
 
         // Tick the wire on the flow that this wire created
         SHDuration now = SHClock::now().time_since_epoch();
-        shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
+        shards::tick(cref->wire->context->flow->wire, now);
 
         // this can be anything really...
         _outputs[i] = cref->wire->previousOutput;
@@ -1903,7 +1903,7 @@ struct Branch {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!_mesh->tick(input)) {
+    if (!_mesh->tick()) {
       switch (_failureBehavior) {
       case BranchFailureBehavior::Ignore:
         break;

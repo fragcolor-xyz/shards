@@ -283,14 +283,11 @@ inline bool isRunning(SHWire *wire) {
   return state >= SHWire::State::Starting && state <= SHWire::State::IterationEnded;
 }
 
-inline bool tick(SHWire *wire, SHDuration now, SHVar rootInput = {}) {
+inline bool tick(SHWire *wire, SHDuration now) {
   if (!wire->context || !wire->coro || !(*wire->coro) || !(isRunning(wire)))
     return false; // check if not null and bool operator also to see if alive!
 
   if (now >= wire->context->next) {
-    if (rootInput != shards::Var::Empty) {
-      cloneVar(wire->rootTickInput, rootInput);
-    }
 #ifdef SH_USE_TSAN
     auto curr = __tsan_get_current_fiber();
     __tsan_switch_to_fiber(wire->tsan_coro, 0);
@@ -484,7 +481,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     schedule(obs, wire, input, compose);
   }
 
-  template <class Observer> bool tick(Observer observer, SHVar input = shards::Var::Empty) {
+  template <class Observer> bool tick(Observer observer) {
     auto noErrors = true;
     _errors.clear();
     _failedWires.clear();
@@ -496,11 +493,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       for (auto it = _flows.begin(); it != _flows.end();) {
         auto &flow = *it;
         observer.before_tick(flow->wire);
-        if (flow->wire->preserveInput) {
-          shards::tick(flow->wire, now);
-        } else {
-          shards::tick(flow->wire, now, input);
-        }
+        shards::tick(flow->wire, now);
         if (unlikely(!shards::isRunning(flow->wire))) {
           if (flow->wire->finishedError.size() > 0) {
             _errors.emplace_back(flow->wire->finishedError);
@@ -526,9 +519,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     return noErrors;
   }
 
-  bool tick(SHVar input = shards::Var::Empty) {
+  bool tick() {
     EmptyObserver obs;
-    return tick(obs, input);
+    return tick(obs);
   }
 
   void terminate() {

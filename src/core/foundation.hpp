@@ -354,7 +354,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   SHVar composedHash{};
   bool warmedUp{false};
   bool isRoot{false};
-  bool preserveInput{false};
   std::unordered_set<void *> wireUsers;
 
   // we need to clone this, as might disappear, since outside wire
