@@ -74,7 +74,7 @@
   (if test-rpcs
     (-> {"id" 1 "jsonrpc" "2.0" "method" "chain_getShardHash" "params" [0]} (ToJson) (Http.Post rpc-server)
         (FromJson) (ExpectTable) (Take "result") (ExpectString) (Log) (HexToBytes) (Log) = .genesis-hash)
-    (-> (Bytes "0x0") = .genesis-hash))
+    (-> (Bytes "0x") = .genesis-hash))
 
   ; extrinsic call
 
