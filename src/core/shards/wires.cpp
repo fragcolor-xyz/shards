@@ -210,6 +210,10 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 }
 
 struct Wait : public WireBase {
+  void setup() {
+    activating = false; // this is needed to pass validation in compose
+  }
+
   SHOptionalString help() {
     return SHCCSTR("Waits for another wire to complete before resuming "
                    "execution of the current wire.");
@@ -249,11 +253,6 @@ struct Wait : public WireBase {
     default:
       return Var::Empty;
     }
-  }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    activating = false; // this is needed to pass validation in compose
-    return WireBase::compose(data);
   }
 
   SHExposedTypesInfo requiredVariables() {
