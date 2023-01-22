@@ -39,7 +39,7 @@ std::unordered_set<const SHWire *> &WireBase::gatheringWires() {
 
 void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposedInfo &shared) {
   // verify input type
-  if (!passthrough && mode != Stepped && data.inputType != wire->inputType && !wire->inputTypeForceNone) {
+  if (!passthrough && data.inputType != wire->inputType && !wire->inputTypeForceNone) {
     SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
     throw ComposeError("Attempted to call an already composed wire with a "
                        "different input type! wire: " +
@@ -101,7 +101,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   // TODO FIXME, wireloader/wire runner might access this from threads
   if (mesh->visitedWires.count(wire.get())) {
     // but visited does not mean composed...
-    if (wire->composeResult) {
+    if (wire->composeResult && activating) {
       IterableExposedInfo shared(data.shared);
       verifyAlreadyComposed(data, shared);
     }
@@ -210,6 +210,10 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 }
 
 struct Wait : public WireBase {
+  void setup() {
+    activating = false; // this is needed to pass validation in compose
+  }
+
   SHOptionalString help() {
     return SHCCSTR("Waits for another wire to complete before resuming "
                    "execution of the current wire.");
