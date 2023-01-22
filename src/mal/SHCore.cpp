@@ -1854,17 +1854,54 @@ BUILTIN("string") {
   return malValuePtr(mvar);
 }
 
+std::string hex2Bytes(const std::string &s) {
+  std::string bytes;
+  for (size_t i = 0; i < s.size(); i += 2) {
+    auto c = s[i];
+    auto c2 = s[i + 1];
+    auto v = 0;
+    if (c >= '0' && c <= '9') {
+      v = (c - '0') << 4;
+    } else if (c >= 'a' && c <= 'f') {
+      v = (c - 'a' + 10) << 4;
+    } else if (c >= 'A' && c <= 'F') {
+      v = (c - 'A' + 10) << 4;
+    } else {
+      throw shards::SHException("Invalid hex string");
+    }
+    if (c2 >= '0' && c2 <= '9') {
+      v |= (c2 - '0');
+    } else if (c2 >= 'a' && c2 <= 'f') {
+      v |= (c2 - 'a' + 10);
+    } else if (c2 >= 'A' && c2 <= 'F') {
+      v |= (c2 - 'A' + 10);
+    } else {
+      throw shards::SHException("Invalid hex string");
+    }
+    bytes.push_back(v);
+  }
+  return bytes;
+}
+
 BUILTIN("bytes") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   SHVar var{};
   var.valueType = SHType::Bytes;
   auto &s = value->ref();
-  var.payload.bytesValue = (uint8_t *)s.data();
-  var.payload.bytesSize = s.size();
-  auto mvar = new malSHVar(var, false);
-  mvar->reference(value);
-  return malValuePtr(mvar);
+  if (s.size() > 2 && s[0] == '0' && s[1] == 'x') {
+    auto bytes = hex2Bytes(s.substr(2));
+    var.payload.bytesValue = (uint8_t *)bytes.data();
+    var.payload.bytesSize = bytes.size();
+    auto mvar = new malSHVar(var, true);
+    return malValuePtr(mvar);
+  } else {
+    var.payload.bytesValue = (uint8_t *)s.data();
+    var.payload.bytesSize = s.size();
+    auto mvar = new malSHVar(var, false);
+    mvar->reference(value);
+    return malValuePtr(mvar);
+  }
 }
 
 BUILTIN("context-var") {
@@ -1880,30 +1917,14 @@ BUILTIN("context-var") {
 }
 
 template <SHType T> struct GetComponentType {};
-template <> struct GetComponentType<SHType::Float2> {
-  typedef double Type;
-};
-template <> struct GetComponentType<SHType::Float3> {
-  typedef float Type;
-};
-template <> struct GetComponentType<SHType::Float4> {
-  typedef float Type;
-};
-template <> struct GetComponentType<SHType::Int2> {
-  typedef int64_t Type;
-};
-template <> struct GetComponentType<SHType::Int3> {
-  typedef int32_t Type;
-};
-template <> struct GetComponentType<SHType::Int4> {
-  typedef int32_t Type;
-};
-template <> struct GetComponentType<SHType::Int8> {
-  typedef int16_t Type;
-};
-template <> struct GetComponentType<SHType::Int16> {
-  typedef int8_t Type;
-};
+template <> struct GetComponentType<SHType::Float2> { typedef double Type; };
+template <> struct GetComponentType<SHType::Float3> { typedef float Type; };
+template <> struct GetComponentType<SHType::Float4> { typedef float Type; };
+template <> struct GetComponentType<SHType::Int2> { typedef int64_t Type; };
+template <> struct GetComponentType<SHType::Int3> { typedef int32_t Type; };
+template <> struct GetComponentType<SHType::Int4> { typedef int32_t Type; };
+template <> struct GetComponentType<SHType::Int8> { typedef int16_t Type; };
+template <> struct GetComponentType<SHType::Int16> { typedef int8_t Type; };
 template <> struct GetComponentType<SHType::Color> {
   typedef uint8_t Type;
   static constexpr uint8_t getDefaultValue(size_t index) { return index == 3 ? 255 : 0; }
