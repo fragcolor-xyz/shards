@@ -36,9 +36,16 @@ struct WireBase {
 
   ParamVar wireref{};
   std::shared_ptr<SHWire> wire;
+
   bool passthrough{false};
+
+   // if false, means the Shard is not going to activate the wire, but just wait for it to complete usually or similar
+  bool activating{true};
+
   bool capturing{false};
+
   RunWireMode mode{RunWireMode::Inline};
+
   IterableExposedInfo exposedInfo{};
 
   void resetComposition();
