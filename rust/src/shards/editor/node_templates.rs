@@ -2,6 +2,16 @@
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
 use super::{graph_ui::UIRenderer, node_factory::NodeTemplateTrait};
+use crate::shardsc::SHType_Float;
+use crate::shardsc::SHType_Float2;
+use crate::shardsc::SHType_Float3;
+use crate::shardsc::SHType_Float4;
+use crate::shardsc::SHType_Int;
+use crate::shardsc::SHType_Int2;
+use crate::shardsc::SHType_Int3;
+use crate::shardsc::SHType_Int4;
+use crate::shardsc::SHType_String;
+use crate::types::Var;
 use egui::Ui;
 
 #[derive(Clone)]
@@ -98,35 +108,12 @@ impl UIRenderer for AssertIsNodeData {
   }
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) enum NodeDataType {
-  #[default]
-  Int,
-  Int2,
-  Int3,
-  Int4,
-  Float,
-  Float2,
-  Float3,
-  Float4,
-  String,
-}
-
 #[derive(Clone, Default)]
 pub(crate) struct ConstNodeData {
-  // FIXME: all values should be merged into a single Var, with custom conversion rules
-  pub value_i: i64,
-  pub value_i2: [i64; 2],
-  pub value_i3: [i64; 3],
-  pub value_i4: [i64; 4],
-  pub value_f: f64,
-  pub value_f2: [f64; 2],
-  pub value_f3: [f64; 3],
-  pub value_f4: [f64; 4],
   pub value_s: String,
-
-  // ...
-  pub typ_: NodeDataType,
+  pub value_type: u8,
+  pub prev_type: u8,
+  pub value: Var,
 }
 
 impl NodeTemplateTrait for ConstNodeData {
@@ -144,72 +131,122 @@ impl UIRenderer for ConstNodeData {
   fn ui(&mut self, ui: &mut Ui) {
     ui.horizontal(|ui| {
       egui::ComboBox::from_id_source(("ConstNodeData", "type"))
-        .selected_text(format!("{:?}", self.typ_))
+        // FIXME: display actualy name instead of int
+        .selected_text(format!("{:?}", self.value_type))
         .show_ui(ui, |ui| {
-          ui.selectable_value(&mut self.typ_, NodeDataType::Int, "Int");
-          ui.selectable_value(&mut self.typ_, NodeDataType::Int2, "Int2");
-          ui.selectable_value(&mut self.typ_, NodeDataType::Int3, "Int3");
-          ui.selectable_value(&mut self.typ_, NodeDataType::Int4, "Int4");
-          ui.selectable_value(&mut self.typ_, NodeDataType::Float, "Float");
-          ui.selectable_value(&mut self.typ_, NodeDataType::Float2, "Float2");
-          ui.selectable_value(&mut self.typ_, NodeDataType::Float3, "Float3");
-          ui.selectable_value(&mut self.typ_, NodeDataType::Float4, "Float4");
-          ui.selectable_value(&mut self.typ_, NodeDataType::String, "String");
+          ui.selectable_value(&mut self.value_type, SHType_Int, "Int");
+          ui.selectable_value(&mut self.value_type, SHType_Int2, "Int2");
+          ui.selectable_value(&mut self.value_type, SHType_Int3, "Int3");
+          ui.selectable_value(&mut self.value_type, SHType_Int4, "Int4");
+          ui.selectable_value(&mut self.value_type, SHType_Float, "Float");
+          ui.selectable_value(&mut self.value_type, SHType_Float2, "Float2");
+          ui.selectable_value(&mut self.value_type, SHType_Float3, "Float3");
+          ui.selectable_value(&mut self.value_type, SHType_Float4, "Float4");
+          ui.selectable_value(&mut self.value_type, SHType_String, "String");
         });
-      // FIXME: use a single backing store (Var) and apply conversion when switching type (when possible)
-      match self.typ_ {
-        NodeDataType::Int => {
-          ui.add(egui::DragValue::new(&mut self.value_i));
+
+      if self.prev_type != self.value_type {
+        self.prev_type = self.value_type;
+        // TODO: conversion or reset the value
+        self.value.valueType = self.value_type;
+      }
+
+      unsafe {
+        match self.value_type {
+          SHType_Int => {
+            ui.add(egui::DragValue::new(
+              &mut self.value.payload.__bindgen_anon_1.intValue,
+            ));
+          }
+          SHType_Int2 => {
+            ui.horizontal(|ui| {
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.int2Value[0],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.int2Value[1],
+              ));
+            });
+          }
+          SHType_Int3 => {
+            ui.horizontal(|ui| {
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.int3Value[0],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.int3Value[1],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.int3Value[2],
+              ));
+            });
+          }
+          SHType_Int4 => {
+            ui.horizontal(|ui| {
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.int4Value[0],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.int4Value[1],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.int4Value[2],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.int4Value[3],
+              ));
+            });
+          }
+          SHType_Float => {
+            ui.add(egui::DragValue::new(
+              &mut self.value.payload.__bindgen_anon_1.floatValue,
+            ));
+          }
+          SHType_Float2 => {
+            ui.horizontal(|ui| {
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.float2Value[0],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.float2Value[1],
+              ));
+            });
+          }
+          SHType_Float3 => {
+            ui.horizontal(|ui| {
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.float3Value[0],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.float3Value[1],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.float3Value[2],
+              ));
+            });
+          }
+          SHType_Float4 => {
+            ui.horizontal(|ui| {
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.float4Value[0],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.float4Value[1],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.float4Value[2],
+              ));
+              ui.add(egui::DragValue::new(
+                &mut self.value.payload.__bindgen_anon_1.float4Value[3],
+              ));
+            });
+          }
+          SHType_String => {
+            // FIXME: need special care for string here
+            ui.text_edit_singleline(&mut self.value_s);
+          }
+          _ => {}
         }
-        NodeDataType::Int2 => {
-          ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut self.value_i2[0]));
-            ui.add(egui::DragValue::new(&mut self.value_i2[1]));
-          });
-        }
-        NodeDataType::Int3 => {
-          ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut self.value_i3[0]));
-            ui.add(egui::DragValue::new(&mut self.value_i3[1]));
-            ui.add(egui::DragValue::new(&mut self.value_i3[2]));
-          });
-        }
-        NodeDataType::Int4 => {
-          ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut self.value_i4[0]));
-            ui.add(egui::DragValue::new(&mut self.value_i4[1]));
-            ui.add(egui::DragValue::new(&mut self.value_i4[2]));
-            ui.add(egui::DragValue::new(&mut self.value_i4[3]));
-          });
-        }
-        NodeDataType::Float => {
-          ui.add(egui::DragValue::new(&mut self.value_f));
-        }
-        NodeDataType::Float2 => {
-          ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut self.value_f2[0]));
-            ui.add(egui::DragValue::new(&mut self.value_f2[1]));
-          });
-        }
-        NodeDataType::Float3 => {
-          ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut self.value_f3[0]));
-            ui.add(egui::DragValue::new(&mut self.value_f3[1]));
-            ui.add(egui::DragValue::new(&mut self.value_f3[2]));
-          });
-        }
-        NodeDataType::Float4 => {
-          ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut self.value_f4[0]));
-            ui.add(egui::DragValue::new(&mut self.value_f4[1]));
-            ui.add(egui::DragValue::new(&mut self.value_f4[2]));
-            ui.add(egui::DragValue::new(&mut self.value_f4[3]));
-          });
-        }
-        NodeDataType::String => {
-          ui.text_edit_singleline(&mut self.value_s);
-        }
-        _ => {}
       }
     });
   }
