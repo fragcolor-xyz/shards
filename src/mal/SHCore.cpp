@@ -500,10 +500,35 @@ struct WireLoadResult {
   SHWire *wire;
 };
 
+struct WatchedFile {
+  using LWT = decltype(fs::last_write_time(fs::path()));
+  std::string path;
+  LWT lastWrite{};
+
+  WatchedFile(std::string path) : path(path) { clean(); }
+
+  // Returns true if time stamp changed
+  bool isChanged() const {
+    fs::path p(path);
+    boost::system::error_code errorCode;
+    bool changed = fs::is_regular_file(p, errorCode) && lastWrite != fs::last_write_time(p, errorCode);
+    return !errorCode.failed() && changed;
+  }
+
+  // Force the file to be marked as changed
+  void markChanged() { lastWrite = 0; }
+
+  // Clears any changes on this file
+  void clean() {
+    boost::system::error_code errorCode;
+    lastWrite = fs::last_write_time(fs::path(path), errorCode);
+  }
+};
+
 struct WireFileWatcher {
   std::atomic_bool running;
   std::thread worker;
-  std::string fileName;
+  std::string rootFilePath;
   malValuePtr autoexec;
   std::string path;
   boost::lockfree::queue<WireLoadResult> results;
@@ -516,9 +541,30 @@ struct WireFileWatcher {
   SHTypeInfo inputTypeInfo;
   shards::IterableExposedInfo shared;
 
+  // std::vector<std::string> paths;
+  std::string rootPath;
+  std::vector<WatchedFile> watchedFiles;
+
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   decltype(std::chrono::high_resolution_clock::now()) tStart{std::chrono::high_resolution_clock::now()};
 #endif
+
+  void mergeTrackedDependencies(const std::set<std::string> &paths) {
+    for (auto &it : paths) {
+      SHLOG_INFO("Tracked Path> {}", it);
+      watchedFiles.emplace_back(it);
+    }
+  }
+
+  bool checkForChanges() {
+    bool anyChanges = false;
+    for (auto &file : watchedFiles) {
+      // Make sure not to early out here so time stamps get updated for all files
+      if (file.isChanged())
+        anyChanges = true;
+    }
+    return anyChanges;
+  }
 
   void checkOnce() {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
@@ -532,14 +578,8 @@ struct WireFileWatcher {
 #endif
 
     try {
-      fs::path p(fileName);
-      if (!fs::exists(p)) {
-        SHLOG_INFO("A WireLoader loaded script path does not exist: {}", p);
-      } else if (fs::is_regular_file(p) && fs::last_write_time(p) != lastWrite) {
-        // make sure to store last write time
-        // before any possible error!
-        auto writeTime = fs::last_write_time(p);
-        lastWrite = writeTime;
+      if (checkForChanges()) {
+        fs::path p(rootFilePath);
 
         std::ifstream lsp(p.c_str());
         std::string str((std::istreambuf_iterator<char>(lsp)), std::istreambuf_iterator<char>());
@@ -550,7 +590,17 @@ struct WireFileWatcher {
         SHLOG_DEBUG("Processing {}", fileNameOnly.string());
 
         malEnvPtr env(new malEnv(rootEnv));
+        env->trackDependencies = true;
+        auto test = malenv();
+
         auto res = maleval(str.c_str(), env);
+
+        // Rebuild the list of watched files
+        // They'll all be marked as clean
+        watchedFiles.clear();
+        watchedFiles.emplace_back(rootFilePath);
+        mergeTrackedDependencies(env->getTrackedDependencies());
+
         auto var = varify(res);
         if (var->value().valueType != SHType::Wire) {
           SHLOG_ERROR("Script did not return a SHWire");
@@ -627,8 +677,15 @@ struct WireFileWatcher {
 
   explicit WireFileWatcher(const std::string &file, std::string currentPath, const SHInstanceData &data,
                            const malValuePtr &autoexec)
-      : running(true), fileName(file), autoexec(autoexec), path(currentPath), results(2), garbage(2),
-        inputTypeInfo(data.inputType), shared(data.shared) {
+      : running(true), autoexec(autoexec), path(currentPath), results(2), garbage(2), inputTypeInfo(data.inputType),
+        shared(data.shared) {
+
+    rootFilePath = absolute(fs::path(file), currentPath).string();
+
+    // Setup initial list of marked files
+    watchedFiles.emplace_back(rootFilePath);
+    watchedFiles.back().markChanged();
+
     mesh = data.wire->mesh;
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
     localRoot = fs::path(path).string();
