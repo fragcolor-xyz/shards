@@ -17,7 +17,7 @@ namespace gfx {
 struct ShapeRenderer;
 }
 
-namespace shards::vui {
+namespace shards::spatial {
 typedef std::shared_ptr<Panel> PanelPtr;
 struct ContextCachedPanel;
 struct Context {
@@ -35,7 +35,7 @@ struct Context {
   // Points per world space unit
   float virtualPointScale = 200.0f;
 
-  // Resolution of rendered UI, in actual pixels per virtual UI pixel
+  // Resolution of rendered UI, in actual pixels per spatial UI pixel
   float pixelsPerPoint = 2.0f;
 
   // Minimum resolution to render UI at from a distance
@@ -80,6 +80,6 @@ private:
   // Computes the render scale to render the given panel at, taking it's projected screen area into account
   float computeRenderResolution(PanelPtr panel) const;
 };
-} // namespace shards::vui
+} // namespace shards::spatial
 
 #endif /* AA53E1AF_30CD_452D_8285_B9C96CC68AD6 */

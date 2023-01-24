@@ -32,7 +32,7 @@ add_subdirectory(${SHARDS_DIR}/src/core src/core)
 add_subdirectory(${SHARDS_DIR}/src/mal src/mal)
 add_subdirectory(${SHARDS_DIR}/src/input src/input)
 add_subdirectory(${SHARDS_DIR}/src/gfx src/gfx)
-add_subdirectory(${SHARDS_DIR}/src/virtual_ui src/virtual_ui)
+add_subdirectory(${SHARDS_DIR}/src/spatial src/spatial)
 
 if(SHARDS_WITH_EXTRA_SHARDS)
   if(SHARDS_WITH_RUST_SHARDS)

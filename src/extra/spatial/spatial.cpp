@@ -1,4 +1,4 @@
-#include "vui.hpp"
+#include "spatial.hpp"
 #include "../gfx.hpp"
 #include "../inputs.hpp"
 #include "gfx/egui/egui_types.hpp"
@@ -11,21 +11,19 @@
 #include <gfx/gizmos/gizmos.hpp>
 #include <input/input.hpp>
 
-namespace shards::VUI {
+namespace shards::Spatial {
 
-#define VUI_PANEL_SHARD_NAME "VUI.Panel"
-
-struct VUIPanelShard;
-struct VUIContextShard {
-  VUIContext _vuiContext{};
-  SHVar *_vuiContextVar{};
+struct SpatialPanelShard;
+struct SpatialUIContextShard {
+  SpatialContext _spatialContext{};
+  SHVar *_spatialContextVar{};
 
   Inputs::RequiredInputContext _inputContext;
   gfx::RequiredGraphicsContext _graphicsContext;
 
   ExposedInfo _exposedVariables;
 
-  std::vector<VUIPanelShard *> _panels;
+  std::vector<SpatialPanelShard *> _panels;
 
   input::InputBuffer _inputBuffer;
 
@@ -36,10 +34,10 @@ struct VUIContextShard {
   PARAM(ShardsVar, _contents, "Contents", "The list of UI panels to render.", {CoreInfo::ShardsOrNone});
   PARAM_VAR(_scale, "Scale", "The scale of how many UI units per world unit.", {CoreInfo::FloatType});
   PARAM_VAR(_debug, "Debug", "Visualize panel outlines and pointer input being sent to panels.", {CoreInfo::BoolType});
-  PARAM_IMPL(VUIContextShard, PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_scale),
+  PARAM_IMPL(SpatialUIContextShard, PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_scale),
              PARAM_IMPL_FOR(_debug));
 
-  VUIContextShard() {
+  SpatialUIContextShard() {
     _scale = Var(1000.0f);
     _debug = Var(false);
   }
@@ -48,7 +46,7 @@ struct VUIContextShard {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static SHOptionalString help() {
-    return SHCCSTR("Creates a context for virtual UI panels to make sure input is correctly handled between them");
+    return SHCCSTR("Creates a context for spatial UI panels to make sure input is correctly handled between them");
   }
 
   SHExposedTypesInfo requiredVariables() {
@@ -66,17 +64,17 @@ struct VUIContextShard {
     _graphicsContext.cleanup();
     _inputContext.cleanup();
 
-    if (_vuiContextVar) {
-      if (_vuiContextVar->refcount > 1) {
-        SHLOG_ERROR("VUI.Context: Found {} dangling reference(s) to {}", _vuiContextVar->refcount - 1, VUIContext::VariableName);
+    if (_spatialContextVar) {
+      if (_spatialContextVar->refcount > 1) {
+        SHLOG_ERROR("Spatial.UI: Found {} dangling reference(s) to {}", _spatialContextVar->refcount - 1, SpatialContext::VariableName);
       }
-      releaseVariable(_vuiContextVar);
+      releaseVariable(_spatialContextVar);
     }
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
     _exposedVariables = ExposedInfo(data.shared);
-    _exposedVariables.push_back(VUIContext::VariableInfo);
+    _exposedVariables.push_back(SpatialContext::VariableInfo);
     data.shared = SHExposedTypesInfo(_exposedVariables);
 
     _contents.compose(data);
@@ -103,15 +101,15 @@ struct VUIContextShard {
       _inputBuffer.push_back(event);
 
     // Evaluate all UI panels
-    _vuiContext.activationContext = shContext;
-    _vuiContext.activationInput = input;
-    _vuiContext.context.virtualPointScale = _scale.payload.floatValue;
-    withObjectVariable(*_vuiContextVar, &_vuiContext, VUIContext::Type, [&]() {
+    _spatialContext.activationContext = shContext;
+    _spatialContext.activationInput = input;
+    _spatialContext.context.virtualPointScale = _scale.payload.floatValue;
+    withObjectVariable(*_spatialContextVar, &_spatialContext, SpatialContext::Type, [&]() {
       gfx::SizedView sizedView(view.view, gfx::float2(viewStackTop.viewport.getSize()));
-      _vuiContext.context.prepareInputs(_inputBuffer, _graphicsContext->window->getInputScale(), sizedView);
-      _vuiContext.context.evaluate(queue.queue, _graphicsContext->time, _graphicsContext->deltaTime);
+      _spatialContext.context.prepareInputs(_inputBuffer, _graphicsContext->window->getInputScale(), sizedView);
+      _spatialContext.context.evaluate(queue.queue, _graphicsContext->time, _graphicsContext->deltaTime);
     });
-    _vuiContext.activationContext = nullptr;
+    _spatialContext.activationContext = nullptr;
 
     // Render debug overlay
     if ((bool)_debug) {
@@ -120,7 +118,7 @@ struct VUIContextShard {
       }
 
       _debugRenderer->begin(view.view, gfx::float2(viewStackTop.viewport.getSize()));
-      _vuiContext.context.renderDebug(_debugRenderer->getShapeRenderer());
+      _spatialContext.context.renderDebug(_debugRenderer->getShapeRenderer());
       _debugRenderer->end(queue.queue);
     }
 
@@ -128,14 +126,14 @@ struct VUIContextShard {
   }
 };
 
-struct VUIPanelShard {
+struct SpatialPanelShard {
   PARAM_PARAMVAR(_transform, "Transform", "The world transform of this panel.",
                  {CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
   PARAM_PARAMVAR(_size, "Size", "The size of the panel.", {CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
   PARAM(ShardsVar, _contents, "Contents", "The panel UI contents.", {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(VUIPanelShard, PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_size), PARAM_IMPL_FOR(_contents));
+  PARAM_IMPL(SpatialPanelShard, PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_size), PARAM_IMPL_FOR(_contents));
 
-  RequiredVUIContext _context;
+  RequiredSpatialContext _context;
   Shard *_uiShard{};
   EguiHost _eguiHost;
   ExposedInfo _exposedTypes;
@@ -143,10 +141,10 @@ struct VUIPanelShard {
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
-  static SHOptionalString help() { return SHCCSTR("Defines a virtual UI panel"); }
+  static SHOptionalString help() { return SHCCSTR("Defines a spatial UI panel"); }
 
   SHExposedTypesInfo requiredVariables() {
-    static auto e = exposedTypesOf(RequiredVUIContext::getExposedTypeInfo());
+    static auto e = exposedTypesOf(RequiredSpatialContext::getExposedTypeInfo());
     return e;
   }
 
@@ -196,7 +194,7 @@ struct VUIPanelShard {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    throw ActivationError("Invalid activation, VUIPanel can not be used directly");
+    throw ActivationError("Invalid activation, SpatialPanel can not be used directly");
   }
 
   // This evaluates the egui contents for this panel
@@ -210,11 +208,11 @@ struct VUIPanelShard {
     return eguiOutput;
   }
 
-  vui::PanelGeometry getGeometry() const {
+  spatial::PanelGeometry getGeometry() const {
     gfx::float4x4 transform = toFloat4x4(_transform.get());
     gfx::float2 alignment{0.5f};
 
-    vui::PanelGeometry result;
+    spatial::PanelGeometry result;
     result.anchor = gfx::extractTranslation(transform);
     result.up = transform.y.xyz();
     result.right = transform.x.xyz();
@@ -226,19 +224,19 @@ struct VUIPanelShard {
 };
 
 const egui::FullOutput &Panel::render(const egui::Input &inputs) { return panelShard.render(inputs); }
-vui::PanelGeometry Panel::getGeometry() const { return panelShard.getGeometry(); }
+spatial::PanelGeometry Panel::getGeometry() const { return panelShard.getGeometry(); }
 
-void VUIContextShard::warmup(SHContext *context) {
-  _vuiContextVar = referenceVariable(context, VUIContext::VariableName);
+void SpatialUIContextShard::warmup(SHContext *context) {
+  _spatialContextVar = referenceVariable(context, SpatialContext::VariableName);
 
   _inputContext.warmup(context);
   _graphicsContext.warmup(context);
 
-  withObjectVariable(*_vuiContextVar, &_vuiContext, VUIContext::Type, [&]() { PARAM_WARMUP(context); });
+  withObjectVariable(*_spatialContextVar, &_spatialContext, SpatialContext::Type, [&]() { PARAM_WARMUP(context); });
 }
 
 void registerShards() {
-  REGISTER_SHARD("VUI.Context", VUIContextShard);
-  REGISTER_SHARD(VUI_PANEL_SHARD_NAME, VUIPanelShard);
+  REGISTER_SHARD("Spatial.UI", SpatialUIContextShard);
+  REGISTER_SHARD("Spatial.Panel", SpatialPanelShard);
 }
-} // namespace shards::VUI
+} // namespace shards::Spatial

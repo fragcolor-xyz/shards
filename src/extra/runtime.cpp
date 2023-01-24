@@ -50,7 +50,7 @@ namespace egui {
 extern void registerShards();
 }
 
-namespace VUI {
+namespace Spatial {
 extern void registerShards();
 }
 
@@ -68,7 +68,7 @@ void shInitExtras() {
   Audio::registerShards();
   DSP::registerShards();
   egui::registerShards();
-  VUI::registerShards();
+  Spatial::registerShards();
 
 #ifdef _WIN32
   Desktop::registerDesktopShards();

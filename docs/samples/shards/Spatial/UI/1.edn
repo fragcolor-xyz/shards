@@ -22,24 +22,24 @@
  :Contents
  (->
   .queue (GFX.ClearQueue)
-  (VUI.Context
+  (Spatial.UI
    :Queue .queue :View .view :Scale 100.0 :Contents
    (->
-    (VUI.Panel
+    (Spatial.Panel
      :Transform .panel-t-0 :Size (Float2 100 100) :Contents
      (->
       (UI.CentralPanel
        (->
         "Left panel" (UI.Label)
         (UI.Button :Label "Button")))))
-    (VUI.Panel
+    (Spatial.Panel
      :Transform .panel-t-1 :Size (Float2 100 100) :Contents
      (->
       (UI.CentralPanel
        (->
         "Right panel" (UI.Label)
         (UI.Button :Label "Button")))))
-    (VUI.Panel
+    (Spatial.Panel
      :Transform .panel-t-2 :Size (Float2 300 60) :Contents
      (->
       (UI.CentralPanel

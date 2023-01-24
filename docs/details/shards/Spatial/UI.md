@@ -1,6 +1,6 @@
 This shard defines the starting point for creating interactive world space UI elements.
 
-Every instance of [VUI.Panel](../Panel) should be placed within this shards's Contents parameter.
+Every instance of [Spatial.Panel](../Panel) should be placed within this shards's Contents parameter.
 
 The draw commands for the UI elements are added to the Queue that is passed in. In contrast to the screen space [UI](../../General/UI) shard, they do not need to be rendered using a [GFX.UIPass](../../GFX/UIPass)
 

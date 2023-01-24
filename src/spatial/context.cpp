@@ -8,7 +8,7 @@
 #include <float.h>
 
 using namespace gfx;
-namespace shards::vui {
+namespace shards::spatial {
 
 // Associated panel data
 struct ContextCachedPanel {
@@ -270,4 +270,4 @@ std::shared_ptr<ContextCachedPanel> Context::getCachedPanel(PanelPtr panel) {
   return it->second;
 }
 
-} // namespace shards::vui
+} // namespace shards::spatial

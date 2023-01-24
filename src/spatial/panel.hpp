@@ -5,7 +5,7 @@
 #include <gfx/fwd.hpp>
 #include <gfx/egui/egui_types.hpp>
 
-namespace shards::vui {
+namespace shards::spatial {
 struct PanelGeometry {
   gfx::float3 anchor;
   gfx::float3 center;
@@ -39,6 +39,6 @@ struct Panel {
   virtual const egui::FullOutput &render(const egui::Input &inputs) = 0;
   virtual PanelGeometry getGeometry() const = 0;
 };
-} // namespace shards::vui
+} // namespace shards::spatial
 
 #endif /* CA03D35E_D054_4C56_9F4B_949787F0B26F */
