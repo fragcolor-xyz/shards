@@ -20,6 +20,8 @@ struct ShardViewer {
   /// The currently selected node. Some interface actions depend on the
   /// currently selected node.
   selected_nodes: Vec<NodeId>,
+  /// The mouse drag start position for an ongoing box selection.
+  ongoing_box_selection: Option<egui::Pos2>,
   /// The node factory.
   node_factory: Option<NodeFactory<NodeTemplate>>,
   // FIXME find a better way to list all templates

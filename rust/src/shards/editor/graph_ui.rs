@@ -12,10 +12,12 @@ use egui::{
   epaint::RectShape, style::Margin, Area, Color32, Frame, Id, InnerResponse, Order, Pos2, Rect,
   Response, Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
+use std::collections::HashMap;
 
 pub(crate) struct GraphNodeWidget<'a, NodeData> {
   pub position: &'a mut Pos2,
   pub graph: &'a mut Graph<NodeData>,
+  pub node_rects: &'a mut HashMap<NodeId, Rect>,
   pub node_id: NodeId,
   pub pan: Vec2,
   pub selected: bool,
@@ -40,7 +42,7 @@ where
     let drag_delta = response.drag_delta();
     if drag_delta.length_sq() > 0.0 {
       node_responses.push(NodeResponse::MoveNode {
-        node: node_id,
+        node_id,
         drag_delta,
       });
       node_responses.push(NodeResponse::RaiseNode(node_id));
@@ -158,7 +160,7 @@ where
       };
 
       // Take note of the node rect, so the editor can use it later to compute intersections.
-      // self.node_rects.insert(self.node_id, node_rect);
+      self.node_rects.insert(self.node_id, node_rect);
 
       (egui::Shape::Vec(vec![titlebar, body]), outline)
     };
@@ -225,7 +227,7 @@ where
 pub(crate) enum NodeResponse {
   DeleteNodeUi(NodeId),
   MoveNode {
-    node: NodeId,
+    node_id: NodeId,
     drag_delta: Vec2,
   },
   /// Emitted when a node is interacted with, and should be raised

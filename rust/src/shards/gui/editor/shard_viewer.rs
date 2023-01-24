@@ -16,6 +16,7 @@ use crate::types::ParamVar;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
+use std::collections::HashMap;
 
 impl Default for ShardViewer {
   fn default() -> Self {
@@ -28,6 +29,7 @@ impl Default for ShardViewer {
       node_order: Vec::new(),
       node_positions: Default::default(),
       selected_nodes: Vec::new(),
+      ongoing_box_selection: None,
       node_factory: None,
       all_templates: Vec::new(),
     }
@@ -207,6 +209,8 @@ impl ShardViewer {
     let mut cursor_in_editor = editor_rect.contains(cursor_pos);
     let mut cursor_in_factory = false;
 
+    let mut node_rects = HashMap::<NodeId, egui::Rect>::new();
+
     // The responses returned from node drawing have side effects that are best
     // executed at the end of this function.
     let mut delayed_responses = Vec::new();
@@ -215,14 +219,15 @@ impl ShardViewer {
     let mut click_on_background = false;
 
     // // Used to detect drag events in the background
-    // let mut drag_started_on_background = false;
-    // let mut drag_released_on_background = false;
+    let mut drag_started_on_background = false;
+    let mut drag_released_on_background = false;
 
     /* Draw nodes */
     for node_id in self.node_order.iter().copied() {
       let responses = GraphNodeWidget {
         position: self.node_positions.get_mut(node_id).unwrap(),
         graph: &mut self.graph,
+        node_rects: &mut node_rects,
         node_id,
         pan: editor_rect.min.to_vec2(),
         selected: self
@@ -241,10 +246,10 @@ impl ShardViewer {
     );
     if r.clicked() {
       click_on_background = true;
-      // } else if r.drag_started() {
-      //   drag_started_on_background = true;
-      // } else if r.drag_released() {
-      //   drag_released_on_background = true;
+    } else if r.drag_started() {
+      drag_started_on_background = true;
+    } else if r.drag_released() {
+      drag_released_on_background = true;
     }
 
     /* Draw the node factory, if open */
@@ -287,13 +292,23 @@ impl ShardViewer {
         NodeResponse::DeleteNodeUi(node_id) => {
           self.graph.remove_node(*node_id);
           self.node_positions.remove(*node_id);
+          // Make sure to not leave references to old nodes hanging
+          self.selected_nodes.retain(|id| *id != *node_id);
           self.node_order.retain(|id| *id != *node_id);
         }
         NodeResponse::MoveNode {
-          node: node_id,
+          node_id,
           drag_delta,
         } => {
           self.node_positions[*node_id] += *drag_delta;
+          // Handle multi-node selection movement
+          if self.selected_nodes.contains(node_id) && self.selected_nodes.len() > 1 {
+            for n in self.selected_nodes.iter().copied() {
+              if n != *node_id {
+                self.node_positions[n] += *drag_delta;
+              }
+            }
+          }
         }
         NodeResponse::RaiseNode(node_id) => {
           let old_pos = self
@@ -310,6 +325,30 @@ impl ShardViewer {
       }
     }
 
+    // Box selection
+    if let Some(box_start) = self.ongoing_box_selection {
+      let selection_rect = egui::Rect::from_two_pos(cursor_pos, box_start);
+      let bg_color = egui::Color32::from_rgba_unmultiplied(200, 200, 200, 20);
+      let stroke_color = egui::Color32::from_rgba_unmultiplied(200, 200, 200, 180);
+      ui.painter().rect(
+        selection_rect,
+        2.0,
+        bg_color,
+        egui::Stroke::new(3.0, stroke_color),
+      );
+
+      self.selected_nodes = node_rects
+        .into_iter()
+        .filter_map(|(node_id, rect)| {
+          if selection_rect.intersects(rect) {
+            Some(node_id)
+          } else {
+            None
+          }
+        })
+        .collect();
+    }
+
     /* Mouse input handling */
     let mouse = &ui.ctx().input().pointer;
     if mouse.secondary_released() && cursor_in_editor && !cursor_in_factory {
@@ -323,6 +362,13 @@ impl ShardViewer {
     if click_on_background || (mouse.any_click() && !cursor_in_editor) {
       self.selected_nodes = Vec::new();
       self.node_factory = None;
+    }
+
+    if drag_started_on_background && mouse.primary_down() {
+      self.ongoing_box_selection = Some(cursor_pos);
+    }
+    if mouse.primary_released() || drag_released_on_background {
+      self.ongoing_box_selection = None;
     }
   }
 }
