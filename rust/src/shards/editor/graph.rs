@@ -35,6 +35,10 @@ impl<NodeData> Graph<NodeData> {
   pub fn add_node(&mut self, label: String, data: NodeData) -> NodeId {
     self.nodes.insert_with_key(|id| Node::new(id, label, data))
   }
+
+  pub fn remove_node(&mut self, node_id: NodeId) -> Node<NodeData> {
+    self.nodes.remove(node_id).expect("Node should exist")
+  }
 }
 
 impl<Data> Node<Data> {

@@ -10,7 +10,7 @@ use super::id_types::*;
 use super::util::ColorUtils;
 use egui::{
   epaint::RectShape, style::Margin, Area, Color32, Frame, Id, InnerResponse, Order, Pos2, Rect,
-  Response, Rounding, Shape, Ui, Vec2,
+  Response, Rounding, Sense, Shape, Stroke, Ui, Vec2,
 };
 
 pub(crate) struct GraphNodeWidget<'a, NodeData> {
@@ -60,7 +60,7 @@ where
 
   fn show_graph_node(self, ui: &mut Ui) -> Vec<NodeResponse> {
     let margin = Margin::symmetric(15.0, 5.0);
-    let responses = Vec::new();
+    let mut responses = Vec::new();
 
     let (background_color, text_color) = if ui.visuals().dark_mode {
       (
@@ -166,11 +166,64 @@ where
     ui.painter().set(background_shape, shape);
     ui.painter().set(outline_shape, outline);
 
+    // --- Interaction ---
+    if Self::close_button(ui, outer_rect).clicked() {
+      responses.push(NodeResponse::DeleteNodeUi(self.node_id));
+    }
+
     responses
+  }
+
+  fn close_button(ui: &mut Ui, node_rect: Rect) -> Response {
+    // Measurements
+    let margin = 8.0;
+    let size = 10.0;
+    let stroke_width = 2.0;
+    let offs = margin + size / 2.0;
+
+    let position = Pos2 {
+      x: node_rect.right() - offs,
+      y: node_rect.top() + offs,
+    };
+    let rect = Rect::from_center_size(position, Vec2 { x: size, y: size });
+    let resp = ui.allocate_rect(rect, Sense::click());
+
+    let dark_mode = ui.visuals().dark_mode;
+    let color = if resp.clicked() {
+      if dark_mode {
+        Color32::from_hex("#ffffff").unwrap()
+      } else {
+        Color32::from_hex("#000000").unwrap()
+      }
+    } else if resp.hovered() {
+      if dark_mode {
+        Color32::from_hex("#dddddd").unwrap()
+      } else {
+        Color32::from_hex("#222222").unwrap()
+      }
+    } else {
+      if dark_mode {
+        Color32::from_hex("#aaaaaa").unwrap()
+      } else {
+        Color32::from_hex("#555555").unwrap()
+      }
+    };
+    let stroke = Stroke {
+      width: stroke_width,
+      color,
+    };
+
+    ui.painter()
+      .line_segment([rect.left_top(), rect.right_bottom()], stroke);
+    ui.painter()
+      .line_segment([rect.right_top(), rect.left_bottom()], stroke);
+
+    resp
   }
 }
 
 pub(crate) enum NodeResponse {
+  DeleteNodeUi(NodeId),
   MoveNode {
     node: NodeId,
     drag_delta: Vec2,

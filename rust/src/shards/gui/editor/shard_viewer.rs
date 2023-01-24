@@ -284,8 +284,16 @@ impl ShardViewer {
     /* Handle responses from drawing nodes */
     for response in delayed_responses.iter() {
       match response {
-        NodeResponse::MoveNode { node, drag_delta } => {
-          self.node_positions[*node] += *drag_delta;
+        NodeResponse::DeleteNodeUi(node_id) => {
+          self.graph.remove_node(*node_id);
+          self.node_positions.remove(*node_id);
+          self.node_order.retain(|id| *id != *node_id);
+        }
+        NodeResponse::MoveNode {
+          node: node_id,
+          drag_delta,
+        } => {
+          self.node_positions[*node_id] += *drag_delta;
         }
         NodeResponse::RaiseNode(node_id) => {
           let old_pos = self
