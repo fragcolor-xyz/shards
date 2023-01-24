@@ -22,7 +22,7 @@ struct ShardViewer {
   selected_nodes: Vec<NodeId>,
   /// The node factory.
   node_factory: Option<NodeFactory<NodeTemplate>>,
-  // FIXME: find a better way to list all templates
+  // FIXME find a better way to list all templates
   all_templates: Vec<NodeTemplate>,
 }
 

@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 pub(crate) struct NodeFactory<NodeData> {
   pub query: String,
   pub position: Option<Pos2>,
+  just_spawned: bool,
   _phantom: PhantomData<NodeData>,
 }
 
@@ -19,6 +20,7 @@ where
     Self {
       query: "".into(),
       position: Some(pos),
+      just_spawned: true,
       _phantom: Default::default(),
     }
   }
@@ -45,6 +47,11 @@ where
       .show(ui, |ui| {
         let mut description = "";
         let response = ui.text_edit_singleline(&mut self.query);
+        if self.just_spawned {
+          response.request_focus();
+          self.just_spawned = false;
+        }
+
         let mut query_submit = response.lost_focus() && ui.input().key_down(Key::Enter);
         let max_height = ui.input().screen_rect.height() * 0.5;
         let scroll_area_width = response.rect.width() - 30.0;
@@ -86,5 +93,5 @@ pub(crate) trait NodeTemplateTrait: Clone {
   }
 }
 
-// FIXME: need a display name for each template
-// TODO: might also add a description that be shown below (for instance we could take the result of the help() function on a shard.)
+// FIXME need a display name for each template
+// TODO might also add a description that be shown below (for instance we could take the result of the help() function on a shard.)

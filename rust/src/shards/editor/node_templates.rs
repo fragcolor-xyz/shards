@@ -2,15 +2,9 @@
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
 use super::{graph_ui::UIRenderer, node_factory::NodeTemplateTrait};
-use crate::shardsc::SHType_Float;
-use crate::shardsc::SHType_Float2;
-use crate::shardsc::SHType_Float3;
-use crate::shardsc::SHType_Float4;
-use crate::shardsc::SHType_Int;
-use crate::shardsc::SHType_Int2;
-use crate::shardsc::SHType_Int3;
-use crate::shardsc::SHType_Int4;
-use crate::shardsc::SHType_String;
+use crate::core::cloneVar;
+use crate::shardsc::*;
+use crate::types::common_type::type2name;
 use crate::types::Var;
 use egui::{Response, Ui};
 
@@ -30,7 +24,7 @@ pub(crate) enum NodeTemplate {
 }
 
 // note: trait redirection because enum items are not considered types yet
-// FIXME: maybe there is a better way, but all this code will eventually disappear once we "generate" it for each shard.
+// FIXME maybe there is a better way, but all this code will eventually disappear once we "generate" it for each shard.
 
 impl NodeTemplateTrait for NodeTemplate {
   fn node_factory_description(&self) -> &str {
@@ -85,79 +79,52 @@ impl UIRenderer for NodeTemplate {
 }
 
 #[derive(Clone, Default)]
-pub(crate) struct AssertIsNodeData {
-  // FIXME: for now only support 64-bit integer
-  pub value: i64,
-  pub abort: bool,
+pub(crate) struct VarValue {
+  value: Var,
+  // FIXME String special case (for now)
+  value_s: String,
+  // ---
+  allowed_types: Vec<SHType>,
+  prev_type: SHType,
 }
 
-impl NodeTemplateTrait for AssertIsNodeData {
-  fn node_factory_label(&self) -> &str {
-    "Assert.Is"
-  }
+impl VarValue {
+  pub fn new(initial_value: &Var, allowed_types: Vec<SHType>) -> Self {
+    debug_assert!(allowed_types.len() > 0usize);
+    debug_assert!(allowed_types.contains(&initial_value.valueType));
 
-  fn node_factory_description(&self) -> &str {
-    "This assertion is used to check whether the input is equal to a given value."
-  }
-}
-
-impl UIRenderer for AssertIsNodeData {
-  fn ui(&mut self, ui: &mut Ui) -> Response {
-    ui.vertical(|ui| {
-      ui.add(egui::DragValue::new(&mut self.value));
-      ui.checkbox(&mut self.abort, "Abort?");
-    })
-    .response
+    let mut ret = Self {
+      allowed_types,
+      ..Default::default()
+    };
+    // FIXME deal with the String case
+    cloneVar(&mut ret.value, initial_value);
+    ret
   }
 }
 
-#[derive(Clone, Default)]
-pub(crate) struct ConstNodeData {
-  pub value_s: String,
-  pub value_type: u8,
-  pub prev_type: u8,
-  pub value: Var,
-}
-
-impl NodeTemplateTrait for ConstNodeData {
-  fn node_factory_label(&self) -> &str {
-    "Const"
-  }
-
-  fn node_factory_description(&self) -> &str {
-    "Declares an un-named constant value."
-  }
-}
-
-// FIXME: refactor. This should be part of some util that can be used wherever there is a value.
-impl UIRenderer for ConstNodeData {
+impl UIRenderer for VarValue {
   fn ui(&mut self, ui: &mut Ui) -> Response {
     ui.horizontal(|ui| {
-      egui::ComboBox::from_id_source(("ConstNodeData", "type"))
-        // FIXME: display actualy name instead of int
-        .selected_text(format!("{:?}", self.value_type))
+      egui::ComboBox::from_id_source(("VarValue", "type"))
+        // FIXME display actualy name instead of int
+        .selected_text(type2name(self.value.valueType))
         .show_ui(ui, |ui| {
-          ui.selectable_value(&mut self.value_type, SHType_Int, "Int");
-          ui.selectable_value(&mut self.value_type, SHType_Int2, "Int2");
-          ui.selectable_value(&mut self.value_type, SHType_Int3, "Int3");
-          ui.selectable_value(&mut self.value_type, SHType_Int4, "Int4");
-          ui.selectable_value(&mut self.value_type, SHType_Float, "Float");
-          ui.selectable_value(&mut self.value_type, SHType_Float2, "Float2");
-          ui.selectable_value(&mut self.value_type, SHType_Float3, "Float3");
-          ui.selectable_value(&mut self.value_type, SHType_Float4, "Float4");
-          ui.selectable_value(&mut self.value_type, SHType_String, "String");
+          for t in &self.allowed_types {
+            // FIXME display actualy name instead of int
+            ui.selectable_value(&mut self.value.valueType, *t, type2name(*t));
+          }
         });
 
-      if self.prev_type != self.value_type {
-        self.prev_type = self.value_type;
-        // FIXME: conversion or reset the value
+      if self.prev_type != self.value.valueType {
+        self.prev_type = self.value.valueType;
+        // FIXME conversion or reset the value
         // for now just clear the value
         self.value.payload = Default::default();
-        self.value.valueType = self.value_type;
       }
 
       unsafe {
-        match self.value_type {
+        match self.value.valueType {
           SHType_Int => ui.add(egui::DragValue::new(
             &mut self.value.payload.__bindgen_anon_1.intValue,
           )),
@@ -249,7 +216,7 @@ impl UIRenderer for ConstNodeData {
             .response
           }
           SHType_String => {
-            // FIXME: need special care for string here
+            // FIXME need special care for string here
             ui.text_edit_singleline(&mut self.value_s)
           }
           _ => ui.colored_label(egui::Color32::RED, "Type of value not supported."),
@@ -261,8 +228,58 @@ impl UIRenderer for ConstNodeData {
 }
 
 #[derive(Clone, Default)]
+pub(crate) struct AssertIsNodeData {
+  // FIXME for now only support 64-bit integer
+  pub value: i64,
+  pub abort: bool,
+}
+
+impl NodeTemplateTrait for AssertIsNodeData {
+  fn node_factory_label(&self) -> &str {
+    "Assert.Is"
+  }
+
+  fn node_factory_description(&self) -> &str {
+    "This assertion is used to check whether the input is equal to a given value."
+  }
+}
+
+impl UIRenderer for AssertIsNodeData {
+  fn ui(&mut self, ui: &mut Ui) -> Response {
+    ui.vertical(|ui| {
+      ui.add(egui::DragValue::new(&mut self.value));
+      ui.checkbox(&mut self.abort, "Abort?");
+    })
+    .response
+  }
+}
+
+#[derive(Clone)]
+pub(crate) struct ConstNodeData {
+  pub value: VarValue,
+  pub override_label: Option<&'static str>,
+}
+
+impl NodeTemplateTrait for ConstNodeData {
+  fn node_factory_label(&self) -> &str {
+    self.override_label.unwrap_or("Const")
+  }
+
+  fn node_factory_description(&self) -> &str {
+    "Declares an un-named constant value."
+  }
+}
+
+// FIXME refactor. This should be part of some util that can be used wherever there is a value.
+impl UIRenderer for ConstNodeData {
+  fn ui(&mut self, ui: &mut Ui) -> Response {
+    self.value.ui(ui)
+  }
+}
+
+#[derive(Clone, Default)]
 pub(crate) struct ForRangeNodeData {
-  // FIXME: for now only support 64-bit integer
+  // FIXME for now only support 64-bit integer
   pub from: i64,
   pub to: i64,
 }
@@ -327,11 +344,10 @@ impl UIRenderer for LogNodeData {
 
 #[derive(Clone, Default)]
 pub(crate) struct MathUnaryNodeData {
-  // FIXME: for now only support 64-bit integer
-  pub value: i64,
+  pub value: VarValue,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub(crate) struct MathAddNodeData(pub MathUnaryNodeData);
 #[derive(Clone, Default)]
 pub(crate) struct MathDivideNodeData(pub MathUnaryNodeData);
@@ -374,7 +390,7 @@ impl NodeTemplateTrait for MathSubtractNodeData {
 
 impl UIRenderer for MathUnaryNodeData {
   fn ui(&mut self, ui: &mut Ui) -> Response {
-    ui.add(egui::DragValue::new(&mut self.value))
+    self.value.ui(ui)
   }
 }
 

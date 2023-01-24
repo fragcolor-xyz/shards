@@ -8,6 +8,7 @@ use crate::shards::gui::util;
 use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
+use crate::shardsc::*;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::OptionalString;
@@ -142,17 +143,50 @@ impl Shard for ShardViewer {
 impl ShardViewer {
   fn init(&mut self) {
     let templates = vec![
-      NodeTemplate::AssertIs(Default::default()),
-      NodeTemplate::Const(Default::default()),
-      NodeTemplate::ForRange(Default::default()),
+      NodeTemplate::Const(ConstNodeData {
+        override_label: "Const(Int)".into(),
+        value: VarValue::new(
+          &Var::from(0),
+          vec![
+            SHType_Int,
+            SHType_Int2,
+            SHType_Int3,
+            SHType_Int4,
+            SHType_Int8,
+          ],
+        ),
+      }),
+      NodeTemplate::Const(ConstNodeData {
+        override_label: Some("Const(Float)"),
+        value: VarValue::new(
+          &Var::from(0.0),
+          vec![SHType_Float, SHType_Float2, SHType_Float3, SHType_Float4],
+        ),
+      }),
+      // NodeTemplate::AssertIs(Default::default()),
+      // NodeTemplate::ForRange(Default::default()),
       NodeTemplate::Get(Default::default()),
+      NodeTemplate::Set(Default::default()),
       NodeTemplate::Log(Default::default()),
-      NodeTemplate::MathAdd(Default::default()),
+      NodeTemplate::MathAdd(MathAddNodeData(MathUnaryNodeData {
+        value: VarValue::new(
+          &Var::from(0),
+          vec![
+            SHType_Int,
+            SHType_Int2,
+            SHType_Int3,
+            SHType_Int4,
+            SHType_Float,
+            SHType_Float2,
+            SHType_Float3,
+            SHType_Float4,
+          ],
+        ),
+      })),
       NodeTemplate::MathDivide(Default::default()),
       NodeTemplate::MathMultiply(Default::default()),
       NodeTemplate::MathMod(Default::default()),
       NodeTemplate::MathSubtract(Default::default()),
-      NodeTemplate::Set(Default::default()),
     ];
     self.all_templates.extend(templates);
   }
@@ -227,9 +261,10 @@ impl ShardViewer {
           let new_node = self
             .graph
             .add_node(template.node_factory_label().into(), template.clone());
-          self
-            .node_positions
-            .insert(new_node, cursor_pos - editor_rect.min.to_vec2());
+          self.node_positions.insert(
+            new_node,
+            node_factory.position.unwrap_or(cursor_pos) - editor_rect.min.to_vec2(),
+          );
           self.node_order.push(new_node);
           should_close_node_factory = true;
         }
