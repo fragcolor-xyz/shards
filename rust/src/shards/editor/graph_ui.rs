@@ -10,7 +10,7 @@ use super::id_types::*;
 use super::util::ColorUtils;
 use egui::{
   epaint::RectShape, style::Margin, Area, Color32, Frame, Id, InnerResponse, Order, Pos2, Rect,
-  Rounding, Shape, Ui, Vec2,
+  Response, Rounding, Shape, Ui, Vec2,
 };
 
 pub(crate) struct GraphNodeWidget<'a, NodeData> {
@@ -181,5 +181,5 @@ pub(crate) enum NodeResponse {
 }
 
 pub(crate) trait UIRenderer {
-  fn ui(&mut self, ui: &mut Ui);
+  fn ui(&mut self, ui: &mut Ui) -> Response;
 }

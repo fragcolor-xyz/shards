@@ -12,7 +12,7 @@ use crate::shardsc::SHType_Int3;
 use crate::shardsc::SHType_Int4;
 use crate::shardsc::SHType_String;
 use crate::types::Var;
-use egui::Ui;
+use egui::{Response, Ui};
 
 #[derive(Clone)]
 pub(crate) enum NodeTemplate {
@@ -67,7 +67,7 @@ impl NodeTemplateTrait for NodeTemplate {
 }
 
 impl UIRenderer for NodeTemplate {
-  fn ui(&mut self, ui: &mut Ui) {
+  fn ui(&mut self, ui: &mut Ui) -> Response {
     match self {
       NodeTemplate::AssertIs(x) => x.ui(ui),
       NodeTemplate::Const(x) => x.ui(ui),
@@ -102,9 +102,12 @@ impl NodeTemplateTrait for AssertIsNodeData {
 }
 
 impl UIRenderer for AssertIsNodeData {
-  fn ui(&mut self, ui: &mut Ui) {
-    ui.add(egui::DragValue::new(&mut self.value));
-    ui.checkbox(&mut self.abort, "Abort?");
+  fn ui(&mut self, ui: &mut Ui) -> Response {
+    ui.vertical(|ui| {
+      ui.add(egui::DragValue::new(&mut self.value));
+      ui.checkbox(&mut self.abort, "Abort?");
+    })
+    .response
   }
 }
 
@@ -128,7 +131,7 @@ impl NodeTemplateTrait for ConstNodeData {
 
 // FIXME: refactor. This should be part of some util that can be used wherever there is a value.
 impl UIRenderer for ConstNodeData {
-  fn ui(&mut self, ui: &mut Ui) {
+  fn ui(&mut self, ui: &mut Ui) -> Response {
     ui.horizontal(|ui| {
       egui::ComboBox::from_id_source(("ConstNodeData", "type"))
         // FIXME: display actualy name instead of int
@@ -155,11 +158,9 @@ impl UIRenderer for ConstNodeData {
 
       unsafe {
         match self.value_type {
-          SHType_Int => {
-            ui.add(egui::DragValue::new(
-              &mut self.value.payload.__bindgen_anon_1.intValue,
-            ));
-          }
+          SHType_Int => ui.add(egui::DragValue::new(
+            &mut self.value.payload.__bindgen_anon_1.intValue,
+          )),
           SHType_Int2 => {
             ui.horizontal(|ui| {
               ui.add(egui::DragValue::new(
@@ -168,7 +169,8 @@ impl UIRenderer for ConstNodeData {
               ui.add(egui::DragValue::new(
                 &mut self.value.payload.__bindgen_anon_1.int2Value[1],
               ));
-            });
+            })
+            .response
           }
           SHType_Int3 => {
             ui.horizontal(|ui| {
@@ -181,7 +183,8 @@ impl UIRenderer for ConstNodeData {
               ui.add(egui::DragValue::new(
                 &mut self.value.payload.__bindgen_anon_1.int3Value[2],
               ));
-            });
+            })
+            .response
           }
           SHType_Int4 => {
             ui.horizontal(|ui| {
@@ -197,13 +200,12 @@ impl UIRenderer for ConstNodeData {
               ui.add(egui::DragValue::new(
                 &mut self.value.payload.__bindgen_anon_1.int4Value[3],
               ));
-            });
+            })
+            .response
           }
-          SHType_Float => {
-            ui.add(egui::DragValue::new(
-              &mut self.value.payload.__bindgen_anon_1.floatValue,
-            ));
-          }
+          SHType_Float => ui.add(egui::DragValue::new(
+            &mut self.value.payload.__bindgen_anon_1.floatValue,
+          )),
           SHType_Float2 => {
             ui.horizontal(|ui| {
               ui.add(egui::DragValue::new(
@@ -212,7 +214,8 @@ impl UIRenderer for ConstNodeData {
               ui.add(egui::DragValue::new(
                 &mut self.value.payload.__bindgen_anon_1.float2Value[1],
               ));
-            });
+            })
+            .response
           }
           SHType_Float3 => {
             ui.horizontal(|ui| {
@@ -225,7 +228,8 @@ impl UIRenderer for ConstNodeData {
               ui.add(egui::DragValue::new(
                 &mut self.value.payload.__bindgen_anon_1.float3Value[2],
               ));
-            });
+            })
+            .response
           }
           SHType_Float4 => {
             ui.horizontal(|ui| {
@@ -241,16 +245,18 @@ impl UIRenderer for ConstNodeData {
               ui.add(egui::DragValue::new(
                 &mut self.value.payload.__bindgen_anon_1.float4Value[3],
               ));
-            });
+            })
+            .response
           }
           SHType_String => {
             // FIXME: need special care for string here
-            ui.text_edit_singleline(&mut self.value_s);
+            ui.text_edit_singleline(&mut self.value_s)
           }
-          _ => {}
+          _ => ui.colored_label(egui::Color32::RED, "Type of value not supported."),
         }
       }
-    });
+    })
+    .response
   }
 }
 
@@ -268,17 +274,20 @@ impl NodeTemplateTrait for ForRangeNodeData {
 }
 
 impl UIRenderer for ForRangeNodeData {
-  fn ui(&mut self, ui: &mut Ui) {
-    ui.add(egui::DragValue::new(&mut self.from));
-    if self.from > self.to {
-      self.from = self.to;
-    }
-    ui.add(egui::DragValue::new(&mut self.to));
-    if self.to < self.from {
-      self.to = self.from;
-    }
-    // FIXME: inner contents
-    // contents(ui);
+  fn ui(&mut self, ui: &mut Ui) -> Response {
+    ui.vertical(|ui| {
+      ui.add(egui::DragValue::new(&mut self.from));
+      if self.from > self.to {
+        self.from = self.to;
+      }
+      ui.add(egui::DragValue::new(&mut self.to));
+      if self.to < self.from {
+        self.to = self.from;
+      }
+      // FIXME inner contents
+      // contents(ui);
+    })
+    .response
   }
 }
 
@@ -294,8 +303,8 @@ impl NodeTemplateTrait for GetNodeData {
 }
 
 impl UIRenderer for GetNodeData {
-  fn ui(&mut self, ui: &mut Ui) {
-    ui.text_edit_singleline(&mut self.name);
+  fn ui(&mut self, ui: &mut Ui) -> Response {
+    ui.text_edit_singleline(&mut self.name)
   }
 }
 
@@ -311,8 +320,8 @@ impl NodeTemplateTrait for LogNodeData {
 }
 
 impl UIRenderer for LogNodeData {
-  fn ui(&mut self, ui: &mut Ui) {
-    ui.text_edit_singleline(&mut self.label);
+  fn ui(&mut self, ui: &mut Ui) -> Response {
+    ui.text_edit_singleline(&mut self.label)
   }
 }
 
@@ -364,8 +373,8 @@ impl NodeTemplateTrait for MathSubtractNodeData {
 }
 
 impl UIRenderer for MathUnaryNodeData {
-  fn ui(&mut self, ui: &mut Ui) {
-    ui.add(egui::DragValue::new(&mut self.value));
+  fn ui(&mut self, ui: &mut Ui) -> Response {
+    ui.add(egui::DragValue::new(&mut self.value))
   }
 }
 
@@ -381,7 +390,7 @@ impl NodeTemplateTrait for SetNodeData {
 }
 
 impl UIRenderer for SetNodeData {
-  fn ui(&mut self, ui: &mut Ui) {
-    ui.text_edit_singleline(&mut self.name);
+  fn ui(&mut self, ui: &mut Ui) -> Response {
+    ui.text_edit_singleline(&mut self.name)
   }
 }
