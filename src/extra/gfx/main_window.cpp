@@ -20,6 +20,10 @@ struct MainWindow final {
        SHCCSTR("If the device backing the window should be created with "
                "debug layers on."),
        {CoreInfo::BoolType}},
+      {"IgnoreCompilationErrors",
+       SHCCSTR("When enabled, shader or pipeline compilation errors will be ignored and either use fallback rendering or not "
+               "render at all."),
+       {CoreInfo::BoolType}},
   };
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -32,6 +36,7 @@ struct MainWindow final {
   bool _debug = false;
   Window _window;
   ShardsVar _shards;
+  bool _ignoreCompilationErrors = false;
 
   std::shared_ptr<InputContext> _inputContext;
   SHVar *_inputContextVar{};
@@ -61,6 +66,8 @@ struct MainWindow final {
     case 4:
       _debug = value.payload.boolValue;
       break;
+    case 5:
+      _ignoreCompilationErrors = value.payload.boolValue;
     default:
       break;
     }
@@ -78,6 +85,8 @@ struct MainWindow final {
       return _shards;
     case 4:
       return Var(_debug);
+    case 5:
+      return Var(_ignoreCompilationErrors);
     default:
       return Var::Empty;
     }
@@ -129,6 +138,7 @@ struct MainWindow final {
     _graphicsContext->context->userData.set(_contextUserData.get());
 
     _graphicsContext->renderer = std::make_shared<Renderer>(*_graphicsContext->context.get());
+    _graphicsContext->renderer->setIgnoreCompilationErrors(_ignoreCompilationErrors);
 
     _graphicsContext->shDrawQueue = SHDrawQueue{
         .queue = std::make_shared<DrawQueue>(),
@@ -156,14 +166,16 @@ struct MainWindow final {
 
     if (_graphicsContextVar) {
       if (_graphicsContextVar->refcount > 1) {
-        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _graphicsContextVar->refcount - 1, GraphicsContext::VariableName);
+        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _graphicsContextVar->refcount - 1,
+                    GraphicsContext::VariableName);
       }
       releaseVariable(_graphicsContextVar);
     }
 
     if (_inputContextVar) {
       if (_inputContextVar->refcount > 1) {
-        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _inputContextVar->refcount - 1, InputContext::VariableName);
+        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _inputContextVar->refcount - 1,
+                    InputContext::VariableName);
       }
       releaseVariable(_inputContextVar);
     }
