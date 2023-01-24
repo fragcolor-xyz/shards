@@ -50,6 +50,9 @@ public:
   /// <div rustbindgen hide></div>
   void cleanup();
 
+  // Toggle whether to ignore shader and pipeline compilation errors
+  void setIgnoreCompilationErrors(bool ignore);
+
   void dumpStats();
 };
 
