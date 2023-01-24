@@ -98,6 +98,8 @@ struct RendererImpl final : public ContextData {
 
   RenderGraphEvaluator renderGraphEvaluator;
 
+  bool ignoreCompilationErrors = false;
+
   const size_t maxBufferedFrames = GFX_RENDERER_MAX_BUFFERED_FRAMES;
 
   // Within the range [0, maxBufferedFrames)
@@ -445,6 +447,10 @@ struct RendererImpl final : public ContextData {
       // Assume same processor
       processor.buildPipeline(builder);
       builder.build(context.wgpuDevice, deviceLimits.limits);
+
+      if (!ignoreCompilationErrors && group.pipeline->compilationError.has_value()) {
+        throw formatException("Failed to build pipeline: {}", group.pipeline->compilationError->message);
+      }
     };
 
     auto preparePipelineGroup = [&](PipelineGroup &group) {
@@ -482,6 +488,9 @@ struct RendererImpl final : public ContextData {
         buildPipeline(group);
       }
 
+      if (group.pipeline->compilationError.has_value())
+        continue;
+
       // Build draw data
       preparePipelineGroup(group);
     }
@@ -496,6 +505,9 @@ struct RendererImpl final : public ContextData {
 
       for (auto &it : pipelineGroups) {
         PipelineGroup &group = it.second;
+        if (group.pipeline->compilationError.has_value())
+          continue;
+
         DrawableEncodeContext encodeCtx{
             .encoder = evaluateContext.encoder,
             .cachedPipeline = *group.pipeline.get(),
@@ -672,6 +684,8 @@ void Renderer::endFrame() { impl->endFrame(); }
 
 void Renderer::cleanup() { impl->releaseContextDataConditional(); }
 
+void Renderer::setIgnoreCompilationErrors(bool ignore) { impl->ignoreCompilationErrors = ignore; }
+
 void Renderer::dumpStats() {
   static constexpr size_t Megabyte = 1 << 20;
 
@@ -693,4 +707,5 @@ void Renderer::dumpStats() {
   SPDLOG_LOGGER_INFO(logger, " Frame Index: {}", impl->frameIndex);
   SPDLOG_LOGGER_INFO(logger, " Frame Counter: {}", impl->frameCounter);
 }
+
 } // namespace gfx
