@@ -147,7 +147,9 @@ impl UIRenderer for ConstNodeData {
 
       if self.prev_type != self.value_type {
         self.prev_type = self.value_type;
-        // TODO: conversion or reset the value
+        // FIXME: conversion or reset the value
+        // for now just clear the value
+        self.value.payload = Default::default();
         self.value.valueType = self.value_type;
       }
 
