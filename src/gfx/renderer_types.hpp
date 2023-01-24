@@ -152,6 +152,13 @@ struct ParameterStorage : public IParameterCollector {
   }
 };
 
+struct CompilationError {
+  std::string message;
+
+  CompilationError() = default;
+  CompilationError(std::string &&message) : message(std::move(message)) {}
+};
+
 struct CachedPipeline {
   // The compiled shader module including both vertex/fragment entry points
   WgpuHandle<WGPUShaderModule> shaderModule;
@@ -184,6 +191,8 @@ struct CachedPipeline {
   size_t lastTouched{};
 
   ParameterStorage baseDrawParameters;
+
+  std::optional<CompilationError> compilationError{};
 };
 typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
 

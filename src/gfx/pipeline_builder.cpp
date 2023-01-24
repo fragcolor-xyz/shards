@@ -352,7 +352,10 @@ void PipelineBuilder::finalize(WGPUDevice device) {
   output.renderTargetLayout = renderTargetLayout;
 
   output.shaderModule.reset(wgpuDeviceCreateShaderModule(device, &moduleDesc));
-  assert(output.shaderModule);
+  if (!output.shaderModule) {
+    output.compilationError.emplace("Failed to compile shader module");
+    return;
+  }
 
   WGPURenderPipelineDescriptor desc = {};
   desc.layout = output.pipelineLayout;
@@ -421,7 +424,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 
   output.pipeline.reset(wgpuDeviceCreateRenderPipeline(device, &desc));
   if (!output.pipeline)
-    throw std::runtime_error("Failed to build pipeline");
+    output.compilationError.emplace("Failed to build pipeline");
 }
 
 void PipelineBuilder::collectTextureBindings() {
