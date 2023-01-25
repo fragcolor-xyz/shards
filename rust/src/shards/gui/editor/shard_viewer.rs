@@ -2,6 +2,7 @@
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
 use super::ShardViewer;
+use crate::core::getShards;
 use crate::shard::Shard;
 use crate::shards::editor::*;
 use crate::shards::gui::util;
@@ -144,52 +145,12 @@ impl Shard for ShardViewer {
 
 impl ShardViewer {
   fn init(&mut self) {
-    let templates = vec![
-      NodeTemplate::Const(ConstNodeData {
-        override_label: "Const(Int)".into(),
-        value: VarValue::new(
-          &Var::from(0),
-          vec![
-            SHType_Int,
-            SHType_Int2,
-            SHType_Int3,
-            SHType_Int4,
-            SHType_Int8,
-          ],
-        ),
-      }),
-      NodeTemplate::Const(ConstNodeData {
-        override_label: Some("Const(Float)"),
-        value: VarValue::new(
-          &Var::from(0.0),
-          vec![SHType_Float, SHType_Float2, SHType_Float3, SHType_Float4],
-        ),
-      }),
-      // NodeTemplate::AssertIs(Default::default()),
-      // NodeTemplate::ForRange(Default::default()),
-      NodeTemplate::Get(Default::default()),
-      NodeTemplate::Set(Default::default()),
-      NodeTemplate::Log(Default::default()),
-      NodeTemplate::MathAdd(MathAddNodeData(MathUnaryNodeData {
-        value: VarValue::new(
-          &Var::from(0),
-          vec![
-            SHType_Int,
-            SHType_Int2,
-            SHType_Int3,
-            SHType_Int4,
-            SHType_Float,
-            SHType_Float2,
-            SHType_Float3,
-            SHType_Float4,
-          ],
-        ),
-      })),
-      NodeTemplate::MathDivide(Default::default()),
-      NodeTemplate::MathMultiply(Default::default()),
-      NodeTemplate::MathMod(Default::default()),
-      NodeTemplate::MathSubtract(Default::default()),
-    ];
+    let mut shards: Vec<&str> = getShards()
+      .into_iter()
+      .map(|s| s.to_str().unwrap())
+      .collect();
+    shards.sort();
+    let templates = shards.iter().map(|s| NodeTemplate::new(s));
     self.all_templates.extend(templates);
   }
 

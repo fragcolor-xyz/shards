@@ -9,6 +9,7 @@ pub(crate) struct NodeFactory<NodeData> {
   pub query: String,
   pub position: Option<Pos2>,
   just_spawned: bool,
+  markdown_cache: egui_commonmark::CommonMarkCache,
   _phantom: PhantomData<NodeData>,
 }
 
@@ -21,6 +22,7 @@ where
       query: "".into(),
       position: Some(pos),
       just_spawned: true,
+      markdown_cache: egui_commonmark::CommonMarkCache::default(),
       _phantom: Default::default(),
     }
   }
@@ -78,7 +80,11 @@ where
             });
         });
         ui.separator();
-        ui.label(description);
+        egui_commonmark::CommonMarkViewer::new("node_factory").show(
+          ui,
+          &mut self.markdown_cache,
+          description,
+        );
       });
 
     ret

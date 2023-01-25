@@ -31,6 +31,7 @@ where
     let node_id = self.node_id;
     let area = Area::new(Id::new(node_id))
       .order(Order::Middle)
+      .constrain(false) // FIXME egui BUG, this is not taken into account if the Area is movable
       .current_pos(*self.position + self.pan);
 
     let InnerResponse {
