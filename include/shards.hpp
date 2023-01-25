@@ -673,6 +673,10 @@ struct Var : public SHVar {
     return res;
   }
 
+  template <typename T> static Var Object(T valuePtr, const Type& type) {
+   return Object(valuePtr, SHTypeInfo(type).object.vendorId, SHTypeInfo(type).object.typeId);
+  }
+
   template <typename T> static Var Enum(T value, uint32_t enumVendorId, uint32_t enumTypeId) {
     Var res;
     res.valueType = SHType::Enum;
@@ -680,6 +684,10 @@ struct Var : public SHVar {
     res.payload.enumVendorId = enumVendorId;
     res.payload.enumTypeId = enumTypeId;
     return res;
+  }
+
+  template <typename T> static Var Enum(T valuePtr, const Type& type) {
+   return Object(valuePtr, SHTypeInfo(type).enumeration.vendorId, SHTypeInfo(type).enumeration.typeId);
   }
 
   Var(uint8_t *ptr, uint32_t size) : SHVar() {

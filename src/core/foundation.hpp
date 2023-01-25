@@ -1333,12 +1333,18 @@ struct VariableResolver {
 
 template <typename T> T *varAsObjectChecked(const SHVar &var, const shards::Type &type) {
   SHTypeInfo typeInfo(type);
-  if (var.valueType != SHType::Object)
+  if (var.valueType != SHType::Object) {
+    assert(false);
     throw std::logic_error("Invalid type");
-  if (var.payload.objectVendorId != typeInfo.object.vendorId)
+  }
+  if (var.payload.objectVendorId != typeInfo.object.vendorId) {
+    assert(false);
     throw std::logic_error("Invalid object vendor id");
-  if (var.payload.objectTypeId != typeInfo.object.typeId)
+  }
+  if (var.payload.objectTypeId != typeInfo.object.typeId) {
+    assert(false);
     throw std::logic_error("Invalid object type id");
+  }
   return reinterpret_cast<T *>(var.payload.objectValue);
 }
 

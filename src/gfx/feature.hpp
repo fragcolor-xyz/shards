@@ -9,6 +9,7 @@
 #include "shader/entry_point.hpp"
 #include "pipeline_hash_collector.hpp"
 #include "unique_id.hpp"
+#include "feature_generated.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -166,19 +167,6 @@ struct NamedTextureParam {
   }
 };
 
-struct FeatureCallbackContext {
-  Context &context;
-  const View *view = nullptr;
-  const IDrawable *drawable = nullptr;
-  const detail::CachedDrawable *cachedDrawable = nullptr;
-  const detail::CachedView *cachedView = nullptr;
-};
-
-typedef std::function<bool(const FeatureCallbackContext &)> FeatureFilterCallback;
-
-struct IParameterCollector;
-typedef std::function<void(const FeatureCallbackContext &, IParameterCollector &)> FeatureParameterGenerator;
-
 extern UniqueIdGenerator featureIdGenerator;
 struct Feature {
   // Used to identify this feature for caching purposes
@@ -186,10 +174,14 @@ struct Feature {
 
   // Pipeline state flags
   FeaturePipelineState state;
+  // TODO: merge into generic generators
   // Per drawable draw data
   std::vector<FeatureParameterGenerator> drawableParameterGenerators;
+  // TODO: merge into generic generators
   // Per view draw data
   std::vector<FeatureParameterGenerator> viewParameterGenerators;
+  // Generated parameters and precomputed rendering
+  std::vector<FeatureGenerator> generators;
   // Shader parameters read from per-instance buffer
   std::vector<NamedShaderParam> shaderParams;
   // Texture parameters

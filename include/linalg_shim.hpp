@@ -220,6 +220,19 @@ struct alignas(16) Vec4 : public linalg::aliases::float4 {
   }
 };
 
+inline linalg::aliases::int2 toInt2(const SHVar &vec) {
+  if (vec.valueType != SHType::Int2)
+    throw InvalidVarTypeError("Invalid variable casting! expected Int2");
+  return linalg::aliases::int2(float(vec.payload.int2Value[0]), float(vec.payload.int2Value[1]));
+}
+
+inline linalg::aliases::int4 toInt4(const SHVar &vec) {
+  if (vec.valueType != SHType::Int4)
+    throw InvalidVarTypeError("Invalid variable casting! expected Int4");
+  return linalg::aliases::int4(vec.payload.int2Value[0], vec.payload.int2Value[1], vec.payload.int2Value[2],
+                               vec.payload.int2Value[3]);
+}
+
 inline linalg::aliases::float2 toFloat2(const SHVar &vec) {
   if (vec.valueType != SHType::Float2)
     throw InvalidVarTypeError("Invalid variable casting! expected Float2");

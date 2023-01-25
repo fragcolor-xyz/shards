@@ -1,6 +1,7 @@
 #ifndef CA95E36A_DF18_4EE1_B394_4094F976B20E
 #define CA95E36A_DF18_4EE1_B394_4094F976B20E
 
+#include "gfx/fwd.hpp"
 #include "gfx_wgpu.hpp"
 #include "texture.hpp"
 #include "drawable.hpp"
@@ -12,6 +13,7 @@
 #include "shader/textures.hpp"
 #include "shader/fmt.hpp"
 #include "renderer.hpp"
+#include "feature_generate_context.hpp"
 #include "log.hpp"
 #include "graph.hpp"
 #include "hasherxxh128.hpp"
@@ -224,7 +226,7 @@ struct CachedView {
 typedef std::shared_ptr<CachedView> CachedViewDataPtr;
 
 struct ViewData {
-  View &view;
+  ViewPtr view;
   CachedView &cachedView;
   Rect viewport;
   RenderTargetPtr renderTarget;
@@ -304,6 +306,22 @@ struct CachedDrawable {
   }
 };
 typedef std::shared_ptr<CachedDrawable> CachedDrawablePtr;
+
+struct FeatureGenerateContext : public IFeatureGenerateContext {
+  Renderer &renderer;
+  IParameterCollector &parameterCollector;
+  DrawQueuePtr parentQueue;
+  ViewPtr parentView;
+
+  FeatureGenerateContext(Renderer &renderer, IParameterCollector &parameterCollector, DrawQueuePtr parentQueue, ViewPtr view)
+      : renderer(renderer), parameterCollector(parameterCollector), parentQueue(parentQueue), parentView(view) {}
+
+  virtual Renderer &getRenderer() { return renderer; }
+  virtual DrawQueuePtr getQueue() { return parentQueue; }
+  virtual ViewPtr getView() { return parentView; }
+  virtual IParameterCollector &getParameterCollector() { return parameterCollector; }
+  virtual void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) { renderer.render(views, pipelineSteps); }
+};
 
 } // namespace gfx::detail
 

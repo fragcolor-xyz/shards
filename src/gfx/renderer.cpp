@@ -2,6 +2,7 @@
 #include "context.hpp"
 #include "drawable.hpp"
 #include "feature.hpp"
+#include "fwd.hpp"
 #include "material.hpp"
 #include "mesh.hpp"
 #include "mesh_utils.hpp"
@@ -27,6 +28,8 @@
 #include "geom.hpp"
 #include "worker_memory.hpp"
 #include "pmr/vector.hpp"
+#include <functional>
+#include <optional>
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/reduce.hpp>
 #include <tracy/Tracy.hpp>
@@ -35,6 +38,7 @@
 #include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
+#include <span>
 
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
@@ -83,8 +87,21 @@ struct FrameStats {
   void reset() { numDrawables = 0; }
 };
 
+// The render graph and outputs
+struct PreparedRenderView {
+  const RenderGraph &renderGraph;
+  std::span<TexturePtr> renderGraphOutputs;
+};
+
+// Captures calls to render()
+// struct RenderCapture {
+//   std::optional<PreparedRenderView> preparedRender;
+// };
+
 struct RendererImpl final : public ContextData {
+  Renderer &outer;
   Context &context;
+
   WGPUSupportedLimits deviceLimits = {};
 
   ViewStack viewStack;
@@ -122,7 +139,9 @@ struct RendererImpl final : public ContextData {
   std::list<TransientPtr> processorDynamicValueCleanupQueue;
   std::vector<Feature *> evaluateFeaturesTemp;
 
-  RendererImpl(Context &context) : context(context), workerMemory(), workerData() {}
+  // static thread_local std::vector<std::reference_wrapper<RenderCapture>> renderCaptures;
+
+  RendererImpl(Context &context, Renderer &outer) : outer(outer), context(context), workerMemory(), workerData() {}
 
   ~RendererImpl() { releaseContextDataConditional(); }
 
@@ -196,8 +215,16 @@ struct RendererImpl final : public ContextData {
   void renderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
     ZoneScoped;
 
+    auto prepared = prepareRenderView(view, pipelineSteps);
+    if (!prepared)
+      return;
+
+    renderGraphEvaluator.evaluate(prepared->renderGraph, prepared->renderGraphOutputs, context, frameCounter);
+  }
+
+  std::optional<PreparedRenderView> prepareRenderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
     ViewData viewData{
-        .view = *view.get(),
+        .view = view,
         .cachedView = getCachedView(view),
     };
 
@@ -210,13 +237,14 @@ struct RendererImpl final : public ContextData {
 
     int2 viewSize = viewStackOutput.viewport.getSize();
     if (viewSize.x == 0 || viewSize.y == 0)
-      return; // Skip rendering
+      return std::nullopt; // Skip rendering
 
     viewData.cachedView.touchWithNewTransform(view->view, view->getProjectionMatrix(float2(viewSize)), frameCounter);
 
     // Match with attached outputs in buildRenderGraph
-    auto &renderGraphOutputs = renderGraphOutputsTemp;
-    renderGraphOutputs.clear();
+    // auto &renderGraphOutputs = renderGraphOutputsTemp;
+    // renderGraphOutputs.clear();
+    shards::pmr::vector<TexturePtr> renderGraphOutputs(getWorkerMemoryForCurrentFrame());
     if (viewData.renderTarget) {
       for (auto &attachment : viewData.renderTarget->attachments) {
         renderGraphOutputs.push_back(attachment.second);
@@ -225,8 +253,40 @@ struct RendererImpl final : public ContextData {
       renderGraphOutputs.push_back(mainOutput.texture);
     }
 
-    const RenderGraph &renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize);
-    renderGraphEvaluator.evaluate(renderGraph, renderGraphOutputs, context, frameCounter);
+    return PreparedRenderView{
+        .renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize),
+        .renderGraphOutputs = std::span(renderGraphOutputs.data(), renderGraphOutputs.size()),
+    };
+  }
+
+  const RenderGraph &getOrBuildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps,
+                                           int2 referenceOutputSize) {
+    ZoneScoped;
+
+    HasherXXH128<PipelineHashVisitor> hasher;
+    for (auto &step : pipelineSteps) {
+      std::visit([&](auto &step) { hasher(step.id); }, *step.get());
+    }
+
+    hasher(referenceOutputSize);
+    if (viewData.renderTarget) {
+      for (auto &attachment : viewData.renderTarget->attachments) {
+        hasher(attachment.first);
+        hasher(attachment.second->getFormat().pixelFormat);
+      }
+    } else {
+      hasher("color");
+      hasher(mainOutput.texture->getFormat().pixelFormat);
+    }
+    Hash128 renderGraphHash = hasher.getDigest();
+
+    auto &cachedRenderGraph = getCacheEntry(renderGraphCache.map, renderGraphHash, [&](const Hash128 &key) {
+      auto result = std::make_shared<CachedRenderGraph>();
+      buildRenderGraph(viewData, pipelineSteps, referenceOutputSize, *result.get());
+      return result;
+    });
+
+    return cachedRenderGraph->renderGraph;
   }
 
   void buildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps, int2 referenceOutputSize,
@@ -259,36 +319,6 @@ struct RendererImpl final : public ContextData {
       std::visit([&](auto &&arg) { setupRenderGraphNode(out, index, viewData, arg); }, *step.get());
       index++;
     }
-  }
-
-  const RenderGraph &getOrBuildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps,
-                                           int2 referenceOutputSize) {
-    ZoneScoped;
-
-    HasherXXH128<PipelineHashVisitor> hasher;
-    for (auto &step : pipelineSteps) {
-      std::visit([&](auto &step) { hasher(step.id); }, *step.get());
-    }
-
-    hasher(referenceOutputSize);
-    if (viewData.renderTarget) {
-      for (auto &attachment : viewData.renderTarget->attachments) {
-        hasher(attachment.first);
-        hasher(attachment.second->getFormat().pixelFormat);
-      }
-    } else {
-      hasher("color");
-      hasher(mainOutput.texture->getFormat().pixelFormat);
-    }
-    Hash128 renderGraphHash = hasher.getDigest();
-
-    auto &cachedRenderGraph = getCacheEntry(renderGraphCache.map, renderGraphHash, [&](const Hash128 &key) {
-      auto result = std::make_shared<CachedRenderGraph>();
-      buildRenderGraph(viewData, pipelineSteps, referenceOutputSize, *result.get());
-      return result;
-    });
-
-    return cachedRenderGraph->renderGraph;
   }
 
   void allocateNodeEdges(detail::RenderGraphBuilder &builder, size_t index, const ClearStep &step) {
@@ -330,17 +360,32 @@ struct RendererImpl final : public ContextData {
     node.encode = [=, this](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step, viewData); };
   }
 
+  void runGenerators(const std::vector<FeaturePtr> &features, DrawQueuePtr parentQueue, const ViewData &viewData,
+                     IParameterCollector &outParameters) {
+    for (auto &feature : features) {
+      for (auto &generator : feature->generators) {
+        FeatureGenerateContext ctx{outer, outParameters, parentQueue, viewData.view};
+        generator(ctx);
+      }
+    }
+  }
+
   void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const RenderDrawablesStep &step,
                             const ViewData &viewData) {
+    ParameterStorage *baseParameters = getWorkerMemoryForCurrentFrame()->new_object<ParameterStorage>();
+    runGenerators(step.features, step.drawQueue, viewData, *baseParameters);
+
     DrawQueue &queue = *step.drawQueue.get();
     evaluateFeaturesTemp.clear();
     for (auto &feature : step.features)
       evaluateFeaturesTemp.push_back(feature.get());
-    renderDrawables(evaluateContext, queue.getDrawables(), evaluateFeaturesTemp, step.sortMode, viewData);
+
+    renderDrawables(evaluateContext, queue.getDrawables(), evaluateFeaturesTemp, step.sortMode, viewData, baseParameters);
   }
 
   void renderDrawables(RenderGraphEncodeContext &evaluateContext, const std::vector<const IDrawable *> &drawables,
-                       const std::vector<Feature *> &features, SortMode sortMode, const ViewData &viewData) {
+                       const std::vector<Feature *> &features, SortMode sortMode, const ViewData &viewData,
+                       const ParameterStorage *baseDrawData = nullptr) {
     ZoneScoped;
 
     const RenderTargetLayout &rtl = evaluateContext.node.renderTargetLayout;
@@ -453,6 +498,7 @@ struct RendererImpl final : public ContextData {
           .workerMemory = workerMemory,
           .cachedPipeline = cachedPipeline,
           .viewData = viewData,
+          .baseDrawData = baseDrawData,
           .drawables = group.drawables,
           .frameCounter = frameCounter,
           .sortMode = sortMode,
@@ -624,8 +670,8 @@ struct RendererImpl final : public ContextData {
   }
 
   void clearOldCacheItems() {
-    clearOldCacheItemsIn(pipelineCache.map, frameCounter, 16);
-    clearOldCacheItemsIn(viewCache, frameCounter, 4);
+    clearOldCacheItemsIn(pipelineCache.map, frameCounter, 1000);
+    clearOldCacheItemsIn(viewCache, frameCounter, 1000);
   }
 
   void ensureMainOutputCleared() {
@@ -637,7 +683,7 @@ struct RendererImpl final : public ContextData {
                                  }));
       auto graph = builder.finalize();
 
-      renderGraphEvaluator.evaluate(graph, std::vector<TexturePtr>{}, context, frameCounter);
+      renderGraphEvaluator.evaluate(graph, std::span<TexturePtr>{}, context, frameCounter);
     }
   }
 
@@ -648,7 +694,7 @@ struct RendererImpl final : public ContextData {
 };
 
 Renderer::Renderer(Context &context) {
-  impl = std::make_shared<RendererImpl>(context);
+  impl = std::make_shared<RendererImpl>(context, *this);
   if (!context.isHeadless()) {
     impl->shouldUpdateMainOutputFromContext = true;
   }
@@ -694,5 +740,7 @@ void Renderer::dumpStats() {
   SPDLOG_LOGGER_INFO(logger, " Frame Index: {}", impl->frameIndex);
   SPDLOG_LOGGER_INFO(logger, " Frame Counter: {}", impl->frameCounter);
 }
+
+// thread_local std::vector<std::reference_wrapper<RenderCapture>> RendererImpl::renderCaptures;
 
 } // namespace gfx

@@ -107,7 +107,7 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
 }
 
 inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &viewData) {
-  outDrawData.setParam("view", viewData.view.view);
+  outDrawData.setParam("view", viewData.view->view);
   outDrawData.setParam("invView", viewData.cachedView.invViewTransform);
   outDrawData.setParam("proj", viewData.cachedView.projectionTransform);
   outDrawData.setParam("invProj", viewData.cachedView.invProjectionTransform);
