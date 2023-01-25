@@ -619,3 +619,45 @@ impl Drop for ShardInstance {
     }
   }
 }
+
+impl ShardInstance {
+  pub fn name(&self) -> SHString {
+    assert_ne!(self.ptr, std::ptr::null_mut());
+    unsafe { (*self.ptr).name.unwrap()(self.ptr) }
+  }
+
+  pub fn help(&self) -> SHOptionalString {
+    assert_ne!(self.ptr, std::ptr::null_mut());
+    unsafe { (*self.ptr).help.unwrap()(self.ptr) }
+  }
+
+  pub fn inputHelp(&self) -> SHOptionalString {
+    assert_ne!(self.ptr, std::ptr::null_mut());
+    unsafe { (*self.ptr).inputHelp.unwrap()(self.ptr) }
+  }
+
+  pub fn outputHelp(&self) -> SHOptionalString {
+    assert_ne!(self.ptr, std::ptr::null_mut());
+    unsafe { (*self.ptr).outputHelp.unwrap()(self.ptr) }
+  }
+
+  pub fn inputTypes(&self) -> SHTypesInfo {
+    assert_ne!(self.ptr, std::ptr::null_mut());
+    unsafe { (*self.ptr).inputTypes.unwrap()(self.ptr) }
+  }
+
+  pub fn outputTypes(&self) -> SHTypesInfo {
+    assert_ne!(self.ptr, std::ptr::null_mut());
+    unsafe { (*self.ptr).outputTypes.unwrap()(self.ptr) }
+  }
+
+  pub fn parameters(&self) -> SHParametersInfo {
+    assert_ne!(self.ptr, std::ptr::null_mut());
+    unsafe { (*self.ptr).parameters.unwrap()(self.ptr) }
+  }
+
+  pub fn getParam(&self, index: i32) -> SHVar {
+    assert_ne!(self.ptr, std::ptr::null_mut());
+    unsafe { (*self.ptr).getParam.unwrap()(self.ptr, index) }
+  }
+}
