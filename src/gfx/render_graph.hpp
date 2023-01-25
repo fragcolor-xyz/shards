@@ -4,6 +4,7 @@
 #include "renderer_types.hpp"
 #include "fmt.hpp"
 #include <compare>
+#include <span>
 
 namespace gfx::detail {
 
@@ -625,7 +626,7 @@ public:
     renderTextureCache.swapBuffers(frameCounter);
   }
 
-  void getFrameTextures(std::vector<TexturePtr> &outFrameTextures, const std::vector<TexturePtr> &outputs,
+  void getFrameTextures(std::vector<TexturePtr> &outFrameTextures, const std::span<TexturePtr> &outputs,
                         const RenderGraph &graph, size_t frameCounter) {
     outFrameTextures.clear();
     outFrameTextures.reserve(graph.frames.size());
@@ -646,7 +647,7 @@ public:
     }
   }
 
-  void evaluate(const RenderGraph &graph, const std::vector<TexturePtr> &outputs, Context &context, size_t frameCounter) {
+  void evaluate(const RenderGraph &graph, std::span<TexturePtr> outputs, Context &context, size_t frameCounter) {
     // Evaluate all render steps in the order they are defined
     // potential optimizations:
     // - evaluate steps without dependencies in parralel

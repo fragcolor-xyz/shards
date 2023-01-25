@@ -9,6 +9,7 @@
 #include <gfx/fwd.hpp>
 #include <input/input_stack.hpp>
 #include <exposed_type_utils.hpp>
+#include <vector>
 #include <shards.hpp>
 
 namespace gfx {
@@ -20,8 +21,7 @@ struct GraphicsContext {
   static inline SHTypeInfo Type{SHType::Object, {.object = {.vendorId = VendorId, .typeId = TypeId}}};
   static inline const char VariableName[] = "GFX.Context";
   static inline const SHOptionalString VariableDescription = SHCCSTR("The graphics context.");
-  static inline SHExposedTypeInfo VariableInfo =
-      shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
+  static inline SHExposedTypeInfo VariableInfo = shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
 
   std::shared_ptr<Context> context;
   std::shared_ptr<Window> window;
@@ -39,11 +39,27 @@ struct GraphicsContext {
   SDL_Window *getSdlWindow();
 };
 
-typedef shards::RequiredContextVariable<GraphicsContext, GraphicsContext::Type, GraphicsContext::VariableName> RequiredGraphicsContext;
+using RequiredGraphicsContext =
+    shards::RequiredContextVariable<GraphicsContext, GraphicsContext::Type, GraphicsContext::VariableName>;
+using OptionalGraphicsContext =
+    shards::RequiredContextVariable<GraphicsContext, GraphicsContext::Type, GraphicsContext::VariableName, false>;
 
-struct ContextUserData {
-  SHContext *shardsContext{};
+struct GraphicsRendererContext {
+  static constexpr uint32_t TypeId = 'grcx';
+  static inline SHTypeInfo Type{SHType::Object, {.object = {.vendorId = VendorId, .typeId = TypeId}}};
+  static inline const char VariableName[] = "GFX.RendererContext";
+  static inline const SHOptionalString VariableDescription = SHCCSTR("The graphics renderer context.");
+  static inline SHExposedTypeInfo VariableInfo = shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
+
+  Renderer *renderer{};
+
+  // Overridable callback for rendering
+  std::function<void(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps)> render;
 };
+
+typedef shards::RequiredContextVariable<GraphicsRendererContext, GraphicsRendererContext::Type,
+                                        GraphicsRendererContext::VariableName>
+    RequiredGraphicsRendererContext;
 
 inline void composeCheckGfxThread(const SHInstanceData &data) {
   if (data.onWorkerThread) {
@@ -51,6 +67,7 @@ inline void composeCheckGfxThread(const SHInstanceData &data) {
                                "within an Await shard)");
   }
 }
+
 } // namespace gfx
 
 #endif // SH_EXTRA_GFX

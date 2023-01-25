@@ -26,6 +26,9 @@ struct DrawablePrepareContext {
   // View data
   const ViewData &viewData;
 
+  // Base drawable data from generators
+  const ParameterStorage *baseDrawData{};
+
   // The drawables
   const std::vector<const IDrawable *> &drawables;
 

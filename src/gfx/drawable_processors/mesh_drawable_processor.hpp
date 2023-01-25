@@ -170,7 +170,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   }
 
   void generateDrawableData(DrawableData &data, Context &context, const CachedPipeline &cachedPipeline, const IDrawable *drawable,
-                            const ViewData &viewData, size_t frameCounter, bool needProjectedDepth = false) {
+                            const ViewData &viewData, const ParameterStorage *baseDrawData, size_t frameCounter,
+                            bool needProjectedDepth = false) {
     ZoneScoped;
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
@@ -254,6 +255,17 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         },
         cachedPipeline, parameters);
 
+    if (baseDrawData) {
+      for (auto &param : baseDrawData->data)
+        parameters.setParamIfUnset(param.first, param.second);
+      for (auto &param : baseDrawData->textures) {
+        int32_t targetSlot = mapTextureBinding(param.first.c_str());
+        if (targetSlot >= 0 && !data.textures[targetSlot]) {
+          data.textures[targetSlot] = param.second.texture->contextData.get();
+        }
+      }
+    }
+
     // Set base parameters where unset
     for (auto &baseParam : cachedPipeline.baseDrawParameters.data) {
       parameters.setParamIfUnset(baseParam.first, baseParam.second);
@@ -283,7 +295,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   void waitForBufferMap(Context &context, PrepareData *prepareData) {
     do {
       bool everythingMapped = true;
-      auto check = [&](auto& buffers) {
+      auto check = [&](auto &buffers) {
         for (auto &drawBuffer : buffers) {
           if (drawBuffer.mappingStatus == WGPUBufferMapAsyncStatus_Unknown)
             everythingMapped = false;
@@ -380,8 +392,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       for (size_t index = 0; index < context.drawables.size(); ++index) {
         const IDrawable *drawable = context.drawables[index];
         auto &drawableData = drawableDatas->emplace_back();
-        generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, context.frameCounter,
-                             needProjectedDepth);
+        generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, context.baseDrawData,
+                             context.frameCounter, needProjectedDepth);
       }
     }
 
@@ -444,7 +456,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       collectGeneratedViewParameters(
           FeatureCallbackContext{
               .context = context.context,
-              .view = &context.viewData.view,
+              .view = context.viewData.view,
               .cachedView = &context.viewData.cachedView,
           },
           cachedPipeline, viewParameters);
