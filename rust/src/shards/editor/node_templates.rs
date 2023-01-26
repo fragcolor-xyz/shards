@@ -58,35 +58,62 @@ impl UIRenderer for ShardTemplate {
 pub(crate) struct ShardData {
   name: &'static str,
   instance: ShardInstance,
+  params: Vec<(&'static str, VarValue)>,
 }
 
 impl ShardData {
   fn new(name: &'static str) -> Self {
+    let instance = createShard(name);
+    let params = instance.parameters();
+    let params = if params.len > 0 {
+      unsafe {
+        let params = core::slice::from_raw_parts(params.elements, params.len as usize);
+        params
+          .iter()
+          .enumerate()
+          .map(|(i, p)| {
+            let types = p.valueTypes;
+            let types = if types.len > 0 {
+              let types = core::slice::from_raw_parts(types.elements, types.len as usize);
+              types.iter().map(|t| t.basicType).collect()
+            } else {
+              vec![]
+            };
+            // FIXME: deal with Any
+
+            let name = CStr::from_ptr(p.name).to_str().unwrap();
+            let initial_value = instance.getParam(i as i32);
+            (name, VarValue::new(&initial_value, types))
+          })
+          .collect()
+      }
+    } else {
+      vec![]
+    };
+
     Self {
       name,
-      instance: createShard(name),
+      instance,
+      params,
     }
   }
 }
 
 impl UIRenderer for ShardData {
   fn ui(&mut self, ui: &mut Ui) -> Response {
-    ui.vertical(|ui| {
-      let params = self.instance.parameters();
-      if params.len > 0 {
-        unsafe {
-          let params = core::slice::from_raw_parts(params.elements, params.len as usize);
-          for p in params {
-            ui.label(CStr::from_ptr(p.name).to_str().unwrap());
-          }
+    egui::Grid::new(self.name)
+      .show(ui, |ui| {
+        for (i, (name, p)) in self.params.iter_mut().enumerate() {
+          ui.label(*name);
+          ui.push_id(i, |ui| p.ui(ui));
+          ui.end_row();
         }
-      }
-    })
-    .response
+      })
+      .response
   }
 }
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub(crate) struct VarValue {
   value: Var,
   // FIXME String special case (for now)
@@ -94,12 +121,29 @@ pub(crate) struct VarValue {
   // ---
   allowed_types: Vec<SHType>,
   prev_type: SHType,
+  // FIXME use this to "restore" previous value
+  // prev_value: Option<SHVarPayload>,
+}
+
+impl Clone for VarValue {
+  fn clone(&self) -> Self {
+    VarValue::new(&self.value, self.allowed_types.clone())
+  }
 }
 
 impl VarValue {
   pub fn new(initial_value: &Var, allowed_types: Vec<SHType>) -> Self {
     debug_assert!(allowed_types.len() > 0usize);
-    debug_assert!(allowed_types.contains(&initial_value.valueType));
+    if cfg!(debug_assertions) {
+      if !allowed_types.contains(&initial_value.valueType) {
+        // HACK: put a breakpoint here or uncomment
+        shlog_debug!(
+          "Type {} is not amongst allowed types {:?}",
+          initial_value.valueType,
+          allowed_types
+        );
+      }
+    }
 
     let mut ret = Self {
       allowed_types,
@@ -107,6 +151,7 @@ impl VarValue {
     };
     // FIXME deal with the String case
     cloneVar(&mut ret.value, initial_value);
+    ret.prev_type = ret.value.valueType;
     ret
   }
 }
@@ -167,6 +212,8 @@ impl UIRenderer for VarValue {
 
       unsafe {
         match self.value.valueType {
+          SHType_None => ui.label(""),
+          SHType_Bool => ui.checkbox(&mut self.value.payload.__bindgen_anon_1.boolValue, ""),
           SHType_Int => ui.add(egui::DragValue::new(
             &mut self.value.payload.__bindgen_anon_1.intValue,
           )),
