@@ -41,8 +41,8 @@ impl<NodeData> Graph<NodeData> {
   }
 }
 
-impl<Data> Node<Data> {
-  pub fn new(id: NodeId, label: String, data: Data) -> Self {
+impl<NodeData> Node<NodeData> {
+  pub fn new(id: NodeId, label: String, data: NodeData) -> Self {
     Self { id, label, data }
   }
 }

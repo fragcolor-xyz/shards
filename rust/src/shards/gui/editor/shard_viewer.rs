@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
+use super::GraphEditorState;
 use super::ShardViewer;
 use crate::core::getShards;
 use crate::shard::Shard;
@@ -19,13 +20,9 @@ use crate::types::Var;
 use crate::types::ANY_TYPES;
 use std::collections::HashMap;
 
-impl Default for ShardViewer {
+impl<NodeData, NodeTemplate> Default for GraphEditorState<NodeData, NodeTemplate> {
   fn default() -> Self {
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
     Self {
-      parents,
-      requiring: Vec::new(),
       graph: Default::default(),
       node_order: Vec::new(),
       node_positions: Default::default(),
@@ -33,6 +30,18 @@ impl Default for ShardViewer {
       ongoing_box_selection: None,
       node_factory: None,
       all_templates: Vec::new(),
+    }
+  }
+}
+
+impl Default for ShardViewer {
+  fn default() -> Self {
+    let mut parents = ParamVar::default();
+    parents.set_name(PARENTS_UI_NAME);
+    Self {
+      parents,
+      requiring: Vec::new(),
+      state: Default::default(),
     }
   }
 }
@@ -150,8 +159,8 @@ impl ShardViewer {
       .map(|s| s.to_str().unwrap())
       .collect();
     shards.sort();
-    let templates = shards.iter().map(|s| NodeTemplate::new(s));
-    self.all_templates.extend(templates);
+    let templates = shards.iter().map(|s| ShardTemplate::new(s));
+    self.state.all_templates.extend(templates);
   }
 
   fn show(&mut self, ui: &mut egui::Ui) {
@@ -184,14 +193,15 @@ impl ShardViewer {
     let mut drag_released_on_background = false;
 
     /* Draw nodes */
-    for node_id in self.node_order.iter().copied() {
+    for node_id in self.state.node_order.iter().copied() {
       let responses = GraphNodeWidget {
-        position: self.node_positions.get_mut(node_id).unwrap(),
-        graph: &mut self.graph,
+        position: self.state.node_positions.get_mut(node_id).unwrap(),
+        graph: &mut self.state.graph,
         node_rects: &mut node_rects,
         node_id,
         pan: editor_rect.min.to_vec2(),
         selected: self
+          .state
           .selected_nodes
           .iter()
           .any(|selected| *selected == node_id),
@@ -215,7 +225,7 @@ impl ShardViewer {
 
     /* Draw the node factory, if open */
     let mut should_close_node_factory = false;
-    if let Some(ref mut node_factory) = self.node_factory {
+    if let Some(ref mut node_factory) = self.state.node_factory {
       let mut node_factory_area = egui::Area::new("node_factory")
         .order(egui::Order::Foreground)
         .movable(false);
@@ -223,15 +233,16 @@ impl ShardViewer {
         node_factory_area = node_factory_area.current_pos(pos);
       }
       node_factory_area.show(ui.ctx(), |ui| {
-        if let Some(template) = node_factory.show(ui, &self.all_templates) {
+        if let Some(template) = node_factory.show(ui, &self.state.all_templates) {
           let new_node = self
+            .state
             .graph
-            .add_node(template.node_factory_label().into(), template.clone());
-          self.node_positions.insert(
+            .add_node(template.node_factory_label().into(), template.build_node());
+          self.state.node_positions.insert(
             new_node,
             node_factory.position.unwrap_or(cursor_pos) - editor_rect.min.to_vec2(),
           );
-          self.node_order.push(new_node);
+          self.state.node_order.push(new_node);
           should_close_node_factory = true;
         }
         let factory_rect = ui.min_rect();
@@ -244,50 +255,51 @@ impl ShardViewer {
       });
     }
     if should_close_node_factory {
-      self.node_factory = None;
+      self.state.node_factory = None;
     }
 
     /* Handle responses from drawing nodes */
     for response in delayed_responses.iter() {
       match response {
         NodeResponse::DeleteNodeUi(node_id) => {
-          self.graph.remove_node(*node_id);
-          self.node_positions.remove(*node_id);
+          self.state.graph.remove_node(*node_id);
+          self.state.node_positions.remove(*node_id);
           // Make sure to not leave references to old nodes hanging
-          self.selected_nodes.retain(|id| *id != *node_id);
-          self.node_order.retain(|id| *id != *node_id);
+          self.state.selected_nodes.retain(|id| *id != *node_id);
+          self.state.node_order.retain(|id| *id != *node_id);
         }
         NodeResponse::MoveNode {
           node_id,
           drag_delta,
         } => {
-          self.node_positions[*node_id] += *drag_delta;
+          self.state.node_positions[*node_id] += *drag_delta;
           // Handle multi-node selection movement
-          if self.selected_nodes.contains(node_id) && self.selected_nodes.len() > 1 {
-            for n in self.selected_nodes.iter().copied() {
+          if self.state.selected_nodes.contains(node_id) && self.state.selected_nodes.len() > 1 {
+            for n in self.state.selected_nodes.iter().copied() {
               if n != *node_id {
-                self.node_positions[n] += *drag_delta;
+                self.state.node_positions[n] += *drag_delta;
               }
             }
           }
         }
         NodeResponse::RaiseNode(node_id) => {
           let old_pos = self
+            .state
             .node_order
             .iter()
             .position(|id| *id == *node_id)
             .expect("Node to be raised should be in `node_order`");
-          self.node_order.remove(old_pos);
-          self.node_order.push(*node_id);
+          self.state.node_order.remove(old_pos);
+          self.state.node_order.push(*node_id);
         }
         NodeResponse::SelectNode(node_id) => {
-          self.selected_nodes = Vec::from([*node_id]);
+          self.state.selected_nodes = Vec::from([*node_id]);
         }
       }
     }
 
     // Box selection
-    if let Some(box_start) = self.ongoing_box_selection {
+    if let Some(box_start) = self.state.ongoing_box_selection {
       let selection_rect = egui::Rect::from_two_pos(cursor_pos, box_start);
       let bg_color = egui::Color32::from_rgba_unmultiplied(200, 200, 200, 20);
       let stroke_color = egui::Color32::from_rgba_unmultiplied(200, 200, 200, 180);
@@ -298,7 +310,7 @@ impl ShardViewer {
         egui::Stroke::new(3.0, stroke_color),
       );
 
-      self.selected_nodes = node_rects
+      self.state.selected_nodes = node_rects
         .into_iter()
         .filter_map(|(node_id, rect)| {
           if selection_rect.intersects(rect) {
@@ -313,23 +325,23 @@ impl ShardViewer {
     /* Mouse input handling */
     let mouse = &ui.ctx().input().pointer;
     if mouse.secondary_released() && cursor_in_editor && !cursor_in_factory {
-      self.node_factory = Some(NodeFactory::new_at(cursor_pos));
+      self.state.node_factory = Some(NodeFactory::new_at(cursor_pos));
     }
     if ui.ctx().input().key_pressed(egui::Key::Escape) {
-      self.node_factory = None;
+      self.state.node_factory = None;
     }
     // Deselect and deactivate factory if the editor backround is clicked,
     // *or* if the the mouse clicks off the ui
     if click_on_background || (mouse.any_click() && !cursor_in_editor) {
-      self.selected_nodes = Vec::new();
-      self.node_factory = None;
+      self.state.selected_nodes = Vec::new();
+      self.state.node_factory = None;
     }
 
     if drag_started_on_background && mouse.primary_down() {
-      self.ongoing_box_selection = Some(cursor_pos);
+      self.state.ongoing_box_selection = Some(cursor_pos);
     }
     if mouse.primary_released() || drag_released_on_background {
-      self.ongoing_box_selection = None;
+      self.state.ongoing_box_selection = None;
     }
   }
 }

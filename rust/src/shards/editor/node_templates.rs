@@ -10,53 +10,66 @@ use egui::{Response, Ui};
 use std::ffi::CStr;
 use std::ptr::slice_from_raw_parts;
 
-pub(crate) struct NodeTemplate {
+#[derive(Clone)]
+pub(crate) struct ShardTemplate {
+  name: &'static str,
+  help: &'static str,
+}
+
+impl ShardTemplate {
+  pub fn new(name: &'static str) -> Self {
+    let instance = createShard(name);
+    let help = instance.help();
+    let help = unsafe {
+      if help.string == std::ptr::null_mut() {
+        ""
+      } else {
+        let slice = CStr::from_ptr(help.string);
+        slice.to_str().unwrap_or("")
+      }
+    };
+
+    Self { name, help }
+  }
+}
+
+impl NodeTemplateTrait for ShardTemplate {
+  type NodeData = ShardData;
+
+  fn node_factory_description(&self) -> &str {
+    self.help
+  }
+
+  fn node_factory_label(&self) -> &str {
+    self.name
+  }
+
+  fn build_node(&self) -> Self::NodeData {
+    ShardData::new(self.name)
+  }
+}
+
+impl UIRenderer for ShardTemplate {
+  fn ui(&mut self, ui: &mut Ui) -> Response {
+    ui.label(self.help)
+  }
+}
+
+pub(crate) struct ShardData {
   name: &'static str,
   instance: ShardInstance,
 }
 
-impl Clone for NodeTemplate {
-  fn clone(&self) -> Self {
-    // FIXME for now just create a new instance, but we might have to copy some stuff (like parameters' values)
-    Self::new(self.name)
-  }
-}
-
-impl NodeTemplate {
-  pub fn new(name: &'static str) -> Self {
+impl ShardData {
+  fn new(name: &'static str) -> Self {
     Self {
       name,
       instance: createShard(name),
     }
   }
-
-  pub fn name(&self) -> &'static str {
-    self.name
-  }
 }
 
-// note: trait redirection because enum items are not considered types yet
-// FIXME maybe there is a better way, but all this code will eventually disappear once we "generate" it for each shard.
-
-impl NodeTemplateTrait for NodeTemplate {
-  fn node_factory_label(&self) -> &str {
-    self.name()
-  }
-
-  fn node_factory_description(&self) -> &str {
-    let str = self.instance.help();
-    unsafe {
-      if str.string == std::ptr::null_mut() {
-        self.node_factory_label()
-      } else {
-        let slice = CStr::from_ptr(str.string);
-        slice.to_str().unwrap_or(self.node_factory_label())
-      }
-    }
-  }
-}
-
-impl UIRenderer for NodeTemplate {
+impl UIRenderer for ShardData {
   fn ui(&mut self, ui: &mut Ui) -> Response {
     ui.vertical(|ui| {
       let params = self.instance.parameters();

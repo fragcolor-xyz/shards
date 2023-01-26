@@ -8,10 +8,8 @@ use crate::types::ParamVar;
 use egui::{Pos2, Vec2};
 use slotmap::{SecondaryMap, SlotMap};
 
-struct ShardViewer {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-  graph: Graph<NodeTemplate>,
+struct GraphEditorState<NodeData, NodeTemplate> {
+  graph: Graph<NodeData>,
   /// Nodes are drawn in this order. Draw order is important because nodes
   /// that are drawn last are on top.
   node_order: Vec<NodeId>,
@@ -24,8 +22,14 @@ struct ShardViewer {
   ongoing_box_selection: Option<egui::Pos2>,
   /// The node factory.
   node_factory: Option<NodeFactory<NodeTemplate>>,
-  // FIXME find a better way to list all templates
+  // The node templates.
   all_templates: Vec<NodeTemplate>,
+}
+
+struct ShardViewer {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  state: GraphEditorState<ShardData, ShardTemplate>,
 }
 
 mod shard_viewer;

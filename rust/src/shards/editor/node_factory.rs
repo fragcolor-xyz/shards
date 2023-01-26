@@ -5,17 +5,17 @@ use super::util::ColorUtils;
 use egui::{Color32, Frame, Key, Pos2, ScrollArea, Stroke, Ui, Vec2};
 use std::marker::PhantomData;
 
-pub(crate) struct NodeFactory<NodeData> {
+pub(crate) struct NodeFactory<NodeTemplate> {
   pub query: String,
   pub position: Option<Pos2>,
   just_spawned: bool,
   markdown_cache: egui_commonmark::CommonMarkCache,
-  _phantom: PhantomData<NodeData>,
+  _phantom: PhantomData<NodeTemplate>,
 }
 
-impl<NodeData> NodeFactory<NodeData>
+impl<NodeTemplate> NodeFactory<NodeTemplate>
 where
-  NodeData: NodeTemplateTrait,
+  NodeTemplate: NodeTemplateTrait,
 {
   pub fn new_at(pos: Pos2) -> Self {
     Self {
@@ -27,7 +27,7 @@ where
     }
   }
 
-  pub fn show(&mut self, ui: &mut Ui, templates: &Vec<NodeData>) -> Option<NodeData> {
+  pub fn show(&mut self, ui: &mut Ui, templates: &Vec<NodeTemplate>) -> Option<NodeTemplate> {
     let (background_color, text_color) = if ui.visuals().dark_mode {
       (
         Color32::from_hex("#3f3f3f").unwrap(),
@@ -92,11 +92,15 @@ where
 }
 
 pub(crate) trait NodeTemplateTrait: Clone {
+  type NodeData;
+
   fn node_factory_label(&self) -> &str;
 
   fn node_factory_description(&self) -> &str {
     self.node_factory_label()
   }
+
+  fn build_node(&self) -> Self::NodeData;
 }
 
 // FIXME need a display name for each template
