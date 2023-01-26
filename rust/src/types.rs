@@ -542,7 +542,9 @@ impl From<SHParametersInfo> for &[SHParameterInfo] {
 Static common type infos utility
 */
 pub mod common_type {
+  use crate::shardsc::util_type2Name;
   use crate::shardsc::SHStrings;
+  use crate::shardsc::SHType;
   use crate::shardsc::SHTypeInfo;
   use crate::shardsc::SHTypeInfo_Details;
   use crate::shardsc::SHTypeInfo_Details_Table;
@@ -572,6 +574,7 @@ pub mod common_type {
   use crate::shardsc::SHType_Table;
   use crate::shardsc::SHType_Wire;
   use crate::shardsc::SHTypesInfo;
+  use std::ffi::CStr;
 
   const fn base_info() -> SHTypeInfo {
     SHTypeInfo {
@@ -590,6 +593,14 @@ pub mod common_type {
   }
 
   pub static none: SHTypeInfo = base_info();
+
+  pub fn type2name(value_type: SHType) -> &'static str {
+    unsafe {
+      let ptr = util_type2Name(value_type);
+      let s = CStr::from_ptr(ptr);
+      s.to_str().unwrap()
+    }
+  }
 
   macro_rules! shtype {
     ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident, $names_var:ident, $name_table:ident, $name_table_var:ident) => {

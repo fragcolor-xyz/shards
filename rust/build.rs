@@ -29,6 +29,7 @@ fn generate_shardsc() {
     .allowlist_type("SH.*")
     .allowlist_var("SH.*")
     .allowlist_function("SH.*")
+    .allowlist_function("util_.*")
     .clang_arg(format!("-I{}", shards_include_dir))
     .clang_arg(format!("-I{}/src", shards_dir))
     .derive_default(true)

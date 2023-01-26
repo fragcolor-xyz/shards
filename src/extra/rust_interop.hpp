@@ -16,6 +16,8 @@ extern "C" {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
 
+SHString const util_type2Name(SHType type);
+
 // gfx::GraphicsContext::Type
 SHTypeInfo *gfx_getGraphicsContextType();
 const char *gfx_getGraphicsContextVarName();

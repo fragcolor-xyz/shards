@@ -10,99 +10,72 @@
 #include <string>
 #include <string_view>
 
-inline std::string type2Name(SHType type) {
-  std::string name = "";
+static const char *type2Name_raw(SHType type) {
   switch (type) {
   case SHType::EndOfBlittableTypes:
     // this should never happen
     throw shards::SHException("EndOfBlittableTypes and Error are invalid types");
   case SHType::None:
-    name = "None";
-    break;
+    return "None";
   case SHType::Any:
-    name = "Any";
-    break;
+    return "Any";
   case SHType::Object:
-    name = "Object";
-    break;
+    return "Object";
   case SHType::Enum:
-    name = "Enum";
-    break;
+    return "Enum";
   case SHType::Bool:
-    name = "Bool";
-    break;
+    return "Bool";
   case SHType::Bytes:
-    name = "Bytes";
-    break;
+    return "Bytes";
   case SHType::Int:
-    name = "Int";
-    break;
+    return "Int";
   case SHType::Int2:
-    name = "Int2";
-    break;
+    return "Int2";
   case SHType::Int3:
-    name = "Int3";
-    break;
+    return "Int3";
   case SHType::Int4:
-    name = "Int4";
-    break;
+    return "Int4";
   case SHType::Int8:
-    name = "Int8";
-    break;
+    return "Int8";
   case SHType::Int16:
-    name = "Int16";
-    break;
+    return "Int16";
   case SHType::Float:
-    name = "Float";
-    break;
+    return "Float";
   case SHType::Float2:
-    name = "Float2";
-    break;
+    return "Float2";
   case SHType::Float3:
-    name = "Float3";
-    break;
+    return "Float3";
   case SHType::Float4:
-    name = "Float4";
-    break;
+    return "Float4";
   case SHType::Color:
-    name = "Color";
-    break;
+    return "Color";
   case SHType::Wire:
-    name = "Wire";
-    break;
+    return "Wire";
   case SHType::ShardRef:
-    name = "Shard";
-    break;
+    return "Shard";
   case SHType::String:
-    name = "String";
-    break;
+    return "String";
   case SHType::ContextVar:
-    name = "ContextVar";
-    break;
+    return "ContextVar";
   case SHType::Path:
-    name = "Path";
-    break;
+    return "Path";
   case SHType::Image:
-    name = "Image";
-    break;
+    return "Image";
   case SHType::Audio:
-    name = "Audio";
-    break;
+    return "Audio";
   case SHType::Seq:
-    name = "Seq";
-    break;
+    return "Seq";
   case SHType::Table:
-    name = "Table";
-    break;
+    return "Table";
   case SHType::Set:
-    name = "Set";
-    break;
+    return "Set";
   case SHType::Array:
-    name = "Array";
-    break;
+    return "Array";
   }
-  return name;
+  return "";
 }
+
+inline std::string type2Name(SHType type) { return type2Name_raw(type); }
 
 ALWAYS_INLINE inline bool operator!=(const SHVar &a, const SHVar &b);
 ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b);

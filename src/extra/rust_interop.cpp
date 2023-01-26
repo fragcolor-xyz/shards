@@ -10,6 +10,8 @@ using namespace gfx;
 using namespace shards;
 using GFXTypes = gfx::Types;
 
+SHString const util_type2Name(SHType type) { return type2Name_raw(type); }
+
 SHTypeInfo *gfx_getGraphicsContextType() {
   static SHTypeInfo type = gfx::GraphicsContext::Type;
   return &type;
