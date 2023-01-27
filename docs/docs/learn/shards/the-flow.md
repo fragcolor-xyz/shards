@@ -10,10 +10,11 @@ To gain better control of the flow in your Shards program, you can employ some o
 
 `Do` disables passthrough, while `Dispatch` has it enabled. This means that `Dispatch` will have its output ignored at the end, while an output can be retrieved from the end of a Wire started with `Do`.
 
+![Difference in Passthrough.](assets/do-dispatch-difference.png)
+
 In the example below, John starts with five apples. He wishes to share them equally with a friend, and thus checks if it can be divided by two. He then takes another apple and checks again. We define two Wires - `add-apple` and `can-it-be-shared` to carry out these tasks.
 
 === "Command"
-
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
     
@@ -41,8 +42,7 @@ In the example below, John starts with five apples. He wishes to share them equa
     1. [`Math.Mod`](../../../reference/shards/Math/Mod/) divides a value by the number specified and returns the remainder. 
 
 === "Output"
-
-    ```
+    ```{.clojure .annotate linenums="1"}
     [can-it-be-shared] No
     [add-apple] Adding an apple...
     [can-it-be-shared] Yes
@@ -57,12 +57,17 @@ In the example below, John starts with five apples. He wishes to share them equa
 
 The difference between `Detach` and `Spawn` is that `Detach` schedules the original Wire itself, while `Spawn` schedules clones of the Wire. This means that there can only be one instance of the detached Wire running, while you can have many instances of the spawned Wire.
 
+![Detach schedules the original Wire.](assets/detach.png)
+
+![Spawn schedules clones of the original Wire.](assets/spawn.png)
+
 `Detach` allows you to pause your current Wire to run the detached Wire by calling the `Wait` shard. It is useful when you have to pause a Wire's execution to wait for something. Use cases would include pausing a program to wait for a file to upload, or waiting for an online transaction to go through.
+
+![Detach allows you to pause your current Wire to run the detached Wire by calling Wait.](assets/detach-wait.png)
 
 Back to our previous example with apples, if John now requires some time to juice each apple before taking another, we could use `Detach` and `Wait` to implement this. Note how Lucy continues to take apples while John is still making apple juice.
 
 === "Command"
-
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
 
@@ -96,8 +101,7 @@ Back to our previous example with apples, if John now requires some time to juic
     2. [`Pause`](../../../reference/shards/General/Pause/) pauses the Wire by the specified amount of seconds.
 
 === "Output"
-
-    ```
+    ```{.clojure .annotate linenums="1"}
     [john] Taking an apple!
     [take-an-apple] Actor: John
     [take-an-apple] Setup: 10
@@ -130,7 +134,6 @@ If you tried `(Detach juice-apple)` for Lucy too, you will notice that the juici
 Now say we have a large oven which can bake multiple apples concurrently. We can use `Spawn` to make clones of a `bake-apple` Wire that can be scheduled to run together.
 
 === "Command"
-
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
 
@@ -157,12 +160,10 @@ Now say we have a large oven which can bake multiple apples concurrently. We can
     (schedule main john)
     (schedule main lucy)
     (run main 1 4)
-
     ```
 
 === "Output"
-
-    ```
+    ```{.clojure .annotate linenums="1"}
     [john] Taking an apple!
     [take-an-apple] Actor: John
     [take-an-apple] Apples Remaining: 9
@@ -260,8 +261,7 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
     3. `(/ 1 60)` is read as "1 divided by 60". It is used to get the program to run at 60 FPS (Frames Per Second).
 
 === "Output"
-
-    ```
+    ```{.clojure .annotate linenums="1"}
     [john] Lucy, you can take as much as you want first.
     [lucy] Taking an apple!
     [take-an-apple] Apples Remaining: 9
@@ -313,8 +313,7 @@ For our example, we use `Stop` to end `bake-apple` looped Wires after they itera
     ```
 
 === "Output"
-
-    ```
+    ```{.clojure .annotate linenums="1"}
     [john] Baking Apple...
     [bake-apple-1] Started Baking
     [bake-apple-1] Time Baked: 1
@@ -357,11 +356,11 @@ Being scheduled on a Wire allows the stepped Wire to share the same scope and en
 
 Most of the methods described in this chapter will only "snapshot" the variables of the Wire that called it. That is, it makes a copy of variables existing in the original Wire so that the Wire called knows what those variables are and can work with them.
 
-Changes made to variables that are copied will not be reflected on the original. `Step` is unique in the sense that it has access to the original variables. Changes made to variables from the Wire that called it will persist.
+**Changes made to variables that are copied will not be reflected on the original.** `Step` is unique in the sense that it has access to the original variables. Changes made to variables from the Wire that called it will persist.
 
 ### Example
 
-In the example below, we demonstrate how the main Looped Wired `john` continues to run and `Step` into the Wire `take-an-apple` even when the Wire `bake-apple` is paused after stepping into it. `bake-apple` cannot be stepped into again when it is paused due to how it is still running.
+In the example below, we demonstrate how the main Looped Wired `john` continues to run even when the Wire `bake-apple` is paused after stepping into it. `bake-apple` cannot be stepped into again when it is paused due to how it is still running.
 
 The example also showcases how variables defined in `john` are affected by changes made to it by the stepped Wires.
 
@@ -393,15 +392,13 @@ The example also showcases how variables defined in `john` are affected by chang
 
     (schedule main john)
     (run main 1 5)
-
     ```
 
     1. This Wire increases the value of `.fresh-apples` every time it is stepped into.
     2. This Wire decreases the value of `.fresh-apples`, pauses the Wire for 1 second, and increases the value of `.baked-apples` every time it is stepped into.
 
 === "Output"
-
-    ```
+    ```{.clojure .annotate linenums="1"}
     [take-an-apple] Taking an apple...
     [take-an-apple] Fresh Apple (+1): 6
     [bake-apple] Baking apple...
@@ -422,13 +419,190 @@ The example also showcases how variables defined in `john` are affected by chang
     [bake-apple] Baked Apple (+1): 2
     ```
 
-<!-- TODO Branch / Stepmany --> 
+## Stepmany
+
+- Takes a sequence as input.
+
+- `Step`s clones of a Wire for each value in the sequence.
+
+[`Stepmany`](../../../reference/shards/General/Stepmany) can be used when you wish to `Step` the same Wire multiple times.
+
+!!! note
+    When using `Step`, any variables from the Wire being Stepped from can be modified. As such, it cannot be used interchangeably with `Spawn` that makes a copy of the original variables instead.
+
+In the example below, five different copies of `take-an-apple` are scheduled on the main Looped Wire `box-of-apples`. Each copy has a different waiting time which we specify in the array passed into `StepMany`.
+
+=== "Command"
+    ```{.clojure .annotate linenums="1"}
+    (defmesh main)
+
+    (defloop take-apple
+      (Msg "\n") ;; (1)
+      (Setup 0 >= .time-before-taking-apple)
+      > .time-before-taking-apple (Log "Wait time")
+      (Msg "Waiting to take apple...")
+      (Pause .time-before-taking-apple) (Math.Dec .fresh-apples)
+      (Msg "\n")
+      (Msg "Took an apple!")
+      .fresh-apples (Log "Apples left"))
+
+    (defloop box-of-apples
+      (Setup
+       100 >= .fresh-apples)
+      [1, 5, 1, 3, 2] (StepMany take-apple))
+
+    (schedule main box-of-apples)
+    (run main 1 10)
+    ```
+
+    1. `\n` is used in `Msg` to create a newline. This makes the results more readable as you can see in "Output".
+
+=== "Output"
+    ```{.clojure .annotate linenums="1"}
+    [take-apple-1] Wait time: 1
+    [take-apple-1] Waiting to take apple...
+    [take-apple-2]
+    
+    [take-apple-2] Wait time: 5
+    [take-apple-2] Waiting to take apple...
+    [take-apple-3]
+    
+    [take-apple-3] Wait time: 1
+    [take-apple-3] Waiting to take apple...
+    [take-apple-4]
+    
+    [take-apple-4] Wait time: 3
+    [take-apple-4] Waiting to take apple...
+    [take-apple-5]
+    
+    [take-apple-5] Wait time: 2
+    [take-apple-5] Waiting to take apple...
+    [take-apple-1]
+    
+    [take-apple-1] Took an apple!
+    [take-apple-1] Apples left: 99
+    [take-apple-3]
+    
+    [take-apple-3] Took an apple!
+    [take-apple-3] Apples left: 98
+    [take-apple-1]
+    
+    [take-apple-1] Wait time: 1
+    [take-apple-1] Waiting to take apple...
+    [take-apple-3]
+    
+    [take-apple-3] Wait time: 1
+    [take-apple-3] Waiting to take apple...
+    [take-apple-5]
+    
+    [take-apple-5] Took an apple!
+    [take-apple-5] Apples left: 97
+    [take-apple-1]
+    
+    [take-apple-1] Took an apple!
+    [take-apple-1] Apples left: 96
+    [take-apple-3]
+    
+    [take-apple-3] Took an apple!
+    [take-apple-3] Apples left: 95
+    [take-apple-4]
+    
+    [take-apple-4] Took an apple!
+    [take-apple-4] Apples left: 94
+    [take-apple-5]
+    
+    [take-apple-5] Wait time: 2
+    [take-apple-5] Waiting to take apple...
+    [take-apple-1]
+    
+    [take-apple-1] Wait time: 1
+    [take-apple-1] Waiting to take apple...
+    [take-apple-3]
+    
+    [take-apple-3] Wait time: 1
+    [take-apple-3] Waiting to take apple...
+    [take-apple-4]
+    
+    [take-apple-4] Wait time: 3
+    [take-apple-4] Waiting to take apple...
+    [take-apple-1]
+    
+    [take-apple-1] Took an apple!
+    [take-apple-1] Apples left: 93
+    [take-apple-2]
+    
+    [take-apple-2] Took an apple!
+    [take-apple-2] Apples left: 92
+    [take-apple-3]
+    
+    [take-apple-3] Took an apple!
+    [take-apple-3] Apples left: 91
+    [take-apple-5]
+    
+    [take-apple-5] Took an apple!
+    [take-apple-5] Apples left: 90
+    [take-apple-1]
+    
+    [take-apple-1] Wait time: 1
+    [take-apple-1] Waiting to take apple...
+    [take-apple-2]
+    
+    [take-apple-2] Wait time: 5
+    [take-apple-2] Waiting to take apple...
+    [take-apple-3]
+    
+    [take-apple-3] Wait time: 1
+    [take-apple-3] Waiting to take apple...
+    [take-apple-5]
+    
+    [take-apple-5] Wait time: 2
+    [take-apple-5] Waiting to take apple...
+    [take-apple-4]
+    
+    [take-apple-4] Took an apple!
+    [take-apple-4] Apples left: 89
+    [take-apple-1]
+    
+    [take-apple-1] Took an apple!
+    [take-apple-1] Apples left: 88
+    [take-apple-3]
+    
+    [take-apple-3] Took an apple!
+    [take-apple-3] Apples left: 87
+    [take-apple-4]
+    
+    [take-apple-4] Wait time: 3
+    [take-apple-4] Waiting to take apple...
+    [take-apple-1]
+    
+    [take-apple-1] Wait time: 1
+    [take-apple-1] Waiting to take apple...
+    [take-apple-3]
+    
+    [take-apple-3] Wait time: 1
+    [take-apple-3] Waiting to take apple...
+    [take-apple-5]
+    
+    [take-apple-5] Took an apple!
+    [take-apple-5] Apples left: 86
+    ```
+
+## Branch
+
+[`Branch`](../../../reference/shards/General/Branch) is used when you wish to create a Submesh on the current Mesh. You can schedule Wires on the Submesh by placing Wires in its `Wires` parameter. These Wires will behave as if they were run with `Step`.
+
+=== "Syntax"
+    ```{.clojure .annotate linenums="1"}
+    (Branch [wire-x, wire-y, wire-z]) ;; (1)
+    ```
+
+    1. You can schedule as many Wires as you wish within the square brackets here. In this example, three Wires are scheduled on the Submesh.
 
 ## Expand
 
-- Creates and schedules copies of a Wire
+- Creates and schedules copies of a Wire.
 
-- Returns an array of the output from all the copies
+- Returns an array of the output from all the copies.
 
 [`Expand`](../../../reference/shards/General/Expand) is useful when you need to run code in bulk. The results produced can then be evaluated, which is useful in Machine Learning for example.
 
@@ -463,8 +637,7 @@ In our example below, we will be using `Expand` to teach John about multiplicati
     3. `Expand` outputs an array of the results. We use [`ForEach`](../../../reference/shards/General/ForEach/) to check if each result [`Is`](../../../reference/shards/General/Is/) 0.
 
 === "Output"
-
-    ```
+    ```{.clojure .annotate linenums="1"}
     [learn-zero-multiplication] true
     [learn-zero-multiplication] true
     [learn-zero-multiplication] true
@@ -490,5 +663,8 @@ In our example below, we will be using `Expand` to teach John about multiplicati
 | Start    | X                        | O              | X                | X                   | 
 | Resume   | X                        | O              | O                | O                   |  
 | Step     | O                        | O              | O                | O                   | 
+| StepMany | O                        | O              | O                | X                   |
+| Branch   | O                        | X              | O                | O                   |
+| Expand   | O                        | O              | O                | X                   |
 
 --8<-- "includes/license.md"
