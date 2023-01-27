@@ -6,6 +6,7 @@
 #include <gfx/gizmos/shapes.hpp>
 #include <input/input.hpp>
 #include <float.h>
+#include <magic_enum.hpp>
 
 using namespace gfx;
 namespace shards::spatial {
@@ -48,6 +49,12 @@ void Context::prepareInputs(input::InputBuffer &input, gfx::float2 inputToViewSc
   float uiToWorldScale = 1.0f / virtualPointScale;
 
   lastFocusedPanel = focusedPanel;
+
+  // Reset focused panel when the cursor is moved
+  bool haveAnyPointerEvents = pointerInputs.size() > 0;
+  if (haveAnyPointerEvents)
+    focusedPanel.reset();
+
   for (auto &evt : pointerInputs) {
     for (size_t panelIndex = 0; panelIndex < panels.size(); panelIndex++) {
       auto &panel = panels[panelIndex];
@@ -139,16 +146,18 @@ void Context::evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime) {
       pointerGone.type = egui::InputEventType::PointerGone;
       eguiInputTranslator.pushEvent(evt);
 
-      // Simulate deselect
+      // Simulate deselect by simulating up/down for all buttons
       auto &pointerButton = evt.pointerButton;
-      pointerButton.type = egui::InputEventType::PointerButton;
-      pointerButton.button = egui::PointerButton::Primary;
-      pointerButton.pos = egui::toPos2(float2(-1, -1));
-      pointerButton.type = egui::InputEventType::PointerButton;
-      pointerButton.pressed = true;
-      eguiInputTranslator.pushEvent(evt);
-      pointerButton.pressed = false;
-      eguiInputTranslator.pushEvent(evt);
+      for (auto &button : magic_enum::enum_values<egui::PointerButton>()) {
+        pointerButton.type = egui::InputEventType::PointerButton;
+        pointerButton.button = button;
+        pointerButton.pos = egui::toPos2(float2(-1, -1));
+        pointerButton.type = egui::InputEventType::PointerButton;
+        pointerButton.pressed = true;
+        eguiInputTranslator.pushEvent(evt);
+        pointerButton.pressed = false;
+        eguiInputTranslator.pushEvent(evt);
+      }
     }
 
     for (auto &pointerInput : pointerInputs) {
