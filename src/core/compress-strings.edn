@@ -3,14 +3,22 @@
 
 ; we compress a shards script that will populate the strings at runtime
 
+; retrieve from shards by computing info
+(map
+ (fn* [name] (shard-info name))
+ (shards))
+
+; compute the full payload
 (def strings (export-strings))
 
 (defn process [s] [(nth s 0) (nth s 1)])
 
 (def payload (apply vector (map process strings)))
 
+; print it
 (prn payload)
 
+; compress to header
 (defwire compress-wire
    payload
    (ToBytes) >= .source
