@@ -431,15 +431,10 @@ struct ExpectLike {
 };
 
 template <SHType ET> struct IsX {
-  static inline Type outputType{{ET}};
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(input.valueType != ET)) {
-      return Var::False;
-    } else {
-      return Var::True;
-    }
+    return Var(input.valueType == ET);
   }
 };
 
@@ -636,8 +631,7 @@ void registerCastingShards() {
 
   REGISTER_SHARD("ExpectLike", ExpectLike);
 
-  using IsNone = IsX<SHType::None>;
-  REGISTER_SHARD("IsNone", IsNone);
+  // IsNone is implemented in Core
   using IsInt = IsX<SHType::Int>;
   REGISTER_SHARD("IsInt", IsInt);
   using IsInt2 = IsX<SHType::Int2>;
