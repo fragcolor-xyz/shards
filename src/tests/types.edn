@@ -1,0 +1,14 @@
+(defmesh root)
+
+(defwire test1
+  [2.3 2 "Hello"]
+  (ForEach
+   (->
+    (Log "value")
+    (Cond [(-> (IsInt)) (-> (ExpectInt) (Log "Int Value"))
+           (-> (IsFloat)) (-> (ExpectFloat) (Log "Float Value"))
+           (-> (IsString)) (-> (ExpectString) (Log "String Value"))
+           (-> true) (-> "should not happen" (Fail))]))))
+
+(schedule root test1)
+(if (run root 0.1) nil (throw "Root tick failed"))

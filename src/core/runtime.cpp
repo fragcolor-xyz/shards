@@ -357,7 +357,7 @@ void registerShard(std::string_view name, SHShardConstructor constructor, std::s
 
   auto findIt = GetGlobals().ShardsRegister.find(name);
   if (findIt == GetGlobals().ShardsRegister.end()) {
-    GetGlobals().ShardsRegister.insert(std::make_pair(name, constructor));
+    GetGlobals().ShardsRegister.emplace(name, constructor);
   } else {
     GetGlobals().ShardsRegister[name] = constructor;
     SHLOG_WARNING("Overriding shard: {}", name);
