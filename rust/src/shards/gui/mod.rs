@@ -91,15 +91,15 @@ impl From<EguiId> for egui::Id {
   }
 }
 
+mod egui_host;
+
 struct EguiContext {
-  context: Option<egui::Context>,
-  instance: ParamVar,
+  host: egui_host::EguiHost,
   requiring: ExposedTypes,
   queue: ParamVar,
   contents: ShardsVar,
   graphics_context: ParamVar,
   input_context: ParamVar,
-  parents: ParamVar,
   renderer: egui_gfx::Renderer,
   input_translator: egui_gfx::InputTranslator,
 }

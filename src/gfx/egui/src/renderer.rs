@@ -217,14 +217,18 @@ impl Renderer {
         queue: *const gfx_DrawQueuePtr,
         draw_scale: f32,
     ) -> Result<(), &str> {
+        let native_egui_output = make_native_full_output(ctx, egui_output, draw_scale)?;
+        self.render_with_native_output(&native_egui_output.full_output, queue);
+        Ok(())
+    }
+
+    pub fn render_with_native_output(
+        &self,
+        egui_output: *const egui_FullOutput,
+        queue: *const gfx_DrawQueuePtr,
+    ) {
         unsafe {
-            let native_egui_output = make_native_full_output(ctx, egui_output, draw_scale)?;
-            gfx_EguiRenderer_renderNoTransform(
-                self.egui_renderer,
-                &native_egui_output.full_output,
-                queue,
-            );
-            Ok(())
+            gfx_EguiRenderer_renderNoTransform(self.egui_renderer, egui_output, queue);
         }
     }
 }

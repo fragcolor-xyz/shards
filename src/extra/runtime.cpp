@@ -46,6 +46,14 @@ namespace Gizmos {
 extern void registerShards();
 }
 
+namespace egui {
+extern void registerShards();
+}
+
+namespace Spatial {
+extern void registerShards();
+}
+
 void shInitExtras() {
 #if SHARDS_WITH_RUST_SHARDS
   registerRustShards(shardsInterface(SHARDS_CURRENT_ABI));
@@ -59,7 +67,8 @@ void shInitExtras() {
   Inputs::registerShards();
   Audio::registerShards();
   DSP::registerShards();
-  Gui::registerShards();
+  egui::registerShards();
+  Spatial::registerShards();
 
 #ifdef _WIN32
   Desktop::registerDesktopShards();

@@ -19,7 +19,8 @@ set(extra_SOURCES
   gfx/texture.cpp
   gfx/view.cpp
   gfx/steps.cpp
-  gui.cpp
+  spatial/spatial.cpp
+  egui/pass.cpp
   rust_interop.cpp
   gizmos/context.cpp
   gizmos/gizmos.cpp
@@ -43,7 +44,7 @@ target_link_libraries(shards-extra SDL2)
 
 target_link_libraries(shards-extra
   shards-core
-  stb gfx gfx-gltf gfx-egui input
+  stb gfx gfx-gltf gfx-egui input spatial
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio
   nlohmann_json

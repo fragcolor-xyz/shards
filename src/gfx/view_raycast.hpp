@@ -19,6 +19,7 @@ struct SizedView {
   float4x4 view;
   float4x4 viewInv;
 
+  SizedView() = default;
   SizedView(ViewPtr view, float2 size) : size(size) {
     viewProj = linalg::mul(view->getProjectionMatrix(size), view->view);
     viewProjInv = linalg::inverse(viewProj);

@@ -112,6 +112,9 @@ struct FeatureShard {
 
   IterableExposedInfo _sharedCopy;
 
+  FeaturePtr *_featurePtr{};
+  SHVar _variable{};
+
   void setParam(int index, const SHVar &value) {
     switch (index) {
     default:
@@ -126,8 +129,19 @@ struct FeatureShard {
     }
   }
 
-  void cleanup() {}
-  void warmup(SHContext *context) {}
+  void cleanup() {
+    if (_featurePtr) {
+      clear();
+      Types::FeatureObjectVar.Release(_featurePtr);
+      _featurePtr = nullptr;
+    }
+  }
+
+  void warmup(SHContext *context) {
+    _featurePtr = Types::FeatureObjectVar.New();
+    *_featurePtr = std::make_shared<Feature>();
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     // Capture variables for callbacks
     // TODO: Refactor IterableArray
@@ -454,11 +468,19 @@ struct FeatureShard {
     ForEach(inputSeq, [&](SHVar v) { applyParam(context, feature, v); });
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    FeaturePtr *varPtr = Types::FeatureObjectVar.New();
-    *varPtr = std::make_shared<Feature>();
+  void clear() {
+    Feature &feature = *_featurePtr->get();
+    feature.drawableParameterGenerators.clear();
+    feature.shaderEntryPoints.clear();
+    feature.shaderParams.clear();
+    feature.viewParameterGenerators.clear();
+  }
 
-    Feature &feature = *varPtr->get();
+  SHVar activate(SHContext *context, const SHVar &input) {
+    Feature &feature = *_featurePtr->get();
+
+    // Reset feature first
+    clear();
 
     checkType(input.valueType, SHType::Table, "Input table");
     const SHTable &inputTable = input.payload.tableValue;
@@ -479,7 +501,7 @@ struct FeatureShard {
     if (getFromTable(context, inputTable, "Params", paramsVar))
       applyParams(context, feature, paramsVar);
 
-    return Types::FeatureObjectVar.Get(varPtr);
+    return Types::FeatureObjectVar.Get(_featurePtr);
   }
 };
 

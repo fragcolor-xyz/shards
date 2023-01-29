@@ -93,6 +93,8 @@ int2 Window::getDrawableSize() const {
   return r;
 }
 
+float2 Window::getInputScale() const { return float2(getDrawableSize()) / float2(getSize()); }
+
 int2 Window::getSize() const {
   int2 r;
   SDL_GetWindowSize(window, &r.x, &r.y);
@@ -118,7 +120,7 @@ static float2 getUIScaleFromDisplayDPI(int displayIndex) {
 
 float2 Window::getUIScale() const {
 #if GFX_APPLE
-  // On apply, derive display scale from drawable size / window size
+  // On apple, derive display scale from drawable size / window size
   return float2(getDrawableSize()) / float2(getSize());
 #else
   return getUIScaleFromDisplayDPI(SDL_GetWindowDisplayIndex(window));

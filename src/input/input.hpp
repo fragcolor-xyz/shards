@@ -10,8 +10,8 @@ namespace shards::input {
 enum class ConsumeEventFilter : uint8_t {
   None = 0,
   Keyboard = 1 << 0,
-  PointerDown = 1 << 1,
-  PointerUp = 1 << 2,
+  Mouse = 1 << 1,
+  Touch = 1 << 2,
   Controller = 1 << 3,
 };
 

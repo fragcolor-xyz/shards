@@ -97,6 +97,11 @@ inline void mergeIntoExposedInfo(ExposedInfo &outInfo, const ShardsVar &shardsVa
     outInfo.push_back(info);
 }
 
+inline void mergeIntoExposedInfo(ExposedInfo &outInfo, const SHExposedTypesInfo &otherTypes) {
+  for (size_t i = 0; i < otherTypes.len; i++)
+    outInfo.push_back(otherTypes.elements[i]);
+}
+
 } // namespace shards
 
 #endif /* A16CC8A4_FBC4_4500_BE1D_F565963C9C16 */

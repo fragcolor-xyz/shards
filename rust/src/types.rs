@@ -3452,6 +3452,12 @@ impl ShardsVar {
   }
 }
 
+impl From<&ShardsVar> for Shards {
+  fn from(v: &ShardsVar) -> Self {
+    v.native_shards
+  }
+}
+
 // Enum
 
 #[macro_export]
@@ -3774,15 +3780,23 @@ impl Iterator for SeqIterator {
 }
 
 impl DoubleEndedIterator for SeqIterator {
-    fn next_back(&mut self) -> Option<Self::Item> {
-      let res = if self.i < self.s.s.len {
-        unsafe { Some(*self.s.s.elements.offset((self.s.s.len - self.i - 1).try_into().unwrap())) }
-      } else {
-        None
-      };
-      self.i += 1;
-      res
-    }
+  fn next_back(&mut self) -> Option<Self::Item> {
+    let res = if self.i < self.s.s.len {
+      unsafe {
+        Some(
+          *self
+            .s
+            .s
+            .elements
+            .offset((self.s.s.len - self.i - 1).try_into().unwrap()),
+        )
+      }
+    } else {
+      None
+    };
+    self.i += 1;
+    res
+  }
 }
 
 impl IntoIterator for Seq {
