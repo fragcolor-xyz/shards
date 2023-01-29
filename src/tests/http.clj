@@ -11,6 +11,8 @@
    "Hello world, this is an escaping test ////"
    (String.EncodeURI) (Log)
    (Assert.Is "Hello%20world%2C%20this%20is%20an%20escaping%20test%20%2F%2F%2F%2F" true)
+   (String.DecodeURI) (Log)
+   (Assert.Is "Hello world, this is an escaping test ////" true)
 
                                         ; params
    1 (ToString)

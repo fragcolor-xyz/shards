@@ -55,6 +55,31 @@ inline std::string url_encode(const std::string_view &value) {
   return escaped.str();
 }
 
+inline std::string url_decode(const std::string_view &value) {
+  std::string decoded;
+  decoded.reserve(value.size());
+
+  for (std::size_t i = 0; i < value.size(); ++i) {
+    if (value[i] == '%') {
+      if (i + 3 <= value.size()) {
+        int v = 0;
+        std::istringstream hex_stream(std::string(value.substr(i + 1, 2)));
+        hex_stream >> std::hex >> v;
+        decoded += static_cast<char>(v);
+        i += 2;
+      } else {
+        throw std::runtime_error("Invalid URL encoding");
+      }
+    } else if (value[i] == '+') {
+      decoded += ' ';
+    } else {
+      decoded += value[i];
+    }
+  }
+
+  return decoded;
+}
+
 namespace shards {
 namespace Http {
 #ifdef __EMSCRIPTEN__
@@ -891,6 +916,17 @@ struct EncodeURI {
   }
 };
 
+struct DecodeURI {
+  std::string _output;
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto str = SHSTRVIEW(input);
+    _output = url_decode(str);
+    return Var(_output);
+  }
+};
+
 void registerShards() {
 #ifdef __EMSCRIPTEN__
   REGISTER_SHARD("Http.Get", Get);
@@ -906,6 +942,7 @@ void registerShards() {
   REGISTER_SHARD("Http.SendFile", SendFile);
 #endif
   REGISTER_SHARD("String.EncodeURI", EncodeURI);
+  REGISTER_SHARD("String.DecodeURI", DecodeURI);
 }
 } // namespace Http
 } // namespace shards
