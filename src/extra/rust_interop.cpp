@@ -10,6 +10,10 @@ using namespace gfx;
 using namespace shards;
 using GFXTypes = gfx::Types;
 
+const SHEnumInfo *util_findEnumInfo(int32_t vendorId, int32_t typeId) { return shards::findEnumInfo(vendorId, typeId); }
+
+const SHObjectInfo *util_findObjectInfo(int32_t vendorId, int32_t typeId) { return shards::findObjectInfo(vendorId, typeId); }
+
 SHString const util_type2Name(SHType type) { return type2Name_raw(type); }
 
 SHTypeInfo *gfx_getGraphicsContextType() {
