@@ -7,6 +7,7 @@ use crate::shardsc::*;
 use crate::types::common_type::type2name;
 use crate::types::Var;
 use egui::{Response, Ui};
+use std::collections::BTreeMap;
 use std::ffi::CStr;
 use std::ptr::slice_from_raw_parts;
 
@@ -72,18 +73,80 @@ impl ShardData {
           .iter()
           .enumerate()
           .map(|(i, p)| {
+            let mut enum_type = None;
             let types = p.valueTypes;
-            let types = if types.len > 0 {
+            let mut types = if types.len > 0 {
               let types = core::slice::from_raw_parts(types.elements, types.len as usize);
-              types.iter().map(|t| t.basicType).collect()
+              types
+                .iter()
+                .map(|t| {
+                  if t.basicType == SHType_Enum {
+                    let details = t.details.enumeration;
+                    let info = util_findEnumInfo(details.vendorId, details.typeId)
+                      .as_ref()
+                      .unwrap();
+                    let name = CStr::from_ptr(info.name).to_str().unwrap();
+                    let labels =
+                      core::slice::from_raw_parts(info.labels.elements, info.labels.len as usize);
+                    let labels: Vec<&str> = labels
+                      .iter()
+                      .map(|l| CStr::from_ptr(*l).to_str().unwrap())
+                      .collect();
+                    let descriptions = core::slice::from_raw_parts(
+                      info.descriptions.elements,
+                      info.descriptions.len as usize,
+                    );
+                    let descriptions: Vec<&str> = descriptions
+                      .iter()
+                      .map(|l| {
+                        if l.string == std::ptr::null_mut() {
+                          ""
+                        } else {
+                          CStr::from_ptr(l.string).to_str().unwrap()
+                        }
+                      })
+                      .collect();
+                    let values =
+                      core::slice::from_raw_parts(info.values.elements, info.values.len as usize);
+
+                    assert_eq!(values.len(), labels.len());
+                    assert_eq!(labels.len(), descriptions.len());
+
+                    // FIXME have a cache for enums
+                    // FIXME support multiple enum types
+                    enum_type = Some((
+                      name,
+                      (0..labels.len())
+                        .map(|i| (values[i], (labels[i], descriptions[i])))
+                        .collect(),
+                    ));
+                  }
+                  t.basicType
+                })
+                .collect()
             } else {
               vec![]
             };
-            // FIXME: deal with Any
+            // TODO deal with ContextVar
+            // deal with Any
+            if types.contains(&SHType_Any) {
+              // FIXME might also need Any's ContextVar
+              // FIXME might also need to restore some Enum values
+              //       note: we expect them to be explicitly allowed in the parameter info as we
+              //       can offer all enum types here (except maybe for radio button)
+              types = any_type();
+            }
 
-            let name = CStr::from_ptr(p.name).to_str().unwrap();
+            let type_name = CStr::from_ptr(p.name).to_str().unwrap();
             let initial_value = instance.getParam(i as i32);
-            (name, VarValue::new(&initial_value, types))
+            if let Some((name, values)) = enum_type {
+              (
+                type_name,
+                VarValue::new(&initial_value, types).with_enum_type(name, values),
+              )
+            } else {
+              (type_name, VarValue::new(&initial_value, types))
+            }
           })
           .collect()
       }
@@ -123,6 +186,10 @@ pub(crate) struct VarValue {
   prev_type: SHType,
   // FIXME use this to "restore" previous value
   // prev_value: Option<SHVarPayload>,
+  // FIXME support multiple enum types
+  // FIXME have a cache for enums
+  enum_name: &'static str,
+  enum_values: BTreeMap<i32, (&'static str, &'static str)>,
 }
 
 impl Clone for VarValue {
@@ -153,6 +220,16 @@ impl VarValue {
     cloneVar(&mut ret.value, initial_value);
     ret.prev_type = ret.value.valueType;
     ret
+  }
+
+  pub fn with_enum_type(
+    mut self,
+    name: &'static str,
+    values: BTreeMap<i32, (&'static str, &'static str)>,
+  ) -> Self {
+    self.enum_name = name;
+    self.enum_values = values;
+    self
   }
 }
 
@@ -213,6 +290,22 @@ impl UIRenderer for VarValue {
       unsafe {
         match self.value.valueType {
           SHType_None => ui.label(""),
+          SHType_Enum => {
+            let value = &mut self
+              .value
+              .payload
+              .__bindgen_anon_1
+              .__bindgen_anon_3
+              .enumValue;
+            egui::ComboBox::from_label(self.enum_name)
+              .selected_text(self.enum_values.get(value).unwrap_or(&("", "")).0)
+              .show_ui(ui, |ui| {
+                for i in self.enum_values.keys() {
+                  ui.selectable_value(value, *i, self.enum_values.get(i).unwrap().0);
+                }
+              })
+              .response
+          }
           SHType_Bool => ui.checkbox(&mut self.value.payload.__bindgen_anon_1.boolValue, ""),
           SHType_Int => ui.add(egui::DragValue::new(
             &mut self.value.payload.__bindgen_anon_1.intValue,
