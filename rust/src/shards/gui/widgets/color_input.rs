@@ -184,27 +184,19 @@ impl Shard for ColorInput {
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
-      let color: shardsc::SHColor = if self.variable.is_variable() {
-        unsafe { self.variable.get().payload.__bindgen_anon_1.colorValue }
+      let color = if self.variable.is_variable() {
+        unsafe { &mut self.variable.get_mut().payload.__bindgen_anon_1.colorValue }
       } else {
-        self.tmp
+        &mut self.tmp
       };
       let mut srgba = [color.r, color.g, color.b, color.a];
       ui.color_edit_button_srgba_unmultiplied(&mut srgba);
+      color.r = srgba[0];
+      color.g = srgba[1];
+      color.b = srgba[2];
+      color.a = srgba[3];
 
-      let color = shardsc::SHColor {
-        r: srgba[0],
-        g: srgba[1],
-        b: srgba[2],
-        a: srgba[3],
-      };
-      if self.variable.is_variable() {
-        self.variable.get_mut().payload.__bindgen_anon_1.colorValue = color;
-      } else {
-        self.tmp = color;
-      }
-
-      Ok(color.into())
+      Ok((*color).into())
     } else {
       Err("No UI parent")
     }

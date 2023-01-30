@@ -172,7 +172,7 @@ fn any_type() -> Vec<SHType> {
     SHType_Float2,
     SHType_Float3,
     SHType_Float4,
-    // SHType_Color, // FIXME add support
+    SHType_Color,
     // SHType_ShardRef, // FIXME add support
     // SHType_EndOfBlittableTypes,
     // SHType_Bytes, // FIXME add support
@@ -303,6 +303,16 @@ impl UIRenderer for VarValue {
               ));
             })
             .response
+          }
+          SHType_Color => {
+            let color = &mut self.value.payload.__bindgen_anon_1.colorValue;
+            let mut srgba = [color.r, color.g, color.b, color.a];
+            let response = ui.color_edit_button_srgba_unmultiplied(&mut srgba);
+            color.r = srgba[0];
+            color.g = srgba[1];
+            color.b = srgba[2];
+            color.a = srgba[3];
+            response
           }
           SHType_String => {
             // FIXME need special care for string here
