@@ -179,9 +179,6 @@ impl UIRenderer for ShardData {
 #[derive(Default)]
 pub(crate) struct VarValue {
   value: Var,
-  // FIXME String special case (for now)
-  value_s: String,
-  // ---
   allowed_types: Vec<SHType>,
   prev_type: SHType,
   // FIXME use this to "restore" previous value
@@ -216,7 +213,6 @@ impl VarValue {
       allowed_types,
       ..Default::default()
     };
-    // FIXME deal with the String case
     cloneVar(&mut ret.value, initial_value);
     ret.prev_type = ret.value.valueType;
     ret
@@ -253,7 +249,7 @@ fn any_type() -> Vec<SHType> {
     // SHType_ShardRef, // FIXME add support
     // SHType_EndOfBlittableTypes,
     // SHType_Bytes, // FIXME add support
-    // SHType_String, // FIXME need special handling
+    SHType_String,
     // SHType_Path, // FIXME add support
     // SHType_ContextVar, // FIXME add support
     // SHType_Image, // FIXME add support
@@ -408,8 +404,8 @@ impl UIRenderer for VarValue {
             response
           }
           SHType_String => {
-            // FIXME need special care for string here
-            ui.text_edit_singleline(&mut self.value_s)
+            let mut mutable = &mut self.value;
+            ui.text_edit_singleline(&mut mutable)
           }
           _ => ui.colored_label(egui::Color32::RED, "Type of value not supported."),
         }
