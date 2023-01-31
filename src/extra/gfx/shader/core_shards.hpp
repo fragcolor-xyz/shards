@@ -127,20 +127,130 @@ struct Literal {
     return params;
   };
 
-  void setParam(int index, const SHVar &value) { this->_value = value; }
-  SHVar getParam(int index) { return this->_value; }
+  static inline shards::Types FormatSeqValueTypes{CoreInfo::StringType, shards::Type::VariableOf(CoreInfo::AnyType)};
+  static inline shards::Type FormatSeqType = shards::Type::SeqOf(FormatSeqValueTypes);
 
-  void warmup(SHContext *shContext) { _value.warmup(shContext); }
-  void cleanup() { _value.cleanup(); }
+  PARAM(shards::OwnedVar, _source, "Source", "The WGSL source code to insert", {CoreInfo::StringType, FormatSeqType});
+  PARAM_VAR(_type, "Type", "Where to insert the code.", {ShaderLiteralTypeEnumInfo::Type});
+  PARAM_VAR(_outType, "OutputType", "The type that this code is expected to output. (default: none)",
+            {Types::ShaderFieldBaseTypeEnumInfo::Type});
+  PARAM_VAR(_outDimension, "OutputDimension", "The dimension that this code is expected to output. (default: 4)",
+            {CoreInfo::IntType});
+  PARAM_VAR(_outMatrixDimension, "OutputMatrixDimension",
+            "The matrix dimension that this code is expected to output. (default: 1)", {CoreInfo::IntType});
+  PARAM_IMPL(Literal, PARAM_IMPL_FOR(_source), PARAM_IMPL_FOR(_type), PARAM_IMPL_FOR(_outType), PARAM_IMPL_FOR(_outDimension),
+             PARAM_IMPL_FOR(_outMatrixDimension));
+
+  // Constant for unset OutputType parameter
+  static inline const SHEnum InvalidType = SHEnum(~0);
+
+  shards::Type _outputType{};
+  std::unique_ptr<blocks::Compound> generatedBlock;
+
+  Literal() {
+    _outType.payload.enumValue = InvalidType;
+    _outDimension.payload.intValue = 4;
+    _outMatrixDimension.payload.intValue = 1;
+  }
+
+  std::optional<FieldType> getOutputType() const {
+    int dimension = 4;
+    int matrixDimension = 1;
+    ShaderFieldBaseType baseType = ShaderFieldBaseType::Float32;
+    bool isSet{};
+
+    if (!_outDimension.isNone()) {
+      dimension = int(_outDimension);
+      isSet = true;
+    }
+    if (!_outMatrixDimension.isNone()) {
+      matrixDimension = int(_outMatrixDimension);
+      isSet = true;
+    }
+    if (!_outType.isNone()) {
+      baseType = ShaderFieldBaseType(_outType.payload.enumValue);
+      isSet = true;
+    }
+
+    if (isSet) {
+      return FieldType(baseType, dimension, matrixDimension);
+    }
+    return std::nullopt;
+  }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    auto type = ShaderLiteralType(_type.payload.enumValue);
+
+    auto outputFieldType = getOutputType();
+
+    if (outputFieldType.has_value()) {
+      if (type == ShaderLiteralType::Header) {
+        throw shards::ComposeError("Output type can not be set for Header type shader literals");
+      }
+      _outputType = fieldTypeToShardsType(outputFieldType.value());
+    } else {
+      _outputType = shards::CoreInfo::NoneType;
+    }
+
+    if (_source.valueType == SHType::None)
+      throw shards::ComposeError("Source is required");
+
+    return _outputType;
+  }
+
+  void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
+  void cleanup() { PARAM_CLEANUP(); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
-  void translate(TranslationContext &context) {
-    const SHString &source = _value.get().payload.stringValue;
-    SPDLOG_LOGGER_INFO(context.logger, "gen(direct)> {}", source);
+  void generateSourceElement(TranslationContext &context, blocks::Compound &output, const SHVar &elem) {
+    if (elem.valueType == SHType::String) {
+      output.append(elem.payload.stringValue);
+    } else if (elem.valueType == SHType::ContextVar) {
+      WGSLBlock ref = context.reference(elem.payload.stringValue);
+      output.append(std::move(ref.block));
+    } else {
+      throw std::logic_error("Invalid source type");
+    }
+  }
 
-    context.addNew(blocks::makeBlock<blocks::Direct>(source));
-    context.clearWGSLTop();
+  BlockPtr generateBlock(TranslationContext &context) {
+    if (_source.valueType == SHType::String)
+      return blocks::makeBlock<blocks::Direct>(_source.payload.stringValue);
+    else if (_source.valueType == SHType::Seq) {
+      auto compound = blocks::makeBlock<blocks::Compound>();
+      const SHSeq &formatSeq = _source.payload.seqValue;
+      for (uint32_t i = 0; i < formatSeq.len; i++) {
+        generateSourceElement(context, *compound.get(), formatSeq.elements[i]);
+      }
+      return compound;
+    } else {
+      throw std::logic_error("Invalid source type");
+    }
+  }
+
+  void translate(TranslationContext &context) {
+    auto type = ShaderLiteralType(_type.payload.enumValue);
+
+    bool isDynamic = _source.valueType != SHType::String;
+    SPDLOG_LOGGER_INFO(context.logger, "gen(literal/{})> {}", magic_enum::enum_name(type),
+                       isDynamic ? "dynamic" : _source.payload.stringValue);
+
+    auto outputFieldType = getOutputType();
+    blocks::BlockPtr block;
+    if (type == ShaderLiteralType::Inline) {
+      block = generateBlock(context);
+    } else if (type == ShaderLiteralType::Header) {
+      outputFieldType = std::nullopt;
+      block = blocks::makeBlock<blocks::Header>(generateBlock(context));
+    }
+
+    if (outputFieldType.has_value()) {
+      context.setWGSLTopVar(outputFieldType.value(), std::move(block));
+    } else {
+      context.addNew(std::move(block));
+      context.clearWGSLTop();
+    }
   }
 };
 
