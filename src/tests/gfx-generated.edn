@@ -39,7 +39,7 @@
      (->
       (Shader.SampleTexture "someTexture") (Shader.WriteGlobal "color"))
      :Before ["writeColor"]}]} (GFX.Feature
-                                :Generated generator))
+                                :ViewGenerators generator))
 
 (def timestep (/ 1.0 120.0))
 

@@ -115,20 +115,6 @@ inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &vie
                                           float(viewData.viewport.height)));
 }
 
-inline void collectGeneratedDrawParameters(const FeatureCallbackContext &ctx, const CachedPipeline &pipeline,
-                                           IParameterCollector &collector) {
-  for (auto &gen : pipeline.drawableParameterGenerators) {
-    gen(ctx, collector);
-  }
-}
-
-inline void collectGeneratedViewParameters(const FeatureCallbackContext &ctx, const CachedPipeline &pipeline,
-                                           IParameterCollector &collector) {
-  for (auto &gen : pipeline.viewParameterGenerators) {
-    gen(ctx, collector);
-  }
-}
-
 } // namespace gfx::detail
 
 #endif /* DB3B2F03_117E_49DC_93AA_28A94118C09D */

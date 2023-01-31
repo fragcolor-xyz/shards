@@ -6,6 +6,7 @@
 #include "shader/blocks.hpp"
 #include "shader/wgsl_mapping.hpp"
 #include "shader/log.hpp"
+#include <variant>
 
 using namespace gfx::detail;
 using namespace gfx::shader;
@@ -158,10 +159,18 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
     }
 
     // Store parameter generators
-    for (auto &gen : feature->drawableParameterGenerators)
-      output.drawableParameterGenerators.push_back(gen);
-    for (auto &gen : feature->viewParameterGenerators)
-      output.viewParameterGenerators.push_back(gen);
+    for (const auto &gen : feature->generators) {
+      std::visit(
+          [&](auto arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, FeatureGenerator::PerObject>) {
+              output.perObjectGenerators.push_back(arg);
+            } else if constexpr (std::is_same_v<T, FeatureGenerator::PerView>) {
+              output.perViewGenerators.push_back(arg);
+            }
+          },
+          gen.callback);
+    }
   }
 
   // Set shader generator input mesh format

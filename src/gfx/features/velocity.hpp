@@ -36,12 +36,15 @@ struct Velocity {
 
     FeaturePtr feature = std::make_shared<Feature>();
     feature->pipelineModifier = std::make_shared<PipelineModifier>();
-    feature->drawableParameterGenerators.emplace_back([](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
-      collector.setParam("previousWorld", ctx.cachedDrawable->previousTransform);
+    feature->generators.emplace_back([](FeatureDrawableGeneratorContext &ctx) {
+      // TODO: Cache velocity locally
+      for (size_t i = 0; i < ctx.getSize(); i++) {
+        // ctx.getParameterCollector(i).setParam("previousWorld", ctx.getCachedDrawable(i).previousTransform);
+      }
     });
 
-    feature->viewParameterGenerators.emplace_back([](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
-      collector.setParam("previousView", ctx.cachedView->previousViewTransform);
+    feature->generators.emplace_back([](FeatureViewGeneratorContext &ctx) {
+      ctx.getParameterCollector().setParam("previousView", ctx.cachedView.previousViewTransform);
     });
 
     {

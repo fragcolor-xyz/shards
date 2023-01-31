@@ -28,7 +28,9 @@
 #include "geom.hpp"
 #include "worker_memory.hpp"
 #include "pmr/vector.hpp"
+#include "pmr/unordered_map.hpp"
 #include <functional>
+#include <memory>
 #include <optional>
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/reduce.hpp>
@@ -39,6 +41,7 @@
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
 #include <span>
+#include <type_traits>
 
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
@@ -58,14 +61,25 @@ static MeshPtr fullscreenQuad = []() {
 }();
 
 struct PipelineGroup {
-  std::vector<const IDrawable *> drawables;
-  std::vector<Feature *> baseFeatures;
+  using allocator_type = shards::pmr::PolymorphicAllocator<>;
+
+  shards::pmr::vector<const IDrawable *> drawables;
+  shards::pmr::vector<Feature *> baseFeatures;
   CachedPipelinePtr pipeline;
+
+  GeneratorData *generatorData{};
 
   // Data generator from drawable processor
   TransientPtr prepareData;
 
-  void resetPreRender() { drawables.clear(); }
+  PipelineGroup() = default;
+  PipelineGroup(allocator_type allocator) : drawables(allocator), baseFeatures(allocator) {}
+  PipelineGroup(PipelineGroup &&other) = default;
+  PipelineGroup(PipelineGroup &&other, allocator_type allocator) : drawables(allocator), baseFeatures(allocator) {
+    *this = std::move(other);
+  } 
+  PipelineGroup &operator=(PipelineGroup &&) = default;
+
   void resetPostRender() { prepareData.destroy(); }
 };
 
@@ -74,11 +88,7 @@ struct WorkerData {
   std::unordered_map<Hash128, PipelineGroup> pipelineGroups;
 
   // Reset worker data before rendering
-  void resetPreRender() {
-    hashCache.reset();
-    for (auto &it : pipelineGroups)
-      it.second.resetPreRender();
-  }
+  void resetPreRender() { hashCache.reset(); }
 };
 
 struct FrameStats {
@@ -134,11 +144,9 @@ struct RendererImpl final : public ContextData {
   std::map<DrawableProcessorConstructor, std::shared_ptr<IDrawableProcessor>> drawableProcessors;
 
   // Cache variables
-  std::vector<TexturePtr> renderGraphOutputsTemp;
-  std::unordered_map<Hash128, PipelineGroup> pipelineGroupsTemp;
+  // std::unordered_map<Hash128, PipelineGroup> pipelineGroupsTemp;
   std::list<TransientPtr> processorDynamicValueCleanupQueue;
-  std::vector<Feature *> evaluateFeaturesTemp;
-
+  // std::vector<Feature *> evaluateFeaturesTemp;
   // static thread_local std::vector<std::reference_wrapper<RenderCapture>> renderCaptures;
 
   RendererImpl(Context &context, Renderer &outer) : outer(outer), context(context), workerMemory(), workerData() {}
@@ -242,8 +250,6 @@ struct RendererImpl final : public ContextData {
     viewData.cachedView.touchWithNewTransform(view->view, view->getProjectionMatrix(float2(viewSize)), frameCounter);
 
     // Match with attached outputs in buildRenderGraph
-    // auto &renderGraphOutputs = renderGraphOutputsTemp;
-    // renderGraphOutputs.clear();
     shards::pmr::vector<TexturePtr> renderGraphOutputs(getWorkerMemoryForCurrentFrame());
     if (viewData.renderTarget) {
       for (auto &attachment : viewData.renderTarget->attachments) {
@@ -360,33 +366,82 @@ struct RendererImpl final : public ContextData {
     node.encode = [=, this](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step, viewData); };
   }
 
-  void runGenerators(const std::vector<FeaturePtr> &features, DrawQueuePtr parentQueue, const ViewData &viewData,
-                     IParameterCollector &outParameters) {
-    for (auto &feature : features) {
-      for (auto &generator : feature->generators) {
-        FeatureGenerateContext ctx{outer, outParameters, parentQueue, viewData.view};
-        generator(ctx);
-      }
-    }
-  }
-
   void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const RenderDrawablesStep &step,
                             const ViewData &viewData) {
-    ParameterStorage *baseParameters = getWorkerMemoryForCurrentFrame()->new_object<ParameterStorage>();
-    runGenerators(step.features, step.drawQueue, viewData, *baseParameters);
-
-    DrawQueue &queue = *step.drawQueue.get();
-    evaluateFeaturesTemp.clear();
+    shards::pmr::vector<Feature *> evaluateFeatures(getWorkerMemoryForCurrentFrame());
     for (auto &feature : step.features)
-      evaluateFeaturesTemp.push_back(feature.get());
+      evaluateFeatures.push_back(feature.get());
 
-    renderDrawables(evaluateContext, queue.getDrawables(), evaluateFeaturesTemp, step.sortMode, viewData, baseParameters);
+    renderDrawables(evaluateContext, step.drawQueue, evaluateFeatures, step.sortMode, viewData);
   }
 
-  void renderDrawables(RenderGraphEncodeContext &evaluateContext, const std::vector<const IDrawable *> &drawables,
-                       const std::vector<Feature *> &features, SortMode sortMode, const ViewData &viewData,
-                       const ParameterStorage *baseDrawData = nullptr) {
+  struct FeatureDrawableGeneratorContextImpl final : FeatureDrawableGeneratorContext {
+    PipelineGroup &group;
+    shards::pmr::vector<ParameterStorage> *drawParameters{};
+
+    FeatureDrawableGeneratorContextImpl(PipelineGroup &group, Renderer &renderer, ViewPtr view,
+                                        const detail::CachedView &cachedView, DrawQueuePtr queue)
+        : FeatureDrawableGeneratorContext(renderer, view, cachedView, queue), group(group) {}
+
+    virtual size_t getSize() const override { return group.drawables.size(); }
+
+    virtual IParameterCollector &getParameterCollector(size_t index) override {
+      assert(index <= drawParameters->size());
+      return (*drawParameters)[index];
+    }
+
+    virtual const IDrawable &getDrawable(size_t index) override { return *group.drawables[index]; }
+
+    virtual void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) override {
+      renderer.render(views, pipelineSteps);
+    }
+  };
+
+  struct FeatureViewGenerateContextImpl final : public FeatureViewGeneratorContext {
+    using FeatureViewGeneratorContext::FeatureViewGeneratorContext;
+    ParameterStorage *viewParameters{};
+
+    virtual IParameterCollector &getParameterCollector() override { return *viewParameters; }
+
+    virtual void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) override {
+      renderer.render(views, pipelineSteps);
+    }
+  };
+
+  // Runs all feature generators and returns the resulting generated parameters
+  GeneratorData *runGenerators(PipelineGroup &group, const ViewData &viewData, const DrawQueuePtr &queue) {
+    WorkerMemory &memory = getWorkerMemoryForCurrentFrame();
+
+    GeneratorData *generatorData = memory->new_object<GeneratorData>();
+
+    if (!group.pipeline->perViewGenerators.empty()) {
+      generatorData->viewParameters = memory->new_object<ParameterStorage>();
+
+      FeatureViewGenerateContextImpl viewCtx(outer, viewData.view, viewData.cachedView, queue);
+      viewCtx.viewParameters = generatorData->viewParameters;
+      for (auto &generator : group.pipeline->perViewGenerators) {
+        generator(viewCtx);
+      }
+    }
+
+    if (!group.pipeline->perObjectGenerators.empty()) {
+      generatorData->drawParameters = memory->new_object<shards::pmr::vector<ParameterStorage>>();
+
+      FeatureDrawableGeneratorContextImpl objectCtx(group, outer, viewData.view, viewData.cachedView, queue);
+      objectCtx.drawParameters = generatorData->drawParameters;
+      for (auto &generator : group.pipeline->perObjectGenerators) {
+        generator(objectCtx);
+      }
+    }
+
+    return generatorData;
+  }
+
+  void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr queue,
+                       const shards::pmr::vector<Feature *> &features, SortMode sortMode, const ViewData &viewData) {
     ZoneScoped;
+
+    const std::vector<const IDrawable *> &drawables = queue->getDrawables();
 
     const RenderTargetLayout &rtl = evaluateContext.node.renderTargetLayout;
 
@@ -402,8 +457,10 @@ struct RendererImpl final : public ContextData {
 
     shards::pmr::vector<const IDrawable *> expandedDrawables(workerMemory);
 
-    auto &pipelineGroups = this->pipelineGroupsTemp;
-    pipelineGroups.clear();
+    // auto& pipelineGroups = *workerMemory->new_object<shards::pmr::unordered_map<Hash128, PipelineGroup>>();
+    shards::pmr::unordered_map<Hash128, PipelineGroup> pipelineGroups;
+
+    auto &test = *workerMemory->new_object<PipelineGroup>();
 
     // Compute drawable hashes
     {
@@ -432,7 +489,7 @@ struct RendererImpl final : public ContextData {
 
         auto &entry = getCacheEntry(pipelineGroups, pipelineHash, [&](const Hash128 &hash) {
           // Setup new PipelineGroup with features from step that apply
-          PipelineGroup newGroup;
+          PipelineGroup newGroup(workerMemory);
           for (auto stepFeature : features) {
             newGroup.baseFeatures.push_back(stepFeature);
           }
@@ -498,11 +555,12 @@ struct RendererImpl final : public ContextData {
           .workerMemory = workerMemory,
           .cachedPipeline = cachedPipeline,
           .viewData = viewData,
-          .baseDrawData = baseDrawData,
           .drawables = group.drawables,
+          .generatorData = *group.generatorData,
           .frameCounter = frameCounter,
           .sortMode = sortMode,
       };
+
       auto prepareData = group.pipeline->drawableProcessor->prepare(prepareContext);
       group.prepareData = prepareData;
 
@@ -526,6 +584,9 @@ struct RendererImpl final : public ContextData {
 
       if (group.pipeline->compilationError.has_value())
         continue;
+
+      // Run generators
+      group.generatorData = runGenerators(group, viewData, queue);
 
       // Build draw data
       preparePipelineGroup(group);
@@ -591,14 +652,17 @@ struct RendererImpl final : public ContextData {
     struct StepData {
       MeshDrawable::Ptr drawable;
       FeaturePtr baseFeature;
-      std::vector<const IDrawable *> drawables;
-      std::vector<Feature *> features;
+      DrawQueuePtr queue;
+      shards::pmr::vector<Feature *> features;
     };
 
     std::shared_ptr<StepData> data = std::make_shared<StepData>();
+
     MeshDrawable::Ptr &drawable = data->drawable = std::make_shared<MeshDrawable>(fullscreenQuad);
     FeaturePtr &baseFeature = data->baseFeature = std::make_shared<Feature>();
-    data->drawables.push_back(drawable.get());
+
+    data->queue = std::make_shared<DrawQueue>();
+    data->queue->add(drawable);
 
     data->features.push_back(baseFeature.get());
     for (auto &feature : step.features) {
@@ -622,7 +686,7 @@ struct RendererImpl final : public ContextData {
         data->drawable->parameters.set(frame.name, texture);
       }
 
-      renderDrawables(ctx, data->drawables, data->features, SortMode::Queue, viewData);
+      renderDrawables(ctx, data->queue, data->features, SortMode::Queue, viewData);
     };
   }
 

@@ -170,8 +170,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   }
 
   void generateDrawableData(DrawableData &data, Context &context, const CachedPipeline &cachedPipeline, const IDrawable *drawable,
-                            const ViewData &viewData, const ParameterStorage *baseDrawData, size_t frameCounter,
-                            bool needProjectedDepth = false) {
+                            const ViewData &viewData, const ParameterStorage *baseDrawData, const ParameterStorage *baseViewData,
+                            size_t frameCounter, bool needProjectedDepth = false) {
     ZoneScoped;
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
@@ -228,6 +228,17 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       }
     };
 
+    auto mergeParameters = [&](const ParameterStorage &params) {
+      for (auto &param : params.data)
+        parameters.setParamIfUnset(param.first, param.second);
+      for (auto &param : params.textures) {
+        int32_t targetSlot = mapTextureBinding(param.first.c_str());
+        if (targetSlot >= 0 && !data.textures[targetSlot]) {
+          data.textures[targetSlot] = param.second.texture->contextData.get();
+        }
+      }
+    };
+
     // Grab parameters from material
     if (Material *material = meshDrawable.material.get()) {
       for (auto &pair : material->parameters.basic) {
@@ -246,37 +257,18 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       setTextureParameter(pair.first.c_str(), pair.second.texture);
     }
 
-    // Generate dynamic parameters
-    collectGeneratedDrawParameters(
-        FeatureCallbackContext{
-            .context = context,
-            .drawable = drawable,
-            .cachedDrawable = data.cachedData,
-        },
-        cachedPipeline, parameters);
-
+    // Merge dynamic parameters
     if (baseDrawData) {
-      for (auto &param : baseDrawData->data)
-        parameters.setParamIfUnset(param.first, param.second);
-      for (auto &param : baseDrawData->textures) {
-        int32_t targetSlot = mapTextureBinding(param.first.c_str());
-        if (targetSlot >= 0 && !data.textures[targetSlot]) {
-          data.textures[targetSlot] = param.second.texture->contextData.get();
-        }
-      }
+      mergeParameters(*baseDrawData);
     }
 
-    // Set base parameters where unset
-    for (auto &baseParam : cachedPipeline.baseDrawParameters.data) {
-      parameters.setParamIfUnset(baseParam.first, baseParam.second);
+    // TODO: Temporary until moved into view buffer
+    if (baseViewData) {
+      mergeParameters(*baseViewData);
     }
 
-    for (auto &baseParam : cachedPipeline.baseDrawParameters.textures) {
-      int32_t targetSlot = mapTextureBinding(baseParam.first.c_str());
-      if (targetSlot >= 0 && !data.textures[targetSlot]) {
-        data.textures[targetSlot] = baseParam.second.texture->contextData.get();
-      }
-    }
+    // Merge default parameters
+    mergeParameters(cachedPipeline.baseDrawParameters);
 
     std::shared_ptr<MeshContextData> meshContextData = meshDrawable.mesh->contextData;
 
@@ -392,8 +384,18 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       for (size_t index = 0; index < context.drawables.size(); ++index) {
         const IDrawable *drawable = context.drawables[index];
         auto &drawableData = drawableDatas->emplace_back();
-        generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, context.baseDrawData,
-                             context.frameCounter, needProjectedDepth);
+
+        ParameterStorage *baseDrawData{};
+        if (context.generatorData.drawParameters) {
+          baseDrawData = &(*context.generatorData.drawParameters)[index];
+        }
+
+        // TODO: Move to view buffer
+        // for now merge into draw data
+        ParameterStorage *baseDrawData1 = context.generatorData.viewParameters;
+
+        generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, baseDrawData,
+                             baseDrawData1, context.frameCounter, needProjectedDepth);
       }
     }
 
@@ -452,14 +454,15 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       ParameterStorage viewParameters(allocator);
       setViewParameters(viewParameters, context.viewData);
 
+      // TODO
       // Collect dynamic view parameters
-      collectGeneratedViewParameters(
-          FeatureCallbackContext{
-              .context = context.context,
-              .view = context.viewData.view,
-              .cachedView = &context.viewData.cachedView,
-          },
-          cachedPipeline, viewParameters);
+      // collectGeneratedViewParameters(
+      //     FeatureCallbackContext{
+      //         .context = context.context,
+      //         .view = context.viewData.view,
+      //         .cachedView = &context.viewData.cachedView,
+      //     },
+      //     cachedPipeline, viewParameters);
 
       auto &buffer = prepareData->viewBuffers[0];
       auto &binding = cachedPipeline.viewBuffersBindings[0];

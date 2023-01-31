@@ -7,6 +7,7 @@
 #include "transient_ptr.hpp"
 #include <taskflow/taskflow.hpp>
 #include "pmr/wrapper.hpp"
+#include "pmr/vector.hpp"
 #include <memory>
 
 namespace gfx::detail {
@@ -26,11 +27,11 @@ struct DrawablePrepareContext {
   // View data
   const ViewData &viewData;
 
-  // Base drawable data from generators
-  const ParameterStorage *baseDrawData{};
-
   // The drawables
-  const std::vector<const IDrawable *> &drawables;
+  const shards::pmr::vector<const IDrawable *> &drawables;
+
+  // Data from feature view/drawable generators
+  const GeneratorData &generatorData;
 
   // Global current frame number
   size_t frameCounter;
