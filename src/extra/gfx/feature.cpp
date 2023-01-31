@@ -237,12 +237,12 @@ struct FeatureShard {
     }
 
     SHVar flipFrontFaceVar;
-    if (getFromTable(context, inputTable, "flipFrontFace", flipFrontFaceVar)) {
+    if (getFromTable(context, inputTable, "FlipFrontFace", flipFrontFaceVar)) {
       state.set_flipFrontFace(flipFrontFaceVar.payload.boolValue);
     }
 
     SHVar cullingVar;
-    if (getFromTable(context, inputTable, "culling", cullingVar)) {
+    if (getFromTable(context, inputTable, "Culling", cullingVar)) {
       state.set_culling(cullingVar.payload.boolValue);
     }
   }
