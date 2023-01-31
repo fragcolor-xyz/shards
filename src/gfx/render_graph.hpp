@@ -1,6 +1,7 @@
 #ifndef FBBE103B_4B4A_462F_BE67_FE59A0C30FB5
 #define FBBE103B_4B4A_462F_BE67_FE59A0C30FB5
 
+#include "render_target.hpp"
 #include "renderer_types.hpp"
 #include "fmt.hpp"
 #include <compare>
@@ -115,7 +116,7 @@ private:
 
 struct RenderTargetData {
   struct DepthTarget {
-    Texture *texture;
+    TextureResource texture;
 
     bool operator==(const DepthTarget &other) const { return texture == other.texture; }
     bool operator!=(const DepthTarget &other) const { return !(*this == other); }
@@ -123,7 +124,7 @@ struct RenderTargetData {
 
   struct ColorTarget {
     std::string name;
-    Texture *texture;
+    TextureResource texture;
 
     bool operator==(const ColorTarget &other) const { return name == other.name && texture == other.texture; }
     bool operator!=(const ColorTarget &other) const { return !(*this == other); }
@@ -140,12 +141,12 @@ struct RenderTargetData {
       auto &key = pair.first;
       if (key == "depth") {
         depthTarget = DepthTarget{
-            .texture = attachment.get(),
+            .texture = attachment,
         };
       } else {
         colorTargets.push_back(ColorTarget{
             .name = key,
-            .texture = attachment.get(),
+            .texture = attachment,
         });
       }
 
@@ -160,13 +161,13 @@ struct RenderTargetData {
   void init(const Renderer::MainOutput &mainOutput, TexturePtr depthStencilBuffer) {
     references.push_back(depthStencilBuffer);
     depthTarget = DepthTarget{
-        .texture = depthStencilBuffer.get(),
+        .texture = depthStencilBuffer,
     };
 
     references.push_back(mainOutput.texture);
     colorTargets.push_back(ColorTarget{
         .name = "color",
-        .texture = mainOutput.texture.get(),
+        .texture = mainOutput.texture,
     });
   }
 
@@ -626,8 +627,8 @@ public:
     renderTextureCache.swapBuffers(frameCounter);
   }
 
-  void getFrameTextures(std::vector<TexturePtr> &outFrameTextures, const std::span<TexturePtr> &outputs,
-                        const RenderGraph &graph, size_t frameCounter) {
+  void getFrameTextures(std::vector<TexturePtr> &outFrameTextures, const std::span<TexturePtr> &outputs, const RenderGraph &graph,
+                        size_t frameCounter) {
     outFrameTextures.clear();
     outFrameTextures.reserve(graph.frames.size());
     for (auto &frame : graph.frames) {

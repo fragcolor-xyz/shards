@@ -1,0 +1,27 @@
+(def cube-rotations [(Float3 0 0 0) ; Z-
+                     (Float3 0 180.0 0) ; Z+
+                     (Float3 0 90.0 0) ; X-
+                     (Float3 0 -90.0 0) ; X+
+                     (Float3 -90.0 0) ; Y-
+                     (Float3 90.0 0 0) ; Y+
+                     ])
+(defshards xyz-to-mat []
+  (| (Take 0) >= .x) (| (Take 1) >= .y) (| (Take 2) >= .z)
+  .x (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) >= .rx
+  .y (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) >= .ry
+  .z (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) >= .rz
+  .rx (Math.MatMul .rz) (Math.MatMul .ry))
+
+(defshards render-cubemap [queue features cube-tex]
+  (GFX.Texture :Format TextureFormat.RGBA8Unorm :Resolution :Type TextureType.Cube) >= cube-tex
+  {:Queue queue :Features features} (GFX.DrawablePass) >> .env-steps
+
+  (map
+   (fn* [n]
+        cube-rotations (Take n) (xyz-to-mat) >= .capture-rot-transform
+        (GFX.View .capture-rot-transform) >= .capture-view
+        (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n}}
+                        :Size (Int2 1024) ; Controls cubemap dimensions
+                        :Contents (->
+                                   (GFX.Render :Steps .env-steps :View .capture-view)))
+        (range 0 6))))
