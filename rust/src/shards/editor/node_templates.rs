@@ -73,7 +73,7 @@ impl ShardData {
           .iter()
           .enumerate()
           .map(|(i, p)| {
-            let mut enum_type = None;
+            let mut data = VarValueData::Basic;
             let types = p.valueTypes;
             let mut types = if types.len > 0 {
               let types = core::slice::from_raw_parts(types.elements, types.len as usize);
@@ -114,12 +114,12 @@ impl ShardData {
 
                     // FIXME have a cache for enums
                     // FIXME support multiple enum types
-                    enum_type = Some((
-                      name,
-                      (0..labels.len())
+                    data = VarValueData::Enum {
+                      enum_name: name,
+                      enum_values: (0..labels.len())
                         .map(|i| (values[i], (labels[i], descriptions[i])))
                         .collect(),
-                    ));
+                    };
                   }
                   t.basicType
                 })
@@ -139,14 +139,7 @@ impl ShardData {
 
             let type_name = CStr::from_ptr(p.name).to_str().unwrap();
             let initial_value = instance.getParam(i as i32);
-            if let Some((name, values)) = enum_type {
-              (
-                type_name,
-                VarValue::new(&initial_value, types).with_enum_type(name, values),
-              )
-            } else {
-              (type_name, VarValue::new(&initial_value, types))
-            }
+            (type_name, VarValue::new(&initial_value, types, data))
           })
           .collect()
       }
@@ -176,27 +169,46 @@ impl UIRenderer for ShardData {
   }
 }
 
-#[derive(Default)]
 pub(crate) struct VarValue {
   value: Var,
   allowed_types: Vec<SHType>,
   prev_type: SHType,
   // FIXME use this to "restore" previous value
   // prev_value: Option<SHVarPayload>,
-  // FIXME support multiple enum types
-  // FIXME have a cache for enums
-  enum_name: &'static str,
-  enum_values: BTreeMap<i32, (&'static str, &'static str)>,
+  data: VarValueData,
+}
+
+pub(crate) enum VarValueData {
+  Basic,
+  Enum {
+    enum_name: &'static str,
+    enum_values: BTreeMap<i32, (&'static str, &'static str)>,
+  },
 }
 
 impl Clone for VarValue {
   fn clone(&self) -> Self {
-    VarValue::new(&self.value, self.allowed_types.clone())
+    VarValue::new(&self.value, self.allowed_types.clone(), self.data.clone())
+  }
+}
+
+impl Clone for VarValueData {
+  fn clone(&self) -> Self {
+    match self {
+      VarValueData::Basic => VarValueData::Basic,
+      VarValueData::Enum {
+        enum_name,
+        enum_values,
+      } => VarValueData::Enum {
+        enum_name,
+        enum_values: enum_values.clone(),
+      },
+    }
   }
 }
 
 impl VarValue {
-  pub fn new(initial_value: &Var, allowed_types: Vec<SHType>) -> Self {
+  pub fn new(initial_value: &Var, allowed_types: Vec<SHType>, data: VarValueData) -> Self {
     debug_assert!(allowed_types.len() > 0usize);
     if cfg!(debug_assertions) {
       if !allowed_types.contains(&initial_value.valueType) {
@@ -210,22 +222,13 @@ impl VarValue {
     }
 
     let mut ret = Self {
+      value: Var::default(),
       allowed_types,
-      ..Default::default()
+      prev_type: initial_value.valueType,
+      data,
     };
     cloneVar(&mut ret.value, initial_value);
-    ret.prev_type = ret.value.valueType;
     ret
-  }
-
-  pub fn with_enum_type(
-    mut self,
-    name: &'static str,
-    values: BTreeMap<i32, (&'static str, &'static str)>,
-  ) -> Self {
-    self.enum_name = name;
-    self.enum_values = values;
-    self
   }
 }
 
@@ -263,6 +266,16 @@ fn any_type() -> Vec<SHType> {
   ]
 }
 
+macro_rules! invalid_data {
+  ($ui:ident) => {
+    if cfg!(debug_assertions) {
+      $ui.colored_label(egui::Color32::RED, "Invalid type of VarValueData")
+    } else {
+      $ui.label("")
+    }
+  };
+}
+
 impl UIRenderer for VarValue {
   fn ui(&mut self, ui: &mut Ui) -> Response {
     ui.horizontal(|ui| {
@@ -287,20 +300,28 @@ impl UIRenderer for VarValue {
         match self.value.valueType {
           SHType_None => ui.label(""),
           SHType_Enum => {
-            let value = &mut self
-              .value
-              .payload
-              .__bindgen_anon_1
-              .__bindgen_anon_3
-              .enumValue;
-            egui::ComboBox::from_label(self.enum_name)
-              .selected_text(self.enum_values.get(value).unwrap_or(&("", "")).0)
-              .show_ui(ui, |ui| {
-                for i in self.enum_values.keys() {
-                  ui.selectable_value(value, *i, self.enum_values.get(i).unwrap().0);
-                }
-              })
-              .response
+            if let VarValueData::Enum {
+              enum_name,
+              enum_values,
+            } = &mut self.data
+            {
+              let value = &mut self
+                .value
+                .payload
+                .__bindgen_anon_1
+                .__bindgen_anon_3
+                .enumValue;
+              egui::ComboBox::from_label(*enum_name)
+                .selected_text(enum_values.get(value).unwrap_or(&("", "")).0)
+                .show_ui(ui, |ui| {
+                  for i in enum_values.keys() {
+                    ui.selectable_value(value, *i, enum_values.get(i).unwrap().0);
+                  }
+                })
+                .response
+            } else {
+              invalid_data!(ui)
+            }
           }
           SHType_Bool => ui.checkbox(&mut self.value.payload.__bindgen_anon_1.boolValue, ""),
           SHType_Int => ui.add(egui::DragValue::new(
