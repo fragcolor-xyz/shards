@@ -13,7 +13,6 @@
 #include "shader/textures.hpp"
 #include "shader/fmt.hpp"
 #include "renderer.hpp"
-#include "feature_generate_context.hpp"
 #include "log.hpp"
 #include "graph.hpp"
 #include "hasherxxh128.hpp"
@@ -187,8 +186,8 @@ struct CachedPipeline {
   std::vector<BufferBinding> drawBufferBindings;
 
   // Collected parameter generator
-  std::vector<FeatureParameterGenerator> drawableParameterGenerators;
-  std::vector<FeatureParameterGenerator> viewParameterGenerators;
+  std::vector<FeatureGenerator::PerView> perViewGenerators;
+  std::vector<FeatureGenerator::PerObject> perObjectGenerators;
 
   size_t lastTouched{};
 
@@ -307,20 +306,10 @@ struct CachedDrawable {
 };
 typedef std::shared_ptr<CachedDrawable> CachedDrawablePtr;
 
-struct FeatureGenerateContext : public IFeatureGenerateContext {
-  Renderer &renderer;
-  IParameterCollector &parameterCollector;
-  DrawQueuePtr parentQueue;
-  ViewPtr parentView;
-
-  FeatureGenerateContext(Renderer &renderer, IParameterCollector &parameterCollector, DrawQueuePtr parentQueue, ViewPtr view)
-      : renderer(renderer), parameterCollector(parameterCollector), parentQueue(parentQueue), parentView(view) {}
-
-  virtual Renderer &getRenderer() { return renderer; }
-  virtual DrawQueuePtr getQueue() { return parentQueue; }
-  virtual ViewPtr getView() { return parentView; }
-  virtual IParameterCollector &getParameterCollector() { return parameterCollector; }
-  virtual void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) { renderer.render(views, pipelineSteps); }
+// Data from generators
+struct GeneratorData {
+  ParameterStorage *viewParameters;
+  shards::pmr::vector<ParameterStorage> *drawParameters;
 };
 
 } // namespace gfx::detail
