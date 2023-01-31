@@ -670,8 +670,8 @@ struct RendererImpl final : public ContextData {
   }
 
   void clearOldCacheItems() {
-    clearOldCacheItemsIn(pipelineCache.map, frameCounter, 1000);
-    clearOldCacheItemsIn(viewCache, frameCounter, 1000);
+    clearOldCacheItemsIn(pipelineCache.map, frameCounter, 120 * 60 * 5);
+    clearOldCacheItemsIn(viewCache, frameCounter, 120 * 60 * 5);
   }
 
   void ensureMainOutputCleared() {
