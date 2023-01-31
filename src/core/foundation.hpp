@@ -993,14 +993,14 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 
 #define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
   static inline const char _NAME_##Name[] = #_NAME_;                  \
-  using _NAME_##EnumInfo = TEnumInfo<InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, false>
+  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, false>
 
 #define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
   static inline const char _NAME_##Name[] = #_NAME_;                        \
-  using _NAME_##EnumInfo = TEnumInfo<InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, true>
+  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, true>
 
-#define DECL_ENUM_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, CoreCC, _CC_)
-#define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, CoreCC, _CC_)
+#define DECL_ENUM_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, shards::CoreCC, _CC_)
+#define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, shards::CoreCC, _CC_)
 
 #define SH_CONCAT1(_a_, _b_) _a_##_b_
 #define SH_CONCAT(_a_, _b_) SH_CONCAT1(_a_, _b_)
