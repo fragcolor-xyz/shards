@@ -249,7 +249,7 @@ template <SHType ToType> struct MakeVector {
     static Parameters params = []() {
       Parameters params;
       auto vectorType = VectorTypeLookup::getInstance().get(ToType);
-      auto paramType = getCompatibleUnitType(vectorType->numberType);
+      const Type &paramType = getCompatibleUnitType(vectorType->numberType);
 
       for (size_t i = 0; i < vectorType->dimension; i++) {
         params._infos.emplace_back(componentNames[i].c_str(), Types({Type::VariableOf(paramType), paramType}));
