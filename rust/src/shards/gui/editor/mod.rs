@@ -26,10 +26,10 @@ struct GraphEditorState<NodeData, NodeTemplate> {
   all_templates: Vec<NodeTemplate>,
 }
 
-struct ShardViewer {
+struct ShardViewer<'a> {
   parents: ParamVar,
   requiring: ExposedTypes,
-  state: GraphEditorState<ShardData, ShardTemplate>,
+  state: GraphEditorState<ShardData<'a>, ShardTemplate<'a>>,
 }
 
 mod shard_viewer;

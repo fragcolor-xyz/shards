@@ -12,13 +12,13 @@ use std::ffi::CStr;
 use std::ptr::slice_from_raw_parts;
 
 #[derive(Clone)]
-pub(crate) struct ShardTemplate {
-  name: &'static str,
-  help: &'static str,
+pub(crate) struct ShardTemplate<'a> {
+  name: &'a str,
+  help: &'a str,
 }
 
-impl ShardTemplate {
-  pub fn new(name: &'static str) -> Self {
+impl<'a> ShardTemplate<'a> {
+  pub fn new(name: &'a str) -> Self {
     let instance = createShard(name);
     let help = instance.help();
     let help = unsafe {
@@ -34,8 +34,8 @@ impl ShardTemplate {
   }
 }
 
-impl NodeTemplateTrait for ShardTemplate {
-  type NodeData = ShardData;
+impl<'a> NodeTemplateTrait for ShardTemplate<'a> {
+  type NodeData = ShardData<'a>;
 
   fn node_factory_description(&self) -> &str {
     self.help
@@ -50,20 +50,20 @@ impl NodeTemplateTrait for ShardTemplate {
   }
 }
 
-impl UIRenderer for ShardTemplate {
+impl<'a> UIRenderer for ShardTemplate<'a> {
   fn ui(&mut self, ui: &mut Ui) -> Response {
     ui.label(self.help)
   }
 }
 
-pub(crate) struct ShardData {
-  name: &'static str,
+pub(crate) struct ShardData<'a> {
+  name: &'a str,
   instance: ShardInstance,
-  params: Vec<(&'static str, VarValue)>,
+  params: Vec<(&'a str, VarValue<'a>)>,
 }
 
-impl ShardData {
-  fn new(name: &'static str) -> Self {
+impl<'a> ShardData<'a> {
+  fn new(name: &'a str) -> Self {
     let instance = createShard(name);
     let params = instance.parameters();
     let params = if params.len > 0 {
@@ -155,7 +155,7 @@ impl ShardData {
   }
 }
 
-impl UIRenderer for ShardData {
+impl<'a> UIRenderer for ShardData<'a> {
   fn ui(&mut self, ui: &mut Ui) -> Response {
     egui::Grid::new(self.name)
       .show(ui, |ui| {
@@ -169,37 +169,37 @@ impl UIRenderer for ShardData {
   }
 }
 
-pub(crate) struct VarValue {
+pub(crate) struct VarValue<'a> {
   value: Var,
   allowed_types: Vec<SHType>,
   prev_type: SHType,
   // FIXME use this to "restore" previous value
   // prev_value: Option<SHVarPayload>,
-  data: VarValueData,
+  data: VarValueData<'a>,
 }
 
-pub(crate) enum VarValueData {
+pub(crate) enum VarValueData<'a> {
   Basic,
   Enum {
-    enum_name: &'static str,
-    enum_values: BTreeMap<i32, (&'static str, &'static str)>,
+    enum_name: &'a str,
+    enum_values: BTreeMap<i32, (&'a str, &'a str)>,
   },
 }
 
-impl Clone for VarValue {
+impl<'a> Clone for VarValue<'a> {
   fn clone(&self) -> Self {
     VarValue::new(&self.value, self.allowed_types.clone(), self.data.clone())
   }
 }
 
-impl Clone for VarValueData {
+impl<'a> Clone for VarValueData<'a> {
   fn clone(&self) -> Self {
     match self {
-      VarValueData::Basic => VarValueData::Basic,
-      VarValueData::Enum {
+      Self::Basic => Self::Basic,
+      Self::Enum {
         enum_name,
         enum_values,
-      } => VarValueData::Enum {
+      } => Self::Enum {
         enum_name,
         enum_values: enum_values.clone(),
       },
@@ -207,8 +207,8 @@ impl Clone for VarValueData {
   }
 }
 
-impl VarValue {
-  pub fn new(initial_value: &Var, allowed_types: Vec<SHType>, data: VarValueData) -> Self {
+impl<'a> VarValue<'a> {
+  pub fn new(initial_value: &Var, allowed_types: Vec<SHType>, data: VarValueData<'a>) -> Self {
     debug_assert!(allowed_types.len() > 0usize);
     if cfg!(debug_assertions) {
       if !allowed_types.contains(&initial_value.valueType) {
@@ -276,7 +276,7 @@ macro_rules! invalid_data {
   };
 }
 
-impl UIRenderer for VarValue {
+impl<'a> UIRenderer for VarValue<'a> {
   fn ui(&mut self, ui: &mut Ui) -> Response {
     ui.horizontal(|ui| {
       egui::ComboBox::from_id_source(("VarValue", "type"))

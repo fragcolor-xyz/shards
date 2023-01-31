@@ -34,7 +34,7 @@ impl<NodeData, NodeTemplate> Default for GraphEditorState<NodeData, NodeTemplate
   }
 }
 
-impl Default for ShardViewer {
+impl<'a> Default for ShardViewer<'a> {
   fn default() -> Self {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
@@ -46,7 +46,7 @@ impl Default for ShardViewer {
   }
 }
 
-impl Shard for ShardViewer {
+impl<'a> Shard for ShardViewer<'a> {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -152,7 +152,7 @@ impl Shard for ShardViewer {
 // (schedule root main-wire)
 // (run root)
 
-impl ShardViewer {
+impl<'a> ShardViewer<'a> {
   fn init(&mut self) {
     let mut shards: Vec<&str> = getShards()
       .into_iter()
