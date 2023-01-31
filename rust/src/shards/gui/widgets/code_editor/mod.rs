@@ -7,8 +7,6 @@ use super::CodeEditor;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
-use crate::shards::gui::ImmutableVar;
-use crate::shards::gui::MutableVar;
 use crate::shards::gui::EGUI_UI_SEQ_TYPE;
 use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
@@ -232,10 +230,10 @@ impl Shard for CodeEditor {
       let mut mutable;
       let mut immutable;
       let text: &mut dyn egui::TextBuffer = if self.mutable_text {
-        mutable = MutableVar(self.variable.get_mut());
+        mutable = self.variable.get_mut();
         &mut mutable
       } else {
-        immutable = ImmutableVar(self.variable.get());
+        immutable = self.variable.get();
         &mut immutable
       };
       let code_editor = egui::TextEdit::multiline(text)

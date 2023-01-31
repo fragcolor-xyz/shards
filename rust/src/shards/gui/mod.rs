@@ -113,16 +113,13 @@ mod properties;
 mod util;
 mod widgets;
 
-struct MutableVar<'a>(&'a mut Var);
-struct ImmutableVar<'a>(&'a Var);
-
-impl egui::TextBuffer for ImmutableVar<'_> {
+impl egui::TextBuffer for &Var {
   fn is_mutable(&self) -> bool {
     false
   }
 
   fn as_str(&self) -> &str {
-    (self.0).try_into().unwrap()
+    self.as_ref().try_into().unwrap()
   }
 
   fn insert_text(&mut self, _text: &str, _char_index: usize) -> usize {
@@ -132,17 +129,17 @@ impl egui::TextBuffer for ImmutableVar<'_> {
   fn delete_char_range(&mut self, _char_range: std::ops::Range<usize>) {}
 }
 
-impl egui::TextBuffer for MutableVar<'_> {
+impl egui::TextBuffer for &mut Var {
   fn is_mutable(&self) -> bool {
     true
   }
 
   fn as_str(&self) -> &str {
-    self.0.as_ref().try_into().unwrap()
+    self.as_ref().try_into().unwrap()
   }
 
   fn insert_text(&mut self, text: &str, char_index: usize) -> usize {
-    let byte_idx = if !self.0.is_string() {
+    let byte_idx = if !self.is_string() {
       0usize
     } else {
       self.byte_index_from_char_index(char_index)
@@ -151,9 +148,8 @@ impl egui::TextBuffer for MutableVar<'_> {
     let text_len = text.len();
     let (current_len, current_cap) = unsafe {
       (
-        self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
+        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
         self
-          .0
           .payload
           .__bindgen_anon_1
           .__bindgen_anon_2
@@ -164,12 +160,12 @@ impl egui::TextBuffer for MutableVar<'_> {
     if current_cap == 0usize {
       // new string
       let tmp = Var::ephemeral_string(text);
-      cloneVar(self.0, &tmp);
+      cloneVar(self, &tmp);
     } else if (current_cap - current_len) >= text_len {
       // text can fit within existing capacity
       unsafe {
         let base_ptr =
-          self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
+          self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
         // move the rest of the string to the end
         std::ptr::copy(
           base_ptr.add(byte_idx),
@@ -181,7 +177,7 @@ impl egui::TextBuffer for MutableVar<'_> {
         std::ptr::copy_nonoverlapping(bytes, base_ptr.add(byte_idx), text_len);
         // update the length
         let new_len = current_len + text_len;
-        self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
+        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
         // fixup null-terminator
         *base_ptr.add(new_len) = 0;
       }
@@ -189,7 +185,7 @@ impl egui::TextBuffer for MutableVar<'_> {
       let mut str = String::from(self.as_str());
       str.insert_str(byte_idx, text);
       let tmp = Var::ephemeral_string(str.as_str());
-      cloneVar(self.0, &tmp);
+      cloneVar(self, &tmp);
     }
 
     text.chars().count()
@@ -207,9 +203,9 @@ impl egui::TextBuffer for MutableVar<'_> {
     }
 
     unsafe {
-      let current_len = self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize;
+      let current_len = self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize;
       let base_ptr =
-        self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
+        self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char;
       // move rest of the text at the deletion location
       std::ptr::copy(
         base_ptr.add(byte_end),
@@ -218,7 +214,7 @@ impl egui::TextBuffer for MutableVar<'_> {
       );
       // update the length
       let new_len = current_len - byte_end + byte_start;
-      self.0.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
+      self.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = new_len as u32;
       // fixup null-terminator
       *base_ptr.add(new_len) = 0;
     }
