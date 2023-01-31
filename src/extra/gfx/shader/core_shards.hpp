@@ -10,8 +10,22 @@
 #include "translator_utils.hpp"
 #include "composition.hpp"
 #include <nameof.hpp>
+#include "params.hpp"
 
 #include "shards/core.hpp"
+
+namespace gfx::shader {
+enum class ShaderLiteralType {
+  Inline,
+  Header,
+};
+}
+
+DECL_ENUM_INFO(gfx::shader::ShaderLiteralType, ShaderLiteralType, '_slt');
+ENUM_HELP(gfx::shader::ShaderLiteralType, gfx::shader::ShaderLiteralType::Inline,
+          SHCCSTR("Insert shader code directly into current scope"));
+ENUM_HELP(gfx::shader::ShaderLiteralType, gfx::shader::ShaderLiteralType::Header,
+          SHCCSTR("Insert shader code into header, where it is defined before all shards shader code"));
 
 namespace gfx {
 namespace shader {
@@ -116,16 +130,11 @@ struct TakeTranslator {
 };
 
 struct Literal {
-  shards::ParamVar _value;
-
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
-  SHParametersInfo parameters() {
-    static shards::Parameters params = {
-        {"Source", SHCCSTR("The shader source to insert"), {CoreInfo::StringOrStringVar}},
-    };
-    return params;
-  };
+  SHTypesInfo outputTypes() {
+    static shards::Types types{CoreInfo::AnyType, CoreInfo::NoneType};
+    return types;
+  }
 
   static inline shards::Types FormatSeqValueTypes{CoreInfo::StringType, shards::Type::VariableOf(CoreInfo::AnyType)};
   static inline shards::Type FormatSeqType = shards::Type::SeqOf(FormatSeqValueTypes);
@@ -145,7 +154,6 @@ struct Literal {
   static inline const SHEnum InvalidType = SHEnum(~0);
 
   shards::Type _outputType{};
-  std::unique_ptr<blocks::Compound> generatedBlock;
 
   Literal() {
     _outType.payload.enumValue = InvalidType;

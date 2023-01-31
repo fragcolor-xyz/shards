@@ -35,7 +35,10 @@ struct PushTranslator {
 
 void registerCoreShards() {
   // Literal copy-paste into shader code
+  REGISTER_ENUM(ShaderLiteralTypeEnumInfo);
   REGISTER_SHADER_SHARD("Shader.Literal", Literal);
+
+  // Basic IO
   REGISTER_SHADER_SHARD("Shader.ReadInput", gfx::shader::Read<blocks::ReadInput>);
   REGISTER_SHADER_SHARD("Shader.ReadBuffer", gfx::shader::ReadBuffer);
   REGISTER_SHADER_SHARD("Shader.ReadGlobal", gfx::shader::Read<blocks::ReadGlobal>);
@@ -43,8 +46,11 @@ void registerCoreShards() {
   REGISTER_SHADER_SHARD("Shader.WriteOutput", gfx::shader::Write<blocks::WriteOutput>);
   REGISTER_SHADER_SHARD("Shader.SampleTexture", gfx::shader::SampleTexture);
   REGISTER_SHADER_SHARD("Shader.SampleTextureUV", gfx::shader::SampleTextureUV);
+
+  // Utilities
   REGISTER_SHADER_SHARD("Shader.LinearizeDepth", gfx::shader::LinearizeDepth);
 
+  // Variable manipulation
   REGISTER_EXTERNAL_SHADER_SHARD(ConstTranslator, "Const", shards::Const);
   REGISTER_EXTERNAL_SHADER_SHARD_T1(SetTranslator, "Set", shards::Set);
   REGISTER_EXTERNAL_SHADER_SHARD_T1(SetTranslator, "Ref", shards::Ref);
