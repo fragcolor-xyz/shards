@@ -1,0 +1,14 @@
+(def timestep (/ 1.0 120.0))
+
+(defmesh root)
+(defloop content
+  (Setup
+   0.0 >= .time)
+  .time (Math.Add timestep) > .time
+  (Maybe
+   (WireLoader (Wire* "main.edn"))
+   :Else (Pause 1.0)))
+(schedule root
+          (Wire "main-loop-wire" :Looped :LStack
+                (GFX.MainWindow :Title "SDL Window" :Width 1280 :Height 720 :IgnoreCompilationErrors true :Contents (Step content))))
+(run root timestep)

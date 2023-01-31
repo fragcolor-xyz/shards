@@ -1,0 +1,71 @@
+(defshards skybox-vs []
+  (Shader.ReadGlobal "localPosition") (ToFloat3) (Math.Multiply 20.0)  >= .local-pos
+
+  (Shader.ReadBuffer "view" :BufferName "view") >= .view
+  (Shader.ReadBuffer "proj" :BufferName "view") >= .proj
+  .local-pos (ToFloat4) >= .local-pos-4
+  .view (Math.MatMul .local-pos-4) (Math.Add (Float4 0 0 0 1)) >= .view-pos-4
+  .proj (Math.MatMul .view-pos-4) >= .screen-pos
+
+  .screen-pos (Shader.WriteGlobal "screenPosition"))
+
+(defshards skybox-fs []
+  (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/atmosphere.wgsl"))
+  (Shader.ReadInput "worldNormal") (Math.Normalize) >= .ray-dir
+  (Float3 0) >= .ray-start
+  9999999999999999999999.0 >= .ray-length
+
+  (Float3 1.0 1.0 -0.2) (Math.Normalize) >= .light-dir
+  (Float3 1.0 1.0 1.0) >= .light-color
+
+  (Shader.Literal ["
+  let _DrawPlanet = 0;
+  if (_DrawPlanet == 1) {
+    let planetIntersection = PlanetIntersection(" .ray-start ", " .ray-dir ");
+    if (planetIntersection.x > 0.0) { " .ray-length " = min (" .ray-length ", planetIntersection.x); }
+  }
+                                                                          "])
+
+  (Shader.Literal "var transmittance : vec3<f32> = vec3<f32>(0.0);")
+  (Shader.Literal ["IntegrateScattering(" .ray-start ", " .ray-dir ", " .ray-length ", " .light-dir ", " .light-color ", &transmittance)"] :OutputDimension 3)
+  (ToFloat4) (Math.Add (Float4 0 0 0 1)) 
+  (Shader.WriteOutput "color"))
+
+(defshards sky-object-fs []
+  (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/atmosphere.wgsl"))
+  (Shader.ReadInput "worldNormal") (Math.Normalize) >= .ray-dir
+  (Float3 0) >= .ray-start
+  9999999999999999999999.0 >= .ray-length
+
+  (Float3 1.0 1.0 -0.2) (Math.Normalize) >= .light-dir
+  (Float3 1.0 1.0 1.0) >= .light-color
+
+  (Shader.Literal ["
+  let _DrawPlanet = 0;
+  if (_DrawPlanet == 1) {
+    let planetIntersection = PlanetIntersection(" .ray-start ", " .ray-dir ");
+    if (planetIntersection.x > 0.0) { " .ray-length " = min (" .ray-length ", planetIntersection.x); }
+  }
+                                                                          "])
+
+  (Shader.Literal "var transmittance : vec3<f32> = vec3<f32>(0.0);")
+  (Shader.Literal ["IntegrateScattering(" .ray-start ", " .ray-dir ", " .ray-length ", " .light-dir ", " .light-color ", &transmittance)"] :OutputDimension 3)
+  (ToFloat4) (Math.Add (Float4 0 0 0 1)) 
+  (Shader.WriteOutput "color"))
+
+(defn setup-skybox-pass [out-pass]
+  (Setup
+   (GFX.DrawQueue) >= .sky-queue
+
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) >= .skybox-mesh
+   {:Mesh .skybox-mesh} (GFX.Drawable) (GFX.Draw .sky-queue)
+
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .sky-features
+   {:State {:FlipFrontFace true :DepthWrite false}
+    :Shaders [{:Stage ProgrammableGraphicsStage.Vertex
+               :EntryPoint (skybox-vs)
+               :After ["initScreenPosition"]
+               :Before ["writePosition"]}
+              {:Stage ProgrammableGraphicsStage.Fragment
+               :EntryPoint (skybox-fs)}]} (GFX.Feature) >> .sky-features
+   {:Features .sky-features :Queue .sky-queue} (GFX.DrawablePass) >= out-pass))
