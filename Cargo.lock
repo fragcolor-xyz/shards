@@ -4518,9 +4518,9 @@ dependencies = [
 
 [[package]]
 name = "webbrowser"
-version = "0.8.7"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97d1fa1e5c829b2bf9eb1e28fb950248b797cd6a04866fbdfa8bc31e5eef4c78"
+checksum = "aa61ff77f695a94d9c8558e0bb5c362a8fd1f27c74663770fbc633acbafedbb6"
 dependencies = [
  "core-foundation",
  "dirs",
@@ -4531,6 +4531,8 @@ dependencies = [
  "raw-window-handle",
  "url",
  "web-sys",
+ "widestring",
+ "winapi",
 ]
 
 [[package]]
@@ -4559,6 +4561,12 @@ dependencies = [
  "bytemuck",
  "safe_arch 0.6.0",
 ]
+
+[[package]]
+name = "widestring"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "653f141f39ec16bba3c5abe400a0c60da7468261cc2cbf36805022876bc721a8"
 
 [[package]]
 name = "winapi"
