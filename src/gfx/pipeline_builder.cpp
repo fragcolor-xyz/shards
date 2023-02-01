@@ -1,4 +1,5 @@
 #include "pipeline_builder.hpp"
+#include "enums.hpp"
 #include "renderer_types.hpp"
 #include "shader/uniforms.hpp"
 #include "log.hpp"
@@ -9,6 +10,7 @@
 #include "shader/log.hpp"
 #include <memory>
 #include <variant>
+#include <webgpu-headers/webgpu.h>
 
 using namespace gfx::detail;
 using namespace gfx::shader;
@@ -244,7 +246,17 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
       textureBinding.visibility = WGPUShaderStage_Fragment;
       textureBinding.texture.multisampled = false;
       textureBinding.texture.sampleType = WGPUTextureSampleType_Float;
-      textureBinding.texture.viewDimension = WGPUTextureViewDimension_2D;
+      switch (desc.type) {
+      case TextureType::D1:
+        textureBinding.texture.viewDimension = WGPUTextureViewDimension_1D;
+        break;
+      case TextureType::D2:
+        textureBinding.texture.viewDimension = WGPUTextureViewDimension_2D;
+        break;
+      case TextureType::Cube:
+        textureBinding.texture.viewDimension = WGPUTextureViewDimension_Cube;
+        break;
+      }
 
       WGPUBindGroupLayoutEntry &samplerBinding = bindGroupLayoutEntries.emplace_back();
       samplerBinding.binding = desc.defaultSamplerBinding;
@@ -456,7 +468,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 void PipelineBuilder::collectTextureBindings() {
   for (auto &feature : features) {
     for (auto &textureParam : feature->textureParams) {
-      textureBindings.addOrUpdateSlot(textureParam.name, 0);
+      textureBindings.addOrUpdateSlot(textureParam.name, textureParam.type, 0);
     }
   }
 

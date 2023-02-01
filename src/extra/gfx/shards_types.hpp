@@ -82,8 +82,9 @@ struct Container {
   OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
   OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue)
-  OBJECT('tex_', "GFX.Texture", Texture, TexturePtr)
-  OBJECT('rtex', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
+  OBJECT('tex2', "GFX.Texture2D", Texture, TexturePtr)
+  OBJECT('texc', "GFX.TextureCube", TextureCube, TexturePtr)
+  OBJECT('__RT', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
 
   DECL_ENUM_INFO(gfx::WindingOrder, WindingOrder, '_e0');
   DECL_ENUM_INFO(gfx::ShaderFieldBaseType, ShaderFieldBaseType, '_e1');
@@ -301,12 +302,11 @@ struct Container {
   // Valid types for shader :Params
   static inline Type ShaderParamTable = Type::TableOf(ShaderParamTypes);
 
-  static inline Types TextureTypes = {{
-      Texture,
-  }};
+  static inline Types TextureTypes{Texture, TextureCube};
 
   static inline Types TextureVarTypes = {{
       Type::VariableOf(Texture),
+      Type::VariableOf(TextureCube),
   }};
 
   // Valid types for shader :Textures

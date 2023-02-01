@@ -26,12 +26,12 @@ int2 RenderTarget::computeSize(int2 mainOutputSize) const {
   return result;
 }
 
-const TextureResource &RenderTarget::getAttachment(const std::string &name) const {
+const TextureSubResource &RenderTarget::getAttachment(const std::string &name) const {
   auto it = attachments.find(name);
   if (it != attachments.end())
     return it->second;
 
-  static TextureResource None{TexturePtr()};
+  static TextureSubResource None{TexturePtr()};
   return None;
 }
 } // namespace gfx

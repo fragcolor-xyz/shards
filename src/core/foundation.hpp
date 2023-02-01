@@ -1332,18 +1332,28 @@ struct VariableResolver {
 };
 
 template <typename T> T *varAsObjectChecked(const SHVar &var, const shards::Type &type) {
+  // auto getObjectTypeName = [](SHTypeInfo type) {
+  //     auto objectInfo = shards::findObjectInfo(var.payload.objectVendorId, var.payload.objectTypeId);
+  //     auto name = objectInfo ? objectInfo->name : "<unknown>";
+  // };
+
   SHTypeInfo typeInfo(type);
   if (var.valueType != SHType::Object) {
+    auto err = fmt::format("Invalid type, expected: {} got: {}", type, magic_enum::enum_name(var.valueType));
     assert(false);
     throw std::logic_error("Invalid type");
   }
   if (var.payload.objectVendorId != typeInfo.object.vendorId) {
+    auto err = fmt::format("Invalid object vendor id, expected: {} got: {}", type,
+                           Type::Object(var.payload.objectVendorId, var.payload.objectTypeId));
     assert(false);
-    throw std::logic_error("Invalid object vendor id");
+    throw std::logic_error(err);
   }
   if (var.payload.objectTypeId != typeInfo.object.typeId) {
+    auto err = fmt::format("Invalid object type id, expected: {} got: {}", type,
+                           Type::Object(var.payload.objectVendorId, var.payload.objectTypeId));
     assert(false);
-    throw std::logic_error("Invalid object type id");
+    throw std::logic_error(err);
   }
   return reinterpret_cast<T *>(var.payload.objectValue);
 }

@@ -3,13 +3,19 @@
 
 // Required before shard headers
 #include "../shards_types.hpp"
+#include "extra/gfx/shader/wgsl.hpp"
+#include "gfx/enums.hpp"
+#include "gfx/error_utils.hpp"
+#include "gfx/shader/uniforms.hpp"
 #include "magic_enum.hpp"
 #include "number_types.hpp"
+#include "shards.h"
 #include "shards/shared.hpp"
 #include "translator.hpp"
 #include "translator_utils.hpp"
 #include "composition.hpp"
 #include <nameof.hpp>
+#include <stdexcept>
 #include "params.hpp"
 
 #include "shards/core.hpp"
@@ -437,6 +443,21 @@ struct SampleTexture {
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
+  SHTypeInfo compose(SHInstanceData &data) {
+    auto name = (const char *)_name;
+    auto &shaderCtx = ShaderCompositionContext::get();
+    auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
+    auto it = textures.find(name);
+    if (it == textures.end()) {
+      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
+    }
+    if (it->second.type != TextureType::D2) {
+      throw formatException("SampleTexture does not support texture for type [{}]", magic_enum::enum_name(it->second.type));
+    }
+
+    return outputTypes().elements[0];
+  }
+
   void translate(TranslationContext &context) {
     const SHString &textureName = _name.payload.stringValue;
     SPDLOG_LOGGER_INFO(context.logger, "gen(sample)> {}", textureName);
@@ -445,7 +466,7 @@ struct SampleTexture {
   }
 };
 
-struct SampleTextureUV : public SampleTexture {
+struct SampleTextureCoord : public SampleTexture {
   static inline shards::Types uvTypes{CoreInfo::Float4Type, CoreInfo::Float3Type, CoreInfo::Float2Type, CoreInfo::FloatType};
 
   static SHTypesInfo inputTypes() { return uvTypes; }
@@ -455,6 +476,36 @@ struct SampleTextureUV : public SampleTexture {
 
   SHParametersInfo parameters() { return SampleTexture::params; };
 
+  SHTypeInfo getExpectedCoordinateType(const TextureDefinition &def) {
+    switch (def.type) {
+    case gfx::TextureType::D1:
+      return CoreInfo::FloatType;
+    case gfx::TextureType::D2:
+      return CoreInfo::Float2Type;
+    case gfx::TextureType::Cube:
+      return CoreInfo::Float3Type;
+    default:
+      throw std::out_of_range("SampleTextureCoord(TextureType)");
+    }
+  }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    auto name = (const char *)_name;
+    auto &shaderCtx = ShaderCompositionContext::get();
+    auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
+    auto it = textures.find(name);
+    if (it == textures.end()) {
+      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
+    }
+
+    SHTypeInfo expectedInputType = getExpectedCoordinateType(it->second);
+    if (data.inputType != expectedInputType) {
+      throw formatException("SampleTextureCoord does not accept input type {}, should be {}", data.inputType, expectedInputType);
+    }
+
+    return outputTypes().elements[0];
+  }
+
   void translate(TranslationContext &context) {
     const SHString &textureName = _name.payload.stringValue;
     SPDLOG_LOGGER_INFO(context.logger, "gen(sample/uv)> {}", textureName);
@@ -463,17 +514,8 @@ struct SampleTextureUV : public SampleTexture {
       throw ShaderComposeError(fmt::format("Can not sample texture: coordinate is required"));
 
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
-    FieldType fieldType = wgslValue->getType();
 
-    auto block = blocks::makeCompoundBlock();
-    const std::string &varName = context.getUniqueVariableName();
-    if (fieldType.numComponents < 2) {
-      block->appendLine(fmt::format("let {} = vec2<f32>(", varName), wgslValue->toBlock(), ", 0.0)");
-    } else {
-      block->appendLine(fmt::format("let {} = (", varName), wgslValue->toBlock(), ").xy");
-    }
-
-    context.addNew(std::move(block));
+    auto &varName = context.assignTempVar(wgslValue->toBlock());
     context.setWGSLTopVar(FieldTypes::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName, varName));
   }
 };

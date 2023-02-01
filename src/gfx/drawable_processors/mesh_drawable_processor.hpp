@@ -9,6 +9,7 @@
 #include "../texture_placeholder.hpp"
 #include "drawable_processor_helpers.hpp"
 #include "pmr/list.hpp"
+#include "texture_cache.hpp"
 #include <tracy/Tracy.hpp>
 
 namespace gfx::detail {
@@ -98,6 +99,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   std::shared_mutex drawableCacheLock;
   std::unordered_map<UniqueId, CachedDrawablePtr> drawableCache;
+  TextureViewCache textureViewCache;
   size_t frameCounter{};
 
   std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
@@ -140,6 +142,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     drawableCacheLock.lock();
     clearOldCacheItemsIn(drawableCache, frameCounter, 16);
     drawableCacheLock.unlock();
+
+    textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
   }
 
   void buildPipeline(PipelineBuilder &builder) override {
@@ -224,7 +228,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     auto setTextureParameter = [&](const char *name, const TexturePtr &texture) {
       int32_t targetSlot = mapTextureBinding(name);
       if (targetSlot >= 0) {
-        data.textures[targetSlot] = texture->contextData.get();
+        data.textures[targetSlot] = &texture->createContextDataConditional(context);
       }
     };
 
@@ -234,7 +238,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       for (auto &param : params.textures) {
         int32_t targetSlot = mapTextureBinding(param.first.c_str());
         if (targetSlot >= 0 && !data.textures[targetSlot]) {
-          data.textures[targetSlot] = param.second.texture->contextData.get();
+          data.textures[targetSlot] = &param.second.texture->createContextDataConditional(context);;
         }
       }
     };
@@ -530,7 +534,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
             auto &binding = cachedPipeline.textureBindingLayout.bindings[i];
             auto texture = firstDrawableData.textures[i];
             if (texture) {
-              drawBindGroupBuilder.addTextureBinding(binding, texture->defaultView, texture->sampler);
+              drawBindGroupBuilder.addTextureBinding(binding, textureViewCache.getDefaultTextureView(frameCounter, *texture),
+                                                     texture->sampler);
             } else {
               drawBindGroupBuilder.addTextureBinding(binding, placeholderTextureContextData->textureView,
                                                      placeholderTextureContextData->sampler);

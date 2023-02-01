@@ -83,6 +83,14 @@ inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatur
   }
 }
 
+inline TexturePtr varToTexture(const SHVar &var) {
+  if (var.payload.objectTypeId == Types::TextureCubeTypeId) {
+    return *varAsObjectChecked<TexturePtr>(var, Types::TextureCube);
+  } else {
+    return *varAsObjectChecked<TexturePtr>(var, Types::Texture);
+  }
+}
+
 } // namespace gfx
 
 #endif /* AD2CA4AE_4D00_49A0_8DD6_323B82813690 */

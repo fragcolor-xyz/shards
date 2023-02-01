@@ -1,5 +1,6 @@
 #include "../gfx.hpp"
 #include "common_types.hpp"
+#include "extra/gfx/shards_types.hpp"
 #include "foundation.hpp"
 #include "linalg_shim.hpp"
 #include "shards.h"
@@ -35,7 +36,7 @@ struct TextureShard {
 
   static inline shards::Types InputTypes{{CoreInfo::ImageType, CoreInfo::NoneType, CoreInfo::AnyType}};
   static SHTypesInfo inputTypes() { return InputTypes; }
-  static SHTypesInfo outputTypes() { return Types::Texture; }
+  static SHTypesInfo outputTypes() { return Types::TextureTypes; }
   static SHOptionalString help() { return SHCCSTR("Creates a texture from an image. Or as a render target"); }
 
   TexturePtr texture;
@@ -49,14 +50,30 @@ struct TextureShard {
             "The format to use to create the texture. The texture will be usable as a render target. (Render target only)",
             {Types::TextureFormatEnumInfo::Type});
   PARAM_VAR(_resolution, "Resolution", "The resolution of the texture to create. (Render target only)", {CoreInfo::Int2Type});
-  PARAM_IMPL(TextureShard, PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution));
+  PARAM_VAR(_dimension, "Dimension", "The type of texture to create. (Render target only)",
+            {Types::TextureDimensionEnumInfo::Type});
+  PARAM_IMPL(TextureShard, PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution),
+             PARAM_IMPL_FOR(_dimension));
 
   TextureShard() {}
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
+
     texture = std::make_shared<Texture>();
-    textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureTypeId);
+
+    // Set TypeId based on texture dimension so we can check bindings at compose time
+    gfx::TextureType dim = getTextureDimension();
+    switch (dim) {
+    case gfx::TextureType::D1:
+      throw formatException("TextureDimension.D1 not supported");
+    case gfx::TextureType::D2:
+      textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureTypeId);
+      break;
+    case gfx::TextureType::Cube:
+      textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureCubeTypeId);
+      break;
+    }
   }
 
   void cleanup() {
@@ -64,15 +81,21 @@ struct TextureShard {
     texture.reset();
   }
 
+  gfx::TextureType getTextureDimension() const {
+    return !_dimension.isNone() ? gfx::TextureType(_dimension.payload.enumValue) : gfx::TextureType::D2;
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (!_format.isNone() && !_interpretAs.isNone()) {
-      throw ComposeError("Can not specify both InterpretAs and Format parameters at the same time");
+    if (!_interpretAs.isNone()) {
+      if (!_format.isNone())
+        throw ComposeError("Can not specify both Format and InterpretAs parameters at the same time");
+      if (!_dimension.isNone())
+        throw ComposeError("Can not specify both Dimension and InterpretAs parameters at the same time");
+      if (!_resolution.isNone())
+        throw ComposeError("Can not specify both Resolution and InterpretAs parameters at the same time");
     }
 
     if (!_format.isNone()) {
-      if (!_interpretAs.isNone()) {
-        throw ComposeError("InterpretAs can only be used for image inputs");
-      }
       _createFromImage = false;
     } else {
       if (data.inputType != CoreInfo::ImageType) {
@@ -81,7 +104,11 @@ struct TextureShard {
       _createFromImage = true;
     }
 
-    return outputTypes().elements[0];
+    auto dim = getTextureDimension();
+    if (dim == gfx::TextureType::Cube)
+      return Types::TextureCube;
+    else
+      return Types::Texture;
   }
 
   void activateFromImage(const SHImage &image) {
@@ -199,9 +226,11 @@ struct TextureShard {
 
   void activateRenderableTexture() {
     int2 resolution = !_resolution.isNone() ? toInt2(_resolution) : int2(0);
+
     texture->init(TextureDesc{
         .format =
             TextureFormat{
+                .type = getTextureDimension(),
                 .flags = TextureFormatFlags::RenderAttachment,
                 .pixelFormat = (WGPUTextureFormat)_format.payload.enumValue,
             },

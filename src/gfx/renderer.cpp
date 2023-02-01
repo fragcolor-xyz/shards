@@ -10,6 +10,7 @@
 #include "pipeline_builder.hpp"
 #include "renderer_types.hpp"
 #include "renderer_cache.hpp"
+#include "texture_cache.hpp"
 #include "render_graph.hpp"
 #include "drawables/mesh_drawable.hpp"
 #include "shader/blocks.hpp"
@@ -100,13 +101,8 @@ struct FrameStats {
 // The render graph and outputs
 struct PreparedRenderView {
   const RenderGraph &renderGraph;
-  std::span<TexturePtr> renderGraphOutputs;
+  std::span<TextureSubResource> renderGraphOutputs;
 };
-
-// Captures calls to render()
-// struct RenderCapture {
-//   std::optional<PreparedRenderView> preparedRender;
-// };
 
 struct RendererImpl final : public ContextData {
   Renderer &outer;
@@ -122,6 +118,7 @@ struct RendererImpl final : public ContextData {
   std::unordered_map<const View *, CachedViewDataPtr> viewCache;
   RenderGraphCache renderGraphCache;
   PipelineCache pipelineCache;
+  TextureViewCache textureViewCache;
 
   RenderGraphEvaluator renderGraphEvaluator;
 
@@ -144,10 +141,7 @@ struct RendererImpl final : public ContextData {
   std::map<DrawableProcessorConstructor, std::shared_ptr<IDrawableProcessor>> drawableProcessors;
 
   // Cache variables
-  // std::unordered_map<Hash128, PipelineGroup> pipelineGroupsTemp;
   std::list<TransientPtr> processorDynamicValueCleanupQueue;
-  // std::vector<Feature *> evaluateFeaturesTemp;
-  // static thread_local std::vector<std::reference_wrapper<RenderCapture>> renderCaptures;
 
   RendererImpl(Context &context, Renderer &outer) : outer(outer), context(context), workerMemory(), workerData() {}
 
@@ -250,7 +244,7 @@ struct RendererImpl final : public ContextData {
     viewData.cachedView.touchWithNewTransform(view->view, view->getProjectionMatrix(float2(viewSize)), frameCounter);
 
     // Match with attached outputs in buildRenderGraph
-    shards::pmr::vector<TexturePtr> renderGraphOutputs(getWorkerMemoryForCurrentFrame());
+    shards::pmr::vector<TextureSubResource> renderGraphOutputs(getWorkerMemoryForCurrentFrame());
     if (viewData.renderTarget) {
       for (auto &attachment : viewData.renderTarget->attachments) {
         renderGraphOutputs.push_back(attachment.second);
@@ -735,6 +729,7 @@ struct RendererImpl final : public ContextData {
   void clearOldCacheItems() {
     clearOldCacheItemsIn(pipelineCache.map, frameCounter, 120 * 60 * 5);
     clearOldCacheItemsIn(viewCache, frameCounter, 120 * 60 * 5);
+    textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 * 1);
   }
 
   void ensureMainOutputCleared() {
@@ -742,11 +737,11 @@ struct RendererImpl final : public ContextData {
       RenderGraphBuilder builder;
       builder.nodes.resize(1);
       builder.allocateOutputs(0, steps::makeRenderStepOutput(RenderStepOutput::Texture{
-                                     .handle = mainOutput.texture,
+                                     .subResource = mainOutput.texture,
                                  }));
       auto graph = builder.finalize();
 
-      renderGraphEvaluator.evaluate(graph, std::span<TexturePtr>{}, context, frameCounter);
+      renderGraphEvaluator.evaluate(graph, std::span<TextureSubResource>{}, context, frameCounter);
     }
   }
 

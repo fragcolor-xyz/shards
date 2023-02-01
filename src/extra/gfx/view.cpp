@@ -163,7 +163,7 @@ struct RegionShard {
 };
 
 // :Textures {:outputName .textureVar}
-// Face indices are ordered Z- Z+ X- X+ Y- Y+
+// Face indices are ordered   X+ X- Y+ Y- Z+ Z-
 // :Textures {:outputName {:Texture .textureVar :Face 0}}
 struct RenderIntoShard {
   static inline std::array<SHString, 2> TextureSubresourceTableKeys{"Texture", "Face"};
@@ -210,7 +210,7 @@ struct RenderIntoShard {
 
   SHTypeInfo compose(SHInstanceData &data) { return _contents.compose(data).outputType; }
 
-  TextureResource applyAttachment(SHContext *shContext, const SHVar &input) {
+  TextureSubResource applyAttachment(SHContext *shContext, const SHVar &input) {
     if (input.valueType == SHType::ContextVar) {
       ParamVar var{input};
       var.warmup(shContext);
@@ -224,7 +224,7 @@ struct RenderIntoShard {
         throw formatException("Texture is required");
       }
 
-      TexturePtr texture = *varAsObjectChecked<TexturePtr>(textureVar, Types::Texture);
+      TexturePtr texture = varToTexture(textureVar);
 
       uint8_t faceIndex{};
       Var faceIndexVar;
@@ -233,11 +233,11 @@ struct RenderIntoShard {
         faceIndex = uint8_t(int(faceIndexVar));
       }
 
-      return TextureResource(texture, faceIndex);
+      return TextureSubResource(texture, faceIndex);
     }
   }
 
-  void applyAttachments(SHContext *shContext, std::map<std::string, TextureResource> &outAttachments, const SHTable &input) {
+  void applyAttachments(SHContext *shContext, std::map<std::string, TextureSubResource> &outAttachments, const SHTable &input) {
     auto &table = _textures.payload.tableValue;
     outAttachments.clear();
     ForEach(table, [&](SHString &k, SHVar &v) { outAttachments.emplace(k, applyAttachment(shContext, v)); });

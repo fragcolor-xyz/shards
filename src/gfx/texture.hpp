@@ -7,37 +7,12 @@
 #include "linalg.hpp"
 #include "unique_id.hpp"
 #include "fwd.hpp"
+#include "enums.hpp"
 #include <variant>
 #include <optional>
 #include <string>
 
 namespace gfx {
-
-enum class TextureFormatFlags : uint8_t {
-  None = 0x0,
-  // Automatically generate mip-maps for this texture
-  AutoGenerateMips = 0x01,
-  // Allow this texture to be rendered to
-  RenderAttachment = 0x02,
-  // Indicate that this texture can not be sampled
-  // Used to mark render attachments that can't be read from
-  NoTextureBinding = 0x04,
-};
-
-inline TextureFormatFlags operator|(const TextureFormatFlags &a, const TextureFormatFlags &b) {
-  return TextureFormatFlags(uint8_t(a) | uint8_t(b));
-}
-
-inline bool textureFormatFlagsContains(TextureFormatFlags left, TextureFormatFlags right) {
-  return ((uint8_t &)left & (uint8_t &)right) != 0;
-}
-
-enum class TextureType : uint8_t {
-  D1,
-  D2,
-  Cube,
-};
-
 struct SamplerState {
   WGPUAddressMode addressModeU = WGPUAddressMode::WGPUAddressMode_Repeat;
   WGPUAddressMode addressModeV = WGPUAddressMode::WGPUAddressMode_Repeat;
@@ -69,18 +44,17 @@ struct InputTextureFormat {
 struct TextureContextData : public ContextData {
   TextureFormat format;
   WGPUTexture texture{};
-  WGPUTextureView defaultView{};
-  bool isExternalView = false;
   WGPUSampler sampler{};
   WGPUExtent3D size{};
+
+  // Only set for externally managed texture views
+  WGPUTextureView externalView{};
 
   ~TextureContextData() { releaseContextDataConditional(); }
 
   void releaseContextData() override {
     WGPU_SAFE_RELEASE(wgpuTextureRelease, texture);
     WGPU_SAFE_RELEASE(wgpuSamplerRelease, sampler);
-    if (!isExternalView)
-      WGPU_SAFE_RELEASE(wgpuTextureViewRelease, defaultView);
   }
 };
 

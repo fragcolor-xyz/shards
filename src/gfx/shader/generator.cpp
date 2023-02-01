@@ -2,15 +2,16 @@
 #include "fmt.hpp"
 #include "shader/uniforms.hpp"
 #include "wgsl_mapping.hpp"
+#include "../enums.hpp"
+#include "../log.hpp"
+#include "../error_utils.hpp"
+#include "../graph.hpp"
 #include <algorithm>
 #include <boost/algorithm/string/join.hpp>
-#include <gfx/error_utils.hpp>
-#include <gfx/graph.hpp>
 #include <magic_enum.hpp>
 #include <optional>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
-#include "../log.hpp"
 
 namespace gfx {
 namespace shader {
@@ -27,7 +28,19 @@ static std::vector<const EntryPoint *> getEntryPointPtrs(const std::vector<Entry
 template <typename T>
 static void generateTextureVars(T &output, const TextureDefinition &def, size_t group, size_t binding, size_t samplerBinding) {
   const char *textureFormat = "f32";
-  const char *textureType = "texture_2d";
+
+  const char *textureType{};
+  switch (def.type) {
+  case gfx::TextureType::D1:
+    textureType = "texture_1d";
+    break;
+  case gfx::TextureType::D2:
+    textureType = "texture_2d";
+    break;
+  case gfx::TextureType::Cube:
+    textureType = "texture_cube";
+    break;
+  }
 
   output += fmt::format("@group({}) @binding({})\n", group, binding);
   output += fmt::format("var {}: {}<{}>;\n", def.variableName, textureType, textureFormat);
@@ -454,10 +467,8 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 
   std::map<String, TextureDefinition> textureDefinitions;
   for (auto &texture : textureBindingLayout.bindings) {
-    TextureDefinition def;
-    def.variableName = "t_" + texture.name;
-    def.defaultSamplerVariableName = "s_" + texture.name;
-    def.defaultTexcoordVariableName = fmt::format("texCoord{}", texture.defaultTexcoordBinding);
+    TextureDefinition def("t_" + texture.name, fmt::format("texCoord{}", texture.defaultTexcoordBinding), "s_" + texture.name,
+                          texture.type);
     generateTextureVars(headerCode, def, textureBindGroup, texture.binding, texture.defaultSamplerBinding);
     textureDefinitions.insert_or_assign(texture.name, def);
   }
@@ -592,7 +603,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
   }
 
   for (auto &texture : textureBindingLayout.bindings) {
-    context.definitions.textures.insert_or_assign(texture.name, TextureDefinition{});
+    context.definitions.textures.emplace(texture.name, "").first->second.type = texture.type;
   }
 
   for (size_t i = 0; i < NumGraphicsStages; i++) {
