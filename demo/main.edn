@@ -1,4 +1,5 @@
 (load-file "atmosphere.edn")
+(load-file "cube-capture.edn")
 
 (Setup
  {:Position (Float3 -1.0 1.5 20.0) :Target (Float3 0.0)} (Math.LookAt) >= .view-transform
@@ -22,6 +23,7 @@
 
  (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
  (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+ (setup-reflection-feature .refl-feature) >> .features
 
  (setup-skybox-pass .skybox-pass)
  .skybox-pass >> .render-steps

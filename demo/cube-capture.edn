@@ -2,7 +2,7 @@
                      (Float3 0 180.0 0) ; Z+
                      (Float3 0 90.0 0) ; X-
                      (Float3 0 -90.0 0) ; X+
-                     (Float3 -90.0 0) ; Y-
+                     (Float3 -90.0 0 0) ; Y-
                      (Float3 90.0 0 0) ; Y+
                      ])
 (defshards xyz-to-mat []
@@ -25,3 +25,22 @@
                         :Contents (->
                                    (GFX.Render :Steps .env-steps :View .capture-view)))
         (range 0 6))))
+
+(defshards setup-reflection-feature [name]
+  (GFX.Feature
+   :Shaders
+   [{:Stage ProgrammableGraphicsStage.Fragment
+     :After ["initWorldNormal" "writeColor"]
+     :Before []
+     :EntryPoint
+     (->
+      (Shader.ReadGlobal "worldNormal") >= .world-normal
+      .world-normal (Shader.SampleTextureUVW "someTexture")
+      (Shader.WriteGlobal "color"))}]
+   :ViewGenerators [(->
+                     (| (Take "Queue") >= .parent-queue)
+                     (| (Take "View") >= .parent-view)
+                     (| (Take "Features") >= .parent-features)
+                     (render-cubemap .parent-queue .parent-features .cube-tex)
+                     {:env .cube-tex})]) >= name
+  name)
