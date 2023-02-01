@@ -1205,13 +1205,15 @@ void setShardParameters(malShard *malshard, malValueIter begin, malValueIter end
       auto paramName = v->value().substr(1);
       auto idx = findParamIndex(paramName, params);
       if (unlikely(idx == -1)) {
-        SHLOG_ERROR("Parameter not found: {} shard: {}", paramName, shard->name(shard));
-        throw shards::SHException("Parameter not found");
+        auto err = fmt::format("Parameter not found: {} shard: {}", paramName, shard->name(shard));
+        SHLOG_ERROR(err);
+        throw shards::SHException(err);
       } else {
         auto var = varify(value);
         if (!validateSetParam(shard, idx, var->value(), validationCallback, nullptr)) {
-          SHLOG_ERROR("Failed parameter: {} line: {}", paramName, value->line);
-          throw shards::SHException("Parameter validation failed");
+          auto err = fmt::format("Failed parameter: {} line: {} shard: {}", paramName, value->line, shard->name(shard));
+          SHLOG_ERROR(err);
+          throw shards::SHException(err);
         }
         shard->setParam(shard, idx, &var->value());
 
@@ -1225,8 +1227,9 @@ void setShardParameters(malShard *malshard, malValueIter begin, malValueIter end
     } else {
       auto var = varify(arg);
       if (!validateSetParam(shard, pindex, var->value(), validationCallback, nullptr)) {
-        SHLOG_ERROR("Failed parameter index: {} line: {}", pindex, arg->line);
-        throw shards::SHException("Parameter validation failed");
+        auto err = fmt::format("Failed parameter index: {} line: {} shard: {}", pindex, arg->line, shard->name(shard));
+        SHLOG_ERROR(err);
+        throw shards::SHException(err);
       }
       shard->setParam(shard, pindex, &var->value());
 
