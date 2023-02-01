@@ -420,7 +420,8 @@ struct RendererImpl final : public ContextData {
       FeatureViewGenerateContextImpl viewCtx(outer, viewData.view, viewData.cachedView, queue);
       viewCtx.viewParameters = generatorData->viewParameters;
       for (auto &generator : group.pipeline->perViewGenerators) {
-        generator(viewCtx);
+        viewCtx.features = generator.otherFeatures;
+        generator.callback(viewCtx);
       }
     }
 
@@ -430,7 +431,8 @@ struct RendererImpl final : public ContextData {
       FeatureDrawableGeneratorContextImpl objectCtx(group, outer, viewData.view, viewData.cachedView, queue);
       objectCtx.drawParameters = generatorData->drawParameters;
       for (auto &generator : group.pipeline->perObjectGenerators) {
-        generator(objectCtx);
+        objectCtx.features = generator.otherFeatures;
+        generator.callback(objectCtx);
       }
     }
 
@@ -457,10 +459,7 @@ struct RendererImpl final : public ContextData {
 
     shards::pmr::vector<const IDrawable *> expandedDrawables(workerMemory);
 
-    auto& pipelineGroups = *workerMemory->new_object<shards::pmr::unordered_map<Hash128, PipelineGroup>>();
-    // shards::pmr::unordered_map<Hash128, PipelineGroup> pipelineGroups;
-
-    // auto &test = *workerMemory->new_object<PipelineGroup>();
+    auto &pipelineGroups = *workerMemory->new_object<shards::pmr::unordered_map<Hash128, PipelineGroup>>();
 
     // Compute drawable hashes
     {

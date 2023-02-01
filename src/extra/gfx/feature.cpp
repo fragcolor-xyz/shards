@@ -125,8 +125,8 @@ struct FeatureShard {
     }
   */
 
-  static inline shards::Types GeneratedInputTableTypes{{Types::DrawQueue, Types::View}};
-  static inline std::array<SHString, 2> GeneratedInputTableKeys{"Queue", "View"};
+  static inline shards::Types GeneratedInputTableTypes{{Types::DrawQueue, Types::View, Types::FeatureSeq}};
+  static inline std::array<SHString, 3> GeneratedInputTableKeys{"Queue", "View", "Features"};
   static inline Type GeneratedInputTableType = Type::TableOf(GeneratedInputTableTypes, GeneratedInputTableKeys);
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
@@ -633,6 +633,8 @@ struct FeatureShard {
     });
   }
 
+  std::deque<FeaturePtr> featurePtrsTemp;
+
   template <typename T, typename T1>
   void runGenerators(std::shared_ptr<SHMesh> mesh, const std::vector<std::shared_ptr<SHWire>> &wires, T &ctx, T1 applyResults) {
     GraphicsRendererContext graphicsRendererContext{
@@ -649,6 +651,16 @@ struct FeatureShard {
     TableVar input;
     input.get<Var>("Queue") = Var::Object(&queue, Types::DrawQueue);
     input.get<Var>("View") = Var::Object(&view, Types::View);
+
+    featurePtrsTemp.clear();
+    SeqVar& features = input.get<SeqVar>("Features");
+    for (auto &weakFeature : ctx.features) {
+      FeaturePtr feature = weakFeature.lock();
+      if (feature) {
+        featurePtrsTemp.push_back(feature);
+        features.push_back(Var::Object(&featurePtrsTemp.back(), Types::FeatureSeq));
+      }
+    }
 
     // Schedule generator wires or update inputs
     for (auto &wire : wires) {

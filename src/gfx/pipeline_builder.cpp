@@ -1,4 +1,5 @@
 #include "pipeline_builder.hpp"
+#include "renderer_types.hpp"
 #include "shader/uniforms.hpp"
 #include "log.hpp"
 #include "shader/textures.hpp"
@@ -6,6 +7,7 @@
 #include "shader/blocks.hpp"
 #include "shader/wgsl_mapping.hpp"
 #include "shader/log.hpp"
+#include <memory>
 #include <variant>
 
 using namespace gfx::detail;
@@ -158,15 +160,30 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
       feature->pipelineModifier->buildPipeline(*this);
     }
 
+    std::vector<std::weak_ptr<Feature>> otherFeatures;
+    for (auto &otherFeature : features) {
+      if (otherFeature != feature) {
+        otherFeatures.push_back(const_cast<Feature *>(otherFeature)->weak_from_this());
+      }
+    }
+
     // Store parameter generators
     for (const auto &gen : feature->generators) {
+
       std::visit(
           [&](auto arg) {
             using T = std::decay_t<decltype(arg)>;
+
+            auto cached = CachedFeatureGenerator<T>{
+                .callback = arg,
+                .owningFeature = const_cast<Feature *>(feature)->weak_from_this(),
+                .otherFeatures = otherFeatures,
+            };
+
             if constexpr (std::is_same_v<T, FeatureGenerator::PerObject>) {
-              output.perObjectGenerators.push_back(arg);
+              output.perObjectGenerators.push_back(cached);
             } else if constexpr (std::is_same_v<T, FeatureGenerator::PerView>) {
-              output.perViewGenerators.push_back(arg);
+              output.perViewGenerators.push_back(cached);
             }
           },
           gen.callback);

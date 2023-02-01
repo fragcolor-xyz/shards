@@ -4,6 +4,8 @@
 #include "params.hpp"
 #include "pipeline_step.hpp"
 #include "renderer.hpp"
+// #include "pmr/vector.hpp"
+#include <span>
 #include <vector>
 
 namespace gfx::detail {
@@ -12,8 +14,13 @@ struct CachedView;
 } // namespace gfx::detail
 
 namespace gfx {
+
+
 struct FeatureGeneratorContext {
   Renderer &renderer;
+
+  // The list of features excluding the one that this generator belongs to
+  std::span<FeatureWeakPtr> features;
 
   // The view used within the parent render step
   ViewPtr view;

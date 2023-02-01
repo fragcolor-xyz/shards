@@ -22,6 +22,7 @@
 #include "pmr/map.hpp"
 #include "pmr/string.hpp"
 #include <cassert>
+#include <memory>
 #include <vector>
 #include <map>
 #include <compare>
@@ -160,6 +161,12 @@ struct CompilationError {
   CompilationError(std::string &&message) : message(std::move(message)) {}
 };
 
+template <typename CB> struct CachedFeatureGenerator {
+  CB callback;
+  std::weak_ptr<Feature> owningFeature;
+  std::vector<std::weak_ptr<Feature>> otherFeatures;
+};
+
 struct CachedPipeline {
   // The compiled shader module including both vertex/fragment entry points
   WgpuHandle<WGPUShaderModule> shaderModule;
@@ -186,8 +193,8 @@ struct CachedPipeline {
   std::vector<BufferBinding> drawBufferBindings;
 
   // Collected parameter generator
-  std::vector<FeatureGenerator::PerView> perViewGenerators;
-  std::vector<FeatureGenerator::PerObject> perObjectGenerators;
+  std::vector<CachedFeatureGenerator<FeatureGenerator::PerView>> perViewGenerators;
+  std::vector<CachedFeatureGenerator<FeatureGenerator::PerObject>> perObjectGenerators;
 
   size_t lastTouched{};
 
