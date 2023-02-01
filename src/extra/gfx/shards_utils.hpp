@@ -17,10 +17,11 @@ inline bool getFromTable(SHContext *shContext, const SHTable &table, const char 
     const SHVar *var = table.api->tableAt(table, key);
     if (var->valueType == SHType::ContextVar) {
       SHVar *refencedVariable = shards::referenceVariable(shContext, var->payload.stringValue);
-      outVar = *var;
+      outVar = *refencedVariable;
       shards::releaseVariable(refencedVariable);
+    } else {
+      outVar = *var;
     }
-    outVar = *var;
     return true;
   }
   return false;
