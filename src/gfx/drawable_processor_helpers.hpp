@@ -4,6 +4,7 @@
 #include "renderer_types.hpp"
 #include "drawable_processor.hpp"
 #include "view.hpp"
+#include <webgpu-headers/webgpu.h>
 
 namespace gfx::detail {
 
@@ -40,7 +41,9 @@ struct BindGroupBuilder {
         .entryCount = uint32_t(entries.size()),
         .entries = entries.data(),
     };
-    return wgpuDeviceCreateBindGroup(device, &desc);
+    WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(device, &desc);
+    assert(bindGroup);
+    return bindGroup;
   }
 };
 

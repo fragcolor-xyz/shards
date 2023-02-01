@@ -132,16 +132,18 @@ struct FeatureShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
 
+  static inline shards::Types GeneratorTypes{CoreInfo::NoneType, CoreInfo::WireType, Type::SeqOf(CoreInfo::WireType),
+                                             CoreInfo::ShardRefSeqType, Type::SeqOf(CoreInfo::ShardRefSeqType)};
   static SHParametersInfo parameters() {
     static Parameters p{
         {"ViewGenerators",
          SHCCSTR(
              "The shards that are run to generate and return shader parameters per view, can use nested rendering commmands."),
-         {CoreInfo::NoneType, CoreInfo::WireType, Type::SeqOf(CoreInfo::WireType)}},
+         GeneratorTypes},
         {"DrawableGenerators",
          SHCCSTR("The shards that are run to generate and return shader parameters per drawable, can use nested rendering "
                  "commmands."),
-         {CoreInfo::NoneType, CoreInfo::WireType, Type::SeqOf(CoreInfo::WireType)}},
+         GeneratorTypes},
     };
     return p;
   }
@@ -162,18 +164,42 @@ struct FeatureShard {
   std::shared_ptr<SHMesh> _drawableGeneratorsMesh;
 
   void setWireVector(const SHVar &var, std::vector<std::shared_ptr<SHWire>> &outVec) {
+
+    auto createWireFromShards = [](const SHSeq &seq) {
+      auto wire = SHWire::make();
+      wire->looped = true;
+      ForEach(seq, [&](SHVar &v) {
+        assert(v.valueType == SHType::ShardRef);
+        wire->addShard(v.payload.shardValue);
+      });
+      return wire;
+    };
+
     outVec.clear();
     if (var.valueType != SHType::None) {
       if (var.valueType == SHType::Wire) {
-        // A single shards sequence
         outVec.emplace_back(*(std::shared_ptr<SHWire> *)var.payload.wireValue);
       } else {
+        assert(var.valueType == SHType::Seq);
         auto &seq = var.payload.seqValue;
         if (seq.len == 0)
           return;
-        // Multiple separate shards sequences
-        for (uint32_t i = 0; i < seq.len; i++) {
-          outVec.emplace_back(*(std::shared_ptr<SHWire> *)seq.elements[i].payload.wireValue);
+
+        // Single collection of shards
+        if (seq.elements[0].valueType == SHType::ShardRef) {
+          outVec.push_back(createWireFromShards(seq));
+        } else if (seq.elements[0].valueType == SHType::Wire) {
+          // Multiple wires
+          for (uint32_t i = 0; i < seq.len; i++) {
+            outVec.emplace_back(*(std::shared_ptr<SHWire> *)seq.elements[i].payload.wireValue);
+          }
+        } else {
+
+          for (uint32_t i = 0; i < seq.len; i++) {
+            SHVar &v = seq.elements[i];
+            assert(v.valueType == SHType::Seq);
+            outVec.push_back(createWireFromShards(v.payload.seqValue));
+          }
         }
       }
     }
@@ -259,7 +285,7 @@ struct FeatureShard {
               if constexpr (std::is_same_v<T, shader::FieldType>) {
                 outBasicParams.emplace_back(k, arg);
               } else if constexpr (std::is_same_v<T, TextureType>) {
-                outTextureParams.emplace_back(k);
+                outTextureParams.emplace_back(k, arg);
               } else {
                 throw formatException("Generator wire returns invalid type {} for key {}", v, k);
               }
@@ -624,8 +650,7 @@ struct FeatureShard {
   static void collectParameters(IParameterCollector &collector, SHContext *context, const SHTable &table) {
     ForEach(table, [&](const SHString &k, const SHVar &v) {
       if (v.valueType == SHType::Object) {
-        auto texture = *varAsObjectChecked<TexturePtr>(v, Types::Texture);
-        collector.setTexture(k, texture);
+        collector.setTexture(k, varToTexture(v));
       } else {
         ParamVariant variant = paramToVariant(context, v);
         collector.setParam(k, variant);
@@ -653,12 +678,12 @@ struct FeatureShard {
     input.get<Var>("View") = Var::Object(&view, Types::View);
 
     featurePtrsTemp.clear();
-    SeqVar& features = input.get<SeqVar>("Features");
+    SeqVar &features = input.get<SeqVar>("Features");
     for (auto &weakFeature : ctx.features) {
       FeaturePtr feature = weakFeature.lock();
       if (feature) {
         featurePtrsTemp.push_back(feature);
-        features.push_back(Var::Object(&featurePtrsTemp.back(), Types::FeatureSeq));
+        features.push_back(Var::Object(&featurePtrsTemp.back(), Types::Feature));
       }
     }
 

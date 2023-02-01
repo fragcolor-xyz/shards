@@ -3,9 +3,12 @@
 
 #include "render_target.hpp"
 #include "renderer_types.hpp"
+#include "texture.hpp"
+#include "texture_cache.hpp"
 #include "fmt.hpp"
 #include <compare>
 #include <span>
+#include <webgpu-headers/webgpu.h>
 
 namespace gfx::detail {
 
@@ -114,76 +117,6 @@ private:
   }
 };
 
-struct RenderTargetData {
-  struct DepthTarget {
-    TextureResource texture;
-
-    bool operator==(const DepthTarget &other) const { return texture == other.texture; }
-    bool operator!=(const DepthTarget &other) const { return !(*this == other); }
-  };
-
-  struct ColorTarget {
-    std::string name;
-    TextureResource texture;
-
-    bool operator==(const ColorTarget &other) const { return name == other.name && texture == other.texture; }
-    bool operator!=(const ColorTarget &other) const { return !(*this == other); }
-  };
-
-  std::optional<DepthTarget> depthTarget;
-  std::vector<ColorTarget> colorTargets;
-  std::vector<TexturePtr> references;
-
-  // Use managed render target with size adjusted to reference size
-  void init(RenderTargetPtr renderTarget) {
-    for (auto &pair : renderTarget->attachments) {
-      auto &attachment = pair.second;
-      auto &key = pair.first;
-      if (key == "depth") {
-        depthTarget = DepthTarget{
-            .texture = attachment,
-        };
-      } else {
-        colorTargets.push_back(ColorTarget{
-            .name = key,
-            .texture = attachment,
-        });
-      }
-
-      references.push_back(attachment);
-    }
-
-    std::sort(colorTargets.begin(), colorTargets.end(),
-              [](const ColorTarget &a, const ColorTarget &b) { return a.name < b.name; });
-  }
-
-  // Use a device's main output with managed depth buffer
-  void init(const Renderer::MainOutput &mainOutput, TexturePtr depthStencilBuffer) {
-    references.push_back(depthStencilBuffer);
-    depthTarget = DepthTarget{
-        .texture = depthStencilBuffer,
-    };
-
-    references.push_back(mainOutput.texture);
-    colorTargets.push_back(ColorTarget{
-        .name = "color",
-        .texture = mainOutput.texture,
-    });
-  }
-
-  bool operator==(const RenderTargetData &other) const {
-    if (!std::equal(colorTargets.begin(), colorTargets.end(), other.colorTargets.begin(), other.colorTargets.end()))
-      return false;
-
-    if (depthTarget != other.depthTarget)
-      return false;
-
-    return true;
-  }
-
-  bool operator!=(const RenderTargetData &other) const { return !(*this == other); }
-};
-
 struct RenderGraph;
 struct RenderGraphNode;
 struct RenderGraphEvaluator;
@@ -229,7 +162,7 @@ struct RenderGraph {
     int2 size;
     WGPUTextureFormat format;
     std::optional<size_t> outputIndex;
-    TexturePtr textureOverride;
+    TextureSubResource textureOverride;
   };
 
   struct Output {
@@ -247,7 +180,7 @@ struct RenderGraphBuilder {
   std::vector<RenderGraph::Frame> frames;
   std::vector<RenderGraph::Output> outputs;
   std::map<std::string, FrameIndex> nameLookup;
-  std::map<TexturePtr, FrameIndex> handleLookup;
+  std::map<TextureSubResource, FrameIndex> handleLookup;
   float2 referenceOutputSize;
 
   void setReferenceOutputSize(int2 size) { referenceOutputSize = float2(size); }
@@ -267,10 +200,10 @@ struct RenderGraphBuilder {
           using T = std::decay_t<decltype(arg)>;
 
           if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-            auto it0 = handleLookup.find(arg.handle);
+            auto it0 = handleLookup.find(arg.subResource);
             if (it0 == handleLookup.end()) {
               frameIndex = frames.size();
-              it0 = handleLookup.insert_or_assign(arg.handle, frameIndex).first;
+              it0 = handleLookup.insert_or_assign(arg.subResource, frameIndex).first;
             } else {
               frameIndex = it0->second;
             }
@@ -297,9 +230,9 @@ struct RenderGraphBuilder {
             frame.name = arg.name;
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-              assert(arg.handle);
-              frame.textureOverride = arg.handle;
-              frame.format = frame.textureOverride->getFormat().pixelFormat;
+              assert(arg.subResource);
+              frame.textureOverride = arg.subResource;
+              frame.format = frame.textureOverride.texture->getFormat().pixelFormat;
             } else if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
               frame.format = arg.format;
             }
@@ -412,7 +345,7 @@ struct RenderGraphBuilder {
             if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
               targetFormat = arg.format;
             } else if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-              targetFormat = arg.handle->getFormat().pixelFormat;
+              targetFormat = arg.subResource.texture->getFormat().pixelFormat;
             } else {
               throw std::logic_error("");
             }
@@ -542,12 +475,19 @@ private:
   std::set<Texture *> writtenTextures;
 
   // Resolved texture handles for indexed by frame index inside nodes
-  std::vector<TexturePtr> frameTextures;
+  struct ResolvedFrameTexture {
+    TexturePtr texture;
+    WGPUTextureView view{};
+
+    ResolvedFrameTexture(TexturePtr texture, WGPUTextureView view) : texture(texture), view(view) {}
+  };
+  std::vector<ResolvedFrameTexture> frameTextures;
 
   std::vector<WGPURenderPassColorAttachment> cachedColorAttachments;
   std::optional<WGPURenderPassDepthStencilAttachment> cachedDepthStencilAttachment;
   WGPURenderPassDescriptor cachedRenderPassDescriptor{};
   RenderTextureCache renderTextureCache;
+  TextureViewCache textureViewCache;
 
 public:
   bool isWrittenTo(const TexturePtr &texture) const { return writtenTextures.contains(texture.get()); }
@@ -555,12 +495,28 @@ public:
   const TexturePtr &getTexture(FrameIndex frameIndex) {
     if (frameIndex >= frameTextures.size())
       throw std::out_of_range("frameIndex");
-    return frameTextures[frameIndex];
+    return frameTextures[frameIndex].texture;
+  }
+
+  WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, size_t frameCounter) {
+    if (textureData.externalView)
+      return textureData.externalView;
+    TextureViewDesc desc{
+        .format = textureData.format.pixelFormat,
+        .dimension = WGPUTextureViewDimension_2D,
+        .baseMipLevel = 0,
+        .mipLevelCount = 1,
+        .baseArrayLayer = uint32_t(faceIndex),
+        .arrayLayerCount = 1,
+        .aspect = WGPUTextureAspect_All,
+    };
+    return textureViewCache.getTextureView(frameCounter, textureData.texture, desc);
   }
 
   // Describes a render pass so that targets are cleared to their default value or loaded
   // based on if they were already written to previously
-  WGPURenderPassDescriptor &createRenderPassDescriptor(const RenderGraph &graph, Context &context, const RenderGraphNode &node) {
+  WGPURenderPassDescriptor &createRenderPassDescriptor(const RenderGraph &graph, Context &context, const RenderGraphNode &node,
+                                                       size_t frameCounter) {
     cachedColorAttachments.clear();
     cachedDepthStencilAttachment.reset();
 
@@ -569,14 +525,11 @@ public:
     size_t depthIndex = node.renderTargetLayout.depthTargetIndex.value_or(~0);
     for (size_t i = 0; i < node.writesTo.size(); i++) {
       const RenderGraphNode::Attachment &nodeAttachment = node.writesTo[i];
-      TexturePtr &texture = frameTextures[nodeAttachment.frameIndex];
-
-      auto &textureData = texture->createContextDataConditional(context);
+      ResolvedFrameTexture &resolvedFrameTexture = frameTextures[nodeAttachment.frameIndex];
 
       if (i == depthIndex) {
-        auto &textureData = texture->createContextDataConditional(context);
         cachedDepthStencilAttachment = WGPURenderPassDepthStencilAttachment{
-            .view = textureData.defaultView,
+            .view = resolvedFrameTexture.view,
         };
         auto &attachment = cachedDepthStencilAttachment.value();
 
@@ -596,7 +549,7 @@ public:
         attachment.stencilStoreOp = WGPUStoreOp_Undefined;
       } else {
         auto &attachment = cachedColorAttachments.emplace_back(WGPURenderPassColorAttachment{
-            .view = textureData.defaultView,
+            .view = resolvedFrameTexture.view,
         });
 
         if (nodeAttachment.clearValues) {
@@ -609,7 +562,7 @@ public:
         attachment.storeOp = WGPUStoreOp_Store;
       }
 
-      writtenTextures.insert(texture.get());
+      writtenTextures.insert(resolvedFrameTexture.texture.get());
     }
 
     cachedRenderPassDescriptor.colorAttachments = cachedColorAttachments.data();
@@ -625,43 +578,56 @@ public:
     writtenTextures.clear();
     frameTextures.clear();
     renderTextureCache.swapBuffers(frameCounter);
+    textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
   }
 
-  void getFrameTextures(std::vector<TexturePtr> &outFrameTextures, const std::span<TexturePtr> &outputs, const RenderGraph &graph,
-                        size_t frameCounter) {
+  void getFrameTextures(std::vector<ResolvedFrameTexture> &outFrameTextures, const std::span<TextureSubResource> &outputs,
+                        const RenderGraph &graph, Context &context, size_t frameCounter) {
     outFrameTextures.clear();
     outFrameTextures.reserve(graph.frames.size());
+
+    // Entire texture view
+    auto resolve = [&](TexturePtr texture) {
+      return ResolvedFrameTexture(texture, getTextureView(texture->createContextDataConditional(context), 0, frameCounter));
+    };
+
+    // Subresource texture view
+    auto resolveSubResourceView = [&](const TextureSubResource &resource) {
+      return ResolvedFrameTexture(resource.texture, getTextureView(resource.texture->createContextDataConditional(context),
+                                                                   resource.faceIndex, frameCounter));
+    };
+
     for (auto &frame : graph.frames) {
       if (frame.outputIndex.has_value()) {
         size_t outputIndex = frame.outputIndex.value();
         if (outputIndex >= outputs.size())
           throw std::logic_error("Missing output");
 
-        outFrameTextures.push_back(outputs[outputIndex]);
+        outFrameTextures.push_back(resolveSubResourceView(outputs[outputIndex]));
       } else if (frame.textureOverride) {
-        outFrameTextures.push_back(frame.textureOverride);
+        outFrameTextures.push_back(resolveSubResourceView(frame.textureOverride));
       } else {
         TexturePtr texture =
             renderTextureCache.allocate(RenderTargetFormat{.format = frame.format, .size = frame.size}, frameCounter);
-        outFrameTextures.push_back(texture);
+        outFrameTextures.push_back(resolve(texture));
       }
     }
   }
 
-  void evaluate(const RenderGraph &graph, std::span<TexturePtr> outputs, Context &context, size_t frameCounter) {
+  void evaluate(const RenderGraph &graph, std::span<TextureSubResource> outputs, Context &context, size_t frameCounter) {
     // Evaluate all render steps in the order they are defined
     // potential optimizations:
     // - evaluate steps without dependencies in parralel
     // - group multiple steps into single render passes
 
     // Allocate frame textures
-    getFrameTextures(frameTextures, outputs, graph, frameCounter);
+    getFrameTextures(frameTextures, outputs, graph, context, frameCounter);
 
     WGPUCommandEncoderDescriptor desc = {};
     WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
 
     for (const auto &node : graph.nodes) {
-      WGPURenderPassDescriptor &renderPassDesc = createRenderPassDescriptor(graph, context, node);
+      WGPURenderPassDescriptor &renderPassDesc = createRenderPassDescriptor(graph, context, node, frameCounter);
       if (node.setupPass)
         node.setupPass(renderPassDesc);
       WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);

@@ -1,9 +1,9 @@
-(def cube-rotations [(Float3 0 0 0) ; Z-
-                     (Float3 0 180.0 0) ; Z+
+(def cube-rotations [(Float3 0 -90.0 0) ; X+
                      (Float3 0 90.0 0) ; X-
-                     (Float3 0 -90.0 0) ; X+
-                     (Float3 -90.0 0 0) ; Y-
                      (Float3 90.0 0 0) ; Y+
+                     (Float3 -90.0 0 0) ; Y-
+                     (Float3 0 180.0 0) ; Z+
+                     (Float3 0 0 0) ; Z-
                      ])
 (defshards xyz-to-mat []
   (| (Take 0) >= .x) (| (Take 1) >= .y) (| (Take 2) >= .z)
@@ -13,34 +13,36 @@
   .rx (Math.MatMul .rz) (Math.MatMul .ry))
 
 (defshards render-cubemap [queue features cube-tex]
-  (GFX.Texture :Format TextureFormat.RGBA8Unorm :Resolution :Type TextureType.Cube) >= cube-tex
-  {:Queue queue :Features features} (GFX.DrawablePass) >> .env-steps
+  (GFX.Texture :Format TextureFormat.RGBA8Unorm :Resolution (Int2 1024) :Dimension TextureDimension.Cube) >= cube-tex
+  ;; {:Queue queue :Features features} (GFX.DrawablePass) >> .env-steps
 
-  (map
-   (fn* [n]
-        cube-rotations (Take n) (xyz-to-mat) >= .capture-rot-transform
-        (GFX.View .capture-rot-transform) >= .capture-view
-        (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n}}
-                        :Size (Int2 1024) ; Controls cubemap dimensions
-                        :Contents (->
-                                   (GFX.Render :Steps .env-steps :View .capture-view)))
-        (range 0 6))))
+  ;; (map
+  ;;  (fn* [n] (->
+  ;;            cube-rotations (Take n) (xyz-to-mat) >= .capture-rot-transform
+  ;;            (GFX.View .capture-rot-transform) >= .capture-view
+  ;;            (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n}}
+  ;;                            :Size (Int2 1024) ; Controls cubemap dimensions
+  ;;                            :Contents (->
+  ;;                                       (GFX.Render :Steps .env-steps :View .capture-view)));
+  ;;            ))
+  ;;  (range 0 5));
+  )
 
 (defshards setup-reflection-feature [name]
-  (GFX.Feature
-   :Shaders
+  {:Shaders
    [{:Stage ProgrammableGraphicsStage.Fragment
-     :After ["initWorldNormal" "writeColor"]
+     :After ["writeColor"]
      :Before []
      :EntryPoint
      (->
-      (Shader.ReadGlobal "worldNormal") >= .world-normal
-      .world-normal (Shader.SampleTextureUVW "someTexture")
-      (Shader.WriteGlobal "color"))}]
-   :ViewGenerators [(->
-                     (| (Take "Queue") >= .parent-queue)
-                     (| (Take "View") >= .parent-view)
-                     (| (Take "Features") >= .parent-features)
-                     (render-cubemap .parent-queue .parent-features .cube-tex)
-                     {:env .cube-tex})]) >= name
+      (Shader.ReadInput "worldNormal") >= .world-normal
+      .world-normal (Shader.SampleTextureCoord "env")
+      (Shader.WriteGlobal "color"))}]} (GFX.Feature
+                                        :ViewGenerators (->
+                                                         (| (Take "Queue") >= .parent-queue)
+                                                         (| (Take "View") >= .parent-view)
+                                                         (| (Take "Features") >= .parent-features)
+                                                         (render-cubemap .parent-queue .parent-features .cube-tex)
+                                                         .cube-tex (Log "Test")
+                                                         {:env .cube-tex})) >= name
   name)

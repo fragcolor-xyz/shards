@@ -90,9 +90,12 @@ inline ShaderFieldTypeVariant toShaderParamType(const SHTypeInfo &typeInfo) {
       return shader::FieldTypes::Float4x4;
     }
     break;
-  case SHType::Object:
+  case SHType::Object: {
     if (typeInfo == Types::Texture)
       return TextureType::D2;
+    else if (typeInfo == Types::TextureCube)
+      return TextureType::Cube;
+  }
   default:
     break;
   }

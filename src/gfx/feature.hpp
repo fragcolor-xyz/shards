@@ -156,10 +156,12 @@ struct NamedShaderParam {
 
 struct NamedTextureParam {
   std::string name;
+  TextureType type = TextureType::D2;
   ShaderParamFlags flags = ShaderParamFlags::None;
 
   NamedTextureParam() = default;
-  NamedTextureParam(std::string name) : name(name) {}
+  NamedTextureParam(std::string name, TextureType type = TextureType::D2, ShaderParamFlags flags = ShaderParamFlags::None)
+      : name(name), type(type) {}
 
   template <typename T> void getPipelineHash(T &hasher) const {
     hasher(name);

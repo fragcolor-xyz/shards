@@ -115,7 +115,7 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
 
       attachment = RenderStepOutput::Texture{
           .name = nameVar.payload.stringValue,
-          .handle = texture,
+          .subResource = texture,
           .clearValues = clearValues,
       };
     } else {
