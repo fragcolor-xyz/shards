@@ -168,7 +168,7 @@ struct NamedTextureParam {
 };
 
 extern UniqueIdGenerator featureIdGenerator;
-struct Feature {
+struct Feature : public std::enable_shared_from_this<Feature> {
   // Used to identify this feature for caching purposes
   const UniqueId id = featureIdGenerator.getNext();
 
