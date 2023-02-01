@@ -24,7 +24,7 @@ For example, `Math.Add` has the parameter `Operand` which is defined by the user
 
 ![The parameters set for a shard affects it's behavior.](assets/shard-parameter.png)
 
-In code form, parameters are defined by the user within the brackets of the shard itself, after the shard's name. The above examples will appear as `5 (Math.Add 1)` and `5 (Math.Add 3)` in code. 
+In code form, parameters are defined by the user within the parentheses of the shard itself, after the shard's name. The above examples will appear as `5 (Math.Add 1)` and `5 (Math.Add 3)` in code. 
  
 Some shards have multiple parameters. When specifying values for multiple parameters, you will have to prepend your values with the parameter they are for if some parameters are skipped.
 
