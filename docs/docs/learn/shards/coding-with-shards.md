@@ -4,7 +4,7 @@ In this chapter, we will be learning how to code with Shards so that you can wri
 
 ## The shard
 
-A shard in its most basic code form consists of its name surrounded by brackets.
+A shard in its most basic code form consists of its name surrounded by parentheses.
 
 ![Some shard examples.](assets/shards-examples.png)
 
@@ -191,7 +191,7 @@ How you assign data to variables depends on the variable type. The main differen
     - Global: The variable is known throughout the entire Mesh.
 
 !!! note "Local vs Global"
-    We will learn more about this later in the section about [Scope](./working-with-data/#scope) in Shards.
+    We will learn more about this later in the section about [Scope](../working-with-data/#scope) in Shards.
 
 Here are the variable types and the symbols used to create and assign to them:
 
@@ -209,9 +209,6 @@ In summary:
 - Otherwise, use `>=` to create **local** variables, or `>==` to make them **global**.
 
 - Use `>` to update variable values.
-
-!!! note "Ligatures"
-    Some fonts will combine characters into a ligature. ">=" can appear as the ligature `>=`, while ">==" will appear as `>==`.
 
 !!! note "Alias"
     Some shards have an alias to reduce your code's verbosity. They can represent shards with defined settings, as you will see in `Setup` below.
@@ -353,7 +350,7 @@ A Wire's lifetime ends once the final shard within it has been executed. To keep
 
 ![A Looped Wire is kept alive even after the final shard is executed.](assets/what-is-a-looped-wire.png)
 
-A Looped Wire will continue running until exit conditions have been met.
+A Looped Wire will continue running until its exit conditions have been met.
 
 !!! note
     You will learn more about the entering and exiting of Looped Wires in the next chapter!
@@ -404,15 +401,15 @@ When the Mesh is run, the Wires are executed in sequence and your program is sta
 
 - The interval between each iteration of the Mesh.
 
-- The maximum number of iterations, used only for Debugging purposes.
+- The maximum number of iterations, typically used for Debugging purposes.
 
 !!! note
-    If your program has animations, we recommend that you set the first value to `(/ 1 60)` which emulates 60 frames per second (60 FPS).
+    If your program has animations, we recommend that you set the first value to `(/ 1.0 60.0)` which emulates 60 frames per second (60 FPS).
 
     === "Running a Mesh at 60 FPS"
     
         ```{.clojure .annotate linenums="1"}
-        (run mesh-name (/ 1 60))
+        (run mesh-name (/ 1.0 60.0))
         ```
 
 Let us now take a look at how a basic Shards program will look like!
