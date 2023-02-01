@@ -2211,6 +2211,7 @@ BUILTIN("shard-info") {
   CHECK_ARGS_IS(1);
   ARG(malString, blkname);
   const auto blkIt = builtIns.find(blkname->ref());
+  SHLOG_TRACE("shard-info {}", blkname->value());
   if (blkIt == builtIns.end()) {
     return mal::nilValue();
   } else {
@@ -2228,6 +2229,7 @@ BUILTIN("shard-info") {
     for (uint32_t i = 0; i < params.len; i++) {
       malHash::Map pmap;
       pmap[":name"] = mal::string(params.elements[i].name);
+      SHLOG_TRACE(" param {}", params.elements[i].name);
       auto &help = params.elements[i].help;
       pmap[":help"] = mal::string(help.string ? help.string : getString(help.crc));
       pmap[":types"] = richTypeInfo(params.elements[i].valueTypes);
