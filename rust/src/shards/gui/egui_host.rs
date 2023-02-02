@@ -178,14 +178,6 @@ impl EguiHost {
           return Err(e);
         }
 
-        #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
-        if let Some(url) = &egui_output.platform_output.open_url {
-          webbrowser::open(&url.url).map_err(|e| {
-            shlog_error!("{}", e);
-            "Failed to open URL."
-          })?;
-        }
-
         self.full_output = Some(make_native_full_output(&gui_ctx, egui_output, draw_scale)?);
         Ok(*input)
       }
