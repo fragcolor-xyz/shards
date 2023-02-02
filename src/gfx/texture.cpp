@@ -25,14 +25,18 @@ std::shared_ptr<Texture> Texture::makeRenderAttachment(WGPUTextureFormat format,
 }
 
 Texture &Texture::init(const TextureDesc &desc) {
-  contextData.reset();
-  this->desc = desc;
+  if (this->desc != desc) {
+    contextData.reset();
+    this->desc = desc;
+  }
   return *this;
 }
 
 Texture &Texture::initWithSamplerState(const SamplerState &samplerState) {
-  desc.samplerState = samplerState;
-  contextData.reset();
+  if (desc.samplerState != samplerState) {
+    desc.samplerState = samplerState;
+    contextData.reset();
+  }
   return *this;
 }
 

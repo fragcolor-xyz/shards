@@ -26,7 +26,7 @@ struct TextureViewDesc {
 
   std::strong_ordering operator<=>(const TextureViewDesc &) const = default;
   friend size_t hash_value(TextureViewDesc const &v) {
-    size_t result;
+    size_t result{};
     boost::hash_combine(result, uint32_t(v.format));
     boost::hash_combine(result, uint32_t(v.dimension));
     boost::hash_combine(result, v.baseMipLevel);
@@ -44,7 +44,7 @@ struct TextureViewKey {
 
   std::strong_ordering operator<=>(const TextureViewKey &) const = default;
   friend size_t hash_value(TextureViewKey const &v) {
-    size_t result;
+    size_t result{};
     boost::hash_combine(result, size_t(v.texture));
     boost::hash_combine(result, v.desc);
     return result;

@@ -8,6 +8,7 @@
 #include "unique_id.hpp"
 #include "fwd.hpp"
 #include "enums.hpp"
+#include <compare>
 #include <variant>
 #include <optional>
 #include <string>
@@ -25,6 +26,8 @@ struct SamplerState {
     hasher(addressModeW);
     hasher(filterMode);
   }
+
+  std::strong_ordering operator<=>(const SamplerState &other) const = default;
 };
 
 struct TextureFormat {
@@ -33,6 +36,8 @@ struct TextureFormat {
   WGPUTextureFormat pixelFormat = WGPUTextureFormat::WGPUTextureFormat_Undefined;
 
   bool hasMips() { return textureFormatFlagsContains(flags, TextureFormatFlags::AutoGenerateMips); }
+
+  std::strong_ordering operator<=>(const TextureFormat &other) const = default;
 };
 
 struct InputTextureFormat {
@@ -70,6 +75,8 @@ struct TextureDesc {
   std::optional<WGPUTextureView> externalTexture;
 
   static TextureDesc getDefault();
+
+  std::strong_ordering operator<=>(const TextureDesc &other) const = default;
 };
 
 /// <div rustbindgen opaque></div>
