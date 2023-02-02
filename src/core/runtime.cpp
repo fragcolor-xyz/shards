@@ -1959,7 +1959,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
       }
     }
 
-    auto runRes = runWire(wire, &context, wire->rootTickInput);
+    auto runRes = runWire(wire, &context, wire->currentInput);
     if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
       SHLOG_DEBUG("Wire {} failed", wire->name);
       wire->state = SHWire::State::Failed;
@@ -1973,9 +1973,9 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
       wire->previousOutput = runRes.output;
       break;
     } else if (unlikely(runRes.state == SHRunWireOutputState::Restarted)) {
-      // must clone over rootTickInput!
-      // restart overwrites rootTickInput on purpose
-      cloneVar(wire->rootTickInput, context.getFlowStorage());
+      // must clone over currentInput!
+      // restart overwrites currentInput on purpose
+      cloneVar(wire->currentInput, context.getFlowStorage());
     }
 
     if (!wire->unsafe && wire->looped) {
