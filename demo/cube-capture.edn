@@ -14,18 +14,18 @@
 
 (defshards render-cubemap [queue features cube-tex]
   (GFX.Texture :Format TextureFormat.RGBA8Unorm :Resolution (Int2 1024) :Dimension TextureDimension.Cube) >= cube-tex
-  ;; {:Queue queue :Features features} (GFX.DrawablePass) >> .env-steps
+  {:Queue queue :Features features} (GFX.DrawablePass) >> .env-steps
 
-  ;; (map
-  ;;  (fn* [n] (->
-  ;;            cube-rotations (Take n) (xyz-to-mat) >= .capture-rot-transform
-  ;;            (GFX.View .capture-rot-transform) >= .capture-view
-  ;;            (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n}}
-  ;;                            :Size (Int2 1024) ; Controls cubemap dimensions
-  ;;                            :Contents (->
-  ;;                                       (GFX.Render :Steps .env-steps :View .capture-view)));
-  ;;            ))
-  ;;  (range 0 5));
+  (map
+   (fn* [n] (->
+             cube-rotations (Take n) (xyz-to-mat) >= .capture-rot-transform
+             (GFX.View .capture-rot-transform) >= .capture-view
+             (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n}}
+                             :Size (Int2 1024) ; Controls cubemap dimensions
+                             :Contents (->
+                                        (GFX.Render :Steps .env-steps :View .capture-view)));
+             ))
+   (range 0 0));
   )
 
 (defshards setup-reflection-feature [name]
@@ -42,7 +42,7 @@
                                                          (| (Take "Queue") >= .parent-queue)
                                                          (| (Take "View") >= .parent-view)
                                                          (| (Take "Features") >= .parent-features)
+                                                         
                                                          (render-cubemap .parent-queue .parent-features .cube-tex)
-                                                         .cube-tex (Log "Test")
                                                          {:env .cube-tex})) >= name
   name)

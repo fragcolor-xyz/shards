@@ -658,7 +658,7 @@ struct FeatureShard {
     });
   }
 
-  std::deque<FeaturePtr> featurePtrsTemp;
+  std::list<FeaturePtr> featurePtrsTemp;
 
   template <typename T, typename T1>
   void runGenerators(std::shared_ptr<SHMesh> mesh, const std::vector<std::shared_ptr<SHWire>> &wires, T &ctx, T1 applyResults) {
@@ -693,7 +693,7 @@ struct FeatureShard {
         mesh->schedule(wire, input, false);
       } else {
         // Update inputs
-        wire->currentInput = input;
+        (TableVar &)wire->currentInput = std::move(input);
       }
     }
 
