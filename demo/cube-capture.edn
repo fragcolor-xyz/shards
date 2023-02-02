@@ -18,7 +18,7 @@
   {:Queue queue :Features features} (GFX.DrawablePass) >> .env-steps
   (map
    (fn* [n] (->
-             cube-rotations (Take n) (Log (str "Rot" n)) (xyz-to-mat) >= .tmp-mat0
+             cube-rotations (Take n) (xyz-to-mat) >= .tmp-mat0
              (Float3 0 20 0) (Math.Translation) >= .tmp-mat1
              .tmp-mat0 (Math.MatMul .tmp-mat1) >= .view-transform
              (GFX.View .view-transform) >= .capture-view
