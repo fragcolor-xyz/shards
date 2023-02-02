@@ -49,15 +49,12 @@ egui-gfx = { path = "../src/gfx/egui", optional = true }
 egui_memory_editor = { version = "0.2.2", optional = true }
 syntect = { version = "5.0.0", default-features = false, features = ["default-fancy"], optional = true }
 half = { version = "2.0.0" }
-tract-onnx = { version = "0.17.7", optional = true }
+tract-onnx = { version = "0.19.2", optional = true }
 enum-map = { version = "2.4.1", optional = true }
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }
 reqwest = { version = "0.11.0", features = ["blocking"], optional = true }
-
-[target.'cfg(not(any(target_arch="wasm32", target_os="ios")))'.dependencies]
-webbrowser = { version = "0.8.3", optional = true }
 
 [dev-dependencies]
 ctor = "0.1.16"
@@ -75,7 +72,6 @@ shards = ["reqwest",
           "hex",
           "rapier3d",
           "crossbeam",
-          "webbrowser",
           "bs58",
           "sha2",
           "wasabi_leb128",

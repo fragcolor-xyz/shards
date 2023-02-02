@@ -210,8 +210,11 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 }
 
 struct Wait : public WireBase {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
   void setup() {
-    activating = false; // this is needed to pass validation in compose
+    activating = false;  // this is needed to pass validation in compose
+    passthrough = false; // also need this to have proper compose output type
   }
 
   SHOptionalString help() {
@@ -1542,6 +1545,7 @@ struct Spawn : public CapturingSpawners {
   Spawn() {
     mode = RunWireMode::Detached;
     capturing = true;
+    passthrough = false;
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
