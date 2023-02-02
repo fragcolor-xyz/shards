@@ -467,9 +467,7 @@ private:
 
 public:
   TShardsVar() = default;
-  TShardsVar(const SHVar &v) {
-    *this = v;
-  }
+  TShardsVar(const SHVar &v) { *this = v; }
   ~TShardsVar() {
     destroy();
     SH_CORE::destroyVar(_shardsParam);
@@ -579,8 +577,11 @@ public:
 
 template <class SH_CORE> struct TOwnedVar : public SHVar {
   TOwnedVar() : SHVar() {}
-  TOwnedVar(TOwnedVar &&source) : SHVar() { *this = source; }
-  TOwnedVar(const TOwnedVar &source) : SHVar() { SH_CORE::cloneVar(*this, source); }
+  TOwnedVar(TOwnedVar &&other) : SHVar() {
+    std::swap<SHVar>(*this, other);
+    SH_CORE::destroyVar(other);
+  }
+  TOwnedVar(const TOwnedVar &other) : SHVar() { SH_CORE::cloneVar(*this, other); }
   TOwnedVar(const SHVar &source) : SHVar() { SH_CORE::cloneVar(*this, source); }
   TOwnedVar &operator=(const SHVar &other) {
     SH_CORE::cloneVar(*this, other);
@@ -591,8 +592,8 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
     return *this;
   }
   TOwnedVar &operator=(TOwnedVar &&other) {
-    SH_CORE::destroyVar(*this);
-    *this = other;
+    std::swap<SHVar>(*this, other);
+    SH_CORE::destroyVar(other);
     return *this;
   }
   ~TOwnedVar() { SH_CORE::destroyVar(*this); }
@@ -772,7 +773,7 @@ template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(co
 }
 
 // Assigns only the variable value, not it's flags and internal properties
-inline void assignVariableValue(SHVar&v , const SHVar& other){
+inline void assignVariableValue(SHVar &v, const SHVar &other) {
   v.valueType = other.valueType;
   v.innerType = other.innerType;
   v.payload = other.payload;
