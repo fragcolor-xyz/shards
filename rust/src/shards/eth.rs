@@ -120,7 +120,7 @@ fn token_to_var(token: Token) -> Result<ClonedVar, &'static str> {
       let mut s = Seq::new();
       for token in tokens {
         let v = token_to_var(token)?;
-        s.push(v.0);
+        s.push(&v.0);
       }
       Ok(s.as_ref().into())
     }
@@ -414,7 +414,7 @@ impl Shard for DecodeCall {
 
       for token in decoded {
         let value: ClonedVar = token.try_into()?;
-        self.output.push(value.0);
+        self.output.push(&value.0);
       }
 
       Ok(self.output.as_ref().into())

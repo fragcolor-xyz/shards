@@ -136,9 +136,9 @@ impl Shard for CSVRead {
           shlog!("{}", e);
           "Failed to parse CSV record string"
         })?;
-        output.push(field.as_ref().into());
+        output.push(&field.as_ref().into());
       }
-      self.output.push(output.as_ref().into());
+      self.output.push(&output.as_ref().into());
     }
     Ok(self.output.as_ref().into())
   }

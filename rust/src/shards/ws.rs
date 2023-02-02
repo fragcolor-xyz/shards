@@ -130,10 +130,10 @@ impl ClientUser {
   fn activate(&mut self) -> Result<&mut WsClient, &str> {
     if self.ws.is_none() {
       let ws = self.instance.get();
-      self.ws = Var::from_object_as_clone(*ws, &WS_CLIENT_TYPE)?;
+      self.ws = Var::from_object_as_clone(ws, &WS_CLIENT_TYPE)?;
     }
 
-    let ws = Var::from_object_mut_ref(*self.instance.get(), &WS_CLIENT_TYPE)?;
+    let ws = Var::from_object_mut_ref(self.instance.get(), &WS_CLIENT_TYPE)?;
 
     if let Some(ws) = ws {
       Ok(ws)

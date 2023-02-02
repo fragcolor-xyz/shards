@@ -261,7 +261,7 @@ impl Shard for SHStorageKey {
       return Err("Invalid input length");
     }
     self.v.clear();
-    for string in strings {
+    for string in strings.iter() {
       let string: &str = string.as_ref().try_into()?;
       let hash = twox_128(string.as_bytes());
       self.v.extend(&hash[..]);
@@ -395,20 +395,20 @@ struct SHEncode {
   v: Vec<u8>,
 }
 
-fn encode_var(value: Var, hint: Var, dest: &mut Vec<u8>) -> Result<(), &'static str> {
+fn encode_var(value: &Var, hint: &Var, dest: &mut Vec<u8>) -> Result<(), &'static str> {
   match value.valueType {
     SHType_None => {
       dest.push(0);
       Ok(())
     }
     SHType_String => {
-      let hint: Result<&str, &str> = hint.as_ref().try_into();
+      let hint: Result<&str, &str> = hint.try_into();
       let account = if let Ok(hint) = hint {
         matches!(hint, "a")
       } else {
         false
       };
-      let string: &str = value.as_ref().try_into()?;
+      let string: &str = value.try_into()?;
       if account {
         let id = AccountId32::from_str(string).map_err(|_| "Invalid account id")?;
         id.encode_to(dest);
@@ -419,8 +419,8 @@ fn encode_var(value: Var, hint: Var, dest: &mut Vec<u8>) -> Result<(), &'static 
       }
     }
     SHType_Int => {
-      let hint: &str = hint.as_ref().try_into()?;
-      let int: i64 = value.as_ref().try_into()?;
+      let hint: &str = hint.try_into()?;
+      let int: i64 = value.try_into()?;
       match hint {
         "u8" => {
           u8::encode_to(&int.try_into().map_err(|_| "Invalid u8 value")?, dest);
@@ -471,12 +471,12 @@ fn encode_var(value: Var, hint: Var, dest: &mut Vec<u8>) -> Result<(), &'static 
       }
     }
     SHType_Bytes => {
-      let bytes: &[u8] = value.as_ref().try_into()?;
+      let bytes: &[u8] = value.try_into()?;
       bytes.encode_to(dest);
       Ok(())
     }
     SHType_Bool => {
-      let bool: bool = value.as_ref().try_into()?;
+      let bool: bool = value.try_into()?;
       bool.encode_to(dest);
       Ok(())
     }
@@ -638,14 +638,14 @@ impl Shard for SHDecode {
         0 => {
           // None
           offset += 1;
-          self.output.push(().into());
+          self.output.push(&().into());
         }
         2 => {
           // Bool
           let mut bytes = &bytes[offset..];
           let value = bool::decode(&mut bytes).map_err(|_| "Invalid bool")?;
           offset += 1;
-          self.output.push(value.into());
+          self.output.push(&value.into());
         }
         3 => {
           // Int
@@ -709,7 +709,7 @@ impl Shard for SHDecode {
             }
             _ => Err("Invalid hint"),
           }?;
-          self.output.push(value);
+          self.output.push(&value);
         }
         16 => {
           // Bytes
@@ -728,7 +728,7 @@ impl Shard for SHDecode {
                 let from = offset;
                 offset += value.encoded_size();
                 let bytes = &original_slice[from..offset];
-                self.output.push(bytes.into());
+                self.output.push(&bytes.into());
                 continue;
               }
               "u64" => {
@@ -737,7 +737,7 @@ impl Shard for SHDecode {
                 let from = offset;
                 offset += 8;
                 let bytes = &original_slice[from..offset];
-                self.output.push(bytes.into());
+                self.output.push(&bytes.into());
                 continue;
               }
               "u128" => {
@@ -746,7 +746,7 @@ impl Shard for SHDecode {
                 let from = offset;
                 offset += 16;
                 let bytes = &original_slice[from..offset];
-                self.output.push(bytes.into());
+                self.output.push(&bytes.into());
                 continue;
               }
               _ => {}
@@ -754,7 +754,7 @@ impl Shard for SHDecode {
           } else {
             let value = Vec::<u8>::decode(&mut bytes).map_err(|_| "Invalid bytes")?;
             offset += value.encoded_size();
-            self.output.push(value.as_slice().into());
+            self.output.push(&value.as_slice().into());
           }
         }
         17 => {
@@ -775,11 +775,11 @@ impl Shard for SHDecode {
               .map_err(|_| "Invalid account")?
               .to_ss58check_with_version(prefix.into());
             offset += value.encoded_size();
-            self.output.push(Var::ephemeral_string(value.as_str())); // Will Clone
+            self.output.push(&Var::ephemeral_string(value.as_str())); // Will Clone
           } else {
             let value = String::decode(&mut bytes).map_err(|_| "Invalid string")?;
             offset += value.encoded_size();
-            self.output.push(Var::ephemeral_string(value.as_str())); // Will Clone
+            self.output.push(&Var::ephemeral_string(value.as_str())); // Will Clone
           }
         }
         _ => return Err("Invalid value type"),

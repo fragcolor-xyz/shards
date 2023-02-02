@@ -150,8 +150,8 @@ impl Shard for Style {
     if let Some(text_styles) = table.get_static(cstr!("text_styles")) {
       let text_styles: Seq = text_styles.try_into()?;
 
-      for var in text_styles {
-        let text_style: Table = var.as_ref().try_into()?;
+      for var in text_styles.iter() {
+        let text_style: Table = var.try_into()?;
         if let Some(name) = text_style.get_static(cstr!("name")) {
           if let Some(key) = style_util::get_text_style(name.try_into()?) {
             if let Some(fontId) = style_util::get_font_id(text_style) {
