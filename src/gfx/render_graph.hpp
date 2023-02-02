@@ -578,7 +578,9 @@ public:
     writtenTextures.clear();
     frameTextures.clear();
     renderTextureCache.swapBuffers(frameCounter);
-    textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
+
+    // NOTE: Because views keep textures alive, try to clean this as frequent as possible
+    textureViewCache.clearOldCacheItems(frameCounter, 8);
   }
 
   void getFrameTextures(std::vector<ResolvedFrameTexture> &outFrameTextures, const std::span<TextureSubResource> &outputs,

@@ -8,27 +8,29 @@
 (defshards xyz-to-mat []
   (| (Take 0) >= .x) (| (Take 1) >= .y) (| (Take 2) >= .z)
   .x (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) >= .rx
-  .y (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) >= .ry
-  .z (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) >= .rz
+  .y (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .ry
+  .z (Math.DegreesToRadians) (Math.AxisAngleZ) (Math.Rotation) >= .rz
   .rx (Math.MatMul .rz) (Math.MatMul .ry))
 
-(defshards render-cubemap [queue features cube-tex]
-  (GFX.Texture :Format TextureFormat.RGBA8Unorm :Resolution (Int2 1024) :Dimension TextureDimension.Cube) >= cube-tex
+(defshards render-cubemap [queue included-steps features cube-tex]
+  (GFX.Texture :Format TextureFormat.RGBA8Unorm :Resolution (Int2 512) :Dimension TextureDimension.Cube) >= cube-tex
+  included-steps >= .env-steps
   {:Queue queue :Features features} (GFX.DrawablePass) >> .env-steps
-
   (map
    (fn* [n] (->
-             cube-rotations (Take n) (xyz-to-mat) >= .capture-rot-transform
-             (GFX.View .capture-rot-transform) >= .capture-view
+             cube-rotations (Take n) (Log (str "Rot" n)) (xyz-to-mat) >= .tmp-mat0
+             (Float3 0 20 0) (Math.Translation) >= .tmp-mat1
+             .tmp-mat0 (Math.MatMul .tmp-mat1) >= .view-transform
+             (GFX.View .view-transform) >= .capture-view
              (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n}}
-                             :Size (Int2 1024) ; Controls cubemap dimensions
+                             :Size (Int2 512) ; Controls cubemap dimensions
                              :Contents (->
                                         (GFX.Render :Steps .env-steps :View .capture-view)));
              ))
-   (range 0 0));
+   (range 0 5));
   )
 
-(defshards setup-reflection-feature [name]
+(defshards setup-reflection-feature [name included-steps]
   {:Shaders
    [{:Stage ProgrammableGraphicsStage.Fragment
      :After ["writeColor"]
@@ -37,12 +39,13 @@
      (->
       (Shader.ReadInput "worldNormal") >= .world-normal
       .world-normal (Shader.SampleTextureCoord "env")
-      (Shader.WriteGlobal "color"))}]} (GFX.Feature
+      (Math.Multiply (Float4 1 1 1 0)) (Math.Add (Float4 0 0 0 1))
+      (Shader.WriteOutput "color"))}]} (GFX.Feature
                                         :ViewGenerators (->
                                                          (| (Take "Queue") >= .parent-queue)
                                                          (| (Take "View") >= .parent-view)
                                                          (| (Take "Features") >= .parent-features)
-                                                         
-                                                         (render-cubemap .parent-queue .parent-features .cube-tex)
+
+                                                         (render-cubemap .parent-queue included-steps .parent-features .cube-tex)
                                                          {:env .cube-tex})) >= name
   name)

@@ -21,14 +21,15 @@
  (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .cube-mesh
  {:Mesh .cube-mesh :Params {:baseColor (Float4 0.12 0.7 0.2 1.0)}} (GFX.Drawable :Transform .cube-transform) >> .drawables
 
+ (setup-skybox-pass .skybox-pass)
+ .skybox-pass (Push "env-included-steps" :Global true)
+
  (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
  (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
- (setup-reflection-feature .refl-feature) >> .features
+ (setup-reflection-feature .refl-feature .env-included-steps) >> .features
 
- (setup-skybox-pass .skybox-pass)
  .skybox-pass >> .render-steps
- {:Features .features} (GFX.DrawablePass) >> .render-steps
-  ;
+ {:Features .features} (GFX.DrawablePass) >> .render-steps ;
  )
 
 ; Update view transform

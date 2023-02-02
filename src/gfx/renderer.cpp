@@ -729,7 +729,9 @@ struct RendererImpl final : public ContextData {
   void clearOldCacheItems() {
     clearOldCacheItemsIn(pipelineCache.map, frameCounter, 120 * 60 * 5);
     clearOldCacheItemsIn(viewCache, frameCounter, 120 * 60 * 5);
-    textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 * 1);
+
+    // NOTE: Because views keep textures alive, try to clean this as frequent as possible
+    textureViewCache.clearOldCacheItems(frameCounter, 8);
   }
 
   void ensureMainOutputCleared() {
