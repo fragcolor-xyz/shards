@@ -303,6 +303,8 @@ struct RendererImpl final : public ContextData {
     }
 
     // Attach outputs
+    // NOTE: This doesn't actually attach the textures
+    //   it just references them for type information
     if (viewData.renderTarget) {
       for (auto &attachment : viewData.renderTarget->attachments)
         builder.attachOutput(attachment.first, attachment.second);
