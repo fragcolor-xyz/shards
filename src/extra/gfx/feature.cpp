@@ -29,6 +29,8 @@
 #include <queue>
 #include <shards/shared.hpp>
 #include <stdexcept>
+#include <string.h>
+#include <unordered_map>
 #include <variant>
 #include <webgpu-headers/webgpu.h>
 
@@ -251,13 +253,22 @@ struct FeatureShard {
       _drawableGeneratorsMesh = SHMesh::make();
   }
 
-  void composeGeneratorWire(std::shared_ptr<SHWire> &wire, std::vector<NamedShaderParam> &outBasicParams,
-                            std::vector<NamedTextureParam> &outTextureParams, bool expectSeqOutput) {
+  void composeGeneratorWire(const SHInstanceData &data, std::shared_ptr<SHWire> &wire,
+                            std::vector<NamedShaderParam> &outBasicParams, std::vector<NamedTextureParam> &outTextureParams,
+                            bool expectSeqOutput) {
     SHInstanceData generatorInstanceData{};
     generatorInstanceData.inputType = GeneratedInputTableType;
 
     ExposedInfo exposed;
     exposed.push_back(RequiredGraphicsRendererContext::getExposedTypeInfo());
+
+    // Capture non-protected variable
+    ForEach(data.shared, [&](const SHExposedTypeInfo &ti) {
+      if (!ti.isProtected) {
+        exposed.push_back(ti);
+      }
+    });
+
     generatorInstanceData.shared = SHExposedTypesInfo(exposed);
 
     generatorInstanceData.wire = wire.get();
@@ -323,10 +334,10 @@ struct FeatureShard {
 
     // Compose generator wires
     for (auto &generatorWire : _viewGenerators) {
-      composeGeneratorWire(generatorWire, _derivedShaderParams, _derivedTextureParams, false);
+      composeGeneratorWire(data, generatorWire, _derivedShaderParams, _derivedTextureParams, false);
     }
     for (auto &generatorWire : _drawableGenerators) {
-      composeGeneratorWire(generatorWire, _derivedShaderParams, _derivedTextureParams, true);
+      composeGeneratorWire(data, generatorWire, _derivedShaderParams, _derivedTextureParams, true);
     }
 
     return Types::Feature;
@@ -591,7 +602,47 @@ struct FeatureShard {
     ForEach(inputSeq, [&](SHVar v) { applyParam(context, feature, v); });
   }
 
+  std::unordered_map<std::string, OwnedVar> capturedVariables;
+
+  bool shouldCaptureVariable(const SHExposedTypeInfo &ti) {
+    if (std::strcmp(ti.name, GraphicsRendererContext::VariableName) == 0)
+      return false;
+    return true;
+  }
+
+  void captureGeneratorCallbackVariables(SHContext *context) {
+    auto captureVariables = [&](const std::shared_ptr<SHWire> &wire) {
+      auto &required = wire->composeResult->requiredInfo;
+      ForEach(required, [&](const SHExposedTypeInfo &ti) {
+        if (!shouldCaptureVariable(ti))
+          return;
+        if (!capturedVariables.contains(ti.name)) {
+          SHVar *var = referenceVariable(context, ti.name);
+          capturedVariables.emplace(ti.name, *var);
+          releaseVariable(var);
+        }
+      });
+    };
+
+    for (auto &gen : _viewGenerators)
+      captureVariables(gen);
+    for (auto &gen : _drawableGenerators)
+      captureVariables(gen);
+  }
+
+  void addGeneratorCapturedVariablesToMeshes() {
+    for (auto &pair : capturedVariables) {
+      if (_viewGeneratorsMesh)
+        _viewGeneratorsMesh->variables.emplace(pair.first, (SHVar &)pair.second);
+      if (_drawableGeneratorsMesh)
+        _drawableGeneratorsMesh->variables.emplace(pair.first, (SHVar &)pair.second);
+    }
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
+    captureGeneratorCallbackVariables(context);
+    addGeneratorCapturedVariablesToMeshes();
+
     Feature &feature = *_featurePtr->get();
 
     checkType(input.valueType, SHType::Table, "Input table");
