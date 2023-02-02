@@ -106,7 +106,7 @@
   (Wire
    "root"
    "Initial input"
-   (Once (Dispatch mywire))
+   (Once (Do mywire))
    (Get "var1")
    (Log "var1")
    (Get "var2")
@@ -116,11 +116,11 @@
    (Log "otherWire")
    (Assert.Is 99 true)
    10
-   (Dispatch funcWire)
+   (Do funcWire)
    12
-   (Dispatch funcWire)
+   (Do funcWire)
    20
-   (Dispatch funcWire)
+   (Do funcWire)
 
    (Detach loopedOther)
    (Stop loopedOther)

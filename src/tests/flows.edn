@@ -279,7 +279,7 @@
   .count (Log) (When (IsMore 10) (-> (Return))))
 
 (defwire wire-loop-inline-parent
-  (Dispatch wire-loop-inline)
+  (Do wire-loop-inline)
   (Msg "Ok done looping..."))
 
 (schedule Root wire-loop-inline-parent)

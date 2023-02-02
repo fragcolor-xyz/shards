@@ -297,11 +297,6 @@
    (Assert.Is 2 true)
 
    "My input"
-   (Dispatch inner1)
-   (Assert.Is "My input" true)
-   (Log)
-
-   "My input"
    (Do inner1)
    (Assert.Is "My input 2" true)
    (Log)
