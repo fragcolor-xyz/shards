@@ -524,6 +524,7 @@ pub extern "C" fn registerRustShards(core: *mut SHCore) {
   shards::gui::registerShards();
   shards::date::registerShards();
   shards::onnx::registerShards();
+  shards::ws::registerShards();
 }
 
 #[no_mangle]
