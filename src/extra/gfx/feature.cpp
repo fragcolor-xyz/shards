@@ -165,7 +165,7 @@ struct FeatureShard {
   std::shared_ptr<SHMesh> _viewGeneratorsMesh;
   std::shared_ptr<SHMesh> _drawableGeneratorsMesh;
 
-  std::unordered_map<std::string, OwnedVar> _capturedVariables;
+  std::unordered_map<std::string, SHVar *> _capturedVariables;
 
   void setWireVector(const SHVar &var, std::vector<std::shared_ptr<SHWire>> &outVec) {
 
@@ -234,6 +234,10 @@ struct FeatureShard {
   }
 
   void cleanup() {
+    for (auto &pair : _capturedVariables)
+      releaseVariable(pair.second);
+    _capturedVariables.clear();
+
     _viewGeneratorsMesh.reset();
     _drawableGeneratorsMesh.reset();
 
@@ -617,9 +621,7 @@ struct FeatureShard {
         if (!shouldCaptureVariable(ti))
           return;
         if (!_capturedVariables.contains(ti.name)) {
-          SHVar *var = referenceVariable(context, ti.name);
-          _capturedVariables.emplace(ti.name, *var);
-          releaseVariable(var);
+          _capturedVariables.emplace(ti.name, referenceVariable(context, ti.name));
         }
       });
     };
@@ -633,9 +635,9 @@ struct FeatureShard {
   void addGeneratorCapturedVariablesToMeshes() {
     for (auto &pair : _capturedVariables) {
       if (_viewGeneratorsMesh)
-        _viewGeneratorsMesh->variables.emplace(pair.first, (SHVar &)pair.second);
+        _viewGeneratorsMesh->variables.emplace(pair.first, *pair.second);
       if (_drawableGeneratorsMesh)
-        _drawableGeneratorsMesh->variables.emplace(pair.first, (SHVar &)pair.second);
+        _drawableGeneratorsMesh->variables.emplace(pair.first, *pair.second);
     }
   }
 
