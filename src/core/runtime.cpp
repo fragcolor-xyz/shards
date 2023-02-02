@@ -284,7 +284,6 @@ void registerCoreShards() {
   registerProcessShards();
   Genetic::registerShards();
   registerNetworkShards();
-  WS::registerShards();
 #endif
 
 #ifdef SHARDS_WITH_EXTRA_SHARDS
