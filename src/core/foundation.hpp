@@ -342,7 +342,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::atomic<State> state{Stopped};
 
-  SHVar rootTickInput{};
   SHVar currentInput{};
   SHVar previousOutput{};
 

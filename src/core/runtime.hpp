@@ -219,7 +219,7 @@ inline void start(SHWire *wire, SHVar input = {}) {
   if (!wire->coro || !(*wire->coro))
     return; // check if not null and bool operator also to see if alive!
 
-  shards::cloneVar(wire->rootTickInput, input);
+  shards::cloneVar(wire->currentInput, input);
   wire->state = SHWire::State::Starting;
 
   wire->dispatcher.trigger(SHWire::OnStartEvent{wire});
@@ -270,7 +270,7 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
   auto res = wire->state == SHWire::State::Ended;
 
   wire->state = SHWire::State::Stopped;
-  destroyVar(wire->rootTickInput);
+  destroyVar(wire->currentInput);
 
   // Clone the results if we need them
   if (result)
