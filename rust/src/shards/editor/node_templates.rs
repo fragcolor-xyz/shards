@@ -65,9 +65,16 @@ pub(crate) struct ShardData<'a> {
 impl<'a> ShardData<'a> {
   fn new(name: &'a str) -> Self {
     let instance = createShard(name);
-    let params = instance.parameters();
-    let params = if params.len > 0 {
-      unsafe {
+    instance.into()
+  }
+}
+
+impl<'a> From<ShardInstance> for ShardData<'a> {
+  fn from(instance: ShardInstance) -> Self {
+    unsafe {
+      let name = CStr::from_ptr(instance.name()).to_str().unwrap();
+      let params = instance.parameters();
+      let params = if params.len > 0 {
         let params = core::slice::from_raw_parts(params.elements, params.len as usize);
         params
           .iter()
@@ -142,15 +149,15 @@ impl<'a> ShardData<'a> {
             (type_name, VarValue::new(&initial_value, types, data))
           })
           .collect()
-      }
-    } else {
-      vec![]
-    };
+      } else {
+        vec![]
+      };
 
-    Self {
-      name,
-      instance,
-      params,
+      Self {
+        name,
+        instance,
+        params,
+      }
     }
   }
 }

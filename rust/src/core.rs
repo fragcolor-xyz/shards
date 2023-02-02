@@ -620,6 +620,12 @@ impl Drop for ShardInstance {
   }
 }
 
+impl From<ShardPtr> for ShardInstance {
+  fn from(ptr: ShardPtr) -> Self {
+    Self { ptr }
+  }
+}
+
 impl ShardInstance {
   pub fn name(&self) -> SHString {
     assert_ne!(self.ptr, std::ptr::null_mut());
