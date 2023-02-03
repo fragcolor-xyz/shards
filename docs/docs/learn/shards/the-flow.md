@@ -4,74 +4,65 @@ Wires are scheduled on the Mesh, and they are run in the order they are schedule
 
 To gain better control of the flow in your Shards program, you can employ some of the methods described here.
 
-## Do / Dispatch
+## Do
 
-[`Do`](../../../reference/shards/General/Do) and [`Dispatch`](../../../reference/shards/General/Dispatch) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function.
+[`Do`](../../../reference/shards/General/Do) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function. `Do` takes an input, passes it into the Wire being called, and returns the output from it.
 
-`Do` disables passthrough, while `Dispatch` has it enabled. Passthrough determines whether the input entering the Wire can pass through the Wire unaltered.
+In the example below, John and Lucy are taking apples in turn. The Looped Wires are scheduled on the Mesh. When they are run, they each call the unscheduled Wire `take-an-apple`.
 
-Since `Do` has passthrough **disabled**:
-
-- Any changes to the input is kept and produced as the Wire's output.
-
-Since `Dispatch` has passthrough **enabled**:
-
-- The value entering the Wire can pass through unaltered.
-
-- The Wire's actual output is ignored.
-
-![Difference in Passthrough.](assets/do-dispatch-difference.png)
-
-In the example below:
-
-1. John starts with five apples.
-
-2. He wishes to share them equally with a friend,
-
-3. and thus checks if it can be divided by two. 
-
-4. He then takes another apple and checks again. 
-
-We define two Wires - `add-apple` and `can-it-be-shared` to carry out these tasks.
+!!! note
+    Wires scheduled on the Mesh are automatically run in order when the program starts. Unscheduled Wires however will only run when called by methods such as `Do`.
 
 === "Command"
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
-    
-    (defwire add-apple
-      (Msg "Adding an apple...")
-      (Math.Add 1))
 
-    (defwire can-it-be-shared 
-      (Math.Mod 2) ;; (1)
-      (If
-       :Predicate (Is 0) ;; (2)
-       :Then (Msg "Yes")
-       :Else (Msg "No")))
+    (defwire take-an-apple
+      = .name (Log "Actor") ;; (1)
+      (Setup 10 >= .apples) ;; (2)
+      (Math.Dec .apples)
+      .apples (Log "Apples Remaining"))
 
-    (defwire john
-      5 >= .apples
-      (Dispatch can-it-be-shared)
-      (Do add-apple)
-      (Dispatch can-it-be-shared))
+    (defloop john 
+      (Msg "Taking an apple!")
+      "John" (Do take-an-apple))
+
+    (defloop lucy
+      (Msg "Taking an apple!")
+      "Lucy" (Do take-an-apple))
 
     (schedule main john)
-    (run main)
+    (schedule main lucy)
+    (run main 1 3)
     ```
 
-    1. [`Math.Mod`](../../../reference/shards/Math/Mod/) divides a value by the number specified and returns the remainder.
+    1. The value passed into the Wire is saved into a variable. In this case, the string "John" or "Lucy" is passed into the Wire and saved into the variable `.name`.
 
-    2. [`If`](../../../reference/shards/General/If/) checks if the `Predicate` is true. `Then` is executed if true, `Else` is executed when false.
+    2. The program starts off with 10 apples. This value decreases each time the Wire `take-an-apple` is called. 
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
-    [can-it-be-shared] No
-    [add-apple] Adding an apple...
-    [can-it-be-shared] Yes
-
+    ```
+    [john] Taking an apple!
+    [take-an-apple] Actor: John
+    [take-an-apple] Apples Remaining: 9
+    [lucy] Taking an apple!
+    [take-an-apple] Actor: Lucy
+    [take-an-apple] Apples Remaining: 8
+    [john] Taking an apple!
+    [take-an-apple] Actor: John
+    [take-an-apple] Apples Remaining: 7
+    [lucy] Taking an apple!
+    [take-an-apple] Actor: Lucy
+    [take-an-apple] Apples Remaining: 6
+    [john] Taking an apple!
+    [take-an-apple] Actor: John
+    [take-an-apple] Apples Remaining: 5
+    [lucy] Taking an apple!
+    [take-an-apple] Actor: Lucy
+    [take-an-apple] Apples Remaining: 4
     ```
 
-![Do and Dispatch](assets/do-dispatch-example.png)
+![Do Example](assets/do-example.png)
 
 ## Detach / Spawn
 
@@ -81,7 +72,7 @@ The difference between `Detach` and `Spawn` is that:
 
 - `Detach` schedules the original Wire itself.
 
-- `Spawn` schedules clones of the Wire.
+- `Spawn` schedules a clone of the Wire.
 
 This means that there can only be one instance of the detached Wire running, while you can have many instances of the spawned Wire.
 
@@ -102,14 +93,14 @@ Back to our previous example with apples, if John now requires some time to juic
     (defmesh main)
 
     (defwire take-an-apple
-      = .name (Log "Actor") ;; (1)
+      = .name (Log "Actor")
       (Setup 10 >= .apples (Log "Setup"))
       (Math.Dec .apples)
       .apples (Log "Apples Remaining"))
 
     (defwire juice-apple
       = .name (Log "Actor")
-      (Msg "Juicing Apple...") (Pause 1) ;; (2)
+      (Msg "Juicing Apple...") (Pause 1) ;; (1)
       (Msg "Made some Apple Juice!"))
 
     (defloop john
@@ -127,11 +118,10 @@ Back to our previous example with apples, if John now requires some time to juic
     (run main 1 4)
     ```
 
-    1. Save values passed into the Wire by associating them with a variable.
-    2. [`Pause`](../../../reference/shards/General/Pause/) pauses the Wire by the specified amount of seconds.
+    1. [`Pause`](../../../reference/shards/General/Pause/) pauses the Wire by the specified amount of seconds.
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```
     [john] Taking an apple!
     [take-an-apple] Actor: John
     [take-an-apple] Setup: 10
@@ -193,7 +183,7 @@ Now say we have a large oven which can bake multiple apples concurrently. We can
     ```
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```
     [john] Taking an apple!
     [take-an-apple] Actor: John
     [take-an-apple] Apples Remaining: 9
@@ -239,12 +229,19 @@ Use cases for `Spawn` would include spawning the same projectile (such as bullet
 
 [`Start`](../../../reference/shards/General/Start) schedules a Wire to run on the same Mesh, in place of the current Wire.
 
+!!! note "Start vs Detach"
+    Even though they both schedules a Wire onto the Mesh, `Start` will stop the current Wire to run the scheduled Wire. With `Detach`, the scheduled Wire will only run when its turn on the Mesh is up.
+
+![Start schedules a Wire to run in place of the current Wire.](assets/start.png)
+
 ### Resume
 
 [`Resume`](../../../reference/shards/General/Resume) will resume a suspended Wire from where it was last paused at.
 
 !!! note
     If `Resume` is used on a Wire that has not been scheduled yet, it will behave as `Start` would and schedule the Wire on the Mesh before starting it.
+
+![Resume will resume a suspended Wire from where it was last paused at.](assets/start-resume.png)
 
 `Start` and `Resume` are useful when managing different states.
 
@@ -272,7 +269,7 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
     (defloop lucy
       (Setup 0 >= .apple-count)
       (Msg "Taking an apple!")
-      (Dispatch take-an-apple)
+      (Do take-an-apple)
       (Math.Inc .apple-count)
 
       (When
@@ -287,7 +284,7 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
            (Start lucy) ;; (2)
            (Msg "It's my turn now!")))
       (Msg "Taking an apple!")
-      (Dispatch take-an-apple))
+      (Do take-an-apple))
 
     (schedule main john)
     (run main (/ 1 60) 6) ;; (3)
@@ -299,7 +296,7 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
     3. `(/ 1 60)` is read as "1 divided by 60". It is used to get the program to run at 60 FPS (Frames Per Second).
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```
     [john] Lucy, you can take as much as you want first.
     [lucy] Taking an apple!
     [take-an-apple] Apples Remaining: 9
@@ -322,6 +319,8 @@ For example, if you have spawned multiple monsters, you could set them to `Stop`
 
 !!! note
     If `Stop` is used on a Wire that is running from `Start` or `Resume`, the Wire itself is stopped and the entire program will end.
+
+![Stop is used to end Wires.](assets/start-stop.png)
 
 For our example, we use `Stop` to end `bake-apple` looped Wires after they iterate twice.
 
@@ -351,7 +350,7 @@ For our example, we use `Stop` to end `bake-apple` looped Wires after they itera
     ```
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```
     [john] Baking Apple...
     [bake-apple-1] Started Baking
     [bake-apple-1] Time Baked: 1
@@ -380,11 +379,11 @@ Being scheduled on a Wire (instead of the Mesh) has a few implications:
 
 ### Flow Difference
 
-The stepped Wire runs similar to how `Do`/`Dispatch` does as the flow shifts into the stepped Wire immediately. It may seem like it is running inline too, but the difference is obvious when calling `Pause` on the stepped Wire. 
+The stepped Wire runs similar to how `Do` does as the flow shifts into the stepped Wire immediately. It may seem like it is running inline too, but the difference is obvious when calling `Pause` on the stepped Wire. 
 
-For `Do`/`Dispatch`, the flow is paused and resumed only after the pause is resolved. For `Step`, even though the stepped Wire is paused, the original Wire continues to run.
+For `Do`, the flow is paused and resumed only after the pause is resolved. For `Step`, even though the stepped Wire is paused, the original Wire continues to run.
 
-![The difference between Step and Do/Dispatch.](assets/step-difference.png)
+![The difference between Step and Do.](assets/step-difference.png)
 
 ### Shared Environment
 
@@ -444,7 +443,7 @@ The example also showcases how variables defined in `john` are affected by chang
     2. This Wire decreases the value of `.fresh-apples`, pauses the Wire for 1 second, and increases the value of `.baked-apples` every time it is stepped into.
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```
     [take-an-apple] Taking an apple...
     [take-an-apple] Fresh Apple (+1): 6
     [bake-apple] Baking apple...
@@ -504,7 +503,7 @@ In the example below, five different copies of `take-an-apple` are scheduled on 
     1. `\n` is used in `Msg` to create a newline. This makes the results more readable as you can see in "Output".
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```
     [take-apple-1] Wait time: 1
     [take-apple-1] Waiting to take apple...
     [take-apple-2]
@@ -639,7 +638,7 @@ In the example below, five different copies of `take-an-apple` are scheduled on 
 
 === "Syntax"
     ```{.clojure .annotate linenums="1"}
-    (Branch [wire-x, wire-y, wire-z]) ;; (1)
+    (Branch [wire-x wire-y wire-z]) ;; (1)
     ```
 
     1. You can schedule as many Wires as you wish within the square brackets here. In this example, three Wires are scheduled on the Submesh.
@@ -683,7 +682,7 @@ In our example below, we will be using `Expand` to teach John about multiplicati
     3. `Expand` outputs an array of the results. We use [`ForEach`](../../../reference/shards/General/ForEach/) to check if each result [`Is`](../../../reference/shards/General/Is/) 0.
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```
     [learn-zero-multiplication] true
     [learn-zero-multiplication] true
     [learn-zero-multiplication] true
@@ -739,7 +738,7 @@ In the following examples, John attempts to hit a moving target by firing arrows
     2. Odd numbers will have a remainder of 1 when divided by 2. We use [`Math.Mod`](../../../reference/shards/Math/Mod/) to get the remainder from the division.
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```
     [fire-arrow] Hits the mark: 1
     ```
 
@@ -769,7 +768,7 @@ In the following examples, John attempts to hit a moving target by firing arrows
     1. All results will be produced in the output, but only if all Wires are successful.
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```
     ;; No result is obtained as the condition for WaitUntil.AllSuccess was not achieved.
     ;; The Wire with a .distance-shot of 2 would fail the Assert check.
     ```
@@ -800,7 +799,7 @@ In the following examples, John attempts to hit a moving target by firing arrows
     1. Only the successful results will be produced as output after all Wires have been executed.
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```
     [fire-arrow] Hits the mark: [1, 3]
     ```
 
@@ -820,9 +819,8 @@ In the next chapter, we will take a look at how working with data in Shards is l
 
 | Shard    | Uses Original Variables? | Restarts Wire? | Continues Loop?  | 1 Instance per run? |
 | :------- | :----------------------- | :------------- | :--------------- | :------------------ |
-| Do       | X                        | X              | O                | O                   | 
-| Dispatch | X                        | X              | O                | O                   | 
-| Detach   | X                        | O              | O                | O                   | 
+| Do       | X                        | X              | O                | O                   |
+| Detach   | X                        | O              | O                | O                   |
 | Spawn    | X                        | O              | O                | X                   | 
 | Start    | X                        | O              | X                | X                   | 
 | Resume   | X                        | O              | O                | O                   |  
