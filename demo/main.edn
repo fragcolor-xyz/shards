@@ -1,8 +1,12 @@
-(load-file "atmosphere.edn")
 (load-file "cube-capture.edn")
+(load-file "atmosphere.edn")
 
 (Setup
- {:Position (Float3 40.0 5.5 40.0) :Target (Float3 0.0)} (Math.LookAt) >= .view-transform
+ {:Position (Float3 20.0 5.5 10.0) :Target (Float3 0.0)} (Math.LookAt)
+;;  -90.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp-mat0
+;;  (Float3 -50 0 0) (Math.Translation) >= .tmp-mat1
+;;  .tmp-mat1 (Math.MatMul .tmp-mat0) (Math.Inverse) 
+ >= .view-transform
  (GFX.View .view-transform) >= .view
 
  (Float3 0.0) (Math.Translation) >= .transform
@@ -20,8 +24,8 @@
  (Float3 1.4) (Math.Scaling) > .tmp-scale
  .transform (Math.MatMul .tmp-rot) (Math.MatMul .tmp-scale) >= .transform-1
 
-;;  (GFX.BuiltinMesh :Type BuiltinMeshType.Plane) >= .plane-mesh
-;;  {:Mesh .plane-mesh :Params {:baseColor (Float4 0.4 0.4 0.94 1.0)}} (GFX.Drawable :Transform .plane-transform) >> .drawables
+ (GFX.BuiltinMesh :Type BuiltinMeshType.Plane) >= .plane-mesh
+ {:Mesh .plane-mesh :Params {:baseColor (Float4 0.4 0.4 0.94 1.0)}} (GFX.Drawable :Transform .plane-transform) >> .drawables
 
  (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) >= .sphere-mesh
  {:Mesh .sphere-mesh :Params {:baseColor (Float4 0.12 0.7 0.2 1.0)}} (GFX.Drawable :Transform .transform-0) >> .drawables
@@ -47,17 +51,22 @@
  .drawables-1 (GFX.Draw .queue-1)
  {:Features .features-1 :Queue .queue-1} (GFX.DrawablePass) >= .debug-shapes-step
 
- (setup-skybox-pass .skybox-pass)
- .skybox-pass (Push "env-included-steps" :Global true)
- .debug-shapes-step (Push "env-included-steps" :Global true)
+ (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features-2
+ (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features-2
+ {:Features .features-2} (GFX.DrawablePass) >= .base-pass-no-refl
 
- (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
- (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
- (setup-reflection-feature .refl-feature .env-included-steps) >> .features
+ (setup-skybox-pass) >= .skybox-pass
+ 
+;;  .skybox-pass (Push "env-included-steps" :Global true)
+;;  .base-pass-no-refl (Push "env-included-steps" :Global true)
 
- .skybox-pass >> .render-steps
- {:Features .features} (GFX.DrawablePass) >> .render-steps ;
- .debug-shapes-step >> .render-steps ;
+ (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform)  >> .features-3
+ (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features-3
+;;  (setup-reflection-feature .refl-feature .env-included-steps) >> .features-3
+ {:Features .features-3} (GFX.DrawablePass) >= .base-pass
+
+ .base-pass >> .render-steps ;
+ .skybox-pass >> .render-steps ;
  )
 
 ; Update view transform

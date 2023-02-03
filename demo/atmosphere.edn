@@ -1,4 +1,4 @@
-(defshards skybox-vs []
+(defshards viewspace-sphere-vs []
   (Shader.ReadGlobal "localPosition") (ToFloat3) (Math.Multiply 20.0)  >= .local-pos
 
   (Shader.ReadBuffer "view" :BufferName "view") >= .view
@@ -9,7 +9,7 @@
 
   .screen-pos (Shader.WriteGlobal "screenPosition"))
 
-(defshards skybox-fs []
+(defshards precompute-sky-fs []
   (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/atmosphere.wgsl"))
   (Shader.ReadInput "worldNormal") (Math.Normalize) >= .ray-dir
   (Float3 0) >= .ray-start
@@ -25,47 +25,48 @@
     if (planetIntersection.x > 0.0) { " .ray-length " = min (" .ray-length ", planetIntersection.x); }
   }
                                                                           "])
-
   (Shader.Literal "var transmittance : vec3<f32> = vec3<f32>(0.0);")
   (Shader.Literal ["IntegrateScattering(" .ray-start ", " .ray-dir ", " .ray-length ", " .light-dir ", " .light-color ", &transmittance)"] :OutputDimension 3)
-  (ToFloat4) (Math.Add (Float4 0 0 0 1)) 
+  (ToFloat4) (Math.Add (Float4 0 0 0 1))
   (Shader.WriteOutput "color"))
 
-(defshards sky-object-fs []
-  (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/atmosphere.wgsl"))
-  (Shader.ReadInput "worldNormal") (Math.Normalize) >= .ray-dir
-  (Float3 0) >= .ray-start
-  9999999999999999999999.0 >= .ray-length
+(defshards sky-fs []
+  ; Just sample the cubemap
+  (Shader.ReadInput "worldNormal") >= .world-normal
+  .world-normal (Math.Multiply (Float3 1 1 -1)) (Shader.SampleTextureCoord "sky")
+  (Shader.WriteOutput "color")
+           
+  ; NOTE: Write depth to compare to (>=) and render sky where it passes
+  1.0 (Shader.WriteOutput "depth"))
 
-  (Float3 1.0 1.0 -0.2) (Math.Normalize) >= .light-dir
-  (Float3 1.0 1.0 1.0) >= .light-color
+(defloop precompute-sky
+  (Setup (->
+          (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .sky-inner-features
+          {:State {:FlipFrontFace true :DepthWrite false}
+           :Shaders [{:Stage ProgrammableGraphicsStage.Vertex
+                      :EntryPoint (viewspace-sphere-vs)
+                      :After ["initScreenPosition"]
+                      :Before ["writePosition"]}
+                     {:Stage ProgrammableGraphicsStage.Fragment
+                      :EntryPoint (precompute-sky-fs)}]} (GFX.Feature) >> .sky-inner-features
+          {:Features .sky-inner-features :Queue .sky-queue} (GFX.DrawablePass) >> .sky-inner-steps
+          (render-cubemap .sky-queue .sky-inner-steps .sky-cube-tex)))
+  {:sky .sky-cube-tex})
 
-  (Shader.Literal ["
-  let _DrawPlanet = 0;
-  if (_DrawPlanet == 1) {
-    let planetIntersection = PlanetIntersection(" .ray-start ", " .ray-dir ");
-    if (planetIntersection.x > 0.0) { " .ray-length " = min (" .ray-length ", planetIntersection.x); }
-  }
-                                                                          "])
+(defshards setup-skybox-pass []
+  (GFX.DrawQueue) >= .sky-queue
 
-  (Shader.Literal "var transmittance : vec3<f32> = vec3<f32>(0.0);")
-  (Shader.Literal ["IntegrateScattering(" .ray-start ", " .ray-dir ", " .ray-length ", " .light-dir ", " .light-color ", &transmittance)"] :OutputDimension 3)
-  (ToFloat4) (Math.Add (Float4 0 0 0 1)) 
-  (Shader.WriteOutput "color"))
+  (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) >= .skybox-mesh
+  {:Mesh .skybox-mesh} (GFX.Drawable) (GFX.Draw .sky-queue)
 
-(defn setup-skybox-pass [out-pass]
-  (Setup
-   (GFX.DrawQueue) >= .sky-queue
+  (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .sky-features
+  {:Shaders [{:Stage ProgrammableGraphicsStage.Vertex
+              :EntryPoint (viewspace-sphere-vs)
+              :After ["initScreenPosition"]
+              :Before ["writePosition"]}
+             {:Stage ProgrammableGraphicsStage.Fragment
+              :EntryPoint (sky-fs)}]
+   :State {:FlipFrontFace true :DepthWrite false :DepthCompare CompareFunction.LessEqual}}
+  (GFX.Feature :ViewGenerators precompute-sky) >> .sky-features
 
-   (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) >= .skybox-mesh
-   {:Mesh .skybox-mesh} (GFX.Drawable) (GFX.Draw .sky-queue)
-
-   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .sky-features
-   {:State {:FlipFrontFace true :DepthWrite false}
-    :Shaders [{:Stage ProgrammableGraphicsStage.Vertex
-               :EntryPoint (skybox-vs)
-               :After ["initScreenPosition"]
-               :Before ["writePosition"]}
-              {:Stage ProgrammableGraphicsStage.Fragment
-               :EntryPoint (skybox-fs)}]} (GFX.Feature) >> .sky-features
-   {:Features .sky-features :Queue .sky-queue} (GFX.DrawablePass) >= out-pass))
+  {:Features .sky-features :Queue .sky-queue} (GFX.DrawablePass))
