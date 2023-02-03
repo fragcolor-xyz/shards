@@ -165,6 +165,7 @@ struct FeatureShard {
   std::shared_ptr<SHMesh> _viewGeneratorsMesh;
   std::shared_ptr<SHMesh> _drawableGeneratorsMesh;
 
+  std::unordered_map<std::string_view, SHExposedTypeInfo> _requiredVariables;
   std::unordered_map<std::string, SHVar *> _capturedVariables;
 
   void setWireVector(const SHVar &var, std::vector<std::shared_ptr<SHWire>> &outVec) {
@@ -264,6 +265,7 @@ struct FeatureShard {
                             bool expectSeqOutput) {
     SHInstanceData generatorInstanceData{};
     generatorInstanceData.inputType = GeneratedInputTableType;
+    generatorInstanceData.requiredVariables = &_requiredVariables; // Capture required variables
 
     ExposedInfo exposed;
     exposed.push_back(RequiredGraphicsRendererContext::getExposedTypeInfo());
@@ -615,21 +617,14 @@ struct FeatureShard {
   }
 
   void captureGeneratorCallbackVariables(SHContext *context) {
-    auto captureVariables = [&](const std::shared_ptr<SHWire> &wire) {
-      auto &required = wire->composeResult->requiredInfo;
-      ForEach(required, [&](const SHExposedTypeInfo &ti) {
-        if (!shouldCaptureVariable(ti))
-          return;
-        if (!_capturedVariables.contains(ti.name)) {
-          _capturedVariables.emplace(ti.name, referenceVariable(context, ti.name));
-        }
-      });
-    };
-
-    for (auto &gen : _viewGenerators)
-      captureVariables(gen);
-    for (auto &gen : _drawableGenerators)
-      captureVariables(gen);
+    for (auto &pair : _requiredVariables) {
+      auto &ti = pair.second;
+      if (!shouldCaptureVariable(ti))
+        continue;
+      if (!_capturedVariables.contains(ti.name)) {
+        _capturedVariables.emplace(ti.name, referenceVariable(context, ti.name));
+      }
+    }
   }
 
   void addGeneratorCapturedVariablesToMeshes() {
@@ -753,6 +748,9 @@ struct FeatureShard {
     // Run one tick of the generator wires
     if (!mesh->tick())
       throw formatException("Generator tick failed");
+
+    if (!mesh->failedWires().empty())
+      throw formatException("Failed wire in generator tick");
 
     // Fetch results and insert into parameter collector
     for (auto &wire : wires) {

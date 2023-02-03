@@ -1,6 +1,7 @@
 #ifndef FBBE103B_4B4A_462F_BE67_FE59A0C30FB5
 #define FBBE103B_4B4A_462F_BE67_FE59A0C30FB5
 
+#include "fwd.hpp"
 #include "render_target.hpp"
 #include "renderer_types.hpp"
 #include "texture.hpp"
@@ -124,6 +125,7 @@ struct RenderGraphNode;
 struct RenderGraphEvaluator;
 struct RenderGraphEncodeContext {
   WGPURenderPassEncoder encoder;
+  const ViewData &viewData;
   RenderGraphEvaluator &evaluator;
   const RenderGraph &graph;
   const RenderGraphNode &node;
@@ -617,7 +619,8 @@ public:
     }
   }
 
-  void evaluate(const RenderGraph &graph, std::span<TextureSubResource> outputs, Context &context, size_t frameCounter) {
+  void evaluate(const RenderGraph &graph, const ViewData &viewData, std::span<TextureSubResource> outputs, Context &context,
+                size_t frameCounter) {
     // Evaluate all render steps in the order they are defined
     // potential optimizations:
     // - evaluate steps without dependencies in parralel
@@ -636,6 +639,7 @@ public:
       WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
       RenderGraphEncodeContext ctx{
           .encoder = renderPassEncoder,
+          .viewData = viewData,
           .evaluator = *this,
           .graph = graph,
           .node = node,

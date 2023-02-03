@@ -243,17 +243,41 @@ struct DynamicVertexOutput : public IGeneratorDynamicHandler {
   }
 };
 
+struct DynamicFragmentOutput : public IGeneratorDynamicHandler {
+  std::vector<StructField> &outputStruct;
+
+  DynamicFragmentOutput(std::vector<StructField> &outputStruct) : outputStruct(outputStruct) {}
+
+  bool createDynamicOutput(const char *name, FieldType requestedType) {
+    StructField newField = generateDynamicStructOutput(name, requestedType);
+    outputStruct.push_back(newField);
+    return true;
+  }
+
+  StructField generateDynamicStructOutput(const String &name, const FieldType &type) {
+    // Handle builtin outputs here
+    if (name == "depth") {
+      return StructField(NamedField(name, type), "frag_depth");
+    } else {
+      size_t location = getNextStructLocation(outputStruct);
+      return StructField(NamedField(name, type), location);
+    }
+  }
+};
+
 struct StageIO {
   const std::vector<NamedField> &outputFields;
 
   std::vector<NamedField> vertexInputFields;
   std::vector<StructField> vertexInputStructFields;
-  std::vector<StructField> fragmentOutputStructFields;
   std::vector<StructField> vertexOutputStructFields;
+  std::vector<StructField> fragmentInputStructFields;
+  std::vector<StructField> fragmentOutputStructFields;
   std::vector<NamedField> fragmentInputFields;
 
   std::optional<DynamicVertexInput> dynamicVertexInputHandler;
   std::optional<DynamicVertexOutput> dynamicVertexOutputHandler;
+  std::optional<DynamicFragmentOutput> dynamicFragmentOutputHandler;
 
   StageIO(const MeshFormat &meshFormat, const std::vector<NamedField> &outputFields) : outputFields(outputFields) {
     for (auto &attr : meshFormat.vertexAttributes) {
@@ -272,6 +296,7 @@ struct StageIO {
 
     dynamicVertexInputHandler.emplace(vertexInputStructFields);
     dynamicVertexOutputHandler.emplace(vertexOutputStructFields);
+    dynamicFragmentOutputHandler.emplace(fragmentOutputStructFields);
   }
 
   void setupDefinitions(GeneratorDefinitions &outDefinitions, std::vector<IGeneratorDynamicHandler *> &outDynamics,
@@ -292,6 +317,7 @@ struct StageIO {
     case gfx::ProgrammableGraphicsStage::Fragment:
       inputs = &fragmentInputFields;
       outputs = &outputFields;
+      outDynamics.push_back(&dynamicFragmentOutputHandler.value());
       break;
     }
 
@@ -306,9 +332,15 @@ struct StageIO {
     }
   }
 
+  static bool isValidFragmentInputBuiltin(const std::string &builtin) { return builtin == "position"; }
+
   void interpolateVertexOutputs() {
-    for (auto &outputField : vertexOutputStructFields)
-      fragmentInputFields.emplace_back(outputField.base);
+    for (auto &outputField : vertexOutputStructFields) {
+      if (outputField.builtinTag.empty() || isValidFragmentInputBuiltin(outputField.builtinTag)) {
+        fragmentInputFields.emplace_back(outputField.base);
+        fragmentInputStructFields.emplace_back(outputField);
+      }
+    }
   }
 };
 
@@ -498,7 +530,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   // Generate input/output structs here since they depend on shader code
   generateStruct(headerCode, vertexInputStructName, stageIO.vertexInputStructFields, false);
   generateStruct(headerCode, vertexOutputStructName, stageIO.vertexOutputStructFields);
-  generateStruct(headerCode, fragmentInputStructName, stageIO.vertexOutputStructFields);
+  generateStruct(headerCode, fragmentInputStructName, stageIO.fragmentInputStructFields);
   generateStruct(headerCode, fragmentOutputStructName, stageIO.fragmentOutputStructFields, false);
 
   output.wgslSource = headerCode + stagesCode;
