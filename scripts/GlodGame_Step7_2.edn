@@ -330,7 +330,10 @@
   .Y (Math.Subtract 5.0)
   >= .damageLower-y-limit
 
-  false >= .damaged)
+  false >= .damaged
+
+  60 >= .timer
+  0 >= .gameOver)
 
 ;; --------- Scoring ----------
 (defshards score-collision [coinx coiny]
@@ -411,11 +414,13 @@
         :Action (->
                  .score (Math.Subtract 1)
                  > .score
+                 true > .damage-effect-play
                  false > .damaged)))
 
 
 ;; ------------- innitialize effects -------------
 (defshards initialize-effects []
+  ;; --------------- Animation Effects -----------------
   (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_1.png") >> .score-effect-array
   (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_2.png") >> .score-effect-array
   (LoadImage "GlodImages/Coin/CoinEffect/Score_Effect_3.png") >> .score-effect-array
@@ -431,7 +436,23 @@
 
   0.0 >= .score-effect-position-x
   0.0 >= .score-effect-position-y
-  (float2 .score-effect-position-x .score-effect-position-y) >= .score-effect-position)
+  (float2 .score-effect-position-x .score-effect-position-y) >= .score-effect-position
+
+  ;; --------------- Damaged Effect ----------------
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_1.png") >> .damage-effect-array
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_2.png") >> .damage-effect-array
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_3.png") >> .damage-effect-array
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_4.png") >> .damage-effect-array
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_5.png") >> .damage-effect-array
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_6.png") >> .damage-effect-array
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_7.png") >> .damage-effect-array
+  (LoadImage "GlodImages/Damage_Effect/Damaged_Effect_8.png") >> .damage-effect-array
+  (Count .damage-effect-array) (Math.Subtract 1) >= .damage-effect-array-index-max
+  0 >= .damage-effect-array-index
+  0.02 >=  .damage-effect-animation-speed ;; Reduce number to increase animation speed
+  false >= .damage-effect-play
+
+  (LoadImage "GlodImages/BG.png") = .bg-image)
 
 ;; ------------ ScoreEffect Animation Position ------------
 (defshards scoreEffect-animation-position []
@@ -460,6 +481,41 @@
 
   (Pause .score-effect-animation-speed))
 
+;; ------------ DamageEffect Animation ------------
+(defloop damage-effect-animation-logic
+
+  .damage-effect-play
+  (When :Predicate (Is true)
+        :Action (->
+                 .damage-effect-array-index (Math.Add 1)
+                 > .damage-effect-array-index
+                 (When :Predicate (IsMore .damage-effect-array-index-max)
+                       :Action (->
+                                0 > .damage-effect-array-index
+                                false > .damage-effect-play))))
+
+
+  (Pause .damage-effect-animation-speed))
+
+;; -------- Timer -----------
+(defloop timer-countdown
+  .gameOver
+  (When :Predicate (->
+                    (Is 0)
+                    (And)
+                    .timer (IsMore 0))
+        :Action (->
+                 .timer (Math.Subtract 1)
+                 > .timer))
+
+  (Pause 1.0))
+
+;; ---------- GameOver Logic ------------
+(defshards gameOver-logic []
+  .timer
+  (When :Predicate (Is 0)
+        :Action (->
+                 1 > .gameOver)))
 
 ;; ------ UI Style --------
 (def style
@@ -470,6 +526,100 @@
      :family "Monospace"}]
    :visuals
    {:override_text_color (color 250 250 250)}})
+
+;; -------- Game_Over_UI -------------
+(defloop gameOver-ui
+  (UI.Area :Position (float2 -40 20)
+           :Anchor Anchor.Center
+           :Contents (->
+                      style (UI.Style)
+                      "Score" (UI.Label)
+                      .score (ToString) (UI.Label)
+                      (UI.Button :Label "Restart"
+                                 :Action (->
+                                          0 > .gameOver
+                                          60 > .timer
+                                          0 > .score
+                                          (float2 0 0) > .character-position)))))
+
+
+;; --------- Main Game UI ---------
+(defloop mainGame-ui
+  (UI.Area :Position (float2 0 0)
+           :Anchor Anchor.TopLeft
+           :Contents (->
+                      .bg-image (UI.Image :Scale (float2 0.7))))
+
+  (UI.Area :Position .character-position
+           :Anchor Anchor.Top
+           :Contents (->
+                      .character-state
+                      (Match [0 (-> .character-direction
+                                    (Match [0 (-> LoadTexture .idle-left-image-array (Take .idle-image-index) (UI.Image :Scale (float2 0.2)))
+                                            1 (-> LoadTexture .idle-right-image-array (Take .idle-image-index) (UI.Image :Scale (float2 0.2)))]
+                                           :Passthrough false))
+                              1 (-> LoadTexture .walking-left-image-array (Take .walking-image-index) (UI.Image :Scale (float2 0.2)))
+                              2 (-> LoadTexture .walking-right-image-array (Take .walking-image-index) (UI.Image :Scale (float2 0.2)))
+                              3 (->  .character-direction
+                                     (Match [0 (-> LoadTexture .character-jumping-left (UI.Image :Scale (float2 0.2)))
+                                             1 (-> LoadTexture .character-jumping-right (UI.Image :Scale (float2 0.2)))]
+                                            :Passthrough false))]
+                             :Passthrough false)))
+
+         ;; -------- coins ui area -----------
+
+  (UI.Area :Position .coin-position-1
+           :Anchor Anchor.Top
+           :Contents (->
+                      LoadTexture .coin-image-array (Take .coin-image-index) (UI.Image :Scale (float2 0.2))))
+
+  (UI.Area :Position .coin-position-2
+           :Anchor Anchor.Top
+           :Contents (->
+                      LoadTexture .coin-image-array (Take .coin-image-index) (UI.Image :Scale (float2 0.2))))
+         ;; --------- spikeball ui area ----------
+
+  (UI.Area :Position .spikeball-position-1
+           :Anchor Anchor.Top
+           :Contents (->
+                      LoadTexture .spikeball-array (Take .spikeball-index) (UI.Image :Scale (float2 0.15))))
+
+  (UI.Area :Position .spikeball-position-2
+           :Anchor Anchor.Top
+           :Contents (->
+                      LoadTexture .spikeball-array (Take .spikeball-index) (UI.Image :Scale (float2 0.15))))
+
+  (UI.Area :Position .spikeball-position-3
+           :Anchor Anchor.Top
+           :Contents (->
+                      LoadTexture .spikeball-array (Take .spikeball-index) (UI.Image :Scale (float2 0.15))))
+
+         ;; ----------------- Visual Effects  -------------------
+  (UI.Area :Position .score-effect-position
+           :Anchor Anchor.Top
+           :Contents (->
+                      LoadTexture .score-effect-array (Take .score-effect-array-index) (UI.Image :Scale (float2 0.15))))
+
+  (UI.Area :Position (float2 0 0)
+           :Anchor Anchor.TopLeft
+           :Contents (->
+                      LoadTexture .damage-effect-array (Take .damage-effect-array-index) (UI.Image :Scale (float2 10))))
+
+         ;; ---------------- UI ------------------
+
+  (UI.Area :Position (float2 -40 20)
+           :Anchor Anchor.TopRight
+           :Contents (->
+                      style (UI.Style)
+                      .score (ToString) (UI.Label)))
+
+  (UI.Area :Position (float2 40 20)
+           :Anchor Anchor.TopLeft
+           :Contents (->
+                      style (UI.Style)
+                      .timer (ToString) (UI.Label))))
+
+
 
 ;;---------- main-wire ------------
 (defloop main-wire
@@ -505,6 +655,10 @@
 
   (scoreEffect-animation-position)
   (Step scoreEffect-animation-logic)
+  (Step damage-effect-animation-logic)
+
+  (Step timer-countdown)
+  (gameOver-logic)
 
   (GFX.MainWindow
    :Title "MainWindow" :Width 1920 :Height 1080
@@ -517,61 +671,10 @@
        (UI
         .ui-draw-queue
         (->
-         (UI.Area :Position .character-position
-                  :Anchor Anchor.Top
-                  :Contents (->
-                             .character-state
-                             (Match [0 (-> .character-direction
-                                           (Match [0 (-> LoadTexture .idle-left-image-array (Take .idle-image-index) (UI.Image :Scale (float2 0.2)))
-                                                   1 (-> LoadTexture .idle-right-image-array (Take .idle-image-index) (UI.Image :Scale (float2 0.2)))]
-                                                  :Passthrough false))
-                                     1 (-> LoadTexture .walking-left-image-array (Take .walking-image-index) (UI.Image :Scale (float2 0.2)))
-                                     2 (-> LoadTexture .walking-right-image-array (Take .walking-image-index) (UI.Image :Scale (float2 0.2)))
-                                     3 (->  .character-direction
-                                            (Match [0 (-> LoadTexture .character-jumping-left (UI.Image :Scale (float2 0.2)))
-                                                    1 (-> LoadTexture .character-jumping-right (UI.Image :Scale (float2 0.2)))]
-                                                   :Passthrough false))]
-                                    :Passthrough false)))
-
-         ;; -------- coins ui area -----------
-         
-         (UI.Area :Position .coin-position-1
-                  :Anchor Anchor.Top
-                  :Contents (->
-                             LoadTexture .coin-image-array (Take .coin-image-index) (UI.Image :Scale (float2 0.2))))
-
-         (UI.Area :Position .coin-position-2
-                  :Anchor Anchor.Top
-                  :Contents (->
-                             LoadTexture .coin-image-array (Take .coin-image-index) (UI.Image :Scale (float2 0.2))))
-         ;; --------- spikeball ui area ----------
-         
-         (UI.Area :Position .spikeball-position-1
-                  :Anchor Anchor.Top
-                  :Contents (->
-                             LoadTexture .spikeball-array (Take .spikeball-index) (UI.Image :Scale (float2 0.15))))
-
-         (UI.Area :Position .spikeball-position-2
-                  :Anchor Anchor.Top
-                  :Contents (->
-                             LoadTexture .spikeball-array (Take .spikeball-index) (UI.Image :Scale (float2 0.15))))
-
-         (UI.Area :Position .spikeball-position-3
-                  :Anchor Anchor.Top
-                  :Contents (->
-                             LoadTexture .spikeball-array (Take .spikeball-index) (UI.Image :Scale (float2 0.15))))
-
-         ;; ----------------- Visual Effects  -------------------
-         (UI.Area :Position .score-effect-position
-                  :Anchor Anchor.Top
-                  :Contents (->
-                             LoadTexture .score-effect-array (Take .score-effect-array-index) (UI.Image :Scale (float2 0.15))))
-
-         (UI.Area :Position (float2 -40 20)
-                  :Anchor Anchor.TopRight
-                  :Contents (->
-                             style (UI.Style)
-                             .score (ToString) (UI.Label)))))
+         .gameOver
+         (Match [0 (-> (Step mainGame-ui))
+                 1 (-> (Step gameOver-ui))]
+                :Passthrough false)))
 
        (button-inputs)
 

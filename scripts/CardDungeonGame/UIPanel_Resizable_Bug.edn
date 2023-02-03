@@ -1,0 +1,33 @@
+
+(defloop main-wire
+
+  (GFX.MainWindow
+   :Title "MainWindow" :Width 1920 :Height 1080
+   :Contents
+   (-> (Setup
+        (GFX.DrawQueue) >= .ui-draw-queue
+        (GFX.UIPass .ui-draw-queue) >> .render-steps)
+       .ui-draw-queue (GFX.ClearQueue)
+
+       (UI
+        .ui-draw-queue
+        (->
+         (UI.LeftPanel
+          :Contents
+          (->
+           "Left Panel" (UI.Label))
+          :Resizable true) 
+         
+         (UI.RightPanel
+          :Contents
+          (->
+           "Right Panel" (UI.Label))
+          :Resizable true)
+         ))
+
+       (GFX.Render :Steps .render-steps))))
+
+
+(defmesh main-mesh)
+(schedule main-mesh main-wire)
+(run main-mesh (/ 1.0 60))
