@@ -98,9 +98,24 @@ struct FrameStats {
   void reset() { numDrawables = 0; }
 };
 
+// Temporary view for edge cases (no output written)
+struct TempView {
+  ViewPtr view = std::make_shared<View>();
+  CachedView cached;
+  Rect viewport;
+  operator ViewData() {
+    return ViewData{
+        .view = view,
+        .cachedView = cached,
+        .viewport = viewport,
+    };
+  }
+};
+
 // The render graph and outputs
 struct PreparedRenderView {
   const RenderGraph &renderGraph;
+  ViewData viewData;
   std::span<TextureSubResource> renderGraphOutputs;
 };
 
@@ -222,7 +237,7 @@ struct RendererImpl final : public ContextData {
       return;
 
     RenderGraphEvaluator evaluator(getWorkerMemoryForCurrentFrame(), renderTextureCache, textureViewCache);
-    evaluator.evaluate(prepared->renderGraph, prepared->renderGraphOutputs, context, frameCounter);
+    evaluator.evaluate(prepared->renderGraph, prepared->viewData, prepared->renderGraphOutputs, context, frameCounter);
 
     mainOutputWrittenTo = mainOutputWrittenTo || evaluator.isWrittenTo(mainOutput.texture);
   }
@@ -258,6 +273,7 @@ struct RendererImpl final : public ContextData {
 
     return PreparedRenderView{
         .renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize),
+        .viewData = viewData,
         .renderGraphOutputs = std::span(renderGraphOutputs.data(), renderGraphOutputs.size()),
     };
   }
@@ -371,7 +387,7 @@ struct RendererImpl final : public ContextData {
     for (auto &feature : step.features)
       evaluateFeatures.push_back(feature.get());
 
-    renderDrawables(evaluateContext, step.drawQueue, evaluateFeatures, step.sortMode, viewData);
+    renderDrawables(evaluateContext, step.drawQueue, evaluateFeatures, step.sortMode);
   }
 
   struct FeatureDrawableGeneratorContextImpl final : FeatureDrawableGeneratorContext {
@@ -439,7 +455,7 @@ struct RendererImpl final : public ContextData {
   }
 
   void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr queue,
-                       const shards::pmr::vector<Feature *> &features, SortMode sortMode, const ViewData &viewData) {
+                       const shards::pmr::vector<Feature *> &features, SortMode sortMode) {
     ZoneScoped;
 
     const std::vector<const IDrawable *> &drawables = queue->getDrawables();
@@ -552,7 +568,7 @@ struct RendererImpl final : public ContextData {
           .context = context,
           .workerMemory = workerMemory,
           .cachedPipeline = cachedPipeline,
-          .viewData = viewData,
+          .viewData = evaluateContext.viewData,
           .drawables = group.drawables,
           .generatorData = *group.generatorData,
           .frameCounter = frameCounter,
@@ -584,7 +600,7 @@ struct RendererImpl final : public ContextData {
         continue;
 
       // Run generators
-      group.generatorData = runGenerators(group, viewData, queue);
+      group.generatorData = runGenerators(group, evaluateContext.viewData, queue);
 
       // Build draw data
       preparePipelineGroup(group);
@@ -594,7 +610,7 @@ struct RendererImpl final : public ContextData {
     {
       ZoneScopedN("encodeRenderCommands");
 
-      auto &viewport = viewData.viewport;
+      auto &viewport = evaluateContext.viewData.viewport;
       wgpuRenderPassEncoderSetViewport(evaluateContext.encoder, (float)viewport.x, (float)viewport.y, (float)viewport.width,
                                        (float)viewport.height, 0.0f, 1.0f);
 
@@ -606,7 +622,7 @@ struct RendererImpl final : public ContextData {
         DrawableEncodeContext encodeCtx{
             .encoder = evaluateContext.encoder,
             .cachedPipeline = *group.pipeline.get(),
-            .viewData = viewData,
+            .viewData = evaluateContext.viewData,
             .preparedData = group.prepareData,
         };
         encodeCtx.cachedPipeline.drawableProcessor->encode(encodeCtx);
@@ -684,7 +700,7 @@ struct RendererImpl final : public ContextData {
         data->drawable->parameters.set(frame.name, texture);
       }
 
-      renderDrawables(ctx, data->queue, data->features, SortMode::Queue, viewData);
+      renderDrawables(ctx, data->queue, data->features, SortMode::Queue);
     };
   }
 
@@ -748,7 +764,9 @@ struct RendererImpl final : public ContextData {
       auto graph = builder.finalize();
 
       RenderGraphEvaluator evaluator(getWorkerMemoryForCurrentFrame(), renderTextureCache, textureViewCache);
-      evaluator.evaluate(graph, std::span<TextureSubResource>{}, context, frameCounter);
+
+      TempView tempView{.viewport = Rect(mainOutput.texture->getResolution())};
+      evaluator.evaluate(graph, tempView, std::span<TextureSubResource>{}, context, frameCounter);
     }
   }
 
