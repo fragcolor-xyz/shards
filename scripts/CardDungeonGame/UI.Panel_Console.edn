@@ -1,0 +1,107 @@
+
+(defloop main-wire
+
+  (Setup "" >= .code)
+
+  (GFX.MainWindow
+   :Title "MainWindow" :Width 1920 :Height 1080
+   :Contents
+   (-> (Setup
+        (GFX.DrawQueue) >= .ui-draw-queue
+        (GFX.UIPass .ui-draw-queue) >> .render-steps)
+       .ui-draw-queue (GFX.ClearQueue)
+
+       (UI
+        .ui-draw-queue
+        (->
+         (UI.TopPanel
+          :Contents
+          (->
+           "Top Panel" (UI.Label)
+
+           (UI.Collapsing
+            :Heading "Menu"
+            :DefaultOpen false
+            ;;------------ UI.Menu -------------
+            :Contents (-> (UI.MenuBar
+                           :Contents
+                           (UI.Menu
+                            "Stuff"
+                            (->
+                             (UI.Horizontal (->
+                                             (UI.Button "Some Text 1")
+                                             (UI.Button "Some Text 2")
+                                             (UI.Button "Some Text 3")
+                                             (UI.Button "Some Text 4")
+                                             (UI.Button "Close" (UI.CloseMenu)))))))))))
+
+         (UI.BottomPanel
+          :Contents
+          (->
+           "Bottom Panel" (UI.Label)
+           (UI.Button
+            :Label "Click me!"
+            :Action (Msg "Clicked"))
+
+           (Get .generation :Global true)
+           (ToString) (UI.Label)
+           (Get .logs :Global true)
+           (UI.Console :ShowFilters true)))
+
+         (UI.LeftPanel
+          :Contents
+          (->
+           "Left Panel" (UI.Label)
+
+           ;; --------------- UI.Grid -------------
+           (UI.Grid
+            :Striped true
+            :Contents (->
+                       "Col 1" (UI.Label)
+                       "Col 2" (UI.Label)
+                       "Col 3" (UI.Label)
+                       (UI.NextRow)
+                       "Final" (UI.Label)
+                       "Fantasy" (UI.Label)
+                       "16" (UI.Label)
+                       (UI.NextRow)
+                       "Can't" (UI.Label)
+                       "Freaking" (UI.Label)
+                       "Wait" (UI.Label)))))
+
+         (UI.CentralPanel
+          :Contents
+          (->
+           "Center Panel" (UI.Label)
+           ;; --------------- UI.Columns -------------
+           (UI.Columns
+            :Contents
+            [(->
+              ;; --------------- UI.Checkbox -------------
+              (UI.Checkbox
+               :Label "Checked"
+               :Style {:color (color 255 0 255) :italics true}
+               :Variable .checked))
+             ;; --------------- UI.Color -------------
+             (-> (UI.ColorInput :Variable .color)
+
+                 ;; --------- UI.Combo ----------
+                 ["α Α" "ω Ω"]
+                 (UI.Combo
+                  :Label "Greek letter"
+                  :Index .index)
+                 (ExpectString) >= .letter)])))
+
+         (UI.RightPanel
+          :Contents
+          (->
+           "Right Panel" (UI.Label)
+           ;; --------------- UI.CodeEditor -------------
+           (UI.CodeEditor .code "Rust")))))
+
+       (GFX.Render :Steps .render-steps))))
+
+
+(defmesh main-mesh)
+(schedule main-mesh main-wire)
+(run main-mesh (/ 1.0 60))
