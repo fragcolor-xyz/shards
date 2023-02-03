@@ -222,7 +222,7 @@ impl Shard for EguiContext {
 
     self
       .host
-      .activate(&egui_input, &(&self.contents).into(), context, input)?;
+      .activate_shards(&egui_input, &(&self.contents).into(), context, input)?;
     let egui_output = self.host.get_egui_output();
 
     let queue_var = self.queue.get();
