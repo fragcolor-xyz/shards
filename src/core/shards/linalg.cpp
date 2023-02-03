@@ -2,6 +2,9 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "linalg.hpp"
+#include "linalg.h"
+#include "linalg_shim.hpp"
+#include "shards/math_ops.hpp"
 
 namespace shards {
 namespace Math {
@@ -312,6 +315,41 @@ SHVar Transpose::activate(SHContext *context, const SHVar &input) {
   return _result;
 }
 
+SHVar Inverse::activate(SHContext *context, const SHVar &input) {
+  size_t height = input.payload.seqValue.len;
+  size_t width = 0;
+  const SHType RowType = input.payload.seqValue.elements[0].valueType;
+  switch (RowType) {
+  case SHType::Float2:
+    width = 2;
+    break;
+  case SHType::Float3:
+    width = 3;
+    break;
+  case SHType::Float4:
+    width = 4;
+    break;
+  default:
+    break;
+  }
+
+  if (height != width && width != 4) {
+    throw ActivationError("Inverse expects a 4x4 matrix.");
+  }
+  Mat4 inverted(linalg::inverse(toFloat4x4(input)));
+
+  _result.valueType = SHType::Seq;
+  shards::arrayResize(_result.payload.seqValue, width);
+
+  for (size_t i = 0; i < height; i++) {
+    for (size_t j = 0; j < width; j++) {
+      _result.payload.float4Value[j] = inverted.row(i)[j];
+    }
+  }
+
+  return _result;
+}
+
 void registerShards() {
   REGISTER_SHARD("Math.Cross", Cross);
   REGISTER_SHARD("Math.Dot", Dot);
@@ -320,6 +358,7 @@ void registerShards() {
   REGISTER_SHARD("Math.Length", Length);
   REGISTER_SHARD("Math.MatMul", MatMul);
   REGISTER_SHARD("Math.Transpose", Transpose);
+  REGISTER_SHARD("Math.Inverse", Inverse);
   REGISTER_SHARD("Math.Orthographic", Orthographic);
   REGISTER_SHARD("Math.Translation", Translation);
   REGISTER_SHARD("Math.Scaling", Scaling);
