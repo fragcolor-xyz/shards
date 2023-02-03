@@ -5,16 +5,7 @@
 
 use crate::shard::shard_construct;
 use crate::shard::Shard;
-use crate::shardsc::SHBool;
-use crate::shardsc::SHContext;
-use crate::shardsc::SHCore;
-use crate::shardsc::SHEnumInfo;
-use crate::shardsc::SHOptionalString;
-use crate::shardsc::SHString;
-use crate::shardsc::SHStrings;
-use crate::shardsc::SHVar;
-use crate::shardsc::SHWireState;
-use crate::shardsc::ShardPtr;
+use crate::shardsc::*;
 use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::DerivedType;
@@ -485,6 +476,135 @@ where
 }
 
 //--------------------------------------------------------------------------------------------------
+
+impl core::fmt::Debug for SHVar {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("SHVar")
+      .field(
+        "payload",
+        &SHVarPayloadDebugView {
+          payload: &self.payload,
+          valueType: self.valueType,
+        },
+      )
+      .field("valueType", &self.valueType)
+      .field("innerType", &self.innerType)
+      .finish_non_exhaustive()
+  }
+}
+
+struct SHVarPayloadDebugView<'a> {
+  payload: &'a SHVarPayload,
+  valueType: SHType,
+}
+
+impl core::fmt::Debug for SHVarPayloadDebugView<'_> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    unsafe {
+      match self.valueType {
+        SHType_None => f.write_str("None"),
+        SHType_Any => f.write_str("Any"),
+        SHType_Enum => f
+          .debug_struct("SHEnum")
+          .field(
+            "value",
+            &self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue,
+          )
+          .field(
+            "vendorId",
+            &self.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId,
+          )
+          .field(
+            "typeId",
+            &self.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId,
+          )
+          .finish(),
+        SHType_Bool => write!(f, "{:?}", self.payload.__bindgen_anon_1.boolValue),
+        SHType_Int => write!(f, "{:?}", self.payload.__bindgen_anon_1.intValue),
+        SHType_Int2 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int2Value),
+        SHType_Int3 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int3Value),
+        SHType_Int4 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int4Value),
+        SHType_Int8 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int8Value),
+        SHType_Int16 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int16Value),
+        SHType_Float => write!(f, "{:?}", self.payload.__bindgen_anon_1.floatValue),
+        SHType_Float2 => write!(f, "{:?}", self.payload.__bindgen_anon_1.float2Value),
+        SHType_Float3 => write!(f, "{:?}", self.payload.__bindgen_anon_1.float3Value),
+        SHType_Float4 => write!(f, "{:?}", self.payload.__bindgen_anon_1.float4Value),
+        SHType_Color => write!(f, "{:?}", self.payload.__bindgen_anon_1.colorValue),
+        SHType_ShardRef => write!(f, "{:p}", self.payload.__bindgen_anon_1.shardValue),
+        SHType_Bytes => f
+          .debug_struct("SHBytes")
+          .field(
+            "value",
+            &format_args!(
+              "{:p}",
+              self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue
+            ),
+          )
+          .field(
+            "size",
+            &self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize,
+          )
+          .field(
+            "capacity",
+            &self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesCapacity,
+          )
+          .finish(),
+        SHType_String => write!(
+          f,
+          "{:?}",
+          CStr::from_ptr(self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue)
+            .to_str()
+            .unwrap()
+        ),
+        SHType_Path => write!(
+          f,
+          "Path({:?})",
+          CStr::from_ptr(self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue)
+            .to_str()
+            .unwrap()
+        ),
+        SHType_ContextVar => write!(
+          f,
+          "ContextVar({:?})",
+          CStr::from_ptr(self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue)
+            .to_str()
+            .unwrap()
+        ),
+        SHType_Image => write!(f, "{:?}", self.payload.__bindgen_anon_1.imageValue),
+        SHType_Seq => write!(f, "{:?}", self.payload.__bindgen_anon_1.seqValue),
+        SHType_Table => write!(f, "{:?}", self.payload.__bindgen_anon_1.tableValue),
+        SHType_Wire => write!(f, "{:p}", self.payload.__bindgen_anon_1.wireValue),
+        SHType_Object => f
+          .debug_struct("SHObject")
+          .field(
+            "value",
+            &format_args!(
+              "{:p}",
+              self.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
+            ),
+          )
+          .field(
+            "vendorId",
+            &self
+              .payload
+              .__bindgen_anon_1
+              .__bindgen_anon_1
+              .objectVendorId,
+          )
+          .field(
+            "typeId",
+            &self.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId,
+          )
+          .finish(),
+        SHType_Array => write!(f, "{:?}", self.payload.__bindgen_anon_1.arrayValue),
+        SHType_Set => write!(f, "{:?}", self.payload.__bindgen_anon_1.setValue),
+        SHType_Audio => write!(f, "{:?}", self.payload.__bindgen_anon_1.audioValue),
+        _ => f.write_str("???"),
+      }
+    }
+  }
+}
 
 pub struct ShardInstance {
   ptr: ShardPtr,
