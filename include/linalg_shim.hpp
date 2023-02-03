@@ -4,6 +4,8 @@
 #ifndef SH_LINALG_SHIM_HPP
 #define SH_LINALG_SHIM_HPP
 
+#include "shards.h"
+#include "shards/math_ops.hpp"
 #include <linalg.h>
 #include <vector>
 #include <shards.h>
@@ -220,38 +222,45 @@ struct alignas(16) Vec4 : public linalg::aliases::float4 {
   }
 };
 
-inline linalg::aliases::int2 toInt2(const SHVar &vec) {
-  if (vec.valueType != SHType::Int2)
-    throw InvalidVarTypeError("Invalid variable casting! expected Int2");
-  return linalg::aliases::int2(float(vec.payload.int2Value[0]), float(vec.payload.int2Value[1]));
+template <typename T> struct VectorConversion {};
+template <> struct VectorConversion<float> {
+  static inline constexpr SHType ShardsType = SHType::Float;
+  static auto convert(const SHVar &value) { return value.payload.floatValue; }
+};
+template <int N> struct VectorConversion<linalg::vec<float, N>> {
+  static inline constexpr SHType ShardsType = SHType(int(SHType::Float) + N - 1);
+  static auto convert(const SHVar &value) {
+    static_assert(N <= 4, "Not implemented for N > 4");
+    linalg::vec<float, N> r;
+    for (int i = 0; i < N; i++)
+      r[i] = Math::PayloadTraits<ShardsType>{}.getContents(const_cast<SHVarPayload &>(value.payload))[i];
+    return r;
+  }
+};
+template <int N> struct VectorConversion<linalg::vec<int, N>> {
+  static inline constexpr SHType ShardsType = SHType(int(SHType::Int) + N - 1);
+  static auto convert(const SHVar &value) {
+    static_assert(N <= 4, "Not implemented for N > 4");
+    linalg::vec<int, N> r;
+    for (int i = 0; i < N; i++)
+      r[i] = int(Math::PayloadTraits<ShardsType>{}.getContents(const_cast<SHVarPayload &>(value.payload))[i]);
+    return r;
+  }
+};
+
+template <typename TVec> inline auto toVec(const SHVar &value) {
+  using Conv = VectorConversion<TVec>;
+  if (value.valueType != Conv::ShardsType)
+    throw std::runtime_error(fmt::format("Invalid vector type {}, expected {}", value.valueType, Conv::ShardsType));
+  return Conv::convert(value);
 }
 
-inline linalg::aliases::int4 toInt4(const SHVar &vec) {
-  if (vec.valueType != SHType::Int4)
-    throw InvalidVarTypeError("Invalid variable casting! expected Int4");
-  return linalg::aliases::int4(vec.payload.int2Value[0], vec.payload.int2Value[1], vec.payload.int2Value[2],
-                               vec.payload.int2Value[3]);
-}
-
-inline linalg::aliases::float2 toFloat2(const SHVar &vec) {
-  if (vec.valueType != SHType::Float2)
-    throw InvalidVarTypeError("Invalid variable casting! expected Float2");
-  return linalg::aliases::float2(float(vec.payload.float2Value[0]), float(vec.payload.float2Value[1]));
-}
-
-inline linalg::aliases::float3 toFloat3(const SHVar &vec) {
-  if (vec.valueType != SHType::Float3)
-    throw InvalidVarTypeError("Invalid variable casting! expected Float3");
-  return linalg::aliases::float3(float(vec.payload.float3Value[0]), float(vec.payload.float3Value[1]),
-                                 float(vec.payload.float3Value[2]));
-}
-
-inline linalg::aliases::float4 toFloat4(const SHVar &vec) {
-  if (vec.valueType != SHType::Float4)
-    throw InvalidVarTypeError("Invalid variable casting! expected Float4");
-  return linalg::aliases::float4(float(vec.payload.float4Value[0]), float(vec.payload.float4Value[1]),
-                                 float(vec.payload.float4Value[2]), float(vec.payload.float4Value[3]));
-}
+inline auto toFloat2(const SHVar &value) { return toVec<linalg::aliases::float2>(value); }
+inline auto toFloat3(const SHVar &value) { return toVec<linalg::aliases::float3>(value); }
+inline auto toFloat4(const SHVar &value) { return toVec<linalg::aliases::float4>(value); }
+inline auto toInt2(const SHVar &value) { return toVec<linalg::aliases::int2>(value); }
+inline auto toInt3(const SHVar &value) { return toVec<linalg::aliases::int3>(value); }
+inline auto toInt4(const SHVar &value) { return toVec<linalg::aliases::int4>(value); }
 
 inline linalg::aliases::float4x4 toFloat4x4(const SHVar &vec) { return Mat4(vec); }
 
