@@ -48,7 +48,7 @@
  {:Features .features-1 :Queue .queue-1} (GFX.DrawablePass) >= .debug-shapes-step
 
  (setup-skybox-pass .skybox-pass)
-;;  .skybox-pass (Push "env-included-steps" :Global true)
+ .skybox-pass (Push "env-included-steps" :Global true)
  .debug-shapes-step (Push "env-included-steps" :Global true)
 
  (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features

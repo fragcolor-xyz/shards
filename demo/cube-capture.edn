@@ -15,20 +15,19 @@
 (defshards render-cubemap [queue included-steps features cube-tex]
   (GFX.Texture :Format TextureFormat.RGBA8Unorm :Resolution (Int2 512) :Dimension TextureDimension.Cube) >= cube-tex
   included-steps >= .env-steps
-  ;; {:Queue queue :Features features} (GFX.DrawablePass) >> .env-steps
   90.0 (Math.DegreesToRadians) >= .fov
   (map
    (fn* [n] (->
              cube-rotations (Take n) (xyz-to-mat) >= .tmp-mat0
-             (Float3 0 20 0) (Math.Translation) >= .tmp-mat1
+             (Float3 0 0 0) (Math.Translation) >= .tmp-mat1
              .tmp-mat1 (Math.MatMul .tmp-mat0) >= (ContextVar (str "view-transform-" n))
-             (GFX.View :View (ContextVar (str "view-transform-" n)) :Fov .fov) >= .capture-view
+             (GFX.View :View (ContextVar (str "view-transform-" n)) :Fov .fov) >= (ContextVar (str "capture-view-" n))
              (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n}}
                              :Size (Int2 512) ; Controls cubemap dimensions
                              :Contents (->
-                                        (GFX.Render :Steps .env-steps :View .capture-view)));
+                                        (GFX.Render :Steps .env-steps :View (ContextVar (str "capture-view-" n)))));
              ))
-   (range 0 5));
+   (range 0 0));
   )
 
 (defshards setup-reflection-feature [name included-steps]
