@@ -15,7 +15,7 @@
   (Float3 0) >= .ray-start
   9999999999999999999999.0 >= .ray-length
 
-  (Float3 1.0 1.0 -0.2) (Math.Normalize) >= .light-dir
+  (Float3 0.4 0.2 -0.2) (Math.Normalize) >= .light-dir
   (Float3 1.0 1.0 1.0) >= .light-color
 
   (Shader.Literal ["

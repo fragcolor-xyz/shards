@@ -22,7 +22,7 @@
    (fn* [n] (->
              cube-rotations (Take n)
              (xyz-to-mat) >= .tmp-rot
-             (Float3 0 -10 0) (Math.Translation) >= .tmp-tsl
+             (Float3 0 10 0) (Math.Translation) >= .tmp-tsl
              .tmp-tsl (Math.MatMul .tmp-rot) (Math.Inverse) >= (ContextVar (str "view-transform-" n))
              (GFX.View :View (ContextVar (str "view-transform-" n)) :Fov .fov) >= (ContextVar (str "capture-view-" n))
              (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n}}
@@ -32,24 +32,3 @@
              ))
    (range 0 5));
   )
-
-(defshards setup-reflection-feature [name included-steps]
-  {:Shaders
-   [{:Stage ProgrammableGraphicsStage.Fragment
-     :After ["writeColor"]
-     :Before []
-     :EntryPoint
-     (->
-      (Shader.ReadInput "worldNormal") >= .world-normal
-      .world-normal (Math.Multiply (Float3 1 1 -1)) (Shader.SampleTextureCoord "env")
-      ; NOTE: Because of our coordinate space with the camera viewing -Z direction
-      ;       It needs to be flipped when sampling cubemaps
-      (Math.Multiply (Float4 1 1 1 0)) (Math.Add (Float4 0 0 0 1))
-      (Shader.WriteOutput "color"))}]} (GFX.Feature
-                                        :ViewGenerators (->
-                                                         (| (Take "Queue") >= .parent-queue)
-                                                         (| (Take "View") >= .parent-view)
-                                                         (Setup (->
-                                                                 (render-cubemap .parent-queue included-steps .cube-tex)))
-                                                         {:env .cube-tex})) >= name
-  name)

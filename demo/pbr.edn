@@ -1,0 +1,33 @@
+(defshards generate-probes [included-steps]
+  (| (Take "Queue") >= .parent-queue)
+  (| (Take "View") >= .parent-view)
+  (Setup (->
+          (render-cubemap .parent-queue included-steps .cube-tex)))
+  {:env .cube-tex})
+
+(defshards setup-pbr-feature [included-steps]
+  {:Params [{:Name "roughness" :Default 1.0}
+            {:Name "metalicness" :Default 0.0}]
+   :Shaders
+   [{:Stage ProgrammableGraphicsStage.Fragment
+     :After ["writeColor"]
+     :Before []
+     :EntryPoint
+     (->
+      (Shader.ReadBuffer "invView" :BufferName "view") >= .camera-matrix
+      (Shader.Literal [.camera-matrix "[3].xyz"] :OutputDimension 3) >= .eye-pos
+      (Shader.ReadInput "worldNormal") >= .world-normal
+      (Shader.ReadInput "worldPosition") >= .world-position
+      .world-position (Math.Subtract .eye-pos) (Math.Normalize) >= .incident-dir
+      (Shader.Literal ["reflect(" .incident-dir "," .world-normal ")"] :OutputDimension 3) >= .reflect-dir
+
+      (Shader.ReadBuffer "roughness") >= .roughness
+      (Shader.ReadBuffer "metalicness") >= .metalicness
+
+      (Shader.ReadGlobal "color") >= .base-color
+      .world-normal (Math.Multiply (Float3 1 1 -1)) (Shader.SampleTextureCoord "env") >= .refl-color
+      .roughness (Math.Lerp  .refl-color .base-color)
+      ; NOTE: Because of our coordinate space with the camera viewing -Z direction
+      ;       It needs to be flipped when sampling cubemaps
+      (Math.Multiply (Float4 1 1 1 0)) (Math.Add (Float4 0 0 0 1))
+      (Shader.WriteOutput "color"))}]} (GFX.Feature :ViewGenerators (-> (generate-probes included-steps))))
