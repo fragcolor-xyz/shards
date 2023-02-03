@@ -2,6 +2,7 @@
 #include "extra/gfx/shards_utils.hpp"
 #include "shards_utils.hpp"
 #include "shader/translator.hpp"
+#include "linalg_shim.hpp"
 #include <gfx/feature.hpp>
 #include <gfx/pipeline_step.hpp>
 #include <gfx/steps/defaults.hpp>
