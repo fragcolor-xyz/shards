@@ -116,15 +116,19 @@ impl EguiHost {
     Ok(())
   }
 
-  pub fn activate(
+  pub fn activate_base<F, R>(
     &mut self,
     egui_input: &egui_Input,
-    contents: &Shards,
-    context: &Context,
-    input: &Var,
-  ) -> Result<Var, &'static str> {
+    run_ui: F,
+  ) -> Result<R, &'static str>
+  where
+    F: FnOnce(&mut Self, &egui::Context) -> Result<R, &'static str>,
+  {
+    // note: we have to clone the egui context here, otherwise we can't borrow it and at the same
+    // time pass self to the closure. Fortunately, cloning the context is both cheap and a
+    // supported pattern.
     let gui_ctx = if let Some(gui_ctx) = &self.context {
-      gui_ctx
+      gui_ctx.clone()
     } else {
       return Err("No UI context");
     };
@@ -133,55 +137,67 @@ impl EguiHost {
     match raw_input {
       Err(_error) => {
         shlog_debug!("Input translation error: {:?}", _error);
-        Err("Input translation error")
+        return Err("Input translation error");
       }
       Ok(raw_input) => {
         let draw_scale = raw_input.pixels_per_point.unwrap_or(1.0);
 
-        let mut error: Option<&str> = None;
+        let mut result = Err("Failed to run the UI");
         let egui_output = gui_ctx.run(raw_input, |ctx| {
-          error = (|| -> Result<(), &str> {
-            // Push empty parent UI in case this context is nested inside another UI
-            util::update_seq(&mut self.parents, |seq| {
-              seq.push(&Var::default());
-            })?;
-
-            let mut _output = Var::default();
-            let wire_state: WireState =
-              util::with_object_stack_var(&mut self.instance, ctx, &EGUI_CTX_TYPE, || {
-                Ok(unsafe {
-                  (*Core).runShards.unwrap()(
-                    *contents,
-                    context as *const _ as *mut _,
-                    input,
-                    &mut _output,
-                  )
-                  .into()
-                })
-              })?;
-
-            if wire_state == WireState::Error {
-              return Err("Failed to activate UI contents");
-            }
-
-            // Pop empty parent UI
-            util::update_seq(&mut self.parents, |seq| {
-              seq.pop();
-            })?;
-
-            Ok(())
-          })()
-          .err();
+          result = run_ui(self, ctx);
         });
 
-        if let Some(e) = error {
-          return Err(e);
-        }
-
-        self.full_output = Some(make_native_full_output(&gui_ctx, egui_output, draw_scale)?);
-        Ok(*input)
+        return match result {
+          Ok(r) => {
+            self.full_output = Some(make_native_full_output(&gui_ctx, egui_output, draw_scale)?);
+            Ok(r)
+          }
+          Err(e) => Err(e),
+        };
       }
     }
+  }
+
+  pub fn activate_shards(
+    &mut self,
+    egui_input: &egui_Input,
+    contents: &Shards,
+    context: &Context,
+    input: &Var,
+  ) -> Result<Var, &'static str> {
+    self.activate_base(egui_input, |this, ctx| {
+      // Push empty parent UI in case this context is nested inside another UI
+      util::update_seq(&mut this.parents, |seq| {
+        seq.push(&Var::default());
+      })?;
+
+      let mut _output = Var::default();
+      let wire_state: WireState =
+        util::with_object_stack_var(&mut this.instance, ctx, &EGUI_CTX_TYPE, || {
+          Ok(unsafe {
+            (*Core).runShards.unwrap()(
+              *contents,
+              context as *const _ as *mut _,
+              input,
+              &mut _output,
+            )
+            .into()
+          })
+        })?;
+
+      if wire_state == WireState::Error {
+        return Err("Failed to activate UI contents");
+      }
+
+      // Pop empty parent UI
+      util::update_seq(&mut this.parents, |seq| {
+        seq.pop();
+      })?;
+
+      Ok(())
+    })?;
+
+    Ok(*input)
   }
 
   pub fn get_egui_output(&self) -> *const egui_FullOutput {
@@ -235,7 +251,7 @@ mod native {
     input: &SHVar,
     output: *mut SHVar,
   ) -> *const u8 {
-    match (*ptr).activate(&*egui_input, &contents, &context, &input) {
+    match (*ptr).activate_shards(&*egui_input, &contents, &context, &input) {
       Ok(result) => {
         *output = result;
         std::ptr::null()
