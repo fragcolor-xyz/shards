@@ -824,6 +824,4 @@ void Renderer::dumpStats() {
   SPDLOG_LOGGER_INFO(logger, " Frame Counter: {}", impl->frameCounter);
 }
 
-// thread_local std::vector<std::reference_wrapper<RenderCapture>> RendererImpl::renderCaptures;
-
 } // namespace gfx
