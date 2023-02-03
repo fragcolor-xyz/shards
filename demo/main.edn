@@ -2,6 +2,31 @@
 (load-file "atmosphere.edn")
 (load-file "pbr.edn")
 
+(defshards setup-ui []
+  (GFX.DrawQueue) >= .ui-queue
+  (GFX.UIPass .ui-queue))
+(defshards render-ui []
+  .ui-queue (GFX.ClearQueue)
+  (UI
+   .ui-queue
+   (->
+    (UI.Window
+     :Contents
+     (->
+      {:EntryPoint (->
+                    (compute-specular-lut)
+                    )}
+      (GFX.EffectPass) >> .lut-steps-1
+      (GFX.Texture :Format TextureFormat.RG8Unorm) >= .lut-tex
+      (GFX.RenderInto :Textures {:color .lut-tex}
+                      :Size (Int2 64)
+                      :Contents (->
+                                 (GFX.Render :Steps .lut-steps-1)));
+
+      "Precomputed" (UI.Label);
+      .lut-tex (UI.Image :Scale (Float2 4.0))
+      )))))
+
 (Setup
  {:Position (Float3 -7.0 2.5 15.0) :Target (Float3 0.0 0.7 0.0)} (Math.LookAt)
 ;;  -90.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp-mat0
@@ -56,13 +81,14 @@
  (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform)  >> .features-3
  (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features-3
  (setup-pbr-feature .env-included-steps) >> .features-3
- {:Features .features-3 :Queue .main-queue} (GFX.DrawablePass) >= .base-pass 
+ {:Features .features-3 :Queue .main-queue} (GFX.DrawablePass) >= .base-pass
 
  .base-pass >> .render-steps ;
  .skybox-pass >> .render-steps ;
- )
+ (setup-ui) >> .render-steps)
 
 ; Update view transform
 .view-transform (FreeCamera :FlySpeed 10.0 :PanSpeed 6.0) > .view-transform
 
+(render-ui)
 (GFX.Render :Steps .render-steps :View .view)

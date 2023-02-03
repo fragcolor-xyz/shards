@@ -82,7 +82,7 @@ struct Container {
   OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
   OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue)
-  OBJECT('tex2', "GFX.Texture2D", Texture, TexturePtr)
+  OBJECT('tex_', "GFX.Texture2D", Texture, TexturePtr)
   OBJECT('texc', "GFX.TextureCube", TextureCube, TexturePtr)
   OBJECT('__RT', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
 

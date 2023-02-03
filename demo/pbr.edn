@@ -1,8 +1,28 @@
+(defshards compute-specular-lut []
+  (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/hammersley2d.wgsl"))
+  (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/specularLUT.wgsl"))
+  (Shader.ReadInput "texCoord0") >= .uv
+  (Shader.Literal :OutputDimension 2 :Source ["computeLUT(" .uv ")"])
+  (ToFloat2) (Shader.WriteOutput "color") ; End shader
+  )
+
 (defshards generate-probes [included-steps]
   (| (Take "Queue") >= .parent-queue)
   (| (Take "View") >= .parent-view)
   (Setup (->
-          (render-cubemap .parent-queue included-steps .cube-tex)))
+          (render-cubemap .parent-queue included-steps .cube-tex)
+
+          {:EntryPoint (->
+                        (Shader.ReadInput "texCoord0")
+                        (ToFloat2) (Shader.WriteOutput "color") ; End shader
+                        )}
+          (GFX.EffectPass) >> .lut-steps
+          (GFX.Texture :Format TextureFormat.RG16Float) >= .lut-tex
+          (GFX.RenderInto :Textures {:color .lut-tex}
+                          :Size (Int2 256)
+                          :Contents (->
+                                     (GFX.Render :Steps .lut-steps)));
+          ))
   {:env .cube-tex})
 
 (defshards setup-pbr-feature [included-steps]
