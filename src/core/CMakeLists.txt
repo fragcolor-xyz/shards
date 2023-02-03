@@ -49,6 +49,11 @@ if(NOT DEFINED SHARDS_INLINE_EVERYTHING)
   set(SHARDS_INLINE_EVERYTHING ${SHARDS_INLINE_EVERYTHING_DEFAULT} CACHE BOOL "When enabled, runtime and core shards are inlined in a single compilation unit")
 endif()
 
+# Enable correct types of underlying collections for SHTable & SHSet
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  target_compile_definitions(shards-core-static PUBLIC SHARDS_DEBUG_COLLECTION_TYPES=1)
+endif()
+
 if(SHARDS_INLINE_EVERYTHING)
   # Compile only runtime_inlined which will compile the runtime and all inlined shards in a single translation unit
   target_compile_definitions(shards-core-static PUBLIC SHARDS_INLINE_EVERYTHING=1)
