@@ -118,9 +118,8 @@ struct RendererImpl final : public ContextData {
   std::unordered_map<const View *, CachedViewDataPtr> viewCache;
   RenderGraphCache renderGraphCache;
   PipelineCache pipelineCache;
+  RenderTextureCache renderTextureCache;
   TextureViewCache textureViewCache;
-
-  RenderGraphEvaluator renderGraphEvaluator;
 
   bool ignoreCompilationErrors = false;
 
@@ -140,7 +139,8 @@ struct RendererImpl final : public ContextData {
   std::shared_mutex drawableProcessorsMutex;
   std::map<DrawableProcessorConstructor, std::shared_ptr<IDrawableProcessor>> drawableProcessors;
 
-  // Cache variables
+  bool mainOutputWrittenTo{};
+
   std::list<TransientPtr> processorDynamicValueCleanupQueue;
 
   RendererImpl(Context &context, Renderer &outer) : outer(outer), context(context), workerMemory(), workerData() {}
@@ -221,7 +221,10 @@ struct RendererImpl final : public ContextData {
     if (!prepared)
       return;
 
-    renderGraphEvaluator.evaluate(prepared->renderGraph, prepared->renderGraphOutputs, context, frameCounter);
+    RenderGraphEvaluator evaluator(getWorkerMemoryForCurrentFrame(), renderTextureCache, textureViewCache);
+    evaluator.evaluate(prepared->renderGraph, prepared->renderGraphOutputs, context, frameCounter);
+
+    mainOutputWrittenTo = mainOutputWrittenTo || evaluator.isWrittenTo(mainOutput.texture);
   }
 
   std::optional<PreparedRenderView> prepareRenderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
@@ -698,8 +701,6 @@ struct RendererImpl final : public ContextData {
 
     frameStats.reset();
 
-    renderGraphEvaluator.reset(frameCounter);
-
     auto mainOutputResolution = mainOutput.texture->getResolution();
     viewStack.push(ViewStack::Item{
         .viewport = Rect(mainOutputResolution),
@@ -732,12 +733,13 @@ struct RendererImpl final : public ContextData {
     clearOldCacheItemsIn(pipelineCache.map, frameCounter, 120 * 60 * 5);
     clearOldCacheItemsIn(viewCache, frameCounter, 120 * 60 * 5);
 
-    // NOTE: Because views keep textures alive, try to clean this as frequent as possible
+    // NOTE: Because textures take up a lot of memory, try to clean this as frequent as possible
+    renderTextureCache.resetAndClearOldCacheItems(frameCounter, 8);
     textureViewCache.clearOldCacheItems(frameCounter, 8);
   }
 
   void ensureMainOutputCleared() {
-    if (!renderGraphEvaluator.isWrittenTo(mainOutput.texture)) {
+    if (!mainOutputWrittenTo) {
       RenderGraphBuilder builder;
       builder.nodes.resize(1);
       builder.allocateOutputs(0, steps::makeRenderStepOutput(RenderStepOutput::Texture{
@@ -745,7 +747,8 @@ struct RendererImpl final : public ContextData {
                                  }));
       auto graph = builder.finalize();
 
-      renderGraphEvaluator.evaluate(graph, std::span<TextureSubResource>{}, context, frameCounter);
+      RenderGraphEvaluator evaluator(getWorkerMemoryForCurrentFrame(), renderTextureCache, textureViewCache);
+      evaluator.evaluate(graph, std::span<TextureSubResource>{}, context, frameCounter);
     }
   }
 
