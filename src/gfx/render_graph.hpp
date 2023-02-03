@@ -6,6 +6,9 @@
 #include "texture.hpp"
 #include "texture_cache.hpp"
 #include "fmt.hpp"
+#include "worker_memory.hpp"
+#include "pmr/set.hpp"
+#include "pmr/vector.hpp"
 #include <compare>
 #include <span>
 #include <webgpu-headers/webgpu.h>
@@ -61,13 +64,11 @@ struct RenderTextureCache {
 
   std::map<RenderTargetFormat, Bin> bins;
 
-  static constexpr size_t cleanupThreshold = 10;
-
   // Cleanup old render targets
-  void swapBuffers(size_t frameCount) {
+  void resetAndClearOldCacheItems(size_t frameCount, size_t frameThreshold) {
     for (auto it = bins.begin(); it != bins.end();) {
       auto &bin = it->second;
-      if (cleanupBin(bin, frameCount) == 0) {
+      if (cleanupBin(bin, frameCount, frameThreshold) == 0) {
         // Evict
         it = bins.erase(it);
       } else {
@@ -105,9 +106,10 @@ struct RenderTextureCache {
   }
 
 private:
-  static size_t cleanupBin(Bin &bin, size_t frameCounter) {
+  static size_t cleanupBin(Bin &bin, size_t frameCounter, size_t frameThreshold) {
     for (auto it = bin.items.begin(); it != bin.items.end();) {
-      if ((frameCounter - it->lastTouched) > cleanupThreshold) {
+      int64_t delta = int64_t(frameCounter) - int64_t(it->lastTouched);
+      if (delta > int64_t(frameThreshold)) {
         it = bin.items.erase(it);
       } else {
         ++it;
@@ -470,9 +472,13 @@ struct RenderGraphBuilder {
 };
 
 struct RenderGraphEvaluator {
+  using allocator_type = shards::pmr::PolymorphicAllocator<>;
+
 private:
+  allocator_type allocator;
+
   // Keeps track of texture that have been written to at least once
-  std::set<Texture *> writtenTextures;
+  shards::pmr::set<Texture *> writtenTextures;
 
   // Resolved texture handles for indexed by frame index inside nodes
   struct ResolvedFrameTexture {
@@ -481,15 +487,16 @@ private:
 
     ResolvedFrameTexture(TexturePtr texture, WGPUTextureView view) : texture(texture), view(view) {}
   };
-  std::vector<ResolvedFrameTexture> frameTextures;
+  shards::pmr::vector<ResolvedFrameTexture> frameTextures;
 
-  std::vector<WGPURenderPassColorAttachment> cachedColorAttachments;
-  std::optional<WGPURenderPassDepthStencilAttachment> cachedDepthStencilAttachment;
-  WGPURenderPassDescriptor cachedRenderPassDescriptor{};
-  RenderTextureCache renderTextureCache;
-  TextureViewCache textureViewCache;
+  RenderTextureCache &renderTextureCache;
+  TextureViewCache &textureViewCache;
 
 public:
+  RenderGraphEvaluator(allocator_type allocator, RenderTextureCache &renderTextureCache, TextureViewCache &textureViewCache)
+      : allocator(allocator), writtenTextures(allocator), frameTextures(allocator), renderTextureCache(renderTextureCache),
+        textureViewCache(textureViewCache) {}
+
   bool isWrittenTo(const TexturePtr &texture) const { return writtenTextures.contains(texture.get()); }
 
   const TexturePtr &getTexture(FrameIndex frameIndex) {
@@ -515,12 +522,11 @@ public:
 
   // Describes a render pass so that targets are cleared to their default value or loaded
   // based on if they were already written to previously
-  WGPURenderPassDescriptor &createRenderPassDescriptor(const RenderGraph &graph, Context &context, const RenderGraphNode &node,
-                                                       size_t frameCounter) {
-    cachedColorAttachments.clear();
-    cachedDepthStencilAttachment.reset();
-
-    memset(&cachedRenderPassDescriptor, 0, sizeof(cachedRenderPassDescriptor));
+  WGPURenderPassDescriptor createRenderPassDescriptor(const RenderGraph &graph, Context &context, const RenderGraphNode &node,
+                                                      size_t frameCounter) {
+    // NOTE: Allocated in frame memory
+    WGPURenderPassDepthStencilAttachment *depthStencilAttachmentPtr{};
+    auto &colorAttachments = *allocator.new_object<shards::pmr::vector<WGPURenderPassColorAttachment>>();
 
     size_t depthIndex = node.renderTargetLayout.depthTargetIndex.value_or(~0);
     for (size_t i = 0; i < node.writesTo.size(); i++) {
@@ -528,10 +534,10 @@ public:
       ResolvedFrameTexture &resolvedFrameTexture = frameTextures[nodeAttachment.frameIndex];
 
       if (i == depthIndex) {
-        cachedDepthStencilAttachment = WGPURenderPassDepthStencilAttachment{
+        auto &attachment = *(depthStencilAttachmentPtr = allocator.new_object<WGPURenderPassDepthStencilAttachment>());
+        attachment = WGPURenderPassDepthStencilAttachment{
             .view = resolvedFrameTexture.view,
         };
-        auto &attachment = cachedDepthStencilAttachment.value();
 
         if (nodeAttachment.clearValues) {
           auto &clearDepth = nodeAttachment.clearValues.value().depth;
@@ -548,7 +554,7 @@ public:
         attachment.stencilLoadOp = WGPULoadOp_Undefined;
         attachment.stencilStoreOp = WGPUStoreOp_Undefined;
       } else {
-        auto &attachment = cachedColorAttachments.emplace_back(WGPURenderPassColorAttachment{
+        auto &attachment = colorAttachments.emplace_back(WGPURenderPassColorAttachment{
             .view = resolvedFrameTexture.view,
         });
 
@@ -565,25 +571,20 @@ public:
       writtenTextures.insert(resolvedFrameTexture.texture.get());
     }
 
-    cachedRenderPassDescriptor.colorAttachments = cachedColorAttachments.data();
-    cachedRenderPassDescriptor.colorAttachmentCount = cachedColorAttachments.size();
-    cachedRenderPassDescriptor.depthStencilAttachment =
-        cachedDepthStencilAttachment ? &cachedDepthStencilAttachment.value() : nullptr;
-
-    return cachedRenderPassDescriptor;
+    return WGPURenderPassDescriptor{
+        .colorAttachmentCount = uint32_t(colorAttachments.size()),
+        .colorAttachments = colorAttachments.data(),
+        .depthStencilAttachment = depthStencilAttachmentPtr,
+    };
   }
 
   // Reset all render texture write state
   void reset(size_t frameCounter) {
     writtenTextures.clear();
     frameTextures.clear();
-    renderTextureCache.swapBuffers(frameCounter);
-
-    // NOTE: Because views keep textures alive, try to clean this as frequent as possible
-    textureViewCache.clearOldCacheItems(frameCounter, 8);
   }
 
-  void getFrameTextures(std::vector<ResolvedFrameTexture> &outFrameTextures, const std::span<TextureSubResource> &outputs,
+  void getFrameTextures(shards::pmr::vector<ResolvedFrameTexture> &outFrameTextures, const std::span<TextureSubResource> &outputs,
                         const RenderGraph &graph, Context &context, size_t frameCounter) {
     outFrameTextures.clear();
     outFrameTextures.reserve(graph.frames.size());
@@ -629,7 +630,7 @@ public:
     WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
 
     for (const auto &node : graph.nodes) {
-      WGPURenderPassDescriptor &renderPassDesc = createRenderPassDescriptor(graph, context, node, frameCounter);
+      WGPURenderPassDescriptor renderPassDesc = createRenderPassDescriptor(graph, context, node, frameCounter);
       if (node.setupPass)
         node.setupPass(renderPassDesc);
       WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
