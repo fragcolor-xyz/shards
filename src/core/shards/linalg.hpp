@@ -209,6 +209,33 @@ struct Transpose : public UnaryBase {
   SHVar activate(SHContext *context, const SHVar &input);
 };
 
+struct Inverse : public UnaryBase {
+  static inline Types Types{{CoreInfo::Float4x4Type}};
+  static SHTypesInfo inputTypes() { return Types; }
+  static SHTypesInfo outputTypes() { return Types; }
+
+  OpType validateTypes(const SHTypeInfo &lhs, SHTypeInfo &resultType) {
+    if (lhs.basicType == SHType::Seq) {
+      resultType = lhs;
+      return OpType::Seq1;
+    }
+    return OpType::Invalid;
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    SHTypeInfo resultType = data.inputType;
+    _opType = validateTypes(data.inputType, resultType);
+
+    if (_opType == Invalid) {
+      throw ComposeError("Incompatible type for Transpose");
+    }
+
+    return resultType;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input);
+};
+
 struct Orthographic {
   double _width = 1280;
   double _height = 720;
