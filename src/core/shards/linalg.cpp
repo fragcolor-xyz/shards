@@ -318,8 +318,8 @@ SHVar Transpose::activate(SHContext *context, const SHVar &input) {
 SHVar Inverse::activate(SHContext *context, const SHVar &input) {
   size_t height = input.payload.seqValue.len;
   size_t width = 0;
-  const SHType RowType = input.payload.seqValue.elements[0].valueType;
-  switch (RowType) {
+  const SHType rowType = input.payload.seqValue.elements[0].valueType;
+  switch (rowType) {
   case SHType::Float2:
     width = 2;
     break;
@@ -342,8 +342,11 @@ SHVar Inverse::activate(SHContext *context, const SHVar &input) {
   shards::arrayResize(_result.payload.seqValue, width);
 
   for (size_t i = 0; i < height; i++) {
+    linalg::aliases::float4 &srcRow = inverted[i];
+    SHVar &dstRow = _result.payload.seqValue.elements[i];
+    dstRow.valueType = rowType;
     for (size_t j = 0; j < width; j++) {
-      _result.payload.float4Value[j] = inverted.row(i)[j];
+      dstRow.payload.float4Value[j] = srcRow[j];
     }
   }
 
