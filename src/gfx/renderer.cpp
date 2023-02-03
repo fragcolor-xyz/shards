@@ -667,6 +667,7 @@ struct RendererImpl final : public ContextData {
       MeshDrawable::Ptr drawable;
       FeaturePtr baseFeature;
       DrawQueuePtr queue;
+      shards::pmr::vector<FeaturePtr> capturedFeatures;
       shards::pmr::vector<Feature *> features;
     };
 
@@ -680,6 +681,7 @@ struct RendererImpl final : public ContextData {
 
     data->features.push_back(baseFeature.get());
     for (auto &feature : step.features) {
+      data->capturedFeatures.push_back(feature);
       data->features.push_back(feature.get());
     }
 
