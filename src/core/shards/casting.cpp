@@ -433,9 +433,7 @@ struct ExpectLike {
 template <SHType ET> struct IsX {
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
-  SHVar activate(SHContext *context, const SHVar &input) {
-    return Var(input.valueType == ET);
-  }
+  SHVar activate(SHContext *context, const SHVar &input) { return Var(input.valueType == ET); }
 };
 
 struct ToBase64 {

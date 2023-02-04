@@ -6,7 +6,7 @@
 namespace shards {
 namespace Events {
 struct Base {
-  std::optional<std::reference_wrapper<entt::dispatcher>> _dispatcher;
+  std::optional<std::reference_wrapper<EventDispatcher>> _dispatcher;
   std::string _eventName{"MyEvent"};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -37,12 +37,29 @@ struct Base {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _dispatcher = GetGlobals().Dispatchers[_eventName];
-    // Should we store types in a global map? and prevent type change? this allows receive to be predictable!
     return data.inputType;
   }
 };
 
 struct Send : Base {
+  SHTypeInfo compose(const SHInstanceData &data) {
+    Base::compose(data);
+
+    // when we send we store the type of the event
+    auto currentType = (*_dispatcher).get().type;
+    if (currentType.basicType != SHType::None) {
+      if (!matchTypes(data.inputType, currentType, false, true)) {
+        SHLOG_ERROR("Event type mismatch, expected {} got {}", currentType, data.inputType);
+        throw ComposeError("Event type mismatch");
+      }
+    } else {
+      // we store the type of the event
+      (*_dispatcher).get().type = data.inputType;
+    }
+
+    return data.inputType;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_dispatcher);
 
@@ -50,7 +67,7 @@ struct Send : Base {
     auto current = context->wireStack.back();
 
     OwnedVar ownedInput = input;
-    dispatcher.enqueue_hint(current->id, std::move(ownedInput));
+    dispatcher->enqueue_hint(current->id, std::move(ownedInput));
 
     return input;
   }
@@ -61,6 +78,9 @@ struct Receive : Base {
   std::vector<OwnedVar> _eventsOut;
   entt::connection _connection;
 
+  Type singleType;
+  Type outputType;
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
@@ -68,9 +88,22 @@ struct Receive : Base {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     Base::compose(data);
-    assert(_dispatcher);
-    _dispatcher->get().sink<OwnedVar>().connect<&Receive::onEvent>(this);
-    return CoreInfo::AnySeqType;
+
+    // prevent none
+    auto currentType = (*_dispatcher).get().type;
+    if (currentType.basicType == SHType::None) {
+      SHLOG_ERROR("Event type not set for event: {}, use Events.Send first", _eventName);
+      throw ComposeError("Event type not set");
+    }
+
+    // fixup type
+    singleType = currentType;
+    outputType = Type::SeqOf(singleType);
+
+    // connect
+    _dispatcher->get()->sink<OwnedVar>().connect<&Receive::onEvent>(this);
+
+    return outputType;
   }
 
   void warmup(SHContext *context) {
@@ -78,7 +111,7 @@ struct Receive : Base {
     auto current = context->wireStack.back();
     if (_connection)
       _connection.release();
-    _connection = _dispatcher->get().sink<OwnedVar>(current->id).connect<&Receive::onEvent>(this);
+    _connection = _dispatcher->get()->sink<OwnedVar>(current->id).connect<&Receive::onEvent>(this);
   }
 
   void cleanup() {
@@ -100,7 +133,7 @@ struct Update : Base {
 
     auto &dispatcher = _dispatcher->get();
 
-    dispatcher.update();
+    dispatcher->update();
 
     return input;
   }

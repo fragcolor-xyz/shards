@@ -616,7 +616,7 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   TTableVar(SHVar &&other) : SHVar() {
     assert(other.valueType == SHType::Table);
-    std::swap(*this, *reinterpret_cast<TTableVar*>(&other));
+    std::swap<SHVar>(*this, *reinterpret_cast<TTableVar *>(&other));
   }
 
   TTableVar &operator=(const TTableVar &other) {
@@ -630,7 +630,7 @@ template <class SH_CORE> struct TTableVar : public SHVar {
     return *this;
   }
 
-  TTableVar(TTableVar &&other) : SHVar() { std::swap(*this, other); }
+  TTableVar(TTableVar &&other) : SHVar() { std::swap<SHVar>(*this, other); }
 
   TTableVar(std::initializer_list<std::pair<std::string_view, SHVar>> pairs) : TTableVar() {
     for (auto &kv : pairs) {
@@ -653,7 +653,7 @@ template <class SH_CORE> struct TTableVar : public SHVar {
   }
 
   TTableVar &operator=(TTableVar &&other) {
-    std::swap(*this, other);
+    std::swap<SHVar>(*this, other);
     SH_CORE::destroyVar(other);
     return *this;
   }
@@ -662,6 +662,12 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   SHVar &operator[](std::string_view key) {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+    return *vp;
+  }
+
+  SHVar &insert(std::string_view key, const SHVar &val) {
+    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+    SH_CORE::cloneVar(*vp, val);
     return *vp;
   }
 
@@ -686,10 +692,10 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
     return *this;
   }
 
-  TSeqVar(TSeqVar &&other) : SHVar() { std::swap(*this, other); }
+  TSeqVar(TSeqVar &&other) : SHVar() { std::swap<SHVar>(*this, other); }
 
   TSeqVar &operator=(TSeqVar &&other) {
-    std::swap(*this, other);
+    std::swap<SHVar>(*this, other);
     SH_CORE::destroyVar(other);
     return *this;
   }

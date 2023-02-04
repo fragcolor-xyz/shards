@@ -408,11 +408,11 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   }
 
   struct OnStartEvent {
-    const SHWire* wire;
+    const SHWire *wire;
   };
 
   struct OnStopEvent {
-    const SHWire* wire;
+    const SHWire *wire;
   };
 
   entt::dispatcher dispatcher{};
@@ -433,6 +433,13 @@ using SHHashSetIt = SHHashSet::iterator;
 using SHMap = std::unordered_map<std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
                                  boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>, 16>>;
 using SHMapIt = SHMap::iterator;
+
+struct EventDispatcher {
+  entt::dispatcher dispatcher;
+  SHTypeInfo type;
+
+  entt::dispatcher *operator->() { return &dispatcher; }
+};
 
 struct Globals {
   // sporadically used, don't abuse. And don't use in real time code.
@@ -458,7 +465,7 @@ struct Globals {
 
   std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
 
-  std::unordered_map<std::string_view, entt::dispatcher> Dispatchers;
+  std::unordered_map<std::string_view, EventDispatcher> Dispatchers;
   entt::registry Registry;
 
   SHTableInterface TableInterface{
