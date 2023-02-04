@@ -3,17 +3,20 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Projects
+# Development environment
 
-The Fragnova ecosystem has a few primary components.
+Check the sections below for details on how to set up specific parts of the build process
 
-- [Shards](https://github.com/fragcolor-xyz/shards) open-scripting programming language
-- [Hasten](https://github.com/fragcolor-xyz/hasten) creativity engine (to build apps, games, and open worlds)
-- [Clamor](https://github.com/fragcolor-xyz/clamor) protocol and networking stack
+## Toolchain
 
-To contribute code to any of the above projects, you will need to [ready your development environment](../getting-started.md). 
+- Setting up [Rust](../rust.md)
+- Setting up the C++ compiler
+  - for [Windows](../cpp-windows.md)
 
-Once done, you can check out the guides on [how to build](./build-shards.md) and [run Shards](./run-shards.md).
 
+## Debugging and tools
+
+- Setting up [debugging](../debugging.md)
+- Setting up [code completion](../code-comp.md)
 
 --8<-- "includes/license.md"

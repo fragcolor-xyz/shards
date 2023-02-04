@@ -1,23 +1,19 @@
-# Building shards (windows)
+---
+authors: Fragcolor & contributors
+license: CC-BY-SA-4.0
+---
+
+# C++ Setup (windows)
 
 This page describes the recommended setup to build shards on windows and that should provide the fastest iteration times
 
 ## Required software
 
-- [Rust](https://rustup.rs/) (with nightly toolchain)
 - [LLVM + Clang 15.0.6](https://github.com/llvm/llvm-project/releases/tag/llvmorg-15.0.6) (choose the installer: "LLVM-xx.x.xx-win64.exe")
 - Windows SDK (Either [Standalone](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) or as part of [Visual Studio](https://developer.microsoft.com/en-us/windows/downloads/)) 
 
 ??? LLVM Version
     Newer versions should also work but the version linked here is confirmed to work
-
-## Installing rust
-
-Follow the instalation steps, make sure to install a nightly toolchain, which should be `nightly-x86_64-pc-windows-msvc` for windows systems. Note the `-msvc` suffix here is required!
-
-You can run the console command `rustup toolchain list` to see which toolchains are installed.
-
-If the required version is not listed you can install it with `rustup toolchain install nightly-x86_64-pc-windows-msvc`
 
 ## Installing LLVM + Clang
 
@@ -67,33 +63,4 @@ You can leave the existing entries or remove them if you don't use them.
 
 Save the file, you should now be able to use the compiler by running the command `CMake: Select a Kit` or from the dropdown in the status bar. Select the newly added kit, using the same name you put in the kits configuration file.
 
-
-## Done
-
-You should now be able to build the project as usual
-
-## Debugging
-
-For debugging from within vscode using this toolchain, you should use the [Microsoft C/C++](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) extension.
-
-Here is and example of a launch configuration:
-
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "(Windows) Launch",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "args": [
-                "src/tests/general.edn",
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-        }
-    ]
-}
-```
+--8<-- "includes/license.md"

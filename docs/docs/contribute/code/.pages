@@ -1,4 +1,6 @@
 nav:
   - index.md
-  - build-shards.md
-  - run-shards.md
+  - rust.md
+  - cpp-windows.md
+  - debugging.md
+  - code-comp.md
