@@ -159,6 +159,7 @@ struct CompilationError {
 
   CompilationError() = default;
   CompilationError(std::string &&message) : message(std::move(message)) {}
+  CompilationError(const std::string &message) : message(message) {}
 };
 
 template <typename CB> struct CachedFeatureGenerator {
