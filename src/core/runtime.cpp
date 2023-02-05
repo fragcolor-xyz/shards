@@ -1691,7 +1691,7 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
     }
   }
 
-  std::string err("Parameter not accepting this kind of variable (" + type2Name(value.valueType) + ")");
+  std::string err(fmt::format("Parameter {} not accepting this kind of variable: {}", param.name, varType));
   callback(shard, err.c_str(), false, userData);
 
   return false;
