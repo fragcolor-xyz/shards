@@ -1,6 +1,8 @@
 #include "generator.hpp"
 #include "fmt.hpp"
+#include "log/log.hpp"
 #include "shader/uniforms.hpp"
+#include "spdlog/logger.h"
 #include "wgsl_mapping.hpp"
 #include "../enums.hpp"
 #include "../log.hpp"
@@ -682,11 +684,12 @@ void IndexedBindings::dump() {
   }
 }
 
-void GeneratorOutput::dumpErrors(const GeneratorOutput &output) {
+void GeneratorOutput::dumpErrors(const std::shared_ptr<spdlog::logger> &logger, const GeneratorOutput &output) {
   if (!output.errors.empty()) {
-    spdlog::error("Failed to generate shader code:");
+    SPDLOG_LOGGER_ERROR(logger, "Failed to generate shader code:");
+    SPDLOG_LOGGER_ERROR(logger, "{}\n------------------", output.wgslSource);
     for (auto &error : output.errors) {
-      spdlog::error(">  {}", error.error);
+      SPDLOG_LOGGER_ERROR(logger, ">  {}", error.error);
     }
   }
 }
