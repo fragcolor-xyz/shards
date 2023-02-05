@@ -11,7 +11,7 @@ fn generate_shardsc() {
 
   let shards_dir = var("SHARDS_DIR").unwrap_or_else(|_| "..".to_string());
   let shards_include_dir = format!("{}/include", shards_dir);
-  let src_extra_dir = format!("{}/src/extra", shards_dir);
+  let src_extra_dir = format!("{}/src/extra", shards_dir); 
   let gfx_path = format!("{}/src/gfx", shards_dir);
 
   let main_header_path = format!("{}/rust_interop.hpp", src_extra_dir);

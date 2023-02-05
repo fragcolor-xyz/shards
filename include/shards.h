@@ -314,6 +314,27 @@ struct SHSetInterface {
 #define SH_UNION_NAME(_name_)
 #endif
 
+typedef struct SHTableTypeInfo {
+  // If tableKeys is populated, it is expected that
+  // tableTypes will be populated as well and that at the same
+  // key index there is the key's type
+  SHStrings keys;
+  // If tableKeys is not populated, len == 0 and tableKeys is populated len
+  // > 0 it is assumed that tableTypes contains a sequence with the possible
+  // types in the table
+  SHTypesInfo types;
+} SHTableTypeInfo;
+
+typedef struct SHObjectTypeInfo {
+  int32_t vendorId;
+  int32_t typeId;
+} SHObjectTypeInfo;
+
+typedef struct SHEnumTypeInfo {
+  int32_t vendorId;
+  int32_t typeId;
+} SHEnumTypeInfo;
+
 struct SHTypeInfo {
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
   SH_ENUM_DECL SHType basicType;
@@ -322,32 +343,14 @@ struct SHTypeInfo {
 #endif
 
   SH_UNION(Details) {
-    SH_STRUCT(Object) {
-      int32_t vendorId;
-      int32_t typeId;
-    }
-    object;
+    SHObjectTypeInfo object;
 
-    SH_STRUCT(Enum) {
-      int32_t vendorId;
-      int32_t typeId;
-    }
-    enumeration;
+    SHEnumTypeInfo enumeration;
 
     SHTypesInfo seqTypes;
     SHTypesInfo setTypes;
 
-    SH_STRUCT(Table) {
-      // If tableKeys is populated, it is expected that
-      // tableTypes will be populated as well and that at the same
-      // key index there is the key's type
-      SHStrings keys;
-      // If tableKeys is not populated, len == 0 and tableKeys is populated len
-      // > 0 it is assumed that tableTypes contains a sequence with the possible
-      // types in the table
-      SHTypesInfo types;
-    }
-    table;
+    SHTableTypeInfo table;
 
     SHTypesInfo contextVarTypes;
 
