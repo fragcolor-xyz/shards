@@ -47,7 +47,7 @@ inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatur
   checkType(input.valueType, SHType::Seq, ":Features");
   for (size_t i = 0; i < input.payload.seqValue.len; i++) {
     auto &elem = input.payload.seqValue.elements[i];
-    FeaturePtr* ptr = varAsObjectChecked<FeaturePtr>(elem, Types::Feature);
+    FeaturePtr *ptr = varAsObjectChecked<FeaturePtr>(elem, Types::Feature);
     outFeatures.push_back(*ptr);
   }
 }
@@ -55,8 +55,13 @@ inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatur
 inline TexturePtr varToTexture(const SHVar &var) {
   if (var.payload.objectTypeId == Types::TextureCubeTypeId) {
     return *varAsObjectChecked<TexturePtr>(var, Types::TextureCube);
-  } else {
+  } else if (var.payload.objectTypeId == Types::TextureTypeId) {
     return *varAsObjectChecked<TexturePtr>(var, Types::Texture);
+  } else {
+    SHInstanceData data{};
+    auto varType = shards::deriveTypeInfo(var, data);
+    DEFER({ shards::freeDerivedInfo(varType); });
+    throw formatException("Invalid texture variable type: {}", varType);
   }
 }
 

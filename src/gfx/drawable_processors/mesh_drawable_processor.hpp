@@ -102,9 +102,11 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   TextureViewCache textureViewCache;
   size_t frameCounter{};
 
-  std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
-    return std::make_shared<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
-  }();
+  TexturePtr placeholderTextures[3]{
+      []() { return PlaceholderTexture::create(TextureType::D1, int2(2, 1), float4(1, 1, 1, 1)); }(),
+      []() { return PlaceholderTexture::create(TextureType::D2, int2(2, 2), float4(1, 1, 1, 1)); }(),
+      []() { return PlaceholderTexture::create(TextureType::Cube, int2(2, 2), float4(1, 1, 1, 1)); }(),
+  };
 
   MeshDrawableProcessor(Context &context)
       : drawBufferPool(getDrawBufferInitializer(context)), viewBufferPool(getViewBufferInitializer(context)) {
@@ -238,7 +240,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       for (auto &param : params.textures) {
         int32_t targetSlot = mapTextureBinding(param.first.c_str());
         if (targetSlot >= 0 && !data.textures[targetSlot]) {
-          data.textures[targetSlot] = &param.second.texture->createContextDataConditional(context);;
+          data.textures[targetSlot] = &param.second.texture->createContextDataConditional(context);
+          ;
         }
       }
     };
@@ -322,8 +325,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     prepareData->drawableData.resize(context.drawables.size());
 
     // Init placeholder texture
-    placeholderTexture->createContextDataConditional(context.context);
-    auto placeholderTextureContextData = placeholderTexture->contextData;
+    for (size_t i = 0; i < std::size(placeholderTextures); i++) {
+      placeholderTextures[i]->createContextDataConditional(context.context);
+    }
 
     // Allocate/map buffer helpers
     auto bufferMapCallback = [](WGPUBufferMapAsyncStatus status, void *userData) {
@@ -537,8 +541,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
               drawBindGroupBuilder.addTextureBinding(binding, textureViewCache.getDefaultTextureView(frameCounter, *texture),
                                                      texture->sampler);
             } else {
-              drawBindGroupBuilder.addTextureBinding(binding, placeholderTextureContextData->textureView,
-                                                     placeholderTextureContextData->sampler);
+              auto &placeholder = placeholderTextures[size_t(binding.type)];
+              drawBindGroupBuilder.addTextureBinding(
+                  binding, textureViewCache.getDefaultTextureView(frameCounter, *placeholder->contextData.get()),
+                  placeholder->contextData->sampler);
             }
           }
 
