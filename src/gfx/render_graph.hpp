@@ -507,13 +507,13 @@ public:
     return frameTextures[frameIndex].texture;
   }
 
-  WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, size_t frameCounter) {
+  WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex, size_t frameCounter) {
     if (textureData.externalView)
       return textureData.externalView;
     TextureViewDesc desc{
         .format = textureData.format.pixelFormat,
         .dimension = WGPUTextureViewDimension_2D,
-        .baseMipLevel = 0,
+        .baseMipLevel = mipIndex,
         .mipLevelCount = 1,
         .baseArrayLayer = uint32_t(faceIndex),
         .arrayLayerCount = 1,
@@ -593,13 +593,13 @@ public:
 
     // Entire texture view
     auto resolve = [&](TexturePtr texture) {
-      return ResolvedFrameTexture(texture, getTextureView(texture->createContextDataConditional(context), 0, frameCounter));
+      return ResolvedFrameTexture(texture, getTextureView(texture->createContextDataConditional(context), 0, 0, frameCounter));
     };
 
     // Subresource texture view
     auto resolveSubResourceView = [&](const TextureSubResource &resource) {
       return ResolvedFrameTexture(resource.texture, getTextureView(resource.texture->createContextDataConditional(context),
-                                                                   resource.faceIndex, frameCounter));
+                                                                   resource.faceIndex, resource.mipIndex, frameCounter));
     };
 
     for (auto &frame : graph.frames) {

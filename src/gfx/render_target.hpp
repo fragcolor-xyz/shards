@@ -33,13 +33,23 @@ typedef std::variant<RenderTargetSize::MainOutput, RenderTargetSize::Fixed> Rend
 struct TextureSubResource {
   std::shared_ptr<Texture> texture;
   uint8_t faceIndex{};
+  uint8_t mipIndex{};
 
   TextureSubResource() = default;
-  TextureSubResource(std::shared_ptr<Texture> texture, uint8_t face = 0) : texture(texture), faceIndex(face) {}
+  TextureSubResource(std::shared_ptr<Texture> texture, uint8_t faceIndex = 0, uint8_t mipIndex = 0)
+      : texture(texture), faceIndex(faceIndex), mipIndex(mipIndex) {}
   TextureSubResource(const TextureSubResource &) = default;
 
   operator bool() const { return (bool)texture; }
   operator const std::shared_ptr<Texture> &() const { return texture; }
+
+  // Get the resolution based on the selected mip index and references texture
+  int2 getResolution() const {
+    assert(texture);
+    int2 baseRes = texture->getResolution();
+    int div = std::pow(2, mipIndex);
+    return baseRes / div;
+  }
 
   std::strong_ordering operator<=>(const TextureSubResource &) const = default;
 };

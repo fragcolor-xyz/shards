@@ -90,7 +90,7 @@ static WGPUSampler createSampler(Context &context, SamplerState samplerState, bo
   return wgpuDeviceCreateSampler(context.wgpuDevice, &desc);
 }
 
-static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, WGPUTexture texture,
+static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, uint32_t numArrayLayers, WGPUTexture texture,
                              const ImmutableSharedBuffer &isb) {
   ZoneScoped;
 
@@ -109,7 +109,7 @@ static void writeTextureData(Context &context, const TextureFormat &format, cons
   WGPUExtent3D writeSize{
       .width = uint32_t(resolution.x),
       .height = uint32_t(resolution.y),
-      .depthOrArrayLayers = 1,
+      .depthOrArrayLayers = numArrayLayers,
   };
   wgpuQueueWriteTexture(context.wgpuQueue, &dst, isb.getData(), isb.getLength(), &layout, &writeSize);
 }
@@ -164,14 +164,14 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
     wgpuDesc.size = contextData.size;
     wgpuDesc.format = desc.format.pixelFormat;
     wgpuDesc.sampleCount = 1;
-    wgpuDesc.mipLevelCount = 1;
+    wgpuDesc.mipLevelCount = desc.format.mipLevels;
     wgpuDesc.label = label.empty() ? "unknown" : label.c_str();
 
     contextData.texture = wgpuDeviceCreateTexture(context.wgpuDevice, &wgpuDesc);
     assert(contextData.texture);
 
     if (desc.data)
-      writeTextureData(context, desc.format, desc.resolution, contextData.texture, desc.data);
+      writeTextureData(context, desc.format, desc.resolution, contextData.size.depthOrArrayLayers, contextData.texture, desc.data);
   }
 
   contextData.sampler = createSampler(context, desc.samplerState, false);
