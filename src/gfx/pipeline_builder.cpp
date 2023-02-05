@@ -8,6 +8,7 @@
 #include "shader/blocks.hpp"
 #include "shader/wgsl_mapping.hpp"
 #include "shader/log.hpp"
+#include "spdlog/spdlog.h"
 #include <memory>
 #include <variant>
 #include <webgpu-headers/webgpu.h>
@@ -374,8 +375,10 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 
   shader::GeneratorOutput generatorOutput = generateShader();
   if (generatorOutput.errors.size() > 0) {
-    shader::GeneratorOutput::dumpErrors(generatorOutput);
-    assert(false);
+    shader::GeneratorOutput::dumpErrors(shader::getLogger(), generatorOutput);
+    for (auto &err : generatorOutput.errors)
+      output.compilationError.emplace(err.error);
+    return;
   }
 
   WGPUShaderModuleDescriptor moduleDesc = {};
@@ -385,7 +388,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 
   wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
   wgpuShaderModuleWGSLDescriptorSetCode(wgslModuleDesc, generatorOutput.wgslSource.c_str());
-  SPDLOG_LOGGER_DEBUG(shader::getLogger(), "Generated WGSL:\n {}", generatorOutput.wgslSource);
+  SPDLOG_LOGGER_DEBUG(shader::getLogger(), "Generated WGSL:\n{}", generatorOutput.wgslSource);
 
   output.renderTargetLayout = renderTargetLayout;
 
