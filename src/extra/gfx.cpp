@@ -1,5 +1,6 @@
 #include "gfx.hpp"
 #include "extra/gfx.hpp"
+#include "extra/gfx/shards_utils.hpp"
 #include "gfx/buffer_vars.hpp"
 #include <gfx/context.hpp>
 #include <gfx/loop.hpp>
@@ -166,6 +167,8 @@ struct RenderShard {
       _collectedPipelineSteps.clear();
 
       Var stepsSHVar(_steps.get());
+      checkType(stepsSHVar.valueType, SHType::Seq, "Render steps parameter");
+
       stepsSHVar.intoVector(_collectedPipelineStepVars);
 
       size_t index = 0;

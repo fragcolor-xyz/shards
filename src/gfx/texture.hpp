@@ -34,9 +34,9 @@ struct TextureFormat {
   TextureType type = TextureType::D2;
   TextureFormatFlags flags = TextureFormatFlags::AutoGenerateMips;
   WGPUTextureFormat pixelFormat = WGPUTextureFormat::WGPUTextureFormat_Undefined;
+  uint8_t mipLevels = 1;
 
-  bool hasMips() { return textureFormatFlagsContains(flags, TextureFormatFlags::AutoGenerateMips); }
-
+  bool hasMips() { return mipLevels > 1; }
   std::strong_ordering operator<=>(const TextureFormat &other) const = default;
 };
 

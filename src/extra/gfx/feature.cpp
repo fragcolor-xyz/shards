@@ -710,6 +710,10 @@ struct FeatureShard {
 
   template <typename T, typename T1>
   void runGenerators(std::shared_ptr<SHMesh> mesh, const std::vector<std::shared_ptr<SHWire>> &wires, T &ctx, T1 applyResults) {
+    // Avoid running after errors happened
+    if (!mesh->failedWires().empty())
+      return;
+
     GraphicsRendererContext graphicsRendererContext{
         .renderer = &ctx.renderer,
         .render = [&ctx = ctx](std::vector<ViewPtr> views,
@@ -744,7 +748,6 @@ struct FeatureShard {
         (TableVar &)wire->currentInput = std::move(input);
       }
     }
-
     // Run one tick of the generator wires
     if (!mesh->tick())
       throw formatException("Generator tick failed");

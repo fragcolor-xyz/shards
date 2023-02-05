@@ -165,9 +165,12 @@ struct RegionShard {
 // :Textures {:outputName .textureVar}
 // Face indices are ordered   X+ X- Y+ Y- Z+ Z-
 // :Textures {:outputName {:Texture .textureVar :Face 0}}
+// Mip map indices starting at 0, can be combined with cubemap faces
+// :Textures {:outputName {:Texture .textureVar :Mip 1 :Face 0}}
 struct RenderIntoShard {
-  static inline std::array<SHString, 2> TextureSubresourceTableKeys{"Texture", "Face"};
-  static inline shards::Types TextureSubresourceTableTypes{Type::VariableOf(Types::Texture), CoreInfo::IntType};
+  static inline std::array<SHString, 4> TextureSubresourceTableKeys{"Texture", "Face", "Mip", ""};
+  static inline shards::Types TextureSubresourceTableTypes{Type::VariableOf(Types::Texture), CoreInfo::IntType,
+                                                           CoreInfo::IntType};
   static inline shards::Type TextureSubresourceTable = Type::TableOf(TextureSubresourceTableTypes, TextureSubresourceTableKeys);
 
   static inline shards::Types AttachmentTableTypes{TextureSubresourceTable, Type::VariableOf(Types::Texture)};
@@ -181,9 +184,11 @@ struct RenderIntoShard {
   PARAM(ShardsVar, _contents, "Contents", "The shards that will render into the given textures.", {CoreInfo::ShardRefSeqType});
   PARAM_PARAMVAR(_referenceSize, "Size", "The reference size. This will control the size of the render targets.",
                  {CoreInfo::Int2Type, CoreInfo::Int2VarType});
+  PARAM_VAR(_matchOutputSize, "MathOutputSize",
+            "When true, the texture rendered into is automatically resized to match the output size.", {CoreInfo::BoolType});
   PARAM_PARAMVAR(_viewport, "Viewport", "The viewport.", {CoreInfo::Int4Type, CoreInfo::Int4VarType});
   PARAM_IMPL(RenderIntoShard, PARAM_IMPL_FOR(_textures), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_referenceSize),
-             PARAM_IMPL_FOR(_viewport));
+             PARAM_IMPL_FOR(_matchOutputSize), PARAM_IMPL_FOR(_viewport));
 
   RequiredGraphicsRendererContext _graphicsRendererContext;
   Inputs::OptionalInputContext _inputContext;
@@ -233,7 +238,14 @@ struct RenderIntoShard {
         faceIndex = uint8_t(int(faceIndexVar));
       }
 
-      return TextureSubResource(texture, faceIndex);
+      uint8_t mipIndex{};
+      Var mipIndexVar;
+      if (getFromTable(shContext, table, "Mip", mipIndexVar)) {
+        checkType(mipIndexVar.valueType, SHType::Int, "Mip should be an integer");
+        mipIndex = uint8_t(int(mipIndexVar));
+      }
+
+      return TextureSubResource(texture, faceIndex, mipIndex);
     }
   }
 
@@ -262,22 +274,26 @@ struct RenderIntoShard {
     GraphicsRendererContext &ctx = _graphicsRendererContext;
     ViewStack &viewStack = ctx.renderer->getViewStack();
 
-    // Use outer size for textures
-    // TODO(guusw): add parameter to control this
-
     Var referenceSizeVar = (Var &)_referenceSize.get();
+    bool matchOutputSize = !_matchOutputSize.isNone() ? (bool)_matchOutputSize : true;
 
-    bool useOuterSize = true;
     int2 referenceSize;
-
     if (!referenceSizeVar.isNone()) {
       referenceSize = toInt2(referenceSizeVar);
-    } else if (useOuterSize) {
+    } else if (matchOutputSize) {
       referenceSize = viewStack.getOutput().referenceSize;
     } else {
       referenceSize = attachments[0].texture->getResolution();
+      for (auto &attachment : attachments) {
+        referenceSize = attachment.second.getResolution();
+        if (referenceSize.x != 0 || referenceSize.y != 0)
+          break;
+      }
     }
     viewItem.referenceSize = referenceSize;
+
+    if (referenceSize.x == 0 || referenceSize.y == 0)
+      throw formatException("Invalid texture size for RenderInto: {}", referenceSize);
 
     // (optional) set viewport rectangle
     Var viewportVar = (Var &)_viewport.get();
