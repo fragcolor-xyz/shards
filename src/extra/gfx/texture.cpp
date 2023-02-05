@@ -50,10 +50,11 @@ struct TextureShard {
             "The format to use to create the texture. The texture will be usable as a render target. (Render target only)",
             {Types::TextureFormatEnumInfo::Type});
   PARAM_VAR(_resolution, "Resolution", "The resolution of the texture to create. (Render target only)", {CoreInfo::Int2Type});
+  PARAM_VAR(_mipLevels, "MipLevels", "The number of mip levels to create. (Render target only)", {CoreInfo::IntType});
   PARAM_VAR(_dimension, "Dimension", "The type of texture to create. (Render target only)",
             {Types::TextureDimensionEnumInfo::Type});
   PARAM_IMPL(TextureShard, PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution),
-             PARAM_IMPL_FOR(_dimension));
+             PARAM_IMPL_FOR(_mipLevels), PARAM_IMPL_FOR(_dimension));
 
   TextureShard() {}
 
@@ -88,11 +89,13 @@ struct TextureShard {
   SHTypeInfo compose(const SHInstanceData &data) {
     if (!_interpretAs.isNone()) {
       if (!_format.isNone())
-        throw ComposeError("Can not specify both Format and InterpretAs parameters at the same time");
+        throw ComposeError("Can not specify Format and InterpretAs parameters at the same time");
       if (!_dimension.isNone())
-        throw ComposeError("Can not specify both Dimension and InterpretAs parameters at the same time");
+        throw ComposeError("Can not specify Dimension and InterpretAs parameters at the same time");
       if (!_resolution.isNone())
-        throw ComposeError("Can not specify both Resolution and InterpretAs parameters at the same time");
+        throw ComposeError("Can not specify Resolution and InterpretAs parameters at the same time");
+      if (!_mipLevels.isNone())
+        throw ComposeError("Can not specify MipLevels and InterpretAs parameters at the same time");
     }
 
     if (!_format.isNone()) {
@@ -226,6 +229,7 @@ struct TextureShard {
 
   void activateRenderableTexture() {
     int2 resolution = !_resolution.isNone() ? toInt2(_resolution) : int2(0);
+    uint8_t mipLevels = uint8_t(!_mipLevels.isNone() ? int(_mipLevels) : 1);
 
     texture->init(TextureDesc{
         .format =
@@ -233,6 +237,7 @@ struct TextureShard {
                 .type = getTextureDimension(),
                 .flags = TextureFormatFlags::RenderAttachment,
                 .pixelFormat = (WGPUTextureFormat)_format.payload.enumValue,
+                .mipLevels = mipLevels,
             },
         .resolution = resolution,
     });
