@@ -910,9 +910,10 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
             auto bkey = receiverType.table.keys.elements[y];
             // if anyLast and the last perform a match anyway
             if (strcmp(akey, bkey) == 0 || (anyLast && y == (bkeys - 1))) {
-              if (matchTypes(atype, btype, isParameter, strict))
+              if (matchTypes(atype, btype, isParameter, strict)) {
                 missingMatches--;
-              else
+                y = bkeys; // break
+              } else
                 return false; // fail quick in this case
             }
           }
