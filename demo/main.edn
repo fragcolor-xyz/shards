@@ -10,22 +10,14 @@
   (UI
    .ui-queue
    (->
-    (UI.Window
-     :Contents
-     (->
-      {:EntryPoint (->
-                    (compute-specular-lut)
-                    )}
-      (GFX.EffectPass) >> .lut-steps-1
-      (GFX.Texture :Format TextureFormat.RG8Unorm) >= .lut-tex
-      (GFX.RenderInto :Textures {:color .lut-tex}
-                      :Size (Int2 64)
-                      :Contents (->
-                                 (GFX.Render :Steps .lut-steps-1)));
-
-      "Precomputed" (UI.Label);
-      .lut-tex (UI.Image :Scale (Float2 4.0))
-      )))))
+    (Int 1)
+    ;; (UI.Window
+    ;;  :Contents
+    ;;  (->
+    ;;   (compute-specular-lut .lut-tex)
+    ;;   "Precomputed" (UI.Label);
+    ;;   .lut-tex (UI.Image :Scale (Float2 4.0))));
+    )))
 
 (Setup
  {:Position (Float3 -7.0 2.5 15.0) :Target (Float3 0.0 0.7 0.0)} (Math.LookAt)

@@ -14,9 +14,7 @@
   .z (Math.DegreesToRadians) (Math.AxisAngleZ) (Math.Rotation) >= .rz
   .rz (Math.MatMul .ry) (Math.MatMul .rx))
 
-(defshards render-cubemap [queue included-steps cube-tex]
-  (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 512) :Dimension TextureDimension.Cube) >= cube-tex
-  included-steps >= .env-steps
+(defshards render-cubemap-section [steps cube-tex mip-index]
   90.0 (Math.DegreesToRadians) >= .fov
   (map
    (fn* [n] (->
@@ -25,10 +23,13 @@
              (Float3 0 10 0) (Math.Translation) >= .tmp-tsl
              .tmp-tsl (Math.MatMul .tmp-rot) (Math.Inverse) >= (ContextVar (str "view-transform-" n))
              (GFX.View :View (ContextVar (str "view-transform-" n)) :Fov .fov) >= (ContextVar (str "capture-view-" n))
-             (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n}}
+             (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n :Mip mip-index}}
                              :Size (Int2 512) ; Controls cubemap dimensions
                              :Contents (->
-                                        (GFX.Render :Steps .env-steps :View (ContextVar (str "capture-view-" n)))));
+                                        (GFX.Render :Steps steps :View (ContextVar (str "capture-view-" n)))));
              ))
    (range 0 5));
   )
+
+(defshards render-cubemap [steps cube-tex]
+  (render-cubemap-section steps cube-tex 0))

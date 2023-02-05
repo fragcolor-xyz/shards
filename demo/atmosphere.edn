@@ -50,7 +50,8 @@
                      {:Stage ProgrammableGraphicsStage.Fragment
                       :EntryPoint (precompute-sky-fs)}]} (GFX.Feature) >> .sky-inner-features
           {:Features .sky-inner-features :Queue .sky-queue} (GFX.DrawablePass) >> .sky-inner-steps
-          (render-cubemap .sky-queue .sky-inner-steps .sky-cube-tex)))
+          (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 1024) :Dimension TextureDimension.Cube) >= .sky-cube-tex
+          (render-cubemap .sky-inner-steps .sky-cube-tex)))
   {:sky .sky-cube-tex})
 
 (defshards setup-skybox-pass []
