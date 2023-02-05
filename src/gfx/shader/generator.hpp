@@ -3,6 +3,7 @@
 
 #include "block.hpp"
 #include "entry_point.hpp"
+#include "spdlog/logger.h"
 #include "textures.hpp"
 #include "types.hpp"
 #include "uniforms.hpp"
@@ -10,6 +11,7 @@
 #include <gfx/mesh.hpp>
 #include <gfx/params.hpp>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -147,7 +149,7 @@ struct GeneratorOutput {
   String wgslSource;
   std::vector<GeneratorError> errors;
 
-  static void dumpErrors(const GeneratorOutput &output);
+  static void dumpErrors(const std::shared_ptr<spdlog::logger> &logger, const GeneratorOutput &output);
 };
 
 struct BufferBinding {
