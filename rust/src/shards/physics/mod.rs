@@ -5,7 +5,7 @@ extern crate crossbeam;
 extern crate rapier3d;
 
 use crate::fourCharacterCode;
-use crate::shardsc::SHTypeInfo_Details_Object;
+use crate::shardsc::SHObjectTypeInfo;
 use crate::shardsc::SHType_Float4;
 use crate::shardsc::SHType_None;
 use crate::types::common_type;
@@ -31,7 +31,7 @@ use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
 lazy_static! {
   static ref SIMULATION_TYPE: Type = {
     let mut t = common_type::object;
-    t.details.object = SHTypeInfo_Details_Object {
+    t.details.object = SHObjectTypeInfo {
       vendorId: FRAG_CC,
       typeId: fourCharacterCode(*b"phys"),
     };
@@ -44,7 +44,7 @@ lazy_static! {
   )];
   static ref SHAPE_TYPE: Type = {
     let mut t = common_type::object;
-    t.details.object = SHTypeInfo_Details_Object {
+    t.details.object = SHObjectTypeInfo {
       vendorId: FRAG_CC,
       typeId: fourCharacterCode(*b"phyS"),
     };
@@ -57,7 +57,7 @@ lazy_static! {
   static ref SHAPE_TYPES: Vec<Type> = vec![*SHAPE_TYPE];
   static ref RIGIDBODY_TYPE: Type = {
     let mut t = common_type::object;
-    t.details.object = SHTypeInfo_Details_Object {
+    t.details.object = SHObjectTypeInfo {
       vendorId: FRAG_CC,
       typeId: fourCharacterCode(*b"phyR"),
     };
