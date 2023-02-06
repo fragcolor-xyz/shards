@@ -2,6 +2,7 @@
 #include "extra/gfx.hpp"
 #include "extra/gfx/shards_utils.hpp"
 #include "gfx/buffer_vars.hpp"
+#include "shards.h"
 #include <gfx/context.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/math.hpp>
@@ -73,9 +74,29 @@ struct RenderShard {
     }
   }
 
+  ExposedInfo _exposed;
   SHExposedTypesInfo requiredVariables() {
-    static auto e = exposedTypesOf(decltype(_graphicsRendererContext)::getExposedTypeInfo());
-    return e;
+    _exposed.clear();
+    _exposed.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
+    if (_steps.isVariable()) {
+      _exposed.push_back(SHExposedTypeInfo{
+          .name = _steps.variableName(),
+          .exposedType = Types::PipelineStepSeq,
+      });
+    }
+    if (_view.isVariable()) {
+      _exposed.push_back(SHExposedTypeInfo{
+          .name = _view.variableName(),
+          .exposedType = Types::View,
+      });
+    }
+    if (_views.isVariable()) {
+      _exposed.push_back(SHExposedTypeInfo{
+          .name = _views.variableName(),
+          .exposedType = Types::ViewSeq,
+      });
+    }
+    return (SHExposedTypesInfo)_exposed;
   }
 
   void cleanup() {
