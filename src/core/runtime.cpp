@@ -1283,14 +1283,18 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
     auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
     if (inTypes.len == 1 && inTypes.elements[0].basicType == SHType::None) {
       wire->inputType = SHTypeInfo{};
-      wire->inputTypeForceNone = true;
+      wire->ignoreInputTypeCheck = true;
     } else {
       wire->inputType = data.inputType;
-      wire->inputTypeForceNone = false;
+      wire->ignoreInputTypeCheck = false;
     }
+  } else if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
+    // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
+    wire->inputType = SHTypeInfo{SHType::Any};
+    wire->ignoreInputTypeCheck = true;
   } else {
     wire->inputType = data.inputType;
-    wire->inputTypeForceNone = false;
+    wire->ignoreInputTypeCheck = false;
   }
 
   auto res = composeWire(wire->shards, callback, userData, data);

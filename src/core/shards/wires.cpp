@@ -39,7 +39,7 @@ std::unordered_set<const SHWire *> &WireBase::gatheringWires() {
 
 void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposedInfo &shared) {
   // verify input type
-  if (!passthrough && data.inputType != wire->inputType && !wire->inputTypeForceNone) {
+  if (!passthrough && data.inputType != wire->inputType && !wire->ignoreInputTypeCheck) {
     SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
     throw ComposeError("Attempted to call an already composed wire with a "
                        "different input type! wire: " +
