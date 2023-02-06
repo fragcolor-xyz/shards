@@ -619,7 +619,8 @@ template <bool COND> struct When {
         data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None);
 
     if (!nextIsNone && !ares.flowStopper && !_passth) {
-      if (cres.outputType != data.inputType) {
+      if (ares.outputType != data.inputType) {
+        SHLOG_ERROR("When Passthrough is false but action output type ({}) does not match input type ({}).", ares.outputType, data.inputType);
         throw ComposeError("When Passthrough is false but action output type "
                            "does not match input type.");
       }
