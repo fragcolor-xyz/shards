@@ -1,0 +1,224 @@
+
+(def lorem_ipsum
+  "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
+   quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum 
+   dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+
+(defloop main-wire
+
+  (Setup 
+   "" >= .code
+   (color 250 250 32) >= .color
+   (LoadImage "Images/KnightCard.png") = .knight-card
+   (GFX.Texture) >= .knight-card-texture
+   0.0 >= .progress
+   2 >= .choice
+   1 >= .index2)
+
+  (GFX.MainWindow
+   :Title "MainWindow" :Width 1920 :Height 1080
+   :Contents
+   (-> (Setup
+        (GFX.DrawQueue) >= .ui-draw-queue
+        (GFX.UIPass .ui-draw-queue) >> .render-steps)
+       .ui-draw-queue (GFX.ClearQueue)
+
+       (UI
+        .ui-draw-queue
+        (->
+         (UI.TopPanel
+          :Contents
+          (->
+           "Top Panel" (UI.Label)
+
+           (UI.Collapsing
+            :Heading "Menu"
+            :DefaultOpen false
+            ;;------------ UI.Menu -------------
+            :Contents (-> (UI.MenuBar
+                           :Contents
+                           (UI.Menu
+                            "Stuff"
+                            (->
+                             (UI.Horizontal (->
+                                             (UI.Button "Some Text 1")
+                                             (UI.Button "Some Text 2")
+                                             (UI.Button "Some Text 3")
+                                             (UI.Button "Some Text 4")
+                                             (UI.Button "Close" (UI.CloseMenu)))))))))))
+
+         (UI.BottomPanel
+          :Contents
+          (->
+           "Bottom Panel" (UI.Label)
+           ;; --------------- UI.Disable -------------
+           (UI.Disable
+            :Disable true
+            :Contents
+            (UI.Button "Can't be clicked"))
+
+           .progress (UI.ProgressBar :Overlay "Progress")
+           
+           ;; ------------- UI.Spinner -------------
+           (UI.Spinner)))
+
+         (UI.LeftPanel
+          :Contents
+          (->
+           "Left Panel" (UI.Label)
+
+           ;; --------------- UI.Grid -------------
+           (UI.Grid
+            :Striped true
+            :Contents (->
+                       "Col 1" (UI.Label)
+                       "Col 2" (UI.Label)
+                       "Col 3" (UI.Label)
+                       (UI.NextRow)
+                       "Final" (UI.Label)
+                       "Fantasy" (UI.Label)
+                       "16" (UI.Label)
+                       (UI.NextRow)
+                       "Can't" (UI.Label)
+                       "Freaking" (UI.Label)
+                       "Wait" (UI.Label)))
+           
+           (UI.TextInput :Variable .text :Multiline false)
+
+           ;; -------- UI.ScrollArea -----------
+           (UI.ScrollArea
+            :Horizontal true
+            :Contents
+            (->
+             lorem_ipsum (UI.Label :Wrap false)))))
+
+         (UI.CentralPanel
+          :Contents
+          (->
+           "Center Panel" (UI.Label)
+           ;; --------------- UI.Columns -------------
+           (UI.Columns
+            :Contents
+            [(->
+              ;; ---------- || Collumn 1 || ------------
+              (UI.ColorInput :Variable .color)
+
+              ;; --------- UI Frame -----------
+              (UI.Frame
+               :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 5)
+               :FillColor (color 50 50 21)
+               :StrokeColor .color :StrokeWidth (float 2)
+               :Contents
+               (->
+
+                ;; --------------- UI.Checkbox ------------- 
+                (UI.Checkbox
+                 :Label "Checked"
+                 :Style {:color (color 255 0 255) :italics true}
+                 :Variable .checked)
+
+                ;; -------- UI.Float2 Slider ------------
+                (UI.Float2Input :Variable .float2)
+                (ExpectFloat2)
+
+                ;; -------- UI.Float2 ------------
+                (UI.Float2Slider
+                 :Variable .float2
+                 :Min (float2 0) :Max (float2 1))))
+
+              ;; ---------- UI.Get ----------- 
+
+              (UI.Group (->
+                         (UI.Button
+                          :Label "UI.Get!"
+                          :Action (->
+                                   (UI.GetProperty UIProperty.RemainingSpace)
+                                   (Log)))
+
+                         ;; ----------- UI.Indent -------------
+                         (UI.Indent
+                          :Contents (->
+                                     (UI.Button
+                                      :Label "Btn in Group 2!"
+                                      :Action (->
+                                               (UI.GetProperty UIProperty.RemainingSpace)
+                                               (Log)))))
+
+
+                         (UI.Button
+                          :Label "Add 1 to Progress"
+                          :Action (->
+                                   .progress
+                                   (Math.Add 0.01) > .progress
+                                   (Log)))))
+
+              (UI.Horizontal (->
+                              "Code: " (UI.Label)
+                              .code (UI.Label)))
+
+              "https://bulbapedia.bulbagarden.net/wiki/Rowlet_(Pok%C3%A9mon)"
+              (UI.Hyperlink
+               :Label "My Favourite Pokemon"
+               :Style {:italics true})
+
+              .knight-card (UI.ImageButton :Scale (float2 0.7)
+                                           :Action (->
+                                                    "Passive: Increases Attack and Defense by 2. Also adds Sword Slash and Block to Deck" (Log))))
+
+
+
+             ;; ------------ || Collumn 2 || -----------
+             ;; --------------- UI.Color -------------
+             (->
+              ;; --------- UI.Combo ----------
+              ["α Α" "ω Ω"]
+              (UI.Combo
+               :Label "Greek letter"
+               :Index .index)
+              (ExpectString) >= .letter
+
+              ;; ------------ UI.Listbox -----------
+              ["α Α" "ω Ω"]
+              (UI.ListBox :Index .index)
+              (ExpectString) >= .letter
+
+              (UI.Int2Input
+               :Variable .int2)
+              (ExpectInt2)
+
+              (UI.Int2Slider
+               :Variable .int2
+               :Min (int2 1) :Max (int2 100))
+              (ExpectInt2)
+
+              (UI.Link
+               :Label "Click here!"
+               :Style {:italics true}
+               :Action (Msg "I think you are cute :3"))
+
+
+              (UI.Scope
+               :Contents
+               (->
+                (UI.RadioButton
+                 :Label "Choice 1"
+                 :Variable .choice
+                 :Value 1)
+                (UI.RadioButton "Choice 2" .choice 2)
+                (UI.RadioButton "Choice 3" .choice 3)))
+              ;; ------------ UI RadioButton -------------
+              )])))
+
+         (UI.RightPanel
+          :Contents
+          (->
+           "Right Panel" (UI.Label)
+           ;; --------------- UI.CodeEditor -------------
+           (UI.CodeEditor .code "Rust")))))
+
+       (GFX.Render :Steps .render-steps))))
+
+
+(defmesh main-mesh)
+(schedule main-mesh main-wire)
+(run main-mesh (/ 1.0 60))
