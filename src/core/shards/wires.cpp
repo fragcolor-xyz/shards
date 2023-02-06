@@ -6,6 +6,8 @@
 #include <chrono>
 #include <memory>
 #include <set>
+#include "../brancher.hpp"
+#include "brancher.hpp"
 
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
 // Remove define from winspool.h
@@ -1757,9 +1759,6 @@ struct Branch {
   static constexpr uint32_t TypeId = 'brcM';
   static inline Type MeshType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = TypeId}}}};
 
-  enum BranchFailureBehavior { Everything, Known, Ignore };
-  DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure, 'brcB');
-
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return MeshType; }
 
@@ -1777,16 +1776,22 @@ struct Branch {
     return params;
   }
 
+private:
+  OwnedVar _wires{Var::Empty};
+  Brancher _brancher;
+
+public:
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _wires = value;
+      _brancher.setRunnables(_wires);
       break;
     case 1:
-      _failureBehavior = BranchFailureBehavior(value.payload.enumValue);
+      _brancher.failureBehavior = BranchFailureBehavior(value.payload.enumValue);
       break;
     case 2:
-      _captureAll = value.payload.boolValue;
+      _brancher.captureAll = value.payload.boolValue;
       break;
     default:
       break;
@@ -1798,9 +1803,9 @@ struct Branch {
     case 0:
       return _wires;
     case 1:
-      return Var::Enum(_failureBehavior, BranchFailureEnumInfo::VendorId, BranchFailureEnumInfo::TypeId);
+      return Var::Enum(_brancher.failureBehavior, BranchFailureEnumInfo::VendorId, BranchFailureEnumInfo::TypeId);
     case 2:
-      return Var(_captureAll);
+      return Var(_brancher.captureAll);
     default:
       return Var::Empty;
     }
@@ -1812,140 +1817,31 @@ struct Branch {
                    "exposed variables in the activator wire.");
   }
 
-  void composeSubWire(const SHInstanceData &data, SHWireRef &wireref) {
-    auto wire = SHWire::sharedFromRef(wireref);
-    wire->mesh = _mesh; // this is needed to be correct
-
-    auto dataCopy = data;
-    dataCopy.wire = wire.get();
-    dataCopy.inputType = {}; // ticked wires don't have inputs
-
-    // Branch needs to capture all it needs, so we need deeper informations
-    // this is triggered by populating requiredVariables variable
-    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
-    dataCopy.requiredVariables = &requirements;
-
-    auto cr = composeWire(
-        wire.get(),
-        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
-          if (!nonfatalWarning) {
-            SHLOG_ERROR("Branch: failed inner wire validation, error: {}", errorTxt);
-            throw ComposeError("RunWire: failed inner wire validation");
-          } else {
-            SHLOG_INFO("Branch: warning during inner wire validation: {}", errorTxt);
-          }
-        },
-        this, dataCopy);
-
-    _runWires.emplace_back(wire);
-
-    // add to merged requirements
-    for (auto &req : cr.requiredInfo) {
-      arrayPush(_mergedReqs, req);
-    }
-
-    if (_captureAll) {
-      for (auto &avail : data.shared) {
-        SHLOG_TRACE("Branch: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-        arrayPush(_mergedReqs, avail);
-      }
-    } else {
-      for (auto &avail : data.shared) {
-        auto it = requirements.find(avail.name);
-        if (it != requirements.end()) {
-          SHLOG_TRACE("Branch: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-          arrayPush(_mergedReqs, it->second);
-        }
-      }
-    }
-
-    arrayFree(cr.requiredInfo);
-    arrayFree(cr.exposedInfo);
-  }
-
-  void destroy() { arrayFree(_mergedReqs); }
-
   SHTypeInfo compose(const SHInstanceData &data) {
-    // release any old info
-    destroy();
+    auto dataCopy = data;
+    dataCopy.inputType = {}; // Branch doesn't have an input
 
-    _runWires.clear();
-    if (_wires.valueType == SHType::Seq) {
-      for (auto &wire : _wires) {
-        composeSubWire(data, wire.payload.wireValue);
-      }
-    } else if (_wires.valueType == SHType::Wire) {
-      composeSubWire(data, _wires.payload.wireValue);
-    }
-
-    const IterableExposedInfo shared(data.shared);
-    // copy shared
-    _sharedCopy = shared;
-    _mesh->instanceData.shared = _sharedCopy;
+    _brancher.compose(dataCopy);
 
     return MeshType;
   }
 
-  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
+  SHExposedTypesInfo requiredVariables() { return _brancher.requiredVariables(); }
 
-  void warmup(SHContext *context) {
-    // grab all the variables we need and reference them
-    for (const auto &req : _mergedReqs) {
-      if (_mesh->refs.count(req.name) == 0) {
-        SHLOG_TRACE("Branch: referencing required variable: {}", req.name);
-        auto vp = referenceVariable(context, req.name);
-        _mesh->refs[req.name] = vp;
-      }
-    }
+  void warmup(SHContext *context) { _brancher.warmup(context); }
 
-    for (const auto &wire : _runWires) {
-      _mesh->schedule(wire, Var::Empty, false);
-    }
-  }
-
-  void cleanup() {
-    for (auto &[_, vp] : _mesh->refs) {
-      releaseVariable(vp);
-    }
-
-    // this will also clear refs
-    _mesh->terminate();
-  }
+  void cleanup() { _brancher.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!_mesh->tick()) {
-      switch (_failureBehavior) {
-      case BranchFailureBehavior::Ignore:
-        break;
-      case BranchFailureBehavior::Everything:
-        throw ActivationError("Branched mesh had errors");
-      case BranchFailureBehavior::Known:
-        for (const auto &wire : _runWires) {
-          auto failed = _mesh->failedWires();
-          if (std::count(failed.begin(), failed.end(), wire.get())) {
-            throw ActivationError("Branched mesh had errors");
-          }
-        }
-        break;
-      }
-    }
-    return Var::Object(_mesh.get(), CoreCC, TypeId);
+    _brancher.activate(context);
+    return Var::Object(_brancher.mesh.get(), CoreCC, TypeId);
   }
-
-private:
-  OwnedVar _wires{Var::Empty};
-  bool _captureAll = false;
-  std::shared_ptr<SHMesh> _mesh = SHMesh::make();
-  IterableExposedInfo _sharedCopy;
-  SHExposedTypesInfo _mergedReqs;
-  std::vector<std::shared_ptr<SHWire>> _runWires;
-  BranchFailureBehavior _failureBehavior = BranchFailureBehavior::Everything;
 };
 
 void registerWiresShards() {
   REGISTER_ENUM(WireBase::RunWireModeEnumInfo);
   REGISTER_ENUM(ParallelBase::WaitUntilEnumInfo);
-  REGISTER_ENUM(Branch::BranchFailureEnumInfo);
+  REGISTER_ENUM(BranchFailureEnumInfo);
 
   using RunWireDo = RunWire<false, RunWireMode::Inline>;
   using RunWireDetach = RunWire<true, RunWireMode::Detached>;
