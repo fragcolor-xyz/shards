@@ -409,7 +409,7 @@ struct ExpectLike {
         SHVar example = _example;
         _expectedType = deriveTypeInfo(example, data);
         _dispose = true;
-        _outputTypeHash = deriveTypeHash(_expectedType);
+        _outputTypeHash = deriveTypeHash(example);
         return _expectedType;
       }
     }
