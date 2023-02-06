@@ -51,6 +51,13 @@ struct TextureSubResource {
     return baseRes / div;
   }
 
+  // Get the resolution based on the selected mip index and references texture
+  int2 getResolutionFromMipResolution(int2 mipResolution) const {
+    assert(texture);
+    int div = std::pow(2, mipIndex);
+    return mipResolution * div;
+  }
+
   std::strong_ordering operator<=>(const TextureSubResource &) const = default;
 };
 
@@ -73,13 +80,13 @@ public:
   void configure(const char *name, WGPUTextureFormat format);
 
   /// <div rustbindgen hide></div>
-  int2 resizeConditional(int2 mainOutputSize);
+  int2 resizeConditional(int2 referenceSize);
 
   /// <div rustbindgen hide></div>
   int2 getSize() const;
 
   /// <div rustbindgen hide></div>
-  int2 computeSize(int2 mainOutputSize) const;
+  int2 computeSize(int2 referenceSize) const;
 
   /// <div rustbindgen hide></div>
   const TextureSubResource &getAttachment(const std::string &name) const;
