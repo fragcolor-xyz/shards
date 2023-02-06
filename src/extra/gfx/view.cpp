@@ -10,6 +10,7 @@
 #include "foundation.hpp"
 #include "gfx/error_utils.hpp"
 #include "gfx/fwd.hpp"
+#include "gfx/render_target.hpp"
 #include "params.hpp"
 #include "linalg_shim.hpp"
 #include "shards.h"
@@ -169,10 +170,13 @@ struct RegionShard {
 // Mip map indices starting at 0, can be combined with cubemap faces
 // :Textures {:outputName {:Texture .textureVar :Mip 1 :Face 0}}
 struct RenderIntoShard {
-  static inline std::array<SHString, 4> TextureSubresourceTableKeys{"Texture", "Face", "Mip", ""};
-  static inline shards::Types TextureSubresourceTableTypes{Type::VariableOf(Types::Texture), CoreInfo::IntType,
-                                                           CoreInfo::IntType};
-  static inline shards::Type TextureSubresourceTable = Type::TableOf(TextureSubresourceTableTypes, TextureSubresourceTableKeys);
+  // static inline std::array<SHString, 4> TextureSubresourceTableKeys{"Texture", "Face", "Mip", ""};
+  // static inline shards::Types TextureSubresourceTableTypes{Type::VariableOf(Types::Texture), CoreInfo::IntType,
+  //                                                          Type::VariableOf(CoreInfo::IntType)};
+  // static inline shards::Type TextureSubresourceTable = Type::TableOf(TextureSubresourceTableTypes,
+  // TextureSubresourceTableKeys);
+  // Can not check, support any table for now
+  static inline shards::Type TextureSubresourceTable = CoreInfo::AnyTableType;
 
   static inline shards::Types AttachmentTableTypes{TextureSubresourceTable, Type::VariableOf(Types::Texture)};
   static inline shards::Type AttachmentTable = Type::TableOf(AttachmentTableTypes);
@@ -181,7 +185,7 @@ struct RenderIntoShard {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Renders within a region of the screen and/or to a render target"); }
 
-  PARAM_VAR(_textures, "Textures", "The textures to render into to create.", {AttachmentTable});
+  PARAM(OwnedVar, _textures, "Textures", "The textures to render into to create.", {AttachmentTable});
   PARAM(ShardsVar, _contents, "Contents", "The shards that will render into the given textures.", {CoreInfo::ShardRefSeqType});
   PARAM_PARAMVAR(_referenceSize, "Size", "The reference size. This will control the size of the render targets.",
                  {CoreInfo::Int2Type, CoreInfo::Int2VarType});
@@ -194,6 +198,7 @@ struct RenderIntoShard {
   RequiredGraphicsRendererContext _graphicsRendererContext;
   Inputs::OptionalInputContext _inputContext;
   RenderTargetPtr _renderTarget;
+  ExposedInfo _requiredVariables;
 
   void warmup(SHContext *context) {
     _graphicsRendererContext.warmup(context);
@@ -209,12 +214,34 @@ struct RenderIntoShard {
     _renderTarget.reset();
   }
 
-  SHExposedTypesInfo requiredVariables() {
-    static auto e = exposedTypesOf(decltype(_graphicsRendererContext)::getExposedTypeInfo());
-    return e;
-  }
+  SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
 
-  SHTypeInfo compose(SHInstanceData &data) { return _contents.compose(data).outputType; }
+  SHTypeInfo compose(SHInstanceData &data) {
+    _requiredVariables.clear();
+    _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
+
+    // auto collectTextureReference = [&](const char *name) {
+    //   _requiredVariables.push_back(SHExposedTypeInfo{
+    //       .name = name,
+    //       .exposedType = Types::Texture,
+    //   });
+    // };
+
+    requireReferences(data.shared, _textures, _requiredVariables);
+    // assert(_textures.valueType == SHType::Table);
+    // ForEach(_textures.payload.tableValue, [&](SHString &k, SHVar &v) {
+    //   if (v.valueType == SHType::ContextVar) {
+    //     collectTextureReference(v.payload.stringValue);
+    //   } else if (v.valueType == SHType::Table) {
+    //     SHVar *tex = v.payload.tableValue.api->tableAt(v.payload.tableValue, "Texture");
+    //     if (tex->valueType == SHType::ContextVar) {
+    //       collectTextureReference(tex->payload.stringValue);
+    //     }
+    //   }
+    // });
+
+    return _contents.compose(data).outputType;
+  }
 
   TextureSubResource applyAttachment(SHContext *shContext, const SHVar &input) {
     if (input.valueType == SHType::ContextVar) {
@@ -235,14 +262,14 @@ struct RenderIntoShard {
       uint8_t faceIndex{};
       Var faceIndexVar;
       if (getFromTable(shContext, table, "Face", faceIndexVar)) {
-        checkType(faceIndexVar.valueType, SHType::Int, "Face should be an integer");
+        checkType(faceIndexVar.valueType, SHType::Int, "Face should be an integer(variable)");
         faceIndex = uint8_t(int(faceIndexVar));
       }
 
       uint8_t mipIndex{};
       Var mipIndexVar;
       if (getFromTable(shContext, table, "Mip", mipIndexVar)) {
-        checkType(mipIndexVar.valueType, SHType::Int, "Mip should be an integer");
+        checkType(mipIndexVar.valueType, SHType::Int, "Mip should be an integer(variable)");
         mipIndex = uint8_t(int(mipIndexVar));
       }
 
@@ -250,7 +277,7 @@ struct RenderIntoShard {
     }
   }
 
-  void applyAttachments(SHContext *shContext, std::map<std::string, TextureSubResource> &outAttachments, const SHTable &input) {
+  void applyAttachments(SHContext *shContext, std::map<std::string, TextureSubResource> &outAttachments) {
     auto &table = _textures.payload.tableValue;
     outAttachments.clear();
     ForEach(table, [&](SHString &k, SHVar &v) { outAttachments.emplace(k, applyAttachment(shContext, v)); });
@@ -265,7 +292,7 @@ struct RenderIntoShard {
     auto &rt = _renderTarget;
     auto &attachments = rt->attachments;
 
-    applyAttachments(shContext, attachments, input.payload.tableValue);
+    applyAttachments(shContext, attachments);
 
     ViewStack::Item viewItem{};
     input::InputStack::Item inputItem;
@@ -276,15 +303,14 @@ struct RenderIntoShard {
     ViewStack &viewStack = ctx.renderer->getViewStack();
 
     Var referenceSizeVar = (Var &)_referenceSize.get();
-    bool matchOutputSize = !_matchOutputSize.isNone() ? (bool)_matchOutputSize : true;
+    bool matchOutputSize = !_matchOutputSize.isNone() ? (bool)_matchOutputSize : false;
 
-    int2 referenceSize;
+    int2 referenceSize{};
     if (!referenceSizeVar.isNone()) {
       referenceSize = toInt2(referenceSizeVar);
     } else if (matchOutputSize) {
       referenceSize = viewStack.getOutput().referenceSize;
     } else {
-      referenceSize = attachments[0].texture->getResolution();
       for (auto &attachment : attachments) {
         referenceSize = attachment.second.getResolution();
         if (referenceSize.x != 0 || referenceSize.y != 0)
@@ -306,7 +332,8 @@ struct RenderIntoShard {
       viewItem.viewport = Rect(referenceSize);
     }
 
-    // NOTE: Don't need to resize textures since the renderer does it automatically for given render targets
+    // Make render target fixed size
+    rt->size = RenderTargetSize::Fixed{.size = referenceSize};
 
     viewStack.push(std::move(viewItem));
 
