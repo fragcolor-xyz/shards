@@ -270,7 +270,6 @@
             :MinSize 250.0
             :Contents
             (->
-
              ;; ------------ Map ------------
              (UI.TopPanel
               :MinSize 200.0
@@ -278,7 +277,6 @@
               (->
                "Map" (UI.Label)
                .map1 (UI.Image :Scale (float2 0.5))))
-
              ;; ------------- Map Description --------------
              (UI.BottomPanel
               :MinSize 500.0
