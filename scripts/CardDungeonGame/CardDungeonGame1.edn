@@ -44,55 +44,13 @@
           (->
            "Top Panel" (UI.Label)))
          
-         ;; ----------------- Bottom Panel ---------------
-         (UI.BottomPanel
-          :MinSize 170.0
-          :Contents
-          (->
-           ;; -------------- Inventory ------------------
-           (UI.LeftPanel
-            :MinSize 700.0
-            :Contents (->
-                       "Inventory" (UI.Label)
-                       (UI.Horizontal
-                        (->
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))))))
-
-           ;; -------------- Hand --------------------
-           (UI.RightPanel
-            :MinSize 500.0
-            :Contents (->
-                       "Hand" (UI.Label)
-                       (UI.Horizontal
-                        (->
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))))))))
-         
          (UI.CentralPanel
           :Contents
           (->
 
            (UI.LeftPanel
             :MinSize 250.0
+            :MaxSize 250.0
             :Contents
             (->
              ;; -------------- Description -------------
@@ -118,6 +76,8 @@
 
              ;; ------------- History --------------
              (UI.BottomPanel
+              :MinSize 500.0
+              :MaxSize 500.0
               :Contents
               (->
                "History" (UI.Label)
@@ -205,8 +165,9 @@
                       .mdefense (ToString) (UI.Label))))])))))
 
              ;; -------------- Monsters ---------------
-
+             
              (UI.RightPanel
+              :MinSize 700.0
               :Contents
               (->
                "Monster" (UI.Label)
@@ -270,7 +231,7 @@
             :MinSize 250.0
             :Contents
             (->
-
+             
              ;; ------------ Map ------------
              (UI.TopPanel
               :MinSize 200.0
@@ -278,7 +239,7 @@
               (->
                "Map" (UI.Label)
                .map1 (UI.Image :Scale (float2 0.5))))
-
+             
              ;; ------------- Map Description --------------
              (UI.BottomPanel
               :MinSize 500.0
@@ -292,6 +253,49 @@
                 :Contents
                 (->
                  "Path of beginnings: Weak monsters, low level weapons & beginner jobs" (UI.Label)))))))))
+         
+         ;; ----------------- Bottom Panel ---------------
+         (UI.BottomPanel
+          :MinSize 170.0
+          :Contents
+          (->
+           ;; -------------- Inventory ------------------
+           (UI.LeftPanel
+            :MinSize 700.0
+            :Contents (->
+                       "Inventory" (UI.Label)
+                       (UI.Horizontal
+                        (->
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))))))
+
+           ;; -------------- Hand --------------------
+           (UI.RightPanel
+            :MinSize 500.0
+            :Contents (->
+                       "Hand" (UI.Label)
+                       (UI.Horizontal
+                        (->
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))))))))
          
          ))
 
