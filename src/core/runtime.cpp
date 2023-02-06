@@ -1512,19 +1512,24 @@ void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
     // this is unsafe because allocates on the stack
     // but we need to sort hashes
     std::vector<std::pair<SHString, uint64_t>, stack_allocator<std::pair<SHString, uint64_t>>> hashes;
+
     // table is unordered so just collect
-    auto &t = var.payload.tableValue;
-    SHTableIterator tit;
-    t.api->tableGetIterator(t, &tit);
-    SHString k;
-    SHVar v;
-    while (t.api->tableNext(t, &tit, &k, &v)) {
-      hashes.emplace_back(k, _deriveTypeHash(v));
+    {
+      auto &t = var.payload.tableValue;
+      SHTableIterator tit;
+      t.api->tableGetIterator(t, &tit);
+      SHString k;
+      SHVar v;
+      while (t.api->tableNext(t, &tit, &k, &v)) {
+        hashes.emplace_back(k, _deriveTypeHash(v));
+      }
     }
+
     // sort and actually do the hashing
-    pdqsort(hashes.begin(), hashes.end());
+    std::sort(hashes.begin(), hashes.end(), [](const auto &a, const auto &b) { return strcmp(a.first, b.first) < 0; });
     for (const auto &pair : hashes) {
-      XXH3_64bits_update(state, pair.first, strlen(k));
+      SHLOG_TRACE("hashing key {}, type hash {}", pair.first, pair.second);
+      XXH3_64bits_update(state, pair.first, strlen(pair.first));
       XXH3_64bits_update(state, &pair.second, sizeof(uint64_t));
     }
   } break;
@@ -1607,16 +1612,19 @@ void updateTypeHash(const SHTypeInfo &t, XXH3_state_s *state) {
   } break;
   case SHType::Table: {
     if (t.table.keys.len == t.table.types.len) {
-      std::vector<std::pair<uint64_t, SHString>, stack_allocator<std::pair<uint64_t, SHString>>> hashes;
+      std::vector<std::pair<SHString, uint64_t>, stack_allocator<std::pair<SHString, uint64_t>>> hashes;
+
       for (uint32_t i = 0; i < t.table.types.len; i++) {
         auto typeHash = deriveTypeHash(t.table.types.elements[i]);
         const char *key = t.table.keys.elements[i];
-        hashes.emplace_back(typeHash, key);
+        hashes.emplace_back(key, typeHash);
       }
-      pdqsort(hashes.begin(), hashes.end());
+
+      std::sort(hashes.begin(), hashes.end(), [](const auto &a, const auto &b) { return strcmp(a.first, b.first) < 0; });
       for (const auto &hash : hashes) {
-        XXH3_64bits_update(state, hash.second, strlen(hash.second));
-        XXH3_64bits_update(state, &hash.first, sizeof(uint64_t));
+        SHLOG_TRACE("hashing key {}, type hash {}", hash.first, hash.second);
+        XXH3_64bits_update(state, hash.first, strlen(hash.first));
+        XXH3_64bits_update(state, &hash.second, sizeof(uint64_t));
       }
     } else {
       std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
