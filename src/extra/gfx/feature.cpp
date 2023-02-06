@@ -15,6 +15,7 @@
 #include "shards.h"
 #include "shards.hpp"
 #include "shards_utils.hpp"
+#include <algorithm>
 #include <array>
 #include <deque>
 #include <gfx/context.hpp>
@@ -165,8 +166,12 @@ struct FeatureShard {
   std::shared_ptr<SHMesh> _viewGeneratorsMesh;
   std::shared_ptr<SHMesh> _drawableGeneratorsMesh;
 
-  std::unordered_map<std::string_view, SHExposedTypeInfo> _requiredVariables;
-  std::unordered_map<std::string, SHVar *> _capturedVariables;
+  std::unordered_map<std::string_view, SHExposedTypeInfo> _generatorRequiredVariables;
+  std::unordered_map<std::string, SHVar *> _generatorCapturedVariables;
+
+  ExposedInfo _requiredVariables;
+
+  SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
 
   void setWireVector(const SHVar &var, std::vector<std::shared_ptr<SHWire>> &outVec) {
 
@@ -235,9 +240,9 @@ struct FeatureShard {
   }
 
   void cleanup() {
-    for (auto &pair : _capturedVariables)
+    for (auto &pair : _generatorCapturedVariables)
       releaseVariable(pair.second);
-    _capturedVariables.clear();
+    _generatorCapturedVariables.clear();
 
     _viewGeneratorsMesh.reset();
     _drawableGeneratorsMesh.reset();
@@ -265,14 +270,16 @@ struct FeatureShard {
                             bool expectSeqOutput) {
     SHInstanceData generatorInstanceData{};
     generatorInstanceData.inputType = GeneratedInputTableType;
-    generatorInstanceData.requiredVariables = &_requiredVariables; // Capture required variables
+    generatorInstanceData.requiredVariables = &_generatorRequiredVariables; // Capture required variables
 
     ExposedInfo exposed;
+
+    // Expose custom render context
     exposed.push_back(RequiredGraphicsRendererContext::getExposedTypeInfo());
 
     // Capture non-protected variable
     ForEach(data.shared, [&](const SHExposedTypeInfo &ti) {
-      if (!ti.isProtected) {
+      if (shouldCaptureVariable(ti)) {
         exposed.push_back(ti);
       }
     });
@@ -346,6 +353,29 @@ struct FeatureShard {
     }
     for (auto &generatorWire : _drawableGenerators) {
       composeGeneratorWire(data, generatorWire, _derivedShaderParams, _derivedTextureParams, true);
+    }
+
+    // Strip required variables that are not exposed here
+    for (auto it = _generatorRequiredVariables.begin(); it != _generatorRequiredVariables.end();) {
+      bool originallyExposed = false;
+      for (size_t i = 0; i < data.shared.len; i++) {
+        if (it->first.compare(data.shared.elements[i].name) == 0) {
+          originallyExposed = true;
+          break;
+        }
+      }
+
+      if (!originallyExposed) {
+        it = _generatorRequiredVariables.erase(it);
+      } else {
+        ++it;
+      }
+    }
+
+    _requiredVariables.clear();
+    for (auto &var : _generatorRequiredVariables) {
+      if (shouldCaptureVariable(var.second))
+        _requiredVariables.push_back(var.second);
     }
 
     return Types::Feature;
@@ -613,22 +643,24 @@ struct FeatureShard {
   bool shouldCaptureVariable(const SHExposedTypeInfo &ti) {
     if (std::strcmp(ti.name, GraphicsRendererContext::VariableName) == 0)
       return false;
+    if (std::strcmp(ti.name, GraphicsContext::VariableName) == 0)
+      return false;
     return true;
   }
 
   void captureGeneratorCallbackVariables(SHContext *context) {
-    for (auto &pair : _requiredVariables) {
+    for (auto &pair : _generatorRequiredVariables) {
       auto &ti = pair.second;
       if (!shouldCaptureVariable(ti))
         continue;
-      if (!_capturedVariables.contains(ti.name)) {
-        _capturedVariables.emplace(ti.name, referenceVariable(context, ti.name));
+      if (!_generatorCapturedVariables.contains(ti.name)) {
+        _generatorCapturedVariables.emplace(ti.name, referenceVariable(context, ti.name));
       }
     }
   }
 
   void addGeneratorCapturedVariablesToMeshes() {
-    for (auto &pair : _capturedVariables) {
+    for (auto &pair : _generatorCapturedVariables) {
       if (_viewGeneratorsMesh)
         _viewGeneratorsMesh->variables.emplace(pair.first, *pair.second);
       if (_drawableGeneratorsMesh)
