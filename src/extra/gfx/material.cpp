@@ -10,13 +10,11 @@ using namespace shards;
 namespace gfx {
 void SHShaderParameters::updateVariables(MaterialParameters &output) {
   for (SHBasicShaderParameter &param : basic) {
-    ParamVariant variant;
-    varToParam(param.var.get(), variant);
+    ParamVariant variant = varToParam(param.var.get());
     output.set(param.key, variant);
   }
   for (SHBasicShaderParameter &texture : textures) {
-    TexturePtr variant;
-    varToTexture(texture.var.get(), variant);
+    TexturePtr variant = varToTexture(texture.var.get());
     output.set(texture.key, variant);
   }
 }
