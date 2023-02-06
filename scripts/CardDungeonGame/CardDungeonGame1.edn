@@ -1,0 +1,306 @@
+(defshards initialize-cards []
+  (LoadImage "Images/CardEmpty.png") = .card-empty)
+
+(defshards initialize-ui-elements []
+  15.0 >= .inventory-card-space
+  (float2 0.6) >= .inventory-hand-card-size
+  (LoadImage "Images/Map1.png") = .map1
+  (LoadImage "Images/Glod2.png") = .character
+  (LoadImage "Images/Slime.png") = .monster1)
+
+(defshards initialize-game-elements[]
+  1 >= .level
+  30 >= .health
+  0 >= .experience
+  10 >= .experience-to-level
+  0 >= .gold
+  5 >= .attack
+  5 >= .defense
+  5 >= .magic
+  5 >= .mdefense)
+
+(defloop main-loop
+  
+  (Setup
+   (initialize-cards)
+   (initialize-ui-elements)
+   (initialize-game-elements))
+  
+  (GFX.MainWindow
+   :Title "MainWindow" :Width 1920 :Height 1080
+   :Contents
+   (-> (Setup
+        (GFX.DrawQueue) >= .ui-draw-queue
+        (GFX.UIPass .ui-draw-queue) >> .render-steps)
+       .ui-draw-queue (GFX.ClearQueue)
+
+       (UI
+        .ui-draw-queue
+        (->
+         ;; ---------------- Top Panel --------------
+         (UI.TopPanel
+          :MinSize 50.0
+          :Contents
+          (->
+           "Top Panel" (UI.Label)))
+         
+         (UI.CentralPanel
+          :Contents
+          (->
+
+           (UI.LeftPanel
+            :MinSize 250.0
+            :MaxSize 250.0
+            :Contents
+            (->
+             ;; -------------- Description -------------
+             (UI.TopPanel
+              :MinSize 200.0
+              :Contents
+              (->
+               "Description" (UI.Label)
+               (UI.Frame
+                :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
+                :FillColor (color 0 0 0 0)
+                :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+                :Contents
+                (->
+                 (UI.ScrollArea
+                  :Horizontal false
+                  :Vertical true
+                  :Contents
+                  (->
+                   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
+   quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum 
+   dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." (UI.Label)))))))
+
+             ;; ------------- History --------------
+             (UI.BottomPanel
+              :MinSize 500.0
+              :MaxSize 500.0
+              :Contents
+              (->
+               "History" (UI.Label)
+
+               (UI.Frame
+                :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
+                :FillColor (color 0 0 0 0)
+                :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+                :Contents
+                (->
+                 (UI.ScrollArea
+                  :Horizontal false
+                  :Vertical true
+                  :Contents
+                  (->
+                   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
+   quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum 
+   dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
+   quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum 
+   dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." (UI.Label)))))))))
+
+           (UI.CentralPanel
+            :Contents
+            (->
+             ;; ------------- Character -------------
+             (UI.LeftPanel
+              :MinSize 300.0
+              :Contents
+              (->
+               "Character" (UI.Label)
+               (UI.Space :Amount 20.0)
+
+               (UI.Frame
+                :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
+                :FillColor (color 0 0 0 0)
+                :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+                :Contents
+                (->
+                 (UI.Horizontal
+                  (->
+                   "Gold: " (UI.Label)
+                   .gold (ToString) (UI.Label)))
+                 (UI.Space :Amount 50.0)
+                 .character (UI.Image :Scale (float2 1))
+                 (UI.Space :Amount 50.0)
+
+                 (UI.Columns
+                  :Contents
+                  [(->
+                    (UI.Horizontal
+                     (->
+                      "HP:" (UI.Label)
+                      .health (ToString) (UI.Label)))
+
+                    (UI.Horizontal
+                     (->
+                      "Lvl:" (UI.Label)
+                      .level (ToString) (UI.Label)))
+
+                    (UI.Horizontal
+                     (->
+                      "Exp:" (UI.Label)
+                      .experience (ToString) (UI.Label)
+                      "/" (UI.Label)
+                      .experience-to-level (ToString) (UI.Label))))
+                   (->
+                    (UI.Horizontal
+                     (->
+                      "Attack:" (UI.Label)
+                      .attack (ToString) (UI.Label)))
+
+                    (UI.Horizontal
+                     (->
+                      "Defense:" (UI.Label)
+                      .defense (ToString) (UI.Label)))
+
+                    (UI.Horizontal
+                     (->
+                      "Magic:" (UI.Label)
+                      .magic (ToString) (UI.Label)))
+
+                    (UI.Horizontal
+                     (->
+                      "Defense:" (UI.Label)
+                      .mdefense (ToString) (UI.Label))))])))))
+
+             ;; -------------- Monsters ---------------
+             
+             (UI.RightPanel
+              :MinSize 700.0
+              :Contents
+              (->
+               "Monster" (UI.Label)
+               (UI.Space :Amount 20.0)
+
+               (UI.Frame
+                :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
+                :FillColor (color 0 0 0 0)
+                :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+                :Contents
+                (->
+                 (UI.Horizontal
+                  (->
+                   "Gold: " (UI.Label)
+                   .gold (ToString) (UI.Label)))
+                 (UI.Space :Amount 50.0)
+                 .monster1 (UI.Image :Scale (float2 1))
+                 (UI.Space :Amount 50.0)
+
+                 (UI.Columns
+                  :Contents
+                  [(->
+                    (UI.Horizontal
+                     (->
+                      "HP:" (UI.Label)
+                      .health (ToString) (UI.Label)))
+
+                    (UI.Horizontal
+                     (->
+                      "Lvl:" (UI.Label)
+                      .level (ToString) (UI.Label)))
+
+                    (UI.Horizontal
+                     (->
+                      "Exp:" (UI.Label)
+                      .experience (ToString) (UI.Label)
+                      "/" (UI.Label)
+                      .experience-to-level (ToString) (UI.Label))))
+                   (->
+                    (UI.Horizontal
+                     (->
+                      "Attack:" (UI.Label)
+                      .attack (ToString) (UI.Label)))
+
+                    (UI.Horizontal
+                     (->
+                      "Defense:" (UI.Label)
+                      .defense (ToString) (UI.Label)))
+
+                    (UI.Horizontal
+                     (->
+                      "Magic:" (UI.Label)
+                      .magic (ToString) (UI.Label)))
+
+                    (UI.Horizontal
+                     (->
+                      "Defense:" (UI.Label)
+                      .mdefense (ToString) (UI.Label))))])))))))
+
+           (UI.RightPanel
+            :MinSize 250.0
+            :Contents
+            (->
+             
+             ;; ------------ Map ------------
+             (UI.TopPanel
+              :MinSize 200.0
+              :Contents
+              (->
+               "Map" (UI.Label)
+               .map1 (UI.Image :Scale (float2 0.5))))
+             
+             ;; ------------- Map Description --------------
+             (UI.BottomPanel
+              :MinSize 500.0
+              :Contents
+              (->
+               "Map Description" (UI.Label)
+               (UI.Frame
+                :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
+                :FillColor (color 0 0 0 0)
+                :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+                :Contents
+                (->
+                 "Path of beginnings: Weak monsters, low level weapons & beginner jobs" (UI.Label)))))))))
+         
+         ;; ----------------- Bottom Panel ---------------
+         (UI.BottomPanel
+          :MinSize 170.0
+          :Contents
+          (->
+           ;; -------------- Inventory ------------------
+           (UI.LeftPanel
+            :MinSize 700.0
+            :Contents (->
+                       "Inventory" (UI.Label)
+                       (UI.Horizontal
+                        (->
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))))))
+
+           ;; -------------- Hand --------------------
+           (UI.RightPanel
+            :MinSize 500.0
+            :Contents (->
+                       "Hand" (UI.Label)
+                       (UI.Horizontal
+                        (->
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                         (UI.Space :Amount .inventory-card-space)
+                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))))))))
+         
+         ))
+
+       (GFX.Render :Steps .render-steps))))
+
+(defmesh main-mesh)
+(schedule main-mesh main-loop)
+(run main-mesh (/ 1.0 60))
