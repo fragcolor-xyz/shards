@@ -1833,7 +1833,7 @@ public:
   void cleanup() { _brancher.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _brancher.activate(context);
+    _brancher.activate();
     return Var::Object(_brancher.mesh.get(), CoreCC, TypeId);
   }
 };
