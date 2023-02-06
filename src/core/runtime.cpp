@@ -1528,7 +1528,7 @@ void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
     // sort and actually do the hashing
     std::sort(hashes.begin(), hashes.end(), [](const auto &a, const auto &b) { return strcmp(a.first, b.first) < 0; });
     for (const auto &pair : hashes) {
-      SHLOG_TRACE("hashing key {}, type hash {}", pair.first, pair.second);
+      // SHLOG_TRACE("hashing key {}, type hash {}", pair.first, pair.second);
       XXH3_64bits_update(state, pair.first, strlen(pair.first));
       XXH3_64bits_update(state, &pair.second, sizeof(uint64_t));
     }
@@ -1622,7 +1622,7 @@ void updateTypeHash(const SHTypeInfo &t, XXH3_state_s *state) {
 
       std::sort(hashes.begin(), hashes.end(), [](const auto &a, const auto &b) { return strcmp(a.first, b.first) < 0; });
       for (const auto &hash : hashes) {
-        SHLOG_TRACE("hashing key {}, type hash {}", hash.first, hash.second);
+        // SHLOG_TRACE("hashing key {}, type hash {}", hash.first, hash.second);
         XXH3_64bits_update(state, hash.first, strlen(hash.first));
         XXH3_64bits_update(state, &hash.second, sizeof(uint64_t));
       }
