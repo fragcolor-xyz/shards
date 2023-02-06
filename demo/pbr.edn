@@ -25,25 +25,25 @@
   (| (Take "Queue") >= .parent-queue)
   (| (Take "View") >= .parent-view)
   (Setup (->
-
+          (Log "Generating pre-rendered PBR textures")
           (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 1024) :Dimension TextureDimension.Cube) >= .cube-tex
           (render-cubemap included-steps .cube-tex)
 
-  ;;         (Int2 1024) >= .size
-  ;;         (Log "Cubemap dimension")
-  ;;         (calc-num-mips) >= .num-mips
-  ;;         (Log "Number of mip levels")
+          (Int2 1024) >= .size
+          (Log "Cubemap dimension")
+          (calc-num-mips) >= .num-mips
+          (Log "Number of mip levels")
 
-  ;;         {:EntryPoint (->
-  ;;                       (Shader.ReadInput "texCoord0")
-  ;;                       (ToFloat2) (Shader.WriteOutput "color") ; End shader
-  ;;                       )}
-  ;;         (GFX.EffectPass) >> .lut-steps
-  ;;         (GFX.Texture :Format TextureFormat.RG16Float) >= .specular-lut-tex
-  ;;         (GFX.RenderInto :Textures {:color .specular-lut-tex}
-  ;;                         :Size (Int2 128)
-  ;;                         :Contents (->
-  ;;                                    (GFX.Render :Steps .lut-steps)));
+          {:EntryPoint (->
+                        (Shader.ReadInput "texCoord0")
+                        (ToFloat2) (Shader.WriteOutput "color") ; End shader
+                        )}
+          (GFX.EffectPass) >> .lut-steps
+          (GFX.Texture :Format TextureFormat.RG16Float) >= .specular-lut-tex
+          (GFX.RenderInto :Textures {:color .specular-lut-tex}
+                          :Size (Int2 128)
+                          :Contents (->
+                                     (GFX.Render :Steps .lut-steps)));
           ))
   {:env .cube-tex})
 
@@ -72,4 +72,5 @@
       ; NOTE: Because of our coordinate space with the camera viewing -Z direction
       ;       It needs to be flipped when sampling cubemaps
       (Math.Multiply (Float4 1 1 1 0)) (Math.Add (Float4 0 0 0 1))
-      (Shader.WriteOutput "color"))}]} (GFX.Feature :ViewGenerators (-> (generate-probes included-steps))))
+      (Shader.WriteOutput "color"))}]}
+  (GFX.Feature :ViewGenerators (-> (generate-probes included-steps))))

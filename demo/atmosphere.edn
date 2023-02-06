@@ -35,7 +35,7 @@
   (Shader.ReadInput "worldNormal") >= .world-normal
   .world-normal (Math.Multiply (Float3 1 1 -1)) (Shader.SampleTextureCoord "sky")
   (Shader.WriteOutput "color")
-           
+
   ; NOTE: Write depth to compare to (>=) and render sky where it passes
   1.0 (Shader.WriteOutput "depth"))
 
