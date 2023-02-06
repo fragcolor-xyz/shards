@@ -1,10 +1,11 @@
 ;; :Abort = `true`, assertion false
 ;; => abort the program
 8
-(Assert.IsNot
- ;:Value
- 8
- ;:Abort
- ;; uncomment next line to abort program on run
- ; true
- )
+(Maybe
+ (Assert.IsNot
+  ;:Value
+  8
+  ;:Abort
+  ;; uncomment next line to abort program on run
+  ;true
+  ))

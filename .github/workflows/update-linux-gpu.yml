@@ -1,0 +1,35 @@
+name: Update Linux/GPU host
+
+on:
+  workflow_dispatch:
+    inputs:
+      update-rust:
+        description: Run rustup update
+        required: true
+        default: false
+        type: boolean
+      update-apt-packages:
+        description: Update other build dependencies
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  Update-host:
+    runs-on: self-hosted
+    steps:
+      - name: Setup
+        id: setup
+        run: |
+          echo "update-rust=${{ github.event.inputs.update-rust || inputs.update-rust }}" >> $GITHUB_OUTPUT
+          echo "update-apt-packages=${{ github.event.inputs.update-apt-packages || inputs.update-apt-packages }}" >> $GITHUB_OUTPUT
+      - name: Update rust
+        if: ${{ steps.setup.outputs.update-rust == 'true' }}
+        run: |
+          rustup toolchain install nightly
+          rustup default nightly
+      - name: Update dependencies
+        if: ${{ steps.setup.outputs.update-apt-packages == 'true' }}
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils

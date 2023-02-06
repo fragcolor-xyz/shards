@@ -69,10 +69,7 @@ public:
     // Collect name & type pairs to keep
     for (auto it = mapping.begin(); it != mapping.end(); it++) {
       const std::string &name = bufferLayout.fieldNames[it->second];
-      UniformLayout &layout = bufferLayout.items[it->second];
-
-      // Update layout
-      layout = generateNext(layout.type);
+      const UniformLayout &layout = bufferLayout.items[it->second];
 
       if (filter(name, layout)) {
         auto &element = queue.emplace_back();
@@ -90,6 +87,14 @@ public:
     }
   }
 
+  // Returns the layout as it is currently
+  const UniformBufferLayout &getCurrentFinalLayout() {
+    bufferLayout.size = offset;
+    return bufferLayout;
+  }
+
+  // Finalizes the layout and moves out the result.
+  // WARNING: do not reuse this builder after calling finalize
   UniformBufferLayout &&finalize() {
     bufferLayout.size = offset;
     return std::move(bufferLayout);
@@ -133,6 +138,15 @@ struct BufferDefinition {
   String variableName;
   UniformBufferLayout layout;
   std::optional<String> indexedBy;
+
+  inline const UniformLayout *findField(const char *fieldName) const {
+    for (size_t i = 0; i < layout.fieldNames.size(); i++) {
+      if (layout.fieldNames[i] == fieldName) {
+        return &layout.items[i];
+      }
+    }
+    return nullptr;
+  }
 };
 
 struct TextureDefinition {

@@ -39,10 +39,15 @@ jobs:
         shell: msys2 {0}
         run: |
           cd docs/samples
-          for i in $(find shards -name '*.edn');
+          for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' \));
           do
             echo "Running sample $i";
             ./shards.exe run-sample.edn --file "$i" > >(tee "$i.log");
+          done
+          for i in $(find shards -name '*.edn' \( -path '*UI*' -or -path '*GFX*' \));
+          do
+            echo "Running sample $i";
+            ./shards.exe run-sample.edn --looped true --file "$i" > >(tee "$i.log");
           done
       - name: Upload samples logs
         uses: actions/upload-artifact@v3
@@ -81,16 +86,17 @@ jobs:
       - name: Generate markdown
         shell: msys2 {0}
         run: |
-          ./shards.exe src/tests/infos-docs.edn
-          mv docs/docs/docs/shards/General/UI.md docs/docs/docs/shards/UI/index.md
+          ./shards.exe docs/generate.edn
       - name: Upload markdown
         uses: actions/upload-artifact@v3
         with:
           name: docs-markdown
           path: |
-            docs/docs/docs/shards/**/*.md
-            !docs/docs/docs/shards/index.md
-            !docs/docs/docs/shards/types.md
+            docs/docs/reference/shards/**/*.md
+            docs/docs/reference/enums/**/*.md
+            !docs/docs/reference/enums/index.md
+            !docs/docs/reference/shards/index.md
+            !docs/docs/reference/shards/types.md
           if-no-files-found: error
 
   #
@@ -112,9 +118,9 @@ jobs:
           fetch-depth: 1
           path: shards
       - name: Set up python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
-          python-version: 3.x
+          python-version: '3.x'
       - name: Install mkdocs
         run: |
           pip install mkdocs-material
@@ -124,7 +130,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: docs-markdown
-          path: shards/docs/docs/docs/shards
+          path: shards/docs/docs/reference
       - name: Download samples logs
         uses: actions/download-artifact@v3
         with:

@@ -12,6 +12,7 @@ use crate::shards::gui::EguiId;
 use crate::shards::gui::BOOL_OR_NONE_SLICE;
 use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -28,38 +29,42 @@ use crate::types::Var;
 use crate::types::ANY_TYPES;
 use crate::types::FLOAT_OR_NONE_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
-use egui::Context as EguiNativeContext;
 
 lazy_static! {
   static ref CENTRALPANEL_PARAMETERS: Parameters = vec![(
     cstr!("Contents"),
-    cstr!("The UI contents."),
+    shccstr!("The UI contents."),
     &SHARDS_OR_NONE_TYPES[..],
   )
     .into(),];
   static ref SIDEPANEL_PARAMETERS: Parameters = vec![
-    (cstr!("Resizable"), cstr!("TODO"), BOOL_OR_NONE_SLICE,).into(),
+    (
+      cstr!("Resizable"),
+      shccstr!("Whether the panel can be resized."),
+      BOOL_OR_NONE_SLICE,
+    )
+      .into(),
     (
       cstr!("DefaultSize"),
-      cstr!("The initial size of the panel."),
+      shccstr!("The initial size of the panel."),
       FLOAT_OR_NONE_TYPES_SLICE,
     )
       .into(),
     (
       cstr!("MinSize"),
-      cstr!("The minimum allowable size of the panel."),
+      shccstr!("The minimum allowable size of the panel."),
       FLOAT_OR_NONE_TYPES_SLICE,
     )
       .into(),
     (
       cstr!("MaxSize"),
-      cstr!("The maximum allowable size of the panel."),
+      shccstr!("The maximum allowable size of the panel."),
       FLOAT_OR_NONE_TYPES_SLICE,
     )
       .into(),
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
@@ -120,7 +125,7 @@ macro_rules! impl_panel {
       }
 
       fn outputHelp(&mut self) -> OptionalString {
-        OptionalString(shccstr!("The output of this shard will be its input."))
+        *HELP_OUTPUT_EQUAL_INPUT
       }
 
       fn parameters(&mut self) -> Option<&Parameters> {
@@ -349,7 +354,7 @@ impl Shard for CentralPanel {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

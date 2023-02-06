@@ -1,174 +1,144 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include "foundation.hpp"
-#include "shared.hpp"
+#include "wires.hpp"
+#include "async.hpp"
 #include <chrono>
 #include <memory>
 #include <set>
+
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
+// Remove define from winspool.h
+#ifdef MAX_PRIORITY
+#undef MAX_PRIORITY
+#endif
 #include <taskflow/taskflow.hpp>
 #endif
 
 namespace shards {
-enum RunWireMode { Inline, Detached, Stepped };
-
-struct WireBase {
-  typedef EnumInfo<RunWireMode> RunWireModeInfo;
-  static inline RunWireModeInfo runWireModeInfo{"RunWireMode", CoreCC, 'runC'};
-  static inline Type ModeType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'runC'}}}};
-
-  static inline Types WireTypes{{CoreInfo::WireType, CoreInfo::StringType, CoreInfo::NoneType}};
-
-  static inline Types WireVarTypes{WireTypes, {CoreInfo::WireVarType}};
-
-  static inline Parameters waitParamsInfo{
-      {"Wire", SHCCSTR("The wire to wait."), {WireVarTypes}},
-      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}},
-      {"Timeout",
-       SHCCSTR("The optional amount of time in seconds to wait for the wire to complete, if the time elapses the wire will be "
-               "stopped and the flow will fail with a timeout error."),
-       {CoreInfo::FloatType, CoreInfo::FloatVarType, CoreInfo::NoneType}}};
-
-  static inline Parameters stopWireParamsInfo{
-      {"Wire", SHCCSTR("The wire to stop."), {WireVarTypes}},
-      {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
-
-  static inline Parameters runWireParamsInfo{{"Wire", SHCCSTR("The wire to run."), {WireTypes}}};
-
-  ParamVar wireref{};
-  std::shared_ptr<SHWire> wire;
-  bool passthrough{false};
-  bool capturing{false};
-  RunWireMode mode{RunWireMode::Inline};
-  IterableExposedInfo exposedInfo{};
-
-  void resetComposition() {
-    if (wire) {
-      if (wire->composeResult) {
-        shards::arrayFree(wire->composeResult->requiredInfo);
-        shards::arrayFree(wire->composeResult->exposedInfo);
-        wire->composeResult.reset();
-      }
+void WireBase::resetComposition() {
+  if (wire) {
+    if (wire->composeResult) {
+      shards::arrayFree(wire->composeResult->requiredInfo);
+      shards::arrayFree(wire->composeResult->exposedInfo);
+      wire->composeResult.reset();
     }
   }
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  std::unordered_set<const SHWire *> &gatheringWires() {
+}
+std::unordered_set<const SHWire *> &WireBase::gatheringWires() {
 #ifdef WIN32
-    // TODO FIX THIS
-    // we have to leak.. or windows tls emulation will crash at process end
-    thread_local std::unordered_set<const SHWire *> *wires = new std::unordered_set<const SHWire *>();
-    return *wires;
+  // TODO FIX THIS
+  // we have to leak.. or windows tls emulation will crash at process end
+  thread_local std::unordered_set<const SHWire *> *wires = new std::unordered_set<const SHWire *>();
+  return *wires;
 #else
-    thread_local std::unordered_set<const SHWire *> wires;
-    return wires;
+  thread_local std::unordered_set<const SHWire *> wires;
+  return wires;
 #endif
+}
+
+void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposedInfo &shared) {
+  // verify input type
+  if (!passthrough && data.inputType != wire->inputType && !wire->ignoreInputTypeCheck) {
+    SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
+    throw ComposeError("Attempted to call an already composed wire with a "
+                       "different input type! wire: " +
+                       wire->name);
   }
 
-  void verifyAlreadyComposed(const SHInstanceData &data, IterableExposedInfo &shared) {
-    // verify input type
-    if (!passthrough && mode != Stepped && data.inputType != wire->inputType && !wire->inputTypeForceNone) {
-      SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
-      throw ComposeError("Attempted to call an already composed wire with a "
-                         "different input type! wire: " +
-                         wire->name);
+  // ensure requirements match our input data
+  for (auto &req : wire->composeResult->requiredInfo) {
+    // find each in shared
+    auto name = req.name;
+    auto res = std::find_if(shared.begin(), shared.end(), [name](SHExposedTypeInfo &x) {
+      std::string_view xNameView(x.name);
+      return name == xNameView;
+    });
+    if (res == shared.end()) {
+      SHLOG_ERROR("Previous wire composed missing required variable: {}", name);
+      throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
     }
 
-    // ensure requirements match our input data
-    for (auto &req : wire->composeResult->requiredInfo) {
-      // find each in shared
-      auto name = req.name;
-      auto res = std::find_if(shared.begin(), shared.end(), [name](SHExposedTypeInfo &x) {
-        std::string_view xNameView(x.name);
-        return name == xNameView;
-      });
-      if (res == shared.end()) {
-        SHLOG_ERROR("Previous wire composed missing required variable: {}", name);
-        throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
-      }
+    if (data.requiredVariables) {
+      // in this case we should also add to required variables as compose won't do it for us
+      auto requirements = reinterpret_cast<std::unordered_map<std::string_view, SHExposedTypeInfo> *>(data.requiredVariables);
+      requirements->emplace(name, req);
+    }
+  }
+}
 
-      if (data.requiredVariables) {
-        // in this case we should also add to required variables as compose won't do it for us
-        auto requirements = reinterpret_cast<std::unordered_map<std::string_view, SHExposedTypeInfo> *>(data.requiredVariables);
-        requirements->emplace(name, req);
-      }
+SHTypeInfo WireBase::compose(const SHInstanceData &data) {
+  // Actualize the wire here, if we are deserialized
+  // wire might already be populated!
+  if (!wire) {
+    if (wireref->valueType == SHType::Wire) {
+      wire = SHWire::sharedFromRef(wireref->payload.wireValue);
+    } else if (wireref->valueType == SHType::String) {
+      SHLOG_DEBUG("WireBase: Resolving wire {}", wireref->payload.stringValue);
+      wire = GetGlobals().GlobalWires[wireref->payload.stringValue];
+    } else {
+      wire = nullptr;
+      SHLOG_DEBUG("WireBase::compose on a null wire");
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    // Actualize the wire here, if we are deserialized
-    // wire might already be populated!
-    if (!wire) {
-      if (wireref->valueType == SHType::Wire) {
-        wire = SHWire::sharedFromRef(wireref->payload.wireValue);
-      } else if (wireref->valueType == String) {
-        SHLOG_DEBUG("WireBase: Resolving wire {}", wireref->payload.stringValue);
-        wire = GetGlobals().GlobalWires[wireref->payload.stringValue];
-      } else {
-        wire = nullptr;
-        SHLOG_DEBUG("WireBase::compose on a null wire");
-      }
+  // Easy case, no wire...
+  if (!wire)
+    return data.inputType;
+
+  assert(data.wire);
+
+  if (wire.get() == data.wire) {
+    SHLOG_DEBUG("WireBase::compose early return, data.wire == wire, name: {}", wire->name);
+    return data.inputType; // we don't know yet...
+  }
+
+  wire->mesh = data.wire->mesh;
+
+  auto mesh = data.wire->mesh.lock();
+  assert(mesh);
+
+  // TODO FIXME, wireloader/wire runner might access this from threads
+  if (mesh->visitedWires.count(wire.get())) {
+    // but visited does not mean composed...
+    if (wire->composeResult && activating) {
+      IterableExposedInfo shared(data.shared);
+      verifyAlreadyComposed(data, shared);
     }
+    return mesh->visitedWires[wire.get()];
+  }
 
-    // Easy case, no wire...
-    if (!wire)
-      return data.inputType;
+  // avoid stack-overflow
+  if (wire->isRoot || gatheringWires().count(wire.get())) {
+    SHLOG_DEBUG("WireBase::compose early return, wire is being visited, name: {}", wire->name);
+    return data.inputType; // we don't know yet...
+  }
 
-    assert(data.wire);
+  SHLOG_TRACE("WireBase::compose, source: {} composing: {} inputType: {}", data.wire->name, wire->name, data.inputType);
 
-    if (wire.get() == data.wire) {
-      SHLOG_DEBUG("WireBase::compose early return, data.wire == wire, name: {}", wire->name);
-      return data.inputType; // we don't know yet...
+  // we can add early in this case!
+  // useful for Resume/Start
+  if (passthrough) {
+    auto [_, done] = mesh->visitedWires.emplace(wire.get(), data.inputType);
+    if (done) {
+      SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
     }
-
-    wire->mesh = data.wire->mesh;
-
-    auto mesh = data.wire->mesh.lock();
-    assert(mesh);
-
-    // TODO FIXME, wireloader/wire runner might access this from threads
-    if (mesh->visitedWires.count(wire.get())) {
-      // but visited does not mean composed...
-      if (wire->composeResult) {
-        IterableExposedInfo shared(data.shared);
-        verifyAlreadyComposed(data, shared);
-      }
-      return mesh->visitedWires[wire.get()];
+  } else if (mode == Stepped) {
+    auto [_, done] = mesh->visitedWires.emplace(wire.get(), CoreInfo::AnyType);
+    if (done) {
+      SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
     }
+  }
 
-    // avoid stack-overflow
-    if (wire->isRoot || gatheringWires().count(wire.get())) {
-      SHLOG_DEBUG("WireBase::compose early return, wire is being visited, name: {}", wire->name);
-      return data.inputType; // we don't know yet...
-    }
+  // and the subject here
+  gatheringWires().insert(wire.get());
+  DEFER(gatheringWires().erase(wire.get()));
 
-    SHLOG_TRACE("WireBase::compose, source: {} composing: {} inputType: {}", data.wire->name, wire->name, data.inputType);
-
-    // we can add early in this case!
-    // useful for Resume/Start
-    if (passthrough) {
-      auto [_, done] = mesh->visitedWires.emplace(wire.get(), data.inputType);
-      if (done) {
-        SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
-      }
-    } else if (mode == Stepped) {
-      auto [_, done] = mesh->visitedWires.emplace(wire.get(), CoreInfo::AnyType);
-      if (done) {
-        SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
-      }
-    }
-
-    // and the subject here
-    gatheringWires().insert(wire.get());
-    DEFER(gatheringWires().erase(wire.get()));
-
-    auto dataCopy = data;
-    dataCopy.wire = wire.get();
-    IterableExposedInfo shared(data.shared);
-    IterableExposedInfo sharedCopy;
+  auto dataCopy = data;
+  dataCopy.wire = wire.get();
+  IterableExposedInfo shared(data.shared);
+  IterableExposedInfo sharedCopy;
+  if (!wire->pure) {
     if (mode == RunWireMode::Detached && !capturing) {
       // keep only globals
       auto end = std::remove_if(shared.begin(), shared.end(), [](const SHExposedTypeInfo &x) { return !x.global; });
@@ -177,90 +147,76 @@ struct WireBase {
       // we allow Detached but they need to be referenced during warmup
       sharedCopy = shared;
     }
-
-    dataCopy.shared = sharedCopy;
-
-    SHTypeInfo wireOutput;
-    // make sure to compose only once...
-    if (!wire->composeResult) {
-      SHLOG_TRACE("Running {} compose", wire->name);
-
-      wire->composeResult = composeWire(
-          wire.get(),
-          [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
-            if (!nonfatalWarning) {
-              SHLOG_ERROR("RunWire: failed inner wire validation, error: {}", errorTxt);
-              throw ComposeError("RunWire: failed inner wire validation");
-            } else {
-              SHLOG_INFO("RunWire: warning during inner wire validation: {}", errorTxt);
-            }
-          },
-          this, dataCopy);
-
-      wireOutput = wire->composeResult->outputType;
-
-      IterableExposedInfo exposing(wire->composeResult->exposedInfo);
-      // keep only globals
-      exposedInfo = IterableExposedInfo(
-          exposing.begin(), std::remove_if(exposing.begin(), exposing.end(), [](SHExposedTypeInfo &x) { return !x.global; }));
-
-      // Notice we DON'T need here to merge the required info here even if we had data.requiredVariables non null
-
-      SHLOG_TRACE("Wire {} composed", wire->name);
-    } else {
-      SHLOG_TRACE("Skipping {} compose", wire->name);
-
-      verifyAlreadyComposed(data, shared);
-
-      // write output type
-      wireOutput = wire->outputType;
-    }
-
-    auto outputType = data.inputType;
-
-    if (!passthrough) {
-      if (mode == Inline)
-        outputType = wireOutput;
-      else if (mode == Stepped)
-        outputType = CoreInfo::AnyType; // unpredictable
-      else
-        outputType = data.inputType;
-    }
-
-    if (!passthrough && mode != Stepped) {
-      auto [_, done] = mesh->visitedWires.emplace(wire.get(), outputType);
-      if (done) {
-        SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(),
-                    *wire->inputType, wire->outputType);
-      }
-    }
-
-    return outputType;
   }
 
-  void cleanup() { wireref.cleanup(); }
+  dataCopy.shared = sharedCopy;
 
-  void warmup(SHContext *ctx) { wireref.warmup(ctx); }
+  SHTypeInfo wireOutput;
+  // make sure to compose only once...
+  if (!wire->composeResult) {
+    SHLOG_TRACE("Running {} compose", wire->name);
 
-  // Use state to mark the dependency for serialization as well!
+    wire->composeResult = composeWire(
+        wire.get(),
+        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+          if (!nonfatalWarning) {
+            SHLOG_ERROR("RunWire: failed inner wire validation, error: {}", errorTxt);
+            throw ComposeError("RunWire: failed inner wire validation");
+          } else {
+            SHLOG_INFO("RunWire: warning during inner wire validation: {}", errorTxt);
+          }
+        },
+        this, dataCopy);
 
-  SHVar getState() {
-    if (wire) {
-      return Var(wire);
-    } else {
-      SHLOG_TRACE("getState no wire was avail");
-      return Var::Empty;
+    wireOutput = wire->composeResult->outputType;
+
+    IterableExposedInfo exposing(wire->composeResult->exposedInfo);
+    // keep only globals
+    exposedInfo = IterableExposedInfo(
+        exposing.begin(), std::remove_if(exposing.begin(), exposing.end(), [](SHExposedTypeInfo &x) { return !x.global; }));
+
+    // Notice we DON'T need here to merge the required info here even if we had data.requiredVariables non null
+
+    SHLOG_TRACE("Wire {} composed", wire->name);
+  } else {
+    SHLOG_TRACE("Skipping {} compose", wire->name);
+
+    verifyAlreadyComposed(data, shared);
+
+    // write output type
+    wireOutput = wire->outputType;
+  }
+
+  auto outputType = data.inputType;
+
+  if (!passthrough) {
+    if (mode == Inline)
+      outputType = wireOutput;
+    else if (mode == Stepped)
+      outputType = CoreInfo::AnyType; // unpredictable
+    else
+      outputType = data.inputType;
+  }
+
+  if (!passthrough && mode != Stepped) {
+    auto [_, done] = mesh->visitedWires.emplace(wire.get(), outputType);
+    if (done) {
+      SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(),
+                  *wire->inputType, wire->outputType);
     }
   }
 
-  void setState(SHVar state) {
-    if (state.valueType == SHType::Wire) {
-      wire = SHWire::sharedFromRef(state.payload.wireValue);
-    }
-  }
-};
+  return outputType;
+}
 
 struct Wait : public WireBase {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  void setup() {
+    activating = false;  // this is needed to pass validation in compose
+    passthrough = false; // also need this to have proper compose output type
+  }
+
   SHOptionalString help() {
     return SHCCSTR("Waits for another wire to complete before resuming "
                    "execution of the current wire.");
@@ -328,7 +284,7 @@ struct Wait : public WireBase {
       auto vwire = wireref.get();
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == String) {
+      } else if (vwire.valueType == SHType::String) {
         SHLOG_DEBUG("Wait: Resolving wire {}", vwire.payload.stringValue);
         wire = GetGlobals().GlobalWires[vwire.payload.stringValue];
       } else {
@@ -396,7 +352,7 @@ struct StopWire : public WireBase {
   }
 
   void composed(const SHWire *wire, const SHComposeResult *result) {
-    if (!wire && wireref->valueType == None && _inputType != result->outputType) {
+    if (!wire && wireref->valueType == SHType::None && _inputType != result->outputType) {
       SHLOG_ERROR("Stop input and wire output type mismatch, Stop input must "
                   "be the same type of the wire's output (regular flow), "
                   "wire: {} expected: {}",
@@ -451,7 +407,7 @@ struct StopWire : public WireBase {
       auto vwire = wireref.get();
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == String) {
+      } else if (vwire.valueType == SHType::String) {
         SHLOG_DEBUG("Stop: Resolving wire {}", vwire.payload.stringValue);
         wire = GetGlobals().GlobalWires[vwire.payload.stringValue];
       } else {
@@ -520,7 +476,7 @@ struct Resume : public WireBase {
           // Capture if not global as we need to copy it!
           SHLOG_TRACE("Start/Resume: adding variable to requirements: {}, wire {}", avail.name, wire->name);
           SHVar ctxVar{};
-          ctxVar.valueType = ContextVar;
+          ctxVar.valueType = SHType::ContextVar;
           ctxVar.payload.stringValue = avail.name;
           auto &p = _vars.emplace_back();
           p = ctxVar;
@@ -717,7 +673,7 @@ struct Recur : public WireBase {
     for (auto &shared : data.shared) {
       if (!shared.global) {
         SHVar ctxVar{};
-        ctxVar.valueType = ContextVar;
+        ctxVar.valueType = SHType::ContextVar;
         ctxVar.payload.stringValue = shared.name;
         auto &p = _vars.emplace_back();
         p = ctxVar;
@@ -763,7 +719,7 @@ struct Recur : public WireBase {
     // (Do self)
     // Run within the root flow
     auto runRes = runSubWire(_wire, context, input);
-    if (unlikely(runRes.state == Failed)) {
+    if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
       // meaning there was an exception while
       // running the sub wire, stop the parent too
       context->stopFlow(runRes.output);
@@ -783,263 +739,6 @@ struct Recur : public WireBase {
   std::deque<ParamVar> _vars;
   size_t _len; // cache it to have nothing on stack from us
   std::vector<SHSeq> _storage;
-};
-
-struct BaseRunner : public WireBase {
-  std::deque<ParamVar> _vars;
-
-  SHExposedTypesInfo _mergedReqs;
-  void destroy() { arrayFree(_mergedReqs); }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    // Start/Resume need to capture all it needs, so we need deeper informations
-    // this is triggered by populating requiredVariables variable
-    auto dataCopy = data;
-    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
-    dataCopy.requiredVariables = &requirements;
-
-    auto res = WireBase::compose(dataCopy);
-
-    // build the list of variables to capture and inject into spawned chain
-    _vars.clear();
-    arrayResize(_mergedReqs, 0);
-    for (auto &avail : data.shared) {
-      auto it = requirements.find(avail.name);
-      if (it != requirements.end()) {
-        if (!avail.global) {
-          // Capture if not global as we need to copy it!
-          SHLOG_TRACE("BaseRunner: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-          SHVar ctxVar{};
-          ctxVar.valueType = ContextVar;
-          ctxVar.payload.stringValue = avail.name;
-          auto &p = _vars.emplace_back();
-          p = ctxVar;
-        }
-
-        arrayPush(_mergedReqs, it->second);
-      }
-    }
-
-    return res;
-  }
-
-  // Only wire runners should expose variables to the context
-  SHExposedTypesInfo exposedVariables() {
-    // Only inline mode ensures that variables will be really avail
-    // step and detach will run at different timing
-    SHExposedTypesInfo empty{};
-    return mode == RunWireMode::Inline ? SHExposedTypesInfo(exposedInfo) : empty;
-  }
-
-  SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
-
-  void cleanup() {
-    if (capturing) {
-      for (auto &v : _vars) {
-        v.cleanup();
-      }
-    }
-
-    if (wire) {
-      if (mode == RunWireMode::Inline && wire->wireUsers.count(this) != 0) {
-        wire->wireUsers.erase(this);
-        wire->cleanup();
-      } else {
-        shards::stop(wire.get());
-      }
-    }
-
-    WireBase::cleanup();
-  }
-
-  void warmup(SHContext *ctx) {
-    if (capturing) {
-      for (auto &v : _vars) {
-        v.warmup(ctx);
-      }
-
-      wire->onStop.clear();
-      wire->onStop.emplace_back([this]() {
-        for (auto &v : _vars) {
-          // notice, this should be already destroyed by the wire releaseVariable
-          destroyVar(wire->variables[v.variableName()]);
-        }
-      });
-    }
-  }
-
-  void doWarmup(SHContext *context) {
-    if (mode == RunWireMode::Inline && wire && wire->wireUsers.count(this) == 0) {
-      wire->wireUsers.emplace(this);
-      wire->warmup(context);
-    }
-  }
-
-  void activateDetached(SHContext *context, const SHVar &input) {
-    if (!shards::isRunning(wire.get())) {
-      // stop in case we need to clean up
-      stop(wire.get());
-
-      if (capturing) {
-        for (auto &v : _vars) {
-          auto &var = v.get();
-          cloneVar(wire->variables[v.variableName()], var);
-        }
-      }
-
-      // validated during infer not here! (false)
-      auto mesh = context->main->mesh.lock();
-      if (mesh)
-        mesh->schedule(wire, input, false);
-    }
-  }
-
-  void activateStepMode(SHContext *context, const SHVar &input) {
-    // Allow to re run wires
-    if (shards::hasEnded(wire.get())) {
-      // stop the root
-      if (!shards::stop(wire.get())) {
-        throw ActivationError("Stepped sub-wire did not end normally.");
-      }
-    }
-
-    // Prepare if no callc was called
-    if (!wire->coro) {
-      wire->mesh = context->main->mesh;
-      // pre-set wire context with our context
-      // this is used to copy wireStack over to the new one
-      wire->context = context;
-      // Notice we don't share our flow!
-      // let the wire create one by passing null
-      shards::prepare(wire.get(), nullptr);
-    }
-
-    // Starting
-    if (!shards::isRunning(wire.get())) {
-      shards::start(wire.get(), input);
-    }
-
-    // Tick the wire on the flow that this Step wire created
-    SHDuration now = SHClock::now().time_since_epoch();
-    shards::tick(wire->context->flow->wire, now, input);
-  }
-};
-
-template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public BaseRunner {
-  void setup() {
-    passthrough = INPUT_PASSTHROUGH;
-    mode = WIRE_MODE;
-    capturing = WIRE_MODE == RunWireMode::Detached;
-  }
-
-  static SHParametersInfo parameters() { return runWireParamsInfo; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      wireref = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return wireref;
-    default:
-      break;
-    }
-    return Var::Empty;
-  }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    auto res = BaseRunner::compose(data);
-    if (!wire) {
-      OVERRIDE_ACTIVATE(data, activateNil);
-    } else if (wire->looped && WIRE_MODE == RunWireMode::Inline) {
-      OVERRIDE_ACTIVATE(data, activateLoop);
-    } else {
-      OVERRIDE_ACTIVATE(data, activate);
-    }
-    return res;
-  }
-
-  void warmup(SHContext *context) {
-    BaseRunner::warmup(context);
-
-    doWarmup(context);
-  }
-
-  SHVar activateNil(SHContext *, const SHVar &input) { return input; }
-
-  SHVar activateLoop(SHContext *context, const SHVar &input) {
-    auto inputCopy = input;
-  run_wire_loop:
-    auto runRes = runSubWire(wire.get(), context, inputCopy);
-    if (unlikely(runRes.state == Failed)) {
-      // meaning there was an exception while
-      // running the sub wire, stop the parent too
-      context->stopFlow(runRes.output);
-      return runRes.output;
-    } else {
-      if (runRes.state == Restarted) {
-        inputCopy = context->getFlowStorage();
-        context->continueFlow();
-        SH_SUSPEND(context, 0.0);
-        goto run_wire_loop;
-      } else if (context->shouldContinue()) {
-        SH_SUSPEND(context, 0.0);
-        goto run_wire_loop;
-      } else {
-        // we don't want to propagate a (Return)
-        if (unlikely(runRes.state == Stopped)) {
-          context->continueFlow();
-        }
-
-        if constexpr (INPUT_PASSTHROUGH) {
-          return input;
-        } else {
-          return runRes.output;
-        }
-      }
-    }
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    if constexpr (WIRE_MODE == RunWireMode::Detached) {
-      activateDetached(context, input);
-      return input;
-    } else if constexpr (WIRE_MODE == RunWireMode::Stepped) {
-      activateStepMode(context, input);
-      if constexpr (INPUT_PASSTHROUGH) {
-        return input;
-      } else {
-        return wire->previousOutput;
-      }
-    } else {
-      // Run within the root flow
-      auto runRes = runSubWire(wire.get(), context, input);
-      if (unlikely(runRes.state == Failed)) {
-        // meaning there was an exception while
-        // running the sub wire, stop the parent too
-        context->stopFlow(runRes.output);
-        return runRes.output;
-      } else {
-        // we don't want to propagate a (Return)
-        if (unlikely(runRes.state == Stopped)) {
-          context->continueFlow();
-        }
-
-        if constexpr (INPUT_PASSTHROUGH) {
-          return input;
-        } else {
-          return runRes.output;
-        }
-      }
-    }
-  }
 };
 
 struct WireNotFound : public ActivationError {
@@ -1100,7 +799,7 @@ template <class T> struct BaseLoader : public BaseRunner {
     } else {
       // Run within the root flow
       const auto runRes = runSubWire(wire.get(), context, input);
-      if (likely(runRes.state != Failed)) {
+      if (likely(runRes.state != SHRunWireOutputState::Failed)) {
         return runRes.output;
       }
     }
@@ -1122,7 +821,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
                                            "Stepped: the wire will run as a child, the root will tick the "
                                            "wire every activation of this shard and so a child pause "
                                            "won't pause the root."),
-                                   {ModeType}},
+                                   {RunWireModeEnumInfo::Type}},
                                   {"OnReload",
                                    SHCCSTR("Shards to execute when the wire is reloaded, the input of "
                                            "this flow will be the reloaded wire."),
@@ -1140,7 +839,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
     switch (index) {
     case 0: {
       cleanup(); // stop current
-      if (value.valueType == Object) {
+      if (value.valueType == SHType::Object) {
         _provider = (SHWireProvider *)value.payload.objectValue;
       } else {
         _provider = nullptr;
@@ -1255,7 +954,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
                                            "Stepped: the wire will run as a child, the root will tick the "
                                            "wire every activation of this shard and so a child pause "
                                            "won't pause the root."),
-                                   {ModeType}}};
+                                   {RunWireModeEnumInfo::Type}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -1337,7 +1036,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     if (unlikely(!wire))
       return input;
 
-    if (_wireHash.valueType == None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
+    if (_wireHash.valueType == SHType::None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
       // Compose and hash in a thread
       await(
           context,
@@ -1385,7 +1084,7 @@ struct CapturingSpawners : public WireBase {
           // Capture if not global as we need to copy it!
           SHLOG_TRACE("CapturingSpawners: adding variable to requirements: {}, wire {}", avail.name, wire->name);
           SHVar ctxVar{};
-          ctxVar.valueType = ContextVar;
+          ctxVar.valueType = SHType::ContextVar;
           ctxVar.payload.stringValue = avail.name;
           auto &p = _vars.emplace_back();
           p = ctxVar;
@@ -1400,31 +1099,33 @@ struct CapturingSpawners : public WireBase {
     _sharedCopy = shared;
   }
 };
+enum class WaitUntil { FirstSuccess, AllSuccess, SomeSuccess };
+} // namespace shards
 
-enum class WaitUntil {
-  FirstSuccess, // will wait until the first success and stop any other
-                // pending operation
-  AllSuccess,   // will wait until all complete, will stop and fail on any
-                // failure
-  SomeSuccess   // will wait until all complete but won't fail if some of the
-                // wires failed
-};
+ENUM_HELP(WaitUntil, WaitUntil::FirstSuccess, SHCCSTR("Will wait until the first success and stop any other pending operation"));
+ENUM_HELP(WaitUntil, WaitUntil::AllSuccess, SHCCSTR("Will wait until all complete, will stop and fail on any failure"));
+ENUM_HELP(WaitUntil, WaitUntil::SomeSuccess, SHCCSTR("Will wait until all complete but won't fail if some of the wires failed"));
 
+namespace shards {
 struct ManyWire : public std::enable_shared_from_this<ManyWire> {
   uint32_t index;
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<SHMesh> mesh; // used only if MT
   bool done;
+  std::optional<entt::connection> onStopConnection;
+
+  ~ManyWire() {
+    if (onStopConnection)
+      onStopConnection->release();
+  }
 };
 
 struct ParallelBase : public CapturingSpawners {
-  typedef EnumInfo<WaitUntil> WaitUntilInfo;
-  static inline WaitUntilInfo waitUntilInfo{"WaitUntil", CoreCC, 'tryM'};
-  static inline Type WaitUntilType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'tryM'}}}};
+  DECL_ENUM_INFO(WaitUntil, WaitUntil, 'tryM');
 
   static inline Parameters _params{
       {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireVarTypes},
-      {"Policy", SHCCSTR("The execution policy in terms of wires success."), {WaitUntilType}},
+      {"Policy", SHCCSTR("The execution policy in terms of wires success."), {WaitUntilEnumInfo::Type}},
       {"Threads", SHCCSTR("The number of cpu threads to use."), {CoreInfo::IntType}},
       {"Coroutines", SHCCSTR("The number of coroutines to run on each thread."), {CoreInfo::IntType}}};
 
@@ -1646,7 +1347,7 @@ struct ParallelBase : public CapturingSpawners {
 
             // Tick the wire on the flow that this wire created
             SHDuration now = SHClock::now().time_since_epoch();
-            shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
+            shards::tick(cref->wire->context->flow->wire, now);
 
             if (!isRunning(cref->wire.get())) {
               if (cref->wire->state == SHWire::State::Ended) {
@@ -1671,40 +1372,37 @@ struct ParallelBase : public CapturingSpawners {
           // multithreaded
           tf::Taskflow flow;
 
-          flow.for_each_dynamic(
-              _wires.begin(), _wires.end(),
-              [this, input, len](auto &cref) {
-                // skip if failed, ended or not relevant yet
-                if (cref->done || cref->index >= len) {
-                  return;
-                }
+          flow.for_each(_wires.begin(), _wires.end(), [this, input, len](auto &cref) {
+            // skip if failed, ended or not relevant yet
+            if (cref->done || cref->index >= len) {
+              return;
+            }
 
-                // Prepare and start if no callc was called
-                if (!cref->wire->coro) {
-                  if (!cref->mesh) {
-                    cref->mesh = SHMesh::make();
-                  }
-                  cref->wire->mesh = cref->mesh;
+            // Prepare and start if no callc was called
+            if (!cref->wire->coro) {
+              if (!cref->mesh) {
+                cref->mesh = SHMesh::make();
+              }
+              cref->wire->mesh = cref->mesh;
 
-                  // capture variables if needed
-                  for (auto &v : _vars) {
-                    auto &var = v.get();
-                    cloneVar(cref->wire->variables[v.variableName()], var);
-                  }
+              // capture variables if needed
+              for (auto &v : _vars) {
+                auto &var = v.get();
+                cloneVar(cref->wire->variables[v.variableName()], var);
+              }
 
-                  // Notice we don't share our flow!
-                  // let the wire create one by passing null
-                  shards::prepare(cref->wire.get(), nullptr);
-                  shards::start(cref->wire.get(), getInput(cref, input));
-                }
+              // Notice we don't share our flow!
+              // let the wire create one by passing null
+              shards::prepare(cref->wire.get(), nullptr);
+              shards::start(cref->wire.get(), getInput(cref, input));
+            }
 
-                // Tick the wire on the flow that this wire created
-                SHDuration now = SHClock::now().time_since_epoch();
-                shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
-                // also tick the mesh
-                cref->mesh->tick();
-              },
-              _coros);
+            // Tick the wire on the flow that this wire created
+            SHDuration now = SHClock::now().time_since_epoch();
+            shards::tick(cref->wire->context->flow->wire, now);
+            // also tick the mesh
+            cref->mesh->tick();
+          });
 
           _exec->run(flow).get();
 
@@ -1847,6 +1545,7 @@ struct Spawn : public CapturingSpawners {
   Spawn() {
     mode = RunWireMode::Detached;
     capturing = true;
+    passthrough = false;
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -1880,6 +1579,7 @@ struct Spawn : public CapturingSpawners {
     CapturingSpawners::compose(data, data.inputType);
 
     // wire should be populated now and such
+    assert(wire);
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
 
     // copy input type
@@ -1938,20 +1638,30 @@ struct Spawn : public CapturingSpawners {
     WireBase::cleanup();
   }
 
+  std::unordered_map<const SHWire *, std::weak_ptr<ManyWire>> _wireContainers;
+
+  void wireOnStop(const SHWire::OnStopEvent &e) {
+    SHLOG_TRACE("Spawn::wireOnStop {}", e.wire->name);
+
+    auto container = _wireContainers[e.wire].lock();
+    for (auto &v : _vars) {
+      // notice, this should be already destroyed by the wire releaseVariable
+      destroyVar(container->wire->variables[v.variableName()]);
+    }
+
+    _pool->release(container);
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto mesh = context->main->mesh.lock();
     auto c = _pool->acquire(_composer);
-    c->wire->onStop.clear(); // we have a fresh recycled wire here
-    std::weak_ptr<ManyWire> wc(c);
-    c->wire->onStop.emplace_back([this, wc]() {
-      if (auto c = wc.lock()) {
-        for (auto &v : _vars) {
-          // notice, this should be already destroyed by the wire releaseVariable
-          destroyVar(c->wire->variables[v.variableName()]);
-        }
-        _pool->release(c);
-      }
-    });
+
+    // Assume that we recycle containers so the connection might already exist!
+    if (!c->onStopConnection) {
+      SHLOG_TRACE("Spawn::activate: connecting wireOnStop to {}", c->wire->name);
+      _wireContainers[c->wire.get()] = c;
+      c->onStopConnection = c->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Spawn::wireOnStop>(this);
+    }
 
     for (auto &v : _vars) {
       auto &var = v.get();
@@ -1959,6 +1669,7 @@ struct Spawn : public CapturingSpawners {
     }
 
     mesh->schedule(c->wire, input, false);
+
     return Var(c->wire); // notice this is "weak"
   }
 
@@ -2029,7 +1740,7 @@ struct StepMany : public TryMany {
 
         // Tick the wire on the flow that this wire created
         SHDuration now = SHClock::now().time_since_epoch();
-        shards::tick(cref->wire->context->flow->wire, now, getInput(cref, input));
+        shards::tick(cref->wire->context->flow->wire, now);
 
         // this can be anything really...
         _outputs[i] = cref->wire->previousOutput;
@@ -2041,22 +1752,26 @@ struct StepMany : public TryMany {
 };
 
 struct Branch {
+  static constexpr uint32_t TypeId = 'brcM';
+  static inline Type MeshType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = TypeId}}}};
+
   enum BranchFailureBehavior { Everything, Known, Ignore };
-  static constexpr int32_t FailureCC = 'brcB';
-  typedef EnumInfo<BranchFailureBehavior> BranchFailureBehaviorInfo;
-  static inline BranchFailureBehaviorInfo runWireModeInfo{"BranchFailure", CoreCC, 'brcB'};
-  static inline Type BehaviorType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = 'brcB'}}}};
+  DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure, 'brcB');
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return MeshType; }
 
   static SHParametersInfo parameters() {
-    static Parameters params{{"Wires",
-                              SHCCSTR("The wires to schedule and run on this branch."),
-                              {CoreInfo::WireType, CoreInfo::WireSeqType, CoreInfo::NoneType}},
-                             {"FailureBehavior",
-                              SHCCSTR("The behavior to take when some of the wires running on this branch mesh fail."),
-                              {BehaviorType}}};
+    static Parameters params{
+        {"Wires",
+         SHCCSTR("The wires to schedule and run on this branch."),
+         {CoreInfo::WireType, CoreInfo::WireSeqType, CoreInfo::NoneType}},
+        {"FailureBehavior",
+         SHCCSTR("The behavior to take when some of the wires running on this branch mesh fail."),
+         {BranchFailureEnumInfo::Type}},
+        {"CaptureAll",
+         SHCCSTR("If all of the existing context variables should be captured, no matter if being used or not."),
+         {CoreInfo::BoolType}}};
     return params;
   }
 
@@ -2068,6 +1783,9 @@ struct Branch {
     case 1:
       _failureBehavior = BranchFailureBehavior(value.payload.enumValue);
       break;
+    case 2:
+      _captureAll = value.payload.boolValue;
+      break;
     default:
       break;
     }
@@ -2078,7 +1796,9 @@ struct Branch {
     case 0:
       return _wires;
     case 1:
-      return Var::Enum(_failureBehavior, CoreCC, FailureCC);
+      return Var::Enum(_failureBehavior, BranchFailureEnumInfo::VendorId, BranchFailureEnumInfo::TypeId);
+    case 2:
+      return Var(_captureAll);
     default:
       return Var::Empty;
     }
@@ -2096,7 +1816,7 @@ struct Branch {
 
     auto dataCopy = data;
     dataCopy.wire = wire.get();
-    dataCopy.inputType = data.inputType;
+    dataCopy.inputType = {}; // ticked wires don't have inputs
 
     // Branch needs to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
@@ -2122,11 +1842,18 @@ struct Branch {
       arrayPush(_mergedReqs, req);
     }
 
-    for (auto &avail : data.shared) {
-      auto it = requirements.find(avail.name);
-      if (it != requirements.end()) {
+    if (_captureAll) {
+      for (auto &avail : data.shared) {
         SHLOG_TRACE("Branch: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-        arrayPush(_mergedReqs, it->second);
+        arrayPush(_mergedReqs, avail);
+      }
+    } else {
+      for (auto &avail : data.shared) {
+        auto it = requirements.find(avail.name);
+        if (it != requirements.end()) {
+          SHLOG_TRACE("Branch: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+          arrayPush(_mergedReqs, it->second);
+        }
       }
     }
 
@@ -2154,7 +1881,7 @@ struct Branch {
     _sharedCopy = shared;
     _mesh->instanceData.shared = _sharedCopy;
 
-    return data.inputType;
+    return MeshType;
   }
 
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
@@ -2184,7 +1911,7 @@ struct Branch {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!_mesh->tick(input)) {
+    if (!_mesh->tick()) {
       switch (_failureBehavior) {
       case BranchFailureBehavior::Ignore:
         break;
@@ -2200,11 +1927,12 @@ struct Branch {
         break;
       }
     }
-    return input;
+    return Var::Object(_mesh.get(), CoreCC, TypeId);
   }
 
 private:
   OwnedVar _wires{Var::Empty};
+  bool _captureAll = false;
   std::shared_ptr<SHMesh> _mesh = SHMesh::make();
   IterableExposedInfo _sharedCopy;
   SHExposedTypesInfo _mergedReqs;
@@ -2213,8 +1941,11 @@ private:
 };
 
 void registerWiresShards() {
+  REGISTER_ENUM(WireBase::RunWireModeEnumInfo);
+  REGISTER_ENUM(ParallelBase::WaitUntilEnumInfo);
+  REGISTER_ENUM(Branch::BranchFailureEnumInfo);
+
   using RunWireDo = RunWire<false, RunWireMode::Inline>;
-  using RunWireDispatch = RunWire<true, RunWireMode::Inline>;
   using RunWireDetach = RunWire<true, RunWireMode::Detached>;
   using RunWireStep = RunWire<false, RunWireMode::Stepped>;
   REGISTER_SHARD("Resume", Resume);
@@ -2222,7 +1953,6 @@ void registerWiresShards() {
   REGISTER_SHARD("Wait", Wait);
   REGISTER_SHARD("Stop", StopWire);
   REGISTER_SHARD("Do", RunWireDo);
-  REGISTER_SHARD("Dispatch", RunWireDispatch);
   REGISTER_SHARD("Detach", RunWireDetach);
   REGISTER_SHARD("Step", RunWireStep);
   REGISTER_SHARD("WireLoader", WireLoader);

@@ -171,10 +171,12 @@ pub fn logLevel(level: i32, s: &str) {
 #[cfg(debug_assertions)]
 macro_rules! shlog_debug {
   ($text:expr, $($arg:expr),*) => {
+    {
       use std::io::Write as __stdWrite;
       let mut buf = vec![];
       ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
       $crate::core::logLevel(1, ::std::str::from_utf8(&buf).unwrap());
+    }
   };
 
   ($text:expr) => {
@@ -193,10 +195,12 @@ macro_rules! shlog_debug {
 #[macro_export]
 macro_rules! shlog {
     ($text:expr, $($arg:expr),*) => {
+      {
         use std::io::Write as __stdWrite;
         let mut buf = vec![];
         ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
         $crate::core::log(::std::str::from_utf8(&buf).unwrap());
+      }
     };
 
     ($text:expr) => {
@@ -207,10 +211,12 @@ macro_rules! shlog {
 #[macro_export]
 macro_rules! shlog_error {
   ($text:expr, $($arg:expr),*) => {
-    use std::io::Write as __stdWrite;
-    let mut buf = vec![];
-    ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
-    $crate::core::logLevel(4, ::std::str::from_utf8(&buf).unwrap());
+    {
+      use std::io::Write as __stdWrite;
+      let mut buf = vec![];
+      ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+      $crate::core::logLevel(4, ::std::str::from_utf8(&buf).unwrap());
+    }
   };
 
   ($text:expr) => {

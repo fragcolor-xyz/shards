@@ -10,6 +10,7 @@ use crate::shards::gui::EguiId;
 use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -26,25 +27,24 @@ use crate::types::Var;
 use crate::types::ANY_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_OR_NONE_SLICE;
-use egui::Context as EguiNativeContext;
 
 lazy_static! {
   static ref AREA_PARAMETERS: Parameters = vec![
     (
       cstr!("Position"),
-      cstr!("Absolute position; or when anchor is set, relative offset."),
+      shccstr!("Absolute position; or when anchor is set, relative offset."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
     (
       cstr!("Anchor"),
-      cstr!("Corner or center of the screen."),
+      shccstr!("Corner or center of the screen."),
       &ANCHOR_TYPES[..],
     )
       .into(),
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
@@ -107,7 +107,7 @@ impl Shard for Area {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

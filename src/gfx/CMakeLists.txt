@@ -17,6 +17,9 @@ add_library(gfx
   utils.cpp
   feature.cpp
   texture.cpp
+  material.cpp
+  drawables/mesh_drawable.cpp
+  drawables/mesh_tree_drawable.cpp
   gizmos/wireframe.cpp
   gizmos/shapes.cpp
   gizmos/gizmo_input.cpp
@@ -30,7 +33,19 @@ add_library(gfx
   render_target.cpp
   pipeline_builder.cpp
   pipeline_step.cpp
+  pipeline_hashes.cpp
+  unique_id.cpp
 )
+
+# Always optimize files with hot-paths
+set_source_files_properties(
+  drawables/mesh_tree_drawable.cpp
+  gltf/gltf.cpp
+  texture_file/texture_file.cpp
+  pipeline_hashes.cpp
+  PROPERTIES
+    COMPILE_FLAGS -O3
+    SKIP_PRECOMPILE_HEADERS ON)
 
 target_compile_features(gfx PUBLIC cxx_std_20)
 
@@ -41,16 +56,28 @@ target_include_directories(gfx
 target_link_libraries(gfx
   tinygltf
   magic_enum nameof linalg
-  spdlog stb xxHash Boost::algorithm Boost::filesystem
+  spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::container
   shards-logging
 )
 target_precompile_headers(gfx PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
+target_link_libraries(gfx Tracy::TracyClient)
+
+if(HAVE_THREADS)
+  set(GFX_THREADING_DEFAULT ON)
+endif()
+option(GFX_THREADING "Support multithreaded rendering" ${GFX_THREADING_DEFAULT})
+if(GFX_THREADING)
+  target_compile_definitions(gfx PUBLIC GFX_THREADING_SUPPORT=1)
+endif()
+
+target_link_libraries(gfx Taskflow)
 
 add_library(gfx-texture-file texture_file/texture_file.cpp)
 target_link_libraries(gfx-texture-file gfx)
 
 add_library(gfx-gltf gltf/gltf.cpp)
 target_link_libraries(gfx-gltf gfx tinygltf)
+target_link_libraries(gfx-gltf Tracy::TracyClient)
 
 add_subdirectory(egui)
 

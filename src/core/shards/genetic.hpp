@@ -8,6 +8,7 @@
 #include "shards.h"
 #include "shards.hpp"
 #include "shared.hpp"
+#include "async.hpp"
 #include <limits>
 #include <pdqsort.h>
 #include <random>
@@ -164,7 +165,7 @@ struct Evolve {
   void cleanup() {
     if (_population.size() > 0) {
       tf::Taskflow cleanupFlow;
-      cleanupFlow.for_each_dynamic(_population.begin(), _population.end(), [&](Individual &i) {
+      cleanupFlow.for_each(_population.begin(), _population.end(), [&](Individual &i) {
         // Free and release wire
         i.mesh->terminate();
         auto wire = SHWire::sharedFromRef(i.wire.payload.wireValue);
@@ -209,7 +210,7 @@ struct Evolve {
             _nelites = size_t(double(_popsize) * _elitism);
 
             tf::Taskflow initFlow;
-            initFlow.for_each_dynamic(_population.begin(), _population.end(), [&](Individual &i) {
+            initFlow.for_each(_population.begin(), _population.end(), [&](Individual &i) {
               Serialization deserial;
               std::stringstream i1Stream(wireStr);
               Reader r1(i1Stream);
@@ -306,14 +307,12 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(
-                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
-                [](auto &i) {
-                  // Evaluate our brain wire
-                  auto wire = SHWire::sharedFromRef(i->wire.payload.wireValue);
-                  i->mesh->schedule(wire);
-                },
-                _coros);
+            flow.for_each(_era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
+                          [](auto &i) {
+                            // Evaluate our brain wire
+                            auto wire = SHWire::sharedFromRef(i->wire.payload.wireValue);
+                            i->mesh->schedule(wire);
+                          });
 
             _exec->run(flow).get();
           }
@@ -321,13 +320,11 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(
-                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
-                [](auto &i) {
-                  if (!i->mesh->empty())
-                    i->mesh->tick();
-                },
-                _coros);
+            flow.for_each(_era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
+                          [](auto &i) {
+                            if (!i->mesh->empty())
+                              i->mesh->tick();
+                          });
 
             _exec
                 ->run_until(flow,
@@ -345,21 +342,19 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(
-                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
-                [](auto &i) {
-                  // reset fitness
-                  i->fitness = -std::numeric_limits<float>::max();
-                  // avoid scheduling if errors
-                  if (!i->mesh->errors().empty())
-                    return;
-                  // compute the fitness
-                  TickObserver obs{*i};
-                  auto fitwire = SHWire::sharedFromRef(i->fitnessWire.payload.wireValue);
-                  auto wire = SHWire::sharedFromRef(i->wire.payload.wireValue);
-                  i->mesh->schedule(obs, fitwire, wire->finishedOutput);
-                },
-                _coros);
+            flow.for_each(_era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
+                          [](auto &i) {
+                            // reset fitness
+                            i->fitness = -std::numeric_limits<float>::max();
+                            // avoid scheduling if errors
+                            if (!i->mesh->errors().empty())
+                              return;
+                            // compute the fitness
+                            TickObserver obs{*i};
+                            auto fitwire = SHWire::sharedFromRef(i->fitnessWire.payload.wireValue);
+                            auto wire = SHWire::sharedFromRef(i->wire.payload.wireValue);
+                            i->mesh->schedule(obs, fitwire, wire->finishedOutput);
+                          });
 
             _exec->run(flow).get();
           }
@@ -367,15 +362,13 @@ struct Evolve {
           {
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(
-                _era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
-                [](auto &i) {
-                  if (!i->mesh->empty()) {
-                    TickObserver obs{*i};
-                    i->mesh->tick(obs);
-                  }
-                },
-                _coros);
+            flow.for_each(_era == 0 ? _sortedPopulation.begin() : _sortedPopulation.begin() + _nelites, _sortedPopulation.end(),
+                          [](auto &i) {
+                            if (!i->mesh->empty()) {
+                              TickObserver obs{*i};
+                              i->mesh->tick(obs);
+                            }
+                          });
 
             _exec
                 ->run_until(flow,
@@ -426,7 +419,7 @@ struct Evolve {
           { // Stop all the population wires
             tf::Taskflow flow;
 
-            flow.for_each_dynamic(_population.begin(), _population.end(), [](Individual &i) {
+            flow.for_each(_population.begin(), _population.end(), [](Individual &i) {
               auto wire = SHWire::sharedFromRef(i.wire.payload.wireValue);
               auto fitwire = SHWire::sharedFromRef(i.fitnessWire.payload.wireValue);
               stop(wire.get());
@@ -467,7 +460,7 @@ struct Evolve {
           // since we might need them
           {
             tf::Taskflow mutFlow;
-            mutFlow.for_each_dynamic(_sortedPopulation.begin() + _nelites, _sortedPopulation.end(), [&](auto &i) {
+            mutFlow.for_each(_sortedPopulation.begin() + _nelites, _sortedPopulation.end(), [&](auto &i) {
               // reset the individual if extinct
               if (i->extinct) {
                 resetState(*i);
@@ -547,7 +540,7 @@ private:
     void before_stop(SHWire *wire) {
       // Collect fitness last result
       auto fitnessVar = wire->finishedOutput;
-      if (fitnessVar.valueType == Float) {
+      if (fitnessVar.valueType == SHType::Float) {
         self.fitness = fitnessVar.payload.floatValue;
       }
     }
@@ -631,12 +624,12 @@ struct Mutant {
     case 2: {
       destroyShards();
       _mutations = value;
-      if (_mutations.valueType == Seq) {
+      if (_mutations.valueType == SHType::Seq) {
         for (auto &mut : _mutations) {
-          if (mut.valueType == ShardRef) {
+          if (mut.valueType == SHType::ShardRef) {
             auto blk = mut.payload.shardValue;
             blk->owned = true;
-          } else if (mut.valueType == Seq) {
+          } else if (mut.valueType == SHType::Seq) {
             for (auto &bv : mut) {
               auto blk = bv.payload.shardValue;
               blk->owned = true;
@@ -669,12 +662,12 @@ struct Mutant {
   }
 
   void cleanupMutations() const {
-    if (_mutations.valueType == Seq) {
+    if (_mutations.valueType == SHType::Seq) {
       for (auto &mut : _mutations) {
-        if (mut.valueType == ShardRef) {
+        if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
           blk->cleanup(blk);
-        } else if (mut.valueType == Seq) {
+        } else if (mut.valueType == SHType::Seq) {
           for (auto &bv : mut) {
             auto blk = bv.payload.shardValue;
             blk->cleanup(blk);
@@ -685,13 +678,13 @@ struct Mutant {
   }
 
   void warmupMutations(SHContext *ctx) const {
-    if (_mutations.valueType == Seq) {
+    if (_mutations.valueType == SHType::Seq) {
       for (auto &mut : _mutations) {
-        if (mut.valueType == ShardRef) {
+        if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
           if (blk->warmup)
             blk->warmup(blk, ctx);
-        } else if (mut.valueType == Seq) {
+        } else if (mut.valueType == SHType::Seq) {
           for (auto &bv : mut) {
             auto blk = bv.payload.shardValue;
             if (blk->warmup)
@@ -708,13 +701,13 @@ struct Mutant {
   }
 
   void destroyShards() {
-    if (_mutations.valueType == Seq) {
+    if (_mutations.valueType == SHType::Seq) {
       for (auto &mut : _mutations) {
-        if (mut.valueType == ShardRef) {
+        if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
           blk->cleanup(blk);
           blk->destroy(blk);
-        } else if (mut.valueType == Seq) {
+        } else if (mut.valueType == SHType::Seq) {
           for (auto &bv : mut) {
             auto blk = bv.payload.shardValue;
             blk->cleanup(blk);
@@ -732,7 +725,7 @@ struct Mutant {
   SHTypeInfo compose(const SHInstanceData &data) {
     auto inner = mutant();
     // validate parameters
-    if (_mutations.valueType == Seq && inner) {
+    if (_mutations.valueType == SHType::Seq && inner) {
       auto dataCopy = data;
       int idx = 0;
       auto innerParams = inner->parameters(inner);
@@ -741,7 +734,7 @@ struct Mutant {
           break;
         TypeInfo ptype(inner->getParam(inner, idx), data);
         dataCopy.inputType = ptype;
-        if (mut.valueType == ShardRef) {
+        if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
           if (blk->compose) {
             auto res0 = blk->compose(blk, dataCopy);
@@ -754,7 +747,7 @@ struct Mutant {
                                 "mutation wire's output.");
             }
           }
-        } else if (mut.valueType == Seq) {
+        } else if (mut.valueType == SHType::Seq) {
           auto res = composeWire(
               mut.payload.seqValue, [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {},
               nullptr, dataCopy);
@@ -885,7 +878,7 @@ inline void Evolve::gatherMutants(SHWire *wire, std::vector<MutantInfo> &out) {
       auto mutator = reinterpret_cast<const ShardWrapper<Mutant> *>(info.shard);
       auto &minfo = out.emplace_back(mutator->shard);
       auto mutant = mutator->shard.mutant();
-      if (mutator->shard._indices.valueType == Seq) {
+      if (mutator->shard._indices.valueType == SHType::Seq) {
         for (auto &idx : mutator->shard._indices) {
           auto i = int(idx.payload.intValue);
           minfo.originalParams.emplace_back(i, mutant->getParam(mutant, i));
@@ -913,7 +906,7 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0, cons
       }
       // check if we have mutant params and cross them over
       auto &indices = cmuts->shard.get()._indices;
-      if (indices.valueType == Seq) {
+      if (indices.valueType == SHType::Seq) {
         for (auto &idx : indices) {
           const auto i = int(idx.payload.intValue);
           const auto r = Random::nextDouble();
@@ -953,11 +946,11 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
     if (info.shard.get().mutant()) {
       auto mutant = info.shard.get().mutant();
       auto &indices = mutator._indices;
-      if (mutant->mutate && (indices.valueType == None || rand() < 0.5)) {
+      if (mutant->mutate && (indices.valueType == SHType::None || rand() < 0.5)) {
         // In the case the shard has `mutate`
-        auto table = options.valueType == Table ? options.payload.tableValue : SHTable();
+        auto table = options.valueType == SHType::Table ? options.payload.tableValue : SHTable();
         mutant->mutate(mutant, table);
-      } else if (indices.valueType == Seq) {
+      } else if (indices.valueType == SHType::Seq) {
         auto &iseq = indices.payload.seqValue;
         // do stuff on the param
         // select a random one
@@ -965,15 +958,15 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
         auto current = mutant->getParam(mutant, int(iseq.elements[rparam].payload.intValue));
         // if we have mutation shards use them
         // if not use default operation
-        if (mutator._mutations.valueType == Seq && uint32_t(rparam) < mutator._mutations.payload.seqValue.len) {
+        if (mutator._mutations.valueType == SHType::Seq && uint32_t(rparam) < mutator._mutations.payload.seqValue.len) {
           // we need to warmup / cleanup in this case
           // mutant mini wire also currently is not composed! FIXME?
           mutator.warmupMutations(&ctx);
           auto mblks = mutator._mutations.payload.seqValue.elements[rparam];
-          if (mblks.valueType == ShardRef) {
+          if (mblks.valueType == SHType::ShardRef) {
             auto blk = mblks.payload.shardValue;
             current = blk->activate(blk, &ctx, &current);
-          } else if (mblks.valueType == Seq) {
+          } else if (mblks.valueType == SHType::Seq) {
             auto blks = mblks.payload.seqValue;
             SHVar out{};
             activateShards(blks, &ctx, current, out);
@@ -1049,7 +1042,7 @@ struct DShard {
       return shards::Var(_name);
     case 1: {
       SHVar res{};
-      res.valueType = Seq;
+      res.valueType = SHType::Seq;
       const auto nparams = _wrappedParams.size();
       res.payload.seqValue.elements = nparams > 0 ? &_wrappedParams.front() : nullptr;
       res.payload.seqValue.len = nparams;

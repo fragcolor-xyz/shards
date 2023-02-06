@@ -3,6 +3,7 @@
 
 #include "SDL.h"
 #include "shards/shared.hpp"
+#include "inputs.hpp"
 #include "gfx.hpp"
 #include <gfx/window.hpp>
 
@@ -10,9 +11,28 @@ using namespace linalg::aliases;
 
 namespace shards {
 namespace Inputs {
-struct Base : public gfx::BaseConsumer {
+
+gfx::Window &InputContext::getWindow() { return *window.get(); }
+SDL_Window *InputContext::getSdlWindow() { return getWindow().window; }
+
+struct Base {
+  RequiredInputContext _inputContext;
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  void baseWarmup(SHContext *context) { _inputContext.warmup(context); }
+  void baseCleanup() { _inputContext.cleanup(); }
+  SHExposedTypesInfo baseRequiredVariables() {
+    static auto e = exposedTypesOf(gfx::RequiredGraphicsContext::getExposedTypeInfo());
+    return e;
+  }
+
+  SHExposedTypesInfo requiredVariables() { return baseRequiredVariables(); }
+  void warmup(SHContext *context) { baseWarmup(context); }
+  void cleanup() { baseCleanup(); }
+
+  gfx::Window &getWindow() const { return _inputContext->getWindow(); }
 };
 
 struct MousePixelPos : public Base {
@@ -38,18 +58,14 @@ struct MouseDelta : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
     return CoreInfo::Float2Type;
   }
-
-  void warmup(SHContext *context) { baseConsumerWarmup(context); }
-
-  void cleanup() { baseConsumerCleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     int2 windowSize = getWindow().getSize();
 
-    for (auto &event : getMainWindowGlobals().events) {
+    for (auto &event : _inputContext->events) {
       if (event.type == SDL_MOUSEMOTION) {
         return Var(float(event.motion.xrel) / float(windowSize.x), float(event.motion.yrel) / float(windowSize.y));
       }
@@ -67,13 +83,9 @@ struct MousePos : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
     return CoreInfo::Float2Type;
   }
-
-  void warmup(SHContext *context) { baseConsumerWarmup(context); }
-
-  void cleanup() { baseConsumerCleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     int2 windowSize = getWindow().getSize();
@@ -90,13 +102,9 @@ struct WindowSize : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
     return CoreInfo::Float2Type;
   }
-
-  void warmup(SHContext *context) { baseConsumerWarmup(context); }
-
-  void cleanup() { baseConsumerCleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     int2 windowSize = getWindow().getSize();
@@ -150,7 +158,7 @@ struct Mouse : public Base {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
     return data.inputType;
   }
 
@@ -158,7 +166,7 @@ struct Mouse : public Base {
     _hidden.warmup(context);
     _captured.warmup(context);
     _relative.warmup(context);
-    baseConsumerWarmup(context);
+    baseWarmup(context);
   }
 
   void cleanup() {
@@ -187,7 +195,7 @@ struct Mouse : public Base {
 
   void setCaptured(bool captured) {
     if (captured != _isCaptured) {
-      SDL_Window *windowToCapture = getSdlWindow();
+      SDL_Window *windowToCapture = _inputContext->getSdlWindow();
       SDL_SetWindowGrab(windowToCapture, captured ? SDL_TRUE : SDL_FALSE);
       _capturedWindow = captured ? windowToCapture : nullptr;
       _isCaptured = captured;
@@ -251,7 +259,7 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
   ShardsVar _middleButton{};
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
 
     _leftButton.compose(data);
     _rightButton.compose(data);
@@ -264,18 +272,18 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
     _leftButton.cleanup();
     _rightButton.cleanup();
     _middleButton.cleanup();
-    baseConsumerCleanup();
+    baseCleanup();
   }
 
   void warmup(SHContext *context) {
     _leftButton.warmup(context);
     _rightButton.warmup(context);
     _middleButton.warmup(context);
-    baseConsumerWarmup(context);
+    baseWarmup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    for (auto &event : getMainWindowGlobals().events) {
+    for (auto &event : _inputContext->events) {
       if (event.type == EVENT_TYPE) {
         SHVar output{};
         if (event.button.button == SDL_BUTTON_LEFT) {
@@ -300,7 +308,7 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
-      if (value.valueType == None) {
+      if (value.valueType == SHType::None) {
         _key.clear();
       } else {
         _key = value.payload.stringValue;
@@ -333,16 +341,16 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
 
   void cleanup() {
     _shards.cleanup();
-    baseConsumerCleanup();
+    baseCleanup();
   }
 
   void warmup(SHContext *context) {
     _shards.warmup(context);
-    baseConsumerWarmup(context);
+    baseWarmup(context);
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
 
     _shards.compose(data);
 
@@ -350,7 +358,7 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    for (auto &event : getMainWindowGlobals().events) {
+    for (auto &event : _inputContext->events) {
       if (event.type == EVENT_TYPE && event.key.keysym.sym == _keyCode) {
         if (_repeat || event.key.repeat == 0) {
           SHVar output{};

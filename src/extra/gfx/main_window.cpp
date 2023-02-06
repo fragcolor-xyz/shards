@@ -3,22 +3,14 @@
 #include <gfx/loop.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>
+#include "../inputs.hpp"
 
 using namespace shards;
+using shards::Inputs::InputContext;
+
 namespace gfx {
 
-MainWindowGlobals &Base::getMainWindowGlobals() {
-  MainWindowGlobals *globalsPtr = reinterpret_cast<MainWindowGlobals *>(_mainWindowGlobalsVar->payload.objectValue);
-  if (!globalsPtr) {
-    throw shards::ActivationError("Graphics context not set");
-  }
-  return *globalsPtr;
-}
-Context &Base::getContext() { return *getMainWindowGlobals().context.get(); }
-Window &Base::getWindow() { return *getMainWindowGlobals().window.get(); }
-SDL_Window *Base::getSdlWindow() { return getWindow().window; }
-
-struct MainWindow : public Base {
+struct MainWindow final {
   static inline Parameters params{
       {"Title", SHCCSTR("The title of the window to create."), {CoreInfo::StringType}},
       {"Width", SHCCSTR("The width of the window to create. In pixels and DPI aware."), {CoreInfo::IntType}},
@@ -41,9 +33,16 @@ struct MainWindow : public Base {
   Window _window;
   ShardsVar _shards;
 
-  std::shared_ptr<MainWindowGlobals> globals;
-  std::shared_ptr<ContextUserData> contextUserData;
-  ::gfx::Loop loop;
+  std::shared_ptr<InputContext> _inputContext;
+  SHVar *_inputContextVar{};
+
+  std::shared_ptr<GraphicsContext> _graphicsContext;
+  SHVar *_graphicsContextVar{};
+
+  std::shared_ptr<ContextUserData> _contextUserData;
+  ::gfx::Loop _loop;
+
+  ExposedInfo _exposedVariables;
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -85,33 +84,25 @@ struct MainWindow : public Base {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    if (data.onWorkerThread) {
-      throw ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
-                         "within an Await shard)");
-    }
+    // Require extra stack space for the wire containing the main window
+    data.wire->stackSize = std::max<size_t>(data.wire->stackSize, 4 * 1024 * 1024);
 
-    // Make sure MainWindow is UNIQUE
+    composeCheckGfxThread(data);
+
+    // Make sure that windows are UNIQUE
     for (uint32_t i = 0; i < data.shared.len; i++) {
-      if (strcmp(data.shared.elements[i].name, "GFX.Context") == 0) {
+      if (strcmp(data.shared.elements[i].name, GraphicsContext::VariableName) == 0) {
         throw SHException("GFX.MainWindow must be unique, found another use!");
       }
     }
 
-    // Make sure MainWindow is UNIQUE
-    for (uint32_t i = 0; i < data.shared.len; i++) {
-      if (strcmp(data.shared.elements[i].name, "GFX.Context") == 0) {
-        throw SHException("GFX.MainWindow must be unique, found another use!");
-      }
-    }
+    _graphicsContext = std::make_shared<GraphicsContext>();
+    _inputContext = std::make_shared<InputContext>();
 
-    globals = std::make_shared<MainWindowGlobals>();
-
-    // twice to actually own the data and release...
-    IterableExposedInfo rshared(data.shared);
-    IterableExposedInfo shared(rshared);
-    shared.push_back(
-        ExposedInfo::ProtectedVariable(Base::mainWindowGlobalsVarName, SHCCSTR("The graphics context"), MainWindowGlobals::Type));
-    data.shared = shared;
+    _exposedVariables = ExposedInfo(data.shared);
+    _exposedVariables.push_back(GraphicsContext::VariableInfo);
+    _exposedVariables.push_back(InputContext::VariableInfo);
+    data.shared = SHExposedTypesInfo(_exposedVariables);
 
     _shards.compose(data);
 
@@ -119,62 +110,76 @@ struct MainWindow : public Base {
   }
 
   void warmup(SHContext *context) {
-    globals = std::make_shared<MainWindowGlobals>();
-    contextUserData = std::make_shared<ContextUserData>();
+    _graphicsContext = std::make_shared<GraphicsContext>();
+    _contextUserData = std::make_shared<ContextUserData>();
 
     WindowCreationOptions windowOptions = {};
     windowOptions.width = _pwidth;
     windowOptions.height = _pheight;
     windowOptions.title = _title;
-    globals->window = std::make_shared<Window>();
-    globals->window->init(windowOptions);
+    _graphicsContext->window = std::make_shared<Window>();
+    _graphicsContext->window->init(windowOptions);
 
     ContextCreationOptions contextOptions = {};
     contextOptions.debug = _debug;
-    globals->context = std::make_shared<Context>();
-    globals->context->init(*globals->window.get(), contextOptions);
+    _graphicsContext->context = std::make_shared<Context>();
+    _graphicsContext->context->init(*_graphicsContext->window.get(), contextOptions);
 
     // Attach user data to context
-    globals->context->userData.set(contextUserData.get());
+    _graphicsContext->context->userData.set(_contextUserData.get());
 
-    globals->renderer = std::make_shared<Renderer>(*globals->context.get());
+    _graphicsContext->renderer = std::make_shared<Renderer>(*_graphicsContext->context.get());
 
-    globals->shDrawQueue = SHDrawQueue{
+    _graphicsContext->shDrawQueue = SHDrawQueue{
         .queue = std::make_shared<DrawQueue>(),
     };
 
-    _mainWindowGlobalsVar = referenceVariable(context, Base::mainWindowGlobalsVarName);
-    _mainWindowGlobalsVar->payload.objectTypeId = SHTypeInfo(MainWindowGlobals::Type).object.typeId;
-    _mainWindowGlobalsVar->payload.objectVendorId = SHTypeInfo(MainWindowGlobals::Type).object.vendorId;
-    _mainWindowGlobalsVar->payload.objectValue = globals.get();
-    _mainWindowGlobalsVar->valueType = SHType::Object;
+    _graphicsContextVar = referenceVariable(context, GraphicsContext::VariableName);
+    _graphicsContextVar->payload.objectTypeId = SHTypeInfo(GraphicsContext::Type).object.typeId;
+    _graphicsContextVar->payload.objectVendorId = SHTypeInfo(GraphicsContext::Type).object.vendorId;
+    _graphicsContextVar->payload.objectValue = _graphicsContext.get();
+    _graphicsContextVar->valueType = SHType::Object;
+
+    _inputContextVar = referenceVariable(context, InputContext::VariableName);
+    _inputContextVar->payload.objectTypeId = SHTypeInfo(InputContext::Type).object.typeId;
+    _inputContextVar->payload.objectVendorId = SHTypeInfo(InputContext::Type).object.vendorId;
+    _inputContextVar->payload.objectValue = _inputContext.get();
+    _inputContextVar->valueType = SHType::Object;
 
     _shards.warmup(context);
   }
 
   void cleanup() {
-    globals.reset();
+    _graphicsContext.reset();
+    _inputContext.reset();
     _shards.cleanup();
 
-    if (_mainWindowGlobalsVar) {
-      if (_mainWindowGlobalsVar->refcount > 1) {
-        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to GFX.Context", _mainWindowGlobalsVar->refcount - 1);
+    if (_graphicsContextVar) {
+      if (_graphicsContextVar->refcount > 1) {
+        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _graphicsContextVar->refcount - 1, GraphicsContext::VariableName);
       }
-      releaseVariable(_mainWindowGlobalsVar);
+      releaseVariable(_graphicsContextVar);
+    }
+
+    if (_inputContextVar) {
+      if (_inputContextVar->refcount > 1) {
+        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _inputContextVar->refcount - 1, InputContext::VariableName);
+      }
+      releaseVariable(_inputContextVar);
     }
   }
 
-  void frameBegan() { globals->getDrawQueue()->clear(); }
+  void frameBegan() { _graphicsContext->getDrawQueue()->clear(); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &renderer = globals->renderer;
-    auto &context = globals->context;
-    auto &window = globals->window;
-    auto &events = globals->events;
+    auto &renderer = _graphicsContext->renderer;
+    auto &context = _graphicsContext->context;
+    auto &window = _graphicsContext->window;
+    auto &events = _inputContext->events;
 
     // Store shards context for current activation in user data
     // this is used by callback chains that need to resolve variables, etc.
-    contextUserData->shardsContext = shContext;
+    _contextUserData->shardsContext = shContext;
 
     window->pollEvents(events);
     for (auto &event : events) {
@@ -195,17 +200,17 @@ struct MainWindow : public Base {
     }
 
     // Push root input region
-    auto &inputStack = globals->inputStack;
+    auto &inputStack = _inputContext->inputStack;
     inputStack.reset();
     inputStack.push(input::InputStack::Item{
         .windowMapping = input::WindowSubRegion::fromEntireWindow(*window.get()),
     });
 
     float deltaTime = 0.0;
-    if (loop.beginFrame(0.0f, deltaTime)) {
+    if (_loop.beginFrame(0.0f, deltaTime)) {
       if (context->beginFrame()) {
-        globals->time = loop.getAbsoluteTime();
-        globals->deltaTime = deltaTime;
+        _graphicsContext->time = _loop.getAbsoluteTime();
+        _graphicsContext->deltaTime = deltaTime;
 
         renderer->beginFrame();
 
@@ -223,7 +228,7 @@ struct MainWindow : public Base {
     inputStack.pop();
 
     // Clear context
-    contextUserData->shardsContext = nullptr;
+    _contextUserData->shardsContext = nullptr;
 
     return SHVar{};
   }

@@ -8,10 +8,15 @@
 namespace gfx {
 using namespace linalg::aliases;
 
-// tighlty packs the matrix into dst with sizeof(float)*16
-inline void packFloat4x4(const float4x4 &mat, float *dst) {
-  for (int i = 0; i < 4; i++) {
-    memcpy(&dst[i * 4], &mat[i].x, sizeof(float) * 4);
+// Returns the byte size of a tighlty packed matrix based on input parameter
+template <typename T, int M, int N> inline constexpr size_t getPackedMatrixSize(const linalg::mat<T, M, N> &_unused) {
+  return sizeof(T) * M * N;
+}
+
+// tighlty packs the matrix into dst
+template <typename T, int M, int N> inline void packMatrix(const linalg::mat<T, M, N> &mat, T *dst) {
+  for (int i = 0; i < M; i++) {
+    memcpy(&dst[i * M], &mat[i].x, sizeof(T) * N);
   }
 }
 

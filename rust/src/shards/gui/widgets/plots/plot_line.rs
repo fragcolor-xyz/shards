@@ -7,10 +7,12 @@ use super::PLOT_UI_NAME;
 use super::SEQ_OF_FLOAT2_TYPES;
 use crate::shard::Shard;
 use crate::shards::gui::COLOR_VAR_OR_NONE_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shardsc::SHColor;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Seq;
@@ -22,13 +24,13 @@ lazy_static! {
   static ref LINE_PARAMETERS: Parameters = vec![
     (
       cstr!("Color"),
-      cstr!("Stroke color"),
+      shccstr!("Stroke color."),
       COLOR_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Name"),
-      cstr!("Name of this chart, displayed in the plot legend."),
+      shccstr!("Name of this chart, displayed in the plot legend."),
       STRING_OR_NONE_SLICE,
     )
       .into(),
@@ -67,12 +69,24 @@ impl Shard for PlotLine {
     "UI.PlotLine"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Line-connected points on a plot."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &SEQ_OF_FLOAT2_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("A sequence of point coordinates."))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &SEQ_OF_FLOAT2_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

@@ -9,83 +9,18 @@
 #include <gfx/view.hpp>
 #include <gfx/steps/defaults.hpp>
 #include <magic_enum.hpp>
+#include <exposed_type_utils.hpp>
 #include <params.hpp>
 
 using namespace shards;
 
 namespace gfx {
 
-struct DrawablePassShard {
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() { return Types::PipelineStep; }
+Context &GraphicsContext::getContext() { return *context.get(); }
+Window &GraphicsContext::getWindow() { return *window.get(); }
+SDL_Window *GraphicsContext::getSdlWindow() { return getWindow().window; }
 
-  PARAM_PARAMVAR(_features, "Features", "Features to use.", {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq});
-  PARAM_PARAMVAR(_queue, "Queue", "The queue to draw from (optional). Uses the default queue if not specified",
-                 {Type::VariableOf(Types::DrawQueue)});
-  PARAM_PARAMVAR(_forceDepthClear, "ForceDepthClear", "When true, forces a depth clear before rendering",
-                 {CoreInfo::BoolType, shards::Type::VariableOf(CoreInfo::BoolType)});
-  PARAM_IMPL(DrawablePassShard, PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_forceDepthClear));
-
-  PipelineStepPtr *_step{};
-
-  std::vector<FeaturePtr> _collectedFeatures;
-  std::vector<Var> _featureVars;
-
-  void cleanup() {
-    if (_step) {
-      Types::PipelineStepObjectVar.Release(_step);
-      _step = nullptr;
-    }
-    PARAM_CLEANUP();
-  }
-
-  void warmup(SHContext *context) {
-    _step = Types::PipelineStepObjectVar.New();
-    PARAM_WARMUP(context);
-  }
-
-  std::vector<FeaturePtr> collectFeatures(const SHVar &input) {
-    _collectedFeatures.clear();
-
-    Var featuresVar(_features.get());
-    featuresVar.intoVector(_featureVars);
-
-    for (auto &featureVar : _featureVars) {
-      if (featureVar.payload.objectValue) {
-        _collectedFeatures.push_back(*reinterpret_cast<FeaturePtr *>(featureVar.payload.objectValue));
-      }
-    }
-
-    _featureVars.clear();
-
-    return _collectedFeatures;
-  }
-
-  DrawQueuePtr getDrawQueue() {
-    SHVar queueVar = _queue.get();
-    if (queueVar.payload.objectValue) {
-      return (reinterpret_cast<SHDrawQueue *>(queueVar.payload.objectValue))->queue;
-    } else {
-      return DrawQueuePtr();
-    }
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    Var forceDepthClearVar(_forceDepthClear.get());
-
-    RenderStepOutput output =
-        steps::getDefaultRenderStepOutput(forceDepthClearVar.isNone() ? false : bool(forceDepthClearVar), std::nullopt);
-
-    *_step = makePipelineStep(RenderDrawablesStep{
-        .drawQueue = getDrawQueue(),
-        .features = collectFeatures(_features),
-        .output = output,
-    });
-    return Types::PipelineStepObjectVar.Get(_step);
-  }
-};
-
-struct RenderShard : public BaseConsumer {
+struct RenderShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
@@ -98,6 +33,7 @@ struct RenderShard : public BaseConsumer {
   };
   static SHParametersInfo parameters() { return params; }
 
+  RequiredGraphicsContext _graphicsContext;
   ParamVar _steps{};
   ParamVar _view{};
   ParamVar _views{};
@@ -133,8 +69,13 @@ struct RenderShard : public BaseConsumer {
     }
   }
 
+  SHExposedTypesInfo requiredVariables() {
+    static auto e = exposedTypesOf(decltype(_graphicsContext)::getExposedTypeInfo());
+    return e;
+  }
+
   void cleanup() {
-    baseConsumerCleanup();
+    _graphicsContext.cleanup();
     _steps.cleanup();
     _view.cleanup();
     _views.cleanup();
@@ -142,7 +83,7 @@ struct RenderShard : public BaseConsumer {
   }
 
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context);
+    _graphicsContext.warmup(context);
     _steps.warmup(context);
     _view.warmup(context);
     _views.warmup(context);
@@ -161,7 +102,7 @@ struct RenderShard : public BaseConsumer {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckMainThread(data);
+    composeCheckGfxThread(data);
     validateViewParameters();
     return CoreInfo::NoneType;
   }
@@ -199,7 +140,7 @@ struct RenderShard : public BaseConsumer {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
             if (!arg.drawQueue)
-              arg.drawQueue = getMainWindowGlobals().getDrawQueue();
+              arg.drawQueue = _graphicsContext->getDrawQueue();
           }
         },
         step);
@@ -227,8 +168,7 @@ struct RenderShard : public BaseConsumer {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    MainWindowGlobals &globals = getMainWindowGlobals();
-    globals.renderer->render(updateAndCollectViews(), collectPipelineSteps());
+    _graphicsContext->renderer->render(updateAndCollectViews(), collectPipelineSteps());
     return SHVar{};
   }
 };
@@ -242,10 +182,23 @@ extern void registerGLTFShards();
 extern void registerCameraShards();
 extern void registerTextureShards();
 extern void registerViewShards();
+extern void registerRenderStepShards();
 namespace shader {
 extern void registerTranslatorShards();
 }
 void registerShards() {
+  REGISTER_ENUM(Types::WindingOrderEnumInfo);
+  REGISTER_ENUM(Types::ShaderFieldBaseTypeEnumInfo);
+  REGISTER_ENUM(Types::ProgrammableGraphicsStageEnumInfo);
+  REGISTER_ENUM(Types::DependencyTypeEnumInfo);
+  REGISTER_ENUM(Types::BlendFactorEnumInfo);
+  REGISTER_ENUM(Types::BlendOperationEnumInfo);
+  REGISTER_ENUM(Types::FilterModeEnumInfo);
+  REGISTER_ENUM(Types::CompareFunctionEnumInfo);
+  REGISTER_ENUM(Types::ColorMaskEnumInfo);
+  REGISTER_ENUM(Types::TextureTypeEnumInfo);
+  REGISTER_ENUM(Types::SortModeEnumInfo);
+
   registerMainWindowShards();
   registerMeshShards();
   registerDrawableShards();
@@ -255,9 +208,8 @@ void registerShards() {
   registerCameraShards();
   registerTextureShards();
   registerViewShards();
+  registerRenderStepShards();
   shader::registerTranslatorShards();
-
-  REGISTER_SHARD("GFX.DrawablePass", DrawablePassShard);
   REGISTER_SHARD("GFX.Render", RenderShard);
 }
 } // namespace gfx

@@ -5,6 +5,7 @@
 
 #include "../../include/ops.hpp"
 #include "../../include/utility.hpp"
+#include "../../include/common_types.hpp"
 #include "../core/runtime.hpp"
 #include <linalg_shim.hpp>
 
@@ -1093,16 +1094,14 @@ struct GamePadTable : public TableVar {
 };
 
 struct HandTable : public GamePadTable {
-  static constexpr uint32_t HandednessCC = 'xrha';
-  static inline Type HandEnumType{{SHType::Enum, {.enumeration = {.vendorId = CoreCC, .typeId = HandednessCC}}}};
-  static inline EnumInfo<XRHand> HandEnumInfo{"XrHand", CoreCC, HandednessCC};
+  DECL_ENUM_INFO(XRHand, XrHand, 'xrha');
 
   HandTable()
       : GamePadTable(),                      //
         handedness((*this)["handedness"]),   //
         transform(get<SeqVar>("transform")), //
         inverseTransform(get<SeqVar>("inverseTransform")) {
-    handedness = Var::Enum(XRHand::Left, CoreCC, HandednessCC);
+    handedness = Var::Enum(XRHand::Left, XrHandEnumInfo::VendorId, XrHandEnumInfo::TypeId);
   }
 
   SHVar &handedness;
@@ -1245,7 +1244,8 @@ TEST_CASE("Vector types") {
   VectorTypeLookup Typelookup;
 
   SHType typesToCheck[] = {
-      Int, Int2, Int3, Int4, Int8, Int16, Float, Float2, Float3, Float4, Color,
+      SHType::Int,   SHType::Int2,   SHType::Int3,   SHType::Int4,   SHType::Int8,  SHType::Int16,
+      SHType::Float, SHType::Float2, SHType::Float3, SHType::Float4, SHType::Color,
   };
 
   for (const SHType &typeToCheck : typesToCheck) {

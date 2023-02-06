@@ -21,18 +21,18 @@ ConsumeEventFilter categorizeEvent(const SDL_Event &event) {
   case SDL_CONTROLLERTOUCHPADUP:
   case SDL_CONTROLLERSENSORUPDATE:
     return ConsumeEventFilter::Controller;
-  case SDL_MOUSEMOTION:
-  case SDL_MOUSEBUTTONDOWN:
-  case SDL_MOUSEWHEEL:
   case SDL_DOLLARGESTURE:
   case SDL_DOLLARRECORD:
   case SDL_MULTIGESTURE:
   case SDL_FINGERDOWN:
   case SDL_FINGERMOTION:
-    return ConsumeEventFilter::PointerDown;
   case SDL_FINGERUP:
+    return ConsumeEventFilter::Touch;
+  case SDL_MOUSEWHEEL:
   case SDL_MOUSEBUTTONUP:
-    return ConsumeEventFilter::PointerUp;
+  case SDL_MOUSEMOTION:
+  case SDL_MOUSEBUTTONDOWN:
+    return ConsumeEventFilter::Mouse;
   case SDL_KEYDOWN:
   case SDL_KEYUP:
   case SDL_TEXTEDITING:
@@ -44,6 +44,7 @@ ConsumeEventFilter categorizeEvent(const SDL_Event &event) {
     return ConsumeEventFilter::None;
   }
 }
+
 void InputBuffer::consumeEvents(ConsumeEventFilter filter, void *by) {
   for (auto it = begin(); it; ++it) {
     ConsumeEventFilter type = categorizeEvent(*it);

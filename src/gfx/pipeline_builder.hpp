@@ -17,27 +17,51 @@ enum class BindingFrequency {
 
 // Describes a buffer binding being built
 struct BufferBindingBuilder {
-  BindingFrequency frequency;
+  BindingFrequency frequency = BindingFrequency::Draw;
   std::string name;
   shader::UniformBufferLayoutBuilder layoutBuilder;
   bool unused = false;
-  size_t bindGroup;
-  size_t binding;
+  shader::BufferType bufferType = shader::BufferType::Uniform;
+  bool hasDynamicOffset = false;
+  size_t bindGroup{};
+  size_t binding{};
 };
 
 struct PipelineBuilder {
-  detail::CachedPipeline &cachedPipeline;
+  // Output
+  detail::CachedPipeline &output;
+
+  detail::RenderTargetLayout renderTargetLayout;
+
+  // First drawable that is grouped into this pipeline
+  const IDrawable &firstDrawable;
+
+  MeshFormat meshFormat;
+
+  // All features that apply to this pipeline
+  std::vector<const Feature *> features;
+
+  // Descriptions of the buffers that will be bound to this pipeline
   std::vector<BufferBindingBuilder> bufferBindings;
+
+  // Descriptions of the textures that will be bound to this pipeline
   shader::TextureBindingLayoutBuilder textureBindings;
+
+  // Description of material texture parameters
+  // During collectTextureBindings these values are collected into textureBindings
+  std::map<std::string, TextureParameter> materialTextureBindings;
+
+  // Cache variables
   std::vector<const shader::EntryPoint *> shaderEntryPoints;
   std::vector<BufferBindingBuilder *> drawBindings;
   std::vector<BufferBindingBuilder *> viewBindings;
   shader::Generator generator;
 
-  PipelineBuilder(detail::CachedPipeline &cachedPipeline) : cachedPipeline(cachedPipeline) {}
+  PipelineBuilder(detail::CachedPipeline &output, const detail::RenderTargetLayout &rtl, const IDrawable &firstDrawable)
+      : output(output), renderTargetLayout(rtl), firstDrawable(firstDrawable) {}
 
   BufferBindingBuilder &getOrCreateBufferBinding(std::string &&name);
-  WGPURenderPipeline build(WGPUDevice device, const WGPULimits &deviceLimits);
+  void build(WGPUDevice device, const WGPULimits &deviceLimits);
 
   static size_t getViewBindGroupIndex();
   static size_t getDrawBindGroupIndex();
@@ -45,11 +69,16 @@ struct PipelineBuilder {
 private:
   void collectShaderEntryPoints();
   void collectTextureBindings();
-  void buildBufferBindingLayouts();
   void buildPipelineLayout(WGPUDevice device, const WGPULimits &deviceLimits);
-  // WGPUPipelineLayout createPipelineLayout(WGPUDevice device);
+
+  // Setup buffer/texture definitions in the shader generator
+  void setupShaderDefinitions(const WGPULimits &deviceLimits, bool final);
+
+  void setupShaderOutputFields();
+
   shader::GeneratorOutput generateShader();
-  WGPURenderPipeline finalize(WGPUDevice device);
+
+  void finalize(WGPUDevice device);
 
   // Strip unused fields from bindings
   void optimizeBufferLayouts(const shader::IndexedBindings &indexedShaderDindings);

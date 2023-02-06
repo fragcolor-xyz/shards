@@ -21,7 +21,7 @@ struct Transform {
       ctx.write("vec4<f32>(");
       ctx.readInput("position");
 
-      auto &stageInputs = ctx.getInputs();
+      auto &stageInputs = ctx.getDefinitions().inputs;
       auto it = stageInputs.find("position");
       if (it != stageInputs.end()) {
         auto &type = it->second;
@@ -39,8 +39,8 @@ struct Transform {
       }
     });
 
-    feature->shaderEntryPoints.emplace_back(
-        "initLocalPosition", ProgrammableGraphicsStage::Vertex, WriteGlobal("localPosition", FieldTypes::Float4, std::move(vec4Pos)));
+    feature->shaderEntryPoints.emplace_back("initLocalPosition", ProgrammableGraphicsStage::Vertex,
+                                            WriteGlobal("localPosition", FieldTypes::Float4, std::move(vec4Pos)));
 
     auto &entry = feature->shaderEntryPoints.emplace_back("initWorldPosition", ProgrammableGraphicsStage::Vertex,
                                                           WriteGlobal("worldPosition", FieldTypes::Float4,

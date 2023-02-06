@@ -90,7 +90,7 @@ public:
 };
 
 static HWND AsHWND(const SHVar &var) {
-  if (var.valueType == Object && var.payload.objectVendorId == CoreCC && var.payload.objectTypeId == windowCC) {
+  if (var.valueType == SHType::Object && var.payload.objectVendorId == CoreCC && var.payload.objectTypeId == windowCC) {
     return reinterpret_cast<HWND>(var.payload.objectValue);
   }
   return NULL;
@@ -350,7 +350,7 @@ struct PixelBase {
   virtual void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      if (value.valueType == ContextVar) {
+      if (value.valueType == SHType::ContextVar) {
         variableName = value.payload.stringValue;
         exposedInfo = ExposedInfo(
             ExposedInfo::Variable(variableName.c_str(), SHCCSTR("The window to use as origin."), Globals::windowType));
@@ -479,7 +479,7 @@ struct Pixels : public PixelBase {
 
   Pixels() {
     _output = SHVar(); // zero it
-    _output.valueType = Image;
+    _output.valueType = SHType::Image;
     _output.payload.imageValue.channels = 4;
     _output.payload.imageValue.flags = 0;
   }

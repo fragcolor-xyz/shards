@@ -1,15 +1,12 @@
 set(core_SOURCES
-  runtime.cpp
   ops_internal.cpp
   number_types.cpp
-  runtime.cpp
   shards/assert.cpp
   shards/wires.cpp
   shards/logging.cpp
   shards/flow.cpp
   shards/seqs.cpp
   shards/casting.cpp
-  shards/core.cpp
   shards/linalg.cpp
   shards/serialization.cpp
   shards/json.cpp
@@ -24,12 +21,12 @@ set(core_SOURCES
   shards/imaging.cpp
   shards/wasm.cpp
   shards/http.cpp
+  shards/events.cpp
 )
 
 set(os_SOURCES
   shards/process.cpp
   shards/network.cpp
-  shards/ws.cpp
 )
 
 add_library(shards-core-static STATIC ${core_SOURCES})
@@ -42,6 +39,31 @@ if(SHARDS_NO_BIGINT_SHARDS)
 else()
   target_sources(shards-core-static PRIVATE shards/bigint.cpp)
 endif()
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  set(SHARDS_INLINE_EVERYTHING_DEFAULT OFF)
+else()
+  set(SHARDS_INLINE_EVERYTHING_DEFAULT ON)
+endif()
+if(NOT DEFINED SHARDS_INLINE_EVERYTHING)
+  set(SHARDS_INLINE_EVERYTHING ${SHARDS_INLINE_EVERYTHING_DEFAULT} CACHE BOOL "When enabled, runtime and core shards are inlined in a single compilation unit")
+endif()
+
+if(SHARDS_INLINE_EVERYTHING)
+  # Compile only runtime_inlined which will compile the runtime and all inlined shards in a single translation unit
+  target_compile_definitions(shards-core-static PUBLIC SHARDS_INLINE_EVERYTHING=1)
+  target_sources(shards-core-static PRIVATE runtime_inlined.cpp)
+else()
+  # Compile normally inlined sources separately
+  target_sources(shards-core-static PRIVATE
+    shards/inlined.cpp
+    shards/core.cpp
+    shards/math.cpp
+    runtime.cpp
+  )
+endif()
+
+target_precompile_headers(shards-core-static PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 
 if(APPLE)
   target_link_libraries(shards-core-static
@@ -98,7 +120,7 @@ endif()
 
 target_link_libraries(shards-core-static
   spdlog magic_enum nameof linalg xxHash
-  pdqsort utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem
+  pdqsort entt utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem
   shards-logging
 )
 

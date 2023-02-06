@@ -8,6 +8,8 @@
 #include <gfx/pipeline_step.hpp>
 #include <gfx/shader/entry_point.hpp>
 #include <gfx/shader/types.hpp>
+#include <gfx/drawables/mesh_drawable.hpp>
+#include <gfx/drawables/mesh_tree_drawable.hpp>
 #include <memory>
 #include <shards.hpp>
 #include <vector>
@@ -28,7 +30,7 @@ struct SHShaderParameters {
 };
 
 struct SHDrawable {
-  DrawablePtr drawable;
+  MeshDrawable drawable;
   shards::ParamVar transformVar;
   shards::ParamVar materialVar;
   SHShaderParameters shaderParameters;
@@ -36,8 +38,8 @@ struct SHDrawable {
   void updateVariables();
 };
 
-struct SHDrawableHierarchy {
-  DrawableHierarchyPtr drawableHierarchy;
+struct SHTreeDrawable {
+  MeshTreeDrawable::Ptr drawable;
   shards::ParamVar transformVar;
 
   void updateVariables();
@@ -71,28 +73,22 @@ namespace detail {
 using namespace shards;
 // NOTE: This needs to be a struct ensure correct initialization order under clang
 struct Container {
-#define SH_CONCAT(_a, _b) _a##_b
-#define ENUM(_id, _displayName, _definedAs, _type)                                     \
-  static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);             \
-  static inline Type _definedAs = Type::Enum(VendorId, SH_CONCAT(_definedAs, TypeId)); \
-  static inline EnumInfo<_type> SH_CONCAT(_definedAs, EnumInfo){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
-
 #define OBJECT(_id, _displayName, _definedAs, _type)                                                                            \
   static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);                                                      \
   static inline Type _definedAs{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
   static inline ObjectVar<_type> SH_CONCAT(_definedAs, ObjectVar){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
 
-  OBJECT('drah', "GFX.DrawableHierarchy", DrawableHierarchy, SHDrawableHierarchy)
+  OBJECT('drah', "GFX.TreeDrawable", TreeDrawable, SHTreeDrawable)
   OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
   OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue)
   OBJECT('tex_', "GFX.Texture", Texture, TexturePtr)
   OBJECT('rtex', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
 
-  ENUM('_e0', "WindingOrder", WindingOrder, gfx::WindingOrder)
-  ENUM('_e1', "ShaderFieldBaseType", ShaderFieldBaseType, gfx::ShaderFieldBaseType)
-  ENUM('_e2', "ProgrammableGraphicsStage", ProgrammableGraphicsStage, gfx::ProgrammableGraphicsStage)
-  ENUM('_e3', "DependencyType", DependencyType, shader::DependencyType)
+  DECL_ENUM_INFO(gfx::WindingOrder, WindingOrder, '_e0');
+  DECL_ENUM_INFO(gfx::ShaderFieldBaseType, ShaderFieldBaseType, '_e1');
+  DECL_ENUM_INFO(gfx::ProgrammableGraphicsStage, ProgrammableGraphicsStage, '_e2');
+  DECL_ENUM_INFO(shader::DependencyType, DependencyType, '_e3');
 
   enum class BlendFactor_ {
     Zero = WGPUBlendFactor_Zero,
@@ -109,7 +105,7 @@ struct Container {
     Constant = WGPUBlendFactor_Constant,
     OneMinusConstant = WGPUBlendFactor_OneMinusConstant,
   };
-  ENUM('_e4', "BlendFactor", BlendFactor, BlendFactor_)
+  DECL_ENUM_INFO(BlendFactor_, BlendFactor, '_e4');
 
   enum class BlendOperation_ {
     Add = WGPUBlendOperation_Add,
@@ -118,13 +114,13 @@ struct Container {
     Min = WGPUBlendOperation_Min,
     Max = WGPUBlendOperation_Max,
   };
-  ENUM('_e5', "BlendOperation", BlendOperation, BlendOperation_)
+  DECL_ENUM_INFO(BlendOperation_, BlendOperation, '_e5');
 
   enum class FilterMode_ {
     Nearest = WGPUFilterMode_Nearest,
     Linear = WGPUFilterMode_Linear,
   };
-  ENUM('_e6', "FilterMode", FilterModeEnum, FilterMode_)
+  DECL_ENUM_INFO(FilterMode_, FilterMode, '_e6');
 
   enum class CompareFunction_ {
     Undefined = WGPUCompareFunction_Undefined,
@@ -137,7 +133,7 @@ struct Container {
     NotEqual = WGPUCompareFunction_NotEqual,
     Always = WGPUCompareFunction_Always,
   };
-  ENUM('_e7', "CompareFunction", CompareFunction, CompareFunction_)
+  DECL_ENUM_INFO(CompareFunction_, CompareFunction, '_e7');
 
   enum class ColorMask_ {
     None = WGPUColorWriteMask_None,
@@ -147,7 +143,7 @@ struct Container {
     Alpha = WGPUColorWriteMask_Alpha,
     All = WGPUColorWriteMask_All,
   };
-  ENUM('_e8', "ColorMask", ColorMask, ColorMask_)
+  DECL_ENUM_INFO(ColorMask_, ColorMask, '_e8');
 
   enum class TextureType_ {
     Default = 0,
@@ -158,9 +154,17 @@ struct Container {
     SNorm,
     Float,
   };
-  ENUM('_e9', "TextureType", TextureType, TextureType_)
+  DECL_ENUM_INFO(TextureType_, TextureType, '_e9');
+
+  enum class SortMode_ : uint8_t {
+    Batch = uint8_t(SortMode::Batch),
+    Queue = uint8_t(SortMode::Queue),
+    BackToFront = uint8_t(SortMode::BackToFront),
+  };
+  DECL_ENUM_INFO(SortMode_, SortMode, '_e10');
 
   OBJECT('feat', "GFX.Feature", Feature, FeaturePtr)
+  static inline Type FeatureSeq = Type::SeqOf(Feature);
 
   OBJECT('pips', "GFX.PipelineStep", PipelineStep, PipelineStepPtr)
   static inline Type PipelineStepSeq = Type::SeqOf(PipelineStep);
@@ -190,15 +194,24 @@ struct Container {
   static inline Type ShaderParamTable = Type::TableOf(ShaderParamTypes);
 
   static inline Types TextureTypes = {{
-      TextureType,
+      Texture,
   }};
 
   static inline Types TextureVarTypes = {{
-      Type::VariableOf(TextureType),
+      Type::VariableOf(Texture),
   }};
 
   // Valid types for shader :Textures
   static inline Type TexturesTable = Type::TableOf(TextureTypes);
+
+  static inline std::map<std::string, Type> DrawableInputTableTypes = {
+      std::make_pair("Transform", CoreInfo::Float4x4Type),
+      std::make_pair("Mesh", Mesh),
+      std::make_pair("Params", ShaderParamTable),
+      std::make_pair("Textures", TexturesTable),
+      std::make_pair("Material", Material),
+      std::make_pair("Features", FeatureSeq),
+  };
 
 #undef ENUM
 #undef OBJECT

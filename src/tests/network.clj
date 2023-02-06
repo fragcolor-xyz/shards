@@ -53,7 +53,7 @@
                                         ; which is the above
                                         ; Network.RemoteEndpoint
                                         ; are the injected variables
-         (Once (Dispatch client-init))
+         (Once (Do client-init))
          ))
 
 ; manually tick and such to properly close all (threads... windows issues)

@@ -1,22 +1,18 @@
-(defloop main-wire
-  (GFX.MainWindow
-   :Contents
-   (->
-    (Setup
-     (GFX.DrawQueue) >= .ui-draw-queue
-     (GFX.UIPass .ui-draw-queue) >> .render-steps)
-    .ui-draw-queue (GFX.ClearQueue)
+(GFX.MainWindow
+ :Contents
+ (->
+  (Setup
+   (GFX.DrawQueue) >= .ui-draw-queue
+   (GFX.UIPass .ui-draw-queue) >> .render-steps)
+  .ui-draw-queue (GFX.ClearQueue)
 
-    (UI
-     .ui-draw-queue
-     (UI.CentralPanel
-      (->
-       (UI.Float2Slider
-        :Variable .float2
-        :Min (float2 0) :Max (float2 1))
-       (ExpectFloat2))))
+  (UI
+   .ui-draw-queue
+   (UI.CentralPanel
+    (->
+     (UI.Float2Slider
+      :Variable .float2
+      :Min (float2 0) :Max (float2 1))
+     (ExpectFloat2))))
 
-    (GFX.Render :Steps .render-steps))))
-(defmesh root)
-(schedule root main-wire)
-(run root 0.1 10)
+  (GFX.Render :Steps .render-steps)))

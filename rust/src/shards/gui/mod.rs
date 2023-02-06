@@ -8,12 +8,12 @@ use crate::shard::Shard;
 use crate::shardsc;
 use crate::types::common_type;
 use crate::types::ExposedTypes;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Var;
 use crate::types::FRAG_CC;
-use egui::Context as EguiNativeContext;
 use std::ffi::c_void;
 use std::ffi::CStr;
 
@@ -53,11 +53,18 @@ static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
 lazy_static! {
-  static ref GFX_GLOBALS_TYPE: Type = unsafe { *shardsc::gfx_getMainWindowGlobalsType() };
+  static ref GFX_CONTEXT_TYPE: Type = unsafe { *shardsc::gfx_getGraphicsContextType() };
+  static ref INPUT_CONTEXT_TYPE: Type = unsafe { *shardsc::gfx_getInputContextType() };
   static ref GFX_QUEUE_TYPE: Type = unsafe { *shardsc::gfx_getQueueType() };
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
+}
+
+lazy_static! {
+  static ref HELP_OUTPUT_EQUAL_INPUT: OptionalString =
+    OptionalString(shccstr!("The output of this shard will be its input."));
+  static ref HELP_VALUE_IGNORED: OptionalString = OptionalString(shccstr!("The value is ignored."));
 }
 
 const CONTEXTS_NAME: &str = "UI.Contexts";
@@ -78,14 +85,21 @@ impl EguiId {
   }
 }
 
+impl From<EguiId> for egui::Id {
+  fn from(value: EguiId) -> Self {
+    egui::Id::new(value)
+  }
+}
+
+mod egui_host;
+
 struct EguiContext {
-  context: Option<EguiNativeContext>,
-  instance: ParamVar,
+  host: egui_host::EguiHost,
   requiring: ExposedTypes,
   queue: ParamVar,
   contents: ShardsVar,
-  main_window_globals: ParamVar,
-  parents: ParamVar,
+  graphics_context: ParamVar,
+  input_context: ParamVar,
   renderer: egui_gfx::Renderer,
   input_translator: egui_gfx::InputTranslator,
 }

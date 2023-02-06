@@ -8,11 +8,19 @@ set(extra_SOURCES
   gfx/feature.cpp
   gfx/shader/translator.cpp
   gfx/shader/wgsl.cpp
+  gfx/shader/composition.cpp
+  gfx/shader/linalg_shards.cpp
+  gfx/shader/math_shards.cpp
+  gfx/shader/core_shards.cpp
+  gfx/shader/wire_shards.cpp
+  gfx/shader/flow_shards.cpp
   gfx/gltf.cpp
   gfx/camera.cpp
   gfx/texture.cpp
   gfx/view.cpp
-  gui.cpp
+  gfx/steps.cpp
+  spatial/spatial.cpp
+  egui/pass.cpp
   rust_interop.cpp
   gizmos/context.cpp
   gizmos/gizmos.cpp
@@ -36,7 +44,7 @@ target_link_libraries(shards-extra SDL2)
 
 target_link_libraries(shards-extra
   shards-core
-  stb gfx gfx-gltf gfx-egui input
+  stb gfx gfx-gltf gfx-egui input spatial
   brotlienc-static brotlidec-static brotlicommon-static snappy
   kissfft miniaudio
   nlohmann_json
@@ -53,6 +61,8 @@ if(IOS)
 else()
   target_sources(shards-extra PRIVATE audio.cpp)
 endif()
+
+target_precompile_headers(shards-extra PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
 
 option(SHARDS_EXTRA_BUILD_SHARED OFF "Build shards extra as dynamic library")
 

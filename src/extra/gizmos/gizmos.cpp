@@ -10,9 +10,9 @@ namespace Gizmos {
 using linalg::aliases::float3;
 using linalg::aliases::float4x4;
 
-struct TranslationGizmo : public BaseConsumer {
+struct TranslationGizmo : public Base {
   static SHTypesInfo inputTypes() {
-    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable, gfx::Types::DrawableHierarchy}};
+    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable, gfx::Types::TreeDrawable}};
     return inputTypes;
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
@@ -24,8 +24,6 @@ struct TranslationGizmo : public BaseConsumer {
   gfx::gizmos::TranslationGizmo _gizmo{};
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &helperContext = getContext();
-
     float4x4 inputMat;
     std::function<void(float4x4 & mat)> applyOutputMat;
 
@@ -41,17 +39,17 @@ struct TranslationGizmo : public BaseConsumer {
           inputMat = (shards::Mat4)drawable->transformVar.get();
           applyOutputMat = [&](float4x4 &outMat) { cloneVar(drawable->transformVar.get(), (shards::Mat4)outMat); };
         } else {
-          inputMat = (shards::Mat4)drawable->drawable->transform;
-          applyOutputMat = [&](float4x4 &outMat) { drawable->drawable->transform = outMat; };
+          inputMat = (shards::Mat4)drawable->drawable.transform;
+          applyOutputMat = [&](float4x4 &outMat) { drawable->drawable.transform = outMat; };
         }
-      } else if (objectType == gfx::Types::DrawableHierarchy) {
-        gfx::SHDrawableHierarchy *drawable = reinterpret_cast<gfx::SHDrawableHierarchy *>(input.payload.objectValue);
+      } else if (objectType == gfx::Types::TreeDrawable) {
+        gfx::SHTreeDrawable *drawable = reinterpret_cast<gfx::SHTreeDrawable *>(input.payload.objectValue);
         if (drawable->transformVar.isVariable()) {
           inputMat = (shards::Mat4)drawable->transformVar.get();
           applyOutputMat = [&](float4x4 &outMat) { cloneVar(drawable->transformVar.get(), (shards::Mat4)outMat); };
         } else {
-          inputMat = (shards::Mat4)drawable->drawableHierarchy->transform;
-          applyOutputMat = [&](float4x4 &outMat) { drawable->drawableHierarchy->transform = outMat; };
+          inputMat = (shards::Mat4)drawable->drawable->transform;
+          applyOutputMat = [&](float4x4 &outMat) { drawable->drawable->transform = outMat; };
         }
       } else {
         throw std::invalid_argument("input type");
@@ -67,9 +65,9 @@ struct TranslationGizmo : public BaseConsumer {
 
     // Scale based on screen distance
     float3 gizmoLocation = gfx::extractTranslation(_gizmo.transform);
-    _gizmo.scale = helperContext.gizmoContext.renderer.getSize(gizmoLocation);
+    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getSize(gizmoLocation);
 
-    helperContext.gizmoContext.updateGizmo(_gizmo);
+    _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
 
     if (applyOutputMat)
       applyOutputMat(_gizmo.transform);
@@ -79,17 +77,16 @@ struct TranslationGizmo : public BaseConsumer {
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    baseConsumerWarmup(context);
+    baseWarmup(context);
   }
 
   void cleanup() {
     PARAM_CLEANUP();
-    baseConsumerCleanup();
+    baseCleanup();
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckMainThread(data);
-    composeCheckContext(data);
+    gfx::composeCheckGfxThread(data);
     return outputTypes().elements[0];
   }
 };

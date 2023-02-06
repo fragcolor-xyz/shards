@@ -61,10 +61,12 @@ else()
 endif()
 message(STATUS "RUST_BUILD_SUBDIR = ${RUST_BUILD_SUBDIR}")
 
-set(RUST_FLAGS ${RUST_FLAGS} -Ctarget-cpu=${ARCH})
+if(ARCH)
+  list(APPEND RUST_FLAGS -Ctarget-cpu=${ARCH})
+endif()
 
 if(RUST_USE_LTO)
-  set(RUST_FLAGS ${RUST_FLAGS} -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld)
+list(APPEND RUST_FLAGS -Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld)
 endif()
 
 if(EMSCRIPTEN_PTHREADS)
@@ -117,6 +119,14 @@ function(add_rust_library)
   message(VERBOSE "  PROJECT_PATH = ${RUST_PROJECT_PATH}")
   message(VERBOSE "  TARGET_PATH = ${RUST_TARGET_PATH}")
   message(VERBOSE "  TARGET_NAME = ${RUST_TARGET_NAME}")
+
+  if(NOT RUST_NAME)
+    message(FATAL_ERROR "NAME <name> is required")
+  endif()
+
+  if(NOT RUST_NAME)
+    message(FATAL_ERROR "PROJECT_PATH <path> is required")
+  endif()
 
   if(RUST_FEATURES)
     list(JOIN RUST_FEATURES "," RUST_FEATURES_STRING)
@@ -176,6 +186,10 @@ function(add_rust_library)
     list(APPEND EXTRA_CLANG_ARGS "-fvisibility=default")
   endif()
 
+  if(IOS)
+    list(APPEND EXTRA_CLANG_ARGS "-mios-version-min=10.0")
+  endif()
+
   if(EXTRA_CLANG_ARGS)
     set(BINDGEN_EXTRA_CLANG_ARGS BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS}")
   endif()
@@ -188,9 +202,11 @@ function(add_rust_library)
     list(APPEND RUST_ENVIRONMENT "AR=${ANDROID_TOOLCHAIN_ROOT}/bin/llvm-ar")
   endif()
 
+  list(APPEND RUST_ENVIRONMENT RUSTFLAGS="${RUST_FLAGS}")
+
   add_custom_command(
     OUTPUT ${GENERATED_LIB_PATH}
-    COMMAND ${CMAKE_COMMAND} -E env RUSTFLAGS="${RUST_FLAGS}" ${BINDGEN_EXTRA_CLANG_ARGS} ${RUST_ENVIRONMENT} ${RUST_BUILD_SCRIPT} ${CARGO_EXE} ${RUST_CARGO_TOOLCHAIN} rustc ${RUST_CARGO_UNSTABLE_FLAGS} ${RUST_FEATURES_ARG} ${RUST_CRATE_TYPE_ARG} ${RUST_TARGET_ARG} ${RUST_CARGO_FLAGS}
+    COMMAND ${CMAKE_COMMAND} -E env ${BINDGEN_EXTRA_CLANG_ARGS} ${RUST_ENVIRONMENT} ${RUST_BUILD_SCRIPT} ${CARGO_EXE} ${RUST_CARGO_TOOLCHAIN} rustc ${RUST_CARGO_UNSTABLE_FLAGS} ${RUST_FEATURES_ARG} ${RUST_CRATE_TYPE_ARG} ${RUST_TARGET_ARG} ${RUST_CARGO_FLAGS}
     WORKING_DIRECTORY ${RUST_PROJECT_PATH}
     DEPENDS ${RUST_SOURCES} ${RUST_DEPENDS}
     USES_TERMINAL

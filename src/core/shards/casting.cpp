@@ -316,33 +316,6 @@ template <SHType ET> struct ExpectX {
   }
 };
 
-#define EXPECT_SHARD(_name_, _shtype_)                 \
-  struct Expect##_name_ : public ExpectX<_shtype_> {}; \
-  RUNTIME_CORE_SHARD(Expect##_name_);                  \
-  RUNTIME_SHARD_inputTypes(Expect##_name_);            \
-  RUNTIME_SHARD_outputTypes(Expect##_name_);           \
-  RUNTIME_SHARD_activate(Expect##_name_);              \
-  RUNTIME_SHARD_END(Expect##_name_);
-
-EXPECT_SHARD(None, None);
-EXPECT_SHARD(Any, SHType::Any);
-EXPECT_SHARD(Float, Float);
-EXPECT_SHARD(Float2, Float2);
-EXPECT_SHARD(Float3, Float3);
-EXPECT_SHARD(Float4, Float4);
-EXPECT_SHARD(Bool, Bool);
-EXPECT_SHARD(Color, Color);
-EXPECT_SHARD(Int, Int);
-EXPECT_SHARD(Int2, Int2);
-EXPECT_SHARD(Int3, Int3);
-EXPECT_SHARD(Int4, Int4);
-EXPECT_SHARD(Bytes, Bytes);
-EXPECT_SHARD(String, String);
-EXPECT_SHARD(Image, Image);
-EXPECT_SHARD(Seq, Seq);
-EXPECT_SHARD(Table, Table);
-EXPECT_SHARD(Wire, SHType::Wire);
-
 template <Type &ET> struct ExpectXComplex {
   static inline Parameters params{{"Unsafe",
                                    SHCCSTR("If we should skip performing deep type hashing and comparison. "
@@ -411,7 +384,7 @@ struct ExpectLike {
   }
 
   void destroy() {
-    if (_expectedType.basicType != None && _dispose) {
+    if (_expectedType.basicType != SHType::None && _dispose) {
       freeDerivedInfo(_expectedType);
       _expectedType = {};
       _dispose = false;
@@ -422,7 +395,7 @@ struct ExpectLike {
     if (_example.isVariable()) {
       throw ComposeError("The example value of ExpectLike cannot be a variable");
     } else {
-      if (_expectedType.basicType != None && _dispose) {
+      if (_expectedType.basicType != SHType::None && _dispose) {
         freeDerivedInfo(_expectedType);
         _expectedType = {};
         _dispose = false;
@@ -436,7 +409,7 @@ struct ExpectLike {
         SHVar example = _example;
         _expectedType = deriveTypeInfo(example, data);
         _dispose = true;
-        _outputTypeHash = deriveTypeHash(_expectedType);
+        _outputTypeHash = deriveTypeHash(example);
         return _expectedType;
       }
     }
@@ -457,6 +430,12 @@ struct ExpectLike {
   }
 };
 
+template <SHType ET> struct IsX {
+  SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  SHVar activate(SHContext *context, const SHVar &input) { return Var(input.valueType == ET); }
+};
+
 struct ToBase64 {
   std::string output;
   static inline Types _inputTypes{{CoreInfo::BytesType, CoreInfo::StringType}};
@@ -464,7 +443,7 @@ struct ToBase64 {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   SHVar activate(SHContext *context, const SHVar &input) {
     output.clear();
-    if (input.valueType == Bytes) {
+    if (input.valueType == SHType::Bytes) {
       auto req = boost::beast::detail::base64::encoded_size(input.payload.bytesSize);
       output.resize(req);
       auto written = boost::beast::detail::base64::encode(output.data(), input.payload.bytesValue, input.payload.bytesSize);
@@ -572,27 +551,27 @@ struct ImageToBytes {
 };
 
 void registerCastingShards() {
-  REGISTER_SHARD("ToInt", ToNumber<Int>);
-  REGISTER_SHARD("ToInt2", ToNumber<Int2>);
-  REGISTER_SHARD("ToInt3", ToNumber<Int3>);
-  REGISTER_SHARD("ToInt4", ToNumber<Int4>);
-  REGISTER_SHARD("ToInt8", ToNumber<Int8>);
-  REGISTER_SHARD("ToInt16", ToNumber<Int16>);
-  REGISTER_SHARD("ToColor", ToNumber<Color>);
-  REGISTER_SHARD("ToFloat", ToNumber<Float>);
-  REGISTER_SHARD("ToFloat2", ToNumber<Float2>);
-  REGISTER_SHARD("ToFloat3", ToNumber<Float3>);
-  REGISTER_SHARD("ToFloat4", ToNumber<Float4>);
+  REGISTER_SHARD("ToInt", ToNumber<SHType::Int>);
+  REGISTER_SHARD("ToInt2", ToNumber<SHType::Int2>);
+  REGISTER_SHARD("ToInt3", ToNumber<SHType::Int3>);
+  REGISTER_SHARD("ToInt4", ToNumber<SHType::Int4>);
+  REGISTER_SHARD("ToInt8", ToNumber<SHType::Int8>);
+  REGISTER_SHARD("ToInt16", ToNumber<SHType::Int16>);
+  REGISTER_SHARD("ToColor", ToNumber<SHType::Color>);
+  REGISTER_SHARD("ToFloat", ToNumber<SHType::Float>);
+  REGISTER_SHARD("ToFloat2", ToNumber<SHType::Float2>);
+  REGISTER_SHARD("ToFloat3", ToNumber<SHType::Float3>);
+  REGISTER_SHARD("ToFloat4", ToNumber<SHType::Float4>);
 
-  REGISTER_SHARD("MakeInt2", MakeVector<Int2>);
-  REGISTER_SHARD("MakeInt3", MakeVector<Int3>);
-  REGISTER_SHARD("MakeInt4", MakeVector<Int4>);
-  REGISTER_SHARD("MakeInt8", MakeVector<Int8>);
-  REGISTER_SHARD("MakeInt16", MakeVector<Int16>);
-  REGISTER_SHARD("MakeColor", MakeVector<Color>);
-  REGISTER_SHARD("MakeFloat2", MakeVector<Float2>);
-  REGISTER_SHARD("MakeFloat3", MakeVector<Float3>);
-  REGISTER_SHARD("MakeFloat4", MakeVector<Float4>);
+  REGISTER_SHARD("MakeInt2", MakeVector<SHType::Int2>);
+  REGISTER_SHARD("MakeInt3", MakeVector<SHType::Int3>);
+  REGISTER_SHARD("MakeInt4", MakeVector<SHType::Int4>);
+  REGISTER_SHARD("MakeInt8", MakeVector<SHType::Int8>);
+  REGISTER_SHARD("MakeInt16", MakeVector<SHType::Int16>);
+  REGISTER_SHARD("MakeColor", MakeVector<SHType::Color>);
+  REGISTER_SHARD("MakeFloat2", MakeVector<SHType::Float2>);
+  REGISTER_SHARD("MakeFloat3", MakeVector<SHType::Float3>);
+  REGISTER_SHARD("MakeFloat4", MakeVector<SHType::Float4>);
 
   REGISTER_CORE_SHARD(ToString);
   REGISTER_CORE_SHARD(ToHex);
@@ -602,24 +581,89 @@ void registerCastingShards() {
   REGISTER_CORE_SHARD(BitSwap32);
   REGISTER_CORE_SHARD(BitSwap64);
 
-  REGISTER_CORE_SHARD(ExpectNone);
-  REGISTER_CORE_SHARD(ExpectAny);
-  REGISTER_CORE_SHARD(ExpectInt);
-  REGISTER_CORE_SHARD(ExpectInt2);
-  REGISTER_CORE_SHARD(ExpectInt3);
-  REGISTER_CORE_SHARD(ExpectInt4);
-  REGISTER_CORE_SHARD(ExpectFloat);
-  REGISTER_CORE_SHARD(ExpectFloat2);
-  REGISTER_CORE_SHARD(ExpectFloat3);
-  REGISTER_CORE_SHARD(ExpectFloat4);
-  REGISTER_CORE_SHARD(ExpectBytes);
-  REGISTER_CORE_SHARD(ExpectString);
-  REGISTER_CORE_SHARD(ExpectImage);
-  REGISTER_CORE_SHARD(ExpectBool);
-  REGISTER_CORE_SHARD(ExpectColor);
-  REGISTER_CORE_SHARD(ExpectSeq);
-  REGISTER_CORE_SHARD(ExpectWire);
-  REGISTER_CORE_SHARD(ExpectTable);
+  using ExpectNone = ExpectX<SHType::None>;
+  REGISTER_SHARD("ExpectNone", ExpectNone);
+  using ExpectInt = ExpectX<SHType::Int>;
+  REGISTER_SHARD("ExpectInt", ExpectInt);
+  using ExpectInt2 = ExpectX<SHType::Int2>;
+  REGISTER_SHARD("ExpectInt2", ExpectInt2);
+  using ExpectInt3 = ExpectX<SHType::Int3>;
+  REGISTER_SHARD("ExpectInt3", ExpectInt3);
+  using ExpectInt4 = ExpectX<SHType::Int4>;
+  REGISTER_SHARD("ExpectInt4", ExpectInt4);
+  using ExpectFloat = ExpectX<SHType::Float>;
+  REGISTER_SHARD("ExpectFloat", ExpectFloat);
+  using ExpectFloat2 = ExpectX<SHType::Float2>;
+  REGISTER_SHARD("ExpectFloat2", ExpectFloat2);
+  using ExpectFloat3 = ExpectX<SHType::Float3>;
+  REGISTER_SHARD("ExpectFloat3", ExpectFloat3);
+  using ExpectFloat4 = ExpectX<SHType::Float4>;
+  REGISTER_SHARD("ExpectFloat4", ExpectFloat4);
+  using ExpectBytes = ExpectX<SHType::Bytes>;
+  REGISTER_SHARD("ExpectBytes", ExpectBytes);
+  using ExpectString = ExpectX<SHType::String>;
+  REGISTER_SHARD("ExpectString", ExpectString);
+  using ExpectImage = ExpectX<SHType::Image>;
+  REGISTER_SHARD("ExpectImage", ExpectImage);
+  using ExpectBool = ExpectX<SHType::Bool>;
+  REGISTER_SHARD("ExpectBool", ExpectBool);
+  using ExpectColor = ExpectX<SHType::Color>;
+  REGISTER_SHARD("ExpectColor", ExpectColor);
+  using ExpectSeq = ExpectX<SHType::Seq>;
+  REGISTER_SHARD("ExpectSeq", ExpectSeq);
+  using ExpectWire = ExpectX<SHType::Wire>;
+  REGISTER_SHARD("ExpectWire", ExpectWire);
+  using ExpectTable = ExpectX<SHType::Table>;
+  REGISTER_SHARD("ExpectTable", ExpectTable);
+  using ExpectAudio = ExpectX<SHType::Audio>;
+  REGISTER_SHARD("ExpectAudio", ExpectAudio);
+
+  using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
+  REGISTER_SHARD("ExpectFloatSeq", ExpectFloatSeq);
+  using ExpectIntSeq = ExpectXComplex<CoreInfo::IntSeqType>;
+  REGISTER_SHARD("ExpectIntSeq", ExpectIntSeq);
+  using ExpectBytesSeq = ExpectXComplex<CoreInfo::BytesSeqType>;
+  REGISTER_SHARD("ExpectBytesSeq", ExpectBytesSeq);
+  using ExpectStringSeq = ExpectXComplex<CoreInfo::StringSeqType>;
+  REGISTER_SHARD("ExpectStringSeq", ExpectStringSeq);
+
+  REGISTER_SHARD("ExpectLike", ExpectLike);
+
+  // IsNone is implemented in Core
+  using IsInt = IsX<SHType::Int>;
+  REGISTER_SHARD("IsInt", IsInt);
+  using IsInt2 = IsX<SHType::Int2>;
+  REGISTER_SHARD("IsInt2", IsInt2);
+  using IsInt3 = IsX<SHType::Int3>;
+  REGISTER_SHARD("IsInt3", IsInt3);
+  using IsInt4 = IsX<SHType::Int4>;
+  REGISTER_SHARD("IsInt4", IsInt4);
+  using IsFloat = IsX<SHType::Float>;
+  REGISTER_SHARD("IsFloat", IsFloat);
+  using IsFloat2 = IsX<SHType::Float2>;
+  REGISTER_SHARD("IsFloat2", IsFloat2);
+  using IsFloat3 = IsX<SHType::Float3>;
+  REGISTER_SHARD("IsFloat3", IsFloat3);
+  using IsFloat4 = IsX<SHType::Float4>;
+  REGISTER_SHARD("IsFloat4", IsFloat4);
+  using IsBytes = IsX<SHType::Bytes>;
+  REGISTER_SHARD("IsBytes", IsBytes);
+  using IsString = IsX<SHType::String>;
+  REGISTER_SHARD("IsString", IsString);
+  using IsImage = IsX<SHType::Image>;
+  REGISTER_SHARD("IsImage", IsImage);
+  using IsBool = IsX<SHType::Bool>;
+  REGISTER_SHARD("IsBool", IsBool);
+  using IsColor = IsX<SHType::Color>;
+  REGISTER_SHARD("IsColor", IsColor);
+  using IsSeq = IsX<SHType::Seq>;
+  REGISTER_SHARD("IsSeq", IsSeq);
+  using IsWire = IsX<SHType::Wire>;
+  REGISTER_SHARD("IsWire", IsWire);
+  using IsTable = IsX<SHType::Table>;
+  REGISTER_SHARD("IsTable", IsTable);
+  using IsAudio = IsX<SHType::Audio>;
+  REGISTER_SHARD("IsAudio", IsAudio);
 
   using ImageToFloats = ToSeq<SHType::Image, SHType::Float>;
   using FloatsToImage = ToImage<SHType::Float>;
@@ -634,17 +678,6 @@ void registerCastingShards() {
   REGISTER_SHARD("IntsToBytes", IntsToBytes);
   REGISTER_SHARD("StringToBytes", StringToBytes);
   REGISTER_SHARD("ImageToBytes", ImageToBytes);
-
-  using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
-  REGISTER_SHARD("ExpectFloatSeq", ExpectFloatSeq);
-  using ExpectIntSeq = ExpectXComplex<CoreInfo::IntSeqType>;
-  REGISTER_SHARD("ExpectIntSeq", ExpectIntSeq);
-  using ExpectBytesSeq = ExpectXComplex<CoreInfo::BytesSeqType>;
-  REGISTER_SHARD("ExpectBytesSeq", ExpectBytesSeq);
-  using ExpectStringSeq = ExpectXComplex<CoreInfo::StringSeqType>;
-  REGISTER_SHARD("ExpectStringSeq", ExpectStringSeq);
-
-  REGISTER_SHARD("ExpectLike", ExpectLike);
 
   REGISTER_SHARD("ToBase64", ToBase64);
   REGISTER_SHARD("FromBase64", FromBase64);

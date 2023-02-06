@@ -16,6 +16,7 @@ use crate::shardsc::SHImage;
 use crate::shardsc::SHInstanceData;
 use crate::shardsc::SHMeshRef;
 use crate::shardsc::SHOptionalString;
+use crate::shardsc::SHOptionalStrings;
 use crate::shardsc::SHParameterInfo;
 use crate::shardsc::SHParametersInfo;
 use crate::shardsc::SHPointer;
@@ -229,6 +230,10 @@ impl ShardRef {
     unsafe {
       (*self.0).setParam.unwrap()(self.0, index, &value);
     }
+  }
+
+  pub fn get_parameter(&self, index: i32) -> Var {
+    unsafe { (*self.0).getParam.unwrap()(self.0, index) }
   }
 }
 
@@ -3301,7 +3306,7 @@ impl ShardsVar {
     }
   }
 
-  pub fn cleanup(&mut self) {
+  pub fn cleanup(&self) {
     for shard in self.shards.iter().rev() {
       if let Err(e) = shard.cleanup() {
         shlog!("Errors during shard cleanup: {}", e);
@@ -3309,8 +3314,8 @@ impl ShardsVar {
     }
   }
 
-  pub fn warmup(&mut self, context: &Context) -> Result<(), &str> {
-    for shard in &mut self.shards {
+  pub fn warmup(&self, context: &Context) -> Result<(), &str> {
+    for shard in self.shards.iter() {
       if let Err(e) = shard.warmup(context) {
         shlog!("Errors during shard warmup: {}", e);
         return Err(e);
@@ -3319,7 +3324,7 @@ impl ShardsVar {
     Ok(())
   }
 
-  pub fn set_param(&mut self, value: &Var) -> Result<(), &str> {
+  pub fn set_param(&mut self, value: &Var) -> Result<(), &'static str> {
     self.destroy(); // destroy old blocks
 
     self.param = value.into(); // clone it
@@ -3389,7 +3394,7 @@ impl ShardsVar {
     }
   }
 
-  pub fn activate(&mut self, context: &Context, input: &Var, output: &mut Var) -> WireState {
+  pub fn activate(&self, context: &Context, input: &Var, output: &mut Var) -> WireState {
     if self.param.0.is_none() {
       return WireState::Continue;
     }
@@ -3406,7 +3411,7 @@ impl ShardsVar {
   }
 
   pub fn activate_handling_return(
-    &mut self,
+    &self,
     context: &Context,
     input: &Var,
     output: &mut Var,
@@ -3447,6 +3452,12 @@ impl ShardsVar {
   }
 }
 
+impl From<&ShardsVar> for Shards {
+  fn from(v: &ShardsVar) -> Self {
+    v.native_shards
+  }
+}
+
 // Enum
 
 #[macro_export]
@@ -3455,6 +3466,7 @@ macro_rules! shenum {
     $(#[$outer:meta])*
     $vis:vis struct $SHEnum:ident {
       $(
+        [description($desc:literal)]
         $(#[$inner:ident $($args:tt)*])*
         const $EnumValue:ident = $value:expr;
       )+
@@ -3473,11 +3485,13 @@ macro_rules! shenum {
       name: &'static str,
       labels: $crate::types::Strings,
       values: Vec<i32>,
+      descriptions: $crate::types::OptionalStrings,
     }
 
     __impl_shenuminfo! {
       $SHEnum {
         $(
+          [description($desc)]
           $(#[$inner $($args)*])*
           $EnumValue = $value;
         )*
@@ -3530,6 +3544,7 @@ macro_rules! __impl_shenuminfo {
   (
     $SHEnum:ident {
       $(
+        [description($desc:literal)]
         $(#[$attr:ident $($args:tt)*])*
         $EnumValue:ident = $value:expr;
       )*
@@ -3553,10 +3568,16 @@ macro_rules! __impl_shenuminfo {
           labels.push($SHEnumInfo::$EnumValue);
         )*
 
+        let mut descriptions = $crate::types::OptionalStrings::new();
+        $(
+          descriptions.push($crate::types::OptionalString(shccstr!($desc)));
+        )*
+
         Self {
           name: cstr!(std::stringify!($SHEnum)),
           labels,
           values: vec![$($value,)*],
+          descriptions,
         }
       }
     }
@@ -3577,6 +3598,7 @@ macro_rules! __impl_shenuminfo {
             len: info.values.len() as u32,
             cap: 0
           },
+          descriptions: (&info.descriptions).into(),
         }
       }
     }
@@ -3709,6 +3731,18 @@ impl AsRef<Strings> for Strings {
   }
 }
 
+pub type OptionalStrings = Vec<OptionalString>;
+
+impl From<&OptionalStrings> for SHOptionalStrings {
+  fn from(vec: &OptionalStrings) -> Self {
+    SHOptionalStrings {
+      elements: vec.as_ptr() as *mut SHOptionalString,
+      len: vec.len() as u32,
+      cap: 0,
+    }
+  }
+}
+
 // Seq / SHSeq
 
 #[derive(Clone)]
@@ -3743,6 +3777,26 @@ impl Iterator for SeqIterator {
     res
   }
   type Item = Var;
+}
+
+impl DoubleEndedIterator for SeqIterator {
+  fn next_back(&mut self) -> Option<Self::Item> {
+    let res = if self.i < self.s.s.len {
+      unsafe {
+        Some(
+          *self
+            .s
+            .s
+            .elements
+            .offset((self.s.s.len - self.i - 1).try_into().unwrap()),
+        )
+      }
+    } else {
+      None
+    };
+    self.i += 1;
+    res
+  }
 }
 
 impl IntoIterator for Seq {

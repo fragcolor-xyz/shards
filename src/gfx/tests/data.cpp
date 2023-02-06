@@ -240,7 +240,10 @@ void TestData::storeFrameInternal(const TestFrame &frame, const char *filePath) 
   stbi_write_png(filePath, size.x, size.y, 4, pixels.data(), sizeof(TestFrame::pixel_t) * size.x);
 
 #ifdef __EMSCRIPTEN__
-  emrun_copyFileToOutput(filePath);
+  // TODO(guusw): This needs to be implemented using emrun_file_dump
+  // old version was still using bx
+  // reference 08005aad738ae1c967363afbddec17308602497b:src/gfx/tests/utils.cpp
+  // emrun_copyFileToOutput(filePath);
 #endif
 }
 

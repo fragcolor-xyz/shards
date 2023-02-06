@@ -18,6 +18,7 @@ At runtime just dlopen the dll, that's it!
 #include <cassert>
 #include <functional>
 
+#include "utility.hpp"
 #include "shardwrapper.hpp"
 #include "common_types.hpp"
 
@@ -240,7 +241,7 @@ public:
   IterableArray(const seq_type &seq) : _seq(seq), _owned(false) {}
 
   // implicit converter
-  IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == Seq); }
+  IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == SHType::Seq); }
 
   IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(_seq, s); }
 
@@ -268,7 +269,7 @@ public:
   }
 
   IterableArray &operator=(SHVar &var) {
-    assert(var.valueType == Seq);
+    assert(var.valueType == SHType::Seq);
     _seq = var.payload.seqValue;
     _owned = false;
     return *this;
@@ -329,9 +330,11 @@ using IterableSeq = IterableArray<SHSeq, SHVar, &Core::seqResize, &Core::seqFree
 using IterableExposedInfo =
     IterableArray<SHExposedTypesInfo, SHExposedTypeInfo, &Core::expTypesResize, &Core::expTypesFree, &Core::expTypesPush>;
 
-template <typename E> class EnumInfo : public TEnumInfo<Core, E> {
+template <typename E, const char *Name_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
+class EnumInfo : public TEnumInfo<Core, E, Name_, VendorId_, TypeId_, IsFlags_> {
 public:
-  EnumInfo(const char *name, int32_t vendorId, int32_t enumId) : TEnumInfo<Core, E>(name, vendorId, enumId) {}
+  EnumInfo(const char *name, int32_t vendorId, int32_t enumId)
+      : TEnumInfo<Core, E, Name_, VendorId_, TypeId_, IsFlags_>(name, vendorId, enumId) {}
 };
 
 template <typename E> class ObjectVar : public TObjectVar<Core, E> {
@@ -343,7 +346,8 @@ inline void registerShard(const char *fullName, SHShardConstructor constructor, 
   Core::registerShard(fullName, constructor);
 }
 
-inline void abortWire(SHContext *ctx, const char *msg) { Core::abortWire(ctx, msg); }
+void abortWire(SHContext *ctx, const char *msg) { Core::abortWire(ctx, msg); }
+void abortWire(SHContext *ctx, std::string_view msg) { Core::abortWire(ctx, msg.data()); }
 }; // namespace shards
 
 #endif

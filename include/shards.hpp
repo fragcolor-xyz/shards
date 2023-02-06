@@ -61,7 +61,7 @@ Shard *createShard(std::string_view name);
 struct Type {
   Type() : _type({SHType::None}) {}
 
-  Type(SHTypeInfo type) : _type(type) {}
+  constexpr Type(SHTypeInfo type) : _type(type) {}
 
   Type(const Type &obj) { _type = obj._type; }
 
@@ -170,8 +170,11 @@ struct Types {
   }
 
   operator SHTypesInfo() {
-    SHTypesInfo res{&_types[0], (uint32_t)_types.size(), 0};
-    return res;
+    if (_types.size() > 0) {
+      return SHTypesInfo{&_types[0], (uint32_t)_types.size(), 0};
+    } else {
+      return SHTypesInfo{nullptr, 0, 0};
+    }
   }
 };
 
@@ -564,51 +567,51 @@ struct Var : public SHVar {
   bool isNone() const { return valueType == SHType::None; }
 
   explicit operator bool() const {
-    if (valueType != Bool) {
+    if (valueType != SHType::Bool) {
       throw InvalidVarTypeError("Invalid variable casting! expected Bool");
     }
     return payload.boolValue;
   }
 
   explicit operator int() const {
-    if (valueType != Int) {
+    if (valueType != SHType::Int) {
       throw InvalidVarTypeError("Invalid variable casting! expected Int");
     }
     return static_cast<int>(payload.intValue);
   }
 
   explicit operator uintptr_t() const {
-    if (valueType != Int) {
+    if (valueType != SHType::Int) {
       throw InvalidVarTypeError("Invalid variable casting! expected Int");
     }
     return static_cast<uintptr_t>(payload.intValue);
   }
 
   explicit operator int16_t() const {
-    if (valueType != Int) {
+    if (valueType != SHType::Int) {
       throw InvalidVarTypeError("Invalid variable casting! expected Int");
     }
     return static_cast<int16_t>(payload.intValue);
   }
 
   explicit operator uint8_t() const {
-    if (valueType != Int) {
+    if (valueType != SHType::Int) {
       throw InvalidVarTypeError("Invalid variable casting! expected Int");
     }
     return static_cast<uint8_t>(payload.intValue);
   }
 
   explicit operator int64_t() const {
-    if (valueType != Int) {
+    if (valueType != SHType::Int) {
       throw InvalidVarTypeError("Invalid variable casting! expected Int");
     }
     return payload.intValue;
   }
 
   explicit operator float() const {
-    if (valueType == Float) {
+    if (valueType == SHType::Float) {
       return static_cast<float>(payload.floatValue);
-    } else if (valueType == Int) {
+    } else if (valueType == SHType::Int) {
       return static_cast<float>(payload.intValue);
     } else {
       throw InvalidVarTypeError("Invalid variable casting! expected Float");
@@ -616,9 +619,9 @@ struct Var : public SHVar {
   }
 
   explicit operator double() const {
-    if (valueType == Float) {
+    if (valueType == SHType::Float) {
       return payload.floatValue;
-    } else if (valueType == Int) {
+    } else if (valueType == SHType::Int) {
       return static_cast<double>(payload.intValue);
     } else {
       throw InvalidVarTypeError("Invalid variable casting! expected Float");
@@ -634,7 +637,7 @@ struct Var : public SHVar {
   }
 
   template <typename T> void intoVector(std::vector<T> &outVec) const {
-    if (valueType != Seq) {
+    if (valueType != SHType::Seq) {
       throw InvalidVarTypeError("Invalid variable casting! expected Seq");
     }
     outVec.resize(payload.seqValue.len);
@@ -680,13 +683,13 @@ struct Var : public SHVar {
   }
 
   Var(uint8_t *ptr, uint32_t size) : SHVar() {
-    valueType = Bytes;
+    valueType = SHType::Bytes;
     payload.bytesSize = size;
     payload.bytesValue = ptr;
   }
 
   Var(const std::vector<uint8_t> &bytes) : SHVar() {
-    valueType = Bytes;
+    valueType = SHType::Bytes;
     const auto size = bytes.size();
     if (size > UINT32_MAX)
       throw SHException("std::vector<uint8_t> to Var size exceeded uint32 maximum");
@@ -704,40 +707,40 @@ struct Var : public SHVar {
   }
 
   explicit Var(int src) : SHVar() {
-    valueType = Int;
+    valueType = SHType::Int;
     payload.intValue = src;
   }
 
   explicit Var(uint8_t src) : SHVar() {
-    valueType = Int;
+    valueType = SHType::Int;
     payload.intValue = int64_t(src);
   }
 
   explicit Var(char src) : SHVar() {
-    valueType = Int;
+    valueType = SHType::Int;
     payload.intValue = int64_t(src);
   }
 
   explicit Var(unsigned int src) : SHVar() {
-    valueType = Int;
+    valueType = SHType::Int;
     payload.intValue = int64_t(src);
   }
 
   explicit Var(int a, int b) : SHVar() {
-    valueType = Int2;
+    valueType = SHType::Int2;
     payload.int2Value[0] = a;
     payload.int2Value[1] = b;
   }
 
   explicit Var(int a, int b, int c) : SHVar() {
-    valueType = Int3;
+    valueType = SHType::Int3;
     payload.int3Value[0] = a;
     payload.int3Value[1] = b;
     payload.int3Value[2] = c;
   }
 
   explicit Var(int a, int b, int c, int d) : SHVar() {
-    valueType = Int4;
+    valueType = SHType::Int4;
     payload.int4Value[0] = a;
     payload.int4Value[1] = b;
     payload.int4Value[2] = c;
@@ -745,7 +748,7 @@ struct Var : public SHVar {
   }
 
   explicit Var(int16_t a, int16_t b, int16_t c, int16_t d, int16_t e, int16_t f, int16_t g, int16_t h) : SHVar() {
-    valueType = Int8;
+    valueType = SHType::Int8;
     payload.int8Value[0] = a;
     payload.int8Value[1] = b;
     payload.int8Value[2] = c;
@@ -759,7 +762,7 @@ struct Var : public SHVar {
   explicit Var(int8_t a, int8_t b, int8_t c, int8_t d, int8_t e, int8_t f, int8_t g, int8_t h, int8_t i, int8_t j, int8_t k,
                int8_t l, int8_t m, int8_t n, int8_t o, int8_t p)
       : SHVar() {
-    valueType = Int16;
+    valueType = SHType::Int16;
     payload.int16Value[0] = a;
     payload.int16Value[1] = b;
     payload.int16Value[2] = c;
@@ -779,26 +782,26 @@ struct Var : public SHVar {
   }
 
   explicit Var(int64_t a, int64_t b) : SHVar() {
-    valueType = Int2;
+    valueType = SHType::Int2;
     payload.int2Value[0] = a;
     payload.int2Value[1] = b;
   }
 
   explicit Var(double a, double b) : SHVar() {
-    valueType = Float2;
+    valueType = SHType::Float2;
     payload.float2Value[0] = a;
     payload.float2Value[1] = b;
   }
 
   explicit Var(double a, double b, double c) : SHVar() {
-    valueType = Float3;
+    valueType = SHType::Float3;
     payload.float3Value[0] = a;
     payload.float3Value[1] = b;
     payload.float3Value[2] = c;
   }
 
   explicit Var(double a, double b, double c, double d) : SHVar() {
-    valueType = Float4;
+    valueType = SHType::Float4;
     payload.float4Value[0] = a;
     payload.float4Value[1] = b;
     payload.float4Value[2] = c;
@@ -806,23 +809,23 @@ struct Var : public SHVar {
   }
 
   explicit Var(float a, float b) : SHVar() {
-    valueType = Float2;
+    valueType = SHType::Float2;
     payload.float2Value[0] = a;
     payload.float2Value[1] = b;
   }
 
   explicit Var(double src) : SHVar() {
-    valueType = Float;
+    valueType = SHType::Float;
     payload.floatValue = src;
   }
 
   explicit Var(bool src) : SHVar() {
-    valueType = Bool;
+    valueType = SHType::Bool;
     payload.boolValue = src;
   }
 
   explicit Var(SHSeq seq) : SHVar() {
-    valueType = Seq;
+    valueType = SHType::Seq;
     payload.seqValue = seq;
   }
 
@@ -849,17 +852,17 @@ struct Var : public SHVar {
   }
 
   explicit Var(SHImage img) : SHVar() {
-    valueType = Image;
+    valueType = SHType::Image;
     payload.imageValue = img;
   }
 
   explicit Var(uint64_t src) : SHVar() {
-    valueType = Int;
+    valueType = SHType::Int;
     payload.intValue = src;
   }
 
   explicit Var(int64_t src) : SHVar() {
-    valueType = Int;
+    valueType = SHType::Int;
     payload.intValue = src;
   }
 
@@ -890,12 +893,12 @@ struct Var : public SHVar {
   }
 
   explicit Var(SHTable &src) : SHVar() {
-    valueType = Table;
+    valueType = SHType::Table;
     payload.tableValue = src;
   }
 
   explicit Var(SHColor color) : SHVar() {
-    valueType = Color;
+    valueType = SHType::Color;
     payload.colorValue = color;
   }
 
@@ -910,7 +913,7 @@ struct Var : public SHVar {
   }
 
   uint32_t colorToInt() {
-    if (valueType != Color) {
+    if (valueType != SHType::Color) {
       throw InvalidVarTypeError("Invalid variable casting! expected Color");
     }
     uint32_t res = 0;
@@ -922,7 +925,7 @@ struct Var : public SHVar {
   }
 
   explicit Var(const SHVar *data, size_t size) : SHVar() {
-    valueType = Seq;
+    valueType = SHType::Seq;
     payload.seqValue.len = uint32_t(size);
     payload.seqValue.elements = payload.seqValue.len > 0 ? const_cast<SHVar *>(data) : nullptr;
   }
@@ -934,13 +937,13 @@ struct Var : public SHVar {
   }
 
   template <typename TVAR> explicit Var(const std::vector<TVAR> &vectorRef) : SHVar() {
-    valueType = Seq;
+    valueType = SHType::Seq;
     payload.seqValue.len = uint32_t(vectorRef.size());
     payload.seqValue.elements = payload.seqValue.len > 0 ? const_cast<TVAR *>(vectorRef.data()) : nullptr;
   }
 
   template <typename TVAR, size_t N> explicit Var(const std::array<TVAR, N> &arrRef) : SHVar() {
-    valueType = Seq;
+    valueType = SHType::Seq;
     payload.seqValue.elements = N > 0 ? const_cast<TVAR *>(arrRef.data()) : nullptr;
     payload.seqValue.len = N;
   }
@@ -1024,7 +1027,7 @@ public:
 
   operator SHVar() {
     SHVar res{};
-    res.valueType = Object;
+    res.valueType = SHType::Object;
     res.payload.objectVendorId = CoreCC;
     res.payload.objectTypeId = 'chnp';
     res.payload.objectValue = &_provider;

@@ -24,7 +24,7 @@ struct MeshShard {
   static SHTypesInfo outputTypes() { return Types::Mesh; }
 
   PARAM_VAR(_layoutParam, "Layout", "The names for each vertex attribute.", {VertexAttributeSeqType});
-  PARAM_VAR(_windingOrderParam, "WindingOrder", "Front facing winding order for this mesh.", {Types::WindingOrder});
+  PARAM_VAR(_windingOrderParam, "WindingOrder", "Front facing winding order for this mesh.", {Types::WindingOrderEnumInfo::Type});
   PARAM_IMPL(MeshShard, PARAM_IMPL_FOR(_layoutParam), PARAM_IMPL_FOR(_windingOrderParam));
 
   MeshPtr *_mesh = {};
@@ -111,19 +111,15 @@ struct BuiltinMeshShard {
     Plane,
   };
 
-  static constexpr uint32_t TypeTypeId = 'bmid';
-  static inline shards::Type TypeType = shards::Type::Enum(VendorId, TypeTypeId);
-  static inline EnumInfo<Type> TypeEnumInfo{"BuiltinMeshType", VendorId, TypeTypeId};
+  DECL_ENUM_INFO(Type, BuiltinMeshType, 'bmid');
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Mesh; }
 
-  PARAM_VAR(_type, "Type", "The type of object to make.", {TypeType})
+  PARAM_VAR(_type, "Type", "The type of object to make.", {BuiltinMeshTypeEnumInfo::Type})
   PARAM_IMPL(BuiltinMeshShard, PARAM_IMPL_FOR(_type));
 
-  BuiltinMeshShard() {
-    _type = Var::Enum(Type::Cube, SHTypeInfo(TypeType).enumeration.vendorId, SHTypeInfo(TypeType).enumeration.typeId);
-  }
+  BuiltinMeshShard() { _type = Var::Enum(Type::Cube, BuiltinMeshTypeEnumInfo::VendorId, BuiltinMeshTypeEnumInfo::TypeId); }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup() { PARAM_CLEANUP(); }
@@ -154,6 +150,8 @@ struct BuiltinMeshShard {
 };
 
 void registerMeshShards() {
+  REGISTER_ENUM(BuiltinMeshShard::BuiltinMeshTypeEnumInfo);
+
   REGISTER_SHARD("GFX.Mesh", MeshShard);
   REGISTER_SHARD("GFX.BuiltinMesh", BuiltinMeshShard);
 }

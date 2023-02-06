@@ -20,7 +20,7 @@ uint32_t thicknessOrDefault(const SHVar &var) {
   return var.valueType == SHType::None ? defaultThickness : std::max<uint32_t>(1, var.payload.intValue);
 }
 
-struct LineShard : public BaseConsumer {
+struct LineShard : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString help() { return SHCCSTR("Draws a line in 3d space"); }
@@ -32,8 +32,7 @@ struct LineShard : public BaseConsumer {
   PARAM_IMPL(LineShard, PARAM_IMPL_FOR(_thickness), PARAM_IMPL_FOR(_a), PARAM_IMPL_FOR(_b), PARAM_IMPL_FOR(_color));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckContext(data);
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
 
     if (_a->valueType == SHType::None)
       throw ComposeError("A is required");
@@ -44,7 +43,7 @@ struct LineShard : public BaseConsumer {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &gizmoRenderer = getContext().gizmoContext.renderer;
+    auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
 
     shapeRenderer.addLine(toFloat3(_a.get()), toFloat3(_b.get()), colorOrDefault(_color.get()), thicknessOrDefault(_thickness));
@@ -53,16 +52,16 @@ struct LineShard : public BaseConsumer {
   }
 
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context);
+    baseWarmup(context);
     PARAM_WARMUP(context);
   }
   void cleanup() {
-    baseConsumerCleanup();
+    baseCleanup();
     PARAM_CLEANUP();
   }
 };
 
-struct CircleShard : public BaseConsumer {
+struct CircleShard : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString help() { return SHCCSTR("Draws a line in 3d space"); }
@@ -77,8 +76,7 @@ struct CircleShard : public BaseConsumer {
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness), );
 
   SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckContext(data);
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -91,7 +89,7 @@ struct CircleShard : public BaseConsumer {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &gizmoRenderer = getContext().gizmoContext.renderer;
+    auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
 
     Var radiusVar(_radius.get());
@@ -104,16 +102,16 @@ struct CircleShard : public BaseConsumer {
   }
 
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context);
+    baseWarmup(context);
     PARAM_WARMUP(context);
   }
   void cleanup() {
-    baseConsumerCleanup();
+    baseCleanup();
     PARAM_CLEANUP();
   }
 };
 
-struct RectShard : public BaseConsumer {
+struct RectShard : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString help() { return SHCCSTR("Draws a rectangle in 3d space"); }
@@ -130,8 +128,7 @@ struct RectShard : public BaseConsumer {
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness), );
 
   SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckContext(data);
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -144,7 +141,7 @@ struct RectShard : public BaseConsumer {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &gizmoRenderer = getContext().gizmoContext.renderer;
+    auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
 
     Var sizeVar(_size.get());
@@ -157,16 +154,16 @@ struct RectShard : public BaseConsumer {
   }
 
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context);
+    baseWarmup(context);
     PARAM_WARMUP(context);
   }
   void cleanup() {
-    baseConsumerCleanup();
+    baseCleanup();
     PARAM_CLEANUP();
   }
 };
 
-struct BoxShard : public BaseConsumer {
+struct BoxShard : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString help() { return SHCCSTR("Draws a box in 3d space"); }
@@ -181,8 +178,7 @@ struct BoxShard : public BaseConsumer {
              PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckContext(data);
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
 
     if (_center->valueType == SHType::None)
       throw ComposeError("A is required");
@@ -191,7 +187,7 @@ struct BoxShard : public BaseConsumer {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &gizmoRenderer = getContext().gizmoContext.renderer;
+    auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
 
     Var sizeVar(_size.get());
@@ -206,16 +202,16 @@ struct BoxShard : public BaseConsumer {
   }
 
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context);
+    baseWarmup(context);
     PARAM_WARMUP(context);
   }
   void cleanup() {
-    baseConsumerCleanup();
+    baseCleanup();
     PARAM_CLEANUP();
   }
 };
 
-struct PointShard : public BaseConsumer {
+struct PointShard : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   static SHOptionalString help() { return SHCCSTR("Draws a point in 3d space"); }
@@ -226,8 +222,7 @@ struct PointShard : public BaseConsumer {
   PARAM_IMPL(PointShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckContext(data);
-    composeCheckMainThread(data);
+    gfx::composeCheckGfxThread(data);
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -236,7 +231,7 @@ struct PointShard : public BaseConsumer {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &gizmoRenderer = getContext().gizmoContext.renderer;
+    auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
 
     shapeRenderer.addPoint(toFloat3(_center.get()), colorOrDefault(_color.get()), thicknessOrDefault(_thickness));
@@ -245,11 +240,11 @@ struct PointShard : public BaseConsumer {
   }
 
   void warmup(SHContext *context) {
-    baseConsumerWarmup(context);
+    baseWarmup(context);
     PARAM_WARMUP(context);
   }
   void cleanup() {
-    baseConsumerCleanup();
+    baseCleanup();
     PARAM_CLEANUP();
   }
 };

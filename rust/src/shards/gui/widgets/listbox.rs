@@ -28,7 +28,7 @@ use std::ffi::CStr;
 lazy_static! {
   static ref LISTBOX_PARAMETERS: Parameters = vec![(
     cstr!("Index"),
-    cstr!("The index of the selected item."),
+    shccstr!("The index of the selected item."),
     INT_VAR_OR_NONE_SLICE,
   )
     .into(),];
@@ -66,6 +66,10 @@ impl Shard for ListBox {
 
   fn name(&mut self) -> &str {
     "UI.ListBox"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("A list selection."))
   }
 
   fn inputTypes(&mut self) -> &Types {

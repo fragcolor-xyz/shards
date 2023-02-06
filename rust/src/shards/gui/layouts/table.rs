@@ -6,6 +6,7 @@ use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
 use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::INT_VAR_OR_NONE_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHType_Int;
@@ -37,31 +38,31 @@ lazy_static! {
   static ref TABLE_PARAMETERS: Parameters = vec![
     (
       cstr!("Rows"),
-      cstr!("Sequence of shards to build the rows."),
+      shccstr!("Sequence of shards to build the rows."),
       &SEQ_OF_SHARDS_TYPES[..]
     )
       .into(),
     (
       cstr!("Columns"),
-      cstr!("Configuration of the columns."),
+      shccstr!("Configuration of the columns."),
       &SEQ_OF_ANY_TABLE_TYPES[..]
     )
       .into(),
     (
       cstr!("Striped"),
-      cstr!("Whether to alternate a subtle background color to every other row."),
+      shccstr!("Whether to alternate a subtle background color to every other row."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Resizable"),
-      cstr!("Whether columns can be resized within their specified range."),
+      shccstr!("Whether columns can be resized within their specified range."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("RowIndex"),
-      cstr!("Variable to hold the row index, to be used within Rows."),
+      shccstr!("Variable to hold the row index, to be used within Rows."),
       INT_VAR_OR_NONE_SLICE,
     )
       .into(),
@@ -116,8 +117,18 @@ impl Shard for Table {
     &ANYS_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Columns and Rows shards of the table."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANYS_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -130,7 +141,7 @@ impl Shard for Table {
         let seq = Seq::try_from(value)?;
         for shard in seq.iter() {
           let mut s = ShardsVar::default();
-          s.set_param(&shard).unwrap();
+          s.set_param(&shard)?;
           self.shards.push(s);
         }
         Ok(self.rows.set_param(value))
@@ -146,7 +157,7 @@ impl Shard for Table {
               }
               SHType_ShardRef | SHType_Seq => {
                 let mut s = ShardsVar::default();
-                s.set_param(&header).unwrap();
+                s.set_param(&header)?;
                 self.header_shards.push(Some(s));
               }
               _ => unreachable!(),
@@ -321,7 +332,7 @@ impl Shard for Table {
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(*self.parents.get())? {
       ui.push_id(EguiId::new(self, 0), |ui| {
-        use egui_extras::{Size, TableBuilder};
+        use egui_extras::{Column, TableBuilder};
 
         let seq = Seq::try_from(input)?;
         let text_height = egui::TextStyle::Body.resolve(ui.style()).size;
@@ -343,9 +354,9 @@ impl Shard for Table {
           for column in columns.iter() {
             let column: crate::types::Table = column.as_ref().try_into()?;
             let mut size = if let Some(initial) = column.get_static(cstr!("Initial")) {
-              Size::initial(initial.try_into()?)
+              Column::initial(initial.try_into()?)
             } else {
-              Size::remainder()
+              Column::remainder()
             };
             if let Some(at_least) = column.get_static(cstr!("AtLeast")) {
               size = size.at_least(at_least.try_into()?);
@@ -357,7 +368,7 @@ impl Shard for Table {
           }
           // add unconfigured columns
           for _ in columns.len()..self.shards.len() {
-            builder = builder.column(Size::remainder());
+            builder = builder.column(Column::remainder());
           }
           // column headers
           builder.header(20.0, |mut header_row| {
@@ -396,7 +407,7 @@ impl Shard for Table {
         } else {
           // fallback to default columns with no header
           for _ in 0..seq.len() {
-            builder = builder.column(Size::remainder());
+            builder = builder.column(Column::remainder());
           }
           builder.header(0.0, |_| {})
         };

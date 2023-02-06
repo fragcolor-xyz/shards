@@ -3,6 +3,7 @@
 
 #include "shards/linalg.hpp"
 #include "math_shards.hpp"
+#include <gfx/shader/fmt.hpp>
 #include <spdlog/fmt/fmt.h>
 
 namespace gfx {
@@ -11,12 +12,22 @@ namespace shader {
 struct OperatorMatMul {
   static inline const char *op = "*";
   static FieldType validateTypes(FieldType a, FieldType b) {
-    if (a.numComponents != FieldType::Float4x4Components) {
+    if (a.matrixDimension <= 1) {
       throw ShaderComposeError(fmt::format("Left hand side should be a matrix"));
     }
 
-    if (!(b.numComponents == 4 || b.numComponents == FieldType::Float4x4Components)) {
-      throw ShaderComposeError(fmt::format("Right hand side should be a Float4/Float4x4"));
+    if (b.matrixDimension == 1) {
+      // square mat x vec
+      if (a.matrixDimension != a.numComponents || a.matrixDimension != b.numComponents) {
+        throw ShaderComposeError(
+            fmt::format("Incompatible matrix/vector sizes {}x{} * {}", a.numComponents, a.matrixDimension, b.numComponents));
+      }
+    } else {
+      // square mat x mat
+      if (a.matrixDimension != b.matrixDimension || a.numComponents != b.numComponents) {
+        throw ShaderComposeError(fmt::format("Incompatible matrix sizes {}x{} * {}x{}", a.numComponents, a.matrixDimension,
+                                             b.numComponents, b.matrixDimension));
+      }
     }
 
     return b;

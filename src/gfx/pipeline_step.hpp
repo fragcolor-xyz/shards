@@ -91,6 +91,8 @@ struct ClearStep {
   ClearValues clearValues;
 
   std::optional<RenderStepOutput> output;
+
+  UniqueId getId() const { return id; }
 };
 
 // Renders all drawables in the queue to the output region
@@ -103,6 +105,8 @@ struct RenderDrawablesStep {
   std::vector<FeaturePtr> features;
 
   std::optional<RenderStepOutput> output;
+
+  UniqueId getId() const { return id; }
 };
 
 typedef std::vector<std::string> RenderStepInputs;
@@ -121,6 +125,8 @@ struct RenderFullscreenStep {
   // used to indicate this pass does not cover the entire output
   // e.g. some blending pass / sub-section of the output
   bool overlay{};
+
+  UniqueId getId() const { return id; }
 };
 
 typedef std::variant<ClearStep, RenderDrawablesStep, RenderFullscreenStep> PipelineStep;

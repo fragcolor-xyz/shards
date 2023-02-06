@@ -1,31 +1,27 @@
-(defloop main-wire
-  (GFX.MainWindow
-   :Contents
-   (->
-    (Setup
-     (GFX.DrawQueue) >= .ui-draw-queue
-     (GFX.UIPass .ui-draw-queue) >> .render-steps)
-    .ui-draw-queue (GFX.ClearQueue)
+(GFX.MainWindow
+ :Contents
+ (->
+  (Setup
+   (GFX.DrawQueue) >= .ui-draw-queue
+   (GFX.UIPass .ui-draw-queue) >> .render-steps)
+  .ui-draw-queue (GFX.ClearQueue)
 
-    (UI
-     .ui-draw-queue
-     (UI.CentralPanel
+  (UI
+   .ui-draw-queue
+   (UI.CentralPanel
+    (->
+     "Part A" (UI.Label)
+     (UI.Indent
+      :Contents
       (->
-       "Part A" (UI.Label)
+       "1." (UI.Label)
        (UI.Indent
         :Contents
         (->
-         "1." (UI.Label)
-         (UI.Indent
-          :Contents
-          (->
-           "1.1." (UI.Label)
-           "1.2." (UI.Label)))
-         "2." (UI.Label)))
-       (UI.Separator)
-       "Part B" (UI.Label))))
+         "1.1." (UI.Label)
+         "1.2." (UI.Label)))
+       "2." (UI.Label)))
+     (UI.Separator)
+     "Part B" (UI.Label))))
 
-    (GFX.Render :Steps .render-steps))))
-(defmesh root)
-(schedule root main-wire)
-(run root 0.1 10)
+  (GFX.Render :Steps .render-steps)))

@@ -6,6 +6,7 @@
 #endif
 
 #include "shared.hpp"
+#include "async.hpp"
 
 // workaround for a boost bug..
 #ifndef __kernel_entry
@@ -27,6 +28,7 @@ namespace Process {
 struct Run {
   std::string _moduleName;
   ParamVar _arguments{};
+  std::array<SHExposedTypeInfo, 1> _requiring;
   std::string _outBuf;
   std::string _errBuf;
   int64_t _timeout{30};
@@ -70,6 +72,17 @@ struct Run {
     }
   }
 
+  SHExposedTypesInfo requiredVariables() {
+    if (_arguments.isVariable()) {
+      _requiring[0].name = _arguments.variableName();
+      _requiring[0].help = SHCCSTR("The required variable containing the arguments for the command to run.");
+      _requiring[0].exposedType = CoreInfo::StringSeqType;
+      return {_requiring.data(), 1, 0};
+    } else {
+      return {};
+    }
+  }
+
   void warmup(SHContext *context) { _arguments.warmup(context); }
 
   void cleanup() { _arguments.cleanup(); }
@@ -81,7 +94,7 @@ struct Run {
           // add any arguments we have
           std::vector<std::string> argsArray;
           auto argsVar = _arguments.get();
-          if (argsVar.valueType == Seq) {
+          if (argsVar.valueType == SHType::Seq) {
             for (auto &arg : argsVar) {
               if (arg.payload.stringLen > 0) {
                 argsArray.emplace_back(arg.payload.stringValue, arg.payload.stringLen);
@@ -129,13 +142,23 @@ struct Run {
 
           SHLOG_TRACE("Process started");
 
-          ios.run_for(std::chrono::seconds(_timeout));
+          auto timeout = std::chrono::seconds(_timeout);
+          auto endTime = std::chrono::system_clock::now() + timeout;
+          ios.run_for(timeout);
 
           SHLOG_TRACE("Process finished");
 
           if (cmd.running()) {
-            cmd.terminate();
-            throw ActivationError("Process timed out");
+            SHLOG_TRACE("Process still running after service wait");
+            if (std::chrono::system_clock::now() > endTime) {
+              cmd.terminate();
+              throw ActivationError("Process timed out");
+            } else {
+              // give a further 1 second to terminate
+              if (!cmd.wait_for(std::chrono::seconds(1))) {
+                cmd.terminate();
+              }
+            }
           }
 
           // we still need to wait termination

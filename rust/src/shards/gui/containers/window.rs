@@ -12,6 +12,7 @@ use crate::shards::gui::util;
 use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -30,50 +31,49 @@ use crate::types::ANY_TYPES;
 use crate::types::INT_OR_NONE_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_TYPES;
-use egui::Context as EguiNativeContext;
 
 lazy_static! {
   static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> = vec![*WINDOW_FLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
   static ref WINDOW_PARAMETERS: Parameters = vec![
     (
       cstr!("Title"),
-      cstr!("The window title displayed on the titlebar."),
+      shccstr!("The window title displayed on the titlebar."),
       &STRING_TYPES[..],
     )
       .into(),
     (
       cstr!("Position"),
-      cstr!("Absolute position; or when anchor is set, relative offset."),
+      shccstr!("Absolute position; or when anchor is set, relative offset."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
     (
       cstr!("Anchor"),
-      cstr!("Corner or center of the screen."),
+      shccstr!("Corner or center of the screen."),
       &ANCHOR_TYPES[..],
     )
       .into(),
     (
       cstr!("Width"),
-      cstr!("The width of the rendered window."),
+      shccstr!("The width of the rendered window."),
       INT_OR_NONE_TYPES_SLICE,
     )
       .into(),
     (
       cstr!("Height"),
-      cstr!("The height of the rendered window."),
+      shccstr!("The height of the rendered window."),
       INT_OR_NONE_TYPES_SLICE,
     )
       .into(),
     (
       cstr!("Flags"),
-      cstr!("Window flags."),
+      shccstr!("Window flags."),
       &WINDOW_FLAGS_OR_SEQ_TYPES[..],
     )
       .into(),
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
@@ -122,7 +122,7 @@ impl Shard for Window {
 
   fn help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "Creates a floating window which can be dragged, closed, collapsed, resized."
+      "Creates a floating window which can be dragged, closed, collapsed, and resized."
     ))
   }
 
@@ -141,7 +141,7 @@ impl Shard for Window {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

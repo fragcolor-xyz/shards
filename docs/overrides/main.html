@@ -1,1 +1,28 @@
 {% extends "base.html" %}
+
+{% block config %}
+{{ super() }}
+<script>
+  function escapeSearchCharacters(query) {
+    var result = "";
+    for (var i = 0; i < query.length; i++) {
+      var char = query.charAt(i);
+      var prevChar = '\0';
+      if (i > 0)
+        prevChar = query.charAt(i - 1);
+      if (char == ':' && prevChar != '\\') {
+        result += '\\';
+      }
+      result += char;
+    }
+    return result;
+  }
+  var __search = {
+    transform: function (query) {
+      return escapeSearchCharacters(query
+        // Replace dots by spaces to support searches for full names, e.g. 'UI.Panel'
+        .replace(/\./, ' '));
+    }
+  }
+</script>
+{% endblock %}

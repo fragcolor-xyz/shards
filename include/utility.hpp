@@ -5,6 +5,7 @@
 #define SH_UTILITY_HPP
 
 #include "shards.hpp"
+#include <spdlog/fmt/fmt.h>
 #include <cassert>
 #include <future>
 #include <magic_enum.hpp>
@@ -254,7 +255,7 @@ public:
 
   void warmup(SHContext *ctx) {
     assert(!_cp);
-    if (_v.valueType == ContextVar) {
+    if (_v.valueType == SHType::ContextVar) {
       assert(!_cp);
       _cp = SH_CORE::referenceVariable(ctx, _v.payload.stringValue);
     } else {
@@ -265,7 +266,7 @@ public:
 
   void cleanup() {
     if (_cp) {
-      if (_v.valueType == ContextVar) {
+      if (_v.valueType == SHType::ContextVar) {
         SH_CORE::releaseVariable(_cp);
       }
       _cp = nullptr;
@@ -288,9 +289,9 @@ public:
 
   const SHVar &get() const { return const_cast<TParamVar *>(this)->get(); }
 
-  bool isVariable() { return _v.valueType == ContextVar; }
+  bool isVariable() const { return _v.valueType == SHType::ContextVar; }
 
-  const char *variableName() {
+  const char *variableName() const {
     if (isVariable())
       return _v.payload.stringValue;
     else
@@ -298,49 +299,69 @@ public:
   }
 };
 
-template <class SH_CORE, typename E, bool isFlag = false> class TEnumInfo {
-private:
-  static constexpr auto enum_names() {
-    if constexpr (isFlag) {
-      return magic_enum::flags::enum_names<E>();
-    } else {
-      return magic_enum::enum_names<E>();
-    }
-  }
-  static constexpr auto enum_values() {
-    if constexpr (isFlag) {
-      return magic_enum::flags::enum_values<E>();
-    } else {
-      return magic_enum::enum_values<E>();
-    }
-  }
+// Contains help text for a specific enum member
+// Implement a specialization to add custom help text
+template <typename E, E Value> struct TEnumHelp {
+  static inline SHOptionalString help = SHOptionalString{""};
+};
+
+template <class SH_CORE_, typename E_, const char *Name_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
+struct TEnumInfo {
+  using Enum = E_;
+  using SHCore = SH_CORE_;
+  static constexpr bool IsFlags = IsFlags_;
+  static constexpr shards::Type Type{{SHType::Enum, {.enumeration = {.vendorId = VendorId_, .typeId = TypeId_}}}};
+  static inline const char *Name = Name_;
+  static constexpr int32_t VendorId = VendorId_;
+  static constexpr int32_t TypeId = TypeId_;
+};
+
+template <typename E, bool IsFlags = false> struct TEnumInfoImpl {
+  static constexpr auto enum_names() { return magic_enum::enum_names<E>(); }
+  static constexpr auto enum_values() { return magic_enum::enum_values<E>(); }
+
   static constexpr auto eseq = enum_names();
   static constexpr auto vseq = enum_values();
+};
+
+struct EnumRegisterImpl {
   SHEnumInfo info;
   std::vector<std::string> labels;
   std::vector<SHString> clabels;
+  std::vector<SHOptionalString> cdescriptions;
   std::vector<SHEnum> values;
 
-public:
-  TEnumInfo(const char *name, int32_t vendorId, int32_t enumId) {
-    info.name = name;
-    for (auto &view : eseq) {
-      labels.emplace_back(view);
-    }
-    for (auto &s : labels) {
-      clabels.emplace_back(s.c_str());
-    }
-    info.labels.elements = &clabels[0];
-    info.labels.len = uint32_t(labels.size());
+  template <typename TEnumInfo> static inline EnumRegisterImpl registerEnum() {
+    using Impl = TEnumInfoImpl<typename TEnumInfo::Enum, TEnumInfo::IsFlags>;
 
-    for (auto &v : vseq) {
-      values.emplace_back(SHEnum(v));
+    EnumRegisterImpl result{};
+    auto &info = result.info;
+    info.name = TEnumInfo::Name;
+    for (auto &view : Impl::eseq) {
+      result.labels.emplace_back(view);
     }
-    info.values.elements = &values[0];
-    info.values.len = uint32_t(values.size());
+    for (auto &s : result.labels) {
+      result.clabels.emplace_back(s.c_str());
+    }
+    info.labels.elements = &result.clabels[0];
+    info.labels.len = uint32_t(result.labels.size());
 
+    for (auto &v : Impl::vseq) {
+      result.values.emplace_back(SHEnum(v));
+    }
+    info.values.elements = &result.values[0];
+    info.values.len = uint32_t(result.values.size());
     assert(info.values.len == info.labels.len);
-    SH_CORE::registerEnumType(vendorId, enumId, info);
+
+    magic_enum::enum_for_each<typename TEnumInfo::Enum>(
+        [&](auto Value) { result.cdescriptions.emplace_back(TEnumHelp<typename TEnumInfo::Enum, Value>::help); });
+    info.descriptions.elements = &result.cdescriptions[0];
+    info.descriptions.len = uint32_t(result.cdescriptions.size());
+
+    SHTypeInfo shType = TEnumInfo::Type;
+    TEnumInfo::SHCore::registerEnumType(shType.enumeration.vendorId, shType.enumeration.typeId, info);
+
+    return result;
   }
 };
 
@@ -554,6 +575,7 @@ public:
   operator bool() const { return _shardsArray.size() > 0; }
 
   const Shards &shards() const { return _shards; }
+  const SHComposeResult &composeResult() const { return _wireValidation; }
 };
 
 template <class SH_CORE> struct TOwnedVar : public SHVar {
@@ -587,36 +609,52 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   TTableVar(const TTableVar &other) : SHVar() { SH_CORE::cloneVar(*this, other); }
 
+  TTableVar(const SHVar &other) : SHVar() {
+    assert(other.valueType == SHType::Table);
+    SH_CORE::cloneVar(*this, other);
+  }
+
+  TTableVar(SHVar &&other) : SHVar() {
+    assert(other.valueType == SHType::Table);
+    std::swap<SHVar>(*this, *reinterpret_cast<TTableVar *>(&other));
+  }
+
   TTableVar &operator=(const TTableVar &other) {
     SH_CORE::cloneVar(*this, other);
     return *this;
   }
 
-  TTableVar(TTableVar &&other) : SHVar() { std::swap(*this, other); }
+  TTableVar &operator=(const SHVar &other) {
+    assert(other.valueType == SHType::Table);
+    SH_CORE::cloneVar(*this, other);
+    return *this;
+  }
+
+  TTableVar(TTableVar &&other) : SHVar() { std::swap<SHVar>(*this, other); }
 
   TTableVar(std::initializer_list<std::pair<std::string_view, SHVar>> pairs) : TTableVar() {
     for (auto &kv : pairs) {
-      auto &rdst = (*this)[kv.first];
-      SH_CORE::cloneVar(rdst, kv.second);
+      auto &rDst = (*this)[kv.first];
+      SH_CORE::cloneVar(rDst, kv.second);
     }
   }
 
   TTableVar(const TTableVar &others, std::initializer_list<std::pair<std::string_view, SHVar>> pairs) : TTableVar() {
     const auto &table = others.payload.tableValue;
     ForEach(table, [&](auto &key, auto &val) {
-      auto &rdst = (*this)[key];
-      SH_CORE::cloneVar(rdst, val);
+      auto &rDst = (*this)[key];
+      SH_CORE::cloneVar(rDst, val);
     });
 
     for (auto &kv : pairs) {
-      auto &rdst = (*this)[kv.first];
-      SH_CORE::cloneVar(rdst, kv.second);
+      auto &rDst = (*this)[kv.first];
+      SH_CORE::cloneVar(rDst, kv.second);
     }
   }
 
   TTableVar &operator=(TTableVar &&other) {
-    std::swap(*this, other);
-    memset(&other, 0x0, sizeof(SHVar));
+    std::swap<SHVar>(*this, other);
+    SH_CORE::destroyVar(other);
     return *this;
   }
 
@@ -624,6 +662,12 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   SHVar &operator[](std::string_view key) {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+    return *vp;
+  }
+
+  SHVar &insert(std::string_view key, const SHVar &val) {
+    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+    SH_CORE::cloneVar(*vp, val);
     return *vp;
   }
 
@@ -648,11 +692,11 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
     return *this;
   }
 
-  TSeqVar(TSeqVar &&other) : SHVar() { std::swap(*this, other); }
+  TSeqVar(TSeqVar &&other) : SHVar() { std::swap<SHVar>(*this, other); }
 
   TSeqVar &operator=(TSeqVar &&other) {
-    std::swap(*this, other);
-    memset(&other, 0x0, sizeof(SHVar));
+    std::swap<SHVar>(*this, other);
+    SH_CORE::destroyVar(other);
     return *this;
   }
 
@@ -673,7 +717,7 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
     value.valueType = SHType::None;
   }
 
-  void clear() { SH_CORE::seqResize(payload.seqValue, 0); }
+  void clear() { SH_CORE::seqResize(&payload.seqValue, 0); }
 
   template <typename T> T &get(int index) {
     static_assert(sizeof(T) == sizeof(SHVar), "Invalid T size, should be sizeof(SHVar)");
@@ -707,6 +751,22 @@ inline size_t getPixelSize(const SHVar &input) {
     pixsize = 4;
   return pixsize;
 }
+
+template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
+  for (const auto &share : data.shared) {
+    if (!strcmp(share.name, var->payload.stringValue)) {
+      return &share;
+    }
+  }
+  return nullptr;
+}
+template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
+  const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);
+  if (!ti)
+    throw ComposeError(fmt::format("Parameter {} not found", var->payload.stringValue));
+  return *ti;
+}
+
 }; // namespace shards
 
 #endif

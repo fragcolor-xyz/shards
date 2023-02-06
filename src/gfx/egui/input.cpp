@@ -70,12 +70,12 @@ void EguiInputTranslator::setupWindowInput(Window &window, int4 mappedWindowRegi
   float eguiDrawScale = EguiRenderer::getDrawScale(window) * scalingFactor;
 
   // Drawable/Window scale
-  float2 drawableScale = float2(window.getDrawableSize()) / float2(window.getSize());
-  windowToEguiScale = drawableScale / eguiDrawScale;
+  float2 inputScale = window.getInputScale();
+  windowToEguiScale = inputScale / eguiDrawScale;
 
   // Convert from pixel to window coordinates
   this->mappedWindowRegion =
-      int4(float4(mappedWindowRegion) / float4(drawableScale.x, drawableScale.y, drawableScale.x, drawableScale.y));
+      int4(float4(mappedWindowRegion) / float4(inputScale.x, inputScale.y, inputScale.x, inputScale.y));
 
   // Take viewport size and scale it by the draw scale
   float2 viewportSizeFloat = float2(float(viewportSize.x), float(viewportSize.y));

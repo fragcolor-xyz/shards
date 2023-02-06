@@ -11,11 +11,8 @@ struct Pipeline;
 struct DrawQueue;
 typedef std::shared_ptr<DrawQueue> DrawQueuePtr;
 
-struct Drawable;
-typedef std::shared_ptr<Drawable> DrawablePtr;
-
-struct DrawableHierarchy;
-typedef std::shared_ptr<DrawableHierarchy> DrawableHierarchyPtr;
+struct IDrawable;
+typedef std::shared_ptr<IDrawable> DrawablePtr;
 
 struct Mesh;
 typedef std::shared_ptr<Mesh> MeshPtr;
@@ -41,6 +38,10 @@ typedef std::shared_ptr<RenderTargetAttachment> RenderTargetAttachmentPtr;
 struct RenderTarget;
 typedef std::shared_ptr<RenderTarget> RenderTargetPtr;
 
+namespace detail {
+struct IDrawableProcessor;
+typedef std::shared_ptr<IDrawableProcessor> DrawableProcessorPtr;
+} // namespace detail
 } // namespace gfx
 
 #endif // GFX_FWD

@@ -6,3 +6,4 @@ Just like [`Assert.Is`](../Is), this shard too can be used for writing (inline) 
 
 !!! note "See also"
     - [`Assert.Is`](../Is)
+    - [`Assert.IsAlmost`](../IsAlmost)

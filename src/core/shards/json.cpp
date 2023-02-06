@@ -147,7 +147,7 @@ void to_json(json &j, const SHVar &var) {
                {"flags", var.payload.imageValue.flags},
                {"data", buffer}};
     } else {
-      j = json{{"type", 0}, {"value", int(Continue)}};
+      j = json{{"type", 0}, {"value", int(SHWireState::Continue)}};
     }
     break;
   }
@@ -163,7 +163,7 @@ void to_json(json &j, const SHVar &var) {
                {"channels", var.payload.audioValue.channels},
                {"samples", buffer}};
     } else {
-      j = json{{"type", 0}, {"value", int(Continue)}};
+      j = json{{"type", 0}, {"value", int(SHWireState::Continue)}};
     }
     break;
   }
@@ -183,7 +183,7 @@ void to_json(json &j, const SHVar &var) {
     j = json{{"type", valType}, {"inner", magic_enum::enum_name(var.innerType)}, {"data", buffer}};
     break;
   }
-  case Enum: {
+  case SHType::Enum: {
     j = json{{"type", valType},
              {"value", int32_t(var.payload.enumValue)},
              {"vendorId", var.payload.enumVendorId},
@@ -496,7 +496,7 @@ void from_json(const json &j, SHVar &var) {
     for (auto jparam : jparams) {
       auto paramName = jparam.at("name").get<std::string>();
       auto value = jparam.at("value").get<SHVar>();
-      if (value.valueType != None) {
+      if (value.valueType != SHType::None) {
         for (uint32_t i = 0; blkParams.len > i; i++) {
           auto &paramInfo = blkParams.elements[i];
           if (paramName == paramInfo.name) {
@@ -526,16 +526,14 @@ void from_json(const json &j, SHVar &var) {
     var.payload.objectVendorId = SHEnum(j.at("vendorId").get<int32_t>());
     var.payload.objectTypeId = SHEnum(j.at("typeId").get<int32_t>());
     var.payload.objectValue = nullptr;
-    int64_t id = (int64_t)var.payload.objectVendorId << 32 | var.payload.objectTypeId;
-    auto it = shards::GetGlobals().ObjectTypesRegister.find(id);
-    if (it != shards::GetGlobals().ObjectTypesRegister.end()) {
-      auto &info = it->second;
+    SHObjectInfo *objectInfo = shards::findObjectInfo(var.payload.objectVendorId, var.payload.objectTypeId);
+    if (objectInfo) {
       auto data = j.at("data").get<std::vector<uint8_t>>();
-      var.payload.objectValue = info.deserialize(&data.front(), data.size());
+      var.payload.objectValue = objectInfo->deserialize(&data.front(), data.size());
       var.flags |= SHVAR_FLAGS_USES_OBJINFO;
-      var.objectInfo = &info;
-      if (info.reference)
-        info.reference(var.payload.objectValue);
+      var.objectInfo = objectInfo;
+      if (objectInfo->reference)
+        objectInfo->reference(var.payload.objectValue);
     } else {
       throw shards::ActivationError("Failed to find object type in registry.");
     }
@@ -611,7 +609,7 @@ struct ToJson {
 
   void anyDump(json &j, const SHVar &input) {
     switch (input.valueType) {
-    case Table: {
+    case SHType::Table: {
       std::unordered_map<std::string, json> table;
       auto &tab = input.payload.tableValue;
       ForEach(tab, [&](auto key, auto &val) {
@@ -622,7 +620,7 @@ struct ToJson {
       });
       j = table;
     } break;
-    case Seq: {
+    case SHType::Seq: {
       std::vector<json> array;
       auto &seq = input.payload.seqValue;
       for (uint32_t i = 0; i < seq.len; i++) {
@@ -632,19 +630,19 @@ struct ToJson {
       }
       j = array;
     } break;
-    case String: {
+    case SHType::String: {
       j = input.payload.stringValue;
     } break;
-    case Int: {
+    case SHType::Int: {
       j = input.payload.intValue;
     } break;
-    case Float: {
+    case SHType::Float: {
       j = input.payload.floatValue;
     } break;
-    case Bool: {
+    case SHType::Bool: {
       j = input.payload.boolValue;
     } break;
-    case None: {
+    case SHType::None: {
       j = nullptr;
     } break;
     default: {
@@ -697,20 +695,20 @@ struct FromJson {
 
   void anyParse(json &j, SHVar &storage) {
     if (j.is_array()) {
-      storage.valueType = Seq;
+      storage.valueType = SHType::Seq;
       for (json::iterator it = j.begin(); it != j.end(); ++it) {
         const auto len = storage.payload.seqValue.len;
         arrayResize(storage.payload.seqValue, len + 1);
         anyParse(*it, storage.payload.seqValue.elements[len]);
       }
     } else if (j.is_number_integer()) {
-      storage.valueType = Int;
+      storage.valueType = SHType::Int;
       storage.payload.intValue = j.get<int64_t>();
     } else if (j.is_number_float()) {
-      storage.valueType = Float;
+      storage.valueType = SHType::Float;
       storage.payload.floatValue = j.get<double>();
     } else if (j.is_string()) {
-      storage.valueType = String;
+      storage.valueType = SHType::String;
       auto strVal = j.get<std::string>();
       const auto strLen = strVal.length();
       storage.payload.stringValue = new char[strLen + 1];
@@ -718,10 +716,10 @@ struct FromJson {
       memcpy((void *)storage.payload.stringValue, strVal.c_str(), strLen);
       ((char *)storage.payload.stringValue)[strLen] = 0;
     } else if (j.is_boolean()) {
-      storage.valueType = Bool;
+      storage.valueType = SHType::Bool;
       storage.payload.boolValue = j.get<bool>();
     } else if (j.is_object()) {
-      storage.valueType = Table;
+      storage.valueType = SHType::Table;
       auto map = new shards::SHMap();
       storage.payload.tableValue.api = &shards::GetGlobals().TableInterface;
       storage.payload.tableValue.opaque = map;

@@ -6,6 +6,7 @@
 #include <gfx/params.hpp>
 #include <gfx/shader/blocks.hpp>
 #include <gfx/pipeline_builder.hpp>
+#include <gfx/renderer_types.hpp>
 #include <memory>
 
 namespace gfx {
@@ -35,11 +36,11 @@ struct Velocity {
 
     FeaturePtr feature = std::make_shared<Feature>();
     feature->pipelineModifier = std::make_shared<PipelineModifier>();
-    feature->drawData.emplace_back([](const FeatureCallbackContext &ctx, IDrawDataCollector &collector) {
+    feature->drawableParameterGenerators.emplace_back([](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
       collector.setParam("previousWorld", ctx.cachedDrawable->previousTransform);
     });
 
-    feature->viewData.emplace_back([](const FeatureCallbackContext &ctx, IDrawDataCollector &collector) {
+    feature->viewParameterGenerators.emplace_back([](const FeatureCallbackContext &ctx, IParameterCollector &collector) {
       collector.setParam("previousView", ctx.cachedView->previousViewTransform);
     });
 
@@ -74,8 +75,8 @@ struct Velocity {
       code->appendLine(WriteGlobal("velocity", FieldTypes::Float2, "ndcVelocity"));
 
       // Apply scale to fit in output precision
-      code->appendLine(WithOutput(
-          "velocity", WriteOutput("velocity", FieldTypes::Float2, ReadGlobal("velocity"), fmt::format(" * {:0.2}", scalingFactor))));
+      code->appendLine(WithOutput("velocity", WriteOutput("velocity", FieldTypes::Float2, ReadGlobal("velocity"),
+                                                          fmt::format(" * {:0.2}", scalingFactor))));
 
       feature->shaderEntryPoints.emplace_back("initVelocity", ProgrammableGraphicsStage::Fragment, std::move(code));
     }

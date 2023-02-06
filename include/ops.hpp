@@ -13,91 +13,91 @@
 inline std::string type2Name(SHType type) {
   std::string name = "";
   switch (type) {
-  case EndOfBlittableTypes:
+  case SHType::EndOfBlittableTypes:
     // this should never happen
     throw shards::SHException("EndOfBlittableTypes and Error are invalid types");
-  case None:
+  case SHType::None:
     name = "None";
     break;
   case SHType::Any:
     name = "Any";
     break;
-  case Object:
+  case SHType::Object:
     name = "Object";
     break;
-  case Enum:
+  case SHType::Enum:
     name = "Enum";
     break;
-  case Bool:
+  case SHType::Bool:
     name = "Bool";
     break;
-  case Bytes:
+  case SHType::Bytes:
     name = "Bytes";
     break;
-  case Int:
+  case SHType::Int:
     name = "Int";
     break;
-  case Int2:
+  case SHType::Int2:
     name = "Int2";
     break;
-  case Int3:
+  case SHType::Int3:
     name = "Int3";
     break;
-  case Int4:
+  case SHType::Int4:
     name = "Int4";
     break;
-  case Int8:
+  case SHType::Int8:
     name = "Int8";
     break;
-  case Int16:
+  case SHType::Int16:
     name = "Int16";
     break;
-  case Float:
+  case SHType::Float:
     name = "Float";
     break;
-  case Float2:
+  case SHType::Float2:
     name = "Float2";
     break;
-  case Float3:
+  case SHType::Float3:
     name = "Float3";
     break;
-  case Float4:
+  case SHType::Float4:
     name = "Float4";
     break;
-  case Color:
+  case SHType::Color:
     name = "Color";
     break;
-  case Wire:
+  case SHType::Wire:
     name = "Wire";
     break;
-  case ShardRef:
+  case SHType::ShardRef:
     name = "Shard";
     break;
   case SHType::String:
     name = "String";
     break;
-  case ContextVar:
+  case SHType::ContextVar:
     name = "ContextVar";
     break;
   case SHType::Path:
     name = "Path";
     break;
-  case Image:
+  case SHType::Image:
     name = "Image";
     break;
-  case Audio:
+  case SHType::Audio:
     name = "Audio";
     break;
-  case Seq:
+  case SHType::Seq:
     name = "Seq";
     break;
-  case Table:
+  case SHType::Table:
     name = "Table";
     break;
   case SHType::Set:
     name = "Set";
     break;
-  case Array:
+  case SHType::Array:
     name = "Array";
     break;
   }
@@ -133,59 +133,59 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     return false;
 
   switch (a.valueType) {
-  case None:
+  case SHType::None:
   case SHType::Any:
-  case EndOfBlittableTypes:
+  case SHType::EndOfBlittableTypes:
     return true;
-  case Object:
+  case SHType::Object:
     return a.payload.objectVendorId == b.payload.objectVendorId && a.payload.objectTypeId == b.payload.objectTypeId &&
            a.payload.objectValue == b.payload.objectValue;
-  case Enum:
+  case SHType::Enum:
     return a.payload.enumVendorId == b.payload.enumVendorId && a.payload.enumTypeId == b.payload.enumTypeId &&
            a.payload.enumValue == b.payload.enumValue;
-  case Bool:
+  case SHType::Bool:
     return a.payload.boolValue == b.payload.boolValue;
-  case Int:
+  case SHType::Int:
     return a.payload.intValue == b.payload.intValue;
-  case Float:
-    return __builtin_fabs(a.payload.floatValue - b.payload.floatValue) <= FLT_EPSILON;
-  case Int2: {
+  case SHType::Float:
+    return __builtin_fabs(a.payload.floatValue - b.payload.floatValue) <= DBL_EPSILON;
+  case SHType::Int2: {
     SHInt2 vec = a.payload.int2Value == b.payload.int2Value;
     for (auto i = 0; i < 2; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
-  case Int3: {
+  case SHType::Int3: {
     SHInt3 vec = a.payload.int3Value == b.payload.int3Value;
     for (auto i = 0; i < 3; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
-  case Int4: {
+  case SHType::Int4: {
     SHInt4 vec = a.payload.int4Value == b.payload.int4Value;
     for (auto i = 0; i < 4; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
-  case Int8: {
+  case SHType::Int8: {
     SHInt8 vec = a.payload.int8Value == b.payload.int8Value;
     for (auto i = 0; i < 8; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
-  case Int16: {
+  case SHType::Int16: {
     SHInt16 vec = a.payload.int16Value == b.payload.int16Value;
     for (auto i = 0; i < 16; i++)
       if (vec[i] == 0)
         return false;
     return true;
   }
-  case Float2: {
-    const SHFloat2 vepsi = {FLT_EPSILON, FLT_EPSILON};
+  case SHType::Float2: {
+    const SHFloat2 vepsi = {DBL_EPSILON, DBL_EPSILON};
     SHFloat2 diff = a.payload.float2Value - b.payload.float2Value;
     diff[0] = __builtin_fabs(diff[0]);
     diff[1] = __builtin_fabs(diff[1]);
@@ -195,7 +195,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
         return false;
     return true;
   }
-  case Float3: {
+  case SHType::Float3: {
     const SHFloat3 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
     SHFloat3 diff = a.payload.float3Value - b.payload.float3Value;
     diff[0] = __builtin_fabs(diff[0]);
@@ -207,7 +207,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
         return false;
     return true;
   }
-  case Float4: {
+  case SHType::Float4: {
     const SHFloat4 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
     SHFloat4 diff = a.payload.float4Value - b.payload.float4Value;
     diff[0] = __builtin_fabs(diff[0]);
@@ -220,15 +220,15 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
         return false;
     return true;
   }
-  case Color:
+  case SHType::Color:
     return a.payload.colorValue.r == b.payload.colorValue.r && a.payload.colorValue.g == b.payload.colorValue.g &&
            a.payload.colorValue.b == b.payload.colorValue.b && a.payload.colorValue.a == b.payload.colorValue.a;
-  case Wire:
+  case SHType::Wire:
     return a.payload.wireValue == b.payload.wireValue;
-  case ShardRef:
+  case SHType::ShardRef:
     return a.payload.shardValue == b.payload.shardValue;
   case SHType::Path:
-  case ContextVar:
+  case SHType::ContextVar:
   case SHType::String: {
     if (a.payload.stringValue == b.payload.stringValue)
       return true;
@@ -241,7 +241,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
 
     return astr == bstr;
   }
-  case Image: {
+  case SHType::Image: {
     auto apixsize = 1;
     auto bpixsize = 1;
     if ((a.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
@@ -259,7 +259,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
             (memcmp(a.payload.imageValue.data, b.payload.imageValue.data,
                     a.payload.imageValue.channels * a.payload.imageValue.width * a.payload.imageValue.height * apixsize) == 0));
   }
-  case Audio: {
+  case SHType::Audio: {
     return a.payload.audioValue.nsamples == b.payload.audioValue.nsamples &&
            a.payload.audioValue.channels == b.payload.audioValue.channels &&
            a.payload.audioValue.sampleRate == b.payload.audioValue.sampleRate &&
@@ -267,9 +267,9 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
             (memcmp(a.payload.audioValue.samples, b.payload.audioValue.samples,
                     a.payload.audioValue.channels * a.payload.audioValue.nsamples * sizeof(float)) == 0));
   }
-  case Seq:
+  case SHType::Seq:
     return _seqEq(a, b);
-  case Table:
+  case SHType::Table:
     return _tableEq(a, b);
   case SHType::Set:
     return _setEq(a, b);
@@ -307,46 +307,46 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
     throw shards::InvalidVarTypeError("Comparison < between two different value types");
 
   switch (a.valueType) {
-  case Enum: {
+  case SHType::Enum: {
     if (a.payload.enumVendorId != b.payload.enumVendorId || a.payload.enumTypeId != b.payload.enumTypeId)
       throw shards::InvalidVarTypeError("Comparison < between two different kind of enums (vendor/type)");
     return a.payload.enumValue < b.payload.enumValue;
   }
-  case Bool:
+  case SHType::Bool:
     return a.payload.boolValue < b.payload.boolValue;
-  case Int:
+  case SHType::Int:
     return a.payload.intValue < b.payload.intValue;
-  case Float:
+  case SHType::Float:
     return a.payload.floatValue < b.payload.floatValue;
-  case Int2: {
+  case SHType::Int2: {
     SHVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, false);
   }
-  case Int3: {
+  case SHType::Int3: {
     SHVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, false);
   }
-  case Int4: {
+  case SHType::Int4: {
     SHVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, false);
   }
-  case Int8: {
+  case SHType::Int8: {
     SHVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, false);
   }
-  case Int16: {
+  case SHType::Int16: {
     SHVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, false);
   }
-  case Float2: {
+  case SHType::Float2: {
     SHVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, false);
   }
-  case Float3: {
+  case SHType::Float3: {
     SHVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, false);
   }
-  case Float4: {
+  case SHType::Float4: {
     SHVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, false);
   }
-  case Color:
+  case SHType::Color:
     return a.payload.colorValue.r < b.payload.colorValue.r || a.payload.colorValue.g < b.payload.colorValue.g ||
            a.payload.colorValue.b < b.payload.colorValue.b || a.payload.colorValue.a < b.payload.colorValue.a;
   case SHType::Path:
-  case ContextVar:
+  case SHType::ContextVar:
   case SHType::String: {
     if (a.payload.stringValue == b.payload.stringValue)
       return false;
@@ -359,18 +359,18 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
 
     return astr < bstr;
   }
-  case Seq:
+  case SHType::Seq:
     return _seqLess(a, b);
-  case Table:
+  case SHType::Table:
     return _tableLess(a, b);
-  case Bytes: {
+  case SHType::Bytes: {
     if (a.payload.bytesValue == b.payload.bytesValue && a.payload.bytesSize == b.payload.bytesSize)
       return false;
     std::string_view abuf((const char *)a.payload.bytesValue, a.payload.bytesSize);
     std::string_view bbuf((const char *)b.payload.bytesValue, b.payload.bytesSize);
     return abuf < bbuf;
   }
-  case Array: {
+  case SHType::Array: {
     if (a.payload.arrayValue.elements == b.payload.arrayValue.elements && a.payload.arrayValue.len == b.payload.arrayValue.len)
       return false;
     std::string_view abuf((const char *)a.payload.arrayValue.elements, a.payload.arrayValue.len * sizeof(SHVarPayload));
@@ -391,46 +391,46 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
     throw shards::InvalidVarTypeError("Comparison <= between two different value types");
 
   switch (a.valueType) {
-  case Enum: {
+  case SHType::Enum: {
     if (a.payload.enumVendorId != b.payload.enumVendorId || a.payload.enumTypeId != b.payload.enumTypeId)
       throw shards::InvalidVarTypeError("Comparison <= between two different kind of enums (vendor/type)");
     return a.payload.enumValue <= b.payload.enumValue;
   }
-  case Bool:
+  case SHType::Bool:
     return a.payload.boolValue <= b.payload.boolValue;
-  case Int:
+  case SHType::Int:
     return a.payload.intValue <= b.payload.intValue;
-  case Float:
+  case SHType::Float:
     return a.payload.floatValue <= b.payload.floatValue;
-  case Int2: {
+  case SHType::Int2: {
     SHVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, true);
   }
-  case Int3: {
+  case SHType::Int3: {
     SHVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, true);
   }
-  case Int4: {
+  case SHType::Int4: {
     SHVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, true);
   }
-  case Int8: {
+  case SHType::Int8: {
     SHVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, true);
   }
-  case Int16: {
+  case SHType::Int16: {
     SHVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, true);
   }
-  case Float2: {
+  case SHType::Float2: {
     SHVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, true);
   }
-  case Float3: {
+  case SHType::Float3: {
     SHVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, true);
   }
-  case Float4: {
+  case SHType::Float4: {
     SHVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, true);
   }
-  case Color:
+  case SHType::Color:
     return a.payload.colorValue.r <= b.payload.colorValue.r && a.payload.colorValue.g <= b.payload.colorValue.g &&
            a.payload.colorValue.b <= b.payload.colorValue.b && a.payload.colorValue.a <= b.payload.colorValue.a;
   case SHType::Path:
-  case ContextVar:
+  case SHType::ContextVar:
   case SHType::String: {
     if (a.payload.stringValue == b.payload.stringValue)
       return true;
@@ -443,18 +443,18 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
 
     return astr <= bstr;
   }
-  case Seq:
+  case SHType::Seq:
     return _seqLessEq(a, b);
-  case Table:
+  case SHType::Table:
     return _tableLessEq(a, b);
-  case Bytes: {
+  case SHType::Bytes: {
     if (a.payload.bytesValue == b.payload.bytesValue && a.payload.bytesSize == b.payload.bytesSize)
       return true;
     std::string_view abuf((const char *)a.payload.bytesValue, a.payload.bytesSize);
     std::string_view bbuf((const char *)b.payload.bytesValue, b.payload.bytesSize);
     return abuf <= bbuf;
   }
-  case Array: {
+  case SHType::Array: {
     if (a.payload.arrayValue.elements == b.payload.arrayValue.elements && a.payload.arrayValue.len == b.payload.arrayValue.len)
       return true;
     std::string_view abuf((const char *)a.payload.arrayValue.elements, a.payload.arrayValue.len * sizeof(SHVarPayload));
@@ -487,6 +487,8 @@ inline bool operator==(const SHExposedTypeInfo &a, const SHExposedTypeInfo &b) {
 
 inline bool operator!=(const SHExposedTypeInfo &a, const SHExposedTypeInfo &b) { return !(a == b); }
 
+bool _almostEqual(const SHVar &lhs, const SHVar &rhs, double e);
+
 namespace shards {
 SHVar hash(const SHVar &var);
 } // namespace shards
@@ -504,9 +506,9 @@ template <> struct hash<SHTypeInfo> {
     using std::hash;
     using std::size_t;
     using std::string;
-    auto res = hash<int>()(typeInfo.basicType);
-    res = res ^ hash<int>()(typeInfo.innerType);
-    if (typeInfo.basicType == Table) {
+    auto res = hash<int>()(int(typeInfo.basicType));
+    res = res ^ hash<int>()(int(typeInfo.innerType));
+    if (typeInfo.basicType == SHType::Table) {
       if (typeInfo.table.keys.elements) {
         for (uint32_t i = 0; i < typeInfo.table.keys.len; i++) {
           res = res ^ hash<string>()(typeInfo.table.keys.elements[i]);
@@ -517,7 +519,7 @@ template <> struct hash<SHTypeInfo> {
           res = res ^ hash<SHTypeInfo>()(typeInfo.table.types.elements[i]);
         }
       }
-    } else if (typeInfo.basicType == Seq) {
+    } else if (typeInfo.basicType == SHType::Seq) {
       for (uint32_t i = 0; i < typeInfo.seqTypes.len; i++) {
         if (typeInfo.seqTypes.elements[i].recursiveSelf) {
           res = res ^ hash<int>()(INT32_MAX);
@@ -533,10 +535,10 @@ template <> struct hash<SHTypeInfo> {
           res = res ^ hash<SHTypeInfo>()(typeInfo.setTypes.elements[i]);
         }
       }
-    } else if (typeInfo.basicType == Object) {
+    } else if (typeInfo.basicType == SHType::Object) {
       res = res ^ hash<int>()(typeInfo.object.vendorId);
       res = res ^ hash<int>()(typeInfo.object.typeId);
-    } else if (typeInfo.basicType == Enum) {
+    } else if (typeInfo.basicType == SHType::Enum) {
       res = res ^ hash<int>()(typeInfo.enumeration.vendorId);
       res = res ^ hash<int>()(typeInfo.enumeration.typeId);
     }

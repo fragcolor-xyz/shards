@@ -9,10 +9,12 @@ use super::SEQ_OF_FLOAT2_TYPES;
 use crate::shard::Shard;
 use crate::shards::gui::widgets::plots::MARKER_SHAPE_TYPES;
 use crate::shards::gui::COLOR_VAR_OR_NONE_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shardsc::SHColor;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Seq;
@@ -25,25 +27,25 @@ lazy_static! {
   static ref POINTS_PARAMETERS: Parameters = vec![
     (
       cstr!("Name"),
-      cstr!("Name of this chart, displayed in the plot legend."),
+      shccstr!("Name of this chart, displayed in the plot legend."),
       STRING_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Color"),
-      cstr!("Stroke color."),
+      shccstr!("Stroke color."),
       COLOR_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Shape"),
-      cstr!("Shape of the marker."),
+      shccstr!("Shape of the marker."),
       &MARKER_SHAPE_TYPES[..],
     )
       .into(),
     (
       cstr!("Radius"),
-      cstr!("Radius of the marker."),
+      shccstr!("Radius of the marker."),
       FLOAT_TYPES_SLICE,
     )
       .into(),
@@ -84,12 +86,24 @@ impl Shard for PlotPoints {
     "UI.PlotPoints"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Scattered points on a plot."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &SEQ_OF_FLOAT2_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!("A sequence of point coordinates."))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &SEQ_OF_FLOAT2_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

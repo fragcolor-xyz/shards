@@ -2,12 +2,14 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "../runtime.hpp"
+#include "core.hpp"
 #include "pdqsort.h"
 #include "utility.hpp"
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 
 namespace shards {
+
 struct JointOp {
   std::vector<SHVar *> _multiSortColumns;
 
@@ -72,13 +74,13 @@ struct JointOp {
   }
 
   void ensureJoinSetup(SHContext *context) {
-    if (_columns.valueType != None) {
+    if (_columns.valueType != SHType::None) {
       auto len = _input->payload.seqValue.len;
       if (_multiSortColumns.size() == 0) {
-        if (_columns.valueType == Seq) {
+        if (_columns.valueType == SHType::Seq) {
           for (const auto &col : _columns) {
             auto target = referenceVariable(context, col.payload.stringValue);
-            if (target && target->valueType == Seq) {
+            if (target && target->valueType == SHType::Seq) {
               auto mseqLen = target->payload.seqValue.len;
               if (len != mseqLen) {
                 throw ActivationError("JointOp: All the sequences to be processed must have "
@@ -87,9 +89,9 @@ struct JointOp {
               _multiSortColumns.push_back(target);
             }
           }
-        } else if (_columns.valueType == ContextVar) { // normal single context var
+        } else if (_columns.valueType == SHType::ContextVar) { // normal single context var
           auto target = referenceVariable(context, _columns.payload.stringValue);
-          if (target && target->valueType == Seq) {
+          if (target && target->valueType == SHType::Seq) {
             auto mseqLen = target->payload.seqValue.len;
             if (len != mseqLen) {
               throw ActivationError("JointOp: All the sequences to be processed must have "
@@ -182,7 +184,7 @@ struct Sort : public ActionJointOp {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    if (_inputVar.valueType != ContextVar)
+    if (_inputVar.valueType != SHType::ContextVar)
       throw SHException("From variable was empty!");
 
     SHExposedTypeInfo info{};
@@ -198,7 +200,7 @@ struct Sort : public ActionJointOp {
   found:
     // need to replace input type of inner wire with inner of seq
     if (info.exposedType.seqTypes.len != 1)
-      throw SHException("From variable is not a single type Seq.");
+      throw SHException("From variable is not a single type SHType::Seq.");
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
@@ -348,7 +350,7 @@ struct Remove : public ActionJointOp {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    if (_inputVar.valueType != ContextVar)
+    if (_inputVar.valueType != SHType::ContextVar)
       throw SHException("From variable was empty!");
 
     SHExposedTypeInfo info{};
@@ -364,7 +366,7 @@ struct Remove : public ActionJointOp {
   found:
     // need to replace input type of inner wire with inner of seq
     if (info.exposedType.seqTypes.len != 1)
-      throw SHException("From variable is not a single type Seq.");
+      throw SHException("From variable is not a single type SHType::Seq.");
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
@@ -494,8 +496,8 @@ struct XpendTo : public XPendBase {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
         if (cons.exposedType.basicType != SHType::Seq && cons.exposedType.basicType != SHType::Bytes &&
             cons.exposedType.basicType != SHType::String) {
-          throw ComposeError("AppendTo/PrependTo expects either a Seq, String "
-                             "or Bytes variable as collection.");
+          throw ComposeError("AppendTo/PrependTo expects either a SHType::Seq, SHType::String "
+                             "or SHType::Bytes variable as collection.");
         } else {
           if (cons.exposedType.basicType != SHType::Seq && cons.exposedType != data.inputType) {
             SHLOG_ERROR("AppendTo/PrependTo input is: {} variable is: {}", data.inputType, cons.exposedType);
@@ -505,10 +507,10 @@ struct XpendTo : public XPendBase {
         if (!cons.isMutable) {
           throw ComposeError("AppendTo/PrependTo expects a mutable variable (Set/Push).");
         }
-        if (cons.exposedType.basicType == Seq &&
+        if (cons.exposedType.basicType == SHType::Seq &&
             (cons.exposedType.seqTypes.len != 1 || cons.exposedType.seqTypes.elements[0] != data.inputType)) {
           throw ComposeError("AppendTo/PrependTo input type is not compatible "
-                             "with the backing Seq.");
+                             "with the backing SHType::Seq.");
         }
         // Validation Ok if here..
         return data.inputType;
@@ -550,14 +552,14 @@ struct AppendTo : public XpendTo {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &collection = _collection.get();
     switch (collection.valueType) {
-    case Seq: {
+    case SHType::Seq: {
       auto &arr = collection.payload.seqValue;
       const auto len = arr.len;
       shards::arrayResize(arr, len + 1);
       cloneVar(arr.elements[len], input);
       break;
     }
-    case String: {
+    case SHType::String: {
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
@@ -568,7 +570,7 @@ struct AppendTo : public XpendTo {
       cloneVar(collection, tmp);
       break;
     }
-    case Bytes: {
+    case SHType::Bytes: {
       // we know it's a mutable variable so must be compatible with our
       // arrayPush and such routines just do like string for now basically
       _scratchStr().clear();
@@ -593,7 +595,7 @@ struct PrependTo : public XpendTo {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &collection = _collection.get();
     switch (collection.valueType) {
-    case Seq: {
+    case SHType::Seq: {
       auto &arr = collection.payload.seqValue;
       const auto len = arr.len;
       shards::arrayResize(arr, len + 1);
@@ -601,7 +603,7 @@ struct PrependTo : public XpendTo {
       cloneVar(arr.elements[0], input);
       break;
     }
-    case String: {
+    case SHType::String: {
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
@@ -612,7 +614,7 @@ struct PrependTo : public XpendTo {
       cloneVar(collection, tmp);
       break;
     }
-    case Bytes: {
+    case SHType::Bytes: {
       // we know it's a mutable variable so must be compatible with our
       // arrayPush and such routines just do like string for now basically
       _scratchStr().clear();
@@ -652,14 +654,14 @@ struct ForEachShard {
   SHVar getParam(int index) { return _shards; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.inputType.basicType != Seq && data.inputType.basicType != Table) {
+    if (data.inputType.basicType != SHType::Seq && data.inputType.basicType != SHType::Table) {
       throw ComposeError("ForEach shard expected a sequence or a table as input.");
     }
 
     auto dataCopy = data;
-    if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1) {
+    if (data.inputType.basicType == SHType::Seq && data.inputType.seqTypes.len == 1) {
       dataCopy.inputType = data.inputType.seqTypes.elements[0];
-    } else if (data.inputType.basicType == Table) {
+    } else if (data.inputType.basicType == SHType::Table) {
       dataCopy.inputType = CoreInfo::AnySeqType;
     } else {
       dataCopy.inputType = CoreInfo::AnyType;
@@ -667,7 +669,7 @@ struct ForEachShard {
 
     _shards.compose(dataCopy);
 
-    if (data.inputType.basicType == Table) {
+    if (data.inputType.basicType == SHType::Table) {
       OVERRIDE_ACTIVATE(data, activateTable);
     } else {
       OVERRIDE_ACTIVATE(data, activateSeq);
@@ -751,7 +753,7 @@ struct Map {
   }
 
   void warmup(SHContext *ctx) {
-    _output.valueType = Seq;
+    _output.valueType = SHType::Seq;
     _shards.warmup(ctx);
   }
 
@@ -923,31 +925,32 @@ struct Erase : SeqUser {
     auto isTable = info->exposedType.basicType == SHType::Table;
 
     // Figure if we output a sequence or not
-    if (_indices->valueType == Seq) {
+    if (_indices->valueType == SHType::Seq) {
       if (_indices->payload.seqValue.len > 0) {
-        if ((_indices->payload.seqValue.elements[0].valueType == Int && !isTable) ||
-            (_indices->payload.seqValue.elements[0].valueType == String && isTable)) {
+        if ((_indices->payload.seqValue.elements[0].valueType == SHType::Int && !isTable) ||
+            (_indices->payload.seqValue.elements[0].valueType == SHType::String && isTable)) {
           valid = true;
         }
       }
-    } else if ((!isTable && _indices->valueType == Int) || (isTable && _indices->valueType == String)) {
+    } else if ((!isTable && _indices->valueType == SHType::Int) || (isTable && _indices->valueType == SHType::String)) {
       valid = true;
-    } else { // ContextVar
+    } else { // SHType::ContextVar
       for (auto &info : data.shared) {
         if (strcmp(info.name, _indices->payload.stringValue) == 0) {
-          if (info.exposedType.basicType == Seq && info.exposedType.seqTypes.len == 1 &&
-              ((info.exposedType.seqTypes.elements[0].basicType == Int && !isTable) ||
-               (info.exposedType.seqTypes.elements[0].basicType == String && isTable))) {
+          if (info.exposedType.basicType == SHType::Seq && info.exposedType.seqTypes.len == 1 &&
+              ((info.exposedType.seqTypes.elements[0].basicType == SHType::Int && !isTable) ||
+               (info.exposedType.seqTypes.elements[0].basicType == SHType::String && isTable))) {
             valid = true;
             break;
-          } else if (info.exposedType.basicType == Int && !isTable) {
+          } else if (info.exposedType.basicType == SHType::Int && !isTable) {
             valid = true;
             break;
-          } else if (info.exposedType.basicType == String && isTable) {
+          } else if (info.exposedType.basicType == SHType::String && isTable) {
             valid = true;
             break;
           } else {
-            auto msg = "Take indices variable " + std::string(info.name) + " expected to be either Seq, Int or String";
+            auto msg =
+                "Take indices variable " + std::string(info.name) + " expected to be either SHType::Seq, SHType::Int or String";
             throw SHException(msg);
           }
         }
@@ -961,8 +964,8 @@ struct Erase : SeqUser {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto &indices = _indices.get();
-    if (unlikely(_target->valueType == Table)) {
-      if (indices.valueType == String) {
+    if (unlikely(_target->valueType == SHType::Table)) {
+      if (indices.valueType == SHType::String) {
         // single key
         const auto key = indices.payload.stringValue;
         _target->payload.tableValue.api->tableRemove(_target->payload.tableValue, key);
@@ -975,7 +978,7 @@ struct Erase : SeqUser {
         }
       }
     } else {
-      if (indices.valueType == Int) {
+      if (indices.valueType == SHType::Int) {
         const auto index = indices.payload.intValue;
         arrayDel(_target->payload.seqValue, index);
       } else {
@@ -1003,7 +1006,6 @@ private:
        SHCCSTR("If the variable is or should be available to all of the wires "
                "in the same mesh."),
        {CoreInfo::BoolType}}};
-  bool _isTable;
 };
 
 struct Assoc : public VariableBase {
@@ -1096,12 +1098,12 @@ struct Assoc : public VariableBase {
 
       auto n = input.payload.seqValue.len / 2;
 
-      if (_cell->valueType == Seq) {
+      if (_cell->valueType == SHType::Seq) {
         auto &s = _cell->payload.seqValue;
         for (uint32_t i = 0; i < n; i++) {
           auto &idx = input.payload.seqValue.elements[(i * 2) + 0];
-          if (idx.valueType != Int) {
-            throw ActivationError("Expected an Int for index.");
+          if (idx.valueType != SHType::Int) {
+            throw ActivationError("Expected an SHType::Int for index.");
           }
           auto index = uint32_t(idx.payload.intValue);
           if (index >= s.len) {
@@ -1110,12 +1112,12 @@ struct Assoc : public VariableBase {
           auto &v = input.payload.seqValue.elements[(i * 2) + 1];
           cloneVar(s.elements[index], v);
         }
-      } else if (_cell->valueType == Table) {
+      } else if (_cell->valueType == SHType::Table) {
         auto &t = _cell->payload.tableValue;
         for (uint32_t i = 0; i < n; i++) {
           auto &k = input.payload.seqValue.elements[(i * 2) + 0];
-          if (k.valueType != String) {
-            throw ActivationError("Expected a String for key.");
+          if (k.valueType != SHType::String) {
+            throw ActivationError("Expected a SHType::String for key.");
           }
           auto &v = input.payload.seqValue.elements[(i * 2) + 1];
           SHVar *record = t.api->tableAt(t, k.payload.stringValue);
@@ -1131,7 +1133,7 @@ struct Assoc : public VariableBase {
       return input;
     } else {
       if (_isTable) {
-        if (_target->valueType == Table) {
+        if (_target->valueType == SHType::Table) {
           auto &kv = _key.get();
           if (_target->payload.tableValue.api->tableContains(_target->payload.tableValue, kv.payload.stringValue)) {
             // Has it
@@ -1145,7 +1147,7 @@ struct Assoc : public VariableBase {
           throw ActivationError("Table is empty or does not exist yet.");
         }
       } else {
-        if (_target->valueType == Seq || _target->valueType == Table) {
+        if (_target->valueType == SHType::Seq || _target->valueType == SHType::Table) {
           // Pin fast cell
           _cell = _target;
         } else {
@@ -1204,13 +1206,13 @@ struct Replace {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_patterns->valueType == None) {
-      data.shard->inlineShardId = NoopShard;
+    if (_patterns->valueType == SHType::None) {
+      data.shard->inlineShardId = InlineShard::NoopShard;
     } else {
-      data.shard->inlineShardId = NotInline;
+      data.shard->inlineShardId = InlineShard::NotInline;
     }
 
-    if (data.inputType.basicType == String) {
+    if (data.inputType.basicType == SHType::String) {
       OVERRIDE_ACTIVATE(data, activateString);
       return CoreInfo::StringType;
     } else {
@@ -1235,7 +1237,7 @@ struct Replace {
     IterableSeq o(_vectorOutput);
     const auto &patterns = _patterns.get();
     const auto &replacements = _replacements.get();
-    if (replacements.valueType == Seq) {
+    if (replacements.valueType == SHType::Seq) {
       if (patterns.payload.seqValue.len != replacements.payload.seqValue.len) {
         throw ActivationError("Translate patterns size mismatch, must be equal "
                               "to replacements size.");
@@ -1261,7 +1263,7 @@ struct Replace {
     _stringOutput.assign(source);
     const auto &patterns = _patterns.get();
     const auto &replacements = _replacements.get();
-    if (replacements.valueType == Seq) {
+    if (replacements.valueType == SHType::Seq) {
       if (patterns.payload.seqValue.len != replacements.payload.seqValue.len) {
         throw ActivationError("Translate patterns size mismatch, must be equal "
                               "to replacements size.");
@@ -1304,10 +1306,10 @@ struct Reverse {
   std::vector<uint8_t> _bytesOutput;
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.inputType.basicType == String) {
+    if (data.inputType.basicType == SHType::String) {
       OVERRIDE_ACTIVATE(data, activateString);
       return CoreInfo::StringType;
-    } else if (data.inputType.basicType == Bytes) {
+    } else if (data.inputType.basicType == SHType::Bytes) {
       OVERRIDE_ACTIVATE(data, activateBytes);
       return CoreInfo::BytesType;
     } else {
@@ -1411,6 +1413,20 @@ RUNTIME_SHARD_inputTypes(IsValidNumber);
 RUNTIME_SHARD_outputTypes(IsValidNumber);
 RUNTIME_SHARD_activate(IsValidNumber);
 RUNTIME_SHARD_END(IsValidNumber);
+
+// Register IsAlmost
+RUNTIME_CORE_SHARD_FACTORY(IsAlmost);
+RUNTIME_SHARD_help(IsAlmost);
+RUNTIME_SHARD_inputTypes(IsAlmost);
+RUNTIME_SHARD_inputHelp(IsAlmost);
+RUNTIME_SHARD_outputTypes(IsAlmost);
+RUNTIME_SHARD_outputHelp(IsAlmost);
+RUNTIME_SHARD_parameters(IsAlmost);
+RUNTIME_SHARD_setParam(IsAlmost);
+RUNTIME_SHARD_getParam(IsAlmost);
+RUNTIME_SHARD_compose(IsAlmost);
+RUNTIME_SHARD_activate(IsAlmost);
+RUNTIME_SHARD_END(IsAlmost);
 
 // Register Set
 RUNTIME_CORE_SHARD_FACTORY(Set);
@@ -1777,7 +1793,7 @@ SHVar blockingSleepActivation(const SHVar &input) {
   } else if (input.valueType == SHType::Float) {
     sleep(input.payload.floatValue, false);
   } else {
-    throw ActivationError("Expected either Int (ms) or Float (seconds)");
+    throw ActivationError("Expected either SHType::Int (ms) or SHType::Float (seconds)");
   }
   return input;
 }
@@ -1866,6 +1882,8 @@ SHVar emscriptenBrowseActivation(const SHVar &input) {
 #endif
 
 void registerShardsCoreShards() {
+  REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
+
   REGISTER_SHARD("Const", Const);
   REGISTER_CORE_SHARD(Set);
   REGISTER_CORE_SHARD(Ref);
@@ -1892,6 +1910,7 @@ void registerShardsCoreShards() {
   REGISTER_CORE_SHARD(Sort);
   REGISTER_CORE_SHARD(Remove);
   REGISTER_CORE_SHARD(Is);
+  REGISTER_CORE_SHARD(IsAlmost);
   REGISTER_CORE_SHARD(IsNot);
   REGISTER_CORE_SHARD(IsMore);
   REGISTER_CORE_SHARD(IsLess);

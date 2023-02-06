@@ -25,6 +25,7 @@ fn generate_shardsc() {
     .header(main_header_path)
     .clang_arg("-DSH_NO_ANON")
     .clang_arg("-DSH_USE_ENUMS")
+    .clang_arg("-DRUST_BINDGEN")
     .allowlist_type("SH.*")
     .allowlist_var("SH.*")
     .allowlist_function("SH.*")

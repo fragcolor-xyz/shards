@@ -2,12 +2,10 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "shards.hpp"
-#define String MalString
 #include "Environment.h"
 #include "MAL.h"
 #include "StaticList.h"
 #include "Types.h"
-#undef String
 #include "../core/shards/shared.hpp"
 #include "../core/runtime.hpp"
 #include <algorithm>
@@ -67,7 +65,7 @@ typedef RefCountedPtr<malSHMesh> malSHMeshPtr;
 typedef RefCountedPtr<malSHVar> malSHVarPtr;
 
 void registerKeywords(malEnvPtr env);
-malSHVarPtr varify(const malValuePtr &arg);
+malSHVarPtr varify(const malValuePtr &arg, bool consumeShard = true);
 
 namespace fs = boost::filesystem;
 
@@ -254,10 +252,8 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(def! partial (fn* [pfn & args] (fn* [& args-inner] (apply pfn (concat "
       "args args-inner)))))",
       env);
-  rep("(defn range [from to] (when (<= from to) (cons from (range (inc from) "
-      "to))))",
-      env);
   rep("(def || Await)", env);
+  rep("(defn for [from to pfn] (map (fn* [n] (apply pfn [n])) (range from to)))", env);
 #if defined(_WIN32)
   rep("(def platform \"windows\")", env);
 #elif defined(__ANDROID__)
@@ -437,10 +433,16 @@ public:
 
   SHMesh *value() const { return m_mesh.get(); }
 
-  void schedule(malSHWire *wire) {
+  void schedule(malSHWire *wire, bool compose = true) {
     auto cp = SHWire::sharedFromRef(wire->value());
-    m_mesh->schedule(cp);
+    m_mesh->schedule(cp, Var::Empty, compose);
     reference(wire);
+  }
+
+  void compose(malSHWire *wire, bool compose = true) {
+    auto cp = SHWire::sharedFromRef(wire->value());
+    m_mesh->compose(cp, Var::Empty);
+    // reference(wire); // don't reference in this case..?
   }
 
   virtual bool doIsEqualTo(const malValue *rhs) const { return m_mesh == static_cast<const malSHMesh *>(rhs)->m_mesh; }
@@ -600,7 +602,7 @@ struct WireFileWatcher {
 
 #if !(defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__))
       // sleep some, don't run callbacks here tho!
-      shards::sleep(2.0, false);
+      shards::sleep(0.2, false);
 #endif
     } catch (malEmptyInputException &) {
       WireLoadResult result = {true, "empty input exception", nullptr};
@@ -903,7 +905,7 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
     WRAP_TO_CONST(var);
   } else if (const malString *v = DYNAMIC_CAST(malString, arg)) {
     SHVar strVar{};
-    strVar.valueType = String;
+    strVar.valueType = SHType::String;
     auto &s = v->ref();
     strVar.payload.stringValue = s.c_str();
     WRAP_TO_CONST(strVar);
@@ -911,21 +913,21 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
     auto value = v->value();
     SHVar var{};
     if (v->isInteger()) {
-      var.valueType = Int;
+      var.valueType = SHType::Int;
       var.payload.intValue = value;
     } else {
-      var.valueType = Float;
+      var.valueType = SHType::Float;
       var.payload.floatValue = value;
     }
     WRAP_TO_CONST(var);
   } else if (arg == mal::trueValue()) {
     SHVar var{};
-    var.valueType = Bool;
+    var.valueType = SHType::Bool;
     var.payload.boolValue = true;
     WRAP_TO_CONST(var);
   } else if (arg == mal::falseValue()) {
     SHVar var{};
-    var.valueType = Bool;
+    var.valueType = SHType::Bool;
     var.payload.boolValue = false;
     WRAP_TO_CONST(var);
   } else if (malSHVar *v = DYNAMIC_CAST(malSHVar, arg)) {
@@ -955,7 +957,7 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
       // key is either a quoted string or a keyword (starting with ':')
       shMap[k[0] == '"' ? unescape(k) : k.substr(1)] = shv->value();
     }
-    var.valueType = Table;
+    var.valueType = SHType::Table;
     var.payload.tableValue.api = &shards::GetGlobals().TableInterface;
     var.payload.tableValue.opaque = &shMap;
     WRAP_TO_CONST(var);
@@ -978,7 +980,7 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
 
 std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end);
 
-malSHVarPtr varify(const malValuePtr &arg) {
+malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
   // Returns clones in order to proper cleanup (nested) allocations
   if (arg == mal::nilValue()) {
     SHVar var{};
@@ -988,7 +990,7 @@ malSHVarPtr varify(const malValuePtr &arg) {
   } else if (malString *v = DYNAMIC_CAST(malString, arg)) {
     auto &s = v->ref();
     SHVar var{};
-    var.valueType = String;
+    var.valueType = SHType::String;
     var.payload.stringValue = s.c_str();
     // notice, we don't clone in this case
     auto svar = new malSHVar(var, false);
@@ -999,10 +1001,10 @@ malSHVarPtr varify(const malValuePtr &arg) {
     auto value = v->value();
     SHVar var{};
     if (v->isInteger()) {
-      var.valueType = Int;
+      var.valueType = SHType::Int;
       var.payload.intValue = value;
     } else {
-      var.valueType = Float;
+      var.valueType = SHType::Float;
       var.payload.floatValue = value;
     }
     auto res = new malSHVar(var, false);
@@ -1010,7 +1012,7 @@ malSHVarPtr varify(const malValuePtr &arg) {
     return malSHVarPtr(res);
   } else if (malSequence *v = DYNAMIC_CAST(malSequence, arg)) {
     SHVar tmp{};
-    tmp.valueType = Seq;
+    tmp.valueType = SHType::Seq;
     tmp.payload.seqValue = {};
     auto count = v->count();
     std::vector<malSHVarPtr> vars;
@@ -1039,7 +1041,7 @@ malSHVarPtr varify(const malValuePtr &arg) {
       shMap[k[0] == '"' ? unescape(k) : k.substr(1)] = shv->value();
     }
     SHVar tmp{};
-    tmp.valueType = Table;
+    tmp.valueType = SHType::Table;
     tmp.payload.tableValue.api = &shards::GetGlobals().TableInterface;
     tmp.payload.tableValue.opaque = &shMap;
     SHVar var{};
@@ -1052,14 +1054,14 @@ malSHVarPtr varify(const malValuePtr &arg) {
     return malSHVarPtr(mvar);
   } else if (arg == mal::trueValue()) {
     SHVar var{};
-    var.valueType = Bool;
+    var.valueType = SHType::Bool;
     var.payload.boolValue = true;
     auto v = new malSHVar(var, false);
     v->line = arg->line;
     return malSHVarPtr(v);
   } else if (arg == mal::falseValue()) {
     SHVar var{};
-    var.valueType = Bool;
+    var.valueType = SHType::Bool;
     var.payload.boolValue = false;
     auto v = new malSHVar(var, false);
     v->line = arg->line;
@@ -1079,10 +1081,11 @@ malSHVarPtr varify(const malValuePtr &arg) {
   } else if (malShard *v = DYNAMIC_CAST(malShard, arg)) {
     auto shard = v->value();
     SHVar var{};
-    var.valueType = ShardRef;
+    var.valueType = SHType::ShardRef;
     var.payload.shardValue = shard;
     auto bvar = new malSHVar(var, false);
-    v->consume();
+    if (consumeShard)
+      v->consume();
     bvar->reference(v);
     bvar->line = arg->line;
     return malSHVarPtr(bvar);
@@ -1172,7 +1175,7 @@ void setShardParameters(malShard *malshard, malValueIter begin, malValueIter end
 
 malValuePtr newEnum(int32_t vendor, int32_t type, SHEnum value) {
   SHVar var{};
-  var.valueType = Enum;
+  var.valueType = SHType::Enum;
   var.payload.enumVendorId = vendor;
   var.payload.enumTypeId = type;
   var.payload.enumValue = value;
@@ -1250,7 +1253,7 @@ std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
   while (begin != end) {
     auto next = *begin++;
     if (auto *v = DYNAMIC_CAST(malSHVar, next)) {
-      if (v->value().valueType == ContextVar) {
+      if (v->value().valueType == SHType::ContextVar) {
         if (state == Get) {
           res.emplace_back(makeVarShard(v, "Get"));
         } else if (state == Set) {
@@ -1518,6 +1521,22 @@ BUILTIN("schedule") {
   return mal::nilValue();
 }
 
+BUILTIN("schedule-fast") {
+  CHECK_ARGS_IS(2);
+  ARG(malSHMesh, mesh);
+  ARG(malSHWire, wire);
+  mesh->schedule(wire, false);
+  return mal::nilValue();
+}
+
+BUILTIN("pre-compose") {
+  CHECK_ARGS_IS(2);
+  ARG(malSHMesh, mesh);
+  ARG(malSHWire, wire);
+  mesh->compose(wire);
+  return mal::nilValue();
+}
+
 // used in wires without a mesh (manually prepared etc)
 thread_local std::shared_ptr<SHMesh> TLSRootSHMesh{SHMesh::make()};
 
@@ -1631,6 +1650,71 @@ BUILTIN("stop") {
   return malValuePtr(new malSHVar(res, true));
 }
 
+bool run(SHMesh *mesh, SHWire *wire, double sleepTime, int times, bool dec) {
+  SHDuration dsleep(sleepTime);
+  auto logTicks = 0;
+
+  if (mesh) {
+    auto now = SHClock::now();
+    auto next = now + dsleep;
+    while (!mesh->empty()) {
+      const auto noErrors = mesh->tick();
+
+      // other wires might be not in error tho...
+      // so return only if empty
+      if (!noErrors && mesh->empty()) {
+        return false;
+      }
+
+      if (dec) {
+        times--;
+        if (times == 0) {
+          mesh->terminate();
+          break;
+        }
+      }
+      // We on purpose run terminate (eventually)
+      // before sleep
+      // cos during sleep some shards
+      // swap states and invalidate stuff
+      if (sleepTime <= 0.0) {
+        shards::sleep(-1.0);
+      } else {
+        // remove the time we took to tick from sleep
+        now = SHClock::now();
+        SHDuration realSleepTime = next - now;
+        if (unlikely(realSleepTime.count() <= 0.0)) {
+          // tick took too long!!!
+          if (++logTicks >= 1000) {
+            logTicks = 0;
+            SHLOG_WARNING("Mesh tick took too long: {}ms", -realSleepTime.count() * 1000.0);
+          }
+          next = now + dsleep;
+        } else {
+          ++logTicks;
+          next = next + dsleep;
+          shards::sleep(realSleepTime.count());
+        }
+      }
+    }
+  } else {
+    SHDuration now = SHClock::now().time_since_epoch();
+    while (!shards::tick(wire, now)) {
+      if (dec) {
+        times--;
+        if (times == 0) {
+          shards::stop(wire);
+          break;
+        }
+      }
+      shards::sleep(sleepTime);
+      now = SHClock::now().time_since_epoch();
+    }
+  }
+
+  return true;
+}
+
 BUILTIN("run") {
   CHECK_ARGS_AT_LEAST(1);
   SHMesh *mesh = nullptr;
@@ -1659,65 +1743,61 @@ BUILTIN("run") {
     dec = true;
   }
 
-  SHDuration dsleep(sleepTime);
+  auto noErrors = run(mesh, wire, sleepTime, times, dec);
 
-  if (mesh) {
-    auto now = SHClock::now();
-    auto next = now + dsleep;
-    while (!mesh->empty()) {
-      const auto noErrors = mesh->tick();
+  spdlog::default_logger()->flush();
 
-      // other wires might be not in error tho...
-      // so return only if empty
-      if (!noErrors && mesh->empty()) {
-        return mal::boolean(false);
-      }
+  return mal::boolean(noErrors);
+}
 
-      if (dec) {
-        times--;
-        if (times == 0) {
-          mesh->terminate();
-          break;
-        }
-      }
-      // We on purpose run terminate (evenutally)
-      // before sleep
-      // cos during sleep some shards
-      // swap states and invalidate stuff
-      if (sleepTime <= 0.0) {
-        shards::sleep(-1.0);
-      } else {
-        // remove the time we took to tick from sleep
-        now = SHClock::now();
-        SHDuration realSleepTime = next - now;
-        if (unlikely(realSleepTime.count() <= 0.0)) {
-          // tick took too long!!!
-          // TODO warn sometimes and skip sleeping, skipping callbacks too
-          next = now + dsleep;
-        } else {
-          next = next + dsleep;
-          shards::sleep(realSleepTime.count());
-        }
-      }
+BUILTIN("run-many") {
+  CHECK_ARGS_AT_LEAST(1);
+  ARG(malSequence, mMeshes);
+
+  std::vector<SHMesh *> meshes;
+
+  auto count = mMeshes->count();
+  for (auto i = 0; i < count; i++) {
+    auto mMesh = mMeshes->item(i);
+    if (const malSHMesh *v = DYNAMIC_CAST(malSHMesh, mMesh)) {
+      meshes.push_back(v->value());
+    } else {
+      throw shards::SHException("run-many expects Mesh only");
     }
-  } else {
-    SHDuration now = SHClock::now().time_since_epoch();
-    while (!shards::tick(wire, now)) {
-      if (dec) {
-        times--;
-        if (times == 0) {
-          shards::stop(wire);
-          break;
-        }
-      }
-      shards::sleep(sleepTime);
-      now = SHClock::now().time_since_epoch();
-    }
+  }
+
+  auto sleepTime = -1.0;
+  if (argsBegin != argsEnd) {
+    ARG(malNumber, argSleepTime);
+    sleepTime = argSleepTime->value();
+  }
+
+  int times = 1;
+  bool dec = false;
+  if (argsBegin != argsEnd) {
+    ARG(malNumber, argTimes);
+    times = argTimes->value();
+    dec = true;
+  }
+
+  std::vector<std::future<bool>> futures;
+  for (auto mesh : meshes) {
+    auto fut = std::async(std::launch::async, [=]() { return run(mesh, nullptr, sleepTime, times, dec); });
+    futures.push_back(std::move(fut));
+  }
+
+  assert(futures.size() == size_t(count));
+
+  // wait for all futures to finish
+  bool noErrors = true;
+  for (auto &fut : futures) {
+    if (!fut.get())
+      noErrors = false;
   }
 
   spdlog::default_logger()->flush();
 
-  return mal::boolean(true);
+  return mal::boolean(noErrors);
 }
 
 BUILTIN("sleep") {
@@ -1742,7 +1822,7 @@ BUILTIN("path") {
   ARG(malString, value);
   auto &s = value->ref();
   SHVar var{};
-  var.valueType = Path;
+  var.valueType = SHType::Path;
   var.payload.stringValue = s.c_str();
   auto mvar = new malSHVar(var, false);
   mvar->reference(value);
@@ -1755,7 +1835,7 @@ BUILTIN("enum") {
   ARG(malNumber, value1);
   ARG(malNumber, value2);
   SHVar var{};
-  var.valueType = Enum;
+  var.valueType = SHType::Enum;
   var.payload.enumVendorId = static_cast<int32_t>(value0->value());
   var.payload.enumTypeId = static_cast<int32_t>(value1->value());
   var.payload.enumValue = static_cast<SHEnum>(value2->value());
@@ -1766,7 +1846,7 @@ BUILTIN("string") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   SHVar var{};
-  var.valueType = String;
+  var.valueType = SHType::String;
   auto &s = value->ref();
   var.payload.stringValue = s.c_str();
   auto mvar = new malSHVar(var, false);
@@ -1774,24 +1854,61 @@ BUILTIN("string") {
   return malValuePtr(mvar);
 }
 
+std::string hex2Bytes(const std::string &s) {
+  std::string bytes;
+  for (size_t i = 0; i < s.size(); i += 2) {
+    auto c = s[i];
+    auto c2 = s[i + 1];
+    auto v = 0;
+    if (c >= '0' && c <= '9') {
+      v = (c - '0') << 4;
+    } else if (c >= 'a' && c <= 'f') {
+      v = (c - 'a' + 10) << 4;
+    } else if (c >= 'A' && c <= 'F') {
+      v = (c - 'A' + 10) << 4;
+    } else {
+      throw shards::SHException("Invalid hex string");
+    }
+    if (c2 >= '0' && c2 <= '9') {
+      v |= (c2 - '0');
+    } else if (c2 >= 'a' && c2 <= 'f') {
+      v |= (c2 - 'a' + 10);
+    } else if (c2 >= 'A' && c2 <= 'F') {
+      v |= (c2 - 'A' + 10);
+    } else {
+      throw shards::SHException("Invalid hex string");
+    }
+    bytes.push_back(v);
+  }
+  return bytes;
+}
+
 BUILTIN("bytes") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   SHVar var{};
-  var.valueType = Bytes;
+  var.valueType = SHType::Bytes;
   auto &s = value->ref();
-  var.payload.bytesValue = (uint8_t *)s.data();
-  var.payload.bytesSize = s.size();
-  auto mvar = new malSHVar(var, false);
-  mvar->reference(value);
-  return malValuePtr(mvar);
+  if (s.size() > 2 && s[0] == '0' && s[1] == 'x') {
+    auto bytes = hex2Bytes(s.substr(2));
+    var.payload.bytesValue = (uint8_t *)bytes.data();
+    var.payload.bytesSize = bytes.size();
+    auto mvar = new malSHVar(var, true);
+    return malValuePtr(mvar);
+  } else {
+    var.payload.bytesValue = (uint8_t *)s.data();
+    var.payload.bytesSize = s.size();
+    auto mvar = new malSHVar(var, false);
+    mvar->reference(value);
+    return malValuePtr(mvar);
+  }
 }
 
 BUILTIN("context-var") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
   SHVar var{};
-  var.valueType = ContextVar;
+  var.valueType = SHType::ContextVar;
   auto &s = value->ref();
   var.payload.stringValue = s.c_str();
   auto mvar = new malSHVar(var, false);
@@ -1922,7 +2039,7 @@ BUILTIN("int") {
   CHECK_ARGS_IS(1);
   ARG(malNumber, value);
   SHVar var{};
-  var.valueType = Int;
+  var.valueType = SHType::Int;
   var.payload.intValue = value->value();
   return malValuePtr(new malSHVar(var, false));
 }
@@ -1943,7 +2060,7 @@ BUILTIN("float") {
   CHECK_ARGS_IS(1);
   ARG(malNumber, value);
   SHVar var{};
-  var.valueType = Float;
+  var.valueType = SHType::Float;
   var.payload.floatValue = value->value();
   return malValuePtr(new malSHVar(var, false));
 }
@@ -2072,10 +2189,45 @@ BUILTIN("shards") {
   return mal::list(items);
 }
 
-BUILTIN("info") {
+BUILTIN("enums") {
+  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
+  malValueVec v;
+  for (auto [_, ti] : shards::GetGlobals().EnumTypesRegister) {
+    v.emplace_back(mal::string(std::string(ti.name)));
+  }
+  malValueVec *items = new malValueVec(v);
+  return mal::list(items);
+}
+
+static bool containsNone(const SHTypesInfo &types) {
+  for (size_t i = 0; i < types.len; i++) {
+    if (types.elements[i].basicType == SHType::None)
+      return true;
+  }
+  return false;
+}
+
+static malValuePtr richTypeInfo(const SHTypesInfo &types, bool ignoreNone = true) {
+  malValueVec vec;
+  for (uint32_t j = 0; j < types.len; j++) {
+    auto &type = types.elements[j];
+    if (ignoreNone && type.basicType == SHType::None)
+      continue;
+    malHash::Map map;
+    std::stringstream ss;
+    ss << type;
+    map[":name"] = mal::string(ss.str());
+    map[":type"] = mal::number(double(type.basicType), true);
+    vec.emplace_back(mal::hash(map));
+  }
+  return mal::list(vec.begin(), vec.end());
+}
+
+BUILTIN("shard-info") {
   CHECK_ARGS_IS(1);
   ARG(malString, blkname);
   const auto blkIt = builtIns.find(blkname->ref());
+  SHLOG_TRACE("shard-info {}", blkname->value());
   if (blkIt == builtIns.end()) {
     return mal::nilValue();
   } else {
@@ -2093,13 +2245,11 @@ BUILTIN("info") {
     for (uint32_t i = 0; i < params.len; i++) {
       malHash::Map pmap;
       pmap[":name"] = mal::string(params.elements[i].name);
-      if (params.elements[i].help.string)
-        pmap[":help"] = mal::string(params.elements[i].help.string);
-      else
-        pmap[":help"] = mal::string(getString(params.elements[i].help.crc));
-      std::stringstream ss;
-      ss << params.elements[i].valueTypes;
-      pmap[":types"] = mal::string(ss.str());
+      SHLOG_TRACE(" param {}", params.elements[i].name);
+      auto &help = params.elements[i].help;
+      pmap[":help"] = mal::string(help.string ? help.string : getString(help.crc));
+      pmap[":types"] = richTypeInfo(params.elements[i].valueTypes);
+      pmap[":optional"] = mal::boolean(containsNone(params.elements[i].valueTypes));
       {
         std::ostringstream ss;
         auto param = shard->getParam(shard, (int)i);
@@ -2114,17 +2264,13 @@ BUILTIN("info") {
     map[":parameters"] = mal::list(pvec.begin(), pvec.end());
 
     {
-      std::stringstream ss;
-      ss << shard->inputTypes(shard);
-      map[":inputTypes"] = mal::string(ss.str());
+      map[":inputTypes"] = richTypeInfo(shard->inputTypes(shard));
       auto help = shard->inputHelp(shard);
       map[":inputHelp"] = mal::string(help.string ? help.string : getString(help.crc));
     }
 
     {
-      std::stringstream ss;
-      ss << shard->outputTypes(shard);
-      map[":outputTypes"] = mal::string(ss.str());
+      map[":outputTypes"] = richTypeInfo(shard->outputTypes(shard));
       auto help = shard->outputHelp(shard);
       map[":outputHelp"] = mal::string(help.string ? help.string : getString(help.crc));
     }
@@ -2140,6 +2286,39 @@ BUILTIN("info") {
 
     return mal::hash(map);
   }
+}
+
+static SHEnumInfo *findEnumByName(const std::string &name) {
+  for (auto &it : GetGlobals().EnumTypesRegister) {
+    if (it.second.name == name)
+      return &it.second;
+  }
+  return nullptr;
+}
+
+BUILTIN("enum-info") {
+  CHECK_ARGS_IS(1);
+  ARG(malString, enumName);
+
+  SHEnumInfo *enumInfo = findEnumByName(enumName->value());
+  assert(enumInfo);
+
+  malHash::Map map;
+  map[":name"] = mal::string(enumInfo->name);
+
+  malValueVec values;
+  assert(enumInfo->descriptions.len == enumInfo->labels.len);
+  for (size_t i = 0; i < enumInfo->labels.len; i++) {
+    malHash::Map elemMap;
+    SHString label = enumInfo->labels.elements[i];
+    SHOptionalString description = enumInfo->descriptions.elements[i];
+    elemMap[":label"] = mal::string(label);
+    elemMap[":description"] = mal::string(description.string ? description.string : getString(description.crc));
+    values.emplace_back(mal::hash(elemMap));
+  }
+  map[":values"] = mal::list(values.begin(), values.end());
+
+  return mal::hash(map);
 }
 
 #ifndef SH_COMPRESSED_STRINGS
@@ -2229,7 +2408,7 @@ SHARDS_API __cdecl void shLispDestroy(void *env) {
   delete penv;
 }
 
-SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output = nullptr) {
+SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output) {
   auto penv = (malEnvPtr *)env;
   try {
     malValuePtr res;
@@ -2240,16 +2419,27 @@ SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output =
       res = maleval(str, cenv);
     }
     if (output) {
-      auto mvar = varify(res);
+      auto mvar = varify(res, false); // don't consume if it's a shard
       auto scriptVal = mvar->value();
       shards::cloneVar(*output, scriptVal);
     }
     return true;
+  } catch (malEmptyInputException &) {
+    return false;
+  } catch (malValuePtr &mv) {
+    SHLOG_WARNING("Eval error: {} line: {}", mv->print(true), std::to_string(mv->line));
+    return false;
+  } catch (std::exception &e) {
+    SHLOG_WARNING("Eval error: {}", e.what());
+    return false;
+  } catch (MalString &str) {
+    SHLOG_WARNING("Eval error: {}", str.c_str());
+    return false;
   } catch (...) {
     return false;
   }
 }
-};
+}
 
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
   obs = std::make_shared<Observer>();

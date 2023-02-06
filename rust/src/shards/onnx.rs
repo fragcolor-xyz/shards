@@ -267,7 +267,7 @@ impl Shard for Activate {
       tensor_slice[i] = value;
     }
 
-    let result = model.model.run(tvec!(tensor)).map_err(|e| {
+    let result = model.model.run(tvec!(tensor.into())).map_err(|e| {
       shlog!("Error: {}", e);
       "Failed to activate model"
     })?;

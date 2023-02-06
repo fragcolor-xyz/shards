@@ -127,8 +127,12 @@ jobs:
           ./shards ../src/tests/casting-numbers.edn
           ./shards ../src/tests/edn.edn
           ./shards ../src/tests/pure.edn
-          # NOTE: Times out on "Hello world" (Process.Run "cat" :Timeout 2) (Log)
-          # ./shards ../src/tests/shell.clj
+          ./shards ../src/tests/shell.clj
+          ./shards ../src/tests/infos.clj
+          ./shards ../src/tests/many.edn
+          ./shards ../src/tests/events.edn
+          ./shards ../src/tests/tablecase.edn
+          ./shards ../src/tests/types.edn
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
@@ -136,13 +140,13 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cd build
-          ./shards ../src/tests/shards.clj
+          ./shards ../src/tests/export-strings.edn
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: 1
         run: |
           cd docs/samples
-          for i in $(find shards -name '*.edn' ! -path '*UI*');
+          for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' \));
           do
             echo "Running sample $i";
             ../../build/shards run-sample.edn --file "$i";

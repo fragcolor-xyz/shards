@@ -14,7 +14,7 @@ void InputStack::pop() {
   items.pop_back();
 }
 
-const InputStack::Item& InputStack::getTop() const {
+const InputStack::Item &InputStack::getTop() const {
   if (items.size() == 0)
     throw std::runtime_error("Input stack empty");
 

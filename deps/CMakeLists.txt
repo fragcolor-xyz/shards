@@ -29,29 +29,37 @@ if(NOT EMSCRIPTEN)
     # Otherwise libressl will use the install prefix
     set(OPENSSLDIR "/etc/ssl" CACHE PATH "" FORCE)
 
-    if(CMAKE_GENERATOR STREQUAL Xcode)
-      # Required to fix linking against empty libraries with object library dependencies from xcode
-      set(LIBRESSL_PATCH_COMMAND PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch)
+    set(LIBRE_SSL_DIR "" CACHE FILEPATH "Use libressl from this path, not setting this will download the sources automatically")
+    if(LIBRE_SSL_DIR)
+      set(libressl_SOURCE_DIR ${LIBRE_SSL_DIR})
+
+      message(STATUS "Using libressl from LIBRE_SSL_DIR=${libressl_SOURCE_DIR}")
+      add_subdirectory(${libressl_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libressl)
+    else()
+      if(CMAKE_GENERATOR STREQUAL Xcode)
+        # Required to fix linking against empty libraries with object library dependencies from xcode
+        set(LIBRESSL_PATCH_COMMAND PATCH_COMMAND patch -p1 -i ${CMAKE_CURRENT_LIST_DIR}/libressl.patch)
+      endif()
+
+      message(STATUS "Fetching libressl")
+      FetchContent_Declare(
+        libressl
+        URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
+        URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
+        ${LIBRESSL_PATCH_COMMAND}
+      )
+      FetchContent_MakeAvailable(libressl)
     endif()
 
-    message(STATUS "Fetching libressl")
-    FetchContent_Declare(
-      libressl
-      URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
-      URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
-      ${LIBRESSL_PATCH_COMMAND}
-    )
-    FetchContent_MakeAvailable(libressl)
+    # Set source dir property used later by rust openssl-sys
     message(STATUS "libressl_SOURCE_DIR=${libressl_SOURCE_DIR}")
+    set_property(GLOBAL PROPERTY libressl_SOURCE_DIR ${libressl_SOURCE_DIR})
 
     # NOTE: External project doesn't work with Xcode here
     #  since ssl/cypto builds into object library referenced by static library
     add_library(OpenSSL INTERFACE)
     target_link_libraries(OpenSSL INTERFACE ssl)
     target_include_directories(OpenSSL INTERFACE ${libressl_SOURCE_DIR}/include)
-
-    # Set source dir property used later by rust openssl-sys
-    set_property(GLOBAL PROPERTY libressl_SOURCE_DIR ${libressl_SOURCE_DIR})
   endif()
 endif()
 
@@ -59,7 +67,6 @@ set(BOOST_DIR "" CACHE FILEPATH "Use boost from this path, not setting this will
 if(BOOST_DIR)
   message(STATUS "Using boost from BOOST_DIR=${BOOST_DIR}")
   add_subdirectory(${BOOST_DIR} ${CMAKE_CURRENT_BINARY_DIR}/boost)
-  message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
 else()
   message(STATUS "Fetching boost")
   FetchContent_Declare(
@@ -214,3 +221,14 @@ target_include_directories(utf8.h INTERFACE utf8.h)
 
 add_library(pdqsort INTERFACE)
 target_include_directories(pdqsort INTERFACE pdqsort)
+
+add_library(entt INTERFACE)
+target_include_directories(entt INTERFACE entt/single_include)
+
+# Tracy profiler, default off
+option(TRACY_ENABLE "Enable profiling" OFF)
+
+# These settings are required to make tracy from C++ work together with rust's tracy-client
+set(TRACY_MANUAL_LIFETIME ON CACHE BOOL "" FORCE)
+set(TRACY_DELAYED_INIT ON CACHE BOOL "" FORCE)
+add_subdirectory(tracy)

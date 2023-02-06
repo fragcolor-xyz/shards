@@ -55,6 +55,31 @@ inline std::string url_encode(const std::string_view &value) {
   return escaped.str();
 }
 
+inline std::string url_decode(const std::string_view &value) {
+  std::string decoded;
+  decoded.reserve(value.size());
+
+  for (std::size_t i = 0; i < value.size(); ++i) {
+    if (value[i] == '%') {
+      if (i + 3 <= value.size()) {
+        int v = 0;
+        std::istringstream hex_stream(std::string(value.substr(i + 1, 2)));
+        hex_stream >> std::hex >> v;
+        decoded += static_cast<char>(v);
+        i += 2;
+      } else {
+        throw std::runtime_error("Invalid URL encoding");
+      }
+    } else if (value[i] == '+') {
+      decoded += ' ';
+    } else {
+      decoded += value[i];
+    }
+  }
+
+  return decoded;
+}
+
 namespace shards {
 namespace Http {
 #ifdef __EMSCRIPTEN__
@@ -218,7 +243,7 @@ template <const string_view &METHOD> struct GetLike : public Base {
 
     vars.clear();
     vars.append(url.get().payload.stringValue);
-    if (input.valueType == Table) {
+    if (input.valueType == SHType::Table) {
       vars.append("?");
       ForEach(input.payload.tableValue, [&](auto key, auto &value) {
         auto sv_value = SHSTRVIEW(value);
@@ -232,7 +257,7 @@ template <const string_view &METHOD> struct GetLike : public Base {
 
     // add custom headers
     headersCArray.clear();
-    if (headers.get().valueType == Table) {
+    if (headers.get().valueType == SHType::Table) {
       auto htab = headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
         auto sv_value = SHSTRVIEW(value);
@@ -300,7 +325,7 @@ template <const string_view &METHOD> struct PostLike : public Base {
     // add custom headers
     bool hasContentType = false;
     headersCArray.clear();
-    if (headers.get().valueType == Table) {
+    if (headers.get().valueType == SHType::Table) {
       auto htab = headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
         std::string data(key);
@@ -401,6 +426,12 @@ struct Peer : public std::enable_shared_from_this<Peer> {
 
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<tcp::socket> socket;
+  std::optional<entt::connection> onStopConnection;
+
+  ~Peer() {
+    if (onStopConnection)
+      onStopConnection->release();
+  }
 };
 
 struct PeerError {
@@ -459,15 +490,25 @@ struct Server {
     return data.inputType;
   }
 
+  std::unordered_map<const SHWire *, std::weak_ptr<Peer>> _wireContainers;
+
+  void wireOnStop(const SHWire::OnStopEvent &e) {
+    SHLOG_TRACE("Wire {} stopped", e.wire->name);
+
+    auto container = _wireContainers[e.wire].lock();
+    _pool->release(container);
+  }
+
   // "Loop" forever accepting new connections.
   void accept_once(SHContext *context) {
     auto peer = _pool->acquire(_composer);
-    peer->wire->onStop.clear(); // we have a fresh recycled wire here
-    std::weak_ptr<Peer> weakPeer(peer);
-    peer->wire->onStop.emplace_back([this, weakPeer]() {
-      if (auto p = weakPeer.lock())
-        _pool->release(p);
-    });
+
+    // Assume that we recycle containers so the connection might already exist!
+    if (!peer->onStopConnection) {
+      _wireContainers[peer->wire.get()] = peer;
+      peer->onStopConnection = peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
+    }
+
     peer->socket.reset(new tcp::socket(*_ioc));
     _acceptor->async_accept(*peer->socket, [context, peer, this](beast::error_code ec) {
       if (!ec) {
@@ -567,7 +608,7 @@ struct Read {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_peerVar->valueType == Object);
+    assert(_peerVar->valueType == SHType::Object);
     assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
@@ -577,7 +618,7 @@ struct Read {
     buffer.clear();
     http::async_read(*peer->socket, buffer, request, [&, peer](beast::error_code ec, std::size_t nbytes) {
       if (ec) {
-        // notice there is likehood of done not being valid
+        // notice there is likelihood of done not being valid
         // anymore here
         throw PeerError{"Read", ec, peer};
       } else {
@@ -613,7 +654,7 @@ struct Read {
     _output["body"] = Var(request.body());
 
     auto res = SHVar();
-    res.valueType = Table;
+    res.valueType = SHType::Table;
     res.payload.tableValue.opaque = &_output;
     res.payload.tableValue.api = &GetGlobals().TableInterface;
     return res;
@@ -667,7 +708,7 @@ struct Response {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_peerVar->valueType == Object);
+    assert(_peerVar->valueType == SHType::Object);
     assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
     _response.clear();
@@ -678,7 +719,7 @@ struct Response {
     _response.body() = input_view;
 
     // add custom headers
-    if (_headers.get().valueType == Table) {
+    if (_headers.get().valueType == SHType::Table) {
       auto htab = _headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
         _response.set(key, value.payload.stringValue);
@@ -796,7 +837,7 @@ struct SendFile {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_peerVar->valueType == Object);
+    assert(_peerVar->valueType == SHType::Object);
     assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
@@ -829,7 +870,7 @@ struct SendFile {
       _response.body() = std::move(file);
 
       // add custom headers
-      if (_headers.get().valueType == Table) {
+      if (_headers.get().valueType == SHType::Table) {
         auto htab = _headers.get().payload.tableValue;
         ForEach(htab, [&](auto key, auto &value) {
           _response.set(key, value.payload.stringValue);
@@ -875,6 +916,17 @@ struct EncodeURI {
   }
 };
 
+struct DecodeURI {
+  std::string _output;
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto str = SHSTRVIEW(input);
+    _output = url_decode(str);
+    return Var(_output);
+  }
+};
+
 void registerShards() {
 #ifdef __EMSCRIPTEN__
   REGISTER_SHARD("Http.Get", Get);
@@ -890,6 +942,7 @@ void registerShards() {
   REGISTER_SHARD("Http.SendFile", SendFile);
 #endif
   REGISTER_SHARD("String.EncodeURI", EncodeURI);
+  REGISTER_SHARD("String.DecodeURI", DecodeURI);
 }
 } // namespace Http
 } // namespace shards

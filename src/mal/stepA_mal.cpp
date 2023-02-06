@@ -18,13 +18,13 @@
 
 namespace fs = boost::filesystem;
 
-malValuePtr READ(const String &input);
-String PRINT(malValuePtr ast);
+malValuePtr READ(const MalString &input);
+MalString PRINT(malValuePtr ast);
 static void installFunctions(malEnvPtr env);
 //  Installs functions, macros and constants implemented in MAL.
 
 static void makeArgv(malEnvPtr env, int argc, const char *argv[]);
-static String safeRep(const String &input, malEnvPtr env, bool *failed = nullptr);
+static MalString safeRep(const MalString &input, malEnvPtr env, bool *failed = nullptr);
 static malValuePtr quasiquote(malValuePtr obj);
 static malValuePtr macroExpand(malValuePtr obj, malEnvPtr env);
 
@@ -72,24 +72,24 @@ int malmain(int argc, const char *argv[]) {
 
   if (argc > 1) {
     if (strcmp(argv[1], "-e") == 0 && argc == 3) {
-      String out = safeRep(argv[2], replEnv, &failed);
+      MalString out = safeRep(argv[2], replEnv, &failed);
       std::cout << out << "\n";
     } else {
       auto scriptFilePath = fs::path(argv[1]);
       auto fileonly = scriptFilePath.filename().string();
-      String filename = escape(fileonly);
-      String out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv, &failed);
+      MalString filename = escape(fileonly);
+      MalString out = safeRep(STRF("(load-file %s)", filename.c_str()), replEnv, &failed);
       if (out.length() > 0 && out != "nil")
         std::cout << out << "\n";
     }
   } else {
 #ifndef NO_MAL_MAIN
     s_readLine = new ReadLine("./shards-history.txt");
-    String prompt = "user> ";
-    String input;
+    MalString prompt = "user> ";
+    MalString input;
     rep("(println (str \"Mal [\" *host-language* \"]\"))", replEnv);
     while (s_readLine->get(prompt, input)) {
-      String out = safeRep(input, replEnv, &failed);
+      MalString out = safeRep(input, replEnv, &failed);
       if (out.length() > 0)
         std::cout << out << "\n";
     }
@@ -108,18 +108,18 @@ int main(int argc, const char *argv[]) { return malmain(argc, argv); }
 
 #endif
 
-static String safeRep(const String &input, malEnvPtr env, bool *failed) {
+static MalString safeRep(const MalString &input, malEnvPtr env, bool *failed) {
   try {
     return rep(input, env);
   } catch (malEmptyInputException &) {
     if (failed)
       *failed = true;
-    return String();
+    return MalString();
   } catch (malValuePtr &mv) {
     if (failed)
       *failed = true;
     return "Error: " + mv->print(true) + " Line: " + std::to_string(mv->line);
-  } catch (String &s) {
+  } catch (MalString &s) {
     if (failed)
       *failed = true;
     return "Error: " + s;
@@ -138,9 +138,9 @@ static void makeArgv(malEnvPtr env, int argc, const char *argv[]) {
   env->set("*command-line-args*", mal::list(args));
 }
 
-String rep(const String &input, malEnvPtr env) { return PRINT(EVAL(READ(input), env)); }
+MalString rep(const MalString &input, malEnvPtr env) { return PRINT(EVAL(READ(input), env)); }
 
-malValuePtr READ(const String &input) { return readStr(input); }
+malValuePtr READ(const MalString &input) { return readStr(input); }
 
 malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
   if (!env) {
@@ -164,7 +164,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
     // From here on down we are evaluating a non-empty list.
     // First handle the special forms.
     if (const malSymbol *symbol = DYNAMIC_CAST(malSymbol, list->item(0))) {
-      String special = symbol->value();
+      MalString special = symbol->value();
       int argCount = list->count() - 1;
 
       if (special == "def!") {
@@ -278,7 +278,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
 
         try {
           ast = EVAL(tryBody, env);
-        } catch (String &s) {
+        } catch (MalString &s) {
           excVal = mal::string(s);
         } catch (malEmptyInputException &) {
           // Not an error, continue as if we got nil
@@ -310,7 +310,7 @@ malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
   }
 }
 
-String PRINT(malValuePtr ast) { return ast->print(true); }
+MalString PRINT(malValuePtr ast) { return ast->print(true); }
 
 malValuePtr APPLY(malValuePtr op, malValueIter argsBegin, malValueIter argsEnd) {
   const malApplicable *handler = DYNAMIC_CAST(malApplicable, op);
@@ -319,7 +319,7 @@ malValuePtr APPLY(malValuePtr op, malValueIter argsBegin, malValueIter argsEnd) 
   return handler->apply(argsBegin, argsEnd);
 }
 
-static bool isSymbol(malValuePtr obj, const String &text) {
+static bool isSymbol(malValuePtr obj, const MalString &text) {
   const malSymbol *sym = DYNAMIC_CAST(malSymbol, obj);
   return sym && (sym->value() == text);
 }
@@ -394,8 +394,8 @@ static void installFunctions(malEnvPtr env) {
 #ifndef NO_MAL_MAIN
 
 // Added to keep the linker happy at step A
-malValuePtr readline(const String &prompt) {
-  String input;
+malValuePtr readline(const MalString &prompt) {
+  MalString input;
   if (s_readLine->get(prompt, input)) {
     return mal::string(input);
   }

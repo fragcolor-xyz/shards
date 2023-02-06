@@ -8,9 +8,18 @@
 #include <stddef.h>  // size_t
 #include <stdint.h>  // ints
 
+#if defined(__cplusplus) && !defined(RUST_BINDGEN)
+#define SH_ENUM_CLASS class
+#define SH_ENUM_DECL
+#else
+#define SH_ENUM_CLASS
+#define SH_ENUM_DECL enum
+#endif
+
+#define SH_USE_ENUMS 1
 // All the available types
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-enum SHType : uint8_t {
+enum SH_ENUM_CLASS SHType : uint8_t {
   // Blittables
   None,
   Any,
@@ -47,7 +56,7 @@ enum SHType : uint8_t {
   Audio,
 };
 
-enum SHWireState : uint8_t {
+enum SH_ENUM_CLASS SHWireState : uint8_t {
   Continue, // Nothing happened, continue
   Return,   // Control flow, end this wire/flow and return previous output
   Rebase,   // Continue but put the local wire initial input as next input
@@ -56,85 +65,13 @@ enum SHWireState : uint8_t {
   Error,    // Stop the flow execution and raise an error
 };
 
-// These shards run fully inline in the wire threaded execution engine
-enum SHInlineShards : uint32_t {
-  // regular shards
-  NotInline,
-  // special flag that will optimize and skip activate calls
-  NoopShard,
-  // internal "quick" inlined shards
-  CoreConst,
-  CoreSleep,
-  CoreInput,
-  CoreForRange,
-  CoreRepeat,
-  CoreOnce,
-  CoreGet,
-  CoreSet,
-  CoreRefRegular,
-  CoreRefTable,
-  CoreUpdate,
-  CoreSwap,
-  CorePush,
-  CoreIs,
-  CoreIsNot,
-  CoreAnd,
-  CoreOr,
-  CoreNot,
-  CoreIsMore,
-  CoreIsLess,
-  CoreIsMoreEqual,
-  CoreIsLessEqual,
-
-  MathAdd,
-  MathSubtract,
-  MathMultiply,
-  MathDivide,
-  MathXor,
-  MathAnd,
-  MathOr,
-  MathMod,
-  MathLShift,
-  MathRShift,
-
-  MathAbs,
-  MathExp,
-  MathExp2,
-  MathExpm1,
-  MathLog,
-  MathLog10,
-  MathLog2,
-  MathLog1p,
-  MathSqrt,
-  MathFastSqrt,
-  MathFastInvSqrt,
-  MathCbrt,
-  MathSin,
-  MathCos,
-  MathTan,
-  MathAsin,
-  MathAcos,
-  MathAtan,
-  MathSinh,
-  MathCosh,
-  MathTanh,
-  MathAsinh,
-  MathAcosh,
-  MathAtanh,
-  MathErf,
-  MathErfc,
-  MathTGamma,
-  MathLGamma,
-  MathCeil,
-  MathFloor,
-  MathTrunc,
-  MathRound,
-};
 #else
 typedef uint8_t SHType;
 typedef uint8_t SHWireState;
-typedef uint32_t SHInlineShards;
 #endif
+
+// Enum defined in shards/inlined.hpp
+typedef uint32_t SHInlineShards;
 
 typedef void *SHArray;
 
@@ -216,6 +153,7 @@ typedef struct _SHOptionalString {
   SHString string;
   uint32_t crc;
 } SHOptionalString;
+SH_ARRAY_DECL(SHOptionalStrings, SHOptionalString);
 
 #if defined(__clang__) || defined(__GNUC__)
 #define likely(x) __builtin_expect((x), 1)
@@ -375,7 +313,7 @@ struct SHSetInterface {
 
 struct SHTypeInfo {
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-  enum SHType basicType;
+  SH_ENUM_DECL SHType basicType;
 #else
   SHType basicType;
 #endif
@@ -447,7 +385,7 @@ struct SHTypeInfo {
   // Should not be considered when hashing this type
   uint32_t fixedSize;
   // Used by Array type, which is still not implemented properly and unstable.
-  enum SHType innerType;
+  SH_ENUM_DECL SHType innerType;
   // used internally to make our live easy when types are recursive (aka Self is
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
@@ -485,6 +423,7 @@ struct SHEnumInfo {
   SHString name;
   SHStrings labels;
   SHEnums values;
+  SHOptionalStrings descriptions;
 };
 
 struct SHParameterInfo {
@@ -631,8 +570,8 @@ struct SHVarPayload {
 struct SHVar {
   struct SHVarPayload payload;
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-  enum SHType valueType;
-  enum SHType innerType;
+  SH_ENUM_DECL SHType valueType;
+  SH_ENUM_DECL SHType innerType;
 #else
   SHType valueType;
   SHType innerType;
@@ -645,11 +584,11 @@ struct SHVar {
 #endif
 } __attribute__((aligned(16)));
 
-enum SHRunWireOutputState { Running, Restarted, Stopped, Failed };
+enum SH_ENUM_CLASS SHRunWireOutputState { Running, Restarted, Stopped, Failed };
 
 struct SHRunWireOutput {
   struct SHVar output;
-  enum SHRunWireOutputState state;
+  SH_ENUM_DECL SHRunWireOutputState state;
 } __attribute__((aligned(16)));
 
 struct SHComposeResult {
@@ -739,12 +678,7 @@ typedef void(__cdecl *SHResetStateProc)(struct Shard *);
 
 struct Shard {
   // \-- Internal stuff, do not directly use! --/
-
-#if defined(__cplusplus) || defined(SH_USE_ENUMS)
-  enum SHInlineShards inlineShardId;
-#else
   SHInlineShards inlineShardId;
-#endif
 
   // flag to ensure shards are unique when flows/wires
   SHBool owned;
@@ -872,8 +806,8 @@ typedef void(__cdecl *SHReleaseVariable)(struct SHVar *variable);
 typedef void(__cdecl *SHAbortWire)(struct SHContext *context, SHString errorText);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef enum SHWireState(__cdecl *SHSuspend)(struct SHContext *context, double seconds);
-typedef enum SHWireState(__cdecl *SHGetState)(struct SHContext *context);
+typedef SH_ENUM_DECL SHWireState(__cdecl *SHSuspend)(struct SHContext *context, double seconds);
+typedef SH_ENUM_DECL SHWireState(__cdecl *SHGetState)(struct SHContext *context);
 #else
 typedef SHWireState(__cdecl *SHSuspend)(struct SHContext *context, double seconds);
 typedef SHWireState(__cdecl *SHGetState)(struct SHContext *context);
@@ -890,16 +824,16 @@ typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, SHValida
                                                          struct SHInstanceData data);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef enum SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
-                                               struct SHVar *output);
+typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
+                                                       struct SHVar *output);
 #else
 typedef SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
                                           struct SHVar *output);
 #endif
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef enum SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
-                                                     struct SHVar *output, struct SHVar *outHash);
+typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
+                                                             struct SHVar *output, struct SHVar *outHash);
 #else
 typedef SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
                                                 struct SHVar *output, struct SHVar *outHash);
@@ -1187,7 +1121,7 @@ SHARDS_API SHCore *__cdecl shardsInterface(uint32_t abi_version);
   }
 
 #define SH_CAT_IMPL(s1, s2) s1##s2
-#define SH_CAT(s1, s2) CAT_IMPL(s1, s2)
+#define SH_CAT(s1, s2) SH_CAT_IMPL(s1, s2)
 
 #ifdef __COUNTER__
 #define SH_GENSYM(str) SH_CAT(str, __COUNTER__)

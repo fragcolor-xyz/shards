@@ -1,7 +1,9 @@
 (defwire main-wire
   ["Hello" "world!" "How" "are" "we" "today?"]
   (String.Join :Separator " ") (Log)
-  (Assert.Is "Hello world! How are we today?" true))
+  (Assert.Is "Hello world! How are we today?" true)
+
+  (bytes "0x7777") (BigInt) (BigInt.ToString) (Assert.Is "30583") (Log))
 
 (defmesh root)
 (schedule root main-wire)

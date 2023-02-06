@@ -1,6 +1,7 @@
 #include "texture.hpp"
 #include "context.hpp"
 #include "error_utils.hpp"
+#include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <map>
 
@@ -64,8 +65,8 @@ Texture &Texture::initWithLabel(std::string &&label) {
   return *this;
 }
 
-std::shared_ptr<Texture> Texture::clone() {
-  std::shared_ptr<Texture> result = std::make_shared<Texture>(*this);
+std::shared_ptr<Texture> Texture::clone() const {
+  auto result = cloneSelfWithId(this, getNextId());
   result->contextData.reset();
   return result;
 }
@@ -98,6 +99,8 @@ static WGPUTextureView createView(const TextureFormat &format, WGPUTexture textu
 
 static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, WGPUTexture texture,
                              const ImmutableSharedBuffer &isb) {
+  ZoneScoped;
+
   const TextureFormatDesc &inputFormat = getTextureFormatDescription(format.pixelFormat);
   uint32_t rowDataLength = inputFormat.pixelSize * resolution.x;
 
@@ -119,6 +122,8 @@ static void writeTextureData(Context &context, const TextureFormat &format, cons
 }
 
 void Texture::initContextData(Context &context, TextureContextData &contextData) {
+  ZoneScoped;
+
   WGPUDevice device = context.wgpuDevice;
   assert(device);
 
@@ -185,5 +190,10 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
 }
 
 void Texture::updateContextData(Context &context, TextureContextData &contextData) {}
+
+UniqueId Texture::getNextId() {
+  static UniqueIdGenerator gen(UniqueIdTag::Texture);
+  return gen.getNext();
+}
 
 } // namespace gfx

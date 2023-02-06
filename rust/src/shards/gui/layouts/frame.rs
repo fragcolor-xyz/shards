@@ -4,6 +4,7 @@
 use super::Frame;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHColor;
 use crate::types::common_type;
@@ -31,43 +32,43 @@ lazy_static! {
   static ref FRAME_PARAMETERS: Parameters = vec![
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("InnerMargin"),
-      cstr!("The UI contents."),
+      shccstr!("The margin inside the frame, between the outline and the contents."),
       &FLOAT4_TYPES[..],
     )
       .into(),
     (
       cstr!("OuterMargin"),
-      cstr!("The UI contents."),
+      shccstr!("The margin outside the frame."),
       &FLOAT4_TYPES[..],
     )
       .into(),
     (
       cstr!("Rounding"),
-      cstr!("The UI contents."),
+      shccstr!("Rounding radiuses for the corners."),
       &FLOAT4_TYPES[..],
     )
       .into(),
     (
       cstr!("FillColor"),
-      cstr!("The UI contents."),
+      shccstr!("The color filling the background of the frame."),
       &COLOR_VAR_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("StrokeColor"),
-      cstr!("The UI contents."),
+      shccstr!("The color for the frame outline."),
       &COLOR_VAR_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("StrokeWidth"),
-      cstr!("The UI contents."),
+      shccstr!("The width of the frame outline."),
       FLOAT_TYPES_SLICE,
     )
       .into(),
@@ -131,7 +132,7 @@ impl Shard for Frame {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

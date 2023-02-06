@@ -34,12 +34,11 @@ struct TextureShard {
   OwnedVar textureVar;
 
   PARAM_VAR(asType_, "Type", "Type to interpret image data as. (Default: UNormSRGB for RGBA8 images, UNorm for other formats)",
-            {Types::TextureType});
+            {Types::TextureTypeEnumInfo::Type});
   PARAM_IMPL(TextureShard, PARAM_IMPL_FOR(asType_));
 
   TextureShard() {
-    asType_ = Var::Enum(Types::TextureType_::Default, SHTypeInfo(Types::TextureType).enumeration.vendorId,
-                        SHTypeInfo(Types::TextureType).enumeration.typeId);
+    asType_ = Var::Enum(Types::TextureType_::Default, Types::TextureTypeEnumInfo::VendorId, Types::TextureTypeEnumInfo::TypeId);
   }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }

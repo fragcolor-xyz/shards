@@ -4,6 +4,7 @@
 use super::Horizontal;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -23,13 +24,13 @@ lazy_static! {
   static ref HORIZONTAL_PARAMETERS: Parameters = vec![
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("Wrap"),
-      cstr!("Wrap the content once it reaches the right edge."),
+      shccstr!("Wrap the content once it reaches the right edge."),
       &BOOL_TYPES[..],
     )
       .into(),
@@ -88,7 +89,7 @@ impl Shard for Horizontal {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

@@ -5,23 +5,24 @@
 #define SH_CORE_SHARDS_CORE
 
 #include "../shards_macros.hpp"
-// circular warning this is self inclusive on purpose
 #include "../foundation.hpp"
+#include "inlined.hpp"
 #include "shards.h"
 #include "shards.hpp"
 #include "common_types.hpp"
 #include "number_types.hpp"
+#include "exposed_type_utils.hpp"
+#include "common_types.hpp"
+#include "inlined.hpp"
 #include <cassert>
 #include <cmath>
 #include <sstream>
 
 namespace shards {
 struct CoreInfo2 {
-  // 'type' == 0x74797065 or 1954115685
-  static inline EnumInfo<BasicTypes> BasicTypesEnum{"Type", CoreCC, 'type'};
-  static inline Type BasicTypesType{{SHType::Enum, {.enumeration = {CoreCC, 'type'}}}};
-  static inline Type BasicTypesSeqType{{SHType::Seq, {.seqTypes = BasicTypesType}}};
-  static inline Types BasicTypesTypes{{BasicTypesType, BasicTypesSeqType}, true};
+  DECL_ENUM_INFO(BasicTypes, Type, 'type');
+  static inline Type BasicTypesSeqType{{SHType::Seq, {.seqTypes = TypeEnumInfo::Type}}};
+  static inline Types BasicTypesTypes{{TypeEnumInfo::Type, BasicTypesSeqType}, true};
 };
 
 struct Const {
@@ -56,10 +57,10 @@ struct Const {
     _innerInfo = deriveTypeInfo(_value, data, &_dependencies);
     if (!_dependencies.empty()) {
       _clone = _value;
-      const_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::NotInline;
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::NotInline;
     } else {
       _clone = shards::Var::Empty;
-      const_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::CoreConst;
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreConst;
     }
     return _innerInfo;
   }
@@ -84,17 +85,8 @@ static shards::ParamsInfo compareParamsInfo =
     shards::ParamsInfo(shards::ParamsInfo::Param("Value", SHCCSTR("The value to test against for equality."), CoreInfo::AnyType));
 
 struct BaseOpsBin {
-  SHVar _value{};
-  SHVar *_target = nullptr;
-
-  void destroy() { destroyVar(_value); }
-
-  void cleanup() {
-    if (_target && _value.valueType == ContextVar) {
-      releaseVariable(_target);
-    }
-    _target = nullptr;
-  }
+  ParamVar _operand{shards::Var(0)};
+  ExposedInfo _requiredVariables;
 
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -102,11 +94,16 @@ struct BaseOpsBin {
 
   SHParametersInfo parameters() { return SHParametersInfo(compareParamsInfo); }
 
+  SHExposedTypesInfo requiredVariables() {
+    _requiredVariables.clear();
+    mergeIntoExposedInfo(_requiredVariables, _operand, CoreInfo::AnyType);
+    return SHExposedTypesInfo(_requiredVariables);
+  }
+
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      cloneVar(_value, value);
-      cleanup();
+      _operand = value;
       break;
     default:
       break;
@@ -116,22 +113,20 @@ struct BaseOpsBin {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return _value;
+      return _operand;
     default:
       return shards::Var::Empty;
     }
   }
 
-  void warmup(SHContext *context) {
-    // TODO deep resolve variables like const
-    _target = _value.valueType == ContextVar ? referenceVariable(context, _value.payload.stringValue) : &_value;
-  }
+  void warmup(SHContext *context) { _operand.warmup(context); }
+  void cleanup() { _operand.cleanup(); }
 };
 
 #define LOGIC_OP(NAME, OP)                                                         \
   struct NAME : public BaseOpsBin {                                                \
     FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) { \
-      const auto &value = *_target;                                                \
+      const auto &value = _operand.get();                                          \
       if (input OP value) {                                                        \
         return shards::Var::True;                                                  \
       }                                                                            \
@@ -150,8 +145,8 @@ LOGIC_OP(IsLessEqual, <=);
 #define LOGIC_ANY_SEQ_OP(NAME, OP)                                                        \
   struct NAME : public BaseOpsBin {                                                       \
     SHVar activate(SHContext *context, const SHVar &input) {                              \
-      const auto &value = *_target;                                                       \
-      if (input.valueType == Seq && value.valueType == Seq) {                             \
+      const auto &value = _operand.get();                                                 \
+      if (input.valueType == SHType::Seq && value.valueType == SHType::Seq) {             \
         auto vlen = value.payload.seqValue.len;                                           \
         auto ilen = input.payload.seqValue.len;                                           \
         if (ilen > vlen)                                                                  \
@@ -162,21 +157,21 @@ LOGIC_OP(IsLessEqual, <=);
           }                                                                               \
         }                                                                                 \
         return shards::Var::False;                                                        \
-      } else if (input.valueType == Seq && value.valueType != Seq) {                      \
+      } else if (input.valueType == SHType::Seq && value.valueType != SHType::Seq) {      \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                       \
           if (input.payload.seqValue.elements[i] OP value) {                              \
             return shards::Var::True;                                                     \
           }                                                                               \
         }                                                                                 \
         return shards::Var::False;                                                        \
-      } else if (input.valueType != Seq && value.valueType == Seq) {                      \
+      } else if (input.valueType != SHType::Seq && value.valueType == SHType::Seq) {      \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                       \
           if (input OP value.payload.seqValue.elements[i]) {                              \
             return shards::Var::True;                                                     \
           }                                                                               \
         }                                                                                 \
         return shards::Var::False;                                                        \
-      } else if (input.valueType != Seq && value.valueType != Seq) {                      \
+      } else if (input.valueType != SHType::Seq && value.valueType != SHType::Seq) {      \
         if (input OP value) {                                                             \
           return shards::Var::True;                                                       \
         }                                                                                 \
@@ -190,8 +185,8 @@ LOGIC_OP(IsLessEqual, <=);
 #define LOGIC_ALL_SEQ_OP(NAME, OP)                                                           \
   struct NAME : public BaseOpsBin {                                                          \
     SHVar activate(SHContext *context, const SHVar &input) {                                 \
-      const auto &value = *_target;                                                          \
-      if (input.valueType == Seq && value.valueType == Seq) {                                \
+      const auto &value = _operand.get();                                                    \
+      if (input.valueType == SHType::Seq && value.valueType == SHType::Seq) {                \
         auto vlen = value.payload.seqValue.len;                                              \
         auto ilen = input.payload.seqValue.len;                                              \
         if (ilen > vlen)                                                                     \
@@ -202,21 +197,21 @@ LOGIC_OP(IsLessEqual, <=);
           }                                                                                  \
         }                                                                                    \
         return shards::Var::True;                                                            \
-      } else if (input.valueType == Seq && value.valueType != Seq) {                         \
+      } else if (input.valueType == SHType::Seq && value.valueType != SHType::Seq) {         \
         for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {                          \
           if (!(input.payload.seqValue.elements[i] OP value)) {                              \
             return shards::Var::False;                                                       \
           }                                                                                  \
         }                                                                                    \
         return shards::Var::True;                                                            \
-      } else if (input.valueType != Seq && value.valueType == Seq) {                         \
+      } else if (input.valueType != SHType::Seq && value.valueType == SHType::Seq) {         \
         for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {                          \
           if (!(input OP value.payload.seqValue.elements[i])) {                              \
             return shards::Var::False;                                                       \
           }                                                                                  \
         }                                                                                    \
         return shards::Var::True;                                                            \
-      } else if (input.valueType != Seq && value.valueType != Seq) {                         \
+      } else if (input.valueType != SHType::Seq && value.valueType != SHType::Seq) {         \
         if (!(input OP value)) {                                                             \
           return shards::Var::False;                                                         \
         }                                                                                    \
@@ -240,17 +235,17 @@ LOGIC_ALL_SEQ_OP(AllMoreEqual, >=);
 LOGIC_ANY_SEQ_OP(AnyLessEqual, <=);
 LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
 
-#define LOGIC_OP_DESC(NAME)         \
-  RUNTIME_CORE_SHARD_FACTORY(NAME); \
-  RUNTIME_SHARD_destroy(NAME);      \
-  RUNTIME_SHARD_cleanup(NAME);      \
-  RUNTIME_SHARD_warmup(NAME);       \
-  RUNTIME_SHARD_inputTypes(NAME);   \
-  RUNTIME_SHARD_outputTypes(NAME);  \
-  RUNTIME_SHARD_parameters(NAME);   \
-  RUNTIME_SHARD_setParam(NAME);     \
-  RUNTIME_SHARD_getParam(NAME);     \
-  RUNTIME_SHARD_activate(NAME);     \
+#define LOGIC_OP_DESC(NAME)              \
+  RUNTIME_CORE_SHARD_FACTORY(NAME);      \
+  RUNTIME_SHARD_cleanup(NAME);           \
+  RUNTIME_SHARD_warmup(NAME);            \
+  RUNTIME_SHARD_inputTypes(NAME);        \
+  RUNTIME_SHARD_outputTypes(NAME);       \
+  RUNTIME_SHARD_parameters(NAME);        \
+  RUNTIME_SHARD_setParam(NAME);          \
+  RUNTIME_SHARD_getParam(NAME);          \
+  RUNTIME_SHARD_activate(NAME);          \
+  RUNTIME_SHARD_requiredVariables(NAME); \
   RUNTIME_SHARD_END(NAME);
 
 struct Input {
@@ -303,9 +298,9 @@ struct Pause {
 
   FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
     const auto &t = time.get();
-    if (t.valueType == None)
+    if (t.valueType == SHType::None)
       suspend(context, 0.0);
-    else if (t.valueType == Int)
+    else if (t.valueType == SHType::Int)
       suspend(context, double(t.payload.intValue));
     else
       suspend(context, t.payload.floatValue);
@@ -331,7 +326,7 @@ struct PauseMs : public Pause {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto &t = time.get();
-    if (t.valueType == None)
+    if (t.valueType == SHType::None)
       suspend(context, 0.0);
     else
       suspend(context, double(t.payload.intValue) / 1000.0);
@@ -492,7 +487,7 @@ struct IsNone {
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   static SHOptionalString outputHelp() { return SHCCSTR("`true` is the type of input is `None`; otherwise, `false`."); }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType == None); }
+  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType == SHType::None); }
 };
 
 struct IsNotNone {
@@ -506,7 +501,7 @@ struct IsNotNone {
     return SHCCSTR("`true` is the type of input different from `None`; otherwise, `false`.");
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType != None); }
+  SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(input.valueType != SHType::None); }
 };
 
 struct Restart {
@@ -551,12 +546,90 @@ struct IsValidNumber {
   SHVar activate(SHContext *context, const SHVar &input) { return shards::Var(std::isnormal(input.payload.floatValue)); }
 };
 
+struct IsAlmost {
+  SHOptionalString help() { return SHCCSTR("Checks whether the input is almost equal to a given value."); }
+
+  static SHTypesInfo inputTypes() { return MathTypes; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any number type or a sequence of such types."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("true if the input is almost equal to the given value; otherwise, false.");
+  }
+
+  SHParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const SHVar &inValue) {
+    switch (index) {
+    case 0:
+      destroyVar(_value);
+      cloneVar(_value, inValue);
+      break;
+    case 1:
+      if (inValue.valueType == SHType::Float)
+        _threshold = inValue.payload.floatValue;
+      else
+        _threshold = double(inValue.payload.intValue);
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _value;
+    case 1:
+      return Var(_threshold);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (_value.valueType != data.inputType.basicType)
+      throw SHException("Input and value types must match.");
+
+    if (_threshold <= 0.0)
+      throw SHException("Threshold must be greater than 0.");
+
+    return CoreInfo::BoolType;
+  }
+
+  void destroy() { destroyVar(_value); }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return Var(_almostEqual(input, _value, _threshold)); }
+
+private:
+  static inline Types MathTypes{{
+      CoreInfo::FloatType,
+      CoreInfo::Float2Type,
+      CoreInfo::Float3Type,
+      CoreInfo::Float4Type,
+      CoreInfo::IntType,
+      CoreInfo::Int2Type,
+      CoreInfo::Int3Type,
+      CoreInfo::Int4Type,
+      CoreInfo::Int8Type,
+      CoreInfo::Int16Type,
+      CoreInfo::AnySeqType,
+  }};
+  static inline Parameters _params = {{"Value", SHCCSTR("The value to test against for almost equality."), MathTypes},
+                                      {"Threshold",
+                                       SHCCSTR("The smallest difference to be considered equal. Should be greater than zero."),
+                                       {CoreInfo::FloatType, CoreInfo::IntType}}};
+
+  SHFloat _threshold{FLT_EPSILON};
+  SHVar _value{};
+};
+
 struct NaNTo0 {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatOrFloatSeq; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatOrFloatSeq; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.inputType.basicType == Float) {
+    if (data.inputType.basicType == SHType::Float) {
       OVERRIDE_ACTIVATE(data, activateSingle);
     } else {
       OVERRIDE_ACTIVATE(data, activateSeq);
@@ -626,7 +699,7 @@ struct VariableBase {
       _name = value.payload.stringValue;
       break;
     case 1:
-      if (value.valueType == None) {
+      if (value.valueType == SHType::None) {
         _isTable = false;
       } else {
         _isTable = true;
@@ -666,13 +739,13 @@ struct SetBase : public VariableBase {
     for (uint32_t i = 0; i < data.shared.len; i++) {
       auto &reference = data.shared.elements[i];
       if (strcmp(reference.name, _name.c_str()) == 0) {
-        if (_isTable && !reference.isTableEntry && reference.exposedType.basicType != Table) {
+        if (_isTable && !reference.isTableEntry && reference.exposedType.basicType != SHType::Table) {
           throw ComposeError("Set/Ref/Update, variable was not a table: " + _name);
         } else if (!_isTable && reference.isTableEntry) {
           throw ComposeError("Set/Ref/Update, variable was a table: " + _name);
         } else if (!_isTable &&
                    // need to check if this was just a any table definition {}
-                   !(reference.exposedType.basicType == Table && reference.exposedType.table.types.len == 0) &&
+                   !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
                    data.inputType != reference.exposedType) {
           throw ComposeError("Set/Ref/Update, variable already set as another type: " + _name);
         }
@@ -710,12 +783,12 @@ struct SetBase : public VariableBase {
     }
 
     if (_isTable) {
-      if (_target->valueType != Table) {
-        if (_target->valueType != None)
+      if (_target->valueType != SHType::Table) {
+        if (_target->valueType != SHType::None)
           destroyVar(*_target);
 
         // Not initialized yet
-        _target->valueType = Table;
+        _target->valueType = SHType::Table;
         _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new SHMap();
       }
@@ -817,13 +890,13 @@ struct Ref : public SetBase {
           ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, false, true));
 
       // properly link the right call
-      const_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::CoreRefTable;
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreRefTable;
     } else {
       // just a variable!
       _exposedInfo =
           ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed variable."), SHTypeInfo(data.inputType), false));
 
-      const_cast<Shard *>(data.shard)->inlineShardId = SHInlineShards::CoreRefRegular;
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreRefRegular;
     }
     return data.inputType;
   }
@@ -858,9 +931,9 @@ struct Ref : public SetBase {
       memcpy(_cell, &input, sizeof(SHVar));
       return input;
     } else {
-      if (_target->valueType != Table) {
+      if (_target->valueType != SHType::Table) {
         // Not initialized yet
-        _target->valueType = Table;
+        _target->valueType = SHType::Table;
         _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new SHMap();
       }
@@ -904,7 +977,7 @@ struct Update : public SetBase {
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         auto &name = data.shared.elements[i].name;
-        if (name == _name && data.shared.elements[i].exposedType.basicType == Table &&
+        if (name == _name && data.shared.elements[i].exposedType.basicType == SHType::Table &&
             data.shared.elements[i].exposedType.table.types.elements) {
           if (data.shared.elements[i].isPushTable) {
             SHLOG_ERROR("Error with variable: {}", _name);
@@ -1008,7 +1081,7 @@ struct Get : public VariableBase {
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         auto &name = data.shared.elements[i].name;
-        if (strcmp(name, _name.c_str()) == 0 && data.shared.elements[i].exposedType.basicType == Table) {
+        if (strcmp(name, _name.c_str()) == 0 && data.shared.elements[i].exposedType.basicType == SHType::Table) {
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           if (tableKeys.len == tableTypes.len) {
@@ -1023,7 +1096,7 @@ struct Get : public VariableBase {
             }
           } else {
             // we got no key names
-            if (_defaultValue.valueType != None) {
+            if (_defaultValue.valueType != SHType::None) {
               freeDerivedInfo(_defaultType);
               _defaultType = deriveTypeInfo(_defaultValue, data);
               return _defaultType;
@@ -1042,7 +1115,7 @@ struct Get : public VariableBase {
           }
         }
       }
-      if (_defaultValue.valueType != None) {
+      if (_defaultValue.valueType != SHType::None) {
         freeDerivedInfo(_defaultType);
         _defaultType = deriveTypeInfo(_defaultValue, data);
         return _defaultType;
@@ -1090,7 +1163,7 @@ struct Get : public VariableBase {
       }
     }
 
-    if (_defaultValue.valueType != None) {
+    if (_defaultValue.valueType != SHType::None) {
       freeDerivedInfo(_defaultType);
       _defaultType = deriveTypeInfo(_defaultValue, data);
       return _defaultType;
@@ -1100,7 +1173,7 @@ struct Get : public VariableBase {
   }
 
   SHExposedTypesInfo requiredVariables() {
-    if (_defaultValue.valueType != None) {
+    if (_defaultValue.valueType != SHType::None) {
       return {};
     } else {
       if (_isTable) {
@@ -1146,7 +1219,7 @@ struct Get : public VariableBase {
   void cleanup() {
     // reset shard id
     if (_shard) {
-      _shard->inlineShardId = SHInlineShards::NotInline;
+      _shard->inlineShardId = InlineShard::NotInline;
     }
     VariableBase::cleanup();
   }
@@ -1158,13 +1231,13 @@ struct Get : public VariableBase {
       return shards::Var::Empty;
     } else {
       if (_isTable) {
-        if (_target->valueType == Table) {
+        if (_target->valueType == SHType::Table) {
           auto &kv = _key.get();
           if (_target->payload.tableValue.api->tableContains(_target->payload.tableValue, kv.payload.stringValue)) {
             // Has it
             SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
 
-            if (unlikely(_defaultValue.valueType != None && !defaultTypeCheck(*vptr))) {
+            if (unlikely(_defaultValue.valueType != SHType::None && !defaultTypeCheck(*vptr))) {
               return _defaultValue;
             } else {
               // Pin fast cell
@@ -1172,20 +1245,20 @@ struct Get : public VariableBase {
               if (!_key.isVariable()) {
                 _cell = vptr;
                 // override shard internal id
-                _shard->inlineShardId = SHInlineShards::CoreGet;
+                _shard->inlineShardId = InlineShard::CoreGet;
               }
               return *vptr;
             }
           } else {
             // No record
-            if (_defaultType.basicType != None) {
+            if (_defaultType.basicType != SHType::None) {
               return _defaultValue;
             } else {
               throw ActivationError("Get - Key not found in table.");
             }
           }
         } else {
-          if (_defaultType.basicType != None) {
+          if (_defaultType.basicType != SHType::None) {
             return _defaultValue;
           } else {
             throw ActivationError("Get - Table is empty or does not exist yet.");
@@ -1193,13 +1266,13 @@ struct Get : public VariableBase {
         }
       } else {
         auto &value = *_target;
-        if (unlikely(_defaultValue.valueType != None && !defaultTypeCheck(value))) {
+        if (unlikely(_defaultValue.valueType != SHType::None && !defaultTypeCheck(value))) {
           return _defaultValue;
         } else {
           // Pin fast cell
           _cell = _target;
           // override shard internal id
-          _shard->inlineShardId = SHInlineShards::CoreGet;
+          _shard->inlineShardId = InlineShard::CoreGet;
           return value;
         }
       }
@@ -1282,9 +1355,9 @@ struct SeqBase : public VariableBase {
 
   void initSeq() {
     if (_isTable) {
-      if (_target->valueType != Table) {
+      if (_target->valueType != SHType::Table) {
         // Not initialized yet
-        _target->valueType = Table;
+        _target->valueType = SHType::Table;
         _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new SHMap();
       }
@@ -1294,16 +1367,16 @@ struct SeqBase : public VariableBase {
         _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
 
         auto &seq = *_cell;
-        if (seq.valueType != Seq) {
-          seq.valueType = Seq;
+        if (seq.valueType != SHType::Seq) {
+          seq.valueType = SHType::Seq;
           seq.payload.seqValue = {};
         }
       } else {
         return; // we will check during activate
       }
     } else {
-      if (_target->valueType != Seq) {
-        _target->valueType = Seq;
+      if (_target->valueType != SHType::Seq) {
+        _target->valueType = SHType::Seq;
         _target->payload.seqValue = {};
       }
       _cell = _target;
@@ -1317,8 +1390,8 @@ struct SeqBase : public VariableBase {
     _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
 
     auto &seq = *_cell;
-    if (seq.valueType != Seq) {
-      seq.valueType = Seq;
+    if (seq.valueType != SHType::Seq) {
+      seq.valueType = SHType::Seq;
       seq.payload.seqValue = {};
     }
   }
@@ -1385,7 +1458,7 @@ struct Push : public SeqBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     const auto updateSeqInfo = [this, &data] {
-      _seqInfo.basicType = Seq;
+      _seqInfo.basicType = SHType::Seq;
       _seqInnerInfo = data.inputType;
       _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
       if (_global) {
@@ -1396,14 +1469,14 @@ struct Push : public SeqBase {
     };
 
     const auto updateTableInfo = [this, &data](bool firstPush) {
-      _tableInfo.basicType = Table;
+      _tableInfo.basicType = SHType::Table;
       if (_tableInfo.table.types.elements) {
         shards::arrayFree(_tableInfo.table.types);
       }
       if (_tableInfo.table.keys.elements) {
         shards::arrayFree(_tableInfo.table.keys);
       }
-      _seqInfo.basicType = Seq;
+      _seqInfo.basicType = SHType::Seq;
       _seqInnerInfo = data.inputType;
       _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
       shards::arrayPush(_tableInfo.table.types, _seqInfo);
@@ -1432,7 +1505,7 @@ struct Push : public SeqBase {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if we got key it's not a variable
             SHVar kv = _key;
-            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == Seq) {
+            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == SHType::Seq) {
               updateTableInfo(false);
               return data.inputType; // found lets escape
             }
@@ -1446,7 +1519,7 @@ struct Push : public SeqBase {
     } else {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
-        if (_name == cv.name && cv.exposedType.basicType == Seq) {
+        if (_name == cv.name && cv.exposedType.basicType == SHType::Seq) {
           // found, let's just update our info
           updateSeqInfo();
           return data.inputType; // found lets escape
@@ -1584,7 +1657,7 @@ struct Sequence : public SeqBase {
 
   void processTypes(Types &inner, const IterableSeq &s) {
     for (auto &v : s) {
-      if (v.valueType == Seq) {
+      if (v.valueType == SHType::Seq) {
         auto &sinner = _innerTypes.emplace_back();
         IterableSeq ss(v);
         processTypes(sinner, ss);
@@ -1600,7 +1673,7 @@ struct Sequence : public SeqBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     const auto updateTableInfo = [this] {
-      _tableInfo.basicType = Table;
+      _tableInfo.basicType = SHType::Table;
       if (_tableInfo.table.types.elements) {
         shards::arrayFree(_tableInfo.table.types);
       }
@@ -1650,7 +1723,7 @@ struct Sequence : public SeqBase {
     // cleaning up previous first
     _seqTypes._types.clear();
     _innerTypes.clear();
-    if (_types->valueType == Enum) {
+    if (_types->valueType == SHType::Enum) {
       // a single type
       addType(_seqTypes, BasicTypes(_types->payload.enumValue));
     } else {
@@ -1691,9 +1764,9 @@ struct TableDecl : public VariableBase {
 
   void initTable() {
     if (_isTable) {
-      if (_target->valueType != Table) {
+      if (_target->valueType != SHType::Table) {
         // Not initialized yet
-        _target->valueType = Table;
+        _target->valueType = SHType::Table;
         _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new SHMap();
       }
@@ -1703,9 +1776,9 @@ struct TableDecl : public VariableBase {
         _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
 
         auto table = _cell;
-        if (table->valueType != Table) {
+        if (table->valueType != SHType::Table) {
           // Not initialized yet
-          table->valueType = Table;
+          table->valueType = SHType::Table;
           table->payload.tableValue.api = &GetGlobals().TableInterface;
           table->payload.tableValue.opaque = new SHMap();
         }
@@ -1713,8 +1786,8 @@ struct TableDecl : public VariableBase {
         return; // we will check during activate
       }
     } else {
-      if (_target->valueType != Table) {
-        _target->valueType = Table;
+      if (_target->valueType != SHType::Table) {
+        _target->valueType = SHType::Table;
         _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new SHMap();
       }
@@ -1729,9 +1802,9 @@ struct TableDecl : public VariableBase {
     _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
 
     auto table = _cell;
-    if (table->valueType != Table) {
+    if (table->valueType != SHType::Table) {
       // Not initialized yet
-      table->valueType = Table;
+      table->valueType = SHType::Table;
       table->payload.tableValue.api = &GetGlobals().TableInterface;
       table->payload.tableValue.opaque = new SHMap();
     }
@@ -1856,7 +1929,7 @@ struct TableDecl : public VariableBase {
 
   void processTypes(Types &inner, const IterableSeq &s) {
     for (auto &v : s) {
-      if (v.valueType == Seq) {
+      if (v.valueType == SHType::Seq) {
         auto &sinner = _innerTypes.emplace_back();
         IterableSeq ss(v);
         processTypes(sinner, ss);
@@ -1872,7 +1945,7 @@ struct TableDecl : public VariableBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     const auto updateTableInfo = [this] {
-      _tableInfo.basicType = Table;
+      _tableInfo.basicType = SHType::Table;
       if (_tableInfo.table.types.elements) {
         shards::arrayFree(_tableInfo.table.types);
       }
@@ -1923,7 +1996,7 @@ struct TableDecl : public VariableBase {
     // cleaning up previous first
     _seqTypes._types.clear();
     _innerTypes.clear();
-    if (_types->valueType == Enum) {
+    if (_types->valueType == SHType::Enum) {
       // a single type
       addType(_seqTypes, BasicTypes(_types->payload.enumValue));
     } else {
@@ -1961,10 +2034,10 @@ struct SeqUser : VariableBase {
 
   void initSeq() {
     if (_isTable) {
-      if (_target->valueType != Table) {
+      if (_target->valueType != SHType::Table) {
         // We need to init this in order to fetch cell addr
         // Not initialized yet
-        _target->valueType = Table;
+        _target->valueType = SHType::Table;
         _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new SHMap();
       }
@@ -2029,13 +2102,13 @@ struct Count : SeqUser {
       fillVariableCell();
     }
 
-    if (likely(_cell->valueType == Seq)) {
+    if (likely(_cell->valueType == SHType::Seq)) {
       return shards::Var(int64_t(_cell->payload.seqValue.len));
-    } else if (_cell->valueType == Table) {
+    } else if (_cell->valueType == SHType::Table) {
       return shards::Var(int64_t(_cell->payload.tableValue.api->tableSize(_cell->payload.tableValue)));
-    } else if (_cell->valueType == Bytes) {
+    } else if (_cell->valueType == SHType::Bytes) {
       return shards::Var(int64_t(_cell->payload.bytesSize));
-    } else if (_cell->valueType == String) {
+    } else if (_cell->valueType == SHType::String) {
       return shards::Var(int64_t(_cell->payload.stringLen > 0 || _cell->payload.stringValue == nullptr
                                      ? _cell->payload.stringLen
                                      : strlen(_cell->payload.stringValue)));
@@ -2061,7 +2134,7 @@ struct Clear : SeqUser {
       fillVariableCell();
     }
 
-    if (likely(_cell->valueType == Seq)) {
+    if (likely(_cell->valueType == SHType::Seq)) {
       // notice this is fine because destroyVar will destroy .cap later
       // so we make sure we are not leaking Vars
       shards::arrayResize(_cell->payload.seqValue, 0);
@@ -2092,7 +2165,7 @@ struct Drop : SeqUser {
       fillVariableCell();
     }
 
-    if (likely(_cell->valueType == Seq)) {
+    if (likely(_cell->valueType == SHType::Seq)) {
       auto len = _cell->payload.seqValue.len;
       // notice this is fine because destroyVar will destroy .cap later
       // so we make sure we are not leaking Vars
@@ -2128,7 +2201,7 @@ struct DropFront : SeqUser {
       fillVariableCell();
     }
 
-    if (likely(_cell->valueType == Seq) && _cell->payload.seqValue.len > 0) {
+    if (likely(_cell->valueType == SHType::Seq) && _cell->payload.seqValue.len > 0) {
       auto &arr = _cell->payload.seqValue;
       shards::arrayDel(arr, 0);
       // sometimes we might have as input the same _cell!
@@ -2169,7 +2242,7 @@ struct Pop : SeqUser {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here _key is not variable
             SHVar kv = _key;
-            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == Seq) {
+            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == SHType::Seq) {
               // if we have 1 type we can predict the output
               // with more just make us a any seq, will need ExpectX shards
               // likely
@@ -2185,7 +2258,7 @@ struct Pop : SeqUser {
     } else {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
-        if (_name == cv.name && cv.exposedType.basicType == Seq) {
+        if (_name == cv.name && cv.exposedType.basicType == SHType::Seq) {
           // if we have 1 type we can predict the output
           // with more just make us a any seq, will need ExpectX shards likely
           if (cv.exposedType.seqTypes.len == 1)
@@ -2203,7 +2276,7 @@ struct Pop : SeqUser {
       fillVariableCell();
     }
 
-    if (_cell->valueType != Seq) {
+    if (_cell->valueType != SHType::Seq) {
       throw ActivationError("Variable is not a sequence, failed to Pop.");
     }
 
@@ -2243,7 +2316,7 @@ struct PopFront : SeqUser {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here _key is not variable
             SHVar kv = _key;
-            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == Seq) {
+            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == SHType::Seq) {
               // if we have 1 type we can predict the output
               // with more just make us a any seq, will need ExpectX shards
               // likely
@@ -2259,7 +2332,7 @@ struct PopFront : SeqUser {
     } else {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
-        if (_name == cv.name && cv.exposedType.basicType == Seq) {
+        if (_name == cv.name && cv.exposedType.basicType == SHType::Seq) {
           // if we have 1 type we can predict the output
           // with more just make us a any seq, will need ExpectX shards likely
           if (cv.exposedType.seqTypes.len == 1)
@@ -2277,7 +2350,7 @@ struct PopFront : SeqUser {
       fillVariableCell();
     }
 
-    if (_cell->valueType != Seq) {
+    if (_cell->valueType != SHType::Seq) {
       throw ActivationError("Variable is not a sequence, failed to Pop.");
     }
 
@@ -2355,33 +2428,33 @@ struct Take {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     bool valid = false;
-    bool isTable = data.inputType.basicType == Table;
+    bool isTable = data.inputType.basicType == SHType::Table;
     // Figure if we output a sequence or not
-    if (_indices.valueType == Seq) {
+    if (_indices.valueType == SHType::Seq) {
       if (_indices.payload.seqValue.len > 0) {
-        if ((_indices.payload.seqValue.elements[0].valueType == Int && !isTable) ||
-            (_indices.payload.seqValue.elements[0].valueType == String && isTable)) {
+        if ((_indices.payload.seqValue.elements[0].valueType == SHType::Int && !isTable) ||
+            (_indices.payload.seqValue.elements[0].valueType == SHType::String && isTable)) {
           _seqOutput = true;
           valid = true;
         }
       }
-    } else if ((!isTable && _indices.valueType == Int) || (isTable && _indices.valueType == String)) {
+    } else if ((!isTable && _indices.valueType == SHType::Int) || (isTable && _indices.valueType == SHType::String)) {
       _seqOutput = false;
       valid = true;
-    } else { // ContextVar
+    } else { // SHType::ContextVar
       for (auto &info : data.shared) {
         if (strcmp(info.name, _indices.payload.stringValue) == 0) {
-          if (info.exposedType.basicType == Seq && info.exposedType.seqTypes.len == 1 &&
-              ((info.exposedType.seqTypes.elements[0].basicType == Int && !isTable) ||
-               (info.exposedType.seqTypes.elements[0].basicType == String && isTable))) {
+          if (info.exposedType.basicType == SHType::Seq && info.exposedType.seqTypes.len == 1 &&
+              ((info.exposedType.seqTypes.elements[0].basicType == SHType::Int && !isTable) ||
+               (info.exposedType.seqTypes.elements[0].basicType == SHType::String && isTable))) {
             _seqOutput = true;
             valid = true;
             break;
-          } else if (info.exposedType.basicType == Int && !isTable) {
+          } else if (info.exposedType.basicType == SHType::Int && !isTable) {
             _seqOutput = false;
             valid = true;
             break;
-          } else if (info.exposedType.basicType == String && isTable) {
+          } else if (info.exposedType.basicType == SHType::String && isTable) {
             _seqOutput = false;
             valid = true;
             break;
@@ -2398,10 +2471,10 @@ struct Take {
     if (!valid)
       throw SHException("Take, invalid indices or malformed input.");
 
-    if (data.inputType.basicType == Seq) {
+    if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
       if (_seqOutput) {
-        // multiple values, leave Seq
+        // multiple values, leave SHType::Seq
         return data.inputType;
       } else if (data.inputType.seqTypes.len == 1) {
         // single unique seq type
@@ -2442,23 +2515,23 @@ struct Take {
 
         _vectorOutput.valueType = _vectorOutputType->shType;
         return _vectorOutputType->type;
-      } else if (data.inputType.basicType == Bytes) {
+      } else if (data.inputType.basicType == SHType::Bytes) {
         OVERRIDE_ACTIVATE(data, activateBytes);
         if (_seqOutput) {
           return CoreInfo::IntSeqType;
         } else {
           return CoreInfo::IntType;
         }
-      } else if (data.inputType.basicType == String) {
+      } else if (data.inputType.basicType == SHType::String) {
         OVERRIDE_ACTIVATE(data, activateString);
         if (_seqOutput) {
           return CoreInfo::StringSeqType;
         } else {
           return CoreInfo::StringType;
         }
-      } else if (data.inputType.basicType == Table) {
+      } else if (data.inputType.basicType == SHType::Table) {
         OVERRIDE_ACTIVATE(data, activateTable);
-        if (data.inputType.table.keys.len > 0 && (_indices.valueType == String || _indices.valueType == Seq)) {
+        if (data.inputType.table.keys.len > 0 && (_indices.valueType == SHType::String || _indices.valueType == SHType::Seq)) {
           // we can fully reconstruct a type in this case
           if (data.inputType.table.keys.len != data.inputType.table.types.len) {
             SHLOG_ERROR("Table input type: {}", data.inputType);
@@ -2470,7 +2543,7 @@ struct Take {
             _seqOutputTypes.clear();
             for (uint32_t j = 0; j < _indices.payload.seqValue.len; j++) {
               auto &record = _indices.payload.seqValue.elements[j];
-              if (record.valueType != String) {
+              if (record.valueType != SHType::String) {
                 SHLOG_ERROR("Expected a sequence of strings, but found: {}", _indices);
                 throw ComposeError("Take: Expected a sequence of strings as keys.");
               }
@@ -2500,7 +2573,7 @@ struct Take {
           }
         } else {
           if (_seqOutput) {
-            // multiple values, leave Seq
+            // multiple values, leave SHType::Seq
             return CoreInfo::AnySeqType;
           } else if (data.inputType.table.types.len == 1) {
             // single unique seq type
@@ -2517,7 +2590,7 @@ struct Take {
   }
 
   SHExposedTypesInfo requiredVariables() {
-    if (_indices.valueType == ContextVar) {
+    if (_indices.valueType == SHType::ContextVar) {
       if (_seqOutput)
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_indices.payload.stringValue, SHCCSTR("The required variables."),
                                                          _tableOutput ? CoreInfo::StringSeqType : CoreInfo::IntSeqType));
@@ -2558,7 +2631,7 @@ struct Take {
   };
 
   void warmup(SHContext *context) {
-    if (_indices.valueType == ContextVar && !_indicesVar) {
+    if (_indices.valueType == SHType::ContextVar && !_indicesVar) {
       _indicesVar = referenceVariable(context, _indices.payload.stringValue);
     }
   }
@@ -2664,7 +2737,7 @@ struct RTake : public Take {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     SHTypeInfo result = Take::compose(data);
-    if (data.inputType.basicType == Seq) {
+    if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activate);
     } else {
       throw SHException("RTake is only supported on sequence types");
@@ -2765,9 +2838,9 @@ struct Slice {
   SHTypeInfo compose(const SHInstanceData &data) {
     bool valid = false;
 
-    if (_from.valueType == Int) {
+    if (_from.valueType == SHType::Int) {
       valid = true;
-    } else { // ContextVar
+    } else { // SHType::ContextVar
       for (auto &info : data.shared) {
         if (strcmp(info.name, _from.payload.stringValue) == 0) {
           valid = true;
@@ -2779,9 +2852,9 @@ struct Slice {
     if (!valid)
       throw SHException("Slice, invalid From variable.");
 
-    if (_to.valueType == Int || _to.valueType == None) {
+    if (_to.valueType == SHType::Int || _to.valueType == SHType::None) {
       valid = true;
-    } else { // ContextVar
+    } else { // SHType::ContextVar
       for (auto &info : data.shared) {
         if (strcmp(info.name, _to.payload.stringValue) == 0) {
           valid = true;
@@ -2793,11 +2866,11 @@ struct Slice {
     if (!valid)
       throw SHException("Slice, invalid To variable.");
 
-    if (data.inputType.basicType == Seq) {
+    if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
-    } else if (data.inputType.basicType == Bytes) {
+    } else if (data.inputType.basicType == SHType::Bytes) {
       OVERRIDE_ACTIVATE(data, activateBytes);
-    } else if (data.inputType.basicType == String) {
+    } else if (data.inputType.basicType == SHType::String) {
       OVERRIDE_ACTIVATE(data, activateString);
     }
 
@@ -2805,16 +2878,16 @@ struct Slice {
   }
 
   SHExposedTypesInfo requiredVariables() {
-    if (_from.valueType == ContextVar && _to.valueType == ContextVar) {
+    if (_from.valueType == SHType::ContextVar && _to.valueType == SHType::ContextVar) {
       _exposedInfo =
           ExposedInfo(ExposedInfo::Variable(_from.payload.stringValue, SHCCSTR("The required variable."), CoreInfo::IntType),
                       ExposedInfo::Variable(_to.payload.stringValue, SHCCSTR("The required variable."), CoreInfo::IntType));
       return SHExposedTypesInfo(_exposedInfo);
-    } else if (_from.valueType == ContextVar) {
+    } else if (_from.valueType == SHType::ContextVar) {
       _exposedInfo =
           ExposedInfo(ExposedInfo::Variable(_from.payload.stringValue, SHCCSTR("The required variable."), CoreInfo::IntType));
       return SHExposedTypesInfo(_exposedInfo);
-    } else if (_to.valueType == ContextVar) {
+    } else if (_to.valueType == SHType::ContextVar) {
       _exposedInfo =
           ExposedInfo(ExposedInfo::Variable(_to.payload.stringValue, SHCCSTR("The required variable."), CoreInfo::IntType));
       return SHExposedTypesInfo(_exposedInfo);
@@ -2861,10 +2934,10 @@ struct Slice {
   };
 
   SHVar activateBytes(SHContext *context, const SHVar &input) {
-    if (_from.valueType == ContextVar && !_fromVar) {
+    if (_from.valueType == SHType::ContextVar && !_fromVar) {
       _fromVar = referenceVariable(context, _from.payload.stringValue);
     }
-    if (_to.valueType == ContextVar && !_toVar) {
+    if (_to.valueType == SHType::ContextVar && !_toVar) {
       _toVar = referenceVariable(context, _to.payload.stringValue);
     }
 
@@ -2875,7 +2948,7 @@ struct Slice {
     if (from < 0) {
       from = inputLen + from;
     }
-    auto to = vto.valueType == None ? inputLen : vto.payload.intValue;
+    auto to = vto.valueType == SHType::None ? inputLen : vto.payload.intValue;
     if (to < 0) {
       to = inputLen + to;
     }
@@ -2888,7 +2961,7 @@ struct Slice {
     if (_step == 1) {
       // we don't need to copy anything in this case
       SHVar output{};
-      output.valueType = Bytes;
+      output.valueType = SHType::Bytes;
       output.payload.bytesValue = &input.payload.bytesValue[from];
       output.payload.bytesSize = uint32_t(len);
       return output;
@@ -2907,10 +2980,10 @@ struct Slice {
   }
 
   SHVar activateString(SHContext *context, const SHVar &input) {
-    if (_from.valueType == ContextVar && !_fromVar) {
+    if (_from.valueType == SHType::ContextVar && !_fromVar) {
       _fromVar = referenceVariable(context, _from.payload.stringValue);
     }
-    if (_to.valueType == ContextVar && !_toVar) {
+    if (_to.valueType == SHType::ContextVar && !_toVar) {
       _toVar = referenceVariable(context, _to.payload.stringValue);
     }
 
@@ -2923,7 +2996,7 @@ struct Slice {
     if (from < 0) {
       from = inputLen + from;
     }
-    auto to = vto.valueType == None ? inputLen : vto.payload.intValue;
+    auto to = vto.valueType == SHType::None ? inputLen : vto.payload.intValue;
     if (to < 0) {
       to = inputLen + to;
     }
@@ -2949,10 +3022,10 @@ struct Slice {
   }
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
-    if (_from.valueType == ContextVar && !_fromVar) {
+    if (_from.valueType == SHType::ContextVar && !_fromVar) {
       _fromVar = referenceVariable(context, _from.payload.stringValue);
     }
-    if (_to.valueType == ContextVar && !_toVar) {
+    if (_to.valueType == SHType::ContextVar && !_toVar) {
       _toVar = referenceVariable(context, _to.payload.stringValue);
     }
 
@@ -2963,7 +3036,7 @@ struct Slice {
     if (from < 0) {
       from = inputLen + from;
     }
-    auto to = vto.valueType == None ? inputLen : vto.payload.intValue;
+    auto to = vto.valueType == SHType::None ? inputLen : vto.payload.intValue;
     if (to < 0) {
       to = inputLen + to;
     }
@@ -2976,7 +3049,7 @@ struct Slice {
     if (_step == 1) {
       // we don't need to copy anything in this case
       SHVar output{};
-      output.valueType = Seq;
+      output.valueType = SHType::Seq;
       output.payload.seqValue.elements = &input.payload.seqValue.elements[from];
       output.payload.seqValue.len = uint32_t(len);
       return output;
@@ -3019,11 +3092,11 @@ struct Limit {
   SHTypeInfo compose(const SHInstanceData &data) {
     // Figure if we output a sequence or not
     if (_max > 1) {
-      if (data.inputType.basicType == Seq) {
+      if (data.inputType.basicType == SHType::Seq) {
         return data.inputType; // multiple values
       }
     } else {
-      if (data.inputType.basicType == Seq && data.inputType.seqTypes.len == 1) {
+      if (data.inputType.basicType == SHType::Seq && data.inputType.seqTypes.len == 1) {
         // single unique type
         return data.inputType.seqTypes.elements[0];
       } else {
@@ -3069,7 +3142,18 @@ struct ForRangeShard {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The output of this shard will be its input."); }
 
+  static inline Parameters _params = {
+      {"From", SHCCSTR("The initial iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"To", SHCCSTR("The final iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"Action",
+       SHCCSTR("The action to perform at each iteration. The current iteration "
+               "value will be passed as input."),
+       {CoreInfo::ShardsOrNone}}};
   static SHParametersInfo parameters() { return _params; }
+
+  ParamVar _from{Var(0)};
+  ParamVar _to{Var(1)};
+  ShardsVar _shards{};
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -3145,19 +3229,6 @@ struct ForRangeShard {
 
     return input;
   }
-
-private:
-  static inline Parameters _params = {
-      {"From", SHCCSTR("The initial iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
-      {"To", SHCCSTR("The final iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
-      {"Action",
-       SHCCSTR("The action to perform at each iteration. The current iteration "
-               "value will be passed as input."),
-       {CoreInfo::ShardsOrNone}}};
-
-  ParamVar _from{Var(0)};
-  ParamVar _to{Var(1)};
-  ShardsVar _shards{};
 };
 
 struct Repeat {
@@ -3220,7 +3291,7 @@ struct Repeat {
       _blks = value;
       break;
     case 1:
-      if (value.valueType == Int) {
+      if (value.valueType == SHType::Int) {
         _ctxVar.clear();
         _times = value.payload.intValue;
       } else {
@@ -3248,7 +3319,7 @@ struct Repeat {
         return shards::Var(_times);
       } else {
         auto ctxTimes = shards::Var(_ctxVar);
-        ctxTimes.valueType = ContextVar;
+        ctxTimes.valueType = SHType::ContextVar;
         return ctxTimes;
       }
     case 2:
@@ -3264,7 +3335,7 @@ struct Repeat {
   SHTypeInfo compose(const SHInstanceData &data) {
     _blks.compose(data);
     const auto predres = _pred.compose(data);
-    if (_pred && predres.outputType.basicType != Bool) {
+    if (_pred && predres.outputType.basicType != SHType::Bool) {
       throw ComposeError("Repeat shard Until predicate should output a boolean!");
     }
     return data.inputType;
@@ -3308,6 +3379,7 @@ struct Once {
   SHTime current;
   SHTimeDiff next;
   SHDuration dsleep;
+  int _logCounter;
 
   ShardsVar _blks;
   ExposedInfo _requiredInfo{};
@@ -3321,7 +3393,7 @@ struct Once {
     _blks.cleanup();
     _done = false;
     if (self)
-      self->inlineShardId = NotInline;
+      self->inlineShardId = InlineShard::NotInline;
   }
 
   void warmup(SHContext *ctx) {
@@ -3329,6 +3401,7 @@ struct Once {
     current = SHClock::now();
     dsleep = SHDuration(_repeatTime);
     next = current + SHDuration(0.0);
+    _logCounter = 0;
   }
 
   static inline Parameters params{{"Action", SHCCSTR("The shard or sequence of shards to execute."), {CoreInfo::Shards}},
@@ -3382,12 +3455,10 @@ struct Once {
   SHExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
-    if (_repeat) {
-      // monitor and reset timer if expired
-      current = SHClock::now();
-      if (current >= next) {
-        _done = false;
-      }
+    // monitor and reset timer if expired
+    current = SHClock::now();
+    if (current >= next) {
+      _done = false;
     }
 
     if (unlikely(!_done)) {
@@ -3396,9 +3467,20 @@ struct Once {
       _blks.activate(context, input, output);
       if (!_repeat) {
         // let's cheat in this case and stop triggering this call
-        self->inlineShardId = NoopShard;
+        self->inlineShardId = InlineShard::NoopShard;
       } else {
-        next = next + dsleep;
+        SHDuration realSleepTime = next - current;
+        if (unlikely(realSleepTime.count() <= 0.0)) {
+          // tick took too long!!!
+          if (++_logCounter >= 1000) {
+            _logCounter = 0;
+            SHLOG_WARNING("Once shard took too long to execute, skipping sleep time, behind: {}", realSleepTime.count());
+          }
+          next = current + dsleep;
+        } else {
+          ++_logCounter;
+          next = next + dsleep;
+        }
       }
     }
 
@@ -3414,6 +3496,7 @@ RUNTIME_CORE_SHARD_TYPE(Fail);
 RUNTIME_CORE_SHARD_TYPE(Restart);
 RUNTIME_CORE_SHARD_TYPE(Return);
 RUNTIME_CORE_SHARD_TYPE(IsValidNumber);
+RUNTIME_CORE_SHARD_TYPE(IsAlmost);
 RUNTIME_CORE_SHARD_TYPE(Set);
 RUNTIME_CORE_SHARD_TYPE(Ref);
 RUNTIME_CORE_SHARD_TYPE(Update);

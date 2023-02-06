@@ -5,6 +5,7 @@ use super::Disable;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedTypes;
@@ -23,13 +24,13 @@ lazy_static! {
   static ref DISABLE_PARAMETERS: Parameters = vec![
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("Disable"),
-      cstr!("Whether the contents should be disabled."),
+      shccstr!("Whether the contents should be disabled."),
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
@@ -88,7 +89,7 @@ impl Shard for Disable {
   }
 
   fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The output of this shard will be its input."))
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

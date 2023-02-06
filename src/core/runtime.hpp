@@ -9,13 +9,12 @@
 #include <winsock2.h>
 #endif
 
-#include <boost/asio/post.hpp>
-#include <boost/asio/thread_pool.hpp>
-
 #include <string.h> // memset
 
 #include "shards_macros.hpp"
 #include "foundation.hpp"
+
+#include "shards/inlined.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -151,72 +150,18 @@ namespace shards {
 [[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data);
 
 bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
+bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict);
 } // namespace shards
-
-#include "shards/core.hpp"
-#include "shards/math.hpp"
 
 namespace shards {
 
 void installSignalHandlers();
 
 FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
-  switch (blk->inlineShardId) {
-  case NoopShard:
-    return input;
-  case CoreConst: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<Const> *>(blk);
-    return shard->shard._value;
-  }
-  case CoreAnd: {
-    auto shard = reinterpret_cast<shards::AndRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreOr: {
-    auto shard = reinterpret_cast<shards::OrRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreNot: {
-    auto shard = reinterpret_cast<shards::NotRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreInput: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<Input> *>(blk);
-    return shard->shard.activate(context, input);
-  }
-  case CorePush: {
-    auto shard = reinterpret_cast<shards::PushRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreGet: {
-    auto shard = reinterpret_cast<shards::GetRuntime *>(blk);
-    return *shard->core._cell;
-  }
-  case CoreSet: {
-    auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreRefTable: {
-    auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
-    return shard->core.activateTable(context, input);
-  }
-  case CoreRefRegular: {
-    auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
-    return shard->core.activateRegular(context, input);
-  }
-  case CoreUpdate: {
-    auto shard = reinterpret_cast<shards::UpdateRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  case CoreSwap: {
-    auto shard = reinterpret_cast<shards::SwapRuntime *>(blk);
-    return shard->core.activate(context, input);
-  }
-  default: {
-    // NotInline
-    return blk->activate(blk, context, &input);
-  }
-  }
+  SHVar output;
+  if (!activateShardInline(blk, context, input, output))
+    output = blk->activate(blk, context, &input);
+  return output;
 }
 
 SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput);
@@ -277,9 +222,7 @@ inline void start(SHWire *wire, SHVar input = {}) {
   shards::cloneVar(wire->rootTickInput, input);
   wire->state = SHWire::State::Starting;
 
-  for (auto &call : wire->onStart) {
-    call();
-  }
+  wire->dispatcher.trigger(SHWire::OnStartEvent{wire});
 }
 
 inline bool stop(SHWire *wire, SHVar *result = nullptr) {
@@ -292,6 +235,8 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
   }
 
   SHLOG_TRACE("stopping wire: {}", wire->name);
+
+  wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
 
   if (wire->coro) {
     // Run until exit if alive, need to propagate to all suspended shards!
@@ -331,10 +276,6 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
   if (result)
     cloneVar(*result, wire->finishedOutput);
 
-  for (auto &call : wire->onStop) {
-    call();
-  }
-
   return res;
 }
 
@@ -343,14 +284,11 @@ inline bool isRunning(SHWire *wire) {
   return state >= SHWire::State::Starting && state <= SHWire::State::IterationEnded;
 }
 
-inline bool tick(SHWire *wire, SHDuration now, SHVar rootInput = {}) {
+inline bool tick(SHWire *wire, SHDuration now) {
   if (!wire->context || !wire->coro || !(*wire->coro) || !(isRunning(wire)))
     return false; // check if not null and bool operator also to see if alive!
 
   if (now >= wire->context->next) {
-    if (rootInput != shards::Var::Empty) {
-      cloneVar(wire->rootTickInput, rootInput);
-    }
 #ifdef SH_USE_TSAN
     auto curr = __tsan_get_current_fiber();
     __tsan_switch_to_fiber(wire->tsan_coro, 0);
@@ -438,6 +376,44 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   ~SHMesh() { terminate(); }
 
+  void compose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
+    SHLOG_TRACE("Pre-composing wire {}", wire->name);
+
+    if (wire->warmedUp) {
+      SHLOG_ERROR("Attempted to Pre-composing a wire multiple times, wire: {}", wire->name);
+      throw shards::SHException("Multiple wire Pre-composing");
+    }
+
+    // this is to avoid recursion during compose
+    visitedWires.clear();
+
+    wire->mesh = shared_from_this();
+    wire->isRoot = true;
+    // remove when done here
+    DEFER(wire->isRoot = false);
+
+    // compose the wire
+    SHInstanceData data = instanceData;
+    data.wire = wire.get();
+    data.inputType = shards::deriveTypeInfo(input, data);
+    auto validation = shards::composeWire(
+        wire.get(),
+        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+          auto blk = const_cast<Shard *>(errorShard);
+          if (!nonfatalWarning) {
+            throw shards::ComposeError(std::string(errorTxt) + ", input shard: " + std::string(blk->name(blk)));
+          } else {
+            SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
+          }
+        },
+        this, data);
+    shards::arrayFree(validation.exposedInfo);
+    shards::arrayFree(validation.requiredInfo);
+    shards::freeDerivedInfo(data.inputType);
+
+    SHLOG_TRACE("Wire {} Pre-composing", wire->name);
+  }
+
   struct EmptyObserver {
     void before_compose(SHWire *wire) {}
     void before_tick(SHWire *wire) {}
@@ -455,16 +431,17 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       throw shards::SHException("Multiple wire schedule");
     }
 
-    // this is to avoid recursion during compose
-    visitedWires.clear();
-
     wire->mesh = shared_from_this();
-    wire->isRoot = true;
-    // remove when done here
-    DEFER(wire->isRoot = false);
 
     observer.before_compose(wire.get());
     if (compose) {
+      // this is to avoid recursion during compose
+      visitedWires.clear();
+
+      wire->isRoot = true;
+      // remove when done here
+      DEFER(wire->isRoot = false);
+
       // compose the wire
       SHInstanceData data = instanceData;
       data.wire = wire.get();
@@ -505,7 +482,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     schedule(obs, wire, input, compose);
   }
 
-  template <class Observer> bool tick(Observer observer, SHVar input = shards::Var::Empty) {
+  template <class Observer> bool tick(Observer observer) {
     auto noErrors = true;
     _errors.clear();
     _failedWires.clear();
@@ -517,7 +494,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       for (auto it = _flows.begin(); it != _flows.end();) {
         auto &flow = *it;
         observer.before_tick(flow->wire);
-        shards::tick(flow->wire, now, input);
+        shards::tick(flow->wire, now);
         if (unlikely(!shards::isRunning(flow->wire))) {
           if (flow->wire->finishedError.size() > 0) {
             _errors.emplace_back(flow->wire->finishedError);
@@ -543,9 +520,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     return noErrors;
   }
 
-  bool tick(SHVar input = shards::Var::Empty) {
+  bool tick() {
     EmptyObserver obs;
-    return tick(obs, input);
+    return tick(obs);
   }
 
   void terminate() {
@@ -598,10 +575,11 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   SHInstanceData instanceData{};
 
 private:
+  SHMesh() = default;
+
   std::list<std::shared_ptr<SHFlow>> _flows;
   std::vector<std::string> _errors;
   std::vector<SHWire *> _failedWires;
-  SHMesh() = default;
 };
 
 namespace shards {
@@ -938,7 +916,7 @@ struct Serialization {
       for (uint32_t i = 0; i < len; i++) {
         SHVar shardVar{};
         deserialize(read, shardVar);
-        assert(shardVar.valueType == ShardRef);
+        assert(shardVar.valueType == SHType::ShardRef);
         wire->addShard(shardVar.payload.shardValue);
         // blow's owner is the wire
       }
@@ -1309,6 +1287,8 @@ template <typename T> struct WireDoppelgangerPool {
   void release(std::shared_ptr<T> wire) { _avail.emplace(wire); }
 
 private:
+  WireDoppelgangerPool() = delete;
+
   struct Writer {
     std::stringstream &stream;
     Writer(std::stringstream &stream) : stream(stream) {}
@@ -1347,105 +1327,6 @@ template <typename T> inline T emscripten_wait(SHContext *context, emscripten::v
   return fut["result"].as<T>();
 }
 #endif
-
-#ifdef __EMSCRIPTEN__
-// limit to 4 under emscripten
-struct SharedThreadPoolConcurrency {
-  static int get() { return 4; }
-};
-#else
-struct SharedThreadPoolConcurrency {
-  static int get() {
-    const auto sys = std::thread::hardware_concurrency();
-    return sys > 4 ? sys * 2 : 4;
-  }
-};
-#endif
-extern Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThreadPool;
-
-template <typename FUNC, typename CANCELLATION>
-inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-  return func();
-#else
-  std::exception_ptr exp = nullptr;
-  SHVar res{};
-  std::atomic_bool complete = false;
-
-  boost::asio::post(shards::SharedThreadPool(), [&]() {
-    try {
-      // SHLOG_TRACE("Awaitne: starting {}", reinterpret_cast<void *>(&func));
-      res = func();
-    } catch (...) {
-      exp = std::current_exception();
-    }
-    complete = true;
-  });
-
-  // SHLOG_TRACE("Awaitne: waiting for completion {}", reinterpret_cast<void *>(&func));
-
-  while (!complete && context->shouldContinue()) {
-    if (shards::suspend(context, 0) != SHWireState::Continue)
-      break;
-  }
-
-  if (unlikely(!complete)) {
-    cancel();
-    while (!complete) {
-      std::this_thread::yield();
-    }
-  }
-
-  if (exp) {
-    try {
-      std::rethrow_exception(exp);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-    } catch (...) {
-      context->cancelFlow("foreign exception failure");
-    }
-  }
-
-  return res;
-#endif
-}
-
-template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-  func();
-#else
-  std::exception_ptr exp = nullptr;
-  std::atomic_bool complete = false;
-
-  boost::asio::post(shards::SharedThreadPool(), [&]() {
-    try {
-      // SHLOG_TRACE("Await: starting {}", reinterpret_cast<void *>(&func));
-      func();
-    } catch (...) {
-      exp = std::current_exception();
-    }
-    complete = true;
-  });
-
-  // SHLOG_TRACE("Await: waiting for completion {}", reinterpret_cast<void *>(&func));
-
-  while (!complete && context->shouldContinue()) {
-    if (shards::suspend(context, 0) != SHWireState::Continue)
-      break;
-  }
-
-  if (unlikely(!complete)) {
-    cancel();
-    while (!complete) {
-      std::this_thread::yield();
-    }
-  }
-
-  if (exp) {
-    std::rethrow_exception(exp);
-  }
-#endif
-}
 } // namespace shards
 
 #endif // SH_CORE_RUNTIME

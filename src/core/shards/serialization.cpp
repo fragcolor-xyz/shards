@@ -53,7 +53,7 @@ struct FileBase {
 
   bool getFilename(SHContext *context, std::string &filename, bool checkExists = true) {
     auto &ctxFile = _filename.get();
-    if (ctxFile.valueType != String)
+    if (ctxFile.valueType != SHType::String)
       return false;
 
     filename = ctxFile.payload.stringValue;
@@ -252,14 +252,13 @@ struct FromBytes {
 
 struct LoadImage : public FileBase {
   enum class BPP { u8, u16, f32 };
-  static inline EnumInfo<BPP> BPPEnum{"BPP", CoreCC, 'ibpp'};
-  static inline Type BPPEnumInfo{{SHType::Enum, {.enumeration = {CoreCC, 'ibpp'}}}};
+  DECL_ENUM_INFO(BPP, BPP, 'ibpp');
 
   static SHTypesInfo inputTypes() { return CoreInfo::BytesOrAny; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   static inline Parameters params{FileBase::params,
-                                  {{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {BPPEnumInfo}}}};
+                                  {{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {BPPEnumInfo::Type}}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -276,7 +275,7 @@ struct LoadImage : public FileBase {
   SHVar getParam(int index) {
     switch (index) {
     case 1:
-      return Var::Enum(_bpp, CoreCC, 'ibpp');
+      return Var::Enum(_bpp, CoreCC, BPPEnumInfo::TypeId);
     default:
       return FileBase::getParam(index);
     }
@@ -286,7 +285,7 @@ struct LoadImage : public FileBase {
   BPP _bpp{BPP::u8};
 
   void cleanup() {
-    if (_output.valueType == Image && _output.payload.imageValue.data) {
+    if (_output.valueType == SHType::Image && _output.payload.imageValue.data) {
       stbi_image_free(_output.payload.imageValue.data);
       _output = Var::Empty;
     }
@@ -301,16 +300,16 @@ struct LoadImage : public FileBase {
     if (!bytesInput) {
       // need a proper filename in this case
       if (!getFilename(context, filename)) {
-        throw ActivationError("File not found!");
+        throw ActivationError(fmt::format("File not found: {}!", filename));
       }
     }
 
-    if (_output.valueType == Image && _output.payload.imageValue.data) {
+    if (_output.valueType == SHType::Image && _output.payload.imageValue.data) {
       stbi_image_free(_output.payload.imageValue.data);
       _output = Var::Empty;
     }
 
-    _output.valueType = Image;
+    _output.valueType = SHType::Image;
     int x, y, n;
     if (_bpp == BPP::u8) {
       if (bytesInput) {
@@ -343,7 +342,7 @@ struct LoadImage : public FileBase {
       }
 
       if (!_output.payload.imageValue.data) {
-        throw ActivationError("Failed to load image file");
+        throw ActivationError(fmt::format("Failed to load image file {}", filename));
       }
     }
     _output.payload.imageValue.width = uint16_t(x);
@@ -472,6 +471,8 @@ struct WritePNG : public FileBase {
 };
 
 void registerSerializationShards() {
+  REGISTER_ENUM(LoadImage::BPPEnumInfo);
+
   REGISTER_SHARD("WriteFile", WriteFile);
   REGISTER_SHARD("ReadFile", ReadFile);
   REGISTER_SHARD("LoadImage", LoadImage);

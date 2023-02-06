@@ -9,7 +9,7 @@ namespace gfx {
 
 // TODO: Rename to BaseType
 // TODO: Move to shader namespace
-enum class ShaderFieldBaseType { UInt8, Int8, UInt16, Int16, UInt32, Int32, Float16, Float32 };
+enum class ShaderFieldBaseType { Bool, UInt8, Int8, UInt16, Int16, UInt32, Int32, Float16, Float32 };
 bool isIntegerType(const ShaderFieldBaseType &type);
 bool isFloatType(const ShaderFieldBaseType &type);
 size_t getByteSize(const ShaderFieldBaseType &type);
@@ -24,16 +24,26 @@ enum struct UniformShard {
 
 // Structure to represent wgsl numerical types (numbers, vectors, matrices)
 struct FieldType {
-  // Special value for numCompontens to specify a square 4x4 matrix
-  static constexpr inline size_t Float4x4Components = 16;
-
+  // Unit type of the vector/scalar
   ShaderFieldBaseType baseType = ShaderFieldBaseType::Float32;
+
+  // Number of component in the vector/scalar type
   size_t numComponents = 1;
+
+  // 1 for scalar/vectors
+  // higher for matrixes
+  // float4x4 will have a matrix dimension of 4 and a numComponents of 4
+  // float3x3 will have a matrix dimension of 3 and a numComponents of 3
+  // etc.
+  size_t matrixDimension = 1;
 
   FieldType() = default;
   FieldType(ShaderFieldBaseType baseType) : baseType(baseType), numComponents(1) {}
-  FieldType(ShaderFieldBaseType baseType, size_t numComponents) : baseType(baseType), numComponents(numComponents) {}
-  bool operator==(const FieldType &other) const { return baseType == other.baseType && numComponents == other.numComponents; }
+  FieldType(ShaderFieldBaseType baseType, size_t numComponents, size_t matrixDimension = 1)
+      : baseType(baseType), numComponents(numComponents), matrixDimension(matrixDimension) {}
+  bool operator==(const FieldType &other) const {
+    return baseType == other.baseType && numComponents == other.numComponents && matrixDimension == other.matrixDimension;
+  }
   bool operator!=(const FieldType &other) const { return !(*this == other); }
 
   size_t getByteSize() const;
@@ -46,9 +56,12 @@ struct FieldTypes {
   static inline FieldType Float2{ShaderFieldBaseType::Float32, 2};
   static inline FieldType Float3{ShaderFieldBaseType::Float32, 3};
   static inline FieldType Float4{ShaderFieldBaseType::Float32, 4};
-  static inline FieldType Float4x4{ShaderFieldBaseType::Float32, FieldType::Float4x4Components};
+  static inline FieldType Float2x2{ShaderFieldBaseType::Float32, 2, 2};
+  static inline FieldType Float3x3{ShaderFieldBaseType::Float32, 3, 3};
+  static inline FieldType Float4x4{ShaderFieldBaseType::Float32, 4, 4};
   static inline FieldType UInt32{ShaderFieldBaseType::UInt32, 1};
   static inline FieldType Int32{ShaderFieldBaseType::Int32, 1};
+  static inline FieldType Bool{ShaderFieldBaseType::Bool, 1};
 };
 
 struct NamedField {

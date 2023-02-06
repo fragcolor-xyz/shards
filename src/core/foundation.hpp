@@ -47,6 +47,9 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
+#define ENTT_ID_TYPE std::uint64_t
+#include <entt/entt.hpp>
+
 // TODO make it into a run-time param
 #ifndef NDEBUG
 #define SH_BASE_STACK_SIZE 1024 * 1024
@@ -150,6 +153,8 @@ void registerCoreShards();
 void registerShard(std::string_view name, SHShardConstructor constructor, std::string_view fullTypeName = std::string_view());
 void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info);
 void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info);
+SHObjectInfo *findObjectInfo(int32_t vendorId, int32_t typeId);
+SHEnumInfo *findEnumInfo(int32_t vendorId, int32_t typeId);
 void registerRunLoopCallback(std::string_view eventName, SHCallback callback);
 void unregisterRunLoopCallback(std::string_view eventName);
 void registerExitCallback(std::string_view eventName, SHCallback callback);
@@ -328,6 +333,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   bool pure{false};
 
   std::string name;
+  entt::id_type id{entt::null};
 
   std::optional<SHCoro> coro;
 #ifdef SH_USE_TSAN
@@ -352,8 +358,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   // we need to clone this, as might disappear, since outside wire
   mutable shards::TypeInfo inputType{};
-  // flag if we changed inputType to None on purpose (first block is none)
-  mutable bool inputTypeForceNone{false};
+  // flag if we changed inputType to None or Any on purpose
+  mutable bool ignoreInputTypeCheck{false};
   // this one is a shard inside the wire, so won't disappear
   mutable SHTypeInfo outputType{};
 
@@ -401,8 +407,15 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     return reinterpret_cast<SHWireRef>(res);
   }
 
-  std::vector<std::function<void()>> onStart;
-  std::vector<std::function<void()>> onStop;
+  struct OnStartEvent {
+    const SHWire *wire;
+  };
+
+  struct OnStopEvent {
+    const SHWire *wire;
+  };
+
+  entt::dispatcher dispatcher{};
 
 private:
   SHWire(std::string_view wire_name) : name(wire_name) { SHLOG_TRACE("Creating wire: {}", name); }
@@ -420,6 +433,13 @@ using SHHashSetIt = SHHashSet::iterator;
 using SHMap = std::unordered_map<std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
                                  boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>, 16>>;
 using SHMapIt = SHMap::iterator;
+
+struct EventDispatcher {
+  entt::dispatcher dispatcher;
+  SHTypeInfo type;
+
+  entt::dispatcher *operator->() { return &dispatcher; }
+};
 
 struct Globals {
   // sporadically used, don't abuse. And don't use in real time code.
@@ -444,6 +464,9 @@ struct Globals {
   std::string ExePath;
 
   std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
+
+  std::unordered_map<std::string_view, EventDispatcher> Dispatchers;
+  entt::registry Registry;
 
   SHTableInterface TableInterface{
       .tableGetIterator =
@@ -723,7 +746,7 @@ public:
   IterableArray(const seq_type &seq) : _seq(seq), _owned(false) {}
 
   // implicit converter
-  IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == Seq); }
+  IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == SHType::Seq); }
 
   IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(_seq, s); }
 
@@ -759,7 +782,7 @@ public:
   }
 
   IterableArray &operator=(SHVar &var) {
-    assert(var.valueType == Seq);
+    assert(var.valueType == SHType::Seq);
     _seq = var.payload.seqValue;
     _owned = false;
     return *this;
@@ -846,29 +869,29 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src);
 
 ALWAYS_INLINE inline void destroyVar(SHVar &var) {
   switch (var.valueType) {
-  case Table:
+  case SHType::Table:
   case SHType::Set:
-  case Seq:
+  case SHType::Seq:
     _destroyVarSlow(var);
     break;
   case SHType::Path:
   case SHType::String:
-  case ContextVar:
+  case SHType::ContextVar:
     delete[] var.payload.stringValue;
     break;
-  case Image:
+  case SHType::Image:
     delete[] var.payload.imageValue.data;
     break;
-  case Audio:
+  case SHType::Audio:
     delete[] var.payload.audioValue.samples;
     break;
-  case Bytes:
+  case SHType::Bytes:
     delete[] var.payload.bytesValue;
     break;
   case SHType::Array:
     arrayFree(var.payload.arrayValue);
     break;
-  case Object:
+  case SHType::Object:
     if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && var.objectInfo && var.objectInfo->release) {
       // in this case the custom object needs actual destruction
       var.objectInfo->release(var.payload.objectValue);
@@ -886,10 +909,10 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
 }
 
 ALWAYS_INLINE inline void cloneVar(SHVar &dst, const SHVar &src) {
-  if (src.valueType < EndOfBlittableTypes && dst.valueType < EndOfBlittableTypes) {
+  if (src.valueType < SHType::EndOfBlittableTypes && dst.valueType < SHType::EndOfBlittableTypes) {
     dst.valueType = src.valueType;
     memcpy(&dst.payload, &src.payload, sizeof(SHVarPayload));
-  } else if (src.valueType < EndOfBlittableTypes) {
+  } else if (src.valueType < SHType::EndOfBlittableTypes) {
     destroyVar(dst);
     dst.valueType = src.valueType;
     memcpy(&dst.payload, &src.payload, sizeof(SHVarPayload));
@@ -968,25 +991,28 @@ typedef TParamVar<InternalCore> ParamVar;
 template <Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType>
 struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputType, OutputType> {};
 
-template <typename E> class EnumInfo : public TEnumInfo<InternalCore, E, false> {
-public:
-  EnumInfo(const char *name, int32_t vendorId, int32_t enumId) : TEnumInfo<InternalCore, E, false>(name, vendorId, enumId) {}
-};
+#define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
+  static inline const char _NAME_##Name[] = #_NAME_;                  \
+  using _NAME_##EnumInfo = TEnumInfo<InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, false>
 
-template <typename E> class FlagsInfo : public TEnumInfo<InternalCore, E, true> {
-public:
-  FlagsInfo(const char *name, int32_t vendorId, int32_t enumId) : TEnumInfo<InternalCore, E, true>(name, vendorId, enumId) {}
-};
+#define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
+  static inline const char _NAME_##Name[] = #_NAME_;                        \
+  using _NAME_##EnumInfo = TEnumInfo<InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, true>
 
-#define REGISTER_ENUM(_NAME_, _CC_)                                             \
-  static constexpr uint32_t _NAME_##CC = _CC_;                                  \
-  static inline EnumInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC, _NAME_##CC}; \
-  static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
+#define DECL_ENUM_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, CoreCC, _CC_)
+#define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, CoreCC, _CC_)
 
-#define REGISTER_FLAGS(_NAME_, _CC_)                                             \
-  static constexpr uint32_t _NAME_##CC = _CC_;                                   \
-  static inline FlagsInfo<_NAME_> _NAME_##EnumInfo{#_NAME_, CoreCC, _NAME_##CC}; \
-  static inline Type _NAME_##Type = Type::Enum(CoreCC, _NAME_##CC)
+#define SH_CONCAT1(_a_, _b_) _a_##_b_
+#define SH_CONCAT(_a_, _b_) SH_CONCAT1(_a_, _b_)
+#define REGISTER_ENUM(_ENUM_INFO_) \
+  static shards::EnumRegisterImpl SH_GENSYM(__registeredEnum) = shards::EnumRegisterImpl::registerEnum<_ENUM_INFO_>()
+
+#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)         \
+  namespace shards {                              \
+  template <> struct TEnumHelp<_ENUM_, _VALUE_> { \
+    static inline SHOptionalString help = _STR_;  \
+  };                                              \
+  }
 
 template <typename E> static E getFlags(SHVar var) {
   E flags{};
@@ -1086,44 +1112,44 @@ struct ExposedInfo {
 
   ExposedInfo(const ExposedInfo &other) {
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
-      shards::arrayPush(_innerInfo, other._innerInfo.elements[i]);
+      push_back(other._innerInfo.elements[i]);
     }
   }
 
   ExposedInfo &operator=(const ExposedInfo &other) {
     shards::arrayResize(_innerInfo, 0);
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
-      shards::arrayPush(_innerInfo, other._innerInfo.elements[i]);
+      push_back(other._innerInfo.elements[i]);
     }
     return *this;
   }
 
   template <typename... Types> explicit ExposedInfo(const ExposedInfo &other, Types... types) {
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
-      shards::arrayPush(_innerInfo, other._innerInfo.elements[i]);
+      push_back(other._innerInfo.elements[i]);
     }
 
     std::vector<SHExposedTypeInfo> vec = {types...};
     for (auto pi : vec) {
-      shards::arrayPush(_innerInfo, pi);
+      push_back(pi);
     }
   }
 
   template <typename... Types> explicit ExposedInfo(const SHExposedTypesInfo other, Types... types) {
     for (uint32_t i = 0; i < other.len; i++) {
-      shards::arrayPush(_innerInfo, other.elements[i]);
+      push_back(other.elements[i]);
     }
 
     std::vector<SHExposedTypeInfo> vec = {types...};
     for (auto pi : vec) {
-      shards::arrayPush(_innerInfo, pi);
+      push_back(pi);
     }
   }
 
-  template <typename... Types> explicit ExposedInfo(const SHExposedTypeInfo first, Types... types) {
+  template <typename... Types> explicit ExposedInfo(const SHExposedTypeInfo &first, Types... types) {
     std::vector<SHExposedTypeInfo> vec = {first, types...};
     for (auto pi : vec) {
-      shards::arrayPush(_innerInfo, pi);
+      push_back(pi);
     }
   }
 
@@ -1146,6 +1172,10 @@ struct ExposedInfo {
   }
 
   ~ExposedInfo() { shards::arrayFree(_innerInfo); }
+
+  void push_back(const SHExposedTypeInfo &info) { shards::arrayPush(_innerInfo, info); }
+
+  void clear() { shards::arrayResize(_innerInfo, 0); }
 
   explicit operator SHExposedTypesInfo() const { return _innerInfo; }
 
@@ -1222,13 +1252,13 @@ struct VarStringStream {
     if (var != previousValue) {
       cache.reset();
       std::ostream stream(&cache);
-      if (var.valueType == Int) {
+      if (var.valueType == SHType::Int) {
         stream << "0x" << std::hex << std::setw(2) << std::setfill('0') << var.payload.intValue;
-      } else if (var.valueType == Bytes) {
+      } else if (var.valueType == SHType::Bytes) {
         stream << "0x" << std::hex;
         for (uint32_t i = 0; i < var.payload.bytesSize; i++)
           stream << std::setw(2) << std::setfill('0') << (int)var.payload.bytesValue[i];
-      } else if (var.valueType == String) {
+      } else if (var.valueType == SHType::String) {
         stream << "0x" << std::hex;
         auto len = var.payload.stringLen;
         if (len == 0 && var.payload.stringValue) {

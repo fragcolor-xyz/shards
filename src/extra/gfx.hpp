@@ -8,21 +8,24 @@
 #include <gfx/drawable.hpp>
 #include <gfx/fwd.hpp>
 #include <input/input_stack.hpp>
+#include <exposed_type_utils.hpp>
 #include <shards.hpp>
 
 namespace gfx {
 struct Window;
 struct Renderer;
 
-struct MainWindowGlobals {
+struct GraphicsContext {
   static constexpr uint32_t TypeId = 'mwnd';
-  static inline shards::Type Type{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = TypeId}}}};
+  static inline SHTypeInfo Type{SHType::Object, {.object = {.vendorId = VendorId, .typeId = TypeId}}};
+  static inline const char VariableName[] = "GFX.Context";
+  static inline const SHOptionalString VariableDescription = SHCCSTR("The graphics context.");
+  static inline SHExposedTypeInfo VariableInfo =
+      shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
 
   std::shared_ptr<Context> context;
   std::shared_ptr<Window> window;
   std::shared_ptr<Renderer> renderer;
-  std::vector<SDL_Event> events;
-  shards::input::InputStack inputStack;
 
   double time;
   float deltaTime;
@@ -31,74 +34,23 @@ struct MainWindowGlobals {
   SHDrawQueue shDrawQueue;
 
   ::gfx::DrawQueuePtr getDrawQueue() { return shDrawQueue.queue; }
-};
-
-struct ContextUserData {
-  SHContext *shardsContext{};
-};
-
-struct Base {
-  static inline const char *mainWindowGlobalsVarName = "GFX.MainWindow";
-  static inline SHExposedTypeInfo mainWindowGlobalsInfo =
-      shards::ExposedInfo::Variable(mainWindowGlobalsVarName, SHCCSTR("The main window context."), MainWindowGlobals::Type);
-  static inline shards::ExposedInfo requiredInfo = shards::ExposedInfo(mainWindowGlobalsInfo);
-
-  SHVar *_mainWindowGlobalsVar{nullptr};
-
-  MainWindowGlobals &getMainWindowGlobals();
   ::gfx::Context &getContext();
   ::gfx::Window &getWindow();
   SDL_Window *getSdlWindow();
 };
 
-struct BaseConsumer : public Base {
-  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(Base::requiredInfo); }
+typedef shards::RequiredContextVariable<GraphicsContext, GraphicsContext::Type, GraphicsContext::VariableName> RequiredGraphicsContext;
 
-  // Required before _bgfxCtx can be used
-  void baseConsumerWarmup(SHContext *context, bool mainWindowRequired = true) {
-    _mainWindowGlobalsVar = shards::referenceVariable(context, Base::mainWindowGlobalsVarName);
-    if (mainWindowRequired) {
-      assert(_mainWindowGlobalsVar->valueType == SHType::Object);
-    }
-  }
-
-  // Required during cleanup if _warmup() was called
-  void baseConsumerCleanup() {
-    if (_mainWindowGlobalsVar) {
-      shards::releaseVariable(_mainWindowGlobalsVar);
-      _mainWindowGlobalsVar = nullptr;
-    }
-  }
-
-  void composeCheckMainThread(const SHInstanceData &data) {
-    if (data.onWorkerThread) {
-      throw shards::ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
-                                 "within an Await shard)");
-    }
-  }
-
-  void composeCheckMainWindowGlobals(const SHInstanceData &data) {
-    bool variableFound = false;
-    for (uint32_t i = 0; i < data.shared.len; i++) {
-      if (strcmp(data.shared.elements[i].name, Base::mainWindowGlobalsVarName) == 0) {
-        variableFound = true;
-      }
-    }
-
-    if (!variableFound)
-      throw shards::ComposeError("MainWindow required, but not found");
-  }
-
-  void warmup(SHContext *context) { baseConsumerWarmup(context); }
-
-  void cleanup(SHContext *context) { baseConsumerCleanup(); }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    composeCheckMainThread(data);
-    composeCheckMainWindowGlobals(data);
-    return shards::CoreInfo::NoneType;
-  }
+struct ContextUserData {
+  SHContext *shardsContext{};
 };
+
+inline void composeCheckGfxThread(const SHInstanceData &data) {
+  if (data.onWorkerThread) {
+    throw shards::ComposeError("GFX Shards cannot be used on a worker thread (e.g. "
+                               "within an Await shard)");
+  }
+}
 } // namespace gfx
 
 #endif // SH_EXTRA_GFX

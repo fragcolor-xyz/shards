@@ -1,0 +1,19 @@
+(defmesh main)
+
+(defloop send
+  (RandomInt) (Events.Send "RandomInts") (Log "Sent")
+  (Pause 0.1))
+
+(defloop receive
+  (Events.Receive "RandomInts") (ExpectSeq)
+  (ForEach (-> (ExpectInt) (Log))))
+
+(defloop updater
+  (Events.Update "RandomInts")
+  (Msg "Updated")
+  (Pause 0.2))
+
+(schedule main send)
+(schedule main receive)
+(schedule main updater)
+(if (run main 0.05 100) nil (throw "Root tick failed"))

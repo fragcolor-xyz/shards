@@ -6,13 +6,13 @@ use crate::types::Type;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod http;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod ws;
+
 pub mod ecdsa;
 pub mod hash;
 
 pub mod physics;
-
-#[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
-pub mod browse;
 
 pub mod casting;
 

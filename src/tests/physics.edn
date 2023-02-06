@@ -1,0 +1,81 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2022 Fragcolor Pte. Ltd.
+
+(def timestep (/ 1.0 120.0))
+(def duration 600)
+
+(def ground-extent 50)
+(def ground-thickness 0.5)
+(def ground-y -4)
+(def obj-count 100)
+
+(defloop main-wire
+  (Setup
+   ; define shapes
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) = .cube
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Plane) = .plane
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) = .sphere
+
+   ; instantiate cubes and spheres
+   (map
+    (fn* [n]
+         (-> (float3 0 n 0) (Math.Translation)
+             >= (ContextVar (str "transform-" n))
+
+             {:Mesh (if (= (% n 2) 0) .cube .cube)
+              :Params
+              {:baseColor (float4 (* (/ n obj-count) 2.0) (* (- 1.0 (/ n obj-count)) 2.0) 0 1)}}
+             (GFX.Drawable :Transform (ContextVar (str "transform-" n)))
+             >> .drawable))
+    (range 1 obj-count))
+
+   ; ground
+   [(float4 ground-extent 0 0 0)
+    (float4 0 0 (- ground-extent) 0)
+    (float4 0 1 0 0)
+    (float4 0 (+ ground-thickness ground-y) 0 1)] = .ground-t
+   {:Mesh .plane
+    :Params
+    {:baseColor (float4 0.8 0.55 0.95 1)}}
+   (GFX.Drawable :Transform .ground-t) >> .drawable
+
+   ; define some physics shapes
+   (Physics.Cuboid :HalfExtents (float3 0.5)) = .cube-pshape
+   (Physics.Ball :Radius 0.5) = .sphere-pshape
+   (Physics.Cuboid :HalfExtents (float3 (/ ground-extent 2) ground-thickness (/ ground-extent 2))) = .ground-pshape
+
+   ; define rendering features
+   (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .features
+   {:Features .features} (GFX.DrawablePass) >> .render-steps
+
+   ; define a view
+   {:Position (float3 50 40 50) :Target (float3 0 0 0)} (Math.LookAt) = .view-transform
+   (GFX.View :View .view-transform) = .view)
+
+  (GFX.MainWindow
+   :Title "Physics" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    ; physics simulation
+    (Physics.Simulation)
+    (Physics.KinematicBody .ground-pshape (float3 0 ground-y 0))
+
+    ; associate a physics body to each shape
+    (map
+     (fn* [n]
+          (-> (Physics.DynamicBody
+               :Position (float3 0 n 0)
+               :Shapes (if (= (% n 2) 0) .cube-pshape .cube-pshape)
+               :Name (str "rb" n)) > (ContextVar (str "transform-" n))))
+     (range 1 obj-count))
+
+    ; draw everything
+    .drawable (GFX.Draw)
+
+    ; final render
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(defmesh root)
+(schedule root main-wire)
+(run root timestep duration)

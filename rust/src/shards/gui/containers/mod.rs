@@ -8,6 +8,7 @@ use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use crate::types::ShardsVar;
 use crate::types::Type;
+use crate::types::Var;
 use crate::types::FRAG_CC;
 
 struct Area {
@@ -22,14 +23,23 @@ struct Area {
 
 shenum! {
   struct Anchor {
+    [description("Top left corner.")]
     const TopLeft = 0x00;
+    [description("Middle left.")]
     const Left = 0x10;
+    [description("Bottom left corner.")]
     const BottomLeft = 0x20;
+    [description("Top middle.")]
     const Top = 0x01;
+    [description("Center.")]
     const Center = 0x11;
+    [description("Bottom middle.")]
     const Bottom = 0x21;
+    [description("Top right corner.")]
     const TopRight = 0x02;
+    [description("Middle right.")]
     const Right = 0x12;
+    [description("Bottom right corner.")]
     const BottomRight = 0x22;
   }
 
@@ -46,9 +56,28 @@ shenum_types! {
   static ref SEQ_OF_ANCHOR_TYPES: Vec<Type>;
 }
 
+struct DockArea {
+  instance: ParamVar,
+  requiring: ExposedTypes,
+  contents: ParamVar,
+  parents: ParamVar,
+  exposing: ExposedTypes,
+  headers: Vec<ParamVar>,
+  shards: Vec<ShardsVar>,
+  tabs: egui_dock::Tree<(ParamVar, ShardsVar)>,
+}
+
 struct Scope {
   parents: ParamVar,
   requiring: ExposedTypes,
+  contents: ShardsVar,
+  exposing: ExposedTypes,
+}
+
+struct Tab {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  title: ParamVar,
   contents: ShardsVar,
   exposing: ExposedTypes,
 }
@@ -69,9 +98,13 @@ struct Window {
 
 shenum! {
   struct WindowFlags {
+    [description("Do not display the title bar.")]
     const NoTitleBar = 1 << 0;
+    [description("Do not allow resizing the window.")]
     const NoResize = 1 << 1;
+    [description("Do not display scrollbars.")]
     const NoScrollbars = 1 << 2;
+    [description("Do not display the collapse button.")]
     const NoCollapse = 1 << 3;
   }
   struct WindowFlagsInfo {}
@@ -117,6 +150,7 @@ struct CentralPanel {
 }
 
 mod area;
+mod docking;
 mod panels;
 mod scope;
 mod window;
@@ -124,6 +158,7 @@ mod window;
 pub fn registerShards() {
   registerShard::<Area>();
   registerEnumType(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
+  docking::registerShards();
   registerShard::<Scope>();
   registerShard::<Window>();
   registerEnumType(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());

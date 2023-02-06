@@ -191,7 +191,7 @@ jobs:
       - name: Checkout glTF-Sample-Models
         # Match with test step below
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: KhronosGroup/glTF-Sample-Models
           path: external/glTF-Sample-Models
@@ -323,12 +323,12 @@ jobs:
         shell: msys2 {0}
         run: |
           cd docs/samples
-          for i in $(find shards -name '*.edn' ! -path '*UI*');
+          for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' \));
           do
             echo "Running sample $i";
             ../../build/shards.exe run-sample.edn --file "$i";
           done
-      - name: Test doc samples (UI)
+      - name: Test doc samples (GFX)
         # NOTE: Graphics backend doesn't run on 32bits
         if: ${{ steps.setup.outputs.bitness == '64bits' }}
         env:
@@ -337,10 +337,10 @@ jobs:
         shell: msys2 {0}
         run: |
           cd docs/samples
-          for i in $(find shards -name '*.edn' -path '*UI*');
+          for i in $(find shards -name '*.edn' \( -path '*UI*' -or -path '*GFX*' \));
           do
             echo "Running sample $i";
-            ../../build/shards.exe run-sample.edn --file "$i";
+            ../../build/shards.exe run-sample.edn --looped true --file "$i";
           done
       - name: Graphics Test (64bits)
         # NOTE: Graphics backend doesn't run on 32bits
@@ -364,6 +364,17 @@ jobs:
           ./shards ../src/tests/egui-demo.edn
           echo "Running test: egui-plot"
           ./shards ../src/tests/egui-plot.edn
+      - name: Physics Test (64bits)
+        # NOTE: Graphics backend doesn't run on 32bits
+        if: ${{ steps.setup.outputs.bitness == '64bits' }}
+        env:
+          GFX_BACKEND: D3D12
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd build
+          echo "Running test: physics"
+          ./shards ../src/tests/physics.edn
       - name: Test (64bits)
         if: ${{ steps.setup.outputs.bitness == '64bits' }}
         env:

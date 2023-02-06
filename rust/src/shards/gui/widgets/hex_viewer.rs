@@ -4,6 +4,7 @@
 use super::HexViewer;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHType_Bytes;
 use crate::shardsc::SHType_Enum;
@@ -22,6 +23,7 @@ use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Type;
 use crate::types::Types;
@@ -76,12 +78,26 @@ impl Shard for HexViewer {
     "UI.HexViewer"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("Displays an hexadecimal viewer of data."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &HEXVIEWER_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The data to visualize. Supports primitive types only (floats, ints, string and bytes)."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &HEXVIEWER_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn hasCompose() -> bool {

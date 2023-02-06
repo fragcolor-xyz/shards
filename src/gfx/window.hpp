@@ -37,6 +37,9 @@ struct Window {
   // draw surface size
   int2 getDrawableSize() const;
 
+  // The scale that converts from input coordinates to drawable surface coordinates
+  float2 getInputScale() const;
+
   // window size
   int2 getSize() const;
 

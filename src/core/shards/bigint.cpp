@@ -2,12 +2,12 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 #include "foundation.hpp"
-#include "math.h"
 #include "shards.h"
 #include "shared.hpp"
+#include "math.hpp"
+#include <math.h>
 #include <deque>
 #include <stdexcept>
-
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <stdexcept>
@@ -45,16 +45,16 @@ struct ToBigInt {
   SHVar activate(SHContext *context, const SHVar &input) {
     cpp_int bi;
     switch (input.valueType) {
-    case Int: {
+    case SHType::Int: {
       bi = input.payload.intValue;
     } break;
-    case Float: {
+    case SHType::Float: {
       bi = cpp_int(input.payload.floatValue);
     } break;
-    case String: {
+    case SHType::String: {
       bi = cpp_int(input.payload.stringValue);
     } break;
-    case Bytes: {
+    case SHType::Bytes: {
       import_bits(bi, input.payload.bytesValue, input.payload.bytesValue + input.payload.bytesSize);
     } break;
     default: {
@@ -167,7 +167,7 @@ struct BigOperandBase {
 
   const SHVar &getOperand() {
     SHVar &op = _op.get();
-    if (op.valueType == None) {
+    if (op.valueType == SHType::None) {
       throw ActivationError("Operand is None, should be valid bigint bytes");
     }
     return op;
@@ -200,7 +200,7 @@ struct RegOperandBase {
 
   const SHVar &getOperand() {
     SHVar &op = _op.get();
-    if (op.valueType == None) {
+    if (op.valueType == SHType::None) {
       throw ActivationError("Operand is None, should be an integer");
     }
     return op;
@@ -253,7 +253,7 @@ using Max = BigInt::BinaryOperation<BigIntBinaryOperation<MaxOp>>;
     SHVar activate(SHContext *context, const SHVar &input) {   \
       cpp_int bia = from_var(input);                           \
       auto op = getOperand();                                  \
-      if (op.valueType != Int)                                 \
+      if (op.valueType != SHType::Int)                         \
         throw ActivationError("Pow operand should be an Int"); \
       cpp_int bres = __OP__(bia, op.payload.intValue);         \
       return to_var(bres, _buffer);                            \

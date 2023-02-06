@@ -10,54 +10,54 @@
 namespace shards::Math {
 
 template <size_t Length> struct ApplyUnaryVector {
-  template <typename TOp, typename T> void apply(T &out, const T &a) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, TArgs... args) {
     TOp op{};
 
     for (size_t i = 0; i < Length; i++)
-      out[i] = op.template apply(a[i]);
+      out[i] = op.template apply(a[i], args...);
   }
 };
 
 template <> struct ApplyUnaryVector<1> {
-  template <typename TOp, typename T> void apply(T &out, const T &a) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, TArgs... args) {
     TOp op{};
-    out = op.template apply(a);
+    out = op.template apply(a, args...);
   }
 };
 
 struct ApplyUnaryColor {
-  template <typename TOp, typename T> void apply(T &out, const T &a) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, TArgs... args) {
     TOp op{};
-    out.r = op.template apply(a.r);
-    out.g = op.template apply(a.g);
-    out.b = op.template apply(a.b);
-    out.a = op.template apply(a.a);
+    out.r = op.template apply(a.r, args...);
+    out.g = op.template apply(a.g, args...);
+    out.b = op.template apply(a.b, args...);
+    out.a = op.template apply(a.a, args...);
   }
 };
 
 template <size_t Length> struct ApplyBinaryVector {
-  template <typename TOp, typename T> void apply(T &out, const T &a, const T &b) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, const T &b, TArgs... args) {
     TOp op{};
 
     for (size_t i = 0; i < Length; i++)
-      out[i] = op.template apply(a[i], b[i]);
+      out[i] = op.template apply(a[i], b[i], args...);
   }
 };
 
 template <> struct ApplyBinaryVector<1> {
-  template <typename TOp, typename T> void apply(T &out, const T &a, const T &b) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, const T &b, TArgs... args) {
     TOp op{};
-    out = op.template apply(a, b);
+    out = op.template apply(a, b, args...);
   }
 };
 
 struct ApplyBinaryColor {
-  template <typename TOp, typename T> void apply(T &out, const T &a, const T &b) {
+  template <typename TOp, typename T, typename... TArgs> void apply(T &out, const T &a, const T &b, TArgs... args) {
     TOp op{};
-    out.r = op.template apply(a.r, b.r);
-    out.g = op.template apply(a.g, b.g);
-    out.b = op.template apply(a.b, b.b);
-    out.a = op.template apply(a.a, b.a);
+    out.r = op.template apply(a.r, b.r, args...);
+    out.g = op.template apply(a.g, b.g, args...);
+    out.b = op.template apply(a.b, b.b, args...);
+    out.a = op.template apply(a.a, b.a, args...);
   }
 };
 
@@ -187,31 +187,39 @@ enum class DispatchType : uint8_t {
   IntTypes = 0x2,
   NumberTypes = FloatTypes | IntTypes,
 };
+} // namespace shards::Math
 
+namespace magic_enum::customize {
+template <> struct enum_range<shards::Math::DispatchType> {
+  static constexpr bool is_flags = true;
+};
+} // namespace magic_enum::customize
+
+namespace shards::Math {
 constexpr bool hasDispatchType(DispatchType a, DispatchType b) { return (uint8_t(a) & uint8_t(b)) != 0; }
 
 template <DispatchType DispatchType, typename T, typename... TArgs> void dispatchType(SHType type, T v, TArgs &&...args) {
   if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes)) {
     switch (type) {
-    case Int:
+    case SHType::Int:
       return v.template apply<SHType::Int>(std::forward<TArgs>(args)...);
       break;
-    case Int2:
+    case SHType::Int2:
       return v.template apply<SHType::Int2>(std::forward<TArgs>(args)...);
       break;
-    case Int3:
+    case SHType::Int3:
       return v.template apply<SHType::Int3>(std::forward<TArgs>(args)...);
       break;
-    case Int4:
+    case SHType::Int4:
       return v.template apply<SHType::Int4>(std::forward<TArgs>(args)...);
       break;
-    case Int8:
+    case SHType::Int8:
       return v.template apply<SHType::Int8>(std::forward<TArgs>(args)...);
       break;
-    case Int16:
+    case SHType::Int16:
       return v.template apply<SHType::Int16>(std::forward<TArgs>(args)...);
       break;
-    case Color:
+    case SHType::Color:
       return v.template apply<SHType::Color>(std::forward<TArgs>(args)...);
       break;
     default:
@@ -220,16 +228,16 @@ template <DispatchType DispatchType, typename T, typename... TArgs> void dispatc
   }
   if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes)) {
     switch (type) {
-    case Float:
+    case SHType::Float:
       return v.template apply<SHType::Float>(std::forward<TArgs>(args)...);
       break;
-    case Float2:
+    case SHType::Float2:
       return v.template apply<SHType::Float2>(std::forward<TArgs>(args)...);
       break;
-    case Float3:
+    case SHType::Float3:
       return v.template apply<SHType::Float3>(std::forward<TArgs>(args)...);
       break;
-    case Float4:
+    case SHType::Float4:
       return v.template apply<SHType::Float4>(std::forward<TArgs>(args)...);
       break;
     default:
@@ -237,7 +245,7 @@ template <DispatchType DispatchType, typename T, typename... TArgs> void dispatc
     }
   }
   throw std::out_of_range(
-      fmt::format("dispatchType<{}>({})", magic_enum::flags::enum_name(DispatchType), magic_enum::enum_name(type)));
+      fmt::format("dispatchType<{}>({})", magic_enum::enum_flags_name(DispatchType), magic_enum::enum_name(type)));
 }
 
 #define MATH_BINARY_OPERATION(__name, __op)                                            \

@@ -9,11 +9,13 @@ use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
 use crate::shards::gui::BOOL_OR_NONE_SLICE;
 use crate::shards::gui::FLOAT_VAR_OR_NONE_SLICE;
+use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
+use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Seq;
@@ -29,25 +31,25 @@ lazy_static! {
   static ref PLOT_PARAMETERS: Parameters = vec![
     (
       cstr!("Contents"),
-      cstr!("The UI contents."),
+      shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
       cstr!("ViewAspect"),
-      cstr!("Width / height ratio of the plot region."),
+      shccstr!("Width / height ratio of the plot region."),
       FLOAT_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("DataAspect"),
-      cstr!("Width / height ratio of the data."),
+      shccstr!("Width / height ratio of the data."),
       FLOAT_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("Legend"),
-      cstr!("Whether to display the legend."),
+      shccstr!("Whether to display the legend."),
       BOOL_OR_NONE_SLICE,
     )
       .into(),
@@ -92,12 +94,26 @@ impl Shard for Plot {
     "UI.Plot"
   }
 
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!("A 2D plot area."))
+  }
+
   fn inputTypes(&mut self) -> &Types {
     &ANY_TYPES
   }
 
+  fn inputHelp(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "The value that will be passed to the Contents shards of the plot."
+    ))
+  }
+
   fn outputTypes(&mut self) -> &Types {
     &ANY_TYPES
+  }
+
+  fn outputHelp(&mut self) -> OptionalString {
+    *HELP_OUTPUT_EQUAL_INPUT
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {

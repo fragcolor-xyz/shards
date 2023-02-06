@@ -6,7 +6,8 @@
 #include "runtime.hpp"
 #include <unordered_set>
 
-std::ostream &operator<<(std::ostream &os, const SHVar &var) {
+namespace shards {
+std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) {
   switch (var.valueType) {
   case SHType::EndOfBlittableTypes:
     break;
@@ -16,31 +17,47 @@ std::ostream &operator<<(std::ostream &os, const SHVar &var) {
   case SHType::Any:
     os << "Any";
     break;
-  case SHType::Object:
-    os << "Object: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.objectValue) << " vendor: 0x"
-       << var.payload.objectVendorId << " type: 0x" << var.payload.objectTypeId << std::dec;
+  case SHType::Object: {
+    SHObjectInfo *objectInfo = var.objectInfo;
+    if (!objectInfo)
+      objectInfo = shards::findObjectInfo(var.payload.objectVendorId, var.payload.objectTypeId);
+    if (objectInfo) {
+      os << objectInfo->name;
+    } else {
+      os << "Object: 0x" << std::hex << var.payload.objectValue << " vendor: 0x" << var.payload.objectVendorId << " type: 0x"
+         << var.payload.objectTypeId << std::dec;
+    }
     break;
+  }
   case SHType::Wire: {
     if (var.payload.wireValue) {
       auto wire = SHWire::sharedFromRef(var.payload.wireValue);
-      os << "Wire: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.wireValue) << std::dec;
-      os << " name: " << wire->name;
+      os << "<Wire: " << wire->name << ">";
     } else {
-      os << "Wire: 0x0";
+      os << "<Wire: None>";
     }
   } break;
   case SHType::Bytes:
-    os << "Bytes: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.bytesValue) << " size: " << std::dec
-       << var.payload.bytesSize;
+    os << "<" << var.payload.bytesSize << " SHType::Bytes>" << std::dec;
     break;
   case SHType::Array:
     os << "Array: 0x" << std::hex << reinterpret_cast<uintptr_t>(var.payload.arrayValue.elements) << " size: " << std::dec
        << var.payload.arrayValue.len << " of: " << type2Name(var.innerType);
     break;
-  case SHType::Enum:
-    os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x" << var.payload.enumVendorId << " type: 0x"
-       << var.payload.enumTypeId << std::dec;
+  case SHType::Enum: {
+    SHEnumInfo *enumInfo = findEnumInfo(var.payload.enumVendorId, var.payload.enumTypeId);
+    if (enumInfo) {
+      const char *label = "<invalid>";
+      if (var.payload.enumValue >= 0 && var.payload.enumValue < SHEnum(enumInfo->labels.len)) {
+        label = enumInfo->labels.elements[var.payload.enumValue];
+      }
+      os << enumInfo->name << "." << label;
+    } else {
+      os << "Enum: " << var.payload.enumValue << std::hex << " vendor: 0x" << var.payload.enumVendorId << " type: 0x"
+         << var.payload.enumTypeId << std::dec;
+    }
     break;
+  }
   case SHType::Bool:
     os << (var.payload.boolValue ? "true" : "false");
     break;
@@ -172,7 +189,7 @@ std::ostream &operator<<(std::ostream &os, const SHVar &var) {
     }
     os << "]";
     break;
-  case Table: {
+  case SHType::Table: {
     os << "{";
     auto &t = var.payload.tableValue;
     bool first = true;
@@ -210,91 +227,116 @@ std::ostream &operator<<(std::ostream &os, const SHVar &var) {
   }
   return os;
 }
-
-std::ostream &operator<<(std::ostream &os, const SHTypeInfo &t) {
-  os << type2Name(t.basicType);
+std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &t) {
+  // This code outputs non-breaking spaces for cleaner wrapping on the documentation page
   if (t.basicType == SHType::Seq) {
-    os << " [";
+    os << "[ ";
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
-      // avoid recursive types
       if (t.seqTypes.elements[i].recursiveSelf) {
-        os << "(Self)";
+        os << "Self";
       } else {
-        os << "(" << t.seqTypes.elements[i] << ")";
+        os << t.seqTypes.elements[i];
       }
       if (i < (t.seqTypes.len - 1)) {
         os << " ";
       }
     }
-    os << "]";
+    os << " ]";
   } else if (t.basicType == SHType::Set) {
-    os << " [";
+    os << "< ";
     for (uint32_t i = 0; i < t.setTypes.len; i++) {
       // avoid recursive types
       if (t.setTypes.elements[i].recursiveSelf) {
-        os << "(Self)";
+        os << "Self";
       } else {
-        os << "(" << t.setTypes.elements[i] << ")";
+        os << t.setTypes.elements[i];
       }
       if (i < (t.setTypes.len - 1)) {
         os << " ";
       }
     }
-    os << "]";
+    os << " >";
   } else if (t.basicType == SHType::Table) {
     if (t.table.types.len == t.table.keys.len) {
-      os << " {";
+      os << "{ ";
       for (uint32_t i = 0; i < t.table.types.len; i++) {
-        os << "\"" << t.table.keys.elements[i] << "\" ";
-        os << "(" << t.table.types.elements[i] << ")";
+        os << ":" << t.table.keys.elements[i] << " ";
+        os << t.table.types.elements[i];
         if (i < (t.table.types.len - 1)) {
           os << " ";
         }
       }
-      os << "}";
+      os << " }";
     } else {
-      os << " [";
+      os << "{ ";
       for (uint32_t i = 0; i < t.table.types.len; i++) {
         if (t.table.types.elements[i].recursiveSelf) {
-          os << "(Self)";
+          os << "Self";
         } else {
-          os << "(" << t.table.types.elements[i] << ")";
+          os << t.table.types.elements[i];
         }
         if (i < (t.table.types.len - 1)) {
           os << " ";
         }
       }
-      os << "]";
+      os << " }";
     }
   } else if (t.basicType == SHType::ContextVar) {
-    os << " [";
+    bool braced = false;
+    if (t.contextVarTypes.len > 1)
+      braced = true;
+
+    os << "&";
+    if (braced)
+      os << "( ";
+
     for (uint32_t i = 0; i < t.contextVarTypes.len; i++) {
       // avoid recursive types
       if (t.contextVarTypes.elements[i].recursiveSelf) {
-        os << "(Self)";
+        os << "Self";
       } else {
-        os << "(" << t.contextVarTypes.elements[i] << ")";
+        os << t.contextVarTypes.elements[i];
       }
       if (i < (t.contextVarTypes.len - 1)) {
         os << " ";
       }
     }
-    os << "]";
+
+    if (braced)
+      os << " )";
+  } else if (t.basicType == SHType::Object) {
+    SHObjectInfo *objectInfo = findObjectInfo(t.object.vendorId, t.object.typeId);
+    if (objectInfo) {
+      os << objectInfo->name;
+    } else {
+      os << "Object";
+      SHLOG_WARNING("No object info found for object: vendor: {}, type: {}", t.object.vendorId, t.object.typeId);
+    }
+  } else if (t.basicType == SHType::Enum) {
+    SHEnumInfo *enumInfo = findEnumInfo(t.enumeration.vendorId, t.enumeration.typeId);
+    if (enumInfo) {
+      os << enumInfo->name;
+    } else {
+      os << "Enum";
+      SHLOG_WARNING("No object info found for enum: vendor: {}, type: {}", t.enumeration.vendorId, t.enumeration.typeId);
+    }
+  } else {
+    os << type2Name(t.basicType);
   }
   return os;
 }
-
-std::ostream &operator<<(std::ostream &os, const SHTypesInfo &ts) {
-  os << "[";
+std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypesInfo &ts) {
   for (uint32_t i = 0; i < ts.len; i++) {
-    os << "(" << ts.elements[i] << ")";
+    if (ignoreNone && ts.elements[i].basicType == SHType::None)
+      continue;
+    os << ts.elements[i];
     if (i < (ts.len - 1)) {
       os << " ";
     }
   }
-  os << "]";
   return os;
 }
+} // namespace shards
 
 bool _seqEq(const SHVar &a, const SHVar &b) {
   if (a.payload.seqValue.elements == b.payload.seqValue.elements)
@@ -567,5 +609,89 @@ bool operator==(const SHTypeInfo &a, const SHTypeInfo &b) {
   }
   default:
     return true;
+  }
+}
+
+ALWAYS_INLINE inline bool _almostEqual(const float a, const float b, const double e) { return __builtin_fabsf(a - b) <= e; }
+ALWAYS_INLINE inline bool _almostEqual(const double a, const double b, const double e) { return __builtin_fabs(a - b) <= e; }
+ALWAYS_INLINE inline bool _almostEqual(const int32_t a, const int32_t b, const double e) { return __builtin_abs(a - b) <= e; }
+ALWAYS_INLINE inline bool _almostEqual(const int64_t a, const int64_t b, const double e) { return __builtin_llabs(a - b) <= e; }
+
+bool _almostEqual(const SHVar &lhs, const SHVar &rhs, double e) {
+  if (lhs.valueType != rhs.valueType) {
+    return false;
+  }
+
+  switch (lhs.valueType) {
+  case SHType::Float:
+    return _almostEqual(lhs.payload.floatValue, rhs.payload.floatValue, e);
+  case SHType::Float2:
+    return (_almostEqual(lhs.payload.float2Value[0], rhs.payload.float2Value[0], e) &&
+            _almostEqual(lhs.payload.float2Value[1], rhs.payload.float2Value[1], e));
+  case SHType::Float3:
+    return (_almostEqual(lhs.payload.float3Value[0], rhs.payload.float3Value[0], e) &&
+            _almostEqual(lhs.payload.float3Value[1], rhs.payload.float3Value[1], e) &&
+            _almostEqual(lhs.payload.float3Value[2], rhs.payload.float3Value[2], e));
+  case SHType::Float4:
+    return (_almostEqual(lhs.payload.float4Value[0], rhs.payload.float4Value[0], e) &&
+            _almostEqual(lhs.payload.float4Value[1], rhs.payload.float4Value[1], e) &&
+            _almostEqual(lhs.payload.float4Value[2], rhs.payload.float4Value[2], e) &&
+            _almostEqual(lhs.payload.float4Value[3], rhs.payload.float4Value[3], e));
+  case SHType::Int:
+    return _almostEqual(lhs.payload.intValue, rhs.payload.intValue, e);
+  case SHType::Int2:
+    return (_almostEqual(lhs.payload.int2Value[0], rhs.payload.int2Value[0], e) &&
+            _almostEqual(lhs.payload.int2Value[1], rhs.payload.int2Value[1], e));
+  case SHType::Int3:
+    return (_almostEqual(lhs.payload.int3Value[0], rhs.payload.int3Value[0], e) &&
+            _almostEqual(lhs.payload.int3Value[1], rhs.payload.int3Value[1], e) &&
+            _almostEqual(lhs.payload.int3Value[2], rhs.payload.int3Value[2], e));
+  case SHType::Int4:
+    return (_almostEqual(lhs.payload.int4Value[0], rhs.payload.int4Value[0], e) &&
+            _almostEqual(lhs.payload.int4Value[1], rhs.payload.int4Value[1], e) &&
+            _almostEqual(lhs.payload.int4Value[2], rhs.payload.int4Value[2], e) &&
+            _almostEqual(lhs.payload.int4Value[3], rhs.payload.int4Value[3], e));
+  case SHType::Int8:
+    return (_almostEqual(lhs.payload.int8Value[0], rhs.payload.int8Value[0], e) &&
+            _almostEqual(lhs.payload.int8Value[1], rhs.payload.int8Value[1], e) &&
+            _almostEqual(lhs.payload.int8Value[2], rhs.payload.int8Value[2], e) &&
+            _almostEqual(lhs.payload.int8Value[3], rhs.payload.int8Value[3], e) &&
+            _almostEqual(lhs.payload.int8Value[4], rhs.payload.int8Value[4], e) &&
+            _almostEqual(lhs.payload.int8Value[5], rhs.payload.int8Value[5], e) &&
+            _almostEqual(lhs.payload.int8Value[6], rhs.payload.int8Value[6], e) &&
+            _almostEqual(lhs.payload.int8Value[7], rhs.payload.int8Value[7], e));
+  case SHType::Int16:
+    return (_almostEqual(lhs.payload.int16Value[0], rhs.payload.int16Value[0], e) &&
+            _almostEqual(lhs.payload.int16Value[1], rhs.payload.int16Value[1], e) &&
+            _almostEqual(lhs.payload.int16Value[2], rhs.payload.int16Value[2], e) &&
+            _almostEqual(lhs.payload.int16Value[3], rhs.payload.int16Value[3], e) &&
+            _almostEqual(lhs.payload.int16Value[4], rhs.payload.int16Value[4], e) &&
+            _almostEqual(lhs.payload.int16Value[5], rhs.payload.int16Value[5], e) &&
+            _almostEqual(lhs.payload.int16Value[6], rhs.payload.int16Value[6], e) &&
+            _almostEqual(lhs.payload.int16Value[7], rhs.payload.int16Value[7], e) &&
+            _almostEqual(lhs.payload.int16Value[8], rhs.payload.int16Value[8], e) &&
+            _almostEqual(lhs.payload.int16Value[9], rhs.payload.int16Value[9], e) &&
+            _almostEqual(lhs.payload.int16Value[10], rhs.payload.int16Value[10], e) &&
+            _almostEqual(lhs.payload.int16Value[11], rhs.payload.int16Value[11], e) &&
+            _almostEqual(lhs.payload.int16Value[12], rhs.payload.int16Value[12], e) &&
+            _almostEqual(lhs.payload.int16Value[13], rhs.payload.int16Value[13], e) &&
+            _almostEqual(lhs.payload.int16Value[14], rhs.payload.int16Value[14], e) &&
+            _almostEqual(lhs.payload.int16Value[15], rhs.payload.int16Value[15], e));
+  case SHType::Seq: {
+    if (lhs.payload.seqValue.len != rhs.payload.seqValue.len) {
+      return false;
+    }
+
+    auto almost = true;
+    for (uint32_t i = 0; i < lhs.payload.seqValue.len; i++) {
+      auto &suba = lhs.payload.seqValue.elements[i];
+      auto &subb = rhs.payload.seqValue.elements[i];
+      almost = almost && _almostEqual(suba, subb, e);
+    }
+
+    return almost;
+  }
+  default:
+    return lhs == rhs;
   }
 }

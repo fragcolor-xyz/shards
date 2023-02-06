@@ -7,6 +7,7 @@
 #include <nameof.hpp>
 #include <stdexcept>
 #include <stdint.h>
+#include <vector>
 
 namespace gfx {
 namespace shader {
@@ -32,6 +33,7 @@ struct WGSLBlock : public IWGSLGenerated {
   FieldType fieldType;
   blocks::BlockPtr block;
 
+  WGSLBlock(WGSLBlock &&) = default;
   WGSLBlock(FieldType fieldType, blocks::BlockPtr &&block) : fieldType(fieldType), block(std::move(block)) {}
 
   const FieldType &getType() const { return fieldType; }

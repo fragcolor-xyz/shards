@@ -9,17 +9,17 @@ namespace shards {
 std::map<SHType, NumberType> getSHTypeToNumberTypeMap() {
   // clang-format off
   return {
-    {Color, NumberType::UInt8},
-    {Int, NumberType::Int64},
-    {Int2, NumberType::Int64},
-    {Int3, NumberType::Int32},
-    {Int4, NumberType::Int32},
-    {Int8, NumberType::Int16},
-    {Int16, NumberType::Int8},
-    {Float, NumberType::Float64},
-    {Float2, NumberType::Float64},
-    {Float3, NumberType::Float32},
-    {Float4, NumberType::Float32},
+    {SHType::Color, NumberType::UInt8},
+    {SHType::Int, NumberType::Int64},
+    {SHType::Int2, NumberType::Int64},
+    {SHType::Int3, NumberType::Int32},
+    {SHType::Int4, NumberType::Int32},
+    {SHType::Int8, NumberType::Int16},
+    {SHType::Int16, NumberType::Int8},
+    {SHType::Float, NumberType::Float64},
+    {SHType::Float2, NumberType::Float64},
+    {SHType::Float3, NumberType::Float32},
+    {SHType::Float4, NumberType::Float32},
   };
   // clang-format on
 };
@@ -134,17 +134,17 @@ template <SHType Type> struct TVectorTypeTraits {};
 
 #define EXPAND(_x) _x
 #define STRINGIFY(_x) EXPAND(#_x)
-#define VECTOR_TYPE_TRAITS(_SHType, _Dimension, _NumberType)                \
-  template <> struct TVectorTypeTraits<_SHType> : public VectorTypeTraits { \
-    typedef TNumberTypeTraits<_NumberType>::TInner TInner;                  \
-    TVectorTypeTraits() {                                                   \
-      dimension = _Dimension;                                               \
-      isInteger = std::is_integral<TInner>::value;                          \
-      shType = _SHType;                                                     \
-      type = shards::CoreInfo::_SHType##Type;                               \
-      numberType = _NumberType;                                             \
-      name = STRINGIFY(_SHType);                                            \
-    }                                                                       \
+#define VECTOR_TYPE_TRAITS(_SHType, _Dimension, _NumberType)                        \
+  template <> struct TVectorTypeTraits<SHType::_SHType> : public VectorTypeTraits { \
+    typedef TNumberTypeTraits<_NumberType>::TInner TInner;                          \
+    TVectorTypeTraits() {                                                           \
+      dimension = _Dimension;                                                       \
+      isInteger = std::is_integral<TInner>::value;                                  \
+      shType = SHType::_SHType;                                                     \
+      type = shards::CoreInfo::_SHType##Type;                                       \
+      numberType = _NumberType;                                                     \
+      name = STRINGIFY(_SHType);                                                    \
+    }                                                                               \
   };
 
 VECTOR_TYPE_TRAITS(Color, 4, NumberType::UInt8);
@@ -166,17 +166,17 @@ VECTOR_TYPE_TRAITS(Float4, 4, NumberType::Float32);
 VectorTypeLookup::VectorTypeLookup() {
   // clang-format off
     vectorTypes = {
-        TVectorTypeTraits<Color>(),
-        TVectorTypeTraits<Int>(),
-        TVectorTypeTraits<Int2>(),
-        TVectorTypeTraits<Int3>(),
-        TVectorTypeTraits<Int4>(),
-        TVectorTypeTraits<Int8>(),
-        TVectorTypeTraits<Int16>(),
-        TVectorTypeTraits<Float>(),
-        TVectorTypeTraits<Float2>(),
-        TVectorTypeTraits<Float3>(),
-        TVectorTypeTraits<Float4>(),
+        TVectorTypeTraits<SHType::Color>(),
+        TVectorTypeTraits<SHType::Int>(),
+        TVectorTypeTraits<SHType::Int2>(),
+        TVectorTypeTraits<SHType::Int3>(),
+        TVectorTypeTraits<SHType::Int4>(),
+        TVectorTypeTraits<SHType::Int8>(),
+        TVectorTypeTraits<SHType::Int16>(),
+        TVectorTypeTraits<SHType::Float>(),
+        TVectorTypeTraits<SHType::Float2>(),
+        TVectorTypeTraits<SHType::Float3>(),
+        TVectorTypeTraits<SHType::Float4>(),
     };
   // clang-format on
   buildSHTypeLookup();

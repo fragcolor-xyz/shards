@@ -6,11 +6,20 @@ if(NOT EMSCRIPTEN)
   set(HAS_WGPU_NATIVE ON)
 endif()
 
+if(TRACY_ENABLE)
+  message(STATUS "Building gfx crate with tracy profiling enabled")
+  list(APPEND FEATURES tracy)
+  list(APPEND RUST_ENV
+  TRACY_CLIENT_LIB=$<TARGET_FILE_NAME:Tracy::TracyClient>
+    TRACY_CLIENT_LIB_PATH=$<TARGET_FILE_DIR:Tracy::TracyClient>)
+endif()
+
 add_rust_library(
   NAME gfx
   PROJECT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/gfx
   DEPENDS ${EXTRA_SOURCES}
   FEATURES ${FEATURES}
+  ENVIRONMENT ${RUST_ENV}
 )
 
 if(WIN32)

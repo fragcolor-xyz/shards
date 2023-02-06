@@ -178,7 +178,7 @@ TEST_CASE("Consume all mouse events") {
   generateTestInputMotionUpDown(buffer, 0, 0, 0);
   CHECK(buffer.size() > 0);
 
-  buffer.consumeEvents(ConsumeEventFilter::PointerDown | ConsumeEventFilter::PointerUp);
+  buffer.consumeEvents(ConsumeEventFilter::Touch | ConsumeEventFilter::Mouse);
 
   consumer.handleInput(buffer);
   CHECK(consumer.receivedEventCount == 0);

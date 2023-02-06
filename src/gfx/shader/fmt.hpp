@@ -15,7 +15,12 @@ template <> struct fmt::formatter<gfx::shader::FieldType> {
 
   template <typename FormatContext>
   auto format(const gfx::shader::FieldType &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
-    return format_to(ctx.out(), "{{{}, {}}}", magic_enum::enum_name(fieldType.baseType), fieldType.numComponents);
+    auto baseTypeName = magic_enum::enum_name(fieldType.baseType);
+    if (fieldType.matrixDimension > 1) {
+      return format_to(ctx.out(), "{{{}, {}x{}}}", baseTypeName, fieldType.numComponents, fieldType.matrixDimension);
+    } else {
+      return format_to(ctx.out(), "{{{}, {}}}", baseTypeName, fieldType.numComponents);
+    }
   }
 };
 

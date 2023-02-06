@@ -68,7 +68,7 @@ template <SHType ToType> struct ToNumber {
       _numberConversion =
           NumberTypeLookup::getInstance().getConversion(_inputVectorType->numberType, _outputVectorType->numberType);
       shassert(_numberConversion);
-    } else if (data.inputType.basicType == Seq) {
+    } else if (data.inputType.basicType == SHType::Seq) {
       const NumberTypeTraits *fixedNumberType = determineFixedSeqNumberType(data.inputType);
       if (fixedNumberType) {
         _numberConversion = fixedNumberType->conversionTable.get(_outputNumberType->type);
@@ -179,13 +179,13 @@ template <SHType ToType> struct ToNumber {
     output.valueType = _outputVectorType->shType;
 
     switch (input.valueType) {
-    case Seq:
+    case SHType::Seq:
       parseSeqElements(output, input.payload.seqValue);
       break;
-    case Enum:
+    case SHType::Enum:
       parseEnumValue(output, input.payload.enumValue);
       break;
-    case String:
+    case SHType::String:
       parseStringElements(output, input.payload.stringValue, input.payload.stringLen);
       break;
     default:
@@ -249,7 +249,7 @@ template <SHType ToType> struct MakeVector {
     static Parameters params = []() {
       Parameters params;
       auto vectorType = VectorTypeLookup::getInstance().get(ToType);
-      auto paramType = getCompatibleUnitType(vectorType->numberType);
+      const Type &paramType = getCompatibleUnitType(vectorType->numberType);
 
       for (size_t i = 0; i < vectorType->dimension; i++) {
         params._infos.emplace_back(componentNames[i].c_str(), Types({Type::VariableOf(paramType), paramType}));
