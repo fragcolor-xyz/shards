@@ -161,7 +161,7 @@ public:
     }
   }
 
-  void activate(SHContext *context) {
+  void activate() {
     if (!mesh->tick()) {
       switch (failureBehavior) {
       case BranchFailureBehavior::Ignore:
