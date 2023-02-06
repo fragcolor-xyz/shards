@@ -239,8 +239,9 @@ struct FeatureShard {
   }
 
   void cleanup() {
-    for (auto &pair : _generatorCapturedVariables)
+    for (auto &pair : _generatorCapturedVariables) {
       releaseVariable(pair.second);
+    }
     _generatorCapturedVariables.clear();
 
     _viewGeneratorsMesh.reset();
@@ -658,12 +659,15 @@ struct FeatureShard {
   }
 
   void addGeneratorCapturedVariablesToMeshes() {
-    for (auto &pair : _generatorCapturedVariables) {
-      if (_viewGeneratorsMesh)
-        _viewGeneratorsMesh->variables.emplace(pair.first, *pair.second);
-      if (_drawableGeneratorsMesh)
-        _drawableGeneratorsMesh->variables.emplace(pair.first, *pair.second);
-    }
+    auto forEachMesh = [&](auto mesh) {
+      for (auto &pair : _generatorCapturedVariables) {
+        if (mesh) {
+          mesh->refs.emplace(pair.first, pair.second);
+        }
+      }
+    };
+    forEachMesh(_viewGeneratorsMesh);
+    forEachMesh(_drawableGeneratorsMesh);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -775,6 +779,7 @@ struct FeatureShard {
         mesh->schedule(wire, input, false);
       } else {
         // Update inputs
+        // NOTE: this is owned by the wire
         (TableVar &)wire->currentInput = std::move(input);
       }
     }
