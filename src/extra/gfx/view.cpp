@@ -14,6 +14,7 @@
 #include "linalg_shim.hpp"
 #include "shards.h"
 #include "shards_utils.hpp"
+#include "drawable_utils.hpp"
 #include "../inputs.hpp"
 
 using namespace shards;

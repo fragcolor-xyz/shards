@@ -50,7 +50,6 @@ ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::Velocity,
           SHCCSTR("Outputs object velocity into the velocity global & output"));
 
 namespace gfx {
-using shards::Mat4;
 
 struct BuiltinFeatureShard {
   DECL_ENUM_INFO(BuiltinFeatureId, BuiltinFeatureId, 'feid');
@@ -546,8 +545,7 @@ struct FeatureShard {
       v = *ref;
     }
 
-    ParamVariant variant;
-    varToParam(v, variant);
+    ParamVariant variant = varToParam(v);
 
     if (ref)
       releaseVariable(ref);
