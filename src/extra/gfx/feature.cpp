@@ -15,6 +15,7 @@
 #include "shards.h"
 #include "shards.hpp"
 #include "shards_utils.hpp"
+#include "brancher.hpp"
 #include <algorithm>
 #include <array>
 #include <deque>
@@ -33,7 +34,6 @@
 #include <string.h>
 #include <unordered_map>
 #include <variant>
-#include <webgpu-headers/webgpu.h>
 
 using namespace shards;
 
@@ -134,95 +134,53 @@ struct FeatureShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
 
-  static inline shards::Types GeneratorTypes{CoreInfo::NoneType, CoreInfo::WireType, Type::SeqOf(CoreInfo::WireType),
-                                             CoreInfo::ShardRefSeqType, Type::SeqOf(CoreInfo::ShardRefSeqType)};
   static SHParametersInfo parameters() {
     static Parameters p{
         {"ViewGenerators",
          SHCCSTR(
              "The shards that are run to generate and return shader parameters per view, can use nested rendering commmands."),
-         GeneratorTypes},
+         Brancher::RunnableTypes},
         {"DrawableGenerators",
          SHCCSTR("The shards that are run to generate and return shader parameters per drawable, can use nested rendering "
                  "commmands."),
-         GeneratorTypes},
+         Brancher::RunnableTypes},
     };
     return p;
   }
 
-  std::vector<std::shared_ptr<SHWire>> _viewGenerators;
-  std::vector<std::shared_ptr<SHWire>> _drawableGenerators;
+private:
+  Brancher _viewGeneratorBranch;
   OwnedVar _viewGeneratorsRaw;
+
+  Brancher _drawableGeneratorBranch;
   OwnedVar _drawableGeneratorsRaw;
+
+  bool _branchesWarmedUp{};
 
   // Parameters derived from generators
   std::vector<NamedShaderParam> _derivedShaderParams;
   std::vector<NamedTextureParam> _derivedTextureParams;
 
   FeaturePtr *_featurePtr{};
-  SHVar _variable{};
-
-  std::shared_ptr<SHMesh> _viewGeneratorsMesh;
-  std::shared_ptr<SHMesh> _drawableGeneratorsMesh;
-
-  std::unordered_map<std::string_view, SHExposedTypeInfo> _generatorRequiredVariables;
-  std::unordered_map<std::string, SHVar *> _generatorCapturedVariables;
 
   ExposedInfo _requiredVariables;
 
+  std::list<FeaturePtr> _featurePtrsTemp;
+
+public:
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
-
-  void setWireVector(const SHVar &var, std::vector<std::shared_ptr<SHWire>> &outVec) {
-
-    auto createWireFromShards = [](const SHSeq &seq) {
-      auto wire = SHWire::make();
-      wire->looped = true;
-      ForEach(seq, [&](SHVar &v) {
-        assert(v.valueType == SHType::ShardRef);
-        wire->addShard(v.payload.shardValue);
-      });
-      return wire;
-    };
-
-    outVec.clear();
-    if (var.valueType != SHType::None) {
-      if (var.valueType == SHType::Wire) {
-        outVec.emplace_back(*(std::shared_ptr<SHWire> *)var.payload.wireValue);
-      } else {
-        assert(var.valueType == SHType::Seq);
-        auto &seq = var.payload.seqValue;
-        if (seq.len == 0)
-          return;
-
-        // Single collection of shards
-        if (seq.elements[0].valueType == SHType::ShardRef) {
-          outVec.push_back(createWireFromShards(seq));
-        } else if (seq.elements[0].valueType == SHType::Wire) {
-          // Multiple wires
-          for (uint32_t i = 0; i < seq.len; i++) {
-            outVec.emplace_back(*(std::shared_ptr<SHWire> *)seq.elements[i].payload.wireValue);
-          }
-        } else {
-
-          for (uint32_t i = 0; i < seq.len; i++) {
-            SHVar &v = seq.elements[i];
-            assert(v.valueType == SHType::Seq);
-            outVec.push_back(createWireFromShards(v.payload.seqValue));
-          }
-        }
-      }
-    }
-  }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _viewGeneratorsRaw = value;
-      setWireVector(_viewGeneratorsRaw, _viewGenerators);
+      _viewGeneratorBranch.setRunnables(_viewGeneratorsRaw);
+      break;
+    case 1:
+      _drawableGeneratorsRaw = value;
+      _drawableGeneratorBranch.setRunnables(_drawableGeneratorsRaw);
       break;
     default:
-      _drawableGeneratorsRaw = value;
-      setWireVector(_drawableGeneratorsRaw, _drawableGenerators);
       break;
     }
   }
@@ -239,13 +197,9 @@ struct FeatureShard {
   }
 
   void cleanup() {
-    for (auto &pair : _generatorCapturedVariables) {
-      releaseVariable(pair.second);
-    }
-    _generatorCapturedVariables.clear();
-
-    _viewGeneratorsMesh.reset();
-    _drawableGeneratorsMesh.reset();
+    _viewGeneratorBranch.cleanup();
+    _drawableGeneratorBranch.cleanup();
+    _branchesWarmedUp = false;
 
     if (_featurePtr) {
       Types::FeatureObjectVar.Release(_featurePtr);
@@ -253,52 +207,13 @@ struct FeatureShard {
     }
   }
 
-  bool hasAnyGeneratorWires() const { return !_viewGenerators.empty() || !_drawableGenerators.empty(); }
-
   void warmup(SHContext *context) {
     _featurePtr = Types::FeatureObjectVar.New();
     *_featurePtr = std::make_shared<Feature>();
-
-    if (!_viewGenerators.empty())
-      _viewGeneratorsMesh = SHMesh::make();
-    if (!_drawableGenerators.empty())
-      _drawableGeneratorsMesh = SHMesh::make();
   }
 
-  void composeGeneratorWire(const SHInstanceData &data, std::shared_ptr<SHWire> &wire,
-                            std::vector<NamedShaderParam> &outBasicParams, std::vector<NamedTextureParam> &outTextureParams,
-                            bool expectSeqOutput) {
-    SHInstanceData generatorInstanceData{};
-    generatorInstanceData.inputType = GeneratedInputTableType;
-    generatorInstanceData.requiredVariables = &_generatorRequiredVariables; // Capture required variables
-
-    ExposedInfo exposed;
-
-    // Expose custom render context
-    exposed.push_back(RequiredGraphicsRendererContext::getExposedTypeInfo());
-
-    // Capture non-protected variable
-    ForEach(data.shared, [&](const SHExposedTypeInfo &ti) {
-      if (shouldCaptureVariable(ti)) {
-        exposed.push_back(ti);
-      }
-    });
-
-    generatorInstanceData.shared = SHExposedTypesInfo(exposed);
-
-    generatorInstanceData.wire = wire.get();
-    wire->composeResult = composeWire(
-        wire->shards,
-        [](const struct Shard *errorShard, SHString errorTxt, SHBool nonfatalWarning, void *userData) {
-          if (!nonfatalWarning) {
-            auto msg = "Feature: failed inner wire validation, error: " + std::string(errorTxt);
-            throw shards::SHException(msg);
-          } else {
-            SHLOG_INFO("Feature: warning during inner wire validation: {}", errorTxt);
-          }
-        },
-        nullptr, generatorInstanceData);
-
+  void collectComposeResult(const std::shared_ptr<SHWire> &wire, std::vector<NamedShaderParam> &outBasicParams,
+                            std::vector<NamedTextureParam> &outTextureParams, bool expectSeqOutput) {
     auto parseParamTable = [&](const SHTypeInfo &type) {
       for (size_t i = 0; i < type.table.keys.len; i++) {
         auto k = type.table.keys.elements[i];
@@ -343,41 +258,33 @@ struct FeatureShard {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  void composeGeneratorWires(const SHInstanceData &data) {
+    SHInstanceData generatorInstanceData{};
+    generatorInstanceData.inputType = GeneratedInputTableType;
+
+    ExposedInfo exposed(data.shared);
+
+    // Expose custom render context
+    exposed.push_back(RequiredGraphicsRendererContext::getExposedTypeInfo());
+
+    generatorInstanceData.shared = SHExposedTypesInfo(exposed);
+
+    _drawableGeneratorBranch.compose(generatorInstanceData);
+    _viewGeneratorBranch.compose(generatorInstanceData);
+
+    // Collect derived shader parameters from wire outputs
     _derivedShaderParams.clear();
     _derivedTextureParams.clear();
-
-    // Compose generator wires
-    for (auto &generatorWire : _viewGenerators) {
-      composeGeneratorWire(data, generatorWire, _derivedShaderParams, _derivedTextureParams, false);
+    for (auto &wire : _viewGeneratorBranch.wires) {
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, false);
     }
-    for (auto &generatorWire : _drawableGenerators) {
-      composeGeneratorWire(data, generatorWire, _derivedShaderParams, _derivedTextureParams, true);
+    for (auto &wire : _drawableGeneratorBranch.wires) {
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, true);
     }
+  }
 
-    // Strip required variables that are not exposed here
-    for (auto it = _generatorRequiredVariables.begin(); it != _generatorRequiredVariables.end();) {
-      bool originallyExposed = false;
-      for (size_t i = 0; i < data.shared.len; i++) {
-        if (it->first.compare(data.shared.elements[i].name) == 0) {
-          originallyExposed = true;
-          break;
-        }
-      }
-
-      if (!originallyExposed) {
-        it = _generatorRequiredVariables.erase(it);
-      } else {
-        ++it;
-      }
-    }
-
-    _requiredVariables.clear();
-    for (auto &var : _generatorRequiredVariables) {
-      if (shouldCaptureVariable(var.second))
-        _requiredVariables.push_back(var.second);
-    }
-
+  SHTypeInfo compose(const SHInstanceData &data) {
+    composeGeneratorWires(data);
     return Types::Feature;
   }
 
@@ -639,40 +546,14 @@ struct FeatureShard {
     ForEach(inputSeq, [&](SHVar v) { applyParam(context, feature, v); });
   }
 
-  bool shouldCaptureVariable(const SHExposedTypeInfo &ti) {
-    if (std::strcmp(ti.name, GraphicsRendererContext::VariableName) == 0)
-      return false;
-    if (std::strcmp(ti.name, GraphicsContext::VariableName) == 0)
-      return false;
-    return true;
-  }
-
-  void captureGeneratorCallbackVariables(SHContext *context) {
-    for (auto &pair : _generatorRequiredVariables) {
-      auto &ti = pair.second;
-      if (!shouldCaptureVariable(ti))
-        continue;
-      if (!_generatorCapturedVariables.contains(ti.name)) {
-        _generatorCapturedVariables.emplace(ti.name, referenceVariable(context, ti.name));
-      }
-    }
-  }
-
-  void addGeneratorCapturedVariablesToMeshes() {
-    auto forEachMesh = [&](auto mesh) {
-      for (auto &pair : _generatorCapturedVariables) {
-        if (mesh) {
-          mesh->refs.emplace(pair.first, pair.second);
-        }
-      }
-    };
-    forEachMesh(_viewGeneratorsMesh);
-    forEachMesh(_drawableGeneratorsMesh);
-  }
-
   SHVar activate(SHContext *context, const SHVar &input) {
-    captureGeneratorCallbackVariables(context);
-    addGeneratorCapturedVariablesToMeshes();
+    // Capture variable once during activate
+    // activate happens during rendering
+    if (!_branchesWarmedUp) {
+      _drawableGeneratorBranch.warmup(context);
+      _viewGeneratorBranch.warmup(context);
+      _branchesWarmedUp = false;
+    }
 
     Feature &feature = *_featurePtr->get();
 
@@ -699,7 +580,7 @@ struct FeatureShard {
 
     feature.generators.clear();
 
-    if (!_drawableGenerators.empty()) {
+    if (!_drawableGeneratorBranch.wires.empty()) {
       feature.generators.emplace_back([=](FeatureDrawableGeneratorContext &ctx) {
         auto applyResults = [](FeatureDrawableGeneratorContext &ctx, SHContext *shContext, const SHVar &output) {
           size_t index{};
@@ -712,17 +593,17 @@ struct FeatureShard {
             ++index;
           });
         };
-        runGenerators(_drawableGeneratorsMesh, _drawableGenerators, ctx, applyResults);
+        runGenerators(_drawableGeneratorBranch, ctx, applyResults);
       });
     }
 
-    if (!_viewGenerators.empty()) {
+    if (!_viewGeneratorBranch.wires.empty()) {
       feature.generators.emplace_back([=](FeatureViewGeneratorContext &ctx) {
         auto applyResults = [](FeatureViewGeneratorContext &ctx, SHContext *shContext, const SHVar &output) {
           auto &collector = ctx.getParameterCollector();
           collectParameters(collector, shContext, output.payload.tableValue);
         };
-        runGenerators(_viewGeneratorsMesh, _viewGenerators, ctx, applyResults);
+        runGenerators(_viewGeneratorBranch, ctx, applyResults);
       });
     }
 
@@ -740,10 +621,10 @@ struct FeatureShard {
     });
   }
 
-  std::list<FeaturePtr> featurePtrsTemp;
+  template <typename T, typename T1> void runGenerators(Brancher &brancher, T &ctx, T1 applyResults) {
+    auto &mesh = brancher.mesh;
+    auto &wires = brancher.wires;
 
-  template <typename T, typename T1>
-  void runGenerators(std::shared_ptr<SHMesh> mesh, const std::vector<std::shared_ptr<SHWire>> &wires, T &ctx, T1 applyResults) {
     // Avoid running after errors happened
     if (!mesh->failedWires().empty())
       return;
@@ -763,32 +644,18 @@ struct FeatureShard {
     input.get<Var>("Queue") = Var::Object(&queue, Types::DrawQueue);
     input.get<Var>("View") = Var::Object(&view, Types::View);
 
-    featurePtrsTemp.clear();
+    _featurePtrsTemp.clear();
     SeqVar &features = input.get<SeqVar>("Features");
     for (auto &weakFeature : ctx.features) {
       FeaturePtr feature = weakFeature.lock();
       if (feature) {
-        featurePtrsTemp.push_back(feature);
-        features.push_back(Var::Object(&featurePtrsTemp.back(), Types::Feature));
+        _featurePtrsTemp.push_back(feature);
+        features.push_back(Var::Object(&_featurePtrsTemp.back(), Types::Feature));
       }
     }
 
-    // Schedule generator wires or update inputs
-    for (auto &wire : wires) {
-      if (!mesh->scheduled.contains(wire)) {
-        mesh->schedule(wire, input, false);
-      } else {
-        // Update inputs
-        // NOTE: this is owned by the wire
-        (TableVar &)wire->currentInput = std::move(input);
-      }
-    }
-    // Run one tick of the generator wires
-    if (!mesh->tick())
-      throw formatException("Generator tick failed");
-
-    if (!mesh->failedWires().empty())
-      throw formatException("Failed wire in generator tick");
+    brancher.updateInputs(input);
+    brancher.activate();
 
     // Fetch results and insert into parameter collector
     for (auto &wire : wires) {
