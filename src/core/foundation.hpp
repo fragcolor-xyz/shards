@@ -358,8 +358,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   // we need to clone this, as might disappear, since outside wire
   mutable shards::TypeInfo inputType{};
-  // flag if we changed inputType to None on purpose (first block is none)
-  mutable bool inputTypeForceNone{false};
+  // flag if we changed inputType to None or Any on purpose
+  mutable bool ignoreInputTypeCheck{false};
   // this one is a shard inside the wire, so won't disappear
   mutable SHTypeInfo outputType{};
 
