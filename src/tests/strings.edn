@@ -3,7 +3,19 @@
   (String.Join :Separator " ") (Log)
   (Assert.Is "Hello world! How are we today?" true)
 
-  (bytes "0x7777") (BigInt) (BigInt.ToString) (Assert.Is "30583") (Log))
+  (bytes "0x7777") (BigInt) (BigInt.ToString) (Assert.Is "30583") (Log)
+
+  ["Hello" "world!" "How" "are" "we" "today?"]
+  (Join)
+  (Assert.Is "Helloworld!Howarewetoday?")
+
+  [(bytes "Hello") "world!"]
+  (Join)
+  (Assert.Is (bytes "Helloworld!"))
+
+  "hello" = .hello
+  "world" = .world
+  [.hello " " .world] (Join) (Assert.Is "hello world"))
 
 (defmesh root)
 (schedule root main-wire)

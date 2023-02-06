@@ -280,8 +280,50 @@ struct IndexOf {
   }
 };
 
+struct Join {
+  std::string _buffer;
+
+  bool _isString = false;
+
+  static inline Type InputType = Type::SeqOf(CoreInfo::StringOrBytes);
+
+  static SHTypesInfo inputTypes() { return InputType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringOrBytes; }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.seqTypes.len == 0) {
+      throw ComposeError("Concat only accepts a single sequence as input");
+    }
+
+    if (data.inputType.seqTypes.elements[0].basicType == SHType::String) {
+      _isString = true;
+      return CoreInfo::StringType;
+    } else {
+      _isString = false;
+      return CoreInfo::BytesType;
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _buffer.clear();
+    auto &seq = input.payload.seqValue;
+    for (uint32_t i = 0; i < seq.len; i++) {
+      auto &v = seq.elements[i];
+      auto &s = v.payload;
+      // string and bytes share same layout!
+      _buffer.insert(_buffer.end(), s.stringValue, s.stringValue + s.stringLen);
+    }
+
+    if (_isString)
+      return Var((const char *)_buffer.c_str(), _buffer.size());
+    else
+      return Var((uint8_t *)_buffer.c_str(), _buffer.size());
+  }
+};
+
 void registerSeqsShards() {
   REGISTER_SHARD("Flatten", Flatten);
   REGISTER_SHARD("IndexOf", IndexOf);
+  REGISTER_SHARD("Join", Join);
 }
 }; // namespace shards
