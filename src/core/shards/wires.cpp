@@ -1946,7 +1946,6 @@ void registerWiresShards() {
   REGISTER_ENUM(Branch::BranchFailureEnumInfo);
 
   using RunWireDo = RunWire<false, RunWireMode::Inline>;
-  using RunWireDispatch = RunWire<true, RunWireMode::Inline>;
   using RunWireDetach = RunWire<true, RunWireMode::Detached>;
   using RunWireStep = RunWire<false, RunWireMode::Stepped>;
   REGISTER_SHARD("Resume", Resume);
@@ -1954,7 +1953,6 @@ void registerWiresShards() {
   REGISTER_SHARD("Wait", Wait);
   REGISTER_SHARD("Stop", StopWire);
   REGISTER_SHARD("Do", RunWireDo);
-  REGISTER_SHARD("Dispatch", RunWireDispatch);
   REGISTER_SHARD("Detach", RunWireDetach);
   REGISTER_SHARD("Step", RunWireStep);
   REGISTER_SHARD("WireLoader", WireLoader);
