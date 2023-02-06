@@ -51,20 +51,6 @@ inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatur
     outFeatures.push_back(*ptr);
   }
 }
-
-inline TexturePtr varToTexture(const SHVar &var) {
-  if (var.payload.objectTypeId == Types::TextureCubeTypeId) {
-    return *varAsObjectChecked<TexturePtr>(var, Types::TextureCube);
-  } else if (var.payload.objectTypeId == Types::TextureTypeId) {
-    return *varAsObjectChecked<TexturePtr>(var, Types::Texture);
-  } else {
-    SHInstanceData data{};
-    auto varType = shards::deriveTypeInfo(var, data);
-    DEFER({ shards::freeDerivedInfo(varType); });
-    throw formatException("Invalid texture variable type: {}", varType);
-  }
-}
-
 } // namespace gfx
 
 #endif /* AD2CA4AE_4D00_49A0_8DD6_323B82813690 */

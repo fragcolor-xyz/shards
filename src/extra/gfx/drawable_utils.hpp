@@ -12,49 +12,47 @@
 #include <gfx/params.hpp>
 #include <gfx/texture.hpp>
 #include <magic_enum.hpp>
+#include <optional>
 #include <shards.hpp>
 #include <spdlog/spdlog.h>
 #include <variant>
 
 namespace gfx {
-inline void varToTexture(const SHVar &var, TexturePtr &outVariant) {
-  switch (var.valueType) {
-  case SHType::Object: {
-    shards::Type type = shards::Type::Object(var.payload.objectVendorId, var.payload.objectTypeId);
-    if (type == Types::Texture) {
-      auto ptr = reinterpret_cast<TexturePtr *>(var.payload.objectValue);
-      assert(ptr);
-      outVariant = *ptr;
-    } else {
-      throw formatException("Expected texture object");
-    }
-  } break;
-  default:
-    throw formatException("Value type {} can not be converted to TextureVariant", magic_enum::enum_name(var.valueType));
-  };
+inline TexturePtr varToTexture(const SHVar &var) {
+  if (var.payload.objectTypeId == Types::TextureCubeTypeId) {
+    return *varAsObjectChecked<TexturePtr>(var, Types::TextureCube);
+  } else if (var.payload.objectTypeId == Types::TextureTypeId) {
+    return *varAsObjectChecked<TexturePtr>(var, Types::Texture);
+  } else {
+    SHInstanceData data{};
+    auto varType = shards::deriveTypeInfo(var, data);
+    DEFER({ shards::freeDerivedInfo(varType); });
+    throw formatException("Invalid texture variable type: {}", varType);
+  }
 }
 
-inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
+inline ParamVariant varToParam(const SHVar &var) {
+  ParamVariant result;
   switch (var.valueType) {
   case SHType::Float: {
     float vec = float(var.payload.floatValue);
-    outVariant = vec;
+    result = vec;
   } break;
   case SHType::Float2: {
     float2 vec;
     vec.x = float(var.payload.float2Value[0]);
     vec.y = float(var.payload.float2Value[1]);
-    outVariant = vec;
+    result = vec;
   } break;
   case SHType::Float3: {
     float3 vec;
     memcpy(&vec.x, &var.payload.float3Value, sizeof(float) * 3);
-    outVariant = vec;
+    result = vec;
   } break;
   case SHType::Float4: {
     float4 vec;
     memcpy(&vec.x, &var.payload.float4Value, sizeof(float) * 4);
-    outVariant = vec;
+    result = vec;
   } break;
   case SHType::Seq:
     if (var.innerType == SHType::Float4) {
@@ -65,7 +63,7 @@ inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
         memcpy(&row.x, &seq.elements[i].payload.float4Value, sizeof(float) * 4);
         matrix[i] = row;
       }
-      outVariant = matrix;
+      result = matrix;
     } else {
       throw formatException("Seq inner type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
     }
@@ -73,6 +71,7 @@ inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
   default:
     throw formatException("Value type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
   }
+  return result;
 }
 
 using ShaderFieldTypeVariant = std::variant<std::monostate, shader::FieldType, gfx::TextureType>;
@@ -102,13 +101,12 @@ inline ShaderFieldTypeVariant toShaderParamType(const SHTypeInfo &typeInfo) {
   return std::monostate();
 }
 
-inline bool tryVarToParam(const SHVar &var, ParamVariant &outVariant) {
+inline std::optional<ParamVariant> tryVarToParam(const SHVar &var) {
   try {
-    varToParam(var, outVariant);
-    return true;
+    return varToParam(var);
   } catch (std::exception &e) {
-    spdlog::error("{}", e.what());
-    return false;
+    SHLOG_ERROR("{}", e.what());
+    return std::nullopt;
   }
 }
 
@@ -118,9 +116,9 @@ inline void initConstantShaderParams(const SHTable &paramsTable, MaterialParamet
   SHVar value{};
   paramsTable.api->tableGetIterator(paramsTable, &it);
   while (paramsTable.api->tableNext(paramsTable, &it, &key, &value)) {
-    ParamVariant variant;
-    if (tryVarToParam(value, variant)) {
-      out.set(key, variant);
+    auto param = tryVarToParam(value);
+    if (param) {
+      out.set(key, std::move(param.value()));
     }
   }
 }
@@ -131,9 +129,7 @@ inline void initConstantTextureParams(const SHTable &texturesTable, MaterialPara
   SHVar value{};
   texturesTable.api->tableGetIterator(texturesTable, &it);
   while (texturesTable.api->tableNext(texturesTable, &it, &key, &value)) {
-    TexturePtr texture;
-    varToTexture(value, texture);
-    out.set(key, texture);
+    out.set(key, varToTexture(value));
   }
 }
 
