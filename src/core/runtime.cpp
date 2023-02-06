@@ -1276,8 +1276,13 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
 
 SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
   // settle input type of wire before compose
-  if (wire->shards.size() > 0 && !std::any_of(wire->shards.begin(), wire->shards.end(),
-                                              [&](const auto &shard) { return strcmp(shard->name(shard), "Input") == 0; })) {
+  if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
+    // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
+    wire->inputType = SHTypeInfo{SHType::Any};
+    wire->ignoreInputTypeCheck = true;
+  } else if (wire->shards.size() > 0 && !std::any_of(wire->shards.begin(), wire->shards.end(), [&](const auto &shard) {
+               return strcmp(shard->name(shard), "Input") == 0;
+             })) {
     // If first shard is a plain None, mark this wire has None input
     // But make sure we have no (Input) shards
     auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
@@ -1288,10 +1293,6 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
       wire->inputType = data.inputType;
       wire->ignoreInputTypeCheck = false;
     }
-  } else if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
-    // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
-    wire->inputType = SHTypeInfo{SHType::Any};
-    wire->ignoreInputTypeCheck = true;
   } else {
     wire->inputType = data.inputType;
     wire->ignoreInputTypeCheck = false;
@@ -1510,7 +1511,7 @@ void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
   case SHType::Table: {
     // this is unsafe because allocates on the stack
     // but we need to sort hashes
-    std::vector<std::pair<uint64_t, SHString>, stack_allocator<std::pair<uint64_t, SHString>>> hashes;
+    std::vector<std::pair<SHString, uint64_t>, stack_allocator<std::pair<SHString, uint64_t>>> hashes;
     // table is unordered so just collect
     auto &t = var.payload.tableValue;
     SHTableIterator tit;
@@ -1518,13 +1519,13 @@ void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
     SHString k;
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
-      hashes.emplace_back(_deriveTypeHash(v), k);
+      hashes.emplace_back(k, _deriveTypeHash(v));
     }
     // sort and actually do the hashing
     pdqsort(hashes.begin(), hashes.end());
     for (const auto &pair : hashes) {
-      XXH3_64bits_update(state, pair.second, strlen(k));
-      XXH3_64bits_update(state, &pair.first, sizeof(uint64_t));
+      XXH3_64bits_update(state, pair.first, strlen(k));
+      XXH3_64bits_update(state, &pair.second, sizeof(uint64_t));
     }
   } break;
   case SHType::Set: {
