@@ -97,14 +97,14 @@
   (Wire
    "started"
    (Msg "From top!")
-   (Resume "root")
+   (Resume "root-wire")
    ;; Should not enter here!
    false ; fail on purpose here
    (Assert.Is true true)))
 
 (def main
   (Wire
-   "root"
+   "root-wire"
    "Initial input"
    (Once (Do mywire))
    (Get "var1")
