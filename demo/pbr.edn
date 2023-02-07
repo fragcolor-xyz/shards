@@ -64,11 +64,20 @@
   .num-mips (Math.Subtract 1) (ToFloat) = .div
   .current-mip (ToFloat) (Math.Divide .div) = .roughness
   .roughness (Log "Roughness")
+
   {:Params [{:Name "source" :Default .cube-tex}
             {:Name "roughness" :Default .roughness}]
    :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
-              :EntryPoint (compute-irradiance-fs)}]} (GFX.Feature) >= .filter-feature
-  (filter-cubemap .filter-feature .cube-tex-1 .current-mip))
+              :EntryPoint (-> {:something "value"} >= .table
+                              (Log "Hello"))}]} (Log "My table")
+
+  ;; {:Params [{:Name "source" :Default .cube-tex}
+  ;;           {:Name "roughness" :Default .roughness}]
+  ;;  :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
+  ;;             :EntryPoint (compute-irradiance-fs)}]} (GFX.Feature) >= .filter-feature
+  ;; (filter-cubemap .filter-feature .cube-tex-1 .current-mip)
+  ;; .current-mip (Log "Done")
+  )
 
 (defshards generate-probes [included-steps]
   (| (Take "Queue") >= .parent-queue)
@@ -80,12 +89,15 @@
 
           (Int2 512) >= .size
           (Log "Cubemap dimension")
-          (calc-num-mips) >= .num-mips
+          ;; (calc-num-mips) 
+          2 >= .num-mips
           (Log "Number of mip levels")
           (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution .size :MipLevels .num-mips :Dimension TextureDimension.Cube) >= .cube-tex-1
-          (ForRange 1 .num-mips (->
-                                 (Math.Subtract 1) >= .current-mip
-                                 (Do compute-irradiance-mip)))
+          ;; (ForRange 1 .num-mips (->
+                                ;;  (Math.Subtract 1)
+          0 >= .current-mip
+          (Spawn compute-irradiance-mip)
+                                ;;  ))
 
           (compute-specular-lut .specular-lut-tex);
           ))
@@ -115,7 +127,7 @@
       (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/pbr.wgsl"))
       (Shader.RefTexture "env") = .env-texture
       (Shader.RefSampler "env") = .env-sampler
-      (Shader.Literal ["textureSampleLevel(" .env-texture "," .env-sampler ",".reflect-dir", 2.0)"] :OutputDimension 4) >= .refl-color
+      (Shader.Literal ["textureSampleLevel(" .env-texture "," .env-sampler "," .reflect-dir ", 3.0)"] :OutputDimension 4) >= .refl-color
 
       ;; .world-normal (Math.Multiply (Float3 1 1 -1)) (Shader.SampleTextureCoord "env") >= .refl-color
       ;; .roughness (Math.Lerp  .refl-color .base-color)
