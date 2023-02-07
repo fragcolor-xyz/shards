@@ -910,6 +910,7 @@ struct Serialization {
       SHLOG_TRACE("Deserializing wire: {}", wire->name);
       read((uint8_t *)&wire->looped, 1);
       read((uint8_t *)&wire->unsafe, 1);
+      read((uint8_t *)&wire->pure, 1);
       // shards len
       read((uint8_t *)&len, sizeof(uint32_t));
       // shards
@@ -1200,6 +1201,8 @@ struct Serialization {
         write((const uint8_t *)&wire->looped, 1);
         total += 1;
         write((const uint8_t *)&wire->unsafe, 1);
+        total += 1;
+        write((const uint8_t *)&wire->pure, 1);
         total += 1;
       }
       { // Shards len

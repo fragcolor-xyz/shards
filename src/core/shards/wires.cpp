@@ -38,6 +38,8 @@ std::unordered_set<const SHWire *> &WireBase::gatheringWires() {
 }
 
 void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposedInfo &shared) {
+  SHLOG_TRACE("WireBase::verifyAlreadyComposed, source: {} composing: {} inputType: {}", data.wire ? data.wire->name : nullptr,
+              wire->name, data.inputType);
   // verify input type
   if (!passthrough && data.inputType != wire->inputType && !wire->ignoreInputTypeCheck) {
     SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
@@ -154,7 +156,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   SHTypeInfo wireOutput;
   // make sure to compose only once...
   if (!wire->composeResult) {
-    SHLOG_TRACE("Running {} compose", wire->name);
+    SHLOG_TRACE("Running {} compose, pure: {}", wire->name, wire->pure);
 
     wire->composeResult = composeWire(
         wire.get(),
