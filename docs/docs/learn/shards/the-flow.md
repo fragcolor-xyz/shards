@@ -2,79 +2,105 @@
 A Shards program flows from left to right, top to bottom.
 Wires are scheduled on the Mesh, and they are run in the order they are scheduled in.
 
-To gain better control of the flow in your Shards program, you can employ some of the functions described here.
+To gain better control of the flow in your Shards program, you can employ some of the methods described here.
 
-## Do / Dispatch
+## Do
 
-[`Do`](../../../reference/shards/General/Do) and [`Dispatch`](../../../reference/shards/General/Dispatch) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function.
+[`Do`](../../../reference/shards/General/Do) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function. `Do` takes an input, passes it into the Wire being called, and returns the output from it.
 
-`Do` disables passthrough, while `Dispatch` has it enabled. This means that `Dispatch` will have its output ignored at the end, while an output can be retrieved from the end of a Wire started with `Do`.
+In the example below, John and Lucy are taking apples in turn. The Looped Wires are scheduled on the Mesh. When they are run, they each call the unscheduled Wire `take-an-apple`.
 
-In the example below, John starts with five apples. He wishes to share them equally with a friend, and thus checks if it can be divided by two. He then takes another apple and checks again. We define two Wires - `add-apple` and `can-it-be-shared` to carry out these tasks.
-
-=== "Command"
-
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
-    
-    (defwire add-apple
-      (Msg "Adding an apple...")
-      (Math.Add 1))
-
-    (defwire can-it-be-shared 
-      (Math.Mod 2) ;; (1)
-      (If
-       :Predicate (Is 0) ;; (2)
-       :Then (Msg "Yes")
-       :Else (Msg "No")))
-
-    (defwire john
-      5 >= .apples
-      (Dispatch can-it-be-shared)
-      (Do add-apple)
-      (Dispatch can-it-be-shared))
-
-    (schedule main john)
-    (run main)
-    ```
-
-    1. [`Math.Mod`](../../../reference/shards/Math/Mod/) divides a value by the number specified and returns the remainder. 
-
-=== "Output"
-
-    ```
-    [can-it-be-shared] No
-    [add-apple] Adding an apple...
-    [can-it-be-shared] Yes
-
-    ```
-
-![Do and Dispatch](assets/do-dispatch-example.png)
-
-## Detach / Spawn
-
-[`Detach`](../../../reference/shards/General/Detach) and [`Spawn`](../../../reference/shards/General/Spawn) schedules a Wire to run on the same Mesh.
-
-The difference between `Detach` and `Spawn` is that `Detach` schedules the original Wire itself, while `Spawn` schedules clones of the Wire. This means that there can only be one instance of the detached Wire running, while you can have many instances of the spawned Wire.
-
-`Detach` allows you to pause your current Wire to run the detached Wire by calling the `Wait` shard. It is useful when you have to pause a Wire's execution to wait for something. Use cases would include pausing a program to wait for a file to upload, or waiting for an online transaction to go through.
-
-Back to our previous example with apples, if John now requires some time to juice each apple before taking another, we could use `Detach` and `Wait` to implement this. Note how Lucy continues to take apples while John is still making apple juice.
+!!! note
+    Wires scheduled on the Mesh are automatically run in order when the program starts. Unscheduled Wires however will only run when called by methods such as `Do`.
 
 === "Command"
-
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
 
     (defwire take-an-apple
       = .name (Log "Actor") ;; (1)
+      (Setup 10 >= .apples) ;; (2)
+      (Math.Dec .apples)
+      .apples (Log "Apples Remaining"))
+
+    (defloop john 
+      (Msg "Taking an apple!")
+      "John" (Do take-an-apple))
+
+    (defloop lucy
+      (Msg "Taking an apple!")
+      "Lucy" (Do take-an-apple))
+
+    (schedule main john)
+    (schedule main lucy)
+    (run main 1 3)
+    ```
+
+    1. The value passed into the Wire is saved into a variable. In this case, the string "John" or "Lucy" is passed into the Wire and saved into the variable `.name`.
+
+    2. The program starts off with 10 apples. This value decreases each time the Wire `take-an-apple` is called. 
+
+=== "Output"
+    ```
+    [john] Taking an apple!
+    [take-an-apple] Actor: John
+    [take-an-apple] Apples Remaining: 9
+    [lucy] Taking an apple!
+    [take-an-apple] Actor: Lucy
+    [take-an-apple] Apples Remaining: 8
+    [john] Taking an apple!
+    [take-an-apple] Actor: John
+    [take-an-apple] Apples Remaining: 7
+    [lucy] Taking an apple!
+    [take-an-apple] Actor: Lucy
+    [take-an-apple] Apples Remaining: 6
+    [john] Taking an apple!
+    [take-an-apple] Actor: John
+    [take-an-apple] Apples Remaining: 5
+    [lucy] Taking an apple!
+    [take-an-apple] Actor: Lucy
+    [take-an-apple] Apples Remaining: 4
+    ```
+
+![Do Example](assets/do-example.png)
+
+## Detach / Spawn
+
+[`Detach`](../../../reference/shards/General/Detach) and [`Spawn`](../../../reference/shards/General/Spawn) schedules a Wire to run on the same Mesh.
+
+The difference between `Detach` and `Spawn` is that:
+
+- `Detach` schedules the original Wire itself.
+
+- `Spawn` schedules a clone of the Wire.
+
+This means that there can only be one instance of the detached Wire running, while you can have many instances of the spawned Wire.
+
+![Detach schedules the original Wire.](assets/detach.png)
+
+![Spawn schedules clones of the original Wire.](assets/spawn.png)
+
+### Wait
+
+`Detach` allows you to pause the original Wire to run the detached Wire by calling the [`Wait`](../../../reference/shards/General/Wait/) shard. It is useful when you have to pause a Wire's execution to wait for something. Use cases would include pausing a program to wait for a file to upload, or waiting for an online transaction to go through.
+
+![Detach allows you to pause your current Wire to run the detached Wire by calling Wait.](assets/detach-wait.png)
+
+Back to our previous example with apples, if John now requires some time to juice each apple before taking another, we could use `Detach` and `Wait` to implement this. Note how Lucy continues to take apples while John is still making apple juice.
+
+=== "Command"
+    ```{.clojure .annotate linenums="1"}
+    (defmesh main)
+
+    (defwire take-an-apple
+      = .name (Log "Actor")
       (Setup 10 >= .apples (Log "Setup"))
       (Math.Dec .apples)
       .apples (Log "Apples Remaining"))
 
     (defwire juice-apple
       = .name (Log "Actor")
-      (Msg "Juicing Apple...") (Pause 1) ;; (2)
+      (Msg "Juicing Apple...") (Pause 1) ;; (1)
       (Msg "Made some Apple Juice!"))
 
     (defloop john
@@ -92,11 +118,9 @@ Back to our previous example with apples, if John now requires some time to juic
     (run main 1 4)
     ```
 
-    1. Save values passed into the Wire by associating them with a variable.
-    2. [`Pause`](../../../reference/shards/General/Pause/) pauses the Wire by the specified amount of seconds.
+    1. [`Pause`](../../../reference/shards/General/Pause/) pauses the Wire by the specified amount of seconds.
 
 === "Output"
-
     ```
     [john] Taking an apple!
     [take-an-apple] Actor: John
@@ -130,7 +154,6 @@ If you tried `(Detach juice-apple)` for Lucy too, you will notice that the juici
 Now say we have a large oven which can bake multiple apples concurrently. We can use `Spawn` to make clones of a `bake-apple` Wire that can be scheduled to run together.
 
 === "Command"
-
     ```{.clojure .annotate linenums="1"}
     (defmesh main)
 
@@ -157,11 +180,9 @@ Now say we have a large oven which can bake multiple apples concurrently. We can
     (schedule main john)
     (schedule main lucy)
     (run main 1 4)
-
     ```
 
 === "Output"
-
     ```
     [john] Taking an apple!
     [take-an-apple] Actor: John
@@ -200,13 +221,18 @@ Now say we have a large oven which can bake multiple apples concurrently. We can
 
 If you added `(Spawn bake-apple)` for Lucy, you will notice that Lucy starts to bake apples along with John! Unlike `Detach`, you can have multiple instances of a spawned Wire running.
 
-Use cases would include spawning multiple same projectiles (such as bullets fired from a gun), or spawning monster mobs with many instances of one monster type.
+Use cases for `Spawn` would include spawning the same projectile (such as bullets fired from a gun), or spawning monster mobs with many instances of one monster type.
 
 ## Start / Resume
 
 ### Start
 
 [`Start`](../../../reference/shards/General/Start) schedules a Wire to run on the same Mesh, in place of the current Wire.
+
+!!! note "Start vs Detach"
+    Even though they both schedules a Wire onto the Mesh, `Start` will stop the current Wire to run the scheduled Wire. With `Detach`, the scheduled Wire will only run when its turn on the Mesh is up.
+
+![Start schedules a Wire to run in place of the current Wire.](assets/start.png)
 
 ### Resume
 
@@ -215,9 +241,19 @@ Use cases would include spawning multiple same projectiles (such as bullets fire
 !!! note
     If `Resume` is used on a Wire that has not been scheduled yet, it will behave as `Start` would and schedule the Wire on the Mesh before starting it.
 
+![Resume will resume a suspended Wire from where it was last paused at.](assets/start-resume.png)
+
 `Start` and `Resume` are useful when managing different states.
 
-For example, your game might `Start` the player in Zone 1. When the player moves to Zone 2, you could `Start` Zone 2's Wire. When the player returns to Zone 1, you could simply `Resume` Zone 1's Wire and any previous changes made by the player in Zone 1 would still persist.
+For example:
+
+- Your game `Start`s the player in Zone 1.
+
+- When the player moves to Zone 2, you `Start` Zone 2's Wire.
+
+- When the player returns to Zone 1, you `Resume` Zone 1's Wire.
+
+- Any previous changes made by the player in Zone 1 would still persist.
 
 In the example below, we use `Start` and `Resume` to toggle between John's and Lucy's turn. Note how `Resume` redirects the flow back to exactly where `john` was paused at.
 
@@ -233,7 +269,7 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
     (defloop lucy
       (Setup 0 >= .apple-count)
       (Msg "Taking an apple!")
-      (Dispatch take-an-apple)
+      (Do take-an-apple)
       (Math.Inc .apple-count)
 
       (When
@@ -248,7 +284,7 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
            (Start lucy) ;; (2)
            (Msg "It's my turn now!")))
       (Msg "Taking an apple!")
-      (Dispatch take-an-apple))
+      (Do take-an-apple))
 
     (schedule main john)
     (run main (/ 1 60) 6) ;; (3)
@@ -260,7 +296,6 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
     3. `(/ 1 60)` is read as "1 divided by 60". It is used to get the program to run at 60 FPS (Frames Per Second).
 
 === "Output"
-
     ```
     [john] Lucy, you can take as much as you want first.
     [lucy] Taking an apple!
@@ -284,6 +319,8 @@ For example, if you have spawned multiple monsters, you could set them to `Stop`
 
 !!! note
     If `Stop` is used on a Wire that is running from `Start` or `Resume`, the Wire itself is stopped and the entire program will end.
+
+![Stop is used to end Wires.](assets/start-stop.png)
 
 For our example, we use `Stop` to end `bake-apple` looped Wires after they iterate twice.
 
@@ -313,7 +350,6 @@ For our example, we use `Stop` to end `bake-apple` looped Wires after they itera
     ```
 
 === "Output"
-
     ```
     [john] Baking Apple...
     [bake-apple-1] Started Baking
@@ -331,7 +367,7 @@ For our example, we use `Stop` to end `bake-apple` looped Wires after they itera
     ```
 ## Step
 
-[`Step`](../../../reference/shards/General/Step) schedules and run another Wire on the Wire calling `Step` itself. That is, if `X Step Y`, Y  is scheduled to run on X itself.
+[`Step`](../../../reference/shards/General/Step) schedules and runs another Wire on the Wire calling `Step` itself. That is, if `X Step Y`, Y  is scheduled to run on X itself.
 
 Being scheduled on a Wire (instead of the Mesh) has a few implications:
 
@@ -343,11 +379,11 @@ Being scheduled on a Wire (instead of the Mesh) has a few implications:
 
 ### Flow Difference
 
-The stepped Wire runs similar to how `Do`/`Dispatch` does as the flow shifts into the stepped Wire immediately. It may seem like it is running inline too, but the difference is obvious when calling `Pause` on the stepped Wire. 
+The stepped Wire runs similar to how `Do` does as the flow shifts into the stepped Wire immediately. It may seem like it is running inline too, but the difference is obvious when calling `Pause` on the stepped Wire. 
 
-For `Do`/`Dispatch`, the flow is paused and resumed only after the pause is resolved. For `Step`, even though the stepped Wire is paused, the original Wire continues to run.
+For `Do`, the flow is paused and resumed only after the pause is resolved. For `Step`, even though the stepped Wire is paused, the original Wire continues to run.
 
-![The difference between Step and Do/Dispatch.](assets/step-difference.png)
+![The difference between Step and Do.](assets/step-difference.png)
 
 ### Shared Environment
 
@@ -355,13 +391,21 @@ Being scheduled on a Wire allows the stepped Wire to share the same scope and en
 
 ### Shared Variables
 
-Most of the methods described in this chapter will only "snapshot" the variables of the Wire that called it. That is, it makes a copy of variables existing in the original Wire so that the Wire called knows what those variables are and can work with them.
+Most of the methods described in this chapter will only "snapshot" the variables of the Wire that called it.
 
-Changes made to variables that are copied will not be reflected on the original. `Step` is unique in the sense that it has access to the original variables. Changes made to variables from the Wire that called it will persist.
+That is:
+
+- It makes a copy of variables existing in the original Wire.
+
+- The Wire called knows what those variables are and can work with them.
+
+- **Changes made to variables that are copied will not be reflected on the original.**
+
+`Step` is unique in the sense that it has access to the original variables. Changes made to variables from the Wire that called it will persist.
 
 ### Example
 
-In the example below, we demonstrate how the main Looped Wired `john` continues to run and `Step` into the Wire `take-an-apple` even when the Wire `bake-apple` is paused after stepping into it. `bake-apple` cannot be stepped into again when it is paused due to how it is still running.
+In the example below, we demonstrate how the main Looped Wired `john` continues to run even when the Wire `bake-apple` is paused after stepping into it. `bake-apple` cannot be stepped into again when it is paused due to how it is still running.
 
 The example also showcases how variables defined in `john` are affected by changes made to it by the stepped Wires.
 
@@ -393,14 +437,12 @@ The example also showcases how variables defined in `john` are affected by chang
 
     (schedule main john)
     (run main 1 5)
-
     ```
 
     1. This Wire increases the value of `.fresh-apples` every time it is stepped into.
     2. This Wire decreases the value of `.fresh-apples`, pauses the Wire for 1 second, and increases the value of `.baked-apples` every time it is stepped into.
 
 === "Output"
-
     ```
     [take-an-apple] Taking an apple...
     [take-an-apple] Fresh Apple (+1): 6
@@ -422,20 +464,197 @@ The example also showcases how variables defined in `john` are affected by chang
     [bake-apple] Baked Apple (+1): 2
     ```
 
-<!-- TODO Branch / Stepmany --> 
+## Stepmany
+
+- Takes a sequence as input.
+
+- `Step`s clones of a Wire for each value in the sequence.
+
+[`Stepmany`](../../../reference/shards/General/Stepmany) can be used when you wish to `Step` the same Wire multiple times.
+
+!!! note
+    When using `Step`, any variables from the Wire being Stepped from can be modified. As such, it cannot be used interchangeably with `Spawn` that makes a copy of the original variables instead.
+
+In the example below, five different copies of `take-an-apple` are scheduled on the main Looped Wire `box-of-apples`. Each copy has a different waiting time which we specify in the array passed into `StepMany`.
+
+=== "Command"
+    ```{.clojure .annotate linenums="1"}
+    (defmesh main)
+
+    (defloop take-apple
+      (Msg "\n") ;; (1)
+      (Setup 0 >= .time-before-taking-apple)
+      > .time-before-taking-apple (Log "Wait time")
+      (Msg "Waiting to take apple...")
+      (Pause .time-before-taking-apple) (Math.Dec .fresh-apples)
+      (Msg "\n")
+      (Msg "Took an apple!")
+      .fresh-apples (Log "Apples left"))
+
+    (defloop box-of-apples
+      (Setup
+       100 >= .fresh-apples)
+      [1, 5, 1, 3, 2] (StepMany take-apple))
+
+    (schedule main box-of-apples)
+    (run main 1 10)
+    ```
+
+    1. `\n` is used in `Msg` to create a newline. This makes the results more readable as you can see in "Output".
+
+=== "Output"
+    ```
+    [take-apple-1] Wait time: 1
+    [take-apple-1] Waiting to take apple...
+    [take-apple-2]
+    
+    [take-apple-2] Wait time: 5
+    [take-apple-2] Waiting to take apple...
+    [take-apple-3]
+    
+    [take-apple-3] Wait time: 1
+    [take-apple-3] Waiting to take apple...
+    [take-apple-4]
+    
+    [take-apple-4] Wait time: 3
+    [take-apple-4] Waiting to take apple...
+    [take-apple-5]
+    
+    [take-apple-5] Wait time: 2
+    [take-apple-5] Waiting to take apple...
+    [take-apple-1]
+    
+    [take-apple-1] Took an apple!
+    [take-apple-1] Apples left: 99
+    [take-apple-3]
+    
+    [take-apple-3] Took an apple!
+    [take-apple-3] Apples left: 98
+    [take-apple-1]
+    
+    [take-apple-1] Wait time: 1
+    [take-apple-1] Waiting to take apple...
+    [take-apple-3]
+    
+    [take-apple-3] Wait time: 1
+    [take-apple-3] Waiting to take apple...
+    [take-apple-5]
+    
+    [take-apple-5] Took an apple!
+    [take-apple-5] Apples left: 97
+    [take-apple-1]
+    
+    [take-apple-1] Took an apple!
+    [take-apple-1] Apples left: 96
+    [take-apple-3]
+    
+    [take-apple-3] Took an apple!
+    [take-apple-3] Apples left: 95
+    [take-apple-4]
+    
+    [take-apple-4] Took an apple!
+    [take-apple-4] Apples left: 94
+    [take-apple-5]
+    
+    [take-apple-5] Wait time: 2
+    [take-apple-5] Waiting to take apple...
+    [take-apple-1]
+    
+    [take-apple-1] Wait time: 1
+    [take-apple-1] Waiting to take apple...
+    [take-apple-3]
+    
+    [take-apple-3] Wait time: 1
+    [take-apple-3] Waiting to take apple...
+    [take-apple-4]
+    
+    [take-apple-4] Wait time: 3
+    [take-apple-4] Waiting to take apple...
+    [take-apple-1]
+    
+    [take-apple-1] Took an apple!
+    [take-apple-1] Apples left: 93
+    [take-apple-2]
+    
+    [take-apple-2] Took an apple!
+    [take-apple-2] Apples left: 92
+    [take-apple-3]
+    
+    [take-apple-3] Took an apple!
+    [take-apple-3] Apples left: 91
+    [take-apple-5]
+    
+    [take-apple-5] Took an apple!
+    [take-apple-5] Apples left: 90
+    [take-apple-1]
+    
+    [take-apple-1] Wait time: 1
+    [take-apple-1] Waiting to take apple...
+    [take-apple-2]
+    
+    [take-apple-2] Wait time: 5
+    [take-apple-2] Waiting to take apple...
+    [take-apple-3]
+    
+    [take-apple-3] Wait time: 1
+    [take-apple-3] Waiting to take apple...
+    [take-apple-5]
+    
+    [take-apple-5] Wait time: 2
+    [take-apple-5] Waiting to take apple...
+    [take-apple-4]
+    
+    [take-apple-4] Took an apple!
+    [take-apple-4] Apples left: 89
+    [take-apple-1]
+    
+    [take-apple-1] Took an apple!
+    [take-apple-1] Apples left: 88
+    [take-apple-3]
+    
+    [take-apple-3] Took an apple!
+    [take-apple-3] Apples left: 87
+    [take-apple-4]
+    
+    [take-apple-4] Wait time: 3
+    [take-apple-4] Waiting to take apple...
+    [take-apple-1]
+    
+    [take-apple-1] Wait time: 1
+    [take-apple-1] Waiting to take apple...
+    [take-apple-3]
+    
+    [take-apple-3] Wait time: 1
+    [take-apple-3] Waiting to take apple...
+    [take-apple-5]
+    
+    [take-apple-5] Took an apple!
+    [take-apple-5] Apples left: 86
+    ```
+
+## Branch
+
+[`Branch`](../../../reference/shards/General/Branch) is used when you wish to create a Submesh on the current Mesh. You can schedule Wires on the Submesh by placing Wires in its `Wires` parameter. These Wires will behave as if they were run with `Step`.
+
+=== "Syntax"
+    ```{.clojure .annotate linenums="1"}
+    (Branch [wire-x wire-y wire-z]) ;; (1)
+    ```
+
+    1. You can schedule as many Wires as you wish within the square brackets here. In this example, three Wires are scheduled on the Submesh.
 
 ## Expand
 
-- Creates and schedules copies of a Wire
+- Creates and schedules copies of a Wire.
 
-- Returns an array of the output from all the copies
+- Returns an array of the output from all the copies.
 
 [`Expand`](../../../reference/shards/General/Expand) is useful when you need to run code in bulk. The results produced can then be evaluated, which is useful in Machine Learning for example.
 
 ??? "Multithreading with `Expand`"
     Simple programs are usually run on a single thread. You can think of a thread as a thought process. For a Computer to be able to "multitask", they require multiple threads.
 
-    `Expand` has the parameter `:Threads` which allows you to specify the number of threads to use. Multithreading can improve performance when attempting to `Expand` a Wire to a large size.
+    `Expand` has the parameter `Threads` which allows you to specify the number of threads to use. Multithreading can improve performance when attempting to `Expand` a Wire to a large size.
 
 In our example below, we will be using `Expand` to teach John about multiplication with zeros.
 
@@ -463,7 +682,6 @@ In our example below, we will be using `Expand` to teach John about multiplicati
     3. `Expand` outputs an array of the results. We use [`ForEach`](../../../reference/shards/General/ForEach/) to check if each result [`Is`](../../../reference/shards/General/Is/) 0.
 
 === "Output"
-
     ```
     [learn-zero-multiplication] true
     [learn-zero-multiplication] true
@@ -473,22 +691,143 @@ In our example below, we will be using `Expand` to teach John about multiplicati
 
     ```
 
-<!-- ## TryMany ##
+## TryMany ##
 
-- Creates and schedules copies of a Wire -->
+- Takes a sequence as input.
 
-<!-- TODO: TryMany is not working yet -->
+- Creates clones of a specified Wire for each entry in the sequence.
+
+ [`TryMany`](../../../reference/shards/General/TryMany) can be used to check for values that would achieve a result desired. This is useful in Machine Learning for example, as it teaches your program how it can achieve a result by using specific values.
+
+`TryMany` has a `Policy` parameter that takes a value of [`WaitUntil`](../../../reference/enums/WaitUntil/). The value used determines the output `TryMany` produces.
+
+There are three variations of `WaitUntil`:
+
+1. `WaitUntil.FirstSuccess` - Will output the result of the first successful Wire copy and ignores the rest.
+
+2. `WaitUntil.AllSuccess` - Will only output all the results if all Wire copies are successful. If one Wire fails, no output is produced.
+
+3. `WaitUntil.SomeSuccess` - Will wait for all Wire copies to run, but will only output the successful results.
+
+In the following examples, John attempts to hit a moving target by firing arrows at it. He can only land a hit if the `.distance-shot` is an odd number. Note how the results vary based on the `Policy` used.
+
+=== "FirstSuccess"
+    ```{.clojure .annotate linenums="1"}
+    (defmesh main)
+
+    (defwire fire-arrow
+      [1, 2, 3]
+      (TryMany
+       :Wire (defwire check-for-hit
+               >= .distance-shot
+               (Math.Mod 2) ;; (2)
+               (Assert.Is 1 false)
+               .distance-shot)
+       :Policy WaitUntil.FirstSuccess) ;; (1)
+      (Log "Hits the mark"))
+
+    (defwire john
+      (Do fire-arrow))
+
+    (schedule main john)
+    (run main)
+
+    ```
+
+    1. Only the first successful result will be used as output. Once a Wire is successful, the rest are ignored.
+    2. Odd numbers will have a remainder of 1 when divided by 2. We use [`Math.Mod`](../../../reference/shards/Math/Mod/) to get the remainder from the division.
+
+=== "Output"
+    ```
+    [fire-arrow] Hits the mark: 1
+    ```
+
+=== "AllSuccess"
+    ```{.clojure .annotate linenums="1"}
+    (defmesh main)
+
+    (defwire fire-arrow
+      [1, 2, 3]
+      (TryMany
+       :Wire (defwire check-for-hit
+               >= .distance-shot
+               (Math.Mod 2)
+               (Assert.Is 1 false)
+               .distance-shot)
+       :Policy WaitUntil.AllSuccess) ;; (1)
+      (Log "Hits the mark"))
+
+    (defwire john
+      (Do fire-arrow))
+
+    (schedule main john)
+    (run main)
+
+    ```
+
+    1. All results will be produced in the output, but only if all Wires are successful.
+
+=== "Output"
+    ```
+    ;; No result is obtained as the condition for WaitUntil.AllSuccess was not achieved.
+    ;; The Wire with a .distance-shot of 2 would fail the Assert check.
+    ```
+
+=== "SomeSuccess"
+    ```{.clojure .annotate linenums="1"}
+    (defmesh main)
+
+    (defwire fire-arrow
+      [1, 2, 3]
+      (TryMany
+       :Wire (defwire check-for-hit
+               >= .distance-shot
+               (Math.Mod 2) ;; (2)
+               (Assert.Is 1 false)
+               .distance-shot)
+       :Policy WaitUntil.SomeSuccess) ;; (1)
+      (Log "Hits the mark"))
+
+    (defwire john
+      (Do fire-arrow))
+
+    (schedule main john)
+    (run main)
+
+    ```
+
+    1. Only the successful results will be produced as output after all Wires have been executed.
+
+=== "Output"
+    ```
+    [fire-arrow] Hits the mark: [1, 3]
+    ```
+
+??? "Multithreading with `TryMany`"
+    `TryMany` has the additional parameters of `Threads` and `Coroutines` which allow it to work better with a very large input. A large input means that it has a large number of Wire copies to run.
+    
+    `Threads` will determine the number of Wires that `TryMany` can run at the same time, while `Coroutines` determines the maximum number of Wires running together on each thread at any point in time.
+    
+    Using `Threads` and `Coroutines` helps to split the work and makes your program runs more efficiently.
+
+
+Congratulations! You have now learned new methods of executing and scheduling Wires, which gives you better control of the Flow of Shards. The possibilities of what you can create with Shards just got much wider with this newfound knowledge!
+
+In the next chapter, we will take a look at how working with data in Shards is like.
 
 ## Summary
 
 | Shard    | Uses Original Variables? | Restarts Wire? | Continues Loop?  | 1 Instance per run? |
 | :------- | :----------------------- | :------------- | :--------------- | :------------------ |
-| Do       | X                        | X              | O                | O                   | 
-| Dispatch | X                        | X              | O                | O                   | 
-| Detach   | X                        | O              | O                | O                   | 
+| Do       | X                        | X              | O                | O                   |
+| Detach   | X                        | O              | O                | O                   |
 | Spawn    | X                        | O              | O                | X                   | 
 | Start    | X                        | O              | X                | X                   | 
 | Resume   | X                        | O              | O                | O                   |  
 | Step     | O                        | O              | O                | O                   | 
+| StepMany | O                        | O              | O                | X                   |
+| Branch   | O                        | X              | O                | O                   |
+| Expand   | O                        | O              | O                | X                   |
+| TryMany  | O                        | O              | O                | X                   |
 
 --8<-- "includes/license.md"
