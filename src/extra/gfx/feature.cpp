@@ -3,6 +3,7 @@
 #include "common_types.hpp"
 #include "drawable_utils.hpp"
 #include "extra/gfx.hpp"
+#include "extra/gfx/drawable_utils.hpp"
 #include "extra/gfx/shards_types.hpp"
 #include "foundation.hpp"
 #include "gfx/enums.hpp"
@@ -220,19 +221,19 @@ public:
         auto k = type.table.keys.elements[i];
         auto v = type.table.types.elements[i];
 
-        auto type = toShaderParamType(v);
+        auto type = deriveShaderFieldType(v);
         std::visit(
             [&](auto &&arg) {
               using T = std::decay_t<decltype(arg)>;
-              if constexpr (std::is_same_v<T, shader::FieldType>) {
+              if constexpr (std::is_same_v<T, shader::NumFieldType>) {
                 outBasicParams.emplace_back(k, arg);
-              } else if constexpr (std::is_same_v<T, TextureDimension>) {
+              } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
                 outTextureParams.emplace_back(k, arg);
               } else {
                 throw formatException("Generator wire returns invalid type {} for key {}", v, k);
               }
             },
-            type);
+            type.value());
       }
     };
 
@@ -447,57 +448,49 @@ public:
     }
   }
 
-  static ParamVariant paramToVariant(SHContext *context, SHVar v) {
+  static std::variant<ParamVariant, TextureParameter> paramVarToShaderParameter(SHContext *context, SHVar v) {
     SHVar *ref{};
     if (v.valueType == SHType::ContextVar) {
       ref = referenceVariable(context, v.payload.stringValue);
       v = *ref;
     }
 
-    ParamVariant variant = varToParam(v);
+    auto shaderParam = varToShaderParameter(v);
 
     if (ref)
       releaseVariable(ref);
 
-    return variant;
+    return shaderParam;
   }
 
   // Returns the field type, or std::monostate if not specified
-  ShaderFieldTypeVariant getShaderFieldType(SHContext *context, const SHTable &inputTable) {
-    shader::FieldType fieldType;
-    bool isFieldTypeSet = false;
+  std::optional<shader::FieldType> getShaderFieldType(SHContext *context, const SHTable &inputTable) {
+    std::optional<shader::FieldType> fieldType;
 
     SHVar typeVar;
     if (getFromTable(context, inputTable, "Type", typeVar)) {
       auto enumType = Type::Enum(typeVar.payload.enumVendorId, typeVar.payload.enumTypeId);
       if (enumType == Types::ShaderFieldBaseTypeEnumInfo::Type) {
         checkEnumType(typeVar, Types::ShaderFieldBaseTypeEnumInfo::Type, ":Type");
-        fieldType.baseType = ShaderFieldBaseType(typeVar.payload.enumValue);
-        isFieldTypeSet = true;
+        fieldType = ShaderFieldBaseType(typeVar.payload.enumValue);
       } else if (enumType == Types::TextureDimensionEnumInfo::Type) {
         return TextureDimension(typeVar.payload.enumValue);
       } else {
         throw formatException("Invalid Type for shader Param, should be either TextureDimension... or ShaderFieldBaseType...");
       }
-    } else {
-      // Default type if not specified:
-      fieldType.baseType = ShaderFieldBaseType::Float32;
     }
 
     SHVar dimVar;
     if (getFromTable(context, inputTable, "Dimension", dimVar)) {
       checkType(dimVar.valueType, SHType::Int, ":Dimension");
-      fieldType.numComponents = size_t(typeVar.payload.intValue);
-      isFieldTypeSet = true;
-    } else {
-      // Default size if not specified:
-      fieldType.numComponents = 1;
+      if (!fieldType)
+        fieldType = shader::NumFieldType();
+      shader::NumFieldType &numFieldType = std::get<shader::NumFieldType>(fieldType.value());
+
+      numFieldType.numComponents = size_t(typeVar.payload.intValue);
     }
 
-    if (isFieldTypeSet)
-      return fieldType;
-
-    return std::monostate();
+    return fieldType;
   }
 
   void applyParam(SHContext *context, Feature &feature, const SHVar &input) {
@@ -514,30 +507,43 @@ public:
     }
 
     SHVar defaultVar;
-    ParamVariant defaultValue;
+    std::optional<std::variant<ParamVariant, TextureParameter>> defaultValue;
     if (getFromTable(context, inputTable, "Default", defaultVar)) {
-      defaultValue = paramToVariant(context, defaultVar);
+      defaultValue = paramVarToShaderParameter(context, defaultVar);
     }
 
-    ShaderFieldTypeVariant typeVariant = getShaderFieldType(context, inputTable);
-    std::visit(
-        [&](auto &&arg) {
-          using T = std::decay_t<decltype(arg)>;
-          if constexpr (std::is_same_v<T, shader::FieldType>) {
-            feature.shaderParams.emplace_back(name, arg);
-          } else if constexpr (std::is_same_v<T, TextureDimension>) {
-            feature.textureParams.emplace_back(name, arg);
-          } else {
-            if (defaultValue.index() > 0) {
-              // Derive field type from given default value
-              auto fieldType = getParamVariantType(defaultValue);
-              feature.shaderParams.emplace_back(name, fieldType, defaultValue);
-            } else {
-              throw formatException("Shader parameter \"{}\" should have a type or default value", name);
+    auto derivedType = getShaderFieldType(context, inputTable);
+    if (!derivedType.has_value()) {
+      if (defaultValue.has_value()) {
+        std::visit(
+            [&](auto &&arg) {
+              using T = std::decay_t<decltype(arg)>;
+              if constexpr (std::is_same_v<T, ParamVariant>) {
+                // Derive field type from given default value
+                auto fieldType = getParamVariantType(arg);
+                feature.shaderParams.emplace_back(name, fieldType, arg);
+              } else if constexpr (std::is_same_v<T, TextureParameter>) {
+                NamedTextureParam &param = feature.textureParams.emplace_back(name);
+                param.defaultValue = arg.texture;
+                param.type.dimension = arg.texture->getFormat().dimension;
+              }
+            },
+            defaultValue.value());
+      } else {
+        throw formatException("Shader parameter \"{}\" should have a type or default value", name);
+      }
+    } else {
+      std::visit(
+          [&](auto &&arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, shader::NumFieldType>) {
+              feature.shaderParams.emplace_back(name, arg);
+            } else if constexpr (std::is_same_v<T, TextureDimension>) {
+              feature.textureParams.emplace_back(name, arg);
             }
-          }
-        },
-        typeVariant);
+          },
+          derivedType.value());
+    }
   }
 
   void applyParams(SHContext *context, Feature &feature, const SHVar &input) {
@@ -616,8 +622,8 @@ public:
       if (v.valueType == SHType::Object) {
         collector.setTexture(k, varToTexture(v));
       } else {
-        ParamVariant variant = paramToVariant(context, v);
-        collector.setParam(k, variant);
+        auto shaderParam = paramVarToShaderParameter(context, v);
+        collector.setParam(k, std::get<ParamVariant>(shaderParam));
       }
     });
   }

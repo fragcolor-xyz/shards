@@ -93,6 +93,11 @@ static void buildBaseDrawParameters(ParameterStorage &params, const std::vector<
         params.setParam(param.name, param.defaultValue);
       }
     }
+    for (auto &param : feature->textureParams) {
+      if (param.defaultValue) {
+        params.setTexture(param.name, param.defaultValue);
+      }
+    }
   }
 }
 
@@ -247,7 +252,7 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
       textureBinding.visibility = WGPUShaderStage_Fragment;
       textureBinding.texture.multisampled = false;
       textureBinding.texture.sampleType = WGPUTextureSampleType_Float;
-      switch (desc.dimension) {
+      switch (desc.type.dimension) {
       case TextureDimension::D1:
         textureBinding.texture.viewDimension = WGPUTextureViewDimension_1D;
         break;
@@ -353,7 +358,7 @@ void PipelineBuilder::setupShaderDefinitions(const WGPULimits &deviceLimits, boo
 }
 
 void PipelineBuilder::setupShaderOutputFields() {
-  FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
+  NumFieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
   size_t index = 0;
   size_t depthIndex = renderTargetLayout.depthTargetIndex.value_or(~0);
@@ -361,7 +366,7 @@ void PipelineBuilder::setupShaderOutputFields() {
     // Ignore depth target, it's implicitly bound to z depth
     if (index != depthIndex) {
       auto &formatDesc = getTextureFormatDescription(target.format);
-      FieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
+      NumFieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
       generator.outputFields.emplace_back(target.name, fieldType);
     }
     index++;
@@ -471,7 +476,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 void PipelineBuilder::collectTextureBindings() {
   for (auto &feature : features) {
     for (auto &textureParam : feature->textureParams) {
-      textureBindings.addOrUpdateSlot(textureParam.name, textureParam.dimension, 0);
+      textureBindings.addOrUpdateSlot(textureParam.name, textureParam.type, 0);
     }
   }
 

@@ -4,6 +4,7 @@
 #include "shards/shared.hpp"
 #include "number_types.hpp"
 #include "translator.hpp"
+#include "../shards_types.hpp"
 #include <gfx/shader/wgsl_mapping.hpp>
 
 namespace gfx {
@@ -29,7 +30,7 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
 
 #define OUTPUT_VEC(_type, _dim, _fmt, ...)                                                             \
   {                                                                                                    \
-    FieldType fieldType(_type, _dim);                                                                  \
+    NumFieldType fieldType(_type, _dim);                                                               \
     std::string resultStr = fmt::format("{}(" _fmt ")", getFieldWGSLTypeName(fieldType), __VA_ARGS__); \
     SPDLOG_LOGGER_INFO(context.logger, "gen(const)> {}", resultStr);                                   \
     result = std::make_unique<WGSLSource>(fieldType, std::move(resultStr));                            \
@@ -81,7 +82,7 @@ inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, Translat
   return result;
 };
 
-inline shards::Type fieldTypeToShardsType(const FieldType &type) {
+inline shards::Type fieldTypeToShardsType(const NumFieldType &type) {
   using shards::CoreInfo;
   if (type.baseType == ShaderFieldBaseType::Float32) {
     if (type.matrixDimension > 1) {
@@ -104,7 +105,7 @@ inline shards::Type fieldTypeToShardsType(const FieldType &type) {
       case 4:
         return CoreInfo::Float4Type;
       default:
-        throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+        throw std::out_of_range(NAMEOF(NumFieldType::numComponents).str());
       }
     }
   } else {
@@ -121,9 +122,26 @@ inline shards::Type fieldTypeToShardsType(const FieldType &type) {
     case 4:
       return CoreInfo::Int4Type;
     default:
-      throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+      throw std::out_of_range(NAMEOF(NumFieldType::numComponents).str());
     }
   }
+}
+
+inline shards::Type fieldTypeToShardsType(const TextureFieldType &type) {
+  switch (type.dimension) {
+  case TextureDimension::D2:
+    return Types::Texture;
+  case TextureDimension::Cube:
+    return Types::TextureCube;
+  default:
+    throw std::logic_error("Texture dimension unsupported");
+  }
+}
+
+inline shards::Type fieldTypeToShardsType(const SamplerFieldType &type) { return Types::Sampler; }
+
+inline shards::Type fieldTypeToShardsType(const FieldType &type) {
+  return std::visit([&](auto &arg) -> shards::Type { return fieldTypeToShardsType(arg); }, type);
 }
 
 static constexpr const char componentNames[] = {'x', 'y', 'z', 'w'};
@@ -195,7 +213,7 @@ inline std::unique_ptr<IWGSLGenerated> generateFunctionCall(const TranslatedFunc
 
   callBlock->append(")");
 
-  FieldType outputType = function.outputType ? function.outputType.value() : FieldType();
+  FieldType outputType = function.outputType ? function.outputType.value() : FieldTypes::Float;
   return std::make_unique<WGSLBlock>(outputType, std::move(callBlock));
 }
 

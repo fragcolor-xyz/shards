@@ -13,7 +13,7 @@ struct PushTranslator {
     if (!value)
       throw std::runtime_error("Missing value to push");
 
-    auto elementType = value->getType();
+    NumFieldType elementType = std::get<NumFieldType>(value->getType());
 
     auto it = scope.virtualSequences.find(shard->_name);
     if (it == scope.virtualSequences.end()) {
@@ -46,6 +46,8 @@ void registerCoreShards() {
   REGISTER_SHADER_SHARD("Shader.WriteOutput", gfx::shader::Write<blocks::WriteOutput>);
   REGISTER_SHADER_SHARD("Shader.SampleTexture", gfx::shader::SampleTexture);
   REGISTER_SHADER_SHARD("Shader.SampleTextureCoord", gfx::shader::SampleTextureCoord);
+  REGISTER_SHADER_SHARD("Shader.RefTexture", gfx::shader::RefTexture);
+  REGISTER_SHADER_SHARD("Shader.RefSampler", gfx::shader::RefSampler);
 
   // Utilities
   REGISTER_SHADER_SHARD("Shader.LinearizeDepth", gfx::shader::LinearizeDepth);

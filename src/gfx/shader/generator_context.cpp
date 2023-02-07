@@ -32,7 +32,7 @@ void GeneratorContext::readGlobal(const char *name) {
     getOutput() += fmt::format("{}.{}", globalsVariableName, name);
   }
 }
-void GeneratorContext::beginWriteGlobal(const char *name, const FieldType &type) {
+void GeneratorContext::beginWriteGlobal(const char *name, const NumFieldType &type) {
   auto it = definitions.globals.find(name);
   if (it == definitions.globals.end()) {
     definitions.globals.insert_or_assign(name, type);
@@ -49,7 +49,7 @@ bool GeneratorContext::hasInput(const char *name) { return definitions.inputs.fi
 
 void GeneratorContext::readInput(const char *name) {
   auto it = definitions.inputs.find(name);
-  const FieldType *fieldType{};
+  const NumFieldType *fieldType{};
   if (it != definitions.inputs.end()) {
     fieldType = &it->second;
   } else {
@@ -64,10 +64,10 @@ void GeneratorContext::readInput(const char *name) {
   getOutput() += fmt::format("{}.{}", inputVariableName, name);
 }
 
-const FieldType *GeneratorContext::getOrCreateDynamicInput(const char *name) {
+const NumFieldType *GeneratorContext::getOrCreateDynamicInput(const char *name) {
   assert(definitions.inputs.find(name) == definitions.inputs.end());
 
-  FieldType newField;
+  NumFieldType newField;
   for (auto &h : dynamicHandlers) {
     if (h->createDynamicInput(name, newField)) {
       return &definitions.inputs.insert_or_assign(name, newField).first->second;
@@ -79,9 +79,9 @@ const FieldType *GeneratorContext::getOrCreateDynamicInput(const char *name) {
 
 bool GeneratorContext::hasOutput(const char *name) { return definitions.outputs.find(name) != definitions.outputs.end(); }
 
-void GeneratorContext::writeOutput(const char *name, const FieldType &type) {
+void GeneratorContext::writeOutput(const char *name, const NumFieldType &type) {
   auto it = definitions.outputs.find(name);
-  const FieldType *outputFieldType{};
+  const NumFieldType *outputFieldType{};
   if (it != definitions.outputs.end()) {
     outputFieldType = &it->second;
   } else {
@@ -101,7 +101,7 @@ void GeneratorContext::writeOutput(const char *name, const FieldType &type) {
   getOutput() += fmt::format("{}.{}", outputVariableName, name);
 }
 
-const FieldType *GeneratorContext::getOrCreateDynamicOutput(const char *name, FieldType requestedType) {
+const NumFieldType *GeneratorContext::getOrCreateDynamicOutput(const char *name, NumFieldType requestedType) {
   assert(definitions.outputs.find(name) == definitions.outputs.end());
 
   for (auto &h : dynamicHandlers) {
@@ -155,7 +155,7 @@ void GeneratorContext::textureDefaultSampler(const char *name) {
   }
 }
 
-void GeneratorContext::readBuffer(const char *fieldName, const FieldType &expectedType, const char *bufferName) {
+void GeneratorContext::readBuffer(const char *fieldName, const NumFieldType &expectedType, const char *bufferName) {
   auto bufferIt = definitions.buffers.find(bufferName);
   if (bufferIt == definitions.buffers.end()) {
     pushError(formatError("Buffer \"{}\" is not defined", bufferName));

@@ -5,6 +5,8 @@
 #include "fwd.hpp"
 #include <optional>
 #include <string>
+#include <variant>
+#include <compare>
 
 namespace gfx {
 
@@ -23,12 +25,22 @@ size_t getWGSLAlignment(const ShaderFieldBaseType &type);
 
 namespace shader {
 struct TextureFieldType {
-  ShaderTextureFormat format;
-  gfx::TextureDimension dimension;
+  gfx::TextureDimension dimension = gfx::TextureDimension::D2;
+  ShaderTextureFormat format = ShaderTextureFormat::Float32;
+
+  TextureFieldType() = default;
+  TextureFieldType(gfx::TextureDimension dimension, ShaderTextureFormat format = ShaderTextureFormat::Float32)
+      : dimension(dimension), format(format) {}
+
+  std::strong_ordering operator<=>(const TextureFieldType &other) const = default;
+};
+
+struct SamplerFieldType {
+  std::strong_ordering operator<=>(const SamplerFieldType &other) const = default;
 };
 
 // Structure to represent wgsl numerical types (numbers, vectors, matrices)
-struct FieldType {
+struct NumFieldType {
   // Unit type of the vector/scalar
   ShaderFieldBaseType baseType = ShaderFieldBaseType::Float32;
 
@@ -42,40 +54,44 @@ struct FieldType {
   // etc.
   size_t matrixDimension = 1;
 
-  FieldType() = default;
-  FieldType(ShaderFieldBaseType baseType) : baseType(baseType), numComponents(1) {}
-  FieldType(ShaderFieldBaseType baseType, size_t numComponents, size_t matrixDimension = 1)
+  NumFieldType() = default;
+  NumFieldType(ShaderFieldBaseType baseType) : baseType(baseType), numComponents(1) {}
+  NumFieldType(ShaderFieldBaseType baseType, size_t numComponents, size_t matrixDimension = 1)
       : baseType(baseType), numComponents(numComponents), matrixDimension(matrixDimension) {}
-  bool operator==(const FieldType &other) const {
-    return baseType == other.baseType && numComponents == other.numComponents && matrixDimension == other.matrixDimension;
-  }
-  bool operator!=(const FieldType &other) const { return !(*this == other); }
+
+  std::strong_ordering operator<=>(const NumFieldType &other) const = default;
 
   size_t getByteSize() const;
   size_t getWGSLAlignment() const;
 };
 
+using FieldType = std::variant<TextureFieldType, SamplerFieldType, NumFieldType>;
+
+inline std::strong_ordering operator<=>(const FieldType &a, const NumFieldType &b) { return a <=> FieldType(b); }
+inline bool operator==(const FieldType &a, const NumFieldType &b) { return std::equal_to<FieldType>{}(a, b); }
+inline bool operator!=(const FieldType &a, const NumFieldType &b) { return !std::equal_to<FieldType>{}(a, b); }
+
 /// <div rustbindgen hide></div>
 struct FieldTypes {
-  static inline FieldType Float{ShaderFieldBaseType::Float32};
-  static inline FieldType Float2{ShaderFieldBaseType::Float32, 2};
-  static inline FieldType Float3{ShaderFieldBaseType::Float32, 3};
-  static inline FieldType Float4{ShaderFieldBaseType::Float32, 4};
-  static inline FieldType Float2x2{ShaderFieldBaseType::Float32, 2, 2};
-  static inline FieldType Float3x3{ShaderFieldBaseType::Float32, 3, 3};
-  static inline FieldType Float4x4{ShaderFieldBaseType::Float32, 4, 4};
-  static inline FieldType UInt32{ShaderFieldBaseType::UInt32, 1};
-  static inline FieldType Int32{ShaderFieldBaseType::Int32, 1};
-  static inline FieldType Bool{ShaderFieldBaseType::Bool, 1};
+  static inline NumFieldType Float{ShaderFieldBaseType::Float32};
+  static inline NumFieldType Float2{ShaderFieldBaseType::Float32, 2};
+  static inline NumFieldType Float3{ShaderFieldBaseType::Float32, 3};
+  static inline NumFieldType Float4{ShaderFieldBaseType::Float32, 4};
+  static inline NumFieldType Float2x2{ShaderFieldBaseType::Float32, 2, 2};
+  static inline NumFieldType Float3x3{ShaderFieldBaseType::Float32, 3, 3};
+  static inline NumFieldType Float4x4{ShaderFieldBaseType::Float32, 4, 4};
+  static inline NumFieldType UInt32{ShaderFieldBaseType::UInt32, 1};
+  static inline NumFieldType Int32{ShaderFieldBaseType::Int32, 1};
+  static inline NumFieldType Bool{ShaderFieldBaseType::Bool, 1};
 };
 
 struct NamedField {
   String name;
-  FieldType type;
+  NumFieldType type;
 
   NamedField() = default;
-  NamedField(String name, const FieldType &type) : name(name), type(type) {}
-  NamedField(String name, FieldType &&type) : name(name), type(type) {}
+  NamedField(String name, const NumFieldType &type) : name(name), type(type) {}
+  NamedField(String name, NumFieldType &&type) : name(name), type(type) {}
 };
 
 } // namespace shader

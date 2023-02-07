@@ -30,7 +30,7 @@
 
 namespace gfx::detail {
 
-using shader::FieldType;
+using shader::NumFieldType;
 using shader::TextureBindingLayout;
 using shader::UniformBufferLayout;
 using shader::UniformLayout;
