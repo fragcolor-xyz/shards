@@ -265,7 +265,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
 #elif defined(__APPLE__)
   rep("(def platform \"apple\")", env);
 #endif
-  rep("(defmacro! Wire (fn* [name & rest] `(do (def! ~(symbol name) (DefWire ~name)) (ImplWire ~(symbol name) ~@rest))))", env);
+  rep("(defmacro! Wire (fn* [name & rest] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str name)) ~@rest))))", env);
   rep("(defmacro! defwire (fn* [name & shards] `(def! ~(symbol (str name)) "
       "(Wire ~(str name) (wireify (vector ~@shards))))))",
       env);
