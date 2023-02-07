@@ -2,6 +2,7 @@
 #define CD187556_E38B_4180_B6B9_B72301E8299E
 
 #include "composition.hpp"
+#include "shards.hpp"
 #include "translator.hpp"
 #include "translator_utils.hpp"
 #include "../shards_utils.hpp"
@@ -87,10 +88,10 @@ void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, c
 
   // Check input type is a shard sequence
   std::vector<ShardPtr> shards;
-  for (SHVar &shardVar : IterableSeq(input)) {
+  ForEach(input.payload.seqValue, [&](const SHVar& shardVar) {
     checkType(shardVar.valueType, SHType::ShardRef, ":Shaders EntryPoint");
     shards.push_back(shardVar.payload.shardValue);
-  }
+  });
 
   entryPoint.code = std::make_unique<DynamicBlockFromShards>(std::move(shards));
 }
