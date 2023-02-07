@@ -336,6 +336,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
       auto runRes = runSubWire(wire.get(), context, input);
       if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
         // When an error happens during inline execution, propagate the error to the parent wire
+        SHLOG_ERROR("Wire {} failed", wire->name);
         context->cancelFlow("Wire failed");
         return runRes.output;
       } else {
