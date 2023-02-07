@@ -1,4 +1,4 @@
-(load-file "cube-capture.edn")
+(load-file "cubemap-utils.edn")
 (load-file "atmosphere.edn")
 (load-file "pbr.edn")
 
@@ -20,6 +20,9 @@
     )))
 
 (Setup
+ ; Sets up a queue (.sky-sphere-queue) that just draws a sphere
+ (setup-shared-sky-sphere-queue)
+ 
  {:Position (Float3 -7.0 2.5 15.0) :Target (Float3 0.0 0.7 0.0)} (Math.LookAt)
 ;;  -90.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp-mat0
 ;;  (Float3 -50 0 0) (Math.Translation) >= .tmp-mat1

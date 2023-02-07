@@ -1,0 +1,64 @@
+; NOTE: Because of our coordinate space with the camera viewing -Z direction
+;       The Y rotation for the Z axis is revesed
+(def cube-rotations [(Float3 0 -90.0 0) ; X+
+                     (Float3 0 90.0 0) ; X-
+                     (Float3 90.0 0 0) ; Y+
+                     (Float3 -90.0 0 0) ; Y-
+                     (Float3 0 0 0) ; Z+
+                     (Float3 0 180 0) ; Z-
+                     ])
+(defshards xyz-to-mat []
+  (| (Take 0) >= .x) (| (Take 1) >= .y) (| (Take 2) >= .z)
+  .x (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) >= .rx
+  .y (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .ry
+  .z (Math.DegreesToRadians) (Math.AxisAngleZ) (Math.Rotation) >= .rz
+  .rz (Math.MatMul .ry) (Math.MatMul .rx))
+
+(defshards render-cubemap [steps cube-tex mip-index]
+  90.0 (Math.DegreesToRadians) >= .fov
+  (map
+   (fn* [n] (->
+             cube-rotations (Take n)
+             (xyz-to-mat) >= .tmp-rot
+             (Float3 0 10 0) (Math.Translation) >= .tmp-tsl
+             .tmp-tsl (Math.MatMul .tmp-rot) (Math.Inverse) >= (ContextVar (str "view-transform-" n))
+             (GFX.View :View (ContextVar (str "view-transform-" n)) :Fov .fov) >= (ContextVar (str "capture-view-" n))
+             (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n :Mip mip-index}}
+                             :Contents (->
+                                        (GFX.Render :Steps steps :View (ContextVar (str "capture-view-" n)))));
+             ))
+   (range 0 5));
+  )
+
+(defshards render-cubemap-0 [steps cube-tex]
+  (render-cubemap steps cube-tex 0))
+
+(defshards sky-sphere-vs []
+  (Shader.ReadGlobal "localPosition") (ToFloat3) (Math.Multiply 20.0)  >= .local-pos
+
+  (Shader.ReadBuffer "view" :BufferName "view") >= .view
+  (Shader.ReadBuffer "proj" :BufferName "view") >= .proj
+  .local-pos (ToFloat4) >= .local-pos-4
+  .view (Math.MatMul .local-pos-4) (Math.Add (Float4 0 0 0 1)) >= .view-pos-4
+  .proj (Math.MatMul .view-pos-4) >= .screen-pos
+
+  .screen-pos (Shader.WriteGlobal "screenPosition"))
+
+(defshards setup-shared-sky-sphere-queue []
+  (GFX.DrawQueue) >== .sky-sphere-queue
+
+  (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) >= .sky-sphere-mesh
+  {:Mesh .sky-sphere-mesh} (GFX.Drawable) (GFX.Draw .sky-sphere-queue))
+
+; Renders a screen space sphere into a cubemap
+; this can be used for applying effects on cubemaps
+(defshards filter-cubemap [effect-feature out-texture out-mip]
+  (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .filter-cubemap-features
+  {:State {:FlipFrontFace true :DepthWrite false}
+   :Shaders [{:Stage ProgrammableGraphicsStage.Vertex
+              :EntryPoint (sky-sphere-vs)
+              :After ["initScreenPosition"]
+              :Before ["writePosition"]}]} (GFX.Feature) >> .filter-cubemap-features
+  effect-feature >> .filter-cubemap-features
+  {:Features .filter-cubemap-features :Queue .sky-sphere-queue} (GFX.DrawablePass) >> .filter-cubemap-steps
+  (render-cubemap .filter-cubemap-steps out-texture out-mip))

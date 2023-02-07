@@ -1,4 +1,40 @@
+(defshards define-montecarlo [texture sampler base-dir body num-samples]
+  (Shader.Literal :Type ShaderLiteralType.Header :Source ["fn montecarlo(baseDir: vec3<f32>) -> vec3<f32> {
+	let tbn = generateFrameFromZDirection(" base-dir ");
+
+	let weight = 0.0;
+	let result = vec3<f32>(0, 0, 0);"
+
+                                                              "var result = vec2<f32>();
+  var sampleIndex = 0;
+  loop {
+    if(sampleIndex >= " num-samples ") {
+      break;
+    }"
+
+                                                              "MonteCarloInput mci;
+		mci.baseDirection = baseDir;
+		mci.coord = hammersley2d(sampleIndex, MONTECARLO_NUM_SAMPLES);
+		mci.uvCoord = inputUV;
+
+		let mco = " body ";
+
+		let lod = getWeightedLod(mco.pdf);"
+
+                                                              "let direction = tbn * mco.localDirection;
+		let s = sampleEnvironmentLod(" texture ", " sampler ", direction, lod);
+		result += s * mco.sampleScale;
+		weight += mco.sampleWeight;
+
+    sampleIndex = sampleIndex + 1;
+	}
+	result /= weight;
+
+	return result;
+}"]))
+
 (defshards compute-specular-lut [out-name]
+  (Msg "Computing specular split-sum LUT")
   {:EntryPoint (->
                 (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/pbr.wgsl"))
                 (Shader.ReadInput "texCoord0") >= .uv
@@ -14,36 +50,45 @@
   out-name;
   )
 
+(defshards compute-irradiance-fs []
+  ;; (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/pbr.wgsl"))
+  (Shader.ReadInput "worldNormal") >= .world-normal
+  ;; (Float3 0.4 0.2 -0.2)
+  .world-normal (Math.Abs)
+  (ToFloat4) (Math.Add (Float4 0 0 0 1))
+  (Shader.WriteOutput "color"))
+
 (defshards calc-num-mips []
   (| (Take 0) >= .dim-x) (| (Take 1) >= .dim-y)
   .dim-x (Min .dim-y) >= .dim-min
   .dim-min (ToFloat) (Math.Log2) (Math.Floor) (ToInt) ; This is up until 2x2
-  (Math.Add 1) ; Including 1x1
   )
+
+(defwire compute-irradiance-mip
+  .current-mip (Log "Computing irradiance mip level")
+
+  {:Shaders [{:Stage ProgrammableGraphicsStage.Fragment
+              :EntryPoint (compute-irradiance-fs)}]} (GFX.Feature) >= .filter-feature
+  (filter-cubemap .filter-feature .cube-tex-1 .current-mip))
 
 (defshards generate-probes [included-steps]
   (| (Take "Queue") >= .parent-queue)
   (| (Take "View") >= .parent-view)
   (Setup (->
-          (Log "Generating pre-rendered PBR textures")
+          (Msg "Generating pre-rendered PBR textures")
           (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 1024) :Dimension TextureDimension.Cube) >= .cube-tex
-          (render-cubemap included-steps .cube-tex)
+          (render-cubemap-0 included-steps .cube-tex)
 
-          (Int2 1024) >= .size
+          (Int2 512) >= .size
           (Log "Cubemap dimension")
           (calc-num-mips) >= .num-mips
           (Log "Number of mip levels")
+          (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution .size :MipLevels .num-mips :Dimension TextureDimension.Cube) >= .cube-tex-1
+          (ForRange 1 .num-mips (->
+                                 (Math.Subtract 1) >= .current-mip
+                                 (Do compute-irradiance-mip)))
 
-          {:EntryPoint (->
-                        (Shader.ReadInput "texCoord0")
-                        (ToFloat2) (Shader.WriteOutput "color") ; End shader
-                        )}
-          (GFX.EffectPass) >> .lut-steps
-          (GFX.Texture :Format TextureFormat.RG16Float) >= .specular-lut-tex
-          (GFX.RenderInto :Textures {:color .specular-lut-tex}
-                          :Size (Int2 128)
-                          :Contents (->
-                                     (GFX.Render :Steps .lut-steps)));
+          (compute-specular-lut .specular-lut-tex);
           ))
   {:env .cube-tex})
 

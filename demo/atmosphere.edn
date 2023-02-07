@@ -1,14 +1,3 @@
-(defshards viewspace-sphere-vs []
-  (Shader.ReadGlobal "localPosition") (ToFloat3) (Math.Multiply 20.0)  >= .local-pos
-
-  (Shader.ReadBuffer "view" :BufferName "view") >= .view
-  (Shader.ReadBuffer "proj" :BufferName "view") >= .proj
-  .local-pos (ToFloat4) >= .local-pos-4
-  .view (Math.MatMul .local-pos-4) (Math.Add (Float4 0 0 0 1)) >= .view-pos-4
-  .proj (Math.MatMul .view-pos-4) >= .screen-pos
-
-  .screen-pos (Shader.WriteGlobal "screenPosition"))
-
 (defshards precompute-sky-fs []
   (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/atmosphere.wgsl"))
   (Shader.ReadInput "worldNormal") (Math.Normalize) >= .ray-dir
@@ -40,29 +29,18 @@
   1.0 (Shader.WriteOutput "depth"))
 
 (defloop precompute-sky
-  (Setup (->
-          (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .sky-inner-features
-          {:State {:FlipFrontFace true :DepthWrite false}
-           :Shaders [{:Stage ProgrammableGraphicsStage.Vertex
-                      :EntryPoint (viewspace-sphere-vs)
-                      :After ["initScreenPosition"]
-                      :Before ["writePosition"]}
-                     {:Stage ProgrammableGraphicsStage.Fragment
-                      :EntryPoint (precompute-sky-fs)}]} (GFX.Feature) >> .sky-inner-features
-          {:Features .sky-inner-features :Queue .sky-queue} (GFX.DrawablePass) >> .sky-inner-steps
-          (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 1024) :Dimension TextureDimension.Cube) >= .sky-cube-tex
-          (render-cubemap .sky-inner-steps .sky-cube-tex)))
+  (Setup
+   {:Shaders [{:Stage ProgrammableGraphicsStage.Fragment
+               :EntryPoint (precompute-sky-fs)}]} (GFX.Feature) >= .filter-feature
+   (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 1024) :Dimension TextureDimension.Cube) >= .sky-cube-tex
+   (filter-cubemap .filter-feature .sky-cube-tex 0))
+
   {:sky .sky-cube-tex})
 
 (defshards setup-skybox-pass []
-  (GFX.DrawQueue) >= .sky-queue
-
-  (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) >= .skybox-mesh
-  {:Mesh .skybox-mesh} (GFX.Drawable) (GFX.Draw .sky-queue)
-
   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .sky-features
   {:Shaders [{:Stage ProgrammableGraphicsStage.Vertex
-              :EntryPoint (viewspace-sphere-vs)
+              :EntryPoint (sky-sphere-vs)
               :After ["initScreenPosition"]
               :Before ["writePosition"]}
              {:Stage ProgrammableGraphicsStage.Fragment
@@ -70,4 +48,4 @@
    :State {:FlipFrontFace true :DepthWrite false :DepthCompare CompareFunction.LessEqual}}
   (GFX.Feature :ViewGenerators precompute-sky) >> .sky-features
 
-  {:Features .sky-features :Queue .sky-queue} (GFX.DrawablePass))
+  {:Features .sky-features :Queue .sky-sphere-queue} (GFX.DrawablePass))

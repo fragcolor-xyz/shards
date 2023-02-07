@@ -1,25 +1,44 @@
 let MONTECARLO_NUM_SAMPLES = 2048;
 let PI = 3.1415998935699463;
+let PI2 = 6.28318530717958647693;
 
 struct MaterialInfo {
-    baseColor: vec3<f32>,
-    specularColor0_: vec3<f32>,
-    specularColor90_: vec3<f32>,
-    perceptualRoughness: f32,
-    metallic: f32,
-    ior: f32,
-    diffuseColor: vec3<f32>,
-    specularWeight: f32,
+  baseColor: vec3<f32>,
+  specularColor0: vec3<f32>,
+  specularColor90: vec3<f32>,
+  perceptualRoughness: f32,
+  metallic: f32,
+  ior: f32,
+  diffuseColor: vec3<f32>,
+  specularWeight: f32,
 }
 
 struct LightingGeneralParams {
-    surfaceNormal: vec3<f32>,
-    viewDirection: vec3<f32>,
+  surfaceNormal: vec3<f32>,
+  viewDirection: vec3<f32>,
 }
 
 struct LightingVectorSample {
-    pdf: f32,
-    localDirection: vec3<f32>,
+  pdf: f32,
+  localDirection: vec3<f32>,
+}
+
+struct MonteCarloInput {
+  baseDirection: vec3<f32>,
+  coord: vec2<f32>,
+  uvCoord: vec2<f32>,
+}
+
+struct MonteCarloOutput {
+  localDirection: vec3<f32>,
+  pdf: f32,
+  sampleWeight: f32,
+  sampleScale: f32,
+}
+
+struct FilterParameters {
+  inputDimensions: vec2<f32>,
+  outputDimensions: vec2<f32>,
 }
 
 // Hammersley Points on the Hemisphere
@@ -146,9 +165,79 @@ fn getIBLRadianceLambertian(lambertianSample: vec3<f32>, ggxLUT: vec2<f32>, fres
 
 	return (FmsEms + k_D) * lambertianSample;
 }
+fn sampleEnvironmentLod(_texture: texture_cube<f32>, _sampler: sampler, dir: vec3<f32>, lod: f32) -> vec3<f32> {
+	// let polar = directionToLongLat(dir);
+	// let uv = vec2<f32>(
+	// 	(polar.x / PI2), // azimuthal angle
+	// 	(polar.y / PI) // polar angle 
+	// );
+	// return textureSampleLevel(_texture, _sampler, uv, lod).xyz;
+  return textureSampleLevel(_texture, _sampler, dir, lod).xyz;
+}
 
-fn computeEnvironmentLighting(material: MaterialInfo, params: LightingGeneralParams) -> vec3<f32> {
-  return vec3<f32>();
+fn sampleEnvironment(_texture: texture_cube<f32>, _sampler: sampler, dir: vec3<f32>) -> vec3<f32> {
+	return sampleEnvironmentLod(_texture, _sampler, dir, f32(textureNumLevels(_texture) - 1));
+}
+
+fn computeEnvironmentLighting( material: MaterialInfo, params: LightingGeneralParams,  
+  envLambert: texture_cube<f32>,
+  envLambertSampler: sampler,
+  envGGX: texture_cube<f32>,
+  envGGXSampler: sampler,
+  ggxLUT: texture_2d<f32>,
+  ggxLUTSampler: sampler) -> vec3<f32> {
+  var material = material;
+  let viewDir = params.viewDirection;
+	let reflDir = reflect(viewDir, params.surfaceNormal);
+
+	let nDotV = dot(viewDir, params.surfaceNormal);
+
+	material.perceptualRoughness = clamp(material.perceptualRoughness, 0.0, 1.0);
+	material.metallic = clamp(material.metallic, 0.0, 1.0);
+
+	let roughness = material.perceptualRoughness * material.perceptualRoughness;
+	let reflectance = max(max(material.specularColor0.r, material.specularColor0.g), material.specularColor0.b);
+
+	material.specularColor90 = vec3<f32>(1.0);
+
+	let numMipLevels = f32(textureNumLevels(envGGX));
+	let ggxLUT = textureSample(ggxLUT, ggxLUTSampler, vec2<f32>(roughness, nDotV)).xy;
+	let ggxSample = sampleEnvironmentLod(envGGX, envGGXSampler, reflDir, numMipLevels * material.perceptualRoughness);
+	let lambertianSample = sampleEnvironmentLod(envLambert, envLambertSampler, params.surfaceNormal, 0.0);
+
+	let specularColor90 = max(vec3<f32>(1.0 - roughness), material.specularColor0);
+	let fresnelColor = fresnelSchlick(material.specularColor0, specularColor90, nDotV);
+
+	let specularLight = getIBLRadianceGGX(ggxSample, ggxLUT, fresnelColor, material.specularWeight);
+	let diffuseLight = getIBLRadianceLambertian(lambertianSample, ggxLUT, fresnelColor, material.diffuseColor, material.specularColor0, material.specularWeight);
+
+	return diffuseLight + specularLight;
+}
+
+fn getWeightedLod(pdf: f32, num_samples: i32, texture: texture_2d<f32>) -> f32 {
+ // https://cgg.mff.cuni.cz/~jaroslav/papers/2007-sketch-fis/Final_sap_0073.pdf
+	let inputDims = textureDimensions(texture);
+	return 0.5 * log2(6.0 * f32(inputDims.x) * f32(inputDims.x) / (f32(num_samples) * pdf));
+}
+
+fn generateFrameFromZDirection(normal: vec3<f32>) -> mat3x3<f32> {
+ 	var bitangent = vec3<f32>(0.0, 1.0, 0.0);
+	let nDotUp = dot(normal, vec3<f32>(0.0, 1.0, 0.0));
+	let epsilon = 0.00001;
+	if (1.0 - abs(nDotUp) <= epsilon) {
+		// Sampling +Y or -Y, so we need a more robust bitangent.
+		if (nDotUp > 0.0) {
+			bitangent = vec3<f32>(0.0, 0.0, 1.0);
+		}
+		else {
+			bitangent = vec3<f32>(0.0, 0.0, -1.0);
+		}
+	}
+
+	let tangent = normalize(cross(bitangent, normal));
+	bitangent = cross(normal, tangent);
+
+	return mat3x3<f32>(tangent, bitangent, normal);
 }
 
 fn computeLUT(in: vec2<f32>) -> vec2<f32> {
@@ -188,4 +277,22 @@ fn computeLUT(in: vec2<f32>) -> vec2<f32> {
   }
   
   return result.xy / f32(MONTECARLO_NUM_SAMPLES) * 4.0;
+}
+
+fn ggx(roughness: f32, mci: MonteCarloInput) -> MonteCarloOutput {
+	var result: MonteCarloOutput;
+
+	let lvs = importanceSampleGGX(mci.coord, roughness);
+	result.localDirection = lvs.localDirection;
+	result.pdf = lvs.pdf;
+
+	// Use N = V for precomputed map
+	let localViewDir = vec3(0.0, 0.0, 1.0);
+	let localLightDir = reflect(localViewDir, result.localDirection);
+	let nDotL = dot(localLightDir, result.localDirection);
+
+	result.sampleWeight = nDotL;
+	result.sampleScale = nDotL;
+
+	return result;
 }
