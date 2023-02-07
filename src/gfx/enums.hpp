@@ -42,7 +42,7 @@ inline bool hasAnyTextureFormatUsage(const TextureFormatUsage &a, const TextureF
   return (uint8_t(a) & uint8_t(b)) != 0;
 }
 
-enum class TextureType : uint8_t {
+enum class TextureDimension : uint8_t {
   D1,
   D2,
   Cube,

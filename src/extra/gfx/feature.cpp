@@ -5,6 +5,7 @@
 #include "extra/gfx.hpp"
 #include "extra/gfx/shards_types.hpp"
 #include "foundation.hpp"
+#include "gfx/enums.hpp"
 #include "gfx/error_utils.hpp"
 #include "gfx/feature.hpp"
 #include "gfx/params.hpp"
@@ -225,7 +226,7 @@ public:
               using T = std::decay_t<decltype(arg)>;
               if constexpr (std::is_same_v<T, shader::FieldType>) {
                 outBasicParams.emplace_back(k, arg);
-              } else if constexpr (std::is_same_v<T, TextureType>) {
+              } else if constexpr (std::is_same_v<T, TextureDimension>) {
                 outTextureParams.emplace_back(k, arg);
               } else {
                 throw formatException("Generator wire returns invalid type {} for key {}", v, k);
@@ -474,7 +475,7 @@ public:
         fieldType.baseType = ShaderFieldBaseType(typeVar.payload.enumValue);
         isFieldTypeSet = true;
       } else if (enumType == Types::TextureDimensionEnumInfo::Type) {
-        return TextureType(typeVar.payload.enumValue);
+        return TextureDimension(typeVar.payload.enumValue);
       } else {
         throw formatException("Invalid Type for shader Param, should be either TextureDimension... or ShaderFieldBaseType...");
       }
@@ -524,8 +525,8 @@ public:
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, shader::FieldType>) {
             feature.shaderParams.emplace_back(name, arg);
-          } else if constexpr (std::is_same_v<T, TextureType>) {
-            feature.textureParams.emplace_back(name);
+          } else if constexpr (std::is_same_v<T, TextureDimension>) {
+            feature.textureParams.emplace_back(name, arg);
           } else {
             if (defaultValue.index() > 0) {
               // Derive field type from given default value

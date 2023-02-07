@@ -92,7 +92,7 @@ struct TextureManager {
       break;
     }
 
-    fmt.type = TextureType::D2;
+    fmt.type = TextureDimension::D2;
     fmt.flags = TextureFormatFlags::None;
     SamplerState sampler{
         .addressModeU = WGPUAddressMode_ClampToEdge,
