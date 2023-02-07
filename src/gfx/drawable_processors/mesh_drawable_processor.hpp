@@ -103,9 +103,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   size_t frameCounter{};
 
   TexturePtr placeholderTextures[3]{
-      []() { return PlaceholderTexture::create(TextureType::D1, int2(2, 1), float4(1, 1, 1, 1)); }(),
-      []() { return PlaceholderTexture::create(TextureType::D2, int2(2, 2), float4(1, 1, 1, 1)); }(),
-      []() { return PlaceholderTexture::create(TextureType::Cube, int2(2, 2), float4(1, 1, 1, 1)); }(),
+      []() { return PlaceholderTexture::create(TextureDimension::D1, int2(2, 1), float4(1, 1, 1, 1)); }(),
+      []() { return PlaceholderTexture::create(TextureDimension::D2, int2(2, 2), float4(1, 1, 1, 1)); }(),
+      []() { return PlaceholderTexture::create(TextureDimension::Cube, int2(2, 2), float4(1, 1, 1, 1)); }(),
   };
 
   MeshDrawableProcessor(Context &context)
@@ -541,7 +541,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
               drawBindGroupBuilder.addTextureBinding(binding, textureViewCache.getDefaultTextureView(frameCounter, *texture),
                                                      texture->sampler);
             } else {
-              auto &placeholder = placeholderTextures[size_t(binding.type)];
+              auto &placeholder = placeholderTextures[size_t(binding.dimension)];
               drawBindGroupBuilder.addTextureBinding(
                   binding, textureViewCache.getDefaultTextureView(frameCounter, *placeholder->contextData.get()),
                   placeholder->contextData->sampler);

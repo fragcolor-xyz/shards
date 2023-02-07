@@ -74,7 +74,7 @@ inline ParamVariant varToParam(const SHVar &var) {
   return result;
 }
 
-using ShaderFieldTypeVariant = std::variant<std::monostate, shader::FieldType, gfx::TextureType>;
+using ShaderFieldTypeVariant = std::variant<std::monostate, shader::FieldType, gfx::TextureDimension>;
 inline ShaderFieldTypeVariant toShaderParamType(const SHTypeInfo &typeInfo) {
   switch (typeInfo.basicType) {
     return shader::FieldTypes::Float;
@@ -91,9 +91,9 @@ inline ShaderFieldTypeVariant toShaderParamType(const SHTypeInfo &typeInfo) {
     break;
   case SHType::Object: {
     if (typeInfo == Types::Texture)
-      return TextureType::D2;
+      return TextureDimension::D2;
     else if (typeInfo == Types::TextureCube)
-      return TextureType::Cube;
+      return TextureDimension::Cube;
   }
   default:
     break;

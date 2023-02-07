@@ -113,13 +113,13 @@ struct TextureViewCache {
     };
 
     switch (textureData.format.type) {
-    case TextureType::D1:
+    case TextureDimension::D1:
       defaultDesc.dimension = WGPUTextureViewDimension_1D;
       break;
-    case TextureType::D2:
+    case TextureDimension::D2:
       defaultDesc.dimension = WGPUTextureViewDimension_2D;
       break;
-    case TextureType::Cube:
+    case TextureDimension::Cube:
       defaultDesc.dimension = WGPUTextureViewDimension_Cube;
       defaultDesc.arrayLayerCount = 6;
       break;

@@ -32,14 +32,14 @@ static void generateTextureVars(T &output, const TextureDefinition &def, size_t 
   const char *textureFormat = "f32";
 
   const char *textureType{};
-  switch (def.type) {
-  case gfx::TextureType::D1:
+  switch (def.dimension) {
+  case TextureDimension::D1:
     textureType = "texture_1d";
     break;
-  case gfx::TextureType::D2:
+  case TextureDimension::D2:
     textureType = "texture_2d";
     break;
-  case gfx::TextureType::Cube:
+  case TextureDimension::Cube:
     textureType = "texture_cube";
     break;
   }
@@ -502,7 +502,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   std::map<String, TextureDefinition> textureDefinitions;
   for (auto &texture : textureBindingLayout.bindings) {
     TextureDefinition def("t_" + texture.name, fmt::format("texCoord{}", texture.defaultTexcoordBinding), "s_" + texture.name,
-                          texture.type);
+                          texture.dimension);
     generateTextureVars(headerCode, def, textureBindGroup, texture.binding, texture.defaultSamplerBinding);
     textureDefinitions.insert_or_assign(texture.name, def);
   }
@@ -637,7 +637,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
   }
 
   for (auto &texture : textureBindingLayout.bindings) {
-    context.definitions.textures.emplace(texture.name, "").first->second.type = texture.type;
+    context.definitions.textures.emplace(texture.name, "").first->second.dimension = texture.dimension;
   }
 
   for (size_t i = 0; i < NumGraphicsStages; i++) {
