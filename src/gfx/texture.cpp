@@ -76,16 +76,16 @@ std::shared_ptr<Texture> Texture::clone() const {
   return result;
 }
 
-static WGPUSampler createSampler(Context &context, SamplerState samplerState, bool haveMips) {
+static WGPUSampler createSampler(Context &context, SamplerState samplerState, size_t mipLevels) {
   WGPUSamplerDescriptor desc{};
   desc.addressModeU = samplerState.addressModeU;
   desc.addressModeV = samplerState.addressModeV;
   desc.addressModeW = samplerState.addressModeW;
   desc.lodMinClamp = 0;
-  desc.lodMaxClamp = 0;
+  desc.lodMaxClamp = mipLevels;
   desc.magFilter = samplerState.filterMode;
   desc.minFilter = samplerState.filterMode;
-  desc.mipmapFilter = haveMips ? WGPUMipmapFilterMode_Linear : WGPUMipmapFilterMode_Nearest;
+  desc.mipmapFilter = (mipLevels > 0) ? WGPUMipmapFilterMode_Linear : WGPUMipmapFilterMode_Nearest;
   desc.maxAnisotropy = 0;
   return wgpuDeviceCreateSampler(context.wgpuDevice, &desc);
 }
@@ -145,7 +145,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
       wgpuDesc.usage |= WGPUTextureUsage_TextureBinding;
     }
 
-    switch (desc.format.type) {
+    switch (desc.format.dimension) {
     case TextureDimension::D1:
       wgpuDesc.dimension = WGPUTextureDimension_1D;
       contextData.size.height = 1;
@@ -174,7 +174,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
       writeTextureData(context, desc.format, desc.resolution, contextData.size.depthOrArrayLayers, contextData.texture, desc.data);
   }
 
-  contextData.sampler = createSampler(context, desc.samplerState, false);
+  contextData.sampler = createSampler(context, desc.samplerState, desc.format.mipLevels);
   assert(contextData.sampler);
 }
 

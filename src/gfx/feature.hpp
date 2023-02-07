@@ -137,13 +137,13 @@ enum class ShaderParamFlags {
 };
 
 struct NamedShaderParam {
-  shader::FieldType type = shader::FieldType(ShaderFieldBaseType::Float32, 4);
+  shader::NumFieldType type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4);
   std::string name;
   ParamVariant defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
 
   NamedShaderParam() = default;
-  NamedShaderParam(std::string name, const shader::FieldType &type = shader::FieldType(ShaderFieldBaseType::Float32, 4),
+  NamedShaderParam(std::string name, const shader::NumFieldType &type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4),
                    ParamVariant defaultValue = ParamVariant());
   NamedShaderParam(std::string name, ParamVariant defaultValue);
 
@@ -156,15 +156,20 @@ struct NamedShaderParam {
 
 struct NamedTextureParam {
   std::string name;
-  TextureDimension dimension = TextureDimension::D2;
+  shader::TextureFieldType type;
+  TexturePtr defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
 
   NamedTextureParam() = default;
-  NamedTextureParam(std::string name, TextureDimension dimension = TextureDimension::D2, ShaderParamFlags flags = ShaderParamFlags::None)
-      : name(name), dimension(dimension) {}
+  NamedTextureParam(std::string name, TextureDimension dimension = TextureDimension::D2,
+                    ShaderParamFlags flags = ShaderParamFlags::None)
+      : name(name), type(dimension), flags(flags) {}
+  NamedTextureParam(std::string name, shader::TextureFieldType type, ShaderParamFlags flags = ShaderParamFlags::None)
+      : name(name), type(type), flags(flags) {}
 
   template <typename T> void getPipelineHash(T &hasher) const {
     hasher(name);
+    hasher(type);
     hasher(flags);
   }
 };

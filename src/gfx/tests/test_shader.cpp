@@ -140,8 +140,8 @@ TEST_CASE("Shader basic", "[Shader]") {
 
   setupDefaultBindings(generator);
 
-  auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
-  auto positionFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
+  auto colorFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
+  auto positionFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
 
   generator.outputFields.emplace_back("color", colorFieldType);
 
@@ -176,8 +176,8 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
 
   setupDefaultBindings(generator);
 
-  auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
-  auto positionFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
+  auto colorFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
+  auto positionFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
 
   generator.outputFields.emplace_back("color", colorFieldType);
 
@@ -217,8 +217,8 @@ TEST_CASE("Shader textures", "[Shader]") {
 
   std::shared_ptr<TestContext> context = createTestContext();
 
-  auto colorFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
-  auto positionFieldType = FieldType(ShaderFieldBaseType::Float32, 4);
+  auto colorFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
+  auto positionFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
 
   TextureBindingLayoutBuilder textureLayoutBuilder;
   textureLayoutBuilder.addOrUpdateSlot("baseColor", 0);

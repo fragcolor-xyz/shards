@@ -3,9 +3,15 @@
 
 // Required before shard headers
 #include "../shards_types.hpp"
+#include "extra/gfx/drawable_utils.hpp"
+#include "extra/gfx/shader/translator.hpp"
 #include "extra/gfx/shader/wgsl.hpp"
 #include "gfx/enums.hpp"
 #include "gfx/error_utils.hpp"
+#include "gfx/shader/block.hpp"
+#include "gfx/shader/blocks.hpp"
+#include "gfx/shader/generator.hpp"
+#include "gfx/shader/types.hpp"
 #include "gfx/shader/uniforms.hpp"
 #include "magic_enum.hpp"
 #include "number_types.hpp"
@@ -16,6 +22,8 @@
 #include "composition.hpp"
 #include <nameof.hpp>
 #include <stdexcept>
+#include <type_traits>
+#include <variant>
 #include "params.hpp"
 
 #include "shards/core.hpp"
@@ -54,7 +62,17 @@ template <typename TShard> struct SetTranslator {
 
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
 
-    WGSLBlock reference = context.assignVariable(varName, shard->_global, false, std::move(wgslValue));
+    bool storeMutable{};
+    if constexpr (std::is_same_v<TShard, shards::Ref>) {
+      storeMutable = false;
+    } else {
+      if (!std::get_if<NumFieldType>(&wgslValue->getType())) {
+        throw ShaderComposeError(fmt::format("Type {} can not be stored as a mutable variable", wgslValue->getType()));
+      }
+      storeMutable = true;
+    }
+
+    WGSLBlock reference = context.assignVariable(varName, shard->_global, false, storeMutable, std::move(wgslValue));
     context.setWGSLTop<WGSLBlock>(std::move(reference));
   }
 };
@@ -79,7 +97,7 @@ struct UpdateTranslator {
 
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
 
-    WGSLBlock reference = context.assignVariable(varName, shard->_global, true, std::move(wgslValue));
+    WGSLBlock reference = context.assignVariable(varName, shard->_global, true, true, std::move(wgslValue));
     context.setWGSLTop<WGSLBlock>(std::move(reference));
   }
 };
@@ -126,7 +144,7 @@ struct TakeTranslator {
     std::string swizzle = generateSwizzle(shard);
 
     auto &outVectorType = *shard->_vectorOutputType;
-    FieldType outFieldType = getShaderBaseType(outVectorType.numberType);
+    NumFieldType outFieldType = getShaderBaseType(outVectorType.numberType);
     outFieldType.numComponents = outVectorType.dimension;
 
     SPDLOG_LOGGER_INFO(context.logger, "gen(take)> {}", swizzle);
@@ -187,7 +205,7 @@ struct Literal {
     }
 
     if (isSet) {
-      return FieldType(baseType, dimension, matrixDimension);
+      return NumFieldType(baseType, dimension, matrixDimension);
     }
     return std::nullopt;
   }
@@ -402,7 +420,8 @@ struct ReadBuffer final : public IOBase {
   void translate(TranslationContext &context) {
     SPDLOG_LOGGER_INFO(context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _bufferName, _name);
 
-    context.setWGSLTop<WGSLBlock>(_type.shaderType, blocks::makeBlock<blocks::ReadBuffer>(_name, _type.shaderType, _bufferName));
+    NumFieldType fieldType = std::get<NumFieldType>(_type.shaderType);
+    context.setWGSLTop<WGSLBlock>(_type.shaderType, blocks::makeBlock<blocks::ReadBuffer>(_name, fieldType, _bufferName));
   }
 };
 
@@ -417,7 +436,7 @@ template <typename TShard> struct Write : public IOBase {
       throw ShaderComposeError(fmt::format("Can not write: value is required"));
 
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
-    FieldType fieldType = wgslValue->getType();
+    NumFieldType fieldType = std::get<NumFieldType>(wgslValue->getType());
 
     context.addNew(blocks::makeBlock<TShard>(_name, fieldType, wgslValue->toBlock()));
   }
@@ -451,8 +470,9 @@ struct SampleTexture {
     if (it == textures.end()) {
       throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
     }
-    if (it->second.dimension != TextureDimension::D2) {
-      throw formatException("SampleTexture does not support texture for type [{}]", magic_enum::enum_name(it->second.dimension));
+    if (it->second.type.dimension != TextureDimension::D2) {
+      throw formatException("SampleTexture does not support texture for type [{}]",
+                            magic_enum::enum_name(it->second.type.dimension));
     }
 
     return outputTypes().elements[0];
@@ -477,7 +497,7 @@ struct SampleTextureCoord : public SampleTexture {
   SHParametersInfo parameters() { return SampleTexture::params; };
 
   SHTypeInfo getExpectedCoordinateType(const TextureDefinition &def) {
-    switch (def.dimension) {
+    switch (def.type.dimension) {
     case gfx::TextureDimension::D1:
       return CoreInfo::FloatType;
     case gfx::TextureDimension::D2:
@@ -518,6 +538,81 @@ struct SampleTextureCoord : public SampleTexture {
     auto &varName = context.assignTempVar(wgslValue->toBlock());
     context.setWGSLTopVar(FieldTypes::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName, varName));
   }
+};
+
+struct RefTexture {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return Types::TextureTypes; }
+
+  static SHOptionalString help() { return SHCCSTR("Returns a reference to the texture object for a named texture."); }
+
+  SHParametersInfo parameters() { return SampleTexture::params; }
+
+  shards::Var _name;
+  TextureFieldType _textureType;
+
+  void setParam(int index, const SHVar &value) { _name = value; }
+  SHVar getParam(int index) { return _name; }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    auto name = (const char *)_name;
+    auto &shaderCtx = ShaderCompositionContext::get();
+    auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
+    auto it = textures.find(name);
+    if (it == textures.end()) {
+      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
+    }
+    _textureType = it->second.type;
+
+    return fieldTypeToShardsType(it->second.type);
+  }
+
+  void translate(TranslationContext &context) {
+    const SHString &textureName = _name.payload.stringValue;
+    SPDLOG_LOGGER_INFO(context.logger, "gen(ref/texture)> {}", textureName);
+
+    auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { ctx.texture(textureName); });
+    context.setWGSLTopVar(_textureType, std::move(block));
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
+};
+
+struct RefSampler {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return Types::Sampler; }
+
+  static SHOptionalString help() { return SHCCSTR("Returns a reference to the default sampler object for a named texture."); }
+
+  SHParametersInfo parameters() { return SampleTexture::params; }
+
+  shards::Var _name;
+  SamplerFieldType _samplerType;
+
+  void setParam(int index, const SHVar &value) { _name = value; }
+  SHVar getParam(int index) { return _name; }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    auto name = (const char *)_name;
+    auto &shaderCtx = ShaderCompositionContext::get();
+    auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
+    auto it = textures.find(name);
+    if (it == textures.end()) {
+      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
+    }
+    _samplerType = SamplerFieldType{};
+    return Types::Sampler;
+  }
+
+  void translate(TranslationContext &context) {
+    const SHString &textureName = _name.payload.stringValue;
+    SPDLOG_LOGGER_INFO(context.logger, "gen(ref/sampler)> {}", textureName);
+
+    auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { ctx.textureDefaultSampler(textureName); });
+    context.setWGSLTopVar(_samplerType, std::move(block));
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 };
 
 struct LinearizeDepth {

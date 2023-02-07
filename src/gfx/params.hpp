@@ -14,9 +14,6 @@ namespace gfx {
 /// <div rustbindgen opaque></div>
 typedef std::variant<std::monostate, float, float2, float3, float4, float4x4, uint32_t> ParamVariant;
 
-/// <div rustbindgen opaque></div>
-typedef std::variant<std::monostate, float, float2, float3, float4, float4x4, uint32_t> TextureVariant;
-
 /// <div rustbindgen hide></div>
 struct TextureParameter {
   TexturePtr texture;
@@ -30,7 +27,7 @@ struct TextureParameter {
 size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &variant);
 
 /// <div rustbindgen hide></div>
-gfx::shader::FieldType getParamVariantType(const ParamVariant &variant);
+gfx::shader::NumFieldType getParamVariantType(const ParamVariant &variant);
 
 /// <div rustbindgen hide></div>
 struct IParameterCollector {

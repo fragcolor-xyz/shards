@@ -31,29 +31,28 @@ inline TexturePtr varToTexture(const SHVar &var) {
   }
 }
 
-inline ParamVariant varToParam(const SHVar &var) {
-  ParamVariant result;
+inline std::variant<ParamVariant, TextureParameter> varToShaderParameter(const SHVar &var) {
   switch (var.valueType) {
   case SHType::Float: {
     float vec = float(var.payload.floatValue);
-    result = vec;
-  } break;
+    return vec;
+  }
   case SHType::Float2: {
     float2 vec;
     vec.x = float(var.payload.float2Value[0]);
     vec.y = float(var.payload.float2Value[1]);
-    result = vec;
-  } break;
+    return vec;
+  }
   case SHType::Float3: {
     float3 vec;
     memcpy(&vec.x, &var.payload.float3Value, sizeof(float) * 3);
-    result = vec;
-  } break;
+    return vec;
+  }
   case SHType::Float4: {
     float4 vec;
     memcpy(&vec.x, &var.payload.float4Value, sizeof(float) * 4);
-    result = vec;
-  } break;
+    return vec;
+  }
   case SHType::Seq:
     if (var.innerType == SHType::Float4) {
       float4x4 matrix;
@@ -63,47 +62,49 @@ inline ParamVariant varToParam(const SHVar &var) {
         memcpy(&row.x, &seq.elements[i].payload.float4Value, sizeof(float) * 4);
         matrix[i] = row;
       }
-      result = matrix;
+      return matrix;
     } else {
       throw formatException("Seq inner type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
     }
-    break;
+  case SHType::Object:
+    return TextureParameter(varToTexture(var));
   default:
     throw formatException("Value type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
   }
-  return result;
 }
 
-using ShaderFieldTypeVariant = std::variant<std::monostate, shader::FieldType, gfx::TextureDimension>;
-inline ShaderFieldTypeVariant toShaderParamType(const SHTypeInfo &typeInfo) {
+inline std::optional<shader::FieldType> deriveShaderFieldType(const SHTypeInfo &typeInfo) {
+  using namespace shader;
   switch (typeInfo.basicType) {
-    return shader::FieldTypes::Float;
+    return FieldTypes::Float;
   case SHType::Float2:
-    return shader::FieldTypes::Float2;
+    return FieldTypes::Float2;
   case SHType::Float3:
-    return shader::FieldTypes::Float3;
+    return FieldTypes::Float3;
   case SHType::Float4:
-    return shader::FieldTypes::Float4;
+    return FieldTypes::Float4;
   case SHType::Seq:
     if (typeInfo.seqTypes.len == 1 && typeInfo.seqTypes.elements[0].basicType == SHType::Float4) {
-      return shader::FieldTypes::Float4x4;
+      return FieldTypes::Float4x4;
     }
     break;
   case SHType::Object: {
-    if (typeInfo == Types::Texture)
-      return TextureDimension::D2;
+    if (typeInfo == Types::Sampler)
+      return SamplerFieldType{};
+    else if (typeInfo == Types::Texture)
+      return TextureFieldType(TextureDimension::D2);
     else if (typeInfo == Types::TextureCube)
-      return TextureDimension::Cube;
+      return TextureFieldType(TextureDimension::Cube);
   }
   default:
     break;
   }
-  return std::monostate();
+  return std::nullopt;
 }
 
-inline std::optional<ParamVariant> tryVarToParam(const SHVar &var) {
+inline std::optional<std::variant<ParamVariant, TextureParameter>> tryVarToParam(const SHVar &var) {
   try {
-    return varToParam(var);
+    return varToShaderParameter(var);
   } catch (std::exception &e) {
     SHLOG_ERROR("{}", e.what());
     return std::nullopt;
@@ -118,18 +119,8 @@ inline void initConstantShaderParams(const SHTable &paramsTable, MaterialParamet
   while (paramsTable.api->tableNext(paramsTable, &it, &key, &value)) {
     auto param = tryVarToParam(value);
     if (param) {
-      out.set(key, std::move(param.value()));
+      std::visit([&](auto &&arg) { out.set(key, std::move(arg)); }, std::move(param.value()));
     }
-  }
-}
-
-inline void initConstantTextureParams(const SHTable &texturesTable, MaterialParameters &out) {
-  SHTableIterator it{};
-  SHString key{};
-  SHVar value{};
-  texturesTable.api->tableGetIterator(texturesTable, &it);
-  while (texturesTable.api->tableNext(texturesTable, &it, &key, &value)) {
-    out.set(key, varToTexture(value));
   }
 }
 
@@ -158,7 +149,7 @@ inline void initShaderParams(SHContext *shContext, const SHTable &inputTable, co
 
   SHVar texturesVar{};
   if (getFromTable(shContext, inputTable, "Textures", texturesVar)) {
-    initConstantTextureParams(texturesVar.payload.tableValue, outParams);
+    initConstantShaderParams(texturesVar.payload.tableValue, outParams);
   }
   if (inTextures->valueType != SHType::None) {
     initReferencedShaderParams(shContext, inTextures.get().payload.tableValue, outSHParams.textures);

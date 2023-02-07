@@ -52,7 +52,7 @@ fn egui_linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
     // NOTE: Override BaseColor's writeColor
     writeVertColor.dependencies.emplace_back("writeColor");
 
-    shader::FieldType flagsFieldType = shader::FieldType(ShaderFieldBaseType::UInt32, 1);
+    shader::NumFieldType flagsFieldType = shader::NumFieldType(ShaderFieldBaseType::UInt32, 1);
     code = makeCompoundBlock();
     code->appendLine("var color = ", ReadInput("color"));
     code->appendLine("var texColor = ", SampleTexture("color"));

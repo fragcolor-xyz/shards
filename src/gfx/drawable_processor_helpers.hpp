@@ -97,7 +97,7 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
     auto drawDataIt = parameterStorage.data.find<std::string>(fieldName);
     if (drawDataIt != parameterStorage.data.end()) {
       const UniformLayout &itemLayout = layout.items[layoutIndex];
-      FieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
+      NumFieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
       if (itemLayout.type != drawDataFieldType) {
         SPDLOG_LOGGER_WARN(getLogger(), "Shader field \"{}\" type mismatch layout:{} parameterStorage:{}", fieldName,
                            itemLayout.type, drawDataFieldType);
