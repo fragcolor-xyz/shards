@@ -594,23 +594,9 @@ private:
 };
 
 struct Mutant {
-  SHTypesInfo inputTypes() {
-    if (_shard) {
-      auto blks = _shard.shards();
-      return blks.elements[0]->inputTypes(blks.elements[0]);
-    } else {
-      return CoreInfo::AnyType;
-    }
-  }
+  SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
-  SHTypesInfo outputTypes() {
-    if (_shard) {
-      auto blks = _shard.shards();
-      return blks.elements[0]->outputTypes(blks.elements[0]);
-    } else {
-      return CoreInfo::AnyType;
-    }
-  }
+  SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static SHParametersInfo parameters() { return _params; }
 

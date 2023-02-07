@@ -17,11 +17,7 @@ template <SHType ToType> struct ToNumber {
   const NumberConversion *_numberConversion{nullptr};
 
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  SHTypesInfo outputTypes() {
-    if (!_outputVectorType)
-      return CoreInfo::AnyType;
-    return _outputVectorType->type;
-  }
+  SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static const NumberTypeTraits *getEnumNumberType() {
     static const NumberTypeTraits *result = nullptr;
@@ -219,11 +215,7 @@ template <SHType ToType> struct MakeVector {
   }
 
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  SHTypesInfo outputTypes() {
-    if (!_outputVectorType)
-      return CoreInfo::AnyType;
-    return _outputVectorType->type;
-  }
+  SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void setParam(int index, const SHVar &value) {
     if (index >= (int)params.size())

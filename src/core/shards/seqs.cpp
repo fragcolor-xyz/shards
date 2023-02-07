@@ -186,6 +186,8 @@ struct Flatten {
 };
 
 struct IndexOf {
+  static inline Types OutputTypes = {{CoreInfo::IntSeqType, CoreInfo::IntType}};
+
   ParamVar _item{};
   SHSeq _results = {};
   bool _all = false;
@@ -200,12 +202,7 @@ struct IndexOf {
   void warmup(SHContext *context) { _item.warmup(context); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
-  SHTypesInfo outputTypes() {
-    if (_all)
-      return CoreInfo::IntSeqType;
-    else
-      return CoreInfo::IntType;
-  }
+  SHTypesInfo outputTypes() { return OutputTypes; }
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param("Item",
                                                                  SHCCSTR("The item to find the index of from the input, "
@@ -231,6 +228,13 @@ struct IndexOf {
       return _item;
     else
       return Var(_all);
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (_all)
+      return CoreInfo::IntSeqType;
+    else
+      return CoreInfo::IntType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {

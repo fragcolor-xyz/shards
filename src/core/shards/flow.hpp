@@ -318,24 +318,10 @@ struct Cond {
 };
 
 struct BaseSubFlow {
-  SHTypesInfo inputTypes() {
-    if (_shards) {
-      auto blks = _shards.shards();
-      return blks.elements[0]->inputTypes(blks.elements[0]);
-    } else {
-      return CoreInfo::AnyType;
-    }
-  }
+  SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Must match the input types of the first shard in the sequence."); }
 
-  SHTypesInfo outputTypes() {
-    if (_shards) {
-      auto blks = _shards.shards();
-      return blks.elements[0]->outputTypes(blks.elements[0]);
-    } else {
-      return CoreInfo::AnyType;
-    }
-  }
+  SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("Will match the output types of the first shard of the sequence."); }
 
   static SHParametersInfo parameters() { return _params; }

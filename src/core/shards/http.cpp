@@ -91,6 +91,7 @@ struct Base {
   static inline std::array<SHString, 3> FullOutputKeys{"status", "headers", "body"};
   static inline Type FullStrOutputType = Type::TableOf(FullStrOutputTypes, FullOutputKeys);
   static inline Type FullBytesOutputType = Type::TableOf(FullBytesOutputTypes, FullOutputKeys);
+  static inline Types AllOutputTypes{{FullBytesOutputType, CoreInfo::BytesType, FullStrOutputType, CoreInfo::StringType}};
 
   static inline Parameters params{
       {"URL", SHCCSTR("The url to request to"), {CoreInfo::StringType, CoreInfo::StringVarType}},
@@ -105,21 +106,7 @@ struct Base {
        {CoreInfo::BoolType}}};
   static SHParametersInfo parameters() { return params; }
 
-  SHTypesInfo outputTypes() {
-    if (fullResponse) {
-      if (asBytes) {
-        return FullBytesOutputType;
-      } else {
-        return FullStrOutputType;
-      }
-    } else {
-      if (asBytes) {
-        return CoreInfo::BytesType;
-      } else {
-        return CoreInfo::StringType;
-      }
-    }
-  }
+  SHTypesInfo outputTypes() { return AllOutputTypes; }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -177,6 +164,22 @@ struct Base {
   void cleanup() {
     url.cleanup();
     headers.cleanup();
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (fullResponse) {
+      if (asBytes) {
+        return FullBytesOutputType;
+      } else {
+        return FullStrOutputType;
+      }
+    } else {
+      if (asBytes) {
+        return CoreInfo::BytesType;
+      } else {
+        return CoreInfo::StringType;
+      }
+    }
   }
 
   static void fetchSucceeded(emscripten_fetch_t *fetch) {

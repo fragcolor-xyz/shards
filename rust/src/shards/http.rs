@@ -9,6 +9,7 @@ use crate::shard::Shard;
 use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;
+use crate::types::InstanceData;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::RawString;
@@ -44,8 +45,6 @@ lazy_static! {
     common_type::bytes,
     common_type::string
   ];
-  static ref STR_OUTPUT_TYPE: Vec<Type> = vec![common_type::string];
-  static ref BYTES_OUTPUT_TYPE: Vec<Type> = vec![common_type::bytes];
   static ref _STR_FULL_OUTPUT_TYPES: Vec<Type> = vec![
     common_type::int,
     common_type::string_table,
@@ -59,8 +58,12 @@ lazy_static! {
   static ref STR_FULL_OUTPUT_TTYPE: Type = Type::table(FULL_OUTPUT_KEYS, &_STR_FULL_OUTPUT_TYPES);
   static ref BYTES_FULL_OUTPUT_TTYPE: Type =
     Type::table(FULL_OUTPUT_KEYS, &_BYTES_FULL_OUTPUT_TYPES);
-  static ref STR_FULL_OUTPUT_TYPE: Vec<Type> = vec![*STR_FULL_OUTPUT_TTYPE];
-  static ref BYTES_FULL_OUTPUT_TYPE: Vec<Type> = vec![*BYTES_FULL_OUTPUT_TTYPE];
+  static ref ALL_OUTPUT_TYPES: Vec<Type> = vec![
+    *BYTES_FULL_OUTPUT_TTYPE,
+    common_type::bytes,
+    *STR_FULL_OUTPUT_TTYPE,
+    common_type::string
+  ];
   static ref GET_PARAMETERS: Parameters = vec![
     (cstr!("URL"), shccstr!("The url to request to."), URL_TYPES).into(),
     (
@@ -124,17 +127,7 @@ impl Default for RequestBase {
 
 impl RequestBase {
   fn _outputTypes(&mut self) -> &Types {
-    if self.as_bytes {
-      if self.full_response {
-        &BYTES_FULL_OUTPUT_TYPE
-      } else {
-        &BYTES_OUTPUT_TYPE
-      }
-    } else if self.full_response {
-      &STR_FULL_OUTPUT_TYPE
-    } else {
-      &STR_OUTPUT_TYPE
-    }
+    &ALL_OUTPUT_TYPES
   }
 
   fn _parameters(&mut self) -> Option<&Parameters> {
@@ -177,6 +170,21 @@ impl RequestBase {
     self.url.cleanup();
     self.headers.cleanup();
     self.client = None;
+  }
+
+  fn _compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
+    let output_type = if self.as_bytes {
+      if self.full_response {
+        *BYTES_FULL_OUTPUT_TTYPE
+      } else {
+        common_type::bytes
+      }
+    } else if self.full_response {
+      *STR_FULL_OUTPUT_TTYPE
+    } else {
+      common_type::string
+    };
+    Ok(output_type)
   }
 
   fn _finalize(&mut self, response: Response) -> Result<Var, &str> {
@@ -277,6 +285,14 @@ macro_rules! get_like {
         Ok(())
       }
 
+      fn hasCompose() -> bool {
+        true
+      }
+
+      fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.rb._compose(data)
+      }
+
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
         Ok(run_blocking(self, context, input))
       }
@@ -370,6 +386,14 @@ macro_rules! post_like {
       fn cleanup(&mut self) -> Result<(), &str> {
         self.rb._cleanup();
         Ok(())
+      }
+
+      fn hasCompose() -> bool {
+        true
+      }
+
+      fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.rb._compose(data)
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
