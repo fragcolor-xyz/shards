@@ -247,7 +247,7 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
       textureBinding.visibility = WGPUShaderStage_Fragment;
       textureBinding.texture.multisampled = false;
       textureBinding.texture.sampleType = WGPUTextureSampleType_Float;
-      switch (desc.dimension) {
+      switch (desc.type.dimension) {
       case TextureDimension::D1:
         textureBinding.texture.viewDimension = WGPUTextureViewDimension_1D;
         break;
@@ -471,7 +471,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 void PipelineBuilder::collectTextureBindings() {
   for (auto &feature : features) {
     for (auto &textureParam : feature->textureParams) {
-      textureBindings.addOrUpdateSlot(textureParam.name, textureParam.dimension, 0);
+      textureBindings.addOrUpdateSlot(textureParam.name, textureParam.type, 0);
     }
   }
 

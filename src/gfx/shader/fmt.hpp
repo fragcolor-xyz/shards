@@ -2,6 +2,7 @@
 #define GFX_SHADER_FMT
 
 #include "types.hpp"
+#include "wgsl_mapping.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <variant>

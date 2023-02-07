@@ -25,8 +25,12 @@ size_t getWGSLAlignment(const ShaderFieldBaseType &type);
 
 namespace shader {
 struct TextureFieldType {
-  ShaderTextureFormat format;
-  gfx::TextureDimension dimension;
+  gfx::TextureDimension dimension = gfx::TextureDimension::D2;
+  ShaderTextureFormat format = ShaderTextureFormat::Float32;
+
+  TextureFieldType() = default;
+  TextureFieldType(gfx::TextureDimension dimension, ShaderTextureFormat format = ShaderTextureFormat::Float32)
+      : dimension(dimension), format(format) {}
 
   std::strong_ordering operator<=>(const TextureFieldType &other) const = default;
 };

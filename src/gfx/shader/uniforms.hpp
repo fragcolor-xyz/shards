@@ -154,13 +154,13 @@ struct TextureDefinition {
   String variableName;
   String defaultTexcoordVariableName;
   String defaultSamplerVariableName;
-  TextureDimension dimension;
+  TextureFieldType type;
 
   TextureDefinition(String variableName) : variableName(variableName) {}
   TextureDefinition(String variableName, String defaultTexcoordVariableName, String defaultSamplerVariableName,
-                    TextureDimension dimension)
+                    TextureFieldType type)
       : variableName(variableName), defaultTexcoordVariableName(defaultTexcoordVariableName),
-        defaultSamplerVariableName(defaultSamplerVariableName), dimension(dimension) {}
+        defaultSamplerVariableName(defaultSamplerVariableName), type(type) {}
 };
 
 } // namespace shader

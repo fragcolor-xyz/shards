@@ -29,12 +29,8 @@ static std::vector<const EntryPoint *> getEntryPointPtrs(const std::vector<Entry
 
 template <typename T>
 static void generateTextureVars(T &output, const TextureDefinition &def, size_t group, size_t binding, size_t samplerBinding) {
-  TextureFieldType textureFieldType{
-      .format = ShaderTextureFormat::Float32,
-      .dimension = def.dimension,
-  };
   output += fmt::format("@group({}) @binding({})\n", group, binding);
-  output += fmt::format("var {}: {};\n", def.variableName, getFieldWGSLTypeName(textureFieldType));
+  output += fmt::format("var {}: {};\n", def.variableName, getFieldWGSLTypeName(def.type));
 
   SamplerFieldType samplerFieldType{};
   output += fmt::format("@group({}) @binding({})\n", group, samplerBinding);
@@ -492,7 +488,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
   std::map<String, TextureDefinition> textureDefinitions;
   for (auto &texture : textureBindingLayout.bindings) {
     TextureDefinition def("t_" + texture.name, fmt::format("texCoord{}", texture.defaultTexcoordBinding), "s_" + texture.name,
-                          texture.dimension);
+                          texture.type);
     generateTextureVars(headerCode, def, textureBindGroup, texture.binding, texture.defaultSamplerBinding);
     textureDefinitions.insert_or_assign(texture.name, def);
   }
@@ -627,7 +623,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
   }
 
   for (auto &texture : textureBindingLayout.bindings) {
-    context.definitions.textures.emplace(texture.name, "").first->second.dimension = texture.dimension;
+    context.definitions.textures.emplace(texture.name, "").first->second.type = texture.type;
   }
 
   for (size_t i = 0; i < NumGraphicsStages; i++) {
