@@ -27,7 +27,7 @@ struct PlaceholderTexture {
     TextureDesc desc{};
     desc.resolution = resolution;
     desc.format.pixelFormat = WGPUTextureFormat_RGBA8UnormSrgb;
-    desc.format.type = dimension;
+    desc.format.dimension = dimension;
     switch (dimension) {
     case TextureDimension::D1:
     case TextureDimension::D2: {

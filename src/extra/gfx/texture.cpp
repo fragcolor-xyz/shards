@@ -239,7 +239,7 @@ struct TextureShard {
     texture->init(TextureDesc{
         .format =
             TextureFormat{
-                .type = getTextureDimension(),
+                .dimension = getTextureDimension(),
                 .flags = TextureFormatFlags::RenderAttachment,
                 .pixelFormat = (WGPUTextureFormat)formatVar.payload.enumValue,
                 .mipLevels = mipLevels,

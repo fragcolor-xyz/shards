@@ -31,7 +31,7 @@ struct SamplerState {
 };
 
 struct TextureFormat {
-  TextureDimension type = TextureDimension::D2;
+  TextureDimension dimension = TextureDimension::D2;
   TextureFormatFlags flags = TextureFormatFlags::AutoGenerateMips;
   WGPUTextureFormat pixelFormat = WGPUTextureFormat::WGPUTextureFormat_Undefined;
   uint8_t mipLevels = 1;

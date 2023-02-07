@@ -3,6 +3,7 @@
 #include "common_types.hpp"
 #include "drawable_utils.hpp"
 #include "extra/gfx.hpp"
+#include "extra/gfx/drawable_utils.hpp"
 #include "extra/gfx/shards_types.hpp"
 #include "foundation.hpp"
 #include "gfx/enums.hpp"
@@ -447,19 +448,19 @@ public:
     }
   }
 
-  static ParamVariant paramToVariant(SHContext *context, SHVar v) {
+  static std::variant<ParamVariant, TextureParameter> paramVarToShaderParameter(SHContext *context, SHVar v) {
     SHVar *ref{};
     if (v.valueType == SHType::ContextVar) {
       ref = referenceVariable(context, v.payload.stringValue);
       v = *ref;
     }
 
-    ParamVariant variant = varToParam(v);
+    auto shaderParam = varToShaderParameter(v);
 
     if (ref)
       releaseVariable(ref);
 
-    return variant;
+    return shaderParam;
   }
 
   // Returns the field type, or std::monostate if not specified
@@ -506,17 +507,28 @@ public:
     }
 
     SHVar defaultVar;
-    ParamVariant defaultValue;
+    std::optional<std::variant<ParamVariant, TextureParameter>> defaultValue;
     if (getFromTable(context, inputTable, "Default", defaultVar)) {
-      defaultValue = paramToVariant(context, defaultVar);
+      defaultValue = paramVarToShaderParameter(context, defaultVar);
     }
 
     auto derivedType = getShaderFieldType(context, inputTable);
     if (!derivedType.has_value()) {
-      if (defaultValue.index() > 0) {
-        // Derive field type from given default value
-        auto fieldType = getParamVariantType(defaultValue);
-        feature.shaderParams.emplace_back(name, fieldType, defaultValue);
+      if (defaultValue.has_value()) {
+        std::visit(
+            [&](auto &&arg) {
+              using T = std::decay_t<decltype(arg)>;
+              if constexpr (std::is_same_v<T, ParamVariant>) {
+                // Derive field type from given default value
+                auto fieldType = getParamVariantType(arg);
+                feature.shaderParams.emplace_back(name, fieldType, arg);
+              } else if constexpr (std::is_same_v<T, TextureParameter>) {
+                NamedTextureParam &param = feature.textureParams.emplace_back(name);
+                param.defaultValue = arg.texture;
+                param.type.dimension = arg.texture->getFormat().dimension;
+              }
+            },
+            defaultValue.value());
       } else {
         throw formatException("Shader parameter \"{}\" should have a type or default value", name);
       }
@@ -610,8 +622,8 @@ public:
       if (v.valueType == SHType::Object) {
         collector.setTexture(k, varToTexture(v));
       } else {
-        ParamVariant variant = paramToVariant(context, v);
-        collector.setParam(k, variant);
+        auto shaderParam = paramVarToShaderParameter(context, v);
+        collector.setParam(k, std::get<ParamVariant>(shaderParam));
       }
     });
   }

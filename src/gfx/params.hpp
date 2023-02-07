@@ -14,9 +14,6 @@ namespace gfx {
 /// <div rustbindgen opaque></div>
 typedef std::variant<std::monostate, float, float2, float3, float4, float4x4, uint32_t> ParamVariant;
 
-/// <div rustbindgen opaque></div>
-typedef std::variant<std::monostate, float, float2, float3, float4, float4x4, uint32_t> TextureVariant;
-
 /// <div rustbindgen hide></div>
 struct TextureParameter {
   TexturePtr texture;
