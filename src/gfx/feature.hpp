@@ -137,13 +137,13 @@ enum class ShaderParamFlags {
 };
 
 struct NamedShaderParam {
-  shader::FieldType type = shader::FieldType(ShaderFieldBaseType::Float32, 4);
+  shader::NumFieldType type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4);
   std::string name;
   ParamVariant defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
 
   NamedShaderParam() = default;
-  NamedShaderParam(std::string name, const shader::FieldType &type = shader::FieldType(ShaderFieldBaseType::Float32, 4),
+  NamedShaderParam(std::string name, const shader::NumFieldType &type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4),
                    ParamVariant defaultValue = ParamVariant());
   NamedShaderParam(std::string name, ParamVariant defaultValue);
 

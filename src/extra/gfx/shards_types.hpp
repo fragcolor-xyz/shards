@@ -67,6 +67,10 @@ struct SHDrawQueue {
   DrawQueuePtr queue;
 };
 
+struct SHSampler {
+  // Unused for now
+};
+
 constexpr uint32_t VendorId = shards::CoreCC;
 
 namespace detail {
@@ -84,6 +88,7 @@ struct Container {
   OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue)
   OBJECT('tex_', "GFX.Texture2D", Texture, TexturePtr)
   OBJECT('texc', "GFX.TextureCube", TextureCube, TexturePtr)
+  OBJECT('smpl', "GFX.Sampler", Sampler, SHSampler)
   OBJECT('__RT', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
 
   DECL_ENUM_INFO(gfx::WindingOrder, WindingOrder, '_e0');

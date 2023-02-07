@@ -15,7 +15,7 @@ namespace shader {
 struct UniformLayout {
   size_t offset{};
   size_t size{};
-  FieldType type{};
+  NumFieldType type{};
 
   bool isEqualIgnoreOffset(const UniformLayout &other) const { return size == other.size && type == other.type; }
 };
@@ -43,7 +43,7 @@ private:
   size_t offset = 0;
 
 public:
-  UniformLayout generateNext(const FieldType &paramType) const {
+  UniformLayout generateNext(const NumFieldType &paramType) const {
     UniformLayout result;
 
     size_t elementAlignment = paramType.getWGSLAlignment();
@@ -55,7 +55,7 @@ public:
     return result;
   }
 
-  const UniformLayout &push(const String &name, const FieldType &paramType) {
+  const UniformLayout &push(const String &name, const NumFieldType &paramType) {
     return pushInternal(name, generateNext(paramType));
   }
 
@@ -63,7 +63,7 @@ public:
   template <typename T> void optimize(T &&filter) {
     struct QueueItem {
       std::string name;
-      FieldType fieldType;
+      NumFieldType fieldType;
     };
     std::vector<QueueItem> queue;
 

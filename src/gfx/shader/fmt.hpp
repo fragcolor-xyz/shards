@@ -4,6 +4,26 @@
 #include "types.hpp"
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
+#include <variant>
+
+template <> struct fmt::formatter<gfx::shader::NumFieldType> {
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
+    auto it = ctx.begin(), end = ctx.end();
+    if (it != end)
+      throw format_error("invalid format");
+    return it;
+  }
+
+  template <typename FormatContext>
+  auto format(const gfx::shader::NumFieldType &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
+    auto baseTypeName = magic_enum::enum_name(fieldType.baseType);
+    if (fieldType.matrixDimension > 1) {
+      return format_to(ctx.out(), "{{{}, {}x{}}}", baseTypeName, fieldType.numComponents, fieldType.matrixDimension);
+    } else {
+      return format_to(ctx.out(), "{{{}, {}}}", baseTypeName, fieldType.numComponents);
+    }
+  }
+};
 
 template <> struct fmt::formatter<gfx::shader::FieldType> {
   constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
@@ -15,12 +35,16 @@ template <> struct fmt::formatter<gfx::shader::FieldType> {
 
   template <typename FormatContext>
   auto format(const gfx::shader::FieldType &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
-    auto baseTypeName = magic_enum::enum_name(fieldType.baseType);
-    if (fieldType.matrixDimension > 1) {
-      return format_to(ctx.out(), "{{{}, {}x{}}}", baseTypeName, fieldType.numComponents, fieldType.matrixDimension);
-    } else {
-      return format_to(ctx.out(), "{{{}, {}}}", baseTypeName, fieldType.numComponents);
-    }
+    return std::visit(
+        [&](auto &arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, gfx::shader::NumFieldType>) {
+            return format_to(ctx.out(), "{}", arg);
+          } else {
+            return format_to(ctx.out(), "{{{}}}", gfx::shader::getFieldWGSLTypeName(arg));
+          }
+        },
+        fieldType);
   }
 };
 

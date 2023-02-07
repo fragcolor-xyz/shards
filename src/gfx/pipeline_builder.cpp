@@ -353,7 +353,7 @@ void PipelineBuilder::setupShaderDefinitions(const WGPULimits &deviceLimits, boo
 }
 
 void PipelineBuilder::setupShaderOutputFields() {
-  FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
+  NumFieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
   size_t index = 0;
   size_t depthIndex = renderTargetLayout.depthTargetIndex.value_or(~0);
@@ -361,7 +361,7 @@ void PipelineBuilder::setupShaderOutputFields() {
     // Ignore depth target, it's implicitly bound to z depth
     if (index != depthIndex) {
       auto &formatDesc = getTextureFormatDescription(target.format);
-      FieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
+      NumFieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
       generator.outputFields.emplace_back(target.name, fieldType);
     }
     index++;
