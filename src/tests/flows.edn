@@ -442,3 +442,17 @@
 (schedule Root test-worker-1)
 (schedule Root test-worker-2)
 (if (run Root 0.1 20) nil (throw "Root tick failed"))
+
+(Wire "test" (-> (Msg "Hello")))
+
+(defwire a-perfect-circle
+  (Log)
+  (When (Is false) (Stop))
+  false (Spawn a-perfect-circle))
+
+(defwire a-perfect-starter
+  true (Spawn a-perfect-circle))
+
+(schedule Root a-perfect-starter)
+(if (run Root 0.1 20) nil (throw "Root tick failed"))
+
