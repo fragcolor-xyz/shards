@@ -16,11 +16,11 @@ struct TextureBinding {
   size_t defaultTexcoordBinding{};
   size_t binding{};
   size_t defaultSamplerBinding{};
-  TextureType type;
+  TextureDimension dimension;
 
   // TextureBinding() = default;
-  TextureBinding(String name, TextureType type, size_t defaultTexcoordBinding = 0)
-      : name(name), defaultTexcoordBinding(defaultTexcoordBinding), type(type) {}
+  TextureBinding(String name, TextureDimension dimension, size_t defaultTexcoordBinding = 0)
+      : name(name), defaultTexcoordBinding(defaultTexcoordBinding), dimension(dimension) {}
 };
 
 struct TextureBindingLayout {
@@ -33,19 +33,19 @@ private:
   TextureBindingLayout layout;
 
 public:
-  void addOrUpdateSlot(const String &name, TextureType type, size_t defaultTexcoordBinding) {
+  void addOrUpdateSlot(const String &name, TextureDimension dimension, size_t defaultTexcoordBinding) {
     auto it = mapping.find(name);
     TextureBinding *binding;
     if (it == mapping.end()) {
       size_t index = layout.bindings.size();
       mapping.insert_or_assign(name, index);
 
-      binding = &layout.bindings.emplace_back(name, type);
+      binding = &layout.bindings.emplace_back(name, dimension);
     } else {
       binding = &layout.bindings[it->second];
-      if (binding->type != type)
-        throw formatException("Texture {} redefined as type {} but already defined as {}", name, magic_enum::enum_name(type),
-                              magic_enum::enum_name(binding->type));
+      if (binding->dimension != dimension)
+        throw formatException("Texture {} redefined as type {} but already defined as {}", name, magic_enum::enum_name(dimension),
+                              magic_enum::enum_name(binding->dimension));
     }
     binding->defaultTexcoordBinding = defaultTexcoordBinding;
   }

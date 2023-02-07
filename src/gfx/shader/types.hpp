@@ -1,6 +1,7 @@
-#ifndef GFX_SHADER_TYPES
-#define GFX_SHADER_TYPES
+#ifndef C9D0BB09_616F_4DAF_BFFF_4328B7893E6A
+#define C9D0BB09_616F_4DAF_BFFF_4328B7893E6A
 
+#include "../enums.hpp"
 #include "fwd.hpp"
 #include <optional>
 #include <string>
@@ -10,16 +11,20 @@ namespace gfx {
 // TODO: Rename to BaseType
 // TODO: Move to shader namespace
 enum class ShaderFieldBaseType { Bool, UInt8, Int8, UInt16, Int16, UInt32, Int32, Float16, Float32 };
+enum class ShaderTextureFormat {
+  Int32,
+  UInt32,
+  Float32,
+};
 bool isIntegerType(const ShaderFieldBaseType &type);
 bool isFloatType(const ShaderFieldBaseType &type);
 size_t getByteSize(const ShaderFieldBaseType &type);
 size_t getWGSLAlignment(const ShaderFieldBaseType &type);
 
 namespace shader {
-
-enum struct UniformShard {
-  View,
-  Object,
+struct TextureFieldType {
+  ShaderTextureFormat format;
+  gfx::TextureDimension dimension;
 };
 
 // Structure to represent wgsl numerical types (numbers, vectors, matrices)
@@ -76,4 +81,4 @@ struct NamedField {
 } // namespace shader
 } // namespace gfx
 
-#endif // GFX_SHADER_TYPES
+#endif /* C9D0BB09_616F_4DAF_BFFF_4328B7893E6A */
