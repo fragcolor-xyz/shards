@@ -1,37 +1,27 @@
-(defshards define-montecarlo [texture sampler base-dir body num-samples]
-  (Shader.Literal :Type ShaderLiteralType.Header :Source ["fn montecarlo(baseDir: vec3<f32>) -> vec3<f32> {
-	let tbn = generateFrameFromZDirection(" base-dir ");
-
-	let weight = 0.0;
-	let result = vec3<f32>(0, 0, 0);"
-
-                                                              "var result = vec2<f32>();
+(defshards shader-integrate [texture sampler base-dir body num-samples args]
+  (Shader.Literal :Type ShaderLiteralType.Header :Source ["fn integrate(args: vec4<f32>, baseDir: vec3<f32>, _texture: texture_cube<f32>, _sampler: sampler) -> vec3<f32> {
+	let tbn = generateFrameFromZDirection(baseDir);
+	var weight = 0.0;
+	var result = vec3<f32>(0.0);" "
   var sampleIndex = 0;
   loop {
     if(sampleIndex >= " num-samples ") {
       break;
-    }"
-
-                                                              "MonteCarloInput mci;
+    }" "
+    var mci: MonteCarloInput;
 		mci.baseDirection = baseDir;
 		mci.coord = hammersley2d(sampleIndex, MONTECARLO_NUM_SAMPLES);
-		mci.uvCoord = inputUV;
-
 		let mco = " body ";
-
-		let lod = getWeightedLod(mco.pdf);"
-
-                                                              "let direction = tbn * mco.localDirection;
-		let s = sampleEnvironmentLod(" texture ", " sampler ", direction, lod);
-		result += s * mco.sampleScale;
-		weight += mco.sampleWeight;
-
+		let lod = getWeightedLod(mco.pdf, " num-samples ", _texture);" "
+    let direction = tbn * mco.localDirection;
+		let s = sampleEnvironmentLod(_texture, _sampler, direction, lod);
+		result = result + s * mco.sampleScale;
+		weight = weight + mco.sampleWeight;" "
     sampleIndex = sampleIndex + 1;
 	}
-	result /= weight;
-
-	return result;
-}"]))
+	return result / weight;
+}"])
+  (Shader.Literal ["integrate(" args "," base-dir "," texture "," sampler ")"] :OutputDimension 3))
 
 (defshards compute-specular-lut [out-name]
   (Msg "Computing specular split-sum LUT")
@@ -51,10 +41,15 @@
   )
 
 (defshards compute-irradiance-fs []
-  ;; (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/pbr.wgsl"))
+  (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/pbr.wgsl"))
   (Shader.ReadInput "worldNormal") >= .world-normal
+  (Shader.RefTexture "source") = .source-texture
+  (Shader.RefSampler "source") = .source-sampler
   ;; (Float3 0.4 0.2 -0.2)
   .world-normal (Math.Abs)
+  ;; (Shader.Literal ["textureSampleLevel(" .source-texture "," .source-sampler",".world-normal", 0.0)"] :OutputDimension 4)
+  (Shader.ReadBuffer "roughness") (ToFloat4) = .args
+  (shader-integrate .source-texture .source-sampler .world-normal "ggx(args.x, mci)" "1024" .args)
   (ToFloat4) (Math.Add (Float4 0 0 0 1))
   (Shader.WriteOutput "color"))
 
@@ -66,8 +61,12 @@
 
 (defwire compute-irradiance-mip
   .current-mip (Log "Computing irradiance mip level")
-
-  {:Shaders [{:Stage ProgrammableGraphicsStage.Fragment
+  .num-mips (Math.Subtract 1) (ToFloat) = .div
+  .current-mip (ToFloat) (Math.Divide .div) = .roughness
+  .roughness (Log "Roughness")
+  {:Params [{:Name "source" :Default .cube-tex}
+            {:Name "roughness" :Default .roughness}]
+   :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
               :EntryPoint (compute-irradiance-fs)}]} (GFX.Feature) >= .filter-feature
   (filter-cubemap .filter-feature .cube-tex-1 .current-mip))
 
@@ -90,7 +89,7 @@
 
           (compute-specular-lut .specular-lut-tex);
           ))
-  {:env .cube-tex})
+  {:env .cube-tex-1})
 
 (defshards setup-pbr-feature [included-steps]
   {:Params [{:Name "roughness" :Default 1.0}
@@ -112,8 +111,15 @@
       (Shader.ReadBuffer "metalicness") >= .metalicness
 
       (Shader.ReadGlobal "color") >= .base-color
-      .world-normal (Math.Multiply (Float3 1 1 -1)) (Shader.SampleTextureCoord "env") >= .refl-color
-      .roughness (Math.Lerp  .refl-color .base-color)
+
+      (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/pbr.wgsl"))
+      (Shader.RefTexture "env") = .env-texture
+      (Shader.RefSampler "env") = .env-sampler
+      (Shader.Literal ["textureSampleLevel(" .env-texture "," .env-sampler ",".reflect-dir", 2.0)"] :OutputDimension 4) >= .refl-color
+
+      ;; .world-normal (Math.Multiply (Float3 1 1 -1)) (Shader.SampleTextureCoord "env") >= .refl-color
+      ;; .roughness (Math.Lerp  .refl-color .base-color)
+      .refl-color
       ; NOTE: Because of our coordinate space with the camera viewing -Z direction
       ;       It needs to be flipped when sampling cubemaps
       (Math.Multiply (Float4 1 1 1 0)) (Math.Add (Float4 0 0 0 1))

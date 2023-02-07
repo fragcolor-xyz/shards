@@ -26,7 +26,6 @@ struct LightingVectorSample {
 struct MonteCarloInput {
   baseDirection: vec3<f32>,
   coord: vec2<f32>,
-  uvCoord: vec2<f32>,
 }
 
 struct MonteCarloOutput {
@@ -166,12 +165,6 @@ fn getIBLRadianceLambertian(lambertianSample: vec3<f32>, ggxLUT: vec2<f32>, fres
 	return (FmsEms + k_D) * lambertianSample;
 }
 fn sampleEnvironmentLod(_texture: texture_cube<f32>, _sampler: sampler, dir: vec3<f32>, lod: f32) -> vec3<f32> {
-	// let polar = directionToLongLat(dir);
-	// let uv = vec2<f32>(
-	// 	(polar.x / PI2), // azimuthal angle
-	// 	(polar.y / PI) // polar angle 
-	// );
-	// return textureSampleLevel(_texture, _sampler, uv, lod).xyz;
   return textureSampleLevel(_texture, _sampler, dir, lod).xyz;
 }
 
@@ -214,7 +207,7 @@ fn computeEnvironmentLighting( material: MaterialInfo, params: LightingGeneralPa
 	return diffuseLight + specularLight;
 }
 
-fn getWeightedLod(pdf: f32, num_samples: i32, texture: texture_2d<f32>) -> f32 {
+fn getWeightedLod(pdf: f32, num_samples: i32, texture: texture_cube<f32>) -> f32 {
  // https://cgg.mff.cuni.cz/~jaroslav/papers/2007-sketch-fis/Final_sap_0073.pdf
 	let inputDims = textureDimensions(texture);
 	return 0.5 * log2(6.0 * f32(inputDims.x) * f32(inputDims.x) / (f32(num_samples) * pdf));
