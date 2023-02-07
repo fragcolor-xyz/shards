@@ -146,14 +146,14 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
     }
 
     switch (desc.format.type) {
-    case TextureType::D1:
+    case TextureDimension::D1:
       wgpuDesc.dimension = WGPUTextureDimension_1D;
       contextData.size.height = 1;
       break;
-    case TextureType::D2:
+    case TextureDimension::D2:
       wgpuDesc.dimension = WGPUTextureDimension_2D;
       break;
-    case TextureType::Cube:
+    case TextureDimension::Cube:
       wgpuDesc.dimension = WGPUTextureDimension_2D;
       contextData.size.depthOrArrayLayers = 6;
       break;

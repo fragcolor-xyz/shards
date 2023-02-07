@@ -66,14 +66,14 @@ struct TextureShard {
     texture = std::make_shared<Texture>();
 
     // Set TypeId based on texture dimension so we can check bindings at compose time
-    gfx::TextureType dim = getTextureDimension();
+    gfx::TextureDimension dim = getTextureDimension();
     switch (dim) {
-    case gfx::TextureType::D1:
+    case gfx::TextureDimension::D1:
       throw formatException("TextureDimension.D1 not supported");
-    case gfx::TextureType::D2:
+    case gfx::TextureDimension::D2:
       textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureTypeId);
       break;
-    case gfx::TextureType::Cube:
+    case gfx::TextureDimension::Cube:
       textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureCubeTypeId);
       break;
     }
@@ -84,8 +84,8 @@ struct TextureShard {
     texture.reset();
   }
 
-  gfx::TextureType getTextureDimension() const {
-    return !_dimension.isNone() ? gfx::TextureType(_dimension.payload.enumValue) : gfx::TextureType::D2;
+  gfx::TextureDimension getTextureDimension() const {
+    return !_dimension.isNone() ? gfx::TextureDimension(_dimension.payload.enumValue) : gfx::TextureDimension::D2;
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -110,7 +110,7 @@ struct TextureShard {
     }
 
     auto dim = getTextureDimension();
-    if (dim == gfx::TextureType::Cube)
+    if (dim == gfx::TextureDimension::Cube)
       return Types::TextureCube;
     else
       return Types::Texture;

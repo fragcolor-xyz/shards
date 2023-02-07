@@ -49,7 +49,7 @@ void TestRenderer::createRenderTarget(int2 res) {
   rtTexture->init(TextureDesc{
       .format =
           TextureFormat{
-              .type = TextureType::D2,
+              .type = TextureDimension::D2,
               .flags = TextureFormatFlags::RenderAttachment,
               .pixelFormat = rtFormat,
           },

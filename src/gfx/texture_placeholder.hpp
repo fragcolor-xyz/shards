@@ -12,7 +12,7 @@
 namespace gfx {
 
 struct PlaceholderTexture {
-  static TexturePtr create(TextureType dimension, int2 resolution, float4 fillColor) {
+  static TexturePtr create(TextureDimension dimension, int2 resolution, float4 fillColor) {
     size_t numLayerPixels = resolution.x * resolution.y;
     size_t layerSizeBytes = sizeof(uint32_t) * numLayerPixels;
     std::vector<uint8_t> data;
@@ -29,12 +29,12 @@ struct PlaceholderTexture {
     desc.format.pixelFormat = WGPUTextureFormat_RGBA8UnormSrgb;
     desc.format.type = dimension;
     switch (dimension) {
-    case TextureType::D1:
-    case TextureType::D2: {
+    case TextureDimension::D1:
+    case TextureDimension::D2: {
       data.resize(layerSizeBytes);
       fillLayer((uint32_t *)data.data());
     } break;
-    case TextureType::Cube: {
+    case TextureDimension::Cube: {
       data.resize(layerSizeBytes * 6);
       for (size_t i = 0; i < 6; i++)
         fillLayer((uint32_t *)data.data() + numLayerPixels * i);
