@@ -126,7 +126,7 @@ struct TakeTranslator {
     std::string swizzle = generateSwizzle(shard);
 
     auto &outVectorType = *shard->_vectorOutputType;
-    FieldType outFieldType = getShaderBaseType(outVectorType.numberType);
+    NumFieldType outFieldType = getShaderBaseType(outVectorType.numberType);
     outFieldType.numComponents = outVectorType.dimension;
 
     SPDLOG_LOGGER_INFO(context.logger, "gen(take)> {}", swizzle);
@@ -187,7 +187,7 @@ struct Literal {
     }
 
     if (isSet) {
-      return FieldType(baseType, dimension, matrixDimension);
+      return NumFieldType(baseType, dimension, matrixDimension);
     }
     return std::nullopt;
   }
@@ -402,7 +402,8 @@ struct ReadBuffer final : public IOBase {
   void translate(TranslationContext &context) {
     SPDLOG_LOGGER_INFO(context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _bufferName, _name);
 
-    context.setWGSLTop<WGSLBlock>(_type.shaderType, blocks::makeBlock<blocks::ReadBuffer>(_name, _type.shaderType, _bufferName));
+    NumFieldType fieldType = std::get<NumFieldType>(_type.shaderType);
+    context.setWGSLTop<WGSLBlock>(_type.shaderType, blocks::makeBlock<blocks::ReadBuffer>(_name, fieldType, _bufferName));
   }
 };
 
@@ -417,7 +418,7 @@ template <typename TShard> struct Write : public IOBase {
       throw ShaderComposeError(fmt::format("Can not write: value is required"));
 
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
-    FieldType fieldType = wgslValue->getType();
+    NumFieldType fieldType = std::get<NumFieldType>(wgslValue->getType());
 
     context.addNew(blocks::makeBlock<TShard>(_name, fieldType, wgslValue->toBlock()));
   }

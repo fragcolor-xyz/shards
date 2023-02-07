@@ -224,7 +224,7 @@ public:
         std::visit(
             [&](auto &&arg) {
               using T = std::decay_t<decltype(arg)>;
-              if constexpr (std::is_same_v<T, shader::FieldType>) {
+              if constexpr (std::is_same_v<T, shader::NumFieldType>) {
                 outBasicParams.emplace_back(k, arg);
               } else if constexpr (std::is_same_v<T, TextureDimension>) {
                 outTextureParams.emplace_back(k, arg);
@@ -464,7 +464,7 @@ public:
 
   // Returns the field type, or std::monostate if not specified
   ShaderFieldTypeVariant getShaderFieldType(SHContext *context, const SHTable &inputTable) {
-    shader::FieldType fieldType;
+    shader::NumFieldType fieldType;
     bool isFieldTypeSet = false;
 
     SHVar typeVar;
@@ -523,7 +523,7 @@ public:
     std::visit(
         [&](auto &&arg) {
           using T = std::decay_t<decltype(arg)>;
-          if constexpr (std::is_same_v<T, shader::FieldType>) {
+          if constexpr (std::is_same_v<T, shader::NumFieldType>) {
             feature.shaderParams.emplace_back(name, arg);
           } else if constexpr (std::is_same_v<T, TextureDimension>) {
             feature.textureParams.emplace_back(name, arg);

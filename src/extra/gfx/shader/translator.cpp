@@ -174,7 +174,7 @@ bool TranslationContext::findVariable(const std::string &varName, const FieldTyp
 
 WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool global, bool allowUpdate,
                                              std::unique_ptr<IWGSLGenerated> &&value) {
-  FieldType valueType = value->getType();
+  NumFieldType valueType = std::get<NumFieldType>(value->getType());
 
   auto updateStorage = [&](VariableStorage &storage, const std::string &varName, const FieldType &fieldType,
                            bool forceNewVariable = false) {
@@ -252,7 +252,7 @@ bool TranslationContext::tryExpandIntoVariable(const std::string &varName) {
   auto it = top.virtualSequences.find(varName);
   if (it != top.virtualSequences.end()) {
     auto &virtualSeq = it->second;
-    FieldType type = virtualSeq.elementType;
+    NumFieldType type = virtualSeq.elementType;
     type.matrixDimension = virtualSeq.elements.size();
 
     auto constructor = blocks::makeCompoundBlock();

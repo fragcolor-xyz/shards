@@ -32,10 +32,10 @@ enum class BufferType {
 struct IGeneratorDynamicHandler {
   // Entry point for generating stage inputs on-demand
   // return true to indicate that the input now exists and the out field is filled in
-  virtual bool createDynamicInput(const char *name, FieldType &out) { return false; }
+  virtual bool createDynamicInput(const char *name, NumFieldType &out) { return false; }
   // Entry point for generating stage outputs on-demand
   // return true to indicate that the output now exists
-  virtual bool createDynamicOutput(const char *name, FieldType requestedType) { return false; }
+  virtual bool createDynamicOutput(const char *name, NumFieldType requestedType) { return false; }
 };
 
 template <typename... TArgs> static GeneratorError formatError(const char *format, TArgs... args) {
@@ -45,9 +45,9 @@ template <typename... TArgs> static GeneratorError formatError(const char *forma
 struct GeneratorDefinitions {
   std::map<String, BufferDefinition> buffers;
   std::map<String, TextureDefinition> textures;
-  std::map<String, FieldType> inputs;
-  std::map<String, FieldType> globals;
-  std::map<String, FieldType> outputs;
+  std::map<String, NumFieldType> inputs;
+  std::map<String, NumFieldType> globals;
+  std::map<String, NumFieldType> outputs;
 };
 
 struct IGeneratorContext {
@@ -60,10 +60,10 @@ struct IGeneratorContext {
   virtual void popHeaderScope() = 0;
 
   virtual void readGlobal(const char *name) = 0;
-  virtual void beginWriteGlobal(const char *name, const FieldType &type) = 0;
+  virtual void beginWriteGlobal(const char *name, const NumFieldType &type) = 0;
   virtual void endWriteGlobal() = 0;
 
-  template <typename T> void writeGlobal(const char *name, const FieldType &type, T &&inner) {
+  template <typename T> void writeGlobal(const char *name, const NumFieldType &type, T &&inner) {
     beginWriteGlobal(name, type);
     inner();
     endWriteGlobal();
@@ -71,10 +71,10 @@ struct IGeneratorContext {
 
   virtual bool hasInput(const char *name) = 0;
   virtual void readInput(const char *name) = 0;
-  virtual const FieldType *getOrCreateDynamicInput(const char *name) = 0;
+  virtual const NumFieldType *getOrCreateDynamicInput(const char *name) = 0;
 
   virtual bool hasOutput(const char *name) = 0;
-  virtual void writeOutput(const char *name, const FieldType &type) = 0;
+  virtual void writeOutput(const char *name, const NumFieldType &type) = 0;
 
   virtual bool hasTexture(const char *name, bool defaultTexcoordRequired = true) = 0;
   virtual const TextureDefinition *getTexture(const char *name) = 0;
@@ -82,7 +82,7 @@ struct IGeneratorContext {
   virtual void textureDefaultTextureCoordinate(const char *name) = 0;
   virtual void textureDefaultSampler(const char *name) = 0;
 
-  virtual void readBuffer(const char *fieldName, const FieldType &type, const char *bufferName) = 0;
+  virtual void readBuffer(const char *fieldName, const NumFieldType &type, const char *bufferName) = 0;
 
   virtual void pushError(GeneratorError &&error) = 0;
 
@@ -119,16 +119,16 @@ struct GeneratorContext : public IGeneratorContext {
   void writeHeader(const StringView &str);
 
   void readGlobal(const char *name);
-  void beginWriteGlobal(const char *name, const FieldType &type);
+  void beginWriteGlobal(const char *name, const NumFieldType &type);
   void endWriteGlobal();
 
   bool hasInput(const char *name);
   void readInput(const char *name);
-  const FieldType *getOrCreateDynamicInput(const char *name);
+  const NumFieldType *getOrCreateDynamicInput(const char *name);
 
   bool hasOutput(const char *name);
-  void writeOutput(const char *name, const FieldType &type);
-  const FieldType *getOrCreateDynamicOutput(const char *name, FieldType requestedType);
+  void writeOutput(const char *name, const NumFieldType &type);
+  const NumFieldType *getOrCreateDynamicOutput(const char *name, NumFieldType requestedType);
 
   bool hasTexture(const char *name, bool defaultTexcoordRequired = true);
   const TextureDefinition *getTexture(const char *name);
@@ -136,7 +136,7 @@ struct GeneratorContext : public IGeneratorContext {
   void textureDefaultTextureCoordinate(const char *name);
   void textureDefaultSampler(const char *name);
 
-  void readBuffer(const char *fieldName, const FieldType &type, const char *bufferName);
+  void readBuffer(const char *fieldName, const NumFieldType &type, const char *bufferName);
 
   void pushError(GeneratorError &&error);
 
@@ -163,7 +163,7 @@ struct BufferBinding {
 
 struct IndexedBufferBinding {
   std::string name;
-  std::map<std::string, FieldType> accessedFields;
+  std::map<std::string, NumFieldType> accessedFields;
 };
 
 struct IndexedTextureBinding {
@@ -172,7 +172,7 @@ struct IndexedTextureBinding {
 
 struct IndexedOutput {
   std::string name;
-  FieldType type;
+  NumFieldType type;
 };
 
 struct IndexedBindings {

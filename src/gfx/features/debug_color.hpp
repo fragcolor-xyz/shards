@@ -16,7 +16,7 @@ struct DebugColor {
     using namespace shader;
     using namespace shader::blocks;
 
-    FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
+    NumFieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
     FeaturePtr feature = std::make_shared<Feature>();
 

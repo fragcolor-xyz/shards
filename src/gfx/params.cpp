@@ -66,10 +66,10 @@ size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &
   return std::visit(visitor, variant);
 }
 
-using shader::FieldType;
+using shader::NumFieldType;
 using shader::FieldTypes;
-FieldType getParamVariantType(const ParamVariant &variant) {
-  FieldType result = {};
+NumFieldType getParamVariantType(const ParamVariant &variant) {
+  NumFieldType result = {};
   std::visit(
       [&](auto &&arg) {
         using T = std::decay_t<decltype(arg)>;
@@ -87,9 +87,9 @@ FieldType getParamVariantType(const ParamVariant &variant) {
         } else if constexpr (std::is_same_v<T, uint32_t>) {
           result = FieldTypes::UInt32;
         } else if constexpr (std::is_same_v<T, uint16_t>) {
-          result = FieldType(ShaderFieldBaseType::UInt16, 1);
+          result = NumFieldType(ShaderFieldBaseType::UInt16, 1);
         } else if constexpr (std::is_same_v<T, uint8_t>) {
-          result = FieldType(ShaderFieldBaseType::UInt8, 1);
+          result = NumFieldType(ShaderFieldBaseType::UInt8, 1);
         } else {
           throw std::logic_error(fmt::format("Type {} not suported by ParamVariant", NAMEOF_TYPE(T)));
         }

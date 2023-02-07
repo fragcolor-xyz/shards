@@ -89,7 +89,7 @@ struct VariableStorage {
 // Keeps track of pushes into sequences
 // used to resolve them as matrix types
 struct VirtualSeq {
-  FieldType elementType;
+  NumFieldType elementType;
   std::vector<std::unique_ptr<IWGSLGenerated>> elements;
 
   VirtualSeq() = default;
@@ -119,7 +119,6 @@ struct TranslationBlockRef {
   VariableStorage variables;
 
   std::map<std::string, VirtualSeq> virtualSequences;
-  std::map<std::string, VirtualSeq> virtualTables;
 
   TranslationBlockRef(blocks::Block *block, IAppender *appender) : block(block), appender(appender) {}
   TranslationBlockRef(TranslationBlockRef &&other) = default;

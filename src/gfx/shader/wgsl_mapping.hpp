@@ -40,7 +40,7 @@ inline ShaderFieldBaseType getCompatibleShaderFieldBaseType(StorageType type) {
   }
 }
 
-inline String getFieldWGSLTypeName(const FieldType &type) {
+inline String getFieldWGSLTypeName(const NumFieldType &type) {
   const char *baseType = nullptr;
   switch (type.baseType) {
   case ShaderFieldBaseType::UInt8:
@@ -71,13 +71,13 @@ inline String getFieldWGSLTypeName(const FieldType &type) {
     baseType = "bool";
     break;
   default:
-    throw std::out_of_range(NAMEOF(FieldType::baseType).str());
+    throw std::out_of_range(NAMEOF(NumFieldType::baseType).str());
   }
 
   if (type.matrixDimension > 1) {
     // Check, can not create mat1x1 types
     if (type.numComponents <= 1)
-      throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+      throw std::out_of_range(NAMEOF(NumFieldType::numComponents).str());
     return fmt::format("mat{}x{}<{}>", type.numComponents, type.matrixDimension, baseType);
   } else {
     const char *vecType = nullptr;
@@ -94,10 +94,46 @@ inline String getFieldWGSLTypeName(const FieldType &type) {
       vecType = "vec4";
       break;
     default:
-      throw std::out_of_range(NAMEOF(FieldType::numComponents).str());
+      throw std::out_of_range(NAMEOF(NumFieldType::numComponents).str());
     }
     return vecType ? fmt::format("{}<{}>", vecType, baseType) : baseType;
   }
+}
+
+inline String getFieldWGSLTypeName(const TextureFieldType &type) {
+  const char *textureFormat{};
+  switch (type.format) {
+  case ShaderTextureFormat::Int32:
+    textureFormat = "i32";
+    break;
+  case ShaderTextureFormat::UInt32:
+    textureFormat = "u32";
+    break;
+  case ShaderTextureFormat::Float32:
+    textureFormat = "f32";
+    break;
+  }
+
+  const char *textureType{};
+  switch (type.dimension) {
+  case TextureDimension::D1:
+    textureType = "texture_1d";
+    break;
+  case TextureDimension::D2:
+    textureType = "texture_2d";
+    break;
+  case TextureDimension::Cube:
+    textureType = "texture_cube";
+    break;
+  }
+
+  return fmt::format("{}<{}>", textureType, textureFormat);
+}
+
+inline const char *getFieldWGSLTypeName(const SamplerFieldType &type) { return "sampler"; }
+
+inline String getFieldWGSLTypeName(const FieldType &type) {
+  return std::visit([&](auto &arg) -> String { return getFieldWGSLTypeName(arg); }, type);
 }
 
 } // namespace shader

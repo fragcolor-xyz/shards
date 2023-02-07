@@ -30,7 +30,7 @@ struct TextureParameter {
 size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &variant);
 
 /// <div rustbindgen hide></div>
-gfx::shader::FieldType getParamVariantType(const ParamVariant &variant);
+gfx::shader::NumFieldType getParamVariantType(const ParamVariant &variant);
 
 /// <div rustbindgen hide></div>
 struct IParameterCollector {

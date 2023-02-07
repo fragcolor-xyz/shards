@@ -29,26 +29,16 @@ static std::vector<const EntryPoint *> getEntryPointPtrs(const std::vector<Entry
 
 template <typename T>
 static void generateTextureVars(T &output, const TextureDefinition &def, size_t group, size_t binding, size_t samplerBinding) {
-  const char *textureFormat = "f32";
-
-  const char *textureType{};
-  switch (def.dimension) {
-  case TextureDimension::D1:
-    textureType = "texture_1d";
-    break;
-  case TextureDimension::D2:
-    textureType = "texture_2d";
-    break;
-  case TextureDimension::Cube:
-    textureType = "texture_cube";
-    break;
-  }
-
+  TextureFieldType textureFieldType{
+      .format = ShaderTextureFormat::Float32,
+      .dimension = def.dimension,
+  };
   output += fmt::format("@group({}) @binding({})\n", group, binding);
-  output += fmt::format("var {}: {}<{}>;\n", def.variableName, textureType, textureFormat);
+  output += fmt::format("var {}: {};\n", def.variableName, getFieldWGSLTypeName(textureFieldType));
 
+  SamplerFieldType samplerFieldType{};
   output += fmt::format("@group({}) @binding({})\n", group, samplerBinding);
-  output += fmt::format("var {}: sampler;\n", def.defaultSamplerVariableName);
+  output += fmt::format("var {}: {};\n", def.defaultSamplerVariableName, getFieldWGSLTypeName(samplerFieldType));
 }
 
 // Pads a struct to array stride inside an array body
@@ -204,9 +194,9 @@ struct DynamicVertexInput : public IGeneratorDynamicHandler {
 
   DynamicVertexInput(std::vector<StructField> &inputStruct) : inputStruct(inputStruct) {}
 
-  bool createDynamicInput(const char *name, FieldType &out) {
+  bool createDynamicInput(const char *name, NumFieldType &out) {
     if (strcmp(name, "vertex_index") == 0) {
-      out = FieldType(ShaderFieldBaseType::UInt32);
+      out = NumFieldType(ShaderFieldBaseType::UInt32);
       StructField newField = generateDynamicStructInput(name, out);
       inputStruct.push_back(newField);
       return true;
@@ -214,7 +204,7 @@ struct DynamicVertexInput : public IGeneratorDynamicHandler {
     return false;
   }
 
-  StructField generateDynamicStructInput(const String &name, const FieldType &type) {
+  StructField generateDynamicStructInput(const String &name, const NumFieldType &type) {
     if (name == "vertex_index") {
       return StructField(NamedField(name, type), "vertex_index");
     } else {
@@ -228,13 +218,13 @@ struct DynamicVertexOutput : public IGeneratorDynamicHandler {
 
   DynamicVertexOutput(std::vector<StructField> &outputStruct) : outputStruct(outputStruct) {}
 
-  bool createDynamicOutput(const char *name, FieldType requestedType) {
+  bool createDynamicOutput(const char *name, NumFieldType requestedType) {
     StructField newField = generateDynamicStructOutput(name, requestedType);
     outputStruct.push_back(newField);
     return true;
   }
 
-  StructField generateDynamicStructOutput(const String &name, const FieldType &type) {
+  StructField generateDynamicStructOutput(const String &name, const NumFieldType &type) {
     // Handle builtin outputs here
     if (name == "position") {
       return StructField(NamedField(name, type), "position");
@@ -250,13 +240,13 @@ struct DynamicFragmentOutput : public IGeneratorDynamicHandler {
 
   DynamicFragmentOutput(std::vector<StructField> &outputStruct) : outputStruct(outputStruct) {}
 
-  bool createDynamicOutput(const char *name, FieldType requestedType) {
+  bool createDynamicOutput(const char *name, NumFieldType requestedType) {
     StructField newField = generateDynamicStructOutput(name, requestedType);
     outputStruct.push_back(newField);
     return true;
   }
 
-  StructField generateDynamicStructOutput(const String &name, const FieldType &type) {
+  StructField generateDynamicStructOutput(const String &name, const NumFieldType &type) {
     // Handle builtin outputs here
     if (name == "depth") {
       return StructField(NamedField(name, type), "frag_depth");
@@ -283,7 +273,7 @@ struct StageIO {
 
   StageIO(const MeshFormat &meshFormat, const std::vector<NamedField> &outputFields) : outputFields(outputFields) {
     for (auto &attr : meshFormat.vertexAttributes) {
-      vertexInputFields.emplace_back(attr.name, FieldType(getCompatibleShaderFieldBaseType(attr.type), attr.numComponents));
+      vertexInputFields.emplace_back(attr.name, NumFieldType(getCompatibleShaderFieldBaseType(attr.type), attr.numComponents));
     }
 
     for (size_t i = 0; i < vertexInputFields.size(); i++) {
@@ -294,7 +284,7 @@ struct StageIO {
       fragmentOutputStructFields.emplace_back(outputFields[i], i);
     }
 
-    vertexOutputStructFields.emplace_back(NamedField("instanceIndex", FieldType(ShaderFieldBaseType::UInt32, 1)), 0);
+    vertexOutputStructFields.emplace_back(NamedField("instanceIndex", NumFieldType(ShaderFieldBaseType::UInt32, 1)), 0);
 
     dynamicVertexInputHandler.emplace(vertexInputStructFields);
     dynamicVertexOutputHandler.emplace(vertexOutputStructFields);
@@ -566,7 +556,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     void popHeaderScope() {}
 
     void readGlobal(const char *name) {}
-    void beginWriteGlobal(const char *name, const FieldType &type) { definitions.globals.insert_or_assign(name, type); }
+    void beginWriteGlobal(const char *name, const NumFieldType &type) { definitions.globals.insert_or_assign(name, type); }
     void endWriteGlobal() {}
 
     bool hasInput(const char *name) {
@@ -575,8 +565,8 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     }
 
     void readInput(const char *name) {}
-    const FieldType *getOrCreateDynamicInput(const char *name) {
-      FieldType newField;
+    const NumFieldType *getOrCreateDynamicInput(const char *name) {
+      NumFieldType newField;
       for (auto &h : dynamicHandlers) {
         if (h->createDynamicInput(name, newField)) {
           return &definitions.inputs.insert_or_assign(name, newField).first->second;
@@ -591,7 +581,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       return it != definitions.outputs.end();
     }
 
-    void writeOutput(const char *name, const FieldType &type) {
+    void writeOutput(const char *name, const NumFieldType &type) {
       auto it = definitions.outputs.find(name);
       if (it == definitions.outputs.end()) {
         definitions.outputs.insert_or_assign(name, type);
@@ -608,7 +598,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     void textureDefaultTextureCoordinate(const char *name) { findOrAddIndex(result.textureBindings, name); }
     void textureDefaultSampler(const char *name) { findOrAddIndex(result.textureBindings, name); }
 
-    void readBuffer(const char *fieldName, const FieldType &type, const char *bufferName) {
+    void readBuffer(const char *fieldName, const NumFieldType &type, const char *bufferName) {
       findOrAddIndex(result.bufferBindings, bufferName).accessedFields.insert(std::make_pair(fieldName, type));
     }
 

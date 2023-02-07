@@ -18,10 +18,10 @@ template <typename TShard> struct ToNumberTranslator {
     const VectorTypeTraits *outputVectorType = shard->_outputVectorType;
     const NumberTypeTraits *outputNumberType = shard->_outputNumberType;
 
-    FieldType fieldType = getShaderBaseType(outputNumberType->type);
+    NumFieldType fieldType = getShaderBaseType(outputNumberType->type);
     fieldType.numComponents = outputVectorType->dimension;
 
-    FieldType unitFieldType = fieldType;
+    NumFieldType unitFieldType = fieldType;
     unitFieldType.numComponents = 1;
 
     SPDLOG_LOGGER_INFO(context.logger, "gen(cast/{})> ", outputVectorType->name);
@@ -30,7 +30,7 @@ template <typename TShard> struct ToNumberTranslator {
       throw ShaderComposeError(fmt::format("Cast requires a value"));
 
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
-    FieldType sourceFieldType = wgslValue->getType();
+    NumFieldType sourceFieldType = std::get<NumFieldType>(wgslValue->getType());
 
     blocks::BlockPtr sourceBlock = wgslValue->toBlock();
     std::unique_ptr<blocks::Compound> sourceComponentList;
@@ -103,10 +103,10 @@ template <typename TShard> struct MakeVectorTranslator {
     const VectorTypeTraits *outputVectorType = shard->_outputVectorType;
     const NumberTypeTraits *outputNumberType = shard->_outputNumberType;
 
-    FieldType fieldType = getShaderBaseType(outputNumberType->type);
+    NumFieldType fieldType = getShaderBaseType(outputNumberType->type);
     fieldType.numComponents = outputVectorType->dimension;
 
-    FieldType unitFieldType = fieldType;
+    NumFieldType unitFieldType = fieldType;
     unitFieldType.numComponents = 1;
 
     SPDLOG_LOGGER_INFO(context.logger, "gen(make/{})> ", outputVectorType->name);
@@ -126,7 +126,7 @@ template <typename TShard> struct MakeVectorTranslator {
       bool isLast = i == (shard->inputSize - 1);
 
       auto value = translateParamVar(params[i], context);
-      if (value->getType() != unitFieldType)
+      if (value->getType() != FieldType(unitFieldType))
         throw ShaderComposeError(fmt::format("Invalid parameter {} to MakeVector", i));
 
       sourceComponentList->append(value->toBlock());

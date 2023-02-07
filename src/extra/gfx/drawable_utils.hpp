@@ -74,7 +74,7 @@ inline ParamVariant varToParam(const SHVar &var) {
   return result;
 }
 
-using ShaderFieldTypeVariant = std::variant<std::monostate, shader::FieldType, gfx::TextureDimension>;
+using ShaderFieldTypeVariant = std::variant<std::monostate, shader::NumFieldType, gfx::TextureDimension>;
 inline ShaderFieldTypeVariant toShaderParamType(const SHTypeInfo &typeInfo) {
   switch (typeInfo.basicType) {
     return shader::FieldTypes::Float;
