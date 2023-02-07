@@ -146,11 +146,13 @@ struct Replace : public Common {
 };
 
 struct Join {
+  static inline Type InputType = Type::SeqOf(CoreInfo::StringOrBytes);
+
   static SHOptionalString help() {
     return SHCCSTR("Concatenates all the elements of a string sequence, using the specified separator between each element.");
   }
 
-  static SHTypesInfo inputTypes() { return CoreInfo::StringSeqType; }
+  static SHTypesInfo inputTypes() { return InputType; }
   static SHOptionalString inputHelp() { return SHCCSTR("A sequence of string values that will be joined together."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -187,7 +189,8 @@ struct Join {
     _buffer.append(input.payload.seqValue.elements[0].payload.stringValue, SHSTRLEN(input.payload.seqValue.elements[0]));
 
     for (uint32_t i = 1; i < input.payload.seqValue.len; i++) {
-      assert(input.payload.seqValue.elements[i].valueType == SHType::String);
+      assert(input.payload.seqValue.elements[i].valueType == SHType::String ||
+             input.payload.seqValue.elements[i].valueType == SHType::Bytes);
       _buffer.append(_separator);
       _buffer.append(input.payload.seqValue.elements[i].payload.stringValue, SHSTRLEN(input.payload.seqValue.elements[i]));
     }
