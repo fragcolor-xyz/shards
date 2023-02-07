@@ -74,31 +74,33 @@ inline ParamVariant varToParam(const SHVar &var) {
   return result;
 }
 
-using ShaderFieldTypeVariant = std::variant<std::monostate, shader::NumFieldType, gfx::TextureDimension>;
-inline ShaderFieldTypeVariant toShaderParamType(const SHTypeInfo &typeInfo) {
+inline std::optional<shader::FieldType> deriveShaderFieldType(const SHTypeInfo &typeInfo) {
+  using namespace shader;
   switch (typeInfo.basicType) {
-    return shader::FieldTypes::Float;
+    return FieldTypes::Float;
   case SHType::Float2:
-    return shader::FieldTypes::Float2;
+    return FieldTypes::Float2;
   case SHType::Float3:
-    return shader::FieldTypes::Float3;
+    return FieldTypes::Float3;
   case SHType::Float4:
-    return shader::FieldTypes::Float4;
+    return FieldTypes::Float4;
   case SHType::Seq:
     if (typeInfo.seqTypes.len == 1 && typeInfo.seqTypes.elements[0].basicType == SHType::Float4) {
-      return shader::FieldTypes::Float4x4;
+      return FieldTypes::Float4x4;
     }
     break;
   case SHType::Object: {
-    if (typeInfo == Types::Texture)
-      return TextureDimension::D2;
+    if (typeInfo == Types::Sampler)
+      return SamplerFieldType{};
+    else if (typeInfo == Types::Texture)
+      return TextureFieldType(TextureDimension::D2);
     else if (typeInfo == Types::TextureCube)
-      return TextureDimension::Cube;
+      return TextureFieldType(TextureDimension::Cube);
   }
   default:
     break;
   }
-  return std::monostate();
+  return std::nullopt;
 }
 
 inline std::optional<ParamVariant> tryVarToParam(const SHVar &var) {

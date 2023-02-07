@@ -541,7 +541,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
               drawBindGroupBuilder.addTextureBinding(binding, textureViewCache.getDefaultTextureView(frameCounter, *texture),
                                                      texture->sampler);
             } else {
-              auto &placeholder = placeholderTextures[size_t(binding.dimension)];
+              auto &placeholder = placeholderTextures[size_t(binding.type.dimension)];
               drawBindGroupBuilder.addTextureBinding(
                   binding, textureViewCache.getDefaultTextureView(frameCounter, *placeholder->contextData.get()),
                   placeholder->contextData->sampler);

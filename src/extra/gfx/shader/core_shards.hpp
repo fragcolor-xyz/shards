@@ -452,8 +452,8 @@ struct SampleTexture {
     if (it == textures.end()) {
       throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", name));
     }
-    if (it->second.dimension != TextureDimension::D2) {
-      throw formatException("SampleTexture does not support texture for type [{}]", magic_enum::enum_name(it->second.dimension));
+    if (it->second.type.dimension != TextureDimension::D2) {
+      throw formatException("SampleTexture does not support texture for type [{}]", magic_enum::enum_name(it->second.type.dimension));
     }
 
     return outputTypes().elements[0];
@@ -478,7 +478,7 @@ struct SampleTextureCoord : public SampleTexture {
   SHParametersInfo parameters() { return SampleTexture::params; };
 
   SHTypeInfo getExpectedCoordinateType(const TextureDefinition &def) {
-    switch (def.dimension) {
+    switch (def.type.dimension) {
     case gfx::TextureDimension::D1:
       return CoreInfo::FloatType;
     case gfx::TextureDimension::D2:
