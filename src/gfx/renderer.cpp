@@ -210,7 +210,7 @@ struct RendererImpl final : public ContextData {
           ->init(TextureDesc{
               .format =
                   TextureFormat{
-                      .type = TextureDimension::D2,
+                      .dimension = TextureDimension::D2,
                       .flags = TextureFormatFlags::RenderAttachment | TextureFormatFlags::NoTextureBinding,
                       .pixelFormat = context.getMainOutputFormat(),
                   },

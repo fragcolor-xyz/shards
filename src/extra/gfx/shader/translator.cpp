@@ -1,4 +1,5 @@
 #include "translator.hpp"
+#include "extra/gfx/shader/translator.hpp"
 #include "translator_utils.hpp"
 #include "../shards_utils.hpp"
 #include "spdlog/spdlog.h"
@@ -172,9 +173,9 @@ bool TranslationContext::findVariable(const std::string &varName, const FieldTyp
   return findVariableGlobal(varName, outFieldType);
 }
 
-WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool global, bool allowUpdate,
+WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool global, bool allowUpdate, bool isMutable,
                                              std::unique_ptr<IWGSLGenerated> &&value) {
-  NumFieldType valueType = std::get<NumFieldType>(value->getType());
+  FieldType valueType = value->getType();
 
   auto updateStorage = [&](VariableStorage &storage, const std::string &varName, const FieldType &fieldType,
                            bool forceNewVariable = false) {
@@ -207,8 +208,12 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
     // Store global variable type info & check update
     const std::string &uniqueVariableName = updateStorage(globals, varName, valueType);
 
+    const NumFieldType *numFieldType = std::get_if<NumFieldType>(&valueType);
+    if (!numFieldType)
+      throw ShaderComposeError(fmt::format("Can not assign {} globally, unsupported type: {}", varName, valueType));
+
     // Generate a shader source block containing the assignment
-    addNew(blocks::makeBlock<blocks::WriteGlobal>(uniqueVariableName, valueType, value->toBlock()));
+    addNew(blocks::makeBlock<blocks::WriteGlobal>(uniqueVariableName, *numFieldType, value->toBlock()));
 
     // Push reference to assigned value
     return WGSLBlock(valueType, blocks::makeBlock<blocks::ReadGlobal>(uniqueVariableName));
@@ -237,9 +242,13 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
     const std::string &uniqueVariableName = updateStorage(parent->variables, varName, valueType, isNewVariable);
 
     // Generate a shader source block containing the assignment
-    if (isNewVariable)
-      addNew(blocks::makeCompoundBlock(fmt::format("var {} = ", uniqueVariableName), value->toBlock(), ";\n"));
-    else
+    if (isNewVariable) {
+      if (isMutable) {
+        addNew(blocks::makeCompoundBlock(fmt::format("var {} = ", uniqueVariableName), value->toBlock(), ";\n"));
+      } else {
+        addNew(blocks::makeCompoundBlock(fmt::format("let {} = ", uniqueVariableName), value->toBlock(), ";\n"));
+      }
+    } else
       addNew(blocks::makeCompoundBlock(fmt::format("{} = ", uniqueVariableName), value->toBlock(), ";\n"));
 
     // Push reference to assigned value
@@ -264,7 +273,7 @@ bool TranslationContext::tryExpandIntoVariable(const std::string &varName) {
     }
     constructor->append(")");
 
-    assignVariable(varName, false, false, std::make_unique<WGSLBlock>(type, std::move(constructor)));
+    assignVariable(varName, false, false, true, std::make_unique<WGSLBlock>(type, std::move(constructor)));
 
     it = top.virtualSequences.erase(it);
     return true;

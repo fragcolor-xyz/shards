@@ -6,7 +6,7 @@ edition = "2021"
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
 
-[features]
+[features] 
 default = []
 tracy = ["profiling/profile-with-tracy", "tracy-client"]
 

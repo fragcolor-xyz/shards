@@ -157,6 +157,7 @@ struct NamedShaderParam {
 struct NamedTextureParam {
   std::string name;
   shader::TextureFieldType type;
+  TexturePtr defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
 
   NamedTextureParam() = default;

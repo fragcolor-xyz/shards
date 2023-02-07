@@ -106,13 +106,13 @@ struct TextureViewCache {
     TextureViewDesc defaultDesc{
         .format = textureData.format.pixelFormat,
         .baseMipLevel = 0,
-        .mipLevelCount = 1,
+        .mipLevelCount = textureData.format.mipLevels,
         .baseArrayLayer = 0,
         .arrayLayerCount = 1,
         .aspect = WGPUTextureAspect_All,
     };
 
-    switch (textureData.format.type) {
+    switch (textureData.format.dimension) {
     case TextureDimension::D1:
       defaultDesc.dimension = WGPUTextureViewDimension_1D;
       break;

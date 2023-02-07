@@ -10,8 +10,8 @@ using namespace shards;
 namespace gfx {
 void SHShaderParameters::updateVariables(MaterialParameters &output) {
   for (SHBasicShaderParameter &param : basic) {
-    ParamVariant variant = varToParam(param.var.get());
-    output.set(param.key, variant);
+    auto v = varToShaderParameter(param.var.get());
+    std::visit([&](auto &&arg) { output.set(param.key, arg); }, v);
   }
   for (SHBasicShaderParameter &texture : textures) {
     TexturePtr variant = varToTexture(texture.var.get());

@@ -94,7 +94,7 @@ struct RenderTextureCache {
           ->init(TextureDesc{
               .format =
                   TextureFormat{
-                      .type = TextureDimension::D2,
+                      .dimension = TextureDimension::D2,
                       .flags = TextureFormatFlags::RenderAttachment,
                       .pixelFormat = format.format,
                   },

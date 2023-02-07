@@ -268,7 +268,7 @@ public:
 
   // Assigns or updates a variable
   // returns a reference to the variable in the same format as `reference` does
-  WGSLBlock assignVariable(const std::string &varName, bool global, bool allowUpdate, std::unique_ptr<IWGSLGenerated> &&value);
+  WGSLBlock assignVariable(const std::string &varName, bool global, bool allowUpdate, bool isMutable, std::unique_ptr<IWGSLGenerated> &&value);
 
   // Returns a shader block that references a variable by name
   // the variable can either be defined in the current, parent or global scope

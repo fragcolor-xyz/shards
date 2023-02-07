@@ -93,6 +93,11 @@ static void buildBaseDrawParameters(ParameterStorage &params, const std::vector<
         params.setParam(param.name, param.defaultValue);
       }
     }
+    for (auto &param : feature->textureParams) {
+      if (param.defaultValue) {
+        params.setTexture(param.name, param.defaultValue);
+      }
+    }
   }
 }
 
