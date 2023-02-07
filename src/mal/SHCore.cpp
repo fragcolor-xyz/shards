@@ -265,6 +265,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
 #elif defined(__APPLE__)
   rep("(def platform \"apple\")", env);
 #endif
+  rep("(defmacro! Wire (fn* [name & rest] `(do (def! ~(symbol name) (DefWire ~name)) (ImplWire ~(symbol name) ~@rest))))", env);
   rep("(defmacro! defwire (fn* [name & shards] `(def! ~(symbol (str name)) "
       "(Wire ~(str name) (wireify (vector ~@shards))))))",
       env);
@@ -1326,10 +1327,9 @@ std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
   return res;
 }
 
-BUILTIN("Wire") {
+BUILTIN("ImplWire") {
   CHECK_ARGS_AT_LEAST(1);
-  ARG(malString, wireName);
-  auto mwire = new malSHWire(wireName->value());
+  ARG(malSHWire, mwire);
   auto wireref = mwire->value();
   auto wire = SHWire::sharedFromRef(wireref);
   while (argsBegin != argsEnd) {
@@ -1358,6 +1358,13 @@ BUILTIN("Wire") {
       break;
     }
   }
+  return malValuePtr(mwire);
+}
+
+BUILTIN("DefWire") {
+  CHECK_ARGS_AT_LEAST(1);
+  ARG(malString, wireName);
+  auto mwire = new malSHWire(wireName->value());
   return malValuePtr(mwire);
 }
 
