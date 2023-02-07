@@ -265,9 +265,8 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
 #elif defined(__APPLE__)
   rep("(def platform \"apple\")", env);
 #endif
-  rep("(defmacro! Wire (fn* [name & rest] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str name)) ~@rest))))", env);
-  rep("(defmacro! defwire (fn* [name & shards] `(def! ~(symbol (str name)) "
-      "(Wire ~(str name) (wireify (vector ~@shards))))))",
+  rep("(defmacro! defwire (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
+      "name)) (wireify (vector ~@shards))))))",
       env);
   rep("(defmacro! deftrait (fn* [name & shards] `(def! ~(symbol (str name)) (hash-map ~@shards))))", env);
   rep("(defmacro! defloop (fn* [name & shards] `(def! ~(symbol (str name)) "
@@ -1325,6 +1324,41 @@ std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
     }
   }
   return res;
+}
+
+BUILTIN("Wire") {
+  CHECK_ARGS_AT_LEAST(1);
+  ARG(malString, wireName);
+  auto mwire = new malSHWire(wireName->value());
+  auto wireref = mwire->value();
+  auto wire = SHWire::sharedFromRef(wireref);
+  while (argsBegin != argsEnd) {
+    auto pbegin = argsBegin;
+    auto arg = *argsBegin++;
+    // Option keywords or shards
+    if (const malKeyword *v = DYNAMIC_CAST(malKeyword, arg)) {
+      if (v->value() == ":Looped") {
+        wire->looped = true;
+      } else if (v->value() == ":Unsafe") {
+        wire->unsafe = true;
+      } else if (v->value() == ":LStack") {
+        wire->stackSize = 4 * 1024 * 1024;  // 4mb
+      } else if (v->value() == ":SStack") { // default is 128kb
+        wire->stackSize = 32 * 1024;        // 32kb
+      } else if (v->value() == ":Pure") {
+        wire->pure = true;
+      }
+    } else {
+      auto blks = wireify(pbegin, argsEnd);
+      for (auto blk : blks) {
+        wire->addShard(blk->value());
+        blk->consume();
+        mwire->reference(blk.ptr());
+      }
+      break;
+    }
+  }
+  return malValuePtr(mwire);
 }
 
 BUILTIN("ImplWire") {
