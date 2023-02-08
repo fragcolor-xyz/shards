@@ -1549,6 +1549,8 @@ struct Spawn : public CapturingSpawners {
     capturing = true;
     passthrough = false;
   }
+  ~Spawn() {
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::WireType; }

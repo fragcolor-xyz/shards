@@ -384,6 +384,7 @@ pub fn create<T: Default + Shard>() -> ShardWrapper<T> {
   ShardWrapper::<T> {
     header: CShard {
       inlineShardId: 0,
+      refCount: 0,
       owned: false,
       name: Some(shard_name::<T>),
       hash: Some(shard_hash::<T>),

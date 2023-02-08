@@ -56,7 +56,7 @@ struct Reader {
   rs.reset();                                   \
   rs.deserialize(r, output);                    \
   REQUIRE(_source_ == output);                  \
-  rs.varFree(output)
+  destroyVar(output)
 
 TEST_CASE("SHType-type2Name", "[ops]") {
   REQUIRE_THROWS(type2Name(SHType::EndOfBlittableTypes));
