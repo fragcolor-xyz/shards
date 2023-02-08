@@ -694,6 +694,11 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   TSeqVar(TSeqVar &&other) : SHVar() { std::swap<SHVar>(*this, other); }
 
+  TSeqVar(SHVar &&other) : SHVar() {
+    assert(other.valueType == SHType::Seq);
+    std::swap<SHVar>(*this, other);
+  }
+
   TSeqVar &operator=(TSeqVar &&other) {
     std::swap<SHVar>(*this, other);
     SH_CORE::destroyVar(other);
