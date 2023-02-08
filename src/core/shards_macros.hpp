@@ -33,13 +33,9 @@
     result->setParam =                                                                                                   \
         static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) { return SHError::Success; });       \
     result->getParam = static_cast<SHGetParamProc>([](Shard *shard, int index) { return SHVar(); });                     \
-    result->compose = nullptr;                                                                                           \
-    result->warmup = nullptr;                                                                                            \
     result->inputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                        \
     result->outputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                       \
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
-    result->nextFrame = nullptr;                                                                                         \
-    result->mutate = nullptr;                                                                                            \
     result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
 
 #define RUNTIME_CORE_SHARD(_name_)                                                                                       \
@@ -68,13 +64,9 @@
     result->setParam =                                                                                                   \
         static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) { return SHError::Success; });       \
     result->getParam = static_cast<SHGetParamProc>([](Shard *shard, int index) { return SHVar(); });                     \
-    result->compose = nullptr;                                                                                           \
-    result->warmup = nullptr;                                                                                            \
     result->inputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                        \
     result->outputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                       \
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
-    result->nextFrame = nullptr;                                                                                         \
-    result->mutate = nullptr;                                                                                            \
     result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
 
 #define RUNTIME_SHARD_TYPE(_namespace_, _name_) \
@@ -105,13 +97,9 @@
     result->setParam =                                                                                                   \
         static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) { return SHError::Success; });       \
     result->getParam = static_cast<SHGetParamProc>([](Shard *shard, int index) { return SHVar(); });                     \
-    result->compose = nullptr;                                                                                           \
-    result->warmup = nullptr;                                                                                            \
     result->inputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                        \
     result->outputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                       \
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
-    result->nextFrame = nullptr;                                                                                         \
-    result->mutate = nullptr;                                                                                            \
     result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
 
 #define RUNTIME_CORE_SHARD_TYPE(_name_) \
@@ -141,13 +129,9 @@
     result->setParam =                                                                                                   \
         static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) { return SHError::Success; });       \
     result->getParam = static_cast<SHGetParamProc>([](Shard *shard, int index) { return SHVar(); });                     \
-    result->compose = nullptr;                                                                                           \
-    result->warmup = nullptr;                                                                                            \
     result->inputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                        \
     result->outputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                       \
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
-    result->nextFrame = nullptr;                                                                                         \
-    result->mutate = nullptr;                                                                                            \
     result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
 
 // Those get nicely inlined fully so only 1 indirection will happen at the root

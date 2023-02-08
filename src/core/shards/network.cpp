@@ -212,7 +212,7 @@ struct Server : public NetworkBase {
       ClientPkt pkt;
       if (_queue.pop(pkt)) {
         delete pkt.remote;
-        Serialization::varFree(pkt.payload);
+        destroyVar(pkt.payload);
       }
     }
 
@@ -220,7 +220,7 @@ struct Server : public NetworkBase {
       ClientPkt pkt;
       if (_empty_queue.pop(pkt)) {
         delete pkt.remote;
-        Serialization::varFree(pkt.payload);
+        destroyVar(pkt.payload);
       }
     }
 
@@ -312,14 +312,14 @@ struct Client : public NetworkBase {
     while (!_queue.empty()) {
       SHVar v;
       if (_queue.pop(v)) {
-        Serialization::varFree(v);
+        destroyVar(v);
       }
     }
 
     while (!_empty_queue.empty()) {
       SHVar v;
       if (_empty_queue.pop(v)) {
-        Serialization::varFree(v);
+        destroyVar(v);
       }
     }
 
