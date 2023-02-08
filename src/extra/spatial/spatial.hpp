@@ -28,7 +28,6 @@ struct SpatialContext {
   SHContext *activationContext{};
   SHVar activationInput{};
   spatial::Context context;
-  std::vector<Panel> panels;
 };
 
 typedef shards::RequiredContextVariable<SpatialContext, SpatialContext::Type, SpatialContext::VariableName>

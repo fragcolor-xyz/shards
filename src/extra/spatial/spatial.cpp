@@ -23,8 +23,6 @@ struct SpatialUIContextShard {
 
   ExposedInfo _exposedVariables;
 
-  std::vector<SpatialPanelShard *> _panels;
-
   input::InputBuffer _inputBuffer;
 
   std::shared_ptr<gfx::GizmoRenderer> _debugRenderer;
