@@ -416,6 +416,10 @@ impl WireRef {
       Ok(None)
     }
   }
+
+  pub fn get_wire_info(&self) -> SHWireInfo {
+    unsafe { (*Core).getWireInfo.unwrap()(self.0) }
+  }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -606,6 +610,7 @@ impl core::fmt::Debug for SHVarPayloadDebugView<'_> {
   }
 }
 
+#[derive(Debug)]
 pub struct ShardInstance {
   ptr: ShardPtr,
 }

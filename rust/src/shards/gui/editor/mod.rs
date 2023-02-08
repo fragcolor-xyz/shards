@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
+use super::egui_host::EguiHost;
 use crate::core::registerShard;
 use crate::shards::editor::*;
 use crate::types::ExposedTypes;
@@ -32,8 +33,26 @@ struct ShardViewer<'a> {
   state: GraphEditorState<ShardData<'a>, ShardTemplate<'a>>,
 }
 
+// FIXME lots of code shared with UI context as well as Spatial UI
+struct WireViewer<'a> {
+  wire: ParamVar,
+  requiring: ExposedTypes,
+  // ---
+  queue: ParamVar,
+  graphics_context: ParamVar,
+  input_context: ParamVar,
+  renderer: egui_gfx::Renderer,
+  input_translator: egui_gfx::InputTranslator,
+  // ---
+  graph: Graph<ShardData<'a>>,
+  node_hosts: SecondaryMap<NodeId, EguiHost>,
+  node_positions: SecondaryMap<NodeId, [f64; 3]>,
+}
+
 mod shard_viewer;
+mod wire_viewer;
 
 pub fn registerShards() {
   registerShard::<ShardViewer>();
+  registerShard::<WireViewer>();
 }

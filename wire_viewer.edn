@@ -1,0 +1,65 @@
+(decompress-strings)
+
+(defwire my-wire
+  nil                                            ; SHType::None
+  LogLevel.Debug                                 ; SHType::Enum
+  true                                           ; SHType::Bool
+  (int 42)                                       ; SHType::Int
+  (int2 1 2)                                     ; SHType::Int2
+  (int3 1 2 3)                                   ; SHType::Int3
+  (int4 1 2 3 4)                                 ; SHType::Int4
+  (int8 1 2 3 4 5 6 7 8)                         ; SHType::Int8
+  (int16 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) ; SHType::Int16
+  (float 3.14)                                   ; SHType::FLoat
+  (float2 1.0 2.0)                               ; SHType::Float2
+  (float3 1.0 2.0 3.0)                           ; SHType::Float3
+  (float4 1.0 2.0 3.0 4.0)                       ; SHType::Float4
+  (color 255 128 0 128)                          ; SHType::Color
+  (bytes "0xabcdef")                             ; SHType::Bytes
+  "MyString"                                     ; SHType::String
+  (path "/home")                                 ; SHType::Path
+  (context-var "variable")                       ; SHType::ContextVar
+  [0 1 2]                                        ; SHType::Seq
+  {:key "value"}                                 ; SHType::Table
+  ;
+  )
+
+(defloop main-wire
+  (GFX.MainWindow
+   :Title "Shard Editor (alpha)"
+   :Width 1024 :Height 768
+   :Contents
+   (->
+    (Setup
+     (GFX.DrawQueue) >= .ui-draw-queue
+     (GFX.UIPass .ui-draw-queue) >> .render-steps)
+    .ui-draw-queue (GFX.ClearQueue)
+
+    ;; ideally I would like to have:
+    ;; (Spatial.UI
+    ;;  :Queue .queue :View .view :Scale 100.0
+    ;;  :Contents
+    ;;  (->
+    ;;   (WireViewer my-wire .base-transform)
+      
+    ;;   ;; which could be combined with other Spatial panels
+    ;;   (Spatial.Panel
+    ;;    :Transform .panel-t-0 :Size (Float2 640 360)
+    ;;    :Contents (-> nil))))
+    
+    (WireViewer .ui-draw-queue my-wire)
+
+    ;; (UI
+    ;;  .ui-draw-queue
+    ;;  :Contents
+    ;;  (->
+    ;;   (UI.CentralPanel
+    ;;    :Contents
+    ;;    (->
+    ;;     (WireViewer my-wire)))))
+
+    (GFX.Render :Steps .render-steps))))
+
+(defmesh root)
+(schedule root main-wire)
+(run root (/ 1.0 30.0))

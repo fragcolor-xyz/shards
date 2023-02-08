@@ -56,10 +56,11 @@ impl<'a> UIRenderer for ShardTemplate<'a> {
   }
 }
 
+#[derive(Debug)]
 pub(crate) struct ShardData<'a> {
-  name: &'a str,
-  instance: ShardInstance,
-  params: Vec<(&'a str, VarValue<'a>)>,
+  pub name: &'a str,
+  pub instance: ShardInstance,
+  pub params: Vec<(&'a str, VarValue<'a>)>,
 }
 
 impl<'a> ShardData<'a> {
@@ -176,6 +177,7 @@ impl<'a> UIRenderer for ShardData<'a> {
   }
 }
 
+#[derive(Debug)]
 pub(crate) struct VarValue<'a> {
   value: Var,
   allowed_types: Vec<SHType>,
@@ -185,6 +187,7 @@ pub(crate) struct VarValue<'a> {
   data: VarValueData<'a>,
 }
 
+#[derive(Debug)]
 pub(crate) enum VarValueData<'a> {
   Basic,
   Enum {
