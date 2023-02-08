@@ -162,7 +162,7 @@ struct ReadFile : public FileBase {
   SHVar _output{};
 
   void cleanup() {
-    Serialization::varFree(_output);
+    destroyVar(_output);
     _fileStream = {};
     FileBase::cleanup();
   }
@@ -226,7 +226,7 @@ struct FromBytes {
   Serialization serial;
   SHVar _output{};
 
-  void destroy() { Serialization::varFree(_output); }
+  void destroy() { destroyVar(_output); }
 
   struct Reader {
     const SHVar &_bytesVar;

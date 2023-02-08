@@ -584,8 +584,6 @@ private:
 
 namespace shards {
 struct Serialization {
-  static void varFree(SHVar &output);
-
   std::unordered_map<SHVar, SHWireRef> wires;
   std::unordered_map<std::string, std::shared_ptr<Shard>> defaultShards;
 
@@ -607,7 +605,7 @@ struct Serialization {
     // stop trying to recycle, types differ
     auto recycle = true;
     if (output.valueType != nextType) {
-      varFree(output);
+      destroyVar(output);
       recycle = false;
     }
 
@@ -728,7 +726,7 @@ struct Serialization {
           map = (SHMap *)output.payload.tableValue.opaque;
           map->clear();
         } else {
-          varFree(output);
+          destroyVar(output);
           output.valueType = nextType;
         }
       }
@@ -752,7 +750,7 @@ struct Serialization {
         deserialize(read, tmp);
         auto &dst = (*map)[keyBuf];
         dst = tmp;
-        varFree(tmp);
+        destroyVar(tmp);
       }
       break;
     }
@@ -764,7 +762,7 @@ struct Serialization {
           set = (SHHashSet *)output.payload.setValue.opaque;
           set->clear();
         } else {
-          varFree(output);
+          destroyVar(output);
           output.valueType = nextType;
         }
       }
@@ -782,7 +780,7 @@ struct Serialization {
         SHVar dst{};
         deserialize(read, dst);
         (*set).emplace(dst);
-        varFree(dst);
+        destroyVar(dst);
       }
       break;
     }
@@ -874,13 +872,13 @@ struct Serialization {
         SHVar tmp{};
         deserialize(read, tmp);
         blk->setParam(blk, idx, &tmp);
-        varFree(tmp);
+        destroyVar(tmp);
       }
       if (blk->setState) {
         SHVar state{};
         deserialize(read, state);
         blk->setState(blk, &state);
-        varFree(state);
+        destroyVar(state);
       }
       output.payload.shardValue = blk;
       break;

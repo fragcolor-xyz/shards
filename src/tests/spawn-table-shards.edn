@@ -1,0 +1,23 @@
+;; (def timestep (/ 1.0 120.0))
+;;   (defmesh root)
+;;   (defwire broken-wire
+;;     {:Shards (-> 0.0)}
+;;     (Log "The table"))
+;;   (schedule root
+;;             (Wire "main-loop-wire" :Looped :LStack
+;;                   (Setup (Spawn broken-wire));
+;;                   ))
+;;   (run root timestep 1)
+;;   (def root nil);
+
+
+(def timestep (/ 1.0 120.0))
+(defmesh root)
+(defwire tablething
+  {:Shards (-> 0.0)}
+  (ToBytes)
+  (FromBytes)
+  (Log "The table"))
+(schedule root tablething)
+(run root timestep 1)
+(def root nil);

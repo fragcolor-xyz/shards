@@ -170,10 +170,10 @@ struct Evolve {
         i.mesh->terminate();
         auto wire = SHWire::sharedFromRef(i.wire.payload.wireValue);
         stop(wire.get());
-        Serialization::varFree(i.wire);
+        destroyVar(i.wire);
         auto fitwire = SHWire::sharedFromRef(i.fitnessWire.payload.wireValue);
         stop(fitwire.get());
-        Serialization::varFree(i.fitnessWire);
+        destroyVar(i.fitnessWire);
       });
       _exec->run(cleanupFlow).get();
       _exec.reset(nullptr);
@@ -505,8 +505,8 @@ private:
 
   struct Individual {
     ~Individual() {
-      Serialization::varFree(wire);
-      Serialization::varFree(fitnessWire);
+      destroyVar(wire);
+      destroyVar(fitnessWire);
     }
 
     size_t idx = 0;

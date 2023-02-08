@@ -900,6 +900,14 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
   case SHType::Wire:
     SHWire::deleteRef(var.payload.wireValue);
     break;
+  case SHType::ShardRef: {
+    auto blk = var.payload.shardValue;
+    if (!blk->owned) {
+      // destroy only if not owned
+      blk->destroy(blk);
+    }
+    break;
+  }
   default:
     break;
   };
@@ -909,6 +917,8 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
 }
 
 ALWAYS_INLINE inline void cloneVar(SHVar &dst, const SHVar &src) {
+  assert(src.valueType != SHType::ShardRef);
+
   if (src.valueType < SHType::EndOfBlittableTypes && dst.valueType < SHType::EndOfBlittableTypes) {
     dst.valueType = src.valueType;
     memcpy(&dst.payload, &src.payload, sizeof(SHVarPayload));
