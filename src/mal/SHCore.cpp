@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MPL-2.0 AND BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
+#include "foundation.hpp"
 #include "shards.hpp"
 #include "Environment.h"
 #include "MAL.h"
@@ -366,9 +367,9 @@ private:
 
 class malShard : public malValue, public malRoot {
 public:
-  malShard(const MalString &name) : m_shard(shards::createShard(name.c_str())) {}
+  malShard(const MalString &name) : m_shard(shards::createShard(name.c_str())) { incRef(m_shard); }
 
-  malShard(Shard *shard) : m_shard(shard) {}
+  malShard(Shard *shard) : m_shard(shard) { incRef(m_shard); }
 
   malShard(const malShard &that, const malValuePtr &meta) = delete;
 
@@ -382,8 +383,7 @@ public:
 
     // could be nullptr
     if (m_shard) {
-      SHLOG_DEBUG("Deleting a non-consumed Shard - {}", m_shard->name(m_shard));
-      m_shard->destroy(m_shard);
+      decRef(m_shard);
     }
   }
 
@@ -402,7 +402,10 @@ public:
     return m_shard;
   }
 
-  void consume() { m_shard = nullptr; }
+  void consume() {
+    decRef(m_shard);
+    m_shard = nullptr;
+  }
 
   virtual bool doIsEqualTo(const malValue *rhs) const { return m_shard == static_cast<const malShard *>(rhs)->m_shard; }
 
@@ -457,25 +460,26 @@ private:
 
 class malSHVar : public malValue, public malRoot {
 public:
-  malSHVar(const SHVar &var, bool cloned) : m_cloned(cloned) {
-    if (cloned) {
-      memset(&m_var, 0, sizeof(m_var));
-      shards::cloneVar(m_var, var);
-    } else {
-      m_var = var;
-    }
+  malSHVar(const SHVar &var, bool owned) : m_owned(owned) {
+    m_var = var;
   }
 
-  malSHVar(const malSHVar &that, const malValuePtr &meta) : malValue(meta), m_cloned(true) {
+  malSHVar(const malSHVar &that, const malValuePtr &meta) : malValue(meta), m_owned(true) {
     m_var = SHVar();
     shards::cloneVar(m_var, that.m_var);
+  }
+
+  static malSHVar* newCloned(const SHVar& var) {
+    SHVar clonedVar{};
+    cloneVar(clonedVar, var);
+    return new malSHVar(clonedVar, true);
   }
 
   ~malSHVar() {
     // unref all we hold  first
     m_refs.clear();
 
-    if (m_cloned)
+    if (m_owned)
       shards::destroyVar(m_var);
   }
 
@@ -493,7 +497,7 @@ public:
 
 private:
   SHVar m_var;
-  bool m_cloned;
+  bool m_owned;
 };
 
 struct WireLoadResult {
@@ -1027,10 +1031,8 @@ malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
       vars.push_back(subVar);
       shards::arrayPush(tmp.payload.seqValue, subVar->value());
     }
-    SHVar var{};
-    shards::cloneVar(var, tmp);
+    auto mvar = malSHVar::newCloned(tmp);
     shards::arrayFree(tmp.payload.seqValue);
-    auto mvar = new malSHVar(var, true);
     for (auto &rvar : vars) {
       mvar->reference(rvar.ptr());
     }
@@ -1049,9 +1051,7 @@ malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
     tmp.valueType = SHType::Table;
     tmp.payload.tableValue.api = &shards::GetGlobals().TableInterface;
     tmp.payload.tableValue.opaque = &shMap;
-    SHVar var{};
-    shards::cloneVar(var, tmp);
-    auto mvar = new malSHVar(var, true);
+    auto mvar = malSHVar::newCloned(tmp);
     for (auto &rvar : vars) {
       mvar->reference(rvar.ptr());
     }
@@ -1072,9 +1072,7 @@ malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
     v->line = arg->line;
     return malSHVarPtr(v);
   } else if (malSHVar *v = DYNAMIC_CAST(malSHVar, arg)) {
-    SHVar var{};
-    shards::cloneVar(var, v->value());
-    auto res = new malSHVar(var, true);
+    auto res = malSHVar::newCloned(v->value());
     res->line = arg->line;
     return malSHVarPtr(res);
   } else if (malWireProvider *v = DYNAMIC_CAST(malWireProvider, arg)) {
@@ -1084,11 +1082,12 @@ malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
     providerVar->line = arg->line;
     return malSHVarPtr(providerVar);
   } else if (malShard *v = DYNAMIC_CAST(malShard, arg)) {
-    auto shard = v->value();
+    auto shard = v->value(); 
     SHVar var{};
     var.valueType = SHType::ShardRef;
     var.payload.shardValue = shard;
-    auto bvar = new malSHVar(var, false);
+    incRef(shard);
+    auto bvar = new malSHVar(var, true);
     if (consumeShard)
       v->consume();
     bvar->reference(v);
@@ -1656,7 +1655,7 @@ BUILTIN("set-var") {
   auto last = *argsBegin;
   auto wire = SHWire::sharedFromRef(wirevar->value());
   auto var = varify(last);
-  auto clonedVar = new malSHVar(var->value(), true);
+  auto clonedVar = malSHVar::newCloned(var->value());
   clonedVar->value().flags |= SHVAR_FLAGS_EXTERNAL;
   wire->externalVariables[varName->ref().c_str()] = &clonedVar->value();
   wirevar->reference(clonedVar); // keep alive until wire is destroyed
@@ -1945,7 +1944,7 @@ BUILTIN("bytes") {
     auto bytes = hex2Bytes(s.substr(2));
     var.payload.bytesValue = (uint8_t *)bytes.data();
     var.payload.bytesSize = bytes.size();
-    auto mvar = new malSHVar(var, true);
+    auto mvar = malSHVar::newCloned(var);
     return malValuePtr(mvar);
   } else {
     var.payload.bytesValue = (uint8_t *)s.data();
@@ -2508,10 +2507,9 @@ void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
 
 namespace mal {
 malValuePtr contextVar(const MalString &token) {
-  SHVar tmp{}, v{};
+  SHVar tmp{};
   tmp.valueType = SHType::ContextVar;
   tmp.payload.stringValue = token.c_str();
-  shards::cloneVar(v, tmp);
-  return malValuePtr(new malSHVar(v, true));
+  return malValuePtr(malSHVar::newCloned(tmp));
 }
 } // namespace mal

@@ -175,6 +175,9 @@ inline void destroyVar(SHVar &src);
 struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
 
+void decRef(ShardPtr shard);
+void incRef(ShardPtr shard);
+
 #if SH_STACK_ALLOCATOR_SUPPORTED
 // utility stack allocator (stolen from stackoverflow)
 template <std::size_t Size = 512> struct bumping_memory_resource {
@@ -313,6 +316,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   void addShard(Shard *blk) {
     assert(!blk->owned);
     blk->owned = true;
+    shards::incRef(blk);
     shards.push_back(blk);
   }
 
@@ -322,6 +326,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     if (findIt != shards.end()) {
       shards.erase(findIt);
       blk->owned = false;
+      shards::decRef(blk);
     } else {
       throw shards::SHException("removeShard: shard not found!");
     }
@@ -872,6 +877,7 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
   case SHType::Table:
   case SHType::Set:
   case SHType::Seq:
+  case SHType::ShardRef:
     _destroyVarSlow(var);
     break;
   case SHType::Path:

@@ -4,7 +4,7 @@
 #ifndef SH_UTILITY_HPP
 #define SH_UTILITY_HPP
 
-#include "shards.hpp"
+#include "foundation.hpp"
 #include <spdlog/fmt/fmt.h>
 #include <cassert>
 #include <future>
@@ -465,7 +465,7 @@ private:
         auto msg = "TShardsVar: Error during blocks cleanup: " + std::string(errors.message);
         SH_CORE::log(msg.c_str());
       }
-      blk->destroy(blk);
+      shards::decRef(blk);
     }
     _shardsArray.clear();
   }

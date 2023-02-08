@@ -36,7 +36,6 @@ enum SH_ENUM_CLASS SHType : uint8_t {
   Float3,   // A vector of 3 32bits floats
   Float4,   // A vector of 4 32bits floats
   Color,    // A vector of 4 uint8
-  ShardRef, // a shard, useful for future introspection shards!
 
   // Internal use only
   EndOfBlittableTypes = 50, // anything below this is not blittable (ish)
@@ -50,6 +49,7 @@ enum SH_ENUM_CLASS SHType : uint8_t {
   Seq,
   Table,
   Wire,
+  ShardRef, // a shard, useful for future introspection shards!
   Object,
   Array, // Notice: of just blittable types/WIP!
   Set,
@@ -679,6 +679,9 @@ typedef void(__cdecl *SHResetStateProc)(struct Shard *);
 struct Shard {
   // \-- Internal stuff, do not directly use! --/
   SHInlineShards inlineShardId;
+
+  // used to manage the lifetime of this shard, should be set to 0
+  uint32_t refCount;
 
   // flag to ensure shards are unique when flows/wires
   SHBool owned;

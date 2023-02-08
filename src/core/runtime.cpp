@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "runtime.hpp"
+#include "shards.h"
 #include "shards/shared.hpp"
 #include "utility.hpp"
 #include "shards/inlined.hpp"
@@ -13,6 +14,7 @@
 #include <cstdarg>
 #include <pdqsort.h>
 #include <set>
+#include <stdexcept>
 #include <string.h>
 #include <unordered_set>
 #include <log/log.hpp>
@@ -2045,6 +2047,9 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     auto set = (SHHashSet *)var.payload.setValue.opaque;
     delete set;
   } break;
+  case SHType::ShardRef:
+    decRef(var.payload.shardValue);
+    break;
   default:
     break;
   };
@@ -2228,6 +2233,12 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     dst.valueType = SHType::Wire;
     dst.payload.wireValue = SHWire::addRef(src.payload.wireValue);
     break;
+  case SHType::ShardRef:
+    destroyVar(dst);
+    dst.valueType = SHType::ShardRef;
+    dst.payload.shardValue = src.payload.shardValue;
+    incRef(dst.payload.shardValue);
+    break;
   case SHType::Object:
     if (dst != src) {
       destroyVar(dst);
@@ -2245,7 +2256,9 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       if (src.objectInfo->reference)
         dst.objectInfo->reference(dst.payload.objectValue);
     }
+    break;
   default:
+    throw std::runtime_error("Not clonable");
     break;
   };
 }
@@ -2506,84 +2519,6 @@ void hash_update(const SHVar &var, void *state) {
   }
 }
 
-void Serialization::varFree(SHVar &output) {
-  switch (output.valueType) {
-  case SHType::None:
-  case SHType::EndOfBlittableTypes:
-  case SHType::Any:
-  case SHType::Enum:
-  case SHType::Bool:
-  case SHType::Int:
-  case SHType::Int2:
-  case SHType::Int3:
-  case SHType::Int4:
-  case SHType::Int8:
-  case SHType::Int16:
-  case SHType::Float:
-  case SHType::Float2:
-  case SHType::Float3:
-  case SHType::Float4:
-  case SHType::Color:
-    break;
-  case SHType::Bytes:
-    delete[] output.payload.bytesValue;
-    break;
-  case SHType::Array:
-    shards::arrayFree(output.payload.arrayValue);
-    break;
-  case SHType::Path:
-  case SHType::String:
-  case SHType::ContextVar: {
-    delete[] output.payload.stringValue;
-    break;
-  }
-  case SHType::Seq: {
-    for (uint32_t i = 0; i < output.payload.seqValue.cap; i++) {
-      varFree(output.payload.seqValue.elements[i]);
-    }
-    shards::arrayFree(output.payload.seqValue);
-    break;
-  }
-  case SHType::Table: {
-    output.payload.tableValue.api->tableFree(output.payload.tableValue);
-    break;
-  }
-  case SHType::Set: {
-    output.payload.setValue.api->setFree(output.payload.setValue);
-    break;
-  }
-  case SHType::Image: {
-    delete[] output.payload.imageValue.data;
-    break;
-  }
-  case SHType::Audio: {
-    delete[] output.payload.audioValue.samples;
-    break;
-  }
-  case SHType::ShardRef: {
-    auto blk = output.payload.shardValue;
-    if (!blk->owned) {
-      // destroy only if not owned
-      blk->destroy(blk);
-    }
-    break;
-  }
-  case SHType::Wire: {
-    SHWire::deleteRef(output.payload.wireValue);
-    break;
-  }
-  case SHType::Object: {
-    if ((output.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && output.objectInfo &&
-        output.objectInfo->release) {
-      output.objectInfo->release(output.payload.objectValue);
-    }
-    break;
-  }
-  }
-
-  memset(&output, 0x0, sizeof(SHVar));
-}
-
 SHString getString(uint32_t crc) {
   assert(shards::GetGlobals().CompressedStrings);
   auto s = (*shards::GetGlobals().CompressedStrings)[crc].string;
@@ -2606,9 +2541,7 @@ void SHWire::reset() {
     (*it)->cleanup(*it);
   }
   for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
-    (*it)->destroy(*it);
-    // blk is responsible to free itself, as they might use any allocation
-    // strategy they wish!
+    decRef(*it);
   }
   shards.clear();
 
@@ -3139,4 +3072,21 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   return result;
 }
-};
+}
+
+namespace shards {
+void decRef(ShardPtr shard) {
+  assert(shard->refCount > 0);
+  --shard->refCount;
+  if (shard->refCount == 0) {
+    SHLOG_TRACE("DecRef 0 shard {:x} {}", (size_t)shard, shard->name(shard));
+    shard->destroy(shard);
+  }
+}
+
+void incRef(ShardPtr shard) {
+  if (shard->refCount == 0)
+    SHLOG_TRACE("IncRef 0 shard {:x} {}", (size_t)shard, shard->name(shard));
+  ++shard->refCount;
+}
+} // namespace shards
