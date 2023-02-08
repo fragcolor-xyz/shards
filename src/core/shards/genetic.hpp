@@ -4,6 +4,7 @@
 #ifndef SH_CORE_SHARDS_GENETIC
 #define SH_CORE_SHARDS_GENETIC
 
+#include "runtime.hpp"
 #include "shardwrapper.hpp"
 #include "shards.h"
 #include "shards.hpp"
@@ -170,10 +171,10 @@ struct Evolve {
         i.mesh->terminate();
         auto wire = SHWire::sharedFromRef(i.wire.payload.wireValue);
         stop(wire.get());
-        Serialization::varFree(i.wire);
+        destroyVar(i.wire);
         auto fitwire = SHWire::sharedFromRef(i.fitnessWire.payload.wireValue);
         stop(fitwire.get());
-        Serialization::varFree(i.fitnessWire);
+        destroyVar(i.fitnessWire);
       });
       _exec->run(cleanupFlow).get();
       _exec.reset(nullptr);
@@ -505,8 +506,8 @@ private:
 
   struct Individual {
     ~Individual() {
-      Serialization::varFree(wire);
-      Serialization::varFree(fitnessWire);
+      destroyVar(wire);
+      destroyVar(fitnessWire);
     }
 
     size_t idx = 0;
@@ -622,7 +623,6 @@ struct Mutant {
       _indices = value;
       break;
     case 2: {
-      destroyShards();
       _mutations = value;
       if (_mutations.valueType == SHType::Seq) {
         for (auto &mut : _mutations) {
@@ -700,25 +700,7 @@ struct Mutant {
     cleanupMutations();
   }
 
-  void destroyShards() {
-    if (_mutations.valueType == SHType::Seq) {
-      for (auto &mut : _mutations) {
-        if (mut.valueType == SHType::ShardRef) {
-          auto blk = mut.payload.shardValue;
-          blk->cleanup(blk);
-          blk->destroy(blk);
-        } else if (mut.valueType == SHType::Seq) {
-          for (auto &bv : mut) {
-            auto blk = bv.payload.shardValue;
-            blk->cleanup(blk);
-            blk->destroy(blk);
-          }
-        }
-      }
-    }
-  }
-
-  void destroy() { destroyShards(); }
+  void destroy() {}
 
   void warmup(SHContext *ctx) { _shard.warmup(ctx); }
 
@@ -1022,6 +1004,7 @@ struct DShard {
       _wrapped = createShard(_name.c_str());
       // and setup if successful
       if (_wrapped) {
+        incRef(_wrapped);
         _wrapped->setup(_wrapped);
       }
     } break;
@@ -1086,8 +1069,10 @@ struct DShard {
   }
 
   void destroy() {
-    if (_wrapped)
-      _wrapped->destroy(_wrapped);
+    if (_wrapped) {
+      decRef(_wrapped);
+      _wrapped = nullptr;
+    }
   }
 
   SHTypesInfo inputTypes() {

@@ -5,6 +5,7 @@
 #define SH_CORE_RUNTIME
 
 // must go first
+#include "shards.h"
 #if _WIN32
 #include <winsock2.h>
 #endif
@@ -584,8 +585,6 @@ private:
 
 namespace shards {
 struct Serialization {
-  static void varFree(SHVar &output);
-
   std::unordered_map<SHVar, SHWireRef> wires;
   std::unordered_map<std::string, std::shared_ptr<Shard>> defaultShards;
 
@@ -607,7 +606,7 @@ struct Serialization {
     // stop trying to recycle, types differ
     auto recycle = true;
     if (output.valueType != nextType) {
-      varFree(output);
+      destroyVar(output);
       recycle = false;
     }
 
@@ -728,7 +727,7 @@ struct Serialization {
           map = (SHMap *)output.payload.tableValue.opaque;
           map->clear();
         } else {
-          varFree(output);
+          destroyVar(output);
           output.valueType = nextType;
         }
       }
@@ -747,12 +746,8 @@ struct Serialization {
         read((uint8_t *)&klen, sizeof(uint32_t));
         keyBuf.resize(klen);
         read((uint8_t *)keyBuf.c_str(), klen);
-        // TODO improve this, avoid allocations
-        SHVar tmp{};
-        deserialize(read, tmp);
         auto &dst = (*map)[keyBuf];
-        dst = tmp;
-        varFree(tmp);
+        deserialize(read, dst);
       }
       break;
     }
@@ -764,7 +759,7 @@ struct Serialization {
           set = (SHHashSet *)output.payload.setValue.opaque;
           set->clear();
         } else {
-          varFree(output);
+          destroyVar(output);
           output.valueType = nextType;
         }
       }
@@ -782,7 +777,7 @@ struct Serialization {
         SHVar dst{};
         deserialize(read, dst);
         (*set).emplace(dst);
-        varFree(dst);
+        destroyVar(dst);
       }
       break;
     }
@@ -874,14 +869,15 @@ struct Serialization {
         SHVar tmp{};
         deserialize(read, tmp);
         blk->setParam(blk, idx, &tmp);
-        varFree(tmp);
+        destroyVar(tmp);
       }
       if (blk->setState) {
         SHVar state{};
         deserialize(read, state);
         blk->setState(blk, &state);
-        varFree(state);
+        destroyVar(state);
       }
+      incRef(blk);
       output.payload.shardValue = blk;
       break;
     }
@@ -917,6 +913,8 @@ struct Serialization {
       for (uint32_t i = 0; i < len; i++) {
         SHVar shardVar{};
         deserialize(read, shardVar);
+        ShardPtr shard = shardVar.payload.shardValue;
+        shard->refCount = 1; // Make owned by wire
         assert(shardVar.valueType == SHType::ShardRef);
         wire->addShard(shardVar.payload.shardValue);
         // blow's owner is the wire
@@ -1259,6 +1257,14 @@ template <typename T> struct WireDoppelgangerPool {
     _wireStr = stream.str();
   }
 
+  ~WireDoppelgangerPool() {
+    SHLOG_TRACE("===== Destroying the pool");
+    SHLOG_TRACE("===== Destroying the pool");
+    SHLOG_TRACE("===== Destroying the pool");
+    SHLOG_TRACE("===== Destroying the pool");
+    SHLOG_TRACE("===== Destroying the pool");
+  }
+
   // notice users should stop wires themselves, we might want wires to persist
   // after this object lifetime
   void stopAll() {
@@ -1276,6 +1282,7 @@ template <typename T> struct WireDoppelgangerPool {
       SHVar vwire{};
       serializer.deserialize(r, vwire);
       auto wire = SHWire::sharedFromRef(vwire.payload.wireValue);
+      destroyVar(vwire);
       auto fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->wire = wire;
       composer.compose(wire.get());

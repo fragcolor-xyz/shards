@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "nlohmann/json.hpp"
+#include "runtime.hpp"
 #include "shards.h"
 #include "shared.hpp"
 #include "utility.hpp"
@@ -485,6 +486,8 @@ void from_json(const json &j, SHVar &var) {
       auto errmsg = "Failed to create shard of type: " + std::string("blkname");
       throw shards::ActivationError(errmsg.c_str());
     }
+
+    shards::incRef(blk);
     var.payload.shardValue = blk;
 
     // Setup
