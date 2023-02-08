@@ -633,7 +633,7 @@ impl Shard for SHDecode {
     let mut offset = 0;
     self.output.clear();
     for (t, h) in types.iter().zip(hints.iter()) {
-      let t = t.enum_value()?;
+      let t = t.enum_value()? as u8;
       match t {
         0 => {
           // None
@@ -713,10 +713,49 @@ impl Shard for SHDecode {
         }
         16 => {
           // Bytes
+          let hint = h.as_ref().try_into();
+          let original_slice = &bytes[offset..];
           let mut bytes = &bytes[offset..];
-          let value = Vec::<u8>::decode(&mut bytes).map_err(|_| "Invalid bytes")?;
-          offset += value.encoded_size();
-          self.output.push(value.as_slice().into());
+          if let Ok(hint) = hint {
+            match hint {
+              "c" => {
+                // Compact
+                // this consumes the above!
+                let value =
+                  Compact::<u128>::decode(&mut bytes).map_err(|_| "Invalid Compact bytes")?;
+                // we decode just to discover the actual size!
+                // we push to the output the actual bytes
+                let from = offset;
+                offset += value.encoded_size();
+                let bytes = &original_slice[from..offset];
+                self.output.push(bytes.into());
+                continue;
+              }
+              "u64" => {
+                // u64
+                // we push to the output the actual bytes
+                let from = offset;
+                offset += 8;
+                let bytes = &original_slice[from..offset];
+                self.output.push(bytes.into());
+                continue;
+              }
+              "u128" => {
+                // u128
+                // we push to the output the actual bytes
+                let from = offset;
+                offset += 16;
+                let bytes = &original_slice[from..offset];
+                self.output.push(bytes.into());
+                continue;
+              }
+              _ => {}
+            }
+          } else {
+            let value = Vec::<u8>::decode(&mut bytes).map_err(|_| "Invalid bytes")?;
+            offset += value.encoded_size();
+            self.output.push(value.as_slice().into());
+          }
         }
         17 => {
           // String
