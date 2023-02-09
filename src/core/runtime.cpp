@@ -2703,6 +2703,8 @@ void SHWire::cleanup(bool force) {
   if (warmedUp && (force || wireUsers.size() == 0)) {
     SHLOG_TRACE("Running cleanup on wire: {} users count: {}", name, wireUsers.size());
 
+    dispatcher.trigger(SHWire::OnCleanupEvent{this});
+
     warmedUp = false;
 
     // Run cleanup on all shards, prepare them for a new start if necessary
