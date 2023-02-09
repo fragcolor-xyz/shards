@@ -277,6 +277,19 @@ struct Container {
   };
   DECL_ENUM_INFO(TextureDimension_, TextureDimension, '_e12');
 
+  enum class TextureAddressing_ {
+    Repeat = WGPUAddressMode_Repeat,
+    MirrorRepeat = WGPUAddressMode_MirrorRepeat,
+    ClampToEdge = WGPUAddressMode_ClampToEdge,
+  };
+  DECL_ENUM_INFO(TextureAddressing_, TextureAddressing, '_e13');
+
+  enum class TextureFiltering_ {
+    Nearest = WGPUFilterMode_Nearest,
+    Linear = WGPUFilterMode_Linear,
+  };
+  DECL_ENUM_INFO(TextureFiltering_, TextureFiltering, '_e14');
+
   OBJECT('feat', "GFX.Feature", Feature, FeaturePtr)
   static inline Type FeatureSeq = Type::SeqOf(Feature);
 

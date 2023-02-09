@@ -11,6 +11,7 @@
 #include <gfx/render_target.hpp>
 #include <params.hpp>
 #include <stdexcept>
+#include <webgpu-headers/webgpu.h>
 
 using namespace shards;
 namespace gfx {
@@ -55,8 +56,11 @@ struct TextureShard {
                  {CoreInfo::IntType, Type::VariableOf(CoreInfo::IntType)});
   PARAM_VAR(_dimension, "Dimension", "The type of texture to create. (Render target only)",
             {Types::TextureDimensionEnumInfo::Type});
+  PARAM_PARAMVAR(_addressing, "Addressing", "For sampling, sets the address modes.",
+                 {Types::TextureAddressingEnumInfo::Type, Type::SeqOf(Types::TextureAddressingEnumInfo::Type)});
+  PARAM_PARAMVAR(_filtering, "Filtering", "For sampling, sets the filter mode.", {Types::TextureFilteringEnumInfo::Type});
   PARAM_IMPL(TextureShard, PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution),
-             PARAM_IMPL_FOR(_mipLevels), PARAM_IMPL_FOR(_dimension));
+             PARAM_IMPL_FOR(_mipLevels), PARAM_IMPL_FOR(_dimension), PARAM_IMPL_FOR(_addressing), PARAM_IMPL_FOR(_filtering));
 
   TextureShard() {}
 
@@ -248,11 +252,39 @@ struct TextureShard {
     });
   }
 
+  void applySamplerSettings() {
+    SamplerState samplerState;
+
+    Var addressingModes{_addressing.get()};
+    if (addressingModes.valueType == SHType::Seq) {
+      auto &seq = addressingModes.payload.seqValue;
+      if (seq.len >= 3) {
+        throw formatException("Number of texture addressing modes are too many ({}, max: 3)", seq.len);
+      }
+      for (size_t i = 0; i < seq.len; i++) {
+        (&samplerState.addressModeU)[i] = WGPUAddressMode(seq.elements[i].payload.enumValue);
+      }
+    } else if (!addressingModes.isNone()) {
+      samplerState.addressModeU = WGPUAddressMode(addressingModes.payload.enumValue);
+      samplerState.addressModeV = samplerState.addressModeU;
+      samplerState.addressModeW = samplerState.addressModeU;
+    }
+
+    Var filteringVar{_filtering.get()};
+    if (!filteringVar.isNone()) {
+      samplerState.filterMode = WGPUFilterMode(filteringVar.payload.enumValue);
+    }
+
+    texture->initWithSamplerState(samplerState);
+  }
+
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (_createFromImage)
       activateFromImage(input.payload.imageValue);
     else
       activateRenderableTexture();
+
+    applySamplerSettings();
 
     return textureVar;
   }
