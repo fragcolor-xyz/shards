@@ -1773,7 +1773,10 @@ struct Branch {
          {BranchFailureEnumInfo::Type}},
         {"CaptureAll",
          SHCCSTR("If all of the existing context variables should be captured, no matter if being used or not."),
-         {CoreInfo::BoolType}}};
+         {CoreInfo::BoolType}},
+        {"Mesh",
+         SHCCSTR("Optional external mesh to use for this branch. If not provided, a new one will be created."),
+         {CoreInfo::NoneType, MeshType}}};
     return params;
   }
 
@@ -1788,6 +1791,14 @@ struct Branch {
     case 2:
       _captureAll = value.payload.boolValue;
       break;
+    case 3:
+      if (value.valueType == SHType::None) {
+        _mesh = SHMesh::make();
+      } else {
+        auto sharedMesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(value.payload.objectValue);
+        _mesh = *sharedMesh;
+      }
+      break;
     default:
       break;
     }
@@ -1801,6 +1812,9 @@ struct Branch {
       return Var::Enum(_failureBehavior, BranchFailureEnumInfo::VendorId, BranchFailureEnumInfo::TypeId);
     case 2:
       return Var(_captureAll);
+    case 3:
+      assert(_mesh); // there always should be a mesh
+      return Var::Object(&_mesh, CoreCC, TypeId);
     default:
       return Var::Empty;
     }
@@ -1929,7 +1943,7 @@ struct Branch {
         break;
       }
     }
-    return Var::Object(_mesh.get(), CoreCC, TypeId);
+    return Var::Object(&_mesh, CoreCC, TypeId);
   }
 
 private:

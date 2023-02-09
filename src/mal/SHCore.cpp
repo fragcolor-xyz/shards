@@ -433,6 +433,8 @@ public:
 
   SHMesh *value() const { return m_mesh.get(); }
 
+  std::shared_ptr<SHMesh> &sharedRef() { return m_mesh; }
+
   void schedule(malSHWire *wire, bool compose = true) {
     auto cp = SHWire::sharedFromRef(wire->value());
     m_mesh->schedule(cp, Var::Empty, compose);
@@ -935,6 +937,9 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
   } else if (malSHWire *v = DYNAMIC_CAST(malSHWire, arg)) {
     auto val = shards::Var(v->value());
     WRAP_TO_CONST(val);
+  } else if (malSHMesh *v = DYNAMIC_CAST(malSHMesh, arg)) {
+    auto val = shards::Var::Object(&v->sharedRef(), CoreCC, 'brcM');
+    WRAP_TO_CONST(val);
   } else if (malShard *v = DYNAMIC_CAST(malShard, arg)) {
     result.emplace_back(v);
   } else if (DYNAMIC_CAST(malVector, arg)) {
@@ -1094,6 +1099,12 @@ malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
     SHVar var{};
     var.valueType = SHType::Wire;
     var.payload.wireValue = wire;
+    auto cvar = new malSHVar(var, false);
+    cvar->reference(v);
+    cvar->line = arg->line;
+    return malSHVarPtr(cvar);
+  } else if (malSHMesh *v = DYNAMIC_CAST(malSHMesh, arg)) {
+    auto var = shards::Var::Object(&v->sharedRef(), CoreCC, 'brcM');
     auto cvar = new malSHVar(var, false);
     cvar->reference(v);
     cvar->line = arg->line;

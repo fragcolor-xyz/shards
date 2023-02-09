@@ -24,22 +24,18 @@
   (WireRunner .c3 :Mode RunWireMode.Detached)
   (Wait .c3))
 
+(defmesh internally-used)
+
+(defloop internally-ran
+  (Msg "Hello?"))
+
+(schedule internally-used internally-ran)
+
 (defloop c
   "Hello" = .msg1
-  (Branch [c4] :CaptureAll true))
+  (Branch [c4]
+          :CaptureAll true
+          :Mesh internally-used))
 
 (schedule main c)
 (if (run main 0.2 25) nil (throw "Root tick failed"))
-
-;; (defwire c4 ; this wire doesn't require .msg1 until it's run
-;;   "(defloop c3 .msg1 (Log))"
-;;   (EDN.Eval) (ExpectWire) = .c3
-;;   (Spawn .c3)
-;;   (Wait .c3))
-
-;; (defloop c
-;;   "Hello" = .msg1
-;;   (Branch [c4] :CaptureAll true))
-
-;; (schedule main c)
-;; (if (run main 0.2 25) nil (throw "Root tick failed"))
