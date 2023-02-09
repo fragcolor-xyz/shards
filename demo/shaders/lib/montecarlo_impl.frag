@@ -67,13 +67,13 @@ vec3 sampleEnvironment(in texture2D inTexture, vec3 dir) {
 
 
 
-struct MonteCarloInput {
+struct IntegrateInput {
 	vec3 baseDirection; // Direction which is being sampled
 	vec2 coord;			// Uniform coord in the unit rectangle
     vec2 uvCoord; // raw uv coordinate
 };
 
-struct MonteCarloOutput {
+struct IntegrateOutput {
 	vec3 localDirection;
 	float pdf;
 	float sampleWeight;
@@ -113,8 +113,8 @@ mat3 generateFrameFromZDirection(vec3 normal) {
 	return mat3(tangent, bitangent, normal);
 }
 
-MonteCarloOutput MONTECARLO_FUNCTION(in MonteCarloInput input) {
-	MonteCarloOutput empty;
+IntegrateOutput MONTECARLO_FUNCTION(in IntegrateInput input) {
+	IntegrateOutput empty;
 	return empty;
 }
 
@@ -125,12 +125,12 @@ vec3 montecarlo(in vec2 inputUV, in texture2D inputTexture) {
 	float weight = 0.0;
 	vec3 result = vec3(0, 0, 0);
 	for (int sampleIndex = 0; sampleIndex < MONTECARLO_NUM_SAMPLES; sampleIndex++) {
-		MonteCarloInput mci;
+		IntegrateInput mci;
 		mci.baseDirection = baseDir;
 		mci.coord = hammersley2d(sampleIndex, MONTECARLO_NUM_SAMPLES);
 		mci.uvCoord = inputUV;
 
-		MonteCarloOutput mco = MONTECARLO_FUNCTION(mci);
+		IntegrateOutput mco = MONTECARLO_FUNCTION(mci);
 
 		float lod = getWeightedLod(mco.pdf);
 

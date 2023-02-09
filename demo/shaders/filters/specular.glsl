@@ -20,8 +20,8 @@ layout(std140) uniform GGXParameters {
 }
 ggxParameters;
 
-MonteCarloOutput ggx(MonteCarloInput mci) {
-	MonteCarloOutput result;
+IntegrateOutput ggx(IntegrateInput mci) {
+	IntegrateOutput result;
 
 	LightingVectorSample lvs = importanceSampleGGX(mci.coord, ggxParameters.roughness);
 	result.localDirection = lvs.localDirection;

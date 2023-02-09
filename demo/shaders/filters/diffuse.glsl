@@ -15,8 +15,8 @@ uniform sampler2D u_inputTexture;
 #include "lib/montecarlo.glsl"
 #include "lib/lighting.glsl"
 
-MonteCarloOutput lambert(MonteCarloInput mci) {
-	MonteCarloOutput result;
+IntegrateOutput lambert(IntegrateInput mci) {
+	IntegrateOutput result;
 	LightingVectorSample lvs = importanceSampleLambert(mci.coord);
 	result.localDirection = lvs.localDirection;
 	result.pdf = lvs.pdf;

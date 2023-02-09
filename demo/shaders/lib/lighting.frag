@@ -187,5 +187,51 @@ vec3 computeEnvironmentLighting(in MaterialInfo material, in LightingGeneralPara
 	return diffuseLight + specularLight;
 }
 
+
+MaterialInfo getMatrialParamsDefault() {
+	MaterialInfo material;
+	material.baseColor = vec3(1, 1, 1);
+	material.ior = 1.5;
+	material.specularColor0 = vec3(0.04);
+	material.specularWeight = 1.0;
+	return material;
+}
+
+void materialSetIor(inout MaterialInfo info, float u_Ior) {
+	info.specularColor0 = vec3(pow((u_Ior - 1.0) / (u_Ior + 1.0), 2.0));
+	info.ior = u_Ior;
+}
+
+void materialSetSpecularColor(inout MaterialInfo info, vec3 color, float weight) {
+	vec3 dielectricSpecularF0 = min(info.specularColor0 * color, vec3(1.0));
+	info.specularColor0 = mix(dielectricSpecularF0, info.baseColor, info.metallic);
+	info.specularWeight = weight;
+	info.diffuseColor = mix(info.baseColor.rgb * (1.0 - max3(dielectricSpecularF0)), vec3(0), info.metallic);
+}
+
+void materialSetMetallicRoughness(inout MaterialInfo info, float u_MetallicFactor, float u_RoughnessFactor) {
+	info.metallic = u_MetallicFactor;
+	info.perceptualRoughness = u_RoughnessFactor;
+
+	// Achromatic specularColor0 based on IOR.
+	info.diffuseColor = mix(info.baseColor.rgb * (vec3(1.0) - info.specularColor0), vec3(0), info.metallic);
+	info.specularColor0 = mix(info.specularColor0, info.baseColor.rgb, info.metallic);
+}
+
+
+void setSpecularGlossinessInfo(inout MaterialInfo info, vec3 u_SpecularFactor, float u_GlossinessFactor) {
+    info.specularColor0 = u_SpecularFactor;
+    info.perceptualRoughness = u_GlossinessFactor;
+
+#ifdef HAS_SPECULAR_GLOSSINESS_MAP
+    vec4 sgSample = texture(u_SpecularGlossinessSampler, getSpecularGlossinessUV());
+    info.perceptualRoughness *= sgSample.a ; // glossiness to roughness
+    info.specularColor0 *= sgSample.rgb; // specular
+#endif // ! HAS_SPECULAR_GLOSSINESS_MAP
+
+    info.perceptualRoughness = 1.0 - info.perceptualRoughness; // 1 - glossiness
+    info.diffuseColor = info.baseColor.rgb * (1.0 - max(max(info.specularColor0.r, info.specularColor0.g), info.specularColor0.b));
+}
+
 void main() {
 }

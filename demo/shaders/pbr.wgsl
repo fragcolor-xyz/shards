@@ -23,12 +23,12 @@ struct LightingVectorSample {
   localDirection: vec3<f32>,
 }
 
-struct MonteCarloInput {
+struct IntegrateInput {
   baseDirection: vec3<f32>,
   coord: vec2<f32>,
 }
 
-struct MonteCarloOutput {
+struct IntegrateOutput {
   localDirection: vec3<f32>,
   pdf: f32,
   sampleWeight: f32,
@@ -65,7 +65,7 @@ fn localHemisphereDirectionHelper(cosTheta: f32, sinTheta: f32, phi: f32) -> vec
 	return vec3<f32>(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
 }
 
-fn max3_(v: vec3<f32>) -> f32 {
+fn max3(v: vec3<f32>) -> f32 {
   return max(max(v.x, v.y), v.z);
 }
 
@@ -165,14 +165,52 @@ fn getIBLRadianceLambertian(lambertianSample: vec3<f32>, ggxLUT: vec2<f32>, fres
 	return (FmsEms + k_D) * lambertianSample;
 }
 fn sampleEnvironmentLod(_texture: texture_cube<f32>, _sampler: sampler, dir: vec3<f32>, lod: f32) -> vec3<f32> {
+  let dir =  vec3<f32>(dir.xy, -dir.z);
   return textureSampleLevel(_texture, _sampler, dir, lod).xyz;
 }
 
 fn sampleEnvironment(_texture: texture_cube<f32>, _sampler: sampler, dir: vec3<f32>) -> vec3<f32> {
+  let dir =  vec3<f32>(dir.xy, -dir.z);
 	return sampleEnvironmentLod(_texture, _sampler, dir, f32(textureNumLevels(_texture) - 1));
 }
 
-fn computeEnvironmentLighting( material: MaterialInfo, params: LightingGeneralParams,  
+fn getDefaultMaterialInfo() -> MaterialInfo {
+	var material: MaterialInfo;
+  material.baseColor = vec3<f32>(f32(1), f32(1), f32(1));
+  material.ior = 1.5;
+  material.specularColor0 = vec3<f32>(0.03999999910593033);
+  material.specularWeight = 1.0;
+	return material;
+}
+
+
+fn materialSetIor(info: ptr<function, MaterialInfo>, ior: f32) {
+	(*info).specularColor0 = vec3<f32>(pow((ior - 1.0) / (ior + 1.0), 2.0));
+	(*info).ior = ior;
+}
+
+fn materialSetSpecularColor(info: ptr<function, MaterialInfo>, color: vec3<f32>, weight: f32) {
+  let dielectricSpecularF0 = min((*info).specularColor0 * color, vec3<f32>(1.0));
+	(*info).specularColor0 = mix(dielectricSpecularF0, (*info).baseColor, (*info).metallic);
+	(*info).specularWeight = weight;
+	(*info).diffuseColor = mix((*info).baseColor.rgb * (1.0 - max3(dielectricSpecularF0)), vec3<f32>(0.0), (*info).metallic);
+}
+
+fn materialSetMetallicRoughness(info: ptr<function, MaterialInfo>, metallicFactor: f32, roughnessFactor: f32) {
+  (*info).metallic = metallicFactor;
+	(*info).perceptualRoughness = roughnessFactor;
+
+	// Achromatic specularColor0 based on IOR.
+	(*info).diffuseColor = mix((*info).baseColor.rgb * (vec3<f32>(1.0) - (*info).specularColor0), vec3<f32>(0.0), (*info).metallic);
+	(*info).specularColor0 = mix((*info).specularColor0, (*info).baseColor.rgb, (*info).metallic);
+}
+
+fn setSpecularGlossinessInfo(info_3: ptr<function, MaterialInfo>, u_SpecularFactor: vec3<f32>, u_GlossinessFactor: f32) {
+    return;
+}
+
+fn computeEnvironmentLighting(material: MaterialInfo, 
+  params: LightingGeneralParams,  
   envLambert: texture_cube<f32>,
   envLambertSampler: sampler,
   envGGX: texture_cube<f32>,
@@ -186,7 +224,7 @@ fn computeEnvironmentLighting( material: MaterialInfo, params: LightingGeneralPa
 	let nDotV = dot(viewDir, params.surfaceNormal);
 
 	material.perceptualRoughness = clamp(material.perceptualRoughness, 0.0, 1.0);
-	material.metallic = clamp(material.metallic, 0.0, 1.0);
+	material.metallic = clamp(material.metallic, 0.2, 1.0);
 
 	let roughness = material.perceptualRoughness * material.perceptualRoughness;
 	let reflectance = max(max(material.specularColor0.r, material.specularColor0.g), material.specularColor0.b);
@@ -253,7 +291,7 @@ fn computeLUT(in: vec2<f32>) -> vec2<f32> {
 
     let lvs = importanceSampleGGX(coord, roughness);
     let sampleNormal = lvs.localDirection;
-    let localLightDir = reflect(localViewDir, sampleNormal);
+    let localLightDir = reflect(-localViewDir, sampleNormal);
 
     let nDotL = localLightDir.z;
     let nDotH = sampleNormal.z;
@@ -272,8 +310,8 @@ fn computeLUT(in: vec2<f32>) -> vec2<f32> {
   return result.xy / f32(MONTECARLO_NUM_SAMPLES) * 4.0;
 }
 
-fn ggx(roughness: f32, mci: MonteCarloInput) -> MonteCarloOutput {
-	var result: MonteCarloOutput;
+fn ggx(roughness: f32, mci: IntegrateInput) -> IntegrateOutput {
+	var result: IntegrateOutput;
 
 	let lvs = importanceSampleGGX(mci.coord, roughness);
 	result.localDirection = lvs.localDirection;
@@ -281,11 +319,23 @@ fn ggx(roughness: f32, mci: MonteCarloInput) -> MonteCarloOutput {
 
 	// Use N = V for precomputed map
 	let localViewDir = vec3(0.0, 0.0, 1.0);
-	let localLightDir = reflect(localViewDir, result.localDirection);
+	let localLightDir = reflect(-localViewDir, result.localDirection);
 	let nDotL = dot(localLightDir, result.localDirection);
 
 	result.sampleWeight = nDotL;
 	result.sampleScale = nDotL;
+
+	return result;
+}
+
+fn lambert(mci: IntegrateInput) -> IntegrateOutput {
+	var result: IntegrateOutput;
+
+	let lvs = importanceSampleLambert(mci.coord);
+	result.localDirection = lvs.localDirection;
+	result.pdf = lvs.pdf;
+	result.sampleWeight = 1.0;
+	result.sampleScale = 1.0;
 
 	return result;
 }
