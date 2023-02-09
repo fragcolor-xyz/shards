@@ -237,8 +237,6 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
 
   SHLOG_TRACE("stopping wire: {}", wire->name);
 
-  wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
-
   if (wire->coro) {
     // Run until exit if alive, need to propagate to all suspended shards!
     if ((*wire->coro) && wire->state > SHWire::State::Stopped && wire->state < SHWire::State::Failed) {
