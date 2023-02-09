@@ -1258,11 +1258,6 @@ template <typename T> struct WireDoppelgangerPool {
   }
 
   ~WireDoppelgangerPool() {
-    SHLOG_TRACE("===== Destroying the pool");
-    SHLOG_TRACE("===== Destroying the pool");
-    SHLOG_TRACE("===== Destroying the pool");
-    SHLOG_TRACE("===== Destroying the pool");
-    SHLOG_TRACE("===== Destroying the pool");
   }
 
   // notice users should stop wires themselves, we might want wires to persist

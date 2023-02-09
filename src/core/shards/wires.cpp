@@ -4,10 +4,13 @@
 #include "wires.hpp"
 #include "async.hpp"
 #include <chrono>
+#include <deque>
 #include <memory>
 #include <set>
 #include "../brancher.hpp"
 #include "brancher.hpp"
+#include "foundation.hpp"
+#include "shards.h"
 
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
 // Remove define from winspool.h
@@ -1115,6 +1118,7 @@ struct ManyWire : public std::enable_shared_from_this<ManyWire> {
   uint32_t index;
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<SHMesh> mesh; // used only if MT
+  std::deque<OwnedVar> injectedVariables;
   bool done;
   std::optional<entt::connection> onStopConnection;
 
@@ -1551,8 +1555,7 @@ struct Spawn : public CapturingSpawners {
     capturing = true;
     passthrough = false;
   }
-  ~Spawn() {
-  }
+  ~Spawn() {}
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::WireType; }
@@ -1650,10 +1653,7 @@ struct Spawn : public CapturingSpawners {
     SHLOG_TRACE("Spawn::wireOnStop {}", e.wire->name);
 
     auto container = _wireContainers[e.wire].lock();
-    for (auto &v : _vars) {
-      // notice, this should be already destroyed by the wire releaseVariable
-      destroyVar(container->wire->variables[v.variableName()]);
-    }
+    container->injectedVariables.clear();
 
     _pool->release(container);
   }
@@ -1669,9 +1669,11 @@ struct Spawn : public CapturingSpawners {
       c->onStopConnection = c->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Spawn::wireOnStop>(this);
     }
 
+    // Inject variables
     for (auto &v : _vars) {
-      auto &var = v.get();
-      cloneVar(c->wire->variables[v.variableName()], var);
+      OwnedVar &var = c->injectedVariables.emplace_back(v.get());
+      var.flags |= SHVAR_FLAGS_EXTERNAL;
+      c->wire->externalVariables.emplace(v.variableName(), &(SHVar&)var);
     }
 
     mesh->schedule(c->wire, input, false);
