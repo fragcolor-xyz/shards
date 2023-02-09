@@ -1,12 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
-use egui_gfx::*;
+use super::ExtPanel;
 use super::WireViewer;
 use crate::core::ShardInstance;
 use crate::shard::Shard;
-use crate::shards::editor::GraphNodeWidget;
-use crate::shards::editor::ShardData;
+use crate::shards::editor::*;
 use crate::shards::gui::egui_host::EguiHost;
 use crate::shards::gui::util;
 use crate::shards::gui::GFX_CONTEXT_TYPE;
@@ -28,19 +27,23 @@ use crate::types::Types;
 use crate::types::Var;
 use crate::types::WireRef;
 use crate::types::ANY_TYPES;
+use egui_gfx::*;
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::CStr;
+use std::rc::Rc;
 
 lazy_static! {
   static ref SPATIAL_CONTEXT_TYPE: Type = unsafe { *super::spatial_getSpatialContextType() };
   static ref WIRE_OR_VAR_TYPES: Vec<Type> = vec![common_type::wire, common_type::wire_var];
   static ref VIEWER_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Queue"),
-      shccstr!("The draw queue."),
-      &GFX_QUEUE_VAR_TYPES[..]
-    )
-      .into(),
+    // (
+    //   cstr!("Queue"),
+    //   shccstr!("The draw queue."),
+    //   &GFX_QUEUE_VAR_TYPES[..]
+    // )
+    //   .into(),
     (cstr!("Wire"), shccstr!("TODO"), &WIRE_OR_VAR_TYPES[..]).into(),
   ];
 }
@@ -51,7 +54,7 @@ impl<'a> Default for WireViewer<'a> {
       wire: ParamVar::default(),
       requiring: Vec::new(),
       // ---
-      queue: ParamVar::default(),
+      // queue: ParamVar::default(),
       graphics_context: unsafe {
         let mut var = ParamVar::default();
         let name = shardsc::gfx_getGraphicsContextVarName() as shardsc::SHString;
@@ -73,9 +76,10 @@ impl<'a> Default for WireViewer<'a> {
       renderer: egui_gfx::Renderer::new(),
       input_translator: egui_gfx::InputTranslator::new(),
       // ---
-      graph: Default::default(),
-      node_hosts: Default::default(),
-      node_positions: Default::default(),
+      graph: Rc::new(RefCell::new(Default::default())),
+      panels: Default::default(),
+      // node_hosts: Default::default(),
+      // node_positions: Default::default(),
     }
   }
 }
@@ -121,16 +125,16 @@ impl<'a> Shard for WireViewer<'a> {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.queue.set_param(value)),
-      1 => Ok(self.wire.set_param(value)),
+      // 0 => Ok(self.queue.set_param(value)),
+      0 => Ok(self.wire.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.queue.get_param(),
-      1 => self.wire.get_param(),
+      // 0 => self.queue.get_param(),
+      0 => self.wire.get_param(),
       _ => Var::default(),
     }
   }
@@ -169,7 +173,7 @@ impl<'a> Shard for WireViewer<'a> {
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.queue.warmup(ctx);
+    // self.queue.warmup(ctx);
     self.wire.warmup(ctx);
     self.graphics_context.warmup(ctx);
     self.input_context.warmup(ctx);
@@ -184,7 +188,7 @@ impl<'a> Shard for WireViewer<'a> {
     self.input_context.cleanup();
     self.graphics_context.cleanup();
     self.wire.cleanup();
-    self.queue.cleanup();
+    // self.queue.cleanup();
 
     Ok(())
   }
@@ -211,44 +215,44 @@ impl<'a> Shard for WireViewer<'a> {
     //   Err("No UI parent")
     // }
 
-    let egui_input = unsafe {
-      &*(shardsc::gfx_getEguiWindowInputs(
-        self.input_translator.as_mut_ptr() as *mut shardsc::gfx_EguiInputTranslator,
-        self.graphics_context.get(),
-        self.input_context.get(),
-        1.0,
-      ) as *const egui_gfx::egui_Input)
-    };
+    // let egui_input = unsafe {
+    //   &*(shardsc::gfx_getEguiWindowInputs(
+    //     self.input_translator.as_mut_ptr() as *mut shardsc::gfx_EguiInputTranslator,
+    //     self.graphics_context.get(),
+    //     self.input_context.get(),
+    //     1.0,
+    //   ) as *const egui_gfx::egui_Input)
+    // };
 
-    for node_id in self.node_positions.keys() {
-      if let Some(host) = self.node_hosts.get_mut(node_id) {
-        host.activate_base(egui_input, |_this, ctx| {
-          egui::CentralPanel::default().show(ctx, |ui| {
-            let mut _pos = egui::Pos2::default();
-            let mut _node_rects = HashMap::new();
-            GraphNodeWidget {
-              position: &mut _pos,
-              graph: &mut self.graph,
-              node_rects: &mut _node_rects,
-              node_id,
-              pan: Default::default(),
-              selected: false,
-            }
-            .show(ui);
-          });
+    // for node_id in self.node_positions.keys() {
+    //   if let Some(host) = self.node_hosts.get_mut(node_id) {
+    //     host.activate_base(egui_input, |_this, ctx| {
+    //       egui::CentralPanel::default().show(ctx, |ui| {
+    //         let mut _pos = egui::Pos2::default();
+    //         let mut _node_rects = HashMap::new();
+    //         GraphNodeWidget {
+    //           position: &mut _pos,
+    //           graph: &mut self.graph,
+    //           node_rects: &mut _node_rects,
+    //           node_id,
+    //           pan: Default::default(),
+    //           selected: false,
+    //         }
+    //         .show(ui);
+    //       });
 
-          Ok(())
-        })?;
-        let egui_output = host.get_egui_output();
-        let queue_var = self.queue.get();
-        unsafe {
-          let queue = shardsc::gfx_getDrawQueueFromVar(queue_var);
-          self
-            .renderer
-            .render_with_native_output(egui_output, queue as *const egui_gfx::gfx_DrawQueuePtr);
-        }
-      }
-    }
+    //       Ok(())
+    //     })?;
+    //     let egui_output = host.get_egui_output();
+    //     let queue_var = self.queue.get();
+    //     unsafe {
+    //       let queue = shardsc::gfx_getDrawQueueFromVar(queue_var);
+    //       self
+    //         .renderer
+    //         .render_with_native_output(egui_output, queue as *const egui_gfx::gfx_DrawQueuePtr);
+    //     }
+    //   }
+    // }
 
     // Always passthrough the input
     Ok(*input)
@@ -269,12 +273,22 @@ impl<'a> WireViewer<'a> {
 
     for s in shards.into_iter() {
       let data: ShardData = s.into();
-      let node_id = self.graph.add_node(data.name.to_string(), data);
+      let node_id = RefCell::borrow_mut(&self.graph).add_node(data.name.to_string(), data);
 
-      let mut host = EguiHost::default();
-      host.warmup(ctx).unwrap();
-      self.node_hosts.insert(node_id, host);
-      self.node_positions.insert(node_id, [0.0, 0.0, 0.0]);
+      let mut panel = ExtPanel {
+        host: EguiHost::default(),
+        node_id,
+        graph: self.graph.clone(),
+      };
+      panel.warmup(ctx)?;
+      unsafe {
+        super::spatial_add_panel(&mut panel, self.spatial_context.get());
+      }
+      self.panels.insert(node_id, panel);
+     
+
+      // self.node_hosts.insert(node_id, host);
+      // self.node_positions.insert(node_id, [0.0, 0.0, 0.0]);
     }
 
     // let data: Vec<ShardData> = shards.into_iter().map(|s| s.into()).collect();
@@ -286,17 +300,46 @@ impl<'a> WireViewer<'a> {
   }
 }
 
-struct ExtPanel {}
+impl ExtPanel<'_> {
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
+    self.host.warmup(ctx)
+  }
+
+  fn cleanup(&mut self) -> Result<(), &'static str> {
+    self.host.cleanup()
+  }
+}
 
 #[no_mangle]
 unsafe extern "C" fn spatial_render_external_panel(
   ptr: *mut ExtPanel,
-  inputs: *const egui_Input,
+  egui_input: *const egui_Input,
 ) -> *const egui_FullOutput {
-  todo!()
+  (*ptr).host.activate_base(&*egui_input, |_, ctx| {
+    let mut graph = RefCell::borrow_mut(&(*ptr).graph);
+    egui::CentralPanel::default().show(ctx, |ui| {
+      let mut _pos = egui::Pos2::default();
+      let mut _node_rects = HashMap::new();
+      GraphNodeWidget {
+        position: &mut _pos,
+        graph: &mut graph,
+        node_rects: &mut _node_rects,
+        node_id: (*ptr).node_id,
+        pan: Default::default(),
+        selected: false,
+      }
+      .show(ui);
+    });
+
+    Ok(())
+  }).unwrap();
+
+  (*ptr).host.get_egui_output()
 }
 
 #[no_mangle]
-unsafe extern "C" fn spatial_get_geometry(ptr: *const ExtPanel) -> shardsc::shards_spatial_PanelGeometry {
+unsafe extern "C" fn spatial_get_geometry(
+  ptr: *const ExtPanel,
+) -> shardsc::shards_spatial_PanelGeometry {
   Default::default()
 }

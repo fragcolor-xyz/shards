@@ -12,7 +12,7 @@ extern "C" {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
 
-const egui::FullOutput *spatial_render_external_panel(ExtPanelPtr, const egui::Input &inputs);
+const egui::FullOutput *spatial_render_external_panel(ExtPanelPtr, const egui::Input &);
 shards::spatial::PanelGeometry spatial_get_geometry(const ExtPanelPtr);
 
 void spatial_add_panel(ExtPanelPtr, const SHVar &spatialContextVar);

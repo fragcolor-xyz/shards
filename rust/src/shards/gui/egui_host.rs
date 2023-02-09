@@ -91,7 +91,7 @@ impl EguiHost {
     &self.exposed
   }
 
-  pub fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+  pub fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
     self.context = Some(egui::Context::default());
     self.instance.warmup(ctx);
     self.parents.warmup(ctx);
@@ -110,7 +110,7 @@ impl EguiHost {
     Ok(())
   }
 
-  pub fn cleanup(&mut self) -> Result<(), &str> {
+  pub fn cleanup(&mut self) -> Result<(), &'static str> {
     self.parents.cleanup();
     self.instance.cleanup();
     Ok(())

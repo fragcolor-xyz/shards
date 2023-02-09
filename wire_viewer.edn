@@ -36,18 +36,19 @@
     .ui-draw-queue (GFX.ClearQueue)
 
     ;; ideally I would like to have:
-    ;; (Spatial.UI
-    ;;  :Queue .queue :View .view :Scale 100.0
-    ;;  :Contents
-    ;;  (->
-    ;;   (WireViewer my-wire .base-transform)
-      
+    (Spatial.UI
+     :Queue .queue :View .view :Scale 100.0
+     :Contents
+     (->
+      (WireViewer my-wire) ;; .base-transform)
+
     ;;   ;; which could be combined with other Spatial panels
     ;;   (Spatial.Panel
     ;;    :Transform .panel-t-0 :Size (Float2 640 360)
-    ;;    :Contents (-> nil))))
-    
-    (WireViewer .ui-draw-queue my-wire)
+    ;;    :Contents (-> nil))
+      ))
+
+    ;; (WireViewer .ui-draw-queue my-wire)
 
     ;; (UI
     ;;  .ui-draw-queue
