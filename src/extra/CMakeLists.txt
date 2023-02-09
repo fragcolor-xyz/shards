@@ -19,6 +19,7 @@ set(extra_SOURCES
   gfx/texture.cpp
   gfx/view.cpp
   gfx/steps.cpp
+  spatial/external.cpp
   spatial/spatial.cpp
   egui/pass.cpp
   rust_interop.cpp
