@@ -1118,7 +1118,7 @@ struct ManyWire : public std::enable_shared_from_this<ManyWire> {
   uint32_t index;
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<SHMesh> mesh; // used only if MT
-  std::deque<OwnedVar> injectedVariables;
+  std::deque<SHVar*> injectedVariables;
   bool done;
   std::optional<entt::connection> onStopConnection;
 
@@ -1653,6 +1653,9 @@ struct Spawn : public CapturingSpawners {
     SHLOG_TRACE("Spawn::wireOnStop {}", e.wire->name);
 
     auto container = _wireContainers[e.wire].lock();
+    for(auto& var : container->injectedVariables) {
+      releaseVariable(var);
+    }
     container->injectedVariables.clear();
 
     _pool->release(container);
@@ -1671,9 +1674,8 @@ struct Spawn : public CapturingSpawners {
 
     // Inject variables
     for (auto &v : _vars) {
-      OwnedVar &var = c->injectedVariables.emplace_back(v.get());
-      var.flags |= SHVAR_FLAGS_EXTERNAL;
-      c->wire->externalVariables.emplace(v.variableName(), &(SHVar&)var);
+      SHVar* refVar = c->injectedVariables.emplace_back(referenceWireVariable(c->wire.get(), v.variableName()));
+      cloneVar(*refVar, v.get());
     }
 
     mesh->schedule(c->wire, input, false);
