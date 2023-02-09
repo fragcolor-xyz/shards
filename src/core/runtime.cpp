@@ -2674,6 +2674,8 @@ void SHWire::cleanup(bool force) {
       }
     }
 
+    dispatcher.trigger(SHWire::OnStopEvent{this});
+
     // Also clear all variables reporting dangling ones
     for (auto var : variables) {
       if (var.second.refcount > 0) {
