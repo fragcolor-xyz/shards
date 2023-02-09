@@ -17,6 +17,9 @@ shards::spatial::PanelGeometry spatial_get_geometry(const ExtPanelPtr);
 
 void spatial_add_panel(ExtPanelPtr, const SHVar &spatialContextVar);
 void spatial_remove_panel(ExtPanelPtr, const SHVar &spatialContextVar);
+
+SHTypeInfo *spatial_getSpatialContextType();
+const char *spatial_getSpatialContextVarName();
 }
 
 namespace shards::Spatial {

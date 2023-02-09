@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
+use egui_gfx::*;
 use super::WireViewer;
 use crate::core::ShardInstance;
 use crate::shard::Shard;
@@ -31,6 +32,7 @@ use std::collections::HashMap;
 use std::ffi::CStr;
 
 lazy_static! {
+  static ref SPATIAL_CONTEXT_TYPE: Type = unsafe { *super::spatial_getSpatialContextType() };
   static ref WIRE_OR_VAR_TYPES: Vec<Type> = vec![common_type::wire, common_type::wire_var];
   static ref VIEWER_PARAMETERS: Parameters = vec![
     (
@@ -59,6 +61,12 @@ impl<'a> Default for WireViewer<'a> {
       input_context: unsafe {
         let mut var = ParamVar::default();
         let name = shardsc::gfx_getInputContextVarName() as shardsc::SHString;
+        var.set_name(CStr::from_ptr(name).to_str().unwrap());
+        var
+      },
+      spatial_context: unsafe {
+        let mut var = ParamVar::default();
+        let name = super::spatial_getSpatialContextVarName() as shardsc::SHString;
         var.set_name(CStr::from_ptr(name).to_str().unwrap());
         var
       },
@@ -144,6 +152,15 @@ impl<'a> Shard for WireViewer<'a> {
       exposedType: *INPUT_CONTEXT_TYPE,
       name: self.input_context.get_name(),
       help: cstr!("The input context.").into(),
+      ..ExposedInfo::default()
+    };
+    self.requiring.push(exp_info);
+
+    // Add Spatial context to the list of required variables
+    let exp_info = ExposedInfo {
+      exposedType: *SPATIAL_CONTEXT_TYPE,
+      name: self.spatial_context.get_name(),
+      help: cstr!("The spatial context.").into(),
       ..ExposedInfo::default()
     };
     self.requiring.push(exp_info);
@@ -267,4 +284,19 @@ impl<'a> WireViewer<'a> {
     // shlog_debug!("Info: {:#?}", info);
     Ok(())
   }
+}
+
+struct ExtPanel {}
+
+#[no_mangle]
+unsafe extern "C" fn spatial_render_external_panel(
+  ptr: *mut ExtPanel,
+  inputs: *const egui_Input,
+) -> *const egui_FullOutput {
+  todo!()
+}
+
+#[no_mangle]
+unsafe extern "C" fn spatial_get_geometry(ptr: *const ExtPanel) -> shardsc::shards_spatial_PanelGeometry {
+  Default::default()
 }

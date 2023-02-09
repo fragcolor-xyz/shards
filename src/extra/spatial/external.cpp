@@ -28,3 +28,10 @@ void spatial_remove_panel(ExtPanelPtr impl, const SHVar &spatialContextVar) {
     panels.erase(find);
   }
 }
+
+SHTypeInfo *spatial_getSpatialContextType() {
+  static SHTypeInfo type = shards::Spatial::SpatialContext::Type;
+  return &type;
+}
+
+const char *spatial_getSpatialContextVarName() { return shards::Spatial::SpatialContext::VariableName; }

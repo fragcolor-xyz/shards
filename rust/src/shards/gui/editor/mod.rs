@@ -4,6 +4,7 @@
 use super::egui_host::EguiHost;
 use crate::core::registerShard;
 use crate::shards::editor::*;
+use crate::shardsc::SHTypeInfo;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
 use egui::{Pos2, Vec2};
@@ -41,12 +42,18 @@ struct WireViewer<'a> {
   queue: ParamVar,
   graphics_context: ParamVar,
   input_context: ParamVar,
+  spatial_context: ParamVar,
   renderer: egui_gfx::Renderer,
   input_translator: egui_gfx::InputTranslator,
   // ---
   graph: Graph<ShardData<'a>>,
   node_hosts: SecondaryMap<NodeId, EguiHost>,
   node_positions: SecondaryMap<NodeId, [f64; 3]>,
+}
+
+extern "C" {
+  fn spatial_getSpatialContextType() -> *mut SHTypeInfo;
+  fn spatial_getSpatialContextVarName() -> *const ::std::os::raw::c_char;
 }
 
 mod shard_viewer;
