@@ -1761,7 +1761,7 @@ struct Branch {
   DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure, 'brcB');
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return MeshType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static SHParametersInfo parameters() {
     static Parameters params{
@@ -1943,7 +1943,7 @@ struct Branch {
         break;
       }
     }
-    return Var::Object(&_mesh, CoreCC, TypeId);
+    return input;
   }
 
 private:
