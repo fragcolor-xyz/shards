@@ -255,6 +255,8 @@ void registerShards() {
   REGISTER_ENUM(Types::SortModeEnumInfo);
   REGISTER_ENUM(Types::TextureFormatEnumInfo);
   REGISTER_ENUM(Types::TextureDimensionEnumInfo);
+  REGISTER_ENUM(Types::TextureAddressingEnumInfo);
+  REGISTER_ENUM(Types::TextureFilteringEnumInfo);
 
   registerMainWindowShards();
   registerMeshShards();
