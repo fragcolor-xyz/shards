@@ -7,6 +7,7 @@
 
 #include "Debug.h"
 
+#include <atomic>
 #include <cstddef>
 
 class RefCounted {
@@ -25,7 +26,7 @@ private:
   RefCounted(const RefCounted &) = delete;
   RefCounted &operator=(const RefCounted &) = delete;
 
-  mutable int m_refCount;
+  mutable std::atomic<int> m_refCount;
 };
 
 template <class T> class RefCountedPtr {
