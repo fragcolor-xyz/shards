@@ -225,6 +225,10 @@ public:
         auto v = type.table.types.elements[i];
 
         auto type = deriveShaderFieldType(v);
+
+        if (!type.has_value()) {
+          throw formatException("Generator wire returns invalid type {} for key {}", v, k);
+        }
         std::visit(
             [&](auto &&arg) {
               using T = std::decay_t<decltype(arg)>;
