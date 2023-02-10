@@ -71,8 +71,8 @@ else()
   message(STATUS "Fetching boost")
   FetchContent_Declare(
     boost
-    URL      https://github.com/shards-lang/boost/releases/download/boost-f74a225c09-2/output.7z
-    URL_HASH SHA256=7C876AC31F7D1A80C9B4671FD960399F86CF24DC9DA83AFF7F1CBC8984424080
+    URL      https://github.com/shards-lang/boost/releases/download/boost-1.81.0-shards/output.7z
+    URL_HASH SHA256=6d6c48146a06f4efc19b337a410c8caa3f4e4562eaf660519d156a2001585d13  
   )
   FetchContent_MakeAvailable(boost)
   message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
