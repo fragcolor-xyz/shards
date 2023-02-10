@@ -17,7 +17,7 @@ struct Brancher {
   static inline shards::Types RunnableTypes{CoreInfo::NoneType, CoreInfo::WireType, Type::SeqOf(CoreInfo::WireType),
                                             CoreInfo::ShardRefSeqType, Type::SeqOf(CoreInfo::ShardRefSeqType)};
 
-  std::shared_ptr<SHMesh> mesh;
+  std::shared_ptr<SHMesh> mesh = SHMesh::make();
   std::vector<std::shared_ptr<SHWire>> wires;
   bool captureAll = false;
   BranchFailureBehavior failureBehavior = BranchFailureBehavior::Everything;
@@ -87,9 +87,6 @@ public:
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_mergedRequirements; }
 
   void compose(const SHInstanceData &data) {
-    if (!mesh)
-      mesh = SHMesh::make();
-
     _collectedRequirements.clear();
 
     for (auto &wire : wires) {
@@ -140,13 +137,11 @@ public:
   }
 
   void cleanup() {
-    if (mesh) {
-      for (auto &[_, vp] : mesh->refs) {
-        releaseVariable(vp);
-      }
-
-      mesh.reset();
+    for (auto &[_, vp] : mesh->refs) {
+      releaseVariable(vp);
     }
+
+    mesh->terminate();
   }
 
   // Update the that the branched wires read
