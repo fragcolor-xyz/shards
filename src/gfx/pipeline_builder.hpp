@@ -38,6 +38,10 @@ struct PipelineBuilder {
 
   MeshFormat meshFormat;
 
+  // Indicates that rendering happens with an inverted camera matrix
+  // winding order of geometry should be flipped to compensate
+  bool isRenderingFlipped{};
+
   // All features that apply to this pipeline
   std::vector<const Feature *> features;
 

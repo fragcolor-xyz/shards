@@ -72,7 +72,7 @@ inline std::strong_ordering operator<=>(const FieldType &a, const FieldType &b) 
   if (ci != 0)
     return ci;
 
-  std::visit(
+  return std::visit(
       [&](auto &arg) {
         using T = std::decay_t<decltype(arg)>;
         return arg <=> std::get<T>(b);

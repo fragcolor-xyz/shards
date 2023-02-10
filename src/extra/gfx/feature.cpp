@@ -122,9 +122,12 @@ struct FeatureShard {
       :State {
         :Blend {...}
       }
-      :DrawData [(-> ...)]/(-> ...)
+      :ViewGenerators [(-> ...)]/(-> ...)/[<wire>]/<wire>
+      :DrawableGenerators [(-> ...)]/(-> ...)/[<wire>]/<wire>
       :Params [
-        {:Name <string> :Type <type> :Dimension <number>}
+        :<name> {:Type <type> :Dimension <number>}
+        :<name> {:Default <default>}   (type will be derived from value)
+        :<name> <default-value>        (type will be derived from value)
       ]
     }
   */
@@ -493,27 +496,23 @@ public:
     return fieldType;
   }
 
-  void applyParam(SHContext *context, Feature &feature, const SHVar &input) {
-    checkType(input.valueType, SHType::Table, ":Params Entry");
-    const SHTable &inputTable = input.payload.tableValue;
-
-    SHVar nameVar;
-    SHString name{};
-    if (getFromTable(context, inputTable, "Name", nameVar)) {
-      checkType(nameVar.valueType, SHType::String, ":Params Name");
-      name = nameVar.payload.stringValue;
-    } else {
-      throw formatException(":Params Entry requires a :Name");
-    }
-
+  void applyParam(SHContext *context, Feature &feature, const char *name, const SHVar &value) {
     SHVar defaultVar;
     std::optional<std::variant<ParamVariant, TextureParameter>> defaultValue;
-    if (getFromTable(context, inputTable, "Default", defaultVar)) {
-      defaultValue = paramVarToShaderParameter(context, defaultVar);
+    std::optional<shader::FieldType> explicitType;
+    if (value.valueType == SHType::Table) {
+      const SHTable &inputTable = value.payload.tableValue;
+
+      if (getFromTable(context, inputTable, "Default", defaultVar)) {
+        defaultValue = paramVarToShaderParameter(context, defaultVar);
+      }
+
+      explicitType = getShaderFieldType(context, inputTable);
+    } else {
+      defaultValue = paramVarToShaderParameter(context, value);
     }
 
-    auto derivedType = getShaderFieldType(context, inputTable);
-    if (!derivedType.has_value()) {
+    if (!explicitType.has_value()) {
       if (defaultValue.has_value()) {
         std::visit(
             [&](auto &&arg) {
@@ -542,15 +541,15 @@ public:
               feature.textureParams.emplace_back(name, arg);
             }
           },
-          derivedType.value());
+          explicitType.value());
     }
   }
 
   void applyParams(SHContext *context, Feature &feature, const SHVar &input) {
-    checkType(input.valueType, SHType::Seq, ":Params");
-    const SHSeq &inputSeq = input.payload.seqValue;
+    checkType(input.valueType, SHType::Table, ":Params");
+    const SHTable &inputTable = input.payload.tableValue;
 
-    ForEach(inputSeq, [&](SHVar v) { applyParam(context, feature, v); });
+    ForEach(inputTable, [&](const char *key, SHVar v) { applyParam(context, feature, key, v); });
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
