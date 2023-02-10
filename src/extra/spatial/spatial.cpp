@@ -121,6 +121,9 @@ struct SpatialUIContextShard {
       _debugRenderer->end(queue.queue);
     }
 
+    SHVar output{};
+    _contents.activate(shContext, input, output);
+
     return input;
   }
 };
@@ -192,9 +195,7 @@ struct SpatialPanelShard {
     return shards::CoreInfo::NoneType;
   }
 
-  SHVar activate(SHContext *shContext, const SHVar &input) {
-    throw ActivationError("Invalid activation, SpatialPanel can not be used directly");
-  }
+  SHVar activate(SHContext *shContext, const SHVar &input) { return input; }
 
   // This evaluates the egui contents for this panel
   virtual const egui::FullOutput &render(const egui::Input &inputs) {
