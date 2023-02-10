@@ -67,6 +67,18 @@ struct NumFieldType {
 
 using FieldType = std::variant<TextureFieldType, SamplerFieldType, NumFieldType>;
 
+inline std::strong_ordering operator<=>(const FieldType &a, const FieldType &b) {
+  auto ci = a.index() <=> b.index();
+  if (ci != 0)
+    return ci;
+
+  std::visit(
+      [&](auto &arg) {
+        using T = std::decay_t<decltype(arg)>;
+        return arg <=> std::get<T>(b);
+      },
+      a);
+}
 inline std::strong_ordering operator<=>(const FieldType &a, const NumFieldType &b) { return a <=> FieldType(b); }
 inline bool operator==(const FieldType &a, const NumFieldType &b) { return std::equal_to<FieldType>{}(a, b); }
 inline bool operator!=(const FieldType &a, const NumFieldType &b) { return !std::equal_to<FieldType>{}(a, b); }
