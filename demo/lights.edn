@@ -1,0 +1,26 @@
+
+(defshards shadow-vs []
+  ;; (Float4 0.0) (Shader.WriteOutput "depth")
+  (Float4 0.0))
+(defshards setup-lighting-feature []
+  {:Shaders [{:Stage ProgrammableGraphicsStage.Vertex
+              :EntryPoint (shadow-vs)}]}
+  (GFX.Feature
+   :ViewGenerators
+   [(-> (| (Take "Queue") >= .parent-queue)
+        (| (Take "View") >= .parent-view)
+        
+        .shadow-cam-pos
+        
+        (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+        (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+        (Int2 1024) = .size
+
+        {:Features .features :Queue .parent-queue :Outputs [{:Name "depth" :Format TextureFormat.Depth24Plus}]} (GFX.DrawablePass) >> .steps
+        (GFX.Texture :Format TextureFormat.Depth24Plus :Resolution .size) >= .shadow-tex
+        (GFX.RenderInto :Textures {:depth .shadow-tex}
+                        :Contents (->
+                                   (GFX.Render :Steps .steps :View .parent-view);
+                                   ))
+
+        {})]))

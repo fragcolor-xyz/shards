@@ -1,6 +1,7 @@
 (load-file "cubemap-utils.edn")
 (load-file "atmosphere.edn")
 (load-file "pbr.edn")
+(load-file "lights.edn")
 
 (defshards setup-ui []
   (GFX.DrawQueue) >= .ui-queue
@@ -25,7 +26,7 @@
 
  {:Position (Float3 5.5 1.2 6.5) :Target (Float3 0.0 1.2 0.0)} (Math.LookAt)
  >= .view-transform
- (GFX.View .view-transform :Fov 1.0) >= .view
+ (GFX.View .view-transform :Fov 1.8) >= .view
 
  (Float3 0.0) (Math.Translation) >= .transform
  -90.0 (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) >= .tmp-rot
@@ -36,7 +37,7 @@
  45.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) > .tmp-rot
  (Float3 1.4) (Math.Scaling) > .tmp-scale
  .transform (Math.MatMul .tmp-rot) (Math.MatMul .tmp-scale) >= .transform-1
- 
+
  (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) >= .sphere-mesh
  (Float3 -1.5 0.8 0.0) (Math.Translation) > .transform
  45.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) > .tmp-rot
@@ -50,14 +51,12 @@
  .transform (Math.MatMul .tmp-rot) (Math.MatMul .tmp-scale) >= .transform-0
  {:Mesh .sphere-mesh :Params {:baseColor (Float4 1.0 1.0 1.0 1.0) :roughness 0.2 :metalicness 1.0} :Transform .transform-0} (GFX.Drawable) >> .drawables
 
- 
  (Float3 -5.5 0.8 0.0) (Math.Translation) > .transform
-0.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) > .tmp-rot
-(Float3 1.6) (Math.Scaling) > .tmp-scale
-.transform (Math.MatMul .tmp-rot) (Math.MatMul .tmp-scale) >= .transform-0
-{:Mesh .sphere-mesh :Params {:baseColor (Float4 1.0 1.0 1.0 1.0) :roughness 0.0 :metalicness 1.0} :Transform .transform-0} (GFX.Drawable) >> .drawables
+ 0.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) > .tmp-rot
+ (Float3 1.6) (Math.Scaling) > .tmp-scale
+ .transform (Math.MatMul .tmp-rot) (Math.MatMul .tmp-scale) >= .transform-0
+ {:Mesh .sphere-mesh :Params {:baseColor (Float4 1.0 1.0 1.0 1.0) :roughness 0.0 :metalicness 1.0} :Transform .transform-0} (GFX.Drawable) >> .drawables
 
- 
  (Float3 1.5 1.2 0.0) (Math.Translation) > .transform
  180.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) > .tmp-rot
  (Float3 4.0) (Math.Scaling) > .tmp-scale
@@ -67,13 +66,16 @@
  (GFX.DrawQueue) >= .main-queue
  .drawables (GFX.Draw .main-queue)
 
+ (Float3 -6.0 10.0 2.5) (Math.Normalize) = .light-direction
+ (Float3 1 1 1) =  .light-color
+ 
  (setup-skybox-pass) >= .skybox-pass
-
  .skybox-pass >> .env-included-steps
 
  (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform)  >> .features-3
  (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features-3
- (setup-pbr-feature .env-included-steps (Float3 0.0 1.0 0.0)) >> .features-3
+;;  (setup-pbr-feature .env-included-steps (Float3 0.0 1.0 0.0)) >> .features-3
+ (setup-lighting-feature) >> .features-3
  {:Features .features-3 :Queue .main-queue} (GFX.DrawablePass) >= .base-pass
 
  .base-pass >> .render-steps ;

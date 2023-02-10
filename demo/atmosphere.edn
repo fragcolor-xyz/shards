@@ -4,8 +4,8 @@
   (Float3 0) >= .ray-start
   9999999999999.0 >= .ray-length
 
-  (Float3 -6.0 10.0 2.5) (Math.Normalize) >= .light-dir
-  (Float3 1.0 1.0 1.0) (Math.Multiply 1.2) >= .light-color
+  (Shader.ReadBuffer "lightDir") >= .light-dir
+  (Shader.ReadBuffer "lightColor") >= .light-color
 
   (Shader.Literal ["
   let _DrawPlanet = 0;
@@ -30,7 +30,10 @@
 
 (defloop precompute-sky
   (Setup
-   {:Shaders [{:Stage ProgrammableGraphicsStage.Fragment
+   {
+    :Params {:lightDir .light-direction
+             :lightColor .light-color}
+    :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
                :EntryPoint (precompute-sky-fs)}]} (GFX.Feature) >= .filter-feature
    (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 1024) :Dimension TextureDimension.Cube) >= .sky-cube-tex
    (filter-cubemap .filter-feature .sky-cube-tex 0))
