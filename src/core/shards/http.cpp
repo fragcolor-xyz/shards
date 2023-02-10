@@ -501,7 +501,7 @@ struct Server {
 
   // "Loop" forever accepting new connections.
   void accept_once(SHContext *context) {
-    auto peer = _pool->acquire(_composer);
+    auto peer = _pool->acquire(_composer, context);
 
     // Assume that we recycle containers so the connection might already exist!
     if (!peer->onStopConnection) {
@@ -556,7 +556,7 @@ struct Server {
     Server &server;
     SHContext *context;
 
-    void compose(SHWire *wire) {
+    void compose(SHWire *wire, SHContext *context) {
       SHInstanceData data{};
       data.inputType = CoreInfo::StringType;
       data.shared = server._sharedCopy;

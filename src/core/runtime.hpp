@@ -1268,7 +1268,7 @@ template <typename T> struct WireDoppelgangerPool {
     }
   }
 
-  template <class Composer> std::shared_ptr<T> acquire(Composer &composer) {
+  template <class Composer, typename Anything> std::shared_ptr<T> acquire(Composer &composer, Anything *anything) {
     if (_avail.size() == 0) {
       Serialization serializer;
       std::stringstream stream(_wireStr);
@@ -1278,7 +1278,7 @@ template <typename T> struct WireDoppelgangerPool {
       auto wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       auto fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->wire = wire;
-      composer.compose(wire.get());
+      composer.compose(wire.get(), anything);
       fresh->wire->name = fresh->wire->name + "-" + std::to_string(_pool.size());
       return fresh;
     } else {

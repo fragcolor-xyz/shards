@@ -1186,7 +1186,7 @@ struct ParallelBase : public CapturingSpawners {
     ParallelBase &server;
     SHContext *context;
 
-    void compose(SHWire *wire) {
+    void compose(SHWire *wire, SHContext *context) {
       SHInstanceData data{};
       data.inputType = server._inputType;
       data.shared = server._sharedCopy;
@@ -1307,7 +1307,7 @@ struct ParallelBase : public CapturingSpawners {
     });
 
     for (uint32_t i = 0; i < increase; i++) {
-      _wires[i] = _pool->acquire(_composer);
+      _wires[i] = _pool->acquire(_composer, context);
       _wires[i]->index = i;
       _wires[i]->done = false;
     }
@@ -1594,7 +1594,7 @@ struct Spawn : public CapturingSpawners {
     Spawn &server;
     SHContext *context;
 
-    void compose(SHWire *wire) {
+    void compose(SHWire *wire, SHContext *context) {
       SHLOG_TRACE("Spawn::Composer::compose {}", wire->name);
       SHInstanceData data{};
       data.inputType = server._inputType;
@@ -1656,7 +1656,7 @@ struct Spawn : public CapturingSpawners {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto mesh = context->main->mesh.lock();
-    auto c = _pool->acquire(_composer);
+    auto c = _pool->acquire(_composer, context);
 
     // Assume that we recycle containers so the connection might already exist!
     if (!c->onStopConnection) {
@@ -1707,7 +1707,7 @@ struct StepMany : public TryMany {
     for (uint32_t i = 0; i < increase; i++) {
       auto &cref = _wires[i];
       if (!cref) {
-        cref = _pool->acquire(_composer);
+        cref = _pool->acquire(_composer, context);
         cref->index = i;
         cref->done = false;
       }
