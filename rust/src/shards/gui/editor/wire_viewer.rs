@@ -177,6 +177,7 @@ impl<'a> Shard for WireViewer<'a> {
     self.wire.warmup(ctx);
     self.graphics_context.warmup(ctx);
     self.input_context.warmup(ctx);
+    self.spatial_context.warmup(ctx);
 
     // FIXME we should recompute the data if the wire changed (or not)
     self.compute_data(ctx)?;
@@ -185,6 +186,7 @@ impl<'a> Shard for WireViewer<'a> {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.spatial_context.cleanup();
     self.input_context.cleanup();
     self.graphics_context.cleanup();
     self.wire.cleanup();
