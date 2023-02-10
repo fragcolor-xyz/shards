@@ -254,37 +254,39 @@ struct DynamicFragmentOutput : public IGeneratorDynamicHandler {
 };
 
 struct StageIO {
-  const std::vector<NamedField> &outputFields;
+  std::vector<StructField> inputStructFields;
+  std::vector<StructField> outputStructFields;
+};
 
+struct PipelineIO {
+  const std::vector<NamedField> &outputFields;
   std::vector<NamedField> vertexInputFields;
-  std::vector<StructField> vertexInputStructFields;
-  std::vector<StructField> vertexOutputStructFields;
-  std::vector<StructField> fragmentInputStructFields;
-  std::vector<StructField> fragmentOutputStructFields;
+  StageIO vertexIO;
+  StageIO fragmentIO;
   std::vector<NamedField> fragmentInputFields;
 
   std::optional<DynamicVertexInput> dynamicVertexInputHandler;
   std::optional<DynamicVertexOutput> dynamicVertexOutputHandler;
   std::optional<DynamicFragmentOutput> dynamicFragmentOutputHandler;
 
-  StageIO(const MeshFormat &meshFormat, const std::vector<NamedField> &outputFields) : outputFields(outputFields) {
+  PipelineIO(const MeshFormat &meshFormat, const std::vector<NamedField> &outputFields) : outputFields(outputFields) {
     for (auto &attr : meshFormat.vertexAttributes) {
       vertexInputFields.emplace_back(attr.name, NumFieldType(getCompatibleShaderFieldBaseType(attr.type), attr.numComponents));
     }
 
     for (size_t i = 0; i < vertexInputFields.size(); i++) {
-      vertexInputStructFields.emplace_back(vertexInputFields[i], i);
+      vertexIO.inputStructFields.emplace_back(vertexInputFields[i], i);
     }
 
     for (size_t i = 0; i < outputFields.size(); i++) {
-      fragmentOutputStructFields.emplace_back(outputFields[i], i);
+      fragmentIO.outputStructFields.emplace_back(outputFields[i], i);
     }
 
-    vertexOutputStructFields.emplace_back(NamedField("instanceIndex", NumFieldType(ShaderFieldBaseType::UInt32, 1)), 0);
+    vertexIO.outputStructFields.emplace_back(NamedField("instanceIndex", NumFieldType(ShaderFieldBaseType::UInt32, 1)), 0);
 
-    dynamicVertexInputHandler.emplace(vertexInputStructFields);
-    dynamicVertexOutputHandler.emplace(vertexOutputStructFields);
-    dynamicFragmentOutputHandler.emplace(fragmentOutputStructFields);
+    dynamicVertexInputHandler.emplace(vertexIO.inputStructFields);
+    dynamicVertexOutputHandler.emplace(vertexIO.outputStructFields);
+    dynamicFragmentOutputHandler.emplace(fragmentIO.outputStructFields);
   }
 
   void setupDefinitions(GeneratorDefinitions &outDefinitions, std::vector<IGeneratorDynamicHandler *> &outDynamics,
@@ -323,10 +325,10 @@ struct StageIO {
   static bool isValidFragmentInputBuiltin(const std::string &builtin) { return builtin == "position"; }
 
   void interpolateVertexOutputs() {
-    for (auto &outputField : vertexOutputStructFields) {
+    for (auto &outputField : vertexIO.outputStructFields) {
       if (outputField.builtinTag.empty() || isValidFragmentInputBuiltin(outputField.builtinTag)) {
         fragmentInputFields.emplace_back(outputField.base);
-        fragmentInputStructFields.emplace_back(outputField);
+        fragmentIO.inputStructFields.emplace_back(outputField);
       }
     }
   }
@@ -356,7 +358,15 @@ struct Stage {
 
   bool sort(bool ignoreMissingDependencies = true) { return sortEntryPoints(entryPoints, ignoreMissingDependencies); }
 
-  StageOutput process(StageIO &stageIO, const std::map<String, BufferDefinition> &buffers,
+  void writeInputStructHeader(std::string &output) {
+    output += fmt::format("var<private> {}: {};\n", inputVariableName, inputStructName);
+  }
+
+  void writeOutputStructHeader(std::string &output) {
+    output += fmt::format("var<private> {}: {};\n", outputVariableName, outputStructName);
+  }
+
+  StageOutput process(PipelineIO &pipelineIO, StageIO &stageIO, const std::map<String, BufferDefinition> &buffers,
                       const std::map<String, TextureDefinition> &textureDefinitions) {
     GeneratorContext context;
     context.inputVariableName = inputVariableName;
@@ -366,7 +376,7 @@ struct Stage {
     context.definitions.buffers = buffers;
     context.definitions.textures = textureDefinitions;
 
-    stageIO.setupDefinitions(context.definitions, context.dynamicHandlers, stage);
+    pipelineIO.setupDefinitions(context.definitions, context.dynamicHandlers, stage);
 
     const char *wgslStageName{};
     switch (stage) {
@@ -377,11 +387,6 @@ struct Stage {
       wgslStageName = "fragment";
       break;
     }
-
-    context.pushHeaderScope();
-    context.write(fmt::format("var<private> {}: {};\n", inputVariableName, inputStructName));
-    context.write(fmt::format("var<private> {}: {};\n", outputVariableName, outputStructName));
-    context.popHeaderScope();
 
     std::vector<String> functionNamesToCall;
     size_t index = 0;
@@ -394,14 +399,29 @@ struct Stage {
       context.write("}\n");
     }
 
-    String entryPointParams = fmt::format("in: {}", inputStructName);
-    if (!extraEntryPointParameters.empty()) {
-      entryPointParams += ", " + boost::algorithm::join(extraEntryPointParameters, ", ");
+    String entryPointParams;
+    bool hasInput{};
+    if (!stageIO.inputStructFields.empty()) {
+      entryPointParams = fmt::format("in: {}", inputStructName);
+      hasInput = true;
     }
 
-    context.write(
-        fmt::format("@{}\nfn {}_main({}) -> {} {{\n", wgslStageName, wgslStageName, entryPointParams, outputStructName));
-    context.write(fmt::format("\t{} = in;\n", inputVariableName));
+    if (!extraEntryPointParameters.empty()) {
+      if (!entryPointParams.empty())
+        entryPointParams += ", ";
+      entryPointParams += boost::algorithm::join(extraEntryPointParameters, ", ");
+    }
+
+    bool hasOutput{};
+    String returnExpr;
+    if (!stageIO.outputStructFields.empty()) {
+      returnExpr = fmt::format("-> {}", outputStructName);
+      hasOutput = true;
+    }
+
+    context.write(fmt::format("@{}\nfn {}_main({}) {} {{\n", wgslStageName, wgslStageName, entryPointParams, returnExpr));
+    if (hasInput)
+      context.write(fmt::format("\t{} = in;\n", inputVariableName));
 
     context.write("\t" + mainFunctionHeader + "\n");
 
@@ -409,7 +429,8 @@ struct Stage {
       context.write(fmt::format("\t{}();\n", functionName));
     }
 
-    context.write(fmt::format("\treturn {};\n", outputVariableName));
+    if (hasOutput)
+      context.write(fmt::format("\treturn {};\n", outputVariableName));
     context.write("}\n");
 
     String globalsHeader;
@@ -493,7 +514,7 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     textureDefinitions.insert_or_assign(texture.name, def);
   }
 
-  StageIO stageIO(meshFormat, outputFields);
+  PipelineIO pipelineIO(meshFormat, outputFields);
 
   String stagesCode;
   stagesCode.reserve(2 << 12);
@@ -503,7 +524,8 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     bool sorted = stage.sort();
     assert(sorted);
 
-    StageOutput stageOutput = stage.process(stageIO, buffers, textureDefinitions);
+    StageIO &stageIO = i == 0 ? pipelineIO.vertexIO : pipelineIO.fragmentIO;
+    StageOutput stageOutput = stage.process(pipelineIO, stageIO, buffers, textureDefinitions);
     for (auto &error : stageOutput.errors)
       output.errors.emplace_back(error);
 
@@ -511,15 +533,29 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
 
     // Copy interpolated fields from vertex to fragment
     if (&stage == &vertexStage) {
-      stageIO.interpolateVertexOutputs();
+      pipelineIO.interpolateVertexOutputs();
     }
   }
 
   // Generate input/output structs here since they depend on shader code
-  generateStruct(headerCode, vertexInputStructName, stageIO.vertexInputStructFields, false);
-  generateStruct(headerCode, vertexOutputStructName, stageIO.vertexOutputStructFields);
-  generateStruct(headerCode, fragmentInputStructName, stageIO.fragmentInputStructFields);
-  generateStruct(headerCode, fragmentOutputStructName, stageIO.fragmentOutputStructFields, false);
+  auto &vsIO = pipelineIO.vertexIO;
+  if (!vsIO.inputStructFields.empty()) {
+    generateStruct(headerCode, vertexInputStructName, vsIO.inputStructFields, false);
+    stages[0].writeInputStructHeader(headerCode);
+  }
+  if (!vsIO.outputStructFields.empty()) {
+    generateStruct(headerCode, vertexOutputStructName, vsIO.outputStructFields);
+    stages[0].writeOutputStructHeader(headerCode);
+  }
+  auto &fsIO = pipelineIO.fragmentIO;
+  if (!fsIO.inputStructFields.empty()) {
+    generateStruct(headerCode, fragmentInputStructName, fsIO.inputStructFields);
+    stages[1].writeInputStructHeader(headerCode);
+  }
+  if (!fsIO.outputStructFields.empty()) {
+    generateStruct(headerCode, fragmentOutputStructName, fsIO.outputStructFields, false);
+    stages[1].writeOutputStructHeader(headerCode);
+  }
 
   output.wgslSource = headerCode + stagesCode;
 
@@ -608,7 +644,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     }
   } context;
 
-  StageIO stageIO(meshFormat, outputFields);
+  PipelineIO pipelineIO(meshFormat, outputFields);
 
   struct Stage {
     std::vector<const EntryPoint *> entryPoints;
@@ -633,7 +669,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     bool sorted = sortEntryPoints(stage.entryPoints);
     assert(sorted);
 
-    stageIO.setupDefinitions(context.definitions, context.dynamicHandlers, stageType);
+    pipelineIO.setupDefinitions(context.definitions, context.dynamicHandlers, stageType);
 
     for (auto &entryPoint : stage.entryPoints) {
       entryPoint->code->apply(context);
@@ -641,7 +677,7 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
 
     // Copy interpolated fields from vertex to fragment
     if (stageType == ProgrammableGraphicsStage::Vertex) {
-      stageIO.interpolateVertexOutputs();
+      pipelineIO.interpolateVertexOutputs();
     } else {
       for (auto &fragOutput : context.definitions.outputs) {
         context.result.outputs.emplace_back(IndexedOutput{
