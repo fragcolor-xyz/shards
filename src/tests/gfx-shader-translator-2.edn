@@ -57,6 +57,8 @@
 (defloop gfx
   (Setup
    0.0 >= .time
+   .time (Broadcast "time")
+
    {:Position (Float3 0.0 1.0 0.0) :Target (Float3 0.0)} (Math.LookAt) = .view-transform
    (GFX.View .view-transform) >= .view
 
@@ -68,15 +70,18 @@
 
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Params [{:Name "time" :Type ShaderFieldBaseType.Float32}]
-    :DrawData (-> {:time .time})
-    :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
+   {:Shaders [{:Stage ProgrammableGraphicsStage.Fragment
                :After ["readColor"]
                :Before ["writeColor"]
-               :EntryPoint (-> (shader-main))}]} (GFX.Feature) >> .features
+               :EntryPoint (-> (shader-main))}]} (GFX.Feature
+                                                  :ViewGenerators
+                                                  (->
+                                                   (Listen "time") >= .time
+                                                   {:time .time})) >> .features
    {:Features .features} (GFX.DrawablePass) >> .render-steps)
 
   .time (Math.Add timestep) > .time
+  .time (Broadcast "time")
   (Do update-cube-transform)
 
   .drawable (GFX.Draw)

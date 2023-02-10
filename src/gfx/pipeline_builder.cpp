@@ -458,6 +458,11 @@ void PipelineBuilder::finalize(WGPUDevice device) {
     desc.primitive.cullMode = WGPUCullMode_None;
   }
 
+  // Flip culling if rendering is inverted
+  if (desc.primitive.cullMode != WGPUCullMode_None && this->isRenderingFlipped) {
+    desc.primitive.cullMode = desc.primitive.cullMode == WGPUCullMode_Front ? WGPUCullMode_Back : WGPUCullMode_Front;
+  }
+
   switch (meshFormat.primitiveType) {
   case PrimitiveType::TriangleList:
     desc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
