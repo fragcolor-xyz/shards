@@ -347,7 +347,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::atomic<State> state{Stopped};
 
-  SHVar currentInput{};
+  shards::OwnedVar currentInput{};
   SHVar previousOutput{};
 
   // notice we preserve those even over stop/reset!

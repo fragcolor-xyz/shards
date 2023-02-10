@@ -146,7 +146,7 @@ public:
 
   // Update the that the branched wires read
   void updateInputs(const SHVar &input = Var::Empty) {
-    emplaceInputs([&](SHVar &outVar) { cloneVar(outVar, input); });
+    emplaceInputs([&](OwnedVar &outVar) { outVar = input; });
   }
 
   // Update inputs directly without copying, should still transfer ownership

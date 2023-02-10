@@ -596,7 +596,10 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
     SH_CORE::destroyVar(other);
     return *this;
   }
-  ~TOwnedVar() { SH_CORE::destroyVar(*this); }
+  ~TOwnedVar() { reset(); }
+  void reset () {
+    SH_CORE::destroyVar(*this);
+  }
 };
 
 // helper to create structured data tables
