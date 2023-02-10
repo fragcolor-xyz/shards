@@ -88,7 +88,6 @@ struct Cond {
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
         shard->cleanup(shard);
-        shard->destroy(shard);
       }
     }
     for (auto it = _actions.rbegin(); it != _actions.rend(); ++it) {
@@ -96,7 +95,6 @@ struct Cond {
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
         shard->cleanup(shard);
-        shard->destroy(shard);
       }
     }
     destroyVar(_wires);
