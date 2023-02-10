@@ -914,10 +914,10 @@ struct Serialization {
         SHVar shardVar{};
         deserialize(read, shardVar);
         ShardPtr shard = shardVar.payload.shardValue;
-        shard->refCount = 1; // Make owned by wire
         assert(shardVar.valueType == SHType::ShardRef);
         wire->addShard(shardVar.payload.shardValue);
-        // blow's owner is the wire
+        // shard's owner is now the wire, remove original reference from deserialize
+        decRef(shard);
       }
       break;
     }
@@ -1255,14 +1255,6 @@ template <typename T> struct WireDoppelgangerPool {
     Serialization serializer;
     serializer.serialize(vwire, w);
     _wireStr = stream.str();
-  }
-
-  ~WireDoppelgangerPool() {
-    SHLOG_TRACE("===== Destroying the pool");
-    SHLOG_TRACE("===== Destroying the pool");
-    SHLOG_TRACE("===== Destroying the pool");
-    SHLOG_TRACE("===== Destroying the pool");
-    SHLOG_TRACE("===== Destroying the pool");
   }
 
   // notice users should stop wires themselves, we might want wires to persist
