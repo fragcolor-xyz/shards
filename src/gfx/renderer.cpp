@@ -242,7 +242,8 @@ struct RendererImpl final : public ContextData {
     mainOutputWrittenTo = mainOutputWrittenTo || evaluator.isWrittenTo(mainOutput.texture);
   }
 
-  std::optional<PreparedRenderView> prepareRenderView(ViewPtr view, const PipelineSteps &pipelineSteps, const RendererHacks& hacks) {
+  std::optional<PreparedRenderView> prepareRenderView(ViewPtr view, const PipelineSteps &pipelineSteps,
+                                                      const RendererHacks &hacks) {
     ViewData viewData{
         .view = view,
         .cachedView = getCachedView(view),
@@ -278,8 +279,8 @@ struct RendererImpl final : public ContextData {
     };
   }
 
-  const RenderGraph &getOrBuildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps,
-                                           int2 referenceOutputSize, const RendererHacks &hacks) {
+  const RenderGraph &getOrBuildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps, int2 referenceOutputSize,
+                                           const RendererHacks &hacks) {
     ZoneScoped;
 
     HasherXXH128<PipelineHashVisitor> hasher;
@@ -289,7 +290,8 @@ struct RendererImpl final : public ContextData {
 
     for (auto &rt : hacks.clearedHints)
       hasher(rt);
-
+      
+    hasher(viewData.cachedView.isFlipped);
     hasher(referenceOutputSize);
     if (viewData.renderTarget) {
       for (auto &attachment : viewData.renderTarget->attachments) {
@@ -478,6 +480,7 @@ struct RendererImpl final : public ContextData {
 
     HasherXXH128<PipelineHashVisitor> sharedHasher;
     sharedHasher(rtl);
+    sharedHasher(evaluateContext.viewData.cachedView.isFlipped);
     Hash128 stepSharedHash = sharedHasher.getDigest();
 
     workerData.resetPreRender();
@@ -554,6 +557,8 @@ struct RendererImpl final : public ContextData {
       group.pipeline->drawableProcessor = &processor;
 
       PipelineBuilder builder(*group.pipeline.get(), rtl, firstDrawable);
+
+      builder.isRenderingFlipped = evaluateContext.viewData.cachedView.isFlipped;
 
       // Add base features
       for (auto &baseFeature : group.baseFeatures) {

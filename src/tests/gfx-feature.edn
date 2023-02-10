@@ -21,6 +21,9 @@
    {:Mesh .mesh} (GFX.Drawable :Transform .transform-1) >> .drawables
    (Float3 0 0 -1) (Math.Normalize) >= .light-direction
 
+   0.0 >= .time
+   .time (Broadcast "time")
+
     ; Create render steps
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
    {:Shaders [{:Name "lighting"
@@ -40,13 +43,14 @@
                             (Shader.ReadGlobal :Name "lighting") (ToFloat4) >= .lighting-4
                             .wave (Math.Multiply (Float4 0 0 0 1)) (Math.Add .lighting-4)
                             (Shader.WriteOutput "color"))}]
-    :Params [{:Name "lightDirection" :Default .light-direction}
-             {:Name "lightColor" :Default (Float3 1 1 1)}
-             {:Name "time" :Default 0.0}]
-    :DrawData (-> {:time .time})
+    :Params {:lightDirection .light-direction
+             :lightColor (Float3 1.0)}
     :State {:DepthCompare CompareFunction.Less
             :Blend {:Color BlendAlpha :Alpha BlendOne}}}
-   (GFX.Feature) >> .features
+   (GFX.Feature :ViewGenerators
+                (->
+                 (Listen "time") >= .time
+                 {:time .time})) >> .features
    {:Features .features} (GFX.DrawablePass) >> .render-steps
 
     ;; Create view
@@ -57,10 +61,12 @@
    :Contents
    (->
     .time (Math.Add timestep) > .time
+    .time (Broadcast "time")
+
     (spin-transform .time (Float3 -0.6 0 0)) > .transform-0
     (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.6 0 0)) > .transform-1
     .drawables (GFX.Draw)
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule root test-wire)
-(if (run root timestep 100) nil (throw "Root tick failed"))
+(if (run root timestep) nil (throw "Root tick failed"))

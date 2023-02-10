@@ -3,6 +3,7 @@
 
 #include "gfx/fwd.hpp"
 #include "gfx_wgpu.hpp"
+#include "linalg.h"
 #include "texture.hpp"
 #include "drawable.hpp"
 #include "mesh.hpp"
@@ -212,14 +213,29 @@ struct CachedView {
   float4x4 previousViewTransform = linalg::identity;
   float4x4 currentViewTransform = linalg::identity;
   float4x4 viewProjectionTransform;
+  bool isFlipped{};
 
   size_t lastTouched{};
+
+  // Checks if the given transform flips the coordinates space along a single axis
+  static bool isFlippedCoordinateSpace(const float4x4 &inTransform) {
+    float3 right = inTransform[0].xyz();
+    float3 up = inTransform[1].xyz();
+    float3 forward = linalg::normalize(inTransform[2].xyz());
+    float3 expectedForward = linalg::normalize(linalg::cross(right, up));
+    if (linalg::dot(forward, expectedForward) < 0) {
+      return true;
+    }
+    return false;
+  }
 
   void touchWithNewTransform(const float4x4 &viewTransform, const float4x4 &projectionTransform, size_t frameCounter) {
     if (frameCounter > lastTouched) {
       previousViewTransform = currentViewTransform;
       currentViewTransform = viewTransform;
       invViewTransform = linalg::inverse(viewTransform);
+
+      isFlipped = isFlippedCoordinateSpace(viewTransform);
 
       this->projectionTransform = projectionTransform;
       invProjectionTransform = linalg::inverse(projectionTransform);

@@ -64,18 +64,19 @@ inline std::variant<ParamVariant, TextureParameter> varToShaderParameter(const S
       }
       return matrix;
     } else {
-      throw formatException("Seq inner type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
+      throw formatException("Seq inner value {} can not be converted to ParamVariant", var);
     }
   case SHType::Object:
     return TextureParameter(varToTexture(var));
   default:
-    throw formatException("Value type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
+    throw formatException("Value {} can not be converted to ParamVariant", var);
   }
 }
 
 inline std::optional<shader::FieldType> deriveShaderFieldType(const SHTypeInfo &typeInfo) {
   using namespace shader;
   switch (typeInfo.basicType) {
+  case SHType::Float:
     return FieldTypes::Float;
   case SHType::Float2:
     return FieldTypes::Float2;
