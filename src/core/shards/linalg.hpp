@@ -210,9 +210,9 @@ struct Transpose : public UnaryBase {
 };
 
 struct Inverse : public UnaryBase {
-  static inline Types Types{{CoreInfo::Float4x4Type}};
-  static SHTypesInfo inputTypes() { return Types; }
-  static SHTypesInfo outputTypes() { return Types; }
+  static inline Types MatrixTypes{{CoreInfo::Float4x4Type}};
+  static SHTypesInfo inputTypes() { return MatrixTypes; }
+  static SHTypesInfo outputTypes() { return MatrixTypes; }
 
   OpType validateTypes(const SHTypeInfo &lhs, SHTypeInfo &resultType) {
     if (lhs.basicType == SHType::Seq) {
