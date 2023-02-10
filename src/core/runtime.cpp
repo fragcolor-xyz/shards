@@ -18,7 +18,7 @@
 #include <string.h>
 #include <unordered_set>
 #include <log/log.hpp>
-#include <atomic>
+#include <boost/atomic/atomic_ref.hpp>
 
 namespace fs = boost::filesystem;
 
@@ -3077,7 +3077,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
 namespace shards {
 void decRef(ShardPtr shard) {
-  std::atomic_ref atomicRefCount(shard->refCount);
+  auto atomicRefCount = boost::atomics::make_atomic_ref(shard->refCount);
   assert(atomicRefCount > 0);
   if (atomicRefCount.fetch_sub(1) == 1) {
     SHLOG_TRACE("DecRef 0 shard {:x} {}", (size_t)shard, shard->name(shard));
@@ -3086,7 +3086,7 @@ void decRef(ShardPtr shard) {
 }
 
 void incRef(ShardPtr shard) {
-  std::atomic_ref atomicRefCount(shard->refCount);
+  auto atomicRefCount = boost::atomics::make_atomic_ref(shard->refCount);
   if (atomicRefCount.fetch_add(1) == 0)
     SHLOG_TRACE("IncRef 0 shard {:x} {}", (size_t)shard, shard->name(shard));
 }
