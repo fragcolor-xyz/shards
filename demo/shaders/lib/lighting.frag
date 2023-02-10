@@ -45,7 +45,7 @@ struct LightingGeneralParams {
 	vec3 viewDirection; // from object to view
 };
 
-struct LightingVectorSample {
+struct ImportanceSample {
 	float pdf;
 	vec3 localDirection;
 };
@@ -54,8 +54,8 @@ float normalDistributionLambert(float nDotH) {
 	return PI;
 }
 
-LightingVectorSample importanceSampleLambert(vec2 uv) {
-	LightingVectorSample result;
+ImportanceSample importanceSampleLambert(vec2 uv) {
+	ImportanceSample result;
 	float phi = uv.x * 2.0 * PI;
 	float cosTheta = sqrt(1.0 - uv.y);
 	float sinTheta = sqrt(uv.y);
@@ -71,7 +71,7 @@ float normalDistributionGGX(float nDotH, float roughness) {
 	return roughnessSq / (PI * f * f);
 }
 
-LightingVectorSample importanceSampleGGX(vec2 uv, float roughness) {
+ImportanceSample importanceSampleGGX(vec2 uv, float roughness) {
 	LightingVectorSample result;
 	float roughnessSq = roughness * roughness;
 	float phi = 2.0 * PI * uv.x;

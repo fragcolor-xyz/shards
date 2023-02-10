@@ -17,7 +17,7 @@ uniform sampler2D u_inputTexture;
 
 IntegrateOutput lambert(IntegrateInput mci) {
 	IntegrateOutput result;
-	LightingVectorSample lvs = importanceSampleLambert(mci.coord);
+	ImportanceSample lvs = importanceSampleLambert(mci.coord);
 	result.localDirection = lvs.localDirection;
 	result.pdf = lvs.pdf;
 	result.sampleWeight = 1.0;

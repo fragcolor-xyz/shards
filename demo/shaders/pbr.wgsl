@@ -1,4 +1,3 @@
-let MONTECARLO_NUM_SAMPLES = 2048;
 let PI = 3.1415998935699463;
 let PI2 = 6.28318530717958647693;
 
@@ -18,7 +17,7 @@ struct LightingGeneralParams {
   viewDirection: vec3<f32>,
 }
 
-struct LightingVectorSample {
+struct ImportanceSample {
   pdf: f32,
   localDirection: vec3<f32>,
 }
@@ -60,7 +59,6 @@ fn hammersley2d(i: i32, N: i32) -> vec2<f32> {
     return vec2<f32>(f32(i)/f32(N), radicalInverse_VdC(u32(i)));
 }
 
-
 fn localHemisphereDirectionHelper(cosTheta: f32, sinTheta: f32, phi: f32) -> vec3<f32> {
 	return vec3<f32>(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
 }
@@ -73,11 +71,11 @@ fn normalDistributionLambert(nDotH: f32) -> f32 {
   return PI;
 }
 
-fn importanceSampleLambert(uv: vec2<f32>) -> LightingVectorSample {
-  var result: LightingVectorSample;
-	let phi = uv.x * 2.0 * PI;
+fn importanceSampleLambert(uv: vec2<f32>) -> ImportanceSample {
+  var result: ImportanceSample;
 	let cosTheta = sqrt(1.0 - uv.y);
 	let sinTheta = sqrt(uv.y);
+	let phi = uv.x * PI2;
 
 	result.pdf = cosTheta / PI;
 	result.localDirection = localHemisphereDirectionHelper(cosTheta, sinTheta, phi);
@@ -90,10 +88,10 @@ fn normalDistributionGGX(nDotH: f32, roughness: f32) -> f32 {
 	return roughnessSq / (PI * f * f);
 }
 
-fn importanceSampleGGX(uv: vec2<f32>, roughness: f32) -> LightingVectorSample {
-	var result: LightingVectorSample;
+fn importanceSampleGGX(uv: vec2<f32>, roughness: f32) -> ImportanceSample {
+	var result: ImportanceSample;
 	let roughnessSq = roughness * roughness;
-	let phi = 2.0 * PI * uv.x;
+	let phi = PI2 * uv.x;
 	let cosTheta = sqrt((1.0 - uv.y) / (1.0 + (roughnessSq * roughnessSq - 1.0) * uv.y));
 	let sinTheta = sqrt(1.0 - cosTheta * cosTheta);
 
@@ -165,12 +163,10 @@ fn getIBLRadianceLambertian(lambertianSample: vec3<f32>, ggxLUT: vec2<f32>, fres
 	return (FmsEms + k_D) * lambertianSample;
 }
 fn sampleEnvironmentLod(_texture: texture_cube<f32>, _sampler: sampler, dir: vec3<f32>, lod: f32) -> vec3<f32> {
-  let dir =  vec3<f32>(dir.xy, -dir.z);
   return textureSampleLevel(_texture, _sampler, dir, lod).xyz;
 }
 
 fn sampleEnvironment(_texture: texture_cube<f32>, _sampler: sampler, dir: vec3<f32>) -> vec3<f32> {
-  let dir =  vec3<f32>(dir.xy, -dir.z);
 	return sampleEnvironmentLod(_texture, _sampler, dir, f32(textureNumLevels(_texture) - 1));
 }
 
@@ -220,16 +216,10 @@ fn computeEnvironmentLighting(material: MaterialInfo,
   var material = material;
   let viewDir = params.viewDirection;
 	let reflDir = reflect(-viewDir, params.surfaceNormal);
-
 	let nDotV = dot(viewDir, params.surfaceNormal);
-
-	material.perceptualRoughness = clamp(material.perceptualRoughness, 0.0, 1.0);
-	material.metallic = clamp(material.metallic, 0.2, 1.0);
 
 	let roughness = material.perceptualRoughness * material.perceptualRoughness;
 	let reflectance = max(max(material.specularColor0.r, material.specularColor0.g), material.specularColor0.b);
-
-	material.specularColor90 = vec3<f32>(1.0);
 
 	let numMipLevels = f32(textureNumLevels(envGGX));
 	let ggxLUT = textureSample(ggxLUT, ggxLUTSampler, vec2<f32>(roughness, nDotV)).xy;
@@ -242,7 +232,9 @@ fn computeEnvironmentLighting(material: MaterialInfo,
 	let specularLight = getIBLRadianceGGX(ggxSample, ggxLUT, fresnelColor, material.specularWeight);
 	let diffuseLight = getIBLRadianceLambertian(lambertianSample, ggxLUT, fresnelColor, material.diffuseColor, material.specularColor0, material.specularWeight);
 
-	return diffuseLight + specularLight;
+  return lambertianSample;
+	// return specularLight;
+  // return specularLight + diffuseLight;
 }
 
 fn getWeightedLod(pdf: f32, num_samples: i32, texture: texture_cube<f32>) -> f32 {
@@ -252,9 +244,9 @@ fn getWeightedLod(pdf: f32, num_samples: i32, texture: texture_cube<f32>) -> f32
 }
 
 fn generateFrameFromZDirection(normal: vec3<f32>) -> mat3x3<f32> {
- 	var bitangent = vec3<f32>(0.0, 1.0, 0.0);
-	let nDotUp = dot(normal, vec3<f32>(0.0, 1.0, 0.0));
-	let epsilon = 0.00001;
+  let nDotUp = dot(normal, vec3<f32>(0.0, 1.0, 0.0));
+	let epsilon = 0.0000001;
+  var bitangent: vec3<f32>;
 	if (1.0 - abs(nDotUp) <= epsilon) {
 		// Sampling +Y or -Y, so we need a more robust bitangent.
 		if (nDotUp > 0.0) {
@@ -265,13 +257,13 @@ fn generateFrameFromZDirection(normal: vec3<f32>) -> mat3x3<f32> {
 		}
 	}
 
-	let tangent = normalize(cross(bitangent, normal));
-	bitangent = cross(normal, tangent);
+   var tangent = normalize(cross(bitangent, normal));
+   bitangent = cross(normal, tangent);
 
 	return mat3x3<f32>(tangent, bitangent, normal);
 }
 
-fn computeLUT(in: vec2<f32>) -> vec2<f32> {
+fn computeLUT(in: vec2<f32>, numSamples:i32) -> vec2<f32> {
   let roughness = in.x;
   let nDotV = in.y;
 
@@ -283,14 +275,14 @@ fn computeLUT(in: vec2<f32>) -> vec2<f32> {
   var result = vec2<f32>();
   var sampleIndex = 0;
   loop {
-    if(sampleIndex >= MONTECARLO_NUM_SAMPLES) {
+    if(sampleIndex >= numSamples) {
       break;
     }
 
-    let coord = hammersley2d(sampleIndex, MONTECARLO_NUM_SAMPLES);
+    let coord = hammersley2d(sampleIndex, numSamples);
 
-    let lvs = importanceSampleGGX(coord, roughness);
-    let sampleNormal = lvs.localDirection;
+    let is = importanceSampleGGX(coord, roughness);
+    let sampleNormal = is.localDirection;
     let localLightDir = reflect(-localViewDir, sampleNormal);
 
     let nDotL = localLightDir.z;
@@ -307,15 +299,15 @@ fn computeLUT(in: vec2<f32>) -> vec2<f32> {
     sampleIndex = sampleIndex + 1;
   }
   
-  return result.xy / f32(MONTECARLO_NUM_SAMPLES) * 4.0;
+  return result.xy / f32(numSamples) * 4.0;
 }
 
 fn ggx(roughness: f32, mci: IntegrateInput) -> IntegrateOutput {
 	var result: IntegrateOutput;
 
-	let lvs = importanceSampleGGX(mci.coord, roughness);
-	result.localDirection = lvs.localDirection;
-	result.pdf = lvs.pdf;
+	let is = importanceSampleGGX(mci.coord, roughness);
+	result.localDirection = is.localDirection;
+	result.pdf = is.pdf;
 
 	// Use N = V for precomputed map
 	let localViewDir = vec3(0.0, 0.0, 1.0);
@@ -331,9 +323,9 @@ fn ggx(roughness: f32, mci: IntegrateInput) -> IntegrateOutput {
 fn lambert(mci: IntegrateInput) -> IntegrateOutput {
 	var result: IntegrateOutput;
 
-	let lvs = importanceSampleLambert(mci.coord);
-	result.localDirection = lvs.localDirection;
-	result.pdf = lvs.pdf;
+	let is = importanceSampleLambert(mci.coord);
+	result.localDirection = is.localDirection;
+	result.pdf = is.pdf;
 	result.sampleWeight = 1.0;
 	result.sampleScale = 1.0;
 

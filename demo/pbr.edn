@@ -10,11 +10,11 @@
     }" "
     var mci: IntegrateInput;
 		mci.baseDirection = baseDir;
-		mci.coord = hammersley2d(sampleIndex, MONTECARLO_NUM_SAMPLES);
+		mci.coord = hammersley2d(sampleIndex, "num-samples");
 		let mco = " body ";
 		let lod = getWeightedLod(mco.pdf, " num-samples ", _texture);" "
     let direction = tbn * mco.localDirection;
-		let s = sampleEnvironmentLod(_texture, _sampler, direction, lod);
+		let s = sampleEnvironmentLod(_texture, _sampler, direction, lod);""
 		result = result + s * mco.sampleScale;
 		weight = weight + mco.sampleWeight;" "
     sampleIndex = sampleIndex + 1;
@@ -28,7 +28,7 @@
   {:EntryPoint (->
                 (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/pbr.wgsl"))
                 (Shader.ReadInput "texCoord0") >= .uv
-                (Shader.Literal :OutputDimension 2 :Source ["computeLUT(" .uv ")"])
+                (Shader.Literal :OutputDimension 2 :Source ["computeLUT(" .uv ", 1024)"])
                 (ToFloat2) (Shader.WriteOutput "color") ; End shader
                 )}
   (GFX.EffectPass) >> .lut-steps-1
@@ -49,7 +49,7 @@
 
 (defshards compute-integrated-specular-fs []
   (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/pbr.wgsl"))
-  (Shader.ReadInput "worldNormal") (Math.Multiply (Float3 1 1 -1)) >= .world-normal
+  (Shader.ReadInput "worldNormal") >= .world-normal
   (Shader.RefTexture "source") = .source-texture
   (Shader.RefSampler "source") = .source-sampler
   (Shader.ReadBuffer "roughness") (ToFloat4) = .args
@@ -61,8 +61,8 @@
   .num-mips (Math.Subtract 1) (ToFloat) = .div
   .current-mip (ToFloat) (Math.Divide .div) = .roughness
   .roughness (Log "Roughness")
-  {:Params [{:Name "source" :Default .cube-tex}
-            {:Name "roughness" :Default .roughness}]
+  {:Params {:source .cube-tex
+            :roughness .roughness}
    :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
               :EntryPoint (compute-integrated-specular-fs)}]} (GFX.Feature) >= .filter-feature
   (filter-cubemap .filter-feature .cube-tex-1 .current-mip)
@@ -70,16 +70,16 @@
 
 (defshards compute-integrated-lambert-fs []
   (Shader.Literal :Type ShaderLiteralType.Header :Source (slurp "shaders/pbr.wgsl"))
-  (Shader.ReadInput "worldNormal") (Math.Multiply (Float3 1 1 -1)) >= .world-normal
+  (Shader.ReadInput "worldNormal") >= .world-normal
   (Shader.RefTexture "source") = .source-texture
   (Shader.RefSampler "source") = .source-sampler
   1.0 (ToFloat4) = .args
-  (shader-integrate .source-texture .source-sampler .world-normal "lambert(mci)" "1024" .args)
+  (shader-integrate .source-texture .source-sampler .world-normal "lambert(mci)" "256" .args)
   (ToFloat4) (Math.Add (Float4 0 0 0 1))
   (Shader.WriteOutput "color"))
 (defwire compute-integrated-lambert
   (Msg "Computing integrated lambert")
-  {:Params [{:Name "source" :Default .cube-tex}]
+  {:Params {:source .cube-tex}
    :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
               :EntryPoint (compute-integrated-lambert-fs)}]} (GFX.Feature) >= .filter-feature
   (filter-cubemap .filter-feature .cube-tex-2 0)
@@ -94,7 +94,7 @@
           (render-cubemap-0 included-steps .cube-tex)
 
           ; Precompute reflective
-          (Int2 512) >= .size
+          (Int2 256) >= .size
           (Log "Cubemap dimension")
           (calc-num-mips) >= .num-mips
           (Log "Number of mip levels")
@@ -104,7 +104,7 @@
                                  (Spawn compute-integrated-specular-mip)))
 
           ; Precompute lambertian
-          (Int2 64) > .size
+          (Int2 256) > .size
           (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution .size :Dimension TextureDimension.Cube) >= .cube-tex-2
           (Do compute-integrated-lambert)
 
@@ -113,8 +113,8 @@
   {:lambert .cube-tex-2 :ggx .cube-tex-1 :ggxLUT .ggx-lut})
 
 (defshards setup-pbr-feature [included-steps]
-  {:Params [{:Name "roughness" :Default 1.0}
-            {:Name "metalicness" :Default 0.0}]
+  {:Params {:roughness 1.0
+            :metalicness 0.0}
    :Shaders
    [{:Stage ProgrammableGraphicsStage.Fragment
      :After ["writeColor"]
@@ -147,8 +147,6 @@
         var mi = getDefaultMaterialInfo();
         mi.baseColor = (" .base-color ").xyz;
         materialSetMetallicRoughness(&mi, " .metalicness ", " .roughness ");
-        //mi.baseColor = vec3<f32>(1.0);
-        materialSetMetallicRoughness(&mi, 1.0, ".roughness");
         "])
 
       (Shader.Literal ["computeEnvironmentLighting(mi, lgp, "

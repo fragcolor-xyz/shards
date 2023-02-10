@@ -23,12 +23,12 @@
  ; Sets up a queue (.sky-sphere-queue) that just draws a sphere
  (setup-shared-sky-sphere-queue)
 
- {:Position (Float3 -7.0 2.5 15.0) :Target (Float3 0.0 0.7 0.0)} (Math.LookAt)
+ {:Position (Float3 -6.5 3.0 6.5) :Target (Float3 0.0 0.5 0.0)} (Math.LookAt)
 ;;  -90.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp-mat0
 ;;  (Float3 -50 0 0) (Math.Translation) >= .tmp-mat1
 ;;  .tmp-mat1 (Math.MatMul .tmp-mat0) (Math.Inverse) 
  >= .view-transform
- (GFX.View .view-transform) >= .view
+ (GFX.View .view-transform :Fov 1.4) >= .view
 
  (Float3 0.0) (Math.Translation) >= .transform
  -90.0 (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) >= .tmp-rot
@@ -43,6 +43,7 @@
  (GFX.BuiltinMesh :Type BuiltinMeshType.Plane) >= .plane-mesh
  {:Mesh .plane-mesh :Params {:baseColor (Float4 0.1 0.1 0.1 1.0)}} (GFX.Drawable :Transform .plane-transform) >= .floor
  .floor >> .drawables
+ (Clear .drawables)
 
  (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) >= .sphere-mesh
  (Float3 -1.5 0.8 0.0) (Math.Translation) > .transform
@@ -79,7 +80,7 @@
  (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features-1
  .floor >> .drawables-2
  (GFX.DrawQueue) >= .floor-queue
- .drawables-2 (GFX.Draw .floor-queue)
+;;  .drawables-2 (GFX.Draw .floor-queue)
  {:Features .features-1 :Queue .floor-queue} (GFX.DrawablePass) >= .base-pass-no-refl
 
  (setup-skybox-pass) >= .skybox-pass

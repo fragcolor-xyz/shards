@@ -25,7 +25,7 @@ void main() {
 	for (int sampleIndex = 0; sampleIndex < MONTECARLO_NUM_SAMPLES; sampleIndex++) {
 		vec2 coord = hammersley2d(sampleIndex, MONTECARLO_NUM_SAMPLES);
 
-		LightingVectorSample lvs = importanceSampleGGX(coord, roughness);
+		ImportanceSample lvs = importanceSampleGGX(coord, roughness);
         vec3 sampleNormal = lvs.localDirection;
 		vec3 localLightDir = getReflectionVector(localViewDir, sampleNormal);
 

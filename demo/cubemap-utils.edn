@@ -2,10 +2,10 @@
 ;       The Y rotation for the Z axis is revesed
 (def cube-rotations [(Float3 0 -90.0 0) ; X+
                      (Float3 0 90.0 0) ; X-
-                     (Float3 90.0 0 0) ; Y+
-                     (Float3 -90.0 0 0) ; Y-
-                     (Float3 0 0 0) ; Z+
+                     (Float3 90.0 180 0) ; Y+
+                     (Float3 -90.0 180 0) ; Y-
                      (Float3 0 180 0) ; Z-
+                     (Float3 0 0 0) ; Z+
                      ])
 (defshards xyz-to-mat []
   (| (Take 0) >= .x) (| (Take 1) >= .y) (| (Take 2) >= .z)
@@ -20,8 +20,9 @@
    (fn* [n] (->
              cube-rotations (Take n)
              (xyz-to-mat) >= .tmp-rot
-             (Float3 0 10 0) (Math.Translation) >= .tmp-tsl
-             .tmp-tsl (Math.MatMul .tmp-rot) (Math.Inverse) >= (ContextVar (str "view-transform-" n))
+             (Float3 0 0 0) (Math.Translation) >= .tmp-tsl
+             (Float3 -1 1 1) (Math.Scaling) >= .tmp-flip
+             .tmp-tsl (Math.MatMul .tmp-rot) (Math.MatMul .tmp-flip) (Math.Inverse) >= (ContextVar (str "view-transform-" n))
              (GFX.View :View (ContextVar (str "view-transform-" n)) :Fov .fov) >= (ContextVar (str "capture-view-" n))
              (GFX.RenderInto :Textures {:color {:Texture cube-tex :Face n :Mip mip-index}}
                              :Contents (->

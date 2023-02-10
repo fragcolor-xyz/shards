@@ -23,7 +23,7 @@ ggxParameters;
 IntegrateOutput ggx(IntegrateInput mci) {
 	IntegrateOutput result;
 
-	LightingVectorSample lvs = importanceSampleGGX(mci.coord, ggxParameters.roughness);
+	ImportanceSample lvs = importanceSampleGGX(mci.coord, ggxParameters.roughness);
 	result.localDirection = lvs.localDirection;
 	result.pdf = lvs.pdf;
 
