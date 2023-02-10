@@ -126,13 +126,18 @@
 (defloop gfx
   (Setup
    0.0 >= .time
+   .time (Broadcast "time")
 
-   {:Params [{:Name "time" :Type ShaderFieldBaseType.Float32}]
-    :DrawData (-> {:time .time})} (GFX.Feature) >> .features
+   {} (GFX.Feature :ViewGenerators
+                   (->
+                    (Listen "time") >= .time
+                    {:time .time})) >> .features
    {:EntryPoint (-> (shader-main)) :Features .features} (GFX.EffectPass) >> .render-steps)
 
   (GFX.Render :Steps .render-steps)
-  .time (Math.Add timestep) > .time)
+
+  .time (Math.Add timestep) > .time
+  .time (Broadcast "time"))
 
 (defmesh root)
 (schedule root (Wire "main-loop-wire" :Looped :LStack
