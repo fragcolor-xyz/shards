@@ -317,6 +317,8 @@ jobs:
           ./shards ../src/tests/eth.edn
           echo "Running test: crypto"
           ./shards ../src/tests/crypto.edn
+          echo "Running test: complex-deserialize"
+          ./shards ../src/tests/complex-deserialize.edn
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: 1

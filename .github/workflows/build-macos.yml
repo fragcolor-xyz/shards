@@ -158,6 +158,7 @@ jobs:
           ./shards ../src/tests/eth.edn
           ./shards ../src/tests/many.edn
           ./shards ../src/tests/events.edn
+          ./shards ../src/tests/complex-deserialize.edn
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: 1
