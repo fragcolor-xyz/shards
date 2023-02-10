@@ -22,7 +22,7 @@
 (Setup
  ; Sets up a queue (.sky-sphere-queue) that just draws a sphere
  (setup-shared-sky-sphere-queue)
- 
+
  {:Position (Float3 -7.0 2.5 15.0) :Target (Float3 0.0 0.7 0.0)} (Math.LookAt)
 ;;  -90.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp-mat0
 ;;  (Float3 -50 0 0) (Math.Translation) >= .tmp-mat1
@@ -41,7 +41,7 @@
  .transform (Math.MatMul .tmp-rot) (Math.MatMul .tmp-scale) >= .transform-1
 
  (GFX.BuiltinMesh :Type BuiltinMeshType.Plane) >= .plane-mesh
- {:Mesh .plane-mesh :Params {:baseColor (Float4 0.4 0.4 0.94 1.0)}} (GFX.Drawable :Transform .plane-transform) >= .floor
+ {:Mesh .plane-mesh :Params {:baseColor (Float4 0.1 0.1 0.1 1.0)}} (GFX.Drawable :Transform .plane-transform) >= .floor
  .floor >> .drawables
 
  (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) >= .sphere-mesh
@@ -51,6 +51,20 @@
  .transform (Math.MatMul .tmp-rot) (Math.MatMul .tmp-scale) >= .transform-0
  {:Mesh .sphere-mesh :Params {:baseColor (Float4 0.12 0.7 0.2 1.0)} :Transform .transform-0} (GFX.Drawable) >> .drawables
 
+ (Float3 -3.5 0.8 0.0) (Math.Translation) > .transform
+ 0.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) > .tmp-rot
+ (Float3 1.6) (Math.Scaling) > .tmp-scale
+ .transform (Math.MatMul .tmp-rot) (Math.MatMul .tmp-scale) >= .transform-0
+ {:Mesh .sphere-mesh :Params {:baseColor (Float4 0.12 0.7 0.2 1.0) :roughness 0.5} :Transform .transform-0} (GFX.Drawable) >> .drawables
+
+ 
+ (Float3 -5.5 0.8 0.0) (Math.Translation) > .transform
+0.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) > .tmp-rot
+(Float3 1.6) (Math.Scaling) > .tmp-scale
+.transform (Math.MatMul .tmp-rot) (Math.MatMul .tmp-scale) >= .transform-0
+{:Mesh .sphere-mesh :Params {:baseColor (Float4 0.12 0.7 0.2 1.0) :roughness 0.0} :Transform .transform-0} (GFX.Drawable) >> .drawables
+
+ 
  (Float3 1.5 1.2 0.0) (Math.Translation) > .transform
  180.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) > .tmp-rot
  (Float3 4.0) (Math.Scaling) > .tmp-scale

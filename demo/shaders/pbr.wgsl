@@ -219,7 +219,7 @@ fn computeEnvironmentLighting(material: MaterialInfo,
   ggxLUTSampler: sampler) -> vec3<f32> {
   var material = material;
   let viewDir = params.viewDirection;
-	let reflDir = reflect(viewDir, params.surfaceNormal);
+	let reflDir = reflect(-viewDir, params.surfaceNormal);
 
 	let nDotV = dot(viewDir, params.surfaceNormal);
 
@@ -319,7 +319,7 @@ fn ggx(roughness: f32, mci: IntegrateInput) -> IntegrateOutput {
 
 	// Use N = V for precomputed map
 	let localViewDir = vec3(0.0, 0.0, 1.0);
-	let localLightDir = reflect(-localViewDir, result.localDirection);
+	let localLightDir = reflect(localViewDir, result.localDirection);
 	let nDotL = dot(localLightDir, result.localDirection);
 
 	result.sampleWeight = nDotL;
