@@ -232,9 +232,7 @@ fn computeEnvironmentLighting(material: MaterialInfo,
 	let specularLight = getIBLRadianceGGX(ggxSample, ggxLUT, fresnelColor, material.specularWeight);
 	let diffuseLight = getIBLRadianceLambertian(lambertianSample, ggxLUT, fresnelColor, material.diffuseColor, material.specularColor0, material.specularWeight);
 
-  return lambertianSample;
-	// return specularLight;
-  // return specularLight + diffuseLight;
+  return (specularLight + diffuseLight) * 1.2;
 }
 
 fn getWeightedLod(pdf: f32, num_samples: i32, texture: texture_cube<f32>) -> f32 {
@@ -246,7 +244,7 @@ fn getWeightedLod(pdf: f32, num_samples: i32, texture: texture_cube<f32>) -> f32
 fn generateFrameFromZDirection(normal: vec3<f32>) -> mat3x3<f32> {
   let nDotUp = dot(normal, vec3<f32>(0.0, 1.0, 0.0));
 	let epsilon = 0.0000001;
-  var bitangent: vec3<f32>;
+  var bitangent = vec3(0.0, 1.0, 0.0);
 	if (1.0 - abs(nDotUp) <= epsilon) {
 		// Sampling +Y or -Y, so we need a more robust bitangent.
 		if (nDotUp > 0.0) {

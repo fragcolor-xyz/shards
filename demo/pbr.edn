@@ -85,13 +85,13 @@
   (filter-cubemap .filter-feature .cube-tex-2 0)
   (Msg "Done"))
 
-(defshards generate-probes [included-steps]
+(defshards generate-probes [included-steps probe-offset]
   (| (Take "Queue") >= .parent-queue)
   (| (Take "View") >= .parent-view)
   (Setup (->
           (Msg "Generating pre-rendered PBR textures")
           (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 512) :Dimension TextureDimension.Cube) >= .cube-tex
-          (render-cubemap-0 included-steps .cube-tex)
+          (render-cubemap-0 included-steps .cube-tex probe-offset)
 
           ; Precompute reflective
           (Int2 256) >= .size
@@ -112,7 +112,7 @@
           ))
   {:lambert .cube-tex-2 :ggx .cube-tex-1 :ggxLUT .ggx-lut})
 
-(defshards setup-pbr-feature [included-steps]
+(defshards setup-pbr-feature [included-steps probe-offset]
   {:Params {:roughness 1.0
             :metalicness 0.0}
    :Shaders
@@ -159,4 +159,4 @@
       ;       It needs to be flipped when sampling cubemaps
       (Math.Multiply (Float4 1 1 1 0)) (Math.Add (Float4 0 0 0 1))
       (Shader.WriteOutput "color"))}]}
-  (GFX.Feature :ViewGenerators (-> (generate-probes included-steps))))
+  (GFX.Feature :ViewGenerators (-> (generate-probes included-steps probe-offset))))
