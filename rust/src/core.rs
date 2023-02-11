@@ -606,6 +606,7 @@ impl core::fmt::Debug for SHVarPayloadDebugView<'_> {
   }
 }
 
+#[derive(Debug)]
 pub struct ShardInstance {
   ptr: ShardPtr,
 }
@@ -617,6 +618,12 @@ impl Drop for ShardInstance {
         (*self.ptr).destroy.unwrap()(self.ptr);
       }
     }
+  }
+}
+
+impl From<ShardPtr> for ShardInstance {
+  fn from(ptr: ShardPtr) -> Self {
+    Self { ptr }
   }
 }
 
