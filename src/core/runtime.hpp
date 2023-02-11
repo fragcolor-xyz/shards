@@ -1277,12 +1277,14 @@ template <typename T> struct WireDoppelgangerPool {
       destroyVar(vwire);
       auto fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->wire = wire;
-      composer.compose(wire.get(), anything);
+      composer.compose(wire.get(), anything, false);
       fresh->wire->name = fresh->wire->name + "-" + std::to_string(_pool.size());
       return fresh;
     } else {
       auto res = _avail.extract(_avail.begin());
-      return res.value();
+      auto &value = res.value();
+      composer.compose(value->wire.get(), anything, true);
+      return value;
     }
   }
 
