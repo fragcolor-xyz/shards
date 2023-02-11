@@ -1282,7 +1282,7 @@ template <typename T> struct WireDoppelgangerPool {
       return fresh;
     } else {
       auto res = _avail.extract(_avail.begin());
-      auto value = res.value();
+      auto &value = res.value();
       composer.compose(value->wire.get(), anything, true);
       return value;
     }
