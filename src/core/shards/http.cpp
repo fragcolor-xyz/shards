@@ -557,7 +557,7 @@ struct Server {
     SHContext *context;
 
     void compose(SHWire *wire, SHContext *context, bool recycling) {
-      if(recycling)
+      if (recycling)
         return;
 
       SHInstanceData data{};

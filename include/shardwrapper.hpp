@@ -104,13 +104,13 @@ template <class T> struct ShardWrapper {
         auto bw = reinterpret_cast<ShardWrapper<T> *>(b);
         bw->shard.destroy();
         bw->ShardWrapper<T>::~ShardWrapper<T>();
-        ::operator delete(bw, std::align_val_t{16});
+        ::operator delete (bw, std::align_val_t{16});
       });
     } else {
       result->destroy = static_cast<SHDestroyProc>([](Shard *b) {
         auto bw = reinterpret_cast<ShardWrapper<T> *>(b);
         bw->ShardWrapper<T>::~ShardWrapper<T>();
-        ::operator delete(bw, std::align_val_t{16});
+        ::operator delete (bw, std::align_val_t{16});
       });
     }
 
