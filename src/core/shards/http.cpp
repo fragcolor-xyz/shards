@@ -556,7 +556,10 @@ struct Server {
     Server &server;
     SHContext *context;
 
-    void compose(SHWire *wire, SHContext *context) {
+    void compose(SHWire *wire, SHContext *context, bool recycling) {
+      if(recycling)
+        return;
+
       SHInstanceData data{};
       data.inputType = CoreInfo::StringType;
       data.shared = server._sharedCopy;

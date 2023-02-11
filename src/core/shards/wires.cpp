@@ -1188,7 +1188,10 @@ struct ParallelBase : public CapturingSpawners {
     ParallelBase &server;
     SHContext *context;
 
-    void compose(SHWire *wire, SHContext *context) {
+    void compose(SHWire *wire, SHContext *context, bool recycling) {
+      if(!recycling)
+        return;
+
       SHInstanceData data{};
       data.inputType = server._inputType;
       data.shared = server._sharedCopy;
@@ -1596,7 +1599,10 @@ struct Spawn : public CapturingSpawners {
     Spawn &server;
     SHContext *context;
 
-    void compose(SHWire *wire, SHContext *context) {
+    void compose(SHWire *wire, SHContext *context, bool recycling) {
+      if(recycling)
+        return;
+
       SHLOG_TRACE("Spawn::Composer::compose {}", wire->name);
       SHInstanceData data{};
       data.inputType = server._inputType;
