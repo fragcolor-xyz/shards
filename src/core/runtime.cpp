@@ -2709,12 +2709,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   sh_current_interface_loaded = true;
 
   result->alloc = [](uint32_t size) -> void * {
-    auto mem = ::operator new(size, std::align_val_t{16});
+    auto mem = ::operator new (size, std::align_val_t{16});
     memset(mem, 0, size);
     return mem;
   };
 
-  result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
+  result->free = [](void *ptr) { ::operator delete (ptr, std::align_val_t{16}); };
 
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)
@@ -2775,7 +2775,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto sc = SHWire::sharedFromRef(wire);
     auto var = sc->externalVariables[name];
     if (var) {
-      ::operator delete(var, std::align_val_t{16});
+      ::operator delete (var, std::align_val_t{16});
     }
     sc->externalVariables.erase(name);
   };

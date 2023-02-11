@@ -1189,7 +1189,7 @@ struct ParallelBase : public CapturingSpawners {
     SHContext *context;
 
     void compose(SHWire *wire, SHContext *context, bool recycling) {
-      if(recycling)
+      if (recycling)
         return;
 
       SHInstanceData data{};
@@ -1600,7 +1600,7 @@ struct Spawn : public CapturingSpawners {
     SHContext *context;
 
     void compose(SHWire *wire, SHContext *context, bool recycling) {
-      if(recycling)
+      if (recycling)
         return;
 
       SHLOG_TRACE("Spawn::Composer::compose {}", wire->name);

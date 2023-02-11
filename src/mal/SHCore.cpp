@@ -460,16 +460,14 @@ private:
 
 class malSHVar : public malValue, public malRoot {
 public:
-  malSHVar(const SHVar &var, bool owned) : m_owned(owned) {
-    m_var = var;
-  }
+  malSHVar(const SHVar &var, bool owned) : m_owned(owned) { m_var = var; }
 
   malSHVar(const malSHVar &that, const malValuePtr &meta) : malValue(meta), m_owned(true) {
     m_var = SHVar();
     shards::cloneVar(m_var, that.m_var);
   }
 
-  static malSHVar* newCloned(const SHVar& var) {
+  static malSHVar *newCloned(const SHVar &var) {
     SHVar clonedVar{};
     cloneVar(clonedVar, var);
     return new malSHVar(clonedVar, true);
@@ -1082,7 +1080,7 @@ malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
     providerVar->line = arg->line;
     return malSHVarPtr(providerVar);
   } else if (malShard *v = DYNAMIC_CAST(malShard, arg)) {
-    auto shard = v->value(); 
+    auto shard = v->value();
     SHVar var{};
     var.valueType = SHType::ShardRef;
     var.payload.shardValue = shard;
@@ -1968,30 +1966,14 @@ BUILTIN("context-var") {
 }
 
 template <SHType T> struct GetComponentType {};
-template <> struct GetComponentType<SHType::Float2> {
-  typedef double Type;
-};
-template <> struct GetComponentType<SHType::Float3> {
-  typedef float Type;
-};
-template <> struct GetComponentType<SHType::Float4> {
-  typedef float Type;
-};
-template <> struct GetComponentType<SHType::Int2> {
-  typedef int64_t Type;
-};
-template <> struct GetComponentType<SHType::Int3> {
-  typedef int32_t Type;
-};
-template <> struct GetComponentType<SHType::Int4> {
-  typedef int32_t Type;
-};
-template <> struct GetComponentType<SHType::Int8> {
-  typedef int16_t Type;
-};
-template <> struct GetComponentType<SHType::Int16> {
-  typedef int8_t Type;
-};
+template <> struct GetComponentType<SHType::Float2> { typedef double Type; };
+template <> struct GetComponentType<SHType::Float3> { typedef float Type; };
+template <> struct GetComponentType<SHType::Float4> { typedef float Type; };
+template <> struct GetComponentType<SHType::Int2> { typedef int64_t Type; };
+template <> struct GetComponentType<SHType::Int3> { typedef int32_t Type; };
+template <> struct GetComponentType<SHType::Int4> { typedef int32_t Type; };
+template <> struct GetComponentType<SHType::Int8> { typedef int16_t Type; };
+template <> struct GetComponentType<SHType::Int16> { typedef int8_t Type; };
 template <> struct GetComponentType<SHType::Color> {
   typedef uint8_t Type;
   static constexpr uint8_t getDefaultValue(size_t index) { return index == 3 ? 255 : 0; }
