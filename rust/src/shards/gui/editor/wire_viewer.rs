@@ -318,19 +318,19 @@ unsafe extern "C" fn spatial_render_external_panel(
   egui_input: *const egui_Input,
 ) -> *const egui_FullOutput {
   (*ptr).host.activate_base(&*egui_input, |_, ctx| {
-    let mut graph = RefCell::borrow_mut(&(*ptr).graph);
+    // let mut graph = RefCell::borrow_mut(&(*ptr).graph);
     egui::CentralPanel::default().show(ctx, |ui| {
-      let mut _pos = egui::Pos2::default();
-      let mut _node_rects = HashMap::new();
-      GraphNodeWidget {
-        position: &mut _pos,
-        graph: &mut graph,
-        node_rects: &mut _node_rects,
-        node_id: (*ptr).node_id,
-        pan: Default::default(),
-        selected: false,
-      }
-      .show(ui);
+      // let mut _pos = egui::Pos2::default();
+      // let mut _node_rects = HashMap::new();
+      // GraphNodeWidget {
+      //   position: &mut _pos,
+      //   graph: &mut graph,
+      //   node_rects: &mut _node_rects,
+      //   node_id: (*ptr).node_id,
+      //   pan: Default::default(),
+      //   selected: false,
+      // }
+      // .show(ui);
     });
 
     Ok(())

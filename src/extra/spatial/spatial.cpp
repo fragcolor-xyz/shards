@@ -121,6 +121,8 @@ struct SpatialUIContextShard {
       _debugRenderer->end(queue.queue);
     }
 
+    // HERE: add an option to actually run the contents shards
+    // and make the panel shard activate be empty
     SHVar output{};
     _contents.activate(shContext, input, output);
 
