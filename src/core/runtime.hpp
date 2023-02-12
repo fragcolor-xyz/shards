@@ -1275,7 +1275,7 @@ template <typename T> struct WireDoppelgangerPool {
       serializer.deserialize(r, vwire);
       auto wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       destroyVar(vwire);
-      auto fresh = _pool.emplace_back(std::make_shared<T>());
+      auto &fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->wire = wire;
       composer.compose(wire.get(), anything, false);
       fresh->wire->name = fresh->wire->name + "-" + std::to_string(_pool.size());
