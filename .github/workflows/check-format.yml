@@ -30,5 +30,7 @@ jobs:
          ./format
       - name: Check format
         run: |
-          git commit -a --dry-run --short
-          exit `git commit -a --dry-run --short | wc -l`
+          check=`git commit -a --dry-run --short`
+          echo $check
+          ret=`echo $check | wc -l`
+          exit `$(( ret - 1))`
