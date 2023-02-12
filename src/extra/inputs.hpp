@@ -13,8 +13,7 @@ struct InputContext {
   static inline SHTypeInfo Type{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = TypeId}}};
   static inline const char VariableName[] = "Input.Context";
   static inline const SHOptionalString VariableDescription = SHCCSTR("The input context.");
-  static inline SHExposedTypeInfo VariableInfo =
-      shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
+  static inline SHExposedTypeInfo VariableInfo = shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
 
   std::shared_ptr<gfx::Window> window;
   std::vector<SDL_Event> events;

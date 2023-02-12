@@ -31,8 +31,8 @@ gfx::DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var);
 
 gfx::int4 gfx_getEguiMappedRegion(const SHVar &inputContext);
 gfx::int4 gfx_getViewport(const SHVar &graphicsContext);
-const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &graphicsContext, const SHVar &inputContext,
-                                           float scalingFactor);
+const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &graphicsContext,
+                                           const SHVar &inputContext, float scalingFactor);
 }
 
 #endif /* E325D8E3_F64E_413D_965B_DF275CF18AC4 */

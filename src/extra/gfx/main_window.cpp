@@ -156,14 +156,16 @@ struct MainWindow final {
 
     if (_graphicsContextVar) {
       if (_graphicsContextVar->refcount > 1) {
-        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _graphicsContextVar->refcount - 1, GraphicsContext::VariableName);
+        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _graphicsContextVar->refcount - 1,
+                    GraphicsContext::VariableName);
       }
       releaseVariable(_graphicsContextVar);
     }
 
     if (_inputContextVar) {
       if (_inputContextVar->refcount > 1) {
-        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _inputContextVar->refcount - 1, InputContext::VariableName);
+        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _inputContextVar->refcount - 1,
+                    InputContext::VariableName);
       }
       releaseVariable(_inputContextVar);
     }

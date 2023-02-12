@@ -144,9 +144,7 @@ struct DrawShard {
   ParamVar _queueVar{};
   RequiredGraphicsContext _graphicsContext{};
 
-  bool isQueueSet() const {
-    return _queueVar->valueType != SHType::None;
-  }
+  bool isQueueSet() const { return _queueVar->valueType != SHType::None; }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {

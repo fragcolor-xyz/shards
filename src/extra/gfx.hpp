@@ -20,8 +20,7 @@ struct GraphicsContext {
   static inline SHTypeInfo Type{SHType::Object, {.object = {.vendorId = VendorId, .typeId = TypeId}}};
   static inline const char VariableName[] = "GFX.Context";
   static inline const SHOptionalString VariableDescription = SHCCSTR("The graphics context.");
-  static inline SHExposedTypeInfo VariableInfo =
-      shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
+  static inline SHExposedTypeInfo VariableInfo = shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
 
   std::shared_ptr<Context> context;
   std::shared_ptr<Window> window;
@@ -39,7 +38,8 @@ struct GraphicsContext {
   SDL_Window *getSdlWindow();
 };
 
-typedef shards::RequiredContextVariable<GraphicsContext, GraphicsContext::Type, GraphicsContext::VariableName> RequiredGraphicsContext;
+typedef shards::RequiredContextVariable<GraphicsContext, GraphicsContext::Type, GraphicsContext::VariableName>
+    RequiredGraphicsContext;
 
 struct ContextUserData {
   SHContext *shardsContext{};

@@ -73,7 +73,9 @@ impl Shard for Tooltip {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Display a tooltip when the Contents is hovered over."))
+    OptionalString(shccstr!(
+      "Display a tooltip when the Contents is hovered over."
+    ))
   }
 
   fn inputTypes(&mut self) -> &Types {

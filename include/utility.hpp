@@ -57,7 +57,9 @@ constexpr uint32_t crc32(std::string_view str) {
   return crc ^ 0xffffffff;
 }
 
-template <auto V> struct constant { constexpr static decltype(V) value = V; };
+template <auto V> struct constant {
+  constexpr static decltype(V) value = V;
+};
 
 inline SHOptionalString operator"" _optional(const char *s, size_t) { return SHOptionalString{s}; }
 
@@ -299,7 +301,9 @@ public:
 
 // Contains help text for a specific enum member
 // Implement a specialization to add custom help text
-template <typename E, E Value> struct TEnumHelp { static inline SHOptionalString help = SHOptionalString{""}; };
+template <typename E, E Value> struct TEnumHelp {
+  static inline SHOptionalString help = SHOptionalString{""};
+};
 
 template <class SH_CORE_, typename E_, const char *Name_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
 struct TEnumInfo {

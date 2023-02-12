@@ -39,7 +39,7 @@ struct WireBase {
 
   bool passthrough{false};
 
-   // if false, means the Shard is not going to activate the wire, but just wait for it to complete usually or similar
+  // if false, means the Shard is not going to activate the wire, but just wait for it to complete usually or similar
   bool activating{true};
 
   bool capturing{false};

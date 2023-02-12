@@ -3296,7 +3296,9 @@ impl ShardsVar {
       let mut tmp = SHVar {
         valueType: SHType_ShardRef,
         payload: SHVarPayload {
-          __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { shardValue: shard.0 },
+          __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+            shardValue: shard.0,
+          },
         },
         ..Default::default()
       };
