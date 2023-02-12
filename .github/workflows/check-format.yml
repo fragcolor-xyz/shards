@@ -1,0 +1,34 @@
+name: Check code formatting
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  check-format:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout shards
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/shards
+          fetch-depth: 1
+          submodules: false
+      - name: Set up clang
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install clang-format-15
+          sudo ln -sf /usr/bin/clang-format-15 /usr/bin/clang-format
+      - name: Set up rust
+        run: |
+          rustup toolchain install --no-self-update nightly
+          rustup default nightly
+          rustup component add rustfmt
+      - name: Run formatters
+        run: |
+         cargo fmt
+         ./format
+      - name: Check format
+        run: |
+          git commit -a --dry-run --short
+          exit `git commit -a --dry-run --short | wc -l`
