@@ -6,6 +6,7 @@
 #include "extra/gfx/drawable_utils.hpp"
 #include "extra/gfx/shader/translator.hpp"
 #include "extra/gfx/shader/wgsl.hpp"
+#include "foundation.hpp"
 #include "gfx/enums.hpp"
 #include "gfx/error_utils.hpp"
 #include "gfx/shader/block.hpp"
@@ -452,7 +453,7 @@ struct SampleTexture {
   static SHOptionalString help() { return SHCCSTR("Samples a named texture with default texture coordinates"); }
   SHParametersInfo parameters() { return params; };
 
-  shards::Var _name;
+  shards::OwnedVar _name;
 
   void setParam(int index, const SHVar &value) { _name = value; }
   SHVar getParam(int index) { return _name; }
@@ -463,7 +464,7 @@ struct SampleTexture {
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = (const char *)_name;
+    auto name = _name.payload.stringValue;
     auto &shaderCtx = ShaderCompositionContext::get();
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(name);
@@ -510,7 +511,7 @@ struct SampleTextureCoord : public SampleTexture {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = (const char *)_name;
+    auto name = _name.payload.stringValue;
     auto &shaderCtx = ShaderCompositionContext::get();
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(name);
@@ -548,14 +549,14 @@ struct RefTexture {
 
   SHParametersInfo parameters() { return SampleTexture::params; }
 
-  shards::Var _name;
+  shards::OwnedVar _name;
   TextureFieldType _textureType;
 
   void setParam(int index, const SHVar &value) { _name = value; }
   SHVar getParam(int index) { return _name; }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = (const char *)_name;
+    auto name = _name.payload.stringValue;
     auto &shaderCtx = ShaderCompositionContext::get();
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(name);
@@ -586,14 +587,14 @@ struct RefSampler {
 
   SHParametersInfo parameters() { return SampleTexture::params; }
 
-  shards::Var _name;
+  shards::OwnedVar _name;
   SamplerFieldType _samplerType;
 
   void setParam(int index, const SHVar &value) { _name = value; }
   SHVar getParam(int index) { return _name; }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = (const char *)_name;
+    auto name = _name.payload.stringValue;
     auto &shaderCtx = ShaderCompositionContext::get();
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(name);
