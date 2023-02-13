@@ -183,12 +183,7 @@ struct Read {
   bool _binary = false;
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  SHTypesInfo outputTypes() {
-    if (_binary)
-      return CoreInfo::BytesType;
-    else
-      return CoreInfo::StringType;
-  }
+  SHTypesInfo outputTypes() { return Types{CoreInfo::BytesType, CoreInfo::StringType}; }
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Bytes", SHCCSTR("If the output should be SHType::Bytes instead of SHType::String."), CoreInfo::BoolType));
@@ -210,6 +205,8 @@ struct Read {
       return Var::Empty;
     }
   }
+
+  SHTypeInfo compose(const SHInstanceData &data) { return _binary ? CoreInfo::BytesType : CoreInfo::StringType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _buffer.clear();

@@ -364,23 +364,26 @@ struct LoadImage : public FileBase {
 };
 
 struct WritePNG : public FileBase {
+  static inline Types OutputTypes = {{CoreInfo::BytesType, CoreInfo::ImageType}};
   std::vector<uint8_t> _scratch;
   std::vector<uint8_t> _output;
 
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
-  SHTypesInfo outputTypes() {
+  SHTypesInfo outputTypes() { return OutputTypes; }
+
+  static void write_func(void *context, void *data, int size) {
+    auto self = reinterpret_cast<WritePNG *>(context);
+    self->_output.resize(size);
+    memcpy(self->_output.data(), data, size);
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
     // If param is none we output the bytes directly
     if (_filename->valueType == SHType::None) {
       return CoreInfo::BytesType;
     } else {
       return CoreInfo::ImageType;
     }
-  }
-
-  static void write_func(void *context, void *data, int size) {
-    auto self = reinterpret_cast<WritePNG *>(context);
-    self->_output.resize(size);
-    memcpy(self->_output.data(), data, size);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
