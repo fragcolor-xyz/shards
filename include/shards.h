@@ -94,13 +94,8 @@ SH_ARRAY_DECL(SHPayloadArray, struct SHVarPayload);
 struct SHVar;
 SH_ARRAY_DECL(SHSeq, struct SHVar);
 
-#ifdef SHARDS_DEBUG_COLLECTION_TYPES
 struct SHTableImpl;
 struct SHSetImpl;
-#else
-typedef void SHTableImpl;
-typedef void SHSetImpl;
-#endif
 
 struct SHTableInterface;
 // 64 bytes should be huge and well enough space for an iterator...
