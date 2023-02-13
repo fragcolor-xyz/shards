@@ -429,12 +429,12 @@ private:
   void reset();
 };
 
-struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>, std::equal_to<SHVar>, boost::alignment::aligned_allocator<shards::OwnedVar, 16>> {
-};
+struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>, std::equal_to<SHVar>,
+                                             boost::alignment::aligned_allocator<shards::OwnedVar, 16>> {};
 
-struct SHTableImpl : public std::unordered_map<std::string, shards::OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
-                                 boost::alignment::aligned_allocator<std::pair<const std::string, shards::OwnedVar>, 16>> {
-};
+struct SHTableImpl
+    : public std::unordered_map<std::string, shards::OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
+                                boost::alignment::aligned_allocator<std::pair<const std::string, shards::OwnedVar>, 16>> {};
 
 namespace shards {
 using SHHashSet = SHSetImpl;

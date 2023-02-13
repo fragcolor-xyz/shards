@@ -68,7 +68,7 @@ template <> struct fmt::formatter<SHTypesInfo> {
 };
 
 template <> struct fmt::formatter<SHType> {
-  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) { 
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
     auto it = ctx.begin(), end = ctx.end();
     if (it != end)
       throw format_error("invalid format");
@@ -78,7 +78,6 @@ template <> struct fmt::formatter<SHType> {
     return format_to(ctx.out(), "{}", magic_enum::enum_name(v));
   }
 };
-
 
 template <> struct fmt::formatter<shards::Type> {
   fmt::formatter<SHTypeInfo> base;

@@ -1849,7 +1849,8 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   DEFER({ wire->state = SHWire::State::IterationEnded; });
 
   try {
-    auto state = shardsActivation<std::vector<ShardPtr>, false, false>(wire->shards, context, wire->currentInput, wire->previousOutput);
+    auto state =
+        shardsActivation<std::vector<ShardPtr>, false, false>(wire->shards, context, wire->currentInput, wire->previousOutput);
     switch (state) {
     case SHWireState::Return:
       return {context->getFlowStorage(), SHRunWireOutputState::Stopped};
