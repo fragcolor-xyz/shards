@@ -16,6 +16,10 @@ extern "C" {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
 
+const SHEnumInfo *util_findEnumInfo(int32_t vendorId, int32_t typeId);
+const SHObjectInfo *util_findObjectInfo(int32_t vendorId, int32_t typeId);
+SHString const util_type2Name(SHType type);
+
 // gfx::GraphicsContext::Type
 SHTypeInfo *gfx_getGraphicsContextType();
 const char *gfx_getGraphicsContextVarName();

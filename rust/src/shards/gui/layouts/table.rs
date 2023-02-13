@@ -330,7 +330,7 @@ impl Shard for Table {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.push_id(EguiId::new(self, 0), |ui| {
         use egui_extras::{Column, TableBuilder};
 

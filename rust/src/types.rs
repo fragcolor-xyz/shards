@@ -542,7 +542,9 @@ impl From<SHParametersInfo> for &[SHParameterInfo] {
 Static common type infos utility
 */
 pub mod common_type {
+  use crate::shardsc::util_type2Name;
   use crate::shardsc::SHStrings;
+  use crate::shardsc::SHType;
   use crate::shardsc::SHTypeInfo;
   use crate::shardsc::SHTypeInfo_Details;
   use crate::shardsc::SHTypeInfo_Details_Table;
@@ -572,6 +574,7 @@ pub mod common_type {
   use crate::shardsc::SHType_Table;
   use crate::shardsc::SHType_Wire;
   use crate::shardsc::SHTypesInfo;
+  use std::ffi::CStr;
 
   const fn base_info() -> SHTypeInfo {
     SHTypeInfo {
@@ -590,6 +593,14 @@ pub mod common_type {
   }
 
   pub static none: SHTypeInfo = base_info();
+
+  pub fn type2name(value_type: SHType) -> &'static str {
+    unsafe {
+      let ptr = util_type2Name(value_type);
+      let s = CStr::from_ptr(ptr);
+      s.to_str().unwrap()
+    }
+  }
 
   macro_rules! shtype {
     ($fname:ident, $type:expr, $name:ident, $names:ident, $name_var:ident, $names_var:ident, $name_table:ident, $name_table_var:ident) => {
@@ -1016,8 +1027,8 @@ impl Serialize for Var {
       SHType_Seq => {
         let seq: Seq = self.try_into().unwrap();
         let mut s = se.serialize_seq(Some(seq.len()))?;
-        for value in seq {
-          s.serialize_element(&value)?;
+        for value in seq.iter() {
+          s.serialize_element(value)?;
         }
         s.end()
       }
@@ -1962,7 +1973,7 @@ impl Var {
     }
   }
 
-  pub fn from_object_as_clone<T>(var: Var, info: &Type) -> Result<Rc<T>, &str> {
+  pub fn from_object_as_clone<'a, T>(var: &Var, info: &'a Type) -> Result<Rc<T>, &'a str> {
     // use this to store the smart pointer in order to keep it alive
     // this will not allow mutable references btw
     unsafe {
@@ -1988,7 +1999,7 @@ impl Var {
     Ok(c)
   }
 
-  pub fn from_object_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
+  pub fn from_object_mut_ref<'a, T>(var: &Var, info: &'a Type) -> Result<&'a mut T, &'a str> {
     // used to use the object once, when it comes from a simple pointer
     unsafe {
       if var.valueType != SHType_Object
@@ -2006,7 +2017,7 @@ impl Var {
     }
   }
 
-  pub fn from_object_ptr_mut_ref<T>(var: Var, info: &Type) -> Result<&mut T, &str> {
+  pub fn from_object_ptr_mut_ref<'a, T>(var: &Var, info: &'a Type) -> Result<&'a mut T, &'a str> {
     // used to use the object once, when it comes from a Rc
     unsafe {
       if var.valueType != SHType_Object
@@ -2022,7 +2033,7 @@ impl Var {
     }
   }
 
-  pub fn from_object_ptr_ref<T>(var: Var, info: &Type) -> Result<&T, &str> {
+  pub fn from_object_ptr_ref<'a, T>(var: &Var, info: &'a Type) -> Result<&'a T, &'a str> {
     // used to use the object once, when it comes from a Rc
     unsafe {
       if var.valueType != SHType_Object
@@ -3054,29 +3065,11 @@ impl TryFrom<&Var> for &[Var] {
   }
 }
 
-impl TryFrom<Var> for &[Var] {
+impl TryFrom<&Var> for WireRef {
   type Error = &'static str;
 
   #[inline(always)]
-  fn try_from(var: Var) -> Result<Self, Self::Error> {
-    if var.valueType != SHType_Seq {
-      Err("Expected Seq variable, but casting failed.")
-    } else {
-      unsafe {
-        let elems = var.payload.__bindgen_anon_1.seqValue.elements;
-        let len = var.payload.__bindgen_anon_1.seqValue.len;
-        let res = std::slice::from_raw_parts(elems, len as usize);
-        Ok(res)
-      }
-    }
-  }
-}
-
-impl TryFrom<Var> for WireRef {
-  type Error = &'static str;
-
-  #[inline(always)]
-  fn try_from(var: Var) -> Result<Self, Self::Error> {
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Wire {
       Err("Expected Wire variable, but casting failed.")
     } else {
@@ -3094,19 +3087,6 @@ impl From<WireRef> for Var {
         __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { wireValue: wire.0 },
       },
       ..Default::default()
-    }
-  }
-}
-
-impl TryFrom<Var> for ShardRef {
-  type Error = &'static str;
-
-  #[inline(always)]
-  fn try_from(var: Var) -> Result<Self, Self::Error> {
-    if var.valueType != SHType_ShardRef {
-      Err("Expected Shard variable, but casting failed.")
-    } else {
-      unsafe { Ok(ShardRef(var.payload.__bindgen_anon_1.shardValue)) }
     }
   }
 }
@@ -3339,11 +3319,11 @@ impl ShardsVar {
 
     self.param = value.into(); // clone it
 
-    if let Ok(s) = Seq::try_from(self.param.0) {
+    if let Ok(s) = Seq::try_from(self.param.0.as_ref()) {
       for shard in s.iter() {
-        self.shards.push(shard.try_into()?);
+        self.shards.push(shard.as_ref().try_into()?);
       }
-    } else if let Ok(s) = ShardRef::try_from(self.param.0) {
+    } else if let Ok(s) = ShardRef::try_from(&self.param.0) {
       self.shards.push(s);
     } else if value.is_none() {
       // we allow none
@@ -3771,30 +3751,30 @@ impl Drop for Seq {
   }
 }
 
-pub struct SeqIterator {
-  s: Seq,
+pub struct SeqIterator<'a> {
+  s: &'a Seq,
   i: u32,
 }
 
-impl Iterator for SeqIterator {
+impl<'a> Iterator for SeqIterator<'a> {
   fn next(&mut self) -> Option<Self::Item> {
     let res = if self.i < self.s.s.len {
-      unsafe { Some(*self.s.s.elements.offset(self.i.try_into().unwrap())) }
+      unsafe { Some(&*self.s.s.elements.offset(self.i.try_into().unwrap())) }
     } else {
       None
     };
     self.i += 1;
     res
   }
-  type Item = Var;
+  type Item = &'a Var;
 }
 
-impl DoubleEndedIterator for SeqIterator {
+impl<'a> DoubleEndedIterator for SeqIterator<'a> {
   fn next_back(&mut self) -> Option<Self::Item> {
     let res = if self.i < self.s.s.len {
       unsafe {
         Some(
-          *self
+          &*self
             .s
             .s
             .elements
@@ -3807,14 +3787,6 @@ impl DoubleEndedIterator for SeqIterator {
     self.i += 1;
     res
   }
-}
-
-impl IntoIterator for Seq {
-  fn into_iter(self) -> Self::IntoIter {
-    SeqIterator { s: self, i: 0 }
-  }
-  type Item = Var;
-  type IntoIter = SeqIterator;
 }
 
 impl Index<usize> for SHSeq {
@@ -3878,7 +3850,7 @@ impl Seq {
     }
   }
 
-  pub fn push(&mut self, value: Var) {
+  pub fn push<'a>(&'a mut self, value: &Var) {
     // we need to clone to own the memory shards side
     let mut tmp = SHVar::default();
     cloneVar(&mut tmp, &value);
@@ -3887,7 +3859,7 @@ impl Seq {
     }
   }
 
-  pub fn insert(&mut self, index: usize, value: Var) {
+  pub fn insert<'a>(&'a mut self, index: usize, value: &Var) {
     // we need to clone to own the memory shards side
     let mut tmp = SHVar::default();
     cloneVar(&mut tmp, &value);
@@ -3926,10 +3898,7 @@ impl Seq {
   }
 
   pub fn iter(&self) -> SeqIterator {
-    SeqIterator {
-      s: self.clone(),
-      i: 0,
-    }
+    SeqIterator { s: self, i: 0 }
   }
 }
 
@@ -4000,24 +3969,6 @@ impl TryFrom<&Var> for Seq {
   }
 }
 
-impl TryFrom<Var> for Seq {
-  type Error = &'static str;
-
-  #[inline(always)]
-  fn try_from(v: Var) -> Result<Self, Self::Error> {
-    if v.valueType != SHType_Seq {
-      Err("Expected Seq variable, but casting failed.")
-    } else {
-      unsafe {
-        Ok(Seq {
-          s: v.payload.__bindgen_anon_1.seqValue,
-          owned: false,
-        })
-      }
-    }
-  }
-}
-
 // Table / SHTable
 
 #[derive(Clone)]
@@ -4070,7 +4021,7 @@ impl Table {
     }
   }
 
-  pub fn insert(&mut self, k: &CString, v: Var) -> Option<Var> {
+  pub fn insert<'a>(&'a mut self, k: &'a CString, v: &Var) -> Option<Var> {
     unsafe {
       let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
@@ -4080,13 +4031,13 @@ impl Table {
         Some(old)
       } else {
         let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
-        *p = v;
+        *p = *v;
         None
       }
     }
   }
 
-  pub fn insert_fast(&mut self, k: &CString, v: Var) {
+  pub fn insert_fast<'a>(&'a mut self, k: &'a CString, v: &Var) {
     unsafe {
       let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
@@ -4094,7 +4045,7 @@ impl Table {
     }
   }
 
-  pub fn insert_fast_static(&mut self, k: &'static str, v: Var) {
+  pub fn insert_fast_static<'a>(&'a mut self, k: &'static str, v: &Var) {
     unsafe {
       let cstr = k.as_ptr() as *const std::os::raw::c_char;
       let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);

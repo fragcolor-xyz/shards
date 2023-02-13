@@ -228,7 +228,7 @@ impl Shard for Activate {
     let current_model = self.model_var.get();
     let model = match self.previous_model {
       None => {
-        self.model = Some(Var::from_object_as_clone(*current_model, &MODEL_VAR_TYPE)?);
+        self.model = Some(Var::from_object_as_clone(current_model, &MODEL_VAR_TYPE)?);
         unsafe {
           let model_ptr = Rc::as_ptr(self.model.as_ref().unwrap()) as *mut ModelWrapper;
           &*model_ptr
@@ -236,7 +236,7 @@ impl Shard for Activate {
       }
       Some(ref previous_model) => {
         if previous_model != current_model {
-          self.model = Some(Var::from_object_as_clone(*current_model, &MODEL_VAR_TYPE)?);
+          self.model = Some(Var::from_object_as_clone(current_model, &MODEL_VAR_TYPE)?);
           unsafe {
             let model_ptr = Rc::as_ptr(self.model.as_ref().unwrap()) as *mut ModelWrapper;
             &*model_ptr

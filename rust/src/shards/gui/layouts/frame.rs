@@ -232,7 +232,7 @@ impl Shard for Frame {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       let inner_margin = self.innerMargin.get();
       let inner_margin = if inner_margin.is_none() {
         egui::style::Margin::default()

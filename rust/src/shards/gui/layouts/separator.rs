@@ -89,7 +89,7 @@ impl Shard for Separator {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.separator();
 
       Ok(*input)

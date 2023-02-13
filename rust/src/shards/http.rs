@@ -117,7 +117,7 @@ impl Default for RequestBase {
     };
     let table = Table::new();
     s.output_table
-      .insert_fast_static(cstr!("headers"), table.as_ref().into());
+      .insert_fast_static(cstr!("headers"), &table.as_ref().into());
     s
   }
 }
@@ -183,7 +183,7 @@ impl RequestBase {
     if self.full_response {
       self
         .output_table
-        .insert_fast_static(cstr!("status"), response.status().as_u16().try_into()?);
+        .insert_fast_static(cstr!("status"), &response.status().as_u16().try_into()?);
 
       let headers = self.output_table.get_mut_fast_static(cstr!("headers"));
       let mut headers: Table = headers.as_ref().try_into()?;
@@ -196,7 +196,7 @@ impl RequestBase {
           shlog!("Failure details: {}", e);
           "Failed to convert header value"
         })?;
-        headers.insert_fast(&key, value.as_ref().into());
+        headers.insert_fast(&key, &value.as_ref().into());
       }
     }
 
@@ -207,7 +207,7 @@ impl RequestBase {
       })?;
       self
         .output_table
-        .insert_fast_static(cstr!("body"), bytes.as_ref().into());
+        .insert_fast_static(cstr!("body"), &bytes.as_ref().into());
     } else {
       let str = response.text().map_err(|e| {
         shlog!("Failure details: {}", e);
@@ -215,7 +215,7 @@ impl RequestBase {
       })?;
       self
         .output_table
-        .insert_fast_static(cstr!("body"), Var::ephemeral_string(str.as_str()));
+        .insert_fast_static(cstr!("body"), &Var::ephemeral_string(str.as_str()));
       // will clone
     }
 

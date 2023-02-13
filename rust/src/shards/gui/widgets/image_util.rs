@@ -65,7 +65,7 @@ pub fn get_egui_texture_from_gfx(
   input: &Var,
 ) -> Result<(egui::TextureId, egui::Vec2), &'static str> {
   let texture_ptr: *mut gfx_TexturePtr =
-    Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(*input, &TEXTURE_TYPE)?;
+    Var::from_object_ptr_mut_ref::<gfx_TexturePtr>(input, &TEXTURE_TYPE)?;
   let texture_size = {
     let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
     egui::vec2(texture_res.x as f32, texture_res.y as f32)

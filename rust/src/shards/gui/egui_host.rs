@@ -143,7 +143,7 @@ impl EguiHost {
           error = (|| -> Result<(), &str> {
             // Push empty parent UI in case this context is nested inside another UI
             util::update_seq(&mut self.parents, |seq| {
-              seq.push(Var::default());
+              seq.push(&Var::default());
             })?;
 
             let mut _output = Var::default();

@@ -39,7 +39,7 @@ where
   unsafe {
     let var = Var::new_object_from_ptr(object as *const _, object_type);
     update_seq(stack_var, |seq| {
-      seq.push(var);
+      seq.push(&var);
     })?;
   }
 
@@ -94,7 +94,7 @@ pub(crate) fn get_current_context<'a>(
   let seq: Seq = context_stack_var.get().try_into()?;
   if !seq.is_empty() {
     Ok(Var::from_object_ptr_mut_ref(
-      seq[seq.len() - 1],
+      &seq[seq.len() - 1],
       &EGUI_CTX_TYPE,
     )?)
   } else {
@@ -103,7 +103,7 @@ pub(crate) fn get_current_context<'a>(
 }
 
 pub(crate) fn get_current_parent<'a>(
-  parents_stack_var: Var,
+  parents_stack_var: &Var,
 ) -> Result<Option<&'a mut egui::Ui>, &'a str> {
   let seq: Seq = parents_stack_var.try_into()?;
   if !seq.is_empty() {
@@ -113,7 +113,7 @@ pub(crate) fn get_current_parent<'a>(
     }
 
     Ok(Some(Var::from_object_ptr_mut_ref(
-      seq[seq.len() - 1],
+      &seq[seq.len() - 1],
       &EGUI_UI_TYPE,
     )?))
   } else {

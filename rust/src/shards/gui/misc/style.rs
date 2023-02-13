@@ -121,7 +121,7 @@ impl Shard for Style {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let mut style = if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    let mut style = if let Some(ui) = util::get_current_parent(self.parents.get())? {
       (**ui.style()).clone()
     } else {
       let gui_ctx = util::get_current_context(&self.instance)?;
@@ -150,8 +150,8 @@ impl Shard for Style {
     if let Some(text_styles) = table.get_static(cstr!("text_styles")) {
       let text_styles: Seq = text_styles.try_into()?;
 
-      for var in text_styles {
-        let text_style: Table = var.as_ref().try_into()?;
+      for var in text_styles.iter() {
+        let text_style: Table = var.try_into()?;
         if let Some(name) = text_style.get_static(cstr!("name")) {
           if let Some(key) = style_util::get_text_style(name.try_into()?) {
             if let Some(fontId) = style_util::get_font_id(text_style) {
@@ -431,7 +431,7 @@ impl Shard for Style {
       style.explanation_tooltips
     );
 
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.set_style(style);
     } else {
       let gui_ctx = util::get_current_context(&self.instance)?;

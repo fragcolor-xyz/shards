@@ -214,7 +214,7 @@ macro_rules! impl_ui_input {
       }
 
       fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-        if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+        if let Some(ui) = util::get_current_parent(self.parents.get())? {
           let value: &mut $native_type = if self.variable.is_variable() {
             self.variable.get_mut().try_into()?
           } else {
@@ -433,7 +433,7 @@ macro_rules! impl_ui_n_input {
       }
 
       fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-        if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+        if let Some(ui) = util::get_current_parent(self.parents.get())? {
           ui.horizontal(|ui| {
             let values: &mut [$native_type; $n] = if self.variable.is_variable() {
               self.variable.get_mut().try_into()?

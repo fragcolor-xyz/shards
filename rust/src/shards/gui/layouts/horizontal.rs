@@ -169,7 +169,7 @@ impl Shard for Horizontal {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       let wrap: bool = self.wrap.get().try_into()?;
       if wrap {
         ui.horizontal_wrapped(|ui| {

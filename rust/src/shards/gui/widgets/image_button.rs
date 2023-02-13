@@ -242,7 +242,7 @@ impl Shard for ImageButton {
 
 impl ImageButton {
   fn activateImage(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       let (texture_id, texture_size) = {
         let texture = self
           .cached_ui_image
@@ -258,7 +258,7 @@ impl ImageButton {
   }
 
   fn activateTexture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(*self.parents.get())? {
+    if let Some(ui) = util::get_current_parent(self.parents.get())? {
       let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
       let scale = image_util::get_scale(&self.scale)?;
 

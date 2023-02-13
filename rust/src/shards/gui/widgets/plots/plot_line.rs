@@ -142,7 +142,7 @@ impl Shard for PlotLine {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let plot_ui: &mut egui::plot::PlotUi =
-      Var::from_object_ptr_mut_ref(*self.plot_ui.get(), &EGUI_PLOT_UI_TYPE)?;
+      Var::from_object_ptr_mut_ref(self.plot_ui.get(), &EGUI_PLOT_UI_TYPE)?;
 
     let seq: Seq = input.try_into()?;
     let points = seq.iter().map(|x| {
