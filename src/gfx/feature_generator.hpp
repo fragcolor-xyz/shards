@@ -31,8 +31,10 @@ struct FeatureGeneratorContext {
   // The queue used within the parent render step
   DrawQueuePtr queue;
 
-  FeatureGeneratorContext(Renderer &renderer, ViewPtr view, const detail::CachedView &cachedView, DrawQueuePtr queue)
-      : renderer(renderer), view(view), cachedView(cachedView), queue(queue) {}
+  size_t frameCounter;
+
+  FeatureGeneratorContext(Renderer &renderer, ViewPtr view, const detail::CachedView &cachedView, DrawQueuePtr queue, size_t frameCounter)
+      : renderer(renderer), view(view), cachedView(cachedView), queue(queue), frameCounter(frameCounter) {}
 
   // Issues a render command that will run before the parent render step
   virtual void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) = 0;

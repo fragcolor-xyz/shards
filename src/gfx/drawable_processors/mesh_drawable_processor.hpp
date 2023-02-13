@@ -25,7 +25,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     std::optional<int4> clipRect{};
     shards::pmr::vector<TextureContextData *> textures;
     ParameterStorage parameters; // TODO: Load values directly into buffer
-    CachedDrawable *cachedData;  // Reference to cached data for this drawable
     float projectedDepth{};      // Projected view depth, only calculated when sorting by depth
 
     DrawableData() = default;
@@ -97,8 +96,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   SharedBufferPool viewBufferPool;
   WGPUSupportedLimits limits{};
 
-  std::shared_mutex drawableCacheLock;
-  std::unordered_map<UniqueId, CachedDrawablePtr> drawableCache;
   TextureViewCache textureViewCache;
   size_t frameCounter{};
 
@@ -141,10 +138,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     drawBufferPool.reset();
     viewBufferPool.reset();
 
-    drawableCacheLock.lock();
-    clearOldCacheItemsIn(drawableCache, frameCounter, 16);
-    drawableCacheLock.unlock();
-
     textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
   }
 
@@ -181,25 +174,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     ZoneScoped;
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
-
-    // Lookup/init cached data
-    drawableCacheLock.lock_shared();
-    auto it = drawableCache.find(meshDrawable.getId());
-    if (it == drawableCache.end()) {
-      drawableCacheLock.unlock_shared();
-      drawableCacheLock.lock();
-      it = drawableCache.emplace(meshDrawable.getId(), std::make_shared<CachedDrawable>()).first;
-      drawableCacheLock.unlock();
-    } else {
-      drawableCacheLock.unlock_shared();
-    }
-
-    // Update cached data
-    data.cachedData = it->second.get();
-    data.cachedData->touchWithNewTransform(meshDrawable.transform, frameCounter);
-    if (meshDrawable.previousTransform) {
-      data.cachedData->previousTransform = meshDrawable.previousTransform.value();
-    }
 
     // Optionally compute projected depth based on transform center
     if (needProjectedDepth) {
@@ -461,16 +435,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       // Set hard-coded view parameters (view/projection matrix)
       ParameterStorage viewParameters(allocator);
       setViewParameters(viewParameters, context.viewData);
-
-      // TODO
-      // Collect dynamic view parameters
-      // collectGeneratedViewParameters(
-      //     FeatureCallbackContext{
-      //         .context = context.context,
-      //         .view = context.viewData.view,
-      //         .cachedView = &context.viewData.cachedView,
-      //     },
-      //     cachedPipeline, viewParameters);
 
       auto &buffer = prepareData->viewBuffers[0];
       auto &binding = cachedPipeline.viewBuffersBindings[0];

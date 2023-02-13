@@ -220,25 +220,7 @@ struct RenderIntoShard {
     _requiredVariables.clear();
     _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
 
-    // auto collectTextureReference = [&](const char *name) {
-    //   _requiredVariables.push_back(SHExposedTypeInfo{
-    //       .name = name,
-    //       .exposedType = Types::Texture,
-    //   });
-    // };
-
     requireReferences(data.shared, _textures, _requiredVariables);
-    // assert(_textures.valueType == SHType::Table);
-    // ForEach(_textures.payload.tableValue, [&](SHString &k, SHVar &v) {
-    //   if (v.valueType == SHType::ContextVar) {
-    //     collectTextureReference(v.payload.stringValue);
-    //   } else if (v.valueType == SHType::Table) {
-    //     SHVar *tex = v.payload.tableValue.api->tableAt(v.payload.tableValue, "Texture");
-    //     if (tex->valueType == SHType::ContextVar) {
-    //       collectTextureReference(tex->payload.stringValue);
-    //     }
-    //   }
-    // });
 
     return _contents.compose(data).outputType;
   }

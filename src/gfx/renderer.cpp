@@ -407,8 +407,8 @@ struct RendererImpl final : public ContextData {
     shards::pmr::vector<ParameterStorage> *drawParameters{};
 
     FeatureDrawableGeneratorContextImpl(PipelineGroup &group, Renderer &renderer, ViewPtr view,
-                                        const detail::CachedView &cachedView, DrawQueuePtr queue)
-        : FeatureDrawableGeneratorContext(renderer, view, cachedView, queue), group(group) {}
+                                        const detail::CachedView &cachedView, DrawQueuePtr queue, size_t frameCounter)
+        : FeatureDrawableGeneratorContext(renderer, view, cachedView, queue, frameCounter), group(group) {}
 
     virtual size_t getSize() const override { return group.drawables.size(); }
 
@@ -444,7 +444,7 @@ struct RendererImpl final : public ContextData {
     if (!group.pipeline->perViewGenerators.empty()) {
       generatorData->viewParameters = memory->new_object<ParameterStorage>();
 
-      FeatureViewGenerateContextImpl viewCtx(outer, viewData.view, viewData.cachedView, queue);
+      FeatureViewGenerateContextImpl viewCtx(outer, viewData.view, viewData.cachedView, queue, frameCounter);
       viewCtx.viewParameters = generatorData->viewParameters;
       for (auto &generator : group.pipeline->perViewGenerators) {
         viewCtx.features = generator.otherFeatures;
@@ -453,9 +453,9 @@ struct RendererImpl final : public ContextData {
     }
 
     if (!group.pipeline->perObjectGenerators.empty()) {
-      generatorData->drawParameters = memory->new_object<shards::pmr::vector<ParameterStorage>>();
+      generatorData->drawParameters = memory->new_object<shards::pmr::vector<ParameterStorage>>(group.drawables.size());
 
-      FeatureDrawableGeneratorContextImpl objectCtx(group, outer, viewData.view, viewData.cachedView, queue);
+      FeatureDrawableGeneratorContextImpl objectCtx(group, outer, viewData.view, viewData.cachedView, queue, frameCounter);
       objectCtx.drawParameters = generatorData->drawParameters;
       for (auto &generator : group.pipeline->perObjectGenerators) {
         objectCtx.features = generator.otherFeatures;
