@@ -2,6 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::TextInput;
+use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::HELP_VALUE_IGNORED;
@@ -182,7 +183,9 @@ impl Shard for TextInput {
     self.multiline.warmup(ctx);
 
     if self.should_expose {
-      self.variable.get_mut().valueType = common_type::string.basicType;
+      // new string
+      let tmp = Var::ephemeral_string("");
+      cloneVar(self.variable.get_mut(), &tmp);
     }
 
     Ok(())
