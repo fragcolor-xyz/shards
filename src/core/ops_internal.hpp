@@ -75,7 +75,7 @@ template <> struct fmt::formatter<SHType> {
     return it;
   }
   template <typename FormatContext> auto format(const SHType &v, FormatContext &ctx) -> decltype(ctx.out()) {
-    format_to(ctx.out(), "{}", magic_enum::enum_name(v));
+    return format_to(ctx.out(), "{}", magic_enum::enum_name(v));
   }
 };
 
