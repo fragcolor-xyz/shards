@@ -77,7 +77,7 @@ struct PipelineGroup {
   PipelineGroup(PipelineGroup &&other) = default;
   PipelineGroup(PipelineGroup &&other, allocator_type allocator) : drawables(allocator), baseFeatures(allocator) {
     *this = std::move(other);
-  } 
+  }
   PipelineGroup &operator=(PipelineGroup &&) = default;
 
   void resetPostRender() { prepareData.destroy(); }
@@ -278,7 +278,7 @@ struct RendererImpl final : public ContextData {
     if (viewData.renderTarget) {
       for (auto &attachment : viewData.renderTarget->attachments) {
         hasher(attachment.first);
-        hasher(attachment.second->getFormat().pixelFormat);
+        hasher(attachment.second.texture->getFormat().pixelFormat);
       }
     } else {
       hasher("color");
@@ -457,10 +457,10 @@ struct RendererImpl final : public ContextData {
 
     shards::pmr::vector<const IDrawable *> expandedDrawables(workerMemory);
 
-    // auto& pipelineGroups = *workerMemory->new_object<shards::pmr::unordered_map<Hash128, PipelineGroup>>();
-    shards::pmr::unordered_map<Hash128, PipelineGroup> pipelineGroups;
+    auto& pipelineGroups = *workerMemory->new_object<shards::pmr::unordered_map<Hash128, PipelineGroup>>();
+    // shards::pmr::unordered_map<Hash128, PipelineGroup> pipelineGroups;
 
-    auto &test = *workerMemory->new_object<PipelineGroup>();
+    // auto &test = *workerMemory->new_object<PipelineGroup>();
 
     // Compute drawable hashes
     {

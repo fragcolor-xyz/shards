@@ -31,8 +31,7 @@
   {:someTexture .out-texture})
 
 (defwire create-test-feature
-  {:Params [{:Name "someTexture" :Type TextureDimension.D2}]
-   :State {:Blend {:Color BlendOverwrite :Alpha BlendOverwrite}}
+  {:State {:Blend {:Color BlendOverwrite :Alpha BlendOverwrite}}
    :Shaders
    [{:Stage ProgrammableGraphicsStage.Fragment
      :EntryPoint
