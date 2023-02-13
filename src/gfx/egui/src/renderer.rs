@@ -1,6 +1,7 @@
 use super::*;
 use egui::ClippedPrimitive;
 use egui::Context;
+use std::ffi::CString;
 use std::ptr;
 
 pub struct Renderer {
@@ -22,6 +23,9 @@ pub struct NativeFullOutput {
     pub vertex_mem: Vec<egui_Vertex>,
     pub index_mem: Vec<u32>,
     pub image_mem: Vec<PixelData>,
+    pub open_url: Option<CString>,
+    pub copied_text: Option<CString>,
+    pub text_cursor_position: Option<egui_Pos2>,
     pub full_output: egui_FullOutput,
 }
 
@@ -165,6 +169,23 @@ pub fn make_native_full_output(
         .map(|id| id.into())
         .collect();
 
+    let platform_output = &input.platform_output;
+    let open_url = match &platform_output.open_url {
+        Some(url) => Some(CString::new(url.url.as_str()).unwrap()),
+        None => None,
+    };
+
+    let copied_text = if platform_output.copied_text.len() > 0 {
+        Some(CString::new(platform_output.copied_text.as_str()).unwrap())
+    } else {
+        None
+    };
+
+    let text_cursor_position = match &platform_output.text_cursor_pos {
+        Some(pos) => Some(egui_Pos2 { x: pos.x, y: pos.y }),
+        None => None,
+    };
+
     let full_output = egui_FullOutput {
         numPrimitives: clipped_primitives.len(),
         primitives: clipped_primitives.as_ptr(),
@@ -174,6 +195,11 @@ pub fn make_native_full_output(
             frees: texture_frees.as_ptr(),
             numFrees: texture_frees.len(),
         },
+        openUrl: open_url.as_ref().map_or(ptr::null(), |x| x.as_ptr()),
+        copiedText: copied_text.as_ref().map_or(ptr::null(), |x| x.as_ptr()),
+        textCursorPosition: text_cursor_position.as_ref().map_or(ptr::null(), |&x| &x),
+        cursorIcon: to_egui_cursor_icon(platform_output.cursor_icon),
+        mutableTextUnderCursor: platform_output.mutable_text_under_cursor,
     };
 
     Ok(NativeFullOutput {
@@ -183,6 +209,9 @@ pub fn make_native_full_output(
         vertex_mem,
         index_mem,
         image_mem,
+        open_url,
+        copied_text,
+        text_cursor_position,
         full_output,
     })
 }

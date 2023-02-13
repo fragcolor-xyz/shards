@@ -3,6 +3,7 @@
 
 #include "egui_types.hpp"
 #include "../linalg.hpp"
+#include <deque>
 #include <vector>
 
 namespace gfx {
@@ -26,14 +27,14 @@ struct EguiInputTranslatorArgs {
 struct EguiInputTranslator {
 private:
   egui::Input input;
-  std::vector<std::string> strings;
+  std::deque<std::string> strings;
   std::vector<egui::InputEvent> events;
   egui::Pos2 lastCursorPosition;
   bool imeComposing{};
   bool textInputActive{};
   float2 windowToEguiScale;
   int4 mappedWindowRegion;
-  std::vector<std::function<void()>> deferQueue;
+  Window* window{};
 
 public:
   EguiInputTranslator() = default;
@@ -63,6 +64,9 @@ public:
 
   // Translate from window coordinates to local egui coordinates
   egui::Pos2 translatePointerPos(const egui::Pos2 &pos);
+
+  // Applies egui output to update cursor pos, clipboard, etc.
+  void applyOutput(const egui::FullOutput &output);
 
   // Set or clear the position for the text cursor
   void updateTextCursorPosition(Window &window, const egui::Pos2 *pos);
