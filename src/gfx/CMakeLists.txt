@@ -28,6 +28,7 @@ add_library(gfx
   shader/generator_context.cpp
   shader/blocks.cpp
   shader/types.cpp
+  features/velocity.cpp
   rust_interop.cpp
   view_stack.cpp
   render_target.cpp

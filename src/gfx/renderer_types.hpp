@@ -313,23 +313,6 @@ template <> struct SizedItemOps<PooledWGPUBuffer> {
 // Pool of WGPUBuffers with custom initializer
 using WGPUBufferPool = SizedItemPool<PooledWGPUBuffer>;
 
-struct CachedDrawable {
-  float4x4 previousTransform = linalg::identity;
-  float4x4 currentTransform = linalg::identity;
-
-  size_t lastTouched{};
-
-  void touchWithNewTransform(const float4x4 &transform, size_t frameCounter) {
-    if (frameCounter > lastTouched) {
-      previousTransform = currentTransform;
-      currentTransform = transform;
-
-      lastTouched = frameCounter;
-    }
-  }
-};
-typedef std::shared_ptr<CachedDrawable> CachedDrawablePtr;
-
 // Data from generators
 struct GeneratorData {
   ParameterStorage *viewParameters;
