@@ -9,9 +9,13 @@
    :ViewGenerators
    [(-> (| (Take "Queue") >= .parent-queue)
         (| (Take "View") >= .parent-view)
-        
-        .shadow-cam-pos
-        
+
+        (Float3 100.0 0.0 0.0) = .shadow-arm
+        (Float4 -1.0 0.0 0.0 0.0) >= .shadow-dir-4
+        (Float3 0.0 0.0 0.0) (xyz-to-mat) >= .tmp
+        .tmp (Math.MatMul .shadow-dir) (ToFloat3) = .shadow-dir
+        (Math.MatMul .shadow-target-pos) .shadow-cam-pos
+
         (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
         (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
         (Int2 1024) = .size
