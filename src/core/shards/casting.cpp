@@ -511,6 +511,10 @@ struct HexToBytes {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    auto len = SHSTRLEN(input);
+    if(len == 0)
+      return Var((uint8_t *)nullptr, 0);
+
     auto src = input.payload.stringValue;
     // allow 0x prefix
     if (src[0] == '0' && (src[1] == 'x' || src[1] == 'X'))
