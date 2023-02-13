@@ -1,0 +1,85 @@
+(def timestep (/ 1.0 120.0))
+(defmesh Root)
+(defloop test-wire
+  (Setup
+   0.0 >= .time
+
+   (GFX.DrawQueue) >= .queue
+   (GFX.DrawQueue) >= .screen-ui-queue
+
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
+   (Float3 0 0 0) (Math.Translation) >= .transform-0
+   {:Mesh .mesh :Params {:baseColor (Float4 1 0 1 1)}} (GFX.Drawable :Transform .transform-0) >> .drawables
+
+    ; Create render steps
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+   {:Features .features :Queue .queue :Sort SortMode.Queue} (GFX.DrawablePass) >> .render-steps
+   (GFX.UIPass .screen-ui-queue) >> .render-steps
+
+   ; Initial panel transforms
+   15.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp
+   (Float3 -1.0 0.0 0.0) (Math.Translation) (Math.MatMul .tmp) >= .panel-t-0
+   -15.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp
+   (Float3 1.0 0.0 0.0) (Math.Translation) (Math.MatMul .tmp) >= .panel-t-1
+   5.0 (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) >= .tmp
+   (Float3 0.0 1.2 0.0) (Math.Translation) (Math.MatMul .tmp) >= .panel-t-2
+
+   ; Initial view
+   {:Position (Float3 1 2 10) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+
+    ; Update view transform
+    .view-transform (FreeCamera :FlySpeed 10.0) > .view-transform
+
+    .queue (GFX.ClearQueue)
+    
+    20.23 (Spatial.UI
+     :Queue .queue :View .view :Scale 100.0 :Contents
+     (->
+      (Rust.ExtPanel
+       :Transform .panel-t-0 :Size (Float2 100 100))
+      (Spatial.Panel
+       :Transform .panel-t-1 :Size (Float2 100 100) :Contents
+       (->
+        (UI.CentralPanel
+         (->
+          (ToString) (UI.Label)
+          "Some other panel" (UI.Label)
+          (UI.Button :Label "Button" :Action (Msg "Button 2 clicked"))))))
+      (Spatial.Panel
+       :Transform .panel-t-2 :Size (Float2 300 60) :Contents
+       (->
+        (UI.CentralPanel
+         (->
+          (ToString) (UI.Label)
+          "Wide panel" (UI.Label)
+          (Setup
+           (LoadImage "../../assets/ShardsLogo.png") (GFX.Texture) >= .button-texture)
+          (UI.Horizontal (->
+                          .button-texture (UI.ImageButton :Scale (Float2 0.01) :Action (Msg "Image button 1 clicked"))
+                          .button-texture (UI.ImageButton :Scale (Float2 0.01) :Action (Msg "Image button 2 clicked"))
+                          .button-texture (UI.ImageButton :Scale (Float2 0.01) :Action (Msg "Image button 3 clicked"))))))))
+      ;
+      nil))
+
+    .drawables (GFX.Draw .queue)
+
+    .screen-ui-queue (GFX.ClearQueue)
+    (UI .screen-ui-queue
+        (->
+         (UI.LeftPanel
+          :Contents
+          (->
+           "Left Panel" (UI.Label)
+           (UI.Button :Label "Button" :Action (Msg "Button 3 clicked"))))))
+
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(schedule Root test-wire)
+(if (run Root timestep) nil (throw "Root tick failed"))

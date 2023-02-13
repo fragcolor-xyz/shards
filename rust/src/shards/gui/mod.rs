@@ -17,6 +17,8 @@ use crate::types::FRAG_CC;
 use std::ffi::c_void;
 use std::ffi::CStr;
 
+use self::egui_host::EguiHost;
+
 static ANY_TABLE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var];
 static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
 static BOOL_OR_NONE_SLICE: &[Type] = &[common_type::bool, common_type::none];
@@ -104,8 +106,17 @@ struct EguiContext {
   input_translator: egui_gfx::InputTranslator,
 }
 
+struct ExtPanel {
+  transform: ParamVar,
+  size: ParamVar,
+  spatial_context: ParamVar,
+  requiring: ExposedTypes,
+  host: EguiHost,
+}
+
 mod containers;
 mod context;
+mod extpanel;
 mod layouts;
 mod menus;
 mod misc;
@@ -224,6 +235,7 @@ impl egui::TextBuffer for &mut Var {
 pub fn registerShards() {
   containers::registerShards();
   registerShard::<EguiContext>();
+  registerShard::<ExtPanel>();
   layouts::registerShards();
   menus::registerShards();
   misc::registerShards();
