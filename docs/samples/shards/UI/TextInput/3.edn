@@ -1,0 +1,16 @@
+(GFX.MainWindow
+ :Contents
+ (->
+  (Setup
+   (GFX.DrawQueue) >= .ui-draw-queue
+   (GFX.UIPass .ui-draw-queue) >> .render-steps)
+  .ui-draw-queue (GFX.ClearQueue)
+
+  (UI
+   .ui-draw-queue
+   (UI.CentralPanel
+    (->
+     ;; exposing a new variable
+     (UI.TextInput .text))))
+
+  (GFX.Render :Steps .render-steps)))
