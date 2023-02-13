@@ -879,6 +879,10 @@ TEST_CASE("SHHashSet") {
   SHHashSet x;
   x.insert(Var(10));
   x.emplace(Var("Hello Set"));
+
+  REQUIRE(x.contains(Var("Hello Set")));
+  REQUIRE(x.contains(Var(10)));
+
   SHVar vx{};
   vx.valueType = SHType::Set;
   vx.payload.setValue.opaque = &x;
@@ -887,6 +891,9 @@ TEST_CASE("SHHashSet") {
   SHHashSet y;
   y.emplace(Var("Hello Set"));
   y.insert(Var(10));
+
+  REQUIRE(y.contains(Var("Hello Set")));
+  REQUIRE(y.contains(Var(10)));
 
   SHVar vy{};
   vy.valueType = SHType::Set;
