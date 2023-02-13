@@ -11,10 +11,12 @@ fn generate_shardsc() {
 
   let shards_dir = var("SHARDS_DIR").unwrap_or_else(|_| "..".to_string());
   let shards_include_dir = format!("{}/include", shards_dir);
-  let src_extra_dir = format!("{}/src/extra", shards_dir);
-  let gfx_path = format!("{}/src/gfx", shards_dir);
+  let src_dir = format!("{}/src", shards_dir);
+  let src_extra_dir = format!("{}/extra", src_dir);
+  let gfx_path = format!("{}/gfx", src_dir);
 
   let main_header_path = format!("{}/rust_interop.hpp", src_extra_dir);
+  let spatial_header_path = format!("{}/spatial/rust_interop.hpp", src_dir);
 
   // Tell cargo to regenerate the bindings whenever the headers change
   println!("cargo:rerun-if-changed={}/shards.h", shards_include_dir);
@@ -23,12 +25,15 @@ fn generate_shardsc() {
   let builder = gfx_build::setup_bindgen_for_gfx(gfx_path.as_str(), bindgen::Builder::default());
   let bindings = builder
     .header(main_header_path)
+    .header(spatial_header_path)
     .clang_arg("-DSH_NO_ANON")
     .clang_arg("-DSH_USE_ENUMS")
     .clang_arg("-DRUST_BINDGEN")
     .allowlist_type("SH.*")
+    .allowlist_type("shards::spatial::.*")
     .allowlist_var("SH.*")
     .allowlist_function("SH.*")
+    .allowlist_function("spatial_.*")
     .allowlist_function("util_.*")
     .clang_arg(format!("-I{}", shards_include_dir))
     .clang_arg(format!("-I{}/src", shards_dir))

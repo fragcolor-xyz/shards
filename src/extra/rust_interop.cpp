@@ -1,13 +1,15 @@
 #include "rust_interop.hpp"
 #include "gfx/shards_types.hpp"
 #include "gfx.hpp"
+#include "spatial/spatial.hpp"
 #include "inputs.hpp"
 #include <gfx/renderer.hpp>
 #include <foundation.hpp>
 
-using namespace shards::input;
 using namespace gfx;
 using namespace shards;
+using namespace shards::input;
+using namespace shards::Spatial;
 using GFXTypes = gfx::Types;
 
 const SHEnumInfo *util_findEnumInfo(int32_t vendorId, int32_t typeId) { return shards::findEnumInfo(vendorId, typeId); }
@@ -20,12 +22,14 @@ SHTypeInfo *gfx_getGraphicsContextType() {
   static SHTypeInfo type = gfx::GraphicsContext::Type;
   return &type;
 }
+
 const char *gfx_getGraphicsContextVarName() { return gfx::GraphicsContext::VariableName; }
 
 SHTypeInfo *gfx_getInputContextType() {
   static SHTypeInfo type = Inputs::InputContext::Type;
   return &type;
 }
+
 const char *gfx_getInputContextVarName() { return Inputs::InputContext::VariableName; }
 
 SHTypeInfo *gfx_getQueueType() {
@@ -38,10 +42,12 @@ SHVar gfx_GraphicsContext_getDefaultQueue(const SHVar &graphicsContext) {
   return Var::Object(&globals->shDrawQueue, SHTypeInfo(GFXTypes::DrawQueue).object.vendorId,
                      SHTypeInfo(GFXTypes::DrawQueue).object.typeId);
 }
-Context *gfx_GraphicsContext_getContext(const SHVar &graphicsContext) {
+
+gfx::Context *gfx_GraphicsContext_getContext(const SHVar &graphicsContext) {
   GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
   return globals->context.get();
 }
+
 Renderer *gfx_GraphicsContext_getRenderer(const SHVar &graphicsContext) {
   GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
   return globals->renderer.get();
@@ -115,3 +121,10 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
       .scalingFactor = scalingFactor,
   });
 }
+
+SHTypeInfo *spatial_getSpatialContextType() {
+  static SHTypeInfo type = SpatialContext::Type;
+  return &type;
+}
+
+const char *spatial_getSpatialContextVarName() { return SpatialContext::VariableName; }
