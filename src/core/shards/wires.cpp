@@ -1606,7 +1606,9 @@ struct Spawn : public CapturingSpawners {
       SHLOG_TRACE("Spawn::Composer::compose {}", wire->name);
       SHInstanceData data{};
       data.inputType = server._inputType;
-      data.shared = server._sharedCopy;
+      if (!wire->pure) {
+        data.shared = server._sharedCopy;
+      }
       data.wire = context->wireStack.back();
       wire->mesh = context->main->mesh;
       auto res = composeWire(
