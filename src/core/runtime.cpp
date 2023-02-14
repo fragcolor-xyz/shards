@@ -1903,6 +1903,9 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
 
   auto running = true;
 
+  // we need this cos by the end of this call we might get suspended/resumed and state changes! this wont
+  bool failed = false;
+
   // Reset state
   wire->state = SHWire::State::Prepared;
   wire->finishedOutput = Var::Empty;
@@ -1974,6 +1977,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
     if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
       SHLOG_DEBUG("Wire {} failed", wire->name);
       wire->state = SHWire::State::Failed;
+      failed = true;
       context.stopFlow(runRes.output);
       break;
     } else if (unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
@@ -2007,11 +2011,12 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
 
 endOfWire:
   wire->finishedOutput = wire->previousOutput;
-  if (context.failed()) {
+  if (failed || context.failed()) {
     wire->finishedError = context.getErrorMessage();
     if (wire->finishedError.empty()) {
       wire->finishedError = "Generic error";
     }
+    SHLOG_TRACE("wire {} failed with error {}", wire->name, wire->finishedError);
   }
 
   // run cleanup on all the shards
