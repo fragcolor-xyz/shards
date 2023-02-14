@@ -211,7 +211,8 @@ struct Container {
     Depth16Unorm = WGPUTextureFormat_Depth16Unorm,
     Depth24Plus = WGPUTextureFormat_Depth24Plus,
     Depth24PlusStencil8 = WGPUTextureFormat_Depth24PlusStencil8,
-    Depth24UnormStencil8 = WGPUTextureFormat_Depth24UnormStencil8,
+    // Not supported on WGPU
+    // Depth24UnormStencil8 = WGPUTextureFormat_Depth24UnormStencil8,
     Depth32Float = WGPUTextureFormat_Depth32Float,
     Depth32FloatStencil8 = WGPUTextureFormat_Depth32FloatStencil8,
     // BC1RGBAUnorm = WGPUTextureFormat_BC1RGBAUnorm,
