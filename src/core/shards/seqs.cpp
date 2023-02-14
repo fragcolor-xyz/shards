@@ -80,8 +80,12 @@ struct Flatten {
   SHTypeInfo compose(const SHInstanceData &data) {
     std::unordered_set<SHTypeInfo> types;
     addInnerType(data.inputType, types);
-    std::vector<SHTypeInfo> vtypes(types.begin(), types.end());
-    seqTypes = Types(vtypes);
+    if(types.size() == 0) {
+      // add any as single type
+      types.insert(CoreInfo::AnyType);
+    }
+    std::vector<SHTypeInfo> vTypes(types.begin(), types.end());
+    seqTypes = Types(vTypes);
     seqType = Type::SeqOf(seqTypes);
     return seqType;
   }
