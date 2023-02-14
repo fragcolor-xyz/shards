@@ -269,13 +269,13 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(defmacro! defwire (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
       "name)) (wireify (vector ~@shards))))))",
       env);
+  rep("(defmacro! defloop (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
+      "name)) :Looped (wireify (vector ~@shards))))))",
+      env);
+  rep("(defmacro! defpure (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
+      "name)) :Pure (wireify (vector ~@shards))))))",
+      env);
   rep("(defmacro! deftrait (fn* [name & shards] `(def! ~(symbol (str name)) (hash-map ~@shards))))", env);
-  rep("(defmacro! defloop (fn* [name & shards] `(def! ~(symbol (str name)) "
-      "(Wire ~(str name) :Looped (wireify (vector ~@shards))))))",
-      env);
-  rep("(defmacro! defpure (fn* [name & shards] `(def! ~(symbol (str name)) "
-      "(Wire ~(str name) :Pure (wireify (vector ~@shards))))))",
-      env);
   rep("(defmacro! defmesh (fn* [name] `(def ~(symbol (str name)) (Mesh))))", env);
   rep("(defmacro! | (fn* [& shards] `(Sub (wireify (vector ~@shards)))))", env);
   rep("(defmacro! |# (fn* [& shards] `(Hashed (wireify (vector ~@shards)))))", env);

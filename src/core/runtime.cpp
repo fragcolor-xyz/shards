@@ -625,16 +625,27 @@ SHWireState suspend(SHContext *context, double seconds) {
 
 void hash_update(const SHVar &var, void *state);
 
-std::unordered_set<const SHWire *> &gatheringWires() {
-#ifdef WIN32
-  // we have to leak.. or windows tls emulation will crash at process end
-  thread_local std::unordered_set<const SHWire *> *wires = new std::unordered_set<const SHWire *>();
-  return *wires;
-#else
-  thread_local std::unordered_set<const SHWire *> wires;
-  return wires;
-#endif
-}
+#define SH_HASHER(prefix)                                                               \
+  std::deque<std::unordered_set<const SHWire *>> &prefix##WiresStack() {                \
+    thread_local std::deque<std::unordered_set<const SHWire *>> s;                      \
+    return s;                                                                           \
+  }                                                                                     \
+  std::optional<std::unordered_set<const SHWire *> *> &prefix##Wires() {                \
+    thread_local std::optional<std::unordered_set<const SHWire *> *> wires;             \
+    return wires;                                                                       \
+  }                                                                                     \
+  void prefix##WiresPush() { prefix##Wires() = &prefix##WiresStack().emplace_front(); } \
+  void prefix##WiresPop() {                                                             \
+    prefix##WiresStack().pop_front();                                                   \
+    if (prefix##WiresStack().empty()) {                                                 \
+      prefix##Wires() = std::nullopt;                                                   \
+    } else {                                                                            \
+      prefix##Wires() = &prefix##WiresStack().front();                                  \
+    }                                                                                   \
+  }
+
+SH_HASHER(gathering);
+SH_HASHER(hashing);
 
 template <typename T, bool HANDLES_RETURN, bool HASHED>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
@@ -644,7 +655,6 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     assert(outHash);
     XXH3_INITSTATE(&hashState);
     XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
-    gatheringWires().clear();
   }
   DEFER(if constexpr (HASHED) {
     auto digest = XXH3_128bits_digest(&hashState);
@@ -2271,8 +2281,8 @@ void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
   case 0: {
     // wire
     auto wire = std::get<const SHWire *>(coll);
-    if (!gatheringWires().count(wire)) {
-      gatheringWires().insert(wire);
+    if (!(*gatheringWires())->count(wire)) {
+      (*gatheringWires())->insert(wire);
       for (auto blk : wire->shards) {
         _gatherShards(blk, out);
       }
@@ -2334,12 +2344,14 @@ void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
 }
 
 void gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
-  gatheringWires().clear();
+  gatheringWiresPush();
+  DEFER(gatheringWiresPop());
   _gatherShards(coll, out);
 }
 
 SHVar hash(const SHVar &var) {
-  gatheringWires().clear();
+  hashingWiresPush();
+  DEFER(hashingWiresPop());
 
   XXH3_state_s hashState;
   XXH3_INITSTATE(&hashState);
@@ -2398,8 +2410,8 @@ void hash_update(const SHVar &var, void *state) {
   } break;
   case SHType::Array: {
     for (uint32_t i = 0; i < var.payload.arrayValue.len; i++) {
-      SHVar tmp; // only of blittable types and hash uses just type, so no init
-                 // needed
+      SHVar tmp{}; // only of blittable types and hash uses just type, so no init
+                   // needed
       tmp.valueType = var.innerType;
       tmp.payload = var.payload.arrayValue.elements[i];
       hash_update(tmp, state);
@@ -2468,8 +2480,8 @@ void hash_update(const SHVar &var, void *state) {
   } break;
   case SHType::Wire: {
     auto wire = SHWire::sharedFromRef(var.payload.wireValue);
-    if (gatheringWires().count(wire.get()) == 0) {
-      gatheringWires().insert(wire.get());
+    if ((*hashingWires())->count(wire.get()) == 0) {
+      (*hashingWires())->insert(wire.get());
 
       error = XXH3_128bits_update(hashState, wire->name.c_str(), wire->name.length());
       assert(error == XXH_OK);
@@ -2481,7 +2493,7 @@ void hash_update(const SHVar &var, void *state) {
       assert(error == XXH_OK);
 
       for (auto &blk : wire->shards) {
-        SHVar tmp;
+        SHVar tmp{};
         tmp.valueType = SHType::ShardRef;
         tmp.payload.shardValue = blk;
         hash_update(tmp, state);
