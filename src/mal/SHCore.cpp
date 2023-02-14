@@ -2548,6 +2548,28 @@ SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output) 
     return false;
   }
 }
+
+SHARDS_API __cdecl SHBool shLispAddToEnv(void *env, const char *str, SHVar input) {
+  auto penv = (malEnvPtr *)env;
+  try {
+    auto var = malValuePtr(malSHVar::newCloned(input));
+    (*penv)->set(str, var);
+    return true;
+  } catch (malEmptyInputException &) {
+    return false;
+  } catch (malValuePtr &mv) {
+    SHLOG_WARNING("AddToEnv error: {} line: {}", mv->print(true), std::to_string(mv->line));
+    return false;
+  } catch (std::exception &e) {
+    SHLOG_WARNING("AddToEnv error: {}", e.what());
+    return false;
+  } catch (MalString &str) {
+    SHLOG_WARNING("AddToEnv error: {}", str.c_str());
+    return false;
+  } catch (...) {
+    return false;
+  }
+}
 }
 
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
