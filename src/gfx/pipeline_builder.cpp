@@ -9,9 +9,9 @@
 #include "shader/wgsl_mapping.hpp"
 #include "shader/log.hpp"
 #include "spdlog/spdlog.h"
+#include "gfx_wgpu.hpp"
 #include <memory>
 #include <variant>
-#include <webgpu-headers/webgpu.h>
 
 using namespace gfx::detail;
 using namespace gfx::shader;

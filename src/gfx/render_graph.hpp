@@ -10,9 +10,9 @@
 #include "worker_memory.hpp"
 #include "pmr/set.hpp"
 #include "pmr/vector.hpp"
+#include "gfx_wgpu.hpp"
 #include <compare>
 #include <span>
-#include <webgpu-headers/webgpu.h>
 
 namespace gfx::detail {
 

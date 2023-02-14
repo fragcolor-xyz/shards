@@ -7,7 +7,6 @@
 #include "gfx_wgpu.hpp"
 #include "texture.hpp"
 #include <vector>
-#include <webgpu-headers/webgpu.h>
 
 namespace gfx {
 

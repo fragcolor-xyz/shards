@@ -12,7 +12,7 @@
 #include <magic_enum.hpp>
 #include <params.hpp>
 #include <optional>
-#include <webgpu-headers/webgpu.h>
+#include "gfx_wgpu.hpp"
 
 using namespace shards;
 
