@@ -9,10 +9,10 @@
 #include <gfx/steps/effect.hpp>
 #include <gfx/features/transform.hpp>
 #include <gfx/texture.hpp>
+#include <gfx/gfx_wgpu.hpp>
 #include <magic_enum.hpp>
 #include <params.hpp>
 #include <optional>
-#include "gfx_wgpu.hpp"
 
 using namespace shards;
 

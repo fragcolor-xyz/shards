@@ -11,7 +11,6 @@
 #include <gfx/render_target.hpp>
 #include <params.hpp>
 #include <stdexcept>
-#include <webgpu-headers/webgpu.h>
 
 using namespace shards;
 namespace gfx {
