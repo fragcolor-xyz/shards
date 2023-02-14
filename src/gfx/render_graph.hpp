@@ -241,11 +241,23 @@ struct RenderGraph {
 };
 
 struct RenderGraphBuilder {
+  // Temporary data about nodes
+  struct Attachment {
+    RenderStepOutput::OutputVariant output;
+    FrameIndex frameIndex;
+    int2 targetSize;
+  };
+  struct NodeBuildData {
+    std::vector<Attachment> attachments;
+    bool forceOverwrite{};
+  };
   std::vector<RenderGraphNode> nodes;
+  std::vector<NodeBuildData> nodeBuildData;
   std::vector<RenderGraph::Frame> frames;
   std::vector<RenderGraph::Output> outputs;
   std::map<std::string, FrameIndex> nameLookup;
   std::map<TexturePtr, FrameIndex> handleLookup;
+  std::set<FrameIndex> externallyWrittenTo;
   float2 referenceOutputSize;
 
   void setReferenceOutputSize(int2 size) { referenceOutputSize = float2(size); }
@@ -259,6 +271,7 @@ struct RenderGraphBuilder {
   }
 
   FrameIndex assignFrame(const RenderStepOutput::OutputVariant &output, int2 targetSize) {
+    // Try to find existing frame that matches output
     FrameIndex frameIndex = ~0;
     std::visit(
         [&](auto &&arg) {
@@ -285,9 +298,9 @@ struct RenderGraphBuilder {
         },
         output);
 
+    // Create a new frame
     assert(frameIndex != size_t(~0));
     if (frameIndex >= frames.size()) {
-      // Initialize frame info
       auto &frame = frames.emplace_back();
       frame.size = targetSize;
       std::visit(
@@ -325,6 +338,11 @@ struct RenderGraphBuilder {
         if (attachment.frameIndex == index)
           attachment.frameIndex = newIndex;
       }
+    }
+
+    if (externallyWrittenTo.contains(index)) {
+      externallyWrittenTo.erase(index);
+      externallyWrittenTo.insert(newIndex);
     }
   }
 
@@ -379,6 +397,8 @@ struct RenderGraphBuilder {
   }
 
   bool isWrittenTo(FrameIndex frameIndex, size_t beforeNodeIndex) {
+    if (externallyWrittenTo.contains(frameIndex))
+      return true;
     for (size_t i = 0; i < beforeNodeIndex; i++) {
       for (auto &attachment : nodes[i].writesTo) {
         if (attachment.frameIndex == frameIndex)
@@ -388,102 +408,112 @@ struct RenderGraphBuilder {
     return false;
   }
 
+  void finalizeNodeConnections() {
+    static auto logger = gfx::getLogger();
+
+    for (size_t nodeIndex = 0; nodeIndex < nodeBuildData.size(); nodeIndex++) {
+      RenderGraphNode &node = nodes[nodeIndex];
+      NodeBuildData &nodeBuildData = this->nodeBuildData[nodeIndex];
+
+      for (auto &attachment : nodeBuildData.attachments) {
+        FrameIndex frameIndex = attachment.frameIndex;
+
+        WGPUTextureFormat targetFormat{};
+        std::optional<ClearValues> clearValues{};
+        std::visit(
+            [&](auto &&arg) {
+              using T = std::decay_t<decltype(arg)>;
+              clearValues = arg.clearValues;
+              if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
+                targetFormat = arg.format;
+              } else if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
+                targetFormat = arg.handle->getFormat().pixelFormat;
+              } else {
+                throw std::logic_error("");
+              }
+            },
+            attachment.output);
+
+        bool sizeMismatch = frames[frameIndex].size != attachment.targetSize;
+        bool formatMismatch = frames[frameIndex].format != targetFormat;
+
+        bool loadRequired = !clearValues.has_value();
+        if (nodeBuildData.forceOverwrite) {
+          loadRequired = false;
+        }
+
+        // Check if the same frame is being read from
+        auto it = std::find(node.readsFrom.begin(), node.readsFrom.end(), frameIndex);
+        if (sizeMismatch || formatMismatch || it != node.readsFrom.end()) {
+          // TODO: Implement copy into loaded attachment from previous step
+          if (loadRequired) {
+            std::string err = "Copy required, not implemented";
+            if (sizeMismatch)
+              err += fmt::format(" (size {}=>{})", frames[frameIndex].size, attachment.targetSize);
+            if (formatMismatch)
+              err += fmt::format(" (fmt {}=>{})", magic_enum::enum_name(frames[frameIndex].format),
+                                 magic_enum::enum_name(targetFormat));
+            throw std::logic_error(err);
+          }
+
+          // Just duplicate the frame for now
+          size_t newFrameIndex = frames.size();
+          auto &frame = frames.emplace_back(RenderGraph::Frame{
+              .name = frames[frameIndex].name,
+              .size = attachment.targetSize,
+              .format = targetFormat,
+          });
+          nameLookup[frame.name] = newFrameIndex;
+          frameIndex = newFrameIndex;
+        }
+
+        // Check if written, force clear with default values if not
+        bool needsClearValue = false;
+        if (nodeBuildData.forceOverwrite)
+          needsClearValue = true;
+        else if (loadRequired && !isWrittenTo(frameIndex, nodeIndex)) {
+          SPDLOG_LOGGER_DEBUG(
+              logger, "Forcing clear with default values for frame {} accessed by node {}, since it's not written to before",
+              frameIndex, nodeIndex);
+          needsClearValue = true;
+        }
+
+        // Set default clear value based on format
+        if (needsClearValue) {
+          auto &formatDesc = getTextureFormatDescription(targetFormat);
+          if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Depth | TextureFormatUsage::Stencil)) {
+            clearValues = ClearValues::getDefaultDepthStencil();
+          } else {
+            clearValues = ClearValues::getDefaultColor();
+          }
+        }
+
+        if (clearValues.has_value())
+          node.writesTo.emplace_back(frameIndex, clearValues.value());
+        else {
+          node.writesTo.emplace_back(frameIndex);
+        }
+      }
+    }
+  }
+
   // When setting forceOverwrite, ignores clear value, marks this attachment as being completely overwritten
   // e.g. fullscreen effect passes
   void allocateOutputs(size_t nodeIndex, const RenderStepOutput &output, bool forceOverwrite = false) {
     static auto logger = gfx::getLogger();
 
     nodes.resize(std::max(nodes.size(), nodeIndex + 1));
-    RenderGraphNode &node = nodes[nodeIndex];
+
+    this->nodeBuildData.resize(std::max(this->nodeBuildData.size(), nodeIndex + 1));
+    NodeBuildData &nodeBuildData = this->nodeBuildData[nodeIndex];
+    nodeBuildData.forceOverwrite = forceOverwrite;
 
     for (auto &attachment : output.attachments) {
       int2 targetSize = int2(linalg::floor(referenceOutputSize * output.sizeScale.value_or(float2(1.0f))));
 
       FrameIndex frameIndex = assignFrame(attachment, targetSize);
 
-      WGPUTextureFormat targetFormat{};
-      std::optional<ClearValues> clearValues{};
-      std::visit(
-          [&](auto &&arg) {
-            using T = std::decay_t<decltype(arg)>;
-            clearValues = arg.clearValues;
-            if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
-              targetFormat = arg.format;
-            } else if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-              targetFormat = arg.handle->getFormat().pixelFormat;
-            } else {
-              throw std::logic_error("");
-            }
-          },
-          attachment);
-
-      bool sizeMismatch = frames[frameIndex].size != targetSize;
-      bool formatMismatch = frames[frameIndex].format != targetFormat;
-
-      bool loadRequired = !clearValues.has_value();
-      if (forceOverwrite) {
-        loadRequired = false;
-      }
-
-      // Check if the same frame is being read from
-      auto it = std::find(node.readsFrom.begin(), node.readsFrom.end(), frameIndex);
-      if (sizeMismatch || formatMismatch || it != node.readsFrom.end()) {
-        // TODO: Implement copy into loaded attachment from previous step
-        if (loadRequired) {
-          std::string err = "Copy required, not implemented";
-          if (sizeMismatch)
-            err += fmt::format(" (size {}=>{})", frames[frameIndex].size, targetSize);
-          if (formatMismatch)
-            err += fmt::format(" (fmt {}=>{})", magic_enum::enum_name(frames[frameIndex].format),
-                               magic_enum::enum_name(targetFormat));
-          throw std::logic_error(err);
-        }
-
-        // Just duplicate the frame for now
-        size_t newFrameIndex = frames.size();
-        auto &frame = frames.emplace_back(RenderGraph::Frame{
-            .name = frames[frameIndex].name,
-            .size = targetSize,
-            .format = targetFormat,
-        });
-        nameLookup[frame.name] = newFrameIndex;
-        frameIndex = newFrameIndex;
-      }
-
-      // Check if written, force clear with default values if not
-      bool needsClearValue = false;
-      if (forceOverwrite)
-        needsClearValue = true;
-      else if (loadRequired && !isWrittenTo(frameIndex, nodeIndex)) {
-        SPDLOG_LOGGER_DEBUG(
-            logger, "Forcing clear with default values for frame {} accessed by node {}, since it's not written to before",
-            frameIndex, nodeIndex);
-        needsClearValue = true;
-      }
-
-      // Set default clear value based on format
-      if (needsClearValue) {
-        auto &formatDesc = getTextureFormatDescription(targetFormat);
-        if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Depth | TextureFormatUsage::Stencil)) {
-          clearValues = ClearValues::getDefaultDepthStencil();
-        } else {
-          clearValues = ClearValues::getDefaultColor();
-        }
-      }
-
-      if (clearValues.has_value())
-        node.writesTo.emplace_back(frameIndex, clearValues.value());
-      else {
-        node.writesTo.emplace_back(frameIndex);
-      }
-    }
-  }
-
-  void updateNodeLayouts() {
-    size_t nodeIndex{};
-    for (auto &node : nodes) {
-      node.renderTargetLayout = getLayout(nodeIndex);
-      nodeIndex++;
+      nodeBuildData.attachments.push_back(Attachment{attachment, frameIndex, targetSize});
     }
   }
 
@@ -511,6 +541,27 @@ struct RenderGraphBuilder {
     return layout;
   }
 
+  RenderGraph finalize() {
+    updateNodeLayouts();
+    validateNodes();
+
+    RenderGraph graph{
+        .nodes = std::move(nodes),
+        .frames = std::move(frames),
+        .outputs = std::move(outputs),
+    };
+    return graph;
+  }
+
+private:
+  void updateNodeLayouts() {
+    size_t nodeIndex{};
+    for (auto &node : nodes) {
+      node.renderTargetLayout = getLayout(nodeIndex);
+      nodeIndex++;
+    }
+  }
+
   void validateNodes() {
     static auto logger = gfx::getLogger();
 
@@ -520,17 +571,6 @@ struct RenderGraphBuilder {
         throw std::runtime_error(fmt::format("Node {} does not write to any outputs", nodeIndex));
       }
     }
-  }
-
-  RenderGraph finalize() {
-    validateNodes();
-
-    RenderGraph graph{
-        .nodes = std::move(nodes),
-        .frames = std::move(frames),
-        .outputs = std::move(outputs),
-    };
-    return graph;
   }
 };
 
