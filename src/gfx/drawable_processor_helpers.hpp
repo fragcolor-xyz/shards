@@ -4,7 +4,7 @@
 #include "renderer_types.hpp"
 #include "drawable_processor.hpp"
 #include "view.hpp"
-#include <webgpu-headers/webgpu.h>
+#include "gfx_wgpu.hpp"
 
 namespace gfx::detail {
 
