@@ -10,6 +10,7 @@
 #include "drawable_processor_helpers.hpp"
 #include "pmr/list.hpp"
 #include "texture_cache.hpp"
+#include "worker_memory.hpp"
 #include <tracy/Tracy.hpp>
 
 namespace gfx::detail {
@@ -45,7 +46,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     WGPUBuffer buffer;
     size_t length;
     size_t stride;
-    WGPUBufferMapAsyncStatus mappingStatus = WGPUBufferMapAsyncStatus_Unknown;
   };
 
   struct PreparedGroupData {
@@ -114,7 +114,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     return [device = context.wgpuDevice](size_t bufferSize) {
       WGPUBufferDescriptor desc{
           .label = "<object buffer>",
-          .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_Storage,
+          .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Storage,
           .size = bufferSize,
       };
       return wgpuDeviceCreateBuffer(device, &desc);
@@ -125,7 +125,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     return [device = context.wgpuDevice](size_t bufferSize) {
       WGPUBufferDescriptor desc{
           .label = "<view buffer>",
-          .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_Uniform,
+          .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform,
           .size = bufferSize,
       };
       return wgpuDeviceCreateBuffer(device, &desc);
@@ -265,31 +265,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     data.groupHash = hasher.getDigest();
   }
 
-  void waitForBufferMap(Context &context, PrepareData *prepareData) {
-    do {
-      bool everythingMapped = true;
-      auto check = [&](auto &buffers) {
-        for (auto &drawBuffer : buffers) {
-          if (drawBuffer.mappingStatus == WGPUBufferMapAsyncStatus_Unknown)
-            everythingMapped = false;
-          else {
-            if (drawBuffer.mappingStatus != WGPUBufferMapAsyncStatus_Success)
-              throw std::runtime_error("Failed to map WGPUBuffer");
-          }
-        }
-      };
-      check(prepareData->drawBuffers);
-      check(prepareData->viewBuffers);
-
-      if (!everythingMapped) {
-        // Don't block, just check for buffer mapping callbacks
-        context.poll(false);
-      } else {
-        break;
-      }
-    } while (true);
-  }
-
   TransientPtr prepare(DrawablePrepareContext &context) override {
     auto &allocator = context.workerMemory;
     const CachedPipeline &cachedPipeline = context.cachedPipeline;
@@ -304,9 +279,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     }
 
     // Allocate/map buffer helpers
-    auto bufferMapCallback = [](WGPUBufferMapAsyncStatus status, void *userData) {
-      ((PreparedBuffer *)userData)->mappingStatus = status;
-    };
     auto allocateBuffers = [&](SharedBufferPool &pool, auto &outBuffers, const auto &bindings, size_t numElements) {
       outBuffers.resize(bindings.size());
       for (size_t i = 0; i < bindings.size(); i++) {
@@ -315,8 +287,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         preparedBuffer.stride = binding.layout.getArrayStride();
         preparedBuffer.length = preparedBuffer.stride * numElements;
         preparedBuffer.buffer = pool.allocate(preparedBuffer.length);
-        wgpuBufferMapAsync(preparedBuffer.buffer, WGPUMapMode_Write, 0, preparedBuffer.length, bufferMapCallback,
-                           &preparedBuffer);
       }
     };
 
@@ -381,9 +351,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       }
     }
 
-    // Wait for draw buffer to be mapped so we can fill them
-    waitForBufferMap(context.context, prepareData);
-
     // Sort and group drawables
     {
       ZoneScopedN("sortAndGroup");
@@ -438,8 +405,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       auto &buffer = prepareData->viewBuffers[0];
       auto &binding = cachedPipeline.viewBuffersBindings[0];
-      uint8_t *bufferData = (uint8_t *)wgpuBufferGetMappedRange(buffer.buffer, 0, buffer.length);
-      packDrawData(bufferData, buffer.stride, binding.layout, viewParameters);
+      uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
+      packDrawData(stagingBuffer, buffer.stride, binding.layout, viewParameters);
+      wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
     }
 
     // Setup draw buffer data
@@ -449,23 +417,17 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
       auto &buffer = prepareData->drawBuffers[0];
       auto &binding = cachedPipeline.drawBufferBindings[0];
-      uint8_t *bufferData = (uint8_t *)wgpuBufferGetMappedRange(buffer.buffer, 0, buffer.length);
+      uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
       for (auto &group : preparedGroupData.groups) {
         size_t offset = buffer.stride * group.startIndex;
         for (size_t i = 0; i < group.numInstances; i++) {
-          packDrawData(bufferData + offset, buffer.stride, binding.layout,
+          packDrawData(stagingBuffer + offset, buffer.stride, binding.layout,
                        prepareData->drawableData[group.startIndex + i]->parameters);
           offset += buffer.stride;
         }
       }
+      wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
     }
-
-    auto unmapBuffers = [&](auto &vec) {
-      for (auto &buffer : vec)
-        wgpuBufferUnmap(buffer.buffer);
-    };
-    unmapBuffers(prepareData->drawBuffers);
-    unmapBuffers(prepareData->viewBuffers);
 
     // Generate bind groups
     WGPUBindGroupLayout viewBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getViewBindGroupIndex()];
