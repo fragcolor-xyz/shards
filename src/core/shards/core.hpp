@@ -3264,7 +3264,7 @@ struct Repeat {
   }
 
   static inline Parameters _params{{"Action", SHCCSTR("The shards to repeat."), CoreInfo::Shards},
-                                   {"Times", SHCCSTR("How many times we should repeat the action."), CoreInfo::IntsVar},
+                                   {"Times", SHCCSTR("How many times we should repeat the action."), CoreInfo::IntOrIntVar},
                                    {"Forever", SHCCSTR("If we should repeat the action forever."), {CoreInfo::BoolType}},
                                    {"Until",
                                     SHCCSTR("Optional shards to use as predicate to continue repeating "
