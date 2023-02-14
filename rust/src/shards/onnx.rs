@@ -1,4 +1,4 @@
-use crate::shardsc::SHTypeInfo_Details_Object;
+use crate::shardsc::SHObjectTypeInfo;
 use crate::types::{
   ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES,
   SEQ_OF_SEQ_OF_FLOAT_TYPES, STRINGS_TYPES, STRING_TYPES,
@@ -19,7 +19,7 @@ pub type OnnxModel =
 lazy_static! {
   static ref MODEL_TYPE: Type = {
     let mut t = common_type::object;
-    t.details.object = SHTypeInfo_Details_Object {
+    t.details.object = SHObjectTypeInfo {
       vendorId: FRAG_CC, // 'frag'
       typeId: 0x6f6e6e78, // 'onnx'
     };

@@ -4,7 +4,7 @@
 
 #include "Environment.h"
 #include "Types.h"
-
+#include <boost/filesystem.hpp>
 #include <algorithm>
 
 malEnv::malEnv(malEnvPtr outer) : m_outer(outer) { TRACE_ENV("Creating malEnv %p, outer=%p\n", this, m_outer.ptr()); }
@@ -71,4 +71,18 @@ malEnvPtr malEnv::getRoot() {
       return env;
     }
   }
+}
+
+using namespace boost::filesystem;
+
+void malEnv::trackDependency(const char *path) {
+  if (trackDependencies) {
+    ::path p = path;
+    std::string absPath = absolute(p).string();
+    m_trackedDependencies.insert(absPath);
+  }
+
+  // Propagate
+  if (m_outer)
+    m_outer->trackDependency(path);
 }

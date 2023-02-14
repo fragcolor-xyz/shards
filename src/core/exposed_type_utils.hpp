@@ -1,6 +1,7 @@
 #ifndef A16CC8A4_FBC4_4500_BE1D_F565963C9C16
 #define A16CC8A4_FBC4_4500_BE1D_F565963C9C16
 
+#include "foundation.hpp"
 #include <shards.hpp>
 #include <runtime.hpp>
 #include <array>
@@ -25,6 +26,10 @@ public:
     if constexpr (Required) {
       // Ensure correct runtime type
       (void)varAsObjectChecked<T>(*variable, VariableType);
+    } else {
+      if (variable->valueType == SHType::None) {
+        cleanup();
+      }
     }
   }
 

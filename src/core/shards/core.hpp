@@ -3211,7 +3211,7 @@ struct ForRangeShard {
 
     SHVar output{};
     SHVar item{};
-    if (from < to) {
+    if (from <= to) {
       for (auto i = from; i <= to; i++) {
         item = Var(i);
         auto state = _shards.activate<true>(context, item, output);

@@ -8,6 +8,7 @@
 #include "MAL.h"
 
 #include <map>
+#include <set>
 
 class malEnv : public RefCounted {
 public:
@@ -24,11 +25,20 @@ public:
   void setPrefix(const MalString &prefix) { m_prefix = prefix; }
   void unsetPrefix() { m_prefix.clear(); }
 
+  // Adds a tacking dependency to a loaded file
+  void trackDependency(const char *path);
+  const std::set<std::string> &getTrackedDependencies() const { return m_trackedDependencies; }
+
+public:
+  bool trackDependencies{};
+
 private:
   typedef std::map<MalString, malValuePtr> Map;
   MalString m_prefix;
   Map m_map;
   malEnvPtr m_outer;
+
+  std::set<std::string> m_trackedDependencies;
 };
 
 #endif // INCLUDE_ENVIRONMENT_H

@@ -4,6 +4,9 @@
 #ifndef SH_CORE_OPS_INTERNAL
 #define SH_CORE_OPS_INTERNAL
 
+#include "magic_enum.hpp"
+#include "shards.hpp"
+#include "spdlog/fmt/bundled/core.h"
 #include <ops.hpp>
 #include <sstream>
 #include <spdlog/fmt/fmt.h>
@@ -60,6 +63,34 @@ template <> struct fmt::formatter<SHTypesInfo> {
   StringStreamFormatter<SHTypesInfo> base;
   constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) { return base.parse(ctx); }
   template <typename FormatContext> auto format(const SHTypesInfo &v, FormatContext &ctx) -> decltype(ctx.out()) {
+    return base.format(v, ctx);
+  }
+};
+
+template <> struct fmt::formatter<SHType> {
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
+    auto it = ctx.begin(), end = ctx.end();
+    if (it != end)
+      throw format_error("invalid format");
+    return it;
+  }
+  template <typename FormatContext> auto format(const SHType &v, FormatContext &ctx) -> decltype(ctx.out()) {
+    return format_to(ctx.out(), "{}", magic_enum::enum_name(v));
+  }
+};
+
+template <> struct fmt::formatter<shards::Type> {
+  fmt::formatter<SHTypeInfo> base;
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) { return base.parse(ctx); }
+  template <typename FormatContext> auto format(const shards::Type &v, FormatContext &ctx) -> decltype(ctx.out()) {
+    return base.format(v, ctx);
+  }
+};
+
+template <> struct fmt::formatter<shards::Types> {
+  fmt::formatter<SHTypesInfo> base;
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) { return base.parse(ctx); }
+  template <typename FormatContext> auto format(const shards::Types &v, FormatContext &ctx) -> decltype(ctx.out()) {
     return base.format(v, ctx);
   }
 };

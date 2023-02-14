@@ -27,9 +27,9 @@ use crate::shardsc::SHTable;
 use crate::shardsc::SHTableIterator;
 use crate::shardsc::SHTypeInfo;
 use crate::shardsc::SHTypeInfo_Details;
-use crate::shardsc::SHTypeInfo_Details_Enum;
-use crate::shardsc::SHTypeInfo_Details_Object;
-use crate::shardsc::SHTypeInfo_Details_Table;
+use crate::shardsc::SHEnumTypeInfo;
+use crate::shardsc::SHObjectTypeInfo;
+use crate::shardsc::SHTableTypeInfo;
 use crate::shardsc::SHType_Any;
 use crate::shardsc::SHType_Array;
 use crate::shardsc::SHType_Bool;
@@ -547,7 +547,7 @@ pub mod common_type {
   use crate::shardsc::SHType;
   use crate::shardsc::SHTypeInfo;
   use crate::shardsc::SHTypeInfo_Details;
-  use crate::shardsc::SHTypeInfo_Details_Table;
+  use crate::shardsc::SHTableTypeInfo;
   use crate::shardsc::SHType_Any;
   use crate::shardsc::SHType_Bool;
   use crate::shardsc::SHType_Bytes;
@@ -629,7 +629,7 @@ pub mod common_type {
       pub static $name_table: SHTypeInfo = SHTypeInfo {
         basicType: SHType_Table,
         details: SHTypeInfo_Details {
-          table: SHTypeInfo_Details_Table {
+          table: SHTableTypeInfo {
             keys: SHStrings {
               elements: core::ptr::null_mut(),
               len: 0,
@@ -924,7 +924,7 @@ impl Type {
     Type {
       basicType: SHType_Enum,
       details: SHTypeInfo_Details {
-        enumeration: SHTypeInfo_Details_Enum { vendorId, typeId },
+        enumeration: SHEnumTypeInfo { vendorId, typeId },
       },
       fixedSize: 0,
       innerType: SHType_None,
@@ -936,7 +936,7 @@ impl Type {
     Type {
       basicType: SHType_Object,
       details: SHTypeInfo_Details {
-        object: SHTypeInfo_Details_Object { vendorId, typeId },
+        object: SHObjectTypeInfo { vendorId, typeId },
       },
       fixedSize: 0,
       innerType: SHType_None,
@@ -948,7 +948,7 @@ impl Type {
     Type {
       basicType: SHType_Table,
       details: SHTypeInfo_Details {
-        table: SHTypeInfo_Details_Table {
+        table: SHTableTypeInfo {
           keys: SHStrings {
             elements: keys.as_ptr() as *mut _,
             len: keys.len() as u32,
@@ -4273,7 +4273,7 @@ lazy_static! {
   pub static ref FLOAT4X2S_TYPE: Type = Type::seq(&FLOAT4X2_TYPES);
   pub static ref ENUM_TYPE: Type = {
     let mut t = common_type::enumeration;
-    t.details.enumeration = SHTypeInfo_Details_Enum {
+    t.details.enumeration = SHEnumTypeInfo {
       vendorId: FRAG_CC,
       typeId: fourCharacterCode(*b"type"),
     };

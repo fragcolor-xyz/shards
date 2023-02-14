@@ -879,6 +879,10 @@ TEST_CASE("SHHashSet") {
   SHHashSet x;
   x.insert(Var(10));
   x.emplace(Var("Hello Set"));
+
+  REQUIRE(x.find(Var("Hello Set")) != x.end());
+  REQUIRE(x.find(Var(10)) != x.end());
+
   SHVar vx{};
   vx.valueType = SHType::Set;
   vx.payload.setValue.opaque = &x;
@@ -887,6 +891,9 @@ TEST_CASE("SHHashSet") {
   SHHashSet y;
   y.emplace(Var("Hello Set"));
   y.insert(Var(10));
+
+  REQUIRE(y.find(Var("Hello Set")) != y.end());
+  REQUIRE(y.find(Var(10)) != y.end());
 
   SHVar vy{};
   vy.valueType = SHType::Set;

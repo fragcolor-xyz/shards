@@ -347,8 +347,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::atomic<State> state{Stopped};
 
-  SHVar rootTickInput{};
-  SHVar currentInput{};
+  shards::OwnedVar currentInput{};
   SHVar previousOutput{};
 
   // notice we preserve those even over stop/reset!
@@ -430,13 +429,18 @@ private:
   void reset();
 };
 
+struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>, std::equal_to<SHVar>,
+                                             boost::alignment::aligned_allocator<shards::OwnedVar, 16>> {};
+
+struct SHTableImpl
+    : public std::unordered_map<std::string, shards::OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
+                                boost::alignment::aligned_allocator<std::pair<const std::string, shards::OwnedVar>, 16>> {};
+
 namespace shards {
-using SHHashSet =
-    std::unordered_set<OwnedVar, std::hash<SHVar>, std::equal_to<SHVar>, boost::alignment::aligned_allocator<OwnedVar, 16>>;
+using SHHashSet = SHSetImpl;
 using SHHashSetIt = SHHashSet::iterator;
 
-using SHMap = std::unordered_map<std::string, OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
-                                 boost::alignment::aligned_allocator<std::pair<const std::string, OwnedVar>, 16>>;
+using SHMap = SHTableImpl;
 using SHMapIt = SHMap::iterator;
 
 struct EventDispatcher {
@@ -999,14 +1003,14 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 
 #define DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
   static inline const char _NAME_##Name[] = #_NAME_;                  \
-  using _NAME_##EnumInfo = TEnumInfo<InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, false>
+  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, false>
 
 #define DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, _VENDOR_CC_, _CC_) \
   static inline const char _NAME_##Name[] = #_NAME_;                        \
-  using _NAME_##EnumInfo = TEnumInfo<InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, true>
+  using _NAME_##EnumInfo = shards::TEnumInfo<shards::InternalCore, _ENUM_, _NAME_##Name, _VENDOR_CC_, _CC_, true>
 
-#define DECL_ENUM_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, CoreCC, _CC_)
-#define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, CoreCC, _CC_)
+#define DECL_ENUM_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_INFO_WITH_VENDOR(_ENUM_, _NAME_, shards::CoreCC, _CC_)
+#define DECL_ENUM_FLAGS_INFO(_ENUM_, _NAME_, _CC_) DECL_ENUM_FLAGS_INFO_WITH_VENDOR(_ENUM_, _NAME_, shards::CoreCC, _CC_)
 
 #define SH_CONCAT1(_a_, _b_) _a_##_b_
 #define SH_CONCAT(_a_, _b_) SH_CONCAT1(_a_, _b_)
@@ -1339,12 +1343,17 @@ struct VariableResolver {
 
 template <typename T> T *varAsObjectChecked(const SHVar &var, const shards::Type &type) {
   SHTypeInfo typeInfo(type);
-  if (var.valueType != SHType::Object)
-    throw std::logic_error("Invalid type");
-  if (var.payload.objectVendorId != typeInfo.object.vendorId)
-    throw std::logic_error("Invalid object vendor id");
-  if (var.payload.objectTypeId != typeInfo.object.typeId)
-    throw std::logic_error("Invalid object type id");
+  if (var.valueType != SHType::Object) {
+    SHLOG_FATAL("Invalid type, expected: {} got: {}", type, magic_enum::enum_name(var.valueType));
+  }
+  if (var.payload.objectVendorId != typeInfo.object.vendorId) {
+    SHLOG_FATAL("Invalid object vendor id, expected: {} got: {}", type,
+                Type::Object(var.payload.objectVendorId, var.payload.objectTypeId));
+  }
+  if (var.payload.objectTypeId != typeInfo.object.typeId) {
+    SHLOG_FATAL("Invalid object type id, expected: {} got: {}", type,
+                Type::Object(var.payload.objectVendorId, var.payload.objectTypeId));
+  }
   return reinterpret_cast<T *>(var.payload.objectValue);
 }
 

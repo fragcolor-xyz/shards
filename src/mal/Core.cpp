@@ -15,6 +15,8 @@
 
 namespace fs = boost::filesystem;
 
+extern malEnvPtr malenv();
+
 static MalString printValues(malValueIter begin, malValueIter end, const MalString &sep, bool readably);
 
 static StaticList<malBuiltIn *> handlers;
@@ -488,6 +490,10 @@ BUILTIN("slurp") {
 
   std::ifstream file(filepath.c_str(), std::ios::binary);
   MAL_CHECK(!file.fail(), "Cannot open %s", filename->value().c_str());
+
+  if (malEnvPtr currentEnv = malenv()) {
+    currentEnv->trackDependency(filename->value().c_str());
+  }
 
   MalString data;
   data.assign(std::istreambuf_iterator<char>(file), {});
