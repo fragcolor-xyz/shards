@@ -445,7 +445,7 @@
 
 (Wire "test" (-> (Msg "Hello")))
 
-(defwire a-perfect-circle
+(defpure a-perfect-circle
   (Log)
   (When (Is false) (Stop))
   false (Spawn a-perfect-circle))
@@ -453,6 +453,9 @@
 (defwire a-perfect-starter
   true (Spawn a-perfect-circle))
 
-(schedule Root a-perfect-starter)
+(defwire more-perfect-starter
+  (Spawn a-perfect-starter))
+
+(schedule Root more-perfect-starter)
 (if (run Root 0.1 20) nil (throw "Root tick failed"))
 
