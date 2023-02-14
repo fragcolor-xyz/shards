@@ -543,7 +543,7 @@ We can employ a shard that is useful when you wish to debug your code - the [`Lo
     Debugging is the process of attempting to find the cause of an error or undesirable behavior in your program. When attempting to debug your code, functions or tools that allow you to check the value of variables at various points in your code can be useful in helping you narrow down where the errors could be originating from.
 
 `Log` is useful as it can be placed at any point of your code to check the value passing through it. In this example, we will use `Log` to verify the value of `.hunger` before the conditional check with `When` occurs. Upon running the code, you will see that when the value of `.hunger` becomes 1, the cat starts to make noises.
-s
+
 ### Readying the Mesh
 
 Before our program can run, do not forget to:
@@ -589,7 +589,7 @@ Before our program can run, do not forget to:
     
 === "Results"
     
-    ```{.clojure .annotate linenums="1"}
+    ```
     [hungry-cat] Hunger Level: 0
     [hungry-cat] Hunger Level: 1
     [make-cat-noises] Meow
