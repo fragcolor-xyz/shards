@@ -1,4 +1,7 @@
 #include "./context.hpp"
+#include "gfx/enums.hpp"
+#include "gfx/shader/log.hpp"
+#include "gfx/shader/types.hpp"
 #include <catch2/catch_all.hpp>
 #include <cctype>
 #include <gfx/context.hpp>
@@ -160,7 +163,7 @@ TEST_CASE("Shader basic", "[Shader]") {
   GeneratorOutput output = generator.build(entryPoints);
   SPDLOG_INFO(output.wgslSource);
 
-  GeneratorOutput::dumpErrors(output);
+  GeneratorOutput::dumpErrors(shader::getLogger(), output);
   CHECK(output.errors.empty());
 
   CHECK(validateShaderModule(*context.get(), output.wgslSource));
@@ -200,7 +203,7 @@ TEST_CASE("Shader globals & dependencies", "[Shader]") {
   GeneratorOutput output = generator.build(entryPoints);
   SPDLOG_INFO(output.wgslSource);
 
-  GeneratorOutput::dumpErrors(output);
+  GeneratorOutput::dumpErrors(shader::getLogger(), output);
   CHECK(output.errors.empty());
 
   CHECK(validateShaderModule(*context.get(), output.wgslSource));
@@ -221,7 +224,7 @@ TEST_CASE("Shader textures", "[Shader]") {
   auto positionFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
 
   TextureBindingLayoutBuilder textureLayoutBuilder;
-  textureLayoutBuilder.addOrUpdateSlot("baseColor", 0);
+  textureLayoutBuilder.addOrUpdateSlot("baseColor", TextureDimension::D2, 0);
 
   generator.textureBindingLayout = textureLayoutBuilder.finalize(0);
   generator.outputFields.emplace_back("color", colorFieldType);
@@ -234,7 +237,7 @@ TEST_CASE("Shader textures", "[Shader]") {
   GeneratorOutput output = generator.build(entryPoints);
   SPDLOG_INFO(output.wgslSource);
 
-  GeneratorOutput::dumpErrors(output);
+  GeneratorOutput::dumpErrors(shader::getLogger(), output);
   CHECK(output.errors.empty());
 
   CHECK(validateShaderModule(*context.get(), output.wgslSource));

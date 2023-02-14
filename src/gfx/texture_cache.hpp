@@ -8,10 +8,10 @@
 #include "gfx/wgpu_handle.hpp"
 #include "gfx/renderer_cache.hpp"
 #include "texture.hpp"
+#include "gfx_wgpu.hpp"
 #include <compare>
 #include <shared_mutex>
 #include <unordered_map>
-#include <webgpu-headers/webgpu.h>
 #include <boost/container_hash/hash.hpp>
 
 namespace gfx {
