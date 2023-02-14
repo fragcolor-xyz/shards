@@ -187,9 +187,6 @@ struct ContextMainOutput {
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
     WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuWindowSurface, adapter);
 
-    // Force the backbuffer to srgb format so we don't have to convert manually in shader
-    preferredFormat = getDefaultSrgbBackbufferFormat();
-
     if (preferredFormat != swapchainFormat) {
       SPDLOG_LOGGER_DEBUG(logger, "swapchain preferred format changed: {}", magic_enum::enum_name(preferredFormat));
       swapchainFormat = preferredFormat;
