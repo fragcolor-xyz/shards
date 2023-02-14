@@ -106,6 +106,7 @@ struct EguiContext {
 
 mod containers;
 mod context;
+mod editor;
 mod layouts;
 mod menus;
 mod misc;
@@ -224,6 +225,7 @@ impl egui::TextBuffer for &mut Var {
 pub fn registerShards() {
   containers::registerShards();
   registerShard::<EguiContext>();
+  editor::registerShards();
   layouts::registerShards();
   menus::registerShards();
   misc::registerShards();

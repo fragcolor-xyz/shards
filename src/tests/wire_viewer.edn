@@ -1,0 +1,75 @@
+(decompress-strings)
+
+(defwire my-wire
+  (color 255 128 0 128)
+  42 (Math.Multiply -1) >= .result
+  (Log :Level LogLevel.Debug)
+  ;
+  )
+
+(def timestep (/ 1.0 120.0))
+(defmesh root)
+(defloop main-wire
+  (Setup
+   (GFX.DrawQueue) >= .queue
+   (GFX.DrawQueue) >= .screen-ui-queue
+
+    ; Create render steps
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+   {:Features .features :Queue .queue :Sort SortMode.Queue} (GFX.DrawablePass) >> .render-steps
+   (GFX.UIPass .screen-ui-queue) >> .render-steps
+
+   ; Initial panel transforms
+   -15.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp
+   (Float3 1.0 0.0 0.0) (Math.Translation) (Math.MatMul .tmp) >= .panel-t-1
+
+   ; Initial view
+   {:Position (Float3 1 2 10) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+
+  (GFX.MainWindow
+   :Title "Shard Editor (alpha)"
+   :Width 1600 :Height 900
+   :Contents
+   (->
+    ; Update view transform
+    .view-transform (FreeCamera :FlySpeed 10.0) > .view-transform
+
+    .queue (GFX.ClearQueue)
+    (Spatial.UI
+     :Queue .queue :View .view :Scale 100.0
+     :Contents
+     (->
+      (Spatial.Panel
+       :Transform .panel-t-1 :Size (Float2 360 240)
+       :Contents
+       (->
+        (UI.CentralPanel
+         :Contents
+         (->
+          (UI.ScrollArea
+           :Contents
+           (->
+            (WireViewer my-wire)))
+          (UI.Separator)))))
+      ;
+      ))
+
+    .screen-ui-queue (GFX.ClearQueue)
+    (UI
+     .screen-ui-queue
+     (->
+      (UI.LeftPanel
+       :Contents
+       (->
+        (UI.ScrollArea
+         :Contents
+         (->
+          (WireViewer my-wire)
+          (UI.Separator)))))))
+
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(schedule root main-wire)
+(if (run root timestep) nil (throw "Root tick failed"))

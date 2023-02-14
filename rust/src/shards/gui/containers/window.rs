@@ -14,6 +14,7 @@ use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
+use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
@@ -33,7 +34,8 @@ use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_TYPES;
 
 lazy_static! {
-  static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> = vec![*WINDOW_FLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
+  static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> =
+    vec![common_type::none, *WINDOW_FLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
   static ref WINDOW_PARAMETERS: Parameters = vec![
     (
       cstr!("Title"),
