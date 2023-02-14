@@ -1,10 +1,10 @@
 #include "texture.hpp"
 #include "context.hpp"
 #include "error_utils.hpp"
+#include "gfx_wgpu.hpp"
 #include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <map>
-#include <webgpu-headers/webgpu.h>
 
 namespace gfx {
 TextureDesc TextureDesc::getDefault() {
