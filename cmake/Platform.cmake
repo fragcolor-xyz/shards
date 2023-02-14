@@ -44,6 +44,8 @@ if(CMAKE_HOST_WIN32)
 endif()
 
 if(EMSCRIPTEN)
+  add_compile_options(-fdeclspec)
+
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     add_compile_options(-g1 -Os)
   endif()

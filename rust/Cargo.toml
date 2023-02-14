@@ -61,7 +61,7 @@ tungstenite = { version = "0.18.0", features = ["native-tls"], optional = true }
 ctor = "0.1.16"
 
 [build-dependencies]
-bindgen = { version = "0.60.1" }
+bindgen = { version = "0.64.0" }
 gfx-build = { path = "../src/gfx/rust/build" }
 
 [features]
