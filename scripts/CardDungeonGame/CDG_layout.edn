@@ -1,0 +1,87 @@
+(defshards initialize-cards []
+  (LoadImage "Images/CardEmpty.png") = .card-empty)
+
+(defshards initialize-ui-elements []
+  15.0 >= .inventory-card-space
+  (float2 0.6) >= .inventory-hand-card-size
+  (LoadImage "Images/Map1.png") = .map1
+  (LoadImage "Images/Glod2.png") = .character
+  (LoadImage "Images/Slime.png") = .monster1)
+
+(defshards initialize-game-elements []
+  1 >= .level
+  30 >= .health
+  0 >= .experience
+  10 >= .experience-to-level
+  0 >= .gold
+  5 >= .attack
+  5 >= .defense
+  5 >= .magic
+  5 >= .mdefense)
+
+(defloop main-loop
+
+  (Setup
+   (initialize-cards)
+   (initialize-ui-elements)
+   (initialize-game-elements))
+
+  (GFX.MainWindow
+   :Title "MainWindow" :Width 1920 :Height 1080
+   :Contents
+   (-> (Setup
+        (GFX.DrawQueue) >= .ui-draw-queue
+        (GFX.UIPass .ui-draw-queue) >> .render-steps)
+       .ui-draw-queue (GFX.ClearQueue)
+
+       (UI
+        .ui-draw-queue
+        (->
+         (UI.TopPanel
+          :Contents
+          (->
+           (UI.MenuBar
+            (->
+             (UI.Menu
+              :Title "Menu"
+              :Contents
+              (UI.Button "Close" (UI.CloseMenu)))))))
+
+         (UI.BottomPanel
+          :Contents
+          (->
+           (UI.Columns
+            [(-> "Column 1" (UI.Label))
+
+             (-> "Column 2" (UI.Label))])))
+
+         (UI.CentralPanel
+          :Contents
+          (->
+           (UI.Columns
+            [(->
+              "Description" (UI.Label)
+              (UI.Frame
+               (-> "passive" (UI.Label)))
+              (UI.Separator)
+              "Log" (UI.Label)
+              (UI.Frame
+               (-> "turn 1" (UI.Label))))
+
+             (->
+              "Character" (UI.Label)
+              (UI.Frame))
+
+             (->
+              "Ennemi" (UI.Label)
+              (UI.Frame))
+
+             (->
+              "Map" (UI.Label)
+              (UI.Frame))])))))
+
+       (GFX.Render :Steps .render-steps))))
+
+(defmesh main-mesh)
+(schedule main-mesh main-loop)
+(run main-mesh (/ 1.0 60))
