@@ -79,9 +79,8 @@
    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
    :Contents
    (->
-
-    (GFX.RenderTarget) >= .rt-0
-    (GFX.RenderTarget) >= .rt-1
+    (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb) >= .rt-0
+    (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb) >= .rt-1
 
     .ui-draw-queue (GFX.ClearQueue)
     (UI .ui-draw-queue
@@ -92,9 +91,8 @@
            (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
            (compute-rt-region-16-9) > .rt-region
 
-           {:Target .rt-0 :WindowRegion .rt-region} (GFX.Region (Step inner-wire-0))
-
-           .rt-0 (GFX.RenderTargetTexture "color") (UI.RenderTarget)
+           (GFX.RenderInto :Textures {:color .rt-0} :WindowRegion .rt-region :Contents (Step inner-wire-0))
+           .rt-0 (UI.RenderTarget)
 
            (UI.Separator)
            (UI.TextField :Variable .text :Multiline true)))
@@ -108,10 +106,8 @@
            (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
            (compute-rt-region-16-9) > .rt-region
 
-           {:Target .rt-1 :WindowRegion .rt-region} (GFX.Region (->
-                                                                 (Step inner-wire-1)))
-
-           .rt-1 (GFX.RenderTargetTexture "color") (UI.RenderTarget)
+           (GFX.RenderInto :Textures {:color .rt-1} :WindowRegion .rt-region :Contents (Step inner-wire-1))
+           .rt-1 (UI.RenderTarget)
 
            (UI.Separator) "Footer" (UI.Label)))
          ))
