@@ -69,8 +69,8 @@ jobs:
           sudo apt-get -y install build-essential git cmake wget ninja-build
           ./bootstrap
           cd emsdk
-          ./emsdk install 3.1.10
-          ./emsdk activate 3.1.10
+          ./emsdk install 3.1.31
+          ./emsdk activate 3.1.31
           rustup toolchain install nightly
           rustup +nightly target add wasm32-unknown-emscripten
           rustup default nightly
