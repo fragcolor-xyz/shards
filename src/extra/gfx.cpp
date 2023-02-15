@@ -30,6 +30,9 @@ struct RenderShard {
       {"Views",
        SHCCSTR("The views to render into. (Optional)"),
        {CoreInfo::NoneType, Type::VariableOf(Types::ViewSeq), Types::ViewSeq}},
+      {"ClearedHint",
+       SHCCSTR("Hints about already cleared views. Unsupported, do not use!"),
+       {CoreInfo::NoneType, Type::SeqOf(CoreInfo::StringType)}},
   };
   static SHParametersInfo parameters() { return params; }
 
@@ -37,6 +40,7 @@ struct RenderShard {
   ParamVar _steps{};
   ParamVar _view{};
   ParamVar _views{};
+  OwnedVar _clearedHint;
   ViewPtr _defaultView;
   std::vector<ViewPtr> _collectedViews;
   std::vector<Var> _collectedPipelineStepVars;
@@ -53,6 +57,9 @@ struct RenderShard {
     case 2:
       _views = value;
       break;
+    case 3:
+      _clearedHint = value;
+      break;
     }
   }
 
@@ -64,6 +71,8 @@ struct RenderShard {
       return _view;
     case 2:
       return _views;
+    case 3:
+      return _clearedHint;
     default:
       return Var::Empty;
     }
@@ -168,7 +177,13 @@ struct RenderShard {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _graphicsContext->renderer->render(updateAndCollectViews(), collectPipelineSteps());
+    RendererHacks hacks;
+    if(_clearedHint.valueType != SHType::None) {
+      for(auto& val : _clearedHint) {
+        hacks.clearedHints.emplace_back(val.payload.stringValue);
+      }
+    }
+    _graphicsContext->renderer->render(updateAndCollectViews(), collectPipelineSteps(), hacks);
     return SHVar{};
   }
 };

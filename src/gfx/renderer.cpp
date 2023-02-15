@@ -183,15 +183,15 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  void renderViews(const std::vector<ViewPtr> &views, const PipelineSteps &pipelineSteps) {
+  void renderViews(const std::vector<ViewPtr> &views, const PipelineSteps &pipelineSteps, const RendererHacks &hacks) {
     for (auto &view : views) {
-      renderView(view, pipelineSteps);
+      renderView(view, pipelineSteps, hacks);
     }
   }
 
   CachedView &getCachedView(const ViewPtr &view) { return *getSharedCacheEntry<CachedView>(viewCache, view.get()).get(); }
 
-  void renderView(ViewPtr view, const PipelineSteps &pipelineSteps) {
+  void renderView(ViewPtr view, const PipelineSteps &pipelineSteps, const RendererHacks &hacks = {}) {
     ZoneScoped;
 
     ViewData viewData{
@@ -223,12 +223,12 @@ struct RendererImpl final : public ContextData {
       renderGraphOutputs.push_back(mainOutput.texture);
     }
 
-    const RenderGraph &renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize);
+    const RenderGraph &renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize, hacks);
     renderGraphEvaluator.evaluate(renderGraph, renderGraphOutputs, context, frameCounter);
   }
 
   void buildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps, int2 referenceOutputSize,
-                        CachedRenderGraph &out) {
+                        const RendererHacks &hacks, CachedRenderGraph &out) {
     ZoneScoped;
 
     RenderGraphBuilder builder;
@@ -240,6 +240,15 @@ struct RendererImpl final : public ContextData {
       std::visit([&](auto &&arg) { allocateNodeEdges(builder, index++, arg); }, *step.get());
     }
 
+    for (auto &rt : hacks.clearedHints) {
+      FrameIndex frameIndex;
+      if (builder.findFrameIndex(rt, frameIndex)) {
+        builder.externallyWrittenTo.insert(frameIndex);
+      }
+    }
+
+    builder.finalizeNodeConnections();
+
     // Attach outputs
     if (viewData.renderTarget) {
       for (auto &attachment : viewData.renderTarget->attachments)
@@ -247,8 +256,6 @@ struct RendererImpl final : public ContextData {
     } else {
       builder.attachOutput("color", mainOutput.texture);
     }
-
-    builder.updateNodeLayouts();
 
     out.renderGraph = builder.finalize();
 
@@ -259,14 +266,17 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  const RenderGraph &getOrBuildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps,
-                                           int2 referenceOutputSize) {
+  const RenderGraph &getOrBuildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps, int2 referenceOutputSize,
+                                           const RendererHacks &hacks) {
     ZoneScoped;
 
     HasherXXH128<PipelineHashVisitor> hasher;
     for (auto &step : pipelineSteps) {
       std::visit([&](auto &step) { hasher(step.id); }, *step.get());
     }
+
+    for (auto &rt : hacks.clearedHints)
+      hasher(rt);
 
     hasher(referenceOutputSize);
     if (viewData.renderTarget) {
@@ -282,7 +292,7 @@ struct RendererImpl final : public ContextData {
 
     auto &cachedRenderGraph = getCacheEntry(renderGraphCache.map, renderGraphHash, [&](const Hash128 &key) {
       auto result = std::make_shared<CachedRenderGraph>();
-      buildRenderGraph(viewData, pipelineSteps, referenceOutputSize, *result.get());
+      buildRenderGraph(viewData, pipelineSteps, referenceOutputSize, hacks, *result.get());
       return result;
     });
 
@@ -623,6 +633,7 @@ struct RendererImpl final : public ContextData {
       builder.allocateOutputs(0, steps::makeRenderStepOutput(RenderStepOutput::Texture{
                                      .handle = mainOutput.texture,
                                  }));
+      builder.finalizeNodeConnections();
       auto graph = builder.finalize();
 
       renderGraphEvaluator.evaluate(graph, std::vector<TexturePtr>{}, context, frameCounter);
@@ -645,7 +656,9 @@ Renderer::Renderer(Context &context) {
 
 Context &Renderer::getContext() { return impl->context; }
 
-void Renderer::render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) { impl->renderViews(views, pipelineSteps); }
+void Renderer::render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps, const RendererHacks &hacks) {
+  impl->renderViews(views, pipelineSteps, hacks);
+}
 void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps) { impl->renderView(view, pipelineSteps); }
 void Renderer::setMainOutput(const MainOutput &output) {
   impl->mainOutput = output;
