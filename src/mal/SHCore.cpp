@@ -1166,7 +1166,7 @@ malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
   } else if (malAtom *v = DYNAMIC_CAST(malAtom, arg)) {
     return varify(v->deref());
   } else {
-    throw shards::SHException("Invalid variable");
+    throw shards::SHException(fmt::format("Invalid variable: {}", arg->print(true)));
   }
 }
 
