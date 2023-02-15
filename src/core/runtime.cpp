@@ -1438,7 +1438,8 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
           return cloneTypeInfo(info.exposedType);
         }
       }
-      SHLOG_WARNING("Could not find variable {} when deriving type info", varName);
+      SHLOG_ERROR("Could not find variable {} when deriving type info", varName);
+      throw std::runtime_error("Could not find variable when deriving type info");
     }
     // if we reach this point, no variable was found...
     // not our job to trigger errors, just continue
@@ -3103,14 +3104,15 @@ void decRef(ShardPtr shard) {
   auto atomicRefCount = boost::atomics::make_atomic_ref(shard->refCount);
   assert(atomicRefCount > 0);
   if (atomicRefCount.fetch_sub(1) == 1) {
-    SHLOG_TRACE("DecRef 0 shard {:x} {}", (size_t)shard, shard->name(shard));
+    // SHLOG_TRACE("DecRef 0 shard {:x} {}", (size_t)shard, shard->name(shard));
     shard->destroy(shard);
   }
 }
 
 void incRef(ShardPtr shard) {
   auto atomicRefCount = boost::atomics::make_atomic_ref(shard->refCount);
-  if (atomicRefCount.fetch_add(1) == 0)
-    SHLOG_TRACE("IncRef 0 shard {:x} {}", (size_t)shard, shard->name(shard));
+  if (atomicRefCount.fetch_add(1) == 0) {
+    // SHLOG_TRACE("IncRef 0 shard {:x} {}", (size_t)shard, shard->name(shard));
+  }
 }
 } // namespace shards
