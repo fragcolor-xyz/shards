@@ -671,4 +671,16 @@ impl ShardInstance {
     assert_ne!(self.ptr, std::ptr::null_mut());
     unsafe { (*self.ptr).getParam.unwrap()(self.ptr, index) }
   }
+
+  pub fn setParam(&mut self, index: i32, value: &SHVar) -> Result<(), &str> {
+    assert_ne!(self.ptr, std::ptr::null_mut());
+    unsafe {
+      let error = (*self.ptr).setParam.unwrap()(self.ptr, index, value);
+      if error.code == 0 {
+        Ok(())
+      } else {
+        Err(CStr::from_ptr(error.message).to_str().unwrap())
+      }
+    }
+  }
 }

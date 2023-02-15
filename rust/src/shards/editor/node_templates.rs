@@ -55,6 +55,20 @@ impl<'a> ShardData<'a> {
     let instance = createShard(name);
     instance.into()
   }
+
+  pub fn apply_changes(&mut self) -> Result<(), &str> {
+    for (index, (_, value)) in self.params.iter().enumerate() {
+      self
+        .instance
+        .setParam(index as i32, &value.value)
+        .map_err(|e| {
+          shlog!("{}", e);
+          "Failed to set the parameter"
+        })?;
+    }
+
+    Ok(())
+  }
 }
 
 impl<'a> From<ShardInstance> for ShardData<'a> {

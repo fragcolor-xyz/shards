@@ -249,5 +249,59 @@ impl<'a> WireViewer<'a> {
     };
 
     ui.painter().set(background_shape, shape);
+
+    // --- Interaction ---
+    if Self::apply_button(ui, outer_rect).clicked() {
+      data.apply_changes();
+    }
+  }
+
+  fn apply_button(ui: &mut egui::Ui, node_rect: egui::Rect) -> egui::Response {
+    use egui::*;
+
+    let font_id = FontId::default();
+
+    // Measurements
+    let margin = 8.0;
+    let size = font_id.size;
+    let offs = margin + size / 2.0;
+
+    let position = Pos2 {
+      x: node_rect.right() - offs,
+      y: node_rect.top() + offs,
+    };
+    let rect = Rect::from_center_size(position, Vec2 { x: size, y: size });
+    let resp = ui.allocate_rect(rect, Sense::click());
+
+    let dark_mode = ui.visuals().dark_mode;
+    let color = if resp.clicked() {
+      if dark_mode {
+        Color32::from_hex("#ffffff").unwrap()
+      } else {
+        Color32::from_hex("#000000").unwrap()
+      }
+    } else if resp.hovered() {
+      if dark_mode {
+        Color32::from_hex("#dddddd").unwrap()
+      } else {
+        Color32::from_hex("#222222").unwrap()
+      }
+    } else {
+      if dark_mode {
+        Color32::from_hex("#aaaaaa").unwrap()
+      } else {
+        Color32::from_hex("#555555").unwrap()
+      }
+    };
+
+    ui.painter().text(
+      position,
+      Align2::CENTER_CENTER,
+      "💾",
+      font_id,
+      color,
+    );
+
+    resp
   }
 }
