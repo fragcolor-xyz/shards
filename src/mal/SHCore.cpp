@@ -2549,11 +2549,16 @@ SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output) 
   }
 }
 
-SHARDS_API __cdecl SHBool shLispAddToEnv(void *env, const char *str, SHVar input) {
+SHARDS_API __cdecl SHBool shLispAddToEnv(void *env, const char *str, SHVar input, bool reference) {
   auto penv = (malEnvPtr *)env;
   try {
-    auto var = malValuePtr(malSHVar::newCloned(input));
-    (*penv)->set(str, var);
+    if (!reference) {
+      auto var = malValuePtr(malSHVar::newCloned(input));
+      (*penv)->set(str, var);
+    } else {
+      auto var = malValuePtr(new malSHVar(input, false));
+      (*penv)->set(str, var);
+    }
     return true;
   } catch (malEmptyInputException &) {
     return false;
