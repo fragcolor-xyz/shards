@@ -14,6 +14,7 @@
 namespace shards::logging {
 void init(Logger logger) {
   initLogLevel(logger);
+  initLogFormat(logger);
   initSinks(logger);
 }
 
@@ -24,6 +25,13 @@ void initLogLevel(Logger logger) {
     if (enumVal.has_value()) {
       logger->set_level(enumVal.value());
     }
+  }
+}
+
+void initLogFormat(Logger logger) {
+  std::string varName = fmt::format("LOG_{}_FORMAT", logger->name());
+  if (const char *val = SDL_getenv(varName.c_str())) {
+    logger->set_pattern(val);
   }
 }
 
@@ -78,6 +86,8 @@ static void setupDefaultLogger() {
 
   // Init log level from environment variable
   initLogLevel(logger);
+  // Init log format from environment variable
+  initLogFormat(logger);
 
   // Redirect all existing loggers to the default sink
   redirectAll(logger->sinks());
