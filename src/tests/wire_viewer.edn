@@ -1,6 +1,10 @@
 (decompress-strings)
 
 (defwire my-wire
+  (Setup
+   0 >= .x
+   1 >= .y
+   2 >= .z)
   (color 255 128 0 128)
   42 (Math.Multiply -1) >= .result
   (Log :Level LogLevel.Debug)

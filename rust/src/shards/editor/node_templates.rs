@@ -7,6 +7,7 @@ use crate::core::createShard;
 use crate::core::ShardInstance;
 use crate::shardsc::*;
 use crate::types::common_type::type2name;
+use crate::types::Seq;
 use crate::types::Var;
 use egui::Response;
 use egui::Ui;
@@ -82,7 +83,7 @@ impl<'a> From<ShardInstance> for ShardData<'a> {
           .iter()
           .enumerate()
           .map(|(i, p)| {
-            let mut data = VarValueData::Basic;
+            let mut value_info = BTreeMap::new();
             let types = p.valueTypes;
             let mut types = if types.len > 0 {
               let types = core::slice::from_raw_parts(types.elements, types.len as usize);
@@ -123,13 +124,19 @@ impl<'a> From<ShardInstance> for ShardData<'a> {
 
                     // FIXME have a cache for enums
                     // FIXME support multiple enum types
-                    data = VarValueData::Enum {
-                      enum_name: name,
-                      enum_values: (0..labels.len())
-                        .map(|i| (values[i], (labels[i], descriptions[i])))
-                        .collect(),
-                    };
+                    value_info.insert(
+                      t.basicType,
+                      VarValueInfo::Enum {
+                        enum_name: name,
+                        enum_values: (0..labels.len())
+                          .map(|i| (values[i], (labels[i], descriptions[i])))
+                          .collect(),
+                      },
+                    );
+                  } else {
+                    value_info.insert(t.basicType, VarValueInfo::Basic);
                   }
+
                   t.basicType
                 })
                 .collect()
@@ -146,9 +153,29 @@ impl<'a> From<ShardInstance> for ShardData<'a> {
               types = any_type();
             }
 
-            let type_name = CStr::from_ptr(p.name).to_str().unwrap();
+            let param_name = CStr::from_ptr(p.name).to_str().unwrap();
             let initial_value = instance.getParam(i as i32);
-            (type_name, VarValue::new(&initial_value, types, data))
+
+            let mut children = Vec::new();
+            if initial_value.is_seq() {
+              let seq: Seq = initial_value.as_ref().try_into().unwrap();
+              if seq.len() > 0 {
+                for v in seq.iter() {
+                  // FIXME retrieve info about item type from cache and add it
+                  children.push(VarValue::new(
+                    v,
+                    vec![v.valueType],
+                    Default::default(),
+                    Default::default(), // FIXME recurse
+                  ));
+                }
+              }
+            }
+
+            (
+              param_name,
+              VarValue::new(&initial_value, types, value_info, children),
+            )
           })
           .collect()
       } else {
@@ -185,11 +212,12 @@ pub(crate) struct VarValue<'a> {
   prev_type: SHType,
   // FIXME use this to "restore" previous value
   // prev_value: Option<SHVarPayload>,
-  data: VarValueData<'a>,
+  info: BTreeMap<SHType, VarValueInfo<'a>>,
+  children: Vec<VarValue<'a>>,
 }
 
 #[derive(Debug)]
-pub(crate) enum VarValueData<'a> {
+pub(crate) enum VarValueInfo<'a> {
   Basic,
   Enum {
     enum_name: &'a str,
@@ -199,11 +227,16 @@ pub(crate) enum VarValueData<'a> {
 
 impl<'a> Clone for VarValue<'a> {
   fn clone(&self) -> Self {
-    VarValue::new(&self.value, self.allowed_types.clone(), self.data.clone())
+    VarValue::new(
+      &self.value,
+      self.allowed_types.clone(),
+      self.info.clone(),
+      self.children.clone(),
+    )
   }
 }
 
-impl<'a> Clone for VarValueData<'a> {
+impl<'a> Clone for VarValueInfo<'a> {
   fn clone(&self) -> Self {
     match self {
       Self::Basic => Self::Basic,
@@ -219,7 +252,12 @@ impl<'a> Clone for VarValueData<'a> {
 }
 
 impl<'a> VarValue<'a> {
-  pub fn new(initial_value: &Var, allowed_types: Vec<SHType>, data: VarValueData<'a>) -> Self {
+  pub fn new(
+    initial_value: &Var,
+    allowed_types: Vec<SHType>,
+    info: BTreeMap<SHType, VarValueInfo<'a>>,
+    children: Vec<VarValue<'a>>,
+  ) -> Self {
     debug_assert!(allowed_types.len() > 0usize);
     if cfg!(debug_assertions) {
       if !allowed_types.contains(&initial_value.valueType) {
@@ -236,7 +274,8 @@ impl<'a> VarValue<'a> {
       value: Var::default(),
       allowed_types,
       prev_type: initial_value.valueType,
-      data,
+      info,
+      children,
     };
     cloneVar(&mut ret.value, initial_value);
     ret
@@ -305,16 +344,18 @@ impl<'a> UIRenderer for VarValue<'a> {
         // FIXME conversion or reset the value
         // for now just clear the value
         self.value.payload = Default::default();
+        self.children.clear();
       }
 
       unsafe {
         match self.value.valueType {
           SHType_None => ui.label(""),
           SHType_Enum => {
-            if let VarValueData::Enum {
+            // FIXME: support multiple enum types
+            if let Some(VarValueInfo::Enum {
               enum_name,
               enum_values,
-            } = &mut self.data
+            }) = &mut self.info.get_mut(&SHType_Enum)
             {
               let value = &mut self
                 .value
@@ -438,6 +479,16 @@ impl<'a> UIRenderer for VarValue<'a> {
           SHType_String => {
             let mut mutable = &mut self.value;
             ui.text_edit_singleline(&mut mutable)
+          }
+          SHType_Seq => {
+            egui::CollapsingHeader::new("Items")
+              .default_open(true)
+              .show(ui, |ui| {
+                for (i, c) in self.children.iter_mut().enumerate() {
+                  ui.push_id(i, |ui| c.ui(ui));
+                }
+              })
+              .header_response
           }
           _ => ui.colored_label(egui::Color32::RED, "Type of value not supported."),
         }
