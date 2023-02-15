@@ -779,7 +779,7 @@ struct SetBase : public VariableBase {
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
     if (likely(_cell != nullptr)) {
       cloneVar(*_cell, input);
-      return input;
+      return *_cell;
     }
 
     if (_isTable) {
@@ -803,15 +803,17 @@ struct SetBase : public VariableBase {
       // if variable we cannot do this tho!
       if (!_key.isVariable())
         _cell = vptr;
+
+      return *vptr;
     } else {
       // Clone will try to recycle memory and such
       cloneVar(*_target, input);
 
       // use fast cell from now
       _cell = _target;
-    }
 
-    return input;
+      return *_cell;
+    }
   }
 };
 
