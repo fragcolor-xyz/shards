@@ -116,7 +116,7 @@ struct RenderTargetLayout {
 };
 
 /// <div rustbindgen hide></div>
-struct ParameterStorage : public IParameterCollector {
+struct ParameterStorage final : public IParameterCollector {
   using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
   struct KeyLess {
