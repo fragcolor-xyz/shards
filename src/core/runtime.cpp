@@ -625,27 +625,32 @@ SHWireState suspend(SHContext *context, double seconds) {
 
 void hash_update(const SHVar &var, void *state);
 
-#define SH_HASHER(prefix)                                                               \
-  std::deque<std::unordered_set<const SHWire *>> &prefix##WiresStack() {                \
-    thread_local std::deque<std::unordered_set<const SHWire *>> s;                      \
-    return s;                                                                           \
-  }                                                                                     \
-  std::optional<std::unordered_set<const SHWire *> *> &prefix##Wires() {                \
-    thread_local std::optional<std::unordered_set<const SHWire *> *> wires;             \
-    return wires;                                                                       \
-  }                                                                                     \
-  void prefix##WiresPush() { prefix##Wires() = &prefix##WiresStack().emplace_front(); } \
-  void prefix##WiresPop() {                                                             \
-    prefix##WiresStack().pop_front();                                                   \
-    if (prefix##WiresStack().empty()) {                                                 \
-      prefix##Wires() = std::nullopt;                                                   \
-    } else {                                                                            \
-      prefix##Wires() = &prefix##WiresStack().front();                                  \
-    }                                                                                   \
+#define SH_WIRE_SET_STACK(prefix)                                                              \
+  std::deque<std::unordered_set<const SHWire *>> &prefix##WiresStack() {                       \
+    thread_local std::deque<std::unordered_set<const SHWire *>> s;                             \
+    return s;                                                                                  \
+  }                                                                                            \
+  std::optional<std::unordered_set<const SHWire *> *> &prefix##WiresStorage() {                \
+    thread_local std::optional<std::unordered_set<const SHWire *> *> wiresOpt;                 \
+    return wiresOpt;                                                                           \
+  }                                                                                            \
+  std::unordered_set<const SHWire *> &prefix##Wires() {                                        \
+    auto wiresPtr = *prefix##WiresStorage();                                                   \
+    assert(wiresPtr);                                                                          \
+    return *wiresPtr;                                                                          \
+  }                                                                                            \
+  void prefix##WiresPush() { prefix##WiresStorage() = &prefix##WiresStack().emplace_front(); } \
+  void prefix##WiresPop() {                                                                    \
+    prefix##WiresStack().pop_front();                                                          \
+    if (prefix##WiresStack().empty()) {                                                        \
+      prefix##WiresStorage() = std::nullopt;                                                   \
+    } else {                                                                                   \
+      prefix##WiresStorage() = &prefix##WiresStack().front();                                  \
+    }                                                                                          \
   }
 
-SH_HASHER(gathering);
-SH_HASHER(hashing);
+SH_WIRE_SET_STACK(gathering);
+SH_WIRE_SET_STACK(hashing);
 
 template <typename T, bool HANDLES_RETURN, bool HASHED>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
@@ -2286,8 +2291,8 @@ void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
   case 0: {
     // wire
     auto wire = std::get<const SHWire *>(coll);
-    if (!(*gatheringWires())->count(wire)) {
-      (*gatheringWires())->insert(wire);
+    if (!gatheringWires().count(wire)) {
+      gatheringWires().insert(wire);
       for (auto blk : wire->shards) {
         _gatherShards(blk, out);
       }
@@ -2485,8 +2490,8 @@ void hash_update(const SHVar &var, void *state) {
   } break;
   case SHType::Wire: {
     auto wire = SHWire::sharedFromRef(var.payload.wireValue);
-    if ((*hashingWires())->count(wire.get()) == 0) {
-      (*hashingWires())->insert(wire.get());
+    if (hashingWires().count(wire.get()) == 0) {
+      hashingWires().insert(wire.get());
 
       error = XXH3_128bits_update(hashState, wire->name.c_str(), wire->name.length());
       assert(error == XXH_OK);
