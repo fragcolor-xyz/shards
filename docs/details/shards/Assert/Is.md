@@ -1,10 +1,12 @@
-If the assertion is satisfied (i.e., the input is equal to or same as the `:Value` parameter) the program will is allowed to continue (control passes to the next shard), irrespective of the `:Abort` parameter .
+If the input is equal to or the same as the `Value` parameter, the assertion is satisfied and the program will be allowed to continue. Control is then passed on to the next shard, irrespective of the `Abort` parameter.
 
-However, if the assertion fails, the program 
-- aborts with an error dump if the `:Abort` parameter is set to `true`
-- logs an assertion validation error but continues running (control passes to the next wire scheduled on the mesh).
+When the assertion fails:
 
-Since this shard can precisely control the conditions under which a program is allowed to run or is to be aborted, it's effective for writing (inline) unit test cases with it.
+- If `Abort` is `true`, the program aborts with an error dump.
+
+- If `Abort` is `false`, the program logs an assertion validation error but continues running. Control is passed to the next Wire scheduled on the Mesh.
+
+Since this shard can control the conditions under which a program is allowed to run or be aborted, it is useful for writing unit test cases.
 
 !!! note "See also"
     - [`Assert.IsAlmost`](../IsAlmost)

@@ -191,7 +191,7 @@ struct DrawQueueShard {
 struct ClearQueueShard {
   static SHTypesInfo inputTypes() { return Types::DrawQueue; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
-  static SHOptionalString help() { return SHCCSTR("Clears a draw queue"); }
+  static SHOptionalString help() { return SHCCSTR("Clears a draw queue."); }
 
   static SHParametersInfo parameters() {
     static Parameters parameters = {};
