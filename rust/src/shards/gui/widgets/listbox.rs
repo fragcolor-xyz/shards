@@ -2,7 +2,6 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::ListBox;
-use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::INT_VAR_OR_NONE_SLICE;
@@ -213,9 +212,8 @@ impl Shard for ListBox {
         }
       }
 
-      let mut ret = Var::default();
-      cloneVar(&mut ret, &seq[*index]);
-      Ok(ret)
+      // this is fine because we don't own input and seq is just a view of it in this case
+      Ok(seq[*index])
     } else {
       Err("No UI parent")
     }

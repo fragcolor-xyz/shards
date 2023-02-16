@@ -9,7 +9,6 @@ use super::Int2Slider;
 use super::Int3Slider;
 use super::Int4Slider;
 use super::IntSlider;
-use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::widgets::text_util;
@@ -521,9 +520,7 @@ macro_rules! impl_ui_n_slider {
           .inner?;
 
           if self.variable.is_variable() {
-            let mut var = Var::default();
-            cloneVar(&mut var, self.variable.get());
-            Ok(var)
+            Ok(*self.variable.get())
           } else {
             Ok((&self.tmp).into())
           }
