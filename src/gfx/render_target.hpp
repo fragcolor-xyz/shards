@@ -8,6 +8,7 @@
 #include "texture.hpp"
 #include "wgpu_handle.hpp"
 #include "fwd.hpp"
+#include <compare>
 #include <map>
 
 namespace gfx {
@@ -29,10 +30,24 @@ struct Fixed {
 /// <div rustbindgen hide></div>
 typedef std::variant<RenderTargetSize::MainOutput, RenderTargetSize::Fixed> RenderTargetSizeVariant;
 
+struct TextureSubResource {
+  std::shared_ptr<Texture> texture;
+  uint8_t faceIndex{};
+
+  TextureSubResource() = default;
+  TextureSubResource(std::shared_ptr<Texture> texture, uint8_t face = 0) : texture(texture), faceIndex(face) {}
+  TextureSubResource(const TextureSubResource &) = default;
+
+  operator bool() const { return (bool)texture; }
+  operator const std::shared_ptr<Texture> &() const { return texture; }
+
+  std::strong_ordering operator<=>(const TextureSubResource &) const = default;
+};
+
 // Group of named view textures
 /// <div rustbindgen opaque></div>
 struct RenderTarget {
-  std::map<std::string, std::shared_ptr<Texture>> attachments;
+  std::map<std::string, TextureSubResource> attachments;
   std::string label;
   RenderTargetSizeVariant size = RenderTargetSize::MainOutput{};
 
@@ -57,9 +72,9 @@ public:
   int2 computeSize(int2 mainOutputSize) const;
 
   /// <div rustbindgen hide></div>
-  const TexturePtr &getAttachment(const std::string &name) const;
+  const TextureSubResource &getAttachment(const std::string &name) const;
 
-  const TexturePtr &operator[](const std::string &name) const { return getAttachment(name); }
+  const TextureSubResource &operator[](const std::string &name) const { return getAttachment(name); }
 };
 
 } // namespace gfx

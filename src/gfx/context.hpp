@@ -50,8 +50,6 @@ public:
   WGPUDevice wgpuDevice = nullptr;
   WGPUQueue wgpuQueue = nullptr;
 
-  TypedUserData userData;
-
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;
   std::shared_ptr<AdapterRequest> adapterRequest;

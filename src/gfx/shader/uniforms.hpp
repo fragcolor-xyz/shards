@@ -3,6 +3,7 @@
 
 #include "../error_utils.hpp"
 #include "../math.hpp"
+#include "../enums.hpp"
 #include "fwd.hpp"
 #include "types.hpp"
 #include <cassert>
@@ -153,6 +154,12 @@ struct TextureDefinition {
   String variableName;
   String defaultTexcoordVariableName;
   String defaultSamplerVariableName;
+  TextureType type;
+
+  TextureDefinition(String variableName) : variableName(variableName) {}
+  TextureDefinition(String variableName, String defaultTexcoordVariableName, String defaultSamplerVariableName, TextureType type)
+      : variableName(variableName), defaultTexcoordVariableName(defaultTexcoordVariableName),
+        defaultSamplerVariableName(defaultSamplerVariableName), type(type) {}
 };
 
 } // namespace shader

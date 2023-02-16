@@ -1,4 +1,5 @@
 #include "render_target.hpp"
+#include "fwd.hpp"
 #include <spdlog/fmt/fmt.h>
 
 namespace gfx {
@@ -12,7 +13,7 @@ int2 RenderTarget::resizeConditional(int2 mainOutputSize) {
       [&](auto &&arg) {
         computedSize = arg.apply(mainOutputSize);
         for (auto &it : attachments)
-          it.second->initWithResolution(computedSize);
+          it.second.texture->initWithResolution(computedSize);
       },
       size);
   return computedSize;
@@ -25,12 +26,12 @@ int2 RenderTarget::computeSize(int2 mainOutputSize) const {
   return result;
 }
 
-const TexturePtr &RenderTarget::getAttachment(const std::string &name) const {
+const TextureSubResource &RenderTarget::getAttachment(const std::string &name) const {
   auto it = attachments.find(name);
   if (it != attachments.end())
     return it->second;
 
-  static TexturePtr None;
+  static TextureSubResource None{TexturePtr()};
   return None;
 }
 } // namespace gfx

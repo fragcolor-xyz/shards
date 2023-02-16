@@ -1,6 +1,7 @@
 #ifndef CA95E36A_DF18_4EE1_B394_4094F976B20E
 #define CA95E36A_DF18_4EE1_B394_4094F976B20E
 
+#include "gfx/fwd.hpp"
 #include "gfx_wgpu.hpp"
 #include "texture.hpp"
 #include "drawable.hpp"
@@ -21,6 +22,7 @@
 #include "pmr/map.hpp"
 #include "pmr/string.hpp"
 #include <cassert>
+#include <memory>
 #include <vector>
 #include <map>
 #include <compare>
@@ -159,6 +161,12 @@ struct CompilationError {
   CompilationError(std::string &&message) : message(std::move(message)) {}
 };
 
+template <typename CB> struct CachedFeatureGenerator {
+  CB callback;
+  std::weak_ptr<Feature> owningFeature;
+  std::vector<std::weak_ptr<Feature>> otherFeatures;
+};
+
 struct CachedPipeline {
   // The compiled shader module including both vertex/fragment entry points
   WgpuHandle<WGPUShaderModule> shaderModule;
@@ -185,8 +193,8 @@ struct CachedPipeline {
   std::vector<BufferBinding> drawBufferBindings;
 
   // Collected parameter generator
-  std::vector<FeatureParameterGenerator> drawableParameterGenerators;
-  std::vector<FeatureParameterGenerator> viewParameterGenerators;
+  std::vector<CachedFeatureGenerator<FeatureGenerator::PerView>> perViewGenerators;
+  std::vector<CachedFeatureGenerator<FeatureGenerator::PerObject>> perObjectGenerators;
 
   size_t lastTouched{};
 
@@ -224,7 +232,7 @@ struct CachedView {
 typedef std::shared_ptr<CachedView> CachedViewDataPtr;
 
 struct ViewData {
-  View &view;
+  ViewPtr view;
   CachedView &cachedView;
   Rect viewport;
   RenderTargetPtr renderTarget;
@@ -304,6 +312,12 @@ struct CachedDrawable {
   }
 };
 typedef std::shared_ptr<CachedDrawable> CachedDrawablePtr;
+
+// Data from generators
+struct GeneratorData {
+  ParameterStorage *viewParameters;
+  shards::pmr::vector<ParameterStorage> *drawParameters;
+};
 
 } // namespace gfx::detail
 

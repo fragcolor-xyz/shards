@@ -37,11 +37,11 @@
                  (MakeFloat2 .u .v) (Math.Multiply 2.0) (Math.FMod (Float2 1.0 1.0)) > .uv
 
                  ; Sample the previous pass color output
-                 .uv (Shader.SampleTextureUV "color") (ToFloat4) >= .color
+                 .uv (Shader.SampleTextureCoord "color") (ToFloat4) >= .color
 
                  ; Sample the previous pass depth output
                  ; Linearize and scale the result to display it, since depth is stored as normalized 1/z 
-                 .uv (Shader.SampleTextureUV "depth") (Take [0])
+                 .uv (Shader.SampleTextureCoord "depth") (Take [0])
                  (Shader.LinearizeDepth) (Math.Subtract 6.0) (Math.Divide 4.0) >= .depth
 
                  ; Write output to "color"

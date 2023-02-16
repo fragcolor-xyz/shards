@@ -9,6 +9,7 @@
 #include "../texture_placeholder.hpp"
 #include "drawable_processor_helpers.hpp"
 #include "pmr/list.hpp"
+#include "texture_cache.hpp"
 #include <tracy/Tracy.hpp>
 
 namespace gfx::detail {
@@ -98,6 +99,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   std::shared_mutex drawableCacheLock;
   std::unordered_map<UniqueId, CachedDrawablePtr> drawableCache;
+  TextureViewCache textureViewCache;
   size_t frameCounter{};
 
   std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
@@ -140,6 +142,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     drawableCacheLock.lock();
     clearOldCacheItemsIn(drawableCache, frameCounter, 16);
     drawableCacheLock.unlock();
+
+    textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
   }
 
   void buildPipeline(PipelineBuilder &builder) override {
@@ -170,7 +174,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   }
 
   void generateDrawableData(DrawableData &data, Context &context, const CachedPipeline &cachedPipeline, const IDrawable *drawable,
-                            const ViewData &viewData, size_t frameCounter, bool needProjectedDepth = false) {
+                            const ViewData &viewData, const ParameterStorage *baseDrawData, const ParameterStorage *baseViewData,
+                            size_t frameCounter, bool needProjectedDepth = false) {
     ZoneScoped;
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
@@ -223,7 +228,18 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     auto setTextureParameter = [&](const char *name, const TexturePtr &texture) {
       int32_t targetSlot = mapTextureBinding(name);
       if (targetSlot >= 0) {
-        data.textures[targetSlot] = texture->contextData.get();
+        data.textures[targetSlot] = &texture->createContextDataConditional(context);
+      }
+    };
+
+    auto mergeParameters = [&](const ParameterStorage &params) {
+      for (auto &param : params.data)
+        parameters.setParamIfUnset(param.first, param.second);
+      for (auto &param : params.textures) {
+        int32_t targetSlot = mapTextureBinding(param.first.c_str());
+        if (targetSlot >= 0 && !data.textures[targetSlot]) {
+          data.textures[targetSlot] = &param.second.texture->createContextDataConditional(context);;
+        }
       }
     };
 
@@ -245,26 +261,18 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       setTextureParameter(pair.first.c_str(), pair.second.texture);
     }
 
-    // Generate dynamic parameters
-    collectGeneratedDrawParameters(
-        FeatureCallbackContext{
-            .context = context,
-            .drawable = drawable,
-            .cachedDrawable = data.cachedData,
-        },
-        cachedPipeline, parameters);
-
-    // Set base parameters where unset
-    for (auto &baseParam : cachedPipeline.baseDrawParameters.data) {
-      parameters.setParamIfUnset(baseParam.first, baseParam.second);
+    // Merge dynamic parameters
+    if (baseDrawData) {
+      mergeParameters(*baseDrawData);
     }
 
-    for (auto &baseParam : cachedPipeline.baseDrawParameters.textures) {
-      int32_t targetSlot = mapTextureBinding(baseParam.first.c_str());
-      if (targetSlot >= 0 && !data.textures[targetSlot]) {
-        data.textures[targetSlot] = baseParam.second.texture->contextData.get();
-      }
+    // TODO: Temporary until moved into view buffer
+    if (baseViewData) {
+      mergeParameters(*baseViewData);
     }
+
+    // Merge default parameters
+    mergeParameters(cachedPipeline.baseDrawParameters);
 
     std::shared_ptr<MeshContextData> meshContextData = meshDrawable.mesh->contextData;
 
@@ -380,8 +388,18 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       for (size_t index = 0; index < context.drawables.size(); ++index) {
         const IDrawable *drawable = context.drawables[index];
         auto &drawableData = drawableDatas->emplace_back();
-        generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, context.frameCounter,
-                             needProjectedDepth);
+
+        ParameterStorage *baseDrawData{};
+        if (context.generatorData.drawParameters) {
+          baseDrawData = &(*context.generatorData.drawParameters)[index];
+        }
+
+        // TODO: Move to view buffer
+        // for now merge into draw data
+        ParameterStorage *baseDrawData1 = context.generatorData.viewParameters;
+
+        generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, baseDrawData,
+                             baseDrawData1, context.frameCounter, needProjectedDepth);
       }
     }
 
@@ -440,14 +458,15 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       ParameterStorage viewParameters(allocator);
       setViewParameters(viewParameters, context.viewData);
 
+      // TODO
       // Collect dynamic view parameters
-      collectGeneratedViewParameters(
-          FeatureCallbackContext{
-              .context = context.context,
-              .view = &context.viewData.view,
-              .cachedView = &context.viewData.cachedView,
-          },
-          cachedPipeline, viewParameters);
+      // collectGeneratedViewParameters(
+      //     FeatureCallbackContext{
+      //         .context = context.context,
+      //         .view = context.viewData.view,
+      //         .cachedView = &context.viewData.cachedView,
+      //     },
+      //     cachedPipeline, viewParameters);
 
       auto &buffer = prepareData->viewBuffers[0];
       auto &binding = cachedPipeline.viewBuffersBindings[0];
@@ -515,7 +534,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
             auto &binding = cachedPipeline.textureBindingLayout.bindings[i];
             auto texture = firstDrawableData.textures[i];
             if (texture) {
-              drawBindGroupBuilder.addTextureBinding(binding, texture->defaultView, texture->sampler);
+              drawBindGroupBuilder.addTextureBinding(binding, textureViewCache.getDefaultTextureView(frameCounter, *texture),
+                                                     texture->sampler);
             } else {
               drawBindGroupBuilder.addTextureBinding(binding, placeholderTextureContextData->textureView,
                                                      placeholderTextureContextData->sampler);
