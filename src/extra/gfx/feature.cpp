@@ -132,9 +132,15 @@ struct FeatureShard {
     }
   */
 
-  static inline shards::Types GeneratedInputTableTypes{{Types::DrawQueue, Types::View, Types::FeatureSeq}};
-  static inline std::array<SHString, 3> GeneratedInputTableKeys{"Queue", "View", "Features"};
-  static inline Type GeneratedInputTableType = Type::TableOf(GeneratedInputTableTypes, GeneratedInputTableKeys);
+  static inline shards::Types GeneratedViewInputTableTypes{{Types::DrawQueue, Types::View, Types::FeatureSeq}};
+  static inline std::array<SHString, 3> GeneratedViewInputTableKeys{"Queue", "View", "Features"};
+  static inline Type GeneratedViewInputTableType = Type::TableOf(GeneratedViewInputTableTypes, GeneratedViewInputTableKeys);
+
+  static inline shards::Type DrawableDataSeqType = Type::SeqOf(CoreInfo::IntType);
+  static inline shards::Types GeneratedDrawInputTableTypes{
+      {Types::DrawQueue, Types::View, Types::FeatureSeq, DrawableDataSeqType}};
+  static inline std::array<SHString, 4> GeneratedDrawInputTableKeys{"Queue", "View", "Features", "Drawables"};
+  static inline Type GeneratedDrawInputTableType = Type::TableOf(GeneratedDrawInputTableTypes, GeneratedDrawInputTableKeys);
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
@@ -252,7 +258,7 @@ public:
 
       for (size_t i = 0; i < outputType.seqTypes.len; i++) {
         auto &tableType = outputType.seqTypes.elements[i];
-        if (outputType.basicType != SHType::Table) {
+        if (tableType.basicType != SHType::Table) {
           throw formatException("Feature generator wire should return a sequence of parameter tables (one for each object). "
                                 "Element {} ({}) was not a table",
                                 tableType, i);
@@ -269,7 +275,6 @@ public:
 
   void composeGeneratorWires(const SHInstanceData &data) {
     SHInstanceData generatorInstanceData{};
-    generatorInstanceData.inputType = GeneratedInputTableType;
 
     ExposedInfo exposed(data.shared);
 
@@ -278,7 +283,10 @@ public:
 
     generatorInstanceData.shared = SHExposedTypesInfo(exposed);
 
+    generatorInstanceData.inputType = GeneratedDrawInputTableType;
     _drawableGeneratorBranch.compose(generatorInstanceData);
+
+    generatorInstanceData.inputType = GeneratedViewInputTableType;
     _viewGeneratorBranch.compose(generatorInstanceData);
 
     // Collect derived shader parameters from wire outputs
@@ -603,7 +611,7 @@ public:
             ++index;
           });
         };
-        runGenerators(_drawableGeneratorBranch, ctx, applyResults);
+        runGenerators<true>(_drawableGeneratorBranch, ctx, applyResults);
       });
     }
 
@@ -613,7 +621,7 @@ public:
           auto &collector = ctx.getParameterCollector();
           collectParameters(collector, shContext, output.payload.tableValue);
         };
-        runGenerators(_viewGeneratorBranch, ctx, applyResults);
+        runGenerators<false>(_viewGeneratorBranch, ctx, applyResults);
       });
     }
 
@@ -631,7 +639,7 @@ public:
     });
   }
 
-  template <typename T, typename T1> void runGenerators(Brancher &brancher, T &ctx, T1 applyResults) {
+  template <bool PerDrawable, typename T, typename T1> void runGenerators(Brancher &brancher, T &ctx, T1 applyResults) {
     auto &mesh = brancher.mesh;
     auto &wires = brancher.wires;
 
@@ -653,6 +661,14 @@ public:
     TableVar input;
     input.get<Var>("Queue") = Var::Object(&queue, Types::DrawQueue);
     input.get<Var>("View") = Var::Object(&view, Types::View);
+
+    if constexpr (PerDrawable) {
+      FeatureDrawableGeneratorContext &drawableCtx = ctx;
+      auto &drawablesSeq = input.get<SeqVar>("Drawables");
+      for (size_t i = 0; i < drawableCtx.getSize(); i++) {
+        drawablesSeq.push_back(Var(reinterpret_cast<SHInt &>(drawableCtx.getDrawable(i).getId().value)));
+      }
+    }
 
     _featurePtrsTemp.clear();
     SeqVar &features = input.get<SeqVar>("Features");

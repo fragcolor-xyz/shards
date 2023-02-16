@@ -210,15 +210,19 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     auto mergeParameters = [&](const ParameterStorage &params) {
       for (auto &param : params.data)
-        parameters.setParamIfUnset(param.first, param.second);
+        parameters.setParam(param.first.c_str(), param.second);
       for (auto &param : params.textures) {
         int32_t targetSlot = mapTextureBinding(param.first.c_str());
-        if (targetSlot >= 0 && !data.textures[targetSlot]) {
+        if (targetSlot >= 0) {
           data.textures[targetSlot] = &param.second.texture->createContextDataConditional(context);
-          ;
         }
       }
     };
+
+    // NOTE : The parameters below are ordered by priority, so later entries overwrite previous entries
+
+    // Grab default parameters
+    mergeParameters(cachedPipeline.baseDrawParameters);
 
     // Grab parameters from material
     if (Material *material = meshDrawable.material.get()) {
@@ -238,18 +242,16 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       setTextureParameter(pair.first.c_str(), pair.second.texture);
     }
 
-    // Merge dynamic parameters
-    if (baseDrawData) {
-      mergeParameters(*baseDrawData);
-    }
-
+    // Grab dynamic parameters from view
     // TODO: Temporary until moved into view buffer
     if (baseViewData) {
       mergeParameters(*baseViewData);
     }
 
-    // Merge default parameters
-    mergeParameters(cachedPipeline.baseDrawParameters);
+    // Grab dynamic parameters from drawable
+    if (baseDrawData) {
+      mergeParameters(*baseDrawData);
+    }
 
     std::shared_ptr<MeshContextData> meshContextData = meshDrawable.mesh->contextData;
 

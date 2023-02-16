@@ -139,14 +139,10 @@ struct ParameterStorage final : public IParameterCollector {
   }
   ParameterStorage &operator=(ParameterStorage &&) = default;
 
-  void setParam(const char *name, ParamVariant &&value) { data.emplace(name, std::move(value)); }
-  void setTexture(const char *name, TextureParameter &&value) { textures.emplace(name, std::move(value)); }
+  void setParam(const char *name, ParamVariant &&value) { data.insert_or_assign(name, std::move(value)); }
+  void setTexture(const char *name, TextureParameter &&value) { textures.insert_or_assign(name, std::move(value)); }
 
-  void setParamIfUnset(const shards::pmr::string &key, const ParamVariant &value) {
-    if (!data.contains(key)) {
-      data.emplace(key, value);
-    }
-  }
+  void setParamIfUnset(const shards::pmr::string &key, const ParamVariant &value) { data.emplace(key, value); }
 
   void append(const ParameterStorage &other) {
     for (auto &it : other.data) {

@@ -14,9 +14,7 @@
             (->
              (Shader.ReadGlobal "color") >= .scene-color
              .scene-color
-             (| (Take 0) >= .r) (| (Take 1) >= .g) (| (Take 2) >= .b)
-             (Float4 .g .g .g 1.0)
-             (Math.Add (Float4 0.2 0.2 0.2 0.0))
+             (Math.Multiply 0.4)
              (Shader.WriteOutput "otherColor"))
             :After ["writeColor"]}]}
          (GFX.Feature) >> .features
@@ -25,10 +23,26 @@
 
          (GFX.Texture :Format TextureFormat.RGBA8Unorm) >= .out-texture
          (GFX.RenderInto :Textures {:otherColor .out-texture}
+                         :MatchOutputSize true
                          :Contents (->
                                     (GFX.Render :View .parent-view :Steps .steps)))))
   ; Returned parameters from rendered texture above
   {:someTexture .out-texture})
+
+(defloop draw-generator
+  (| (Take "Queue") >= .parent-queue)
+  (| (Take "View") >= .parent-view)
+  (| (Take "Drawables") >= .drawables-1)
+  .drawables-1
+  (| (Count .drawables-1) (Assert.Is 2))
+  (Map (->
+        (RandomInt 3) >= .index
+        .index (Match [0 (-> (Float4 1.0 0.0 0.0 1.0))
+                       1 (-> (Float4 0.0 1.0 0.0 1.0))
+                       2 (-> (Float4 0.0 0.0 1.0 1.0))]
+                      :Passthrough false) (Math.Multiply 0.1) >= .color
+        {:baseColor .color}));
+  )
 
 (defwire create-test-feature
   {:State {:Blend {:Color BlendOverwrite :Alpha BlendOverwrite}}
@@ -36,9 +50,12 @@
    [{:Stage ProgrammableGraphicsStage.Fragment
      :EntryPoint
      (->
-      (Shader.SampleTexture "someTexture") (Shader.WriteGlobal "color"))
-     :Before ["writeColor"]}]} (GFX.Feature
-                                :ViewGenerators generator))
+      (Shader.ReadGlobal "color") >= .base-color
+      (Shader.SampleTexture "someTexture") (Math.Add .base-color)
+      (Shader.WriteGlobal "color"))
+     :After ["readColor"] :Before ["writeColor"]}]} (GFX.Feature
+                                                     :ViewGenerators generator
+                                                     :DrawableGenerators draw-generator))
 
 (def timestep (/ 1.0 120.0))
 
@@ -83,4 +100,4 @@
 (schedule root
           (Wire "main-loop-wire" :Looped :LStack
                 (GFX.MainWindow :Title "Test" :Width 1280 :Height 720 :IgnoreCompilationErrors true :Contents (Step content))))
-(run root timestep)
+(run root timestep 100)
