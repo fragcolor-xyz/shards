@@ -37,7 +37,7 @@
 (defloop test-static
   (Setup
    (default-setup)
-   {} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables)
+   {} (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables)
 
   (default-window))
 (schedule root test-static)
@@ -69,9 +69,9 @@
    (Float3 -0.05 0 0) (Math.Translation) >= .t1
    (get-xy-wave-transform 0.0 0.0) >= .t2
    (Float3 0.05 0 0) (Math.Translation) >= .t3
-   {:Transform .t1} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables
-   {} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" :Transform .t2) >> .drawables
-   {:Transform .t3} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables)
+   {:Transform .t1} (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables
+   {} (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" :Transform .t2) >> .drawables
+   {:Transform .t3} (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables)
 
   (GFX.MainWindow
    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
@@ -92,7 +92,7 @@
    (default-setup)
    (Float3 -0.05 0 0) (Math.Translation) >= .t1
    (Float3 0.05 0 0) (Math.Translation) >= .t2
-   {:Transform .t1} (GFX.glTF :Path "external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >= .avocado-a
+   {:Transform .t1} (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >= .avocado-a
    .avocado-a >> .drawables
    {:Transform .t2 :Copy .avocado-a} (GFX.glTF) >> .drawables)
 
