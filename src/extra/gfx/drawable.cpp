@@ -1,13 +1,6 @@
 #include "../gfx.hpp"
 #include "drawable_utils.hpp"
-#include "extra/gfx/drawable_utils.hpp"
-#include "extra/gfx/shards_types.hpp"
 #include "foundation.hpp"
-#include "gfx/drawables/mesh_drawable.hpp"
-#include "gfx/fwd.hpp"
-#include "runtime.hpp"
-#include "shards.h"
-#include "shards.hpp"
 #include "shards_utils.hpp"
 #include <gfx/drawable.hpp>
 #include <gfx/error_utils.hpp>
@@ -77,7 +70,7 @@ struct DrawableShard {
     meshDrawable->mesh = varAsObjectChecked<MeshPtr>(_mesh.get(), Types::Mesh);
 
     if (!_material.isNone()) {
-      meshDrawable->material = varAsObjectChecked<SHMaterial>(_material.get(), Types::Material)->material;
+      meshDrawable->material = varAsObjectChecked<SHMaterial>(_material.get(), Types::Material).material;
     }
 
     if (!_params.isNone()) {
@@ -130,7 +123,6 @@ struct DrawShard {
     if (!isQueueSet()) {
       // Use default global queue (check main thread)
       composeCheckGfxThread(data);
-
       _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
     }
 
@@ -139,6 +131,7 @@ struct DrawShard {
     } else {
       OVERRIDE_ACTIVATE(data, activateSingle);
     }
+
     return CoreInfo::NoneType;
   }
 
@@ -162,7 +155,7 @@ struct DrawShard {
             addDrawableToQueue(drawable); //
           }
         },
-        varAsObjectChecked<SHDrawable>(input, Types::Drawable)->drawable);
+        varAsObjectChecked<SHDrawable>(input, Types::Drawable).drawable);
 
     return SHVar{};
   }

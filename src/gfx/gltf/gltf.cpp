@@ -1,5 +1,12 @@
 #include "gltf.hpp"
+#include "gfx/drawables/mesh_tree_drawable.hpp"
+#include "gfx/gltf/gltf.hpp"
+#include "gfx/linalg.hpp"
+#include "linalg.h"
+#include "spdlog/spdlog.h"
+#include <SDL_config.h>
 #include <algorithm>
+#include <cmath>
 #include <gfx/error_utils.hpp>
 #include <gfx/filesystem.hpp>
 #include <gfx/material.hpp>
@@ -7,6 +14,11 @@
 #include <gfx/texture.hpp>
 #include <gfx/texture_file/texture_file.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
+#include <iterator>
+#include <memory>
+#include <stdexcept>
+#include <type_traits>
+#include <unordered_map>
 #include <vector>
 #include <string>
 
@@ -23,6 +35,9 @@ using namespace tinygltf;
 namespace gfx {
 
 static WGPUAddressMode convertAddressMode(int mode) {
+  if (mode < 0)
+    return WGPUAddressMode_Repeat;
+
   switch (mode) {
   case TINYGLTF_TEXTURE_WRAP_REPEAT:
     return WGPUAddressMode_Repeat;
@@ -36,6 +51,9 @@ static WGPUAddressMode convertAddressMode(int mode) {
 }
 
 static WGPUFilterMode convertFilterMode(int mode) {
+  if (mode < 0)
+    return WGPUFilterMode_Linear;
+
   switch (mode) {
   case TINYGLTF_TEXTURE_FILTER_NEAREST:
     return WGPUFilterMode_Nearest;
@@ -103,14 +121,15 @@ static float4 convertFloat4Vec(const std::vector<double> &v) {
   return float4(v[0], v[1], v[2], v[3]);
 }
 
-static float4x4 convertNodeTransform(const tinygltf::Node &node) {
+static TRS convertNodeTransform(const tinygltf::Node &node) {
   if (node.matrix.size() != 0) {
-    return float4x4(double4x4(node.matrix.data()));
+    return TRS(float4x4(double4x4(node.matrix.data())));
   } else {
-    const auto t = linalg::translation_matrix(node.translation.size() != 0 ? double3(node.translation.data()) : double3());
-    const auto r = linalg::rotation_matrix(node.rotation.size() != 0 ? double4(node.rotation.data()) : double4(0, 0, 0, 1));
-    const auto s = linalg::scaling_matrix(node.scale.size() != 0 ? double3(node.scale.data()) : double3(1, 1, 1));
-    return float4x4(linalg::mul(linalg::mul(t, r), s));
+    TRS result;
+    result.translation = float3(node.translation.size() != 0 ? double3(node.translation.data()) : double3());
+    result.rotation = float4(node.rotation.size() != 0 ? double4(node.rotation.data()) : double4(0, 0, 0, 1));
+    result.scale = float3(node.scale.size() != 0 ? double3(node.scale.data()) : double3(1, 1, 1));
+    return result;
   }
 }
 
@@ -126,6 +145,7 @@ struct Loader {
   std::vector<TexturePtr> textureMap;
   std::vector<MeshTreeDrawable::Ptr> nodeMap;
   std::vector<MeshTreeDrawable::Ptr> sceneMap;
+  std::unordered_map<std::string, gfx::Animation> animations;
 
   Loader(tinygltf::Model &model) : model(model) {}
 
@@ -245,6 +265,7 @@ struct Loader {
     }
 
     std::vector<uint8_t> indexBuffer;
+    bool requireConversion{};
     if (primitive.indices >= 0) {
       const tinygltf::Accessor &accessor = model.accessors[primitive.indices];
       const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
@@ -256,20 +277,36 @@ struct Loader {
       case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
         format.indexFormat = IndexFormat::UInt32;
         break;
+      case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+        format.indexFormat = IndexFormat::UInt16;
+        requireConversion = true;
+        break;
       default:
         throw formatException("Accessor {}: Unsupported index format", primitive.indices);
       }
 
-      size_t elementSize = getIndexFormatSize(format.indexFormat);
+      size_t dstElementSize = getIndexFormatSize(format.indexFormat);
       int srcStride = accessor.ByteStride(bufferView);
 
-      indexBuffer.resize(elementSize * accessor.count);
+      indexBuffer.resize(dstElementSize * accessor.count);
       uint8_t *dstPtr = indexBuffer.data();
       const uint8_t *srcPtr = buffer.data.data() + bufferView.byteOffset + accessor.byteOffset;
-      for (size_t i = 0; i < accessor.count; i++) {
-        memcpy(dstPtr, srcPtr, elementSize);
-        dstPtr += elementSize;
-        srcPtr += srcStride;
+      if (requireConversion) {
+        for (size_t i = 0; i < accessor.count; i++) {
+          switch (accessor.componentType) {
+          case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+            ((uint16_t *)dstPtr)[0] = uint16_t(((uint8_t *)srcPtr)[i]);
+            break;
+          }
+          dstPtr += dstElementSize;
+          srcPtr += srcStride;
+        }
+      } else {
+        for (size_t i = 0; i < accessor.count; i++) {
+          memcpy(dstPtr, srcPtr, dstElementSize);
+          dstPtr += dstElementSize;
+          srcPtr += srcStride;
+        }
       }
     }
 
@@ -323,8 +360,7 @@ struct Loader {
       }
     }
 
-    node->transform = convertNodeTransform(gltfNode);
-    assert(node->transform != float4x4());
+    node->trs = convertNodeTransform(gltfNode);
 
     for (size_t i = 0; i < gltfNode.children.size(); i++) {
       int childNodeIndex = gltfNode.children[i];
@@ -333,7 +369,7 @@ struct Loader {
         childNode = std::make_shared<MeshTreeDrawable>();
         initNode(childNodeIndex);
       }
-      node->children.push_back(childNode);
+      node->addChild(childNode);
     }
   }
 
@@ -407,11 +443,107 @@ struct Loader {
     }
   }
 
+  animation::Track loadAnimationTrack(const tinygltf::Animation &gltfAnimation, const tinygltf::AnimationChannel &gltfChannel) {
+    auto &gltfAnimSampler = gltfAnimation.samplers[gltfChannel.sampler];
+    auto &input = model.accessors[gltfAnimSampler.input];
+    auto &output = model.accessors[gltfAnimSampler.output];
+
+    animation::Track result;
+    if (gltfAnimSampler.interpolation == "LINEAR") {
+      result.interpolation = animation::Interpolation::Linear;
+    } else if (gltfAnimSampler.interpolation == "STEP") {
+      result.interpolation = animation::Interpolation::Linear; // TODO: FIX
+    } else {
+      throw formatException("Interpolation mode not supported: {}", gltfAnimSampler.interpolation);
+    }
+
+    const tinygltf::BufferView &inputBufferView = model.bufferViews[input.bufferView];
+    const tinygltf::BufferView &outputBufferView = model.bufferViews[output.bufferView];
+    const tinygltf::Buffer &inputBuffer = model.buffers[inputBufferView.buffer];
+    const tinygltf::Buffer &outputBuffer = model.buffers[outputBufferView.buffer];
+    const uint8_t *inputData = inputBuffer.data.data() + inputBufferView.byteOffset + input.byteOffset;
+    const uint8_t *outputData = outputBuffer.data.data() + outputBufferView.byteOffset + output.byteOffset;
+
+    size_t numFrames = input.count;
+    size_t numComponents = GetNumComponentsInType(output.type);
+    result.elementSize = numComponents;
+    result.data.resize(numComponents * numFrames);
+    for (size_t i = 0; i < numFrames; i++) {
+      const float &time = *(float *)(inputData + input.ByteStride(inputBufferView) * i);
+      result.times.emplace_back(time);
+    }
+
+    // Convert animation values to float
+    for (size_t i = 0; i < numFrames; i++) {
+      float *outData = result.data.data() + numComponents * i;
+      const uint8_t *inputData = outputData + output.ByteStride(outputBufferView) * i;
+      switch (output.componentType) {
+      case TINYGLTF_COMPONENT_TYPE_FLOAT:
+        for (size_t c = 0; c < numComponents; c++)
+          outData[c] = ((float *)inputData)[c];
+        break;
+      case TINYGLTF_COMPONENT_TYPE_BYTE:
+        for (size_t c = 0; c < numComponents; c++)
+          outData[c] = std::max((float)((int8_t *)inputData)[c] / float(0x7f), -1.0f);
+        break;
+      case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+        for (size_t c = 0; c < numComponents; c++)
+          outData[c] = (float)((uint8_t *)inputData)[c] / float(0xff);
+        break;
+      case TINYGLTF_COMPONENT_TYPE_SHORT:
+        for (size_t c = 0; c < numComponents; c++)
+          outData[c] = std::max((float)((int16_t *)inputData)[c] / float(0x7fff), -1.0f);
+        break;
+      case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+        for (size_t c = 0; c < numComponents; c++)
+          outData[c] = (float)((uint16_t *)inputData)[c] / float(0x7fff);
+        break;
+      default:
+        throw formatException("Invalid component type for animation {}/{}: {}", gltfAnimation.name, output.name,
+                              output.componentType);
+      }
+    }
+
+    result.targetNode = this->nodeMap[gltfChannel.target_node];
+    if (gltfChannel.target_path == "rotation") {
+      result.target = animation::BuiltinTarget::Rotation;
+      if (numComponents != 4)
+        throw formatException("Invalid animation {}: rotation requires 4 components", gltfAnimation.name);
+    } else if (gltfChannel.target_path == "translation") {
+      result.target = animation::BuiltinTarget::Translation;
+      if (numComponents != 3)
+        throw formatException("Invalid animation {}: translation requires 3 components", gltfAnimation.name);
+    } else if (gltfChannel.target_path == "scale") {
+      result.target = animation::BuiltinTarget::Scale;
+      if (numComponents != 3)
+        throw formatException("Invalid animation {}: scale requires 3 components", gltfAnimation.name);
+    } else if (gltfChannel.target_path == "weights") {
+      SPDLOG_WARN("morph target animations are not implemented");
+    } else {
+      throw formatException("Invalid animation target {}: {}", gltfAnimation.name, gltfChannel.target_path);
+    }
+
+    return result;
+  }
+
+  void loadAnimations() {
+    size_t numAnimations = model.animations.size();
+    for (size_t i = 0; i < numAnimations; i++) {
+      tinygltf::Animation &gltfAnimation = model.animations[i];
+      auto &animation = animations.emplace(gltfAnimation.name, Animation()).first->second;
+
+      for (auto &gltfChannel : gltfAnimation.channels) {
+        animation.tracks.emplace_back(loadAnimationTrack(gltfAnimation, gltfChannel));
+      }
+    }
+  }
+
   void load() {
     loadTextures();
     loadMaterials();
     loadMeshes();
     loadNodes();
+    loadAnimations();
 
     size_t numScenes = model.scenes.size();
     sceneMap.resize(numScenes);
@@ -429,14 +561,14 @@ struct Loader {
         for (size_t i = 0; i < gltfScene.nodes.size(); i++) {
           int nodeIndex = gltfScene.nodes[i];
           MeshTreeDrawable::Ptr node = nodeMap[nodeIndex];
-          scene->children.push_back(node);
+          scene->addChild(node);
         }
       }
     }
   }
 };
 
-template <typename T> MeshTreeDrawable::Ptr load(T loader) {
+template <typename T> glTF load(T loader) {
   tinygltf::Model model;
   loader(model);
 
@@ -447,14 +579,22 @@ template <typename T> MeshTreeDrawable::Ptr load(T loader) {
   Loader gfxLoader(model);
   gfxLoader.load();
 
-  return gfxLoader.sceneMap[model.defaultScene];
+  glTF result;
+  result.root = std::move(gfxLoader.sceneMap[model.defaultScene]);
+  result.animations = std::move(gfxLoader.animations);
+  return result;
 }
 
-MeshTreeDrawable::Ptr loadGltfFromFile(const char *inFilepath) {
+static inline bool isPossiblyText(const char *inFilepath) {
+  fs::path filepath(inFilepath);
+  const auto &ext = filepath.extension();
+  return ext == ".gltf" || ext == ".json" || ext == ".txt";
+}
+
+glTF loadGltfFromFile(const char *inFilepath) {
   tinygltf::TinyGLTF context;
   auto loader = [&](tinygltf::Model &model) {
     fs::path filepath(inFilepath);
-    const auto &ext = filepath.extension();
 
     if (!fs::exists(filepath)) {
       throw formatException("glTF model file \"{}\" does not exist", filepath.string());
@@ -463,10 +603,10 @@ MeshTreeDrawable::Ptr loadGltfFromFile(const char *inFilepath) {
     std::string err;
     std::string warn;
     bool success{};
-    if (ext == ".glb") {
-      success = context.LoadBinaryFromFile(&model, &err, &warn, filepath.string());
-    } else {
+    if (isPossiblyText(inFilepath)) {
       success = context.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
+    } else {
+      success = context.LoadBinaryFromFile(&model, &err, &warn, filepath.string());
     }
 
     if (!success) {
@@ -477,7 +617,7 @@ MeshTreeDrawable::Ptr loadGltfFromFile(const char *inFilepath) {
   return load(loader);
 }
 
-MeshTreeDrawable::Ptr loadGltfFromMemory(const uint8_t *data, size_t dataLength) {
+glTF loadGltfFromMemory(const uint8_t *data, size_t dataLength) {
   tinygltf::TinyGLTF context;
   auto loader = [&](tinygltf::Model &model) {
     std::string err;
@@ -492,5 +632,4 @@ MeshTreeDrawable::Ptr loadGltfFromMemory(const uint8_t *data, size_t dataLength)
 
   return load(loader);
 }
-
 } // namespace gfx

@@ -1,0 +1,103 @@
+(def timestep (/ 1.0 120.0))
+(defmesh root)
+
+(defshards get-view-transform [time]
+  (Float4 0.0 1.0 -3.0 1.0) >= .arm-pos
+  time (Math.AxisAngleY) (Math.Rotation) (Math.MatMul .arm-pos) (ToFloat3) >= .arm-pos-3
+  {:Position .arm-pos-3 :Target (Float3 0 1.025 0)} (Math.LookAt))
+
+(defshards get-xy-wave-transform [x time]
+  time (Math.Multiply 4.5) (Math.Cos) (Math.Multiply 0.01) >= .tmp-y
+  [x .tmp-y 0] (ToFloat3) (Math.Translation))
+
+(defloop character
+  (Take "Position") = .position
+  (GFX.glTF :Path "../shards-pbr-demo/assets/mascot.glb"
+            :AnimationController
+            (->
+             (| (Setup
+                 (ForEach (-> (Take 0) >> .animation-names))
+                 .animation-names (Log "Animations"))
+                .animation-names (Take .animation-index) >= .animation-name)
+             (Take .animation-name) >= .animation
+             (Animation.Timer .animation :Rate 1.3
+                              :Action (->
+                                       (Count .animation-names) >= .num-animations
+                                       (Math.Inc .animation-index)
+                                       .animation-index (Math.Mod .num-animations) > .animation-index
+                                       (Log "Playing next animation")))
+             (Animation.Play .animation);
+             ))>= .gltf
+  .gltf (GFX.Draw .queue))
+
+(defwire spawn-benchmark
+  (Log "Spawning models")
+  (ForRange 1 16 (->
+                  (ToFloat) (Math.Subtract 8.0) >= .x
+                  (Log "Hello")
+                  (Float3 .x 0.0 0.0) >= .position
+                  {:Position .position} (Spawn character))))
+
+(defloop character
+  (Take "Position") = .position
+  (GFX.glTF :Copy .base-model
+            :AnimationController
+            (->
+             (| (Setup
+                 (ForEach (-> (Take 0) >> .animation-names))
+                 .animation-names (Log "Animations"))
+                .animation-names (Take .animation-index) >= .animation-name)
+             (Take .animation-name) >= .animation
+             (Animation.Timer .animation :Rate 1.3
+                              :Action (->
+                                       (Count .animation-names) >= .num-animations
+                                       (Math.Inc .animation-index)
+                                       .animation-index (Math.Mod .num-animations) > .animation-index
+                                       (Log "Playing next animation")))
+             (Animation.Play .animation);
+             ))>= .gltf
+  .gltf (GFX.Draw .queue))
+
+(defwire spawn-benchmark
+  (Log "Spawning models")
+  (GFX.glTF :Path "../../../shards-pbr-demo/assets/mascot.glb") >= .base-model
+  (ForRange 1 16 (->
+                  (ToFloat) (Math.Subtract 8.0) >= .x
+                  (Log "Hello")
+                  (Float3 .x 0.0 0.0) >= .position
+                  {:Position .position} (Spawn character))))
+
+(defloop test-basic-anim
+  (Setup
+   (Float3 0 0 0) (Math.Translation) >= .t1
+
+   "" >> .animation-names
+   (Clear .animation-names)
+   1 >= .animation-index
+
+   (GFX.DrawQueue) >= .queue
+
+  ;; Render steps
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+
+  ;; Create view
+   (get-view-transform 0.0) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+
+  (GFX.MainWindow
+   :Title "glTF" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    (Animation.Timer :Rate 0.8 :Offset -0.75) >= .time
+    (get-view-transform .time) > .view-transform
+    ;; (GFX.glTF :Path "../shards/external/glTF-Sample-Models/2.0/AnimatedCube/glTF/AnimatedCube.gltf") (GFX.Draw)
+    ;; (GFX.glTF :Path "../shards/external/glTF-Sample-Models/2.0/BoomBoxWithAxes/glTF/BoomBoxWithAxes.gltf") (GFX.Draw)
+    ;; (GFX.glTF :Path "../shards/external/glTF-Sample-Models/2.0/MultiUVTest/glTF-Binary/MultiUVTest.glb") (GFX.Draw)
+    .queue (GFX.ClearQueue)
+    (Branch [spawn-benchmark])
+
+    (GFX.Render :Steps .render-steps :View .view))))
+(schedule root test-basic-anim)
+(if (run root timestep) nil (throw "Root tick failed"))

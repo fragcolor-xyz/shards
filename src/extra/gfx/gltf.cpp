@@ -1,30 +1,67 @@
 #include "boost/filesystem/path.hpp"
 #include "common_types.hpp"
-#include "extra/gfx/shards_types.hpp"
-#include "gfx/drawables/mesh_tree_drawable.hpp"
-#include "gfx/unique_id.hpp"
+#include "params.hpp"
 #include "shards_types.hpp"
 #include "shards_utils.hpp"
 #include "drawable_utils.hpp"
+#include "anim/types.hpp"
+#include "anim/bindings.hpp"
 #include <memory>
+#include <deque>
+#include <optional>
 #include <shards_macros.hpp>
 #include <foundation.hpp>
+#include <gfx/drawables/mesh_tree_drawable.hpp>
 #include <gfx/gltf/gltf.hpp>
 #include <gfx/paths.hpp>
 #include <linalg_shim.hpp>
 #include <runtime.hpp>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
-#include "params.hpp"
+#include <string_view>
 
 using namespace shards;
 
 namespace gfx {
 
+SeqVar getAnimationPath(MeshTreeDrawable::Ptr node) {
+  SeqVar result;
+  auto rootNode = MeshTreeDrawable::findRoot(node);
+  MeshTreeDrawable::traverseDown(rootNode, node, [&](auto &node) {
+    SHVar tmp{
+        .payload = {.stringValue = node->label.c_str()},
+        .valueType = SHType::String,
+    };
+    SHVar cloned{};
+    cloneVar(cloned, tmp);
+    result.push_back(cloned);
+  });
+
+  return result;
+};
+
+SeqVar getAnimationPath(MeshTreeDrawable::Ptr node, animation::BuiltinTarget target) {
+  SeqVar result = getAnimationPath(node);
+  auto &componentName = (OwnedVar &)result.emplace_back();
+  switch (target) {
+  case animation::BuiltinTarget::Rotation:
+    componentName = Var{"~r"};
+    break;
+  case animation::BuiltinTarget::Scale:
+    componentName = Var{"~s"};
+    break;
+  case animation::BuiltinTarget::Translation:
+    componentName = Var{"~t"};
+    break;
+  }
+  return result;
+};
+
 struct GLTFShard {
   static inline Type PathInputType = CoreInfo::StringType;
   static inline Type ByteInputType = CoreInfo::BytesType;
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
+  static inline Type AnimationTable = Type::TableOf(Animations::Types::Animation);
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
   static SHTypesInfo outputTypes() { return Types::Drawable; }
@@ -37,8 +74,9 @@ struct GLTFShard {
                  {CoreInfo::NoneType, Type::VariableOf(Types::Drawable)});
   PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+  PARAM(ShardsVar, _animController, "AnimationController", "The animation controller", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(GLTFShard, PARAM_IMPL_FOR(_path), PARAM_IMPL_FOR(_bytes), PARAM_IMPL_FOR(_copy), PARAM_IMPL_FOR(_params),
-             PARAM_IMPL_FOR(_features));
+             PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_animController));
 
   enum LoadMode {
     Invalid,
@@ -48,12 +86,16 @@ struct GLTFShard {
     LoadCopy,
   };
 
+  std::optional<glTF> _model;
   LoadMode _loadMode{};
   bool _hasConstTransform{};
   SHDrawable *_drawable{};
   bool _dynamicsApplied{};
+  TableVar _animations;
 
   MeshTreeDrawable::Ptr &getMeshTreeDrawable() { return std::get<MeshTreeDrawable::Ptr>(_drawable->drawable); }
+
+  bool hasAnimationController() const { return _animController.shards().len > 0; }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -80,22 +122,60 @@ struct GLTFShard {
       throw ComposeError("glTF Binary, file path or copy source required");
     }
 
+    if (hasAnimationController()) {
+      SHInstanceData childData = data;
+      childData.inputType = AnimationTable;
+      _animController.compose(childData);
+      if (!shards::matchTypes(_animController.composeResult().outputType, Animations::Types::AnimationValues, false, true))
+        throw std::runtime_error(fmt::format("Invalid animation frame data: {}, expected: {}",
+                                             _animController.composeResult().outputType, Animations::Types::AnimationValues));
+    }
+
     return Types::Drawable;
+  }
+
+  void shardifyAnimationData() {
+    for (auto &[name, animation] : _model->animations) {
+      SeqVar &tracks = _animations.get<SeqVar>(name);
+      for (auto &track : animation.tracks) {
+        TableVar trackTable;
+        trackTable.get<SeqVar>("Path") = getAnimationPath(track.targetNode.lock(), track.target);
+
+        SeqVar frames;
+        frames.resize(track.times.size());
+
+        size_t frameIndex{};
+        for (auto &time : track.times) {
+          TableVar frameTableVar;
+
+          frameTableVar.get<Var>("Time") = Var{time};
+
+          Var &value = frameTableVar.get<Var>("Value");
+          std::visit([&](auto &&v) -> void { value = toVar(v); }, track.getValue(frameIndex));
+
+          static_cast<TableVar &>(frames[frameIndex]) = std::move(frameTableVar);
+          ++frameIndex;
+        }
+
+        trackTable.get<SeqVar>("Frames") = std::move(frames);
+        static_cast<TableVar &>(tracks.emplace_back()) = std::move(trackTable);
+      }
+    }
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
 
     _drawable = Types::DrawableObjectVar.New();
+    _drawable->drawable = MeshTreeDrawable::Ptr();
 
     switch (_loadMode) {
     case LoadMode::LoadFileStatic:
-      _drawable->drawable = loadGltfFromFile(_path.get().payload.stringValue);
+      _model.emplace(loadGltfFromFile(_path.get().payload.stringValue));
       break;
     case LoadMode::LoadFileDynamic:
     case LoadMode::LoadMemory:
     case LoadMode::LoadCopy:
-      _drawable->drawable = MeshTreeDrawable::Ptr();
       break;
     default:
       throw std::out_of_range("glTF load mode");
@@ -111,6 +191,8 @@ struct GLTFShard {
       Types::DrawableObjectVar.Release(_drawable);
       _drawable = {};
     }
+
+    _model.reset();
   }
 
   void applyRecursiveParams(SHContext *context) {
@@ -130,28 +212,122 @@ struct GLTFShard {
     });
   }
 
+  MeshTreeDrawable::Ptr findNode(Animations::Path &p) {
+    MeshTreeDrawable::Ptr node = _model->root;
+    while (true) {
+      if (!node)
+        return MeshTreeDrawable::Ptr();
+
+      // Use ~ as an indicator for internal glTF components
+      if (!p || p.getHead()[0] == '~')
+        return node;
+
+      for (auto &child : node->getChildren()) {
+        if (child->label == p.getHead()) {
+          node = child;
+          p = p.next();
+          goto _next;
+        }
+      }
+      return MeshTreeDrawable::Ptr();
+    _next:;
+    }
+  }
+
+  std::optional<animation::BuiltinTarget> findTarget(Animations::Path &p) {
+    if (p.length == 1) {
+      std::string_view str = p.getHead();
+      if (str == "~t") {
+        return animation::BuiltinTarget::Translation;
+      } else if (str == "~r") {
+        return animation::BuiltinTarget::Rotation;
+      } else if (str == "~s") {
+        return animation::BuiltinTarget::Scale;
+      }
+    }
+    return std::nullopt;
+  }
+
+  void applyFrame(const MeshTreeDrawable::Ptr &node, animation::BuiltinTarget target, const SHVar &value) {
+    switch (target) {
+    case animation::BuiltinTarget::Rotation:
+      node->trs.rotation = toVec<float4>(value);
+      break;
+    case animation::BuiltinTarget::Scale:
+      node->trs.scale = toVec<float3>(value);
+      break;
+    case animation::BuiltinTarget::Translation:
+      node->trs.translation = toVec<float3>(value);
+      break;
+    }
+  }
+
+  void applyAnimationData(SeqVar &data) {
+    for (auto &v : data) {
+      TableVar &valueTable = (TableVar &)v;
+      auto &pathSeq = valueTable.get<SeqVar>("Path");
+
+      Animations::Path path(pathSeq);
+      MeshTreeDrawable::Ptr node = findNode(path);
+      if (!node) {
+        SHLOG_WARNING("Animation node path not found: {}", pathSeq);
+        continue;
+      }
+      auto target = findTarget(path);
+      if (!target) {
+        SHLOG_WARNING("Animation node path not found: {}", pathSeq);
+        continue;
+      }
+
+      auto &value = valueTable.get<Var>("Value");
+      applyFrame(node, target.value(), value);
+    }
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &drawable = getMeshTreeDrawable();
     if (!drawable) {
       switch (_loadMode) {
       case LoadFileDynamic:
-        drawable = loadGltfFromFile(_path.get().payload.stringValue);
+        _model.emplace(loadGltfFromFile(_path.get().payload.stringValue));
         break;
       case LoadMemory:
-        drawable = loadGltfFromMemory(_bytes.get().payload.bytesValue, _bytes.get().payload.bytesSize);
+        _model.emplace(loadGltfFromMemory(_bytes.get().payload.bytesValue, _bytes.get().payload.bytesSize));
         break;
       case LoadCopy: {
-        auto shOther = varAsObjectChecked<SHDrawable>(_copy.get(), Types::Drawable);
-        MeshTreeDrawable::Ptr &other = *std::get_if<MeshTreeDrawable::Ptr>(&shOther->drawable);
-        drawable = std::static_pointer_cast<MeshTreeDrawable>(other->clone());
+        auto &shOther = varAsObjectChecked<SHDrawable>(_copy.get(), Types::Drawable);
+        MeshTreeDrawable::Ptr &other = *std::get_if<MeshTreeDrawable::Ptr>(&shOther.drawable);
+        _model.emplace();
+        _model->root = std::static_pointer_cast<MeshTreeDrawable>(other->clone());
+        _model->animations = shOther.animations;
       } break;
+      case LoadMode::LoadFileStatic:
+        assert(_model); // Loaded in warmup
+        break;
       default:
         throw std::out_of_range("glTF load mode");
         break;
       }
+
+      _drawable->drawable = _model->root;
+      _drawable->animations = _model->animations;
+
+      if (hasAnimationController()) {
+        shardifyAnimationData();
+      }
     }
 
-    drawable->transform = toFloat4x4(input);
+    drawable->trs = toFloat4x4(input);
+
+    if (_animController.shards().len > 0) {
+      SHVar animationData;
+      SHWireState state = _animController.activate(context, _animations, animationData);
+      if (state == SHWireState::Error) {
+        throw std::runtime_error("Animation controller failed");
+      }
+
+      applyAnimationData((SeqVar &)animationData);
+    }
 
     // Only apply recursive parameters once
     if (!_dynamicsApplied) {

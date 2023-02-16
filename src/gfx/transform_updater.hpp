@@ -37,14 +37,15 @@ struct TransformUpdaterCollector {
       visited.insert(node.node);
 #endif
 
-      assert(node.node->transform != float4x4());
-      float4x4 resolvedTransform = linalg::mul(node.parentTransform, node.node->transform);
+      auto mat = node.node->trs.getMatrix();
+      assert(mat != float4x4());
+      float4x4 resolvedTransform = linalg::mul(node.parentTransform, mat);
       for (auto &drawable : node.node->drawables) {
         drawable->transform = resolvedTransform;
         collector(drawable);
       }
 
-      for (auto &child : node.node->children) {
+      for (auto &child : node.node->getChildren()) {
         queue.push_back(Node{resolvedTransform, child.get()});
       }
     }

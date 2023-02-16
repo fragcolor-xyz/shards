@@ -51,11 +51,11 @@ TEST_CASE("glTF sample models", "[glTF]") {
   for (auto &testModel : testModels) {
     DYNAMIC_SECTION("Test " << testModel.name) {
       auto glbPath = gfx::resolveDataPath(fmt::format("external/glTF-Sample-Models/2.0/{0}/glTF-Binary/{0}.glb", testModel.name));
-      auto gltfScene = loadGltfFromFile(glbPath.string().c_str());
+      auto gltfScene = loadGltfFromFile(glbPath.string().c_str()).root;
       assert(gltfScene);
 
-      float4x4 origTransform = gltfScene->transform;
-      gltfScene->transform = linalg::mul(origTransform, linalg::mul(linalg::translation_matrix(testModel.offset),
+      float4x4 origTransform = gltfScene->trs.getMatrix();
+      gltfScene->trs = linalg::mul(origTransform, linalg::mul(linalg::translation_matrix(testModel.offset),
                                                                     linalg::scaling_matrix(float3(testModel.scale))));
 
       queue->clear();

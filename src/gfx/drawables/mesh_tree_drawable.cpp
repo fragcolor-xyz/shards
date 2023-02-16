@@ -7,7 +7,7 @@ namespace gfx {
 DrawablePtr MeshTreeDrawable::clone() const {
   MeshTreeDrawable::Ptr result = std::make_shared<MeshTreeDrawable>();
   result->label = label;
-  result->transform = transform;
+  result->trs = trs;
   for (auto &drawable : drawables) {
     result->drawables.push_back(std::static_pointer_cast<MeshDrawable>(drawable->clone()));
   }

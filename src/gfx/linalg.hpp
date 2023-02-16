@@ -50,7 +50,19 @@ inline bool intersectPlane(const float3 &rayOrigin, const float3 &rayDir, const 
 }
 
 inline float3 extractTranslation(const float4x4 &transform) { return transform.w.xyz(); }
-
+inline float3 extractScale(const float4x4 &transform) {
+  const float3 x = transform.x.xyz();
+  const float3 y = transform.y.xyz();
+  const float3 z = transform.z.xyz();
+  return float3(linalg::length(x), linalg::length(y), linalg::length(z));
+}
+inline float3x3 extractRotationMatrix(const float4x4 &transform) {
+  const float3 x = transform.x.xyz();
+  const float3 y = transform.y.xyz();
+  const float3 z = transform.z.xyz();
+  float3 scale{linalg::length(x), linalg::length(y), linalg::length(z)};
+  return float3x3(x / scale.x, y / scale.y, z / scale.z);
+}
 inline void decomposeTRS(const float4x4 &transform, float3 &translation, float3 &scale, float3x3 &rotationMatrix) {
   translation = extractTranslation(transform);
   const float3 x = transform.x.xyz();
