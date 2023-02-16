@@ -183,6 +183,18 @@ jobs:
           ninja test-runtime
           echo "Building graphics tests"
           ninja test-gfx
+      # Minimize disk usage to prevent the next steps getting stuck on glTF models
+      - name: Minimize disk usage
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          rm -rf build/src
+          rm -rf build/lib
+          rm -rf build/deps
+          rm -rf build/_deps
+          rm -rf build/.cache
+          rm -rf target
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
