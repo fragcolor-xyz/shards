@@ -912,10 +912,10 @@ struct Ref : public SetBase {
       // Let's cleanup our storage so that release, if calls destroy
       // won't mangle the shard's variable memory
       const auto rc = _target->refcount;
-      const auto rcflag = _target->flags & SHVAR_FLAGS_REF_COUNTED;
+      const auto flags = _target->flags;
       memset(_target, 0x0, sizeof(SHVar));
       _target->refcount = rc;
-      _target->flags |= rcflag;
+      _target->flags = flags;
       releaseVariable(_target);
     }
     _target = nullptr;
@@ -955,12 +955,12 @@ struct Ref : public SetBase {
   }
 
   ALWAYS_INLINE SHVar activateRegular(SHContext *context, const SHVar &input) {
-    // must keep refcount!
+    // must keep flags!
     const auto rc = _target->refcount;
-    const auto rcflag = _target->flags & SHVAR_FLAGS_REF_COUNTED;
+    const auto flags = _target->flags;
     memcpy(_target, &input, sizeof(SHVar));
     _target->refcount = rc;
-    _target->flags |= rcflag;
+    _target->flags = flags;
     return input;
   }
 };
