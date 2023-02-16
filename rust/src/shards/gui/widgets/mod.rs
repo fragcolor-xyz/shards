@@ -172,7 +172,7 @@ struct Spinner {
   size: ParamVar,
 }
 
-struct TextInput {
+struct TextField {
   parents: ParamVar,
   requiring: ExposedTypes,
   variable: ParamVar,
@@ -301,7 +301,7 @@ pub fn registerShards() {
   registerShard::<ProgressBar>();
   registerShard::<RadioButton>();
   registerShard::<Spinner>();
-  registerShard::<TextInput>();
+  registerShard::<TextField>();
   registerShard::<Tooltip>();
 
   if cfg!(feature = "code_editor") {

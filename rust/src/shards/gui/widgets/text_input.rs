@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::TextInput;
+use super::TextField;
 use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
@@ -43,7 +43,7 @@ lazy_static! {
   ];
 }
 
-impl Default for TextInput {
+impl Default for TextField {
   fn default() -> Self {
     let mut parents = ParamVar::default();
     parents.set_name(PARENTS_UI_NAME);
@@ -59,23 +59,23 @@ impl Default for TextInput {
   }
 }
 
-impl Shard for TextInput {
+impl Shard for TextField {
   fn registerName() -> &'static str
   where
     Self: Sized,
   {
-    cstr!("UI.TextInput")
+    cstr!("UI.TextField")
   }
 
   fn hash() -> u32
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.TextInput-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.TextField-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "UI.TextInput"
+    "UI.TextField"
   }
 
   fn help(&mut self) -> OptionalString {
@@ -138,7 +138,7 @@ impl Shard for TextInput {
           self.should_expose = false;
           self.mutable_text = var.isMutable;
           if var.exposedType.basicType != shardsc::SHType_String {
-            return Err("TextInput: string variable required.");
+            return Err("TextField: string variable required.");
           }
           break;
         }

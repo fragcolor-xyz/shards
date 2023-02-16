@@ -46,7 +46,7 @@
               :Contents
               (->
                "This is UI inside a render target" (UI.Label)
-               (UI.TextInput :Variable .text1 :Multiline true)
+               (UI.TextField :Variable .text1 :Multiline true)
                ;
                ))))
 
@@ -97,7 +97,7 @@
            .rt-0 (GFX.RenderTargetTexture "color") (UI.RenderTarget)
 
            (UI.Separator)
-           (UI.TextInput :Variable .text :Multiline true)))
+           (UI.TextField :Variable .text :Multiline true)))
 
          (UI.Window
           :Title "Second Window"
