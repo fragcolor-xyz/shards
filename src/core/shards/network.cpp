@@ -189,10 +189,10 @@ struct NetworkBase {
       _socketVar = referenceVariable(context, "Network.Socket");
     }
     auto rc = _socketVar->refcount;
-    auto rcflag = _socketVar->flags & SHVAR_FLAGS_REF_COUNTED;
+    auto flags = _socketVar->flags;
     *_socketVar = Var::Object(&_socket, CoreCC, SocketCC);
     _socketVar->refcount = rc;
-    _socketVar->flags |= rcflag;
+    _socketVar->flags = flags;
   }
 };
 
