@@ -9,7 +9,6 @@ use super::Int2Input;
 use super::Int3Input;
 use super::Int4Input;
 use super::IntInput;
-use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EGUI_UI_TYPE;
@@ -448,9 +447,7 @@ macro_rules! impl_ui_n_input {
           });
 
           if self.variable.is_variable() {
-            let mut var = Var::default();
-            cloneVar(&mut var, self.variable.get());
-            Ok(var)
+            Ok(*self.variable.get())
           } else {
             Ok((&self.tmp).into())
           }
