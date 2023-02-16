@@ -1,11 +1,22 @@
 #include "input.hpp"
 #include "../linalg.hpp"
+#include "../platform.hpp"
 #include <SDL.h>
+#include <SDL_keycode.h>
 #include <gfx/window.hpp>
 #include "renderer.hpp"
 #include <map>
 
 namespace gfx {
+
+// Defines the primary command key
+//   on apple this is the cmd key
+//   otherwise the ctrl key
+#if GFX_APPLE
+#define KMOD_PRIMARY KMOD_GUI
+#else
+#define KMOD_PRIMARY KMOD_CTRL
+#endif
 
 struct SDLCursor {
   SDL_Cursor *cursor{};
@@ -192,13 +203,13 @@ bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
 
     // Translate cut/copy/paste using the standard keys combos
     if (ievent.type == SDL_KEYDOWN) {
-      if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_c) {
+      if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_c) {
         newEvent(InputEventType::Copy);
-      } else if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_v) {
+      } else if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_v) {
         auto &evt = newEvent(InputEventType::Paste);
 
         evt.paste.str = strings.emplace_back(SDL_GetClipboardText()).c_str();
-      } else if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_x) {
+      } else if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_x) {
         newEvent(InputEventType::Cut);
       }
     }
