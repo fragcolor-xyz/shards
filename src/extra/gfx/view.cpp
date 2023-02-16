@@ -104,7 +104,7 @@ struct RenderIntoShard {
   PARAM(ShardsVar, _contents, "Contents", "The shards that will render into the given textures.", {CoreInfo::Shards});
   PARAM_PARAMVAR(_referenceSize, "Size", "The reference size. This will control the size of the render targets.",
                  {CoreInfo::Int2Type, CoreInfo::Int2VarType});
-  PARAM_VAR(_matchOutputSize, "MathOutputSize",
+  PARAM_VAR(_matchOutputSize, "MatchOutputSize",
             "When true, the texture rendered into is automatically resized to match the output size.", {CoreInfo::BoolType});
   PARAM_PARAMVAR(_viewport, "Viewport", "The viewport.", {CoreInfo::Int4Type, CoreInfo::Int4VarType});
   PARAM_PARAMVAR(_windowRegion, "WindowRegion", "Sets the window region for input handling.",
