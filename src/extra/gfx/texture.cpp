@@ -321,7 +321,7 @@ struct RenderTargetShard {
     auto &table = _attachments.payload.tableValue;
     attachments.clear();
     ForEach(table, [&](SHString &k, SHVar &v) {
-      TexturePtr texture = *varAsObjectChecked<TexturePtr>(v, Types::Texture);
+      TexturePtr texture = varAsObjectChecked<TexturePtr>(v, Types::Texture);
       attachments.emplace(k, texture);
     });
 
@@ -359,7 +359,7 @@ struct RenderTargetTextureShard {
   void cleanup() { PARAM_CLEANUP(); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &renderTarget = *varAsObjectChecked<RenderTargetPtr>(input, Types::RenderTarget);
+    auto &renderTarget = varAsObjectChecked<RenderTargetPtr>(input, Types::RenderTarget);
 
     if (!isNameStatic) {
       _name = (const char *)(Var(_nameVar.get()));

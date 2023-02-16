@@ -1382,7 +1382,7 @@ struct VariableResolver {
   }
 };
 
-template <typename T> T *varAsObjectChecked(const SHVar &var, const shards::Type &type) {
+template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type &type) {
   SHTypeInfo typeInfo(type);
   if (var.valueType != SHType::Object) {
     SHLOG_FATAL("Invalid type, expected: {} got: {}", type, magic_enum::enum_name(var.valueType));
@@ -1395,7 +1395,7 @@ template <typename T> T *varAsObjectChecked(const SHVar &var, const shards::Type
     SHLOG_FATAL("Invalid object type id, expected: {} got: {}", type,
                 Type::Object(var.payload.objectVendorId, var.payload.objectTypeId));
   }
-  return reinterpret_cast<T *>(var.payload.objectValue);
+  return *reinterpret_cast<T *>(var.payload.objectValue);
 }
 
 // Collects all ContextVar references

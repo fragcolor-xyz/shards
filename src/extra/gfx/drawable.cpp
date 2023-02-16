@@ -74,7 +74,7 @@ struct DrawableShard {
     auto &meshDrawable = getMeshDrawable();
 
     meshDrawable->transform = toFloat4x4(input);
-    meshDrawable->mesh = *varAsObjectChecked<MeshPtr>(_mesh.get(), Types::Mesh);
+    meshDrawable->mesh = varAsObjectChecked<MeshPtr>(_mesh.get(), Types::Mesh);
 
     if (!_material.isNone()) {
       meshDrawable->material = varAsObjectChecked<SHMaterial>(_material.get(), Types::Material)->material;
@@ -145,7 +145,7 @@ struct DrawShard {
   DrawQueue &getDrawQueue() {
     SHVar queueVar = _queue.get();
     if (isQueueSet()) {
-      return *varAsObjectChecked<SHDrawQueue>(queueVar, Types::DrawQueue)->queue.get();
+      return *varAsObjectChecked<SHDrawQueue>(queueVar, Types::DrawQueue).queue.get();
     } else {
       return *_graphicsContext->getDrawQueue().get();
     }

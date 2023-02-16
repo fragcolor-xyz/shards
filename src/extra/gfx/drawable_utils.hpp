@@ -20,9 +20,9 @@
 namespace gfx {
 inline TexturePtr varToTexture(const SHVar &var) {
   if (var.payload.objectTypeId == Types::TextureCubeTypeId) {
-    return *varAsObjectChecked<TexturePtr>(var, Types::TextureCube);
+    return varAsObjectChecked<TexturePtr>(var, Types::TextureCube);
   } else if (var.payload.objectTypeId == Types::TextureTypeId) {
-    return *varAsObjectChecked<TexturePtr>(var, Types::Texture);
+    return varAsObjectChecked<TexturePtr>(var, Types::Texture);
   } else {
     SHInstanceData data{};
     auto varType = shards::deriveTypeInfo(var, data);
