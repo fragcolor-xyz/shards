@@ -263,7 +263,7 @@ mod progress_bar;
 mod radio_button;
 mod render_target;
 mod spinner;
-mod text_input;
+mod text_field;
 mod text_util;
 mod tooltip;
 
