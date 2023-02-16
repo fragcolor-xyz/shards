@@ -84,7 +84,7 @@ impl Shard for CodeEditor {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("A TextInput with support for highlighting."))
+    OptionalString(shccstr!("A TextField with support for highlighting."))
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -143,7 +143,7 @@ impl Shard for CodeEditor {
           self.should_expose = false;
           self.mutable_text = var.isMutable;
           if var.exposedType.basicType != shardsc::SHType_String {
-            return Err("TextInput: string variable required.");
+            return Err("TextField: string variable required.");
           }
           break;
         }

@@ -381,8 +381,8 @@
        :Contents
        (->
         (Setup "Lorem ipsum dolor sit amet" >= .text)
-        (UI.TextInput "read-only") (ExpectNone)
-        (UI.TextInput .text) (Maybe (ExpectNone) :Else (ExpectString))))))
+        (UI.TextField "read-only") (ExpectNone)
+        (UI.TextField .text) (Maybe (ExpectNone) :Else (ExpectString))))))
 
     (GFX.Render :Steps .render-steps))))
 (schedule main text-input-test)
