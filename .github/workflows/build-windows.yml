@@ -177,8 +177,12 @@ jobs:
           ./bootstrap
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DUSE_LIBBACKTRACE=${{ steps.setup.outputs.bitness == '64bits' }} ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           ninja ${{ steps.setup.outputs.build-target }}
+          echo "Building runtime tests"
+          ninja test-runtime
+          echo "Building graphics tests"
+          ninja test-gfx
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
@@ -186,7 +190,6 @@ jobs:
         shell: msys2 {0}
         run: |
           cd build
-          ninja test-runtime
           ./test-runtime
       - name: Checkout glTF-Sample-Models
         # Match with test step below
@@ -204,7 +207,6 @@ jobs:
         shell: msys2 {0}
         run: |
           cd build
-          ninja test-gfx
           GFX_BACKEND=D3D12 ./test-gfx
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
