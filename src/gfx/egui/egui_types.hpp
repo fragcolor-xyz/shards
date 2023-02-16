@@ -253,6 +253,11 @@ struct FullOutput {
   TextureUpdates textureUpdates;
   const ClippedPrimitive *primitives;
   size_t numPrimitives;
+  egui::CursorIcon cursorIcon;
+  const char* openUrl;
+  const char* copiedText;
+  bool mutableTextUnderCursor;
+  const egui::Pos2* textCursorPosition;
 };
 } // namespace egui
 

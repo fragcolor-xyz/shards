@@ -1,11 +1,22 @@
 #include "input.hpp"
 #include "../linalg.hpp"
+#include "../platform.hpp"
 #include <SDL.h>
+#include <SDL_keycode.h>
 #include <gfx/window.hpp>
 #include "renderer.hpp"
 #include <map>
 
 namespace gfx {
+
+// Defines the primary command key
+//   on apple this is the cmd key
+//   otherwise the ctrl key
+#if GFX_APPLE
+#define KMOD_PRIMARY KMOD_GUI
+#else
+#define KMOD_PRIMARY KMOD_CTRL
+#endif
 
 struct SDLCursor {
   SDL_Cursor *cursor{};
@@ -66,6 +77,8 @@ static egui::ModifierKeys translateModifierKeys(SDL_Keymod flags) {
 }
 
 void EguiInputTranslator::setupWindowInput(Window &window, int4 mappedWindowRegion, int2 viewportSize, float scalingFactor) {
+  this->window = &window;
+
   // UI Points per pixel
   float eguiDrawScale = EguiRenderer::getDrawScale(window) * scalingFactor;
 
@@ -163,30 +176,20 @@ bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
       newEvent(InputEventType::CompositionStart);
     }
 
-    newEvent(InputEventType::CompositionUpdate);
-    strings.emplace_back(ievent.text);
-    deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
-      events[eventIdx].compositionUpdate.text = strings[stringIdx].c_str();
-    });
+    auto &evt = newEvent(InputEventType::CompositionUpdate);
+    evt.compositionUpdate.text = strings.emplace_back(ievent.text).c_str();
     break;
   }
   case SDL_TEXTINPUT: {
     auto &ievent = sdlEvent.text;
 
     if (imeComposing) {
-      newEvent(InputEventType::CompositionEnd);
-      strings.emplace_back(ievent.text);
-      deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
-        events[eventIdx].compositionEnd.text = strings[stringIdx].c_str();
-      });
+      auto &evt = newEvent(InputEventType::CompositionEnd);
+      evt.compositionEnd.text = strings.emplace_back(ievent.text).c_str();
       imeComposing = false;
     } else {
-      newEvent(InputEventType::Text);
-      strings.emplace_back(ievent.text);
-
-      deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
-        events[eventIdx].text.text = strings[stringIdx].c_str();
-      });
+      auto &evt = newEvent(InputEventType::Text);
+      evt.text.text = strings.emplace_back(ievent.text).c_str();
     }
     break;
   }
@@ -200,16 +203,13 @@ bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
 
     // Translate cut/copy/paste using the standard keys combos
     if (ievent.type == SDL_KEYDOWN) {
-      if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_c) {
+      if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_c) {
         newEvent(InputEventType::Copy);
-      } else if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_v) {
-        newEvent(InputEventType::Paste);
+      } else if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_v) {
+        auto &evt = newEvent(InputEventType::Paste);
 
-        strings.emplace_back(SDL_GetClipboardText());
-        deferQueue.emplace_back([this, eventIdx = events.size() - 1, stringIdx = strings.size() - 1]() {
-          events[eventIdx].paste.str = strings[stringIdx].c_str();
-        });
-      } else if ((ievent.keysym.mod & KMOD_CTRL) && ievent.keysym.sym == SDLK_x) {
+        evt.paste.str = strings.emplace_back(SDL_GetClipboardText()).c_str();
+      } else if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_x) {
         newEvent(InputEventType::Cut);
       }
     }
@@ -220,10 +220,6 @@ bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
 }
 
 void EguiInputTranslator::end() {
-  for (auto &deferred : deferQueue) {
-    deferred();
-  }
-
   input.inputEvents = events.data();
   input.numInputEvents = events.size();
 
@@ -232,8 +228,8 @@ void EguiInputTranslator::end() {
 }
 
 const egui::Input *EguiInputTranslator::translateFromInputEvents(const EguiInputTranslatorArgs &args) {
-  setupWindowInput(args.window, args.mappedWindowRegion, args.viewportSize, args.scalingFactor);
   begin(args.time, args.deltaTime);
+  setupWindowInput(args.window, args.mappedWindowRegion, args.viewportSize, args.scalingFactor);
   for (const auto &event : args.events)
     translateEvent(event);
   end();
@@ -247,6 +243,17 @@ egui::Pos2 EguiInputTranslator::translatePointerPos(const egui::Pos2 &pos) {
       (pos.x - mappedWindowRegion.x) * windowToEguiScale.x,
       (pos.y - mappedWindowRegion.y) * windowToEguiScale.y,
   };
+}
+
+void EguiInputTranslator::applyOutput(const egui::FullOutput &output) {
+  if (window)
+    updateTextCursorPosition(*window, output.textCursorPosition);
+
+  if (output.copiedText)
+    copyText(output.copiedText);
+
+  if (input.numInputEvents > 0)
+    updateCursorIcon(output.cursorIcon);
 }
 
 void EguiInputTranslator::updateTextCursorPosition(Window &window, const egui::Pos2 *pos) {
@@ -287,7 +294,7 @@ void EguiInputTranslator::updateCursorIcon(egui::CursorIcon icon) {
 void EguiInputTranslator::reset() {
   strings.clear();
   events.clear();
-  deferQueue.clear();
+  this->window = nullptr;
 }
 
 EguiInputTranslator *EguiInputTranslator::create() { return new EguiInputTranslator(); }
