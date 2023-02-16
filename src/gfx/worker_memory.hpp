@@ -106,6 +106,9 @@ public:
   template <typename T> operator shards::pmr::PolymorphicAllocator<T> &() {
     return reinterpret_cast<shards::pmr::PolymorphicAllocator<T> &>(allocator);
   }
+  template <typename T> operator const shards::pmr::PolymorphicAllocator<T> &() {
+    return reinterpret_cast<shards::pmr::PolymorphicAllocator<T> &>(allocator);
+  }
   Allocator *operator->() { return &allocator; }
 
   const MonotonicGrowableAllocator &getMemoryResource() const { return memoryResource; }

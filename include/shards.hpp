@@ -986,6 +986,11 @@ template <class Function> inline void ForEach(const SHSeq &seq, Function &&f) {
     f(seq.elements[i]);
 }
 
+template <typename TGenericArray, class Function> inline void ForEach(const TGenericArray &seq, Function &&f) {
+  for (size_t i = 0; i < seq.len; i++)
+    f(seq.elements[i]);
+}
+
 class WireProvider {
   // used specially for live editing wires, from host languages
 public:

@@ -45,7 +45,7 @@ void registerCoreShards() {
   REGISTER_SHADER_SHARD("Shader.WriteGlobal", gfx::shader::Write<blocks::WriteGlobal>);
   REGISTER_SHADER_SHARD("Shader.WriteOutput", gfx::shader::Write<blocks::WriteOutput>);
   REGISTER_SHADER_SHARD("Shader.SampleTexture", gfx::shader::SampleTexture);
-  REGISTER_SHADER_SHARD("Shader.SampleTextureUV", gfx::shader::SampleTextureUV);
+  REGISTER_SHADER_SHARD("Shader.SampleTextureCoord", gfx::shader::SampleTextureCoord);
 
   // Utilities
   REGISTER_SHADER_SHARD("Shader.LinearizeDepth", gfx::shader::LinearizeDepth);

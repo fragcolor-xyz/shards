@@ -4,6 +4,7 @@
 #include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <map>
+#include <webgpu-headers/webgpu.h>
 
 namespace gfx {
 TextureDesc TextureDesc::getDefault() {
@@ -24,14 +25,18 @@ std::shared_ptr<Texture> Texture::makeRenderAttachment(WGPUTextureFormat format,
 }
 
 Texture &Texture::init(const TextureDesc &desc) {
-  contextData.reset();
-  this->desc = desc;
+  if (this->desc != desc) {
+    contextData.reset();
+    this->desc = desc;
+  }
   return *this;
 }
 
 Texture &Texture::initWithSamplerState(const SamplerState &samplerState) {
-  desc.samplerState = samplerState;
-  contextData.reset();
+  if (desc.samplerState != samplerState) {
+    desc.samplerState = samplerState;
+    contextData.reset();
+  }
   return *this;
 }
 
@@ -85,18 +90,6 @@ static WGPUSampler createSampler(Context &context, SamplerState samplerState, bo
   return wgpuDeviceCreateSampler(context.wgpuDevice, &desc);
 }
 
-static WGPUTextureView createView(const TextureFormat &format, WGPUTexture texture) {
-  WGPUTextureViewDescriptor viewDesc{};
-  viewDesc.baseArrayLayer = 0;
-  viewDesc.arrayLayerCount = 1;
-  viewDesc.baseMipLevel = 0;
-  viewDesc.mipLevelCount = 1;
-  viewDesc.aspect = WGPUTextureAspect_All;
-  viewDesc.dimension = WGPUTextureViewDimension_2D;
-  viewDesc.format = format.pixelFormat;
-  return wgpuTextureCreateView(texture, &viewDesc);
-}
-
 static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, WGPUTexture texture,
                              const ImmutableSharedBuffer &isb) {
   ZoneScoped;
@@ -136,8 +129,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
     return;
 
   if (desc.externalTexture) {
-    contextData.defaultView = desc.externalTexture.value();
-    contextData.isExternalView = true;
+    contextData.externalView = desc.externalTexture.value();
   } else {
     WGPUTextureDescriptor wgpuDesc = {};
     wgpuDesc.usage = WGPUTextureUsage_TextureBinding;
@@ -163,7 +155,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
       break;
     case TextureType::Cube:
       wgpuDesc.dimension = WGPUTextureDimension_2D;
-      contextData.size.depthOrArrayLayers = 8;
+      contextData.size.depthOrArrayLayers = 6;
       break;
     default:
       assert(false);
@@ -180,9 +172,6 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
 
     if (desc.data)
       writeTextureData(context, desc.format, desc.resolution, contextData.texture, desc.data);
-
-    contextData.defaultView = createView(desc.format, contextData.texture);
-    assert(contextData.defaultView);
   }
 
   contextData.sampler = createSampler(context, desc.samplerState, false);

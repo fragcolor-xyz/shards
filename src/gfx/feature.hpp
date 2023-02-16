@@ -9,6 +9,7 @@
 #include "shader/entry_point.hpp"
 #include "pipeline_hash_collector.hpp"
 #include "unique_id.hpp"
+#include "feature_generator.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -155,10 +156,12 @@ struct NamedShaderParam {
 
 struct NamedTextureParam {
   std::string name;
+  TextureType type = TextureType::D2;
   ShaderParamFlags flags = ShaderParamFlags::None;
 
   NamedTextureParam() = default;
-  NamedTextureParam(std::string name) : name(name) {}
+  NamedTextureParam(std::string name, TextureType type = TextureType::D2, ShaderParamFlags flags = ShaderParamFlags::None)
+      : name(name), type(type) {}
 
   template <typename T> void getPipelineHash(T &hasher) const {
     hasher(name);
@@ -166,30 +169,15 @@ struct NamedTextureParam {
   }
 };
 
-struct FeatureCallbackContext {
-  Context &context;
-  const View *view = nullptr;
-  const IDrawable *drawable = nullptr;
-  const detail::CachedDrawable *cachedDrawable = nullptr;
-  const detail::CachedView *cachedView = nullptr;
-};
-
-typedef std::function<bool(const FeatureCallbackContext &)> FeatureFilterCallback;
-
-struct IParameterCollector;
-typedef std::function<void(const FeatureCallbackContext &, IParameterCollector &)> FeatureParameterGenerator;
-
 extern UniqueIdGenerator featureIdGenerator;
-struct Feature {
+struct Feature : public std::enable_shared_from_this<Feature> {
   // Used to identify this feature for caching purposes
   const UniqueId id = featureIdGenerator.getNext();
 
   // Pipeline state flags
   FeaturePipelineState state;
-  // Per drawable draw data
-  std::vector<FeatureParameterGenerator> drawableParameterGenerators;
-  // Per view draw data
-  std::vector<FeatureParameterGenerator> viewParameterGenerators;
+  // Generated parameters and precomputed rendering
+  std::vector<FeatureGenerator> generators;
   // Shader parameters read from per-instance buffer
   std::vector<NamedShaderParam> shaderParams;
   // Texture parameters

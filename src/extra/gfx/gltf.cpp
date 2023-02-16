@@ -1,3 +1,4 @@
+#include "boost/filesystem/path.hpp"
 #include "shards_types.hpp"
 #include "shards_utils.hpp"
 #include "drawable_utils.hpp"
@@ -115,8 +116,10 @@ struct GLTFShard {
     PARAM_WARMUP(context);
 
     if (!_staticModelPath.isNone()) {
-      // Since loading from files is more of a debug funcitonality, try to load using the shards relative path
-      std::string resolvedPath = gfx::resolveDataPath((const char *)_staticModelPath).string();
+      // Load relative to script path
+      fs::path p = GetGlobals().RootPath;
+      p /= (const char *)_staticModelPath;
+      std::string resolvedPath = p.string();
 
       SPDLOG_DEBUG("Loading static glTF model from {}", resolvedPath);
       _staticModel = loadGltfFromFile(resolvedPath.c_str());

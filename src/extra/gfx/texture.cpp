@@ -1,4 +1,11 @@
 #include "../gfx.hpp"
+#include "common_types.hpp"
+#include "extra/gfx/shards_types.hpp"
+#include "foundation.hpp"
+#include "linalg_shim.hpp"
+#include "shards.h"
+#include "shards.hpp"
+#include <array>
 #include <gfx/texture.hpp>
 #include <gfx/error_utils.hpp>
 #include <gfx/render_target.hpp>
@@ -25,35 +32,86 @@ struct TextureFormatException : public std::runtime_error {
 };
 
 struct TextureShard {
-  static inline shards::Types InputTypes{{CoreInfo::ImageType}};
+  using TextureType = Types::TextureType_;
+
+  static inline shards::Types InputTypes{{CoreInfo::ImageType, CoreInfo::NoneType, CoreInfo::AnyType}};
   static SHTypesInfo inputTypes() { return InputTypes; }
-  static SHTypesInfo outputTypes() { return Types::Texture; }
-  static SHOptionalString help() { return SHCCSTR("Creates a texture from an image"); }
+  static SHTypesInfo outputTypes() { return Types::TextureTypes; }
+  static SHOptionalString help() { return SHCCSTR("Creates a texture from an image. Or as a render target"); }
 
   TexturePtr texture;
   OwnedVar textureVar;
+  bool _createFromImage{};
 
-  PARAM_VAR(asType_, "Type", "Type to interpret image data as. (Default: UNormSRGB for RGBA8 images, UNorm for other formats)",
+  PARAM_VAR(_interpretAs, "InterpretAs",
+            "Type to interpret image data as. (From image only, Default: UNormSRGB for RGBA8 images, UNorm for other formats)",
             {Types::TextureTypeEnumInfo::Type});
-  PARAM_IMPL(TextureShard, PARAM_IMPL_FOR(asType_));
+  PARAM_VAR(_format, "Format",
+            "The format to use to create the texture. The texture will be usable as a render target. (Render target only)",
+            {Types::TextureFormatEnumInfo::Type});
+  PARAM_VAR(_resolution, "Resolution", "The resolution of the texture to create. (Render target only)", {CoreInfo::Int2Type});
+  PARAM_VAR(_dimension, "Dimension", "The type of texture to create. (Render target only)",
+            {Types::TextureDimensionEnumInfo::Type});
+  PARAM_IMPL(TextureShard, PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution),
+             PARAM_IMPL_FOR(_dimension));
 
-  TextureShard() {
-    asType_ = Var::Enum(Types::TextureType_::Default, Types::TextureTypeEnumInfo::VendorId, Types::TextureTypeEnumInfo::TypeId);
+  TextureShard() {}
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
+    texture = std::make_shared<Texture>();
+
+    // Set TypeId based on texture dimension so we can check bindings at compose time
+    gfx::TextureType dim = getTextureDimension();
+    switch (dim) {
+    case gfx::TextureType::D1:
+      throw formatException("TextureDimension.D1 not supported");
+    case gfx::TextureType::D2:
+      textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureTypeId);
+      break;
+    case gfx::TextureType::Cube:
+      textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureCubeTypeId);
+      break;
+    }
   }
 
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup() {
+    PARAM_CLEANUP();
+    texture.reset();
+  }
 
-  SHVar activate(SHContext *shContext, const SHVar &input) {
-    using TextureType = Types::TextureType_;
+  gfx::TextureType getTextureDimension() const {
+    return !_dimension.isNone() ? gfx::TextureType(_dimension.payload.enumValue) : gfx::TextureType::D2;
+  }
 
-    auto &image = input.payload.imageValue;
-
-    if (!texture) {
-      texture = std::make_shared<Texture>();
-      textureVar = Var::Object(&texture, gfx::VendorId, Types::TextureTypeId);
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (!_interpretAs.isNone()) {
+      if (!_format.isNone())
+        throw ComposeError("Can not specify both Format and InterpretAs parameters at the same time");
+      if (!_dimension.isNone())
+        throw ComposeError("Can not specify both Dimension and InterpretAs parameters at the same time");
+      if (!_resolution.isNone())
+        throw ComposeError("Can not specify both Resolution and InterpretAs parameters at the same time");
     }
 
+    if (!_format.isNone()) {
+      _createFromImage = false;
+    } else {
+      if (data.inputType != CoreInfo::ImageType) {
+        throw ComposeError("Format is required when not creating a texture from an image");
+      }
+      _createFromImage = true;
+    }
+
+    auto dim = getTextureDimension();
+    if (dim == gfx::TextureType::Cube)
+      return Types::TextureCube;
+    else
+      return Types::Texture;
+  }
+
+  void activateFromImage(const SHImage &image) {
     ComponentType componentType;
     TextureType asType;
     if (image.flags & SHIMAGE_FLAGS_32BITS_FLOAT) {
@@ -70,7 +128,7 @@ struct TextureShard {
         asType = TextureType::UNorm;
     }
 
-    TextureType paramAsType = TextureType(asType_.payload.enumValue);
+    TextureType paramAsType = !_interpretAs.isNone() ? (TextureType)_interpretAs.payload.enumValue : TextureType::Default;
     if (paramAsType != TextureType::Default) {
       asType = paramAsType;
     }
@@ -164,6 +222,27 @@ struct TextureShard {
     // Copy the data since we can't keep a reference to the image variable
     ImmutableSharedBuffer isb(image.data, imageSize);
     texture->init(TextureDesc{.format = format, .resolution = int2(image.width, image.height), .data = std::move(isb)});
+  }
+
+  void activateRenderableTexture() {
+    int2 resolution = !_resolution.isNone() ? toInt2(_resolution) : int2(0);
+
+    texture->init(TextureDesc{
+        .format =
+            TextureFormat{
+                .type = getTextureDimension(),
+                .flags = TextureFormatFlags::RenderAttachment,
+                .pixelFormat = (WGPUTextureFormat)_format.payload.enumValue,
+            },
+        .resolution = resolution,
+    });
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    if (_createFromImage)
+      activateFromImage(input.payload.imageValue);
+    else
+      activateRenderableTexture();
 
     return textureVar;
   }
@@ -173,32 +252,39 @@ struct RenderTargetShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Types::RenderTarget; }
   static SHOptionalString help() {
-    return SHCCSTR("Defines a new default render target with \"main\" (color) and \"depth\" attachments");
+    return SHCCSTR("Groups a collection of textures into a render target that can be rendered into");
   }
 
-  SHRenderTarget renderTarget;
-  OwnedVar renderTargetVar{};
+  static inline std::array<SHString, 2> AttachmentTableKeys{"Texture", "Name"};
+  static inline shards::Types AttachmentTableTypes{{CoreInfo::StringType}};
+  static inline shards::Type AttachmentTable = Type::TableOf(AttachmentTableTypes, AttachmentTableKeys);
+
+  PARAM_VAR(_attachments, "Attachments", "The list of attachements to create.", {Type::TableOf(AttachmentTable)});
+  PARAM_IMPL(RenderTargetShard, PARAM_IMPL_FOR(_attachments));
+
+  SHRenderTarget _renderTarget;
+  OwnedVar _renderTargetVar{};
 
   RenderTargetShard() {}
 
-  PARAM_IMPL(RenderTargetShard);
-
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _renderTarget.renderTarget = std::make_shared<RenderTarget>();
+    _renderTargetVar = Var::Object(&_renderTarget, gfx::VendorId, Types::RenderTargetTypeId);
+  }
   void cleanup() { PARAM_CLEANUP(); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    bool isInitialized = renderTargetVar.valueType == SHType::Object;
-    if (!isInitialized) {
-      static std::atomic<uint32_t> counter;
-      std::string id = fmt::format("shardsRenderTarget{}", counter++);
-      auto &vt = renderTarget.renderTarget = std::make_shared<RenderTarget>(id.c_str());
-      vt->configure("color", WGPUTextureFormat_RGBA8Unorm);
-      vt->configure("depth", WGPUTextureFormat_Depth32Float);
+    auto &rt = _renderTarget.renderTarget;
+    auto &attachments = rt->attachments;
+    auto &table = _attachments.payload.tableValue;
+    attachments.clear();
+    ForEach(table, [&](SHString &k, SHVar &v) {
+      TexturePtr texture = *varAsObjectChecked<TexturePtr>(v, Types::Texture);
+      attachments.emplace(k, texture);
+    });
 
-      renderTargetVar = Var::Object(&renderTarget, gfx::VendorId, Types::RenderTargetTypeId);
-    }
-
-    return renderTargetVar;
+    return _renderTargetVar;
   }
 };
 

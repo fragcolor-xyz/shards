@@ -4,6 +4,7 @@
 #include "renderer_types.hpp"
 #include "drawable_processor.hpp"
 #include "view.hpp"
+#include <webgpu-headers/webgpu.h>
 
 namespace gfx::detail {
 
@@ -40,7 +41,9 @@ struct BindGroupBuilder {
         .entryCount = uint32_t(entries.size()),
         .entries = entries.data(),
     };
-    return wgpuDeviceCreateBindGroup(device, &desc);
+    WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(device, &desc);
+    assert(bindGroup);
+    return bindGroup;
   }
 };
 
@@ -107,26 +110,12 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
 }
 
 inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &viewData) {
-  outDrawData.setParam("view", viewData.view.view);
+  outDrawData.setParam("view", viewData.view->view);
   outDrawData.setParam("invView", viewData.cachedView.invViewTransform);
   outDrawData.setParam("proj", viewData.cachedView.projectionTransform);
   outDrawData.setParam("invProj", viewData.cachedView.invProjectionTransform);
   outDrawData.setParam("viewport", float4(float(viewData.viewport.x), float(viewData.viewport.y), float(viewData.viewport.width),
                                           float(viewData.viewport.height)));
-}
-
-inline void collectGeneratedDrawParameters(const FeatureCallbackContext &ctx, const CachedPipeline &pipeline,
-                                           IParameterCollector &collector) {
-  for (auto &gen : pipeline.drawableParameterGenerators) {
-    gen(ctx, collector);
-  }
-}
-
-inline void collectGeneratedViewParameters(const FeatureCallbackContext &ctx, const CachedPipeline &pipeline,
-                                           IParameterCollector &collector) {
-  for (auto &gen : pipeline.viewParameterGenerators) {
-    gen(ctx, collector);
-  }
 }
 
 } // namespace gfx::detail

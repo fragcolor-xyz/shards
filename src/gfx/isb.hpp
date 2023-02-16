@@ -1,6 +1,7 @@
 #ifndef GFX_ISB
 #define GFX_ISB
 
+#include <compare>
 #include <functional>
 #include <stdint.h>
 #include <string.h>
@@ -65,6 +66,8 @@ public:
   }
 
   ImmutableSharedBuffer(std::vector<uint8_t> &&data) { container = std::make_shared<OwnedContainer>(std::move(data)); }
+
+  std::strong_ordering operator<=>(const ImmutableSharedBuffer &other) const = default;
 
   size_t getLength() const { return container ? container->getLength() : 0; }
   const uint8_t *getData() const { return container ? container->getData() : nullptr; }

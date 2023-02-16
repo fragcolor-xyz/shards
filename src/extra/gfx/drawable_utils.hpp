@@ -2,15 +2,19 @@
 #define C7AA640C_1748_42BC_8772_0B8F4E136CEA
 
 #include "gfx/error_utils.hpp"
+#include "gfx/shader/types.hpp"
+#include "shards.h"
 #include "shards_types.hpp"
 #include "shards_utils.hpp"
 #include <ops_internal.hpp>
 #include <foundation.hpp>
 #include <gfx/material.hpp>
 #include <gfx/params.hpp>
+#include <gfx/texture.hpp>
 #include <magic_enum.hpp>
 #include <shards.hpp>
 #include <spdlog/spdlog.h>
+#include <variant>
 
 namespace gfx {
 inline void varToTexture(const SHVar &var, TexturePtr &outVariant) {
@@ -69,6 +73,33 @@ inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
   default:
     throw formatException("Value type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
   }
+}
+
+using ShaderFieldTypeVariant = std::variant<std::monostate, shader::FieldType, gfx::TextureType>;
+inline ShaderFieldTypeVariant toShaderParamType(const SHTypeInfo &typeInfo) {
+  switch (typeInfo.basicType) {
+    return shader::FieldTypes::Float;
+  case SHType::Float2:
+    return shader::FieldTypes::Float2;
+  case SHType::Float3:
+    return shader::FieldTypes::Float3;
+  case SHType::Float4:
+    return shader::FieldTypes::Float4;
+  case SHType::Seq:
+    if (typeInfo.seqTypes.len == 1 && typeInfo.seqTypes.elements[0].basicType == SHType::Float4) {
+      return shader::FieldTypes::Float4x4;
+    }
+    break;
+  case SHType::Object: {
+    if (typeInfo == Types::Texture)
+      return TextureType::D2;
+    else if (typeInfo == Types::TextureCube)
+      return TextureType::Cube;
+  }
+  default:
+    break;
+  }
+  return std::monostate();
 }
 
 inline bool tryVarToParam(const SHVar &var, ParamVariant &outVariant) {

@@ -1,4 +1,6 @@
 #include "pipeline_builder.hpp"
+#include "enums.hpp"
+#include "renderer_types.hpp"
 #include "shader/uniforms.hpp"
 #include "log.hpp"
 #include "shader/textures.hpp"
@@ -6,6 +8,9 @@
 #include "shader/blocks.hpp"
 #include "shader/wgsl_mapping.hpp"
 #include "shader/log.hpp"
+#include <memory>
+#include <variant>
+#include <webgpu-headers/webgpu.h>
 
 using namespace gfx::detail;
 using namespace gfx::shader;
@@ -157,11 +162,34 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
       feature->pipelineModifier->buildPipeline(*this);
     }
 
+    std::vector<std::weak_ptr<Feature>> otherFeatures;
+    for (auto &otherFeature : features) {
+      if (otherFeature != feature) {
+        otherFeatures.push_back(const_cast<Feature *>(otherFeature)->weak_from_this());
+      }
+    }
+
     // Store parameter generators
-    for (auto &gen : feature->drawableParameterGenerators)
-      output.drawableParameterGenerators.push_back(gen);
-    for (auto &gen : feature->viewParameterGenerators)
-      output.viewParameterGenerators.push_back(gen);
+    for (const auto &gen : feature->generators) {
+
+      std::visit(
+          [&](auto arg) {
+            using T = std::decay_t<decltype(arg)>;
+
+            auto cached = CachedFeatureGenerator<T>{
+                .callback = arg,
+                .owningFeature = const_cast<Feature *>(feature)->weak_from_this(),
+                .otherFeatures = otherFeatures,
+            };
+
+            if constexpr (std::is_same_v<T, FeatureGenerator::PerObject>) {
+              output.perObjectGenerators.push_back(cached);
+            } else if constexpr (std::is_same_v<T, FeatureGenerator::PerView>) {
+              output.perViewGenerators.push_back(cached);
+            }
+          },
+          gen.callback);
+    }
   }
 
   // Set shader generator input mesh format
@@ -218,7 +246,17 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
       textureBinding.visibility = WGPUShaderStage_Fragment;
       textureBinding.texture.multisampled = false;
       textureBinding.texture.sampleType = WGPUTextureSampleType_Float;
-      textureBinding.texture.viewDimension = WGPUTextureViewDimension_2D;
+      switch (desc.type) {
+      case TextureType::D1:
+        textureBinding.texture.viewDimension = WGPUTextureViewDimension_1D;
+        break;
+      case TextureType::D2:
+        textureBinding.texture.viewDimension = WGPUTextureViewDimension_2D;
+        break;
+      case TextureType::Cube:
+        textureBinding.texture.viewDimension = WGPUTextureViewDimension_Cube;
+        break;
+      }
 
       WGPUBindGroupLayoutEntry &samplerBinding = bindGroupLayoutEntries.emplace_back();
       samplerBinding.binding = desc.defaultSamplerBinding;
@@ -430,7 +468,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 void PipelineBuilder::collectTextureBindings() {
   for (auto &feature : features) {
     for (auto &textureParam : feature->textureParams) {
-      textureBindings.addOrUpdateSlot(textureParam.name, 0);
+      textureBindings.addOrUpdateSlot(textureParam.name, textureParam.type, 0);
     }
   }
 

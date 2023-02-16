@@ -4,6 +4,7 @@
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>
 #include "../inputs.hpp"
+#include "extra/gfx.hpp"
 
 using namespace shards;
 using shards::Inputs::InputContext;
@@ -38,13 +39,15 @@ struct MainWindow final {
   ShardsVar _shards;
   bool _ignoreCompilationErrors = false;
 
-  std::shared_ptr<InputContext> _inputContext;
+  InputContext _inputContext;
   SHVar *_inputContextVar{};
 
-  std::shared_ptr<GraphicsContext> _graphicsContext;
+  GraphicsContext _graphicsContext;
   SHVar *_graphicsContextVar{};
 
-  std::shared_ptr<ContextUserData> _contextUserData;
+  GraphicsRendererContext _graphicsRendererContext;
+  SHVar *_graphicsRendererContextVar{};
+
   ::gfx::Loop _loop;
 
   ExposedInfo _exposedVariables;
@@ -105,11 +108,9 @@ struct MainWindow final {
       }
     }
 
-    _graphicsContext = std::make_shared<GraphicsContext>();
-    _inputContext = std::make_shared<InputContext>();
-
     _exposedVariables = ExposedInfo(data.shared);
     _exposedVariables.push_back(GraphicsContext::VariableInfo);
+    _exposedVariables.push_back(GraphicsRendererContext::VariableInfo);
     _exposedVariables.push_back(InputContext::VariableInfo);
     data.shared = SHExposedTypesInfo(_exposedVariables);
 
@@ -119,50 +120,43 @@ struct MainWindow final {
   }
 
   void warmup(SHContext *context) {
-    _graphicsContext = std::make_shared<GraphicsContext>();
-    _contextUserData = std::make_shared<ContextUserData>();
-
     WindowCreationOptions windowOptions = {};
     windowOptions.width = _pwidth;
     windowOptions.height = _pheight;
     windowOptions.title = _title;
-    _graphicsContext->window = std::make_shared<Window>();
-    _graphicsContext->window->init(windowOptions);
+    _graphicsContext.window = std::make_shared<Window>();
+    _graphicsContext.window->init(windowOptions);
 
     ContextCreationOptions contextOptions = {};
     contextOptions.debug = _debug;
-    _graphicsContext->context = std::make_shared<Context>();
-    _graphicsContext->context->init(*_graphicsContext->window.get(), contextOptions);
+    _graphicsContext.context = std::make_shared<Context>();
+    _graphicsContext.context->init(*_graphicsContext.window.get(), contextOptions);
 
-    // Attach user data to context
-    _graphicsContext->context->userData.set(_contextUserData.get());
+    _graphicsContext.renderer = std::make_shared<Renderer>(*_graphicsContext.context.get());
+    _graphicsContext.renderer->setIgnoreCompilationErrors(_ignoreCompilationErrors);
+    _graphicsRendererContext.renderer = _graphicsContext.renderer.get();
 
-    _graphicsContext->renderer = std::make_shared<Renderer>(*_graphicsContext->context.get());
-    _graphicsContext->renderer->setIgnoreCompilationErrors(_ignoreCompilationErrors);
-
-    _graphicsContext->shDrawQueue = SHDrawQueue{
+    _graphicsContext.shDrawQueue = SHDrawQueue{
         .queue = std::make_shared<DrawQueue>(),
     };
 
     _graphicsContextVar = referenceVariable(context, GraphicsContext::VariableName);
-    _graphicsContextVar->payload.objectTypeId = SHTypeInfo(GraphicsContext::Type).object.typeId;
-    _graphicsContextVar->payload.objectVendorId = SHTypeInfo(GraphicsContext::Type).object.vendorId;
-    _graphicsContextVar->payload.objectValue = _graphicsContext.get();
-    _graphicsContextVar->valueType = SHType::Object;
+    assignVariableValue(*_graphicsContextVar, Var::Object(&_graphicsContext, GraphicsContext::Type));
+
+    _graphicsRendererContextVar = referenceVariable(context, GraphicsRendererContext::VariableName);
+    assignVariableValue(*_graphicsRendererContextVar, Var::Object(&_graphicsRendererContext, GraphicsRendererContext::Type));
 
     _inputContextVar = referenceVariable(context, InputContext::VariableName);
-    _inputContextVar->payload.objectTypeId = SHTypeInfo(InputContext::Type).object.typeId;
-    _inputContextVar->payload.objectVendorId = SHTypeInfo(InputContext::Type).object.vendorId;
-    _inputContextVar->payload.objectValue = _inputContext.get();
-    _inputContextVar->valueType = SHType::Object;
+    assignVariableValue(*_inputContextVar, Var::Object(&_inputContext, InputContext::Type));
 
     _shards.warmup(context);
   }
 
   void cleanup() {
-    _graphicsContext.reset();
-    _inputContext.reset();
     _shards.cleanup();
+    _graphicsContext = GraphicsContext{};
+    _graphicsRendererContext = GraphicsRendererContext{};
+    _inputContext = InputContext{};
 
     if (_graphicsContextVar) {
       if (_graphicsContextVar->refcount > 1) {
@@ -170,6 +164,14 @@ struct MainWindow final {
                     GraphicsContext::VariableName);
       }
       releaseVariable(_graphicsContextVar);
+    }
+
+    if (_graphicsRendererContextVar) {
+      if (_graphicsRendererContextVar->refcount > 1) {
+        SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _graphicsRendererContextVar->refcount - 1,
+                    GraphicsRendererContext::VariableName);
+      }
+      releaseVariable(_graphicsRendererContextVar);
     }
 
     if (_inputContextVar) {
@@ -181,17 +183,13 @@ struct MainWindow final {
     }
   }
 
-  void frameBegan() { _graphicsContext->getDrawQueue()->clear(); }
+  void frameBegan() { _graphicsContext.getDrawQueue()->clear(); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto &renderer = _graphicsContext->renderer;
-    auto &context = _graphicsContext->context;
-    auto &window = _graphicsContext->window;
-    auto &events = _inputContext->events;
-
-    // Store shards context for current activation in user data
-    // this is used by callback chains that need to resolve variables, etc.
-    _contextUserData->shardsContext = shContext;
+    auto &renderer = _graphicsRendererContext.renderer;
+    auto &context = _graphicsContext.context;
+    auto &window = _graphicsContext.window;
+    auto &events = _inputContext.events;
 
     window->pollEvents(events);
     for (auto &event : events) {
@@ -212,7 +210,7 @@ struct MainWindow final {
     }
 
     // Push root input region
-    auto &inputStack = _inputContext->inputStack;
+    auto &inputStack = _inputContext.inputStack;
     inputStack.reset();
     inputStack.push(input::InputStack::Item{
         .windowMapping = input::WindowSubRegion::fromEntireWindow(*window.get()),
@@ -221,8 +219,8 @@ struct MainWindow final {
     float deltaTime = 0.0;
     if (_loop.beginFrame(0.0f, deltaTime)) {
       if (context->beginFrame()) {
-        _graphicsContext->time = _loop.getAbsoluteTime();
-        _graphicsContext->deltaTime = deltaTime;
+        _graphicsContext.time = _loop.getAbsoluteTime();
+        _graphicsContext.deltaTime = deltaTime;
 
         renderer->beginFrame();
 
@@ -238,9 +236,6 @@ struct MainWindow final {
     }
 
     inputStack.pop();
-
-    // Clear context
-    _contextUserData->shardsContext = nullptr;
 
     return SHVar{};
   }

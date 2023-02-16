@@ -2,9 +2,17 @@
 #include <gfx/view.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>
+#include <gfx/fmt.hpp>
 #include <input/input_stack.hpp>
+#include "common_types.hpp"
+#include "extra/gfx.hpp"
+#include "extra/gfx/shards_utils.hpp"
+#include "foundation.hpp"
+#include "gfx/error_utils.hpp"
+#include "gfx/fwd.hpp"
 #include "params.hpp"
 #include "linalg_shim.hpp"
+#include "shards.h"
 #include "shards_utils.hpp"
 #include "../inputs.hpp"
 
@@ -25,42 +33,26 @@ struct ViewShard {
     return SHCCSTR("Defines a viewer (or camera) for a rendered frame based on a view transform matrix");
   }
 
-  static inline Parameters params{
-      {"View", SHCCSTR("The view matrix. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(CoreInfo::Float4x4Type)}},
-  };
-  static SHParametersInfo parameters() { return params; }
+  PARAM_PARAMVAR(_viewTransform, "View", "The view matrix.", {CoreInfo::NoneType, Type::VariableOf(CoreInfo::Float4x4Type)});
+  PARAM_PARAMVAR(_fov, "Fov", "The vertical field of view. (In radians. Implies perspective projection)",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, Type::VariableOf(CoreInfo::FloatType)});
+  PARAM_IMPL(ViewShard, PARAM_IMPL_FOR(_viewTransform), PARAM_IMPL_FOR(_fov));
 
-  ParamVar _viewTransform;
   SHView *_view;
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _viewTransform = value;
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _viewTransform;
-    default:
-      return Var::Empty;
-    }
-  }
-
   void cleanup() {
+    PARAM_CLEANUP();
+
     if (_view) {
       Types::ViewObjectVar.Release(_view);
       _view = nullptr;
     }
-    _viewTransform.cleanup();
   }
 
   void warmup(SHContext *context) {
     _view = Types::ViewObjectVar.New();
-    _viewTransform.warmup(context);
+
+    PARAM_WARMUP(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -72,10 +64,15 @@ struct ViewShard {
     // TODO: Add projection/viewport override params
     view->proj = ViewPerspectiveProjection{};
 
+    Var fovVar = (Var &)_fov.get();
+    if (!fovVar.isNone())
+      std::get<ViewPerspectiveProjection>(view->proj).fov = float(fovVar);
+
     if (_viewTransform.isVariable()) {
       _view->viewTransformVar = (SHVar &)_viewTransform;
       _view->viewTransformVar.warmup(context);
     }
+
     return Types::ViewObjectVar.Get(_view);
   }
 };
@@ -88,24 +85,24 @@ struct RegionShard {
   PARAM(ShardsVar, _content, "Content", "The code to run inside this region", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(RegionShard, PARAM_IMPL_FOR(_content));
 
-  RequiredGraphicsContext _graphicsContext;
+  RequiredGraphicsRendererContext _graphicsRendererContext;
   Inputs::RequiredInputContext _inputContext;
 
   void warmup(SHContext *context) {
-    _graphicsContext.warmup(context);
+    _graphicsRendererContext.warmup(context);
     _inputContext.warmup(context);
     PARAM_WARMUP(context);
   }
 
   void cleanup() {
     PARAM_CLEANUP();
-    _graphicsContext.cleanup();
+    _graphicsRendererContext.cleanup();
     _inputContext.cleanup();
   }
 
   SHExposedTypesInfo requiredVariables() {
     static auto e =
-        exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), Inputs::RequiredInputContext::getExposedTypeInfo());
+        exposedTypesOf(decltype(_graphicsRendererContext)::getExposedTypeInfo(), decltype(_inputContext)::getExposedTypeInfo());
     return e;
   }
 
@@ -149,7 +146,7 @@ struct RegionShard {
       viewItem.referenceSize = int2(linalg::floor(float2(regionSize)));
     }
 
-    ViewStack &viewStack = _graphicsContext->renderer->getViewStack();
+    ViewStack &viewStack = _graphicsRendererContext->renderer->getViewStack();
     input::InputStack &inputStack = _inputContext->inputStack;
 
     viewStack.push(std::move(viewItem));
@@ -165,8 +162,157 @@ struct RegionShard {
   }
 };
 
+// :Textures {:outputName .textureVar}
+// Face indices are ordered   X+ X- Y+ Y- Z+ Z-
+// :Textures {:outputName {:Texture .textureVar :Face 0}}
+struct RenderIntoShard {
+  static inline std::array<SHString, 2> TextureSubresourceTableKeys{"Texture", "Face"};
+  static inline shards::Types TextureSubresourceTableTypes{Type::VariableOf(Types::Texture), CoreInfo::IntType};
+  static inline shards::Type TextureSubresourceTable = Type::TableOf(TextureSubresourceTableTypes, TextureSubresourceTableKeys);
+
+  static inline shards::Types AttachmentTableTypes{TextureSubresourceTable, Type::VariableOf(Types::Texture)};
+  static inline shards::Type AttachmentTable = Type::TableOf(AttachmentTableTypes);
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR("Renders within a region of the screen and/or to a render target"); }
+
+  PARAM_VAR(_textures, "Textures", "The textures to render into to create.", {AttachmentTable});
+  PARAM(ShardsVar, _contents, "Contents", "The shards that will render into the given textures.", {CoreInfo::ShardRefSeqType});
+  PARAM_PARAMVAR(_referenceSize, "Size", "The reference size. This will control the size of the render targets.",
+                 {CoreInfo::Int2Type, CoreInfo::Int2VarType});
+  PARAM_PARAMVAR(_viewport, "Viewport", "The viewport.", {CoreInfo::Int4Type, CoreInfo::Int4VarType});
+  PARAM_IMPL(RenderIntoShard, PARAM_IMPL_FOR(_textures), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_referenceSize),
+             PARAM_IMPL_FOR(_viewport));
+
+  RequiredGraphicsRendererContext _graphicsRendererContext;
+  Inputs::OptionalInputContext _inputContext;
+  RenderTargetPtr _renderTarget;
+
+  void warmup(SHContext *context) {
+    _graphicsRendererContext.warmup(context);
+    _inputContext.warmup(context);
+    _renderTarget = std::make_shared<RenderTarget>();
+    PARAM_WARMUP(context);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    _graphicsRendererContext.cleanup();
+    _inputContext.cleanup();
+    _renderTarget.reset();
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    static auto e = exposedTypesOf(decltype(_graphicsRendererContext)::getExposedTypeInfo());
+    return e;
+  }
+
+  SHTypeInfo compose(SHInstanceData &data) { return _contents.compose(data).outputType; }
+
+  TextureSubResource applyAttachment(SHContext *shContext, const SHVar &input) {
+    if (input.valueType == SHType::ContextVar) {
+      ParamVar var{input};
+      var.warmup(shContext);
+      return *varAsObjectChecked<TexturePtr>(var.get(), Types::Texture);
+    } else {
+      checkType(input.valueType, SHType::Table, "Attachment");
+      auto &table = input.payload.tableValue;
+
+      Var textureVar;
+      if (!getFromTable(shContext, table, "Texture", textureVar)) {
+        throw formatException("Texture is required");
+      }
+
+      TexturePtr texture = varToTexture(textureVar);
+
+      uint8_t faceIndex{};
+      Var faceIndexVar;
+      if (getFromTable(shContext, table, "Face", faceIndexVar)) {
+        checkType(faceIndexVar.valueType, SHType::Int, "Face should be an integer");
+        faceIndex = uint8_t(int(faceIndexVar));
+      }
+
+      return TextureSubResource(texture, faceIndex);
+    }
+  }
+
+  void applyAttachments(SHContext *shContext, std::map<std::string, TextureSubResource> &outAttachments, const SHTable &input) {
+    auto &table = _textures.payload.tableValue;
+    outAttachments.clear();
+    ForEach(table, [&](SHString &k, SHVar &v) { outAttachments.emplace(k, applyAttachment(shContext, v)); });
+
+    if (outAttachments.size() == 0) {
+      throw formatException("RenderInto is missing at least one output texture");
+    }
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    // Set the render target textures
+    auto &rt = _renderTarget;
+    auto &attachments = rt->attachments;
+
+    applyAttachments(shContext, attachments, input.payload.tableValue);
+
+    ViewStack::Item viewItem{};
+    input::InputStack::Item inputItem;
+
+    viewItem.renderTarget = _renderTarget;
+
+    GraphicsRendererContext &ctx = _graphicsRendererContext;
+    ViewStack &viewStack = ctx.renderer->getViewStack();
+
+    // Use outer size for textures
+    // TODO(guusw): add parameter to control this
+
+    Var referenceSizeVar = (Var &)_referenceSize.get();
+
+    bool useOuterSize = true;
+    int2 referenceSize;
+
+    if (!referenceSizeVar.isNone()) {
+      referenceSize = toInt2(referenceSizeVar);
+    } else if (useOuterSize) {
+      referenceSize = viewStack.getOutput().referenceSize;
+    } else {
+      referenceSize = attachments[0].texture->getResolution();
+    }
+    viewItem.referenceSize = referenceSize;
+
+    // (optional) set viewport rectangle
+    Var viewportVar = (Var &)_viewport.get();
+    if (!viewportVar.isNone()) {
+      auto &v = viewportVar.payload.float4Value;
+      // Read SHType::Float4 rect as (X0, Y0, X1, Y1)
+      viewItem.viewport = Rect::fromCorners(v[0], v[1], v[2], v[3]);
+    } else {
+      viewItem.viewport = Rect(referenceSize);
+    }
+
+    // NOTE: Don't need to resize textures since the renderer does it automatically for given render targets
+
+    viewStack.push(std::move(viewItem));
+
+    if (_inputContext) {
+      _inputContext->inputStack.push(std::move(inputItem));
+    }
+
+    SHVar contentOutput;
+    _contents.activate(shContext, input, contentOutput);
+
+    viewStack.pop();
+
+    if (_inputContext) {
+      _inputContext->inputStack.pop();
+    }
+
+    return contentOutput;
+  }
+};
+
 void registerViewShards() {
   REGISTER_SHARD("GFX.View", ViewShard);
   REGISTER_SHARD("GFX.Region", RegionShard);
+  REGISTER_SHARD("GFX.RenderInto", RenderIntoShard);
 }
 } // namespace gfx

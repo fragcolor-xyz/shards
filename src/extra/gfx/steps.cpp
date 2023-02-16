@@ -1,4 +1,5 @@
 #include "../gfx.hpp"
+#include "extra/gfx/shards_utils.hpp"
 #include "shards_utils.hpp"
 #include "shader/translator.hpp"
 #include "linalg_shim.hpp"
@@ -11,6 +12,7 @@
 #include <magic_enum.hpp>
 #include <params.hpp>
 #include <optional>
+#include <webgpu-headers/webgpu.h>
 
 using namespace shards;
 
@@ -25,8 +27,8 @@ WGPUTextureFormat getAttachmentFormat(const std::string &name, const SHVar &form
       return WGPUTextureFormat_Depth32Float;
     }
   } else {
-    // TODO: Convert var to WGPUTextureFormat
-    // possibly reuse code from Texture shard
+    checkEnumType(formatVar, Types::TextureFormatEnumInfo::Type, "Attachment format");
+    return WGPUTextureFormat(formatVar.payload.enumValue);
   }
 
   throw std::runtime_error("Output :Format required");
@@ -114,7 +116,7 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
 
       attachment = RenderStepOutput::Texture{
           .name = nameVar.payload.stringValue,
-          .handle = texture,
+          .subResource = texture,
           .clearValues = clearValues,
       };
     } else {

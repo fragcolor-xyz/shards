@@ -5,6 +5,7 @@
 #include "pipeline_hash_collector.hpp"
 #include "hasherxxh128.hpp"
 #include <magic_enum.hpp>
+#include <type_traits>
 #include <unordered_map>
 
 namespace gfx::detail {
@@ -69,12 +70,23 @@ struct PipelineCache {
   void clear() { map.clear(); }
 };
 
+template <typename T> struct is_shared_ptr : std::false_type {};
+template <typename T> struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
+
 // Checks values in a map for the lastTouched member
 // if not used in `frameThreshold` frames, remove it
 template <typename T> void clearOldCacheItemsIn(T &iterable, size_t frameCounter, size_t frameThreshold) {
   for (auto it = iterable.begin(); it != iterable.end();) {
     auto &value = it->second;
-    if ((frameCounter - value->lastTouched) > frameThreshold) {
+
+    using T1 = std::decay_t<decltype(value)>;
+    int64_t frameDelta{};
+    if constexpr (is_shared_ptr<T1>::value)
+      frameDelta = int64_t(frameCounter) - int64_t(value->lastTouched);
+    else
+      frameDelta = int64_t(frameCounter) - int64_t(value.lastTouched);
+
+    if (frameDelta > int64_t(frameThreshold)) {
       it = iterable.erase(it);
     } else {
       ++it;

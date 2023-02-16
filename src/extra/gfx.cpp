@@ -1,4 +1,5 @@
 #include "gfx.hpp"
+#include "extra/gfx.hpp"
 #include "gfx/buffer_vars.hpp"
 #include <gfx/context.hpp>
 #include <gfx/loop.hpp>
@@ -8,6 +9,7 @@
 #include <gfx/window.hpp>
 #include <gfx/view.hpp>
 #include <gfx/steps/defaults.hpp>
+#include <foundation.hpp>
 #include <magic_enum.hpp>
 #include <exposed_type_utils.hpp>
 #include <params.hpp>
@@ -36,7 +38,8 @@ struct RenderShard {
   };
   static SHParametersInfo parameters() { return params; }
 
-  RequiredGraphicsContext _graphicsContext;
+  OptionalGraphicsContext _graphicsContext;
+  RequiredGraphicsRendererContext _graphicsRendererContext;
   ParamVar _steps{};
   ParamVar _view{};
   ParamVar _views{};
@@ -79,11 +82,12 @@ struct RenderShard {
   }
 
   SHExposedTypesInfo requiredVariables() {
-    static auto e = exposedTypesOf(decltype(_graphicsContext)::getExposedTypeInfo());
+    static auto e = exposedTypesOf(decltype(_graphicsRendererContext)::getExposedTypeInfo());
     return e;
   }
 
   void cleanup() {
+    _graphicsRendererContext.cleanup();
     _graphicsContext.cleanup();
     _steps.cleanup();
     _view.cleanup();
@@ -92,6 +96,7 @@ struct RenderShard {
   }
 
   void warmup(SHContext *context) {
+    _graphicsRendererContext.warmup(context);
     _graphicsContext.warmup(context);
     _steps.warmup(context);
     _view.warmup(context);
@@ -118,21 +123,21 @@ struct RenderShard {
 
   const std::vector<ViewPtr> &updateAndCollectViews() {
     _collectedViews.clear();
-    if (_view->valueType != SHType::None) {
-      const SHVar &var = _view.get();
-      SHView *shView = reinterpret_cast<SHView *>(var.payload.objectValue);
+    Var &viewVar = (Var &)_view.get();
+    Var &viewsVar = (Var &)_views.get();
+    if (!viewVar.isNone()) {
+      SHView *shView = varAsObjectChecked<SHView>(viewVar, Types::View);
       if (!shView)
-        throw formatException("GFX.Render View is not defined");
+        throw formatException("Specified view to GFX.Render is invalid");
 
       shView->updateVariables();
       _collectedViews.push_back(shView->view);
-    } else if (_views->valueType != SHType::None) {
-      SeqVar &seq = (SeqVar &)_views.get();
+    } else if (!viewsVar.isNone()) {
+      SeqVar &seq = (SeqVar &)viewsVar;
       for (size_t i = 0; i < seq.size(); i++) {
-        const SHVar &viewVar = seq[i];
-        SHView *shView = reinterpret_cast<SHView *>(viewVar.payload.objectValue);
+        SHView *shView = varAsObjectChecked<SHView>(seq[i], Types::View);
         if (!shView)
-          throw formatException("GFX.Render View[{}] is not defined", i);
+          throw formatException("Specified view {} to GFX.Render is invalid", i);
 
         shView->updateVariables();
         _collectedViews.push_back(shView->view);
@@ -143,12 +148,13 @@ struct RenderShard {
     return _collectedViews;
   }
 
+  // TODO(guusw): Remove the global draw queue
   void fixupPipelineStep(PipelineStep &step) {
     std::visit(
         [&](auto &&arg) {
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
-            if (!arg.drawQueue)
+            if (!arg.drawQueue && _graphicsContext)
               arg.drawQueue = _graphicsContext->getDrawQueue();
           }
         },
@@ -156,34 +162,44 @@ struct RenderShard {
   }
 
   PipelineSteps collectPipelineSteps() {
-    _collectedPipelineSteps.clear();
+    try {
+      _collectedPipelineSteps.clear();
 
-    Var stepsSHVar(_steps.get());
-    stepsSHVar.intoVector(_collectedPipelineStepVars);
+      Var stepsSHVar(_steps.get());
+      stepsSHVar.intoVector(_collectedPipelineStepVars);
 
-    size_t index = 0;
-    for (const auto &stepVar : _collectedPipelineStepVars) {
-      if (!stepVar.payload.objectValue)
-        throw formatException("GFX.Render PipelineStep[{}] is not defined", index);
+      size_t index = 0;
+      for (const auto &stepVar : _collectedPipelineStepVars) {
+        if (!stepVar.payload.objectValue)
+          throw formatException("GFX.Render PipelineStep[{}] is not defined", index);
 
-      PipelineStepPtr &ptr = *reinterpret_cast<PipelineStepPtr *>(stepVar.payload.objectValue);
-      fixupPipelineStep(*ptr.get());
+        PipelineStepPtr &ptr = *reinterpret_cast<PipelineStepPtr *>(stepVar.payload.objectValue);
+        fixupPipelineStep(*ptr.get());
 
-      _collectedPipelineSteps.push_back(ptr);
-      index++;
+        _collectedPipelineSteps.push_back(ptr);
+        index++;
+      }
+
+      return _collectedPipelineSteps;
+    } catch (...) {
+      SHLOG_ERROR("Failed to collect pipeline steps");
+      throw;
     }
-
-    return _collectedPipelineSteps;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    RendererHacks hacks;
-    if(_clearedHint.valueType != SHType::None) {
-      for(auto& val : _clearedHint) {
-        hacks.clearedHints.emplace_back(val.payload.stringValue);
+    if (_graphicsRendererContext->render) {
+      _graphicsRendererContext->render(updateAndCollectViews(), collectPipelineSteps());
+    } else {
+      RendererHacks hacks;
+      if (_clearedHint.valueType != SHType::None) {
+        for (auto &val : _clearedHint) {
+          hacks.clearedHints.emplace_back(val.payload.stringValue);
+        }
       }
+
+      _graphicsRendererContext->renderer->render(updateAndCollectViews(), collectPipelineSteps(), hacks);
     }
-    _graphicsContext->renderer->render(updateAndCollectViews(), collectPipelineSteps(), hacks);
     return SHVar{};
   }
 };
@@ -213,6 +229,8 @@ void registerShards() {
   REGISTER_ENUM(Types::ColorMaskEnumInfo);
   REGISTER_ENUM(Types::TextureTypeEnumInfo);
   REGISTER_ENUM(Types::SortModeEnumInfo);
+  REGISTER_ENUM(Types::TextureFormatEnumInfo);
+  REGISTER_ENUM(Types::TextureDimensionEnumInfo);
 
   registerMainWindowShards();
   registerMeshShards();

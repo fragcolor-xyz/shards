@@ -14,3 +14,8 @@ indent_style = space
 charset = utf-8
 indent_size = 2
 indent_style = space
+
+[*.wgsl]
+charset = utf-8
+indent_size = 2
+indent_style = space

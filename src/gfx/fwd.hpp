@@ -19,6 +19,7 @@ typedef std::shared_ptr<Mesh> MeshPtr;
 
 struct Feature;
 typedef std::shared_ptr<Feature> FeaturePtr;
+typedef std::weak_ptr<Feature> FeatureWeakPtr;
 
 struct IPipelineModifier;
 typedef std::shared_ptr<IPipelineModifier> PipelineModifierPtr;
