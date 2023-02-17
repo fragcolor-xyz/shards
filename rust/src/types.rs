@@ -3155,12 +3155,12 @@ impl ParamVar {
     assert_ne!(self.pointee, std::ptr::null_mut());
   }
 
-  pub fn set(&mut self, value: Var) {
+  pub fn set_fast_unsafe(&mut self, value: &Var) {
     // avoid overwrite refcount
     assert_ne!(self.pointee, std::ptr::null_mut());
     unsafe {
       let rc = (*self.pointee).refcount;
-      (*self.pointee) = value;
+      (*self.pointee) = *value;
       (*self.pointee).flags = value.flags | (SHVAR_FLAGS_REF_COUNTED as u16);
       (*self.pointee).refcount = rc;
     }

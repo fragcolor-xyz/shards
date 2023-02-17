@@ -116,7 +116,7 @@ impl Shard for Simulation {
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.self_obj.warmup(context);
     unsafe {
-      self.self_obj.set(Var::new_object_from_ptr(
+      self.self_obj.set_cloning(&Var::new_object_from_ptr(
         self as *const Simulation,
         &SIMULATION_TYPE,
       ));

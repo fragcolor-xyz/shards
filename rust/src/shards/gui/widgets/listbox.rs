@@ -206,7 +206,7 @@ impl Shard for ListBox {
 
       if changed {
         if self.index.is_variable() {
-          self.index.set((*index as i64).into());
+          self.index.set_fast_unsafe(&(*index as i64).into());
         } else {
           self.tmp = *index;
         }
