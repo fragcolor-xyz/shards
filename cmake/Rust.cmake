@@ -34,6 +34,8 @@ if(NOT RUST_CARGO_TARGET)
   elseif(DESKTOP_LINUX)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
       set(RUST_CARGO_TARGET x86_64-unknown-linux-gnu)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+      set(RUST_CARGO_TARGET aarch64-unknown-linux-gnu)
     endif()
   endif()
 
