@@ -126,27 +126,27 @@ struct ParameterStorage final : public IParameterCollector {
     }
   };
 
-  shards::pmr::map<shards::pmr::string, ParamVariant, KeyLess> data;
+  shards::pmr::map<shards::pmr::string, ParamVariant, KeyLess> basic;
   shards::pmr::map<shards::pmr::string, TextureParameter, KeyLess> textures;
 
   using IParameterCollector::setParam;
   using IParameterCollector::setTexture;
 
   ParameterStorage() = default;
-  ParameterStorage(allocator_type allocator) : data(allocator), textures(allocator) {}
-  ParameterStorage(ParameterStorage &&other, allocator_type allocator) : data(allocator), textures(allocator) {
+  ParameterStorage(allocator_type allocator) : basic(allocator), textures(allocator) {}
+  ParameterStorage(ParameterStorage &&other, allocator_type allocator) : basic(allocator), textures(allocator) {
     *this = std::move(other);
   }
   ParameterStorage &operator=(ParameterStorage &&) = default;
 
-  void setParam(const char *name, ParamVariant &&value) { data.insert_or_assign(name, std::move(value)); }
+  void setParam(const char *name, ParamVariant &&value) { basic.insert_or_assign(name, std::move(value)); }
   void setTexture(const char *name, TextureParameter &&value) { textures.insert_or_assign(name, std::move(value)); }
 
-  void setParamIfUnset(const shards::pmr::string &key, const ParamVariant &value) { data.emplace(key, value); }
+  void setParamIfUnset(const shards::pmr::string &key, const ParamVariant &value) { basic.emplace(key, value); }
 
   void append(const ParameterStorage &other) {
-    for (auto &it : other.data) {
-      data.emplace(it);
+    for (auto &it : other.basic) {
+      basic.emplace(it);
     }
   }
 };

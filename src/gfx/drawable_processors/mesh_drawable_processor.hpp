@@ -194,63 +194,39 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     auto &textureBindings = cachedPipeline.textureBindingLayout.bindings;
     data.textures.resize(textureBindings.size());
 
-    auto mapTextureBinding = [&](const char *name) -> int32_t {
-      auto it = std::find_if(textureBindings.begin(), textureBindings.end(), [&](auto it) { return it.name == name; });
-      if (it != textureBindings.end())
-        return int32_t(it - textureBindings.begin());
-      return -1;
-    };
-
     auto setTextureParameter = [&](const char *name, const TexturePtr &texture) {
-      int32_t targetSlot = mapTextureBinding(name);
-      if (targetSlot >= 0) {
-        data.textures[targetSlot] = &texture->createContextDataConditional(context);
-      }
+      gfx::detail::setTextureParameter(textureBindings, data.textures, context, name, texture);
     };
 
-    auto mergeParameters = [&](const ParameterStorage &params) {
-      for (auto &param : params.data)
-        parameters.setParam(param.first.c_str(), param.second);
-      for (auto &param : params.textures) {
-        int32_t targetSlot = mapTextureBinding(param.first.c_str());
-        if (targetSlot >= 0) {
-          data.textures[targetSlot] = &param.second.texture->createContextDataConditional(context);
-        }
-      }
+    auto applyParameters = [&](const auto &srcParams) {
+      gfx::detail::applyParameters(textureBindings, data.textures, context, parameters, srcParams);
     };
 
     // NOTE : The parameters below are ordered by priority, so later entries overwrite previous entries
 
     // Grab default parameters
-    mergeParameters(cachedPipeline.baseDrawParameters);
+    applyParameters(cachedPipeline.baseDrawParameters);
 
     // Grab parameters from material
     if (Material *material = meshDrawable.material.get()) {
-      for (auto &pair : material->parameters.basic) {
-        parameters.setParam(pair.first, pair.second);
-      }
-      for (auto &pair : material->parameters.texture) {
+      applyParameters(material->parameters);
+    }
+
+    // Grab parameters from drawable
+    applyParameters(meshDrawable.parameters);
+
+    // Grab dynamic parameters from view
+    // TODO(guusw): Currently store per-view textures in the object buffer
+    //    Need to split the binding logic so that they can be on the view buffer as well
+    if (baseViewData) {
+      for (auto &pair : baseViewData->textures) {
         setTextureParameter(pair.first.c_str(), pair.second.texture);
       }
     }
 
-    // Grab parameters from drawable
-    for (auto &pair : meshDrawable.parameters.basic) {
-      parameters.setParam(pair.first, pair.second);
-    }
-    for (auto &pair : meshDrawable.parameters.texture) {
-      setTextureParameter(pair.first.c_str(), pair.second.texture);
-    }
-
-    // Grab dynamic parameters from view
-    // TODO: Temporary until moved into view buffer
-    if (baseViewData) {
-      mergeParameters(*baseViewData);
-    }
-
     // Grab dynamic parameters from drawable
     if (baseDrawData) {
-      mergeParameters(*baseDrawData);
+      applyParameters(*baseDrawData);
     }
 
     std::shared_ptr<MeshContextData> meshContextData = meshDrawable.mesh->contextData;
@@ -309,21 +285,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     for (auto &drawable : context.drawables) {
       const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
       meshDrawable.mesh->createContextDataConditional(context.context);
-
-      for (auto &texParam : meshDrawable.parameters.texture) {
-        auto texture = texParam.second.texture;
-        if (texture)
-          texture->createContextDataConditional(context.context);
-      }
-
-      auto material = meshDrawable.material;
-      if (material) {
-        for (auto &texParam : material->parameters.texture) {
-          auto texture = texParam.second.texture;
-          if (texture)
-            texture->createContextDataConditional(context.context);
-        }
-      }
     }
 
     auto *drawableDatas = allocator->new_object<shards::pmr::list<DrawableData>>();
@@ -344,8 +305,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
           baseDrawData = &(*context.generatorData.drawParameters)[index];
         }
 
-        // TODO: Move to view buffer
-        // for now merge into draw data
+        // TODO: Temporary to store per-view textures in per-object bind group
         ParameterStorage *baseDrawData1 = context.generatorData.viewParameters;
 
         generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, baseDrawData,
@@ -403,7 +363,18 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       // Set hard-coded view parameters (view/projection matrix)
       ParameterStorage viewParameters(allocator);
+
+      // Set builtin view paramters (transforms)
       setViewParameters(viewParameters, context.viewData);
+
+      // Merge generator parameters
+      auto baseViewData = context.generatorData.viewParameters;
+      if (baseViewData) {
+        for (auto &pair : baseViewData->basic) {
+          viewParameters.setParam(pair.first.c_str(), pair.second);
+        }
+        // TODO: Bind per-view textures here too once bindings are split
+      }
 
       auto &buffer = prepareData->viewBuffers[0];
       auto &binding = cachedPipeline.viewBuffersBindings[0];
@@ -462,6 +433,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
             // Drawable buffers are mapped entirely, dynamic offset is applied during encoding
             drawBindGroupBuilder.addBinding(binding, prepareData->drawBuffers[i].buffer, group.numInstances);
           }
+
+          // TODO(guusw): Need to split this so that we can have per-view texture bindings
           for (size_t i = 0; i < cachedPipeline.textureBindingLayout.bindings.size(); i++) {
             auto &binding = cachedPipeline.textureBindingLayout.bindings[i];
             auto texture = firstDrawableData.textures[i];

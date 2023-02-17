@@ -94,8 +94,8 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
                          const ParameterStorage &parameterStorage) {
   size_t layoutIndex = 0;
   for (const std::string &fieldName : layout.fieldNames) {
-    auto drawDataIt = parameterStorage.data.find<std::string>(fieldName);
-    if (drawDataIt != parameterStorage.data.end()) {
+    auto drawDataIt = parameterStorage.basic.find<std::string>(fieldName);
+    if (drawDataIt != parameterStorage.basic.end()) {
       const UniformLayout &itemLayout = layout.items[layoutIndex];
       NumFieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
       if (itemLayout.type != drawDataFieldType) {
@@ -117,6 +117,32 @@ inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &vie
   outDrawData.setParam("viewport", float4(float(viewData.viewport.x), float(viewData.viewport.y), float(viewData.viewport.width),
                                           float(viewData.viewport.height)));
 }
+
+template <typename TTextureBindings>
+auto mapTextureBinding(const TTextureBindings &textureBindings, const char *name) -> int32_t {
+  auto it = std::find_if(textureBindings.begin(), textureBindings.end(), [&](auto it) { return it.name == name; });
+  if (it != textureBindings.end())
+    return int32_t(it - textureBindings.begin());
+  return -1;
+};
+
+template <typename TTextureBindings, typename TOutTextures>
+auto setTextureParameter(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context, const char *name,
+                         const TexturePtr &texture) {
+  int32_t targetSlot = mapTextureBinding(textureBindings, name);
+  if (targetSlot >= 0) {
+    outTextures[targetSlot] = &texture->createContextDataConditional(context);
+  }
+};
+
+template <typename TTextureBindings, typename TOutTextures, typename TSrc>
+auto applyParameters(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context,
+                     ParameterStorage &dstParams, const TSrc &srcParam) {
+  for (auto &param : srcParam.basic)
+    dstParams.setParam(param.first.c_str(), param.second);
+  for (auto &param : srcParam.textures)
+    setTextureParameter(textureBindings, outTextures, context, param.first.c_str(), param.second.texture);
+};
 
 } // namespace gfx::detail
 
