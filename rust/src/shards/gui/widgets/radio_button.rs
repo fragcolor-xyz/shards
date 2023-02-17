@@ -2,7 +2,6 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::RadioButton;
-use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::widgets::text_util;
@@ -235,7 +234,7 @@ impl Shard for RadioButton {
       let response = ui.add(radio);
       if response.clicked() {
         if self.variable.is_variable() {
-          cloneVar(self.variable.get_mut(), &self.value);
+          self.variable.set_cloning(&self.value);
         }
 
         // radio button clicked during this frame

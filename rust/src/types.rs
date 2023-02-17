@@ -3166,6 +3166,11 @@ impl ParamVar {
     }
   }
 
+  pub fn set_cloning(&mut self, value: &Var) {
+    unsafe { (*Core).cloneVar.unwrap()(self.pointee, value) };
+    // notice we don't need to fix up ref-counting because cloning does not touch that
+  }
+
   pub fn get(&self) -> &Var {
     assert_ne!(self.pointee, std::ptr::null_mut());
     unsafe { &*self.pointee }

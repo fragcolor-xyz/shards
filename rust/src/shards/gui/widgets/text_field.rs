@@ -2,7 +2,6 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::TextField;
-use crate::core::cloneVar;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::HELP_VALUE_IGNORED;
@@ -185,7 +184,7 @@ impl Shard for TextField {
     if self.should_expose {
       // new string
       let tmp = Var::ephemeral_string("");
-      cloneVar(self.variable.get_mut(), &tmp);
+      self.variable.set_cloning(&tmp);
     }
 
     Ok(())
