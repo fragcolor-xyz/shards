@@ -673,7 +673,7 @@ struct Read {
 };
 
 struct Response {
-  static inline Types PostInTypes{CoreInfo::StringType};
+  static inline Types PostInTypes{CoreInfo::StringType, CoreInfo::BytesType};
 
   static SHTypesInfo inputTypes() { return PostInTypes; }
   static SHTypesInfo outputTypes() { return PostInTypes; }
@@ -699,6 +699,11 @@ struct Response {
       return _headers;
   }
 
+  // compose to fixup output type purely based on input type
+  SHTypeInfo compose(const SHInstanceData &data) {
+    return data.inputType;
+  }
+
   void warmup(SHContext *context) {
     _headers.warmup(context);
     _peerVar = referenceVariable(context, "Http.Server.Socket");
@@ -721,10 +726,10 @@ struct Response {
 
     _response.result(_status);
     _response.set(http::field::content_type, "application/json");
-    auto input_view = SHSTRVIEW(input);
+    auto input_view = SHSTRVIEW(input); // this also supports bytes cos POD layout
     _response.body() = input_view;
 
-    // add custom headers
+    // add custom headers (or replace current ones!)
     if (_headers.get().valueType == SHType::Table) {
       auto htab = _headers.get().payload.tableValue;
       ForEach(htab, [&](auto key, auto &value) {
