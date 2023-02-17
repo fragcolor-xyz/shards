@@ -2207,9 +2207,11 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
           // we might end up with some extra copies if keys are not the same but
           // given shards nature, it's unlikely it will be the majority of cases
           while (it != sMap->end()) {
-            cloneVar(dit->second, it->second);
             if (it->first != dit->first)
               goto early_exit;
+
+            cloneVar(dit->second, it->second);
+
             ++it;
             ++dit;
           }
