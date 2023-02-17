@@ -16,7 +16,7 @@
      (UI.Horizontal
       (->
        "Text: " (UI.Label)
-       (UI.TextInput .text)))
+       (UI.TextField .text)))
 
      .text (UI.HexViewer))))
 
