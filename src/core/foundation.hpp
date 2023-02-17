@@ -36,6 +36,7 @@
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
+#include <boost/container/stable_vector.hpp>
 #include <boost/container/flat_map.hpp>
 
 #define ENTT_ID_TYPE std::uint64_t
@@ -419,10 +420,11 @@ private:
 struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>, std::equal_to<SHVar>,
                                              boost::alignment::aligned_allocator<shards::OwnedVar, 16>> {};
 
-struct SHTableImpl
-    : public boost::container::flat_map<std::string, shards::OwnedVar, std::less<std::string>,
-                                        boost::alignment::aligned_allocator<std::pair<const std::string, shards::OwnedVar>, 16>> {
-};
+struct SHTableImpl : public boost::container::flat_map<
+                         std::string, shards::OwnedVar, std::less<std::string>,
+                         boost::container::stable_vector<
+                             std::pair<const std::string, shards::OwnedVar>,
+                             boost::alignment::aligned_allocator<std::pair<const std::string, shards::OwnedVar>, 16>>> {};
 
 namespace shards {
 using SHHashSet = SHSetImpl;
