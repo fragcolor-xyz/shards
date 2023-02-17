@@ -165,8 +165,6 @@ struct RendererImpl final : public ContextData {
   WorkerMemory &getWorkerMemoryForCurrentFrame() { return workerMemory; }
 
   void initializeContextData() {
-    SPDLOG_INFO("Renderer initializeContextData");
-
     assert(context.isReady());
     gfxWgpuDeviceGetLimits(context.wgpuDevice, &deviceLimits);
     bindToContext(context);
