@@ -2194,9 +2194,13 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
   case SHType::Table: {
     SHMap *map;
     if (dst.valueType == SHType::Table) {
+      // This code checks if the source and destination of a copy are the same.
       if (src.payload.tableValue.opaque == dst.payload.tableValue.opaque)
         return;
+
+      // also we assume mutable tables are of our internal type!!
       assert(dst.payload.tableValue.api == &GetGlobals().TableInterface);
+
       map = (SHMap *)dst.payload.tableValue.opaque;
 
       // let's do some magic here, while KISS at same time
@@ -2222,6 +2226,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       }
 
     early_exit:
+      // ok clear destination and copy values the old way
       map->clear();
     } else {
       destroyVar(dst);
