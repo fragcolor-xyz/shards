@@ -2232,8 +2232,10 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     t.api->tableGetIterator(t, &tit);
     SHString k;
     SHVar v;
+    uint64_t kHash = 0;
     while (t.api->tableNext(t, &tit, &k, &v)) {
       (*map)[k] = v;
+      kHash += std::hash<SHString>()(k) * 31;
     }
   } break;
   case SHType::Set: {
