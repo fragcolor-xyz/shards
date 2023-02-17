@@ -466,7 +466,7 @@ impl Shard for StaticRigidBody {
     let user_data: u128 =
       { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
     if self.self_obj.is_variable() {
-      self.self_obj.set(obj);
+      self.self_obj.set_cloning(&obj);
     }
     Rc::get_mut(&mut self.rb)
       .unwrap()
@@ -600,7 +600,7 @@ impl Shard for DynamicRigidBody {
     let user_data: u128 =
       { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
     if self.self_obj.is_variable() {
-      self.self_obj.set(obj);
+      self.self_obj.set_cloning(&obj);
     }
     Rc::get_mut(&mut self.rb)
       .unwrap()
@@ -744,7 +744,7 @@ impl Shard for KinematicRigidBody {
     let user_data: u128 =
       { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
     if self.self_obj.is_variable() {
-      self.self_obj.set(obj);
+      self.self_obj.set_cloning(&obj);
     }
     Rc::get_mut(&mut self.rb)
       .unwrap()

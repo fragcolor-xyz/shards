@@ -287,7 +287,7 @@ impl ImageButton {
     if response.clicked() {
       if self.selected.is_variable() {
         let selected: bool = selected.try_into()?;
-        self.selected.set((!selected).into());
+        self.selected.set_fast_unsafe(&(!selected).into());
       }
       let mut output = Var::default();
       if self.action.activate(context, input, &mut output) == WireState::Error {

@@ -193,7 +193,7 @@ impl Shard for Plot {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
     self.plot_context.warmup(ctx);
-    self.plot_context.set(Seq::new().as_ref().into());
+    self.plot_context.set_fast_unsafe(&Seq::new().as_ref().into());
 
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
@@ -245,7 +245,7 @@ impl Shard for Plot {
       plot
         .show(ui, |plot_ui| unsafe {
           let var = Var::new_object_from_ptr(plot_ui as *const _, &EGUI_PLOT_UI_TYPE);
-          self.plot_context.set(var);
+          self.plot_context.set_cloning(&var);
 
           let mut _output = Var::default();
           if self.contents.activate(context, input, &mut _output) == WireState::Error {
