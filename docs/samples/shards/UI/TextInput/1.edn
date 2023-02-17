@@ -11,6 +11,6 @@
    (UI.CentralPanel
     (->
      (Setup "Lorem ipsum dolor sit amet" >= .text)
-     (UI.TextInput :Variable .text :Multiline false))))
+     (UI.TextField :Variable .text :Multiline false))))
 
   (GFX.Render :Steps .render-steps)))

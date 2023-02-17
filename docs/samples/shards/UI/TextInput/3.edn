@@ -11,6 +11,6 @@
    (UI.CentralPanel
     (->
      ;; exposing a new variable
-     (UI.TextInput .text))))
+     (UI.TextField .text))))
 
   (GFX.Render :Steps .render-steps)))

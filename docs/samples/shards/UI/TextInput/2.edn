@@ -11,6 +11,6 @@
    (UI.CentralPanel
     (->
        ;; read-only
-     (UI.TextInput "Lorem ipsum dolor sit amet"))))
+     (UI.TextField "Lorem ipsum dolor sit amet"))))
 
   (GFX.Render :Steps .render-steps)))
