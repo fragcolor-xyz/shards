@@ -42,6 +42,10 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #include <unordered_set>
 #include <variant>
 
+#ifdef SHARDS_TRACKING
+#include "tracking.hpp"
+#endif
+
 #include "shardwrapper.hpp"
 
 // Needed specially for win32/32bit
@@ -299,12 +303,17 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   enum State { Stopped, Prepared, Starting, Iterating, IterationEnded, Failed, Ended };
 
   ~SHWire() {
+#if SHARDS_TRACKING
+    shards::tracking::untrack(this);
+#endif
+
     reset();
 #ifdef SH_USE_TSAN
     if (tsan_coro) {
       __tsan_destroy_fiber(tsan_coro);
     }
 #endif
+
     SHLOG_TRACE("Destroying wire {}", name);
   }
 
@@ -422,19 +431,41 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   entt::dispatcher dispatcher{};
 
 private:
-  SHWire(std::string_view wire_name) : name(wire_name) { SHLOG_TRACE("Creating wire: {}", name); }
+  SHWire(std::string_view wire_name) : name(wire_name) {
+    SHLOG_TRACE("Creating wire: {}", name);
 
-  SHWire() { SHLOG_TRACE("Creating wire"); }
+#if SHARDS_TRACKING
+    shards::tracking::track(this);
+#endif
+  }
+
+  SHWire() {
+    SHLOG_TRACE("Creating wire");
+
+#if SHARDS_TRACKING
+    shards::tracking::track(this);
+#endif
+  }
 
   void reset();
 };
 
 struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>, std::equal_to<SHVar>,
-                                             boost::alignment::aligned_allocator<shards::OwnedVar, 16>> {};
+                                             boost::alignment::aligned_allocator<shards::OwnedVar, 16>> {
+#if SHARDS_TRACKING
+  SHSetImpl() { shards::tracking::track(this); }
+  ~SHSetImpl() { shards::tracking::untrack(this); }
+#endif
+};
 
 struct SHTableImpl
     : public std::unordered_map<std::string, shards::OwnedVar, std::hash<std::string>, std::equal_to<std::string>,
-                                boost::alignment::aligned_allocator<std::pair<const std::string, shards::OwnedVar>, 16>> {};
+                                boost::alignment::aligned_allocator<std::pair<const std::string, shards::OwnedVar>, 16>> {
+#if SHARDS_TRACKING
+  SHTableImpl() { shards::tracking::track(this); }
+  ~SHTableImpl() { shards::tracking::untrack(this); }
+#endif
+};
 
 namespace shards {
 using SHHashSet = SHSetImpl;
@@ -613,10 +644,17 @@ template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_ca
   // TODO investigate realloc
   auto newbuf = new (std::align_val_t{16}) uint8_t[sizeof(arr.elements[0]) * min_cap];
   if (arr.elements) {
+#if SHARDS_TRACKING
+    tracking::untrackArray(arr.elements);
+#endif
     memcpy(newbuf, arr.elements, sizeof(arr.elements[0]) * arr.len);
     ::operator delete[](arr.elements, std::align_val_t{16});
   }
   arr.elements = (decltype(arr.elements))newbuf;
+
+#if SHARDS_TRACKING
+  tracking::trackArray(arr.elements, min_cap);
+#endif
 
   // also memset to 0 new memory in order to make cloneVars valid on new items
   size_t size = sizeof(arr.elements[0]) * (min_cap - arr.len);
@@ -678,8 +716,12 @@ template <typename T> inline void arrayDel(T &arr, uint32_t index) {
 }
 
 template <typename T> inline void arrayFree(T &arr) {
-  if (arr.elements)
+  if (arr.elements) {
+#if SHARDS_TRACKING
+    tracking::untrackArray(arr.elements);
+#endif
     ::operator delete[](arr.elements, std::align_val_t{16});
+  }
   memset(&arr, 0x0, sizeof(T));
 }
 
