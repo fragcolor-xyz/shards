@@ -2196,6 +2196,28 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
         return;
       assert(dst.payload.tableValue.api == &GetGlobals().TableInterface);
       map = (SHMap *)dst.payload.tableValue.opaque;
+
+      // let's do some magic here, while KISS at same time
+      if (dst.payload.tableValue.api == src.payload.tableValue.api) {
+        auto sMap = (SHMap *)src.payload.tableValue.opaque;
+        if (sMap->size() == map->size()) {
+          auto it = sMap->begin();
+          auto dit = map->begin();
+          // copy values fast, hoping keys are the same
+          // we might end up with some extra copies if keys are not the same but
+          // given shards nature, it's unlikely it will be the majority of cases
+          while (it != sMap->end()) {
+            cloneVar(dit->second, it->second);
+            if (it->first != dit->first)
+              goto early_exit;
+            ++it;
+            ++dit;
+          }
+          return;
+        }
+      }
+
+    early_exit:
       map->clear();
     } else {
       destroyVar(dst);
