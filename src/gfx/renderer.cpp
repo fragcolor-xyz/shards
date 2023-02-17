@@ -38,7 +38,6 @@
 #include <tracy/Tracy.hpp>
 #include <thread>
 #include <algorithm>
-#include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/spdlog.h>
 #include <span>
@@ -291,7 +290,7 @@ struct RendererImpl final : public ContextData {
 
     for (auto &rt : hacks.clearedHints)
       hasher(rt);
-      
+
     hasher(viewData.cachedView.isFlipped);
     hasher(referenceOutputSize);
     if (viewData.renderTarget) {
@@ -760,7 +759,13 @@ struct RendererImpl final : public ContextData {
 
     processProcessorDynamicValueCleanupQueue();
 
+#ifdef TRACY_ENABLE
     TracyPlot("Drawables Processed", int64_t(frameStats.numDrawables));
+
+    TracyPlotConfig("GFX WorkerMemory", tracy::PlotFormatType::Memory, true, true, 0);
+    TracyPlot("GFX WorkerMemory", int64_t(workerMemory.getMemoryResource().totalRequestedBytes));
+
+#endif
   }
 
   void clearOldCacheItems() {
