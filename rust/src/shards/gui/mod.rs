@@ -129,6 +129,7 @@ impl egui::TextBuffer for &Var {
   fn delete_char_range(&mut self, _char_range: std::ops::Range<usize>) {}
 }
 
+// Warning: this will leak if we ever use this for temporary, the Var needs to be strictly a Shards variable!!!
 impl egui::TextBuffer for &mut Var {
   fn is_mutable(&self) -> bool {
     true
