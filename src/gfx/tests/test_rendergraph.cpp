@@ -81,7 +81,7 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
                   }(),
               },
           .parameters{
-              .texture = {{"baseColor", TextureParameter(rt->getAttachment("color"))}},
+              .textures = {{"baseColor", TextureParameter(rt->getAttachment("color"))}},
           },
           .output = makeRenderStepOutput(steps::getDefaultColorOutput()),
           .overlay = true,
@@ -190,7 +190,7 @@ TEST_CASE("Velocity", "[RenderGraph]") {
       makePipelineStep(RenderFullscreenStep{
           .features = steps::withDefaultFullscreenFeatures(postFeature),
           .parameters{
-              .texture = {{"velocity", TextureParameter(rt->getAttachment("velocity"))}},
+              .textures = {{"velocity", TextureParameter(rt->getAttachment("velocity"))}},
           },
           .output = makeRenderStepOutput(getDefaultColorOutput()),
       }),
