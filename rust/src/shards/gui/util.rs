@@ -21,8 +21,6 @@ where
   let var = seq_var.get();
   let mut seq: Seq = var.try_into()?;
   inner(&mut seq);
-  seq_var.set_cloning(&seq.as_ref().into());
-
   Ok(())
 }
 
