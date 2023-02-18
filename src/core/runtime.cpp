@@ -2043,6 +2043,8 @@ endOfWire:
 
   SHLOG_DEBUG("Wire {} ended", wire->name);
 
+  wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
+
 #ifndef __EMSCRIPTEN__
   return std::move(context.continuation);
 #else
