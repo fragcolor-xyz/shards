@@ -29,7 +29,6 @@
 #include "pmr/vector.hpp"
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/reduce.hpp>
-#include <tracy/Tracy.hpp>
 #include <thread>
 #include <algorithm>
 #include <tracy/Tracy.hpp>

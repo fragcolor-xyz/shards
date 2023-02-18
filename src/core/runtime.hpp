@@ -352,6 +352,8 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
       (void)0;
 #endif
   }
+
+  FrameMarkNamed("Main Shards Yield");
 }
 
 struct RuntimeCallbacks {
@@ -511,7 +513,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       }
     }
 
-    FrameMark;
     return noErrors;
   }
 

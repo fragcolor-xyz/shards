@@ -111,10 +111,6 @@ pub trait Shard {
     Ok(())
   }
 
-  fn nextFrame(&mut self, _context: &Context) -> Result<(), &str> {
-    Ok(())
-  }
-
   fn hasMutate() -> bool
   where
     Self: Sized,
@@ -231,13 +227,6 @@ unsafe extern "C" fn shard_warmup<T: Shard>(arg1: *mut CShard, arg2: *mut SHCont
         code: 1,
       }
     }
-  }
-}
-
-unsafe extern "C" fn shard_nextFrame<T: Shard>(arg1: *mut CShard, arg2: *mut SHContext) {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  if let Err(error) = (*blk).shard.nextFrame(&(*arg2)) {
-    abortWire(&(*arg2), error);
   }
 }
 
@@ -412,7 +401,6 @@ pub fn create<T: Default + Shard>() -> ShardWrapper<T> {
       setParam: Some(shard_setParam::<T>),
       getParam: Some(shard_getParam::<T>),
       warmup: Some(shard_warmup::<T>),
-      nextFrame: Some(shard_nextFrame::<T>),
       activate: Some(shard_activate::<T>),
       cleanup: Some(shard_cleanup::<T>),
       mutate: if T::hasMutate() {
