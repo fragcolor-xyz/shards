@@ -1909,7 +1909,7 @@ boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::con
 void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
 #endif
 {
-  SHLOG_TRACE("wire {} rolling", wire->name);
+  SHLOG_DEBUG("Wire {} rolling", wire->name);
 
   auto running = true;
 
@@ -1961,7 +1961,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
 
   // RESUMING
 
-  SHLOG_DEBUG("wire {} starting", wire->name);
+  SHLOG_DEBUG("Wire {} starting", wire->name);
 
   if (context.shouldStop()) {
     // We might have stopped before even starting!
