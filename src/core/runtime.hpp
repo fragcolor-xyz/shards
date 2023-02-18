@@ -41,6 +41,38 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #include <emscripten/val.h>
 #endif
 
+#ifdef TRACY_ENABLE
+// profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
+#include <tracy/Tracy.hpp>
+#ifdef TRACY_FIBERS
+#define TracyCoroEnter(wire)             \
+  {                                      \
+    if (!getCoroWireStack().empty()) {   \
+      TracyFiberLeave;                   \
+    }                                    \
+    TracyFiberEnter(wire->name.c_str()); \
+    getCoroWireStack().push_back(wire);  \
+  }
+#define TracyCoroExit(wire)                                     \
+  {                                                             \
+    getCoroWireStack().pop_back();                              \
+    TracyFiberLeave;                                            \
+    if (!getCoroWireStack().empty()) {                          \
+      TracyFiberEnter(getCoroWireStack().back()->name.c_str()); \
+    }                                                           \
+  }
+#else
+#define TracyCoroEnter(wire)
+#define TracyCoroExit(wire)
+#endif
+#else
+#define ZoneScoped
+#define ZoneName(X, Y)
+#define FrameMarkNamed(X)
+#define TracyCoroEnter(wire)
+#define TracyCoroExit(wire)
+#endif
+
 #define XXH_INLINE_ALL
 #include <xxhash.h>
 
@@ -86,9 +118,6 @@ struct SHContext {
   SHCoro *continuation{nullptr};
 #endif
   SHDuration next{};
-#ifdef SH_USE_TSAN
-  void *tsan_handle = nullptr;
-#endif
 
   SHWire *currentWire() const { return wireStack.back(); }
 
@@ -147,13 +176,13 @@ namespace shards {
 
 bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict);
-} // namespace shards
-
-namespace shards {
 
 void installSignalHandlers();
 
 FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
+  ZoneScoped;
+  ZoneName(blk->name(blk), blk->nameLength);
+
   SHVar output;
   if (!activateShardInline(blk, context, input, output))
     output = blk->activate(blk, context, &input);
@@ -176,17 +205,15 @@ boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::con
 void run(SHWire *wire, SHFlow *flow, SHCoro *coro);
 #endif
 
+#ifdef TRACY_FIBERS
+std::vector<SHWire *> &getCoroWireStack();
+#endif
+
 inline void prepare(SHWire *wire, SHFlow *flow) {
   if (wire->coro)
     return;
 
-#ifdef SH_USE_TSAN
-  auto curr = __tsan_get_current_fiber();
-  if (wire->tsan_coro)
-    __tsan_destroy_fiber(wire->tsan_coro);
-  wire->tsan_coro = __tsan_create_fiber(0);
-  __tsan_switch_to_fiber(wire->tsan_coro, 0);
-#endif
+  TracyCoroEnter(wire);
 
 #ifndef __EMSCRIPTEN__
   if (!wire->stackMem) {
@@ -201,9 +228,7 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
   wire->coro->resume();
 #endif
 
-#ifdef SH_USE_TSAN
-  __tsan_switch_to_fiber(curr, 0);
-#endif
+  TracyCoroExit(wire);
 }
 
 inline void start(SHWire *wire, SHVar input = {}) {
@@ -239,16 +264,12 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
 
       // BIG Warning: wire->context existed in the coro stack!!!
       // after this resume wire->context is trash!
-#ifdef SH_USE_TSAN
-      auto curr = __tsan_get_current_fiber();
-      __tsan_switch_to_fiber(wire->tsan_coro, 0);
-#endif
+
+      TracyCoroEnter(wire);
 
       wire->coro->resume();
 
-#ifdef SH_USE_TSAN
-      __tsan_switch_to_fiber(curr, 0);
-#endif
+      TracyCoroExit(wire);
     }
 
     // delete also the coro ptr
@@ -281,10 +302,7 @@ inline bool tick(SHWire *wire, SHDuration now) {
     return false; // check if not null and bool operator also to see if alive!
 
   if (now >= wire->context->next) {
-#ifdef SH_USE_TSAN
-    auto curr = __tsan_get_current_fiber();
-    __tsan_switch_to_fiber(wire->tsan_coro, 0);
-#endif
+    TracyCoroEnter(wire);
 
 #ifndef __EMSCRIPTEN__
     *wire->coro = wire->coro->resume();
@@ -292,9 +310,7 @@ inline bool tick(SHWire *wire, SHDuration now) {
     wire->coro->resume();
 #endif
 
-#ifdef SH_USE_TSAN
-    __tsan_switch_to_fiber(curr, 0);
-#endif
+    TracyCoroExit(wire);
   }
   return true;
 }
@@ -351,6 +367,8 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
       (void)0;
 #endif
   }
+
+  FrameMarkNamed("Main Shards Yield");
 }
 
 struct RuntimeCallbacks {
@@ -509,6 +527,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
         }
       }
     }
+
     return noErrors;
   }
 

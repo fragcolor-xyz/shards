@@ -27,7 +27,6 @@ SH_HAS_MEMBER_TEST(setParam);
 SH_HAS_MEMBER_TEST(getParam);
 SH_HAS_MEMBER_TEST(warmup);
 SH_HAS_MEMBER_TEST(activate);
-SH_HAS_MEMBER_TEST(nextFrame);
 SH_HAS_MEMBER_TEST(cleanup);
 SH_HAS_MEMBER_TEST(mutate);
 SH_HAS_MEMBER_TEST(crossover);
@@ -214,15 +213,6 @@ template <class T> struct ShardWrapper {
     } else {
       // warmup is optional!
       result->warmup = nullptr;
-    }
-
-    // nextFrame
-    if constexpr (has_nextFrame<T>::value) {
-      result->nextFrame = static_cast<SHNextFrameProc>(
-          [](Shard *b, SHContext *ctx) { reinterpret_cast<ShardWrapper<T> *>(b)->shard.nextFrame(ctx); });
-    } else {
-      // nextFrame is optional!
-      result->nextFrame = nullptr;
     }
 
     // activate
