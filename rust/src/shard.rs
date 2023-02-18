@@ -370,11 +370,12 @@ unsafe extern "C" fn shard_resetState<T: Shard>(arg1: *mut CShard) {
 }
 
 pub fn create<T: Default + Shard>() -> ShardWrapper<T> {
-  ShardWrapper::<T> {
+  let mut shard = ShardWrapper::<T> {
     header: CShard {
       inlineShardId: 0,
       refCount: 0,
       owned: false,
+      nameLength: 0,
       name: Some(shard_name::<T>),
       hash: Some(shard_hash::<T>),
       help: Some(shard_help::<T>),
@@ -433,7 +434,9 @@ pub fn create<T: Default + Shard>() -> ShardWrapper<T> {
     name: None,
     help: None,
     error: None,
-  }
+  };
+  shard.header.nameLength = shard.shard.name().len() as u32;
+  return shard;
 }
 
 /// Declares a function as an override to [`Shard::activate`].
