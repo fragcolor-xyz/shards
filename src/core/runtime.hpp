@@ -90,9 +90,6 @@ struct SHContext {
   SHCoro *continuation{nullptr};
 #endif
   SHDuration next{};
-#ifdef SH_USE_TSAN
-  void *tsan_handle = nullptr;
-#endif
 
   SHWire *currentWire() const { return wireStack.back(); }
 
@@ -156,9 +153,6 @@ namespace shards {
 
 bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict);
-} // namespace shards
-
-namespace shards {
 
 void installSignalHandlers();
 
@@ -190,16 +184,8 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
     return;
 
 #ifdef TRACY_FIBERS
-  auto name = fmt::format("{}-{}", wire->name, (void*)wire);
-  TracyFiberEnter(name.c_str());
-#endif
-
-#ifdef SH_USE_TSAN
-  auto curr = __tsan_get_current_fiber();
-  if (wire->tsan_coro)
-    __tsan_destroy_fiber(wire->tsan_coro);
-  wire->tsan_coro = __tsan_create_fiber(0);
-  __tsan_switch_to_fiber(wire->tsan_coro, 0);
+  TracyFiberEnter(wire->name.c_str());
+  SHLOG_DEBUG("|CORO| START {}", wire->name);
 #endif
 
 #ifndef __EMSCRIPTEN__
@@ -217,10 +203,7 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
 
 #ifdef TRACY_FIBERS
   TracyFiberLeave;
-#endif
-
-#ifdef SH_USE_TSAN
-  __tsan_switch_to_fiber(curr, 0);
+  SHLOG_DEBUG("|CORO| ~~START {}", wire->name);
 #endif
 }
 
@@ -260,25 +243,18 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
       wire->context->onLastResume = true;
 
 #ifdef TRACY_FIBERS
-      auto name = fmt::format("{}-{}", wire->name, (void*)wire);
-      TracyFiberEnter(name.c_str());
+      TracyFiberEnter(wire->name.c_str());
+      SHLOG_DEBUG("|CORO| STOPPING {}", wire->name);
 #endif
 
       // BIG Warning: wire->context existed in the coro stack!!!
       // after this resume wire->context is trash!
-#ifdef SH_USE_TSAN
-      auto curr = __tsan_get_current_fiber();
-      __tsan_switch_to_fiber(wire->tsan_coro, 0);
-#endif
 
       wire->coro->resume();
 
 #ifdef TRACY_FIBERS
       TracyFiberLeave;
-#endif
-
-#ifdef SH_USE_TSAN
-      __tsan_switch_to_fiber(curr, 0);
+      SHLOG_DEBUG("|CORO| ~~STOPPING {}", wire->name);
 #endif
     }
 
@@ -313,13 +289,8 @@ inline bool tick(SHWire *wire, SHDuration now) {
 
   if (now >= wire->context->next) {
 #ifdef TRACY_FIBERS
-    auto name = fmt::format("{}-{}", wire->name, (void*)wire);
-    TracyFiberEnter(name.c_str());
-#endif
-
-#ifdef SH_USE_TSAN
-    auto curr = __tsan_get_current_fiber();
-    __tsan_switch_to_fiber(wire->tsan_coro, 0);
+    TracyFiberEnter(wire->name.c_str());
+    SHLOG_DEBUG("|CORO| TICK {}", wire->name);
 #endif
 
 #ifndef __EMSCRIPTEN__
@@ -330,10 +301,7 @@ inline bool tick(SHWire *wire, SHDuration now) {
 
 #ifdef TRACY_FIBERS
     TracyFiberLeave;
-#endif
-
-#ifdef SH_USE_TSAN
-    __tsan_switch_to_fiber(curr, 0);
+    SHLOG_DEBUG("|CORO| ~~TICK {}", wire->name);
 #endif
   }
   return true;

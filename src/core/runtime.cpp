@@ -616,30 +616,13 @@ SHWireState suspend(SHContext *context, double seconds) {
     context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
   }
 
-#ifdef TRACY_FIBERS
-  auto wire = context->wireStack.back();
-  auto name = fmt::format("{}-{}", wire->name, (void*)wire);
-  TracyFiberEnter(name.c_str());
-#endif
-
-#ifdef SH_USE_TSAN
-  auto curr = __tsan_get_current_fiber();
-  __tsan_switch_to_fiber(context->tsan_handle, 0);
-#endif
-
 #ifndef __EMSCRIPTEN__
   context->continuation = context->continuation.resume();
 #else
   context->continuation->yield();
 #endif
 
-#ifdef TRACY_FIBERS
-  TracyFiberLeave;
-#endif
-
-#ifdef SH_USE_TSAN
-  __tsan_switch_to_fiber(curr, 0);
-#endif
+  // RESUMING
 
   return context->getState();
 }
@@ -1954,13 +1937,10 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
     context.wireStack.push_back(wire);
   }
 
-#ifdef SH_USE_TSAN
-  context.tsan_handle = wire->tsan_coro;
-#endif
-  // also pupulate context in wire
+  // also populate context in wire
   wire->context = &context;
 
-  // We prerolled our coro, suspend here before actually starting.
+  // We pre-rolled our coro, suspend here before actually starting.
   // This allows us to allocate the stack ahead of time.
   // And call warmup on all the shards!
   try {
@@ -1979,7 +1959,9 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
   context.continuation->yield();
 #endif
 
-  SHLOG_TRACE("wire {} starting", wire->name);
+  // RESUMING
+
+  SHLOG_DEBUG("wire {} starting", wire->name);
 
   if (context.shouldStop()) {
     // We might have stopped before even starting!
@@ -2028,6 +2010,9 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
 #else
       context.continuation->yield();
 #endif
+
+      // RESUMING
+
       // This is delayed upon continuation!!
       if (context.shouldStop()) {
         SHLOG_DEBUG("Wire {} aborted on resume", wire->name);
@@ -2043,7 +2028,7 @@ endOfWire:
     if (wire->finishedError.empty()) {
       wire->finishedError = "Generic error";
     }
-    SHLOG_TRACE("wire {} failed with error {}", wire->name, wire->finishedError);
+    SHLOG_DEBUG("Wire {} failed with error {}", wire->name, wire->finishedError);
   }
 
   // run cleanup on all the shards
@@ -2056,13 +2041,17 @@ endOfWire:
   if (wire->state != SHWire::State::Failed)
     wire->state = SHWire::State::Ended;
 
-  SHLOG_TRACE("wire {} ended", wire->name);
+  SHLOG_DEBUG("Wire {} ended", wire->name);
 
 #ifndef __EMSCRIPTEN__
   return std::move(context.continuation);
 #else
   context.continuation->yield();
 #endif
+
+  // we should never resume here!
+
+  assert(false);
 }
 
 Globals &GetGlobals() {
@@ -2626,7 +2615,7 @@ void SHWire::reset() {
 
 void SHWire::warmup(SHContext *context) {
   if (!warmedUp) {
-    SHLOG_DEBUG("Running warmup on wire: {}", name);
+    SHLOG_TRACE("Running warmup on wire: {}", name);
 
     // we likely need this early!
     mesh = context->main->mesh;
@@ -2663,15 +2652,15 @@ void SHWire::warmup(SHContext *context) {
       }
     }
 
-    SHLOG_DEBUG("Ran warmup on wire: {}", name);
+    SHLOG_TRACE("Ran warmup on wire: {}", name);
   } else {
-    SHLOG_DEBUG("Warmup already run on wire: {}", name);
+    SHLOG_TRACE("Warmup already run on wire: {}", name);
   }
 }
 
 void SHWire::cleanup(bool force) {
   if (warmedUp && (force || wireUsers.size() == 0)) {
-    SHLOG_DEBUG("Running cleanup on wire: {} users count: {}", name, wireUsers.size());
+    SHLOG_TRACE("Running cleanup on wire: {} users count: {}", name, wireUsers.size());
 
     warmedUp = false;
 
@@ -2711,7 +2700,7 @@ void SHWire::cleanup(bool force) {
 
     resumer = nullptr;
 
-    SHLOG_DEBUG("Ran cleanup on wire: {}", name);
+    SHLOG_TRACE("Ran cleanup on wire: {}", name);
   }
 }
 
@@ -2754,12 +2743,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   sh_current_interface_loaded = true;
 
   result->alloc = [](uint32_t size) -> void * {
-    auto mem = ::operator new(size, std::align_val_t{16});
+    auto mem = ::operator new (size, std::align_val_t{16});
     memset(mem, 0, size);
     return mem;
   };
 
-  result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
+  result->free = [](void *ptr) { ::operator delete (ptr, std::align_val_t{16}); };
 
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)
@@ -2820,7 +2809,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto sc = SHWire::sharedFromRef(wire);
     auto var = sc->externalVariables[name];
     if (var) {
-      ::operator delete(var, std::align_val_t{16});
+      ::operator delete (var, std::align_val_t{16});
     }
     sc->externalVariables.erase(name);
   };
