@@ -2037,6 +2037,8 @@ endOfWire:
 
   SHLOG_TRACE("wire {} ended", wire->name);
 
+  wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
+
 #ifndef __EMSCRIPTEN__
   return std::move(context.continuation);
 #else

@@ -237,8 +237,6 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
 
   SHLOG_TRACE("stopping wire: {}", wire->name);
 
-  wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
-
   if (wire->coro) {
     // Run until exit if alive, need to propagate to all suspended shards!
     if ((*wire->coro) && wire->state > SHWire::State::Stopped && wire->state < SHWire::State::Failed) {
@@ -321,9 +319,9 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
   if (runCallbacks) {
     SHDuration sleepTime(seconds);
     auto pre = SHClock::now();
-    for (auto &shinfo : GetGlobals().RunLoopHooks) {
-      if (shinfo.second) {
-        shinfo.second();
+    for (auto &shInfo : GetGlobals().RunLoopHooks) {
+      if (shInfo.second) {
+        shInfo.second();
       }
     }
     auto post = SHClock::now();
