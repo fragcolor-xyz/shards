@@ -41,9 +41,8 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #include <emscripten/val.h>
 #endif
 
-#ifdef TRACY_ENABLE
+// profiler, will be empty macros if not enabled
 #include <tracy/Tracy.hpp>
-#endif
 
 #define XXH_INLINE_ALL
 #include <xxhash.h>
@@ -152,6 +151,9 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
 void installSignalHandlers();
 
 FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
+  ZoneScoped;
+  ZoneName(blk->name(blk), blk->nameLength);
+
   SHVar output;
   if (!activateShardInline(blk, context, input, output))
     output = blk->activate(blk, context, &input);
@@ -508,6 +510,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
         }
       }
     }
+
+    FrameMark;
     return noErrors;
   }
 

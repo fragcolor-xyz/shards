@@ -354,6 +354,7 @@ Shard *createShard(std::string_view name) {
   auto shard = it->second();
 
   shards::setInlineShardId(shard, name);
+  shard->nameLength = uint32_t(name.length());
 
   return shard;
 }
@@ -659,6 +660,8 @@ SH_WIRE_SET_STACK(hashing);
 template <typename T, bool HANDLES_RETURN, bool HASHED>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
                                            SHVar *outHash = nullptr) noexcept {
+  ZoneScoped;
+
   XXH3_state_s hashState; // optimized out in release if not HASHED
   if constexpr (HASHED) {
     assert(outHash);
@@ -1862,6 +1865,9 @@ SHWireRef Wire::weakRef() const { return SHWire::weakRef(_wire); }
 Var::Var(const Wire &wire) : Var(wire.weakRef()) {}
 
 SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput) {
+  ZoneScoped;
+  ZoneName(wire->name.c_str(), wire->name.size());
+
   memset(&wire->previousOutput, 0x0, sizeof(SHVar));
   wire->currentInput = wireInput;
   wire->state = SHWire::State::Iterating;
@@ -1887,7 +1893,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
       return {context->getFlowStorage(), SHRunWireOutputState::Stopped};
     case SHWireState::Rebase:
       // Handled inside shardsActivation
-      SHLOG_FATAL("invalid state");
+      SHLOG_FATAL("Invalid wire state");
     case SHWireState::Continue:
       break;
     }
@@ -2049,8 +2055,7 @@ endOfWire:
 #endif
 
   // we should never resume here!
-
-  assert(false);
+  SHLOG_FATAL("Wire {} resumed after ending", wire->name);
 }
 
 Globals &GetGlobals() {
@@ -2290,7 +2295,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     }
     break;
   default:
-    throw std::runtime_error("Not clonable");
+    SHLOG_FATAL("Unhandled type {}", src.valueType);
     break;
   };
 }

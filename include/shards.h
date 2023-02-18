@@ -670,8 +670,6 @@ typedef struct SHError(__cdecl *SHCleanupProc)(struct Shard *);
 
 typedef struct SHError(__cdecl *SHWarmupProc)(struct Shard *, struct SHContext *);
 
-typedef void(__cdecl *SHNextFrameProc)(struct Shard *, struct SHContext *);
-
 // Genetic programming optional mutation procedure
 typedef void(__cdecl *SHMutateProc)(struct Shard *, struct SHTable options);
 // Genetic programming optional crossover (inplace/3way) procedure
@@ -691,6 +689,9 @@ struct Shard {
 
   // flag to ensure shards are unique when flows/wires
   SHBool owned;
+
+  // name length, used for profiling and more
+  uint32_t nameLength;
 
   // \-- The interface to fill --/
 
@@ -732,12 +733,6 @@ struct Shard {
   // Called every time you stop a coroutine or sometimes
   // internally to clean up the shard
   SHCleanupProc cleanup;
-
-  // this proc is optional and won't be called unless requested
-  // using ... (todo)
-  // it will be called always before activate, right at the beginning of the
-  // next top wire coroutine iteration even if the shard is not activated
-  SHNextFrameProc nextFrame;
 
   // Optional genetic programming helpers
   // getState/setState are also used during serialization
