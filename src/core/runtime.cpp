@@ -193,11 +193,22 @@ void loadExternalShards(std::string from) {
   }
 }
 
+#ifdef TRACY_ENABLE
+// Defined in the gfx rust crate
+//   used to initialize tracy on the rust side, since it required special intialization (C++ doesn't)
+//   but since we link to the dll, we can use it from C++ too
+extern "C" void gfxTracyInit();
+#endif
+
 void registerCoreShards() {
   if (globalRegisterDone)
     return;
 
   globalRegisterDone = true;
+
+#ifdef TRACY_ENABLE
+  gfxTracyInit();
+#endif
 
   logging::setupDefaultLoggerConditional();
 
@@ -605,6 +616,12 @@ SHWireState suspend(SHContext *context, double seconds) {
     context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
   }
 
+#ifdef TRACY_FIBERS
+  auto wire = context->wireStack.back();
+  auto name = fmt::format("{}-{}", wire->name, (void*)wire);
+  TracyFiberEnter(name.c_str());
+#endif
+
 #ifdef SH_USE_TSAN
   auto curr = __tsan_get_current_fiber();
   __tsan_switch_to_fiber(context->tsan_handle, 0);
@@ -614,6 +631,10 @@ SHWireState suspend(SHContext *context, double seconds) {
   context->continuation = context->continuation.resume();
 #else
   context->continuation->yield();
+#endif
+
+#ifdef TRACY_FIBERS
+  TracyFiberLeave;
 #endif
 
 #ifdef SH_USE_TSAN

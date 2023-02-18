@@ -16,25 +16,8 @@
 #include <emscripten/html5.h>
 #endif
 
-#ifdef TRACY_ENABLE
-// Defined in the gfx rust crate
-//   used to initialize tracy on the rust side, since it required special intialization (C++ doesn't)
-//   but since we link to the dll, we can use it from C++ too
-extern "C" void gfxTracyInit();
-#endif
-
 namespace gfx {
 static auto logger = getLogger();
-
-static void gfxTracyInitOnce() {
-#ifdef TRACY_ENABLE
-  static bool tracyInitialized{};
-  if (!tracyInitialized) {
-    gfxTracyInit();
-    tracyInitialized = true;
-  }
-#endif
-}
 
 static WGPUTextureFormat getDefaultSrgbBackbufferFormat() {
 #if GFX_ANDROID
@@ -557,8 +540,6 @@ void Context::releaseAdapter() {
 }
 
 void Context::initCommon() {
-  gfxTracyInitOnce();
-
   ZoneScoped;
   SPDLOG_LOGGER_DEBUG(logger, "initCommon");
 

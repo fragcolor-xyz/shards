@@ -41,6 +41,10 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #include <emscripten/val.h>
 #endif
 
+#ifdef TRACY_ENABLE
+#include <tracy/Tracy.hpp>
+#endif
+
 #define XXH_INLINE_ALL
 #include <xxhash.h>
 
@@ -185,6 +189,11 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
   if (wire->coro)
     return;
 
+#ifdef TRACY_FIBERS
+  auto name = fmt::format("{}-{}", wire->name, (void*)wire);
+  TracyFiberEnter(name.c_str());
+#endif
+
 #ifdef SH_USE_TSAN
   auto curr = __tsan_get_current_fiber();
   if (wire->tsan_coro)
@@ -204,6 +213,10 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
   wire->coro.emplace(wire->stackSize);
   wire->coro->init([=]() { run(wire, flow, &(*wire->coro)); });
   wire->coro->resume();
+#endif
+
+#ifdef TRACY_FIBERS
+  TracyFiberLeave;
 #endif
 
 #ifdef SH_USE_TSAN
@@ -246,6 +259,11 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
       wire->context->stopFlow(shards::Var::Empty);
       wire->context->onLastResume = true;
 
+#ifdef TRACY_FIBERS
+      auto name = fmt::format("{}-{}", wire->name, (void*)wire);
+      TracyFiberEnter(name.c_str());
+#endif
+
       // BIG Warning: wire->context existed in the coro stack!!!
       // after this resume wire->context is trash!
 #ifdef SH_USE_TSAN
@@ -254,6 +272,10 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
 #endif
 
       wire->coro->resume();
+
+#ifdef TRACY_FIBERS
+      TracyFiberLeave;
+#endif
 
 #ifdef SH_USE_TSAN
       __tsan_switch_to_fiber(curr, 0);
@@ -290,6 +312,11 @@ inline bool tick(SHWire *wire, SHDuration now) {
     return false; // check if not null and bool operator also to see if alive!
 
   if (now >= wire->context->next) {
+#ifdef TRACY_FIBERS
+    auto name = fmt::format("{}-{}", wire->name, (void*)wire);
+    TracyFiberEnter(name.c_str());
+#endif
+
 #ifdef SH_USE_TSAN
     auto curr = __tsan_get_current_fiber();
     __tsan_switch_to_fiber(wire->tsan_coro, 0);
@@ -299,6 +326,10 @@ inline bool tick(SHWire *wire, SHDuration now) {
     *wire->coro = wire->coro->resume();
 #else
     wire->coro->resume();
+#endif
+
+#ifdef TRACY_FIBERS
+    TracyFiberLeave;
 #endif
 
 #ifdef SH_USE_TSAN
