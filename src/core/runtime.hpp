@@ -131,17 +131,12 @@ struct SHContext {
 
   constexpr SHVar getFlowStorage() const { return flowStorage; }
 
-  void registerNextFrameCallback(const Shard *shard) const { nextFrameShards.push_back(shard); }
-
-  const std::vector<const Shard *> &nextFrameCallbacks() const { return nextFrameShards; }
-
 private:
   SHWireState state = SHWireState::Continue;
   // Used when flow is stopped/restart/return
   // to store the previous result
   SHVar flowStorage{};
   std::string errorMessage;
-  mutable std::vector<const Shard *> nextFrameShards;
 };
 
 namespace shards {
@@ -218,8 +213,6 @@ inline void start(SHWire *wire, SHVar input = {}) {
 
   wire->currentInput = input;
   wire->state = SHWire::State::Starting;
-
-  wire->dispatcher.trigger(SHWire::OnStartEvent{wire});
 }
 
 inline bool stop(SHWire *wire, SHVar *result = nullptr) {
