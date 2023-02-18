@@ -1864,6 +1864,8 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   wire->context = context;
   DEFER({ wire->state = SHWire::State::IterationEnded; });
 
+  wire->dispatcher.trigger(SHWire::OnUpdateEvent{wire});
+
   try {
     auto state =
         shardsActivation<std::vector<ShardPtr>, false, false>(wire->shards, context, wire->currentInput, wire->previousOutput);
@@ -1966,18 +1968,13 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
     goto endOfWire;
   }
 
+  wire->dispatcher.trigger(SHWire::OnStartEvent{wire});
+
   while (running) {
     running = wire->looped;
+
     // reset context state
     context.continueFlow();
-
-    // call optional nextFrame calls here
-    for (auto blk : context.nextFrameCallbacks()) {
-      auto shard = const_cast<Shard *>(blk);
-      if (shard->nextFrame) {
-        shard->nextFrame(shard, &context);
-      }
-    }
 
     auto runRes = runWire(wire, &context, wire->currentInput);
     if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
