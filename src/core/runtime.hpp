@@ -44,10 +44,21 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #ifdef TRACY_ENABLE
 // profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
 #include <tracy/Tracy.hpp>
+#ifdef TRACY_FIBERS
+#define TracyCoroEnter(wire) \
+  { TracyFiberEnter(wire->name.c_str()); }
+#define TracyCoroExit(wire) \
+  { TracyFiberLeave; }
+#else
+#define TracyCoroEnter(wire)
+#define TracyCoroExit(wire)
+#endif
 #else
 #define ZoneScoped
 #define ZoneName(X, Y)
 #define FrameMarkNamed(X)
+#define TracyCoroEnter(wire)
+#define TracyCoroExit(wire)
 #endif
 
 #define XXH_INLINE_ALL
@@ -186,11 +197,6 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
   if (wire->coro)
     return;
 
-#ifdef TRACY_FIBERS
-  TracyFiberEnter(wire->name.c_str());
-  SHLOG_DEBUG("|CORO| START {}", wire->name);
-#endif
-
 #ifndef __EMSCRIPTEN__
   if (!wire->stackMem) {
     wire->stackMem = new (std::align_val_t{16}) uint8_t[wire->stackSize];
@@ -202,11 +208,6 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
   wire->coro.emplace(wire->stackSize);
   wire->coro->init([=]() { run(wire, flow, &(*wire->coro)); });
   wire->coro->resume();
-#endif
-
-#ifdef TRACY_FIBERS
-  TracyFiberLeave;
-  SHLOG_DEBUG("|CORO| ~~START {}", wire->name);
 #endif
 }
 
@@ -241,20 +242,10 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
       wire->context->stopFlow(shards::Var::Empty);
       wire->context->onLastResume = true;
 
-#ifdef TRACY_FIBERS
-      TracyFiberEnter(wire->name.c_str());
-      SHLOG_DEBUG("|CORO| STOPPING {}", wire->name);
-#endif
-
       // BIG Warning: wire->context existed in the coro stack!!!
       // after this resume wire->context is trash!
 
       wire->coro->resume();
-
-#ifdef TRACY_FIBERS
-      TracyFiberLeave;
-      SHLOG_DEBUG("|CORO| ~~STOPPING {}", wire->name);
-#endif
     }
 
     // delete also the coro ptr
@@ -287,10 +278,7 @@ inline bool tick(SHWire *wire, SHDuration now) {
     return false; // check if not null and bool operator also to see if alive!
 
   if (now >= wire->context->next) {
-#ifdef TRACY_FIBERS
-    TracyFiberEnter(wire->name.c_str());
-    SHLOG_DEBUG("|CORO| TICK {}", wire->name);
-#endif
+    TracyCoroEnter(wire);
 
 #ifndef __EMSCRIPTEN__
     *wire->coro = wire->coro->resume();
@@ -298,10 +286,7 @@ inline bool tick(SHWire *wire, SHDuration now) {
     wire->coro->resume();
 #endif
 
-#ifdef TRACY_FIBERS
-    TracyFiberLeave;
-    SHLOG_DEBUG("|CORO| ~~TICK {}", wire->name);
-#endif
+    TracyCoroExit(wire);
   }
   return true;
 }

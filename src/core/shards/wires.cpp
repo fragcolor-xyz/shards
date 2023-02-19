@@ -1855,7 +1855,7 @@ public:
   void cleanup() { _brancher.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _brancher.activate();
+    _brancher.activate(context);
     return input;
   }
 };
