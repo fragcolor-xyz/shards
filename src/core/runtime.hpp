@@ -41,8 +41,14 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #include <emscripten/val.h>
 #endif
 
-// profiler, will be empty macros if not enabled
+#ifndef USE_VALGRIND
+// profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
 #include <tracy/Tracy.hpp>
+#else
+#define ZoneScoped
+#define ZoneName(X, Y)
+#define FrameMarkNamed(X)
+#endif
 
 #define XXH_INLINE_ALL
 #include <xxhash.h>
