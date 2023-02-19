@@ -1101,7 +1101,6 @@ public:
 
   Wire &looped(bool looped);
   Wire &unsafe(bool unsafe);
-  Wire &stackSize(size_t size);
   Wire &name(std::string_view name);
 
   SHWire *operator->() { return _wire.get(); }

@@ -894,15 +894,12 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0, cons
 }
 
 inline void Evolve::mutate(Evolve::Individual &individual) {
-  auto wire = SHWire::sharedFromRef(individual.wire.payload.wireValue);
+  // TODO(guusw): CORO
+ /*  auto wire = SHWire::sharedFromRef(individual.wire.payload.wireValue);
   // we need to hack this in as we run out of context
   SHCoro foo{};
   SHFlow flow{};
-#ifndef __EMSCRIPTEN__
-  SHContext ctx(std::move(foo), wire.get(), &flow);
-#else
   SHContext ctx(&foo, wire.get(), &flow);
-#endif
   ctx.wireStack.push_back(wire.get());
   std::for_each(std::begin(individual.mutants), std::end(individual.mutants), [&](MutantInfo &info) {
     if (Random::nextDouble() > _mutation) {
@@ -950,7 +947,7 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
         mutant->setParam(mutant, int(iseq.elements[rparam].payload.intValue), &current);
       }
     }
-  });
+  }); */
 }
 
 inline void Evolve::resetState(Evolve::Individual &individual) {

@@ -14,10 +14,10 @@
 
 #include "shards_macros.hpp"
 #include "foundation.hpp"
+#include "time.hpp"
 
 #include "shards/inlined.hpp"
 
-#include <chrono>
 #include <iostream>
 #include <list>
 #include <map>
@@ -25,10 +25,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-using SHClock = std::chrono::high_resolution_clock;
-using SHTime = decltype(SHClock::now());
-using SHDuration = std::chrono::duration<double>;
-using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 
 // For sleep
 #if _WIN32
@@ -49,99 +45,6 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 // TODO add our secret
 #define CUSTOM_XXH3_kSecret XXH3_kSecret
 #endif
-
-#define SH_SUSPEND(_ctx_, _secs_)                             \
-  const auto _suspend_state = shards::suspend(_ctx_, _secs_); \
-  if (_suspend_state != SHWireState::Continue)                \
-  return shards::Var::Empty
-
-struct SHContext {
-  SHContext(
-#ifndef __EMSCRIPTEN__
-      SHCoro &&sink,
-#else
-      SHCoro *coro,
-#endif
-      const SHWire *starter, SHFlow *flow)
-      : main(starter), flow(flow),
-#ifndef __EMSCRIPTEN__
-        continuation(std::move(sink))
-#else
-        continuation(coro)
-#endif
-  {
-    wireStack.push_back(const_cast<SHWire *>(starter));
-  }
-
-  const SHWire *main;
-  SHFlow *flow;
-  std::vector<SHWire *> wireStack;
-  bool onCleanup{false};
-  bool onLastResume{false};
-
-// Used within the coro& stack! (suspend, etc)
-#ifndef __EMSCRIPTEN__
-  SHCoro &&continuation;
-#else
-  SHCoro *continuation{nullptr};
-#endif
-  SHDuration next{};
-#ifdef SH_USE_TSAN
-  void *tsan_handle = nullptr;
-#endif
-
-  SHWire *currentWire() const { return wireStack.back(); }
-
-  constexpr void stopFlow(const SHVar &lastValue) {
-    state = SHWireState::Stop;
-    flowStorage = lastValue;
-  }
-
-  constexpr void restartFlow(const SHVar &lastValue) {
-    state = SHWireState::Restart;
-    flowStorage = lastValue;
-  }
-
-  constexpr void returnFlow(const SHVar &lastValue) {
-    state = SHWireState::Return;
-    flowStorage = lastValue;
-  }
-
-  void cancelFlow(std::string_view message) {
-    state = SHWireState::Error;
-    errorMessage = message;
-  }
-
-  constexpr void rebaseFlow() { state = SHWireState::Rebase; }
-
-  constexpr void continueFlow() { state = SHWireState::Continue; }
-
-  constexpr bool shouldContinue() const { return state == SHWireState::Continue; }
-
-  constexpr bool shouldReturn() const { return state == SHWireState::Return; }
-
-  constexpr bool shouldStop() const { return state == SHWireState::Stop; }
-
-  constexpr bool failed() const { return state == SHWireState::Error; }
-
-  constexpr const std::string &getErrorMessage() { return errorMessage; }
-
-  constexpr SHWireState getState() const { return state; }
-
-  constexpr SHVar getFlowStorage() const { return flowStorage; }
-
-  void registerNextFrameCallback(const Shard *shard) const { nextFrameShards.push_back(shard); }
-
-  const std::vector<const Shard *> &nextFrameCallbacks() const { return nextFrameShards; }
-
-private:
-  SHWireState state = SHWireState::Continue;
-  // Used when flow is stopped/restart/return
-  // to store the previous result
-  SHVar flowStorage{};
-  std::string errorMessage;
-  mutable std::vector<const Shard *> nextFrameShards;
-};
 
 namespace shards {
 [[nodiscard]] SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallback callback, void *userData,
@@ -175,41 +78,9 @@ inline SHRunWireOutput runSubWire(SHWire *wire, SHContext *context, const SHVar 
   return runRes;
 }
 
-#ifndef __EMSCRIPTEN__
-boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::continuation &&sink);
-#else
 void run(SHWire *wire, SHFlow *flow, SHCoro *coro);
-#endif
 
-inline void prepare(SHWire *wire, SHFlow *flow) {
-  if (wire->coro)
-    return;
-
-#ifdef SH_USE_TSAN
-  auto curr = __tsan_get_current_fiber();
-  if (wire->tsan_coro)
-    __tsan_destroy_fiber(wire->tsan_coro);
-  wire->tsan_coro = __tsan_create_fiber(0);
-  __tsan_switch_to_fiber(wire->tsan_coro, 0);
-#endif
-
-#ifndef __EMSCRIPTEN__
-  if (!wire->stackMem) {
-    wire->stackMem = new (std::align_val_t{16}) uint8_t[wire->stackSize];
-  }
-  wire->coro =
-      boost::context::callcc(std::allocator_arg, SHStackAllocator{wire->stackSize, wire->stackMem},
-                             [wire, flow](boost::context::continuation &&sink) { return run(wire, flow, std::move(sink)); });
-#else
-  wire->coro.emplace(wire->stackSize);
-  wire->coro->init([=]() { run(wire, flow, &(*wire->coro)); });
-  wire->coro->resume();
-#endif
-
-#ifdef SH_USE_TSAN
-  __tsan_switch_to_fiber(curr, 0);
-#endif
-}
+void prepare(SHWire *wire, SHFlow *flow);
 
 inline void start(SHWire *wire, SHVar input = {}) {
   if (wire->state != SHWire::State::Prepared) {
@@ -248,16 +119,8 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
 
       // BIG Warning: wire->context existed in the coro stack!!!
       // after this resume wire->context is trash!
-#ifdef SH_USE_TSAN
-      auto curr = __tsan_get_current_fiber();
-      __tsan_switch_to_fiber(wire->tsan_coro, 0);
-#endif
 
       wire->coro->resume();
-
-#ifdef SH_USE_TSAN
-      __tsan_switch_to_fiber(curr, 0);
-#endif
     }
 
     // delete also the coro ptr
@@ -290,20 +153,7 @@ inline bool tick(SHWire *wire, SHDuration now) {
     return false; // check if not null and bool operator also to see if alive!
 
   if (now >= wire->context->next) {
-#ifdef SH_USE_TSAN
-    auto curr = __tsan_get_current_fiber();
-    __tsan_switch_to_fiber(wire->tsan_coro, 0);
-#endif
-
-#ifndef __EMSCRIPTEN__
-    *wire->coro = wire->coro->resume();
-#else
     wire->coro->resume();
-#endif
-
-#ifdef SH_USE_TSAN
-    __tsan_switch_to_fiber(curr, 0);
-#endif
   }
   return true;
 }

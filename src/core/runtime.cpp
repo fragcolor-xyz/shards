@@ -605,20 +605,7 @@ SHWireState suspend(SHContext *context, double seconds) {
     context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
   }
 
-#ifdef SH_USE_TSAN
-  auto curr = __tsan_get_current_fiber();
-  __tsan_switch_to_fiber(context->tsan_handle, 0);
-#endif
-
-#ifndef __EMSCRIPTEN__
-  context->continuation = context->continuation.resume();
-#else
   context->continuation->yield();
-#endif
-
-#ifdef SH_USE_TSAN
-  __tsan_switch_to_fiber(curr, 0);
-#endif
 
   return context->getState();
 }
@@ -1815,11 +1802,6 @@ Wire &Wire::unsafe(bool unsafe) {
   return *this;
 }
 
-Wire &Wire::stackSize(size_t stackSize) {
-  _wire->stackSize = stackSize;
-  return *this;
-}
-
 Wire &Wire::name(std::string_view name) {
   _wire->name = name;
   return *this;
@@ -1886,11 +1868,6 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
       break;
     }
   }
-#ifndef __EMSCRIPTEN__
-  catch (boost::context::detail::forced_unwind const &e) {
-    throw; // required for Boost Coroutine!
-  }
-#endif
   catch (...) {
     // shardsActivation handles error logging and such
     return {wire->previousOutput, SHRunWireOutputState::Failed};
@@ -1899,12 +1876,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   return {wire->previousOutput, SHRunWireOutputState::Running};
 }
 
-#ifndef __EMSCRIPTEN__
-boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::continuation &&sink)
-#else
-void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
-#endif
-{
+void run(SHWire *wire, SHFlow *flow, SHCoro *coro) {
   SHLOG_TRACE("wire {} rolling", wire->name);
 
   auto running = true;
@@ -1919,11 +1891,8 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
 
   // Create a new context and copy the sink in
   SHFlow anonFlow{wire};
-#ifndef __EMSCRIPTEN__
-  SHContext context(std::move(sink), wire, flow ? flow : &anonFlow);
-#else
-  SHContext context(coro, wire, flow ? flow : &anonFlow);
-#endif
+  coro->context.emplace(coro, wire, flow ? flow : &anonFlow);
+  SHContext &context = coro->context.value();
 
   // if the wire had a context (Stepped wires in wires.cpp)
   // copy some stuff from it
@@ -1951,12 +1920,8 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
     goto endOfWire;
   }
 
-// yield after warming up
-#ifndef __EMSCRIPTEN__
-  context.continuation = context.continuation.resume();
-#else
+  // yield after warming up
   context.continuation->yield();
-#endif
 
   SHLOG_TRACE("wire {} starting", wire->name);
 
@@ -2002,11 +1967,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
     if (!wire->unsafe && wire->looped) {
       // Ensure no while(true), yield anyway every run
       context.next = SHDuration(0);
-#ifndef __EMSCRIPTEN__
-      context.continuation = context.continuation.resume();
-#else
       context.continuation->yield();
-#endif
       // This is delayed upon continuation!!
       if (context.shouldStop()) {
         SHLOG_DEBUG("Wire {} aborted on resume", wire->name);
@@ -2037,11 +1998,16 @@ endOfWire:
 
   SHLOG_TRACE("wire {} ended", wire->name);
 
-#ifndef __EMSCRIPTEN__
-  return std::move(context.continuation);
-#else
   context.continuation->yield();
-#endif
+}
+
+void prepare(SHWire *wire, SHFlow *flow) {
+  if (wire->coro)
+    return;
+
+  wire->coro.emplace();
+  wire->coro->init([=]() { run(wire, flow, &(*wire->coro)); });
+  wire->coro->resume();
 }
 
 Globals &GetGlobals() {
@@ -2595,11 +2561,6 @@ void SHWire::reset() {
   }
   mesh.reset();
 
-  if (stackMem) {
-    ::operator delete[](stackMem, std::align_val_t{16});
-    stackMem = nullptr;
-  }
-
   resumer = nullptr;
 }
 
@@ -2660,13 +2621,7 @@ void SHWire::cleanup(bool force) {
       auto blk = *it;
       try {
         blk->cleanup(blk);
-      }
-#ifndef __EMSCRIPTEN__
-      catch (boost::context::detail::forced_unwind const &e) {
-        throw; // required for Boost Coroutine!
-      }
-#endif
-      catch (const std::exception &e) {
+      } catch (const std::exception &e) {
         SHLOG_ERROR("Shard cleanup error, failed shard: {}, error: {}", blk->name(blk), e.what());
       } catch (...) {
         SHLOG_ERROR("Shard cleanup error, failed shard: {}", blk->name(blk));

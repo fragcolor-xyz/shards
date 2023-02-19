@@ -147,6 +147,7 @@ endif()
 
 target_compile_options(shards-core-static
   PRIVATE -ffast-math -fno-finite-math-only -funroll-loops
+  # PRIVATE -fcoroutines
 )
 
 # TODO: Modularize shard registration to remove Core=>Rust dependency

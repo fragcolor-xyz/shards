@@ -1409,10 +1409,6 @@ BUILTIN("Wire") {
         wire->looped = true;
       } else if (v->value() == ":Unsafe") {
         wire->unsafe = true;
-      } else if (v->value() == ":LStack") {
-        wire->stackSize = 4 * 1024 * 1024;  // 4mb
-      } else if (v->value() == ":SStack") { // default is 128kb
-        wire->stackSize = 32 * 1024;        // 32kb
       } else if (v->value() == ":Pure") {
         wire->pure = true;
       }
@@ -1443,10 +1439,6 @@ BUILTIN("ImplWire") {
         wire->looped = true;
       } else if (v->value() == ":Unsafe") {
         wire->unsafe = true;
-      } else if (v->value() == ":LStack") {
-        wire->stackSize = 4 * 1024 * 1024;  // 4mb
-      } else if (v->value() == ":SStack") { // default is 128kb
-        wire->stackSize = 32 * 1024;        // 32kb
       } else if (v->value() == ":Pure") {
         wire->pure = true;
       }
