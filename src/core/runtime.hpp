@@ -41,7 +41,7 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #include <emscripten/val.h>
 #endif
 
-#ifndef USE_VALGRIND
+#ifdef TRACY_ENABLE
 // profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
 #include <tracy/Tracy.hpp>
 #else
