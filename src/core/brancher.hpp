@@ -157,14 +157,7 @@ public:
   }
 
   void activate(SHContext *context) {
-#ifdef TRACY_FIBERS
-    auto wire = context->wireStack.back();
-    TracyCoroExit(wire);
-#endif
     if (!mesh->tick()) {
-#ifdef TRACY_FIBERS
-      TracyCoroEnter(wire);
-#endif
       switch (failureBehavior) {
       case BranchFailureBehavior::Ignore:
         break;
@@ -179,10 +172,6 @@ public:
         }
         break;
       }
-    } else {
-#ifdef TRACY_FIBERS
-      TracyCoroEnter(wire);
-#endif
     }
   }
 

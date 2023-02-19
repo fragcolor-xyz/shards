@@ -198,6 +198,15 @@ void loadExternalShards(std::string from) {
 //   used to initialize tracy on the rust side, since it required special intialization (C++ doesn't)
 //   but since we link to the dll, we can use it from C++ too
 extern "C" void gfxTracyInit();
+
+#ifdef TRACY_FIBERS
+std::vector<SHWire *> &getCoroWireStack() {
+  // Here is the thing, this currently works.. but only because we don't move coroutines between threads
+  // When we will do if we do this will break...
+  static thread_local std::vector<SHWire *> wireStack;
+  return wireStack;
+}
+#endif
 #endif
 
 void registerCoreShards() {

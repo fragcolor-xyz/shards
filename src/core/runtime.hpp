@@ -45,10 +45,22 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 // profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
 #include <tracy/Tracy.hpp>
 #ifdef TRACY_FIBERS
-#define TracyCoroEnter(wire) \
-  { TracyFiberEnter(wire->name.c_str()); }
-#define TracyCoroExit(wire) \
-  { TracyFiberLeave; }
+#define TracyCoroEnter(wire)             \
+  {                                      \
+    if (!getCoroWireStack().empty()) {   \
+      TracyFiberLeave;                   \
+    }                                    \
+    TracyFiberEnter(wire->name.c_str()); \
+    getCoroWireStack().push_back(wire);  \
+  }
+#define TracyCoroExit(wire)                                     \
+  {                                                             \
+    getCoroWireStack().pop_back();                              \
+    TracyFiberLeave;                                            \
+    if (!getCoroWireStack().empty()) {                          \
+      TracyFiberEnter(getCoroWireStack().back()->name.c_str()); \
+    }                                                           \
+  }
 #else
 #define TracyCoroEnter(wire)
 #define TracyCoroExit(wire)
@@ -193,9 +205,15 @@ boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::con
 void run(SHWire *wire, SHFlow *flow, SHCoro *coro);
 #endif
 
+#ifdef TRACY_FIBERS
+std::vector<SHWire *> &getCoroWireStack();
+#endif
+
 inline void prepare(SHWire *wire, SHFlow *flow) {
   if (wire->coro)
     return;
+
+  TracyCoroEnter(wire);
 
 #ifndef __EMSCRIPTEN__
   if (!wire->stackMem) {
@@ -209,6 +227,8 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
   wire->coro->init([=]() { run(wire, flow, &(*wire->coro)); });
   wire->coro->resume();
 #endif
+
+  TracyCoroExit(wire);
 }
 
 inline void start(SHWire *wire, SHVar input = {}) {
@@ -245,7 +265,11 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
       // BIG Warning: wire->context existed in the coro stack!!!
       // after this resume wire->context is trash!
 
+      TracyCoroEnter(wire);
+
       wire->coro->resume();
+
+      TracyCoroExit(wire);
     }
 
     // delete also the coro ptr
