@@ -62,16 +62,12 @@ theme:
   favicon: assets/images/favicon.svg
   palette:
     - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: purple
-      accent: purple
+      scheme: fragnova-light
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: teal
-      accent: teal
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
