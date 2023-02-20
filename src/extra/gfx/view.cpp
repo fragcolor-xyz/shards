@@ -115,7 +115,6 @@ struct RenderIntoShard {
   RequiredGraphicsRendererContext _graphicsRendererContext;
   Inputs::OptionalInputContext _inputContext;
   RenderTargetPtr _renderTarget;
-  ExposedInfo _requiredVariables;
 
   void warmup(SHContext *context) {
     _graphicsRendererContext.warmup(context);
@@ -131,13 +130,11 @@ struct RenderIntoShard {
     _renderTarget.reset();
   }
 
-  SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
-
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
-    _requiredVariables.clear();
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    
     _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
-
-    requireReferences(data.shared, _textures, _requiredVariables);
 
     return _contents.compose(data).outputType;
   }

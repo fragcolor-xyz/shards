@@ -1,7 +1,12 @@
 #include "boost/filesystem/path.hpp"
+#include "common_types.hpp"
+#include "extra/gfx/shards_types.hpp"
+#include "gfx/drawables/mesh_tree_drawable.hpp"
+#include "gfx/unique_id.hpp"
 #include "shards_types.hpp"
 #include "shards_utils.hpp"
 #include "drawable_utils.hpp"
+#include <memory>
 #include <shards_macros.hpp>
 #include <foundation.hpp>
 #include <gfx/gltf/gltf.hpp>
@@ -9,6 +14,7 @@
 #include <linalg_shim.hpp>
 #include <runtime.hpp>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
 #include "params.hpp"
 
 using namespace shards;
@@ -20,214 +26,143 @@ struct GLTFShard {
   static inline Type ByteInputType = CoreInfo::BytesType;
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
-  static SHTypesInfo outputTypes() { return Types::TreeDrawable; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return Types::Drawable; }
 
-  PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use", {CoreInfo::NoneType, TransformVarType});
-  PARAM_VAR(_staticModelPath, "Path", "The static path to load a model from during warmup",
-            {CoreInfo::NoneType, CoreInfo::StringType});
-  PARAM_IMPL(GLTFShard, PARAM_IMPL_FOR(_transformVar), PARAM_IMPL_FOR(_staticModelPath));
+  PARAM_PARAMVAR(_transform, "Transform", "The transform variable to use", {CoreInfo::NoneType, TransformVarType});
+  PARAM_PARAMVAR(_path, "Path", "The path to load the model from",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_bytes, "Bytes", "The bytes to load the model from",
+                 {CoreInfo::NoneType, CoreInfo::BytesType, CoreInfo::BytesVarType});
+  PARAM_PARAMVAR(_copy, "Copy", "Reference to another glTF model to copy",
+                 {CoreInfo::NoneType, Type::VariableOf(Types::Drawable)});
+  PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
+  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+  PARAM_IMPL(GLTFShard, PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_path), PARAM_IMPL_FOR(_bytes), PARAM_IMPL_FOR(_copy),
+             PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
 
   enum LoadMode {
     Invalid,
-    LoadStaticFile,
-    LoadFile,
+    LoadFileStatic,
+    LoadFileDynamic,
     LoadMemory,
     LoadCopy,
   };
 
   LoadMode _loadMode{};
-  MeshTreeDrawable::Ptr _staticModel;
   bool _hasConstTransform{};
-  SHTreeDrawable *_returnVar{};
-  std::vector<FeaturePtr> _features;
+  SHDrawable *_drawable{};
+  bool _dynamicsApplied{};
 
-  void releaseReturnVar() {
-    if (_returnVar)
-      Types::TreeDrawableObjectVar.Release(_returnVar);
-    _returnVar = {};
-  }
+  MeshTreeDrawable::Ptr &getMeshTreeDrawable() { return std::get<MeshTreeDrawable::Ptr>(_drawable->drawable); }
 
-  void makeNewReturnVar() {
-    releaseReturnVar();
-    _returnVar = Types::TreeDrawableObjectVar.New();
-  }
-
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
-    auto &inputTableType = data.inputType.table;
-    size_t inputTableLen = inputTableType.keys.len;
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
-    auto findInputTableType = [&](const std::string &key) -> const SHTypeInfo * {
-      for (size_t i = 0; i < inputTableLen; i++) {
-        if (key == inputTableType.keys.elements[i]) {
-          return &inputTableType.types.elements[i];
-        }
-      }
-      return nullptr;
-    };
+    bool havePath = !_path.isNone();
+    bool haveBytes = !_bytes.isNone();
+    bool haveCopy = !_copy.isNone();
 
-    const SHTypeInfo *pathType = findInputTableType("Path");
-    const SHTypeInfo *bytesType = findInputTableType("Bytes");
-    const SHTypeInfo *copyType = findInputTableType("Copy");
-    size_t numSources = (pathType ? 1 : 0) + (bytesType ? 1 : 0) + (copyType ? 1 : 0);
+    size_t numSources = (havePath ? 1 : 0) + (haveBytes ? 1 : 0) + (haveCopy ? 1 : 0);
     if (numSources > 1) {
-      throw ComposeError("glTF can only have one source");
-    } else if (pathType) {
-      if (*pathType != PathInputType)
-        throw ComposeError("Path should be a string");
-      _loadMode = LoadFile;
-      OVERRIDE_ACTIVATE(data, activatePath);
-    } else if (bytesType) {
-      if (*bytesType != ByteInputType)
-        throw ComposeError("Bytes should be a byte array");
-      _loadMode = LoadMemory;
-      OVERRIDE_ACTIVATE(data, activateBytes);
-    } else if (copyType) {
-      if (*copyType != Types::TreeDrawable)
-        throw ComposeError("Copy should be an already loaded glTF model");
-      _loadMode = LoadCopy;
-      OVERRIDE_ACTIVATE(data, activateCopy);
-    } else if (!_staticModelPath.isNone()) {
-      _loadMode = LoadStaticFile;
-      OVERRIDE_ACTIVATE(data, activateStatic);
-    } else {
-      throw ComposeError("glTF Binary or file path required when not loading a static model");
-    }
-
-    for (size_t i = 0; i < inputTableLen; i++) {
-      std::string_view key = inputTableType.keys.elements[i];
-      SHTypeInfo &type = inputTableType.types.elements[i];
-      if (key != "Path" && key != "Bytes" && key != "Copy") {
-        validateDrawableInputTableEntry(inputTableType.keys.elements[i], type);
+      throw ComposeError("glTF can only have one source (Path, Bytes or Copy)");
+    } else if (havePath) {
+      if (_path.isNotNullConstant()) {
+        _loadMode = LoadFileStatic;
+      } else {
+        _loadMode = LoadFileDynamic;
       }
+    } else if (haveBytes) {
+      _loadMode = LoadMemory;
+    } else if (haveCopy) {
+      _loadMode = LoadCopy;
+    } else {
+      throw ComposeError("glTF Binary, file path or copy source required");
     }
 
-    const SHTypeInfo *transformType = findInputTableType("Transform");
-    _hasConstTransform = transformType != nullptr;
-    if (_hasConstTransform) {
-      if (*transformType != CoreInfo::Float4x4Type)
-        throw ComposeError("Transform should be a Float4x4");
-    }
-
-    return Types::TreeDrawable;
+    return Types::Drawable;
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
 
-    if (!_staticModelPath.isNone()) {
-      // Load relative to script path
-      fs::path p = GetGlobals().RootPath;
-      p /= (const char *)_staticModelPath;
-      std::string resolvedPath = p.string();
+    _drawable = Types::DrawableObjectVar.New();
 
-      SPDLOG_DEBUG("Loading static glTF model from {}", resolvedPath);
-      _staticModel = loadGltfFromFile(resolvedPath.c_str());
+    switch (_loadMode) {
+    case LoadMode::LoadFileStatic:
+      _drawable->drawable = loadGltfFromFile(_path.get().payload.stringValue);
+      break;
+    case LoadMode::LoadFileDynamic:
+    case LoadMode::LoadMemory:
+    case LoadMode::LoadCopy:
+      _drawable->drawable = MeshTreeDrawable::Ptr();
+      break;
+    default:
+      throw std::out_of_range("glTF load mode");
     }
+
+    _dynamicsApplied = false;
   }
 
   void cleanup() {
     PARAM_CLEANUP()
 
-    _staticModel.reset();
-    releaseReturnVar();
+    if (_drawable) {
+      Types::DrawableObjectVar.Release(_drawable);
+      _drawable = {};
+    }
   }
 
-  // Set & link transform
-  void initModel(SHContext *context, SHTreeDrawable &shDrawable, const SHVar &input) {
-    const SHTable &inputTable = input.payload.tableValue;
+  void applyRecursiveParams(SHContext *context) {
+    auto &meshTreeDrawable = getMeshTreeDrawable();
 
-    // Set constant transform
-    if (_hasConstTransform) {
-      SHVar transformVar;
-      getFromTable(context, inputTable, "Transform", transformVar);
-      float4x4 transform = shards::Mat4(transformVar);
-
-      shDrawable.drawable->transform = transform;
-    }
-
-    // Link transform variable
-    if (_transformVar.isVariable()) {
-      shDrawable.transformVar = (SHVar &)_transformVar;
-      shDrawable.transformVar.warmup(context);
-    }
-
-    _features.clear();
-    SHVar featuresVar;
-    if (getFromTable(context, inputTable, "Features", featuresVar)) {
-      applyFeatures(context, _features, featuresVar);
-      MeshTreeDrawable::foreach (shDrawable.drawable, [&](MeshTreeDrawable::Ptr item) {
-        for (auto &drawable : item->drawables) {
-          drawable->features = _features;
+    MeshTreeDrawable::foreach (meshTreeDrawable, [&](MeshTreeDrawable::Ptr item) {
+      for (auto &drawable : item->drawables) {
+        if (!_params.isNone()) {
+          initShaderParams(context, _params.get().payload.tableValue, drawable->parameters);
         }
-      });
-    }
-  }
 
-  SHVar activateStatic(SHContext *context, const SHVar &input) {
-    assert(_loadMode == LoadStaticFile);
-
-    makeNewReturnVar();
-    try {
-      if (_staticModel) {
-        _returnVar->drawable = std::static_pointer_cast<MeshTreeDrawable>(_staticModel->clone());
-      } else {
-        throw ActivationError("No glTF model was loaded");
+        drawable->features.clear();
+        if (!_features.isNone()) {
+          applyFeatures(context, drawable->features, _features.get());
+        }
       }
+    });
+  }
 
-    } catch (...) {
-      Types::TreeDrawableObjectVar.Release(_returnVar);
-      throw;
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &drawable = getMeshTreeDrawable();
+    if (!drawable) {
+      switch (_loadMode) {
+      case LoadFileDynamic:
+        drawable = loadGltfFromFile(_path.get().payload.stringValue);
+        break;
+      case LoadMemory:
+        drawable = loadGltfFromMemory(_bytes.get().payload.bytesValue, _bytes.get().payload.bytesSize);
+        break;
+      case LoadCopy: {
+        auto shOther = varAsObjectChecked<SHDrawable>(_copy.get(), Types::Drawable);
+        MeshTreeDrawable::Ptr &other = *std::get_if<MeshTreeDrawable::Ptr>(&shOther->drawable);
+        drawable = std::static_pointer_cast<MeshTreeDrawable>(other->clone());
+      } break;
+      default:
+        throw std::out_of_range("glTF load mode");
+        break;
+      }
     }
 
-    initModel(context, *_returnVar, input);
-    return Types::TreeDrawableObjectVar.Get(_returnVar);
+    if (!_transform.isNone()) {
+      drawable->transform = toFloat4x4(_transform.get());
+    }
+
+    // Only apply recursive parameters once
+    if (!_dynamicsApplied) {
+      applyRecursiveParams(context);
+    }
+
+    return Types::DrawableObjectVar.Get(_drawable);
   }
-
-  SHVar activatePath(SHContext *context, const SHVar &input) {
-    assert(_loadMode == LoadFile);
-
-    SHVar pathVar{};
-    getFromTable(context, input.payload.tableValue, "Path", pathVar);
-
-    makeNewReturnVar();
-    _returnVar->drawable = loadGltfFromFile(pathVar.payload.stringValue);
-
-    initModel(context, *_returnVar, input);
-    return Types::TreeDrawableObjectVar.Get(_returnVar);
-  }
-
-  SHVar activateBytes(SHContext *context, const SHVar &input) {
-    assert(_loadMode == LoadMemory);
-
-    SHVar bytesVar{};
-    getFromTable(context, input.payload.tableValue, "Bytes", bytesVar);
-
-    makeNewReturnVar();
-    _returnVar->drawable = loadGltfFromMemory(bytesVar.payload.bytesValue, bytesVar.payload.bytesSize);
-
-    initModel(context, *_returnVar, input);
-    return Types::TreeDrawableObjectVar.Get(_returnVar);
-  }
-
-  SHVar activateCopy(SHContext *context, const SHVar &input) {
-    assert(_loadMode == LoadCopy);
-
-    SHVar sourceVar{};
-    getFromTable(context, input.payload.tableValue, "Copy", sourceVar);
-
-    SHTreeDrawable *source = reinterpret_cast<SHTreeDrawable *>(sourceVar.payload.objectValue);
-    if (!source)
-      throw ActivationError("Undefined glTF model passed to Copy");
-
-    SHTreeDrawable *result = Types::TreeDrawableObjectVar.New();
-    result->drawable = std::static_pointer_cast<MeshTreeDrawable>(source->drawable->clone());
-
-    initModel(context, *result, input);
-    return Types::TreeDrawableObjectVar.Get(result);
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) { throw std::logic_error("invalid activation"); }
 };
 
 void registerGLTFShards() { REGISTER_SHARD("GFX.glTF", GLTFShard); }

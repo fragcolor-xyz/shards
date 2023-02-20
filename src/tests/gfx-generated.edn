@@ -80,10 +80,10 @@
    .transform (Math.MatMul .tmp-rot) (Math.MatMul .tmp-scale) >= .cube-transform
 
    (GFX.BuiltinMesh :Type BuiltinMeshType.Plane) >= .plane-mesh
-   {:Mesh .plane-mesh :Params {:baseColor (Float4 0.4 0.4 0.94 1.0)}} (GFX.Drawable :Transform .plane-transform) >> .drawables
-
+   .plane-transform (GFX.Drawable :Mesh .plane-mesh :Params {:baseColor (Float4 0.4 0.4 0.94 1.0)}) >> .drawables
+   
    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .cube-mesh
-   {:Mesh .cube-mesh :Params {:baseColor (Float4 0.12 0.7 0.2 1.0)}} (GFX.Drawable :Transform .cube-transform) >> .drawables
+   .cube-transform (GFX.Drawable :Mesh .cube-mesh :Params {:baseColor (Float4 0.12 0.7 0.2 1.0)}) >> .drawables
 
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features

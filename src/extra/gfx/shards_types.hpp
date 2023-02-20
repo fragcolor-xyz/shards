@@ -1,6 +1,7 @@
 #ifndef SH_EXTRA_GFX_SHARDS_TYPES
 #define SH_EXTRA_GFX_SHARDS_TYPES
 
+#include "gfx/texture.hpp"
 #include <common_types.hpp>
 #include <foundation.hpp>
 #include <gfx/enums.hpp>
@@ -12,37 +13,14 @@
 #include <gfx/drawables/mesh_tree_drawable.hpp>
 #include <memory>
 #include <shards.hpp>
+#include <variant>
 #include <vector>
 
 namespace gfx {
-struct SHBasicShaderParameter {
-  std::string key;
-  shards::ParamVar var;
-  SHBasicShaderParameter(std::string key, shards::ParamVar &&var) : key(key), var(std::move(var)) {}
-};
-
-struct MaterialParameters;
-struct SHShaderParameters {
-  std::vector<SHBasicShaderParameter> basic;
-  std::vector<SHBasicShaderParameter> textures;
-
-  void updateVariables(MaterialParameters &output);
-};
 
 struct SHDrawable {
-  MeshDrawable drawable;
-  shards::ParamVar transformVar;
-  shards::ParamVar materialVar;
-  SHShaderParameters shaderParameters;
-
-  void updateVariables();
-};
-
-struct SHTreeDrawable {
-  MeshTreeDrawable::Ptr drawable;
-  shards::ParamVar transformVar;
-
-  void updateVariables();
+  using Variant = std::variant<MeshDrawable::Ptr, MeshTreeDrawable::Ptr>;
+  Variant drawable;
 };
 
 struct SHView {
@@ -54,9 +32,6 @@ struct SHView {
 
 struct SHMaterial {
   MaterialPtr material;
-  SHShaderParameters shaderParameters;
-
-  void updateVariables();
 };
 
 struct SHRenderTarget {
@@ -82,7 +57,6 @@ struct Container {
   static inline Type _definedAs{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
   static inline ObjectVar<_type> SH_CONCAT(_definedAs, ObjectVar){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
 
-  OBJECT('drah', "GFX.TreeDrawable", TreeDrawable, SHTreeDrawable)
   OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
   OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue)
@@ -293,6 +267,8 @@ struct Container {
 
   OBJECT('feat', "GFX.Feature", Feature, FeaturePtr)
   static inline Type FeatureSeq = Type::SeqOf(Feature);
+  static inline Type FeatureVarType = Type::VariableOf(Feature);
+  static inline Type FeatureVarSeq = Type::SeqOf(FeatureVarType);
 
   OBJECT('pips', "GFX.PipelineStep", PipelineStep, PipelineStepPtr)
   static inline Type PipelineStepSeq = Type::SeqOf(PipelineStep);
@@ -302,43 +278,39 @@ struct Container {
 
   OBJECT('mat_', "GFX.Material", Material, SHMaterial)
 
-  static inline Types ShaderParamTypes{{
-      CoreInfo::Float4x4Type,
-      CoreInfo::Float4Type,
-      CoreInfo::Float3Type,
-      CoreInfo::Float2Type,
-      CoreInfo::FloatType,
+  static inline Types TextureTypes = {{
+      Texture,
+      TextureCube,
   }};
 
-  static inline Types ShaderParamVarTypes{{
-      Type::VariableOf(CoreInfo::Float4x4Type),
-      Type::VariableOf(CoreInfo::Float4Type),
-      Type::VariableOf(CoreInfo::Float3Type),
-      Type::VariableOf(CoreInfo::Float2Type),
-      Type::VariableOf(CoreInfo::FloatType),
-  }};
+  static inline Type TextureVarType = Type::VariableOf(TextureTypes);
+
+  static inline Types ShaderParamTypes{TextureTypes,
+                                       {
+                                           CoreInfo::Float4x4Type,
+                                           CoreInfo::Float4Type,
+                                           CoreInfo::Float3Type,
+                                           CoreInfo::Float2Type,
+                                           CoreInfo::FloatType,
+                                       }};
+
+  static inline Types ShaderParamOrVarTypes{ShaderParamTypes, {Type::VariableOf(ShaderParamTypes)}};
+
+  // Shared drawable parameters
+  static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
   // Valid types for shader :Params
-  static inline Type ShaderParamTable = Type::TableOf(ShaderParamTypes);
+  static inline Type ShaderParamTable = Type::TableOf(ShaderParamOrVarTypes);
 
-  static inline Types TextureTypes{Texture, TextureCube};
+  static inline ParameterInfo TransformParameterInfo{
+      "Transform", SHCCSTR("The transform to use"), {CoreInfo::NoneType, TransformVarType}};
 
-  static inline Types TextureVarTypes = {{
-      Type::VariableOf(Texture),
-      Type::VariableOf(TextureCube),
-  }};
+  static inline ParameterInfo MaterialParameterInfo{"Material", SHCCSTR("The material"), {Type::VariableOf(Material)}};
 
-  // Valid types for shader :Textures
-  static inline Type TexturesTable = Type::TableOf(TextureTypes);
+  static inline ParameterInfo ParamsParameterInfo{"Params", SHCCSTR("Shader parameters for this drawable"), {ShaderParamTable}};
 
-  static inline std::map<std::string, Type> DrawableInputTableTypes = {
-      std::make_pair("Transform", CoreInfo::Float4x4Type),
-      std::make_pair("Mesh", Mesh),
-      std::make_pair("Params", ShaderParamTable),
-      std::make_pair("Textures", TexturesTable),
-      std::make_pair("Material", Material),
-      std::make_pair("Features", FeatureSeq),
-  };
+  static inline ParameterInfo FeaturesParameterInfo{
+      "Features", SHCCSTR("Features to attach to this drawable"), {FeatureSeq, Type::VariableOf(FeatureSeq)}};
 
 #undef ENUM
 #undef OBJECT

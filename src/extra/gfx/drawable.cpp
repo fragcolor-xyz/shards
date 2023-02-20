@@ -1,5 +1,12 @@
 #include "../gfx.hpp"
 #include "drawable_utils.hpp"
+#include "extra/gfx/drawable_utils.hpp"
+#include "extra/gfx/shards_types.hpp"
+#include "foundation.hpp"
+#include "gfx/drawables/mesh_drawable.hpp"
+#include "gfx/fwd.hpp"
+#include "runtime.hpp"
+#include "shards.hpp"
 #include "shards_utils.hpp"
 #include <gfx/drawable.hpp>
 #include <gfx/error_utils.hpp>
@@ -8,165 +15,105 @@
 #include <linalg_shim.hpp>
 #include <magic_enum.hpp>
 #include <params.hpp>
+#include <type_traits>
+#include <variant>
 
 using namespace shards;
 namespace gfx {
-
-void SHDrawable::updateVariables() {
-  if (transformVar.isVariable()) {
-    drawable.transform = shards::Mat4(transformVar.get());
-  }
-  shaderParameters.updateVariables(drawable.parameters);
-
-  if (materialVar->valueType != SHType::None) {
-    SHMaterial *shMaterial = (SHMaterial *)materialVar.get().payload.objectValue;
-    shMaterial->updateVariables();
-  }
-}
-
-void SHTreeDrawable::updateVariables() {
-  if (transformVar.isVariable()) {
-    drawable->transform = shards::Mat4(transformVar.get());
-  }
-}
-
 struct DrawableShard {
   static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
-  static inline Type TexturesTable = Type::TableOf(Types::TextureTypes);
-  static inline Type ShaderParamTable = Type::TableOf(Types::ShaderParamTypes);
-  static inline Type ShaderParamVarTable = Type::TableOf(Types::ShaderParamVarTypes);
 
-  PARAM_PARAMVAR(_transformVar, "Transform", "The transform variable to use (Optional)", {CoreInfo::NoneType, TransformVarType});
-  PARAM_PARAMVAR(_paramsVar, "Params", "The params variable to use (Optional)",
-                 {CoreInfo::NoneType, ShaderParamVarTable, Type::VariableOf(ShaderParamVarTable)});
-  PARAM_PARAMVAR(_texturesVar, "Textures", "The textures variable to use (Optional)",
-                 {CoreInfo::NoneType, TexturesTable, Type::VariableOf(TexturesTable)});
-  PARAM_IMPL(DrawableShard, PARAM_IMPL_FOR(_transformVar), PARAM_IMPL_FOR(_paramsVar), PARAM_IMPL_FOR(_texturesVar));
+  PARAM_EXT(ParamVar, _transform, Types::TransformParameterInfo);
+  PARAM_PARAMVAR(_mesh, "Mesh", "The mesh to use for this drawable.", {MeshVarType});
+  PARAM_EXT(ParamVar, _material, Types::MaterialParameterInfo);
+  PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
+  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+
+  PARAM_IMPL(DrawableShard, PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_mesh), PARAM_IMPL_FOR(_material), PARAM_IMPL_FOR(_params),
+             PARAM_IMPL_FOR(_features));
 
   static SHOptionalString help() { return SHCCSTR(R"(Drawable help text)"); }
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Drawable; }
 
-  SHDrawable *_returnVar{};
+  SHDrawable *_drawable{};
 
-  void releaseReturnVar() {
-    if (_returnVar)
-      Types::DrawableObjectVar.Release(_returnVar);
-    _returnVar = {};
+  MeshDrawable::Ptr &getMeshDrawable() { return std::get<MeshDrawable::Ptr>(_drawable->drawable); }
+
+  void releaseReturnVar() {}
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
+    _drawable = Types::DrawableObjectVar.New();
+    _drawable->drawable = std::make_shared<MeshDrawable>();
   }
-
-  void makeNewReturnVar() {
-    releaseReturnVar();
-    _returnVar = Types::DrawableObjectVar.New();
-  }
-
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   void cleanup() {
     PARAM_CLEANUP();
-    releaseReturnVar();
+
+    if (_drawable) {
+      Types::DrawableObjectVar.Release(_drawable);
+      _drawable = {};
+    }
   }
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
-    validateDrawableInputTableType(data.inputType);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (_mesh.isNone())
+      throw formatException("Mesh is required");
+
     return Types::Drawable;
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    const SHTable &inputTable = input.payload.tableValue;
+    auto &meshDrawable = getMeshDrawable();
 
-    SHVar meshVar{};
-    MeshPtr *meshPtr{};
-    if (getFromTable(shContext, inputTable, "Mesh", meshVar)) {
-      meshPtr = reinterpret_cast<MeshPtr *>(meshVar.payload.objectValue);
-    } else {
-      throw formatException("Mesh must be set");
+    meshDrawable->mesh = *varAsObjectChecked<MeshPtr>(_mesh.get(), Types::Mesh);
+
+    if (!_transform.isNone()) {
+      meshDrawable->transform = toFloat4x4(_transform.get());
     }
 
-    float4x4 transform = linalg::identity;
-    SHVar transformVar{};
-    if (getFromTable(shContext, inputTable, "Transform", transformVar)) {
-      transform = shards::Mat4(transformVar);
+    if (!_material.isNone()) {
+      meshDrawable->material = varAsObjectChecked<SHMaterial>(_material.get(), Types::Material)->material;
     }
 
-    SHVar materialVar{};
-    SHMaterial *shMaterial{};
-    if (getFromTable(shContext, inputTable, "Material", materialVar)) {
-      shMaterial = reinterpret_cast<SHMaterial *>(materialVar.payload.objectValue);
+    if (!_params.isNone()) {
+      initShaderParams(shContext, _params.get().payload.tableValue, meshDrawable->parameters);
     }
 
-    makeNewReturnVar();
-    _returnVar->drawable.mesh = *meshPtr;
-    _returnVar->drawable.transform = transform;
-
-    if (shMaterial) {
-      _returnVar->materialVar = Types::MaterialObjectVar.Get(shMaterial);
-      _returnVar->materialVar.warmup(shContext);
-      _returnVar->drawable.material = shMaterial->material;
+    if (!_features.isNone()) {
+      meshDrawable->features.clear();
+      applyFeatures(shContext, meshDrawable->features, _features.get());
     }
 
-    initShaderParams(shContext, inputTable, _paramsVar, _texturesVar, _returnVar->drawable.parameters,
-                     _returnVar->shaderParameters);
-
-    if (_transformVar.isVariable()) {
-      _returnVar->transformVar = (SHVar &)_transformVar;
-      _returnVar->transformVar.warmup(shContext);
-    }
-
-    SHVar featuresVar;
-    _returnVar->drawable.features.clear();
-    if (getFromTable(shContext, inputTable, "Features", featuresVar)) {
-      applyFeatures(shContext, _returnVar->drawable.features, featuresVar);
-    }
-
-    return Types::DrawableObjectVar.Get(_returnVar);
+    return Types::DrawableObjectVar.Get(_drawable);
   }
 };
 
 // MainWindow is only required if Queue is not specified
 struct DrawShard {
-  static inline shards::Types SingleDrawableTypes = shards::Types{Types::Drawable, Types::TreeDrawable};
+  static inline shards::Types SingleDrawableTypes = shards::Types{Types::Drawable};
   static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
-  static inline shards::Types DrawableTypes{Types::Drawable, Types::TreeDrawable, DrawableSeqType};
+  static inline shards::Types DrawableTypes{Types::Drawable, DrawableSeqType};
+
+  PARAM_PARAMVAR(_queue, "Queue", "The queue to add the draw command to (Optional). Uses the default queue if not specified",
+                 {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)});
+  PARAM_IMPL(DrawShard, PARAM_IMPL_FOR(_queue));
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
-  static SHParametersInfo parameters() {
-    static Parameters params{
-        {"Queue",
-         SHCCSTR("The queue to add the draw command to (Optional). Uses the default queue if not specified"),
-         {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)}},
-    };
-    return params;
-  }
 
-  ParamVar _queueVar{};
   RequiredGraphicsContext _graphicsContext{};
 
-  bool isQueueSet() const { return _queueVar->valueType != SHType::None; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _queueVar = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _queueVar;
-    default:
-      return Var::Empty;
-    }
-  }
+  bool isQueueSet() const { return _queue->valueType != SHType::None; }
 
   void warmup(SHContext *shContext) {
-    _queueVar.warmup(shContext);
+    PARAM_WARMUP(shContext);
 
     if (!isQueueSet()) {
       _graphicsContext.warmup(shContext);
@@ -175,23 +122,18 @@ struct DrawShard {
 
   void cleanup() {
     _graphicsContext.cleanup();
-    _queueVar.cleanup();
+    PARAM_CLEANUP();
   }
 
-  SHExposedTypesInfo requiredVariables() {
-    static auto requiredWithContext = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo());
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
-    // Context is only required when accessing the default queue
-    if (isQueueSet())
-      return requiredWithContext;
-    else
-      return SHExposedTypesInfo{};
-  }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
     if (!isQueueSet()) {
       // Use default global queue (check main thread)
       composeCheckGfxThread(data);
+
+      _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
     }
 
     if (data.inputType.basicType == SHType::Seq) {
@@ -203,7 +145,7 @@ struct DrawShard {
   }
 
   DrawQueue &getDrawQueue() {
-    SHVar queueVar = _queueVar.get();
+    SHVar queueVar = _queue.get();
     if (isQueueSet()) {
       return *varAsObjectChecked<SHDrawQueue>(queueVar, Types::DrawQueue)->queue.get();
     } else {
@@ -215,19 +157,14 @@ struct DrawShard {
 
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
     assert(input.valueType == SHType::Object);
-    if (input.payload.objectTypeId == Types::DrawableTypeId) {
-      SHDrawable *shDrawable = reinterpret_cast<SHDrawable *>(input.payload.objectValue);
-      assert(shDrawable);
-      shDrawable->updateVariables();
-      addDrawableToQueue(shDrawable->drawable);
-    } else if (input.payload.objectTypeId == Types::TreeDrawableTypeId) {
-      SHTreeDrawable *shdrawable = reinterpret_cast<SHTreeDrawable *>(input.payload.objectValue);
-      assert(shdrawable);
-      shdrawable->updateVariables();
-      addDrawableToQueue(shdrawable->drawable);
-    } else {
-      throw ActivationError("Unknown drawable object type");
-    }
+    std::visit(
+        [&](auto &drawable) {
+          using T = std::decay_t<decltype(drawable)>;
+          if constexpr (!std::is_same_v<T, std::monostate>) {
+            addDrawableToQueue(drawable); //
+          }
+        },
+        varAsObjectChecked<SHDrawable>(input, Types::Drawable)->drawable);
 
     return SHVar{};
   }

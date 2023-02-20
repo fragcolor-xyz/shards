@@ -14,11 +14,11 @@
      ; Keep track of the time variable
      0.0 >= .time 
      
-     ; Use the built-in cube mesh and setup a drawable using the mesh
+     ; Load the built-in cube mesh
      (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
+
+     ; Declare transform variable
      (Float3 0 0 0) (Math.Translation) >= .transform
-     ; NOTE: The transform is passed as a parameter so it will be dynamic
-     {:Mesh .mesh :Params {:baseColor (Float4 0 1 0 1)}} (GFX.Drawable :Transform .transform) >= .drawable
 
      ; The queue that will contain the draw commands (just the cube)
      (GFX.DrawQueue) >= .queue
@@ -35,11 +35,14 @@
     ; Clear the queue before rendering
     .queue (GFX.ClearQueue)
 
-    ; Rotate the cube
+    ; Rotate the cube's transform
     .time (Math.Add timestep) > .time
     (spin-transform .time (Float3 0.0 0 0)) > .transform
 
-    ; Add draw command to the queue
+    ; Update and retrieve the drawable
+    (GFX.Drawable :Transform .transform :Mesh .mesh :Params {:baseColor (Float4 0 1 0 1)}) >= .drawable
+    
+    ; Add drawable to the queue
     .drawable (GFX.Draw .queue)
     
     ; Render everyghing

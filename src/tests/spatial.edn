@@ -9,7 +9,7 @@
 
    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
    (Float3 0 0 0) (Math.Translation) >= .transform-0
-   {:Mesh .mesh :Params {:baseColor (Float4 1 0 1 1)}} (GFX.Drawable :Transform .transform-0) >> .drawables
+   (GFX.Drawable :Transform .transform-0 :Mesh .mesh :Params {:baseColor (Float4 1 0 1 1)}) >> .drawables
 
     ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features

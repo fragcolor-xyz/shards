@@ -13,8 +13,7 @@
    (Log "Texture")
 
    (Float3 0 0 0) (Math.Translation) >= .transform
-   {:Transform .transform :Mesh .mesh :Textures {:baseColor .texture}} (GFX.Drawable :Transform .transform) >= .drawable
-
+   
     ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
@@ -32,7 +31,7 @@
     .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
     .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
     .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) > .transform
-    .drawable (GFX.Draw)
+    (GFX.Drawable :Transform .transform :Transform .transform :Mesh .mesh :Params {:baseColor .texture}) (GFX.Draw)
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule Root test-wire)

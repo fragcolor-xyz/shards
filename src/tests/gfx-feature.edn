@@ -17,8 +17,6 @@
    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
    (Float3 -1 0 0) (Math.Translation) >= .transform-0
    (Float3 1 0 0) (Math.Translation) >= .transform-1
-   {:Mesh .mesh} (GFX.Drawable :Transform .transform-0) >> .drawables
-   {:Mesh .mesh} (GFX.Drawable :Transform .transform-1) >> .drawables
    (Float3 0 0 -1) (Math.Normalize) >= .light-direction
 
    0.0 >= .time
@@ -65,6 +63,8 @@
 
     (spin-transform .time (Float3 -0.6 0 0)) > .transform-0
     (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.6 0 0)) > .transform-1
+    (GFX.Drawable :Mesh .mesh :Transform .transform-0) >> .drawables
+    (GFX.Drawable :Mesh .mesh :Transform .transform-1) >> .drawables
     .drawables (GFX.Draw)
     (GFX.Render :Steps .render-steps :View .view))))
 

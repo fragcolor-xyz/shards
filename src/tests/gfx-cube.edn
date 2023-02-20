@@ -30,7 +30,6 @@
    0.0 >= .time
    cube (GFX.Mesh :Layout cube-layout :WindingOrder WindingOrder.CW) >= .mesh
    (Float3 0 0 0) (Math.Translation) >= .transform
-   {:Transform .transform :Mesh .mesh} (GFX.Drawable :Transform .transform) >= .drawable
 
     ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
@@ -49,7 +48,7 @@
     .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
     .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
     .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) > .transform
-    .drawable (GFX.Draw)
+    (GFX.Drawable :Transform .transform :Mesh .mesh) (GFX.Draw)
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule Root test-wire)

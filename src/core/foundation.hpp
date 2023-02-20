@@ -1392,6 +1392,38 @@ template <typename T> T *varAsObjectChecked(const SHVar &var, const shards::Type
   return reinterpret_cast<T *>(var.payload.objectValue);
 }
 
+// Collects all ContextVar references
+inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedInfo &out, const SHVar &var) {
+  using namespace std::literals;
+  switch (var.valueType) {
+  case SHType::ContextVar: {
+    auto sv = std::string_view(var.payload.stringValue);
+    for (const auto &entry : exposed) {
+      if (sv == entry.name) {
+        out.push_back(SHExposedTypeInfo{
+            .name = var.payload.stringValue,
+            .exposedType = entry.exposedType,
+        });
+        break;
+      }
+    }
+  } break;
+  case SHType::Seq:
+    shards::ForEach(var.payload.seqValue, [&](const SHVar &v) { collectRequiredVariables(exposed, out, v); });
+    break;
+  case SHType::Table:
+    shards::ForEach(var.payload.tableValue, [&](const char *key, const SHVar &v) { collectRequiredVariables(exposed, out, v); });
+    break;
+  default:
+    break;
+  }
+}
+
+template <typename... TArgs>
+inline void collectAllRequiredVariables(const SHExposedTypesInfo &exposed, ExposedInfo &out, TArgs &&...args) {
+  (collectRequiredVariables(exposed, out, std::forward<TArgs>(args)), ...);
+}
+
 }; // namespace shards
 
 #endif // SH_CORE_FOUNDATION

@@ -16,8 +16,7 @@
 
          (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
          (Float3 0 0 0) (Math.Translation) >= .transform-0
-         {:Mesh .mesh :Params {:baseColor base-color}} (GFX.Drawable :Transform .transform-0) >> .drawables
-
+         
          (GFX.DrawQueue) >= .queue
          (GFX.DrawQueue) >= .ui-queue
 
@@ -38,7 +37,7 @@
         .queue (GFX.ClearQueue)
         .ui-queue (GFX.ClearQueue)
 
-        .drawables (GFX.Draw .queue)
+        (GFX.Drawable :Transform .transform-0 :Mesh .mesh :Params {:baseColor base-color}) (GFX.Draw .queue)
 
         (UI .ui-queue
             (-> ; UI Content

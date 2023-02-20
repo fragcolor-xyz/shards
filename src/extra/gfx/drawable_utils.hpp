@@ -112,120 +112,18 @@ inline std::optional<std::variant<ParamVariant, TextureParameter>> tryVarToParam
   }
 }
 
-inline void initConstantShaderParams(const SHTable &paramsTable, MaterialParameters &out) {
-  SHTableIterator it{};
-  SHString key{};
-  SHVar value{};
-  paramsTable.api->tableGetIterator(paramsTable, &it);
-  while (paramsTable.api->tableNext(paramsTable, &it, &key, &value)) {
+inline void initShaderParams(SHContext *shContext, const SHTable &paramsTable, MaterialParameters &out) {
+  shards::ForEach(paramsTable, [&](SHString key, SHVar v) {
+    shards::ParamVar paramVar{v};
+    paramVar.warmup(shContext);
+    DEFER({ paramVar.cleanup(); });
+    SHVar value = paramVar.get();
+
     auto param = tryVarToParam(value);
     if (param) {
       std::visit([&](auto &&arg) { out.set(key, std::move(arg)); }, std::move(param.value()));
     }
-  }
-}
-
-inline void initReferencedShaderParams(SHContext *shContext, const SHTable &inTable,
-                                       std::vector<SHBasicShaderParameter> &outParams) {
-  SHTableIterator it{};
-  SHString key{};
-  SHVar value{};
-  inTable.api->tableGetIterator(inTable, &it);
-  while (inTable.api->tableNext(inTable, &it, &key, &value)) {
-    shards::ParamVar paramVar(value);
-    paramVar.warmup(shContext);
-    outParams.emplace_back(key, std::move(paramVar));
-  }
-}
-
-inline void initShaderParams(SHContext *shContext, const SHTable &inputTable, const shards::ParamVar &inParams,
-                             const shards::ParamVar &inTextures, MaterialParameters &outParams, SHShaderParameters &outSHParams) {
-  SHVar paramsVar{};
-  if (getFromTable(shContext, inputTable, "Params", paramsVar)) {
-    initConstantShaderParams(paramsVar.payload.tableValue, outParams);
-  }
-  if (inParams->valueType != SHType::None) {
-    initReferencedShaderParams(shContext, inParams.get().payload.tableValue, outSHParams.basic);
-  }
-
-  SHVar texturesVar{};
-  if (getFromTable(shContext, inputTable, "Textures", texturesVar)) {
-    initConstantShaderParams(texturesVar.payload.tableValue, outParams);
-  }
-  if (inTextures->valueType != SHType::None) {
-    initReferencedShaderParams(shContext, inTextures.get().payload.tableValue, outSHParams.textures);
-  }
-}
-
-inline void validateShaderParamsType(const SHTypeInfo &type) {
-  using shards::ComposeError;
-
-  if (type.basicType != SHType::Table) {
-    throw formatException("Wrong type for Params: {}, should be a table", magic_enum::enum_name(type.basicType));
-  }
-
-  size_t tableLen = type.table.types.len;
-  for (size_t i = 0; i < tableLen; i++) {
-    const char *key = type.table.keys.elements[i];
-    auto valueType = type.table.types.elements[i];
-    bool matched = false;
-    for (auto &supportedType : Types::ShaderParamTypes._types) {
-      if (valueType == supportedType) {
-        matched = true;
-        break;
-      }
-    }
-
-    if (!matched) {
-      throw formatException("Unsupported parameter type for param {}: {}", key, magic_enum::enum_name(valueType.basicType));
-    }
-  }
-}
-
-inline void validateTexturesInputType(const SHTypeInfo &type) {
-  if (type.basicType != SHType::Table)
-    throw formatException("Textures should be a table");
-
-  auto &tableTypes = type.table.types;
-  for (auto &type : tableTypes) {
-    if (type != Types::Texture)
-      throw formatException("Unexpected type in Textures table");
-  }
-}
-
-struct TableValidationResult {
-  bool isValid{};
-  std::string unexpectedKey;
-  operator bool() const { return isValid; }
-};
-
-inline void validateDrawableInputTableEntry(const char *key, const SHTypeInfo &type) {
-  if (strcmp(key, "Params") == 0) {
-    validateShaderParamsType(type);
-  } else if (strcmp(key, "Textures") == 0) {
-    validateTexturesInputType(type);
-  } else {
-    auto expectedTypeIt = Types::DrawableInputTableTypes.find(key);
-    if (expectedTypeIt == Types::DrawableInputTableTypes.end()) {
-      throw formatException("Unexpected input table key: {}", key);
-    }
-
-    if (expectedTypeIt->second != type) {
-      throw formatException("Unexpected input type for key: {}. expected {}, got {}", key, (SHTypeInfo &)expectedTypeIt->second,
-                            type);
-    }
-  }
-}
-
-inline void validateDrawableInputTableType(const SHTypeInfo &type) {
-  auto &inputTable = type.table;
-  size_t inputTableLen = inputTable.keys.len;
-  for (size_t i = 0; i < inputTableLen; i++) {
-    const char *key = inputTable.keys.elements[i];
-    SHTypeInfo &type = inputTable.types.elements[i];
-
-    validateDrawableInputTableEntry(key, type);
-  }
+  });
 }
 
 } // namespace gfx
