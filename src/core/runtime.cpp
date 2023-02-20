@@ -669,8 +669,6 @@ SH_WIRE_SET_STACK(hashing);
 template <typename T, bool HANDLES_RETURN, bool HASHED>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
                                            SHVar *outHash = nullptr) noexcept {
-  ZoneScoped;
-
   XXH3_state_s hashState; // optimized out in release if not HASHED
   if constexpr (HASHED) {
     assert(outHash);
@@ -790,7 +788,8 @@ SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wire
 
 // Lazy and also avoid windows Loader (Dead)Lock
 // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices?redirectedfrom=MSDN
-Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThreadPool{};
+Shared<LoadBalancingPool<SHVar>, SharedThreadPoolConcurrency> SharedThreadPool{};
+Shared<LoadBalancingPool<void>, SharedThreadPoolConcurrency> SharedThreadPoolNR{};
 
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict) {
   if (receiverType.basicType == SHType::Any)

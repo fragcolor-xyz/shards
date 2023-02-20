@@ -2,6 +2,10 @@
 #define F80CEE03_D5CE_4787_8D65_FB8CC200104A
 
 #include "shards.h"
+#include "load_balancing_pool.hpp"
+#include <future>
+
+// legacy
 #include <boost/asio/post.hpp>
 #include <boost/asio/thread_pool.hpp>
 
@@ -20,49 +24,35 @@ struct SharedThreadPoolConcurrency {
   }
 };
 #endif
-extern Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThreadPool;
+
+extern Shared<LoadBalancingPool<SHVar>, SharedThreadPoolConcurrency> SharedThreadPool;
+extern Shared<LoadBalancingPool<void>, SharedThreadPoolConcurrency> SharedThreadPoolNR;
 
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   return func();
 #else
-  std::exception_ptr exp = nullptr;
   SHVar res{};
-  std::atomic_bool complete = false;
-
-  boost::asio::post(shards::SharedThreadPool(), [&]() {
-    try {
-      // SHLOG_TRACE("Awaitne: starting {}", reinterpret_cast<void *>(&func));
-      res = func();
-    } catch (...) {
-      exp = std::current_exception();
-    }
-    complete = true;
-  });
-
-  // SHLOG_TRACE("Awaitne: waiting for completion {}", reinterpret_cast<void *>(&func));
-
+  auto future = shards::SharedThreadPool().submit(func);
+  auto complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   while (!complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
+    complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   }
 
-  if (unlikely(!complete)) {
+  if (!complete) {
     cancel();
-    while (!complete) {
-      std::this_thread::yield();
-    }
+    future.wait(); // hmm, this might block forever
   }
 
-  if (exp) {
-    try {
-      std::rethrow_exception(exp);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-    } catch (...) {
-      context->cancelFlow("foreign exception failure");
-    }
+  try {
+    res = future.get();
+  } catch (const std::exception &e) {
+    context->cancelFlow(e.what());
+  } catch (...) {
+    context->cancelFlow("foreign exception failure");
   }
 
   return res;
@@ -73,35 +63,25 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else
-  std::exception_ptr exp = nullptr;
-  std::atomic_bool complete = false;
-
-  boost::asio::post(shards::SharedThreadPool(), [&]() {
-    try {
-      // SHLOG_TRACE("Await: starting {}", reinterpret_cast<void *>(&func));
-      func();
-    } catch (...) {
-      exp = std::current_exception();
-    }
-    complete = true;
-  });
-
-  // SHLOG_TRACE("Await: waiting for completion {}", reinterpret_cast<void *>(&func));
-
+  auto future = shards::SharedThreadPoolNR().submit(func);
+  auto complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   while (!complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
+    complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   }
 
-  if (unlikely(!complete)) {
+  if (!complete) {
     cancel();
-    while (!complete) {
-      std::this_thread::yield();
-    }
+    future.wait(); // hmm, this might block forever
   }
 
-  if (exp) {
-    std::rethrow_exception(exp);
+  try {
+    future.get();
+  } catch (const std::exception &e) {
+    context->cancelFlow(e.what());
+  } catch (...) {
+    context->cancelFlow("foreign exception failure");
   }
 #endif
 }
