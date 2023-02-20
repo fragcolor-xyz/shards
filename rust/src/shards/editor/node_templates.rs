@@ -8,6 +8,7 @@ use crate::core::ShardInstance;
 use crate::shardsc::*;
 use crate::types::common_type::type2name;
 use crate::types::Seq;
+use crate::types::Table;
 use crate::types::Var;
 use egui::Response;
 use egui::Ui;
@@ -171,6 +172,24 @@ impl<'a> From<ShardInstance> for ShardData<'a> {
                 }
               }
             }
+            if initial_value.is_table() {
+              let table: Table = initial_value.as_ref().try_into().unwrap();
+              if table.len() > 0 {
+                for (k, v) in table.iter() {
+                  let k = CStr::from_ptr(k.0).to_str().unwrap();
+                  let mut item_info = BTreeMap::new();
+                  item_info.insert(SHType_Table, VarValueInfo::Key(k));
+                  // FIXME retrieve info about item type from cache and add it
+                  // FIXME what if the item type is itself a table (i.e. recursion)
+                  children.push(VarValue::new(
+                    &v,
+                    vec![v.valueType],
+                    item_info,
+                    Default::default(), // FIXME recurse
+                  ));
+                }
+              }
+            }
 
             (
               param_name,
@@ -223,6 +242,7 @@ pub(crate) enum VarValueInfo<'a> {
     enum_name: &'a str,
     enum_values: BTreeMap<i32, (&'a str, &'a str)>,
   },
+  Key(&'a str),
 }
 
 impl<'a> Clone for VarValue<'a> {
@@ -247,6 +267,7 @@ impl<'a> Clone for VarValueInfo<'a> {
         enum_name,
         enum_values: enum_values.clone(),
       },
+      Self::Key(k) => Self::Key(*k),
     }
   }
 }
@@ -486,6 +507,25 @@ impl<'a> UIRenderer for VarValue<'a> {
               .show(ui, |ui| {
                 for (i, c) in self.children.iter_mut().enumerate() {
                   ui.push_id(i, |ui| c.ui(ui));
+                }
+              })
+              .header_response
+          }
+          SHType_Table => {
+            egui::CollapsingHeader::new("Items")
+              .default_open(true)
+              .show(ui, |ui| {
+                for c in self.children.iter_mut() {
+                  if let VarValueInfo::Key(k) = *c.info.get(&SHType_Table).unwrap() {
+                    ui.push_id(k, |ui| {
+                      ui.horizontal(|ui| {
+                        ui.label(k);
+                        c.ui(ui);
+                      });
+                    });
+                  } else {
+                    invalid_data!(ui);
+                  }
                 }
               })
               .header_response
