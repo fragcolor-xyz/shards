@@ -9,6 +9,13 @@
   42 (Math.Multiply -1) >= .result
   (Log :Level LogLevel.Debug)
   ;
+  [1 2 3]
+  {:key "value"} = .table
+  {:key1 "value1"
+   :key2 "value2"
+   :key3 "value3"
+   :key4 "value4"}
+  ;
   )
 
 (def timestep (/ 1.0 120.0))
