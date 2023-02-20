@@ -9,17 +9,6 @@
 #include <winsock2.h>
 #endif
 
-#ifdef SH_USE_TSAN
-extern "C" {
-void *__tsan_get_current_fiber(void);
-void *__tsan_create_fiber(unsigned flags);
-void __tsan_destroy_fiber(void *fiber);
-void __tsan_switch_to_fiber(void *fiber, unsigned flags);
-void __tsan_set_fiber_name(void *fiber, const char *name);
-const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
-}
-#endif
-
 #include "shards.h"
 #include "ops_internal.hpp"
 #include <shards.hpp>
@@ -300,11 +289,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   ~SHWire() {
     reset();
-#ifdef SH_USE_TSAN
-    if (tsan_coro) {
-      __tsan_destroy_fiber(tsan_coro);
-    }
-#endif
     SHLOG_TRACE("Destroying wire {}", name);
   }
 
@@ -341,9 +325,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   entt::id_type id{entt::null};
 
   std::optional<SHCoro> coro;
-#ifdef SH_USE_TSAN
-  void *tsan_coro{nullptr};
-#endif
 
   std::atomic<State> state{Stopped};
 
@@ -412,6 +393,10 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   }
 
   struct OnStartEvent {
+    const SHWire *wire;
+  };
+
+  struct OnUpdateEvent {
     const SHWire *wire;
   };
 
