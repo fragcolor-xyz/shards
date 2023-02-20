@@ -368,7 +368,8 @@ inline void sleep(double seconds = -1.0, bool runCallbacks = true) {
 #endif
   }
 
-  FrameMarkNamed("Main Shards Yield");
+  if (runCallbacks)
+    FrameMarkNamed("Main Shards Yield");
 }
 
 struct RuntimeCallbacks {
