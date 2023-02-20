@@ -12,6 +12,8 @@ use crate::types::Table;
 use crate::types::Var;
 use egui::Response;
 use egui::Ui;
+use egui_extras::Column;
+use egui_extras::TableBuilder;
 use std::collections::BTreeMap;
 use std::ffi::CStr;
 use std::ptr::slice_from_raw_parts;
@@ -212,15 +214,45 @@ impl<'a> From<ShardInstance> for ShardData<'a> {
 
 impl<'a> UIRenderer for ShardData<'a> {
   fn ui(&mut self, ui: &mut Ui) -> Response {
-    egui::Grid::new(self.name)
-      .show(ui, |ui| {
-        for (i, (name, p)) in self.params.iter_mut().enumerate() {
-          ui.label(*name);
-          ui.push_id(i, |ui| p.ui(ui));
-          ui.end_row();
-        }
-      })
-      .response
+    // egui::Grid::new(self.name)
+    //   .show(ui, |ui| {
+    //     for (i, (name, p)) in self.params.iter_mut().enumerate() {
+    //       ui.label(*name);
+    //       ui.push_id(i, |ui| p.ui(ui));
+    //       ui.end_row();
+    //     }
+    //   })
+    //   .response
+
+    // ui.columns(self.params.len(), |columns| {
+    //   for (i, ui) in columns.iter_mut().enumerate() {
+    //     let (name, p) = &mut self.params[i];
+    //     ui.label(*name);
+    //     ui.push_id(i, |ui| p.ui(ui));
+    //   }
+    // });
+
+    let default_height = egui::TextStyle::Body.resolve(ui.style()).size;
+    let mut table = TableBuilder::new(ui)
+      .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+      .resizable(true)
+      .columns(Column::remainder(), 2)
+      .header(0.0, |_| {});
+    table.body(|mut body| {
+      for (i, (name, p)) in self.params.iter_mut().enumerate() {
+        body.row(default_height, |mut row| {
+          row.col(|ui| {
+            ui.label(*name);
+          });
+          row.col(|ui| {
+            ui.push_id(i, |ui| p.ui(ui));
+          });
+        })
+      }
+    });
+
+    // dummy response
+    ui.label("")
   }
 }
 
