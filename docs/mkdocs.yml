@@ -56,7 +56,7 @@ theme:
     - search.suggest
   font:
     code: Fira Code
-    text: Montserrat
+    text: Hind
   language: custom
   logo: assets/images/logo.svg
   favicon: assets/images/favicon.svg
