@@ -42,17 +42,13 @@ private:
       _tasks.pop(task);
 
       (*task)();
-
-      SHLOG_TRACE("Task finished");
-
-      task->reset();
     }
   }
 
   void resize() {
     // cleanup our tasks memory, this will still keep our vector capacity the same!
     _tasksMem.erase(std::remove_if(_tasksMem.begin(), _tasksMem.end(), [](const auto &task) {
-      return task.valid();
+      return !task.valid();
     }), _tasksMem.end());
 
     // now clean up threads
@@ -61,8 +57,8 @@ private:
 
     if (load >= active_threads) {
       // if the load is greater than the number of active threads, create a new thread
+      SHLOG_TRACE("Creating new thread, load: {}, active threads: {}", load, active_threads);
       _threads.emplace_back(&LoadBalancingPool::worker_thread, this);
-      SHLOG_TRACE("Created new thread, load: {}, active threads: {}", load, active_threads);
     } else {
       // if the load is less than the number of active threads, detach a thread
       while (load < active_threads && active_threads > _maxThreads) {

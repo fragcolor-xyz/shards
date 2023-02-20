@@ -26,7 +26,6 @@ struct SharedThreadPoolConcurrency {
 #endif
 
 extern Shared<LoadBalancingPool<SHVar>, SharedThreadPoolConcurrency> SharedThreadPool;
-extern Shared<LoadBalancingPool<void>, SharedThreadPoolConcurrency> SharedThreadPoolNR;
 
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
@@ -63,7 +62,10 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else
-  auto future = shards::SharedThreadPoolNR().submit(func);
+  auto future = shards::SharedThreadPool().submit([&] {
+    func();
+    return SHVar();
+  });
   auto complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   while (!complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)

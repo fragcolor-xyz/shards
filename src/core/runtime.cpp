@@ -789,7 +789,6 @@ SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wire
 // Lazy and also avoid windows Loader (Dead)Lock
 // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices?redirectedfrom=MSDN
 Shared<LoadBalancingPool<SHVar>, SharedThreadPoolConcurrency> SharedThreadPool{};
-Shared<LoadBalancingPool<void>, SharedThreadPoolConcurrency> SharedThreadPoolNR{};
 
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict) {
   if (receiverType.basicType == SHType::Any)
