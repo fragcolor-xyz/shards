@@ -14,6 +14,7 @@
 #include <gfx/drawables/mesh_tree_drawable.hpp>
 #include <gfx/gltf/gltf.hpp>
 #include <gfx/paths.hpp>
+#include <tracy/Tracy.hpp>
 #include <linalg_shim.hpp>
 #include <runtime.hpp>
 #include <spdlog/spdlog.h>
@@ -126,6 +127,7 @@ struct GLTFShard {
       SHInstanceData childData = data;
       childData.inputType = AnimationTable;
       _animController.compose(childData);
+      SHLOG_TRACE("Checking animation frame data {}: {}", data.wire->name, _animController.composeResult().outputType);
       if (!shards::matchTypes(_animController.composeResult().outputType, Animations::Types::AnimationValues, false, true))
         throw std::runtime_error(fmt::format("Invalid animation frame data: {}, expected: {}",
                                              _animController.composeResult().outputType, Animations::Types::AnimationValues));
@@ -135,6 +137,7 @@ struct GLTFShard {
   }
 
   void shardifyAnimationData() {
+    ZoneScoped;
     for (auto &[name, animation] : _model->animations) {
       SeqVar &tracks = _animations.get<SeqVar>(name);
       for (auto &track : animation.tracks) {
@@ -263,6 +266,7 @@ struct GLTFShard {
   }
 
   void applyAnimationData(SeqVar &data) {
+    ZoneScoped;
     for (auto &v : data) {
       TableVar &valueTable = (TableVar &)v;
       auto &pathSeq = valueTable.get<SeqVar>("Path");
@@ -321,9 +325,12 @@ struct GLTFShard {
 
     if (_animController.shards().len > 0) {
       SHVar animationData;
-      SHWireState state = _animController.activate(context, _animations, animationData);
-      if (state == SHWireState::Error) {
-        throw std::runtime_error("Animation controller failed");
+      {
+        ZoneScopedN("AnimationController");
+        SHWireState state = _animController.activate(context, _animations, animationData);
+        if (state == SHWireState::Error) {
+          throw std::runtime_error("Animation controller failed");
+        }
       }
 
       applyAnimationData((SeqVar &)animationData);

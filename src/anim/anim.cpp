@@ -145,7 +145,7 @@ struct TimerShard {
         runAction(shContext, input);
         if (looped) {
           evalTime = std::fmodf(evalTime, duration.value());
-          _time = std::fmodf(_time, duration.value());
+          _time = std::fmodf(_time + offset, duration.value()) - offset;
         } else {
           _stopped = true;
         }
@@ -160,8 +160,10 @@ struct TimerShard {
 struct PlayShard {
   static SHOptionalString help() { return SHCCSTR(R"(Returns the duration of an animation, in seconds)"); }
 
+  static inline shards::Types OutputTypes{{Type::SeqOf(Types::ValueTable)}};
+
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
-  static SHTypesInfo outputTypes() { return Type::SeqOf(Types::ValueTable); }
+  static SHTypesInfo outputTypes() { return SHTypesInfo(OutputTypes); }
 
   static SHOptionalString inputHelp() { return SHCCSTR(R"(The position in the animation to play)"); }
   static SHOptionalString outputHelp() { return SHCCSTR(R"(The interpolated frame data)"); }
@@ -173,7 +175,6 @@ struct PlayShard {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup() { PARAM_CLEANUP(); }
-  SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
 
   void evaluateTrack(SHVar &outputValue, const SeqVar &keyframesVar, float time) const {
     SeqVar &keyframes = (SeqVar &)keyframesVar;
