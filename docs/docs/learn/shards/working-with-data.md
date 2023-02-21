@@ -12,7 +12,7 @@ Scope determines the visibility of data at different points in your program. Whe
 
 - Global: The variable is known throughout the entire Mesh.
 
-In the example below, the Wire `retrieve-x` attempts to retrieve the value of `.x` defined in the Wire `define-x`. Note how it is able to retrieve the value of 1 even though it was defined in a separate Wire. This is due to how `.x` has been defined as a global variable, making its value available to all Wires on the Mesh.
+In the example below, the Wire `get-x` attempts to retrieve the value of `.x` defined in the Wire `define-x`. Note how it is able to retrieve the value of 1 even though it was defined in a separate Wire. This is due to how `.x` has been defined as a global variable, making its value available to all Wires on the Mesh.
 
 === "Command"
     ```{.clojure .annotate linenums="1"}
@@ -62,11 +62,63 @@ For the following example, `get-x` fails to retrieve the value of `.x` defined i
 
 ### Flow Methods
 
-If Wire Y is run from a separate Wire X using methods such as [`Do`](../../../reference/shards/General/Do), the variables on Wire X will be copied such that Y has access to its value at the moment it was called.
+If Wire Y is run from a separate Wire X using methods such as [`Detach`](../../../reference/shards/General/Detach), the variables on Wire X will be copied such that Y has access to its value at the moment it was called.
 
 However, this does not mean that Wire Y is in the same scope as X. Wire Y holds only a copy of the value - it does not have access to the actual variable.
 
 If a method such as [`Step`](../../../reference/shards/General/Step) is used instead, Wire Y would be scheduled on Wire X itself, giving it the same scope and access to X's actual variables.
+
+=== "Detach"
+    ```{.clojure .annotate linenums="1"}
+    (defmesh main)
+
+    (defwire wire-y
+      12 > .x (Log)) ;; (1)
+
+    (defloop wire-x
+      (Setup 0 >= .x)
+      .x (Log)
+      (Detach wire-y))
+
+    (schedule main wire-x)
+    (run main 1 2)
+    ```
+
+    1. `.x` here is a copy of the original variable in `wire-x`. It was snapshotted when `Detach wire-y` was called.
+
+=== "Output"
+    ```
+    [wire-x] 0
+    [wire-y] 12
+    [wire-x] 0
+    [wire-y] 12
+    ```
+
+=== "Step"
+    ```{.clojure .annotate linenums="1"}
+    (defmesh main)
+
+    (defwire wire-y
+      12 > .x (Log)) ;; (1)
+
+    (defloop wire-x
+      (Setup 0 >= .x)
+      .x (Log)
+      (Step wire-y))
+
+    (schedule main wire-x)
+    (run main 1 2)
+    ```
+    
+    1. `.x` here is the original variable from `wire-x`. This is due to how `Step` results in `wire-y` existing in the same scope as `wire-x`.
+
+=== "Output"
+    ```
+    [wire-x] 0
+    [wire-y] 12
+    [wire-x] 12
+    [wire-y] 12
+    ```
 
 ![Methods to control the Flow of Shards can affect scope.](assets/wires-scope.png)
 
@@ -137,9 +189,9 @@ If you define a constant in your program, it will have a global scope and can be
 
 ## Passthrough
 
-Passthrough determines if data can pass through a Wire unaltered. It allows you to better control the state of the data moving through your program.
+Passthrough determines if data can pass through shards unaltered. It allows you to better control the state of the data moving through your program.
 
-Wires will have passthrough disabled by default. In order to enable passthrough for Wires, we employ the shard [`Sub`](../../../reference/shards/General/Sub/). Any shards passed into the `Shards` parameter of `Sub` will run as per usual, except that the final output will be replaced with the initial input passed into `Sub`, thereby creating a passthrough effect.
+Most shards take in data, processes the data, and outputs the results. In order to allow data to emerge from these shards unaltered, we can employ the shard [`Sub`](../../../reference/shards/General/Sub/). `Sub` saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the `Shards` parameter of `Sub` will run as per usual, except that the final output will be replaced with the initial input passed into `Sub`, thereby creating a passthrough effect.
 
 `Sub` has an alias `|` which eliminates the need for `->` to group shards together when passed into its `Shards` parameter.
 
@@ -180,15 +232,15 @@ Wires will have passthrough disabled by default. In order to enable passthrough 
     [sub-test] After Sub: 1
     ```
 
-In the example below, John attempts to find out the price of an apple in different currencies. The base price of 1 USD is passed into the Wire, and goes through a series of shards that each performs mathematical operations on it to obtain its foreign value.
+In the example below, John wishes to check the price of an apple in different currencies. The base price of 1 USD is passed into the Wire, and goes through a series of shards that each performs mathematical operations on it to obtain its foreign value.
 
-In order to keep the initial value unchanged as it passes through Wires, passthrough has to be enabled for each Wire.
+In order to keep the initial value unchanged as it passes through the different shards, passthrough is required.
 
-![Passthrough has to be enabled for data to pass through Wires unaltered.](assets/enabling-passthrough.png)
+![Passthrough has to be enabled for data to pass through shards unaltered.](assets/with-passthrough.png)
 
-Without enabling passthrough, the data passed in at the start of the Wire gets altered each time it passes through a Wire that transforms its value.
+Without passthrough, the data passed in at the start of the Wire gets altered each time it passes through a shard that transforms its value.
 
-![Without enabling passthrough, the data gets altered each time it passes through a Wire that transforms its value.](assets/disabling-passthrough.png)
+![Without enabling passthrough, the data gets altered each time it passes through a shard that transforms its value.](assets/without-passthrough.png)
 
 ## Specific Data Types
 
