@@ -140,7 +140,7 @@ struct TimerShard {
     _lastActivation = now;
 
     float evalTime = _time + offset;
-    if (duration) {
+    if (duration && !_stopped) {
       if (evalTime > duration.value()) {
         runAction(shContext, input);
         if (looped) {
