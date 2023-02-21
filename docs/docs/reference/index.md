@@ -5,10 +5,10 @@ license: CC-BY-SA-4.0
 
 # Shards reference
 
-Welcome to the shards reference, here you'll find details for every shard, enum and built-in function defined in shards
+<figure markdown>
+  ![](assets/ReferenceLogo.png){ width=50% }
+</figure>
 
-- [Shards](./shards/)
-- [Enums](./enums/)
-- [Built-in functions](./functions/)
+Welcome to the shards reference, here you'll find details for every [Shard](./shards/), [Enum](./enums/) and [Built-in function](./functions/) defined in shards.
 
 --8<-- "includes/license.md"
