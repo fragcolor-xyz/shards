@@ -8,7 +8,7 @@
 #include "texture_cache.hpp"
 #include "fmt.hpp"
 #include "worker_memory.hpp"
-#include "pmr/set.hpp"
+#include "pmr/unordered_set.hpp"
 #include "pmr/vector.hpp"
 #include "gfx_wgpu.hpp"
 #include <compare>
@@ -520,7 +520,7 @@ private:
   allocator_type allocator;
 
   // Keeps track of texture that have been written to at least once
-  shards::pmr::set<Texture *> writtenTextures;
+  shards::pmr::unordered_set<Texture *> writtenTextures;
 
   // Resolved texture handles for indexed by frame index inside nodes
   struct ResolvedFrameTexture {
@@ -547,7 +547,8 @@ public:
     return frameTextures[frameIndex].texture;
   }
 
-  WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex, size_t frameCounter) {
+  WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex,
+                                 size_t frameCounter) {
     if (textureData.externalView)
       return textureData.externalView;
     TextureViewDesc desc{

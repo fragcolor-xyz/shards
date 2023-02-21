@@ -3,11 +3,11 @@
 
 #include "wrapper.hpp"
 #include <functional>
-#include <set>
+#include <unordered_set>
 
 #if !HAVE_CXX_17_MEMORY_RESOURCE
 namespace shards::pmr {
-template <typename K, typename Less = std::less<K>> using set = std::set<K, Less, PolymorphicAllocator<K>>;
+template <typename K, typename Hasher = std::hash<K>, typename Equal = std::equal_to<K>> using unordered_set = std::unordered_set<K, Hasher, Equal, PolymorphicAllocator<K>>;
 }
 #endif
 
