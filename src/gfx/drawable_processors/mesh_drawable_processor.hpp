@@ -9,6 +9,7 @@
 #include "../texture_placeholder.hpp"
 #include "drawable_processor_helpers.hpp"
 #include "pmr/list.hpp"
+#include "pmr/unordered_map.hpp"
 #include "texture_cache.hpp"
 #include "worker_memory.hpp"
 #include <tracy/Tracy.hpp>
@@ -417,9 +418,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
       WGPUBindGroupLayout drawBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getDrawBindGroupIndex()];
 
-      auto cachedBindGroups = allocator->new_object<shards::pmr::map<Hash128, WGPUBindGroup>>();
+      auto cachedBindGroups = allocator->new_object<shards::pmr::unordered_map<Hash128, WGPUBindGroup>>();
       for (size_t index = 0; index < preparedGroupData.groups.size(); ++index) {
-        shards::pmr::map<Hash128, WGPUBindGroup> &cache = *cachedBindGroups;
+        shards::pmr::unordered_map<Hash128, WGPUBindGroup> &cache = *cachedBindGroups;
 
         auto &group = preparedGroupData.groups[index];
         auto &groupData = preparedGroupData.groupData[index];

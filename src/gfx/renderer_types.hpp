@@ -20,10 +20,12 @@
 #include "sized_item_pool.hpp"
 #include "worker_memory.hpp"
 #include "pmr/wrapper.hpp"
-#include "pmr/map.hpp"
+#include "pmr/unordered_map.hpp"
 #include "pmr/string.hpp"
 #include <cassert>
+#include <functional>
 #include <memory>
+#include <string_view>
 #include <vector>
 #include <map>
 #include <compare>
@@ -119,15 +121,20 @@ struct RenderTargetLayout {
 struct ParameterStorage final : public IParameterCollector {
   using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
-  struct KeyLess {
+  struct KeyEqual {
     using is_transparent = std::true_type;
     template <typename T, typename U> bool operator()(const T &a, const U &b) const {
-      return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end());
+      return std::string_view(a) == std::string_view(b);
     }
   };
 
-  shards::pmr::map<shards::pmr::string, ParamVariant, KeyLess> basic;
-  shards::pmr::map<shards::pmr::string, TextureParameter, KeyLess> textures;
+  struct KeyHash {
+    using is_transparent = std::true_type;
+    template <typename U> size_t operator()(const U &b) const { return std::hash<U>{}(b); }
+  };
+
+  shards::pmr::unordered_map<shards::pmr::string, ParamVariant, KeyHash, KeyEqual> basic;
+  shards::pmr::unordered_map<shards::pmr::string, TextureParameter, KeyHash, KeyEqual> textures;
 
   using IParameterCollector::setParam;
   using IParameterCollector::setTexture;
