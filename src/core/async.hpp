@@ -31,7 +31,7 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   std::packaged_task<SHVar()> task(std::move(func));
   auto future = task.get_future();
 
-  boost::asio::post(shards::SharedThreadPool(), std::move(task));
+  boost::asio::post(shards::SharedThreadPool(), [&] { task(); });
 
   auto complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   while (!complete && context->shouldContinue()) {
@@ -70,7 +70,7 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
   std::packaged_task<void()> task(std::move(func));
   auto future = task.get_future();
 
-  boost::asio::post(shards::SharedThreadPool(), std::move(task));
+  boost::asio::post(shards::SharedThreadPool(), [&] { task(); });
 
   auto complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   while (!complete && context->shouldContinue()) {
