@@ -9,7 +9,7 @@
 (defloop character
   (Take "Position") = .position
   .position (Math.Translation) >= .transform
-  (GFX.glTF :Path "data/mascot.glb"
+  (GFX.glTF :Copy .gltf-template
             :Transform .transform
             :AnimationController
             (->
@@ -25,10 +25,23 @@
                                        (Count .animation-names) >= .num-animations
                                        (Math.Inc .animation-index)
                                        .animation-index (Math.Mod .num-animations) > .animation-index
-                                       (Log "Playing next animation");
                                        ))
              (Animation.Play .animation);
-             ))(GFX.Draw .queue))
+             )) (GFX.Draw .queue))
+
+(defwire spawn-benchmark
+  (Log "Spawning models")
+  8 >= .num-x (ToFloat) (Math.Divide 2.0) >= .sub-x
+  16 >= .num-y (ToFloat) (Math.Divide 2.0) >= .sub-y
+
+  (ForRange 1 .num-y
+            (->
+             (ToFloat) (Math.Subtract .sub-y) >= .y
+             (ForRange 1 .num-x
+                       (->
+                        (ToFloat) (Math.Subtract .sub-x) >= .x
+                        (Float3 .x 0.0 .y) >= .position
+                        {:Position .position} (Spawn character))))))
 
 (defshards lighting-feature []
   (Float3 -0.2 -2 -1) (Math.Normalize) = .light-direction
@@ -64,6 +77,8 @@
 
    (GFX.DrawQueue) >= .queue
 
+   (GFX.glTF :Path "data/mascot.glb") = .gltf-template
+
   ;; Render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
@@ -81,7 +96,7 @@
     (Animation.Timer :Rate 0.2 :Offset -0.75) >= .time
     (get-view-transform .time) > .view-transform
     .queue (GFX.ClearQueue)
-    {:Position (Float3 0.0)} (Step character)
+    (Branch [spawn-benchmark])
 
     (GFX.Render :Steps .render-steps :View .view))))
 (schedule root test-basic-anim)
