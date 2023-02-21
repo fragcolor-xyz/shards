@@ -1,10 +1,17 @@
 #pragma once
 
+#include "common_types.hpp"
+#include "foundation.hpp"
+#include "linalg.h"
+#include "shards.h"
 #include "shared.hpp"
 #include "math.hpp"
+#include "core.hpp"
+#include "params.hpp"
 #include <linalg_shim.hpp>
 #include <math.h>
 #include <cmath>
+#include <stdexcept>
 
 namespace shards {
 namespace Math {
@@ -434,6 +441,39 @@ struct Rad2Deg {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   SHVar activate(SHContext *context, const SHVar &input) { return Var(input.payload.floatValue * (180.0 / PI)); }
+};
+
+struct MatIdentity {
+  PARAM_VAR(_type, "Type", "The matrix row type of the corresponding matrix", {CoreInfo2::TypeEnumInfo::Type});
+  PARAM_IMPL(MatIdentity, PARAM_IMPL_FOR(_type));
+
+  static SHOptionalString help() { return SHCCSTR("Gives identity values for square matrix types"); }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() {
+    static Types types{CoreInfo::Float4x4Type};
+    return types;
+  }
+
+  static inline Mat4 Float4x4Identity = linalg::identity;
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    switch (BasicTypes(_type.payload.enumValue)) {
+    case shards::BasicTypes::Float4:
+      return CoreInfo::Float4x4Type;
+    default:
+      throw std::runtime_error("Unsuported matrix row type");
+    }
+    return SHTypeInfo{};
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    switch (BasicTypes(_type.payload.enumValue)) {
+    case shards::BasicTypes::Float4:
+      return Float4x4Identity;
+    default:
+      return SHVar{};
+    }
+  }
 };
 
 } // namespace LinAlg
