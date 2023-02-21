@@ -31,7 +31,7 @@
     .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
     .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
     .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) > .transform
-    (GFX.Drawable :Transform .transform :Transform .transform :Mesh .mesh :Params {:baseColor .texture}) (GFX.Draw)
+    (GFX.Drawable :Transform .transform :Transform .transform :Mesh .mesh :Params {:baseColorTexture .texture}) (GFX.Draw)
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule Root test-wire)

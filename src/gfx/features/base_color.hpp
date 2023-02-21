@@ -41,7 +41,7 @@ struct BaseColor {
 
     FeaturePtr feature = std::make_shared<Feature>();
     feature->shaderParams.emplace_back("baseColor", float4(1, 1, 1, 1));
-    feature->textureParams.emplace_back("baseColor");
+    feature->textureParams.emplace_back("baseColorTexture");
 
     feature->state.set_blend(BlendState{
         .color = BlendComponent::Alpha,
@@ -92,8 +92,8 @@ struct BaseColor {
     // Apply base color texture
     auto &sampleTexture = feature->shaderEntryPoints.emplace_back(
         "textureColor", ProgrammableGraphicsStage::Fragment,
-        WithTexture("baseColor", true,
-                    WriteGlobal("color", colorFieldType, ReadGlobal("color"), "*", SampleTexture("baseColor"))));
+        WithTexture("baseColorTexture", true,
+                    WriteGlobal("color", colorFieldType, ReadGlobal("color"), "*", SampleTexture("baseColorTexture"))));
     sampleTexture.dependencies.emplace_back("readColor");
     sampleTexture.dependencies.emplace_back("writeColor", DependencyType::Before);
 

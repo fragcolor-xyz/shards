@@ -402,12 +402,12 @@ TEST_CASE("Textures", "[General]") {
 
   transform = linalg::translation_matrix(float3(-.5f, 0.0f, 0.0f));
   drawable = std::make_shared<MeshDrawable>(planeMesh, transform);
-  drawable->parameters.set("baseColor", textureA);
+  drawable->parameters.set("baseColorTexture", textureA);
   queue->add(drawable);
 
   transform = linalg::translation_matrix(float3(.5f, 0.0f, 0.0f));
   drawable = std::make_shared<MeshDrawable>(planeMesh, transform);
-  drawable->parameters.set("baseColor", textureB);
+  drawable->parameters.set("baseColorTexture", textureB);
   queue->add(drawable);
 
   FeaturePtr blendFeature = std::make_shared<Feature>();
