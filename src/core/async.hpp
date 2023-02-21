@@ -27,42 +27,36 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   return func();
 #else
-  std::exception_ptr exp = nullptr;
   SHVar res{};
-  std::atomic_bool complete = false;
+  std::packaged_task<SHVar()> task(std::move(func));
+  auto future = task.get_future();
 
-  boost::asio::post(shards::SharedThreadPool(), [&]() {
-    try {
-      // SHLOG_TRACE("Awaitne: starting {}", reinterpret_cast<void *>(&func));
-      res = func();
-    } catch (...) {
-      exp = std::current_exception();
-    }
-    complete = true;
-  });
+  boost::asio::post(shards::SharedThreadPool(), std::move(task));
 
-  // SHLOG_TRACE("Awaitne: waiting for completion {}", reinterpret_cast<void *>(&func));
-
+  auto complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   while (!complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
+    complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   }
 
   if (unlikely(!complete)) {
     cancel();
-    while (!complete) {
-      std::this_thread::yield();
+    SHLOG_DEBUG("awaitne: canceling task");
+    auto state = future.wait_for(std::chrono::milliseconds(5000)); // give it 5 seconds to complete? TBD, should not happen
+    if (state != std::future_status::ready) {
+      context->cancelFlow("awaitne: task canceled but potentially still running");
+      return res;
     }
+    SHLOG_DEBUG("awaitne: task canceled");
   }
 
-  if (exp) {
-    try {
-      std::rethrow_exception(exp);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-    } catch (...) {
-      context->cancelFlow("foreign exception failure");
-    }
+  try {
+    res = future.get();
+  } catch (const std::exception &e) {
+    context->cancelFlow(e.what());
+  } catch (...) {
+    context->cancelFlow("foreign exception failure");
   }
 
   return res;
@@ -73,36 +67,28 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else
-  std::exception_ptr exp = nullptr;
-  std::atomic_bool complete = false;
+  std::packaged_task<void()> task(std::move(func));
+  auto future = task.get_future();
 
-  boost::asio::post(shards::SharedThreadPool(), [&]() {
-    try {
-      // SHLOG_TRACE("Await: starting {}", reinterpret_cast<void *>(&func));
-      func();
-    } catch (...) {
-      exp = std::current_exception();
-    }
-    complete = true;
-  });
+  boost::asio::post(shards::SharedThreadPool(), std::move(task));
 
-  // SHLOG_TRACE("Await: waiting for completion {}", reinterpret_cast<void *>(&func));
-
+  auto complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   while (!complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
+    complete = future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
   }
 
   if (unlikely(!complete)) {
     cancel();
-    while (!complete) {
-      std::this_thread::yield();
-    }
+    SHLOG_DEBUG("await: canceling task");
+    auto state = future.wait_for(std::chrono::milliseconds(5000)); // give it 5 seconds to complete? TBD, should not happen
+    if (state != std::future_status::ready)
+      throw std::runtime_error("await: task canceled but potentially still running");
+    SHLOG_DEBUG("await: task canceled");
   }
 
-  if (exp) {
-    std::rethrow_exception(exp);
-  }
+  future.get(); // can throw!
 #endif
 }
 } // namespace shards
