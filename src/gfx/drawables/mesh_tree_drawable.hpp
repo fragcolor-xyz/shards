@@ -3,6 +3,7 @@
 
 #include "../linalg.hpp"
 #include "mesh_drawable.hpp"
+#include <boost/container/small_vector.hpp>
 #include <cassert>
 #include <memory>
 #include <set>
@@ -82,7 +83,7 @@ template <typename T> void MeshTreeDrawable::foreach (const Ptr &item, T && call
   struct Node {
     Ptr node;
   };
-  std::vector<Node> queue{{item}};
+  boost::container::small_vector<Node, 16> queue{{item}};
 
   while (!queue.empty()) {
     Node node = queue.back();
@@ -105,7 +106,7 @@ template <typename T> void MeshTreeDrawable::traverseUp(const Ptr &item, T &&cal
 }
 
 template <typename T> void MeshTreeDrawable::traverseDown(const Ptr &from, const Ptr &until, T &&callback) {
-  std::list<Ptr> queue;
+  boost::container::small_vector<Ptr, 16> queue;
   Ptr node = until;
   while (node && node != from) {
     queue.push_back(node);
