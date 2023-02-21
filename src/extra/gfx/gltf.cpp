@@ -26,10 +26,9 @@ struct GLTFShard {
   static inline Type ByteInputType = CoreInfo::BytesType;
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
   static SHTypesInfo outputTypes() { return Types::Drawable; }
 
-  PARAM_PARAMVAR(_transform, "Transform", "The transform variable to use", {CoreInfo::NoneType, TransformVarType});
   PARAM_PARAMVAR(_path, "Path", "The path to load the model from",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_bytes, "Bytes", "The bytes to load the model from",
@@ -38,8 +37,8 @@ struct GLTFShard {
                  {CoreInfo::NoneType, Type::VariableOf(Types::Drawable)});
   PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
-  PARAM_IMPL(GLTFShard, PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_path), PARAM_IMPL_FOR(_bytes), PARAM_IMPL_FOR(_copy),
-             PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
+  PARAM_IMPL(GLTFShard, PARAM_IMPL_FOR(_path), PARAM_IMPL_FOR(_bytes), PARAM_IMPL_FOR(_copy), PARAM_IMPL_FOR(_params),
+             PARAM_IMPL_FOR(_features));
 
   enum LoadMode {
     Invalid,
@@ -152,9 +151,7 @@ struct GLTFShard {
       }
     }
 
-    if (!_transform.isNone()) {
-      drawable->transform = toFloat4x4(_transform.get());
-    }
+    drawable->transform = toFloat4x4(input);
 
     // Only apply recursive parameters once
     if (!_dynamicsApplied) {

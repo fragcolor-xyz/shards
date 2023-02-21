@@ -57,7 +57,7 @@
   .time (Math.Add timestep) > .time
   (spin-transform .time (Float3 0.0 0 0)) > .transform-0
 
-  (GFX.Drawable :Transform .transform-0 :Mesh .mesh :Params {:baseColor (Float4 1 1 1 1)}) (GFX.Draw)
+  .transform-0 (GFX.Drawable :Mesh .mesh :Params {:baseColor (Float4 1 1 1 1)}) (GFX.Draw)
   (GFX.Render :Steps .render-steps1 :View .view))
 
 (defmesh root)

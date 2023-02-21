@@ -61,11 +61,12 @@
     .time (Math.Add timestep) > .time
     .time (Broadcast "time")
 
-    (spin-transform .time (Float3 -0.6 0 0)) > .transform-0
-    (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.6 0 0)) > .transform-1
-    (GFX.Drawable :Mesh .mesh :Transform .transform-0) >> .drawables
-    (GFX.Drawable :Mesh .mesh :Transform .transform-1) >> .drawables
-    .drawables (GFX.Draw)
+    (spin-transform .time (Float3 -0.6 0 0))
+    (GFX.Drawable :Mesh .mesh) (GFX.Draw)
+
+    (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.6 0 0))
+    (GFX.Drawable :Mesh .mesh) (GFX.Draw)
+
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule root test-wire)

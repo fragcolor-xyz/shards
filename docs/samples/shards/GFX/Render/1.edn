@@ -37,10 +37,11 @@
 
     ; Rotate the cube's transform
     .time (Math.Add timestep) > .time
-    (spin-transform .time (Float3 0.0 0 0)) > .transform
+    (spin-transform .time (Float3 0.0 0 0))
 
     ; Update and retrieve the drawable
-    (GFX.Drawable :Transform .transform :Mesh .mesh :Params {:baseColor (Float4 0 1 0 1)}) >= .drawable
+    ; Note that the transform is the input 
+    (GFX.Drawable :Mesh .mesh :Params {:baseColor (Float4 0 1 0 1)}) >= .drawable
     
     ; Add drawable to the queue
     .drawable (GFX.Draw .queue)

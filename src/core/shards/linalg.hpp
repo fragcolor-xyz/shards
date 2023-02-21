@@ -456,6 +456,8 @@ struct MatIdentity {
 
   static inline Mat4 Float4x4Identity = linalg::identity;
 
+  MatIdentity() { _type = Var::Enum(BasicTypes::Float4, CoreInfo2::TypeEnumInfo::Type); }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     switch (BasicTypes(_type.payload.enumValue)) {
     case shards::BasicTypes::Float4:

@@ -52,7 +52,7 @@
   (Float3 0.25) (Math.Scaling) >= .transform
   .time (Math.Cos) (Math.Multiply 10.0) (Math.DegreesToRadians) (Math.AxisAngleZ) (Math.Rotation) >= .rmat-0
   .time (Math.Multiply 0.8) (Math.Cos) (Math.Multiply 3.0) (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .rmat-1
-  .rmat-1 (Math.MatMul .rmat-0) (Math.MatMul .transform) > .transform)
+  .rmat-1 (Math.MatMul .rmat-0) (Math.MatMul .transform))
 
 (defloop gfx
   (Setup
@@ -64,7 +64,6 @@
 
    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .cube
 
-   (Float3 0.0) (Math.Translation) >= .transform
    (Do update-cube-transform)
 
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
@@ -82,8 +81,7 @@
   .time (Math.Add timestep) > .time
   .time (Broadcast "time")
   (Do update-cube-transform)
-
-  (GFX.Drawable :Transform .transform :Mesh .cube) (GFX.Draw)
+  (GFX.Drawable :Mesh .cube) (GFX.Draw)
   (GFX.Render :Steps .render-steps :View .view))
 
 (defmesh root)

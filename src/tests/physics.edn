@@ -20,8 +20,8 @@
    [(float4 ground-extent 0 0 0)
     (float4 0 0 (- ground-extent) 0)
     (float4 0 1 0 0)
-    (float4 0 (+ ground-thickness ground-y) 0 1)] = .ground-t
-   (GFX.Drawable :Transform .ground-t :Mesh .plane
+    (float4 0 (+ ground-thickness ground-y) 0 1)]
+   (GFX.Drawable :Mesh .plane
                  :Params {:baseColor (float4 0.8 0.55 0.95 1)}) >= .ground-drawable
 
    ; define some physics shapes
@@ -65,10 +65,11 @@
     ; cubes and spheres instances
     (map
      (fn* [n]
-          (-> (GFX.Drawable :Transform (ContextVar (str "transform-" n))
-                            :Mesh (if (= (% n 2) 0) .cube .cube)
-                            :Params
-                            {:baseColor (float4 (* (/ n obj-count) 2.0) (* (- 1.0 (/ n obj-count)) 2.0) 0 1)})
+          (-> (ContextVar (str "transform-" n))
+              (GFX.Drawable
+               :Mesh (if (= (% n 2) 0) .cube .cube)
+               :Params
+               {:baseColor (float4 (* (/ n obj-count) 2.0) (* (- 1.0 (/ n obj-count)) 2.0) 0 1)})
 
               >> .drawables))
      (range 1 obj-count))

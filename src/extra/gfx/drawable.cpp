@@ -6,6 +6,7 @@
 #include "gfx/drawables/mesh_drawable.hpp"
 #include "gfx/fwd.hpp"
 #include "runtime.hpp"
+#include "shards.h"
 #include "shards.hpp"
 #include "shards_utils.hpp"
 #include <gfx/drawable.hpp>
@@ -24,17 +25,17 @@ struct DrawableShard {
   static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
 
-  PARAM_EXT(ParamVar, _transform, Types::TransformParameterInfo);
   PARAM_PARAMVAR(_mesh, "Mesh", "The mesh to use for this drawable.", {MeshVarType});
   PARAM_EXT(ParamVar, _material, Types::MaterialParameterInfo);
   PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
 
-  PARAM_IMPL(DrawableShard, PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_mesh), PARAM_IMPL_FOR(_material), PARAM_IMPL_FOR(_params),
-             PARAM_IMPL_FOR(_features));
+  PARAM_IMPL(DrawableShard, PARAM_IMPL_FOR(_mesh), PARAM_IMPL_FOR(_material), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
 
   static SHOptionalString help() { return SHCCSTR(R"(Drawable help text)"); }
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The drawable's transform"); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
   static SHTypesInfo outputTypes() { return Types::Drawable; }
 
   SHDrawable *_drawable{};
@@ -72,11 +73,8 @@ struct DrawableShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &meshDrawable = getMeshDrawable();
 
+    meshDrawable->transform = toFloat4x4(input);
     meshDrawable->mesh = *varAsObjectChecked<MeshPtr>(_mesh.get(), Types::Mesh);
-
-    if (!_transform.isNone()) {
-      meshDrawable->transform = toFloat4x4(_transform.get());
-    }
 
     if (!_material.isNone()) {
       meshDrawable->material = varAsObjectChecked<SHMaterial>(_material.get(), Types::Material)->material;

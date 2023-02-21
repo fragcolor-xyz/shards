@@ -41,7 +41,7 @@
    (->
     .time (Math.Add timestep) > .time
 
-    (GFX.Drawable :Transform .transform-0 :Mesh .mesh :Params {:baseColor (Float4 1 0 0 1)}) >= .drawable-0
+    .transform-0 (GFX.Drawable :Mesh .mesh :Params {:baseColor (Float4 1 0 0 1)}) >= .drawable-0
     (GFX.Draw)
 
     ; Draw helpers (using scene depth)
