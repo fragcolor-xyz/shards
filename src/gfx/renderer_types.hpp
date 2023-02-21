@@ -130,7 +130,10 @@ struct ParameterStorage final : public IParameterCollector {
 
   struct KeyHash {
     using is_transparent = std::true_type;
-    template <typename U> size_t operator()(const U &b) const { return std::hash<U>{}(b); }
+    template <typename U> size_t operator()(const U &b) const {
+      std::hash<U> hash;
+      return hash(b);
+    }
   };
 
   shards::pmr::unordered_map<shards::pmr::string, ParamVariant, KeyHash, KeyEqual> basic;
