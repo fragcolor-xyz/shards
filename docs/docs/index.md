@@ -6,7 +6,7 @@ license: CC-BY-SA-4.0
 # Home
 
 <figure markdown>
-  ![](assets/HomePageLogo.png){ width=50% }
+  ![](assets/HomePageLogo.png)
 </figure>
 
 Welcome to Fragcolor documentation!

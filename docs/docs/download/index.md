@@ -6,7 +6,7 @@ license: CC-BY-SA-4.0
 # Download
 
 <figure markdown>
-  ![](assets/DownloadLogo.png){ width=50% }
+  ![](assets/DownloadLogo.png)
 </figure>
 
 Download [here](https://github.com/fragcolor-xyz/shards/releases).

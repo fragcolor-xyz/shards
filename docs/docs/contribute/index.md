@@ -6,7 +6,7 @@ license: CC-BY-SA-4.0
 # Contribute
 
 <figure markdown>
-  ![](assets/ContributeLogo.png){ width=50% }
+  ![](assets/ContributeLogo.png)
 </figure>
 
 Fragcolor has a number of interesting [projects](https://github.com/fragcolor-xyz) open to community contributions.
