@@ -101,7 +101,7 @@ struct IterableParam {
   }
 
 #define PARAM_REQUIRED_VARIABLES() \
-  ExposedInfo _requiredVariables;  \
+  shards::ExposedInfo _requiredVariables;  \
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
 
 // Implements collection of required variables
