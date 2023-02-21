@@ -6,7 +6,6 @@
 #endif
 
 #include "shared.hpp"
-#include "async.hpp"
 
 // workaround for a boost bug..
 #ifndef __kernel_entry
@@ -22,6 +21,8 @@
 #include <sstream>
 #include <string>
 #pragma clang diagnostic pop
+
+#include "async.hpp"
 
 namespace shards {
 namespace Process {
@@ -88,6 +89,7 @@ struct Run {
   void cleanup() { _arguments.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    std::optional<boost::process::child*> pCmd;
     return awaitne(
         context,
         [&]() {
@@ -132,6 +134,8 @@ struct Run {
 
           boost::process::child cmd(exePath, argsArray, boost::process::std_out > ostr, boost::process::std_err > estr,
                                     boost::process::std_in < ipipe, ios);
+
+          pCmd = &cmd;
 
           if (!ipipe) {
             throw ActivationError("Failed to open streams for child process");
@@ -180,8 +184,10 @@ struct Run {
             return Var(_outBuf);
           }
         },
-        [] {
-          // TODO CANCELLATION
+        [&] {
+          if(pCmd) {
+            (*pCmd)->terminate();
+          }
         });
   }
 };
