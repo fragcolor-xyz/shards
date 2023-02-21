@@ -8,27 +8,34 @@
 
 (defloop character
   (Take "Position") = .position
+
+  (Setup
+   0 >= .animation-index
+   "" >> .animation-names
+   (Clear .animation-names))
+
   .position (Math.Translation) >= .transform
-  (GFX.glTF :Path "data/mascot.glb"
+  (GFX.glTF :Path "data/mascot1.gltf"
             :Transform .transform
             :AnimationController
             (->
-             (| (Setup
-                 (ForEach (-> (Take 0) >> .animation-names))
-                 .animation-names
-                 (RandomFloat 5.0) = .animation-offset)
-                .animation-names (Take .animation-index) >= .animation-name)
-             (Take .animation-name) >= .animation
+             = .animations
+             (Setup
+              .animations (ForEach (-> (Take 0) >> .animation-names)))
+             .animation-names (Take .animation-index) >= .animation-name
+             .animations (Take .animation-name) = .animation
+             (Setup
+              (Take 1)
+              (Log "Animation"))
 
-             (Animation.Timer .animation :Rate 1.3 :Offset .animation-offset
+             (Animation.Timer :Rate 0.4 :Duration 1.0
                               :Action (->
-                                       (Count .animation-names) >= .num-animations
-                                       (Math.Inc .animation-index)
-                                       .animation-index (Math.Mod .num-animations) > .animation-index
-                                       (Log "Playing next animation");
-                                       ))
+                                       (Msg "Done"))) (Math.Add 5.0)
              (Animation.Play .animation);
-             ))(GFX.Draw .queue))
+             (|
+              (Take 1)
+              ;; (Log "Packet");
+              )))(GFX.Draw .queue))
 
 (defshards lighting-feature []
   (Float3 -0.2 -2 -1) (Math.Normalize) = .light-direction
@@ -57,10 +64,6 @@
 (defloop test-basic-anim
   (Setup
    (Float3 0 0 0) (Math.Translation) >= .t1
-
-   "" >> .animation-names
-   (Clear .animation-names)
-   1 >= .animation-index
 
    (GFX.DrawQueue) >= .queue
 

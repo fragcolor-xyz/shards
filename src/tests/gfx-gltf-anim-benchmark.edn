@@ -18,7 +18,7 @@
                  .animation-names
                  (RandomFloat 5.0) = .animation-offset)
                 .animation-names (Take .animation-index) >= .animation-name)
-             (Take .animation-name) >= .animation
+             (Take .animation-name) = .animation
 
              (Animation.Timer .animation :Rate 1.3 :Offset .animation-offset
                               :Action (->
@@ -31,7 +31,7 @@
 
 (defwire spawn-benchmark
   (Log "Spawning models")
-  8 >= .num-x (ToFloat) (Math.Divide 2.0) >= .sub-x
+  16 >= .num-x (ToFloat) (Math.Divide 2.0) >= .sub-x
   16 >= .num-y (ToFloat) (Math.Divide 2.0) >= .sub-y
 
   (ForRange 1 .num-y

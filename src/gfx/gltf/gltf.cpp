@@ -452,7 +452,9 @@ struct Loader {
     if (gltfAnimSampler.interpolation == "LINEAR") {
       result.interpolation = animation::Interpolation::Linear;
     } else if (gltfAnimSampler.interpolation == "STEP") {
-      result.interpolation = animation::Interpolation::Linear; // TODO: FIX
+      result.interpolation = animation::Interpolation::Step;
+    } else if (gltfAnimSampler.interpolation == "CUBICSPLINE") {
+      result.interpolation = animation::Interpolation::Cubic;
     } else {
       throw formatException("Interpolation mode not supported: {}", gltfAnimSampler.interpolation);
     }
@@ -467,14 +469,19 @@ struct Loader {
     size_t numFrames = input.count;
     size_t numComponents = GetNumComponentsInType(output.type);
     result.elementSize = numComponents;
-    result.data.resize(numComponents * numFrames);
     for (size_t i = 0; i < numFrames; i++) {
       const float &time = *(float *)(inputData + input.ByteStride(inputBufferView) * i);
       result.times.emplace_back(time);
     }
 
     // Convert animation values to float
-    for (size_t i = 0; i < numFrames; i++) {
+    size_t numValues = numFrames;
+    if (result.interpolation == animation::Interpolation::Cubic)
+      numValues = numFrames * 3;
+    assert(numValues == output.count);
+    result.data.resize(numComponents * numValues);
+
+    for (size_t i = 0; i < numValues; i++) {
       float *outData = result.data.data() + numComponents * i;
       const uint8_t *inputData = outputData + output.ByteStride(outputBufferView) * i;
       switch (output.componentType) {

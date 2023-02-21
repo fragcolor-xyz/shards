@@ -1,11 +1,12 @@
 #include "boost/filesystem/path.hpp"
 #include "common_types.hpp"
+#include "gfx/gltf/animation.hpp"
 #include "params.hpp"
 #include "shards_types.hpp"
 #include "shards_utils.hpp"
 #include "drawable_utils.hpp"
 #include "anim/types.hpp"
-#include "anim/bindings.hpp"
+#include "anim/path.hpp"
 #include <memory>
 #include <deque>
 #include <optional>
@@ -144,6 +145,22 @@ struct GLTFShard {
         TableVar trackTable;
         trackTable.get<SeqVar>("Path") = getAnimationPath(track.targetNode.lock(), track.target);
 
+        std::optional<Var> interpolationValue;
+        if (track.interpolation != animation::Interpolation::Linear) {
+          auto &enumType = Animations::Types::InterpolationEnumInfo::Type;
+          switch (track.interpolation) {
+          case animation::Interpolation::Step:
+            interpolationValue = Var::Enum(Animations::Interpolation::Step, enumType);
+            break;
+          case animation::Interpolation::Cubic:
+            interpolationValue = Var::Enum(Animations::Interpolation::Cubic, enumType);
+            break;
+          default:
+            throw std::out_of_range("Unsupported value");
+            break;
+          }
+        }
+
         SeqVar frames;
         frames.resize(track.times.size());
 
@@ -153,8 +170,18 @@ struct GLTFShard {
 
           frameTableVar.get<Var>("Time") = Var{time};
 
-          Var &value = frameTableVar.get<Var>("Value");
-          std::visit([&](auto &&v) -> void { value = toVar(v); }, track.getValue(frameIndex));
+          if (interpolationValue) {
+            frameTableVar.get<Var>("Interpolation") = *interpolationValue;
+          }
+
+          if (track.interpolation == animation::Interpolation::Cubic) {
+            std::visit([&](auto &&v) -> void { frameTableVar.get<Var>("In") = toVar(v); }, track.getValue(frameIndex * 3 + 0));
+            std::visit([&](auto &&v) -> void { frameTableVar.get<Var>("Value") = toVar(v); }, track.getValue(frameIndex * 3 + 1));
+            std::visit([&](auto &&v) -> void { frameTableVar.get<Var>("Out") = toVar(v); }, track.getValue(frameIndex * 3 + 2));
+          } else {
+            Var &value = frameTableVar.get<Var>("Value");
+            std::visit([&](auto &&v) -> void { value = toVar(v); }, track.getValue(frameIndex));
+          }
 
           static_cast<TableVar &>(frames[frameIndex]) = std::move(frameTableVar);
           ++frameIndex;

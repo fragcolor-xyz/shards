@@ -1,4 +1,5 @@
-#include "anim/bindings.hpp"
+#include "anim/path.hpp"
+#include "anim/types.hpp"
 #include "common_types.hpp"
 #include "foundation.hpp"
 #include "linalg.h"
@@ -20,6 +21,13 @@ using namespace linalg::aliases;
 
 static auto getKeyframeTime(const SHVar &keyframe) { return (float)((TableVar &)keyframe).get<Var>("Time"); };
 static auto getKeyframeValue(const SHVar &keyframe) { return ((TableVar &)keyframe).get<Var>("Value"); };
+static auto getKeyframeInterpolation(const SHVar &keyframe) {
+  Var &v = ((TableVar &)keyframe).get<Var>("Interpolation");
+  if (v.valueType == SHType::Enum) {
+    return (Interpolation)v.payload.enumValue;
+  }
+  return Interpolation::Linear;
+};
 static float getAnimationDuration(const SHVar &animation) {
   float duration{};
   for (auto &track : ((SeqVar &)animation)) {
@@ -195,26 +203,39 @@ struct PlayShard {
       return;
     }
 
-    float timeA = getKeyframeTime(keyframes[indexA]);
-    float timeB = getKeyframeTime(*it);
-
-    float phase = (time - timeA) / (timeB - timeA);
     auto va = getKeyframeValue(keyframes[indexA]);
-    auto vb = getKeyframeValue(keyframes[indexB]);
+    auto interpolation = getKeyframeInterpolation(keyframes[indexB]);
 
-    if (va.valueType != vb.valueType)
-      throw std::runtime_error("Can not interpolate between two different values");
+    if (interpolation == Interpolation::Linear) {
+      float timeA = getKeyframeTime(keyframes[indexA]);
+      float timeB = getKeyframeTime(*it);
+      float phase = (time - timeA) / (timeB - timeA);
 
-    // TODO: better determination
-    bool isQuaternion = va.valueType == SHType::Float4;
-    if (isQuaternion) {
-      // Quaternion slerp
-      outputValue = toVar(linalg::slerp(toVec<float4>(va), toVec<float4>(vb), phase));
+      auto vb = getKeyframeValue(keyframes[indexB]);
+
+      if (va.valueType != vb.valueType)
+        throw std::runtime_error("Can not interpolate between two different values");
+
+      // TODO: better determination
+      bool isQuaternion = va.valueType == SHType::Float4;
+      if (isQuaternion) {
+        // Quaternion slerp
+        float4 a = toVec<float4>(va);
+        float4 b = toVec<float4>(vb);
+
+        // Fix for long path rotations (>180 degrees)
+        float dot = linalg::dot(a, b);
+        if (dot < 0.0)
+          a = -a;
+        outputValue = toVar(linalg::slerp(a, b, phase));
+      } else {
+        // Generic lerp
+        outputValue.valueType = va.valueType;
+        Math::dispatchType<Math::DispatchType::NumberTypes>(va.valueType, Math::ApplyLerp{}, outputValue.payload, va.payload,
+                                                            vb.payload, double(phase));
+      }
     } else {
-      // Generic lerp
-      outputValue.valueType = va.valueType;
-      Math::dispatchType<Math::DispatchType::NumberTypes>(va.valueType, Math::ApplyLerp{}, outputValue.payload, va.payload,
-                                                          vb.payload, double(phase));
+      outputValue = va;
     }
   }
 
