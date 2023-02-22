@@ -321,6 +321,8 @@ jobs:
           ./shards ../src/tests/brotli.clj
           echo "Running test: snappy"
           ./shards ../src/tests/snappy.clj
+          echo "Running test: expect-like"
+          ./shards ../src/tests/expect-like.edn
           # echo "Running test: ws"
           # ./shards ../src/tests/ws.edn
           echo "Running test: bigint"

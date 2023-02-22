@@ -621,7 +621,6 @@
    (Assert.Is "0x9000070000000000" true)
 
    "Test"
-   (ExpectLike inner1)
    (Any ["Test" "A"])
    (Log)
 
