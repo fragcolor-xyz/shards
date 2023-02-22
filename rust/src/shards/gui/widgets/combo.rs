@@ -253,8 +253,12 @@ impl Shard for Combo {
         }
       }
 
-      // this is fine because we don't own input and seq is just a view of it in this case
-      Ok(seq[*index])
+      if seq.is_empty() {
+        Ok(Var::default())
+      } else {
+        // this is fine because we don't own input and seq is just a view of it in this case
+        Ok(seq[*index])
+      }
     } else {
       Err("No UI parent")
     }
