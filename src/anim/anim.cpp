@@ -153,8 +153,8 @@ struct TimerShard {
       if (evalTime > duration.value()) {
         runAction(shContext, input);
         if (looped) {
-          evalTime = std::fmodf(evalTime, duration.value());
-          _time = std::fmodf(_time + offset, duration.value()) - offset;
+          evalTime = std::fmod(evalTime, duration.value());
+          _time = std::fmod(_time + offset, duration.value()) - offset;
         } else {
           _stopped = true;
         }
