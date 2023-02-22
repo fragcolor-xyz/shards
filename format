@@ -1,5 +1,7 @@
 #!/bin/bash
 
+FIND=${FIND:=find}
+
 if [[ "$OSTYPE" == "darwin"* ]]; then
     FIND_ARG0=-E
 else
@@ -24,7 +26,7 @@ function FormatFolderRecursiveAsync() {
         local PID=$!
         PIDs[${PIDCounter}]=$PID
         PIDCounter=$(($PIDCounter+1))
-    done <<<"$(find $FIND_ARG0 "$1" $FIND_ARG1 -regex '.*\.(cpp|hpp|h)')"
+    done <<<"$($FIND $FIND_ARG0 "$1" $FIND_ARG1 -regex '.*\.(cpp|hpp|h)')"
 }
 
 function AsyncWait() {
