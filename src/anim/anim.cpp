@@ -12,6 +12,7 @@
 #include "params.hpp"
 #include "utility.hpp"
 #include "shards/math_ops.hpp"
+#include <cmath>
 #include <chrono>
 #include <optional>
 #include <stdexcept>
