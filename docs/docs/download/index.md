@@ -3,11 +3,9 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Download
+![](assets/DownloadLogo.png)
 
-<figure markdown>
-  ![](assets/DownloadLogo.png)
-</figure>
+# Download
 
 Download [here](https://github.com/fragcolor-xyz/shards/releases).
 

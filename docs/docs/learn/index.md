@@ -3,11 +3,9 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Learn
+![](assets/LearnLogo.png)
 
-<figure markdown>
-  ![](assets/LearnLogo.png)
-</figure>
+# Learn
 
 Learn the basics of Shards with our [primer](./shards/) and reinforce the concepts learned with our [tutorials](./tutorials/).
 

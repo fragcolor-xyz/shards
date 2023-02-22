@@ -3,11 +3,9 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Contribute
+![](assets/ContributeLogo.png)
 
-<figure markdown>
-  ![](assets/ContributeLogo.png)
-</figure>
+# Contribute
 
 Fragcolor has a number of interesting [projects](https://github.com/fragcolor-xyz) open to community contributions.
 

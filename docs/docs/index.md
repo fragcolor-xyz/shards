@@ -3,11 +3,9 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Home
+![](assets/HomePageLogo.png)
 
-<figure markdown>
-  ![](assets/HomePageLogo.png)
-</figure>
+# Home
 
 Welcome to Fragcolor documentation!
 

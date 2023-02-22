@@ -3,11 +3,9 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Shards reference
+![](assets/ReferenceLogo.png)
 
-<figure markdown>
-  ![](assets/ReferenceLogo.png)
-</figure>
+# Shards reference
 
 Welcome to the shards reference, here you'll find details for every [Shard](./shards/), [Enum](./enums/) and [Built-in function](./functions/) defined in shards.
 
