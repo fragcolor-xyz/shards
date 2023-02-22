@@ -27,6 +27,7 @@ struct InputContext {
 };
 
 typedef shards::RequiredContextVariable<InputContext, InputContext::Type, InputContext::VariableName> RequiredInputContext;
+typedef shards::RequiredContextVariable<InputContext, InputContext::Type, InputContext::VariableName, false> OptionalInputContext;
 
 } // namespace shards::Inputs
 

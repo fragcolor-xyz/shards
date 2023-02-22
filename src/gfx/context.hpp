@@ -50,8 +50,6 @@ public:
   WGPUDevice wgpuDevice = nullptr;
   WGPUQueue wgpuQueue = nullptr;
 
-  TypedUserData userData;
-
 private:
   std::shared_ptr<DeviceRequest> deviceRequest;
   std::shared_ptr<AdapterRequest> adapterRequest;
@@ -80,7 +78,7 @@ public:
 
   // Checks if the the context is ready to use
   // while requesting a device this returns false
-  bool isReady() const { return state != ContextState::Requesting; }
+  bool isReady() const { return state == ContextState::Ok; }
 
   // While isReady returns false, this ticks device/adapter initialization
   void tickRequesting();

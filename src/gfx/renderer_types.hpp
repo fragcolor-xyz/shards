@@ -1,7 +1,9 @@
 #ifndef CA95E36A_DF18_4EE1_B394_4094F976B20E
 #define CA95E36A_DF18_4EE1_B394_4094F976B20E
 
+#include "gfx/fwd.hpp"
 #include "gfx_wgpu.hpp"
+#include "linalg.h"
 #include "texture.hpp"
 #include "drawable.hpp"
 #include "mesh.hpp"
@@ -18,9 +20,12 @@
 #include "sized_item_pool.hpp"
 #include "worker_memory.hpp"
 #include "pmr/wrapper.hpp"
-#include "pmr/map.hpp"
+#include "pmr/unordered_map.hpp"
 #include "pmr/string.hpp"
 #include <cassert>
+#include <functional>
+#include <memory>
+#include <string_view>
 #include <vector>
 #include <map>
 #include <compare>
@@ -28,7 +33,7 @@
 
 namespace gfx::detail {
 
-using shader::FieldType;
+using shader::NumFieldType;
 using shader::TextureBindingLayout;
 using shader::UniformBufferLayout;
 using shader::UniformLayout;
@@ -113,43 +118,61 @@ struct RenderTargetLayout {
 };
 
 /// <div rustbindgen hide></div>
-struct ParameterStorage : public IParameterCollector {
+struct ParameterStorage final : public IParameterCollector {
   using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
-  struct KeyLess {
+  struct KeyEqual {
     using is_transparent = std::true_type;
     template <typename T, typename U> bool operator()(const T &a, const U &b) const {
-      return std::lexicographical_compare(a.begin(), a.end(), b.begin(), b.end());
+      return std::string_view(a) == std::string_view(b);
     }
   };
 
-  shards::pmr::map<shards::pmr::string, ParamVariant, KeyLess> data;
-  shards::pmr::map<shards::pmr::string, TextureParameter, KeyLess> textures;
+  struct KeyHash {
+    using is_transparent = std::true_type;
+    template <typename U> size_t operator()(const U &b) const {
+      std::hash<std::string_view> hash;
+      return hash(std::string_view(b));
+    }
+  };
+
+  shards::pmr::unordered_map<shards::pmr::string, ParamVariant, KeyHash, KeyEqual> basic;
+  shards::pmr::unordered_map<shards::pmr::string, TextureParameter, KeyHash, KeyEqual> textures;
 
   using IParameterCollector::setParam;
   using IParameterCollector::setTexture;
 
   ParameterStorage() = default;
-  ParameterStorage(allocator_type allocator) : data(allocator), textures(allocator) {}
-  ParameterStorage(ParameterStorage &&other, allocator_type allocator) : data(allocator), textures(allocator) {
+  ParameterStorage(allocator_type allocator) : basic(allocator), textures(allocator) {}
+  ParameterStorage(ParameterStorage &&other, allocator_type allocator) : basic(allocator), textures(allocator) {
     *this = std::move(other);
   }
   ParameterStorage &operator=(ParameterStorage &&) = default;
 
-  void setParam(const char *name, ParamVariant &&value) { data.emplace(name, std::move(value)); }
-  void setTexture(const char *name, TextureParameter &&value) { textures.emplace(name, std::move(value)); }
+  void setParam(const char *name, ParamVariant &&value) { basic.insert_or_assign(name, std::move(value)); }
+  void setTexture(const char *name, TextureParameter &&value) { textures.insert_or_assign(name, std::move(value)); }
 
-  void setParamIfUnset(const shards::pmr::string &key, const ParamVariant &value) {
-    if (!data.contains(key)) {
-      data.emplace(key, value);
-    }
-  }
+  void setParamIfUnset(const shards::pmr::string &key, const ParamVariant &value) { basic.emplace(key, value); }
 
   void append(const ParameterStorage &other) {
-    for (auto &it : other.data) {
-      data.emplace(it);
+    for (auto &it : other.basic) {
+      basic.emplace(it);
     }
   }
+};
+
+struct CompilationError {
+  std::string message;
+
+  CompilationError() = default;
+  CompilationError(std::string &&message) : message(std::move(message)) {}
+  CompilationError(const std::string &message) : message(message) {}
+};
+
+template <typename CB> struct CachedFeatureGenerator {
+  CB callback;
+  std::weak_ptr<Feature> owningFeature;
+  std::vector<std::weak_ptr<Feature>> otherFeatures;
 };
 
 struct CachedPipeline {
@@ -178,12 +201,14 @@ struct CachedPipeline {
   std::vector<BufferBinding> drawBufferBindings;
 
   // Collected parameter generator
-  std::vector<FeatureParameterGenerator> drawableParameterGenerators;
-  std::vector<FeatureParameterGenerator> viewParameterGenerators;
+  std::vector<CachedFeatureGenerator<FeatureGenerator::PerView>> perViewGenerators;
+  std::vector<CachedFeatureGenerator<FeatureGenerator::PerObject>> perObjectGenerators;
 
   size_t lastTouched{};
 
   ParameterStorage baseDrawParameters;
+
+  std::optional<CompilationError> compilationError{};
 };
 typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
 
@@ -194,14 +219,29 @@ struct CachedView {
   float4x4 previousViewTransform = linalg::identity;
   float4x4 currentViewTransform = linalg::identity;
   float4x4 viewProjectionTransform;
+  bool isFlipped{};
 
   size_t lastTouched{};
+
+  // Checks if the given transform flips the coordinates space along a single axis
+  static bool isFlippedCoordinateSpace(const float4x4 &inTransform) {
+    float3 right = inTransform[0].xyz();
+    float3 up = inTransform[1].xyz();
+    float3 forward = linalg::normalize(inTransform[2].xyz());
+    float3 expectedForward = linalg::normalize(linalg::cross(right, up));
+    if (linalg::dot(forward, expectedForward) < 0) {
+      return true;
+    }
+    return false;
+  }
 
   void touchWithNewTransform(const float4x4 &viewTransform, const float4x4 &projectionTransform, size_t frameCounter) {
     if (frameCounter > lastTouched) {
       previousViewTransform = currentViewTransform;
       currentViewTransform = viewTransform;
       invViewTransform = linalg::inverse(viewTransform);
+
+      isFlipped = isFlippedCoordinateSpace(viewTransform);
 
       this->projectionTransform = projectionTransform;
       invProjectionTransform = linalg::inverse(projectionTransform);
@@ -215,7 +255,7 @@ struct CachedView {
 typedef std::shared_ptr<CachedView> CachedViewDataPtr;
 
 struct ViewData {
-  View &view;
+  ViewPtr view;
   CachedView &cachedView;
   Rect viewport;
   RenderTargetPtr renderTarget;
@@ -279,22 +319,11 @@ template <> struct SizedItemOps<PooledWGPUBuffer> {
 // Pool of WGPUBuffers with custom initializer
 using WGPUBufferPool = SizedItemPool<PooledWGPUBuffer>;
 
-struct CachedDrawable {
-  float4x4 previousTransform = linalg::identity;
-  float4x4 currentTransform = linalg::identity;
-
-  size_t lastTouched{};
-
-  void touchWithNewTransform(const float4x4 &transform, size_t frameCounter) {
-    if (frameCounter > lastTouched) {
-      previousTransform = currentTransform;
-      currentTransform = transform;
-
-      lastTouched = frameCounter;
-    }
-  }
+// Data from generators
+struct GeneratorData {
+  ParameterStorage *viewParameters;
+  shards::pmr::vector<ParameterStorage> *drawParameters;
 };
-typedef std::shared_ptr<CachedDrawable> CachedDrawablePtr;
 
 } // namespace gfx::detail
 

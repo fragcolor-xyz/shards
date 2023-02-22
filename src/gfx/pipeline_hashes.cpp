@@ -8,7 +8,7 @@
 using gfx::detail::PipelineHashCollector;
 namespace gfx {
 void MaterialParameters::pipelineHashCollect(PipelineHashCollector &pipelineHashCollector) const {
-  for (auto &pair : texture) {
+  for (auto &pair : textures) {
     pipelineHashCollector(pair.first);
     if (pair.second.texture) {
       pipelineHashCollector(1u);

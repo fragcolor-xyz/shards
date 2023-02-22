@@ -1,6 +1,7 @@
 #include "texture.hpp"
 #include "context.hpp"
 #include "error_utils.hpp"
+#include "gfx_wgpu.hpp"
 #include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <map>
@@ -24,14 +25,18 @@ std::shared_ptr<Texture> Texture::makeRenderAttachment(WGPUTextureFormat format,
 }
 
 Texture &Texture::init(const TextureDesc &desc) {
-  contextData.reset();
-  this->desc = desc;
+  if (this->desc != desc) {
+    contextData.reset();
+    this->desc = desc;
+  }
   return *this;
 }
 
 Texture &Texture::initWithSamplerState(const SamplerState &samplerState) {
-  desc.samplerState = samplerState;
-  contextData.reset();
+  if (desc.samplerState != samplerState) {
+    desc.samplerState = samplerState;
+    contextData.reset();
+  }
   return *this;
 }
 
@@ -71,33 +76,21 @@ std::shared_ptr<Texture> Texture::clone() const {
   return result;
 }
 
-static WGPUSampler createSampler(Context &context, SamplerState samplerState, bool haveMips) {
+static WGPUSampler createSampler(Context &context, SamplerState samplerState, size_t mipLevels) {
   WGPUSamplerDescriptor desc{};
   desc.addressModeU = samplerState.addressModeU;
   desc.addressModeV = samplerState.addressModeV;
   desc.addressModeW = samplerState.addressModeW;
   desc.lodMinClamp = 0;
-  desc.lodMaxClamp = 0;
+  desc.lodMaxClamp = mipLevels;
   desc.magFilter = samplerState.filterMode;
   desc.minFilter = samplerState.filterMode;
-  desc.mipmapFilter = haveMips ? WGPUMipmapFilterMode_Linear : WGPUMipmapFilterMode_Nearest;
+  desc.mipmapFilter = (mipLevels > 0) ? WGPUMipmapFilterMode_Linear : WGPUMipmapFilterMode_Nearest;
   desc.maxAnisotropy = 0;
   return wgpuDeviceCreateSampler(context.wgpuDevice, &desc);
 }
 
-static WGPUTextureView createView(const TextureFormat &format, WGPUTexture texture) {
-  WGPUTextureViewDescriptor viewDesc{};
-  viewDesc.baseArrayLayer = 0;
-  viewDesc.arrayLayerCount = 1;
-  viewDesc.baseMipLevel = 0;
-  viewDesc.mipLevelCount = 1;
-  viewDesc.aspect = WGPUTextureAspect_All;
-  viewDesc.dimension = WGPUTextureViewDimension_2D;
-  viewDesc.format = format.pixelFormat;
-  return wgpuTextureCreateView(texture, &viewDesc);
-}
-
-static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, WGPUTexture texture,
+static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, uint32_t numArrayLayers, WGPUTexture texture,
                              const ImmutableSharedBuffer &isb) {
   ZoneScoped;
 
@@ -116,7 +109,7 @@ static void writeTextureData(Context &context, const TextureFormat &format, cons
   WGPUExtent3D writeSize{
       .width = uint32_t(resolution.x),
       .height = uint32_t(resolution.y),
-      .depthOrArrayLayers = 1,
+      .depthOrArrayLayers = numArrayLayers,
   };
   wgpuQueueWriteTexture(context.wgpuQueue, &dst, isb.getData(), isb.getLength(), &layout, &writeSize);
 }
@@ -136,8 +129,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
     return;
 
   if (desc.externalTexture) {
-    contextData.defaultView = desc.externalTexture.value();
-    contextData.isExternalView = true;
+    contextData.externalView = desc.externalTexture.value();
   } else {
     WGPUTextureDescriptor wgpuDesc = {};
     wgpuDesc.usage = WGPUTextureUsage_TextureBinding;
@@ -153,17 +145,17 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
       wgpuDesc.usage |= WGPUTextureUsage_TextureBinding;
     }
 
-    switch (desc.format.type) {
-    case TextureType::D1:
+    switch (desc.format.dimension) {
+    case TextureDimension::D1:
       wgpuDesc.dimension = WGPUTextureDimension_1D;
       contextData.size.height = 1;
       break;
-    case TextureType::D2:
+    case TextureDimension::D2:
       wgpuDesc.dimension = WGPUTextureDimension_2D;
       break;
-    case TextureType::Cube:
+    case TextureDimension::Cube:
       wgpuDesc.dimension = WGPUTextureDimension_2D;
-      contextData.size.depthOrArrayLayers = 8;
+      contextData.size.depthOrArrayLayers = 6;
       break;
     default:
       assert(false);
@@ -172,20 +164,17 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
     wgpuDesc.size = contextData.size;
     wgpuDesc.format = desc.format.pixelFormat;
     wgpuDesc.sampleCount = 1;
-    wgpuDesc.mipLevelCount = 1;
+    wgpuDesc.mipLevelCount = desc.format.mipLevels;
     wgpuDesc.label = label.empty() ? "unknown" : label.c_str();
 
     contextData.texture = wgpuDeviceCreateTexture(context.wgpuDevice, &wgpuDesc);
     assert(contextData.texture);
 
     if (desc.data)
-      writeTextureData(context, desc.format, desc.resolution, contextData.texture, desc.data);
-
-    contextData.defaultView = createView(desc.format, contextData.texture);
-    assert(contextData.defaultView);
+      writeTextureData(context, desc.format, desc.resolution, contextData.size.depthOrArrayLayers, contextData.texture, desc.data);
   }
 
-  contextData.sampler = createSampler(context, desc.samplerState, false);
+  contextData.sampler = createSampler(context, desc.samplerState, desc.format.mipLevels);
   assert(contextData.sampler);
 }
 

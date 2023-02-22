@@ -65,7 +65,7 @@ static SamplerState convertSampler(const tinygltf::Sampler &sampler) {
 
 static TextureFormat convertTextureFormat(const tinygltf::Image &image) {
   TextureFormat result{
-      .type = TextureType::D2,
+      .dimension = TextureDimension::D2,
   };
 
   auto throwUnsupportedPixelFormat = [&]() {

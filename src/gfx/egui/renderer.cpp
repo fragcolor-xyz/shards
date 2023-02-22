@@ -92,7 +92,7 @@ struct TextureManager {
       break;
     }
 
-    fmt.type = TextureType::D2;
+    fmt.dimension = TextureDimension::D2;
     fmt.flags = TextureFormatFlags::None;
     SamplerState sampler{
         .addressModeU = WGPUAddressMode_ClampToEdge,
@@ -195,13 +195,15 @@ struct EguiRendererImpl {
       drawable.mesh = mesh;
       drawable.transform = rootTransform;
       drawable.features = uiFeatures;
+      uint32_t flags = 0;
       TexturePtr texture = textures.get(prim.textureId);
       if (texture) {
         drawable.parameters.set("color", texture);
         if (texture->getFormat().pixelFormat == WGPUTextureFormat_R8Unorm) {
-          drawable.parameters.set("flags", uint32_t(0x1));
+          flags |= uint32_t(0x1);
         }
       }
+      drawable.parameters.set("flags", flags);
 
       if (clipGeometry)
         drawable.clipRect = int4(prim.clipRect.min.x, prim.clipRect.min.y, prim.clipRect.max.x, prim.clipRect.max.y);

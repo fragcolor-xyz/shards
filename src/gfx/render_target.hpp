@@ -8,6 +8,7 @@
 #include "texture.hpp"
 #include "wgpu_handle.hpp"
 #include "fwd.hpp"
+#include <compare>
 #include <map>
 
 namespace gfx {
@@ -29,10 +30,41 @@ struct Fixed {
 /// <div rustbindgen hide></div>
 typedef std::variant<RenderTargetSize::MainOutput, RenderTargetSize::Fixed> RenderTargetSizeVariant;
 
+struct TextureSubResource {
+  std::shared_ptr<Texture> texture;
+  uint8_t faceIndex{};
+  uint8_t mipIndex{};
+
+  TextureSubResource() = default;
+  TextureSubResource(std::shared_ptr<Texture> texture, uint8_t faceIndex = 0, uint8_t mipIndex = 0)
+      : texture(texture), faceIndex(faceIndex), mipIndex(mipIndex) {}
+  TextureSubResource(const TextureSubResource &) = default;
+
+  operator bool() const { return (bool)texture; }
+  operator const std::shared_ptr<Texture> &() const { return texture; }
+
+  // Get the resolution based on the selected mip index and references texture
+  int2 getResolution() const {
+    assert(texture);
+    int2 baseRes = texture->getResolution();
+    int div = std::pow(2, mipIndex);
+    return baseRes / div;
+  }
+
+  // Get the resolution based on the selected mip index and references texture
+  int2 getResolutionFromMipResolution(int2 mipResolution) const {
+    assert(texture);
+    int div = std::pow(2, mipIndex);
+    return mipResolution * div;
+  }
+
+  std::strong_ordering operator<=>(const TextureSubResource &) const = default;
+};
+
 // Group of named view textures
 /// <div rustbindgen opaque></div>
 struct RenderTarget {
-  std::map<std::string, std::shared_ptr<Texture>> attachments;
+  std::map<std::string, TextureSubResource> attachments;
   std::string label;
   RenderTargetSizeVariant size = RenderTargetSize::MainOutput{};
 
@@ -48,18 +80,18 @@ public:
   void configure(const char *name, WGPUTextureFormat format);
 
   /// <div rustbindgen hide></div>
-  int2 resizeConditional(int2 mainOutputSize);
+  int2 resizeConditional(int2 referenceSize);
 
   /// <div rustbindgen hide></div>
   int2 getSize() const;
 
   /// <div rustbindgen hide></div>
-  int2 computeSize(int2 mainOutputSize) const;
+  int2 computeSize(int2 referenceSize) const;
 
   /// <div rustbindgen hide></div>
-  const TexturePtr &getAttachment(const std::string &name) const;
+  const TextureSubResource &getAttachment(const std::string &name) const;
 
-  const TexturePtr &operator[](const std::string &name) const { return getAttachment(name); }
+  const TextureSubResource &operator[](const std::string &name) const { return getAttachment(name); }
 };
 
 } // namespace gfx

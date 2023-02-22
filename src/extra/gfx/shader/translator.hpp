@@ -89,7 +89,7 @@ struct VariableStorage {
 // Keeps track of pushes into sequences
 // used to resolve them as matrix types
 struct VirtualSeq {
-  FieldType elementType;
+  NumFieldType elementType;
   std::vector<std::unique_ptr<IWGSLGenerated>> elements;
 
   VirtualSeq() = default;
@@ -119,7 +119,6 @@ struct TranslationBlockRef {
   VariableStorage variables;
 
   std::map<std::string, VirtualSeq> virtualSequences;
-  std::map<std::string, VirtualSeq> virtualTables;
 
   TranslationBlockRef(blocks::Block *block, IAppender *appender) : block(block), appender(appender) {}
   TranslationBlockRef(TranslationBlockRef &&other) = default;
@@ -269,7 +268,7 @@ public:
 
   // Assigns or updates a variable
   // returns a reference to the variable in the same format as `reference` does
-  WGSLBlock assignVariable(const std::string &varName, bool global, bool allowUpdate, std::unique_ptr<IWGSLGenerated> &&value);
+  WGSLBlock assignVariable(const std::string &varName, bool global, bool allowUpdate, bool isMutable, std::unique_ptr<IWGSLGenerated> &&value);
 
   // Returns a shader block that references a variable by name
   // the variable can either be defined in the current, parent or global scope

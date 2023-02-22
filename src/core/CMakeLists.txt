@@ -34,6 +34,12 @@ add_library(shards-core-static STATIC ${core_SOURCES})
 target_include_directories(shards-core-static PUBLIC ../../include)
 target_include_directories(shards-core-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
+message(STATUS "TRACY_ENABLE=${TRACY_ENABLE}")
+if(TRACY_ENABLE)
+  target_compile_definitions(shards-core-static PUBLIC SHARDS_TRACKING=1)
+  target_sources(shards-core-static PRIVATE tracking.cpp)
+endif()
+
 if(SHARDS_NO_BIGINT_SHARDS)
   target_compile_definitions(shards-core-static PUBLIC SHARDS_NO_BIGINT_SHARDS=1)
 else()
@@ -178,6 +184,7 @@ if(EMSCRIPTEN)
   target_link_options(shards-core-static PUBLIC
     "SHELL:-s DISABLE_EXCEPTION_CATCHING=0"
     "SHELL:-s INITIAL_MEMORY=209715200"
+    "SHELL:-s STACK_SIZE=1000000"
     "SHELL:-s ALLOW_MEMORY_GROWTH=1"
     "SHELL:-s LLD_REPORT_UNDEFINED"
     "SHELL:-s \"EXPORTED_FUNCTIONS=['_main', '_shardsInterface', '_malloc', '_free', '_emscripten_get_now']\""
@@ -185,9 +192,13 @@ if(EMSCRIPTEN)
     "SHELL:-s \"EXPORTED_RUNTIME_METHODS=['FS', 'callMain', 'ENV', 'IDBFS', 'PThread', 'setValue', 'getValue', 'lengthBytesUTF8', 'stringToUTF8']\""
   )
 
+  target_link_options(shards-core-static PUBLIC "SHELL:-s ASYNCIFY=1")
+
   # Require optimizations when building with asyncify too keep size/build time reasonable
-  target_compile_options(shards-core-static PUBLIC "-O2")
-  target_link_options(shards-core-static PUBLIC "-O2" "SHELL:-s ASYNCIFY=1")
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(shards-core-static PUBLIC "-O3") 
+    target_link_options(shards-core-static PUBLIC "-O3")
+  endif()
 endif()
 
 if(IOS)

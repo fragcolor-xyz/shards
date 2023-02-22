@@ -4,6 +4,7 @@
 #include "fwd.hpp"
 #include "material.hpp"
 #include "gfx_wgpu.hpp"
+#include "render_target.hpp"
 #include "unique_id.hpp"
 #include <variant>
 #include <vector>
@@ -63,7 +64,7 @@ struct RenderStepOutput {
   struct Texture {
     std::string name;
 
-    TexturePtr handle;
+    TextureSubResource subResource;
 
     // When set, clear buffer with these values (based on format)
     std::optional<ClearValues> clearValues;

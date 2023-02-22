@@ -861,20 +861,20 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
       // as in
       // "" on the receiver side, in such case any input is allowed (types are
       // still checked)
-      const auto atypes = inputType.table.types.len;
-      const auto btypes = receiverType.table.types.len;
-      const auto akeys = inputType.table.keys.len;
-      const auto bkeys = receiverType.table.keys.len;
-      if (bkeys == 0) {
+      const auto numInputTypes = inputType.table.types.len;
+      const auto numReceiverTypes = receiverType.table.types.len;
+      const auto numInputKeys = inputType.table.keys.len;
+      const auto numReceiverKeys = receiverType.table.keys.len;
+      if (numReceiverKeys == 0) {
         // case 1, consumer is not strict, match types if avail
         // ignore input keys information
-        if (atypes == 0) {
+        if (numInputTypes == 0) {
           // assume this as an Any
-          if (btypes == 0)
+          if (numReceiverTypes == 0)
             return true; // both Any
           auto matched = false;
           SHTypeInfo anyType{SHType::Any};
-          for (uint32_t y = 0; y < btypes; y++) {
+          for (uint32_t y = 0; y < numReceiverTypes; y++) {
             auto btype = receiverType.table.types.elements[y];
             if (matchTypes(anyType, btype, isParameter, strict)) {
               matched = true;
@@ -885,14 +885,14 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
             return false;
           }
         } else {
-          if (isParameter || btypes != 0) {
+          if (isParameter || numReceiverTypes != 0) {
             // receiver doesn't accept anything, match further
-            for (uint32_t i = 0; i < atypes; i++) {
+            for (uint32_t i = 0; i < numInputTypes; i++) {
               // Go thru all exposed types and make sure we get a positive match
               // with the consumer
               auto atype = inputType.table.types.elements[i];
               auto matched = false;
-              for (uint32_t y = 0; y < btypes; y++) {
+              for (uint32_t y = 0; y < numReceiverTypes; y++) {
                 auto btype = receiverType.table.types.elements[y];
                 if (matchTypes(atype, btype, isParameter, strict)) {
                   matched = true;
@@ -906,27 +906,30 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
           }
         }
       } else {
-        if (!isParameter && akeys == 0 && atypes == 0)
+        if (!isParameter && numInputKeys == 0 && numInputTypes == 0)
           return true; // update case {} >= .edit-me {"x" 10} > .edit-me
 
-        const auto anyLast = // last element can be a jolly
-            strlen(receiverType.table.keys.elements[bkeys - 1]) == 0;
-        if (!anyLast && (akeys != bkeys || akeys != atypes)) {
+        // Last element being empty ("") indicates that keys not in the type can match
+        // in that case they will be matched against the last type element at the same position
+        const auto lastElementEmpty = strlen(receiverType.table.keys.elements[numReceiverKeys - 1]) == 0;
+        if (!lastElementEmpty && (numInputKeys != numReceiverKeys || numInputKeys != numInputTypes)) {
           // we need a 1:1 match in this case, fail early
           return false;
         }
-        auto missingMatches = akeys;
-        for (uint32_t i = 0; i < akeys; i++) {
-          auto atype = inputType.table.types.elements[i];
-          auto akey = inputType.table.keys.elements[i];
-          for (uint32_t y = 0; y < bkeys; y++) {
-            auto btype = receiverType.table.types.elements[y];
-            auto bkey = receiverType.table.keys.elements[y];
-            // if anyLast and the last perform a match anyway
-            if (strcmp(akey, bkey) == 0 || (anyLast && y == (bkeys - 1))) {
-              if (matchTypes(atype, btype, isParameter, strict))
+        
+        auto missingMatches = numInputKeys;
+        for (uint32_t i = 0; i < numInputKeys; i++) {
+          auto inputEntryType = inputType.table.types.elements[i];
+          auto inputEntryKey = inputType.table.keys.elements[i];
+          for (uint32_t y = 0; y < numReceiverKeys; y++) {
+            auto receiverEntryType = receiverType.table.types.elements[y];
+            auto receiverEntryKey = receiverType.table.keys.elements[y];
+            // Either match the expected key's type or compare against the last type (if it's key is "")
+            if (strcmp(inputEntryKey, receiverEntryKey) == 0 || (lastElementEmpty && y == (numReceiverKeys - 1))) {
+              if (matchTypes(inputEntryType, receiverEntryType, isParameter, strict)) {
                 missingMatches--;
-              else
+                y = numReceiverKeys; // break
+              } else
                 return false; // fail quick in this case
             }
           }
@@ -1724,7 +1727,7 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
     }
   }
 
-  std::string err("Parameter not accepting this kind of variable (" + type2Name(value.valueType) + ")");
+  std::string err(fmt::format("Parameter {} not accepting this kind of variable: {}", param.name, varType));
   callback(shard, err.c_str(), false, userData);
 
   return false;
@@ -2702,6 +2705,8 @@ void SHWire::cleanup(bool force) {
   if (warmedUp && (force || wireUsers.size() == 0)) {
     SHLOG_TRACE("Running cleanup on wire: {} users count: {}", name, wireUsers.size());
 
+    dispatcher.trigger(SHWire::OnCleanupEvent{this});
+
     warmedUp = false;
 
     // Run cleanup on all shards, prepare them for a new start if necessary
@@ -2783,12 +2788,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   sh_current_interface_loaded = true;
 
   result->alloc = [](uint32_t size) -> void * {
-    auto mem = ::operator new (size, std::align_val_t{16});
+    auto mem = ::operator new(size, std::align_val_t{16});
     memset(mem, 0, size);
     return mem;
   };
 
-  result->free = [](void *ptr) { ::operator delete (ptr, std::align_val_t{16}); };
+  result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
 
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)
@@ -2849,7 +2854,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto sc = SHWire::sharedFromRef(wire);
     auto var = sc->externalVariables[name];
     if (var) {
-      ::operator delete (var, std::align_val_t{16});
+      ::operator delete(var, std::align_val_t{16});
     }
     sc->externalVariables.erase(name);
   };

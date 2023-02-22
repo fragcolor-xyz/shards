@@ -19,14 +19,14 @@ struct PipelineHashCollector;
 /// <div rustbindgen opaque>
 struct MaterialParameters {
   std::map<std::string, ParamVariant> basic;
-  std::map<std::string, TextureParameter> texture;
+  std::map<std::string, TextureParameter> textures;
 
   void set(const std::string_view &key, const ParamVariant &param) { basic.insert_or_assign(std::string(key), (param)); }
   void set(const std::string_view &key, ParamVariant &&param) { basic.insert_or_assign(std::string(key), std::move(param)); }
-  void set(const std::string_view &key, const TextureParameter &param) { texture.insert_or_assign(std::string(key), (param)); }
+  void set(const std::string_view &key, const TextureParameter &param) { textures.insert_or_assign(std::string(key), (param)); }
 
   template <typename THash> void getPipelineHash(THash &hash) const {
-    for (auto &pair : texture) {
+    for (auto &pair : textures) {
       hash(pair.first);
       hash(pair.second.defaultTexcoordBinding);
     }

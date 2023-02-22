@@ -1115,12 +1115,13 @@ struct ManyWire : public std::enable_shared_from_this<ManyWire> {
   uint32_t index;
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<SHMesh> mesh; // used only if MT
+  std::deque<SHVar*> injectedVariables;
   bool done;
-  std::optional<entt::connection> onStopConnection;
+  std::optional<entt::connection> onCleanupConnection;
 
   ~ManyWire() {
-    if (onStopConnection)
-      onStopConnection->release();
+    if (onCleanupConnection)
+      onCleanupConnection->release();
   }
 };
 
@@ -1652,14 +1653,14 @@ struct Spawn : public CapturingSpawners {
 
   std::unordered_map<const SHWire *, std::weak_ptr<ManyWire>> _wireContainers;
 
-  void wireOnStop(const SHWire::OnStopEvent &e) {
+  void wireOnCleanup(const SHWire::OnCleanupEvent &e) {
     SHLOG_TRACE("Spawn::wireOnStop {}", e.wire->name);
 
     auto container = _wireContainers[e.wire].lock();
-    for (auto &v : _vars) {
-      // notice, this should be already destroyed by the wire releaseVariable
-      destroyVar(container->wire->variables[v.variableName()]);
+    for(auto& var : container->injectedVariables) {
+      releaseVariable(var);
     }
+    container->injectedVariables.clear();
 
     _pool->release(container);
   }
@@ -1669,15 +1670,15 @@ struct Spawn : public CapturingSpawners {
     auto c = _pool->acquire(_composer, context);
 
     // Assume that we recycle containers so the connection might already exist!
-    if (!c->onStopConnection) {
+    if (!c->onCleanupConnection) {
       SHLOG_TRACE("Spawn::activate: connecting wireOnStop to {}", c->wire->name);
       _wireContainers[c->wire.get()] = c;
-      c->onStopConnection = c->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Spawn::wireOnStop>(this);
+      c->onCleanupConnection = c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
     }
 
     for (auto &v : _vars) {
-      auto &var = v.get();
-      cloneVar(c->wire->variables[v.variableName()], var);
+      SHVar* refVar = c->injectedVariables.emplace_back(referenceWireVariable(c->wire.get(), v.variableName()));
+      cloneVar(*refVar, v.get());
     }
 
     mesh->schedule(c->wire, input, false);

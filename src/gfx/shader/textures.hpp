@@ -2,6 +2,10 @@
 #define GFX_SHADER_TEXTURES
 
 #include "fwd.hpp"
+#include "../error_utils.hpp"
+#include "../texture.hpp"
+#include "magic_enum.hpp"
+#include "fmt.hpp"
 #include <map>
 #include <vector>
 
@@ -13,9 +17,11 @@ struct TextureBinding {
   size_t defaultTexcoordBinding{};
   size_t binding{};
   size_t defaultSamplerBinding{};
+  TextureFieldType type;
 
-  TextureBinding() = default;
-  TextureBinding(String name, size_t defaultTexcoordBinding = 0) : name(name), defaultTexcoordBinding(defaultTexcoordBinding) {}
+  // TextureBinding() = default;
+  TextureBinding(String name, TextureFieldType type, size_t defaultTexcoordBinding = 0)
+      : name(name), defaultTexcoordBinding(defaultTexcoordBinding), type(type) {}
 };
 
 struct TextureBindingLayout {
@@ -28,17 +34,19 @@ private:
   TextureBindingLayout layout;
 
 public:
-  void addOrUpdateSlot(const String &name, size_t defaultTexcoordBinding) {
+  void addOrUpdateSlot(const String &name, TextureFieldType type, size_t defaultTexcoordBinding) {
     auto it = mapping.find(name);
     TextureBinding *binding;
     if (it == mapping.end()) {
       size_t index = layout.bindings.size();
       mapping.insert_or_assign(name, index);
 
-      binding = &layout.bindings.emplace_back();
-      binding->name = name;
+      binding = &layout.bindings.emplace_back(name, type);
     } else {
       binding = &layout.bindings[it->second];
+      if (binding->type != type)
+        throw formatException("Texture {} redefined as type {} but already defined as {}", name, FieldType(type),
+                              FieldType(binding->type));
     }
     binding->defaultTexcoordBinding = defaultTexcoordBinding;
   }

@@ -44,6 +44,8 @@ if(CMAKE_HOST_WIN32)
 endif()
 
 if(EMSCRIPTEN)
+  add_compile_options(-fdeclspec)
+
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     add_compile_options(-g1 -Os)
   endif()
@@ -61,6 +63,8 @@ if(EMSCRIPTEN)
     add_compile_options(-pthread -Wno-pthreads-mem-growth)
     add_link_options(-pthread)
     set(HAVE_THREADS ON)
+  else()
+    add_compile_options(-DBOOST_ASIO_DISABLE_THREADS=1)
   endif()
 
   if(NODEJS)

@@ -2,56 +2,57 @@
 #define C7AA640C_1748_42BC_8772_0B8F4E136CEA
 
 #include "gfx/error_utils.hpp"
+#include "gfx/shader/types.hpp"
+#include "shards.h"
 #include "shards_types.hpp"
 #include "shards_utils.hpp"
 #include <ops_internal.hpp>
 #include <foundation.hpp>
 #include <gfx/material.hpp>
 #include <gfx/params.hpp>
+#include <gfx/texture.hpp>
 #include <magic_enum.hpp>
+#include <optional>
 #include <shards.hpp>
 #include <spdlog/spdlog.h>
+#include <variant>
 
 namespace gfx {
-inline void varToTexture(const SHVar &var, TexturePtr &outVariant) {
-  switch (var.valueType) {
-  case SHType::Object: {
-    shards::Type type = shards::Type::Object(var.payload.objectVendorId, var.payload.objectTypeId);
-    if (type == Types::Texture) {
-      auto ptr = reinterpret_cast<TexturePtr *>(var.payload.objectValue);
-      assert(ptr);
-      outVariant = *ptr;
-    } else {
-      throw formatException("Expected texture object");
-    }
-  } break;
-  default:
-    throw formatException("Value type {} can not be converted to TextureVariant", magic_enum::enum_name(var.valueType));
-  };
+inline TexturePtr varToTexture(const SHVar &var) {
+  if (var.payload.objectTypeId == Types::TextureCubeTypeId) {
+    return *varAsObjectChecked<TexturePtr>(var, Types::TextureCube);
+  } else if (var.payload.objectTypeId == Types::TextureTypeId) {
+    return *varAsObjectChecked<TexturePtr>(var, Types::Texture);
+  } else {
+    SHInstanceData data{};
+    auto varType = shards::deriveTypeInfo(var, data);
+    DEFER({ shards::freeDerivedInfo(varType); });
+    throw formatException("Invalid texture variable type: {}", varType);
+  }
 }
 
-inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
+inline std::variant<ParamVariant, TextureParameter> varToShaderParameter(const SHVar &var) {
   switch (var.valueType) {
   case SHType::Float: {
     float vec = float(var.payload.floatValue);
-    outVariant = vec;
-  } break;
+    return vec;
+  }
   case SHType::Float2: {
     float2 vec;
     vec.x = float(var.payload.float2Value[0]);
     vec.y = float(var.payload.float2Value[1]);
-    outVariant = vec;
-  } break;
+    return vec;
+  }
   case SHType::Float3: {
     float3 vec;
     memcpy(&vec.x, &var.payload.float3Value, sizeof(float) * 3);
-    outVariant = vec;
-  } break;
+    return vec;
+  }
   case SHType::Float4: {
     float4 vec;
     memcpy(&vec.x, &var.payload.float4Value, sizeof(float) * 4);
-    outVariant = vec;
-  } break;
+    return vec;
+  }
   case SHType::Seq:
     if (var.innerType == SHType::Float4) {
       float4x4 matrix;
@@ -61,23 +62,53 @@ inline void varToParam(const SHVar &var, ParamVariant &outVariant) {
         memcpy(&row.x, &seq.elements[i].payload.float4Value, sizeof(float) * 4);
         matrix[i] = row;
       }
-      outVariant = matrix;
+      return matrix;
     } else {
-      throw formatException("Seq inner type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
+      throw formatException("Seq inner value {} can not be converted to ParamVariant", var);
     }
-    break;
+  case SHType::Object:
+    return TextureParameter(varToTexture(var));
   default:
-    throw formatException("Value type {} can not be converted to ParamVariant", magic_enum::enum_name(var.valueType));
+    throw formatException("Value {} can not be converted to ParamVariant", var);
   }
 }
 
-inline bool tryVarToParam(const SHVar &var, ParamVariant &outVariant) {
+inline std::optional<shader::FieldType> deriveShaderFieldType(const SHTypeInfo &typeInfo) {
+  using namespace shader;
+  switch (typeInfo.basicType) {
+  case SHType::Float:
+    return FieldTypes::Float;
+  case SHType::Float2:
+    return FieldTypes::Float2;
+  case SHType::Float3:
+    return FieldTypes::Float3;
+  case SHType::Float4:
+    return FieldTypes::Float4;
+  case SHType::Seq:
+    if (typeInfo.seqTypes.len == 1 && typeInfo.seqTypes.elements[0].basicType == SHType::Float4) {
+      return FieldTypes::Float4x4;
+    }
+    break;
+  case SHType::Object: {
+    if (typeInfo == Types::Sampler)
+      return SamplerFieldType{};
+    else if (typeInfo == Types::Texture)
+      return TextureFieldType(TextureDimension::D2);
+    else if (typeInfo == Types::TextureCube)
+      return TextureFieldType(TextureDimension::Cube);
+  }
+  default:
+    break;
+  }
+  return std::nullopt;
+}
+
+inline std::optional<std::variant<ParamVariant, TextureParameter>> tryVarToParam(const SHVar &var) {
   try {
-    varToParam(var, outVariant);
-    return true;
+    return varToShaderParameter(var);
   } catch (std::exception &e) {
-    spdlog::error("{}", e.what());
-    return false;
+    SHLOG_ERROR("{}", e.what());
+    return std::nullopt;
   }
 }
 
@@ -87,22 +118,10 @@ inline void initConstantShaderParams(const SHTable &paramsTable, MaterialParamet
   SHVar value{};
   paramsTable.api->tableGetIterator(paramsTable, &it);
   while (paramsTable.api->tableNext(paramsTable, &it, &key, &value)) {
-    ParamVariant variant;
-    if (tryVarToParam(value, variant)) {
-      out.set(key, variant);
+    auto param = tryVarToParam(value);
+    if (param) {
+      std::visit([&](auto &&arg) { out.set(key, std::move(arg)); }, std::move(param.value()));
     }
-  }
-}
-
-inline void initConstantTextureParams(const SHTable &texturesTable, MaterialParameters &out) {
-  SHTableIterator it{};
-  SHString key{};
-  SHVar value{};
-  texturesTable.api->tableGetIterator(texturesTable, &it);
-  while (texturesTable.api->tableNext(texturesTable, &it, &key, &value)) {
-    TexturePtr texture;
-    varToTexture(value, texture);
-    out.set(key, texture);
   }
 }
 
@@ -131,7 +150,7 @@ inline void initShaderParams(SHContext *shContext, const SHTable &inputTable, co
 
   SHVar texturesVar{};
   if (getFromTable(shContext, inputTable, "Textures", texturesVar)) {
-    initConstantTextureParams(texturesVar.payload.tableValue, outParams);
+    initConstantShaderParams(texturesVar.payload.tableValue, outParams);
   }
   if (inTextures->valueType != SHType::None) {
     initReferencedShaderParams(shContext, inTextures.get().payload.tableValue, outSHParams.textures);

@@ -1,4 +1,6 @@
 #include "pipeline_builder.hpp"
+#include "enums.hpp"
+#include "renderer_types.hpp"
 #include "shader/uniforms.hpp"
 #include "log.hpp"
 #include "shader/textures.hpp"
@@ -6,6 +8,10 @@
 #include "shader/blocks.hpp"
 #include "shader/wgsl_mapping.hpp"
 #include "shader/log.hpp"
+#include "spdlog/spdlog.h"
+#include "gfx_wgpu.hpp"
+#include <memory>
+#include <variant>
 
 using namespace gfx::detail;
 using namespace gfx::shader;
@@ -87,6 +93,11 @@ static void buildBaseDrawParameters(ParameterStorage &params, const std::vector<
         params.setParam(param.name, param.defaultValue);
       }
     }
+    for (auto &param : feature->textureParams) {
+      if (param.defaultValue) {
+        params.setTexture(param.name, param.defaultValue);
+      }
+    }
   }
 }
 
@@ -157,11 +168,34 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
       feature->pipelineModifier->buildPipeline(*this);
     }
 
+    std::vector<std::weak_ptr<Feature>> otherFeatures;
+    for (auto &otherFeature : features) {
+      if (otherFeature != feature) {
+        otherFeatures.push_back(const_cast<Feature *>(otherFeature)->weak_from_this());
+      }
+    }
+
     // Store parameter generators
-    for (auto &gen : feature->drawableParameterGenerators)
-      output.drawableParameterGenerators.push_back(gen);
-    for (auto &gen : feature->viewParameterGenerators)
-      output.viewParameterGenerators.push_back(gen);
+    for (const auto &gen : feature->generators) {
+
+      std::visit(
+          [&](auto arg) {
+            using T = std::decay_t<decltype(arg)>;
+
+            auto cached = CachedFeatureGenerator<T>{
+                .callback = arg,
+                .owningFeature = const_cast<Feature *>(feature)->weak_from_this(),
+                .otherFeatures = otherFeatures,
+            };
+
+            if constexpr (std::is_same_v<T, FeatureGenerator::PerObject>) {
+              output.perObjectGenerators.push_back(cached);
+            } else if constexpr (std::is_same_v<T, FeatureGenerator::PerView>) {
+              output.perViewGenerators.push_back(cached);
+            }
+          },
+          gen.callback);
+    }
   }
 
   // Set shader generator input mesh format
@@ -218,7 +252,17 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
       textureBinding.visibility = WGPUShaderStage_Fragment;
       textureBinding.texture.multisampled = false;
       textureBinding.texture.sampleType = WGPUTextureSampleType_Float;
-      textureBinding.texture.viewDimension = WGPUTextureViewDimension_2D;
+      switch (desc.type.dimension) {
+      case TextureDimension::D1:
+        textureBinding.texture.viewDimension = WGPUTextureViewDimension_1D;
+        break;
+      case TextureDimension::D2:
+        textureBinding.texture.viewDimension = WGPUTextureViewDimension_2D;
+        break;
+      case TextureDimension::Cube:
+        textureBinding.texture.viewDimension = WGPUTextureViewDimension_Cube;
+        break;
+      }
 
       WGPUBindGroupLayoutEntry &samplerBinding = bindGroupLayoutEntries.emplace_back();
       samplerBinding.binding = desc.defaultSamplerBinding;
@@ -314,7 +358,7 @@ void PipelineBuilder::setupShaderDefinitions(const WGPULimits &deviceLimits, boo
 }
 
 void PipelineBuilder::setupShaderOutputFields() {
-  FieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
+  NumFieldType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
   size_t index = 0;
   size_t depthIndex = renderTargetLayout.depthTargetIndex.value_or(~0);
@@ -322,7 +366,7 @@ void PipelineBuilder::setupShaderOutputFields() {
     // Ignore depth target, it's implicitly bound to z depth
     if (index != depthIndex) {
       auto &formatDesc = getTextureFormatDescription(target.format);
-      FieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
+      NumFieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
       generator.outputFields.emplace_back(target.name, fieldType);
     }
     index++;
@@ -336,8 +380,10 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 
   shader::GeneratorOutput generatorOutput = generateShader();
   if (generatorOutput.errors.size() > 0) {
-    shader::GeneratorOutput::dumpErrors(generatorOutput);
-    assert(false);
+    shader::GeneratorOutput::dumpErrors(shader::getLogger(), generatorOutput);
+    for (auto &err : generatorOutput.errors)
+      output.compilationError.emplace(err.error);
+    return;
   }
 
   WGPUShaderModuleDescriptor moduleDesc = {};
@@ -347,12 +393,15 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 
   wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
   wgpuShaderModuleWGSLDescriptorSetCode(wgslModuleDesc, generatorOutput.wgslSource.c_str());
-  SPDLOG_LOGGER_DEBUG(shader::getLogger(), "Generated WGSL:\n {}", generatorOutput.wgslSource);
+  SPDLOG_LOGGER_DEBUG(shader::getLogger(), "Generated WGSL:\n{}", generatorOutput.wgslSource);
 
   output.renderTargetLayout = renderTargetLayout;
 
   output.shaderModule.reset(wgpuDeviceCreateShaderModule(device, &moduleDesc));
-  assert(output.shaderModule);
+  if (!output.shaderModule) {
+    output.compilationError.emplace("Failed to compile shader module");
+    return;
+  }
 
   WGPURenderPipelineDescriptor desc = {};
   desc.layout = output.pipelineLayout;
@@ -409,6 +458,11 @@ void PipelineBuilder::finalize(WGPUDevice device) {
     desc.primitive.cullMode = WGPUCullMode_None;
   }
 
+  // Flip culling if rendering is inverted
+  if (desc.primitive.cullMode != WGPUCullMode_None && this->isRenderingFlipped) {
+    desc.primitive.cullMode = desc.primitive.cullMode == WGPUCullMode_Front ? WGPUCullMode_Back : WGPUCullMode_Front;
+  }
+
   switch (meshFormat.primitiveType) {
   case PrimitiveType::TriangleList:
     desc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
@@ -421,13 +475,13 @@ void PipelineBuilder::finalize(WGPUDevice device) {
 
   output.pipeline.reset(wgpuDeviceCreateRenderPipeline(device, &desc));
   if (!output.pipeline)
-    throw std::runtime_error("Failed to build pipeline");
+    output.compilationError.emplace("Failed to build pipeline");
 }
 
 void PipelineBuilder::collectTextureBindings() {
   for (auto &feature : features) {
     for (auto &textureParam : feature->textureParams) {
-      textureBindings.addOrUpdateSlot(textureParam.name, 0);
+      textureBindings.addOrUpdateSlot(textureParam.name, textureParam.type, 0);
     }
   }
 

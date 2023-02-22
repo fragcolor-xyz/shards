@@ -15,7 +15,6 @@
 #endif
 
 namespace gfx {
-
 enum class FovDirection {
   Horizontal,
   Vertical,

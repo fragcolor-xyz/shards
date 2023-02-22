@@ -9,6 +9,9 @@
 #include "../texture_placeholder.hpp"
 #include "drawable_processor_helpers.hpp"
 #include "pmr/list.hpp"
+#include "pmr/unordered_map.hpp"
+#include "texture_cache.hpp"
+#include "worker_memory.hpp"
 #include <tracy/Tracy.hpp>
 
 namespace gfx::detail {
@@ -24,7 +27,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     std::optional<int4> clipRect{};
     shards::pmr::vector<TextureContextData *> textures;
     ParameterStorage parameters; // TODO: Load values directly into buffer
-    CachedDrawable *cachedData;  // Reference to cached data for this drawable
     float projectedDepth{};      // Projected view depth, only calculated when sorting by depth
 
     DrawableData() = default;
@@ -45,7 +47,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     WGPUBuffer buffer;
     size_t length;
     size_t stride;
-    WGPUBufferMapAsyncStatus mappingStatus = WGPUBufferMapAsyncStatus_Unknown;
   };
 
   struct PreparedGroupData {
@@ -96,13 +97,14 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   SharedBufferPool viewBufferPool;
   WGPUSupportedLimits limits{};
 
-  std::shared_mutex drawableCacheLock;
-  std::unordered_map<UniqueId, CachedDrawablePtr> drawableCache;
+  TextureViewCache textureViewCache;
   size_t frameCounter{};
 
-  std::shared_ptr<PlaceholderTexture> placeholderTexture = []() {
-    return std::make_shared<PlaceholderTexture>(int2(2, 2), float4(1, 1, 1, 1));
-  }();
+  TexturePtr placeholderTextures[3]{
+      []() { return PlaceholderTexture::create(TextureDimension::D1, int2(2, 1), float4(1, 1, 1, 1)); }(),
+      []() { return PlaceholderTexture::create(TextureDimension::D2, int2(2, 2), float4(1, 1, 1, 1)); }(),
+      []() { return PlaceholderTexture::create(TextureDimension::Cube, int2(2, 2), float4(1, 1, 1, 1)); }(),
+  };
 
   MeshDrawableProcessor(Context &context)
       : drawBufferPool(getDrawBufferInitializer(context)), viewBufferPool(getViewBufferInitializer(context)) {
@@ -113,7 +115,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     return [device = context.wgpuDevice](size_t bufferSize) {
       WGPUBufferDescriptor desc{
           .label = "<object buffer>",
-          .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_Storage,
+          .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Storage,
           .size = bufferSize,
       };
       return wgpuDeviceCreateBuffer(device, &desc);
@@ -124,7 +126,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     return [device = context.wgpuDevice](size_t bufferSize) {
       WGPUBufferDescriptor desc{
           .label = "<view buffer>",
-          .usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_Uniform,
+          .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform,
           .size = bufferSize,
       };
       return wgpuDeviceCreateBuffer(device, &desc);
@@ -137,9 +139,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     drawBufferPool.reset();
     viewBufferPool.reset();
 
-    drawableCacheLock.lock();
-    clearOldCacheItemsIn(drawableCache, frameCounter, 16);
-    drawableCacheLock.unlock();
+    textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
   }
 
   void buildPipeline(PipelineBuilder &builder) override {
@@ -170,29 +170,11 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   }
 
   void generateDrawableData(DrawableData &data, Context &context, const CachedPipeline &cachedPipeline, const IDrawable *drawable,
-                            const ViewData &viewData, size_t frameCounter, bool needProjectedDepth = false) {
+                            const ViewData &viewData, const ParameterStorage *baseDrawData, const ParameterStorage *baseViewData,
+                            size_t frameCounter, bool needProjectedDepth = false) {
     ZoneScoped;
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
-
-    // Lookup/init cached data
-    drawableCacheLock.lock_shared();
-    auto it = drawableCache.find(meshDrawable.getId());
-    if (it == drawableCache.end()) {
-      drawableCacheLock.unlock_shared();
-      drawableCacheLock.lock();
-      it = drawableCache.emplace(meshDrawable.getId(), std::make_shared<CachedDrawable>()).first;
-      drawableCacheLock.unlock();
-    } else {
-      drawableCacheLock.unlock_shared();
-    }
-
-    // Update cached data
-    data.cachedData = it->second.get();
-    data.cachedData->touchWithNewTransform(meshDrawable.transform, frameCounter);
-    if (meshDrawable.previousTransform) {
-      data.cachedData->previousTransform = meshDrawable.previousTransform.value();
-    }
 
     // Optionally compute projected depth based on transform center
     if (needProjectedDepth) {
@@ -213,57 +195,39 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     auto &textureBindings = cachedPipeline.textureBindingLayout.bindings;
     data.textures.resize(textureBindings.size());
 
-    auto mapTextureBinding = [&](const char *name) -> int32_t {
-      auto it = std::find_if(textureBindings.begin(), textureBindings.end(), [&](auto it) { return it.name == name; });
-      if (it != textureBindings.end())
-        return int32_t(it - textureBindings.begin());
-      return -1;
+    auto setTextureParameter = [&](const char *name, const TexturePtr &texture) {
+      gfx::detail::setTextureParameter(textureBindings, data.textures, context, name, texture);
     };
 
-    auto setTextureParameter = [&](const char *name, const TexturePtr &texture) {
-      int32_t targetSlot = mapTextureBinding(name);
-      if (targetSlot >= 0) {
-        data.textures[targetSlot] = texture->contextData.get();
-      }
+    auto applyParameters = [&](const auto &srcParams) {
+      gfx::detail::applyParameters(textureBindings, data.textures, context, parameters, srcParams);
     };
+
+    // NOTE : The parameters below are ordered by priority, so later entries overwrite previous entries
+
+    // Grab default parameters
+    applyParameters(cachedPipeline.baseDrawParameters);
 
     // Grab parameters from material
     if (Material *material = meshDrawable.material.get()) {
-      for (auto &pair : material->parameters.basic) {
-        parameters.setParam(pair.first, pair.second);
-      }
-      for (auto &pair : material->parameters.texture) {
+      applyParameters(material->parameters);
+    }
+
+    // Grab parameters from drawable
+    applyParameters(meshDrawable.parameters);
+
+    // Grab dynamic parameters from view
+    // TODO(guusw): Currently store per-view textures in the object buffer
+    //    Need to split the binding logic so that they can be on the view buffer as well
+    if (baseViewData) {
+      for (auto &pair : baseViewData->textures) {
         setTextureParameter(pair.first.c_str(), pair.second.texture);
       }
     }
 
-    // Grab parameters from drawable
-    for (auto &pair : meshDrawable.parameters.basic) {
-      parameters.setParam(pair.first, pair.second);
-    }
-    for (auto &pair : meshDrawable.parameters.texture) {
-      setTextureParameter(pair.first.c_str(), pair.second.texture);
-    }
-
-    // Generate dynamic parameters
-    collectGeneratedDrawParameters(
-        FeatureCallbackContext{
-            .context = context,
-            .drawable = drawable,
-            .cachedDrawable = data.cachedData,
-        },
-        cachedPipeline, parameters);
-
-    // Set base parameters where unset
-    for (auto &baseParam : cachedPipeline.baseDrawParameters.data) {
-      parameters.setParamIfUnset(baseParam.first, baseParam.second);
-    }
-
-    for (auto &baseParam : cachedPipeline.baseDrawParameters.textures) {
-      int32_t targetSlot = mapTextureBinding(baseParam.first.c_str());
-      if (targetSlot >= 0 && !data.textures[targetSlot]) {
-        data.textures[targetSlot] = baseParam.second.texture->contextData.get();
-      }
+    // Grab dynamic parameters from drawable
+    if (baseDrawData) {
+      applyParameters(*baseDrawData);
     }
 
     std::shared_ptr<MeshContextData> meshContextData = meshDrawable.mesh->contextData;
@@ -280,31 +244,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     data.groupHash = hasher.getDigest();
   }
 
-  void waitForBufferMap(Context &context, PrepareData *prepareData) {
-    do {
-      bool everythingMapped = true;
-      auto check = [&](auto &buffers) {
-        for (auto &drawBuffer : buffers) {
-          if (drawBuffer.mappingStatus == WGPUBufferMapAsyncStatus_Unknown)
-            everythingMapped = false;
-          else {
-            if (drawBuffer.mappingStatus != WGPUBufferMapAsyncStatus_Success)
-              throw std::runtime_error("Failed to map WGPUBuffer");
-          }
-        }
-      };
-      check(prepareData->drawBuffers);
-      check(prepareData->viewBuffers);
-
-      if (!everythingMapped) {
-        // Don't block, just check for buffer mapping callbacks
-        context.poll(false);
-      } else {
-        break;
-      }
-    } while (true);
-  }
-
   TransientPtr prepare(DrawablePrepareContext &context) override {
     auto &allocator = context.workerMemory;
     const CachedPipeline &cachedPipeline = context.cachedPipeline;
@@ -314,13 +253,11 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     prepareData->drawableData.resize(context.drawables.size());
 
     // Init placeholder texture
-    placeholderTexture->createContextDataConditional(context.context);
-    auto placeholderTextureContextData = placeholderTexture->contextData;
+    for (size_t i = 0; i < std::size(placeholderTextures); i++) {
+      placeholderTextures[i]->createContextDataConditional(context.context);
+    }
 
     // Allocate/map buffer helpers
-    auto bufferMapCallback = [](WGPUBufferMapAsyncStatus status, void *userData) {
-      ((PreparedBuffer *)userData)->mappingStatus = status;
-    };
     auto allocateBuffers = [&](SharedBufferPool &pool, auto &outBuffers, const auto &bindings, size_t numElements) {
       outBuffers.resize(bindings.size());
       for (size_t i = 0; i < bindings.size(); i++) {
@@ -329,8 +266,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         preparedBuffer.stride = binding.layout.getArrayStride();
         preparedBuffer.length = preparedBuffer.stride * numElements;
         preparedBuffer.buffer = pool.allocate(preparedBuffer.length);
-        wgpuBufferMapAsync(preparedBuffer.buffer, WGPUMapMode_Write, 0, preparedBuffer.length, bufferMapCallback,
-                           &preparedBuffer);
       }
     };
 
@@ -351,21 +286,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     for (auto &drawable : context.drawables) {
       const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
       meshDrawable.mesh->createContextDataConditional(context.context);
-
-      for (auto &texParam : meshDrawable.parameters.texture) {
-        auto texture = texParam.second.texture;
-        if (texture)
-          texture->createContextDataConditional(context.context);
-      }
-
-      auto material = meshDrawable.material;
-      if (material) {
-        for (auto &texParam : material->parameters.texture) {
-          auto texture = texParam.second.texture;
-          if (texture)
-            texture->createContextDataConditional(context.context);
-        }
-      }
     }
 
     auto *drawableDatas = allocator->new_object<shards::pmr::list<DrawableData>>();
@@ -380,13 +300,19 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       for (size_t index = 0; index < context.drawables.size(); ++index) {
         const IDrawable *drawable = context.drawables[index];
         auto &drawableData = drawableDatas->emplace_back();
-        generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, context.frameCounter,
-                             needProjectedDepth);
+
+        ParameterStorage *baseDrawData{};
+        if (context.generatorData.drawParameters) {
+          baseDrawData = &(*context.generatorData.drawParameters)[index];
+        }
+
+        // TODO: Temporary to store per-view textures in per-object bind group
+        ParameterStorage *baseDrawData1 = context.generatorData.viewParameters;
+
+        generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, baseDrawData,
+                             baseDrawData1, context.frameCounter, needProjectedDepth);
       }
     }
-
-    // Wait for draw buffer to be mapped so we can fill them
-    waitForBufferMap(context.context, prepareData);
 
     // Sort and group drawables
     {
@@ -438,21 +364,24 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       // Set hard-coded view parameters (view/projection matrix)
       ParameterStorage viewParameters(allocator);
+
+      // Set builtin view paramters (transforms)
       setViewParameters(viewParameters, context.viewData);
 
-      // Collect dynamic view parameters
-      collectGeneratedViewParameters(
-          FeatureCallbackContext{
-              .context = context.context,
-              .view = &context.viewData.view,
-              .cachedView = &context.viewData.cachedView,
-          },
-          cachedPipeline, viewParameters);
+      // Merge generator parameters
+      auto baseViewData = context.generatorData.viewParameters;
+      if (baseViewData) {
+        for (auto &pair : baseViewData->basic) {
+          viewParameters.setParam(pair.first.c_str(), pair.second);
+        }
+        // TODO: Bind per-view textures here too once bindings are split
+      }
 
       auto &buffer = prepareData->viewBuffers[0];
       auto &binding = cachedPipeline.viewBuffersBindings[0];
-      uint8_t *bufferData = (uint8_t *)wgpuBufferGetMappedRange(buffer.buffer, 0, buffer.length);
-      packDrawData(bufferData, buffer.stride, binding.layout, viewParameters);
+      uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
+      packDrawData(stagingBuffer, buffer.stride, binding.layout, viewParameters);
+      wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
     }
 
     // Setup draw buffer data
@@ -462,23 +391,17 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
       auto &buffer = prepareData->drawBuffers[0];
       auto &binding = cachedPipeline.drawBufferBindings[0];
-      uint8_t *bufferData = (uint8_t *)wgpuBufferGetMappedRange(buffer.buffer, 0, buffer.length);
+      uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
       for (auto &group : preparedGroupData.groups) {
         size_t offset = buffer.stride * group.startIndex;
         for (size_t i = 0; i < group.numInstances; i++) {
-          packDrawData(bufferData + offset, buffer.stride, binding.layout,
+          packDrawData(stagingBuffer + offset, buffer.stride, binding.layout,
                        prepareData->drawableData[group.startIndex + i]->parameters);
           offset += buffer.stride;
         }
       }
+      wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
     }
-
-    auto unmapBuffers = [&](auto &vec) {
-      for (auto &buffer : vec)
-        wgpuBufferUnmap(buffer.buffer);
-    };
-    unmapBuffers(prepareData->drawBuffers);
-    unmapBuffers(prepareData->viewBuffers);
 
     // Generate bind groups
     WGPUBindGroupLayout viewBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getViewBindGroupIndex()];
@@ -495,9 +418,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
       WGPUBindGroupLayout drawBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getDrawBindGroupIndex()];
 
-      auto cachedBindGroups = allocator->new_object<shards::pmr::map<Hash128, WGPUBindGroup>>();
+      auto cachedBindGroups = allocator->new_object<shards::pmr::unordered_map<Hash128, WGPUBindGroup>>();
       for (size_t index = 0; index < preparedGroupData.groups.size(); ++index) {
-        shards::pmr::map<Hash128, WGPUBindGroup> &cache = *cachedBindGroups;
+        shards::pmr::unordered_map<Hash128, WGPUBindGroup> &cache = *cachedBindGroups;
 
         auto &group = preparedGroupData.groups[index];
         auto &groupData = preparedGroupData.groupData[index];
@@ -511,14 +434,19 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
             // Drawable buffers are mapped entirely, dynamic offset is applied during encoding
             drawBindGroupBuilder.addBinding(binding, prepareData->drawBuffers[i].buffer, group.numInstances);
           }
+
+          // TODO(guusw): Need to split this so that we can have per-view texture bindings
           for (size_t i = 0; i < cachedPipeline.textureBindingLayout.bindings.size(); i++) {
             auto &binding = cachedPipeline.textureBindingLayout.bindings[i];
             auto texture = firstDrawableData.textures[i];
             if (texture) {
-              drawBindGroupBuilder.addTextureBinding(binding, texture->defaultView, texture->sampler);
+              drawBindGroupBuilder.addTextureBinding(binding, textureViewCache.getDefaultTextureView(frameCounter, *texture),
+                                                     texture->sampler);
             } else {
-              drawBindGroupBuilder.addTextureBinding(binding, placeholderTextureContextData->textureView,
-                                                     placeholderTextureContextData->sampler);
+              auto &placeholder = placeholderTextures[size_t(binding.type.dimension)];
+              drawBindGroupBuilder.addTextureBinding(
+                  binding, textureViewCache.getDefaultTextureView(frameCounter, *placeholder->contextData.get()),
+                  placeholder->contextData->sampler);
             }
           }
 

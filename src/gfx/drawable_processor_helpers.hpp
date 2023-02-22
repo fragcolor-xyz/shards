@@ -4,6 +4,7 @@
 #include "renderer_types.hpp"
 #include "drawable_processor.hpp"
 #include "view.hpp"
+#include "gfx_wgpu.hpp"
 
 namespace gfx::detail {
 
@@ -40,7 +41,9 @@ struct BindGroupBuilder {
         .entryCount = uint32_t(entries.size()),
         .entries = entries.data(),
     };
-    return wgpuDeviceCreateBindGroup(device, &desc);
+    WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(device, &desc);
+    assert(bindGroup);
+    return bindGroup;
   }
 };
 
@@ -91,10 +94,10 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
                          const ParameterStorage &parameterStorage) {
   size_t layoutIndex = 0;
   for (const std::string &fieldName : layout.fieldNames) {
-    auto drawDataIt = parameterStorage.data.find<std::string>(fieldName);
-    if (drawDataIt != parameterStorage.data.end()) {
+    auto drawDataIt = parameterStorage.basic.find<std::string>(fieldName);
+    if (drawDataIt != parameterStorage.basic.end()) {
       const UniformLayout &itemLayout = layout.items[layoutIndex];
-      FieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
+      NumFieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
       if (itemLayout.type != drawDataFieldType) {
         SPDLOG_LOGGER_WARN(getLogger(), "Shader field \"{}\" type mismatch layout:{} parameterStorage:{}", fieldName,
                            itemLayout.type, drawDataFieldType);
@@ -107,7 +110,7 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
 }
 
 inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &viewData) {
-  outDrawData.setParam("view", viewData.view.view);
+  outDrawData.setParam("view", viewData.view->view);
   outDrawData.setParam("invView", viewData.cachedView.invViewTransform);
   outDrawData.setParam("proj", viewData.cachedView.projectionTransform);
   outDrawData.setParam("invProj", viewData.cachedView.invProjectionTransform);
@@ -115,19 +118,31 @@ inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &vie
                                           float(viewData.viewport.height)));
 }
 
-inline void collectGeneratedDrawParameters(const FeatureCallbackContext &ctx, const CachedPipeline &pipeline,
-                                           IParameterCollector &collector) {
-  for (auto &gen : pipeline.drawableParameterGenerators) {
-    gen(ctx, collector);
-  }
-}
+template <typename TTextureBindings>
+auto mapTextureBinding(const TTextureBindings &textureBindings, const char *name) -> int32_t {
+  auto it = std::find_if(textureBindings.begin(), textureBindings.end(), [&](auto it) { return it.name == name; });
+  if (it != textureBindings.end())
+    return int32_t(it - textureBindings.begin());
+  return -1;
+};
 
-inline void collectGeneratedViewParameters(const FeatureCallbackContext &ctx, const CachedPipeline &pipeline,
-                                           IParameterCollector &collector) {
-  for (auto &gen : pipeline.viewParameterGenerators) {
-    gen(ctx, collector);
+template <typename TTextureBindings, typename TOutTextures>
+auto setTextureParameter(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context, const char *name,
+                         const TexturePtr &texture) {
+  int32_t targetSlot = mapTextureBinding(textureBindings, name);
+  if (targetSlot >= 0) {
+    outTextures[targetSlot] = &texture->createContextDataConditional(context);
   }
-}
+};
+
+template <typename TTextureBindings, typename TOutTextures, typename TSrc>
+auto applyParameters(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context,
+                     ParameterStorage &dstParams, const TSrc &srcParam) {
+  for (auto &param : srcParam.basic)
+    dstParams.setParam(param.first.c_str(), param.second);
+  for (auto &param : srcParam.textures)
+    setTextureParameter(textureBindings, outTextures, context, param.first.c_str(), param.second.texture);
+};
 
 } // namespace gfx::detail
 

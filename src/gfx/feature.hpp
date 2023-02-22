@@ -9,6 +9,7 @@
 #include "shader/entry_point.hpp"
 #include "pipeline_hash_collector.hpp"
 #include "unique_id.hpp"
+#include "feature_generator.hpp"
 #include <functional>
 #include <memory>
 #include <optional>
@@ -136,13 +137,13 @@ enum class ShaderParamFlags {
 };
 
 struct NamedShaderParam {
-  shader::FieldType type = shader::FieldType(ShaderFieldBaseType::Float32, 4);
+  shader::NumFieldType type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4);
   std::string name;
   ParamVariant defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
 
   NamedShaderParam() = default;
-  NamedShaderParam(std::string name, const shader::FieldType &type = shader::FieldType(ShaderFieldBaseType::Float32, 4),
+  NamedShaderParam(std::string name, const shader::NumFieldType &type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4),
                    ParamVariant defaultValue = ParamVariant());
   NamedShaderParam(std::string name, ParamVariant defaultValue);
 
@@ -155,41 +156,33 @@ struct NamedShaderParam {
 
 struct NamedTextureParam {
   std::string name;
+  shader::TextureFieldType type;
+  TexturePtr defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
 
   NamedTextureParam() = default;
-  NamedTextureParam(std::string name) : name(name) {}
+  NamedTextureParam(std::string name, TextureDimension dimension = TextureDimension::D2,
+                    ShaderParamFlags flags = ShaderParamFlags::None)
+      : name(name), type(dimension), flags(flags) {}
+  NamedTextureParam(std::string name, shader::TextureFieldType type, ShaderParamFlags flags = ShaderParamFlags::None)
+      : name(name), type(type), flags(flags) {}
 
   template <typename T> void getPipelineHash(T &hasher) const {
     hasher(name);
+    hasher(type);
     hasher(flags);
   }
 };
 
-struct FeatureCallbackContext {
-  Context &context;
-  const View *view = nullptr;
-  const IDrawable *drawable = nullptr;
-  const detail::CachedDrawable *cachedDrawable = nullptr;
-  const detail::CachedView *cachedView = nullptr;
-};
-
-typedef std::function<bool(const FeatureCallbackContext &)> FeatureFilterCallback;
-
-struct IParameterCollector;
-typedef std::function<void(const FeatureCallbackContext &, IParameterCollector &)> FeatureParameterGenerator;
-
 extern UniqueIdGenerator featureIdGenerator;
-struct Feature {
+struct Feature : public std::enable_shared_from_this<Feature> {
   // Used to identify this feature for caching purposes
   const UniqueId id = featureIdGenerator.getNext();
 
   // Pipeline state flags
   FeaturePipelineState state;
-  // Per drawable draw data
-  std::vector<FeatureParameterGenerator> drawableParameterGenerators;
-  // Per view draw data
-  std::vector<FeatureParameterGenerator> viewParameterGenerators;
+  // Generated parameters and precomputed rendering
+  std::vector<FeatureGenerator> generators;
   // Shader parameters read from per-instance buffer
   std::vector<NamedShaderParam> shaderParams;
   // Texture parameters

@@ -126,14 +126,14 @@ struct WithOutput : public Block {
 
 struct WriteOutput : public Block {
   String name;
-  FieldType type;
+  NumFieldType type;
   BlockPtr inner;
 
   template <typename T>
-  WriteOutput(const String &name, FieldType type, T &&inner)
+  WriteOutput(const String &name, NumFieldType type, T &&inner)
       : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename... TArgs>
-  WriteOutput(const String &name, FieldType type, TArgs &&...inner)
+  WriteOutput(const String &name, NumFieldType type, TArgs &&...inner)
       : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
   WriteOutput(WriteOutput &&other) = default;
 
@@ -160,14 +160,14 @@ struct ReadInput : public Block {
 
 struct WriteGlobal : public Block {
   String name;
-  FieldType type;
+  NumFieldType type;
   BlockPtr inner;
 
   template <typename T>
-  WriteGlobal(const String &name, FieldType type, T &&inner)
+  WriteGlobal(const String &name, NumFieldType type, T &&inner)
       : name(name), type(type), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename... TArgs>
-  WriteGlobal(const String &name, FieldType type, TArgs &&...inner)
+  WriteGlobal(const String &name, NumFieldType type, TArgs &&...inner)
       : name(name), type(type), inner(makeCompoundBlock(std::forward<TArgs>(inner)...)) {}
   WriteGlobal(WriteGlobal &&other) = default;
 
@@ -191,10 +191,10 @@ struct ReadGlobal : public Block {
 
 struct ReadBuffer : public Block {
   String fieldName;
-  FieldType type;
+  NumFieldType type;
   String bufferName;
 
-  ReadBuffer(const String &fieldName, const FieldType &type, const String &bufferName = "object")
+  ReadBuffer(const String &fieldName, const NumFieldType &type, const String &bufferName = "object")
       : fieldName(fieldName), type(type), bufferName(bufferName) {}
   ReadBuffer(ReadBuffer &&other) = default;
 

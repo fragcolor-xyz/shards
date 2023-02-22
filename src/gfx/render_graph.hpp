@@ -1,9 +1,18 @@
 #ifndef FBBE103B_4B4A_462F_BE67_FE59A0C30FB5
 #define FBBE103B_4B4A_462F_BE67_FE59A0C30FB5
 
+#include "fwd.hpp"
+#include "render_target.hpp"
 #include "renderer_types.hpp"
+#include "texture.hpp"
+#include "texture_cache.hpp"
 #include "fmt.hpp"
+#include "worker_memory.hpp"
+#include "pmr/unordered_set.hpp"
+#include "pmr/vector.hpp"
+#include "gfx_wgpu.hpp"
 #include <compare>
+#include <span>
 
 namespace gfx::detail {
 
@@ -56,13 +65,11 @@ struct RenderTextureCache {
 
   std::map<RenderTargetFormat, Bin> bins;
 
-  static constexpr size_t cleanupThreshold = 10;
-
   // Cleanup old render targets
-  void swapBuffers(size_t frameCount) {
+  void resetAndClearOldCacheItems(size_t frameCount, size_t frameThreshold) {
     for (auto it = bins.begin(); it != bins.end();) {
       auto &bin = it->second;
-      if (cleanupBin(bin, frameCount) == 0) {
+      if (cleanupBin(bin, frameCount, frameThreshold) == 0) {
         // Evict
         it = bins.erase(it);
       } else {
@@ -87,7 +94,7 @@ struct RenderTextureCache {
           ->init(TextureDesc{
               .format =
                   TextureFormat{
-                      .type = TextureType::D2,
+                      .dimension = TextureDimension::D2,
                       .flags = TextureFormatFlags::RenderAttachment,
                       .pixelFormat = format.format,
                   },
@@ -100,9 +107,10 @@ struct RenderTextureCache {
   }
 
 private:
-  static size_t cleanupBin(Bin &bin, size_t frameCounter) {
+  static size_t cleanupBin(Bin &bin, size_t frameCounter, size_t frameThreshold) {
     for (auto it = bin.items.begin(); it != bin.items.end();) {
-      if ((frameCounter - it->lastTouched) > cleanupThreshold) {
+      int64_t delta = int64_t(frameCounter) - int64_t(it->lastTouched);
+      if (delta > int64_t(frameThreshold)) {
         it = bin.items.erase(it);
       } else {
         ++it;
@@ -112,81 +120,12 @@ private:
   }
 };
 
-struct RenderTargetData {
-  struct DepthTarget {
-    Texture *texture;
-
-    bool operator==(const DepthTarget &other) const { return texture == other.texture; }
-    bool operator!=(const DepthTarget &other) const { return !(*this == other); }
-  };
-
-  struct ColorTarget {
-    std::string name;
-    Texture *texture;
-
-    bool operator==(const ColorTarget &other) const { return name == other.name && texture == other.texture; }
-    bool operator!=(const ColorTarget &other) const { return !(*this == other); }
-  };
-
-  std::optional<DepthTarget> depthTarget;
-  std::vector<ColorTarget> colorTargets;
-  std::vector<TexturePtr> references;
-
-  // Use managed render target with size adjusted to reference size
-  void init(RenderTargetPtr renderTarget) {
-    for (auto &pair : renderTarget->attachments) {
-      auto &attachment = pair.second;
-      auto &key = pair.first;
-      if (key == "depth") {
-        depthTarget = DepthTarget{
-            .texture = attachment.get(),
-        };
-      } else {
-        colorTargets.push_back(ColorTarget{
-            .name = key,
-            .texture = attachment.get(),
-        });
-      }
-
-      references.push_back(attachment);
-    }
-
-    std::sort(colorTargets.begin(), colorTargets.end(),
-              [](const ColorTarget &a, const ColorTarget &b) { return a.name < b.name; });
-  }
-
-  // Use a device's main output with managed depth buffer
-  void init(const Renderer::MainOutput &mainOutput, TexturePtr depthStencilBuffer) {
-    references.push_back(depthStencilBuffer);
-    depthTarget = DepthTarget{
-        .texture = depthStencilBuffer.get(),
-    };
-
-    references.push_back(mainOutput.texture);
-    colorTargets.push_back(ColorTarget{
-        .name = "color",
-        .texture = mainOutput.texture.get(),
-    });
-  }
-
-  bool operator==(const RenderTargetData &other) const {
-    if (!std::equal(colorTargets.begin(), colorTargets.end(), other.colorTargets.begin(), other.colorTargets.end()))
-      return false;
-
-    if (depthTarget != other.depthTarget)
-      return false;
-
-    return true;
-  }
-
-  bool operator!=(const RenderTargetData &other) const { return !(*this == other); }
-};
-
 struct RenderGraph;
 struct RenderGraphNode;
 struct RenderGraphEvaluator;
 struct RenderGraphEncodeContext {
   WGPURenderPassEncoder encoder;
+  const ViewData &viewData;
   RenderGraphEvaluator &evaluator;
   const RenderGraph &graph;
   const RenderGraphNode &node;
@@ -227,7 +166,7 @@ struct RenderGraph {
     int2 size;
     WGPUTextureFormat format;
     std::optional<size_t> outputIndex;
-    TexturePtr textureOverride;
+    TextureSubResource textureOverride;
   };
 
   struct Output {
@@ -256,7 +195,7 @@ struct RenderGraphBuilder {
   std::vector<RenderGraph::Frame> frames;
   std::vector<RenderGraph::Output> outputs;
   std::map<std::string, FrameIndex> nameLookup;
-  std::map<TexturePtr, FrameIndex> handleLookup;
+  std::map<TextureSubResource, FrameIndex> handleLookup;
   std::set<FrameIndex> externallyWrittenTo;
   float2 referenceOutputSize;
 
@@ -278,10 +217,10 @@ struct RenderGraphBuilder {
           using T = std::decay_t<decltype(arg)>;
 
           if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-            auto it0 = handleLookup.find(arg.handle);
+            auto it0 = handleLookup.find(arg.subResource);
             if (it0 == handleLookup.end()) {
               frameIndex = frames.size();
-              it0 = handleLookup.insert_or_assign(arg.handle, frameIndex).first;
+              it0 = handleLookup.insert_or_assign(arg.subResource, frameIndex).first;
             } else {
               frameIndex = it0->second;
             }
@@ -308,9 +247,9 @@ struct RenderGraphBuilder {
             frame.name = arg.name;
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-              assert(arg.handle);
-              frame.textureOverride = arg.handle;
-              frame.format = frame.textureOverride->getFormat().pixelFormat;
+              assert(arg.subResource);
+              frame.textureOverride = arg.subResource;
+              frame.format = frame.textureOverride.texture->getFormat().pixelFormat;
             } else if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
               frame.format = arg.format;
             }
@@ -427,7 +366,7 @@ struct RenderGraphBuilder {
               if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
                 targetFormat = arg.format;
               } else if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-                targetFormat = arg.handle->getFormat().pixelFormat;
+                targetFormat = arg.subResource.texture->getFormat().pixelFormat;
               } else {
                 throw std::logic_error("");
               }
@@ -575,48 +514,73 @@ private:
 };
 
 struct RenderGraphEvaluator {
+  using allocator_type = shards::pmr::PolymorphicAllocator<>;
+
 private:
+  allocator_type allocator;
+
   // Keeps track of texture that have been written to at least once
-  std::set<Texture *> writtenTextures;
+  shards::pmr::unordered_set<Texture *> writtenTextures;
 
   // Resolved texture handles for indexed by frame index inside nodes
-  std::vector<TexturePtr> frameTextures;
+  struct ResolvedFrameTexture {
+    TexturePtr texture;
+    WGPUTextureView view{};
 
-  std::vector<WGPURenderPassColorAttachment> cachedColorAttachments;
-  std::optional<WGPURenderPassDepthStencilAttachment> cachedDepthStencilAttachment;
-  WGPURenderPassDescriptor cachedRenderPassDescriptor{};
-  RenderTextureCache renderTextureCache;
+    ResolvedFrameTexture(TexturePtr texture, WGPUTextureView view) : texture(texture), view(view) {}
+  };
+  shards::pmr::vector<ResolvedFrameTexture> frameTextures;
+
+  RenderTextureCache &renderTextureCache;
+  TextureViewCache &textureViewCache;
 
 public:
+  RenderGraphEvaluator(allocator_type allocator, RenderTextureCache &renderTextureCache, TextureViewCache &textureViewCache)
+      : allocator(allocator), writtenTextures(allocator), frameTextures(allocator), renderTextureCache(renderTextureCache),
+        textureViewCache(textureViewCache) {}
+
   bool isWrittenTo(const TexturePtr &texture) const { return writtenTextures.contains(texture.get()); }
 
   const TexturePtr &getTexture(FrameIndex frameIndex) {
     if (frameIndex >= frameTextures.size())
       throw std::out_of_range("frameIndex");
-    return frameTextures[frameIndex];
+    return frameTextures[frameIndex].texture;
+  }
+
+  WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex,
+                                 size_t frameCounter) {
+    if (textureData.externalView)
+      return textureData.externalView;
+    TextureViewDesc desc{
+        .format = textureData.format.pixelFormat,
+        .dimension = WGPUTextureViewDimension_2D,
+        .baseMipLevel = mipIndex,
+        .mipLevelCount = 1,
+        .baseArrayLayer = uint32_t(faceIndex),
+        .arrayLayerCount = 1,
+        .aspect = WGPUTextureAspect_All,
+    };
+    return textureViewCache.getTextureView(frameCounter, textureData.texture, desc);
   }
 
   // Describes a render pass so that targets are cleared to their default value or loaded
   // based on if they were already written to previously
-  WGPURenderPassDescriptor &createRenderPassDescriptor(const RenderGraph &graph, Context &context, const RenderGraphNode &node) {
-    cachedColorAttachments.clear();
-    cachedDepthStencilAttachment.reset();
-
-    memset(&cachedRenderPassDescriptor, 0, sizeof(cachedRenderPassDescriptor));
+  WGPURenderPassDescriptor createRenderPassDescriptor(const RenderGraph &graph, Context &context, const RenderGraphNode &node,
+                                                      size_t frameCounter) {
+    // NOTE: Allocated in frame memory
+    WGPURenderPassDepthStencilAttachment *depthStencilAttachmentPtr{};
+    auto &colorAttachments = *allocator.new_object<shards::pmr::vector<WGPURenderPassColorAttachment>>();
 
     size_t depthIndex = node.renderTargetLayout.depthTargetIndex.value_or(~0);
     for (size_t i = 0; i < node.writesTo.size(); i++) {
       const RenderGraphNode::Attachment &nodeAttachment = node.writesTo[i];
-      TexturePtr &texture = frameTextures[nodeAttachment.frameIndex];
-
-      auto &textureData = texture->createContextDataConditional(context);
+      ResolvedFrameTexture &resolvedFrameTexture = frameTextures[nodeAttachment.frameIndex];
 
       if (i == depthIndex) {
-        auto &textureData = texture->createContextDataConditional(context);
-        cachedDepthStencilAttachment = WGPURenderPassDepthStencilAttachment{
-            .view = textureData.defaultView,
+        auto &attachment = *(depthStencilAttachmentPtr = allocator.new_object<WGPURenderPassDepthStencilAttachment>());
+        attachment = WGPURenderPassDepthStencilAttachment{
+            .view = resolvedFrameTexture.view,
         };
-        auto &attachment = cachedDepthStencilAttachment.value();
 
         if (nodeAttachment.clearValues) {
           auto &clearDepth = nodeAttachment.clearValues.value().depth;
@@ -633,8 +597,8 @@ public:
         attachment.stencilLoadOp = WGPULoadOp_Undefined;
         attachment.stencilStoreOp = WGPUStoreOp_Undefined;
       } else {
-        auto &attachment = cachedColorAttachments.emplace_back(WGPURenderPassColorAttachment{
-            .view = textureData.defaultView,
+        auto &attachment = colorAttachments.emplace_back(WGPURenderPassColorAttachment{
+            .view = resolvedFrameTexture.view,
         });
 
         if (nodeAttachment.clearValues) {
@@ -647,64 +611,76 @@ public:
         attachment.storeOp = WGPUStoreOp_Store;
       }
 
-      writtenTextures.insert(texture.get());
+      writtenTextures.insert(resolvedFrameTexture.texture.get());
     }
 
-    cachedRenderPassDescriptor.colorAttachments = cachedColorAttachments.data();
-    cachedRenderPassDescriptor.colorAttachmentCount = cachedColorAttachments.size();
-    cachedRenderPassDescriptor.depthStencilAttachment =
-        cachedDepthStencilAttachment ? &cachedDepthStencilAttachment.value() : nullptr;
-
-    return cachedRenderPassDescriptor;
+    return WGPURenderPassDescriptor{
+        .colorAttachmentCount = uint32_t(colorAttachments.size()),
+        .colorAttachments = colorAttachments.data(),
+        .depthStencilAttachment = depthStencilAttachmentPtr,
+    };
   }
 
   // Reset all render texture write state
   void reset(size_t frameCounter) {
     writtenTextures.clear();
     frameTextures.clear();
-    renderTextureCache.swapBuffers(frameCounter);
   }
 
-  void getFrameTextures(std::vector<TexturePtr> &outFrameTextures, const std::vector<TexturePtr> &outputs,
-                        const RenderGraph &graph, size_t frameCounter) {
+  void getFrameTextures(shards::pmr::vector<ResolvedFrameTexture> &outFrameTextures, const std::span<TextureSubResource> &outputs,
+                        const RenderGraph &graph, Context &context, size_t frameCounter) {
     outFrameTextures.clear();
     outFrameTextures.reserve(graph.frames.size());
+
+    // Entire texture view
+    auto resolve = [&](TexturePtr texture) {
+      return ResolvedFrameTexture(texture, getTextureView(texture->createContextDataConditional(context), 0, 0, frameCounter));
+    };
+
+    // Subresource texture view
+    auto resolveSubResourceView = [&](const TextureSubResource &resource) {
+      return ResolvedFrameTexture(resource.texture, getTextureView(resource.texture->createContextDataConditional(context),
+                                                                   resource.faceIndex, resource.mipIndex, frameCounter));
+    };
+
     for (auto &frame : graph.frames) {
       if (frame.outputIndex.has_value()) {
         size_t outputIndex = frame.outputIndex.value();
         if (outputIndex >= outputs.size())
           throw std::logic_error("Missing output");
 
-        outFrameTextures.push_back(outputs[outputIndex]);
+        outFrameTextures.push_back(resolveSubResourceView(outputs[outputIndex]));
       } else if (frame.textureOverride) {
-        outFrameTextures.push_back(frame.textureOverride);
+        outFrameTextures.push_back(resolveSubResourceView(frame.textureOverride));
       } else {
         TexturePtr texture =
             renderTextureCache.allocate(RenderTargetFormat{.format = frame.format, .size = frame.size}, frameCounter);
-        outFrameTextures.push_back(texture);
+        outFrameTextures.push_back(resolve(texture));
       }
     }
   }
 
-  void evaluate(const RenderGraph &graph, const std::vector<TexturePtr> &outputs, Context &context, size_t frameCounter) {
+  void evaluate(const RenderGraph &graph, const ViewData &viewData, std::span<TextureSubResource> outputs, Context &context,
+                size_t frameCounter) {
     // Evaluate all render steps in the order they are defined
     // potential optimizations:
     // - evaluate steps without dependencies in parralel
     // - group multiple steps into single render passes
 
     // Allocate frame textures
-    getFrameTextures(frameTextures, outputs, graph, frameCounter);
+    getFrameTextures(frameTextures, outputs, graph, context, frameCounter);
 
     WGPUCommandEncoderDescriptor desc = {};
     WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
 
     for (const auto &node : graph.nodes) {
-      WGPURenderPassDescriptor &renderPassDesc = createRenderPassDescriptor(graph, context, node);
+      WGPURenderPassDescriptor renderPassDesc = createRenderPassDescriptor(graph, context, node, frameCounter);
       if (node.setupPass)
         node.setupPass(renderPassDesc);
       WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
       RenderGraphEncodeContext ctx{
           .encoder = renderPassEncoder,
+          .viewData = viewData,
           .evaluator = *this,
           .graph = graph,
           .node = node,
