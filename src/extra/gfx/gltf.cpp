@@ -348,8 +348,6 @@ struct GLTFShard {
       }
     }
 
-    drawable->trs = toFloat4x4(input);
-
     if (_animController.shards().len > 0) {
       SHVar animationData;
       {
@@ -362,6 +360,8 @@ struct GLTFShard {
 
       applyAnimationData((SeqVar &)animationData);
     }
+
+    drawable->trs = toFloat4x4(input);
 
     // Only apply recursive parameters once
     if (!_dynamicsApplied) {
