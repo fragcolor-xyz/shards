@@ -14,9 +14,8 @@
    "" >> .animation-names
    (Clear .animation-names))
 
-  .position (Math.Translation) >= .transform
+  .position (Math.Translation)
   (GFX.glTF :Path "data/mascot1.gltf"
-            :Transform .transform
             :AnimationController
             (->
              = .animations
@@ -57,14 +56,12 @@
                            (Shader.WriteGlobal "color"))
               :After ["readColor"]
               :Before ["writeColor"]}]
-   :Params [{:Name "lightDirection" :Default .light-direction}
-            {:Name "lightColor" :Default .light-color}]}
+   :Params {:lightDirection {:Default .light-direction}
+            :lightColor {:Default .light-color}}}
   (GFX.Feature))
 
 (defloop test-basic-anim
   (Setup
-   (Float3 0 0 0) (Math.Translation) >= .t1
-
    (GFX.DrawQueue) >= .queue
 
   ;; Render steps

@@ -8,9 +8,8 @@
 
 (defloop character
   (Take "Position") = .position
-  .position (Math.Translation) >= .transform
+  .position (Math.Translation)
   (GFX.glTF :Copy .gltf-template
-            :Transform .transform
             :AnimationController
             (->
              (| (Setup
@@ -63,8 +62,8 @@
                            (Shader.WriteGlobal "color"))
               :After ["readColor"]
               :Before ["writeColor"]}]
-   :Params [{:Name "lightDirection" :Default .light-direction}
-            {:Name "lightColor" :Default .light-color}]}
+   :Params {:lightDirection {:Default .light-direction}
+            :lightColor {:Default .light-color}}}
   (GFX.Feature))
 
 (defloop test-basic-anim
@@ -77,7 +76,7 @@
 
    (GFX.DrawQueue) >= .queue
 
-   (GFX.glTF :Path "data/mascot.glb") = .gltf-template
+   (Math.MatIdentity) (GFX.glTF :Path "data/mascot.glb") = .gltf-template
 
   ;; Render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
