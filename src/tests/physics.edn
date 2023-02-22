@@ -16,28 +16,13 @@
    (GFX.BuiltinMesh :Type BuiltinMeshType.Plane) = .plane
    (GFX.BuiltinMesh :Type BuiltinMeshType.Sphere) = .sphere
 
-   ; instantiate cubes and spheres
-   (map
-    (fn* [n]
-         (-> (float3 0 n 0) (Math.Translation)
-             >= (ContextVar (str "transform-" n))
-
-             {:Mesh (if (= (% n 2) 0) .cube .cube)
-              :Params
-              {:baseColor (float4 (* (/ n obj-count) 2.0) (* (- 1.0 (/ n obj-count)) 2.0) 0 1)}}
-             (GFX.Drawable :Transform (ContextVar (str "transform-" n)))
-             >> .drawable))
-    (range 1 obj-count))
-
    ; ground
    [(float4 ground-extent 0 0 0)
     (float4 0 0 (- ground-extent) 0)
     (float4 0 1 0 0)
-    (float4 0 (+ ground-thickness ground-y) 0 1)] = .ground-t
-   {:Mesh .plane
-    :Params
-    {:baseColor (float4 0.8 0.55 0.95 1)}}
-   (GFX.Drawable :Transform .ground-t) >> .drawable
+    (float4 0 (+ ground-thickness ground-y) 0 1)]
+   (GFX.Drawable :Mesh .plane
+                 :Params {:baseColor (float4 0.8 0.55 0.95 1)}) >= .ground-drawable
 
    ; define some physics shapes
    (Physics.Cuboid :HalfExtents (float3 0.5)) = .cube-pshape
@@ -61,17 +46,34 @@
     (Physics.Simulation)
     (Physics.KinematicBody .ground-pshape (float3 0 ground-y 0))
 
-    ; associate a physics body to each shape
+    ; initialize transforms and  associate a physics body to each shape
     (map
      (fn* [n]
-          (-> (Physics.DynamicBody
-               :Position (float3 0 n 0)
-               :Shapes (if (= (% n 2) 0) .cube-pshape .cube-pshape)
-               :Name (str "rb" n)) > (ContextVar (str "transform-" n))))
+          (->
+           (float3 0 n 0) (Math.Translation)
+           >= (ContextVar (str "transform-" n))
+
+           (Physics.DynamicBody
+            :Position (float3 0 n 0)
+            :Shapes (if (= (% n 2) 0) .cube-pshape .cube-pshape)
+            :Name (str "rb" n)) > (ContextVar (str "transform-" n))))
      (range 1 obj-count))
 
     ; draw everything
-    .drawable (GFX.Draw)
+    .ground-drawable (GFX.Draw)
+
+    ; cubes and spheres instances
+    (map
+     (fn* [n]
+          (-> (ContextVar (str "transform-" n))
+              (GFX.Drawable
+               :Mesh (if (= (% n 2) 0) .cube .cube)
+               :Params
+               {:baseColor (float4 (* (/ n obj-count) 2.0) (* (- 1.0 (/ n obj-count)) 2.0) 0 1)})
+
+              >> .drawables))
+     (range 1 obj-count))
+    .drawables (GFX.Draw)
 
     ; final render
     (GFX.Render :Steps .render-steps :View .view))))

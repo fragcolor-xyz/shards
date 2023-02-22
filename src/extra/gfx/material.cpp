@@ -8,67 +8,52 @@
 
 using namespace shards;
 namespace gfx {
-void SHShaderParameters::updateVariables(MaterialParameters &output) {
-  for (SHBasicShaderParameter &param : basic) {
-    auto v = varToShaderParameter(param.var.get());
-    std::visit([&](auto &&arg) { output.set(param.key, arg); }, v);
-  }
-  for (SHBasicShaderParameter &texture : textures) {
-    TexturePtr variant = varToTexture(texture.var.get());
-    output.set(texture.key, variant);
-  }
-}
-
-void SHMaterial::updateVariables() { shaderParameters.updateVariables(material->parameters); }
-
 struct MaterialShard {
-  static inline Type MeshVarType = Type::VariableOf(Types::Mesh);
-  static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
-  static inline Type TexturesTable = Type::TableOf(Types::TextureTypes);
-  static inline Type ShaderParamVarTable = Type::TableOf(Types::ShaderParamVarTypes);
-
-  static inline std::map<std::string, Type> InputTableTypes{};
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Material; }
 
-  PARAM_PARAMVAR(_paramsVar, "Params", "The params variable to use (Optional)",
-                 {CoreInfo::NoneType, ShaderParamVarTable, Type::VariableOf(ShaderParamVarTable)});
-  PARAM_PARAMVAR(_texturesVar, "Textures", "The textures variable to use (Optional)",
-                 {CoreInfo::NoneType, TexturesTable, Type::VariableOf(TexturesTable)});
-  PARAM_IMPL(MaterialShard, PARAM_IMPL_FOR(_paramsVar), PARAM_IMPL_FOR(_texturesVar));
+  PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
+  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
 
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup() { PARAM_CLEANUP(); }
+  PARAM_IMPL(MaterialShard, PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
 
-  void validateInputTableType(SHTypeInfo &type) {
-    auto &inputTable = type.table;
-    size_t inputTableLen = inputTable.keys.len;
-    for (size_t i = 0; i < inputTableLen; i++) {
-      const char *key = inputTable.keys.elements[i];
-      SHTypeInfo &type = inputTable.types.elements[i];
+  SHMaterial *_material{};
 
-      if (strcmp(key, "Params") == 0) {
-        validateShaderParamsType(type);
-      }
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
+    _material = Types::MaterialObjectVar.New();
+    _material->material = std::make_shared<Material>();
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    if (_material) {
+      Types::MaterialObjectVar.Release(_material);
+      _material = nullptr;
     }
   }
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
-    validateInputTableType(data.inputType);
-    return Types::Material;
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    
+    return outputTypes().elements[0];
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    const SHTable &inputTable = input.payload.tableValue;
+    auto &material = _material->material;
 
-    SHMaterial *shMaterial = Types::MaterialObjectVar.New();
-    shMaterial->material = std::make_shared<Material>();
+    if (!_params.isNone()) {
+      initShaderParams(shContext, _params.get().payload.tableValue, material->parameters);
+    }
 
-    initShaderParams(shContext, inputTable, _paramsVar, _texturesVar, shMaterial->material->parameters,
-                     shMaterial->shaderParameters);
+    if (!_features.isNone()) {
+      material->features.clear();
+      applyFeatures(shContext, material->features, _features.get());
+    }
 
-    return Types::MaterialObjectVar.Get(shMaterial);
+    return Types::MaterialObjectVar.Get(_material);
   }
 };
 

@@ -7,9 +7,9 @@ using namespace gfx;
 
 struct HighlightShard : public Base {
   // TODO: Merge with DrawShard type
-  static inline shards::Types SingleDrawableTypes = shards::Types{gfx::Types::Drawable, gfx::Types::TreeDrawable};
+  static inline shards::Types SingleDrawableTypes = shards::Types{gfx::Types::Drawable};
   static inline Type DrawableSeqType = Type::SeqOf(SingleDrawableTypes);
-  static inline shards::Types DrawableTypes{gfx::Types::Drawable, gfx::Types::TreeDrawable, DrawableSeqType};
+  static inline shards::Types DrawableTypes{gfx::Types::Drawable, DrawableSeqType};
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
@@ -25,14 +25,10 @@ struct HighlightShard : public Base {
   }
 
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
-    SHTypeInfo inputType = shards::Type::Object(input.payload.objectVendorId, input.payload.objectTypeId);
-    if (gfx::Types::Drawable == inputType) {
-      SHDrawable *dPtr = static_cast<SHDrawable *>(input.payload.objectValue);
-      _gizmoContext->wireframeRenderer.overlayWireframe(*_gizmoContext->queue.get(), dPtr->drawable);
-    } else if (gfx::Types::TreeDrawable == inputType) {
-      SHTreeDrawable *dhPtr = static_cast<SHTreeDrawable *>(input.payload.objectValue);
-      _gizmoContext->wireframeRenderer.overlayWireframe(*_gizmoContext->queue.get(), *dhPtr->drawable.get());
-    }
+    SHDrawable *drawable = static_cast<SHDrawable *>(input.payload.objectValue);
+    std::visit(
+        [&](auto &drawable) { _gizmoContext->wireframeRenderer.overlayWireframe(*_gizmoContext->queue.get(), *drawable.get()); },
+        drawable->drawable);
 
     return SHVar{};
   }

@@ -289,7 +289,11 @@ public:
 
   const SHVar &get() const { return const_cast<TParamVar *>(this)->get(); }
 
+  bool isNone() const { return _v.valueType == SHType::None; }
+
   bool isVariable() const { return _v.valueType == SHType::ContextVar; }
+  
+  bool isNotNullConstant() const { return !isNone() && !isVariable(); }
 
   const char *variableName() const {
     if (isVariable())
@@ -719,12 +723,27 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   size_t size() const { return payload.seqValue.len; }
 
+  bool empty() const { return size() == 0; }
+
+  SHVar &back() {
+    assert(!empty());
+    return data()[size() - 1];
+  }
+
+  SHVar *begin() { return data(); }
+  SHVar *end() { return data() + size(); }
+
   void resize(size_t nsize) { SH_CORE::seqResize(&payload.seqValue, nsize); }
 
   void push_back(const SHVar &value) { SH_CORE::seqPush(&payload.seqValue, &value); }
   void push_back(SHVar &&value) {
     SH_CORE::seqPush(&payload.seqValue, &value);
     value.valueType = SHType::None;
+  }
+
+  template <typename... TArgs> SHVar &emplace_back(TArgs... args) {
+    push_back(SHVar{args...});
+    return back();
   }
 
   void clear() { SH_CORE::seqResize(&payload.seqValue, 0); }
@@ -763,6 +782,9 @@ inline size_t getPixelSize(const SHVar &input) {
 }
 
 template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHInstanceData &data, TParamVar<T> &var) {
+  if (!var.isVariable())
+    return nullptr;
+
   for (const auto &share : data.shared) {
     if (!strcmp(share.name, var->payload.stringValue)) {
       return &share;

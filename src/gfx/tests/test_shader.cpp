@@ -224,14 +224,14 @@ TEST_CASE("Shader textures", "[Shader]") {
   auto positionFieldType = NumFieldType(ShaderFieldBaseType::Float32, 4);
 
   TextureBindingLayoutBuilder textureLayoutBuilder;
-  textureLayoutBuilder.addOrUpdateSlot("baseColor", TextureDimension::D2, 0);
+  textureLayoutBuilder.addOrUpdateSlot("baseColorTexture", TextureDimension::D2, 0);
 
   generator.textureBindingLayout = textureLayoutBuilder.finalize(0);
   generator.outputFields.emplace_back("color", colorFieldType);
 
   std::vector<EntryPoint> entryPoints;
   entryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment,
-                           blocks::WriteOutput("color", colorFieldType, blocks::SampleTexture("baseColor")));
+                           blocks::WriteOutput("color", colorFieldType, blocks::SampleTexture("baseColorTexture")));
   entryPoints.emplace_back("interpolate", ProgrammableGraphicsStage::Vertex, blocks::DefaultInterpolation());
 
   GeneratorOutput output = generator.build(entryPoints);

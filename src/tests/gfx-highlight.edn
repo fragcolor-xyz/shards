@@ -16,7 +16,6 @@
    0.0 >= .time
    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
    (Float3 0 0 0) (Math.Translation) >= .transform-0
-   {:Mesh .mesh :Params {:baseColor (Float4 1 0 0 0.5)}} (GFX.Drawable :Transform .transform-0) >> .drawable-0
 
    (GFX.DrawQueue) >= .editor-queue
 
@@ -35,16 +34,16 @@
    :Contents
    (->
     .time (Math.Add timestep) > .time
-    (spin-transform .time (Float3 0.0 0 0)) > .transform-0
-
+    (spin-transform .time (Float3 0.0 0 0))
+    (GFX.Drawable :Mesh .mesh :Params {:baseColor (Float4 1 0 0 0.5)}) >= .drawable-0
     .drawable-0 (GFX.Draw)
 
     .editor-queue (GFX.ClearQueue)
     (Gizmos.Context :Queue .editor-queue :View .view
-                     :Content (->
-                               .drawable-0 (Gizmos.Highlight)))
+                    :Content (->
+                              .drawable-0 (Gizmos.Highlight)))
 
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule root test-wire)
-(if (run root timestep 200) nil (throw "Root tick failed"))
+(if (run root timestep 100) nil (throw "Root tick failed"))

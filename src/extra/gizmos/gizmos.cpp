@@ -12,7 +12,7 @@ using linalg::aliases::float4x4;
 
 struct TranslationGizmo : public Base {
   static SHTypesInfo inputTypes() {
-    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable, gfx::Types::TreeDrawable}};
+    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable}};
     return inputTypes;
   }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
@@ -32,28 +32,13 @@ struct TranslationGizmo : public Base {
       inputMat = (shards::Mat4)input;
       break;
     case SHType::Object: {
-      Type objectType = Type::Object(input.payload.objectVendorId, input.payload.objectTypeId);
-      if (objectType == gfx::Types::Drawable) {
-        gfx::SHDrawable *drawable = reinterpret_cast<gfx::SHDrawable *>(input.payload.objectValue);
-        if (drawable->transformVar.isVariable()) {
-          inputMat = (shards::Mat4)drawable->transformVar.get();
-          applyOutputMat = [&](float4x4 &outMat) { cloneVar(drawable->transformVar.get(), (shards::Mat4)outMat); };
-        } else {
-          inputMat = (shards::Mat4)drawable->drawable.transform;
-          applyOutputMat = [&](float4x4 &outMat) { drawable->drawable.transform = outMat; };
-        }
-      } else if (objectType == gfx::Types::TreeDrawable) {
-        gfx::SHTreeDrawable *drawable = reinterpret_cast<gfx::SHTreeDrawable *>(input.payload.objectValue);
-        if (drawable->transformVar.isVariable()) {
-          inputMat = (shards::Mat4)drawable->transformVar.get();
-          applyOutputMat = [&](float4x4 &outMat) { cloneVar(drawable->transformVar.get(), (shards::Mat4)outMat); };
-        } else {
-          inputMat = (shards::Mat4)drawable->drawable->transform;
-          applyOutputMat = [&](float4x4 &outMat) { drawable->drawable->transform = outMat; };
-        }
-      } else {
-        throw std::invalid_argument("input type");
-      }
+      gfx::SHDrawable *drawable = reinterpret_cast<gfx::SHDrawable *>(input.payload.objectValue);
+      std::visit(
+          [&](auto &drawable) {
+            inputMat = (shards::Mat4)drawable->transform;
+            applyOutputMat = [&](float4x4 &outMat) { drawable->transform = outMat; };
+          },
+          drawable->drawable);
       break;
     }
     default:

@@ -9,6 +9,10 @@
 // Template helpers for setParam/getParam
 namespace shards {
 
+#define PARAM_EXT(_type, _name, _paramInfo)                              \
+  static inline shards::ParameterInfo _name##ParameterInfo = _paramInfo; \
+  _type _name;
+
 #define PARAM(_type, _name, _displayName, _help, ...)                                                     \
   static inline shards::ParameterInfo _name##ParameterInfo = {_displayName, SHCCSTR(_help), __VA_ARGS__}; \
   _type _name;
@@ -23,6 +27,7 @@ struct IterableParam {
 
   void (*setParam)(void *varPtr, SHVar var){};
   SHVar (*getParam)(void *varPtr){};
+  void (*collectRequirements)(const SHExposedTypesInfo &exposed, ExposedInfo &out, void *varPtr){};
   void (*warmup)(void *varPtr, SHContext *ctx){};
   void (*cleanup)(void *varPtr){};
 
@@ -34,12 +39,12 @@ struct IterableParam {
 
   template <typename T>
   static IterableParam createWithVarInterface(void *(*resolveParamInShard)(void *), const ParameterInfo *paramInfo) {
-    IterableParam result{
-        .resolveParamInShard = resolveParamInShard,
-        .paramInfo = paramInfo,
-        .setParam = [](void *varPtr, SHVar var) { *((T *)varPtr) = var; },
-        .getParam = [](void *varPtr) -> SHVar { return *((T *)varPtr); },
-    };
+    IterableParam result{.resolveParamInShard = resolveParamInShard,
+                         .paramInfo = paramInfo,
+                         .setParam = [](void *varPtr, SHVar var) { *((T *)varPtr) = var; },
+                         .getParam = [](void *varPtr) -> SHVar { return *((T *)varPtr); },
+                         .collectRequirements = [](const SHExposedTypesInfo &exposed, ExposedInfo &out,
+                                                   void *varPtr) { collectRequiredVariables(exposed, out, *((T *)varPtr)); }};
 
     if constexpr (has_warmup<T>::value) {
       result.warmup = [](void *varPtr, SHContext *ctx) { ((T *)varPtr)->warmup(ctx); };
@@ -93,6 +98,20 @@ struct IterableParam {
       return result;                                                                    \
     }();                                                                                \
     return result;                                                                      \
+  }
+
+#define PARAM_REQUIRED_VARIABLES() \
+  ExposedInfo _requiredVariables;  \
+  SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
+
+// Implements collection of required variables
+#define PARAM_COMPOSE_REQUIRED_VARIABLES(__data)                                                             \
+  {                                                                                                          \
+    size_t numParams;                                                                                        \
+    const shards::IterableParam *params = getIterableParams(numParams);                                      \
+    _requiredVariables.clear();                                                                              \
+    for (size_t i = 0; i < numParams; i++)                                                                   \
+      params[i].collectRequirements(__data.shared, _requiredVariables, params[i].resolveParamInShard(this)); \
   }
 
 // Implements setParam()/getParam()

@@ -81,7 +81,7 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
                   }(),
               },
           .parameters{
-              .textures = {{"baseColor", TextureParameter(rt->getAttachment("color"))}},
+              .textures = {{"baseColorTexture", TextureParameter(rt->getAttachment("color"))}},
           },
           .output = makeRenderStepOutput(steps::getDefaultColorOutput()),
           .overlay = true,

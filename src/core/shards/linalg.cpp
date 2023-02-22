@@ -372,6 +372,7 @@ void registerShards() {
   REGISTER_SHARD("Math.AxisAngleZ", AxisAngleZ);
   REGISTER_SHARD("Math.DegreesToRadians", Deg2Rad);
   REGISTER_SHARD("Math.RadiansToDegrees", Rad2Deg);
+  REGISTER_SHARD("Math.MatIdentity", MatIdentity);
 }
 
 }; // namespace LinAlg

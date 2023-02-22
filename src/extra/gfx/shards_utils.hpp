@@ -2,6 +2,7 @@
 #define AD2CA4AE_4D00_49A0_8DD6_323B82813690
 
 #include <foundation.hpp>
+#include <utility.hpp>
 #include <gfx/error_utils.hpp>
 #include <gfx/linalg.hpp>
 #include <gfx/fwd.hpp>
@@ -51,33 +52,6 @@ inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatur
     auto &elem = input.payload.seqValue.elements[i];
     FeaturePtr *ptr = varAsObjectChecked<FeaturePtr>(elem, Types::Feature);
     outFeatures.push_back(*ptr);
-  }
-}
-
-// Collects all ContextVar references
-inline void requireReferences(const SHExposedTypesInfo &exposed, const SHVar &var, shards::ExposedInfo &out) {
-  using namespace std::literals;
-  switch (var.valueType) {
-  case SHType::ContextVar: {
-    auto sv = std::string_view(var.payload.stringValue);
-    for (const auto &entry : exposed) {
-      if (sv == entry.name) {
-        out.push_back(SHExposedTypeInfo{
-            .name = var.payload.stringValue,
-            .exposedType = entry.exposedType,
-        });
-        break;
-      }
-    }
-  } break;
-  case SHType::Seq:
-    shards::ForEach(var.payload.seqValue, [&](const SHVar &v) { requireReferences(exposed, v, out); });
-    break;
-  case SHType::Table:
-    shards::ForEach(var.payload.tableValue, [&](const char *key, const SHVar &v) { requireReferences(exposed, v, out); });
-    break;
-  default:
-    break;
   }
 }
 } // namespace gfx
