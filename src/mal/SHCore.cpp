@@ -1491,9 +1491,9 @@ SHVar shards::EdnEval::activate(SHContext *context, const SHVar &input) {
 
   auto p = prefix.get();
   if (p.valueType == SHType::String) {
-    env->setPrefix(p.payload.stringValue);
+    malEnv::setPrefix(p.payload.stringValue);
   }
-  DEFER(env->unsetPrefix());
+  DEFER(malEnv::unsetPrefix());
 
   try {
     auto malRes = EVAL(READ(input.payload.stringValue), env);
@@ -2506,6 +2506,13 @@ SHARDS_API __cdecl void *shLispCreateSub(void *parent) {
   assert(parent != nullptr);
   auto env = new malEnvPtr(new malEnv(*reinterpret_cast<malEnvPtr *>(parent)));
   return (void *)env;
+}
+
+SHARDS_API __cdecl void shLispSetPrefix(const char *envNamespace) {
+  if(envNamespace)
+    malEnv::setPrefix(envNamespace);
+  else
+    malEnv::unsetPrefix();
 }
 
 SHARDS_API __cdecl void shLispDestroy(void *env) {

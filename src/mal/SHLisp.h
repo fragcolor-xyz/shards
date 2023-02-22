@@ -6,6 +6,7 @@
 extern "C" {
 SHARDS_API __cdecl void *shLispCreate(const char *path);
 SHARDS_API __cdecl void *shLispCreateSub(void *parent);
+SHARDS_API __cdecl void *shLispSetPrefix(const char *envNamespace);
 SHARDS_API __cdecl void shLispDestroy(void *env);
 SHARDS_API __cdecl SHBool shLispEval(void *env, const char *str, SHVar *output = nullptr);
 SHARDS_API __cdecl SHBool shLispAddToEnv(void *env, const char *str, SHVar input, bool reference);

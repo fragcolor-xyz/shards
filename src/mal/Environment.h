@@ -22,8 +22,8 @@ public:
   malValuePtr set(const MalString &symbol, malValuePtr value);
   malEnvPtr getRoot();
 
-  void setPrefix(const MalString &prefix) { m_prefix = prefix; }
-  void unsetPrefix() { m_prefix.clear(); }
+  static void setPrefix(const MalString &prefix);
+  static void unsetPrefix();
 
   // Adds a tacking dependency to a loaded file
   void trackDependency(const char *path);
@@ -34,7 +34,6 @@ public:
 
 private:
   typedef std::map<MalString, malValuePtr> Map;
-  MalString m_prefix;
   Map m_map;
   malEnvPtr m_outer;
 
