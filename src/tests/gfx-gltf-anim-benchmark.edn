@@ -23,10 +23,9 @@
                               :Action (->
                                        (Count .animation-names) >= .num-animations
                                        (Math.Inc .animation-index)
-                                       .animation-index (Math.Mod .num-animations) > .animation-index
-                                       ))
+                                       .animation-index (Math.Mod .num-animations) > .animation-index))
              (Animation.Play .animation);
-             )) (GFX.Draw .queue))
+             ))(GFX.Draw .queue))
 
 (defwire spawn-benchmark
   (Log "Spawning models")
@@ -78,13 +77,13 @@
 
    (Math.MatIdentity) (GFX.glTF :Path "data/mascot.glb") = .gltf-template
 
-  ;; Render steps
+   ;; Render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
    (lighting-feature) >> .features
    {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
 
-  ;; Create view
+   ;; Create view
    (get-view-transform 0.0) >= .view-transform
    (GFX.View :View .view-transform) >= .view)
 
