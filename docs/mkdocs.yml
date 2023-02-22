@@ -1,8 +1,8 @@
 edit_uri: ''
 repo_url: https://github.com/fragcolor-xyz/shards/
-site_name: Fragcolor documentation
-site_url: https://docs.fragcolor.xyz
-copyright: Copyright © 2021 Fragcolor Pte. Ltd.
+site_name: Fragnova documentation
+site_url: https://docs.fragnova.com
+copyright: Copyright © 2023 Fragnova Foundation
 extra:
   generator: false
   social:
@@ -10,17 +10,17 @@ extra:
       link: https://github.com/fragcolor-xyz
       name: Fragcolor is on GitHub
     - icon: fontawesome/brands/discord
-      link: https://discord.gg/c7mjxvYqd3
+      link: https://discord.fragnova.com/
       name: Join us on Discord
     - icon: fontawesome/brands/twitter
-      link: https://twitter.com/fragcolor
+      link: https://twitter.com/fragnova
       name: Follow us on Twitter
-    # - icon: fontawesome/brands/facebook
-    #   link: https://www.facebook.com/fragcolor/
-    #   name: Follow us on Facebook
-    - icon: fontawesome/brands/linkedin-in
-      link: https://www.linkedin.com/company/fragcolor/
-      name: Company profile on LinkedIn
+    - icon: fontawesome/brands/telegram
+      link: https://t.me/fragnova
+      name: Follow us on Telegram
+    - icon: fontawesome/brands/medium
+      link: https://medium.com/@fragnova
+      name: Read our articles
 markdown_extensions:
   - admonition
   - attr_list
@@ -56,22 +56,18 @@ theme:
     - search.suggest
   font:
     code: Fira Code
-    text: Montserrat
+    text: Hind
   language: custom
   logo: assets/images/logo.svg
   favicon: assets/images/favicon.svg
   palette:
     - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: purple
-      accent: purple
+      scheme: fragnova-light
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: teal
-      accent: teal
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode

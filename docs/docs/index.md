@@ -5,6 +5,10 @@ license: CC-BY-SA-4.0
 
 # Home
 
+<figure markdown>
+  ![](assets/HomePageLogo.png)
+</figure>
+
 Welcome to Fragcolor documentation!
 
 These documents will help you understand, use, and contribute to Fragcolor technologies.
