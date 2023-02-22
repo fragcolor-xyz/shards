@@ -7,6 +7,11 @@
 #include <boost/filesystem.hpp>
 #include <algorithm>
 
+std::string &thPrefix() {
+  static thread_local std::string prefix;
+  return prefix;
+}
+
 malEnv::malEnv(malEnvPtr outer) : m_outer(outer) { TRACE_ENV("Creating malEnv %p, outer=%p\n", this, m_outer.ptr()); }
 
 malEnv::malEnv(malEnvPtr outer, const StringVec &bindings, malValueIter argsBegin, malValueIter argsEnd) : m_outer(outer) {
@@ -39,14 +44,14 @@ malEnvPtr malEnv::find(const MalString &symbol) {
 }
 
 malValuePtr malEnv::get(const MalString &symbol) {
-  auto name = m_prefix.empty() ? symbol : (symbol.find("/") != MalString::npos ? symbol : m_prefix + "/" + symbol);
+  auto name = thPrefix().empty() ? symbol : (symbol.find("/") != MalString::npos ? symbol : thPrefix() + "/" + symbol);
   for (malEnvPtr env = this; env; env = env->m_outer) {
     auto it = env->m_map.find(name);
     if (it != env->m_map.end()) {
       return it->second;
     }
   }
-  if (!m_prefix.empty()) {
+  if (!thPrefix().empty()) {
     // well basically if prefix existed we wanna still run the search without it
     for (malEnvPtr env = this; env; env = env->m_outer) {
       auto it = env->m_map.find(symbol);
@@ -59,7 +64,7 @@ malValuePtr malEnv::get(const MalString &symbol) {
 }
 
 malValuePtr malEnv::set(const MalString &symbol, malValuePtr value) {
-  auto name = m_prefix.empty() ? symbol : (symbol.find("/") != MalString::npos ? symbol : m_prefix + "/" + symbol);
+  auto name = thPrefix().empty() ? symbol : (symbol.find("/") != MalString::npos ? symbol : thPrefix() + "/" + symbol);
   m_map[name] = value;
   return value;
 }
@@ -86,3 +91,7 @@ void malEnv::trackDependency(const char *path) {
   if (m_outer)
     m_outer->trackDependency(path);
 }
+
+void malEnv::setPrefix(const MalString &prefix) { thPrefix() = prefix; }
+
+void malEnv::unsetPrefix() { thPrefix().clear(); }
