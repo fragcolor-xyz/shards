@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
-use crate::core::cloneVar;
 use crate::core::registerShard;
 use crate::core::run_blocking;
 use crate::core::BlockingShard;
@@ -100,13 +99,13 @@ impl Shard for FileDialog {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    self._activate(context, input)
+    Ok(run_blocking(self, context, input))
   }
 }
 
-impl FileDialog {
+impl BlockingShard for FileDialog {
   #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-  fn _activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     let path = if self.folder.get().try_into()? {
       rfd::FileDialog::new().pick_folder()
     } else {
@@ -124,7 +123,7 @@ impl FileDialog {
   }
 
   #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-  fn _activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     Ok(Var::default())
   }
 }
