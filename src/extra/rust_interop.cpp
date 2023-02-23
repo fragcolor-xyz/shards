@@ -14,7 +14,7 @@ const SHEnumInfo *util_findEnumInfo(int32_t vendorId, int32_t typeId) { return s
 
 const SHObjectInfo *util_findObjectInfo(int32_t vendorId, int32_t typeId) { return shards::findObjectInfo(vendorId, typeId); }
 
-SHString const util_type2Name(SHType type) { return type2Name_raw(type); }
+SHString util_type2Name(SHType type) { return type2Name_raw(type); }
 
 SHTypeInfo *gfx_getGraphicsContextType() {
   static SHTypeInfo type = gfx::GraphicsContext::Type;
