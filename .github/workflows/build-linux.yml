@@ -82,7 +82,7 @@ jobs:
           cd build
 
           if [ "${{ steps.setup.outputs.build-type }}" == "Debug" ]; then
-            cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DTRACY_ENABLE=ON ..
+            cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
           else
             cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
           fi
