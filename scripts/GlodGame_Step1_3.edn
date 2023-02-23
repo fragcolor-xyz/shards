@@ -1,0 +1,100 @@
+(defshards LoadTexture [name]
+  (LoadImage name)
+  (GFX.Texture))
+
+(defshards initialize-character []
+  (LoadTexture "GlodImages/Character1.png") = .character-image
+  (LoadTexture "GlodImages/Character1_Left.png") = .character-left
+  (LoadTexture "GlodImages/Character1_Right.png") = .character-right
+  (LoadTexture "GlodImages/Character1_Jumping.png") = .character-jumping
+
+  0 >= .character-state
+
+  ;; ---------- Character Idle Array (Facing Left) ----------
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png") >> .idle-left-image-array
+
+  0 >= .idle-image-index
+  (Count .idle-left-image-array) = .idle-image-index-max
+  0.08 = .idle-animation-speed) ;; Reduce number to increase animation speed
+
+;; --------- Idle Animation Loop ---------
+(defloop idle-animation
+  .idle-image-index (Math.Add 1)
+  > .idle-image-index
+  (When :Predicate (IsMoreEqual .idle-image-index-max)
+        :Action (-> 0 > .idle-image-index))
+  (Pause .idle-animation-speed))
+
+;; ------- Button Inputs ----------
+(defshards button-inputs []
+  (Inputs.KeyDown
+   :Key "left"
+   :Action (->
+            (Msg "left")
+            1 > .character-state))
+
+  (Inputs.KeyDown
+   :Key "right"
+   :Action (->
+            (Msg "right")
+            2 > .character-state))
+
+  (Inputs.KeyDown
+   :Key "up"
+   :Action (->
+            (Msg "up")
+            3 > .character-state))
+
+  (Inputs.KeyUp
+   :Key "left"
+   :Action (->
+            0 > .character-state))
+
+  (Inputs.KeyUp
+   :Key "right"
+   :Action (->
+            0 > .character-state)))
+
+;;---------- main-wire ------------
+(defloop main-wire
+  (Setup
+   (initialize-character))
+
+  (Step idle-animation)
+
+  (GFX.MainWindow
+   :Title "MainWindow" :Width 1920 :Height 1080
+   :Contents
+   (-> (Setup
+        (GFX.DrawQueue) >= .ui-draw-queue
+        (GFX.UIPass .ui-draw-queue) >> .render-steps)
+       .ui-draw-queue (GFX.ClearQueue)
+
+       (UI
+        .ui-draw-queue
+        (->
+         (UI.Area :Position (float2 0 0)
+                  :Anchor Anchor.Center
+                  :Contents
+                  (->
+                   .character-state
+                   (Match [0 (-> .idle-left-image-array (Take .idle-image-index) (UI.Image :Scale (float2 0.2)))
+                           1 (-> .character-left (UI.Image :Scale (float2 0.2)))
+                           2 (-> .character-right (UI.Image :Scale (float2 0.2)))
+                           3 (-> .character-jumping (UI.Image :Scale (float2 0.2)))]
+                          :Passthrough false)))))
+
+       (button-inputs)
+
+       (GFX.Render :Steps .render-steps))))
+
+
+(defmesh main)
+(schedule main main-wire)
+(run main (/ 1.0 60))
