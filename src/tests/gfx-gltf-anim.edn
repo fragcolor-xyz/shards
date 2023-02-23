@@ -15,7 +15,7 @@
    (Clear .animation-names))
 
   .position (Math.Translation)
-  (GFX.glTF :Path "data/mascot1.gltf"
+  (GFX.glTF :Path "data/mascot.glb"
             :AnimationController
             (->
              = .animations
