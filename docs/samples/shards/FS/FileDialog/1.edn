@@ -2,6 +2,10 @@
 (FS.FileDialog)
 (Log "file path")
 
+; pick only .edn and .log files
+(FS.FileDialog :Filters ["edn" "log"])
+(Log "file path")
+
 ; pick any folder
 (FS.FileDialog :Folder true)
 (Log "folder path")
