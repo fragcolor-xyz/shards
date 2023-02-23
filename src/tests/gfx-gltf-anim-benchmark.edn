@@ -98,4 +98,4 @@
 
     (GFX.Render :Steps .render-steps :View .view))))
 (schedule root test-basic-anim)
-(if (run root timestep) nil (throw "Root tick failed"))
+(if (run root timestep 400) nil (throw "Root tick failed"))
