@@ -17,6 +17,7 @@ use crate::types::Var;
 use crate::types::BOOL_VAR_OR_NONE_SLICE;
 use crate::types::NONE_TYPES;
 use crate::types::STRING_TYPES;
+use crate::types::STRING_VAR_OR_NONE_SLICE;
 
 lazy_static! {
   pub static ref STRINGS_VAR_OR_NONE_TYPES: Types = vec![
@@ -37,12 +38,19 @@ lazy_static! {
       BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
+    (
+      cstr!("CurrentDir"),
+      shccstr!("Set the current directory"),
+      STRING_VAR_OR_NONE_SLICE,
+    )
+      .into(),
   ];
 }
 
 struct FileDialog {
   filters: ParamVar,
   folder: ParamVar,
+  current_dir: ParamVar,
   output: ClonedVar,
 }
 
@@ -51,6 +59,7 @@ impl Default for FileDialog {
     Self {
       filters: ParamVar::default(),
       folder: ParamVar::new(false.into()),
+      current_dir: ParamVar::default(),
       output: ClonedVar::default(),
     }
   }
@@ -91,6 +100,7 @@ impl Shard for FileDialog {
     match index {
       0 => Ok(self.filters.set_param(value)),
       1 => Ok(self.folder.set_param(value)),
+      2 => Ok(self.current_dir.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -99,6 +109,7 @@ impl Shard for FileDialog {
     match index {
       0 => self.filters.get_param(),
       1 => self.folder.get_param(),
+      2 => self.current_dir.get_param(),
       _ => Var::default(),
     }
   }
@@ -106,11 +117,13 @@ impl Shard for FileDialog {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.filters.warmup(ctx);
     self.folder.warmup(ctx);
+    self.current_dir.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.current_dir.cleanup();
     self.folder.cleanup();
     self.filters.cleanup();
 
@@ -133,6 +146,13 @@ impl BlockingShard for FileDialog {
       for filter in filters.iter() {
         let filter: &str = filter.try_into()?;
         dialog = dialog.add_filter(filter, &[filter]);
+      }
+    }
+    let current_dir = self.current_dir.get();
+    if !current_dir.is_none() {
+      let cd: &str = current_dir.try_into()?;
+      if let Ok(start_path) = std::path::PathBuf::from(cd).canonicalize() {
+        dialog = dialog.set_directory(start_path);
       }
     }
     let path = if folder {
