@@ -1,9 +1,5 @@
 (defshards innitialize-character []
-  (LoadImage "GlodImages/Character1.png") = .character-image
-  (LoadImage "GlodImages/Character1_Left.png") = .character-left
-  (LoadImage "GlodImages/Character1_Right.png") = .character-right
-  (LoadImage "GlodImages/Character1_Jumping.png") = .character-jumping
-  0 >= character-state)
+  (LoadImage "GlodImages/Character1.png") = .character-image)
 
 (defshards LoadTexture [name]
   (LoadImage name)
@@ -55,16 +51,7 @@
 
        (UI
         .ui-draw-queue
-        (->
-         (UI.Area :Position (float2 0 0)
-                  :Anchor Anchor.Center
-                  :Contents (->
-                             LoadTexture .character-image (UI.Image :Scale (float2 0.2))
-                             LoadTexture .character-left (UI.Image :Scale (float2 0.2))
-                             LoadTexture .character-right (UI.Image :Scale (float2 0.2))
-                             LoadTexture .character-jumping (UI.Image :Scale (float2 0.2))))))
-       
-       (button-inputs)
+        (->))
 
        (GFX.Render :Steps .render-steps))))
 
