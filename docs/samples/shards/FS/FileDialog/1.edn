@@ -1,0 +1,7 @@
+; pick any file
+(FS.FileDialog)
+(Log "file path")
+
+; pick any folder
+(FS.FileDialog :Folder true)
+(Log "folder path")
