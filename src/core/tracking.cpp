@@ -1,6 +1,10 @@
 #include "tracking.hpp"
 #include "shards.h"
+#include "spdlog/spdlog.h"
+#include <client/TracyCallstack.hpp>
+#include <common/TracyAlloc.hpp>
 #include <mutex>
+#include <stdexcept>
 #include <tracy/Tracy.hpp>
 #include <tuple>
 #include <type_traits>
@@ -22,6 +26,14 @@ template <template <typename...> typename T> struct WithTrackableTypes {
 using Item = WithTrackableTypes<std::variant>;
 using MultiRegistry = WithTrackableTypes<IntoRegistry_t>::type;
 
+template <typename T> struct VirtualAllocationName {
+  static const std::string name;
+  static const char *get() { return name.c_str(); }
+};
+template <typename T> const std::string VirtualAllocationName<T>::name = std::string(NAMEOF_SHORT_TYPE(T)) + " count";
+
+static bool shuttingDown{};
+
 struct Tracker {
   struct TrackedObject {};
   MultiRegistry registries;
@@ -31,35 +43,84 @@ struct Tracker {
     uint32_t length;
   };
   std::unordered_map<void *, TrackedArray> arraysRegistry;
-  bool tracyInitialized{};
 
   std::mutex arraysLock;
   std::mutex registryLock;
 
+  std::mutex allocatedLock;
+  std::unordered_map<void *, void *> allocated;
+
   static constexpr int CallStackDepth = 16;
 
-  ALWAYS_INLINE void ensureTracyInit() {
-    if (!tracyInitialized) {
-      gfxTracyInit();
-      tracyInitialized = true;
+  Tracker() {
+    gfxTracyInit();
+    atexit([]() { shuttingDown = true; });
+  }
+
+#if defined(SHARDS_TRACK_MATCHING_FREE_ALLOC) && defined(TRACY_HAS_CALLSTACK)
+  void dumpCallstack(void *callstack) {
+    auto data = (uintptr_t *)callstack;
+    const auto sz = *data++;
+    uintptr_t i;
+    for (i = 0; i < sz; i++) {
+      const char *v = tracy::DecodeCallstackPtrFast(data[i]);
+      SPDLOG_CRITICAL(" {}", v);
     }
   }
 
-  Tracker() { ensureTracyInit(); }
+  void debugCheckAlloc(void *ptr) {
+    allocatedLock.lock();
+    auto it = allocated.find(ptr);
+    if (it != allocated.end()) {
+      dumpCallstack(it->second);
+      throw std::logic_error("");
+    }
+    allocated.emplace(ptr, tracy::Callstack(32));
+    allocatedLock.unlock();
+  }
+
+  void debugCheckDealloc(void *ptr) {
+    allocatedLock.lock();
+    auto it = allocated.find(ptr);
+    if (it == allocated.end()) {
+      dumpCallstack(it->second);
+      throw std::logic_error("");
+    }
+    allocated.erase(it);
+    allocatedLock.unlock();
+  }
+#else
+  ALWAYS_INLINE void debugCheckAlloc(void *) {}
+  ALWAYS_INLINE void debugCheckDealloc(void *) {}
+#endif
 
   template <typename T> void track(T *item) {
+    debugCheckAlloc(item);
+
     registryLock.lock();
-    std::get<Registry<T>>(registries).emplace(item, uint8_t{});
+    auto &reg = std::get<Registry<T>>(registries);
+    reg.emplace(item, uint8_t{});
     registryLock.unlock();
+
+    tracy::Profiler::MemAllocCallstackNamed(item, 16, CallStackDepth, false, VirtualAllocationName<T>::get());
   }
-  
+
   template <typename T> void untrack(T *item) {
+    debugCheckDealloc(item);
+
     registryLock.lock();
-    std::get<Registry<T>>(registries).erase(item);
+    auto &reg = std::get<Registry<T>>(registries);
+    auto it = reg.find(item);
+    if (it != reg.end()) {
+      reg.erase(it);
+      tracy::Profiler::MemFreeCallstackNamed(item, CallStackDepth, false, VirtualAllocationName<T>::get());
+    }
     registryLock.unlock();
   }
 
   void trackArray(const TypeInfo &ti, void *data, size_t length) {
+    debugCheckAlloc(data);
+
     arraysLock.lock();
     auto &entry = arraysRegistry[data];
     arraysLock.unlock();
@@ -69,20 +130,15 @@ struct Tracker {
   }
 
   void untrackArray(const TypeInfo &ti, void *data) {
+    debugCheckDealloc(data);
+
     arraysLock.lock();
-    arraysRegistry.erase(data);
+    auto it = arraysRegistry.find(data);
+    if (it != arraysRegistry.end()) {
+      arraysRegistry.erase(it);
+      tracy::Profiler::MemFreeCallstackNamed(data, CallStackDepth, false, ti.name.c_str());
+    }
     arraysLock.unlock();
-    tracy::Profiler::MemFreeCallstackNamed(data, CallStackDepth, false, ti.name.c_str());
-  }
-
-  void plotDataPoints() {
-    auto &tables = std::get<Registry<SHTableImpl>>(registries);
-    auto &sets = std::get<Registry<SHSetImpl>>(registries);
-    auto &wires = std::get<Registry<SHWire>>(registries);
-
-    TracyPlot("SHTables", int64_t(tables.size()));
-    TracyPlot("SHSets", int64_t(sets.size()));
-    TracyPlot("SHWires", int64_t(wires.size()));
   }
 
   static Tracker &get() {
@@ -91,13 +147,24 @@ struct Tracker {
   }
 };
 
-#define SHARDS_IMPL_TRACKING(__type)                 \
-  void track(__type *v) { Tracker::get().track(v); } \
-  void untrack(__type *v) { Tracker::get().untrack(v); }
+#define SHARDS_IMPL_TRACKING(__type) \
+  void track(__type *v) {            \
+    if (!shuttingDown)               \
+      Tracker::get().track(v);       \
+  }                                  \
+  void untrack(__type *v) {          \
+    if (!shuttingDown)               \
+      Tracker::get().untrack(v);     \
+  }
 SHARDS_IMPL_TRACKING(SHSetImpl)
 SHARDS_IMPL_TRACKING(SHTableImpl)
 SHARDS_IMPL_TRACKING(SHWire)
-void trackArray(const TypeInfo &ti, void *data, size_t length) { Tracker::get().trackArray(ti, data, length); }
-void untrackArray(const TypeInfo &ti, void *data) { Tracker::get().untrackArray(ti, data); }
-void plotDataPoints() { Tracker::get().plotDataPoints(); }
+void trackArray(const TypeInfo &ti, void *data, size_t length) {
+  if (!shuttingDown)
+    Tracker::get().trackArray(ti, data, length);
+}
+void untrackArray(const TypeInfo &ti, void *data) {
+  if (!shuttingDown)
+    Tracker::get().untrackArray(ti, data);
+}
 } // namespace shards::tracking

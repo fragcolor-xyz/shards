@@ -7,6 +7,7 @@
 #include "utility.hpp"
 #include "shards/inlined.hpp"
 #include "async.hpp"
+#include "tracking.hpp"
 #include <boost/asio/thread_pool.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/stacktrace.hpp>
@@ -916,7 +917,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
           // we need a 1:1 match in this case, fail early
           return false;
         }
-        
+
         auto missingMatches = numInputKeys;
         for (uint32_t i = 0; i < numInputKeys; i++) {
           auto inputEntryType = inputType.table.types.elements[i];
