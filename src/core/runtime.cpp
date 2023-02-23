@@ -916,7 +916,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
           // we need a 1:1 match in this case, fail early
           return false;
         }
-        
+
         auto missingMatches = numInputKeys;
         for (uint32_t i = 0; i < numInputKeys; i++) {
           auto inputEntryType = inputType.table.types.elements[i];
@@ -2615,14 +2615,13 @@ void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(err
 
 // NO NAMESPACE here!
 
-void SHWire::reset() {
+void SHWire::destroy() {
   for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
     (*it)->cleanup(*it);
   }
   for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
     decRef(*it);
   }
-  shards.clear();
 
   // find dangling variables, notice but do not destroy
   for (auto var : variables) {
@@ -2630,31 +2629,20 @@ void SHWire::reset() {
       SHLOG_ERROR("Found a dangling variable: {}, wire: {}", var.first, name);
     }
   }
-  variables.clear();
-
-  wireUsers.clear();
-  composedHash = Var::Empty;
-  inputType = SHTypeInfo();
-  outputType = {};
 
   if (composeResult) {
     shards::arrayFree(composeResult->requiredInfo);
     shards::arrayFree(composeResult->exposedInfo);
-    composeResult.reset();
   }
 
   auto n = mesh.lock();
   if (n) {
     n->visitedWires.erase(this);
   }
-  mesh.reset();
 
   if (stackMem) {
     ::operator delete[](stackMem, std::align_val_t{16});
-    stackMem = nullptr;
   }
-
-  resumer = nullptr;
 }
 
 void SHWire::warmup(SHContext *context) {
