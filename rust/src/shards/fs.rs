@@ -146,8 +146,7 @@ impl BlockingShard for FileDialog {
       self.output = output.as_ref().into();
       Ok(self.output.0)
     } else {
-      // FIXME should we return an empty string instead?
-      Ok(Var::default())
+      Err("Operation was cancelled")
     }
   }
 
