@@ -5,9 +5,10 @@
   15.0 >= .inventory-card-space
   (float2 0.6) >= .inventory-hand-card-size
   (LoadImage "Images/Map1.png") = .map1
-  (LoadImage "Images/Glod2.png") = .character)
+  (LoadImage "Images/Glod2.png") = .character
+  (LoadImage "Images/Slime.png") = .monster1)
 
-(defshards initialize-game-elements[]
+(defshards initialize-game-elements []
   1 >= .level
   30 >= .health
   0 >= .experience
@@ -18,13 +19,256 @@
   5 >= .magic
   5 >= .mdefense)
 
+;;------------ Initialize Deck -------------
+(defshards initialize-deck []
+  ;; 0 = empty card
+  ;; 1 = attack
+  ;; 2 = m.attack
+  ;; 3 = monster
+  ;; 4 = jobs
+  ;; 5 = treasure
+  (LoadImage "Images/Cards/card-empty.png") >> .beginner-deck-cards
+  (LoadImage "Images/Cards/card-attack.png") >> .beginner-deck-cards
+  (LoadImage "Images/Cards/card-mattack.png") >> .beginner-deck-cards
+  (LoadImage "Images/Cards/card-monster.png") >> .beginner-deck-cards
+  (LoadImage "Images/Cards/card-knight.png") >> .beginner-deck-cards
+  (LoadImage "Images/Cards/card-treasure.png") >> .beginner-deck-cards
+
+  [] >= .beginner-deck
+
+  ;; attack cards
+  (Repeat
+   (-> 1 >> .beginner-deck)
+   :Times 14)
+
+  ;; m.attack cards
+  (Repeat
+   (-> 2 >> .beginner-deck)
+   :Times 14)
+
+  ;; monster cards
+  (Repeat
+   (-> 3 >> .beginner-deck)
+   :Times 10)
+
+  ;; job cards
+  (Repeat
+   (-> 4 >> .beginner-deck)
+   :Times 6)
+
+  ;; treasure cards
+  (Repeat
+   (-> 5 >> .beginner-deck)
+   :Times 11)
+
+  .beginner-deck
+  (Log)
+
+  (Count .beginner-deck)
+  >= .beginner-deck-length)
+
+(defshards shuffle-deck []
+  (Count .beginner-deck) (Math.Subtract 1) >= .deck-index
+  (Log "Deck Index: ")
+
+  (Repeat
+   (-> (RandomInt :Max .deck-index) >= .random-index ;; generates a random index number
+       .beginner-deck
+       (Take .random-index) >= .new-number ;; from that random index, take the element
+       .beginner-deck
+       (Take .deck-index) >= .old-number ;; take the element from the end of the sequence
+
+       .beginner-deck
+       [.random-index .old-number] (Assoc .beginner-deck) ;; takes the old number from the end of the sequence and puts it into the random index
+       .beginner-deck
+       [.deck-index .new-number] (Assoc .beginner-deck) ;; takes the new number and puts it into the end of the sequence, basicall swaps their positions
+
+       (Math.Dec .deck-index) ;; moves down the deck
+       )
+   :Forever true
+   :Until (-> .deck-index (Is 0)))
+
+  .beginner-deck
+  (Log "New Beginner Deck: ")
+
+  .beginner-deck (Take 0) (ToInt) >= .card1
+  .beginner-deck (Take 1) (ToInt) >= .card2
+  .beginner-deck (Take 2) (ToInt) >= .card3
+  .beginner-deck (Take 3) (ToInt) >= .card4
+  .beginner-deck (Take 4) (ToInt) >= .card5)
+
+(defshards initialize-inventory []
+  [] >= .inventory
+  0 >= .inventory1
+  0 >= .inventory2
+  0 >= .inventory3
+  0 >= .inventory4
+  0 >= .inventory5
+  0 >= .inventory6
+  0 >= .inventory7)
+
+;; ----------------- Card Draw System ------------------
+(defshards draw-card [card-to-add]
+  (Count .inventory)
+  (When :Predicate (IsLessEqual 7)
+        :Action (->
+                 ;; if number of cards in deck is  more than 0, draw cards
+                 (Count .beginner-deck)
+                 (If :Predicate (IsMore 0)
+                     :Then (->
+                            card-to-add
+                            (If :Predicate (Is 3)
+                                :Then (->
+                                       (Log "Monster Card"))
+                                :Else (->
+                                       card-to-add >> .inventory
+                                       (Count .inventory)
+                                       (Match [1 (-> .inventory (Take 0) (ToInt) >= .inventory1)
+                                               2 (-> .inventory (Take 1) (ToInt) >= .inventory2)
+                                               3 (-> .inventory (Take 2) (ToInt) >= .inventory3)
+                                               4 (-> .inventory (Take 3) (ToInt) >= .inventory4)
+                                               5 (-> .inventory (Take 4) (ToInt) >= .inventory5)
+                                               6 (-> .inventory (Take 5) (ToInt) >= .inventory6)
+                                               7 (-> .inventory (Take 6) (ToInt) >= .inventory7)
+                                               8 (->
+                                                  .inventory
+                                                  (Get .inventory) (Log)
+                                                  (PopFront :Name .inventory) (Log)
+                                                  (Get .inventory) (Log)
+                                                  (Count .inventory)
+                                                  .inventory (Take 0) (ToInt) >= .inventory1
+                                                  .inventory (Take 1) (ToInt) >= .inventory2
+                                                  .inventory (Take 2) (ToInt) >= .inventory3
+                                                  .inventory (Take 3) (ToInt) >= .inventory4
+                                                  .inventory (Take 4) (ToInt) >= .inventory5
+                                                  .inventory (Take 5) (ToInt) >= .inventory6
+                                                  .inventory (Take 6) (ToInt) >= .inventory7)
+                                               nil (-> (Log "Exceeded"))]
+                                              :Passthrough false)
+                            ;;only discard cards that are non monster cards
+                                       (discard-non-monster-card)
+                            ;; Show empty cards in the hand when deck has lesser than 5 cards
+                                       (Count .beginner-deck)
+                                       (If :Predicate (IsMore 4)
+                                           :Then (->
+                                                  .beginner-deck (Take 0) (ToInt) >= .card1
+                                                  .beginner-deck (Take 1) (ToInt) >= .card2
+                                                  .beginner-deck (Take 2) (ToInt) >= .card3
+                                                  .beginner-deck (Take 3) (ToInt) >= .card4
+                                                  .beginner-deck (Take 4) (ToInt) >= .card5)
+                                           :Else (->
+                                                  (Match [0 (->
+                                                             0 >= .card1
+                                                             0 >= .card2
+                                                             0 >= .card3
+                                                             0 >= .card4
+                                                             0 >= .card5)
+
+                                                          1 (->
+                                                             .beginner-deck (Take 0) (ToInt) >= .card1
+                                                             0 >= .card2
+                                                             0 >= .card3
+                                                             0 >= .card4
+                                                             0 >= .card5)
+                                                          2 (->
+                                                             .beginner-deck (Take 0) (ToInt) >= .card1
+                                                             .beginner-deck (Take 1) (ToInt) >= .card2
+                                                             0 >= .card3
+                                                             0 >= .card4
+                                                             0 >= .card5)
+                                                          3 (->
+                                                             .beginner-deck (Take 0) (ToInt) >= .card1
+                                                             .beginner-deck (Take 1) (ToInt) >= .card2
+                                                             .beginner-deck (Take 2) (ToInt) >= .card3
+                                                             0 >= .card4
+                                                             0 >= .card5)
+                                                          4 (->
+                                                             .beginner-deck (Take 0) (ToInt) >= .card1
+                                                             .beginner-deck (Take 1) (ToInt) >= .card2
+                                                             .beginner-deck (Take 2) (ToInt) >= .card3
+                                                             .beginner-deck (Take 3) (ToInt) >= .card4
+                                                             0 >= .card5)
+
+                                                          5 (->
+                                                             .beginner-deck (Take 0) (ToInt) >= .card1
+                                                             .beginner-deck (Take 1) (ToInt) >= .card2
+                                                             .beginner-deck (Take 2) (ToInt) >= .card3
+                                                             .beginner-deck (Take 3) (ToInt) >= .card4
+                                                             .beginner-deck (Take 4) (ToInt) >= .card5)])))))))
+                 .beginner-deck
+                 (Log "Current Inventory: "))))
+
+(defshards discard-non-monster-card []
+  0 >= .card-to-delete
+  .card-to-delete >> .card-to-delete-seq
+  .card-to-delete-seq
+  (Log "Delete Sequence: ")
+  .beginner-deck
+  (Slice 0 5 1)
+  >= .beginner-hand
+  (Log "Beginner Hand: ")
+
+  .beginner-hand
+  (ForEach (->
+            (If :Predicate (Is 3)
+                :Then (->
+                       (Math.Inc .card-to-delete)
+                       [0 .card-to-delete] (Assoc .card-to-delete-seq)
+                       .card-to-delete-seq
+                       (Log "Delete Sequence: ")
+                       .beginner-hand
+                       (Log "Is 3 + 1 to card-to-delete: "))
+                :Else (->
+                       (Erase .card-to-delete-seq :Name .beginner-deck)
+                       .beginner-hand
+                       (Log "Not 3: ")
+                       .beginner-deck
+                       (Log "New Deck: ")))))
+
+
+  .beginner-deck (Take 0) (ToInt) >= .card1
+  .beginner-deck (Take 1) (ToInt) >= .card2
+  .beginner-deck (Take 2) (ToInt) >= .card3
+  .beginner-deck (Take 3) (ToInt) >= .card4
+  .beginner-deck (Take 4) (ToInt) >= .card5)
+
+(defshards test3 []
+  -1 >> .card-to-delete-seq
+  .card-to-delete-seq
+  (Log "Delete Sequence: ")
+  [0 1] (Assoc .card-to-delete-seq)
+  .card-to-delete-seq
+  (Log "New Delete Sequence: "))
+
+(defshards test2 []
+  [] >= .temp-seq
+  [1 2 3 4] >= .seq
+  .beginner-deck
+  (Slice 0 5 1) >= .beginner-hand
+  (Log "Beginner Hand: ")
+  .beginner-deck
+  (Slice 5 60 1) >= .rest-of-deck
+  (Log "Rest of Deck: ")
+  (Erase [2 3] :Name .beginner-hand)
+  .beginner-hand
+  (Log "New Beginner Hand: ")
+  .rest-of-deck
+  (ForEach
+   (->
+    (Push :Name .beginner-hand)))
+  .beginner-deck
+  (Log "New Beginner Deck: "))
+
 (defloop main-loop
-  
+
   (Setup
    (initialize-cards)
    (initialize-ui-elements)
-   (initialize-game-elements))
-  
+   (initialize-game-elements)
+   (initialize-deck)
+   (shuffle-deck)
+   (initialize-inventory))
+
   (GFX.MainWindow
    :Title "MainWindow" :Width 1920 :Height 1080
    :Contents
@@ -42,187 +286,322 @@
           :Contents
           (->
            "Top Panel" (UI.Label)))
-         
-         (UI.CentralPanel
+
+         (UI.TopPanel
+          :MinSize 750.0
           :Contents
           (->
-
-           (UI.LeftPanel
-            :MinSize 250.0
-            :MaxSize 250.0
+           (UI.TopPanel
+            :MinSize 500.0
             :Contents
             (->
-             ;; -------------- Description -------------
-             (UI.TopPanel
+             (UI.LeftPanel
               :MinSize 200.0
               :Contents
               (->
-               "Description" (UI.Label)
-               (UI.Frame
-                :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
-                :FillColor (color 0 0 0 0)
-                :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+               (UI.TopPanel
+                :MinSize 200.0
                 :Contents
                 (->
-                 (UI.ScrollArea
-                  :Horizontal false
-                  :Vertical true
+                 ;;-------------- Description ----------------
+                 "Description" (UI.Label)
+                 (UI.Frame
+                  :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
+                  :FillColor (color 0 0 0 0)
+                  :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
                   :Contents
                   (->
-                   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
+                   (UI.ScrollArea
+                    :Horizontal false
+                    :Vertical true
+                    :Contents
+                    (->
+                     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
    quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum 
    dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." (UI.Label)))))))
 
-             ;; ------------- History --------------
-             (UI.BottomPanel
-              :MinSize 500.0
-              :MaxSize 500.0
-              :Contents
-              (->
-               "History" (UI.Label)
-
-               (UI.Frame
-                :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
-                :FillColor (color 0 0 0 0)
-                :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+               (UI.TopPanel
+                :MinSize 300.0
                 :Contents
                 (->
-                 (UI.ScrollArea
-                  :Horizontal false
-                  :Vertical true
+                 ;;-------------- Log ----------------
+                 "Log" (UI.Label)
+                 (UI.Frame
+                  :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
+                  :FillColor (color 0 0 0 0)
+                  :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
                   :Contents
                   (->
-                   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
-   quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum 
-   dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
+                   (UI.ScrollArea
+                    :Horizontal false
+                    :Vertical true
+                    :Contents
+                    (->
+                     "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
    quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum 
    dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." (UI.Label)))))))))
 
-           (UI.CentralPanel
-            :Contents
-            (->
-             ;; ------------- Character -------------
              (UI.LeftPanel
-              :MinSize 300.0
+              :MinSize 980.0
               :Contents
               (->
-               "Character" (UI.Label)
-               (UI.Space :Amount 10.0)
-               
-               (UI.Frame
-                :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
-                :FillColor (color 0 0 0 0)
-                :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+               (UI.LeftPanel
+                :MinSize 760.0
                 :Contents
                 (->
-                 (UI.Horizontal
-                  (->
-                   "Gold: " (UI.Label)
-                   .gold (ToString) (UI.Label)))
-                 .character (UI.Image :Scale (float2 1))
-                 (UI.Space :Amount 70.0)
-                 
-                 (UI.Columns
+                 (UI.LeftPanel
+                  :MinSize 390.0
                   :Contents
-                   [(->
-                     (UI.Horizontal
-                      (->
-                       "Attack:" (UI.Label)
-                       .attack (ToString) (UI.Label)))
+                  (->
+                   "Character" (UI.Label)
+                   (UI.Space :Amount 20.0)
 
+                   (UI.Frame
+                    :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
+                    :FillColor (color 0 0 0 0)
+                    :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+                    :Contents
+                    (->
                      (UI.Horizontal
                       (->
-                       "Defense:" (UI.Label)
-                       .defense (ToString) (UI.Label))))
-                    (-> 
-                     (UI.Horizontal
-                      (->
-                       "Magic:" (UI.Label)
-                       .magic (ToString) (UI.Label)))
-                     
-                     (UI.Horizontal
-                      (->
-                       "Defense:" (UI.Label)
-                       .mdefense (ToString) (UI.Label))))])))))
-             
-             ;; -------------- Monsters ---------------
-             (UI.RightPanel
-              :MinSize 700.0
-              :Contents
-              (->
-               "Monster"(UI.Label)))))
+                       "Gold: " (UI.Label)
+                       .gold (ToString) (UI.Label)))
+                     (UI.Space :Amount 50.0)
+                     .character (UI.Image :Scale (float2 1))
+                     (UI.Space :Amount 50.0)
 
-           (UI.RightPanel
+                     (UI.Columns
+                      :Contents
+                      [(->
+                        (UI.Horizontal
+                         (->
+                          "HP:" (UI.Label)
+                          .health (ToString) (UI.Label)))
+
+                        (UI.Horizontal
+                         (->
+                          "Lvl:" (UI.Label)
+                          .level (ToString) (UI.Label)))
+
+                        (UI.Horizontal
+                         (->
+                          "Exp:" (UI.Label)
+                          .experience (ToString) (UI.Label)
+                          "/" (UI.Label)
+                          .experience-to-level (ToString) (UI.Label))))
+                       (->
+                        (UI.Horizontal
+                         (->
+                          "Attack:" (UI.Label)
+                          .attack (ToString) (UI.Label)))
+
+                        (UI.Horizontal
+                         (->
+                          "Defense:" (UI.Label)
+                          .defense (ToString) (UI.Label)))
+
+                        (UI.Horizontal
+                         (->
+                          "Magic:" (UI.Label)
+                          .magic (ToString) (UI.Label)))
+
+                        (UI.Horizontal
+                         (->
+                          "Defense:" (UI.Label)
+                          .mdefense (ToString) (UI.Label))))])))))
+
+                 (UI.RightPanel
+                  :MinSize 390.0
+                  :Contents
+                  (->
+                   "Monster" (UI.Label)
+                   (UI.Space :Amount 20.0)
+
+                   (UI.Frame
+                    :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
+                    :FillColor (color 0 0 0 0)
+                    :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+                    :Contents
+                    (->
+                     (UI.Horizontal
+                      (->
+                       "Gold: " (UI.Label)
+                       .gold (ToString) (UI.Label)))
+                     (UI.Space :Amount 50.0)
+                     .monster1 (UI.Image :Scale (float2 1))
+                     (UI.Space :Amount 50.0)
+
+                     (UI.Columns
+                      :Contents
+                      [(->
+                        (UI.Horizontal
+                         (->
+                          "HP:" (UI.Label)
+                          .health (ToString) (UI.Label)))
+
+                        (UI.Horizontal
+                         (->
+                          "Lvl:" (UI.Label)
+                          .level (ToString) (UI.Label)))
+
+                        (UI.Horizontal
+                         (->
+                          "Exp:" (UI.Label)
+                          .experience (ToString) (UI.Label)
+                          "/" (UI.Label)
+                          .experience-to-level (ToString) (UI.Label))))
+                       (->
+                        (UI.Horizontal
+                         (->
+                          "Attack:" (UI.Label)
+                          .attack (ToString) (UI.Label)))
+
+                        (UI.Horizontal
+                         (->
+                          "Defense:" (UI.Label)
+                          .defense (ToString) (UI.Label)))
+
+                        (UI.Horizontal
+                         (->
+                          "Magic:" (UI.Label)
+                          .magic (ToString) (UI.Label)))
+
+                        (UI.Horizontal
+                         (->
+                          "Defense:" (UI.Label)
+                          .mdefense (ToString) (UI.Label))))])))))))
+
+               (UI.RightPanel
+                :MinSize 200.0
+                :Contents
+                (->
+                 (UI.TopPanel
+                  :MinSize 200.0
+                  :Contents
+                  (->
+                   "Map" (UI.Label)
+                   .map1 (UI.Image :Scale (float2 0.5))))
+
+                 (UI.TopPanel
+                  :MinSize 100.0
+                  :Contents
+                  (->
+                   "Map Description" (UI.Label)
+                   (UI.Frame
+                    :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
+                    :FillColor (color 0 0 0 0)
+                    :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
+                    :Contents
+                    (->
+                     "Path of beginnings: Weak monsters, low level weapons & beginner jobs" (UI.Label)))))))))))
+
+           (UI.BottomPanel
             :MinSize 250.0
             :Contents
             (->
-             
-             ;; ------------ Map ------------
-             (UI.TopPanel
-              :MinSize 200.0
-              :Contents
-              (->
-               "Map" (UI.Label)
-               .map1 (UI.Image :Scale (float2 0.5))))
-             
-             ;; ------------- Map Description --------------
-             (UI.BottomPanel
-              :MinSize 500.0
-              :Contents
-              (->
-               "Map Description" (UI.Label)
-               (UI.Frame
-                :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 3)
-                :FillColor (color 0 0 0 0)
-                :StrokeColor (color 125 255 0) :StrokeWidth (float 3.5)
-                :Contents
-                (->
-                 "Path of beginnings: Weak monsters, low level weapons & beginner jobs" (UI.Label)))))))))
-         
-         ;; ----------------- Bottom Panel ---------------
-         (UI.BottomPanel
-          :MinSize 170.0
-          :Contents
-          (->
-           ;; -------------- Inventory ------------------
-           (UI.LeftPanel
-            :MinSize 700.0
-            :Contents (->
-                       "Inventory" (UI.Label)
-                       (UI.Horizontal
-                        (->
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))))))
+             ;; -------------- Inventory ------------------
+             (UI.LeftPanel
+              :MinSize 700.0
+              :Contents (->
+                         "Inventory" (UI.Label)
+                         (UI.Horizontal
+                          (->
+                           .beginner-deck-cards (Take .inventory1) (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                           (UI.Space :Amount .inventory-card-space)
+                           .beginner-deck-cards (Take .inventory2) (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                           (UI.Space :Amount .inventory-card-space)
+                           .beginner-deck-cards (Take .inventory3) (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                           (UI.Space :Amount .inventory-card-space)
+                           .beginner-deck-cards (Take .inventory4) (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                           (UI.Space :Amount .inventory-card-space)
+                           .beginner-deck-cards (Take .inventory5) (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                           (UI.Space :Amount .inventory-card-space)
+                           .beginner-deck-cards (Take .inventory6) (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
+                           (UI.Space :Amount .inventory-card-space)
+                           .beginner-deck-cards (Take .inventory7) (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))))))
 
            ;; -------------- Hand --------------------
-           (UI.RightPanel
-            :MinSize 500.0
-            :Contents (->
-                       "Hand" (UI.Label)
-                       (UI.Horizontal
-                        (->
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))
-                         (UI.Space :Amount .inventory-card-space)
-                         .card-empty (UI.ImageButton :Scale .inventory-hand-card-size :Action (Msg "Clicked"))))))))
-         
-         ))
+             (UI.LeftPanel
+              :MinSize 500.0
+              :Contents (->
+                         "Hand" (UI.Label)
+                         (UI.Horizontal
+                          (->
+                           (Count .beginner-deck)
+                           (If :Predicate (IsMore 4)
+                               :Then (->
+                                      .beginner-deck-cards (Take .card1) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card1)))
+                                      (UI.Space :Amount .inventory-card-space)
+                                      .beginner-deck-cards (Take .card2) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card2)))
+                                      (UI.Space :Amount .inventory-card-space)
+                                      .beginner-deck-cards (Take .card3) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card3)))
+                                      (UI.Space :Amount .inventory-card-space)
+                                      .beginner-deck-cards (Take .card4) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card4)))
+                                      (UI.Space :Amount .inventory-card-space)
+                                      .beginner-deck-cards (Take .card5) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card5))))
+
+                               :Else (->
+                                      (Count .beginner-deck)
+                                      (Match [0 (->
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card1)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card2)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card3)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card4)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card5))))
+                                              1 (->
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card1)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card2)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card3)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card4)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card5))))
+                                              2 (->
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card1)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card2)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card3)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card4)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card5))))
+                                              3 (->
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card1)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card2)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card3)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card4)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card5))))
+                                              4 (->
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card1)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card2)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card3)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card4)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card5))))
+                                              5 (->
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card1)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card2)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card3)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card4)))
+                                                 (UI.Space :Amount .inventory-card-space)
+                                                 .beginner-deck-cards (Take 0) (UI.ImageButton :Scale .inventory-hand-card-size :Action (-> (draw-card .card5))))])))))))))))))
 
        (GFX.Render :Steps .render-steps))))
 
