@@ -299,7 +299,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     shards::tracking::untrack(this);
 #endif
 
-    reset();
+    destroy();
+
     SHLOG_TRACE("Destroying wire {}", name);
   }
 
@@ -438,7 +439,8 @@ private:
 #endif
   }
 
-  void reset();
+private:
+  void destroy();
 };
 
 struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>, std::equal_to<SHVar>,

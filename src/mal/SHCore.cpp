@@ -275,6 +275,8 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(defmacro! defpure (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
       "name)) :Pure (wireify (vector ~@shards))))))",
       env);
+  rep("(defmacro! patch (fn* [name & shards] `(do (ImplWire ~(symbol (str name)) :Pure (wireify (vector ~@shards))))))",
+      env);
   rep("(defmacro! deftrait (fn* [name & shards] `(def! ~(symbol (str name)) (hash-map ~@shards))))", env);
   rep("(defmacro! defmesh (fn* [name] `(def ~(symbol (str name)) (Mesh))))", env);
   rep("(defmacro! | (fn* [& shards] `(Sub (wireify (vector ~@shards)))))", env);
@@ -1434,6 +1436,14 @@ BUILTIN("ImplWire") {
   ARG(malSHWire, mwire);
   auto wireref = mwire->value();
   auto wire = SHWire::sharedFromRef(wireref);
+  // if the wire has already been implemented, clean it up first
+  if (wire->shards.size() > 0) {
+    wire->cleanup(true);
+    for (auto it = wire->shards.rbegin(); it != wire->shards.rend(); ++it) {
+      decRef(*it);
+    }
+    wire->shards.clear();
+  }
   while (argsBegin != argsEnd) {
     auto pbegin = argsBegin;
     auto arg = *argsBegin++;
@@ -2509,7 +2519,7 @@ SHARDS_API __cdecl void *shLispCreateSub(void *parent) {
 }
 
 SHARDS_API __cdecl void shLispSetPrefix(const char *envNamespace) {
-  if(envNamespace)
+  if (envNamespace)
     malEnv::setPrefix(envNamespace);
   else
     malEnv::unsetPrefix();
