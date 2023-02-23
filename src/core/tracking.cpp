@@ -1,5 +1,6 @@
 #include "tracking.hpp"
 #include "shards.h"
+#include <mutex>
 #include <tracy/Tracy.hpp>
 #include <tuple>
 #include <type_traits>
@@ -32,6 +33,9 @@ struct Tracker {
   std::unordered_map<void *, TrackedArray> arraysRegistry;
   bool tracyInitialized{};
 
+  std::mutex arraysLock;
+  std::mutex registryLock;
+
   static constexpr int CallStackDepth = 16;
 
   ALWAYS_INLINE void ensureTracyInit() {
@@ -43,18 +47,31 @@ struct Tracker {
 
   Tracker() { ensureTracyInit(); }
 
-  template <typename T> void track(T *item) { std::get<Registry<T>>(registries).emplace(item, uint8_t{}); }
-  template <typename T> void untrack(T *item) { std::get<Registry<T>>(registries).erase(item); }
-  void trackArray(const TypeInfo &ti, void *data, size_t length) {
+  template <typename T> void track(T *item) {
+    registryLock.lock();
+    std::get<Registry<T>>(registries).emplace(item, uint8_t{});
+    registryLock.unlock();
+  }
+  
+  template <typename T> void untrack(T *item) {
+    registryLock.lock();
+    std::get<Registry<T>>(registries).erase(item);
+    registryLock.unlock();
+  }
 
+  void trackArray(const TypeInfo &ti, void *data, size_t length) {
+    arraysLock.lock();
     auto &entry = arraysRegistry[data];
+    arraysLock.unlock();
     entry.ti = &ti;
     entry.length = length;
     tracy::Profiler::MemAllocCallstackNamed(data, length * ti.size, CallStackDepth, false, ti.name.c_str());
   }
 
   void untrackArray(const TypeInfo &ti, void *data) {
+    arraysLock.lock();
     arraysRegistry.erase(data);
+    arraysLock.unlock();
     tracy::Profiler::MemFreeCallstackNamed(data, CallStackDepth, false, ti.name.c_str());
   }
 
