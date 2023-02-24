@@ -16,21 +16,31 @@ use crate::types::OptionalString;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Seq;
+use crate::types::ShardsVar;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::STRINGS_TYPES;
+use crate::types::ANYS_TYPES;
 use crate::types::ANY_TYPES;
+use crate::types::SHARDS_OR_NONE_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;
 
 lazy_static! {
-  static ref LISTBOX_PARAMETERS: Parameters = vec![(
-    cstr!("Index"),
-    shccstr!("The index of the selected item."),
-    INT_VAR_OR_NONE_SLICE,
-  )
-    .into(),];
+  static ref LISTBOX_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Index"),
+      shccstr!("The index of the selected item."),
+      INT_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Template"),
+      shccstr!("Custom rendering"),
+      &SHARDS_OR_NONE_TYPES[..],
+    )
+      .into(),
+  ];
 }
 
 impl Default for ListBox {
@@ -41,6 +51,7 @@ impl Default for ListBox {
       parents,
       requiring: Vec::new(),
       index: ParamVar::default(),
+      template: ShardsVar::default(),
       exposing: Vec::new(),
       should_expose: false,
       tmp: 0,
@@ -72,7 +83,7 @@ impl Shard for ListBox {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &STRINGS_TYPES
+    &ANYS_TYPES
   }
 
   fn inputHelp(&mut self) -> OptionalString {
@@ -94,6 +105,7 @@ impl Shard for ListBox {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.index.set_param(value)),
+      1 => self.template.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -101,6 +113,7 @@ impl Shard for ListBox {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.index.get_param(),
+      1 => self.template.get_param(),
       _ => Var::default(),
     }
   }
@@ -131,7 +144,24 @@ impl Shard for ListBox {
       }
     }
 
-    Ok(common_type::any)
+    let input_type = data.inputType;
+    let slice = unsafe {
+      let ptr = input_type.details.seqTypes.elements;
+      std::slice::from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
+    };
+    let element_type = if !slice.is_empty() {
+      slice[0]
+    } else {
+      common_type::none
+    };
+
+    if !self.template.is_empty() {
+      let mut data = *data;
+      data.inputType = element_type;
+      self.template.compose(&data)?;
+    }
+
+    Ok(element_type)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -165,23 +195,26 @@ impl Shard for ListBox {
     self.parents.warmup(ctx);
 
     self.index.warmup(ctx);
-
     if self.should_expose {
       self.index.get_mut().valueType = common_type::int.basicType;
+    }
+
+    if !self.template.is_empty() {
+      self.template.warmup(ctx)?;
     }
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.template.cleanup();
     self.index.cleanup();
-
     self.parents.cleanup();
 
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
       let index = &mut if self.index.is_variable() {
         let index: i64 = self.index.get().try_into()?;
@@ -194,10 +227,54 @@ impl Shard for ListBox {
       let mut changed = false;
       ui.group(|ui| {
         for i in 0..seq.len() {
-          let str: &str = (&seq[i]).try_into()?;
-          if ui.selectable_label(i == *index, str.to_owned()).clicked() {
-            *index = i;
-            changed = true;
+          if self.template.is_empty() {
+            let str: &str = (&seq[i]).try_into()?;
+            if ui.selectable_label(i == *index, str.to_owned()).clicked() {
+              *index = i;
+              changed = true;
+            }
+          } else {
+            let inner_margin = egui::style::Margin::same(3.0);
+            let background_id = ui.painter().add(egui::Shape::Noop);
+            let outer_rect = ui.available_rect_before_wrap();
+            let mut inner_rect = outer_rect;
+            inner_rect.min += inner_margin.left_top();
+            inner_rect.max -= inner_margin.right_bottom();
+            // Make sure we don't shrink to the negative:
+            inner_rect.max.x = inner_rect.max.x.max(inner_rect.min.x);
+            inner_rect.max.y = inner_rect.max.y.max(inner_rect.min.y);
+
+            let mut content_ui = ui.child_ui_with_id_source(inner_rect, *ui.layout(), i);
+            util::activate_ui_contents(
+              context,
+              &seq[i],
+              &mut content_ui,
+              &mut self.parents,
+              &mut self.template,
+            )?;
+
+            let mut paint_rect = content_ui.min_rect();
+            paint_rect.min -= inner_margin.left_top();
+            paint_rect.max += inner_margin.right_bottom();
+
+            let selected = i == *index;
+            let response = ui.allocate_rect(paint_rect, egui::Sense::click());
+            let visuals = ui.style().interact_selectable(&response, selected);
+            if selected || response.hovered() || response.has_focus() {
+              let rect = paint_rect.expand(visuals.expansion);
+              let shape = egui::Shape::Rect(egui::epaint::RectShape {
+                rect,
+                rounding: visuals.rounding,
+                fill: visuals.bg_fill,
+                stroke: visuals.bg_stroke,
+              });
+              ui.painter().set(background_id, shape);
+            }
+
+            if response.clicked() {
+              *index = i;
+              changed = true;
+            }
           }
         }
         Ok::<(), &str>(())

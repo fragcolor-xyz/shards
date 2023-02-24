@@ -136,6 +136,7 @@ struct ListBox {
   parents: ParamVar,
   requiring: ExposedTypes,
   index: ParamVar,
+  template: ShardsVar,
   exposing: ExposedTypes,
   should_expose: bool,
   tmp: usize,
