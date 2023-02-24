@@ -9,7 +9,6 @@ use super::TopPanel;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
-use crate::shards::gui::BOOL_OR_NONE_SLICE;
 use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
@@ -27,6 +26,7 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
+use crate::types::BOOL_OR_NONE_SLICE;
 use crate::types::FLOAT_OR_NONE_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 

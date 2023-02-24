@@ -6,7 +6,6 @@ use super::EGUI_PLOT_UI_TYPE;
 use super::PLOT_UI_NAME;
 use super::SEQ_OF_FLOAT2_TYPES;
 use crate::shard::Shard;
-use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
 use crate::shards::gui::COLOR_VAR_OR_NONE_SLICE;
 use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shardsc::SHColor;
@@ -19,6 +18,7 @@ use crate::types::Parameters;
 use crate::types::Seq;
 use crate::types::Types;
 use crate::types::Var;
+use crate::types::BOOL_VAR_OR_NONE_SLICE;
 use crate::types::FLOAT_TYPES;
 use crate::types::STRING_OR_NONE_SLICE;
 

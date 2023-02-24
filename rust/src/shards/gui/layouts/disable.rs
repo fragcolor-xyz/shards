@@ -4,7 +4,6 @@
 use super::Disable;
 use crate::shard::Shard;
 use crate::shards::gui::util;
-use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
 use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
@@ -18,6 +17,7 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
+use crate::types::BOOL_VAR_OR_NONE_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 
 lazy_static! {
