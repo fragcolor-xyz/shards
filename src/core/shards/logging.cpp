@@ -54,10 +54,19 @@ struct Log : public LoggingBase {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto current = context->wireStack.back();
+    auto id = findId(context);
     if (_prefix.size() > 0) {
-      SHLOG_LEVEL((int)_level, "[{}] {}: {}", current->name, _prefix, input);
+      if (id != entt::null) {
+        SHLOG_LEVEL((int)_level, "[{} {}] {}: {}", current->name, id, _prefix, input);
+      } else {
+        SHLOG_LEVEL((int)_level, "[{}] {}: {}", current->name, _prefix, input);
+      }
     } else {
-      SHLOG_LEVEL((int)_level, "[{}] {}", current->name, input);
+      if (id != entt::null) {
+        SHLOG_LEVEL((int)_level, "[{} {}] {}", current->name, id, input);
+      } else {
+        SHLOG_LEVEL((int)_level, "[{}] {}", current->name, input);
+      }
     }
     return input;
   }
@@ -103,7 +112,12 @@ struct Msg : public LoggingBase {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto current = context->wireStack.back();
-    SHLOG_LEVEL((int)_level, "[{}] {}", current->name, _msg);
+    auto id = findId(context);
+    if (id != entt::null) {
+      SHLOG_LEVEL((int)_level, "[{} {}] {}: {}", current->name, id, _msg, input);
+    } else {
+      SHLOG_LEVEL((int)_level, "[{}] {}: {}", current->name, _msg, input);
+    }
     return input;
   }
 
