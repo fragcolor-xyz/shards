@@ -4,7 +4,6 @@
 #ifndef SH_UTILITY_HPP
 #define SH_UTILITY_HPP
 
-#include "foundation.hpp"
 #include "shards.hpp"
 #include <spdlog/fmt/fmt.h>
 #include <cassert>
