@@ -149,16 +149,25 @@ impl Shard for ListBox {
       let ptr = input_type.details.seqTypes.elements;
       std::slice::from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
     };
-    let element_type = if !slice.is_empty() {
-      slice[0]
-    } else {
-      common_type::none
+
+    let element_type = match slice.len() {
+      0 => common_type::none,
+      1 => slice[0],
+      _ => {
+        if slice.iter().skip(1).all(|t| *t == slice[0]) {
+          slice[0]
+        } else {
+          common_type::any
+        }
+      }
     };
 
     if !self.template.is_empty() {
       let mut data = *data;
       data.inputType = element_type;
       self.template.compose(&data)?;
+    } else if element_type.basicType != shardsc::SHType_String {
+      return Err("Input is not a sequence of strings, a template must be provided.");
     }
 
     Ok(element_type)
