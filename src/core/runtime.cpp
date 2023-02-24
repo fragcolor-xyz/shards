@@ -504,6 +504,26 @@ void callExitCallbacks() {
   }
 }
 
+entt::id_type findId(SHContext *ctx) noexcept {
+  entt::id_type id = entt::null;
+
+  // try find a wire id
+  // from top to bottom of wire stack
+  {
+    auto rit = ctx->wireStack.rbegin();
+    for (; rit != ctx->wireStack.rend(); ++rit) {
+      // prioritize local variables
+      auto wire = *rit;
+      if(wire->id != entt::null) {
+        id = wire->id;
+        break;
+      }
+    }
+  }
+
+  return id;
+}
+
 SHVar *referenceWireVariable(SHWire *wire, const char *name) {
   SHVar &v = wire->variables[name];
   v.refcount++;

@@ -143,6 +143,7 @@ void setSharedVariable(const char *name, const SHVar &value);
 void unsetSharedVariable(const char *name);
 SHVar getSharedVariable(const char *name);
 SHWireState suspend(SHContext *context, double seconds);
+entt::id_type findId(SHContext *ctx) noexcept;
 
 Shard *createShard(std::string_view name);
 void registerCoreShards();
