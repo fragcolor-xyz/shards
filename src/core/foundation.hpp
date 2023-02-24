@@ -469,12 +469,14 @@ using SHMapIt = SHMap::iterator;
 
 struct EventDispatcher {
   entt::dispatcher dispatcher;
+  std::string name;
   SHTypeInfo type;
 
   entt::dispatcher *operator->() { return &dispatcher; }
 };
 
 struct Globals {
+public:
   // sporadically used, don't abuse. And don't use in real time code.
   std::mutex GlobalMutex;
   std::unordered_map<std::string, OwnedVar> Settings;
@@ -498,7 +500,6 @@ struct Globals {
 
   std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
 
-  std::unordered_map<std::string_view, EventDispatcher> Dispatchers;
   entt::registry Registry;
 
   SHTableInterface TableInterface{
@@ -616,6 +617,7 @@ struct Globals {
 };
 
 Globals &GetGlobals();
+EventDispatcher& getEventDispatcher(const std::string& name);
 
 template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
   // safety check to make sure this is not a borrowed foreign array!

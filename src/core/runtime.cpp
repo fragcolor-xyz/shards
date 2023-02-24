@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "runtime.hpp"
+#include "foundation.hpp"
 #include "shards.h"
 #include "shards/shared.hpp"
 #include "utility.hpp"
@@ -13,12 +14,15 @@
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
+#include <mutex>
 #include <pdqsort.h>
 #include <set>
+#include <shared_mutex>
 #include <stdexcept>
 #include <string.h>
 #include <unordered_set>
 #include <log/log.hpp>
+#include <shared_mutex>
 #include <boost/atomic/atomic_ref.hpp>
 
 namespace fs = boost::filesystem;
@@ -2073,6 +2077,23 @@ endOfWire:
 Globals &GetGlobals() {
   static Globals globals;
   return globals;
+}
+
+static std::unordered_map<std::string, EventDispatcher> dispatchers;
+static std::shared_mutex mutex;
+EventDispatcher &getEventDispatcher(const std::string &name) {
+
+  std::shared_lock<decltype(mutex)> _l(mutex);
+  auto it = dispatchers.find(name);
+  if (it == dispatchers.end()) {
+    _l.unlock();
+    std::scoped_lock<decltype(mutex)> _l1(mutex);
+    auto &result = dispatchers[name];
+    result.name = name;
+    return result;
+  } else {
+    return it->second;
+  }
 }
 
 NO_INLINE void _destroyVarSlow(SHVar &var) {

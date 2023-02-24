@@ -2,6 +2,7 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 #include "channels.hpp"
+#include <shared_mutex>
 
 namespace shards {
 namespace channels {
@@ -60,7 +61,7 @@ struct Produce : public Base {
   static SHParametersInfo parameters() { return producerParams; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &vChannel = Globals::get(_name);
+    auto &vChannel = get(_name);
     switch (vChannel.index()) {
     case 0: {
       vChannel.emplace<MPMCChannel>(_noCopy);
@@ -116,7 +117,7 @@ struct Broadcast : public Base {
   static SHParametersInfo parameters() { return producerParams; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &vChannel = Globals::get(_name);
+    auto &vChannel = get(_name);
     switch (vChannel.index()) {
     case 0: {
       SHLOG_TRACE("Creating broadcast channel: {}", _name);
@@ -247,7 +248,7 @@ struct Consumers : public Base {
 
 struct Consume : public Consumers {
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &vChannel = Globals::get(_name);
+    auto &vChannel = get(_name);
     switch (vChannel.index()) {
     case 1: {
       auto &channel = std::get<MPMCChannel>(vChannel);
@@ -320,7 +321,7 @@ struct Listen : public Consumers {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &vChannel = Globals::get(_name);
+    auto &vChannel = get(_name);
     switch (vChannel.index()) {
     case 2: {
       SHLOG_TRACE("Listening broadcast channel: {}", _name);
@@ -389,7 +390,7 @@ struct Complete : public Base {
   static SHParametersInfo parameters() { return consumerParams; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &vChannel = Globals::get(_name);
+    auto &vChannel = get(_name);
     switch (vChannel.index()) {
     case 1: {
       auto &channel = std::get<MPMCChannel>(vChannel);
@@ -415,6 +416,21 @@ struct Complete : public Base {
     return input;
   }
 };
+
+Channel &get(const std::string &name) {
+  static std::unordered_map<std::string, Channel> channels;
+  static std::shared_mutex mutex;
+
+  std::shared_lock<decltype(mutex)> _l(mutex);
+  auto it = channels.find(name);
+  if (it == channels.end()) {
+    _l.unlock();
+    std::scoped_lock<decltype(mutex)> _l1(mutex);
+    return channels[name];
+  } else {
+    return it->second;
+  }
+}
 
 void registerShards() {
   REGISTER_SHARD("Produce", Produce);

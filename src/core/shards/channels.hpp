@@ -62,18 +62,8 @@ protected:
 };
 
 using Channel = std::variant<DummyChannel, MPMCChannel, BroadcastChannel>;
+Channel &get(const std::string &name);
 
-class Globals {
-private:
-  static inline std::mutex ChannelsMutex;
-  static inline std::unordered_map<std::string, Channel> Channels;
-
-public:
-  static Channel &get(const std::string &name) {
-    std::scoped_lock<std::mutex> lock(ChannelsMutex);
-    return Channels[name];
-  }
-};
 } // namespace channels
 } // namespace shards
 

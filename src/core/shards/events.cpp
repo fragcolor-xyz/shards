@@ -36,7 +36,7 @@ struct Base {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    _dispatcher = GetGlobals().Dispatchers[_eventName];
+    _dispatcher = shards::getEventDispatcher(_eventName);
     return data.inputType;
   }
 };

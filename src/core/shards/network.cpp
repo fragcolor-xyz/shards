@@ -11,7 +11,7 @@
 #include <thread>
 
 using boost::asio::ip::udp;
-
+ 
 namespace shards {
 namespace Network {
 constexpr uint32_t SocketCC = 'netS';
