@@ -4,6 +4,7 @@
 #ifndef SH_UTILITY_HPP
 #define SH_UTILITY_HPP
 
+#include "foundation.hpp"
 #include "shards.hpp"
 #include <spdlog/fmt/fmt.h>
 #include <cassert>
@@ -292,7 +293,7 @@ public:
   bool isNone() const { return _v.valueType == SHType::None; }
 
   bool isVariable() const { return _v.valueType == SHType::ContextVar; }
-  
+
   bool isNotNullConstant() const { return !isNone() && !isVariable(); }
 
   const char *variableName() const {
@@ -669,15 +670,15 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   ~TTableVar() { SH_CORE::destroyVar(*this); }
 
-  SHVar &operator[](std::string_view key) {
+  TOwnedVar<SH_CORE> &operator[](std::string_view key) {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
-    return *vp;
+    return (TOwnedVar<SH_CORE>&)*vp;
   }
 
-  SHVar &insert(std::string_view key, const SHVar &val) {
+  TOwnedVar<SH_CORE> &insert(std::string_view key, const SHVar &val) {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
     SH_CORE::cloneVar(*vp, val);
-    return *vp;
+    return (TOwnedVar<SH_CORE>&)*vp;
   }
 
   template <typename T> T &get(std::string_view key) {
@@ -716,8 +717,8 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   ~TSeqVar() { SH_CORE::destroyVar(*this); }
 
-  SHVar &operator[](int index) { return payload.seqValue.elements[index]; }
-  const SHVar &operator[](int index) const { return payload.seqValue.elements[index]; }
+  TOwnedVar<SH_CORE> &operator[](int index) { return (TOwnedVar<SH_CORE>&)payload.seqValue.elements[index]; }
+  const TOwnedVar<SH_CORE> &operator[](int index) const { return (TOwnedVar<SH_CORE>&)payload.seqValue.elements[index]; }
 
   SHVar *data() { return payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0]; }
 
@@ -725,9 +726,9 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   bool empty() const { return size() == 0; }
 
-  SHVar &back() {
+  TOwnedVar<SH_CORE> &back() {
     assert(!empty());
-    return data()[size() - 1];
+    return (TOwnedVar<SH_CORE>&)data()[size() - 1];
   }
 
   SHVar *begin() { return data(); }
@@ -735,15 +736,14 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   void resize(size_t nsize) { SH_CORE::seqResize(&payload.seqValue, nsize); }
 
-  void push_back(const SHVar &value) { SH_CORE::seqPush(&payload.seqValue, &value); }
-  void push_back(SHVar &&value) {
-    SH_CORE::seqPush(&payload.seqValue, &value);
-    value.valueType = SHType::None;
+  void push_back(const SHVar &value) {
+    resize(size() + 1);
+    cloneVar(back(), value);
   }
 
-  template <typename... TArgs> SHVar &emplace_back(TArgs... args) {
-    push_back(SHVar{args...});
-    return back();
+  TOwnedVar<SH_CORE> &emplace_back(const SHVar &value) {
+    push_back(value);
+    return (TOwnedVar<SH_CORE>&)back();
   }
 
   void clear() { SH_CORE::seqResize(&payload.seqValue, 0); }

@@ -86,8 +86,7 @@ struct Receive : Base {
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
   void onEvent(OwnedVar &event) {
-    auto e = _eventsIn.emplace_back();
-    cloneVar(e, event);
+    _eventsIn.push_back(event);
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
