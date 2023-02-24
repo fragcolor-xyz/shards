@@ -84,7 +84,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -G Ninja -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
+          cmake -G Ninja -DSKIP_HEAVY_INLINE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DTRACY_ENABLE=ON ..
           ninja shards
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
