@@ -2131,6 +2131,18 @@ struct Clear : SeqUser {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
+  SHTypeInfo compose(const SHInstanceData &data) {
+    for (auto &shared : data.shared) {
+      std::string_view vName(shared.name);
+      if (vName == _name && !shared.isMutable) {
+        SHLOG_ERROR("Count: Variable {} is not mutable.", _name);
+        throw ComposeError("Count: Variable is not mutable.");
+      }
+    }
+
+    return data.inputType;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();

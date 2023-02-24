@@ -1047,40 +1047,17 @@ struct Assoc : public VariableBase {
     return SHExposedTypesInfo(_requiredInfo);
   }
 
-  // TODO we need to evaluate deeper and figure out we don't mutate types
+  SHTypeInfo compose(const SHInstanceData &data) {
+    for (auto &shared : data.shared) {
+      std::string_view vName(shared.name);
+      if (vName == _name && !shared.isMutable) {
+        SHLOG_ERROR("Assoc: Variable {} is not mutable.", _name);
+        throw ComposeError("Assoc: Variable is not mutable.");
+      }
+    }
 
-  // SHTypeInfo compose(const SHInstanceData &data) {
-  //   _exposedInfo = {};
-
-  //   if (_isTable) {
-  //     _tableTypes = Type::TableOf(data.inputType.seqTypes);
-  //     if (_global) {
-  //       _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
-  //           _name.c_str(), SHCCSTR("The exposed table."), _tableTypes,
-  //           true));
-  //     } else {
-  //       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-  //           _name.c_str(), SHCCSTR("The exposed table."), _tableTypes,
-  //           true));
-  //     }
-  //   } else {
-  //     if (_global) {
-  //       _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(
-  //           _name.c_str(), SHCCSTR("The exposed sequence."), data.inputType,
-  //           true));
-  //     } else {
-  //       _exposedInfo = ExposedInfo(ExposedInfo::Variable(
-  //           _name.c_str(), SHCCSTR("The exposed sequence."), data.inputType,
-  //           true));
-  //     }
-  //   }
-
-  //   return data.inputType;
-  // }
-
-  // SHExposedTypesInfo exposedVariables() {
-  //   return SHExposedTypesInfo(_exposedInfo);
-  // }
+    return data.inputType;
+  }
 
   void warmup(SHContext *context) {
     if (_global)
