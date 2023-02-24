@@ -19,7 +19,7 @@ use crate::types::Seq;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::ANYS_TYPES;
+use crate::types::STRINGS_TYPES;
 use crate::types::ANY_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;
@@ -72,7 +72,7 @@ impl Shard for ListBox {
   }
 
   fn inputTypes(&mut self) -> &Types {
-    &ANYS_TYPES
+    &STRINGS_TYPES
   }
 
   fn inputHelp(&mut self) -> OptionalString {
