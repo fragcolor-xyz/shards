@@ -6,7 +6,6 @@ use super::NextRow;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
-use crate::shards::gui::BOOL_VAR_OR_NONE_SLICE;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::FLOAT_VAR_SLICE;
 use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
@@ -23,6 +22,7 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
+use crate::types::BOOL_VAR_OR_NONE_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 
 lazy_static! {

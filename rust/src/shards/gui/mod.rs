@@ -19,9 +19,6 @@ use std::ffi::CStr;
 
 static ANY_TABLE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var];
 static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
-static BOOL_OR_NONE_SLICE: &[Type] = &[common_type::bool, common_type::none];
-static BOOL_VAR_OR_NONE_SLICE: &[Type] =
-  &[common_type::bool, common_type::bool_var, common_type::none];
 static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[
   common_type::color,
   common_type::color_var,

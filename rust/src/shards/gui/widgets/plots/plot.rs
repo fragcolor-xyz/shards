@@ -7,7 +7,6 @@ use super::PLOT_UI_NAME;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::EguiId;
-use crate::shards::gui::BOOL_OR_NONE_SLICE;
 use crate::shards::gui::FLOAT_VAR_OR_NONE_SLICE;
 use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
@@ -25,6 +24,7 @@ use crate::types::Types;
 use crate::types::Var;
 use crate::types::WireState;
 use crate::types::ANY_TYPES;
+use crate::types::BOOL_OR_NONE_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 
 lazy_static! {
@@ -193,7 +193,9 @@ impl Shard for Plot {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
     self.plot_context.warmup(ctx);
-    self.plot_context.set_fast_unsafe(&Seq::new().as_ref().into());
+    self
+      .plot_context
+      .set_fast_unsafe(&Seq::new().as_ref().into());
 
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
