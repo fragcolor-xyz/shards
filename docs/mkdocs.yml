@@ -48,6 +48,7 @@ theme:
   name: material
   custom_dir: overrides
   features:
+    - navigation.footer
     - navigation.indexes
     - navigation.instant
     - navigation.tabs
