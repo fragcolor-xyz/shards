@@ -74,8 +74,9 @@ struct Send : Base {
 };
 
 struct Receive : Base {
-  std::vector<OwnedVar> _events;
-  std::vector<OwnedVar> _eventsOut;
+  SeqVar _eventsIn;
+  SeqVar _eventsOut;
+
   entt::connection _connection;
 
   Type singleType;
@@ -84,7 +85,10 @@ struct Receive : Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
-  void onEvent(OwnedVar &event) { _events.push_back(event); }
+  void onEvent(OwnedVar &event) {
+    auto e = _eventsIn.emplace_back();
+    cloneVar(e, event);
+  }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     Base::compose(data);
@@ -121,8 +125,8 @@ struct Receive : Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    std::swap(_eventsOut, _events);
-    _events.clear();
+    std::swap(_eventsOut, _eventsIn);
+    _eventsIn.clear();
     return Var(_eventsOut);
   }
 };
