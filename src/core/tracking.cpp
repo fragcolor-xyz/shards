@@ -102,7 +102,7 @@ struct Tracker {
     reg.emplace(item, uint8_t{});
     registryLock.unlock();
 
-    tracy::Profiler::MemAllocCallstackNamed(item, 16, CallStackDepth, false, VirtualAllocationName<T>::get());
+    tracy::Profiler::MemAllocCallstackNamed(item, 1, CallStackDepth, false, VirtualAllocationName<T>::get());
   }
 
   template <typename T> void untrack(T *item) {
