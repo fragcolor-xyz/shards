@@ -9,11 +9,14 @@ use crate::types::common_type;
 use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::ExposedTypes;
+use crate::types::InstanceData;
 use crate::types::ParamVar;
 use crate::types::Parameters;
 use crate::types::Seq;
+use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
+use crate::types::BOOL_TYPES_SLICE;
 use crate::types::BOOL_VAR_OR_NONE_SLICE;
 use crate::types::NONE_TYPES;
 use crate::types::STRING_TYPES;
@@ -25,6 +28,7 @@ lazy_static! {
     common_type::strings_var,
     common_type::none
   ];
+  pub static ref STRING_OR_STRINGS_TYPES: Types = vec![common_type::string, common_type::strings];
   static ref FILEDIALOG_PARAMETERS: Parameters = vec![
     (
       cstr!("Filters"),
@@ -39,6 +43,12 @@ lazy_static! {
     )
       .into(),
     (
+      cstr!("Multiple"),
+      shccstr!("To select multiple files instead of just one."),
+      BOOL_TYPES_SLICE,
+    )
+      .into(),
+    (
       cstr!("CurrentDir"),
       shccstr!("Set the current directory"),
       STRING_VAR_OR_NONE_SLICE,
@@ -50,6 +60,7 @@ lazy_static! {
 struct FileDialog {
   filters: ParamVar,
   folder: ParamVar,
+  multiple: bool,
   current_dir: ParamVar,
   output: ClonedVar,
 }
@@ -59,6 +70,7 @@ impl Default for FileDialog {
     Self {
       filters: ParamVar::default(),
       folder: ParamVar::new(false.into()),
+      multiple: false,
       current_dir: ParamVar::default(),
       output: ClonedVar::default(),
     }
@@ -100,7 +112,8 @@ impl Shard for FileDialog {
     match index {
       0 => Ok(self.filters.set_param(value)),
       1 => Ok(self.folder.set_param(value)),
-      2 => Ok(self.current_dir.set_param(value)),
+      2 => Ok(self.multiple = value.try_into()?),
+      3 => Ok(self.current_dir.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -109,8 +122,21 @@ impl Shard for FileDialog {
     match index {
       0 => self.filters.get_param(),
       1 => self.folder.get_param(),
-      2 => self.current_dir.get_param(),
+      2 => self.multiple.into(),
+      3 => self.current_dir.get_param(),
       _ => Var::default(),
+    }
+  }
+
+  fn hasCompose() -> bool {
+    true
+  }
+
+  fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
+    if self.multiple {
+      Ok(common_type::strings)
+    } else {
+      Ok(common_type::string)
     }
   }
 
@@ -155,11 +181,28 @@ impl BlockingShard for FileDialog {
         dialog = dialog.set_directory(start_path);
       }
     }
+    if self.multiple {
+      self.pick_multiple(dialog, folder)
+    } else {
+      self.pick_single(dialog, folder)
+    }
+  }
+
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    Err("Not supported")
+  }
+}
+
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+impl FileDialog {
+  fn pick_single(&mut self, dialog: rfd::FileDialog, folder: bool) -> Result<Var, &str> {
     let path = if folder {
       dialog.pick_folder()
     } else {
       dialog.pick_file()
     };
+
     if let Some(path) = path {
       let path = path.display().to_string();
       let output = Var::ephemeral_string(path.as_str());
@@ -170,9 +213,27 @@ impl BlockingShard for FileDialog {
     }
   }
 
-  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    Ok(Var::default())
+  fn pick_multiple(&mut self, dialog: rfd::FileDialog, folder: bool) -> Result<Var, &str> {
+    let paths = if folder {
+      dialog.pick_folders()
+    } else {
+      dialog.pick_files()
+    };
+
+    if let Some(paths) = paths {
+      let paths: Vec<Var> = paths
+        .iter()
+        .map(|path| {
+          let path = path.display().to_string();
+          Var::ephemeral_string(path.as_str())
+        })
+        .collect();
+      self.output = paths.as_slice().into();
+
+      Ok(self.output.0)
+    } else {
+      Err("Operation was cancelled")
+    }
   }
 }
 
