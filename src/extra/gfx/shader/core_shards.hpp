@@ -106,7 +106,7 @@ struct UpdateTranslator {
 // Generates vector swizzles
 struct TakeTranslator {
   static char getComponentName(SHInt index) {
-    static constexpr auto numComponents = std::size(componentNames);
+    static constexpr auto numComponents = SHInt(std::size(componentNames));
     if (index < 0 || index >= numComponents)
       throw std::out_of_range("Take component index");
     return componentNames[index];
