@@ -76,12 +76,15 @@ else()
   set(HAVE_THREADS ON)
 endif()
 
+if(WIN32)
+  add_compile_definitions(_CRT_SECURE_NO_DEPRECATE=1)
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
+  add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS=1)
+  add_compile_definitions(NOMINMAX=1)
+endif()
+
 if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
   set(WINDOWS_ABI "msvc")
-
-  add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
-  add_compile_definitions(_SCL_SECURE_NO_WARNINGS=1)
-  add_compile_definitions(NOMINMAX=1)
 
   # We can not keep iterators in memory without freeing with iterator debugging
   # See SHTable/Set iterator internals
