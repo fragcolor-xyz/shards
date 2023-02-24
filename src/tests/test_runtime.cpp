@@ -7,6 +7,7 @@
 #include "../../include/utility.hpp"
 #include "../../include/common_types.hpp"
 #include "../core/runtime.hpp"
+#include "runtime.hpp"
 #include <linalg_shim.hpp>
 
 #undef CHECK
@@ -15,10 +16,23 @@
 
 #include <catch2/catch_all.hpp>
 
+// Defined in the gfx rust crate
+//   used to initialize tracy on the rust side, since it required special intialization (C++ doesn't)
+//   but since we link to the dll, we can use it from C++ too
+extern "C" void gfxTracyInit();
+
 int main(int argc, char *argv[]) {
+#ifdef TRACY_ENABLE
+  gfxTracyInit();
+#endif
+
   shards::GetGlobals().RootPath = "./";
   shards::registerCoreShards();
   int result = Catch::Session().run(argc, argv);
+
+#ifdef TRACY_ENABLE
+  shards::sleep(1.0);
+#endif
   return result;
 }
 

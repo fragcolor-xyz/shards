@@ -1,3 +1,4 @@
+#include <SDL_timer.h>
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch_all.hpp>
 #include <spdlog/spdlog.h>
@@ -24,6 +25,10 @@ int main(int argc, char *argv[]) {
   (void)configData;
 
   int result = session.run();
+
+#ifdef TRACY_ENABLE
+  SDL_Delay(1000);
+#endif
 
   return result;
 }
