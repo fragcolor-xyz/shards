@@ -95,9 +95,7 @@ struct Uglify {
   void rewrite(form::FormWrapper &formWrapper, SHVar &v) { rewrite(formWrapper.form, v); }
 
   void rewrite(form::FormWrapperMap &map, SHVar &v) {
-    // BOOST_FOREACH (auto &item, map) {
-    //   rewrite(item.second.form);
-    // }
+    throw ActivationError("Map not handled");
   }
 
   void rewrite(form::Form &form, SHVar &v) {
