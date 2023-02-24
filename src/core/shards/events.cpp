@@ -64,10 +64,10 @@ struct Send : Base {
     assert(_dispatcher);
 
     auto &dispatcher = _dispatcher->get();
-    auto current = context->wireStack.back();
+    auto id = findId(context);
 
     OwnedVar ownedInput = input;
-    dispatcher->enqueue_hint(current->id, std::move(ownedInput));
+    dispatcher->enqueue_hint(id, std::move(ownedInput));
 
     return input;
   }
@@ -104,18 +104,15 @@ struct Receive : Base {
     singleType = currentType;
     outputType = Type::SeqOf(singleType);
 
-    // connect
-    _dispatcher->get()->sink<OwnedVar>().connect<&Receive::onEvent>(this);
-
     return outputType;
   }
 
   void warmup(SHContext *context) {
     assert(_dispatcher);
-    auto current = context->wireStack.back();
+    auto id = findId(context);
     if (_connection)
       _connection.release();
-    _connection = _dispatcher->get()->sink<OwnedVar>(current->id).connect<&Receive::onEvent>(this);
+    _connection = _dispatcher->get()->sink<OwnedVar>(id).connect<&Receive::onEvent>(this);
   }
 
   void cleanup() {
