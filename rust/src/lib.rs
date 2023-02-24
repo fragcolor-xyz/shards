@@ -521,6 +521,7 @@ pub extern "C" fn registerRustShards(core: *mut SHCore) {
   shards::gui::registerShards();
   shards::date::registerShards();
   shards::onnx::registerShards();
+  shards::fs::registerShards();
 
   #[cfg(not(target_arch = "wasm32"))]
   shards::ws::registerShards();
