@@ -5,7 +5,6 @@
 #include <gfx/window.hpp>
 #include "../inputs.hpp"
 #include "extra/gfx.hpp"
-#include "tracking.hpp"
 
 using namespace shards;
 using shards::Inputs::InputContext;
@@ -233,10 +232,6 @@ struct MainWindow final {
         renderer->endFrame();
 
         context->endFrame();
-
-#ifdef SHARDS_TRACKING
-        shards::tracking::plotDataPoints();
-#endif
       }
     }
 

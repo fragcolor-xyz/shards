@@ -195,7 +195,6 @@ jobs:
           rm -rf build/deps
           rm -rf build/_deps
           rm -rf build/.cache
-          rm -rf target
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:

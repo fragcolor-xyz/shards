@@ -228,6 +228,9 @@ target_include_directories(entt INTERFACE entt/single_include)
 # Tracy profiler, default off
 option(TRACY_ENABLE "Enable profiling" OFF)
 
+# Enable fibers support by default
+option(TRACY_FIBERS "Enable fibers support" ON)
+
 # These settings are required to make tracy from C++ work together with rust's tracy-client
 set(TRACY_MANUAL_LIFETIME ON CACHE BOOL "" FORCE)
 set(TRACY_DELAYED_INIT ON CACHE BOOL "" FORCE)

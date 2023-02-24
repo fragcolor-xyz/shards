@@ -34,8 +34,9 @@ add_library(shards-core-static STATIC ${core_SOURCES})
 target_include_directories(shards-core-static PUBLIC ../../include)
 target_include_directories(shards-core-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-message(STATUS "TRACY_ENABLE=${TRACY_ENABLE}")
-if(TRACY_ENABLE)
+
+option(SHARDS_MEMORY_TRACKING "Enable memory tracking that works with tracy" ON)
+if(TRACY_ENABLE AND SHARDS_MEMORY_TRACKING)
   target_compile_definitions(shards-core-static PUBLIC SHARDS_TRACKING=1)
   target_sources(shards-core-static PRIVATE tracking.cpp)
 endif()
