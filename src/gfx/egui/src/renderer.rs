@@ -25,7 +25,7 @@ pub struct NativeFullOutput {
     pub image_mem: Vec<PixelData>,
     pub open_url: Option<CString>,
     pub copied_text: Option<CString>,
-    pub text_cursor_position: Option<egui_Pos2>,
+    pub text_cursor_position: Option<Box<egui_Pos2>>,
     pub full_output: egui_FullOutput,
 }
 
@@ -182,7 +182,7 @@ pub fn make_native_full_output(
     };
 
     let text_cursor_position = match &platform_output.text_cursor_pos {
-        Some(pos) => Some(egui_Pos2 { x: pos.x, y: pos.y }),
+        Some(pos) => Some(Box::new(egui_Pos2 { x: pos.x, y: pos.y })),
         None => None,
     };
 
@@ -197,7 +197,7 @@ pub fn make_native_full_output(
         },
         openUrl: open_url.as_ref().map_or(ptr::null(), |x| x.as_ptr()),
         copiedText: copied_text.as_ref().map_or(ptr::null(), |x| x.as_ptr()),
-        textCursorPosition: text_cursor_position.as_ref().map_or(ptr::null(), |&x| &x),
+        textCursorPosition: text_cursor_position.as_ref().map_or(ptr::null(), |x| x.as_ref()),
         cursorIcon: to_egui_cursor_icon(platform_output.cursor_icon),
         mutableTextUnderCursor: platform_output.mutable_text_under_cursor,
     };
