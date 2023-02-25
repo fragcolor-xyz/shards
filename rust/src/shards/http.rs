@@ -312,7 +312,7 @@ macro_rules! get_like {
             let hname: HeaderName = key
               .try_into()
               .map_err(|_| "Could not convert into HeaderName")?;
-            let hvalue = HeaderValue::from_str(v.as_ref().try_into()?)
+            let hvalue = HeaderValue::from_str(v.try_into()?)
               .map_err(|_| "Could not convert into HeaderValue")?;
             request = request.header(hname, hvalue);
           }
@@ -322,7 +322,7 @@ macro_rules! get_like {
           let input_table: Table = input.try_into()?;
           for (k, v) in input_table.iter() {
             let key: &str = k.into();
-            let value: &str = v.as_ref().try_into()?;
+            let value: &str = v.try_into()?;
             request = request.query(&[(key, value)]);
           }
         }
@@ -414,7 +414,7 @@ macro_rules! post_like {
           if let Ok(input_table) = input_table {
             for (k, v) in input_table.iter() {
               let key: &str = k.into();
-              let value: &str = v.as_ref().try_into()?;
+              let value: &str = v.try_into()?;
               request = request.form(&[(key, value)]);
             }
             // default to this in this case but users can edit under
@@ -445,7 +445,7 @@ macro_rules! post_like {
             let hname: HeaderName = key
               .try_into()
               .map_err(|_| "Could not convert into HeaderName")?;
-            let hvalue = HeaderValue::from_str(v.as_ref().try_into()?)
+            let hvalue = HeaderValue::from_str(v.try_into()?)
               .map_err(|_| "Could not convert into HeaderValue")?;
             request = request.header(hname, hvalue);
           }

@@ -1015,7 +1015,7 @@ impl Serialize for Var {
         for (key, value) in table.iter() {
           unsafe {
             let key = CStr::from_ptr(key.0).to_str().unwrap();
-            t.serialize_entry(&key, &value)?;
+            t.serialize_entry(&key, value)?;
           }
         }
         t.end()
@@ -4120,7 +4120,7 @@ impl Table {
   pub fn iter(&self) -> TableIterator {
     unsafe {
       let it = TableIterator {
-        table: self.t,
+        table: &self.t,
         citer: [0; 64],
       };
       (*self.t.api).tableGetIterator.unwrap()(self.t, &it.citer as *const _ as *mut _);
@@ -4129,25 +4129,25 @@ impl Table {
   }
 }
 
-pub struct TableIterator {
-  table: SHTable,
+pub struct TableIterator<'a> {
+  table: &'a SHTable,
   citer: SHTableIterator,
 }
 
-impl Iterator for TableIterator {
-  type Item = (String, Var);
+impl<'a> Iterator for TableIterator<'a> {
+  type Item = (String, &'a Var);
   fn next(&mut self) -> Option<Self::Item> {
     unsafe {
       let k: SHString = core::ptr::null();
-      let v: SHVar = SHVar::default();
+      let v: *mut SHVar = core::ptr::null_mut();
       let hasValue = (*(self.table.api)).tableNext.unwrap()(
-        self.table,
+        *self.table,
         &self.citer as *const _ as *mut _,
         &k as *const _ as *mut _,
-        &v as *const _ as *mut _,
+        v,
       );
       if hasValue {
-        Some((String(k), v))
+        Some((String(k), &*v))
       } else {
         None
       }
