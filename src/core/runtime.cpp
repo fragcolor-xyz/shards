@@ -238,7 +238,7 @@ void registerCoreShards() {
 #ifdef SH_USE_UBSAN
   auto absPath = fs::absolute(GetGlobals().RootPath);
   auto absPathStr = absPath.string();
-  SHLOG_TRACE("Setting ASAN report path to: {}", absPathStr);
+  SHLOG_TRACE("Setting UBSAN report path to: {}", absPathStr);
   __sanitizer_set_report_path(absPathStr.c_str());
 #endif
 
