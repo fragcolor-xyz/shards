@@ -245,6 +245,11 @@ impl Shard for Combo {
         str.to_owned()
       });
 
+      if *index >= seq.len() {
+        // in fact if len == 0, we are fine to have -1 as a way to signal "no selection"
+        *index = seq.len() - 1;
+      }
+
       if response.changed {
         if self.index.is_variable() {
           self.index.set_fast_unsafe(&(*index as i64).into());
