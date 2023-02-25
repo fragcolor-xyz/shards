@@ -204,6 +204,11 @@ impl Shard for ListBox {
       })
       .inner?;
 
+      if *index >= seq.len() {
+        // in fact if len == 0, we are fine to have -1 as a way to signal "no selection"
+        *index = seq.len() - 1;
+      }
+
       if changed {
         if self.index.is_variable() {
           self.index.set_fast_unsafe(&(*index as i64).into());
@@ -212,7 +217,7 @@ impl Shard for ListBox {
         }
       }
 
-      if seq.is_empty() || *index >= seq.len() {
+      if seq.is_empty() {
         Ok(Var::default())
       } else {
         // this is fine because we don't own input and seq is just a view of it in this case
