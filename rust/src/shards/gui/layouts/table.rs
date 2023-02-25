@@ -35,7 +35,7 @@ use std::ffi::CStr;
 lazy_static! {
   static ref ANY_TABLE_TYPES: Vec<Type> = vec![common_type::any_table];
   static ref SEQ_OF_ANY_TABLE: Type = Type::seq(&ANY_TABLE_TYPES);
-  static ref SEQ_OF_ANY_TABLE_TYPES: Vec<Type> = vec![*SEQ_OF_ANY_TABLE];
+  static ref SEQ_OF_ANY_TABLE_TYPES: Vec<Type> = vec![*SEQ_OF_ANY_TABLE, common_type::none];
   static ref TABLE_PARAMETERS: Parameters = vec![
     (
       cstr!("Builder"),
@@ -368,7 +368,7 @@ impl Shard for Table {
 
         // configure columns
         let table = {
-          let columns: Seq = self.columns.0.as_ref().try_into()?;
+          let columns: Seq = self.columns.0.as_ref().try_into().unwrap_or_default();
 
           for column in columns.iter() {
             let column: crate::types::Table = column.as_ref().try_into()?;
@@ -392,7 +392,8 @@ impl Shard for Table {
           }
 
           // column headers
-          builder.header(20.0, |mut header_row| {
+          let row_height = if columns.len() > 0 { 20.0 } else { 0.0 };
+          builder.header(row_height, |mut header_row| {
             for i in 0..columns.len() {
               let column: crate::types::Table = columns[i]
                 .as_ref()
