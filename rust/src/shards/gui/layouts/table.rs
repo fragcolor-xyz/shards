@@ -434,7 +434,12 @@ impl Shard for Table {
         table.body(|body| {
           body.rows(text_height, seq.len(), |row_index, mut row| {
             if self.row_index.is_variable() {
-              self.row_index.set_fast_unsafe(&(row_index as i64).into());
+              let var: &mut i64 = self
+                .row_index
+                .get_mut()
+                .try_into()
+                .except("row_index is set int during warmup, qed");
+              *var = row_index as i64;
             }
             for s in &mut self.shards {
               row.col(|ui| {
