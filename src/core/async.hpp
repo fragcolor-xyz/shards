@@ -16,7 +16,7 @@ struct SharedThreadPoolConcurrency {
 struct SharedThreadPoolConcurrency {
   static int get() {
     const auto sys = std::thread::hardware_concurrency();
-    return sys > 4 ? sys * 2 : 4;
+    return sys > 4 ? sys : 4;
   }
 };
 #endif
@@ -24,6 +24,8 @@ extern Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThrea
 
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
+  SHLOG_TRACE("awaitne starting");
+  DEFER(SHLOG_TRACE("awaitne ending"));
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   return func();
 #else
@@ -64,6 +66,8 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 }
 
 template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
+  SHLOG_TRACE("await starting");
+  DEFER(SHLOG_TRACE("await ending"));
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else
