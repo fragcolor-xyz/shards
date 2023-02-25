@@ -6,6 +6,7 @@ use crate::shards::gui::util;
 use crate::shards::gui::CONTEXTS_NAME;
 use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::PARENTS_UI_NAME;
+use crate::shardsc;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
@@ -258,8 +259,7 @@ impl Shard for DockArea {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => {
-        let seq = Seq::try_from(value)?;
-        let tab_specs = seq.iter().rev().filter_map(|s| {
+        let filter_closure = |s: &Var| {
           if let Ok(r) = ShardRef::try_from(s) {
             if r.name() == TAB_NAME {
               let mut title = ParamVar::default();
@@ -275,11 +275,27 @@ impl Shard for DockArea {
           } else {
             None
           }
-        });
-        for tab_spec in tab_specs {
-          let (title, contents) = tab_spec?;
-          self.headers.push(title);
-          self.shards.push(contents);
+        };
+
+        match value.valueType {
+          shardsc::SHType_None => {}
+          shardsc::SHType_ShardRef => {
+            if let Some(tab_spec) = filter_closure(&value) {
+              let (title, contents) = tab_spec?;
+              self.headers.push(title);
+              self.shards.push(contents);
+            }
+          }
+          shardsc::SHType_Seq => {
+            let seq = Seq::try_from(value)?;
+            let tab_specs = seq.iter().rev().filter_map(filter_closure);
+            for tab_spec in tab_specs {
+              let (title, contents) = tab_spec?;
+              self.headers.push(title);
+              self.shards.push(contents);
+            }
+          }
+          _ => return Err("Invalid parameter type"),
         }
 
         Ok(self.contents.set_param(value))

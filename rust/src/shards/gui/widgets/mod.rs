@@ -197,7 +197,6 @@ macro_rules! decl_ui_input {
       parents: ParamVar,
       requiring: ExposedTypes,
       variable: ParamVar,
-      prefix: ParamVar,
       exposing: ExposedTypes,
       should_expose: bool,
       tmp: $tmp_type,
@@ -205,11 +204,27 @@ macro_rules! decl_ui_input {
   };
 }
 
-decl_ui_input!(FloatInput, f64);
+struct FloatInput {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  variable: ParamVar,
+  prefix: ParamVar,
+  exposing: ExposedTypes,
+  should_expose: bool,
+  tmp: f64,
+}
 decl_ui_input!(Float2Input, [f64; 2]);
 decl_ui_input!(Float3Input, [f32; 3]);
 decl_ui_input!(Float4Input, [f32; 4]);
-decl_ui_input!(IntInput, i64);
+struct IntInput {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  variable: ParamVar,
+  prefix: ParamVar,
+  exposing: ExposedTypes,
+  should_expose: bool,
+  tmp: i64,
+}
 decl_ui_input!(Int2Input, [i64; 2]);
 decl_ui_input!(Int3Input, [i32; 3]);
 decl_ui_input!(Int4Input, [i32; 4]);

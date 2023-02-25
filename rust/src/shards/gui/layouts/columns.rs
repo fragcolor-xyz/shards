@@ -36,7 +36,7 @@ impl Default for Columns {
     Self {
       parents,
       requiring: Vec::new(),
-      contents: ParamVar::default(),
+      contents: ParamVar::new(Seq::new().as_ref().into()),
       shards: Vec::new(),
       exposing: Vec::new(),
     }

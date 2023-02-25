@@ -274,12 +274,6 @@ macro_rules! impl_ui_n_input {
           $static,
         )
           .into(),
-        (
-          cstr!("Prefix"),
-          shccstr!("Display a prefix before the number."),
-          STRING_OR_NONE_SLICE,
-        )
-          .into(),
       ];
     }
 
@@ -291,7 +285,6 @@ macro_rules! impl_ui_n_input {
           parents,
           requiring: Vec::new(),
           variable: ParamVar::default(),
-          prefix: ParamVar::default(),
           exposing: Vec::new(),
           should_expose: false,
           tmp: Default::default(),

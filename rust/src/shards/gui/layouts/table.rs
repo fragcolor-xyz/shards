@@ -79,7 +79,7 @@ impl Default for Table {
     Self {
       parents,
       requiring: Vec::new(),
-      rows: ClonedVar::default(),
+      rows: Seq::new().as_ref().into(),
       columns: ClonedVar::default(),
       striped: ParamVar::default(),
       resizable: ParamVar::default(),
@@ -154,24 +154,24 @@ impl Shard for Table {
       1 => {
         self.header_shards.clear();
 
-        let columns = Seq::try_from(value)?;
-
-        for column in columns.iter() {
-          let column: crate::types::Table = column.as_ref().try_into()?;
-          if let Some(header) = column.get_static(cstr!("Header")) {
-            match header.valueType {
-              SHType_String => {
-                self.header_shards.push(None);
+        if let Ok(columns) = Seq::try_from(value) {
+          for column in columns.iter() {
+            let column: crate::types::Table = column.as_ref().try_into()?;
+            if let Some(header) = column.get_static(cstr!("Header")) {
+              match header.valueType {
+                SHType_String => {
+                  self.header_shards.push(None);
+                }
+                SHType_ShardRef | SHType_Seq => {
+                  let mut s = ShardsVar::default();
+                  s.set_param(&header)?;
+                  self.header_shards.push(Some(s));
+                }
+                _ => unreachable!(),
               }
-              SHType_ShardRef | SHType_Seq => {
-                let mut s = ShardsVar::default();
-                s.set_param(&header)?;
-                self.header_shards.push(Some(s));
-              }
-              _ => unreachable!(),
+            } else {
+              self.header_shards.push(None);
             }
-          } else {
-            self.header_shards.push(None);
           }
         }
 
