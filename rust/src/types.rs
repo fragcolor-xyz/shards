@@ -4139,15 +4139,15 @@ impl<'a> Iterator for TableIterator<'a> {
   fn next(&mut self) -> Option<Self::Item> {
     unsafe {
       let k: SHString = core::ptr::null();
-      let v: *mut SHVar = core::ptr::null_mut();
+      let _v: SHVar = SHVar::default();
       let hasValue = (*(self.table.api)).tableNext.unwrap()(
         *self.table,
         &self.citer as *const _ as *mut _,
         &k as *const _ as *mut _,
-        v,
+        &_v as *const _ as *mut _,
       );
       if hasValue {
-        Some((String(k), &*v))
+        Some((String(k), &*(*(self.table.api)).tableAt.unwrap()(*self.table, k)))
       } else {
         None
       }
