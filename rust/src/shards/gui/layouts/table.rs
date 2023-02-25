@@ -424,13 +424,11 @@ impl Shard for Table {
           builder.header(0.0, |_| {})
         };
 
-        let row_idx_var: &mut i64 = self.row_index.get_mut().try_into()?;
-
         // populate rows
         table.body(|body| {
           body.rows(text_height, seq.len(), |row_index, mut row| {
             if self.row_index.is_variable() {
-              *row_idx_var = row_index as i64;
+              self.row_index.set_fast_unsafe(&(row_index as i64).into());
             }
             for s in &mut self.shards {
               row.col(|ui| {
