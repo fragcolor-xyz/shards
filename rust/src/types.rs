@@ -3794,6 +3794,44 @@ impl<'a> DoubleEndedIterator for SeqIterator<'a> {
   }
 }
 
+pub struct SeqIteratorMut<'a> {
+  s: &'a mut Seq,
+  i: u32,
+}
+
+impl<'a> Iterator for SeqIteratorMut<'a> {
+  fn next(&mut self) -> Option<Self::Item> {
+    let res = if self.i < self.s.s.len {
+      unsafe { Some(&mut *self.s.s.elements.offset(self.i.try_into().unwrap())) }
+    } else {
+      None
+    };
+    self.i += 1;
+    res
+  }
+  type Item = &'a mut Var;
+}
+
+impl<'a> DoubleEndedIterator for SeqIteratorMut<'a> {
+  fn next_back(&mut self) -> Option<Self::Item> {
+    let res = if self.i < self.s.s.len {
+      unsafe {
+        Some(
+          &mut *self
+            .s
+            .s
+            .elements
+            .offset((self.s.s.len - self.i - 1).try_into().unwrap()),
+        )
+      }
+    } else {
+      None
+    };
+    self.i += 1;
+    res
+  }
+}
+
 impl Index<usize> for SHSeq {
   #[inline(always)]
   fn index(&self, idx: usize) -> &Self::Output {
@@ -3904,6 +3942,10 @@ impl Seq {
 
   pub fn iter(&self) -> SeqIterator {
     SeqIterator { s: self, i: 0 }
+  }
+
+  pub fn iter_mut(&mut self) -> SeqIteratorMut {
+    SeqIteratorMut { s: self, i: 0 }
   }
 }
 
@@ -4127,6 +4169,17 @@ impl Table {
       it
     }
   }
+
+  pub fn iter_mut(&mut self) -> TableIteratorMut {
+    unsafe {
+      let it = TableIteratorMut {
+        table: &mut self.t,
+        citer: [0; 64],
+      };
+      (*it.table.api).tableGetIterator.unwrap()(*it.table, &it.citer as *const _ as *mut _);
+      it
+    }
+  }
 }
 
 pub struct TableIterator<'a> {
@@ -4139,7 +4192,7 @@ impl<'a> Iterator for TableIterator<'a> {
   fn next(&mut self) -> Option<Self::Item> {
     unsafe {
       let k: SHString = core::ptr::null();
-      let _v: SHVar = SHVar::default();
+      let _v: SHVar = SHVar::default(); // FIXME: wasteful
       let hasValue = (*(self.table.api)).tableNext.unwrap()(
         *self.table,
         &self.citer as *const _ as *mut _,
@@ -4148,6 +4201,32 @@ impl<'a> Iterator for TableIterator<'a> {
       );
       if hasValue {
         Some((String(k), &*(*(self.table.api)).tableAt.unwrap()(*self.table, k)))
+      } else {
+        None
+      }
+    }
+  }
+}
+
+pub struct TableIteratorMut<'a> {
+  table: &'a mut SHTable,
+  citer: SHTableIterator,
+}
+
+impl<'a> Iterator for TableIteratorMut<'a> {
+  type Item = (String, &'a mut Var);
+  fn next(&mut self) -> Option<Self::Item> {
+    unsafe {
+      let k: SHString = core::ptr::null();
+      let _v: SHVar = SHVar::default(); // FIXME: wasteful
+      let hasValue = (*(self.table.api)).tableNext.unwrap()(
+        *self.table,
+        &self.citer as *const _ as *mut _,
+        &k as *const _ as *mut _,
+        &_v as *const _ as *mut _,
+      );
+      if hasValue {
+        Some((String(k), &mut *(*(self.table.api)).tableAt.unwrap()(*self.table, k)))
       } else {
         None
       }
