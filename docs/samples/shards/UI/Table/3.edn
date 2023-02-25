@@ -27,7 +27,7 @@
             (UI.Button "Up" (Msg "Clicked Up") :Style {:text_style "Small"})
             (UI.Button "Down" (Msg "Clicked Down") :Style {:text_style "Small"}))
         :Initial (float 120) :AtLeast (float 100) :AtMost (float 160)}]
-      :Rows
+      :Builder
       [(-> .index (ToString) (UI.Label))
        (-> (Take "Surname") (UI.Label))
        (-> (Take "Name") (UI.Label))]))))

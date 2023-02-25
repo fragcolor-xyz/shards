@@ -604,6 +604,11 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
     SH_CORE::destroyVar(other);
     return *this;
   }
+  TOwnedVar &operator=(SHVar &&other) {
+    std::swap<SHVar>(*this, other);
+    SH_CORE::destroyVar(other);
+    return *this;
+  }
   ~TOwnedVar() { reset(); }
   void reset() { SH_CORE::destroyVar(*this); }
 };

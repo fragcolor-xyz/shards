@@ -3180,6 +3180,7 @@ impl ParamVar {
     unsafe { &*self.pointee }
   }
 
+  // Users should never fully overwrite or flags will be lost, unless taken care of
   pub fn get_mut(&mut self) -> &mut Var {
     assert_ne!(self.pointee, std::ptr::null_mut());
     unsafe { &mut *self.pointee }
