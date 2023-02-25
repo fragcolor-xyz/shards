@@ -4,6 +4,7 @@
 use crate::core::registerShard;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
+use crate::types::ClonedVar;
 use crate::types::ShardsVar;
 
 struct CollapsingHeader {
@@ -107,8 +108,8 @@ struct Space {
 struct Table {
   parents: ParamVar,
   requiring: ExposedTypes,
-  rows: ParamVar,
-  columns: ParamVar,
+  rows: ClonedVar,
+  columns: ClonedVar,
   striped: ParamVar,
   resizable: ParamVar,
   row_index: ParamVar,

@@ -14,6 +14,7 @@ use crate::shardsc::SHType_Seq;
 use crate::shardsc::SHType_ShardRef;
 use crate::shardsc::SHType_String;
 use crate::types::common_type;
+use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
@@ -37,8 +38,8 @@ lazy_static! {
   static ref SEQ_OF_ANY_TABLE_TYPES: Vec<Type> = vec![*SEQ_OF_ANY_TABLE];
   static ref TABLE_PARAMETERS: Parameters = vec![
     (
-      cstr!("Rows"),
-      shccstr!("Sequence of shards to build the rows."),
+      cstr!("Builder"),
+      shccstr!("Sequence of shards to build each column, repeated for each row."),
       &SEQ_OF_SHARDS_TYPES[..]
     )
       .into(),
@@ -78,8 +79,8 @@ impl Default for Table {
     Self {
       parents,
       requiring: Vec::new(),
-      rows: ParamVar::default(),
-      columns: ParamVar::default(),
+      rows: ClonedVar::default(),
+      columns: ClonedVar::default(),
       striped: ParamVar::default(),
       resizable: ParamVar::default(),
       row_index,
@@ -138,16 +139,23 @@ impl Shard for Table {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => {
+        self.shards.clear();
+
         let seq = Seq::try_from(value)?;
+
         for shard in seq.iter() {
           let mut s = ShardsVar::default();
           s.set_param(&shard)?;
           self.shards.push(s);
         }
-        Ok(self.rows.set_param(value))
+
+        Ok(self.rows = value.into())
       }
       1 => {
+        self.header_shards.clear();
+
         let columns = Seq::try_from(value)?;
+
         for column in columns.iter() {
           let column: crate::types::Table = column.as_ref().try_into()?;
           if let Some(header) = column.get_static(cstr!("Header")) {
@@ -166,7 +174,8 @@ impl Shard for Table {
             self.header_shards.push(None);
           }
         }
-        Ok(self.columns.set_param(value))
+
+        Ok(self.columns = value.into())
       }
       2 => Ok(self.striped.set_param(value)),
       3 => Ok(self.resizable.set_param(value)),
@@ -177,8 +186,8 @@ impl Shard for Table {
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.rows.get_param(),
-      1 => self.columns.get_param(),
+      0 => self.rows.0,
+      1 => self.columns.0,
       2 => self.striped.get_param(),
       3 => self.resizable.get_param(),
       4 => self.row_index.get_param(),
@@ -215,6 +224,16 @@ impl Shard for Table {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    // validate
+
+    if !self.columns.0.is_none() {
+      let columns = Seq::try_from(&self.columns.0)?;
+      let rows = Seq::try_from(&self.rows.0)?;
+      if columns.len() != rows.len() {
+        return Err("Columns and Builder parameters must have the same length.");
+      }
+    }
+
     // compose header shards
     for header_shard in &mut self.header_shards {
       if let Some(header_shard) = header_shard {
@@ -288,8 +307,6 @@ impl Shard for Table {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
 
-    self.rows.warmup(ctx);
-    self.columns.warmup(ctx);
     self.striped.warmup(ctx);
     self.resizable.warmup(ctx);
     self.row_index.warmup(ctx);
@@ -319,11 +336,10 @@ impl Shard for Table {
     for s in &mut self.shards {
       s.cleanup();
     }
+
     self.row_index.cleanup();
     self.resizable.cleanup();
     self.striped.cleanup();
-    self.columns.cleanup();
-    self.rows.cleanup();
 
     self.parents.cleanup();
     Ok(())
@@ -335,10 +351,6 @@ impl Shard for Table {
         use egui_extras::{Column, TableBuilder};
 
         let seq = Seq::try_from(input)?;
-
-        if seq.len() != self.shards.len() {
-          return Err("Table column count does not match the input");
-        }
 
         let text_height = egui::TextStyle::Body.resolve(ui.style()).size;
 
@@ -355,9 +367,9 @@ impl Shard for Table {
         }
 
         // configure columns
-        let columns = self.columns.get();
-        let table = if !columns.is_none() {
-          let columns: Seq = columns.try_into()?;
+        let table = {
+          let columns: Seq = self.columns.0.as_ref().try_into()?;
+
           for column in columns.iter() {
             let column: crate::types::Table = column.as_ref().try_into()?;
             let mut size = if let Some(initial) = column.get_static(cstr!("Initial")) {
@@ -416,12 +428,6 @@ impl Shard for Table {
               }
             }
           })
-        } else {
-          // fallback to default columns with no header
-          for _ in 0..seq.len() {
-            builder = builder.column(Column::remainder());
-          }
-          builder.header(0.0, |_| {})
         };
 
         // populate rows
