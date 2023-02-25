@@ -1268,7 +1268,10 @@ struct Observer : public shards::RuntimeObserver {
 #ifndef NDEBUG
       // add coverage for parameters setting
       auto val = shard->getParam(shard, i);
-      shard->setParam(shard, i, &val);
+      auto res = shard->setParam(shard, i, &val);
+      if(res.code != 0) {
+        SHLOG_WARNING("Debug validation failed to set parameter: {} code: {} shard: {}", param.name, res.code, shard->name(shard));
+      }
 #endif
     }
     // define the new built-in
