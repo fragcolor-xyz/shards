@@ -207,6 +207,7 @@ impl Shard for ListBox {
       if *index >= seq.len() {
         // in fact if len == 0, we are fine to have -1 as a way to signal "no selection"
         *index = seq.len() - 1;
+        changed = true;
       }
 
       if changed {
