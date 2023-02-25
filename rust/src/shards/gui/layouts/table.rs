@@ -335,7 +335,13 @@ impl Shard for Table {
         use egui_extras::{Column, TableBuilder};
 
         let seq = Seq::try_from(input)?;
+
+        if seq.len() != self.shards.len() {
+          return Err("Table column count does not match the input");
+        }
+
         let text_height = egui::TextStyle::Body.resolve(ui.style()).size;
+
         // start building a table
         let mut builder =
           TableBuilder::new(ui).cell_layout(egui::Layout::left_to_right(egui::Align::Center));
@@ -347,6 +353,7 @@ impl Shard for Table {
         if !resizable.is_none() {
           builder = builder.resizable(resizable.try_into()?);
         }
+
         // configure columns
         let columns = self.columns.get();
         let table = if !columns.is_none() {
@@ -366,14 +373,19 @@ impl Shard for Table {
             }
             builder = builder.column(size);
           }
-          // add unconfigured columns
+
+          // add columns
           for _ in columns.len()..self.shards.len() {
             builder = builder.column(Column::remainder());
           }
+
           // column headers
           builder.header(20.0, |mut header_row| {
             for i in 0..columns.len() {
-              let column: crate::types::Table = columns[i].as_ref().try_into().unwrap();
+              let column: crate::types::Table = columns[i]
+                .as_ref()
+                .try_into()
+                .expect("iterated successfully above, qed");
               if let Some(header) = column.get_static(cstr!("Header")) {
                 match header.valueType {
                   SHType_String => {
@@ -411,12 +423,14 @@ impl Shard for Table {
           }
           builder.header(0.0, |_| {})
         };
+
+        let row_idx_var: &mut i64 = self.row_index.get_mut().try_into()?;
+
         // populate rows
         table.body(|body| {
           body.rows(text_height, seq.len(), |row_index, mut row| {
             if self.row_index.is_variable() {
-              let var: &mut i64 = self.row_index.get_mut().try_into().unwrap();
-              *var = row_index as i64;
+              *row_idx_var = row_index as i64;
             }
             for s in &mut self.shards {
               row.col(|ui| {

@@ -3159,9 +3159,13 @@ impl ParamVar {
     // avoid overwrite refcount
     assert_ne!(self.pointee, std::ptr::null_mut());
     unsafe {
+      // store flags and rc
       let rc = (*self.pointee).refcount;
+      let flags = (*self.pointee).flags;
+      // assign
       (*self.pointee) = *value;
-      (*self.pointee).flags = value.flags | (SHVAR_FLAGS_REF_COUNTED as u16);
+      // restore flags and rc
+      (*self.pointee).flags = flags;
       (*self.pointee).refcount = rc;
     }
   }
