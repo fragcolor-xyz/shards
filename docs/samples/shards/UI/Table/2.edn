@@ -17,7 +17,7 @@
       [{:Header "A"}
        {:Header "B"}
        {:Header "A xor B"}]
-      :Rows
+      :Builder
       [(-> (Take 0) (ToString) (UI.Label))
        (-> (Take 1) (ToString) (UI.Label))
        (-> (| (Take 0) >= .a)
