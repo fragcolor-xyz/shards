@@ -57,9 +57,7 @@ constexpr uint32_t crc32(std::string_view str) {
   return crc ^ 0xffffffff;
 }
 
-template <auto V> struct constant {
-  constexpr static decltype(V) value = V;
-};
+template <auto V> struct constant { constexpr static decltype(V) value = V; };
 
 inline SHOptionalString operator"" _optional(const char *s, size_t) { return SHOptionalString{s}; }
 
@@ -305,9 +303,7 @@ public:
 
 // Contains help text for a specific enum member
 // Implement a specialization to add custom help text
-template <typename E, E Value> struct TEnumHelp {
-  static inline SHOptionalString help = SHOptionalString{""};
-};
+template <typename E, E Value> struct TEnumHelp { static inline SHOptionalString help = SHOptionalString{""}; };
 
 template <class SH_CORE_, typename E_, const char *Name_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
 struct TEnumInfo {
@@ -604,11 +600,6 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
     SH_CORE::destroyVar(other);
     return *this;
   }
-  TOwnedVar &operator=(SHVar &&other) {
-    std::swap<SHVar>(*this, other);
-    SH_CORE::destroyVar(other);
-    return *this;
-  }
   ~TOwnedVar() { reset(); }
   void reset() { SH_CORE::destroyVar(*this); }
 };
@@ -676,13 +667,13 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   TOwnedVar<SH_CORE> &operator[](std::string_view key) {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
-    return (TOwnedVar<SH_CORE>&)*vp;
+    return (TOwnedVar<SH_CORE> &)*vp;
   }
 
   TOwnedVar<SH_CORE> &insert(std::string_view key, const SHVar &val) {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
     SH_CORE::cloneVar(*vp, val);
-    return (TOwnedVar<SH_CORE>&)*vp;
+    return (TOwnedVar<SH_CORE> &)*vp;
   }
 
   template <typename T> T &get(std::string_view key) {
@@ -693,6 +684,10 @@ template <class SH_CORE> struct TTableVar : public SHVar {
       new (vp) T();
     }
     return (T &)*vp;
+  }
+
+  TOwnedVar<SH_CORE> &asOwned() {
+    return (TOwnedVar<SH_CORE> &)*this;
   }
 };
 
@@ -721,8 +716,8 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   ~TSeqVar() { SH_CORE::destroyVar(*this); }
 
-  TOwnedVar<SH_CORE> &operator[](int index) { return (TOwnedVar<SH_CORE>&)payload.seqValue.elements[index]; }
-  const TOwnedVar<SH_CORE> &operator[](int index) const { return (TOwnedVar<SH_CORE>&)payload.seqValue.elements[index]; }
+  TOwnedVar<SH_CORE> &operator[](int index) { return (TOwnedVar<SH_CORE> &)payload.seqValue.elements[index]; }
+  const TOwnedVar<SH_CORE> &operator[](int index) const { return (TOwnedVar<SH_CORE> &)payload.seqValue.elements[index]; }
 
   SHVar *data() { return payload.seqValue.len == 0 ? nullptr : &payload.seqValue.elements[0]; }
 
@@ -732,7 +727,7 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   TOwnedVar<SH_CORE> &back() {
     assert(!empty());
-    return (TOwnedVar<SH_CORE>&)data()[size() - 1];
+    return (TOwnedVar<SH_CORE> &)data()[size() - 1];
   }
 
   SHVar *begin() { return data(); }
@@ -747,7 +742,7 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   TOwnedVar<SH_CORE> &emplace_back(const SHVar &value) {
     push_back(value);
-    return (TOwnedVar<SH_CORE>&)back();
+    return (TOwnedVar<SH_CORE> &)back();
   }
 
   void clear() { SH_CORE::seqResize(&payload.seqValue, 0); }
@@ -761,7 +756,31 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
     }
     return (T &)*vp;
   }
+
+  TOwnedVar<SH_CORE> &asOwned() {
+    return (TOwnedVar<SH_CORE> &)*this;
+  }
 };
+
+template <class SH_CORE> TTableVar<SH_CORE> &asTable(TOwnedVar<SH_CORE> &var) {
+  assert(var.valueType == SHType::Table);
+  return (TTableVar<SH_CORE> &)var;
+}
+
+template <class SH_CORE> const TTableVar<SH_CORE> &asTable(const TOwnedVar<SH_CORE> &var) {
+  assert(var.valueType == SHType::Table);
+  return (const TTableVar<SH_CORE> &)var;
+}
+
+template <class SH_CORE> TSeqVar<SH_CORE> &asSeq(TOwnedVar<SH_CORE> &var) {
+  assert(var.valueType == SHType::Seq);
+  return (TSeqVar<SH_CORE> &)var;
+}
+
+template <class SH_CORE> const TSeqVar<SH_CORE> &asSeq(const TOwnedVar<SH_CORE> &var) {
+  assert(var.valueType == SHType::Seq);
+  return (const TSeqVar<SH_CORE> &)var;
+}
 
 // https://godbolt.org/z/I72ctd
 template <class Function> struct Defer {
