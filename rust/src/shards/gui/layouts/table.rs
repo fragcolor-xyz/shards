@@ -397,7 +397,7 @@ impl Shard for Table {
               let column: crate::types::Table = columns[i]
                 .as_ref()
                 .try_into()
-                .expect("iterated successfully above, qed");
+                .unwrap(); // iterated successfully above, qed
               if let Some(header) = column.get_static(cstr!("Header")) {
                 match header.valueType {
                   SHType_String => {
@@ -438,7 +438,7 @@ impl Shard for Table {
                 .row_index
                 .get_mut()
                 .try_into()
-                .except("row_index is set int during warmup, qed");
+                .unwrap(); // row_index is set int during warmup, qed
               *var = row_index as i64;
             }
             for s in &mut self.shards {
