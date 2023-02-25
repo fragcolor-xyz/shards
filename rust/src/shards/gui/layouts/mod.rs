@@ -2,9 +2,9 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use crate::core::registerShard;
+use crate::types::ClonedVar;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
-use crate::types::ClonedVar;
 use crate::types::ShardsVar;
 
 struct CollapsingHeader {
