@@ -212,7 +212,7 @@ impl Shard for ListBox {
         }
       }
 
-      if seq.is_empty() {
+      if seq.is_empty() || *index >= seq.len() {
         Ok(Var::default())
       } else {
         // this is fine because we don't own input and seq is just a view of it in this case
