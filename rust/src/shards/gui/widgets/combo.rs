@@ -239,7 +239,7 @@ impl Shard for Combo {
       };
 
       let seq: Seq = input.try_into()?;
-      let response = combo.show_index(ui, index, seq.len(), |i| {
+      let mut response = combo.show_index(ui, index, seq.len(), |i| {
         // FIXME type might not be string so we need a way to convert in all cases
         let str: &str = (&seq[i]).try_into().unwrap();
         str.to_owned()
@@ -248,6 +248,7 @@ impl Shard for Combo {
       if *index >= seq.len() {
         // in fact if len == 0, we are fine to have -1 as a way to signal "no selection"
         *index = seq.len() - 1;
+        response.changed = true;
       }
 
       if response.changed {
