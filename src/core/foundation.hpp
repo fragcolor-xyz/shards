@@ -452,11 +452,14 @@ struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>,
 #endif
 };
 
-struct SHTableImpl
+template <typename K>
+struct SHAlignedMap
     : public boost::container::flat_map<
-          std::string, shards::OwnedVar, std::less<std::string>,
-          boost::container::deque<std::pair<const std::string, shards::OwnedVar>,
-                                  boost::alignment::aligned_allocator<std::pair<const std::string, shards::OwnedVar>, 16>>> {
+          K, shards::OwnedVar, std::less<K>,
+          boost::container::deque<std::pair<const K, shards::OwnedVar>,
+                                  boost::alignment::aligned_allocator<std::pair<const K, shards::OwnedVar>, 16>>> {};
+
+struct SHTableImpl : public SHAlignedMap<std::string> {
 #if SHARDS_TRACKING
   SHTableImpl() { shards::tracking::track(this); }
   ~SHTableImpl() { shards::tracking::untrack(this); }
@@ -620,7 +623,7 @@ public:
 };
 
 Globals &GetGlobals();
-EventDispatcher& getEventDispatcher(const std::string& name);
+EventDispatcher &getEventDispatcher(const std::string &name);
 
 template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
   // safety check to make sure this is not a borrowed foreign array!
@@ -1057,11 +1060,9 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 #define REGISTER_ENUM(_ENUM_INFO_) \
   static shards::EnumRegisterImpl SH_GENSYM(__registeredEnum) = shards::EnumRegisterImpl::registerEnum<_ENUM_INFO_>()
 
-#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)         \
-  namespace shards {                              \
-  template <> struct TEnumHelp<_ENUM_, _VALUE_> { \
-    static inline SHOptionalString help = _STR_;  \
-  };                                              \
+#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)                                                         \
+  namespace shards {                                                                              \
+  template <> struct TEnumHelp<_ENUM_, _VALUE_> { static inline SHOptionalString help = _STR_; }; \
   }
 
 template <typename E> static E getFlags(SHVar var) {
