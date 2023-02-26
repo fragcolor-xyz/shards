@@ -14,61 +14,65 @@
 
 ## Vision
 
-Fragcolor is building a programming tool for the future.
+We, the developers of Shards, have a vision for the future. We are developing a programming tool that aims to revolutionize the way we interact with technology. Our goal is to create a future where current interfaces like *screen*, *desktop*, *mouse*, and *keyboard* are replaced by more flexible and intuitive virtual interfaces within a *VR/MR/AR* environment.
 
-A future where current interfaces like *screen*, *desktop*, *mouse*, *keyboard*, etc. are replaced by more flexible and intuitive virtual interfaces within a *VR/MR/AR* environment.
+In this future, creators will only be limited by their imaginations, not by their technology or tools. A world where artists, creators, and developers from all over the world can freely leverage each other's work to build something even bigger and better, while still receiving fair rewards for their efforts.
 
-A future where it's the creator's imagination that limits what they can build; not the technology or the tools. 
+To achieve this vision, we aim to create a low-code way of producing high-performance and multi-platform applications. We plan to do this by creating a scripting tool that can be both visual and textual at the same time. It will represent the flow of data and logic as it is, which means that "what you see is how it works."
 
-And, a future where artists, creators, and developers all over the world can freely leverage each other's work to build something even bigger and better, while still getting justly rewarded for their efforts.
-
-To that end, Fragcolor's vision is to build a low-code way of producing high performance and multi-platform apps in the form of a scripting tool that can be both visual and textual at the same time, and one that represents the flow of data and logic as it is (what you see is how it works).
+Our vision is not only ambitious, it is also exciting! By creating a tool that is accessible, intuitive, and powerful, we are able to unleash the creativity of developers, artists, and creators worldwide. We firmly believe that this will lead to a future where we can build anything we can imagine, without being limited by our current technology or tools.
 
 ## Goals
 
-The two main goals of this project are:  
+This project has two main goals:
 
-### To unleash creativity
-* Prototype quickly; unchain your imagination
-* Go from pseudo code to real app, real fast
-* Replace pseudo blocks with native blocks in real time without pausing program execution
-* An easy-to-use universal interface to your mixed/native code
-* Maximum modularity and inter-project reuse of code
-* Release a fully bundled executable app or library with just one click
+### Unleashing creativity
 
-### To be accessible  
-* Automation scripting for everyone
-* Video game engine scripting; even for non-technical artists
-* Simplified Machine Learning scripting - just build graphs
-* Powerful textual representation (scripting language) for experienced programmers
+- Prototype quickly and unleash your imagination
+- Quickly move from pseudo code to a real app
+- Replace pseudo blocks with native blocks in real time, without pausing program execution
+- An easy-to-use universal interface for your mixed/native code
+- Maximum modularity and inter-project code reuse
+- Release a fully bundled executable app or library with just one click
+
+### Accessibility
+
+- Automation scripting for everyone
+- Video game engine scripting, even for non-technical artists
+- Simplified machine learning scripting with just graph building
+- Powerful textual representation (scripting language) for experienced programmers
 
 ## Features
 
-Shards has a number of features that make it highly suitable for live on-the-fly game development, using both visual scripting as well as traditional game scripting.
+Shards has numerous features that make it ideal for live on-the-fly game development, using both visual scripting and traditional game scripting.
 
 ### Intuitive
-* Supports **visual editing** without the associated spaghetti and spider webs
-* Versatile textual representation (for now backed by a derived **Clojure/Lisp**). Read more about it [here](https://docs.fragcolor.xyz/docs/shards/).
-  
-### Developer friendly
-* Clear data flow
-* Extremely easy to debug and dissect
-* Automatically inferred strong types
-* **SIMD** vectors as first-class types
-* Hot code reloading, without any serialization due to completely decoupled data
-  
+
+- Supports **visual editing** without the associated spaghetti and spider webs
+- Offers a versatile textual representation (currently backed by a derived **Clojure/Lisp**). More information on this can be found [here](https://docs.fragcolor.xyz/docs/shards/).
+
+### Developer-friendly
+
+- Clear data flow
+- Extremely easy to debug and dissect
+- Automatically inferred strong types
+- **SIMD** vectors as first-class types
+- Hot code reloading, without any serialization due to completely decoupled data
+
 ### Performant
-* Performance-driven and easy to profile
-* Deterministic execution and performance
-* Strong validation, composition, and optimization ahead of run-time
-* Built on top of **co-routines**; extremely easy to unleash parallelism and low syscall count
-* Fast execution inspired by threaded code interpreters
-* Support for WASM
+
+- Performance-driven and easy to profile
+- Deterministic execution and performance
+- Strong validation, composition, and optimization ahead of run-time
+- Built on top of **co-routines**; extremely easy to unleash parallelism and maintain a low syscall count
+- Fast execution inspired by threaded code interpreters
+- Support for WASM
 
 ### Built for game development
-* Batteries included: 600+ shards & functions allowing a high level of abstraction
-* Game loops: Trivially easy implementation and control of game loop code
-* Graphics rendering: A `wgpu` based composable/swappable graphics rendering pipeline implementation
+
+- Batteries included: 600+ shards and functions allowing a high level of abstraction
+- Game loops: Trivially easy implementation and control of game loop code
+- Graphics rendering: A `wgpu`based composable/swappable graphics rendering pipeline implementation
 
 
 ## TL;DR
@@ -98,7 +102,7 @@ Shards has a number of features that make it highly suitable for live on-the-fly
      (UI.Window
       :Title "My UI Window"
       :Contents
-      (->       
+      (->
        "Hello world"   (UI.Label)
        "Hello world 2" (UI.Label)
        "Hello world 3" (UI.Label)
