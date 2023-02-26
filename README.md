@@ -14,13 +14,9 @@
 
 ## Vision
 
-We, the developers of Shards, believe that the way we interact with technology is poised for a major revolution. As virtual and mixed reality technologies continue to evolve, we foresee a future where traditional interfaces like screens, desktops, mice, and keyboards are replaced by more flexible and intuitive virtual interfaces that are seamlessly integrated into the user's VR/MR/AR environment. We are dedicated to creating programming tools that will enable developers to build this future and help shape the way we interact with technology in the years to come.
+We believe that technology is on the cusp of a major revolution. As virtual and mixed reality continue to evolve, we see a future where traditional interfaces are replaced by more flexible and intuitive virtual interfaces that are seamlessly integrated into the user's VR/MR/AR environment. We are committed to creating programming tools that will enable developers to build this future and shape the way we interact with technology in the years to come.
 
-In this future, creators will only be limited by their imaginations, not by their technology or tools. A world where artists, creators, and developers from all over the world can freely leverage each other's work to build something even bigger and better, while still receiving fair rewards for their efforts.
-
-To achieve this vision, we aim to create a low-code way of producing high-performance and multi-platform applications. We plan to do this by creating a scripting tool that can be both visual and textual at the same time. It will represent the flow of data and logic as it is, which means that "what you see is how it works."
-
-Our vision is not only ambitious, it is also exciting! By creating a tool that is accessible, intuitive, and powerful, we are able to unleash the creativity of developers, artists, and creators worldwide. We firmly believe that this will lead to a future where we can build anything we can imagine, without being limited by our current technology or tools.
+With Shards we aim to create a low-code tool for producing high-performance, multi-platform applications. Our approach is to create a scripting tool that is both visual and textual. This tool will represent the flow of data and logic as it is, in a "what you see is how it works" manner.
 
 ## Introduction
 
