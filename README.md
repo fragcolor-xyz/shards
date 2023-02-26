@@ -14,13 +14,35 @@
 
 ## Vision
 
-We, the developers of Shards, have a vision for the future. We are developing a programming tool that aims to revolutionize the way we interact with technology. Our goal is to create a future where current interfaces like *screen*, *desktop*, *mouse*, and *keyboard* are replaced by more flexible and intuitive virtual interfaces within a *VR/MR/AR* environment.
+We, the developers of Shards, believe that the way we interact with technology is poised for a major revolution. As virtual and mixed reality technologies continue to evolve, we foresee a future where traditional interfaces like screens, desktops, mice, and keyboards are replaced by more flexible and intuitive virtual interfaces that are seamlessly integrated into the user's VR/MR/AR environment. We are dedicated to creating programming tools that will enable developers to build this future and help shape the way we interact with technology in the years to come.
 
 In this future, creators will only be limited by their imaginations, not by their technology or tools. A world where artists, creators, and developers from all over the world can freely leverage each other's work to build something even bigger and better, while still receiving fair rewards for their efforts.
 
 To achieve this vision, we aim to create a low-code way of producing high-performance and multi-platform applications. We plan to do this by creating a scripting tool that can be both visual and textual at the same time. It will represent the flow of data and logic as it is, which means that "what you see is how it works."
 
 Our vision is not only ambitious, it is also exciting! By creating a tool that is accessible, intuitive, and powerful, we are able to unleash the creativity of developers, artists, and creators worldwide. We firmly believe that this will lead to a future where we can build anything we can imagine, without being limited by our current technology or tools.
+
+## Introduction
+
+Shards is a concatenative programming language that emphasizes modularity and composition. This is achieved through the use of shards, which represent individual functional units that can easily be connected with other shards to form complex computational workflows. Each shard can have parameters, which function like properties that manipulate how the shard itself works. This means that developers can create a diverse range of workflows that can be easily customized to meet specific requirements, enabling faster and more efficient deployment of applications.
+
+Shards shares some similarities with stack-based languages such as Forth, as both focus on functional composition and modularity. However, Shards has a unique way of executing code that sets it apart from other languages.
+
+By using Shards, developers can create a diverse range of computational workflows that can be easily customized to meet specific requirements, enabling faster and more efficient deployment of applications.
+
+*Please note that the textual representation of shards may change, and it adopts a Lisp/Clojure syntax mainly for convenience.*
+
+The expression `2 (Math.Add 3) (Math.Add 4)` in the Shards language represents the same computation as the Forth expression `2 3 + 4 +`. However, the difference lies in the way that the computation is represented and executed.
+
+In the Shards language, the expression `2 (Math.Add 3) (Math.Add 4)` would be evaluated as follows:
+
+1. The `Const` shard with an output value of `2` produces its output.
+2. The output of the `Const` shard is connected to the input of the first `Math.Add` shard. This shard has a parameter operand of `3`, which results in an output of `5`.
+3. The output of the first `Math.Add` shard is connected to the input of the second `Math.Add` shard. The second shard has a parameter operand of `4`, which produces an output of `9`.
+4. The output of the second `Math.Add` shard is the final result of the computation, which in this case is `9`.
+
+To summarize, Shards use a concatenative syntax where each shard is represented by its name followed by its parameters (if any) without any additional separators. For example, the expression `2 (Math.Add 3) (Math.Add 4)` is evaluated as you described, with the `Const` (inferred in this case) shard producing an output of `2` that is connected to the first `Math.Add` shard, and so on.
+
 
 ## Goals
 
@@ -72,8 +94,7 @@ Shards has numerous features that make it ideal for live on-the-fly game develop
 
 - Batteries included: 600+ shards and functions allowing a high level of abstraction
 - Game loops: Trivially easy implementation and control of game loop code
-- Graphics rendering: A `wgpu`based composable/swappable graphics rendering pipeline implementation
-
+- Graphics rendering: A `wgpu` based composable/hackable graphics rendering pipeline implementation
 
 ## TL;DR
 
