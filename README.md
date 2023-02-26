@@ -4,7 +4,7 @@
   <img width="450" src="assets/ShardsLogo.png">
 </p>
 
-## A scripting tool to build tools.
+## Modular, performant scripting for efficient app development.
 
 [![license](https://img.shields.io/github/license/fragcolor-xyz/shards)](./LICENSE)
 ![CI](https://github.com/fragcolor-xyz/shards/workflows/CI/badge.svg)
