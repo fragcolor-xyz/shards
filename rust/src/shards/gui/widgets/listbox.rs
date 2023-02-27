@@ -291,8 +291,12 @@ impl Shard for ListBox {
       .inner?;
 
       if *index >= seq.len() {
-        // in fact if len == 0, we are fine to have -1 as a way to signal "no selection"
-        *index = seq.len() - 1;
+        if seq.is_empty() {
+          // Indicate no selection using usize max
+          *index = std::usize::MAX;
+        } else {
+          *index = seq.len() - 1;
+        }
         changed = true;
       }
 
