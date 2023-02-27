@@ -1099,22 +1099,22 @@ typedef TShardsVar<InternalCore> ShardsVar;
 typedef TTableVar<InternalCore> TableVar;
 typedef TSeqVar<InternalCore> SeqVar;
 
-TableVar &asTable(SHVar &var) {
+inline TableVar &asTable(SHVar &var) {
   assert(var.valueType == SHType::Table);
   return (TableVar &)var;
 }
 
-const TableVar &asTable(const SHVar &var) {
+inline const TableVar &asTable(const SHVar &var) {
   assert(var.valueType == SHType::Table);
   return (const TableVar &)var;
 }
 
-SeqVar &asSeq(SHVar &var) {
+inline SeqVar &asSeq(SHVar &var) {
   assert(var.valueType == SHType::Seq);
   return (SeqVar &)var;
 }
 
-const SeqVar &asSeq(const SHVar &var) {
+inline const SeqVar &asSeq(const SHVar &var) {
   assert(var.valueType == SHType::Seq);
   return (const SeqVar &)var;
 }

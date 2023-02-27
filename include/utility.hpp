@@ -670,6 +670,11 @@ template <class SH_CORE> struct TTableVar : public SHVar {
     return (TOwnedVar<SH_CORE> &)*vp;
   }
 
+  const TOwnedVar<SH_CORE> &operator[](std::string_view key) const {
+    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+    return (const TOwnedVar<SH_CORE> &)*vp;
+  }
+
   TOwnedVar<SH_CORE> &insert(std::string_view key, const SHVar &val) {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
     SH_CORE::cloneVar(*vp, val);
