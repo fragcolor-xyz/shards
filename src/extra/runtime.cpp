@@ -54,6 +54,10 @@ namespace Spatial {
 extern void registerShards();
 }
 
+namespace Animations {
+extern void registerShards();
+}
+
 void shInitExtras() {
 #if SHARDS_WITH_RUST_SHARDS
   registerRustShards(shardsInterface(SHARDS_CURRENT_ABI));
@@ -69,6 +73,7 @@ void shInitExtras() {
   DSP::registerShards();
   egui::registerShards();
   Spatial::registerShards();
+  Animations::registerShards();
 
 #ifdef _WIN32
   Desktop::registerDesktopShards();

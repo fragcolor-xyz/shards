@@ -31,6 +31,8 @@ set(extra_SOURCES
   inputs.cpp
   snappy.cpp
   brotli.cpp
+  ../anim/types.cpp
+  ../anim/anim.cpp
 )
 
 if(SHARDS_EXTRA_BUILD_SHARED)

@@ -65,7 +65,7 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
     WGPUTextureFormat textureFormat{};
     TexturePtr texture;
     if (hasTexture) {
-      texture = *varAsObjectChecked<TexturePtr>(textureVar, Types::Texture);
+      texture = varAsObjectChecked<TexturePtr>(textureVar, Types::Texture);
       textureFormat = texture->getFormat().pixelFormat;
     } else {
       textureFormat = getAttachmentFormat(attachmentName, formatVar);
@@ -108,7 +108,7 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
     }
 
     if (hasTexture) {
-      const TexturePtr &texture = *varAsObjectChecked<TexturePtr>(textureVar, Types::Texture);
+      const TexturePtr &texture = varAsObjectChecked<TexturePtr>(textureVar, Types::Texture);
       auto textureFormatFlags = texture->getFormat().flags;
       if (!textureFormatFlagsContains(textureFormatFlags, TextureFormatFlags::RenderAttachment)) {
         throw std::runtime_error("Invalid output texture, it wasn't created as a render target");
@@ -201,7 +201,7 @@ struct DrawablePassShard {
   }
 
   void applyQueue(SHContext *context, RenderDrawablesStep &step, const SHVar &input) {
-    step.drawQueue = *varAsObjectChecked<DrawQueuePtr>(input, Types::DrawQueue);
+    step.drawQueue = varAsObjectChecked<DrawQueuePtr>(input, Types::DrawQueue);
   }
 
   void applySorting(SHContext *context, RenderDrawablesStep &step, const SHVar &input) {

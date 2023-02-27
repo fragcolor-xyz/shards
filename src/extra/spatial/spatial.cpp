@@ -93,8 +93,8 @@ struct SpatialUIContextShard {
     auto &viewStack = _graphicsContext->renderer->getViewStack();
     auto viewStackTop = viewStack.getOutput();
 
-    auto &queue = *varAsObjectChecked<gfx::SHDrawQueue>(_queue.get(), gfx::Types::DrawQueue);
-    auto &view = *varAsObjectChecked<gfx::SHView>(_view.get(), gfx::Types::View);
+    auto &queue = varAsObjectChecked<gfx::SHDrawQueue>(_queue.get(), gfx::Types::DrawQueue);
+    auto &view = varAsObjectChecked<gfx::SHView>(_view.get(), gfx::Types::View);
 
     // TODO: Move to input context
     _inputBuffer.clear();

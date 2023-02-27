@@ -34,7 +34,7 @@ private:
   bool textInputActive{};
   float2 windowToEguiScale;
   int4 mappedWindowRegion;
-  Window* window{};
+  Window *window{};
 
 public:
   EguiInputTranslator() = default;

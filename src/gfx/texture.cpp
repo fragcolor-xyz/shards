@@ -90,8 +90,8 @@ static WGPUSampler createSampler(Context &context, SamplerState samplerState, si
   return wgpuDeviceCreateSampler(context.wgpuDevice, &desc);
 }
 
-static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, uint32_t numArrayLayers, WGPUTexture texture,
-                             const ImmutableSharedBuffer &isb) {
+static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, uint32_t numArrayLayers,
+                             WGPUTexture texture, const ImmutableSharedBuffer &isb) {
   ZoneScoped;
 
   const TextureFormatDesc &inputFormat = getTextureFormatDescription(format.pixelFormat);
@@ -171,7 +171,8 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
     assert(contextData.texture);
 
     if (desc.data)
-      writeTextureData(context, desc.format, desc.resolution, contextData.size.depthOrArrayLayers, contextData.texture, desc.data);
+      writeTextureData(context, desc.format, desc.resolution, contextData.size.depthOrArrayLayers, contextData.texture,
+                       desc.data);
   }
 
   contextData.sampler = createSampler(context, desc.samplerState, desc.format.mipLevels);

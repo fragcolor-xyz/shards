@@ -50,8 +50,7 @@ inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatur
   checkType(input.valueType, SHType::Seq, ":Features");
   for (size_t i = 0; i < input.payload.seqValue.len; i++) {
     auto &elem = input.payload.seqValue.elements[i];
-    FeaturePtr *ptr = varAsObjectChecked<FeaturePtr>(elem, Types::Feature);
-    outFeatures.push_back(*ptr);
+    outFeatures.push_back(varAsObjectChecked<FeaturePtr>(elem, Types::Feature));
   }
 }
 } // namespace gfx

@@ -34,28 +34,28 @@ SHTypeInfo *gfx_getQueueType() {
 }
 
 SHVar gfx_GraphicsContext_getDefaultQueue(const SHVar &graphicsContext) {
-  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
-  return Var::Object(&globals->shDrawQueue, SHTypeInfo(GFXTypes::DrawQueue).object.vendorId,
+  GraphicsContext &globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
+  return Var::Object(&globals.shDrawQueue, SHTypeInfo(GFXTypes::DrawQueue).object.vendorId,
                      SHTypeInfo(GFXTypes::DrawQueue).object.typeId);
 }
 Context *gfx_GraphicsContext_getContext(const SHVar &graphicsContext) {
-  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
-  return globals->context.get();
+  GraphicsContext &globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
+  return globals.context.get();
 }
 Renderer *gfx_GraphicsContext_getRenderer(const SHVar &graphicsContext) {
-  GraphicsContext *globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
-  return globals->renderer.get();
+  GraphicsContext &globals = varAsObjectChecked<GraphicsContext>(graphicsContext, GraphicsContext::Type);
+  return globals.renderer.get();
 }
 
 DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var) {
-  SHDrawQueue *shDrawQueue = varAsObjectChecked<SHDrawQueue>(var, GFXTypes::DrawQueue);
-  return &shDrawQueue->queue;
+  SHDrawQueue &shDrawQueue = varAsObjectChecked<SHDrawQueue>(var, GFXTypes::DrawQueue);
+  return &shDrawQueue.queue;
 }
 
 gfx::int4 gfx_getEguiMappedRegion(const SHVar &inputContextVar) {
-  Inputs::InputContext *inputContext = varAsObjectChecked<Inputs::InputContext>(inputContextVar, Inputs::InputContext::Type);
+  Inputs::InputContext &inputContext = varAsObjectChecked<Inputs::InputContext>(inputContextVar, Inputs::InputContext::Type);
 
-  auto &inputStack = inputContext->inputStack;
+  auto &inputStack = inputContext.inputStack;
   InputStack::Item inputStackOutput = inputStack.getTop();
 
   int4 result{};
@@ -65,9 +65,9 @@ gfx::int4 gfx_getEguiMappedRegion(const SHVar &inputContextVar) {
 }
 
 gfx::int4 gfx_getViewport(const SHVar &graphicsContextVar) {
-  GraphicsContext *graphicsContext = varAsObjectChecked<GraphicsContext>(graphicsContextVar, GraphicsContext::Type);
+  GraphicsContext &graphicsContext = varAsObjectChecked<GraphicsContext>(graphicsContextVar, GraphicsContext::Type);
 
-  auto &viewStack = graphicsContext->renderer->getViewStack();
+  auto &viewStack = graphicsContext.renderer->getViewStack();
   auto viewStackOutput = viewStack.getOutput();
 
   gfx::Rect viewportRect = viewStackOutput.viewport;
@@ -76,21 +76,21 @@ gfx::int4 gfx_getViewport(const SHVar &graphicsContextVar) {
 
 const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &graphicsContextVar,
                                            const SHVar &inputContextVar, float scalingFactor) {
-  GraphicsContext *graphicsContext = varAsObjectChecked<GraphicsContext>(graphicsContextVar, GraphicsContext::Type);
-  Inputs::InputContext *inputContext = varAsObjectChecked<Inputs::InputContext>(inputContextVar, Inputs::InputContext::Type);
+  GraphicsContext &graphicsContext = varAsObjectChecked<GraphicsContext>(graphicsContextVar, GraphicsContext::Type);
+  Inputs::InputContext &inputContext = varAsObjectChecked<Inputs::InputContext>(inputContextVar, Inputs::InputContext::Type);
 
   static std::vector<SDL_Event> noEvents{};
   const std::vector<SDL_Event> *eventsPtr = &noEvents;
   int4 mappedWindowRegion;
 
-  auto &viewStack = graphicsContext->renderer->getViewStack();
+  auto &viewStack = graphicsContext.renderer->getViewStack();
   auto viewStackOutput = viewStack.getOutput();
 
   // Get viewport size from view stack
   int2 viewportSize = viewStackOutput.viewport.getSize();
 
   // Get events based on input stack
-  auto &inputStack = inputContext->inputStack;
+  auto &inputStack = inputContext.inputStack;
   InputStack::Item inputStackOutput = inputStack.getTop();
   if (inputStackOutput.windowMapping) {
     auto &windowMapping = inputStackOutput.windowMapping.value();
@@ -99,7 +99,7 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
           using T = std::decay_t<decltype(arg)>;
           if constexpr (std::is_same_v<T, WindowSubRegion>) {
             mappedWindowRegion = arg.region;
-            eventsPtr = &inputContext->events;
+            eventsPtr = &inputContext.events;
           }
         },
         windowMapping);
@@ -107,9 +107,9 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
 
   return translator->translateFromInputEvents(EguiInputTranslatorArgs{
       .events = *eventsPtr,
-      .window = *graphicsContext->window.get(),
-      .time = graphicsContext->time,
-      .deltaTime = graphicsContext->deltaTime,
+      .window = *graphicsContext.window.get(),
+      .time = graphicsContext.time,
+      .deltaTime = graphicsContext.deltaTime,
       .viewportSize = viewportSize,
       .mappedWindowRegion = mappedWindowRegion,
       .scalingFactor = scalingFactor,

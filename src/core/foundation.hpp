@@ -1060,9 +1060,11 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 #define REGISTER_ENUM(_ENUM_INFO_) \
   static shards::EnumRegisterImpl SH_GENSYM(__registeredEnum) = shards::EnumRegisterImpl::registerEnum<_ENUM_INFO_>()
 
-#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)                                                         \
-  namespace shards {                                                                              \
-  template <> struct TEnumHelp<_ENUM_, _VALUE_> { static inline SHOptionalString help = _STR_; }; \
+#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)         \
+  namespace shards {                              \
+  template <> struct TEnumHelp<_ENUM_, _VALUE_> { \
+    static inline SHOptionalString help = _STR_;  \
+  };                                              \
   }
 
 template <typename E> static E getFlags(SHVar var) {
@@ -1402,7 +1404,7 @@ struct VariableResolver {
   }
 };
 
-template <typename T> T *varAsObjectChecked(const SHVar &var, const shards::Type &type) {
+template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type &type) {
   SHTypeInfo typeInfo(type);
   if (var.valueType != SHType::Object) {
     SHLOG_FATAL("Invalid type, expected: {} got: {}", type, magic_enum::enum_name(var.valueType));
@@ -1415,7 +1417,7 @@ template <typename T> T *varAsObjectChecked(const SHVar &var, const shards::Type
     SHLOG_FATAL("Invalid object type id, expected: {} got: {}", type,
                 Type::Object(var.payload.objectVendorId, var.payload.objectTypeId));
   }
-  return reinterpret_cast<T *>(var.payload.objectValue);
+  return *reinterpret_cast<T *>(var.payload.objectValue);
 }
 
 // Collects all ContextVar references

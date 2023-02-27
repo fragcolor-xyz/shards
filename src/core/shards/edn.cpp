@@ -94,9 +94,7 @@ struct Uglify {
 
   void rewrite(form::FormWrapper &formWrapper, SHVar &v) { rewrite(formWrapper.form, v); }
 
-  void rewrite(form::FormWrapperMap &map, SHVar &v) {
-    throw ActivationError("Map not handled");
-  }
+  void rewrite(form::FormWrapperMap &map, SHVar &v) { throw ActivationError("Map not handled"); }
 
   void rewrite(form::Form &form, SHVar &v) {
     switch (form.index()) {

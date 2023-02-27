@@ -80,9 +80,9 @@ struct Transform {
                                                 WriteOutput("worldNormal", FieldTypes::Float3, ReadGlobal("worldNormal")));
     writeNormal.dependencies.emplace_back("initWorldNormal");
 
-    auto &writeWorldPosition =
-        feature->shaderEntryPoints.emplace_back("writeWorldPosition", ProgrammableGraphicsStage::Vertex,
-                                                WriteOutput("worldPosition", FieldTypes::Float3, ReadGlobal("worldPosition"), ".xyz"));
+    auto &writeWorldPosition = feature->shaderEntryPoints.emplace_back(
+        "writeWorldPosition", ProgrammableGraphicsStage::Vertex,
+        WriteOutput("worldPosition", FieldTypes::Float3, ReadGlobal("worldPosition"), ".xyz"));
     writeWorldPosition.dependencies.emplace_back("initWorldPosition");
 
     return feature;

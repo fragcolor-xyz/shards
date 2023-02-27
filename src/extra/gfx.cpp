@@ -148,21 +148,15 @@ struct RenderShard {
     Var &viewVar = (Var &)_view.get();
     Var &viewsVar = (Var &)_views.get();
     if (!viewVar.isNone()) {
-      SHView *shView = varAsObjectChecked<SHView>(viewVar, Types::View);
-      if (!shView)
-        throw formatException("Specified view to GFX.Render is invalid");
-
-      shView->updateVariables();
-      _collectedViews.push_back(shView->view);
+      SHView &shView = varAsObjectChecked<SHView>(viewVar, Types::View);
+      shView.updateVariables();
+      _collectedViews.push_back(shView.view);
     } else if (!viewsVar.isNone()) {
       SeqVar &seq = (SeqVar &)viewsVar;
       for (size_t i = 0; i < seq.size(); i++) {
-        SHView *shView = varAsObjectChecked<SHView>(seq[i], Types::View);
-        if (!shView)
-          throw formatException("Specified view {} to GFX.Render is invalid", i);
-
-        shView->updateVariables();
-        _collectedViews.push_back(shView->view);
+        SHView &shView = varAsObjectChecked<SHView>(seq[i], Types::View);
+        shView.updateVariables();
+        _collectedViews.push_back(shView.view);
       }
     } else {
       _collectedViews.push_back(getDefaultView());

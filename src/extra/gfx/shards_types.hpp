@@ -1,5 +1,5 @@
-#ifndef SH_EXTRA_GFX_SHARDS_TYPES
-#define SH_EXTRA_GFX_SHARDS_TYPES
+#ifndef E452293C_6700_4675_8B6E_5293674E0A33
+#define E452293C_6700_4675_8B6E_5293674E0A33
 
 #include "gfx/texture.hpp"
 #include <common_types.hpp>
@@ -11,6 +11,7 @@
 #include <gfx/shader/types.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
 #include <gfx/drawables/mesh_tree_drawable.hpp>
+#include <gfx/gltf/animation.hpp>
 #include <memory>
 #include <shards.hpp>
 #include <variant>
@@ -21,6 +22,7 @@ namespace gfx {
 struct SHDrawable {
   using Variant = std::variant<MeshDrawable::Ptr, MeshTreeDrawable::Ptr>;
   Variant drawable;
+  std::unordered_map<std::string, Animation> animations;
 };
 
 struct SHView {
@@ -314,11 +316,10 @@ struct Container {
 
 #undef ENUM
 #undef OBJECT
-#undef SH_CONCAT
 };
 } // namespace detail
 using Types = detail::Container;
 
 } // namespace gfx
 
-#endif // SH_EXTRA_GFX_SHARDS_TYPES
+#endif /* E452293C_6700_4675_8B6E_5293674E0A33 */

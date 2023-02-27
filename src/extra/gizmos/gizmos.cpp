@@ -1,9 +1,11 @@
 #include "context.hpp"
 #include "../gfx/shards_types.hpp"
+#include "gfx/drawables/mesh_tree_drawable.hpp"
 #include <linalg_shim.hpp>
 #include <params.hpp>
 #include <gfx/gizmos/translation_gizmo.hpp>
 #include <stdexcept>
+#include <type_traits>
 
 namespace shards {
 namespace Gizmos {
@@ -35,8 +37,14 @@ struct TranslationGizmo : public Base {
       gfx::SHDrawable *drawable = reinterpret_cast<gfx::SHDrawable *>(input.payload.objectValue);
       std::visit(
           [&](auto &drawable) {
-            inputMat = (shards::Mat4)drawable->transform;
-            applyOutputMat = [&](float4x4 &outMat) { drawable->transform = outMat; };
+            using T = std::decay_t<decltype(drawable)>;
+            if constexpr (std::is_same_v<T, gfx::MeshTreeDrawable::Ptr>) {
+              inputMat = drawable->trs.getMatrix();
+              applyOutputMat = [&](float4x4 &outMat) { drawable->trs = outMat; };
+            } else {
+              inputMat = drawable->transform;
+              applyOutputMat = [&](float4x4 &outMat) { drawable->transform = outMat; };
+            }
           },
           drawable->drawable);
       break;

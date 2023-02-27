@@ -133,7 +133,7 @@ struct RenderIntoShard {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    
+
     _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
 
     return _contents.compose(data).outputType;
@@ -143,7 +143,7 @@ struct RenderIntoShard {
     if (input.valueType == SHType::ContextVar) {
       ParamVar var{input};
       var.warmup(shContext);
-      return *varAsObjectChecked<TexturePtr>(var.get(), Types::Texture);
+      return varAsObjectChecked<TexturePtr>(var.get(), Types::Texture);
     } else {
       checkType(input.valueType, SHType::Table, "Attachment");
       auto &table = input.payload.tableValue;
