@@ -40,8 +40,8 @@ add_library(gfx
 
 # Always optimize files with hot-paths
 set_source_files_properties(
-  # drawables/mesh_tree_drawable.cpp
-  # gltf/gltf.cpp
+  drawables/mesh_tree_drawable.cpp
+  gltf/gltf.cpp
   texture_file/texture_file.cpp
   pipeline_hashes.cpp
   PROPERTIES

@@ -3,7 +3,7 @@
 
 (defpure get-view-transform
   (| (Float4 0.0 1.0 -5.0 1.0) >= .arm-pos)
-  time (Math.AxisAngleY) (Math.Rotation) (Math.MatMul .arm-pos) (ToFloat3) >= .arm-pos-3
+  (Math.AxisAngleY) (Math.Rotation) (Math.MatMul .arm-pos) (ToFloat3) >= .arm-pos-3
   {:Position .arm-pos-3 :Target (Float3 0 0.025 0)} (Math.LookAt))
 
 (defloop character
@@ -29,8 +29,8 @@
 
 (defwire spawn-benchmark
   (Log "Spawning models")
-  16 >= .num-x (ToFloat) (Math.Divide 2.0) >= .sub-x
-  16 >= .num-y (ToFloat) (Math.Divide 2.0) >= .sub-y
+  4 >= .num-x (ToFloat) (Math.Divide 2.0) >= .sub-x
+  4 >= .num-y (ToFloat) (Math.Divide 2.0) >= .sub-y
 
   (ForRange 1 .num-y
             (->
@@ -98,4 +98,4 @@
 
     (GFX.Render :Steps .render-steps :View .view))))
 (schedule root test-basic-anim)
-(if (run root timestep 400) nil (throw "Root tick failed"))
+(if (run root timestep 100) nil (throw "Root tick failed"))

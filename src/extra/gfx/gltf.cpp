@@ -2,6 +2,7 @@
 #include "common_types.hpp"
 #include "gfx/gltf/animation.hpp"
 #include "params.hpp"
+#include "shards.hpp"
 #include "shards_types.hpp"
 #include "shards_utils.hpp"
 #include "drawable_utils.hpp"
@@ -26,6 +27,47 @@ using namespace shards;
 
 namespace gfx {
 
+#define GLTF
+
+static const char internalComponentIdentifier = '$';
+
+// Checks if the given name points to an internal glTF component (translation/rotation/scale)
+static bool isGltfBuiltinTarget(std::string_view path) { return path.starts_with(internalComponentIdentifier); }
+
+static std::optional<animation::BuiltinTarget> getGltfBuiltinTarget(std::string_view path) {
+  if (!isGltfBuiltinTarget(path))
+    return std::nullopt;
+  path = path.substr(1);
+  if (path == "t") {
+    return animation::BuiltinTarget::Translation;
+  } else if (path == "r") {
+    return animation::BuiltinTarget::Rotation;
+  } else if (path == "s") {
+    return animation::BuiltinTarget::Scale;
+  } else {
+    throw std::runtime_error(fmt::format("Invalid internal glTF target {}", path));
+  }
+}
+
+static OwnedVar getGltfBuiltinTargetPath(animation::BuiltinTarget target) {
+  OwnedVar result;
+  char pathStr[] = {internalComponentIdentifier, 0, 0};
+  switch (target) {
+  case animation::BuiltinTarget::Rotation:
+    pathStr[1] = 'r';
+    break;
+  case animation::BuiltinTarget::Scale:
+    pathStr[1] = 's';
+    break;
+  case animation::BuiltinTarget::Translation:
+    pathStr[1] = 't';
+    break;
+  }
+  pathStr[2] = 0;
+  cloneVar(result, Var(pathStr, 2));
+  return result;
+}
+
 SeqVar getAnimationPath(MeshTreeDrawable::Ptr node) {
   SeqVar result;
   auto rootNode = MeshTreeDrawable::findRoot(node);
@@ -44,18 +86,7 @@ SeqVar getAnimationPath(MeshTreeDrawable::Ptr node) {
 
 SeqVar getAnimationPath(MeshTreeDrawable::Ptr node, animation::BuiltinTarget target) {
   SeqVar result = getAnimationPath(node);
-  auto &componentName = (OwnedVar &)result.emplace_back();
-  switch (target) {
-  case animation::BuiltinTarget::Rotation:
-    componentName = Var{"~r"};
-    break;
-  case animation::BuiltinTarget::Scale:
-    componentName = Var{"~s"};
-    break;
-  case animation::BuiltinTarget::Translation:
-    componentName = Var{"~t"};
-    break;
-  }
+  result.emplace_back() = getGltfBuiltinTargetPath(target);
   return result;
 };
 
@@ -183,12 +214,12 @@ struct GLTFShard {
             std::visit([&](auto &&v) -> void { value = toVar(v); }, track.getValue(frameIndex));
           }
 
-          static_cast<TableVar &>(frames[frameIndex]) = std::move(frameTableVar);
+          frames[frameIndex] = std::move(frameTableVar.asOwned());
           ++frameIndex;
         }
 
         trackTable.get<SeqVar>("Frames") = std::move(frames);
-        static_cast<TableVar &>(tracks.emplace_back()) = std::move(trackTable);
+        tracks.emplace_back() = std::move(trackTable.asOwned());
       }
     }
   }
@@ -242,14 +273,18 @@ struct GLTFShard {
     });
   }
 
+  // Modifies path and returns the mesh tree node found
+  // the path will contain the elements after the node that was found
+  // there can only be builtin target identifiers left in the path
   MeshTreeDrawable::Ptr findNode(Animations::Path &p) {
     MeshTreeDrawable::Ptr node = _model->root;
     while (true) {
       if (!node)
         return MeshTreeDrawable::Ptr();
 
-      // Use ~ as an indicator for internal glTF components
-      if (!p || p.getHead()[0] == '~')
+      // Stop when end of path is reached
+      // or we encounter a builtin target identifier
+      if (!p || isGltfBuiltinTarget(p.getHead()))
         return node;
 
       for (auto &child : node->getChildren()) {
@@ -266,14 +301,7 @@ struct GLTFShard {
 
   std::optional<animation::BuiltinTarget> findTarget(Animations::Path &p) {
     if (p.length == 1) {
-      std::string_view str = p.getHead();
-      if (str == "~t") {
-        return animation::BuiltinTarget::Translation;
-      } else if (str == "~r") {
-        return animation::BuiltinTarget::Rotation;
-      } else if (str == "~s") {
-        return animation::BuiltinTarget::Scale;
-      }
+      return getGltfBuiltinTarget(p.getHead());
     }
     return std::nullopt;
   }

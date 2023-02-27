@@ -3,7 +3,7 @@
 
 (defpure get-view-transform
   (| (Float4 0.0 1.0 -5.0 1.0) >= .arm-pos)
-  time (Math.AxisAngleY) (Math.Rotation) (Math.MatMul .arm-pos) (ToFloat3) >= .arm-pos-3
+  (Math.AxisAngleY) (Math.Rotation) (Math.MatMul .arm-pos) (ToFloat3) >= .arm-pos-3
   {:Position .arm-pos-3 :Target (Float3 0 0.025 0)} (Math.LookAt))
 
 (defloop character
@@ -24,12 +24,9 @@
              .animation-names (Take .animation-index) >= .animation-name
              .animations (Take .animation-name) = .animation
              (Setup
-              (Take 1)
-              (Log "Animation"))
+              (Take 1))
 
-             (Animation.Timer :Rate 0.4 :Duration 1.0
-                              :Action (->
-                                       (Msg "Done"))) (Math.Add 5.0)
+             (Animation.Timer .animation :Offset 1.0)
              (Animation.Play .animation);
              (|
               (Take 1)))) (GFX.Draw .queue))
