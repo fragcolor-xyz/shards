@@ -1,22 +1,19 @@
 
 
-(defwire initialize-animation-array
-  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") (GFX.Texture) (Push :Name .animation-array :Global true)
-  (Clear .animation-array))
-
 (defwire initialize-animation
+
+  [] >= .animation-array
+  (ExpectLike (GFX.Texture))
+
   (ForEach
    (-> = .texture-name
        (LoadImage .texture-name) (GFX.Texture)  >> .animation-array))
 
-  .animation-index >== 0
-  (Count :Name .animation-array)
-  >== .animation-index-max
-  .animation-speed >== 0.08
-  
-  (Return .animation-array))
+  .animationn-index = 0
+  .animation-index-max = count (.animation-array)
+  .animation-speed = 0.08)
 
-(defloop animate-animation
+(defloop loop-animate
   .animation-index (Math.Add 1)
   > .animation-index
   (When :Predicate (IsMoreEqual .animation-index-max)
@@ -25,7 +22,6 @@
 
 (defloop main-animation-loop
   (Setup
-   (Do initialize-animation-array)
    ["GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png",
     "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png",
     "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png",
@@ -47,10 +43,12 @@
        (UI
         .ui-draw-queue
         (->
-         (UI.Area :Position (float2 0 0)
-                  :Anchor Anchor.Center
-                  :Contents (->
-                             .animation-array (Take .animation-index) (UI.Image :Scale (float2 0.2))))))
+           (UI.Area :Position (float2 0 0)
+                    :Anchor Anchor.Center
+                    :Contents (->
+                               .animation-array (Take .animation-index) (UI.Image :Scale (float2 0.2))))))
+
+       (button-inputs)
 
        (GFX.Render :Steps .render-steps))))
 

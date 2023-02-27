@@ -1,94 +1,29 @@
-(defshards LoadTexture [name]
-  (LoadImage name)
-  (GFX.Texture))
-
 (defwire initialize-animation-array
-  (GFX.Texture :Format TextureFormat.R8Unorm) (Push :Name .animation-array :Global true)
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") (GFX.Texture) (Push :Name .animation-array :Global true)
   (Clear .animation-array))
 
-(defwire initialize-animation
+(defwire initialize-animation-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") (GFX.Texture) >> .animation-array
+  (Clear .animation-array))
+
+(defwire initialize-animation 
   (ForEach
-   (-> >= .texture-name
-       (Log ".texture-name")
-       (LoadTexture .texture-name)  >> .animation-array
-       .animation-array
-       (Log "animation-array: "))) 
-
-  0 >== .animation-index
-  (Count :Name .animation-array)
-  >== .animation-index-max
-  0.08 >== .animation-speed)
-
-(defloop load-image-into-texture 
-  = .filename 
-  (LoadImage .filename) (GFX.Texture))
-
-(defwire initialize-animation-3
-  (StepMany load-image-into-texture)
-  >= .animation-array
-  (Log "Array: ")
-
-  0 >== .animation-index
-  (Count :Name .animation-array)
-  >== .animation-index-max
-  0.08 >== .animation-speed)
-
-(defwire initialize-animation-2
-  
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") >> .animation-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png") >> .animation-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png") >> .animation-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png") >> .animation-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png") >> .animation-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png") >> .animation-array
-  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png") >> .animation-array
-
-  0 >== .animation-index
-  (Count :Name .animation-array)
-  >== .animation-index-max
-  0.08 >== .animation-speed)
-
-(defloop animate-animation
-  .animation-index (Math.Add 1)
-  > .animation-index
-  (When :Predicate (IsMoreEqual .animation-index-max)
-        :Action (-> 0 > .animation-index))
-  (Pause .animation-speed))
+   (-> = .texture-name
+       (LoadImage .texture-name) (GFX.Texture)  >> .animation-array)))
 
 (defloop main-animation-loop
-  (Setup
+  (Setup 
    (Do initialize-animation-array)
-   ["GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png"
-    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png"
-    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png"
-    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png"
-    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png"
-    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png"
+   ["GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png",
     "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png"]
-   (Do initialize-animation-3)
-   (Count :Name .animation-array)
+   (Do initialize-animation)
    .animation-array
-   (Log "animation:Array"))
-
-  (Step animate-animation)
-
-  (GFX.MainWindow
-   :Title "MainWindow" :Width 1920 :Height 1080
-   :Contents
-   (-> (Setup
-        (GFX.DrawQueue) >= .ui-draw-queue
-        (GFX.UIPass .ui-draw-queue) >> .render-steps)
-       .ui-draw-queue (GFX.ClearQueue)
-
-       (UI
-        .ui-draw-queue
-        (->
-         (UI.Area :Position (float2 0 0)
-                  :Anchor Anchor.Center
-                  :Contents (->
-                             .animation-array (Take .animation-index) (UI.Image :Scale (float2 0.2))))))
-
-       (GFX.Render :Steps .render-steps))))
+   (Log "Array")))
 
 (defmesh main)
 (schedule main main-animation-loop)
