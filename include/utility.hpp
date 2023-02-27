@@ -782,6 +782,27 @@ template <class SH_CORE> const TSeqVar<SH_CORE> &asSeq(const TOwnedVar<SH_CORE> 
   return (const TSeqVar<SH_CORE> &)var;
 }
 
+// also for pure SHVar
+template <class SH_CORE> TTableVar<SH_CORE> &asTable(SHVar &var) {
+  assert(var.valueType == SHType::Table);
+  return (TTableVar<SH_CORE> &)var;
+}
+
+template <class SH_CORE> const TTableVar<SH_CORE> &asTable(const SHVar &var) {
+  assert(var.valueType == SHType::Table);
+  return (const TTableVar<SH_CORE> &)var;
+}
+
+template <class SH_CORE> TSeqVar<SH_CORE> &asSeq(SHVar &var) {
+  assert(var.valueType == SHType::Seq);
+  return (TSeqVar<SH_CORE> &)var;
+}
+
+template <class SH_CORE> const TSeqVar<SH_CORE> &asSeq(const SHVar &var) {
+  assert(var.valueType == SHType::Seq);
+  return (const TSeqVar<SH_CORE> &)var;
+}
+
 // https://godbolt.org/z/I72ctd
 template <class Function> struct Defer {
   Function _f;
