@@ -43,6 +43,10 @@ More complex operations can also be executed with shards such as:
 
 These shards allow you to work with strings and text in Shards.
 
+- [AppendTo](../../../reference/shards/General/AppendTo/) (Append to a string)
+
+- [PrependTo](../../../reference/shards/General/PrependTo/) (Prepend to a string)
+
 - [String.Contains](../../../reference/shards/String/Contains/) (Searches for a string)
 
 - [String.Join](../../../reference/shards/String/Join/) (Combines strings)
