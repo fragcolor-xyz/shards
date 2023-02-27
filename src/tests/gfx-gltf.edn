@@ -1,8 +1,8 @@
 (def timestep (/ 1.0 120.0))
 (defmesh root)
 
-(defshards get-view-transform [time]
-  (Float4 0 0.2 0.2 1.0) >= .arm-pos
+(defpure get-view-transform
+  (| (Float4 0 0.2 0.2 1.0) >= .arm-pos)
   time (Math.AxisAngleY) (Math.Rotation) (Math.MatMul .arm-pos) (ToFloat3) >= .arm-pos-3
   {:Position .arm-pos-3 :Target (Float3 0 0.025 0)} (Math.LookAt))
 
@@ -19,7 +19,7 @@
   {:Features .features} (GFX.DrawablePass) >> .render-steps
 
   ;; Create view
-  (get-view-transform 0.0) >= .view-transform
+  0.0 (Do get-view-transform) >= .view-transform
   (GFX.View :View .view-transform) >= .view)
 
 (defshards default-window []
@@ -29,7 +29,7 @@
    (->
     ;; Rotate camera
     .time (Math.Add timestep) > .time
-    (get-view-transform .time) > .view-transform
+    .time (Do get-view-transform) > .view-transform
 
     .drawables (GFX.Draw)
     (GFX.Render :Steps .render-steps :View .view))))
@@ -76,7 +76,7 @@
    (->
     ;; Rotate camera
     .time (Math.Add timestep) > .time
-    (get-view-transform .time) > .view-transform
+    .time (Do get-view-transform) > .view-transform
     (get-xy-wave-transform 0.0 .time) > .t2
 
     .t1 (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables
