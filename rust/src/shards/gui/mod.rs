@@ -95,6 +95,7 @@ struct EguiContext {
   requiring: ExposedTypes,
   queue: ParamVar,
   contents: ShardsVar,
+  exposing: ExposedTypes,
   graphics_context: ParamVar,
   input_context: ParamVar,
   renderer: egui_gfx::Renderer,
