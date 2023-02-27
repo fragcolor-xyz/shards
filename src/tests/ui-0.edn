@@ -21,9 +21,11 @@
     .ui-draw-queue (GFX.ClearQueue)
 
     input
-    (UI .ui-draw-queue)
+    (UI .ui-draw-queue (-> "hello" = .hello))
     ;; input passthrough
     (Assert.Is input :Abort true)
+    ;; exposed variable
+    .hello (ExpectString)
 
     (GFX.Render :Steps .render-steps))))
 (schedule main context-test)

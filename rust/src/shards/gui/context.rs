@@ -63,6 +63,7 @@ impl Default for EguiContext {
       requiring: Vec::new(),
       queue: ParamVar::default(),
       contents: ShardsVar::default(),
+      exposing: Vec::new(),
       graphics_context: unsafe {
         let mut var = ParamVar::default();
         let name = shardsc::gfx_getGraphicsContextVarName() as shardsc::SHString;
@@ -158,6 +159,16 @@ impl Shard for EguiContext {
     self.requiring.push(exp_info);
 
     Some(&self.requiring)
+  }
+
+  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+    self.exposing.clear();
+
+    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
+      Some(&self.exposing)
+    } else {
+      None
+    }
   }
 
   fn hasCompose() -> bool {
