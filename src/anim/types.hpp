@@ -12,11 +12,6 @@ constexpr uint32_t VendorId = shards::CoreCC;
 enum class Interpolation { Linear, Step, Cubic };
 
 namespace detail {
-#define OBJECT(_id, _displayName, _definedAs, _type)                                                                            \
-  static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);                                                      \
-  static inline Type _definedAs{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
-  static inline ObjectVar<_type> SH_CONCAT(_definedAs, ObjectVar){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
-
 using namespace shards;
 // NOTE: This needs to be a struct ensure correct initialization order under clang
 struct Container {
@@ -41,7 +36,6 @@ struct Container {
   static inline Type Animation = Type::SeqOf(TrackTable);
   static inline Types AnimationOrAnimationVar{Type::VariableOf(Animation), Animation};
 };
-#undef OBJECT
 } // namespace detail
 
 using Types = detail::Container;
