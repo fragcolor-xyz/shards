@@ -192,6 +192,13 @@ struct Tooltip {
   exposing: ExposedTypes,
 }
 
+struct Variable {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  variable: ParamVar,
+  mutable: bool,
+}
+
 macro_rules! decl_ui_input {
   ($name:ident, $tmp_type:ty) => {
     struct $name {
@@ -282,6 +289,8 @@ mod spinner;
 mod text_field;
 mod text_util;
 mod tooltip;
+mod var_util;
+mod variable;
 
 pub fn registerShards() {
   registerShard::<Button>();
@@ -319,6 +328,7 @@ pub fn registerShards() {
   registerShard::<Spinner>();
   registerShard::<TextField>();
   registerShard::<Tooltip>();
+  registerShard::<Variable>();
 
   if cfg!(feature = "code_editor") {
     registerCodeEditor();
