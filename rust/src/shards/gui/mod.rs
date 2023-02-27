@@ -101,6 +101,10 @@ struct EguiContext {
   input_translator: egui_gfx::InputTranslator,
 }
 
+pub(crate) trait UIRenderer {
+  fn render(&mut self, ui: &mut egui::Ui) -> egui::Response;
+}
+
 mod containers;
 mod context;
 mod layouts;
