@@ -1,9 +1,5 @@
 (defwire initialize-animation-array
-  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") (GFX.Texture) (Push :Name .animation-array :Global true)
-  (Clear .animation-array))
-
-(defwire initialize-animation-array
-  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") (GFX.Texture) >> .animation-array
+  (GFX.Texture :Format TextureFormat.R8Unorm) (Push :Name .animation-array :Global true)
   (Clear .animation-array))
 
 (defwire initialize-animation 
@@ -23,7 +19,7 @@
     "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png"]
    (Do initialize-animation)
    .animation-array
-   (Log "Array")))
+   (Log "Item: ")))
 
 (defmesh main)
 (schedule main main-animation-loop)

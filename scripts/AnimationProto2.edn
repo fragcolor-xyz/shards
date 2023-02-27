@@ -1,10 +1,10 @@
 
 
+(defwire initialize-animation-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") (GFX.Texture) (Push :Name .animation-array :Global true)
+  (Clear .animation-array))
+
 (defwire initialize-animation
-
-  [] >= .animation-array
-  (ExpectLike (GFX.Texture))
-
   (ForEach
    (-> = .texture-name
        (LoadImage .texture-name) (GFX.Texture)  >> .animation-array))
@@ -43,10 +43,10 @@
        (UI
         .ui-draw-queue
         (->
-           (UI.Area :Position (float2 0 0)
-                    :Anchor Anchor.Center
-                    :Contents (->
-                               .animation-array (Take .animation-index) (UI.Image :Scale (float2 0.2))))))
+         (UI.Area :Position (float2 0 0)
+                  :Anchor Anchor.Center
+                  :Contents (->
+                             .animation-array (Take .animation-index) (UI.Image :Scale (float2 0.2))))))
 
        (button-inputs)
 
