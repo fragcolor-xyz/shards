@@ -9,8 +9,8 @@
 [![license](https://img.shields.io/github/license/fragcolor-xyz/shards)](./LICENSE)
 ![CI](https://github.com/fragcolor-xyz/shards/workflows/CI/badge.svg)
 [![codecov](https://codecov.io/gh/fragcolor-xyz/shards/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/fragcolor-xyz/shards)
-[![docs](https://img.shields.io/badge/docs-API-blueviolet)](https://docs.fragcolor.xyz/)
-[![examples](https://img.shields.io/badge/learn-examples-blue)](https://learn.fragcolor.xyz/)
+[![docs](https://img.shields.io/badge/docs-API-blueviolet)](https://docs.fragnova.com/)
+[![examples](https://img.shields.io/badge/learn-examples-blue)](https://docs.fragnova.com/learn)
 
 ## Vision
 
@@ -67,7 +67,7 @@ Shards has numerous features that make it ideal for live on-the-fly game develop
 ### Intuitive
 
 - Supports **visual editing** without the associated spaghetti and spider webs
-- Offers a versatile textual representation (currently backed by a derived **Clojure/Lisp**). More information on this can be found [here](https://docs.fragcolor.xyz/docs/shards/).
+- Offers a versatile textual representation (currently backed by a derived **Clojure/Lisp**). More information on this can be found [here](https://docs.fragnova.com/reference/shards/).
 
 ### Developer-friendly
 
@@ -147,7 +147,7 @@ Shards has numerous features that make it ideal for live on-the-fly game develop
 
 ## Installation
 
-To start developing with Shards, you'll need to [set up your environment](https://docs.fragcolor.xyz/contribute/getting-started/) and then [build Shards](https://docs.fragcolor.xyz/contribute/code/build-shards/).
+To start developing with Shards, you'll need to [set up your environment](https://docs.fragnova.com/contribute/getting-started/) and then [build Shards](https://docs.fragnova.com/contribute/code/build-shards/).
 
 ## Usage
 
@@ -157,7 +157,7 @@ Shards files end with extension `.edn` and can be directly run from the console 
 ./shards <filename.edn>
 ```
 
-Shards language API and features are documented [here](https://docs.fragcolor.xyz/docs/) while example codes and tutorials can be found [here](https://learn.fragcolor.xyz/).
+Shards language API and features are documented [here](https://docs.fragnova.com/) while example codes and tutorials can be found [here](https://docs.fragnova.com/learn).
 
 ## License
 
