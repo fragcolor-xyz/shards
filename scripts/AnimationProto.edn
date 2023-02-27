@@ -1,0 +1,21 @@
+(defshards initialize-character []
+  ;; ---------- Character Idle Array (Facing Left) ----------
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png") >> .idle-left-image-array
+  (LoadTexture "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png") >> .idle-left-image-array
+
+  0 >= .idle-image-index
+  (Count .idle-left-image-array) = .idle-image-index-max
+  0.08 = .idle-animation-speed)
+
+;; --------- Idle Animation Loop ---------
+(defloop idle-animation
+  .idle-image-index (Math.Add 1)
+  > .idle-image-index
+  (When :Predicate (IsMoreEqual .idle-image-index-max)
+        :Action (-> 0 > .idle-image-index))
+  (Pause .idle-animation-speed))

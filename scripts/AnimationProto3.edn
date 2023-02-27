@@ -1,0 +1,30 @@
+(defwire initialize-animation-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") (GFX.Texture) (Push :Name .animation-array :Global true)
+  (Clear .animation-array))
+
+(defwire initialize-animation-array
+  (LoadImage "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png") (GFX.Texture) >> .animation-array
+  (Clear .animation-array))
+
+(defwire initialize-animation 
+  (ForEach
+   (-> = .texture-name
+       (LoadImage .texture-name) (GFX.Texture)  >> .animation-array)))
+
+(defloop main-animation-loop
+  (Setup 
+   (Do initialize-animation-array)
+   ["GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png",
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png"]
+   (Do initialize-animation)
+   .animation-array
+   (Log "Array")))
+
+(defmesh main)
+(schedule main main-animation-loop)
+(run main (/ 1.0 60))

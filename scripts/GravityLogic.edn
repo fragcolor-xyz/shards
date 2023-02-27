@@ -1,0 +1,24 @@
+;; ------------ Test Character gravity-logic ---------------
+(defshards gravity-logic [object-y object-y-velocity object-y-acceleration object-x object-position object-jump-state object-animation-state]
+  object-y (Math.Add object-y-velocity)
+  > object-y
+
+  object-y-velocity (Math.Add object-y-acceleration)
+  > object-y-velocity
+
+  (float2 object-x object-y) > object-position
+
+  (clamp object-y -620.0 620.0)
+
+  object-y
+  (When :Predicate (IsMoreEqual 620.0)
+        :Action (->
+                 0.0 > object-y
+                 0.0 > object-y-acceleration
+                 true > object-jump-state
+                 object-animation-state
+                 (When :Predicate (Is 3)
+                       :Action (->
+                                0 > object-animation-state)))))
+
+
