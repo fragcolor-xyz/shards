@@ -159,7 +159,7 @@ function(add_rust_library)
   message(VERBOSE "  Rust target name: ${RUST_TARGET_NAME}")
 
   if(NOT RUST_TARGET_PATH)
-    set(RUST_TARGET_PATH ${RUST_PROJECT_PATH}/target)
+    set(RUST_TARGET_PATH ${PROJECT_SOURCE_DIR}/target)
   endif()
   message(VERBOSE "  Rust target path: ${RUST_TARGET_PATH}")
 

@@ -1420,6 +1420,18 @@ template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type
   return *reinterpret_cast<T *>(var.payload.objectValue);
 }
 
+inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, const SHVar &var) {
+  assert(var.valueType == SHType::ContextVar);
+
+  auto sv = std::string_view(var.payload.stringValue);
+  for (const auto &entry : exposed) {
+    if (sv == entry.name) {
+      return entry;
+    }
+  }
+  return std::nullopt;
+}
+
 // Collects all ContextVar references
 inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedInfo &out, const SHVar &var) {
   using namespace std::literals;

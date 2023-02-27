@@ -112,6 +112,7 @@ jobs:
           ./shards ../src/tests/bigint.clj
           ./shards ../src/tests/brotli.clj
           ./shards ../src/tests/snappy.clj
+          ./shards ../src/tests/expect-like.edn
           ./shards ../src/tests/failures.clj
           ./shards ../src/tests/wasm.clj
           ./shards ../src/tests/rust.clj

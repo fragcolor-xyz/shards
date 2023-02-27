@@ -1,0 +1,29 @@
+(def Root (Mesh))
+
+(schedule
+ Root
+ (Wire "test"
+       "\"Test\"" (FromJson)
+       (ExpectLike "")
+       (Log "String from json")
+
+       "100" (FromJson)
+       (ExpectLike 0)
+       (Log "Number from json")
+
+       "{\"name\": \"john\"}" (FromJson)
+       (ExpectLike :OutputOf (-> {:name ""}))
+       (Log "Table from json")
+       (Take "name")
+       (Log "Taken from table")
+
+       (Sequence .seq)
+       (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
+       (ForRange 0 10 (->
+                       (Math.MatIdentity) (GFX.Drawable :Mesh .mesh) >> .seq))
+
+       ; Use expect-like to pass the dynamic sequence to GFX.Draw
+       (GFX.DrawQueue) >= .queue
+       .seq (ExpectLike :OutputOf (-> (Math.MatIdentity) (GFX.Drawable :Mesh .mesh) >> .seq-1 .seq-1))
+       (GFX.Draw .queue)))
+(tick Root)

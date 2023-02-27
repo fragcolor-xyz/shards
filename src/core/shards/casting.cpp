@@ -2,9 +2,13 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "casting.hpp"
+#include "foundation.hpp"
+#include "params.hpp"
+#include "runtime.hpp"
 #include <boost/beast/core/detail/base64.hpp>
 #include <type_traits>
 #include <boost/algorithm/hex.hpp>
+
 namespace shards {
 struct FromImage {
   // TODO SIMD this
@@ -349,70 +353,65 @@ template <Type &ET> struct ExpectXComplex {
 };
 
 struct ExpectLike {
-  ParamVar _example{};
   SHTypeInfo _expectedType{};
-  bool _dispose{false};
-  uint64_t _outputTypeHash{0};
-  bool _unsafe{false};
+  uint64_t _expectedTypeHash{0};
   bool _derived{false};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline Parameters params{{"Example",
-                                   SHCCSTR("The example value to expect, in the case of a used wire, the "
-                                           "output type of that wire will be used."),
-                                   {CoreInfo::AnyType}},
-                                  {"Unsafe",
-                                   SHCCSTR("If we should skip performing deep type hashing and comparison. "
-                                           "(generally fast but this might improve performance)"),
-                                   {CoreInfo::BoolType}}};
-  static SHParametersInfo parameters() { return params; }
+  PARAM_PARAMVAR(_typeOf, "TypeOf",
+                 "The example value to expect. The type of the constant given here will be checked against this shard's input.",
+                 {CoreInfo::AnyType});
+  PARAM(ShardsVar, _outputOf, "OutputOf",
+        "Evaluates the output type of the given expression. That type will be checked against this shard's input.",
+        {CoreInfo::ShardsOrNone});
+  PARAM_VAR(_unsafe, "Unsafe",
+            "If we should skip performing deep type hashing and comparison. "
+            "(generally fast but this might improve performance)",
+            {CoreInfo::BoolType});
+  PARAM_IMPL(ExpectLike, PARAM_IMPL_FOR(_typeOf), PARAM_IMPL_FOR(_outputOf), PARAM_IMPL_FOR(_unsafe));
 
-  void setParam(int index, const SHVar &value) {
-    if (index == 0)
-      _example = value;
-    else if (index == 1)
-      _unsafe = value.payload.boolValue;
-  }
+  ExpectLike() { _unsafe = Var(false); }
 
-  SHVar getParam(int index) {
-    if (index == 0)
-      return _example;
-    else
-      return Var(_unsafe);
-  }
-
-  void destroy() {
-    if (_expectedType.basicType != SHType::None && _dispose) {
+  void clearDerived() {
+    if (_derived) {
       freeDerivedInfo(_expectedType);
       _expectedType = {};
-      _dispose = false;
+      _derived = false;
     }
   }
 
+  void destroy() { clearDerived(); }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup() { PARAM_CLEANUP(); }
+
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_example.isVariable()) {
-      throw ComposeError("The example value of ExpectLike cannot be a variable");
-    } else {
-      if (_expectedType.basicType != SHType::None && _dispose) {
-        freeDerivedInfo(_expectedType);
-        _expectedType = {};
-        _dispose = false;
-      }
-      if (_example->valueType == SHType::Wire) {
-        auto wire = SHWire::sharedFromRef(_example->payload.wireValue);
-        _expectedType = wire->outputType;
-        _outputTypeHash = deriveTypeHash(_expectedType);
-        return _expectedType;
-      } else {
-        SHVar example = _example;
-        _expectedType = deriveTypeInfo(example, data);
-        _dispose = true;
-        _outputTypeHash = deriveTypeHash(example);
-        return _expectedType;
-      }
+    bool haveOutputOf = _outputOf.shards().len > 0;
+    if (_typeOf.isNotNullConstant() && haveOutputOf) {
+      throw ComposeError("Only one of TypeOf or OutputOf is allowed");
     }
+
+    if (_typeOf.isVariable()) {
+      auto type = findExposedVariable(data.shared, _typeOf);
+      if (!type.has_value())
+        throw ComposeError(fmt::format("Can not derive type of variable {}, it was not found", _typeOf->payload.stringValue));
+      _expectedType = type->exposedType;
+    } else if (_typeOf.isNotNullConstant()) {
+      clearDerived();
+      _expectedType = deriveTypeInfo((SHVar &)_typeOf, data);
+      _derived = true;
+    } else if (haveOutputOf) {
+      _expectedType = _outputOf.compose(data).outputType;
+    } else {
+      throw ComposeError("One of TypeOf or OutputOf is required");
+    }
+
+    _expectedTypeHash = deriveTypeHash(_expectedType);
+
+    return _expectedType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -421,7 +420,7 @@ struct ExpectLike {
       throw ActivationError("Unexpected input type");
     } else if (!_unsafe) {
       auto inputTypeHash = deriveTypeHash(input);
-      if (unlikely(inputTypeHash != _outputTypeHash)) {
+      if (unlikely(inputTypeHash != _expectedTypeHash)) {
         SHLOG_ERROR("Unexpected value: {} expected type: {}", input, _expectedType);
         throw ActivationError("Unexpected input type");
       }
