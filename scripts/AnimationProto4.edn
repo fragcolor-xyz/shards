@@ -1,0 +1,84 @@
+
+(defwire initialize-animation-array
+  (GFX.Texture :Format TextureFormat.R8Unorm) (Push :Name .animation-array :Global true)
+  (Clear .animation-array))
+
+(defloop load-image-into-texture
+  = .filename
+  (LoadImage .filename) (GFX.Texture))
+
+(defwire initialize-animation
+  (StepMany load-image-into-texture)
+  >= .animation-array
+  (Log "Array: ")
+
+  0 >== .animation-index
+  (Count :Name .animation-array)
+  >== .animation-index-max)
+
+(defwire initialise-animation-speed
+  (ToFloat) >== .animation-speed)
+
+(defloop animate-animation
+  .animation-index (Math.Add 1)
+  > .animation-index
+  (When :Predicate (IsMoreEqual .animation-index-max)
+        :Action (-> 0 > .animation-index))
+  (Pause .animation-speed))
+
+(defwire set-animation-position
+  = .temp-position-array
+  (Take 0)(ToFloat) >== .x-position
+  .temp-position-array
+  (Take 1)(ToFloat) >== .y-position
+  .x-position
+  (Log "X position: ")
+  .y-position
+  (Log "Y position: ")
+  
+  (float2 .x-position .y-position) >== .animation-position
+  (Log "animation position: "))
+
+(defloop display-animation
+  (UI.Area :Position .animation-position
+           :Anchor Anchor.Center
+           :Contents (->
+                      .animation-array (Take .animation-index) (UI.Image :Scale (float2 0.2)))))
+
+(defloop main-animation-loop
+  (Setup
+   (Do initialize-animation-array)
+   ["GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png"]
+   (Do initialize-animation)
+   (Count :Name .animation-array)
+   0.04
+   (Do initialise-animation-speed)
+   [0 0]
+   (Do set-animation-position))
+
+  (Step animate-animation)
+
+  (GFX.MainWindow
+   :Title "MainWindow" :Width 1920 :Height 1080
+   :Contents
+   (-> (Setup
+        (GFX.DrawQueue) >= .ui-draw-queue
+        (GFX.UIPass .ui-draw-queue) >> .render-steps)
+       .ui-draw-queue (GFX.ClearQueue)
+
+       (UI
+        .ui-draw-queue
+        (->
+         (Step display-animation)))
+
+       (GFX.Render :Steps .render-steps))))
+
+(defmesh main)
+(schedule main main-animation-loop)
+(run main (/ 1.0 60))
