@@ -89,7 +89,7 @@ struct Run {
   void cleanup() { _arguments.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    std::optional<boost::process::child*> pCmd;
+    std::optional<boost::process::child *> pCmd;
     return awaitne(
         context,
         [&]() {
@@ -186,7 +186,7 @@ struct Run {
         },
         [&] {
           SHLOG_DEBUG("Process terminated");
-          if(pCmd) {
+          if (pCmd) {
             (*pCmd)->terminate();
           }
         });

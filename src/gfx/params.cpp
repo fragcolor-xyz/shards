@@ -66,8 +66,8 @@ size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &
   return std::visit(visitor, variant);
 }
 
-using shader::NumFieldType;
 using shader::FieldTypes;
+using shader::NumFieldType;
 NumFieldType getParamVariantType(const ParamVariant &variant) {
   NumFieldType result = {};
   std::visit(

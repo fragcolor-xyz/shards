@@ -700,9 +700,7 @@ struct Response {
   }
 
   // compose to fixup output type purely based on input type
-  SHTypeInfo compose(const SHInstanceData &data) {
-    return data.inputType;
-  }
+  SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
 
   void warmup(SHContext *context) {
     _headers.warmup(context);

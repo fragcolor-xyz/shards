@@ -254,10 +254,10 @@ struct FullOutput {
   const ClippedPrimitive *primitives;
   size_t numPrimitives;
   egui::CursorIcon cursorIcon;
-  const char* openUrl;
-  const char* copiedText;
+  const char *openUrl;
+  const char *copiedText;
   bool mutableTextUnderCursor;
-  const egui::Pos2* textCursorPosition;
+  const egui::Pos2 *textCursorPosition;
 };
 } // namespace egui
 

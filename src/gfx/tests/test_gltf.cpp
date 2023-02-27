@@ -56,7 +56,7 @@ TEST_CASE("glTF sample models", "[glTF]") {
 
       float4x4 origTransform = gltfScene->trs.getMatrix();
       gltfScene->trs = linalg::mul(origTransform, linalg::mul(linalg::translation_matrix(testModel.offset),
-                                                                    linalg::scaling_matrix(float3(testModel.scale))));
+                                                              linalg::scaling_matrix(float3(testModel.scale))));
 
       queue->clear();
       queue->add(gltfScene);

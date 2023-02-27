@@ -37,7 +37,7 @@ struct MaterialShard {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    
+
     return outputTypes().elements[0];
   }
 

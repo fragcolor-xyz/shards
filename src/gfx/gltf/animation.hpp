@@ -11,11 +11,7 @@
 namespace gfx {
 
 namespace animation {
-enum class Interpolation {
-  Linear,
-  Step,
-  Cubic
-};
+enum class Interpolation { Linear, Step, Cubic };
 
 enum class BuiltinTarget {
   Translation,

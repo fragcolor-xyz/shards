@@ -133,7 +133,7 @@ struct RenderIntoShard {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    
+
     _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
 
     return _contents.compose(data).outputType;

@@ -275,8 +275,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(defmacro! defpure (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
       "name)) :Pure (wireify (vector ~@shards))))))",
       env);
-  rep("(defmacro! patch (fn* [name & shards] `(do (ImplWire ~(symbol (str name)) :Pure (wireify (vector ~@shards))))))",
-      env);
+  rep("(defmacro! patch (fn* [name & shards] `(do (ImplWire ~(symbol (str name)) :Pure (wireify (vector ~@shards))))))", env);
   rep("(defmacro! deftrait (fn* [name & shards] `(def! ~(symbol (str name)) (hash-map ~@shards))))", env);
   rep("(defmacro! defmesh (fn* [name] `(def ~(symbol (str name)) (Mesh))))", env);
   rep("(defmacro! | (fn* [& shards] `(Sub (wireify (vector ~@shards)))))", env);
@@ -1269,8 +1268,9 @@ struct Observer : public shards::RuntimeObserver {
       // add coverage for parameters setting
       auto val = shard->getParam(shard, i);
       auto res = shard->setParam(shard, i, &val);
-      if(res.code != 0) {
-        SHLOG_WARNING("Debug validation failed to set parameter: {} code: {} shard: {}", param.name, res.code, shard->name(shard));
+      if (res.code != 0) {
+        SHLOG_WARNING("Debug validation failed to set parameter: {} code: {} shard: {}", param.name, res.code,
+                      shard->name(shard));
       }
 #endif
     }

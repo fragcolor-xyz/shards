@@ -15,7 +15,6 @@ struct CachedView;
 
 namespace gfx {
 
-
 struct FeatureGeneratorContext {
   Renderer &renderer;
 
@@ -33,7 +32,8 @@ struct FeatureGeneratorContext {
 
   size_t frameCounter;
 
-  FeatureGeneratorContext(Renderer &renderer, ViewPtr view, const detail::CachedView &cachedView, DrawQueuePtr queue, size_t frameCounter)
+  FeatureGeneratorContext(Renderer &renderer, ViewPtr view, const detail::CachedView &cachedView, DrawQueuePtr queue,
+                          size_t frameCounter)
       : renderer(renderer), view(view), cachedView(cachedView), queue(queue), frameCounter(frameCounter) {}
 
   // Issues a render command that will run before the parent render step

@@ -88,7 +88,7 @@ void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, c
 
   // Check input type is a shard sequence
   std::vector<ShardPtr> shards;
-  ForEach(input.payload.seqValue, [&](const SHVar& shardVar) {
+  ForEach(input.payload.seqValue, [&](const SHVar &shardVar) {
     checkType(shardVar.valueType, SHType::ShardRef, ":Shaders EntryPoint");
     shards.push_back(shardVar.payload.shardValue);
   });

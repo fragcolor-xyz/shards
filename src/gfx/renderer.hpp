@@ -35,7 +35,7 @@ public:
   Context &getContext();
 
   /// <div rustbindgen hide></div>
-  void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps, const RendererHacks& hacks = {});
+  void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps, const RendererHacks &hacks = {});
 
   /// <div rustbindgen hide></div>
   void render(ViewPtr view, const PipelineSteps &pipelineSteps);

@@ -514,7 +514,7 @@ entt::id_type findId(SHContext *ctx) noexcept {
     for (; rit != ctx->wireStack.rend(); ++rit) {
       // prioritize local variables
       auto wire = *rit;
-      if(wire->id != entt::null) {
+      if (wire->id != entt::null) {
         id = wire->id;
         break;
       }
