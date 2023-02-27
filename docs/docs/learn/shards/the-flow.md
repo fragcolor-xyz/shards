@@ -819,7 +819,7 @@ In the next chapter, we will take a look at how working with data in Shards is l
 
 | Shard    | Uses Original Variables? | Restarts Wire? | Continues Loop?  | 1 Instance per run? |
 | :------- | :----------------------- | :------------- | :--------------- | :------------------ |
-| Do       | X                        | X              | O                | O                   |
+| Do       | O                        | X              | O                | O                   |
 | Detach   | X                        | O              | O                | O                   |
 | Spawn    | X                        | O              | O                | X                   | 
 | Start    | X                        | O              | X                | X                   | 
