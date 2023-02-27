@@ -182,6 +182,20 @@ BUILTIN("concat") {
   return mal::list(items);
 }
 
+// like concat for hashmaps
+BUILTIN("merge") {
+  malHash::Map output;
+
+  for (auto it = argsBegin; it != argsEnd; ++it) {
+    const malHash *hash = STATIC_CAST(malHash, *it);
+    for (auto it = hash->m_map.begin(); it != hash->m_map.end(); ++it) {
+      output[it->first] = it->second;
+    }
+  }
+
+  return mal::hash(output);
+}
+
 BUILTIN("conj") {
   CHECK_ARGS_AT_LEAST(1);
   ARG(malSequence, seq);

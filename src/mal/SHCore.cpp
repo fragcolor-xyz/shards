@@ -253,6 +253,10 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(def! partial (fn* [pfn & args] (fn* [& args-inner] (apply pfn (concat "
       "args args-inner)))))",
       env);
+  rep("(def! reduce (fn* (f init xs) (if (empty? xs) init (reduce f (f init (first xs)) (rest xs)))))", env);
+  rep("(def! foldr (let* [rec (fn* [f xs acc index] (if (< index 0) acc (rec f xs (f (nth xs index) acc) (- index 1))))] (fn* [f "
+      "init xs] (rec f xs init (- (count xs) 1)))))",
+      env);
   rep("(def || Await)", env);
   rep("(defn for [from to pfn] (map (fn* [n] (apply pfn [n])) (range from to)))", env);
 #if defined(_WIN32)
