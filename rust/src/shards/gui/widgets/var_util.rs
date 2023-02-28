@@ -10,7 +10,10 @@ use egui::*;
 use std::ffi::CStr;
 
 impl UIRenderer for Var {
-  fn render(&mut self, ui: &mut Ui) -> Response {
+  fn render(&mut self, read_only: bool, ui: &mut Ui) -> Response {
+    if read_only && !matches!(self.valueType, SHType_Seq | SHType_Table) {
+      ui.set_enabled(false);
+    }
     unsafe {
       match self.valueType {
         SHType_None => ui.label(""),
@@ -134,7 +137,7 @@ impl UIRenderer for Var {
           color.a = srgba[3];
           response
         }
-        SHType_String => {
+        SHType_String | SHType_Path => {
           let mut mutable = self;
           ui.text_edit_singleline(&mut mutable)
         }
@@ -144,12 +147,13 @@ impl UIRenderer for Var {
             ui.collapsing(format!("Seq: {} items", seq.len()), |ui| {
               for i in 0..seq.len() {
                 ui.push_id(i, |ui| {
-                  seq[i].render(ui);
+                  seq[i].render(read_only, ui);
                 });
               }
             })
             .header_response
           } else {
+            ui.set_enabled(!read_only);
             ui.colored_label(Color32::YELLOW, "Empty sequence")
           }
         }
@@ -162,13 +166,14 @@ impl UIRenderer for Var {
                 ui.push_id(cstr, |ui| {
                   ui.horizontal(|ui| {
                     ui.label(cstr.to_str().unwrap_or_default());
-                    table.get_mut_fast(cstr).render(ui);
+                    table.get_mut_fast(cstr).render(read_only, ui);
                   });
                 });
               }
             })
             .header_response
           } else {
+            ui.set_enabled(!read_only);
             ui.colored_label(Color32::YELLOW, "Empty table")
           }
         }
