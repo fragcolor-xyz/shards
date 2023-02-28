@@ -4063,9 +4063,9 @@ impl Table {
     }
   }
 
-  pub fn get_mut(&self, k: &CString) -> Option<&mut Var> {
+  pub fn get_mut(&self, k: &CStr) -> Option<&mut Var> {
     unsafe {
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
+      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
         let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
         Some(&mut *p)
@@ -4075,23 +4075,24 @@ impl Table {
     }
   }
 
-  pub fn get_mut_fast(&mut self, k: &CString) -> &mut Var {
+  pub fn get_mut_fast(&mut self, k: &CStr) -> &mut Var {
     unsafe {
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
+      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       &mut *(*self.t.api).tableAt.unwrap()(self.t, cstr)
     }
   }
 
   pub fn get_mut_fast_static(&mut self, k: &'static str) -> &mut Var {
+    debug_assert!(k.ends_with('\0'));
     unsafe {
       let cstr = k.as_ptr() as *const std::os::raw::c_char;
       &mut *(*self.t.api).tableAt.unwrap()(self.t, cstr)
     }
   }
 
-  pub fn get(&self, k: &CString) -> Option<&Var> {
+  pub fn get(&self, k: &CStr) -> Option<&Var> {
     unsafe {
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
+      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
         let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
         Some(&*p)
@@ -4119,6 +4120,12 @@ impl Table {
     unsafe {
       let cstr = k.as_ptr() as *const std::os::raw::c_char;
       &*(*self.t.api).tableAt.unwrap()(self.t, cstr)
+    }
+  }
+
+  pub fn len(&self) -> usize {
+    unsafe {
+      (*self.t.api).tableSize.unwrap()(self.t)
     }
   }
 
@@ -4163,6 +4170,24 @@ impl Iterator for TableIterator {
 impl From<SHTable> for Table {
   fn from(t: SHTable) -> Self {
     Table { t, owned: false }
+  }
+}
+
+impl TryFrom<&mut Var> for Table {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &mut Var) -> Result<Self, Self::Error> {
+    // in this case allow None type, we might be a new variable from a Table or Seq
+    if var.valueType == SHType_None {
+      var.valueType = SHType_Table;
+    }
+
+    if var.valueType != SHType_Table {
+      Err("Expected Table variable, but casting failed.")
+    } else {
+      unsafe { Ok(var.payload.__bindgen_anon_1.tableValue.into()) }
+    }
   }
 }
 
