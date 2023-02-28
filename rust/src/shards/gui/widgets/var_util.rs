@@ -3,6 +3,7 @@
 
 use crate::shards::gui::UIRenderer;
 use crate::shardsc::*;
+use crate::types::Seq;
 use crate::types::Var;
 use egui::*;
 
@@ -11,7 +12,9 @@ impl UIRenderer for Var {
     unsafe {
       match self.valueType {
         SHType_None => ui.label(""),
-        SHType_Enum => ui.add(DragValue::new(&mut self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue)),
+        SHType_Enum => ui.add(DragValue::new(
+          &mut self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue,
+        )),
         SHType_Bool => ui.checkbox(&mut self.payload.__bindgen_anon_1.boolValue, ""),
         SHType_Int => ui.add(DragValue::new(&mut self.payload.__bindgen_anon_1.intValue)),
         SHType_Int2 => {
@@ -132,6 +135,21 @@ impl UIRenderer for Var {
         SHType_String => {
           let mut mutable = self;
           ui.text_edit_singleline(&mut mutable)
+        }
+        SHType_Seq => {
+          let mut seq: Seq = self.try_into().unwrap_or_default();
+          if seq.len() > 0 {
+            ui.collapsing(format!("Seq: {} items", seq.len()), |ui| {
+              for i in 0..seq.len() {
+                ui.push_id(i, |ui| {
+                  seq[i].render(ui);
+                });
+              }
+            })
+            .header_response
+          } else {
+            ui.colored_label(Color32::YELLOW, "Empty sequence")
+          }
         }
         _ => ui.colored_label(Color32::RED, "Type of variable not supported"),
       }
