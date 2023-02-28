@@ -5,6 +5,7 @@
 #include "foundation.hpp"
 #include "params.hpp"
 #include "runtime.hpp"
+#include "shards.h"
 #include <boost/beast/core/detail/base64.hpp>
 #include <type_traits>
 #include <boost/algorithm/hex.hpp>
@@ -421,8 +422,13 @@ struct ExpectLike {
     } else if (!_unsafe) {
       auto inputTypeHash = deriveTypeHash(input);
       if (unlikely(inputTypeHash != _expectedTypeHash)) {
-        SHLOG_ERROR("Unexpected value: {} expected type: {}", input, _expectedType);
-        throw ActivationError("Unexpected input type");
+        // Do an even deeper type check
+        SHTypeInfo derivedType = deriveTypeInfo(input, SHInstanceData{});
+        DEFER({ freeDerivedInfo(derivedType); });
+        if (!matchTypes(derivedType, _expectedType, false, true)) {
+          SHLOG_ERROR("Unexpected value: {} expected type: {}", input, _expectedType);
+          throw ActivationError("Unexpected input type");
+        }
       }
     }
     return input;

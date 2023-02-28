@@ -747,7 +747,7 @@ struct SetBase : public VariableBase {
                    // need to check if this was just a any table definition {}
                    !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
                    data.inputType != reference.exposedType) {
-          throw ComposeError("Set/Ref/Update, variable already set as another type: " + _name);
+          throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name, reference.exposedType, data.inputType));
         }
         if (!_isTable && !reference.isMutable) {
           SHLOG_ERROR("Error with variable: {}", _name);
@@ -2515,7 +2515,7 @@ struct Take {
     _tableOutput = isTable;
 
     if (!valid)
-      throw SHException("Take, invalid indices or malformed input.");
+      throw SHException(fmt::format("Take, invalid indices or malformed input. input: {}, indices: {}", data.inputType, _indices));
 
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
