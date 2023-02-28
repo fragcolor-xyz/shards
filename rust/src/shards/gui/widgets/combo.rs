@@ -159,7 +159,34 @@ impl Shard for Combo {
       }
     }
 
-    Ok(common_type::any)
+    // we only support strings for now
+    let input_type = data.inputType;
+    if input_type.basicType != shardsc::SHType_Seq {
+      return Err("Combo: sequence required.");
+    }
+
+    let slice = unsafe {
+      let ptr = input_type.details.seqTypes.elements;
+      std::slice::from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
+    };
+
+    let element_type = match slice.len() {
+      0 => common_type::none,
+      1 => slice[0],
+      _ => {
+        if slice.iter().skip(1).all(|t| *t == slice[0]) {
+          slice[0]
+        } else {
+          common_type::any
+        }
+      }
+    };
+
+    if element_type.basicType != shardsc::SHType_String {
+      return Err("Combo: sequence of strings required.");
+    }
+
+    Ok(common_type::string)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -240,7 +267,7 @@ impl Shard for Combo {
 
       let seq: Seq = input.try_into()?;
       let mut response = combo.show_index(ui, index, seq.len(), |i| {
-        // FIXME type might not be string so we need a way to convert in all cases
+        // TODO type might not be string so we need a way to convert in all cases
         let str: &str = (&seq[i]).try_into().unwrap();
         str.to_owned()
       });

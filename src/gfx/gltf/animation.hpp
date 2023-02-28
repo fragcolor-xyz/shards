@@ -76,7 +76,7 @@ inline Value Track::getValue(size_t keyframeIndex) const { return unpack(target,
 struct Animation {
   std::vector<animation::Track> tracks;
 
-  const float getDuration() const;
+  float getDuration() const;
 
   Animation() = default;
   Animation(Animation &&) = default;
@@ -85,7 +85,7 @@ struct Animation {
   Animation &operator=(const Animation &) = default;
 };
 
-inline const float Animation::getDuration() const {
+inline float Animation::getDuration() const {
   float maxDuration{};
   for (auto &track : tracks) {
     maxDuration = std::max(maxDuration, track.times.back());
