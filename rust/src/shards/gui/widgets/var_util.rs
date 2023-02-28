@@ -4,8 +4,10 @@
 use crate::shards::gui::UIRenderer;
 use crate::shardsc::*;
 use crate::types::Seq;
+use crate::types::Table;
 use crate::types::Var;
 use egui::*;
+use std::ffi::CStr;
 
 impl UIRenderer for Var {
   fn render(&mut self, ui: &mut Ui) -> Response {
@@ -149,6 +151,25 @@ impl UIRenderer for Var {
             .header_response
           } else {
             ui.colored_label(Color32::YELLOW, "Empty sequence")
+          }
+        }
+        SHType_Table => {
+          let mut table: Table = self.try_into().unwrap_or_default();
+          if table.len() > 0 {
+            ui.collapsing(format!("Table: {} items", table.len()), |ui| {
+              for (k, _v) in table.iter() {
+                let cstr = CStr::from_ptr(k.0);
+                ui.push_id(cstr, |ui| {
+                  ui.horizontal(|ui| {
+                    ui.label(cstr.to_str().unwrap_or_default());
+                    table.get_mut_fast(cstr).render(ui);
+                  });
+                });
+              }
+            })
+            .header_response
+          } else {
+            ui.colored_label(Color32::YELLOW, "Empty table")
           }
         }
         _ => ui.colored_label(Color32::RED, "Type of variable not supported"),
