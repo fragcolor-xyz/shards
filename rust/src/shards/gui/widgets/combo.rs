@@ -159,7 +159,12 @@ impl Shard for Combo {
       }
     }
 
-    Ok(common_type::any)
+    // we only support strings for now
+    if data.inputType.basicType != shardsc::SHType_String {
+      return Err("Combo: string sequence required.");
+    }
+
+    Ok(common_type::string)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -240,7 +245,7 @@ impl Shard for Combo {
 
       let seq: Seq = input.try_into()?;
       let mut response = combo.show_index(ui, index, seq.len(), |i| {
-        // FIXME type might not be string so we need a way to convert in all cases
+        // TODO type might not be string so we need a way to convert in all cases
         let str: &str = (&seq[i]).try_into().unwrap();
         str.to_owned()
       });
