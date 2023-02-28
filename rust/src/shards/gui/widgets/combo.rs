@@ -160,8 +160,30 @@ impl Shard for Combo {
     }
 
     // we only support strings for now
-    if data.inputType.basicType != shardsc::SHType_String {
-      return Err("Combo: string sequence required.");
+    let input_type = data.inputType;
+    if input_type.basicType != shardsc::SHType_Seq {
+      return Err("Combo: sequence required.");
+    }
+
+    let slice = unsafe {
+      let ptr = input_type.details.seqTypes.elements;
+      std::slice::from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
+    };
+
+    let element_type = match slice.len() {
+      0 => common_type::none,
+      1 => slice[0],
+      _ => {
+        if slice.iter().skip(1).all(|t| *t == slice[0]) {
+          slice[0]
+        } else {
+          common_type::any
+        }
+      }
+    };
+
+    if element_type.basicType != shardsc::SHType_String {
+      return Err("Combo: sequence of strings required.");
     }
 
     Ok(common_type::string)
