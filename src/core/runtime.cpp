@@ -615,8 +615,10 @@ create:
   // worst case create in current top wire!
   SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
   SHVar &cv = ctx->wireStack.back()->variables[name];
+  assert(cv.refcount == 0);
   cv.refcount++;
-  cv.flags |= SHVAR_FLAGS_REF_COUNTED;
+  // can safely set this here, as we are creating a new variable
+  cv.flags = SHVAR_FLAGS_REF_COUNTED;
   return &cv;
 }
 
