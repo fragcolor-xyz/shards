@@ -141,9 +141,7 @@ impl Shard for Variable {
           .to_str()
           .unwrap_or_default();
         ui.label(label);
-        ui.add_enabled_ui(self.mutable, |ui| {
-          self.variable.get_mut().render(ui);
-        });
+        self.variable.get_mut().render(!self.mutable, ui);
       });
 
       Ok(*input)

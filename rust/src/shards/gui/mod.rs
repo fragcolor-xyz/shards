@@ -102,7 +102,7 @@ struct EguiContext {
 }
 
 pub(crate) trait UIRenderer {
-  fn render(&mut self, ui: &mut egui::Ui) -> egui::Response;
+  fn render(&mut self, read_only: bool, ui: &mut egui::Ui) -> egui::Response;
 }
 
 mod containers;
