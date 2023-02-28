@@ -1248,20 +1248,22 @@ struct ParallelBase : public CapturingSpawners {
     _outputs.clear();
 
     for (auto &cref : _wires) {
-      if (cref->mesh) {
-        cref->mesh->terminate();
-      }
-
-      stop(cref->wire.get());
-
-      if (capturing) {
-        for (auto &v : _vars) {
-          // notice, this should be already destroyed by the wire releaseVariable
-          destroyVar(cref->wire->variables[v.variableName()]);
+      if (cref) {
+        if (cref->mesh) {
+          cref->mesh->terminate();
         }
-      }
 
-      _pool->release(cref);
+        stop(cref->wire.get());
+
+        if (capturing) {
+          for (auto &v : _vars) {
+            // notice, this should be already destroyed by the wire releaseVariable
+            destroyVar(cref->wire->variables[v.variableName()]);
+          }
+        }
+
+        _pool->release(cref);
+      }
     }
     _wires.clear();
   }
@@ -1698,66 +1700,61 @@ struct StepMany : public TryMany {
   static SHParametersInfo parameters() { return _params; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto current = _wires.size();
     auto len = getLength(input);
 
-    // compute the minimum capacity needed
-    size_t minIncrease = len;
-    size_t increase = MinWiresAdded;
+    // Compute required size
+    size_t capacity = std::max(MinWiresAdded, len);
 
-    if (minIncrease > increase)
-      increase = minIncrease;
+    // Only ever grow
+    capacity = std::max(_wires.size(), capacity);
 
-    // increase needed capacity to guarantee O(1) amortized
-    if (increase < 2 * current)
-      increase = 2 * current;
+    _outputs.resize(capacity);
+    _wires.resize(capacity);
 
-    _outputs.resize(increase);
-    _wires.resize(increase);
-
-    for (uint32_t i = 0; i < increase; i++) {
+    for (uint32_t i = 0; i < len; i++) {
       auto &cref = _wires[i];
       if (!cref) {
         cref = _pool->acquire(_composer, context);
-        cref->index = i;
         cref->done = false;
       }
 
-      // process only the ones we need to
-      if (i < len) {
-        // Allow to re run wires
-        if (shards::hasEnded(cref->wire.get())) {
-          // stop the root
-          if (!shards::stop(cref->wire.get())) {
-            throw ActivationError("Stepped sub-wire did not end normally.");
-          }
+      // Allow to re run wires
+      if (shards::hasEnded(cref->wire.get())) {
+        // stop the root
+        if (!shards::stop(cref->wire.get())) {
+          throw ActivationError("Stepped sub-wire did not end normally.");
         }
-
-        // Prepare and start if no callc was called
-        if (!cref->wire->coro) {
-          cref->wire->mesh = context->main->mesh;
-
-          // pre-set wire context with our context
-          // this is used to copy wireStack over to the new one
-          cref->wire->context = context;
-
-          // Notice we don't share our flow!
-          // let the wire create one by passing null
-          shards::prepare(cref->wire.get(), nullptr);
-        }
-
-        // Starting
-        if (!shards::isRunning(cref->wire.get())) {
-          shards::start(cref->wire.get(), getInput(cref, input));
-        }
-
-        // Tick the wire on the flow that this wire created
-        SHDuration now = SHClock::now().time_since_epoch();
-        shards::tick(cref->wire->context->flow->wire, now);
-
-        // this can be anything really...
-        _outputs[i] = cref->wire->previousOutput;
       }
+
+      // Prepare and start if no callc was called
+      if (!cref->wire->coro) {
+        cref->wire->mesh = context->main->mesh;
+
+        // pre-set wire context with our context
+        // this is used to copy wireStack over to the new one
+        cref->wire->context = context;
+
+        // Notice we don't share our flow!
+        // let the wire create one by passing null
+        shards::prepare(cref->wire.get(), nullptr);
+      }
+
+      const SHVar &inputElement = input.payload.seqValue.elements[i];
+
+      if (!shards::isRunning(cref->wire.get())) {
+        // Starting
+        shards::start(cref->wire.get(), inputElement);
+      } else {
+        // Update input
+        cref->wire->currentInput = inputElement;
+      }
+
+      // Tick the wire on the flow that this wire created
+      SHDuration now = SHClock::now().time_since_epoch();
+      shards::tick(cref->wire->context->flow->wire, now);
+
+      // this can be anything really...
+      cloneVar(_outputs[i], cref->wire->previousOutput);
     }
 
     return Var(_outputs.data(), len);
