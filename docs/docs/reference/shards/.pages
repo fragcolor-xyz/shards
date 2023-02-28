@@ -1,4 +1,6 @@
 nav:
   - index.md
-  - types.md
-  - ...
+  - overview
+  - shards
+  - enums
+  - lisp

@@ -77,6 +77,8 @@ Shards to work with collections:
 
 - [Take](../../../reference/shards/General/Take/) (Extract elements from a collection)
 
+- [Push](../../../reference/shards/General/Push/) (Adds new elements to the back of a collection)
+
 ## Flow
 
 Flow shards allow you to manipulate the flow of your Shards program.

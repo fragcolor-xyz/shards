@@ -7,6 +7,8 @@ license: CC-BY-SA-4.0
 
 # Learn
 
-Learn the basics of Shards with our [primer](./shards/) and reinforce the concepts learned with our [tutorials](./tutorials/).
+Learn about our various projects from our primers and tutorials.
+
+- [Shards](./shards/)
 
 --8<-- "includes/license.md"
