@@ -8,6 +8,7 @@
 #include <set>
 #include "../brancher.hpp"
 #include "brancher.hpp"
+#include "ops_internal.hpp"
 
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
 // Remove define from winspool.h
@@ -45,9 +46,9 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposed
   // verify input type
   if (!passthrough && data.inputType != wire->inputType && !wire->ignoreInputTypeCheck) {
     SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
-    throw ComposeError("Attempted to call an already composed wire with a "
-                       "different input type! wire: " +
-                       wire->name);
+    throw ComposeError(fmt::format("Attempted to call an already composed wire with a "
+                       "different input type! wire: {}, old type: {}, new type: {}",
+                       wire->name, (SHTypeInfo)wire->inputType, data.inputType));
   }
 
   // ensure requirements match our input data
