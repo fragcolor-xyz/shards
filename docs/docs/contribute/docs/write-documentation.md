@@ -9,7 +9,7 @@ license: CC-BY-SA-4.0
 
     Our documentation follows the [Microsoft Style Guide](https://docs.microsoft.com/en-us/style-guide/welcome/). Do refer to it if you are unsure of the documentation style!
 
-In this chapter, you will be learning how to write documentation for Fragcolor.
+In this chapter, you will be learning how to write documentation for Fragnova.
 
 Pre-requisites:
 

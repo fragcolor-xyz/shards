@@ -85,7 +85,7 @@ Finally, install the following by running the given commands:
     pip install mkdocs-macros-plugin
     ```
 
-You are now ready to start writing documentation! We will learn how Fragcolor's documentation is written in the next chapter.
+You are now ready to start writing documentation! We will learn how Fragnova's documentation is written in the next chapter.
 
 ## Overview ##
 
