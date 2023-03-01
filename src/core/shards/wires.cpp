@@ -1761,6 +1761,61 @@ struct StepMany : public TryMany {
   }
 };
 
+struct DoMany : public TryMany {
+  static inline Parameters _params{
+      {"Wire", SHCCSTR("The pure wire to run many times sequentially."), WireBase::WireVarTypes},
+  };
+
+  static SHParametersInfo parameters() { return _params; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto len = getLength(input);
+
+    // Compute required size
+    size_t capacity = std::max(MinWiresAdded, len);
+
+    // Only ever grow
+    capacity = std::max(_wires.size(), capacity);
+
+    _outputs.resize(capacity);
+    _wires.resize(capacity);
+
+    for (uint32_t i = 0; i < len; i++) {
+      auto &cref = _wires[i];
+      if (!cref) {
+        cref = _pool->acquire(_composer, context);
+        cref->wire->warmup(context);
+        cref->done = false;
+      }
+
+      if (!cref->wire->pure) {
+        throw ActivationError("DoMany can only be used with pure wires.");
+      }
+
+      const SHVar &inputElement = input.payload.seqValue.elements[i];
+
+      // Run within the root flow
+      auto runRes = runSubWire(cref->wire.get(), context, inputElement);
+      if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
+        // When an error happens during inline execution, propagate the error to the parent wire
+        SHLOG_ERROR("Wire {} failed", wire->name);
+        context->cancelFlow("Wire failed");
+        return cref->wire->previousOutput; // doesn't matter actually
+      } else {
+        // we don't want to propagate a (Return)
+        if (unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
+          context->continueFlow();
+        }
+      }
+
+      // this can be anything really...
+      cloneVar(_outputs[i], cref->wire->previousOutput);
+    }
+
+    return Var(_outputs.data(), len);
+  }
+};
+
 struct Branch {
   static constexpr uint32_t TypeId = 'brcM';
   static inline Type MeshType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = TypeId}}}};
@@ -1881,6 +1936,7 @@ void registerWiresShards() {
   REGISTER_SHARD("Expand", Expand);
   REGISTER_SHARD("Branch", Branch);
   REGISTER_SHARD("StepMany", StepMany);
+  REGISTER_SHARD("DoMany", DoMany);
 }
 }; // namespace shards
 
