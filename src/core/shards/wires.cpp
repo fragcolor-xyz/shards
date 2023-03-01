@@ -1763,7 +1763,7 @@ struct StepMany : public TryMany {
 
 struct DoMany : public TryMany {
   static inline Parameters _params{
-      {"Wire", SHCCSTR("The pure wire to run many times sequentially."), WireBase::WireVarTypes},
+      {"Wire", SHCCSTR("The wire to run many times sequentially."), WireBase::WireVarTypes},
   };
 
   static SHParametersInfo parameters() { return _params; }
@@ -1786,10 +1786,6 @@ struct DoMany : public TryMany {
         cref = _pool->acquire(_composer, context);
         cref->wire->warmup(context);
         cref->done = false;
-      }
-
-      if (!cref->wire->pure) {
-        throw ActivationError("DoMany can only be used with pure wires.");
       }
 
       const SHVar &inputElement = input.payload.seqValue.elements[i];
