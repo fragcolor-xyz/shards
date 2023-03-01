@@ -2811,6 +2811,11 @@ SHVar *getExternalVariable(SHWireRef wireRef, const char *name, uint64_t nameLen
   auto it = wire->externalVariables.find(nameView);
   if (it != wire->externalVariables.end()) {
     return it->second;
+  } else {
+    auto it2 = wire->variables.find(nameView);
+    if (it2 != wire->variables.end()) {
+      return &it2->second;
+    }
   }
   return nullptr;
 }

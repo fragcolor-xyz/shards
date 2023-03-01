@@ -234,11 +234,13 @@ impl Shard for WireVariable {
     let input: Table = input.try_into()?;
     let name: &str = input.get_fast_static("Name\0").try_into()?;
     let wire: WireRef = input.get_fast_static("Wire\0").try_into()?;
-    let varRef = unsafe {
-      let varPtr =
-        getExternalVariable(wire, name.as_ptr() as *const c_char, name.len() as u64) as *mut Var;
-      &mut *varPtr
+    let varPtr = unsafe {
+      getExternalVariable(wire, name.as_ptr() as *const c_char, name.len() as u64) as *mut Var
     };
+    if varPtr == std::ptr::null_mut() {
+      return Err("Variable not found");
+    }
+    let varRef = unsafe { &mut *varPtr };
 
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.horizontal(|ui| {

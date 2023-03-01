@@ -1277,7 +1277,11 @@ struct CachedStreamBuf : std::streambuf {
 
   void done() { data.push_back('\0'); }
 
-  const char *str() { return &data[0]; }
+  const char *str() {
+    if (data.empty())
+      data.push_back('\0');
+    return &data[0];
+  }
 };
 
 struct StringStreamBuf : std::streambuf {
