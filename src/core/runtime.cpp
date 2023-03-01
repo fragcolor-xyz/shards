@@ -2348,9 +2348,15 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     memcpy(&dst.payload.arrayValue.elements[0], &src.payload.arrayValue.elements[0], sizeof(SHVarPayload) * srcLen);
   } break;
   case SHType::Wire:
-    if (dst != src) {
-      destroyVar(dst);
+    if (dst.valueType == SHType::Wire) {
+      auto &aWire = SHWire::sharedFromRef(src.payload.wireValue);
+      auto &bWire = SHWire::sharedFromRef(dst.payload.wireValue);
+      if (aWire == bWire)
+        return;
     }
+
+    destroyVar(dst);
+
     dst.valueType = SHType::Wire;
     dst.payload.wireValue = SHWire::addRef(src.payload.wireValue);
     break;
