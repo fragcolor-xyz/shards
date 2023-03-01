@@ -139,7 +139,7 @@ struct ListBox {
   template: ShardsVar,
   exposing: ExposedTypes,
   should_expose: bool,
-  tmp: usize,
+  tmp: i64,
 }
 
 struct MarkdownViewer {
