@@ -232,8 +232,8 @@ impl Shard for WireVariable {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let input: Table = input.try_into()?;
-    let name: &str = input.get_fast_static("Name\0").try_into()?;
-    let wire: WireRef = input.get_fast_static("Wire\0").try_into()?;
+    let name: &str = input.get_fast_static(cstr!("Name")).try_into()?;
+    let wire: WireRef = input.get_fast_static(cstr!("Wire")).try_into()?;
     let varPtr = unsafe {
       getWireVariable(wire, name.as_ptr() as *const c_char, name.len() as u32) as *mut Var
     };

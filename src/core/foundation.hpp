@@ -1279,7 +1279,7 @@ struct CachedStreamBuf : std::streambuf {
 
   const char *str() {
     if (data.empty())
-      data.push_back('\0');
+      return "";
     return &data[0];
   }
 };
