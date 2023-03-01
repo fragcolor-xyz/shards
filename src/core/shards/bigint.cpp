@@ -436,7 +436,7 @@ struct ToBytes {
   void cleanup() { _bits.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    const auto bits = _bits.get().payload.intValue;
+    const int64_t bits = _bits.get().payload.intValue;
     if (bits <= 0) {
       SHVar fixedInput = input;
       fixedInput.payload.bytesValue++;
@@ -445,7 +445,7 @@ struct ToBytes {
     } else {
       cpp_int bi = from_var(input);
       const auto usedBits = msb(bi) + 1;
-      if (usedBits > bits) {
+      if (int64_t(usedBits) > bits) {
         throw ActivationError("The number of used bits is higher than the requested bits");
       }
       const auto padding = bits - usedBits;

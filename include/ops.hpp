@@ -196,8 +196,11 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
   case SHType::Color:
     return a.payload.colorValue.r == b.payload.colorValue.r && a.payload.colorValue.g == b.payload.colorValue.g &&
            a.payload.colorValue.b == b.payload.colorValue.b && a.payload.colorValue.a == b.payload.colorValue.a;
-  case SHType::Wire:
-    return a.payload.wireValue == b.payload.wireValue;
+  case SHType::Wire: {
+    auto aWire = reinterpret_cast<const std::shared_ptr<SHWire> *>(a.payload.wireValue);
+    auto bWire = reinterpret_cast<const std::shared_ptr<SHWire> *>(b.payload.wireValue);
+    return *aWire == *bWire;
+  }
   case SHType::ShardRef:
     return a.payload.shardValue == b.payload.shardValue;
   case SHType::Path:

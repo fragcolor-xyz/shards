@@ -693,7 +693,7 @@ struct ForEachShard {
     return input;
   }
 
-  std::array<OwnedVar, 2> _tableItem;
+  std::array<SHVar, 2> _tableItem;
 
   SHVar activateTable(SHContext *context, const SHVar &input) {
     const auto &table = input.payload.tableValue;
@@ -701,8 +701,7 @@ struct ForEachShard {
     ForEach(table, [&](auto key, auto &val) {
       _tableItem[0] = Var(key);
       _tableItem[1] = val;
-      auto &itemref = _tableItem;
-      const auto item = Var(reinterpret_cast<std::array<SHVar, 2> &>(itemref));
+      const auto item = Var(_tableItem);
       const auto state = _shards.activate<true>(context, item, output);
       // handle return short circuit, assume it was for us
       if (unlikely(state != SHWireState::Continue))

@@ -286,9 +286,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
   rep("(defmacro! |# (fn* [& shards] `(Hashed (wireify (vector ~@shards)))))", env);
   rep("(defmacro! || (fn* [& shards] `(Await (wireify (vector ~@shards)))))", env);
   rep("(defmacro! Setup (fn* [& shards] `(Once (wireify (vector ~@shards)))))", env);
-  rep("(defmacro! defshards (fn* [name args & shards] `(defn ~(symbol (str "
-      "name)) ~args (wireify (vector ~@shards)))))",
-      env);
+  rep("(defmacro! defshards (fn* [name args & shards] `(defn ~(symbol (str name)) ~args (wireify (vector ~@shards)))))", env);
   rep("(defmacro! $ (fn* [prefix sym] (symbol (str prefix \"/\" sym))))", env);
 
   // overrides for some built-in types
@@ -1388,7 +1386,7 @@ std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
       if (state == AddGetDefault) {
         auto blk = res.back();
         if (strcmp(blk->value()->name(blk->value()), "Get") != 0) {
-          throw shards::SHException("There should be a variable preceeding ||");
+          throw shards::SHException("There should be a variable preceding ||");
         }
         // set :Default
         auto v = varify(next);
@@ -1732,7 +1730,7 @@ BUILTIN("set-var") {
   auto var = varify(last);
   auto clonedVar = malSHVar::newCloned(var->value());
   clonedVar->value().flags |= SHVAR_FLAGS_EXTERNAL;
-  wire->externalVariables[varName->ref().c_str()] = &clonedVar->value();
+  wire->externalVariables[varName->ref()] = &clonedVar->value();
   wirevar->reference(clonedVar); // keep alive until wire is destroyed
   return malValuePtr(clonedVar);
 }

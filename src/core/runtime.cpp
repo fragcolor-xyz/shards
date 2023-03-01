@@ -235,7 +235,7 @@ void registerCoreShards() {
     GetGlobals().RootPath = cp.string();
   }
 
-#ifdef SH_USE_UBSAN
+#ifdef SH_USE_UBSAN_REPORT
   auto absPath = fs::absolute(GetGlobals().RootPath);
   auto absPathStr = absPath.string();
   SHLOG_TRACE("Setting UBSAN report path to: {}", absPathStr);
@@ -615,8 +615,10 @@ create:
   // worst case create in current top wire!
   SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
   SHVar &cv = ctx->wireStack.back()->variables[name];
+  assert(cv.refcount == 0);
   cv.refcount++;
-  cv.flags |= SHVAR_FLAGS_REF_COUNTED;
+  // can safely set this here, as we are creating a new variable
+  cv.flags = SHVAR_FLAGS_REF_COUNTED;
   return &cv;
 }
 
@@ -2346,9 +2348,15 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     memcpy(&dst.payload.arrayValue.elements[0], &src.payload.arrayValue.elements[0], sizeof(SHVarPayload) * srcLen);
   } break;
   case SHType::Wire:
-    if (dst != src) {
-      destroyVar(dst);
+    if (dst.valueType == SHType::Wire) {
+      auto &aWire = SHWire::sharedFromRef(src.payload.wireValue);
+      auto &bWire = SHWire::sharedFromRef(dst.payload.wireValue);
+      if (aWire == bWire)
+        return;
     }
+
+    destroyVar(dst);
+
     dst.valueType = SHType::Wire;
     dst.payload.wireValue = SHWire::addRef(src.payload.wireValue);
     break;
@@ -2797,6 +2805,21 @@ bool sh_current_interface_loaded{false};
 SHCore sh_current_interface{};
 
 extern "C" {
+SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
+  auto wire = SHWire::sharedFromRef(wireRef);
+  std::string nameView{name, nameLen};
+  auto it = wire->externalVariables.find(nameView);
+  if (it != wire->externalVariables.end()) {
+    return it->second;
+  } else {
+    auto it2 = wire->variables.find(nameView);
+    if (it2 != wire->variables.end()) {
+      return &it2->second;
+    }
+  }
+  return nullptr;
+}
+
 SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   // for now we ignore abi_version
   if (sh_current_interface_loaded)

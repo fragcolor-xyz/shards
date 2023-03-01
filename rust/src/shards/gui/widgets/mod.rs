@@ -139,7 +139,7 @@ struct ListBox {
   template: ShardsVar,
   exposing: ExposedTypes,
   should_expose: bool,
-  tmp: usize,
+  tmp: i64,
 }
 
 struct MarkdownViewer {
@@ -197,6 +197,11 @@ struct Variable {
   requiring: ExposedTypes,
   variable: ParamVar,
   mutable: bool,
+}
+
+struct WireVariable {
+  parents: ParamVar,
+  requiring: ExposedTypes,
 }
 
 macro_rules! decl_ui_input {
@@ -329,6 +334,7 @@ pub fn registerShards() {
   registerShard::<TextField>();
   registerShard::<Tooltip>();
   registerShard::<Variable>();
+  registerShard::<WireVariable>();
 
   if cfg!(feature = "code_editor") {
     registerCodeEditor();

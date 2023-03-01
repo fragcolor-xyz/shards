@@ -230,6 +230,9 @@ struct BaseRunner : public WireBase {
     // Starting
     if (!shards::isRunning(wire.get())) {
       shards::start(wire.get(), input);
+    } else {
+      // Update input
+      wire->currentInput = input;
     }
 
     // Tick the wire on the flow that this Step wire created

@@ -225,22 +225,25 @@ impl Shard for ListBox {
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
-      let index = &mut if self.index.is_variable() {
-        let index: i64 = self.index.get().try_into()?;
-        index as usize
+      let current_index = if self.index.is_variable() {
+        self.index.get().try_into()?
       } else {
         self.tmp
       };
+
+      let mut new_index = None;
+
       let seq: Seq = input.try_into()?;
 
-      let mut changed = false;
       ui.group(|ui| {
         for i in 0..seq.len() {
           if self.template.is_empty() {
             let str: &str = (&seq[i]).try_into()?;
-            if ui.selectable_label(i == *index, str.to_owned()).clicked() {
-              *index = i;
-              changed = true;
+            if ui
+              .selectable_label(i as i64 == current_index, str.to_owned())
+              .clicked()
+            {
+              new_index = Some(i as i64);
             }
           } else {
             let inner_margin = egui::style::Margin::same(3.0);
@@ -266,7 +269,7 @@ impl Shard for ListBox {
             paint_rect.min -= inner_margin.left_top();
             paint_rect.max += inner_margin.right_bottom();
 
-            let selected = i == *index;
+            let selected = i as i64 == current_index;
             let response = ui.allocate_rect(paint_rect, egui::Sense::click());
             let visuals = ui.style().interact_selectable(&response, selected);
             if selected || response.hovered() || response.has_focus() {
@@ -281,8 +284,7 @@ impl Shard for ListBox {
             }
 
             if response.clicked() {
-              *index = i;
-              changed = true;
+              new_index = Some(i as i64);
             }
           }
         }
@@ -290,29 +292,31 @@ impl Shard for ListBox {
       })
       .inner?;
 
-      if *index >= seq.len() {
-        if seq.is_empty() {
-          // Indicate no selection using usize max
-          *index = std::usize::MAX;
-        } else {
-          *index = seq.len() - 1;
-        }
-        changed = true;
-      }
+      let current_index = if let Some(new_index) = new_index {
+        new_index
+      } else {
+        current_index
+      };
 
-      if changed {
+      if current_index >= seq.len() as i64 || current_index < 0 {
+        // also fixup the index if it's out of bounds
+        let fixup = -1i64;
         if self.index.is_variable() {
-          self.index.set_fast_unsafe(&(*index as i64).into());
+          self.index.set_fast_unsafe(&fixup.into());
         } else {
-          self.tmp = *index;
+          self.tmp = fixup;
         }
-      }
 
-      if seq.is_empty() {
         Ok(Var::default())
       } else {
+        if self.index.is_variable() {
+          self.index.set_fast_unsafe(&current_index.into());
+        } else {
+          self.tmp = current_index;
+        }
+
         // this is fine because we don't own input and seq is just a view of it in this case
-        Ok(seq[*index])
+        Ok(seq[current_index as usize])
       }
     } else {
       Err("No UI parent")
