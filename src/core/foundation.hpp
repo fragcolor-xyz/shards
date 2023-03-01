@@ -40,7 +40,7 @@
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
-#pragma clang attribute push (__attribute__((no_sanitize("undefined"))), apply_to=function)
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include <boost/container/stable_vector.hpp>
 #pragma clang attribute pop
 #include <boost/container/flat_map.hpp>
@@ -272,10 +272,10 @@ struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>,
 };
 
 template <typename K, typename V>
-struct SHAlignedMap
-    : public boost::container::flat_map<
-          K, V, std::less<K>,
-          boost::container::stable_vector<std::pair<const K, V>, boost::alignment::aligned_allocator<std::pair<const K, V>, 16>>> {};
+struct SHAlignedMap : public boost::container::flat_map<
+                          K, V, std::less<K>,
+                          boost::container::stable_vector<std::pair<const K, V>,
+                                                          boost::alignment::aligned_allocator<std::pair<const K, V>, 16>>> {};
 
 struct SHTableImpl : public SHAlignedMap<std::string, shards::OwnedVar> {
 #if SHARDS_TRACKING
@@ -407,7 +407,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   uint8_t *stackMem{nullptr};
   size_t stackSize{SH_BASE_STACK_SIZE};
 
-  static std::shared_ptr<SHWire> sharedFromRef(SHWireRef ref) { return *reinterpret_cast<std::shared_ptr<SHWire> *>(ref); }
+  static std::shared_ptr<SHWire> &sharedFromRef(SHWireRef ref) { return *reinterpret_cast<std::shared_ptr<SHWire> *>(ref); }
 
   static void deleteRef(SHWireRef ref) {
     auto pref = reinterpret_cast<std::shared_ptr<SHWire> *>(ref);

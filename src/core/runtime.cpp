@@ -2799,6 +2799,16 @@ bool sh_current_interface_loaded{false};
 SHCore sh_current_interface{};
 
 extern "C" {
+SHVar *getExternalVariable(SHWireRef wireRef, const char *name, uint64_t nameLen) {
+  auto wire = SHWire::sharedFromRef(wireRef);
+  std::string nameView{name, nameLen};
+  auto it = wire->externalVariables.find(nameView);
+  if (it != wire->externalVariables.end()) {
+    return it->second;
+  }
+  return nullptr;
+}
+
 SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   // for now we ignore abi_version
   if (sh_current_interface_loaded)

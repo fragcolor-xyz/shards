@@ -199,6 +199,11 @@ struct Variable {
   mutable: bool,
 }
 
+struct WireVariable {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+}
+
 macro_rules! decl_ui_input {
   ($name:ident, $tmp_type:ty) => {
     struct $name {
@@ -329,6 +334,7 @@ pub fn registerShards() {
   registerShard::<TextField>();
   registerShard::<Tooltip>();
   registerShard::<Variable>();
+  registerShard::<WireVariable>();
 
   if cfg!(feature = "code_editor") {
     registerCodeEditor();
