@@ -285,4 +285,4 @@ In the example below, [`String.Join`](../../../reference/shards/String/Join/) re
 
 Congratulations on making it to the end of the primer series! You are now equipped with the fundamentals that will allow you to start creating amazing things with Shards.
 
-If you are still lost and unsure of where to go from here, why not take a look at our [tutorials](../../tutorials/index.md) to have a taste of what you could potentially create with Shards?
+If you are still lost and unsure of where to go from here, why not take a look at our [tutorials](../tutorials/index.md) to have a taste of what you could potentially create with Shards?
