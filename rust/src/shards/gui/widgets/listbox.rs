@@ -293,19 +293,28 @@ impl Shard for ListBox {
       .inner?;
 
       let current_index = if let Some(new_index) = new_index {
-        if self.index.is_variable() {
-          self.index.set_fast_unsafe(&new_index.into());
-        } else {
-          self.tmp = new_index;
-        }
         new_index
       } else {
         current_index
       };
 
       if current_index >= seq.len() as i64 || current_index < 0 {
+        // also fixup the index if it's out of bounds
+        let fixup = -1i64;
+        if self.index.is_variable() {
+          self.index.set_fast_unsafe(&fixup.into());
+        } else {
+          self.tmp = fixup;
+        }
+
         Ok(Var::default())
       } else {
+        if self.index.is_variable() {
+          self.index.set_fast_unsafe(&current_index.into());
+        } else {
+          self.tmp = current_index;
+        }
+
         // this is fine because we don't own input and seq is just a view of it in this case
         Ok(seq[current_index as usize])
       }
