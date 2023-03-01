@@ -1,3 +1,5 @@
+# Documentation (built)
 /site
-/docs/reference/shards/**/*.md
-/docs/reference/enums/**/*.md
+# Documentation (generated)
+/docs/reference/shards/enums/**/*.md
+/docs/reference/shards/shards/**/*.md

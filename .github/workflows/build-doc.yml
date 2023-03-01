@@ -92,11 +92,11 @@ jobs:
         with:
           name: docs-markdown
           path: |
-            docs/docs/reference/shards/**/*.md
-            docs/docs/reference/enums/**/*.md
-            !docs/docs/reference/enums/index.md
-            !docs/docs/reference/shards/index.md
-            !docs/docs/reference/shards/types.md
+            docs/docs/reference/shards/shards/**/*.md
+            docs/docs/reference/shards/enums/**/*.md
+            !docs/docs/reference/shards/enums/index.md
+            !docs/docs/reference/shards/shards/index.md
+            !docs/docs/reference/shards/shards/types.md
           if-no-files-found: error
 
   #
@@ -130,7 +130,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: docs-markdown
-          path: shards/docs/docs/reference
+          path: shards/docs/docs/reference/shards
       - name: Download samples logs
         uses: actions/download-artifact@v3
         with:
@@ -147,8 +147,8 @@ jobs:
           # note: we link twice because some relative path (esp. include) might be incorrect
           cd shards/docs
           ln -s ../../shards-examples/tutorials/
-          cd docs/learn
-          ln -s ../../../../shards-examples/tutorials/
+          cd docs/learn/shards
+          ln -s ../../../../../shards-examples/tutorials/
       - name: Build website
         if: ${{ steps.setup.outputs.publish != 'true' }}
         run: |
