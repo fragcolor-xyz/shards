@@ -40,8 +40,9 @@
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
-#include <boost/container/deque.hpp>
+#pragma clang attribute push (__attribute__((no_sanitize("undefined"))), apply_to=function)
 #include <boost/container/stable_vector.hpp>
+#pragma clang attribute pop
 #include <boost/container/flat_map.hpp>
 
 #define ENTT_ID_TYPE std::uint64_t
@@ -545,8 +546,8 @@ public:
       .tableAt =
           [](SHTable table, const char *key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            SHVar &vref = (*map)[key];
-            return &vref;
+            SHVar &vRef = (*map)[key];
+            return &vRef;
           },
       .tableRemove =
           [](SHTable table, const char *key) {
