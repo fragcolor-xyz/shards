@@ -41,6 +41,7 @@
 #include <boost/align/aligned_allocator.hpp>
 
 #include <boost/container/deque.hpp>
+#include <boost/container/stable_vector.hpp>
 #include <boost/container/flat_map.hpp>
 
 #define ENTT_ID_TYPE std::uint64_t
@@ -261,6 +262,27 @@ private:
 };
 } // namespace shards
 
+struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>, std::equal_to<SHVar>,
+                                             boost::alignment::aligned_allocator<shards::OwnedVar, 16>> {
+#if SHARDS_TRACKING
+  SHSetImpl() { shards::tracking::track(this); }
+  ~SHSetImpl() { shards::tracking::untrack(this); }
+#endif
+};
+
+template <typename K, typename V>
+struct SHAlignedMap
+    : public boost::container::flat_map<
+          K, V, std::less<K>,
+          boost::container::stable_vector<std::pair<const K, V>, boost::alignment::aligned_allocator<std::pair<const K, V>, 16>>> {};
+
+struct SHTableImpl : public SHAlignedMap<std::string, shards::OwnedVar> {
+#if SHARDS_TRACKING
+  SHTableImpl() { shards::tracking::track(this); }
+  ~SHTableImpl() { shards::tracking::untrack(this); }
+#endif
+};
+
 #ifndef __EMSCRIPTEN__
 struct SHStackAllocator {
   size_t size{SH_BASE_STACK_SIZE};
@@ -371,14 +393,14 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::vector<Shard *> shards;
 
-  std::unordered_map<std::string, SHVar, std::hash<std::string>, std::equal_to<std::string>,
-                     boost::alignment::aligned_allocator<std::pair<const std::string, SHVar>, 16>>
-      variables;
+  SHAlignedMap<std::string, SHVar> variables;
 
   // variables with lifetime managed externally
   std::unordered_map<std::string, SHVar *> externalVariables;
   // used only in the case of external variables
   std::unordered_map<uint64_t, shards::TypeInfo> typesCache;
+  // property storage (properties are used simply by inserting them into externalVariables for now)
+  SHTableImpl properties;
 
   // this is the eventual coroutine stack memory buffer
   uint8_t *stackMem{nullptr};
@@ -442,28 +464,6 @@ private:
 
 private:
   void destroy();
-};
-
-struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>, std::equal_to<SHVar>,
-                                             boost::alignment::aligned_allocator<shards::OwnedVar, 16>> {
-#if SHARDS_TRACKING
-  SHSetImpl() { shards::tracking::track(this); }
-  ~SHSetImpl() { shards::tracking::untrack(this); }
-#endif
-};
-
-template <typename K>
-struct SHAlignedMap
-    : public boost::container::flat_map<
-          K, shards::OwnedVar, std::less<K>,
-          boost::container::deque<std::pair<const K, shards::OwnedVar>,
-                                  boost::alignment::aligned_allocator<std::pair<const K, shards::OwnedVar>, 16>>> {};
-
-struct SHTableImpl : public SHAlignedMap<std::string> {
-#if SHARDS_TRACKING
-  SHTableImpl() { shards::tracking::track(this); }
-  ~SHTableImpl() { shards::tracking::untrack(this); }
-#endif
 };
 
 namespace shards {

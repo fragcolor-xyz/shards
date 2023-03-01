@@ -1723,6 +1723,29 @@ BUILTIN("run-empty-forever") {
   }
 }
 
+BUILTIN("property") {
+  CHECK_ARGS_IS(3);
+  ARG(malSHWire, wirevar);
+  ARG(malString, varName);
+
+  auto last = *argsBegin;
+  auto wire = SHWire::sharedFromRef(wirevar->value());
+  auto mVar = varify(last);
+  auto &storage = wire->properties[varName->ref().c_str()];
+  cloneVar(storage, mVar->value());
+  storage.flags |= SHVAR_FLAGS_EXTERNAL;
+  wire->externalVariables[varName->ref().c_str()] = &storage;
+
+  // return a context variable that points to what we created above!
+  SHVar var{};
+  var.valueType = SHType::ContextVar;
+  var.payload.stringValue = varName->ref().c_str();
+  var.payload.stringLen = varName->ref().size();
+  auto mvar = new malSHVar(var, false);
+  mvar->reference(varName);
+  return malValuePtr(mvar);
+}
+
 BUILTIN("set-var") {
   CHECK_ARGS_IS(3);
   ARG(malSHWire, wirevar);

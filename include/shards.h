@@ -572,9 +572,6 @@ struct SHVarPayload {
 // this marks a variable external and even if references are counted
 // it won't be destroyed automatically
 #define SHVAR_FLAGS_EXTERNAL (1 << 2)
-// this marks a variable weak reference
-// as it it likely is a quick copy of another shard output created using Ref
-#define SHVAR_FLAGS_WEAK (1 << 3)
 
 struct SHVar {
   struct SHVarPayload payload;

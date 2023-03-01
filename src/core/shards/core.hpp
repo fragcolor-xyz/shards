@@ -905,11 +905,6 @@ struct Ref : public SetBase {
 
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
-  void warmup(SHContext *context) {
-    SetBase::warmup(context);
-    _target->flags |= SHVAR_FLAGS_WEAK;
-  }
-
   void cleanup() {
     if (_target) {
       // this is a special case

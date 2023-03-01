@@ -235,7 +235,7 @@ void registerCoreShards() {
     GetGlobals().RootPath = cp.string();
   }
 
-#ifdef SH_USE_UBSAN
+#ifdef SH_USE_UBSAN_REPORT
   auto absPath = fs::absolute(GetGlobals().RootPath);
   auto absPathStr = absPath.string();
   SHLOG_TRACE("Setting UBSAN report path to: {}", absPathStr);
