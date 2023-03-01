@@ -5,8 +5,10 @@ license: CC-BY-SA-4.0
 
 ![](assets/ReferenceLogo.png)
 
-# Shards reference
+# Fragnova reference
 
-Welcome to the shards reference, here you'll find details for every [Shard](./shards/), [Enum](./enums/) and [Built-in function](./functions/) defined in shards.
+Welcome to the reference docs. Here you'll find API documentation for our various projects.
+
+- [Shards](./shards/)
 
 --8<-- "includes/license.md"

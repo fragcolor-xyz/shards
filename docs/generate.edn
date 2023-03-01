@@ -5,8 +5,8 @@
 
 ;; path definitions
 (def basePath "./")
-(def shardsPath "docs/reference/shards/")
-(def enumsPath "docs/reference/enums/")
+(def shardsPath "docs/reference/shards/shards/")
+(def enumsPath "docs/reference/shards/enums/")
 (def shardsDetailsPath "details/shards/")
 (def shardsSamplePath "samples/shards/")
 

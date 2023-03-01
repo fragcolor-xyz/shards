@@ -125,8 +125,8 @@
       (UI.CentralPanel
        :Contents
        (->
-        "https://docs.fragcolor.xyz" (UI.Hyperlink "Fragcolor documentation")
-        (Assert.Is "https://docs.fragcolor.xyz" :Abort true)))))
+        "https://docs.fragnova.com" (UI.Hyperlink "Fragnova documentation")
+        (Assert.Is "https://docs.fragnova.com" :Abort true)))))
 
     (GFX.Render :Steps .render-steps))))
 (schedule main hyperlink-test)

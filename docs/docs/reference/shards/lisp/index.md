@@ -3,7 +3,9 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-# Built-in Functions
+# Lisp Functions
+
+These functions are used for templating and writing macros.
 
 * [Collections](collections.md)
 * [Macros](macros.md)

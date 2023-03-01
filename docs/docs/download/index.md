@@ -7,9 +7,10 @@ license: CC-BY-SA-4.0
 
 # Download
 
-Download [here](https://github.com/fragcolor-xyz/shards/releases).
+Select the project you wish to download:
 
-Unsure of where to go from here? Check out our [primers](../learn/shards/) to learn more, or follow a step-by-step [tutorials](../learn/tutorials/) to create a minigame with Shards!
+- Download [Shards](https://github.com/fragcolor-xyz/shards/releases)
 
+Unsure of where to go from here? Why not [learn more](../learn/tutorials/) about our projects with our primers and tutorials here!
 
 --8<-- "includes/license.md"

@@ -7,9 +7,9 @@ license: CC-BY-SA-4.0
 
 # Home
 
-Welcome to Fragcolor documentation!
+Welcome to Fragnova documentation!
 
-These documents will help you understand, use, and contribute to Fragcolor technologies.
+These documents will help you understand, use, and contribute to Fragnova technologies.
 
 You can start from a high-level topic below or use the navigation links at the top.
 
