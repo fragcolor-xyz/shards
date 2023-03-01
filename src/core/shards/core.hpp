@@ -818,11 +818,35 @@ struct SetBase : public VariableBase {
 };
 
 struct Set : public SetBase {
+  bool _exposed{false};
+
   static SHOptionalString help() { return SHCCSTR("Creates a mutable variable and assigns a value to it."); }
 
   static SHOptionalString inputHelp() { return SHCCSTR("Input becomes the value of the variable being created."); }
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
+
+  static inline shards::ParamsInfo setParamsInfo = shards::ParamsInfo(
+      variableParamsInfo,
+      ParamsInfo::Param("Exposed", SHCCSTR("If the variable should be marked as exposed."), CoreInfo::BoolType));
+
+  static SHParametersInfo parameters() { return SHParametersInfo(setParamsInfo); }
+
+  void setParam(int index, const SHVar &value) {
+    if (index < variableParamsInfoLen)
+      VariableBase::setParam(index, value);
+    else if (index == variableParamsInfoLen + 0) {
+      _exposed = value.payload.boolValue;
+    }
+  }
+
+  SHVar getParam(int index) {
+    if (index < variableParamsInfoLen)
+      return VariableBase::getParam(index);
+    else if (index == variableParamsInfoLen + 0)
+      return Var(_exposed);
+    throw SHException("Param index out of range.");
+  }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     sanityChecks(data, true);
@@ -861,6 +885,14 @@ struct Set : public SetBase {
   }
 
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
+
+  void warmup(SHContext *context) {
+    SetBase::warmup(context);
+    if (_exposed)
+      _target->flags |= SHVAR_FLAGS_EXPOSED;
+    else if (_target->flags & SHVAR_FLAGS_EXPOSED)
+      _target->flags &= ~SHVAR_FLAGS_EXPOSED;
+  }
 };
 
 struct Ref : public SetBase {
