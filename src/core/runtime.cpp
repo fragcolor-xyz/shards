@@ -858,8 +858,8 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
         matched:
           continue;
         }
-      } else if (inputType.seqTypes.len == 0 && receiverType.seqTypes.len > 0) {
-        // find Any
+      } // Empty input sequence type indicates [ Any ], receiver type needs to explicitly contain Any to match
+      else if (inputType.seqTypes.len == 0 && receiverType.seqTypes.len > 0) {
         for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {
           if (receiverType.seqTypes.elements[j].basicType == SHType::Any)
             return true;
