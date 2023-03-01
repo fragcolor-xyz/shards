@@ -874,7 +874,15 @@ struct Match {
       }
     }
     if (!matched) {
-      throw ActivationError("Failed to match input, no matching case is present.");
+      std::string expected = "[ ";
+      for (auto i = 0; i < _ncases; i++) {
+        auto &case_ = _cases[i];
+        expected += fmt::format("{}", case_);
+        if ((i + 1) < _ncases)
+          expected.append(" ");
+      }
+      expected += " ]";
+      throw ActivationError(fmt::format("Failed to match input ({}), no matching case is present. Could be any of {}", input, expected));
     }
     return _pass ? input : finalOutput;
   }
