@@ -44,7 +44,7 @@ static HEADERS_TYPES: &[Type] = &[
 ];
 
 extern "C" {
-  fn getExternalVariable(wire: WireRef, name: *const c_char, nameLen: u64) -> *mut Var;
+  fn getWireVariable(wire: WireRef, name: *const c_char, nameLen: u32) -> *mut Var;
 }
 
 impl Default for Variable {
@@ -235,7 +235,7 @@ impl Shard for WireVariable {
     let name: &str = input.get_fast_static("Name\0").try_into()?;
     let wire: WireRef = input.get_fast_static("Wire\0").try_into()?;
     let varPtr = unsafe {
-      getExternalVariable(wire, name.as_ptr() as *const c_char, name.len() as u64) as *mut Var
+      getWireVariable(wire, name.as_ptr() as *const c_char, name.len() as u32) as *mut Var
     };
     if varPtr == std::ptr::null_mut() {
       return Err("Variable not found");

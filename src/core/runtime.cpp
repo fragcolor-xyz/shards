@@ -2805,7 +2805,7 @@ bool sh_current_interface_loaded{false};
 SHCore sh_current_interface{};
 
 extern "C" {
-SHVar *getExternalVariable(SHWireRef wireRef, const char *name, uint64_t nameLen) {
+SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   auto wire = SHWire::sharedFromRef(wireRef);
   std::string nameView{name, nameLen};
   auto it = wire->externalVariables.find(nameView);
