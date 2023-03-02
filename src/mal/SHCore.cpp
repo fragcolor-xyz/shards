@@ -1311,6 +1311,15 @@ malShard *makeVarShard(malSHVar *v, const char *shardName) {
   return blk;
 }
 
+malShard *makeVarShard(SHVar &v, size_t line, const char *shardName) {
+  auto b = shards::createShard(shardName);
+  b->setup(b);
+  b->setParam(b, 0, &v);
+  auto blk = new malShard(b);
+  blk->line = line;
+  return blk;
+}
+
 BUILTIN(">>") { return mal::nilValue(); }
 
 BUILTIN(">>!") { return mal::nilValue(); }
@@ -1330,7 +1339,34 @@ std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
     if (auto *v = DYNAMIC_CAST(malSHVar, next)) {
       if (v->value().valueType == SHType::ContextVar) {
         if (state == Get) {
-          res.emplace_back(makeVarShard(v, "Get"));
+          std::string fullVar(v->value().payload.stringValue, v->value().payload.stringLen);
+
+          std::vector<std::string> components;
+          std::string component;
+          std::istringstream input_stream(fullVar);
+          while (std::getline(input_stream, component, ':')) {
+            components.push_back(component);
+          }
+
+          shards::Var mainVar(components[0]);
+          res.emplace_back(makeVarShard(mainVar, v->line, "Get"));
+
+          // iterate skipping the first one
+          for (size_t i = 1; i < components.size(); i++) {
+            // if component is an integer we pass by number (seq)
+            // if not by string (table)
+            char *endptr;
+            auto value = std::strtol(components[i].c_str(), &endptr, 10);
+            if (*endptr != '\0') {
+              // Parsing failed
+              shards::Var extraVar(components[i]);
+              res.emplace_back(makeVarShard(extraVar, v->line, "Take"));
+            } else {
+              // Parsing succeeded
+              shards::Var extraVar((int64_t(value)));
+              res.emplace_back(makeVarShard(extraVar, v->line, "Take"));
+            }
+          }
         } else if (state == Set) {
           res.emplace_back(makeVarShard(v, "Set"));
           state = Get;
@@ -2617,6 +2653,7 @@ malValuePtr contextVar(const MalString &token) {
   SHVar tmp{};
   tmp.valueType = SHType::ContextVar;
   tmp.payload.stringValue = token.c_str();
+  tmp.payload.stringLen = token.size();
   return malValuePtr(malSHVar::newCloned(tmp));
 }
 } // namespace mal
