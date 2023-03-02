@@ -156,7 +156,7 @@
    3.141592653589793238
    (Is 3.141592653589793) ; 16 digits
    (Assert.Is true true)
-   (Log)   
+   (Log)
    3.141592653589793238
    (Is 3.14159265358979) ; 15 digits
    (Assert.Is false true)
@@ -744,6 +744,14 @@
    "test-copy2.txt"
    (FS.Remove)
    (Assert.Is true true)
+
+   "test-lwt.txt"
+   (| (FS.Write .text2 :Overwrite true))
+   (| (FS.LastWriteTime) (Log "Last write time 0") = .test-lwt0)
+   (| (Pause 1.5)) ; At least second precision
+   (| (FS.Write .text2 :Overwrite true))
+   (| (FS.LastWriteTime) (Log "Last write time 1") = .test-lwt1)
+   .test-lwt1 (IsMore .test-lwt0) (Assert.Is true true)
 
    (Get "text1")
    (ToJson :Pure false)
