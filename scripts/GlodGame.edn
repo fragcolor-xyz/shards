@@ -95,11 +95,14 @@
 (defshards gravity-logic []
   .Y (Math.Add .character-y-velocity)
   > .Y
+  (Log ".y position")
 
   .character-y-velocity (Math.Add .character-y-acceleration)
   > .character-y-velocity
+  (Log ".y-velocity")
 
   (float2 .X .Y) > .character-position
+  (Log ".character-position")
 
   (clamp .Y -620.0 620.0)
   .Y
@@ -114,7 +117,7 @@
                                 0 > .character-state)))))
 
 ;; ------------ Protofied Character gravity-logic ---------------
-(defshards gravity-logic [object-y object-y-velocity object-y-acceleration object-x object-position object-jump-state object-animation-state]
+(defshards gravity-logic-2 [object-y object-y-velocity object-y-acceleration object-x object-position object-jump-state object-animation-state]
   object-y (Math.Add object-y-velocity)
   > object-y
 
