@@ -378,6 +378,58 @@ struct ParseFloat : public Parser {
   }
 };
 
+struct Split {
+  std::string _inputStr;
+  SeqVar _lines;
+  std::string _separator;
+
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
+
+  static inline Parameters params{{{"Separator",
+                                    SHCCSTR("The separator character to split the string on."),
+                                    {CoreInfo::StringType, CoreInfo::StringVarType}}}};
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _separator.clear();
+      _separator.append(SHSTRVIEW(value));
+      break;
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_separator);
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto input_string = SHSTRVIEW(input);
+    _inputStr.clear();
+    _inputStr.append(input_string);
+    std::vector<std::string> components;
+    std::string component;
+    std::istringstream input_stream(_inputStr);
+    const auto sep = _separator[0];
+
+    _lines.clear();
+    while (std::getline(input_stream, component, sep)) {
+      _lines.push_back(Var(component));
+    }
+
+    return _lines;
+  }
+};
+
 void registerShards() {
   REGISTER_SHARD("Regex.Replace", Replace);
   REGISTER_SHARD("Regex.Search", Search);
@@ -389,6 +441,7 @@ void registerShards() {
   REGISTER_SHARD("ParseFloat", ParseFloat);
   REGISTER_SHARD("String.Trim", Trim);
   REGISTER_SHARD("String.Contains", Contains);
+  REGISTER_SHARD("String.Split", Split);
 }
 } // namespace Regex
 } // namespace shards

@@ -15,7 +15,10 @@
 
   "hello" = .hello
   "world" = .world
-  [.hello " " .world] (Bytes.Join) (Assert.Is (bytes "hello world")))
+  [.hello " " .world] (Bytes.Join) (Assert.Is (bytes "hello world"))
+
+  "rare|pose:transform:0:rot" (String.Split ":")
+  (Assert.Is ["rare|pose" "transform" "0" "rot"]))
 
 (defmesh root)
 (schedule root main-wire)
