@@ -59,13 +59,11 @@ public:
 
   void setChildren(std::vector<Ptr> &&children) {
     for (auto &child : children) {
-      child->parent.reset();
-    }
-    this->children = std::move(children);
-    for (auto &child : children) {
       child->parent = weak_from_this();
     }
+    this->children = std::move(children);
   }
+
   void addChild(Ptr child) {
     children.push_back(child);
     child->parent = weak_from_this();
