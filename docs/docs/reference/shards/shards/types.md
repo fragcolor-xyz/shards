@@ -115,7 +115,7 @@ To allow the shard to do this its output type is defined as a **Bool**. If the v
 Type **Bytes** represents binary data.
 
 !!! note
-    Has keyword [`bytes`](../../functions/values/#bytes) and alias `Bytes`.
+    Has keyword [`bytes`](../../lisp/values/#bytes) and alias `Bytes`.
 
 A byte is made up of 8 bits (for example, `10111010`) and a **Bytes** type is an sequence of such bytes: `[11110001 10110111 10000111]`
 
@@ -129,7 +129,7 @@ Shards like [`(ToBytes)`](../General/ToBytes/),  [`(BytesToString)`](../General/
 Type **Color** represents an RGBA color format and is constructed from four unsigned 8 bit integers (one each for the R, G, B, and A values).
 
 !!! note
-    Has keyword [`color`](../../functions/values/#color) and alias `Color`.
+    Has keyword [`color`](../../lisp/values/#color) and alias `Color`.
 
 Each of the R, G, B, and A values range from 0 to 255. R, G, and B stand for red, blue, and green components of the color. A represents the *alpha channel* property (how opaqe a pixel is - 0 is fully transparent, 255 is fully opaque).
 
@@ -161,7 +161,7 @@ The shard [`(ToColor)`](../General/ToColor/) converts its input into a **Color**
 Type **ContextVar** represents a contextual variable (i.e., a variable that is in scope for the shard processing this data).
 
 !!! note
-    Has keyword [`context-var`](../../functions/values/#context-var) and alias `ContextVar`.
+    Has keyword [`context-var`](../../lisp/values/#context-var) and alias `ContextVar`.
 
 The shard [`(Math.Inc)`](../Math/Inc/) accepts only **ContextVar** type numeric data (i.e., a variable that holds numeric data) into its `:Value` parameter, and increments it by 1.
 
@@ -189,7 +189,7 @@ The shard [`(Math.Inc)`](../Math/Inc/) accepts only **ContextVar** type numeric 
 **Enum** stands for enumerated data type.
 
 !!! note
-    Has keyword [`enum`](../../functions/values/#enum) and alias `Enum`.
+    Has keyword [`enum`](../../lisp/values/#enum) and alias `Enum`.
 
 The value that you pass to an enumerated variable can only take certain 'states' or named constant values.
 
@@ -249,7 +249,7 @@ In simple terms it just means that you pass in one of the allowed named constant
 Type **Float** defines a 64-bit signed floating point number.
 
 !!! note
-    Has keyword [`float`](../../functions/values/#float) and alias `Float`.
+    Has keyword [`float`](../../lisp/values/#float) and alias `Float`.
 
 Floating point means it has the capability to store a decimal point and hence supports decimal numbers.
 
@@ -282,7 +282,7 @@ It may also be represented without the keyword `float`, with just the floating-p
 Type **Float2** defines a vector of two [**Float**](#float) type numbers.
 
 !!! note
-    Has keyword [`float2`](../../functions/values/#float2) and alias `Float2`.
+    Has keyword [`float2`](../../lisp/values/#float2) and alias `Float2`.
 
 A vector can be thought of as a group or list of items that are considered together for processing.
 
@@ -308,7 +308,7 @@ A **Float2** type value looks like this: `(float2 3.4 -5.0)`.
 Type **Float3** defines a vector of three 32-bit signed floating point numbers.
 
 !!! note
-    Has keyword [`float3`](../../functions/values/#float3) and alias `Float3`.
+    Has keyword [`float3`](../../lisp/values/#float3) and alias `Float3`.
 
 Floating point means it has the capability to store a decimal point and hence supports decimal numbers.
 
@@ -336,7 +336,7 @@ A **Float3** type value looks like this: `(float3 2.9 -4.23 7.83)`.
 Type **Float4** is like type [**Float3**](#float3) but is a vector of four 32-bit signed floating point numbers instead.
 
 !!! note
-    Has keyword [`float4`](../../functions/values/#float4) and alias `Float4`.
+    Has keyword [`float4`](../../lisp/values/#float4) and alias `Float4`.
 
 A **Float4** type value looks like this: `(float4 -8.84 38.2 4.7 0.4)`.
 
@@ -370,7 +370,7 @@ A shard that uses this type is [`(StripAlpha)`](../General/StripAlpha/). This ta
 Type **Int** defines a 64-bit signed integer.
 
 !!! note
-    Has keyword [`int`](../../functions/values/#int) and alias `Int`.
+    Has keyword [`int`](../../lisp/values/#int) and alias `Int`.
 
 64 bits of memory allows this data type to store integer values ranging from -9,223,372,036,854,775,808 to +9,223,372,036,854,775,807 (no decimals).
 
@@ -401,7 +401,7 @@ It may also be represented without the keyword `int`, with just the integer valu
 Type **Int2** defines a vector of two [**Int**](#int) type numbers.
 
 !!! note
-    Has keyword [`int2`](../../functions/values/#int2) and alias `Int2`.
+    Has keyword [`int2`](../../lisp/values/#int2) and alias `Int2`.
 
 A vector can be thought of as a group or list of items that are considered together for processing.
 
@@ -427,7 +427,7 @@ An **Int2** type value looks like this: `(int2 3 -5)`.
 Type **Int3** defines a vector of three 32-bit signed integers.
 
 !!! note
-    Has keyword [`int3`](../../functions/values/#int3) and alias `Int3`.
+    Has keyword [`int3`](../../lisp/values/#int3) and alias `Int3`.
 
 32 bits of memory for each number allows this data type to store integer values ranging from -2147483648 to +2147483647 (no decimals).
 
@@ -453,7 +453,7 @@ An **Int3** type value looks like this: `(int3 2 4 -4)`.
 Type **Int4** is like type [**Int3**](#int3) but is a vector of four 32-bit signed integers instead.
 
 !!! note
-    Has keyword [`int4`](../../functions/values/#int4) and alias `Int4`.
+    Has keyword [`int4`](../../lisp/values/#int4) and alias `Int4`.
 
 An **Int4** type value looks like this: `(int4 1 -4 0 3)`.
 
@@ -533,7 +533,7 @@ For example, the `:Socket` parameter object of [`(WS.ReadString)`](../WS/ReadStr
 Type **Path** is [**String**](#string) type data that is expected to contain a valid path (your operating system or local machine) for loading resources like script files, images, audio files etc.
 
 !!! note
-    Has keyword [`path`](../../functions/values/#path) and alias `Path`.
+    Has keyword [`path`](../../lisp/values/#path) and alias `Path`.
 
 A valid **Path** type data string would look like this: `"../../external/sample-models/Avocado.glb"`
 
@@ -555,7 +555,7 @@ An example of a **Set** type data would be `(22 3 378 4)`.
 Type **Seq** is a collection of values that can be accessed sequentially (i.e., they're iterable).
 
 !!! note
-    Has keyword [`seq`](../../functions/values/#seq).
+    Has keyword [`seq`](../../lisp/values/#seq).
 
 Also called a sequence. An example of **Seq** type would be `[7 2 54 42]`.
 
@@ -603,7 +603,7 @@ When more that one shard is accepted it is indicated as a sequence of shards, an
 Type **String** represents string data (any data enclosed within double quotes).
 
 !!! note
-    Has keyword [`string`](../../functions/values/#string) and alias `String`.
+    Has keyword [`string`](../../lisp/values/#string) and alias `String`.
 
 A **String** value looks like this: `(string "Hello @Tom!")`. It may also be represented without the keyword `string`, with just the data within double quotes: `"Hello @Tom!"`.
 
@@ -650,7 +650,7 @@ Its also known as map, data dictionary, or associative array. An example of a **
 Type **Wire** represents a wire being passed as data.
 
 !!! note
-    Has keyword [`Wire`](../../functions/values/#wire).
+    Has keyword [`Wire`](../../lisp/values/#wire).
 
 A **Wire** type thus consists of a sequence of shards (which make up the wire), their shared state (memory) context, name of the wire, and other properties that enable operations on the wire like scheduling it on a mesh, starting/stopping/pausing the wire, etc.
 

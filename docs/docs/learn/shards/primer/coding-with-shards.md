@@ -98,7 +98,7 @@ We can utilize the `Repeat` shard with its different parameters as shown:
 !!! note "`->`"
     When using shards for a parameter (e.g., `Action`), you must always place `->` before the first shard.
 
-    [`->`](../../../reference/functions/misc/) is a shard container used to group multiple shards together. We will see how to eliminate the use of `->` later in the segment for `defshards`.
+    [`->`](../../../reference/lisp/misc/) is a shard container used to group multiple shards together. We will see how to eliminate the use of `->` later in the segment for `defshards`.
 
 To find out more about the input/output/parameter of a shard, you can search for the shard in the search bar above and check out its documentation page.
 
@@ -229,7 +229,7 @@ When defining variables in your program, you can use `Setup` to ensure that vari
 
 ## Grouping shards
 
-[`defshards`](../../../reference/functions/macros/#defshards) allows you to group multiple shards together to form a new shard, thereby eliminating the use of `->`. It is useful for organizing your code and improving readability.
+[`defshards`](../../../reference/lisp/macros/#defshards) allows you to group multiple shards together to form a new shard, thereby eliminating the use of `->`. It is useful for organizing your code and improving readability.
 
 `defshards` has a syntax as such:
 
@@ -330,7 +330,7 @@ A Wire is made up of a sequence of shards, queued for execution from left to rig
 
 ![A Wire is made up of a sequence of shards.](assets/what-is-a-wire.png)
 
-To create a Wire, we use [`defwire`](../../../reference/functions/macros/#defwire).
+To create a Wire, we use [`defwire`](../../../reference/lisp/macros/#defwire).
 
 === "Creating a Wire"
     
@@ -355,7 +355,7 @@ A Looped Wire will continue running until its exit conditions have been met.
 !!! note
     You will learn more about the entering and exiting of Looped Wires in the next chapter!
 
-To create a Looped Wire, we use [`defloop`](../../../reference/functions/macros/#defloop).
+To create a Looped Wire, we use [`defloop`](../../../reference/lisp/macros/#defloop).
 
 === "Creating a Looped Wire"
     
@@ -371,7 +371,7 @@ Wires are queued for execution within a Mesh, from left to right, top to bottom.
 
 ![Wires are queued for execution within a Mesh.](assets/what-is-a-mesh.png)
 
-To queue a Wire on a Mesh, we use [`schedule`](../../../reference/functions/misc/#schedule).
+To queue a Wire on a Mesh, we use [`schedule`](../../../reference/lisp/misc/#schedule).
 
 === "Scheduling a Wire"
     
@@ -389,7 +389,7 @@ In order to actually get Shards running, a specific hierarchy and sequence must 
 
 ![The hierarchy of a Shards program.](assets/shards-hierarchy.png)
 
-When the Mesh is run, the Wires are executed in sequence and your program is started. This is done using the aptly named command [`run`](../../../reference/functions/misc/#run).
+When the Mesh is run, the Wires are executed in sequence and your program is started. This is done using the aptly named command [`run`](../../../reference/lisp/misc/#run).
 
 === "Running a Mesh"
     

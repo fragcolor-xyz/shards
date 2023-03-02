@@ -126,7 +126,7 @@ If a method such as [`Step`](../../../reference/shards/General/Step) is used ins
 
 Pure Wires are Wires that exist in their own scope. When run from another Wire, they do not copy that Wire's variables. 
 
-To create a Pure Wire, we use [`defpure`](../../../reference/functions/macros/#defpure).
+To create a Pure Wire, we use [`defpure`](../../../reference/lisp/macros/#defpure).
 
 === "Syntax"
     ```{.clojure .annotate linenums="1"}
