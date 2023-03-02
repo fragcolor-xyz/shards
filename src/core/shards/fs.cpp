@@ -1,11 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
+#include "boost/filesystem/operations.hpp"
 #include "shared.hpp"
 #include <boost/algorithm/string.hpp>
 #include <fstream>
 
 #include <boost/filesystem.hpp>
+#include <system_error>
 namespace fs = boost::filesystem;
 using ErrorCode = boost::system::error_code;
 
@@ -408,6 +410,26 @@ struct Copy {
     return input;
   }
 };
+
+struct LastWriteTime {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  SHTypesInfo outputTypes() { return Types{CoreInfo::IntType}; }
+
+  static SHParametersInfo parameters() { return SHParametersInfo{}; }
+
+  void setParam(int index, const SHVar &value) {}
+  SHVar getParam(int index) { return Var::Empty; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    fs::path p(input.payload.stringValue);
+    ErrorCode ec;
+    auto lwt = fs::last_write_time(p, ec);
+    if (ec.failed()) {
+      throw ActivationError(fmt::format("FS.LastWriteTime, file {} does not exist.", p));
+    }
+    return Var(static_cast<int64_t>(lwt));
+  }
+};
 }; // namespace FS
 
 void registerFSShards() {
@@ -422,5 +444,6 @@ void registerFSShards() {
   REGISTER_SHARD("FS.IsDirectory", FS::IsDirectory);
   REGISTER_SHARD("FS.Copy", FS::Copy);
   REGISTER_SHARD("FS.Remove", FS::Remove);
+  REGISTER_SHARD("FS.LastWriteTime", FS::LastWriteTime);
 }
 }; // namespace shards
