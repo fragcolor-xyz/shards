@@ -2071,6 +2071,7 @@ BUILTIN("context-var") {
   var.valueType = SHType::ContextVar;
   auto &s = value->ref();
   var.payload.stringValue = s.c_str();
+  var.payload.stringLen = s.size();
   auto mvar = new malSHVar(var, false);
   mvar->reference(value);
   return malValuePtr(mvar);
