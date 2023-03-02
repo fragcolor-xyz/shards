@@ -275,6 +275,10 @@ void registerCoreShards() {
   static_assert(sizeof(SHVarPayload) == 16);
   static_assert(sizeof(SHVar) == 32);
   static_assert(sizeof(SHMapIt) <= sizeof(SHTableIterator));
+  static_assert(sizeof(SHHashSetIt) <= sizeof(SHSetIterator));
+  static_assert(sizeof(OwnedVar) == sizeof(SHVar));
+  static_assert(sizeof(TableVar) == sizeof(SHVar));
+  static_assert(sizeof(SeqVar) == sizeof(SHVar));
 
   SHLOG_DEBUG("Hardware concurrency: {}", std::thread::hardware_concurrency());
 
