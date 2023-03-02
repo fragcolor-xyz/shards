@@ -1,0 +1,80 @@
+
+;;[velocity acceleration]
+(defwire initialise-jump
+  0.0 >== .character-y-velocity
+  0.0 >== .character-y-acceleration
+  true >== .can-jump)
+
+;;[y-min y-max]
+(defwire initialise-character-y-limits
+  = .temp-ylimits-array
+  (Take 0)(ToFloat) >== .y-min
+  .temp-ylimits-array
+  (Take 1)(ToFloat) >== .y-max)
+
+
+;; [Yposition ]
+(defloop character-gravity
+  >= .temp-y
+  (Math.Subtract .character-y-velocity)
+  > .temp-y
+
+  .character-y-velocity (Math.Subtract .character-y-acceleration)
+  > .character-y-velocity 
+
+  .temp-y > (Max .y-min) (Min .y-max) > .temp-y
+  >
+  )
+
+;; [xposition ypostion]
+(defwire set-animation-position
+  = .temp-position-array
+  (Take 0) (ToFloat) >== .x-position
+  .temp-position-array
+  (Take 1) (ToFloat) >== .y-position
+
+  (float2 .x-position .y-position) >== .animation-position)
+
+;;.yposition
+(defloop character-on-ground
+  (When :Predicate (IsMoreEqual 620.0)
+        :Action (->
+                 0.0 > .character-y-velocity
+                 0.0 > .character-y-acceleration
+                 true > .can-jump)))
+
+
+;;[character-y-velocity character-y-acceleration]
+(defloop jump-button
+  = .temp-array
+  (Take 0)(ToFloat) >= .temp-velocity
+  .temp-array
+  (Take 1)(ToFloat) >= .temp-acceleration
+
+  (Inputs.KeyDown
+   :Key "up"
+   :Action (->
+            (Msg "up")
+            .can-jump
+            .temp-velocity > .character-y-velocity
+            .temp-acceleration >  .character-y-acceleration)))
+
+(defloop main-jump-loop
+  (Setup
+   (Do initialise-jump)
+   [-620.0 620.0]
+   (Do initialise-character-y-limits)
+   [0.0 0.0]
+   (Do set-animation-position)
+   )
+  
+  .y-position
+  (Do character-gravity) 
+  .y-position
+  (Do character-on-ground)
+  )
+
+
+(defmesh main)
+(schedule main main-jump-loop)
+(run main (/ 1.0 60))

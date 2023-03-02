@@ -1,0 +1,167 @@
+;; ----------------  Animation Protos ----------------
+
+(defwire initialize-animation-array
+  (GFX.Texture :Format TextureFormat.R8Unorm) (Push :Name .animation-array :Global true)
+  (Clear .animation-array))
+
+(defloop load-image-into-texture
+  = .filename
+  (LoadImage .filename) (GFX.Texture))
+
+(defwire initialize-animation
+  (StepMany load-image-into-texture)
+  >= .animation-array
+
+  0 >== .animation-index
+  (Count :Name .animation-array)
+  >== .animation-index-max)
+
+(defwire initialise-animation-speed
+  (ToFloat) >== .animation-speed)
+
+(defloop animate-animation
+  .animation-index (Math.Add 1)
+  > .animation-index
+  (When :Predicate (IsMoreEqual .animation-index-max)
+        :Action (-> 0 > .animation-index))
+  (Pause .animation-speed))
+
+(defwire set-animation-position
+  (|(Take 0) (ToFloat) > .x-position)
+  (|(Take 1) (ToFloat) > .y-position)
+
+  (float2 .x-position .y-position) >== .animation-position)
+
+;;(scale)
+(defloop display-animation 
+  (ToFloat2) >= .temp-scale
+
+  (UI.Area :Position .animation-position
+           :Anchor Anchor.Top
+           :Contents (->
+                      .animation-array (Take .animation-index) (UI.Image :Scale .temp-scale))))
+
+;; --------------- Jumping Protos --------------
+;;[velocity acceleration]
+(defwire initialise-jump
+  0.0 >== .character-y-velocity
+  0.0 >== .character-y-acceleration
+  true >== .can-jump)
+
+;;[y-min y-max]
+(defwire initialise-character-y-limits
+  = .temp-ylimits-array
+  (Take 0) (ToFloat) >== .y-min
+  .temp-ylimits-array
+  (Take 1) (ToFloat) >== .y-max)
+
+;; (float 2) .animation-position
+(defwire character-jump-plus-gravity
+  (| (Take 0) (ToFloat) > .x-position)
+  (| (Take 1) (ToFloat) > .y-position)
+
+  .y-position (Math.Subtract .character-y-velocity)
+  > .y-position
+
+  .character-y-velocity (Math.Subtract .character-y-acceleration)
+  > .character-y-velocity
+
+  .y-position > (Max .y-min) (Min .y-max) > .y-position
+
+  (float2 .x-position .y-position))
+;; > .animation-position
+
+;;[.y-position .y-limit]
+(defwire character-on-ground
+  (|(Take 0)(ToFloat) >= .temp-y)
+  (|(Take 1)(ToFloat) >= .temp-y-limit)
+  
+  .temp-y
+  (When :Predicate (IsMoreEqual .temp-y-limit)
+        :Action (->
+                 0.0 > .character-y-velocity
+                 0.0 > .character-y-acceleration
+                 true > .can-jump)))
+
+;;[character-y-velocity character-y-acceleration]
+(defloop jump-button
+  (|(Take 0)(ToFloat) >= .temp-velocity)
+  (|(Take 1) (ToFloat) >= .temp-acceleration)
+
+  (Inputs.KeyDown
+   :Key "up"
+   :Action (->
+            .can-jump
+            (When :Predicate (Is true)
+                  :Action (->
+                           .temp-velocity > .character-y-velocity
+                           .temp-acceleration >  .character-y-acceleration
+                           false > .can-jump
+                           )))))
+
+
+;; ---------------- main-animation-loop -------------------
+(defloop main-animation-loop
+  (Setup
+   0.0 >== .x-position
+   0.0 >== .y-position
+   (Do initialize-animation-array)
+   ["GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_1.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_2.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_3.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_4.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_5.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_6.png"
+    "GlodImages/Character_Idle/Idle_Left/Character1_Idle_Left_7.png"]
+   (Do initialize-animation)
+   (Count :Name .animation-array)
+   0.04
+   (Do initialise-animation-speed)
+   [0 620]
+   (Do set-animation-position)
+
+   (Do initialise-jump)
+   [-620.0 620.0]
+   (Do initialise-character-y-limits))
+
+  (Step animate-animation)
+
+  .animation-position
+  (Do character-jump-plus-gravity)
+  (ToFloat2) > .animation-position
+
+  [.y-position 620.0]
+  (Do character-on-ground)
+
+  .can-jump
+  (Log "CanJump ")
+  .character-y-velocity
+  (Log ".character-y-velocity ")
+  .character-y-acceleration
+  (Log ".character-y-acceleration ")
+  .y-position
+  (Log ".Character-y ")
+
+
+  (GFX.MainWindow
+   :Title "MainWindow" :Width 1920 :Height 1080
+   :Contents
+   (-> (Setup
+        (GFX.DrawQueue) >= .ui-draw-queue
+        (GFX.UIPass .ui-draw-queue) >> .render-steps)
+       .ui-draw-queue (GFX.ClearQueue)
+
+       (UI
+        .ui-draw-queue
+        (->
+         (float2 0.2)
+         (Step display-animation)))
+
+       [20.0 1.0]
+       (Step jump-button)
+
+       (GFX.Render :Steps .render-steps))))
+
+(defmesh main)
+(schedule main main-animation-loop)
+(run main (/ 1.0 60))

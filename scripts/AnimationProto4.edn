@@ -1,4 +1,3 @@
-
 (defwire initialize-animation-array
   (GFX.Texture :Format TextureFormat.R8Unorm) (Push :Name .animation-array :Global true)
   (Clear .animation-array))
