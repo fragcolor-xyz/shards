@@ -185,7 +185,10 @@ struct Read {
   bool _binary = false;
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  SHTypesInfo outputTypes() { return Types{CoreInfo::BytesType, CoreInfo::StringType}; }
+  static SHTypesInfo outputTypes() {
+    static Types _types { CoreInfo::BytesType, CoreInfo::StringType };
+    return _types;
+  }
 
   static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
       "Bytes", SHCCSTR("If the output should be SHType::Bytes instead of SHType::String."), CoreInfo::BoolType));
@@ -413,7 +416,7 @@ struct Copy {
 
 struct LastWriteTime {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  SHTypesInfo outputTypes() { return Types{CoreInfo::IntType}; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
   static SHParametersInfo parameters() { return SHParametersInfo{}; }
 
