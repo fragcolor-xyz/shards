@@ -192,6 +192,9 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
     wireOutput = wire->outputType;
   }
 
+  // Propagate stack size
+  data.wire->stackSize = std::max<size_t>(data.wire->stackSize, wire->stackSize);
+
   auto outputType = data.inputType;
 
   if (!passthrough) {
