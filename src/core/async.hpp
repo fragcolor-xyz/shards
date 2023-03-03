@@ -30,7 +30,7 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   return func();
 #else
   SHVar res{};
-  std::packaged_task<SHVar()> task(std::move(func));
+  std::packaged_task<SHVar()> task(std::forward<FUNC>(func));
   auto future = task.get_future();
 
   boost::asio::post(shards::SharedThreadPool(), [&] { task(); });
@@ -71,7 +71,7 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else
-  std::packaged_task<void()> task(std::move(func));
+  std::packaged_task<void()> task(std::forward<FUNC>(func));
   auto future = task.get_future();
 
   boost::asio::post(shards::SharedThreadPool(), [&] { task(); });

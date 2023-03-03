@@ -47,8 +47,8 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposed
   if (!passthrough && data.inputType != wire->inputType && !wire->ignoreInputTypeCheck) {
     SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
     throw ComposeError(fmt::format("Attempted to call an already composed wire with a "
-                       "different input type! wire: {}, old type: {}, new type: {}",
-                       wire->name, (SHTypeInfo)wire->inputType, data.inputType));
+                                   "different input type! wire: {}, old type: {}, new type: {}",
+                                   wire->name, (SHTypeInfo)wire->inputType, data.inputType));
   }
 
   // ensure requirements match our input data
@@ -353,18 +353,31 @@ struct StopWire : public WireBase {
 
   SHTypeInfo _inputType{};
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  entt::connection _onComposedConn;
+
+  void destroy() {
+    if (_onComposedConn)
+      _onComposedConn.release();
+  }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    assert(data.wire);
     _inputType = data.inputType;
+    if (_onComposedConn)
+      _onComposedConn.release();
+    _onComposedConn = data.wire->dispatcher.sink<SHWire::OnComposedEvent>().connect<&StopWire::composed>(this);
     WireBase::compose(data);
     return data.inputType;
   }
 
-  void composed(const SHWire *wire, const SHComposeResult *result) {
-    if (!wire && wireref->valueType == SHType::None && _inputType != result->outputType) {
+  void composed(const SHWire::OnComposedEvent &e) {
+    // this check runs only when (Stop) is called without any params!
+    // meaning it's stopping the wire it is in
+    if (!wire && wireref->valueType == SHType::None && _inputType != e.wire->outputType) {
       SHLOG_ERROR("Stop input and wire output type mismatch, Stop input must "
                   "be the same type of the wire's output (regular flow), "
                   "wire: {} expected: {}",
-                  wire->name, wire->outputType);
+                  e.wire->name, e.wire->outputType);
       throw ComposeError("Stop input and wire output type mismatch");
     }
   }

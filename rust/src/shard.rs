@@ -85,14 +85,6 @@ pub trait Shard {
     Ok(Type::default())
   }
 
-  fn hasComposed() -> bool
-  where
-    Self: Sized,
-  {
-    false
-  }
-  fn composed(&mut self, _wire: &SHWire, _results: &ComposeResult) {}
-
   fn parameters(&mut self) -> Option<&Parameters> {
     None
   }
@@ -305,15 +297,6 @@ unsafe extern "C" fn shard_compose<T: Shard>(
   }
 }
 
-unsafe extern "C" fn shard_composed<T: Shard>(
-  arg1: *mut CShard,
-  wire: *const SHWire,
-  results: *const ComposeResult,
-) {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.composed(&(*wire), &(*results));
-}
-
 unsafe extern "C" fn shard_parameters<T: Shard>(arg1: *mut CShard) -> SHParametersInfo {
   let blk = arg1 as *mut ShardWrapper<T>;
   if let Some(params) = (*blk).shard.parameters() {
@@ -390,11 +373,6 @@ pub fn create<T: Default + Shard>() -> ShardWrapper<T> {
       requiredVariables: Some(shard_requiredVariables::<T>),
       compose: if T::hasCompose() {
         Some(shard_compose::<T>)
-      } else {
-        None
-      },
-      composed: if T::hasComposed() {
-        Some(shard_composed::<T>)
       } else {
         None
       },

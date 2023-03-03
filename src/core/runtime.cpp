@@ -1369,13 +1369,7 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
   // set output type
   wire->outputType = res.outputType;
 
-  std::vector<shards::ShardInfo> allShards;
-  shards::gatherShards(wire, allShards);
-  // call composed on all shards if they have it
-  for (auto &blk : allShards) {
-    if (blk.shard->composed)
-      blk.shard->composed(const_cast<Shard *>(blk.shard), wire, &res);
-  }
+  const_cast<SHWire *>(wire)->dispatcher.trigger(SHWire::OnComposedEvent{wire});
 
   return res;
 }
