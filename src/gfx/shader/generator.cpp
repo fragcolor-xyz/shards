@@ -179,6 +179,7 @@ static bool sortEntryPoints(std::vector<const EntryPoint *> &entryPoints, bool i
     return false;
 
   auto unsortedEntryPoints = std::move(entryPoints);
+  entryPoints.clear();
   for (size_t i = 0; i < sortedIndices.size(); i++) {
     entryPoints.push_back(unsortedEntryPoints[sortedIndices[i]]);
   }
