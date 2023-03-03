@@ -930,7 +930,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
       SHInstanceData data{};
       data.inputType = _inputTypeCopy;
       data.shared = _sharedCopy;
-      data.wire = nullptr; // should be not used by the provider!
+      data.wire = context->wireStack.back(); // not correct but used just to pick the mesh
       assert(data.wire->mesh.lock());
       _provider->setup(_provider, GetGlobals().RootPath.c_str(), data);
     }
