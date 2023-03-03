@@ -1364,6 +1364,8 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
     wire->ignoreInputTypeCheck = false;
   }
 
+  assert(wire == data.wire); // caller must pass the same wire as data.wire
+
   auto res = composeWire(wire->shards, callback, userData, data);
 
   // set output type

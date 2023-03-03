@@ -11,6 +11,7 @@
 #include "shared.hpp"
 #include "async.hpp"
 #include <limits>
+#include <memory>
 #include <pdqsort.h>
 #include <random>
 #include <sstream>
@@ -108,7 +109,8 @@ struct Evolve {
     auto fwire = SHWire::sharedFromRef(_fitnessWire.payload.wireValue);
 
     SHInstanceData vdata{};
-    vdata.wire = data.wire;
+    vdata.wire = bwire.get();
+    bwire->mesh = emptyMesh;
     auto res = composeWire(
         bwire.get(),
         [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
@@ -124,6 +126,8 @@ struct Evolve {
     arrayFree(res.requiredInfo);
 
     vdata.inputType = res.outputType;
+    vdata.wire = fwire.get();
+    fwire->mesh = emptyMesh;
     res = composeWire(
         fwire.get(),
         [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
@@ -591,6 +595,7 @@ private:
   double _elitism = 0.1;
   size_t _nelites = 0;
   size_t _era = 0;
+  std::shared_ptr<SHMesh> emptyMesh{SHMesh::make()};
 };
 
 struct Mutant {

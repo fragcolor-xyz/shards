@@ -131,7 +131,7 @@
    .ntimes
    (When (IsMore 7) (->
                      (Msg "STOP OK!")
-                     (Stop)))
+                     nil (Stop)))
    (Evolve
     (Wire
      "evolveme"
@@ -145,7 +145,8 @@
     :Coroutines 8)
    (Take 1)
    (ToJson false)
-   (Log)))
+   (Log)
+   nil))
 
 (schedule Root evolveme)
 (if (run Root 0.1) nil (throw "Root tick failed"))
