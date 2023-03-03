@@ -1,17 +1,14 @@
 #ifndef FE9A8471_61AF_483B_8D2F_84E570864FB2
 #define FE9A8471_61AF_483B_8D2F_84E570864FB2
 
-#include "drawables/mesh_drawable.hpp"
+#include "../drawables/mesh_drawable.hpp"
 #include "../drawable_processor.hpp"
-#include "../renderer_types.hpp"
-#include "../renderer_cache.hpp"
+#include "../renderer_storage.hpp"
 #include "../shader/types.hpp"
 #include "../texture_placeholder.hpp"
+#include "../pmr/list.hpp"
+#include "../pmr/unordered_map.hpp"
 #include "drawable_processor_helpers.hpp"
-#include "pmr/list.hpp"
-#include "pmr/unordered_map.hpp"
-#include "texture_cache.hpp"
-#include "worker_memory.hpp"
 #include <tracy/Tracy.hpp>
 
 namespace gfx::detail {
@@ -245,7 +242,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   }
 
   TransientPtr prepare(DrawablePrepareContext &context) override {
-    auto &allocator = context.workerMemory;
+    auto &allocator = context.storage.workerMemory;
     const CachedPipeline &cachedPipeline = context.cachedPipeline;
 
     // NOTE: Memory is thrown away at end of frame, deconstructed by renderer
@@ -310,7 +307,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         ParameterStorage *baseDrawData1 = context.generatorData.viewParameters;
 
         generateDrawableData(drawableData, context.context, cachedPipeline, drawable, context.viewData, baseDrawData,
-                             baseDrawData1, context.frameCounter, needProjectedDepth);
+                             baseDrawData1, context.storage.frameCounter, needProjectedDepth);
       }
     }
 

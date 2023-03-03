@@ -32,6 +32,8 @@ add_library(gfx
   rust_interop.cpp
   view_stack.cpp
   render_target.cpp
+  render_graph.cpp
+  render_step_impl.cpp
   pipeline_builder.cpp
   pipeline_step.cpp
   pipeline_hashes.cpp

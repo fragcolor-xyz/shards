@@ -49,6 +49,7 @@ struct DrawQueue {
 private:
   std::vector<DrawablePtr> sharedDrawables;
   std::vector<const IDrawable *> drawables;
+  bool autoClear{};
 
 public:
   // Adds a managed drawable, automatically kept alive until the renderer is done with it
@@ -64,6 +65,9 @@ public:
     drawables.clear();
     sharedDrawables.clear();
   }
+
+  bool isAutoClear() const { return autoClear; }
+  void setAutoClear(bool autoClear) { this->autoClear = autoClear; }
 
   const std::vector<DrawablePtr> &getSharedDrawables() const { return sharedDrawables; }
   const std::vector<const IDrawable *> &getDrawables() const { return drawables; }

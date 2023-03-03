@@ -93,38 +93,22 @@ struct DrawShard {
   static inline shards::Types DrawableTypes{Types::Drawable, DrawableSeqType};
 
   PARAM_PARAMVAR(_queue, "Queue", "The queue to add the draw command to (Optional). Uses the default queue if not specified",
-                 {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)});
-  PARAM_IMPL(DrawShard, PARAM_IMPL_FOR(_queue));
+                 {Type::VariableOf(Types::DrawQueue)});
+  PARAM_VAR(_autoClearQueue, "ClearQueue", "Automatically clear queue after processing it", {CoreInfo::BoolType});
+  PARAM_IMPL(DrawShard, PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_autoClearQueue));
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
-  RequiredGraphicsContext _graphicsContext{};
+  DrawShard() { _autoClearQueue = Var(true); }
 
-  bool isQueueSet() const { return _queue->valueType != SHType::None; }
+  void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
 
-  void warmup(SHContext *shContext) {
-    PARAM_WARMUP(shContext);
-
-    if (!isQueueSet()) {
-      _graphicsContext.warmup(shContext);
-    }
-  }
-
-  void cleanup() {
-    _graphicsContext.cleanup();
-    PARAM_CLEANUP();
-  }
+  void cleanup() { PARAM_CLEANUP(); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-
-    if (!isQueueSet()) {
-      // Use default global queue (check main thread)
-      composeCheckGfxThread(data);
-      _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
-    }
 
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
@@ -135,16 +119,11 @@ struct DrawShard {
     return CoreInfo::NoneType;
   }
 
-  DrawQueue &getDrawQueue() {
-    SHVar queueVar = _queue.get();
-    if (isQueueSet()) {
-      return *varAsObjectChecked<SHDrawQueue>(queueVar, Types::DrawQueue).queue.get();
-    } else {
-      return *_graphicsContext->getDrawQueue().get();
-    }
-  }
+  DrawQueue &getDrawQueue() { return *varAsObjectChecked<SHDrawQueue>(_queue.get(), Types::DrawQueue).queue.get(); }
 
   template <typename T> void addDrawableToQueue(T &drawable) { getDrawQueue().add(drawable); }
+
+  void activateCommon() { getDrawQueue().setAutoClear((bool)_autoClearQueue); }
 
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
     assert(input.valueType == SHType::Object);
@@ -156,7 +135,7 @@ struct DrawShard {
           }
         },
         varAsObjectChecked<SHDrawable>(input, Types::Drawable).drawable);
-
+    activateCommon();
     return SHVar{};
   }
 
@@ -165,7 +144,7 @@ struct DrawShard {
     for (size_t i = 0; i < seq.len; i++) {
       (void)activateSingle(shContext, seq.elements[i]);
     }
-
+    activateCommon();
     return SHVar{};
   }
 
@@ -182,6 +161,8 @@ struct DrawQueueShard {
     return parameters;
   }
 
+  SHDrawQueue *_queue{};
+
   void setParam(int index, const SHVar &value) {
     switch (index) {
     default:
@@ -196,16 +177,24 @@ struct DrawQueueShard {
     }
   }
 
-  void warmup(SHContext *context) {}
+  void warmup(SHContext *context) {
+    assert(!_queue);
+    _queue = Types::DrawQueueObjectVar.New();
+    _queue->queue = std::make_shared<DrawQueue>();
+  }
 
-  void cleanup() {}
+  void cleanup() {
+    if (_queue) {
+      Types::DrawQueueObjectVar.Release(_queue);
+      _queue = nullptr;
+    }
+  }
 
   SHTypeInfo compose(SHInstanceData &data) { return Types::DrawQueue; }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    SHDrawQueue *shQueue = Types::DrawQueueObjectVar.New();
-    shQueue->queue = std::make_shared<DrawQueue>();
-    return Types::DrawQueueObjectVar.Get(shQueue);
+    _queue->queue->clear();
+    return Types::DrawQueueObjectVar.Get(_queue);
   }
 };
 

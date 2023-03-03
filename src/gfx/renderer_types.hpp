@@ -259,6 +259,7 @@ struct ViewData {
   CachedView &cachedView;
   Rect viewport;
   RenderTargetPtr renderTarget;
+  int2 referenceOutputSize;
 };
 
 struct VertexStateBuilder {

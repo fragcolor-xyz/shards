@@ -1,5 +1,6 @@
 #include "../gfx.hpp"
 #include "extra/gfx/shards_utils.hpp"
+#include "gfx/error_utils.hpp"
 #include "shards_utils.hpp"
 #include "shader/translator.hpp"
 #include "linalg_shim.hpp"
@@ -228,7 +229,7 @@ struct DrawablePassShard {
     if (getFromTable(context, inputTable, "Queue", queueVar))
       applyQueue(context, step, queueVar);
     else {
-      step.drawQueue = DrawQueuePtr();
+      throw formatException("DrawablePass requires a queue");
     }
 
     return Types::PipelineStepObjectVar.Get(_step);
