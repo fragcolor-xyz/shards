@@ -21,7 +21,6 @@ SH_HAS_MEMBER_TEST(outputTypes);
 SH_HAS_MEMBER_TEST(exposedVariables);
 SH_HAS_MEMBER_TEST(requiredVariables);
 SH_HAS_MEMBER_TEST(compose);
-SH_HAS_MEMBER_TEST(composed);
 SH_HAS_MEMBER_TEST(parameters);
 SH_HAS_MEMBER_TEST(setParam);
 SH_HAS_MEMBER_TEST(getParam);
@@ -187,16 +186,6 @@ template <class T> struct ShardWrapper {
     } else {
       // compose is optional!
       result->compose = nullptr;
-    }
-
-    // composed
-    if constexpr (has_composed<T>::value) {
-      result->composed = static_cast<SHComposedProc>([](Shard *b, const SHWire *wire, const SHComposeResult *result) {
-        reinterpret_cast<ShardWrapper<T> *>(b)->shard.composed(wire, result);
-      });
-    } else {
-      // composed is optional!
-      result->composed = nullptr;
     }
 
     // warmup

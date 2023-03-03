@@ -432,6 +432,10 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     return reinterpret_cast<SHWireRef>(res);
   }
 
+  struct OnComposedEvent {
+    const SHWire *wire;
+  };
+
   struct OnStartEvent {
     const SHWire *wire;
   };
