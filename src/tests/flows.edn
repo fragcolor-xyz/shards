@@ -462,7 +462,9 @@
 (defpure a-perfect-circle
   (Log)
   (When (Is false) (Stop))
-  false (Spawn a-perfect-circle))
+  false (Spawn a-perfect-circle)
+  true; make compose validation happy!
+  )
 
 (defwire a-perfect-starter
   true (Spawn a-perfect-circle))
