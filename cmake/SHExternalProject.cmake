@@ -30,6 +30,8 @@ list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME})
 
 message(STATUS "External Project cmake args: ${EXTERNAL_CMAKE_ARGS}")
 
+set(EXTERNAL_BUILD_ARGS "")
+
 # Xcode specific settings
 if(CMAKE_GENERATOR STREQUAL Xcode)
   option(XCODE_SDK "The sdk to pass to xcode builds for external project, should match the one passed to the root project build")
@@ -39,6 +41,7 @@ if(CMAKE_GENERATOR STREQUAL Xcode)
   endif()
 
   list(APPEND XCODE_ARGS -sdk ${XCODE_SDK} -arch ${CMAKE_SYSTEM_PROCESSOR})
+  list(APPEND EXTERNAL_BUILD_ARGS --config ${EXTERNAL_BUILD_TYPE})
   if(XCODE_SDK MATCHES "macosx")
     set(XCODE_CONFIG_BINARY_DIR "${EXTERNAL_BUILD_TYPE}") # Debug-iphone, Release-iphonesimulator etc.
   else()
@@ -192,7 +195,7 @@ function(sh_add_external_project)
     ${EXTPROJ_ARGS}
     INSTALL_COMMAND ""
     CMAKE_ARGS -DCMAKE_BUILD_TYPE=${EXTERNAL_BUILD_TYPE} "-DCMAKE_INSTALL_PREFIX:PATH=${PROJ_INSTALL_PATH}" ${EXTERNAL_CMAKE_ARGS} ${PROJ_CMAKE_ARGS}
-    BUILD_COMMAND ${CMAKE_COMMAND} --build . ${BUILD_TARGETS} -- ${XCODE_ARGS}
+    BUILD_COMMAND ${CMAKE_COMMAND} --build . ${BUILD_TARGETS} ${EXTERNAL_BUILD_ARGS} -- ${XCODE_ARGS}
     BUILD_BYPRODUCTS ${PROJ_LIBS}
   )
 
