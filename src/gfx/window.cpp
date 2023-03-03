@@ -33,7 +33,21 @@ void Window::init(const WindowCreationOptions &options) {
   }
 
   uint32_t flags = SDL_WINDOW_SHOWN;
+
+  int width{options.width}, height{options.height};
+
+// Base OS flags
+#if GFX_APPLE || GFX_ANDROID
+  flags |= SDL_WINDOW_FULLSCREEN;
+#else
   flags |= SDL_WINDOW_RESIZABLE | (options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+#endif
+
+  if ((flags & SDL_WINDOW_FULLSCREEN) != 0) {
+    width = 0;
+    height = 0;
+  }
+
 #if !GFX_EMSCRIPTEN
   flags |= SDL_WINDOW_ALLOW_HIGHDPI;
 #endif
@@ -43,8 +57,7 @@ void Window::init(const WindowCreationOptions &options) {
 
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
   SDL_SetHint(SDL_HINT_VIDEO_EXTERNAL_CONTEXT, "1");
-  window = SDL_CreateWindow(options.title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                            options.fullscreen ? 0 : options.width, options.fullscreen ? 0 : options.height, flags);
+  window = SDL_CreateWindow(options.title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags);
 
   if (!window) {
     throw formatException("SDL_CreateWindow failed: {}", SDL_GetError());
