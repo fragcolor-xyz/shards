@@ -930,7 +930,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
       SHInstanceData data{};
       data.inputType = _inputTypeCopy;
       data.shared = _sharedCopy;
-      data.wire = context->wireStack.back();
+      data.wire = nullptr; // should be not used by the provider!
       assert(data.wire->mesh.lock());
       _provider->setup(_provider, GetGlobals().RootPath.c_str(), data);
     }
@@ -1213,7 +1213,7 @@ struct ParallelBase : public CapturingSpawners {
       SHInstanceData data{};
       data.inputType = server._inputType;
       data.shared = server._sharedCopy;
-      data.wire = context->wireStack.back();
+      data.wire = wire;
       wire->mesh = context->main->mesh;
       auto res = composeWire(
           wire,
@@ -1629,7 +1629,7 @@ struct Spawn : public CapturingSpawners {
       if (!wire->pure) {
         data.shared = server._sharedCopy;
       }
-      data.wire = context->wireStack.back();
+      data.wire = wire;
       wire->mesh = context->main->mesh;
       auto res = composeWire(
           wire,
