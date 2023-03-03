@@ -1024,7 +1024,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     SHInstanceData data{};
     data.inputType = _inputTypeCopy;
     data.shared = _sharedCopy;
-    data.wire = context->wireStack.back();
+    data.wire = wire.get();
     wire->mesh = context->main->mesh;
 
     // avoid stack-overflow
