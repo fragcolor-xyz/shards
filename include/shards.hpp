@@ -690,13 +690,13 @@ struct Var : public SHVar {
     return Enum(valuePtr, SHTypeInfo(type).enumeration.vendorId, SHTypeInfo(type).enumeration.typeId);
   }
 
-  Var(uint8_t *ptr, uint32_t size) : SHVar() {
+  explicit Var(const uint8_t *ptr, uint32_t size) : SHVar() {
     valueType = SHType::Bytes;
     payload.bytesSize = size;
-    payload.bytesValue = ptr;
+    payload.bytesValue = const_cast<uint8_t *>(ptr);
   }
 
-  Var(const std::vector<uint8_t> &bytes) : SHVar() {
+  explicit Var(const std::vector<uint8_t> &bytes) : SHVar() {
     valueType = SHType::Bytes;
     const auto size = bytes.size();
     if (size > UINT32_MAX)
@@ -705,13 +705,13 @@ struct Var : public SHVar {
     payload.bytesValue = const_cast<uint8_t *>(bytes.data());
   }
 
-  Var(uint8_t *data, uint16_t width, uint16_t height, uint8_t channels, uint8_t flags = 0) : SHVar() {
+  explicit Var(const uint8_t *data, uint16_t width, uint16_t height, uint8_t channels, uint8_t flags = 0) : SHVar() {
     valueType = SHType::Image;
     payload.imageValue.width = width;
     payload.imageValue.height = height;
     payload.imageValue.channels = channels;
     payload.imageValue.flags = flags;
-    payload.imageValue.data = data;
+    payload.imageValue.data = const_cast<uint8_t *>(data);
   }
 
   explicit Var(int src) : SHVar() {
