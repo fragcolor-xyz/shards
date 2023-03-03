@@ -37,9 +37,9 @@ lazy_static! {
     )
       .into(),
     (
-      cstr!("Folder"),
-      shccstr!("To select a folder instead of a file."),
-      BOOL_VAR_OR_NONE_SLICE,
+      cstr!("CurrentDir"),
+      shccstr!("Set the current directory"),
+      STRING_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
@@ -49,9 +49,9 @@ lazy_static! {
     )
       .into(),
     (
-      cstr!("CurrentDir"),
-      shccstr!("Set the current directory"),
-      STRING_VAR_OR_NONE_SLICE,
+      cstr!("Folder"),
+      shccstr!("To select a folder instead of a file."),
+      BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
   ];
@@ -59,9 +59,9 @@ lazy_static! {
 
 struct FileDialog {
   filters: ParamVar,
-  folder: ParamVar,
-  multiple: bool,
   current_dir: ParamVar,
+  multiple: bool,
+  folder: ParamVar,
   output: ClonedVar,
 }
 
@@ -69,9 +69,9 @@ impl Default for FileDialog {
   fn default() -> Self {
     Self {
       filters: ParamVar::default(),
-      folder: ParamVar::new(false.into()),
-      multiple: false,
       current_dir: ParamVar::default(),
+      multiple: false,
+      folder: ParamVar::new(false.into()),
       output: ClonedVar::default(),
     }
   }
@@ -101,7 +101,7 @@ impl Shard for FileDialog {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &STRING_TYPES
+    &STRING_OR_STRINGS_TYPES
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -111,9 +111,9 @@ impl Shard for FileDialog {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.filters.set_param(value)),
-      1 => Ok(self.folder.set_param(value)),
+      1 => Ok(self.current_dir.set_param(value)),
       2 => Ok(self.multiple = value.try_into()?),
-      3 => Ok(self.current_dir.set_param(value)),
+      3 => Ok(self.folder.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -121,9 +121,9 @@ impl Shard for FileDialog {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.filters.get_param(),
-      1 => self.folder.get_param(),
+      1 => self.current_dir.get_param(),
       2 => self.multiple.into(),
-      3 => self.current_dir.get_param(),
+      3 => self.folder.get_param(),
       _ => Var::default(),
     }
   }
@@ -142,15 +142,15 @@ impl Shard for FileDialog {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.filters.warmup(ctx);
-    self.folder.warmup(ctx);
     self.current_dir.warmup(ctx);
+    self.folder.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.current_dir.cleanup();
     self.folder.cleanup();
+    self.current_dir.cleanup();
     self.filters.cleanup();
 
     Ok(())
