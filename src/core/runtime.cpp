@@ -2611,6 +2611,9 @@ void hash_update(const SHVar &var, void *state) {
       error = XXH3_128bits_update(hashState, &wire->unsafe, sizeof(wire->unsafe));
       assert(error == XXH_OK);
 
+      error = XXH3_128bits_update(hashState, &wire->pure, sizeof(wire->pure));
+      assert(error == XXH_OK);
+
       for (auto &blk : wire->shards) {
         SHVar tmp{};
         tmp.valueType = SHType::ShardRef;
