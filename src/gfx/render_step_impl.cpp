@@ -304,7 +304,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   }
 }
 
-void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const RenderDrawablesStep &step, const ViewData &viewData) {
+void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const RenderDrawablesStep &step) {
   auto &storage = evaluateContext.evaluator.getStorage();
   shards::pmr::vector<Feature *> evaluateFeatures(storage.workerMemory);
   for (auto &feature : step.features)
@@ -322,10 +322,8 @@ void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const Re
   builder.allocateOutputs(data, step.output ? step.output.value() : defaultFullscreenOutput, overwriteTargets);
 }
 
-void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderFullscreenStep &step) {
+void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const RenderFullscreenStep &step) {
   ZoneScoped;
-
-  RenderGraphNode &node = out.getNode(index);
 
   struct StepData {
     MeshDrawable::Ptr drawable;
@@ -353,12 +351,11 @@ void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &
   drawable->parameters = step.parameters;
 
   // Setup node outputs as texture slots
-  for (auto &frameIndex : node.readsFrom) {
-    auto &frame = out.renderGraph.frames[frameIndex];
-    baseFeature->textureParams.emplace_back(frame.name);
+  for (auto &frame : buildData.readsFrom) {
+    baseFeature->textureParams.emplace_back(frame->name);
   }
 
-  node.encode = [data, viewData](RenderGraphEncodeContext &ctx) {
+  node.encode = [data](RenderGraphEncodeContext &ctx) {
     // Connect texture inputs
     for (auto &frameIndex : ctx.node.readsFrom) {
       auto &texture = ctx.evaluator.getTexture(frameIndex);
@@ -374,32 +371,29 @@ void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const Cl
   builder.allocateOutputs(data, step.output ? step.output.value() : defaultRenderStepOutput);
 }
 
-void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const ClearStep &step) {
-  //   auto &node = out.getNode(index);
-  //   node.setupPass = [=](WGPURenderPassDescriptor &desc) {
-  //     for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
-  //       auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
-  //       double4 clearValue(step.clearValues.color);
-  //       memcpy(&attachment.clearValue.r, &clearValue.x, sizeof(double) * 4);
-  //     }
-  //     if (desc.depthStencilAttachment) {
-  //       auto &attachment = const_cast<WGPURenderPassDepthStencilAttachment &>(*desc.depthStencilAttachment);
-  //       attachment.depthClearValue = step.clearValues.depth;
-  //       attachment.stencilClearValue = step.clearValues.stencil;
-  //     }
-  //   };
+void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const ClearStep &step) {
+  node.setupPass = [=](WGPURenderPassDescriptor &desc) {
+    for (size_t i = 0; i < desc.colorAttachmentCount; i++) {
+      auto &attachment = const_cast<WGPURenderPassColorAttachment &>(desc.colorAttachments[i]);
+      double4 clearValue(step.clearValues.color);
+      memcpy(&attachment.clearValue.r, &clearValue.x, sizeof(double) * 4);
+    }
+    if (desc.depthStencilAttachment) {
+      auto &attachment = const_cast<WGPURenderPassDepthStencilAttachment &>(*desc.depthStencilAttachment);
+      attachment.depthClearValue = step.clearValues.depth;
+      attachment.stencilClearValue = step.clearValues.stencil;
+    }
+  };
 }
 
 void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const RenderDrawablesStep &step) {
   builder.allocateOutputs(data, step.output ? step.output.value() : defaultRenderStepOutput);
 }
 
-void setupRenderGraphNode(CachedRenderGraph &out, size_t index, const ViewData &viewData, const RenderDrawablesStep &step) {
-  //   auto &node = out.getNode(index);
+void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const RenderDrawablesStep &step) {
+  if (!step.drawQueue)
+    throw std::runtime_error("No draw queue assigned to drawable step");
 
-  //   if (!step.drawQueue)
-  //     throw std::runtime_error("No draw queue assigned to drawable step");
-
-  //   node.encode = [=, this](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step, viewData); };
+  node.encode = [=](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step); };
 }
 } // namespace gfx::detail

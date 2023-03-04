@@ -16,6 +16,7 @@
 #include "drawable_processor.hpp"
 #include <compare>
 #include <span>
+#include <webgpu-headers/webgpu.h>
 
 namespace gfx::detail {
 
@@ -151,6 +152,9 @@ struct RenderGraphNode {
   std::vector<Attachment> writesTo;
   std::vector<FrameIndex> readsFrom;
 
+  // This points to which data slot to use when resolving view data
+  size_t queueDataIndex;
+
   // Sets up the render pass
   std::function<void(WGPURenderPassDescriptor &)> setupPass;
 
@@ -183,20 +187,32 @@ struct RenderGraph {
 };
 
 struct RenderGraphBuilder {
+  struct FrameBuildData;
+
   // Temporary data about nodes
   struct Attachment {
     RenderStepOutput::OutputVariant output;
-    FrameIndex frameIndex;
+    FrameBuildData *frame;
     int2 targetSize;
+    std::optional<ClearValues> clearValues;
+  };
+
+  struct FrameBuildData {
+    std::string name;
+    int2 size;
+    WGPUTextureFormat format;
+    TextureSubResource textureOverride;
+    std::optional<size_t> outputIndex;
   };
 
   struct NodeBuildData {
     ViewData viewData;
     PipelineStepPtr step;
+
     // This points to which data slot to use when resolving view data
     size_t queueDataIndex;
 
-    std::vector<FrameIndex> readsFrom;
+    std::vector<FrameBuildData *> readsFrom;
     std::vector<Attachment> attachments;
     bool forceOverwrite{};
 
@@ -204,17 +220,26 @@ struct RenderGraphBuilder {
         : viewData(viewData), step(step), queueDataIndex(queueDataIndex) {}
   };
 
-  // boost::container::stable_vector<RenderGraphNode> nodes;
-  boost::container::stable_vector<NodeBuildData> buildingNodes;
+  struct OutputBuildData {
+    FrameBuildData *frame{};
+  };
 
-  // std::vector<RenderGraphNode> nodes;
-  // std::vector<NodeBuildData> nodeBuildData;
-  std::vector<RenderGraph::Frame> frames;
-  std::vector<RenderGraph::Output> outputs;
-  std::map<std::string, FrameIndex> nameLookup;
-  std::map<TextureSubResource, FrameIndex> handleLookup;
-  std::set<FrameIndex> externallyWrittenTo;
+  struct Output {
+    std::string name;
+    WGPUTextureFormat format;
+  };
+
+private:
+  boost::container::stable_vector<NodeBuildData> buildingNodes;
+  boost::container::stable_vector<FrameBuildData> buildingFrames;
+  boost::container::stable_vector<OutputBuildData> buildingOutputs;
+
+  std::map<std::string, FrameBuildData *> nameLookup;
+  std::map<TextureSubResource, FrameBuildData *> handleLookup;
+
+public:
   float2 referenceOutputSize;
+  std::vector<Output> outputs;
 
   // Adds a node to the render graph
   void addNode(const ViewData &viewData, const PipelineStepPtr &step, size_t queueDataIndex);
@@ -224,10 +249,19 @@ struct RenderGraphBuilder {
   void allocateInputs(NodeBuildData &buildData, const std::vector<std::string> &inputs);
 
   // Get or allocate a frame based on it's description
-  FrameIndex assignFrame(const RenderStepOutput::OutputVariant &output, int2 targetSize);
+  FrameBuildData *assignFrame(const RenderStepOutput::OutputVariant &output, int2 targetSize);
 
   // Find the index of a frame
-  bool findFrameIndex(const std::string &name, FrameIndex &outFrameIndex);
+  FrameBuildData *findFrameByName(const std::string &name);
+
+  RenderGraph build();
+
+private:
+  void attachOutputs();
+  void finalizeNodeConnections();
+  RenderTargetLayout getLayout(const NodeBuildData &node) const;
+  bool isWrittenTo(const FrameBuildData &frame, const decltype(buildingNodes)::const_iterator &it) const;
+  void replaceWrittenFrames(const FrameBuildData &frame, FrameBuildData& newFrame);
 };
 
 struct DrawableProcessorCache {
@@ -252,6 +286,11 @@ struct DrawableProcessorCache {
       drawableProcessor.second->reset(frameCounter);
     }
   }
+};
+
+// Interface to resolve node evaluation data during runtime
+struct IRenderGraphEvaluationData {
+  virtual const ViewData &getViewData(size_t queueIndex) = 0;
 };
 
 struct RendererStorage;
@@ -293,61 +332,7 @@ public:
 
   // Describes a render pass so that targets are cleared to their default value or loaded
   // based on if they were already written to previously
-  WGPURenderPassDescriptor createRenderPassDescriptor(const RenderGraph &graph, Context &context, const RenderGraphNode &node,
-                                                      size_t frameCounter) {
-    // NOTE: Allocated in frame memory
-    WGPURenderPassDepthStencilAttachment *depthStencilAttachmentPtr{};
-    auto &colorAttachments = *allocator.new_object<shards::pmr::vector<WGPURenderPassColorAttachment>>();
-
-    size_t depthIndex = node.renderTargetLayout.depthTargetIndex.value_or(~0);
-    for (size_t i = 0; i < node.writesTo.size(); i++) {
-      const RenderGraphNode::Attachment &nodeAttachment = node.writesTo[i];
-      ResolvedFrameTexture &resolvedFrameTexture = frameTextures[nodeAttachment.frameIndex];
-
-      if (i == depthIndex) {
-        auto &attachment = *(depthStencilAttachmentPtr = allocator.new_object<WGPURenderPassDepthStencilAttachment>());
-        attachment = WGPURenderPassDepthStencilAttachment{
-            .view = resolvedFrameTexture.view,
-        };
-
-        if (nodeAttachment.clearValues) {
-          auto &clearDepth = nodeAttachment.clearValues.value().depth;
-          attachment.depthLoadOp = WGPULoadOp_Clear;
-          attachment.depthClearValue = clearDepth;
-        } else {
-          attachment.depthLoadOp = WGPULoadOp_Load;
-        }
-        attachment.depthStoreOp = WGPUStoreOp_Store;
-
-        // TODO: Stencil
-        uint32_t clearStencil = 0;
-        attachment.stencilClearValue = clearStencil;
-        attachment.stencilLoadOp = WGPULoadOp_Undefined;
-        attachment.stencilStoreOp = WGPUStoreOp_Undefined;
-      } else {
-        auto &attachment = colorAttachments.emplace_back(WGPURenderPassColorAttachment{
-            .view = resolvedFrameTexture.view,
-        });
-
-        if (nodeAttachment.clearValues) {
-          auto &clearColor = nodeAttachment.clearValues.value().color;
-          attachment.loadOp = WGPULoadOp_Clear;
-          attachment.clearValue = WGPUColor{clearColor.x, clearColor.y, clearColor.z, clearColor.w};
-        } else {
-          attachment.loadOp = WGPULoadOp_Load;
-        }
-        attachment.storeOp = WGPUStoreOp_Store;
-      }
-
-      writtenTextures.insert(resolvedFrameTexture.texture.get());
-    }
-
-    return WGPURenderPassDescriptor{
-        .colorAttachmentCount = uint32_t(colorAttachments.size()),
-        .colorAttachments = colorAttachments.data(),
-        .depthStencilAttachment = depthStencilAttachmentPtr,
-    };
-  }
+  WGPURenderPassDescriptor createRenderPassDescriptor(const RenderGraph &graph, Context &context, const RenderGraphNode &node);
 
   // Reset all render texture write state
   void reset(size_t frameCounter) {
@@ -356,49 +341,13 @@ public:
   }
 
   void getFrameTextures(shards::pmr::vector<ResolvedFrameTexture> &outFrameTextures, const std::span<TextureSubResource> &outputs,
-                        const RenderGraph &graph, Context &context, size_t frameCounter);
+                        const RenderGraph &graph, Context &context);
 
-  void evaluate(const RenderGraph &graph, const ViewData &viewData, std::span<TextureSubResource> outputs, Context &context,
-                size_t frameCounter) {
-    // Evaluate all render steps in the order they are defined
-    // potential optimizations:
-    // - evaluate steps without dependencies in parralel
-    // - group multiple steps into single render passes
-
-    // Allocate frame textures
-    getFrameTextures(frameTextures, outputs, graph, context, frameCounter);
-
-    WGPUCommandEncoderDescriptor desc = {};
-    WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
-
-    for (const auto &node : graph.nodes) {
-      WGPURenderPassDescriptor renderPassDesc = createRenderPassDescriptor(graph, context, node, frameCounter);
-      if (node.setupPass)
-        node.setupPass(renderPassDesc);
-      WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
-      RenderGraphEncodeContext ctx{
-          .encoder = renderPassEncoder,
-          .viewData = viewData,
-          .evaluator = *this,
-          .graph = graph,
-          .node = node,
-      };
-      if (node.encode)
-        node.encode(ctx);
-      wgpuRenderPassEncoderEnd(renderPassEncoder);
-    }
-
-    WGPUCommandBufferDescriptor cmdBufDesc{};
-    WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
-
-    context.submit(cmdBuf);
-  }
+  void evaluate(const RenderGraph &graph, IRenderGraphEvaluationData &evaluationData, std::span<TextureSubResource> outputs);
 };
 
 struct CachedRenderGraph {
   RenderGraph renderGraph;
-
-  RenderGraphNode &getNode(size_t index) { return renderGraph.nodes[index]; }
 };
 typedef std::shared_ptr<CachedRenderGraph> CachedRenderGraphPtr;
 

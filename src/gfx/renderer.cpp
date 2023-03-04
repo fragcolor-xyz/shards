@@ -355,19 +355,14 @@ struct RendererImpl final : public ContextData {
 
   void resetWorkerMemory() { storage.workerMemory.reset(); }
 
-  void evaluateFrameQueue() {
-    const RenderGraph &rg = frameQueue->getOrCreateRenderGraph();
-    RenderGraphEvaluator evaluator(getWorkerMemoryForCurrentFrame(), outer, storage);
-    // TODO: Hook up views
-    // evaluator.evaluate(crg.renderGraph, const ViewData &viewData, std::span<TextureSubResource> outputs, Context &context,
-    //                    size_t frameCounter)
-  }
-
   void endFrame() {
     viewStack.pop(); // Main output
     viewStack.reset();
 
-    evaluateFrameQueue();
+    // Render frame queue render graph
+    frameQueue->evaluate(outer, storage);
+    // NOTE: Should free frame queue here since it uses worker memory
+    frameQueue.reset();
 
     clearOldCacheItems();
 
