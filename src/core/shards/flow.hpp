@@ -455,6 +455,7 @@ struct Maybe : public BaseSubFlow {
           if (_elseBlks)
             _elseBlks.activate(context, input, output);
         } else {
+          SHLOG_DEBUG("Maybe shard Ignored an error: {}, when on last resume", context->getErrorMessage());
           // Just continue as the wire is done
           return Var::Empty;
         }
