@@ -37,7 +37,7 @@ void Window::init(const WindowCreationOptions &options) {
   int width{options.width}, height{options.height};
 
 // Base OS flags
-#if GFX_APPLE || GFX_ANDROID
+#if GFX_IOS || GFX_ANDROID
   flags |= SDL_WINDOW_FULLSCREEN;
 #else
   flags |= SDL_WINDOW_RESIZABLE | (options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);

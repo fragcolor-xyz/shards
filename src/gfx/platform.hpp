@@ -19,7 +19,7 @@
 #include <TargetConditionals.h>
 #define GFX_APPLE 1
 
-#if defined(TARGET_IPHONE_SIMULATOR) || defined(TARGET_OS_IPHONE)
+#if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
 #define GFX_IOS 1
 #else
 #define GFX_OSX 1
