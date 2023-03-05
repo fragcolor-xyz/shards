@@ -232,10 +232,10 @@ struct RendererImpl final : public ContextData {
     processTransientPtrCleanupQueue();
 
 #ifdef TRACY_ENABLE
-    TracyPlot("Drawables Processed", int64_t(frameStats.numDrawables));
+    TracyPlot("Drawables Processed", int64_t(storage.frameStats.numDrawables));
 
     TracyPlotConfig("GFX WorkerMemory", tracy::PlotFormatType::Memory, true, true, 0);
-    TracyPlot("GFX WorkerMemory", int64_t(workerMemory.getMemoryResource().totalRequestedBytes));
+    TracyPlot("GFX WorkerMemory", int64_t(storage.workerMemory.getMemoryResource().totalRequestedBytes));
 
 #endif
   }
