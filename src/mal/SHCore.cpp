@@ -268,7 +268,11 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
 #elif defined(__linux__)
   rep("(def platform \"linux\")", env);
 #elif defined(__APPLE__)
-  rep("(def platform \"apple\")", env);
+#ifdef TARGET_OS_IOS
+  rep("(def platform \"ios\")", env);
+#else
+  rep("(def platform \"macos\")", env);
+#endif
 #endif
   rep("(defmacro! defwire (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
       "name)) (wireify (vector ~@shards))))))",
@@ -2078,30 +2082,14 @@ BUILTIN("context-var") {
 }
 
 template <SHType T> struct GetComponentType {};
-template <> struct GetComponentType<SHType::Float2> {
-  typedef double Type;
-};
-template <> struct GetComponentType<SHType::Float3> {
-  typedef float Type;
-};
-template <> struct GetComponentType<SHType::Float4> {
-  typedef float Type;
-};
-template <> struct GetComponentType<SHType::Int2> {
-  typedef int64_t Type;
-};
-template <> struct GetComponentType<SHType::Int3> {
-  typedef int32_t Type;
-};
-template <> struct GetComponentType<SHType::Int4> {
-  typedef int32_t Type;
-};
-template <> struct GetComponentType<SHType::Int8> {
-  typedef int16_t Type;
-};
-template <> struct GetComponentType<SHType::Int16> {
-  typedef int8_t Type;
-};
+template <> struct GetComponentType<SHType::Float2> { typedef double Type; };
+template <> struct GetComponentType<SHType::Float3> { typedef float Type; };
+template <> struct GetComponentType<SHType::Float4> { typedef float Type; };
+template <> struct GetComponentType<SHType::Int2> { typedef int64_t Type; };
+template <> struct GetComponentType<SHType::Int3> { typedef int32_t Type; };
+template <> struct GetComponentType<SHType::Int4> { typedef int32_t Type; };
+template <> struct GetComponentType<SHType::Int8> { typedef int16_t Type; };
+template <> struct GetComponentType<SHType::Int16> { typedef int8_t Type; };
 template <> struct GetComponentType<SHType::Color> {
   typedef uint8_t Type;
   static constexpr uint8_t getDefaultValue(size_t index) { return index == 3 ? 255 : 0; }
