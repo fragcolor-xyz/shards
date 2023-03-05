@@ -260,10 +260,10 @@ void EguiInputTranslator::updateTextCursorPosition(Window &window, const egui::P
   if (pos) {
     float2 drawScale = window.getUIScale();
     SDL_Rect rect;
-    rect.x = int(pos->x * drawScale.x);
-    rect.y = int(pos->y * drawScale.y);
-    rect.w = 500;
-    rect.h = 80;
+    rect.x = int(pos->x);
+    rect.y = int(pos->y);
+    rect.w = 20;
+    rect.h = 20;
     SDL_SetTextInputRect(&rect);
 
     if (!textInputActive) {
