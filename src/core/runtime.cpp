@@ -1370,12 +1370,7 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
   auto res = composeWire(wire->shards, callback, userData, data);
 
   // set output type
-  if (!wire->looped)
-    wire->outputType = res.outputType;
-  else // loops usually don't end at end of wire, so we can't know the output type for sure as there might be multiple (Stop) etc
-    wire->outputType = CoreInfo::AnyType;
-
-  res.outputType = wire->outputType;
+  wire->outputType = res.outputType;
 
   const_cast<SHWire *>(wire)->dispatcher.trigger(SHWire::OnComposedEvent{wire});
 
