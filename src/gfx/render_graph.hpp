@@ -16,7 +16,6 @@
 #include "drawable_processor.hpp"
 #include <compare>
 #include <span>
-#include <webgpu-headers/webgpu.h>
 
 namespace gfx::detail {
 
