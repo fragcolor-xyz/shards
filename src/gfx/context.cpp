@@ -481,6 +481,16 @@ void Context::requestDevice() {
 #if WEBGPU_NATIVE
   WGPURequiredLimits requiredLimits = {.limits = wgpuGetDefaultLimits()};
   deviceDesc.requiredLimits = &requiredLimits;
+
+  // Lower default limits to support devices like iOS simulator
+  WGPURequiredLimitsExtras extraLimits{
+      .chain =
+          WGPUChainedStruct{
+              .sType = (WGPUSType)WGPUSType_RequiredLimitsExtras,
+          },
+      .maxBufferSize = 256 * 1024 * 1024,
+  };
+  requiredLimits.nextInChain = &extraLimits.chain;
 #endif
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
