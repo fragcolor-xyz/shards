@@ -370,7 +370,7 @@ struct StopWire : public WireBase {
   void composed(const SHWire::OnComposedEvent &e) {
     // this check runs only when (Stop) is called without any params!
     // meaning it's stopping the wire it is in
-    if (!wire && wireref->valueType == SHType::None && !e.wire->looped && _inputType != e.wire->outputType) {
+    if (!wire && wireref->valueType == SHType::None && _inputType != e.wire->outputType) {
       SHLOG_ERROR("Stop input and wire output type mismatch, Stop input must "
                   "be the same type of the wire's output (regular flow), "
                   "wire: {} expected: {}",
