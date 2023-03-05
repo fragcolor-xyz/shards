@@ -23,6 +23,8 @@
   (GFX.Drawable :Mesh .mesh :Params {:baseColor .color}) (GFX.Draw .queue)
   (GFX.Render :Steps .render-steps :View .view))
 
+; This tests correct rendering of several separate Render calls that might write to the same output
+; the render graph builder will figure out that only the first render has to clear
 (defwire branch-init
   (Float3 -1.2 0.0 0.0) (Spawn pass)
   (Float3 0.0 0.0 0.0) (Spawn pass)
@@ -38,7 +40,7 @@
   {:EntryPoint (->
                 (Shader.ReadInput "texCoord0") (ToFloat4) (Math.Add (Float4 0 0 0 1))
                 (Shader.WriteOutput "color") ; End shader
-                )} (GFX.EffectPass) >> .render-steps
+                )}(GFX.EffectPass) >> .render-steps
   (GFX.Render :Steps .render-steps)
 
   ; Spawned passes
@@ -49,4 +51,4 @@
                      (GFX.MainWindow
                       :Title "SDL Window" :Width 1280 :Height 720
                       :Contents (-> (Step test-wire)))))
-(if (run root (/ 1.0 120.0)) nil (throw "root tick failed"))
+(if (run root (/ 1.0 120.0) 100) nil (throw "root tick failed"))

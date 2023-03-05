@@ -16,7 +16,8 @@
   ;; Render steps
   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-  {:Features .features} (GFX.DrawablePass) >> .render-steps
+  (GFX.DrawQueue) >= .queue
+  {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
 
   ;; Create view
   0.0 (Do get-view-transform) >= .view-transform
@@ -31,7 +32,7 @@
     .time (Math.Add timestep) > .time
     .time (Do get-view-transform) > .view-transform
 
-    .drawables (GFX.Draw)
+    .drawables (GFX.Draw .queue)
     (GFX.Render :Steps .render-steps :View .view))))
 
 (defloop test-path-static
@@ -82,7 +83,7 @@
     .t1 (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables
     .t2 (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables
     .t3 (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables
-    .drawables (GFX.Draw)
+    .drawables (GFX.Draw .queue)
     (GFX.Render :Steps .render-steps :View .view))))
 (schedule root test-transforms)
 (if (run root timestep 100) nil (throw "Root tick failed"))

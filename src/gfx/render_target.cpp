@@ -9,16 +9,17 @@ void RenderTarget::configure(const char *name, WGPUTextureFormat format) {
 }
 
 int2 RenderTarget::resizeConditional(int2 referenceSize) {
-  std::visit(
-      [&](auto &&arg) {
-        computedSize = arg.apply(referenceSize);
-        for (auto &it : attachments) {
-          int2 actualSize = it.second.getResolutionFromMipResolution(computedSize);
-          it.second.texture->initWithResolution(actualSize);
-        }
-      },
-      size);
+  computedSize = computeSize(referenceSize);
+  for (auto &it : attachments) {
+    int2 actualSize = it.second.getResolutionFromMipResolution(computedSize);
+    it.second.texture->initWithResolution(actualSize);
+  }
   return computedSize;
+}
+
+void RenderTarget::resizeFixed(int2 size) {
+  this->size = RenderTargetSize::Fixed{.size = size};
+  resizeConditional(int2());
 }
 
 int2 RenderTarget::getSize() const { return computedSize; }

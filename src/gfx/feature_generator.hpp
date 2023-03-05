@@ -37,7 +37,7 @@ struct FeatureGeneratorContext {
       : renderer(renderer), view(view), cachedView(cachedView), queue(queue), frameCounter(frameCounter) {}
 
   // Issues a render command that will run before the parent render step
-  virtual void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) = 0;
+  virtual void render(ViewPtr view, const PipelineSteps &pipelineSteps) = 0;
 };
 
 struct FeatureViewGeneratorContext : public FeatureGeneratorContext {

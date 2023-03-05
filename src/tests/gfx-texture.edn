@@ -12,10 +12,12 @@
    (GFX.Texture) >= .texture
    (Log "Texture")
 
+   (GFX.DrawQueue) >= .queue
+
     ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Features .features} (GFX.DrawablePass) >> .render-steps
+   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
 
     ; Create view
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
@@ -28,7 +30,7 @@
     .time (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
     .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
     .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
-    .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) (GFX.Drawable :Mesh .mesh :Params {:baseColorTexture .texture}) (GFX.Draw)
+    .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) (GFX.Drawable :Mesh .mesh :Params {:baseColorTexture .texture}) (GFX.Draw .queue)
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule Root test-wire)

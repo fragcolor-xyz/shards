@@ -184,6 +184,7 @@ struct RenderGraph {
   std::vector<RenderGraphNode> nodes;
   std::vector<Frame> frames;
   std::vector<Output> outputs;
+  std::vector<DrawQueuePtr> autoClearQueues;
 };
 
 struct RenderGraphBuilder {
@@ -212,6 +213,9 @@ struct RenderGraphBuilder {
     // This points to which data slot to use when resolving view data
     size_t queueDataIndex;
 
+    // Queues to automatically clear after rendering
+    std::vector<DrawQueuePtr> autoClearQueues;
+
     std::vector<FrameBuildData *> readsFrom;
     std::vector<Attachment> attachments;
     bool forceOverwrite{};
@@ -230,12 +234,15 @@ struct RenderGraphBuilder {
   };
 
 private:
-  boost::container::stable_vector<NodeBuildData> buildingNodes;
-  boost::container::stable_vector<FrameBuildData> buildingFrames;
-  boost::container::stable_vector<OutputBuildData> buildingOutputs;
+  template <typename T> using VectorType = boost::container::stable_vector<T>;
+  VectorType<NodeBuildData> buildingNodes;
+  VectorType<FrameBuildData> buildingFrames;
+  VectorType<OutputBuildData> buildingOutputs;
 
   std::map<std::string, FrameBuildData *> nameLookup;
   std::map<TextureSubResource, FrameBuildData *> handleLookup;
+
+  bool needPrepare = true;
 
 public:
   float2 referenceOutputSize;
@@ -254,14 +261,21 @@ public:
   // Find the index of a frame
   FrameBuildData *findFrameByName(const std::string &name);
 
+  bool isWrittenTo(const FrameBuildData &frame);
+  bool isWrittenTo(const std::string &name);
+
   RenderGraph build();
 
 private:
+  // Validate node connections & setup output
+  // after this additional modification can be made such as inserting clear steps/resizing
+  void prepare();
+
   void attachOutputs();
   void finalizeNodeConnections();
   RenderTargetLayout getLayout(const NodeBuildData &node) const;
   bool isWrittenTo(const FrameBuildData &frame, const decltype(buildingNodes)::const_iterator &it) const;
-  void replaceWrittenFrames(const FrameBuildData &frame, FrameBuildData& newFrame);
+  void replaceWrittenFrames(const FrameBuildData &frame, FrameBuildData &newFrame);
 };
 
 struct DrawableProcessorCache {

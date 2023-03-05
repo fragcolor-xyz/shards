@@ -32,9 +32,6 @@
 
         .time (Math.Add timestep) > .time
 
-        .queue (GFX.ClearQueue)
-        .ui-queue (GFX.ClearQueue)
-
         (spin-transform .time (Float3 -0.6 0 0))
         (GFX.Drawable :Mesh .mesh :Params {:baseColor base-color}) (GFX.Draw .queue)
 
@@ -80,7 +77,6 @@
     (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb) >= .rt-0
     (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb) >= .rt-1
 
-    .ui-draw-queue (GFX.ClearQueue)
     (UI .ui-draw-queue
         (-> ; UI Content
          (UI.Window

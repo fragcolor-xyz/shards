@@ -649,8 +649,8 @@ public:
 
     GraphicsRendererContext graphicsRendererContext{
         .renderer = &ctx.renderer,
-        .render = [&ctx = ctx](std::vector<ViewPtr> views,
-                               const PipelineSteps &pipelineSteps) { ctx.render(views, pipelineSteps); },
+        .render = [&ctx = ctx](ViewPtr view,
+                               const PipelineSteps &pipelineSteps) { ctx.render(view, pipelineSteps); },
     };
     mesh->variables.emplace(GraphicsRendererContext::VariableName,
                             Var::Object(&graphicsRendererContext, GraphicsRendererContext::Type));

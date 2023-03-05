@@ -28,153 +28,56 @@ struct RenderShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
-  static inline Parameters params{
-      {"Steps", SHCCSTR("Render steps to follow."), {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq}},
-      {"View", SHCCSTR("The view to render into. (Optional)"), {CoreInfo::NoneType, Type::VariableOf(Types::View)}},
-      {"Views",
-       SHCCSTR("The views to render into. (Optional)"),
-       {CoreInfo::NoneType, Type::VariableOf(Types::ViewSeq), Types::ViewSeq}},
-      {"ClearedHint",
-       SHCCSTR("Hints about already cleared views. Unsupported, do not use!"),
-       {CoreInfo::NoneType, Type::SeqOf(CoreInfo::StringType)}},
-  };
-  static SHParametersInfo parameters() { return params; }
+  PARAM_PARAMVAR(_steps, "Steps", "Render steps to follow.", {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq});
+  PARAM_PARAMVAR(_view, "View", "The view to render. (Optional)", {CoreInfo::NoneType, Type::VariableOf(Types::View)});
+  PARAM_IMPL(RenderShard, PARAM_IMPL_FOR(_steps), PARAM_IMPL_FOR(_view));
 
   OptionalGraphicsContext _graphicsContext;
   RequiredGraphicsRendererContext _graphicsRendererContext;
-  ParamVar _steps{};
-  ParamVar _view{};
-  ParamVar _views{};
-  OwnedVar _clearedHint;
   ViewPtr _defaultView;
   std::vector<ViewPtr> _collectedViews;
   std::vector<Var> _collectedPipelineStepVars;
   PipelineSteps _collectedPipelineSteps;
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _steps = value;
-      break;
-    case 1:
-      _view = value;
-      break;
-    case 2:
-      _views = value;
-      break;
-    case 3:
-      _clearedHint = value;
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _steps;
-    case 1:
-      return _view;
-    case 2:
-      return _views;
-    case 3:
-      return _clearedHint;
-    default:
-      return Var::Empty;
-    }
-  }
-
-  ExposedInfo _exposed;
-  SHExposedTypesInfo requiredVariables() {
-    _exposed.clear();
-    _exposed.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
-    if (_steps.isVariable()) {
-      _exposed.push_back(SHExposedTypeInfo{
-          .name = _steps.variableName(),
-          .exposedType = Types::PipelineStepSeq,
-      });
-    }
-    if (_view.isVariable()) {
-      _exposed.push_back(SHExposedTypeInfo{
-          .name = _view.variableName(),
-          .exposedType = Types::View,
-      });
-    }
-    if (_views.isVariable()) {
-      _exposed.push_back(SHExposedTypeInfo{
-          .name = _views.variableName(),
-          .exposedType = Types::ViewSeq,
-      });
-    }
-    return (SHExposedTypesInfo)_exposed;
-  }
+  PARAM_REQUIRED_VARIABLES();
 
   void cleanup() {
     _graphicsRendererContext.cleanup();
     _graphicsContext.cleanup();
-    _steps.cleanup();
-    _view.cleanup();
-    _views.cleanup();
     _defaultView.reset();
+    PARAM_CLEANUP();
   }
 
   void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
     _graphicsRendererContext.warmup(context);
     _graphicsContext.warmup(context);
-    _steps.warmup(context);
-    _view.warmup(context);
-    _views.warmup(context);
   }
 
-  ViewPtr getDefaultView() {
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
+
+    composeCheckGfxThread(data);
+
+    return CoreInfo::NoneType;
+  }
+
+  const ViewPtr &getDefaultView() {
     if (!_defaultView)
       _defaultView = std::make_shared<View>();
     return _defaultView;
   }
 
-  void validateViewParameters() {
-    if (_view->valueType != SHType::None && _views->valueType != SHType::None) {
-      throw ComposeError("GFX.Render :View and :Views can not be set at the same time");
-    }
-  }
-
-  SHTypeInfo compose(SHInstanceData &data) {
-    composeCheckGfxThread(data);
-    validateViewParameters();
-    return CoreInfo::NoneType;
-  }
-
-  const std::vector<ViewPtr> &updateAndCollectViews() {
-    _collectedViews.clear();
+  const ViewPtr &getAndUpdateView() {
     Var &viewVar = (Var &)_view.get();
-    Var &viewsVar = (Var &)_views.get();
     if (!viewVar.isNone()) {
       SHView &shView = varAsObjectChecked<SHView>(viewVar, Types::View);
       shView.updateVariables();
-      _collectedViews.push_back(shView.view);
-    } else if (!viewsVar.isNone()) {
-      SeqVar &seq = (SeqVar &)viewsVar;
-      for (size_t i = 0; i < seq.size(); i++) {
-        SHView &shView = varAsObjectChecked<SHView>(seq[i], Types::View);
-        shView.updateVariables();
-        _collectedViews.push_back(shView.view);
-      }
+      return shView.view;
     } else {
-      _collectedViews.push_back(getDefaultView());
+      return getDefaultView();
     }
-    return _collectedViews;
-  }
-
-  // TODO(guusw): Remove the global draw queue
-  void fixupPipelineStep(PipelineStep &step) {
-    std::visit(
-        [&](auto &&arg) {
-          using T = std::decay_t<decltype(arg)>;
-          if constexpr (std::is_same_v<T, RenderDrawablesStep>) {
-            if (!arg.drawQueue && _graphicsContext)
-              arg.drawQueue = _graphicsContext->getDrawQueue();
-          }
-        },
-        step);
   }
 
   PipelineSteps collectPipelineSteps() {
@@ -192,7 +95,6 @@ struct RenderShard {
           throw formatException("GFX.Render PipelineStep[{}] is not defined", index);
 
         PipelineStepPtr &ptr = *reinterpret_cast<PipelineStepPtr *>(stepVar.payload.objectValue);
-        fixupPipelineStep(*ptr.get());
 
         _collectedPipelineSteps.push_back(ptr);
         index++;
@@ -207,16 +109,9 @@ struct RenderShard {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (_graphicsRendererContext->render) {
-      _graphicsRendererContext->render(updateAndCollectViews(), collectPipelineSteps());
+      _graphicsRendererContext->render(getAndUpdateView(), collectPipelineSteps());
     } else {
-      RendererHacks hacks;
-      if (_clearedHint.valueType != SHType::None) {
-        for (auto &val : _clearedHint) {
-          hacks.clearedHints.emplace_back(val.payload.stringValue);
-        }
-      }
-
-      _graphicsRendererContext->renderer->render(updateAndCollectViews(), collectPipelineSteps(), hacks);
+      _graphicsRendererContext->renderer->render(getAndUpdateView(), collectPipelineSteps());
     }
     return SHVar{};
   }

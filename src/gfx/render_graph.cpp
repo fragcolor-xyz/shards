@@ -12,6 +12,7 @@ static auto logger = gfx::getLogger();
 void RenderGraphBuilder::addNode(const ViewData &viewData, const PipelineStepPtr &step, size_t queueDataIndex) {
   auto &buildData = buildingNodes.emplace_back(viewData, step, queueDataIndex);
   std::visit([&](auto &step) { allocateNodeEdges(*this, buildData, step); }, *step.get());
+  needPrepare = true;
 }
 
 RenderGraphBuilder::FrameBuildData *RenderGraphBuilder::findFrameByName(const std::string &name) {
@@ -19,6 +20,19 @@ RenderGraphBuilder::FrameBuildData *RenderGraphBuilder::findFrameByName(const st
   if (it != nameLookup.end())
     return it->second;
   return nullptr;
+}
+
+bool RenderGraphBuilder::isWrittenTo(const FrameBuildData &frame) {
+  prepare();
+  return isWrittenTo(frame, buildingNodes.end());
+}
+
+bool RenderGraphBuilder::isWrittenTo(const std::string &name) {
+  prepare();
+  auto frame = findFrameByName(name);
+  if (!frame)
+    return false;
+  return isWrittenTo(*frame);
 }
 
 RenderGraphBuilder::FrameBuildData *RenderGraphBuilder::assignFrame(const RenderStepOutput::OutputVariant &output,
@@ -189,7 +203,7 @@ void RenderGraphBuilder::finalizeNodeConnections() {
         FrameBuildData &newFrame = buildingFrames.emplace_back();
         newFrame.name = frame->name;
         newFrame.size = attachment.targetSize;
-        newFrame.name = targetFormat;
+        newFrame.format = targetFormat;
         nameLookup[frame->name] = &newFrame;
         attachment.frame = &newFrame;
         frame = &newFrame;
@@ -201,8 +215,7 @@ void RenderGraphBuilder::finalizeNodeConnections() {
         needsClearValue = true;
       else if (loadRequired && !isWrittenTo(*frame, it)) {
         SPDLOG_LOGGER_DEBUG(
-            logger,
-            "Forcing clear with default values for frame 0x{:x} ({}) accessed by node {}, since it's not written to before",
+            logger, "Forcing clear with default values for frame {} ({}) accessed by node {}, since it's not written to before",
             (void *)frame, frame->name, std::distance(buildingNodes.begin(), it));
         needsClearValue = true;
       }
@@ -224,12 +237,21 @@ void RenderGraphBuilder::finalizeNodeConnections() {
   }
 }
 
-RenderGraph RenderGraphBuilder::build() {
+void RenderGraphBuilder::prepare() {
+  if (!needPrepare)
+    return;
+
   // Fixup all read/write connections
   finalizeNodeConnections();
 
   // Attach outputs to nodes
   attachOutputs();
+
+  needPrepare = false;
+}
+
+RenderGraph RenderGraphBuilder::build() {
+  prepare();
 
   RenderGraph outputGraph;
 
@@ -291,6 +313,12 @@ RenderGraph RenderGraphBuilder::build() {
 
     // Setup step rendering callbacks
     std::visit([&](auto &step) { setupRenderGraphNode(outputNode, buildingNode, step); }, *buildingNode.step.get());
+
+    // This value should be set by the setup callback above
+    // so run it after
+    for (auto &autoClearQueues : buildingNode.autoClearQueues) {
+      outputGraph.autoClearQueues.push_back(autoClearQueues);
+    }
   }
 
   return outputGraph;
@@ -481,6 +509,11 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
   WGPUCommandBuffer cmdBuf = wgpuCommandEncoderFinish(commandEncoder, &cmdBufDesc);
 
   context.submit(cmdBuf);
+
+  // TODO: move this earlier into the process once rendering is multi-threaded
+  for (auto &queue : graph.autoClearQueues) {
+    queue->clear();
+  }
 }
 
 } // namespace gfx::detail

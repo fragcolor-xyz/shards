@@ -41,6 +41,8 @@ public:
   /// <div rustbindgen hide></div>
   Output getOutput() const;
 
+  size_t size() const { return items.size(); }
+
   void reset() { ensureEmptyStack(items); }
 };
 } // namespace gfx

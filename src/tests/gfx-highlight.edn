@@ -17,13 +17,14 @@
    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
    (Float3 0 0 0) (Math.Translation) >= .transform-0
 
+   (GFX.DrawQueue) >= .queue
    (GFX.DrawQueue) >= .editor-queue
 
     ; Create render steps
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .features
 
-   {:Features .features} (GFX.DrawablePass) >> .render-steps
+   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
    {:Features .features :Queue .editor-queue} (GFX.DrawablePass) >> .render-steps
 
     ;; Create view
@@ -36,9 +37,8 @@
     .time (Math.Add timestep) > .time
     (spin-transform .time (Float3 0.0 0 0))
     (GFX.Drawable :Mesh .mesh :Params {:baseColor (Float4 1 0 0 0.5)}) >= .drawable-0
-    .drawable-0 (GFX.Draw)
+    .drawable-0 (GFX.Draw .queue)
 
-    .editor-queue (GFX.ClearQueue)
     (Gizmos.Context :Queue .editor-queue :View .view
                     :Content (->
                               .drawable-0 (Gizmos.Highlight)))

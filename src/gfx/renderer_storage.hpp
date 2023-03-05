@@ -1,6 +1,7 @@
 #ifndef A136DB6F_2BE4_4AC2_B49D_57A7943F990B
 #define A136DB6F_2BE4_4AC2_B49D_57A7943F990B
 
+#include "fwd.hpp"
 #include "worker_memory.hpp"
 #include "render_graph.hpp"
 #include "texture_cache.hpp"
@@ -41,6 +42,7 @@ struct RendererStorage {
   WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex) {
     if (textureData.externalView)
       return textureData.externalView;
+    assert(textureData.texture);
     TextureViewDesc desc{
         .format = textureData.format.pixelFormat,
         .dimension = WGPUTextureViewDimension_2D,
@@ -50,7 +52,9 @@ struct RendererStorage {
         .arrayLayerCount = 1,
         .aspect = WGPUTextureAspect_All,
     };
-    return textureViewCache.getTextureView(frameCounter, textureData.texture, desc);
+    WGPUTextureView result = textureViewCache.getTextureView(frameCounter, textureData.texture, desc);
+    assert(result);
+    return result;
   }
 };
 

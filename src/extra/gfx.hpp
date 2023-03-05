@@ -54,7 +54,7 @@ struct GraphicsRendererContext {
   Renderer *renderer{};
 
   // Overridable callback for rendering
-  std::function<void(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps)> render;
+  std::function<void(ViewPtr view, const PipelineSteps &pipelineSteps)> render;
 };
 
 typedef shards::RequiredContextVariable<GraphicsRendererContext, GraphicsRendererContext::Type,

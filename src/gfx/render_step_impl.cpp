@@ -68,9 +68,7 @@ struct FeatureDrawableGeneratorContextImpl final : FeatureDrawableGeneratorConte
 
   virtual const IDrawable &getDrawable(size_t index) override { return *group.drawables[index]; }
 
-  virtual void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) override {
-    // renderer.render(views, pipelineSteps);
-  }
+  virtual void render(ViewPtr view, const PipelineSteps &pipelineSteps) override { renderer.render(view, pipelineSteps, true); }
 };
 
 struct FeatureViewGenerateContextImpl final : public FeatureViewGeneratorContext {
@@ -79,9 +77,7 @@ struct FeatureViewGenerateContextImpl final : public FeatureViewGeneratorContext
 
   virtual IParameterCollector &getParameterCollector() override { return *viewParameters; }
 
-  virtual void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps) override {
-    // renderer.render(views, pipelineSteps);
-  }
+  virtual void render(ViewPtr view, const PipelineSteps &pipelineSteps) override { renderer.render(view, pipelineSteps, true); }
 };
 
 // Runs all feature generators and returns the resulting generated parameters
@@ -368,7 +364,7 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
 }
 
 void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const ClearStep &step) {
-  builder.allocateOutputs(data, step.output ? step.output.value() : defaultRenderStepOutput);
+  builder.allocateOutputs(data, step.output ? step.output.value() : defaultRenderStepOutput, true);
 }
 
 void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const ClearStep &step) {
@@ -394,6 +390,9 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
   if (!step.drawQueue)
     throw std::runtime_error("No draw queue assigned to drawable step");
 
+  if (step.drawQueue->isAutoClear())
+    buildData.autoClearQueues.push_back(step.drawQueue);
+    
   node.encode = [=](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step); };
 }
 } // namespace gfx::detail

@@ -24,7 +24,7 @@
     6 3 7]})
 
 (defloop spawned-0
-  .transform (GFX.Drawable :Mesh .mesh :Params {:baseColor .color}) (GFX.Draw))
+  .transform (GFX.Drawable :Mesh .mesh :Params {:baseColor .color}) (GFX.Draw .queue))
 (defwire spawn-dynamic-0
   [{:Location (Float3 -3 0 -2) :Color (Float4 1 0 0 1)}
    {:Location (Float3 0 0 -2) :Color (Float4 0 1 0 1)}]
@@ -34,7 +34,7 @@
         (Spawn spawned-0))))
 
 (defloop spawned-1
-  .transform (GFX.Drawable :Mesh .mesh :Material .magenta-material) (GFX.Draw))
+  .transform (GFX.Drawable :Mesh .mesh :Material .magenta-material) (GFX.Draw .queue))
 (defwire spawn-dynamic-1
   [{:Location (Float3 -3 0 2)}
    {:Location (Float3 0 0 2)}
@@ -50,10 +50,12 @@
    0.0 >= .time
    cube (GFX.Mesh :Layout cube-layout :WindingOrder WindingOrder.CW) >= .mesh
 
+   (GFX.DrawQueue) >= .queue
+
    ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Features .features} (GFX.DrawablePass) >> .render-steps
+   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
 
    ; Static material
    (GFX.Material :Params {:baseColor (Float4 1 0 1 1)}) >= .magenta-material
@@ -73,7 +75,7 @@
     .c (ToFloat4) >= .color-var
 
     (Float3 3 0 -2) (Math.Translation)
-    (GFX.Drawable :Mesh .mesh :Params {:baseColor .color-var}) (GFX.Draw)
+    (GFX.Drawable :Mesh .mesh :Params {:baseColor .color-var}) (GFX.Draw .queue)
 
     (Branch [spawn-dynamic-0])
     (Branch [spawn-dynamic-1])

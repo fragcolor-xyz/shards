@@ -52,20 +52,6 @@ namespace gfx {
 
 static auto logger = gfx::getLogger();
 
-// Temporary view for edge cases (no output written)
-struct TempView {
-  ViewPtr view = std::make_shared<View>();
-  CachedView cached;
-  Rect viewport;
-  operator ViewData() {
-    return ViewData{
-        .view = view,
-        .cachedView = cached,
-        .viewport = viewport,
-    };
-  }
-};
-
 // The render graph and outputs
 struct PreparedRenderView {
   const RenderGraph &renderGraph;
@@ -82,6 +68,7 @@ struct RendererImpl final : public ContextData {
   ViewStack viewStack;
 
   Renderer::MainOutput mainOutput;
+  RenderTargetPtr mainOutputRenderTarget;
   bool shouldUpdateMainOutputFromContext = false;
 
   bool ignoreCompilationErrors = false;
@@ -136,7 +123,7 @@ struct RendererImpl final : public ContextData {
     int2 resolution = context.getMainOutputSize();
 
     auto currentDesc = mainOutput.texture->getDesc();
-    bool needUpdate = currentDesc.externalTexture != view || currentDesc.resolution != resolution;
+    bool needUpdate = !mainOutputRenderTarget || currentDesc.externalTexture != view || currentDesc.resolution != resolution;
     if (needUpdate) {
       mainOutput.texture
           ->init(TextureDesc{
@@ -150,18 +137,18 @@ struct RendererImpl final : public ContextData {
               .externalTexture = view,
           })
           .initWithLabel("mainOutput");
-    }
-  }
 
-  void renderViews(const std::vector<ViewPtr> &views, const PipelineSteps &pipelineSteps, const RendererHacks &hacks) {
-    for (auto &view : views) {
-      enqueue(view, pipelineSteps, hacks);
+      // Update main render target
+      if (!mainOutputRenderTarget)
+        mainOutputRenderTarget = std::make_shared<RenderTarget>("mainOutput");
+      mainOutputRenderTarget->attachments["color"].texture = mainOutput.texture;
+      mainOutputRenderTarget->resizeFixed(resolution);
     }
   }
 
   CachedView &getCachedView(const ViewPtr &view) { return *getSharedCacheEntry<CachedView>(storage.viewCache, view.get()).get(); }
 
-  void enqueue(ViewPtr view, const PipelineSteps &pipelineSteps, const RendererHacks &hacks = {}) {
+  void render(ViewPtr view, const PipelineSteps &pipelineSteps, bool immediate) {
     ZoneScoped;
 
     ViewData viewData{
@@ -175,6 +162,11 @@ struct RendererImpl final : public ContextData {
     viewData.referenceOutputSize = viewStackOutput.referenceSize;
     if (viewData.renderTarget) {
       viewData.renderTarget->resizeConditional(viewStackOutput.referenceSize);
+
+      // Render all render target views in a separate render graph
+      immediate = true;
+
+      SPDLOG_LOGGER_DEBUG(logger, "Running immediate render command into target \"{}\"", viewData.renderTarget->label);
     }
 
     int2 viewSize = viewStackOutput.viewport.getSize();
@@ -183,149 +175,18 @@ struct RendererImpl final : public ContextData {
 
     viewData.cachedView.touchWithNewTransform(view->view, view->getProjectionMatrix(float2(viewSize)), storage.frameCounter);
 
-    // // Match with attached outputs in buildRenderGraph
-    // shards::pmr::vector<TextureSubResource> renderGraphOutputs(getWorkerMemoryForCurrentFrame());
-    // if (viewData.renderTarget) {
-    //   for (auto &attachment : viewData.renderTarget->attachments) {
-    //     renderGraphOutputs.push_back(attachment.second);
-    //   }
-    // } else {
-    //   renderGraphOutputs.push_back(mainOutput.texture);
-    // }
-
-    frameQueue->enqueue(viewData, pipelineSteps);
-
-    // return PreparedRenderView{
-    //     .renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize, hacks),
-    //     .viewData = viewData,
-    //     .renderGraphOutputs = std::span(renderGraphOutputs.data(), renderGraphOutputs.size()),
-    // };
-
-    // prepareRenderView(view, pipelineSteps, hacks);
-    // frameQueue
-
-    // auto prepared = prepareRenderView(view, pipelineSteps, hacks);
-    // if (!prepared)
-    //   return;
-
-    // RenderGraphEvaluator evaluator(getWorkerMemoryForCurrentFrame(), renderTextureCache, textureViewCache);
-    // evaluator.evaluate(prepared->renderGraph, prepared->viewData, prepared->renderGraphOutputs, context, frameCounter);
-
-    // mainOutputWrittenTo = mainOutputWrittenTo || evaluator.isWrittenTo(mainOutput.texture);
+    if (immediate) {
+      renderImmediate(viewData, pipelineSteps);
+    } else {
+      frameQueue->enqueue(viewData, pipelineSteps);
+    }
   }
 
-  // std::optional<PreparedRenderView> prepareRenderView(ViewPtr view, const PipelineSteps &pipelineSteps,
-  //                                                     const RendererHacks &hacks) {
-  //   ViewData viewData{
-  //       .view = view,
-  //       .cachedView = getCachedView(view),
-  //   };
-
-  //   ViewStack::Output viewStackOutput = viewStack.getOutput();
-  //   viewData.viewport = viewStackOutput.viewport;
-  //   viewData.renderTarget = viewStackOutput.renderTarget;
-  //   if (viewData.renderTarget) {
-  //     viewData.renderTarget->resizeConditional(viewStackOutput.referenceSize);
-  //   }
-
-  //   int2 viewSize = viewStackOutput.viewport.getSize();
-  //   if (viewSize.x == 0 || viewSize.y == 0)
-  //     return std::nullopt; // Skip rendering
-
-  //   viewData.cachedView.touchWithNewTransform(view->view, view->getProjectionMatrix(float2(viewSize)), frameCounter);
-
-  //   // Match with attached outputs in buildRenderGraph
-  //   shards::pmr::vector<TextureSubResource> renderGraphOutputs(getWorkerMemoryForCurrentFrame());
-  //   if (viewData.renderTarget) {
-  //     for (auto &attachment : viewData.renderTarget->attachments) {
-  //       renderGraphOutputs.push_back(attachment.second);
-  //     }
-  //   } else {
-  //     renderGraphOutputs.push_back(mainOutput.texture);
-  //   }
-
-  //   return PreparedRenderView{
-  //       .renderGraph = getOrBuildRenderGraph(viewData, pipelineSteps, viewStackOutput.referenceSize, hacks),
-  //       .viewData = viewData,
-  //       .renderGraphOutputs = std::span(renderGraphOutputs.data(), renderGraphOutputs.size()),
-  //   };
-  // }
-
-  // const RenderGraph &getOrBuildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps, int2
-  // referenceOutputSize,
-  //                                          const RendererHacks &hacks) {
-  //   ZoneScoped;
-
-  //   HasherXXH128<PipelineHashVisitor> hasher;
-  //   for (auto &step : pipelineSteps) {
-  //     std::visit([&](auto &step) { hasher(step.id); }, *step.get());
-  //   }
-
-  //   for (auto &rt : hacks.clearedHints)
-  //     hasher(rt);
-
-  //   hasher(viewData.cachedView.isFlipped);
-  //   hasher(referenceOutputSize);
-  //   if (viewData.renderTarget) {
-  //     for (auto &attachment : viewData.renderTarget->attachments) {
-  //       hasher(attachment.first);
-  //       hasher(attachment.second.texture->getFormat().pixelFormat);
-  //     }
-  //   } else {
-  //     hasher("color");
-  //     hasher(mainOutput.texture->getFormat().pixelFormat);
-  //   }
-  //   Hash128 renderGraphHash = hasher.getDigest();
-
-  //   auto &cachedRenderGraph = getCacheEntry(renderGraphCache.map, renderGraphHash, [&](const Hash128 &key) {
-  //     auto result = std::make_shared<CachedRenderGraph>();
-  //     buildRenderGraph(viewData, pipelineSteps, referenceOutputSize, hacks, *result.get());
-  //     return result;
-  //   });
-
-  //   return cachedRenderGraph->renderGraph;
-  // }
-
-  // void buildRenderGraph(const ViewData &viewData, const PipelineSteps &pipelineSteps, int2 referenceOutputSize,
-  //                       const RendererHacks &hacks, CachedRenderGraph &out) {
-  //   ZoneScoped;
-
-  //   RenderGraphBuilder builder;
-
-  //   builder.setReferenceOutputSize(referenceOutputSize);
-
-  //   size_t index{};
-  //   for (auto &step : pipelineSteps) {
-  //     std::visit([&](auto &&arg) { allocateNodeEdges(builder, index++, arg); }, *step.get());
-  //   }
-
-  //   for (auto &rt : hacks.clearedHints) {
-  //     FrameIndex frameIndex;
-  //     if (builder.findFrameIndex(rt, frameIndex)) {
-  //       builder.externallyWrittenTo.insert(frameIndex);
-  //     }
-  //   }
-
-  //   builder.finalizeNodeConnections();
-
-  //   // Attach outputs
-  //   // NOTE: This doesn't actually attach the textures
-  //   //   it just references them for type information
-  //   if (viewData.renderTarget) {
-  //     for (auto &attachment : viewData.renderTarget->attachments)
-  //       builder.attachOutput(attachment.first, attachment.second);
-  //   } else {
-  //     builder.attachOutput("color", mainOutput.texture);
-  //   }
-
-  //   out.renderGraph = builder.finalize();
-
-  //   index = 0;
-  //   for (auto &step : pipelineSteps) {
-  //     std::visit([&](auto &&arg) { setupRenderGraphNode(out, index, viewData, arg); }, *step.get());
-  //     index++;
-  //   }
-  // }
+  void renderImmediate(const ViewData &viewData, const PipelineSteps &pipelineSteps) {
+    FrameQueue imFrameQueue(viewData.renderTarget, storage, getWorkerMemoryForCurrentFrame());
+    imFrameQueue.enqueue(viewData, pipelineSteps);
+    imFrameQueue.evaluate(outer);
+  }
 
   void beginFrame() {
     // This registers ContextData so that releaseContextData is called when GPU resources are invalidated
@@ -350,19 +211,21 @@ struct RendererImpl final : public ContextData {
 
     resetWorkerMemory();
 
-    frameQueue.emplace(mainOutput, storage.renderGraphCache, getWorkerMemoryForCurrentFrame());
+    frameQueue.emplace(mainOutputRenderTarget, storage, getWorkerMemoryForCurrentFrame());
+    frameQueue->fallbackClearColor.emplace(float4(1, 1, 1, 1));
   }
 
   void resetWorkerMemory() { storage.workerMemory.reset(); }
 
   void endFrame() {
-    viewStack.pop(); // Main output
-    viewStack.reset();
-
     // Render frame queue render graph
-    frameQueue->evaluate(outer, storage);
+    frameQueue->evaluate(outer);
     // NOTE: Should free frame queue here since it uses worker memory
     frameQueue.reset();
+
+    // Reset view stack and pop main output
+    viewStack.pop();
+    viewStack.reset();
 
     clearOldCacheItems();
 
@@ -386,25 +249,6 @@ struct RendererImpl final : public ContextData {
     storage.textureViewCache.clearOldCacheItems(storage.frameCounter, 8);
   }
 
-  // void ensureMainOutputCleared() {
-  // if (!mainOutputWrittenTo) {
-  // TODO
-
-  // RenderGraphBuilder builder;
-  // builder.nodes.resize(1);
-  // builder.allocateOutputs(0, steps::makeRenderStepOutput(RenderStepOutput::Texture{
-  //                                .subResource = mainOutput.texture,
-  //                            }));
-  // builder.finalizeNodeConnections();
-  // auto graph = builder.finalize();
-
-  // RenderGraphEvaluator evaluator(getWorkerMemoryForCurrentFrame(), renderTextureCache, textureViewCache);
-
-  // TempView tempView{.viewport = Rect(mainOutput.texture->getResolution())};
-  // evaluator.evaluate(graph, tempView, std::span<TextureSubResource>{}, context, frameCounter);
-  //   }
-  // }
-
   void swapBuffers() {
     ++storage.frameCounter;
     storage.frameIndex = (storage.frameIndex + 1) % maxBufferedFrames;
@@ -423,10 +267,9 @@ Renderer::Renderer(Context &context) {
 
 Context &Renderer::getContext() { return impl->context; }
 
-void Renderer::render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps, const RendererHacks &hacks) {
-  impl->renderViews(views, pipelineSteps, hacks);
+void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps, bool immediate) {
+  impl->render(view, pipelineSteps, immediate);
 }
-void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps) { impl->enqueue(view, pipelineSteps); }
 void Renderer::setMainOutput(const MainOutput &output) {
   impl->mainOutput = output;
   impl->shouldUpdateMainOutputFromContext = false;

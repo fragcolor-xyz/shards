@@ -1,4 +1,5 @@
 #include "../gfx.hpp"
+#include "common_types.hpp"
 #include "drawable_utils.hpp"
 #include "foundation.hpp"
 #include "shards_utils.hpp"
@@ -156,34 +157,24 @@ struct DrawQueueShard {
   static SHTypesInfo outputTypes() { return Types::DrawQueue; }
   static SHOptionalString help() { return SHCCSTR("Creates a new drawable queue to record Draw commands into"); }
 
-  static SHParametersInfo parameters() {
-    static Parameters parameters = {};
-    return parameters;
-  }
+  PARAM_VAR(_autoClear, "AutoClear", "When enabled, automatically clears the queue after items have been rendered",
+            {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(DrawQueueShard, PARAM_IMPL_FOR(_autoClear));
 
   SHDrawQueue *_queue{};
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    default:
-      return Var::Empty;
-    }
-  }
+  DrawQueueShard() { _autoClear = Var(true); }
 
   void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
     assert(!_queue);
     _queue = Types::DrawQueueObjectVar.New();
     _queue->queue = std::make_shared<DrawQueue>();
+    _queue->queue->setAutoClear(_autoClear.isNone() ? true : (bool)_autoClear);
   }
 
   void cleanup() {
+    PARAM_CLEANUP();
     if (_queue) {
       Types::DrawQueueObjectVar.Release(_queue);
       _queue = nullptr;
