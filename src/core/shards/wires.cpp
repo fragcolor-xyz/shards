@@ -1713,6 +1713,11 @@ struct StepMany : public TryMany {
 
   static SHParametersInfo parameters() { return _params; }
 
+  SHTypeInfo compose(const SHInstanceData &data) {
+    TryMany::compose(data);
+    return CoreInfo::AnyType; // we don't know the output type as we return output every step
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto len = getLength(input);
 
