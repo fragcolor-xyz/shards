@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "runtime.hpp"
+#include "common_types.hpp"
 #include "foundation.hpp"
 #include "shards.h"
 #include "shards/shared.hpp"
@@ -1369,7 +1370,12 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
   auto res = composeWire(wire->shards, callback, userData, data);
 
   // set output type
-  wire->outputType = res.outputType;
+  if (!wire->looped)
+    wire->outputType = res.outputType;
+  else // loops usually don't end at end of wire, so we can't know the output type for sure as there might be multiple (Stop) etc
+    wire->outputType = CoreInfo::AnyType;
+
+  res.outputType = wire->outputType;
 
   const_cast<SHWire *>(wire)->dispatcher.trigger(SHWire::OnComposedEvent{wire});
 
@@ -2845,12 +2851,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   sh_current_interface_loaded = true;
 
   result->alloc = [](uint32_t size) -> void * {
-    auto mem = ::operator new(size, std::align_val_t{16});
+    auto mem = ::operator new (size, std::align_val_t{16});
     memset(mem, 0, size);
     return mem;
   };
 
-  result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
+  result->free = [](void *ptr) { ::operator delete (ptr, std::align_val_t{16}); };
 
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)
@@ -2911,7 +2917,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto sc = SHWire::sharedFromRef(wire);
     auto var = sc->externalVariables[name];
     if (var) {
-      ::operator delete(var, std::align_val_t{16});
+      ::operator delete (var, std::align_val_t{16});
     }
     sc->externalVariables.erase(name);
   };
