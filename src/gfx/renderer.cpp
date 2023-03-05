@@ -137,12 +137,6 @@ struct RendererImpl final : public ContextData {
               .externalTexture = view,
           })
           .initWithLabel("mainOutput");
-
-      // Update main render target
-      if (!mainOutputRenderTarget)
-        mainOutputRenderTarget = std::make_shared<RenderTarget>("mainOutput");
-      mainOutputRenderTarget->attachments["color"].texture = mainOutput.texture;
-      mainOutputRenderTarget->resizeFixed(resolution);
     }
   }
 
@@ -198,6 +192,12 @@ struct RendererImpl final : public ContextData {
     if (shouldUpdateMainOutputFromContext) {
       updateMainOutputFromContext();
     }
+
+    // Update main render target
+    if (!mainOutputRenderTarget)
+      mainOutputRenderTarget = std::make_shared<RenderTarget>("mainOutput");
+    mainOutputRenderTarget->attachments["color"].texture = mainOutput.texture;
+    mainOutputRenderTarget->resizeFixed(mainOutput.texture->getResolution());
 
     storage.frameStats.reset();
 

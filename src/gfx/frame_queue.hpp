@@ -150,11 +150,12 @@ public:
     if (fallbackClearColor) {
       for (auto &output : mainOutput->attachments) {
         if (!builder.isWrittenTo(output.first)) {
-          auto &formatDesc = getTextureFormatDescription(output.second.texture->getFormat().pixelFormat);
+          auto format = output.second.texture->getFormat().pixelFormat;
+          auto &formatDesc = getTextureFormatDescription(format);
           if (hasAnyTextureFormatUsage(formatDesc.usage, TextureFormatUsage::Color)) {
             ClearStep clear;
             clear.output = RenderStepOutput{};
-            clear.output->attachments.emplace_back(RenderStepOutput::Named{.name = output.first});
+            clear.output->attachments.emplace_back(RenderStepOutput::Named{.name = output.first, .format = format});
             clear.clearValues = ClearValues::getColorValue(fallbackClearColor.value());
 
             // Add a clear node, the queue index ~0 indicates that the tempView is passed during runtime

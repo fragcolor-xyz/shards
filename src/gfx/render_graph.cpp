@@ -117,6 +117,7 @@ void RenderGraphBuilder::attachOutputs() {
           newFrame.size = frame.size;
           newFrame.format = output.format;
           newFrame.outputIndex.emplace(outputIndex);
+          nameLookup[frame.name] = &newFrame;
 
           // Make sure no node after this references this as an input anymore
           // TODO: support this case by forcing a copy from intermediate texture to output
