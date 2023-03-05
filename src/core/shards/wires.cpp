@@ -156,7 +156,6 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
   dataCopy.shared = sharedCopy;
 
-  SHTypeInfo wireOutput;
   // make sure to compose only once...
   if (!wire->composeResult) {
     SHLOG_TRACE("Running {} compose, pure: {}", wire->name, wire->pure);
@@ -173,8 +172,6 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
         },
         this, dataCopy);
 
-    wireOutput = wire->composeResult->outputType;
-
     IterableExposedInfo exposing(wire->composeResult->exposedInfo);
     // keep only globals
     exposedInfo = IterableExposedInfo(
@@ -187,10 +184,10 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
     SHLOG_TRACE("Skipping {} compose", wire->name);
 
     verifyAlreadyComposed(data, shared);
-
-    // write output type
-    wireOutput = wire->outputType;
   }
+
+  // write output type
+  SHTypeInfo wireOutput = wire->outputType;
 
   // Propagate stack size
   data.wire->stackSize = std::max<size_t>(data.wire->stackSize, wire->stackSize);
@@ -373,7 +370,7 @@ struct StopWire : public WireBase {
   void composed(const SHWire::OnComposedEvent &e) {
     // this check runs only when (Stop) is called without any params!
     // meaning it's stopping the wire it is in
-    if (!wire && wireref->valueType == SHType::None && _inputType != e.wire->outputType) {
+    if (!wire && wireref->valueType == SHType::None && !e.wire->looped && _inputType != e.wire->outputType) {
       SHLOG_ERROR("Stop input and wire output type mismatch, Stop input must "
                   "be the same type of the wire's output (regular flow), "
                   "wire: {} expected: {}",
