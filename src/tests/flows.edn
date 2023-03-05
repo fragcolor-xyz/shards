@@ -182,6 +182,7 @@
            (Setup
             >= .starting)
            .starting (Log) (Math.Add .my-adder) > .starting))
+    (ExpectIntSeq) ; step many will return intermediate outputs!
     > .my-result)
    :Times 3)
   .my-result
@@ -196,12 +197,13 @@
            (Setup
             >= .starting)
            .starting (Log) (Math.Add .my-adder) > .starting))
+    (ExpectIntSeq) ; step many will return intermediate outputs!
     > .my-result)
    :Times 3)
   .my-result
   (Assert.Is [10, 31, 342] true)
 
-  (Const [1 22 333]) >= .my-result
+  (Const [1 22 333]) > .my-result
   (Repeat
    (->
     .my-result
