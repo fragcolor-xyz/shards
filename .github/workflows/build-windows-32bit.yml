@@ -1,0 +1,278 @@
+name: Build (Windows 32-bit)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-type:
+        description: Build in Release or Debug?
+        required: true
+        default: Debug
+        type: choice
+        options:
+          - Debug
+          - Release
+      binary-type:
+        description: Executable or dynamic library?
+        required: false
+        default: Exe
+        type: choice
+        options:
+          - Exe
+          - Library
+      runtime-tests:
+        description: Run the runtime tests (Debug only)?
+        required: false
+        default: false
+        type: boolean
+      run-tests:
+        description: Run the tests?
+        required: false
+        default: false
+        type: boolean
+      rust-cache:
+        description: Use existing rust cache?
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      build-type:
+        required: true
+        default: Debug
+        type: string
+      binary-type:
+        required: false
+        default: Exe
+        type: string
+      runtime-tests:
+        required: false
+        default: false
+        type: boolean
+      run-tests:
+        required: false
+        default: false
+        type: boolean
+      rust-cache:
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  #
+  # Build shards for Windows
+  #
+  Windows:
+    name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, 32-bit)
+    runs-on: windows-latest
+    outputs:
+      binary-type: ${{ steps.setup.outputs.binary-type }}
+      run-tests: ${{ steps.setup.outputs.run-tests }}
+    steps:
+      - name: Setup
+        id: setup
+        shell: bash
+        run: |
+          echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
+          echo "binary-type=${{ github.event.inputs.binary-type || inputs.binary-type }}" >> $GITHUB_OUTPUT
+          echo "run-tests=${{ github.event.inputs.run-tests || inputs.run-tests }}" >> $GITHUB_OUTPUT
+          echo "runtime-tests=${{ github.event.inputs.runtime-tests || inputs.runtime-tests }}" >> $GITHUB_OUTPUT
+          echo "rust-cache=${{ github.event.inputs.rust-cache || inputs.rust-cache }}" >> $GITHUB_OUTPUT
+
+          if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
+          then
+            echo "build-target=shards" >> $GITHUB_OUTPUT
+            echo "artifact-path=build/shards.exe" >> $GITHUB_OUTPUT
+          else
+            echo "build-target=shards-dll" >> $GITHUB_OUTPUT
+            echo "artifact-path=build/libshards.dll" >> $GITHUB_OUTPUT
+          fi
+
+          if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
+          then
+            echo "artifact=shards-win32" >> $GITHUB_OUTPUT
+          else
+            echo "artifact=libshards-win32" >> $GITHUB_OUTPUT
+          fi
+      - name: Checkout shards
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/shards
+          fetch-depth: 1
+          submodules: recursive
+      - name: Set up rust
+        env:
+          RUSTUP_USE_CURL: 1
+        run: |
+          rustup toolchain install --no-self-update nightly
+          rustup +nightly target add i686-pc-windows-gnu
+          rustup default nightly-i686-pc-windows-gnu
+
+          # Native libClang required for rust bindgen
+          choco install -y llvm
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
+      - uses: Swatinem/rust-cache@v2
+        if: ${{ steps.setup.outputs.rust-cache == 'true' }}
+        with:
+          key: ${{ steps.setup.outputs.build-type }}
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          release: false
+          path-type: inherit
+          install: >-
+            base-devel
+            mingw-w64-i686-toolchain
+            mingw-w64-i686-cmake
+            mingw-w64-i686-ninja
+            mingw-w64-i686-clang
+            mingw-w64-i686-lld
+            wget
+      - name: Build
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          ./bootstrap
+          mkdir build
+          cd build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
+          echo "Building shards"
+          ninja ${{ steps.setup.outputs.build-target }}
+          echo "Building runtime tests"
+          ninja test-runtime
+          echo "Building graphics tests"
+          ninja test-gfx
+      # Minimize disk usage to prevent the next steps getting stuck on glTF models
+      - name: Minimize disk usage
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          rm -rf build/src
+          rm -rf build/lib
+          rm -rf build/deps
+          rm -rf build/_deps
+          rm -rf build/.cache
+      - name: Test runtime (Debug)
+        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd build
+          ./test-runtime
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
+          path: ${{ steps.setup.outputs.artifact-path }}
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: ${{ steps.setup.outputs.artifact }} rejected test data
+          path: src/gfx/tests/data/default/rejected
+          if-no-files-found: ignore
+
+  #
+  # Test shards for Windows
+  #
+  Windows-test:
+    if: ${{ needs.Windows.outputs.run-tests == 'true' && needs.Windows.outputs.binary-type == 'Exe' }}
+    needs: Windows
+    name: Test
+    runs-on: windows-latest
+    steps:
+      - name: Setup
+        id: setup
+        shell: bash
+        run: |
+          echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
+      - name: Change git line endings
+        run: |
+          git config --system core.autocrlf false
+          git config --system core.eol lf
+      - name: Checkout shards
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/shards
+          fetch-depth: 1
+          submodules: true
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: shards-win32 ${{ steps.setup.outputs.build-type }}
+          path: build
+      - name: Set up MSYS2 (Release)
+        if: ${{ steps.setup.outputs.build-type == 'Release' }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          release: false
+          path-type: inherit
+      - name: Set up MSYS2 (Debug)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          release: false
+          path-type: inherit
+          install: >-
+            base-devel
+            mingw-w64-i686-toolchain
+      - name: Test
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd build
+          echo "Running test: general"
+          ./shards ../src/tests/general.edn
+          echo "Running test: variables"
+          ./shards ../src/tests/variables.clj
+          echo "Running test: linalg"
+          ./shards ../src/tests/linalg.clj
+          echo "Running test: loader"
+          ./shards ../src/tests/loader.clj
+          echo "Running test: network"
+          ./shards ../src/tests/network.clj
+          echo "Running test: struct"
+          ./shards ../src/tests/struct.clj
+          echo "Running test: flows"
+          ./shards ../src/tests/flows.edn
+          echo "Running test: kdtree"
+          ./shards ../src/tests/kdtree.clj
+          echo "Running test: channels"
+          ./shards ../src/tests/channels.clj
+          echo "Running test: http"
+          ./shards ../src/tests/http.clj
+          echo "Running test: brotli"
+          ./shards ../src/tests/brotli.clj
+          echo "Running test: snappy"
+          ./shards ../src/tests/snappy.clj
+          echo "Running test: expect-like"
+          ./shards ../src/tests/expect-like.edn
+          # echo "Running test: ws"
+          # ./shards ../src/tests/ws.edn
+          echo "Running test: bigint"
+          ./shards ../src/tests/bigint.clj
+          echo "Running test: wasm"
+          ./shards ../src/tests/wasm.clj
+          echo "Running test: eth"
+          ./shards ../src/tests/eth.edn
+          echo "Running test: crypto"
+          ./shards ../src/tests/crypto.edn
+          echo "Running test: complex-deserialize"
+          ./shards ../src/tests/complex-deserialize.edn
+      - name: Test doc samples (non-UI)
+        env:
+          RUST_BACKTRACE: 1
+        shell: msys2 {0}
+        run: |
+          cd docs/samples
+          for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' ! -path '*Dialog*' \));
+          do
+            echo "Running sample $i";
+            ../../build/shards.exe run-sample.edn --file "$i";
+          done

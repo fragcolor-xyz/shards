@@ -113,19 +113,17 @@ jobs:
       run-tests: true
   Windows-32bits-Debug:
     needs: Setup
-    uses: ./.github/workflows/build-windows.yml
+    uses: ./.github/workflows/build-windows-32bit.yml
     secrets: inherit
     with:
-      bitness: 32bits
       build-type: Debug
       runtime-tests: true
       run-tests: true
   Windows-32bits-Release:
     needs: Setup
-    uses: ./.github/workflows/build-windows.yml
+    uses: ./.github/workflows/build-windows-32bit.yml
     secrets: inherit
     with:
-      bitness: 32bits
       build-type: Release
       run-tests: true
 
