@@ -268,7 +268,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
 #elif defined(__linux__)
   rep("(def platform \"linux\")", env);
 #elif defined(__APPLE__)
-#ifdef TARGET_OS_IOS
+#if TARGET_OS_IOS
   rep("(def platform \"ios\")", env);
 #else
   rep("(def platform \"macos\")", env);
