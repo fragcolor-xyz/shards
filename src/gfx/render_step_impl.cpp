@@ -346,6 +346,14 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
   // Set parameters from step
   drawable->parameters = step.parameters;
 
+  // Derive definitions from parameters
+  for (auto &param : drawable->parameters.basic) {
+    baseFeature->shaderParams.emplace_back(param.first, param.second);
+  }
+  for (auto &param : drawable->parameters.textures) {
+    baseFeature->textureParams.emplace_back(param.first, param.second.texture->getFormat().dimension);
+  }
+
   // Setup node outputs as texture slots
   for (auto &frame : buildData.readsFrom) {
     baseFeature->textureParams.emplace_back(frame->name);
@@ -392,7 +400,7 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
 
   if (step.drawQueue->isAutoClear())
     buildData.autoClearQueues.push_back(step.drawQueue);
-    
+
   node.encode = [=](RenderGraphEncodeContext &ctx) { evaluateDrawableStep(ctx, step); };
 }
 } // namespace gfx::detail

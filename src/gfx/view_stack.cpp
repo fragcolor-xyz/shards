@@ -14,12 +14,12 @@ void ViewStack::pop() {
   items.pop_back();
 }
 
-ViewStack::Output ViewStack::getOutput() const {
+ViewStack::Output ViewStack::getOutput(size_t offset) const {
   Output result{};
 
   bool isViewportSet = false;
   bool hasReferenceSize = false;
-  for (size_t i = 0; i < items.size(); i++) {
+  for (size_t i = 0; i < items.size() - offset; i++) {
     const Item &item = items[i];
     if (item.renderTarget) {
       result.renderTarget = item.renderTarget;

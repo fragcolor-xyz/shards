@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include "boost/container/stable_vector.hpp"
 #include "context.hpp"
 #include "drawable.hpp"
 #include "feature.hpp"
@@ -27,6 +28,7 @@
 #include "render_target.hpp"
 #include "log.hpp"
 #include "geom.hpp"
+#include "view_stack.hpp"
 #include "worker_memory.hpp"
 #include "pmr/vector.hpp"
 #include "pmr/unordered_map.hpp"
@@ -34,6 +36,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/reduce.hpp>
 #include <tracy/Tracy.hpp>
@@ -77,7 +80,7 @@ struct RendererImpl final : public ContextData {
 
   bool mainOutputWrittenTo{};
 
-  std::optional<FrameQueue> frameQueue;
+  boost::container::stable_vector<std::optional<FrameQueue>> frameQueues;
 
   RendererImpl(Context &context, Renderer &outer) : outer(outer), context(context), storage(context) {}
 
@@ -142,6 +145,53 @@ struct RendererImpl final : public ContextData {
 
   CachedView &getCachedView(const ViewPtr &view) { return *getSharedCacheEntry<CachedView>(storage.viewCache, view.get()).get(); }
 
+  void pushView(ViewStack::Item &&item) {
+    viewStack.push(std::move(item));
+    const auto &viewStackOutput = viewStack.getOutput();
+
+    bool needsNewFrameQueue = false;
+    if (viewStack.size() == 1)
+      needsNewFrameQueue = true;
+    else {
+      auto prevItem = viewStack.getOutput(1);
+      if (prevItem.renderTarget != viewStackOutput.renderTarget) {
+        needsNewFrameQueue = true;
+      }
+    }
+
+    if (needsNewFrameQueue) {
+      viewStackOutput.renderTarget->resizeConditional(viewStackOutput.referenceSize);
+      auto &frameQueue = frameQueues.emplace_back();
+      frameQueue.emplace(viewStackOutput.renderTarget, storage, getWorkerMemoryForCurrentFrame());
+      frameQueue->fallbackClearColor.emplace(float4(1, 1, 1, 1));
+    } else {
+      // Can render to the exisiting queue
+      frameQueues.push_back(std::nullopt);
+    }
+  }
+
+  void popView() {
+    auto &frameQueue = frameQueues.back();
+
+    // Evaluate the queue for the popped view
+    if (frameQueue.has_value()) {
+      frameQueue->evaluate(outer);
+    }
+
+    frameQueues.pop_back();
+    viewStack.pop();
+  }
+
+  FrameQueue &getFrameQueue() {
+    for (auto it = frameQueues.rbegin(); it != frameQueues.rend(); ++it) {
+      if (it->has_value())
+        return it->value();
+    }
+
+    // Somehow there's no FrameQueue to enque render commands into
+    throw std::logic_error("No frame queue in view stack");
+  }
+
   void render(ViewPtr view, const PipelineSteps &pipelineSteps, bool immediate) {
     ZoneScoped;
 
@@ -154,14 +204,6 @@ struct RendererImpl final : public ContextData {
     viewData.viewport = viewStackOutput.viewport;
     viewData.renderTarget = viewStackOutput.renderTarget;
     viewData.referenceOutputSize = viewStackOutput.referenceSize;
-    if (viewData.renderTarget) {
-      viewData.renderTarget->resizeConditional(viewStackOutput.referenceSize);
-
-      // Render all render target views in a separate render graph
-      immediate = true;
-
-      SPDLOG_LOGGER_DEBUG(logger, "Running immediate render command into target \"{}\"", viewData.renderTarget->label);
-    }
 
     int2 viewSize = viewStackOutput.viewport.getSize();
     if (viewSize.x == 0 || viewSize.y == 0)
@@ -169,18 +211,14 @@ struct RendererImpl final : public ContextData {
 
     viewData.cachedView.touchWithNewTransform(view->view, view->getProjectionMatrix(float2(viewSize)), storage.frameCounter);
 
-    if (immediate) {
-      renderImmediate(viewData, pipelineSteps);
-    } else {
-      frameQueue->enqueue(viewData, pipelineSteps);
-    }
+    getFrameQueue().enqueue(viewData, pipelineSteps);
   }
 
-  void renderImmediate(const ViewData &viewData, const PipelineSteps &pipelineSteps) {
-    FrameQueue imFrameQueue(viewData.renderTarget, storage, getWorkerMemoryForCurrentFrame());
-    imFrameQueue.enqueue(viewData, pipelineSteps);
-    imFrameQueue.evaluate(outer);
-  }
+  // void renderImmediate(const ViewData &viewData, const PipelineSteps &pipelineSteps) {
+  //   FrameQueue imFrameQueue(viewData.renderTarget, storage, getWorkerMemoryForCurrentFrame());
+  //   imFrameQueue.enqueue(viewData, pipelineSteps);
+  //   imFrameQueue.evaluate(outer);
+  // }
 
   void beginFrame() {
     // This registers ContextData so that releaseContextData is called when GPU resources are invalidated
@@ -201,30 +239,24 @@ struct RendererImpl final : public ContextData {
 
     storage.frameStats.reset();
 
-    auto mainOutputResolution = mainOutput.texture->getResolution();
-    viewStack.push(ViewStack::Item{
-        .viewport = Rect(mainOutputResolution),
-        .referenceSize = mainOutputResolution,
-    });
-
     storage.drawableProcessorCache.beginFrame(storage.frameCounter);
 
     resetWorkerMemory();
 
-    frameQueue.emplace(mainOutputRenderTarget, storage, getWorkerMemoryForCurrentFrame());
-    frameQueue->fallbackClearColor.emplace(float4(1, 1, 1, 1));
+    auto mainOutputResolution = mainOutput.texture->getResolution();
+    pushView(ViewStack::Item{
+        .viewport = Rect(mainOutputResolution),
+        .referenceSize = mainOutputResolution,
+        .renderTarget = mainOutputRenderTarget,
+    });
   }
 
   void resetWorkerMemory() { storage.workerMemory.reset(); }
 
   void endFrame() {
-    // Render frame queue render graph
-    frameQueue->evaluate(outer);
-    // NOTE: Should free frame queue here since it uses worker memory
-    frameQueue.reset();
-
     // Reset view stack and pop main output
-    viewStack.pop();
+    // This also evaluates the main frame queue
+    popView();
     viewStack.reset();
 
     clearOldCacheItems();
@@ -275,7 +307,13 @@ void Renderer::setMainOutput(const MainOutput &output) {
   impl->shouldUpdateMainOutputFromContext = false;
 }
 
-ViewStack &Renderer::getViewStack() { return impl->viewStack; }
+const ViewStack &Renderer::getViewStack() const { return impl->viewStack; }
+
+/// <div rustbindgen hide></div>
+void Renderer::pushView(ViewStack::Item &&item) { impl->pushView(std::move(item)); }
+
+/// <div rustbindgen hide></div>
+void Renderer::popView() { impl->popView(); }
 
 void Renderer::beginFrame() { impl->beginFrame(); }
 void Renderer::endFrame() { impl->endFrame(); }

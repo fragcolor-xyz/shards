@@ -1,4 +1,5 @@
 #include "../gfx.hpp"
+#include "extra/gfx/drawable_utils.hpp"
 #include "extra/gfx/shards_utils.hpp"
 #include "gfx/error_utils.hpp"
 #include "shards_utils.hpp"
@@ -285,6 +286,13 @@ struct EffectPassShard {
     }
   }
 
+  void applyParams(SHContext *context, RenderFullscreenStep &step, const SHVar &input) {
+    checkType(input.valueType, SHType::Table, ":Params");
+    const SHTable &inputTable = input.payload.tableValue;
+
+    initShaderParams(context, inputTable, step.parameters);
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     RenderFullscreenStep &step = std::get<RenderFullscreenStep>(*_step->get());
 
@@ -299,6 +307,10 @@ struct EffectPassShard {
     else {
       step.inputs = RenderStepInputs{"color"};
     }
+
+    SHVar paramsVar;
+    if (getFromTable(context, inputTable, "Params", paramsVar))
+      applyParams(context, step, paramsVar);
 
     SHVar entryPointVar;
     if (getFromTable(context, inputTable, "EntryPoint", entryPointVar)) {

@@ -35,7 +35,14 @@ public:
   /// <div rustbindgen hide></div>
   void setMainOutput(const MainOutput &output);
 
-  ViewStack &getViewStack();
+  /// <div rustbindgen hide></div>
+  const ViewStack &getViewStack() const;
+
+  /// <div rustbindgen hide></div>
+  void pushView(ViewStack::Item&& item);
+
+  /// <div rustbindgen hide></div>
+  void popView();
 
   /// <div rustbindgen hide></div>
   void beginFrame();
