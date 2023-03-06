@@ -29,10 +29,12 @@
    (Physics.Ball :Radius 0.5) = .sphere-pshape
    (Physics.Cuboid :HalfExtents (float3 (/ ground-extent 2) ground-thickness (/ ground-extent 2))) = .ground-pshape
 
+   (GFX.DrawQueue) >= .queue
+   
    ; define rendering features
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .features
-   {:Features .features} (GFX.DrawablePass) >> .render-steps
+   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
 
    ; define a view
    {:Position (float3 50 40 50) :Target (float3 0 0 0)} (Math.LookAt) = .view-transform
@@ -60,7 +62,7 @@
      (range 1 obj-count))
 
     ; draw everything
-    .ground-drawable (GFX.Draw)
+    .ground-drawable (GFX.Draw .queue)
 
     ; cubes and spheres instances
     (map
@@ -73,7 +75,7 @@
 
               >> .drawables))
      (range 1 obj-count))
-    .drawables (GFX.Draw)
+    .drawables (GFX.Draw .queue)
 
     ; final render
     (GFX.Render :Steps .render-steps :View .view))))
