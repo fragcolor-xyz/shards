@@ -26,7 +26,7 @@
 (defpure plasma
   (Math.Add (Float2 0.3 -0.5)) (Math.Multiply 4.0)
   (| (Take 0) >= .u) (| (Take 1) >= .v)
-  (Shader.ReadBuffer :Name "time" :BufferName "view") (Math.Multiply 0.8) >= .time
+  (Shader.ReadBuffer "time") (Math.Multiply 0.8) >= .time
   .v (Math.Add .time) > .v
 
   .time (Math.Add .u) >= .t0
@@ -38,9 +38,9 @@
   .u1 (Math.Add .t3) (Math.Add .time) (Math.Add .u0) (Do ucos))
 
 (defshards shader-main []
-  (Shader.ReadBuffer :Name "viewport" :BufferName "view") >= .viewport
+  (Shader.ReadBuffer "viewport") >= .viewport
   (Shader.ReadInput "texCoord0") >= .uv
-  (Shader.ReadBuffer :Name "time" :BufferName "view") >= .time
+  (Shader.ReadBuffer "time") >= .time
   (Shader.ReadGlobal "color") >= .base-color
 
   .uv (Do plasma) >= .vcolor
