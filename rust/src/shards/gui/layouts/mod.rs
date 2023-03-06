@@ -122,6 +122,7 @@ struct Vertical {
   parents: ParamVar,
   requiring: ExposedTypes,
   contents: ShardsVar,
+  centered: ParamVar,
   exposing: ExposedTypes,
 }
 

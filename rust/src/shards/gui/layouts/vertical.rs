@@ -17,15 +17,24 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANY_TYPES;
+use crate::types::BOOL_VAR_OR_NONE_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 
 lazy_static! {
-  static ref VERTICAL_PARAMETERS: Parameters = vec![(
-    cstr!("Contents"),
-    shccstr!("The UI contents."),
-    &SHARDS_OR_NONE_TYPES[..],
-  )
-    .into(),];
+  static ref VERTICAL_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Contents"),
+      shccstr!("The UI contents."),
+      &SHARDS_OR_NONE_TYPES[..],
+    )
+      .into(),
+    (
+      cstr!("Centered"),
+      shccstr!("Center the contents horizontally."),
+      BOOL_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+  ];
 }
 
 impl Default for Vertical {
@@ -36,6 +45,7 @@ impl Default for Vertical {
       parents,
       requiring: Vec::new(),
       contents: ShardsVar::default(),
+      centered: ParamVar::default(),
       exposing: Vec::new(),
     }
   }
@@ -89,6 +99,7 @@ impl Shard for Vertical {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
+      1 => Ok(self.centered.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -96,6 +107,7 @@ impl Shard for Vertical {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.contents.get_param(),
+      1 => self.centered.get_param(),
       _ => Var::default(),
     }
   }
@@ -137,11 +149,13 @@ impl Shard for Vertical {
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
     }
+    self.centered.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.centered.cleanup();
     if !self.contents.is_empty() {
       self.contents.cleanup();
     }
@@ -156,10 +170,17 @@ impl Shard for Vertical {
     }
 
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
-      ui.vertical(|ui| {
-        util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-      })
-      .inner?;
+      if self.centered.get().try_into().unwrap_or_default() {
+        ui.vertical_centered(|ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+        })
+        .inner?
+      } else {
+        ui.vertical(|ui| {
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+        })
+        .inner?
+      };
 
       // Always passthrough the input
       Ok(*input)
