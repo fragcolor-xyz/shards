@@ -32,7 +32,7 @@ void Window::init(const WindowCreationOptions &options) {
     throw formatException("SDL_Init failed: {}", SDL_GetError());
   }
 
-  uint32_t flags = SDL_WINDOW_SHOWN;
+  uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
 
   int width{options.width}, height{options.height};
 
@@ -40,7 +40,7 @@ void Window::init(const WindowCreationOptions &options) {
 #if GFX_IOS || GFX_ANDROID
   flags |= SDL_WINDOW_FULLSCREEN;
 #else
-  flags |= SDL_WINDOW_RESIZABLE | (options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+  flags |= (options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 #endif
 
   if ((flags & SDL_WINDOW_FULLSCREEN) != 0) {
