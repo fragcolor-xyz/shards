@@ -95,13 +95,12 @@ struct DrawShard {
 
   PARAM_PARAMVAR(_queue, "Queue", "The queue to add the draw command to (Optional). Uses the default queue if not specified",
                  {Type::VariableOf(Types::DrawQueue)});
-  PARAM_VAR(_autoClearQueue, "ClearQueue", "Automatically clear queue after processing it", {CoreInfo::BoolType});
-  PARAM_IMPL(DrawShard, PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_autoClearQueue));
+  PARAM_IMPL(DrawShard, PARAM_IMPL_FOR(_queue));
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
-  DrawShard() { _autoClearQueue = Var(true); }
+  DrawShard() {}
 
   void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
 
@@ -124,8 +123,6 @@ struct DrawShard {
 
   template <typename T> void addDrawableToQueue(T &drawable) { getDrawQueue().add(drawable); }
 
-  void activateCommon() { getDrawQueue().setAutoClear((bool)_autoClearQueue); }
-
   SHVar activateSingle(SHContext *shContext, const SHVar &input) {
     assert(input.valueType == SHType::Object);
     std::visit(
@@ -136,7 +133,6 @@ struct DrawShard {
           }
         },
         varAsObjectChecked<SHDrawable>(input, Types::Drawable).drawable);
-    activateCommon();
     return SHVar{};
   }
 
@@ -145,7 +141,6 @@ struct DrawShard {
     for (size_t i = 0; i < seq.len; i++) {
       (void)activateSingle(shContext, seq.elements[i]);
     }
-    activateCommon();
     return SHVar{};
   }
 
