@@ -3140,9 +3140,8 @@ dependencies = [
 
 [[package]]
 name = "rfd"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fe3bae427b011620cf4436d5dd7405c1a86dce3dfcdc0cda12b41fd31569ac3"
+version = "0.11.2"
+source = "git+https://github.com/shards-lang/rfd.git?tag=shards-1#63e8715bb7be4ae0f2cec4b70e89f4cd18d13a1b"
 dependencies = [
  "ashpd",
  "block",
