@@ -197,7 +197,9 @@ pub fn make_native_full_output(
         },
         openUrl: open_url.as_ref().map_or(ptr::null(), |x| x.as_ptr()),
         copiedText: copied_text.as_ref().map_or(ptr::null(), |x| x.as_ptr()),
-        textCursorPosition: text_cursor_position.as_ref().map_or(ptr::null(), |x| x.as_ref()),
+        textCursorPosition: text_cursor_position
+            .as_ref()
+            .map_or(ptr::null(), |x| x.as_ref()),
         cursorIcon: to_egui_cursor_icon(platform_output.cursor_icon),
         mutableTextUnderCursor: platform_output.mutable_text_under_cursor,
     };

@@ -239,7 +239,10 @@ impl Shard for EguiContext {
     let queue_var = self.queue.get();
     unsafe {
       // Apply outputs to input related functionality (clipboard, cursor, etc.)
-      egui_gfx::gfx_EguiInputTranslator_applyOutput(self.input_translator.as_mut_ptr(), egui_output);
+      egui_gfx::gfx_EguiInputTranslator_applyOutput(
+        self.input_translator.as_mut_ptr(),
+        egui_output,
+      );
 
       let queue = shardsc::gfx_getDrawQueueFromVar(queue_var);
       self

@@ -267,14 +267,12 @@ macro_rules! impl_ui_n_input {
     static $static: &[Type] = &[common_type::$common_type, common_type::$var_type];
 
     lazy_static! {
-      static ref $parameters: Parameters = vec![
-        (
-          cstr!("Variable"),
-          shccstr!("The variable that holds the input value."),
-          $static,
-        )
-          .into(),
-      ];
+      static ref $parameters: Parameters = vec![(
+        cstr!("Variable"),
+        shccstr!("The variable that holds the input value."),
+        $static,
+      )
+        .into(),];
     }
 
     impl Default for $shard_name {
