@@ -10,11 +10,13 @@ use crate::shardsc::SHColor;
 use crate::shardsc::SHComposeResult;
 use crate::shardsc::SHContext;
 use crate::shardsc::SHEnumInfo;
+use crate::shardsc::SHEnumTypeInfo;
 use crate::shardsc::SHExposedTypeInfo;
 use crate::shardsc::SHExposedTypesInfo;
 use crate::shardsc::SHImage;
 use crate::shardsc::SHInstanceData;
 use crate::shardsc::SHMeshRef;
+use crate::shardsc::SHObjectTypeInfo;
 use crate::shardsc::SHOptionalString;
 use crate::shardsc::SHOptionalStrings;
 use crate::shardsc::SHParameterInfo;
@@ -25,11 +27,9 @@ use crate::shardsc::SHString;
 use crate::shardsc::SHStrings;
 use crate::shardsc::SHTable;
 use crate::shardsc::SHTableIterator;
+use crate::shardsc::SHTableTypeInfo;
 use crate::shardsc::SHTypeInfo;
 use crate::shardsc::SHTypeInfo_Details;
-use crate::shardsc::SHEnumTypeInfo;
-use crate::shardsc::SHObjectTypeInfo;
-use crate::shardsc::SHTableTypeInfo;
 use crate::shardsc::SHType_Any;
 use crate::shardsc::SHType_Array;
 use crate::shardsc::SHType_Bool;
@@ -544,10 +544,10 @@ Static common type infos utility
 pub mod common_type {
   use crate::shardsc::util_type2Name;
   use crate::shardsc::SHStrings;
+  use crate::shardsc::SHTableTypeInfo;
   use crate::shardsc::SHType;
   use crate::shardsc::SHTypeInfo;
   use crate::shardsc::SHTypeInfo_Details;
-  use crate::shardsc::SHTableTypeInfo;
   use crate::shardsc::SHType_Any;
   use crate::shardsc::SHType_Bool;
   use crate::shardsc::SHType_Bytes;
@@ -4124,9 +4124,7 @@ impl Table {
   }
 
   pub fn len(&self) -> usize {
-    unsafe {
-      (*self.t.api).tableSize.unwrap()(self.t)
-    }
+    unsafe { (*self.t.api).tableSize.unwrap()(self.t) }
   }
 
   pub fn iter(&self) -> TableIterator {

@@ -34,6 +34,12 @@ lazy_static! {
       &BOOL_TYPES[..],
     )
       .into(),
+    (
+      cstr!("Centered"),
+      shccstr!("Center the contents horizontally."),
+      &BOOL_TYPES[..],
+    )
+      .into(),
   ];
 }
 
@@ -45,7 +51,8 @@ impl Default for Horizontal {
       parents,
       requiring: Vec::new(),
       contents: ShardsVar::default(),
-      wrap: ParamVar::new(false.into()),
+      wrap: false,
+      centered: false,
       exposing: Vec::new(),
     }
   }
@@ -99,7 +106,8 @@ impl Shard for Horizontal {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.wrap.set_param(value)),
+      1 => Ok(self.wrap = value.try_into()?),
+      2 => Ok(self.centered = value.try_into()?),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -107,7 +115,8 @@ impl Shard for Horizontal {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.contents.get_param(),
-      1 => self.wrap.get_param(),
+      1 => self.wrap.into(),
+      2 => self.centered.into(),
       _ => Var::default(),
     }
   }
@@ -149,13 +158,11 @@ impl Shard for Horizontal {
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
     }
-    self.wrap.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.wrap.cleanup();
     if !self.contents.is_empty() {
       self.contents.cleanup();
     }
@@ -170,17 +177,32 @@ impl Shard for Horizontal {
     }
 
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
-      let wrap: bool = self.wrap.get().try_into()?;
-      if wrap {
-        ui.horizontal_wrapped(|ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+      if self.centered {
+        ui.centered_and_justified(|ui| {
+          if self.wrap {
+            ui.horizontal_wrapped(|ui| {
+              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+            })
+          } else {
+            ui.horizontal(|ui| {
+              util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+            })
+          }
+          .inner
         })
+        .inner?;
       } else {
-        ui.horizontal(|ui| {
-          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        })
+        if self.wrap {
+          ui.horizontal_wrapped(|ui| {
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          })
+        } else {
+          ui.horizontal(|ui| {
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          })
+        }
+        .inner?;
       }
-      .inner?;
 
       // Always passthrough the input
       Ok(*input)

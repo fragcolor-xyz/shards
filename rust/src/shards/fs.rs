@@ -352,7 +352,7 @@ impl BlockingShard for SaveFileDialog {
         dialog = dialog.set_directory(start_path);
       }
     }
-    
+
     if let Some(path) = dialog.save_file() {
       let path = path.display().to_string();
       let output = Var::ephemeral_string(path.as_str());

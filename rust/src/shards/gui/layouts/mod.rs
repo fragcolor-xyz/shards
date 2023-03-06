@@ -68,7 +68,8 @@ struct Horizontal {
   parents: ParamVar,
   requiring: ExposedTypes,
   contents: ShardsVar,
-  wrap: ParamVar,
+  wrap: bool,
+  centered: bool,
   exposing: ExposedTypes,
 }
 
@@ -122,7 +123,7 @@ struct Vertical {
   parents: ParamVar,
   requiring: ExposedTypes,
   contents: ShardsVar,
-  centered: ParamVar,
+  centered: bool,
   exposing: ExposedTypes,
 }
 
