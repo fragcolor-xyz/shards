@@ -747,7 +747,8 @@ struct SetBase : public VariableBase {
                    // need to check if this was just a any table definition {}
                    !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
                    data.inputType != reference.exposedType) {
-          throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name, reference.exposedType, data.inputType));
+          throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
+                                         reference.exposedType, data.inputType));
         }
         if (!_isTable && !reference.isMutable) {
           SHLOG_ERROR("Error with variable: {}", _name);
@@ -782,6 +783,9 @@ struct SetBase : public VariableBase {
       return *_cell;
     }
 
+    // if flagged exposed and not None, we got set already!
+    const auto shouldNotOverwrite = (_target->flags & SHVAR_FLAGS_EXPOSED) && _target->valueType != SHType::None;
+
     if (_isTable) {
       if (_target->valueType != SHType::Table) {
         if (_target->valueType != SHType::None)
@@ -796,8 +800,10 @@ struct SetBase : public VariableBase {
       auto &kv = _key.get();
       SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
 
-      // Clone will try to recycle memory and such
-      cloneVar(*vptr, input);
+      if (likely(!shouldNotOverwrite)) {
+        // Clone will try to recycle memory and such
+        cloneVar(*vptr, input);
+      }
 
       // use fast cell from now
       // if variable we cannot do this tho!
@@ -806,8 +812,10 @@ struct SetBase : public VariableBase {
 
       return *vptr;
     } else {
-      // Clone will try to recycle memory and such
-      cloneVar(*_target, input);
+      if (likely(!shouldNotOverwrite)) {
+        // Clone will try to recycle memory and such
+        cloneVar(*_target, input);
+      }
 
       // use fast cell from now
       _cell = _target;
@@ -826,9 +834,9 @@ struct Set : public SetBase {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
-  static inline shards::ParamsInfo setParamsInfo = shards::ParamsInfo(
-      variableParamsInfo,
-      ParamsInfo::Param("Exposed", SHCCSTR("If the variable should be marked as exposed."), CoreInfo::BoolType));
+  static inline shards::ParamsInfo setParamsInfo =
+      shards::ParamsInfo(variableParamsInfo, ParamsInfo::Param("Exposed", SHCCSTR("If the variable should be marked as exposed."),
+                                                               CoreInfo::BoolType));
 
   static SHParametersInfo parameters() { return SHParametersInfo(setParamsInfo); }
 
@@ -2515,7 +2523,8 @@ struct Take {
     _tableOutput = isTable;
 
     if (!valid)
-      throw SHException(fmt::format("Take, invalid indices or malformed input. input: {}, indices: {}", data.inputType, _indices));
+      throw SHException(
+          fmt::format("Take, invalid indices or malformed input. input: {}, indices: {}", data.inputType, _indices));
 
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
