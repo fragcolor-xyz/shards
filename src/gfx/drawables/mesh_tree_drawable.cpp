@@ -12,7 +12,7 @@ DrawablePtr MeshTreeDrawable::clone() const {
     result->drawables.push_back(std::static_pointer_cast<MeshDrawable>(drawable->clone()));
   }
   for (auto &child : children) {
-    result->children.push_back(std::static_pointer_cast<MeshTreeDrawable>(child->clone()));
+    result->addChild(std::static_pointer_cast<MeshTreeDrawable>(child->clone()));
   }
   result->id = getNextDrawableId();
   return result;
