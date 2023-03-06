@@ -1,9 +1,9 @@
 set(SHARDS_TOOLS_PATH ${SHARDS_DIR}/src/tools/build/bin)
 find_program(BIN2C_EXE NAMES "bin2c" PATHS ${SHARDS_TOOLS_PATH} REQUIRED NO_DEFAULT_PATH NO_SYSTEM_ENVIRONMENT_PATH)
 
-define_property(TARGET PROPERTY BUNDLED_FILE_NAMES)
-define_property(TARGET PROPERTY BUNDLED_FILE_VARS)
-define_property(TARGET PROPERTY BUNDLED_FILE_MAPPED_NAMES)
+define_property(TARGET PROPERTY BUNDLED_FILE_NAMES BRIEF_DOCS "")
+define_property(TARGET PROPERTY BUNDLED_FILE_VARS BRIEF_DOCS "")
+define_property(TARGET PROPERTY BUNDLED_FILE_MAPPED_NAMES BRIEF_DOCS "")
 
 # Used to add files
 # This functions strips all the folder names and genrates include paths as follows:
