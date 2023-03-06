@@ -112,8 +112,6 @@ Shards has numerous features that make it ideal for live on-the-fly game develop
     (Setup
      (GFX.DrawQueue) >= .ui-draw-queue
      (GFX.UIPass .ui-draw-queue) >> .render-steps)
-    .ui-draw-queue (GFX.ClearQueue)
-
     (UI
      .ui-draw-queue
      (UI.Window
