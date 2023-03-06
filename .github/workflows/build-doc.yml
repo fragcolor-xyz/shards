@@ -27,16 +27,10 @@ jobs:
         with:
           name: shards-win64 Release
           path: docs/samples
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          release: false
-          path-type: inherit
       - name: Run samples
         env:
           GFX_BACKEND: D3D12
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd docs/samples
           for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' ! -path '*Dialog*' \));
@@ -74,17 +68,8 @@ jobs:
         with:
           name: shards-win64 Debug
           path: ./
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          release: false
-          path-type: inherit
-          install: >-
-            base-devel
-            mingw-w64-x86_64-toolchain
       - name: Generate markdown
-        shell: msys2 {0}
+        shell: bash
         run: |
           ./shards.exe docs/generate.edn
       - name: Upload markdown
