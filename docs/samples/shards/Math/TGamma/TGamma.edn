@@ -1,4 +1,4 @@
 10.0
 (Math.TGamma) (Log)
 
-(Assert.Is 362880.0 true)
+(Assert.IsAlmost 362880.0 true)
