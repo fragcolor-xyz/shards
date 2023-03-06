@@ -2,6 +2,7 @@
 #include "common_types.hpp"
 #include "drawable_utils.hpp"
 #include "foundation.hpp"
+#include "shards.hpp"
 #include "shards_utils.hpp"
 #include <gfx/drawable.hpp>
 #include <gfx/error_utils.hpp>
@@ -109,6 +110,9 @@ struct DrawShard {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (!_queue.isVariable())
+      throw ComposeError("Draw requires a queue");
 
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);

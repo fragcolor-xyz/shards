@@ -23,7 +23,7 @@ static constexpr float comparisonTolerance = 0.05f;
 TEST_CASE("Viewport render target", "[RenderGraph]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
-  auto &viewStack = renderer.getViewStack();
+  const auto &viewStack = renderer.getViewStack();
 
   MeshPtr cubeMesh = createCubeMesh();
 
@@ -95,13 +95,13 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
     Rect mainViewport = viewStack.getOutput().viewport;
     Rect subViewport = Rect(int2(mainViewport.width / 2, mainViewport.x), mainViewport.getSize() / 2);
 
-    viewStack.push(ViewStack::Item{.renderTarget = rt});
+    renderer.pushView(ViewStack::Item{.renderTarget = rt});
     renderer.render(view, stepsRT);
-    viewStack.pop();
+    renderer.popView();
 
-    viewStack.push(ViewStack::Item{.viewport = subViewport});
+    renderer.pushView(ViewStack::Item{.viewport = subViewport});
     renderer.render(subView, stepsMain);
-    viewStack.pop();
+    renderer.popView();
   };
   CHECK(testRenderer->checkFrame("rendergraph_viewport", comparisonTolerance));
 
@@ -111,7 +111,7 @@ TEST_CASE("Viewport render target", "[RenderGraph]") {
 TEST_CASE("Velocity", "[RenderGraph]") {
   auto testRenderer = createTestRenderer();
   Renderer &renderer = *testRenderer->renderer.get();
-  auto &viewStack = renderer.getViewStack();
+  const auto &viewStack = renderer.getViewStack();
 
   MeshPtr cubeMesh = createCubeMesh();
 
@@ -207,9 +207,9 @@ TEST_CASE("Velocity", "[RenderGraph]") {
     drawable1->transform = getWaveTransform(t, 0);
     drawable2->transform = getWaveTransform(t, 1);
 
-    viewStack.push(ViewStack::Item{.renderTarget = rt});
+    renderer.pushView(ViewStack::Item{.renderTarget = rt});
     renderer.render(view, stepsRT);
-    viewStack.pop();
+    renderer.popView();
 
     renderer.render(view, stepsMain);
 
