@@ -136,11 +136,17 @@ enum class ShaderParamFlags {
   None = 0,
 };
 
+enum class BindingFrequency {
+  View,
+  Draw,
+};
+
 struct NamedShaderParam {
   shader::NumFieldType type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4);
   std::string name;
   ParamVariant defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
+  BindingFrequency bindingFrequency = BindingFrequency::Draw;
 
   NamedShaderParam() = default;
   NamedShaderParam(std::string name, const shader::NumFieldType &type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4),
@@ -159,6 +165,7 @@ struct NamedTextureParam {
   shader::TextureFieldType type;
   TexturePtr defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
+  BindingFrequency bindingFrequency = BindingFrequency::Draw;
 
   NamedTextureParam() = default;
   NamedTextureParam(std::string name, TextureDimension dimension = TextureDimension::D2,

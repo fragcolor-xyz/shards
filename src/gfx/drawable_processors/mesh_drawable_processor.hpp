@@ -362,6 +362,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       // Set hard-coded view parameters (view/projection matrix)
       ParameterStorage viewParameters(allocator);
 
+      // Set default parameters
+      for (auto &param : cachedPipeline.baseViewParameters.basic)
+        viewParameters.setParam(param.first.c_str(), param.second);
+
       // Set builtin view paramters (transforms)
       setViewParameters(viewParameters, context.viewData);
 

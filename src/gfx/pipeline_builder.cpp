@@ -84,18 +84,22 @@ static FeaturePipelineState computePipelineState(const std::vector<const Feature
   return state;
 }
 
-static void buildBaseDrawParameters(ParameterStorage &params, const std::vector<const Feature *> &features) {
+static void buildBaseParameters(ParameterStorage &viewParams, ParameterStorage &drawParams,
+                                const std::vector<const Feature *> &features) {
+  auto getOutput = [&](auto &param) -> ParameterStorage & {
+    return (param.bindingFrequency == BindingFrequency::Draw) ? drawParams : viewParams;
+  };
   for (const Feature *feature : features) {
     for (auto &param : feature->shaderParams) {
       if (param.defaultValue.index() == 0) {
         // Not set (monostate)
       } else {
-        params.setParam(param.name, param.defaultValue);
+        getOutput(param).setParam(param.name, param.defaultValue);
       }
     }
     for (auto &param : feature->textureParams) {
       if (param.defaultValue) {
-        params.setTexture(param.name, param.defaultValue);
+        getOutput(param).setTexture(param.name, param.defaultValue);
       }
     }
   }
@@ -157,10 +161,15 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
   objectBinding.frequency = BindingFrequency::Draw;
 
   auto &objectLayoutBuilder = objectBinding.layoutBuilder;
+  auto &viewLayoutBuilder = viewBinding.layoutBuilder;
+  auto getParamBuilder = [&](auto &param) -> decltype(objectLayoutBuilder) & {
+    return (param.bindingFrequency == BindingFrequency::Draw) ? objectLayoutBuilder : viewLayoutBuilder;
+  };
+
   for (const Feature *feature : features) {
-    // Object parameters
+    // Push parameter declarations
     for (auto &param : feature->shaderParams) {
-      objectLayoutBuilder.push(param.name, param.type);
+      getParamBuilder(param).push(param.name, param.type);
     }
 
     // Apply modifiers
@@ -177,7 +186,6 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
 
     // Store parameter generators
     for (const auto &gen : feature->generators) {
-
       std::visit(
           [&](auto arg) {
             using T = std::decay_t<decltype(arg)>;
@@ -224,7 +232,7 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
 
   buildPipelineLayout(device, deviceLimits);
 
-  buildBaseDrawParameters(output.baseDrawParameters, features);
+  buildBaseParameters(output.baseViewParameters, output.baseDrawParameters, features);
 
   // Actually create the pipeline object
   finalize(device);

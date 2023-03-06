@@ -36,7 +36,7 @@
               {:Name "mainColor"
                :Stage ProgrammableGraphicsStage.Fragment
                :EntryPoint (->
-                            (Shader.ReadBuffer :Name "time") >= .time
+                            (Shader.ReadBuffer :Name "time" :BufferName "view") >= .time
                             .time (Math.Multiply 2.0) (Math.Cos) (Math.Divide 2.0) (Math.Add 0.5) >= .wave
                             (Shader.ReadGlobal :Name "lighting") (ToFloat4) >= .lighting-4
                             .wave (Math.Multiply (Float4 0 0 0 1)) (Math.Add .lighting-4)
@@ -71,4 +71,4 @@
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule root test-wire)
-(if (run root timestep 100) nil (throw "Root tick failed"))
+(if (run root timestep) nil (throw "Root tick failed"))

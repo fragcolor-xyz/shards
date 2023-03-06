@@ -206,6 +206,7 @@ struct CachedPipeline {
 
   size_t lastTouched{};
 
+  ParameterStorage baseViewParameters;
   ParameterStorage baseDrawParameters;
 
   std::optional<CompilationError> compilationError{};
