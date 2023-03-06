@@ -27,18 +27,18 @@
    {:Shaders [{:Name "lighting"
                :Stage ProgrammableGraphicsStage.Fragment
                :EntryPoint (->
-                            (Shader.ReadInput :Name "worldNormal") >= .normal
-                            (Shader.ReadBuffer :Name "lightDirection") >= .light-dir
+                            (Shader.ReadInput "worldNormal") >= .normal
+                            (Shader.ReadBuffer "lightDirection") >= .light-dir
                             (Float3 0 0 0) (Math.Subtract .light-dir) >= .inv-light-dir
                             .normal (Math.Normalize) (Math.Dot .inv-light-dir) (Max 0.0) >= .n-dot-l
-                            (Shader.ReadBuffer :Name "lightColor") (Math.Multiply .n-dot-l)
+                            (Shader.ReadBuffer "lightColor") (Math.Multiply .n-dot-l)
                             (Shader.WriteGlobal "lighting"))}
               {:Name "mainColor"
                :Stage ProgrammableGraphicsStage.Fragment
                :EntryPoint (->
-                            (Shader.ReadBuffer :Name "time") >= .time
+                            (Shader.ReadBuffer "time") >= .time
                             .time (Math.Multiply 2.0) (Math.Cos) (Math.Divide 2.0) (Math.Add 0.5) >= .wave
-                            (Shader.ReadGlobal :Name "lighting") (ToFloat4) >= .lighting-4
+                            (Shader.ReadGlobal "lighting") (ToFloat4) >= .lighting-4
                             .wave (Math.Multiply (Float4 0 0 0 1)) (Math.Add .lighting-4)
                             (Shader.WriteOutput "color"))}]
     :Params {:lightDirection .light-direction
@@ -49,7 +49,8 @@
                 (->
                  (Listen "time") >= .time
                  {:time .time})) >> .features
-   {:Features .features} (GFX.DrawablePass) >> .render-steps
+   (GFX.DrawQueue) >= .queue
+   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
 
     ;; Create view
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
@@ -62,10 +63,10 @@
     .time (Broadcast "time")
 
     (spin-transform .time (Float3 -0.6 0 0))
-    (GFX.Drawable :Mesh .mesh) (GFX.Draw)
+    (GFX.Drawable :Mesh .mesh) (GFX.Draw .queue)
 
     (spin-transform (-> .time (Math.Multiply 0.5)) (Float3 0.6 0 0))
-    (GFX.Drawable :Mesh .mesh) (GFX.Draw)
+    (GFX.Drawable :Mesh .mesh) (GFX.Draw .queue)
 
     (GFX.Render :Steps .render-steps :View .view))))
 

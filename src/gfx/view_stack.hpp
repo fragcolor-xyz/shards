@@ -4,6 +4,11 @@
 #include "types.hpp"
 #include "render_target.hpp"
 #include "checked_stack.hpp"
+#include <optional>
+
+namespace gfx::detail {
+  struct FrameQueue;
+}
 
 namespace gfx {
 
@@ -39,7 +44,9 @@ public:
   void pop();
 
   /// <div rustbindgen hide></div>
-  Output getOutput() const;
+  Output getOutput(size_t offset = 0) const;
+
+  size_t size() const { return items.size(); }
 
   void reset() { ensureEmptyStack(items); }
 };

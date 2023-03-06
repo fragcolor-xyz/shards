@@ -1,6 +1,8 @@
 #include "../gfx.hpp"
+#include "common_types.hpp"
 #include "drawable_utils.hpp"
 #include "foundation.hpp"
+#include "shards.hpp"
 #include "shards_utils.hpp"
 #include <gfx/drawable.hpp>
 #include <gfx/error_utils.hpp>
@@ -93,38 +95,24 @@ struct DrawShard {
   static inline shards::Types DrawableTypes{Types::Drawable, DrawableSeqType};
 
   PARAM_PARAMVAR(_queue, "Queue", "The queue to add the draw command to (Optional). Uses the default queue if not specified",
-                 {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)});
+                 {Type::VariableOf(Types::DrawQueue)});
   PARAM_IMPL(DrawShard, PARAM_IMPL_FOR(_queue));
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
-  RequiredGraphicsContext _graphicsContext{};
+  DrawShard() {}
 
-  bool isQueueSet() const { return _queue->valueType != SHType::None; }
+  void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
 
-  void warmup(SHContext *shContext) {
-    PARAM_WARMUP(shContext);
-
-    if (!isQueueSet()) {
-      _graphicsContext.warmup(shContext);
-    }
-  }
-
-  void cleanup() {
-    _graphicsContext.cleanup();
-    PARAM_CLEANUP();
-  }
+  void cleanup() { PARAM_CLEANUP(); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
-    if (!isQueueSet()) {
-      // Use default global queue (check main thread)
-      composeCheckGfxThread(data);
-      _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
-    }
+    if (!_queue.isVariable())
+      throw ComposeError("Draw requires a queue");
 
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE(data, activateSeq);
@@ -135,14 +123,7 @@ struct DrawShard {
     return CoreInfo::NoneType;
   }
 
-  DrawQueue &getDrawQueue() {
-    SHVar queueVar = _queue.get();
-    if (isQueueSet()) {
-      return *varAsObjectChecked<SHDrawQueue>(queueVar, Types::DrawQueue).queue.get();
-    } else {
-      return *_graphicsContext->getDrawQueue().get();
-    }
-  }
+  DrawQueue &getDrawQueue() { return *varAsObjectChecked<SHDrawQueue>(_queue.get(), Types::DrawQueue).queue.get(); }
 
   template <typename T> void addDrawableToQueue(T &drawable) { getDrawQueue().add(drawable); }
 
@@ -156,7 +137,6 @@ struct DrawShard {
           }
         },
         varAsObjectChecked<SHDrawable>(input, Types::Drawable).drawable);
-
     return SHVar{};
   }
 
@@ -165,7 +145,6 @@ struct DrawShard {
     for (size_t i = 0; i < seq.len; i++) {
       (void)activateSingle(shContext, seq.elements[i]);
     }
-
     return SHVar{};
   }
 
@@ -177,35 +156,35 @@ struct DrawQueueShard {
   static SHTypesInfo outputTypes() { return Types::DrawQueue; }
   static SHOptionalString help() { return SHCCSTR("Creates a new drawable queue to record Draw commands into"); }
 
-  static SHParametersInfo parameters() {
-    static Parameters parameters = {};
-    return parameters;
+  PARAM_VAR(_autoClear, "AutoClear", "When enabled, automatically clears the queue after items have been rendered",
+            {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(DrawQueueShard, PARAM_IMPL_FOR(_autoClear));
+
+  SHDrawQueue *_queue{};
+
+  DrawQueueShard() { _autoClear = Var(true); }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    assert(!_queue);
+    _queue = Types::DrawQueueObjectVar.New();
+    _queue->queue = std::make_shared<DrawQueue>();
+    _queue->queue->setAutoClear(_autoClear.isNone() ? true : (bool)_autoClear);
   }
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    default:
-      break;
+  void cleanup() {
+    PARAM_CLEANUP();
+    if (_queue) {
+      Types::DrawQueueObjectVar.Release(_queue);
+      _queue = nullptr;
     }
   }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void warmup(SHContext *context) {}
-
-  void cleanup() {}
 
   SHTypeInfo compose(SHInstanceData &data) { return Types::DrawQueue; }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    SHDrawQueue *shQueue = Types::DrawQueueObjectVar.New();
-    shQueue->queue = std::make_shared<DrawQueue>();
-    return Types::DrawQueueObjectVar.Get(shQueue);
+    _queue->queue->clear();
+    return Types::DrawQueueObjectVar.Get(_queue);
   }
 };
 

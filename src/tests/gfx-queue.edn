@@ -29,7 +29,6 @@
    ;; Red cube should be draw on top of cyan cube
    {:Features .features :Queue .queue-1} (GFX.DrawablePass) >> .render-steps
    {:Features .features :Queue .queue-0} (GFX.DrawablePass) >> .render-steps
-   {:Features .features} (GFX.DrawablePass) >> .render-steps ; Test default case with global queue
 
     ;; Create view
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
@@ -39,9 +38,6 @@
    :Contents
    (->
     .time (Math.Add timestep) > .time
-
-    .queue-0 (GFX.ClearQueue)
-    .queue-1 (GFX.ClearQueue)
 
     (spin-transform .time (Float3 -0.4 0 0))
     (GFX.Drawable :Mesh .mesh :Params {:baseColor (Float4 1 0 0 0.5)}) (GFX.Draw :Queue .queue-0)

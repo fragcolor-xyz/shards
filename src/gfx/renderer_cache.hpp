@@ -1,6 +1,7 @@
 #ifndef A2997EDF_4E03_48F4_AF46_10E0BEE1DFE3
 #define A2997EDF_4E03_48F4_AF46_10E0BEE1DFE3
 
+#include "boost/core/allocator_access.hpp"
 #include "renderer_types.hpp"
 #include "pipeline_hash_collector.hpp"
 #include "hasherxxh128.hpp"
@@ -11,10 +12,18 @@
 namespace gfx::detail {
 
 struct PipelineHashCache final : public IPipelineHashStorage {
+  using allocator_type = shards::pmr::PolymorphicAllocator<>;
+
   struct Entry {
     Hash128 hash;
   };
-  std::unordered_map<UniqueId, Entry> perType[magic_enum::enum_count<UniqueIdTag>()];
+
+  static inline constexpr size_t NumTypes = magic_enum::enum_count<UniqueIdTag>();
+  shards::pmr::unordered_map<UniqueId, Entry> *perType{};
+
+  PipelineHashCache(allocator_type allocator) {
+    perType = allocator.new_objects<std::remove_pointer_t<decltype(perType)>>(NumTypes);
+  }
 
   const Hash128 *find(UniqueId id) {
     auto &lut = perType[(uint8_t)id.getTag()];
@@ -57,7 +66,7 @@ struct PipelineHashCache final : public IPipelineHashStorage {
   }
 
   void reset() {
-    for (size_t i = 0; i < std::size(perType); i++) {
+    for (size_t i = 0; i < NumTypes; i++) {
       auto &lut = perType[i];
       lut.clear();
     }

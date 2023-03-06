@@ -9,6 +9,7 @@
 #include <variant>
 #include <vector>
 #include <memory>
+#include <boost/container/small_vector.hpp>
 
 namespace gfx {
 
@@ -132,7 +133,7 @@ struct RenderFullscreenStep {
 
 typedef std::variant<ClearStep, RenderDrawablesStep, RenderFullscreenStep> PipelineStep;
 typedef std::shared_ptr<PipelineStep> PipelineStepPtr;
-typedef std::vector<PipelineStepPtr> PipelineSteps;
+typedef boost::container::small_vector<PipelineStepPtr, 8> PipelineSteps;
 
 template <typename T> PipelineStepPtr makePipelineStep(T &&step) { return std::make_shared<PipelineStep>(std::move(step)); }
 } // namespace gfx

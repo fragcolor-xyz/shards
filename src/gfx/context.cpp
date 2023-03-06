@@ -18,6 +18,7 @@
 
 namespace gfx {
 static auto logger = getLogger();
+static auto wgpuLogger = getWgpuLogger();
 
 static WGPUTextureFormat getDefaultSrgbBackbufferFormat() {
 #if GFX_ANDROID
@@ -442,7 +443,7 @@ void Context::deviceObtained() {
   auto errorCallback = [](WGPUErrorType type, char const *message, void *userdata) {
     Context &context = *(Context *)userdata;
     std::string msgString(message);
-    SPDLOG_LOGGER_ERROR(logger, "{} ({})", message, type);
+    SPDLOG_LOGGER_ERROR(wgpuLogger, "{} ({})", message, type);
     if (type == WGPUErrorType_DeviceLost) {
       context.deviceLost();
     }
@@ -565,22 +566,22 @@ void Context::initCommon() {
 #ifdef WEBGPU_NATIVE
   wgpuSetLogCallback(
       [](WGPULogLevel level, const char *msg, void *userData) {
-        Context &context = *(Context *)userData;
+        (void)userData;
         switch (level) {
         case WGPULogLevel_Error:
-          logger->error("{}", msg);
+          wgpuLogger->error("{}", msg);
           break;
         case WGPULogLevel_Warn:
-          logger->warn("{}", msg);
+          wgpuLogger->warn("{}", msg);
           break;
         case WGPULogLevel_Info:
-          logger->info("{}", msg);
+          wgpuLogger->info("{}", msg);
           break;
         case WGPULogLevel_Debug:
-          logger->debug("{}", msg);
+          wgpuLogger->debug("{}", msg);
           break;
         case WGPULogLevel_Trace:
-          logger->trace("{}", msg);
+          wgpuLogger->trace("{}", msg);
           break;
         default:
           break;

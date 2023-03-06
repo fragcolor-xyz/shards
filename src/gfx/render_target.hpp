@@ -39,6 +39,7 @@ struct TextureSubResource {
   TextureSubResource(std::shared_ptr<Texture> texture, uint8_t faceIndex = 0, uint8_t mipIndex = 0)
       : texture(texture), faceIndex(faceIndex), mipIndex(mipIndex) {}
   TextureSubResource(const TextureSubResource &) = default;
+  TextureSubResource& operator=(const TextureSubResource &) = default;
 
   operator bool() const { return (bool)texture; }
   operator const std::shared_ptr<Texture> &() const { return texture; }
@@ -81,6 +82,9 @@ public:
 
   /// <div rustbindgen hide></div>
   int2 resizeConditional(int2 referenceSize);
+
+  /// Initialize & resize with fixed size
+  void resizeFixed(int2 size);
 
   /// <div rustbindgen hide></div>
   int2 getSize() const;

@@ -224,7 +224,7 @@ public:
   }
 
   void collectComposeResult(const std::shared_ptr<SHWire> &wire, std::vector<NamedShaderParam> &outBasicParams,
-                            std::vector<NamedTextureParam> &outTextureParams, bool expectSeqOutput) {
+                            std::vector<NamedTextureParam> &outTextureParams, BindingFrequency bindingFreq, bool expectSeqOutput) {
     auto parseParamTable = [&](const SHTypeInfo &type) {
       for (size_t i = 0; i < type.table.keys.len; i++) {
         auto k = type.table.keys.elements[i];
@@ -239,9 +239,11 @@ public:
             [&](auto &&arg) {
               using T = std::decay_t<decltype(arg)>;
               if constexpr (std::is_same_v<T, shader::NumFieldType>) {
-                outBasicParams.emplace_back(k, arg);
+                auto& param = outBasicParams.emplace_back(k, arg);
+                param.bindingFrequency = bindingFreq;
               } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
-                outTextureParams.emplace_back(k, arg);
+                auto& param = outTextureParams.emplace_back(k, arg);
+                param.bindingFrequency = bindingFreq;
               } else {
                 throw formatException("Generator wire returns invalid type {} for key {}", v, k);
               }
@@ -293,10 +295,10 @@ public:
     _derivedShaderParams.clear();
     _derivedTextureParams.clear();
     for (auto &wire : _viewGeneratorBranch.wires) {
-      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, false);
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindingFrequency::View, false);
     }
     for (auto &wire : _drawableGeneratorBranch.wires) {
-      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, true);
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindingFrequency::Draw, true);
     }
   }
 
@@ -649,8 +651,8 @@ public:
 
     GraphicsRendererContext graphicsRendererContext{
         .renderer = &ctx.renderer,
-        .render = [&ctx = ctx](std::vector<ViewPtr> views,
-                               const PipelineSteps &pipelineSteps) { ctx.render(views, pipelineSteps); },
+        .render = [&ctx = ctx](ViewPtr view,
+                               const PipelineSteps &pipelineSteps) { ctx.render(view, pipelineSteps); },
     };
     mesh->variables.emplace(GraphicsRendererContext::VariableName,
                             Var::Object(&graphicsRendererContext, GraphicsRendererContext::Type));

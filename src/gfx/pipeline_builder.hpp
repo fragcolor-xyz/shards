@@ -10,11 +10,6 @@
 
 namespace gfx {
 
-enum class BindingFrequency {
-  View,
-  Draw,
-};
-
 // Describes a buffer binding being built
 struct BufferBindingBuilder {
   BindingFrequency frequency = BindingFrequency::Draw;

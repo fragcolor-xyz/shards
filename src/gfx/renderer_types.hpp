@@ -206,6 +206,7 @@ struct CachedPipeline {
 
   size_t lastTouched{};
 
+  ParameterStorage baseViewParameters;
   ParameterStorage baseDrawParameters;
 
   std::optional<CompilationError> compilationError{};
@@ -259,6 +260,7 @@ struct ViewData {
   CachedView &cachedView;
   Rect viewport;
   RenderTargetPtr renderTarget;
+  int2 referenceOutputSize;
 };
 
 struct VertexStateBuilder {

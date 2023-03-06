@@ -59,7 +59,7 @@
 (defshards shader-main []
   (Shader.ReadBuffer :Name "viewport" :BufferName "view") >= .viewport
   (Shader.ReadInput "texCoord0") >= .uv
-  (Shader.ReadBuffer "time") >= .time
+  (Shader.ReadBuffer :Name "time" :BufferName "view") >= .time
 
   ; Convert uv to screen position & aspect correct normalize 
   .viewport (Take [2 3]) >= .screen-size

@@ -366,23 +366,42 @@ template <typename TShard> struct Read final : public IOBase {
 
 // Override for reading a value from a named buffer
 struct ReadBuffer final : public IOBase {
-  std::string _bufferName = "object";
+  std::string _bufferName;
+  std::string _resolvedBufferName;
 
   SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   SHTypesInfo outputTypes() { return _type.shardsTypes; }
 
+  const auto &findBufferContainingParam(const std::string &fieldName) {
+    auto &shaderCtx = ShaderCompositionContext::get();
+    for (auto &b : shaderCtx.generatorContext.getDefinitions().buffers) {
+      auto field = b.second.findField(fieldName.c_str());
+      if (field)
+        return b;
+    }
+    throw shards::ComposeError(fmt::format("Failed to find shader parameter \"{}\" in any buffer", fieldName));
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     auto &shaderCtx = ShaderCompositionContext::get();
 
-    // Find buffer
-    auto &buffers = shaderCtx.generatorContext.getDefinitions().buffers;
-    auto bufferIt = buffers.find(_bufferName);
-    if (bufferIt == buffers.end())
-      throw shards::ComposeError(fmt::format("Shader buffer \"{}\" does not exist", _bufferName));
+    const BufferDefinition *buffer{};
+    if (_bufferName.empty()) {
+      auto &[name, def] = findBufferContainingParam(_name);
+      _resolvedBufferName = name;
+      buffer = &def;
+    } else {
+      // Find buffer
+      auto &buffers = shaderCtx.generatorContext.getDefinitions().buffers;
+      auto bufferIt = buffers.find(_bufferName);
+      if (bufferIt == buffers.end())
+        throw shards::ComposeError(fmt::format("Shader buffer \"{}\" does not exist", _bufferName));
+      buffer = &bufferIt->second;
+      _resolvedBufferName = _bufferName;
+    }
 
     // Find field in buffer
-    auto &buffer = bufferIt->second;
-    const UniformLayout *field = buffer.findField(_name.c_str());
+    const UniformLayout *field = buffer->findField(_name.c_str());
     if (!field)
       throw shards::ComposeError(fmt::format("Shader parameter \"{}\" does not exist in buffer \"{}\"", _name, _bufferName));
 
@@ -419,10 +438,10 @@ struct ReadBuffer final : public IOBase {
   }
 
   void translate(TranslationContext &context) {
-    SPDLOG_LOGGER_INFO(context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _bufferName, _name);
+    SPDLOG_LOGGER_INFO(context.logger, "gen(read/{})> {}.{}", NAMEOF_TYPE(blocks::ReadBuffer), _resolvedBufferName, _name);
 
     NumFieldType fieldType = std::get<NumFieldType>(_type.shaderType);
-    context.setWGSLTop<WGSLBlock>(_type.shaderType, blocks::makeBlock<blocks::ReadBuffer>(_name, fieldType, _bufferName));
+    context.setWGSLTop<WGSLBlock>(_type.shaderType, blocks::makeBlock<blocks::ReadBuffer>(_name, fieldType, _resolvedBufferName));
   }
 };
 

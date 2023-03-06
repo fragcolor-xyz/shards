@@ -38,6 +38,13 @@ template <typename T = uint8_t> struct PolymorphicAllocator : public polymorphic
     this->construct(p, std::forward<TArgs>(args)...);
     return p;
   }
+
+  template <typename U, typename... TArgs> U *new_objects(size_t count, TArgs... args) {
+    U *p = reinterpret_cast<PolymorphicAllocator<U> &>(*this).allocate(count);
+    for (size_t i = 0; i < count; i++)
+      this->construct(p + i, std::forward<TArgs>(args)...);
+    return p;
+  }
 };
 } // namespace shards::pmr
 

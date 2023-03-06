@@ -14,13 +14,15 @@ namespace gfx::detail {
 
 struct AsyncGraphicsContext;
 
+struct RendererStorage;
+
 // Context data when evaluating rendering commands
 struct DrawablePrepareContext {
   using Allocator = shards::pmr::PolymorphicAllocator<>;
 
   Context &context;
 
-  WorkerMemory &workerMemory;
+  RendererStorage &storage;
 
   const CachedPipeline &cachedPipeline;
 
@@ -32,9 +34,6 @@ struct DrawablePrepareContext {
 
   // Data from feature view/drawable generators
   const GeneratorData &generatorData;
-
-  // Global current frame number
-  size_t frameCounter;
 
   // Sorting mode for drawables, set on the pipeline step
   SortMode sortMode;

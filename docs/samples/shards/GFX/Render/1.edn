@@ -6,49 +6,43 @@
   location (Math.Translation) (Math.MatMul .rotX) (Math.MatMul .rotY) (Math.MatMul .rotZ))
 
 (def timestep (/ 1.0 120.0))
-(defloop main-wire
-  (GFX.MainWindow
-   :Contents
-   (->
-    (Setup
-     ; Keep track of the time variable
-     0.0 >= .time 
-     
-     ; Load the built-in cube mesh
-     (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
 
-     ; Declare transform variable
-     (Float3 0 0 0) (Math.Translation) >= .transform
+(GFX.MainWindow
+:Contents
+(->
+(Setup
+  ; Keep track of the time variable
+  0.0 >= .time 
+  
+  ; Load the built-in cube mesh
+  (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
 
-     ; The queue that will contain the draw commands (just the cube)
-     (GFX.DrawQueue) >= .queue
+  ; Declare transform variable
+  (Float3 0 0 0) (Math.Translation) >= .transform
 
-     ; Define a pass that renders the cube, with the built-in color and camera transform behaviour
-     (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
-     (GFX.BuiltinFeature  BuiltinFeatureId.BaseColor) >> .features
-     {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+  ; The queue that will contain the draw commands (just the cube)
+  ; By default this queue it automatically cleared after it has been processed
+  (GFX.DrawQueue) >= .queue
 
-     ; Setup the camera
-     {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
-     (GFX.View :View .view-transform) >= .view)
+  ; Define a pass that renders the cube, with the built-in color and camera transform behaviour
+  (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
+  (GFX.BuiltinFeature  BuiltinFeatureId.BaseColor) >> .features
+  {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
 
-    ; Clear the queue before rendering
-    .queue (GFX.ClearQueue)
+  ; Setup the camera
+  {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+  (GFX.View :View .view-transform) >= .view)
 
-    ; Rotate the cube's transform
-    .time (Math.Add timestep) > .time
-    (spin-transform .time (Float3 0.0 0 0))
+; Rotate the cube's transform
+.time (Math.Add timestep) > .time
+(spin-transform .time (Float3 0.0 0 0))
 
-    ; Update and retrieve the drawable
-    ; Note that the transform is the input 
-    (GFX.Drawable :Mesh .mesh :Params {:baseColor (Float4 0 1 0 1)}) >= .drawable
-    
-    ; Add drawable to the queue
-    .drawable (GFX.Draw .queue)
-    
-    ; Render everyghing
-    (GFX.Render :View .view :Steps .render-steps))))
+; Update and retrieve the drawable
+; Note that the transform is the input 
+(GFX.Drawable :Mesh .mesh :Params {:baseColor (Float4 0 1 0 1)}) >= .drawable
 
-(defmesh root)
-(schedule root main-wire)
-(run root timestep 200)
+; Add drawable to the queue
+.drawable (GFX.Draw .queue)
+
+; Render everyghing
+(GFX.Render :View .view :Steps .render-steps)))

@@ -196,7 +196,7 @@ struct RenderIntoShard {
     viewItem.renderTarget = _renderTarget;
 
     GraphicsRendererContext &ctx = _graphicsRendererContext;
-    ViewStack &viewStack = ctx.renderer->getViewStack();
+    const ViewStack &viewStack = ctx.renderer->getViewStack();
 
     Var referenceSizeVar = (Var &)_referenceSize.get();
     bool matchOutputSize = !_matchOutputSize.isNone() ? (bool)_matchOutputSize : false;
@@ -252,7 +252,7 @@ struct RenderIntoShard {
     // Make render target fixed size
     rt->size = RenderTargetSize::Fixed{.size = referenceSize};
 
-    viewStack.push(std::move(viewItem));
+    ctx.renderer->pushView(std::move(viewItem));
 
     if (_inputContext) {
       _inputContext->inputStack.push(std::move(inputItem));
@@ -261,7 +261,7 @@ struct RenderIntoShard {
     SHVar contentOutput;
     _contents.activate(shContext, input, contentOutput);
 
-    viewStack.pop();
+    ctx.renderer->popView();
 
     if (_inputContext) {
       _inputContext->inputStack.pop();

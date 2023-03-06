@@ -13,11 +13,6 @@ namespace gfx {
 
 struct RendererImpl;
 
-struct RendererHacks {
-  // Hints about definitely cleared render targets
-  std::vector<std::string> clearedHints;
-};
-
 /// Instance that caches render pipelines
 /// <div rustbindgen opaque></div>
 struct Renderer {
@@ -35,15 +30,19 @@ public:
   Context &getContext();
 
   /// <div rustbindgen hide></div>
-  void render(std::vector<ViewPtr> views, const PipelineSteps &pipelineSteps, const RendererHacks &hacks = {});
-
-  /// <div rustbindgen hide></div>
-  void render(ViewPtr view, const PipelineSteps &pipelineSteps);
+  void render(ViewPtr view, const PipelineSteps &pipelineSteps, bool immediate = false);
 
   /// <div rustbindgen hide></div>
   void setMainOutput(const MainOutput &output);
 
-  ViewStack &getViewStack();
+  /// <div rustbindgen hide></div>
+  const ViewStack &getViewStack() const;
+
+  /// <div rustbindgen hide></div>
+  void pushView(ViewStack::Item&& item);
+
+  /// <div rustbindgen hide></div>
+  void popView();
 
   /// <div rustbindgen hide></div>
   void beginFrame();

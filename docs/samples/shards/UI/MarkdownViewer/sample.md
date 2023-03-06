@@ -15,8 +15,6 @@
     (Setup
      (GFX.DrawQueue) >= .ui-draw-queue
      (GFX.UIPass .ui-draw-queue) >> .render-steps)
-    .ui-draw-queue (GFX.ClearQueue)
-
     (UI
      .ui-draw-queue
      (UI.TopPanel

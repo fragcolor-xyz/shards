@@ -38,9 +38,9 @@
   .u1 (Math.Add .t3) (Math.Add .time) (Math.Add .u0) (Do ucos))
 
 (defshards shader-main []
-  (Shader.ReadBuffer :Name "viewport" :BufferName "view") >= .viewport
+  (Shader.ReadBuffer "viewport") >= .viewport
   (Shader.ReadInput "texCoord0") >= .uv
-  (Shader.ReadBuffer "time") >== .time
+  (Shader.ReadBuffer "time") >= .time
   (Shader.ReadGlobal "color") >= .base-color
 
   .uv (Do plasma) >= .vcolor
@@ -76,12 +76,14 @@
                                                   (->
                                                    (Listen "time") >= .time
                                                    {:time .time})) >> .features
-   {:Features .features} (GFX.DrawablePass) >> .render-steps)
+
+   (GFX.DrawQueue) >= .queue
+   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps)
 
   .time (Math.Add timestep) > .time
   .time (Broadcast "time")
   (Do update-cube-transform)
-  (GFX.Drawable :Mesh .cube) (GFX.Draw)
+  (GFX.Drawable :Mesh .cube) (GFX.Draw .queue)
   (GFX.Render :Steps .render-steps :View .view))
 
 (defmesh root)

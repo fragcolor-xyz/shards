@@ -1,3 +1,4 @@
+#include "boost/container/pmr/global_resource.hpp"
 #include <gfx/renderer_cache.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
 #include <gfx/feature.hpp>
@@ -200,7 +201,7 @@ TEST_CASE("Pipeline cache evictions", "[Caching]") {
       make_shared<MeshDrawable>(meshes[0]),
   };
 
-  detail::PipelineHashCache cache;
+  detail::PipelineHashCache cache(boost::container::pmr::new_delete_resource());
 
   Hash128 hash0 = cache.update(*drawables[0].get());
   CHECK(cache.find(drawables[0]->getId()) != nullptr);
