@@ -99,7 +99,6 @@ jobs:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
-      bitness: 64bits
       build-type: Debug
       runtime-tests: true
       run-tests: true
@@ -108,7 +107,6 @@ jobs:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
-      bitness: 64bits
       build-type: Release
       run-tests: true
   Windows-32bits-Debug:

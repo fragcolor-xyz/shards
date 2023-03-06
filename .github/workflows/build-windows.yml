@@ -1,16 +1,8 @@
-name: Build (Windows)
+name: Build (Windows 64-bit)
 
 on:
   workflow_dispatch:
     inputs:
-      bitness:
-        description: Build for 32-bit or 64-bit?
-        required: true
-        default: 64bits
-        type: choice
-        options:
-          - 32bits
-          - 64bits
       build-type:
         description: Build in Release or Debug?
         required: true
@@ -44,10 +36,6 @@ on:
         type: boolean
   workflow_call:
     inputs:
-      bitness:
-        required: true
-        default: 64bits
-        type: string
       build-type:
         required: true
         default: Debug
@@ -74,7 +62,7 @@ jobs:
   # Build shards for Windows
   #
   Windows:
-    name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, ${{ github.event.inputs.bitness || inputs.bitness }})
+    name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, 64-bit)
     runs-on: windows-latest
     outputs:
       binary-type: ${{ steps.setup.outputs.binary-type }}
@@ -84,7 +72,6 @@ jobs:
         id: setup
         shell: bash
         run: |
-          echo "bitness=${{ github.event.inputs.bitness || inputs.bitness }}" >> $GITHUB_OUTPUT
           echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
           echo "binary-type=${{ github.event.inputs.binary-type || inputs.binary-type }}" >> $GITHUB_OUTPUT
           echo "run-tests=${{ github.event.inputs.run-tests || inputs.run-tests }}" >> $GITHUB_OUTPUT
@@ -100,25 +87,11 @@ jobs:
             echo "artifact-path=build/libshards.dll" >> $GITHUB_OUTPUT
           fi
 
-          if [ "${{ github.event.inputs.bitness || inputs.bitness }}" == "64bits" ]
+          if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
           then
-            echo "msystem=MINGW64" >> $GITHUB_OUTPUT
-            echo "arch=x86_64" >> $GITHUB_OUTPUT
-            if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
-            then
-              echo "artifact=shards-win64" >> $GITHUB_OUTPUT
-            else
-              echo "artifact=libshards-win64" >> $GITHUB_OUTPUT
-            fi
+            echo "artifact=shards-win64" >> $GITHUB_OUTPUT
           else
-            echo "msystem=MINGW32" >> $GITHUB_OUTPUT
-            echo "arch=i686" >> $GITHUB_OUTPUT
-            if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
-            then
-              echo "artifact=shards-win32" >> $GITHUB_OUTPUT
-            else
-              echo "artifact=libshards-win32" >> $GITHUB_OUTPUT
-            fi
+            echo "artifact=libshards-win64" >> $GITHUB_OUTPUT
           fi
       - name: Checkout shards
         uses: actions/checkout@v3
@@ -131,53 +104,28 @@ jobs:
           RUSTUP_USE_CURL: 1
         run: |
           rustup toolchain install --no-self-update nightly
-          rustup +nightly target add ${{ steps.setup.outputs.arch }}-pc-windows-gnu
-          rustup default nightly-${{ steps.setup.outputs.arch }}-pc-windows-gnu
-      - name: Set up rust (32-bits)
-        if: ${{ steps.setup.outputs.bitness == '32bits' }}
-        env:
-          RUSTUP_USE_CURL: 1
-        shell: bash
-        run: |
-          # Native libClang required for rust bindgen
-          # choco exit with code 1 after successful install
-          choco install -y --force llvm || exit 0
-          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
+          rustup +nightly target add x86_64-pc-windows-msvc
+          rustup default nightly-x86_64-pc-windows-msvc
       - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
-      - name: Set up MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ steps.setup.outputs.msystem }}
-          release: false
-          path-type: inherit
-          install: >-
-            base-devel
-            mingw-w64-${{ steps.setup.outputs.arch }}-toolchain
-            mingw-w64-${{ steps.setup.outputs.arch }}-cmake
-            mingw-w64-${{ steps.setup.outputs.arch }}-ninja
-            mingw-w64-${{ steps.setup.outputs.arch }}-clang
-            mingw-w64-${{ steps.setup.outputs.arch }}-lld
-            wget
-      - name: Build libtrace (64bits)
-        if: ${{ steps.setup.outputs.bitness == '64bits' }}
-        shell: msys2 {0}
+      - name: Set up dev dependencies
+        shell: bash
         run: |
-          cd deps/libbacktrace
-          mkdir build
-          ./configure --prefix=`pwd`/build
-          make && make install
+          choco install -y cmake ninja llvm
       - name: Build
         env:
           RUST_BACKTRACE: 1
-        shell: msys2 {0}
+        shell: bash
         run: |
           ./bootstrap
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
+          cmake -G Ninja \
+            "-DCMAKE_C_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang.exe" \
+            "-DCMAKE_CXX_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang++.exe" \
+            -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           echo "Building shards"
           ninja ${{ steps.setup.outputs.build-target }}
           echo "Building runtime tests"
@@ -188,7 +136,7 @@ jobs:
       - name: Minimize disk usage
         env:
           RUST_BACKTRACE: 1
-        shell: msys2 {0}
+        shell: bash
         run: |
           rm -rf build/src
           rm -rf build/lib
@@ -199,24 +147,23 @@ jobs:
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
           RUST_BACKTRACE: 1
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd build
           ./test-runtime
       - name: Checkout glTF-Sample-Models
         # Match with test step below
-        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}
+        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         uses: actions/checkout@v3
         with:
           repository: KhronosGroup/glTF-Sample-Models
           path: external/glTF-Sample-Models
           fetch-depth: 1
       - name: Test graphics (Debug)
-        # NOTE: Graphics backend doesn't run on 32bits
-        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' && steps.setup.outputs.bitness == '64bits' }}
+        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
           RUST_BACKTRACE: 1
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd build
           GFX_BACKEND=D3D12 ./test-gfx
@@ -246,19 +193,7 @@ jobs:
         id: setup
         shell: bash
         run: |
-          echo "bitness=${{ github.event.inputs.bitness || inputs.bitness }}" >> $GITHUB_OUTPUT
           echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
-
-          if [ "${{ github.event.inputs.bitness || inputs.bitness }}" == "64bits" ]
-          then
-            echo "msystem=MINGW64" >> $GITHUB_OUTPUT
-            echo "arch=x86_64" >> $GITHUB_OUTPUT
-            echo "artifact=shards-win64" >> $GITHUB_OUTPUT
-          else
-            echo "msystem=MINGW32" >> $GITHUB_OUTPUT
-            echo "arch=i686" >> $GITHUB_OUTPUT
-            echo "artifact=shards-win32" >> $GITHUB_OUTPUT
-          fi
       - name: Change git line endings
         run: |
           git config --system core.autocrlf false
@@ -272,29 +207,12 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
+          name: shards-win64 ${{ steps.setup.outputs.build-type }}
           path: build
-      - name: Set up MSYS2 (Release)
-        if: ${{ steps.setup.outputs.build-type == 'Release' }}
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ steps.setup.outputs.msystem }}
-          release: false
-          path-type: inherit
-      - name: Set up MSYS2 (Debug)
-        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ steps.setup.outputs.msystem }}
-          release: false
-          path-type: inherit
-          install: >-
-            base-devel
-            mingw-w64-${{ steps.setup.outputs.arch }}-toolchain
       - name: Test
         env:
           RUST_BACKTRACE: 1
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd build
           echo "Running test: general"
@@ -338,7 +256,7 @@ jobs:
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: 1
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd docs/samples
           for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' ! -path '*Dialog*' \));
@@ -347,12 +265,10 @@ jobs:
             ../../build/shards.exe run-sample.edn --file "$i";
           done
       - name: Test doc samples (GFX)
-        # NOTE: Graphics backend doesn't run on 32bits
-        if: ${{ steps.setup.outputs.bitness == '64bits' }}
         env:
           GFX_BACKEND: D3D12
           RUST_BACKTRACE: 1
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd docs/samples
           for i in $(find shards -name '*.edn' \( -path '*UI*' -or -path '*GFX*' \));
@@ -360,13 +276,11 @@ jobs:
             echo "Running sample $i";
             ../../build/shards.exe run-sample.edn --looped true --file "$i";
           done
-      - name: Graphics Test (64bits)
-        # NOTE: Graphics backend doesn't run on 32bits
-        if: ${{ steps.setup.outputs.bitness == '64bits' }}
+      - name: Graphics Test
         env:
           GFX_BACKEND: D3D12
           RUST_BACKTRACE: 1
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd build
           echo "Running test: gfx_window"
@@ -382,22 +296,19 @@ jobs:
           ./shards ../src/tests/egui-demo.edn
           echo "Running test: egui-plot"
           ./shards ../src/tests/egui-plot.edn
-      - name: Physics Test (64bits)
-        # NOTE: Graphics backend doesn't run on 32bits
-        if: ${{ steps.setup.outputs.bitness == '64bits' }}
+      - name: Physics Test
         env:
           GFX_BACKEND: D3D12
           RUST_BACKTRACE: 1
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd build
           echo "Running test: physics"
           ./shards ../src/tests/physics.edn
-      - name: Test (64bits)
-        if: ${{ steps.setup.outputs.bitness == '64bits' }}
+      - name: Test
         env:
           RUST_BACKTRACE: 1
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd build
           echo "Running test: genetic"
