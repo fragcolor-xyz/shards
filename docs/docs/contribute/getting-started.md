@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-<!-- TODO: Add guides for Mac and Linux. -->
+<!-- TODO: Complete guides for Mac and Linux. -->
 
 # Getting Started
 
@@ -14,109 +14,193 @@ license: CC-BY-SA-4.0
 
 Learn how to set up the development environment to start working with our projects!
 
-## Code Editor ##
 
-A code editor allows you to work with code more easily. We will be using Visual Studio Code (VS Code) for this tutorial. You can download it [here](https://code.visualstudio.com/download), and install it with the default settings.
+## Setting up the C/C++ Compiler
 
-!!! note
-    You are free to use any code editor of your choice, although you will have to complete steps of this tutorial through alternate means.
+A compiler translates human-readable code into machine code. We will be setting up the C/C++ compiler so that our code written in the human-readable C++ language can be understood by the computers!
 
-## Setting up the GCC Compiler ##
+=== "Windows"
 
-A compiler translates human-readable code into machine code. We will be setting up the GCC compiler so that our code written in the human-readable C++ language can be understood by the computers!
+    First, [download Chocolatey](https://docs.chocolatey.org/en-us/choco/setup#installing-chocolatey) and install it using an [administrative shell](https://www.howtogeek.com/194041/how-to-open-the-command-prompt-as-administrator-in-windows-8.1/). Chocolatey is a package manager that simplifies the installation of the tools we will need.
 
-First, [download MSYS2](https://www.msys2.org/) and install it with the default settings. MSYS2 helps to set up MinGW-w64, which uses the GCC compiler to create Windows programs.
+    We will now install the compiler and other build tools using Chocolatey.
+    Open up the Command Prompt and enter the following commands:
 
-We will now install the Mingw-w64 toolset which includes GCC, and other build tools that will be employed later. When the MinGW terminal pops up, enter the following command:
+    ??? tip
+        You can use the Windows Search Bar to find the Command Prompt application.
+        ![Search for the Command Prompt in the Window’s search bar.](assets/search-command-prompt.png)
 
-```
-pacman -Sy --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget
-```
+    ```cmd
+    choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
+    choco install -y ninja
+    choco install -y llvm
+    refreshenv
+    ```
 
+    !!! note
+        By default, `System` will make `cmake` available to all users on the Windows machine. To only set it for the current user, replace `System` with `User`.
 
-Next, we will set the Mingw-w64 path to the environment variables. This will allow the terminal to search the Mingw-w64 directory for executables to run without requiring the user to specify the full address of the .exe each time.
+    Next, we want to check that the tools were properly installed. Enter the following commands:
 
-Search for “Edit environment variables for your account.” in the Window’s search bar and select the option that appears.
-
-!!! help
-    You can also access the Environment Variables window from "Control Panel → User Accounts → User Accounts → Change my environment variables".
-
-Double-click on “Path” under “User variables”.
-
-![Double-click on the “Path” user variable.](assets/set-environment-variable-mingw64-path.png)
-
-In the “Edit environment variable” window, select “New” and add `C:\msys64\mingw64\bin` to the empty field that appears.
-```
-C:\msys64\mingw64\bin
-```
-
-![Add the mingw64 bin directory to the environment variables.](assets/set-environment-variable-mingw64-new.png)
-
-Click the “OK” button twice to close the windows and save the changes.
-
-## Rust ##
-
-Rust is a programming language that we will be using. Install it [here](https://www.rust-lang.org/tools/install). 
-
-Open up the Command Prompt. You can use the Windows Search Bar to find the Command Prompt application.
-
-![Search for the Command Prompt in the Window’s search bar.](assets/search-command-prompt.png)
-
-!!! tip
-    You can check if Rust is properly installed by using `cargo --version` in the Command Prompt. 
-
-    If a version number is printed, your installation was successful!
+    === "CMD"
+        ```cmd
+        cmake --version
+        ninja --version
+        clang --version
         ```
-        cargo --version
+    === "Output"
+        ```
+        cmake version 3.25.2
+        1.11.1
+        clang version 15.0.7
+        ```
+    
+    If any of the above commands returned an error, it is possible that the `PATH` environment variable is not properly set.
+    Search for “Edit the system environment variables” in the Window’s search bar and select the option that appears.
+
+    !!! help
+        You can also access the Environment Variables window from "Control Panel → System and Security → System → Advanced system settings".
+
+    Double-click on “Path” under “System variables”.
+
+    ![Double-click on “Path” under “System variables”](assets/system-environment-variables-path.png)
+
+    In the “Edit environment variable” window, check that paths to the installed tools are set as in the picture below.
+        
+    ![“Edit environment variable” window](assets/edit-environment-variable-path.png)
+    
+    If not, click on “New” to add the missing values.
+
+    !!! note
+        `ninja` is installed under `C:\ProgramData\chocolatey\bin`
+
+=== "Linux"
+
+    Install `cmake`, `ninja`, `clang` and other development dependencies using the package manager of your favorite distribution.
+
+    For example on Ubuntu, you can use the following commands:
+
+    ```bash
+    sudo apt install build-essential cmake ninja-build clang xorg-dev libdbus-1-dev libssl-dev mesa-utils
+    ```
+
+
+## Rust
+
+Rust is another programming language that we will be using. Install it from [here](https://www.rust-lang.org/tools/install). 
+
+=== "Windows"
+
+    Open up the Command Prompt.
+
+    ??? Tip
+        You can use the Windows Search Bar to find the Command Prompt application.
+        ![Search for the Command Prompt in the Window’s search bar.](assets/search-command-prompt.png)
+
+    !!! help
+        You can check if Rust is properly installed by using `cargo --version` in the Command Prompt. 
+
+        If a version number is printed, your installation was successful!
+            ```
+            cargo --version
+            ```
+
+    We will be using the nightly version of Rust which is updated more frequently compared to the stable and beta versions. Install it with the following commands:
+        ```cmd
+        rustup toolchain install nightly
+        rustup +nightly target add x86_64-pc-windows-msvc
+        rustup default nightly-x86_64-pc-windows-msvc
         ```
 
-We will be using the nightly version of Rust which is updated more frequently compared to the stable and beta versions. Install it with the following commands:
-    ```
-    rustup toolchain install nightly
-    ```
-    ```
-    rustup +nightly target add x86_64-pc-windows-gnu
-    ```
-	```
-    rustup default nightly-x86_64-pc-windows-gnu
-	```
+=== "Linux"
+
+    !!! help
+        You can check if Rust is properly installed by using `cargo --version` in the Command Prompt. 
+
+        If a version number is printed, your installation was successful!
+            ```
+            cargo --version
+            ```
+
+    We will be using the nightly version of Rust which is updated more frequently compared to the stable and beta versions. Install it with the following commands:
+        ```bash
+        rustup toolchain install nightly
+        rustup +nightly target add x86_64-unknown-linux-gnu
+        rustup default nightly-x86_64-unknown-linux-gnu
+        ```
 
 To add support for building to web browsers, input the following command:
-	```
+    ```
     rustup +nightly target add wasm32-unknown-unknown
-	```
+    ```
 
 Use the `rustup update` command to update your installation. Since we are using the nightly release, you are encouraged to update often.
-	```
+    ```
     rustup update
-	```
- 
-<!-- For Linux / WSL
+    ```
 
-Only 2 commands are required to set up the Rust nightly build:
 
-rustup install nightly
-rustup default nightly
-
--->
-
-##  Git & GitHub ##
+##  Git & GitHub
 
 Git is a system used for managing and tracking changes in your code. It is also known as a Version Control System (VCS). It makes it easier for collaborators to work together, and allows you to access our projects too!
 
-Install Git [here](https://git-scm.com/download). The installation settings can be left unchanged.
+=== "Windows"
+    Install Git [here](https://git-scm.com/download). The installation settings can be left unchanged.
+
+    Alternatively, you can also use chocolatey:
+    ```cmd
+    choco install -y git
+    ```
+
+=== "Linux"
+    ```bash
+    sudo apt install git
+    ```
 
 Although Git is powerful, it can be daunting to use on its own. Instead, we use GitHub, a service which employs Git’s version control with its own to make project collaboration much easier. 
 
 We recommend that you use a [Git GUI Client](https://git-scm.com/downloads/guis) to facilitate your work by pruning off the manual input of code and making the version control process more visual.
 
-We will be using [GitHub Desktop](https://desktop.github.com/) for the tutorials. You can install it with the default settings, and create a GitHub account when prompted if you do not have one.
+=== "Windows"
+
+    We will be using [GitHub Desktop](https://desktop.github.com/) for the tutorials. You can install it with the default settings, and create a GitHub account when prompted if you do not have one.
+    
+    Alternatively, you can also use chocolatey:
+    ```cmd
+    choco install -y github-desktop
+    ```
+
+    !!! note
+        Even though we recommend GitHub Desktop, feel free to use any GUI client of your choice!
+
+
+## Code Editor
+
+A code editor allows you to work with code more easily. We will be using Visual Studio Code (VS Code) for this tutorial.
+
+=== "Windows"
+
+    You can download it [here](https://code.visualstudio.com/download), and install it with the default settings.
+
+    Alternatively, you can also use chocolatey:
+    ```cmd
+    choco install -y vscode
+    ```
+
+=== "Linux"
+
+    The easiest is to install the snap package.
+    ```bash
+    sudo snap install --classic code
+    ```
+
+    Follow the [installation](https://code.visualstudio.com/docs/setup/linux#_installation) page for more details, and other installation alternatives.
 
 !!! note
-    Even though we recommend GitHub Desktop, feel free to use any GUI client of your choice!
+    You are free to use any code editor of your choice, although you will have to complete steps of this tutorial through alternate means.
 
 
-## VS Code Extensions ##
+### VS Code Extensions
 
 Launch Visual Studio Code and open the Extensions view (Ctrl+Shift+X). We will be installing a few extensions to facilitate our VS Code experience.
 
@@ -134,57 +218,97 @@ Search for and install the following extensions:
 
 5. Calva
 
-6. CMake
+6. CMake Tools
 
-7. CMake Tools
-
-8. YAML
-
-## Overview ##
-
-1. Install the [VS Code Editor](https://code.visualstudio.com/download).
-
-2. Install [MSYS2](https://www.msys2.org/).
-
-3. Install the Mingw-w64 toolset with the MinGW terminal.
-```
-pacman -Sy --needed --noconfirm base-devel mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-clang mingw-w64-x86_64-lld wget
-```
-
-4. Add the Mingw-w64 folder path to the user’s system path.
-```
-C:\msys64\mingw64\bin
-```
-
-5. Install [Rust](https://www.rust-lang.org/tools/install).
-
-6. Install and set up the Rust nightly build.
-```
-rustup toolchain install nightly
-```
-```
-rustup +nightly target add x86_64-pc-windows-gnu
-```
-```
-rustup default nightly-x86_64-pc-windows-gnu
-```
+7. YAML
 
 
-7. Install the Rust Web Assembly toolchain.
-```
-rustup +nightly target add wasm32-unknown-unknown
-```
+## Overview
 
-8. Update Rust.
-```
-rustup update
-```
+=== "Windows"
 
-9. Install [Git](https://git-scm.com/download).
+    1. Install [Chocolatey](https://docs.chocolatey.org/en-us/choco/setup#installing-chocolatey)
 
-10. Install [GitHub for Desktop](https://desktop.github.com/) or any other [Git GUI Client](https://git-scm.com/downloads/guis).
+    2. Install `cmake`, `ninja` and `llvm` using Chocolatey.
+    ```cmd
+    choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
+    choco install -y ninja
+    choco install -y llvm
+    refreshenv
+    ```
 
-11. Install [Extensions for Visual Studio Code](#vs-code-extensions).
+    3. Install [Rust](https://www.rust-lang.org/tools/install).
 
+    4. Install and set up the Rust nightly build.
+    ```cmd
+    rustup toolchain install nightly
+    rustup +nightly target add x86_64-pc-windows-msvc
+    rustup default nightly-x86_64-pc-windows-msvc
+    ```
+
+    5. Install the Rust Web Assembly toolchain.
+    ```cmd
+    rustup +nightly target add wasm32-unknown-unknown
+    ```
+
+    6. Update Rust
+    ```cmd
+    rustup update
+    ```
+
+    7. Install [Git](https://git-scm.com/download).
+    ```cmd
+    choco install -y git
+    ```
+
+    8. Install [GitHub for Desktop](https://desktop.github.com/) or any other [Git GUI Client](https://git-scm.com/downloads/guis).
+    ```cmd
+    choco install -y github-desktop
+    ```
+
+    9. Install the [VS Code Editor](https://code.visualstudio.com/download).
+    ```cmd
+    choco install -y vscode
+    ```
+
+    10. Install [Extensions for Visual Studio Code](#vs-code-extensions).
+
+=== "Linux"
+
+    1. Install `cmake`, `ninja`, `clang` and other development dependencies
+    ```bash
+    sudo apt install build-essential cmake ninja-build clang xorg-dev libdbus-1-dev libssl-dev mesa-utils
+    ```
+
+    2. Install [Rust](https://www.rust-lang.org/tools/install).
+
+    3. Install and set up the Rust nightly build.
+    ```bash
+    rustup toolchain install nightly
+    rustup +nightly target add x86_64-unknown-linux-gnu
+    rustup default nightly-x86_64-unknown-linux-gnu
+    ```
+
+    4. Install the Rust Web Assembly toolchain.
+    ```bash
+    rustup +nightly target add wasm32-unknown-unknown
+    ```
+
+    5. Update Rust
+    ```bash
+    rustup update
+    ```
+
+    6. Install [Git](https://git-scm.com/download).
+    ```bash
+    sudo apt install git
+    ```
+
+    7. Install the [VS Code Editor](https://code.visualstudio.com/download).
+    ```bash
+    sudo snap install --classic code
+    ```
+
+    8. Install [Extensions for Visual Studio Code](#vs-code-extensions).
 
 --8<-- "includes/license.md"
