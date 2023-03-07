@@ -22,7 +22,7 @@ using namespace shards;
 
 namespace gfx {
 void SHView::updateVariables() {
-  if (viewTransformVar->isVariable()) {
+  if (viewTransformVar && viewTransformVar->isVariable()) {
     view->view = shards::Mat4(viewTransformVar->get());
   }
 }

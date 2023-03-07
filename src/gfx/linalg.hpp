@@ -50,6 +50,7 @@ inline bool intersectPlane(const float3 &rayOrigin, const float3 &rayDir, const 
 }
 
 inline float3 extractTranslation(const float4x4 &transform) { return transform.w.xyz(); }
+
 inline float3 extractScale(const float4x4 &transform) {
   const float3 x = transform.x.xyz();
   const float3 y = transform.y.xyz();
