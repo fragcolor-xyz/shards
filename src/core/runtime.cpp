@@ -2541,10 +2541,10 @@ void hash_update(const SHVar &var, void *state) {
         hashes;
 
     auto &t = var.payload.tableValue;
-    SHTableIterator it;
+    SHTableIterator it{};
     t.api->tableGetIterator(t, &it);
-    SHString key;
-    SHVar value;
+    SHString key{};
+    SHVar value{};
     while (t.api->tableNext(t, &it, &key, &value)) {
       const auto h = hash(value);
       hashes.emplace_back(std::make_pair(uint64_t(h.payload.int2Value[0]), uint64_t(h.payload.int2Value[1])), key);
