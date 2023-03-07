@@ -343,14 +343,11 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
     data->features.push_back(feature.get());
   }
 
-  // Set parameters from step
-  drawable->parameters = step.parameters;
-
   // Derive definitions from parameters
-  for (auto &param : drawable->parameters.basic) {
+  for (auto &param : step.parameters.basic) {
     baseFeature->shaderParams.emplace_back(param.first, param.second);
   }
-  for (auto &param : drawable->parameters.textures) {
+  for (auto &param : step.parameters.textures) {
     baseFeature->textureParams.emplace_back(param.first, param.second.texture->getFormat().dimension);
   }
 
@@ -359,7 +356,10 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
     baseFeature->textureParams.emplace_back(frame->name);
   }
 
-  node.encode = [data](RenderGraphEncodeContext &ctx) {
+  node.encode = [data, &step, drawable](RenderGraphEncodeContext &ctx) {
+    // Set parameters from step
+    drawable->parameters = step.parameters;
+
     // Connect texture inputs
     for (auto &frameIndex : ctx.node.readsFrom) {
       auto &texture = ctx.evaluator.getTexture(frameIndex);
