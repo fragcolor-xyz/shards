@@ -1,6 +1,7 @@
 ---
 authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
+title: Contribute
 ---
 
 ![](assets/ContributeLogo.png)
