@@ -1,0 +1,7 @@
+(Setup
+ 0 >= .first-value
+ 100 >= .end-value)
+
+(Repeat
+ :Action (-> 0.5 (Math.Lerp .first-value .end-value) > .first-value (Log))
+ :Times 5)

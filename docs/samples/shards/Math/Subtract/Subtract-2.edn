@@ -1,0 +1,4 @@
+(float2 7.0 5.0)
+(Math.Subtract
+ ;;Operand
+ 5.0) (Log)

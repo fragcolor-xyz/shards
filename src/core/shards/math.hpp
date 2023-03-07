@@ -698,12 +698,12 @@ struct Lerp final {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return Base::MathTypes; }
 
-  static SHOptionalString help() { return SHCCSTR("Linearly interpolate between two values based on input"); }
+  static SHOptionalString help() { return SHCCSTR("Linearly interpolate between two values based on the input that is used as a fraction or weight."); }
 
   static SHParametersInfo parameters() {
     static Parameters params{
-        {"First", SHCCSTR("The first value"), BinaryBase::MathTypesOrVar},
-        {"Second", SHCCSTR("The first value"), BinaryBase::MathTypesOrVar},
+        {"First", SHCCSTR("The first value, used as the start point."), BinaryBase::MathTypesOrVar},
+        {"Second", SHCCSTR("The second value, used as the end point."), BinaryBase::MathTypesOrVar},
     };
     return params;
   }

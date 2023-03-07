@@ -1,0 +1,6 @@
+1 >= .x
+(Repeat
+ :Action
+ (-> (Math.Inc .x)
+     .x (Log))
+ :Times 3)
