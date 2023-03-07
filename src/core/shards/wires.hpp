@@ -69,7 +69,7 @@ struct WireBase {
     if (wire) {
       return Var(wire);
     } else {
-      SHLOG_TRACE("getState no wire was avail");
+      // SHLOG_TRACE("getState no wire was avail");
       return Var::Empty;
     }
   }
