@@ -2284,7 +2284,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     }
 
     auto &t = src.payload.tableValue;
-    SHTableIterator tit{};
+    SHTableIterator tit;
     t.api->tableGetIterator(t, &tit);
     SHString k;
     SHVar v;
@@ -2309,7 +2309,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     }
 
     auto &s = src.payload.setValue;
-    SHSetIterator sit{};
+    SHSetIterator sit;
     s.api->setGetIterator(s, &sit);
     SHVar v;
     while (s.api->setNext(s, &sit, &v)) {
@@ -2541,10 +2541,10 @@ void hash_update(const SHVar &var, void *state) {
         hashes;
 
     auto &t = var.payload.tableValue;
-    SHTableIterator it{};
+    SHTableIterator it;
     t.api->tableGetIterator(t, &it);
-    SHString key{};
-    SHVar value{};
+    SHString key;
+    SHVar value;
     while (t.api->tableNext(t, &it, &key, &value)) {
       const auto h = hash(value);
       hashes.emplace_back(std::make_pair(uint64_t(h.payload.int2Value[0]), uint64_t(h.payload.int2Value[1])), key);
