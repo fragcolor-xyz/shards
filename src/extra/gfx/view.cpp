@@ -22,8 +22,8 @@ using namespace shards;
 
 namespace gfx {
 void SHView::updateVariables() {
-  if (viewTransformVar.isVariable()) {
-    view->view = shards::Mat4(viewTransformVar.get());
+  if (viewTransformVar->isVariable()) {
+    view->view = shards::Mat4(viewTransformVar->get());
   }
 }
 
@@ -70,10 +70,7 @@ struct ViewShard {
     if (!fovVar.isNone())
       std::get<ViewPerspectiveProjection>(view->proj).fov = float(fovVar);
 
-    if (_viewTransform.isVariable()) {
-      _view->viewTransformVar = (SHVar &)_viewTransform;
-      _view->viewTransformVar.warmup(context);
-    }
+    _view->viewTransformVar = &_viewTransform;
 
     return Types::ViewObjectVar.Get(_view);
   }
