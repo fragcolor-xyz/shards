@@ -15,7 +15,7 @@ Curious about the inner workings of Shards? Build Shards to unlock its hidden ma
 Do ensure that you have your [development environment readied](../getting-started.md) before embarking on the quest to build Shards!
 
 
-## Cloning the Shards Repository ##
+## Cloning the Shards Repository
 
 Go to the [Shard’s repository on Github](https://github.com/fragcolor-xyz/shards). If you have GitHub for Desktop installed, select the “Code” button, and “Open with GitHub Desktop” to clone the repository. 
 
@@ -35,29 +35,26 @@ Go to the [Shard’s repository on Github](https://github.com/fragcolor-xyz/shar
 The repository is now cloned to your computer! Take note of where it has been cloned to, as we will be using it in the following step…
 
 
-## Navigating to the Shards Repository ##
+## Navigating to the Shards Repository
 
-Launch the MinGW terminal (ming64.exe). The .exe file can be found in the msys64 folder, usually located in your C drive.
+Open up Git Bash.
 
-![Find and select the ming64.exe](assets/location-mingw.png)
+??? Tip
+    You can use the Windows Search Bar to find the Git Bash application.
 
 Navigate to where your Shards repository is located using the command `cd $(cygpath -u '(X)')`, where (X) is the directory of your folder.
 
-```
-cd $(cygpath -u '(X)')
-```
-
 ??? "cd"
-	The `cd` command is used for navigating to different directories within the MinGW terminal.
+    The `cd` command is used for navigating to different directories within the terminal.
 
 ??? "cygpath"
-    The MinGW terminal requires you to convert the backslashes(\\) in your directory address to forward slashes(/). You will also have to remove the colon(:) after the drive alphabet. 
+    The Git Bash terminal requires you to convert the backslashes(\\) in your directory address to forward slashes(/). You will also have to remove the colon(:) after the drive alphabet. 
     
     This is the Unix form of an address, and can be done automatically by using the cygpath program.
 
-    e.g. `cygpath -u 'C:\Fragcolor\Shards'` will output `/c/Fragcolor/Shards`
+    e.g. `cygpath -u 'C:\Projects\Shards'` will output `/c/Projects/Shards`
 
-If your Shards repository is located at `C:\Fragcolor\Shards`, the command used in the MinGW terminal would be `cd $(cygpath -u 'C:\Fragcolor\Shards')`.
+If your Shards repository is located at `C:\Projects\Shards`, the command used in the terminal would be `cd $(cygpath -u 'C:\Projects\Shards')`.
 
 !!! tip
     A simple way to obtain a folder’s directory is to copy the address as text. 
@@ -82,15 +79,6 @@ The Shards repository contains repositories of other projects, known as *submodu
 ```
 git submodule update --init --recursive
 ```
-
-??? help "git: command not found"
-    This error occurs when WinGW is unable to find where git.exe is. We will have to manually add the path of the folder containing it to the MinGW environment. 
-
-    Use the command `export PATH=$PATH:$(cygpath -u '(X)')` whereby (X) is the folder directory for git.exe. The default location is at `C:\Program Files\Git\cmd`.
-
-    ```
-    export PATH=$PATH:$(cygpath -u 'C:\Program Files\Git\cmd')
-    ```
 
 ??? help "not a git repository"
 	This occurs when you are attempting to run the command outside of a git repository. [Navigate to your Shards repository](#navigating-to-the-shards-repository) before attempting to update the submodules.
@@ -121,7 +109,7 @@ We will next create build folders in the Shards repository - one for the Debug v
 
     ![Release builds hide the detailed logs.](assets/mingw-release-build.png)
 
-First input `mkdir build` in the MinGW terminal to create a folder named “build”. 
+First input `mkdir build` in the terminal to create a folder named “build”. 
 
 ```
 mkdir build
@@ -170,14 +158,14 @@ Input the following command to generate the build files:
 === "Output"
 
     ```
-    -- SHARDS_DIR = C:/Fragcolor/Shards
-    -- clang-format found: C:/msys64/mingw64/bin/clang-format.exe
+    -- SHARDS_DIR = C:/Projects/Shards
+    -- clang-format found:  C:/Program Files/LLVM/bin/clang-format.exe
     .
     .
     .
     -- Configuring done
     -- Generating done
-    -- Build files have been written to: C:/Fragcolor/Shards/build/Debug
+    -- Build files have been written to: C:/Projects/Shards/build/Debug
     ```
 
 
@@ -188,7 +176,7 @@ Input the following command to generate the build files:
 
 
 ??? help "cmake: command not found"
-    This error occurs when MinGW is unable to find where cargo.exe is. We will have to manually add the path of the folder containing it to the MinGW environment. 
+    This error occurs when the terminal is unable to find where cargo.exe is. We will have to manually add the path of the folder containing it to the environment. 
 
     The default location is at `C:\Users\username\.cargo\bin`.
 
@@ -200,13 +188,9 @@ Input the following command to generate the build files:
 
     For the user ‘john’, the command used would be `export PATH=$PATH:$(cygpath -u 'C:\Users\john\.cargo\bin')`.
 
-    You can check if the path has been set correctly by using the command `cargo` in the MinGW terminal. If done correctly, a wall of text starting with “Rust’s package manager” will appear. Otherwise, you will get the error “cargo: command not found”.
+    You can check if the path has been set correctly by using the command `cargo` in the terminal. If done correctly, a wall of text starting with “Rust’s package manager” will appear. Otherwise, you will get the error “cargo: command not found”.
 
 ??? help "Unable to Build Shards"
-	If you are still unable to build Shards, try updating your packages by running:
-	```
-	pacman -Syu --noconfirm
-	```
 	```
 	rustup update
     ```
@@ -249,14 +233,14 @@ We will now repeat the process to create a Release version of Shards. Input the 
 === "Output"
 
     ```
-    -- The C compiler identification is GNU 12.2.0
-    -- The CXX compiler identification is GNU 12.2.0
+    -- The C compiler identification is Clang 15.0.7 with GNU-like command-line
+    -- The CXX compiler identification is Clang 15.0.7 with GNU-like command-line
     .
     .
     .
     -- Configuring done
     -- Generating done
-    -- Build files have been written to: C:/Fragcolor/Shards/build/Release
+    -- Build files have been written to: C:/Projects/Shards/build/Release
     ```
 
 Once again, build the .exe file with the `ninja` command below. Why not watch a few cat videos while waiting this time?

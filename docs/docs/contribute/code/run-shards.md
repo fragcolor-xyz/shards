@@ -14,7 +14,7 @@ Learn how to employ Shards to execute code and bring your works to fruition!
 
 Ensure that you have [Shards built](./build-shards.md) before attempting to run it.
 
-## Preparing the Script ##
+## Preparing the Script
 
 In VS Code, select “File → Open Folder…” (Ctrl+K+O) and select the Shards repository.
 
@@ -44,9 +44,9 @@ Paste the following code into your new file and save it.
 
 Now that we have created a .edn file, the final step is to use shards.exe to execute the code in it.
 
-## Running the Script ##
+## Running the Script
 
-Open the MinGW terminal and navigate to your Shards repository with the command `cd $(cygpath -u '(X)')`, where (X) is the directory of your folder. For example, `cd $(cygpath -u 'C:\Fragcolor\Shards')`. 
+Open the Git Bash terminal and navigate to your Shards repository with the command `cd $(cygpath -u '(X)')`, where (X) is the directory of your folder. For example, `cd $(cygpath -u 'C:\Projects\Shards')`.
 
 ```
 cd $(cygpath -u '(X)')
@@ -75,8 +75,8 @@ To run our “helloworld.edn” script, we run the command `./build/Debug/shards
 === "Output"
 
     ```
-    [debug] [2022-09-19 11:47:36.873] [T-19628] [SHCore.cpp::163] Exe path: C:\Fragcolor\Shards\build\Debug
-    [debug] [2022-09-19 11:47:36.873] [T-19628] [SHCore.cpp::164] Script path: C:\Fragcolor\Shards\scripts
+    [debug] [2022-09-19 11:47:36.873] [T-19628] [SHCore.cpp::163] Exe path: C:\Projects\Shards\build\Debug
+    [debug] [2022-09-19 11:47:36.873] [T-19628] [SHCore.cpp::164] Script path: C:\Projects\Shards\scripts
     .
     .
     .
@@ -90,7 +90,7 @@ To run our “helloworld.edn” script, we run the command `./build/Debug/shards
 
 Congratulations! You have printed out your first “Hello World” message to the terminal with Shards! ⭐
 
-##  Overview ##
+##  Overview
 
 1. Use `./build/Debug/shards ./scripts/fileName.edn` to run scripts with the Debug version of Shards.
 ```

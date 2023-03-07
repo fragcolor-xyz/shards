@@ -17,13 +17,11 @@ jobs:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
-      bitness: 64bits
       build-type: Debug
   Windows-64bits-Release:
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
     with:
-      bitness: 64bits
       build-type: Release
 
   #

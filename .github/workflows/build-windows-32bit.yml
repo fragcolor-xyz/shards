@@ -1,4 +1,4 @@
-name: Build (Windows 64-bit)
+name: Build (Windows 32-bit)
 
 on:
   workflow_dispatch:
@@ -62,7 +62,7 @@ jobs:
   # Build shards for Windows
   #
   Windows:
-    name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, 64-bit)
+    name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, 32-bit)
     runs-on: windows-latest
     outputs:
       binary-type: ${{ steps.setup.outputs.binary-type }}
@@ -89,9 +89,9 @@ jobs:
 
           if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
           then
-            echo "artifact=shards-win64" >> $GITHUB_OUTPUT
+            echo "artifact=shards-win32" >> $GITHUB_OUTPUT
           else
-            echo "artifact=libshards-win64" >> $GITHUB_OUTPUT
+            echo "artifact=libshards-win32" >> $GITHUB_OUTPUT
           fi
       - name: Checkout shards
         uses: actions/checkout@v3
@@ -104,28 +104,39 @@ jobs:
           RUSTUP_USE_CURL: 1
         run: |
           rustup toolchain install --no-self-update nightly
-          rustup +nightly target add x86_64-pc-windows-msvc
-          rustup default nightly-x86_64-pc-windows-msvc
+          rustup +nightly target add i686-pc-windows-gnu
+          rustup default nightly-i686-pc-windows-gnu
+
+          # Native libClang required for rust bindgen
+          choco install -y llvm
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
       - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
         with:
           key: ${{ steps.setup.outputs.build-type }}
-      - name: Set up dev dependencies
-        shell: bash
-        run: |
-          choco install -y cmake ninja llvm
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          release: false
+          path-type: inherit
+          install: >-
+            base-devel
+            mingw-w64-i686-toolchain
+            mingw-w64-i686-cmake
+            mingw-w64-i686-ninja
+            mingw-w64-i686-clang
+            mingw-w64-i686-lld
+            wget
       - name: Build
         env:
           RUST_BACKTRACE: 1
-        shell: bash
+        shell: msys2 {0}
         run: |
           ./bootstrap
           mkdir build
           cd build
-          cmake -G Ninja \
-            "-DCMAKE_C_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang.exe" \
-            "-DCMAKE_CXX_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang++.exe" \
-            -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           echo "Building shards"
           ninja ${{ steps.setup.outputs.build-target }}
           echo "Building runtime tests"
@@ -136,7 +147,7 @@ jobs:
       - name: Minimize disk usage
         env:
           RUST_BACKTRACE: 1
-        shell: bash
+        shell: msys2 {0}
         run: |
           rm -rf build/src
           rm -rf build/lib
@@ -147,26 +158,10 @@ jobs:
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
           RUST_BACKTRACE: 1
-        shell: bash
+        shell: msys2 {0}
         run: |
           cd build
           ./test-runtime
-      - name: Checkout glTF-Sample-Models
-        # Match with test step below
-        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
-        uses: actions/checkout@v3
-        with:
-          repository: KhronosGroup/glTF-Sample-Models
-          path: external/glTF-Sample-Models
-          fetch-depth: 1
-      - name: Test graphics (Debug)
-        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
-        env:
-          RUST_BACKTRACE: 1
-        shell: bash
-        run: |
-          cd build
-          GFX_BACKEND=D3D12 ./test-gfx
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -207,12 +202,29 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: shards-win64 ${{ steps.setup.outputs.build-type }}
+          name: shards-win32 ${{ steps.setup.outputs.build-type }}
           path: build
+      - name: Set up MSYS2 (Release)
+        if: ${{ steps.setup.outputs.build-type == 'Release' }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          release: false
+          path-type: inherit
+      - name: Set up MSYS2 (Debug)
+        if: ${{ steps.setup.outputs.build-type == 'Debug' }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          release: false
+          path-type: inherit
+          install: >-
+            base-devel
+            mingw-w64-i686-toolchain
       - name: Test
         env:
           RUST_BACKTRACE: 1
-        shell: bash
+        shell: msys2 {0}
         run: |
           cd build
           echo "Running test: general"
@@ -256,7 +268,7 @@ jobs:
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: 1
-        shell: bash
+        shell: msys2 {0}
         run: |
           cd docs/samples
           for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' ! -path '*Dialog*' \));
@@ -264,56 +276,3 @@ jobs:
             echo "Running sample $i";
             ../../build/shards.exe run-sample.edn --file "$i";
           done
-      - name: Test doc samples (GFX)
-        env:
-          GFX_BACKEND: D3D12
-          RUST_BACKTRACE: 1
-        shell: bash
-        run: |
-          cd docs/samples
-          for i in $(find shards -name '*.edn' \( -path '*UI*' -or -path '*GFX*' \));
-          do
-            echo "Running sample $i";
-            ../../build/shards.exe run-sample.edn --looped true --file "$i";
-          done
-      - name: Graphics Test
-        env:
-          GFX_BACKEND: D3D12
-          RUST_BACKTRACE: 1
-        shell: bash
-        run: |
-          cd build
-          echo "Running test: gfx_window"
-          ./shards ../src/tests/gfx-window.edn
-          echo "Running test: gfx_cube"
-          ./shards ../src/tests/gfx-cube.edn
-          echo "Running test: gfx_materials"
-          ./shards ../src/tests/gfx-materials.edn
-          echo "Running test: ui"
-          ./shards ../src/tests/ui-0.edn
-          ./shards ../src/tests/ui-1.edn
-          echo "Running test: egui_demo"
-          ./shards ../src/tests/egui-demo.edn
-          echo "Running test: egui-plot"
-          ./shards ../src/tests/egui-plot.edn
-      - name: Physics Test
-        env:
-          GFX_BACKEND: D3D12
-          RUST_BACKTRACE: 1
-        shell: bash
-        run: |
-          cd build
-          echo "Running test: physics"
-          ./shards ../src/tests/physics.edn
-      - name: Test
-        env:
-          RUST_BACKTRACE: 1
-        shell: bash
-        run: |
-          cd build
-          echo "Running test: genetic"
-          ./shards ../src/tests/genetic.clj
-          echo "Running test: time"
-          ./shards ../src/tests/time.edn
-          echo "Running test: subwires"
-          ./shards ../src/tests/subwires.clj
