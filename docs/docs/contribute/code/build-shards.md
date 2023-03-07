@@ -52,9 +52,9 @@ Navigate to where your Shards repository is located using the command `cd $(cygp
     
     This is the Unix form of an address, and can be done automatically by using the cygpath program.
 
-    e.g. `cygpath -u 'C:\Fragcolor\Shards'` will output `/c/Fragcolor/Shards`
+    e.g. `cygpath -u 'C:\Projects\Shards'` will output `/c/Projects/Shards`
 
-If your Shards repository is located at `C:\Fragcolor\Shards`, the command used in the terminal would be `cd $(cygpath -u 'C:\Fragcolor\Shards')`.
+If your Shards repository is located at `C:\Projects\Shards`, the command used in the terminal would be `cd $(cygpath -u 'C:\Projects\Shards')`.
 
 !!! tip
     A simple way to obtain a folder’s directory is to copy the address as text. 
@@ -158,14 +158,14 @@ Input the following command to generate the build files:
 === "Output"
 
     ```
-    -- SHARDS_DIR = C:/Fragcolor/Shards
+    -- SHARDS_DIR = C:/Projects/Shards
     -- clang-format found:  C:/Program Files/LLVM/bin/clang-format.exe
     .
     .
     .
     -- Configuring done
     -- Generating done
-    -- Build files have been written to: C:/Fragcolor/Shards/build/Debug
+    -- Build files have been written to: C:/Projects/Shards/build/Debug
     ```
 
 
@@ -240,7 +240,7 @@ We will now repeat the process to create a Release version of Shards. Input the 
     .
     -- Configuring done
     -- Generating done
-    -- Build files have been written to: C:/Fragcolor/Shards/build/Release
+    -- Build files have been written to: C:/Projects/Shards/build/Release
     ```
 
 Once again, build the .exe file with the `ninja` command below. Why not watch a few cat videos while waiting this time?

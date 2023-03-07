@@ -21,14 +21,16 @@ A compiler translates human-readable code into machine code. We will be setting 
 
 === "Windows"
 
-    First, [download Chocolatey](https://docs.chocolatey.org/en-us/choco/setup#installing-chocolatey) and install it using an [administrative shell](https://www.howtogeek.com/194041/how-to-open-the-command-prompt-as-administrator-in-windows-8.1/). Chocolatey is a package manager that simplifies the installation of the tools we will need.
+    Open up the Command Prompt.
 
-    We will now install the compiler and other build tools using Chocolatey.
-    Open up the Command Prompt and enter the following commands:
-
-    ??? tip
+    ??? Tip
         You can use the Windows Search Bar to find the Command Prompt application.
         ![Search for the Command Prompt in the Window’s search bar.](assets/search-command-prompt.png)
+
+    Use the Command Prompt to install Chocolatey by following the instructions [here](https://docs.chocolatey.org/en-us/choco/setup#installing-chocolatey). Chocolatey is a package manager that simplifies the installation of the tools we will need.
+
+    We will now install the compiler and other build tools using Chocolatey.
+    In the Command Prompt, enter the following commands:
 
     ```cmd
     choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
@@ -38,7 +40,7 @@ A compiler translates human-readable code into machine code. We will be setting 
     ```
 
     !!! note
-        By default, `System` will make `cmake` available to all users on the Windows machine. To only set it for the current user, replace `System` with `User`.
+        The above command will make `cmake` available to all users on the Windows machine. To only set it for the current user, replace `System` with `User`.
 
     Next, we want to check that the tools were properly installed. Enter the following commands:
 
@@ -55,24 +57,25 @@ A compiler translates human-readable code into machine code. We will be setting 
         clang version 15.0.7
         ```
     
-    If any of the above commands returned an error, it is possible that the `PATH` environment variable is not properly set.
-    Search for “Edit the system environment variables” in the Window’s search bar and select the option that appears.
+    ??? help
+        If any of the above commands returned an error, it is possible that the `PATH` environment variable is not properly set.
+        Search for “Edit the system environment variables” in the Window’s search bar and select the option that appears.
 
-    !!! help
-        You can also access the Environment Variables window from "Control Panel → System and Security → System → Advanced system settings".
+        !!! tip
+            You can also access the Environment Variables window from "Control Panel → System and Security → System → Advanced system settings".
 
-    Double-click on “Path” under “System variables”.
+        Double-click on “Path” under “System variables”.
 
-    ![Double-click on “Path” under “System variables”](assets/system-environment-variables-path.png)
+        ![Double-click on “Path” under “System variables”](assets/system-environment-variables-path.png)
 
-    In the “Edit environment variable” window, check that paths to the installed tools are set as in the picture below.
+        In the “Edit environment variable” window, check that paths to the installed tools are set as in the picture below.
+            
+        ![“Edit environment variable” window](assets/edit-environment-variable-path.png)
         
-    ![“Edit environment variable” window](assets/edit-environment-variable-path.png)
-    
-    If not, click on “New” to add the missing values.
+        If not, click on “New” to add the missing values.
 
-    !!! note
-        `ninja` is installed under `C:\ProgramData\chocolatey\bin`
+        !!! note
+            `ninja` is installed under `C:\ProgramData\chocolatey\bin`
 
 === "Linux"
 
@@ -97,7 +100,7 @@ Rust is another programming language that we will be using. Install it from [her
         You can use the Windows Search Bar to find the Command Prompt application.
         ![Search for the Command Prompt in the Window’s search bar.](assets/search-command-prompt.png)
 
-    !!! help
+    ??? help
         You can check if Rust is properly installed by using `cargo --version` in the Command Prompt. 
 
         If a version number is printed, your installation was successful!
@@ -145,6 +148,7 @@ Use the `rustup update` command to update your installation. Since we are using 
 Git is a system used for managing and tracking changes in your code. It is also known as a Version Control System (VCS). It makes it easier for collaborators to work together, and allows you to access our projects too!
 
 === "Windows"
+
     Install Git [here](https://git-scm.com/download). The installation settings can be left unchanged.
 
     Alternatively, you can also use chocolatey:
@@ -153,6 +157,8 @@ Git is a system used for managing and tracking changes in your code. It is also 
     ```
 
 === "Linux"
+
+    Install git with the following command:
     ```bash
     sudo apt install git
     ```
@@ -189,12 +195,13 @@ A code editor allows you to work with code more easily. We will be using Visual 
 
 === "Linux"
 
-    The easiest is to install the snap package.
+    VS Code is available as a snap package, which can be installed with the following command:
     ```bash
     sudo snap install --classic code
     ```
 
-    Follow the [installation](https://code.visualstudio.com/docs/setup/linux#_installation) page for more details, and other installation alternatives.
+    !!! note
+        Follow the [installation](https://code.visualstudio.com/docs/setup/linux#_installation) page for more details, and for other installation alternatives.
 
 !!! note
     You are free to use any code editor of your choice, although you will have to complete steps of this tutorial through alternate means.
@@ -227,7 +234,7 @@ Search for and install the following extensions:
 
 === "Windows"
 
-    1. Install [Chocolatey](https://docs.chocolatey.org/en-us/choco/setup#installing-chocolatey)
+    1. Install [Chocolatey](https://docs.chocolatey.org/en-us/choco/setup#installing-chocolatey).
 
     2. Install `cmake`, `ninja` and `llvm` using Chocolatey.
     ```cmd
@@ -251,7 +258,7 @@ Search for and install the following extensions:
     rustup +nightly target add wasm32-unknown-unknown
     ```
 
-    6. Update Rust
+    6. Update Rust.
     ```cmd
     rustup update
     ```
@@ -275,7 +282,7 @@ Search for and install the following extensions:
 
 === "Linux"
 
-    1. Install `cmake`, `ninja`, `clang` and other development dependencies
+    1. Install `cmake`, `ninja`, `clang` and other development dependencies.
     ```bash
     sudo apt install build-essential cmake ninja-build clang xorg-dev libdbus-1-dev libssl-dev mesa-utils
     ```
@@ -294,7 +301,7 @@ Search for and install the following extensions:
     rustup +nightly target add wasm32-unknown-unknown
     ```
 
-    5. Update Rust
+    5. Update Rust.
     ```bash
     rustup update
     ```
