@@ -449,10 +449,7 @@ struct MatIdentity {
 
   static SHOptionalString help() { return SHCCSTR("Gives identity values for square matrix types"); }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
-  static SHTypesInfo outputTypes() {
-    static Types types{CoreInfo::Float4x4Type};
-    return types;
-  }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
 
   static inline Mat4 Float4x4Identity = linalg::identity;
 

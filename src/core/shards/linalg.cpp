@@ -2,9 +2,11 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "linalg.hpp"
+#include "foundation.hpp"
 #include "linalg.h"
 #include "linalg_shim.hpp"
 #include "shards/math_ops.hpp"
+#include "gfx/linalg.hpp"
 
 namespace shards {
 namespace Math {
@@ -353,6 +355,39 @@ SHVar Inverse::activate(SHContext *context, const SHVar &input) {
   return _result;
 }
 
+struct Decompose {
+  static constexpr std::array<SHString, 3> _keys{
+      "translation",
+      "rotation",
+      "scale",
+  };
+  static inline Types _types{{
+      CoreInfo::Float3Type,
+      CoreInfo::Float4Type,
+      CoreInfo::Float3Type,
+  }};
+  static inline Type ValueType = Type::TableOf(_types, _keys);
+
+  TableVar output{};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
+  static SHTypesInfo outputTypes() { return ValueType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    using namespace linalg::aliases;
+    Mat4 mat = toFloat4x4(input);
+    float3 scale;
+    float3x3 rotation;
+    float3 translation;
+    gfx::decomposeTRS(mat, translation, scale, rotation);
+    float4 qRot = linalg::rotation_quat(rotation);
+    output["translation"] = toVar(translation);
+    output["rotation"] = toVar(qRot);
+    output["scale"] = toVar(scale);
+    return output;
+  }
+};
+
 void registerShards() {
   REGISTER_SHARD("Math.Cross", Cross);
   REGISTER_SHARD("Math.Dot", Dot);
@@ -373,6 +408,7 @@ void registerShards() {
   REGISTER_SHARD("Math.DegreesToRadians", Deg2Rad);
   REGISTER_SHARD("Math.RadiansToDegrees", Rad2Deg);
   REGISTER_SHARD("Math.MatIdentity", MatIdentity);
+  REGISTER_SHARD("Math.Decompose", Decompose);
 }
 
 }; // namespace LinAlg

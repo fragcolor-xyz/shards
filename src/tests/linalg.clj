@@ -113,6 +113,8 @@
   (Float3 2 3 4) (Math.Translation)
   (Assert.Is [(Float4 1 0 0 0) (Float4 0 1 0 0) (Float4 0 0 1 0) (Float4 2 3 4 1)] true)
   (Log)
+  (Math.Decompose) = .trs
+  .trs:translation (Assert.Is (Float3 2 3 4) true)
 
   180.0 (Math.DegreesToRadians) (Log) (Sub (-> (ToString) (Assert.Is "3.14159" true)))
   (Math.AxisAngleX) (Log)
