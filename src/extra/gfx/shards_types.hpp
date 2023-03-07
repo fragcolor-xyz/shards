@@ -27,7 +27,7 @@ struct SHDrawable {
 
 struct SHView {
   ViewPtr view;
-  shards::ParamVar viewTransformVar;
+  shards::ParamVar* viewTransformVar;
 
   void updateVariables();
 };
