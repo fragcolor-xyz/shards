@@ -19,9 +19,9 @@ add_rust_library(
   PROJECT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/gfx
   DEPENDS ${EXTRA_SOURCES}
   FEATURES ${FEATURES}
-  ENVIRONMENT ${RUST_ENV}
+  ENVIRONMENT ${RUST_ENV} CARGO_FEATURE_STD=YES
 )
-
+ 
 if(WIN32)
   target_link_libraries(gfx-rust INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler)
 endif()
