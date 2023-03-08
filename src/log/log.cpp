@@ -1,7 +1,7 @@
 #include "log.hpp"
 #include <spdlog/spdlog.h>
 #include <vector>
-#include <SDL_stdinc.h>
+#include <SDL3/SDL_stdinc.h>
 #include <magic_enum.hpp>
 #include <boost/filesystem.hpp>
 #include <spdlog/sinks/dist_sink.h>

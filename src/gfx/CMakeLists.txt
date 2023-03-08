@@ -98,7 +98,7 @@ if(GFX_DEBUG)
 endif()
 
 if(EMSCRIPTEN)
-  # Use builtin SDL2 port
+  # Use builtin SDL3 port
   target_compile_options(gfx PUBLIC
     "SHELL:-s USE_SDL=2"
   )
@@ -119,11 +119,7 @@ if(EMSCRIPTEN)
     )
   endif()
 else()
-  target_link_libraries(gfx SDL2)
-  if(NOT DESKTOP)
-    # Only need SDL2main for setup on mobile platforms
-    target_link_libraries(gfx SDL2main)
-  endif()
+  target_link_libraries(gfx SDL3)
 endif()
 
 if(ANDROID)

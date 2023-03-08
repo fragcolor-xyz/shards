@@ -1,13 +1,11 @@
 #include "../gfx.hpp"
-#include <SDL_events.h>
-#include <SDL_keyboard.h>
-#include <SDL_keycode.h>
-#include <SDL_scancode.h>
+#include <SDL3/SDL_video.h>
 #include <gfx/context.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/window.hpp>
 #include "../inputs.hpp"
+#include <SDL3/SDL_events.h>
 #include "extra/gfx.hpp"
 #include "linalg_shim.hpp"
 #include "params.hpp"
@@ -255,18 +253,16 @@ struct MainWindow final {
 
     window->pollEvents(events);
     for (auto &event : events) {
-      if (event.type == SDL_QUIT) {
+      if (event.type == SDL_EVENT_QUIT)
         throw ActivationError("Window closed, aborting wire.");
-      } else if (event.type == SDL_WINDOWEVENT) {
-        if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-          throw ActivationError("Window closed, aborting wire.");
-        } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-          gfx::int2 newSize = window->getDrawableSize();
-          context->resizeMainOutputConditional(newSize);
-        }
-      } else if (event.type == SDL_APP_DIDENTERBACKGROUND) {
+      else if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+        throw ActivationError("Window closed, aborting wire.");
+      } else if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+        gfx::int2 newSize = window->getDrawableSize();
+        context->resizeMainOutputConditional(newSize);
+      } else if (event.type == SDL_EVENT_DID_ENTER_BACKGROUND) {
         context->suspend();
-      } else if (event.type == SDL_APP_DIDENTERFOREGROUND) {
+      } else if (event.type == SDL_EVENT_DID_ENTER_FOREGROUND) {
         context->resume();
       }
     }

@@ -2,7 +2,7 @@
 #define SH_EXTRA_GFX
 
 #include "gfx/shards_types.hpp"
-#include <SDL_events.h>
+#include <SDL3/SDL_events.h>
 #include <common_types.hpp>
 #include <foundation.hpp>
 #include <gfx/drawable.hpp>

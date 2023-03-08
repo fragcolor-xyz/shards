@@ -2,7 +2,7 @@
 #define GFX_WINDOW
 
 #include "linalg.hpp"
-#include <SDL_events.h>
+#include <SDL3/SDL_events.h>
 #include <string>
 #include <vector>
 

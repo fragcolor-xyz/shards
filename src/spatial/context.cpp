@@ -1,4 +1,5 @@
 #include "context.hpp"
+#include "SDL/include/SDL3/SDL_events.h"
 #include "gfx/egui/egui_types.hpp"
 #include <spdlog/spdlog.h>
 #include <gfx/linalg.hpp>
@@ -25,12 +26,12 @@ void Context::prepareInputs(input::InputBuffer &input, gfx::float2 inputToViewSc
     bool isPointerEvent = false;
     float2 pointerCoords;
     switch (it->type) {
-    case SDL_MOUSEMOTION:
+    case SDL_EVENT_MOUSE_MOTION:
       pointerCoords = float2(it->motion.x, it->motion.y);
       isPointerEvent = true;
       break;
-    case SDL_MOUSEBUTTONDOWN:
-    case SDL_MOUSEBUTTONUP:
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP:
       pointerCoords = float2(it->button.x, it->button.y);
       isPointerEvent = true;
       break;
@@ -164,7 +165,7 @@ void Context::evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime) {
       if (pointerInput.hitPanel == panel) {
         const SDL_Event &sdlEvent = *pointerInput.iterator;
         switch (sdlEvent.type) {
-        case SDL_MOUSEMOTION: {
+        case SDL_EVENT_MOUSE_MOTION: {
           egui::InputEvent evt;
           auto &oevent = evt.pointerMoved;
           oevent.type = egui::InputEventType::PointerMoved;
@@ -172,14 +173,14 @@ void Context::evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime) {
           eguiInputTranslator.pushEvent(evt);
           break;
         }
-        case SDL_MOUSEBUTTONDOWN:
-        case SDL_MOUSEBUTTONUP: {
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP: {
           egui::InputEvent evt;
           auto &ievent = sdlEvent.button;
           auto &oevent = evt.pointerButton;
           oevent.type = egui::InputEventType::PointerButton;
           oevent.pos = egui::toPos2(pointerInput.panelCoord * virtualPointScale);
-          oevent.pressed = sdlEvent.type == SDL_MOUSEBUTTONDOWN;
+          oevent.pressed = sdlEvent.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
           bool unknownButton = false;
           switch (ievent.button) {
           case SDL_BUTTON_LEFT:

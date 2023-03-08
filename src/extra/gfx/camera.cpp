@@ -6,6 +6,7 @@
 #include <gfx/fmt.hpp>
 #include "../inputs.hpp"
 #include "../gfx.hpp"
+#include "SDL/include/SDL3/SDL_events.h"
 
 using namespace shards;
 using namespace shards::Inputs;
@@ -82,43 +83,43 @@ struct FreeCameraShard {
 
     for (auto &event : _inputContext->events) {
       switch (event.type) {
-      case SDL_KEYDOWN:
-      case SDL_KEYUP:
+      case SDL_EVENT_KEY_DOWN:
+      case SDL_EVENT_KEY_UP:
         switch (event.key.keysym.sym) {
         case SDL_KeyCode::SDLK_w:
-          _inputState.keyboardZAxis.neg = event.key.type == SDL_KEYDOWN;
+          _inputState.keyboardZAxis.neg = event.key.type == SDL_EVENT_KEY_DOWN;
           break;
         case SDL_KeyCode::SDLK_s:
-          _inputState.keyboardZAxis.pos = event.key.type == SDL_KEYDOWN;
+          _inputState.keyboardZAxis.pos = event.key.type == SDL_EVENT_KEY_DOWN;
           break;
         case SDL_KeyCode::SDLK_a:
-          _inputState.keyboardXAxis.neg = event.key.type == SDL_KEYDOWN;
+          _inputState.keyboardXAxis.neg = event.key.type == SDL_EVENT_KEY_DOWN;
           break;
         case SDL_KeyCode::SDLK_d:
-          _inputState.keyboardXAxis.pos = event.key.type == SDL_KEYDOWN;
+          _inputState.keyboardXAxis.pos = event.key.type == SDL_EVENT_KEY_DOWN;
           break;
         }
         break;
-      case SDL_MOUSEMOTION:
+      case SDL_EVENT_MOUSE_MOTION:
         _inputState.pointer.position = float2(event.motion.x, event.motion.y);
         break;
-      case SDL_MOUSEBUTTONDOWN:
-      case SDL_MOUSEBUTTONUP:
+      case SDL_EVENT_MOUSE_BUTTON_DOWN:
+      case SDL_EVENT_MOUSE_BUTTON_UP:
         _inputState.pointer.position = float2(event.button.x, event.button.y);
         switch (event.button.button) {
         case SDL_BUTTON_LEFT:
-          _inputState.pointer.primaryButton = event.button.type == SDL_MOUSEBUTTONDOWN;
+          _inputState.pointer.primaryButton = event.button.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
           break;
         case SDL_BUTTON_RIGHT:
-          _inputState.pointer.secondaryButton = event.button.type == SDL_MOUSEBUTTONDOWN;
+          _inputState.pointer.secondaryButton = event.button.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
           break;
         case SDL_BUTTON_MIDDLE:
-          _inputState.pointer.tertiaryButton = event.button.type == SDL_MOUSEBUTTONDOWN;
+          _inputState.pointer.tertiaryButton = event.button.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
           break;
         }
         break;
-      case SDL_MOUSEWHEEL:
-        _inputState.mouseWheel += float(event.wheel.preciseY);
+      case SDL_EVENT_MOUSE_WHEEL:
+        _inputState.mouseWheel += float(event.wheel.y);
         break;
       }
     }

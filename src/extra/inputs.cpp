@@ -1,13 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-#include "SDL.h"
-#include "shards.hpp"
+#include <SDL3/SDL.h>
 #include "shards/shared.hpp"
 #include "inputs.hpp"
 #include "gfx.hpp"
-#include <SDL_keyboard.h>
-#include <SDL_keycode.h>
+#include <SDL3/SDL_mouse.h>
 #include <gfx/window.hpp>
 
 using namespace linalg::aliases;
@@ -48,9 +46,9 @@ struct MousePixelPos : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    int32_t mouseX, mouseY;
+    float mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
-    return Var(mouseX, mouseY);
+    return Var(int(mouseX), int(mouseY));
   }
 
   void cleanup() {}
@@ -69,7 +67,7 @@ struct MouseDelta : public Base {
     int2 windowSize = getWindow().getSize();
 
     for (auto &event : _inputContext->events) {
-      if (event.type == SDL_MOUSEMOTION) {
+      if (event.type == SDL_EVENT_MOUSE_MOTION) {
         return Var(float(event.motion.xrel) / float(windowSize.x), float(event.motion.yrel) / float(windowSize.y));
       }
     }
@@ -93,10 +91,10 @@ struct MousePos : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     int2 windowSize = getWindow().getSize();
 
-    int32_t mouseX, mouseY;
+    float mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
 
-    return Var(float(mouseX) / float(windowSize.x), float(mouseY) / float(windowSize.y));
+    return Var((mouseX) / float(windowSize.x), (mouseY) / float(windowSize.y));
   }
 };
 
@@ -184,7 +182,10 @@ struct Mouse : public Base {
 
   void setHidden(bool hidden) {
     if (hidden != _isHidden) {
-      SDL_ShowCursor(hidden ? SDL_DISABLE : SDL_ENABLE);
+      if (hidden)
+        SDL_ShowCursor();
+      else
+        SDL_HideCursor();
       _isHidden = hidden;
     }
   }
@@ -302,8 +303,8 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
   }
 };
 
-using MouseUp = MouseUpDown<SDL_MOUSEBUTTONUP>;
-using MouseDown = MouseUpDown<SDL_MOUSEBUTTONDOWN>;
+using MouseUp = MouseUpDown<SDL_EVENT_MOUSE_BUTTON_UP>;
+using MouseDown = MouseUpDown<SDL_EVENT_MOUSE_BUTTON_DOWN>;
 
 static inline std::map<std::string, SDL_Keycode> KeycodeMap = {
     // note: keep the same order as in SDL_keycode.h
