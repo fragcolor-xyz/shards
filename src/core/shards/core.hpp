@@ -778,17 +778,18 @@ struct SetBase : public VariableBase {
     _key.warmup(context);
   }
 
-  ALWAYS_INLINE void checkIfTableChanged(const SHVar &input) {
-    if (_tablePtr != input.payload.tableValue.opaque) {
-      _tablePtr = input.payload.tableValue.opaque;
+  ALWAYS_INLINE void checkIfTableChanged() {
+    if (_tablePtr != _target->payload.tableValue.opaque) {
+      _tablePtr = _target->payload.tableValue.opaque;
       _cell = nullptr;
+      SHLOG_TRACE("Table changed, clearing cell pointer");
     }
   }
 };
 
 struct SetUpdateBase : public SetBase {
   ALWAYS_INLINE SHVar activateTable(SHContext *context, const SHVar &input) {
-    checkIfTableChanged(input);
+    checkIfTableChanged();
 
     if (likely(_cell != nullptr)) {
       cloneVar(*_cell, input);
@@ -988,7 +989,7 @@ struct Ref : public SetBase {
   }
 
   ALWAYS_INLINE SHVar activateTable(SHContext *context, const SHVar &input) {
-    checkIfTableChanged(input);
+    checkIfTableChanged();
 
     if (likely(_cell != nullptr)) {
       memcpy(_cell, &input, sizeof(SHVar));
