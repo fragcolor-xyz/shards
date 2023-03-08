@@ -42,7 +42,7 @@ else()
   add_library(shards-extra STATIC ${extra_SOURCES})
 endif()
 
-target_link_libraries(shards-extra SDL2)
+target_link_libraries(shards-extra SDL3)
 
 target_link_libraries(shards-extra
   shards-core

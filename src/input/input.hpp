@@ -1,7 +1,7 @@
 #ifndef B44846E1_9E91_4350_8C77_98F3A10E8882
 #define B44846E1_9E91_4350_8C77_98F3A10E8882
 
-#include <SDL_events.h>
+#include <SDL3/SDL_events.h>
 #include <vector>
 #include <algorithm>
 

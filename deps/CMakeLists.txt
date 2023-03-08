@@ -79,23 +79,18 @@ else()
 endif()
 
 if(NOT EMSCRIPTEN)
-  if(NOT ANDROID AND EXTERNAL_BUILD_TYPE MATCHES "Debug")
-    set(SDL_LIB_SUFFIX "d")
-  endif()
-
   sh_add_external_project(
     NAME sdl_a
-    TARGETS   SDL2 SDL2main
-    LIB_NAMES SDL2 SDL2main
+    TARGETS   SDL3 SDL3main
+    LIB_NAMES SDL3 SDL3main
     INSTALL
     LIB_SUFFIX ${SDL_LIB_SUFFIX}
-    RELATIVE_INSTALL_INCLUDE_PATHS include/SDL2
-    CMAKE_ARGS -DSDL_RENDER_DISABLED=ON -DSDL_OPENGLES=OFF -DBUILD_SHARED_LIBS=OFF
+    RELATIVE_INSTALL_INCLUDE_PATHS include
+    CMAKE_ARGS -DSDL_RENDER_DISABLED=ON -DSDL_OPENGLES=OFF -DBUILD_SHARED_LIBS=OFF -DSDL_TEST=OFF
     REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL)
-
-
+    
   if(APPLE)
-    target_link_libraries(SDL2 INTERFACE
+    target_link_libraries(SDL3 INTERFACE
       "-framework Foundation"
       "-framework CoreAudio"
       "-framework AudioToolbox"
@@ -111,14 +106,14 @@ if(NOT EMSCRIPTEN)
     )
 
     if(IOS)
-      target_link_libraries(SDL2 INTERFACE
+      target_link_libraries(SDL3 INTERFACE
         "-framework AVFoundation"
         "-framework CoreMotion"
         "-framework CoreGraphics"
         "-framework UIKit"
       )
     else()
-      target_link_libraries(SDL2 INTERFACE
+      target_link_libraries(SDL3 INTERFACE
         "-framework Cocoa"
         "-framework Carbon"
         "-framework ForceFeedback"
@@ -127,26 +122,19 @@ if(NOT EMSCRIPTEN)
   endif()
 
   if(WIN32)
-    target_link_libraries(SDL2 INTERFACE user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 setupapi shell32 dinput8)
+    target_link_libraries(SDL3 INTERFACE user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 setupapi shell32 dinput8)
   elseif(LINUX)
-    target_link_libraries(SDL2 INTERFACE dl)
-  endif()
-
-  # Required for SDL2main entry point to call main
-  if(NOT DESKTOP)
-    target_compile_definitions(SDL2main INTERFACE "main=SDL_main")
-  else()
-    target_compile_definitions(SDL2 INTERFACE "SDL_MAIN_HANDLED=1")
+    target_link_libraries(SDL3 INTERFACE dl)
   endif()
 else()
-  add_library(SDL2 INTERFACE)
-  add_library(SDL2main INTERFACE)
+  add_library(SDL3 INTERFACE)
+  add_library(SDL3main INTERFACE)
 
-  # Use builtin SDL2 port
-  target_compile_options(SDL2 INTERFACE
+  # Use builtin SDL3 port
+  target_compile_options(SDL3 INTERFACE
     "SHELL:-s USE_SDL=2"
   )
-  target_link_options(SDL2 INTERFACE
+  target_link_options(SDL3 INTERFACE
     "SHELL:-s MIN_WEBGL_VERSION=2"
     "SHELL:-s MAX_WEBGL_VERSION=2"
     "SHELL:-s USE_SDL=2"

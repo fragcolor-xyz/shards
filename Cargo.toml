@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "rust",
-]
+] 
 
 [patch.crates-io]
 # If we don't use this exact rev the semver of cargo will screw up

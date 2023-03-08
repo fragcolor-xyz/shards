@@ -20,7 +20,7 @@ struct RegionConsumer : public IConsumer {
     for (auto it = inputBuffer.begin(); it; ++it) {
       ++receivedEventCount;
       switch (it->type) {
-      case SDL_MOUSEMOTION: {
+      case SDL_EVENT_MOUSE_MOTION: {
         auto &ievent = it->motion;
         if (isWithinBounds(ievent.x, ievent.y)) {
           it.consume(this);
@@ -28,8 +28,8 @@ struct RegionConsumer : public IConsumer {
         }
         break;
       }
-      case SDL_MOUSEBUTTONDOWN:
-      case SDL_MOUSEBUTTONUP: {
+      case SDL_EVENT_MOUSE_BUTTON_DOWN:
+      case SDL_EVENT_MOUSE_BUTTON_UP: {
         auto &ievent = it->button;
         if (isWithinBounds(ievent.x, ievent.y)) {
           it.consume(this);
@@ -49,13 +49,13 @@ struct RegionConsumer : public IConsumer {
 
 void generateTestInputMotionUpDown(InputBuffer &buffer, int x, int y, uint8_t button) {
   buffer.push_back(SDL_Event{
-      .motion = {.type = SDL_MOUSEMOTION, .x = x, .y = y},
+      .motion = {.type = SDL_EVENT_MOUSE_MOTION, .x = x, .y = y},
   });
   buffer.push_back(SDL_Event{
-      .button = {.type = SDL_MOUSEBUTTONDOWN, .button = button, .x = x, .y = y},
+      .button = {.type = SDL_EVENT_MOUSE_BUTTON_DOWN, .button = button, .x = x, .y = y},
   });
   buffer.push_back(SDL_Event{
-      .button = {.type = SDL_MOUSEBUTTONUP, .button = button, .x = x, .y = y},
+      .button = {.type = SDL_EVENT_MOUSE_BUTTON_UP, .button = button, .x = x, .y = y},
   });
 }
 
@@ -67,11 +67,11 @@ void generateKeyEvents(InputBuffer &buffer) {
   buffer.push_back(textEvent);
 
   buffer.push_back(SDL_Event{
-      .key = {.type = SDL_KEYDOWN, .keysym = {.sym = SDLK_w}},
+      .key = {.type = SDL_EVENT_KEY_DOWN, .keysym = {.sym = SDLK_w}},
   });
 
   buffer.push_back(SDL_Event{
-      .key = {.type = SDL_KEYUP, .keysym = {.sym = SDLK_w}},
+      .key = {.type = SDL_EVENT_KEY_UP, .keysym = {.sym = SDLK_w}},
   });
 }
 

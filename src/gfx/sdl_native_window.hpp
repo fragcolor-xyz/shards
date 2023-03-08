@@ -1,11 +1,11 @@
 #ifndef GFX_SDL_NATIVE_WINDOW
 #define GFX_SDL_NATIVE_WINDOW
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #define NEED_SYSWM (GFX_WINDOWS || GFX_ANDROID || GFX_LINUX)
 
-#include <SDL_syswm.h>
+#include <SDL3/SDL_syswm.h>
 
 #include "error_utils.hpp"
 #include "platform.hpp"

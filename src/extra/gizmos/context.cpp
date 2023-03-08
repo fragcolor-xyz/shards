@@ -79,10 +79,10 @@ struct GizmosContextShard {
 
   void handleGizmoInputEvents(std::vector<SDL_Event> &events) {
     for (auto &event : events) {
-      if (event.type == SDL_MOUSEMOTION) {
+      if (event.type == SDL_EVENT_MOUSE_MOTION) {
         _cursorPosition.x = event.motion.x;
         _cursorPosition.y = event.motion.y;
-      } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
+      } else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
         _cursorPosition.x = event.button.x;
         _cursorPosition.y = event.button.y;
         if (event.button.button == SDL_BUTTON_LEFT) {

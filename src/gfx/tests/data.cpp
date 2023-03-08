@@ -1,5 +1,5 @@
 #include "./data.hpp"
-#include <SDL_stdinc.h>
+#include <SDL3/SDL_stdinc.h>
 #include <cassert>
 #include <fstream>
 #include <gfx/paths.hpp>
