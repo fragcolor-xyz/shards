@@ -81,8 +81,8 @@ endif()
 if(NOT EMSCRIPTEN)
   sh_add_external_project(
     NAME sdl_a
-    TARGETS   SDL3 SDL3main
-    LIB_NAMES SDL3 SDL3main
+    TARGETS   SDL3
+    LIB_NAMES SDL3-static
     INSTALL
     LIB_SUFFIX ${SDL_LIB_SUFFIX}
     RELATIVE_INSTALL_INCLUDE_PATHS include

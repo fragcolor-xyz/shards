@@ -54,7 +54,7 @@ void Window::init(const WindowCreationOptions &options) {
 
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
   SDL_SetHint(SDL_HINT_VIDEO_EXTERNAL_CONTEXT, "1");
-  window = SDL_CreateWindow(options.title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags);
+  window = SDL_CreateWindow(options.title.c_str(), width, height, flags);
 
   if (!window) {
     throw formatException("SDL_CreateWindow failed: {}", SDL_GetError());
