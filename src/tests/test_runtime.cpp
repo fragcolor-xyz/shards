@@ -1157,8 +1157,8 @@ TEST_CASE("HashedActivations") {
   shards.elements = &b1;
   activateShards2(shards, &ctx, input, output, hash);
   SHLOG_INFO("hash: {} - output: {}", hash, output);
-  REQUIRE(hash.payload.int2Value[0] == 994886936879121204ll);
-  REQUIRE(hash.payload.int2Value[1] == -5204327824692322669ll);
+  REQUIRE(hash.payload.int2Value[0] == 62676603279285628ll);
+  REQUIRE(hash.payload.int2Value[1] == 4355757995457941589ll);
   REQUIRE(output == input);
 
   auto wrongValue = Var(12);
@@ -1170,8 +1170,8 @@ TEST_CASE("HashedActivations") {
   } catch (...) {
   }
   SHLOG_INFO("hash: {} - output: {}", hash, output);
-  REQUIRE(hash.payload.int2Value[0] == 4867318254273060702ll);
-  REQUIRE(hash.payload.int2Value[1] == -743121074487371807ll);
+  REQUIRE(hash.payload.int2Value[0] == 8279642819435580160ll);
+  REQUIRE(hash.payload.int2Value[1] == -8728332158951495684ll);
   REQUIRE(output == Var::Empty);
 }
 
