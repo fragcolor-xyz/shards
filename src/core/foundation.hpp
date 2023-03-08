@@ -1112,22 +1112,22 @@ typedef TSeqVar<InternalCore> SeqVar;
 
 inline TableVar &asTable(SHVar &var) {
   assert(var.valueType == SHType::Table);
-  return *reinterpret_cast<TableVar*>(&var);
+  return *reinterpret_cast<TableVar *>(&var);
 }
 
 inline const TableVar &asTable(const SHVar &var) {
   assert(var.valueType == SHType::Table);
-  return *reinterpret_cast<const TableVar*>(&var);
+  return *reinterpret_cast<const TableVar *>(&var);
 }
 
 inline SeqVar &asSeq(SHVar &var) {
   assert(var.valueType == SHType::Seq);
-  return *reinterpret_cast<SeqVar*>(&var);
+  return *reinterpret_cast<SeqVar *>(&var);
 }
 
 inline const SeqVar &asSeq(const SHVar &var) {
   assert(var.valueType == SHType::Seq);
-  return *reinterpret_cast<const SeqVar*>(&var);
+  return *reinterpret_cast<const SeqVar *>(&var);
 }
 
 struct ParamsInfo {

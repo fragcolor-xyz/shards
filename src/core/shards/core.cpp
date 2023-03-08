@@ -544,7 +544,6 @@ struct XpendTo : public XPendBase {
 };
 
 struct AppendTo : public XpendTo {
-
   static SHOptionalString help() { return SHCCSTR("Appends the input to the context variable passed to `:Collection`."); }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to append to the collection."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
@@ -587,7 +586,6 @@ struct AppendTo : public XpendTo {
 };
 
 struct PrependTo : public XpendTo {
-
   static SHOptionalString help() { return SHCCSTR("Prepends the input to the context variable passed to `:Collection`."); }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to prepend to the collection."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
