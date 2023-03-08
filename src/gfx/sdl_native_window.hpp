@@ -2,6 +2,7 @@
 #define GFX_SDL_NATIVE_WINDOW
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_syswm.h>
 
 #define NEED_SYSWM (GFX_WINDOWS || GFX_ANDROID || GFX_LINUX)
 
@@ -14,10 +15,7 @@
 inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {
 #if NEED_SYSWM
   SDL_SysWMinfo winInfo{};
-  SDL_version sdlVer{};
-  SDL_VERSION(&sdlVer);
-  winInfo.version = sdlVer;
-  if (!SDL_GetWindowWMInfo(window, &winInfo)) {
+  if (SDL_GetWindowWMInfo(window, &winInfo, SDL_SYSWM_CURRENT_VERSION) != 0) {
     throw gfx::formatException("Failed to call SDL_GetWindowWMInfo: {}", SDL_GetError());
   }
 #endif
@@ -36,10 +34,7 @@ inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {
 inline void *SDL_GetNativeDisplayPtr(SDL_Window *window) {
 #if NEED_SYSWM
   SDL_SysWMinfo winInfo{};
-  SDL_version sdlVer{};
-  SDL_VERSION(&sdlVer);
-  winInfo.version = sdlVer;
-  if (!SDL_GetWindowWMInfo(window, &winInfo)) {
+  if (SDL_GetWindowWMInfo(window, &winInfo, SDL_SYSWM_CURRENT_VERSION) != 0) {
     throw gfx::formatException("Failed to call SDL_GetWindowWMInfo: {}", SDL_GetError());
   }
 #endif
