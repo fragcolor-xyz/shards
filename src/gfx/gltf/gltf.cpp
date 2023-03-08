@@ -4,7 +4,6 @@
 #include "gfx/linalg.hpp"
 #include "linalg.h"
 #include "spdlog/spdlog.h"
-#include <SDL_config.h>
 #include <algorithm>
 #include <cmath>
 #include <gfx/error_utils.hpp>

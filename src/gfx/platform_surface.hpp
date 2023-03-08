@@ -1,7 +1,7 @@
 #ifndef GFX_PLATFORM_SURFACE
 #define GFX_PLATFORM_SURFACE
 
-#include "SDL_metal.h"
+#include <SDL3/SDL_metal.h>
 #include "gfx_wgpu.hpp"
 #include "platform.hpp"
 #include "sdl_native_window.hpp"

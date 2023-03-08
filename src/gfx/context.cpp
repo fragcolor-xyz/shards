@@ -10,7 +10,9 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
-#include <SDL_stdinc.h>
+#include <SDL3/SDL_stdinc.h>
+#include <webgpu-headers/webgpu.h>
+#include <wgpu.h>
 
 #if GFX_EMSCRIPTEN
 #include <emscripten/html5.h>
@@ -481,6 +483,18 @@ void Context::requestDevice() {
   // Passed to force full feature set to be enabled
 #if WEBGPU_NATIVE
   WGPURequiredLimits requiredLimits = {.limits = wgpuGetDefaultLimits()};
+
+  // Lower minimum limits to support more targets
+  // based on ios simulator:
+  // max_buffer_size	unsigned long	268435456
+  WGPURequiredLimitsExtras extras{
+      .chain = {.sType = (WGPUSType)WGPUSType_RequiredLimitsExtras},
+      .maxBufferSize = 250 * 1024 * 1024,
+  };
+  requiredLimits.limits.minStorageBufferOffsetAlignment = 0;
+  requiredLimits.limits.minUniformBufferOffsetAlignment = 0;
+  requiredLimits.nextInChain = &extras.chain;
+  
   deviceDesc.requiredLimits = &requiredLimits;
 
   // Lower default limits to support devices like iOS simulator

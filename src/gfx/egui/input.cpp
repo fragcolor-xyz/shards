@@ -1,8 +1,9 @@
 #include "input.hpp"
 #include "../linalg.hpp"
 #include "../platform.hpp"
-#include <SDL.h>
-#include <SDL_keycode.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_keycode.h>
+#include <SDL3/SDL_mouse.h>
 #include <gfx/window.hpp>
 #include "renderer.hpp"
 #include <map>
@@ -13,9 +14,9 @@ namespace gfx {
 //   on apple this is the cmd key
 //   otherwise the ctrl key
 #if GFX_APPLE
-#define KMOD_PRIMARY KMOD_GUI
+#define KMOD_PRIMARY SDL_KMOD_GUI
 #else
-#define KMOD_PRIMARY KMOD_CTRL
+#define KMOD_PRIMARY SDL_KMOD_CTRL
 #endif
 
 struct SDLCursor {
@@ -34,7 +35,7 @@ struct SDLCursor {
   }
   ~SDLCursor() {
     if (cursor)
-      SDL_FreeCursor(cursor);
+      SDL_DestroyCursor(cursor);
   }
   operator SDL_Cursor *() const { return cursor; }
 };
@@ -68,11 +69,11 @@ struct CursorMap {
 
 static egui::ModifierKeys translateModifierKeys(SDL_Keymod flags) {
   return egui::ModifierKeys{
-      .alt = (flags & KMOD_ALT) != 0,
-      .ctrl = (flags & KMOD_CTRL) != 0,
-      .shift = (flags & KMOD_SHIFT) != 0,
-      .macCmd = (flags & KMOD_GUI) != 0,
-      .command = (flags & KMOD_GUI) != 0,
+      .alt = (flags & SDL_KMOD_ALT) != 0,
+      .ctrl = (flags & SDL_KMOD_CTRL) != 0,
+      .shift = (flags & SDL_KMOD_SHIFT) != 0,
+      .macCmd = (flags & SDL_KMOD_GUI) != 0,
+      .command = (flags & SDL_KMOD_GUI) != 0,
   };
 }
 
@@ -128,8 +129,8 @@ bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
   };
 
   switch (sdlEvent.type) {
-  case SDL_MOUSEBUTTONDOWN:
-  case SDL_MOUSEBUTTONUP: {
+  case SDL_EVENT_MOUSE_BUTTON_DOWN:
+  case SDL_EVENT_MOUSE_BUTTON_UP: {
     auto &ievent = sdlEvent.button;
     auto &oevent = newEvent(InputEventType::PointerButton).pointerButton;
     switch (ievent.button) {
@@ -147,27 +148,27 @@ bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
       events.pop_back();
       break;
     }
-    oevent.pressed = ievent.type == SDL_MOUSEBUTTONDOWN;
+    oevent.pressed = ievent.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
     oevent.modifiers = input.modifierKeys;
     oevent.pos = translatePointerPos(updateCursorPosition(ievent.x, ievent.y));
     break;
   }
-  case SDL_MOUSEMOTION: {
+  case SDL_EVENT_MOUSE_MOTION: {
     auto &ievent = sdlEvent.motion;
     auto &oevent = newEvent(InputEventType::PointerMoved).pointerMoved;
     oevent.pos = translatePointerPos(updateCursorPosition(ievent.x, ievent.y));
     break;
   }
-  case SDL_MOUSEWHEEL: {
+  case SDL_EVENT_MOUSE_WHEEL: {
     auto &ievent = sdlEvent.wheel;
     auto &oevent = newEvent(InputEventType::Scroll).scroll;
     oevent.delta = egui::Pos2{
-        .x = float(ievent.preciseX),
-        .y = float(ievent.preciseY),
+        .x = float(ievent.x),
+        .y = float(ievent.y),
     };
     break;
   }
-  case SDL_TEXTEDITING: {
+  case SDL_EVENT_TEXT_EDITING: {
     auto &ievent = sdlEvent.edit;
 
     std::string editingText = ievent.text;
@@ -180,7 +181,7 @@ bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
     evt.compositionUpdate.text = strings.emplace_back(ievent.text).c_str();
     break;
   }
-  case SDL_TEXTINPUT: {
+  case SDL_EVENT_TEXT_INPUT: {
     auto &ievent = sdlEvent.text;
 
     if (imeComposing) {
@@ -193,16 +194,16 @@ bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
     }
     break;
   }
-  case SDL_KEYDOWN:
-  case SDL_KEYUP: {
+  case SDL_EVENT_KEY_DOWN:
+  case SDL_EVENT_KEY_UP: {
     auto &ievent = sdlEvent.key;
     auto &oevent = newEvent(InputEventType::Key).key;
     oevent.key = SDL_KeyCode(ievent.keysym.sym);
-    oevent.pressed = ievent.type == SDL_KEYDOWN;
+    oevent.pressed = ievent.type == SDL_EVENT_KEY_DOWN;
     oevent.modifiers = translateModifierKeys(SDL_Keymod(ievent.keysym.mod));
 
     // Translate cut/copy/paste using the standard keys combos
-    if (ievent.type == SDL_KEYDOWN) {
+    if (ievent.type == SDL_EVENT_KEY_DOWN) {
       if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_c) {
         newEvent(InputEventType::Copy);
       } else if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_v) {
@@ -283,9 +284,9 @@ void EguiInputTranslator::copyText(const char *text) { SDL_SetClipboardText(text
 
 void EguiInputTranslator::updateCursorIcon(egui::CursorIcon icon) {
   if (icon == egui::CursorIcon::None) {
-    SDL_ShowCursor(SDL_DISABLE);
+    SDL_HideCursor();
   } else {
-    SDL_ShowCursor(SDL_ENABLE);
+    SDL_ShowCursor();
     SDL_Cursor *cursor = CursorMap::getInstance().getCursor(icon);
     SDL_SetCursor(cursor);
   }
