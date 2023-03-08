@@ -788,6 +788,8 @@ struct SetBase : public VariableBase {
 
 struct SetUpdateBase : public SetBase {
   ALWAYS_INLINE SHVar activateTable(SHContext *context, const SHVar &input) {
+    checkIfTableChanged(input);
+
     if (likely(_cell != nullptr)) {
       cloneVar(*_cell, input);
       return *_cell;
@@ -986,6 +988,8 @@ struct Ref : public SetBase {
   }
 
   ALWAYS_INLINE SHVar activateTable(SHContext *context, const SHVar &input) {
+    checkIfTableChanged(input);
+
     if (likely(_cell != nullptr)) {
       memcpy(_cell, &input, sizeof(SHVar));
       return input;
