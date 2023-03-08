@@ -2,5 +2,6 @@ nav:
   - index.md
   - rust.md
   - cpp-windows.md
+  - cpp-android.md
   - debugging.md
   - code-comp.md

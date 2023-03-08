@@ -12,6 +12,7 @@ Check the sections below for details on how to set up specific parts of the buil
 - Setting up [Rust](../rust.md)
 - Setting up the C++ compiler
   - for [Windows](../cpp-windows.md)
+  - for [Android](../cpp-android.md)
 
 
 ## Debugging and tools
