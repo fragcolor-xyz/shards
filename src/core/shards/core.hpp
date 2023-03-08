@@ -730,6 +730,7 @@ struct SetBase : public VariableBase {
   Type _tableTypeInfo{};
   SHString _tableContentKey{};
   SHTypeInfo _tableContentInfo{};
+  void *_tablePtr{nullptr};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -777,56 +778,55 @@ struct SetBase : public VariableBase {
     _key.warmup(context);
   }
 
-  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE void checkIfTableChanged(const SHVar &input) {
+    if (_tablePtr != input.payload.tableValue.opaque) {
+      _tablePtr = input.payload.tableValue.opaque;
+      _cell = nullptr;
+    }
+  }
+};
+
+struct SetUpdateBase : public SetBase {
+  ALWAYS_INLINE SHVar activateTable(SHContext *context, const SHVar &input) {
     if (likely(_cell != nullptr)) {
       cloneVar(*_cell, input);
       return *_cell;
     }
 
-    // if flagged exposed and not None, we got set already!
-    const auto shouldNotOverwrite = (_target->flags & SHVAR_FLAGS_EXPOSED) && _target->valueType != SHType::None;
+    if (_target->valueType != SHType::Table) {
+      if (_target->valueType != SHType::None)
+        destroyVar(*_target);
 
-    if (_isTable) {
-      if (_target->valueType != SHType::Table) {
-        if (_target->valueType != SHType::None)
-          destroyVar(*_target);
-
-        // Not initialized yet
-        _target->valueType = SHType::Table;
-        _target->payload.tableValue.api = &GetGlobals().TableInterface;
-        _target->payload.tableValue.opaque = new SHMap();
-      }
-
-      auto &kv = _key.get();
-      SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
-
-      if (likely(!shouldNotOverwrite)) {
-        // Clone will try to recycle memory and such
-        cloneVar(*vptr, input);
-      }
-
-      // use fast cell from now
-      // if variable we cannot do this tho!
-      if (!_key.isVariable())
-        _cell = vptr;
-
-      return *vptr;
-    } else {
-      if (likely(!shouldNotOverwrite)) {
-        // Clone will try to recycle memory and such
-        cloneVar(*_target, input);
-      }
-
-      // use fast cell from now
-      _cell = _target;
-
-      return *_cell;
+      // Not initialized yet
+      _target->valueType = SHType::Table;
+      _target->payload.tableValue.api = &GetGlobals().TableInterface;
+      _target->payload.tableValue.opaque = new SHMap();
     }
+
+    auto &kv = _key.get();
+    SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+
+    // Clone will try to recycle memory and such
+    cloneVar(*vptr, input);
+
+    // use fast cell from now
+    // if variable we cannot do this tho!
+    if (!_key.isVariable())
+      _cell = vptr;
+
+    return *vptr;
+  }
+
+  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+    // Clone will try to recycle memory and such
+    cloneVar(*_target, input);
+    return *_target;
   }
 };
 
-struct Set : public SetBase {
+struct Set : public SetUpdateBase {
   bool _exposed{false};
+  Shard *_self{};
 
   static SHOptionalString help() { return SHCCSTR("Creates a mutable variable and assigns a value to it."); }
 
@@ -857,6 +857,8 @@ struct Set : public SetBase {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    _self = data.shard;
+
     sanityChecks(data, true);
 
     // bake exposed types
@@ -879,6 +881,8 @@ struct Set : public SetBase {
         _exposedInfo =
             ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, true, true));
       }
+
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateTable;
     } else {
       // just a variable!
       if (_global) {
@@ -888,6 +892,8 @@ struct Set : public SetBase {
         _exposedInfo =
             ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed variable."), SHTypeInfo(data.inputType), true));
       }
+
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
     }
     return data.inputType;
   }
@@ -896,10 +902,21 @@ struct Set : public SetBase {
 
   void warmup(SHContext *context) {
     SetBase::warmup(context);
-    if (_exposed)
+
+    if (_exposed) {
       _target->flags |= SHVAR_FLAGS_EXPOSED;
-    else if (_target->flags & SHVAR_FLAGS_EXPOSED)
+      // Ok so, at this point if we are exposed we might be also be Set!
+      // if that is true we can disable this Shard completely from the graph !
+      const_cast<Shard *>(_self)->inlineShardId = InlineShard::NoopShard;
+    } else if (_target->flags & SHVAR_FLAGS_EXPOSED) {
+      // something changed, we are no longer exposed
+      // fixup activations and variable flags
       _target->flags &= ~SHVAR_FLAGS_EXPOSED;
+      if (_isTable)
+        const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;
+      else
+        const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
+    }
   }
 };
 
@@ -1005,7 +1022,7 @@ struct Ref : public SetBase {
   }
 };
 
-struct Update : public SetBase {
+struct Update : public SetUpdateBase {
   static SHOptionalString help() { return SHCCSTR("Modifies the value of an existing mutable variable."); }
 
   static SHOptionalString inputHelp() { return SHCCSTR("Input is the new value of the variable being updated."); }
@@ -1039,6 +1056,8 @@ struct Update : public SetBase {
           }
         }
       }
+
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateTable;
     } else {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
@@ -1048,6 +1067,8 @@ struct Update : public SetBase {
           }
         }
       }
+
+      const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
     }
 
     // bake exposed types

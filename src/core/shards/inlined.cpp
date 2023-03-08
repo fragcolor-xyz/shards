@@ -30,10 +30,6 @@ SHARDS_CONDITIONAL_INLINE FLATTEN void setInlineShardId(Shard *shard, std::strin
     shard->inlineShardId = InlineShard::CoreRepeat;
   } else if (name == "Once") {
     shard->inlineShardId = InlineShard::CoreOnce;
-  } else if (name == "Set") {
-    shard->inlineShardId = InlineShard::CoreSet;
-  } else if (name == "Update") {
-    shard->inlineShardId = InlineShard::CoreUpdate;
   } else if (name == "Swap") {
     shard->inlineShardId = InlineShard::CoreSwap;
   } else if (name == "Push") {
@@ -120,9 +116,9 @@ SHARDS_CONDITIONAL_INLINE FLATTEN bool activateShardInline(Shard *blk, SHContext
     output = *shard->core._cell;
     break;
   }
-  case InlineShard::CoreSet: {
-    auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
-    output = shard->core.activate(context, input);
+  case InlineShard::CoreRefRegular: {
+    auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
+    output = shard->core.activateRegular(context, input);
     break;
   }
   case InlineShard::CoreRefTable: {
@@ -130,14 +126,14 @@ SHARDS_CONDITIONAL_INLINE FLATTEN bool activateShardInline(Shard *blk, SHContext
     output = shard->core.activateTable(context, input);
     break;
   }
-  case InlineShard::CoreRefRegular: {
-    auto shard = reinterpret_cast<shards::RefRuntime *>(blk);
-    output = shard->core.activateRegular(context, input);
+  case InlineShard::CoreSetUpdateRegular: {
+    auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
+    output = shard->core.activate(context, input);
     break;
   }
-  case InlineShard::CoreUpdate: {
-    auto shard = reinterpret_cast<shards::UpdateRuntime *>(blk);
-    output = shard->core.activate(context, input);
+  case InlineShard::CoreSetUpdateTable: {
+    auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
+    output = shard->core.activateTable(context, input);
     break;
   }
   case InlineShard::CoreSwap: {
