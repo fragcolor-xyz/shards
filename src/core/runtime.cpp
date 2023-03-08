@@ -2645,10 +2645,58 @@ void hash_update(const SHVar &var, void *state) {
   case SHType::None:
   case SHType::Any:
     break;
-  default: {
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHVarPayload));
+  case SHType::Enum:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHEnum));
     assert(error == XXH_OK);
-  }
+    break;
+  case SHType::Bool:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHBool));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int2:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt2));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int3:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt3));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int4:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt4));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int8:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt8));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int16:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt16));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Color:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHColor));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Float:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Float2:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat2));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Float3:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat3));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Float4:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat4));
+    assert(error == XXH_OK);
+    break;
   }
 }
 
