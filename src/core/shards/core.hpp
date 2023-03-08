@@ -830,6 +830,7 @@ struct SetUpdateBase : public SetBase {
 struct Set : public SetUpdateBase {
   bool _exposed{false};
   Shard *_self{};
+  entt::connection _onStartConnection{};
 
   static SHOptionalString help() { return SHCCSTR("Creates a mutable variable and assigns a value to it."); }
 
@@ -903,22 +904,44 @@ struct Set : public SetUpdateBase {
 
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
+  void onStart(const SHWire::OnStartEvent &e) {
+    if (_target->valueType != SHType::None) {
+      // Ok so, at this point if we are exposed we might be also be Set!
+      // if that is true we can disable this Shard completely from the graph !
+      SHLOG_TRACE("Variable {} is exposed and already initialized, disabling shard", _name);
+      const_cast<Shard *>(_self)->inlineShardId = InlineShard::NoopShard;
+    }
+  }
+
   void warmup(SHContext *context) {
     SetBase::warmup(context);
 
+    if (_onStartConnection) {
+      _onStartConnection.release();
+    }
+
+    // restore any possible deferred change here
+    if (_isTable)
+      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;
+    else
+      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
+
     if (_exposed) {
       _target->flags |= SHVAR_FLAGS_EXPOSED;
-      // Ok so, at this point if we are exposed we might be also be Set!
-      // if that is true we can disable this Shard completely from the graph !
-      const_cast<Shard *>(_self)->inlineShardId = InlineShard::NoopShard;
+      // need to defer the check to before we actually start running
+      _onStartConnection = context->main->dispatcher.sink<SHWire::OnStartEvent>().connect<&Set::onStart>(this);
     } else if (_target->flags & SHVAR_FLAGS_EXPOSED) {
       // something changed, we are no longer exposed
       // fixup activations and variable flags
       _target->flags &= ~SHVAR_FLAGS_EXPOSED;
-      if (_isTable)
-        const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;
-      else
-        const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
+    }
+  }
+
+  void cleanup() {
+    SetBase::cleanup();
+
+    if (_onStartConnection) {
+      _onStartConnection.release();
     }
   }
 };

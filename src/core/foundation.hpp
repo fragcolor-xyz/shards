@@ -452,7 +452,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     const SHWire *wire;
   };
 
-  entt::dispatcher dispatcher{};
+  mutable entt::dispatcher dispatcher{};
 
 private:
   SHWire(std::string_view wire_name) : name(wire_name) {
