@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <variant>
 #include "math_ops.hpp"
+#include "shards/math_ops.hpp"
 
 #define _PC
 #include "ShaderFastMathLib.h"
@@ -433,6 +434,17 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
   }
 };
 
+template <class TOp> struct UnaryFloatOperation : public UnaryOperation<TOp> {
+  static inline Types FloatOrSeqTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type,
+                                  CoreInfo::ColorType, CoreInfo::AnySeqType}};
+
+  static SHTypesInfo inputTypes() { return FloatOrSeqTypes; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Any valid float(s) or a sequence of such entities supported by this operation.");
+  }
+  static SHTypesInfo outputTypes() { return FloatOrSeqTypes; }
+};
+
 template <class TOp> struct UnaryVarOperation final : public UnaryOperation<TOp> {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -519,7 +531,7 @@ MATH_BINARY_INT_OPERATION(RShift, >>);
   struct NAME##Op final {                                                               \
     template <typename T> T apply(const T &lhs) { return FUNC(lhs); }                   \
   };                                                                                    \
-  using NAME = UnaryOperation<BasicUnaryOperation<NAME##Op, DispatchType::FloatTypes>>; \
+  using NAME = UnaryFloatOperation<BasicUnaryOperation<NAME##Op, DispatchType::FloatTypes>>; \
   RUNTIME_SHARD_TYPE(Math, NAME);
 
 MATH_UNARY_FLOAT_OPERATION(Abs, __builtin_fabs, __builtin_fabsf);
