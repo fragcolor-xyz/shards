@@ -782,7 +782,7 @@ struct SetBase : public VariableBase {
     if (_tablePtr != _target->payload.tableValue.opaque) {
       _tablePtr = _target->payload.tableValue.opaque;
       _cell = nullptr;
-      SHLOG_TRACE("Table changed, clearing cell pointer");
+      SHLOG_TRACE("Table {} changed, clearing cell pointer", _name);
     }
   }
 };
