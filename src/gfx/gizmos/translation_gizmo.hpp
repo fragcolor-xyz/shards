@@ -13,8 +13,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float3 dragStartPoint;
 
   float scale = 1.0f;
-  const float axisRadius = 0.1f;
-  const float axisLength = 0.7f;
+  const float axisRadius = 0.03f;
+  const float axisLength = 0.5f;
 
   float getGlobalAxisRadius() const { return axisRadius * scale; }
   float getGlobalAxisLength() const { return axisLength * scale; }
@@ -82,10 +82,12 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     for (size_t i = 0; i < 3; i++) {
       auto &handle = handles[i];
 
+      bool hovering = inputContext.hovering && inputContext.hovering == &handle;
+
+#if 0
       // Debug draw
       float4 color = float4(.7, .7, .7, 1.);
       uint32_t thickness = 1;
-      bool hovering = inputContext.hovering && inputContext.hovering == &handle;
       if (hovering) {
         color = float4(.5, 1., .5, 1.);
         thickness = 2;
@@ -97,6 +99,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 size = max - min;
 
       renderer.getShapeRenderer().addBox(handle.selectionBoxTransform, center, size, color, thickness);
+#endif
 
       float3 loc = extractTranslation(handle.selectionBoxTransform);
       float3 dir = getAxisDirection(i, handle.selectionBoxTransform);
