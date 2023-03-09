@@ -94,6 +94,8 @@ struct Window {
   flags: ParamVar,
   contents: ShardsVar,
   parents: ParamVar,
+  id: ParamVar,
+  cached_id: Option<egui::Id>,
 }
 
 shenum! {
