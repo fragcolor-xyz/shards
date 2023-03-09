@@ -3579,7 +3579,8 @@ struct Once {
         // tick took too long!!!
         if (++_logCounter >= 1000) {
           _logCounter = 0;
-          SHLOG_WARNING("Once shard took too long to execute, skipping next pause time");
+          auto wire = context->currentWire();
+          SHLOG_WARNING("Once shard took too long to execute, skipping next pause time, wire: {}", wire->name);
         }
       } else {
         ++_logCounter;
