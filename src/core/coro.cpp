@@ -2,7 +2,36 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 #include "foundation.hpp"
+#include "coro.hpp"
 
+SHHeavyCoro::SHHeavyCoro(std::function<void()> fn) {
+  init();
+  thread.emplace([=]() {
+    suspend();
+    finished = true;
+    v.notify_one();
+    fn();
+  });
+}
+
+void SHHeavyCoro::resume() {
+  assert(runLock);
+  runLock.reset();
+  std::unique_lock<decltype(mtx1)> _lock(mtx1);
+  v.wait(_lock);
+}
+
+void SHHeavyCoro::suspend() {
+  assert(!runLock.has_value());
+  v.notify_one();
+
+  // Acquire lock to resume
+  runLock.emplace(mtx);
+}
+
+operator SHHeavyCoro::bool() const { return !finished; }
+
+#ifdef __EMSCRIPTEN__
 thread_local emscripten_fiber_t *em_local_coro{nullptr};
 thread_local emscripten_fiber_t em_main_coro{};
 thread_local uint8_t em_asyncify_main_stack[SHCoro::as_stack_size];
@@ -47,3 +76,4 @@ NO_INLINE void SHCoro::yield() {
   em_local_coro = em_parent_fiber;
   emscripten_fiber_swap(&em_fiber, em_parent_fiber);
 }
+#endif
