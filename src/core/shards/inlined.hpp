@@ -83,13 +83,12 @@ struct InlineShard {
 };
 
 #ifdef SHARDS_INLINE_EVERYTHING
-#define SHARDS_CONDITIONAL_INLINE inline
+#define SHARDS_CONDITIONAL_INLINE always_inline
 #else
 #define SHARDS_CONDITIONAL_INLINE
 #endif
 
-SHARDS_CONDITIONAL_INLINE void setInlineShardId(Shard *shard, std::string_view name);
-SHARDS_CONDITIONAL_INLINE bool activateShardInline(Shard *blk, SHContext *context, const SHVar &input, SHVar &output);
+void setInlineShardId(Shard *shard, std::string_view name);
 } // namespace shards
 
 #endif /* AA4E918E_F09A_4717_B158_76C05D2A7388 */
