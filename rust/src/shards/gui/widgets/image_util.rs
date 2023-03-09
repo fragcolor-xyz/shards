@@ -40,6 +40,10 @@ impl Default for CachedUIImage {
 }
 
 impl CachedUIImage {
+  pub fn invalidate(&mut self) {
+    self.prev_ptr = null_mut();
+  }
+
   pub fn get_egui_texture_from_image<'a>(
     &'a mut self,
     input: &Var,

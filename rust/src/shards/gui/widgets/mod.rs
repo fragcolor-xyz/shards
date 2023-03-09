@@ -96,6 +96,8 @@ struct Image {
   requiring: ExposedTypes,
   scale: ParamVar,
   cached_ui_image: image_util::CachedUIImage,
+  hash: ParamVar,
+  current_hash: Var,
 }
 
 struct RenderTarget {
