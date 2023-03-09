@@ -901,7 +901,7 @@ inline void Evolve::crossover(Individual &child, const Individual &parent0, cons
 inline void Evolve::mutate(Evolve::Individual &individual) {
   auto wire = SHWire::sharedFromRef(individual.wire.payload.wireValue);
   // we need to hack this in as we run out of context
-  SHCoro foo{};
+  shards::Coroutine foo{};
   SHFlow flow{};
   SHContext ctx(&foo, wire.get(), &flow);
 

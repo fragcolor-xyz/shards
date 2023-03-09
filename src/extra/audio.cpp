@@ -91,7 +91,7 @@ struct Device {
   uint64_t inputHash;
   uint64_t outputHash;
   SHFlow dpsFlow{};
-  SHCoro dspStubCoro{};
+  shards::Coroutine dspStubCoro{};
   std::shared_ptr<SHMesh> dspMesh = SHMesh::make();
   std::shared_ptr<SHWire> dspWire = SHWire::make("Audio-DSP-Wire");
   SHContext dspContext{&dspStubCoro, dspWire.get(), &dpsFlow};

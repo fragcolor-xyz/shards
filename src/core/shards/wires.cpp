@@ -11,7 +11,7 @@
 #include "../brancher.hpp"
 #include "brancher.hpp"
 #include "common_types.hpp"
-#include "foundation.hpp"
+#include "coro.hpp"
 #include "ops_internal.hpp"
 #include "shards.h"
 
@@ -24,6 +24,14 @@
 #endif
 
 namespace shards {
+
+inline void propagateWireProperties(SHWire &outer, SHWire &inner) {
+  // Propagate stack size
+  outer.stackSize = std::max<size_t>(inner.stackSize, inner.stackSize);
+  // Propagate settings
+  outer.runOnDedicatedThread = outer.runOnDedicatedThread || inner.runOnDedicatedThread;
+}
+
 void WireBase::resetComposition() {
   if (wire) {
     if (wire->composeResult) {
@@ -192,7 +200,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   SHTypeInfo wireOutput = wire->outputType;
 
   // Propagate stack size
-  data.wire->stackSize = std::max<size_t>(data.wire->stackSize, wire->stackSize);
+  propagateWireProperties(*data.wire, *wire);
 
   auto outputType = data.inputType;
 
@@ -655,7 +663,7 @@ struct Resume : public WireBase {
     }
 
     // Prepare if no callc was called
-    if (!pWire->coro) {
+    if (!coroutineValid(pWire->coro)) {
       pWire->mesh = context->main->mesh;
       shards::prepare(pWire, context->flow);
 
@@ -1493,7 +1501,7 @@ struct ParallelBase : public CapturingSpawners {
             }
 
             // Prepare and start if no callc was called
-            if (!cref->wire->coro) {
+            if (!coroutineValid(cref->wire->coro)) {
               cref->wire->mesh = context->main->mesh;
 
               // pre-set wire context with our context
@@ -1540,7 +1548,7 @@ struct ParallelBase : public CapturingSpawners {
             }
 
             // Prepare and start if no callc was called
-            if (!cref->wire->coro) {
+            if (!coroutineValid(cref->wire->coro)) {
               if (!cref->mesh) {
                 cref->mesh = SHMesh::make();
               }
@@ -1885,7 +1893,7 @@ struct StepMany : public TryMany {
       }
 
       // Prepare and start if no callc was called
-      if (!cref->wire->coro) {
+      if (!coroutineValid(cref->wire->coro)) {
         cref->wire->mesh = context->main->mesh;
 
         // pre-set wire context with our context
@@ -1976,6 +1984,7 @@ struct Branch {
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static inline Type VarSeqType = Type::SeqOf(CoreInfo::AnyVarType);
 
   static SHParametersInfo parameters() {
     static Parameters params{
@@ -1990,13 +1999,15 @@ struct Branch {
          {CoreInfo::BoolType}},
         {"Mesh",
          SHCCSTR("Optional external mesh to use for this branch. If not provided, a new one will be created."),
-         {CoreInfo::NoneType, MeshType}}};
+         {CoreInfo::NoneType, MeshType}},
+        {"Capture", SHCCSTR("List of variables to capture."), {CoreInfo::NoneType, CoreInfo::StringSeqType, VarSeqType}}};
     return params;
   }
 
 private:
   OwnedVar _wires{Var::Empty};
   Brancher _brancher;
+  OwnedVar _capture;
 
 public:
   void setParam(int index, const SHVar &value) {
@@ -2019,6 +2030,9 @@ public:
         _brancher.mesh = *sharedMesh;
       }
       break;
+    case 4:
+      _capture = value;
+      break;
     default:
       break;
     }
@@ -2035,6 +2049,8 @@ public:
     case 3:
       assert(_brancher.mesh); // there always should be a mesh
       return Var::Object(&_brancher.mesh, CoreCC, TypeId);
+    case 4:
+      return _capture;
     default:
       return Var::Empty;
     }
@@ -2049,6 +2065,13 @@ public:
   SHTypeInfo compose(const SHInstanceData &data) {
     auto dataCopy = data;
     dataCopy.inputType = {}; // Branch doesn't have an input
+
+    _brancher.capturedVariableNames.clear();
+    if (_capture.valueType == SHType::Seq) {
+      for (auto &capture : _capture) {
+        _brancher.capturedVariableNames.push_back(capture.payload.stringValue);
+      }
+    }
 
     _brancher.compose(dataCopy);
 

@@ -48,13 +48,6 @@
 #define ENTT_ID_TYPE std::uint64_t
 #include <entt/entt.hpp>
 
-// TODO make it into a run-time param
-#ifndef NDEBUG
-#define SH_BASE_STACK_SIZE 1024 * 1024
-#else
-#define SH_BASE_STACK_SIZE 128 * 1024
-#endif
-
 #if defined(_WIN32) && defined(__clang__)
 #define SH_STACK_ALLOCATOR_SUPPORTED 0
 #endif
@@ -111,6 +104,8 @@ SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wire
 SHVar *referenceGlobalVariable(SHContext *ctx, const char *name);
 SHVar *referenceVariable(SHContext *ctx, const char *name);
 SHVar *referenceWireVariable(SHWire *wire, const char *name);
+SHVar *findVariable(SHContext *ctx, const char *name);
+SHVar *findMeshVariable(const std::shared_ptr<SHMesh> &mesh, const char *name, SHContext *debugContext = nullptr);
 void releaseVariable(SHVar *variable);
 void setSharedVariable(const char *name, const SHVar &value);
 void unsetSharedVariable(const char *name);
@@ -308,9 +303,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   std::string name;
   entt::id_type id{entt::null};
 
-  std::optional<SHCoro> coro;
-  std::optional<SHHeavyCoro> heavyCoro;
-
   std::atomic<State> state{Stopped};
 
   shards::OwnedVar currentInput{};
@@ -350,12 +342,17 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   // used only in the case of external variables
   std::unordered_map<uint64_t, shards::TypeInfo> typesCache;
 
+  // The wire's running coroutine
+  shards::Coroutine coro;
+
   // this is the eventual coroutine stack memory buffer
   uint8_t *stackMem{nullptr};
   size_t stackSize{SH_BASE_STACK_SIZE};
 
   // Run this wire on a dedicated hardware thread
-  bool dedicatedThread = true;
+  // This is mainly a work-around for android,
+  //  where coroutine stacks do not play nicely with JNI calls
+  bool runOnDedicatedThread = false;
 
   static std::shared_ptr<SHWire> &sharedFromRef(SHWireRef ref) { return *reinterpret_cast<std::shared_ptr<SHWire> *>(ref); }
 
@@ -1383,16 +1380,18 @@ template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type
   return *reinterpret_cast<T *>(var.payload.objectValue);
 }
 
-inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, const SHVar &var) {
-  assert(var.valueType == SHType::ContextVar);
-
-  auto sv = std::string_view(var.payload.stringValue);
+inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, std::string_view variableName) {
   for (const auto &entry : exposed) {
-    if (sv == entry.name) {
+    if (variableName == entry.name) {
       return entry;
     }
   }
   return std::nullopt;
+}
+
+inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, const SHVar &var) {
+  assert(var.valueType == SHType::ContextVar);
+  return findExposedVariable(exposed, std::string_view(var.payload.stringValue));
 }
 
 // Collects all ContextVar references

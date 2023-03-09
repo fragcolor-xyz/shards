@@ -21,6 +21,7 @@ struct Brancher {
   std::vector<std::shared_ptr<SHWire>> wires;
   bool captureAll = false;
   BranchFailureBehavior failureBehavior = BranchFailureBehavior::Everything;
+  std::vector<std::string> capturedVariableNames;
 
 private:
   std::unordered_map<std::string_view, SHExposedTypeInfo> _collectedRequirements;
@@ -116,9 +117,15 @@ public:
       }
     }
 
-    // Copy shared
-    _shared = ExposedInfo(data.shared);
-    mesh->instanceData.shared = (SHExposedTypesInfo)_shared;
+    for (auto &varName : capturedVariableNames) {
+      auto var = findExposedVariable(data.shared, varName);
+      if (!var) {
+        throw ComposeError(fmt::format("Branch: Can not capture variable {}", varName));
+      }
+      _mergedRequirements.push_back(var.value());
+    }
+
+    mesh->instanceData.shared = (SHExposedTypesInfo)_mergedRequirements;
   }
 
   void warmup(SHContext *context, const SHVar &input = Var::Empty) {
