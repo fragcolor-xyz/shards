@@ -13,7 +13,7 @@ Select from our list of Lisp functions below to access their API docs:
 
 * [Collections](collections.md)
 * [Macros](macros.md)
-* [Operators](operators.md)B3
+* [Operators](operators.md)
 * [Standard Output](standard-output.md)
 * [Strings](strings.md)
 * [Values](values.md)
