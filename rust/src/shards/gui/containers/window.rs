@@ -14,6 +14,7 @@ use crate::shards::gui::EGUI_CTX_TYPE;
 use crate::shards::gui::FLOAT2_VAR_SLICE;
 use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
+use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
@@ -31,6 +32,7 @@ use crate::types::ANY_TYPES;
 use crate::types::INT_OR_NONE_TYPES_SLICE;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use crate::types::STRING_TYPES;
+use crate::types::STRING_VAR_OR_NONE_SLICE;
 
 lazy_static! {
   static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> = vec![*WINDOW_FLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
@@ -77,6 +79,12 @@ lazy_static! {
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
+    (
+      cstr!("ID"),
+      shccstr!("An optional ID value to make the window unique if the title name collides."),
+      &STRING_VAR_OR_NONE_SLICE[..],
+    )
+      .into(),
   ];
 }
 
@@ -97,6 +105,8 @@ impl Default for Window {
       flags: ParamVar::default(),
       contents: ShardsVar::default(),
       parents,
+      id: ParamVar::default(),
+      cached_id: None,
     }
   }
 }
@@ -157,6 +167,7 @@ impl Shard for Window {
       4 => Ok(self.height.set_param(value)),
       5 => Ok(self.flags.set_param(value)),
       6 => self.contents.set_param(value),
+      7 => Ok(self.id.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -170,6 +181,7 @@ impl Shard for Window {
       4 => self.height.get_param(),
       5 => self.flags.get_param(),
       6 => self.contents.get_param(),
+      7 => self.id.get_param(),
       _ => Var::default(),
     }
   }
@@ -187,6 +199,16 @@ impl Shard for Window {
     self.requiring.push(exp_info);
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring, &self.parents);
+
+    if self.id.is_variable() {
+      let id_info = ExposedInfo {
+        exposedType: common_type::string,
+        name: self.id.get_name(),
+        help: cstr!("The ID variable.").into(),
+        ..ExposedInfo::default()
+      };
+      self.requiring.push(id_info);
+    }
 
     Some(&self.requiring)
   }
@@ -217,6 +239,8 @@ impl Shard for Window {
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
     }
+    self.id.warmup(ctx);
+    self.cached_id = None;
 
     Ok(())
   }
@@ -234,6 +258,7 @@ impl Shard for Window {
 
     self.parents.cleanup();
     self.instance.cleanup();
+    self.id.cleanup();
 
     Ok(())
   }
@@ -245,6 +270,15 @@ impl Shard for Window {
     if !self.contents.is_empty() {
       let title: &str = self.title.get().try_into()?;
       let mut window = egui::Window::new(title);
+      if let Ok(id) = <&str>::try_from(self.id.get()) {
+        if let Some(id) = self.cached_id {
+          window = window.id(id);
+        } else {
+          let id = egui::Id::new(id);
+          window = window.id(id);
+          self.cached_id = Some(id);
+        }
+      }
 
       window = if self.anchor.get().is_none() {
         // note: in egui the position is relative to the top-left corner of the whole UI
