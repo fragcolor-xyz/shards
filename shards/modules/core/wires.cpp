@@ -2186,6 +2186,8 @@ struct DoMany : public TryMany {
 struct Branch {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static inline Types VarSeqTypes{CoreInfo::AnyVarType, CoreInfo::StringType};
+  static inline Type VarSeqType = Type::SeqOf(VarSeqTypes);
 
   static SHParametersInfo parameters() {
     static Parameters params{
@@ -2200,13 +2202,16 @@ struct Branch {
          {CoreInfo::BoolType}},
         {"Mesh",
          SHCCSTR("Optional external mesh to use for this branch. If not provided, a new one will be created."),
-         {CoreInfo::NoneType, SHMesh::MeshType}}};
+         {CoreInfo::NoneType, SHMesh::MeshType}},
+        {"Capture", SHCCSTR("List of variables to capture."), {CoreInfo::NoneType, VarSeqType}},
+    };
     return params;
   }
 
 private:
   OwnedVar _wires{Var::Empty};
   Brancher _brancher;
+  OwnedVar _capture;
 
 public:
   void setParam(int index, const SHVar &value) {
@@ -2229,6 +2234,9 @@ public:
         _brancher.mesh = *sharedMesh;
       }
       break;
+    case 4:
+      _capture = value;
+      break;
     default:
       break;
     }
@@ -2245,6 +2253,8 @@ public:
     case 3:
       assert(_brancher.mesh); // there always should be a mesh
       return Var::Object(&_brancher.mesh, CoreCC, SHMesh::TypeId);
+    case 4:
+      return _capture;
     default:
       return Var::Empty;
     }
@@ -2259,6 +2269,13 @@ public:
   SHTypeInfo compose(const SHInstanceData &data) {
     auto dataCopy = data;
     dataCopy.inputType = {}; // Branch doesn't have an input
+
+    _brancher.capturedVariableNames.clear();
+    if (_capture.valueType == SHType::Seq) {
+      for (auto &capture : _capture) {
+        _brancher.capturedVariableNames.push_back(capture.payload.stringValue);
+      }
+    }
 
     _brancher.compose(dataCopy);
 

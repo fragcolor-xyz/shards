@@ -19,6 +19,7 @@ struct Brancher {
   std::vector<std::shared_ptr<SHWire>> wires;
   bool captureAll = false;
   BranchFailureBehavior failureBehavior = BranchFailureBehavior::Everything;
+  std::vector<std::string> capturedVariableNames;
 
 private:
   std::unordered_map<std::string_view, SHExposedTypeInfo> _collectedRequirements;
@@ -44,8 +45,23 @@ public:
   void compose(const SHInstanceData &data) {
     _collectedRequirements.clear();
 
+    if (captureAll) {
+      _shared = ExposedInfo(data.shared);
+    } else {
+      for(auto &req : data.shared) {
+        auto it = std::find_if(capturedVariableNames.begin(), capturedVariableNames.end(), [&](auto &name) {
+          return name == req.name;
+        });
+        if(it != capturedVariableNames.end()) {
+          _shared.push_back(req);
+        }
+      }
+    }
+
+    SHInstanceData dataCopy = data;
+    dataCopy.shared = SHExposedTypesInfo(_shared);
     for (auto &wire : wires) {
-      composeSubWire(data, wire);
+      composeSubWire(dataCopy, wire);
     }
 
     // Merge requirements from compose result
@@ -56,24 +72,12 @@ public:
     }
 
     // Merge deep requirements
-    if (captureAll) {
-      for (auto &avail : data.shared) {
-        SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
-        _mergedRequirements.push_back(avail);
-      }
-    } else {
-      for (auto &avail : data.shared) {
-        auto it = _collectedRequirements.find(avail.name);
-        if (it != _collectedRequirements.end()) {
-          SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
-          _mergedRequirements.push_back(it->second);
-        }
-      }
+    for (auto &avail : data.shared) {
+      SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
+      _mergedRequirements.push_back(avail);
     }
 
-    // Copy shared
-    _shared = ExposedInfo(data.shared);
-    mesh->instanceData.shared = (SHExposedTypesInfo)_shared;
+    mesh->instanceData.shared = (SHExposedTypesInfo)_mergedRequirements;
   }
 
   // Calls initVariableReferences, then schedule (in that order)
