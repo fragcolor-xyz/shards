@@ -698,17 +698,125 @@ void hash_update(const SHVar &var, void *state);
 SH_WIRE_SET_STACK(gathering);
 SH_WIRE_SET_STACK(hashing);
 
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
+template <typename T, bool HANDLES_RETURN, bool HASHED>
+ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &wireInput, SHVar &output,
+                                           SHVar *outHash = nullptr) noexcept {
+  XXH3_state_s hashState; // optimized out in release if not HASHED
+  if constexpr (HASHED) {
+    assert(outHash);
+    XXH3_INITSTATE(&hashState);
+    XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
+  }
+  DEFER(if constexpr (HASHED) {
+    auto digest = XXH3_128bits_digest(&hashState);
+    outHash->valueType = SHType::Int2;
+    outHash->payload.int2Value[0] = int64_t(digest.low64);
+    outHash->payload.int2Value[1] = int64_t(digest.high64);
+    SHLOG_TRACE("Hash digested {}", *outHash);
+  });
 
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
+  // store initial input
+  auto input = wireInput;
 
-SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
+  // find len based on shards type
+  size_t len;
+  if constexpr (std::is_same<T, Shards>::value || std::is_same<T, SHSeq>::value) {
+    len = shards.len;
+  } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
+    len = shards.size();
+  } else {
+    len = 0;
+    SHLOG_FATAL("Unreachable shardsActivation case");
+  }
 
-SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
+  for (size_t i = 0; i < len; i++) {
+    ShardPtr blk;
+    if constexpr (std::is_same<T, Shards>::value) {
+      blk = shards.elements[i];
+    } else if constexpr (std::is_same<T, SHSeq>::value) {
+      blk = shards.elements[i].payload.shardValue;
+    } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
+      blk = shards[i];
+    } else {
+      blk = nullptr;
+      SHLOG_FATAL("Unreachable shardsActivation case");
+    }
 
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
+    if constexpr (HASHED) {
+      const auto shardHash = blk->hash(blk);
+      SHLOG_TRACE("Hashing shard {}", shardHash);
+      XXH3_128bits_update(&hashState, &shardHash, sizeof(shardHash));
 
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
+      SHLOG_TRACE("Hashing input {}", input);
+      hash_update(input, &hashState);
+
+      const auto params = blk->parameters(blk);
+      for (uint32_t nParam = 0; nParam < params.len; nParam++) {
+        const auto param = blk->getParam(blk, nParam);
+        SHLOG_TRACE("Hashing param {}", param);
+        hash_update(param, &hashState);
+      }
+
+      output = activateShard(blk, context, input);
+      SHLOG_TRACE("Hashing output {}", output);
+      hash_update(output, &hashState);
+    } else {
+      output = activateShard(blk, context, input);
+    }
+
+    // Deal with aftermath of activation
+    if (unlikely(!context->shouldContinue())) {
+      auto state = context->getState();
+      switch (state) {
+      case SHWireState::Return:
+        if constexpr (HANDLES_RETURN)
+          context->continueFlow();
+        return SHWireState::Return;
+      case SHWireState::Error:
+        SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}", blk->name(blk), context->getErrorMessage());
+      case SHWireState::Stop:
+      case SHWireState::Restart:
+        return state;
+      case SHWireState::Rebase:
+        // reset input to wire one
+        // and reset state
+        input = wireInput;
+        context->continueFlow();
+        continue;
+      case SHWireState::Continue:
+        break;
+      }
+    }
+
+    // Pass output to next block input
+    input = output;
+  }
+  return SHWireState::Continue;
+}
+
+SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
+  return shardsActivation<Shards, false, false>(shards, context, wireInput, output);
+}
+
+SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
+  return shardsActivation<Shards, true, false>(shards, context, wireInput, output);
+}
+
+SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
+  return shardsActivation<SHSeq, false, false>(shards, context, wireInput, output);
+}
+
+SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
+  return shardsActivation<SHSeq, true, false>(shards, context, wireInput, output);
+}
+
+SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept {
+  return shardsActivation<Shards, false, true>(shards, context, wireInput, output, &outHash);
+}
+
+SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept {
+  return shardsActivation<Shards, true, true>(shards, context, wireInput, output, &outHash);
+}
 
 // Lazy and also avoid windows Loader (Dead)Lock
 // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices?redirectedfrom=MSDN
@@ -1795,7 +1903,52 @@ SHWireRef Wire::weakRef() const { return SHWire::weakRef(_wire); }
 
 Var::Var(const Wire &wire) : Var(wire.weakRef()) {}
 
-SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput);
+SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput) {
+  ZoneScoped;
+  ZoneName(wire->name.c_str(), wire->name.size());
+
+  memset(&wire->previousOutput, 0x0, sizeof(SHVar));
+  wire->currentInput = wireInput;
+  wire->state = SHWire::State::Iterating;
+  wire->context = context;
+  DEFER({ wire->state = SHWire::State::IterationEnded; });
+
+  wire->dispatcher.trigger(SHWire::OnUpdateEvent{wire});
+
+  try {
+    auto state =
+        shardsActivation<std::vector<ShardPtr>, false, false>(wire->shards, context, wire->currentInput, wire->previousOutput);
+    switch (state) {
+    case SHWireState::Return:
+      return {context->getFlowStorage(), SHRunWireOutputState::Stopped};
+    case SHWireState::Restart:
+      return {context->getFlowStorage(), SHRunWireOutputState::Restarted};
+    case SHWireState::Error:
+      // shardsActivation handles error logging and such
+      assert(context->failed());
+      return {wire->previousOutput, SHRunWireOutputState::Failed};
+    case SHWireState::Stop:
+      assert(!context->failed());
+      return {context->getFlowStorage(), SHRunWireOutputState::Stopped};
+    case SHWireState::Rebase:
+      // Handled inside shardsActivation
+      SHLOG_FATAL("Invalid wire state");
+    case SHWireState::Continue:
+      break;
+    }
+  }
+#ifndef __EMSCRIPTEN__
+  catch (boost::context::detail::forced_unwind const &e) {
+    throw; // required for Boost Coroutine!
+  }
+#endif
+  catch (...) {
+    // shardsActivation handles error logging and such
+    return {wire->previousOutput, SHRunWireOutputState::Failed};
+  }
+
+  return {wire->previousOutput, SHRunWireOutputState::Running};
+}
 
 #ifndef __EMSCRIPTEN__
 boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::continuation &&sink)
