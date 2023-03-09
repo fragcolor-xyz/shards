@@ -217,7 +217,7 @@ struct BaseRunner : public WireBase {
     }
 
     // Prepare if no callc was called
-    if (!wire->coro) {
+    if (!coroutineValid(wire->coro)) {
       wire->mesh = context->main->mesh;
       // pre-set wire context with our context
       // this is used to copy wireStack over to the new one

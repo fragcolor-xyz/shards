@@ -99,7 +99,12 @@ struct MainWindow final {
 
   SHTypeInfo compose(SHInstanceData &data) {
     // Require extra stack space for the wire containing the main window
-    data.wire->stackSize = std::max<size_t>(data.wire->stackSize, 16 * 1024 * 1024);
+    data.wire->stackSize = std::max<size_t>(data.wire->stackSize, 4 * 1024 * 1024);
+
+#if GFX_ANDROID || 1
+    // Required to get past JNI not working from within coroutine stacks
+    data.wire->runOnDedicatedThread = true;
+#endif
 
     composeCheckGfxThread(data);
 

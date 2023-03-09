@@ -15,6 +15,7 @@
 #include <boost/stacktrace.hpp>
 #include <csignal>
 #include <cstdarg>
+#include <memory>
 #include <mutex>
 #include <pdqsort.h>
 #include <set>
@@ -554,77 +555,92 @@ SHVar *referenceGlobalVariable(SHContext *ctx, const char *name) {
   return &v;
 }
 
-SHVar *referenceVariable(SHContext *ctx, const char *name) {
-  // try find a wire variable
-  // from top to bottom of wire stack
-  {
-    auto rit = ctx->wireStack.rbegin();
-    for (; rit != ctx->wireStack.rend(); ++rit) {
-      // prioritize local variables
-      auto wire = *rit;
-      auto it = wire->variables.find(name);
-      if (it != wire->variables.end()) {
-        // found, lets get out here
-        SHVar &cv = it->second;
-        cv.refcount++;
-        cv.flags |= SHVAR_FLAGS_REF_COUNTED;
-        return &cv;
-      }
-      // try external variables
-      auto pit = wire->externalVariables.find(name);
-      if (pit != wire->externalVariables.end()) {
-        // found, lets get out here
-        SHVar &cv = *pit->second;
-        assert((cv.flags & SHVAR_FLAGS_EXTERNAL) != 0);
-        return &cv;
-      }
-      // if this wire is pure we break here and do not look further
-      if (wire->pure) {
-        goto create;
-      }
+// try find a wire variable
+// from top to bottom of wire stack
+inline SHVar *findWireVariable(SHContext *ctx, const char *name) {
+  auto rit = ctx->wireStack.rbegin();
+  for (; rit != ctx->wireStack.rend(); ++rit) {
+    // prioritize local variables
+    auto wire = *rit;
+    auto it = wire->variables.find(name);
+    if (it != wire->variables.end()) {
+      // found, lets get out here
+      SHVar &cv = it->second;
+      cv.refcount++;
+      cv.flags |= SHVAR_FLAGS_REF_COUNTED;
+      return &cv;
+    }
+    // try external variables
+    auto pit = wire->externalVariables.find(name);
+    if (pit != wire->externalVariables.end()) {
+      // found, lets get out here
+      SHVar &cv = *pit->second;
+      assert((cv.flags & SHVAR_FLAGS_EXTERNAL) != 0);
+      return &cv;
+    }
+    // if this wire is pure we break here and do not look further
+    if (wire->pure) {
+      return nullptr;
     }
   }
+
+  return nullptr;
+}
+
+SHVar *findMeshVariable(const std::shared_ptr<SHMesh> &mesh, const char *name, SHContext *debugContext) {
+  auto it = mesh->variables.find(name);
+  if (it != mesh->variables.end()) {
+    // found, lets get out here
+    SHVar &cv = it->second;
+    cv.refcount++;
+    cv.flags |= SHVAR_FLAGS_REF_COUNTED;
+    return &cv;
+  }
+
+  // Was not in mesh directly.. try find in meshs refs
+  auto it1 = mesh->refs.find(name);
+  if (it1 != mesh->refs.end()) {
+    SHLOG_TRACE("Referencing a parent node variable, wire: {} name: {}",
+                debugContext ? debugContext->wireStack.back()->name.c_str() : "<>", name);
+    // found, lets get out here
+    SHVar *cv = it1->second;
+    cv->refcount++;
+    cv->flags |= SHVAR_FLAGS_REF_COUNTED;
+    return cv;
+  }
+
+  return nullptr;
+}
+
+SHVar *findVariable(SHContext *context, const char *name) {
+  if (SHVar *var = findWireVariable(context, name))
+    return var;
 
   // try using mesh
-  {
-    auto mesh = ctx->main->mesh.lock();
-    assert(mesh);
-
-    // Was not in wires.. find in mesh
-    {
-      auto it = mesh->variables.find(name);
-      if (it != mesh->variables.end()) {
-        // found, lets get out here
-        SHVar &cv = it->second;
-        cv.refcount++;
-        cv.flags |= SHVAR_FLAGS_REF_COUNTED;
-        return &cv;
-      }
-    }
-
-    // Was not in mesh directly.. try find in meshs refs
-    {
-      auto it = mesh->refs.find(name);
-      if (it != mesh->refs.end()) {
-        SHLOG_TRACE("Referencing a parent node variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
-        // found, lets get out here
-        SHVar *cv = it->second;
-        cv->refcount++;
-        cv->flags |= SHVAR_FLAGS_REF_COUNTED;
-        return cv;
-      }
-    }
+  auto mesh = context->main->mesh.lock();
+  assert(mesh);
+  if (SHVar *var = findMeshVariable(mesh, name, context)) {
+    return var;
   }
 
-create:
-  // worst case create in current top wire!
-  SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
-  SHVar &cv = ctx->wireStack.back()->variables[name];
+  return nullptr;
+}
+
+inline SHVar *createWireVariable(SHContext *context, const char *name) {
+  SHLOG_TRACE("Creating a variable, wire: {} name: {}", context->wireStack.back()->name, name);
+  SHVar &cv = context->wireStack.back()->variables[name];
   assert(cv.refcount == 0);
   cv.refcount++;
   // can safely set this here, as we are creating a new variable
   cv.flags = SHVAR_FLAGS_REF_COUNTED;
   return &cv;
+}
+
+SHVar *referenceVariable(SHContext *ctx, const char *name) {
+  if (SHVar *var = findVariable(ctx, name))
+    return var;
+
+  return createWireVariable(ctx, name);
 }
 
 void releaseVariable(SHVar *variable) {
@@ -658,7 +674,7 @@ SHWireState suspend(SHContext *context, double seconds) {
     context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
   }
 
-  context->continuation->resume();
+  coroutineResume(*context->continuation);
 
   // RESUMING
 
@@ -1947,7 +1963,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   return {wire->previousOutput, SHRunWireOutputState::Running};
 }
 
-void run(SHWire *wire, SHFlow *flow, SHCoro *coro) {
+void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
   SHLOG_DEBUG("Wire {} rolling", wire->name);
 
   auto running = true;
@@ -1988,7 +2004,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro) {
   }
 
   // yield after warming up
-  context.continuation->resume();
+  coroutineResume(*context.continuation);
 
   // RESUMING
 
@@ -2031,7 +2047,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro) {
     if (!wire->unsafe && wire->looped) {
       // Ensure no while(true), yield anyway every run
       context.next = SHDuration(0);
-      context.continuation->resume();
+      coroutineResume(*context.continuation);
 
       // RESUMING
 
@@ -2457,6 +2473,8 @@ void hash_update(const SHVar &var, void *state) {
   assert(error == XXH_OK);
 
   switch (var.valueType) {
+  case SHType::EndOfBlittableTypes:
+    break;
   case SHType::Bytes: {
     error = XXH3_128bits_update(hashState, var.payload.bytesValue, size_t(var.payload.bytesSize));
     assert(error == XXH_OK);

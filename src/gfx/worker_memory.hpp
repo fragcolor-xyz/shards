@@ -9,11 +9,15 @@
 #include <optional>
 #include <mutex>
 
+#define GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD 0
+
 // Enable to check for allocation from wrong thread
+#ifndef GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD
 #ifdef NDEBUG
 #define GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD 0
 #else
 #define GFX_CHECK_ALLOCATION_FROM_BOUND_THREAD 1
+#endif
 #endif
 
 namespace gfx::detail {
