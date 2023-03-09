@@ -5,6 +5,7 @@
 #include "drawable_processor.hpp"
 #include "view.hpp"
 #include "gfx_wgpu.hpp"
+#include "platform.hpp"
 
 namespace gfx::detail {
 
@@ -94,7 +95,11 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
                          const ParameterStorage &parameterStorage) {
   size_t layoutIndex = 0;
   for (const std::string &fieldName : layout.fieldNames) {
+#if GFX_ANDROID
+    auto drawDataIt = parameterStorage.basic.find(fieldName.c_str());
+#else
     auto drawDataIt = parameterStorage.basic.find<std::string>(fieldName);
+#endif
     if (drawDataIt != parameterStorage.basic.end()) {
       const UniformLayout &itemLayout = layout.items[layoutIndex];
       NumFieldType drawDataFieldType = getParamVariantType(drawDataIt->second);

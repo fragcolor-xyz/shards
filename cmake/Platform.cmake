@@ -177,23 +177,7 @@ if(CODE_COVERAGE)
 endif()
 
 # Move this?
-if(NOT SPDLOG_ACTIVE_LEVEL)
-  if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    if(NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-      set(SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO)
-    else()
-      set(SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG)
-    endif()
-  else()
-    set(SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE)
-  endif()
-endif()
-add_compile_definitions(SPDLOG_ACTIVE_LEVEL=${SPDLOG_ACTIVE_LEVEL})
 
-# Move this?
-if(VERBOSE_BGFX_LOGGING)
-  add_compile_definitions(BGFX_CONFIG_DEBUG)
-endif()
 
 add_compile_definitions(BOOST_INTERPROCESS_BOOTSTAMP_IS_LASTBOOTUPTIME=1)
 

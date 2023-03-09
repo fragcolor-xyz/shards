@@ -2284,7 +2284,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     }
 
     auto &t = src.payload.tableValue;
-    SHTableIterator tit{};
+    SHTableIterator tit;
     t.api->tableGetIterator(t, &tit);
     SHString k;
     SHVar v;
@@ -2309,7 +2309,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     }
 
     auto &s = src.payload.setValue;
-    SHSetIterator sit{};
+    SHSetIterator sit;
     s.api->setGetIterator(s, &sit);
     SHVar v;
     while (s.api->setNext(s, &sit, &v)) {
@@ -2541,10 +2541,10 @@ void hash_update(const SHVar &var, void *state) {
         hashes;
 
     auto &t = var.payload.tableValue;
-    SHTableIterator it{};
+    SHTableIterator it;
     t.api->tableGetIterator(t, &it);
-    SHString key{};
-    SHVar value{};
+    SHString key;
+    SHVar value;
     while (t.api->tableNext(t, &it, &key, &value)) {
       const auto h = hash(value);
       hashes.emplace_back(std::make_pair(uint64_t(h.payload.int2Value[0]), uint64_t(h.payload.int2Value[1])), key);
@@ -2645,10 +2645,58 @@ void hash_update(const SHVar &var, void *state) {
   case SHType::None:
   case SHType::Any:
     break;
-  default: {
-    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHVarPayload));
+  case SHType::Enum:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHEnum));
     assert(error == XXH_OK);
-  }
+    break;
+  case SHType::Bool:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHBool));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int2:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt2));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int3:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt3));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int4:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt4));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int8:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt8));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Int16:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt16));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Color:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHColor));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Float:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Float2:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat2));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Float3:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat3));
+    assert(error == XXH_OK);
+    break;
+  case SHType::Float4:
+    error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat4));
+    assert(error == XXH_OK);
+    break;
   }
 }
 
