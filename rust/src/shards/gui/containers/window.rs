@@ -273,13 +273,8 @@ impl Shard for Window {
       let mut window = egui::Window::new(title);
 
       if let Ok(id) = <&str>::try_from(self.id.get()) {
-        if let Some(id) = self.cached_id {
-          window = window.id(id);
-        } else {
-          let id = egui::Id::new(id);
-          window = window.id(id);
-          self.cached_id = Some(id);
-        }
+        let id = self.cached_id.get_or_insert_with(|| egui::Id::new(id));
+        window = window.id(*id);
       }
 
       window = if self.anchor.get().is_none() {
