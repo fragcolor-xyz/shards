@@ -126,7 +126,7 @@ if(USE_LTO)
   add_link_options(-flto)
 endif()
 
-add_compile_options(-Wall)
+add_compile_options(-Wall INLINING_FLAGS)
 
 if(NOT MSVC)
   add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)

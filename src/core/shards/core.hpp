@@ -3480,31 +3480,27 @@ struct Repeat {
 };
 
 struct Once {
-  SHTime current;
-  SHTimeDiff next;
-  SHDuration dsleep;
+  SHTimeDiff _next;
+  SHDuration _dsleep;
   int _logCounter;
 
   ShardsVar _blks;
   ExposedInfo _requiredInfo{};
   SHComposeResult _validation{};
-  bool _done{false};
   bool _repeat{false};
   double _repeatTime{0.0};
   Shard *self{nullptr};
 
   void cleanup() {
     _blks.cleanup();
-    _done = false;
     if (self)
-      self->inlineShardId = InlineShard::NotInline;
+      self->inlineShardId = InlineShard::CoreOnce;
+    _next = {};
   }
 
   void warmup(SHContext *ctx) {
     _blks.warmup(ctx);
-    current = SHClock::now();
-    dsleep = SHDuration(_repeatTime);
-    next = current + SHDuration(0.0);
+    _dsleep = SHDuration(_repeatTime);
     _logCounter = 0;
   }
 
@@ -3558,36 +3554,47 @@ struct Once {
 
   SHExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
 
-  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
-    // monitor and reset timer if expired
-    current = SHClock::now();
-    if (current >= next) {
-      _done = false;
-    }
+  ALWAYS_INLINE void activateOnce(SHContext *context, const SHVar &input) {
+    SHVar output{};
+    _blks.activate(context, input, output);
+    // let's cheat in this case and stop triggering this call
+    self->inlineShardId = InlineShard::NoopShard;
+  }
 
-    if (unlikely(!_done)) {
-      _done = true;
+  ALWAYS_INLINE void activateTimed(SHContext *context, const SHVar &input) {
+    // Get the current time
+    auto now = SHClock::now();
+
+    // If the timer has not been initialized or has expired, reset it
+    if (now >= _next) {
+      // Call the activation function
       SHVar output{};
       _blks.activate(context, input, output);
-      if (!_repeat) {
-        // let's cheat in this case and stop triggering this call
-        self->inlineShardId = InlineShard::NoopShard;
-      } else {
-        SHDuration realSleepTime = next - current;
-        if (unlikely(realSleepTime.count() <= 0.0)) {
-          // tick took too long!!!
-          if (++_logCounter >= 1000) {
-            _logCounter = 0;
-            SHLOG_WARNING("Once shard took too long to execute, skipping sleep time, behind: {}", realSleepTime.count());
-          }
-          next = current + dsleep;
-        } else {
-          ++_logCounter;
-          next = next + dsleep;
+
+      // Update the next activation time based on how long the activation function took
+      auto elapsed = SHClock::now() - now;
+      if (elapsed >= _dsleep) {
+        // If the activation function took longer than dsleep, update the next activation time to be immediately
+        _next = now;
+        // tick took too long!!!
+        if (++_logCounter >= 1000) {
+          _logCounter = 0;
+          SHLOG_WARNING("Once shard took too long to execute, skipping next pause time");
         }
+      } else {
+        ++_logCounter;
+        // If the activation function took less than dsleep, adjust the next activation time based on how much time is remaining
+        _next = now + _dsleep - elapsed;
       }
     }
+  }
 
+  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+    if (!_repeat) {
+      activateOnce(context, input);
+    } else {
+      activateTimed(context, input);
+    }
     return input;
   }
 };
