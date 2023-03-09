@@ -185,7 +185,7 @@ impl Image {
       if self.current_hash != *v_hash {
         self.cached_ui_image.invalidate();
         self.current_hash = *v_hash;
-        shlog_debug!("Image hash changed: {:?}", self.current_hash)
+        shlog_debug!("Image hash changed: {:?}", self.current_hash);
       }
     }
 
@@ -209,7 +209,7 @@ impl Image {
       if self.current_hash != *v_hash {
         self.cached_ui_image.invalidate();
         self.current_hash = *v_hash;
-        shlog_debug!("Image hash changed: {:?}", self.current_hash)
+        shlog_debug!("Image hash changed: {:?}", self.current_hash);
       }
     }
 
