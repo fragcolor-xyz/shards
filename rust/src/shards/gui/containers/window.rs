@@ -240,6 +240,7 @@ impl Shard for Window {
       self.contents.warmup(ctx)?;
     }
     self.id.warmup(ctx);
+
     self.cached_id = None;
 
     Ok(())
@@ -270,6 +271,7 @@ impl Shard for Window {
     if !self.contents.is_empty() {
       let title: &str = self.title.get().try_into()?;
       let mut window = egui::Window::new(title);
+
       if let Ok(id) = <&str>::try_from(self.id.get()) {
         if let Some(id) = self.cached_id {
           window = window.id(id);
