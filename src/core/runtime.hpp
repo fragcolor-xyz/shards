@@ -88,20 +88,7 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
   return shards::Var::Empty
 
 struct SHContext {
-  SHContext(
-#ifndef __EMSCRIPTEN__
-      SHCoro &&sink,
-#else
-      SHCoro *coro,
-#endif
-      const SHWire *starter, SHFlow *flow)
-      : main(starter), flow(flow),
-#ifndef __EMSCRIPTEN__
-        continuation(std::move(sink))
-#else
-        continuation(coro)
-#endif
-  {
+  SHContext(SHCoro *coro, const SHWire *starter, SHFlow *flow) : main(starter), flow(flow), continuation(coro) {
     wireStack.push_back(const_cast<SHWire *>(starter));
   }
 
@@ -111,12 +98,8 @@ struct SHContext {
   bool onCleanup{false};
   bool onLastResume{false};
 
-// Used within the coro& stack! (suspend, etc)
-#ifndef __EMSCRIPTEN__
-  SHCoro &&continuation;
-#else
+  // Used within the coro& stack! (suspend, etc)
   SHCoro *continuation{nullptr};
-#endif
   SHDuration next{};
 
   SHWire *currentWire() const { return wireStack.back(); }
@@ -199,11 +182,7 @@ inline SHRunWireOutput runSubWire(SHWire *wire, SHContext *context, const SHVar 
   return runRes;
 }
 
-#ifndef __EMSCRIPTEN__
-boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::continuation &&sink);
-#else
 void run(SHWire *wire, SHFlow *flow, SHCoro *coro);
-#endif
 
 #ifdef TRACY_FIBERS
 std::vector<SHWire *> &getCoroWireStack();
@@ -215,21 +194,26 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
 
   TracyCoroEnter(wire);
 
-#ifndef __EMSCRIPTEN__
-  if (!wire->stackMem) {
-    wire->stackMem = new (std::align_val_t{16}) uint8_t[wire->stackSize];
-  }
-  wire->coro =
-      boost::context::callcc(std::allocator_arg, SHStackAllocator{wire->stackSize, wire->stackMem},
-                             [wire, flow](boost::context::continuation &&sink) { return run(wire, flow, std::move(sink)); });
-#else
-  wire->coro.emplace(wire->stackSize);
-  wire->coro->init([=]() { run(wire, flow, &(*wire->coro)); });
-  wire->coro->resume();
-#endif
-
+  wire->coro.emplace([wire, flow]() { return run(wire, flow, &wire->heavyCoro.value()); });
+  // if (wire->dedicatedThread) {
+  // } else {
+  // #ifndef __EMSCRIPTEN__
+  //     if (!wire->stackMem) {
+  //       wire->stackMem = new (std::align_val_t{16}) uint8_t[wire->stackSize];
+  //     }
+  //     wire->coro =
+  //         boost::context::callcc(std::allocator_arg, SHStackAllocator{wire->stackSize, wire->stackMem},
+  //                                [wire, flow](boost::context::continuation &&sink) { return run(wire, flow, std::move(sink));
+  //                                });
+  // #else
+  //     wire->coro.emplace(wire->stackSize);
+  //     wire->coro->init([=]() { run(wire, flow, &(*wire->coro)); });
+  //     wire->coro->resume();
+  // #endif
   TracyCoroExit(wire);
 }
+
+// }
 
 inline void start(SHWire *wire, SHVar input = {}) {
   if (wire->state != SHWire::State::Prepared) {
@@ -304,11 +288,7 @@ inline bool tick(SHWire *wire, SHDuration now) {
   if (now >= wire->context->next) {
     TracyCoroEnter(wire);
 
-#ifndef __EMSCRIPTEN__
-    *wire->coro = wire->coro->resume();
-#else
     wire->coro->resume();
-#endif
 
     TracyCoroExit(wire);
   }

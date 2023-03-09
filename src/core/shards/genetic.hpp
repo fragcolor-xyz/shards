@@ -903,11 +903,8 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
   // we need to hack this in as we run out of context
   SHCoro foo{};
   SHFlow flow{};
-#ifndef __EMSCRIPTEN__
-  SHContext ctx(std::move(foo), wire.get(), &flow);
-#else
   SHContext ctx(&foo, wire.get(), &flow);
-#endif
+
   ctx.wireStack.push_back(wire.get());
   std::for_each(std::begin(individual.mutants), std::end(individual.mutants), [&](MutantInfo &info) {
     if (Random::nextDouble() > _mutation) {

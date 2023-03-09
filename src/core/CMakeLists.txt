@@ -137,9 +137,7 @@ if(DESKTOP)
   target_compile_definitions(shards-core-static PUBLIC SHARDS_DESKTOP=1)
 endif()
 
-if(EMSCRIPTEN)
-  target_sources(shards-core-static PRIVATE coro.cpp) # emscripten coroutines
-endif()
+target_sources(shards-core-static PRIVATE coro.cpp)
 
 if(NOT EMSCRIPTEN)
   # Required by Boost::asio

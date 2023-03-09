@@ -658,11 +658,7 @@ SHWireState suspend(SHContext *context, double seconds) {
     context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
   }
 
-#ifndef __EMSCRIPTEN__
-  context->continuation = context->continuation.resume();
-#else
-  context->continuation->yield();
-#endif
+  context->continuation->resume();
 
   // RESUMING
 
@@ -1937,6 +1933,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
       break;
     }
   }
+
 #ifndef __EMSCRIPTEN__
   catch (boost::context::detail::forced_unwind const &e) {
     throw; // required for Boost Coroutine!
@@ -1950,12 +1947,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   return {wire->previousOutput, SHRunWireOutputState::Running};
 }
 
-#ifndef __EMSCRIPTEN__
-boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::continuation &&sink)
-#else
-void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
-#endif
-{
+void run(SHWire *wire, SHFlow *flow, SHCoro *coro) {
   SHLOG_DEBUG("Wire {} rolling", wire->name);
 
   auto running = true;
@@ -1970,11 +1962,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
 
   // Create a new context and copy the sink in
   SHFlow anonFlow{wire};
-#ifndef __EMSCRIPTEN__
-  SHContext context(std::move(sink), wire, flow ? flow : &anonFlow);
-#else
   SHContext context(coro, wire, flow ? flow : &anonFlow);
-#endif
 
   // if the wire had a context (Stepped wires in wires.cpp)
   // copy some stuff from it
@@ -1999,12 +1987,8 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
     goto endOfWire;
   }
 
-// yield after warming up
-#ifndef __EMSCRIPTEN__
-  context.continuation = context.continuation.resume();
-#else
-  context.continuation->yield();
-#endif
+  // yield after warming up
+  context.continuation->resume();
 
   // RESUMING
 
@@ -2047,11 +2031,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
     if (!wire->unsafe && wire->looped) {
       // Ensure no while(true), yield anyway every run
       context.next = SHDuration(0);
-#ifndef __EMSCRIPTEN__
-      context.continuation = context.continuation.resume();
-#else
-      context.continuation->yield();
-#endif
+      context.continuation->resume();
 
       // RESUMING
 
@@ -2086,15 +2066,6 @@ endOfWire:
   SHLOG_DEBUG("Wire {} ended", wire->name);
 
   wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
-
-#ifndef __EMSCRIPTEN__
-  return std::move(context.continuation);
-#else
-  context.continuation->yield();
-#endif
-
-  // we should never resume here!
-  SHLOG_FATAL("Wire {} resumed after ending", wire->name);
 }
 
 Globals &GetGlobals() {

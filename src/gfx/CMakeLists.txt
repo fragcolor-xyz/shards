@@ -40,6 +40,12 @@ add_library(gfx
   unique_id.cpp
 )
 
+set(GFX_JNI_DISPATCHER ON)
+if(GFX_JNI_DISPATCHER)
+  target_sources(gfx PRIVATE jni_dispatcher.cpp)
+  target_compile_definitions(gfx PUBLIC GFX_JNI_DISPATCHER=1)
+endif()
+
 # Always optimize files with hot-paths
 set_source_files_properties(
   drawables/mesh_tree_drawable.cpp

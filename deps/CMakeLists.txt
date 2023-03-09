@@ -79,16 +79,22 @@ else()
 endif()
 
 if(NOT EMSCRIPTEN)
+  if(LIB_SUFFIX STREQUAL ".lib")
+    set(SDL3LibName SDL3-static)
+  else()
+    set(SDL3LibName SDL3)
+  endif()
+
   sh_add_external_project(
     NAME sdl_a
     TARGETS   SDL3
-    LIB_NAMES SDL3-static
+    LIB_NAMES ${SDL3LibName}
     INSTALL
     LIB_SUFFIX ${SDL_LIB_SUFFIX}
     RELATIVE_INSTALL_INCLUDE_PATHS include
     CMAKE_ARGS -DSDL_RENDER_DISABLED=ON -DSDL_OPENGLES=OFF -DBUILD_SHARED_LIBS=OFF -DSDL_TEST=OFF
     REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/SDL)
-    
+
   if(APPLE)
     target_link_libraries(SDL3 INTERFACE
       "-framework Foundation"
@@ -128,7 +134,6 @@ if(NOT EMSCRIPTEN)
   endif()
 else()
   add_library(SDL3 INTERFACE)
-  add_library(SDL3main INTERFACE)
 
   # Use builtin SDL3 port
   target_compile_options(SDL3 INTERFACE

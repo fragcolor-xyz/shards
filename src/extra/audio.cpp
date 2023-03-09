@@ -94,11 +94,7 @@ struct Device {
   SHCoro dspStubCoro{};
   std::shared_ptr<SHMesh> dspMesh = SHMesh::make();
   std::shared_ptr<SHWire> dspWire = SHWire::make("Audio-DSP-Wire");
-#ifndef __EMSCRIPTEN__
-  SHContext dspContext{std::move(dspStubCoro), dspWire.get(), &dpsFlow};
-#else
   SHContext dspContext{&dspStubCoro, dspWire.get(), &dpsFlow};
-#endif
   std::atomic_bool stopped{false};
   std::atomic_bool hasErrors{false};
   std::string errorMessage;
