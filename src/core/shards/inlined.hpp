@@ -83,7 +83,7 @@ struct InlineShard {
 };
 
 #ifdef SHARDS_INLINE_EVERYTHING
-#define SHARDS_CONDITIONAL_INLINE always_inline
+#define SHARDS_CONDITIONAL_INLINE __attribute__((always_inline))
 #else
 #define SHARDS_CONDITIONAL_INLINE
 #endif
