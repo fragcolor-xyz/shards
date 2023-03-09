@@ -19,20 +19,18 @@
 struct SHHeavyCoro {
 private:
   std::mutex mtx;
-  std::optional<std::unique_lock<decltype(mtx)>> runLock;
+  std::condition_variable cv;
 
   std::mutex mtx1;
-  std::atomic<bool> finished;
-  std::condition_variable v;
+  std::condition_variable cv1;
+
+  std::atomic_bool finished;
 
   std::optional<std::thread> thread;
 
-private:
-  void init() { runLock.emplace(mtx); }
-
 public:
   SHHeavyCoro() = default;
-  SHHeavyCoro(std::function<void()> fn);
+  void init(std::function<void()> fn);
   void resume();
   void suspend();
   operator bool() const;

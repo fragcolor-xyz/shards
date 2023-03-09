@@ -3,33 +3,40 @@
 
 #include "foundation.hpp"
 #include "coro.hpp"
+#include <mutex>
 
-SHHeavyCoro::SHHeavyCoro(std::function<void()> fn) {
-  init();
+void SHHeavyCoro::init(std::function<void()> fn) {
+  // Initial suspend
   thread.emplace([=]() {
-    suspend();
-    finished = true;
-    v.notify_one();
     fn();
+
+    // Final suspend
+    finished = true;
+    cv.notify_one();
   });
+
+  // Wait for initial suspend
+  std::unique_lock<decltype(mtx1)> l(mtx1);
+  cv1.wait(l);
 }
 
 void SHHeavyCoro::resume() {
-  assert(runLock);
-  runLock.reset();
-  std::unique_lock<decltype(mtx1)> _lock(mtx1);
-  v.wait(_lock);
+  assert(!finished);
+  cv.notify_all();
+
+  std::unique_lock<decltype(mtx1)> l(mtx1);
+  cv1.wait(l);
 }
 
 void SHHeavyCoro::suspend() {
-  assert(!runLock.has_value());
-  v.notify_one();
+  cv1.notify_all();
 
-  // Acquire lock to resume
-  runLock.emplace(mtx);
+  // Wait for cv to continue
+  std::unique_lock<decltype(mtx)> l(mtx);
+  cv.wait(l);
 }
 
-operator SHHeavyCoro::bool() const { return !finished; }
+SHHeavyCoro::operator bool() const { return !finished; }
 
 #ifdef __EMSCRIPTEN__
 thread_local emscripten_fiber_t *em_local_coro{nullptr};
