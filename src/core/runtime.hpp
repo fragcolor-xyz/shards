@@ -194,7 +194,8 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
 
   TracyCoroEnter(wire);
 
-  wire->coro.emplace([wire, flow]() { return run(wire, flow, &wire->heavyCoro.value()); });
+  wire->coro.emplace();
+  wire->coro->init([wire, flow]() { return run(wire, flow, &wire->coro.value()); });
   // if (wire->dedicatedThread) {
   // } else {
   // #ifndef __EMSCRIPTEN__
