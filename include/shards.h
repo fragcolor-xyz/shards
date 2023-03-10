@@ -590,9 +590,6 @@ struct SHVar {
     struct SHObjectInfo *objectInfo;
     uint64_t version;
   };
-#if defined(__i386__) || defined(__EMSCRIPTEN__)
-  uint32_t _cpu32bits_padding;
-#endif
 } __attribute__((aligned(16)));
 
 enum SH_ENUM_CLASS SHRunWireOutputState { Running, Restarted, Stopped, Failed };
