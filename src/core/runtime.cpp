@@ -2133,6 +2133,7 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     assert(var.payload.tableValue.opaque);
     auto map = (SHMap *)var.payload.tableValue.opaque;
     delete map;
+    var.version = 0;
   } break;
   case SHType::Set: {
     assert(var.payload.setValue.api == &GetGlobals().SetInterface);
@@ -2210,6 +2211,8 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       dst.payload.imageValue.data = new uint8_t[srcImgSize];
     }
 
+    dst.version++;
+
     dst.payload.imageValue.flags = src.payload.imageValue.flags;
     dst.payload.imageValue.height = src.payload.imageValue.height;
     dst.payload.imageValue.width = src.payload.imageValue.width;
@@ -2282,6 +2285,8 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       map = new SHMap();
       dst.payload.tableValue.opaque = map;
     }
+
+    dst.version++;
 
     auto &t = src.payload.tableValue;
     SHTableIterator tit;
