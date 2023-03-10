@@ -226,6 +226,7 @@ template <typename T> struct VectorConversion {};
 template <> struct VectorConversion<float> {
   static inline constexpr SHType ShardsType = SHType::Float;
   static auto convert(const SHVar &value) { return value.payload.floatValue; }
+  static SHVar rconvert(const float &value) { return SHVar{.payload = {.floatValue = value}, .valueType = ShardsType}; }
 };
 template <int N> struct VectorConversion<linalg::vec<float, N>> {
   static inline constexpr SHType ShardsType = SHType(int(SHType::Float) + N - 1);
@@ -236,7 +237,16 @@ template <int N> struct VectorConversion<linalg::vec<float, N>> {
       r[i] = Math::PayloadTraits<ShardsType>{}.getContents(const_cast<SHVarPayload &>(value.payload))[i];
     return r;
   }
+  static SHVar rconvert(const linalg::vec<float, N> &v) {
+    static_assert(N <= 4, "Not implemented for N > 4");
+    SHVar r{};
+    r.valueType = ShardsType;
+    for (int i = 0; i < N; i++)
+      Math::PayloadTraits<ShardsType>{}.getContents(const_cast<SHVarPayload &>(r.payload))[i] = v[i];
+    return r;
+  }
 };
+
 template <int N> struct VectorConversion<linalg::vec<int, N>> {
   static inline constexpr SHType ShardsType = SHType(int(SHType::Int) + N - 1);
   static auto convert(const SHVar &value) {
@@ -244,6 +254,14 @@ template <int N> struct VectorConversion<linalg::vec<int, N>> {
     linalg::vec<int, N> r;
     for (int i = 0; i < N; i++)
       r[i] = int(Math::PayloadTraits<ShardsType>{}.getContents(const_cast<SHVarPayload &>(value.payload))[i]);
+    return r;
+  }
+  static SHVar rconvert(const linalg::vec<int, N> &v) {
+    static_assert(N <= 4, "Not implemented for N > 4");
+    SHVar r{};
+    r.valueType = ShardsType;
+    for (int i = 0; i < N; i++)
+      Math::PayloadTraits<ShardsType>{}.getContents(const_cast<SHVarPayload &>(r.payload))[i] = v[i];
     return r;
   }
 };
@@ -262,37 +280,19 @@ inline auto toInt2(const SHVar &value) { return toVec<linalg::aliases::int2>(val
 inline auto toInt3(const SHVar &value) { return toVec<linalg::aliases::int3>(value); }
 inline auto toInt4(const SHVar &value) { return toVec<linalg::aliases::int4>(value); }
 
+template <typename TVec> inline SHVar genericToVar(const TVec &value) {
+  using Conv = VectorConversion<TVec>;
+  return Conv::rconvert(value);
+}
+
+inline auto toVar(const linalg::aliases::float2 &value) { return genericToVar(value); }
+inline auto toVar(const linalg::aliases::float3 &value) { return genericToVar(value); }
+inline auto toVar(const linalg::aliases::float4 &value) { return genericToVar(value); }
+inline auto toVar(const linalg::aliases::int2 &value) { return genericToVar(value); }
+inline auto toVar(const linalg::aliases::int3 &value) { return genericToVar(value); }
+inline auto toVar(const linalg::aliases::int4 &value) { return genericToVar(value); }
+
 inline linalg::aliases::float4x4 toFloat4x4(const SHVar &vec) { return Mat4(vec); }
-
-inline SHVar toVar(const linalg::aliases::float2 &vec) {
-  SHVar var{
-      .valueType = SHType::Float2,
-  };
-  var.payload.float2Value[0] = vec.x;
-  var.payload.float2Value[1] = vec.y;
-  return var;
-}
-
-inline SHVar toVar(const linalg::aliases::float3 &vec) {
-  SHVar var{
-      .valueType = SHType::Float3,
-  };
-  var.payload.float3Value[0] = vec.x;
-  var.payload.float3Value[1] = vec.y;
-  var.payload.float3Value[2] = vec.z;
-  return var;
-}
-
-inline SHVar toVar(const linalg::aliases::float4 &vec) {
-  SHVar var{
-      .valueType = SHType::Float4,
-  };
-  var.payload.float4Value[0] = vec.x;
-  var.payload.float4Value[1] = vec.y;
-  var.payload.float4Value[2] = vec.z;
-  var.payload.float4Value[3] = vec.w;
-  return var;
-}
 
 constexpr linalg::aliases::float3 AxisX{1.0, 0.0, 0.0};
 constexpr linalg::aliases::float3 AxisY{0.0, 1.0, 0.0};

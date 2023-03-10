@@ -258,7 +258,6 @@ void EguiInputTranslator::applyOutput(const egui::FullOutput &output) {
 
 void EguiInputTranslator::updateTextCursorPosition(Window &window, const egui::Pos2 *pos) {
   if (pos) {
-    float2 drawScale = window.getUIScale();
     SDL_Rect rect;
     rect.x = int(pos->x);
     rect.y = int(pos->y);

@@ -102,7 +102,6 @@ struct EguiContext {
   renderer: egui_gfx::Renderer,
   input_translator: egui_gfx::InputTranslator,
 }
-
 pub(crate) trait UIRenderer {
   fn render(&mut self, read_only: bool, ui: &mut egui::Ui) -> egui::Response;
 }
@@ -115,6 +114,7 @@ mod misc;
 mod properties;
 mod util;
 mod widgets;
+mod state;
 
 impl egui::TextBuffer for &Var {
   fn is_mutable(&self) -> bool {
@@ -226,8 +226,9 @@ impl egui::TextBuffer for &mut Var {
 }
 
 pub fn registerShards() {
-  containers::registerShards();
   registerShard::<EguiContext>();
+  state::registerShards();
+  containers::registerShards();
   layouts::registerShards();
   menus::registerShards();
   misc::registerShards();

@@ -180,6 +180,21 @@ struct Filename {
   }
 };
 
+struct Parent {
+  std::string _output;
+
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+    fs::path p(input.payload.stringValue);
+    p = p.parent_path();
+    _output.assign(p.string());
+    return Var(_output);
+  }
+};
+
 struct Read {
   std::vector<uint8_t> _buffer;
   bool _binary = false;
@@ -441,6 +456,7 @@ void registerFSShards() {
   REGISTER_SHARD("FS.Iterate", FS::Iterate);
   REGISTER_SHARD("FS.Extension", FS::Extension);
   REGISTER_SHARD("FS.Filename", FS::Filename);
+  REGISTER_SHARD("FS.Parent", FS::Parent);
   REGISTER_SHARD("FS.Read", FS::Read);
   REGISTER_SHARD("FS.Write", FS::Write);
   REGISTER_SHARD("FS.IsFile", FS::IsFile);

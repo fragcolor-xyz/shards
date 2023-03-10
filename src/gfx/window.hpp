@@ -43,6 +43,13 @@ struct Window {
   // window size
   int2 getSize() const;
 
+  void resize(int2 targetSize);
+
+  // window position
+  int2 getPosition() const;
+
+  void move(int2 targetPosition);
+
   // OS UI scaling factor for the display the window is on
   float2 getUIScale() const;
 

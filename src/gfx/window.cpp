@@ -114,6 +114,17 @@ int2 Window::getSize() const {
   return r;
 }
 
+void Window::resize(int2 targetSize) { SDL_SetWindowSize(window, targetSize.x, targetSize.y); }
+
+// window position
+int2 Window::getPosition() const {
+  int2 r;
+  SDL_GetWindowPosition(window, &r.x, &r.y);
+  return r;
+}
+
+void Window::move(int2 targetPosition) { SDL_SetWindowPosition(window, targetPosition.x, targetPosition.y); }
+
 static float2 getUIScaleFromDisplayDPI(int displayIndex) {
   float2 dpi;
   float diagonalDpi;

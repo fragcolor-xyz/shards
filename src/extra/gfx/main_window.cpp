@@ -5,6 +5,8 @@
 #include <gfx/window.hpp>
 #include "../inputs.hpp"
 #include "extra/gfx.hpp"
+#include "linalg_shim.hpp"
+#include "params.hpp"
 
 using namespace shards;
 using shards::Inputs::InputContext;
@@ -241,6 +243,123 @@ struct MainWindow final {
   }
 };
 
-void registerMainWindowShards() { REGISTER_SHARD("GFX.MainWindow", MainWindow); }
+struct WindowSize {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+
+  PARAM_IMPL(WindowSize);
+
+  RequiredGraphicsContext _requiredGraphicsContext;
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _requiredGraphicsContext.warmup(context);
+  }
+  void cleanup() {
+    PARAM_CLEANUP();
+    _requiredGraphicsContext.cleanup();
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) { return toVar(_requiredGraphicsContext->window->getSize()); }
+};
+
+struct ResizeWindow {
+  static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+
+  PARAM_IMPL(WindowSize);
+
+  RequiredGraphicsContext _requiredGraphicsContext;
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return data.inputType;
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _requiredGraphicsContext.warmup(context);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    _requiredGraphicsContext.cleanup();
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    _requiredGraphicsContext->window->resize(toInt2(input));
+    return input;
+  }
+};
+struct WindowPosition {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+
+  PARAM_IMPL(WindowPosition);
+
+  RequiredGraphicsContext _requiredGraphicsContext;
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _requiredGraphicsContext.warmup(context);
+  }
+  void cleanup() {
+    PARAM_CLEANUP();
+    _requiredGraphicsContext.cleanup();
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) { return toVar(_requiredGraphicsContext->window->getPosition()); }
+};
+
+struct MoveWindow {
+  static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
+
+  PARAM_IMPL(WindowSize);
+
+  RequiredGraphicsContext _requiredGraphicsContext;
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return data.inputType;
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _requiredGraphicsContext.warmup(context);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    _requiredGraphicsContext.cleanup();
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    _requiredGraphicsContext->window->move(toInt2(input));
+    return input;
+  }
+};
+
+void registerMainWindowShards() {
+  REGISTER_SHARD("GFX.MainWindow", MainWindow);
+  REGISTER_SHARD("GFX.WindowSize", WindowSize);
+  REGISTER_SHARD("GFX.ResizeWindow", ResizeWindow);
+  REGISTER_SHARD("GFX.WindowPosition", WindowPosition);
+  REGISTER_SHARD("GFX.MoveWindow", MoveWindow);
+}
 
 } // namespace gfx
