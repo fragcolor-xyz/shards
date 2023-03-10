@@ -1334,8 +1334,10 @@ BUILTIN(">==") { return mal::nilValue(); }
 
 BUILTIN("??") { return mal::nilValue(); }
 
+BUILTIN("=!") { return mal::nilValue(); }
+
 std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
-  enum State { Get, Set, SetGlobal, Update, Ref, Push, PushNoClear, AddGetDefault };
+  enum State { Get, Set, SetGlobal, Update, Ref, RefOverwrite, Push, PushNoClear, AddGetDefault };
   State state = Get;
   std::vector<malShardPtr> res;
   while (begin != end) {
@@ -1387,6 +1389,13 @@ std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
         } else if (state == Ref) {
           res.emplace_back(makeVarShard(v, "Ref"));
           state = Get;
+        } else if (state == RefOverwrite) {
+          auto blk = makeVarShard(v, "Ref");
+           // set :Overwrite false
+          auto val = shards::Var(true);
+          blk->value()->setParam(blk->value(), 3, &val);
+          res.emplace_back(blk);
+          state = Get;
         } else if (state == Push) {
           res.emplace_back(makeVarShard(v, "Push"));
           state = Get;
@@ -1413,6 +1422,8 @@ std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
         state = Update;
       } else if (v->name() == "&>" || v->name() == "=") {
         state = Ref;
+      } else if (v->name() == "=!") {
+        state = RefOverwrite;
       } else if (v->name() == ">>") {
         state = Push;
       } else if (v->name() == ">>!") {
@@ -2082,14 +2093,30 @@ BUILTIN("context-var") {
 }
 
 template <SHType T> struct GetComponentType {};
-template <> struct GetComponentType<SHType::Float2> { typedef double Type; };
-template <> struct GetComponentType<SHType::Float3> { typedef float Type; };
-template <> struct GetComponentType<SHType::Float4> { typedef float Type; };
-template <> struct GetComponentType<SHType::Int2> { typedef int64_t Type; };
-template <> struct GetComponentType<SHType::Int3> { typedef int32_t Type; };
-template <> struct GetComponentType<SHType::Int4> { typedef int32_t Type; };
-template <> struct GetComponentType<SHType::Int8> { typedef int16_t Type; };
-template <> struct GetComponentType<SHType::Int16> { typedef int8_t Type; };
+template <> struct GetComponentType<SHType::Float2> {
+  typedef double Type;
+};
+template <> struct GetComponentType<SHType::Float3> {
+  typedef float Type;
+};
+template <> struct GetComponentType<SHType::Float4> {
+  typedef float Type;
+};
+template <> struct GetComponentType<SHType::Int2> {
+  typedef int64_t Type;
+};
+template <> struct GetComponentType<SHType::Int3> {
+  typedef int32_t Type;
+};
+template <> struct GetComponentType<SHType::Int4> {
+  typedef int32_t Type;
+};
+template <> struct GetComponentType<SHType::Int8> {
+  typedef int16_t Type;
+};
+template <> struct GetComponentType<SHType::Int16> {
+  typedef int8_t Type;
+};
 template <> struct GetComponentType<SHType::Color> {
   typedef uint8_t Type;
   static constexpr uint8_t getDefaultValue(size_t index) { return index == 3 ? 255 : 0; }

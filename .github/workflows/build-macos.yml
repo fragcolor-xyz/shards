@@ -132,7 +132,7 @@ jobs:
           cd build
           chmod +x shards
           ./shards ../src/tests/general.edn
-          ./shards ../src/tests/variables.clj
+          ./shards ../src/tests/variables.edn
           ./shards ../src/tests/subwires.clj
           ./shards ../src/tests/linalg.clj
           ./shards ../src/tests/loader.clj
