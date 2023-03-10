@@ -5,6 +5,7 @@ use super::Combo;
 use crate::shard::Shard;
 use crate::shards::gui::util;
 use crate::shards::gui::widgets::text_util;
+use crate::shards::gui::EguiId;
 use crate::shards::gui::ANY_TABLE_SLICE;
 use crate::shards::gui::FLOAT_VAR_SLICE;
 use crate::shards::gui::INT_VAR_OR_NONE_SLICE;
@@ -252,7 +253,7 @@ impl Shard for Combo {
         text = text_util::get_styled_text(text, &style.try_into()?)?;
       }
 
-      let mut combo = egui::ComboBox::from_label(text);
+      let mut combo = egui::ComboBox::new(EguiId::new(self, 0), text);
       let width = self.width.get();
       if !width.is_none() {
         combo = combo.width(width.try_into()?);
