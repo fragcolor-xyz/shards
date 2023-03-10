@@ -236,6 +236,11 @@
   ["z" 33] (Assoc .assoc-test-table)
   .assoc-test-table (Assert.Is {"x" 1 "y" 2 "z" 33} true)
 
+  "Hello World" =! .hw
+  .hw (Assert.Is "Hello World" true)
+  .hw (Reverse) =! .hw
+  .hw (Assert.Is "dlroW olleH" true)
+
   (Msg "Done!")))
 
 (if (tick mesh) nil (throw "failure"))

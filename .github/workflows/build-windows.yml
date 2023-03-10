@@ -218,7 +218,7 @@ jobs:
           echo "Running test: general"
           ./shards ../src/tests/general.edn
           echo "Running test: variables"
-          ./shards ../src/tests/variables.clj
+          ./shards ../src/tests/variables.edn
           echo "Running test: linalg"
           ./shards ../src/tests/linalg.clj
           echo "Running test: loader"

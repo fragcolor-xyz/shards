@@ -736,7 +736,7 @@ struct SetBase : public VariableBase {
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  void sanityChecks(const SHInstanceData &data, bool warnIfExists) {
+  void sanityChecks(const SHInstanceData &data, bool warnIfExists, bool overwrite) {
     for (uint32_t i = 0; i < data.shared.len; i++) {
       auto &reference = data.shared.elements[i];
       if (strcmp(reference.name, _name.c_str()) == 0) {
@@ -751,7 +751,7 @@ struct SetBase : public VariableBase {
           throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
                                          reference.exposedType, data.inputType));
         }
-        if (!_isTable && !reference.isMutable) {
+        if (!overwrite && !_isTable && !reference.isMutable) {
           SHLOG_ERROR("Error with variable: {}", _name);
           throw ComposeError("Set/Ref/Update, attempted to write an immutable variable.");
         }
@@ -863,7 +863,7 @@ struct Set : public SetUpdateBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     _self = data.shard;
 
-    sanityChecks(data, true);
+    sanityChecks(data, true, false);
 
     // bake exposed types
     if (_isTable) {
@@ -947,6 +947,8 @@ struct Set : public SetUpdateBase {
 };
 
 struct Ref : public SetBase {
+  bool _overwrite{false};
+
   static SHOptionalString help() {
     return SHCCSTR("Creates an immutable variable with a constant value. Once created this variable cannot be changed.");
   }
@@ -955,8 +957,31 @@ struct Ref : public SetBase {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
+  static inline shards::ParamsInfo getParamsInfo = shards::ParamsInfo(
+      variableParamsInfo,
+      shards::ParamsInfo::Param("Overwrite", SHCCSTR("If the variable should be overwritten if it already exists."),
+                                CoreInfo::AnyType));
+
+  static SHParametersInfo parameters() { return SHParametersInfo(getParamsInfo); }
+
+  void setParam(int index, const SHVar &value) {
+    if (index < variableParamsInfoLen)
+      VariableBase::setParam(index, value);
+    else if (index == variableParamsInfoLen + 0) {
+      _overwrite = value.payload.boolValue;
+    }
+  }
+
+  SHVar getParam(int index) {
+    if (index < variableParamsInfoLen)
+      return VariableBase::getParam(index);
+    else if (index == variableParamsInfoLen + 0)
+      return Var(_overwrite);
+    throw SHException("Param index out of range.");
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
-    sanityChecks(data, true);
+    sanityChecks(data, true, _overwrite);
 
     // bake exposed types
     if (_isTable) {
@@ -1058,7 +1083,7 @@ struct Update : public SetUpdateBase {
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    sanityChecks(data, false);
+    sanityChecks(data, false, false);
 
     // make sure we update to the same type
     if (_isTable) {
