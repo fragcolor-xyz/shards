@@ -24,22 +24,12 @@ use crate::types::Types;
 use crate::types::Var;
 
 lazy_static! {
-  static ref IMAGE_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Scale"),
-      shccstr!("Scaling to apply to the source image."),
-      FLOAT2_VAR_SLICE,
-    )
-      .into(),
-    (
-      cstr!("Hash"),
-      shccstr!(
-        "Optional hash variable used to invalidate cached data in case the contents of the image change."
-      ),
-      HASH_VAR_OR_NONE_SLICE,
-    )
-      .into()
-  ];
+  static ref IMAGE_PARAMETERS: Parameters = vec![(
+    cstr!("Scale"),
+    shccstr!("Scaling to apply to the source image."),
+    FLOAT2_VAR_SLICE,
+  )
+    .into(),];
 }
 
 impl Default for Image {
@@ -51,8 +41,7 @@ impl Default for Image {
       requiring: Vec::new(),
       scale: ParamVar::new((1.0, 1.0).into()),
       cached_ui_image: Default::default(),
-      hash: ParamVar::default(),
-      current_hash: Var::default(),
+      current_version: 0,
     }
   }
 }
@@ -103,7 +92,6 @@ impl Shard for Image {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.scale.set_param(value)),
-      1 => Ok(self.hash.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -111,23 +99,12 @@ impl Shard for Image {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.scale.get_param(),
-      1 => self.hash.get_param(),
       _ => Var::default(),
     }
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
-
-    if self.hash.is_variable() {
-      let hash_info = ExposedInfo {
-        exposedType: common_type::int2,
-        name: self.hash.get_name(),
-        help: cstr!("The hash variable.").into(),
-        ..ExposedInfo::default()
-      };
-      self.requiring.push(hash_info);
-    }
 
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring, &self.parents);
@@ -160,7 +137,8 @@ impl Shard for Image {
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.parents.warmup(context);
     self.scale.warmup(context);
-    self.hash.warmup(context);
+
+    self.current_version = 0;
 
     Ok(())
   }
@@ -168,7 +146,6 @@ impl Shard for Image {
   fn cleanup(&mut self) -> Result<(), &str> {
     self.scale.cleanup();
     self.parents.cleanup();
-    self.hash.cleanup();
 
     Ok(())
   }
@@ -180,13 +157,11 @@ impl Shard for Image {
 
 impl Image {
   fn activateImage(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let v_hash = self.hash.get();
-    if !v_hash.is_none() {
-      if self.current_hash != *v_hash {
-        self.cached_ui_image.invalidate();
-        self.current_hash = *v_hash;
-        shlog_debug!("Image hash changed: {:?}", self.current_hash);
-      }
+    let version = unsafe { input.__bindgen_anon_1.version };
+    if self.current_version != version {
+      self.cached_ui_image.invalidate();
+      self.current_version = version;
+      shlog_debug!("Image version changed: {}", self.current_version);
     }
 
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
@@ -204,15 +179,6 @@ impl Image {
   }
 
   fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let v_hash = self.hash.get();
-    if !v_hash.is_none() {
-      if self.current_hash != *v_hash {
-        self.cached_ui_image.invalidate();
-        self.current_hash = *v_hash;
-        shlog_debug!("Image hash changed: {:?}", self.current_hash);
-      }
-    }
-
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
       let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
 

@@ -731,6 +731,7 @@ struct SetBase : public VariableBase {
   SHString _tableContentKey{};
   SHTypeInfo _tableContentInfo{};
   void *_tablePtr{nullptr};
+  uint64_t _tableVersion{0};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -779,9 +780,10 @@ struct SetBase : public VariableBase {
   }
 
   ALWAYS_INLINE void checkIfTableChanged() {
-    if (_tablePtr != _target->payload.tableValue.opaque) {
+    if (_tablePtr != _target->payload.tableValue.opaque || _tableVersion != _target->version) {
       _tablePtr = _target->payload.tableValue.opaque;
       _cell = nullptr;
+      _tableVersion = _target->version;
       SHLOG_TRACE("Table {} changed, clearing cell pointer", _name);
     }
   }

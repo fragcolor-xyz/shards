@@ -586,7 +586,10 @@ struct SHVar {
 #endif
   uint16_t flags;
   uint32_t refcount;
-  struct SHObjectInfo *objectInfo;
+  union {
+    struct SHObjectInfo *objectInfo;
+    uint64_t version;
+  };
 #if defined(__i386__) || defined(__EMSCRIPTEN__)
   uint32_t _cpu32bits_padding;
 #endif
