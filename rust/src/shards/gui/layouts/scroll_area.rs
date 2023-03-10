@@ -4,6 +4,7 @@
 use super::ScrollArea;
 use crate::shard::Shard;
 use crate::shards::gui::util;
+use crate::shards::gui::EguiId;
 use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::Context;
@@ -198,6 +199,7 @@ impl Shard for ScrollArea {
         self.horizontal.get().try_into()?,
         self.vertical.get().try_into()?,
       ])
+      .id_source(EguiId::new(self, 0))
       .always_show_scroll(self.alwaysShow.get().try_into()?)
       .show(ui, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)

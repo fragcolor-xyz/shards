@@ -11,6 +11,7 @@ use crate::shards::gui::HELP_OUTPUT_EQUAL_INPUT;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc::SHType_Image;
 use crate::shardsc::SHType_Object;
+use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
@@ -21,7 +22,6 @@ use crate::types::Parameters;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
-use crate::types::common_type;
 
 lazy_static! {
   static ref IMAGE_PARAMETERS: Parameters = vec![
