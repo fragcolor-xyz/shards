@@ -34,8 +34,8 @@ mod syntax_highlighting;
 lazy_static! {
   static ref CODEEDITOR_PARAMETERS: Parameters = vec![
     (
-      cstr!("Variable"),
-      shccstr!("The variable that holds the input value."),
+      cstr!("Code"),
+      shccstr!("The variable that holds the code to edit."),
       STRING_VAR_SLICE,
     )
       .into(),
