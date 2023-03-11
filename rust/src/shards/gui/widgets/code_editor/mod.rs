@@ -221,12 +221,15 @@ impl Shard for CodeEditor {
       } else {
         language.try_into()?
       };
+
+      let id1 = EguiId::new(self, 0);
+      let id2 = EguiId::new(self, 1);
+
       let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
         let mut layout_job = highlight(ui.ctx(), &theme, string, language);
         layout_job.wrap.max_width = wrap_width;
         ui.fonts().layout_job(layout_job)
       };
-      let id_source = EguiId::new(self, 0);
       let mut mutable;
       let mut immutable;
       let text: &mut dyn egui::TextBuffer = if self.mutable_text {
@@ -237,11 +240,12 @@ impl Shard for CodeEditor {
         &mut immutable
       };
       let code_editor = egui::TextEdit::multiline(text)
+        .id_source(id1)
         .code_editor()
         .desired_width(f32::INFINITY)
         .layouter(&mut layouter);
       let response = egui::ScrollArea::vertical()
-        .id_source(id_source)
+        .id_source(id2)
         .show(ui, |ui| ui.centered_and_justified(|ui| ui.add(code_editor)))
         .inner
         .inner;
