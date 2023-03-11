@@ -4,10 +4,13 @@
 #include "wires.hpp"
 #include "async.hpp"
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <set>
+#include <unordered_map>
 #include "../brancher.hpp"
 #include "brancher.hpp"
+#include "foundation.hpp"
 #include "ops_internal.hpp"
 
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
@@ -63,16 +66,10 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposed
       SHLOG_ERROR("Previous wire composed missing required variable: {}", name);
       throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
     }
-
-    if (data.requiredVariables) {
-      // in this case we should also add to required variables as compose won't do it for us
-      auto requirements = reinterpret_cast<std::unordered_map<std::string_view, SHExposedTypeInfo> *>(data.requiredVariables);
-      requirements->emplace(name, req);
-    }
   }
 }
 
-SHTypeInfo WireBase::compose(const SHInstanceData &data) {
+void WireBase::resolveWire() {
   // Actualize the wire here, if we are deserialized
   // wire might already be populated!
   if (!wire) {
@@ -86,6 +83,10 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
       SHLOG_DEBUG("WireBase::compose on a null wire");
     }
   }
+}
+
+SHTypeInfo WireBase::compose(const SHInstanceData &data) {
+  resolveWire();
 
   // Easy case, no wire...
   if (!wire)
@@ -1078,26 +1079,68 @@ struct CapturingSpawners : public WireBase {
   IterableExposedInfo _sharedCopy;
   std::deque<ParamVar> _vars;
 
-  void destroy() { arrayFree(_mergedReqs); }
+  struct SpawnedWireData {
+    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
+
+    // TODO Add doppelganger serialized bytes here too!
+
+    // refcount the wire as we don't wanna grow the memory too much
+    uint32_t refcount = 0;
+  };
+
+  static inline thread_local std::unordered_map<SHWire *, SpawnedWireData> threadSpawnedWires;
+
+  void destroy() {
+    auto it = threadSpawnedWires.find(wire.get());
+    if (it != threadSpawnedWires.end()) {
+      it->second.refcount--;
+      if (it->second.refcount == 0) {
+        threadSpawnedWires.erase(it);
+        SHLOG_TRACE("CapturingSpawners: Destroying wire {} ptr {}", it->first->name, (void *)it->first);
+      }
+    }
+
+    arrayFree(_mergedReqs);
+  }
 
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
 
   void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
-    // Parallel needs to capture all it needs, so we need deeper informations
-    // this is triggered by populating requiredVariables variable
-    auto dataCopy = data;
-    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
-    dataCopy.requiredVariables = &requirements;
-    dataCopy.inputType = inputType;
+    SpawnedWireData *spawnedWireData = nullptr;
+    auto it = threadSpawnedWires.find(wire.get());
+    if (it != threadSpawnedWires.end()) {
+      WireBase::compose(data); // discard the result, we do our thing here
 
-    WireBase::compose(dataCopy); // discard the result, we do our thing here
+      // We already have this wire, just increase the refcount
+      it->second.refcount++;
+
+      spawnedWireData = &it->second;
+
+      SHLOG_TRACE("CapturingSpawners: Reusing wire {} ptr {}", wire->name, (void *)wire.get());
+    } else {
+      // Parallel needs to capture all it needs, so we need deeper informations
+      // this is triggered by populating requiredVariables variable
+      auto dataCopy = data;
+      std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
+      dataCopy.requiredVariables = &requirements;
+      dataCopy.inputType = inputType;
+
+      WireBase::compose(dataCopy); // discard the result, we do our thing here
+
+      auto &wireData = threadSpawnedWires[wire.get()];
+      wireData.requirements = std::move(requirements);
+      wireData.refcount = 1;
+      spawnedWireData = &wireData;
+
+      SHLOG_TRACE("CapturingSpawners: New wire {} ptr {}", wire->name, (void *)wire.get());
+    }
 
     // build the list of variables to capture and inject into spawned chain
     _vars.clear();
     arrayResize(_mergedReqs, 0);
     for (auto &avail : data.shared) {
-      auto it = requirements.find(avail.name);
-      if (it != requirements.end()) {
+      auto it = spawnedWireData->requirements.find(avail.name);
+      if (it != spawnedWireData->requirements.end()) {
         if (!avail.global) {
           // Capture if not global as we need to copy it!
           SHLOG_TRACE("CapturingSpawners: adding variable to requirements: {}, wire {}", avail.name, wire->name);
@@ -1600,10 +1643,12 @@ struct Spawn : public CapturingSpawners {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    WireBase::resolveWire();
+
+    assert(wire);
+
     CapturingSpawners::compose(data, data.inputType);
 
-    // wire should be populated now and such
-    assert(wire);
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
 
     // copy input type

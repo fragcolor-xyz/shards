@@ -63,6 +63,8 @@ struct WireBase {
 
   void warmup(SHContext *ctx) { wireref.warmup(ctx); }
 
+  void resolveWire();
+
   // Use state to mark the dependency for serialization as well!
 
   SHVar getState() {
