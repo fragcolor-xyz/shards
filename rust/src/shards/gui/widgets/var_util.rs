@@ -142,30 +142,46 @@ impl UIRenderer for Var {
           ui.text_edit_singleline(&mut mutable)
         }
         SHType_Seq => {
-          let mut seq: Seq = self.try_into().unwrap_or_default();
+          let mut seq: Seq = self
+            .try_into()
+            .expect("SHType was Seq, but failed to convert to Seq");
           if seq.len() > 0 {
+            if !read_only && ui.button("+").clicked() {
+              seq.push(&Var::default());
+              // update self as `seq` len changed
+              *self = seq.as_ref().into();
+            }
             ui.collapsing(format!("Seq: {} items", seq.len()), |ui| {
               let mut i = 0usize;
               while i < seq.len() {
                 ui.push_id(i, |ui| {
                   ui.horizontal(|ui| {
                     seq[i].render(read_only, ui);
-                    if ui.button("X").clicked() {
+                    if ui.button("-").clicked() {
                       seq.remove(i);
                     }
                   });
                 });
                 i += 1;
               }
+              // update self as `seq` len changed
+              *self = seq.as_ref().into();
             })
             .header_response
           } else {
             ui.set_enabled(!read_only);
-            ui.colored_label(Color32::YELLOW, "Empty sequence")
+            if !read_only && ui.button("+").clicked() {
+              seq.push(&Var::default());
+              // update self as `seq` len changed
+              *self = seq.as_ref().into();
+            }
+            ui.colored_label(Color32::YELLOW, "Seq: 0 items")
           }
         }
         SHType_Table => {
-          let mut table: Table = self.try_into().unwrap_or_default();
+          let mut table: Table = self
+            .try_into()
+            .expect("SHType was Table, but failed to convert to Table");
           if table.len() > 0 {
             ui.collapsing(format!("Table: {} items", table.len()), |ui| {
               for (k, _v) in table.iter() {
