@@ -124,7 +124,7 @@ impl Shard for Variable {
           break;
         }
       }
-      Ok(common_type::any)
+      Ok(data.inputType)
     } else {
       Err("Variable is not a variable")
     }
