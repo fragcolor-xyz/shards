@@ -1858,7 +1858,7 @@ bool run(SHMesh *mesh, SHWire *wire, double sleepTime, int times, bool dec) {
         // remove the time we took to tick from sleep
         now = SHClock::now();
         SHDuration realSleepTime = next - now;
-        if (unlikely(realSleepTime.count() <= 0.0)) {
+        if (unlikely(realSleepTime.count() < 0.0)) {
           // tick took too long!!!
           if (++logTicks >= 1000) {
             logTicks = 0;

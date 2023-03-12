@@ -3528,6 +3528,10 @@ struct Once {
   void warmup(SHContext *ctx) {
     _blks.warmup(ctx);
     _dsleep = SHDuration(_repeatTime);
+    // the following ensures that we activate immediately on the first run
+    _elapsed = _dsleep;
+    _prev = SHClock::now();
+    _next = SHClock::now();
     _logCounter = 0;
   }
 
@@ -3588,31 +3592,39 @@ struct Once {
     self->inlineShardId = InlineShard::NoopShard;
   }
 
+  SHDuration _elapsed = SHDuration::zero();
+  SHClock::time_point _prev = SHClock::now();
+
   ALWAYS_INLINE void activateTimed(SHContext *context, const SHVar &input) {
     // Get the current time
     auto now = SHClock::now();
 
     // If the timer has not been initialized or has expired, reset it
     if (now >= _next) {
+      // Calculate the elapsed time since the previous activation
+      auto deltaTime = std::chrono::duration_cast<SHDuration>(now - _prev);
+      _prev = now;
+
       // Call the activation function
       SHVar output{};
       _blks.activate(context, input, output);
 
-      // Update the next activation time based on how long the activation function took
-      auto elapsed = SHClock::now() - now;
-      if (elapsed >= _dsleep) {
-        // If the activation function took longer than dsleep, update the next activation time to be immediately
-        _next = now;
+      // Update the next activation time based on the target activation frequency
+      _elapsed += deltaTime;
+      while (_elapsed >= _dsleep) {
+        _next = _next + _dsleep;
+        _elapsed -= _dsleep;
+      }
+
+      if (unlikely(deltaTime > SHDuration(_repeatTime))) {
         // tick took too long!!!
         if (++_logCounter >= 1000) {
           _logCounter = 0;
           auto wire = context->currentWire();
-          SHLOG_WARNING("Once shard took too long to execute, skipping next pause time, wire: {}", wire->name);
+          SHLOG_DEBUG("Once shard took too long to execute: {}ms, wire: {}", _elapsed.count() * 1000.0, wire->name);
         }
       } else {
         ++_logCounter;
-        // If the activation function took less than dsleep, adjust the next activation time based on how much time is remaining
-        _next = now + _dsleep - elapsed;
       }
     }
   }
