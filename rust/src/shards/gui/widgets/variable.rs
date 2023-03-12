@@ -124,11 +124,10 @@ impl Shard for Variable {
           break;
         }
       }
+      Ok(common_type::any)
     } else {
-      self.mutable = false;
+      Err("Variable is not a variable")
     }
-
-    Ok(common_type::string)
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
