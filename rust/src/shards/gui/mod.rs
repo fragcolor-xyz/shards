@@ -112,9 +112,9 @@ mod layouts;
 mod menus;
 mod misc;
 mod properties;
+mod state;
 mod util;
 mod widgets;
-mod state;
 
 impl egui::TextBuffer for &Var {
   fn is_mutable(&self) -> bool {
