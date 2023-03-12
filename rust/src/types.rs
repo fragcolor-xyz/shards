@@ -2061,6 +2061,10 @@ impl Var {
     self.valueType == SHType_Seq
   }
 
+  pub fn is_table(&self) -> bool {
+    self.valueType == SHType_Table
+  }
+
   pub fn is_none(&self) -> bool {
     self.valueType == SHType_None
   }
