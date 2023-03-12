@@ -3928,6 +3928,10 @@ impl Seq {
   pub fn iter(&self) -> SeqIterator {
     SeqIterator { s: self, i: 0 }
   }
+
+  pub fn sync(&self, v: &mut Var) {
+    v.payload.__bindgen_anon_1.seqValue = self.s;
+  }
 }
 
 impl Default for Seq {
