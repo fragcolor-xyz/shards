@@ -3930,6 +3930,7 @@ impl Seq {
   }
 
   pub fn sync(&self, v: &mut Var) {
+    debug_assert!(v.valueType == SHType_Seq);
     v.payload.__bindgen_anon_1.seqValue = self.s;
   }
 }
