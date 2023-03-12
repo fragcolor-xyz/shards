@@ -64,7 +64,7 @@ struct EpochMs {
   SHVar activate(SHContext *context, const SHVar &input) {
     using namespace std::chrono;
     milliseconds ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
-    return Var(int(ms.count()));
+    return Var(int64_t(ms.count()));
   }
 };
 

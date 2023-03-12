@@ -5,8 +5,9 @@
 (defwire producer
   (Sequence .sink :Types [Type.Any Type.Int] :Global true)
   "Hi!" = .v
-  (Time.EpochMs) (Math.Add 2000) = .t
+  (Time.EpochMs) >= .t
   (Repeat (->
+           .t (Math.Add 2000) >= .t
            (Const [.v .t]) >> .sink)
           :Times 4)
   .sink (Log))
