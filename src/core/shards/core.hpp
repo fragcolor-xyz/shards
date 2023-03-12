@@ -3600,7 +3600,7 @@ struct Once {
 
       // Update the next activation time based on how long the activation function took
       auto elapsed = SHClock::now() - now;
-      if (elapsed >= _dsleep) {
+      if (unlikely(elapsed > _dsleep)) {
         // If the activation function took longer than dsleep, update the next activation time to be immediately
         _next = now;
         // tick took too long!!!
