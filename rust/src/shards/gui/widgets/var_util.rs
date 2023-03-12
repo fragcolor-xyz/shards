@@ -147,9 +147,7 @@ impl UIRenderer for Var {
             .expect("SHType was Seq, but failed to convert to Seq");
           if seq.len() > 0 {
             if !read_only && ui.button("+").clicked() {
-              seq.push(&Var::default());
-              // update self as `seq` len changed
-              *self = seq.as_ref().into();
+              seq.push(&Var::default()); // TODO this is wrong! we need to know the type of the seq
             }
             ui.collapsing(format!("Seq: {} items", seq.len()), |ui| {
               let mut i = 0usize;
@@ -164,6 +162,7 @@ impl UIRenderer for Var {
                 });
                 i += 1;
               }
+
               // update self as `seq` len changed
               *self = seq.as_ref().into();
             })
@@ -171,7 +170,8 @@ impl UIRenderer for Var {
           } else {
             ui.set_enabled(!read_only);
             if !read_only && ui.button("+").clicked() {
-              seq.push(&Var::default());
+              seq.push(&Var::default()); // TODO this is wrong! we need to know the type of the seq
+
               // update self as `seq` len changed
               *self = seq.as_ref().into();
             }
