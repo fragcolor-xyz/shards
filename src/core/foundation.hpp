@@ -400,8 +400,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   std::unordered_map<std::string, SHVar *> externalVariables;
   // used only in the case of external variables
   std::unordered_map<uint64_t, shards::TypeInfo> typesCache;
-  // property storage (properties are used simply by inserting them into externalVariables for now)
-  SHTableImpl properties;
 
   // this is the eventual coroutine stack memory buffer
   uint8_t *stackMem{nullptr};
