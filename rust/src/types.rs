@@ -3897,6 +3897,24 @@ impl Seq {
     }
   }
 
+  pub fn remove(&mut self, index: usize) {
+    unsafe {
+      (*Core).seqSlowDelete.unwrap()(
+        &self.s as *const SHSeq as *mut SHSeq,
+        index.try_into().unwrap(),
+      );
+    }
+  }
+
+  pub fn remove_fast(&mut self, index: usize) {
+    unsafe {
+      (*Core).seqFastDelete.unwrap()(
+        &self.s as *const SHSeq as *mut SHSeq,
+        index.try_into().unwrap(),
+      );
+    }
+  }
+
   pub fn clear(&mut self) {
     unsafe {
       (*Core).seqResize.unwrap()(&self.s as *const SHSeq as *mut SHSeq, 0);
