@@ -164,9 +164,7 @@ impl UIRenderer for Var {
               }
 
               // update self as `seq` len might have changed
-              unsafe {
-                self.payload.__bindgen_anon_1.seqValue.len = seq.len() as u32;
-              }
+              self.payload.__bindgen_anon_1.seqValue.len = seq.len() as u32;
             })
             .header_response
           } else {
@@ -175,9 +173,7 @@ impl UIRenderer for Var {
               seq.push(&Var::default()); // TODO this is wrong! we need to know the type of the seq
 
               // update self as `seq` len might have changed
-              unsafe {
-                self.payload.__bindgen_anon_1.seqValue.len = seq.len() as u32;
-              }
+              self.payload.__bindgen_anon_1.seqValue.len = seq.len() as u32;
             }
             ui.colored_label(Color32::YELLOW, "Seq: 0 items")
           }
