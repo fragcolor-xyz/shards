@@ -145,10 +145,17 @@ impl UIRenderer for Var {
           let mut seq: Seq = self.try_into().unwrap_or_default();
           if seq.len() > 0 {
             ui.collapsing(format!("Seq: {} items", seq.len()), |ui| {
-              for i in 0..seq.len() {
+              let mut i = 0usize;
+              while i < seq.len() {
                 ui.push_id(i, |ui| {
-                  seq[i].render(read_only, ui);
+                  ui.horizontal(|ui| {
+                    seq[i].render(read_only, ui);
+                    if ui.button("X").clicked() {
+                      seq.remove(i);
+                    }
+                  });
                 });
+                i += 1;
               }
             })
             .header_response
