@@ -2,6 +2,7 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 #include "SDL.h"
+#include "shards.hpp"
 #include "shards/shared.hpp"
 #include "inputs.hpp"
 #include "gfx.hpp"
@@ -370,7 +371,7 @@ inline SDL_Keycode keyStringToKeyCode(const std::string &str) {
   if (it != KeycodeMap.end())
     return it->second;
 
-  return SDLK_UNKNOWN;
+  throw SHException(fmt::format("Unknown key identifier: {}", str));
 }
 
 template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {

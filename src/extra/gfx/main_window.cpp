@@ -218,7 +218,7 @@ struct MainWindow final {
     auto keyStates = SDL_GetKeyboardState(&numKeys);
     _actuallyHeldKeys.clear();
     for (size_t i = 0; i < numKeys; i++) {
-      SDL_Keycode code = SDL_SCANCODE_TO_KEYCODE(i);
+      SDL_Keycode code = SDL_GetKeyFromScancode((SDL_Scancode)i);
       if (keyStates[i] == 1) {
         _actuallyHeldKeys.insert(code);
       }
