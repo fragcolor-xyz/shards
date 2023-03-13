@@ -198,6 +198,7 @@ struct Variable {
   requiring: ExposedTypes,
   variable: ParamVar,
   mutable: bool,
+  inner_type: Option<Type>,
 }
 
 struct WireVariable {

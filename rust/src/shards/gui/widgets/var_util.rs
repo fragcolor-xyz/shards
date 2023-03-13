@@ -5,12 +5,30 @@ use crate::shards::gui::UIRenderer;
 use crate::shardsc::*;
 use crate::types::Seq;
 use crate::types::Table;
+use crate::types::Type;
 use crate::types::Var;
 use egui::*;
 use std::ffi::CStr;
 
+fn get_default_value(value_type: SHType) -> Var {
+  match value_type {
+    SHType_None => Var::default(),
+    SHType_Bool => false.into(),
+    SHType_Int => 0.into(),
+    SHType_Int2 => (0, 0).into(),
+    SHType_Int3 => (0, 0, 0).into(),
+    SHType_Int4 => (0, 0, 0, 0).into(),
+    SHType_Float => 0.0.into(),
+    SHType_Float2 => (0.0, 0.0).into(),
+    SHType_Float3 => (0.0, 0.0, 0.0).into(),
+    SHType_Float4 => (0.0, 0.0, 0.0, 0.0).into(),
+    SHType_String => Var::ephemeral_string(""),
+    _ => Var::default(),
+  }
+}
+
 impl UIRenderer for Var {
-  fn render(&mut self, read_only: bool, ui: &mut Ui) -> Response {
+  fn render(&mut self, read_only: bool, inner_type: Option<&Type>, ui: &mut Ui) -> Response {
     if read_only && !matches!(self.valueType, SHType_Seq | SHType_Table) {
       ui.set_enabled(false);
     }
@@ -146,34 +164,41 @@ impl UIRenderer for Var {
             .try_into()
             .expect("SHType was Seq, but failed to convert to Seq");
           if seq.len() > 0 {
-            if !read_only && ui.button("+").clicked() {
-              seq.push(&Var::default()); // TODO this is wrong! we need to know the type of the seq
+            if let Some(inner_type) = inner_type {
+              if !read_only && ui.button("+").clicked() {
+                let default_value = get_default_value(inner_type.basicType);
+                seq.push(&default_value);
+                // update self as `seq` len changed
+                seq.sync(self);
+              }
             }
             ui.collapsing(format!("Seq: {} items", seq.len()), |ui| {
               let mut i = 0usize;
               while i < seq.len() {
                 ui.push_id(i, |ui| {
                   ui.horizontal(|ui| {
-                    seq[i].render(read_only, ui);
+                    // for now let's not support sub seqs... we can add that after GDC
+                    seq[i].render(read_only, None, ui);
                     if ui.button("-").clicked() {
                       seq.remove(i);
+                      // update self as `seq` len changed
+                      seq.sync(self);
                     }
                   });
                 });
                 i += 1;
               }
-
-              // update self as `seq` len might have changed
-              seq.sync(self);
             })
             .header_response
           } else {
             ui.set_enabled(!read_only);
-            if !read_only && ui.button("+").clicked() {
-              seq.push(&Var::default()); // TODO this is wrong! we need to know the type of the seq
-
-              // update self as `seq` len might have changed
-              seq.sync(self);
+            if let Some(inner_type) = inner_type {
+              if !read_only && ui.button("+").clicked() {
+                let default_value = get_default_value(inner_type.basicType);
+                seq.push(&default_value);
+                // update self as `seq` len changed
+                seq.sync(self);
+              }
             }
             ui.colored_label(Color32::YELLOW, "Seq: 0 items")
           }
@@ -189,7 +214,8 @@ impl UIRenderer for Var {
                 ui.push_id(cstr, |ui| {
                   ui.horizontal(|ui| {
                     ui.label(cstr.to_str().unwrap_or_default());
-                    table.get_mut_fast(cstr).render(read_only, ui);
+                    // no inner type for now
+                    table.get_mut_fast(cstr).render(read_only, None, ui);
                   });
                 });
               }

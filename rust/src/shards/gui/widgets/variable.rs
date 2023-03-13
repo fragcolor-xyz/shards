@@ -17,6 +17,7 @@ use crate::types::Types;
 use crate::types::Var;
 use crate::types::WireRef;
 use crate::types::ANY_TYPES;
+use crate::SHType_Seq;
 use std::cmp::Ordering;
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -56,6 +57,7 @@ impl Default for Variable {
       requiring: Vec::new(),
       variable: ParamVar::default(),
       mutable: true,
+      inner_type: None,
     }
   }
 }
@@ -121,6 +123,16 @@ impl Shard for Variable {
         };
         if CStr::cmp(a, b) == Ordering::Equal {
           self.mutable = var.isMutable;
+          if var.exposedType.basicType == SHType_Seq {
+            let slice = unsafe {
+              let ptr = var.exposedType.details.seqTypes.elements;
+              std::slice::from_raw_parts(ptr, var.exposedType.details.seqTypes.len as usize)
+            };
+            if slice.len() != 1 {
+              return Err("UI.Variable: Sequence must have only one type");
+            }
+            self.inner_type = Some(slice[0]);
+          }
           break;
         }
       }
@@ -160,7 +172,10 @@ impl Shard for Variable {
           .to_str()
           .unwrap_or_default();
         ui.label(label);
-        self.variable.get_mut().render(!self.mutable, ui);
+        self
+          .variable
+          .get_mut()
+          .render(!self.mutable, self.inner_type.as_ref(), ui);
       });
 
       Ok(*input)
@@ -244,7 +259,7 @@ impl Shard for WireVariable {
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.horizontal(|ui| {
         ui.label(name);
-        varRef.render(false, ui);
+        varRef.render(false, None, ui);
       });
 
       Ok(*varRef)
