@@ -58,6 +58,10 @@ namespace Animations {
 extern void registerShards();
 }
 
+namespace UI::Clipboard {
+  extern void registerShards();
+}
+
 void shInitExtras() {
 #if SHARDS_WITH_RUST_SHARDS
   registerRustShards(shardsInterface(SHARDS_CURRENT_ABI));
@@ -74,6 +78,7 @@ void shInitExtras() {
   egui::registerShards();
   Spatial::registerShards();
   Animations::registerShards();
+  UI::Clipboard::registerShards();
 
 #ifdef _WIN32
   Desktop::registerDesktopShards();
