@@ -27,6 +27,7 @@ set(extra_SOURCES
   gizmos/highlight.cpp
   gizmos/shapes.cpp
   # xr.cpp
+  clipboard.cpp
   dsp.cpp
   inputs.cpp
   snappy.cpp
