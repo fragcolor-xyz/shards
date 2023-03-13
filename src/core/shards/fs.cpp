@@ -3,6 +3,7 @@
 
 #include "boost/filesystem/operations.hpp"
 #include "shared.hpp"
+#include "params.hpp"
 #include <boost/algorithm/string.hpp>
 #include <fstream>
 
@@ -83,6 +84,23 @@ struct Iterate {
     }
 
     return Var(_storage);
+  }
+};
+
+struct Join {
+  fs::path _buffer;
+  std::string _result;
+
+  static SHTypesInfo inputTypes() { return CoreInfo::StringSeqType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _buffer.clear();
+    for (auto &v : input) {
+      _buffer /= v.payload.stringValue;
+    }
+    _result = _buffer.string();
+    return Var(_result);
   }
 };
 
@@ -180,6 +198,37 @@ struct Filename {
   }
 };
 
+struct RelativeTo {
+  std::string _output;
+  fs::path _cachedBasePath;
+  fs::path _cachedPath;
+  bool _noExt = false;
+
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  PARAM_PARAMVAR(_basePath, "BasePath", "The base path to make the input path relative to", {CoreInfo::StringOrStringVar});
+  PARAM_IMPL(RelativeTo, PARAM_IMPL_FOR(_basePath));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup() { PARAM_CLEANUP(); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+
+    _cachedPath = input.payload.stringValue;
+    _cachedBasePath = _basePath.get().payload.stringValue;
+
+    _output.assign(fs::relative(_cachedPath, _cachedBasePath).string());
+    return Var(_output);
+  }
+};
+
 struct Parent {
   std::string _output;
 
@@ -201,7 +250,7 @@ struct Read {
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() {
-    static Types _types { CoreInfo::BytesType, CoreInfo::StringType };
+    static Types _types{CoreInfo::BytesType, CoreInfo::StringType};
     return _types;
   }
 
@@ -453,9 +502,11 @@ struct LastWriteTime {
 void registerFSShards() {
   REGISTER_ENUM(FS::Copy::IfExistsEnumInfo);
 
+  REGISTER_SHARD("FS.Join", FS::Join);
   REGISTER_SHARD("FS.Iterate", FS::Iterate);
   REGISTER_SHARD("FS.Extension", FS::Extension);
   REGISTER_SHARD("FS.Filename", FS::Filename);
+  REGISTER_SHARD("FS.RelativeTo", FS::RelativeTo);
   REGISTER_SHARD("FS.Parent", FS::Parent);
   REGISTER_SHARD("FS.Read", FS::Read);
   REGISTER_SHARD("FS.Write", FS::Write);
