@@ -159,6 +159,10 @@ namespace Events {
 extern void registerShards();
 }
 
+namespace Time {
+extern void registerShards();
+}
+
 #ifdef SHARDS_WITH_EXTRA_SHARDS
 extern void shInitExtras();
 #endif
@@ -295,7 +299,7 @@ void registerCoreShards() {
   Math::LinAlg::registerShards();
   registerJsonShards();
   registerStructShards();
-  registerTimeShards();
+  Time::registerShards();
   Regex::registerShards();
   channels::registerShards();
   Random::registerShards();

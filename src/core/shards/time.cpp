@@ -2,15 +2,9 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "shared.hpp"
-#include <chrono>
+#include "time.hpp"
 
-namespace shards {
-namespace Time {
-struct ProcessClock {
-  decltype(std::chrono::high_resolution_clock::now()) Start;
-  ProcessClock() { Start = std::chrono::high_resolution_clock::now(); }
-};
-
+namespace shards::Time {
 struct Now {
   static inline ProcessClock _clock{};
 
@@ -33,27 +27,27 @@ struct NowMs : public Now {
 };
 
 struct Delta {
-  ProcessClock _clock{};
+  DeltaTimer _deltaTimer;
+
+  static SHOptionalString help() {
+    return SHCCSTR(R"(Gives the time between the last activation of this shard and the current, capped to a limit)");
+  }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  void warmup(SHContext *context) { _clock.Start = std::chrono::high_resolution_clock::now(); }
+  void warmup(SHContext *context) { _deltaTimer.reset(); }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    auto tnow = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> dt = tnow - _clock.Start;
-    _clock.Start = tnow; // reset timer
-    return Var(dt.count());
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    float dt = _deltaTimer.update();
+    return Var{dt};
   }
 };
 
 struct DeltaMs : public Delta {
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto tnow = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> dt = tnow - _clock.Start;
-    _clock.Start = tnow; // reset timer
-    return Var(dt.count());
+    using Type = std::chrono::duration<double, std::milli>;
+    return Var{_deltaTimer.update<Type>()};
   }
 };
 
@@ -231,9 +225,7 @@ private:
   }
 };
 
-} // namespace Time
-
-void registerTimeShards() {
+void registerShards() {
   REGISTER_SHARD("Time.Now", Time::Now);
   REGISTER_SHARD("Time.NowMs", Time::NowMs);
   REGISTER_SHARD("Time.Delta", Time::Delta);
@@ -242,4 +234,4 @@ void registerTimeShards() {
   REGISTER_SHARD("Time.Pop", Time::Pop);
   REGISTER_SHARD("Time.ToString", Time::ToString);
 }
-} // namespace shards
+} // namespace shards::Time

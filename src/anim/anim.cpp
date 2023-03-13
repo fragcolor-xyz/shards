@@ -12,6 +12,7 @@
 #include "params.hpp"
 #include "utility.hpp"
 #include "shards/math_ops.hpp"
+#include "shards/time.hpp"
 #include <cmath>
 #include <chrono>
 #include <optional>
@@ -19,6 +20,7 @@
 
 namespace shards::Animations {
 using namespace linalg::aliases;
+using shards::Time::DeltaTimer;
 
 static auto getKeyframeTime(const SHVar &keyframe) { return (float)((TableVar &)keyframe).get<Var>("Time"); };
 static auto getKeyframeValue(const SHVar &keyframe) { return ((TableVar &)keyframe).get<Var>("Value"); };
@@ -59,19 +61,12 @@ struct TimerShard {
   PARAM_IMPL(TimerShard, PARAM_IMPL_FOR(_animation), PARAM_IMPL_FOR(_duration), PARAM_IMPL_FOR(_looped), PARAM_IMPL_FOR(_rate),
              PARAM_IMPL_FOR(_offset), PARAM_IMPL_FOR(_action));
 
-  using Clock = std::chrono::high_resolution_clock;
-  using TimePoint = std::chrono::time_point<Clock>;
-  using FloatSecDuration = std::chrono::duration<float>;
-
-  TimePoint _lastActivation;
   float _time{};
   bool _hasCallback{};
   bool _stopped{};
+  DeltaTimer _deltaTimer;
 
   enum class DurationSource { Animation, Infinite, Var } _durationSource = DurationSource::Infinite;
-
-  // Limit delta time to avoid jumps after unpausing wires
-  const float MaxDeltaTime = 1.0f / 15.0f;
 
   TimerShard() {
     _looped = Var{true};
@@ -81,7 +76,7 @@ struct TimerShard {
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     _time = 0.0f;
-    _lastActivation = Clock::now();
+    _deltaTimer.reset();
   }
 
   void cleanup() { PARAM_CLEANUP(); }
@@ -141,12 +136,10 @@ struct TimerShard {
     if (!duration)
       looped = false;
 
-    auto now = Clock::now();
+    float deltaTime = _deltaTimer.update();
     if (!_stopped) {
-      FloatSecDuration delta = (now - _lastActivation);
-      _time += std::min(MaxDeltaTime, delta.count()) * rate;
+      _time += deltaTime * rate;
     }
-    _lastActivation = now;
 
     float evalTime = _time + offset;
     if (duration && !_stopped) {
