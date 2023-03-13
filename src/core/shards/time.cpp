@@ -141,6 +141,96 @@ struct Pop {
     }
   }
 };
+
+struct ToString {
+  static SHOptionalString help() { return SHCCSTR("Converts time into a human readable string."); }
+  static SHTypesInfo inputTypes() { return _inputTypes; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The time to convert."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("A string representation of the time."); }
+
+  SHParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const SHVar &value) { _isMillis = value.payload.boolValue; }
+
+  SHVar getParam(int index) { return Var(_isMillis); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+
+    switch (input.valueType) {
+    case SHType::Int: {
+      _output = _isMillis ? format(std::chrono::duration<int64_t, std::milli>(input.payload.intValue))
+                          : format(std::chrono::duration<int64_t>(input.payload.intValue));
+    } break;
+    case SHType::Float: {
+      _output = _isMillis ? format(std::chrono::duration<double, std::milli>(input.payload.floatValue))
+                          : format(std::chrono::duration<double>(input.payload.floatValue));
+    } break;
+    default: {
+      SHLOG_ERROR("Unexpected type for pure Time conversion: {}", type2Name(input.valueType));
+      throw ActivationError("Type not supported for timeN conversion");
+    }
+    }
+
+    return Var(_output);
+  }
+
+private:
+  static inline Types _inputTypes = {{CoreInfo::IntType, CoreInfo::FloatType}};
+  static inline Parameters _params{
+      {"Millis", SHCCSTR("True if the input is given in milliseconds, False if given in seconds."), {CoreInfo::BoolType}}};
+
+  bool _isMillis{false};
+  std::string _output;
+
+  template <typename T> inline std::string format(T timeunit) {
+    using namespace std::chrono;
+
+    milliseconds ms = duration_cast<milliseconds>(timeunit);
+    std::ostringstream os;
+    bool foundNonZero = false;
+    os.fill('0');
+    typedef duration<int, std::ratio<86400 * 365>> years;
+    const auto y = duration_cast<years>(ms);
+    if (y.count()) {
+      foundNonZero = true;
+      os << y.count() << "y:";
+      ms -= y;
+    }
+    typedef duration<int, std::ratio<86400>> days;
+    const auto d = duration_cast<days>(ms);
+    if (d.count()) {
+      foundNonZero = true;
+      os << d.count() << "d:";
+      ms -= d;
+    }
+    const auto h = duration_cast<hours>(ms);
+    if (h.count() || foundNonZero) {
+      foundNonZero = true;
+      os << h.count() << "h:";
+      ms -= h;
+    }
+    const auto m = duration_cast<minutes>(ms);
+    if (m.count() || foundNonZero) {
+      foundNonZero = true;
+      os << m.count() << "m:";
+      ms -= m;
+    }
+    const auto s = duration_cast<seconds>(ms);
+#if !TIME_TOSTRING_PRINT_MILLIS
+    os << s.count() << "s";
+#else
+    if (s.count() || foundNonZero) {
+      foundNonZero = true;
+      os << s.count() << "s:";
+      ms -= s;
+    }
+    os << std::setw(3) << ms.count() << "ms";
+#endif
+    return os.str();
+  }
+};
+
 } // namespace Time
 
 void registerTimeShards() {
@@ -150,5 +240,6 @@ void registerTimeShards() {
   REGISTER_SHARD("Time.DeltaMs", Time::DeltaMs);
   REGISTER_SHARD("Time.EpochMs", Time::EpochMs);
   REGISTER_SHARD("Time.Pop", Time::Pop);
+  REGISTER_SHARD("Time.ToString", Time::ToString);
 }
 } // namespace shards
