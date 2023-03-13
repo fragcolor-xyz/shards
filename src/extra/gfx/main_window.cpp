@@ -1,4 +1,8 @@
 #include "../gfx.hpp"
+#include <SDL_events.h>
+#include <SDL_keyboard.h>
+#include <SDL_keycode.h>
+#include <SDL_scancode.h>
 #include <gfx/context.hpp>
 #include <gfx/loop.hpp>
 #include <gfx/renderer.hpp>
@@ -53,6 +57,8 @@ struct MainWindow final {
   ::gfx::Loop _loop;
 
   ExposedInfo _exposedVariables;
+
+  boost::container::flat_set<SDL_Keycode> _actuallyHeldKeys;
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -187,6 +193,60 @@ struct MainWindow final {
 
   void frameBegan() { _graphicsContext.getDrawQueue()->clear(); }
 
+  void updateVirtualInputEvents() {
+    auto &virtualInputEvents = _inputContext.virtualInputEvents;
+    auto &heldKeys = _inputContext.heldKeys;
+    virtualInputEvents.clear();
+
+    for (auto &evt : _inputContext.events) {
+      switch (evt.type) {
+      case SDL_KEYDOWN:
+        if (heldKeys.insert(evt.key.keysym.sym).second) {
+          virtualInputEvents.push_back(evt);
+        }
+        break;
+      case SDL_KEYUP:
+        if (heldKeys.contains(evt.key.keysym.sym)) {
+          heldKeys.erase(evt.key.keysym.sym);
+          virtualInputEvents.push_back(evt);
+        }
+        break;
+      }
+    }
+
+    int numKeys{};
+    auto keyStates = SDL_GetKeyboardState(&numKeys);
+    _actuallyHeldKeys.clear();
+    for (size_t i = 0; i < numKeys; i++) {
+      SDL_Keycode code = SDL_SCANCODE_TO_KEYCODE(i);
+      if (keyStates[i] == 1) {
+        _actuallyHeldKeys.insert(code);
+      }
+    }
+
+    // Synthesize release events in case the event got lost
+    for (auto it = heldKeys.begin(); it != heldKeys.end();) {
+      if (!_actuallyHeldKeys.contains(*it)) {
+        it = heldKeys.erase(it);
+        // Generate virtual event
+        SDL_Event evt{
+            .key =
+                {
+                    .type = SDL_KEYUP,
+                    .state = SDL_RELEASED,
+                    .keysym =
+                        {
+                            .sym = *it,
+                        },
+                },
+        };
+        virtualInputEvents.push_back(evt);
+      } else {
+        ++it;
+      }
+    }
+  }
+
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &renderer = _graphicsRendererContext.renderer;
     auto &context = _graphicsContext.context;
@@ -236,6 +296,8 @@ struct MainWindow final {
         context->endFrame();
       }
     }
+
+    updateVirtualInputEvents();
 
     inputStack.pop();
 
