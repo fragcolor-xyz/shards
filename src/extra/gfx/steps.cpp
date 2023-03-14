@@ -3,6 +3,10 @@
 #include "extra/gfx/shader/composition.hpp"
 #include "extra/gfx/shards_utils.hpp"
 #include "gfx/error_utils.hpp"
+#include "gfx/fwd.hpp"
+#include "gfx/hash.hpp"
+#include "gfx/hasherxxh128.hpp"
+#include "gfx/unique_id.hpp"
 #include "shards_utils.hpp"
 #include "shader/translator.hpp"
 #include "linalg_shim.hpp"
@@ -20,8 +24,8 @@
 using namespace shards;
 
 namespace gfx {
-
 namespace shared {
+
 WGPUTextureFormat getAttachmentFormat(const std::string &name, const SHVar &formatVar) {
   if (formatVar.valueType == SHType::None) {
     if (name == "color") {
@@ -164,6 +168,25 @@ template <typename T> void applyAll(SHContext *context, T &step, const SHTable &
 
 } // namespace shared
 
+struct HashState {
+  Hash128 hash;
+
+  template <typename T> bool update(const T &step) {
+    HasherXXH128<> hasher;
+    for (const FeaturePtr &feature : step.features) {
+      hasher(feature->getId());
+    }
+
+    auto newHash = hasher.getDigest();
+    if (hash != newHash) {
+      hash = newHash;
+      return true;
+    } else {
+      return false;
+    }
+  }
+};
+
 struct DrawablePassShard {
   /* Input table
   {
@@ -188,6 +211,7 @@ struct DrawablePassShard {
   PARAM_IMPL(DrawablePassShard);
 
   PipelineStepPtr *_step{};
+  HashState _hashState;
 
   void cleanup() {
     if (_step) {
@@ -232,6 +256,11 @@ struct DrawablePassShard {
       applyQueue(context, step, queueVar);
     else {
       throw formatException("DrawablePass requires a queue");
+    }
+
+    if (_hashState.update(step)) {
+      // *_step = cloneSelfWithId(_step->get(), );
+      step.id = renderStepIdGenerator.getNext();
     }
 
     return Types::PipelineStepObjectVar.Get(_step);

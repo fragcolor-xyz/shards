@@ -27,7 +27,7 @@ struct SHDrawable {
 
 struct SHView {
   ViewPtr view;
-  shards::ParamVar* viewTransformVar{};
+  shards::ParamVar *viewTransformVar{};
 
   void updateVariables();
 };
@@ -309,7 +309,8 @@ struct Container {
 
   static inline ParameterInfo MaterialParameterInfo{"Material", SHCCSTR("The material"), {Type::VariableOf(Material)}};
 
-  static inline ParameterInfo ParamsParameterInfo{"Params", SHCCSTR("Shader parameters for this drawable"), {ShaderParamTable}};
+  static inline ParameterInfo ParamsParameterInfo{
+      "Params", SHCCSTR("Shader parameters for this drawable"), {ShaderParamTable, Type::VariableOf(ShaderParamTable)}};
 
   static inline ParameterInfo FeaturesParameterInfo{
       "Features", SHCCSTR("Features to attach to this drawable"), {FeatureSeq, Type::VariableOf(FeatureSeq)}};

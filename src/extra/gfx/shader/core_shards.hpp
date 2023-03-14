@@ -17,12 +17,14 @@
 #include "gfx/shader/uniforms.hpp"
 #include "magic_enum.hpp"
 #include "number_types.hpp"
+#include "runtime.hpp"
 #include "shards.h"
 #include "shards/shared.hpp"
 #include "translator.hpp"
 #include "translator_utils.hpp"
 #include "composition.hpp"
 #include <nameof.hpp>
+#include <optional>
 #include <stdexcept>
 #include <type_traits>
 #include <variant>
@@ -80,13 +82,19 @@ template <typename TShard> struct SetTranslator {
 };
 
 struct GetTranslator {
-  static void translateByName(const char *varName, TranslationContext &context) {
+  static void translateByName(const std::string &varName, TranslationContext &context) {
     SPDLOG_LOGGER_INFO(context.logger, "gen(get)> {}", varName);
 
-    context.setWGSLTop<WGSLBlock>(context.reference(varName));
+    auto &compositionContext = ShaderCompositionContext::get();
+
+    if (auto composeVar = compositionContext.getComposeTimeConstant(varName)) {
+      context.wgslTop = translateConst(*composeVar, context);
+    } else {
+      context.setWGSLTop<WGSLBlock>(context.reference(varName));
+    }
   }
 
-  static void translate(shards::Get *shard, TranslationContext &context) { translateByName(shard->_name.c_str(), context); }
+  static void translate(shards::Get *shard, TranslationContext &context) { translateByName(shard->_name, context); }
 };
 
 struct UpdateTranslator {
@@ -162,10 +170,10 @@ struct Literal {
     return types;
   }
 
-  static inline shards::Types FormatSeqValueTypes{CoreInfo::StringOrStringVar, {shards::Type::VariableOf(CoreInfo::AnyType)}};
+  static inline shards::Types FormatSeqValueTypes{CoreInfo::StringType, shards::Type::VariableOf(CoreInfo::AnyType)};
   static inline shards::Type FormatSeqType = shards::Type::SeqOf(FormatSeqValueTypes);
 
-  PARAM(shards::OwnedVar, _source, "Source", "The WGSL source code to insert", {CoreInfo::StringType, FormatSeqType});
+  PARAM(shards::OwnedVar, _source, "Source", "The WGSL source code to insert", {CoreInfo::StringOrStringVar, {FormatSeqType}});
   PARAM_VAR(_type, "Type", "Where to insert the code.", {ShaderLiteralTypeEnumInfo::Type});
   PARAM_VAR(_outType, "OutputType", "The type that this code is expected to output. (default: none)",
             {Types::ShaderFieldBaseTypeEnumInfo::Type});
@@ -237,17 +245,24 @@ struct Literal {
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
+  std::optional<const char *> getComposeTimeConstant(ShaderCompositionContext &compositionContext, const std::string &key) {
+    if (auto constValue = compositionContext.getComposeTimeConstant(key)) {
+      if (constValue->valueType != SHType::String) {
+        throw formatError("Composition variable {}, has an invalid value {} (Only string is allowed)", key, *constValue);
+      }
+      return constValue->payload.stringValue;
+    }
+    return std::nullopt;
+  }
+
   void generateSourceElement(ShaderCompositionContext &compositionContext, TranslationContext &context, blocks::Compound &output,
                              const SHVar &elem) {
     if (elem.valueType == SHType::String) {
       output.append(elem.payload.stringValue);
     } else if (elem.valueType == SHType::ContextVar) {
       std::string key = elem.payload.stringValue;
-      if (auto constValue = compositionContext.getComposeTimeConstant(key)) {
-        if (constValue->valueType != SHType::String) {
-          throw formatError("Composition variable {}, has an invalid value {} (Only string is allowed)", key, *constValue);
-        }
-        output.append(constValue->payload.stringValue);
+      if (auto constValue = getComposeTimeConstant(compositionContext, key)) {
+        output.append(*constValue);
       } else {
         WGSLBlock ref = context.reference(elem.payload.stringValue);
         output.append(std::move(ref.block));
@@ -262,7 +277,14 @@ struct Literal {
 
     if (_source.valueType == SHType::String)
       return blocks::makeBlock<blocks::Direct>(_source.payload.stringValue);
-    else if (_source.valueType == SHType::Seq) {
+    else if (_source.valueType == SHType::ContextVar) {
+      auto key = _source.payload.stringValue;
+      if (auto constValue = getComposeTimeConstant(compositionContext, key)) {
+        return blocks::makeBlock<blocks::Direct>(*constValue);
+      } else {
+        throw formatError("Composition variable {} not found", key);
+      }
+    } else if (_source.valueType == SHType::Seq) {
       auto compound = blocks::makeBlock<blocks::Compound>();
       const SHSeq &formatSeq = _source.payload.seqValue;
       for (uint32_t i = 0; i < formatSeq.len; i++) {
