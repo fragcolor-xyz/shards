@@ -14,6 +14,7 @@ use crate::shards::gui::util;
 use crate::shards::gui::EGUI_UI_TYPE;
 use crate::shards::gui::HELP_VALUE_IGNORED;
 use crate::shards::gui::PARENTS_UI_NAME;
+use crate::shards::gui::widgets::drag_value::CustomDragValue;
 use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -220,11 +221,11 @@ macro_rules! impl_ui_input {
             &mut self.tmp
           };
 
-          let mut drag_value = egui::DragValue::new(value);
+          let mut drag_value = CustomDragValue::new(value);
           let prefix = self.prefix.get();
           if !prefix.is_none() {
             let prefix: &str = prefix.try_into()?;
-            drag_value = drag_value.prefix(prefix);
+            drag_value.drag_value = drag_value.drag_value.prefix(prefix);
           }
 
           ui.add(drag_value);
@@ -431,7 +432,7 @@ macro_rules! impl_ui_n_input {
               &mut self.tmp
             };
             for i in 0..$n {
-              ui.add(egui::DragValue::new(&mut values[i]));
+              ui.add(CustomDragValue::new(&mut values[i]));
             }
 
             Ok::<(), &str>(())
