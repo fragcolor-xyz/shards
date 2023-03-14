@@ -1,7 +1,9 @@
 #ifndef DACF8017_857B_4084_9427_A52FCAE0D044
 #define DACF8017_857B_4084_9427_A52FCAE0D044
 
+#include <boost/container/flat_set.hpp>
 #include "gfx/window.hpp"
+#include <SDL_keycode.h>
 #include <foundation.hpp>
 #include <input/input_stack.hpp>
 #include <exposed_type_utils.hpp>
@@ -17,6 +19,8 @@ struct InputContext {
 
   std::shared_ptr<gfx::Window> window;
   std::vector<SDL_Event> events;
+  std::vector<SDL_Event> virtualInputEvents;
+  boost::container::flat_set<SDL_Keycode> heldKeys;
   shards::input::InputStack inputStack;
 
   double time;

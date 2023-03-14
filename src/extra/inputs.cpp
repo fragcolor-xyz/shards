@@ -2,9 +2,11 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 #include "SDL.h"
+#include "shards.hpp"
 #include "shards/shared.hpp"
 #include "inputs.hpp"
 #include "gfx.hpp"
+#include <SDL_keyboard.h>
 #include <gfx/window.hpp>
 
 using namespace linalg::aliases;
@@ -302,6 +304,76 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
 using MouseUp = MouseUpDown<SDL_MOUSEBUTTONUP>;
 using MouseDown = MouseUpDown<SDL_MOUSEBUTTONDOWN>;
 
+static inline std::map<std::string, SDL_Keycode> KeycodeMap = {
+    // note: keep the same order as in SDL_keycode.h
+    {"return", SDLK_RETURN},
+    {"escape", SDLK_ESCAPE},
+    {"backspace", SDLK_BACKSPACE},
+    {"tab", SDLK_TAB},
+    {"space", SDLK_SPACE},
+    {"f1", SDLK_F1},
+    {"f2", SDLK_F2},
+    {"f3", SDLK_F3},
+    {"f4", SDLK_F4},
+    {"f5", SDLK_F5},
+    {"f6", SDLK_F6},
+    {"f7", SDLK_F7},
+    {"f8", SDLK_F8},
+    {"f9", SDLK_F9},
+    {"f10", SDLK_F10},
+    {"f11", SDLK_F11},
+    {"f12", SDLK_F12},
+    {"pause", SDLK_PAUSE},
+    {"insert", SDLK_INSERT},
+    {"home", SDLK_HOME},
+    {"pageUp", SDLK_PAGEUP},
+    {"delete", SDLK_DELETE},
+    {"end", SDLK_END},
+    {"pageDown", SDLK_PAGEDOWN},
+    {"right", SDLK_RIGHT},
+    {"left", SDLK_LEFT},
+    {"down", SDLK_DOWN},
+    {"up", SDLK_UP},
+    {"divide", SDLK_KP_DIVIDE},
+    {"multiply", SDLK_KP_MULTIPLY},
+    {"subtract", SDLK_KP_MINUS},
+    {"add", SDLK_KP_PLUS},
+    {"enter", SDLK_KP_ENTER},
+    {"num1", SDLK_KP_1},
+    {"num2", SDLK_KP_2},
+    {"num3", SDLK_KP_3},
+    {"num4", SDLK_KP_4},
+    {"num5", SDLK_KP_5},
+    {"num6", SDLK_KP_6},
+    {"num7", SDLK_KP_7},
+    {"num8", SDLK_KP_8},
+    {"num9", SDLK_KP_9},
+    {"num0", SDLK_KP_0},
+    {"leftCtrl", SDLK_LCTRL},
+    {"leftShift", SDLK_LSHIFT},
+    {"leftAlt", SDLK_LALT},
+    {"rightCtrl", SDLK_RCTRL},
+    {"rightShift", SDLK_RSHIFT},
+    {"rightAlt", SDLK_RALT},
+};
+
+inline SDL_Keycode keyStringToKeyCode(const std::string &str) {
+  if (str.length() == 1) {
+    if ((str[0] >= ' ' && str[0] <= '@') || (str[0] >= '[' && str[0] <= 'z')) {
+      return SDL_Keycode(str[0]);
+    }
+    if (str[0] >= 'A' && str[0] <= 'Z') {
+      return SDL_Keycode(str[0] + 32);
+    }
+  }
+
+  auto it = KeycodeMap.find(str);
+  if (it != KeycodeMap.end())
+    return it->second;
+
+  throw SHException(fmt::format("Unknown key identifier: {}", str));
+}
+
 template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
   static SHParametersInfo parameters() { return _params; }
 
@@ -358,7 +430,8 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    for (auto &event : _inputContext->events) {
+    auto &events = _repeat ? _inputContext->events : _inputContext->virtualInputEvents;
+    for (auto &event : events) {
       if (event.type == EVENT_TYPE && event.key.keysym.sym == _keyCode) {
         if (_repeat || event.key.repeat == 0) {
           SHVar output{};
@@ -368,23 +441,6 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
     }
 
     return input;
-  }
-
-  static SDL_Keycode keyStringToKeyCode(const std::string &str) {
-    if (str.length() == 1) {
-      if ((str[0] >= ' ' && str[0] <= '@') || (str[0] >= '[' && str[0] <= 'z')) {
-        return SDL_Keycode(str[0]);
-      }
-      if (str[0] >= 'A' && str[0] <= 'Z') {
-        return SDL_Keycode(str[0] + 32);
-      }
-    }
-
-    auto it = _keyMap.find(str);
-    if (it != _keyMap.end())
-      return it->second;
-
-    return SDLK_UNKNOWN;
   }
 
 private:
@@ -398,63 +454,50 @@ private:
   std::string _key;
   SDL_Keycode _keyCode;
   bool _repeat{false};
-
-  static inline std::map<std::string, SDL_Keycode> _keyMap = {
-      // note: keep the same order as in SDL_keycode.h
-      {"return", SDLK_RETURN},
-      {"escape", SDLK_ESCAPE},
-      {"backspace", SDLK_BACKSPACE},
-      {"tab", SDLK_TAB},
-      {"space", SDLK_SPACE},
-      {"f1", SDLK_F1},
-      {"f2", SDLK_F2},
-      {"f3", SDLK_F3},
-      {"f4", SDLK_F4},
-      {"f5", SDLK_F5},
-      {"f6", SDLK_F6},
-      {"f7", SDLK_F7},
-      {"f8", SDLK_F8},
-      {"f9", SDLK_F9},
-      {"f10", SDLK_F10},
-      {"f11", SDLK_F11},
-      {"f12", SDLK_F12},
-      {"pause", SDLK_PAUSE},
-      {"insert", SDLK_INSERT},
-      {"home", SDLK_HOME},
-      {"pageUp", SDLK_PAGEUP},
-      {"delete", SDLK_DELETE},
-      {"end", SDLK_END},
-      {"pageDown", SDLK_PAGEDOWN},
-      {"right", SDLK_RIGHT},
-      {"left", SDLK_LEFT},
-      {"down", SDLK_DOWN},
-      {"up", SDLK_UP},
-      {"divide", SDLK_KP_DIVIDE},
-      {"multiply", SDLK_KP_MULTIPLY},
-      {"subtract", SDLK_KP_MINUS},
-      {"add", SDLK_KP_PLUS},
-      {"enter", SDLK_KP_ENTER},
-      {"num1", SDLK_KP_1},
-      {"num2", SDLK_KP_2},
-      {"num3", SDLK_KP_3},
-      {"num4", SDLK_KP_4},
-      {"num5", SDLK_KP_5},
-      {"num6", SDLK_KP_6},
-      {"num7", SDLK_KP_7},
-      {"num8", SDLK_KP_8},
-      {"num9", SDLK_KP_9},
-      {"num0", SDLK_KP_0},
-      {"leftCtrl", SDLK_LCTRL},
-      {"leftShift", SDLK_LSHIFT},
-      {"leftAlt", SDLK_LALT},
-      {"rightCtrl", SDLK_RCTRL},
-      {"rightShift", SDLK_RSHIFT},
-      {"rightAlt", SDLK_RALT},
-  };
 };
 
-using KeyUp = KeyUpDown<SDL_KEYUP>;
-using KeyDown = KeyUpDown<SDL_KEYDOWN>;
+struct IsKeyDown : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  SDL_Keycode _keyCode;
+  std::string _keyName;
+
+  static inline Parameters _params = {
+      {"Key", SHCCSTR("The name of the key to check."), {{CoreInfo::StringType}}},
+  };
+
+  static SHParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0: {
+      if (value.valueType == SHType::None) {
+        _keyName.clear();
+      } else {
+        _keyName = value.payload.stringValue;
+      }
+      _keyCode = keyStringToKeyCode(_keyName);
+    } break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_keyName);
+    default:
+      throw InvalidParameterIndex();
+    }
+  }
+
+  void cleanup() { baseCleanup(); }
+  void warmup(SHContext *context) { baseWarmup(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return Var(_inputContext->heldKeys.contains(_keyCode)); }
+};
 
 void registerShards() {
   REGISTER_SHARD("Window.Size", WindowSize);
@@ -464,8 +507,11 @@ void registerShards() {
   REGISTER_SHARD("Inputs.Mouse", Mouse);
   REGISTER_SHARD("Inputs.MouseUp", MouseUp);
   REGISTER_SHARD("Inputs.MouseDown", MouseDown);
+  using KeyUp = KeyUpDown<SDL_KEYUP>;
+  using KeyDown = KeyUpDown<SDL_KEYDOWN>;
   REGISTER_SHARD("Inputs.KeyUp", KeyUp);
   REGISTER_SHARD("Inputs.KeyDown", KeyDown);
+  REGISTER_SHARD("Inputs.IsKeyDown", IsKeyDown);
 }
 } // namespace Inputs
 } // namespace shards

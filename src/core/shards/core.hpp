@@ -742,9 +742,9 @@ struct SetBase : public VariableBase {
       auto &reference = data.shared.elements[i];
       if (strcmp(reference.name, _name.c_str()) == 0) {
         if (_isTable && !reference.isTableEntry && reference.exposedType.basicType != SHType::Table) {
-          throw ComposeError("Set/Ref/Update, variable was not a table: " + _name);
+          throw ComposeError(fmt::format("Set/Ref/Update, variable \"{}\" was not a table", _name));
         } else if (!_isTable && reference.isTableEntry) {
-          throw ComposeError("Set/Ref/Update, variable was a table: " + _name);
+          throw ComposeError(fmt::format("Set/Ref/Update, variable \"{}\" was a table", _name));
         } else if (!_isTable &&
                    // need to check if this was just a any table definition {}
                    !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
@@ -754,18 +754,18 @@ struct SetBase : public VariableBase {
         }
         if (!overwrite && !_isTable && !reference.isMutable) {
           SHLOG_ERROR("Error with variable: {}", _name);
-          throw ComposeError("Set/Ref/Update, attempted to write an immutable variable.");
+          throw ComposeError(fmt::format("Set/Ref/Update, attempted to write an immutable variable \"{}\".", _name));
         }
         if (!_isTable && reference.isProtected) {
           SHLOG_ERROR("Error with variable: {}", _name);
-          throw ComposeError("Set/Ref/Update, attempted to write a protected variable.");
+          throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
         }
         if (!_isTable && warnIfExists) {
-          SHLOG_INFO("Set - Warning: setting an already exposed variable, use Update to avoid this warning, variable: {}", _name);
+          SHLOG_INFO("Set - Warning: setting an already exposed variable \"{}\", use Update to avoid this warning.", _name);
         }
         if (reference.isPushTable) {
           SHLOG_ERROR("Error with variable: {}", _name);
-          throw ComposeError("Set/Ref/Update, attempted to write a table variable that is filled using Push shards.");
+          throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a table variable \"{}\" that is filled using Push shards.", _name));
         }
       }
     }
