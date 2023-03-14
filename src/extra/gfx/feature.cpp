@@ -592,19 +592,22 @@ public:
     if (!_branchesWarmedUp) {
       _drawableGeneratorBranch.warmup(context);
       _viewGeneratorBranch.warmup(context);
-      _branchesWarmedUp = false;
+      _branchesWarmedUp = true;
     }
-
-    Feature &feature = *_featurePtr->get();
 
     checkType(input.valueType, SHType::Table, "Input table");
     const SHTable &inputTable = input.payload.tableValue;
 
-    feature.shaderEntryPoints.clear();
-
+    // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
     SHVar composeWithVar;
-    if (getFromTable(context, inputTable, "ComposeWith", composeWithVar))
+    if (getFromTable(context, inputTable, "ComposeWith", composeWithVar)) {
+      // Always create a new object to force shader recompile
+      *_featurePtr = std::make_shared<Feature>();
       applyComposeWith(context, composeWithVar);
+    }
+
+    Feature &feature = *_featurePtr->get();
+    feature.shaderEntryPoints.clear();
 
     SHVar shadersVar;
     if (getFromTable(context, inputTable, "Shaders", shadersVar))

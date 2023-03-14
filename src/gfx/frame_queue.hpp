@@ -69,7 +69,7 @@ public:
     HasherXXH128<HasherDefaultVisitor> hasher;
     for (auto &entry : queue) {
       for (auto &step : entry.steps) {
-        std::visit([&](auto &step) { hasher(step.id); }, *step.get());
+        std::visit([&](auto &step) { hasher(step.getId()); }, *step.get());
       }
 
       auto &viewData = entry.viewData;

@@ -88,19 +88,20 @@ extern UniqueIdGenerator renderStepIdGenerator;
 // Explicitly clear render targets
 struct ClearStep {
   // Used to identify this feature for caching purposes
-  const UniqueId id = renderStepIdGenerator.getNext();
+  UniqueId id = renderStepIdGenerator.getNext();
 
   ClearValues clearValues;
 
   std::optional<RenderStepOutput> output;
 
+  std::shared_ptr<ClearStep> clone() { return cloneSelfWithId(this, renderStepIdGenerator.getNext()); };
   UniqueId getId() const { return id; }
 };
 
 // Renders all drawables in the queue to the output region
 struct RenderDrawablesStep {
   // Used to identify this feature for caching purposes
-  const UniqueId id = renderStepIdGenerator.getNext();
+  UniqueId id = renderStepIdGenerator.getNext();
 
   DrawQueuePtr drawQueue;
   SortMode sortMode = SortMode::Batch;
@@ -108,6 +109,7 @@ struct RenderDrawablesStep {
 
   std::optional<RenderStepOutput> output;
 
+  std::shared_ptr<RenderDrawablesStep> clone() { return cloneSelfWithId(this, renderStepIdGenerator.getNext()); };
   UniqueId getId() const { return id; }
 };
 
@@ -116,7 +118,7 @@ typedef std::vector<std::string> RenderStepInputs;
 // Renders a single item to the entire output region, used for post processing steps
 struct RenderFullscreenStep {
   // Used to identify this feature for caching purposes
-  const UniqueId id = renderStepIdGenerator.getNext();
+  UniqueId id = renderStepIdGenerator.getNext();
 
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;
@@ -128,6 +130,7 @@ struct RenderFullscreenStep {
   // e.g. some blending pass / sub-section of the output
   bool overlay{};
 
+  std::shared_ptr<RenderFullscreenStep> clone() { return cloneSelfWithId(this, renderStepIdGenerator.getNext()); };
   UniqueId getId() const { return id; }
 };
 
