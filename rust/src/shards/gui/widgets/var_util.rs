@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
+use crate::shards::gui::widgets::drag_value;
 use crate::shards::gui::UIRenderer;
 use crate::shardsc::*;
 use crate::types::Seq;
@@ -9,6 +10,8 @@ use crate::types::Type;
 use crate::types::Var;
 use egui::*;
 use std::ffi::CStr;
+
+use super::drag_value::CustomDragValue;
 
 fn get_default_value(value_type: SHType) -> Var {
   match value_type {
@@ -35,35 +38,35 @@ impl UIRenderer for Var {
     unsafe {
       match self.valueType {
         SHType_None => ui.label(""),
-        SHType_Enum => ui.add(DragValue::new(
+        SHType_Enum => ui.add(CustomDragValue::new(
           &mut self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue,
         )),
         SHType_Bool => ui.checkbox(&mut self.payload.__bindgen_anon_1.boolValue, ""),
-        SHType_Int => ui.add(DragValue::new(&mut self.payload.__bindgen_anon_1.intValue)),
+        SHType_Int => ui.add(CustomDragValue::new(&mut self.payload.__bindgen_anon_1.intValue)),
         SHType_Int2 => {
           let values = &mut self.payload.__bindgen_anon_1.int2Value;
           ui.horizontal(|ui| {
-            ui.add(DragValue::new(&mut values[0]));
-            ui.add(DragValue::new(&mut values[1]));
+            ui.add(CustomDragValue::new(&mut values[0]));
+            ui.add(CustomDragValue::new(&mut values[1]));
           })
           .response
         }
         SHType_Int3 => {
           let values = &mut self.payload.__bindgen_anon_1.int3Value;
           ui.horizontal(|ui| {
-            ui.add(DragValue::new(&mut values[0]));
-            ui.add(DragValue::new(&mut values[1]));
-            ui.add(DragValue::new(&mut values[2]));
+            ui.add(CustomDragValue::new(&mut values[0]));
+            ui.add(CustomDragValue::new(&mut values[1]));
+            ui.add(CustomDragValue::new(&mut values[2]));
           })
           .response
         }
         SHType_Int4 => {
           let values = &mut self.payload.__bindgen_anon_1.int4Value;
           ui.horizontal(|ui| {
-            ui.add(DragValue::new(&mut values[0]));
-            ui.add(DragValue::new(&mut values[1]));
-            ui.add(DragValue::new(&mut values[2]));
-            ui.add(DragValue::new(&mut values[3]));
+            ui.add(CustomDragValue::new(&mut values[0]));
+            ui.add(CustomDragValue::new(&mut values[1]));
+            ui.add(CustomDragValue::new(&mut values[2]));
+            ui.add(CustomDragValue::new(&mut values[3]));
           })
           .response
         }
@@ -71,16 +74,16 @@ impl UIRenderer for Var {
           let values = &mut self.payload.__bindgen_anon_1.int8Value;
           ui.vertical(|ui| {
             ui.horizontal(|ui| {
-              ui.add(DragValue::new(&mut values[0]));
-              ui.add(DragValue::new(&mut values[1]));
-              ui.add(DragValue::new(&mut values[2]));
-              ui.add(DragValue::new(&mut values[3]));
+              ui.add(CustomDragValue::new(&mut values[0]));
+              ui.add(CustomDragValue::new(&mut values[1]));
+              ui.add(CustomDragValue::new(&mut values[2]));
+              ui.add(CustomDragValue::new(&mut values[3]));
             });
             ui.horizontal(|ui| {
-              ui.add(DragValue::new(&mut values[4]));
-              ui.add(DragValue::new(&mut values[5]));
-              ui.add(DragValue::new(&mut values[6]));
-              ui.add(DragValue::new(&mut values[7]));
+              ui.add(CustomDragValue::new(&mut values[4]));
+              ui.add(CustomDragValue::new(&mut values[5]));
+              ui.add(CustomDragValue::new(&mut values[6]));
+              ui.add(CustomDragValue::new(&mut values[7]));
             });
           })
           .response
@@ -89,59 +92,59 @@ impl UIRenderer for Var {
           let values = &mut self.payload.__bindgen_anon_1.int16Value;
           ui.vertical(|ui| {
             ui.horizontal(|ui| {
-              ui.add(DragValue::new(&mut values[0]));
-              ui.add(DragValue::new(&mut values[1]));
-              ui.add(DragValue::new(&mut values[2]));
-              ui.add(DragValue::new(&mut values[3]));
+              ui.add(CustomDragValue::new(&mut values[0]));
+              ui.add(CustomDragValue::new(&mut values[1]));
+              ui.add(CustomDragValue::new(&mut values[2]));
+              ui.add(CustomDragValue::new(&mut values[3]));
             });
             ui.horizontal(|ui| {
-              ui.add(DragValue::new(&mut values[4]));
-              ui.add(DragValue::new(&mut values[5]));
-              ui.add(DragValue::new(&mut values[6]));
-              ui.add(DragValue::new(&mut values[7]));
+              ui.add(CustomDragValue::new(&mut values[4]));
+              ui.add(CustomDragValue::new(&mut values[5]));
+              ui.add(CustomDragValue::new(&mut values[6]));
+              ui.add(CustomDragValue::new(&mut values[7]));
             });
             ui.horizontal(|ui| {
-              ui.add(DragValue::new(&mut values[8]));
-              ui.add(DragValue::new(&mut values[9]));
-              ui.add(DragValue::new(&mut values[10]));
-              ui.add(DragValue::new(&mut values[11]));
+              ui.add(CustomDragValue::new(&mut values[8]));
+              ui.add(CustomDragValue::new(&mut values[9]));
+              ui.add(CustomDragValue::new(&mut values[10]));
+              ui.add(CustomDragValue::new(&mut values[11]));
             });
             ui.horizontal(|ui| {
-              ui.add(DragValue::new(&mut values[12]));
-              ui.add(DragValue::new(&mut values[13]));
-              ui.add(DragValue::new(&mut values[14]));
-              ui.add(DragValue::new(&mut values[15]));
+              ui.add(CustomDragValue::new(&mut values[12]));
+              ui.add(CustomDragValue::new(&mut values[13]));
+              ui.add(CustomDragValue::new(&mut values[14]));
+              ui.add(CustomDragValue::new(&mut values[15]));
             });
           })
           .response
         }
-        SHType_Float => ui.add(DragValue::new(
+        SHType_Float => ui.add(CustomDragValue::new(
           &mut self.payload.__bindgen_anon_1.floatValue,
         )),
         SHType_Float2 => {
           let values = &mut self.payload.__bindgen_anon_1.float2Value;
           ui.horizontal(|ui| {
-            ui.add(DragValue::new(&mut values[0]));
-            ui.add(DragValue::new(&mut values[1]));
+            ui.add(CustomDragValue::new(&mut values[0]));
+            ui.add(CustomDragValue::new(&mut values[1]));
           })
           .response
         }
         SHType_Float3 => {
           let values = &mut self.payload.__bindgen_anon_1.float3Value;
           ui.horizontal(|ui| {
-            ui.add(DragValue::new(&mut values[0]));
-            ui.add(DragValue::new(&mut values[1]));
-            ui.add(DragValue::new(&mut values[2]));
+            ui.add(CustomDragValue::new(&mut values[0]));
+            ui.add(CustomDragValue::new(&mut values[1]));
+            ui.add(CustomDragValue::new(&mut values[2]));
           })
           .response
         }
         SHType_Float4 => {
           let values = &mut self.payload.__bindgen_anon_1.float4Value;
           ui.horizontal(|ui| {
-            ui.add(DragValue::new(&mut values[0]));
-            ui.add(DragValue::new(&mut values[1]));
-            ui.add(DragValue::new(&mut values[2]));
-            ui.add(DragValue::new(&mut values[3]));
+            ui.add(CustomDragValue::new(&mut values[0]));
+            ui.add(CustomDragValue::new(&mut values[1]));
+            ui.add(CustomDragValue::new(&mut values[2]));
+            ui.add(CustomDragValue::new(&mut values[3]));
           })
           .response
         }

@@ -298,6 +298,7 @@ mod text_util;
 mod tooltip;
 mod var_util;
 mod variable;
+mod drag_value;
 
 pub fn registerShards() {
   registerShard::<Button>();
