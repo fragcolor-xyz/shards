@@ -1,6 +1,8 @@
 #include "render_step_impl.hpp"
 #include "drawables/mesh_drawable.hpp"
 #include "render_graph.hpp"
+#include "renderer_types.hpp"
+#include "shader/log.hpp"
 #include "steps/defaults.hpp"
 #include "geom.hpp"
 #include "mesh_utils.hpp"
@@ -208,8 +210,16 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
     }
 
     // Assume same processor
-    processor.buildPipeline(builder);
-    builder.build(context.wgpuDevice, storage.deviceLimits.limits);
+    try {
+      processor.buildPipeline(builder);
+      builder.build(context.wgpuDevice, storage.deviceLimits.limits);
+    } catch (std::exception &ex) {
+      if (storage.ignoreCompilationErrors) {
+        std::string msg = fmt::format("Ignored shader compilation error: {}", ex.what());
+        SPDLOG_LOGGER_ERROR(gfx::shader::getLogger(), "{}", msg);
+        group.pipeline->compilationError.emplace(msg);
+      }
+    }
 
     if (!storage.ignoreCompilationErrors && group.pipeline->compilationError.has_value()) {
       throw formatException("Failed to build pipeline: {}", group.pipeline->compilationError->message);
