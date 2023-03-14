@@ -7,6 +7,7 @@
 #include "inputs.hpp"
 #include "gfx.hpp"
 #include <SDL_keyboard.h>
+#include <SDL_keycode.h>
 #include <gfx/window.hpp>
 
 using namespace linalg::aliases;
@@ -358,6 +359,10 @@ static inline std::map<std::string, SDL_Keycode> KeycodeMap = {
 };
 
 inline SDL_Keycode keyStringToKeyCode(const std::string &str) {
+  if (str.empty()) {
+    return SDLK_UNKNOWN;
+  }
+
   if (str.length() == 1) {
     if ((str[0] >= ' ' && str[0] <= '@') || (str[0] >= '[' && str[0] <= 'z')) {
       return SDL_Keycode(str[0]);
