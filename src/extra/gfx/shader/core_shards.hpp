@@ -4,6 +4,7 @@
 // Required before shard headers
 #include "../shards_types.hpp"
 #include "extra/gfx/drawable_utils.hpp"
+#include "extra/gfx/shader/composition.hpp"
 #include "extra/gfx/shader/translator.hpp"
 #include "extra/gfx/shader/wgsl.hpp"
 #include "foundation.hpp"
@@ -161,7 +162,7 @@ struct Literal {
     return types;
   }
 
-  static inline shards::Types FormatSeqValueTypes{CoreInfo::StringType, shards::Type::VariableOf(CoreInfo::AnyType)};
+  static inline shards::Types FormatSeqValueTypes{CoreInfo::StringOrStringVar, {shards::Type::VariableOf(CoreInfo::AnyType)}};
   static inline shards::Type FormatSeqType = shards::Type::SeqOf(FormatSeqValueTypes);
 
   PARAM(shards::OwnedVar, _source, "Source", "The WGSL source code to insert", {CoreInfo::StringType, FormatSeqType});
@@ -236,25 +237,36 @@ struct Literal {
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
-  void generateSourceElement(TranslationContext &context, blocks::Compound &output, const SHVar &elem) {
+  void generateSourceElement(ShaderCompositionContext &compositionContext, TranslationContext &context, blocks::Compound &output,
+                             const SHVar &elem) {
     if (elem.valueType == SHType::String) {
       output.append(elem.payload.stringValue);
     } else if (elem.valueType == SHType::ContextVar) {
-      WGSLBlock ref = context.reference(elem.payload.stringValue);
-      output.append(std::move(ref.block));
+      std::string key = elem.payload.stringValue;
+      if (auto constValue = compositionContext.getComposeTimeConstant(key)) {
+        if (constValue->valueType != SHType::String) {
+          throw formatError("Composition variable {}, has an invalid value {} (Only string is allowed)", key, *constValue);
+        }
+        output.append(constValue->payload.stringValue);
+      } else {
+        WGSLBlock ref = context.reference(elem.payload.stringValue);
+        output.append(std::move(ref.block));
+      }
     } else {
       throw std::logic_error("Invalid source type");
     }
   }
 
   BlockPtr generateBlock(TranslationContext &context) {
+    auto &compositionContext = ShaderCompositionContext::get();
+
     if (_source.valueType == SHType::String)
       return blocks::makeBlock<blocks::Direct>(_source.payload.stringValue);
     else if (_source.valueType == SHType::Seq) {
       auto compound = blocks::makeBlock<blocks::Compound>();
       const SHSeq &formatSeq = _source.payload.seqValue;
       for (uint32_t i = 0; i < formatSeq.len; i++) {
-        generateSourceElement(context, *compound.get(), formatSeq.elements[i]);
+        generateSourceElement(compositionContext, context, *compound.get(), formatSeq.elements[i]);
       }
       return compound;
     } else {

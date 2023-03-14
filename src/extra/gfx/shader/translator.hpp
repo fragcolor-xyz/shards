@@ -294,8 +294,6 @@ public:
 
 TranslationRegistry &getTranslationRegistry();
 
-void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input);
-
 } // namespace shader
 } // namespace gfx
 

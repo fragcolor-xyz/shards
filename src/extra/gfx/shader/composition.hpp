@@ -1,14 +1,25 @@
 #ifndef F7DDD110_DF89_4AA4_A005_18C9BBFDFC40
 #define F7DDD110_DF89_4AA4_A005_18C9BBFDFC40
 
+#include <optional>
 #include <shards.h>
 #include <gfx/shader/generator.hpp>
 
 namespace gfx::shader {
+using VariableMap = std::unordered_map<std::string, shards::OwnedVar>;
 struct ShaderCompositionContext {
   IGeneratorContext &generatorContext;
+  const VariableMap &composeWith;
 
-  ShaderCompositionContext(IGeneratorContext &generatorContext) : generatorContext(generatorContext) {}
+  ShaderCompositionContext(IGeneratorContext &generatorContext, const VariableMap &composeWith)
+      : generatorContext(generatorContext), composeWith(composeWith) {}
+
+  std::optional<SHVar> getComposeTimeConstant(const std::string &key) {
+    auto it = composeWith.find(key);
+    if (it == composeWith.end())
+      return std::nullopt;
+    return it->second;
+  }
 
   static ShaderCompositionContext &get();
   template <typename T> static auto withContext(ShaderCompositionContext &ctx, T &&cb) -> decltype(cb()) {
@@ -28,6 +39,9 @@ struct ShaderCompositionContext {
 private:
   static void setContext(ShaderCompositionContext *context);
 };
+
+void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input,
+                           const VariableMap &composeWithVariables = VariableMap());
 } // namespace gfx::shader
 
 #endif /* F7DDD110_DF89_4AA4_A005_18C9BBFDFC40 */

@@ -1,5 +1,6 @@
 #include "../gfx.hpp"
 #include "extra/gfx/drawable_utils.hpp"
+#include "extra/gfx/shader/composition.hpp"
 #include "extra/gfx/shards_utils.hpp"
 #include "gfx/error_utils.hpp"
 #include "shards_utils.hpp"
@@ -321,7 +322,7 @@ struct EffectPassShard {
 
       shader::EntryPoint entryPoint;
       entryPoint.stage = ProgrammableGraphicsStage::Fragment;
-      shader::applyShaderEntryPoint(context, entryPoint, entryPointVar);
+      shader::applyShaderEntryPoint(context, entryPoint, entryPointVar, shader::VariableMap{});
       wrapperFeature->shaderEntryPoints.emplace_back(std::move(entryPoint));
       step.features.push_back(wrapperFeature);
     }
