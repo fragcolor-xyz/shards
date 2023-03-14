@@ -24,7 +24,9 @@
 
     ; Create render steps
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
-   {:Shaders [{:Name "lighting"
+   "vec3<f32>(0.0, 1.0, 0.2)" = .fconst-str
+   {:ComposeWith {:fconst-str .fconst-str}
+    :Shaders [{:Name "lighting"
                :Stage ProgrammableGraphicsStage.Fragment
                :EntryPoint (->
                             (Shader.ReadInput "worldNormal") >= .normal
@@ -32,6 +34,9 @@
                             (Float3 0 0 0) (Math.Subtract .light-dir) >= .inv-light-dir
                             .normal (Math.Normalize) (Math.Dot .inv-light-dir) (Max 0.0) >= .n-dot-l
                             (Shader.ReadBuffer "lightColor") (Math.Multiply .n-dot-l)
+                            (| (Float3 0.0) >= .extra-color
+                               (Shader.Literal [.extra-color " = " .fconst-str ";\n"]))
+                            (Math.Add .extra-color)
                             (Shader.WriteGlobal "lighting"))}
               {:Name "mainColor"
                :Stage ProgrammableGraphicsStage.Fragment

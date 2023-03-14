@@ -14,6 +14,7 @@
 #include "gfx/texture.hpp"
 #include "runtime.hpp"
 #include "shader/translator.hpp"
+#include "shader/composition.hpp"
 #include "shards.h"
 #include "shards.hpp"
 #include "shards_utils.hpp"
@@ -36,6 +37,7 @@
 #include <string.h>
 #include <unordered_map>
 #include <variant>
+#include "iterator.hpp"
 
 using namespace shards;
 
@@ -119,6 +121,7 @@ struct FeatureShard {
       :Shaders [
         {:Name <string> :Stage <enum> :Before [...] :After [...] :EntryPoint (-> ...)}
       ]
+      :ComposeWith {:name <value>}
       :State {
         :Blend {...}
       }
@@ -178,6 +181,8 @@ private:
 
   std::list<FeaturePtr> _featurePtrsTemp;
 
+  gfx::shader::VariableMap _composedWith;
+
 public:
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
 
@@ -224,7 +229,8 @@ public:
   }
 
   void collectComposeResult(const std::shared_ptr<SHWire> &wire, std::vector<NamedShaderParam> &outBasicParams,
-                            std::vector<NamedTextureParam> &outTextureParams, BindingFrequency bindingFreq, bool expectSeqOutput) {
+                            std::vector<NamedTextureParam> &outTextureParams, BindingFrequency bindingFreq,
+                            bool expectSeqOutput) {
     auto parseParamTable = [&](const SHTypeInfo &type) {
       for (size_t i = 0; i < type.table.keys.len; i++) {
         auto k = type.table.keys.elements[i];
@@ -239,10 +245,10 @@ public:
             [&](auto &&arg) {
               using T = std::decay_t<decltype(arg)>;
               if constexpr (std::is_same_v<T, shader::NumFieldType>) {
-                auto& param = outBasicParams.emplace_back(k, arg);
+                auto &param = outBasicParams.emplace_back(k, arg);
                 param.bindingFrequency = bindingFreq;
               } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
-                auto& param = outTextureParams.emplace_back(k, arg);
+                auto &param = outTextureParams.emplace_back(k, arg);
                 param.bindingFrequency = bindingFreq;
               } else {
                 throw formatException("Generator wire returns invalid type {} for key {}", v, k);
@@ -413,6 +419,20 @@ public:
     dep.type = type;
   }
 
+  void applyComposeWith(SHContext *context, const SHVar &input) {
+    checkType(input.valueType, SHType::Table, ":ComposeWith table");
+
+    _composedWith.clear();
+    for (auto &[k, v] : input.payload.tableValue) {
+      ParamVar pv(v);
+      pv.warmup(context);
+      auto &var = _composedWith.emplace(k, pv.get()).first->second;
+      if (var.valueType == SHType::None) {
+        throw formatException("Required variable {} not found", k);
+      }
+    }
+  }
+
   void applyShader(SHContext *context, Feature &feature, const SHVar &input) {
     shader::EntryPoint &entryPoint = feature.shaderEntryPoints.emplace_back();
 
@@ -450,7 +470,7 @@ public:
 
     SHVar entryPointVar;
     if (getFromTable(context, inputTable, "EntryPoint", entryPointVar)) {
-      applyShaderEntryPoint(context, entryPoint, entryPointVar);
+      applyShaderEntryPoint(context, entryPoint, entryPointVar, _composedWith);
     } else {
       throw formatException(":Shader table requires an :EntryPoint");
     }
@@ -582,6 +602,10 @@ public:
 
     feature.shaderEntryPoints.clear();
 
+    SHVar composeWithVar;
+    if (getFromTable(context, inputTable, "ComposeWith", composeWithVar))
+      applyComposeWith(context, composeWithVar);
+
     SHVar shadersVar;
     if (getFromTable(context, inputTable, "Shaders", shadersVar))
       applyShaders(context, feature, shadersVar);
@@ -651,8 +675,7 @@ public:
 
     GraphicsRendererContext graphicsRendererContext{
         .renderer = &ctx.renderer,
-        .render = [&ctx = ctx](ViewPtr view,
-                               const PipelineSteps &pipelineSteps) { ctx.render(view, pipelineSteps); },
+        .render = [&ctx = ctx](ViewPtr view, const PipelineSteps &pipelineSteps) { ctx.render(view, pipelineSteps); },
     };
     mesh->variables.emplace(GraphicsRendererContext::VariableName,
                             Var::Object(&graphicsRendererContext, GraphicsRendererContext::Type));
