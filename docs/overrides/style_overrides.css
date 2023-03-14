@@ -15,6 +15,14 @@
     background-color: inherit !important;
 }
 
+.md-typeset__table {
+    min-width: 100%;
+ }
+ 
+ .md-typeset table:not([class]) {
+     display: table;
+ }
+
 #sh-flags-row {
     min-width: 1rem !important;
 }
