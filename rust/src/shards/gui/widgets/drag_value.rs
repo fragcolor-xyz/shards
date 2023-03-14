@@ -21,6 +21,12 @@ impl<'a> CustomDragValue<'a> {
     drag_value = adjust_drag_value(&num_copy, drag_value);
     Self { drag_value }
   }
+
+  pub fn from_egui<Num: emath::Numeric>(value: &Num, drag_value: DragValue<'a>) -> Self {
+    Self {
+      drag_value: adjust_drag_value(value, drag_value),
+    }
+  }
 }
 
 impl<'a> Widget for CustomDragValue<'a> {
