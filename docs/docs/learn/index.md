@@ -17,4 +17,7 @@ Begin by navigating to the project you wish to learn more about:
 
 - [Shards](./shards/)
 
+- Rare Engine (Coming Soon!)
+<!-- - [Rare Engine](./rare-engine/) -->
+
 --8<-- "includes/license.md"

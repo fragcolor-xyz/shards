@@ -17,4 +17,8 @@ Choose from our projects here:
 
 - [Shards](./shards/)
 
+- Rare Engine (Coming Soon!)
+
+*Use the search box above if you're looking for something specific.*
+
 --8<-- "includes/license.md"

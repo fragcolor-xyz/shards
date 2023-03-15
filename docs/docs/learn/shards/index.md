@@ -3,6 +3,8 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
+![](assets/ShardsLogo.png)
+
 # Learn Shards
 
 Shards is a programming language that helps developers create apps more efficiently. It does this by breaking down the app into smaller functional units called shards. These shards can then be easily connected to create more complex workflows. By using Shards, developers can create a variety of workflows that can be customized to fit specific needs, while improving the performance and scalability of a system.

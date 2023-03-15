@@ -3,6 +3,8 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
+![](assets/ShardsLogo.png)
+
 # Shards reference
 
 Welcome to the Shards reference docs. This is where you can access comprehensive information about every shard, enum, and Lisp function that has been defined in Shards. 
