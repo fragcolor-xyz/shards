@@ -127,6 +127,17 @@ struct Vertical {
   exposing: ExposedTypes,
 }
 
+struct Sized {
+  parents: ParamVar,
+  contents: ShardsVar,
+  requiring: ExposedTypes,
+  exposing: ExposedTypes,
+  width : ClonedVar,
+  height : ClonedVar,
+  fill_width : ClonedVar,
+  fill_height : ClonedVar,
+}
+
 mod collapsing_header;
 mod columns;
 mod disable;
@@ -140,6 +151,7 @@ mod separator;
 mod space;
 mod table;
 mod vertical;
+mod sized;
 
 pub fn registerShards() {
   registerShard::<CollapsingHeader>();
@@ -156,4 +168,5 @@ pub fn registerShards() {
   registerShard::<Space>();
   registerShard::<Table>();
   registerShard::<Vertical>();
+  registerShard::<Sized>();
 }
