@@ -84,8 +84,13 @@ RenderGraphBuilder::FrameBuildData *RenderGraphBuilder::assignFrame(const Render
 }
 
 void RenderGraphBuilder::replaceWrittenFrames(const FrameBuildData &frame, FrameBuildData &newFrame) {
-  for (auto &node : buildingNodes) {
-    for (auto &attachment : node.attachments) {
+  replaceWrittenFramesAfterNode(frame, newFrame, buildingNodes.begin());
+}
+
+void RenderGraphBuilder::replaceWrittenFramesAfterNode(const FrameBuildData &frame, FrameBuildData &newFrame,
+                                                       const decltype(buildingNodes)::iterator &it) {
+  for (auto it1 = it; it1 != buildingNodes.end(); ++it1) {
+    for (auto &attachment : it1->attachments) {
       if (attachment.frame == &frame) {
         attachment.frame = &newFrame;
       }
@@ -207,6 +212,7 @@ void RenderGraphBuilder::finalizeNodeConnections() {
         newFrame.format = targetFormat;
         nameLookup[frame->name] = &newFrame;
         attachment.frame = &newFrame;
+        replaceWrittenFramesAfterNode(*frame, newFrame, it);
         frame = &newFrame;
       }
 
