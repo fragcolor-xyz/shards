@@ -10,8 +10,10 @@
 #include <unordered_map>
 #include "../brancher.hpp"
 #include "brancher.hpp"
+#include "common_types.hpp"
 #include "foundation.hpp"
 #include "ops_internal.hpp"
+#include "shards.h"
 
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
 // Remove define from winspool.h
@@ -380,6 +382,11 @@ struct Peek : public WireBase {
     } else {
       return {};
     }
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    WireBase::compose(data);
+    return CoreInfo::AnyType;
   }
 
   void warmup(SHContext *ctx) { WireBase::warmup(ctx); }
