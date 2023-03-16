@@ -275,6 +275,7 @@ private:
   RenderTargetLayout getLayout(const NodeBuildData &node) const;
   bool isWrittenTo(const FrameBuildData &frame, const decltype(buildingNodes)::const_iterator &it) const;
   void replaceWrittenFrames(const FrameBuildData &frame, FrameBuildData &newFrame);
+  void replaceWrittenFramesAfterNode(const FrameBuildData &frame, FrameBuildData &newFrame, const decltype(buildingNodes)::iterator &it);
 };
 
 struct DrawableProcessorCache {
