@@ -302,6 +302,23 @@ struct BitSwap64 {
   }
 };
 
+// Matches input against expected type and throws if it doesn't match
+// unsafe only matches basic type
+static inline void expectTypeCheck(const SHVar &input, uint64_t _expectedTypeHash, const SHTypeInfo &_expectedType, bool unsafe) {
+  if (unlikely(input.valueType != _expectedType.basicType)) {
+    throw ActivationError(fmt::format("Unexpected input type, value: {} expected type: {}", input, _expectedType));
+  } else if (!unsafe) {
+    auto inputTypeHash = deriveTypeHash(input);
+    if (unlikely(inputTypeHash != _expectedTypeHash)) {
+      // Do an even deeper type check
+      TypeInfo derivedType{input, SHInstanceData{}};
+      if (!matchTypes(derivedType, _expectedType, false, true)) {
+        throw ActivationError(fmt::format("Unexpected value: {} expected type: {}", input, _expectedType));
+      }
+    }
+  }
+}
+
 RUNTIME_CORE_SHARD(BitSwap64);
 RUNTIME_SHARD_inputTypes(BitSwap64);
 RUNTIME_SHARD_outputTypes(BitSwap64);
@@ -339,16 +356,7 @@ template <Type &ET> struct ExpectXComplex {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const static SHTypeInfo info = ET;
-    if (unlikely(input.valueType != info.basicType)) {
-      SHLOG_ERROR("Unexpected value: {} expected type: {}", input, info);
-      throw ActivationError("Expected type " + type2Name(info.basicType) + " got instead " + type2Name(input.valueType));
-    } else if (!_unsafe) {
-      auto inputTypeHash = deriveTypeHash(input);
-      if (unlikely(inputTypeHash != ExpectedHash)) {
-        SHLOG_ERROR("Unexpected value: {} expected type: {}", input, info);
-        throw ActivationError("Expected type " + type2Name(info.basicType) + " got instead " + type2Name(input.valueType));
-      }
-    }
+    expectTypeCheck(input, ExpectedHash, info, (bool)_unsafe);
     return input;
   }
 };
@@ -416,21 +424,7 @@ struct ExpectLike {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (unlikely(input.valueType != _expectedType.basicType)) {
-      SHLOG_ERROR("Unexpected value: {} expected type: {}", input, _expectedType);
-      throw ActivationError("Unexpected input type");
-    } else if (!_unsafe) {
-      auto inputTypeHash = deriveTypeHash(input);
-      if (unlikely(inputTypeHash != _expectedTypeHash)) {
-        // Do an even deeper type check
-        SHTypeInfo derivedType = deriveTypeInfo(input, SHInstanceData{});
-        DEFER({ freeDerivedInfo(derivedType); });
-        if (!matchTypes(derivedType, _expectedType, false, true)) {
-          SHLOG_ERROR("Unexpected value: {} expected type: {}", input, _expectedType);
-          throw ActivationError("Unexpected input type");
-        }
-      }
-    }
+    expectTypeCheck(input, _expectedTypeHash, _expectedType, (bool)_unsafe);
     return input;
   }
 };
@@ -618,8 +612,6 @@ void registerCastingShards() {
   REGISTER_SHARD("ExpectBool", ExpectBool);
   using ExpectColor = ExpectX<SHType::Color>;
   REGISTER_SHARD("ExpectColor", ExpectColor);
-  using ExpectSeq = ExpectX<SHType::Seq>;
-  REGISTER_SHARD("ExpectSeq", ExpectSeq);
   using ExpectWire = ExpectX<SHType::Wire>;
   REGISTER_SHARD("ExpectWire", ExpectWire);
   using ExpectTable = ExpectX<SHType::Table>;
@@ -635,6 +627,8 @@ void registerCastingShards() {
   REGISTER_SHARD("ExpectBytesSeq", ExpectBytesSeq);
   using ExpectStringSeq = ExpectXComplex<CoreInfo::StringSeqType>;
   REGISTER_SHARD("ExpectStringSeq", ExpectStringSeq);
+  using ExpectAnySeq = ExpectXComplex<CoreInfo::AnySeqType>;
+  REGISTER_SHARD("ExpectSeq", ExpectAnySeq);
 
   REGISTER_SHARD("ExpectLike", ExpectLike);
 
