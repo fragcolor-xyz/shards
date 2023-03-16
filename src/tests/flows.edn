@@ -469,11 +469,24 @@
   )
 
 (defwire a-perfect-starter
-  true (Spawn a-perfect-circle))
+  true (Spawn a-perfect-circle) = .a-perfect-circle-0
+  (Wait .a-perfect-circle-0))
 
 (defwire more-perfect-starter
-  (Spawn a-perfect-starter))
+  (Spawn a-perfect-starter) = .a-perfect-starter-0
+  (Wait .a-perfect-starter-0))
 
 (schedule Root more-perfect-starter)
 (if (run Root 0.1 20) nil (throw "Root tick failed"))
 
+(defwire peek-test
+  (Detach more-perfect-starter)
+  (Peek more-perfect-starter)
+  (Assert.Is nil)
+  (Wait more-perfect-starter)
+  (Assert.Is true)
+  (Peek more-perfect-starter)
+  (Assert.Is true))
+
+(schedule Root peek-test)
+(if (run Root 0.1 20) nil (throw "Root tick failed"))

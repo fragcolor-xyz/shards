@@ -228,9 +228,6 @@ struct Wait : public WireBase {
                    "execution of the current wire.");
   }
 
-  // we don't need OwnedVar here
-  // we keep the wire referenced!
-  SHVar _output{};
   SHExposedTypeInfo _requiredWire{};
   ParamVar _timeout{};
 
@@ -334,9 +331,95 @@ struct Wait : public WireBase {
         return input;
       } else {
         // no clone
-        _output = wire->finishedOutput;
-        return _output;
+        return wire->finishedOutput;
       }
+    }
+  }
+};
+
+struct Peek : public WireBase {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+
+  void setup() {
+    activating = false;  // this is needed to pass validation in compose
+    passthrough = false; // also need this to have proper compose output type
+  }
+
+  SHOptionalString help() {
+    return SHCCSTR(
+        "Verifies if another wire has finished processing. Returns the wire's output if complete, or None if still in progress.");
+  }
+
+  SHExposedTypeInfo _requiredWire{};
+
+  static SHParametersInfo parameters() { return runWireParamsInfo; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      wireref = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return wireref;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    if (wireref.isVariable()) {
+      _requiredWire = SHExposedTypeInfo{wireref.variableName(), SHCCSTR("The wire to check."), CoreInfo::WireType};
+      return {&_requiredWire, 1, 0};
+    } else {
+      return {};
+    }
+  }
+
+  void warmup(SHContext *ctx) { WireBase::warmup(ctx); }
+
+  void cleanup() {
+    if (wireref.isVariable())
+      wire = nullptr;
+    WireBase::cleanup();
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (unlikely(!wire && wireref.isVariable())) {
+      auto vwire = wireref.get();
+      if (vwire.valueType == SHType::Wire) {
+        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
+      } else if (vwire.valueType == SHType::String) {
+        SHLOG_DEBUG("Wait: Resolving wire {}", vwire.payload.stringValue);
+        wire = GetGlobals().GlobalWires[vwire.payload.stringValue];
+      } else {
+        wire = nullptr;
+      }
+    }
+
+    if (unlikely(!wire)) {
+      return Var::Empty;
+    } else {
+      // Make sure to actually wait only if the wire is running on another context.
+      if (wire->context != context && isRunning(wire.get())) {
+        return Var::Empty;
+      }
+
+      if (!wire->finishedError.empty() || wire->state == SHWire::State::Failed) {
+        SHLOG_TRACE("Waiting wire: {} failed with error: {}", wire->name, wire->finishedError);
+        // if the wire has errors we need to propagate them
+        // we can avoid interruption using Maybe shards
+        throw ActivationError(wire->finishedError);
+      }
+
+      // no clone
+      return wire->finishedOutput;
     }
   }
 };
@@ -1997,6 +2080,7 @@ void registerWiresShards() {
   REGISTER_SHARD("Branch", Branch);
   REGISTER_SHARD("StepMany", StepMany);
   REGISTER_SHARD("DoMany", DoMany);
+  REGISTER_SHARD("Peek", Peek);
 }
 }; // namespace shards
 
