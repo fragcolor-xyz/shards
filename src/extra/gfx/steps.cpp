@@ -10,6 +10,7 @@
 #include "shards_utils.hpp"
 #include "shader/translator.hpp"
 #include "linalg_shim.hpp"
+#include "iterator.hpp"
 #include <gfx/feature.hpp>
 #include <gfx/pipeline_step.hpp>
 #include <gfx/steps/defaults.hpp>
@@ -286,6 +287,7 @@ struct EffectPassShard {
 
   FeaturePtr wrapperFeature;
   PipelineStepPtr *_step{};
+  gfx::shader::VariableMap _composedWith;
 
   void cleanup() {
     if (_step) {
@@ -302,6 +304,20 @@ struct EffectPassShard {
     wrapperFeature = std::make_shared<Feature>();
 
     PARAM_WARMUP(context);
+  }
+
+  void applyComposeWith(SHContext *context, const SHVar &input) {
+    checkType(input.valueType, SHType::Table, ":ComposeWith table");
+
+    _composedWith.clear();
+    for (auto &[k, v] : input.payload.tableValue) {
+      ParamVar pv(v);
+      pv.warmup(context);
+      auto &var = _composedWith.emplace(k, pv.get()).first->second;
+      if (var.valueType == SHType::None) {
+        throw formatException("Required variable {} not found", k);
+      }
+    }
   }
 
   void applyInputs(SHContext *context, RenderFullscreenStep &step, const SHVar &input) {
@@ -342,6 +358,14 @@ struct EffectPassShard {
     if (getFromTable(context, inputTable, "Params", paramsVar))
       applyParams(context, step, paramsVar);
 
+    // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
+    SHVar composeWithVar;
+    if (getFromTable(context, inputTable, "ComposeWith", composeWithVar)) {
+      // Always create a new object to force shader recompile
+      wrapperFeature = std::make_shared<Feature>();
+      applyComposeWith(context, composeWithVar);
+    }
+
     SHVar entryPointVar;
     if (getFromTable(context, inputTable, "EntryPoint", entryPointVar)) {
       wrapperFeature->shaderEntryPoints.clear();
@@ -351,7 +375,7 @@ struct EffectPassShard {
 
       shader::EntryPoint entryPoint;
       entryPoint.stage = ProgrammableGraphicsStage::Fragment;
-      shader::applyShaderEntryPoint(context, entryPoint, entryPointVar, shader::VariableMap{});
+      shader::applyShaderEntryPoint(context, entryPoint, entryPointVar, _composedWith);
       wrapperFeature->shaderEntryPoints.emplace_back(std::move(entryPoint));
       step.features.push_back(wrapperFeature);
     }

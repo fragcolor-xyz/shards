@@ -19,6 +19,7 @@
 #include "shards.hpp"
 #include "shards_utils.hpp"
 #include "brancher.hpp"
+#include "iterator.hpp"
 #include <algorithm>
 #include <array>
 #include <deque>
@@ -37,7 +38,6 @@
 #include <string.h>
 #include <unordered_map>
 #include <variant>
-#include "iterator.hpp"
 
 using namespace shards;
 

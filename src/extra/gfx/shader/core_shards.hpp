@@ -268,7 +268,7 @@ struct Literal {
         output.append(std::move(ref.block));
       }
     } else {
-      throw std::logic_error("Invalid source type");
+      throw std::runtime_error(fmt::format("Invalid shader literal source type {}", elem));
     }
   }
 
@@ -292,7 +292,7 @@ struct Literal {
       }
       return compound;
     } else {
-      throw std::logic_error("Invalid source type");
+      throw std::runtime_error(fmt::format("Invalid shader literal source type {}", _source));
     }
   }
 

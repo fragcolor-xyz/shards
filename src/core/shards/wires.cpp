@@ -50,7 +50,6 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposed
               wire->name, data.inputType);
   // verify input type
   if (!passthrough && data.inputType != wire->inputType && !wire->ignoreInputTypeCheck) {
-    SHLOG_ERROR("Previous wire composed type {} requested call type {}", *wire->inputType, data.inputType);
     throw ComposeError(fmt::format("Attempted to call an already composed wire with a "
                                    "different input type! wire: {}, old type: {}, new type: {}",
                                    wire->name, (SHTypeInfo)wire->inputType, data.inputType));
@@ -65,8 +64,8 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposed
       return name == xNameView;
     });
     if (res == shared.end()) {
-      SHLOG_ERROR("Previous wire composed missing required variable: {}", name);
-      throw ComposeError("Attempted to call an already composed wire (" + wire->name + ") with a missing required variable");
+      throw ComposeError(
+          fmt::format("Attempted to call an already composed wire ({}) with a missing required variable: {}", wire->name, name));
     }
   }
 }
