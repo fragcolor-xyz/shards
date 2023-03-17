@@ -55,7 +55,7 @@ jobs:
           ./bootstrap
       - name: Build
         run: |
-          cmake -Bbuild -G Ninja -DCODE_COVERAGE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }}
+          cmake -Bbuild -G Ninja -DUSE_UBSAN=1 -DCODE_COVERAGE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }}
           cmake --build build --target shards test-gfx
       - name: Checkout glTF-Sample-Models
         uses: actions/checkout@v3
@@ -107,8 +107,8 @@ jobs:
         run: |
           set -e
           export DISPLAY=:1
-          Xvfb "$DISPLAY" &          
-          
+          Xvfb "$DISPLAY" &
+
           echo "Running physics"
           build/shards src/tests/physics.edn
       - name: Test doc samples (GFX)
