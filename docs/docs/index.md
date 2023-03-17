@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![Fragnova Logo](assets/Fragnova-Logomark-01.png){: style="height:240px;width:300px"}
+![Fragnova Logo](assets/Fragnova-Logomark-01.png){ width=300 }
 
 # Welcome to Fragnova documentation!
 
@@ -23,11 +23,9 @@ To make this vision a reality, we're dedicated to creating programming tools tha
 
 | | | |
 | :----------: | :----------: |:----------: |
-|[![](assets/GettingStartedLogo.png){: style="height:180px;width:180px"}](./learn/index.md) <br> <span style="font-weight:600;font-size:20px">[Getting Started](./learn/index.md)</span> | [![](assets/ShardsLogo.png){: style="height:180px;width:180px"}](./learn/shards/index.md)<br> <span style="font-weight:600;font-size:20px">[Shards](./learn/shards/index.md)</span> | [![](assets/RareEngineLogo_2.png){: style="height:180px;width:180px"}]()<br> <span style="font-weight:600;font-size:20px">[Rare Engine]()</span> |
+|[![](assets/GettingStartedLogo.png){ width=180 }](./learn/index.md) <br> <span style="font-weight:600;font-size:20px">[Getting Started](./learn/index.md)</span> | [![](assets/ShardsLogo.png){ width=180 }](./learn/shards/index.md)<br> <span style="font-weight:600;font-size:20px">[Shards](./learn/shards/index.md)</span> | [![](assets/RareEngineLogo_2.png){ width=180 }]()<br> <span style="font-weight:600;font-size:20px">[Rare Engine]()</span> |
 | | | |
 
 --8<-- "includes/license.md"
 
 Built on {{ (git.date or now()).strftime("%b %d, %Y at %H:%M:%S") }}{% if git.status %} from commit [{{ git.short_commit }}](https://github.com/fragcolor-xyz/shards/commit/{{ git.commit }}){% endif %}.
-
-542 580

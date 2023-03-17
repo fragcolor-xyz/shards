@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![](assets/fragnova.png){: style="height:225px;width:225px"}
+![](assets/fragnova.png){ width=225 }
 
 # The Fragnova Network
 
@@ -23,7 +23,7 @@ Before you can start exploring the interesting world of Fragnova, you must first
 
 ## What is a Proto-Fragment?
 
-![A Proto-Fragment](assets/ProtoFragment.png){: style="height:225px;width:225px"}
+![A Proto-Fragment](assets/ProtoFragment.png){ width=225 }
 
 In Fragnova, any creation that is uploaded by its creator is known as a Proto-Fragment (also known as *Protos* for short). 
 
@@ -53,7 +53,7 @@ For example he can determine his Proto's:
 
 ## What are Fragments?
 
-![A Fragment](assets/Fragment.png){: style="height:225px;width:225px"}
+![A Fragment](assets/Fragment.png){ width=225 }
 
 In the Fragnova Network, Fragments are the *end products* that are meant for the *end users*. They can be created from a Proto-Fragment.
 
@@ -178,7 +178,7 @@ Apart from the seven custom Pallets, the Fragnova Network also contains the foll
 
 ## JavaScript/TypeScript SDK
 
-!!! caution
+!!! warning
     Please read [Interacting with the Fragnova Blockchain](#interacting-with-the-fragnova-blockchain) before this section.
 
 You can use the NPM package [@fragnova/api-augment](https://www.npmjs.com/package/@fragnova/api-augment) to interact with the Fragnova Blockchain using JavaScript/TypeScript.
