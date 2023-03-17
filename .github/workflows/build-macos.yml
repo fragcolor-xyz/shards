@@ -54,6 +54,7 @@ jobs:
     runs-on: macos-latest
     outputs:
       run-tests: ${{ steps.setup.outputs.run-tests }}
+      artifact-name: shards-macos ${{ steps.setup.outputs.build-type }}
     steps:
       - name: Setup
         id: setup
@@ -123,7 +124,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: shards-macos ${{ steps.setup.outputs.build-type }}
+          name: ${{ needs.macOS.outputs.artifact-name }}
           path: build
       - name: Test
         env:

@@ -52,6 +52,7 @@ jobs:
       build-type: ${{ steps.setup.outputs.build-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}
       rust-cache: ${{ steps.setup.outputs.rust-cache }}
+      artifact-name: shards-linux ${{ steps.setup.outputs.build-type }}
     steps:
       - name: Setup
         id: setup
