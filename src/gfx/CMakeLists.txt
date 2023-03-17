@@ -57,7 +57,7 @@ target_include_directories(gfx
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(gfx
-  tinygltf
+  tinygltf draco-wrapper
   magic_enum nameof linalg
   spdlog stb xxHash Boost::algorithm Boost::filesystem Boost::container
   shards-logging

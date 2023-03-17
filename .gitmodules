@@ -70,6 +70,12 @@
 [submodule "deps/tracy"]
 	path = deps/tracy
 	url = https://github.com/wolfpld/tracy.git
+[submodule "deps/entt"]
+	path = deps/entt
+	url = https://github.com/shards-lang/entt.git
+[submodule "deps/draco"]
+	path = deps/draco
+	url = https://github.com/shards-lang/draco.git
 [submodule "src/gfx/wgpu-native"]
 	path = src/gfx/rust/wgpu-native
 	url = https://github.com/shards-lang/wgpu-native.git
@@ -86,6 +92,3 @@
 [submodule "src/gfx/rust/profiling"]
 	path = src/gfx/rust/profiling
 	url = https://github.com/shards-lang/rust-profiling.git
-[submodule "deps/entt"]
-	path = deps/entt
-	url = https://github.com/shards-lang/entt.git

@@ -200,6 +200,13 @@ sh_add_external_project(
 add_library(tinygltf INTERFACE)
 target_include_directories(tinygltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Draco doesn't expose include paths directly, add them here using a wrapper
+add_subdirectory(draco)
+add_library(draco-wrapper INTERFACE)
+target_link_libraries(draco-wrapper INTERFACE draco::draco)
+target_include_directories(draco-wrapper INTERFACE draco/src)
+target_include_directories(draco-wrapper INTERFACE ${CMAKE_BINARY_DIR})
+
 option(TF_BUILD_TESTS "" OFF)
 option(TF_BUILD_EXAMPLES "" OFF)
 add_subdirectory(cpp-taskflow)
