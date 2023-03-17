@@ -89,7 +89,6 @@ jobs:
           fi
 
           ninja shards
-          ninja test-runtime
       - name: Test
         env:
           RUST_BACKTRACE: 1
@@ -159,6 +158,7 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cd build
+          ninja test-runtime
           ./test-runtime
       - name: Collect coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
