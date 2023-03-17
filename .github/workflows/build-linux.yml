@@ -52,6 +52,7 @@ jobs:
       build-type: ${{ steps.setup.outputs.build-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}
       rust-cache: ${{ steps.setup.outputs.rust-cache }}
+      artifact-name: shards-linux ${{ steps.setup.outputs.build-type }}
     steps:
       - name: Setup
         id: setup
@@ -88,7 +89,6 @@ jobs:
           fi
 
           ninja shards
-          ninja test-runtime
       - name: Test
         env:
           RUST_BACKTRACE: 1
@@ -158,6 +158,7 @@ jobs:
           RUST_BACKTRACE: 1
         run: |
           cd build
+          ninja test-runtime
           ./test-runtime
       - name: Collect coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}

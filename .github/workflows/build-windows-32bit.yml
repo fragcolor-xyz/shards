@@ -67,6 +67,7 @@ jobs:
     outputs:
       binary-type: ${{ steps.setup.outputs.binary-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}
+      artifact-name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
     steps:
       - name: Setup
         id: setup
@@ -202,7 +203,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: shards-win32 ${{ steps.setup.outputs.build-type }}
+          name: ${{ needs.Windows.outputs.artifact-name }}
           path: build
       - name: Set up MSYS2 (Release)
         if: ${{ steps.setup.outputs.build-type == 'Release' }}

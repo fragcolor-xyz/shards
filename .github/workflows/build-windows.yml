@@ -67,6 +67,7 @@ jobs:
     outputs:
       binary-type: ${{ steps.setup.outputs.binary-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}
+      artifact-name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
     steps:
       - name: Setup
         id: setup
@@ -128,10 +129,6 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           echo "Building shards"
           ninja ${{ steps.setup.outputs.build-target }}
-          echo "Building runtime tests"
-          ninja test-runtime
-          echo "Building graphics tests"
-          ninja test-gfx
       # Minimize disk usage to prevent the next steps getting stuck on glTF models
       - name: Minimize disk usage
         env:
@@ -150,6 +147,8 @@ jobs:
         shell: bash
         run: |
           cd build
+          echo "Building runtime tests"
+          ninja test-runtime
           ./test-runtime
       - name: Checkout glTF-Sample-Models
         # Match with test step below
@@ -166,6 +165,8 @@ jobs:
         shell: bash
         run: |
           cd build
+          echo "Building graphics tests"
+          ninja test-gfx
           GFX_BACKEND=D3D12 ./test-gfx
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -207,7 +208,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: shards-win64 ${{ steps.setup.outputs.build-type }}
+          name: ${{ needs.Windows.outputs.artifact-name }}
           path: build
       - name: Test
         env:
