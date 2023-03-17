@@ -5,9 +5,9 @@ license: CC-BY-SA-4.0
 
 ![](assets/fragnova.png){: style="height:225px;width:225px"}
 
-# The Fragnovan Network
+# The Fragnova Network
 
-The Fragnovan Network is a *fully decentralized blockchain* that allows game and application creators to *create and monetize their creations*.
+The Fragnova Network is a *fully decentralized blockchain* that allows game and application creators to *create and monetize their creations*.
 
 Furthermore, the Fragnova Blockchain has been designed to allow creators to seamlessly integrate other user's creations in their own works - promoting collaboration amongst creators.
 
@@ -55,7 +55,7 @@ For example he can determine his Proto's:
 
 ![A Fragment](assets/Fragment.png){: style="height:225px;width:225px"}
 
-In Fragnova, Fragments are the *end products* that are meant for the *end users*. They can be created from a Proto-Fragment.
+In the Fragnova Network, Fragments are the *end products* that are meant for the *end users*. They can be created from a Proto-Fragment.
 
 If a creator wants to sell or distribute his Proto-Fragment to the end users, he must first create Fragments from his Proto-Fragment and then put the Fragments on sale. End users can then buy these Fragments.
 
@@ -71,7 +71,7 @@ If a creator wants to sell or distribute his Proto-Fragment to the end users, he
 
 To interact with the Fragnova Blockchain Network, you will need to send transactions to it. 
 
-A *Pallet* contains of a group of related transactions.
+A *Pallet* consists of a group of related transactions.
 
 In Fragnova, there are seven custom Pallets:
 
@@ -148,7 +148,7 @@ Transaction examples:
     
     Find out more in the tokenomics section of the Fragnova whitepaper [here](https://wp.fragnova.com/9.-tokenomics-and-token-sale).
 
-- [`accounts.unlink()`](https://fragcolor-xyz.github.io/fragnova/doc/pallet_accounts/pallet/struct.Pallet.html#method.unlink): Unlinks your  Ethereum Account from your Fragnova Account.
+- [`accounts.unlink()`](https://fragcolor-xyz.github.io/fragnova/doc/pallet_accounts/pallet/struct.Pallet.html#method.unlink): Unlinks your Ethereum Account from your Fragnova Account.
 
 ### Detach Pallet
 
@@ -160,7 +160,7 @@ The [Oracle Pallet](https://fragcolor-xyz.github.io/fragnova/doc/pallet_oracle/i
 
 ### Substrate Pallets
 
-Apart from the seven custom Pallets, the Fragnovan Network also contains the following Substrate Pallets:
+Apart from the seven custom Pallets, the Fragnova Network also contains the following Substrate Pallets:
 
 1. [Balances Pallet](https://paritytech.github.io/substrate/master/pallet_balances/index.html) contains transactions related to NOVA. NOVA is the native currency of the Fragnova Blockchain.
 
@@ -169,10 +169,12 @@ Apart from the seven custom Pallets, the Fragnovan Network also contains the fol
 3. [Assets Pallet](https://paritytech.github.io/substrate/master/pallet_assets/index.html) contains transactions related to user-created fungible tokens.
 
 !!! note
-    The transactions listed are only a subset of all available transactions on the Fragnova Blockchain that you can send! They have been chosen for illustration purposes.
+    The transactions listed above are only a subset of all available transactions on the Fragnova Network. They have been chosen for illustration purposes.
     
-    To view all the available transactions and the exact parameters needed for each transaction, you can see them in the [Extrinsics Tab of the Polkadot.js Website](https://polkadot.js.org/apps/?rpc=wss%3A%2F%2Fws.fragnova.network#/extrinsics), or from the [Rust Developer Documentation](https://fragcolor-xyz.github.io/fragnova/).
+    To view all the available transactions and the exact parameters needed for each transaction, you can visit Fragnova's [Extrinsics Page](https://polkadot.js.org/apps/?rpc=wss%3A%2F%2Fws.fragnova.network#/extrinsics) or the [Rust Developer Documentation](https://fragcolor-xyz.github.io/fragnova/).
 
+!!! note
+    These pallets have been provided by the [Substrate Framework](https://docs.substrate.io/reference/frame-pallets/). Since the Fragnova Network was built using the Substrate Framework, it can use these pallets.
 
 ## JavaScript/TypeScript SDK
 
@@ -200,7 +202,7 @@ To connect to the Fragnova Node with the websocket endpoint `"ws://ws.fragnova.n
     ```typescript
     npm install @fragnova/api-augment && npm install @polkadot/api@9.14.2 
     import { options } from "@fragnova/api-augment";
-    import { ApiPromise, WsProvider } from '@polkadot/api';
+    import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
     import { Vec, U8aFixed } from "@polkadot/types-codec";
 
     const api = await ApiPromise.create({
@@ -244,5 +246,7 @@ For example, if you want to call the transaction `upload` from the pallet `proto
     ```
 
 Volia! You have successfully sent a transaction to the Fragnova Blockchain!
+
+For more details on usage, please see the [Polkadot API library documentation](https://polkadot.js.org/docs/api).
 
 --8<-- "includes/license.md"
