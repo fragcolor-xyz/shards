@@ -46,17 +46,17 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.Windows.outputs.artifact-name }}
+          name: shards-win64 Release
           path: windows
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.Linux.outputs.artifact-name }}
+          name: shards-linux Release
           path: linux
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.macOS.outputs.artifact-name }}
+          name: shards-macos Release
           path: macOS
       - name: Create release files
         shell: bash
