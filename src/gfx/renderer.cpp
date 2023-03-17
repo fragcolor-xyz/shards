@@ -143,7 +143,7 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  CachedView &getCachedView(const ViewPtr &view) { return *getSharedCacheEntry<CachedView>(storage.viewCache, view.get()).get(); }
+  CachedView &getCachedView(const ViewPtr &view) { return *getSharedCacheEntry<CachedView>(storage.viewCache, view->getId()).get(); }
 
   void pushView(ViewStack::Item &&item) {
     viewStack.push(std::move(item));
@@ -213,12 +213,6 @@ struct RendererImpl final : public ContextData {
 
     getFrameQueue().enqueue(viewData, pipelineSteps);
   }
-
-  // void renderImmediate(const ViewData &viewData, const PipelineSteps &pipelineSteps) {
-  //   FrameQueue imFrameQueue(viewData.renderTarget, storage, getWorkerMemoryForCurrentFrame());
-  //   imFrameQueue.enqueue(viewData, pipelineSteps);
-  //   imFrameQueue.evaluate(outer);
-  // }
 
   void beginFrame() {
     // This registers ContextData so that releaseContextData is called when GPU resources are invalidated

@@ -237,20 +237,21 @@ struct CachedView {
   }
 
   void touchWithNewTransform(const float4x4 &viewTransform, const float4x4 &projectionTransform, size_t frameCounter) {
+    // Update history (but only at most once per frame)
     if (frameCounter > lastTouched) {
       previousViewTransform = currentViewTransform;
       currentViewTransform = viewTransform;
-      invViewTransform = linalg::inverse(viewTransform);
-
-      isFlipped = isFlippedCoordinateSpace(viewTransform);
-
-      this->projectionTransform = projectionTransform;
-      invProjectionTransform = linalg::inverse(projectionTransform);
-
-      viewProjectionTransform = linalg::mul(projectionTransform, currentViewTransform);
-
       lastTouched = frameCounter;
     }
+
+    invViewTransform = linalg::inverse(viewTransform);
+
+    isFlipped = isFlippedCoordinateSpace(viewTransform);
+
+    this->projectionTransform = projectionTransform;
+    invProjectionTransform = linalg::inverse(projectionTransform);
+
+    viewProjectionTransform = linalg::mul(projectionTransform, currentViewTransform);
   }
 };
 typedef std::shared_ptr<CachedView> CachedViewDataPtr;

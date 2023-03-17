@@ -27,6 +27,9 @@ static MeshPtr fullscreenQuad = []() {
   geom::QuadGenerator quadGen;
   quadGen.optimizeForFullscreen = true;
   quadGen.generate();
+  for (auto &v : quadGen.vertices) {
+    v.position[2] = 0.5f;
+  }
   return createMesh(quadGen.vertices, std::vector<uint16_t>{});
 }();
 
@@ -218,6 +221,8 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
         std::string msg = fmt::format("Ignored shader compilation error: {}", ex.what());
         SPDLOG_LOGGER_ERROR(gfx::shader::getLogger(), "{}", msg);
         group.pipeline->compilationError.emplace(msg);
+      } else {
+        throw;
       }
     }
 

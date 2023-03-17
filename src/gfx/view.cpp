@@ -3,6 +3,9 @@
 #include <type_traits>
 
 namespace gfx {
+
+UniqueIdGenerator viewIdGenerator(UniqueIdTag::View);
+
 View::View() : view(linalg::identity), proj(linalg::identity) {}
 
 float4x4 View::getProjectionMatrix(const float2 &viewSize) const {
