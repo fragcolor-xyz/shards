@@ -378,11 +378,13 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         // TODO: Bind per-view textures here too once bindings are split
       }
 
-      auto &buffer = prepareData->viewBuffers[0];
-      auto &binding = cachedPipeline.viewBuffersBindings[0];
-      uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
-      packDrawData(stagingBuffer, buffer.stride, binding.layout, viewParameters);
-      wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
+      for (size_t bindingIndex = 0; bindingIndex < cachedPipeline.viewBuffersBindings.size(); bindingIndex++) {
+        auto &buffer = prepareData->viewBuffers[bindingIndex];
+        auto &binding = cachedPipeline.viewBuffersBindings[bindingIndex];
+        uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
+        packDrawData(stagingBuffer, buffer.stride, binding.layout, viewParameters);
+        wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
+      }
     }
 
     // Setup draw buffer data
@@ -390,18 +392,21 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       ZoneScopedN("fillDrawBuffer");
 
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
-      auto &buffer = prepareData->drawBuffers[0];
-      auto &binding = cachedPipeline.drawBufferBindings[0];
-      uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
-      for (auto &group : preparedGroupData.groups) {
-        size_t offset = buffer.stride * group.startIndex;
-        for (size_t i = 0; i < group.numInstances; i++) {
-          packDrawData(stagingBuffer + offset, buffer.stride, binding.layout,
-                       prepareData->drawableData[group.startIndex + i]->parameters);
-          offset += buffer.stride;
+
+      for (size_t bindingIndex = 0; bindingIndex < cachedPipeline.drawBufferBindings.size(); bindingIndex++) {
+        auto &buffer = prepareData->drawBuffers[bindingIndex];
+        auto &binding = cachedPipeline.drawBufferBindings[bindingIndex];
+        uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
+        for (auto &group : preparedGroupData.groups) {
+          size_t offset = buffer.stride * group.startIndex;
+          for (size_t i = 0; i < group.numInstances; i++) {
+            packDrawData(stagingBuffer + offset, buffer.stride, binding.layout,
+                         prepareData->drawableData[group.startIndex + i]->parameters);
+            offset += buffer.stride;
+          }
         }
+        wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
       }
-      wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
     }
 
     // Generate bind groups

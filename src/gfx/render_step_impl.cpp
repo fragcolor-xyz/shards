@@ -221,6 +221,8 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
         std::string msg = fmt::format("Ignored shader compilation error: {}", ex.what());
         SPDLOG_LOGGER_ERROR(gfx::shader::getLogger(), "{}", msg);
         group.pipeline->compilationError.emplace(msg);
+      } else {
+        throw;
       }
     }
 
