@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-<!--![](assets/ContactUsLogo.png)-->
+![](assets/ContactUsLogo.png)
 
 # Contact Us
 
