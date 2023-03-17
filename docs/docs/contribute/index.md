@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![](assets/ContributeLogo.png)
+![](assets/ContributeLogo.png){ width=180 }
 
 # Contribute
 

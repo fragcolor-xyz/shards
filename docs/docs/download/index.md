@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![](assets/DownloadLogo.png)
+![](assets/DownloadLogo.png){ width=180 }
 
 # Download
 

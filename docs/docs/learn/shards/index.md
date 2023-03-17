@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![](assets/ShardsLogo.png)
+![](assets/ShardsLogo.png){ width=180 }
 
 # Learn Shards
 

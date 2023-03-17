@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![](assets/fragnova.png){ width=225 }
+![](assets/fragnova.png){ width=180 }
 
 # The Fragnova Network
 
@@ -23,7 +23,7 @@ Before you can start exploring the interesting world of Fragnova, you must first
 
 ## What is a Proto-Fragment?
 
-![A Proto-Fragment](assets/ProtoFragment.png){ width=225 }
+![A Proto-Fragment](assets/ProtoFragment.png){ width=180 }
 
 In Fragnova, any creation that is uploaded by its creator is known as a Proto-Fragment (also known as *Protos* for short). 
 
@@ -53,7 +53,7 @@ For example he can determine his Proto's:
 
 ## What are Fragments?
 
-![A Fragment](assets/Fragment.png){ width=225 }
+![A Fragment](assets/Fragment.png){ width=180 }
 
 In the Fragnova Network, Fragments are the *end products* that are meant for the *end users*. They can be created from a Proto-Fragment.
 

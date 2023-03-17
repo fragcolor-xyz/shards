@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![](assets/LearnLogo.png)
+![](assets/LearnLogo.png){ width=180 }
 
 # Learn
 

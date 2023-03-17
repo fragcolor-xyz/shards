@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![](assets/ReferenceLogo.png)
+![](assets/ReferenceLogo.png){ width=180 }
 
 # Fragnova reference
 
