@@ -23,7 +23,7 @@ To make this vision a reality, we're dedicated to creating programming tools tha
 
 | | | |
 | :----------: | :----------: |:----------: |
-|[![](assets/GettingStartedLogo.png){: style="height:180px;width:180px"}](./learn/index.md) <br> <span style="font-weight:600;font-size:20px">[Getting Started](./learn/index.md)</span> | [![](assets/ShardsLogo.png){: style="height:180px;width:180px"}](./learn/index.md)<br> <span style="font-weight:600;font-size:20px">[Shards](./learn/shards/index.md)</span> | [![](assets/RareEngineLogo_2.png){: style="height:180px;width:180px"}](./learn/rare-engine/index.md)<br> <span style="font-weight:600;font-size:20px">[Rare Engine](./learn/rare-engine/index.md)</span> |
+|[![](assets/GettingStartedLogo.png){: style="height:180px;width:180px"}](./learn/index.md) <br> <span style="font-weight:600;font-size:20px">[Getting Started](./learn/index.md)</span> | [![](assets/ShardsLogo.png){: style="height:180px;width:180px"}](./learn/shards/index.md)<br> <span style="font-weight:600;font-size:20px">[Shards](./learn/shards/index.md)</span> | [![](assets/RareEngineLogo_2.png){: style="height:180px;width:180px"}]()<br> <span style="font-weight:600;font-size:20px">[Rare Engine]()</span> |
 | | | |
 
 --8<-- "includes/license.md"
