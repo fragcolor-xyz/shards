@@ -315,6 +315,7 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
 class malRoot {
 public:
   void reference(malValue *val) { m_refs.emplace_back(val); }
+  void reference(const malValuePtr &val) { m_refs.emplace_back(val); }
 
 protected:
   std::vector<malValuePtr> m_refs;
@@ -1391,7 +1392,7 @@ std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
           state = Get;
         } else if (state == RefOverwrite) {
           auto blk = makeVarShard(v, "Ref");
-           // set :Overwrite false
+          // set :Overwrite false
           auto val = shards::Var(true);
           blk->value()->setParam(blk->value(), 3, &val);
           res.emplace_back(blk);
@@ -1678,14 +1679,28 @@ BUILTIN("wireify") {
 
 BUILTIN("unquote") {
   CHECK_ARGS_IS(1);
-  ARG(malSequence, value);
   auto vec = new malValueVec();
-  auto blks = wireify(value->begin(), value->end());
-  for (auto blk : blks) {
-    malShard *pblk = blk.ptr();
-    vec->emplace_back(pblk);
+  auto await = new malShard("Await");
+  await->value()->setup(await->value());
+  auto first = *argsBegin++;
+  if (malShard *shrd = DYNAMIC_CAST(malShard, first)) {
+    vec->emplace_back(shrd);
+  } else if (malSequence *seq = DYNAMIC_CAST(malSequence, first)) {
+    auto blks = wireify(seq->begin(), seq->end());
+    for (auto blk : blks) {
+      malShard *pblk = blk.ptr();
+      vec->emplace_back(pblk);
+    }
+  } else {
+    throw shards::SHException("Expected Shard or Shards sequence");
   }
-  return malValuePtr(new malList(vec));
+
+  auto shardsVP = malValuePtr(new malList(vec));
+  auto shardsVar = varify(shardsVP);
+  await->value()->setParam(await->value(), 0, &shardsVar->value());
+  await->reference(shardsVP);
+
+  return malValuePtr(await);
 }
 
 BUILTIN("schedule") {

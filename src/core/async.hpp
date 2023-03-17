@@ -1,7 +1,7 @@
 #ifndef F80CEE03_D5CE_4787_8D65_FB8CC200104A
 #define F80CEE03_D5CE_4787_8D65_FB8CC200104A
 
-#include "shards.h"
+#include "runtime.hpp"
 #include <boost/asio/post.hpp>
 #include <boost/asio/thread_pool.hpp>
 
@@ -24,8 +24,8 @@ extern Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThrea
 
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
-  SHLOG_TRACE("awaitne starting");
-  DEFER(SHLOG_TRACE("awaitne ending"));
+  // SHLOG_TRACE("awaitne starting");
+  // DEFER(SHLOG_TRACE("awaitne ending"));
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   return func();
 #else
@@ -66,8 +66,8 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 }
 
 template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
-  SHLOG_TRACE("await starting");
-  DEFER(SHLOG_TRACE("await ending"));
+  // SHLOG_TRACE("await starting");
+  // DEFER(SHLOG_TRACE("await ending"));
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   func();
 #else
