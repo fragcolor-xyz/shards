@@ -114,9 +114,9 @@ struct Msg : public LoggingBase {
     auto current = context->wireStack.back();
     auto id = findId(context);
     if (id != entt::null) {
-      SHLOG_LEVEL((int)_level, "[{} {}] {}: {}", current->name, id, _msg, input);
+      SHLOG_LEVEL((int)_level, "[{} {}] {}", current->name, id, _msg);
     } else {
-      SHLOG_LEVEL((int)_level, "[{}] {}: {}", current->name, _msg, input);
+      SHLOG_LEVEL((int)_level, "[{}] {}", current->name, _msg);
     }
     return input;
   }
