@@ -100,8 +100,10 @@ struct Convolve {
     // advance the scan
     _xindex += _step;
 
-    return Var(&_bytes.front(), uint16_t(_kernel), uint16_t(_kernel), input.payload.imageValue.channels,
-               input.payload.imageValue.flags);
+    auto output = Var(&_bytes.front(), uint16_t(_kernel), uint16_t(_kernel), input.payload.imageValue.channels,
+                      input.payload.imageValue.flags);
+    output.version = input.version;
+    return output;
   }
 
 private:
@@ -154,7 +156,9 @@ struct StripAlpha {
       process<float>(input, w, h);
     }
 
-    return Var(&_bytes.front(), uint16_t(w), uint16_t(h), 3, input.payload.imageValue.flags);
+    auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 3, input.payload.imageValue.flags);
+    output.version = input.version;
+    return output;
   }
 
 private:
@@ -207,7 +211,9 @@ struct FillAlpha {
       process<float>(input, w, h, 1.0);
     }
 
-    return Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
+    auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
+    output.version = input.version;
+    return output;
   }
 
 private:
@@ -292,8 +298,10 @@ struct Resize {
       }
     }
 
-    return Var(&_bytes.front(), uint16_t(width), uint16_t(height), input.payload.imageValue.channels,
-               input.payload.imageValue.flags);
+    auto output = Var(&_bytes.front(), uint16_t(width), uint16_t(height), input.payload.imageValue.channels,
+                      input.payload.imageValue.flags);
+    output.version = input.version;
+    return output;
   }
 
 private:
