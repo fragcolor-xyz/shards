@@ -22,7 +22,7 @@ struct RendererStorage {
   DrawableProcessorCache drawableProcessorCache;
   std::list<TransientPtr> transientPtrCleanupQueue;
   RenderGraphCache renderGraphCache;
-  std::unordered_map<const View *, CachedViewDataPtr> viewCache;
+  std::unordered_map<UniqueId, CachedViewDataPtr> viewCache;
   PipelineCache pipelineCache;
   RenderTextureCache renderTextureCache;
   TextureViewCache textureViewCache;

@@ -27,6 +27,9 @@ static MeshPtr fullscreenQuad = []() {
   geom::QuadGenerator quadGen;
   quadGen.optimizeForFullscreen = true;
   quadGen.generate();
+  for (auto &v : quadGen.vertices) {
+    v.position[2] = 0.5f;
+  }
   return createMesh(quadGen.vertices, std::vector<uint16_t>{});
 }();
 

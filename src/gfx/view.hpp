@@ -3,6 +3,7 @@
 
 #include "math.hpp"
 #include "types.hpp"
+#include "unique_id.hpp"
 
 #include <optional>
 #include <variant>
@@ -39,8 +40,12 @@ struct ViewOrthographicProjection {
   float far = 1000.0f;
 };
 
+extern UniqueIdGenerator viewIdGenerator;
+
 struct alignas(16) View {
 public:
+  UniqueId id = viewIdGenerator.getNext();
+
   float4x4 view;
   std::variant<std::monostate, ViewPerspectiveProjection, ViewOrthographicProjection, float4x4> proj;
 
@@ -49,6 +54,7 @@ public:
   View(const View &) = delete;
 
   float4x4 getProjectionMatrix(const float2 &viewSize) const;
+  UniqueId getId() const { return id; }
 };
 
 } // namespace gfx

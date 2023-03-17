@@ -17,6 +17,7 @@ enum class UniqueIdTag : uint8_t {
   Material,
   Step,
   Texture,
+  View,
 };
 
 typedef uint64_t UniqueIdValue;
