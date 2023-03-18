@@ -143,11 +143,6 @@ Transaction examples:
 
 - [`accounts.link()`](https://fragcolor-xyz.github.io/fragnova/doc/pallet_accounts/pallet/struct.Pallet.html#method.link): Links your Fragnova Account with your Ethereum Account.
 
-!!! note
-    This link is established so that any FRAG Token that has been locked by your Ethereum Account on the Ethereum Blockchain can consequentially result in a NOVA Token being minted to your Fragnova Account on the Fragnova Blockchain.
-    
-    Find out more in the tokenomics section of the Fragnova whitepaper [here](https://wp.fragnova.com/9.-tokenomics-and-token-sale).
-
 - [`accounts.unlink()`](https://fragcolor-xyz.github.io/fragnova/doc/pallet_accounts/pallet/struct.Pallet.html#method.unlink): Unlinks your Ethereum Account from your Fragnova Account.
 
 ### Detach Pallet
