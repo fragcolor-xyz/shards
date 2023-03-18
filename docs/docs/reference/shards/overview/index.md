@@ -291,13 +291,16 @@ These shards are used for converting between data types.
 
 For type conversions:
 
-- [ToBytes](../../../reference/shards/General/ToBytes/)
-
 - [ToInt](../../../reference/shards/General/ToInt/)
 
 - [ToFloat](../../../reference/shards/General/ToFloat/)
 
 - [ToString](../../../reference/shards/General/ToString/)
+
+- [StringToBytes](../../../reference/shards/General/StringToBytes/) and [BytesToString](../../../reference/shards/General/StringToBytes/)
+
+!!! note
+    [ToBytes](../../../reference/shards/General/ToBytes/) and [FromBytes](../../../reference/shards/General/FromBytes/) serializes and deserializes values to a  Shard specific format. Do not use them interchangeably with `StringToBytes` and `BytesToString`!
 
 For converting between vector types:
 
