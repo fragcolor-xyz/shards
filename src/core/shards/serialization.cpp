@@ -359,6 +359,7 @@ struct LoadImage : public FileBase {
       _output.payload.imageValue.flags = 0;
       break;
     }
+    _output.version++;
     return _output;
   }
 };
