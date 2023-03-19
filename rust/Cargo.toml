@@ -62,7 +62,7 @@ rfd = { version = "0.11", git = "https://github.com/shards-lang/rfd.git", tag = 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }
 reqwest = { version = "0.11.0", features = ["blocking"], optional = true }
-tungstenite = { version = "0.18.0", features = ["rustls-tls-native-roots"], optional = true }
+tungstenite = { version = "0.18.0", features = ["native-tls"], optional = true }
 
 [dev-dependencies]
 ctor = "0.1.16"
