@@ -150,6 +150,11 @@ bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
     oevent.pressed = ievent.type == SDL_MOUSEBUTTONDOWN;
     oevent.modifiers = input.modifierKeys;
     oevent.pos = translatePointerPos(updateCursorPosition(ievent.x, ievent.y));
+
+    // Synthesize PointerGone event to indicate there's no more fingers
+    if (!oevent.pressed) {
+      (void)newEvent(InputEventType::PointerGone).pointerGone;
+    }
     break;
   }
   case SDL_MOUSEMOTION: {

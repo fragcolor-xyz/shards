@@ -30,7 +30,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     for (size_t i = 0; i < 3; i++) {
       auto &handle = handles[i];
 
-      const float2 hitboxScale = float2(1.5f, 1.2f);
+      const float2 hitboxScale = float2(2.5f, 1.2f);
 
       float3 fwd{};
       fwd[i] = 1.0f;
