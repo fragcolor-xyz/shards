@@ -304,16 +304,19 @@ struct BitSwap64 {
 
 // Matches input against expected type and throws if it doesn't match
 // unsafe only matches basic type
-static inline void expectTypeCheck(const SHVar &input, uint64_t _expectedTypeHash, const SHTypeInfo &_expectedType, bool unsafe) {
-  if (unlikely(input.valueType != _expectedType.basicType)) {
-    throw ActivationError(fmt::format("Unexpected input type, value: {} expected type: {}", input, _expectedType));
+static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash, const SHTypeInfo &expectedType, bool unsafe) {
+  if (input.valueType != expectedType.basicType) {
+    throw ActivationError(fmt::format("Unexpected input type, value: {} expected type: {}", input, expectedType));
+  } else if (input.valueType == SHType::Seq && input.payload.seqValue.len == 0) {
+    // early out if seq is empty
+    return;
   } else if (!unsafe) {
     auto inputTypeHash = deriveTypeHash(input);
-    if (unlikely(inputTypeHash != _expectedTypeHash)) {
+    if (inputTypeHash != expectedTypeHash) {
       // Do an even deeper type check
       TypeInfo derivedType{input, SHInstanceData{}};
-      if (!matchTypes(derivedType, _expectedType, false, true)) {
-        throw ActivationError(fmt::format("Unexpected value: {} expected type: {}", input, _expectedType));
+      if (!matchTypes(derivedType, expectedType, false, true)) {
+        throw ActivationError(fmt::format("Unexpected value: {} expected type: {}", input, expectedType));
       }
     }
   }
