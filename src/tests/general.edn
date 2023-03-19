@@ -1147,6 +1147,10 @@
 
    -0.1 (Math.Abs) (Assert.Is 0.1 true)
 
+   {:a 1 :b 2 :c 3} >= .table-abc
+   {:a 2 :d 4} (Merge .table-abc)
+   (Assert.Is {:a 2 :b 2 :c 3 :d 4} true)
+
    "global1" (Set .global1 :Global true)
 
    (Msg "All looking good!")

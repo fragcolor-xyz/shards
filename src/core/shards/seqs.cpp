@@ -1,8 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
+#include "shards.h"
+#include "shards.hpp"
 #include "shared.hpp"
 #include <unordered_set>
+#include "params.hpp"
+#include "utility.hpp"
 
 namespace shards {
 struct Flatten {
@@ -311,9 +315,55 @@ struct Join {
   }
 };
 
+struct Merge {
+  PARAM_PARAMVAR(_target, "Target", "The table to merge into.",
+                 {
+                     CoreInfo::AnyVarTableType,
+                 });
+  PARAM_IMPL(Merge, PARAM_IMPL_FOR(_target));
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+
+  SHOptionalString help() {
+    return SHCCSTR("Combine two tables into one, with the input table taking priority over the operand table, which will be "
+                   "written and returned as output. This shard is useful in scenarios where you need to merge data from "
+                   "different sources while keeping the priority of certain values.");
+  }
+
+  void cleanup() { PARAM_CLEANUP(); }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (!_target.isVariable()) {
+      throw ComposeError("Target must be a variable");
+    }
+
+    for (auto &shared : data.shared) {
+      if (strcmp(shared.name, _target.variableName()) == 0) {
+        if (!shared.isMutable || shared.isProtected) {
+          throw ComposeError("Target must be a mutable variable");
+        }
+        return shared.exposedType;
+      }
+    }
+
+    throw ComposeError("Target variable not found");
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto target = _target.get();
+    auto &targetTable = asTable(target);
+    ForEach(input.payload.tableValue, [&](auto key, auto &val) { targetTable[key] = val; });
+    return target;
+  }
+};
+
 void registerSeqsShards() {
   REGISTER_SHARD("Flatten", Flatten);
   REGISTER_SHARD("IndexOf", IndexOf);
   REGISTER_SHARD("Bytes.Join", Join);
+  REGISTER_SHARD("Merge", Merge);
 }
 }; // namespace shards
