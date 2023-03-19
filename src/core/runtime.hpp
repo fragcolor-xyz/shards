@@ -5,6 +5,7 @@
 #define SH_CORE_RUNTIME
 
 // must go first
+#include "coro.hpp"
 #include "shards.h"
 #if _WIN32
 #include <winsock2.h>
@@ -78,7 +79,7 @@ inline SHRunWireOutput runSubWire(SHWire *wire, SHContext *context, const SHVar 
   return runRes;
 }
 
-void run(SHWire *wire, SHFlow *flow, SHCoro *coro);
+coroutine run(SHWire *wire, SHFlow *flow, SHCoro *coro);
 
 void prepare(SHWire *wire, SHFlow *flow);
 

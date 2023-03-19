@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "runtime.hpp"
+#include "coro.hpp"
 #include "shards.h"
 #include "shards/shared.hpp"
 #include "utility.hpp"
@@ -10,6 +11,7 @@
 #include <boost/asio/thread_pool.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/stacktrace.hpp>
+#include <coroutine>
 #include <csignal>
 #include <cstdarg>
 #include <pdqsort.h>
@@ -1867,8 +1869,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
     case SHWireState::Continue:
       break;
     }
-  }
-  catch (...) {
+  } catch (...) {
     // shardsActivation handles error logging and such
     return {wire->previousOutput, SHRunWireOutputState::Failed};
   }
@@ -1876,61 +1877,35 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   return {wire->previousOutput, SHRunWireOutputState::Running};
 }
 
-void run(SHWire *wire, SHFlow *flow, SHCoro *coro) {
-  SHLOG_TRACE("wire {} rolling", wire->name);
-
-  auto running = true;
-
-  // we need this cos by the end of this call we might get suspended/resumed and state changes! this wont
-  bool failed = false;
-
-  // Reset state
-  wire->state = SHWire::State::Prepared;
-  wire->finishedOutput = Var::Empty;
-  wire->finishedError.clear();
-
-  // Create a new context and copy the sink in
-  SHFlow anonFlow{wire};
-  coro->context.emplace(coro, wire, flow ? flow : &anonFlow);
-  SHContext &context = coro->context.value();
-
-  // if the wire had a context (Stepped wires in wires.cpp)
-  // copy some stuff from it
-  if (wire->context) {
-    context.wireStack = wire->context->wireStack;
-    // need to add back ourself
-    context.wireStack.push_back(wire);
+void wireTermination(SHWire *wire, SHContext &context, bool failed) {
+  wire->finishedOutput = wire->previousOutput;
+  if (failed || context.failed()) {
+    wire->finishedError = context.getErrorMessage();
+    if (wire->finishedError.empty()) {
+      wire->finishedError = "Generic error";
+    }
+    SHLOG_TRACE("wire {} failed with error {}", wire->name, wire->finishedError);
   }
 
-#ifdef SH_USE_TSAN
-  context.tsan_handle = wire->tsan_coro;
-#endif
-  // also pupulate context in wire
-  wire->context = &context;
+  // run cleanup on all the shards
+  // ensure stop state is set
+  context.stopFlow(wire->previousOutput);
+  wire->cleanup(true);
 
-  // We prerolled our coro, suspend here before actually starting.
-  // This allows us to allocate the stack ahead of time.
-  // And call warmup on all the shards!
-  try {
-    wire->warmup(&context);
-  } catch (...) {
-    // inside warmup we re-throw, we handle logging and such there
-    wire->state = SHWire::State::Failed;
-    SHLOG_ERROR("Wire {} warmup failed", wire->name);
-    goto endOfWire;
-  }
+  // Need to take care that we might have stopped the wire very early due to
+  // errors and the next eventual stop() should avoid resuming
+  if (wire->state != SHWire::State::Failed)
+    wire->state = SHWire::State::Ended;
 
-  // yield after warming up
-  context.continuation->yield();
+  SHLOG_TRACE("wire {} ended", wire->name);
+}
 
-  SHLOG_TRACE("wire {} starting", wire->name);
+coroutine run(SHWire *wire, SHFlow *flow, SHCoro *coro) {
+  co_await std::suspend_always{};
 
-  if (context.shouldStop()) {
-    // We might have stopped before even starting!
-    SHLOG_ERROR("Wire {} stopped before starting", wire->name);
-    goto endOfWire;
-  }
-
+  SHContext &context = *wire->context;
+  bool running = true;
+  bool failed{};
   while (running) {
     running = wire->looped;
     // reset context state
@@ -1967,7 +1942,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro) {
     if (!wire->unsafe && wire->looped) {
       // Ensure no while(true), yield anyway every run
       context.next = SHDuration(0);
-      context.continuation->yield();
+      co_await std::suspend_always{};
       // This is delayed upon continuation!!
       if (context.shouldStop()) {
         SHLOG_DEBUG("Wire {} aborted on resume", wire->name);
@@ -1976,38 +1951,64 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro) {
     }
   }
 
-endOfWire:
-  wire->finishedOutput = wire->previousOutput;
-  if (failed || context.failed()) {
-    wire->finishedError = context.getErrorMessage();
-    if (wire->finishedError.empty()) {
-      wire->finishedError = "Generic error";
-    }
-    SHLOG_TRACE("wire {} failed with error {}", wire->name, wire->finishedError);
-  }
-
-  // run cleanup on all the shards
-  // ensure stop state is set
-  context.stopFlow(wire->previousOutput);
-  wire->cleanup(true);
-
-  // Need to take care that we might have stopped the wire very early due to
-  // errors and the next eventual stop() should avoid resuming
-  if (wire->state != SHWire::State::Failed)
-    wire->state = SHWire::State::Ended;
-
-  SHLOG_TRACE("wire {} ended", wire->name);
-
-  context.continuation->yield();
+  // TODO replace this with
+  wireTermination(wire, context, failed);
+  // in the resume location
+  // assert(false);
 }
 
 void prepare(SHWire *wire, SHFlow *flow) {
   if (wire->coro)
     return;
 
-  wire->coro.emplace();
-  wire->coro->init([=]() { run(wire, flow, &(*wire->coro)); });
-  wire->coro->resume();
+  SHLOG_TRACE("Preparing wire: {}", wire->name);
+
+  auto &coro = wire->coro.emplace();
+
+  // Reset state
+  wire->state = SHWire::State::Prepared;
+  wire->finishedOutput = Var::Empty;
+  wire->finishedError.clear();
+
+  // Create a new context and copy the sink in
+  SHFlow anonFlow{wire};
+  SHContext &context = coro.context.emplace(&coro, wire, flow ? flow : &anonFlow);
+
+  // if the wire had a context (Stepped wires in wires.cpp)
+  // copy some stuff from it
+  if (wire->context) {
+    context.wireStack = wire->context->wireStack;
+    // need to add back ourself
+    context.wireStack.push_back(wire);
+  }
+
+  // also populate context in wire
+  wire->context = &context;
+
+  // We prerolled our coro, suspend here before actually starting.
+  // This allows us to allocate the stack ahead of time.
+  // And call warmup on all the shards!
+  try {
+    wire->warmup(&context);
+  } catch (...) {
+    // inside warmup we re-throw, we handle logging and such there
+    wire->state = SHWire::State::Failed;
+    SHLOG_ERROR("Wire {} warmup failed", wire->name);
+
+    wireTermination(wire, context, false);
+    return;
+  }
+
+  SHLOG_TRACE("Starting wire: {}", wire->name);
+
+  if (context.shouldStop()) {
+    // We might have stopped before even starting!
+    SHLOG_ERROR("Wire {} stopped before starting", wire->name);
+    wireTermination(wire, context, false);
+    return;
+  }
+
+  coro.init(run(wire, flow, &(*wire->coro)));
 }
 
 Globals &GetGlobals() {

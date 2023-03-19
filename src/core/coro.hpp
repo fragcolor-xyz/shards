@@ -6,8 +6,21 @@
 #include <coroutine>
 #include <optional>
 #include <vector>
+#include <cassert>
 
 namespace shards {
+struct coroutine_promise;
+struct coroutine : public std::coroutine_handle<coroutine_promise> {
+  using promise_type = struct coroutine_promise;
+};
+
+struct coroutine_promise {
+  coroutine get_return_object() { return {coroutine::from_promise(*this)}; }
+  std::suspend_always initial_suspend() noexcept { return {}; }
+  std::suspend_always final_suspend() noexcept { return {}; }
+  void return_void() {}
+  void unhandled_exception() {}
+};
 SHWireState suspend(SHContext *context, double seconds);
 } // namespace shards
 
@@ -89,17 +102,17 @@ private:
 };
 
 struct SHCoro {
-  std::coroutine_handle<> *handle;
+  shards::coroutine handle;
   std::optional<SHContext> context;
 
-  template <typename T> void init(T &&cb) {}
-  void resume() {}
-  void suspend() {}
-  void yield() {}
-  ~SHCoro() {}
+  void init(shards::coroutine &&handle);
+  void resume();
+  shards::coroutine suspend();
+  shards::coroutine yield();
+  ~SHCoro();
 
   // Return true if alive
-  operator bool() const { return false; }
+  operator bool() const;
 };
 
 #endif /* BB0A9620_422B_4277_B3B8_DB67729FA942 */

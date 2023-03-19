@@ -1,6 +1,7 @@
 set(core_SOURCES
   ops_internal.cpp
   number_types.cpp
+  coro.cpp
   shards/assert.cpp
   shards/wires.cpp
   shards/logging.cpp
@@ -128,10 +129,6 @@ if(DESKTOP)
   target_sources(shards-core-static PRIVATE ${os_SOURCES})
   target_link_libraries(shards-core-static Boost::process)
   target_compile_definitions(shards-core-static PUBLIC SHARDS_DESKTOP=1)
-endif()
-
-if(EMSCRIPTEN)
-  target_sources(shards-core-static PRIVATE coro.cpp) # emscripten coroutines
 endif()
 
 if(NOT EMSCRIPTEN)
