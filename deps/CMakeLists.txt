@@ -201,14 +201,15 @@ add_library(tinygltf INTERFACE)
 target_include_directories(tinygltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Draco doesn't expose include paths directly, add them here using a wrapper
+set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)
 add_subdirectory(draco)
 add_library(draco-wrapper INTERFACE)
 target_link_libraries(draco-wrapper INTERFACE draco::draco)
 target_include_directories(draco-wrapper INTERFACE draco/src)
 target_include_directories(draco-wrapper INTERFACE ${CMAKE_BINARY_DIR})
 
-option(TF_BUILD_TESTS "" OFF)
-option(TF_BUILD_EXAMPLES "" OFF)
+set(TF_BUILD_TESTS OFF CACHE BOOL "")
+set(TF_BUILD_EXAMPLES OFF CACHE BOOL "")
 add_subdirectory(cpp-taskflow)
 
 add_library(xxHash INTERFACE)
