@@ -13,8 +13,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float3 dragStartPoint;
 
   float scale = 1.0f;
-  const float axisRadius = 0.03f;
-  const float axisLength = 0.5f;
+  const float axisRadius = 0.05f;
+  const float axisLength = 0.55f;
 
   float getGlobalAxisRadius() const { return axisRadius * scale; }
   float getGlobalAxisLength() const { return axisLength * scale; }
@@ -30,6 +30,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     for (size_t i = 0; i < 3; i++) {
       auto &handle = handles[i];
 
+      const float2 hitboxScale = float2(1.5f, 1.2f);
+
       float3 fwd{};
       fwd[i] = 1.0f;
       float3 t1 = float3(-fwd.z, -fwd.x, fwd.y);
@@ -37,8 +39,9 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
       auto &min = handle.selectionBox.min;
       auto &max = handle.selectionBox.max;
-      min = -t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius();
-      max = t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius() + fwd * getGlobalAxisLength();
+      min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
+      max =
+          (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
 
       handle.selectionBoxTransform = transform;
 
