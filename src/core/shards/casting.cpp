@@ -621,12 +621,38 @@ void registerCastingShards() {
 
   using ExpectFloatSeq = ExpectXComplex<CoreInfo::FloatSeqType>;
   REGISTER_SHARD("ExpectFloatSeq", ExpectFloatSeq);
+  using ExpectFloat2Seq = ExpectXComplex<CoreInfo::Float2SeqType>;
+  REGISTER_SHARD("ExpectFloat2Seq", ExpectFloat2Seq);
+  using ExpectFloat3Seq = ExpectXComplex<CoreInfo::Float3SeqType>;
+  REGISTER_SHARD("ExpectFloat3Seq", ExpectFloat3Seq);
+  using ExpectFloat4Seq = ExpectXComplex<CoreInfo::Float4SeqType>;
+  REGISTER_SHARD("ExpectFloat4Seq", ExpectFloat4Seq);
   using ExpectIntSeq = ExpectXComplex<CoreInfo::IntSeqType>;
   REGISTER_SHARD("ExpectIntSeq", ExpectIntSeq);
+  using ExpectInt2Seq = ExpectXComplex<CoreInfo::Int2SeqType>;
+  REGISTER_SHARD("ExpectInt2Seq", ExpectInt2Seq);
+  using ExpectInt3Seq = ExpectXComplex<CoreInfo::Int3SeqType>;
+  REGISTER_SHARD("ExpectInt3Seq", ExpectInt3Seq);
+  using ExpectInt4Seq = ExpectXComplex<CoreInfo::Int4SeqType>;
+  REGISTER_SHARD("ExpectInt4Seq", ExpectInt4Seq);
+  using ExpectInt8Seq = ExpectXComplex<CoreInfo::Int8SeqType>;
+  REGISTER_SHARD("ExpectInt8Seq", ExpectInt8Seq);
+  using ExpectInt16Seq = ExpectXComplex<CoreInfo::Int16SeqType>;
+  REGISTER_SHARD("ExpectInt16Seq", ExpectInt16Seq);
   using ExpectBytesSeq = ExpectXComplex<CoreInfo::BytesSeqType>;
   REGISTER_SHARD("ExpectBytesSeq", ExpectBytesSeq);
   using ExpectStringSeq = ExpectXComplex<CoreInfo::StringSeqType>;
   REGISTER_SHARD("ExpectStringSeq", ExpectStringSeq);
+  using ExpectImageSeq = ExpectXComplex<CoreInfo::ImageSeqType>;
+  REGISTER_SHARD("ExpectImageSeq", ExpectImageSeq);
+  using ExpectBoolSeq = ExpectXComplex<CoreInfo::BoolSeqType>;
+  REGISTER_SHARD("ExpectBoolSeq", ExpectBoolSeq);
+  using ExpectColorSeq = ExpectXComplex<CoreInfo::ColorSeqType>;
+  REGISTER_SHARD("ExpectColorSeq", ExpectColorSeq);
+  using ExpectWireSeq = ExpectXComplex<CoreInfo::WireSeqType>;
+  REGISTER_SHARD("ExpectWireSeq", ExpectWireSeq);
+  using ExpectAudioSeq = ExpectXComplex<CoreInfo::AudioSeqType>;
+  REGISTER_SHARD("ExpectAudioSeq", ExpectAudioSeq);
   using ExpectAnySeq = ExpectXComplex<CoreInfo::AnySeqType>;
   REGISTER_SHARD("ExpectSeq", ExpectAnySeq);
 
