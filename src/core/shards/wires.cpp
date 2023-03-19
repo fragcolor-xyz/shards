@@ -1425,6 +1425,11 @@ struct ParallelBase : public CapturingSpawners {
     auto len = getLength(input);
     auto current = _wires.size();
 
+    if(len == 0) {
+      _outputs.clear();
+      return Var(_outputs.data(), 0);
+    }
+
     // compute the minimum capacity needed
     size_t minIncrease = len;
     size_t increase = MinWiresAdded;
