@@ -17,10 +17,17 @@ float4x4 View::getProjectionMatrix(const float2 &viewSize) const {
         if constexpr (std::is_same_v<T, float4x4>) {
           return arg;
         } else if constexpr (std::is_same_v<T, ViewPerspectiveProjection>) {
+          bool useHorizontalFov = arg.fovType == FovDirection::Horizontal;
+          if (arg.fovType == FovDirection::Max && aspectRatio > 1.0f) {
+            useHorizontalFov = true;
+          }
+
           float fovY = arg.fov;
-          if (arg.fovType == FovDirection::Horizontal) {
+          if (useHorizontalFov) {
             fovY = arg.fov / aspectRatio;
           }
+
+          fovY = std::min(pi, fovY);
           return linalg::perspective_matrix(fovY, aspectRatio, arg.near, arg.far, linalg::neg_z, linalg::zero_to_one);
         } else if constexpr (std::is_same_v<T, ViewOrthographicProjection>) {
           float2 orthoSize = viewSize;

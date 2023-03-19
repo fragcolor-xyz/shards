@@ -310,10 +310,10 @@ float GizmoRenderer::getSize(float3 position) const {
   projected /= projected.w;
   float4x4 projMatrix = view->getProjectionMatrix(viewportSize);
 
-  float minPerspective = std::max(projMatrix[0][0], projMatrix[1][1]);
+  float minPerspective = std::min(projMatrix[0][0], projMatrix[1][1]);
 
   float distanceFromCamera = std::abs(projected.z);
-  float scalingFactor = distanceFromCamera / minPerspective;
+  float scalingFactor = distanceFromCamera / minPerspective; 
   return scalingFactor;
 }
 
