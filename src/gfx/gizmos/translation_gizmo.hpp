@@ -2,6 +2,7 @@
 #define BCCA14A9_4E3A_4D04_B838_CE099ABD609E
 
 #include "gizmos.hpp"
+#include <gfx/linalg.hpp>
 
 namespace gfx {
 namespace gizmos {
@@ -13,8 +14,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float3 dragStartPoint;
 
   float scale = 1.0f;
-  const float axisRadius = 0.03f;
-  const float axisLength = 0.5f;
+  const float axisRadius = 0.05f;
+  const float axisLength = 0.55f;
 
   float getGlobalAxisRadius() const { return axisRadius * scale; }
   float getGlobalAxisLength() const { return axisLength * scale; }
@@ -27,6 +28,9 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   }
 
   void update(InputContext &inputContext) {
+    float3x3 invTransform = linalg::inverse(extractRotationMatrix(transform));
+    float3 localRayDir = linalg::mul(invTransform, inputContext.rayDirection);
+
     for (size_t i = 0; i < 3; i++) {
       auto &handle = handles[i];
 
@@ -35,10 +39,19 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 t1 = float3(-fwd.z, -fwd.x, fwd.y);
       float3 t2 = linalg::cross(fwd, t1);
 
+      // Slightly decrease hitbox size if view direction is parallel
+      // e.g. looking towards +z you are less likely to want to click on the z axis
+      float dotThreshold = 0.8f;
+      float angleFactor = std::max(0.0f, (linalg::abs(linalg::dot(localRayDir, fwd)) - dotThreshold) / (1.0f - dotThreshold));
+
+      // Make hitboxes slightly bigger than the actual visuals
+      const float2 hitboxScale = linalg::lerp(float2(2.2f, 1.2f), float2(0.8f, 1.0f), angleFactor);
+
       auto &min = handle.selectionBox.min;
       auto &max = handle.selectionBox.max;
-      min = -t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius();
-      max = t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius() + fwd * getGlobalAxisLength();
+      min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
+      max =
+          (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
 
       handle.selectionBoxTransform = transform;
 

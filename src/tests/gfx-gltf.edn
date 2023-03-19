@@ -38,7 +38,8 @@
 (defloop test-path-static
   (Setup
    (default-setup)
-   (Math.MatIdentity) (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> .drawables)
+   (Float3 0.02) (Math.Scaling)
+   (GFX.glTF :Path "data/building.glb") >> .drawables)
 
   (default-window))
 (schedule root test-path-static)

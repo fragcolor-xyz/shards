@@ -1,4 +1,5 @@
 #include "shapes.hpp"
+#include "linalg.h"
 #include <gfx/geom.hpp>
 #include <gfx/mesh_utils.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
@@ -305,10 +306,14 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
 GizmoRenderer::GizmoRenderer() { loadGeometry(); }
 
 float GizmoRenderer::getSize(float3 position) const {
-  float4 proj = linalg::mul(view->view, float4(position, 1.0f));
-  proj /= proj.w;
-  float distanceFromCamera = std::abs(-proj.z);
-  float scalingFactor = std::max(1.0f, distanceFromCamera) * 0.1f;
+  float4 projected = linalg::mul(view->view, float4(position, 1.0f));
+  projected /= projected.w;
+  float4x4 projMatrix = view->getProjectionMatrix(viewportSize);
+
+  float minPerspective = std::min(projMatrix[0][0], projMatrix[1][1]);
+
+  float distanceFromCamera = std::abs(projected.z);
+  float scalingFactor = distanceFromCamera / minPerspective; 
   return scalingFactor;
 }
 

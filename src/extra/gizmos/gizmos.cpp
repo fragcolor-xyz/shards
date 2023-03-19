@@ -58,7 +58,7 @@ struct TranslationGizmo : public Base {
 
     // Scale based on screen distance
     float3 gizmoLocation = gfx::extractTranslation(_gizmo.transform);
-    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getSize(gizmoLocation);
+    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getSize(gizmoLocation) * 0.3f;
 
     _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
 

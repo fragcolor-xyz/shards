@@ -17,13 +17,19 @@
 
 namespace gfx {
 enum class FovDirection {
+  // This specifies the FoV angle as being the smallest largest dimension
+  // Vertical when screen width > height
+  // Horizontal when screen height > width
+  Max,
+  // Specifies horizontal field of view
   Horizontal,
+  // Specifies vertical field of view
   Vertical,
 };
 
 struct ViewPerspectiveProjection {
   float fov = degToRad(45.0f);
-  FovDirection fovType = FovDirection::Horizontal;
+  FovDirection fovType = FovDirection::Max;
   float near = 0.1f;
   float far = 800.0f;
 };
