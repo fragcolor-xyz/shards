@@ -668,6 +668,8 @@ struct VariableBase {
   ExposedInfo _exposedInfo{};
   bool _isTable{false};
   bool _global{false};
+  void *_tablePtr{nullptr};
+  uint64_t _tableVersion{0};
 
   static inline ParamsInfo variableParamsInfo =
       ParamsInfo(ParamsInfo::Param("Name", SHCCSTR("The name of the variable."), CoreInfo::StringOrAnyVar),
@@ -724,14 +726,21 @@ struct VariableBase {
       throw InvalidParameterIndex();
     }
   }
+
+  ALWAYS_INLINE void checkIfTableChanged() {
+    if (_tablePtr != _target->payload.tableValue.opaque || _tableVersion != _target->version) {
+      _tablePtr = _target->payload.tableValue.opaque;
+      _cell = nullptr;
+      _tableVersion = _target->version;
+      SHLOG_TRACE("Table {} changed, clearing cell pointer", _name);
+    }
+  }
 };
 
 struct SetBase : public VariableBase {
   Type _tableTypeInfo{};
   SHString _tableContentKey{};
   SHTypeInfo _tableContentInfo{};
-  void *_tablePtr{nullptr};
-  uint64_t _tableVersion{0};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -765,7 +774,8 @@ struct SetBase : public VariableBase {
         }
         if (reference.isPushTable) {
           SHLOG_ERROR("Error with variable: {}", _name);
-          throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a table variable \"{}\" that is filled using Push shards.", _name));
+          throw ComposeError(
+              fmt::format("Set/Ref/Update, attempted to write a table variable \"{}\" that is filled using Push shards.", _name));
         }
       }
     }
@@ -777,15 +787,6 @@ struct SetBase : public VariableBase {
     else
       _target = referenceVariable(context, _name.c_str());
     _key.warmup(context);
-  }
-
-  ALWAYS_INLINE void checkIfTableChanged() {
-    if (_tablePtr != _target->payload.tableValue.opaque || _tableVersion != _target->version) {
-      _tablePtr = _target->payload.tableValue.opaque;
-      _cell = nullptr;
-      _tableVersion = _target->version;
-      SHLOG_TRACE("Table {} changed, clearing cell pointer", _name);
-    }
   }
 };
 
@@ -1304,15 +1305,11 @@ struct Get : public VariableBase {
   }
 
   bool defaultTypeCheck(const SHVar &value) {
-    auto warn = false;
-    DEFER({
-      if (warn) {
-        SHLOG_INFO("Get found a variable but it's using the default value because the "
-                   "type found did not match with the default type.");
-      }
-    });
-    if (value.valueType != _defaultValue.valueType)
+    if (value.valueType != _defaultValue.valueType) {
+      SHLOG_WARNING(
+          "Get found a variable but it's using the default value because the type found did not match with the default type.");
       return false;
+    }
 
     if (value.valueType == SHType::Object && (value.payload.objectVendorId != _defaultValue.payload.objectVendorId ||
                                               value.payload.objectTypeId != _defaultValue.payload.objectTypeId))
@@ -1343,10 +1340,14 @@ struct Get : public VariableBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    if (_isTable) {
+      checkIfTableChanged();
+    }
+
     if (unlikely(_cell != nullptr)) {
-      // we override shard id, this should not happen
-      assert(false);
-      return shards::Var::Empty;
+      assert(_isTable);
+      // This is used in the table case still
+      return *_cell;
     } else {
       if (_isTable) {
         if (_target->valueType == SHType::Table) {
@@ -1362,8 +1363,6 @@ struct Get : public VariableBase {
               // skip if variable
               if (!_key.isVariable()) {
                 _cell = vptr;
-                // override shard internal id
-                _shard->inlineShardId = InlineShard::CoreGet;
               }
               return *vptr;
             }
