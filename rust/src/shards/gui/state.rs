@@ -93,9 +93,11 @@ impl Shard for Save {
   ) -> Result<crate::types::Var, &str> {
     let ctx = util::get_current_context(&self.instance)?;
 
-    let memory = ctx.memory();
-    self.data =
-      Some(rmp_serde::to_vec(memory.deref()).map_err(|_| "Failed to serialize UI state")?);
+    self.data = ctx.memory_mut(|mem| {
+      Ok::<_, &str>(Some(
+        rmp_serde::to_vec(mem.deref()).map_err(|_| "Failed to serialize UI state")?,
+      ))
+    })?;
 
     let data: Var = self.data.as_ref().unwrap().as_slice().into();
     Ok(data)
@@ -168,8 +170,11 @@ impl Shard for Restore {
     let gui_ctx = util::get_current_context(&self.instance)?;
 
     let bytes: &[u8] = input.try_into()?;
-    *gui_ctx.memory().deref_mut() =
-      rmp_serde::from_slice(bytes).map_err(|_| "Failed to deserialize UI state")?;
+    gui_ctx.memory_mut(|mem| {
+      Ok::<_, &str>(
+        *mem = rmp_serde::from_slice(bytes).map_err(|_| "Failed to deserialize UI state")?,
+      )
+    })?;
 
     Ok(Var::default())
   }

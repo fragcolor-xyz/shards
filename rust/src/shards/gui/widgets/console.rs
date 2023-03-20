@@ -198,7 +198,7 @@ impl Shard for Console {
       let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
         let mut layout_job = Console::highlight(ui.ctx(), &theme, string, filters);
         layout_job.wrap.max_width = wrap_width;
-        ui.fonts().layout_job(layout_job)
+        ui.fonts(|f| f.layout_job(layout_job))
       };
 
       let mut text: &str = input.try_into()?;
@@ -245,9 +245,10 @@ impl Console {
 
     type HighlightCache = egui::util::cache::FrameCache<egui::text::LayoutJob, Highlighter>;
 
-    let mut memory = ctx.memory();
-    let highlight_cache = memory.caches.cache::<HighlightCache>();
-    highlight_cache.get((theme, code, filters))
+    ctx.memory_mut(|mem| {
+      let highlight_cache = mem.caches.cache::<HighlightCache>();
+      highlight_cache.get((theme, code, filters))
+    })
   }
 }
 

@@ -26,9 +26,10 @@ pub(crate) fn highlight(
 
   type HighlightCache<'a> = egui::util::cache::FrameCache<LayoutJob, Highlighter>;
 
-  let mut memory = ctx.memory();
-  let highlight_cache = memory.caches.cache::<HighlightCache<'_>>();
-  highlight_cache.get((theme, code, language))
+  ctx.memory_mut(|mem| {
+    let highlight_cache = mem.caches.cache::<HighlightCache<'_>>();
+    highlight_cache.get((theme, code, language))
+  })
 }
 
 #[derive(Hash)]

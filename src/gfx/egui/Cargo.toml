@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-egui = { version = "0.20.1" }
-epaint = {version = "0.20.0"}
+egui = { version = "0.21.0" }
 lazy_static = "1.4.0"
 
 [build-dependencies]

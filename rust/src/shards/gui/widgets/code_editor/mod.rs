@@ -228,7 +228,7 @@ impl Shard for CodeEditor {
       let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
         let mut layout_job = highlight(ui.ctx(), &theme, string, language);
         layout_job.wrap.max_width = wrap_width;
-        ui.fonts().layout_job(layout_job)
+        ui.fonts(|f| f.layout_job(layout_job))
       };
       let mut mutable;
       let mut immutable;

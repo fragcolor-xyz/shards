@@ -193,6 +193,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
                         Ok(key) => Some(Event::Key {
                             key,
                             pressed: event.pressed,
+                            repeat: false,
                             modifiers: event.modifiers.into(),
                         }),
                         Err(_) => None,

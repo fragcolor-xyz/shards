@@ -4,6 +4,8 @@
 #![allow(non_snake_case)]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+use egui::epaint;
+
 impl From<egui::Pos2> for egui_Pos2 {
     fn from(pos: egui::Pos2) -> Self {
         Self { x: pos.x, y: pos.y }
