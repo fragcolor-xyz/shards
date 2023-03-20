@@ -1,11 +1,13 @@
 #ifndef SH_EXTRA_GFX_SHADER_TRANSLATOR_UTILS
 #define SH_EXTRA_GFX_SHADER_TRANSLATOR_UTILS
 
+#include "shards.h"
 #include "shards/shared.hpp"
 #include "number_types.hpp"
 #include "translator.hpp"
 #include "../shards_types.hpp"
 #include <gfx/shader/wgsl_mapping.hpp>
+#include <stdexcept>
 
 namespace gfx {
 namespace shader {
@@ -160,6 +162,31 @@ inline constexpr ShaderFieldBaseType getShaderBaseType(shards::NumberType number
     return ShaderFieldBaseType::Int32;
   default:
     throw std::out_of_range(std::string(NAMEOF_TYPE(shards::NumberType)));
+  }
+}
+
+inline FieldType shardsTypeToFieldType(const SHTypeInfo &typeInfo) {
+  SHType basicType = typeInfo.basicType;
+  if (basicType == SHType::Seq) {
+    if (typeInfo.seqTypes.len != 1)
+      throw std::runtime_error(fmt::format("Type {} is not a valid shader type (only square matrices supported)", typeInfo));
+
+    const shards::VectorTypeTraits *type = shards::VectorTypeLookup::getInstance().get(typeInfo.basicType);
+    if (!type)
+      throw std::runtime_error(fmt::format("Type {} is not a valid matrix row type", typeInfo));
+
+    NumFieldType fieldType = getShaderBaseType(type->numberType);
+    fieldType.numComponents = type->dimension;
+    fieldType.matrixDimension = typeInfo.fixedSize;
+    return fieldType;
+  } else {
+    const shards::VectorTypeTraits *type = shards::VectorTypeLookup::getInstance().get(typeInfo.basicType);
+    if (!type)
+      throw std::runtime_error(fmt::format("Type {} is not supported in this shader context", typeInfo));
+
+    NumFieldType fieldType = getShaderBaseType(type->numberType);
+    fieldType.numComponents = type->dimension;
+    return fieldType;
   }
 }
 
