@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![](assets/ReferenceLogo.png)
+![](assets/ReferenceLogo.png){ width=180 }
 
 # Fragnova reference
 
@@ -16,5 +16,9 @@ We hope you find them helpful and we can't wait to see the incredible things you
 Choose from our projects here:
 
 - [Shards](./shards/)
+
+- Rare Engine (Coming Soon!)
+
+*Use the search box above if you're looking for something specific.*
 
 --8<-- "includes/license.md"
