@@ -19,7 +19,7 @@ jobs:
     secrets: inherit
     with:
       binary-type: Exe
-      build-type: Release
+      build-type: Release optimized
       run-tests: false
 
   Linux:
@@ -27,7 +27,7 @@ jobs:
     uses: ./.github/workflows/build-linux.yml
     secrets: inherit
     with:
-      build-type: Release
+      build-type: Release optimized
       run-tests: false
 
   macOS:
