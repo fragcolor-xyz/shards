@@ -1,5 +1,10 @@
 #include <shards/flow.hpp>
 #include <shards/core.hpp>
+#include "gfx/shader/block.hpp"
+#include "gfx/shader/blocks.hpp"
+#include "gfx/shader/wgsl_mapping.hpp"
+#include "number_types.hpp"
+#include "shards.h"
 #include "translate_wrapper.hpp"
 #include "translator_utils.hpp"
 #include <gfx/shader/fmt.hpp>
@@ -25,11 +30,14 @@ struct IfTranslator {
     auto func = context.processShards(shard->_cond.shards(), shard->_cond.composeResult(), inputType, "condition");
     auto cmp = generateFunctionCall(func, context.wgslTop, context);
 
-    // This is a weird case where the type depends on whether the branch is taken or not
-    // Mainly when the :Else parameter is not set
-    // ignore for now
+    std::string ifResultVarName;
+    FieldType outputType;
     if (!shard->_passth) {
-      throw ShaderComposeError("Non-passthrough on If is not supported in shaders");
+      SHTypeInfo outputShardsType = shard->_then.composeResult().outputType;
+      outputType = shardsTypeToFieldType(outputShardsType);
+      ifResultVarName = context.getUniqueVariableName("if");
+      context.addNew(
+          blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getFieldWGSLTypeName(outputType)), ";\n"));
     }
 
     context.addNew(blocks::makeBlock<blocks::Direct>("if("));
@@ -39,6 +47,8 @@ struct IfTranslator {
     // Then block
     context.enterNew(blocks::makeCompoundBlock());
     processShardsVar(shard->_then, context);
+    if (!shard->_passth)
+      context.addNew(blocks::makeCompoundBlock(ifResultVarName, " = ", context.takeWGSLTop()->toBlock(), ";\n"));
     context.leave();
 
     if (shard->_else.shards().len > 0) {
@@ -48,6 +58,9 @@ struct IfTranslator {
       context.enterNew(blocks::makeCompoundBlock());
       context.setWGSLTop<WGSLBlock>(inputType, inputBlock->clone());
       processShardsVar(shard->_else, context);
+      if (!shard->_passth)
+        context.addNew(blocks::makeCompoundBlock(ifResultVarName, " = ", context.takeWGSLTop()->toBlock(), ";\n"));
+
       context.leave();
     }
     context.addNew(blocks::makeBlock<blocks::Direct>("}\n"));
@@ -55,15 +68,13 @@ struct IfTranslator {
     if (shard->_passth) {
       context.setWGSLTop<WGSLBlock>(inputType, std::move(inputBlock));
     } else {
-      context.setWGSLTop<WGSLBlock>(cmp->getType(), cmp->toBlock());
+      context.setWGSLTop<WGSLBlock>(outputType, blocks::makeBlock<blocks::Direct>(ifResultVarName));
     }
   }
 };
 
 template <typename TShard> struct ExtractTemplateBool {};
-template <template <bool B> class C, bool B> struct ExtractTemplateBool<C<B>> {
-  static constexpr bool Cond = B;
-};
+template <template <bool B> class C, bool B> struct ExtractTemplateBool<C<B>> { static constexpr bool Cond = B; };
 
 template <typename TShard> struct WhenTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
