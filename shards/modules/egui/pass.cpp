@@ -18,18 +18,23 @@ struct UIPassShard {
                  {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)});
   PARAM_IMPL(PARAM_IMPL_FOR(_queue));
 
-  PipelineStepPtr *_step{};
+  PipelineStepPtr *_stepPtr{};
+
+  RenderDrawablesStep &getRenderDrawablesStep() {
+    assert(_stepPtr);
+    return std::get<RenderDrawablesStep>(*_stepPtr->get());
+  }
 
   void cleanup() {
-    if (_step) {
-      Types::PipelineStepObjectVar.Release(_step);
-      _step = nullptr;
+    if (_stepPtr) {
+      Types::PipelineStepObjectVar.Release(_stepPtr);
+      _stepPtr = nullptr;
     }
     PARAM_CLEANUP();
   }
 
   void warmup(SHContext *context) {
-    _step = Types::PipelineStepObjectVar.New();
+    _stepPtr = Types::PipelineStepObjectVar.New();
     PARAM_WARMUP(context);
   }
 
@@ -40,8 +45,12 @@ struct UIPassShard {
 
     SHDrawQueue *shDrawQueue = (reinterpret_cast<SHDrawQueue *>(queueVar.payload.objectValue));
 
-    *_step = EguiRenderPass::createPipelineStep(shDrawQueue->queue);
-    return Types::PipelineStepObjectVar.Get(_step);
+    if (!(*_stepPtr)) {
+      *_stepPtr = EguiRenderPass::createPipelineStep(shDrawQueue->queue);
+    }
+    getRenderDrawablesStep().drawQueue = shDrawQueue->queue;
+
+    return Types::PipelineStepObjectVar.Get(_stepPtr);
   }
 };
 

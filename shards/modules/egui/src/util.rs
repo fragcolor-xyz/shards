@@ -14,7 +14,7 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::WireState;
 
-pub(crate) fn update_seq<F>(seq_var: &mut ParamVar, inner: F) -> Result<(), &'static str>
+pub fn update_seq<F>(seq_var: &mut ParamVar, inner: F) -> Result<(), &'static str>
 where
   F: FnOnce(&mut Seq),
 {
@@ -25,7 +25,7 @@ where
   Ok(())
 }
 
-pub(crate) fn with_object_stack_var<'a, T, F, R>(
+pub fn with_object_stack_var<'a, T, F, R>(
   stack_var: &mut ParamVar,
   object: &T,
   object_type: &Type,
@@ -52,7 +52,7 @@ where
   result
 }
 
-pub(crate) fn activate_ui_contents<'a>(
+pub fn activate_ui_contents<'a>(
   context: &Context,
   input: &Var,
   ui: &mut egui::Ui,
@@ -72,7 +72,7 @@ pub(crate) fn activate_ui_contents<'a>(
   Ok(output)
 }
 
-pub(crate) fn expose_contents_variables(exposing: &mut ExposedTypes, contents: &ShardsVar) -> bool {
+pub fn expose_contents_variables(exposing: &mut ExposedTypes, contents: &ShardsVar) -> bool {
   if !contents.is_empty() {
     if let Some(contents_exposing) = contents.get_exposing() {
       for exp in contents_exposing {
@@ -87,10 +87,10 @@ pub(crate) fn expose_contents_variables(exposing: &mut ExposedTypes, contents: &
   }
 }
 
-pub(crate) fn get_current_context<'a>(
-  context_stack_var: &ParamVar,
+pub fn get_current_context_from_var<'a>(
+  context_stack_var: &Var,
 ) -> Result<&'a mut egui::Context, &'a str> {
-  let seq: Seq = context_stack_var.get().try_into()?;
+  let seq: Seq = context_stack_var.try_into()?;
   if !seq.is_empty() {
     Ok(Var::from_object_ptr_mut_ref(
       &seq[seq.len() - 1],
@@ -101,7 +101,13 @@ pub(crate) fn get_current_context<'a>(
   }
 }
 
-pub(crate) fn get_current_parent<'a>(
+pub fn get_current_context<'a>(
+  context_stack_var: &ParamVar,
+) -> Result<&'a mut egui::Context, &'a str> {
+  return get_current_context_from_var(context_stack_var.get());
+}
+
+pub fn get_current_parent<'a>(
   parents_stack_var: &Var,
 ) -> Result<Option<&'a mut egui::Ui>, &'a str> {
   let seq: Seq = parents_stack_var.try_into()?;
@@ -120,7 +126,7 @@ pub(crate) fn get_current_parent<'a>(
   }
 }
 
-pub(crate) fn require_parents(requiring: &mut ExposedTypes, parents_stack_var: &ParamVar) {
+pub fn require_parents(requiring: &mut ExposedTypes, parents_stack_var: &ParamVar) {
   let exp_info = ExposedInfo {
     exposedType: EGUI_UI_SEQ_TYPE,
     name: parents_stack_var.get_name(),

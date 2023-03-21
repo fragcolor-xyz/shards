@@ -5,6 +5,7 @@
 #include "platform_surface.hpp"
 #include "window.hpp"
 #include "log.hpp"
+#include <SDL_video.h>
 #include <tracy/Tracy.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
@@ -105,10 +106,6 @@ struct ContextMainOutput {
   int2 currentSize{};
   WGPUTextureView currentView{};
 
-#if GFX_APPLE
-  std::unique_ptr<MetalViewContainer> metalViewContainer;
-#endif
-
   ContextMainOutput(Window &window) { this->window = &window; }
   ~ContextMainOutput() {
     releaseSwapchain();
@@ -123,8 +120,7 @@ struct ContextMainOutput {
 
 #if GFX_APPLE
       if (!surfaceHandle) {
-        metalViewContainer = std::make_unique<MetalViewContainer>(window->window);
-        surfaceHandle = metalViewContainer->layer;
+        surfaceHandle = window->metalView->layer;
       }
 #endif
 
@@ -170,6 +166,11 @@ struct ContextMainOutput {
 
   void resizeSwapchain(WGPUDevice device, WGPUAdapter adapter, const int2 &newSize) {
     WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(wgpuWindowSurface, adapter);
+
+    if (preferredFormat == WGPUTextureFormat_Undefined) {
+      releaseSwapchain();
+      throw formatException("Failed to create swapchain");
+    }
 
     if (preferredFormat != swapchainFormat) {
       SPDLOG_LOGGER_DEBUG(logger, "swapchain preferred format changed: {}", magic_enum::enum_name(preferredFormat));

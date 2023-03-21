@@ -16,6 +16,7 @@
 #include "shards_utils.hpp"
 #include "drawable_utils.hpp"
 #include <shards/modules/inputs/inputs.hpp>
+#include "window.hpp"
 
 using namespace shards;
 
@@ -112,12 +113,12 @@ struct RenderIntoShard {
              PARAM_IMPL_FOR(_matchOutputSize), PARAM_IMPL_FOR(_viewport), PARAM_IMPL_FOR(_windowRegion));
 
   RequiredGraphicsRendererContext _graphicsRendererContext;
-  Inputs::OptionalInputContext _inputContext;
+  OptionalWindowContext _windowContext;
   RenderTargetPtr _renderTarget;
 
   void warmup(SHContext *context) {
     _graphicsRendererContext.warmup(context);
-    _inputContext.warmup(context);
+    _windowContext.warmup(context);
     _renderTarget = std::make_shared<RenderTarget>();
     PARAM_WARMUP(context);
   }
@@ -125,7 +126,7 @@ struct RenderIntoShard {
   void cleanup() {
     PARAM_CLEANUP();
     _graphicsRendererContext.cleanup();
-    _inputContext.cleanup();
+    _windowContext.cleanup();
     _renderTarget.reset();
   }
 
@@ -213,7 +214,7 @@ struct RenderIntoShard {
       }
     }
 
-    if (_inputContext) {
+    if (_windowContext) {
       // (optional) Push window region for input
       Var windowRegionVar{_windowRegion.get()};
       if (!windowRegionVar.isNone()) {
@@ -253,18 +254,20 @@ struct RenderIntoShard {
 
     ctx.renderer->pushView(std::move(viewItem));
 
-    if (_inputContext) {
-      _inputContext->inputStack.push(std::move(inputItem));
-    }
+    // TODO: Input
+    // if (_windowContext) {
+    //   _windowContext->inputStack.push(std::move(inputItem));
+    // }
 
     SHVar contentOutput;
     _contents.activate(shContext, input, contentOutput);
 
     ctx.renderer->popView();
 
-    if (_inputContext) {
-      _inputContext->inputStack.pop();
-    }
+    // TODO: Input
+    // if (_windowContext) {
+    //   _windowContext->inputStack.pop();
+    // }
 
     return contentOutput;
   }

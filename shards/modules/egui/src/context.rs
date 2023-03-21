@@ -58,6 +58,7 @@ impl Default for EguiContext {
       queue: ParamVar::default(),
       contents: ShardsVar::default(),
       exposing: Vec::new(),
+      has_graphics_context: false,
       graphics_context: unsafe {
         let mut var = ParamVar::default();
         let name = bindings::gfx_getGraphicsContextVarName() as shardsc::SHString;
@@ -132,26 +133,6 @@ impl Shard for EguiContext {
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add Graphics context to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: *GFX_CONTEXT_TYPE,
-      name: self.graphics_context.get_name(),
-      help: cstr!("The graphics context.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
-
-    // Add Input context to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: *INPUT_CONTEXT_TYPE,
-      name: self.input_context.get_name(),
-      help: cstr!("The input context.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
-
     Some(&self.requiring)
   }
 
@@ -170,6 +151,35 @@ impl Shard for EguiContext {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.requiring.clear();
+
+    // Add Graphics context to the list of required variables (optional)
+    // If this is not provided, the UI will be rendered based on the window surface area
+    self.has_graphics_context = (&data.shared)
+      .iter()
+      .find(|x| unsafe {
+        CStr::from_ptr(x.name) == CStr::from_ptr(self.graphics_context.get_name())
+      })
+      .is_some();
+    if self.has_graphics_context {
+      let exp_info = ExposedInfo {
+        exposedType: *GFX_CONTEXT_TYPE,
+        name: self.graphics_context.get_name(),
+        help: cstr!("The graphics context.").into(),
+        ..ExposedInfo::default()
+      };
+      self.requiring.push(exp_info);
+    }
+
+    // Add Input context to the list of required variables
+    let exp_info = ExposedInfo {
+      exposedType: *INPUT_CONTEXT_TYPE,
+      name: self.input_context.get_name(),
+      help: cstr!("The input context.").into(),
+      ..ExposedInfo::default()
+    };
+    self.requiring.push(exp_info);
+
     // we need to inject the UI context to the inner shards
     let mut data = *data;
     // clone shared into a new vector we can append things to
@@ -196,7 +206,9 @@ impl Shard for EguiContext {
     self.host.warmup(ctx)?;
     self.queue.warmup(ctx);
     self.contents.warmup(ctx)?;
-    self.graphics_context.warmup(ctx);
+    if self.has_graphics_context {
+      self.graphics_context.warmup(ctx);
+    }
     self.input_context.warmup(ctx);
 
     Ok(())
@@ -217,31 +229,39 @@ impl Shard for EguiContext {
     }
 
     let egui_input = unsafe {
-      &*(crate::bindings::gfx_getEguiWindowInputs(
+      let gfx_context = if self.has_graphics_context {
+        self.graphics_context.get()
+      } else {
+        std::ptr::null()
+      };
+
+      &*(bindings::gfx_getEguiWindowInputs(
         self.input_translator.as_mut_ptr() as *mut bindings::gfx_EguiInputTranslator,
-        self.graphics_context.get() as *const _ as *const bindings::SHVar,
+        gfx_context as *const _ as *const bindings::SHVar,
         self.input_context.get() as *const _ as *const bindings::SHVar,
         1.0,
       ) as *const bindings::egui_Input)
     };
 
-    self
-      .host
-      .activate(&egui_input, &(&self.contents).into(), context, input)?;
-    let egui_output = self.host.get_egui_output();
-
-    let queue_var = self.queue.get();
-    unsafe {
-      // Apply outputs to input related functionality (clipboard, cursor, etc.)
-      bindings::gfx_EguiInputTranslator_applyOutput(
-        self.input_translator.as_mut_ptr(),
-        egui_output,
-      );
-
-      let queue = bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar);
+    if egui_input.pixelsPerPoint > 0.0 {
       self
-        .renderer
-        .render_with_native_output(egui_output, queue as *const bindings::gfx_DrawQueuePtr);
+        .host
+        .activate(&egui_input, &(&self.contents).into(), context, input)?;
+      let egui_output = self.host.get_egui_output();
+
+      let queue_var = self.queue.get();
+      unsafe {
+        bindings::gfx_applyEguiOutputs(
+          self.input_translator.as_mut_ptr() as *mut bindings::gfx_EguiInputTranslator,
+          egui_output as *const _,
+          self.input_context.get() as *const _ as *const bindings::SHVar,
+        );
+
+        let queue = bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar);
+        self
+          .renderer
+          .render_with_native_output(egui_output, queue as *const bindings::gfx_DrawQueuePtr);
+      }
     }
 
     Ok(*input)

@@ -86,6 +86,8 @@ public:
 
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_mergedRequirements; }
 
+  const shards::ExposedInfo &getMergedRequirements() const { return _mergedRequirements; }
+
   void compose(const SHInstanceData &data) {
     _collectedRequirements.clear();
 
@@ -121,8 +123,14 @@ public:
     mesh->instanceData.shared = (SHExposedTypesInfo)_shared;
   }
 
+  // Calls initVariableReferences, then schedule (in that order)
   void warmup(SHContext *context, const SHVar &input = Var::Empty) {
-    // grab all the variables we need and reference them
+    initVariableReferences(context);
+    schedule(input);
+  }
+
+  // This grabs all the variables that are needed and references them
+  void initVariableReferences(SHContext *context) {
     for (const auto &req : _mergedRequirements._innerInfo) {
       if (mesh->refs.count(req.name) == 0) {
         SHLOG_TRACE("Branch: referencing required variable: {}", req.name);
@@ -130,7 +138,10 @@ public:
         mesh->refs[req.name] = vp;
       }
     }
+  }
 
+  // Schedules the wires to run on the mesh (calling warmup in the process)
+  void schedule(const SHVar &input = Var::Empty) {
     for (const auto &wire : wires) {
       mesh->schedule(wire, input, false);
     }

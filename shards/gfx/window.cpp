@@ -62,10 +62,18 @@ void Window::init(const WindowCreationOptions &options) {
   if (!window) {
     throw formatException("SDL_CreateWindow failed: {}", SDL_GetError());
   }
+
+#if GFX_APPLE
+  metalView.emplace(window);
+#endif
 }
 
 void Window::cleanup() {
   if (window) {
+#if GFX_APPLE
+    metalView.reset();
+#endif
+
     SDL_DestroyWindow(window);
     SDL_Quit();
     window = nullptr;
@@ -142,13 +150,15 @@ static float2 getUIScaleFromDisplayDPI(int displayIndex) {
 #endif
 }
 
-float2 Window::getUIScale() const {
+float Window::getUIScale() const {
+  float2 scale{};
 #if GFX_APPLE
   // On apple, derive display scale from drawable size / window size
-  return float2(getDrawableSize()) / float2(getSize());
+  scale = float2(getDrawableSize()) / float2(getSize());
 #else
-  return getUIScaleFromDisplayDPI(SDL_GetWindowDisplayIndex(window));
+  scale = getUIScaleFromDisplayDPI(SDL_GetWindowDisplayIndex(window));
 #endif
+  return std::max<float>(scale.x, scale.y);
 }
 
 Window::~Window() { cleanup(); }
