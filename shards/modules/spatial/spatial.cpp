@@ -1,12 +1,13 @@
 #include "spatial.hpp"
 #include <shards/modules/gfx/gfx.hpp>
-#include <shards/modules/egui/context.hpp>
-#include <shards/core/shared.hpp>
+#include <shards/modules/gfx/window.hpp>
 #include <shards/modules/inputs/inputs.hpp>
+#include <shards/modules/egui/context.hpp>
+#include <shards/modules/egui/egui_types.hpp>
+#include <shards/core/shared.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/core/object_var_util.hpp>
 #include <shards/core/params.hpp>
-#include <shards/modules/egui/egui_types.hpp>
 #include <gfx/linalg.hpp>
 #include <gfx/renderer.hpp>
 #include <gfx/gizmos/gizmos.hpp>
@@ -20,7 +21,7 @@ struct SpatialUIContextShard {
   SpatialContext _spatialContext{};
   SHVar *_spatialContextVar{};
 
-  Inputs::RequiredInputContext _inputContext;
+  RequiredWindowContext _windowContext;
   gfx::RequiredGraphicsContext _graphicsContext;
 
   ExposedInfo _exposedVariables;
@@ -53,7 +54,7 @@ struct SpatialUIContextShard {
 
   SHExposedTypesInfo requiredVariables() {
     static auto e =
-        exposedTypesOf(decltype(_inputContext)::getExposedTypeInfo(), decltype(_graphicsContext)::getExposedTypeInfo());
+        exposedTypesOf(decltype(_windowContext)::getExposedTypeInfo(), decltype(_graphicsContext)::getExposedTypeInfo());
     return e;
   }
 
@@ -64,7 +65,7 @@ struct SpatialUIContextShard {
 
     _contents.cleanup();
     _graphicsContext.cleanup();
-    _inputContext.cleanup();
+    _windowContext.cleanup();
 
     if (_spatialContextVar) {
       if (_spatialContextVar->refcount > 1) {
@@ -99,9 +100,9 @@ struct SpatialUIContextShard {
     auto &view = varAsObjectChecked<gfx::SHView>(_view.get(), gfx::Types::View);
 
     // TODO: Move to input context
-    _inputBuffer.clear();
-    for (auto &event : _inputContext->events)
-      _inputBuffer.push_back(event);
+    // _inputBuffer.clear();
+    // for (auto &event : _windowContext->events)
+    //   _inputBuffer.push_back(event);
 
     // Evaluate all UI panels
     _spatialContext.activationContext = shContext;
@@ -233,7 +234,7 @@ spatial::PanelGeometry Panel::getGeometry() const { return panelShard.getGeometr
 void SpatialUIContextShard::warmup(SHContext *context) {
   _spatialContextVar = referenceVariable(context, SpatialContext::VariableName);
 
-  _inputContext.warmup(context);
+  _windowContext.warmup(context);
   _graphicsContext.warmup(context);
 
   withObjectVariable(*_spatialContextVar, &_spatialContext, SpatialContext::Type, [&]() { PARAM_WARMUP(context); });

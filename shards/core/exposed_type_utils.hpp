@@ -39,6 +39,11 @@ public:
     }
   }
 
+  const SHVar &asVar() {
+    assert(variable);
+    return *variable;
+  }
+
   operator bool() const { return variable; }
   T *operator->() const {
     assert(variable); // Missing call to warmup?
