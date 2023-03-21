@@ -174,7 +174,7 @@
 
 (defloop ui-wire
   (GFX.MainWindow
-   :Title "egui plot demo" :Width 1280 :Height 768 :Debug false
+   :Title "egui plot demo" :Width 1280 :Height 768 
    :Contents
    (->
     (Setup

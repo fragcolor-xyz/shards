@@ -12,6 +12,7 @@
 #include <vector>
 #include <shards/shards.hpp>
 
+
 namespace gfx {
 struct Window;
 struct Renderer;
@@ -27,13 +28,10 @@ struct GraphicsContext {
   std::shared_ptr<Window> window;
   std::shared_ptr<Renderer> renderer;
 
-  double time;
-  float deltaTime;
+  double time{};
+  float deltaTime{};
+  bool frameInProgress{};
 
-  // Draw queue used when it's not manually specified
-  SHDrawQueue shDrawQueue;
-
-  ::gfx::DrawQueuePtr getDrawQueue() { return shDrawQueue.queue; }
   ::gfx::Context &getContext();
   ::gfx::Window &getWindow();
   SDL_Window *getSdlWindow();

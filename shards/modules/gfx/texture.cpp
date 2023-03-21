@@ -9,6 +9,8 @@
 #include <gfx/texture.hpp>
 #include <gfx/error_utils.hpp>
 #include <gfx/render_target.hpp>
+#include <gfx/gpu_read_buffer.hpp>
+#include <gfx/renderer.hpp>
 #include <shards/core/params.hpp>
 #include <stdexcept>
 #include <vector>

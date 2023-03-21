@@ -49,6 +49,6 @@
 
 (defmesh root)
 (schedule root (Wire "test-wire" :Looped :LStack
-                     (GFX.MainWindow :Title "SDL Window" :Width 1280 :Height 720 :Debug false :Contents
+                     (GFX.MainWindow :Title "SDL Window" :Width 1280 :Height 720  :Contents
                                      (Step gfx))))
 (if (run root timestep 100) nil (throw "Root tick failed"))

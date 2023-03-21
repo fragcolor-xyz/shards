@@ -3,6 +3,10 @@
 
 #include "egui_types.hpp"
 #include <gfx/linalg.hpp>
+#ifndef RUST_BINDGEN
+#include <shards/input/events.hpp>
+#include <shards/input/messages.hpp>
+#endif
 #include <deque>
 #include <vector>
 
@@ -10,18 +14,17 @@ namespace gfx {
 struct Window;
 struct EguiInputTranslatorPrivate;
 
+#ifndef RUST_BINDGEN
 struct EguiInputTranslatorArgs {
-  const std::vector<SDL_Event> &events;
-  Window &window;
+  const std::vector<shards::input::Event> &events;
   double time;
   float deltaTime;
-  // Size of the UI region (in pixels)
-  int2 viewportSize;
-  // Mapped window region (in pixels)
+  // The sizes of the input surface
+  shards::input::InputRegion region;
+  // The sub-section of the physical size that is mapped to this UI
   int4 mappedWindowRegion;
-  // Scale to render the UI at, on top of OS scaling factor
-  float scalingFactor = 1.0f;
 };
+#endif
 
 /// <div rustbindgen opaque></div>
 struct EguiInputTranslator {
@@ -33,27 +36,33 @@ private:
   bool imeComposing{};
   bool textInputActive{};
   float2 windowToEguiScale;
-  int4 mappedWindowRegion;
-  Window *window{};
+  float4 mappedWindowRegion;
+
+#ifndef RUST_BINDGEN
+  std::vector<shards::input::Message> outputMessages;
+#endif
 
 public:
   EguiInputTranslator() = default;
   EguiInputTranslator(const EguiInputTranslator &) = delete;
   const EguiInputTranslator &operator=(const EguiInputTranslator &) = delete;
 
+#ifndef RUST_BINDGEN
   // Setup input mapping from a window to a specific subregion
-  // all coordinates are pixel coordinates
-  void setupWindowInput(Window &window, int4 mappedWindowRegion, int2 viewportSize, float scalingFactor = 1.0f);
+  void setupInputRegion(const shards::input::InputRegion &region, const int4& mappedWindowRegion);
 
   // Resets the conversion output
   void begin(double time, float deltaTime);
   // Takes the SDL event and return true when it was converted into an egui event
-  bool translateEvent(const SDL_Event &event);
+  bool translateEvent(const shards::input::Event &event);
   // Finalizes the egui::Input result
   void end();
 
   // ALternative to calling the above 4 and returning the output
   const egui::Input *translateFromInputEvents(const EguiInputTranslatorArgs &args);
+
+  const std::vector<shards::input::Message> &getOutputMessages() const { return outputMessages; }
+#endif
 
   const std::vector<egui::InputEvent> &getTranslatedEvents() const { return events; }
 
@@ -69,7 +78,7 @@ public:
   void applyOutput(const egui::FullOutput &output);
 
   // Set or clear the position for the text cursor
-  void updateTextCursorPosition(Window &window, const egui::Pos2 *pos);
+  void updateTextCursorPosition(const egui::Pos2 *pos);
   void copyText(const char *text);
   void updateCursorIcon(egui::CursorIcon icon);
 

@@ -40,24 +40,24 @@ struct SDLCursor {
 };
 
 struct CursorMap {
-  std::map<egui::CursorIcon, SDLCursor> cursorMap{};
+  std::map<egui::CursorIcon, SDL_SystemCursor> cursorMap{};
 
   CursorMap() {
-    cursorMap.insert_or_assign(egui::CursorIcon::Text, SDLCursor(SDL_SystemCursor::SDL_SYSTEM_CURSOR_IBEAM));
-    cursorMap.insert_or_assign(egui::CursorIcon::PointingHand, SDLCursor(SDL_SystemCursor::SDL_SYSTEM_CURSOR_HAND));
-    cursorMap.insert_or_assign(egui::CursorIcon::Crosshair, SDLCursor(SDL_SystemCursor::SDL_SYSTEM_CURSOR_CROSSHAIR));
-    cursorMap.insert_or_assign(egui::CursorIcon::ResizeNeSw, SDLCursor(SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENESW));
-    cursorMap.insert_or_assign(egui::CursorIcon::ResizeNwSe, SDLCursor(SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENWSE));
-    cursorMap.insert_or_assign(egui::CursorIcon::Default, SDLCursor(SDL_SystemCursor::SDL_SYSTEM_CURSOR_ARROW));
-    cursorMap.insert_or_assign(egui::CursorIcon::ResizeVertical, SDLCursor(SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENS));
-    cursorMap.insert_or_assign(egui::CursorIcon::ResizeHorizontal, SDLCursor(SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZEWE));
+    cursorMap.insert_or_assign(egui::CursorIcon::Text, SDL_SystemCursor::SDL_SYSTEM_CURSOR_IBEAM);
+    cursorMap.insert_or_assign(egui::CursorIcon::PointingHand, SDL_SystemCursor::SDL_SYSTEM_CURSOR_HAND);
+    cursorMap.insert_or_assign(egui::CursorIcon::Crosshair, SDL_SystemCursor::SDL_SYSTEM_CURSOR_CROSSHAIR);
+    cursorMap.insert_or_assign(egui::CursorIcon::ResizeNeSw, SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENESW);
+    cursorMap.insert_or_assign(egui::CursorIcon::ResizeNwSe, SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENWSE);
+    cursorMap.insert_or_assign(egui::CursorIcon::Default, SDL_SystemCursor::SDL_SYSTEM_CURSOR_ARROW);
+    cursorMap.insert_or_assign(egui::CursorIcon::ResizeVertical, SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENS);
+    cursorMap.insert_or_assign(egui::CursorIcon::ResizeHorizontal, SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZEWE);
   }
 
-  SDL_Cursor *getCursor(egui::CursorIcon cursor) {
+  SDL_SystemCursor *getCursor(egui::CursorIcon cursor) {
     auto it = cursorMap.find(cursor);
     if (it == cursorMap.end())
       return nullptr;
-    return it->second;
+    return &it->second;
   }
 
   static CursorMap &getInstance() {
@@ -76,21 +76,19 @@ static egui::ModifierKeys translateModifierKeys(SDL_Keymod flags) {
   };
 }
 
-void EguiInputTranslator::setupWindowInput(Window &window, int4 mappedWindowRegion, int2 viewportSize, float scalingFactor) {
-  this->window = &window;
-
+void EguiInputTranslator::setupInputRegion(const shards::input::InputRegion &region, const int4& mappedWindowRegion) {
   // UI Points per pixel
-  float eguiDrawScale = EguiRenderer::getDrawScale(window) * scalingFactor;
+  float eguiDrawScale = region.uiScalingFactor;
 
   // Drawable/Window scale
-  float2 inputScale = window.getInputScale();
+  float2 inputScale = float2(region.pixelSize) / float2(region.size);
   windowToEguiScale = inputScale / eguiDrawScale;
 
-  // Convert from pixel to window coordinates
-  this->mappedWindowRegion = int4(float4(mappedWindowRegion) / float4(inputScale.x, inputScale.y, inputScale.x, inputScale.y));
+  // Convert from pixel to window coordinatesmapping
+  this->mappedWindowRegion = float4(mappedWindowRegion) / float4(inputScale.x, inputScale.y, inputScale.x, inputScale.y);
 
   // Take viewport size and scale it by the draw scale
-  float2 viewportSizeFloat = float2(float(viewportSize.x), float(viewportSize.y));
+  float2 viewportSizeFloat = float2(float(region.size.x), float(region.size.y));
   float2 eguiScreenSize = viewportSizeFloat / eguiDrawScale;
 
   input.screenRect = egui::Rect{
@@ -103,14 +101,30 @@ void EguiInputTranslator::setupWindowInput(Window &window, int4 mappedWindowRegi
 void EguiInputTranslator::begin(double time, float deltaTime) {
   reset();
 
-  egui::ModifierKeys modifierKeys = translateModifierKeys(SDL_GetModState());
+  egui::ModifierKeys modifierKeys{};
 
   input.time = time;
   input.predictedDeltaTime = deltaTime;
   input.modifierKeys = modifierKeys;
 }
 
-bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
+egui::PointerButton translateMouseButton(uint32_t button) {
+  switch (button) {
+  case SDL_BUTTON_LEFT:
+    return egui::PointerButton::Primary;
+    break;
+  case SDL_BUTTON_MIDDLE:
+    return egui::PointerButton::Middle;
+    break;
+  case SDL_BUTTON_RIGHT:
+    return egui::PointerButton::Secondary;
+    break;
+  default:
+    throw std::out_of_range("SDL Mouse Button");
+  }
+}
+
+bool EguiInputTranslator::translateEvent(const shards::input::Event &event) {
   using egui::InputEvent;
   using egui::InputEventType;
 
@@ -127,100 +141,60 @@ bool EguiInputTranslator::translateEvent(const SDL_Event &sdlEvent) {
     return lastCursorPosition = egui::Pos2{.x = cursorPosition.x, .y = cursorPosition.y};
   };
 
-  switch (sdlEvent.type) {
-  case SDL_MOUSEBUTTONDOWN:
-  case SDL_MOUSEBUTTONUP: {
-    auto &ievent = sdlEvent.button;
-    auto &oevent = newEvent(InputEventType::PointerButton).pointerButton;
-    switch (ievent.button) {
-    case SDL_BUTTON_LEFT:
-      oevent.button = egui::PointerButton::Primary;
-      break;
-    case SDL_BUTTON_MIDDLE:
-      oevent.button = egui::PointerButton::Middle;
-      break;
-    case SDL_BUTTON_RIGHT:
-      oevent.button = egui::PointerButton::Secondary;
-      break;
-    default:
-      // ignore this button
-      events.pop_back();
-      break;
-    }
-    oevent.pressed = ievent.type == SDL_MOUSEBUTTONDOWN;
-    oevent.modifiers = input.modifierKeys;
-    oevent.pos = translatePointerPos(updateCursorPosition(ievent.x, ievent.y));
+  using namespace shards::input;
+  std::visit(
+      [&](auto &arg) {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, PointerMoveEvent>) {
+          auto &oevent = newEvent(InputEventType::PointerMoved).pointerMoved;
+          oevent.pos = translatePointerPos(updateCursorPosition(arg.pos.x, arg.pos.y));
+        } else if constexpr (std::is_same_v<T, PointerButtonEvent>) {
+          auto &oevent = newEvent(InputEventType::PointerButton).pointerButton;
+          oevent.pos = translatePointerPos(updateCursorPosition(arg.pos.x, arg.pos.y));
+          oevent.button = translateMouseButton(arg.index);
+          oevent.pressed = arg.pressed;
+          oevent.modifiers = translateModifierKeys(arg.modifiers);
+        } else if constexpr (std::is_same_v<T, ScrollEvent>) {
+          auto &oevent = newEvent(InputEventType::Scroll).scroll;
+          oevent.delta = egui::Pos2{0.0f, arg.delta};
+        } else if constexpr (std::is_same_v<T, KeyEvent>) {
+          auto &oevent = newEvent(InputEventType::Key).key;
+          oevent.key = SDL_KeyCode(arg.key);
+          oevent.pressed = arg.pressed;
+          oevent.modifiers = translateModifierKeys(arg.modifiers);
 
-    // Synthesize PointerGone event to indicate there's no more fingers
-    if (!oevent.pressed) {
-      (void)newEvent(InputEventType::PointerGone).pointerGone;
-    }
-    break;
-  }
-  case SDL_MOUSEMOTION: {
-    auto &ievent = sdlEvent.motion;
-    auto &oevent = newEvent(InputEventType::PointerMoved).pointerMoved;
-    oevent.pos = translatePointerPos(updateCursorPosition(ievent.x, ievent.y));
-    break;
-  }
-  case SDL_MOUSEWHEEL: {
-    auto &ievent = sdlEvent.wheel;
-    auto &oevent = newEvent(InputEventType::Scroll).scroll;
-    oevent.delta = egui::Pos2{
-        .x = float(ievent.preciseX),
-        .y = float(ievent.preciseY),
-    };
-    break;
-  }
-  case SDL_TEXTEDITING: {
-    auto &ievent = sdlEvent.edit;
-
-    std::string editingText = ievent.text;
-    if (!imeComposing) {
-      imeComposing = true;
-      newEvent(InputEventType::CompositionStart);
-    }
-
-    auto &evt = newEvent(InputEventType::CompositionUpdate);
-    evt.compositionUpdate.text = strings.emplace_back(ievent.text).c_str();
-    break;
-  }
-  case SDL_TEXTINPUT: {
-    auto &ievent = sdlEvent.text;
-
-    if (imeComposing) {
-      auto &evt = newEvent(InputEventType::CompositionEnd);
-      evt.compositionEnd.text = strings.emplace_back(ievent.text).c_str();
-      imeComposing = false;
-    } else {
-      auto &evt = newEvent(InputEventType::Text);
-      evt.text.text = strings.emplace_back(ievent.text).c_str();
-    }
-    break;
-  }
-  case SDL_KEYDOWN:
-  case SDL_KEYUP: {
-    auto &ievent = sdlEvent.key;
-    auto &oevent = newEvent(InputEventType::Key).key;
-    oevent.key = SDL_KeyCode(ievent.keysym.sym);
-    oevent.pressed = ievent.type == SDL_KEYDOWN;
-    oevent.modifiers = translateModifierKeys(SDL_Keymod(ievent.keysym.mod));
-
-    // Translate cut/copy/paste using the standard keys combos
-    if (ievent.type == SDL_KEYDOWN) {
-      if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_c) {
-        newEvent(InputEventType::Copy);
-      } else if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_v) {
-        auto &evt = newEvent(InputEventType::Paste);
-
-        evt.paste.str = strings.emplace_back(SDL_GetClipboardText()).c_str();
-      } else if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_x) {
-        newEvent(InputEventType::Cut);
-      }
-    }
-    break;
-  }
-  }
+          if (arg.pressed) {
+            if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_c) {
+              newEvent(InputEventType::Copy);
+            } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_v) {
+              auto &evt = newEvent(InputEventType::Paste);
+              evt.paste.str = strings.emplace_back(SDL_GetClipboardText()).c_str();
+            } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_x) {
+              newEvent(InputEventType::Cut);
+            }
+          }
+        } else if constexpr (std::is_same_v<T, TextEvent>) {
+          if (imeComposing) {
+            imeComposing = false;
+          }
+          auto &oevent = newEvent(InputEventType::Text).text;
+          oevent.text = arg.text.c_str();
+        } else if constexpr (std::is_same_v<T, TextCompositionEvent>) {
+          if (!imeComposing) {
+            (void)newEvent(InputEventType::CompositionStart).compositionStart;
+            imeComposing = true;
+          }
+          if (!arg.text.empty()) {
+            auto &oevent = newEvent(InputEventType::CompositionUpdate).text;
+            oevent.text = arg.text.c_str();
+          }
+        } else if constexpr (std::is_same_v<T, TextCompositionEndEvent>) {
+          auto &oevent = newEvent(InputEventType::CompositionEnd).text;
+          oevent.text = arg.text.c_str();
+          imeComposing = false;
+        }
+      },
+      event);
   return handled;
 }
 
@@ -234,7 +208,7 @@ void EguiInputTranslator::end() {
 
 const egui::Input *EguiInputTranslator::translateFromInputEvents(const EguiInputTranslatorArgs &args) {
   begin(args.time, args.deltaTime);
-  setupWindowInput(args.window, args.mappedWindowRegion, args.viewportSize, args.scalingFactor);
+  setupInputRegion(args.region, args.mappedWindowRegion);
   for (const auto &event : args.events)
     translateEvent(event);
   end();
@@ -251,8 +225,11 @@ egui::Pos2 EguiInputTranslator::translatePointerPos(const egui::Pos2 &pos) {
 }
 
 void EguiInputTranslator::applyOutput(const egui::FullOutput &output) {
-  if (window)
-    updateTextCursorPosition(*window, output.textCursorPosition);
+  // TODO
+  // if (window)
+  //   updateTextCursorPosition(*window, output.textCursorPosition);
+  // updateTextCursorPosition(
+  updateTextCursorPosition(output.textCursorPosition);
 
   if (output.copiedText)
     copyText(output.copiedText);
@@ -261,22 +238,23 @@ void EguiInputTranslator::applyOutput(const egui::FullOutput &output) {
     updateCursorIcon(output.cursorIcon);
 }
 
-void EguiInputTranslator::updateTextCursorPosition(Window &window, const egui::Pos2 *pos) {
+void EguiInputTranslator::updateTextCursorPosition(const egui::Pos2 *pos) {
   if (pos) {
     SDL_Rect rect;
     rect.x = int(pos->x);
     rect.y = int(pos->y);
     rect.w = 20;
     rect.h = 20;
-    SDL_SetTextInputRect(&rect);
 
     if (!textInputActive) {
-      SDL_StartTextInput();
+      outputMessages.push_back(shards::input::BeginTextInputMessage{
+          .inputRect = rect,
+      });
       textInputActive = true;
     }
   } else {
     if (textInputActive) {
-      SDL_StopTextInput();
+      outputMessages.push_back(shards::input::EndTextInputMessage{});
       textInputActive = false;
       imeComposing = false;
     }
@@ -287,18 +265,22 @@ void EguiInputTranslator::copyText(const char *text) { SDL_SetClipboardText(text
 
 void EguiInputTranslator::updateCursorIcon(egui::CursorIcon icon) {
   if (icon == egui::CursorIcon::None) {
-    SDL_ShowCursor(SDL_DISABLE);
+    outputMessages.push_back(shards::input::SetCursorMessage{
+        .visible = false,
+    });
   } else {
-    SDL_ShowCursor(SDL_ENABLE);
-    SDL_Cursor *cursor = CursorMap::getInstance().getCursor(icon);
-    SDL_SetCursor(cursor);
+    auto *cursor = CursorMap::getInstance().getCursor(icon);
+    outputMessages.push_back(shards::input::SetCursorMessage{
+        .visible = true,
+        .cursor = cursor ? *cursor : SDL_SYSTEM_CURSOR_ARROW,
+    });
   }
 }
 
 void EguiInputTranslator::reset() {
   strings.clear();
   events.clear();
-  this->window = nullptr;
+  outputMessages.clear();
 }
 
 EguiInputTranslator *EguiInputTranslator::create() { return new EguiInputTranslator(); }

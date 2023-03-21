@@ -81,15 +81,19 @@ fn egui_linear_from_srgb(srgb: vec3<f32>) -> vec3<f32> {
 
 struct EguiRenderPass {
   static PipelineStepPtr createPipelineStep(DrawQueuePtr queue) {
-    auto drawableStep = makePipelineStep(RenderDrawablesStep{
+    auto drawableStep = makePipelineStep(createDrawableStep(queue));
+    return drawableStep;
+  }
+
+  static RenderDrawablesStep createDrawableStep(DrawQueuePtr queue) {
+    return RenderDrawablesStep{
         .drawQueue = queue,
         .sortMode = SortMode::Queue,
         .features =
             std::vector<FeaturePtr>{
                 EguiTransformFeature::create(),
             },
-    });
-    return drawableStep;
+    };
   }
 };
 } // namespace gfx

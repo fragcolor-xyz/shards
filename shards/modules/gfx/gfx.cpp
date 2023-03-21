@@ -118,6 +118,7 @@ struct RenderShard {
 };
 
 extern void registerMainWindowShards();
+extern void registerRendererShards();
 extern void registerMeshShards();
 extern void registerDrawableShards();
 extern void registerMaterialShards();
@@ -130,7 +131,11 @@ extern void registerRenderStepShards();
 namespace shader {
 extern void registerTranslatorShards();
 }
-void registerShards() {
+} // namespace gfx
+
+SHARDS_REGISTER_FN(gfx) {
+  using namespace gfx;
+  using gfx::Types;
   REGISTER_ENUM(Types::WindingOrderEnumInfo);
   REGISTER_ENUM(Types::ShaderFieldBaseTypeEnumInfo);
   REGISTER_ENUM(Types::ProgrammableGraphicsStageEnumInfo);
@@ -148,6 +153,7 @@ void registerShards() {
   REGISTER_ENUM(Types::TextureFilteringEnumInfo);
 
   registerMainWindowShards();
+  registerRendererShards();
   registerMeshShards();
   registerDrawableShards();
   registerMaterialShards();
@@ -160,4 +166,3 @@ void registerShards() {
   shader::registerTranslatorShards();
   REGISTER_SHARD("GFX.Render", RenderShard);
 }
-} // namespace gfx

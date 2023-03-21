@@ -1,6 +1,7 @@
 set(SOURCES
   gfx.cpp
-  main_window.cpp
+  window.cpp
+  renderer.cpp
   mesh.cpp
   drawable.cpp
   material.cpp

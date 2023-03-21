@@ -70,7 +70,7 @@
    (GFX.View :View .view-transform) >= .view)
 
   (GFX.MainWindow
-   :Title "glTF" :Width 1280 :Height 720 :Debug false
+   :Title "glTF" :Width 1280 :Height 720 
    :Contents
    (->
     (Animation.Timer :Rate 0.2 :Offset -0.75) >= .time
