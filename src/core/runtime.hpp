@@ -67,6 +67,7 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #endif
 #else
 #define ZoneScoped
+#define ZoneNamed(X, Y)
 #define ZoneName(X, Y)
 #define FrameMarkNamed(X)
 #define TracyCoroEnter(wire)
@@ -298,6 +299,9 @@ inline bool isRunning(SHWire *wire) {
 }
 
 inline bool tick(SHWire *wire, SHDuration now) {
+  ZoneScoped;
+  ZoneName(wire->name.c_str(), wire->name.size());
+
   if (!wire->context || !wire->coro || !(*wire->coro) || !(isRunning(wire)))
     return false; // check if not null and bool operator also to see if alive!
 
@@ -494,6 +498,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   template <class Observer> bool tick(Observer observer) {
+    ZoneScoped;
+
     auto noErrors = true;
     _errors.clear();
     _failedWires.clear();
