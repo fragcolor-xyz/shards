@@ -49,8 +49,8 @@ if(NOT EMSCRIPTEN)
       message(STATUS "Fetching libressl")
       FetchContent_Declare(
         libressl
-        # URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
-        URL      https://cloudflare.cdn.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
+        URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
+        # URL      https://cloudflare.cdn.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
         URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
         ${LIBRESSL_PATCH_COMMAND}
       )

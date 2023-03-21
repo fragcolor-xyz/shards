@@ -1,0 +1,93 @@
+#ifndef B01B265C_2D67_4D6C_8DD1_D697ED304EC6
+#define B01B265C_2D67_4D6C_8DD1_D697ED304EC6
+
+#include "events.hpp"
+#include "event_buffer.hpp"
+#include "detached.hpp"
+#include "messages.hpp"
+#include <shared_mutex>
+#include <boost/lockfree/spsc_queue.hpp>
+
+namespace shards::input {
+struct FocusTracker {
+  void *previous{};
+  void *current{};
+
+  void swap() {
+    previous = current;
+    current = nullptr;
+  }
+
+  bool canReceiveInput(void *token) const { return token == current || (!current && (!previous || token == previous)); }
+
+  bool requestFocus(void *token) {
+    // Same frame early out
+    if (current == token)
+      return true;
+
+    // Obtain new focus or continue focus from last frame
+    if (!current && (!previous || previous == token)) {
+      current = token;
+      return true;
+    } else {
+      return false;
+    }
+  }
+};
+
+struct IInputHandler {
+  virtual ~IInputHandler() = default;
+  virtual int getPriority() const { return 0; }
+  virtual void handle(const InputState &state, std::vector<ConsumableEvent> &events, FocusTracker &focusTracker) = 0;
+};
+
+struct InputMaster {
+private:
+  std::vector<std::weak_ptr<IInputHandler>> handlers;
+  std::vector<std::shared_ptr<IInputHandler>> handlersLocked;
+  std::shared_mutex mutex;
+
+  EventBuffer<Frame<ConsumableEvent>> eventBuffer;
+
+  boost::lockfree::spsc_queue<Message> messageQueue;
+
+  FocusTracker focusTracker;
+
+  DetachedInput input;
+  InputState state;
+
+  bool terminateRequested{};
+
+public:
+  InputMaster();
+  ~InputMaster();
+
+  bool isTerminateRequested() const { return terminateRequested; }
+
+  void postMessage(const Message &message) { messageQueue.push(message); }
+
+  void addHandler(std::shared_ptr<IInputHandler> ptr) {
+    std::unique_lock<decltype(mutex)> l(mutex);
+    handlers.emplace_back(ptr);
+  }
+
+  void update(SDL_Window *window);
+  void reset() {}
+
+  // Only use from main thread
+  std::vector<std::shared_ptr<IInputHandler>> getHandlers() {
+    std::unique_lock<decltype(mutex)> l(mutex);
+    updateAndSortHandlersLocked();
+    return handlersLocked;
+  }
+
+private:
+  void updateAndSortHandlers();
+
+  // Assumes already locked
+  void updateAndSortHandlersLocked();
+};
+
+} // namespace shards::input
+
+#endif /* B01B265C_2D67_4D6C_8DD1_D697ED304EC6 */

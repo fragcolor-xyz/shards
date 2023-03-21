@@ -1,0 +1,17 @@
+[package]
+name = "input-debug-ui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+egui = { version = "0.21.0", features = ["persistence"] }
+shards = { path = "../../../rust", features = ["shards"] }
+
+[build-dependencies]
+bindgen = "0.64.0"
+gfx-build = { path = "../../gfx/rust/build" }
+
+[workspace]
+members = []

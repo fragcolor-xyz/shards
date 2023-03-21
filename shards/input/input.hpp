@@ -4,8 +4,19 @@
 #include <SDL_events.h>
 #include <vector>
 #include <algorithm>
+#include <linalg/linalg.h>
 
 namespace shards::input {
+using namespace linalg::aliases;
+
+struct InputRegion {
+  // Size in virtual pixels, same space as input coordinates
+  float2 size;
+  // Size in physical pixels
+  int2 pixelSize;
+  // Request OS scaling factor for UI
+  float uiScalingFactor{};
+};
 
 enum class ConsumeEventFilter : uint8_t {
   None = 0,

@@ -169,7 +169,7 @@ struct DrawQueueShard {
     assert(!_queue);
     _queue = Types::DrawQueueObjectVar.New();
     _queue->queue = std::make_shared<DrawQueue>();
-    _queue->queue->setAutoClear(_autoClear.isNone() ? true : (bool)_autoClear);
+    _queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear);
   }
 
   void cleanup() {
@@ -208,6 +208,40 @@ struct ClearQueueShard {
     SHDrawQueue *shQueue = reinterpret_cast<SHDrawQueue *>(input.payload.objectValue);
     shQueue->queue->clear();
     return SHVar{};
+  }
+};
+
+struct GetQueueDrawablesShard {
+  static inline const Type OutputSeqType = Type::SeqOf(Types::Drawable);
+
+  static SHTypesInfo inputTypes() { return Types::DrawQueue; }
+  static SHTypesInfo outputTypes() { return OutputSeqType; }
+  static SHOptionalString help() { return SHCCSTR("Retrieves the individual drawables in a draw queue"); }
+
+  SeqVar _outputSeq;
+  std::vector<SHDrawable *> _objects;
+
+  static SHParametersInfo parameters() {
+    static Parameters parameters = {};
+    return parameters;
+  }
+  void setParam(int index, const SHVar &value) {}
+  SHVar getParam(int index) { return Var::Empty; }
+
+  void warmup(SHContext *context) {}
+  void cleanup() {}
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    SHDrawQueue *shQueue = reinterpret_cast<SHDrawQueue *>(input.payload.objectValue);
+    auto &drawables = shQueue->queue->getDrawables();
+    _objects.reserve(drawables.size());
+    for (auto &drawable : drawables) {
+      SHDrawable *ptr = _objects.emplace_back(Types::DrawableObjectVar.New());
+      ptr->assign(drawable->clone());
+      _outputSeq.push_back(Types::DrawableObjectVar.Get(ptr));
+    }
+
+    return _outputSeq;
   }
 };
 
