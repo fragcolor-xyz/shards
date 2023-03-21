@@ -2015,12 +2015,17 @@ BUILTIN("run-many") {
   }
 
   std::vector<std::future<bool>> futures;
-  for (auto mesh : meshes) {
-    auto fut = std::async(std::launch::async, [=]() { return run(mesh, nullptr, sleepTime, times, dec); });
+
+  // Run all other meshes on another thread
+  for (size_t i = 1; i < meshes.size(); i++) {
+    auto fut = std::async(std::launch::async, [=]() { return run(meshes[i], nullptr, sleepTime, times, dec); });
     futures.push_back(std::move(fut));
   }
 
-  assert(futures.size() == size_t(count));
+  assert(futures.size() == size_t(count - 1));
+
+  // Run this first mesh on this thread
+  run(meshes[0], nullptr, sleepTime, times, dec);
 
   // wait for all futures to finish
   bool noErrors = true;

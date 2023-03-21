@@ -203,6 +203,8 @@ pub fn make_native_full_output(
       .map_or(ptr::null(), |x| x.as_ref()),
     cursorIcon: to_egui_cursor_icon(platform_output.cursor_icon),
     mutableTextUnderCursor: platform_output.mutable_text_under_cursor,
+    wantsPointerInput: ctx.wants_pointer_input(),
+    wantsKeyboardInput: ctx.wants_keyboard_input(),
   };
 
   Ok(NativeFullOutput {

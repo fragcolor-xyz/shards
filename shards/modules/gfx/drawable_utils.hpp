@@ -38,6 +38,16 @@ inline TexturePtr varToTexture(const SHVar &var) {
 }
 
 inline std::variant<ParamVariant, TextureParameter> varToShaderParameter(const SHVar &var) {
+  auto isTypedSeq = [&](const SHType basicType) {
+    if (var.innerType == SHType::Float4)
+      return true;
+    for (size_t i = 0; i < var.payload.seqValue.len; i++) {
+      if (var.payload.seqValue.elements[i].valueType != basicType)
+        return false;
+    }
+    return true;
+  };
+
   switch (var.valueType) {
   case SHType::Float: {
     float vec = float(var.payload.floatValue);
@@ -60,7 +70,7 @@ inline std::variant<ParamVariant, TextureParameter> varToShaderParameter(const S
     return vec;
   }
   case SHType::Seq:
-    if (var.innerType == SHType::Float4) {
+    if (isTypedSeq(SHType::Float4)) {
       float4x4 matrix;
       const SHSeq &seq = var.payload.seqValue;
       for (size_t i = 0; i < std::min<size_t>(4, seq.len); i++) {

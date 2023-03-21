@@ -1,38 +1,42 @@
-#ifndef DACF8017_857B_4084_9427_A52FCAE0D044
-#define DACF8017_857B_4084_9427_A52FCAE0D044
+#ifndef FAD79EC4_CD09_4DDB_88A1_E168CCE2B4F5
+#define FAD79EC4_CD09_4DDB_88A1_E168CCE2B4F5
 
-#include <boost/container/flat_set.hpp>
-#include "gfx/window.hpp"
-#include <SDL_keycode.h>
-#include <shards/core/foundation.hpp>
 #include <input/input_stack.hpp>
+#include <input/detached.hpp>
+#include <input/event_buffer.hpp>
+#include <input/messages.hpp>
+#include <shards/linalg_shim.hpp>
+#include <shards/core/foundation.hpp>
 #include <shards/core/exposed_type_utils.hpp>
 
-namespace shards::Inputs {
+namespace shards::input {
+struct InputMaster;
 
 struct InputContext {
   static constexpr uint32_t TypeId = 'ictx';
   static inline SHTypeInfo Type{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = TypeId}}};
-  static inline const char VariableName[] = "Input.Context";
+  static inline const char VariableName[] = "Shards.InputContext";
   static inline const SHOptionalString VariableDescription = SHCCSTR("The input context.");
   static inline SHExposedTypeInfo VariableInfo = shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
 
   std::shared_ptr<gfx::Window> window;
-  std::vector<SDL_Event> events;
-  std::vector<SDL_Event> virtualInputEvents;
-  boost::container::flat_set<SDL_Keycode> heldKeys;
-  shards::input::InputStack inputStack;
+  input::InputMaster *master{};
+  input::DetachedInput detached;
 
-  double time;
-  float deltaTime;
+  bool wantsPointerInput{};
+  bool wantsKeyboardInput{};
+  bool requestFocus{};
 
-  ::gfx::Window &getWindow();
-  SDL_Window *getSdlWindow();
+  void postMessage(const input::Message &message);
+  const input::InputState &getState() const { return detached.state; }
+  const std::vector<input::Event> &getEvents() const { return detached.virtualInputEvents; }
+
+  double time{};
+  float deltaTime{};
 };
 
-typedef shards::RequiredContextVariable<InputContext, InputContext::Type, InputContext::VariableName> RequiredInputContext;
-typedef shards::RequiredContextVariable<InputContext, InputContext::Type, InputContext::VariableName, false> OptionalInputContext;
+using RequiredInputContext = shards::RequiredContextVariable<InputContext, InputContext::Type, InputContext::VariableName>;
 
-} // namespace shards::Inputs
+} // namespace shards
 
-#endif /* DACF8017_857B_4084_9427_A52FCAE0D044 */
+#endif /* FAD79EC4_CD09_4DDB_88A1_E168CCE2B4F5 */

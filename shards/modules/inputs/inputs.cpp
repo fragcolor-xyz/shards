@@ -1,34 +1,33 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-#include "SDL.h"
+#include <SDL.h>
+#include "inputs.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
 #include <shards/core/shared.hpp>
-#include "core/module.hpp"
-#include "inputs.hpp"
-#include "../gfx/gfx.hpp"
+#include <shards/input/master.hpp>
+#include <shards/modules/gfx/gfx.hpp>
+#include <shards/modules/gfx/window.hpp>
 #include <SDL_keyboard.h>
 #include <SDL_keycode.h>
-#include <gfx/window.hpp>
 #include <shards/core/params.hpp>
 
 using namespace linalg::aliases;
 
 namespace shards {
-namespace Inputs {
+namespace input {
 
-gfx::Window &InputContext::getWindow() { return *window.get(); }
-SDL_Window *InputContext::getSdlWindow() { return getWindow().window; }
+void InputContext::postMessage(const input::Message &message) { master->postMessage(message); }
 
 struct Base {
-  RequiredInputContext _inputContext;
+  RequiredWindowContext _windowContext;
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  void baseWarmup(SHContext *context) { _inputContext.warmup(context); }
-  void baseCleanup() { _inputContext.cleanup(); }
+  void baseWarmup(SHContext *context) { _windowContext.warmup(context); }
+  void baseCleanup() { _windowContext.cleanup(); }
   SHExposedTypesInfo baseRequiredVariables() {
     static auto e = exposedTypesOf(gfx::RequiredGraphicsContext::getExposedTypeInfo());
     return e;
@@ -38,7 +37,7 @@ struct Base {
   void warmup(SHContext *context) { baseWarmup(context); }
   void cleanup() { baseCleanup(); }
 
-  gfx::Window &getWindow() const { return _inputContext->getWindow(); }
+  gfx::Window &getWindow() const { return _windowContext->getWindow(); }
 };
 
 struct MousePixelPos : public Base {
@@ -69,13 +68,14 @@ struct MouseDelta : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    int2 windowSize = getWindow().getSize();
+    // int2 windowSize = getWindow().getSize();
 
-    for (auto &event : _inputContext->events) {
-      if (event.type == SDL_MOUSEMOTION) {
-        return Var(float(event.motion.xrel) / float(windowSize.x), float(event.motion.yrel) / float(windowSize.y));
-      }
-    }
+    // TODO: Input
+    // for (auto &event : _windowContext->events) {
+    //   if (event.type == SDL_MOUSEMOTION) {
+    //     return Var(float(event.motion.xrel) / float(windowSize.x), float(event.motion.yrel) / float(windowSize.y));
+    //   }
+    // }
 
     return Var(0.0, 0.0);
   }
@@ -201,7 +201,7 @@ struct Mouse : public Base {
 
   void setCaptured(bool captured) {
     if (captured != _isCaptured) {
-      SDL_Window *windowToCapture = _inputContext->getSdlWindow();
+      SDL_Window *windowToCapture = _windowContext->getSdlWindow();
       SDL_SetWindowGrab(windowToCapture, captured ? SDL_TRUE : SDL_FALSE);
       _capturedWindow = captured ? windowToCapture : nullptr;
       _isCaptured = captured;
@@ -289,18 +289,19 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    for (auto &event : _inputContext->events) {
-      if (event.type == EVENT_TYPE) {
-        SHVar output{};
-        if (event.button.button == SDL_BUTTON_LEFT) {
-          _leftButton.activate(context, input, output);
-        } else if (event.button.button == SDL_BUTTON_RIGHT) {
-          _rightButton.activate(context, input, output);
-        } else if (event.button.button == SDL_BUTTON_MIDDLE) {
-          _middleButton.activate(context, input, output);
-        }
-      }
-    }
+    // TODO: Input
+    // for (auto &event : _windowContext->events) {
+    //   if (event.type == EVENT_TYPE) {
+    //     SHVar output{};
+    //     if (event.button.button == SDL_BUTTON_LEFT) {
+    //       _leftButton.activate(context, input, output);
+    //     } else if (event.button.button == SDL_BUTTON_RIGHT) {
+    //       _rightButton.activate(context, input, output);
+    //     } else if (event.button.button == SDL_BUTTON_MIDDLE) {
+    //       _middleButton.activate(context, input, output);
+    //     }
+    //   }
+    // }
     return input;
   }
 };
@@ -438,15 +439,16 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto &events = _repeat ? _inputContext->events : _inputContext->virtualInputEvents;
-    for (auto &event : events) {
-      if (event.type == EVENT_TYPE && event.key.keysym.sym == _keyCode) {
-        if (_repeat || event.key.repeat == 0) {
-          SHVar output{};
-          _shards.activate(context, input, output);
-        }
-      }
-    }
+    // TODO
+    // auto &events = _repeat ? _windowContext->events : _windowContext->virtualInputEvents;
+    // for (auto &event : events) {
+    //   if (event.type == EVENT_TYPE && event.key.keysym.sym == _keyCode) {
+    //     if (_repeat || event.key.repeat == 0) {
+    //       SHVar output{};
+    //       _shards.activate(context, input, output);
+    //     }
+    //   }
+    // }
 
     return input;
   }
@@ -504,7 +506,11 @@ struct IsKeyDown : public Base {
   void cleanup() { baseCleanup(); }
   void warmup(SHContext *context) { baseWarmup(context); }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return Var(_inputContext->heldKeys.contains(_keyCode)); }
+  SHVar activate(SHContext *context, const SHVar &input) {
+    // TODO:
+    // return Var(_windowContext->heldKeys.contains(_keyCode));
+    return Var(false);
+  }
 };
 
 struct HandleURL : public Base {
@@ -536,19 +542,20 @@ struct HandleURL : public Base {
   static SHTypeInfo outputType() { return CoreInfo::AnyType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    for (auto &ev : _inputContext->events) {
-      if (ev.type == SDL_DROPFILE || ev.type == SDL_DROPTEXT) {
-        _url.clear();
-        auto url = ev.drop.file;
-        _url.append(url);
-        SDL_free(url);
+    // TODO: Input
+    // for (auto &ev : _windowContext->events) {
+    //   if (ev.type == SDL_DROPFILE || ev.type == SDL_DROPTEXT) {
+    //     _url.clear();
+    //     auto url = ev.drop.file;
+    //     _url.append(url);
+    //     SDL_free(url);
 
-        SHVar output{};
-        _action.activate(context, Var(_url), output);
+    //     SHVar output{};
+    //     _action.activate(context, Var(_url), output);
 
-        break;
-      }
-    }
+    //     break;
+    //   }
+    // }
 
     return input;
   }
@@ -556,8 +563,9 @@ struct HandleURL : public Base {
 
 } // namespace Inputs
 } // namespace shards
+
 SHARDS_REGISTER_FN(inputs) {
-  using namespace shards::Inputs;
+  using namespace shards::input; 
   REGISTER_SHARD("Window.Size", WindowSize);
   REGISTER_SHARD("Inputs.MousePixelPos", MousePixelPos);
   REGISTER_SHARD("Inputs.MousePos", MousePos);

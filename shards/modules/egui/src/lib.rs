@@ -60,12 +60,10 @@ static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
 lazy_static! {
-  static ref GFX_CONTEXT_TYPE: Type =
-    unsafe { *(bindings::gfx_getGraphicsContextType() as *mut shardsc::SHTypeInfo) };
-  static ref INPUT_CONTEXT_TYPE: Type =
-    unsafe { *(bindings::gfx_getInputContextType() as *mut shardsc::SHTypeInfo) };
-  static ref GFX_QUEUE_TYPE: Type =
-    unsafe { *(bindings::gfx_getQueueType() as *mut shardsc::SHTypeInfo) };
+  static ref GFX_CONTEXT_TYPE: Type = unsafe { *(bindings::gfx_getGraphicsContextType() as *mut shardsc::SHTypeInfo) };
+  static ref WINDOW_CONTEXT_TYPE: Type = unsafe { *(bindings::gfx_getWindowContextType() as *mut shardsc::SHTypeInfo) };
+  static ref INPUT_CONTEXT_TYPE: Type = unsafe { *(bindings::gfx_getInputContextType() as *mut shardsc::SHTypeInfo) };
+  static ref GFX_QUEUE_TYPE: Type = unsafe { *(bindings::gfx_getQueueType() as *mut shardsc::SHTypeInfo) };
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
@@ -109,6 +107,7 @@ struct EguiContext {
   queue: ParamVar,
   contents: ShardsVar,
   exposing: ExposedTypes,
+  has_graphics_context: bool,
   graphics_context: ParamVar,
   input_context: ParamVar,
   renderer: bindings::Renderer,
@@ -131,8 +130,8 @@ mod menus;
 mod misc;
 mod properties;
 mod state;
-mod util;
 mod widgets;
+pub mod util;
 
 struct VarTextBuffer<'a>(&'a Var);
 struct MutVarTextBuffer<'a>(&'a mut Var);
