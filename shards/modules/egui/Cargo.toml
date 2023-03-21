@@ -9,6 +9,9 @@ edition = "2021"
 [lib]
 crate-type = ["rlib", "staticlib"]
 
+[features]
+no-register = [] 
+
 [dependencies]
 lazy_static = "1.4.0"
 egui = { version = "0.22.0", features = ["persistence"] }

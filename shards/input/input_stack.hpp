@@ -10,7 +10,7 @@ namespace shards::input {
 struct InputStack {
   /// <div rustbindgen hide></div>
   struct Item {
-    // Set the input mapping, if unsed, not input will be handled inside this view
+    // Set the input mapping, if unsed, no input will be handled inside this view
     std::optional<WindowMapping> windowMapping;
   };
 

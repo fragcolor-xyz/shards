@@ -41,7 +41,7 @@
    (GFX.View :View .view-transform) = .view)
 
   (GFX.MainWindow
-   :Title "Physics" :Width 1280 :Height 720 :Debug false
+   :Title "Physics" :Width 1280 :Height 720 
    :Contents
    (->
     ; physics simulation

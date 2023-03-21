@@ -258,6 +258,8 @@ struct FullOutput {
   const char *copiedText;
   bool mutableTextUnderCursor;
   const egui::Pos2 *textCursorPosition;
+  bool wantsPointerInput;
+  bool wantsKeyboardInput;
 };
 } // namespace egui
 

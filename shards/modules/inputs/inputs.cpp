@@ -1,25 +1,25 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-#include "SDL.h"
+#include <SDL.h>
+#include "input/events.hpp"
+#include "inputs.hpp"
+#include "shards/linalg_shim.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
 #include <shards/core/shared.hpp>
-#include "core/module.hpp"
-#include "inputs.hpp"
-#include "../gfx/gfx.hpp"
+#include <shards/input/master.hpp>
+#include <shards/modules/gfx/gfx.hpp>
+#include <shards/modules/gfx/window.hpp>
 #include <SDL_keyboard.h>
 #include <SDL_keycode.h>
-#include <gfx/window.hpp>
 #include <shards/core/params.hpp>
+#include <variant>
 
 using namespace linalg::aliases;
 
 namespace shards {
-namespace Inputs {
-
-gfx::Window &InputContext::getWindow() { return *window.get(); }
-SDL_Window *InputContext::getSdlWindow() { return getWindow().window; }
+namespace input {
 
 struct Base {
   RequiredInputContext _inputContext;
@@ -30,15 +30,13 @@ struct Base {
   void baseWarmup(SHContext *context) { _inputContext.warmup(context); }
   void baseCleanup() { _inputContext.cleanup(); }
   SHExposedTypesInfo baseRequiredVariables() {
-    static auto e = exposedTypesOf(gfx::RequiredGraphicsContext::getExposedTypeInfo());
+    static auto e = exposedTypesOf(decltype(_inputContext)::getExposedTypeInfo());
     return e;
   }
 
   SHExposedTypesInfo requiredVariables() { return baseRequiredVariables(); }
   void warmup(SHContext *context) { baseWarmup(context); }
   void cleanup() { baseCleanup(); }
-
-  gfx::Window &getWindow() const { return _inputContext->getWindow(); }
 };
 
 struct MousePixelPos : public Base {
@@ -46,38 +44,31 @@ struct MousePixelPos : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    // no base call.. Await should be fine here
     return CoreInfo::Int2Type;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    int32_t mouseX, mouseY;
-    SDL_GetMouseState(&mouseX, &mouseY);
-    return Var(mouseX, mouseY);
+    auto &state = _inputContext->getState();
+    auto &region = state.region;
+    float2 scale = float2(region.pixelSize) / region.size;
+    return toVar(int2(state.cursorPosition * scale));
   }
-
-  void cleanup() {}
 };
 
 struct MouseDelta : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
-    return CoreInfo::Float2Type;
-  }
+  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::Float2Type; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    int2 windowSize = getWindow().getSize();
-
-    for (auto &event : _inputContext->events) {
-      if (event.type == SDL_MOUSEMOTION) {
-        return Var(float(event.motion.xrel) / float(windowSize.x), float(event.motion.yrel) / float(windowSize.y));
+    float2 delta{};
+    for (auto &event : _inputContext->getEvents()) {
+      if (const PointerMoveEvent *pme = std::get_if<PointerMoveEvent>(&event)) {
+        delta += pme->delta;
       }
     }
-
-    return Var(0.0, 0.0);
+    return toVar(delta);
   }
 };
 
@@ -88,33 +79,23 @@ struct MousePos : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
-    return CoreInfo::Float2Type;
-  }
+  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::Float2Type; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    int2 windowSize = getWindow().getSize();
-
-    int32_t mouseX, mouseY;
-    SDL_GetMouseState(&mouseX, &mouseY);
-
-    return Var(float(mouseX) / float(windowSize.x), float(mouseY) / float(windowSize.y));
+    float2 cursorPosition = _inputContext->getState().cursorPosition;
+    return toVar(cursorPosition);
   }
 };
 
-struct WindowSize : public Base {
+struct InputRegionSize : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
-    return CoreInfo::Float2Type;
-  }
+  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::Float2Type; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    int2 windowSize = getWindow().getSize();
-    return Var(windowSize.x, windowSize.y);
+    int2 size = (int2)_inputContext->getState().region.size;
+    return toVar(size);
   }
 };
 
@@ -163,10 +144,7 @@ struct Mouse : public Base {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
-    return data.inputType;
-  }
+  SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
 
   void warmup(SHContext *context) {
     _hidden.warmup(context);
@@ -187,37 +165,38 @@ struct Mouse : public Base {
 
   void setHidden(bool hidden) {
     if (hidden != _isHidden) {
-      SDL_ShowCursor(hidden ? SDL_DISABLE : SDL_ENABLE);
+      // SDL_ShowCursor(hidden ? SDL_DISABLE : SDL_ENABLE);
       _isHidden = hidden;
     }
   }
 
   void setRelative(bool relative) {
     if (relative != _isRelative) {
-      SDL_SetRelativeMouseMode(relative ? SDL_TRUE : SDL_FALSE);
+      // SDL_SetRelativeMouseMode(relative ? SDL_TRUE : SDL_FALSE);
       _isRelative = relative;
     }
   }
 
   void setCaptured(bool captured) {
     if (captured != _isCaptured) {
-      SDL_Window *windowToCapture = _inputContext->getSdlWindow();
-      SDL_SetWindowGrab(windowToCapture, captured ? SDL_TRUE : SDL_FALSE);
-      _capturedWindow = captured ? windowToCapture : nullptr;
+      // SDL_Window *windowToCapture = _windowContext->getSdlWindow();
+      // SDL_SetWindowGrab(windowToCapture, captured ? SDL_TRUE : SDL_FALSE);
+      // _capturedWindow = captured ? windowToCapture : nullptr;
       _isCaptured = captured;
     }
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    setHidden(_hidden.get().payload.boolValue);
-    setCaptured(_captured.get().payload.boolValue);
-    setRelative(_relative.get().payload.boolValue);
+    // setHidden(_hidden.get().payload.boolValue);
+    // setCaptured(_captured.get().payload.boolValue);
+    // setRelative(_relative.get().payload.boolValue);
+    // TODO
 
     return input;
   }
 };
 
-template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
+template <bool Pressed> struct MouseUpDown : public Base {
   static inline Parameters params{
       {"Left", SHCCSTR("The action to perform when the left mouse button is pressed down."), {CoreInfo::ShardsOrNone}},
       {"Right",
@@ -265,8 +244,6 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
   ShardsVar _middleButton{};
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
-
     _leftButton.compose(data);
     _rightButton.compose(data);
     _middleButton.compose(data);
@@ -289,24 +266,24 @@ template <SDL_EventType EVENT_TYPE> struct MouseUpDown : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    for (auto &event : _inputContext->events) {
-      if (event.type == EVENT_TYPE) {
-        SHVar output{};
-        if (event.button.button == SDL_BUTTON_LEFT) {
-          _leftButton.activate(context, input, output);
-        } else if (event.button.button == SDL_BUTTON_RIGHT) {
-          _rightButton.activate(context, input, output);
-        } else if (event.button.button == SDL_BUTTON_MIDDLE) {
-          _middleButton.activate(context, input, output);
+    // TODO: Input
+    for (auto &event : _inputContext->getEvents()) {
+      if (const PointerButtonEvent *pbe = std::get_if<PointerButtonEvent>(&event)) {
+        if (pbe->pressed == Pressed) {
+          SHVar output{};
+          if (pbe->index == SDL_BUTTON_LEFT) {
+            _leftButton.activate(context, input, output);
+          } else if (pbe->index == SDL_BUTTON_RIGHT) {
+            _rightButton.activate(context, input, output);
+          } else if (pbe->index == SDL_BUTTON_MIDDLE) {
+            _middleButton.activate(context, input, output);
+          }
         }
       }
     }
     return input;
   }
 };
-
-using MouseUp = MouseUpDown<SDL_MOUSEBUTTONUP>;
-using MouseDown = MouseUpDown<SDL_MOUSEBUTTONDOWN>;
 
 static inline std::map<std::string, SDL_Keycode> KeycodeMap = {
     // note: keep the same order as in SDL_keycode.h
@@ -382,7 +359,7 @@ inline SDL_Keycode keyStringToKeyCode(const std::string &str) {
   throw SHException(fmt::format("Unknown key identifier: {}", str));
 }
 
-template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
+template <bool Pressed> struct KeyUpDown : public Base {
   static SHParametersInfo parameters() { return _params; }
 
   void setParam(int index, const SHVar &value) {
@@ -430,20 +407,20 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
-
     _shards.compose(data);
-
     return data.inputType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto &events = _repeat ? _inputContext->events : _inputContext->virtualInputEvents;
+    auto &events = _inputContext->getEvents();
     for (auto &event : events) {
-      if (event.type == EVENT_TYPE && event.key.keysym.sym == _keyCode) {
-        if (_repeat || event.key.repeat == 0) {
-          SHVar output{};
-          _shards.activate(context, input, output);
+      if (const KeyEvent *ke = std::get_if<KeyEvent>(&event)) {
+        if (ke->pressed == Pressed && ke->key == _keyCode) {
+
+          if (_repeat || ke->repeat == 0) {
+            SHVar output{};
+            _shards.activate(context, input, output);
+          }
         }
       }
     }
@@ -504,7 +481,7 @@ struct IsKeyDown : public Base {
   void cleanup() { baseCleanup(); }
   void warmup(SHContext *context) { baseWarmup(context); }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return Var(_inputContext->heldKeys.contains(_keyCode)); }
+  SHVar activate(SHContext *context, const SHVar &input) { return Var(_inputContext->getState().isKeyHeld(_keyCode)); }
 };
 
 struct HandleURL : public Base {
@@ -536,39 +513,45 @@ struct HandleURL : public Base {
   static SHTypeInfo outputType() { return CoreInfo::AnyType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    for (auto &ev : _inputContext->events) {
-      if (ev.type == SDL_DROPFILE || ev.type == SDL_DROPTEXT) {
-        _url.clear();
-        auto url = ev.drop.file;
-        _url.append(url);
-        SDL_free(url);
+    // TODO: Input
+    // for (auto &ev : _windowContext->events) {
+    //   if (ev.type == SDL_DROPFILE || ev.type == SDL_DROPTEXT) {
+    //     _url.clear();
+    //     auto url = ev.drop.file;
+    //     _url.append(url);
+    //     SDL_free(url);
 
-        SHVar output{};
-        _action.activate(context, Var(_url), output);
+    //     SHVar output{};
+    //     _action.activate(context, Var(_url), output);
 
-        break;
-      }
-    }
+    //     break;
+    //   }
+    // }
 
     return input;
   }
 };
 
-} // namespace Inputs
+} // namespace input
 } // namespace shards
+
 SHARDS_REGISTER_FN(inputs) {
-  using namespace shards::Inputs;
-  REGISTER_SHARD("Window.Size", WindowSize);
+  using namespace shards::input;
+  REGISTER_SHARD("Inputs.Size", InputRegionSize);
   REGISTER_SHARD("Inputs.MousePixelPos", MousePixelPos);
   REGISTER_SHARD("Inputs.MousePos", MousePos);
   REGISTER_SHARD("Inputs.MouseDelta", MouseDelta);
   REGISTER_SHARD("Inputs.Mouse", Mouse);
-  REGISTER_SHARD("Inputs.MouseUp", MouseUp);
-  REGISTER_SHARD("Inputs.MouseDown", MouseDown);
-  using KeyUp = KeyUpDown<SDL_KEYUP>;
-  using KeyDown = KeyUpDown<SDL_KEYDOWN>;
-  REGISTER_SHARD("Inputs.KeyUp", KeyUp);
-  REGISTER_SHARD("Inputs.KeyDown", KeyDown);
   REGISTER_SHARD("Inputs.IsKeyDown", IsKeyDown);
   REGISTER_SHARD("Inputs.HandleURL", HandleURL);
+
+  using MouseDown = MouseUpDown<true>;
+  using MouseUp = MouseUpDown<false>;
+  REGISTER_SHARD("Inputs.MouseDown", MouseDown);
+  REGISTER_SHARD("Inputs.MouseUp", MouseUp);
+
+  using KeyDown = KeyUpDown<true>;
+  using KeyUp = KeyUpDown<false>;
+  REGISTER_SHARD("Inputs.KeyDown", KeyDown);
+  REGISTER_SHARD("Inputs.KeyUp", KeyUp);
 }

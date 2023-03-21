@@ -16,6 +16,7 @@
 #include "shards_utils.hpp"
 #include "drawable_utils.hpp"
 #include <shards/modules/inputs/inputs.hpp>
+#include "window.hpp"
 
 using namespace shards;
 
@@ -112,7 +113,7 @@ struct RenderIntoShard {
              PARAM_IMPL_FOR(_matchOutputSize), PARAM_IMPL_FOR(_viewport), PARAM_IMPL_FOR(_windowRegion));
 
   RequiredGraphicsRendererContext _graphicsRendererContext;
-  Inputs::OptionalInputContext _inputContext;
+  shards::input::OptionalInputContext _inputContext;
   RenderTargetPtr _renderTarget;
 
   void warmup(SHContext *context) {
@@ -134,6 +135,10 @@ struct RenderIntoShard {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
+
+    if(findExposedVariable(data.shared, decltype(_inputContext)::getExposedTypeInfo().name)) {
+      _requiredVariables.push_back(decltype(_inputContext)::getExposedTypeInfo());
+    }
 
     return _contents.compose(data).outputType;
   }
@@ -258,8 +263,9 @@ struct RenderIntoShard {
 
     ctx.renderer->pushView(std::move(viewItem));
 
-    if (_inputContext) {
-      _inputContext->inputStack.push(std::move(inputItem));
+    input::InputStack *inputStack = _inputContext ? &_inputContext->getInputStack() : nullptr;
+    if (inputStack) {
+      inputStack->push(std::move(inputItem));
     }
 
     SHVar contentOutput;
@@ -267,8 +273,8 @@ struct RenderIntoShard {
 
     ctx.renderer->popView();
 
-    if (_inputContext) {
-      _inputContext->inputStack.pop();
+    if (inputStack) {
+      inputStack->pop();
     }
 
     return contentOutput;

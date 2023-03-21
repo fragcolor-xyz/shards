@@ -2,8 +2,7 @@ use super::*;
 use egui::CursorIcon;
 use egui::Event;
 use egui::Modifiers;
-use std::ffi::{CStr, CString};
-use std::ptr::null;
+use std::ffi::CStr;
 use std::slice::from_raw_parts;
 
 const SCROLL_SPEED: f32 = 50.0;
@@ -193,7 +192,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
             Ok(key) => Some(Event::Key {
               key,
               pressed: event.pressed,
-              repeat: false,
+              repeat: event.repeat,
               modifiers: event.modifiers.into(),
             }),
             Err(_) => None,
@@ -275,37 +274,5 @@ impl InputTranslator {
 
   pub fn as_mut_ptr(&self) -> *mut gfx_EguiInputTranslator {
     self.egui_translator
-  }
-
-  pub fn update_text_cursor_position(&mut self, window: *mut gfx_Window, pos: Option<egui::Pos2>) {
-    unsafe {
-      match pos {
-        Some(pos) => {
-          let native_pos: egui_Pos2 = pos.into();
-          gfx_EguiInputTranslator_updateTextCursorPosition(
-            self.egui_translator,
-            window,
-            &native_pos,
-          );
-        }
-        None => {
-          gfx_EguiInputTranslator_updateTextCursorPosition(self.egui_translator, window, null())
-        }
-      };
-    }
-  }
-
-  pub fn copy_text(&mut self, text: &String) {
-    unsafe {
-      if let Ok(c_str) = CString::new(text.to_owned()) {
-        gfx_EguiInputTranslator_copyText(self.egui_translator, c_str.as_ptr());
-      }
-    }
-  }
-
-  pub fn update_cursor_icon(&mut self, icon: egui::CursorIcon) {
-    unsafe {
-      gfx_EguiInputTranslator_updateCursorIcon(self.egui_translator, to_egui_cursor_icon(icon));
-    }
   }
 }

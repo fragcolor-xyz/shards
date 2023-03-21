@@ -21,29 +21,37 @@
 
          (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features1
          (GFX.BuiltinFeature  BuiltinFeatureId.BaseColor) >> .features1
-         (GFX.UIPass :Queue .ui-queue) >> .render-steps1
          (GFX.DrawablePass :Features .features1 :Queue .queue) >> .render-steps1
+         (GFX.UIPass :Queue .ui-queue) >> .render-steps1
 
          ;; Create view
          {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
          (GFX.View :View .view-transform) >= .view)
 
-        .view-transform (FreeCamera) > .view-transform
+        (Inputs.Detached
+         .window-ctx :Name "Camera" :Priority 1
+         :Contents
+         (->
+          .view-transform (FreeCamera) > .view-transform))
 
         .time (Math.Add timestep) > .time
 
         (spin-transform .time (Float3 -0.6 0 0))
         (GFX.Drawable :Mesh .mesh :Params {:baseColor base-color}) (GFX.Draw .queue)
 
-        (UI .ui-queue
-            (-> ; UI Content
-             (UI.Window
-              :Contents
-              (->
-               "This is UI inside a render target" (UI.Label)
-               (UI.TextField :Variable .text1 :Multiline true)
+        (Inputs.Detached
+         .window-ctx :Name "Child UI" :Priority 2
+         :Contents
+         (->
+          (UI .ui-queue
+              (-> ; UI Content
+               (UI.Window
+                :Contents
+                (->
+                 "This is UI inside a render target" (UI.Label)
+                 (UI.TextField :Variable .text1 :Multiline true)
                ;
-               ))))
+                 ))))))
 
         ; This renders to the render target that was pushed in the outer wire
         (GFX.Render :Steps .render-steps1 :View .view)))
@@ -71,39 +79,47 @@
    "Something" >= .text)
 
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
-   :Contents
+   :Title "SDL Window" :Width 1280 :Height 720
+   :DetachRenderer true) = .window-ctx
+
+  (GFX.Renderer
+   .window-ctx
    (->
     (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb) >= .rt-0
     (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb) >= .rt-1
 
-    (UI .ui-draw-queue
-        (-> ; UI Content
-         (UI.Window
-          :Contents
-          (->
-           (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
-           (compute-rt-region-16-9) > .rt-region
+    (Inputs.Detached .window-ctx :Name "Main" :Priority 0
+                     :Contents
+                     (->
+                      (UI .ui-draw-queue
+                          (-> ; UI Content
+                           (UI.Window
+                            :Contents
+                            (->
+                             (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
+                             (compute-rt-region-16-9) > .rt-region
 
-           (GFX.RenderInto :Textures {:color .rt-0} :WindowRegion .rt-region :Contents (Step inner-wire-0))
-           .rt-0 (UI.RenderTarget)
+                             (GFX.RenderInto :Textures {:color .rt-0} :WindowRegion .rt-region :Contents (Step inner-wire-0))
+                             .rt-0 (UI.RenderTarget)
 
-           (UI.Separator)
-           (UI.TextField :Variable .text :Multiline true)))
+                             (UI.Separator)
+                             (UI.TextField :Variable .text :Multiline true)))
 
-         (UI.Window
-          :Title "Second Window"
-          :Contents
-          (->
-           "Header" (UI.Label) (UI.Separator)
+                           (UI.Window
+                            :Title "Second Window"
+                            :Contents
+                            (->
+                             "Header" (UI.Label) (UI.Separator)
 
-           (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
-           (compute-rt-region-16-9) > .rt-region
+                             (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
+                             (compute-rt-region-16-9) > .rt-region
 
-           (GFX.RenderInto :Textures {:color .rt-1} :WindowRegion .rt-region :Contents (Step inner-wire-1))
-           .rt-1 (UI.RenderTarget)
+                             (GFX.RenderInto :Textures {:color .rt-1} :WindowRegion .rt-region :Contents (Step inner-wire-1))
+                             .rt-1 (UI.RenderTarget)
 
-           (UI.Separator) "Footer" (UI.Label)))))
+                             (UI.Separator) "Footer" (UI.Label)))
+
+                           (Inputs.DebugUI)))))
 
     (GFX.Render :Steps .render-steps))))
 
