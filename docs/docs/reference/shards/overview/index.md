@@ -285,4 +285,36 @@ Shards to aid Physics calculations:
 
 - [Physics.CastRay](../../../reference/shards/shards/Physics/CastRay/)
 
+## Conversion
+
+These shards are used for converting between data types.
+
+For type conversions:
+
+- [ToInt](../../../reference/shards/General/ToInt/)
+
+- [ToFloat](../../../reference/shards/General/ToFloat/)
+
+- [ToString](../../../reference/shards/General/ToString/)
+
+- [StringToBytes](../../../reference/shards/General/StringToBytes/) and [BytesToString](../../../reference/shards/General/StringToBytes/)
+
+!!! note
+    [ToBytes](../../../reference/shards/General/ToBytes/) and [FromBytes](../../../reference/shards/General/FromBytes/) serializes and deserializes values to a  Shard specific format. Do not use them interchangeably with `StringToBytes` and `BytesToString`!
+
+For converting between vector types:
+
+- [ToInt2](../../../reference/shards/General/ToInt2/)
+
+- [ToInt3](../../../reference/shards/General/ToInt3/)
+
+- [ToFloat2](../../../reference/shards/General/ToFloat2/)
+
+- [ToFloat3](../../../reference/shards/General/ToFloat3/)
+
+!!! note
+    To construct vectors out of components, you can employ the [type's keyword](../../../reference/shards/types).
+    
+    For example, you can use `(float2 x y)` to create a vector with the values `x` and `y`.
+
 --8<-- "includes/license.md"
