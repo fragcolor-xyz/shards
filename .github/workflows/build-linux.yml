@@ -11,6 +11,7 @@ on:
         options:
           - Debug
           - Release
+          - Release optimized
       run-tests:
         description: Run the tests?
         required: false
@@ -57,7 +58,14 @@ jobs:
       - name: Setup
         id: setup
         run: |
-          echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
+          if [ "${{ github.event.inputs.build-type || inputs.build-type }}" == "Release optimized" ]
+          then
+            echo "build-type=Release" >> $GITHUB_OUTPUT
+            echo "optimized=true" >> $GITHUB_OUTPUT
+          else
+            echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
+            echo "optimized=false" >> $GITHUB_OUTPUT
+          fi
           echo "run-tests=${{ github.event.inputs.run-tests || inputs.run-tests }}" >> $GITHUB_OUTPUT
           echo "rust-cache=${{ github.event.inputs.rust-cache || inputs.rust-cache }}" >> $GITHUB_OUTPUT
       - name: Checkout shards
@@ -85,7 +93,7 @@ jobs:
           if [ "${{ steps.setup.outputs.build-type }}" == "Debug" ]; then
             cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DUSE_UBSAN=ON -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
           else
-            cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_UBSAN=ON ..
+            cmake -G Ninja -DSKIP_HEAVY_INLINE=${{ steps.setup.outputs.optimized == 'false' }} -DCMAKE_BUILD_TYPE=Release -DUSE_UBSAN=ON ..
           fi
 
           ninja shards

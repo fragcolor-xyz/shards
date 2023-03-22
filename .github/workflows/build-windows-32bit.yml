@@ -11,6 +11,7 @@ on:
         options:
           - Debug
           - Release
+          - Release optimized
       binary-type:
         description: Executable or dynamic library?
         required: false
@@ -73,7 +74,14 @@ jobs:
         id: setup
         shell: bash
         run: |
-          echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
+          if [ "${{ github.event.inputs.build-type || inputs.build-type }}" == "Release optimized" ]
+          then
+            echo "build-type=Release" >> $GITHUB_OUTPUT
+            echo "optimized=true" >> $GITHUB_OUTPUT
+          else
+            echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
+            echo "optimized=false" >> $GITHUB_OUTPUT
+          fi
           echo "binary-type=${{ github.event.inputs.binary-type || inputs.binary-type }}" >> $GITHUB_OUTPUT
           echo "run-tests=${{ github.event.inputs.run-tests || inputs.run-tests }}" >> $GITHUB_OUTPUT
           echo "runtime-tests=${{ github.event.inputs.runtime-tests || inputs.runtime-tests }}" >> $GITHUB_OUTPUT
@@ -137,13 +145,19 @@ jobs:
           ./bootstrap
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
+          cmake -G Ninja \
+            -DSKIP_HEAVY_INLINE=${{ steps.setup.outputs.optimized == 'false' }} \
+            -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           echo "Building shards"
           ninja ${{ steps.setup.outputs.build-target }}
-          echo "Building runtime tests"
-          ninja test-runtime
-          echo "Building graphics tests"
-          ninja test-gfx
+
+          if [ "${{ steps.setup.outputs.runtime-tests }}" == "true" ]
+          then
+            echo "Building runtime tests"
+            ninja test-runtime
+            echo "Building graphics tests"
+            ninja test-gfx
+          fi
       # Minimize disk usage to prevent the next steps getting stuck on glTF models
       - name: Minimize disk usage
         env:
