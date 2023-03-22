@@ -134,6 +134,19 @@ jobs:
           ln -s ../../shards-examples/tutorials/
           cd docs/learn/shards
           ln -s ../../../../../shards-examples/tutorials/
+      - name: Checkout fragnova
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/fragnova
+          fetch-depth: 1
+          path: fragnova
+      - name: Link fragnova
+        run: |
+          # note: we link twice because some relative path (esp. include) might be incorrect
+          cd shards/docs
+          ln -s ../../fragnova/docs/fragnova-network
+          cd docs/learn
+          ln -s ../../../../fragnova/docs/fragnova-network
       - name: Build website
         if: ${{ steps.setup.outputs.publish != 'true' }}
         run: |
