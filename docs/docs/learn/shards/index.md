@@ -1,6 +1,7 @@
 ---
 authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
+title: Learn Shards
 ---
 
 ![](assets/ShardsLogo.png){ width=180 }

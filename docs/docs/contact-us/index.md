@@ -1,6 +1,7 @@
 ---
 authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
+title: Contact Us
 ---
 
 ![](assets/ContactUsLogo.png){ width=180 }
