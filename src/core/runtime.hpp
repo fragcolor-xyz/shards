@@ -119,6 +119,7 @@ struct SHContext {
   SHCoro *continuation{nullptr};
 #endif
   SHDuration next{};
+  entt::delegate<void()> mainThreadTask;
 
   SHWire *currentWire() const { return wireStack.back(); }
 
@@ -198,6 +199,26 @@ inline SHRunWireOutput runSubWire(SHWire *wire, SHContext *context, const SHVar 
   DEFER({ context->wireStack.pop_back(); });
   auto runRes = shards::runWire(wire, context, input);
   return runRes;
+}
+
+template <typename DELEGATE> void callOnMainThread(SHContext *context, DELEGATE &func) {
+  if (unlikely(!context->shouldContinue() || context->onCleanup)) {
+    throw ActivationError("Trying to suspend a terminated context!");
+  } else if (unlikely(!context->continuation)) {
+    throw ActivationError("Trying to suspend a context without coroutine!");
+  }
+
+  assert(!context->mainThreadTask);
+  context->mainThreadTask.connect<&DELEGATE::action>(func);
+
+#ifndef __EMSCRIPTEN__
+  context->continuation = context->continuation.resume();
+#else
+  context->continuation->yield();
+#endif
+
+  // RESUMING
+  context->mainThreadTask.reset();
 }
 
 #ifndef __EMSCRIPTEN__
@@ -306,15 +327,27 @@ inline bool tick(SHWire *wire, SHDuration now) {
     return false; // check if not null and bool operator also to see if alive!
 
   if (now >= wire->context->next) {
-    TracyCoroEnter(wire);
+    while (true) {
+      TracyCoroEnter(wire);
 
 #ifndef __EMSCRIPTEN__
-    *wire->coro = wire->coro->resume();
+      *wire->coro = wire->coro->resume();
 #else
-    wire->coro->resume();
+      wire->coro->resume();
 #endif
 
-    TracyCoroExit(wire);
+      // CORO EXITED
+      TracyCoroExit(wire);
+
+      if (unlikely((bool)wire->context->mainThreadTask)) {
+        // if we have a task to run, run it and resume coro asap
+        wire->context->mainThreadTask();
+        wire->context->mainThreadTask.reset();
+        // and continue in order to resume the coro
+      } else {
+        break;
+      }
+    }
   }
   return true;
 }
