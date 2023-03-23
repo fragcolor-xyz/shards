@@ -505,6 +505,8 @@ struct IsKeyDown : public Base {
   SHVar activate(SHContext *context, const SHVar &input) { return Var(_inputContext->heldKeys.contains(_keyCode)); }
 };
 
+typedef  KeyUpDown<SDL_EVENT_KEY_UP> SKeyUp;
+typedef  KeyUpDown<SDL_EVENT_KEY_DOWN> SKeyDown;
 void registerShards() {
   REGISTER_SHARD("Window.Size", WindowSize);
   REGISTER_SHARD("Inputs.MousePixelPos", MousePixelPos);
@@ -513,10 +515,8 @@ void registerShards() {
   REGISTER_SHARD("Inputs.Mouse", Mouse);
   REGISTER_SHARD("Inputs.MouseUp", MouseUp);
   REGISTER_SHARD("Inputs.MouseDown", MouseDown);
-  using KeyUp = KeyUpDown<SDL_KEYUP>;
-  using KeyDown = KeyUpDown<SDL_KEYDOWN>;
-  REGISTER_SHARD("Inputs.KeyUp", KeyUp);
-  REGISTER_SHARD("Inputs.KeyDown", KeyDown);
+  REGISTER_SHARD("Inputs.KeyUp", SKeyUp);
+  REGISTER_SHARD("Inputs.KeyDown", SKeyDown);
   REGISTER_SHARD("Inputs.IsKeyDown", IsKeyDown);
 }
 } // namespace Inputs

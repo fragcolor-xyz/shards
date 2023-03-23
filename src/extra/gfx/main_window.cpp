@@ -203,12 +203,12 @@ struct MainWindow final {
 
     for (auto &evt : _inputContext.events) {
       switch (evt.type) {
-      case SDL_KEYDOWN:
+      case SDL_EVENT_KEY_DOWN:
         if (heldKeys.insert(evt.key.keysym.sym).second) {
           virtualInputEvents.push_back(evt);
         }
         break;
-      case SDL_KEYUP:
+      case SDL_EVENT_KEY_UP:
         if (heldKeys.contains(evt.key.keysym.sym)) {
           heldKeys.erase(evt.key.keysym.sym);
           virtualInputEvents.push_back(evt);
@@ -235,7 +235,7 @@ struct MainWindow final {
         SDL_Event evt{
             .key =
                 {
-                    .type = SDL_KEYUP,
+                    .type = SDL_EVENT_KEY_UP,
                     .state = SDL_RELEASED,
                     .keysym =
                         {

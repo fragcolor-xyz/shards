@@ -117,9 +117,9 @@ void Window::move(int2 targetPosition) { SDL_SetWindowPosition(window, targetPos
 static float2 getUIScaleFromDisplayDPI(int displayIndex) {
   float2 dpi;
   float diagonalDpi;
-  if (SDL_GetDisplayDPI(displayIndex, &diagonalDpi, &dpi.x, &dpi.y) != 0) {
-    return float2(1.0f);
-  }
+  // if (SDL_GetDisplayDPI(displayIndex, &diagonalDpi, &dpi.x, &dpi.y) != 0) {
+  return float2(1.0f);
+  // }
 
 #if GFX_WINDOWS
   // DPI for 100% on windows

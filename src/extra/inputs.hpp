@@ -3,7 +3,7 @@
 
 #include <boost/container/flat_set.hpp>
 #include "gfx/window.hpp"
-#include <SDL_keycode.h>
+#include <SDL3/SDL_keycode.h>
 #include <foundation.hpp>
 #include <input/input_stack.hpp>
 #include <exposed_type_utils.hpp>

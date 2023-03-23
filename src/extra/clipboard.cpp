@@ -1,5 +1,5 @@
-#include <SDL.h>
-#include <SDL_clipboard.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_clipboard.h>
 #include "runtime.hpp"
 #include "common_types.hpp"
 
