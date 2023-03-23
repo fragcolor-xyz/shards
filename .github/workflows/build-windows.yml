@@ -296,20 +296,26 @@ jobs:
           RUST_BACKTRACE: 1
         shell: bash
         run: |
-          cd build
-          echo "Running test: gfx_window"
-          ./shards ../src/tests/gfx-window.edn
-          echo "Running test: gfx_cube"
-          ./shards ../src/tests/gfx-cube.edn
-          echo "Running test: gfx_materials"
-          ./shards ../src/tests/gfx-materials.edn
-          echo "Running test: ui"
-          ./shards ../src/tests/ui-0.edn
-          ./shards ../src/tests/ui-1.edn
-          echo "Running test: egui_demo"
-          ./shards ../src/tests/egui-demo.edn
-          echo "Running test: egui-plot"
-          ./shards ../src/tests/egui-plot.edn
+          echo "Running gfx test scripts"
+          for i in $(find src/tests -name 'gfx-*.edn');
+          do
+            echo "Running $i"
+            build/shards "$i"
+          done
+
+          echo "Running egui test scripts"
+          for i in $(find src/tests -name 'egui-*.edn');
+          do
+            echo "Running $i"
+            build/shards "$i"
+          done
+
+          echo "Running UI test scripts"
+          for i in $(find src/tests -name 'ui-*.edn');
+          do
+            echo "Running $i"
+            build/shards "$i"
+          done
       - name: Physics Test
         env:
           GFX_BACKEND: D3D12
