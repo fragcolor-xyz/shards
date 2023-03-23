@@ -34,7 +34,7 @@ struct EntryPoint {
   template <typename T>
   EntryPoint(const std::string &name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment,
              T &&code = BlockPtr())
-      : stage(stage), name(name), code(blocks::ConvertToBlock<T>{}(std::move(code))) {}
+      : stage(stage), name(name), code(blocks::ConvertToBlock<T>{}(std::forward<T>(code))) {}
 
   EntryPoint(EntryPoint &&other) = default;
   EntryPoint &operator=(EntryPoint &&other) = default;

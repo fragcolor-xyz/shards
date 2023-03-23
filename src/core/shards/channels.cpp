@@ -201,7 +201,7 @@ struct BufferedConsumer {
       SHVar res{};
       res.valueType = SHType::Seq;
       res.payload.seqValue.elements = &buffer[0];
-      res.payload.seqValue.len = buffer.size();
+      res.payload.seqValue.len = uint32_t(buffer.size());
       return res;
     } else {
       return buffer[0];

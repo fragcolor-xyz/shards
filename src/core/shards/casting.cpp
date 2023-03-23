@@ -19,7 +19,7 @@ struct FromImage {
       if (input.valueType != SHType::Image)
         throw ActivationError("Expected Image type.");
 
-      auto pixsize = getPixelSize(input);
+      int pixsize = int(getPixelSize(input));
 
       const int w = int(input.payload.imageValue.width);
       const int h = int(input.payload.imageValue.height);

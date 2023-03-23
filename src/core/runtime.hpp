@@ -1079,7 +1079,7 @@ struct Serialization {
         SHString k;
         SHVar v;
         while (t.api->tableNext(t, &tit, &k, &v)) {
-          uint32_t klen = strlen(k);
+          auto klen = uint32_t(strlen(k));
           write((const uint8_t *)&klen, sizeof(uint32_t));
           total += sizeof(uint32_t);
           write((const uint8_t *)k, klen);

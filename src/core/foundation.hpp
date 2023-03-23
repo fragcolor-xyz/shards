@@ -1346,7 +1346,7 @@ struct VarStringStream {
         stream << "0x" << std::hex;
         auto len = var.payload.stringLen;
         if (len == 0 && var.payload.stringValue) {
-          len = strlen(var.payload.stringValue);
+          len = uint32_t(strlen(var.payload.stringValue));
         }
         for (uint32_t i = 0; i < len; i++)
           stream << std::setw(2) << std::setfill('0') << (int)var.payload.stringValue[i];

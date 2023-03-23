@@ -138,7 +138,7 @@ typedef std::variant<ClearStep, RenderDrawablesStep, RenderFullscreenStep> Pipel
 typedef std::shared_ptr<PipelineStep> PipelineStepPtr;
 typedef boost::container::small_vector<PipelineStepPtr, 8> PipelineSteps;
 
-template <typename T> PipelineStepPtr makePipelineStep(T &&step) { return std::make_shared<PipelineStep>(std::move(step)); }
+template <typename T> PipelineStepPtr makePipelineStep(T &&step) { return std::make_shared<PipelineStep>(std::forward<T>(step)); }
 } // namespace gfx
 
 #endif /* D251FF97_80A2_4ACD_856B_0D3A776BB7A7 */
