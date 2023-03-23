@@ -21,7 +21,7 @@ on:
           - Exe
           - Library
       runtime-tests:
-        description: Run the runtime tests (Debug only)?
+        description: Run the runtime tests?
         required: false
         default: false
         type: boolean
@@ -157,8 +157,8 @@ jobs:
           rm -rf build/deps
           rm -rf build/_deps
           rm -rf build/.cache
-      - name: Test runtime (Debug)
-        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
+      - name: Test runtime
+        if: ${{ steps.setup.outputs.runtime-tests == 'true' }}
         env:
           RUST_BACKTRACE: 1
         shell: bash
@@ -166,15 +166,14 @@ jobs:
           cd build
           ./test-runtime
       - name: Checkout glTF-Sample-Models
-        # Match with test step below
-        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
+        if: ${{ steps.setup.outputs.runtime-tests == 'true' }}
         uses: actions/checkout@v3
         with:
           repository: KhronosGroup/glTF-Sample-Models
           path: external/glTF-Sample-Models
           fetch-depth: 1
-      - name: Test graphics (Debug)
-        if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
+      - name: Test graphics
+        if: ${{ steps.setup.outputs.runtime-tests == 'true' }}
         env:
           RUST_BACKTRACE: 1
         shell: bash
@@ -223,6 +222,12 @@ jobs:
         with:
           name: ${{ needs.Windows.outputs.artifact-name }}
           path: build
+      - name: Checkout glTF-Sample-Models
+        uses: actions/checkout@v3
+        with:
+          repository: KhronosGroup/glTF-Sample-Models
+          path: external/glTF-Sample-Models
+          fetch-depth: 1
       - name: Test
         env:
           RUST_BACKTRACE: 1
