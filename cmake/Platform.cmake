@@ -168,6 +168,22 @@ if(DESKTOP_LINUX OR APPLE AND USE_UBSAN)
   add_compile_definitions(SH_USE_UBSAN)
 endif()
 
+option(USE_ASAN "Use address sanitizer" OFF)
+
+if(DESKTOP_LINUX OR APPLE AND USE_ASAN)
+  add_compile_options(-DBOOST_USE_ASAN -fsanitize=address -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-omit-frame-pointer -g -O1)
+  add_link_options(-DBOOST_USE_ASAN -fsanitize=address -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-omit-frame-pointer -g -O1)
+  add_compile_definitions(SH_USE_ASAN)
+endif()
+
+option(USE_LSAN "Use address sanitizer" OFF)
+
+if(DESKTOP_LINUX OR APPLE AND USE_LSAN)
+  add_compile_options(-fsanitize=leak -fno-omit-frame-pointer -g -O1)
+  add_link_options(-fsanitize=leak -fno-omit-frame-pointer -g -O1)
+  add_compile_definitions(SH_USE_LSAN)
+endif()
+
 if(CODE_COVERAGE)
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     add_compile_options(--coverage)
