@@ -483,7 +483,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     observer.before_prepare(wire.get());
     // create a flow as well
-    shards::prepare(wire.get(), _flows.emplace_back(new SHFlow{wire.get()}).get());
+    shards::prepare(wire.get(), &_flowPool.emplace_back());
     observer.before_start(wire.get());
     shards::start(wire.get(), input);
 
@@ -508,27 +508,27 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       terminate();
     } else {
       SHDuration now = SHClock::now().time_since_epoch();
-      for (auto it = _flows.begin(); it != _flows.end();) {
+      for (auto it = _flowPool.begin(); it != _flowPool.end();) {
         auto &flow = *it;
-        observer.before_tick(flow->wire);
-        shards::tick(flow->wire, now);
-        if (unlikely(!shards::isRunning(flow->wire))) {
-          if (flow->wire->finishedError.size() > 0) {
-            _errors.emplace_back(flow->wire->finishedError);
+        observer.before_tick(flow.wire);
+        shards::tick(flow.wire, now);
+        if (unlikely(!shards::isRunning(flow.wire))) {
+          if (flow.wire->finishedError.size() > 0) {
+            _errors.emplace_back(flow.wire->finishedError);
           }
 
-          if (flow->wire->state == SHWire::State::Failed) {
-            _failedWires.emplace_back(flow->wire);
+          if (flow.wire->state == SHWire::State::Failed) {
+            _failedWires.emplace_back(flow.wire);
             noErrors = false;
           }
 
-          observer.before_stop(flow->wire);
-          if (!shards::stop(flow->wire)) {
+          observer.before_stop(flow.wire);
+          if (!shards::stop(flow.wire)) {
             noErrors = false;
           }
 
-          flow->wire->mesh.reset();
-          it = _flows.erase(it);
+          flow.wire->mesh.reset();
+          it = _flowPool.erase(it);
         } else {
           ++it;
         }
@@ -549,7 +549,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       wire->mesh.reset();
     }
 
-    _flows.clear();
+    _flowPool.clear();
 
     // release all wires
     scheduled.clear();
@@ -568,13 +568,13 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   void remove(const std::shared_ptr<SHWire> &wire) {
     shards::stop(wire.get());
-    _flows.remove_if([wire](auto &flow) { return flow->wire == wire.get(); });
+    _flowPool.remove_if([wire](auto &flow) { return flow.wire == wire.get(); });
     wire->mesh.reset();
     visitedWires.erase(wire.get());
     scheduled.erase(wire);
   }
 
-  bool empty() { return _flows.empty(); }
+  bool empty() { return _flowPool.empty(); }
 
   const std::vector<std::string> &errors() { return _errors; }
 
@@ -595,7 +595,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 private:
   SHMesh() = default;
 
-  std::list<std::shared_ptr<SHFlow>> _flows;
+  std::list<SHFlow> _flowPool;
   std::vector<std::string> _errors;
   std::vector<SHWire *> _failedWires;
 };
