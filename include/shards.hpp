@@ -994,8 +994,9 @@ template <typename TGenericArray, class Function> inline void ForEach(const TGen
 class WireProvider {
   // used specially for live editing wires, from host languages
 public:
+  static constexpr int CC = 'wrpr';
   static inline Type NoneType{{SHType::None}};
-  static inline Type ProviderType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = 'chnp'}}}};
+  static inline Type ProviderType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = CC}}}};
   static inline Types ProviderOrNone{{ProviderType, NoneType}};
 
   WireProvider() {
@@ -1042,7 +1043,7 @@ public:
     SHVar res{};
     res.valueType = SHType::Object;
     res.payload.objectVendorId = CoreCC;
-    res.payload.objectTypeId = 'chnp';
+    res.payload.objectTypeId = CC;
     res.payload.objectValue = &_provider;
     return res;
   }

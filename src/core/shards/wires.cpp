@@ -14,6 +14,7 @@
 #include "foundation.hpp"
 #include "ops_internal.hpp"
 #include "shards.h"
+#include "shards.hpp"
 
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
 // Remove define from winspool.h
@@ -971,7 +972,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
     switch (index) {
     case 0:
       if (_provider) {
-        return Var::Object(_provider, CoreCC, 'chnp');
+        return Var::Object(_provider, CoreCC, WireProvider::CC);
       } else {
         return Var();
       }
