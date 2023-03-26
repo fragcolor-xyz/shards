@@ -597,6 +597,10 @@ void registerCastingShards() {
   REGISTER_SHARD("ExpectInt3", ExpectInt3);
   using ExpectInt4 = ExpectX<SHType::Int4>;
   REGISTER_SHARD("ExpectInt4", ExpectInt4);
+  using ExpectInt8 = ExpectX<SHType::Int8>;
+  REGISTER_SHARD("ExpectInt8", ExpectInt8);
+  using ExpectInt16 = ExpectX<SHType::Int16>;
+  REGISTER_SHARD("ExpectInt16", ExpectInt16);
   using ExpectFloat = ExpectX<SHType::Float>;
   REGISTER_SHARD("ExpectFloat", ExpectFloat);
   using ExpectFloat2 = ExpectX<SHType::Float2>;
