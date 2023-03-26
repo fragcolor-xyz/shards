@@ -483,6 +483,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     observer.before_prepare(wire.get());
     // create a flow as well
+    auto &flow = _flowPool.emplace_back();
+    flow.wire = wire.get();
     shards::prepare(wire.get(), &_flowPool.emplace_back());
     observer.before_start(wire.get());
     shards::start(wire.get(), input);
