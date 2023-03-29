@@ -191,6 +191,13 @@ impl Shard for Style {
         (f32, f32),
         style.spacing.button_padding
       );
+      apply_style!(
+        spacing,
+        "menu_margin",
+        (f32, f32, f32, f32),
+        style.spacing.menu_margin,
+        style_util::get_margin
+      );
       apply_style!(spacing, "indent", f32, style.spacing.indent);
       apply_style!(
         spacing,
@@ -213,6 +220,7 @@ impl Shard for Style {
         style.spacing.icon_width_inner
       );
       apply_style!(spacing, "icon_spacing", f32, style.spacing.icon_spacing);
+      apply_style!(spacing, "tooltip_width", f32, style.spacing.tooltip_width);
       apply_style!(
         spacing,
         "indent_ends_with_horizontal_line",
@@ -225,6 +233,18 @@ impl Shard for Style {
         "scroll_bar_width",
         f32,
         style.spacing.scroll_bar_width
+      );
+      apply_style!(
+        spacing,
+        "scroll_bar_inner_margin",
+        f32,
+        style.spacing.scroll_bar_inner_margin
+      );
+      apply_style!(
+        spacing,
+        "scroll_bar_outer_margin",
+        f32,
+        style.spacing.scroll_bar_outer_margin
       );
     }
 
@@ -364,6 +384,27 @@ impl Shard for Style {
       );
       apply_style!(
         visuals,
+        "window_fill",
+        SHColor,
+        style.visuals.window_fill,
+        style_util::get_color
+      );
+      apply_style!(
+        visuals,
+        "window_stroke",
+        Table,
+        style.visuals.window_stroke,
+        style_util::get_stroke
+      );
+      apply_style!(
+        visuals,
+        "panel_fill",
+        SHColor,
+        style.visuals.panel_fill,
+        style_util::get_color
+      );
+      apply_style!(
+        visuals,
         "popup_shadow",
         Table,
         style.visuals.popup_shadow,
@@ -422,6 +463,18 @@ impl Shard for Style {
         style.debug.show_expand_height
       );
       apply_style!(debug, "show_resize", bool, style.debug.show_resize);
+      apply_style!(
+        debug,
+        "show_interactive_widgets",
+        bool,
+        style.debug.show_interactive_widgets
+      );
+      apply_style!(
+        debug,
+        "show_blocking_widget",
+        bool,
+        style.debug.show_blocking_widget
+      );
     }
 
     apply_style!(
