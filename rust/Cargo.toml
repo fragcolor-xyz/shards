@@ -10,29 +10,29 @@ edition = "2021"
 crate-type = ["rlib", "staticlib"]
 
 [dependencies]
-approx = "0.5.0"
+approx = "0.5.1"
 lazy_static = "1.4.0"
 compile-time-crc32 = "0.1.2"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0.64" }
+serde_json = { version = "1.0.95" }
 tiny-keccak = { version = "2.0.2", features = ["keccak", "sha3"], optional = true }
-libsecp256k1 = { version = "0.7.0", optional = true }
-hex = { version = "0.4.2", optional = true }
-crossbeam = { version = "0.8.1", optional = true }
+libsecp256k1 = { version = "0.7.1", optional = true }
+hex = { version = "0.4.3", optional = true }
+crossbeam = { version = "0.8.2", optional = true }
 rapier3d = { version = "0.16.1", optional = true }
 bs58 = { version = "0.4.0", optional = true }
-sha2 = { version = "0.10.0", optional = true }
+sha2 = { version = "0.10.6", optional = true }
 wasabi_leb128 = { version = "0.4.0", optional = true }
 
 resvg = { version = "0.23.0", optional = true }
 usvg = { version = "0.23.0", optional = true }
 # svg crates require 0.6.3 for now
-tiny-skia = { version = "0.6.3", optional = true }
+tiny-skia = { version = "0.6.6", optional = true }
 
-instant = { version = "0.1.10", features = [ "now" ] }
-ethereum-types = { version = "0.12.0", optional = true }
+instant = { version = "0.1.12", features = [ "now" ] }
+ethereum-types = { version = "0.12.1", optional = true }
 ethabi = { version = "16.0.0", optional = true }
-ext-csv = {  package = "csv", version = "1.1", optional = true }
+ext-csv = {  package = "csv", version = "1.2", optional = true }
 
 # can't seem to update those as they crash on windows release builds.....
 sp-core = { version = "4.1.0-dev", git = "https://github.com/fragcolor-xyz/substrate.git", tag = 'monthly-2022-01', optional = true }
@@ -40,17 +40,17 @@ parity-scale-codec = { version = "2.3.1", default-features = false, optional = t
 
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"], optional = true }
 
-chacha20poly1305 = { version = "0.9.0", optional = true }
+chacha20poly1305 = { version = "0.9.1", optional = true }
 egui = { version = "0.20.1", optional = true, features = ["persistence"] }
 egui_commonmark = { version = "0.6.0", optional = true }
-egui_dock = { version = "0.3.0", optional = true }
+egui_dock = { version = "0.3.1", optional = true }
 egui_extras = { version = "0.20.0", optional = true }
 egui-gfx = { path = "../src/gfx/egui", optional = true }
 egui_memory_editor = { version = "0.2.2", optional = true }
 syntect = { version = "5.0.0", default-features = false, features = ["default-fancy"], optional = true }
-half = { version = "2.0.0" }
-tract-onnx = { version = "0.19.2", optional = true }
-enum-map = { version = "2.4.1", optional = true }
+half = { version = "2.2.1" }
+tract-onnx = { version = "0.19.8", optional = true }
+enum-map = { version = "2.5.0", optional = true }
 rmp-serde = { version = "1.1.1", optional = true }
 
 [target.'cfg(any(target_os="windows", target_os="macos"))'.dependencies]
@@ -61,11 +61,11 @@ rfd = { version = "0.11", git = "https://github.com/shards-lang/rfd.git", tag = 
 
 [target.'cfg(not(target_arch="wasm32"))'.dependencies]
 dlopen = { version = "0.1.8", optional = true }
-reqwest = { version = "0.11.0", features = ["blocking"], optional = true }
+reqwest = { version = "0.11.16", features = ["blocking"], optional = true }
 tungstenite = { version = "0.18.0", features = ["native-tls"], optional = true }
 
 [dev-dependencies]
-ctor = "0.1.16"
+ctor = "0.1.26"
 
 [build-dependencies]
 bindgen = { version = "0.64.0" }
@@ -74,7 +74,37 @@ gfx-build = { path = "../src/gfx/rust/build" }
 [features]
 default = []
 dummy = []
-shards = ["reqwest", "tiny-keccak", "libsecp256k1", "hex", "rapier3d", "crossbeam", "bs58", "sha2", "wasabi_leb128", "usvg", "resvg", "tiny-skia", "ethabi", "ethereum-types", "ext-csv", "sp-core", "parity-scale-codec", "chacha20poly1305", "chrono", "egui", "egui_commonmark", "egui_dock", "egui_extras", "egui-gfx", "code_editor", "hex_viewer", "rfd", "tract-onnx", "tungstenite", "enum-map", "rmp-serde"]
+shards = ["reqwest",
+          "tiny-keccak",
+          "libsecp256k1",
+          "hex",
+          "rapier3d",
+          "crossbeam",
+          "bs58",
+          "sha2",
+          "wasabi_leb128",
+          "usvg",
+          "resvg",
+          "tiny-skia",
+          "ethabi",
+          "ethereum-types",
+          "ext-csv",
+          "sp-core",
+          "parity-scale-codec",
+          "chacha20poly1305",
+          "chrono",
+          "egui",
+          "egui_commonmark",
+          "egui_dock",
+          "egui_extras",
+          "egui-gfx",
+          "code_editor",
+          "hex_viewer",
+          "rfd",
+          "tract-onnx",
+          "tungstenite",
+          "enum-map",
+          "rmp-serde"]
 code_editor = ["syntect", "egui_commonmark/syntax_highlighting"]
 hex_viewer = ["egui_memory_editor"]
 dllshard = ["dlopen"]
