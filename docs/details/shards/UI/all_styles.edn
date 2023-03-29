@@ -1,0 +1,146 @@
+(def default_style
+  {:override_text_style nil
+   :override_font_id nil
+   :text_styles
+   [{:name "Small"
+     :size 9.0
+     :family "Proportional"}
+    {:name "Body"
+     :size 12.5
+     :family "Proportional"}
+    {:name "Monospace"
+     :size 12.0
+     :family "Monospace"}
+    {:name "Button"
+     :size 12.5
+     :family "Proportional"}
+    {:name "Heading"
+     :size 18.0
+     :family "Proportional"}]
+   :drag_value_text_style "Button"
+   :wrap nil
+   :spacing
+   {:item_spacing (float2 8.0 3.0)
+    :window_margin (float4 6.0 6.0 6.0 6.0)
+    :button_padding (float2 4.0 1.0)
+    :menu_margin (float4 6.0 6.0 6.0 6.0)
+    :indent 18.0
+    :interact_size (float2 40.0 18.0)
+    :slider_width 100.0
+    :combo_width 100.0
+    :text_edit_width 280.0
+    :icon_width 14.0
+    :icon_width_inner 8.0
+    :icon_spacing 4.0
+    :tooltip_width 600.0
+    :indent_ends_with_horizontal_line false
+    :combo_height 200.0
+    :scroll_bar_width 8.0
+    :scroll_handle_min_length 12.0
+    :scroll_bar_inner_margin 4.0
+    :scroll_bar_outer_margin 0.0}
+   :interaction
+   {:resize_grab_radius_side 5.0
+    :resize_grab_radius_corner 10.0
+    :show_tooltips_only_when_still true}
+   :visuals
+   {:dark_mode true
+    :override_text_color nil
+    :widgets
+    {:noninteractive
+     {:bg_fill (color 27 27 27 255)
+      :weak_bg_fill (color 27 27 27 255)
+      :bg_stroke
+      {:width 1.0
+       :color (color 60 60 60 255)}
+      :rounding (float4 2.0 2.0 2.0 2.0)
+      :fg_stroke
+      {:width 1.0
+       :color (color 140 140 140 255)}
+      :expansion 0.0}
+     :inactive
+     {:bg_fill (color 60 60 60 255)
+      :weak_bg_fill (color 60 60 60 255)
+      :bg_stroke
+      {:width 0.0
+       :color (color 0 0 0 0)}
+      :rounding (float4 2.0 2.0 2.0 2.0)
+      :fg_stroke
+      {:width 1.0
+       :color (color 180 180 180 255)}
+      :expansion 0.0}
+     :hovered
+     {:bg_fill (color 70 70 70 255)
+      :weak_bg_fill (color 70 70 70 255)
+      :bg_stroke
+      {:width 1.0
+       :color (color 150 150 150 255)}
+      :rounding (float4 3.0 3.0 3.0 3.0)
+      :fg_stroke
+      {:width 1.5
+       :color (color 240 240 240 255)}
+      :expansion 1.0}
+     :active
+     {:bg_fill (color 55 55 55 255)
+      :weak_bg_fill (color 55 55 55 255)
+      :bg_stroke
+      {:width 1.0
+       :color (color 255 255 255 255)}
+      :rounding (float4 2.0 2.0 2.0 2.0)
+      :fg_stroke
+      {:width 2.0
+       :color (color 255 255 255 255)}
+      :expansion 1.0}
+     :open
+     {:bg_fill (color 27 27 27 255)
+      :weak_bg_fill (color 27 27 27 255)
+      :bg_stroke
+      {:width 1.0
+       :color (color 60 60 60 255)}
+      :rounding (float4 2.0 2.0 2.0 2.0)
+      :fg_stroke
+      {:width 1.0
+       :color (color 210 210 210 255)}
+      :expansion 0.0}}
+    :selection
+    {:bg_fill (color 0 92 128 255)
+     :stroke
+     {:width 1.0
+      :color (color 192 222 255 255)}}
+    :hyperlink_color (color 90 170 255 255)
+    :faint_bg_color (color 35 35 35 255)
+    :extreme_bg_color (color 10 10 10 255)
+    :code_bg_color (color 64 64 64 255)
+    :warn_fg_color (color 255 143 0 255)
+    :error_fg_color (color 255 0 0 255)
+    :window_rounding (float4 6.0 6.0 6.0 6.0)
+    :window_shadow
+    {:extrusion 32.0
+     :color (color 0 0 0 96)}
+    :window_fill (color 27 27 27 255)
+    :window_stroke
+    {:width 1.0
+     :color (color 60 60 60 255)}
+    :menu_rounding (float4 6.0 6.0 6.0 6.0)
+    :panel_fill (color 27 27 27 255)
+    :popup_shadow
+    {:extrusion 16.0
+     :color (color 0 0 0 96)}
+    :resize_corner_size 12.0
+    :text_cursor_width 2.0
+    :text_cursor_preview false
+    :clip_rect_margin 3.0
+    :button_frame true
+    :collapsing_header_frame false
+    :indent_has_left_vline true
+    :striped false
+    :slider_trailing_fill false}
+   :animation_time 0.083333336
+   :debug
+   {:debug_on_hover false
+    :show_expand_width false
+    :show_expand_height false
+    :show_resize false
+    :show_interactive_widgets false
+    :show_blocking_widget false}
+   :explanation_tooltips false})
