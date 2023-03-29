@@ -38,6 +38,29 @@ macro_rules! apply_style {
   };
 }
 
+macro_rules! apply_style_or_none {
+  ($table:ident, $name:literal, $type:ty, $style_path:expr) => {
+    if let Some(value) = $table.get_static(cstr!($name)) {
+      if value.valueType == $crate::shardsc::SHType_None {
+        $style_path = None;
+      } else {
+        let value: $type = value.try_into()?;
+        $style_path = value.into();
+      }
+    }
+  };
+  ($table:ident, $name:literal, $type:ty, $style_path:expr, $convert:expr) => {
+    if let Some(value) = $table.get_static(cstr!($name)) {
+      if value.valueType == $crate::shardsc::SHType_None {
+        $style_path = None;
+      } else {
+        let value: $type = value.try_into()?;
+        $style_path = $convert(value).into();
+      }
+    }
+  };
+}
+
 impl Default for Style {
   fn default() -> Self {
     let mut ctx = ParamVar::default();
@@ -131,14 +154,14 @@ impl Shard for Style {
     let table: Table = input.try_into()?;
     // note: follows declaration orders in egui structs
 
-    apply_style!(
+    apply_style_or_none!(
       table,
       "override_text_style",
       &str,
       style.override_text_style,
       style_util::get_text_style
     );
-    apply_style!(
+    apply_style_or_none!(
       table,
       "override_font_id",
       Table,
@@ -153,20 +176,19 @@ impl Shard for Style {
       for var in text_styles.iter() {
         let text_style: Table = var.try_into()?;
         if let Some(name) = text_style.get_static(cstr!("name")) {
-          if let Some(key) = style_util::get_text_style(name.try_into()?) {
-            if let Some(fontId) = style_util::get_font_id(text_style) {
-              style
-                .text_styles
-                .entry(key)
-                .and_modify(|x| *x = fontId.clone())
-                .or_insert(fontId);
-            }
+          let key = style_util::get_text_style(name.try_into()?);
+          if let Some(fontId) = style_util::get_font_id(text_style) {
+            style
+              .text_styles
+              .entry(key)
+              .and_modify(|x| *x = fontId.clone())
+              .or_insert(fontId);
           }
         }
       }
     }
 
-    apply_style!(table, "wrap", bool, style.wrap);
+    apply_style_or_none!(table, "wrap", bool, style.wrap);
 
     // spacing
     if let Some(spacing) = table.get_static(cstr!("spacing")) {
@@ -348,7 +370,7 @@ impl Style {
 
   fn apply_visuals(style: &mut egui::Style, visuals: &Table) -> Result<(), &'static str> {
     apply_style!(visuals, "dark_mode", bool, style.visuals.dark_mode);
-    apply_style!(
+    apply_style_or_none!(
       visuals,
       "override_text_color",
       SHColor,

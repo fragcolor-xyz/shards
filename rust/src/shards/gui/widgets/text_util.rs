@@ -13,10 +13,8 @@ pub(crate) fn get_styled_text(
 
   if let Some(text_style) = style.get_static(cstr!("text_style")) {
     if !text_style.is_none() {
-      let text_style: &str = text_style.try_into()?;
-      if let Some(text_style) = style_util::get_text_style(text_style) {
-        text = text.text_style(text_style);
-      }
+      let text_style = style_util::get_text_style(text_style.try_into()?);
+      text = text.text_style(text_style);
     }
   }
 

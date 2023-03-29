@@ -82,15 +82,14 @@ pub(crate) fn get_text_format(format: Table) -> egui::TextFormat {
   text_format
 }
 
-pub(crate) fn get_text_style(name: &str) -> Option<egui::TextStyle> {
+pub(crate) fn get_text_style(name: &str) -> egui::TextStyle {
   match name {
-    "Small" => Some(egui::TextStyle::Small),
-    "Body" => Some(egui::TextStyle::Body),
-    "Monospace" => Some(egui::TextStyle::Monospace),
-    "Button" => Some(egui::TextStyle::Button),
-    "Heading" => Some(egui::TextStyle::Heading),
-    "" => None,
-    name => Some(egui::TextStyle::Name(name.into())),
+    "Small" => egui::TextStyle::Small,
+    "Body" => egui::TextStyle::Body,
+    "Monospace" => egui::TextStyle::Monospace,
+    "Button" => egui::TextStyle::Button,
+    "Heading" => egui::TextStyle::Heading,
+    name => egui::TextStyle::Name(name.into()),
   }
 }
 
