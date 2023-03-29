@@ -37,10 +37,11 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode.app
           brew install cmake clang-format
           ./bootstrap
-          rustup toolchain install nightly
-          rustup +nightly target add aarch64-apple-ios
-          rustup +nightly target add x86_64-apple-ios
-          rustup default nightly
+          RUSTUP_TOOLCHAIN=`cat rust.version`
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
+          rustup toolchain install $RUSTUP_TOOLCHAIN
+          rustup +$RUSTUP_TOOLCHAIN target add aarch64-apple-ios
+          rustup +$RUSTUP_TOOLCHAIN target add x86_64-apple-ios
       - uses: Swatinem/rust-cache@v2
         if: ${{ steps.setup.outputs.rust-cache == 'true' }}
       - name: Build device

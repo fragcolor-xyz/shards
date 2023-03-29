@@ -109,11 +109,14 @@ jobs:
           fetch-depth: 1
           submodules: recursive
       - name: Set up rust
+        shell: bash
         env:
           RUSTUP_USE_CURL: 1
         run: |
-          rustup toolchain install --no-self-update nightly
-          rustup +nightly target add i686-pc-windows-gnu
+          RUSTUP_TOOLCHAIN=`cat rust.version`
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
+          rustup toolchain install $RUSTUP_TOOLCHAIN
+          rustup +$RUSTUP_TOOLCHAIN target add i686-pc-windows-gnu
 
           # Native libClang required for rust bindgen
           choco install -y llvm
