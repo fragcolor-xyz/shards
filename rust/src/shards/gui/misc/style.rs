@@ -189,6 +189,13 @@ impl Shard for Style {
     }
 
     apply_style_or_none!(table, "wrap", bool, style.wrap);
+    apply_style!(
+      table,
+      "drag_value_text_style",
+      &str,
+      style.drag_value_text_style,
+      style_util::get_text_style
+    );
 
     // spacing
     if let Some(spacing) = table.get_static(cstr!("spacing")) {
@@ -324,6 +331,7 @@ impl Style {
       style.spacing.interact_size
     );
     apply_style!(spacing, "slider_width", f32, style.spacing.slider_width);
+    apply_style!(spacing, "combo_width", f32, style.spacing.combo_width);
     apply_style!(
       spacing,
       "text_edit_width",
@@ -351,6 +359,12 @@ impl Style {
       "scroll_bar_width",
       f32,
       style.spacing.scroll_bar_width
+    );
+    apply_style!(
+      spacing,
+      "scroll_handle_min_length",
+      f32,
+      style.spacing.scroll_handle_min_length
     );
     apply_style!(
       spacing,
@@ -491,6 +505,13 @@ impl Style {
     );
     apply_style!(
       visuals,
+      "menu_rounding",
+      (f32, f32, f32, f32),
+      style.visuals.menu_rounding,
+      style_util::get_rounding
+    );
+    apply_style!(
+      visuals,
       "panel_fill",
       SHColor,
       style.visuals.panel_fill,
@@ -534,6 +555,19 @@ impl Style {
       bool,
       style.visuals.collapsing_header_frame
     );
+    apply_style!(
+      visuals,
+      "indent_has_left_vline",
+      bool,
+      style.visuals.indent_has_left_vline
+    );
+    apply_style!(visuals, "striped", bool, style.visuals.striped);
+    apply_style!(
+      visuals,
+      "slider_trailing_fill",
+      bool,
+      style.visuals.slider_trailing_fill
+    );
 
     Ok(())
   }
@@ -551,6 +585,13 @@ impl Style {
         "bg_fill",
         SHColor,
         visuals.bg_fill,
+        style_util::get_color
+      );
+      apply_style!(
+        table,
+        "weak_bg_fill",
+        SHColor,
+        visuals.weak_bg_fill,
         style_util::get_color
       );
       apply_style!(
