@@ -171,276 +171,19 @@ impl Shard for Style {
     // spacing
     if let Some(spacing) = table.get_static(cstr!("spacing")) {
       let spacing: Table = spacing.try_into()?;
-
-      apply_style!(
-        spacing,
-        "item_spacing",
-        (f32, f32),
-        style.spacing.item_spacing
-      );
-      apply_style!(
-        spacing,
-        "window_margin",
-        (f32, f32, f32, f32),
-        style.spacing.window_margin,
-        style_util::get_margin
-      );
-      apply_style!(
-        spacing,
-        "button_padding",
-        (f32, f32),
-        style.spacing.button_padding
-      );
-      apply_style!(
-        spacing,
-        "menu_margin",
-        (f32, f32, f32, f32),
-        style.spacing.menu_margin,
-        style_util::get_margin
-      );
-      apply_style!(spacing, "indent", f32, style.spacing.indent);
-      apply_style!(
-        spacing,
-        "interact_size",
-        (f32, f32),
-        style.spacing.interact_size
-      );
-      apply_style!(spacing, "slider_width", f32, style.spacing.slider_width);
-      apply_style!(
-        spacing,
-        "text_edit_width",
-        f32,
-        style.spacing.text_edit_width
-      );
-      apply_style!(spacing, "icon_width", f32, style.spacing.icon_width);
-      apply_style!(
-        spacing,
-        "icon_width_inner",
-        f32,
-        style.spacing.icon_width_inner
-      );
-      apply_style!(spacing, "icon_spacing", f32, style.spacing.icon_spacing);
-      apply_style!(spacing, "tooltip_width", f32, style.spacing.tooltip_width);
-      apply_style!(
-        spacing,
-        "indent_ends_with_horizontal_line",
-        bool,
-        style.spacing.indent_ends_with_horizontal_line
-      );
-      apply_style!(spacing, "combo_height", f32, style.spacing.combo_height);
-      apply_style!(
-        spacing,
-        "scroll_bar_width",
-        f32,
-        style.spacing.scroll_bar_width
-      );
-      apply_style!(
-        spacing,
-        "scroll_bar_inner_margin",
-        f32,
-        style.spacing.scroll_bar_inner_margin
-      );
-      apply_style!(
-        spacing,
-        "scroll_bar_outer_margin",
-        f32,
-        style.spacing.scroll_bar_outer_margin
-      );
+      Style::apply_spacing(&mut style, &spacing)?;
     }
 
     // interaction
     if let Some(interaction) = table.get_static(cstr!("interaction")) {
       let interaction: Table = interaction.try_into()?;
-
-      apply_style!(
-        interaction,
-        "resize_grab_radius_side",
-        f32,
-        style.interaction.resize_grab_radius_side
-      );
-      apply_style!(
-        interaction,
-        "resize_grab_radius_corner",
-        f32,
-        style.interaction.resize_grab_radius_corner
-      );
-      apply_style!(
-        interaction,
-        "show_tooltips_only_when_still",
-        bool,
-        style.interaction.show_tooltips_only_when_still
-      );
+      Style::apply_interaction(&mut style, &interaction)?;
     }
 
     // visuals
     if let Some(visuals) = table.get_static(cstr!("visuals")) {
       let visuals: Table = visuals.try_into()?;
-
-      apply_style!(visuals, "dark_mode", bool, style.visuals.dark_mode);
-      apply_style!(
-        visuals,
-        "override_text_color",
-        SHColor,
-        style.visuals.override_text_color,
-        style_util::get_color
-      );
-
-      if let Some(widgets) = visuals.get_static(cstr!("widgets")) {
-        let widgets: Table = widgets.try_into()?;
-
-        Style::apply_widget_visuals(
-          &mut style.visuals.widgets.noninteractive,
-          &widgets,
-          cstr!("noninteractive"),
-        )?;
-        Style::apply_widget_visuals(
-          &mut style.visuals.widgets.inactive,
-          &widgets,
-          cstr!("inactive"),
-        )?;
-        Style::apply_widget_visuals(
-          &mut style.visuals.widgets.hovered,
-          &widgets,
-          cstr!("hovered"),
-        )?;
-        Style::apply_widget_visuals(&mut style.visuals.widgets.active, &widgets, cstr!("active"))?;
-        Style::apply_widget_visuals(&mut style.visuals.widgets.open, &widgets, cstr!("open"))?;
-      }
-
-      if let Some(selection) = visuals.get_static(cstr!("selection")) {
-        let selection: Table = selection.try_into()?;
-
-        apply_style!(
-          selection,
-          "bg_fill",
-          SHColor,
-          style.visuals.selection.bg_fill,
-          style_util::get_color
-        );
-        apply_style!(
-          selection,
-          "stroke",
-          Table,
-          style.visuals.selection.stroke,
-          style_util::get_stroke
-        );
-      }
-
-      apply_style!(
-        visuals,
-        "hyperlink_color",
-        SHColor,
-        style.visuals.hyperlink_color,
-        style_util::get_color
-      );
-      apply_style!(
-        visuals,
-        "faint_bg_color",
-        SHColor,
-        style.visuals.faint_bg_color,
-        style_util::get_color
-      );
-      apply_style!(
-        visuals,
-        "extreme_bg_color",
-        SHColor,
-        style.visuals.extreme_bg_color,
-        style_util::get_color
-      );
-      apply_style!(
-        visuals,
-        "code_bg_color",
-        SHColor,
-        style.visuals.code_bg_color,
-        style_util::get_color
-      );
-      apply_style!(
-        visuals,
-        "warn_fg_color",
-        SHColor,
-        style.visuals.warn_fg_color,
-        style_util::get_color
-      );
-      apply_style!(
-        visuals,
-        "error_fg_color",
-        SHColor,
-        style.visuals.error_fg_color,
-        style_util::get_color
-      );
-      apply_style!(
-        visuals,
-        "window_rounding",
-        (f32, f32, f32, f32),
-        style.visuals.window_rounding,
-        style_util::get_rounding
-      );
-      apply_style!(
-        visuals,
-        "window_shadow",
-        Table,
-        style.visuals.window_shadow,
-        style_util::get_shadow
-      );
-      apply_style!(
-        visuals,
-        "window_fill",
-        SHColor,
-        style.visuals.window_fill,
-        style_util::get_color
-      );
-      apply_style!(
-        visuals,
-        "window_stroke",
-        Table,
-        style.visuals.window_stroke,
-        style_util::get_stroke
-      );
-      apply_style!(
-        visuals,
-        "panel_fill",
-        SHColor,
-        style.visuals.panel_fill,
-        style_util::get_color
-      );
-      apply_style!(
-        visuals,
-        "popup_shadow",
-        Table,
-        style.visuals.popup_shadow,
-        style_util::get_shadow
-      );
-      apply_style!(
-        visuals,
-        "resize_corner_size",
-        f32,
-        style.visuals.resize_corner_size
-      );
-      apply_style!(
-        visuals,
-        "text_cursor_width",
-        f32,
-        style.visuals.text_cursor_width
-      );
-      apply_style!(
-        visuals,
-        "text_cursor_preview",
-        bool,
-        style.visuals.text_cursor_preview
-      );
-      apply_style!(
-        visuals,
-        "clip_rect_margin",
-        f32,
-        style.visuals.clip_rect_margin
-      );
-      apply_style!(visuals, "button_frame", bool, style.visuals.button_frame);
-      apply_style!(
-        visuals,
-        "collapsing_header_frame",
-        bool,
-        style.visuals.collapsing_header_frame
-      );
+      Style::apply_visuals(&mut style, &visuals)?;
     }
 
     apply_style!(table, "animation_time", f32, style.animation_time);
@@ -448,33 +191,7 @@ impl Shard for Style {
     // debug
     if let Some(debug) = table.get_static(cstr!("debug")) {
       let debug: Table = debug.try_into()?;
-
-      apply_style!(debug, "debug_on_hover", bool, style.debug.debug_on_hover);
-      apply_style!(
-        debug,
-        "show_expand_width",
-        bool,
-        style.debug.show_expand_width
-      );
-      apply_style!(
-        debug,
-        "show_expand_height",
-        bool,
-        style.debug.show_expand_height
-      );
-      apply_style!(debug, "show_resize", bool, style.debug.show_resize);
-      apply_style!(
-        debug,
-        "show_interactive_widgets",
-        bool,
-        style.debug.show_interactive_widgets
-      );
-      apply_style!(
-        debug,
-        "show_blocking_widget",
-        bool,
-        style.debug.show_blocking_widget
-      );
+      Style::apply_debug(&mut style, &debug)?;
     }
 
     apply_style!(
@@ -496,6 +213,309 @@ impl Shard for Style {
 }
 
 impl Style {
+  fn apply_debug(style: &mut egui::Style, debug: &Table) -> Result<(), &'static str> {
+    apply_style!(debug, "debug_on_hover", bool, style.debug.debug_on_hover);
+    apply_style!(
+      debug,
+      "show_expand_width",
+      bool,
+      style.debug.show_expand_width
+    );
+    apply_style!(
+      debug,
+      "show_expand_height",
+      bool,
+      style.debug.show_expand_height
+    );
+    apply_style!(debug, "show_resize", bool, style.debug.show_resize);
+    apply_style!(
+      debug,
+      "show_interactive_widgets",
+      bool,
+      style.debug.show_interactive_widgets
+    );
+    apply_style!(
+      debug,
+      "show_blocking_widget",
+      bool,
+      style.debug.show_blocking_widget
+    );
+
+    Ok(())
+  }
+
+  fn apply_interaction(style: &mut egui::Style, interaction: &Table) -> Result<(), &'static str> {
+    apply_style!(
+      interaction,
+      "resize_grab_radius_side",
+      f32,
+      style.interaction.resize_grab_radius_side
+    );
+    apply_style!(
+      interaction,
+      "resize_grab_radius_corner",
+      f32,
+      style.interaction.resize_grab_radius_corner
+    );
+    apply_style!(
+      interaction,
+      "show_tooltips_only_when_still",
+      bool,
+      style.interaction.show_tooltips_only_when_still
+    );
+
+    Ok(())
+  }
+
+  fn apply_spacing(style: &mut egui::Style, spacing: &Table) -> Result<(), &'static str> {
+    apply_style!(
+      spacing,
+      "item_spacing",
+      (f32, f32),
+      style.spacing.item_spacing
+    );
+    apply_style!(
+      spacing,
+      "window_margin",
+      (f32, f32, f32, f32),
+      style.spacing.window_margin,
+      style_util::get_margin
+    );
+    apply_style!(
+      spacing,
+      "button_padding",
+      (f32, f32),
+      style.spacing.button_padding
+    );
+    apply_style!(
+      spacing,
+      "menu_margin",
+      (f32, f32, f32, f32),
+      style.spacing.menu_margin,
+      style_util::get_margin
+    );
+    apply_style!(spacing, "indent", f32, style.spacing.indent);
+    apply_style!(
+      spacing,
+      "interact_size",
+      (f32, f32),
+      style.spacing.interact_size
+    );
+    apply_style!(spacing, "slider_width", f32, style.spacing.slider_width);
+    apply_style!(
+      spacing,
+      "text_edit_width",
+      f32,
+      style.spacing.text_edit_width
+    );
+    apply_style!(spacing, "icon_width", f32, style.spacing.icon_width);
+    apply_style!(
+      spacing,
+      "icon_width_inner",
+      f32,
+      style.spacing.icon_width_inner
+    );
+    apply_style!(spacing, "icon_spacing", f32, style.spacing.icon_spacing);
+    apply_style!(spacing, "tooltip_width", f32, style.spacing.tooltip_width);
+    apply_style!(
+      spacing,
+      "indent_ends_with_horizontal_line",
+      bool,
+      style.spacing.indent_ends_with_horizontal_line
+    );
+    apply_style!(spacing, "combo_height", f32, style.spacing.combo_height);
+    apply_style!(
+      spacing,
+      "scroll_bar_width",
+      f32,
+      style.spacing.scroll_bar_width
+    );
+    apply_style!(
+      spacing,
+      "scroll_bar_inner_margin",
+      f32,
+      style.spacing.scroll_bar_inner_margin
+    );
+    apply_style!(
+      spacing,
+      "scroll_bar_outer_margin",
+      f32,
+      style.spacing.scroll_bar_outer_margin
+    );
+
+    Ok(())
+  }
+
+  fn apply_visuals(style: &mut egui::Style, visuals: &Table) -> Result<(), &'static str> {
+    apply_style!(visuals, "dark_mode", bool, style.visuals.dark_mode);
+    apply_style!(
+      visuals,
+      "override_text_color",
+      SHColor,
+      style.visuals.override_text_color,
+      style_util::get_color
+    );
+
+    if let Some(widgets) = visuals.get_static(cstr!("widgets")) {
+      let widgets: Table = widgets.try_into()?;
+
+      Style::apply_widget_visuals(
+        &mut style.visuals.widgets.noninteractive,
+        &widgets,
+        cstr!("noninteractive"),
+      )?;
+      Style::apply_widget_visuals(
+        &mut style.visuals.widgets.inactive,
+        &widgets,
+        cstr!("inactive"),
+      )?;
+      Style::apply_widget_visuals(
+        &mut style.visuals.widgets.hovered,
+        &widgets,
+        cstr!("hovered"),
+      )?;
+      Style::apply_widget_visuals(&mut style.visuals.widgets.active, &widgets, cstr!("active"))?;
+      Style::apply_widget_visuals(&mut style.visuals.widgets.open, &widgets, cstr!("open"))?;
+    }
+
+    if let Some(selection) = visuals.get_static(cstr!("selection")) {
+      let selection: Table = selection.try_into()?;
+
+      apply_style!(
+        selection,
+        "bg_fill",
+        SHColor,
+        style.visuals.selection.bg_fill,
+        style_util::get_color
+      );
+      apply_style!(
+        selection,
+        "stroke",
+        Table,
+        style.visuals.selection.stroke,
+        style_util::get_stroke
+      );
+    }
+
+    apply_style!(
+      visuals,
+      "hyperlink_color",
+      SHColor,
+      style.visuals.hyperlink_color,
+      style_util::get_color
+    );
+    apply_style!(
+      visuals,
+      "faint_bg_color",
+      SHColor,
+      style.visuals.faint_bg_color,
+      style_util::get_color
+    );
+    apply_style!(
+      visuals,
+      "extreme_bg_color",
+      SHColor,
+      style.visuals.extreme_bg_color,
+      style_util::get_color
+    );
+    apply_style!(
+      visuals,
+      "code_bg_color",
+      SHColor,
+      style.visuals.code_bg_color,
+      style_util::get_color
+    );
+    apply_style!(
+      visuals,
+      "warn_fg_color",
+      SHColor,
+      style.visuals.warn_fg_color,
+      style_util::get_color
+    );
+    apply_style!(
+      visuals,
+      "error_fg_color",
+      SHColor,
+      style.visuals.error_fg_color,
+      style_util::get_color
+    );
+    apply_style!(
+      visuals,
+      "window_rounding",
+      (f32, f32, f32, f32),
+      style.visuals.window_rounding,
+      style_util::get_rounding
+    );
+    apply_style!(
+      visuals,
+      "window_shadow",
+      Table,
+      style.visuals.window_shadow,
+      style_util::get_shadow
+    );
+    apply_style!(
+      visuals,
+      "window_fill",
+      SHColor,
+      style.visuals.window_fill,
+      style_util::get_color
+    );
+    apply_style!(
+      visuals,
+      "window_stroke",
+      Table,
+      style.visuals.window_stroke,
+      style_util::get_stroke
+    );
+    apply_style!(
+      visuals,
+      "panel_fill",
+      SHColor,
+      style.visuals.panel_fill,
+      style_util::get_color
+    );
+    apply_style!(
+      visuals,
+      "popup_shadow",
+      Table,
+      style.visuals.popup_shadow,
+      style_util::get_shadow
+    );
+    apply_style!(
+      visuals,
+      "resize_corner_size",
+      f32,
+      style.visuals.resize_corner_size
+    );
+    apply_style!(
+      visuals,
+      "text_cursor_width",
+      f32,
+      style.visuals.text_cursor_width
+    );
+    apply_style!(
+      visuals,
+      "text_cursor_preview",
+      bool,
+      style.visuals.text_cursor_preview
+    );
+    apply_style!(
+      visuals,
+      "clip_rect_margin",
+      f32,
+      style.visuals.clip_rect_margin
+    );
+    apply_style!(visuals, "button_frame", bool, style.visuals.button_frame);
+    apply_style!(
+      visuals,
+      "collapsing_header_frame",
+      bool,
+      style.visuals.collapsing_header_frame
+    );
+
+    Ok(())
+  }
+
   fn apply_widget_visuals(
     visuals: &mut egui::style::WidgetVisuals,
     widgets: &Table,
