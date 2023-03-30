@@ -1418,15 +1418,15 @@ struct VariableResolver {
 template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type &type) {
   SHTypeInfo typeInfo(type);
   if (var.valueType != SHType::Object) {
-    SHLOG_FATAL("Invalid type, expected: {} got: {}", type, magic_enum::enum_name(var.valueType));
+    throw std::runtime_error(fmt::format("Invalid type, expected: {} got: {}", type, magic_enum::enum_name(var.valueType)));
   }
   if (var.payload.objectVendorId != typeInfo.object.vendorId) {
-    SHLOG_FATAL("Invalid object vendor id, expected: {} got: {}", type,
-                Type::Object(var.payload.objectVendorId, var.payload.objectTypeId));
+    throw std::runtime_error(fmt::format("Invalid object vendor id, expected: {} got: {}", type,
+                                         Type::Object(var.payload.objectVendorId, var.payload.objectTypeId)));
   }
   if (var.payload.objectTypeId != typeInfo.object.typeId) {
-    SHLOG_FATAL("Invalid object type id, expected: {} got: {}", type,
-                Type::Object(var.payload.objectVendorId, var.payload.objectTypeId));
+    throw std::runtime_error(fmt::format("Invalid object type id, expected: {} got: {}", type,
+                                         Type::Object(var.payload.objectVendorId, var.payload.objectTypeId)));
   }
   return *reinterpret_cast<T *>(var.payload.objectValue);
 }
