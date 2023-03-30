@@ -55,14 +55,6 @@
 #define SH_BASE_STACK_SIZE 128 * 1024
 #endif
 
-#if defined(_WIN32) && defined(__clang__)
-#define SH_STACK_ALLOCATOR_SUPPORTED 0
-#endif
-
-#ifndef SH_STACK_ALLOCATOR_SUPPORTED
-#define SH_STACK_ALLOCATOR_SUPPORTED 1
-#endif
-
 #ifndef __EMSCRIPTEN__
 // For coroutines/context switches
 #include <boost/context/continuation.hpp>
@@ -177,8 +169,6 @@ using OwnedVar = TOwnedVar<InternalCore>;
 void decRef(ShardPtr shard);
 void incRef(ShardPtr shard);
 
-#if SH_STACK_ALLOCATOR_SUPPORTED
-// utility stack allocator (stolen from stackoverflow)
 template <std::size_t Size = 512> struct bumping_memory_resource {
   char buffer[Size];
   std::size_t _used = 0;
@@ -199,7 +189,7 @@ template <std::size_t Size = 512> struct bumping_memory_resource {
   void deallocate(void *) noexcept {}
 };
 
-template <typename T, typename Resource = bumping_memory_resource<512>> struct stack_allocator {
+template <typename T, typename Resource = bumping_memory_resource<sizeof(T) * 128>> struct stack_allocator {
   Resource _res;
   using value_type = T;
 
@@ -216,12 +206,6 @@ template <typename T, typename Resource = bumping_memory_resource<512>> struct s
 
   friend bool operator!=(const stack_allocator &lhs, const stack_allocator &rhs) { return lhs._res != rhs._res; }
 };
-#else
-template <typename T> struct stack_allocator : public std::allocator<T> {
-  using Base = std::allocator<T>;
-  using Base::allocator;
-};
-#endif
 
 void freeDerivedInfo(SHTypeInfo info);
 SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr);
