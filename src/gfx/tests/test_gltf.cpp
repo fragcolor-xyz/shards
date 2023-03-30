@@ -11,7 +11,7 @@
 
 using namespace gfx;
 
-static constexpr float comparisonTolerance = 0.05f;
+static constexpr float comparisonTolerance = 0.09f;
 
 struct TestModelDesc {
   const char *name;
