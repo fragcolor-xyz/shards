@@ -9,6 +9,7 @@
 #include <boost/beast/core/detail/base64.hpp>
 #include <type_traits>
 #include <boost/algorithm/hex.hpp>
+#include <unordered_map>
 
 namespace shards {
 struct FromImage {
@@ -311,11 +312,15 @@ static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash
     // early out if seq is empty
     return;
   } else if (!unsafe) {
+    static thread_local std::unordered_map<uint64_t, TypeInfo> typeCache;
     auto inputTypeHash = deriveTypeHash(input);
     if (inputTypeHash != expectedTypeHash) {
       // Do an even deeper type check
-      TypeInfo derivedType{input, SHInstanceData{}};
-      if (!matchTypes(derivedType, expectedType, false, true)) {
+      auto it = typeCache.find(inputTypeHash);
+      if(it == typeCache.end()) {
+        it = typeCache.emplace(inputTypeHash, TypeInfo{input, SHInstanceData{}}).first;
+      }
+      if (!matchTypes(it->second, expectedType, false, true)) {
         throw ActivationError(fmt::format("Unexpected value: {} expected type: {}", input, expectedType));
       }
     }
