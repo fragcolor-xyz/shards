@@ -1,6 +1,8 @@
 #ifndef F80CEE03_D5CE_4787_8D65_FB8CC200104A
 #define F80CEE03_D5CE_4787_8D65_FB8CC200104A
 
+#include <chrono>
+#include <thread>
 #include "foundation.hpp"
 #include "runtime.hpp"
 #include <boost/asio/post.hpp>
