@@ -152,9 +152,13 @@ pub unsafe extern "C" fn shard_construct<T: Default + Shard>() -> *mut CShard {
 
 unsafe extern "C" fn shard_name<T: Shard>(arg1: *mut CShard) -> *const ::std::os::raw::c_char {
   let blk = arg1 as *mut ShardWrapper<T>;
-  let name = (*blk).shard.name();
-  (*blk).name = Some(CString::new(name).expect("CString::new failed"));
-  (*blk).name.as_ref().unwrap().as_ptr()
+  if (*blk).name.is_some() {
+    return (*blk).name.as_ref().unwrap().as_ptr();
+  } else {
+    let name = (*blk).shard.name();
+    (*blk).name = Some(CString::new(name).expect("CString::new failed"));
+    (*blk).name.as_ref().unwrap().as_ptr()
+  }
 }
 
 unsafe extern "C" fn shard_hash<T: Shard>(_arg1: *mut CShard) -> u32 {
