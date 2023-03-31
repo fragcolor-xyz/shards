@@ -6,6 +6,7 @@
 #include "../../include/ops.hpp"
 #include "../../include/utility.hpp"
 #include "../../include/common_types.hpp"
+#include "../core/async.hpp"
 #include "../core/runtime.hpp"
 #include "runtime.hpp"
 #include <linalg_shim.hpp>
@@ -1299,4 +1300,33 @@ TEST_CASE("UnsafeActivate-shard") {
   b1->setParam(b1, 0, &fVar);
   SHVar input{};
   CHECK(b1->activate(b1, nullptr, &input).payload.intValue == 77);
+}
+
+TEST_CASE("AWAIT/AWAITNE") {
+  struct TestWork : TidePool::Work {
+    TestWork() {
+      testString = "test-aaaaaabbbbbbbcccccccccddddddeeeeeffff";
+    }
+    virtual ~TestWork() {}
+    virtual void call() {
+      testString.append("test-aaaaaabbbbbbbcccccccccddddddeeeeeffff");
+      std::cout << testString << "\n";
+      std::this_thread::sleep_for(std::chrono::milliseconds(4000));
+    }
+
+    std::string testString;
+  };
+
+  std::vector<TestWork> works(40);
+  for (auto &work : works) {
+    getTidePool().schedule(&work);
+  }
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  // number of workers should be increased
+  CHECK(getTidePool()._workers.size() > TidePool::NumWorkers);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(15000));
+  // number should be back now to normal
+  CHECK(getTidePool()._workers.size() == TidePool::NumWorkers);
 }
