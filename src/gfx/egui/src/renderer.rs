@@ -1,6 +1,7 @@
 use super::*;
 use egui::ClippedPrimitive;
 use egui::Context;
+use egui::epaint;
 use std::ffi::CString;
 use std::ptr;
 

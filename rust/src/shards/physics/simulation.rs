@@ -136,12 +136,10 @@ impl Shard for Simulation {
       &mut self.impulse_joints,
       &mut self.multibody_joints,
       &mut self.ccd_solver,
+      Some(&mut self.query_pipeline),
       &(),
       &self.event_handler,
     );
-    self
-      .query_pipeline
-      .update(&self.islands_manager, &self.bodies, &self.colliders);
     Ok(*input)
   }
 }
