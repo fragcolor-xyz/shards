@@ -38,6 +38,7 @@ struct TidePool {
 
   static constexpr size_t LowWater = 4;
   static constexpr size_t NumWorkers = 8;
+  static constexpr size_t MaxWorkers = 32;
 
   std::atomic_size_t _scheduledCounter;
 
@@ -85,11 +86,11 @@ struct TidePool {
         // we have less than LowWater scheduled and we have more than NumWorkers workers
         _workers.back()._running = false;
         _workers.pop_back();
-        SHLOG_DEBUG("TidePool: worker removed, count: {}", _workers.size());
-      } else if (_scheduledCounter > _workers.size()) {
+        // SHLOG_DEBUG("TidePool: worker removed, count: {}", _workers.size());
+      } else if (_scheduledCounter > _workers.size() && _workers.size() < MaxWorkers) {
         // we have more scheduled than workers
         _workers.emplace_back(_queue, _scheduledCounter);
-        SHLOG_DEBUG("TidePool: worker added, count: {}", _workers.size());
+        // SHLOG_DEBUG("TidePool: worker added, count: {}", _workers.size());
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -121,6 +122,8 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 #else
   struct BlockingCall : TidePool::Work {
     BlockingCall(FUNC &&func) : func(std::move(func)), exp(), res(), complete(false) {}
+
+    virtual ~BlockingCall() {}
 
     FUNC &&func;
 
