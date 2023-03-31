@@ -30,13 +30,11 @@ lazy_static! {
 }
 
 struct ToBase58 {
-  buffer: String,
   output: ClonedVar,
 }
 impl Default for ToBase58 {
   fn default() -> Self {
     ToBase58 {
-      buffer: String::new(),
       output: ().into(),
     }
   }
@@ -64,15 +62,17 @@ impl Shard for ToBase58 {
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let bytes: Result<&[u8], &str> = input.try_into();
-    if let Ok(bytes) = bytes {
-      self.buffer = bs58::encode(bytes).into_string();
+    let buffer = if let Ok(bytes) = bytes {
+      bs58::encode(bytes).into_string()
     } else {
       let string: Result<&str, &str> = input.try_into();
       if let Ok(string) = string {
-        self.buffer = bs58::encode(string).into_string();
+        bs58::encode(string).into_string()
+      } else {
+        return Err("Invalid input type");
       }
-    }
-    self.output.assign(&Var::ephemeral_string(self.buffer.as_str()));
+    };
+    self.output.assign(&Var::ephemeral_string(buffer.as_str()));
     Ok(self.output.0)
   }
 }

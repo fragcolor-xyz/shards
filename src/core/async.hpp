@@ -55,7 +55,7 @@ struct TidePool {
         while (_running) {
           Work *work;
           if (_queue.pop(work)) {
-            SHLOG_DEBUG("TidePool: calling {}", (void*)work);
+            // SHLOG_DEBUG("TidePool: calling {}", (void*)work);
             work->call();
             _counter--;
           } else {
