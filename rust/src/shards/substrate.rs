@@ -207,7 +207,7 @@ impl Shard for AccountId {
       let key = sr25519::Public::from_raw(raw);
       key.to_ss58check_with_version(prefix.into())
     };
-    self.output = id.into();
+    self.output.assign_string(&id.as_str());
     Ok(self.output.0)
   }
 }
@@ -266,7 +266,7 @@ impl Shard for SHStorageKey {
       let hash = twox_128(string.as_bytes());
       self.v.extend(&hash[..]);
     }
-    self.output = self.v.as_slice().into();
+    self.output.assign(&self.v.as_slice().into());
     Ok(self.output.0)
   }
 }
@@ -383,7 +383,7 @@ impl Shard for SHStorageMap {
       }
     }
 
-    self.output = self.v.as_slice().into();
+    self.output.assign(&self.v.as_slice().into());
     Ok(self.output.0)
   }
 }
@@ -548,7 +548,7 @@ impl Shard for SHEncode {
       encode_var(value, hint, &mut self.v)?;
     }
 
-    self.output = self.v.as_slice().into();
+    self.output.assign(&self.v.as_slice().into());
     Ok(self.output.0)
   }
 }

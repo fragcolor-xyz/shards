@@ -72,7 +72,7 @@ impl Shard for ToBase58 {
         self.buffer = bs58::encode(string).into_string();
       }
     }
-    self.output = Var::ephemeral_string(self.buffer.as_str()).into();
+    self.output.assign(&Var::ephemeral_string(self.buffer.as_str()));
     Ok(self.output.0)
   }
 }

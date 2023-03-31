@@ -180,7 +180,8 @@ macro_rules! add_hasher2 {
             }
           }
         }
-        self.output = k.finalize().as_slice().into();
+        self.output.clear();
+        self.output.extend_from_slice(k.finalize().as_slice());
         Ok(self.output.as_slice().into())
       }
     }
@@ -259,7 +260,8 @@ macro_rules! add_hasher3 {
           }
         }
         let output: [u8; $size] = $algo(&self.scratch);
-        self.output = output[..].into();
+        self.output.clear();
+        self.output.extend_from_slice(&output);
         Ok(self.output.as_slice().into())
       }
     }
