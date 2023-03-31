@@ -218,7 +218,7 @@ impl BlockingShard for ReadString {
 
       match msg {
         Message::Text(text) => {
-          self.text = text.into();
+          self.text.assign_string(&text);
           return Ok(self.text.0);
         }
         Message::Binary(_) => {

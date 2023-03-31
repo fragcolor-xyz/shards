@@ -125,7 +125,7 @@ impl Shard for Encrypt {
       .encrypt(&nonce_bytes, input)
       .map_err(|_| "Encryption failed")?;
 
-    self.output = ciphertext.as_slice().into();
+    self.output.assign(&ciphertext.as_slice().into());
 
     Ok(self.output.0)
   }
@@ -223,7 +223,7 @@ impl Shard for Decrypt {
       .decrypt(&nonce_bytes, input)
       .map_err(|_| "Decryption failed")?;
 
-    self.output = plaintext.as_slice().into();
+    self.output.assign(&plaintext.as_slice().into());
 
     Ok(self.output.0)
   }

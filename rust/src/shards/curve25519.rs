@@ -134,7 +134,7 @@ macro_rules! add_signer {
         let signature: $key_type::Signature = key.sign(bytes);
         let signature: [u8; $size] = signature.0;
 
-        self.output = signature[..].into();
+        self.output.assign(&signature[..].into());
         Ok(self.output.0)
       }
     }
@@ -190,7 +190,7 @@ macro_rules! add_pub_key {
         let key: $key_type::Pair = get_key(input)?;
         let key = key.public();
         let key: &[u8; $size] = key.as_array_ref();
-        self.output = key[..].into();
+        self.output.assign(&key[..].into());
         Ok(self.output.0)
       }
     }
@@ -249,7 +249,7 @@ macro_rules! add_priv_key {
           "Failed to parse secret key mnemonic or string"
         })?;
         if let Some(seed) = seed {
-          self.output = seed[..].into();
+          self.output.assign(&seed[..].into());
           Ok(self.output.0)
         } else {
           Err("No seed found")

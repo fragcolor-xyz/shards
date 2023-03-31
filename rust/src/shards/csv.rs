@@ -241,7 +241,8 @@ impl Shard for CSVWrite {
       shlog!("{}", e);
       "Failed to write to CSV"
     })?;
-    self.output = output.as_ref().into();
+    let output: Var = output.as_ref().into();
+    self.output.assign(&output);
     Ok(self.output.0)
   }
 }

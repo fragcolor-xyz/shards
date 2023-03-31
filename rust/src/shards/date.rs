@@ -98,7 +98,7 @@ impl Shard for DateFormat {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.formatting = value.into()),
+      0 => Ok(self.formatting.assign(value)),
       _ => unreachable!(),
     }
   }
@@ -115,26 +115,11 @@ impl Shard for DateFormat {
     match time {
       LocalResult::Single(time) => {
         let formatter: &str = self.formatting.0.as_ref().try_into()?;
-        self.output = time.format(formatter).to_string().into();
+        let output = time.format(formatter).to_string();
+        self.output.assign_string(&output.as_str());
         Ok(self.output.0)
       }
       _ => Err("Date.Format: input must be a valid epoch seconds timestamp"),
-    }
-  }
-}
-
-struct CSVWrite {
-  output: ClonedVar,
-  no_header: bool,
-  separator: CString,
-}
-
-impl Default for CSVWrite {
-  fn default() -> Self {
-    CSVWrite {
-      output: ().into(),
-      no_header: false,
-      separator: CString::new(",").unwrap(),
     }
   }
 }

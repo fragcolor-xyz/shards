@@ -156,7 +156,7 @@ impl Shard for ECDSASign {
     let mut signature: [u8; 65] = [0; 65];
     signature[0..64].copy_from_slice(&x.0.serialize()[..]);
     signature[64] = x.1.serialize();
-    self.output = signature[..].into();
+    self.output.assign(&signature[..].into());
     Ok(self.output.0)
   }
 }
@@ -211,10 +211,10 @@ impl Shard for ECDSAPubKey {
     let key = libsecp256k1::PublicKey::from_secret_key(&key);
     if !self.compressed {
       let key: [u8; 65] = key.serialize();
-      self.output = key[..].into();
+      self.output.assign(&key[..].into());
     } else {
       let key: [u8; 33] = key.serialize_compressed();
-      self.output = key[..].into();
+      self.output.assign(&key[..].into());
     }
     Ok(self.output.0)
   }
@@ -268,7 +268,7 @@ impl Shard for ECDSAPrivKey {
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let key = get_key(input)?;
     let key: [u8; 32] = key.serialize();
-    self.output = key[..].into();
+    self.output.assign(&key[..].into());
     Ok(self.output.0)
   }
 }
@@ -357,10 +357,10 @@ impl Shard for ECDSARecover {
 
     if self.compressed {
       let key: [u8; 33] = pub_key.serialize_compressed();
-      self.output = key[..].into();
+      self.output.assign(&key[..].into());
     } else {
       let key: [u8; 65] = pub_key.serialize();
-      self.output = key[..].into();
+      self.output.assign(&key[..].into());
     }
     Ok(self.output.0)
   }

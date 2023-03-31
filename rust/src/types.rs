@@ -114,6 +114,18 @@ pub type RawString = SHString;
 #[derive(Default)]
 pub struct ClonedVar(pub Var);
 
+impl ClonedVar {
+  pub fn assign(&mut self, other: &Var) {
+    cloneVar(&mut self.0, other);
+  }
+
+  pub fn assign_string(&mut self, s: &str) {
+    let cstr = CString::new(s).unwrap();
+    let tmp = Var::from(&cstr);
+    self.assign(&tmp);
+  }
+}
+
 #[repr(transparent)] // force it same size of original
 pub struct ExternalVar(pub Var);
 

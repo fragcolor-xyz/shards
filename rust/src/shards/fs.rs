@@ -219,8 +219,7 @@ impl FileDialog {
 
     if let Some(path) = path {
       let path = path.display().to_string();
-      let output = Var::ephemeral_string(path.as_str());
-      self.output = output.as_ref().into();
+      self.output.assign(&Var::ephemeral_string(path.as_str()));
       Ok(self.output.0)
     } else {
       Err("Operation was cancelled")
@@ -242,8 +241,8 @@ impl FileDialog {
           Var::ephemeral_string(path.as_str())
         })
         .collect();
-      self.output = paths.as_slice().into();
-
+      let output: Var = paths.as_slice().into();
+      self.output.assign(&output);
       Ok(self.output.0)
     } else {
       Err("Operation was cancelled")
@@ -355,8 +354,7 @@ impl BlockingShard for SaveFileDialog {
 
     if let Some(path) = dialog.save_file() {
       let path = path.display().to_string();
-      let output = Var::ephemeral_string(path.as_str());
-      self.output = output.as_ref().into();
+      self.output.assign(&Var::ephemeral_string(path.as_str()));
       Ok(self.output.0)
     } else {
       Err("Operation was cancelled")
