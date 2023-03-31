@@ -1,4 +1,5 @@
 set(core_SOURCES
+  async.cpp
   ops_internal.cpp
   number_types.cpp
   shards/assert.cpp
@@ -197,7 +198,7 @@ if(EMSCRIPTEN)
 
   # Require optimizations when building with asyncify too keep size/build time reasonable
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(shards-core-static PUBLIC "-O3") 
+    target_compile_options(shards-core-static PUBLIC "-O3")
     target_link_options(shards-core-static PUBLIC "-O3")
   endif()
 endif()
