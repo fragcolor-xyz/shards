@@ -2,7 +2,6 @@
 #define F80CEE03_D5CE_4787_8D65_FB8CC200104A
 
 #include "foundation.hpp"
-#include "gfx/feature.hpp"
 #include "runtime.hpp"
 #include <boost/asio/post.hpp>
 #include <boost/asio/thread_pool.hpp>
