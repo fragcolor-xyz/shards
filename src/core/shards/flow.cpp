@@ -14,6 +14,5 @@ void registerFlowShards() {
   REGISTER_SHARD("Match", Match);
   REGISTER_SHARD("Sub", Sub);
   REGISTER_SHARD("Hashed", HashedShards);
-  REGISTER_SHARD("Worker", Worker);
 }
 }; // namespace shards

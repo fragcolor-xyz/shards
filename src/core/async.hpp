@@ -5,9 +5,6 @@
 #include <thread>
 #include "foundation.hpp"
 #include "runtime.hpp"
-#include <boost/asio/post.hpp>
-#include <boost/asio/thread_pool.hpp>
-#include <boost/bind/bind.hpp>
 #include <boost/lockfree/queue.hpp>
 
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
@@ -116,8 +113,6 @@ struct SharedThreadPoolConcurrency {
   }
 };
 #endif
-
-extern Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThreadPool;
 
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
