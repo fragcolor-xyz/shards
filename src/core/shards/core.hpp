@@ -3088,14 +3088,7 @@ struct Slice {
     }
 
     const auto len = to - from;
-    if (_step == 1) {
-      // we don't need to copy anything in this case
-      SHVar output{};
-      output.valueType = SHType::Bytes;
-      output.payload.bytesValue = &input.payload.bytesValue[from];
-      output.payload.bytesSize = uint32_t(len);
-      return output;
-    } else if (_step > 1) {
+    if (_step > 0) {
       const auto actualLen = len / _step + (len % _step != 0);
       _cachedBytes.resize(actualLen);
       auto idx = 0;
