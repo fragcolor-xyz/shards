@@ -23,38 +23,6 @@ struct TidePool {
     virtual void call() = 0;
   };
 
-  TidePool() {
-    _running = true;
-
-    // spawn workers first
-    for (size_t i = 0; i < NumWorkers; ++i) {
-      _workers.emplace_back(_queue, _scheduledCounter);
-    }
-
-    _controller = std::async(std::launch::async, [this]() { controllerWorker(); });
-  }
-
-  ~TidePool() {
-    _running = false;
-    _controller.wait();
-    for (auto &worker : _workers) {
-      worker._running = false;
-      worker._future.wait();
-    }
-  }
-
-  static constexpr size_t LowWater = 4;
-  static constexpr size_t NumWorkers = 8;
-  static constexpr size_t MaxWorkers = 32;
-
-  std::atomic_size_t _scheduledCounter;
-
-  std::atomic_bool _running;
-
-  std::future<void> _controller;
-
-  boost::lockfree::queue<Work *> _queue{NumWorkers};
-
   struct Worker {
     Worker(boost::lockfree::queue<Work *> &queue, std::atomic_size_t &counter) : _queue(queue), _counter(counter) {
       _running = true;
@@ -78,7 +46,25 @@ struct TidePool {
     std::atomic_size_t &_counter;
   };
 
+  static constexpr size_t LowWater = 4;
+  static constexpr size_t NumWorkers = 8;
+  static constexpr size_t MaxWorkers = 32;
+
+  std::atomic_size_t _scheduledCounter;
+  std::atomic_bool _running;
+  std::future<void> _controller;
+  boost::lockfree::queue<Work *> _queue{NumWorkers};
   std::deque<Worker> _workers;
+
+  TidePool() {
+    _running = true;
+    _controller = std::async(std::launch::async, [this]() { controllerWorker(); });
+  }
+
+  ~TidePool() {
+    _running = false;
+    _controller.wait();
+  }
 
   void schedule(Work *work) {
     _scheduledCounter++;
@@ -86,6 +72,11 @@ struct TidePool {
   }
 
   void controllerWorker() {
+    // spawn workers first
+    for (size_t i = 0; i < NumWorkers; ++i) {
+      _workers.emplace_back(_queue, _scheduledCounter);
+    }
+
     while (_running) {
       assert(_workers.size() >= NumWorkers);
 
@@ -100,6 +91,11 @@ struct TidePool {
         // SHLOG_DEBUG("TidePool: worker added, count: {}", _workers.size());
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    for (auto &worker : _workers) {
+      worker._running = false;
+      worker._future.wait();
     }
   }
 };
@@ -130,8 +126,6 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 #else
   struct BlockingCall : TidePool::Work {
     BlockingCall(FUNC &&func) : func(std::move(func)), exp(), res(), complete(false) {}
-
-    virtual ~BlockingCall() {}
 
     FUNC &&func;
 
@@ -181,13 +175,15 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
 #if !HAS_ASYNC_SUPPORT
   func();
 #else
-  struct BlockingCall {
+  struct BlockingCall : TidePool::Work {
+    BlockingCall(FUNC &&func) : func(std::move(func)), exp(), complete(false) {}
+
     FUNC &&func;
 
     std::exception_ptr exp;
     std::atomic_bool complete;
 
-    void call() {
+    virtual void call() {
       try {
         func();
       } catch (...) {
@@ -197,7 +193,7 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
     }
   } call{std::forward<FUNC>(func)};
 
-  boost::asio::post(shards::SharedThreadPool(), boost::bind(&BlockingCall::call, &call));
+  getTidePool().schedule(&call);
 
   while (!call.complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
