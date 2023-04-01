@@ -69,7 +69,7 @@ jobs:
           wget https://github.com/onnx/models/raw/main/vision/classification/mobilenet/model/mobilenetv2-7.onnx
       - name: Test (GPU)
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           set -e
           export DISPLAY=:1
@@ -103,7 +103,7 @@ jobs:
           build/shards src/tests/onnx.edn
       - name: Test Physics
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           set -e
           export DISPLAY=:1
@@ -113,7 +113,7 @@ jobs:
           build/shards src/tests/physics.edn
       - name: Test doc samples (GFX)
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           set -e
           export DISPLAY=:1

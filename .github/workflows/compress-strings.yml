@@ -68,7 +68,7 @@ jobs:
           ninja shards
       - name: Compress strings
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           cd build
           chmod +x shards

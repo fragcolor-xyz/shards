@@ -90,7 +90,7 @@ jobs:
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           cd build
           ninja test-runtime
@@ -128,7 +128,7 @@ jobs:
           path: build
       - name: Test
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           cd build
           chmod +x shards
@@ -163,7 +163,7 @@ jobs:
           ./shards ../src/tests/complex-deserialize.edn
       - name: Test doc samples (non-UI)
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           cd docs/samples
           for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' ! -path '*Dialog*' \));

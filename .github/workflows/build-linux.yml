@@ -99,7 +99,7 @@ jobs:
           ninja shards
       - name: Test
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           cd build
           chmod +x shards
@@ -147,13 +147,13 @@ jobs:
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           cd build
           ./shards ../src/tests/export-strings.edn
       - name: Test doc samples (non-UI)
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           cd docs/samples
           for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' ! -path '*Dialog*' \));
@@ -163,7 +163,7 @@ jobs:
           done
       - name: Test runtime
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         run: |
           cd build
           ninja test-runtime

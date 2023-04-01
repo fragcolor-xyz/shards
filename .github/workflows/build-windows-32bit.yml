@@ -139,7 +139,7 @@ jobs:
             wget
       - name: Build
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: msys2 {0}
         run: |
           ./bootstrap
@@ -161,7 +161,7 @@ jobs:
       # Minimize disk usage to prevent the next steps getting stuck on glTF models
       - name: Minimize disk usage
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: msys2 {0}
         run: |
           rm -rf build/src
@@ -172,7 +172,7 @@ jobs:
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: msys2 {0}
         run: |
           cd build
@@ -238,7 +238,7 @@ jobs:
             mingw-w64-i686-toolchain
       - name: Test
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: msys2 {0}
         run: |
           cd build
@@ -282,7 +282,7 @@ jobs:
           ./shards ../src/tests/complex-deserialize.edn
       - name: Test doc samples (non-UI)
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: msys2 {0}
         run: |
           cd docs/samples
