@@ -154,17 +154,20 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
   case SHType::ShardRef:
     os << "Shard: " << var.payload.shardValue->name(var.payload.shardValue);
     break;
-  case SHType::String:
-    if (var.payload.stringValue == nullptr)
-      os << "NULL";
-    else
-      os << var.payload.stringValue;
+  case SHType::String: {
+      auto sView = SHSTRVIEW(var);
+      os << sView;
+    }
     break;
-  case SHType::ContextVar:
-    os << "ContextVariable: " << var.payload.stringValue;
+  case SHType::ContextVar: {
+      auto sView = SHSTRVIEW(var);
+      os << "ContextVariable: " << sView;
+    }
     break;
-  case SHType::Path:
-    os << "Path: " << var.payload.stringValue;
+  case SHType::Path: {
+      auto sView = SHSTRVIEW(var);
+      os << "Path: " << sView;
+    }
     break;
   case SHType::Image:
     os << "Image";
