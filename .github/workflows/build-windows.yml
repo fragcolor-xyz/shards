@@ -125,7 +125,7 @@ jobs:
           choco install -y cmake ninja llvm
       - name: Build
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: bash
         run: |
           ./bootstrap
@@ -149,7 +149,7 @@ jobs:
       # Minimize disk usage to prevent the next steps getting stuck on glTF models
       - name: Minimize disk usage
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: bash
         run: |
           rm -rf build/src
@@ -160,7 +160,7 @@ jobs:
       - name: Test runtime (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: bash
         run: |
           cd build
@@ -176,7 +176,7 @@ jobs:
       - name: Test graphics (Debug)
         if: ${{ steps.setup.outputs.runtime-tests == 'true' && steps.setup.outputs.build-type == 'Debug' }}
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: bash
         run: |
           cd build
@@ -225,7 +225,7 @@ jobs:
           path: build
       - name: Test
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: bash
         run: |
           cd build
@@ -269,7 +269,7 @@ jobs:
           ./shards ../src/tests/complex-deserialize.edn
       - name: Test doc samples (non-UI)
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: bash
         run: |
           cd docs/samples
@@ -281,7 +281,7 @@ jobs:
       - name: Test doc samples (GFX)
         env:
           GFX_BACKEND: D3D12
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: bash
         run: |
           cd docs/samples
@@ -293,7 +293,7 @@ jobs:
       - name: Graphics Test
         env:
           GFX_BACKEND: D3D12
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: bash
         run: |
           cd build
@@ -313,7 +313,7 @@ jobs:
       - name: Physics Test
         env:
           GFX_BACKEND: D3D12
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: bash
         run: |
           cd build
@@ -321,7 +321,7 @@ jobs:
           ./shards ../src/tests/physics.edn
       - name: Test
         env:
-          RUST_BACKTRACE: 1
+          RUST_BACKTRACE: full
         shell: bash
         run: |
           cd build
