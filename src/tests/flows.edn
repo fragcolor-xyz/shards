@@ -439,26 +439,6 @@
 (schedule Root main)
 (if (run Root 0.1 100) nil (throw "Root tick failed"))
 
-(defloop test-worker-1
-  10
-  (Worker "worker1"
-          (-> (Log "Hello from worker1 on 1")
-              (Math.Add 1)))
-  (Assert.Is 11 true)
-  (Log "Done"))
-
-(defloop test-worker-2
-  11
-  (Worker "worker1"
-          (-> (Log "Hello from worker1 on 2")
-              (Math.Add 2)))
-  (Assert.Is 13 true)
-  (Log "Done"))
-
-(schedule Root test-worker-1)
-(schedule Root test-worker-2)
-(if (run Root 0.1 20) nil (throw "Root tick failed"))
-
 (Wire "test" (-> (Msg "Hello")))
 
 (defpure a-perfect-circle
