@@ -10,7 +10,14 @@
 #include <boost/bind/bind.hpp>
 #include <boost/lockfree/queue.hpp>
 
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+#define HAS_ASYNC_SUPPORT 0
+#else
+#define HAS_ASYNC_SUPPORT 1
+#endif
+
 namespace shards {
+#if HAS_ASYNC_SUPPORT
 struct TidePool {
   struct Work {
     virtual void call() = 0;
@@ -98,6 +105,7 @@ struct TidePool {
 };
 
 TidePool &getTidePool();
+#endif
 
 #ifdef __EMSCRIPTEN__
 // limit to 4 under emscripten
@@ -117,7 +125,7 @@ extern Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThrea
 
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+#if !HAS_ASYNC_SUPPORT
   return func();
 #else
   struct BlockingCall : TidePool::Work {
@@ -170,7 +178,7 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 }
 
 template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+#if !HAS_ASYNC_SUPPORT
   func();
 #else
   struct BlockingCall {

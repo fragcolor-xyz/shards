@@ -1312,6 +1312,7 @@ TEST_CASE("UnsafeActivate-shard") {
 }
 
 TEST_CASE("AWAIT/AWAITNE") {
+#if HAS_ASYNC_SUPPORT
   struct TestWork : TidePool::Work {
     TestWork() {
       testString = "test-aaaaaabbbbbbbcccccccccddddddeeeeeffff";
@@ -1338,4 +1339,5 @@ TEST_CASE("AWAIT/AWAITNE") {
   std::this_thread::sleep_for(std::chrono::milliseconds(15000));
   // number should be back now to normal
   CHECK(getTidePool()._workers.size() == TidePool::NumWorkers);
+#endif
 }
