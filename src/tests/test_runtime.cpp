@@ -626,6 +626,12 @@ TEST_CASE("SHVar-comparison", "[ops]") {
     REQUIRE(s2 >= s5);
     REQUIRE(v2 >= v5);
 
+    auto h1 = deriveTypeHash(v1);
+    auto h2 = deriveTypeHash(v2);
+    REQUIRE(h1 == h2);
+    auto h3 = deriveTypeHash(v3);
+    REQUIRE(h1 != h3);
+
     SHLOG_INFO(v1);
   }
 

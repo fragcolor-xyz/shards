@@ -16,7 +16,6 @@
 #include <csignal>
 #include <cstdarg>
 #include <mutex>
-#include <pdqsort.h>
 #include <set>
 #include <shared_mutex>
 #include <stdexcept>
@@ -25,6 +24,7 @@
 #include <log/log.hpp>
 #include <shared_mutex>
 #include <boost/atomic/atomic_ref.hpp>
+#include <boost/container/small_vector.hpp>
 
 namespace fs = boost::filesystem;
 
@@ -1579,7 +1579,7 @@ void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
   case SHType::Table: {
     // this is unsafe because allocates on the stack
     // but we need to sort hashes
-    std::vector<std::pair<SHString, uint64_t>, stack_allocator<std::pair<SHString, uint64_t>>> hashes;
+    boost::container::small_vector<std::pair<SHString, uint64_t>, 8> hashes;
 
     // table is unordered so just collect
     {
@@ -1680,7 +1680,7 @@ void updateTypeHash(const SHTypeInfo &t, XXH3_state_s *state) {
   } break;
   case SHType::Table: {
     if (t.table.keys.len == t.table.types.len) {
-      std::vector<std::pair<SHString, uint64_t>, stack_allocator<std::pair<SHString, uint64_t>>> hashes;
+      boost::container::small_vector<std::pair<SHString, uint64_t>, 8> hashes;
 
       for (uint32_t i = 0; i < t.table.types.len; i++) {
         auto typeHash = deriveTypeHash(t.table.types.elements[i]);
@@ -2543,11 +2543,7 @@ void hash_update(const SHVar &var, void *state) {
     }
   } break;
   case SHType::Table: {
-    // this is unsafe because allocates on the stack
-    // but we need to sort hashes
-    std::vector<std::pair<std::pair<uint64_t, uint64_t>, SHString>,
-                stack_allocator<std::pair<std::pair<uint64_t, uint64_t>, SHString>>>
-        hashes;
+    boost::container::small_vector<std::pair<std::pair<uint64_t, uint64_t>, SHString>, 8> hashes;
 
     auto &t = var.payload.tableValue;
     SHTableIterator it;
@@ -2559,7 +2555,7 @@ void hash_update(const SHVar &var, void *state) {
       hashes.emplace_back(std::make_pair(uint64_t(h.payload.int2Value[0]), uint64_t(h.payload.int2Value[1])), key);
     }
 
-    pdqsort(hashes.begin(), hashes.end());
+    std::sort(hashes.begin(), hashes.end());
     for (const auto &pair : hashes) {
       error = XXH3_128bits_update(hashState, pair.second, strlen(pair.second));
       assert(error == XXH_OK);
@@ -2567,9 +2563,7 @@ void hash_update(const SHVar &var, void *state) {
     }
   } break;
   case SHType::Set: {
-    // this is unsafe because allocates on the stack
-    // but we need to sort hashes
-    std::vector<std::pair<uint64_t, uint64_t>, stack_allocator<std::pair<uint64_t, uint64_t>>> hashes;
+    boost::container::small_vector<std::pair<uint64_t, uint64_t>, 8> hashes;
 
     // just store hashes, sort and actually combine later
     auto &s = var.payload.setValue;
@@ -2581,7 +2575,7 @@ void hash_update(const SHVar &var, void *state) {
       hashes.emplace_back(uint64_t(h.payload.int2Value[0]), uint64_t(h.payload.int2Value[1]));
     }
 
-    pdqsort(hashes.begin(), hashes.end());
+    std::sort(hashes.begin(), hashes.end());
     for (const auto &hash : hashes) {
       XXH3_128bits_update(hashState, &hash, sizeof(uint64_t));
     }
@@ -2653,6 +2647,7 @@ void hash_update(const SHVar &var, void *state) {
   } break;
   case SHType::None:
   case SHType::Any:
+  case SHType::EndOfBlittableTypes:
     break;
   case SHType::Enum:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHEnum));
