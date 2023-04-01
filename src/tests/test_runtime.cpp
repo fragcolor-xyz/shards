@@ -602,6 +602,9 @@ TEST_CASE("SHVar-comparison", "[ops]") {
     std::vector<SHVar> s5{Var(1), Var(2), Var(3), Var(4), Var(5), Var(6)};
     Var v5(s5);
     REQUIRE(v5.valueType == SHType::Seq);
+    std::vector<SHVar> s6{Var(1), Var(2.2), Var(3), Var(4), Var("Hello"), Var(6)};
+    Var v6(s6);
+    REQUIRE(v6.valueType == SHType::Seq);
 
     REQUIRE(s1 == s2);
     REQUIRE(v1 == v2);
@@ -629,8 +632,8 @@ TEST_CASE("SHVar-comparison", "[ops]") {
     auto h1 = deriveTypeHash(v1);
     auto h2 = deriveTypeHash(v2);
     REQUIRE(h1 == h2);
-    auto h3 = deriveTypeHash(v3);
-    REQUIRE(h1 != h3);
+    auto h6 = deriveTypeHash(v6);
+    REQUIRE(h1 != h6);
 
     SHLOG_INFO(v1);
   }
