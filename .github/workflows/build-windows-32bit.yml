@@ -90,10 +90,10 @@ jobs:
           if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
           then
             echo "build-target=shards" >> $GITHUB_OUTPUT
-            echo "artifact-path=build/shards.exe" >> $GITHUB_OUTPUT
+            echo "artifact-path=build/shards.*" >> $GITHUB_OUTPUT
           else
             echo "build-target=shards-dll" >> $GITHUB_OUTPUT
-            echo "artifact-path=build/libshards.dll" >> $GITHUB_OUTPUT
+            echo "artifact-path=build/libshards.*" >> $GITHUB_OUTPUT
           fi
 
           if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
