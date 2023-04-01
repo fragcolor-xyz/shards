@@ -15,6 +15,27 @@
 
 namespace shards {
 #if HAS_ASYNC_SUPPORT
+
+/*
+ * The TidePool class is a simple C++ thread pool implementation designed to manage
+ * worker threads and distribute tasks to them. The class supports dynamic adjustment
+ * of the number of worker threads based on the current workload.
+ *
+ * Features:
+ * - Abstract Work struct representing tasks to be executed by the worker threads.
+ * - Dynamic adjustment of the number of worker threads based on the number of tasks in the queue.
+ * - Lock-free queue for efficient task scheduling.
+ * - Configurable minimum, initial, and maximum number of worker threads.
+ * - Asynchronous controller thread that manages worker threads.
+ * - Simple scheduling function for adding tasks to the queue.
+ *
+ * Usage:
+ * - Derive custom work classes from the Work struct and implement the call() function.
+ * - Create an instance of TidePool.
+ * - Schedule tasks using the schedule() function.
+ * - The pool will automatically adjust the number of worker threads based on the workload.
+ */
+
 struct TidePool {
   struct Work {
     virtual void call() = 0;
