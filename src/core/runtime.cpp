@@ -219,6 +219,15 @@ std::vector<SHWire *> &getCoroWireStack() {
 #endif
 #endif
 
+#ifdef SH_USE_TSAN
+std::vector<SHWire *> &getCoroWireStack2() {
+  // Here is the thing, this currently works.. but only because we don't move coroutines between threads
+  // When we will do if we do this will break...
+  static thread_local std::vector<SHWire *> wireStack;
+  return wireStack;
+}
+#endif
+
 void registerCoreShards() {
   if (globalRegisterDone)
     return;
