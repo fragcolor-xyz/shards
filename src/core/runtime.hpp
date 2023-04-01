@@ -41,6 +41,37 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 #include <emscripten/val.h>
 #endif
 
+#ifdef SH_USE_TSAN
+extern "C" {
+void *__tsan_get_current_fiber(void);
+void *__tsan_create_fiber(unsigned flags);
+void __tsan_destroy_fiber(void *fiber);
+void __tsan_switch_to_fiber(void *fiber, unsigned flags);
+void __tsan_set_fiber_name(void *fiber, const char *name);
+const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
+
+}
+#define TSANCoroEnter(wire)             \
+  {                                      \
+    if (!getCoroWireStack2().empty()) {   \
+      TracyFiberLeave;                   \
+    }                                    \
+    TracyFiberEnter(wire->name.c_str()); \
+    getCoroWireStack2().push_back(wire);  \
+  }
+#define TSANCoroExit(wire)                                     \
+  {                                                             \
+    getCoroWireStack2().pop_back();                              \
+    TracyFiberLeave;                                            \
+    if (!getCoroWireStack2().empty()) {                          \
+      TracyFiberEnter(getCoroWireStack2().back()->name.c_str()); \
+    }                                                           \
+  }
+#else
+#define TSANCoroEnter(wire)
+#define TSANCoroExit(wire)
+#endif
+
 #ifdef TRACY_ENABLE
 // profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
 #include <tracy/Tracy.hpp>
