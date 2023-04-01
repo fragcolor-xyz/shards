@@ -189,7 +189,7 @@ template <std::size_t Size = 512> struct bumping_memory_resource {
   void deallocate(void *) noexcept {}
 };
 
-template <typename T, typename Resource = bumping_memory_resource<sizeof(T) * 128>> struct stack_allocator {
+template <typename T, typename Resource = bumping_memory_resource<sizeof(T) * 32>> struct stack_allocator {
   Resource _res;
   using value_type = T;
 
