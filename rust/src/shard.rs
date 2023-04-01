@@ -133,7 +133,7 @@ pub trait Shard {
 }
 
 #[repr(C)]
-#[repr(align(8))] // ensure alignment is 8 bytes
+#[repr(align(16))] // ensure alignment is 16 bytes
 pub struct ShardWrapper<T: Shard> {
   header: CShard,
   pub shard: T,
