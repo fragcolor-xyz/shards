@@ -114,7 +114,6 @@ jobs:
         run: |
           rustup toolchain install --no-self-update nightly
           rustup +nightly target add i686-pc-windows-gnu
-          rustup default nightly-i686-pc-windows-gnu
 
           # Native libClang required for rust bindgen
           choco install -y llvm
@@ -135,7 +134,6 @@ jobs:
             mingw-w64-i686-cmake
             mingw-w64-i686-ninja
             mingw-w64-i686-clang
-            mingw-w64-i686-lld
             wget
       - name: Build
         env:
@@ -147,6 +145,7 @@ jobs:
           cd build
           cmake -G Ninja \
             -DSKIP_HEAVY_INLINE=${{ steps.setup.outputs.optimized == 'false' }} \
+            -DUSE_LLD=OFF \
             -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           echo "Building shards"
           ninja ${{ steps.setup.outputs.build-target }}
@@ -260,6 +259,8 @@ jobs:
           ./shards ../src/tests/kdtree.clj
           echo "Running test: channels"
           ./shards ../src/tests/channels.clj
+          # echo "Running test: http"
+          # ./shards ../src/tests/http.clj
           echo "Running test: brotli"
           ./shards ../src/tests/brotli.clj
           echo "Running test: snappy"
