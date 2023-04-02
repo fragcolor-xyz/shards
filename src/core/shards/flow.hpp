@@ -6,6 +6,7 @@
 #include "foundation.hpp"
 #include "shared.hpp"
 #include "async.hpp"
+#include <atomic>
 
 namespace shards {
 static inline Type condShardSeqs = Type::SeqOf(CoreInfo::ShardsOrNone);
@@ -495,18 +496,18 @@ struct Await : public BaseSubFlow {
     return BaseSubFlow::compose(dataCopy);
   }
 
-  std::mutex mtx;
+  std::atomic_bool running{false};
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    // lock but don't actually lock, just try and suspend
-    std::unique_lock<std::mutex> lock(mtx, std::defer_lock);
-    while(true) {
-      if(lock.try_lock())
-        break; // continue the flow
+    do {
+      bool expected = false;
+      if (running.compare_exchange_strong(expected, true))
+        break;
       else if (shards::suspend(context, 0) != SHWireState::Continue)
         return Var::Empty; // return as there is some error or so going on
-    }
-
+      // SHLOG_TRACE("Await: waiting for the previous await to finish");
+    } while (running);
+    DEFER(running = false);
     return awaitne(
         context,
         [&] {
@@ -894,7 +895,8 @@ struct Match {
           expected.append(" ");
       }
       expected += " ]";
-      throw ActivationError(fmt::format("Failed to match input ({}), no matching case is present. Could be any of {}", input, expected));
+      throw ActivationError(
+          fmt::format("Failed to match input ({}), no matching case is present. Could be any of {}", input, expected));
     }
     return _pass ? input : finalOutput;
   }

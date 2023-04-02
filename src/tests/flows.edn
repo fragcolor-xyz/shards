@@ -470,3 +470,24 @@
 
 (schedule Root peek-test)
 (if (run Root 0.1 20) nil (throw "Root tick failed"))
+
+(defwire long-wire
+  (||
+   (Msg "long-wire")
+   1.0 (SleepBlocking!))
+  (Msg "long-wire done"))
+
+(defloop await-test
+  (Do long-wire))
+(defloop await-test1
+  (Do long-wire))
+(defloop await-test2
+  (Do long-wire))
+(defloop await-test3
+  (Do long-wire))
+
+(schedule Root await-test)
+(schedule Root await-test1)
+(schedule Root await-test2)
+(schedule Root await-test3)
+(if (run Root 0.1 100) nil (throw "Root tick failed"))
