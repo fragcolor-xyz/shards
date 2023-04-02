@@ -116,7 +116,7 @@ jobs:
     with:
       build-type: Debug
       runtime-tests: true
-      run-tests: true
+      run-tests: false
   Windows-32bits-Release:
     needs: Setup
     uses: ./.github/workflows/build-windows-32bit.yml

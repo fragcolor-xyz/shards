@@ -257,8 +257,8 @@ jobs:
           ./shards ../src/tests/kdtree.clj
           echo "Running test: channels"
           ./shards ../src/tests/channels.clj
-          # echo "Running test: http"
-          # ./shards ../src/tests/http.clj
+          echo "Running test: http"
+          ./shards ../src/tests/http.clj
           echo "Running test: brotli"
           ./shards ../src/tests/brotli.clj
           echo "Running test: snappy"
