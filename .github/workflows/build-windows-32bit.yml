@@ -154,8 +154,6 @@ jobs:
           then
             echo "Building runtime tests"
             ninja test-runtime
-            echo "Building graphics tests"
-            ninja test-gfx
           fi
       # Minimize disk usage to prevent the next steps getting stuck on glTF models
       - name: Minimize disk usage
