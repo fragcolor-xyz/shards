@@ -495,7 +495,18 @@ struct Await : public BaseSubFlow {
     return BaseSubFlow::compose(dataCopy);
   }
 
+  std::mutex mtx;
+
   SHVar activate(SHContext *context, const SHVar &input) {
+    // lock but don't actually lock, just try and suspend
+    std::unique_lock<std::mutex> lock(mtx, std::defer_lock);
+    while(true) {
+      if(lock.try_lock())
+        break; // continue the flow
+      else if (shards::suspend(context, 0) != SHWireState::Continue)
+        return Var::Empty; // return as there is some error or so going on
+    }
+
     return awaitne(
         context,
         [&] {
