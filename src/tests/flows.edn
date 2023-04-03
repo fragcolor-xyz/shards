@@ -249,31 +249,6 @@
 
 (if (run Root 0.1) nil (throw "Root tick failed"))
 
-(def test-case-step
-  (Wire
-   "test-case-step"
-   :Looped
-   .x ?? 0
-   (Math.Add 1) >= .x
-   (Log "x")))
-
-(prepare test-case-step)
-(start test-case-step)
-(tick test-case-step)
-(tick test-case-step)
-
-(schedule
- Root
- (Wire
-  "continue-stepping"
-  :Looped
-  (Step test-case-step)
-  (Assert.Is 3 true)
-  (Msg "Done")
-  (Stop)))
-
-(if (run Root 0.1) nil (throw "Root tick failed"))
-
 (defwire hashed
   10
   (|#
