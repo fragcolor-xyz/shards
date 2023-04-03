@@ -2,6 +2,7 @@
 #define E726D173_792B_489C_AD25_455528CCF0D0
 
 #include "drawables/mesh_tree_drawable.hpp"
+#include "../core/function.hpp"
 #include <cassert>
 #include <set>
 
@@ -23,7 +24,7 @@ struct TransformUpdaterCollector {
   std::set<MeshTreeDrawable *> visited;
 #endif
 
-  std::function<void(const DrawablePtr &)> collector = [](const DrawablePtr &) {};
+  shards::Function<void(const DrawablePtr &)> collector = [](const DrawablePtr &) {};
 
   void update(MeshTreeDrawable &root) {
     queue.push_back(Node{float4x4(linalg::identity), &root});
