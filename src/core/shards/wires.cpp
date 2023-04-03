@@ -101,10 +101,14 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
     return data.inputType; // we don't know yet...
   }
 
-  wire->mesh = data.wire->mesh;
-
   auto mesh = data.wire->mesh.lock();
   assert(mesh);
+
+  auto currentMesh = wire->mesh.lock();
+  if(currentMesh && currentMesh != mesh)
+    throw ComposeError(fmt::format("Attempted to compose a wire ({}) that is already part of another mesh!", wire->name));
+
+  wire->mesh = data.wire->mesh;
 
   // TODO FIXME, wireloader/wire runner might access this from threads
   if (mesh->visitedWires.count(wire.get())) {
