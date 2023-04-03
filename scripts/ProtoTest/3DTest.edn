@@ -1,0 +1,275 @@
+(defmesh root)
+
+(defpure get-view-transform
+  (| (Float4 0.0 1.0 -8.0 1.0) >= .arm-pos)
+  (Math.AxisAngleY) (Math.Rotation) (Math.MatMul .arm-pos) (ToFloat3) >= .arm-pos-3
+  {:Position .arm-pos-3 :Target (Float3 0 0.025 0)} (Math.LookAt))
+
+(defwire character
+  (Take "Position") >== .position
+  (Log ".position")
+
+  (Setup
+   0 >= .animation-index
+   "" >> .animation-names
+   (Clear .animation-names))
+
+  .position (Math.Translation)
+  (GFX.glTF :Path "gltf-files/Claymore-Mascot-original-noAnim.glb"
+            ;; :AnimationController
+            ;; (->
+            ;;  = .animations
+            ;;  (Setup
+            ;;   .animations (ForEach (-> (Take 0) >> .animation-names)))
+            ;;  .animation-names (Take .animation-index) >= .animation-name
+            ;;  .animations (Take .animation-name) = .animation
+            ;;  (Setup
+            ;;   (Take 1))
+
+            ;;  (Animation.Timer .animation :Offset 1.0)
+            ;;  (Animation.Play .animation);
+            ;;  (|
+            ;;   (Take 1)))
+            )(GFX.Draw .queue))
+
+(defshards lighting-feature []
+  (Float3 -0.2 -2 -1) (Math.Normalize) = .light-direction
+  (Float3 1 1 1) (Math.Multiply 0.5) = .light-color
+  {:Shaders [{:Name "lighting"
+              :Stage ProgrammableGraphicsStage.Fragment
+              :EntryPoint (->
+                           (Shader.ReadInput :Name "worldNormal") >= .normal
+                           (Shader.ReadBuffer :Name "lightDirection") >= .light-dir
+                           (Float3 0 0 0) (Math.Subtract .light-dir) >= .inv-light-dir
+                           .normal (Math.Normalize) (Math.Dot .inv-light-dir) (Max 0.0) >= .n-dot-l
+                           (Shader.ReadBuffer :Name "lightColor") (Math.Multiply .n-dot-l)
+                           (Shader.WriteGlobal "lighting"))}
+             {:Name "mainColor"
+              :Stage ProgrammableGraphicsStage.Fragment
+              :EntryPoint (->
+                           (Shader.ReadGlobal "lighting") (ToFloat4) >= .lighting-4
+                           (Shader.ReadGlobal "color") (Math.Add .lighting-4)
+                           (Shader.WriteGlobal "color"))
+              :After ["readColor"]
+              :Before ["writeColor"]}]
+   :Params {:lightDirection {:Default .light-direction}
+            :lightColor {:Default .light-color}}}
+  (GFX.Feature))
+
+;; ############### adding the protos ####################
+;; #######################################################
+
+;; ############### walking protos ####################
+;; #######################################################
+
+;; -------- creates character position --------
+;;[x y]
+(defwire initialise-character-position
+  (| (Take 0) (ToFloat) >== .x-position)
+  (| (Take 1) (ToFloat) >== .y-position)
+
+  (float2 .x-position .y-position))
+;;>== .character-position
+
+;; --------------- moving-left-right-protos --------------
+(defwire initialise-character-walk
+  0.0 >== .character-x-velocity)
+
+;; ---- character x limits ------
+;; prevents character from walking off screen
+;; [xmin ymin]
+
+(defwire initialise-character-x-limits
+  (| (Take 0) (ToFloat) >== .x-min)
+  (| (Take 1) (ToFloat) >== .x-max))
+
+;; ---- actual character x-logic ---
+;;.character-position
+(defwire character-walk
+  (| (Take 0) (ToFloat) > .x-position)
+  (| (Take 1) (ToFloat) > .y-position)
+
+  .x-position (Math.Add .character-x-velocity)
+  > .x-position
+  (Log "x-position ")
+
+  .x-position > (Max .x-min) (Min .x-max) > .x-position
+
+  (float2 .x-position .y-position))
+;;.character-position
+
+;; ----- button to walk left -----
+;; x-velocity
+(defwire character-walk-left-button
+  (ToFloat) (Math.Multiply -1.0) >= .temp-x-velocity
+
+  (Inputs.KeyDown
+   :Key "left"
+   :Action (->
+            .temp-x-velocity > .character-x-velocity))
+
+  (Inputs.KeyUp
+   :Key "left"
+   :Action (->
+            0.0 > .character-x-velocity)))
+
+;; ----- button to walk right -----
+;; x-velocity positive number
+(defwire character-walk-right-button
+  (ToFloat) >= .temp-x-velocity
+
+  (Inputs.KeyDown
+   :Key "right"
+   :Action (->
+            .temp-x-velocity > .character-x-velocity))
+
+  (Inputs.KeyUp
+   :Key "right"
+   :Action (->
+            0.0 > .character-x-velocity)))
+
+;; ############### jumping protos ####################
+;; #######################################################
+
+;; ----- initialising y velocity & acceleration
+(defwire initialise-jump
+  0.0 >== .character-y-velocity
+  0.0 >== .character-y-acceleration
+  true >== .can-jump)
+
+;; ---- character y limits ----
+;;[y-min y-max]
+(defwire initialise-character-y-limits
+  (| (Take 0) (ToFloat) >== .y-min)
+  (| (Take 1) (ToFloat) >== .y-max))
+
+;; ---- actual jump logic ----
+;; (float 2) .animation-position
+(defwire character-jump-plus-gravity
+  (| (Take 0) (ToFloat) > .x-position)
+  (| (Take 1) (ToFloat) > .y-position)
+
+  .y-position (Math.Subtract .character-y-velocity)
+  > .y-position
+
+  .character-y-velocity (Math.Subtract .character-y-acceleration)
+  > .character-y-velocity
+
+  .y-position > (Max .y-min) (Min .y-max) > .y-position
+
+  (float2 .x-position .y-position))
+;; > .animation-position
+
+;; ---- when character is on the ground reset stuff ----
+[.y-position .y-limit]
+(defwire character-on-ground
+  (| (Take 0) (ToFloat) >= .temp-y)
+  (| (Take 1) (ToFloat) >= .temp-y-limit)
+
+  .temp-y
+  (When :Predicate (Is .temp-y-limit)
+        :Action (->
+                 0.0 > .character-y-velocity
+                 0.0 > .character-y-acceleration
+                 true > .can-jump)))
+
+
+;; ---- jump button ----
+;;[character-y-velocity character-y-acceleration]
+(defwire character-jump-button
+  (| (Take 0) (ToFloat) >= .temp-velocity)
+  (| (Take 1) (ToFloat) >= .temp-acceleration)
+
+  (Inputs.KeyDown
+   :Key "up"
+   :Action (->
+            .can-jump
+            (When :Predicate (Is true)
+                  :Action (->
+                           .temp-velocity > .character-y-velocity
+                           .temp-acceleration >  .character-y-acceleration
+                           false > .can-jump)))))
+
+
+;; ----- change 2D to 3D -----
+;; .character-position
+(defwire twoD-to-threeD
+  (| (Take 0) (ToFloat) > .x-position)
+  (| (Take 1) (ToFloat) > .y-position)
+
+  0.0 >== .z-position
+
+  (float3 .x-position .y-position .z-position))
+;; >== .character-position-3d
+
+
+;; ############################# Main-Wire ###################################
+;; ###########################################################################
+(defloop test-basic-anim
+  (Setup
+   (GFX.DrawQueue) >= .queue
+
+   ;; Render steps
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+   (lighting-feature) >> .features
+   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+
+   ;; Create view
+   0.0 (Do get-view-transform) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+
+  (Setup
+  ;; ------------- movement protos --------------
+   [0.0 0.0]
+   (Do initialise-character-position)
+   >== .character-position
+   (Do initialise-character-walk)
+   [-3.0 3.0]
+   (Do initialise-character-x-limits)
+
+   (Do initialise-jump)
+
+   [0 3]
+   (Do initialise-character-y-limits))
+
+  .character-position
+  (Do character-walk)
+  > .character-position
+
+  .character-position
+  (Do character-jump-plus-gravity)
+  > .character-position
+
+  [.y-position 0]
+  (Do character-on-ground)
+
+  .can-jump
+  (Log ".can-jump")
+
+  .character-position
+  (Do twoD-to-threeD)
+  >== .character-position-3d
+  (Log ".character-position-3d")
+
+  (GFX.MainWindow
+   :Title "glTF" :Width 1920 :Height 1080 :Debug false
+   :Contents
+   (->
+    (Animation.Timer :Rate 0.0 :Offset -6.3) >= .time
+    .time (Do get-view-transform) > .view-transform
+    .queue (GFX.ClearQueue)
+    {:Position .character-position-3d} (Do character)
+
+    -0.05
+    (Do character-walk-left-button)
+
+    -0.05
+    (Do character-walk-right-button)
+
+    [-0.15 -0.01]
+    (Do character-jump-button)
+
+    (GFX.Render :Steps .render-steps :View .view))))
+(schedule root test-basic-anim)
+(if (run root (/ 1.0 60)) nil (throw "Root tick failed"))
