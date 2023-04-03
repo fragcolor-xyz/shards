@@ -132,7 +132,7 @@ pub trait Shard {
   fn resetState(&mut self) {}
 }
 
-#[repr(C, align (16))] // ensure alignment is 16 bytes
+#[repr(C, align(16))] // ensure alignment is 16 bytes
 pub struct ShardWrapper<T: Shard> {
   header: CShard,
   pub shard: T,

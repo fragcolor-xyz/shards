@@ -42,7 +42,9 @@ impl UIRenderer for Var {
           &mut self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue,
         )),
         SHType_Bool => ui.checkbox(&mut self.payload.__bindgen_anon_1.boolValue, ""),
-        SHType_Int => ui.add(CustomDragValue::new(&mut self.payload.__bindgen_anon_1.intValue)),
+        SHType_Int => ui.add(CustomDragValue::new(
+          &mut self.payload.__bindgen_anon_1.intValue,
+        )),
         SHType_Int2 => {
           let values = &mut self.payload.__bindgen_anon_1.int2Value;
           ui.horizontal(|ui| {

@@ -23,6 +23,7 @@ use crate::types::Parameters;
 use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
+use crate::types::BOOL_TYPES;
 use crate::types::BOOL_TYPES_SLICE;
 use crate::types::NONE_TYPES;
 use crate::types::STRING_TYPES;
@@ -96,7 +97,7 @@ impl Shard for CodeEditor {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &STRING_TYPES
+    &BOOL_TYPES
   }
 
   fn outputHelp(&mut self) -> OptionalString {
@@ -152,7 +153,7 @@ impl Shard for CodeEditor {
       self.mutable_text = false;
     }
 
-    Ok(common_type::string)
+    Ok(common_type::bool)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
@@ -251,9 +252,9 @@ impl Shard for CodeEditor {
         .inner;
 
       if response.changed() || response.lost_focus() {
-        Ok(*self.variable.get())
+        Ok(true.into())
       } else {
-        Ok(Var::default())
+        Ok(false.into())
       }
     } else {
       Err("No UI parent")
