@@ -208,7 +208,8 @@ impl Shard for super::Sized {
             resp =
               util::activate_ui_contents(context, input, ui, &mut self.parents, &self.contents);
           },
-        ).response
+        )
+        .response
       });
 
       resp

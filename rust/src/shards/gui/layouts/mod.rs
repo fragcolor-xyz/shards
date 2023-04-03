@@ -132,10 +132,10 @@ struct Sized {
   contents: ShardsVar,
   requiring: ExposedTypes,
   exposing: ExposedTypes,
-  width : ClonedVar,
-  height : ClonedVar,
-  fill_width : ClonedVar,
-  fill_height : ClonedVar,
+  width: ClonedVar,
+  height: ClonedVar,
+  fill_width: ClonedVar,
+  fill_height: ClonedVar,
 }
 
 mod collapsing_header;
@@ -148,10 +148,10 @@ mod horizontal;
 mod indent;
 mod scroll_area;
 mod separator;
+mod sized;
 mod space;
 mod table;
 mod vertical;
-mod sized;
 
 pub fn registerShards() {
   registerShard::<CollapsingHeader>();

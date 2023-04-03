@@ -34,9 +34,7 @@ struct ToBase58 {
 }
 impl Default for ToBase58 {
   fn default() -> Self {
-    ToBase58 {
-      output: ().into(),
-    }
+    ToBase58 { output: ().into() }
   }
 }
 impl Shard for ToBase58 {

@@ -277,6 +277,7 @@ mod code_editor;
 mod color_input;
 mod combo;
 mod console;
+mod drag_value;
 #[cfg(feature = "hex_viewer")]
 mod hex_viewer;
 mod hyperlink;
@@ -298,7 +299,6 @@ mod text_util;
 mod tooltip;
 mod var_util;
 mod variable;
-mod drag_value;
 
 pub fn registerShards() {
   registerShard::<Button>();
