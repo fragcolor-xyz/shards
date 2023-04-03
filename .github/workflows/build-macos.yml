@@ -137,7 +137,7 @@ jobs:
           ./shards ../src/tests/subwires.clj
           ./shards ../src/tests/linalg.clj
           ./shards ../src/tests/loader.clj
-          ./shards ../src/tests/network.clj
+          ./shards ../src/tests/network.edn
           ./shards ../src/tests/struct.clj
           ./shards ../src/tests/flows.edn
           ./shards ../src/tests/kdtree.clj
