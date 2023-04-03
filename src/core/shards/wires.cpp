@@ -1185,8 +1185,8 @@ struct CapturingSpawners : public WireBase {
     if (it != threadSpawnedWires.end()) {
       it->second.refcount--;
       if (it->second.refcount == 0) {
-        threadSpawnedWires.erase(it);
         SHLOG_TRACE("CapturingSpawners: Destroying wire {} ptr {}", it->first->name, (void *)it->first);
+        threadSpawnedWires.erase(it);
       }
     }
 
