@@ -5,6 +5,7 @@
 #include <boost/asio.hpp>
 
 #include "../runtime.hpp"
+#include "shards.hpp"
 #include "shared.hpp"
 #include "utility.hpp"
 #include <boost/lockfree/queue.hpp>
@@ -428,12 +429,24 @@ struct Send {
 
   SHVar *_socketVar = nullptr;
 
+  std::shared_ptr<NetworkContext> _context;
+
   void cleanup() {
+    _context.reset();
+
     // clean context vars
     if (_socketVar) {
       releaseVariable(_socketVar);
       _socketVar = nullptr;
     }
+  }
+
+  void warmup(SHContext *context) {
+    auto &networkContext = context->anyStorage["Network.Context"];
+    if (networkContext.type() != entt::type_id<std::shared_ptr<NetworkContext>>()) {
+      throw WarmupError("Network.Context not set");
+    }
+    _context = entt::any_cast<std::shared_ptr<NetworkContext> &>(networkContext);
   }
 
   SocketData *getSocket(SHContext *context) {
@@ -455,8 +468,12 @@ struct Send {
     NetworkBase::Writer w(&_send_buffer().front(), _send_buffer().size());
     serializer.reset();
     auto size = serializer.serialize(input, w);
-    // use async, avoid syscalls!
-    socket->socket->send_to(boost::asio::buffer(&_send_buffer().front(), size), *socket->endpoint);
+    socket->socket->async_send_to(boost::asio::buffer(&_send_buffer().front(), size), *socket->endpoint,
+                                  [](boost::system::error_code ec, std::size_t bytes_sent) {
+                                    if (ec) {
+                                      std::cout << "Error sending: " << ec.message() << std::endl;
+                                    }
+                                  });
     return input;
   }
 };

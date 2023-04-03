@@ -1,8 +1,6 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2019 Fragcolor Pte. Ltd.
 
-(def remote "Network.RemoteEndpoint")
-
 (def network-test-server
   (Wire "server" :Looped
          (Network.Server
@@ -56,22 +54,10 @@
          (Once (Do client-init))
          ))
 
-; manually tick and such to properly close all (threads... windows issues)
-(prepare network-test-server)
-(prepare network-test-client)
-(start network-test-server)
-(start network-test-client)
-(tick network-test-server)
-(tick network-test-client)
-(sleep 3)
-(tick network-test-server)
-(tick network-test-client)
-(sleep 3)
-(stop network-test-server)
-(stop network-test-client)
-; destroy wires - issues with CI, to investigate better.. valgrind, gdb, drmingw said no problem tho...
+(defmesh main)
+(schedule main network-test-server)
+(schedule main network-test-client)
+(run main 0.01 100)
 (def network-test-server nil)
 (def network-test-client nil)
-;(def client-init nil)
-(sleep 3)
-          
+(def main nil)          
