@@ -143,6 +143,8 @@ struct SHContext {
   bool onCleanup{false};
   bool onLastResume{false};
 
+  std::unordered_map<std::string, entt::any> anyStorage;
+
 // Used within the coro& stack! (suspend, etc)
 #ifndef __EMSCRIPTEN__
   SHCoro &&continuation;

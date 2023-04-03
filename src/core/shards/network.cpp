@@ -8,7 +8,10 @@
 #include "shared.hpp"
 #include "utility.hpp"
 #include <boost/lockfree/queue.hpp>
+#include <functional>
+#include <memory>
 #include <thread>
+#include <utility>
 
 using boost::asio::ip::udp;
 
@@ -21,13 +24,37 @@ struct SocketData {
   udp::endpoint *endpoint;
 };
 
+struct NetworkContext {
+  boost::asio::io_context _io_context;
+  std::thread _io_context_thread;
+
+  NetworkContext() {
+    _io_context_thread = std::thread([this] {
+      // Force run to run even without work
+      boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g = boost::asio::make_work_guard(_io_context);
+      try {
+        SHLOG_DEBUG("Boost asio context running...");
+        _io_context.run();
+      } catch (...) {
+        SHLOG_ERROR("Boost asio context run failed.");
+      }
+      SHLOG_DEBUG("Boost asio context exiting...");
+    });
+  }
+
+  ~NetworkContext() {
+    boost::asio::post(_io_context, [this]() {
+      // allow end/thread exit
+      _io_context.stop();
+    });
+    _io_context_thread.join();
+  }
+};
+
 struct NetworkBase {
   ShardsVar _blks{};
 
   static inline Type SocketInfo{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = SocketCC}}}};
-
-  static inline boost::asio::io_context _io_context;
-  static inline int64_t _io_context_refc = 0;
 
   ParamVar _addr{Var("localhost")};
   ParamVar _port{Var(9191)};
@@ -46,50 +73,27 @@ struct NetworkBase {
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
-  static void setup() {
-    if (_io_context_refc == 0) {
-      auto worker = std::thread([] {
-        // Force run to run even without work
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> g = boost::asio::make_work_guard(_io_context);
-        try {
-          // SHLOG_DEBUG("Boost asio context running...");
-          _io_context.run();
-        } catch (...) {
-          SHLOG_ERROR("Boost asio context run failed.");
-        }
-        // SHLOG_DEBUG("Boost asio context exiting...");
-      });
-      worker.detach();
-    }
-    _io_context_refc++;
-  }
-
-  void destroy() {
-    // defer all in the context or we will crash!
-    if (_io_context_refc > 0) {
-      boost::asio::post(_io_context, []() {
-        _io_context_refc--;
-        if (_io_context_refc == 0) {
-          // allow end/thread exit
-          _io_context.stop();
-        }
-      });
-    }
-  }
+  std::shared_ptr<NetworkContext> _context;
 
   void cleanup() {
-    // defer all in the context or we will crash!
-    if (_socket.socket) {
-      auto socket = _socket.socket;
-      boost::asio::post(_io_context, [socket]() {
-        if (socket) {
-          socket->close();
-          delete socket;
-        }
-      });
+    if (_context) {
+      auto &io_context = _context->_io_context;
 
-      _socket.socket = nullptr;
-      _socket.endpoint = nullptr;
+      // defer all in the context or we will crash!
+      if (_socket.socket) {
+        auto socket = _socket.socket;
+        boost::asio::post(io_context, [socket]() {
+          if (socket) {
+            socket->close();
+            delete socket;
+          }
+        });
+
+        _socket.socket = nullptr;
+        _socket.endpoint = nullptr;
+      }
+
+      _context.reset();
     }
 
     // clean context vars
@@ -107,6 +111,17 @@ struct NetworkBase {
     _addr.warmup(context);
     _port.warmup(context);
     _blks.warmup(context);
+
+    auto &networkContext = context->anyStorage["Network.Context"];
+    if (networkContext.type() != entt::type_id<std::shared_ptr<NetworkContext>>()) {
+      // create a new context
+      networkContext = entt::any{std::in_place_type_t<std::shared_ptr<NetworkContext>>{}};
+    }
+    auto &ctx = entt::any_cast<std::shared_ptr<NetworkContext> &>(networkContext);
+    if (!ctx) {
+      ctx.reset(new NetworkContext());
+    }
+    _context = ctx;
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -223,8 +238,6 @@ struct Server : public NetworkBase {
         destroyVar(pkt.payload);
       }
     }
-
-    NetworkBase::destroy();
   }
 
   Serialization deserial;
@@ -258,17 +271,20 @@ struct Server : public NetworkBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    assert(_context);
+    auto &io_context = _context->_io_context;
+
     if (!_socket.socket) {
       // first activation, let's init
-      _socket.socket = new udp::socket(_io_context, udp::endpoint(udp::v4(), _port.get().payload.intValue));
+      _socket.socket = new udp::socket(io_context, udp::endpoint(udp::v4(), _port.get().payload.intValue));
 
       // start receiving
-      boost::asio::post(_io_context, [this]() { do_receive(); });
+      boost::asio::post(io_context, [this]() { do_receive(); });
     }
 
     setSocket(context);
 
-    // receive from ringbuffer and run wires
+    // receive from ring-buffer and run wires
     while (!_queue.empty()) {
       ClientPkt pkt;
       if (_queue.pop(pkt)) {
@@ -288,7 +304,6 @@ struct Server : public NetworkBase {
 
 // Register
 RUNTIME_SHARD(Network, Server);
-RUNTIME_SHARD_setup(Server);
 RUNTIME_SHARD_cleanup(Server);
 RUNTIME_SHARD_warmup(Server);
 RUNTIME_SHARD_destroy(Server);
@@ -322,8 +337,6 @@ struct Client : public NetworkBase {
         destroyVar(v);
       }
     }
-
-    NetworkBase::destroy();
   }
 
   Serialization deserial;
@@ -354,9 +367,12 @@ struct Client : public NetworkBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    assert(_context);
+    auto &io_context = _context->_io_context;
+
     if (!_socket.socket) {
       // first activation, let's init
-      _socket.socket = new udp::socket(_io_context, udp::endpoint(udp::v4(), 0));
+      _socket.socket = new udp::socket(io_context, udp::endpoint(udp::v4(), 0));
 
       boost::asio::io_service io_service;
       udp::resolver resolver(io_service);
@@ -365,7 +381,7 @@ struct Client : public NetworkBase {
       _server = *resolver.resolve(query);
 
       // start receiving
-      boost::asio::post(_io_context, [this]() { do_receive(); });
+      boost::asio::post(io_context, [this]() { do_receive(); });
     }
 
     setSocket(context);
@@ -392,7 +408,6 @@ struct Client : public NetworkBase {
 
 // Register
 RUNTIME_SHARD(Network, Client);
-RUNTIME_SHARD_setup(Client);
 RUNTIME_SHARD_cleanup(Client);
 RUNTIME_SHARD_warmup(Client);
 RUNTIME_SHARD_destroy(Client);
