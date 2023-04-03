@@ -1,0 +1,10 @@
+;; ----- change 2D to 3D -----
+;; .character-position
+(defwire twoD-to-threeD
+  (| (Take 0) (ToFloat) > .x-position)
+  (| (Take 1) (ToFloat) > .y-position)
+
+  0.0 >== .z-position
+
+  (float3 .x-position .y-position .z-position))
+;; >== .character-position-3d

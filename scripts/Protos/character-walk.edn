@@ -1,0 +1,14 @@
+;; ---- actual character x-logic ---
+;;.character-position
+(defwire character-walk
+  (| (Take 0) (ToFloat) > .x-position)
+  (| (Take 1) (ToFloat) > .y-position)
+
+  .x-position (Math.Add .character-x-velocity)
+  > .x-position
+  (Log "x-position ")
+
+  .x-position > (Max .x-min) (Min .x-max) > .x-position
+
+  (float2 .x-position .y-position))
+;;.character-position

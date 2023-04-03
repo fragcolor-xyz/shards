@@ -1,0 +1,14 @@
+(defwire testwire
+  [] >= .empty-seq
+  (Log ".empty-seq")
+  )
+
+(defloop testloop
+  (Setup
+   (Do testwire)
+   )
+  )
+
+(defmesh main)
+(schedule main testwire)
+(run main (/ 1.0 60))

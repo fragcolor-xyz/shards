@@ -1,0 +1,7 @@
+;; ---- character x limits ------
+;; prevents character from walking off screen
+;; [xmin ymin]
+
+(defwire initialise-character-x-limits
+  (| (Take 0) (ToFloat) >== .x-min)
+  (| (Take 1) (ToFloat) >== .x-max))

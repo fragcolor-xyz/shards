@@ -1,0 +1,8 @@
+;; -------- creates character position --------
+;;[x y]
+(defwire initialise-character-position
+  (| (Take 0) (ToFloat) >== .x-position)
+  (| (Take 1) (ToFloat) >== .y-position)
+
+  (float2 .x-position .y-position))
+;;>== .character-position

@@ -1,0 +1,3 @@
+;; --------------- moving-left-right-protos --------------
+(defwire initialise-character-walk
+  0.0 >== .character-x-velocity)

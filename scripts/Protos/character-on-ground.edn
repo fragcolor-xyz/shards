@@ -1,0 +1,12 @@
+;; ---- when character is on the ground reset stuff ----
+[.y-position .y-limit]
+(defwire character-on-ground
+  (| (Take 0) (ToFloat) >= .temp-y)
+  (| (Take 1) (ToFloat) >= .temp-y-limit)
+
+  .temp-y
+  (When :Predicate (Is .temp-y-limit)
+        :Action (->
+                 0.0 > .character-y-velocity
+                 0.0 > .character-y-acceleration
+                 true > .can-jump)))

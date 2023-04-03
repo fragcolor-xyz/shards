@@ -1,0 +1,14 @@
+;; ----- button to walk right -----
+;; x-velocity positive number
+(defwire character-walk-right-button
+  (ToFloat) >= .temp-x-velocity
+
+  (Inputs.KeyDown
+   :Key "right"
+   :Action (->
+            .temp-x-velocity > .character-x-velocity))
+
+  (Inputs.KeyUp
+   :Key "right"
+   :Action (->
+            0.0 > .character-x-velocity)))

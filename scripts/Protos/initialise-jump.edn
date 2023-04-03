@@ -1,0 +1,5 @@
+;; ----- initialising y velocity & acceleration
+(defwire initialise-jump
+  0.0 >== .character-y-velocity
+  0.0 >== .character-y-acceleration
+  true >== .can-jump)

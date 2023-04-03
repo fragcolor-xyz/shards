@@ -1,0 +1,5 @@
+;; ---- character y limits ----
+;;[y-min y-max]
+(defwire initialise-character-y-limits
+  (| (Take 0) (ToFloat) >== .y-min)
+  (| (Take 1) (ToFloat) >== .y-max))

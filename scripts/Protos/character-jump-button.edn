@@ -1,0 +1,15 @@
+;; ---- jump button ----
+;;[character-y-velocity character-y-acceleration]
+(defwire character-jump-button
+  (| (Take 0) (ToFloat) >= .temp-velocity)
+  (| (Take 1) (ToFloat) >= .temp-acceleration)
+
+  (Inputs.KeyDown
+   :Key "up"
+   :Action (->
+            .can-jump
+            (When :Predicate (Is true)
+                  :Action (->
+                           .temp-velocity > .character-y-velocity
+                           .temp-acceleration >  .character-y-acceleration
+                           false > .can-jump)))))

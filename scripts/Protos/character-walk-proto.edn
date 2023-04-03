@@ -1,0 +1,68 @@
+;; ############### walking protos ####################
+;; #######################################################
+
+;; -------- creates character position --------
+;;[x y]
+(defwire initialise-character-position
+  (| (Take 0) (ToFloat) >== .x-position)
+  (| (Take 1) (ToFloat) >== .y-position)
+
+  (float2 .x-position .y-position))
+;;>== .character-position
+
+;; --------------- moving-left-right-protos --------------
+(defwire initialise-character-walk
+  0.0 >== .character-x-velocity)
+
+;; ---- character x limits ------
+;; prevents character from walking off screen
+;; [xmin ymin]
+
+(defwire initialise-character-x-limits
+  (| (Take 0) (ToFloat) >== .x-min)
+  (| (Take 1) (ToFloat) >== .x-max))
+
+;; ---- actual character x-logic ---
+;;.character-position
+(defwire character-walk
+  (| (Take 0) (ToFloat) > .x-position)
+  (| (Take 1) (ToFloat) > .y-position)
+
+  .x-position (Math.Add .character-x-velocity)
+  > .x-position
+  (Log "x-position ")
+
+  .x-position > (Max .x-min) (Min .x-max) > .x-position
+
+  (float2 .x-position .y-position))
+;;.character-position
+
+;; ----- button to walk left -----
+;; x-velocity
+(defwire character-walk-left-button
+  (ToFloat) (Math.Multiply -1.0) >= .temp-x-velocity
+
+  (Inputs.KeyDown
+   :Key "left"
+   :Action (->
+            .temp-x-velocity > .character-x-velocity))
+
+  (Inputs.KeyUp
+   :Key "left"
+   :Action (->
+            0.0 > .character-x-velocity)))
+
+;; ----- button to walk right -----
+;; x-velocity positive number
+(defwire character-walk-right-button
+  (ToFloat) >= .temp-x-velocity
+
+  (Inputs.KeyDown
+   :Key "right"
+   :Action (->
+            .temp-x-velocity > .character-x-velocity))
+
+  (Inputs.KeyUp
+   :Key "right"
+   :Action (->
+            0.0 > .character-x-velocity)))

@@ -1,0 +1,45 @@
+(def timestep (/ 1.0 120.0))
+(defmesh Root)
+(def BlendAlpha {:Operation BlendOperation.Add :Src BlendFactor.SrcAlpha :Dst BlendFactor.OneMinusSrcAlpha})
+(defloop test-wire
+  (Setup
+   0.0 >= .time
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Plane) >= .mesh
+
+   ; Load texture
+   (LoadImage "GlodImages/Character1.png") >= .image
+   (Log "Image")
+   (GFX.Texture) >= .texture
+   (Log "Texture")
+
+    ; Create render steps
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+   {:Features .features} (GFX.DrawablePass) >> .render-steps
+
+    ; Create view
+   {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    0.0 (Math.AxisAngleX) (Math.Rotation) >= .rotX
+    0.0 (Math.AxisAngleY) (Math.Rotation) >= .rotY
+    3.142 (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
+    (float3 0.0 0.0 0.0) (Math.Translation) >= .object-translation
+    .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) (Math.MatMul .object-translation) >= .transform-matrix
+    (Log ".transform-matrix")
+
+    ;; .time (Math.Add timestep) > .time
+    ;; .time (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
+    ;; .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
+    ;; .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
+    ;; .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ)
+    ;; >= .transform-matrix
+
+    (GFX.Drawable :Mesh .mesh :Params {:baseColorTexture .texture}) (GFX.Draw)
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(schedule Root test-wire)
+(if (run Root (/ 1.0 60)) nil (throw "Root tick failed"))

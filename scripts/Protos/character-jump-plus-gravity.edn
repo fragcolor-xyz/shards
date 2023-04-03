@@ -1,0 +1,16 @@
+;; ---- actual jump logic ----
+;; (float 2) .animation-position
+(defwire character-jump-plus-gravity
+  (| (Take 0) (ToFloat) > .x-position)
+  (| (Take 1) (ToFloat) > .y-position)
+
+  .y-position (Math.Subtract .character-y-velocity)
+  > .y-position
+
+  .character-y-velocity (Math.Subtract .character-y-acceleration)
+  > .character-y-velocity
+
+  .y-position > (Max .y-min) (Min .y-max) > .y-position
+
+  (float2 .x-position .y-position))
+;; > .animation-position
