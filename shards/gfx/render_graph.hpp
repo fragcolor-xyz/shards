@@ -14,6 +14,7 @@
 #include "pmr/vector.hpp"
 #include "gfx_wgpu.hpp"
 #include "drawable_processor.hpp"
+#include "../core/function.hpp"
 #include <compare>
 #include <span>
 
@@ -155,10 +156,10 @@ struct RenderGraphNode {
   size_t queueDataIndex;
 
   // Sets up the render pass
-  std::function<void(WGPURenderPassDescriptor &)> setupPass;
+  shards::Function<void(WGPURenderPassDescriptor &)> setupPass;
 
   // Writes the render pass
-  std::function<void(RenderGraphEncodeContext &)> encode;
+  shards::Function<void(RenderGraphEncodeContext &)> encode;
 
   RenderGraphNode() = default;
   RenderGraphNode(RenderGraphNode &&) = default;
