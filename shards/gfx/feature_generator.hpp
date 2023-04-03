@@ -4,7 +4,7 @@
 #include "params.hpp"
 #include "pipeline_step.hpp"
 #include "renderer.hpp"
-// #include "pmr/vector.hpp"
+#include "../core/function.hpp"
 #include <span>
 #include <vector>
 
@@ -60,8 +60,8 @@ struct FeatureDrawableGeneratorContext : public FeatureGeneratorContext {
 };
 
 struct FeatureGenerator {
-  using PerView = std::function<void(FeatureViewGeneratorContext &)>;
-  using PerObject = std::function<void(FeatureDrawableGeneratorContext &drawable)>;
+  using PerView = shards::Function<void(FeatureViewGeneratorContext &)>;
+  using PerObject = shards::Function<void(FeatureDrawableGeneratorContext &drawable)>;
 
   FeatureGenerator(PerView cb) : callback(cb) {}
   FeatureGenerator(PerObject cb) : callback(cb) {}

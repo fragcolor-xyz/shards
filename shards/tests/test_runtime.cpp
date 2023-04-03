@@ -1338,6 +1338,7 @@ TEST_CASE("AWAIT/AWAITNE") {
   CHECK(getTidePool()._workers.size() == TidePool::NumWorkers);
 #endif
 }
+
 TEST_CASE("TTableVar initialization", "[TTableVar]") {
   SECTION("Default construction") {
     TableVar tv;
@@ -1404,6 +1405,47 @@ TEST_CASE("TTableVar operations", "[TTableVar]") {
     REQUIRE(tv.size() == 0);
     REQUIRE_FALSE(tv.hasKey("key1"));
   }
+
+#include <shards/core/function.hpp>
+static int staticVal = 0;
+extern shards::Function<void()> getFunc(int &output, int someValue) {
+  return [&, someValue]() { output += someValue; };
+}
+
+extern void staticFunc() { staticVal = 1; }
+
+TEST_CASE("Function") {
+  shards::Function<void()> f = []() { staticVal = 2; };
+  f();
+  CHECK(staticVal == 2);
+
+  decltype(f) f1 = getFunc(staticVal, 0x100);
+  f1();
+  CHECK(staticVal == (0x100 + 2));
+
+  decltype(f) f2 = f1;
+  f2();
+  CHECK(staticVal == (0x100 * 2 + 2));
+
+  auto f3 = getFunc(staticVal, 0x200);
+  f3();
+  CHECK(staticVal == (0x100 * 2 + 0x200 + 2));
+
+  shards::Function<void()> f4;
+  CHECK(!f4);
+  f4 = []() {};
+  CHECK(f4);
+
+  f4();
+  CHECK(staticVal == (0x100 * 2 + 0x200 + 2)); // Unchanged
+
+  f4 = &staticFunc;
+  CHECK(f4);
+  f4();
+  CHECK(staticVal == 1);
+
+  f4.reset();
+  CHECK(!f4);
 }
 
 #define TEST_SUCCESS_CASE(testName, code)                \
