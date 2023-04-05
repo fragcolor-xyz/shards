@@ -110,7 +110,7 @@ struct Query : public Base {
 
   PARAM_VAR(_query, "Query", "The database query to execute every activation.", {CoreInfo::StringType});
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
-  PARAM_IMPL(Query, PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName));
+  PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName));
 
   void cleanup() {
     PARAM_CLEANUP();
@@ -237,7 +237,7 @@ struct Transaction : public Base {
 
   PARAM(ShardsVar, _queries, "Queries", "The Shards logic executing various DB queries.", {CoreInfo::ShardsOrNone});
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
-  PARAM_IMPL(Transaction, PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName));
+  PARAM_IMPL(PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName));
 
   SHTypeInfo compose(SHInstanceData &data) {
     _queries.compose(data);

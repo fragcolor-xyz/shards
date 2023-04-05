@@ -16,7 +16,7 @@ struct UIPassShard {
 
   PARAM_PARAMVAR(_queue, "Queue", "The queue to draw from (Optional). Uses the default queue if not specified",
                  {CoreInfo::NoneType, Type::VariableOf(Types::DrawQueue)});
-  PARAM_IMPL(UIPassShard, PARAM_IMPL_FOR(_queue));
+  PARAM_IMPL(PARAM_IMPL_FOR(_queue));
 
   PipelineStepPtr *_step{};
 

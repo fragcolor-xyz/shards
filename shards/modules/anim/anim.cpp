@@ -54,7 +54,7 @@ struct TimerShard {
   PARAM_PARAMVAR(_offset, "Offset", "Timer offset", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM(ShardsVar, _action, "Action", "The action to evaluate after the given Duration",
         {CoreInfo::Shards, {CoreInfo::NoneType}});
-  PARAM_IMPL(TimerShard, PARAM_IMPL_FOR(_animation), PARAM_IMPL_FOR(_duration), PARAM_IMPL_FOR(_looped), PARAM_IMPL_FOR(_rate),
+  PARAM_IMPL(PARAM_IMPL_FOR(_animation), PARAM_IMPL_FOR(_duration), PARAM_IMPL_FOR(_looped), PARAM_IMPL_FOR(_rate),
              PARAM_IMPL_FOR(_offset), PARAM_IMPL_FOR(_action));
 
   float _time{};
@@ -167,7 +167,7 @@ struct PlayShard {
   static SHOptionalString outputHelp() { return SHCCSTR(R"(The interpolated frame data)"); }
 
   PARAM_PARAMVAR(_animation, "Animation", "The animation to play", Types::AnimationOrAnimationVar);
-  PARAM_IMPL(PlayShard, PARAM_IMPL_FOR(_animation));
+  PARAM_IMPL(PARAM_IMPL_FOR(_animation));
 
   SeqVar _output;
 
@@ -258,7 +258,7 @@ struct DurationShard {
   static SHTypesInfo inputTypes() { return Types::Animation; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  PARAM_IMPL(DurationShard);
+  PARAM_IMPL();
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup() { PARAM_CLEANUP(); }
   SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }

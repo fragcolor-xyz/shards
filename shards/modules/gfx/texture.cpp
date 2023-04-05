@@ -59,8 +59,8 @@ struct TextureShard {
   PARAM_PARAMVAR(_addressing, "Addressing", "For sampling, sets the address modes.",
                  {Types::TextureAddressingEnumInfo::Type, Type::SeqOf(Types::TextureAddressingEnumInfo::Type)});
   PARAM_PARAMVAR(_filtering, "Filtering", "For sampling, sets the filter mode.", {Types::TextureFilteringEnumInfo::Type});
-  PARAM_IMPL(TextureShard, PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution),
-             PARAM_IMPL_FOR(_mipLevels), PARAM_IMPL_FOR(_dimension), PARAM_IMPL_FOR(_addressing), PARAM_IMPL_FOR(_filtering));
+  PARAM_IMPL(PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution), PARAM_IMPL_FOR(_mipLevels),
+             PARAM_IMPL_FOR(_dimension), PARAM_IMPL_FOR(_addressing), PARAM_IMPL_FOR(_filtering));
 
   TextureShard() {}
 
@@ -357,7 +357,7 @@ struct RenderTargetShard {
   static inline shards::Type AttachmentTable = Type::TableOf(AttachmentTableTypes, AttachmentTableKeys);
 
   PARAM_VAR(_attachments, "Attachments", "The list of attachements to create.", {Type::TableOf(AttachmentTable)});
-  PARAM_IMPL(RenderTargetShard, PARAM_IMPL_FOR(_attachments));
+  PARAM_IMPL(PARAM_IMPL_FOR(_attachments));
 
   SHRenderTarget _renderTarget;
   OwnedVar _renderTargetVar{};
@@ -391,7 +391,7 @@ struct RenderTargetTextureShard {
   static SHOptionalString help() { return SHCCSTR("Retrieve a named attachment from a render target"); }
 
   PARAM_PARAMVAR(_nameVar, "Name", "Name of the attachment to retrieve", {CoreInfo::StringOrNone})
-  PARAM_IMPL(RenderTargetTextureShard, PARAM_IMPL_FOR(_nameVar));
+  PARAM_IMPL(PARAM_IMPL_FOR(_nameVar));
 
   TexturePtr texture;
   OwnedVar textureVar;

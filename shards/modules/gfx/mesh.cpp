@@ -25,7 +25,7 @@ struct MeshShard {
 
   PARAM_VAR(_layoutParam, "Layout", "The names for each vertex attribute.", {VertexAttributeSeqType});
   PARAM_VAR(_windingOrderParam, "WindingOrder", "Front facing winding order for this mesh.", {Types::WindingOrderEnumInfo::Type});
-  PARAM_IMPL(MeshShard, PARAM_IMPL_FOR(_layoutParam), PARAM_IMPL_FOR(_windingOrderParam));
+  PARAM_IMPL(PARAM_IMPL_FOR(_layoutParam), PARAM_IMPL_FOR(_windingOrderParam));
 
   MeshPtr *_mesh = {};
 
@@ -117,7 +117,7 @@ struct BuiltinMeshShard {
   static SHTypesInfo outputTypes() { return Types::Mesh; }
 
   PARAM_VAR(_type, "Type", "The type of object to make.", {BuiltinMeshTypeEnumInfo::Type})
-  PARAM_IMPL(BuiltinMeshShard, PARAM_IMPL_FOR(_type));
+  PARAM_IMPL(PARAM_IMPL_FOR(_type));
 
   BuiltinMeshShard() { _type = Var::Enum(Type::Cube, BuiltinMeshTypeEnumInfo::VendorId, BuiltinMeshTypeEnumInfo::TypeId); }
 

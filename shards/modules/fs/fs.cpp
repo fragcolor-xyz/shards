@@ -208,7 +208,7 @@ struct RelativeTo {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   PARAM_PARAMVAR(_basePath, "BasePath", "The base path to make the input path relative to", {CoreInfo::StringOrStringVar});
-  PARAM_IMPL(RelativeTo, PARAM_IMPL_FOR(_basePath));
+  PARAM_IMPL(PARAM_IMPL_FOR(_basePath));
 
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {

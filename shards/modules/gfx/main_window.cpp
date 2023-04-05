@@ -308,13 +308,14 @@ struct WindowSize {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_IMPL(WindowSize);
+  PARAM_IMPL();
 
   RequiredGraphicsContext _requiredGraphicsContext;
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
     return outputTypes().elements[0];
   }
 
@@ -334,13 +335,14 @@ struct ResizeWindow {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_IMPL(WindowSize);
+  PARAM_IMPL();
 
   RequiredGraphicsContext _requiredGraphicsContext;
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
     return data.inputType;
   }
 
@@ -363,13 +365,14 @@ struct WindowPosition {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_IMPL(WindowPosition);
+  PARAM_IMPL();
 
   RequiredGraphicsContext _requiredGraphicsContext;
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
     return outputTypes().elements[0];
   }
 
@@ -389,13 +392,14 @@ struct MoveWindow {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_IMPL(WindowSize);
+  PARAM_IMPL();
 
   RequiredGraphicsContext _requiredGraphicsContext;
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
     return data.inputType;
   }
 

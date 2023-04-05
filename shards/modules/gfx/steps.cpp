@@ -209,7 +209,7 @@ struct DrawablePassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
-  PARAM_IMPL(DrawablePassShard);
+  PARAM_IMPL();
 
   PipelineStepPtr *_step{};
   HashState _hashState;
@@ -283,7 +283,7 @@ struct EffectPassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
-  PARAM_IMPL(DrawablePassShard);
+  PARAM_IMPL();
 
   FeaturePtr wrapperFeature;
   PipelineStepPtr *_step{};

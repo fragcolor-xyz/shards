@@ -24,7 +24,7 @@ struct GizmosContextShard {
         "Actual logic to draw the actual gizmos, the input of this flow will be a boolean that will be true if the gizmo is "
         "being pressed and so edited.",
         {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(GizmosContextShard, PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content));
+  PARAM_IMPL(PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content));
 
   RequiredGraphicsContext _graphicsContext;
   Inputs::RequiredInputContext _inputContext;

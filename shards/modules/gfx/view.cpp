@@ -37,7 +37,7 @@ struct ViewShard {
   PARAM_PARAMVAR(_viewTransform, "View", "The view matrix.", {CoreInfo::NoneType, Type::VariableOf(CoreInfo::Float4x4Type)});
   PARAM_PARAMVAR(_fov, "Fov", "The vertical field of view. (In radians. Implies perspective projection)",
                  {CoreInfo::NoneType, CoreInfo::FloatType, Type::VariableOf(CoreInfo::FloatType)});
-  PARAM_IMPL(ViewShard, PARAM_IMPL_FOR(_viewTransform), PARAM_IMPL_FOR(_fov));
+  PARAM_IMPL(PARAM_IMPL_FOR(_viewTransform), PARAM_IMPL_FOR(_fov));
 
   SHView *_view;
 
@@ -108,7 +108,7 @@ struct RenderIntoShard {
   PARAM_PARAMVAR(_viewport, "Viewport", "The viewport.", {CoreInfo::Int4Type, CoreInfo::Int4VarType});
   PARAM_PARAMVAR(_windowRegion, "WindowRegion", "Sets the window region for input handling.",
                  {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_IMPL(RenderIntoShard, PARAM_IMPL_FOR(_textures), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_referenceSize),
+  PARAM_IMPL(PARAM_IMPL_FOR(_textures), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_referenceSize),
              PARAM_IMPL_FOR(_matchOutputSize), PARAM_IMPL_FOR(_viewport), PARAM_IMPL_FOR(_windowRegion));
 
   RequiredGraphicsRendererContext _graphicsRendererContext;

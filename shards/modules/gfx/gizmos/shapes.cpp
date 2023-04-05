@@ -29,7 +29,7 @@ struct LineShard : public Base {
   PARAM_PARAMVAR(_b, "B", "Ending position of the line", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the line", {CoreInfo::Float4Type, Type::VariableOf(CoreInfo::Float4Type)});
   PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space", {CoreInfo::IntType});
-  PARAM_IMPL(LineShard, PARAM_IMPL_FOR(_thickness), PARAM_IMPL_FOR(_a), PARAM_IMPL_FOR(_b), PARAM_IMPL_FOR(_color));
+  PARAM_IMPL(PARAM_IMPL_FOR(_thickness), PARAM_IMPL_FOR(_a), PARAM_IMPL_FOR(_b), PARAM_IMPL_FOR(_color));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
@@ -72,7 +72,7 @@ struct CircleShard : public Base {
   PARAM_PARAMVAR(_radius, "Radius", "Radius", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the circle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the circle in screen space", {CoreInfo::IntType});
-  PARAM_IMPL(CircleShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_radius),
+  PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_radius),
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -124,7 +124,7 @@ struct RectShard : public Base {
   PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
   PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the rectangle in screen space", {CoreInfo::IntType});
-  PARAM_IMPL(RectShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
+  PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -174,7 +174,7 @@ struct BoxShard : public Base {
                  {CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
   PARAM_PARAMVAR(_color, "Color", "Boxar color of the box", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the box in screen space", {CoreInfo::IntType});
-  PARAM_IMPL(BoxShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_size), PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_color),
+  PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_size), PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_color),
              PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -219,7 +219,7 @@ struct PointShard : public Base {
   PARAM_PARAMVAR(_center, "Center", "Center of the point", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_color, "Color", "Pointar color of the point", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Size of the point in screen space", {CoreInfo::IntType});
-  PARAM_IMPL(PointShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
+  PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
@@ -262,7 +262,7 @@ struct SolidRectShard : public Base {
   PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
   PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the rectangle", {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_IMPL(SolidRectShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
+  PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -317,7 +317,7 @@ struct DiscShard : public Base {
                  {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the disc", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the disc", {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_IMPL(DiscShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), 
+  PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), 
              PARAM_IMPL_FOR(_outerRadius), PARAM_IMPL_FOR(_innerRadius), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
   SHTypeInfo compose(SHInstanceData &data) {

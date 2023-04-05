@@ -25,7 +25,7 @@ struct DrawableShard {
   PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
 
-  PARAM_IMPL(DrawableShard, PARAM_IMPL_FOR(_mesh), PARAM_IMPL_FOR(_material), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
+  PARAM_IMPL(PARAM_IMPL_FOR(_mesh), PARAM_IMPL_FOR(_material), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
 
   static SHOptionalString help() { return SHCCSTR(R"(Drawable help text)"); }
   static SHOptionalString inputHelp() { return SHCCSTR("The drawable's transform"); }
@@ -96,7 +96,7 @@ struct DrawShard {
 
   PARAM_PARAMVAR(_queue, "Queue", "The queue to add the draw command to (Optional). Uses the default queue if not specified",
                  {Type::VariableOf(Types::DrawQueue)});
-  PARAM_IMPL(DrawShard, PARAM_IMPL_FOR(_queue));
+  PARAM_IMPL(PARAM_IMPL_FOR(_queue));
 
   static SHTypesInfo inputTypes() { return DrawableTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
@@ -158,7 +158,7 @@ struct DrawQueueShard {
 
   PARAM_VAR(_autoClear, "AutoClear", "When enabled, automatically clears the queue after items have been rendered",
             {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_IMPL(DrawQueueShard, PARAM_IMPL_FOR(_autoClear));
+  PARAM_IMPL(PARAM_IMPL_FOR(_autoClear));
 
   SHDrawQueue *_queue{};
 
@@ -169,7 +169,7 @@ struct DrawQueueShard {
     assert(!_queue);
     _queue = Types::DrawQueueObjectVar.New();
     _queue->queue = std::make_shared<DrawQueue>();
-    _queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear);
+    _queue->queue->setAutoClear(_autoClear.isNone() ? true : (bool)_autoClear);
   }
 
   void cleanup() {
