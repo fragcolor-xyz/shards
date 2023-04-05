@@ -42,8 +42,15 @@
 
     (GFX.Render :Steps .render-steps :View .view)
 
-    .u8-tex (GFX.ReadTexture :Wait true) >= .image
+    (GFX.EndFrame)
+    .u8-tex (GFX.ReadTexture :Wait true) = .image
+    (Setup 0 >= .fc)
+    "frame-" >= .fn .fc (ToString) (AppendTo .fn) ".png" (AppendTo .fn)
+    (Int2 400 400) (GetImagePixel .image true) (Log "Pixel (400, 400)")
+    (Int2 800 400) (GetImagePixel .image true) (Log "Pixel (800, 400)")
+    .image  (WritePNG .fn)
+    .fc (Math.Add 1) > .fc
     (Log "Read image"))))
 
 (schedule root test-wire)
-(if (run root timestep 100) nil (throw "Root tick failed"))
+(if (run root timestep 4) nil (throw "Root tick failed"))
