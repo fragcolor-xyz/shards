@@ -143,6 +143,7 @@ jobs:
           ./shards ../src/tests/tablecase.edn
           ./shards ../src/tests/types.edn
           ./shards ../src/tests/complex-deserialize.edn
+          ./shards ../src/tests/db.edn
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}

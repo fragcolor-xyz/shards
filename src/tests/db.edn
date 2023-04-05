@@ -1,0 +1,11 @@
+(defmesh root)
+
+(defwire db-test-1
+  (Maybe (-> [] (DB.Query "CREATE TABLE integers(i BIGINT, j BIGINT)") (Log)))
+  [88 99 100 101 102] (DB.Query "INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)") (Log)
+  [] (DB.Query "SELECT * FROM integers") (Log)
+  ;
+  )
+
+(schedule root db-test-1)
+(run root)

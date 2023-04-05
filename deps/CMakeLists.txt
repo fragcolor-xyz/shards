@@ -16,6 +16,10 @@ add_subdirectory(pareto)
 add_subdirectory(replxx)
 add_subdirectory(spdlog)
 
+set(ENABLE_SANITIZER OFF CACHE BOOL "" FORCE)
+set(ENABLE_UBSAN OFF CACHE BOOL "" FORCE)
+add_subdirectory(duckdb)
+
 if(NOT EMSCRIPTEN)
   if(DESKTOP_LINUX)
     find_package(OpenSSL REQUIRED)
