@@ -1,8 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-#include "core/module.hpp"
+#include <shards/core/module.hpp>
 #include <shards/core/shared.hpp>
+#include <shards/core/params.hpp>
+
+#include "linalg.h"
+using namespace linalg::aliases;
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include <stb_image_resize.h>
@@ -223,7 +227,7 @@ struct Resize {
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   static inline Parameters _params{{"Width", SHCCSTR("The target width."), CoreInfo::IntOrIntVar},
-                                   {"Height", SHCCSTR("How target height."), CoreInfo::IntOrIntVar}};
+                                   {"Height", SHCCSTR("The target height."), CoreInfo::IntOrIntVar}};
 
   static SHParametersInfo parameters() { return _params; }
 
@@ -308,11 +312,96 @@ private:
   ParamVar _height{Var(32)};
 };
 
+struct ImageGetPixel {
+  static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
+
+  PARAM_PARAMVAR(_image, "Position", "The position of the pixel to retrieve", {CoreInfo::ImageType, CoreInfo::ImageVarType});
+  PARAM_VAR(_asInteger, "AsInteger", "Read the pixel as an integer", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_image), PARAM_IMPL_FOR(_asInteger));
+
+  ImageGetPixel() { _asInteger = Var(false); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup() { PARAM_CLEANUP(); }
+
+  auto static constexpr Conv_UIntToFloat4 = [](const SHImage &image, auto *pixel) {
+    constexpr float max = float(std::numeric_limits<std::remove_pointer_t<decltype(pixel)>>::max());
+    Float4VarPayload result{};
+    for (size_t i = 0; i < image.channels; i++)
+      result.float4Value[i] = (float)pixel[i] / max;
+    return result;
+  };
+
+  auto static constexpr Conv_FloatToInt4 = [](const SHImage &image, auto *pixel) {
+    constexpr float max = float(std::numeric_limits<std::remove_pointer_t<decltype(pixel)>>::max());
+    Int4VarPayload result{};
+    for (size_t i = 0; i < image.channels; i++)
+      result.int4Value[i] = (int32_t)pixel[i] * max;
+    return result;
+  };
+
+  auto static constexpr Conv_CastFloat4 = [](const SHImage &image, auto *pixel) {
+    Float4VarPayload result{};
+    for (size_t i = 0; i < image.channels; i++)
+      result.float4Value[i] = (float)pixel[i];
+    return result;
+  };
+
+  auto static constexpr Conv_CastInt4 = [](const SHImage &image, auto *pixel) {
+    Int4VarPayload result{};
+    for (size_t i = 0; i < image.channels; i++)
+      result.int4Value[i] = (int32_t)pixel[i];
+    return result;
+  };
+
+  template <typename TPixel, typename TConv> SHVar convert(const SHImage &image, SHInt2 coord, TConv conv) {
+    TPixel *pix = (TPixel *)image.data + image.channels * (coord[1] * image.width + coord[0]);
+    return Var(conv(image, pix));
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &image = _image.get().payload.imageValue;
+    int w = uint32_t(image.width);
+    int h = uint32_t(image.height);
+
+    SHInt2 coord = input.payload.int2Value;
+    if (coord[0] < 0 || coord[0] >= w)
+      throw std::out_of_range("Image fetch x coordinate out of range");
+    if (coord[1] < 0 || coord[1] >= h)
+      throw std::out_of_range("Image fetch y coordinate out of range");
+
+    auto pixsize = getPixelSize(_image.get());
+
+    if (pixsize == 1) {
+      return (bool)*_asInteger ? convert<uint8_t>(image, coord, Conv_CastInt4) //
+                              : convert<uint8_t>(image, coord, Conv_UIntToFloat4);
+    } else if (pixsize == 2) {
+      return (bool)*_asInteger ? convert<uint16_t>(image, coord, Conv_CastInt4) //
+                              : convert<uint16_t>(image, coord, Conv_UIntToFloat4);
+    } else if (pixsize == 4) {
+      return (bool)*_asInteger ? convert<float>(image, coord, Conv_FloatToInt4) //
+                              : convert<float>(image, coord, Conv_CastFloat4);
+    } else {
+      throw std::logic_error("Invalid image format");
+    }
+  }
+};
+
 } // namespace Imaging
 } // namespace shards
 
 SHARDS_REGISTER_FN(imaging) {
   using namespace shards::Imaging;
+
+  REGISTER_SHARD("GetImagePixel", ImageGetPixel);
   REGISTER_SHARD("Convolve", Convolve);
   REGISTER_SHARD("StripAlpha", StripAlpha);
   REGISTER_SHARD("FillAlpha", FillAlpha);
