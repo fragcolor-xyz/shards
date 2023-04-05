@@ -226,6 +226,7 @@ struct RendererImpl final : public ContextData {
     std::optional<void *> mappedBuffer;
     size_t rowSizeAligned;
     size_t bufferSize;
+    int2 size{};
 
     DeferredTextureReadCommand(TextureSubResource texture, GpuTextureReadBufferPtr destination)
         : texture(texture), destination(destination) {}
@@ -241,12 +242,12 @@ struct RendererImpl final : public ContextData {
   void queueTextureReadCommand(WGPUCommandEncoder encoder, DeferredTextureReadCommand &cmd) {
     auto &textureData = cmd.texture.texture->createContextDataConditional(context);
 
-    auto &size = textureData.size;
+    cmd.size = int2(textureData.size.width, textureData.size.height);
     auto &pixelFormatDesc = getTextureFormatDescription(textureData.format.pixelFormat);
 
-    size_t rowSize = pixelFormatDesc.pixelSize * pixelFormatDesc.numComponents * size.width;
+    size_t rowSize = pixelFormatDesc.pixelSize * pixelFormatDesc.numComponents * cmd.size.x;
     cmd.rowSizeAligned = alignTo(rowSize, WGPU_COPY_BYTES_PER_ROW_ALIGNMENT);
-    cmd.bufferSize = cmd.rowSizeAligned * size.height;
+    cmd.bufferSize = cmd.rowSizeAligned * cmd.size.y;
     WGPUBufferDescriptor bufDesc{
         .label = "Temp copy buffer",
         .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
@@ -264,18 +265,21 @@ struct RendererImpl final : public ContextData {
         .buffer = cmd.buffer,
     };
     WGPUExtent3D sizeDesc{
-        .width = size.width,
-        .height = size.height,
+        .width = uint32_t(cmd.size.x),
+        .height = uint32_t(cmd.size.y),
         .depthOrArrayLayers = 1,
     };
     wgpuCommandEncoderCopyTextureToBuffer(encoder, &srcDesc, &dstDesc, &sizeDesc);
+  }
 
-    auto bufferMapped = [](WGPUBufferMapAsyncStatus status, DeferredTextureReadCommand &cmd) {
+  void queueTextureReadBufferMap(DeferredTextureReadCommand &cmd) {
+    auto bufferMapped = [](WGPUBufferMapAsyncStatus status, void *ud) {
+      DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)ud;
       if (status != WGPUBufferMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.buffer, 0, cmd.bufferSize);
     };
-    wgpuBufferMapAsync(cmd.buffer, WGPUMapMode_Read, 0, cmd.bufferSize, (WGPUBufferMapCallback)&bufferMapped, &cmd);
+    wgpuBufferMapAsync(cmd.buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed
@@ -283,6 +287,11 @@ struct RendererImpl final : public ContextData {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
+
+      cmd.destination->pixelFormat = cmd.texture.texture->getFormat().pixelFormat;
+      cmd.destination->stride = cmd.rowSizeAligned;
+      cmd.destination->size = cmd.size;
+
       wgpuBufferUnmap(cmd.buffer);
       cmd.mappedBuffer.reset();
       return true;
@@ -303,6 +312,8 @@ struct RendererImpl final : public ContextData {
       WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
       wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer);
 
+      queueTextureReadBufferMap(tmpCommand);
+
       context.poll(true);
       pollQueuedTextureReadCommand(tmpCommand);
     } else {
@@ -311,6 +322,8 @@ struct RendererImpl final : public ContextData {
   }
 
   void processTextureCopies() {
+    boost::container::small_vector<DeferredTextureReadCommand *, 16> buffersToMap;
+
     WGPUCommandEncoderDescriptor encDesc{};
     WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
     for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
@@ -318,6 +331,7 @@ struct RendererImpl final : public ContextData {
         if (pollQueuedTextureReadCommand(*it)) {
           // Finished, remove from queue
           it = deferredTextureReadCommands.erase(it);
+          buffersToMap.push_back(&*it);
           continue;
         }
       } else {
@@ -330,6 +344,11 @@ struct RendererImpl final : public ContextData {
     WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture (blocking)"};
     WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
     wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer);
+
+    // Need to map buffers after submitting the texture copies
+    for (auto &cmd : buffersToMap) {
+      queueTextureReadBufferMap(*cmd);
+    }
   }
 
   void beginFrame() {
