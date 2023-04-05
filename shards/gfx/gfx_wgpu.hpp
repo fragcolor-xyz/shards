@@ -82,4 +82,7 @@ WGPULimits wgpuGetDefaultLimits();
 // workaround for emscripten not implementing limits
 void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits);
 
+// When copying textures into buffers the bytesPerRow should be aligned to this number
+inline constexpr size_t WGPU_COPY_BYTES_PER_ROW_ALIGNMENT = 256;
+
 #endif // GFX_GFX_WGPU

@@ -1,4 +1,5 @@
 #include "gfx.hpp"
+#include "drawable_utils.hpp"
 #include <shards/common_types.hpp>
 #include "shards_types.hpp"
 #include <shards/core/foundation.hpp>
@@ -435,9 +436,80 @@ struct RenderTargetTextureShard {
   }
 };
 
+struct ReadTextureShard {
+  static SHTypesInfo inputTypes() { return Types::TextureTypes; }
+  static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
+  static SHOptionalString help() {
+    return SHCCSTR("Adds a render step that reads back the rendered textures into a images, the returned images ");
+  }
+
+  static inline Type OutputSeqType = Type::SeqOf(CoreInfo::StringType);
+
+  PARAM_VAR(_wait, "Wait", "Wait for read to complete", {CoreInfo::BoolType});
+  // OwnedVar _outputs;
+  PARAM_IMPL(PARAM_IMPL_FOR(_wait));
+
+  RequiredGraphicsContext _requiredGraphicsContext;
+
+  GpuTextureReadBufferPtr _readBuffer = makeGpuTextureReadBuffer();
+  std::vector<OwnedVar> _images;
+  std::vector<uint8_t> _imageBuffer;
+
+  ReadTextureShard() { _wait = Var(false); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _requiredGraphicsContext.warmup(context);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    _requiredGraphicsContext.cleanup();
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    TexturePtr texture = varToTexture(input);
+    _requiredGraphicsContext->renderer->copyTexture(TextureSubResource(texture), _readBuffer, (bool)*_wait);
+
+    _images.resize(1);
+
+    auto &image = _images[0];
+    image.valueType = SHType::Image;
+    auto &outImage = image.payload.imageValue;
+    if (_readBuffer->pixelFormat == WGPUTextureFormat_Undefined) {
+      outImage.data = nullptr;
+      outImage.flags = outImage.width = outImage.height = outImage.channels = 0;
+    } else {
+      auto &fmtDesc = getTextureFormatDescription(_readBuffer->pixelFormat);
+      if (fmtDesc.storageType == StorageType::UInt8) {
+        outImage.channels = fmtDesc.numComponents;
+        outImage.flags = SHIMAGE_FLAGS_NONE;
+        size_t rowLength = fmtDesc.pixelSize * fmtDesc.numComponents * _readBuffer->size.x;
+        for (size_t y = 0; y < _readBuffer->size.y; ++y) {
+          memcpy(_imageBuffer.data() + rowLength * y, _readBuffer->data.data() + _readBuffer->stride, rowLength);
+        }
+        _imageBuffer.resize(_readBuffer->data.size());
+      } else {
+        throw formatException("Unsupported image storage type {} (from {})", magic_enum::enum_name(fmtDesc.storageType),
+                              magic_enum::enum_name(_readBuffer->pixelFormat));
+      }
+    }
+
+    return _images[0];
+  }
+};
+
 void registerTextureShards() {
   REGISTER_SHARD("GFX.Texture", TextureShard);
   REGISTER_SHARD("GFX.RenderTarget", RenderTargetShard);
   REGISTER_SHARD("GFX.RenderTargetTexture", RenderTargetTextureShard);
+  REGISTER_SHARD("GFX.ReadTexture", ReadTextureShard);
 }
 } // namespace gfx

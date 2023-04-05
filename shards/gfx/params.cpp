@@ -12,7 +12,6 @@ struct PackParamVisitor {
   uint8_t *outData{};
   size_t outLength{};
 
-  size_t operator()(const uint32_t &arg) { return packPlain(arg); }
   size_t operator()(const float &arg) { return packPlain(arg); }
   size_t operator()(const float2 &arg) {
     size_t len = sizeof(float) * 2;
@@ -50,7 +49,31 @@ struct PackParamVisitor {
     packMatrix(arg, (float *)outData);
     return len;
   }
-
+  size_t operator()(const uint32_t &arg) { return packPlain(arg); }
+  size_t operator()(const int32_t &arg) {
+    size_t len = sizeof(int32_t);
+    assert(len <= outLength);
+    memcpy(outData, &arg, len);
+    return len;
+  }
+  size_t operator()(const int2 &arg) {
+    size_t len = sizeof(int32_t) * 2;
+    assert(len <= outLength);
+    memcpy(outData, &arg.x, len);
+    return len;
+  }
+  size_t operator()(const int3 &arg) {
+    size_t len = sizeof(int32_t) * 3;
+    assert(len <= outLength);
+    memcpy(outData, &arg.x, len);
+    return len;
+  }
+  size_t operator()(const int4 &arg) {
+    size_t len = sizeof(int32_t) * 4;
+    assert(len <= outLength);
+    memcpy(outData, &arg.x, len);
+    return len;
+  }
   template <typename T> size_t packPlain(const T &val) {
     size_t len = sizeof(T);
     assert(len <= outLength);
@@ -84,12 +107,16 @@ NumFieldType getParamVariantType(const ParamVariant &variant) {
           result = FieldTypes::Float4;
         } else if constexpr (std::is_same_v<T, float4x4>) {
           result = FieldTypes::Float4x4;
+        } else if constexpr (std::is_same_v<T, int>) {
+          result = FieldTypes::Int32;
+        } else if constexpr (std::is_same_v<T, int2>) {
+          result = FieldTypes::Int2;
+        } else if constexpr (std::is_same_v<T, int3>) {
+          result = FieldTypes::Int3;
+        } else if constexpr (std::is_same_v<T, int4>) {
+          result = FieldTypes::Int4;
         } else if constexpr (std::is_same_v<T, uint32_t>) {
           result = FieldTypes::UInt32;
-        } else if constexpr (std::is_same_v<T, uint16_t>) {
-          result = NumFieldType(ShaderFieldBaseType::UInt16, 1);
-        } else if constexpr (std::is_same_v<T, uint8_t>) {
-          result = NumFieldType(ShaderFieldBaseType::UInt8, 1);
         } else {
           throw std::logic_error(fmt::format("Type {} not suported by ParamVariant", NAMEOF_TYPE(T)));
         }
