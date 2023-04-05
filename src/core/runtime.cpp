@@ -163,6 +163,10 @@ namespace Time {
 extern void registerShards();
 }
 
+namespace DB {
+extern void registerShards();
+}
+
 #ifdef SHARDS_WITH_EXTRA_SHARDS
 extern void shInitExtras();
 #endif
@@ -324,6 +328,7 @@ void registerCoreShards() {
   edn::registerShards();
   reflection::registerShards();
   Events::registerShards();
+  DB::registerShards();
 
 #ifdef SHARDS_DESKTOP
   // registerOSShards();
