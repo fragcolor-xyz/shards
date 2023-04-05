@@ -1,9 +1,10 @@
 (defmesh root)
 
 (defwire db-test-1
-  (Maybe (-> [] (DB.Query "CREATE TABLE integers(i BIGINT, j BIGINT)") (Log)))
+  [] (DB.Query "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)") (Log)
   [88 99 100 101 102] (DB.Query "INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)") (Log)
   [] (DB.Query "SELECT * FROM integers") (Log)
+  (Assert.Is {:x [88 100 102], :y [99 101 nil]})
   ;
   )
 
