@@ -304,6 +304,10 @@ struct Container {
                                            CoreInfo::Float3Type,
                                            CoreInfo::Float2Type,
                                            CoreInfo::FloatType,
+                                           CoreInfo::IntType,
+                                           CoreInfo::Int2Type,
+                                           CoreInfo::Int3Type,
+                                           CoreInfo::Int4Type,
                                        }};
 
 // NOTE: Currently accept AnyVarType since mixing types will result in a table of type  {:Default &Any}
