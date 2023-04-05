@@ -58,9 +58,6 @@
 [submodule "deps/kissfft"]
 	path = deps/kissfft
 	url = https://github.com/shards-lang/kissfft.git
-[submodule "deps/pareto"]
-	path = deps/pareto
-	url = https://github.com/shards-lang/pareto.git
 [submodule "deps/brotli"]
 	path = deps/brotli
 	url = https://github.com/shards-lang/brotli.git
