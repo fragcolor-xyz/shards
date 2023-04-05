@@ -92,6 +92,3 @@
 [submodule "src/gfx/rust/profiling"]
 	path = src/gfx/rust/profiling
 	url = https://github.com/shards-lang/rust-profiling.git
-[submodule "deps/duckdb"]
-	path = deps/duckdb
-	url = https://github.com/shards-lang/duckdb.git
