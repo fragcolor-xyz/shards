@@ -16,6 +16,7 @@ add_subdirectory(pareto)
 add_subdirectory(replxx)
 add_subdirectory(spdlog)
 
+set(BUILD_JEMALLOC_EXTENSION OFF CACHE BOOL "" FORCE)
 set(ENABLE_SANITIZER OFF CACHE BOOL "" FORCE)
 set(ENABLE_UBSAN OFF CACHE BOOL "" FORCE)
 add_subdirectory(duckdb)
