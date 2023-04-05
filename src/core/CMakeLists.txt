@@ -23,7 +23,7 @@ set(core_SOURCES
   shards/wasm.cpp
   shards/http.cpp
   shards/events.cpp
-  shards/duckdb.cpp
+  shards/sqlite.cpp
 )
 
 set(os_SOURCES
@@ -128,7 +128,7 @@ else()
 endif()
 
 target_link_libraries(shards-core-static
-  spdlog magic_enum nameof linalg xxHash duckdb
+  spdlog magic_enum nameof linalg xxHash sqlite-static
   pdqsort entt utf8.h Taskflow stb nlohmann_json m3 ghc_filesystem
   shards-logging
 )
