@@ -452,7 +452,7 @@ struct ReadTextureShard {
   RequiredGraphicsContext _requiredGraphicsContext;
 
   GpuTextureReadBufferPtr _readBuffer = makeGpuTextureReadBuffer();
-  std::vector<OwnedVar> _images;
+  OwnedVar _image;
   std::vector<uint8_t> _imageBuffer;
 
   ReadTextureShard() { _wait = Var(false); }
@@ -478,11 +478,8 @@ struct ReadTextureShard {
     TexturePtr texture = varToTexture(input);
     _requiredGraphicsContext->renderer->copyTexture(TextureSubResource(texture), _readBuffer, (bool)*_wait);
 
-    _images.resize(1);
-
-    auto &image = _images[0];
-    image.valueType = SHType::Image;
-    auto &outImage = image.payload.imageValue;
+    _image.valueType = SHType::Image;
+    auto &outImage = _image.payload.imageValue;
     if (_readBuffer->pixelFormat == WGPUTextureFormat_Undefined) {
       outImage.data = nullptr;
       outImage.flags = outImage.width = outImage.height = outImage.channels = 0;
@@ -491,18 +488,22 @@ struct ReadTextureShard {
       if (fmtDesc.storageType == StorageType::UInt8) {
         outImage.channels = fmtDesc.numComponents;
         outImage.flags = SHIMAGE_FLAGS_NONE;
+        outImage.width = _readBuffer->size.x;
+        outImage.height = _readBuffer->size.y;
         size_t rowLength = fmtDesc.pixelSize * fmtDesc.numComponents * _readBuffer->size.x;
+        size_t imageSize = fmtDesc.pixelSize * fmtDesc.numComponents * _readBuffer->size.x * _readBuffer->size.y;
+        _imageBuffer.resize(imageSize);
+        outImage.data = _imageBuffer.data();
         for (size_t y = 0; y < _readBuffer->size.y; ++y) {
-          memcpy(_imageBuffer.data() + rowLength * y, _readBuffer->data.data() + _readBuffer->stride, rowLength);
+          memcpy(_imageBuffer.data() + rowLength * y, _readBuffer->data.data() + _readBuffer->stride * y, rowLength);
         }
-        _imageBuffer.resize(_readBuffer->data.size());
       } else {
         throw formatException("Unsupported image storage type {} (from {})", magic_enum::enum_name(fmtDesc.storageType),
                               magic_enum::enum_name(_readBuffer->pixelFormat));
       }
     }
 
-    return _images[0];
+    return _image;
   }
 };
 
