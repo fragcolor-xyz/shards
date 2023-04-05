@@ -73,7 +73,7 @@ struct FeatureDrawableGeneratorContextImpl final : FeatureDrawableGeneratorConte
 
   virtual const IDrawable &getDrawable(size_t index) override { return *group.drawables[index]; }
 
-  virtual void render(ViewPtr view, const PipelineSteps &pipelineSteps) override { renderer.render(view, pipelineSteps, true); }
+  virtual void render(ViewPtr view, const PipelineSteps &pipelineSteps) override { renderer.render(view, pipelineSteps); }
 };
 
 struct FeatureViewGenerateContextImpl final : public FeatureViewGeneratorContext {
@@ -82,7 +82,7 @@ struct FeatureViewGenerateContextImpl final : public FeatureViewGeneratorContext
 
   virtual IParameterCollector &getParameterCollector() override { return *viewParameters; }
 
-  virtual void render(ViewPtr view, const PipelineSteps &pipelineSteps) override { renderer.render(view, pipelineSteps, true); }
+  virtual void render(ViewPtr view, const PipelineSteps &pipelineSteps) override { renderer.render(view, pipelineSteps); }
 };
 
 // Runs all feature generators and returns the resulting generated parameters

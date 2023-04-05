@@ -413,6 +413,11 @@ void RenderGraphEvaluator::getFrameTextures(shards::pmr::vector<ResolvedFrameTex
 
       outFrameTextures.push_back(resolveSubResourceView(outputs[outputIndex]));
     } else if (frame.textureOverride) {
+      // Update the texture size/format
+      auto desc = frame.textureOverride.texture->getDesc();
+      desc.resolution = frame.size;
+      desc.format.pixelFormat = frame.format;
+      frame.textureOverride.texture->init(desc);
       outFrameTextures.push_back(resolveSubResourceView(frame.textureOverride));
     } else {
       TexturePtr texture = storage.renderTextureCache.allocate(RenderTargetFormat{.format = frame.format, .size = frame.size},

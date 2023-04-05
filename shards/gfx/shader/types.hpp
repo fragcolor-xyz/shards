@@ -89,6 +89,9 @@ struct FieldTypes {
   static inline NumFieldType Float4x4{ShaderFieldBaseType::Float32, 4, 4};
   static inline NumFieldType UInt32{ShaderFieldBaseType::UInt32, 1};
   static inline NumFieldType Int32{ShaderFieldBaseType::Int32, 1};
+  static inline NumFieldType Int2{ShaderFieldBaseType::Int32, 2};
+  static inline NumFieldType Int3{ShaderFieldBaseType::Int32, 3};
+  static inline NumFieldType Int4{ShaderFieldBaseType::Int32, 4};
   static inline NumFieldType Bool{ShaderFieldBaseType::Bool, 1};
 };
 
