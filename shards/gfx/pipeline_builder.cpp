@@ -377,6 +377,36 @@ void PipelineBuilder::setupShaderOutputFields() {
     if (index != depthIndex) {
       auto &formatDesc = getTextureFormatDescription(target.format);
       NumFieldType fieldType(ShaderFieldBaseType::Float32, formatDesc.numComponents);
+      switch (formatDesc.storageType) {
+      case StorageType::UInt8:
+        fieldType.baseType = ShaderFieldBaseType::UInt8;
+        break;
+      case StorageType::Int8:
+        fieldType.baseType = ShaderFieldBaseType::Int8;
+        break;
+      case StorageType::UInt16:
+        fieldType.baseType = ShaderFieldBaseType::UInt16;
+        break;
+      case StorageType::Int16:
+        fieldType.baseType = ShaderFieldBaseType::Int16;
+        break;
+      case StorageType::UInt32:
+        fieldType.baseType = ShaderFieldBaseType::UInt32;
+        break;
+      case StorageType::Int32:
+        fieldType.baseType = ShaderFieldBaseType::Int32;
+        break;
+      case StorageType::UNorm8:
+      case StorageType::SNorm8:
+      case StorageType::UNorm16:
+      case StorageType::SNorm16:
+      case StorageType::Float16:
+      case StorageType::Float32:
+        fieldType.baseType = ShaderFieldBaseType::Float32;
+        break;
+      default:
+        throw std::logic_error("Invalid storage type");
+      }
       generator.outputFields.emplace_back(target.name, fieldType);
     }
     index++;
