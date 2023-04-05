@@ -144,7 +144,7 @@ struct Query : public Base {
         auto type = sqlite3_column_type(prepared->get(), i);
         switch (type) {
         case SQLITE_INTEGER:
-          col.push_back(Var(sqlite3_column_int64(prepared->get(), i)));
+          col.push_back(Var((int64_t)sqlite3_column_int64(prepared->get(), i)));
           break;
         case SQLITE_FLOAT:
           col.push_back(Var(sqlite3_column_double(prepared->get(), i)));
