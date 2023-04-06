@@ -28,6 +28,9 @@ set(core_SOURCES
 
 set(os_SOURCES
   shards/process.cpp
+)
+
+set(network_SOURCES
   shards/network.cpp
 )
 
@@ -135,7 +138,7 @@ target_link_libraries(shards-core-static
 
 if(DESKTOP)
   target_sources(shards-core-static PRIVATE ${os_SOURCES})
-  target_link_libraries(shards-core-static Boost::process)
+  target_link_libraries(shards-core-static Boost::process kcp)
   target_compile_definitions(shards-core-static PUBLIC SHARDS_DESKTOP=1)
 endif()
 
@@ -144,8 +147,8 @@ if(EMSCRIPTEN)
 endif()
 
 if(NOT EMSCRIPTEN)
-  # Required by Boost::asio
-  target_link_libraries(shards-core-static OpenSSL)
+  target_sources(shards-core-static PRIVATE ${network_SOURCES})
+  target_link_libraries(shards-core-static OpenSSL kcp)
 endif()
 
 if(WIN32)
