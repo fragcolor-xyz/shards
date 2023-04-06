@@ -17,7 +17,7 @@
 #include <thread>
 #include <unordered_map>
 #include <utility>
-#include <kcp/ikcp.h>
+#include <ikcp.h>
 
 using boost::asio::ip::udp;
 

@@ -334,6 +334,9 @@ void registerCoreShards() {
   // registerOSShards();
   registerProcessShards();
   Genetic::registerShards();
+#endif
+
+#ifndef __EMSCRIPTEN__
   registerNetworkShards();
 #endif
 
