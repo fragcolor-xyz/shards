@@ -74,7 +74,8 @@ struct NetworkBase {
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
-  std::shared_ptr<NetworkContext> _context;
+  std::shared_ptr<entt::any> _contextStorage;
+  NetworkContext *_context = nullptr;
 
   void cleanup() {
     if (_context) {
@@ -93,9 +94,10 @@ struct NetworkBase {
         _socket.socket = nullptr;
         _socket.endpoint = nullptr;
       }
-
-      _context.reset();
     }
+
+    _contextStorage.reset();
+    _context = nullptr;
 
     // clean context vars
     if (_socketVar) {
@@ -113,16 +115,16 @@ struct NetworkBase {
     _port.warmup(context);
     _blks.warmup(context);
 
-    auto &networkContext = context->anyStorage["Network.Context"];
-    if (networkContext.type() != entt::type_id<std::shared_ptr<NetworkContext>>()) {
-      // create a new context
-      networkContext = entt::any{std::in_place_type_t<std::shared_ptr<NetworkContext>>{}};
+    auto networkContext = context->anyStorage["Network.Context"].lock();
+    if (!networkContext) {
+      _contextStorage = std::make_shared<entt::any>(std::in_place_type_t<NetworkContext>{});
+      context->anyStorage["Network.Context"] = _contextStorage;
+      auto anyPtr = _contextStorage.get();
+      _context = &entt::any_cast<NetworkContext &>(*anyPtr);
+    } else {
+      _contextStorage = networkContext;
+      _context = entt::any_cast<NetworkContext *>(*networkContext);
     }
-    auto &ctx = entt::any_cast<std::shared_ptr<NetworkContext> &>(networkContext);
-    if (!ctx) {
-      ctx.reset(new NetworkContext());
-    }
-    _context = ctx;
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -429,10 +431,12 @@ struct Send {
 
   SHVar *_socketVar = nullptr;
 
-  std::shared_ptr<NetworkContext> _context;
+  std::shared_ptr<entt::any> _contextStorage;
+  NetworkContext *_context = nullptr;
 
   void cleanup() {
-    _context.reset();
+    _contextStorage.reset();
+    _context = nullptr;
 
     // clean context vars
     if (_socketVar) {
@@ -442,11 +446,14 @@ struct Send {
   }
 
   void warmup(SHContext *context) {
-    auto &networkContext = context->anyStorage["Network.Context"];
-    if (networkContext.type() != entt::type_id<std::shared_ptr<NetworkContext>>()) {
+    auto networkContext = context->anyStorage["Network.Context"].lock();
+    if (!networkContext) {
       throw WarmupError("Network.Context not set");
+    } else {
+      _contextStorage = networkContext;
+      auto anyPtr = networkContext.get();
+      _context = &entt::any_cast<NetworkContext &>(*anyPtr);
     }
-    _context = entt::any_cast<std::shared_ptr<NetworkContext> &>(networkContext);
   }
 
   SocketData *getSocket(SHContext *context) {

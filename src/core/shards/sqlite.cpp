@@ -1,6 +1,7 @@
 #include "shared.hpp"
 #include "params.hpp"
 #include "utility.hpp"
+#include <functional>
 #include <optional>
 #include <sqlite3.h>
 
@@ -13,6 +14,13 @@ struct Connection {
     if (sqlite3_open(path, &db) != SQLITE_OK) {
       throw ActivationError(sqlite3_errmsg(db));
     }
+  }
+
+  Connection(const Connection &) = delete;
+
+  Connection(Connection &&other) {
+    db = other.db;
+    other.db = nullptr;
   }
 
   ~Connection() { sqlite3_close(db); }
@@ -29,28 +37,43 @@ struct Statement {
     }
   }
 
+  Statement(const Statement &) = delete;
+
+  Statement(Statement &&other) {
+    stmt = other.stmt;
+    other.stmt = nullptr;
+  }
+
   ~Statement() { sqlite3_finalize(stmt); }
 
   sqlite3_stmt *get() { return stmt; }
 };
 
 struct Base {
-  std::shared_ptr<Connection> _connection;
+  std::shared_ptr<entt::any> _connectionStorage;
+  Connection *_connection = nullptr;
+  std::string_view _dbName{"shards.db"};
 
   void warmup(SHContext *context) {
-    auto &dbCtx = context->anyStorage["DBConnection"];
-    if (dbCtx.type() != entt::type_id<std::shared_ptr<Connection>>()) {
-      // create a new context
-      dbCtx = entt::any{std::in_place_type_t<std::shared_ptr<Connection>>{}};
+    auto storageKey = fmt::format("DB.Connection_{}", _dbName);
+    auto dbCtx = context->anyStorage[storageKey].lock();
+    if (!dbCtx) {
+      Connection conn(_dbName.data());
+      _connectionStorage = std::make_shared<entt::any>(std::move(conn));
+      context->anyStorage[storageKey] = _connectionStorage;
+      auto anyPtr = _connectionStorage.get();
+      _connection = &entt::any_cast<Connection &>(*anyPtr);
+    } else {
+      _connectionStorage = dbCtx;
+      auto anyPtr = _connectionStorage.get();
+      _connection = &entt::any_cast<Connection &>(*anyPtr);
     }
-    auto &ctx = entt::any_cast<std::shared_ptr<Connection> &>(dbCtx);
-    if (!ctx) {
-      ctx.reset(new Connection("shards.db"));
-    }
-    _connection = ctx;
   }
 
-  void cleanup() { _connection.reset(); }
+  void cleanup() {
+    _connectionStorage.reset();
+    _connection = nullptr;
+  }
 };
 
 struct Query : public Base {
@@ -58,7 +81,8 @@ struct Query : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
 
   PARAM_VAR(_query, "Query", "The database query to execute every activation.", {CoreInfo::StringType});
-  PARAM_IMPL(Query, PARAM_IMPL_FOR(_query));
+  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_IMPL(Query, PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName));
 
   void cleanup() {
     PARAM_CLEANUP();
@@ -71,6 +95,12 @@ struct Query : public Base {
   std::unique_ptr<Statement> prepared;
 
   void warmup(SHContext *context) {
+    if(_dbName.valueType != SHType::None) {
+      Base::_dbName = SHSTRVIEW(_dbName);
+    } else {
+      Base::_dbName = "shards.db";
+    }
+
     Base::warmup(context);
 
     PARAM_WARMUP(context);
@@ -173,8 +203,6 @@ struct Query : public Base {
   }
 };
 
-void registerShards() {
-  REGISTER_SHARD("DB.Query", Query);
-}
+void registerShards() { REGISTER_SHARD("DB.Query", Query); }
 } // namespace DB
 } // namespace shards
