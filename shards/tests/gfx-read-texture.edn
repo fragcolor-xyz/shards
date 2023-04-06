@@ -9,7 +9,7 @@
    (GFX.DrawQueue) >= .queue
    {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
 
-   (GFX.Texture :Format TextureFormat.R8Uint) >= .u8-tex
+   (GFX.Texture :Format TextureFormat.R16Uint) >= .u8-tex
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features-1
    {:State {:DepthCompare CompareFunction.Equal :DepthWrite false}
     :Params {:index 0}
@@ -35,22 +35,31 @@
    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
    :Contents
    (->
+    (Setup 0 >= .frame-index)
+
     (Float3 -1.0 0.0 0.0) (Math.Translation)
-    (GFX.Drawable :Mesh .mesh :Params {:index 64}) (GFX.Draw .queue)
+    (GFX.Drawable :Mesh .mesh :Params {:index .frame-index}) (GFX.Draw .queue)
     (Float3 1.0 0.0 0.0) (Math.Translation)
-    (GFX.Drawable :Mesh .mesh :Params {:index 128}) (GFX.Draw .queue)
+    (GFX.Drawable :Mesh .mesh :Params {:index 0xffff}) (GFX.Draw .queue)
 
     (GFX.Render :Steps .render-steps :View .view)
 
-    (GFX.EndFrame)
-    .u8-tex (GFX.ReadTexture :Wait true) = .image
-    (Setup 0 >= .fc)
-    "frame-" >= .fn .fc (ToString) (AppendTo .fn) ".png" (AppendTo .fn)
-    (Int2 400 400) (GetImagePixel .image true) (Log "Pixel (400, 400)")
-    (Int2 800 400) (GetImagePixel .image true) (Log "Pixel (800, 400)")
-    .image  (WritePNG .fn)
-    .fc (Math.Add 1) > .fc
-    (Log "Read image"))))
+    ;; (GFX.EndFrame)
+    .u8-tex (GFX.ReadTexture) = .image
+    .frame-index (Log "This frame index")
+    (Int2 400 400) (GetImagePixel .image true :Default (Float4 0)) (ToInt4) = .p0 (Log "Pixel (400, 400)")
+    (Int2 800 400) (GetImagePixel .image true :Default (Float4 0)) (ToInt4) = .p1 (Log "Pixel (800, 400)")
+
+    .frame-index (When (IsMore 1)
+                       (->
+                        .p0:0 = .p0-x
+                        .p1:0 = .p1-x
+                        .frame-index (Math.Subtract 1) = .expected-frame-index
+                        .p0-x (Assert.Is .expected-frame-index)
+                        .p1-x (Assert.Is 0xffff)))
+
+    (Math.Inc .frame-index)
+    nil)))
 
 (schedule root test-wire)
-(if (run root timestep 4) nil (throw "Root tick failed"))
+(if (run root timestep 32) nil (throw "Root tick failed"))
