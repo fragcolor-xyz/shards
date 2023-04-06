@@ -9,7 +9,12 @@ include(FetchContent)
 
 add_subdirectory(filesystem)
 add_subdirectory(json)
+
 add_subdirectory(kcp)
+add_library(kcp-wrapper INTERFACE)
+target_link_libraries(kcp-wrapper INTERFACE kcp)
+target_include_directories(kcp-wrapper INTERFACE kcp)
+
 add_subdirectory(magic_enum)
 add_subdirectory(nameof)
 add_subdirectory(replxx)

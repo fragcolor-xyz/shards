@@ -138,7 +138,7 @@ target_link_libraries(shards-core-static
 
 if(DESKTOP)
   target_sources(shards-core-static PRIVATE ${os_SOURCES})
-  target_link_libraries(shards-core-static Boost::process kcp)
+  target_link_libraries(shards-core-static Boost::process)
   target_compile_definitions(shards-core-static PUBLIC SHARDS_DESKTOP=1)
 endif()
 
@@ -148,7 +148,7 @@ endif()
 
 if(NOT EMSCRIPTEN)
   target_sources(shards-core-static PRIVATE ${network_SOURCES})
-  target_link_libraries(shards-core-static OpenSSL kcp)
+  target_link_libraries(shards-core-static OpenSSL kcp-wrapper)
 endif()
 
 if(WIN32)
