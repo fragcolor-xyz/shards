@@ -18,7 +18,7 @@
            ;;    (Msg "Hey remote host!"))
            ;;   ])
            (Get "pkt")
-           (Log)
+           (Log "Server received")
                                         ; send something to the client
                                         ; will use automatically the context vars
            "Ok"
@@ -44,7 +44,7 @@
          (Network.Client
           "127.0.0.1" 9191
           (-> ; acting as callback when there is a new pkt
-           (Log)
+           (Log "Client received")
            ))
                                         ; test some sending
                                         ; will send to the client in context

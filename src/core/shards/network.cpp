@@ -5,6 +5,7 @@
 #include <boost/asio.hpp>
 
 #include "../runtime.hpp"
+#include "foundation.hpp"
 #include "shards.hpp"
 #include "shardwrapper.hpp"
 #include "shared.hpp"
@@ -12,19 +13,17 @@
 #include <boost/lockfree/queue.hpp>
 #include <functional>
 #include <memory>
+#include <stdint.h>
 #include <thread>
+#include <unordered_map>
 #include <utility>
+#include <kcp/ikcp.h>
 
 using boost::asio::ip::udp;
 
 namespace shards {
 namespace Network {
-constexpr uint32_t SocketCC = 'netS';
-
-struct SocketData {
-  udp::socket *socket;
-  udp::endpoint *endpoint;
-};
+constexpr uint32_t PeerCC = 'netP';
 
 struct NetworkContext {
   boost::asio::io_context _io_context;
@@ -53,20 +52,41 @@ struct NetworkContext {
   }
 };
 
+struct NetworkPeer {
+  NetworkPeer() {
+    kcp = ikcp_create('shrd', this);
+    // set "turbo" mode
+    ikcp_nodelay(kcp, 1, 10, 2, 1);
+  }
+
+  ~NetworkPeer() { ikcp_release(kcp); }
+
+  void maybeUpdate() {
+    auto now = SHClock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
+    if (ikcp_check(kcp, ms) <= ms) {
+      ikcp_update(kcp, ms);
+    }
+  }
+
+  std::optional<udp::endpoint> endpoint;
+  ikcpcb *kcp;
+  Serialization des;
+  OwnedVar payload;
+
+  SHTime _start = SHClock::now();
+
+  void *user;
+};
+
 struct NetworkBase {
   ShardsVar _blks{};
 
-  static inline Type SocketInfo{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = SocketCC}}}};
+  static inline Type PeerInfo{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
+  SHVar *_peerVar = nullptr;
 
   ParamVar _addr{Var("localhost")};
   ParamVar _port{Var(9191)};
-
-  // Every server/client will share same context, so sharing the same recv
-  // buffer is possible and nice!
-  ThreadShared<std::array<char, 0xFFFF>> _recv_buffer;
-
-  SHVar *_socketVar = nullptr;
-  SocketData _socket{};
 
   static inline ParamsInfo params = ParamsInfo(
       ParamsInfo::Param("Address", SHCCSTR("The local bind address or the remote address."), CoreInfo::StringOrStringVar),
@@ -78,22 +98,18 @@ struct NetworkBase {
   std::shared_ptr<entt::any> _contextStorage;
   NetworkContext *_context = nullptr;
 
+  std::optional<udp::socket> _socket;
+
   void cleanup() {
     if (_context) {
       auto &io_context = _context->_io_context;
 
       // defer all in the context or we will crash!
-      if (_socket.socket) {
-        auto socket = _socket.socket;
-        boost::asio::post(io_context, [socket]() {
-          if (socket) {
-            socket->close();
-            delete socket;
-          }
+      if (_socket) {
+        boost::asio::post(io_context, [&]() {
+          _socket->close();
+          _socket.reset();
         });
-
-        _socket.socket = nullptr;
-        _socket.endpoint = nullptr;
       }
     }
 
@@ -101,9 +117,9 @@ struct NetworkBase {
     _context = nullptr;
 
     // clean context vars
-    if (_socketVar) {
-      releaseVariable(_socketVar);
-      _socketVar = nullptr;
+    if (_peerVar) {
+      releaseVariable(_peerVar);
+      _peerVar = nullptr;
     }
 
     _blks.cleanup();
@@ -134,7 +150,7 @@ struct NetworkBase {
 
   SHTypeInfo compose(SHInstanceData &data) {
     // inject our special context vars
-    auto endpointInfo = ExposedInfo::Variable("Network.Socket", SHCCSTR("The active socket."), SHTypeInfo(SocketInfo));
+    auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
     shards::arrayPush(data.shared, endpointInfo);
     _blks.compose(data);
     return data.inputType;
@@ -203,102 +219,90 @@ struct NetworkBase {
     }
   };
 
-  void setSocket(SHContext *context) {
-    if (!_socketVar) {
-      _socketVar = referenceVariable(context, "Network.Socket");
+  void setPeer(SHContext *context, NetworkPeer &peer) {
+    if (!_peerVar) {
+      _peerVar = referenceVariable(context, "Network.Peer");
     }
-    auto rc = _socketVar->refcount;
-    auto flags = _socketVar->flags;
-    *_socketVar = Var::Object(&_socket, CoreCC, SocketCC);
-    _socketVar->refcount = rc;
-    _socketVar->flags = flags;
+    auto rc = _peerVar->refcount;
+    auto flags = _peerVar->flags;
+    *_peerVar = Var::Object(&peer, CoreCC, PeerCC);
+    _peerVar->refcount = rc;
+    _peerVar->flags = flags;
   }
 };
 
 struct Server : public NetworkBase {
-  struct ClientPkt {
-    udp::endpoint *remote;
-    SHVar payload;
-  };
-
-  boost::lockfree::queue<ClientPkt> _queue{16};
-  boost::lockfree::queue<ClientPkt> _empty_queue{16};
   udp::endpoint _sender;
 
-  void destroy() {
-    // drain queues first
-    while (!_queue.empty()) {
-      ClientPkt pkt;
-      if (_queue.pop(pkt)) {
-        delete pkt.remote;
-        destroyVar(pkt.payload);
-      }
-    }
+  std::unordered_map<udp::endpoint, NetworkPeer> _end2Peer;
 
-    while (!_empty_queue.empty()) {
-      ClientPkt pkt;
-      if (_empty_queue.pop(pkt)) {
-        delete pkt.remote;
-        destroyVar(pkt.payload);
-      }
-    }
+  static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
+    NetworkPeer *p = (NetworkPeer *)user;
+    Server *s = (Server *)p->user;
+    s->_socket->async_send_to(boost::asio::buffer(buf, len), *p->endpoint,
+                              [](boost::system::error_code ec, std::size_t bytes_sent) {
+                                if (ec) {
+                                  std::cout << "Error sending: " << ec.message() << std::endl;
+                                }
+                              });
+    return 0;
   }
-
-  Serialization deserial;
 
   void do_receive() {
-    _socket.socket->async_receive_from(boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()), _sender,
-                                       [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-                                         if (!ec && bytes_recvd > 0) {
-                                           ClientPkt pkt{};
+    thread_local std::vector<uint8_t> recv_buffer(0xFFFF);
+    _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
+                                [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+                                  if (!ec && bytes_recvd > 0) {
+                                    auto &peer = _end2Peer[_sender];
+                                    if (!peer.endpoint) {
+                                      // new peer
+                                      peer.endpoint = _sender;
+                                      peer.user = this;
+                                      peer.kcp->user = &peer;
+                                      peer.kcp->output = &Server::udp_output;
+                                      SHLOG_DEBUG("Added new peer: {} port: {}", peer.endpoint->address().to_string(),
+                                                  peer.endpoint->port());
+                                    }
 
-                                           // try reuse vars internal memory smartly
-                                           if (!_empty_queue.empty()) {
-                                             _empty_queue.pop(pkt);
-                                             *pkt.remote = _sender;
-                                           } else {
-                                             pkt.remote = new udp::endpoint(_sender);
-                                           }
+                                    ikcp_input(peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
 
-                                           // deserialize from buffer
-                                           Reader r(&_recv_buffer().front(), bytes_recvd);
-                                           deserial.reset();
-                                           deserial.deserialize(r, pkt.payload);
-
-                                           // add ready packet to queue
-                                           _queue.push(pkt);
-
-                                           // keep receiving
-                                           do_receive();
-                                         }
-                                       });
+                                    // keep receiving
+                                    do_receive();
+                                  }
+                                });
   }
+
+  std::vector<uint8_t> _buffer;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_context);
     auto &io_context = _context->_io_context;
 
-    if (!_socket.socket) {
+    if (!_socket) {
       // first activation, let's init
-      _socket.socket = new udp::socket(io_context, udp::endpoint(udp::v4(), _port.get().payload.intValue));
+      _socket.emplace(io_context, udp::endpoint(udp::v4(), _port.get().payload.intValue));
 
       // start receiving
       boost::asio::post(io_context, [this]() { do_receive(); });
     }
 
-    setSocket(context);
+    for (auto &[end, peer] : _end2Peer) {
+      peer.maybeUpdate();
 
-    // receive from ring-buffer and run wires
-    while (!_queue.empty()) {
-      ClientPkt pkt;
-      if (_queue.pop(pkt)) {
+      auto nextSize = ikcp_peeksize(peer.kcp);
+      if (nextSize > 0) {
+        _buffer.resize(nextSize);
+        auto size = ikcp_recv(peer.kcp, (char *)_buffer.data(), nextSize);
+        assert(size == nextSize);
+
+        // deserialize from buffer
+        Reader r((char *)_buffer.data(), nextSize);
+        peer.des.reset();
+        peer.des.deserialize(r, peer.payload);
+
         SHVar output{};
-        // update remote as pops in context variable
-        _socket.endpoint = pkt.remote;
-        activateShards(SHVar(_blks).payload.seqValue, context, pkt.payload, output);
-        // release the var once done
-        // will recycle internal buffers
-        _empty_queue.push(pkt);
+        setPeer(context, peer);
+        activateShards(SHVar(_blks).payload.seqValue, context, peer.payload, output);
       }
     }
 
@@ -307,87 +311,76 @@ struct Server : public NetworkBase {
 };
 
 struct Client : public NetworkBase {
-  ExposedInfo _exposedInfo{};
+  NetworkPeer _peer;
 
-  boost::lockfree::queue<SHVar> _queue{16};
-  boost::lockfree::queue<SHVar> _empty_queue{16};
-
-  void destroy() {
-    // drain queues first
-    while (!_queue.empty()) {
-      SHVar v;
-      if (_queue.pop(v)) {
-        destroyVar(v);
-      }
-    }
-
-    while (!_empty_queue.empty()) {
-      SHVar v;
-      if (_empty_queue.pop(v)) {
-        destroyVar(v);
-      }
-    }
+  static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
+    Client *c = (Client *)user;
+    c->_socket->async_send_to(boost::asio::buffer(buf, len), c->_server,
+                              [](boost::system::error_code ec, std::size_t bytes_sent) {
+                                if (ec) {
+                                  std::cout << "Error sending: " << ec.message() << std::endl;
+                                }
+                              });
+    return 0;
   }
 
-  Serialization deserial;
+  void setup() {
+    // new peer
+    _peer.kcp->user = this;
+    _peer.kcp->output = &Client::udp_output;
+  }
 
   void do_receive() {
-    _socket.socket->async_receive_from(boost::asio::buffer(&_recv_buffer().front(), _recv_buffer().size()), _server,
-                                       [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-                                         if (!ec && bytes_recvd > 0) {
-                                           SHVar v{};
+    thread_local std::vector<uint8_t> recv_buffer(0xFFFF);
+    _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _server,
+                                [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+                                  if (!ec && bytes_recvd > 0) {
+                                    ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
 
-                                           // try reuse vars internal memory smartly
-                                           if (!_empty_queue.empty()) {
-                                             _empty_queue.pop(v);
-                                           }
-
-                                           // deserialize from buffer
-                                           Reader r(&_recv_buffer().front(), bytes_recvd);
-                                           deserial.reset();
-                                           deserial.deserialize(r, v);
-
-                                           // process a packet
-                                           _queue.push(v);
-
-                                           // keep receiving
-                                           do_receive();
-                                         }
-                                       });
+                                    // keep receiving
+                                    do_receive();
+                                  }
+                                });
   }
+
+  std::vector<uint8_t> _buffer;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_context);
     auto &io_context = _context->_io_context;
 
-    if (!_socket.socket) {
+    if (!_socket) {
       // first activation, let's init
-      _socket.socket = new udp::socket(io_context, udp::endpoint(udp::v4(), 0));
+      _socket.emplace(io_context, udp::endpoint(udp::v4(), 0));
 
       boost::asio::io_service io_service;
       udp::resolver resolver(io_service);
       auto sport = std::to_string(_port.get().payload.intValue);
       udp::resolver::query query(udp::v4(), _addr.get().payload.stringValue, sport);
       _server = *resolver.resolve(query);
+      _peer.endpoint = _server;
 
       // start receiving
       boost::asio::post(io_context, [this]() { do_receive(); });
     }
 
-    setSocket(context);
-    // in the case of client we actually set the remote here
-    _socket.endpoint = &_server;
+    setPeer(context, _peer);
 
-    // receive from ringbuffer and run wires
-    while (!_queue.empty()) {
-      SHVar v;
-      if (_queue.pop(v)) {
-        SHVar output{};
-        activateShards(SHVar(_blks).payload.seqValue, context, v, output);
-        // release the var once done
-        // will recycle internal buffers
-        _empty_queue.push(v);
-      }
+    _peer.maybeUpdate();
+
+    auto nextSize = ikcp_peeksize(_peer.kcp);
+    if (nextSize > 0) {
+      _buffer.resize(nextSize);
+      auto size = ikcp_recv(_peer.kcp, (char *)_buffer.data(), nextSize);
+      assert(size == nextSize);
+
+      // deserialize from buffer
+      Reader r((char *)_buffer.data(), nextSize);
+      _peer.des.reset();
+      _peer.des.deserialize(r, _peer.payload);
+
+      SHVar output{};
+      activateShards(SHVar(_blks).payload.seqValue, context, _peer.payload, output);
     }
 
     return input;
@@ -402,7 +395,7 @@ struct Send {
 
   ThreadShared<std::array<char, 0xFFFF>> _send_buffer;
 
-  SHVar *_socketVar = nullptr;
+  SHVar *_peerVar = nullptr;
 
   std::shared_ptr<entt::any> _contextStorage;
   NetworkContext *_context = nullptr;
@@ -412,9 +405,9 @@ struct Send {
     _context = nullptr;
 
     // clean context vars
-    if (_socketVar) {
-      releaseVariable(_socketVar);
-      _socketVar = nullptr;
+    if (_peerVar) {
+      releaseVariable(_peerVar);
+      _peerVar = nullptr;
     }
   }
 
@@ -429,13 +422,13 @@ struct Send {
     }
   }
 
-  SocketData *getSocket(SHContext *context) {
-    if (!_socketVar) {
-      _socketVar = referenceVariable(context, "Network.Socket");
+  NetworkPeer *getPeer(SHContext *context) {
+    if (!_peerVar) {
+      _peerVar = referenceVariable(context, "Network.Peer");
     }
-    assert(_socketVar->payload.objectVendorId == CoreCC);
-    assert(_socketVar->payload.objectTypeId == SocketCC);
-    return reinterpret_cast<SocketData *>(_socketVar->payload.objectValue);
+    assert(_peerVar->payload.objectVendorId == CoreCC);
+    assert(_peerVar->payload.objectTypeId == PeerCC);
+    return reinterpret_cast<NetworkPeer *>(_peerVar->payload.objectValue);
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -444,16 +437,11 @@ struct Send {
   Serialization serializer;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto socket = getSocket(context);
+    auto peer = getPeer(context);
     NetworkBase::Writer w(&_send_buffer().front(), _send_buffer().size());
     serializer.reset();
     auto size = serializer.serialize(input, w);
-    socket->socket->async_send_to(boost::asio::buffer(&_send_buffer().front(), size), *socket->endpoint,
-                                  [](boost::system::error_code ec, std::size_t bytes_sent) {
-                                    if (ec) {
-                                      std::cout << "Error sending: " << ec.message() << std::endl;
-                                    }
-                                  });
+    ikcp_send(peer->kcp, (char *)_send_buffer().data(), size);
     return input;
   }
 };
