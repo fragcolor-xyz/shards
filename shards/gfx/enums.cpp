@@ -116,6 +116,29 @@ size_t getStorageTypeSize(const StorageType &type) {
   }
 }
 
+
+bool isIntegerStorageType(const StorageType &type) {
+  switch (type) {
+  case StorageType::UInt8:
+  case StorageType::Int8:
+  case StorageType::UNorm8:
+  case StorageType::SNorm8:
+  case StorageType::UInt16:
+  case StorageType::Int16:
+  case StorageType::UNorm16:
+  case StorageType::SNorm16:
+  case StorageType::UInt32:
+  case StorageType::Int32:
+    return true;
+  case StorageType::Float16:
+  case StorageType::Float32:
+    return false;
+  default:
+    throw std::out_of_range(std::string(NAMEOF_TYPE(StorageType)));
+  }
+
+}
+
 size_t getIndexFormatSize(const IndexFormat &type) {
   switch (type) {
   case IndexFormat::UInt16:

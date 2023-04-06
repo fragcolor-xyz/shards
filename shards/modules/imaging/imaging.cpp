@@ -318,7 +318,10 @@ struct ImageGetPixel {
 
   PARAM_PARAMVAR(_image, "Position", "The position of the pixel to retrieve", {CoreInfo::ImageType, CoreInfo::ImageVarType});
   PARAM_VAR(_asInteger, "AsInteger", "Read the pixel as an integer", {CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_image), PARAM_IMPL_FOR(_asInteger));
+  PARAM_VAR(_default, "Default",
+            "When specified, out of bounds or otherwise failed reads will returns this value instead of failing",
+            {CoreInfo::NoneType, CoreInfo::Float4Type});
+  PARAM_IMPL(PARAM_IMPL_FOR(_image), PARAM_IMPL_FOR(_asInteger), PARAM_IMPL_FOR(_default));
 
   ImageGetPixel() { _asInteger = Var(false); }
 
@@ -373,10 +376,16 @@ struct ImageGetPixel {
     int h = uint32_t(image.height);
 
     SHInt2 coord = input.payload.int2Value;
-    if (coord[0] < 0 || coord[0] >= w)
+    if (coord[0] < 0 || coord[0] >= w) {
+      if (!_default.isNone())
+        return _default;
       throw std::out_of_range("Image fetch x coordinate out of range");
-    if (coord[1] < 0 || coord[1] >= h)
+    }
+    if (coord[1] < 0 || coord[1] >= h) {
+      if (!_default.isNone())
+        return _default;
       throw std::out_of_range("Image fetch y coordinate out of range");
+    }
 
     auto pixsize = getPixelSize(_image.get());
 

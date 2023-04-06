@@ -75,6 +75,7 @@ struct TextureFormatDesc {
 // TextureFormat
 const TextureFormatDesc &getTextureFormatDescription(WGPUTextureFormat pixelFormat);
 size_t getStorageTypeSize(const StorageType &type);
+bool isIntegerStorageType(const StorageType &type);
 size_t getIndexFormatSize(const IndexFormat &type);
 WGPUVertexFormat getWGPUVertexFormat(const StorageType &type, size_t dim);
 WGPUIndexFormat getWGPUIndexFormat(const IndexFormat &type);
