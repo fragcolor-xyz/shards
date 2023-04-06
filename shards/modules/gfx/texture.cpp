@@ -474,6 +474,12 @@ struct ReadTextureShard {
     _requiredGraphicsContext.cleanup();
   }
 
+  bool isSupportedFormat(WGPUTextureFormat format) const {
+    auto &fmtDesc = getTextureFormatDescription(format);
+    return isIntegerStorageType(fmtDesc.storageType) || // or float
+           getStorageTypeSize(fmtDesc.storageType) == 4;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     TexturePtr texture = varToTexture(input);
     _requiredGraphicsContext->renderer->copyTexture(TextureSubResource(texture), _readBuffer, (bool)*_wait);
@@ -484,10 +490,17 @@ struct ReadTextureShard {
       outImage.data = nullptr;
       outImage.flags = outImage.width = outImage.height = outImage.channels = 0;
     } else {
+      if (isSupportedFormat(_readBuffer->pixelFormat)) {
       auto &fmtDesc = getTextureFormatDescription(_readBuffer->pixelFormat);
-      if (fmtDesc.storageType == StorageType::UInt8) {
+        size_t componentSize = getStorageTypeSize(fmtDesc.storageType);
         outImage.channels = fmtDesc.numComponents;
+        if (!isIntegerStorageType(fmtDesc.storageType)) {
+          outImage.flags = SHIMAGE_FLAGS_32BITS_FLOAT;
+        } else if (componentSize == 2) {
+          outImage.flags = SHIMAGE_FLAGS_16BITS_INT;
+        } else {
         outImage.flags = SHIMAGE_FLAGS_NONE;
+        }
         outImage.width = _readBuffer->size.x;
         outImage.height = _readBuffer->size.y;
         size_t rowLength = fmtDesc.pixelSize * fmtDesc.numComponents * _readBuffer->size.x;
@@ -498,8 +511,7 @@ struct ReadTextureShard {
           memcpy(_imageBuffer.data() + rowLength * y, _readBuffer->data.data() + _readBuffer->stride * y, rowLength);
         }
       } else {
-        throw formatException("Unsupported image storage type {} (from {})", magic_enum::enum_name(fmtDesc.storageType),
-                              magic_enum::enum_name(_readBuffer->pixelFormat));
+        throw formatException("Unsupported image storage type {}", magic_enum::enum_name(_readBuffer->pixelFormat));
       }
     }
 
