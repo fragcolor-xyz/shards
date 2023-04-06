@@ -224,8 +224,8 @@ struct RendererImpl final : public ContextData {
 
     WgpuHandle<WGPUBuffer> buffer;
     std::optional<void *> mappedBuffer;
-    size_t rowSizeAligned;
-    size_t bufferSize;
+    size_t rowSizeAligned{};
+    size_t bufferSize{};
     int2 size{};
 
     DeferredTextureReadCommand(TextureSubResource texture, GpuTextureReadBufferPtr destination)
@@ -331,11 +331,11 @@ struct RendererImpl final : public ContextData {
         if (pollQueuedTextureReadCommand(*it)) {
           // Finished, remove from queue
           it = deferredTextureReadCommands.erase(it);
-          buffersToMap.push_back(&*it);
           continue;
         }
       } else {
         queueTextureReadCommand(encoder, *it);
+        buffersToMap.push_back(&*it);
       }
       ++it;
     }
@@ -352,6 +352,8 @@ struct RendererImpl final : public ContextData {
   }
 
   void beginFrame() {
+    context.poll(false);
+
     // This registers ContextData so that releaseContextData is called when GPU resources are invalidated
     if (!isBoundToContext())
       initializeContextData();
