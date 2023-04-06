@@ -6,6 +6,7 @@
 
 #include "../runtime.hpp"
 #include "shards.hpp"
+#include "shardwrapper.hpp"
 #include "shared.hpp"
 #include "utility.hpp"
 #include <boost/lockfree/queue.hpp>
@@ -111,10 +112,6 @@ struct NetworkBase {
   }
 
   void warmup(SHContext *context) {
-    _addr.warmup(context);
-    _port.warmup(context);
-    _blks.warmup(context);
-
     auto networkContext = context->anyStorage["Network.Context"].lock();
     if (!networkContext) {
       _contextStorage = std::make_shared<entt::any>(std::in_place_type_t<NetworkContext>{});
@@ -125,6 +122,10 @@ struct NetworkBase {
       _contextStorage = networkContext;
       _context = entt::any_cast<NetworkContext *>(*networkContext);
     }
+
+    _addr.warmup(context);
+    _port.warmup(context);
+    _blks.warmup(context);
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -305,20 +306,6 @@ struct Server : public NetworkBase {
   }
 };
 
-// Register
-RUNTIME_SHARD(Network, Server);
-RUNTIME_SHARD_cleanup(Server);
-RUNTIME_SHARD_warmup(Server);
-RUNTIME_SHARD_destroy(Server);
-RUNTIME_SHARD_inputTypes(Server);
-RUNTIME_SHARD_outputTypes(Server);
-RUNTIME_SHARD_parameters(Server);
-RUNTIME_SHARD_setParam(Server);
-RUNTIME_SHARD_getParam(Server);
-RUNTIME_SHARD_activate(Server);
-RUNTIME_SHARD_compose(Server);
-RUNTIME_SHARD_END(Server);
-
 struct Client : public NetworkBase {
   ExposedInfo _exposedInfo{};
 
@@ -409,20 +396,6 @@ struct Client : public NetworkBase {
   udp::endpoint _server;
 };
 
-// Register
-RUNTIME_SHARD(Network, Client);
-RUNTIME_SHARD_cleanup(Client);
-RUNTIME_SHARD_warmup(Client);
-RUNTIME_SHARD_destroy(Client);
-RUNTIME_SHARD_inputTypes(Client);
-RUNTIME_SHARD_outputTypes(Client);
-RUNTIME_SHARD_parameters(Client);
-RUNTIME_SHARD_setParam(Client);
-RUNTIME_SHARD_getParam(Client);
-RUNTIME_SHARD_activate(Client);
-RUNTIME_SHARD_compose(Client);
-RUNTIME_SHARD_END(Client);
-
 struct Send {
   // Must take an optional seq of SocketData, to be used properly by server
   // This way we get also a easy and nice broadcast
@@ -484,19 +457,12 @@ struct Send {
     return input;
   }
 };
-
-// Register
-RUNTIME_SHARD(Network, Send);
-RUNTIME_SHARD_cleanup(Send);
-RUNTIME_SHARD_inputTypes(Send);
-RUNTIME_SHARD_outputTypes(Send);
-RUNTIME_SHARD_activate(Send);
-RUNTIME_SHARD_END(Send);
 }; // namespace Network
 
 void registerNetworkShards() {
-  REGISTER_SHARD2(Network, Server);
-  REGISTER_SHARD2(Network, Client);
-  REGISTER_SHARD2(Network, Send);
+  using namespace Network;
+  REGISTER_SHARD("Network.Server", Server);
+  REGISTER_SHARD("Network.Client", Client);
+  REGISTER_SHARD("Network.Send", Send);
 }
 }; // namespace shards
