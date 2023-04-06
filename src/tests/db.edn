@@ -10,6 +10,33 @@
   [88 99 100 101 102] (DB.Query "INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" "custom.db") (Log)
   [] (DB.Query "SELECT * FROM integers" "custom.db") (Log)
   (Assert.Is {:x [88 100 102], :y [99 101 nil]})
+
+  11 >= .x
+  22 >= .y
+  (DB.Transaction
+   (->
+    (Repeat
+     (->
+      (Math.Inc .x)
+      (Math.Inc .y)
+      [.x .y] (DB.Query "INSERT INTO integers VALUES (?, ?)") (Log)) :Times 10)))
+  [] (DB.Query "SELECT * FROM integers") (Log)
+  (Assert.Is {:x [88, 100, 102, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], :y [99, 101, nil, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]})
+
+  (Maybe
+   (->
+    (DB.Transaction
+     (->
+      (Repeat
+       (->
+        (Math.Inc .x)
+        (Math.Inc .y)
+        [.x .y] (DB.Query "INSERT INTO integers VALUES (?, ?)") (Log)) :Times 10)
+      true (Assert.Is false) ; fail on purpose, we test rerolling here
+      ))))
+
+  [] (DB.Query "SELECT * FROM integers") (Log)
+  (Assert.Is {:x [88, 100, 102, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], :y [99, 101, nil, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]})
   ;
   )
 

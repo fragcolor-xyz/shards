@@ -1,3 +1,4 @@
+#include "foundation.hpp"
 #include "shared.hpp"
 #include "params.hpp"
 #include "utility.hpp"
@@ -95,7 +96,7 @@ struct Query : public Base {
   std::unique_ptr<Statement> prepared;
 
   void warmup(SHContext *context) {
-    if(_dbName.valueType != SHType::None) {
+    if (_dbName.valueType != SHType::None) {
       Base::_dbName = SHSTRVIEW(_dbName);
     } else {
       Base::_dbName = "shards.db";
@@ -203,6 +204,64 @@ struct Query : public Base {
   }
 };
 
-void registerShards() { REGISTER_SHARD("DB.Query", Query); }
+struct Transaction : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  PARAM(ShardsVar, _queries, "Queries", "The Shards logic executing various DB queries.", {CoreInfo::ShardsOrNone});
+  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_IMPL(Transaction, PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName));
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    _queries.compose(data);
+    return data.inputType;
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+
+    Base::cleanup();
+  }
+
+  void warmup(SHContext *context) {
+    if (_dbName.valueType != SHType::None) {
+      Base::_dbName = SHSTRVIEW(_dbName);
+    } else {
+      Base::_dbName = "shards.db";
+    }
+
+    Base::warmup(context);
+
+    PARAM_WARMUP(context);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto rc = sqlite3_exec(_connection->get(), "BEGIN TRANSACTION;", nullptr, nullptr, nullptr);
+    if (rc != SQLITE_OK) {
+      throw ActivationError(sqlite3_errmsg(_connection->get()));
+    }
+    SHVar output{};
+    auto state = _queries.activate(context, input, output);
+    if (state != SHWireState::Continue) {
+      // likely something went wrong! lets rollback.
+      auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
+      if (rc != SQLITE_OK) {
+        throw ActivationError(sqlite3_errmsg(_connection->get()));
+      }
+    } else {
+      // commit
+      auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
+      if (rc != SQLITE_OK) {
+        throw ActivationError(sqlite3_errmsg(_connection->get()));
+      }
+    }
+    return input;
+  }
+};
+
+void registerShards() {
+  REGISTER_SHARD("DB.Query", Query);
+  REGISTER_SHARD("DB.Transaction", Transaction);
+}
 } // namespace DB
 } // namespace shards
