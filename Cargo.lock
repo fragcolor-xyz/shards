@@ -1866,6 +1866,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
+name = "lib0"
+version = "0.16.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "daf23122cb1c970b77ea6030eac5e328669415b65d2ab245c99bfb110f9d62dc"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.140"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3650,6 +3659,7 @@ dependencies = [
  "hex",
  "instant",
  "lazy_static",
+ "lib0",
  "libsecp256k1",
  "parity-scale-codec",
  "rapier3d",
@@ -3668,6 +3678,7 @@ dependencies = [
  "tungstenite",
  "usvg",
  "wasabi_leb128",
+ "yrs",
 ]
 
 [[package]]
@@ -3717,6 +3728,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6528351c9bc8ab22353f9d776db39a20288e8d6c37ef8cfe3317cf875eecfc2d"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "smallstr"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e922794d168678729ffc7e07182721a14219c65814e66e91b839a272fe5ae4f"
+dependencies = [
+ "smallvec",
 ]
 
 [[package]]
@@ -5059,6 +5079,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
 dependencies = [
  "linked-hash-map",
+]
+
+[[package]]
+name = "yrs"
+version = "0.16.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c2aef2bf89b4f7c003f9c73f1c8097427ca32e1d006443f3f607f11e79a797b"
+dependencies = [
+ "atomic_refcell",
+ "lib0",
+ "rand 0.7.3",
+ "smallstr",
+ "smallvec",
+ "thiserror",
 ]
 
 [[package]]
