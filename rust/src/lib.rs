@@ -35,6 +35,8 @@ pub mod types;
 #[cfg(feature = "shards")]
 pub mod shards;
 
+use shards::crdt;
+
 use crate::core::log;
 use crate::core::Core;
 use crate::shard::Shard;
@@ -534,4 +536,7 @@ pub extern "C" fn registerRustShards(core: *mut SHCore) {
 pub extern "C" fn runRuntimeTests() {
   #[cfg(feature = "scripting")]
   scripting::test_shl();
+
+  crdt::sample1();
+  crdt::sample2();
 }
