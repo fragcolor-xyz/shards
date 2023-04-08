@@ -2,6 +2,7 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 #include "SDL.h"
+#include "shards.h"
 #include "shards.hpp"
 #include "shards/shared.hpp"
 #include "inputs.hpp"
@@ -9,6 +10,7 @@
 #include <SDL_keyboard.h>
 #include <SDL_keycode.h>
 #include <gfx/window.hpp>
+#include "params.hpp"
 
 using namespace linalg::aliases;
 
@@ -504,6 +506,53 @@ struct IsKeyDown : public Base {
   SHVar activate(SHContext *context, const SHVar &input) { return Var(_inputContext->heldKeys.contains(_keyCode)); }
 };
 
+struct HandleURL : public Base {
+  std::string _url;
+
+  PARAM(ShardsVar, _action, "Action", "The Shards to run if a text/file drop event happened.", {CoreInfo::ShardsOrNone});
+  PARAM_IMPL(HandleURL, PARAM_IMPL_FOR(_action));
+
+  void cleanup() {
+    PARAM_CLEANUP();
+
+    Base::cleanup();
+  }
+
+  void warmup(SHContext *context) {
+    Base::warmup(context);
+
+    PARAM_WARMUP(context);
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    auto dataCopy = data;
+    dataCopy.inputType = CoreInfo::StringType;
+    _action.compose(data);
+    return data.inputType;
+  }
+
+  static SHTypeInfo inputType() { return CoreInfo::AnyType; }
+  static SHTypeInfo outputType() { return CoreInfo::AnyType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    for (auto &ev : _inputContext->events) {
+      if (ev.type == SDL_DROPFILE || ev.type == SDL_DROPTEXT) {
+        _url.clear();
+        auto url = ev.drop.file;
+        _url.append(url);
+        SDL_free(url);
+
+        SHVar output{};
+        _action.activate(context, Var(_url), output);
+
+        break;
+      }
+    }
+
+    return input;
+  }
+};
+
 void registerShards() {
   REGISTER_SHARD("Window.Size", WindowSize);
   REGISTER_SHARD("Inputs.MousePixelPos", MousePixelPos);
@@ -517,6 +566,7 @@ void registerShards() {
   REGISTER_SHARD("Inputs.KeyUp", KeyUp);
   REGISTER_SHARD("Inputs.KeyDown", KeyDown);
   REGISTER_SHARD("Inputs.IsKeyDown", IsKeyDown);
+  REGISTER_SHARD("Inputs.HandleURL", HandleURL);
 }
 } // namespace Inputs
 } // namespace shards
