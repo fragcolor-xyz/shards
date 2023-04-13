@@ -3367,7 +3367,7 @@ impl ShardsVar {
     self.param.0
   }
 
-  pub fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+  pub fn compose(&mut self, data: &InstanceData) -> Result<&ComposeResult, &'static str> {
     // clear old results if any
     if let Some(compose_result) = self.compose_result {
       unsafe {
@@ -3378,7 +3378,8 @@ impl ShardsVar {
     }
 
     if self.param.0.is_none() {
-      return Ok(Type::default());
+      self.compose_result = Some(Default::default());
+      return Ok(self.compose_result.as_ref().unwrap());
     }
 
     let failed = false;
@@ -3400,9 +3401,8 @@ impl ShardsVar {
     } else if failed {
       Err("Composition failed.")
     } else {
-      let output_type = result.outputType;
       self.compose_result = Some(result);
-      Ok(output_type)
+      Ok(self.compose_result.as_ref().unwrap())
     }
   }
 
@@ -3467,6 +3467,47 @@ impl ShardsVar {
 impl From<&ShardsVar> for Shards {
   fn from(v: &ShardsVar) -> Self {
     v.native_shards
+  }
+}
+
+pub struct ExposedTypesIterator {
+  elements: *mut SHExposedTypeInfo,
+  length: usize,
+  index: usize,
+}
+
+impl Iterator for ExposedTypesIterator {
+  type Item = SHExposedTypeInfo;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    if self.index < (self.length - 1) {
+      Some({
+        let ret_index = self.index;
+        self.index += 1;
+        unsafe { slice::from_raw_parts_mut(self.elements, self.length)[ret_index] }
+      })
+    } else {
+      None
+    }
+  }
+}
+
+impl IntoIterator for &SHExposedTypesInfo {
+  type Item = SHExposedTypeInfo;
+  type IntoIter = ExposedTypesIterator;
+
+  fn into_iter(self) -> Self::IntoIter {
+    ExposedTypesIterator {
+      elements: self.elements,
+      index: 0,
+      length: self.len as usize,
+    }
+  }
+}
+
+impl SHExposedTypesInfo {
+  pub fn iter(&self) -> ExposedTypesIterator {
+    (&self).into_iter()
   }
 }
 

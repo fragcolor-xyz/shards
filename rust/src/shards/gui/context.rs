@@ -190,8 +190,8 @@ impl Shard for EguiContext {
     data.shared = (&shared).into();
 
     if !self.contents.is_empty() {
-      let outputType = self.contents.compose(&data)?;
-      return Ok(outputType);
+      let result = self.contents.compose(&data)?;
+      return Ok(result.outputType);
     }
 
     // Always passthrough the input
