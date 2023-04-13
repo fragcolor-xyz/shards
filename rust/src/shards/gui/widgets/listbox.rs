@@ -7,6 +7,7 @@ use crate::shards::gui::util;
 use crate::shards::gui::INT_VAR_OR_NONE_SLICE;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::shardsc;
+use crate::shardsc::SHType_Bool;
 use crate::types::common_type;
 use crate::types::Context;
 use crate::types::ExposedInfo;
@@ -22,6 +23,7 @@ use crate::types::Types;
 use crate::types::Var;
 use crate::types::ANYS_TYPES;
 use crate::types::ANY_TYPES;
+use crate::types::INT_TYPES;
 use crate::types::SHARDS_OR_NONE_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;
@@ -32,6 +34,18 @@ lazy_static! {
       cstr!("Index"),
       shccstr!("The index of the selected item."),
       INT_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("IsSelected"),
+      shccstr!("Predicate that should return selection state of an item, receives the index in the list, should return true/false."),
+      &SHARDS_OR_NONE_TYPES[..],
+    )
+    .into(),
+    (
+      cstr!("Selected"),
+      shccstr!("Predicate that should return selection state of an item, receives the index in the list, should return true/false."),
+      &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),
     (
@@ -52,6 +66,8 @@ impl Default for ListBox {
       requiring: Vec::new(),
       index: ParamVar::default(),
       template: ShardsVar::default(),
+      is_selected: ShardsVar::default(),
+      selected: ShardsVar::default(),
       exposing: Vec::new(),
       should_expose: false,
       tmp: 0,
@@ -105,7 +121,9 @@ impl Shard for ListBox {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.index.set_param(value)),
-      1 => self.template.set_param(value),
+      1 => self.is_selected.set_param(value),
+      2 => self.selected.set_param(value),
+      3 => self.template.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -113,7 +131,9 @@ impl Shard for ListBox {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.index.get_param(),
-      1 => self.template.get_param(),
+      1 => self.is_selected.get_param(),
+      2 => self.selected.get_param(),
+      3 => self.template.get_param(),
       _ => Var::default(),
     }
   }
@@ -123,6 +143,11 @@ impl Shard for ListBox {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.requiring.clear();
+
+    // Add UI.Parents to the list of required variables
+    util::require_parents(&mut self.requiring, &self.parents);
+
     if self.index.is_variable() {
       self.should_expose = true; // assume we expose a new variable
 
@@ -141,6 +166,30 @@ impl Shard for ListBox {
           }
           break;
         }
+      }
+    }
+
+    if !self.is_selected.is_empty() {
+      let mut data_copy = *data;
+      data_copy.inputType = common_type::int;
+      let res = self.is_selected.compose(&data_copy)?;
+
+      if res.outputType.basicType != SHType_Bool {
+        return Err("IsSelected callback should return a boolean");
+      }
+
+      for item in res.requiredInfo.iter() {
+        self.requiring.push(item);
+      }
+    }
+
+    if !self.selected.is_empty() {
+      let mut data_copy = *data;
+      data_copy.inputType = common_type::int;
+      let res = self.selected.compose(&data_copy)?;
+
+      for item in res.requiredInfo.iter() {
+        self.requiring.push(item);
       }
     }
 
@@ -192,11 +241,6 @@ impl Shard for ListBox {
   }
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
-
     Some(&self.requiring)
   }
 
@@ -212,6 +256,14 @@ impl Shard for ListBox {
       self.template.warmup(ctx)?;
     }
 
+    if !self.selected.is_empty() {
+      self.selected.warmup(ctx)?;
+    }
+
+    if !self.is_selected.is_empty() {
+      self.is_selected.warmup(ctx)?;
+    }
+
     Ok(())
   }
 
@@ -219,6 +271,8 @@ impl Shard for ListBox {
     self.template.cleanup();
     self.index.cleanup();
     self.parents.cleanup();
+    self.selected.cleanup();
+    self.is_selected.cleanup();
 
     Ok(())
   }
@@ -237,13 +291,27 @@ impl Shard for ListBox {
 
       ui.group(|ui| {
         for i in 0..seq.len() {
+          let is_selected = {
+            if !self.is_selected.is_empty() {
+              let input = Var::from(i as i64);
+              let mut output = Var::default();
+              self.is_selected.activate(context, &input, &mut output);
+              <bool>::try_from(&output)?
+            } else {
+              i as i64 == current_index
+            }
+          };
+
           if self.template.is_empty() {
             let str: &str = (&seq[i]).try_into()?;
-            if ui
-              .selectable_label(i as i64 == current_index, str.to_owned())
-              .clicked()
-            {
-              new_index = Some(i as i64);
+            if ui.selectable_label(is_selected, str.to_owned()).clicked() {
+              if !self.selected.is_empty() {
+                let input = Var::from(i as i64);
+                let mut _output = Var::default();
+                self.selected.activate(context, &input, &mut _output);
+              } else {
+                new_index = Some(i as i64);
+              }
             }
           } else {
             let inner_margin = egui::style::Margin::same(3.0);
@@ -269,10 +337,9 @@ impl Shard for ListBox {
             paint_rect.min -= inner_margin.left_top();
             paint_rect.max += inner_margin.right_bottom();
 
-            let selected = i as i64 == current_index;
             let response = ui.allocate_rect(paint_rect, egui::Sense::click());
-            let visuals = ui.style().interact_selectable(&response, selected);
-            if selected || response.hovered() || response.has_focus() {
+            let visuals = ui.style().interact_selectable(&response, is_selected);
+            if is_selected || response.hovered() || response.has_focus() {
               let rect = paint_rect.expand(visuals.expansion);
               let shape = egui::Shape::Rect(egui::epaint::RectShape {
                 rect,
@@ -284,7 +351,13 @@ impl Shard for ListBox {
             }
 
             if response.clicked() {
-              new_index = Some(i as i64);
+              if !self.selected.is_empty() {
+                let input = Var::from(i as i64);
+                let mut _output = Var::default();
+                self.selected.activate(context, &input, &mut _output);
+              } else {
+                new_index = Some(i as i64);
+              }
             }
           }
         }

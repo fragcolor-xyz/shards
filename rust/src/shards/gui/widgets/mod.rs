@@ -138,6 +138,8 @@ struct ListBox {
   requiring: ExposedTypes,
   index: ParamVar,
   template: ShardsVar,
+  is_selected: ShardsVar,
+  selected: ShardsVar,
   exposing: ExposedTypes,
   should_expose: bool,
   tmp: i64,
