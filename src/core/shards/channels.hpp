@@ -50,7 +50,7 @@ public:
 
   MPMCChannel &subscribe() {
     // we automatically cleanup based on the closed flag of the inner channel
-    std::scoped_lock<std::mutex> lock(subMutex);
+    std::unique_lock<std::mutex> lock(subMutex);
     return subscribers.emplace_back(_noCopy);
   }
 
