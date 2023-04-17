@@ -2,6 +2,8 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
 #include "channels.hpp"
+#include "runtime.hpp"
+#include <mutex>
 #include <shared_mutex>
 
 namespace shards {
@@ -147,7 +149,16 @@ struct Broadcast : public Base {
     // we need to support subscriptions during run-time
     // so we need to lock this operation
     // furthermore we allow multiple broadcasters so the erase needs this
-    std::scoped_lock<std::mutex> lock(_mpChannel->subMutex);
+    // but we use suspend instead of kernel locking!
+
+    std::unique_lock<std::mutex> lock(_mpChannel->subMutex);
+
+    // try to lock, if we can't we suspend
+    while(!lock.try_lock()) {
+      SH_SUSPEND(context, 0);
+    }
+
+    // we locked it!
     for (auto it = _mpChannel->subscribers.begin(); it != _mpChannel->subscribers.end();) {
       if (it->closed) {
         it = _mpChannel->subscribers.erase(it);
@@ -172,6 +183,8 @@ struct Broadcast : public Base {
         ++it;
       }
     }
+
+    // we are done, exiting and going out of scope will unlock
 
     return input;
   }
