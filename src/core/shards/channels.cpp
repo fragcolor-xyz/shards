@@ -309,14 +309,6 @@ struct Listen : public Consumers {
   void destroy() {
     if (_mpChannel) {
       _mpChannel->closed = true;
-      // also try clear here, to make broadcast removal faster
-      SHVar tmp{};
-      while (_mpChannel->data.pop(tmp)) {
-        destroyVar(tmp);
-      }
-      while (_mpChannel->recycle.pop(tmp)) {
-        destroyVar(tmp);
-      }
     }
   }
 
