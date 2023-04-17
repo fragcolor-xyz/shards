@@ -5,6 +5,7 @@
 #include <atomic>
 #include <boost/lockfree/queue.hpp>
 #include <boost/lockfree/stack.hpp>
+#include <memory>
 #include <mutex>
 #include <variant>
 
@@ -62,7 +63,7 @@ protected:
 };
 
 using Channel = std::variant<DummyChannel, MPMCChannel, BroadcastChannel>;
-Channel &get(const std::string &name);
+std::shared_ptr<Channel> get(const std::string &name);
 
 } // namespace channels
 } // namespace shards
