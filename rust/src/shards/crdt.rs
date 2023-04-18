@@ -1,9 +1,127 @@
 use lib0::any;
-use yrs::types::ToJson;
-use yrs::*;
-use yrs::types::text::YChange;
+use lib0::any::Any;
 use std::collections::HashMap;
+use std::ffi::CStr;
+use yrs::types::text::YChange;
+use yrs::types::ToJson;
 use yrs::updates::decoder::Decode;
+use yrs::*;
+
+use crate::shardsc::*;
+
+use crate::types::{Var, Table};
+
+impl Into<Any> for Var {
+  fn into(self) -> Any {
+    unsafe {
+      match self.valueType {
+        SHType_None => Any::Null,
+        SHType_Any => Any::Undefined,
+        // SHType_Enum => f
+        //   .debug_struct("SHEnum")
+        //   .field(
+        //     "value",
+        //     &self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue,
+        //   )
+        //   .field(
+        //     "vendorId",
+        //     &self.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId,
+        //   )
+        //   .field(
+        //     "typeId",
+        //     &self.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId,
+        //   )
+        //   .finish(),
+        SHType_Bool => Any::Bool(self.payload.__bindgen_anon_1.boolValue),
+        SHType_Int => Any::BigInt(self.payload.__bindgen_anon_1.intValue),
+        // SHType_Int2 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int2Value),
+        // SHType_Int3 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int3Value),
+        // SHType_Int4 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int4Value),
+        // SHType_Int8 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int8Value),
+        // SHType_Int16 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int16Value),
+        SHType_Float => Any::Number(self.payload.__bindgen_anon_1.floatValue),
+        // SHType_Float2 => write!(f, "{:?}", self.payload.__bindgen_anon_1.float2Value),
+        // SHType_Float3 => write!(f, "{:?}", self.payload.__bindgen_anon_1.float3Value),
+        // SHType_Float4 => write!(f, "{:?}", self.payload.__bindgen_anon_1.float4Value),
+        // SHType_Color => write!(f, "{:?}", self.payload.__bindgen_anon_1.colorValue),
+        // SHType_ShardRef => write!(f, "{:p}", self.payload.__bindgen_anon_1.shardValue),
+        SHType_Bytes => {
+          let s = std::slice::from_raw_parts(
+            self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
+            self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize as usize,
+          );
+          Any::Buffer(Box::from(s))
+        }
+        SHType_String => {
+          let s = CStr::from_ptr(self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue)
+            .to_str()
+            .unwrap();
+          Any::String(Box::from(s))
+        }
+        // SHType_Path => write!(
+        //   f,
+        //   "Path({:?})",
+        //   CStr::from_ptr(self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue)
+        //     .to_str()
+        //     .unwrap()
+        // ),
+        // SHType_ContextVar => write!(
+        //   f,
+        //   "ContextVar({:?})",
+        //   CStr::from_ptr(self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue)
+        //     .to_str()
+        //     .unwrap()
+        // ),
+        // SHType_Image => write!(f, "{:?}", self.payload.__bindgen_anon_1.imageValue),
+        SHType_Seq => {
+          let v = self.payload.__bindgen_anon_1.seqValue;
+          let mut arr = Vec::with_capacity(v.len as usize);
+          for i in 0..v.len {
+            arr.push((*v.elements.offset(i as isize)).into());
+          }
+          Any::Array(arr.into_boxed_slice())
+        }
+        SHType_Table => {
+          let t = self.payload.__bindgen_anon_1.tableValue;
+          let tab: Table = Table::try_from(t).expect("Failed to convert table");
+          let mut map = HashMap::new();
+          for (k, v) in tab.iter() {
+            let k = CStr::from_ptr(k.0).to_str().unwrap().to_string();
+            map.insert(k, v.into());
+          }
+          Any::Map(Box::new(map))
+        }
+        // SHType_Wire => write!(f, "{:p}", self.payload.__bindgen_anon_1.wireValue),
+        // SHType_Object => f
+        //   .debug_struct("SHObject")
+        //   .field(
+        //     "value",
+        //     &format_args!(
+        //       "{:p}",
+        //       self.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
+        //     ),
+        //   )
+        //   .field(
+        //     "vendorId",
+        //     &self
+        //       .payload
+        //       .__bindgen_anon_1
+        //       .__bindgen_anon_1
+        //       .objectVendorId,
+        //   )
+        //   .field(
+        //     "typeId",
+        //     &self.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId,
+        //   )
+        //   .finish(),
+        // SHType_Array => write!(f, "{:?}", self.payload.__bindgen_anon_1.arrayValue),
+        // SHType_Set => write!(f, "{:?}", self.payload.__bindgen_anon_1.setValue),
+        // SHType_Audio => write!(f, "{:?}", self.payload.__bindgen_anon_1.audioValue),
+        _ => Any::Undefined,
+      }
+    }
+  }
+}
 
 pub fn sample1() {
   let doc = Doc::new();
@@ -119,4 +237,39 @@ pub fn sample3() {
 
   // create sequence of text chunks with optional format attributes
   let _diff = remote_text.diff(&remote_txn, YChange::identity);
+}
+
+pub fn sample4() {
+  let doc = Doc::new();
+  let map = doc.get_or_insert_map("map");
+  let mut txn = doc.transact_mut();
+
+  // insert value
+  let v1: Var = 1.0.into();
+  map.insert(&mut txn, "key1", v1);
+
+  let mut t: Table = Table::new();
+  let v2: Var = 2.0.into();
+  t.insert_fast_static("k\0", &v2);
+  let tv: Var = (&t).into();
+
+  // insert nested shared type
+  map.insert(&mut txn, "key2", tv);
+
+  assert_eq!(
+    map.to_json(&txn),
+    any!({
+      "key1": 1,
+      "key2": {
+        "k": 2,
+      }
+    })
+  );
+
+  // get value
+  assert_eq!(map.get(&txn, "key1"), Some(1.0.into()));
+
+  // remove entry
+  map.remove(&mut txn, "key1");
+  assert_eq!(map.get(&txn, "key1"), None);
 }
