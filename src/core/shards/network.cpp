@@ -13,6 +13,7 @@
 #include <boost/lockfree/queue.hpp>
 #include <functional>
 #include <memory>
+#include <shared_mutex>
 #include <stdint.h>
 #include <thread>
 #include <unordered_map>
@@ -232,6 +233,7 @@ struct NetworkBase {
 };
 
 struct Server : public NetworkBase {
+  std::shared_mutex peersMutex;
   udp::endpoint _sender;
 
   std::unordered_map<udp::endpoint, NetworkPeer> _end2Peer;
@@ -253,18 +255,31 @@ struct Server : public NetworkBase {
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
                                   if (!ec && bytes_recvd > 0) {
-                                    auto &peer = _end2Peer[_sender];
-                                    if (!peer.endpoint) {
+                                    ikcpcb *kcp = nullptr;
+                                    std::shared_lock<std::shared_mutex> lock(peersMutex);
+                                    auto it = _end2Peer.find(_sender);
+                                    if (it == _end2Peer.end()) {
+                                      lock.unlock();
+
+                                      std::unique_lock<std::shared_mutex> lock(peersMutex);
+
                                       // new peer
+                                      auto &peer = _end2Peer[_sender];
                                       peer.endpoint = _sender;
                                       peer.user = this;
                                       peer.kcp->user = &peer;
                                       peer.kcp->output = &Server::udp_output;
                                       SHLOG_DEBUG("Added new peer: {} port: {}", peer.endpoint->address().to_string(),
                                                   peer.endpoint->port());
+
+                                      kcp = peer.kcp;
+                                    } else {
+                                      kcp = it->second.kcp;
+
+                                      lock.unlock();
                                     }
 
-                                    ikcp_input(peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
+                                    ikcp_input(kcp, (char *)recv_buffer.data(), bytes_recvd);
 
                                     // keep receiving
                                     do_receive();
@@ -285,6 +300,8 @@ struct Server : public NetworkBase {
       // start receiving
       boost::asio::post(io_context, [this]() { do_receive(); });
     }
+
+    std::shared_lock<std::shared_mutex> lock(peersMutex);
 
     for (auto &[end, peer] : _end2Peer) {
       peer.maybeUpdate();
