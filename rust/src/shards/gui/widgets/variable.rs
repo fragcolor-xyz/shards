@@ -192,6 +192,9 @@ impl Default for WireVariable {
     Self {
       parents,
       requiring: Vec::new(),
+      variable_name: Var::default(),
+      wire_name: Var::default(),
+      variable_ptr: None,
     }
   }
 }
@@ -241,25 +244,46 @@ impl Shard for WireVariable {
   fn cleanup(&mut self) -> Result<(), &str> {
     self.parents.cleanup();
 
+    self.variable_ptr = None;
+
     Ok(())
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let input: Table = input.try_into()?;
-    let name: &str = input.get_fast_static(cstr!("Name")).try_into()?;
-    let wire: WireRef = input.get_fast_static(cstr!("Wire")).try_into()?;
-    let varPtr = unsafe {
-      getWireVariable(wire, name.as_ptr() as *const c_char, name.len() as u32) as *mut Var
-    };
-    if varPtr == std::ptr::null_mut() {
-      return Err("Variable not found");
+
+    let name_var = input.get_fast_static(cstr!("Name"));
+    let name: &str = name_var.try_into()?;
+    let wire_var = input.get_fast_static(cstr!("Wire"));
+    if self.variable_name != *name_var || self.wire_name != *wire_var || self.variable_ptr.is_none()
+    {
+      let wire: WireRef = wire_var.try_into()?;
+
+      let varPtr = unsafe {
+        getWireVariable(wire, name.as_ptr() as *const c_char, name.len() as u32) as *mut Var
+      };
+
+      if varPtr == std::ptr::null_mut() {
+        return Err("Variable not found");
+      }
+
+      self.variable_ptr = Some(varPtr);
+      self.variable_name = *name_var;
+      self.wire_name = *wire_var;
     }
-    let varRef = unsafe { &mut *varPtr };
+
+    let varRef = if let Some(varPtr) = self.variable_ptr {
+      unsafe { &mut *varPtr }
+    } else {
+      return Err("Variable not found");
+    };
 
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.horizontal(|ui| {
         ui.label(name);
-        varRef.render(false, None, ui);
+        if varRef.render(false, None, ui).changed() {
+          unsafe { varRef.__bindgen_anon_1.version += 1 };
+        }
       });
 
       Ok(*varRef)
