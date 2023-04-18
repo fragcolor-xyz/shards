@@ -9,42 +9,16 @@ use yrs::*;
 
 use crate::shardsc::*;
 
-use crate::types::{Var, Table};
+use crate::types::{Table, Var};
 
 impl Into<Any> for Var {
   fn into(self) -> Any {
     unsafe {
       match self.valueType {
         SHType_None => Any::Null,
-        SHType_Any => Any::Undefined,
-        // SHType_Enum => f
-        //   .debug_struct("SHEnum")
-        //   .field(
-        //     "value",
-        //     &self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue,
-        //   )
-        //   .field(
-        //     "vendorId",
-        //     &self.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId,
-        //   )
-        //   .field(
-        //     "typeId",
-        //     &self.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId,
-        //   )
-        //   .finish(),
         SHType_Bool => Any::Bool(self.payload.__bindgen_anon_1.boolValue),
         SHType_Int => Any::BigInt(self.payload.__bindgen_anon_1.intValue),
-        // SHType_Int2 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int2Value),
-        // SHType_Int3 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int3Value),
-        // SHType_Int4 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int4Value),
-        // SHType_Int8 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int8Value),
-        // SHType_Int16 => write!(f, "{:?}", self.payload.__bindgen_anon_1.int16Value),
         SHType_Float => Any::Number(self.payload.__bindgen_anon_1.floatValue),
-        // SHType_Float2 => write!(f, "{:?}", self.payload.__bindgen_anon_1.float2Value),
-        // SHType_Float3 => write!(f, "{:?}", self.payload.__bindgen_anon_1.float3Value),
-        // SHType_Float4 => write!(f, "{:?}", self.payload.__bindgen_anon_1.float4Value),
-        // SHType_Color => write!(f, "{:?}", self.payload.__bindgen_anon_1.colorValue),
-        // SHType_ShardRef => write!(f, "{:p}", self.payload.__bindgen_anon_1.shardValue),
         SHType_Bytes => {
           let s = std::slice::from_raw_parts(
             self.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue,
@@ -58,21 +32,6 @@ impl Into<Any> for Var {
             .unwrap();
           Any::String(Box::from(s))
         }
-        // SHType_Path => write!(
-        //   f,
-        //   "Path({:?})",
-        //   CStr::from_ptr(self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue)
-        //     .to_str()
-        //     .unwrap()
-        // ),
-        // SHType_ContextVar => write!(
-        //   f,
-        //   "ContextVar({:?})",
-        //   CStr::from_ptr(self.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue)
-        //     .to_str()
-        //     .unwrap()
-        // ),
-        // SHType_Image => write!(f, "{:?}", self.payload.__bindgen_anon_1.imageValue),
         SHType_Seq => {
           let v = self.payload.__bindgen_anon_1.seqValue;
           let mut arr = Vec::with_capacity(v.len as usize);
@@ -91,32 +50,6 @@ impl Into<Any> for Var {
           }
           Any::Map(Box::new(map))
         }
-        // SHType_Wire => write!(f, "{:p}", self.payload.__bindgen_anon_1.wireValue),
-        // SHType_Object => f
-        //   .debug_struct("SHObject")
-        //   .field(
-        //     "value",
-        //     &format_args!(
-        //       "{:p}",
-        //       self.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue
-        //     ),
-        //   )
-        //   .field(
-        //     "vendorId",
-        //     &self
-        //       .payload
-        //       .__bindgen_anon_1
-        //       .__bindgen_anon_1
-        //       .objectVendorId,
-        //   )
-        //   .field(
-        //     "typeId",
-        //     &self.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId,
-        //   )
-        //   .finish(),
-        // SHType_Array => write!(f, "{:?}", self.payload.__bindgen_anon_1.arrayValue),
-        // SHType_Set => write!(f, "{:?}", self.payload.__bindgen_anon_1.setValue),
-        // SHType_Audio => write!(f, "{:?}", self.payload.__bindgen_anon_1.audioValue),
         _ => Any::Undefined,
       }
     }

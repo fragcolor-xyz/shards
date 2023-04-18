@@ -206,6 +206,9 @@ struct Variable {
 struct WireVariable {
   parents: ParamVar,
   requiring: ExposedTypes,
+  variable_name: Var,
+  wire_name: Var,
+  variable_ptr: Option<*mut Var>,
 }
 
 macro_rules! decl_ui_input {
