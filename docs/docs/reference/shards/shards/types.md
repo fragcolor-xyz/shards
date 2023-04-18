@@ -22,7 +22,7 @@ Valid data types for every shard are listed under the `Type` column of their Par
 
 Type **Any** indicates that all data types are allowed.
 
-For example, **Any** as the allowed data type for input and `:Value` parameter of shard [`(All)`](../General/All/) means that `(All)` accepts and compares across all data types.
+For example, **Any** as the allowed data type for input and `Value` parameter of shard [`(All)`](../General/All/) means that `(All)` accepts and compares across all data types.
 
 ```clojure linenums="1"
 (All
@@ -30,7 +30,7 @@ For example, **Any** as the allowed data type for input and `:Value` parameter o
 )
 ```
 
-`(All)` compares the input and`:Value` parameter values and returns `true` only if both the value and data type of these entities is equal/same.
+`(All)` compares the input and`Value` parameter values and returns `true` only if both the value and data type of these entities is equal/same.
 
 === "Code"
 
@@ -83,7 +83,7 @@ Examples of shards that use this type are [`(Audio.Oscillator)`](../Audio/Oscill
 Type **Bool** allows only two values - `true` or `false`.
 In that sense it can be thought of as a special case of an [**Enum**](#enum) data type.
 
-Consider the shard [`(Is)`](../General/Is/). This shard compares its input and the value in the `:Value` parameter for equality. After the comparison it needs to communicate its result in a yes/no format (yes values are equal; no values are not equal).
+Consider the shard [`(Is)`](../General/Is/). This shard compares its input and the value in the `Value` parameter for equality. After the comparison it needs to communicate its result in a yes/no format (yes values are equal; no values are not equal).
 
 ```clojure linenums="1"
 (Is
@@ -163,7 +163,7 @@ Type **ContextVar** represents a contextual variable (i.e., a variable that is i
 !!! note
     Has keyword [`context-var`](../../lisp/values/#context-var) and alias `ContextVar`.
 
-The shard [`(Math.Inc)`](../Math/Inc/) accepts only **ContextVar** type numeric data (i.e., a variable that holds numeric data) into its `:Value` parameter, and increments it by 1.
+The shard [`(Math.Inc)`](../Math/Inc/) accepts only **ContextVar** type numeric data (i.e., a variable that holds numeric data) into its `Value` parameter, and increments it by 1.
 
 === "Code"
 
@@ -195,7 +195,7 @@ The value that you pass to an enumerated variable can only take certain 'states'
 
 For an overview of all enums and valid values check the [Enums](../../enums) page
 
-For example, in [`(Math.Mean)`](../Math/Mean/) the value for `:Kind` parameter needs to be of type [**Mean**](../../enums/Mean/).
+For example, in [`(Math.Mean)`](../Math/Mean/) the value for `Kind` parameter needs to be of type [**Mean**](../../enums/Mean/).
 
 ```clojure linenums="1"
 (Math.Mean
@@ -205,10 +205,10 @@ For example, in [`(Math.Mean)`](../Math/Mean/) the value for `:Kind` parameter n
 
 `(Math.Mean)` computes the mean of a sequence of floating-point numbers. But there are three kinds of means - Arithmetic mean, Geometric mean, and Harmonic mean.
 
-So the parameter `:Kind` is defined as an enum variable with these three fixed states :
+So the parameter `Kind` is defined as an enum variable with these three fixed states :
 ` :Kind = {Arithmtic mean, Geometric mean, Harmonic mean}`
 
-And hence `:Kind` expects a value that matches one of its possible states. In other words the value you pass in for `:Kind` needs to be an enumerated data type.
+And hence `Kind` expects a value that matches one of its possible states. In other words the value you pass in for `Kind` needs to be an enumerated data type.
 
 In simple terms it just means that you pass in one of the allowed named constant values. Anything else will fail validation.
 
@@ -258,7 +258,7 @@ Floating point means it has the capability to store a decimal point and hence su
 A **Float** value looks like this: `(float 2.53)`.
 It may also be represented without the keyword `float`, with just the floating-point value: `2.53`.
 
-[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `Operand` parameter.
 
 === "Code"
 
@@ -288,7 +288,7 @@ A vector can be thought of as a group or list of items that are considered toget
 
 A **Float2** type value looks like this: `(float2 3.4 -5.0)`.
 
-[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `Operand` parameter.
 
 === "Code"
 
@@ -316,7 +316,7 @@ Floating point means it has the capability to store a decimal point and hence su
 
 A **Float3** type value looks like this: `(float3 2.9 -4.23 7.83)`.
 
-[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `Operand` parameter.
 
 === "Code"
 
@@ -340,7 +340,7 @@ Type **Float4** is like type [**Float3**](#float3) but is a vector of four 32-bi
 
 A **Float4** type value looks like this: `(float4 -8.84 38.2 4.7 0.4)`.
 
-[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `Operand` parameter.
 
 === "Code"
 
@@ -377,7 +377,7 @@ Type **Int** defines a 64-bit signed integer.
 An **Int** value looks like this: `(int 2)`.
 It may also be represented without the keyword `int`, with just the integer value: `2`.
 
-[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `Operand` parameter.
 
 === "Code"
 
@@ -407,7 +407,7 @@ A vector can be thought of as a group or list of items that are considered toget
 
 An **Int2** type value looks like this: `(int2 3 -5)`.
 
-[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `Operand` parameter.
 
 === "Code"
 
@@ -433,7 +433,7 @@ Type **Int3** defines a vector of three 32-bit signed integers.
 
 An **Int3** type value looks like this: `(int3 2 4 -4)`.
 
-[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `Operand` parameter.
 
 === "Code"
 
@@ -457,7 +457,7 @@ Type **Int4** is like type [**Int3**](#int3) but is a vector of four 32-bit sign
 
 An **Int4** type value looks like this: `(int4 1 -4 0 3)`.
 
-[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `:Operand` parameter.
+[`(Math.Add)`](../Math/Add/) is an example of a shard that uses this data type for its input, output, and `Operand` parameter.
 
 === "Code"
 
@@ -479,7 +479,7 @@ Type **Int8** defines a vector of eight 16-bit signed integers.
 
 16 bits of memory for each number allows this data type to store integer values ranging from −32,768 to +32,767 (no decimals).
 
-The shard `(Math.Add)` accepts **Int8** as input and as its `:Operand`. The shard adds these up outputs the sum as another vector of 8 integers or **Int8** data type.
+The shard `(Math.Add)` accepts **Int8** as input and as its `Operand`. The shard adds these up outputs the sum as another vector of 8 integers or **Int8** data type.
 
 ## Int16
 
@@ -487,13 +487,13 @@ Type **Int16** defines a vector of sixteen 8-bit signed integers.
 
 8 bits of memory for each number allows this data type to store integer values ranging from −128 to +127 (no decimals).
 
-The shard `(Math.Add)` accepts **Int16** as input and as its `:Operand`. The shard adds these up outputs the sum as another vector of 16 integers or **Int16** data type.
+The shard `(Math.Add)` accepts **Int16** as input and as its `Operand`. The shard adds these up outputs the sum as another vector of 16 integers or **Int16** data type.
 
 ## None
 
 Type **None** indicates that no data type is expected. This implies that no value is expected.
 
-For example, **None** as one of the valid data types for `:Max` parameter in shard [`(RandomInt)`](../General/RandomInt/) means that setting a value for this parameter is not mandatory.
+For example, **None** as one of the valid data types for `Max` parameter in shard [`(RandomInt)`](../General/RandomInt/) means that setting a value for this parameter is not mandatory.
 
 ```clojure linenums="1"
 (RandomInt
@@ -501,7 +501,7 @@ For example, **None** as one of the valid data types for `:Max` parameter in sha
 )
 ```
 
-`(RandomInt)` generates a random integer and the `:Max` parameter is the upper limit (not inclusive) of the value that can be generated. So it makes sense to have **None** as one of the valid types for this `:Max` parameter for cases when you do not want an upper limit on the random integer (though in this case the system will inherently set the upper limit to the maximum value a 64-bit signed integer can hold: 9,223,372,036,854,775,807).
+`(RandomInt)` generates a random integer and the `Max` parameter is the upper limit (not inclusive) of the value that can be generated. So it makes sense to have **None** as one of the valid types for this `Max` parameter for cases when you do not want an upper limit on the random integer (though in this case the system will inherently set the upper limit to the maximum value a 64-bit signed integer can hold: 9,223,372,036,854,775,807).
 
 === "Code"
 
@@ -526,7 +526,7 @@ Type **Object** is an *opaque* data type in Shards.
 
 Opacity in a data type means that the structure of this kind of data is not defined in an interface and is visible only to shards that use this type. What this also implies is that the internal structure of this data type will vary from shard to shard.
 
-For example, the `:Socket` parameter object of [`(WS.ReadString)`](../WS/ReadString/) is different from the output object of [`(GFX.DrawQueue)`](../GFX/DrawQueue/), even though both are of type **Object**.
+For example, the `Socket` parameter object of [`(WS.ReadString)`](../WS/ReadString/) is different from the output object of [`(GFX.DrawQueue)`](../GFX/DrawQueue/), even though both are of type **Object**.
 
 ## Path
 
@@ -540,7 +540,7 @@ A valid **Path** type data string would look like this: `"../../external/sample-
 !!! note
     For shards this type is the same as [**String**](#string) type as far as type validations are concerned (when you execute your script Shards first checks the types before running your code). However,if the path-string passed is invalid, malformed, or missing the resource to be loaded, the shard will complain with an error message at runtime (i.e., when your code actually runs).
 
-A shard that uses this type is [`(Process.Run)`](../Process/Run/). This shard takes a **Path** type in its `:Executable` parameter.
+A shard that uses this type is [`(Process.Run)`](../Process/Run/). This shard takes a **Path** type in its `Executable` parameter.
 
 ## Set
 
@@ -583,7 +583,7 @@ This type is an important aspect of the homoiconicity feature (i.e., code/data i
 !!! note
     What's a [`shard`](https://learn.fragcolor.xyz/primer/#shard)?
 
-The shard [`(ForEach)`](../General/ForEach/) expects type **Shard** for its `:Apply` parameter (the other option being a sequence of **Shard** type values, i.e., a [`Wire`](#wire) type).
+The shard [`(ForEach)`](../General/ForEach/) expects type **Shard** for its `Apply` parameter (the other option being a sequence of **Shard** type values, i.e., a [`Wire`](#wire) type).
 
 `(ForEach)` then applies this shard (or sequence of shards) on its input to transform it into its output.
 
@@ -647,17 +647,17 @@ Its also known as map, data dictionary, or associative array. An example of a **
 
 ## Wire
 
-Type **Wire** represents a wire being passed as data.
+Type **Wire** represents a Wire being passed as data.
 
 !!! note
     Has keyword [`Wire`](../../lisp/values/#wire).
 
-A **Wire** type thus consists of a sequence of shards (which make up the wire), their shared state (memory) context, name of the wire, and other properties that enable operations on the wire like scheduling it on a mesh, starting/stopping/pausing the wire, etc.
+A **Wire** type thus consists of a sequence of shards (which make up the Wire), their shared state (memory) context, name of the Wire, and other properties that enable operations on the Wire like scheduling it on a Mesh, starting/stopping/pausing the Wire, etc.
 
 !!! note
-    What's a [`wire`](https://learn.fragcolor.xyz/primer/#wire)?
+    What's a [`Wire`](https://learn.fragcolor.xyz/primer/#wire)?
 
-For example, the shard [`(Stop)`](../General/Stop/) accepts **Wire** type data in its `:Wire` parameter and stops that wire's execution if its currently running.
+For example, the shard [`(Stop)`](../General/Stop/) accepts **Wire** type data in its `Wire` parameter and stops that Wire's execution if its currently running.
 
 
 --8<-- "includes/license.md"

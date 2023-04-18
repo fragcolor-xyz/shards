@@ -23,7 +23,7 @@ Writes `screenPosition` global to `position` output.
 #### `initWorldNormal` (vertex)
 
 Transforms the object normal and writes the transformed result into the `worldNormal` global (float3).
-If the mesh doesn't have vertex normals, the normal will be `(0.0, 0.0, 1.0)`.
+If the Mesh doesn't have vertex normals, the normal will be `(0.0, 0.0, 1.0)`.
 
 #### `writeNormal` (vertex)
 
@@ -37,7 +37,7 @@ Here are the entry points that are defined and can be added as dependencies by y
 
 #### `initColor` (vertex)
 
-This vertex shader entry point sets up the `color` global (float4) with the vertex color from the mesh if it has been set. If the mesh doesn't have a vertex color, it'll be white with alpha 1.0.
+This vertex shader entry point sets up the `color` global (float4) with the vertex color from the Mesh if it has been set. If the Mesh doesn't have a vertex color, it'll be white with alpha 1.0.
 
 #### `writeColor` (vertex)
 
@@ -57,7 +57,7 @@ Writes `color` global to `color` output. `color` is the default name for the mai
 
 #### VertexColorFromNormal
 
-This Feature outputs the mesh normal as a per-vertex color output.
+This Feature outputs the Mesh normal as a per-vertex color output.
 
 Use for debugging.
 

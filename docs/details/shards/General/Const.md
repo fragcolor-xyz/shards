@@ -1,4 +1,4 @@
-`Const` declares a constant value (of any data type) by passing it into the parameter `:Value`. Such a value is usually declared for use as input in other shards.
+`Const` declares a constant value (of any data type) by passing it into the parameter `Value`. Such a value is usually declared for use as input in other shards.
 
 A constant value declared with `Const` is un-named i.e., it is not assigned to any variable or allocated any alias. Hence it cannot be invoked or referred to later. To create named constants see [`Ref`](../Ref).
 

@@ -145,7 +145,7 @@ Push works for building matrix types out of vectors, but with the constraint tha
   ))
 ```
 
-### Function-like wire evaluation
+### Function-like Wire evaluation
 
 Pure Wires are supported. They can be run using `Do` and passing an input as a scalar/vector/matrix type. Their output is returned.
 
@@ -161,7 +161,7 @@ Pure Wires are supported. They can be run using `Do` and passing an input as a s
   .result ; Output a 2x2 matrix
 )
 
-0.45 (Do rotation-matrix) >= .mat2-2 ; This will contain the result from the wire
+0.45 (Do rotation-matrix) >= .mat2-2 ; This will contain the result from the Wire
 
 ```
 

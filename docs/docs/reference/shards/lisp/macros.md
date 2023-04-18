@@ -45,7 +45,7 @@ Defines an alias.
 
 ## defshards
 
-Defines new shards that can be grouped together and inserted into an existing wire program.
+Defines new shards that can be grouped together and inserted into an existing Wire program.
 
 !!! note
     What's a [`shard`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#shard)?
@@ -90,7 +90,7 @@ See the last two code examples in [`(defn)`](#defn) for a comparison of these us
 
 ## defwire
 
-Defines a new non-looped wire.
+Defines a new non-looped Wire.
 
 === "Code"
 
@@ -102,9 +102,9 @@ Defines a new non-looped wire.
     ```
 
 !!! note
-    What's a [`wire`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#wire)?
+    What's a [`Wire`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#wire)?
 
-`(defwire <wire-name>)` is actually a shorthand for the more verbose non-looped wire definition: `def <wire-name>` + `Wire "wire-name"`.
+`(defwire <wire-name>)` is actually a shorthand for the more verbose non-looped Wire definition: `def <wire-name>` + `Wire "wire-name"`.
 === "Code"
 
     ```clojure linenums="1"
@@ -115,25 +115,25 @@ Defines a new non-looped wire.
     ))
     ```
 
-To run a wire you must first schedule it on a mesh. When you run this mesh, all the wires scheduled on it are executed (in the order of scheduling).
+To run a Wire you must first schedule it on a Mesh. When you run this Mesh, all the Wires scheduled on it are executed (in the order of scheduling).
 
-A mesh will execute a non-looped wire only once (even though the mesh itself may continue running).
+A Mesh will execute a non-looped Wire only once (even though the Mesh itself may continue running).
 
 === "Code"
 
     ```clojure linenums="1"
-    ;; define a mesh (main)
+    ;; define a Mesh (main)
     (defmesh main)
-    ;; define a non-looped wire (wire-hello)
+    ;; define a non-looped Wire (wire-hello)
     (defwire wire-hello
         (Msg "Hello World!"))
-    ;; define another non-looped wire (wire-bye)
+    ;; define another non-looped Wire (wire-bye)
     (defwire wire-bye
         (Msg "Goodbye World"))
-    ;; schedule the non-looped wires on the mesh
+    ;; schedule the non-looped Wires on the Mesh
     (schedule main wire-hello)
     (schedule main wire-bye)
-    ;; run all the scheduled wires on the mesh
+    ;; run all the scheduled Wires on the Mesh
     (run main)
     ```
 
@@ -144,7 +144,7 @@ A mesh will execute a non-looped wire only once (even though the mesh itself may
     [info] [2022-03-07 20:45:35.678] [T-9044] [logging.cpp::94] [wire-bye] Goodbye World
     ```
 
-`defwire` can also parse and save the wire's input into a variable.
+`defwire` can also parse and save the Wire's input into a variable.
 
 === "Code"
 
@@ -152,7 +152,7 @@ A mesh will execute a non-looped wire only once (even though the mesh itself may
     (defmesh main)
     (defwire mywire
         = .wirevar                      ;; save mywire input to wirevar
-        .wirevar (Log "wire input"))    ;; log mywire input to screen
+        .wirevar (Log "Wire input"))    ;; log mywire input to screen
     (defwire mainwire
         "shards" (Do mywire))           ;; invoke mywire with an input
     (schedule main mainwire)
@@ -311,39 +311,39 @@ Defines a new macro.
 
 ## defmesh
 
-Defines a new `mesh` on which wires can be scheduled and then run.
+Defines a new `Mesh` on which Wires can be scheduled and then run.
 
 !!! note
-    What's a [`mesh`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#mesh)?
+    What's a [`Mesh`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#mesh)?
 
 === "Code"
 
     ```clojure linenums="1"
     ;; defmesh
-    (defmesh main)     ;; define a mesh named 'main'
+    (defmesh main)     ;; define a Mesh named 'main'
     ```
 
-`(defmesh <mesh-name>)` is actually a shorthand for the more verbose mesh definition: `def <mesh-name> (Mesh)`.
+`(defmesh <mesh-name>)` is actually a shorthand for the more verbose Mesh definition: `def <mesh-name> (Mesh)`.
 === "Code"
 
     ```clojure linenums="1"
     ;; def + Mesh
-    (def main (Mesh))   ;; define a mesh named 'main'
+    (def main (Mesh))   ;; define a Mesh named 'main'
     ```
 
-Here's an example that schedules a looped and a non-looped wire on a mesh.
+Here's an example that schedules a looped and a non-looped Wire on a Mesh.
 
 === "Code"
 
     ```clojure linenums="1"
-    (defmesh main)              ;; define a mesh (main)
-    (defloop wire-hi            ;; define a looped wire
+    (defmesh main)              ;; define a Mesh (main)
+    (defloop wire-hi            ;; define a looped Wire
         (Msg "Hello World!"))
-    (defwire wire-bye           ;; define a non-looped wire
+    (defwire wire-bye           ;; define a non-looped Wire
         (Msg "Goodbye World"))
-    (schedule main wire-hi)     ;; schedule looped wire (wire-hi) on this mesh
-    (schedule main wire-bye)    ;; schedule non-looped wire (wire-hi) on this mesh
-    (run main)                  ;; run all the scheduled wires on this mesh
+    (schedule main wire-hi)     ;; schedule looped Wire (wire-hi) on this Mesh
+    (schedule main wire-bye)    ;; schedule non-looped Wire (wire-hi) on this Mesh
+    (run main)                  ;; run all the scheduled Wires on this Mesh
     ```
 === "Result"
 
@@ -364,21 +364,21 @@ Here's an example that schedules a looped and a non-looped wire on a mesh.
 
 ## defloop
 
-Defines a new looped wire.
+Defines a new looped Wire.
 
 === "Code"
 
     ```clojure linenums="1"
     ;; defloop
-    (defloop my-loop       ;; define a looped wire
+    (defloop my-loop       ;; define a looped Wire
         ;; shards here
     )
     ```
 
 !!! note
-    What's a [`wire`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#wire)?
+    What's a [`Wire`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#wire)?
 
-`(defloop <looped wire-name)` is actually a shorthand for the more verbose looped wire definition: `def <looped wire-name>` + `Wire "looped wire-name"`.
+`(defloop <looped wire-name)` is actually a shorthand for the more verbose looped Wire definition: `def <looped wire-name>` + `Wire "looped wire-name"`.
 === "Code"
 
     ```clojure linenums="1"
@@ -389,16 +389,16 @@ Defines a new looped wire.
     ))
     ```
 
-For a wire to be executed, it must first be scheduled on a `mesh` and then that that mesh needs to run.
+For a Wire to be executed, it must first be scheduled on a `Mesh` and then that that Mesh needs to run.
 
 === "Code"
 
     ```clojure linenums="1"
-    (defmesh main)          ;; define a mesh
-    (defloop my-loop        ;; define a looped wire
+    (defmesh main)          ;; define a Mesh
+    (defloop my-loop        ;; define a looped Wire
         (Msg "Hello World!"))
     (schedule main my-loop) ;;
-    (run main)              ;; run wires scheduled on this mesh
+    (run main)              ;; run Wires scheduled on this Mesh
     ```
 === "Result"
 
@@ -412,19 +412,19 @@ For a wire to be executed, it must first be scheduled on a `mesh` and then that 
 
     ```
 
-A mesh will continue executing a looped wire till the mesh itself stops running (or the wire execution is stopped via a logic condition).
+A Mesh will continue executing a looped Wire till the Mesh itself stops running (or the Wire execution is stopped via a logic condition).
 
 === "Code"
 
     ```clojure linenums="1"
-    (defmesh main)              ;; define a mesh
-    (defloop wire-hi            ;; define a looped wire (wire-hello)
+    (defmesh main)              ;; define a Mesh
+    (defloop wire-hi            ;; define a looped Wire (wire-hello)
         (Msg "Hello World!"))
-    (defloop wire-bye           ;; define another looped wire (wire-bye)
+    (defloop wire-bye           ;; define another looped Wire (wire-bye)
         (Msg "Goodbye World"))
-    (schedule main wire-hi)     ;; schedule the wire (wire-hi) on the mesh
-    (schedule main wire-bye)    ;; schedule the wire (wire-bye) on the mesh
-    (run main)                  ;; run all the wires scheduled on this mesh
+    (schedule main wire-hi)     ;; schedule the Wire (wire-hi) on the Mesh
+    (schedule main wire-bye)    ;; schedule the Wire (wire-bye) on the Mesh
+    (run main)                  ;; run all the Wires scheduled on this Mesh
     ```
 === "Result"
 

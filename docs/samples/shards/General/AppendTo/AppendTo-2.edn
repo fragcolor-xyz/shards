@@ -1,0 +1,4 @@
+;; append character to string
+"Hell" >= .str
+"o" (AppendTo .str)  ;; appends character to string
+.str (Log)           ;; updated string => Hello

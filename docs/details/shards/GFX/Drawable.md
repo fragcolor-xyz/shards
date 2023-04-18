@@ -1,4 +1,4 @@
-The Drawable shard defines an instance of a drawn object. It usually has a transform (in world space) and a mesh to draw.
+The Drawable shard defines an instance of a drawn object. It usually has a transform (in world space) and a Mesh to draw.
 
 --8<-- "includes/drawable_refactor.md"
 
@@ -23,7 +23,7 @@ Constant parameters are passed through the input table. They are read and stay t
 
 ### Dynamic parameters
 
-Dynamic parameters are passed as parameters to the shard. You can set the same fields as you can when setting constant parameters, with the exception of the mesh. The variables are referenced by the `Drawable` so that changes in their value will be reflect in the rendered result.
+Dynamic parameters are passed as parameters to the shard. You can set the same fields as you can when setting constant parameters, with the exception of the Mesh. The variables are referenced by the `Drawable` so that changes in their value will be reflect in the rendered result.
 
 ```clojure
 .. >= .dynamic-color
@@ -42,6 +42,6 @@ To avoid re-creating Drawables for objects with minor or no changes, you should 
   (Float4 1.0) >= .dynamic-color
   {:Mesh .mesh :Transform .const-transform} (Drawable :Params {:baseColor .dynamic-color}) >= .my-drawable)
 
-; Update color every time this wire runs
+; Update color every time this Wire runs
 ... > .dynamic-color
 ```

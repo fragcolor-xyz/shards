@@ -99,29 +99,29 @@ This is useful for cases where you need multiple shards (to transform your data)
 
 ## run
 
-Executes all the wires that have been scheduled on a given `mesh`.
+Executes all the Wires that have been scheduled on a given `Mesh`.
 
-`(run <params>)` takes two arguments: name of the mesh, and mesh iteration interval (no. of seconds between two mesh iterations).
+`(run <params>)` takes two arguments: name of the Mesh, and Mesh iteration interval (no. of seconds between two Mesh iterations).
 
-*An optional 3rd argument defines the maximum mesh iterations to run. This argument is a debug parameter - do not use for production.*
+*An optional 3rd argument defines the maximum Mesh iterations to run. This argument is a debug parameter - do not use for production.*
 
 === "Code"
 
     ```clojure linenums="1"
-    ;; define a mesh (main)
+    ;; define a Mesh (main)
     (defmesh main)
-    ;; define a looped wire
+    ;; define a looped Wire
     (defloop wire-hi
         (Msg "Hello World!"))
-    ;; define a non-looped wire
+    ;; define a non-looped Wire
     (defwire wire-bye
         (Msg "Goodbye World"))
-    ;; schedule both the wires on this mesh
+    ;; schedule both the Wires on this Mesh
     (schedule main wire-hi)
     (schedule main wire-bye)
-    ;; run the mesh to execute scheduled wires
-    ;; time between mesh iterations - 0.02 secs
-    ;; max mesh iterations allowed - 5
+    ;; run the Mesh to execute scheduled Wires
+    ;; time between Mesh iterations - 0.02 secs
+    ;; max Mesh iterations allowed - 5
     (run main 0.02 5)
     ;; The last two args  may also be passed as mathematical expressions
     ;; (run main (/ 1 50) (+ 2 3))
@@ -140,25 +140,25 @@ Executes all the wires that have been scheduled on a given `mesh`.
 
 ## schedule
 
-Queues a wire for execution on a given mesh.
+Queues a Wire for execution on a given Mesh.
 
-Multiple wires can be scheduled on the same `mesh`. When a mesh is run, all the wires on it are executed.
+Multiple Wires can be scheduled on the same `Mesh`. When a Mesh is run, all the Wires on it are executed.
 
 === "Code"
 
     ```clojure linenums="1"
-    ;; define a mesh (main)
+    ;; define a Mesh (main)
     (defmesh main)
-    ;; define a looped wire
+    ;; define a looped Wire
     (defloop wire-hi
         (Msg "Hello World!"))
-    ;; define a non-looped wire
+    ;; define a non-looped Wire
     (defwire wire-bye
         (Msg "Goodbye World"))
-    ;; schedule both the wires on this mesh
+    ;; schedule both the Wires on this Mesh
     (schedule main wire-hi)
     (schedule main wire-bye)
-    ;; run all the scheduled wires on this mesh (main)
+    ;; run all the scheduled Wires on this Mesh (main)
     (run main)
     ```
 

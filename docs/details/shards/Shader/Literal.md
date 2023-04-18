@@ -16,7 +16,7 @@ This insertes the given WGSL source code directly into the current entry point.
 
 ### Static header code
 
-When defining WGSL functions, specify the `:Type ShaderLiteralType.Header` parameter:
+When defining WGSL functions, specify the `Type ShaderLiteralType.Header` parameter:
 
 ```clojure
   (Shader.Literal :Type ShaderLiteralType.Header :Source "
