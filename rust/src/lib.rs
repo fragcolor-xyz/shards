@@ -540,4 +540,5 @@ pub extern "C" fn runRuntimeTests() {
   crdt::sample1();
   crdt::sample2();
   crdt::sample3();
+  crdt::sample4();
 }
