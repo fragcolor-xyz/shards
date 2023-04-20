@@ -7,6 +7,8 @@ use yrs::types::ToJson;
 use yrs::updates::decoder::Decode;
 use yrs::*;
 
+use core::ffi::c_char;
+
 use crate::shardsc::*;
 
 use crate::types::{Table, Var};
@@ -206,3 +208,58 @@ pub fn sample4() {
   map.remove(&mut txn, "key1");
   assert_eq!(map.get(&txn, "key1"), None);
 }
+
+pub struct NexusDocument(Doc);
+
+// pub struct NexusPart<'a> {
+//   doc: NexusDocument,
+//   tx: TransactionMut<'a>,
+// }
+
+#[no_mangle]
+pub extern "C" fn sh_create_nexus() -> *mut NexusDocument {
+  let session = NexusDocument(Doc::new());
+  Box::into_raw(Box::new(session))
+}
+
+pub extern "C" fn sh_load_nexus(bytes: *const Var) -> *mut NexusDocument {
+  let session = NexusDocument(Doc::new());
+  let bytes: &[u8] = unsafe { &*bytes }.try_into().unwrap();
+  let update = Update::decode_v2(bytes).unwrap();
+  session.0.transact_mut().apply_update(update);
+  Box::into_raw(Box::new(session))
+}
+
+// // insert a domain inside a nexus
+// #[no_mangle]
+// pub extern "C" fn sh_create_domain(
+//   nexus: *mut NexusDocument,
+//   domain_name: *const c_char,
+// ) -> *mut NexusPart {
+//   let doc = unsafe { &mut *nexus };
+//   let domains = doc.0.get_or_insert_map("domains");
+//   let domain_doc = NexusDocument(Doc::new());
+//   let domain_name = unsafe { CStr::from_ptr(domain_name).to_str().unwrap() };
+//   let mut tx = doc.0.transact_mut();
+//   let sub_domain = domains.insert(&mut tx, domain_name, domain_doc.0);
+//   let mut sub_domain = NexusDocument(sub_domain);
+//   Box::into_raw(Box::new(NexusPart {
+//     doc: sub_domain,
+//     tx: tx,
+//   }))
+// }
+
+// // insert a domain inside a nexus
+// #[no_mangle]
+// pub extern "C" fn sh_create_form(
+//   domain: *mut NexusDocument,
+//   form_name: *const c_char,
+// ) -> *mut NexusDocument {
+//   let doc = unsafe { &mut *domain };
+//   let forms = doc.0.get_or_insert_map("forms");
+//   let form_doc = NexusDocument(Doc::new());
+//   let form_name = unsafe { CStr::from_ptr(form_name).to_str().unwrap() };
+//   let form = forms.insert(&mut doc.0.transact_mut(), form_name, form_doc.0);
+//   let mut form = NexusDocument(form);
+//   &mut form
+// }

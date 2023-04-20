@@ -82,6 +82,7 @@ use crate::SHWireState_Error;
 use crate::SHVAR_FLAGS_EXTERNAL;
 use core::convert::TryFrom;
 use core::convert::TryInto;
+use core::fmt::{Debug, Formatter};
 use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
@@ -123,6 +124,31 @@ impl ClonedVar {
     let cstr = CString::new(s).unwrap();
     let tmp = Var::from(&cstr);
     self.assign(&tmp);
+  }
+}
+
+impl Clone for ClonedVar {
+  #[inline(always)]
+  fn clone(&self) -> Self {
+    let mut ret = ClonedVar::default();
+    ret.assign(&self.0);
+    ret
+  }
+}
+
+impl Drop for ClonedVar {
+  #[inline(always)]
+  fn drop(&mut self) {
+    unsafe {
+      let rv = &self.0 as *const SHVar as *mut SHVar;
+      (*Core).destroyVar.unwrap()(rv);
+    }
+  }
+}
+
+impl Debug for ClonedVar {
+  fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+    write!(f, "{:?}", self.0)
   }
 }
 
@@ -1147,16 +1173,6 @@ impl From<&[ClonedVar]> for ClonedVar {
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
-  }
-}
-
-impl Drop for ClonedVar {
-  #[inline(always)]
-  fn drop(&mut self) {
-    unsafe {
-      let rv = &self.0 as *const SHVar as *mut SHVar;
-      (*Core).destroyVar.unwrap()(rv);
-    }
   }
 }
 
