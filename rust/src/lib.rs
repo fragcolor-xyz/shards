@@ -35,6 +35,8 @@ pub mod types;
 #[cfg(feature = "shards")]
 pub mod shards;
 
+pub mod sync;
+
 use shards::crdt;
 
 use crate::core::log;
@@ -541,4 +543,6 @@ pub extern "C" fn runRuntimeTests() {
   crdt::sample2();
   crdt::sample3();
   crdt::sample4();
+  sync::crdts_test();
+  sync::crdts_test2();
 }
