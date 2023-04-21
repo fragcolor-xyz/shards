@@ -539,10 +539,11 @@ pub extern "C" fn runRuntimeTests() {
   #[cfg(feature = "scripting")]
   scripting::test_shl();
 
-  crdt::sample1();
-  crdt::sample2();
-  crdt::sample3();
-  crdt::sample4();
-  sync::crdts_test();
-  sync::crdts_test2();
+  // crdt::sample1();
+  // crdt::sample2();
+  // crdt::sample3();
+  // crdt::sample4();
+  // sync::crdts_test();
+  // sync::crdts_test2();
+  sync::crdts_test3();
 }
