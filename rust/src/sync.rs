@@ -2,6 +2,8 @@ use crdts::{CmRDT, CvRDT, MVReg, Map, Orswot};
 
 use crate::types::{ClonedVar, Var};
 
+use serde::{Deserialize, Serialize};
+
 pub fn crdts_test() {
   let mut friend_map: Map<&str, Orswot<&str, u8>, u8> = Map::new();
 
@@ -50,7 +52,7 @@ pub fn crdts_test() {
   assert_eq!(bobs_friends, Some(vec!["erik"]));
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Hash, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Hash, Ord, Serialize, Deserialize)]
 struct Bytes32([u8; 32]);
 
 pub fn crdts_test2() {
@@ -62,7 +64,11 @@ pub fn crdts_test2() {
   let svar1: Var = Var::ephemeral_string("janet\0");
 
   let read_ctx = friend_map.len(); // we read anything from the map to get a add context
-  friend_map.apply(friend_map.update("bob", read_ctx.derive_add_ctx(actor1), |r, c| r.write(svar1, c)));
+  friend_map.apply(
+    friend_map.update("bob", read_ctx.derive_add_ctx(actor1), |r, c| {
+      r.write(svar1, c)
+    }),
+  );
 
   assert_eq!(friend_map.get(&"bob").val.unwrap().read().val, vec![svar1]);
 
@@ -77,7 +83,10 @@ pub fn crdts_test2() {
     |r, c| r.write(svar2, c),
   ));
 
-  assert_eq!(friend_map_on_2nd_device.get(&"bob").val.unwrap().read().val, vec![svar2]);
+  assert_eq!(
+    friend_map_on_2nd_device.get(&"bob").val.unwrap().read().val,
+    vec![svar2]
+  );
 
   // // Meanwhile, on the first device we remove
   // // the entire 'bob' entry from the friend map.
@@ -89,15 +98,31 @@ pub fn crdts_test2() {
   let friend_map_snapshot = friend_map.clone();
   let friend_map_on_2nd_device_snapshot = friend_map_on_2nd_device.clone();
 
-  assert_eq!(friend_map_snapshot.get(&"bob").val.unwrap().read().val, vec![svar1]);
-  assert_eq!(friend_map_on_2nd_device_snapshot.get(&"bob").val.unwrap().read().val, vec![svar2]);
+  assert_eq!(
+    friend_map_snapshot.get(&"bob").val.unwrap().read().val,
+    vec![svar1]
+  );
+  assert_eq!(
+    friend_map_on_2nd_device_snapshot
+      .get(&"bob")
+      .val
+      .unwrap()
+      .read()
+      .val,
+    vec![svar2]
+  );
 
   friend_map.merge(friend_map_on_2nd_device_snapshot);
   friend_map_on_2nd_device.merge(friend_map_snapshot);
   assert_eq!(friend_map, friend_map_on_2nd_device);
 
   assert_eq!(friend_map.get(&"bob").val.unwrap().read().val, vec![svar2]);
-  assert_eq!(friend_map_on_2nd_device.get(&"bob").val.unwrap().read().val, vec![svar2]);
+  assert_eq!(
+    friend_map_on_2nd_device.get(&"bob").val.unwrap().read().val,
+    vec![svar2]
+  );
+
+  let _encoded: Vec<u8> = bincode::serialize(&friend_map).unwrap();
 }
 
 pub fn crdts_test3() {
@@ -122,7 +147,10 @@ pub fn crdts_test3() {
     |r, c| r.write(svar2, c),
   ));
 
-  assert_eq!(friend_map_on_2nd_device.get(&"bob").val.unwrap().read().val, vec![svar2]);
+  assert_eq!(
+    friend_map_on_2nd_device.get(&"bob").val.unwrap().read().val,
+    vec![svar2]
+  );
 
   // // Meanwhile, on the first device we remove
   // // the entire 'bob' entry from the friend map.
@@ -134,14 +162,27 @@ pub fn crdts_test3() {
   let friend_map_snapshot = friend_map.clone();
   let friend_map_on_2nd_device_snapshot = friend_map_on_2nd_device.clone();
 
-  assert_eq!(friend_map_snapshot.get(&"bob").val.unwrap().read().val, vec![svar1]);
-  assert_eq!(friend_map_on_2nd_device_snapshot.get(&"bob").val.unwrap().read().val, vec![svar2]);
+  assert_eq!(
+    friend_map_snapshot.get(&"bob").val.unwrap().read().val,
+    vec![svar1]
+  );
+  assert_eq!(
+    friend_map_on_2nd_device_snapshot
+      .get(&"bob")
+      .val
+      .unwrap()
+      .read()
+      .val,
+    vec![svar2]
+  );
 
   friend_map.merge(friend_map_on_2nd_device_snapshot);
   friend_map_on_2nd_device.merge(friend_map_snapshot);
   assert_eq!(friend_map, friend_map_on_2nd_device);
 
-
   assert_eq!(friend_map.get(&"bob").val.unwrap().read().val, vec![svar2]);
-  assert_eq!(friend_map_on_2nd_device.get(&"bob").val.unwrap().read().val, vec![svar2]);
+  assert_eq!(
+    friend_map_on_2nd_device.get(&"bob").val.unwrap().read().val,
+    vec![svar2]
+  );
 }
