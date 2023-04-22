@@ -3645,6 +3645,7 @@ name = "shards"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "bincode",
  "bindgen",
  "bs58",
  "chacha20poly1305",
