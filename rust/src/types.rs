@@ -87,7 +87,11 @@ use core::mem::transmute;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::slice;
+use serde::de::MapAccess;
+use serde::de::SeqAccess;
+use serde::de::Visitor;
 use serde::ser::{SerializeMap, SerializeSeq};
+use serde::Deserializer;
 use serde::{Deserialize, Serialize};
 use std::ffi::c_void;
 use std::ffi::CStr;
@@ -1026,6 +1030,41 @@ impl Type {
 SHVar utility
  */
 
+impl Serialize for Seq {
+  fn serialize<S>(
+    &self,
+    se: S,
+  ) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut s = se.serialize_seq(Some(self.len()))?;
+    for value in self.iter() {
+      s.serialize_element(value)?;
+    }
+    s.end()
+  }
+}
+
+impl Serialize for Table {
+  fn serialize<S>(
+    &self,
+    se: S,
+  ) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error>
+  where
+    S: serde::Serializer,
+  {
+    let mut t = se.serialize_map(None)?;
+    for (key, value) in self.iter() {
+      unsafe {
+        let key = CStr::from_ptr(key.0).to_str().unwrap();
+        t.serialize_entry(&key, &value)?;
+      }
+    }
+    t.end()
+  }
+}
+
 impl Serialize for Var {
   fn serialize<S>(
     &self,
@@ -1035,43 +1074,352 @@ impl Serialize for Var {
     S: serde::Serializer,
   {
     match self.valueType {
-      SHType_Int => {
-        let value: i64 = unsafe { self.payload.__bindgen_anon_1.intValue };
-        se.serialize_i64(value)
+      SHType_None | SHType_Any => {
+        let mut s = se.serialize_seq(Some(1))?;
+        s.serialize_element(&self.valueType)?;
+        s.end()
       }
-      SHType_Float => {
-        let value: f64 = unsafe { self.payload.__bindgen_anon_1.floatValue };
-        se.serialize_f64(value)
+      SHType_Enum => {
+        let value: i32 = unsafe { self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
+        let vendor: i32 = unsafe { self.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId };
+        let type_: i32 = unsafe { self.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId };
+        let mut s = se.serialize_seq(Some(4))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&value)?;
+        s.serialize_element(&vendor)?;
+        s.serialize_element(&type_)?;
+        s.end()
       }
       SHType_Bool => {
         let value: bool = unsafe { self.payload.__bindgen_anon_1.boolValue };
-        se.serialize_bool(value)
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&value)?;
+        s.end()
       }
-      SHType_Table => {
-        let table: Table = self.try_into().unwrap();
-        let mut t = se.serialize_map(None)?;
-        for (key, value) in table.iter() {
-          unsafe {
-            let key = CStr::from_ptr(key.0).to_str().unwrap();
-            t.serialize_entry(&key, &value)?;
-          }
-        }
-        t.end()
+      SHType_Int => {
+        let value: i64 = unsafe { self.payload.__bindgen_anon_1.intValue };
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&value)?;
+        s.end()
       }
-      SHType_String => {
-        let value: &str = self.try_into().unwrap();
-        se.serialize_str(value)
-      }
-      SHType_Seq => {
-        let seq: Seq = self.try_into().unwrap();
-        let mut s = se.serialize_seq(Some(seq.len()))?;
-        for value in seq.iter() {
-          s.serialize_element(value)?;
+      SHType_Int2 => {
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        unsafe {
+          s.serialize_element(&self.payload.__bindgen_anon_1.int2Value)?;
         }
         s.end()
       }
-      _ => se.serialize_none(),
+      SHType_Int3 | SHType_Int4 => {
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        unsafe {
+          s.serialize_element(&self.payload.__bindgen_anon_1.int4Value)?;
+        }
+        s.end()
+      }
+      SHType_Int8 => {
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        unsafe {
+          s.serialize_element(&self.payload.__bindgen_anon_1.int8Value)?;
+        }
+        s.end()
+      }
+      SHType_Int16 => {
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        unsafe {
+          s.serialize_element(&self.payload.__bindgen_anon_1.int16Value)?;
+        }
+        s.end()
+      }
+      SHType_Float => {
+        let value: f64 = unsafe { self.payload.__bindgen_anon_1.floatValue };
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&value)?;
+        s.end()
+      }
+      SHType_Float2 => {
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        unsafe {
+          s.serialize_element(&self.payload.__bindgen_anon_1.float2Value)?;
+        }
+        s.end()
+      }
+      SHType_Float3 | SHType_Float4 => {
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        unsafe {
+          s.serialize_element(&self.payload.__bindgen_anon_1.float4Value)?;
+        }
+        s.end()
+      }
+      SHType_Color => {
+        let value0: u8 = unsafe { self.payload.__bindgen_anon_1.colorValue.r };
+        let value1: u8 = unsafe { self.payload.__bindgen_anon_1.colorValue.g };
+        let value2: u8 = unsafe { self.payload.__bindgen_anon_1.colorValue.b };
+        let value3: u8 = unsafe { self.payload.__bindgen_anon_1.colorValue.a };
+        let arr = [value0, value1, value2, value3];
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&arr)?;
+        s.end()
+      }
+      SHType_Bytes => {
+        let value: &[u8] = self.try_into().unwrap();
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&value)?;
+        s.end()
+      }
+      SHType_String => {
+        let value: &str = self.try_into().unwrap();
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&value)?;
+        s.end()
+      }
+      SHType_Path => {
+        let value: &str = self.try_into().unwrap();
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&value)?;
+        s.end()
+      }
+      SHType_ContextVar => {
+        let value: &str = self.try_into().unwrap();
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&value)?;
+        s.end()
+      }
+      SHType_Image => {
+        let width = unsafe { self.payload.__bindgen_anon_1.imageValue.width };
+        let height = unsafe { self.payload.__bindgen_anon_1.imageValue.height };
+        let channels = unsafe { self.payload.__bindgen_anon_1.imageValue.channels };
+        let flags = unsafe { self.payload.__bindgen_anon_1.imageValue.flags };
+        let data = unsafe { self.payload.__bindgen_anon_1.imageValue.data };
+        let pixsize = if (flags as u32 & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT {
+          2
+        } else if (flags as u32 & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT {
+          4
+        } else {
+          1
+        };
+        let data = unsafe {
+          std::slice::from_raw_parts(
+            data,
+            (width as usize * height as usize * channels as usize * pixsize as usize) as usize,
+          )
+        };
+        let mut s = se.serialize_seq(Some(6))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&width)?;
+        s.serialize_element(&height)?;
+        s.serialize_element(&channels)?;
+        s.serialize_element(&flags)?;
+        s.serialize_element(&data)?;
+        s.end()
+      }
+      SHType_Seq => {
+        let seq: Seq = self.try_into().unwrap();
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&seq)?;
+        s.end()
+      }
+      SHType_Table => {
+        let table: Table = self.try_into().unwrap();
+        let mut s = se.serialize_seq(Some(2))?;
+        s.serialize_element(&self.valueType)?;
+        s.serialize_element(&table)?;
+        s.end()
+      }
+      _ => unimplemented!("Unsupported type: {:?}", self.valueType),
     }
+  }
+}
+
+impl<'de> Deserialize<'de> for Seq {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    struct SeqVisitor;
+
+    impl<'de> Visitor<'de> for SeqVisitor {
+      type Value = Seq;
+
+      fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a supported Seq value")
+      }
+
+      fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+      where
+        A: SeqAccess<'de>,
+      {
+        let mut dst = Seq::new();
+        while let Some(var) = seq.next_element::<ClonedVar>()? {
+          dst.push(&var.0);
+        }
+        Ok(dst)
+      }
+    }
+
+    deserializer.deserialize_seq(SeqVisitor)
+  }
+}
+
+impl<'de> Deserialize<'de> for Table {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    struct TableVisitor;
+
+    impl<'de> Visitor<'de> for TableVisitor {
+      type Value = Table;
+
+      fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a supported Table value")
+      }
+
+      fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+      where
+        A: MapAccess<'de>,
+      {
+        let mut table = Table::new();
+        while let Some((key, value)) = map.next_entry::<&str, ClonedVar>()? {
+          let cstr = CString::new(key).unwrap();
+          table.insert_fast(&cstr, &value.0);
+        }
+        Ok(table)
+      }
+    }
+
+    deserializer.deserialize_seq(TableVisitor)
+  }
+}
+
+impl<'de> Deserialize<'de> for ClonedVar {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    struct VarVisitor;
+
+    impl<'de> Visitor<'de> for VarVisitor {
+      type Value = ClonedVar;
+
+      fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a supported Var value")
+      }
+
+      fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+      where
+        A: SeqAccess<'de>,
+      {
+        let type_: u8 = seq.next_element()?.unwrap();
+        let mut v = Var::default();
+        v.valueType = type_;
+        match type_ {
+          SHType_None | SHType_Any => {}
+          SHType_Enum => {
+            let value: i32 = seq.next_element()?.unwrap();
+            let vendor: i32 = seq.next_element()?.unwrap();
+            let enum_type: i32 = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue = value;
+            v.payload.__bindgen_anon_1.__bindgen_anon_3.enumVendorId = vendor;
+            v.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId = enum_type;
+          }
+          SHType_Bool => {
+            let value: bool = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.boolValue = value;
+          }
+          SHType_Int => {
+            let value: i64 = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.intValue = value;
+          }
+          SHType_Int2 => {
+            let value: [i64; 2] = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.int2Value = value;
+          }
+          SHType_Int3 | SHType_Int4 => {
+            let value: [i32; 4] = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.int4Value = value;
+          }
+          SHType_Int8 => {
+            let value: [i16; 8] = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.int8Value = value;
+          }
+          SHType_Int16 => {
+            let value: [i8; 16] = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.int16Value = value;
+          }
+          SHType_Float => {
+            let value: f64 = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.floatValue = value;
+          }
+          SHType_Float2 => {
+            let value: [f64; 2] = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.float2Value = value;
+          }
+          SHType_Float3 | SHType_Float4 => {
+            let value: [f32; 4] = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.float4Value = value;
+          }
+          SHType_Color => {
+            let value: [u8; 4] = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.colorValue.r = value[0];
+            v.payload.__bindgen_anon_1.colorValue.g = value[1];
+            v.payload.__bindgen_anon_1.colorValue.b = value[2];
+            v.payload.__bindgen_anon_1.colorValue.a = value[3];
+          }
+          SHType_Bytes => {
+            let value: &[u8] = seq.next_element()?.unwrap();
+            let len = value.len();
+            let ptr = value.as_ptr();
+            v.payload.__bindgen_anon_1.__bindgen_anon_4.bytesValue = ptr as *mut u8;
+            v.payload.__bindgen_anon_1.__bindgen_anon_4.bytesSize = len as u32;
+          }
+          SHType_String | SHType_Path | SHType_ContextVar => {
+            let value: &str = seq.next_element()?.unwrap();
+            let cstr = CString::new(value).unwrap();
+            v.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue = cstr.as_ptr();
+            v.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen = value.len() as u32;
+          }
+          SHType_Image => {
+            let width: u16 = seq.next_element()?.unwrap();
+            let height: u16 = seq.next_element()?.unwrap();
+            let channels: u8 = seq.next_element()?.unwrap();
+            let flags: u8 = seq.next_element()?.unwrap();
+            let value: &[u8] = seq.next_element()?.unwrap();
+            v.payload.__bindgen_anon_1.imageValue.width = width;
+            v.payload.__bindgen_anon_1.imageValue.height = height;
+            v.payload.__bindgen_anon_1.imageValue.channels = channels;
+            v.payload.__bindgen_anon_1.imageValue.flags = flags;
+            v.payload.__bindgen_anon_1.imageValue.data = value.as_ptr() as *mut u8;
+          }
+          SHType_Seq => {
+            let seq: Seq = seq.next_element()?.unwrap();
+            v = Var::from(&seq);
+          }
+          SHType_Table => {
+            let table: Table = seq.next_element()?.unwrap();
+            v = Var::from(&table);
+          }
+          _ => unimplemented!("Unsupported type: {:?}", type_),
+        }
+        Ok(v.into())
+      }
+    }
+
+    deserializer.deserialize_seq(VarVisitor)
   }
 }
 
@@ -1079,6 +1427,7 @@ impl<T> From<T> for ClonedVar
 where
   T: Into<Var>,
 {
+  #[inline]
   fn from(v: T) -> Self {
     let vt: Var = v.into();
     let res = ClonedVar(Var::default());
@@ -1095,6 +1444,7 @@ impl<T> From<T> for ExternalVar
 where
   T: Into<Var>,
 {
+  #[inline]
   fn from(v: T) -> Self {
     let vt: Var = v.into();
     let mut res = ExternalVar(Var::default());
