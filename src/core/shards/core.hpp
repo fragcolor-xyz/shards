@@ -793,18 +793,6 @@ struct SetBase : public VariableBase {
 struct SetUpdateBase : public SetBase {
   Shard *_self{};
 
-  void warmup(SHContext *context) {
-    SetBase::warmup(context);
-
-    // restore any possible deferred change here
-    if (_isTable)
-      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;
-    else
-      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
-  }
-
-  void cleanup() { SetBase::cleanup(); }
-
   ALWAYS_INLINE SHVar activateTable(SHContext *context, const SHVar &input) {
     checkIfTableChanged();
 
@@ -843,9 +831,7 @@ struct SetUpdateBase : public SetBase {
     return *_target;
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
-    SHLOG_FATAL("Invalid code path, this should never be called");
-  }
+  SHVar activate(SHContext *context, const SHVar &input) { SHLOG_FATAL("Invalid code path, this should never be called"); }
 };
 
 struct Set : public SetUpdateBase {
@@ -934,7 +920,7 @@ struct Set : public SetUpdateBase {
   }
 
   void warmup(SHContext *context) {
-    SetUpdateBase::warmup(context);
+    SetBase::warmup(context);
 
     if (_onStartConnection) {
       _onStartConnection.release();
@@ -944,19 +930,38 @@ struct Set : public SetUpdateBase {
       _target->flags |= SHVAR_FLAGS_EXPOSED;
       // need to defer the check to before we actually start running
       _onStartConnection = context->main->dispatcher.sink<SHWire::OnStartEvent>().connect<&Set::onStart>(this);
+
+      const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
     } else if (_target->flags & SHVAR_FLAGS_EXPOSED) {
       // something changed, we are no longer exposed
       // fixup activations and variable flags
       _target->flags &= ~SHVAR_FLAGS_EXPOSED;
+
+      // restore any possible deferred change here
+      if (_isTable)
+        const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;
+      else
+        const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
     }
   }
 
   void cleanup() {
-    SetUpdateBase::cleanup();
+    SetBase::cleanup();
 
     if (_onStartConnection) {
       _onStartConnection.release();
     }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    assert(_exposed);
+
+    context->main->dispatcher.trigger<OnExposedValueSet>(OnExposedValueSet{_name, _key, input});
+
+    if (_isTable)
+      return activateTable(context, input);
+    else
+      return activateRegular(context, input);
   }
 };
 
@@ -1165,6 +1170,18 @@ struct Update : public SetUpdateBase {
   }
 
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_exposedInfo); }
+
+  void warmup(SHContext *context) {
+    SetBase::warmup(context);
+
+    // restore any possible deferred change here
+    if (_isTable)
+      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;
+    else
+      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
+  }
+
+  void cleanup() { SetBase::cleanup(); }
 };
 
 struct Get : public VariableBase {

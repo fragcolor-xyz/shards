@@ -13,6 +13,9 @@
 #include <variant>
 #include <vector>
 
+#define ENTT_ID_TYPE std::uint64_t
+#include <entt/entt.hpp>
+
 namespace shards {
 constexpr uint32_t CoreCC = 'frag'; // FourCC = 1718772071 = 0x66726167
 
@@ -1121,6 +1124,12 @@ private:
 };
 
 void abortWire(struct SHContext *context, std::string_view errorText);
+
+struct OnExposedValueSet {
+  std::string_view name;
+  SHVar key;
+  SHVar newValue;
+};
 } // namespace shards
 
 inline SHVar *begin(SHVar &a) {
