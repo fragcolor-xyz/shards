@@ -45,9 +45,6 @@
 #pragma clang attribute pop
 #include <boost/container/flat_map.hpp>
 
-#define ENTT_ID_TYPE std::uint64_t
-#include <entt/entt.hpp>
-
 // TODO make it into a run-time param
 #ifndef NDEBUG
 #define SH_BASE_STACK_SIZE 1024 * 1024
