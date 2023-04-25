@@ -88,10 +88,16 @@ if(NOT EMSCRIPTEN)
     set(SDL_LIB_SUFFIX "d")
   endif()
 
+  if(LIB_SUFFIX STREQUAL ".lib")
+    set(SDL2_LIB_NAME "SDL2-static")
+  else()
+    set(SDL2_LIB_NAME "SDL2")
+  endif()
+
   sh_add_external_project(
     NAME sdl_a
     TARGETS   SDL2 SDL2main
-    LIB_NAMES SDL2 SDL2main
+    LIB_NAMES ${SDL2_LIB_NAME} SDL2main
     INSTALL
     LIB_SUFFIX ${SDL_LIB_SUFFIX}
     RELATIVE_INSTALL_INCLUDE_PATHS include/SDL2
