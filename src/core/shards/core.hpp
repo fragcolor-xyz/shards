@@ -791,6 +791,20 @@ struct SetBase : public VariableBase {
 };
 
 struct SetUpdateBase : public SetBase {
+  Shard *_self{};
+
+  void warmup(SHContext *context) {
+    SetBase::warmup(context);
+
+    // restore any possible deferred change here
+    if (_isTable)
+      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;
+    else
+      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
+  }
+
+  void cleanup() { SetBase::cleanup(); }
+
   ALWAYS_INLINE SHVar activateTable(SHContext *context, const SHVar &input) {
     checkIfTableChanged();
 
@@ -823,16 +837,19 @@ struct SetUpdateBase : public SetBase {
     return *vptr;
   }
 
-  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE SHVar activateRegular(SHContext *context, const SHVar &input) {
     // Clone will try to recycle memory and such
     cloneVar(*_target, input);
     return *_target;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    SHLOG_FATAL("Invalid code path, this should never be called");
   }
 };
 
 struct Set : public SetUpdateBase {
   bool _exposed{false};
-  Shard *_self{};
   entt::connection _onStartConnection{};
 
   static SHOptionalString help() { return SHCCSTR("Creates a mutable variable and assigns a value to it."); }
@@ -917,17 +934,11 @@ struct Set : public SetUpdateBase {
   }
 
   void warmup(SHContext *context) {
-    SetBase::warmup(context);
+    SetUpdateBase::warmup(context);
 
     if (_onStartConnection) {
       _onStartConnection.release();
     }
-
-    // restore any possible deferred change here
-    if (_isTable)
-      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;
-    else
-      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
 
     if (_exposed) {
       _target->flags |= SHVAR_FLAGS_EXPOSED;
@@ -941,7 +952,7 @@ struct Set : public SetUpdateBase {
   }
 
   void cleanup() {
-    SetBase::cleanup();
+    SetUpdateBase::cleanup();
 
     if (_onStartConnection) {
       _onStartConnection.release();
@@ -1086,6 +1097,8 @@ struct Update : public SetUpdateBase {
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    _self = data.shard;
+
     sanityChecks(data, false, false);
 
     // make sure we update to the same type
