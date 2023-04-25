@@ -128,7 +128,7 @@ SHARDS_CONDITIONAL_INLINE FLATTEN bool activateShardInline(Shard *blk, SHContext
   }
   case InlineShard::CoreSetUpdateRegular: {
     auto shard = reinterpret_cast<shards::SetRuntime *>(blk);
-    output = shard->core.activate(context, input);
+    output = shard->core.activateRegular(context, input);
     break;
   }
   case InlineShard::CoreSetUpdateTable: {
