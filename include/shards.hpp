@@ -1125,7 +1125,8 @@ private:
 
 void abortWire(struct SHContext *context, std::string_view errorText);
 
-struct OnExposedValueSet {
+struct OnVarValueChange {
+  entt::id_type id;
   std::string_view name;
   SHVar key;
   SHVar newValue;

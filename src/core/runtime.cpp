@@ -5,6 +5,7 @@
 #include "common_types.hpp"
 #include "foundation.hpp"
 #include "shards.h"
+#include "shards.hpp"
 #include "shards/shared.hpp"
 #include "utility.hpp"
 #include "shards/inlined.hpp"
@@ -2891,6 +2892,10 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
     }
   }
   return nullptr;
+}
+
+void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *var) {
+  shards::triggerVarValueChange(context, name, var);
 }
 
 SHCore *__cdecl shardsInterface(uint32_t abi_version) {

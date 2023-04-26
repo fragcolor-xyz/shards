@@ -1383,6 +1383,15 @@ template <typename T> inline T emscripten_wait(SHContext *context, emscripten::v
   return fut["result"].as<T>();
 }
 #endif
+
+inline void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *var) {
+  if(var->flags & SHVAR_FLAGS_EXPOSED) {
+    SHLOG_TRACE("Triggering var value change for exposed var: {}", *name);
+    auto vName = SHSTRVIEW((*name));
+    OnVarValueChange ev{context->main->id, vName, Var::Empty, *var};
+    context->main->dispatcher.trigger(ev);
+  }
+}
 } // namespace shards
 
 #endif // SH_CORE_RUNTIME
