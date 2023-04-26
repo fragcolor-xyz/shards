@@ -2897,7 +2897,7 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
 void triggerVarValueChange(SHWireRef wire, const SHVar *name, const SHVar *var) {
   auto vName = SHSTRVIEW((*name));
   auto &w = SHWire::sharedFromRef(wire);
-  OnExposedVarSet ev{w->id, vName, Var::Empty, *var};
+  OnExposedVarSet ev{w->id, vName, *var};
   w->dispatcher.trigger(ev);
 }
 

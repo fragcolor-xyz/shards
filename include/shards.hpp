@@ -1128,15 +1128,17 @@ void abortWire(struct SHContext *context, std::string_view errorText);
 struct OnExposedVarWarmup {
   entt::id_type id;
   std::string_view name;
-  SHVar key;
   SHExposedTypesInfo info;
+  // if the var is a table, this is the key
+  std::optional<std::string_view> key;
 };
 
 struct OnExposedVarSet {
   entt::id_type id;
   std::string_view name;
-  SHVar key;
   SHVar newValue;
+  // if the var is a table, this is the key
+  std::optional<std::string_view> key;
 };
 } // namespace shards
 
