@@ -46,7 +46,7 @@ static HEADERS_TYPES: &[Type] = &[
 
 extern "C" {
   fn getWireVariable(wire: WireRef, name: *const c_char, nameLen: u32) -> *mut Var;
-  fn triggerVarValueChange(context: *mut Context, name: *const Var, var: *const Var);
+  fn triggerVarValueChange(wire: WireRef, name: *const Var, var: *const Var);
 }
 
 impl Default for Variable {
@@ -250,7 +250,7 @@ impl Shard for WireVariable {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let input: Table = input.try_into()?;
 
     let name_var = input.get_fast_static(cstr!("Name"));
@@ -285,7 +285,7 @@ impl Shard for WireVariable {
         if varRef.render(false, None, ui).changed() {
           unsafe {
             triggerVarValueChange(
-              context as *const Context as *mut Context,
+              WireRef(wire_var.payload.__bindgen_anon_1.wireValue),
               name_var as *const Var,
               varRef as *const Var,
             );

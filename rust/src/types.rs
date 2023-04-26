@@ -163,12 +163,15 @@ pub struct ExternalVar(pub Var);
 #[derive(Default)]
 pub struct WrappedVar(pub Var); // used in DSL macro, ignore it
 
+#[repr(transparent)] // force it same size of original
 #[derive(Clone)]
 pub struct Mesh(pub SHMeshRef);
 
+#[repr(transparent)] // force it same size of original
 #[derive(Copy, Clone)]
 pub struct WireRef(pub SHWireRef);
 
+#[repr(transparent)] // force it same size of original
 #[derive(Copy, Clone)]
 pub struct ShardRef(pub ShardPtr);
 
