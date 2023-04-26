@@ -16,6 +16,7 @@
 #include "inlined.hpp"
 #include <cassert>
 #include <cmath>
+#include <optional>
 #include <sstream>
 
 namespace shards {
@@ -933,7 +934,9 @@ struct Set : public SetUpdateBase {
 
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
 
-      OnExposedVarWarmup ev{context->main->id, _name, _key, SHExposedTypesInfo(_exposedInfo)};
+      OnExposedVarWarmup ev{context->main->id, _name, SHExposedTypesInfo(_exposedInfo)};
+      if (_isTable)
+        ev.key = _key.isVariable() ? _key.variableName() : _key.get().payload.stringValue;
       context->main->dispatcher.trigger(ev);
     } else if (_target->flags & SHVAR_FLAGS_EXPOSED) {
       // something changed, we are no longer exposed
@@ -959,7 +962,9 @@ struct Set : public SetUpdateBase {
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_exposed);
 
-    OnExposedVarSet ev{context->main->id, _name, _key, input};
+    OnExposedVarSet ev{context->main->id, _name, input};
+    if (_isTable)
+      ev.key = _key.isVariable() ? _key.variableName() : _key.get().payload.stringValue;
     context->main->dispatcher.trigger(ev);
 
     if (_isTable)
