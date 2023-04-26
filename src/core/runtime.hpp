@@ -49,23 +49,22 @@ void __tsan_destroy_fiber(void *fiber);
 void __tsan_switch_to_fiber(void *fiber, unsigned flags);
 void __tsan_set_fiber_name(void *fiber, const char *name);
 const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
-
 }
-#define TSANCoroEnter(wire)             \
+#define TSANCoroEnter(wire)              \
   {                                      \
-    if (!getCoroWireStack2().empty()) {   \
+    if (!getCoroWireStack2().empty()) {  \
       TracyFiberLeave;                   \
     }                                    \
     TracyFiberEnter(wire->name.c_str()); \
-    getCoroWireStack2().push_back(wire);  \
+    getCoroWireStack2().push_back(wire); \
   }
-#define TSANCoroExit(wire)                                     \
-  {                                                             \
+#define TSANCoroExit(wire)                                       \
+  {                                                              \
     getCoroWireStack2().pop_back();                              \
-    TracyFiberLeave;                                            \
+    TracyFiberLeave;                                             \
     if (!getCoroWireStack2().empty()) {                          \
       TracyFiberEnter(getCoroWireStack2().back()->name.c_str()); \
-    }                                                           \
+    }                                                            \
   }
 #else
 #define TSANCoroEnter(wire)
@@ -1383,15 +1382,6 @@ template <typename T> inline T emscripten_wait(SHContext *context, emscripten::v
   return fut["result"].as<T>();
 }
 #endif
-
-inline void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *var) {
-  if(var->flags & SHVAR_FLAGS_EXPOSED) {
-    SHLOG_TRACE("Triggering var value change for exposed var: {}", *name);
-    auto vName = SHSTRVIEW((*name));
-    OnVarValueChange ev{context->main->id, vName, Var::Empty, *var};
-    context->main->dispatcher.trigger(ev);
-  }
-}
 } // namespace shards
 
 #endif // SH_CORE_RUNTIME

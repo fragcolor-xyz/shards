@@ -932,6 +932,9 @@ struct Set : public SetUpdateBase {
       _onStartConnection = context->main->dispatcher.sink<SHWire::OnStartEvent>().connect<&Set::onStart>(this);
 
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
+
+      OnExposedVarWarmup ev{context->main->id, _name, _key, SHExposedTypesInfo(_exposedInfo)};
+      context->main->dispatcher.trigger(ev);
     } else if (_target->flags & SHVAR_FLAGS_EXPOSED) {
       // something changed, we are no longer exposed
       // fixup activations and variable flags
@@ -956,7 +959,7 @@ struct Set : public SetUpdateBase {
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_exposed);
 
-    OnVarValueChange ev{context->main->id, _name, _key, input};
+    OnExposedVarSet ev{context->main->id, _name, _key, input};
     context->main->dispatcher.trigger(ev);
 
     if (_isTable)
