@@ -956,7 +956,8 @@ struct Set : public SetUpdateBase {
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_exposed);
 
-    context->main->dispatcher.trigger<OnExposedValueSet>(OnExposedValueSet{_name, _key, input});
+    OnVarValueChange ev{context->main->id, _name, _key, input};
+    context->main->dispatcher.trigger(ev);
 
     if (_isTable)
       return activateTable(context, input);
