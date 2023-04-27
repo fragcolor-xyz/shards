@@ -3306,3 +3306,64 @@ void incRef(ShardPtr shard) {
   }
 }
 } // namespace shards
+
+#ifdef TRACY_ENABLE
+void* operator new(std::size_t count) {
+    void* ptr = std::malloc(count);
+    TracySecureAlloc(ptr, count);
+    return ptr;
+}
+
+void* operator new[](std::size_t count) {
+    void* ptr = std::malloc(count);
+    TracySecureAlloc(ptr, count);
+    return ptr;
+}
+
+void* operator new(std::size_t count, std::align_val_t alignment) {
+    std::size_t align_value = static_cast<std::size_t>(alignment);
+    std::size_t aligned_count = (count + align_value - 1) / align_value * align_value;
+    void* ptr = std::aligned_alloc(align_value, aligned_count);
+    TracySecureAlloc(ptr, count);
+    return ptr;
+}
+
+void* operator new[](std::size_t count, std::align_val_t alignment) {
+    std::size_t align_value = static_cast<std::size_t>(alignment);
+    std::size_t aligned_count = (count + align_value - 1) / align_value * align_value;
+    void* ptr = std::aligned_alloc(align_value, aligned_count);
+    TracySecureAlloc(ptr, count);
+    return ptr;
+}
+
+void operator delete(void* ptr) noexcept {
+    TracySecureFree(ptr);
+    std::free(ptr);
+}
+
+void operator delete[](void* ptr) noexcept {
+    TracySecureFree(ptr);
+    std::free(ptr);
+}
+
+void operator delete(void* ptr, std::align_val_t alignment) noexcept {
+    TracySecureFree(ptr);
+    std::free(ptr);
+}
+
+void operator delete[](void* ptr, std::align_val_t alignment) noexcept {
+    TracySecureFree(ptr);
+    std::free(ptr);
+}
+
+void operator delete(void* ptr, std::size_t count) noexcept {
+    TracySecureFree(ptr);
+    std::free(ptr);
+}
+
+void operator delete[](void* ptr, std::size_t count) noexcept {
+    TracySecureFree(ptr);
+    std::free(ptr);
+}
+
+#endif
