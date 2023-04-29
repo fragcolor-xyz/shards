@@ -116,7 +116,7 @@ pub type ParameterInfo = SHParameterInfo;
 pub type RawString = SHString;
 
 #[repr(transparent)] // force it same size of original
-#[derive(Default)]
+#[derive(Default, Serialize)]
 pub struct ClonedVar(pub Var);
 
 impl ClonedVar {
