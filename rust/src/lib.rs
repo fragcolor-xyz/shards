@@ -530,6 +530,7 @@ pub extern "C" fn registerRustShards(core: *mut SHCore) {
   shards::http::registerShards();
 }
 
+#[cfg(feature = "shards")]
 #[no_mangle]
 pub extern "C" fn runRuntimeTests() {
   #[cfg(feature = "scripting")]
