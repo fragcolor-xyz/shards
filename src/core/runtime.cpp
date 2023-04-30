@@ -67,7 +67,7 @@ EM_JS(void, sh_emscripten_init, (), {
 namespace shards {
 #ifdef SH_COMPRESSED_STRINGS
 SHOptionalString getCompiledCompressedString(uint32_t id) {
-  static std::unordered_map<uint32_t, SHOptionalString> CompiledCompressedStrings;
+  static std::remove_pointer_t<decltype(Globals::CompressedStrings)> CompiledCompressedStrings;
   if (GetGlobals().CompressedStrings == nullptr)
     GetGlobals().CompressedStrings = &CompiledCompressedStrings;
   auto &val = CompiledCompressedStrings[id];
