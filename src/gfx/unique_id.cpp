@@ -1,10 +1,11 @@
 #include "unique_id.hpp"
+#include "../core/untracked_collections.hpp"
 #include <vector>
 
 namespace gfx {
 
-static std::vector<std::weak_ptr<UniqueIdGenerator *>> &getRegister() {
-  static std::vector<std::weak_ptr<UniqueIdGenerator *>> inst;
+static shards::UntrackedVector<std::weak_ptr<UniqueIdGenerator *>> &getRegister() {
+  static shards::UntrackedVector<std::weak_ptr<UniqueIdGenerator *>> inst;
   return inst;
 }
 

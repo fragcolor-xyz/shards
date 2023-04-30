@@ -239,7 +239,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro);
 #endif
 
 #ifdef TRACY_FIBERS
-std::vector<SHWire *> &getCoroWireStack();
+UntrackedVector<SHWire *> &getCoroWireStack();
 #endif
 
 inline void prepare(SHWire *wire, SHFlow *flow) {

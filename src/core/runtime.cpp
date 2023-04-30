@@ -77,7 +77,7 @@ SHOptionalString getCompiledCompressedString(uint32_t id) {
 }
 #else
 SHOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
-  static std::unordered_map<uint32_t, SHOptionalString> CompiledCompressedStrings;
+  static std::remove_pointer_t<decltype(Globals::CompressedStrings)> CompiledCompressedStrings;
   if (GetGlobals().CompressedStrings == nullptr)
     GetGlobals().CompressedStrings = &CompiledCompressedStrings;
   SHOptionalString ls{str, id};
@@ -215,20 +215,20 @@ void loadExternalShards(std::string from) {
 extern "C" void gfxTracyInit();
 
 #ifdef TRACY_FIBERS
-std::vector<SHWire *> &getCoroWireStack() {
+UntrackedVector<SHWire *> &getCoroWireStack() {
   // Here is the thing, this currently works.. but only because we don't move coroutines between threads
   // When we will do if we do this will break...
-  static thread_local std::vector<SHWire *> wireStack;
+  static thread_local UntrackedVector<SHWire *> wireStack;
   return wireStack;
 }
 #endif
 #endif
 
 #ifdef SH_USE_TSAN
-std::vector<SHWire *> &getCoroWireStack2() {
+UntrackedVector<SHWire *> &getCoroWireStack2() {
   // Here is the thing, this currently works.. but only because we don't move coroutines between threads
   // When we will do if we do this will break...
-  static thread_local std::vector<SHWire *> wireStack;
+  static thread_local UntrackedVector<SHWire *> wireStack;
   return wireStack;
 }
 #endif
@@ -2124,7 +2124,7 @@ Globals &GetGlobals() {
   return globals;
 }
 
-static std::unordered_map<std::string, EventDispatcher> dispatchers;
+static UntrackedUnorderedMap<std::string, EventDispatcher> dispatchers;
 static std::shared_mutex mutex;
 EventDispatcher &getEventDispatcher(const std::string &name) {
 
