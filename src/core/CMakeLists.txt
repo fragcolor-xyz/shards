@@ -42,7 +42,11 @@ target_include_directories(shards-core-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 
 option(SHARDS_MEMORY_TRACKING "Enable memory tracking that works with tracy" ON)
 if(TRACY_ENABLE AND SHARDS_MEMORY_TRACKING)
-  target_compile_definitions(shards-core-static PUBLIC SHARDS_TRACKING=1)
+  target_compile_definitions(shards-core-static PUBLIC
+    SHARDS_TRACKING=1
+    # The default call stack size
+    TRACY_CALLSTACK=16
+  )
   target_sources(shards-core-static PRIVATE tracking.cpp)
 endif()
 
