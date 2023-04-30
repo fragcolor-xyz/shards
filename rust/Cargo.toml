@@ -109,6 +109,7 @@ code_editor = ["syntect", "egui_commonmark/syntax_highlighting"]
 hex_viewer = ["egui_memory_editor"]
 dllshard = ["dlopen"]
 scripting = []
+core_only = []
 
 [profile.release]
 panic = "abort"
