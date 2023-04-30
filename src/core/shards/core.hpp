@@ -962,15 +962,18 @@ struct Set : public SetUpdateBase {
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_exposed);
 
-    OnExposedVarSet ev{context->main->id, _name, input};
+    SHVar output;
+    if (_isTable)
+      output = activateTable(context, input);
+    else
+      output = activateRegular(context, input);
+
+    OnExposedVarSet ev{context->main->id, _name, output};
     if (_isTable)
       ev.key = _key.isVariable() ? _key.variableName() : _key.get().payload.stringValue;
     context->main->dispatcher.trigger(ev);
 
-    if (_isTable)
-      return activateTable(context, input);
-    else
-      return activateRegular(context, input);
+    return output;
   }
 };
 
