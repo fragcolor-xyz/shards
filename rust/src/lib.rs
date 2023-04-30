@@ -536,3 +536,11 @@ pub extern "C" fn runRuntimeTests() {
   #[cfg(feature = "scripting")]
   scripting::test_shl();
 }
+
+#[cfg(feature = "core_only")]
+#[no_mangle]
+pub extern "C" fn registerRustCore(core: *mut SHCore) {
+  unsafe {
+    Core = core;
+  }
+}
