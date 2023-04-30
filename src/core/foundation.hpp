@@ -30,6 +30,7 @@
 #include <type_traits>
 #include <unordered_set>
 #include <variant>
+#include "untracked_collections.hpp"
 
 #ifdef SHARDS_TRACKING
 #include "tracking.hpp"
@@ -473,26 +474,26 @@ struct Globals {
 public:
   // sporadically used, don't abuse. And don't use in real time code.
   std::mutex GlobalMutex;
-  std::unordered_map<std::string, OwnedVar> Settings;
+  UntrackedUnorderedMap<std::string, OwnedVar> Settings;
 
   int SigIntTerm{0};
-  std::unordered_map<std::string_view, SHShardConstructor> ShardsRegister;
-  std::unordered_map<std::string_view, std::string_view> ShardNamesToFullTypeNames;
-  std::unordered_map<int64_t, SHObjectInfo> ObjectTypesRegister;
-  std::unordered_map<int64_t, SHEnumInfo> EnumTypesRegister;
+  UntrackedUnorderedMap<std::string_view, SHShardConstructor> ShardsRegister;
+  UntrackedUnorderedMap<std::string_view, std::string_view> ShardNamesToFullTypeNames;
+  UntrackedUnorderedMap<int64_t, SHObjectInfo> ObjectTypesRegister;
+  UntrackedUnorderedMap<int64_t, SHEnumInfo> EnumTypesRegister;
 
   // map = ordered! we need that for those
-  std::map<std::string_view, SHCallback> RunLoopHooks;
-  std::map<std::string_view, SHCallback> ExitHooks;
+  UntrackedMap<std::string_view, SHCallback> RunLoopHooks;
+  UntrackedMap<std::string_view, SHCallback> ExitHooks;
 
-  std::unordered_map<std::string, std::shared_ptr<SHWire>> GlobalWires;
+  UntrackedUnorderedMap<std::string, std::shared_ptr<SHWire>> GlobalWires;
 
-  std::list<std::weak_ptr<RuntimeObserver>> Observers;
+  UntrackedList<std::weak_ptr<RuntimeObserver>> Observers;
 
   std::string RootPath;
   std::string ExePath;
 
-  std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
+  UntrackedUnorderedMap<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
 
   entt::registry Registry;
 

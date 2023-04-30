@@ -1182,7 +1182,7 @@ struct CapturingSpawners : public WireBase {
     uint32_t refcount = 0;
   };
 
-  static inline thread_local std::unordered_map<SHWire *, SpawnedWireData> threadSpawnedWires;
+  static inline thread_local UntrackedUnorderedMap<SHWire *, SpawnedWireData> threadSpawnedWires;
 
   void destroy() {
     auto it = threadSpawnedWires.find(wire.get());
