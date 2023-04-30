@@ -213,6 +213,7 @@ void loadExternalShards(std::string from) {
 //   used to initialize tracy on the rust side, since it required special intialization (C++ doesn't)
 //   but since we link to the dll, we can use it from C++ too
 extern "C" void gfxTracyInit();
+static bool tracyInitialized{};
 
 #ifdef TRACY_FIBERS
 UntrackedVector<SHWire *> &getCoroWireStack() {
@@ -241,6 +242,7 @@ void registerCoreShards() {
 
 #ifdef TRACY_ENABLE
   gfxTracyInit();
+  tracyInitialized = true;
 #endif
 
   logging::setupDefaultLoggerConditional();
@@ -3310,13 +3312,15 @@ void incRef(ShardPtr shard) {
 #ifdef TRACY_ENABLE
 void *operator new(std::size_t count) {
   void *ptr = std::malloc(count);
-  TracySecureAlloc(ptr, count);
+  if (shards::tracyInitialized)
+    TracyAlloc(ptr, count);
   return ptr;
 }
 
 void *operator new[](std::size_t count) {
   void *ptr = std::malloc(count);
-  TracySecureAlloc(ptr, count);
+  if (shards::tracyInitialized)
+    TracyAlloc(ptr, count);
   return ptr;
 }
 
@@ -3328,7 +3332,8 @@ void *operator new(std::size_t count, std::align_val_t alignment) {
 #else
   void *ptr = std::aligned_alloc(align_value, aligned_count);
 #endif
-  TracySecureAlloc(ptr, count);
+  if (shards::tracyInitialized)
+    TracyAlloc(ptr, count);
   return ptr;
 }
 
@@ -3340,22 +3345,26 @@ void *operator new[](std::size_t count, std::align_val_t alignment) {
 #else
   void *ptr = std::aligned_alloc(align_value, aligned_count);
 #endif
-  TracySecureAlloc(ptr, count);
+  if (shards::tracyInitialized)
+    TracyAlloc(ptr, count);
   return ptr;
 }
 
 void operator delete(void *ptr) noexcept {
-  TracySecureFree(ptr);
+  if (shards::tracyInitialized)
+    TracyFree(ptr);
   std::free(ptr);
 }
 
 void operator delete[](void *ptr) noexcept {
-  TracySecureFree(ptr);
+  if (shards::tracyInitialized)
+    TracyFree(ptr);
   std::free(ptr);
 }
 
 void operator delete(void *ptr, std::align_val_t alignment) noexcept {
-  TracySecureFree(ptr);
+  if (shards::tracyInitialized)
+    TracyFree(ptr);
 #ifdef WIN32
   _aligned_free(ptr);
 #else
@@ -3364,7 +3373,8 @@ void operator delete(void *ptr, std::align_val_t alignment) noexcept {
 }
 
 void operator delete[](void *ptr, std::align_val_t alignment) noexcept {
-  TracySecureFree(ptr);
+  if (shards::tracyInitialized)
+    TracyFree(ptr);
 #ifdef WIN32
   _aligned_free(ptr);
 #else
@@ -3373,12 +3383,14 @@ void operator delete[](void *ptr, std::align_val_t alignment) noexcept {
 }
 
 void operator delete(void *ptr, std::size_t count) noexcept {
-  TracySecureFree(ptr);
+  if (shards::tracyInitialized)
+    TracyFree(ptr);
   std::free(ptr);
 }
 
 void operator delete[](void *ptr, std::size_t count) noexcept {
-  TracySecureFree(ptr);
+  if (shards::tracyInitialized)
+    TracyFree(ptr);
   std::free(ptr);
 }
 
