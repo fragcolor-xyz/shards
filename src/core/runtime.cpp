@@ -10,7 +10,6 @@
 #include "utility.hpp"
 #include "shards/inlined.hpp"
 #include "async.hpp"
-#include "tracking.hpp"
 #include <boost/asio/thread_pool.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/stacktrace.hpp>
@@ -215,6 +214,11 @@ void loadExternalShards(std::string from) {
 extern "C" void gfxTracyInit();
 static bool tracyInitialized{};
 
+void tracyInit() {
+  gfxTracyInit();
+  tracyInitialized = true;
+}
+
 #ifdef TRACY_FIBERS
 UntrackedVector<SHWire *> &getCoroWireStack() {
   // Here is the thing, this currently works.. but only because we don't move coroutines between threads
@@ -241,8 +245,7 @@ void registerCoreShards() {
   globalRegisterDone = true;
 
 #ifdef TRACY_ENABLE
-  gfxTracyInit();
-  tracyInitialized = true;
+  tracyInit();
 #endif
 
   logging::setupDefaultLoggerConditional();
