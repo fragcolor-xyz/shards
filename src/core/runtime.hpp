@@ -238,6 +238,10 @@ boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::con
 void run(SHWire *wire, SHFlow *flow, SHCoro *coro);
 #endif
 
+#ifdef TRACY_ENABLE
+void tracyInit();
+#endif
+
 #ifdef TRACY_FIBERS
 UntrackedVector<SHWire *> &getCoroWireStack();
 #endif
