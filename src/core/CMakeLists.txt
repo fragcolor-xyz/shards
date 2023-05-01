@@ -40,7 +40,7 @@ target_include_directories(shards-core-static PUBLIC ../../include)
 target_include_directories(shards-core-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 
-if(TRACY_ENABLE)
+if(TRACY_ENABLE AND TRACY_FULL_CALLSTACKS)
   target_compile_definitions(shards-core-static PUBLIC
     # The default call stack size
     TRACY_CALLSTACK=16
