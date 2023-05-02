@@ -236,7 +236,12 @@ struct TextureShard {
     Var resolutionVar{_resolution.get()};
     Var mipLevelsVar{_mipLevels.get()};
     Var formatVar{_format.get()};
+
+    // NOTE: Use existing resultion if unspecified here to avoid resetting the texture
     int2 resolution = !resolutionVar.isNone() ? toInt2(resolutionVar) : int2(0);
+    if (resolutionVar.isNone())
+      resolution = texture->getDesc().resolution;
+
     uint8_t mipLevels = uint8_t(!mipLevelsVar.isNone() ? int(mipLevelsVar) : 1);
 
     texture->init(TextureDesc{

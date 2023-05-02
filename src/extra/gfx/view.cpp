@@ -58,7 +58,10 @@ struct ViewShard {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ViewPtr view = _view->view = std::make_shared<View>();
+    ViewPtr &view = _view->view;
+    if (!view)
+      view = std::make_shared<View>();
+
     if (_viewTransform->valueType != SHType::None) {
       view->view = shards::Mat4(_viewTransform.get());
     }

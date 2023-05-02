@@ -288,6 +288,7 @@ struct EffectPassShard {
   FeaturePtr wrapperFeature;
   PipelineStepPtr *_step{};
   gfx::shader::VariableMap _composedWith;
+  std::vector<FeaturePtr> _generatedFeatures;
 
   void cleanup() {
     if (_step) {
@@ -366,18 +367,25 @@ struct EffectPassShard {
       applyComposeWith(context, composeWithVar);
     }
 
-    SHVar entryPointVar;
-    if (getFromTable(context, inputTable, "EntryPoint", entryPointVar)) {
-      wrapperFeature->shaderEntryPoints.clear();
+    // Only do this once
+    if (wrapperFeature->shaderEntryPoints.empty()) {
+      _generatedFeatures.clear();
 
-      // Add default base transform
-      step.features.push_back(features::Transform::create(false, false));
+      SHVar entryPointVar;
+      if (getFromTable(context, inputTable, "EntryPoint", entryPointVar)) {
+        // Add default base transform
+        _generatedFeatures.push_back(features::Transform::create(false, false));
 
-      shader::EntryPoint entryPoint;
-      entryPoint.stage = ProgrammableGraphicsStage::Fragment;
-      shader::applyShaderEntryPoint(context, entryPoint, entryPointVar, _composedWith);
-      wrapperFeature->shaderEntryPoints.emplace_back(std::move(entryPoint));
-      step.features.push_back(wrapperFeature);
+        shader::EntryPoint entryPoint;
+        entryPoint.stage = ProgrammableGraphicsStage::Fragment;
+        shader::applyShaderEntryPoint(context, entryPoint, entryPointVar, _composedWith);
+        wrapperFeature->shaderEntryPoints.emplace_back(std::move(entryPoint));
+        _generatedFeatures.push_back(wrapperFeature);
+      }
+    }
+
+    for (auto &feature : _generatedFeatures) {
+      step.features.push_back(feature);
     }
 
     return Types::PipelineStepObjectVar.Get(_step);
