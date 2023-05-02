@@ -1,6 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#include <boost/container/stable_vector.hpp>
+#pragma clang attribute pop
+
 // ASIO must go first!!
 #include <boost/asio.hpp>
 
