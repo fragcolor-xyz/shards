@@ -9,6 +9,7 @@
 #include "ReadLine.h"
 #endif
 #include "Types.h"
+#include "runtime.hpp"
 
 #include <boost/filesystem.hpp>
 #include <cassert>
@@ -51,6 +52,10 @@ malValuePtr maleval(const char *str, malEnvPtr env) {
 extern malEnvPtr malenv() { return currentEnv; }
 
 int malmain(int argc, const char *argv[]) {
+#ifdef TRACY_ENABLE
+  shards::tracyInit();
+#endif
+
   malEnvPtr replEnv(new malEnv());
 
   // do the following before malinit
