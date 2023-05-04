@@ -550,10 +550,10 @@ struct ExposerFlow {
 template <bool COND> struct When {
   static SHOptionalString help() {
     if constexpr (COND == true) {
-      return SHCCSTR("Conditonal shard that only executes the action if the "
+      return SHCCSTR("Conditional shard that only executes the action if the "
                      "predicate is true.");
     } else {
-      return SHCCSTR("Conditonal shard that only executes the action if the "
+      return SHCCSTR("Conditional shard that only executes the action if the "
                      "predicate is false.");
     }
   }
