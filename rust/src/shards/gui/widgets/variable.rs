@@ -193,9 +193,6 @@ impl Default for WireVariable {
     Self {
       parents,
       requiring: Vec::new(),
-      variable_name: Var::default(),
-      wire_name: Var::default(),
-      variable_ptr: None,
     }
   }
 }
@@ -238,15 +235,11 @@ impl Shard for WireVariable {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
-
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
     self.parents.cleanup();
-
-    self.variable_ptr = None;
-
     Ok(())
   }
 
@@ -256,28 +249,17 @@ impl Shard for WireVariable {
     let name_var = input.get_fast_static(cstr!("Name"));
     let name: &str = name_var.try_into()?;
     let wire_var = input.get_fast_static(cstr!("Wire"));
-    if self.variable_name != *name_var || self.wire_name != *wire_var || self.variable_ptr.is_none()
-    {
-      let wire: WireRef = wire_var.try_into()?;
+    let wire: WireRef = wire_var.try_into()?;
 
-      let varPtr = unsafe {
-        getWireVariable(wire, name.as_ptr() as *const c_char, name.len() as u32) as *mut Var
-      };
+    let varPtr = unsafe {
+      getWireVariable(wire, name.as_ptr() as *const c_char, name.len() as u32) as *mut Var
+    };
 
-      if varPtr == std::ptr::null_mut() {
-        return Err("Variable not found");
-      }
-
-      self.variable_ptr = Some(varPtr);
-      self.variable_name = *name_var;
-      self.wire_name = *wire_var;
+    if varPtr == std::ptr::null_mut() {
+      return Err("Variable not found");
     }
 
-    let varRef = if let Some(varPtr) = self.variable_ptr {
-      unsafe { &mut *varPtr }
-    } else {
-      return Err("Variable not found");
-    };
+    let varRef = unsafe { &mut *varPtr };
 
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
       ui.horizontal(|ui| {
