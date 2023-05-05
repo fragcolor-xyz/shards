@@ -1305,7 +1305,7 @@ impl<'de> Deserialize<'de> for Table {
       }
     }
 
-    deserializer.deserialize_seq(TableVisitor)
+    deserializer.deserialize_map(TableVisitor)
   }
 }
 
