@@ -86,7 +86,7 @@ static WGPUSampler createSampler(Context &context, SamplerState samplerState, si
   desc.magFilter = samplerState.filterMode;
   desc.minFilter = samplerState.filterMode;
   desc.mipmapFilter = (mipLevels > 0) ? WGPUMipmapFilterMode_Linear : WGPUMipmapFilterMode_Nearest;
-  desc.maxAnisotropy = 0;
+  desc.maxAnisotropy = 1;
   return wgpuDeviceCreateSampler(context.wgpuDevice, &desc);
 }
 

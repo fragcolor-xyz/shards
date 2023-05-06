@@ -234,6 +234,8 @@ void Context::release() {
 
   releaseAdapter();
   mainOutput.reset();
+
+  WGPU_SAFE_RELEASE(wgpuInstanceRelease, wgpuInstance);
 }
 
 Window &Context::getWindow() {
@@ -484,12 +486,12 @@ void Context::requestDevice() {
   deviceDesc.requiredLimits = &requiredLimits;
 
   // Lower default limits to support devices like iOS simulator
+  requiredLimits.limits.maxBufferSize = 256 * 1024 * 1024;
   WGPURequiredLimitsExtras extraLimits{
       .chain =
           WGPUChainedStruct{
               .sType = (WGPUSType)WGPUSType_RequiredLimitsExtras,
           },
-      .maxBufferSize = 256 * 1024 * 1024,
   };
   requiredLimits.nextInChain = &extraLimits.chain;
 #endif
@@ -521,6 +523,11 @@ void Context::requestAdapter() {
   assert(!wgpuAdapter);
 
   state = ContextState::Requesting;
+
+  if (!wgpuInstance) {
+    WGPUInstanceDescriptor desc{};
+    wgpuInstance = wgpuCreateInstance(&desc);
+  }
 
   WGPURequestAdapterOptions requestAdapter = {};
   requestAdapter.powerPreference = WGPUPowerPreference_HighPerformance;
