@@ -183,16 +183,14 @@ impl UIRenderer for Var {
           ui.text_edit_singleline(&mut mutable)
         }
         SHType_Seq => {
-          let mut seq: Seq = self
-            .try_into()
+          let seq = self
+            .as_mut_seq()
             .expect("SHType was Seq, but failed to convert to Seq");
           if seq.len() > 0 {
             if let Some(inner_type) = inner_type {
               if !read_only && ui.button("+").clicked() {
                 let default_value = get_default_value(inner_type.basicType);
                 seq.push(&default_value);
-                // update self as `seq` len changed
-                seq.sync(self);
               }
             }
             let mut changed = false;
@@ -206,8 +204,6 @@ impl UIRenderer for Var {
                       let response = seq[i].render(read_only, None, ui);
                       if ui.button("-").clicked() {
                         seq.remove(i);
-                        // update self as `seq` len changed
-                        seq.sync(self);
                       }
                       response
                     })
@@ -224,8 +220,6 @@ impl UIRenderer for Var {
               if !read_only && ui.button("+").clicked() {
                 let default_value = get_default_value(inner_type.basicType);
                 seq.push(&default_value);
-                // update self as `seq` len changed
-                seq.sync(self);
               }
             }
             ui.colored_label(Color32::YELLOW, "Seq: 0 items")
