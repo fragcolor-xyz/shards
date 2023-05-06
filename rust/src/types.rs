@@ -2495,6 +2495,22 @@ impl Var {
       Ok(unsafe { &mut *(self as *mut Var as *mut SeqVar) })
     }
   }
+
+  pub fn as_table(&self) -> Result<&TableVar, &str> {
+    if self.valueType != SHType_Table {
+      Err("Variable is not a table")
+    } else {
+      Ok(unsafe { &*(self as *const Var as *const TableVar) })
+    }
+  }
+
+  pub fn as_mut_table(&mut self) -> Result<&mut TableVar, &str> {
+    if self.valueType != SHType_Table {
+      Err("Variable is not a table")
+    } else {
+      Ok(unsafe { &mut *(self as *mut Var as *mut TableVar) })
+    }
+  }
 }
 
 impl TryFrom<&Var> for SHString {
@@ -4640,6 +4656,131 @@ impl TryFrom<&Var> for Seq {
           owned: false,
         })
       }
+    }
+  }
+}
+
+#[repr(transparent)]
+pub struct TableVar(Var);
+
+impl TableVar {
+  pub fn insert<'a>(&'a mut self, k: &'a CString, v: &Var) -> Option<Var> {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
+      if (*t.api).tableContains.unwrap()(t, cstr) {
+        let p = (*t.api).tableAt.unwrap()(t, cstr);
+        let old = *p;
+        cloneVar(&mut *p, &v);
+        Some(old)
+      } else {
+        let p = (*t.api).tableAt.unwrap()(t, cstr);
+        *p = *v;
+        None
+      }
+    }
+  }
+
+  pub fn insert_fast<'a>(&'a mut self, k: &'a CString, v: &Var) {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
+      let p = (*t.api).tableAt.unwrap()(t, cstr);
+      cloneVar(&mut *p, &v);
+    }
+  }
+
+  pub fn insert_fast_static<'a>(&'a mut self, k: &'static str, v: &Var) {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let cstr = k.as_ptr() as *const std::os::raw::c_char;
+      let p = (*t.api).tableAt.unwrap()(t, cstr);
+      cloneVar(&mut *p, &v);
+    }
+  }
+
+  pub fn get_mut(&self, k: &CStr) -> Option<&mut Var> {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
+      if (*t.api).tableContains.unwrap()(t, cstr) {
+        let p = (*t.api).tableAt.unwrap()(t, cstr);
+        Some(&mut *p)
+      } else {
+        None
+      }
+    }
+  }
+
+  pub fn get_mut_fast(&mut self, k: &CStr) -> &mut Var {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
+      &mut *(*t.api).tableAt.unwrap()(t, cstr)
+    }
+  }
+
+  pub fn get_mut_fast_static(&mut self, k: &'static str) -> &mut Var {
+    debug_assert!(k.ends_with('\0'));
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let cstr = k.as_ptr() as *const std::os::raw::c_char;
+      &mut *(*t.api).tableAt.unwrap()(t, cstr)
+    }
+  }
+
+  pub fn get(&self, k: &CStr) -> Option<&Var> {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
+      if (*t.api).tableContains.unwrap()(t, cstr) {
+        let p = (*t.api).tableAt.unwrap()(t, cstr);
+        Some(&*p)
+      } else {
+        None
+      }
+    }
+  }
+
+  pub fn get_static(&self, k: &'static str) -> Option<&Var> {
+    debug_assert!(k.ends_with('\0'));
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let cstr = k.as_ptr() as *const std::os::raw::c_char;
+      if (*t.api).tableContains.unwrap()(t, cstr) {
+        let p = (*t.api).tableAt.unwrap()(t, cstr);
+        Some(&*p)
+      } else {
+        None
+      }
+    }
+  }
+
+  pub fn get_fast_static(&self, k: &'static str) -> &Var {
+    debug_assert!(k.ends_with('\0'));
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let cstr = k.as_ptr() as *const std::os::raw::c_char;
+      &*(*t.api).tableAt.unwrap()(t, cstr)
+    }
+  }
+
+  pub fn len(&self) -> usize {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      (*t.api).tableSize.unwrap()(t)
+    }
+  }
+
+  pub fn iter(&self) -> TableIterator {
+    unsafe {
+      let t = self.0.payload.__bindgen_anon_1.tableValue;
+      let it = TableIterator {
+        table: t,
+        citer: [0; 64],
+      };
+      (*t.api).tableGetIterator.unwrap()(t, &it.citer as *const _ as *mut _);
+      it
     }
   }
 }
