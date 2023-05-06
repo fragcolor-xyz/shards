@@ -2473,6 +2473,28 @@ impl Var {
       unsafe { Ok(self.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue) }
     }
   }
+
+  pub fn as_seq(&self) -> Result<&SeqVar, &str> {
+    if self.valueType != SHType_Seq {
+      Err("Variable is not a sequence")
+    } else {
+      Ok(unsafe { &*(self as *const Var as *const SeqVar) })
+    }
+  }
+
+  pub fn as_mut_seq(&mut self) -> Result<&mut SeqVar, &str> {
+    if self.valueType != SHType_Seq {
+      if self.valueType == SHType_None {
+        let sv = SeqVar::new();
+        *self = sv.0;
+        Ok(unsafe { &mut *(self as *mut Var as *mut SeqVar) })
+      } else {
+        Err("Variable is not a sequence")
+      }
+    } else {
+      Ok(unsafe { &mut *(self as *mut Var as *mut SeqVar) })
+    }
+  }
 }
 
 impl TryFrom<&Var> for SHString {
@@ -4165,6 +4187,211 @@ impl From<&OptionalStrings> for SHOptionalStrings {
   }
 }
 
+#[repr(transparent)]
+pub struct SeqVar(Var);
+
+pub struct SeqVarIterator<'a> {
+  s: &'a SeqVar,
+  i: u32,
+}
+
+impl<'a> Iterator for SeqVarIterator<'a> {
+  fn next(&mut self) -> Option<Self::Item> {
+    unsafe {
+      let res = if self.i < self.s.0.payload.__bindgen_anon_1.seqValue.len {
+        Some(
+          &*self
+            .s
+            .0
+            .payload
+            .__bindgen_anon_1
+            .seqValue
+            .elements
+            .offset(self.i.try_into().unwrap()),
+        )
+      } else {
+        None
+      };
+      self.i += 1;
+      res
+    }
+  }
+  type Item = &'a Var;
+}
+
+impl<'a> DoubleEndedIterator for SeqVarIterator<'a> {
+  fn next_back(&mut self) -> Option<Self::Item> {
+    unsafe {
+      let res = if self.i < self.s.0.payload.__bindgen_anon_1.seqValue.len {
+        Some(
+          &*self.s.0.payload.__bindgen_anon_1.seqValue.elements.offset(
+            (self.s.0.payload.__bindgen_anon_1.seqValue.len - self.i - 1)
+              .try_into()
+              .unwrap(),
+          ),
+        )
+      } else {
+        None
+      };
+      self.i += 1;
+      res
+    }
+  }
+}
+
+impl Index<usize> for SeqVar {
+  #[inline(always)]
+  fn index(&self, idx: usize) -> &Self::Output {
+    let idx_u32: u32 = idx.try_into().unwrap();
+    let len = unsafe { self.0.payload.__bindgen_anon_1.seqValue.len };
+    if idx_u32 < len {
+      unsafe {
+        &*self
+          .0
+          .payload
+          .__bindgen_anon_1
+          .seqValue
+          .elements
+          .offset(idx.try_into().unwrap())
+      }
+    } else {
+      panic!("Index out of range");
+    }
+  }
+  type Output = Var;
+}
+
+impl IndexMut<usize> for SeqVar {
+  #[inline(always)]
+  fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+    let idx_u32: u32 = idx.try_into().unwrap();
+    let len = unsafe { self.0.payload.__bindgen_anon_1.seqValue.len };
+    if idx_u32 < len {
+      unsafe {
+        &mut *self
+          .0
+          .payload
+          .__bindgen_anon_1
+          .seqValue
+          .elements
+          .offset(idx.try_into().unwrap())
+      }
+    } else {
+      panic!("Index out of range");
+    }
+  }
+}
+
+impl SeqVar {
+  pub fn new() -> SeqVar {
+    SeqVar {
+      0: Var {
+        payload: SHVarPayload {
+          __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+            seqValue: SHSeq {
+              elements: 0 as *mut SHVar,
+              len: 0,
+              cap: 0,
+            },
+          },
+        },
+        valueType: SHType_Seq,
+        ..Default::default()
+      },
+    }
+  }
+
+  pub fn set_len(&mut self, len: usize) {
+    unsafe {
+      (*Core).seqResize.unwrap()(
+        &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
+        len.try_into().unwrap(),
+      );
+    }
+  }
+
+  pub fn push<'a>(&'a mut self, value: &Var) {
+    // we need to clone to own the memory shards side
+    let idx = self.len();
+    self.set_len(idx + 1);
+    cloneVar(&mut self[idx], &value);
+  }
+
+  pub fn insert<'a>(&'a mut self, index: usize, value: &Var) {
+    // we need to clone to own the memory shards side
+    let mut tmp = SHVar::default();
+    cloneVar(&mut tmp, &value);
+    unsafe {
+      (*Core).seqInsert.unwrap()(
+        &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
+        index.try_into().unwrap(),
+        &tmp,
+      );
+    }
+  }
+
+  pub fn len(&self) -> usize {
+    unsafe {
+      self
+        .0
+        .payload
+        .__bindgen_anon_1
+        .seqValue
+        .len
+        .try_into()
+        .unwrap()
+    }
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.len() == 0
+  }
+
+  pub fn pop(&mut self) -> Option<ClonedVar> {
+    unsafe {
+      if !self.is_empty() {
+        let v = (*Core).seqPop.unwrap()(
+          &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
+        );
+        Some(transmute(v))
+      } else {
+        None
+      }
+    }
+  }
+
+  pub fn remove(&mut self, index: usize) {
+    unsafe {
+      (*Core).seqSlowDelete.unwrap()(
+        &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
+        index.try_into().unwrap(),
+      );
+    }
+  }
+
+  pub fn remove_fast(&mut self, index: usize) {
+    unsafe {
+      (*Core).seqFastDelete.unwrap()(
+        &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
+        index.try_into().unwrap(),
+      );
+    }
+  }
+
+  pub fn clear(&mut self) {
+    unsafe {
+      (*Core).seqResize.unwrap()(
+        &self.0.payload.__bindgen_anon_1.seqValue as *const SHSeq as *mut SHSeq,
+        0,
+      );
+    }
+  }
+
+  pub fn iter(&self) -> SeqVarIterator {
+    SeqVarIterator { s: self, i: 0 }
+  }
+}
+
 // Seq / SHSeq
 
 #[derive(Clone)]
@@ -4284,11 +4511,9 @@ impl Seq {
 
   pub fn push<'a>(&'a mut self, value: &Var) {
     // we need to clone to own the memory shards side
-    let mut tmp = SHVar::default();
-    cloneVar(&mut tmp, &value);
-    unsafe {
-      (*Core).seqPush.unwrap()(&self.s as *const SHSeq as *mut SHSeq, &tmp);
-    }
+    let idx = self.len();
+    self.set_len(idx + 1);
+    cloneVar(&mut self[idx], &value);
   }
 
   pub fn insert<'a>(&'a mut self, index: usize, value: &Var) {
