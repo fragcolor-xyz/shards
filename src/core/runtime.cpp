@@ -2187,10 +2187,11 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       dst.valueType = SHType::Seq;
     }
 
+    shards::arrayResize(dst.payload.seqValue, srcLen);
+
     if (src.payload.seqValue.elements == dst.payload.seqValue.elements)
       return;
 
-    shards::arrayResize(dst.payload.seqValue, srcLen);
     for (uint32_t i = 0; i < srcLen; i++) {
       const auto &subsrc = src.payload.seqValue.elements[i];
       cloneVar(dst.payload.seqValue.elements[i], subsrc);
