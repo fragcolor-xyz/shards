@@ -4097,9 +4097,8 @@ macro_rules! shenum_types {
 
 // Strings / SHStrings
 
-#[derive(Clone)]
 pub struct Strings {
-  pub(crate) s: SHStrings,
+  pub(crate) s: SHStrings, // Don't derive clone, won't work, it will double free
   owned: bool,
 }
 
@@ -4410,9 +4409,8 @@ impl SeqVar {
 
 // Seq / SHSeq
 
-#[derive(Clone)]
 pub struct Seq {
-  s: SHSeq,
+  s: SHSeq, // Don't derive clone, won't work, it will double free
   owned: bool,
 }
 
@@ -4787,9 +4785,8 @@ impl TableVar {
 
 // Table / SHTable
 
-#[derive(Clone)]
 pub struct Table {
-  pub t: SHTable,
+  pub t: SHTable, // note, don't derive clone... cos won't work
   owned: bool,
 }
 
