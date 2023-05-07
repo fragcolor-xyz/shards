@@ -4675,7 +4675,7 @@ impl TableVar {
         Some(old)
       } else {
         let p = (*t.api).tableAt.unwrap()(t, cstr);
-        *p = *v;
+        cloneVar(&mut *p, &v);
         None
       }
     }
@@ -4847,7 +4847,7 @@ impl Table {
         Some(old)
       } else {
         let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
-        *p = *v;
+        cloneVar(&mut *p, &v);
         None
       }
     }
