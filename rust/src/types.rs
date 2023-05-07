@@ -4326,14 +4326,14 @@ impl SeqVar {
     }
   }
 
-  pub fn push<'a>(&'a mut self, value: &Var) {
+  pub fn push(&mut self, value: &Var) {
     // we need to clone to own the memory shards side
     let idx = self.len();
     self.set_len(idx + 1);
     cloneVar(&mut self[idx], &value);
   }
 
-  pub fn insert<'a>(&'a mut self, index: usize, value: &Var) {
+  pub fn insert(&mut self, index: usize, value: &Var) {
     // we need to clone to own the memory shards side
     let mut tmp = SHVar::default();
     cloneVar(&mut tmp, &value);
@@ -4525,14 +4525,14 @@ impl Seq {
     }
   }
 
-  pub fn push<'a>(&'a mut self, value: &Var) {
+  pub fn push(&mut self, value: &Var) {
     // we need to clone to own the memory shards side
     let idx = self.len();
     self.set_len(idx + 1);
     cloneVar(&mut self[idx], &value);
   }
 
-  pub fn insert<'a>(&'a mut self, index: usize, value: &Var) {
+  pub fn insert(&mut self, index: usize, value: &Var) {
     // we need to clone to own the memory shards side
     let mut tmp = SHVar::default();
     cloneVar(&mut tmp, &value);
@@ -4664,7 +4664,7 @@ impl TryFrom<&Var> for Seq {
 pub struct TableVar(Var);
 
 impl TableVar {
-  pub fn insert<'a>(&'a mut self, k: &'a CString, v: &Var) -> Option<Var> {
+  pub fn insert(&mut self, k: &CString, v: &Var) -> Option<Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
@@ -4681,7 +4681,7 @@ impl TableVar {
     }
   }
 
-  pub fn insert_fast<'a>(&'a mut self, k: &'a CString, v: &Var) {
+  pub fn insert_fast(&mut self, k: &CString, v: &Var) {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
@@ -4690,7 +4690,7 @@ impl TableVar {
     }
   }
 
-  pub fn insert_fast_static<'a>(&'a mut self, k: &'static str, v: &Var) {
+  pub fn insert_fast_static(&mut self, k: &str, v: &Var) {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let cstr = k.as_ptr() as *const std::os::raw::c_char;
@@ -4837,7 +4837,7 @@ impl Table {
     }
   }
 
-  pub fn insert<'a>(&'a mut self, k: &'a CString, v: &Var) -> Option<Var> {
+  pub fn insert(&mut self, k: &CString, v: &Var) -> Option<Var> {
     unsafe {
       let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
@@ -4853,7 +4853,7 @@ impl Table {
     }
   }
 
-  pub fn insert_fast<'a>(&'a mut self, k: &'a CString, v: &Var) {
+  pub fn insert_fast(&mut self, k: &CString, v: &Var) {
     unsafe {
       let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
       let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
@@ -4861,7 +4861,7 @@ impl Table {
     }
   }
 
-  pub fn insert_fast_static<'a>(&'a mut self, k: &'static str, v: &Var) {
+  pub fn insert_fast_static(&mut self, k: &str, v: &Var) {
     unsafe {
       let cstr = k.as_ptr() as *const std::os::raw::c_char;
       let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
