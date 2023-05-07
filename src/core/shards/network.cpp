@@ -74,14 +74,14 @@ struct NetworkPeer {
     }
   }
 
-  std::optional<udp::endpoint> endpoint;
-  ikcpcb *kcp;
-  Serialization des;
-  OwnedVar payload;
+  std::optional<udp::endpoint> endpoint{};
+  ikcpcb *kcp = nullptr;
+  Serialization des{};
+  OwnedVar payload{};
 
   SHTime _start = SHClock::now();
 
-  void *user;
+  void *user = nullptr;
 };
 
 struct NetworkBase {
@@ -310,8 +310,10 @@ struct Server : public NetworkBase {
     for (auto &[end, peer] : _end2Peer) {
       peer.maybeUpdate();
 
+      setPeer(context, peer);
+
       auto nextSize = ikcp_peeksize(peer.kcp);
-      if (nextSize > 0) {
+      while (nextSize > 0) {
         _buffer.resize(nextSize);
         auto size = ikcp_recv(peer.kcp, (char *)_buffer.data(), nextSize);
         assert(size == nextSize);
@@ -322,8 +324,9 @@ struct Server : public NetworkBase {
         peer.des.deserialize(r, peer.payload);
 
         SHVar output{};
-        setPeer(context, peer);
         activateShards(SHVar(_blks).payload.seqValue, context, peer.payload, output);
+
+        nextSize = ikcp_peeksize(peer.kcp);
       }
     }
 
