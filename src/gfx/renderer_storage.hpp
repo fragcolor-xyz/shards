@@ -4,7 +4,7 @@
 #include "fwd.hpp"
 #include "worker_memory.hpp"
 #include "render_graph.hpp"
-#include "texture_cache.hpp"
+#include "texture_view_cache.hpp"
 #include "drawable_processor.hpp"
 
 namespace gfx::detail {

@@ -13,11 +13,6 @@ namespace gfx {
 // TODO: Rename to BaseType
 // TODO: Move to shader namespace
 enum class ShaderFieldBaseType { Bool, UInt8, Int8, UInt16, Int16, UInt32, Int32, Float16, Float32 };
-enum class ShaderTextureFormat {
-  Int32,
-  UInt32,
-  Float32,
-};
 bool isIntegerType(const ShaderFieldBaseType &type);
 bool isFloatType(const ShaderFieldBaseType &type);
 size_t getByteSize(const ShaderFieldBaseType &type);
@@ -26,10 +21,10 @@ size_t getWGSLAlignment(const ShaderFieldBaseType &type);
 namespace shader {
 struct TextureFieldType {
   gfx::TextureDimension dimension = gfx::TextureDimension::D2;
-  ShaderTextureFormat format = ShaderTextureFormat::Float32;
+  TextureSampleType format = TextureSampleType::Float;
 
   TextureFieldType() = default;
-  TextureFieldType(gfx::TextureDimension dimension, ShaderTextureFormat format = ShaderTextureFormat::Float32)
+  TextureFieldType(gfx::TextureDimension dimension, TextureSampleType format = TextureSampleType::Float)
       : dimension(dimension), format(format) {}
 
   std::strong_ordering operator<=>(const TextureFieldType &other) const = default;

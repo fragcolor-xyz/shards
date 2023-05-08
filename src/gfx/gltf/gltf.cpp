@@ -399,12 +399,13 @@ struct Loader {
       }
 
       int2 resolution(gltfImage.width, gltfImage.height);
-      texture->init(TextureDesc{
-          .format = convertTextureFormat(gltfImage),
-          .resolution = resolution,
-          .samplerState = samplerState,
-          .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
-      });
+      texture
+          ->init(TextureDesc{
+              .format = convertTextureFormat(gltfImage),
+              .resolution = resolution,
+              .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
+          })
+          .initWithSamplerState(samplerState);
     }
   }
 

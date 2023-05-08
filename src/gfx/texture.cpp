@@ -33,10 +33,7 @@ Texture &Texture::init(const TextureDesc &desc) {
 }
 
 Texture &Texture::initWithSamplerState(const SamplerState &samplerState) {
-  if (desc.samplerState != samplerState) {
-    desc.samplerState = samplerState;
-    contextData.reset();
-  }
+  this->samplerState = samplerState;
   return *this;
 }
 
@@ -74,20 +71,6 @@ std::shared_ptr<Texture> Texture::clone() const {
   auto result = cloneSelfWithId(this, getNextId());
   result->contextData.reset();
   return result;
-}
-
-static WGPUSampler createSampler(Context &context, SamplerState samplerState, size_t mipLevels) {
-  WGPUSamplerDescriptor desc{};
-  desc.addressModeU = samplerState.addressModeU;
-  desc.addressModeV = samplerState.addressModeV;
-  desc.addressModeW = samplerState.addressModeW;
-  desc.lodMinClamp = 0;
-  desc.lodMaxClamp = mipLevels;
-  desc.magFilter = samplerState.filterMode;
-  desc.minFilter = samplerState.filterMode;
-  desc.mipmapFilter = (mipLevels > 0) ? WGPUMipmapFilterMode_Linear : WGPUMipmapFilterMode_Nearest;
-  desc.maxAnisotropy = 1;
-  return wgpuDeviceCreateSampler(context.wgpuDevice, &desc);
 }
 
 static void writeTextureData(Context &context, const TextureFormat &format, const int2 &resolution, uint32_t numArrayLayers,
@@ -174,9 +157,6 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
       writeTextureData(context, desc.format, desc.resolution, contextData.size.depthOrArrayLayers, contextData.texture,
                        desc.data);
   }
-
-  contextData.sampler = createSampler(context, desc.samplerState, desc.format.mipLevels);
-  assert(contextData.sampler);
 }
 
 void Texture::updateContextData(Context &context, TextureContextData &contextData) {}

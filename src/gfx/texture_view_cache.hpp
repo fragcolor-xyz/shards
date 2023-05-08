@@ -1,12 +1,11 @@
 #ifndef A569D4E8_ACA8_49B1_9D91_A7936E698D61
 #define A569D4E8_ACA8_49B1_9D91_A7936E698D61
 
-#include "boost/container_hash/hash_fwd.hpp"
 #include "fwd.hpp"
-#include "gfx/enums.hpp"
-#include "gfx/render_target.hpp"
-#include "gfx/wgpu_handle.hpp"
-#include "gfx/renderer_cache.hpp"
+#include "enums.hpp"
+#include "render_target.hpp"
+#include "wgpu_handle.hpp"
+#include "renderer_cache.hpp"
 #include "texture.hpp"
 #include "gfx_wgpu.hpp"
 #include <compare>
@@ -52,7 +51,6 @@ struct TextureViewKey {
 };
 
 struct TextureViewCache {
-
   struct Entry {
     WgpuHandle<WGPUTextureView> view;
     size_t lastTouched{};

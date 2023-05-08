@@ -10,8 +10,9 @@ namespace gfx {
 
 typedef std::map<WGPUTextureFormat, TextureFormatDesc> TextureFormatMap;
 
-TextureFormatDesc::TextureFormatDesc(StorageType storageType, size_t numComponents, TextureFormatUsage usage)
-    : storageType(storageType), numComponents(numComponents), usage(usage) {
+TextureFormatDesc::TextureFormatDesc(StorageType storageType, size_t numComponents, TextureSampleType compatibleSampleTypes,
+                                     TextureFormatUsage usage)
+    : storageType(storageType), numComponents(numComponents), compatibleSampleTypes(compatibleSampleTypes), usage(usage) {
   if (storageType == StorageType::Invalid)
     pixelSize = 0;
   else
@@ -21,57 +22,62 @@ TextureFormatDesc::TextureFormatDesc(StorageType storageType, size_t numComponen
 static const TextureFormatMap &getTextureFormatMap() {
   static TextureFormatMap instance = []() {
     return TextureFormatMap{
-        {WGPUTextureFormat_R8Unorm, {StorageType::UNorm8, 1}},
         // u8x1
-        {WGPUTextureFormat_R8Snorm, {StorageType::SNorm8, 1}},
-        {WGPUTextureFormat_R8Uint, {StorageType::UInt8, 1}},
-        {WGPUTextureFormat_R8Sint, {StorageType::Int8, 1}},
+        {WGPUTextureFormat_R8Unorm, {StorageType::UNorm8, 1, TextureSampleType::Float}},
+        {WGPUTextureFormat_R8Snorm, {StorageType::SNorm8, 1, TextureSampleType::Float}},
+        {WGPUTextureFormat_R8Uint, {StorageType::UInt8, 1, TextureSampleType::UInt}},
+        {WGPUTextureFormat_R8Sint, {StorageType::Int8, 1, TextureSampleType::Int}},
         // u8x2
-        {WGPUTextureFormat_RG8Unorm, {StorageType::UNorm8, 2}},
-        {WGPUTextureFormat_RG8Snorm, {StorageType::SNorm8, 2}},
-        {WGPUTextureFormat_RG8Uint, {StorageType::UInt8, 2}},
-        {WGPUTextureFormat_RG8Sint, {StorageType::Int8, 2}},
+        {WGPUTextureFormat_RG8Unorm, {StorageType::UNorm8, 2, TextureSampleType::Float}},
+        {WGPUTextureFormat_RG8Snorm, {StorageType::SNorm8, 2, TextureSampleType::Float}},
+        {WGPUTextureFormat_RG8Uint, {StorageType::UInt8, 2, TextureSampleType::UInt}},
+        {WGPUTextureFormat_RG8Sint, {StorageType::Int8, 2, TextureSampleType::Int}},
         // u8x4
-        {WGPUTextureFormat_RGBA8Unorm, {StorageType::UNorm8, 4}},
-        {WGPUTextureFormat_RGBA8UnormSrgb, {StorageType::UNorm8, 4}},
-        {WGPUTextureFormat_RGBA8Snorm, {StorageType::SNorm8, 4}},
-        {WGPUTextureFormat_RGBA8Uint, {StorageType::UInt8, 4}},
-        {WGPUTextureFormat_RGBA8Sint, {StorageType::Int8, 4}},
-        {WGPUTextureFormat_BGRA8Unorm, {StorageType::UNorm8, 4}},
-        {WGPUTextureFormat_BGRA8UnormSrgb, {StorageType::UNorm8, 4}},
+        {WGPUTextureFormat_RGBA8Unorm, {StorageType::UNorm8, 4, TextureSampleType::Float}},
+        {WGPUTextureFormat_RGBA8UnormSrgb, {StorageType::UNorm8, 4, TextureSampleType::Float}},
+        {WGPUTextureFormat_RGBA8Snorm, {StorageType::SNorm8, 4, TextureSampleType::Float}},
+        {WGPUTextureFormat_RGBA8Uint, {StorageType::UInt8, 4, TextureSampleType::UInt}},
+        {WGPUTextureFormat_RGBA8Sint, {StorageType::Int8, 4, TextureSampleType::Int}},
+        {WGPUTextureFormat_BGRA8Unorm, {StorageType::UNorm8, 4, TextureSampleType::Float}},
+        {WGPUTextureFormat_BGRA8UnormSrgb, {StorageType::UNorm8, 4, TextureSampleType::Float}},
         // u16x1
-        {WGPUTextureFormat_R16Uint, {StorageType::UInt16, 1}},
-        {WGPUTextureFormat_R16Sint, {StorageType::Int16, 1}},
-        {WGPUTextureFormat_R16Float, {StorageType::Float16, 1}},
+        {WGPUTextureFormat_R16Uint, {StorageType::UInt16, 1, TextureSampleType::UInt}},
+        {WGPUTextureFormat_R16Sint, {StorageType::Int16, 1, TextureSampleType::Int}},
+        {WGPUTextureFormat_R16Float, {StorageType::Float16, 1, TextureSampleType::Float}},
         // u16x2
-        {WGPUTextureFormat_RG16Uint, {StorageType::UInt16, 2}},
-        {WGPUTextureFormat_RG16Sint, {StorageType::Int16, 2}},
-        {WGPUTextureFormat_RG16Float, {StorageType::Float16, 2}},
+        {WGPUTextureFormat_RG16Uint, {StorageType::UInt16, 2, TextureSampleType::UInt}},
+        {WGPUTextureFormat_RG16Sint, {StorageType::Int16, 2, TextureSampleType::Int}},
+        {WGPUTextureFormat_RG16Float, {StorageType::Float16, 2, TextureSampleType::Float}},
         // u16x4
-        {WGPUTextureFormat_RGBA16Uint, {StorageType::UInt16, 4}},
-        {WGPUTextureFormat_RGBA16Sint, {StorageType::Int16, 4}},
-        {WGPUTextureFormat_RGBA16Float, {StorageType::Float16, 4}},
+        {WGPUTextureFormat_RGBA16Uint, {StorageType::UInt16, 4, TextureSampleType::UInt}},
+        {WGPUTextureFormat_RGBA16Sint, {StorageType::Int16, 4, TextureSampleType::Int}},
+        {WGPUTextureFormat_RGBA16Float, {StorageType::Float16, 4, TextureSampleType::Float}},
         // u32x1
-        {WGPUTextureFormat_R32Float, {StorageType::UInt32, 1}},
-        {WGPUTextureFormat_R32Uint, {StorageType::Int32, 1}},
-        {WGPUTextureFormat_R32Sint, {StorageType::Float32, 1}},
+        {WGPUTextureFormat_R32Float, {StorageType::UInt32, 1, TextureSampleType::UnfilterableFloat}},
+        {WGPUTextureFormat_R32Uint, {StorageType::Int32, 1, TextureSampleType::Int}},
+        {WGPUTextureFormat_R32Sint, {StorageType::Float32, 1, TextureSampleType::UInt}},
         // u32x2
-        {WGPUTextureFormat_RG32Float, {StorageType::UInt32, 2}},
-        {WGPUTextureFormat_RG32Uint, {StorageType::Int32, 2}},
-        {WGPUTextureFormat_RG32Sint, {StorageType::Float32, 2}},
+        {WGPUTextureFormat_RG32Float, {StorageType::UInt32, 2, TextureSampleType::UnfilterableFloat}},
+        {WGPUTextureFormat_RG32Uint, {StorageType::Int32, 2, TextureSampleType::Int}},
+        {WGPUTextureFormat_RG32Sint, {StorageType::Float32, 2, TextureSampleType::UInt}},
         // u32x4
-        {WGPUTextureFormat_RGBA32Float, {StorageType::UInt32, 4}},
-        {WGPUTextureFormat_RGBA32Uint, {StorageType::Int32, 4}},
-        {WGPUTextureFormat_RGBA32Sint, {StorageType::Float32, 4}},
+        {WGPUTextureFormat_RGBA32Float, {StorageType::UInt32, 4, TextureSampleType::UnfilterableFloat}},
+        {WGPUTextureFormat_RGBA32Uint, {StorageType::Int32, 4, TextureSampleType::Int}},
+        {WGPUTextureFormat_RGBA32Sint, {StorageType::Float32, 4, TextureSampleType::UInt}},
         // Depth(+stencil) formats
-        {WGPUTextureFormat_Depth32Float, {StorageType::Invalid, 0, TextureFormatUsage::Depth}},
-        {WGPUTextureFormat_Depth24Plus, {StorageType::Invalid, 0, TextureFormatUsage::Depth}},
-        {WGPUTextureFormat_Depth16Unorm, {StorageType::UNorm16, 2, TextureFormatUsage::Depth}},
-        {WGPUTextureFormat_Stencil8, {StorageType::UInt8, 1, TextureFormatUsage::Stencil}},
+        {WGPUTextureFormat_Depth32Float,
+         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat, TextureFormatUsage::Depth}},
+        {WGPUTextureFormat_Depth24Plus,
+         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat, TextureFormatUsage::Depth}},
+        {WGPUTextureFormat_Depth16Unorm,
+         {StorageType::UNorm16, 2, TextureSampleType::UnfilterableFloat, TextureFormatUsage::Depth}},
+        {WGPUTextureFormat_Stencil8, {StorageType::UInt8, 1, TextureSampleType::UInt, TextureFormatUsage::Stencil}},
         {WGPUTextureFormat_Depth32FloatStencil8,
-         {StorageType::Invalid, 0, TextureFormatUsage::Depth | TextureFormatUsage::Stencil}},
+         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat,
+          TextureFormatUsage::Depth | TextureFormatUsage::Stencil}},
         {WGPUTextureFormat_Depth24PlusStencil8,
-         {StorageType::Invalid, 0, TextureFormatUsage::Depth | TextureFormatUsage::Stencil}},
+         {StorageType::Invalid, 0, TextureSampleType::UnfilterableFloat,
+          TextureFormatUsage::Depth | TextureFormatUsage::Stencil}},
     };
   }();
   return instance;
@@ -248,6 +254,21 @@ WGPUIndexFormat getWGPUIndexFormat(const IndexFormat &type) {
     return WGPUIndexFormat_Uint32;
   default:
     throw std::out_of_range(std::string(NAMEOF_TYPE(IndexFormat)));
+  }
+}
+
+WGPUTextureSampleType getWGPUSampleType(TextureSampleType type) {
+  switch (type) {
+  case TextureSampleType::Float:
+    return WGPUTextureSampleType_Float;
+  case TextureSampleType::Int:
+    return WGPUTextureSampleType_Sint;
+  case TextureSampleType::UInt:
+    return WGPUTextureSampleType_Uint;
+  case TextureSampleType::UnfilterableFloat:
+    return WGPUTextureSampleType_UnfilterableFloat;
+  default:
+    throw std::out_of_range(std::string(NAMEOF_TYPE(TextureSampleType)));
   }
 }
 } // namespace gfx

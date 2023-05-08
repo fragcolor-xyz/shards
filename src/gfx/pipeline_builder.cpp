@@ -259,7 +259,7 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
       textureBinding.binding = desc.binding;
       textureBinding.visibility = WGPUShaderStage_Fragment;
       textureBinding.texture.multisampled = false;
-      textureBinding.texture.sampleType = WGPUTextureSampleType_Float;
+      textureBinding.texture.sampleType = getWGPUSampleType(desc.type.format);
       switch (desc.type.dimension) {
       case TextureDimension::D1:
         textureBinding.texture.viewDimension = WGPUTextureViewDimension_1D;
@@ -275,7 +275,9 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
       WGPUBindGroupLayoutEntry &samplerBinding = bindGroupLayoutEntries.emplace_back();
       samplerBinding.binding = desc.defaultSamplerBinding;
       samplerBinding.visibility = WGPUShaderStage_Fragment;
-      samplerBinding.sampler.type = WGPUSamplerBindingType_Filtering;
+      samplerBinding.sampler.type = desc.type.format == TextureSampleType::Float
+                                        ? WGPUSamplerBindingType_Filtering
+                                        : WGPUSamplerBindingType_NonFiltering;
     }
 
     WGPUBindGroupLayoutDescriptor desc{

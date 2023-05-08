@@ -87,6 +87,7 @@ TestFrame TestRenderer::getTestFrame() {
   WGPUImageCopyBuffer dst{};
   dst.buffer = tempBuffer;
   dst.layout.bytesPerRow = bufferPitch;
+  dst.layout.rowsPerImage = WGPU_COPY_STRIDE_UNDEFINED;
   WGPUExtent3D extent{};
   extent.width = rtSize.x;
   extent.height = rtSize.y;

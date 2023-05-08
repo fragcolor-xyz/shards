@@ -6,6 +6,7 @@
 #include "../renderer_storage.hpp"
 #include "../shader/types.hpp"
 #include "../texture_placeholder.hpp"
+#include "../sampler_cache.hpp"
 #include "../pmr/list.hpp"
 #include "../pmr/unordered_map.hpp"
 #include "drawable_processor_helpers.hpp"
@@ -22,7 +23,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     size_t queueIndex{}; // Original index in the queue
     MeshContextData *mesh{};
     std::optional<int4> clipRect{};
-    shards::pmr::vector<TextureContextData *> textures;
+    shards::pmr::vector<TextureData> textures;
     ParameterStorage parameters; // TODO: Load values directly into buffer
     float projectedDepth{};      // Projected view depth, only calculated when sorting by depth
 
@@ -95,6 +96,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   WGPUSupportedLimits limits{};
 
   TextureViewCache textureViewCache;
+  SamplerCache samplerCache;
   size_t frameCounter{};
 
   TexturePtr placeholderTextures[3]{
@@ -104,7 +106,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   };
 
   MeshDrawableProcessor(Context &context)
-      : drawBufferPool(getDrawBufferInitializer(context)), viewBufferPool(getViewBufferInitializer(context)) {
+      : drawBufferPool(getDrawBufferInitializer(context)), viewBufferPool(getViewBufferInitializer(context)),
+        samplerCache(context.wgpuDevice) {
     wgpuDeviceGetLimits(context.wgpuDevice, &limits);
   }
 
@@ -193,11 +196,11 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     data.textures.resize(textureBindings.size());
 
     auto setTextureParameter = [&](const char *name, const TexturePtr &texture) {
-      gfx::detail::setTextureParameter(textureBindings, data.textures, context, name, texture);
+      gfx::detail::setTextureParameter(textureBindings, data.textures, context, samplerCache, frameCounter, name, texture);
     };
 
     auto applyParameters = [&](const auto &srcParams) {
-      gfx::detail::applyParameters(textureBindings, data.textures, context, parameters, srcParams);
+      gfx::detail::applyParameters(textureBindings, data.textures, context, samplerCache, frameCounter, parameters, srcParams);
     };
 
     // NOTE : The parameters below are ordered by priority, so later entries overwrite previous entries
@@ -232,12 +235,27 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     data.mesh = meshContextData.get();
     data.clipRect = meshDrawable.clipRect;
 
+    // Validate texture bindings
+    for (size_t i = 0; i < textureBindings.size(); i++) {
+      auto textureData = data.textures[i].data;
+      if (textureData) {
+        auto &binding = textureBindings[i];
+        auto expectedFormat = binding.type.format;
+        auto expectedSampleTypes = getTextureFormatDescription(textureData->format.pixelFormat).compatibleSampleTypes;
+        if ((uint8_t(expectedSampleTypes) & uint8_t(expectedFormat)) == 0) {
+          throw std::runtime_error(
+              fmt::format("Texture format mismatch on {}, expected a {} sample, but format {} does not support it", binding.name,
+                          magic_enum::enum_name(expectedSampleTypes), magic_enum::enum_name(textureData->format.pixelFormat)));
+        }
+      }
+    }
+
     // Generate grouping hash
     HasherXXH128<HasherDefaultVisitor> hasher;
     hasher(size_t(data.mesh));
     hasher(data.clipRect);
     for (auto &texture : data.textures)
-      hasher(size_t(texture));
+      hasher(size_t(texture.id));
     data.groupHash = hasher.getDigest();
   }
 
@@ -348,7 +366,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
           // Generate texture binding hash
           HasherXXH128<HasherDefaultVisitor> hasher;
           for (auto &texture : firstDrawableData.textures)
-            hasher(texture ? size_t(texture) : size_t(0));
+            hasher(texture ? size_t(texture.id) : size_t(0));
           hasher(group.numInstances);
           groupData.bindGroupHash = hasher.getDigest();
         }
@@ -446,13 +464,13 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
             auto &binding = cachedPipeline.textureBindingLayout.bindings[i];
             auto texture = firstDrawableData.textures[i];
             if (texture) {
-              drawBindGroupBuilder.addTextureBinding(binding, textureViewCache.getDefaultTextureView(frameCounter, *texture),
-                                                     texture->sampler);
+              drawBindGroupBuilder.addTextureBinding(binding, textureViewCache.getDefaultTextureView(frameCounter, *texture.data),
+                                                     texture.sampler);
             } else {
               auto &placeholder = placeholderTextures[size_t(binding.type.dimension)];
+              WGPUSampler sampler = samplerCache.getDefaultSampler(frameCounter, true, placeholder);
               drawBindGroupBuilder.addTextureBinding(
-                  binding, textureViewCache.getDefaultTextureView(frameCounter, *placeholder->contextData.get()),
-                  placeholder->contextData->sampler);
+                  binding, textureViewCache.getDefaultTextureView(frameCounter, *placeholder->contextData.get()), sampler);
             }
           }
 

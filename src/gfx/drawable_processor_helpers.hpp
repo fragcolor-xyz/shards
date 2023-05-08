@@ -3,6 +3,7 @@
 
 #include "renderer_types.hpp"
 #include "drawable_processor.hpp"
+#include "sampler_cache.hpp"
 #include "view.hpp"
 #include "gfx_wgpu.hpp"
 #include "platform.hpp"
@@ -123,6 +124,14 @@ inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &vie
                                           float(viewData.viewport.height)));
 }
 
+struct TextureData {
+  const TextureContextData *data{};
+  WGPUSampler sampler{};
+  UniqueId id{};
+
+  operator bool() const { return data != nullptr; }
+};
+
 template <typename TTextureBindings>
 auto mapTextureBinding(const TTextureBindings &textureBindings, const char *name) -> int32_t {
   auto it = std::find_if(textureBindings.begin(), textureBindings.end(), [&](auto it) { return it.name == name; });
@@ -132,21 +141,24 @@ auto mapTextureBinding(const TTextureBindings &textureBindings, const char *name
 };
 
 template <typename TTextureBindings, typename TOutTextures>
-auto setTextureParameter(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context, const char *name,
-                         const TexturePtr &texture) {
+auto setTextureParameter(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context,
+                         SamplerCache &samplerCache, size_t frameCounter, const char *name, const TexturePtr &texture) {
   int32_t targetSlot = mapTextureBinding(textureBindings, name);
   if (targetSlot >= 0) {
-    outTextures[targetSlot] = &texture->createContextDataConditional(context);
+    bool isFilterable = textureBindings[targetSlot].type.format == TextureSampleType::Float;
+    outTextures[targetSlot].data = &texture->createContextDataConditional(context);
+    outTextures[targetSlot].sampler = samplerCache.getDefaultSampler(frameCounter, isFilterable, texture);
+    outTextures[targetSlot].id = texture->getId();
   }
 };
 
 template <typename TTextureBindings, typename TOutTextures, typename TSrc>
 auto applyParameters(const TTextureBindings &textureBindings, TOutTextures &outTextures, Context &context,
-                     ParameterStorage &dstParams, const TSrc &srcParam) {
+                     SamplerCache &samplerCache, size_t frameCounter, ParameterStorage &dstParams, const TSrc &srcParam) {
   for (auto &param : srcParam.basic)
     dstParams.setParam(param.first.c_str(), param.second);
   for (auto &param : srcParam.textures)
-    setTextureParameter(textureBindings, outTextures, context, param.first.c_str(), param.second.texture);
+    setTextureParameter(textureBindings, outTextures, context, samplerCache, frameCounter, param.first.c_str(), param.second.texture);
 };
 
 } // namespace gfx::detail

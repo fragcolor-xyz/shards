@@ -12,6 +12,7 @@
 #include <variant>
 #include <optional>
 #include <string>
+#include <boost/container_hash/hash_fwd.hpp>
 
 namespace gfx {
 struct SamplerState {
@@ -27,7 +28,16 @@ struct SamplerState {
     hasher(filterMode);
   }
 
-  std::strong_ordering operator<=>(const SamplerState &other) const = default;
+  std::strong_ordering operator<=>(const SamplerState &) const = default;
+
+  friend size_t hash_value(SamplerState const &v) {
+    size_t result{};
+    boost::hash_combine(result, uint32_t(v.addressModeU));
+    boost::hash_combine(result, uint32_t(v.addressModeV));
+    boost::hash_combine(result, uint32_t(v.addressModeW));
+    boost::hash_combine(result, uint32_t(v.filterMode));
+    return result;
+  }
 };
 
 struct TextureFormat {
@@ -49,7 +59,6 @@ struct InputTextureFormat {
 struct TextureContextData : public ContextData {
   TextureFormat format;
   WGPUTexture texture{};
-  WGPUSampler sampler{};
   WGPUExtent3D size{};
 
   // Only set for externally managed texture views
@@ -59,7 +68,6 @@ struct TextureContextData : public ContextData {
 
   void releaseContextData() override {
     WGPU_SAFE_RELEASE(wgpuTextureRelease, texture);
-    WGPU_SAFE_RELEASE(wgpuSamplerRelease, sampler);
   }
 };
 
@@ -67,7 +75,6 @@ struct TextureContextData : public ContextData {
 struct TextureDesc {
   TextureFormat format;
   int2 resolution;
-  SamplerState samplerState;
   ImmutableSharedBuffer data;
 
   // Can wrap an already existing texture if this is passed
@@ -84,6 +91,7 @@ struct Texture final : public TWithContextData<TextureContextData> {
 private:
   UniqueId id = getNextId();
   TextureDesc desc = TextureDesc::getDefault();
+  SamplerState samplerState{};
   std::string label;
 
   friend struct gfx::UpdateUniqueId<Texture>;
@@ -101,6 +109,7 @@ public:
   /// <div rustbindgen hide></div>
   Texture &initWithLabel(std::string &&label);
 
+  SamplerState &getSamplerState() { return samplerState; }
   const std::string &getLabel() const { return label; }
   const TextureDesc &getDesc() const { return desc; }
   ImmutableSharedBuffer getData() const { return desc.data; }
