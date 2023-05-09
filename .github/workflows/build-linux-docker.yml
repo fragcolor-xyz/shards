@@ -18,21 +18,30 @@ jobs:
           repository: fragcolor-xyz/shards
           fetch-depth: 1
           submodules: recursive
+      - name: Set up environment variables
+        shell: bash
+        env:
+          RUSTUP_USE_CURL: 1
+        run: |
+          RUSTUP_TOOLCHAIN=`cat rust.version`
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN"
       - name: Build and upload to hub devel image
-        uses: shards-lang/Publish-Docker-Github-Action@master
+        uses: elgohr/Publish-Docker-Github-Action@v5
         with:
           name: chainblocks/devenv
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           dockerfile: docker/linux/Dockerfile
           tags: "latest"
+          buildargs: RUSTUP_TOOLCHAIN
       - name: Build and Test
         run: |
           docker run --name shards -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja shards && ./shards ../src/tests/general.edn && ./shards ../src/tests/variables.edn && ./shards ../src/tests/linalg.clj && ./shards ../src/tests/channels.clj"
           mkdir build
           docker cp shards:/home/shards/repo/build/shards ./build/shards
       - name: Build and upload to hub runtime image
-        uses: shards-lang/Publish-Docker-Github-Action@master
+        uses: elgohr/Publish-Docker-Github-Action@v5
         if: ${{ github.ref == 'refs/heads/devel' && github.event_name == 'push' }}
         with:
           name: chainblocks/shards
