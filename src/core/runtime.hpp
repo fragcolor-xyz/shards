@@ -209,6 +209,8 @@ namespace shards {
 
 bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData);
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict);
+void triggerVarValueChange(SHWireRef wire, const SHVar *name, const SHVar *var);
+void triggerVarValueChange(SHWire *wire, const SHVar *name, const SHVar *var);
 
 void installSignalHandlers();
 

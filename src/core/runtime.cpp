@@ -2741,6 +2741,17 @@ void setString(uint32_t crc, SHString str) {
 }
 
 void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
+
+void triggerVarValueChange(SHWire *wire, const SHVar *name, const SHVar *var) {
+  auto vName = SHSTRVIEW((*name));
+  OnExposedVarSet ev{wire->id, vName, *var};
+  wire->dispatcher.trigger(ev);
+}
+
+void triggerVarValueChange(SHWireRef wire, const SHVar *name, const SHVar *var) {
+  auto &w = SHWire::sharedFromRef(wire);
+  triggerVarValueChange(w.get(), name, var);
+}
 }; // namespace shards
 
 // NO NAMESPACE here!
@@ -2901,10 +2912,7 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
 }
 
 void triggerVarValueChange(SHWireRef wire, const SHVar *name, const SHVar *var) {
-  auto vName = SHSTRVIEW((*name));
-  auto &w = SHWire::sharedFromRef(wire);
-  OnExposedVarSet ev{w->id, vName, *var};
-  w->dispatcher.trigger(ev);
+  shards::triggerVarValueChange(wire, name, var);
 }
 
 SHCore *__cdecl shardsInterface(uint32_t abi_version) {
