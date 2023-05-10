@@ -68,12 +68,13 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install build-essential git cmake wget ninja-build
           ./bootstrap
+          RUSTUP_TOOLCHAIN=`cat rust.version`
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
+          rustup toolchain install $RUSTUP_TOOLCHAIN
+          rustup +$RUSTUP_TOOLCHAIN target add wasm32-unknown-emscripten
           cd emsdk
           ./emsdk install 3.1.31
           ./emsdk activate 3.1.31
-          rustup toolchain install nightly
-          rustup +nightly target add wasm32-unknown-emscripten
-          rustup default nightly
       - name: Set up rust (mt)
         if: ${{ steps.setup.outputs.run-tests == 'true' && steps.setup.outputs.threading == 'mt' }}
         run: |

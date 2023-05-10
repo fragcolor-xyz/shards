@@ -26,8 +26,9 @@ jobs:
       - name: Update rust
         if: ${{ steps.setup.outputs.update-rust == 'true' }}
         run: |
-          rustup toolchain install nightly
-          rustup default nightly
+          RUSTUP_TOOLCHAIN=`cat rust.version`-msvc
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
+          rustup toolchain install $RUSTUP_TOOLCHAIN
       - name: Update dependencies
         if: ${{ steps.setup.outputs.update-apt-packages == 'true' }}
         run: |
