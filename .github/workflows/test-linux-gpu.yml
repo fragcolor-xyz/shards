@@ -89,6 +89,7 @@ jobs:
           echo "Running UI"
           build/shards src/tests/ui-0.edn
           build/shards src/tests/ui-1.edn
+          build/shards src/tests/ui-2.edn
 
           echo "Running UI (nested)"
           build/shards src/tests/ui-nested.edn
