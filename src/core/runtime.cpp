@@ -2742,15 +2742,15 @@ void setString(uint32_t crc, SHString str) {
 
 void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
 
-void triggerVarValueChange(SHWire *wire, const SHVar *name, const SHVar *var) {
-  auto vName = SHSTRVIEW((*name));
-  OnExposedVarSet ev{wire->id, vName, *var};
+void triggerVarValueChange(SHWire *wire, std::string_view name, const SHVar *var) {
+  OnExposedVarSet ev{wire->id, name, *var};
   wire->dispatcher.trigger(ev);
 }
 
 void triggerVarValueChange(SHWireRef wire, const SHVar *name, const SHVar *var) {
   auto &w = SHWire::sharedFromRef(wire);
-  triggerVarValueChange(w.get(), name, var);
+  auto nameStr = SHSTRVIEW((*name));
+  triggerVarValueChange(w.get(), nameStr, var);
 }
 }; // namespace shards
 
