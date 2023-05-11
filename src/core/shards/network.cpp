@@ -79,8 +79,7 @@ struct NetworkPeer {
   std::optional<udp::endpoint> endpoint{};
   ikcpcb *kcp = nullptr;
   Serialization des{};
-  OwnedVar payload{}; // when client
-  SeqVar payloads{};  // when server
+  OwnedVar payload{};
 
   SHTime _start = SHClock::now();
 
@@ -321,6 +320,8 @@ struct Server : public NetworkBase {
 
     std::unique_lock<std::shared_mutex> lock2(peersMutex);
     _end2Peer.erase(*container->endpoint);
+
+    const_cast<SHWire*>(e.wire)->cleanup();
   }
 
   void do_receive() {
@@ -354,21 +355,9 @@ struct Server : public NetworkBase {
                 peer->onStopConnection = peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
               }
 
+              peer->wire->warmup(*_contextCopy);
+
               kcp = peer->kcp;
-
-              auto mesh = (*_contextCopy)->main->mesh.lock();
-              mesh->schedule(peer->wire, peer->payloads, false);
-
-              auto context = peer->wire->context;
-              assert(context); // we now should have a context
-
-              // fix up a few things
-
-              auto parentContext = (*_contextCopy)->anyStorage["Network.Context"].lock();
-              assert(parentContext);
-              context->anyStorage["Network.Context"] = parentContext;
-
-              setPeer(context, *peer);
             } else {
               // existing peer
               kcp = it->second->kcp;
@@ -407,6 +396,8 @@ struct Server : public NetworkBase {
     for (auto &[end, peer] : _end2Peer) {
       peer->maybeUpdate();
 
+      setPeer(context, *peer);
+
       auto nextSize = ikcp_peeksize(peer->kcp);
       while (nextSize > 0) {
         _buffer.resize(nextSize);
@@ -416,12 +407,20 @@ struct Server : public NetworkBase {
         // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
         Reader r((char *)_buffer.data(), nextSize);
         peer->des.reset();
-        auto idx = peer->payloads.size();
-        peer->payloads.resize(idx + 1);
-        peer->des.deserialize(r, peer->payloads[idx]);
+        peer->des.deserialize(r, peer->payload);
 
-        peer->wire->currentInput = peer->payloads;
-        // TODO REVERT THIS, ACTIVATE THIS WIRE IN CONTEXT WHEN NEEDED LIKE A DO!!!
+        // Run within the root flow
+        auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
+        if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
+          // When an error happens disconnect the peer
+          // TODO
+          SHLOG_ERROR("Error running wire: {}", peer->wire->name);
+        } else {
+          // we don't want to propagate a (Return)
+          if (unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
+            context->continueFlow();
+          }
+        }
 
         nextSize = ikcp_peeksize(peer->kcp);
       }
