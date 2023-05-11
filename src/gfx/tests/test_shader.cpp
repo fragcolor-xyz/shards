@@ -227,12 +227,16 @@ TEST_CASE("Shader textures", "[Shader]") {
   textureLayoutBuilder.addOrUpdateSlot("baseColorTexture", TextureDimension::D2, 0);
 
   generator.textureBindingLayout = textureLayoutBuilder.finalize(0);
-  generator.outputFields.emplace_back("color", colorFieldType);
+  generator.outputFields.emplace_back("position", positionFieldType);
 
   std::vector<EntryPoint> entryPoints;
   entryPoints.emplace_back("color", ProgrammableGraphicsStage::Fragment,
                            blocks::WriteOutput("color", colorFieldType, blocks::SampleTexture("baseColorTexture")));
   entryPoints.emplace_back("interpolate", ProgrammableGraphicsStage::Vertex, blocks::DefaultInterpolation());
+
+  // Need dummy position
+  entryPoints.emplace_back("position", ProgrammableGraphicsStage::Vertex,
+                           blocks::makeCompoundBlock(blocks::WriteOutput("position", positionFieldType, "vec4<f32>(0.0)")));
 
   GeneratorOutput output = generator.build(entryPoints);
   SPDLOG_INFO(output.wgslSource);

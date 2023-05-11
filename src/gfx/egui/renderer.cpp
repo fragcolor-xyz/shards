@@ -132,9 +132,8 @@ struct TextureManager {
     texture->init(TextureDesc{
         .format = fmt,
         .resolution = size,
-        .samplerState = sampler,
         .data = std::move(imageData),
-    });
+    }).initWithSamplerState(sampler);
   }
 
   void free(egui::TextureId id) { textures.erase(id.id); }

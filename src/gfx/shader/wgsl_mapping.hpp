@@ -103,13 +103,14 @@ inline String getFieldWGSLTypeName(const NumFieldType &type) {
 inline String getFieldWGSLTypeName(const TextureFieldType &type) {
   const char *textureFormat{};
   switch (type.format) {
-  case ShaderTextureFormat::Int32:
+  case TextureSampleType::Int:
     textureFormat = "i32";
     break;
-  case ShaderTextureFormat::UInt32:
+  case TextureSampleType::UInt:
     textureFormat = "u32";
     break;
-  case ShaderTextureFormat::Float32:
+  case TextureSampleType::Float:
+  case TextureSampleType::UnfilterableFloat:
     textureFormat = "f32";
     break;
   }

@@ -11,6 +11,12 @@ enum class WindingOrder { CW, CCW };
 enum class ProgrammableGraphicsStage { Vertex, Fragment };
 enum class StorageType { Invalid, UInt8, Int8, UNorm8, SNorm8, UInt16, Int16, UNorm16, SNorm16, UInt32, Int32, Float16, Float32 };
 enum class IndexFormat { UInt16, UInt32 };
+enum class TextureSampleType {
+  Int = 1 << 0,
+  UInt = 1 << 1,
+  Float = 1 << 2,
+  UnfilterableFloat = 1 << 3,
+};
 
 enum class TextureFormatFlags : uint8_t {
   None = 0x0,
@@ -58,9 +64,12 @@ struct TextureFormatDesc {
   // Number of bytes per pixel
   uint8_t pixelSize;
 
+  TextureSampleType compatibleSampleTypes;
+
   TextureFormatUsage usage;
 
-  TextureFormatDesc(StorageType storageType, size_t numComponents, TextureFormatUsage usage = TextureFormatUsage::Color);
+  TextureFormatDesc(StorageType storageType, size_t numComponents, TextureSampleType compatibleSampleTypes,
+                    TextureFormatUsage usage = TextureFormatUsage::Color);
 };
 
 // TextureFormat
@@ -69,6 +78,7 @@ size_t getStorageTypeSize(const StorageType &type);
 size_t getIndexFormatSize(const IndexFormat &type);
 WGPUVertexFormat getWGPUVertexFormat(const StorageType &type, size_t dim);
 WGPUIndexFormat getWGPUIndexFormat(const IndexFormat &type);
+WGPUTextureSampleType getWGPUSampleType(TextureSampleType type);
 
 } // namespace gfx
 

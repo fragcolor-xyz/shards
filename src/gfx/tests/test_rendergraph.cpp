@@ -124,7 +124,7 @@ TEST_CASE("Velocity", "[RenderGraph]") {
   MeshDrawable::Ptr drawable;
 
   std::shared_ptr<RenderTarget> rt = std::make_shared<RenderTarget>("testTarget");
-  rt->configure("velocity", WGPUTextureFormat::WGPUTextureFormat_RG8Snorm);
+  rt->configure("velocity", WGPUTextureFormat::WGPUTextureFormat_RG16Float);
 
   transform = linalg::identity;
   drawable = std::make_shared<MeshDrawable>(cubeMesh, transform);

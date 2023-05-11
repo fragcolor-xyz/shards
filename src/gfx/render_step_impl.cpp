@@ -333,6 +333,21 @@ void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const Re
   builder.allocateOutputs(data, step.output ? step.output.value() : defaultFullscreenOutput, overwriteTargets);
 }
 
+static inline TextureSampleType getDefaultTextureSampleType(WGPUTextureFormat pixelFormat) {
+  TextureSampleType compatibleSampleTypes = getTextureFormatDescription(pixelFormat).compatibleSampleTypes;
+  if (uint8_t(compatibleSampleTypes) & uint8_t(TextureSampleType::Float)) {
+    return TextureSampleType::Float;
+  } else if (uint8_t(compatibleSampleTypes) & uint8_t(TextureSampleType::UInt)) {
+    return TextureSampleType::UInt;
+  } else if (uint8_t(compatibleSampleTypes) & uint8_t(TextureSampleType::Int)) {
+    return TextureSampleType::Int;
+  } else if (uint8_t(compatibleSampleTypes) & uint8_t(TextureSampleType::UnfilterableFloat)) {
+    return TextureSampleType::UnfilterableFloat;
+  } else {
+    throw std::logic_error("No default compatible sample type found for texture format");
+  }
+}
+
 void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildData &buildData, const RenderFullscreenStep &step) {
   ZoneScoped;
 
@@ -363,12 +378,15 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
     baseFeature->shaderParams.emplace_back(param.first, param.second);
   }
   for (auto &param : step.parameters.textures) {
-    baseFeature->textureParams.emplace_back(param.first, param.second.texture->getFormat().dimension);
+    auto &textureFormat = param.second.texture->getFormat();
+    auto &entry = baseFeature->textureParams.emplace_back(param.first, textureFormat.dimension);
+    entry.type.format = getDefaultTextureSampleType(textureFormat.pixelFormat);
   }
 
   // Setup node outputs as texture slots
   for (auto &frame : buildData.readsFrom) {
-    baseFeature->textureParams.emplace_back(frame->name);
+    auto &entry = baseFeature->textureParams.emplace_back(frame->name);
+     entry.type.format = getDefaultTextureSampleType(frame->format);
   }
 
   node.encode = [data, &step, drawable](RenderGraphEncodeContext &ctx) {

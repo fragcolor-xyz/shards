@@ -2,7 +2,7 @@
 #define F5756E4F_1B24_4D04_801D_E6D0D0563099
 
 #include "renderer_cache.hpp"
-#include "texture_cache.hpp"
+#include "texture_view_cache.hpp"
 #include "render_graph.hpp"
 
 namespace gfx::detail {

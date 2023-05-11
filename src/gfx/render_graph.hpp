@@ -7,7 +7,7 @@
 #include "render_target.hpp"
 #include "renderer_types.hpp"
 #include "texture.hpp"
-#include "texture_cache.hpp"
+#include "texture_view_cache.hpp"
 #include "fmt.hpp"
 #include "worker_memory.hpp"
 #include "pmr/unordered_set.hpp"
