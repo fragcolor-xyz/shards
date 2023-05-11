@@ -344,7 +344,7 @@ struct Server : public NetworkBase {
               _end2Peer[_sender] = peer;
               peer->endpoint = _sender;
               peer->user = this;
-              peer->kcp->user = &peer;
+              peer->kcp->user = peer.get();
               peer->kcp->output = &Server::udp_output;
               SHLOG_DEBUG("Added new peer: {} port: {}", peer->endpoint->address().to_string(), peer->endpoint->port());
 
@@ -358,6 +358,17 @@ struct Server : public NetworkBase {
 
               auto mesh = (*_contextCopy)->main->mesh.lock();
               mesh->schedule(peer->wire, peer->payloads, false);
+
+              auto context = peer->wire->context;
+              assert(context); // we now should have a context
+
+              // fix up a few things
+
+              auto parentContext = (*_contextCopy)->anyStorage["Network.Context"].lock();
+              assert(parentContext);
+              context->anyStorage["Network.Context"] = parentContext;
+
+              setPeer(context, *peer);
             } else {
               // existing peer
               kcp = it->second->kcp;
@@ -396,8 +407,6 @@ struct Server : public NetworkBase {
     for (auto &[end, peer] : _end2Peer) {
       peer->maybeUpdate();
 
-      setPeer(context, *peer);
-
       auto nextSize = ikcp_peeksize(peer->kcp);
       while (nextSize > 0) {
         _buffer.resize(nextSize);
@@ -411,7 +420,8 @@ struct Server : public NetworkBase {
         peer->payloads.resize(idx + 1);
         peer->des.deserialize(r, peer->payloads[idx]);
 
-        peer->wire->currentInput = peer->payloads[idx];
+        peer->wire->currentInput = peer->payloads;
+        // TODO REVERT THIS, ACTIVATE THIS WIRE IN CONTEXT WHEN NEEDED LIKE A DO!!!
 
         nextSize = ikcp_peeksize(peer->kcp);
       }
@@ -577,17 +587,6 @@ struct Send {
     }
   }
 
-  void warmup(SHContext *context) {
-    auto networkContext = context->anyStorage["Network.Context"].lock();
-    if (!networkContext) {
-      throw WarmupError("Network.Context not set");
-    } else {
-      _contextStorage = networkContext;
-      auto anyPtr = networkContext.get();
-      _context = &entt::any_cast<NetworkContext &>(*anyPtr);
-    }
-  }
-
   NetworkPeer *getPeer(SHContext *context) {
     if (!_peerVar) {
       _peerVar = referenceVariable(context, "Network.Peer");
@@ -603,6 +602,17 @@ struct Send {
   Serialization serializer;
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    if (!_context) {
+      auto networkContext = context->anyStorage["Network.Context"].lock();
+      if (!networkContext) {
+        throw WarmupError("Network.Context not set");
+      } else {
+        _contextStorage = networkContext;
+        auto anyPtr = networkContext.get();
+        _context = &entt::any_cast<NetworkContext &>(*anyPtr);
+      }
+    }
+
     auto peer = getPeer(context);
     NetworkBase::Writer w(&_send_buffer().front(), _send_buffer().size());
     serializer.reset();
