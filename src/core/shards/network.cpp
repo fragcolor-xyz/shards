@@ -313,6 +313,8 @@ struct Server : public NetworkBase {
   void wireOnStop(const SHWire::OnStopEvent &e) {
     SHLOG_TRACE("Wire {} stopped", e.wire->name);
 
+    const_cast<SHWire *>(e.wire)->cleanup();
+
     std::shared_lock<std::shared_mutex> lock(peersMutex);
     auto container = _wire2Peer[e.wire].lock();
     _pool->release(container);
@@ -320,8 +322,6 @@ struct Server : public NetworkBase {
 
     std::unique_lock<std::shared_mutex> lock2(peersMutex);
     _end2Peer.erase(*container->endpoint);
-
-    const_cast<SHWire*>(e.wire)->cleanup();
   }
 
   void do_receive() {
@@ -411,15 +411,10 @@ struct Server : public NetworkBase {
 
         // Run within the root flow
         auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
-        if (unlikely(runRes.state == SHRunWireOutputState::Failed)) {
-          // When an error happens disconnect the peer
-          // TODO
+        if (unlikely(runRes.state == SHRunWireOutputState::Failed) || unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
+          // Always continue, on stop event will cleanup
+          context->continueFlow();
           SHLOG_ERROR("Error running wire: {}", peer->wire->name);
-        } else {
-          // we don't want to propagate a (Return)
-          if (unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
-            context->continueFlow();
-          }
         }
 
         nextSize = ikcp_peeksize(peer->kcp);
@@ -558,7 +553,8 @@ struct Client : public NetworkBase {
       activateShards(SHVar(_blks).payload.seqValue, context, _peer.payload, output);
     }
 
-    // TODO make this output the peer itself so it can be used inside Network.Send to send arbitrary messages without being in context of handler
+    // TODO make this output the peer itself so it can be used inside Network.Send to send arbitrary messages without being in
+    // context of handler
     return input;
   }
 
