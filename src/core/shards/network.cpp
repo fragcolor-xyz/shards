@@ -558,6 +558,7 @@ struct Client : public NetworkBase {
       activateShards(SHVar(_blks).payload.seqValue, context, _peer.payload, output);
     }
 
+    // TODO make this output the peer itself so it can be used inside Network.Send to send arbitrary messages without being in context of handler
     return input;
   }
 
