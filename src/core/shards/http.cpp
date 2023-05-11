@@ -543,7 +543,10 @@ struct Server {
     accept_once(context);
   }
 
-  void cleanup() { _pool->stopAll(); }
+  void cleanup() {
+    if (_pool)
+      _pool->stopAll();
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     try {
@@ -566,7 +569,7 @@ struct Server {
       SHInstanceData data{};
       data.inputType = CoreInfo::StringType;
       data.shared = server._sharedCopy;
-      data.wire = context->wireStack.back();
+      data.wire = wire;
       wire->mesh = context->main->mesh;
       auto res = composeWire(
           wire,

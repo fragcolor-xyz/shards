@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
+#include "shards.h"
+#include <optional>
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include <boost/container/stable_vector.hpp>
 #pragma clang attribute pop
@@ -77,28 +79,24 @@ struct NetworkPeer {
   std::optional<udp::endpoint> endpoint{};
   ikcpcb *kcp = nullptr;
   Serialization des{};
-  OwnedVar payload{};
+  OwnedVar payload{}; // when client
+  SeqVar payloads{};  // when server
 
   SHTime _start = SHClock::now();
 
   void *user = nullptr;
+
+  // used only when Server
+  std::shared_ptr<SHWire> wire;
+  std::optional<entt::connection> onStopConnection;
 };
 
 struct NetworkBase {
-  ShardsVar _blks{};
-
   static inline Type PeerInfo{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
   SHVar *_peerVar = nullptr;
 
   ParamVar _addr{Var("localhost")};
   ParamVar _port{Var(9191)};
-
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Address", SHCCSTR("The local bind address or the remote address."), CoreInfo::StringOrStringVar),
-      ParamsInfo::Param("Port", SHCCSTR("The port to bind if server or to connect to if client."), CoreInfo::IntOrIntVar),
-      ParamsInfo::Param("Receive", SHCCSTR("The flow to execute when a packet is received."), CoreInfo::ShardsOrNone));
-
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   std::shared_ptr<entt::any> _contextStorage;
   NetworkContext *_context = nullptr;
@@ -127,7 +125,6 @@ struct NetworkBase {
       _peerVar = nullptr;
     }
 
-    _blks.cleanup();
     _addr.cleanup();
     _port.cleanup();
   }
@@ -146,49 +143,11 @@ struct NetworkBase {
 
     _addr.warmup(context);
     _port.warmup(context);
-    _blks.warmup(context);
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  SHTypeInfo compose(SHInstanceData &data) {
-    // inject our special context vars
-    auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
-    shards::arrayPush(data.shared, endpointInfo);
-    _blks.compose(data);
-    return data.inputType;
-  }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _addr = value;
-      break;
-    case 1:
-      _port = value;
-      break;
-    case 2:
-      _blks = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _addr;
-    case 1:
-      return _port;
-    case 2:
-      return _blks;
-    default:
-      return Var::Empty;
-    }
-  }
 
   struct Reader {
     char *buffer;
@@ -240,7 +199,77 @@ struct Server : public NetworkBase {
   std::shared_mutex peersMutex;
   udp::endpoint _sender;
 
-  std::unordered_map<udp::endpoint, NetworkPeer> _end2Peer;
+  std::unordered_map<udp::endpoint, std::shared_ptr<NetworkPeer>> _end2Peer;
+  std::unordered_map<const SHWire *, std::weak_ptr<NetworkPeer>> _wire2Peer;
+  std::unique_ptr<WireDoppelgangerPool<NetworkPeer>> _pool;
+  OwnedVar _handlerMaster{};
+
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Address", SHCCSTR("The local bind address or the remote address."), CoreInfo::StringOrStringVar),
+      ParamsInfo::Param("Port", SHCCSTR("The port to bind if server or to connect to if client."), CoreInfo::IntOrIntVar),
+      ParamsInfo::Param(
+          "Handler", SHCCSTR("The wire to spawn for each new peer that connects, stopping that wire will break the connection."),
+          CoreInfo::WireOrNone));
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _addr = value;
+      break;
+    case 1:
+      _port = value;
+      break;
+    case 2:
+      _handlerMaster = value;
+      if (value.valueType == SHType::Wire)
+        _pool.reset(new WireDoppelgangerPool<NetworkPeer>(_handlerMaster.payload.wireValue));
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _addr;
+    case 1:
+      return _port;
+    case 2:
+      return _handlerMaster;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    // inject our special context vars
+    _sharedCopy = data.shared;
+    auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
+    _sharedCopy.push_back(endpointInfo);
+    return data.inputType;
+  }
+
+  void warmup(SHContext *context) {
+    if (!_pool) {
+      throw ComposeError("Peer wires pool not valid!");
+    }
+
+    _contextCopy = context;
+
+    NetworkBase::warmup(context);
+  }
+
+  void cleanup() {
+    if (_pool)
+      _pool->stopAll();
+
+    _contextCopy.reset();
+
+    NetworkBase::cleanup();
+  }
 
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     NetworkPeer *p = (NetworkPeer *)user;
@@ -254,44 +283,101 @@ struct Server : public NetworkBase {
     return 0;
   }
 
+  struct Composer {
+    Server &server;
+
+    void compose(SHWire *wire, void *nothing, bool recycling) {
+      if (recycling)
+        return;
+
+      SHInstanceData data{};
+      data.inputType = CoreInfo::AnySeqType;
+      data.shared = server._sharedCopy;
+      data.wire = wire;
+      wire->mesh = (*server._contextCopy)->main->mesh;
+      auto res = composeWire(
+          wire,
+          [](const struct Shard *errorShard, const char *errorTxt, SHBool nonfatalWarning, void *userData) {
+            if (!nonfatalWarning) {
+              SHLOG_ERROR(errorTxt);
+              throw ActivationError("Http.Server handler wire compose failed");
+            } else {
+              SHLOG_WARNING(errorTxt);
+            }
+          },
+          nullptr, data);
+      arrayFree(res.exposedInfo);
+      arrayFree(res.requiredInfo);
+    }
+  };
+
+  void wireOnStop(const SHWire::OnStopEvent &e) {
+    SHLOG_TRACE("Wire {} stopped", e.wire->name);
+
+    std::shared_lock<std::shared_mutex> lock(peersMutex);
+    auto container = _wire2Peer[e.wire].lock();
+    _pool->release(container);
+    lock.unlock();
+
+    std::unique_lock<std::shared_mutex> lock2(peersMutex);
+    _end2Peer.erase(*container->endpoint);
+  }
+
   void do_receive() {
     thread_local std::vector<uint8_t> recv_buffer(0xFFFF);
-    _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
-                                [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-                                  if (!ec && bytes_recvd > 0) {
-                                    ikcpcb *kcp = nullptr;
-                                    std::shared_lock<std::shared_mutex> lock(peersMutex);
-                                    auto it = _end2Peer.find(_sender);
-                                    if (it == _end2Peer.end()) {
-                                      lock.unlock();
+    _socket->async_receive_from(
+        boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
+        [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+          if (!ec && bytes_recvd > 0) {
+            ikcpcb *kcp = nullptr;
+            std::shared_lock<std::shared_mutex> lock(peersMutex);
+            auto it = _end2Peer.find(_sender);
+            if (it == _end2Peer.end()) {
+              // new peer
+              lock.unlock();
 
-                                      std::unique_lock<std::shared_mutex> lock(peersMutex);
+              // we write so hard lock this
+              std::unique_lock<std::shared_mutex> lock(peersMutex);
 
-                                      // new peer
-                                      auto &peer = _end2Peer[_sender];
-                                      peer.endpoint = _sender;
-                                      peer.user = this;
-                                      peer.kcp->user = &peer;
-                                      peer.kcp->output = &Server::udp_output;
-                                      SHLOG_DEBUG("Added new peer: {} port: {}", peer.endpoint->address().to_string(),
-                                                  peer.endpoint->port());
+              // new peer
+              auto peer = _pool->acquire(_composer, (void *)0);
+              _end2Peer[_sender] = peer;
+              peer->endpoint = _sender;
+              peer->user = this;
+              peer->kcp->user = &peer;
+              peer->kcp->output = &Server::udp_output;
+              SHLOG_DEBUG("Added new peer: {} port: {}", peer->endpoint->address().to_string(), peer->endpoint->port());
 
-                                      kcp = peer.kcp;
-                                    } else {
-                                      kcp = it->second.kcp;
+              // Assume that we recycle containers so the connection might already exist!
+              if (!peer->onStopConnection) {
+                _wire2Peer[peer->wire.get()] = peer;
+                peer->onStopConnection = peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
+              }
 
-                                      lock.unlock();
-                                    }
+              kcp = peer->kcp;
 
-                                    ikcp_input(kcp, (char *)recv_buffer.data(), bytes_recvd);
+              auto mesh = (*_contextCopy)->main->mesh.lock();
+              mesh->schedule(peer->wire, peer->payloads, false);
+            } else {
+              // existing peer
+              kcp = it->second->kcp;
 
-                                    // keep receiving
-                                    do_receive();
-                                  }
-                                });
+              lock.unlock();
+            }
+
+            ikcp_input(kcp, (char *)recv_buffer.data(), bytes_recvd);
+
+            // keep receiving
+            do_receive();
+          }
+        });
   }
 
   std::vector<uint8_t> _buffer;
+
+  IterableExposedInfo _sharedCopy;
+  std::optional<SHContext *> _contextCopy;
+  Composer _composer{*this};
 
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_context);
@@ -308,25 +394,26 @@ struct Server : public NetworkBase {
     std::shared_lock<std::shared_mutex> lock(peersMutex);
 
     for (auto &[end, peer] : _end2Peer) {
-      peer.maybeUpdate();
+      peer->maybeUpdate();
 
-      setPeer(context, peer);
+      setPeer(context, *peer);
 
-      auto nextSize = ikcp_peeksize(peer.kcp);
+      auto nextSize = ikcp_peeksize(peer->kcp);
       while (nextSize > 0) {
         _buffer.resize(nextSize);
-        auto size = ikcp_recv(peer.kcp, (char *)_buffer.data(), nextSize);
+        auto size = ikcp_recv(peer->kcp, (char *)_buffer.data(), nextSize);
         assert(size == nextSize);
 
-        // deserialize from buffer
+        // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
         Reader r((char *)_buffer.data(), nextSize);
-        peer.des.reset();
-        peer.des.deserialize(r, peer.payload);
+        peer->des.reset();
+        auto idx = peer->payloads.size();
+        peer->payloads.resize(idx + 1);
+        peer->des.deserialize(r, peer->payloads[idx]);
 
-        SHVar output{};
-        activateShards(SHVar(_blks).payload.seqValue, context, peer.payload, output);
+        peer->wire->currentInput = peer->payloads[idx];
 
-        nextSize = ikcp_peeksize(peer.kcp);
+        nextSize = ikcp_peeksize(peer->kcp);
       }
     }
 
@@ -336,6 +423,43 @@ struct Server : public NetworkBase {
 
 struct Client : public NetworkBase {
   NetworkPeer _peer;
+  ShardsVar _blks{};
+
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Address", SHCCSTR("The local bind address or the remote address."), CoreInfo::StringOrStringVar),
+      ParamsInfo::Param("Port", SHCCSTR("The port to bind if server or to connect to if client."), CoreInfo::IntOrIntVar),
+      ParamsInfo::Param("Handler", SHCCSTR("The flow to execute when a packet is received."), CoreInfo::ShardsOrNone));
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _addr = value;
+      break;
+    case 1:
+      _port = value;
+      break;
+    case 2:
+      _blks = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _addr;
+    case 1:
+      return _port;
+    case 2:
+      return _blks;
+    default:
+      return Var::Empty;
+    }
+  }
 
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     Client *c = (Client *)user;
@@ -368,6 +492,24 @@ struct Client : public NetworkBase {
   }
 
   std::vector<uint8_t> _buffer;
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    // inject our special context vars
+    auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
+    shards::arrayPush(data.shared, endpointInfo);
+    _blks.compose(data);
+    return data.inputType;
+  }
+
+  void cleanup() {
+    NetworkBase::cleanup();
+    _blks.cleanup();
+  }
+
+  void warmup(SHContext *context) {
+    NetworkBase::warmup(context);
+    _blks.warmup(context);
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_context);
