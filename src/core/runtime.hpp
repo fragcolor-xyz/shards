@@ -316,6 +316,9 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
   } else {
     // if we had a coro this will run inside it!
     wire->cleanup(true);
+
+    // let's not forget to call events, those are called inside coro handler for the above case
+    wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
   }
 
   // return true if we ended, as in we did our job

@@ -3,7 +3,13 @@
 
 (defloop handler
   (Log "Server's Peer Received")
+  (When (Is "The End") (-> "" (Stop)))
   "Ok" (Network.Send))
+
+;; (defloop handler
+;;   (Log "Server's Peer Received")
+;;   (When (Is "The End") (Stop)) ; another bug triggers with this!
+;;   "Ok" (Network.Send))
 
 (def network-test-server
   (Wire "server" :Looped
@@ -20,14 +26,15 @@
         (Float4 3 2 1 0)
         (Network.Send)
         (Const [1 2 3 4 5])
-        (Network.Send)))
+        (Network.Send)
+        "The End" (Network.Send .peer)))
 
 (def network-test-client
   (Wire "client" :Looped
         (Network.Client
          "127.0.0.1" 9191
          (-> ; acting as callback when there is a new pkt
-          (Log "Client received")))
+          (Log "Client received"))) = .peer
                                         ; test some sending
                                         ; will send to the client in context
                                         ; which is the above
