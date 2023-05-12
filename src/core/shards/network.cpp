@@ -335,23 +335,30 @@ struct Server : public NetworkBase {
               std::unique_lock<std::shared_mutex> lock(peersMutex);
 
               // new peer
-              auto peer = _pool->acquire(_composer, (void *)0);
-              _end2Peer[_sender] = peer;
-              peer->endpoint = _sender;
-              peer->user = this;
-              peer->kcp->user = peer.get();
-              peer->kcp->output = &Server::udp_output;
-              SHLOG_DEBUG("Added new peer: {} port: {}", peer->endpoint->address().to_string(), peer->endpoint->port());
+              try {
+                auto peer = _pool->acquire(_composer, (void *)0);
+                _end2Peer[_sender] = peer;
+                peer->endpoint = _sender;
+                peer->user = this;
+                peer->kcp->user = peer.get();
+                peer->kcp->output = &Server::udp_output;
+                SHLOG_DEBUG("Added new peer: {} port: {}", peer->endpoint->address().to_string(), peer->endpoint->port());
 
-              // Assume that we recycle containers so the connection might already exist!
-              if (!peer->onStopConnection) {
-                _wire2Peer[peer->wire.get()] = peer;
-                peer->onStopConnection = peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
+                // Assume that we recycle containers so the connection might already exist!
+                if (!peer->onStopConnection) {
+                  _wire2Peer[peer->wire.get()] = peer;
+                  peer->onStopConnection = peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
+                }
+
+                peer->wire->warmup(*_contextCopy);
+
+                kcp = peer->kcp;
+              } catch (std::exception &e) {
+                SHLOG_ERROR("Error acquiring peer: {}", e.what());
+
+                // keep receiving
+                return do_receive();
               }
-
-              peer->wire->warmup(*_contextCopy);
-
-              kcp = peer->kcp;
             } else {
               // existing peer
               kcp = it->second->kcp;
@@ -362,7 +369,7 @@ struct Server : public NetworkBase {
             ikcp_input(kcp, (char *)recv_buffer.data(), bytes_recvd);
 
             // keep receiving
-            do_receive();
+            return do_receive();
           }
         });
   }

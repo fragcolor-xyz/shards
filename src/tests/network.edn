@@ -6,11 +6,6 @@
   (When (Is "The End") (-> "" (Stop)))
   "Ok" (Network.Send))
 
-;; (defloop handler
-;;   (Log "Server's Peer Received")
-;;   (When (Is "The End") (Stop)) ; another bug triggers with this!
-;;   "Ok" (Network.Send))
-
 (def network-test-server
   (Wire "server" :Looped
         (Network.Server "127.0.0.1" 9191 handler)))
