@@ -310,18 +310,12 @@ struct Server : public NetworkBase {
     }
   };
 
+  boost::lockfree::queue<const SHWire *> _stopWireQueue{16};
+
   void wireOnStop(const SHWire::OnStopEvent &e) {
     SHLOG_TRACE("Wire {} stopped", e.wire->name);
 
-    const_cast<SHWire *>(e.wire)->cleanup();
-
-    std::shared_lock<std::shared_mutex> lock(peersMutex);
-    auto container = _wire2Peer[e.wire].lock();
-    _pool->release(container);
-    lock.unlock();
-
-    std::unique_lock<std::shared_mutex> lock2(peersMutex);
-    _end2Peer.erase(*container->endpoint);
+    _stopWireQueue.push(e.wire);
   }
 
   void do_receive() {
@@ -391,33 +385,54 @@ struct Server : public NetworkBase {
       boost::asio::post(io_context, [this]() { do_receive(); });
     }
 
-    std::shared_lock<std::shared_mutex> lock(peersMutex);
+    if (!_stopWireQueue.empty()) {
+      SHWire *toStop;
+      while (_stopWireQueue.pop(toStop)) {
+        SHLOG_TRACE("Stopping wire {}", toStop->name);
 
-    for (auto &[end, peer] : _end2Peer) {
-      peer->maybeUpdate();
+        const_cast<SHWire *>(toStop)->cleanup();
 
-      setPeer(context, *peer);
+        std::shared_lock<std::shared_mutex> lock(peersMutex);
+        auto container = _wire2Peer[toStop].lock();
+        _pool->release(container);
+        lock.unlock();
 
-      auto nextSize = ikcp_peeksize(peer->kcp);
-      while (nextSize > 0) {
-        _buffer.resize(nextSize);
-        auto size = ikcp_recv(peer->kcp, (char *)_buffer.data(), nextSize);
-        assert(size == nextSize);
+        SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
+        std::unique_lock<std::shared_mutex> lock2(peersMutex);
+        _end2Peer.erase(*container->endpoint);
+      }
+    }
 
-        // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
-        Reader r((char *)_buffer.data(), nextSize);
-        peer->des.reset();
-        peer->des.deserialize(r, peer->payload);
+    {
+      std::shared_lock<std::shared_mutex> lock(peersMutex);
 
-        // Run within the root flow
-        auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
-        if (unlikely(runRes.state == SHRunWireOutputState::Failed) || unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
-          // Always continue, on stop event will cleanup
-          context->continueFlow();
-          SHLOG_ERROR("Error running wire: {}", peer->wire->name);
+      for (auto &[end, peer] : _end2Peer) {
+        peer->maybeUpdate();
+
+        setPeer(context, *peer);
+
+        auto nextSize = ikcp_peeksize(peer->kcp);
+        while (nextSize > 0) {
+          _buffer.resize(nextSize);
+          auto size = ikcp_recv(peer->kcp, (char *)_buffer.data(), nextSize);
+          assert(size == nextSize);
+
+          // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
+          Reader r((char *)_buffer.data(), nextSize);
+          peer->des.reset();
+          peer->des.deserialize(r, peer->payload);
+
+          // Run within the root flow
+          auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
+          if (unlikely(runRes.state == SHRunWireOutputState::Failed) || unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
+            stop(peer->wire.get());
+            // Always continue, on stop event will cleanup
+            context->continueFlow();
+            nextSize = 0; // exit this peer
+          } else {
+            nextSize = ikcp_peeksize(peer->kcp);
+          }
         }
-
-        nextSize = ikcp_peeksize(peer->kcp);
       }
     }
 
@@ -426,6 +441,11 @@ struct Server : public NetworkBase {
 };
 
 struct Client : public NetworkBase {
+  static inline Type PeerType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
+  static inline Type PeerObjectType = Type::VariableOf(PeerType);
+
+  static SHTypesInfo outputTypes() { return PeerType; }
+
   NetworkPeer _peer;
   ShardsVar _blks{};
 
@@ -553,9 +573,7 @@ struct Client : public NetworkBase {
       activateShards(SHVar(_blks).payload.seqValue, context, _peer.payload, output);
     }
 
-    // TODO make this output the peer itself so it can be used inside Network.Send to send arbitrary messages without being in
-    // context of handler
-    return input;
+    return Var::Object(&_peer, CoreCC, PeerCC);
   }
 
   udp::endpoint _server;
@@ -568,6 +586,7 @@ struct Send {
   ThreadShared<std::array<char, 0xFFFF>> _send_buffer;
 
   SHVar *_peerVar = nullptr;
+  ParamVar _peerParam;
 
   std::shared_ptr<entt::any> _contextStorage;
   NetworkContext *_context = nullptr;
@@ -581,19 +600,54 @@ struct Send {
       releaseVariable(_peerVar);
       _peerVar = nullptr;
     }
+
+    _peerParam.cleanup();
   }
 
+  void warmup(SHContext *context) { _peerParam.warmup(context); }
+
   NetworkPeer *getPeer(SHContext *context) {
-    if (!_peerVar) {
-      _peerVar = referenceVariable(context, "Network.Peer");
+    auto &fixedPeer = _peerParam.get();
+    if (fixedPeer.valueType == SHType::Object) {
+      assert(fixedPeer.payload.objectVendorId == CoreCC);
+      assert(fixedPeer.payload.objectTypeId == PeerCC);
+      return reinterpret_cast<NetworkPeer *>(fixedPeer.payload.objectValue);
+    } else {
+      if (!_peerVar) {
+        _peerVar = referenceVariable(context, "Network.Peer");
+      }
+      assert(_peerVar->payload.objectVendorId == CoreCC);
+      assert(_peerVar->payload.objectTypeId == PeerCC);
+      return reinterpret_cast<NetworkPeer *>(_peerVar->payload.objectValue);
     }
-    assert(_peerVar->payload.objectVendorId == CoreCC);
-    assert(_peerVar->payload.objectTypeId == PeerCC);
-    return reinterpret_cast<NetworkPeer *>(_peerVar->payload.objectValue);
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters params{
+      {"Peer", SHCCSTR("The optional explicit peer to send packets to."), {CoreInfo::NoneType, Client::PeerObjectType}}};
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _peerParam = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _peerParam;
+    default:
+      return Var::Empty;
+    }
+  }
 
   Serialization serializer;
 
