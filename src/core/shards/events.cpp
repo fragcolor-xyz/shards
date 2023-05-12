@@ -67,7 +67,10 @@ struct Send : Base {
     auto id = findId(context);
 
     OwnedVar ownedInput = input;
-    dispatcher->enqueue_hint(id, std::move(ownedInput));
+    if(id == entt::null)
+      dispatcher->enqueue(std::move(ownedInput));
+    else
+      dispatcher->enqueue_hint(id, std::move(ownedInput));
 
     return input;
   }
@@ -109,7 +112,10 @@ struct Receive : Base {
     auto id = findId(context);
     if (_connection)
       _connection.release();
-    _connection = _dispatcher->get()->sink<OwnedVar>(id).connect<&Receive::onEvent>(this);
+    if(id == entt::null)
+      _connection = _dispatcher->get()->sink<OwnedVar>().connect<&Receive::onEvent>(this);
+    else
+      _connection = _dispatcher->get()->sink<OwnedVar>(id).connect<&Receive::onEvent>(this);
   }
 
   void cleanup() {
