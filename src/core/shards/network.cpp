@@ -1,15 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include "shards.h"
+#include "network.hpp"
+
 #include <optional>
-#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
-#include <boost/container/stable_vector.hpp>
-#pragma clang attribute pop
-
-// ASIO must go first!!
-#include <boost/asio.hpp>
-
 #include "../runtime.hpp"
 #include "foundation.hpp"
 #include "shards.hpp"
@@ -25,8 +19,6 @@
 #include <unordered_map>
 #include <utility>
 #include <ikcp.h>
-
-using boost::asio::ip::udp;
 
 namespace shards {
 namespace Network {
@@ -352,6 +344,16 @@ struct Server : public NetworkBase {
 
                 peer->wire->warmup(*_contextCopy);
 
+                // set wire ID, in order for Events to be properly routed
+                // for now we just use ptr as ID, until it causes problems
+                peer->wire->id = reinterpret_cast<entt::id_type>(peer.get());
+
+                OnPeerConnected event{
+                    .endpoint = *peer->endpoint,
+                    .wire = peer->wire,
+                };
+                (*_contextCopy)->main->dispatcher.trigger(std::move(event));
+
                 kcp = peer->kcp;
               } catch (std::exception &e) {
                 SHLOG_ERROR("Error acquiring peer: {}", e.what());
@@ -395,14 +397,19 @@ struct Server : public NetworkBase {
     if (!_stopWireQueue.empty()) {
       SHWire *toStop;
       while (_stopWireQueue.pop(toStop)) {
-        SHLOG_TRACE("Stopping wire {}", toStop->name);
-
+        // ensure cleanup is called
         const_cast<SHWire *>(toStop)->cleanup();
 
         std::shared_lock<std::shared_mutex> lock(peersMutex);
         auto container = _wire2Peer[toStop].lock();
         _pool->release(container);
         lock.unlock();
+
+        OnPeerDisconnected event{
+            .endpoint = *container->endpoint,
+            .wire = container->wire,
+        };
+        context->main->dispatcher.trigger(std::move(event));
 
         SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
         std::unique_lock<std::shared_mutex> lock2(peersMutex);
