@@ -2,43 +2,40 @@
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
 #include "shared.hpp"
+#include "params.hpp"
+#include "utility.hpp"
 
 namespace shards {
 namespace Events {
 struct Base {
   std::optional<std::reference_wrapper<EventDispatcher>> _dispatcher;
-  std::string _eventName{"MyEvent"};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline Parameters params{{"Name", SHCCSTR("The name of the event dispatcher to use."), {CoreInfo::StringType}}};
+  PARAM(OwnedVar, _eventName, "Name", "The name of the event dispatcher to use.",
+        {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_id, "ID", "The optional ID to use to differentiate events with the same name.",
+                 {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType});
+  PARAM_IMPL(Base, PARAM_IMPL_FOR(_eventName), PARAM_IMPL_FOR(_id));
 
-  static SHParametersInfo parameters() { return params; }
+  static inline Parameters params{{"Name", SHCCSTR("The name of the event dispatcher to use."), {CoreInfo::StringType}},
+                                  {"ID",
+                                   SHCCSTR("The optional ID to use to differentiate events with the same name."),
+                                   {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType}}};
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _eventName = value.payload.stringValue;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(_eventName);
-    default:
-      return Var::Empty;
-    }
-  }
+  PARAM_REQUIRED_VARIABLES();
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    _dispatcher = shards::getEventDispatcher(_eventName);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    auto name = SHSTRVIEW(_eventName);
+    _dispatcher = shards::getEventDispatcher(std::string(name));
     return data.inputType;
   }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup() { PARAM_CLEANUP(); }
 };
 
 struct Send : Base {
@@ -64,10 +61,17 @@ struct Send : Base {
     assert(_dispatcher);
 
     auto &dispatcher = _dispatcher->get();
-    auto id = findId(context);
+
+    entt::id_type id;
+    auto &idVar = _id.get();
+    if (idVar.valueType == SHType::Int) {
+      id = static_cast<entt::id_type>(idVar.payload.intValue);
+    } else {
+      id = findId(context);
+    }
 
     OwnedVar ownedInput = input;
-    if(id == entt::null)
+    if (id == entt::null)
       dispatcher->enqueue(std::move(ownedInput));
     else
       dispatcher->enqueue_hint(id, std::move(ownedInput));
@@ -107,24 +111,42 @@ struct Receive : Base {
     return outputType;
   }
 
-  void warmup(SHContext *context) {
-    assert(_dispatcher);
-    auto id = findId(context);
-    if (_connection)
-      _connection.release();
-    if(id == entt::null)
-      _connection = _dispatcher->get()->sink<OwnedVar>().connect<&Receive::onEvent>(this);
-    else
-      _connection = _dispatcher->get()->sink<OwnedVar>(id).connect<&Receive::onEvent>(this);
-  }
+  void warmup(SHContext *context) { Base::warmup(context); }
 
   void cleanup() {
+    Base::cleanup();
+
     assert(_dispatcher);
+
     if (_connection)
       _connection.release();
+
+    _prevId = Var::Empty;
   }
 
+  SHVar _prevId{};
+
   SHVar activate(SHContext *context, const SHVar &input) {
+    auto &idVar = _id.get();
+    if (!_connection || _prevId != idVar) {
+      assert(_dispatcher);
+
+      entt::id_type id;
+      if (idVar.valueType == SHType::Int) {
+        id = static_cast<entt::id_type>(idVar.payload.intValue);
+      } else {
+        id = findId(context);
+      }
+
+      if (_connection)
+        _connection.release();
+
+      if (id == entt::null)
+        _connection = _dispatcher->get()->sink<OwnedVar>().connect<&Receive::onEvent>(this);
+      else
+        _connection = _dispatcher->get()->sink<OwnedVar>(id).connect<&Receive::onEvent>(this);
+    }
+
     std::swap(_eventsOut, _eventsIn);
     _eventsIn.clear();
     return Var(_eventsOut);

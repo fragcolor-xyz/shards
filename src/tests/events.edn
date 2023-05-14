@@ -4,9 +4,17 @@
   (RandomInt) (Events.Send "RandomInts") (Log "Sent")
   (Pause 0.1))
 
+(defloop send2
+  (RandomInt) (Events.Send "RandomInts" 28) (Log "Sent 28")
+  (Pause 0.1))
+
 (defloop receive
   (Events.Receive "RandomInts") (ExpectSeq)
   (ForEach (-> (ExpectInt) (Log))))
+
+(defloop receive2
+  (Events.Receive "RandomInts" 28) (ExpectSeq)
+  (ForEach (-> (ExpectInt) (Log "Recv 28"))))
 
 (defloop updater
   (Events.Update "RandomInts")
@@ -14,6 +22,8 @@
   (Pause 0.2))
 
 (schedule main send)
+(schedule main send2)
 (schedule main receive)
+(schedule main receive2)
 (schedule main updater)
 (if (run main 0.05 100) nil (throw "Root tick failed"))
