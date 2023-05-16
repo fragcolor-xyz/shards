@@ -193,6 +193,33 @@ struct TextureShard {
       break;
     case 3:
       throw formatException("RGB textures not supported");
+      
+      // TODO
+      // switch (componentType) {
+      // case ComponentType::Float:
+      //   if (asType == TextureType::Float)
+      //     /* code */
+      //   break;
+      // case ComponentType::Int16:
+      //   if (asType == TextureType::UInt)
+      //     /* code */
+      //   else if (asType == TextureType::Int)
+      //     /* code */
+      // case ComponentType::Int8:
+      //   if (asType == TextureType::UNorm)
+      //     /* code */
+      //   else if (asType == TextureType::UNormSRGB)
+      //     /* code */
+      //   else if (asType == TextureType::SNorm)
+      //     /* code */
+      //   else if (asType == TextureType::UInt)
+      //     /* code */
+      //   else if (asType == TextureType::Int)
+      //     /* code */
+      //   break;
+      // }
+      // break;
+      
     case 4:
       switch (componentType) {
       case ComponentType::Float:
