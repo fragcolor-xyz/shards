@@ -30,6 +30,8 @@ struct IGizmoCallbacks {
 struct Handle {
   IGizmoCallbacks *callbacks{};
   void *userData{};
+  bool grabbed{};
+  float grabOffset{};
 };
 
 struct InputState {
