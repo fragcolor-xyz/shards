@@ -120,20 +120,19 @@ struct TextureShard {
   }
 
   void activateFromImage(const SHImage &image) {
+    // create a copy of the source image
+    // convert RGB image to RGBA
     const SHImage &imageCopy = (image.channels == 3) ? convertToRGBA(image) : image;
+    
     ComponentType componentType;
     TextureType asType;
-    // determine the component type of the original image
     if (imageCopy.flags & SHIMAGE_FLAGS_32BITS_FLOAT) {
-      // the image has 32-bit floating point values for each component
       asType = TextureType::Float;
       componentType = ComponentType::Float;
     } else if (imageCopy.flags & SHIMAGE_FLAGS_16BITS_INT) {
-      // the image has 16-bit integer values for each component
       asType = TextureType::UInt;
       componentType = ComponentType::Int16;
     } else {
-      // the image has 8-bit ingeter values for each component
       componentType = ComponentType::Int8;
       if (imageCopy.channels == 4)
         asType = TextureType::UNormSRGB;
@@ -197,31 +196,7 @@ struct TextureShard {
       }
       break;
     case 3:
-      // throw formatException("RGB textures not supported");
-      switch (componentType) {
-      case ComponentType::Float:
-        if (asType == TextureType::Float)
-          format.pixelFormat = WGPUTextureFormat_RGBA32Float;
-        break;
-      case ComponentType::Int16:
-        if (asType == TextureType::UInt)
-          format.pixelFormat = WGPUTextureFormat_RGBA16Uint;
-        else if (asType == TextureType::Int)
-          format.pixelFormat = WGPUTextureFormat_RGBA16Sint;
-      case ComponentType::Int8:
-        if (asType == TextureType::UNorm)
-          format.pixelFormat = WGPUTextureFormat_RGBA8Unorm;
-        else if (asType == TextureType::UNormSRGB)
-          format.pixelFormat = WGPUTextureFormat_RGBA8UnormSrgb;
-        else if (asType == TextureType::SNorm)
-          format.pixelFormat = WGPUTextureFormat_RGBA8Snorm;
-        else if (asType == TextureType::UInt)
-          format.pixelFormat = WGPUTextureFormat_RGBA8Uint;
-        else if (asType == TextureType::Int)
-          format.pixelFormat = WGPUTextureFormat_RGBA8Sint;
-        break;
-      }
-      break; 
+      throw formatException("RGB textures not supported");
     case 4:
       switch (componentType) {
       case ComponentType::Float:
@@ -283,6 +258,7 @@ const SHImage convertToRGBA(const SHImage &image) {
   dstImage.channels = 4;  // RGBA format
   dstImage.data = rgbaData;
   
+  SHLOG_TRACE("RGB conversion completed");
   return dstImage;
 }
 
