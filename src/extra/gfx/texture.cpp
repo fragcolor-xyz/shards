@@ -121,7 +121,7 @@ struct TextureShard {
 
   void activateFromImage(const SHImage &image) {
     // create a copy of the source image
-    // convert RGB image to RGBA
+    // convert RGB image to RGBA format by adding a default alpha value
     const SHImage &imageCopy = (image.channels == 3) ? convertToRGBA(image) : image;
     
     ComponentType componentType;
