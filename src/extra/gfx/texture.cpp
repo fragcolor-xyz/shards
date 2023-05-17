@@ -120,17 +120,22 @@ struct TextureShard {
   }
 
   void activateFromImage(const SHImage &image) {
+    const SHImage &imageCopy = (image.channels == 3) ? convertToRGBA(image) : image;
     ComponentType componentType;
     TextureType asType;
-    if (image.flags & SHIMAGE_FLAGS_32BITS_FLOAT) {
+    // determine the component type of the original image
+    if (imageCopy.flags & SHIMAGE_FLAGS_32BITS_FLOAT) {
+      // the image has 32-bit floating point values for each component
       asType = TextureType::Float;
       componentType = ComponentType::Float;
-    } else if (image.flags & SHIMAGE_FLAGS_16BITS_INT) {
+    } else if (imageCopy.flags & SHIMAGE_FLAGS_16BITS_INT) {
+      // the image has 16-bit integer values for each component
       asType = TextureType::UInt;
       componentType = ComponentType::Int16;
     } else {
+      // the image has 8-bit ingeter values for each component
       componentType = ComponentType::Int8;
-      if (image.channels == 4)
+      if (imageCopy.channels == 4)
         asType = TextureType::UNormSRGB;
       else
         asType = TextureType::UNorm;
@@ -142,7 +147,7 @@ struct TextureShard {
     }
 
     TextureFormat format{};
-    switch (image.channels) {
+    switch (imageCopy.channels) {
     case 1:
       switch (componentType) {
       case ComponentType::Float:
@@ -249,12 +254,37 @@ struct TextureShard {
       throw TextureFormatException(componentType, asType);
 
     auto &inputFormat = getTextureFormatDescription(format.pixelFormat);
-    size_t imageSize = inputFormat.pixelSize * image.width * image.height;
+    size_t imageSize = inputFormat.pixelSize * imageCopy.width * imageCopy.height;
 
     // Copy the data since we can't keep a reference to the image variable
-    ImmutableSharedBuffer isb(image.data, imageSize);
-    texture->init(TextureDesc{.format = format, .resolution = int2(image.width, image.height), .data = std::move(isb)});
+    ImmutableSharedBuffer isb(imageCopy.data, imageSize);
+    texture->init(TextureDesc{.format = format, .resolution = int2(imageCopy.width, imageCopy.height), .data = std::move(isb)});
   }
+
+const SHImage convertToRGBA(const SHImage &image) {
+  uint8_t *rgbaData = new uint8_t[image.width * image.height * 4];
+  
+  for (size_t y = 0; y < image.height; ++y) {
+    for (size_t x = 0; x < image.width; ++x) {
+      size_t srcIndex = (y * image.width + x) * 3;
+      size_t dstIndex = (y * image.width + x) * 4;
+
+      rgbaData[dstIndex] = image.data[srcIndex];
+      rgbaData[dstIndex + 1] = image.data[srcIndex + 1];
+      rgbaData[dstIndex + 2] = image.data[srcIndex + 2];
+
+      rgbaData[dstIndex + 3] = 255;
+    }
+  }
+
+  SHImage dstImage;
+  dstImage.width = image.width;
+  dstImage.height = image.height;
+  dstImage.channels = 4;  // RGBA format
+  dstImage.data = rgbaData;
+  
+  return dstImage;
+}
 
   void activateRenderableTexture() {
     Var resolutionVar{_resolution.get()};
