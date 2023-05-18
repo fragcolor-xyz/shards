@@ -432,7 +432,7 @@ struct ExpectLike {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    expectTypeCheck(input, _expectedTypeHash, _expectedType, (bool)_unsafe);
+    expectTypeCheck(input, _expectedTypeHash, _expectedType, (bool)*_unsafe);
     return input;
   }
 };

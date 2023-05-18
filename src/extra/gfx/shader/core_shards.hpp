@@ -201,15 +201,15 @@ struct Literal {
     ShaderFieldBaseType baseType = ShaderFieldBaseType::Float32;
     bool isSet{};
 
-    if (!_outDimension.isNone()) {
-      dimension = int(_outDimension);
+    if (!_outDimension->isNone()) {
+      dimension = int(*_outDimension);
       isSet = true;
     }
-    if (!_outMatrixDimension.isNone()) {
-      matrixDimension = int(_outMatrixDimension);
+    if (!_outMatrixDimension->isNone()) {
+      matrixDimension = int(*_outMatrixDimension);
       isSet = true;
     }
-    if (!_outType.isNone()) {
+    if (!_outType->isNone()) {
       baseType = ShaderFieldBaseType(_outType.payload.enumValue);
       isSet = true;
     }

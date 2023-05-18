@@ -17,7 +17,7 @@ namespace shards {
   static inline shards::ParameterInfo _name##ParameterInfo = {_displayName, SHCCSTR(_help), __VA_ARGS__}; \
   _type _name;
 
-#define PARAM_VAR(_name, _displayName, _help, ...) PARAM(shards::Var, _name, _displayName, _help, __VA_ARGS__)
+#define PARAM_VAR(_name, _displayName, _help, ...) PARAM(shards::OwnedVar, _name, _displayName, _help, __VA_ARGS__)
 #define PARAM_PARAMVAR(_name, _displayName, _help, ...) PARAM(shards::ParamVar, _name, _displayName, _help, __VA_ARGS__)
 
 struct IterableParam {

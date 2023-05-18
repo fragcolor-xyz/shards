@@ -169,7 +169,7 @@ struct DrawQueueShard {
     assert(!_queue);
     _queue = Types::DrawQueueObjectVar.New();
     _queue->queue = std::make_shared<DrawQueue>();
-    _queue->queue->setAutoClear(_autoClear.isNone() ? true : (bool)_autoClear);
+    _queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear);
   }
 
   void cleanup() {

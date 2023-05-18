@@ -606,6 +606,10 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
   }
   ~TOwnedVar() { reset(); }
   void reset() { SH_CORE::destroyVar(*this); }
+  Var &operator*() { return *reinterpret_cast<Var *>(this); }
+  const Var &operator*() const { return *reinterpret_cast<const Var *>(this); }
+  Var *operator->() { return reinterpret_cast<Var *>(this); }
+  const Var *operator->() const { return reinterpret_cast<const Var *>(this); }
 };
 
 // helper to create structured data tables
