@@ -342,17 +342,9 @@ struct Server : public NetworkBase {
                   peer->onStopConnection = peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
                 }
 
-                peer->wire->warmup(*_contextCopy);
-
                 // set wire ID, in order for Events to be properly routed
                 // for now we just use ptr as ID, until it causes problems
                 peer->wire->id = reinterpret_cast<entt::id_type>(peer.get());
-
-                OnPeerConnected event{
-                    .endpoint = *peer->endpoint,
-                    .wire = peer->wire,
-                };
-                (*_contextCopy)->main->dispatcher.trigger(std::move(event));
 
                 kcp = peer->kcp;
               } catch (std::exception &e) {
@@ -425,6 +417,16 @@ struct Server : public NetworkBase {
 
         setPeer(context, *peer);
 
+        if (!peer->wire->warmedUp) {
+          peer->wire->warmup(context);
+
+          OnPeerConnected event{
+              .endpoint = *peer->endpoint,
+              .wire = peer->wire,
+          };
+          context->main->dispatcher.trigger(std::move(event));
+        }
+
         auto nextSize = ikcp_peeksize(peer->kcp);
         while (nextSize > 0) {
           _buffer.resize(nextSize);
@@ -455,6 +457,15 @@ struct Server : public NetworkBase {
 };
 
 struct Client : public NetworkBase {
+  std::array<SHExposedTypeInfo, 1> _exposing;
+
+  SHExposedTypesInfo exposedVariables() {
+    _exposing[0].name = "Network.Peer";
+    _exposing[0].help = SHCCSTR("The required peer.");
+    _exposing[0].exposedType = Client::PeerType;
+    return {_exposing.data(), 1, 0};
+  }
+
   static inline Type PeerType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
   static inline Type PeerObjectType = Type::VariableOf(PeerType);
 
@@ -593,22 +604,12 @@ struct Client : public NetworkBase {
   udp::endpoint _server;
 };
 
-struct Send {
-  // Must take an optional seq of SocketData, to be used properly by server
-  // This way we get also a easy and nice broadcast
-
-  ThreadShared<std::array<char, 0xFFFF>> _send_buffer;
-
+struct PeerBase {
+  std::array<SHExposedTypeInfo, 1> _requiring;
   SHVar *_peerVar = nullptr;
   ParamVar _peerParam;
 
-  std::shared_ptr<entt::any> _contextStorage;
-  NetworkContext *_context = nullptr;
-
   void cleanup() {
-    _contextStorage.reset();
-    _context = nullptr;
-
     // clean context vars
     if (_peerVar) {
       releaseVariable(_peerVar);
@@ -636,9 +637,6 @@ struct Send {
     }
   }
 
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
   static inline Parameters params{
       {"Peer", SHCCSTR("The optional explicit peer to send packets to."), {CoreInfo::NoneType, Client::PeerObjectType}}};
 
@@ -663,26 +661,43 @@ struct Send {
     }
   }
 
+  SHExposedTypesInfo requiredVariables() {
+    // TODO add _peerParam
+    _requiring[0].name = "Network.Peer";
+    _requiring[0].help = SHCCSTR("The required peer.");
+    _requiring[0].exposedType = Client::PeerType;
+    return {_requiring.data(), 1, 0};
+  }
+};
+
+struct Send : public PeerBase {
+  // Must take an optional seq of SocketData, to be used properly by server
+  // This way we get also a easy and nice broadcast
+
+  ThreadShared<std::array<char, 0xFFFF>> _send_buffer;
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
   Serialization serializer;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!_context) {
-      auto networkContext = context->anyStorage["Network.Context"].lock();
-      if (!networkContext) {
-        throw WarmupError("Network.Context not set");
-      } else {
-        _contextStorage = networkContext;
-        auto anyPtr = networkContext.get();
-        _context = &entt::any_cast<NetworkContext &>(*anyPtr);
-      }
-    }
-
     auto peer = getPeer(context);
     NetworkBase::Writer w(&_send_buffer().front(), _send_buffer().size());
     serializer.reset();
     auto size = serializer.serialize(input, w);
     ikcp_send(peer->kcp, (char *)_send_buffer().data(), size);
     return input;
+  }
+};
+
+struct PeerID : public PeerBase {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto peer = getPeer(context);
+    return Var(reinterpret_cast<entt::id_type>(peer));
   }
 };
 }; // namespace Network
@@ -692,5 +707,6 @@ void registerNetworkShards() {
   REGISTER_SHARD("Network.Server", Server);
   REGISTER_SHARD("Network.Client", Client);
   REGISTER_SHARD("Network.Send", Send);
+  REGISTER_SHARD("Network.PeerID", PeerID);
 }
 }; // namespace shards
