@@ -199,7 +199,7 @@ struct RenderIntoShard {
     const ViewStack &viewStack = ctx.renderer->getViewStack();
 
     Var referenceSizeVar = (Var &)_referenceSize.get();
-    bool matchOutputSize = !_matchOutputSize.isNone() ? (bool)_matchOutputSize : false;
+    bool matchOutputSize = !_matchOutputSize->isNone() ? (bool)*_matchOutputSize : false;
 
     int2 referenceSize{};
     if (!referenceSizeVar.isNone()) {

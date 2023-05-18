@@ -88,14 +88,14 @@ struct TextureShard {
   }
 
   gfx::TextureDimension getTextureDimension() const {
-    return !_dimension.isNone() ? gfx::TextureDimension(_dimension.payload.enumValue) : gfx::TextureDimension::D2;
+    return !_dimension->isNone() ? gfx::TextureDimension(_dimension.payload.enumValue) : gfx::TextureDimension::D2;
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (!_interpretAs.isNone()) {
+    if (!_interpretAs->isNone()) {
       if (_format->valueType != SHType::None)
         throw ComposeError("Can not specify Format and InterpretAs parameters at the same time");
-      if (!_dimension.isNone())
+      if (!_dimension->isNone())
         throw ComposeError("Can not specify Dimension and InterpretAs parameters at the same time");
       if (_resolution->valueType != SHType::None)
         throw ComposeError("Can not specify Resolution and InterpretAs parameters at the same time");
@@ -136,7 +136,7 @@ struct TextureShard {
         asType = TextureType::UNorm;
     }
 
-    TextureType paramAsType = !_interpretAs.isNone() ? (TextureType)_interpretAs.payload.enumValue : TextureType::Default;
+    TextureType paramAsType = !_interpretAs->isNone() ? (TextureType)_interpretAs.payload.enumValue : TextureType::Default;
     if (paramAsType != TextureType::Default) {
       asType = paramAsType;
     }

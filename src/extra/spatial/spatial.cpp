@@ -113,7 +113,7 @@ struct SpatialUIContextShard {
     _spatialContext.activationContext = nullptr;
 
     // Render debug overlay
-    if ((bool)_debug) {
+    if ((bool)*_debug) {
       if (!_debugRenderer) {
         _debugRenderer = std::make_shared<gfx::GizmoRenderer>();
       }
