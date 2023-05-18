@@ -127,12 +127,14 @@ struct GizmosContextShard {
 };
 
 extern void registerHighlightShards();
-extern void registerGizmoShards();
+extern void registerTranslationGizmoShards();
+extern void registerScalingGizmoShards();
 extern void registerShapeShards();
 void registerShards() {
   REGISTER_SHARD("Gizmos.Context", GizmosContextShard);
   registerHighlightShards();
-  registerGizmoShards();
+  registerTranslationGizmoShards();
+  registerScalingGizmoShards();
   registerShapeShards();
 }
 } // namespace Gizmos
