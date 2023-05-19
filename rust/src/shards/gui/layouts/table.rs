@@ -277,6 +277,7 @@ impl Shard for Table {
           isTableEntry: false,
           global: false,
           isPushTable: false,
+          exposed: false,
         };
         shared.push(index_info);
         // update shared

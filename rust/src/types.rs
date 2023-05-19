@@ -400,6 +400,7 @@ impl ExposedInfo {
       isTableEntry: false,
       global: false,
       isPushTable: false,
+      exposed: false,
     }
   }
 
@@ -416,6 +417,7 @@ impl ExposedInfo {
       isTableEntry: false,
       global: false,
       isPushTable: false,
+      exposed: false,
     }
   }
 
@@ -429,6 +431,7 @@ impl ExposedInfo {
       isTableEntry: false,
       global: false,
       isPushTable: false,
+      exposed: false,
     }
   }
 
@@ -447,6 +450,7 @@ impl ExposedInfo {
       isTableEntry: false,
       global: false,
       isPushTable: false,
+      exposed: false,
     }
   }
 
@@ -465,6 +469,7 @@ impl ExposedInfo {
       isTableEntry: false,
       global: false,
       isPushTable: false,
+      exposed: false,
     }
   }
 }
