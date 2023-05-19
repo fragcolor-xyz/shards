@@ -4,6 +4,7 @@
 #include <linalg_shim.hpp>
 #include <params.hpp>
 #include <gfx/gizmos/translation_gizmo.hpp>
+#include <gfx/gizmos/rotation_gizmo.hpp>
 #include <stdexcept>
 #include <type_traits>
 
@@ -83,6 +84,91 @@ struct TranslationGizmo : public Base {
     return outputTypes().elements[0];
   }
 };
-void registerGizmoShards() { REGISTER_SHARD("Gizmos.Translation", TranslationGizmo); }
+
+struct RotationGizmo : public Base {
+  static SHTypesInfo inputTypes() {
+    static Types inputTypes = {{CoreInfo::Float4x4Type, gfx::Types::Drawable}};
+    return inputTypes;
+  }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString help() { return SHCCSTR("Shows a rotation gizmo "); }
+
+  // declare parameter named scale
+  PARAM_VAR(_scale, "Scale", "Gizmo scale", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_IMPL(RotationGizmo, PARAM_IMPL_FOR(_scale));
+
+  // gizmo from translation_gizmo.hpp, not this file
+  gfx::gizmos::RotationGizmo _gizmo{};
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    float4x4 inputMat;
+    std::function<void(float4x4 & mat)> applyOutputMat;
+
+    switch (input.valueType) {
+    // if sequence given (transform matrix)
+    case SHType::Seq:
+      inputMat = (shards::Mat4)input;
+      break;
+    // if object given (drawable)
+    case SHType::Object: {
+      gfx::SHDrawable *drawable = reinterpret_cast<gfx::SHDrawable *>(input.payload.objectValue);
+      std::visit(
+          [&](auto &drawable) {
+            // let T be the type of the drawable
+            using T = std::decay_t<decltype(drawable)>;
+            // if same type as MeshTreeDrawable
+            if constexpr (std::is_same_v<T, gfx::MeshTreeDrawable::Ptr>) {
+              // get the transform matrix from drawable, and set applyOutputMat to a function that sets the transform
+              inputMat = drawable->trs.getMatrix();
+              applyOutputMat = [&](float4x4 &outMat) { drawable->trs = outMat; };
+            } else { // not sure what type this is expecting, just a type with transform member variable?
+              inputMat = drawable->transform;
+              applyOutputMat = [&](float4x4 &outMat) { drawable->transform = outMat; };
+            }
+          },
+          drawable->drawable);
+      break;
+    }
+    default:
+      // unexpected input type
+      throw std::invalid_argument("input type");
+      break;
+    }
+
+    _gizmo.transform = inputMat;
+
+    // Scale based on screen distance
+    float3 gizmoLocation = gfx::extractTranslation(_gizmo.transform);
+    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getSize(gizmoLocation) * 0.3f;
+
+    _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
+
+    // if valid applyOutputMat function, apply the new transform calculated by _gizmo to the drawable
+    if (applyOutputMat)
+      applyOutputMat(_gizmo.transform);
+
+    return reinterpret_cast<Mat4 &>(_gizmo.transform);
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    baseWarmup(context);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    baseCleanup();
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    gfx::composeCheckGfxThread(data);
+    return outputTypes().elements[0];
+  }
+};
+
+void registerGizmoShards() { 
+  REGISTER_SHARD("Gizmos.Translation", TranslationGizmo); 
+  REGISTER_SHARD("Gizmos.Rotation", RotationGizmo); 
+}
 } // namespace Gizmos
 } // namespace shards

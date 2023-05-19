@@ -9,7 +9,7 @@ namespace gizmos {
 struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
 
-  Handle handles[3];
+  std::unique_ptr<Handle> handles[3];
   float4x4 dragStartTransform;
   float3 dragStartPoint;
 
@@ -22,8 +22,9 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
   TranslationGizmo() {
     for (size_t i = 0; i < 3; i++) {
-      handles[i].userData = (void *)i;
-      handles[i].callbacks = this;
+      handles[i] = std::make_unique<BoxHandle>();
+      handles[i]->userData = (void *)i;
+      handles[i]->callbacks = this;
     }
   }
 
@@ -32,7 +33,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     float3 localRayDir = linalg::mul(invTransform, inputContext.rayDirection);
 
     for (size_t i = 0; i < 3; i++) {
-      auto &handle = handles[i];
+      auto &handle = *(reinterpret_cast<BoxHandle *>(handles[i].get()));
 
       float3 fwd{};
       fwd[i] = 1.0f;
@@ -93,7 +94,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
   void render(InputContext &inputContext, GizmoRenderer &renderer) {
     for (size_t i = 0; i < 3; i++) {
-      auto &handle = handles[i];
+      auto &handle = *(reinterpret_cast<BoxHandle *>(handles[i].get()));
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
