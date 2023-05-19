@@ -98,11 +98,9 @@
     ;; (Gizmos.Context :Queue .editor-queue-no-depth :View .view
     ;;                 :Content (->
     ;;                           .transform-0 (Gizmos.Translation) > .transform-0))
-                              ;; .transform-0 (Gizmos.Rotation) > .transform-0))
 
     (Gizmos.Context :Queue .editor-queue-no-depth :View .view
                     :Content (->
-                              ;; .transform-0 (Gizmos.Translation) > .transform-0))
                               .transform-0 (Gizmos.Rotation) > .transform-0))
 
     (GFX.Render :Steps .render-steps :View .view))))
