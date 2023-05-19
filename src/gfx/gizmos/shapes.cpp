@@ -221,6 +221,7 @@ void ShapeRenderer::addBox(float3 center, float3 xBase, float3 yBase, float3 zBa
     addLine(a, b, color, thickness);
   }
 }
+
 void ShapeRenderer::addBox(float4x4 transform, float3 center, float3 size, float4 color, uint32_t thickness) {
   float4 x(1, 0, 0, 0);
   float4 y(0, 1, 0, 0);
@@ -263,7 +264,51 @@ void ShapeRenderer::addPoint(float3 center, float4 color, uint32_t thickness) {
   }
 }
 
-void addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness) {}
+void ShapeRenderer::addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness) {
+  float2 halfSize = size / 2.0f;
+  float3 verts[] = {
+      center - halfSize.x * xBase - halfSize.y * yBase,
+      center + halfSize.x * xBase - halfSize.y * yBase,
+      center + halfSize.x * xBase + halfSize.y * yBase,
+      center - halfSize.x * xBase + halfSize.y * yBase,
+  };
+
+  addSolidQuad(verts[0], verts[1], verts[2], verts[3], color);
+}
+
+void ShapeRenderer::addSolidQuad(float3 a, float3 b, float3 c, float3 d, float4 color) {
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(b), .color = UNPACK4(color)});
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(d), .color = UNPACK4(color)});
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
+}
+
+void ShapeRenderer::addDisc(float3 center, float3 xBase, float3 yBase, float outerRadius, float innerRadius, float4 color,
+                            uint32_t resolution) {
+
+  float3 prevPos;
+  float3 prevDelta;
+  float3 innerPrevPos;
+  float3 innerPrevDelta;
+  for (size_t i = 0; i < resolution; i++) {
+    float t = i / float(resolution - 1) * pi2;
+    float tCos = std::cos(t);
+    float tSin = std::sin(t);
+    float3 pos = center + tCos * xBase * outerRadius + tSin * yBase * outerRadius;
+    float3 delta = center + -tSin * xBase + tCos * yBase;
+    float3 innerPos = center + tCos * xBase * innerRadius + tSin * yBase * innerRadius;
+    float3 innerDelta = center + -tSin * xBase + tCos * yBase;
+    if (i > 0) {
+      addSolidQuad(prevPos, pos, innerPos, innerPrevPos, color);
+    }
+    prevPos = pos;
+    prevDelta = delta;
+    innerPrevPos = innerPos;
+    innerPrevDelta = innerDelta;
+  }
+}
 
 void ShapeRenderer::begin() {
   lineVertices.clear();
