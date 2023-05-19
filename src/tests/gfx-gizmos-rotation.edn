@@ -1,0 +1,111 @@
+(def timestep (/ 1.0 120.0))
+(defmesh root)
+(def BlendAlphaPremul {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.OneMinusSrcAlpha})
+(def BlendOne {:Operation BlendOperation.Add :Src BlendFactor.One :Dst BlendFactor.One})
+
+(defn spin-transform [t location]
+  (->
+   t >= .tmp-0
+   .tmp-0 (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
+   .tmp-0 (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
+   .tmp-0 (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
+   location (Math.Translation) (Math.MatMul .rotX) (Math.MatMul .rotY) (Math.MatMul .rotZ)))
+
+(defloop test-wire
+  (Setup
+   0.0 >= .time
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
+   (Float3 0 0 0) (Math.Translation) >= .transform-0
+
+   (GFX.DrawQueue) >= .queue
+   (GFX.DrawQueue) >= .editor-queue
+   (GFX.DrawQueue) >= .editor-queue-no-depth
+
+    ; Create render steps
+   (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .features
+
+   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+   {:Features .features
+    :Queue .editor-queue} (GFX.DrawablePass) >> .render-steps
+   {:Features .features
+    :Queue .editor-queue-no-depth
+    :Outputs [{:Name "color"}
+              {:Name "depth" :Clear true}]} (GFX.DrawablePass) >> .render-steps
+
+    ;; Create view
+   {:Position (Float3 3 3 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+  ;; end setup
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    .time (Math.Add timestep) > .time
+
+    ;; link the transform (?) to the cube mesh and get a drawable 
+    ;; not linked, transform-0 value is updated by Gizmos.Translation every loop
+    .transform-0 (GFX.Drawable :Mesh .mesh :Params {:baseColor (Float4 1 0 0 1)}) >= .drawable-0
+    (GFX.Draw .queue)
+
+    ; Draw helpers (using scene depth)
+    ;; provides a context for rendering gizmos
+    (Gizmos.Context :Queue .editor-queue :View .view
+                    :Content (->
+                              ;; highlights the object (drawable) attached to gizmo, show wireframe
+                              .drawable-0 (Gizmos.Highlight)
+                              (Float3 0 0 0) >= .a
+                              (Float3 0 0 2) >= .z-2
+                              ;; draws the 3 axes
+                              (Gizmos.Line :A (Float3 0 0 0) :B (Float3 2 0 0) :Color (Float4 1 0 0 1) :Thickness 8)
+                              (Gizmos.Line :A .a :B (Float3 0 2 0) :Color (Float4 0 1 0 1))
+                              (Gizmos.Line :A .a :B .z-2 :Color (Float4 0 0 1 1) :Thickness 4)
+
+                              (Float3 1 0 0) >= .xbase
+                              (Float3 0 1 0) >= .ybase
+                              (Float3 0 0 1) >= .zbase
+                              (Float3 -1 1 -1) (Math.Cross (Float3 1 0 0)) >= .norm
+
+                              (Gizmos.Line :A (Float3 0 0 0) :B (Float3 -1 1 -1) :Color (Float4 1 1 1 1) :Thickness 4)
+                              ;; (Gizmos.Disc :Center (Float3 0 0 0) :XBase (Float3 1 0 0) :YBase (Float3 0 1 0) :OuterRadius 1.0 :InnerRadius 0.5 :Color (Float4 0.5 0.5 0.5 1.0))
+
+                              ;; (Gizmos.Disc :Center (Float3 0 0 0) :XBase .xbase :YBase .ybase :OuterRadius 1.0 :InnerRadius 0.5 :Color (Float4 0.2 1.0 0.2 1.0))
+
+                              ;; draws 2 rotation circles around imaginary object
+                              (Gizmos.Circle :Center (Float3 1 1 1) :XBase .xbase :YBase .ybase)
+                              ;; (Gizmos.Circle :Center (Float3 1 1 1) :XBase .zbase :YBase (Float3 -1 1 1) :Color (Float4 0.2 1.0 0.2 1.0) :Thickness 4)
+                              (Gizmos.Circle :Center (Float3 1 1 1) :XBase .xbase :YBase .norm :Color (Float4 0.2 1.0 0.2 1.0) :Thickness 1)
+                              ;; rect on xy plane
+
+                              (Gizmos.Rect :Center (Float3 0 0 0) :XBase .xbase :YBase .norm :Size (Float2 1 1) :Color (Float4 0.2 1.0 0.2 1.0) :Thickness 4)
+
+                              ;; solid rect test on xy plane
+                              ;; (Gizmos.SolidRect :Center (Float3 1 1 0) :XBase .xbase :YBase .ybase :Size (Float2 2 2) :Color (Float4 0 0.5 0 1.0))
+
+                              ;; solid disc test on xy plane
+                              ;; (Gizmos.Disc :Center (Float3 1 1 0.5) :XBase .xbase :YBase .ybase :OuterRadius 5.0 :InnerRadius 3.0 :Color (Float4 0 0 0.5 1.0))
+
+                              ;; imaginary object (box)
+                              (Gizmos.Box :Center (Float3 1 1 1) :Size (Float3 0.5 0.2 0.3) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 4)
+
+                              ;; dot at top right of xy rect
+                              (Gizmos.Point :Center (Float3 1.4 1.4 1) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 16)
+                              ;; dot doing idk what, its out there 
+                              (Gizmos.Point :Center (Float3 -2 -0.2 1)  :Color (Float4 1.0 0.2 1.0 1.0) :Thickness 4)))
+
+    ; Draw on top of everything (ignore depth)
+    ;; translation gizmo itself, attached to .translation-0
+    ;; (Gizmos.Context :Queue .editor-queue-no-depth :View .view
+    ;;                 :Content (->
+    ;;                           .transform-0 (Gizmos.Translation) > .transform-0))
+                              ;; .transform-0 (Gizmos.Rotation) > .transform-0))
+
+    (Gizmos.Context :Queue .editor-queue-no-depth :View .view
+                    :Content (->
+                              ;; .transform-0 (Gizmos.Translation) > .transform-0))
+                              .transform-0 (Gizmos.Rotation) > .transform-0))
+
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(schedule root test-wire)
+(if (run root timestep) nil (throw "Root tick failed"))
