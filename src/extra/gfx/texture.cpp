@@ -11,6 +11,7 @@
 #include <gfx/render_target.hpp>
 #include <params.hpp>
 #include <stdexcept>
+#include <vector>
 
 using namespace shards;
 namespace gfx {
@@ -120,21 +121,17 @@ struct TextureShard {
   }
 
   void activateFromImage(const SHImage &image) {
-    // create a copy of the source image
-    // convert RGB image to RGBA format by adding a default alpha value
-    const SHImage &imageCopy = (image.channels == 3) ? convertToRGBA(image) : image;
-    
     ComponentType componentType;
     TextureType asType;
-    if (imageCopy.flags & SHIMAGE_FLAGS_32BITS_FLOAT) {
+    if (image.flags & SHIMAGE_FLAGS_32BITS_FLOAT) {
       asType = TextureType::Float;
       componentType = ComponentType::Float;
-    } else if (imageCopy.flags & SHIMAGE_FLAGS_16BITS_INT) {
+    } else if (image.flags & SHIMAGE_FLAGS_16BITS_INT) {
       asType = TextureType::UInt;
       componentType = ComponentType::Int16;
     } else {
       componentType = ComponentType::Int8;
-      if (imageCopy.channels == 4)
+      if (image.channels == 3 || image.channels == 4)
         asType = TextureType::UNormSRGB;
       else
         asType = TextureType::UNorm;
@@ -146,7 +143,7 @@ struct TextureShard {
     }
 
     TextureFormat format{};
-    switch (imageCopy.channels) {
+    switch (image.channels) {
     case 1:
       switch (componentType) {
       case ComponentType::Float:
@@ -196,7 +193,31 @@ struct TextureShard {
       }
       break;
     case 3:
-      throw formatException("RGB textures not supported");
+      switch (componentType) {
+      case ComponentType::Float:
+        if (asType == TextureType::Float)
+          format.pixelFormat = WGPUTextureFormat_RGBA32Float;
+        break;
+      case ComponentType::Int16:
+        if (asType == TextureType::UInt)
+          format.pixelFormat = WGPUTextureFormat_RGBA16Uint;
+        else if (asType == TextureType::Int)
+          format.pixelFormat = WGPUTextureFormat_RGBA16Sint;
+        break;
+      case ComponentType::Int8:
+        if (asType == TextureType::UNorm)
+          format.pixelFormat = WGPUTextureFormat_RGBA8Unorm;
+        else if (asType == TextureType::UNormSRGB)
+          format.pixelFormat = WGPUTextureFormat_RGBA8UnormSrgb;
+        else if (asType == TextureType::SNorm)
+          format.pixelFormat = WGPUTextureFormat_RGBA8Snorm;
+        else if (asType == TextureType::UInt)
+          format.pixelFormat = WGPUTextureFormat_RGBA8Uint;
+        else if (asType == TextureType::Int)
+          format.pixelFormat = WGPUTextureFormat_RGBA8Sint;
+        break;
+      }
+      break;
     case 4:
       switch (componentType) {
       case ComponentType::Float:
@@ -229,16 +250,22 @@ struct TextureShard {
       throw TextureFormatException(componentType, asType);
 
     auto &inputFormat = getTextureFormatDescription(format.pixelFormat);
-    size_t imageSize = inputFormat.pixelSize * imageCopy.width * imageCopy.height;
+    size_t imageSize = inputFormat.pixelSize * image.width * image.height;
 
     // Copy the data since we can't keep a reference to the image variable
-    ImmutableSharedBuffer isb(imageCopy.data, imageSize);
-    texture->init(TextureDesc{.format = format, .resolution = int2(imageCopy.width, imageCopy.height), .data = std::move(isb)});
+    ImmutableSharedBuffer isb{};
+    if (image.channels == 3) { 
+      std::vector<uint8_t> imageDataRGBA = convertToRGBA(image);
+      isb = ImmutableSharedBuffer(std::move(imageDataRGBA)); 
+    } else { 
+      isb = ImmutableSharedBuffer(image.data, imageSize); 
+    }
+    texture->init(TextureDesc{.format = format, .resolution = int2(image.width, image.height), .data = std::move(isb)});
   }
 
-const SHImage convertToRGBA(const SHImage &image) {
-  uint8_t *rgbaData = new uint8_t[image.width * image.height * 4];
-  
+std::vector<uint8_t> convertToRGBA(const SHImage& image) {
+  std::vector<uint8_t> rgbaData(image.width * image.height * 4);
+
   for (size_t y = 0; y < image.height; ++y) {
     for (size_t x = 0; x < image.width; ++x) {
       size_t srcIndex = (y * image.width + x) * 3;
@@ -252,14 +279,8 @@ const SHImage convertToRGBA(const SHImage &image) {
     }
   }
 
-  SHImage dstImage;
-  dstImage.width = image.width;
-  dstImage.height = image.height;
-  dstImage.channels = 4;  // RGBA format
-  dstImage.data = rgbaData;
-  
   SHLOG_TRACE("RGB conversion completed");
-  return dstImage;
+  return rgbaData;
 }
 
   void activateRenderableTexture() {
