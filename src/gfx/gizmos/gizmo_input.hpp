@@ -5,6 +5,7 @@
 #include "../linalg.hpp"
 #include "../math.hpp"
 #include "../view.hpp"
+#include "gizmo_math.hpp"
 #include <memory>
 #include <optional>
 
@@ -14,6 +15,12 @@ namespace gizmos {
 struct Box {
   float3 min{};
   float3 max{};
+};
+
+struct Disc {
+  float3 center{};
+  float outerRadius{};
+  float innerRadius{};
 };
 
 struct InputContext;
@@ -32,10 +39,35 @@ struct IGizmoCallbacks {
 };
 
 struct Handle {
-  Box selectionBox;
+  bool isBoxSelection{};
   float4x4 selectionBoxTransform;
   IGizmoCallbacks *callbacks{};
   void *userData{};
+
+  enum class SelectionType {
+    box,
+    disc,
+  } selectionType;
+
+  virtual ~Handle() = default;
+  // Checks if ray intersects handle and update hitDistance and hovering if so
+  virtual void resolveHover(InputContext &context) = 0;
+  virtual SelectionType getSelectionType() const = 0;
+};
+
+struct BoxHandle : public Handle {
+  Box selectionBox;
+
+  void resolveHover(InputContext &context) override;
+  SelectionType getSelectionType() const override { return SelectionType::box; }
+};
+
+struct DiscHandle : public Handle {
+  Disc selectionDisc;
+
+  DiscHandle(float3 center, float outerRadius, float innerRadius) : selectionDisc{center, outerRadius, innerRadius} {}
+  void resolveHover(InputContext &context) override;
+  SelectionType getSelectionType() const override { return SelectionType::disc; }
 };
 
 struct InputState {
