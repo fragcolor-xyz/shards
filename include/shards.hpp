@@ -1130,16 +1130,12 @@ struct OnExposedVarWarmup {
   entt::id_type id;
   std::string_view name;
   SHExposedTypesInfo info;
-  // if the var is a table, this is the key
-  std::optional<std::string_view> key;
 };
 
 struct OnExposedVarSet {
   entt::id_type id;
   std::string_view name;
   SHVar newValue;
-  // if the var is a table, this is the key
-  std::optional<std::string_view> key;
 };
 } // namespace shards
 

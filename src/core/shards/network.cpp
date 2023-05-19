@@ -237,7 +237,7 @@ struct Server : public NetworkBase {
 
   SHTypeInfo compose(SHInstanceData &data) {
     // inject our special context vars
-    _sharedCopy = data.shared;
+    _sharedCopy = ExposedInfo(data.shared);
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
     _sharedCopy.push_back(endpointInfo);
     return data.inputType;
@@ -283,7 +283,7 @@ struct Server : public NetworkBase {
 
       SHInstanceData data{};
       data.inputType = CoreInfo::AnySeqType;
-      data.shared = server._sharedCopy;
+      data.shared = SHExposedTypesInfo(server._sharedCopy);
       data.wire = wire;
       wire->mesh = (*server._contextCopy)->main->mesh;
       auto res = composeWire(
@@ -370,7 +370,7 @@ struct Server : public NetworkBase {
 
   std::vector<uint8_t> _buffer;
 
-  IterableExposedInfo _sharedCopy;
+  ExposedInfo _sharedCopy;
   std::optional<SHContext *> _contextCopy;
   Composer _composer{*this};
 

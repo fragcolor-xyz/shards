@@ -14,6 +14,7 @@
 #include "exposed_type_utils.hpp"
 #include "common_types.hpp"
 #include "inlined.hpp"
+#include "utility.hpp"
 #include <cassert>
 #include <cmath>
 #include <optional>
@@ -742,6 +743,7 @@ struct SetBase : public VariableBase {
   Type _tableTypeInfo{};
   SHString _tableContentKey{};
   SHTypeInfo _tableContentInfo{};
+  bool _isExposed{false}; // notice this is used in Update only
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -777,6 +779,12 @@ struct SetBase : public VariableBase {
           SHLOG_ERROR("Error with variable: {}", _name);
           throw ComposeError(
               fmt::format("Set/Ref/Update, attempted to write a table variable \"{}\" that is filled using Push shards.", _name));
+        }
+
+        if (data.shared.elements[i].exposed) {
+          _isExposed = true;
+        } else {
+          _isExposed = false;
         }
       }
     }
@@ -906,6 +914,11 @@ struct Set : public SetUpdateBase {
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
     }
+    if (_exposed) {
+      _exposedInfo._innerInfo.elements[0].exposed = true;
+    } else {
+      _exposedInfo._innerInfo.elements[0].exposed = false;
+    }
     return data.inputType;
   }
 
@@ -935,13 +948,13 @@ struct Set : public SetUpdateBase {
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
 
       OnExposedVarWarmup ev{context->main->id, _name, SHExposedTypesInfo(_exposedInfo)};
-      if (_isTable)
-        ev.key = _key.isVariable() ? _key.variableName() : _key.get().payload.stringValue;
       context->main->dispatcher.trigger(ev);
-    } else if (_target->flags & SHVAR_FLAGS_EXPOSED) {
-      // something changed, we are no longer exposed
-      // fixup activations and variable flags
-      _target->flags &= ~SHVAR_FLAGS_EXPOSED;
+    } else {
+      if (_target->flags & SHVAR_FLAGS_EXPOSED) {
+        // something changed, we are no longer exposed
+        // fixup activations and variable flags
+        _target->flags &= ~SHVAR_FLAGS_EXPOSED;
+      }
 
       // restore any possible deferred change here
       if (_isTable)
@@ -968,9 +981,7 @@ struct Set : public SetUpdateBase {
     else
       output = activateRegular(context, input);
 
-    OnExposedVarSet ev{context->main->id, _name, output};
-    if (_isTable)
-      ev.key = _key.isVariable() ? _key.variableName() : _key.get().payload.stringValue;
+    OnExposedVarSet ev{context->main->id, _name, *_target};
     context->main->dispatcher.trigger(ev);
 
     return output;
@@ -1186,14 +1197,37 @@ struct Update : public SetUpdateBase {
   void warmup(SHContext *context) {
     SetBase::warmup(context);
 
-    // restore any possible deferred change here
-    if (_isTable)
-      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;
-    else
-      const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
+    if (_isExposed) {
+      assert(_target->flags & SHVAR_FLAGS_EXPOSED && "exposed flag not set");
+
+      const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
+    } else {
+      assert(!(_target->flags & SHVAR_FLAGS_EXPOSED) && "exposed flag still set");
+
+      // restore any possible deferred change here
+      if (_isTable)
+        const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;
+      else
+        const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
+    }
   }
 
   void cleanup() { SetBase::cleanup(); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    assert(_isExposed);
+
+    SHVar output;
+    if (_isTable)
+      output = activateTable(context, input);
+    else
+      output = activateRegular(context, input);
+
+    OnExposedVarSet ev{context->main->id, _name, *_target};
+    context->main->dispatcher.trigger(ev);
+
+    return output;
+  }
 };
 
 struct Get : public VariableBase {

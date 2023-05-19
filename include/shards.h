@@ -466,6 +466,9 @@ struct SHExposedTypeInfo {
   // If this variable is a table that is populated using Push blocks
   // Which makes some assumptions and optimizations for keys caching
   SHBool isPushTable;
+
+  // If the variable is market as exposed, apps building on top will can use this feature
+  SHBool exposed;
 };
 
 struct SHFlow {
