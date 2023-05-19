@@ -178,6 +178,7 @@ impl Shard for Plot {
       isTableEntry: false,
       global: false,
       isPushTable: false,
+      exposed: false,
     };
     shared.push(ctx_info);
     // update shared

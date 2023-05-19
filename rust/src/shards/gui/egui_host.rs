@@ -59,6 +59,7 @@ impl Default for EguiHost {
         isTableEntry: false,
         global: false,
         isPushTable: false,
+        exposed: false,
       },
       ExposedInfo {
         exposedType: EGUI_UI_SEQ_TYPE,
@@ -69,6 +70,7 @@ impl Default for EguiHost {
         isTableEntry: false,
         global: false,
         isPushTable: false,
+        exposed: false,
       },
     ];
 
