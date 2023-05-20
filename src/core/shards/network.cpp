@@ -94,6 +94,16 @@ struct NetworkBase {
 
   std::optional<udp::socket> _socket;
 
+  ExposedInfo _required;
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _required.clear();
+    collectRequiredVariables(data.shared, _required, (SHVar &)_addr);
+    collectRequiredVariables(data.shared, _required, (SHVar &)_port);
+    return data.inputType;
+  }
+
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_required); }
+
   void cleanup() {
     if (_context) {
       auto &io_context = _context->_io_context;
@@ -240,7 +250,7 @@ struct Server : public NetworkBase {
     _sharedCopy = ExposedInfo(data.shared);
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
     _sharedCopy.push_back(endpointInfo);
-    return data.inputType;
+    return NetworkBase::compose(data);
   }
 
   void warmup(SHContext *context) {
@@ -547,7 +557,7 @@ struct Client : public NetworkBase {
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
     shards::arrayPush(data.shared, endpointInfo);
     _blks.compose(data);
-    return data.inputType;
+    return NetworkBase::compose(data);
   }
 
   void cleanup() {
