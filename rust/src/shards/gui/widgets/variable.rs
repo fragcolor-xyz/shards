@@ -5,6 +5,7 @@ use crate::shards::gui::util;
 use crate::shards::gui::UIRenderer;
 use crate::shards::gui::PARENTS_UI_NAME;
 use crate::types::common_type;
+use crate::types::ClonedVar;
 use crate::types::Context;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
@@ -46,7 +47,7 @@ static HEADERS_TYPES: &[Type] = &[
 
 extern "C" {
   fn getWireVariable(wire: WireRef, name: *const c_char, nameLen: u32) -> *mut Var;
-  fn triggerVarValueChange(wire: WireRef, name: *const Var, var: *const Var);
+  fn triggerVarValueChange(context: *mut Context, name: *const Var, var: *const Var);
 }
 
 impl Default for Variable {
@@ -57,6 +58,7 @@ impl Default for Variable {
       parents,
       requiring: Vec::new(),
       variable: ParamVar::default(),
+      name: ClonedVar::default(),
       mutable: true,
       inner_type: None,
     }
@@ -156,6 +158,13 @@ impl Shard for Variable {
     self.parents.warmup(ctx);
     self.variable.warmup(ctx);
 
+    self.name = if self.variable.is_variable() {
+      let name = unsafe { CStr::from_ptr(self.variable.get_name()) };
+      name.into()
+    } else {
+      ClonedVar::default()
+    };
+
     Ok(())
   }
 
@@ -166,17 +175,25 @@ impl Shard for Variable {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
+      let label: &str = self.name.as_ref().try_into()?;
       ui.horizontal(|ui| {
-        let label = unsafe { CStr::from_ptr(self.variable.get_name()) }
-          .to_str()
-          .unwrap_or_default();
         ui.label(label);
-        self
-          .variable
-          .get_mut()
-          .render(!self.mutable, self.inner_type.as_ref(), ui);
+        let varRef = self.variable.get_mut();
+        if varRef
+          .render(!self.mutable, self.inner_type.as_ref(), ui)
+          .changed()
+        {
+          unsafe {
+            triggerVarValueChange(
+              context as *const Context as *mut Context,
+              self.name.as_ref() as *const Var,
+              varRef as *const Var,
+            );
+            varRef.__bindgen_anon_1.version += 1
+          };
+        }
       });
 
       Ok(*input)
@@ -243,7 +260,7 @@ impl Shard for WireVariable {
     Ok(())
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     let input: Table = input.try_into()?;
 
     let name_var = input.get_fast_static(cstr!("Name"));
@@ -267,7 +284,7 @@ impl Shard for WireVariable {
         if varRef.render(false, None, ui).changed() {
           unsafe {
             triggerVarValueChange(
-              WireRef(wire_var.payload.__bindgen_anon_1.wireValue),
+              context as *const Context as *mut Context,
               name_var as *const Var,
               varRef as *const Var,
             );

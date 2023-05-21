@@ -3,6 +3,7 @@
 
 use crate::core::registerShard;
 use crate::shardsc;
+use crate::types::ClonedVar;
 use crate::types::common_type;
 use crate::types::ExposedTypes;
 use crate::types::ParamVar;
@@ -199,6 +200,7 @@ struct Variable {
   parents: ParamVar,
   requiring: ExposedTypes,
   variable: ParamVar,
+  name: ClonedVar,
   mutable: bool,
   inner_type: Option<Type>,
 }

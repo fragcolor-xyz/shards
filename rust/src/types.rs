@@ -3535,6 +3535,13 @@ impl AsRef<Var> for Var {
   }
 }
 
+impl AsRef<Var> for ClonedVar {
+  #[inline(always)]
+  fn as_ref(&self) -> &Var {
+    &self.0
+  }
+}
+
 pub struct ParamVar {
   pub parameter: ClonedVar,
   pub pointee: *mut Var,
