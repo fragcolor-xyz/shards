@@ -663,10 +663,10 @@ struct Var : public SHVar {
   }
 
   constexpr static SHVar Empty{};
-  constexpr static SHVar True{{true}, SHType::Bool};
-  constexpr static SHVar False{{false}, SHType::Bool};
+  constexpr static SHVar True{.payload = {{true}}, .valueType = SHType::Bool};
+  constexpr static SHVar False{.payload = {{false}}, .valueType = SHType::Bool};
   // this is a special one used to flag default value in Wire/Shards C++ DSL
-  constexpr static SHVar Any{{false}, SHType::Any};
+  constexpr static SHVar Any{.valueType = SHType::Any};
 
   template <typename T> static Var Object(T valuePtr, uint32_t objectVendorId, uint32_t objectTypeId) {
     Var res;

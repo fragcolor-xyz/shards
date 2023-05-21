@@ -2223,7 +2223,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     if (dst.valueType != src.valueType || dst.payload.stringCapacity < srcSize) {
       destroyVar(dst);
       dst.valueType = src.valueType;
-      if (srcSize < 8) {
+      if (srcSize <= 7) {
         // short string, no need to allocate
         // capacity is 8 but last is 0 terminator
         dst.payload.stringValue = dst.shortString;
