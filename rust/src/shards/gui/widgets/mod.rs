@@ -200,6 +200,7 @@ struct Variable {
   parents: ParamVar,
   requiring: ExposedTypes,
   variable: ParamVar,
+  labeled: bool,
   name: ClonedVar,
   mutable: bool,
   inner_type: Option<Type>,

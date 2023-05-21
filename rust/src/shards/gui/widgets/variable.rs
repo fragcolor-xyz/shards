@@ -18,6 +18,7 @@ use crate::types::Types;
 use crate::types::Var;
 use crate::types::WireRef;
 use crate::types::ANY_TYPES;
+use crate::types::BOOL_TYPES;
 use crate::SHType_Seq;
 use std::cmp::Ordering;
 use std::ffi::CStr;
@@ -29,12 +30,20 @@ const WIRE_VAR_NAMES: &[RawString] = &[shstr!("Wire"), shstr!("Name")];
 static WIRE_VAR_TYPES: &[Type] = &[common_type::wire, common_type::string];
 
 lazy_static! {
-  static ref VARIABLE_PARAMETERS: Parameters = vec![(
-    cstr!("Variable"),
-    shccstr!("The variable that holds the value."),
-    ANY_VAR_ONLY_SLICE,
-  )
-    .into(),];
+  static ref VARIABLE_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Variable"),
+      shccstr!("The variable that holds the value."),
+      ANY_VAR_ONLY_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Labeled"),
+      shccstr!("If the name of the variable should be visible as a label."),
+      &BOOL_TYPES[..],
+    )
+      .into()
+  ];
   static ref WIRE_VAR_TTYPE: Type = Type::table(WIRE_VAR_NAMES, &WIRE_VAR_TYPES);
   static ref WIRE_VAR_INPUT: Vec<Type> = vec![*WIRE_VAR_TTYPE];
 }
@@ -48,6 +57,7 @@ static HEADERS_TYPES: &[Type] = &[
 extern "C" {
   fn getWireVariable(wire: WireRef, name: *const c_char, nameLen: u32) -> *mut Var;
   fn triggerVarValueChange(context: *mut Context, name: *const Var, var: *const Var);
+  fn getWireContext(wire: WireRef) -> *mut Context;
 }
 
 impl Default for Variable {
@@ -58,6 +68,7 @@ impl Default for Variable {
       parents,
       requiring: Vec::new(),
       variable: ParamVar::default(),
+      labeled: false,
       name: ClonedVar::default(),
       mutable: true,
       inner_type: None,
@@ -99,6 +110,7 @@ impl Shard for Variable {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.variable.set_param(value)),
+      1 => Ok(self.labeled = value.try_into()?),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -106,6 +118,7 @@ impl Shard for Variable {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.variable.get_param(),
+      1 => self.labeled.into(),
       _ => Var::default(),
     }
   }
@@ -179,7 +192,9 @@ impl Shard for Variable {
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
       let label: &str = self.name.as_ref().try_into()?;
       ui.horizontal(|ui| {
-        ui.label(label);
+        if self.labeled {
+          ui.label(label);
+        }
         let varRef = self.variable.get_mut();
         if varRef
           .render(!self.mutable, self.inner_type.as_ref(), ui)
@@ -284,7 +299,7 @@ impl Shard for WireVariable {
         if varRef.render(false, None, ui).changed() {
           unsafe {
             triggerVarValueChange(
-              context as *const Context as *mut Context,
+              getWireContext(wire),
               name_var as *const Var,
               varRef as *const Var,
             );

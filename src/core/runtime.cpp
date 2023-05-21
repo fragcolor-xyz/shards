@@ -2748,6 +2748,12 @@ void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *v
   OnExposedVarSet ev{w->id, nameStr, *var, context->currentWire()};
   w->dispatcher.trigger(ev);
 }
+
+void triggerVarValueChange(SHWire *w, const SHVar *name, const SHVar *var) {
+  auto nameStr = SHSTRVIEW((*name));
+  OnExposedVarSet ev{w->id, nameStr, *var, w};
+  w->dispatcher.trigger(ev);
+}
 }; // namespace shards
 
 // NO NAMESPACE here!
@@ -2909,6 +2915,10 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
 
 void triggerVarValueChange(SHContext *ctx, const SHVar *name, const SHVar *var) {
   shards::triggerVarValueChange(ctx, name, var);
+}
+
+SHContext *getWireContext(SHWire *wire) {
+  return wire->context;
 }
 
 SHCore *__cdecl shardsInterface(uint32_t abi_version) {
