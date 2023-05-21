@@ -720,18 +720,24 @@ struct Serialization {
       auto availBytes = recycle ? output.payload.bytesCapacity : 0;
       read((uint8_t *)&output.payload.bytesSize, sizeof(output.payload.bytesSize));
 
-      if (availBytes > 0 && availBytes < output.payload.bytesSize) {
-        // not enough space, ideally realloc, but for now just delete
-        delete[] output.payload.bytesValue;
-        // and re alloc
-        output.payload.bytesValue = new uint8_t[output.payload.bytesSize];
-      } else if (availBytes == 0) {
-        // just alloc
-        output.payload.bytesValue = new uint8_t[output.payload.bytesSize];
-      } // else got enough space to recycle!
+      if (output.payload.bytesSize <= 8) {
+        // short array
+        output.payload.bytesValue = output.shortBytes;
+        output.payload.bytesCapacity = 8;
+      } else {
+        if (availBytes > 0 && availBytes < output.payload.bytesSize) {
+          // not enough space, ideally realloc, but for now just delete
+          delete[] output.payload.bytesValue;
+          // and re alloc
+          output.payload.bytesValue = new uint8_t[output.payload.bytesSize];
+        } else if (availBytes == 0) {
+          // just alloc
+          output.payload.bytesValue = new uint8_t[output.payload.bytesSize];
+        } // else got enough space to recycle!
 
-      // record actualSize for further recycling usage
-      output.payload.bytesCapacity = std::max(availBytes, output.payload.bytesSize);
+        // record actualSize for further recycling usage
+        output.payload.bytesCapacity = std::max(availBytes, output.payload.bytesSize);
+      }
 
       read((uint8_t *)output.payload.bytesValue, output.payload.bytesSize);
       break;
@@ -744,28 +750,32 @@ struct Serialization {
       read((uint8_t *)&output.payload.arrayValue.elements[0], len * sizeof(SHVarPayload));
       break;
     }
-    case SHType::Path:
     case SHType::String:
+    case SHType::Path:
     case SHType::ContextVar: {
       auto availChars = recycle ? output.payload.stringCapacity : 0;
-      uint32_t len;
-      read((uint8_t *)&len, sizeof(uint32_t));
+      read((uint8_t *)&output.payload.stringLen, sizeof(uint32_t));
 
-      if (availChars > 0 && availChars < len) {
-        // we need more chars then what we have, realloc
-        delete[] output.payload.stringValue;
-        output.payload.stringValue = new char[len + 1];
-      } else if (availChars == 0) {
-        // just alloc
-        output.payload.stringValue = new char[len + 1];
-      } // else recycling
+      if (output.payload.stringLen < 8) {
+        // small string, just use the stack
+        output.payload.stringValue = output.shortString;
+        output.payload.stringCapacity = 7;
+      } else {
+        if (availChars > 0 && availChars < output.payload.stringLen) {
+          // we need more chars then what we have, realloc
+          delete[] output.payload.stringValue;
+          output.payload.stringValue = new char[output.payload.stringLen + 1];
+        } else if (availChars == 0) {
+          // just alloc
+          output.payload.stringValue = new char[output.payload.stringLen + 1];
+        } // else recycling
 
-      // record actualSize
-      output.payload.stringCapacity = std::max(availChars, len);
+        // record actualSize
+        output.payload.stringCapacity = std::max(availChars, output.payload.stringLen);
+      }
 
-      read((uint8_t *)output.payload.stringValue, len);
-      const_cast<char *>(output.payload.stringValue)[len] = 0;
-      output.payload.stringLen = len;
+      read((uint8_t *)output.payload.stringValue, output.payload.stringLen);
+      const_cast<char *>(output.payload.stringValue)[output.payload.stringLen] = 0;
       break;
     }
     case SHType::Seq: {

@@ -592,6 +592,8 @@ struct SHVar {
   union {
     struct SHObjectInfo *objectInfo;
     uint64_t version;
+    char shortString[8];
+    uint8_t shortBytes[8];
   };
 } __attribute__((aligned(16)));
 

@@ -206,7 +206,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
   case SHType::Path:
   case SHType::ContextVar:
   case SHType::String: {
-    if (a.payload.stringValue == b.payload.stringValue)
+    if (a.payload.stringValue == b.payload.stringValue && a.payload.stringLen == b.payload.stringLen)
       return true;
 
     const auto astr = a.payload.stringLen > 0 ? std::string_view(a.payload.stringValue, a.payload.stringLen)
@@ -324,7 +324,7 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
   case SHType::Path:
   case SHType::ContextVar:
   case SHType::String: {
-    if (a.payload.stringValue == b.payload.stringValue)
+    if (a.payload.stringValue == b.payload.stringValue && a.payload.stringLen == b.payload.stringLen)
       return false;
 
     const auto astr = a.payload.stringLen > 0 ? std::string_view(a.payload.stringValue, a.payload.stringLen)
@@ -408,7 +408,7 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
   case SHType::Path:
   case SHType::ContextVar:
   case SHType::String: {
-    if (a.payload.stringValue == b.payload.stringValue)
+    if (a.payload.stringValue == b.payload.stringValue && a.payload.stringLen == b.payload.stringLen)
       return true;
 
     const auto astr = a.payload.stringLen > 0 ? std::string_view(a.payload.stringValue, a.payload.stringLen)

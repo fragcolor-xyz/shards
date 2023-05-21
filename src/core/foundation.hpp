@@ -248,8 +248,8 @@ private:
 struct SHSetImpl : public std::unordered_set<shards::OwnedVar, std::hash<SHVar>, std::equal_to<SHVar>,
                                              boost::alignment::aligned_allocator<shards::OwnedVar, 16>> {
 #if SHARDS_TRACKING
-  SHSetImpl() { }
-  ~SHSetImpl() { }
+  SHSetImpl() {}
+  ~SHSetImpl() {}
 #endif
 };
 
@@ -261,8 +261,8 @@ struct SHAlignedMap : public boost::container::flat_map<
 
 struct SHTableImpl : public SHAlignedMap<std::string, shards::OwnedVar> {
 #if SHARDS_TRACKING
-  SHTableImpl() {  }
-  ~SHTableImpl() {  }
+  SHTableImpl() {}
+  ~SHTableImpl() {}
 #endif
 };
 
@@ -431,13 +431,9 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   mutable entt::dispatcher dispatcher{};
 
 private:
-  SHWire(std::string_view wire_name) : name(wire_name) {
-    SHLOG_TRACE("Creating wire: {}", name);
-  }
+  SHWire(std::string_view wire_name) : name(wire_name) { SHLOG_TRACE("Creating wire: {}", name); }
 
-  SHWire() {
-    SHLOG_TRACE("Creating wire");
-  }
+  SHWire() { SHLOG_TRACE("Creating wire"); }
 
 private:
   void destroy();
@@ -892,21 +888,17 @@ ALWAYS_INLINE inline void destroyVar(SHVar &var) {
   case SHType::Set:
   case SHType::Seq:
   case SHType::ShardRef:
-    _destroyVarSlow(var);
-    break;
-  case SHType::Path:
+  case SHType::Bytes:
   case SHType::String:
+  case SHType::Path:
   case SHType::ContextVar:
-    delete[] var.payload.stringValue;
+    _destroyVarSlow(var);
     break;
   case SHType::Image:
     delete[] var.payload.imageValue.data;
     break;
   case SHType::Audio:
     delete[] var.payload.audioValue.samples;
-    break;
-  case SHType::Bytes:
-    delete[] var.payload.bytesValue;
     break;
   case SHType::Array:
     arrayFree(var.payload.arrayValue);
@@ -1027,11 +1019,9 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 #define REGISTER_ENUM(_ENUM_INFO_) \
   static shards::EnumRegisterImpl SH_GENSYM(__registeredEnum) = shards::EnumRegisterImpl::registerEnum<_ENUM_INFO_>()
 
-#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)         \
-  namespace shards {                              \
-  template <> struct TEnumHelp<_ENUM_, _VALUE_> { \
-    static inline SHOptionalString help = _STR_;  \
-  };                                              \
+#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)                                                         \
+  namespace shards {                                                                              \
+  template <> struct TEnumHelp<_ENUM_, _VALUE_> { static inline SHOptionalString help = _STR_; }; \
   }
 
 template <typename E> static E getFlags(SHVar var) {
