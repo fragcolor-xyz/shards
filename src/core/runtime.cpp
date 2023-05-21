@@ -2148,6 +2148,24 @@ EventDispatcher &getEventDispatcher(const std::string &name) {
 
 NO_INLINE void _destroyVarSlow(SHVar &var) {
   switch (var.valueType) {
+  case SHType::String:
+  case SHType::Path:
+  case SHType::ContextVar:
+    assert(var.payload.stringCapacity >= 7 && "string capacity is too small, it should be at least 7");
+    if (var.payload.stringCapacity > 7) {
+      delete[] var.payload.stringValue;
+    } else {
+      memset(var.shortString, 0, 7);
+    }
+    break;
+  case SHType::Bytes:
+    assert(var.payload.bytesCapacity >= 8 && "bytes capacity is too small, it should be at least 8");
+    if (var.payload.bytesCapacity > 8) {
+      delete[] var.payload.bytesValue;
+    } else {
+      memset(var.shortString, 0, 8);
+    }
+    break;
   case SHType::Seq: {
     // notice we use .cap! because we make sure to 0 new empty elements
     for (size_t i = var.payload.seqValue.cap; i > 0; i--) {
@@ -2202,19 +2220,27 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
   case SHType::String: {
     auto srcSize = src.payload.stringLen > 0 || src.payload.stringValue == nullptr ? src.payload.stringLen
                                                                                    : uint32_t(strlen(src.payload.stringValue));
-    if ((dst.valueType != SHType::String && dst.valueType != SHType::ContextVar) || dst.payload.stringCapacity < srcSize) {
+    if (dst.valueType != src.valueType || dst.payload.stringCapacity < srcSize) {
       destroyVar(dst);
-      // allocate a 0 terminator too
-      dst.payload.stringValue = new char[srcSize + 1];
-      dst.payload.stringCapacity = srcSize;
+      dst.valueType = src.valueType;
+      if (srcSize < 8) {
+        // short string, no need to allocate
+        // capacity is 8 but last is 0 terminator
+        dst.payload.stringValue = dst.shortString;
+        dst.payload.stringCapacity = 7; // this also marks it as short string, lucky 7
+      } else {
+        // allocate a 0 terminator too
+        dst.payload.stringValue = new char[srcSize + 1];
+        dst.payload.stringCapacity = srcSize;
+      }
     } else {
-      if (src.payload.stringValue == dst.payload.stringValue)
+      if (src.payload.stringValue == dst.payload.stringValue && src.payload.stringLen == dst.payload.stringLen)
         return;
     }
 
-    dst.valueType = src.valueType;
     memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue, srcSize);
     ((char *)dst.payload.stringValue)[srcSize] = 0;
+
     // fill the optional len field
     dst.payload.stringLen = srcSize;
   } break;
@@ -2353,15 +2379,20 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     if (dst.valueType != SHType::Bytes || dst.payload.bytesCapacity < src.payload.bytesSize) {
       destroyVar(dst);
       dst.valueType = SHType::Bytes;
-      dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
-      dst.payload.bytesCapacity = src.payload.bytesSize;
+      if (src.payload.bytesSize <= 8) {
+        // small bytes are stored directly in the payload
+        dst.payload.bytesValue = dst.shortBytes;
+        dst.payload.bytesCapacity = 8;
+      } else {
+        dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
+        dst.payload.bytesCapacity = src.payload.bytesSize;
+      }
+    } else {
+      if (src.payload.bytesValue == dst.payload.bytesValue && src.payload.bytesSize == dst.payload.bytesSize)
+        return;
     }
 
     dst.payload.bytesSize = src.payload.bytesSize;
-
-    if (src.payload.bytesValue == dst.payload.bytesValue)
-      return;
-
     memcpy((void *)dst.payload.bytesValue, (void *)src.payload.bytesValue, src.payload.bytesSize);
   } break;
   case SHType::Array: {
@@ -2743,7 +2774,8 @@ void setString(uint32_t crc, SHString str) {
 void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
 
 void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *var) {
-  if((var->flags & SHVAR_FLAGS_EXPOSED) == 0) return;
+  if ((var->flags & SHVAR_FLAGS_EXPOSED) == 0)
+    return;
 
   auto &w = context->main;
   auto nameStr = SHSTRVIEW((*name));
@@ -2752,7 +2784,8 @@ void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *v
 }
 
 void triggerVarValueChange(SHWire *w, const SHVar *name, const SHVar *var) {
-  if((var->flags & SHVAR_FLAGS_EXPOSED) == 0) return;
+  if ((var->flags & SHVAR_FLAGS_EXPOSED) == 0)
+    return;
 
   auto nameStr = SHSTRVIEW((*name));
   OnExposedVarSet ev{w->id, nameStr, *var, w};
@@ -2917,9 +2950,7 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   return nullptr;
 }
 
-void triggerVarValueChange(SHContext *ctx, const SHVar *name, const SHVar *var) {
-  shards::triggerVarValueChange(ctx, name, var);
-}
+void triggerVarValueChange(SHContext *ctx, const SHVar *name, const SHVar *var) { shards::triggerVarValueChange(ctx, name, var); }
 
 SHContext *getWireContext(SHWireRef wireRef) {
   auto &wire = SHWire::sharedFromRef(wireRef);
@@ -2948,12 +2979,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   sh_current_interface_loaded = true;
 
   result->alloc = [](uint32_t size) -> void * {
-    auto mem = ::operator new(size, std::align_val_t{16});
+    auto mem = ::operator new (size, std::align_val_t{16});
     memset(mem, 0, size);
     return mem;
   };
 
-  result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
+  result->free = [](void *ptr) { ::operator delete (ptr, std::align_val_t{16}); };
 
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)
@@ -3014,7 +3045,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto sc = SHWire::sharedFromRef(wire);
     auto var = sc->externalVariables[name];
     if (var) {
-      ::operator delete(var, std::align_val_t{16});
+      ::operator delete (var, std::align_val_t{16});
     }
     sc->externalVariables.erase(name);
   };
