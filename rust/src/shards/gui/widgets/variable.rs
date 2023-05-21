@@ -275,7 +275,7 @@ impl Shard for WireVariable {
     Ok(())
   }
 
-  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let input: Table = input.try_into()?;
 
     let name_var = input.get_fast_static(cstr!("Name"));
