@@ -2743,6 +2743,8 @@ void setString(uint32_t crc, SHString str) {
 void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
 
 void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *var) {
+  if((var->flags & SHVAR_FLAGS_EXPOSED) == 0) return;
+
   auto &w = context->main;
   auto nameStr = SHSTRVIEW((*name));
   OnExposedVarSet ev{w->id, nameStr, *var, context->currentWire()};
@@ -2750,6 +2752,8 @@ void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *v
 }
 
 void triggerVarValueChange(SHWire *w, const SHVar *name, const SHVar *var) {
+  if((var->flags & SHVAR_FLAGS_EXPOSED) == 0) return;
+
   auto nameStr = SHSTRVIEW((*name));
   OnExposedVarSet ev{w->id, nameStr, *var, w};
   w->dispatcher.trigger(ev);
