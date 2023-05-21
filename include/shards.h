@@ -580,6 +580,12 @@ struct SHVarPayload {
 
 struct SHVar {
   struct SHVarPayload payload;
+  union {
+    struct SHObjectInfo *objectInfo;
+    uint64_t version;
+    char shortString[8];
+    uint8_t shortBytes[8];
+  };
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
   SH_ENUM_DECL SHType valueType;
   SH_ENUM_DECL SHType innerType;
@@ -589,12 +595,6 @@ struct SHVar {
 #endif
   uint16_t flags;
   uint32_t refcount;
-  union {
-    struct SHObjectInfo *objectInfo;
-    uint64_t version;
-    char shortString[8];
-    uint8_t shortBytes[8];
-  };
 } __attribute__((aligned(16)));
 
 enum SH_ENUM_CLASS SHRunWireOutputState { Running, Restarted, Stopped, Failed };
