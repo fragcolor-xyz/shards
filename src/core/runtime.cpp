@@ -2899,7 +2899,7 @@ SHCore sh_current_interface{};
 
 extern "C" {
 SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
-  auto wire = SHWire::sharedFromRef(wireRef);
+  auto &wire = SHWire::sharedFromRef(wireRef);
   std::string nameView{name, nameLen};
   auto it = wire->externalVariables.find(nameView);
   if (it != wire->externalVariables.end()) {
@@ -2917,7 +2917,8 @@ void triggerVarValueChange(SHContext *ctx, const SHVar *name, const SHVar *var) 
   shards::triggerVarValueChange(ctx, name, var);
 }
 
-SHContext *getWireContext(SHWire *wire) {
+SHContext *getWireContext(SHWireRef wireRef) {
+  auto &wire = SHWire::sharedFromRef(wireRef);
   return wire->context;
 }
 
