@@ -947,7 +947,7 @@ struct Set : public SetUpdateBase {
 
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
 
-      OnExposedVarWarmup ev{context->main->id, _name, SHExposedTypesInfo(_exposedInfo)};
+      OnExposedVarWarmup ev{context->main->id, _name, SHExposedTypesInfo(_exposedInfo), context->currentWire()};
       context->main->dispatcher.trigger(ev);
     } else {
       if (_target->flags & SHVAR_FLAGS_EXPOSED) {
@@ -981,7 +981,7 @@ struct Set : public SetUpdateBase {
     else
       output = activateRegular(context, input);
 
-    OnExposedVarSet ev{context->main->id, _name, *_target};
+    OnExposedVarSet ev{context->main->id, _name, *_target, context->currentWire()};
     context->main->dispatcher.trigger(ev);
 
     return output;
@@ -1223,7 +1223,7 @@ struct Update : public SetUpdateBase {
     else
       output = activateRegular(context, input);
 
-    OnExposedVarSet ev{context->main->id, _name, *_target};
+    OnExposedVarSet ev{context->main->id, _name, *_target, context->currentWire()};
     context->main->dispatcher.trigger(ev);
 
     return output;

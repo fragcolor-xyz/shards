@@ -1130,12 +1130,14 @@ struct OnExposedVarWarmup {
   entt::id_type id;
   std::string_view name;
   SHExposedTypesInfo info;
+  const SHWire *wire;
 };
 
 struct OnExposedVarSet {
   entt::id_type id;
   std::string_view name;
   SHVar newValue;
+  const SHWire *wire;
 };
 } // namespace shards
 

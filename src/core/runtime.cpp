@@ -2742,15 +2742,11 @@ void setString(uint32_t crc, SHString str) {
 
 void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
 
-void triggerVarValueChange(SHWire *wire, std::string_view name, const SHVar *var) {
-  OnExposedVarSet ev{wire->id, name, *var};
-  wire->dispatcher.trigger(ev);
-}
-
-void triggerVarValueChange(SHWireRef wire, const SHVar *name, const SHVar *var) {
-  auto &w = SHWire::sharedFromRef(wire);
+void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *var) {
+  auto &w = context->main;
   auto nameStr = SHSTRVIEW((*name));
-  triggerVarValueChange(w.get(), nameStr, var);
+  OnExposedVarSet ev{w->id, nameStr, *var, context->currentWire()};
+  w->dispatcher.trigger(ev);
 }
 }; // namespace shards
 
@@ -2911,8 +2907,8 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   return nullptr;
 }
 
-void triggerVarValueChange(SHWireRef wire, const SHVar *name, const SHVar *var) {
-  shards::triggerVarValueChange(wire, name, var);
+void triggerVarValueChange(SHContext *ctx, const SHVar *name, const SHVar *var) {
+  shards::triggerVarValueChange(ctx, name, var);
 }
 
 SHCore *__cdecl shardsInterface(uint32_t abi_version) {
