@@ -13,6 +13,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
   const float sensitivity = 1.0f;
   float4x4 dragStartTransform;
   float3 dragStartPoint;
+  float2 dragStartCursor;
 
   float scale = 1.0f;
   const float axisRadius = 0.05f;
@@ -68,7 +69,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       max =
           (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
       }
-      handle.selectionBoxTransform = transform;
+      handle.selectionBoxTransform = linalg::identity;
 
       inputContext.updateHandle(handle);
     }
@@ -110,9 +111,10 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
 
     if (index == 3) {
-      float3 axisPoint = float3(0.0f, 0.0f, 0.0f);
-      dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, axisPoint,
-                                  linalg::cross(context.eyeLocation, context.rayDirection)); // hit point on the plane                          
+      // float3 axisPoint = float3(0.0f, 0.0f, 0.0f);
+      // dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, axisPoint,
+      //                             linalg::cross(context.eyeLocation, context.rayDirection)); // hit point on the plane                          
+      dragStartCursor = context.inputState.cursorPosition;
       // SPDLOG_DEBUG("dragStartPoint: {}", dragStartPoint);  
     } else {
       dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
@@ -135,16 +137,16 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
     // float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
     // SPDLOG_DEBUG("Handle {} ({}) moved to {}", index, fwd, hitPoint);
 
-    float3 hitPoint;
     float3 delta;
     if (index == 3) {
-      hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint,
-                            linalg::cross(context.eyeLocation, context.rayDirection));
-      delta = hitPoint - dragStartPoint;
-      // SPDLOG_DEBUG("hitPoint: {}, delta: {}", hitPoint, delta);
+      // hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint,
+      //                       linalg::cross(context.eyeLocation, context.rayDirection));
+      float2 hitPoint = context.inputState.cursorPosition;
+      delta = float3((hitPoint - dragStartCursor), 0);
+      // SPDLOG_DEBUG("delta: {}", delta);
       
     } else {
-      hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
+      float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
       delta = hitPoint - dragStartPoint;
     }
     // float3 delta = hitPoint - dragStartPoint;
@@ -173,7 +175,13 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       break;
     case 3:
       // SPDLOG_DEBUG("Scaling: {}", scaling);
-      scaling = float3(1 + delta.x * sensitivity, 1 + delta.y * sensitivity, 1 + delta.z * sensitivity);
+      float scale = 0.0005f * linalg::length(delta);
+      SPDLOG_DEBUG("Scale: {}", scale);
+      if (delta.x > 0) {
+        scaling = float3(1 + scale, 1 + scale, 1 + scale);
+      } else {
+        scaling = float3(1 - scale, 1 - scale, 1 - scale);
+      }
       break;
     }
     transform = linalg::mul(linalg::scaling_matrix(scaling), dragStartTransform);
