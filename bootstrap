@@ -13,7 +13,7 @@ fi
 popd
 
 echo "Setting up tools"
-pushd $SHARDS_ROOT/src/tools
+pushd $SHARDS_ROOT/shards/tools
 ./bootstrap; Res=$?
 if [ ! $Res -eq 0 ]; then
   echo "Failed to set-up tools ($Res)"

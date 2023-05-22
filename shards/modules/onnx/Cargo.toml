@@ -1,0 +1,19 @@
+[package]
+name = "shards-onnx"
+description = ""
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Giovanni Petrantoni <sinkingsugar@gmail.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+lazy_static = "1.4.0"
+shards = { path = "../../rust" }
+compile-time-crc32 = "0.1.2"
+tract-onnx = { version = "0.19.8" }
+
+[patch.crates-io]
+tar = { git = "https://github.com/shards-lang/tar-rs", rev = "6d26c0d1724326c8c1b06eaafc25a19253afbcdc" }

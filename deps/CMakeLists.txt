@@ -228,7 +228,7 @@ add_library(xxHash INTERFACE)
 target_include_directories(xxHash INTERFACE xxHash)
 
 add_library(linalg INTERFACE)
-target_include_directories(linalg INTERFACE linalg)
+target_include_directories(linalg INTERFACE linalg ${CMAKE_CURRENT_LIST_DIR})
 
 add_library(miniaudio INTERFACE)
 target_include_directories(miniaudio INTERFACE miniaudio)

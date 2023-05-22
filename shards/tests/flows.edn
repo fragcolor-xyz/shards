@@ -1,0 +1,468 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2019 Fragcolor Pte. Ltd.
+
+(def Root (Mesh))
+
+;; Notice, if running with valgrind:
+;; you need valgrind headers and BOOST_USE_VALGRIND (-DUSE_VALGRIND @ cmake cmdline)
+;; To run this properly or valgrind will complain
+
+(def wire1
+  (Wire
+   "one"
+   (Msg "one - 1")
+   (Resume "two")
+   (Msg "one - 2")
+   (Msg "one - 3")
+   (Resume "two")
+   (Msg "one - Done")
+   (Resume "two")))
+
+(def wire2
+  (Wire
+   "two"
+   (Msg "two - 1")
+   (Resume "one")
+   (Msg "two - 2")
+   (Msg "two - 3")
+   (Resume "one")
+   (Msg "two - 4")
+   (Msg "two - Done")))
+
+(schedule Root wire1)
+(if (run Root 0.1) nil (throw "Root tick failed"))
+
+(def recursive
+  (Wire
+   "recur"
+   (Log "depth")
+   (Math.Add 1)
+   (Cond
+    [(-> (IsLess 5))
+     (Do "recur")])
+   (Log "res")))
+
+(def logicWire
+  (Wire
+   "dologic"
+   (IsMore 10)
+   (Or)
+   (IsLess 0)))
+
+;; ;; Broken for now indeed, until we implement jumps
+
+;; ;; (def recursiveAnd
+;; ;;   (Wire
+;; ;;    "recurAnd"
+;; ;;    (Log "depth")
+;; ;;    (Math.Inc)
+;; ;;    (Push)
+;; ;;    (IsLess 5)
+;; ;;    (And)
+;; ;;    (Pop)
+;; ;;    (Do "recurAnd")
+;; ;;    (Log "res")
+;; ;;    ))
+
+(schedule
+ Root
+ (Wire
+  "doit"
+  0
+  (Do recursive)
+  ;; (Do recursiveAnd)
+  ))
+
+;; test stack overflow, notice in this case (below) we could have tail call optimized,
+;; TODO implement TCO
+
+;; (def recursiveCrash
+;;   (Wire
+;;    "recurCrash"
+;;    (Log "depth")
+;;    (Math.Inc)
+;;    (Do "recurCrash")
+;;    ))
+
+;; (schedule
+;;  Root
+;;  (Wire
+;;   "doit"
+;;   0
+;;   (Do recursiveCrash)))
+
+(def spawner
+  (Wire
+   "spawner"
+   (Spawn logicWire)))
+
+(def Loop
+  (Wire
+   "Loop" :Looped
+   (Math.Add 1)
+   (Log)
+   (Cond
+    [(-> (Is 5))
+     (Stop)])
+   (Restart)))
+
+(schedule
+ Root
+ (Wire
+  "loop-test"
+  0
+  (Detach Loop)
+  (Wait Loop)
+  (Assert.Is 5 true)
+  (Log)
+
+  ;; test logic
+  ;; ensure a sub inline wire
+  ;; using Return mechanics
+  ;; is handled by (If)
+  -10
+  (If (Do logicWire)
+      (-> true)
+      (-> false))
+  (Assert.Is true true)
+
+  -10
+  (If (Do logicWire)
+      (-> true)
+      (-> false))
+  (Assert.IsNot false true)
+
+  11
+  (If (Do logicWire)
+      (-> true)
+      (-> false))
+  (Assert.Is true true)
+
+  11
+  (If (Do logicWire)
+      (-> true)
+      (-> false))
+  (Assert.IsNot false true)
+
+  0
+  (If (Do logicWire)
+      (-> true)
+      (-> false))
+  (Assert.Is false true)
+
+  0
+  (If (Do logicWire)
+      (-> true)
+      (-> false))
+  (Assert.IsNot true true)
+
+  "Hello world" = .hello-var
+
+  (Const ["A" "B" "C"])
+  (TryMany (Wire "print-stuff" (Log) .hello-var (Assert.Is "Hello world" true) (Log) "Ok"))
+  (Assert.Is ["Ok" "Ok" "Ok"] true)
+  (Const ["A" "B" "C"])
+  (TryMany (Wire "print-stuff" (Log) .hello-var (Assert.Is "Hello world" true) (Log) "A") :Policy WaitUntil.FirstSuccess)
+  (Assert.Is "A" true)
+
+  (Const ["A" "B" "C"])
+  (TryMany (Wire "print-stuff" (Log) .hello-var (Assert.Is "Hello world" true) (Log) "Ok") :Threads 3)
+  (Assert.Is ["Ok" "Ok" "Ok"] true)
+  (Const ["A" "B" "C"])
+  (TryMany (Wire "print-stuff" (Log) .hello-var (Assert.Is "Hello world" true) (Log) "A") :Threads 3 :Policy WaitUntil.FirstSuccess)
+  (Assert.Is "A" true)
+
+  3 = .my-adder
+  (Const [1 22 333]) >= .my-result
+  (Repeat
+   (->
+    .my-result
+    (StepMany
+     (Wire "keep-state"
+           (Setup
+            >= .starting)
+           .starting (Log) (Math.Add .my-adder) > .starting))
+    (ExpectIntSeq) ; step many will return intermediate outputs!
+    > .my-result)
+   :Times 3)
+  .my-result
+  (Assert.Is [10, 31, 342] true)
+
+  (Const [1 22 333]) > .my-result
+  (Repeat
+   (->
+    ;; .my-result NO NEED HERE AS WE KEEP STATE BY LOOP
+    (StepMany
+     (Wire "keep-state2" :Looped
+           (Setup
+            >= .starting)
+           .starting (Log) (Math.Add .my-adder) > .starting))
+    (ExpectIntSeq) ; step many will return intermediate outputs!
+    > .my-result)
+   :Times 3)
+  .my-result
+  (Assert.Is [10, 31, 342] true)
+
+  (Const [1 22 333]) > .my-result
+  (Repeat
+   (->
+    .my-result
+    (DoMany
+     (Wire "keep-state" :Pure
+           (Setup
+            >= .starting)
+           .starting (Log) (Math.Add 3) > .starting))
+    > .my-result)
+   :Times 3)
+  .my-result
+  (Assert.Is [10, 31, 342] true)
+
+  (Repeat (-> 10
+              (Expand 10 (defwire wide-test (Math.Add 1)) :Threads 10)
+              (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
+              (Log))
+          :Times 10)
+
+  (Repeat (-> 10
+              (Expand 10 (defwire wide-test (RandomBytes 8) (ToHex)) :Threads 10)
+              (Log))
+          :Times 10)
+
+  10
+  (Expand 10 (defwire wide-test (Math.Add 1)))
+  (Assert.Is [11 11 11 11 11 11 11 11 11 11] true)
+  (Log)
+
+  -10
+  (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
+      (-> true)
+      (-> false))
+  (Assert.IsNot false true)
+
+  11
+  (If (-> (Do spawner) >= .ccc (Wait .ccc) (ExpectBool))
+      (-> true)
+      (-> false))
+  (Assert.Is true true)
+
+  (Msg "Done")))
+
+(if (run Root 0.1) nil (throw "Root tick failed"))
+
+(defwire hashed
+  10
+  (|#
+   (Math.Add 1)
+   (Math.Add 2)
+   (Math.Add 3)
+   (Math.Add 4)
+   (Math.Add 5)
+   (Math.Add 6))
+  (Log)
+  (| (Take "Hash") (ToBytes) (ToHex) (Assert.Is "0x0517ed7b7fbe5dbc1311a60edfc55db278") (Log)))
+
+(schedule Root hashed)
+(if (run Root) nil (throw "Root tick failed"))
+
+(defloop wire-loop-inline
+  (Setup 0 >= .count)
+  (Math.Inc .count)
+  .count (Log) (When (IsMore 10) (-> (Return))))
+
+(defwire wire-loop-inline-parent
+  (Do wire-loop-inline)
+  (Msg "Ok done looping..."))
+
+(schedule Root wire-loop-inline-parent)
+(if (run Root) nil (throw "Root tick failed"))
+
+(defwire depth-wire-indirect
+  ["This is a " .consumed-variable]
+  (String.Join))
+
+(defwire depth-wire
+  (Do depth-wire-indirect)
+  (Log)
+  .consumed-variable)
+
+(defwire spawned-wire
+  (Do "depth-wire")
+  (ToInt)
+  (Math.Add 1)
+  (Log "X"))
+
+(defwire test-capture
+  "2" = .consumed-variable
+  ; Spawn should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  (| (Spawn spawned-wire) = .spawned-wire-0)
+  (| (Spawn spawned-wire) = .spawned-wire-1)
+  (Wait .spawned-wire-0)
+  (Assert.Is 3 true)
+  (Wait .spawned-wire-1)
+  (Assert.Is 3 true))
+
+(schedule Root test-capture)
+(if (run Root) nil (throw "Root tick failed"))
+
+(defwire detached-wire
+  .consumed-variable
+  (ToInt)
+  (Math.Add 1)
+  (ToString)
+  (| (Do "depth-wire"))
+  (ToInt)
+  (Log "X"))
+
+(defwire test-capture
+  "2" = .consumed-variable
+  ; Detach should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  (Detach detached-wire)
+  (Wait detached-wire)
+  (Assert.Is 3 true))
+
+(schedule Root test-capture)
+(if (run Root) nil (throw "Root tick failed"))
+
+(defwire depth-wire-deeper-do
+  ["This is a " .consumed-variable]
+  (String.Join))
+
+(defwire depth-wire-deeper
+  (Do "depth-wire-deeper-do")
+  (Log)
+  (Resume))
+
+(defwire depth-wire
+  (Start "depth-wire-deeper")
+  (Resume))
+
+(defwire spawned-wire
+  (Start "depth-wire")
+  .consumed-variable
+  (ToInt)
+  (Math.Add 1)
+  (Log "X")
+  (Stop "depth-wire-deeper-do")
+  (Stop "depth-wire-deeper")
+  (Stop "depth-wire"))
+
+(defwire test-capture
+  "2" = .consumed-variable
+  ; Spawn should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  (| (Spawn spawned-wire) = .spawned-wire-0)
+  (| (Spawn spawned-wire) = .spawned-wire-1)
+  (Wait .spawned-wire-0)
+  (Assert.Is 3 true)
+  (Wait .spawned-wire-1)
+  (Assert.Is 3 true))
+
+(schedule Root test-capture)
+(if (run Root) nil (throw "Root tick failed"))
+
+(defwire depth-wire-deeper-do
+  ["This is a " .consumed-variable]
+  (String.Join))
+
+(defwire depth-wire-deeper
+  (Do "depth-wire-deeper-do")
+  (Log)
+  (Resume))
+
+(defwire depth-wire
+  (Start "depth-wire-deeper")
+  (Resume))
+
+(defwire spawned-wire
+  (Start "depth-wire")
+  .consumed-variable
+  (ToInt)
+  (Math.Add 1)
+  (Log "X")
+  (Stop "depth-wire-deeper")
+  (Stop "depth-wire")
+  (Stop)
+  ;
+  )
+
+(defwire test-capture
+  "2" = .consumed-variable
+  ; Spawn should now capture .consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  (Msg "<------------SPAWN 1---------------->")
+  (| (Spawn spawned-wire) = .spawned-wire-0)
+  (Wait .spawned-wire-0)
+  (Assert.Is 3 true)
+  (Msg "<------------SPAWN 2---------------->")
+  (| (Spawn spawned-wire) = .spawned-wire-1)
+  (Wait .spawned-wire-1)
+  (Assert.Is 3 true))
+
+(schedule Root test-capture)
+(if (run Root) nil (throw "Root tick failed"))
+
+(defloop inner-loop
+  .root-variable
+  (Log)
+  (Pause 2.0))
+
+(defwire fire-starter
+  (Spawn inner-loop))
+
+(defloop main
+  (Setup "Hello" = .root-variable)
+  (Branch [fire-starter]))
+
+(schedule Root main)
+(if (run Root 0.1 100) nil (throw "Root tick failed"))
+
+(Wire "test" (-> (Msg "Hello")))
+
+(defpure a-perfect-circle
+  (Log)
+  (When (Is false) (Stop))
+  false (Spawn a-perfect-circle)
+  true; make compose validation happy!
+  )
+
+(defwire a-perfect-starter
+  true (Spawn a-perfect-circle) = .a-perfect-circle-0
+  (Wait .a-perfect-circle-0))
+
+(defwire more-perfect-starter
+  (Spawn a-perfect-starter) = .a-perfect-starter-0
+  (Wait .a-perfect-starter-0))
+
+(schedule Root more-perfect-starter)
+(if (run Root 0.1 20) nil (throw "Root tick failed"))
+
+(defwire peek-test
+  (Detach more-perfect-starter)
+  (Peek more-perfect-starter)
+  (Assert.Is nil)
+  (Wait more-perfect-starter)
+  (Assert.Is true)
+  (Peek more-perfect-starter)
+  (Assert.Is true))
+
+(schedule Root peek-test)
+(if (run Root 0.1 20) nil (throw "Root tick failed"))
+
+(defwire long-wire
+  (||
+   (Msg "long-wire")
+   1.0 (SleepBlocking!))
+  (Msg "long-wire done"))
+
+(defloop await-test
+  (Do long-wire))
+(defloop await-test1
+  (Do long-wire))
+(defloop await-test2
+  (Do long-wire))
+(defloop await-test3
+  (Do long-wire))
+
+(schedule Root await-test)
+(schedule Root await-test1)
+(schedule Root await-test2)
+(schedule Root await-test3)
+(if (run Root 0.1 100) nil (throw "Root tick failed"))

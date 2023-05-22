@@ -99,8 +99,8 @@ jobs:
         if: ${{ steps.setup.outputs.run-tests == 'true' && steps.setup.outputs.threading == 'st' }}
         run: |
           cd build
-          node ../src/tests/test-shards.js shards-st.js || [[ $? == 143 ]] || exit
-          node ../src/tests/test-runtime.js || [[ $? == 143 ]] || exit
+          node ../shards/tests/test-shards.js shards-st.js || [[ $? == 143 ]] || exit
+          node ../shards/tests/test-runtime.js || [[ $? == 143 ]] || exit
           mkdir shards
           cp shards-st.wasm shards/
           cp shards-st.js shards/
@@ -108,8 +108,8 @@ jobs:
         if: ${{ steps.setup.outputs.threading == 'mt' }}
         run: |
           cd build
-          node --experimental-wasm-threads ../src/tests/test-shards.js shards-mt.js || [[ $? == 143 ]] || exit
-          node --experimental-wasm-threads ../src/tests/test-runtime.js || [[ $? == 143 ]] || exit
+          node --experimental-wasm-threads ../shards/tests/test-shards.js shards-mt.js || [[ $? == 143 ]] || exit
+          node --experimental-wasm-threads ../shards/tests/test-runtime.js || [[ $? == 143 ]] || exit
           mkdir shards
           cp shards-mt.wasm shards/
           cp shards-mt.js shards/

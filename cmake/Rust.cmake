@@ -233,4 +233,9 @@ function(add_rust_library)
   set_target_properties(${RUST_TARGET_NAME} PROPERTIES
     IMPORTED_LOCATION ${GENERATED_LIB_PATH}
   )
+
+  # Add default required libraries for windows
+  if(WIN32)
+    target_link_libraries(${RUST_TARGET_NAME} INTERFACE NtDll)
+  endif()
 endfunction()

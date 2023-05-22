@@ -73,7 +73,7 @@ jobs:
         run: |
           cd build
           chmod +x shards
-          ./shards ../src/core/compress-strings.edn
+          ./shards ../shards/core/compress-strings.edn
 
           cd ..
           ./format
@@ -82,14 +82,14 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: shccstrings
-          path: src/core/shccstrings.hpp
+          path: shards/core/shccstrings.hpp
       - name: Create a PR
         uses: peter-evans/create-pull-request@v4
         with:
           title: Update compressed strings
           commit-message: Update compressed strings
           add-paths: |
-            src/core/shccstrings.hpp
+            shards/core/shccstrings.hpp
           branch: compress-strings
           branch-suffix: short-commit-hash
           labels: |

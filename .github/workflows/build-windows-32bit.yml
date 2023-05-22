@@ -164,6 +164,7 @@ jobs:
           RUST_BACKTRACE: full
         shell: msys2 {0}
         run: |
+          rm -rf build/modules
           rm -rf build/src
           rm -rf build/lib
           rm -rf build/deps
@@ -187,7 +188,7 @@ jobs:
         if: failure()
         with:
           name: ${{ steps.setup.outputs.artifact }} rejected test data
-          path: src/gfx/tests/data/default/rejected
+          path: shards/gfx/tests/data/default/rejected
           if-no-files-found: ignore
 
   #
@@ -243,43 +244,43 @@ jobs:
         run: |
           cd build
           echo "Running test: general"
-          ./shards ../src/tests/general.edn
+          ./shards ../shards/tests/general.edn
           echo "Running test: variables"
-          ./shards ../src/tests/variables.edn
+          ./shards ../shards/tests/variables.edn
           echo "Running test: linalg"
-          ./shards ../src/tests/linalg.clj
+          ./shards ../shards/tests/linalg.clj
           echo "Running test: loader"
-          ./shards ../src/tests/loader.clj
+          ./shards ../shards/tests/loader.clj
           echo "Running test: network"
-          ./shards ../src/tests/network.edn
+          ./shards ../shards/tests/network.edn
           echo "Running test: struct"
-          ./shards ../src/tests/struct.clj
+          ./shards ../shards/tests/struct.clj
           echo "Running test: flows"
-          ./shards ../src/tests/flows.edn
+          ./shards ../shards/tests/flows.edn
           echo "Running test: kdtree"
-          ./shards ../src/tests/kdtree.clj
+          ./shards ../shards/tests/kdtree.clj
           echo "Running test: channels"
-          ./shards ../src/tests/channels.clj
+          ./shards ../shards/tests/channels.clj
           echo "Running test: http"
-          ./shards ../src/tests/http.clj
+          ./shards ../shards/tests/http.clj
           echo "Running test: brotli"
-          ./shards ../src/tests/brotli.clj
+          ./shards ../shards/tests/brotli.clj
           echo "Running test: snappy"
-          ./shards ../src/tests/snappy.clj
+          ./shards ../shards/tests/snappy.clj
           echo "Running test: expect-like"
-          ./shards ../src/tests/expect-like.edn
+          ./shards ../shards/tests/expect-like.edn
           # echo "Running test: ws"
-          # ./shards ../src/tests/ws.edn
+          # ./shards ../shards/tests/ws.edn
           echo "Running test: bigint"
-          ./shards ../src/tests/bigint.clj
+          ./shards ../shards/tests/bigint.clj
           echo "Running test: wasm"
-          ./shards ../src/tests/wasm.clj
+          ./shards ../shards/tests/wasm.clj
           echo "Running test: eth"
-          ./shards ../src/tests/eth.edn
+          ./shards ../shards/tests/eth.edn
           echo "Running test: crypto"
-          ./shards ../src/tests/crypto.edn
+          ./shards ../shards/tests/crypto.edn
           echo "Running test: complex-deserialize"
-          ./shards ../src/tests/complex-deserialize.edn
+          ./shards ../shards/tests/complex-deserialize.edn
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

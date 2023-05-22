@@ -1,0 +1,29 @@
+[package]
+name = "shards-crypto"
+description = ""
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Giovanni Petrantoni <sinkingsugar@gmail.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+lazy_static = "1.4.0"
+shards = { path = "../../rust" }
+compile-time-crc32 = "0.1.2"
+# chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+tiny-keccak = { version = "2.0.2", features = ["keccak", "sha3"] }
+libsecp256k1 = { version = "0.7.1" }
+instant = { version = "0.1.12", features = [ "now" ] }
+ethereum-types = { version = "0.12.1" }
+ethabi = { version = "16.0.0" }
+chacha20poly1305 = { version = "0.9.1" }
+sha2 = { version = "0.10.6" }
+hex = { version = "0.4.3" }
+serde_json = { version = "1.0.95" }
+
+# can't seem to update those as they crash on windows release builds.....
+sp-core = { version = "4.1.0-dev", git = "https://github.com/fragcolor-xyz/substrate.git", tag = 'monthly-2022-01' }
+parity-scale-codec = { version = "2.3.1", default-features = false }
