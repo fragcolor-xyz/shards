@@ -720,11 +720,14 @@ struct Serialization {
       auto availBytes = recycle ? output.payload.bytesCapacity : 0;
       read((uint8_t *)&output.payload.bytesSize, sizeof(output.payload.bytesSize));
 
+#if 0
       if (output.payload.bytesSize <= 8) {
         // short array
         output.payload.bytesValue = output.shortBytes;
         output.payload.bytesCapacity = 8;
-      } else {
+      } else
+#endif
+      {
         if (availBytes > 0 && availBytes < output.payload.bytesSize) {
           // not enough space, ideally realloc, but for now just delete
           delete[] output.payload.bytesValue;
@@ -756,11 +759,14 @@ struct Serialization {
       auto availChars = recycle ? output.payload.stringCapacity : 0;
       read((uint8_t *)&output.payload.stringLen, sizeof(uint32_t));
 
-      if (output.payload.stringLen < 8) {
+#if 0
+      if (output.payload.stringLen <= 7) {
         // small string, just use the stack
         output.payload.stringValue = output.shortString;
         output.payload.stringCapacity = 7;
-      } else {
+      } else
+#endif
+      {
         if (availChars > 0 && availChars < output.payload.stringLen) {
           // we need more chars then what we have, realloc
           delete[] output.payload.stringValue;

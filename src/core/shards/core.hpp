@@ -347,7 +347,7 @@ struct Comment {
 
   static SHParametersInfo parameters() { return params; }
 
-  void setParam(int index, const SHVar &value) { _comment = value.payload.stringValue; }
+  void setParam(int index, const SHVar &value) { _comment = SHSTRVIEW(value); }
 
   SHVar getParam(int index) { return shards::Var(_comment); }
 
@@ -700,7 +700,7 @@ struct VariableBase {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _name = value.payload.stringValue;
+      _name = SHSTRVIEW(value);
       break;
     case 1:
       if (value.valueType == SHType::None) {
@@ -1520,9 +1520,9 @@ struct Swap {
 
   void setParam(int index, const SHVar &value) {
     if (index == 0)
-      _nameA = value.payload.stringValue;
+      _nameA = SHSTRVIEW(value);
     else if (index == 1) {
-      _nameB = value.payload.stringValue;
+      _nameB = SHSTRVIEW(value);
     }
   }
 
