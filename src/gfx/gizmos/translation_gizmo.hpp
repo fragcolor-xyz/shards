@@ -9,7 +9,8 @@ namespace gizmos {
 struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
 
-  std::unique_ptr<Handle> handles[3];
+  Handle handles[3];
+  Box handleSelectionBoxes[3];
   float4x4 dragStartTransform;
   float3 dragStartPoint;
 
@@ -22,9 +23,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
   TranslationGizmo() {
     for (size_t i = 0; i < 3; i++) {
-      handles[i] = std::make_unique<BoxHandle>();
-      handles[i]->userData = (void *)i;
-      handles[i]->callbacks = this;
+      handles[i].userData = (void *)i;
+      handles[i].callbacks = this;
     }
   }
 
@@ -33,7 +33,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     float3 localRayDir = linalg::mul(invTransform, inputContext.rayDirection);
 
     for (size_t i = 0; i < 3; i++) {
-      auto &handle = *(reinterpret_cast<BoxHandle *>(handles[i].get()));
+      auto &handle = handles[i];
+      auto &selectionBox = handleSelectionBoxes[i];
 
       float3 fwd{};
       fwd[i] = 1.0f;
@@ -48,15 +49,16 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       // Make hitboxes slightly bigger than the actual visuals
       const float2 hitboxScale = linalg::lerp(float2(2.2f, 1.2f), float2(0.8f, 1.0f), angleFactor);
 
-      auto &min = handle.selectionBox.min;
-      auto &max = handle.selectionBox.max;
+      auto &min = selectionBox.min;
+      auto &max = selectionBox.max;
       min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
       max =
           (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
 
-      handle.selectionBoxTransform = transform;
+      selectionBox.transform = transform;
 
-      inputContext.updateHandle(handle);
+      float hitDistance = intersectBox(inputContext.eyeLocation, inputContext.rayDirection, handleSelectionBoxes[i]);
+      inputContext.updateHandle(handle, hitDistance);
     }
   }
 
@@ -94,7 +96,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
   void render(InputContext &inputContext, GizmoRenderer &renderer) {
     for (size_t i = 0; i < 3; i++) {
-      auto &handle = *(reinterpret_cast<BoxHandle *>(handles[i].get()));
+      auto &handle = handles[i];
+      auto &selectionBox = handleSelectionBoxes[i];
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
@@ -107,16 +110,16 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
         thickness = 2;
       }
 
-      auto &min = handle.selectionBox.min;
-      auto &max = handle.selectionBox.max;
+      auto &min = selectionBox.min;
+      auto &max = selectionBox.max;
       float3 center = (max + min) / 2.0f;
       float3 size = max - min;
 
-      renderer.getShapeRenderer().addBox(handle.selectionBoxTransform, center, size, color, thickness);
+      renderer.getShapeRenderer().addBox(selectionBox.transform, center, size, color, thickness);
 #endif
 
-      float3 loc = extractTranslation(handle.selectionBoxTransform);
-      float3 dir = getAxisDirection(i, handle.selectionBoxTransform);
+      float3 loc = extractTranslation(selectionBox.transform);
+      float3 dir = getAxisDirection(i, selectionBox.transform);
       float4 axisColor = axisColors[i];
       axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
       renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,

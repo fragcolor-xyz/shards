@@ -11,7 +11,7 @@ void InputContext::begin(const InputState &inputState, ViewPtr view) {
   updateView(view);
 
   // Reset hover state
-  hitDistance = FLT_MAX;
+  hitDistance = std::numeric_limits<float>::infinity();
   hovering = nullptr;
 
   // Reset tracker for held handle
@@ -20,16 +20,15 @@ void InputContext::begin(const InputState &inputState, ViewPtr view) {
 
 // TODO: move raycasting out of updateHandle, maybe even call it with a distance parameter
 // let the gizmo itself handle the raycasting however it needs to instead perhaps
-void InputContext::updateHandle(Handle &handle) {
+
+// call with hit distance from raycast
+void InputContext::updateHandle(Handle &handle, float hitDistance) {
   bool isHeld = &handle == held;
 
-  //auto &box = handle.selectionBox;
-  //float4x4 invHandleTransform = linalg::inverse(handle.selectionBoxTransform);
-  //float3 rayLoc1 = linalg::mul(invHandleTransform, float4(eyeLocation, 1)).xyz();
-  //float3 rayDir1 = linalg::mul(invHandleTransform, float4(rayDirection, 0)).xyz();
-  //float2 hit = intersectAABB(rayLoc1, rayDir1, box.min, box.max);
-
-  handle.resolveHover(*this);
+  if (hitDistance < this->hitDistance) {
+    this->hitDistance = hitDistance;
+    this->hovering = &handle;
+  }
 
   // Movement callback for held handle
   if (isHeld) {
@@ -94,49 +93,6 @@ void InputContext::updateView(ViewPtr view) {
 
   eyeLocation = viewInv.w.xyz();
   rayDirection = linalg::normalize(unprojected.xyz() - eyeLocation);
-}
-
-void BoxHandle::resolveHover(InputContext &context) {
-  auto &box = selectionBox;
-  float4x4 invHandleTransform = linalg::inverse(selectionBoxTransform);
-  float3 rayLoc1 = linalg::mul(invHandleTransform, float4(context.eyeLocation, 1)).xyz();
-  float3 rayDir1 = linalg::mul(invHandleTransform, float4(context.rayDirection, 0)).xyz();
-  float2 hit = intersectAABB(rayLoc1, rayDir1, box.min, box.max);
-
-  if (hit.x < hit.y) {
-    if (hit.x < context.hitDistance) {
-      context.hitDistance = hit.x;
-      context.hovering = this;
-    }
-  }
-}
-
-void DiscHandle::resolveHover(InputContext &context) {
-  float3 axisDir{};
-  axisDir[size_t(userData)] = 1.0f;
-
-  // find a unit vector perpendicular to the forward axis and the camera direction
-  float3 rotPlaneX = linalg::normalize(linalg::cross(axisDir, context.rayDirection));
-  //float3 hitLoc = hitOnPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, rotPlaneX);
-  float3 hitLoc = hitOnPlane(selectionDisc.center + axisDir, context.rayDirection, selectionDisc.center, rotPlaneX);
-  float distanceFromCenter = linalg::distance(hitLoc, selectionDisc.center);
-
-  static int debugged{};
-  if (axisDir[0] == 1.0f) {
-    debugged++;
-    if (debugged % 300 == 0) {
-      SPDLOG_DEBUG("axisDir: {} {} {}    rotplaneX: {} {} {}    hitLoc: {} {} {}  distance: {}", axisDir.x, axisDir.y, axisDir.z,
-                   rotPlaneX.x, rotPlaneX.y, rotPlaneX.z, hitLoc.x, hitLoc.y, hitLoc.z, distanceFromCenter);
-      SPDLOG_DEBUG("discRadii: {} {}", selectionDisc.innerRadius, selectionDisc.outerRadius);
-    }
-  }
-  
-  if (distanceFromCenter <= selectionDisc.outerRadius && distanceFromCenter >= selectionDisc.innerRadius) {
-    if (distanceFromCenter < context.hitDistance) {
-      context.hitDistance = distanceFromCenter;
-      context.hovering = this;
-    }
-  }
 }
 
 } // namespace gizmos

@@ -9,7 +9,8 @@ namespace gizmos {
 struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
 
-  std::unique_ptr<Handle> handles[3];
+  Handle handles[3];
+  Disc handleSelectionDiscs[3];
   float4x4 dragStartTransform;
   float3 dragStartPoint;
 
@@ -19,14 +20,18 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   const float outerRadius = 1.0f;
   const float innerRadius = 0.8f;
 
-   float getGlobalAxisRadius() const { return axisRadius * scale; }
-   float getGlobalAxisLength() const { return axisLength * scale; }
+  float getGlobalAxisRadius() const { return axisRadius * scale; }
+  float getGlobalAxisLength() const { return axisLength * scale; }
 
   RotationGizmo() {
-     for (int i = 0; i < 3; ++i) {
-      handles[i] = std::make_unique<DiscHandle>(float3(0.0f, 0.0f, 0.0f), outerRadius, innerRadius);
-      handles[i]->userData = reinterpret_cast<void *>(i);
-      handles[i]->callbacks = this;
+    for (int i = 0; i < 3; ++i) {
+      handles[i].userData = reinterpret_cast<void *>(i);
+      handles[i].callbacks = this;
+      handleSelectionDiscs[i].outerRadius = 1.0f;
+      handleSelectionDiscs[i].innerRadius = 0.9f;
+      float3 normal{};
+      normal[i] = 1.0f;
+      handleSelectionDiscs[i].normal = normal;
     }
   }
 
@@ -37,12 +42,13 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     float3 localRayDir = linalg::mul(invTransform, inputContext.rayDirection);
 
     for (size_t i = 0; i < 3; i++) {
-      auto &handle = *handles[i];
+      auto &handle = handles[i];
+      auto &selectionDisc = handleSelectionDiscs[i];
 
       float3 fwd{};
       fwd[i] = 1.0f;
-      float3 t1 = float3(-fwd.z, -fwd.x, fwd.y);
-      float3 t2 = linalg::cross(fwd, t1);
+      // float3 t1 = float3(-fwd.z, -fwd.x, fwd.y);
+      // float3 t2 = linalg::cross(fwd, t1);
 
       // Slightly decrease hitbox size if view direction is parallel
       // e.g. looking towards +z you are less likely to want to click on the z axis
@@ -50,31 +56,33 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       float angleFactor = std::max(0.0f, (linalg::abs(linalg::dot(localRayDir, fwd)) - dotThreshold) / (1.0f - dotThreshold));
 
       // Make hitboxes slightly bigger than the actual visuals
-      const float2 hitboxScale = linalg::lerp(float2(2.2f, 1.2f), float2(0.8f, 1.0f), angleFactor);
+      // const float2 hitboxScale = linalg::lerp(float2(2.2f, 1.2f), float2(0.8f, 1.0f), angleFactor);
 
-      //// TODO: the handle shouldn't be using a collision box, it should be using a sphere or ring 
+      //// TODO: the handle shouldn't be using a collision box, it should be using a sphere or ring
       // (probably a 2D ring projected onto the plane perpendicular to the axis)
       // what is left is to adjust whether it should scale the radius less or more
       // currently its same scale as for a box, but scaling radius may have a lot more impact
       /*auto& innerRadius = handle.selectionBox.innerRadius;
       auto& outerRadius = handle.selectionBox.outerRadius;*/
-      //innerRadius = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
-      //outerRadius = (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + 
-      //              fwd * getGlobalAxisLength() * hitboxScale.y;
+      // innerRadius = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
+      // outerRadius = (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x +
+      //               fwd * getGlobalAxisLength() * hitboxScale.y;
 
-      handle.selectionBoxTransform = transform;
+      // selectionDisc.transform = transform;
 
-      inputContext.updateHandle(handle);
+      float hitDistance = intersectDisc(inputContext.eyeLocation, inputContext.rayDirection, selectionDisc);
+      inputContext.updateHandle(handle, hitDistance);
 
-      //auto &min = handle.selectionBox.min;
-      //auto &max = handle.selectionBox.max;
-      //min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
-      //max =
-      //    (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
+      // auto &min = handle.selectionBox.min;
+      // auto &max = handle.selectionBox.max;
+      // min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
+      // max =
+      //     (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() *
+      //     hitboxScale.y;
 
-      //handle.selectionBoxTransform = transform;
+      // handle.selectionBoxTransform = transform;
 
-      //inputContext.updateHandle(handle);
+      // inputContext.updateHandle(handle);
     }
   }
 
@@ -93,19 +101,12 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     size_t index = getHandleIndex(handle);
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
 
-    
     float3 fwd = getAxisDirection(index, dragStartTransform);
     // find a unit vector perpendicular to the forward axis and the camera direction
     float3 rotPlaneX = linalg::normalize(linalg::cross(fwd, context.rayDirection));
     float3 loc = extractTranslation(dragStartTransform);
 
-    /*dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                getAxisDirection(index, dragStartTransform));*/
-    //dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, loc, fwd);
-
-    
     dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, loc, rotPlaneX);
-    // log drag start point
     SPDLOG_DEBUG("Drag start point: {} {} {}", dragStartPoint.x, dragStartPoint.y, dragStartPoint.z);
   }
 
@@ -118,10 +119,9 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   /*
     for x-axis: x axis is to the right, means rotation circle is on y-z plane
     only half the circle needs to be coloured, based on the direction of the camera
-    once clicked, find the point on the circle clicked, then project new mouse position onto the tangent on the point of the circle
-    then find the angle between the tangent and the x axis, and rotate the object by that angle
-    rotate anti-clockwise:
-      click left, pull down 
+    once clicked, find the point on the circle clicked, then project new mouse position onto the tangent on the point of the
+    circle then find the angle between the tangent and the x axis, and rotate the object by that angle rotate anti-clockwise:
+      click left, pull down
       click top pull left
       click right pull up
       click bottom pull right
@@ -147,53 +147,53 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     // find a unit vector perpendicular to the forward axis and the camera direction
     float3 rotPlaneX = linalg::normalize(linalg::cross(fwd, context.rayDirection));
     float3 rotPlaneY = linalg::normalize(linalg::cross(rotPlaneX, fwd));
-    
+
     float3 loc = extractTranslation(dragStartTransform);
 
     // instead of dragStartPoint as the axisPoint, it should use the point in the middle of the gizmo
     float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, loc, rotPlaneX);
 
-    //float rotRad = linalg::angle(rotPlaneY, hitPoint);
+    // float rotRad = linalg::angle(rotPlaneY, hitPoint);
 
     // hitPoint and loc are on the same plane, but the "xy" axes of the plane may not be along those axes
     // positive xDelta = rotate clockwise. negative yDelta = same direction, rotate clockwise
     float3 delta = hitPoint - dragStartPoint;
     float xDelta = linalg::dot(delta, rotPlaneX);
     float yDelta = linalg::dot(delta, rotPlaneY);
-    
+
     // flip sign of yDelta
-    float rotRadians = (xDelta - yDelta) / 5; // arbitrary amount to rotate
-    
+    float rotRadians = xDelta - yDelta; // to adjust amount to rotate, multiply this by a constant
+
     float sinTheta = std::sin(rotRadians);
     float cosTheta = std::cos(rotRadians);
     float4x4 rotationMat;
 
-    switch (handleIndex) { 
+    switch (handleIndex) {
     case 0:
       // rotating about x-axis
-      rotationMat = float4x4 {
-        {1, 0, 0, 0}, 
-        {0, cosTheta, -sinTheta, 0}, 
-        {0, sinTheta, cosTheta, 0}, 
-        {0, 0, 0, 1},
+      rotationMat = float4x4{
+          {1, 0, 0, 0},
+          {0, cosTheta, -sinTheta, 0},
+          {0, sinTheta, cosTheta, 0},
+          {0, 0, 0, 1},
       };
       break;
     case 1:
       // rotating about y-axis
-      rotationMat = float4x4 {
-        {cosTheta, 0, sinTheta, 0}, 
-        {0, 1, 0, 0}, 
-        {-sinTheta, 0, cosTheta, 0}, 
-        {0, 0, 0, 1},
+      rotationMat = float4x4{
+          {cosTheta, 0, sinTheta, 0},
+          {0, 1, 0, 0},
+          {-sinTheta, 0, cosTheta, 0},
+          {0, 0, 0, 1},
       };
       break;
     case 2:
       // rotating about z-axis
-      rotationMat = float4x4 {
-        {cosTheta, -sinTheta, 0, 0}, 
-        {sinTheta, cosTheta, 0, 0}, 
-        {0, 0, 1, 0}, 
-        {0, 0, 0, 1},
+      rotationMat = float4x4{
+          {cosTheta, -sinTheta, 0, 0},
+          {sinTheta, cosTheta, 0, 0},
+          {0, 0, 1, 0},
+          {0, 0, 0, 1},
       };
       break;
     }
@@ -207,22 +207,19 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     float3 axisDirs[]{{1.0, 0, 0}, {0, 1.0, 0}, {0, 0, 1.0}};
 
     for (size_t i = 0; i < 3; i++) {
-      auto &handle = *handles[i];
+      auto &handle = handles[i];
+      auto &selectionDisc = handleSelectionDiscs[i];
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
-      //render based on size of selection box?
+      // render based on size of selection box?
       float3 center = extractTranslation(transform);
       float4 axisColor = axisColors[i];
       axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
-      renderer.getShapeRenderer().addDisc(center, axisDirs[(i + 1) % 3], axisDirs[(i + 2) % 3], outerRadius, innerRadius,
-                                          axisColor);
-
-      // no addHandle unlike translation_gizmo
-
+      renderer.getShapeRenderer().addDisc(selectionDisc.center, axisDirs[(i + 1) % 3], axisDirs[(i + 2) % 3],
+                                          selectionDisc.outerRadius, selectionDisc.innerRadius, axisColor);
     }
   }
-
 };
 } // namespace gizmos
 } // namespace gfx

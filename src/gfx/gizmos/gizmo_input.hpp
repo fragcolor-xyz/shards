@@ -12,17 +12,6 @@
 namespace gfx {
 namespace gizmos {
 
-struct Box {
-  float3 min{};
-  float3 max{};
-};
-
-struct Disc {
-  float3 center{};
-  float outerRadius{};
-  float innerRadius{};
-};
-
 struct InputContext;
 struct Handle;
 
@@ -39,35 +28,8 @@ struct IGizmoCallbacks {
 };
 
 struct Handle {
-  bool isBoxSelection{};
-  float4x4 selectionBoxTransform;
   IGizmoCallbacks *callbacks{};
   void *userData{};
-
-  enum class SelectionType {
-    box,
-    disc,
-  } selectionType;
-
-  virtual ~Handle() = default;
-  // Checks if ray intersects handle and update hitDistance and hovering if so
-  virtual void resolveHover(InputContext &context) = 0;
-  virtual SelectionType getSelectionType() const = 0;
-};
-
-struct BoxHandle : public Handle {
-  Box selectionBox;
-
-  void resolveHover(InputContext &context) override;
-  SelectionType getSelectionType() const override { return SelectionType::box; }
-};
-
-struct DiscHandle : public Handle {
-  Disc selectionDisc;
-
-  DiscHandle(float3 center, float outerRadius, float innerRadius) : selectionDisc{center, outerRadius, innerRadius} {}
-  void resolveHover(InputContext &context) override;
-  SelectionType getSelectionType() const override { return SelectionType::disc; }
 };
 
 struct InputState {
@@ -113,7 +75,7 @@ public:
   // Call this within the update for each handle in view
   //  when a handle is grabbed, this is allowed to run the move callback directly
   //  since no raycast needs to be performed on the entire set of handles
-  void updateHandle(Handle &handle);
+  void updateHandle(Handle &handle, float hitDistance);
   // Call to end input update and run input callbacks
   void end();
 
