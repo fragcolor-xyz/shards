@@ -109,8 +109,18 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
     size_t index = getHandleIndex(handle);
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
 
-    dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                getAxisDirection(index, dragStartTransform));
+    if (index == 3) {
+      float3 axisPoint = float3(0.0f, 0.0f, 0.0f);
+      dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, axisPoint,
+                                  linalg::cross(context.eyeLocation, context.rayDirection)); // hit point on the plane                          
+      // SPDLOG_DEBUG("dragStartPoint: {}", dragStartPoint);  
+    } else {
+      dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
+                                  getAxisDirection(index, dragStartTransform));
+      // SPDLOG_DEBUG("dragStartPoint: {}", dragStartPoint);                            
+    }
+    // dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
+    //                             getAxisDirection(index, dragStartTransform));
   }
 
   virtual void released(InputContext &context, Handle &handle) {
@@ -122,10 +132,23 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
   virtual void move(InputContext &context, Handle &inHandle) {
     size_t index = getHandleIndex(inHandle);
     float3 fwd = getAxisDirection(index, dragStartTransform);
-    float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
+    // float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
     // SPDLOG_DEBUG("Handle {} ({}) moved to {}", index, fwd, hitPoint);
 
-    float3 delta = hitPoint - dragStartPoint;
+    float3 hitPoint;
+    float3 delta;
+    if (index == 3) {
+      hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint,
+                            linalg::cross(context.eyeLocation, context.rayDirection));
+      delta = hitPoint - dragStartPoint;
+      // SPDLOG_DEBUG("hitPoint: {}, delta: {}", hitPoint, delta);
+      
+    } else {
+      hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
+      delta = hitPoint - dragStartPoint;
+    }
+    // float3 delta = hitPoint - dragStartPoint;
+    // SPDLOG_DEBUG("delta: {}", delta);
     float3 scaling;
     // if (index == 3) {
     //   // Grabbing the centered cube - scale all sides uniformly
@@ -149,6 +172,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       scaling = float3(1, 1, 1 + delta.z * sensitivity);
       break;
     case 3:
+      // SPDLOG_DEBUG("Scaling: {}", scaling);
       scaling = float3(1 + delta.x * sensitivity, 1 + delta.y * sensitivity, 1 + delta.z * sensitivity);
       break;
     }
@@ -162,6 +186,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
 // #if 0
+      // if (i == 3) {
       // Debug draw
       float4 color = float4(.7, .7, .7, 1.);
       uint32_t thickness = 1;
@@ -176,6 +201,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       float3 size = max - min;
 
       renderer.getShapeRenderer().addBox(handle.selectionBoxTransform, center, size, color, thickness);
+      // }
 // #endif
 
       // the origin of the handle
