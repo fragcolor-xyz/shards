@@ -94,6 +94,7 @@ public:
   enum class CapType { Cube, Arrow, Sphere };
 
   void addHandle(float3 origin, float3 direction, float radius, float length, float4 bodyColor, CapType capType, float4 capColor);
+  void addCubeHandle(float3 center, float size, float4 color);
 
   void begin(ViewPtr view, float2 viewportSize);
   void end(DrawQueuePtr queue);
