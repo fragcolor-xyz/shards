@@ -18,10 +18,7 @@ void InputContext::begin(const InputState &inputState, ViewPtr view) {
   heldHandleUpdated = false;
 }
 
-// TODO: move raycasting out of updateHandle, maybe even call it with a distance parameter
-// let the gizmo itself handle the raycasting however it needs to instead perhaps
-
-// call with hit distance from raycast
+// Call with hit distance from raycast
 void InputContext::updateHandle(Handle &handle, float hitDistance) {
   bool isHeld = &handle == held;
 

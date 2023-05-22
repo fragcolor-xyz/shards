@@ -95,9 +95,9 @@
 
     ; Draw on top of everything (ignore depth)
     ;; translation gizmo itself, attached to .translation-0
-    ;; (Gizmos.Context :Queue .editor-queue-no-depth :View .view
-    ;;                 :Content (->
-    ;;                           .transform-0 (Gizmos.Translation) > .transform-0))
+    (Gizmos.Context :Queue .editor-queue-no-depth :View .view
+                    :Content (->
+                              .transform-0 (Gizmos.Translation) > .transform-0))
 
     (Gizmos.Context :Queue .editor-queue-no-depth :View .view
                     :Content (->

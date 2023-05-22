@@ -83,6 +83,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       //     hitboxScale.y;
 
       // handle.selectionBoxTransform = transform;
+      selectionDisc.center = extractTranslation(transform);
 
       // inputContext.updateHandle(handle);
     }
@@ -119,14 +120,6 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
       SPDLOG_DEBUG("Drag start point: {} {} {}", dragStartPoint.x, dragStartPoint.y, dragStartPoint.z);
     }
-
-    // float3 fwd = getAxisDirection(index, dragStartTransform);
-    //// find a unit vector perpendicular to the forward axis and the camera direction
-    // float3 rotPlaneX = linalg::normalize(linalg::cross(fwd, context.rayDirection));
-    // float3 loc = extractTranslation(dragStartTransform);
-
-    // dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, loc, rotPlaneX);
-    // SPDLOG_DEBUG("Drag start point: {} {} {}", dragStartPoint.x, dragStartPoint.y, dragStartPoint.z);
   }
 
   // Called when handle released from IGizmoCallbacks
@@ -151,12 +144,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   */
 
   // Called every update while handle is being held from IGizmoCallbacks
-  // TODO: Check behaviour
   virtual void move(InputContext &context, Handle &handle) {
-
-    // for rotating each disc: Find the point on the disc clicked, and then get the direction of the tangent to the disc
-    // on that point. then, depending on the distance dragged along the axis of that tangent, rotate the object by some
-    // angle relative to that distance moved
 
     auto handleIndex = getHandleIndex(handle);
     auto &selectionDisc = handleSelectionDiscs[handleIndex];
@@ -164,7 +152,6 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     float d;
     // if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, selectionDisc.normal, d)) {
     if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, dragNormalDir, d)) {
-      // SPDLOG_DEBUG("Hit plane at {}", d);
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
       float3 deltaVec = dragStartPoint - hitPoint;
 
@@ -221,7 +208,6 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
-      // render based on size of selection box?
       float3 center = extractTranslation(transform);
       float4 axisColor = axisColors[i];
       axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
