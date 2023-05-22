@@ -19,6 +19,8 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   float scale = 1.0f;
   const float axisRadius = 0.05f;
   const float axisLength = 0.55f;
+  const float initialOuterRadius = 1.0f;
+  const float initialInnerRadius = 0.9f;
 
   float getGlobalAxisRadius() const { return axisRadius * scale; }
   float getGlobalAxisLength() const { return axisLength * scale; }
@@ -27,8 +29,8 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     for (int i = 0; i < 3; ++i) {
       handles[i].userData = reinterpret_cast<void *>(i);
       handles[i].callbacks = this;
-      handleSelectionDiscs[i].outerRadius = 1.0f;
-      handleSelectionDiscs[i].innerRadius = 0.9f;
+      handleSelectionDiscs[i].outerRadius = initialOuterRadius;
+      handleSelectionDiscs[i].innerRadius = initialInnerRadius;
       float3 normal{};
       normal[i] = 1.0f;
       handleSelectionDiscs[i].normal = normal;
@@ -83,6 +85,8 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       //     hitboxScale.y;
 
       // handle.selectionBoxTransform = transform;
+
+      // update selectionDisc transform
       selectionDisc.center = extractTranslation(transform);
 
       // inputContext.updateHandle(handle);
@@ -111,10 +115,17 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 radiusVec = hitPoint - selectionDisc.center;
 
       // solnA using the tangent to the disc and the normal of the disc to form the plane of rotation
+      // the problem with this solution is that in the case that the ring is along a plane that is near perpendicular,
+      // the distance along the tangent moved can easily grow exponentially, causing the object to "spin-out" or rotate too much
       dragStartPoint = hitPoint;
       dragTangentDir = linalg::normalize(linalg::cross(selectionDisc.normal, radiusVec));
 
-      // solnB using the plane normal to the eye location as the plane of rotation, where tangent is projected onto this plane
+      // solnB using the plane that is normal to the eye location as the plane of rotation (from the hitPoint), 
+      // where tangent is projected onto this plane. this solution is not using true screen space, but the plane should be
+      // almost parallel to the viewport, such that we do not get the same spin-out issue
+      // not sure if possible to get true distane in screen space because information about the true normal vector to the
+      // viewport is not visible to the gizmo (need to be calculated through e.g. InputContext::updateView?)
+      // builds upon the results of solnA rather than using the 2 lines above as-is
       dragNormalDir = linalg::normalize(context.eyeLocation - hitPoint);
       dragTangentDir = linalg::normalize(dragTangentDir - linalg::dot(dragTangentDir, dragNormalDir) * dragNormalDir);
 
@@ -150,7 +161,9 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     auto &selectionDisc = handleSelectionDiscs[handleIndex];
 
     float d;
+    // solnA
     // if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, selectionDisc.normal, d)) {
+    // solnB
     if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, dragNormalDir, d)) {
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
       float3 deltaVec = dragStartPoint - hitPoint;
@@ -200,7 +213,11 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
   // render from IGizmo
   virtual void render(InputContext &inputContext, GizmoRenderer &renderer) {
+
+    // extractRotationMatrix(transform);
+
     float3 axisDirs[]{{1.0, 0, 0}, {0, 1.0, 0}, {0, 0, 1.0}};
+    float3x3 rotationMatrix = extractRotationMatrix(transform);
 
     for (size_t i = 0; i < 3; i++) {
       auto &handle = handles[i];
@@ -208,7 +225,6 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
-      float3 center = extractTranslation(transform);
       float4 axisColor = axisColors[i];
       axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
       renderer.getShapeRenderer().addDisc(selectionDisc.center, axisDirs[(i + 1) % 3], axisDirs[(i + 2) % 3],
