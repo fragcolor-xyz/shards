@@ -133,36 +133,36 @@ jobs:
         run: |
           cd build
           chmod +x shards
-          ./shards ../src/tests/general.edn
-          ./shards ../src/tests/variables.edn
-          ./shards ../src/tests/subwires.clj
-          ./shards ../src/tests/linalg.clj
-          ./shards ../src/tests/loader.clj
-          ./shards ../src/tests/network.edn
-          ./shards ../src/tests/struct.clj
-          ./shards ../src/tests/flows.edn
-          ./shards ../src/tests/kdtree.clj
-          ./shards ../src/tests/channels.clj
-          ./shards ../src/tests/imaging.clj
-          ./shards ../src/tests/http.clj
-          # ./shards ../src/tests/ws.edn
-          ./shards ../src/tests/bigint.clj
-          ./shards ../src/tests/brotli.clj
-          ./shards ../src/tests/snappy.clj
-          ./shards ../src/tests/expect-like.edn
-          ./shards ../src/tests/wasm.clj
-          ./shards ../src/tests/infos.clj
-          ./shards ../src/tests/rust.clj
-          ./shards ../src/tests/crypto.edn
-          ./shards ../src/tests/wire-macro.edn
-          ./shards ../src/tests/branch.edn
-          ./shards ../src/tests/audio.edn
-          ./shards ../src/tests/time.edn
-          ./shards ../src/tests/eth.edn
-          ./shards ../src/tests/many.edn
-          ./shards ../src/tests/events.edn
-          ./shards ../src/tests/complex-deserialize.edn
-          ./shards ../src/tests/db.edn
+          ./shards ../shards/tests/general.edn
+          ./shards ../shards/tests/variables.edn
+          ./shards ../shards/tests/subwires.clj
+          ./shards ../shards/tests/linalg.clj
+          ./shards ../shards/tests/loader.clj
+          ./shards ../shards/tests/network.edn
+          ./shards ../shards/tests/struct.clj
+          ./shards ../shards/tests/flows.edn
+          ./shards ../shards/tests/kdtree.clj
+          ./shards ../shards/tests/channels.clj
+          ./shards ../shards/tests/imaging.clj
+          ./shards ../shards/tests/http.clj
+          # ./shards ../shards/tests/ws.edn
+          ./shards ../shards/tests/bigint.clj
+          ./shards ../shards/tests/brotli.clj
+          ./shards ../shards/tests/snappy.clj
+          ./shards ../shards/tests/expect-like.edn
+          ./shards ../shards/tests/wasm.clj
+          ./shards ../shards/tests/infos.clj
+          ./shards ../shards/tests/rust.clj
+          ./shards ../shards/tests/crypto.edn
+          ./shards ../shards/tests/wire-macro.edn
+          ./shards ../shards/tests/branch.edn
+          ./shards ../shards/tests/audio.edn
+          ./shards ../shards/tests/time.edn
+          ./shards ../shards/tests/eth.edn
+          ./shards ../shards/tests/many.edn
+          ./shards ../shards/tests/events.edn
+          ./shards ../shards/tests/complex-deserialize.edn
+          ./shards ../shards/tests/db.edn
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

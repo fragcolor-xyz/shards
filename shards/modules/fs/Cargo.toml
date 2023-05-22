@@ -1,0 +1,18 @@
+[package]
+name = "shards-fs"
+description = ""
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Giovanni Petrantoni <sinkingsugar@gmail.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+lazy_static = "1.4.0"
+shards = { path = "../../rust" }
+compile-time-crc32 = "0.1.2"
+
+[target.'cfg(any(target_os="windows", target_os="macos", target_os="linux"))'.dependencies]
+rfd = { version = "0.11", git = "https://github.com/shards-lang/rfd.git", tag = 'shards-1', default-features = false, features = ["xdg-portal"] }

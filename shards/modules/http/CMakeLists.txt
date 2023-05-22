@@ -1,0 +1,44 @@
+set(HTTP_SUPPORTED ON)
+
+# emscripten implementation depends on fetch support
+if(EMSCRIPTEN)
+  if(NODEJS)
+    message(STATUS "Http module disabled for node.js due to missing Fetch support")
+    set(HTTP_SUPPORTED OFF)
+  endif()
+endif()
+
+if(IOS)
+  set(HTTP_SUPPORTED OFF)
+endif()
+
+if(HTTP_SUPPORTED)
+  set(SOURCES
+    http.cpp
+  )
+
+  add_shards_module(http SOURCES ${SOURCES}
+    REGISTER_SHARDS http rust)
+
+  target_include_directories(shards-module-http PRIVATE ../core)
+
+  if(NOT EMSCRIPTEN)
+    target_link_libraries(shards-module-http OpenSSL Boost::beast Boost::asio Boost::context)
+  else()
+    target_include_directories(shards-module-http PUBLIC $<TARGET_PROPERTY:Boost::asio,INTERFACE_INCLUDE_DIRECTORIES>)
+    target_include_directories(shards-module-http PUBLIC $<TARGET_PROPERTY:Boost::beast,INTERFACE_INCLUDE_DIRECTORIES>)
+  endif()
+
+  if(EMSCRIPTEN)
+    em_link_js_library(shards-module-http http.js)
+    target_link_options(shards-module-http PUBLIC
+      "SHELL:-s FETCH=1")  
+  endif()
+
+  # The rust shards use reqwest, which can not run on emscripten
+  if(NOT EMSCRIPTEN)
+    add_rust_library(NAME shards-http 
+      PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
+    target_link_libraries(shards-module-http shards-http-rust)
+  endif()
+endif()

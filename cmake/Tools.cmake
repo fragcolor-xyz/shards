@@ -1,4 +1,4 @@
-set(SHARDS_TOOLS_PATH ${SHARDS_DIR}/src/tools/build/bin)
+set(SHARDS_TOOLS_PATH ${SHARDS_DIR}/shards/tools/build/bin)
 find_program(BIN2C_EXE NAMES "bin2c" PATHS ${SHARDS_TOOLS_PATH} REQUIRED NO_DEFAULT_PATH NO_SYSTEM_ENVIRONMENT_PATH)
 
 # Used to add files

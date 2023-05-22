@@ -1,0 +1,22 @@
+[package]
+name = "shards-core"
+description = ""
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Giovanni Petrantoni <sinkingsugar@gmail.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+lazy_static = "1.4.0"
+shards = { path = "../../rust" }
+compile-time-crc32 = "0.1.2"
+hex = { version = "0.4.3" }
+bs58 = { version = "0.4.0" }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+wasabi_leb128 = { version = "0.4.0" }
+
+[patch.crates-io]
+chrono = { git = "https://github.com/shards-lang/chrono", rev = "b1d74aef688c27fccc738c64746535905903471a" }

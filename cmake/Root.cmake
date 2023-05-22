@@ -2,8 +2,6 @@ get_filename_component(SHARDS_DIR ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
 message(STATUS "SHARDS_DIR = ${SHARDS_DIR}")
 
 option(SHARDS_BUILD_TESTS "Enable to build shards tests" ON)
-option(SHARDS_WITH_EXTRA_SHARDS "Enabled to build and include the extra c++ shards (graphics, audio, etc.)" ON)
-option(SHARDS_WITH_RUST_SHARDS "Enable to build and include the extra rust shards" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -18,6 +16,7 @@ include(Platform)
 include(Tidy)
 include(Utils)
 include(Tools)
+include(Modules)
 
 # Rust build support
 include(Rust)
@@ -27,17 +26,53 @@ set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 
 add_subdirectory(${SHARDS_DIR}/deps deps)
 
-add_subdirectory(${SHARDS_DIR}/src/log src/log)
-add_subdirectory(${SHARDS_DIR}/src/core src/core)
-add_subdirectory(${SHARDS_DIR}/src/mal src/mal)
-add_subdirectory(${SHARDS_DIR}/src/input src/input)
-add_subdirectory(${SHARDS_DIR}/src/gfx src/gfx)
-add_subdirectory(${SHARDS_DIR}/src/spatial src/spatial)
+# add_subdirectory(${SHARDS_DIR}/src/mal src/mal)
 
-if(SHARDS_WITH_EXTRA_SHARDS)
-  if(SHARDS_WITH_RUST_SHARDS)
-    add_subdirectory(${SHARDS_DIR}/rust rust)
+# Standalone libraries
+add_subdirectory(${SHARDS_DIR}/shards/log src/log)
+add_subdirectory(${SHARDS_DIR}/shards/input src/input)
+add_subdirectory(${SHARDS_DIR}/shards/gfx src/gfx)
+
+# Shards core
+add_subdirectory(${SHARDS_DIR}/shards/core src/core)
+
+# Modules
+set(SHARDS_MODULE_ROOT ${SHARDS_DIR}/shards/modules)
+macro(add_module NAME)
+  add_subdirectory(${SHARDS_MODULE_ROOT}/${NAME} modules/${NAME})
+  list(APPEND ADDED_MODULES ${NAME})
+endmacro()
+
+# Fixed-order modules (should be here if they have dependencies)
+add_module(gfx)
+add_module(egui)
+add_module(spatial)
+
+message(STATUS "ADDED_MODULES = ${ADDED_MODULES}")
+
+# Automatic scan for remaining modules
+file(GLOB SHARDS_MODULE_FOLDERS RELATIVE ${SHARDS_MODULE_ROOT} ${SHARDS_MODULE_ROOT}/*)
+foreach(MODULE_FOLDER ${SHARDS_MODULE_FOLDERS})
+  list(FIND ADDED_MODULES ${MODULE_FOLDER} ALREADY_ADDED)
+  if(EXISTS ${SHARDS_MODULE_ROOT}/${MODULE_FOLDER}/CMakeLists.txt AND ALREADY_ADDED LESS 0)
+    add_subdirectory(${SHARDS_MODULE_ROOT}/${MODULE_FOLDER} modules/${MODULE_FOLDER})
   endif()
+endforeach()
 
-  add_subdirectory(${SHARDS_DIR}/src/extra src/extra)
-endif()
+# Union library that ties the modules together
+add_subdirectory(${SHARDS_DIR}/shards/union src/union)
+
+# Shards library and executable bundle
+add_subdirectory(${SHARDS_DIR}/shards/shards src/shards)
+
+add_subdirectory(${SHARDS_DIR}/shards/tests src/tests)
+
+# Automatically find subprojects
+set(SHARDS_SUBPROJECT_ROOT "${SHARDS_DIR}/external")
+file(GLOB SHARDS_SUBPROJECT_FOLDERS RELATIVE ${SHARDS_SUBPROJECT_ROOT} ${SHARDS_SUBPROJECT_ROOT}/*)
+foreach(SUBPROJECT_FOLDER ${SHARDS_SUBPROJECT_FOLDERS})
+  if(EXISTS ${SHARDS_SUBPROJECT_ROOT}/${SUBPROJECT_FOLDER}/CMakeLists.txt)
+    message(STATUS "Possible subproject: ${SUBPROJECT_FOLDER}")
+    add_subdirectory(${SHARDS_SUBPROJECT_ROOT}/${SUBPROJECT_FOLDER} external/${SUBPROJECT_FOLDER})
+  endif()
+endforeach()

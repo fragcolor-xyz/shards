@@ -73,21 +73,21 @@
 [submodule "deps/draco"]
 	path = deps/draco
 	url = https://github.com/shards-lang/draco.git
-[submodule "src/gfx/wgpu-native"]
-	path = src/gfx/rust/wgpu-native
+[submodule "shards/gfx/wgpu-native"]
+	path = shards/gfx/rust/wgpu-native
 	url = https://github.com/shards-lang/wgpu-native.git
 [submodule "cmake/android-cmake"]
 	path = cmake/android-cmake
 	url = https://github.com/guusw/android-cmake.git
-[submodule "src/gfx/rust/wgpu"]
-	path = src/gfx/rust/wgpu
+[submodule "shards/gfx/rust/wgpu"]
+	path = shards/gfx/rust/wgpu
 	url = https://github.com/shards-lang/wgpu.git
 	branch = master
-[submodule "src/gfx/rust/naga"]
-	path = src/gfx/rust/naga
+[submodule "shards/gfx/rust/naga"]
+	path = shards/gfx/rust/naga
 	url = https://github.com/shards-lang/naga
-[submodule "src/gfx/rust/profiling"]
-	path = src/gfx/rust/profiling
+[submodule "shards/gfx/rust/profiling"]
+	path = shards/gfx/rust/profiling
 	url = https://github.com/shards-lang/rust-profiling.git
 [submodule "deps/sqlite/cr-sqlite"]
 	path = deps/sqlite/cr-sqlite
