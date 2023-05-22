@@ -2151,20 +2151,29 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
   case SHType::String:
   case SHType::Path:
   case SHType::ContextVar:
+#if 0
     assert(var.payload.stringCapacity >= 7 && "string capacity is too small, it should be at least 7");
     if (var.payload.stringCapacity > 7) {
       delete[] var.payload.stringValue;
     } else {
       memset(var.shortString, 0, 7);
+      assert(var.shortString[7] == 0 && "0 terminator should be 0 always");
     }
+#else
+    delete[] var.payload.stringValue;
+#endif
     break;
   case SHType::Bytes:
+#if 0
     assert(var.payload.bytesCapacity >= 8 && "bytes capacity is too small, it should be at least 8");
     if (var.payload.bytesCapacity > 8) {
       delete[] var.payload.bytesValue;
     } else {
-      memset(var.shortString, 0, 8);
+      memset(var.shortBytes, 0, 8);
     }
+#else
+    delete[] var.payload.bytesValue;
+#endif
     break;
   case SHType::Seq: {
     // notice we use .cap! because we make sure to 0 new empty elements
@@ -2223,12 +2232,15 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     if (dst.valueType != src.valueType || dst.payload.stringCapacity < srcSize) {
       destroyVar(dst);
       dst.valueType = src.valueType;
+#if 0
       if (srcSize <= 7) {
         // short string, no need to allocate
         // capacity is 8 but last is 0 terminator
         dst.payload.stringValue = dst.shortString;
         dst.payload.stringCapacity = 7; // this also marks it as short string, lucky 7
-      } else {
+      } else
+#endif
+      {
         // allocate a 0 terminator too
         dst.payload.stringValue = new char[srcSize + 1];
         dst.payload.stringCapacity = srcSize;
@@ -2379,11 +2391,14 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     if (dst.valueType != SHType::Bytes || dst.payload.bytesCapacity < src.payload.bytesSize) {
       destroyVar(dst);
       dst.valueType = SHType::Bytes;
+#if 0
       if (src.payload.bytesSize <= 8) {
         // small bytes are stored directly in the payload
         dst.payload.bytesValue = dst.shortBytes;
         dst.payload.bytesCapacity = 8;
-      } else {
+      } else
+#endif
+      {
         dst.payload.bytesValue = new uint8_t[src.payload.bytesSize];
         dst.payload.bytesCapacity = src.payload.bytesSize;
       }
@@ -2979,12 +2994,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   sh_current_interface_loaded = true;
 
   result->alloc = [](uint32_t size) -> void * {
-    auto mem = ::operator new (size, std::align_val_t{16});
+    auto mem = ::operator new(size, std::align_val_t{16});
     memset(mem, 0, size);
     return mem;
   };
 
-  result->free = [](void *ptr) { ::operator delete (ptr, std::align_val_t{16}); };
+  result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
 
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)
@@ -3045,7 +3060,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto sc = SHWire::sharedFromRef(wire);
     auto var = sc->externalVariables[name];
     if (var) {
-      ::operator delete (var, std::align_val_t{16});
+      ::operator delete(var, std::align_val_t{16});
     }
     sc->externalVariables.erase(name);
   };
