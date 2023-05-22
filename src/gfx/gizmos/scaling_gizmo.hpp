@@ -54,47 +54,30 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       auto &max = handle.selectionBox.max;
       if (i == 3) {
         float half_size = 0.1f;
-        // min = float3(-half_size, -half_size, -half_size);
-        // max = float3(half_size, half_size, half_size);
         if (min == max) {
           min = float3(-half_size, -half_size, -half_size);
           max = float3(half_size, half_size, half_size);
+          SPDLOG_DEBUG("initializing min and max");
         } else {
           min = float3(-half_size, -half_size, -half_size) * hitboxScale.x;
           max = float3(half_size, half_size, half_size) * hitboxScale.y;
         }
         // SPDLOG_DEBUG("min: {}, max: {}", min, max);
       } else {
-      min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
+        float radius = getGlobalAxisRadius();
+        float length = getGlobalAxisLength();
+        SPDLOG_DEBUG("radius: {}, length: {}", radius, length);
+      min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.5f;
+      
       max =
           (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
+      SPDLOG_DEBUG("min: {}, max: {}", min, max);
       }
       handle.selectionBoxTransform = linalg::identity;
 
       inputContext.updateHandle(handle);
     }
   }
-
-  // void update(InputContext& inputContext) {
-  //   for (size_t i = 0; i < 4; i++) {
-  //     auto& handle = handles[i];
-
-  //     // Retrieve the original hitbox dimensions and transform
-  //     const auto& originalMin = handle.selectionBox.min;
-  //     const auto& originalMax = handle.selectionBox.max;
-  //     const auto& originalTransform = handle.selectionBoxTransform;
-
-  //     // Update the transform of the handle
-  //     handle.selectionBoxTransform = transform;
-
-  //     // Restore the original hitbox dimensions
-  //     handle.selectionBox.min = originalMin;
-  //     handle.selectionBox.max = originalMax;
-
-  //     // Update the input context for the handle
-  //     inputContext.updateHandle(handle);
-  //   }
-  // }
 
   size_t getHandleIndex(Handle &inHandle) { return size_t(inHandle.userData); }
 
@@ -175,8 +158,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       break;
     case 3:
       // SPDLOG_DEBUG("Scaling: {}", scaling);
-      float scale = 0.0005f * linalg::length(delta);
-      SPDLOG_DEBUG("Scale: {}", scale);
+      float scale = 0.001f * std::abs(delta.x);
       if (delta.x > 0) {
         scaling = float3(1 + scale, 1 + scale, 1 + scale);
       } else {
