@@ -13,12 +13,12 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   Disc handleSelectionDiscs[3];
   float4x4 dragStartTransform;
   float3 dragStartPoint;
+  float3 dragTangentDir;
+  float3 dragNormalDir;
 
   float scale = 1.0f;
   const float axisRadius = 0.05f;
   const float axisLength = 0.55f;
-  const float outerRadius = 1.0f;
-  const float innerRadius = 0.8f;
 
   float getGlobalAxisRadius() const { return axisRadius * scale; }
   float getGlobalAxisLength() const { return axisLength * scale; }
@@ -47,6 +47,9 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
       float3 fwd{};
       fwd[i] = 1.0f;
+
+      //// might not actually require a scaling on the rotation ring yet
+
       // float3 t1 = float3(-fwd.z, -fwd.x, fwd.y);
       // float3 t2 = linalg::cross(fwd, t1);
 
@@ -58,8 +61,6 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       // Make hitboxes slightly bigger than the actual visuals
       // const float2 hitboxScale = linalg::lerp(float2(2.2f, 1.2f), float2(0.8f, 1.0f), angleFactor);
 
-      //// TODO: the handle shouldn't be using a collision box, it should be using a sphere or ring
-      // (probably a 2D ring projected onto the plane perpendicular to the axis)
       // what is left is to adjust whether it should scale the radius less or more
       // currently its same scale as for a box, but scaling radius may have a lot more impact
       /*auto& innerRadius = handle.selectionBox.innerRadius;
@@ -68,6 +69,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       // outerRadius = (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x +
       //               fwd * getGlobalAxisLength() * hitboxScale.y;
 
+      ///// may want to update this in the future to allow rotation of the gizmos themselves
       // selectionDisc.transform = transform;
 
       float hitDistance = intersectDisc(inputContext.eyeLocation, inputContext.rayDirection, selectionDisc);
@@ -101,13 +103,30 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     size_t index = getHandleIndex(handle);
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
 
-    float3 fwd = getAxisDirection(index, dragStartTransform);
-    // find a unit vector perpendicular to the forward axis and the camera direction
-    float3 rotPlaneX = linalg::normalize(linalg::cross(fwd, context.rayDirection));
-    float3 loc = extractTranslation(dragStartTransform);
+    auto &selectionDisc = handleSelectionDiscs[index];
+    float d;
+    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, selectionDisc.normal, d)) {
+      float3 hitPoint = context.eyeLocation + d * context.rayDirection;
+      float3 radiusVec = hitPoint - selectionDisc.center;
 
-    dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, loc, rotPlaneX);
-    SPDLOG_DEBUG("Drag start point: {} {} {}", dragStartPoint.x, dragStartPoint.y, dragStartPoint.z);
+      // solnA using the tangent to the disc and the normal of the disc to form the plane of rotation
+      dragStartPoint = hitPoint;
+      dragTangentDir = linalg::normalize(linalg::cross(selectionDisc.normal, radiusVec));
+
+      // solnB using the plane normal to the eye location as the plane of rotation, where tangent is projected onto this plane
+      dragNormalDir = linalg::normalize(context.eyeLocation - hitPoint);
+      dragTangentDir = linalg::normalize(dragTangentDir - linalg::dot(dragTangentDir, dragNormalDir) * dragNormalDir);
+
+      SPDLOG_DEBUG("Drag start point: {} {} {}", dragStartPoint.x, dragStartPoint.y, dragStartPoint.z);
+    }
+
+    // float3 fwd = getAxisDirection(index, dragStartTransform);
+    //// find a unit vector perpendicular to the forward axis and the camera direction
+    // float3 rotPlaneX = linalg::normalize(linalg::cross(fwd, context.rayDirection));
+    // float3 loc = extractTranslation(dragStartTransform);
+
+    // dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, loc, rotPlaneX);
+    // SPDLOG_DEBUG("Drag start point: {} {} {}", dragStartPoint.x, dragStartPoint.y, dragStartPoint.z);
   }
 
   // Called when handle released from IGizmoCallbacks
@@ -133,73 +152,63 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
   // Called every update while handle is being held from IGizmoCallbacks
   // TODO: Check behaviour
-
-  // let it rotate to the world transform for now, but if want to in the future, it can rotate with the object transform (input)
   virtual void move(InputContext &context, Handle &handle) {
-    // print debug message, rotation gizmo moved
+
+    // for rotating each disc: Find the point on the disc clicked, and then get the direction of the tangent to the disc
+    // on that point. then, depending on the distance dragged along the axis of that tangent, rotate the object by some
+    // angle relative to that distance moved
 
     auto handleIndex = getHandleIndex(handle);
-    // for rotation about the x axis, it should find the hitOnPlane along the z-axis
+    auto &selectionDisc = handleSelectionDiscs[handleIndex];
 
-    // gets direction of axis based on handle transform
-    // need a forward axis that is on the plane perpendicular to the ais
-    float3 fwd = getAxisDirection(handleIndex, dragStartTransform);
-    // find a unit vector perpendicular to the forward axis and the camera direction
-    float3 rotPlaneX = linalg::normalize(linalg::cross(fwd, context.rayDirection));
-    float3 rotPlaneY = linalg::normalize(linalg::cross(rotPlaneX, fwd));
+    float d;
+    // if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, selectionDisc.normal, d)) {
+    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, dragNormalDir, d)) {
+      // SPDLOG_DEBUG("Hit plane at {}", d);
+      float3 hitPoint = context.eyeLocation + d * context.rayDirection;
+      float3 deltaVec = dragStartPoint - hitPoint;
 
-    float3 loc = extractTranslation(dragStartTransform);
+      float delta = linalg::dot(deltaVec, dragTangentDir);
+      SPDLOG_DEBUG("dragTangentDir {} {} {}", dragTangentDir.x, dragTangentDir.y, dragTangentDir.z);
+      SPDLOG_DEBUG("Delta: {}", delta);
+      float sinTheta = std::sin(delta);
+      float cosTheta = std::cos(delta);
 
-    // instead of dragStartPoint as the axisPoint, it should use the point in the middle of the gizmo
-    float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, loc, rotPlaneX);
+      float4x4 rotationMat;
 
-    // float rotRad = linalg::angle(rotPlaneY, hitPoint);
+      switch (handleIndex) {
+      case 0:
+        // rotating about x-axis
+        rotationMat = float4x4{
+            {1, 0, 0, 0},
+            {0, cosTheta, -sinTheta, 0},
+            {0, sinTheta, cosTheta, 0},
+            {0, 0, 0, 1},
+        };
+        break;
+      case 1:
+        // rotating about y-axis
+        rotationMat = float4x4{
+            {cosTheta, 0, sinTheta, 0},
+            {0, 1, 0, 0},
+            {-sinTheta, 0, cosTheta, 0},
+            {0, 0, 0, 1},
+        };
+        break;
+      case 2:
+        // rotating about z-axis
+        rotationMat = float4x4{
+            {cosTheta, -sinTheta, 0, 0},
+            {sinTheta, cosTheta, 0, 0},
+            {0, 0, 1, 0},
+            {0, 0, 0, 1},
+        };
+        break;
+      }
 
-    // hitPoint and loc are on the same plane, but the "xy" axes of the plane may not be along those axes
-    // positive xDelta = rotate clockwise. negative yDelta = same direction, rotate clockwise
-    float3 delta = hitPoint - dragStartPoint;
-    float xDelta = linalg::dot(delta, rotPlaneX);
-    float yDelta = linalg::dot(delta, rotPlaneY);
-
-    // flip sign of yDelta
-    float rotRadians = xDelta - yDelta; // to adjust amount to rotate, multiply this by a constant
-
-    float sinTheta = std::sin(rotRadians);
-    float cosTheta = std::cos(rotRadians);
-    float4x4 rotationMat;
-
-    switch (handleIndex) {
-    case 0:
-      // rotating about x-axis
-      rotationMat = float4x4{
-          {1, 0, 0, 0},
-          {0, cosTheta, -sinTheta, 0},
-          {0, sinTheta, cosTheta, 0},
-          {0, 0, 0, 1},
-      };
-      break;
-    case 1:
-      // rotating about y-axis
-      rotationMat = float4x4{
-          {cosTheta, 0, sinTheta, 0},
-          {0, 1, 0, 0},
-          {-sinTheta, 0, cosTheta, 0},
-          {0, 0, 0, 1},
-      };
-      break;
-    case 2:
-      // rotating about z-axis
-      rotationMat = float4x4{
-          {cosTheta, -sinTheta, 0, 0},
-          {sinTheta, cosTheta, 0, 0},
-          {0, 0, 1, 0},
-          {0, 0, 0, 1},
-      };
-      break;
+      // for the delta, depending on how far left/top or right/bottom, change the amount of rotation
+      transform = linalg::mul(dragStartTransform, rotationMat);
     }
-
-    // for the delta, depending on how far left/top or right/bottom, change the amount of rotation
-    transform = linalg::mul(dragStartTransform, rotationMat);
   }
 
   // render from IGizmo
