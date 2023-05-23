@@ -12,8 +12,8 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
   Handle handles[4];
   // The sensitivities of the axes and the centered cube vary due to different methods of calculating delta.
   // The axes utilize the delta of the ray intersection with the axis plane, whereas the centered cube relies on the delta of the cursor position.
-  const float axisSensitivity = 1.0f;
-  const float centeredCubeSensitivity = 0.001f;
+  const float axisSensitivity = 1.5f;
+  const float centeredCubeSensitivity = 0.003f;
   const float4 centered_handle_color = float4(0.3f, 0.3f, 0.3f, 1.0f);
   float4x4 dragStartTransform;
   float3 dragStartPoint;
@@ -150,12 +150,12 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       scaling = float3(1, 1, 1 + delta.z * axisSensitivity);
       break;
     case 3:
+      for (size_t i = 0; i < 3; i++) {
+        handles[i].grabbed = true;
+        handles[i].grabOffset = centeredCubeSensitivity * delta.x;
+      }
       // Dragging the centered cube to the right increases the object's scale, while dragging it to the left decreases the object's scale.
       float diameter = centeredCubeSensitivity * std::abs(delta.x);
-            for (size_t i = 0; i < 3; i++) {
-        handles[i].grabbed = true;
-        handles[i].grabOffset = diameter;
-      }
       if (delta.x > 0) {
         scaling = float3(1 + diameter, 1 + diameter, 1 + diameter);
       } else {
