@@ -10,7 +10,11 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity; // load identity matrix
 
   Handle handles[4];
-  const float sensitivity = 1.0f;
+  // The sensitivities of the axes and the centered cube vary due to different methods of calculating delta.
+  // The axes utilize the delta of the ray intersection with the axis plane, whereas the centered cube relies on the delta of the cursor position.
+  const float axisSensitivity = 1.0f;
+  const float centeredCubeSensitivity = 0.001f;
+  const float4 centered_handle_color = float4(0.3f, 0.3f, 0.3f, 1.0f);
   float4x4 dragStartTransform;
   float3 dragStartPoint;
   float2 dragStartCursor;
@@ -36,7 +40,6 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
     for (size_t i = 0; i < 4; i++) {
       auto &handle = handles[i];
 
-      // the fwd vector represent the axis direction of the handle
       float3 fwd{};
       fwd[i] = 1.0f;
       float3 t1 = float3(-fwd.z, -fwd.x, fwd.y);
@@ -53,25 +56,13 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       auto &min = handle.selectionBox.min;
       auto &max = handle.selectionBox.max;
       if (i == 3) {
-        float half_size = 0.1f;
-        if (min == max) {
-          min = float3(-half_size, -half_size, -half_size);
-          max = float3(half_size, half_size, half_size);
-          SPDLOG_DEBUG("initializing min and max");
-        } else {
-          min = float3(-half_size, -half_size, -half_size) * hitboxScale.x;
-          max = float3(half_size, half_size, half_size) * hitboxScale.y;
-        }
-        // SPDLOG_DEBUG("min: {}, max: {}", min, max);
+        float hitbox_size = 0.08f;
+        min = float3(-hitbox_size, -hitbox_size, -hitbox_size);
+        max = float3(hitbox_size, hitbox_size, hitbox_size);
       } else {
-        float radius = getGlobalAxisRadius();
-        float length = getGlobalAxisLength();
-        SPDLOG_DEBUG("radius: {}, length: {}", radius, length);
-      min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.5f;
-      
-      max =
-          (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
-      SPDLOG_DEBUG("min: {}, max: {}", min, max);
+        min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.5f;
+        max =
+            (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
       }
       handle.selectionBoxTransform = linalg::identity;
 
@@ -94,18 +85,11 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
 
     if (index == 3) {
-      // float3 axisPoint = float3(0.0f, 0.0f, 0.0f);
-      // dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, axisPoint,
-      //                             linalg::cross(context.eyeLocation, context.rayDirection)); // hit point on the plane                          
       dragStartCursor = context.inputState.cursorPosition;
-      // SPDLOG_DEBUG("dragStartPoint: {}", dragStartPoint);  
     } else {
       dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                  getAxisDirection(index, dragStartTransform));
-      // SPDLOG_DEBUG("dragStartPoint: {}", dragStartPoint);                            
+                                  getAxisDirection(index, dragStartTransform));                    
     }
-    // dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-    //                             getAxisDirection(index, dragStartTransform));
   }
 
   virtual void released(InputContext &context, Handle &handle) {
@@ -113,56 +97,36 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
     SPDLOG_DEBUG("Handle {} ({}) released", index, getAxisDirection(index, dragStartTransform));
   }
 
-  // this is executed to "move" the handle when dragged
   virtual void move(InputContext &context, Handle &inHandle) {
     size_t index = getHandleIndex(inHandle);
     float3 fwd = getAxisDirection(index, dragStartTransform);
-    // float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
-    // SPDLOG_DEBUG("Handle {} ({}) moved to {}", index, fwd, hitPoint);
-
+    
     float3 delta;
     if (index == 3) {
-      // hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint,
-      //                       linalg::cross(context.eyeLocation, context.rayDirection));
       float2 hitPoint = context.inputState.cursorPosition;
-      delta = float3((hitPoint - dragStartCursor), 0);
-      // SPDLOG_DEBUG("delta: {}", delta);
-      
+      delta = float3((hitPoint - dragStartCursor), 0); 
     } else {
       float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
       delta = hitPoint - dragStartPoint;
     }
-    // float3 delta = hitPoint - dragStartPoint;
-    // SPDLOG_DEBUG("delta: {}", delta);
     float3 scaling;
-    // if (index == 3) {
-    //   // Grabbing the centered cube - scale all sides uniformly
-    //   float uniformScaling = std::min(std::abs(delta.x), std::min(std::abs(delta.y), std::abs(delta.z)));
-    //   scaling = float3(uniformScaling);
-    // } else {
-    //   // Grabbing a cube on the axis - scale in one direction
-    //   scaling = float3(delta.x * sensitivity, delta.y * sensitivity, delta.z * sensitivity);
-    // }
-    // scaling = float3(1, 1, 1 * std::abs(delta.z * sensitivity));
-    // SPDLOG_DEBUG("Scaling: {}", scaling);
     switch (index)
     {
     case 0: 
-      scaling = float3(1 + delta.x * sensitivity,1 ,1);
+      scaling = float3(1 + delta.x * axisSensitivity,1 ,1);
       break;
     case 1:
-      scaling = float3(1, 1 + delta.y * sensitivity, 1);
+      scaling = float3(1, 1 + delta.y * axisSensitivity, 1);
       break;
     case 2:
-      scaling = float3(1, 1, 1 + delta.z * sensitivity);
+      scaling = float3(1, 1, 1 + delta.z * axisSensitivity);
       break;
     case 3:
-      // SPDLOG_DEBUG("Scaling: {}", scaling);
-      float scale = 0.001f * std::abs(delta.x);
+      float diameter = centeredCubeSensitivity * std::abs(delta.x);
       if (delta.x > 0) {
-        scaling = float3(1 + scale, 1 + scale, 1 + scale);
+        scaling = float3(1 + diameter, 1 + diameter, 1 + diameter);
       } else {
-        scaling = float3(1 - scale, 1 - scale, 1 - scale);
+        scaling = float3(1 - diameter, 1 - diameter, 1 - diameter);
       }
       break;
     }
@@ -200,17 +164,12 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       float3 dir = getAxisDirection(i, handle.selectionBoxTransform);
       float4 cubeColor;
       if (i == 3) {
-        cubeColor = float4(0.3f, 0.3f, 0.3f, 1.0f);
+        cubeColor = centered_handle_color;
       } else {
         cubeColor = axisColors[i];
       }
-      // cubeColor = axisColors[i];
       cubeColor = float4(cubeColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
-      // addHandle(float3 origin, float3 direction, float radius, float length, float4 bodyColor, CapType capType, float4 capColor)
-      // renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), cubeColor, GizmoRenderer::CapType::Cube,
-      //                    cubeColor);
       if (i == 3) {
-        // SPDLOG_DEBUG("Adding centered cube handle");
         renderer.addCubeHandle(float3(0, 0, 0), 0.08f, cubeColor);
       } else {
         renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), cubeColor, GizmoRenderer::CapType::Cube,
