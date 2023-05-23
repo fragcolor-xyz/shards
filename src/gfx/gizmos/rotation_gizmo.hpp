@@ -29,6 +29,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     for (int i = 0; i < 3; ++i) {
       handles[i].userData = reinterpret_cast<void *>(i);
       handles[i].callbacks = this;
+      // Can possibly allow adjustment of radii in the future
       handleSelectionDiscs[i].outerRadius = initialOuterRadius;
       handleSelectionDiscs[i].innerRadius = initialInnerRadius;
       float3 normal{};
@@ -47,49 +48,10 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       auto &handle = handles[i];
       auto &selectionDisc = handleSelectionDiscs[i];
 
-      float3 fwd{};
-      fwd[i] = 1.0f;
-
-      //// might not actually require a scaling on the rotation ring yet
-
-      // float3 t1 = float3(-fwd.z, -fwd.x, fwd.y);
-      // float3 t2 = linalg::cross(fwd, t1);
-
-      // Slightly decrease hitbox size if view direction is parallel
-      // e.g. looking towards +z you are less likely to want to click on the z axis
-      float dotThreshold = 0.8f;
-      float angleFactor = std::max(0.0f, (linalg::abs(linalg::dot(localRayDir, fwd)) - dotThreshold) / (1.0f - dotThreshold));
-
-      // Make hitboxes slightly bigger than the actual visuals
-      // const float2 hitboxScale = linalg::lerp(float2(2.2f, 1.2f), float2(0.8f, 1.0f), angleFactor);
-
-      // what is left is to adjust whether it should scale the radius less or more
-      // currently its same scale as for a box, but scaling radius may have a lot more impact
-      /*auto& innerRadius = handle.selectionBox.innerRadius;
-      auto& outerRadius = handle.selectionBox.outerRadius;*/
-      // innerRadius = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
-      // outerRadius = (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x +
-      //               fwd * getGlobalAxisLength() * hitboxScale.y;
-
-      ///// may want to update this in the future to allow rotation of the gizmos themselves
-      // selectionDisc.transform = transform;
-
       float hitDistance = intersectDisc(inputContext.eyeLocation, inputContext.rayDirection, selectionDisc);
       inputContext.updateHandle(handle, hitDistance);
 
-      // auto &min = handle.selectionBox.min;
-      // auto &max = handle.selectionBox.max;
-      // min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
-      // max =
-      //     (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() *
-      //     hitboxScale.y;
-
-      // handle.selectionBoxTransform = transform;
-
-      // update selectionDisc transform
       selectionDisc.center = extractTranslation(transform);
-
-      // inputContext.updateHandle(handle);
     }
   }
 
@@ -110,23 +72,16 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
     auto &selectionDisc = handleSelectionDiscs[index];
     float d;
+    // Check if ray intersects with plane of the disc (either side)
     if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, selectionDisc.normal, d) ||
         intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, -selectionDisc.normal, d)) {
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
       float3 radiusVec = hitPoint - selectionDisc.center;
 
-      // solnA using the tangent to the disc and the normal of the disc to form the plane of rotation
-      // the problem with this solution is that in the case that the ring is along a plane that is near perpendicular,
-      // the distance along the tangent moved can easily grow exponentially, causing the object to "spin-out" or rotate too much
+      // Construct a plane whose normal is the vector from hitPoint to context.eyeLocation and project tangent onto this plane
       dragStartPoint = hitPoint;
       dragTangentDir = linalg::normalize(linalg::cross(selectionDisc.normal, radiusVec));
 
-      // solnB using the plane that is normal to the eye location as the plane of rotation (from the hitPoint),
-      // where tangent is projected onto this plane. this solution is not using true screen space, but the plane should be
-      // almost parallel to the viewport, such that we do not get the same spin-out issue
-      // not sure if possible to get true distane in screen space because information about the true normal vector to the
-      // viewport is not visible to the gizmo (need to be calculated through e.g. InputContext::updateView?)
-      // builds upon the results of solnA rather than using the 2 lines above as-is
       dragNormalDir = linalg::normalize(context.eyeLocation - hitPoint);
       dragTangentDir = linalg::normalize(dragTangentDir - linalg::dot(dragTangentDir, dragNormalDir) * dragNormalDir);
 
@@ -140,21 +95,6 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     SPDLOG_DEBUG("Handle {} ({}) released", index, getAxisDirection(index, dragStartTransform));
   }
 
-  /*
-    for x-axis: x axis is to the right, means rotation circle is on y-z plane
-    only half the circle needs to be coloured, based on the direction of the camera
-    once clicked, find the point on the circle clicked, then project new mouse position onto the tangent on the point of the
-    circle then find the angle between the tangent and the x axis, and rotate the object by that angle rotate anti-clockwise:
-      click left, pull down
-      click top pull left
-      click right pull up
-      click bottom pull right
-    rotate clockwise: opposite of the above.
-
-    for unity, allow rotation of degrees over 360 and with negative values, not wrapping around (like in unreal)
-    for unity, they also have a 4th circle that can rotate the cube around the plane perpendicular to the camera
-  */
-
   // Called every update while handle is being held from IGizmoCallbacks
   virtual void move(InputContext &context, Handle &handle) {
 
@@ -162,16 +102,14 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     auto &selectionDisc = handleSelectionDiscs[handleIndex];
 
     float d;
-    // solnA
-    // if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, selectionDisc.normal, d)) {
-    // solnB
     if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, dragNormalDir, d)) {
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
       float3 deltaVec = dragStartPoint - hitPoint;
 
       float delta = linalg::dot(deltaVec, dragTangentDir);
-      SPDLOG_DEBUG("dragTangentDir {} {} {}", dragTangentDir.x, dragTangentDir.y, dragTangentDir.z);
-      SPDLOG_DEBUG("Delta: {}", delta);
+      // Use this to check direction vector of tangent and delta for the effective distance moved along the tangent
+      //SPDLOG_DEBUG("dragTangentDir {} {} {}", dragTangentDir.x, dragTangentDir.y, dragTangentDir.z);
+      //SPDLOG_DEBUG("Delta: {}", delta);
       float sinTheta = std::sin(delta);
       float cosTheta = std::cos(delta);
 
@@ -207,7 +145,6 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
         break;
       }
 
-      // for the delta, depending on how far left/top or right/bottom, change the amount of rotation
       transform = linalg::mul(dragStartTransform, rotationMat);
     }
   }
@@ -215,6 +152,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   // render from IGizmo
   virtual void render(InputContext &inputContext, GizmoRenderer &renderer) {
 
+    // Rotate the discs according to the current transform of the object
     float3x3 rotationMat = extractRotationMatrix(transform);
     float3x3 axisDirs{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
     axisDirs = linalg::mul(axisDirs, rotationMat);
