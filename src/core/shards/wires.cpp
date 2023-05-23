@@ -1522,7 +1522,7 @@ struct ParallelBase : public CapturingSpawners {
                   stop(cref->wire.get(), &_outputs[0]);
                   return _outputs[0];
                 } else {
-                  stop(cref->wire.get(), &_outputs[succeeded]);
+                  stop(cref->wire.get(), &_outputs[i]);
                   succeeded++;
                 }
               } else {
@@ -1581,7 +1581,7 @@ struct ParallelBase : public CapturingSpawners {
                   stop(cref->wire.get(), &_outputs[0]);
                   return _outputs[0];
                 } else {
-                  stop(cref->wire.get(), &_outputs[succeeded]);
+                  stop(cref->wire.get(), &_outputs[i]);
                   succeeded++;
                 }
               } else {
