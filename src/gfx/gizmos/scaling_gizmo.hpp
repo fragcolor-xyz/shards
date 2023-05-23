@@ -203,13 +203,6 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       if (i == 3) {
         renderer.addCubeHandle(float3(0, 0, 0), 0.08f, cubeColor);
       } else {
-        // renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), cubeColor, GizmoRenderer::CapType::Cube,
-        //                  cubeColor);
-
-        /*
-          Function signature for addHandle:
-          void addHandle(float3 location, float3 direction, float radius, float length, float4 color, CapType capType, float4 capColor);
-        */
         if (handles[i].grabbed) {
           float modifiedLength = getGlobalAxisLength() + handles[i].grabOffset * 0.5f;
           
