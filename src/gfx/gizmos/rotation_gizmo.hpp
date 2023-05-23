@@ -110,7 +110,8 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
     auto &selectionDisc = handleSelectionDiscs[index];
     float d;
-    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, selectionDisc.normal, d)) {
+    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, selectionDisc.normal, d) ||
+        intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, -selectionDisc.normal, d)) {
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
       float3 radiusVec = hitPoint - selectionDisc.center;
 
@@ -120,7 +121,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       dragStartPoint = hitPoint;
       dragTangentDir = linalg::normalize(linalg::cross(selectionDisc.normal, radiusVec));
 
-      // solnB using the plane that is normal to the eye location as the plane of rotation (from the hitPoint), 
+      // solnB using the plane that is normal to the eye location as the plane of rotation (from the hitPoint),
       // where tangent is projected onto this plane. this solution is not using true screen space, but the plane should be
       // almost parallel to the viewport, such that we do not get the same spin-out issue
       // not sure if possible to get true distane in screen space because information about the true normal vector to the
@@ -214,14 +215,14 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   // render from IGizmo
   virtual void render(InputContext &inputContext, GizmoRenderer &renderer) {
 
-    // extractRotationMatrix(transform);
-
-    float3 axisDirs[]{{1.0, 0, 0}, {0, 1.0, 0}, {0, 0, 1.0}};
-    float3x3 rotationMatrix = extractRotationMatrix(transform);
+    float3x3 rotationMat = extractRotationMatrix(transform);
+    float3x3 axisDirs{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
+    axisDirs = linalg::mul(axisDirs, rotationMat);
 
     for (size_t i = 0; i < 3; i++) {
       auto &handle = handles[i];
       auto &selectionDisc = handleSelectionDiscs[i];
+      selectionDisc.normal = axisDirs[i]; // update the normal of the disc according to its new rotation
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 

@@ -289,24 +289,20 @@ void ShapeRenderer::addDisc(float3 center, float3 xBase, float3 yBase, float out
                             uint32_t resolution) {
 
   float3 prevPos;
-  float3 prevDelta;
   float3 innerPrevPos;
-  float3 innerPrevDelta;
   for (size_t i = 0; i < resolution; i++) {
     float t = i / float(resolution - 1) * pi2;
     float tCos = std::cos(t);
     float tSin = std::sin(t);
     float3 pos = center + tCos * xBase * outerRadius + tSin * yBase * outerRadius;
-    float3 delta = center + -tSin * xBase + tCos * yBase;
     float3 innerPos = center + tCos * xBase * innerRadius + tSin * yBase * innerRadius;
-    float3 innerDelta = center + -tSin * xBase + tCos * yBase;
     if (i > 0) {
+      // draw both sides of the quad to avoid culling
       addSolidQuad(prevPos, pos, innerPos, innerPrevPos, color);
+      addSolidQuad(prevPos, innerPrevPos, innerPos, pos, color );
     }
     prevPos = pos;
-    prevDelta = delta;
     innerPrevPos = innerPos;
-    innerPrevDelta = innerDelta;
   }
 }
 

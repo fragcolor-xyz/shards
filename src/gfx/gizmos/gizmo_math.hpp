@@ -65,7 +65,8 @@ inline float intersectBox(const float3 &eyeLocation, const float3 &rayDirection,
 // Returns infinity if the ray does not intersect the plane.
 inline float intersectDisc(const float3 &eyeLocation, const float3 &rayDirection, const Disc &disc) {
   float d;
-  if (intersectPlane(eyeLocation, rayDirection, disc.center, disc.normal, d)) {
+  if (intersectPlane(eyeLocation, rayDirection, disc.center, disc.normal, d) || 
+    intersectPlane(eyeLocation, rayDirection, disc.center, -disc.normal, d)) {
     float3 hitPoint = eyeLocation + d * rayDirection;
     float3 hitVector = hitPoint - disc.center;
     float hitDist = linalg::length(hitVector);
