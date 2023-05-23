@@ -1,11 +1,18 @@
-#ifndef TO_BE_REPLACED
-#define TO_BE_REPLACED
+#ifndef ROTATION_GIZMO_HPP
+#define ROTATION_GIZMO_HPP
 
 #include "gizmos.hpp"
 #include <gfx/linalg.hpp>
 
 namespace gfx {
 namespace gizmos {
+// A gizmo that allows the rotation of an object about the 3 axes. The gizmo is composed of 3
+// handles, each of which allows rotation about a single axis.
+//
+// Note: While only a single handle of the RotationGizmo may be selected at any point in time,
+// handles from multiple different gizmos may be selected at the same time and manipulated.
+// In such a case, do be forewarned that some awkward behaviour may occur as multiple gizmos
+// are not expected to be active and used at the same time.
 struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
 
@@ -108,8 +115,8 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
       float delta = linalg::dot(deltaVec, dragTangentDir);
       // Use this to check direction vector of tangent and delta for the effective distance moved along the tangent
-      //SPDLOG_DEBUG("dragTangentDir {} {} {}", dragTangentDir.x, dragTangentDir.y, dragTangentDir.z);
-      //SPDLOG_DEBUG("Delta: {}", delta);
+      // SPDLOG_DEBUG("dragTangentDir {} {} {}", dragTangentDir.x, dragTangentDir.y, dragTangentDir.z);
+      // SPDLOG_DEBUG("Delta: {}", delta);
       float sinTheta = std::sin(delta);
       float cosTheta = std::cos(delta);
 
@@ -174,4 +181,4 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 } // namespace gizmos
 } // namespace gfx
 
-#endif /* TO_BE_REPLACED */
+#endif

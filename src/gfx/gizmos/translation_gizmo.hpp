@@ -6,6 +6,10 @@
 
 namespace gfx {
 namespace gizmos {
+// Note: While only a single handle of the TranslationGizmo may be selected at any point in time,
+// handles from multiple different gizmos may be selected at the same time and manipulated.
+// In such a case, do be forewarned that some awkward behaviour may occur as multiple gizmos
+// are not expected to be active and used at the same time.
 struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
 
