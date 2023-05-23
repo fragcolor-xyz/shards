@@ -94,6 +94,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       - The second solution offers a more intuitive reasoning as the direction of dragging is directly reflected in the cursor position changes.
   */
   virtual void grabbed(InputContext &context, Handle &handle) {
+    handle.grabbed = true;
     dragStartTransform = transform;
 
     size_t index = getHandleIndex(handle);
@@ -109,6 +110,15 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
 
   virtual void released(InputContext &context, Handle &handle) {
     size_t index = getHandleIndex(handle);
+    if (index == 3) {
+      for (size_t i = 0; i < 3; i++) {
+        handles[i].grabbed = false;
+        handles[i].grabOffset = 0.0f;
+      }
+    } else {
+      handle.grabbed = false;
+      handle.grabOffset = 0.0f;
+    }
     SPDLOG_DEBUG("Handle {} ({}) released", index, getAxisDirection(index, dragStartTransform));
   }
 
@@ -128,17 +138,24 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
     switch (index)
     {
     case 0: 
+      handles[index].grabOffset = delta.x;
       scaling = float3(1 + delta.x * axisSensitivity,1 ,1);
       break;
     case 1:
+      handles[index].grabOffset = delta.y;
       scaling = float3(1, 1 + delta.y * axisSensitivity, 1);
       break;
     case 2:
+      handles[index].grabOffset = delta.z;
       scaling = float3(1, 1, 1 + delta.z * axisSensitivity);
       break;
     case 3:
       // Dragging the centered cube to the right increases the object's scale, while dragging it to the left decreases the object's scale.
       float diameter = centeredCubeSensitivity * std::abs(delta.x);
+            for (size_t i = 0; i < 3; i++) {
+        handles[i].grabbed = true;
+        handles[i].grabOffset = diameter;
+      }
       if (delta.x > 0) {
         scaling = float3(1 + diameter, 1 + diameter, 1 + diameter);
       } else {
@@ -186,8 +203,28 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       if (i == 3) {
         renderer.addCubeHandle(float3(0, 0, 0), 0.08f, cubeColor);
       } else {
-        renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), cubeColor, GizmoRenderer::CapType::Cube,
-                         cubeColor);
+        // renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), cubeColor, GizmoRenderer::CapType::Cube,
+        //                  cubeColor);
+
+        /*
+          Function signature for addHandle:
+          void addHandle(float3 location, float3 direction, float radius, float length, float4 color, CapType capType, float4 capColor);
+        */
+        if (handles[i].grabbed) {
+          float modifiedLength = getGlobalAxisLength() + handles[i].grabOffset * 0.5f;
+          
+          if (modifiedLength < 0.0f) {
+            SPDLOG_DEBUG("Modified length: {}", modifiedLength);
+            renderer.addHandle(loc, -dir, getGlobalAxisRadius(), -modifiedLength, cubeColor, GizmoRenderer::CapType::Cube, 
+                               cubeColor);
+          } else {
+          renderer.addHandle(loc, dir, getGlobalAxisRadius(), modifiedLength, cubeColor, GizmoRenderer::CapType::Cube, 
+                            cubeColor);
+          }
+        } else {
+          renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), cubeColor, GizmoRenderer::CapType::Cube, 
+                             cubeColor);
+        }
       }
     }
   }

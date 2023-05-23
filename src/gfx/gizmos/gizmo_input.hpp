@@ -36,6 +36,8 @@ struct Handle {
   float4x4 selectionBoxTransform;
   IGizmoCallbacks *callbacks{};
   void *userData{};
+  bool grabbed{};
+  float grabOffset{};
 };
 
 struct InputState {
