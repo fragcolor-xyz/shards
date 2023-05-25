@@ -248,8 +248,6 @@ void registerCoreShards() {
   tracyInit();
 #endif
 
-  logging::setupDefaultLoggerConditional();
-
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
     fs::current_path(GetGlobals().RootPath);
@@ -258,6 +256,9 @@ void registerCoreShards() {
     auto cp = fs::current_path();
     GetGlobals().RootPath = cp.string();
   }
+
+  // setup logging after rootpath is set
+  logging::setupDefaultLoggerConditional();
 
 #ifdef SH_USE_UBSAN_REPORT
   auto absPath = fs::absolute(GetGlobals().RootPath);
