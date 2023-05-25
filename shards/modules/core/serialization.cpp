@@ -297,14 +297,7 @@ struct LoadImage : public FileBase {
   SHVar activate(SHContext *context, const SHVar &input) {
     bool bytesInput = input.valueType == SHType::Bytes;
 
-    std::string filename;
-    if (!bytesInput) {
-      // need a proper filename in this case
-      if (!getFilename(context, filename)) {
-        throw ActivationError(fmt::format("File not found: {}!", filename));
-      }
-    }
-
+    // free the old image if we have one
     if (_output.valueType == SHType::Image && _output.payload.imageValue.data) {
       stbi_image_free(_output.payload.imageValue.data);
       _output = Var::Empty;
@@ -312,42 +305,68 @@ struct LoadImage : public FileBase {
 
     stbi_set_flip_vertically_on_load_thread(0);
 
+    uint8_t *bytesValue;
+    uint32_t bytesSize;
+    bool is_png{false};
+
+    // if we have a file input, load them into bytes form
+    std::string filename;
+    std::vector<uint8_t> buffer;
+
+    if (!bytesInput) {
+      // need a proper filename in this case
+      if (!getFilename(context, filename)) {
+        throw ActivationError(fmt::format("File not found: {}!", filename));
+      }
+
+      // load the file
+      std::ifstream file(filename, std::ios::binary);
+      if (!file) {
+        throw ActivationError(fmt::format("Error opening file: {}!", filename));
+      }
+
+      // get length of file
+      file.seekg(0, std::ios::end);
+      std::streampos length = file.tellg();
+      file.seekg(0, std::ios::beg);
+
+      // read file into buffer
+      buffer.resize(length);
+      file.read(reinterpret_cast<char *>(buffer.data()), length);
+
+      bytesValue = buffer.data();
+      bytesSize = static_cast<uint32_t>(length);
+    } else {
+      // image already given in bytes form
+      bytesValue = input.payload.bytesValue;
+      bytesSize = input.payload.bytesSize;
+    }
+
+    // check if it's a png (Using same signature check as stbi__check_png_header)
+    static const uint8_t png_sig[8] = {137, 80, 78, 71, 13, 10, 26, 10};
+    is_png = (std::memcmp(bytesValue, png_sig, 8) == 0);
+
     _output.valueType = SHType::Image;
     int x, y, n;
-    if (_bpp == BPP::u8) {
-      if (bytesInput) {
-        _output.payload.imageValue.data =
-            (uint8_t *)stbi_load_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
-      } else {
-        _output.payload.imageValue.data = (uint8_t *)stbi_load(filename.c_str(), &x, &y, &n, 0);
-      }
-
-      if (!_output.payload.imageValue.data) {
-        throw ActivationError("Failed to load image file");
-      }
-    } else if (_bpp == BPP::u16) {
-      if (bytesInput) {
-        _output.payload.imageValue.data =
-            (uint8_t *)stbi_load_16_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
-      } else {
-        _output.payload.imageValue.data = (uint8_t *)stbi_load_16(filename.c_str(), &x, &y, &n, 0);
-      }
-
-      if (!_output.payload.imageValue.data) {
-        throw ActivationError("Failed to load image file");
-      }
-    } else {
-      if (bytesInput) {
-        _output.payload.imageValue.data =
-            (uint8_t *)stbi_loadf_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
-      } else {
-        _output.payload.imageValue.data = (uint8_t *)stbi_loadf(filename.c_str(), &x, &y, &n, 0);
-      }
-
-      if (!_output.payload.imageValue.data) {
-        throw ActivationError(fmt::format("Failed to load image file {}", filename));
-      }
+    switch (_bpp) {
+    case BPP::u8:
+      _output.payload.imageValue.data =
+          reinterpret_cast<uint8_t *>(stbi_load_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
+      break;
+    case BPP::u16:
+      _output.payload.imageValue.data =
+          reinterpret_cast<uint8_t *>(stbi_load_16_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
+      break;
+    default:
+      _output.payload.imageValue.data =
+          reinterpret_cast<uint8_t *>(stbi_loadf_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
+      break;
     }
+
+    if (!_output.payload.imageValue.data) {
+      throw ActivationError("Failed to load image file");
+    }
+
     _output.payload.imageValue.width = uint16_t(x);
     _output.payload.imageValue.height = uint16_t(y);
     _output.payload.imageValue.channels = uint16_t(n);
@@ -363,41 +382,21 @@ struct LoadImage : public FileBase {
       break;
     }
 
-    // Check if file is a PNG image file format
-    // If it is, then it is necessary to premultiply the alpha channel
-    // TODO: Possibly find a better way to check if the file is a PNG image file format without having to load the image twice and
-    // without modifying stbi library
+    // Premultiply the alpha channel if it is a PNG
     auto pixsize = getPixelSize(_output);
-    stbi__context s;
-    bool is_png{false};
-    if (bytesInput) {
-      stbi__start_mem(&s, input.payload.bytesValue, int(input.payload.bytesSize));
-
-      if (stbi__png_test(&s)) {
-        is_png = true;
-      }
-    } else {
-      stbi__context s;
-      FILE *f = stbi__fopen(filename.c_str(), "rb");
-      stbi__start_file(&s, f);
-
-      if (stbi__png_test(&s)) {
-        is_png = true;
-      }
-
-      fclose(f); // not sure if stbi__png_test relies on f still being open. if it doesn't, can move the above if-statement
-                 // outside of this if-statement block
-    }
-
     if (is_png) {
       // premultiply the alpha channel
-      if (pixsize == 1) {
+      switch (pixsize) {
+      case 1:
         Imaging::premultiplyAlpha<uint8_t>(_output, _output, _output.payload.imageValue.width, _output.payload.imageValue.height);
-      } else if (pixsize == 2) {
+        break;
+      case 2:
         Imaging::premultiplyAlpha<uint16_t>(_output, _output, _output.payload.imageValue.width,
                                             _output.payload.imageValue.height);
-      } else if (pixsize == 4) {
+        break;
+      case 4:
         Imaging::premultiplyAlpha<float>(_output, _output, _output.payload.imageValue.width, _output.payload.imageValue.height);
+        break;
       }
     }
 
