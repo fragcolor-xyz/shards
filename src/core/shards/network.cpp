@@ -74,6 +74,7 @@ struct NetworkPeer {
   OwnedVar payload{};
 
   SHTime _start = SHClock::now();
+  SHTime _lastContact = SHClock::now();
 
   void *user = nullptr;
 
@@ -205,12 +206,17 @@ struct Server : public NetworkBase {
   std::unique_ptr<WireDoppelgangerPool<NetworkPeer>> _pool;
   OwnedVar _handlerMaster{};
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Address", SHCCSTR("The local bind address or the remote address."), CoreInfo::StringOrStringVar),
-      ParamsInfo::Param("Port", SHCCSTR("The port to bind if server or to connect to if client."), CoreInfo::IntOrIntVar),
-      ParamsInfo::Param(
-          "Handler", SHCCSTR("The wire to spawn for each new peer that connects, stopping that wire will break the connection."),
-          CoreInfo::WireOrNone));
+  float _timeoutSecs = 30.0f;
+
+  static inline Parameters params{
+      {"Address", SHCCSTR("The local bind address or the remote address."), {CoreInfo::StringOrStringVar}},
+      {"Port", SHCCSTR("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar}},
+      {"Handler",
+       SHCCSTR("The wire to spawn for each new peer that connects, stopping that wire will break the connection."),
+       {CoreInfo::WireOrNone}},
+      {"Timeout",
+       SHCCSTR("The timeout in seconds after which a peer will be disconnected if there is no network activity."),
+       {CoreInfo::FloatType}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -227,6 +233,9 @@ struct Server : public NetworkBase {
       if (value.valueType == SHType::Wire)
         _pool.reset(new WireDoppelgangerPool<NetworkPeer>(_handlerMaster.payload.wireValue));
       break;
+    case 3:
+      _timeoutSecs = value.payload.floatValue;
+      break;
     default:
       break;
     }
@@ -240,6 +249,8 @@ struct Server : public NetworkBase {
       return _port;
     case 2:
       return _handlerMaster;
+    case 3:
+      return Var(_timeoutSecs);
     default:
       return Var::Empty;
     }
@@ -301,7 +312,7 @@ struct Server : public NetworkBase {
           [](const struct Shard *errorShard, const char *errorTxt, SHBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
               SHLOG_ERROR(errorTxt);
-              throw ActivationError("Http.Server handler wire compose failed");
+              throw ActivationError("Network.Server handler wire compose failed");
             } else {
               SHLOG_WARNING(errorTxt);
             }
@@ -326,7 +337,7 @@ struct Server : public NetworkBase {
         boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
         [this](boost::system::error_code ec, std::size_t bytes_recvd) {
           if (!ec && bytes_recvd > 0) {
-            ikcpcb *kcp = nullptr;
+            NetworkPeer *currentPeer = nullptr;
             std::shared_lock<std::shared_mutex> lock(peersMutex);
             auto it = _end2Peer.find(_sender);
             if (it == _end2Peer.end()) {
@@ -356,7 +367,7 @@ struct Server : public NetworkBase {
                 // for now we just use ptr as ID, until it causes problems
                 peer->wire->id = reinterpret_cast<entt::id_type>(peer.get());
 
-                kcp = peer->kcp;
+                currentPeer = peer.get();
               } catch (std::exception &e) {
                 SHLOG_ERROR("Error acquiring peer: {}", e.what());
 
@@ -365,15 +376,29 @@ struct Server : public NetworkBase {
               }
             } else {
               // existing peer
-              kcp = it->second->kcp;
+              currentPeer = it->second.get();
 
               lock.unlock();
             }
 
-            auto err = ikcp_input(kcp, (char *)recv_buffer.data(), bytes_recvd);
-            if(err < 0) {
-              SHLOG_ERROR("Error receiving: {}", err);
-              return;
+            auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
+            if (err < 0) {
+              SHLOG_ERROR("Error ikcp_input: {}, peer: {} port: {}", err, currentPeer->endpoint->address().to_string(),
+                          currentPeer->endpoint->port());
+              _stopWireQueue.push(currentPeer->wire.get());
+            }
+
+            currentPeer->_lastContact = std::chrono::steady_clock::now();
+
+            // keep receiving
+            return do_receive();
+          } else {
+            std::shared_lock<std::shared_mutex> lock(peersMutex);
+            auto it = _end2Peer.find(_sender);
+            if (it == _end2Peer.end()) {
+              SHLOG_ERROR("Error receiving: {}, peer: {} port: {}", ec.message(), it->second->endpoint->address().to_string(),
+                          it->second->endpoint->port());
+              _stopWireQueue.push(it->second->wire.get());
             }
 
             // keep receiving
@@ -424,9 +449,17 @@ struct Server : public NetworkBase {
     }
 
     {
+      auto now = SHClock::now();
+
       std::shared_lock<std::shared_mutex> lock(peersMutex);
 
       for (auto &[end, peer] : _end2Peer) {
+        if (now > (peer->_lastContact + SHDuration(_timeoutSecs))) {
+          SHLOG_DEBUG("Peer {} timed out", end.address().to_string());
+          _stopWireQueue.push(peer->wire.get());
+          continue;
+        }
+
         peer->maybeUpdate();
 
         setPeer(context, *peer);
@@ -488,10 +521,10 @@ struct Client : public NetworkBase {
   NetworkPeer _peer;
   ShardsVar _blks{};
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Address", SHCCSTR("The local bind address or the remote address."), CoreInfo::StringOrStringVar),
-      ParamsInfo::Param("Port", SHCCSTR("The port to bind if server or to connect to if client."), CoreInfo::IntOrIntVar),
-      ParamsInfo::Param("Handler", SHCCSTR("The flow to execute when a packet is received."), CoreInfo::ShardsOrNone));
+  static inline Parameters params{
+      {"Address", SHCCSTR("The local bind address or the remote address."), {CoreInfo::StringOrStringVar}},
+      {"Port", SHCCSTR("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar}},
+      {"Handler", SHCCSTR("The flow to execute when a packet is received."), {CoreInfo::ShardsOrNone}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -546,7 +579,10 @@ struct Client : public NetworkBase {
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _server,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
                                   if (!ec && bytes_recvd > 0) {
-                                    ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
+                                    auto err = ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
+                                    if (err < 0) {
+                                      SHLOG_ERROR("Error ikcp_input: {}");
+                                    }
 
                                     // keep receiving
                                     do_receive();
@@ -701,7 +737,7 @@ struct Send : public PeerBase {
     serializer.reset();
     auto size = serializer.serialize(input, w);
     auto err = ikcp_send(peer->kcp, (char *)_send_buffer().data(), size);
-    if(err < 0) {
+    if (err < 0) {
       SHLOG_ERROR("ikcp_send error: {}", err);
       throw ActivationError("ikcp_send error");
     }
