@@ -398,6 +398,9 @@ struct LoadImage : public FileBase {
         Imaging::premultiplyAlpha<float>(_output, _output, _output.payload.imageValue.width, _output.payload.imageValue.height);
         break;
       }
+    } else {
+      // if not a PNG, assume that it has already been premultiplied
+      _output.payload.imageValue.flags |= SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
     }
 
     _output.version++;
