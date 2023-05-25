@@ -5,6 +5,7 @@
 #include <object_var_util.hpp>
 #include <params.hpp>
 #include "../inputs.hpp"
+#include "common_types.hpp"
 
 namespace shards {
 namespace Gizmos {
@@ -16,10 +17,13 @@ struct GizmosContextShard {
 
   PARAM_PARAMVAR(_view, "View",
                  "The view used to render the gizmos."
-                 "When drawing over a scene, the view should be the same",
+                 "When drawing over a scene, the view should be the same.",
                  {Type::VariableOf(gfx::Types::View)});
-  PARAM_PARAMVAR(_queue, "Queue", "The queue to draw into", {Type::VariableOf(gfx::Types::DrawQueue)});
-  PARAM(ShardsVar, _content, "Content", "Content", {CoreInfo::ShardsOrNone});
+  PARAM_PARAMVAR(_queue, "Queue", "The queue to draw into.", {Type::VariableOf(gfx::Types::DrawQueue)});
+  PARAM(ShardsVar, _content, "Content",
+        "Actual logic to draw the actual gizmos, the input of this flow will be a boolean that will be true if the gizmo is "
+        "being pressed and so edited.",
+        {CoreInfo::ShardsOrNone});
   PARAM_IMPL(GizmosContextShard, PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content));
 
   RequiredGraphicsContext _graphicsContext;
@@ -73,6 +77,7 @@ struct GizmosContextShard {
     _exposedInfo.push_back(GizmoContext::VariableInfo);
 
     SHInstanceData contentInstanceData = data;
+    contentInstanceData.inputType = CoreInfo::BoolType; // pressed or not
     contentInstanceData.shared = SHExposedTypesInfo(_exposedInfo);
     return _content.compose(contentInstanceData).outputType;
   }
@@ -118,7 +123,7 @@ struct GizmosContextShard {
     SHVar _shardsOutput{};
     withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] {
       gfxGizmoContext.begin(gizmoInput, view);
-      _content.activate(shContext, input, _shardsOutput);
+      _content.activate(shContext, Var(gfxGizmoContext.input.held != nullptr), _shardsOutput);
       gfxGizmoContext.end(_gizmoContext.queue);
     });
 
