@@ -52,13 +52,12 @@ struct NetworkContext {
 };
 
 struct NetworkPeer {
-  NetworkPeer() {
-    kcp = ikcp_create('shrd', this);
-    // set "turbo" mode
-    ikcp_nodelay(kcp, 1, 10, 2, 1);
-  }
+  NetworkPeer() {}
 
-  ~NetworkPeer() { ikcp_release(kcp); }
+  ~NetworkPeer() {
+    if (kcp)
+      ikcp_release(kcp);
+  }
 
   void maybeUpdate() {
     auto now = SHClock::now();
@@ -66,6 +65,16 @@ struct NetworkPeer {
     if (ikcp_check(kcp, ms) <= ms) {
       ikcp_update(kcp, ms);
     }
+  }
+
+  void reset() {
+    if (kcp)
+      ikcp_release(kcp);
+    kcp = ikcp_create('shrd', this);
+    // set "turbo" mode
+    ikcp_nodelay(kcp, 1, 10, 2, 1);
+    _start = SHClock::now();
+    _lastContact = SHClock::now();
   }
 
   std::optional<udp::endpoint> endpoint{};
@@ -350,6 +359,7 @@ struct Server : public NetworkBase {
               // new peer
               try {
                 auto peer = _pool->acquire(_composer, (void *)0);
+                peer->reset();
                 _end2Peer[_sender] = peer;
                 peer->endpoint = _sender;
                 peer->user = this;
@@ -570,6 +580,7 @@ struct Client : public NetworkBase {
 
   void setup() {
     // new peer
+    _peer.reset();
     _peer.kcp->user = this;
     _peer.kcp->output = &Client::udp_output;
   }
