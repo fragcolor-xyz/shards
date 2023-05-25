@@ -4,6 +4,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
+#include "imaging.cpp"
 #include <shards/core/shared.hpp>
 #include <boost/filesystem.hpp>
 #include <fstream>
@@ -361,6 +362,45 @@ struct LoadImage : public FileBase {
       _output.payload.imageValue.flags = 0;
       break;
     }
+
+    // Check if file is a PNG image file format
+    // If it is, then it is necessary to premultiply the alpha channel
+    // TODO: Possibly find a better way to check if the file is a PNG image file format without having to load the image twice and
+    // without modifying stbi library
+    auto pixsize = getPixelSize(_output);
+    stbi__context s;
+    bool is_png{false};
+    if (bytesInput) {
+      stbi__start_mem(&s, input.payload.bytesValue, int(input.payload.bytesSize));
+
+      if (stbi__png_test(&s)) {
+        is_png = true;
+      }
+    } else {
+      stbi__context s;
+      FILE *f = stbi__fopen(filename.c_str(), "rb");
+      stbi__start_file(&s, f);
+
+      if (stbi__png_test(&s)) {
+        is_png = true;
+      }
+
+      fclose(f); // not sure if stbi__png_test relies on f still being open. if it doesn't, can move the above if-statement
+                 // outside of this if-statement block
+    }
+
+    if (is_png) {
+      // premultiply the alpha channel
+      if (pixsize == 1) {
+        Imaging::premultiplyAlpha<uint8_t>(_output, _output, _output.payload.imageValue.width, _output.payload.imageValue.height);
+      } else if (pixsize == 2) {
+        Imaging::premultiplyAlpha<uint16_t>(_output, _output, _output.payload.imageValue.width,
+                                            _output.payload.imageValue.height);
+      } else if (pixsize == 4) {
+        Imaging::premultiplyAlpha<float>(_output, _output, _output.payload.imageValue.width, _output.payload.imageValue.height);
+      }
+    }
+
     _output.version++;
     return _output;
   }
@@ -392,10 +432,6 @@ struct WritePNG : public FileBase {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto pixsize = getPixelSize(input);
 
-    if (pixsize != 1) {
-      throw ActivationError("Bits per pixel must be 8");
-    }
-
     std::string filename;
     if (_filename->valueType != SHType::None) {
       if (!getFilename(context, filename, false)) {
@@ -410,43 +446,18 @@ struct WritePNG : public FileBase {
     // demultiply alpha if needed, limited to 4 channels
     if (c == 4 && (input.payload.imageValue.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
       _scratch.resize(w * h * 4 * pixsize);
-      int lineSize = w * 4;
       for (int ih = 0; ih < h; ih++) {
         for (int iw = 0; iw < w; iw++) {
-          int baseIdx = (ih * lineSize) + (iw * 4);
-          if (pixsize == 1) {
-            uint8_t a = input.payload.imageValue.data[baseIdx + 3];
-            float fa = float(a) / 255.0f;
-            _scratch[baseIdx + 3] = a;
-            uint8_t r = input.payload.imageValue.data[baseIdx + 0];
-            _scratch[baseIdx + 0] = fa > 0.0 ? uint8_t(float(r) / fa) : 0;
-            uint8_t g = input.payload.imageValue.data[baseIdx + 1];
-            _scratch[baseIdx + 1] = fa > 0.0 ? uint8_t(float(g) / fa) : 0;
-            uint8_t b = input.payload.imageValue.data[baseIdx + 2];
-            _scratch[baseIdx + 2] = fa > 0.0 ? uint8_t(float(b) / fa) : 0;
-          } else if (pixsize == 2) {
-            uint16_t *source = reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
-            uint16_t *dest = reinterpret_cast<uint16_t *>(_scratch.data());
-            uint16_t a = source[baseIdx + 3];
-            float fa = float(a) / 65535.0f;
-            dest[baseIdx + 3] = a;
-            uint16_t r = source[baseIdx + 0];
-            dest[baseIdx + 0] = fa > 0.0 ? uint16_t(float(r) / fa) : 0;
-            uint16_t g = source[baseIdx + 1];
-            dest[baseIdx + 1] = fa > 0.0 ? uint16_t(float(g) / fa) : 0;
-            uint16_t b = source[baseIdx + 2];
-            dest[baseIdx + 2] = fa > 0.0 ? uint16_t(float(b) / fa) : 0;
-          } else if (pixsize == 4) {
-            float *source = reinterpret_cast<float *>(input.payload.imageValue.data);
-            float *dest = reinterpret_cast<float *>(_scratch.data());
-            float fa = source[baseIdx + 3];
-            dest[baseIdx + 3] = fa;
-            float r = source[baseIdx + 0];
-            dest[baseIdx + 0] = fa > 0.0 ? r / fa : 0;
-            float g = source[baseIdx + 1];
-            dest[baseIdx + 1] = fa > 0.0 ? g / fa : 0;
-            float b = source[baseIdx + 2];
-            dest[baseIdx + 2] = fa > 0.0 ? b / fa : 0;
+          switch (pixsize) {
+          case 1:
+            Imaging::demultiplyAlpha<uint8_t>(input, _scratch, w, h);
+            break;
+          case 2:
+            Imaging::demultiplyAlpha<uint16_t>(input, _scratch, w, h);
+            break;
+          case 4:
+            Imaging::demultiplyAlpha<float>(input, _scratch, w, h);
+            break;
           }
         }
       }
