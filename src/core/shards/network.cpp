@@ -370,7 +370,11 @@ struct Server : public NetworkBase {
               lock.unlock();
             }
 
-            ikcp_input(kcp, (char *)recv_buffer.data(), bytes_recvd);
+            auto err = ikcp_input(kcp, (char *)recv_buffer.data(), bytes_recvd);
+            if(err < 0) {
+              SHLOG_ERROR("Error receiving: {}", err);
+              return;
+            }
 
             // keep receiving
             return do_receive();
@@ -696,7 +700,11 @@ struct Send : public PeerBase {
     NetworkBase::Writer w(&_send_buffer().front(), _send_buffer().size());
     serializer.reset();
     auto size = serializer.serialize(input, w);
-    ikcp_send(peer->kcp, (char *)_send_buffer().data(), size);
+    auto err = ikcp_send(peer->kcp, (char *)_send_buffer().data(), size);
+    if(err < 0) {
+      SHLOG_ERROR("ikcp_send error: {}", err);
+      throw ActivationError("ikcp_send error");
+    }
     return input;
   }
 };

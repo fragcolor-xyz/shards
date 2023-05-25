@@ -215,6 +215,22 @@ macro_rules! shlog_error {
   };
 }
 
+#[macro_export]
+macro_rules! shlog_warn {
+  ($text:expr, $($arg:expr),*) => {
+    {
+      use std::io::Write as __stdWrite;
+      let mut buf = vec![];
+      ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+      $crate::core::logLevel(3, ::std::str::from_utf8(&buf).unwrap());
+    }
+  };
+
+  ($text:expr) => {
+    $crate::core::logLevel(3, concat!($text, "\0"));
+  };
+}
+
 #[inline(always)]
 pub fn sleep(seconds: f64) {
   unsafe {
