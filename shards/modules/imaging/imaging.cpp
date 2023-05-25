@@ -163,6 +163,172 @@ private:
   std::vector<uint8_t> _bytes;
 };
 
+// Premultiplies the alpha channel in input image and writes the resulting image to a given SHVar output
+// Assumes that both SHVars are images. Output's data must be pre-allocated before calling this function
+// Adds SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag to output image
+template <typename T> void premultiplyAlpha(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
+  const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
+  auto to = reinterpret_cast<T *>(output.payload.imageValue.data);
+
+  premultiplyAlpha<T>(from, to, w, h);
+
+  // mark as premultiplied
+  output.payload.imageValue.flags |= SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
+}
+
+// Premultiplies the alpha channel in input image and writes the resulting image to a given vector of bytes
+// bytes's data must be pre-allocated before calling htis function
+// Does not add SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag to output image
+template <typename T> void premultiplyAlpha(const SHVar &input, std::vector<uint8_t> &bytes, int32_t w, int32_t h) {
+  const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
+  auto to = reinterpret_cast<T *>(&bytes[0]);
+
+  premultiplyAlpha<T>(from, to, w, h);
+}
+
+template <typename T> inline void premultiplyAlpha(T *from, T *to, int32_t w, int32_t h) {
+  const auto max = std::numeric_limits<T>::max(); // set to respective max value for uint8_t uint16_t and float
+  for (auto y = 0; y < h; y++) {
+    for (auto x = 0; x < w; x++) {
+      const auto addr = ((w * y) + x) * 4;
+      // premultiply RGB values
+      for (auto z = 0; z < 3; z++) {
+        // do calculation in float for better accuracy
+        to[addr + z] = static_cast<T>(static_cast<float>(from[addr + z]) / max * from[addr + 3]);
+      }
+      // copy A value
+      to[addr + 3] = from[addr + 3];
+    }
+  }
+}
+
+struct PremultiplyAlpha {
+  static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
+
+  template <typename T> void process(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
+    premultiplyAlpha<T>(input, output, w, h);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.payload.imageValue.channels < 4)
+      return input; // nothing to do
+
+    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) 
+      return input; // already premultiplied
+
+    // find number of bytes per pixel
+    auto pixsize = 1;
+    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+      pixsize = 2;
+    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+      pixsize = 4;
+
+    int32_t w = int32_t(input.payload.imageValue.width);
+    int32_t h = int32_t(input.payload.imageValue.height);
+
+    _bytes.resize(w * h * 4 * pixsize);
+    auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
+    output.version = input.version;
+
+    if (pixsize == 1) {
+      process<uint8_t>(input, output, w, h);
+    } else if (pixsize == 2) {
+      process<uint16_t>(input, output, w, h);
+    } else if (pixsize == 4) {
+      process<float>(input, output, w, h);
+    }
+
+    return output;
+  }
+
+private:
+  std::vector<uint8_t> _bytes;
+};
+
+// Premultiplies the alpha channel in input image and writes the resulting image to a given SHVar output
+// Assumes that both SHVars are images. Output's data must be pre-allocated before calling this function
+// Adds SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag to output image
+template <typename T> void demultiplyAlpha(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
+  const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
+  auto to = reinterpret_cast<T *>(output.payload.imageValue.data);
+
+  demultiplyAlpha<T>(from, to, w, h);
+
+  // remove premultiplied flag
+  output.payload.imageValue.flags &= ~SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
+}
+
+// Premultiplies the alpha channel in input image and writes the resulting image to a given vector of bytes
+// bytes's data must be pre-allocated before calling htis function
+// Does not add SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag to output image
+template <typename T> void demultiplyAlpha(const SHVar &input, std::vector<uint8_t> &bytes, int32_t w, int32_t h) {
+  const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
+  auto to = reinterpret_cast<T *>(&bytes[0]);
+
+  demultiplyAlpha<T>(from, to, w, h);
+}
+
+template <typename T> inline void demultiplyAlpha(T *from, T *to, int32_t w, int32_t h) {
+  const auto max = std::numeric_limits<T>::max(); // set to respective max value for uint8_t uint16_t and float
+
+  for (auto y = 0; y < h; y++) {
+    for (auto x = 0; x < w; x++) {
+      const auto addr = ((w * y) + x) * 4;
+      // un-premultiply RGB values
+      for (auto z = 0; z < 3; z++) {
+        to[addr + z] = static_cast<T>(static_cast<float>(from[addr + z]) / from[addr + 3] * max);
+      }
+      // copy A value
+      to[addr + 3] = from[addr + 3];
+    }
+  }
+}
+
+struct DemultiplyAlpha {
+  static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
+
+  template <typename T> void process(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
+    demultiplyAlpha<T>(input, output, w, h);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (input.payload.imageValue.channels < 4)
+      return input; // nothing to do
+
+    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) != SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) 
+      return input; // already straight alpha
+
+    // find number of bytes per pixel
+    auto pixsize = 1;
+    if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_16BITS_INT) == SHIMAGE_FLAGS_16BITS_INT)
+      pixsize = 2;
+    else if ((input.payload.imageValue.flags & SHIMAGE_FLAGS_32BITS_FLOAT) == SHIMAGE_FLAGS_32BITS_FLOAT)
+      pixsize = 4;
+
+    int32_t w = int32_t(input.payload.imageValue.width);
+    int32_t h = int32_t(input.payload.imageValue.height);
+    
+    _bytes.resize(w * h * 4 * pixsize);
+    auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
+    output.version = input.version;
+
+    if (pixsize == 1) {
+      process<uint8_t>(input, output, w, h);
+    } else if (pixsize == 2) {
+      process<uint16_t>(input, output, w, h);
+    } else if (pixsize == 4) {
+      process<float>(input, output, w, h);
+    }
+
+    return output;
+  }
+
+private:
+  std::vector<uint8_t> _bytes;
+};
+
 struct FillAlpha {
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
@@ -315,6 +481,8 @@ SHARDS_REGISTER_FN(imaging) {
   using namespace shards::Imaging;
   REGISTER_SHARD("Convolve", Convolve);
   REGISTER_SHARD("StripAlpha", StripAlpha);
+  REGISTER_SHARD("PremultiplyAlpha", PremultiplyAlpha);
+  REGISTER_SHARD("DemultiplyAlpha", DemultiplyAlpha);
   REGISTER_SHARD("FillAlpha", FillAlpha);
   REGISTER_SHARD("ResizeImage", Resize);
 }
