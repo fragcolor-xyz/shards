@@ -398,7 +398,7 @@ struct Server : public NetworkBase {
               _stopWireQueue.push(currentPeer->wire.get());
             }
 
-            currentPeer->_lastContact = std::chrono::steady_clock::now();
+            currentPeer->_lastContact = SHClock::now();
 
             // keep receiving
             return do_receive();
