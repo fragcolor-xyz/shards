@@ -201,7 +201,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       cubeColor = float4(cubeColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
       
       if (i == 3) {
-        renderer.addCubeHandle(float3(0, 0, 0), 0.08f, cubeColor);
+        renderer.addCubeHandle(loc, getGlobalAxisLength() * 0.15f, cubeColor);
       } else {
         if (handles[i].grabbed) {
           float modifiedLength = getGlobalAxisLength() + handles[i].grabOffset * 0.5f;
