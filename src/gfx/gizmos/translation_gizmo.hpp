@@ -127,30 +127,34 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
                          axisColor);
       } else {
         // TODO
+        float3 center;
         float3 xBase;
         float3 yBase;
         float2 size = float2(0.15f, 0.15f);
-        
-        // float3 center = loc + float3(size.x / 2, size.y / 2, 0.0f);
-        float3 center;
+        float4 color;
         switch (i) {
           case 3:
+            // handle on the xy-plane
             xBase = float3(1.0f, 0.0f, 0.0f);
             yBase = float3(0.0f, 1.0f, 0.0f);
             center = loc + float3(size.x / 2, size.y / 2, 0.0f);
+            color = float4(axisColors[2].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
             break;
           case 4:
+            // handle on the yz-plane
             xBase = float3(0.0f, 1.0f, 0.0f);
             yBase = float3(0.0f, 0.0f, 1.0f);
             center = loc + float3(0.0f, size.x / 2, size.y / 2);
+            color = float4(axisColors[0].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
             break;
           case 5:
+            // handle on the xz-plane
             xBase = float3(0.0f, 0.0f, 1.0f);
             yBase = float3(1.0f, 0.0f, 0.0f);
             center = loc + float3(size.y / 2, 0.0f, size.x / 2);
+            color = float4(axisColors[1].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
             break;
         }
-        float4 color = float4(1.0f, 1.0f, 1.0f, 1.0f);
         uint32_t thickness = 1;
         renderer.getShapeRenderer().addSolidRect(center, xBase, yBase, size, color, thickness);
       }
