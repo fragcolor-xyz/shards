@@ -263,7 +263,26 @@ void ShapeRenderer::addPoint(float3 center, float4 color, uint32_t thickness) {
   }
 }
 
-void addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness) {}
+void ShapeRenderer::addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness) {
+  float2 halfSize = size / 2.0f;
+  float3 verts[] = {
+      center - halfSize.x * xBase - halfSize.y * yBase,
+      center + halfSize.x * xBase - halfSize.y * yBase,
+      center + halfSize.x * xBase + halfSize.y * yBase,
+      center - halfSize.x * xBase + halfSize.y * yBase,
+  };
+
+  addSolidQuad(verts[0], verts[1], verts[2], verts[3], color);
+}
+
+void ShapeRenderer::addSolidQuad(float3 a, float3 b, float3 c, float3 d, float4 color) {
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(b), .color = UNPACK4(color)});
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(d), .color = UNPACK4(color)});
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
+  solidVertices.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
+}
 
 void ShapeRenderer::begin() {
   lineVertices.clear();

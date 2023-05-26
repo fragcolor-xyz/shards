@@ -61,6 +61,7 @@ public:
   void addPoint(float3 center, float4 color, uint32_t thickness);
 
   void addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness);
+  void addSolidQuad(float3 a, float3 b, float3 c, float3 d, float4 color);
 
   void begin();
   void end(DrawQueuePtr queue);

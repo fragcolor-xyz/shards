@@ -9,7 +9,7 @@ namespace gizmos {
 struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
 
-  Handle handles[3];
+  Handle handles[6];
   float4x4 dragStartTransform;
   float3 dragStartPoint;
 
@@ -21,7 +21,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float getGlobalAxisLength() const { return axisLength * scale; }
 
   TranslationGizmo() {
-    for (size_t i = 0; i < 3; i++) {
+    for (size_t i = 0; i < 6; i++) {
       handles[i].userData = (void *)i;
       handles[i].callbacks = this;
     }
@@ -31,7 +31,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     float3x3 invTransform = linalg::inverse(extractRotationMatrix(transform));
     float3 localRayDir = linalg::mul(invTransform, inputContext.rayDirection);
 
-    for (size_t i = 0; i < 3; i++) {
+    for (size_t i = 0; i < 6; i++) {
       auto &handle = handles[i];
 
       float3 fwd{};
@@ -49,9 +49,13 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
       auto &min = handle.selectionBox.min;
       auto &max = handle.selectionBox.max;
+      if (i < 3) {
       min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
       max =
           (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
+      } else {
+        // TODO
+      }
 
       handle.selectionBoxTransform = transform;
 
@@ -92,7 +96,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   }
 
   void render(InputContext &inputContext, GizmoRenderer &renderer) {
-    for (size_t i = 0; i < 3; i++) {
+    for (size_t i = 0; i < 6; i++) {
       auto &handle = handles[i];
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
@@ -118,8 +122,38 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 dir = getAxisDirection(i, handle.selectionBoxTransform);
       float4 axisColor = axisColors[i];
       axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
+      if (i < 3) {
       renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
                          axisColor);
+      } else {
+        // TODO
+        float3 xBase;
+        float3 yBase;
+        float2 size = float2(0.15f, 0.15f);
+        
+        // float3 center = loc + float3(size.x / 2, size.y / 2, 0.0f);
+        float3 center;
+        switch (i) {
+          case 3:
+            xBase = float3(1.0f, 0.0f, 0.0f);
+            yBase = float3(0.0f, 1.0f, 0.0f);
+            center = loc + float3(size.x / 2, size.y / 2, 0.0f);
+            break;
+          case 4:
+            xBase = float3(0.0f, 1.0f, 0.0f);
+            yBase = float3(0.0f, 0.0f, 1.0f);
+            center = loc + float3(0.0f, size.x / 2, size.y / 2);
+            break;
+          case 5:
+            xBase = float3(0.0f, 0.0f, 1.0f);
+            yBase = float3(1.0f, 0.0f, 0.0f);
+            center = loc + float3(size.y / 2, 0.0f, size.x / 2);
+            break;
+        }
+        float4 color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+        uint32_t thickness = 1;
+        renderer.getShapeRenderer().addSolidRect(center, xBase, yBase, size, color, thickness);
+      }
     }
   }
 };
