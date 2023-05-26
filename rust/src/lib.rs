@@ -25,6 +25,8 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
+extern crate crsql_bundle;
+
 pub mod core;
 #[macro_use]
 pub mod shard;

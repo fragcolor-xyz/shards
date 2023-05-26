@@ -89,3 +89,7 @@
 [submodule "src/gfx/rust/profiling"]
 	path = src/gfx/rust/profiling
 	url = https://github.com/shards-lang/rust-profiling.git
+[submodule "deps/sqlite/cr-sqlite"]
+	path = deps/sqlite/cr-sqlite
+	url = https://github.com/shards-lang/cr-sqlite.git
+	branch = shards
