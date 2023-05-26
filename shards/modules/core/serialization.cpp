@@ -259,7 +259,10 @@ struct LoadImage : public FileBase {
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   static inline Parameters params{FileBase::params,
-                                  {{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {BPPEnumInfo::Type}}}};
+                                  {{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {BPPEnumInfo::Type}},
+                                   {"PremultiplyAlpha",
+                                    SHCCSTR("Toggle premultiplication of alpha channels (E.g. To support PNG images)"),
+                                    {CoreInfo::BoolType}}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -267,6 +270,9 @@ struct LoadImage : public FileBase {
     switch (index) {
     case 1:
       _bpp = BPP(value.payload.enumValue);
+      break;
+    case 2:
+      _premultiplyAlpha = value.payload.boolValue;
       break;
     default:
       FileBase::setParam(index, value);
@@ -277,6 +283,8 @@ struct LoadImage : public FileBase {
     switch (index) {
     case 1:
       return Var::Enum(_bpp, CoreCC, BPPEnumInfo::TypeId);
+    case 2:
+      return Var(_premultiplyAlpha);
     default:
       return FileBase::getParam(index);
     }
@@ -284,6 +292,7 @@ struct LoadImage : public FileBase {
 
   SHVar _output{};
   BPP _bpp{BPP::u8};
+  bool _premultiplyAlpha{};
 
   void cleanup() {
     if (_output.valueType == SHType::Image && _output.payload.imageValue.data) {
@@ -307,7 +316,6 @@ struct LoadImage : public FileBase {
 
     uint8_t *bytesValue;
     uint32_t bytesSize;
-    bool is_png{false};
 
     // if we have a file input, load them into bytes form
     std::string filename;
@@ -341,10 +349,6 @@ struct LoadImage : public FileBase {
       bytesValue = input.payload.bytesValue;
       bytesSize = input.payload.bytesSize;
     }
-
-    // check if it's a png (Using same signature check as stbi__check_png_header)
-    static const uint8_t png_sig[8] = {137, 80, 78, 71, 13, 10, 26, 10};
-    is_png = (std::memcmp(bytesValue, png_sig, 8) == 0);
 
     _output.valueType = SHType::Image;
     int x, y, n;
@@ -382,9 +386,9 @@ struct LoadImage : public FileBase {
       break;
     }
 
-    // Premultiply the alpha channel if it is a PNG
+    // Premultiply the alpha channel if premultiply option is chosen
     auto pixsize = getPixelSize(_output);
-    if (is_png) {
+    if (_premultiplyAlpha) {
       // premultiply the alpha channel
       switch (pixsize) {
       case 1:
@@ -398,9 +402,6 @@ struct LoadImage : public FileBase {
         Imaging::premultiplyAlpha<float>(_output, _output, _output.payload.imageValue.width, _output.payload.imageValue.height);
         break;
       }
-    } else {
-      // if not a PNG, assume that it has already been premultiplied
-      _output.payload.imageValue.flags |= SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
     }
 
     _output.version++;
