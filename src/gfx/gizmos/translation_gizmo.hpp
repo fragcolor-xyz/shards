@@ -55,8 +55,8 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
         max =
             (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.8f;
       } else {
-        float hitboxSize = 0.15f;
-        float hitboxThickness = 0.05f;
+        float hitboxSize = getGlobalAxisLength() * 0.3f;
+        float hitboxThickness = getGlobalAxisLength() * 0.1f;
         switch (i) {
           case 3:
             min = float3(0, 0, hitboxThickness);
@@ -156,7 +156,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
-#if 0
+// #if 0
       // Debug draw
       float4 color = float4(.7, .7, .7, 1.);
       uint32_t thickness = 1;
@@ -171,7 +171,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 size = max - min;
 
       renderer.getShapeRenderer().addBox(handle.selectionBoxTransform, center, size, color, thickness);
-#endif
+// #endif
 
       float3 loc = extractTranslation(handle.selectionBoxTransform);
       float3 dir = getAxisDirection(i, handle.selectionBoxTransform);
