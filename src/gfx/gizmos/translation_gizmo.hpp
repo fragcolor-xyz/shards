@@ -50,11 +50,11 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       auto &min = handle.selectionBox.min;
       auto &max = handle.selectionBox.max;
       if (i < 3) {
-      min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.6f;
-      max =
-          (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.8f;
+        // The size of the selection box for the axis handles is reduced to avoid overlapping with the hitboxes of the plane handles
+        min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.6f;
+        max =
+            (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.8f;
       } else {
-        // TODO
         float hitboxSize = 0.15f;
         float hitboxThickness = 0.05f;
         switch (i) {
@@ -97,15 +97,17 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
                                 getAxisDirection(index, dragStartTransform));
     } else {
-      // TODO
       switch (index) {
         case 3:
+          // Intersects a view ray with the xy-plane
           dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(2, dragStartTransform));
           break;
         case 4:
+          // Intersects a view ray with the yz-plane
           dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(0, dragStartTransform));
           break;
         case 5:
+          // Intersects a view ray with the xz-plane
           dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(1, dragStartTransform));
           break;
       }
@@ -131,12 +133,15 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 hitPoint;
       switch (index) {
         case 3:
+          // Intersects a view ray with the xy-plane
           hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(2, dragStartTransform));
           break;
         case 4:
+          // Intersects a view ray with the yz-plane
           hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(0, dragStartTransform));
           break;
         case 5:
+          // Intersects a view ray with the xz-plane
           hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(1, dragStartTransform));
           break;
       }
@@ -151,7 +156,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
-// #if 0
+#if 0
       // Debug draw
       float4 color = float4(.7, .7, .7, 1.);
       uint32_t thickness = 1;
@@ -166,15 +171,15 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 size = max - min;
 
       renderer.getShapeRenderer().addBox(handle.selectionBoxTransform, center, size, color, thickness);
-// #endif
+#endif
 
       float3 loc = extractTranslation(handle.selectionBoxTransform);
       float3 dir = getAxisDirection(i, handle.selectionBoxTransform);
       float4 axisColor = axisColors[i];
       axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
       if (i < 3) {
-      renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
-                         axisColor);
+        renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
+                          axisColor);
       } else {
         float3 center;
         float3 xBase;
