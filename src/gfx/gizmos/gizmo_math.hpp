@@ -30,6 +30,23 @@ inline float3 hitOnPlane(float3 eyeLocation, float3 rayDirection, float3 axisPoi
 
   return axisPoint;
 }
+
+// Intersects a view ray with a plane based on eye location
+// this is used for draging handles within a single plane
+inline float3 hitOnPlaneUnprojected(float3 eyeLocation, float3 rayDirection, float3 planePoint, float3 planeNormal) {
+  // float3 planeT0 = planeNormal;
+  // float3 planeNormal = eyeLocation - planePoint;
+  // planeNormal -= linalg::dot(planeNormal, planeT0) * planeT0;
+  // planeNormal = linalg::normalize(planeNormal);
+
+  float d;
+  if (intersectPlane(eyeLocation, rayDirection, planePoint, planeNormal, d)) {
+    return eyeLocation + d * rayDirection;
+  }
+
+  return planePoint;
+}
+
 } // namespace gizmos
 } // namespace gfx
 

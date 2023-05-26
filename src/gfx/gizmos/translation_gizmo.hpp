@@ -93,8 +93,24 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     size_t index = getHandleIndex(handle);
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
 
+    if (index < 3) {
     dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
                                 getAxisDirection(index, dragStartTransform));
+    } else {
+      // TODO
+      switch (index) {
+        case 3:
+          dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(2, dragStartTransform));
+          break;
+        case 4:
+          dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(0, dragStartTransform));
+          break;
+        case 5:
+          dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(1, dragStartTransform));
+          break;
+      }
+      SPDLOG_DEBUG("Drag start point: {}", dragStartPoint);
+    }
   }
 
   virtual void released(InputContext &context, Handle &handle) {
@@ -103,12 +119,18 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   }
 
   virtual void move(InputContext &context, Handle &inHandle) {
+    size_t index = getHandleIndex(inHandle);
     float3 fwd = getAxisDirection(getHandleIndex(inHandle), dragStartTransform);
+    
+    if (index < 3) {
     float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
 
     float3 delta = hitPoint - dragStartPoint;
     delta = linalg::dot(delta, fwd) * fwd;
     transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
+    } else {
+      // TODO
+    }
   }
 
   void render(InputContext &inputContext, GizmoRenderer &renderer) {
@@ -142,7 +164,6 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
                          axisColor);
       } else {
-        // TODO
         float3 center;
         float3 xBase;
         float3 yBase;
