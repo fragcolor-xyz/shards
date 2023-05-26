@@ -184,7 +184,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
         float3 center;
         float3 xBase;
         float3 yBase;
-        float2 size = float2(0.15f, 0.15f);
+        float2 size = float2(getGlobalAxisLength() * 0.3f, getGlobalAxisLength() * 0.3f);
         float4 color;
         switch (i) {
           case 3:
