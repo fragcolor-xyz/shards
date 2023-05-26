@@ -273,6 +273,33 @@ struct Server : public NetworkBase {
     return NetworkBase::compose(data);
   }
 
+  void gcWires() {
+    if (!_stopWireQueue.empty()) {
+      SHWire *toStop;
+      while (_stopWireQueue.pop(toStop)) {
+        // ensure cleanup is called
+        const_cast<SHWire *>(toStop)->cleanup();
+
+        std::shared_lock<std::shared_mutex> lock(peersMutex);
+        auto container = _wire2Peer[toStop].lock();
+        _pool->release(container);
+        lock.unlock();
+
+        if (_contextCopy) {
+          OnPeerDisconnected event{
+              .endpoint = *container->endpoint,
+              .wire = container->wire,
+          };
+          (*_contextCopy)->main->dispatcher.trigger(std::move(event));
+        }
+
+        SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
+        std::unique_lock<std::shared_mutex> lock2(peersMutex);
+        _end2Peer.erase(*container->endpoint);
+      }
+    }
+  }
+
   void warmup(SHContext *context) {
     if (!_pool) {
       throw ComposeError("Peer wires pool not valid!");
@@ -286,6 +313,8 @@ struct Server : public NetworkBase {
   void cleanup() {
     if (_pool)
       _pool->stopAll();
+
+    gcWires();
 
     _contextCopy.reset();
 
@@ -435,28 +464,7 @@ struct Server : public NetworkBase {
       boost::asio::post(io_context, [this]() { do_receive(); });
     }
 
-    if (!_stopWireQueue.empty()) {
-      SHWire *toStop;
-      while (_stopWireQueue.pop(toStop)) {
-        // ensure cleanup is called
-        const_cast<SHWire *>(toStop)->cleanup();
-
-        std::shared_lock<std::shared_mutex> lock(peersMutex);
-        auto container = _wire2Peer[toStop].lock();
-        _pool->release(container);
-        lock.unlock();
-
-        OnPeerDisconnected event{
-            .endpoint = *container->endpoint,
-            .wire = container->wire,
-        };
-        context->main->dispatcher.trigger(std::move(event));
-
-        SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
-        std::unique_lock<std::shared_mutex> lock2(peersMutex);
-        _end2Peer.erase(*container->endpoint);
-      }
-    }
+    gcWires();
 
     {
       auto now = SHClock::now();
