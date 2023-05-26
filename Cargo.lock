@@ -290,6 +290,28 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
+version = "0.63.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36d860121800b2a9a94f9b5604b332d5cffb234ce17609ea479d723dbc9d3885"
+dependencies = [
+ "bitflags",
+ "cexpr",
+ "clang-sys",
+ "lazy_static",
+ "lazycell",
+ "log",
+ "peeking_take_while",
+ "proc-macro2 1.0.54",
+ "quote 1.0.26",
+ "regex",
+ "rustc-hash",
+ "shlex",
+ "syn 1.0.109",
+ "which",
+]
+
+[[package]]
+name = "bindgen"
 version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4243e6031260db77ede97ad86c27e501d646a27ab57b59a574f725d98ab1fb4"
@@ -683,6 +705,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "crsql_bundle"
+version = "0.1.0"
+dependencies = [
+ "crsql_core",
+ "crsql_fractindex_core",
+ "sqlite_nostd",
+]
+
+[[package]]
+name = "crsql_core"
+version = "0.1.0"
+dependencies = [
+ "sqlite_nostd",
+]
+
+[[package]]
+name = "crsql_fractindex_core"
+version = "0.1.0"
+dependencies = [
+ "rand 0.8.5",
+ "sqlite_nostd",
+]
+
+[[package]]
 name = "crunchy"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -995,7 +1041,7 @@ dependencies = [
 name = "egui-gfx"
 version = "0.1.0"
 dependencies = [
- "bindgen",
+ "bindgen 0.64.0",
  "egui",
  "gfx-build",
  "lazy_static",
@@ -1496,7 +1542,7 @@ dependencies = [
 name = "gfx-build"
 version = "0.1.0"
 dependencies = [
- "bindgen",
+ "bindgen 0.64.0",
 ]
 
 [[package]]
@@ -3627,12 +3673,13 @@ name = "shards"
 version = "0.1.0"
 dependencies = [
  "approx",
- "bindgen",
+ "bindgen 0.64.0",
  "bs58",
  "chacha20poly1305",
  "chrono",
  "compile-time-crc32",
  "crossbeam",
+ "crsql_bundle",
  "csv",
  "ctor",
  "dlopen",
@@ -3898,6 +3945,30 @@ dependencies = [
  "optional",
  "robust",
  "smallvec",
+]
+
+[[package]]
+name = "sqlite3_allocator"
+version = "0.1.0"
+dependencies = [
+ "sqlite3_capi",
+]
+
+[[package]]
+name = "sqlite3_capi"
+version = "0.1.0"
+dependencies = [
+ "bindgen 0.63.0",
+]
+
+[[package]]
+name = "sqlite_nostd"
+version = "0.1.0"
+dependencies = [
+ "num-derive",
+ "num-traits",
+ "sqlite3_allocator",
+ "sqlite3_capi",
 ]
 
 [[package]]

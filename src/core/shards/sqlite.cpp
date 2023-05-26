@@ -4,14 +4,29 @@
 #include "utility.hpp"
 #include <functional>
 #include <optional>
-#include <sqlite3.h>
+
+#include "sqlite3.h"
+
+extern "C" int sqlite3_crsqlite_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);
 
 namespace shards {
 namespace DB {
 struct Connection {
   sqlite3 *db;
 
+  static void RegisterExts() {
+    static bool registered = false;
+    if (!registered) {
+      if (sqlite3_auto_extension((void (*)())sqlite3_crsqlite_init) != SQLITE_OK) {
+        throw ActivationError("Failed to register sqlite3_crsqlite_init");
+      }
+      registered = true;
+    }
+  }
+
   Connection(const char *path) {
+    RegisterExts();
+
     if (sqlite3_open(path, &db) != SQLITE_OK) {
       throw ActivationError(sqlite3_errmsg(db));
     }

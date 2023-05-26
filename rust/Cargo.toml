@@ -53,6 +53,8 @@ tract-onnx = { version = "0.19.8", optional = true }
 enum-map = { version = "2.5.0", optional = true }
 rmp-serde = { version = "1.1.1", optional = true }
 
+crsql_bundle = { path = "../deps/sqlite/cr-sqlite/core/rs/bundle", optional = true, features = ["static"] }
+
 [target.'cfg(any(target_os="windows", target_os="macos", target_os="linux"))'.dependencies]
 rfd = { version = "0.11", git = "https://github.com/shards-lang/rfd.git", tag = 'shards-1', default-features = false, features = ["xdg-portal"], optional = true }
 
@@ -101,7 +103,8 @@ shards = ["reqwest",
           "tract-onnx",
           "tungstenite",
           "enum-map",
-          "rmp-serde"]
+          "rmp-serde",
+          "crsql_bundle"]
 code_editor = ["syntect", "egui_commonmark/syntax_highlighting"]
 hex_viewer = ["egui_memory_editor"]
 dllshard = ["dlopen"]
