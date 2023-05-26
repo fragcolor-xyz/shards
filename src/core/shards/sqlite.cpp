@@ -7,13 +7,16 @@
 
 #include "sqlite3.h"
 
+#ifndef USE_VALGRIND
 extern "C" int sqlite3_crsqlite_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);
+#endif
 
 namespace shards {
 namespace DB {
 struct Connection {
   sqlite3 *db;
 
+#ifndef USE_VALGRIND
   static void RegisterExts() {
     static bool registered = false;
     if (!registered) {
@@ -23,9 +26,12 @@ struct Connection {
       registered = true;
     }
   }
+#endif
 
   Connection(const char *path) {
+#ifndef USE_VALGRIND
     RegisterExts();
+#endif
 
     if (sqlite3_open(path, &db) != SQLITE_OK) {
       throw ActivationError(sqlite3_errmsg(db));
@@ -39,7 +45,12 @@ struct Connection {
     other.db = nullptr;
   }
 
-  ~Connection() { sqlite3_close(db); }
+  ~Connection() {
+#ifndef USE_VALGRIND
+    sqlite3_exec(db, "SELECT crsql_finalize();", nullptr, nullptr, nullptr);
+#endif
+    sqlite3_close(db);
+  }
 
   sqlite3 *get() { return db; }
 };
