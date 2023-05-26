@@ -50,11 +50,27 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       auto &min = handle.selectionBox.min;
       auto &max = handle.selectionBox.max;
       if (i < 3) {
-      min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
+      min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.6f;
       max =
-          (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
+          (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.8f;
       } else {
         // TODO
+        float hitboxSize = 0.15f;
+        float hitboxThickness = 0.05f;
+        switch (i) {
+          case 3:
+            min = float3(0, 0, hitboxThickness);
+            max = float3(hitboxSize, hitboxSize, -hitboxThickness);
+            break;
+          case 4:
+            min = float3(-hitboxThickness, 0, hitboxSize);
+            max = float3(hitboxThickness, hitboxSize, 0);
+            break;
+          case 5:
+            min = float3(0, -hitboxThickness, hitboxSize);
+            max = float3(hitboxSize, hitboxThickness, 0);
+            break;
+        }
       }
 
       handle.selectionBoxTransform = transform;
@@ -101,7 +117,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
-#if 0
+// #if 0
       // Debug draw
       float4 color = float4(.7, .7, .7, 1.);
       uint32_t thickness = 1;
@@ -116,7 +132,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 size = max - min;
 
       renderer.getShapeRenderer().addBox(handle.selectionBoxTransform, center, size, color, thickness);
-#endif
+// #endif
 
       float3 loc = extractTranslation(handle.selectionBoxTransform);
       float3 dir = getAxisDirection(i, handle.selectionBoxTransform);
