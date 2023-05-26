@@ -109,7 +109,6 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
           dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(1, dragStartTransform));
           break;
       }
-      SPDLOG_DEBUG("Drag start point: {}", dragStartPoint);
     }
   }
 
@@ -129,7 +128,20 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     delta = linalg::dot(delta, fwd) * fwd;
     transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
     } else {
-      // TODO
+      float3 hitPoint;
+      switch (index) {
+        case 3:
+          hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(2, dragStartTransform));
+          break;
+        case 4:
+          hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(0, dragStartTransform));
+          break;
+        case 5:
+          hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(1, dragStartTransform));
+          break;
+      }
+      float3 delta = hitPoint - dragStartPoint;
+      transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
     }
   }
 
