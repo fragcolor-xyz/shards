@@ -56,7 +56,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       auto &min = handle.selectionBox.min;
       auto &max = handle.selectionBox.max;
       if (i == 3) {
-        float hitbox_size = 0.12f;
+        float hitbox_size = getGlobalAxisLength() * 0.2f;
         min = float3(-hitbox_size, -hitbox_size, -hitbox_size);
         max = float3(hitbox_size, hitbox_size, hitbox_size);
       } else {
