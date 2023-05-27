@@ -34,6 +34,10 @@ set(network_SOURCES
   shards/network.cpp
 )
 
+set(crsqlite_SOURCES
+  ${CRSQLITE_DIR}/core/src/crsqlite.c
+)
+
 add_library(shards-core-static STATIC ${core_SOURCES})
 
 target_include_directories(shards-core-static PUBLIC ../../include)
@@ -150,6 +154,10 @@ endif()
 if(NOT EMSCRIPTEN)
   target_sources(shards-core-static PRIVATE ${network_SOURCES})
   target_link_libraries(shards-core-static OpenSSL kcp-wrapper)
+endif()
+
+if(NOT USE_VALGRIND)
+  target_sources(shards-core-static PRIVATE ${crsqlite_SOURCES})
 endif()
 
 if(WIN32)

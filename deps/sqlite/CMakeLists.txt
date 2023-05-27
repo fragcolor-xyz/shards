@@ -1,6 +1,5 @@
 set(SQLITE_SOURCES
   cr-sqlite/core/src/sqlite/sqlite3.c
-	cr-sqlite/core/src/crsqlite.c
   cr-sqlite/core/src/util.c
 	cr-sqlite/core/src/tableinfo.c
 	cr-sqlite/core/src/triggers.c
@@ -16,4 +15,5 @@ add_library(sqlite-static STATIC ${SQLITE_SOURCES})
 target_compile_definitions(sqlite-static PUBLIC SQLITE_THREADSAFE=2 SQLITE_ENABLE_SESSION=1)
 target_include_directories(sqlite-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 target_include_directories(sqlite-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src)
-target_link_options(sqlite-static PUBLIC -Wl,--unresolved-symbols=ignore-in-object-files)
+
+set(CRSQLITE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite CACHE INTERNAL "CRSQLITE_DIR")
