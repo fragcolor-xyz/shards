@@ -379,6 +379,8 @@ struct Server : public NetworkBase {
             std::shared_lock<std::shared_mutex> lock(peersMutex);
             auto it = _end2Peer.find(_sender);
             if (it == _end2Peer.end()) {
+              SHLOG_TRACE("Received packet from unknown peer: {} port: {}", _sender.address().to_string(), _sender.port());
+
               // new peer
               lock.unlock();
 
@@ -414,6 +416,8 @@ struct Server : public NetworkBase {
                 return do_receive();
               }
             } else {
+              SHLOG_TRACE("Received packet from known peer: {} port: {}", _sender.address().to_string(), _sender.port());
+
               // existing peer
               currentPeer = it->second.get();
 
