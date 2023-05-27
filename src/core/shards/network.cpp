@@ -43,6 +43,7 @@ struct NetworkContext {
   }
 
   ~NetworkContext() {
+    SHLOG_TRACE("NetworkContext dtor");
     boost::asio::post(_io_context, [this]() {
       // allow end/thread exit
       _io_context.stop();
@@ -311,14 +312,18 @@ struct Server : public NetworkBase {
   }
 
   void cleanup() {
-    if (_pool)
+    if (_pool) {
+      SHLOG_TRACE("Stopping all wires");
       _pool->stopAll();
-
-    gcWires();
+    } else {
+      SHLOG_TRACE("No pool to stop");
+    }
 
     _contextCopy.reset();
 
     NetworkBase::cleanup();
+
+    gcWires();
   }
 
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
@@ -379,7 +384,7 @@ struct Server : public NetworkBase {
             std::shared_lock<std::shared_mutex> lock(peersMutex);
             auto it = _end2Peer.find(_sender);
             if (it == _end2Peer.end()) {
-              SHLOG_TRACE("Received packet from unknown peer: {} port: {}", _sender.address().to_string(), _sender.port());
+              // SHLOG_TRACE("Received packet from unknown peer: {} port: {}", _sender.address().to_string(), _sender.port());
 
               // new peer
               lock.unlock();
@@ -413,10 +418,11 @@ struct Server : public NetworkBase {
                 SHLOG_ERROR("Error acquiring peer: {}", e.what());
 
                 // keep receiving
-                return do_receive();
+                if (_socket)
+                  return do_receive();
               }
             } else {
-              SHLOG_TRACE("Received packet from known peer: {} port: {}", _sender.address().to_string(), _sender.port());
+              // SHLOG_TRACE("Received packet from known peer: {} port: {}", _sender.address().to_string(), _sender.port());
 
               // existing peer
               currentPeer = it->second.get();
@@ -426,26 +432,28 @@ struct Server : public NetworkBase {
 
             auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
             if (err < 0) {
-              SHLOG_ERROR("Error ikcp_input: {}, peer: {} port: {}", err, currentPeer->endpoint->address().to_string(),
-                          currentPeer->endpoint->port());
+              SHLOG_ERROR("Error ikcp_input: {}, peer: {} port: {}", err, _sender.address().to_string(), _sender.port());
               _stopWireQueue.push(currentPeer->wire.get());
             }
 
             currentPeer->_lastContact = SHClock::now();
 
             // keep receiving
-            return do_receive();
+            if (_socket)
+              return do_receive();
           } else {
+            SHLOG_DEBUG("Error receiving: {}, peer: {} port: {}", ec.message(), _sender.address().to_string(), _sender.port());
+
             std::shared_lock<std::shared_mutex> lock(peersMutex);
             auto it = _end2Peer.find(_sender);
-            if (it == _end2Peer.end()) {
-              SHLOG_ERROR("Error receiving: {}, peer: {} port: {}", ec.message(), it->second->endpoint->address().to_string(),
-                          it->second->endpoint->port());
+            if (it != _end2Peer.end()) {
+              SHLOG_TRACE("Removing peer: {} port: {}", _sender.address().to_string(), _sender.port());
               _stopWireQueue.push(it->second->wire.get());
             }
 
             // keep receiving
-            return do_receive();
+            if (_socket)
+              return do_receive();
           }
         });
   }
