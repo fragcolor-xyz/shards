@@ -41,6 +41,7 @@
 (schedule main network-test-server)
 (schedule main network-test-client)
 (run main 0.01 100)
+(def handler nil)
 (def network-test-server nil)
 (def network-test-client nil)
 (def main nil)
