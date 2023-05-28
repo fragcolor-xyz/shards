@@ -51,8 +51,8 @@ if(TRACY_ENABLE AND TRACY_CALLSTACK_SIZE AND (TRACY_CALLSTACK_SIZE GREATER_EQUAL
   )
 endif()
 
-if(SHARDS_NO_BIGINT_SHARDS)
-  target_compile_definitions(shards-core-static PUBLIC SHARDS_NO_BIGINT_SHARDS=1)
+if(SHARDS_VALGRIND)
+  target_compile_definitions(shards-core-static PUBLIC SHARDS_VALGRIND=1)
 else()
   target_sources(shards-core-static PRIVATE shards/bigint.cpp)
 endif()

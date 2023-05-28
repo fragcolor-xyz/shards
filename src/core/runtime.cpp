@@ -325,7 +325,7 @@ void registerCoreShards() {
   Random::registerShards();
   Imaging::registerShards();
 
-#ifndef SHARDS_NO_BIGINT_SHARDS
+#ifndef SHARDS_VALGRIND
   BigInt::registerShards();
 #endif
 
