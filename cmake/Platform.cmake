@@ -145,7 +145,7 @@ endif()
 if(DESKTOP_LINUX)
   add_link_options(-export-dynamic)
   if(USE_VALGRIND)
-    add_compile_definitions(BOOST_USE_VALGRIND SHARDS_NO_BIGINT_SHARDS)
+    add_compile_definitions(BOOST_USE_VALGRIND SHARDS_VALGRIND)
   endif()
 endif()
 
