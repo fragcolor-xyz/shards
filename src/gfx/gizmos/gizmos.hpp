@@ -35,10 +35,11 @@ public:
   void end(DrawQueuePtr drawQueue);
 };
 
-inline constexpr Colorf axisColors[3] = {
+inline constexpr Colorf axisColors[4] = {
     colorToFloat(colorFromRGBA(0xCD453DFF)) * 1.1f,
     colorToFloat(colorFromRGBA(0x298C0AFF)) * 1.1f,
     colorToFloat(colorFromRGBA(0x1D7EC5FF)) * 1.1f,
+    colorToFloat(colorFromRGBA(0x7D7D7DFF)) * 1.1f,
 };
 
 } // namespace gizmos

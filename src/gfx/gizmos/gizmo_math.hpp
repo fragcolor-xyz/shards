@@ -14,6 +14,8 @@ struct Box {
 
 struct Disc {
   float3 center{};
+  float3 xBase{};
+  float3 yBase{};
   float3 normal{};
   float outerRadius{};
   float innerRadius{};

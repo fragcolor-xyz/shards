@@ -16,8 +16,8 @@ namespace gizmos {
 struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
 
-  Handle handles[3];
-  Disc handleSelectionDiscs[3];
+  Handle handles[4];
+  Disc handleSelectionDiscs[4];
   float4x4 dragStartTransform;
   float3 dragStartPoint;
   float3 dragTangentDir;
@@ -33,41 +33,68 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   float getGlobalAxisLength() const { return axisLength * scale; }
 
   RotationGizmo() {
+    float3x3 axisDirs{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
     for (int i = 0; i < 3; ++i) {
       handles[i].userData = reinterpret_cast<void *>(i);
       handles[i].callbacks = this;
       // Can possibly allow adjustment of radii in the future
       handleSelectionDiscs[i].outerRadius = initialOuterRadius;
       handleSelectionDiscs[i].innerRadius = initialInnerRadius;
-      float3 normal{};
-      normal[i] = 1.0f;
-      handleSelectionDiscs[i].normal = normal;
+
+      handleSelectionDiscs[i].normal = axisDirs[i];
+      handleSelectionDiscs[i].xBase = axisDirs[(i + 1) % 3];
+      handleSelectionDiscs[i].yBase = axisDirs[(i + 2) % 3];
     }
+
+    // special values for 4th handle
+    handles[3].userData = reinterpret_cast<void *>(3);
+    handles[3].callbacks = this;
+    handleSelectionDiscs[3].outerRadius = initialOuterRadius * 1.1;
+    handleSelectionDiscs[3].innerRadius = initialInnerRadius * 1.1;
+    
+    handleSelectionDiscs[3].normal = {1.0, 0.0, 1.0};
+    handleSelectionDiscs[3].xBase = {1.0, 0.0, -1.0};
+    handleSelectionDiscs[3].yBase = {0.0, 1.0, 0.0};
   }
 
   // update from IGizmo, seems to update gizmo based on inputcontext
   // updates mainly the hitbox for the handle and calls updateHandle to check if the handle is selected (via raycasting)
   virtual void update(InputContext &inputContext) {
-    float3x3 invTransform = linalg::inverse(extractRotationMatrix(transform));
-    float3 localRayDir = linalg::mul(invTransform, inputContext.rayDirection);
+    // float3x3 invTransform = linalg::inverse(extractRotationMatrix(transform));
+    // float3 localRayDir = linalg::mul(invTransform, inputContext.rayDirection);
 
-    for (size_t i = 0; i < 3; i++) {
+    // Rotate the 3 discs for x/y/z-axis according to the current transform of the object
+    float3x3 rotationMat = extractRotationMatrix(transform);
+    float3x3 axisDirs{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
+    axisDirs = linalg::mul(axisDirs, rotationMat);
+    for (int i = 0; i < 3; ++i) {
+      handleSelectionDiscs[i].normal = axisDirs[i];
+      handleSelectionDiscs[i].xBase = axisDirs[(i + 1) % 3];
+      handleSelectionDiscs[i].yBase = axisDirs[(i + 2) % 3];
+    }
+
+    // Update 4th handle's rotation based on any changes to camera transform
+    float3x2 screenSpaceBaseVec = inputContext.getScreenSpacePlaneAxes();
+    handleSelectionDiscs[3].normal = linalg::normalize(linalg::cross(screenSpaceBaseVec.x, screenSpaceBaseVec.y));
+    handleSelectionDiscs[3].xBase = screenSpaceBaseVec.x;
+    handleSelectionDiscs[3].yBase = screenSpaceBaseVec.y;
+
+    // Update the center of all 4 handles, check for intersection with ray and update handle
+    for (size_t i = 0; i < 4; i++) {
       auto &handle = handles[i];
       auto &selectionDisc = handleSelectionDiscs[i];
 
+      selectionDisc.center = extractTranslation(transform);
+
       float hitDistance = intersectDisc(inputContext.eyeLocation, inputContext.rayDirection, selectionDisc);
       inputContext.updateHandle(handle, hitDistance);
-
-      selectionDisc.center = extractTranslation(transform);
     }
   }
 
   size_t getHandleIndex(Handle &inHandle) { return size_t(inHandle.userData); }
 
   float3 getAxisDirection(size_t index, float4x4 transform) {
-    float3 base{};
-    base[index] = 1.0f;
-    return linalg::normalize(linalg::mul(transform, float4(base, 0)).xyz());
+    return handleSelectionDiscs[index].normal;
   }
 
   // Called when handle grabbed from IGizmoCallbacks
@@ -80,6 +107,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     auto &selectionDisc = handleSelectionDiscs[index];
     float d;
     // Check if ray intersects with plane of the disc (either side)
+    // TODO: Check if there is a way to do it without checking both sides of the plane
     if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, selectionDisc.normal, d) ||
         intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, -selectionDisc.normal, d)) {
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
@@ -150,6 +178,26 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
             {0, 0, 0, 1},
         };
         break;
+      case 3:
+        // rotating about screen-space axis
+        float x = selectionDisc.normal.x;
+        float y = selectionDisc.normal.y;
+        float z = selectionDisc.normal.z;
+        float x2 = x * x;
+        float y2 = y * y;
+        float z2 = z * z;
+        float xy = x * y;
+        float xz = x * z;
+        float yz = y * z;
+
+        // Construct the rotation matrix
+        rotationMat = {
+          {x2 + (1 - x2) * cosTheta, xy * (1 - cosTheta) - z * sinTheta, xz * (1 - cosTheta) + y * sinTheta, 0},
+          {xy * (1 - cosTheta) + z * sinTheta, y2 + (1 - y2) * cosTheta, yz * (1 - cosTheta) - x * sinTheta, 0},
+          {xz * (1 - cosTheta) - y * sinTheta, yz * (1 - cosTheta) + x * sinTheta, z2 + (1 - z2) * cosTheta, 0},
+          {0, 0, 0, 1}
+        };
+        break;
       }
 
       transform = linalg::mul(dragStartTransform, rotationMat);
@@ -159,21 +207,16 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   // render from IGizmo
   virtual void render(InputContext &inputContext, GizmoRenderer &renderer) {
 
-    // Rotate the discs according to the current transform of the object
-    float3x3 rotationMat = extractRotationMatrix(transform);
-    float3x3 axisDirs{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
-    axisDirs = linalg::mul(axisDirs, rotationMat);
-
-    for (size_t i = 0; i < 3; i++) {
+    // render all 4 selection discs
+    for (size_t i = 0; i < 4; i++) {
       auto &handle = handles[i];
       auto &selectionDisc = handleSelectionDiscs[i];
-      selectionDisc.normal = axisDirs[i]; // update the normal of the disc according to its new rotation
-
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
       float4 axisColor = axisColors[i];
       axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
-      renderer.getShapeRenderer().addDisc(selectionDisc.center, axisDirs[(i + 1) % 3], axisDirs[(i + 2) % 3],
+      // The xbase and ybase of each disc is the normal of the other discs (for discs 1-3)
+      renderer.getShapeRenderer().addDisc(selectionDisc.center, selectionDisc.xBase, selectionDisc.yBase,
                                           selectionDisc.outerRadius, selectionDisc.innerRadius, axisColor);
     }
   }

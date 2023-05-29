@@ -92,5 +92,13 @@ void InputContext::updateView(ViewPtr view) {
   rayDirection = linalg::normalize(unprojected.xyz() - eyeLocation);
 }
 
+float3x2 InputContext::getScreenSpacePlaneAxes() {
+  float3 yBase = cachedViewProjInv[1].xyz() / cachedViewProjInv[3].w; // also upDir
+  float3 viewDir = cachedViewProjInv[2].xyz() / cachedViewProjInv[3].w;
+  float3 xBase = linalg::cross(yBase, viewDir);
+
+  return {linalg::normalize(xBase), linalg::normalize(yBase)};
+}
+
 } // namespace gizmos
 } // namespace gfx

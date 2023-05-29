@@ -79,6 +79,9 @@ public:
   // Call to end input update and run input callbacks
   void end();
 
+  // Returns a direction vector ray from the middle of the viewport into the eye
+  float3x2 getScreenSpacePlaneAxes();
+
 private:
   // Computes eye location and cursor ray direction
   void updateView(ViewPtr view);
