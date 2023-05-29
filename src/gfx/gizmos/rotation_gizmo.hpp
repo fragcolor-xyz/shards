@@ -9,10 +9,9 @@ namespace gizmos {
 // A gizmo that allows the rotation of an object about the 3 axes. The gizmo is composed of 3
 // handles, each of which allows rotation about a single axis.
 //
-// Note: While only a single handle of the RotationGizmo may be selected at any point in time,
-// handles from multiple different gizmos may be selected at the same time and manipulated.
-// In such a case, do be forewarned that some awkward behaviour may occur as multiple gizmos
-// are not expected to be active and used at the same time.
+// Note: If multiple gizmos are to be active at any time, ensure that they are created in the same Gizmos.Context
+//       This is to prevent multiple handles from different gizmos being selected at the same time, 
+//       resulting in unexpected behaviour.
 struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
 
@@ -60,9 +59,6 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   // update from IGizmo, seems to update gizmo based on inputcontext
   // updates mainly the hitbox for the handle and calls updateHandle to check if the handle is selected (via raycasting)
   virtual void update(InputContext &inputContext) {
-    // float3x3 invTransform = linalg::inverse(extractRotationMatrix(transform));
-    // float3 localRayDir = linalg::mul(invTransform, inputContext.rayDirection);
-
     // Rotate the 3 discs for x/y/z-axis according to the current transform of the object
     float3x3 rotationMat = extractRotationMatrix(transform);
     float3x3 axisDirs{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};

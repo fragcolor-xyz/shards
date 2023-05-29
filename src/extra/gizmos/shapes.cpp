@@ -261,9 +261,8 @@ struct SolidRectShard : public Base {
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
   PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_VAR(_thickness, "Thickness", "Not currently in use. May be removed in the future", {CoreInfo::IntType});
   PARAM_IMPL(RectShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
-             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness), );
+             PARAM_IMPL_FOR(_color));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
@@ -286,7 +285,7 @@ struct SolidRectShard : public Base {
     float2 size = sizeVar.isNone() ? float2(1.0f, 1.0f) : toFloat2(sizeVar);
 
     shapeRenderer.addSolidRect(toFloat3(_center.get()), toFloat3(_xBase.get()), toFloat3(_yBase.get()), size,
-                               colorOrDefault(_color.get()), thicknessOrDefault(_thickness));
+                               colorOrDefault(_color.get()));
 
     return SHVar{};
   }

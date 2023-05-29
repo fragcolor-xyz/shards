@@ -264,7 +264,7 @@ void ShapeRenderer::addPoint(float3 center, float4 color, uint32_t thickness) {
   }
 }
 
-void ShapeRenderer::addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness) {
+void ShapeRenderer::addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color) {
   float2 halfSize = size / 2.0f;
   float3 verts[] = {
       center - halfSize.x * xBase - halfSize.y * yBase,

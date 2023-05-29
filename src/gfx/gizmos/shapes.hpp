@@ -60,7 +60,7 @@ public:
   void addBox(float4x4 transform, float3 center, float3 size, float4 color, uint32_t thickness);
   void addPoint(float3 center, float4 color, uint32_t thickness);
 
-  void addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness);
+  void addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color);
   void addSolidQuad(float3 a, float3 b, float3 c, float3 d, float4 color);
   void addDisc(float3 center, float3 xBase, float3 yBase, float outerRadius, float innerRadius, float4 color,
                uint32_t resolution = 64);

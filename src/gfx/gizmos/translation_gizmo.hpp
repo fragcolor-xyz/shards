@@ -6,10 +6,9 @@
 
 namespace gfx {
 namespace gizmos {
-// Note: While only a single handle of the TranslationGizmo may be selected at any point in time,
-// handles from multiple different gizmos may be selected at the same time and manipulated.
-// In such a case, do be forewarned that some awkward behaviour may occur as multiple gizmos
-// are not expected to be active and used at the same time.
+// Note: If multiple gizmos are to be active at any time, ensure that they are created in the same Gizmos.Context
+//       This is to prevent multiple handles from different gizmos being selected at the same time, 
+//       resulting in unexpected behaviour.
 struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
 
