@@ -11,6 +11,7 @@
 #include <gfx/render_target.hpp>
 #include <params.hpp>
 #include <stdexcept>
+#include <vector>
 
 using namespace shards;
 namespace gfx {
@@ -130,7 +131,7 @@ struct TextureShard {
       componentType = ComponentType::Int16;
     } else {
       componentType = ComponentType::Int8;
-      if (image.channels == 4)
+      if (image.channels == 3 || image.channels == 4)
         asType = TextureType::UNormSRGB;
       else
         asType = TextureType::UNorm;
@@ -192,7 +193,31 @@ struct TextureShard {
       }
       break;
     case 3:
-      throw formatException("RGB textures not supported");
+      switch (componentType) {
+      case ComponentType::Float:
+        if (asType == TextureType::Float)
+          format.pixelFormat = WGPUTextureFormat_RGBA32Float;
+        break;
+      case ComponentType::Int16:
+        if (asType == TextureType::UInt)
+          format.pixelFormat = WGPUTextureFormat_RGBA16Uint;
+        else if (asType == TextureType::Int)
+          format.pixelFormat = WGPUTextureFormat_RGBA16Sint;
+        break;
+      case ComponentType::Int8:
+        if (asType == TextureType::UNorm)
+          format.pixelFormat = WGPUTextureFormat_RGBA8Unorm;
+        else if (asType == TextureType::UNormSRGB)
+          format.pixelFormat = WGPUTextureFormat_RGBA8UnormSrgb;
+        else if (asType == TextureType::SNorm)
+          format.pixelFormat = WGPUTextureFormat_RGBA8Snorm;
+        else if (asType == TextureType::UInt)
+          format.pixelFormat = WGPUTextureFormat_RGBA8Uint;
+        else if (asType == TextureType::Int)
+          format.pixelFormat = WGPUTextureFormat_RGBA8Sint;
+        break;
+      }
+      break;
     case 4:
       switch (componentType) {
       case ComponentType::Float:
@@ -228,9 +253,35 @@ struct TextureShard {
     size_t imageSize = inputFormat.pixelSize * image.width * image.height;
 
     // Copy the data since we can't keep a reference to the image variable
-    ImmutableSharedBuffer isb(image.data, imageSize);
+    ImmutableSharedBuffer isb{};
+    if (image.channels == 3) { 
+      std::vector<uint8_t> imageDataRGBA = convertToRGBA(image);
+      isb = ImmutableSharedBuffer(std::move(imageDataRGBA)); 
+    } else { 
+      isb = ImmutableSharedBuffer(image.data, imageSize); 
+    }
     texture->init(TextureDesc{.format = format, .resolution = int2(image.width, image.height), .data = std::move(isb)});
   }
+
+std::vector<uint8_t> convertToRGBA(const SHImage& image) {
+  std::vector<uint8_t> rgbaData(image.width * image.height * 4);
+
+  for (size_t y = 0; y < image.height; ++y) {
+    for (size_t x = 0; x < image.width; ++x) {
+      size_t srcIndex = (y * image.width + x) * 3;
+      size_t dstIndex = (y * image.width + x) * 4;
+
+      rgbaData[dstIndex] = image.data[srcIndex];
+      rgbaData[dstIndex + 1] = image.data[srcIndex + 1];
+      rgbaData[dstIndex + 2] = image.data[srcIndex + 2];
+
+      rgbaData[dstIndex + 3] = 255;
+    }
+  }
+
+  SHLOG_TRACE("RGB conversion completed");
+  return rgbaData;
+}
 
   void activateRenderableTexture() {
     Var resolutionVar{_resolution.get()};

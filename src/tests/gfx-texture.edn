@@ -35,3 +35,35 @@
 
 (schedule Root test-wire)
 (if (run Root timestep 100) nil (throw "Root tick failed"))
+
+(defloop test-formats
+  (Setup
+   (GFX.BuiltinMesh :Type BuiltinMeshType.Plane) >= .mesh
+
+   (LoadImage "data/RGBA.png") (GFX.Texture) >= .texture-0
+   (LoadImage "data/RGB.png") (GFX.Texture) >= .texture-1
+   (LoadImage "../../assets/ShardsLogo.png") (GFX.Texture) >= .texture-2
+
+   (GFX.DrawQueue) >= .queue
+
+    ; Create render steps
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+   {:Features .features :Queue .queue
+    :Outputs [{:Name "color" :Clear (Float4 1.0)}] ;
+    }(GFX.DrawablePass) >> .render-steps
+
+    ; Create view
+   {:Position (Float3 0 0 8.0) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    (Float3 -2 0 0) (Math.Translation) (GFX.Drawable :Mesh .mesh :Params {:baseColorTexture .texture-0}) (GFX.Draw .queue)
+    (Float3 0 0 0) (Math.Translation) (GFX.Drawable :Mesh .mesh :Params {:baseColorTexture .texture-1}) (GFX.Draw .queue)
+    (Float3 2 0 0) (Math.Translation) (GFX.Drawable :Mesh .mesh :Params {:baseColorTexture .texture-2}) (GFX.Draw .queue)
+    (GFX.Render :Steps .render-steps :View .view))))
+
+(schedule Root test-formats)
+(if (run Root timestep 100) nil (throw "Root tick failed"))

@@ -216,7 +216,7 @@ void TestData::writeRejectionDetails(const char *id, const TestFrame &frame, con
 bool TestData::loadFrameInternal(TestFrame &frame, const char *filePath) {
   int2 size;
   int32_t numChannels;
-  stbi_set_flip_vertically_on_load(0);
+  stbi_set_flip_vertically_on_load_thread(0);
   uint8_t *data = stbi_load(filePath, &size.x, &size.y, &numChannels, 4);
   if (numChannels != 4) {
     stbi_image_free(data);
