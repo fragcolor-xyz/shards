@@ -309,6 +309,8 @@ struct LoadImage : public FileBase {
       _output = Var::Empty;
     }
 
+    stbi_set_flip_vertically_on_load_thread(1);
+
     _output.valueType = SHType::Image;
     int x, y, n;
     if (_bpp == BPP::u8) {
