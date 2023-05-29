@@ -79,8 +79,12 @@ public:
   // Call to end input update and run input callbacks
   void end();
 
-  // Returns a direction vector ray from the middle of the viewport into the eye
-  float3x2 getScreenSpacePlaneAxes();
+  // Returns normalized world direction vectors of the 3 axes relative to the screen
+  float3x3 getScreenSpacePlaneAxes() const;
+  // Returns the normalized up vector of the camera in world space
+  float3 getUpVector() const;
+  // Returns the normalized forward vector of the camera in world space
+  float3 getForwardVector() const;
 
 private:
   // Computes eye location and cursor ray direction
@@ -89,6 +93,10 @@ private:
   void updateHeldHandle();
   // Updates `hitLocation` variable based on hovered/held handle
   void updateHitLocation();
+
+  // Set to private to prevent using the cached inverse view projection matrix for the 3 axes
+  // Forces the user to use the `getScreenSpacePlaneAxes` function
+  float3 getRightVector() const;
 };
 } // namespace gizmos
 

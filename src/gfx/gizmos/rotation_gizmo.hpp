@@ -74,10 +74,10 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     }
 
     // Update 4th handle's rotation based on any changes to camera transform
-    float3x2 screenSpaceBaseVec = inputContext.getScreenSpacePlaneAxes();
-    handleSelectionDiscs[3].normal = linalg::normalize(linalg::cross(screenSpaceBaseVec.x, screenSpaceBaseVec.y));
-    handleSelectionDiscs[3].xBase = screenSpaceBaseVec.x;
-    handleSelectionDiscs[3].yBase = screenSpaceBaseVec.y;
+    float3x3 screenSpaceBaseVec = inputContext.getScreenSpacePlaneAxes();
+    handleSelectionDiscs[3].xBase = screenSpaceBaseVec[0];
+    handleSelectionDiscs[3].yBase = screenSpaceBaseVec[1];
+    handleSelectionDiscs[3].normal = screenSpaceBaseVec[2];
 
     // Update the center of all 4 handles, check for intersection with ray and update handle
     for (size_t i = 0; i < 4; i++) {
@@ -113,11 +113,17 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
       float3 radiusVec = hitPoint - selectionDisc.center;
 
-      // Construct a plane whose normal is the vector from hitPoint to context.eyeLocation and project tangent onto this plane
+      // Construct a plane that is parallel to the camera view projeciton and project the tangent onto this plane
       dragStartPoint = hitPoint;
       dragTangentDir = linalg::normalize(linalg::cross(selectionDisc.normal, radiusVec));
 
-      dragNormalDir = linalg::normalize(context.eyeLocation - hitPoint);
+      // if, instead, we use 2d screen space translation instead of projection onto this 3d screen plane,
+      // we can calculate the amount of rotation based off screen cursor position instead, which may be more efficient
+      // but, wil require cachedViewProjInv which is currently private in the InputContext class
+      // else, for a point in 3D we multiply the point by the cachedViewProjInv, divide by w to get NDC in 2D
+
+      // dragNormalDir = linalg::normalize(context.eyeLocation - hitPoint);
+      dragNormalDir = context.getForwardVector(); // Get the normal vector to the camera/screen
       dragTangentDir = linalg::normalize(dragTangentDir - linalg::dot(dragTangentDir, dragNormalDir) * dragNormalDir);
 
       SPDLOG_DEBUG("Drag start point: {} {} {}", dragStartPoint.x, dragStartPoint.y, dragStartPoint.z);
@@ -137,7 +143,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     auto &selectionDisc = handleSelectionDiscs[handleIndex];
 
     float d;
-    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, dragNormalDir, d)) {
+    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, dragNormalDir, d) || intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, -dragNormalDir, d)) {
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
       float3 deltaVec = dragStartPoint - hitPoint;
 
@@ -179,10 +185,12 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
         };
         break;
       case 3:
-        // rotating about screen-space axis
-        float x = selectionDisc.normal.x;
-        float y = selectionDisc.normal.y;
-        float z = selectionDisc.normal.z;
+      // Calculate the axis to rotate about (To the user, it will appear to be the screen normal)
+        float3x3 startRotation = extractRotationMatrix(dragStartTransform);
+        float3 rotAxis = linalg::normalize(linalg::mul(linalg::inverse(startRotation), dragNormalDir));
+        float x = rotAxis.x;
+        float y = rotAxis.y;
+        float z = rotAxis.z;
         float x2 = x * x;
         float y2 = y * y;
         float z2 = z * z;
@@ -197,6 +205,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
           {xz * (1 - cosTheta) - y * sinTheta, yz * (1 - cosTheta) + x * sinTheta, z2 + (1 - z2) * cosTheta, 0},
           {0, 0, 0, 1}
         };
+
         break;
       }
 
