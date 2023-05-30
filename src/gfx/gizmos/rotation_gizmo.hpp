@@ -176,9 +176,9 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
       float4 axisColor = axisColors[i];
       axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
-      // The xbase and ybase of each disc is the normal of the other discs (for discs 1-3)
+      // Render without culling so it can be seen from either sides
       renderer.getShapeRenderer().addDisc(selectionDisc.center, selectionDisc.xBase, selectionDisc.yBase,
-                                          selectionDisc.outerRadius, selectionDisc.innerRadius, axisColor);
+                                          selectionDisc.outerRadius, selectionDisc.innerRadius, axisColor, false);
     }
   }
 };

@@ -261,8 +261,9 @@ struct SolidRectShard : public Base {
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
   PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_IMPL(RectShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
-             PARAM_IMPL_FOR(_color));
+  PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the rectangle", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(SolidRectShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
+             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
@@ -283,9 +284,11 @@ struct SolidRectShard : public Base {
 
     Var sizeVar(_size.get());
     float2 size = sizeVar.isNone() ? float2(1.0f, 1.0f) : toFloat2(sizeVar);
-
+    Var cullingVar(_culling.get());
+    bool culling = cullingVar.isNone() ? true : bool(cullingVar);
+    
     shapeRenderer.addSolidRect(toFloat3(_center.get()), toFloat3(_xBase.get()), toFloat3(_yBase.get()), size,
-                               colorOrDefault(_color.get()));
+                               colorOrDefault(_color.get()), culling);
 
     return SHVar{};
   }
@@ -313,8 +316,9 @@ struct DiscShard : public Base {
   PARAM_PARAMVAR(_innerRadius, "InnerRadius", "Radius of the inner circle of the disc",
                  {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the disc", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the disc", {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_IMPL(DiscShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), 
-             PARAM_IMPL_FOR(_outerRadius), PARAM_IMPL_FOR(_innerRadius), PARAM_IMPL_FOR(_color), );
+             PARAM_IMPL_FOR(_outerRadius), PARAM_IMPL_FOR(_innerRadius), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
@@ -337,6 +341,8 @@ struct DiscShard : public Base {
     Var innerRadiusVar(_innerRadius.get());
     float outerRadius = outerRadiusVar.isNone() ? 1.0f : float(outerRadiusVar);
     float innerRadius = innerRadiusVar.isNone() ? outerRadius / 2 : float(innerRadiusVar);
+    Var cullingVar(_culling.get());
+    bool culling = cullingVar.isNone() ? true : bool(cullingVar);
 
     // currently ensures there will never be an issue where inneradius is larger than outer radius
     // may want to handle differently in the future
@@ -345,7 +351,7 @@ struct DiscShard : public Base {
     }
 
     shapeRenderer.addDisc(toFloat3(_center.get()), toFloat3(_xBase.get()), toFloat3(_yBase.get()), outerRadius, innerRadius,
-                          colorOrDefault(_color.get()), 64);
+                          colorOrDefault(_color.get()), culling, 64);
 
     return SHVar{};
   }

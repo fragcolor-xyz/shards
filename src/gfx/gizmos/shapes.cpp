@@ -76,6 +76,13 @@ FeaturePtr ScreenSpaceSizeFeature::create() {
   return result;
 }
 
+FeaturePtr NoCullingFeature::create() {
+  FeaturePtr result = std::make_shared<Feature>();
+  result->state.set_culling(false);
+
+  return result;
+}
+
 FeaturePtr GizmoLightingFeature::create() {
   FeaturePtr result = std::make_shared<Feature>();
   result->state.set_culling(false);
@@ -264,7 +271,7 @@ void ShapeRenderer::addPoint(float3 center, float4 color, uint32_t thickness) {
   }
 }
 
-void ShapeRenderer::addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color) {
+void ShapeRenderer::addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, bool culling) {
   float2 halfSize = size / 2.0f;
   float3 verts[] = {
       center - halfSize.x * xBase - halfSize.y * yBase,
@@ -273,20 +280,22 @@ void ShapeRenderer::addSolidRect(float3 center, float3 xBase, float3 yBase, floa
       center - halfSize.x * xBase + halfSize.y * yBase,
   };
 
-  addSolidQuad(verts[0], verts[1], verts[2], verts[3], color);
+  addSolidQuad(verts[0], verts[1], verts[2], verts[3], color, culling);
 }
 
-void ShapeRenderer::addSolidQuad(float3 a, float3 b, float3 c, float3 d, float4 color) {
-  solidVertices.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
-  solidVertices.push_back(SolidVertex{.position = UNPACK3(b), .color = UNPACK4(color)});
-  solidVertices.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
-  solidVertices.push_back(SolidVertex{.position = UNPACK3(d), .color = UNPACK4(color)});
-  solidVertices.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
-  solidVertices.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
+void ShapeRenderer::addSolidQuad(float3 a, float3 b, float3 c, float3 d, float4 color, bool culling) {
+  // Render to different vector buffer based on whether culling is enabled
+  std::vector<SolidVertex> &solidVertexVec = culling ? solidVertices : unculledSolidVertices;
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(b), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(d), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
 }
 
 void ShapeRenderer::addDisc(float3 center, float3 xBase, float3 yBase, float outerRadius, float innerRadius, float4 color,
-                            uint32_t resolution) {
+                            bool culling, uint32_t resolution) {
 
   float3 prevPos;
   float3 innerPrevPos;
@@ -297,9 +306,7 @@ void ShapeRenderer::addDisc(float3 center, float3 xBase, float3 yBase, float out
     float3 pos = center + tCos * xBase * outerRadius + tSin * yBase * outerRadius;
     float3 innerPos = center + tCos * xBase * innerRadius + tSin * yBase * innerRadius;
     if (i > 0) {
-      // draw both sides of the quad to avoid culling
-      addSolidQuad(prevPos, pos, innerPos, innerPrevPos, color);
-      addSolidQuad(prevPos, innerPrevPos, innerPos, pos, color);
+      addSolidQuad(prevPos, pos, innerPos, innerPrevPos, color, culling);
     }
     prevPos = pos;
     innerPrevPos = innerPos;
@@ -309,6 +316,7 @@ void ShapeRenderer::addDisc(float3 center, float3 xBase, float3 yBase, float out
 void ShapeRenderer::begin() {
   lineVertices.clear();
   solidVertices.clear();
+  unculledSolidVertices.clear();
 }
 
 void ShapeRenderer::end(DrawQueuePtr queue) {
@@ -340,6 +348,22 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
     solidMesh->update(fmt, solidVertices.data(), solidVertices.size() * sizeof(SolidVertex), nullptr, 0);
 
     auto drawable = std::make_shared<MeshDrawable>(solidMesh);
+    queue->add(drawable);
+  }
+
+  if (unculledSolidVertices.size() > 0) {
+    if (!unculledSolidMesh)
+      unculledSolidMesh = std::make_shared<Mesh>();
+
+    MeshFormat fmt = {
+        .primitiveType = PrimitiveType::TriangleList,
+        .windingOrder = WindingOrder::CCW,
+        .vertexAttributes = SolidVertex::getAttributes(),
+    };
+    unculledSolidMesh->update(fmt, unculledSolidVertices.data(), unculledSolidVertices.size() * sizeof(SolidVertex), nullptr, 0);
+
+    auto drawable = std::make_shared<MeshDrawable>(unculledSolidMesh);
+    drawable->features.push_back(noCullingFeature);
     queue->add(drawable);
   }
 }
