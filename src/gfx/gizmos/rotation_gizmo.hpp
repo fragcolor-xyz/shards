@@ -152,15 +152,14 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       case 1:
       case 2:
         axis[handleIndex] = 1.0f;
-        rotationMat = linalg::rotation_matrix(linalg::rotation_quat(axis, delta));
         break;
       case 3:
         float3x3 startRotation = extractRotationMatrix(dragStartTransform);
         axis = linalg::normalize(linalg::mul(linalg::inverse(startRotation), dragNormalDir));
-        rotationMat = linalg::rotation_matrix(linalg::rotation_quat(axis, delta));
         break;
       }
 
+      rotationMat = linalg::rotation_matrix(linalg::rotation_quat(axis, delta));
       transform = linalg::mul(dragStartTransform, rotationMat);
     }
   }
