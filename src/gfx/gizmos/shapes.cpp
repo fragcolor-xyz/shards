@@ -299,7 +299,7 @@ void ShapeRenderer::addDisc(float3 center, float3 xBase, float3 yBase, float out
     if (i > 0) {
       // draw both sides of the quad to avoid culling
       addSolidQuad(prevPos, pos, innerPos, innerPrevPos, color);
-      addSolidQuad(prevPos, innerPrevPos, innerPos, pos, color );
+      addSolidQuad(prevPos, innerPrevPos, innerPos, pos, color);
     }
     prevPos = pos;
     innerPrevPos = innerPos;
@@ -354,7 +354,7 @@ float GizmoRenderer::getSize(float3 position) const {
   float minPerspective = std::min(projMatrix[0][0], projMatrix[1][1]);
 
   float distanceFromCamera = std::abs(projected.z);
-  float scalingFactor = distanceFromCamera / minPerspective; 
+  float scalingFactor = distanceFromCamera / minPerspective;
   return scalingFactor;
 }
 

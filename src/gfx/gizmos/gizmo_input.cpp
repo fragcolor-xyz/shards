@@ -100,17 +100,11 @@ float3x3 InputContext::getScreenSpacePlaneAxes() const {
   return {xBase, yBase, normal};
 }
 
-float3 InputContext::getRightVector() const {
-  return linalg::normalize(cachedViewProjInv[0].xyz() / cachedViewProjInv[3].w);
-}
+float3 InputContext::getRightVector() const { return linalg::normalize(cachedViewProjInv[0].xyz() / cachedViewProjInv[3].w); }
 
-float3 InputContext::getUpVector() const {
-  return linalg::normalize(cachedViewProjInv[1].xyz() / cachedViewProjInv[3].w);
-}
+float3 InputContext::getUpVector() const { return linalg::normalize(cachedViewProjInv[1].xyz() / cachedViewProjInv[3].w); }
 
-float3 InputContext::getForwardVector() const {
-  return linalg::normalize(cachedViewProjInv[2].xyz() / cachedViewProjInv[3].w);
-}
+float3 InputContext::getForwardVector() const { return linalg::normalize(cachedViewProjInv[2].xyz() / cachedViewProjInv[3].w); }
 
 } // namespace gizmos
 } // namespace gfx

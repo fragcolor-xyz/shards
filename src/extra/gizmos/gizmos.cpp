@@ -166,9 +166,9 @@ struct RotationGizmo : public Base {
   }
 };
 
-void registerGizmoShards() { 
-  REGISTER_SHARD("Gizmos.Translation", TranslationGizmo); 
-  REGISTER_SHARD("Gizmos.Rotation", RotationGizmo); 
+void registerGizmoShards() {
+  REGISTER_SHARD("Gizmos.Translation", TranslationGizmo);
+  REGISTER_SHARD("Gizmos.Rotation", RotationGizmo);
 }
 } // namespace Gizmos
 } // namespace shards
