@@ -10,7 +10,7 @@ namespace gizmos {
 // handles, each of which allows rotation about a single axis.
 //
 // Note: If multiple gizmos are to be active at any time, ensure that they are created in the same Gizmos.Context
-//       This is to prevent multiple handles from different gizmos being selected at the same time, 
+//       This is to prevent multiple handles from different gizmos being selected at the same time,
 //       resulting in unexpected behaviour.
 struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
@@ -50,7 +50,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     handles[3].callbacks = this;
     handleSelectionDiscs[3].outerRadius = initialOuterRadius * 1.1;
     handleSelectionDiscs[3].innerRadius = initialInnerRadius * 1.1;
-    
+
     handleSelectionDiscs[3].normal = {1.0, 0.0, 1.0};
     handleSelectionDiscs[3].xBase = {1.0, 0.0, -1.0};
     handleSelectionDiscs[3].yBase = {0.0, 1.0, 0.0};
@@ -89,9 +89,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
 
   size_t getHandleIndex(Handle &inHandle) { return size_t(inHandle.userData); }
 
-  float3 getAxisDirection(size_t index, float4x4 transform) {
-    return handleSelectionDiscs[index].normal;
-  }
+  float3 getAxisDirection(size_t index, float4x4 transform) { return handleSelectionDiscs[index].normal; }
 
   // Called when handle grabbed from IGizmoCallbacks
   virtual void grabbed(InputContext &context, Handle &handle) {
@@ -113,12 +111,10 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       dragStartPoint = hitPoint;
       dragTangentDir = linalg::normalize(linalg::cross(selectionDisc.normal, radiusVec));
 
-      // if, instead, we use 2d screen space translation instead of projection onto this 3d screen plane,
-      // we can calculate the amount of rotation based off screen cursor position instead, which may be more efficient
-      // but, wil require cachedViewProjInv which is currently private in the InputContext class
-      // else, for a point in 3D we multiply the point by the cachedViewProjInv, divide by w to get NDC in 2D
+      // we could possibly make this more efficient by projecting the tangent onto the 2d screen space and then
+      // calculating delta for rotation using the amount moved by the mouse cursor along the tangent in screen space
+      // instead of doing raycasting in 3d as we do now.
 
-      // dragNormalDir = linalg::normalize(context.eyeLocation - hitPoint);
       dragNormalDir = context.getForwardVector(); // Get the normal vector to the camera/screen
       dragTangentDir = linalg::normalize(dragTangentDir - linalg::dot(dragTangentDir, dragNormalDir) * dragNormalDir);
 
@@ -139,69 +135,29 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     auto &selectionDisc = handleSelectionDiscs[handleIndex];
 
     float d;
-    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, dragNormalDir, d) || intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, -dragNormalDir, d)) {
+    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, dragNormalDir, d) ||
+        intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, -dragNormalDir, d)) {
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
       float3 deltaVec = dragStartPoint - hitPoint;
 
-      float delta = linalg::dot(deltaVec, dragTangentDir);
+      float delta = -linalg::dot(deltaVec, dragTangentDir);
       // Use this to check direction vector of tangent and delta for the effective distance moved along the tangent
       // SPDLOG_DEBUG("dragTangentDir {} {} {}", dragTangentDir.x, dragTangentDir.y, dragTangentDir.z);
       // SPDLOG_DEBUG("Delta: {}", delta);
-      float sinTheta = std::sin(delta);
-      float cosTheta = std::cos(delta);
 
       float4x4 rotationMat;
-
+      float3 axis{};
       switch (handleIndex) {
       case 0:
-        // rotating about x-axis
-        rotationMat = float4x4{
-            {1, 0, 0, 0},
-            {0, cosTheta, -sinTheta, 0},
-            {0, sinTheta, cosTheta, 0},
-            {0, 0, 0, 1},
-        };
-        break;
       case 1:
-        // rotating about y-axis
-        rotationMat = float4x4{
-            {cosTheta, 0, sinTheta, 0},
-            {0, 1, 0, 0},
-            {-sinTheta, 0, cosTheta, 0},
-            {0, 0, 0, 1},
-        };
-        break;
       case 2:
-        // rotating about z-axis
-        rotationMat = float4x4{
-            {cosTheta, -sinTheta, 0, 0},
-            {sinTheta, cosTheta, 0, 0},
-            {0, 0, 1, 0},
-            {0, 0, 0, 1},
-        };
+        axis[handleIndex] = 1.0f;
+        rotationMat = linalg::rotation_matrix(linalg::rotation_quat(axis, delta));
         break;
       case 3:
-      // Calculate the axis to rotate about (To the user, it will appear to be the screen normal)
         float3x3 startRotation = extractRotationMatrix(dragStartTransform);
-        float3 rotAxis = linalg::normalize(linalg::mul(linalg::inverse(startRotation), dragNormalDir));
-        float x = rotAxis.x;
-        float y = rotAxis.y;
-        float z = rotAxis.z;
-        float x2 = x * x;
-        float y2 = y * y;
-        float z2 = z * z;
-        float xy = x * y;
-        float xz = x * z;
-        float yz = y * z;
-
-        // Construct the rotation matrix
-        rotationMat = {
-          {x2 + (1 - x2) * cosTheta, xy * (1 - cosTheta) - z * sinTheta, xz * (1 - cosTheta) + y * sinTheta, 0},
-          {xy * (1 - cosTheta) + z * sinTheta, y2 + (1 - y2) * cosTheta, yz * (1 - cosTheta) - x * sinTheta, 0},
-          {xz * (1 - cosTheta) - y * sinTheta, yz * (1 - cosTheta) + x * sinTheta, z2 + (1 - z2) * cosTheta, 0},
-          {0, 0, 0, 1}
-        };
-
+        axis = linalg::normalize(linalg::mul(linalg::inverse(startRotation), dragNormalDir));
+        rotationMat = linalg::rotation_matrix(linalg::rotation_quat(axis, delta));
         break;
       }
 
