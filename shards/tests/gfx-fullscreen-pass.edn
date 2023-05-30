@@ -4,10 +4,11 @@
   (Setup
    0.0 >= .time
 
-   {:EntryPoint (->
+   (GFX.EffectPass
+    :EntryPoint (->
                  (Shader.ReadInput "texCoord0") (ToFloat4) (Math.Add (Float4 0 0 0 1))
                  (Shader.WriteOutput "color") ; End shader
-                 )}(GFX.EffectPass) >> .render-steps)
+                 )) >> .render-steps)
 
   (GFX.Render :Steps .render-steps))
 

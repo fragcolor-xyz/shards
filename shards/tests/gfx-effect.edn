@@ -18,11 +18,11 @@
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature  BuiltinFeatureId.BaseColor) >> .features
    (GFX.DrawQueue) >= .queue
-   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps1
+   (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps1
 
    ; The effect pass that modifies the rendered cube image
    ; It also uses the depth buffer from the rendered cube
-   {;
+   (GFX.EffectPass
     ; This indicates that the outputs from previous passes named "color" & "depth" are used within the pass
     ; EffectPass will automatically expose them as shader bindings
     :Inputs ["color" "depth"]
@@ -46,9 +46,9 @@
 
                  ; Write output to "color"
                  (MakeFloat4 .depth .depth 1.0 1.0) (Math.Multiply .color)
-                 (Shader.WriteOutput "color")
+                 (Shader.WriteOutput "color")))
                  ; End shader
-                 )}(GFX.EffectPass) >> .render-steps1
+   >> .render-steps1
 
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
    (GFX.View :View .view-transform) >= .view)

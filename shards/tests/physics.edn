@@ -34,7 +34,7 @@
    ; define rendering features
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .features
-   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps
 
    ; define a view
    {:Position (float3 50 40 50) :Target (float3 0 0 0)} (Math.LookAt) = .view-transform

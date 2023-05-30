@@ -55,7 +55,7 @@
    ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps
 
    ; Static material
    (GFX.Material :Params {:baseColor (Float4 1 0 1 1)}) >= .magenta-material

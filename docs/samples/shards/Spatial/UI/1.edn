@@ -3,7 +3,7 @@
 
   ; Create render steps
  (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
- {:Features .features :Queue .queue :Sort SortMode.Queue} (GFX.DrawablePass) >> .render-steps
+ (GFX.DrawablePass :Features .features :Queue .queue :Sort SortMode.Queue) >> .render-steps
 
   ; Panel transforms
  15.0 (Math.DegreesToRadians) (Math.AxisAngleY) (Math.Rotation) >= .tmp

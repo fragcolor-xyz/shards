@@ -78,7 +78,7 @@
                                                    {:time .time})) >> .features
 
    (GFX.DrawQueue) >= .queue
-   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps)
+   (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps)
 
   .time (Math.Add timestep) > .time
   .time (Broadcast "time")

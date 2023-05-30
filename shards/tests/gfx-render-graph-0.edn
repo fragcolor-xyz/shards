@@ -10,9 +10,9 @@
          (GFX.DrawQueue) = .queue
          (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
          (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-         {:Features .features :Queue .queue
-          :Outputs [{:Name "color"}
-                    {:Name "depth"}]} (GFX.DrawablePass) >> .render-steps)
+         (GFX.DrawablePass :Features .features :Queue .queue
+                           :Outputs [{:Name "color"}
+                                     {:Name "depth"}]) >> .render-steps)
 
   (Animation.Timer :Offset .offset) = .time
   .time (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
@@ -37,10 +37,11 @@
    (GFX.View :View .view-transform) >= .view)
 
   ; Special clear pass
-  {:EntryPoint (->
+  (GFX.EffectPass
+   :EntryPoint (->
                 (Shader.ReadInput "texCoord0") (ToFloat4) (Math.Add (Float4 0 0 0 1))
                 (Shader.WriteOutput "color") ; End shader
-                )}(GFX.EffectPass) >> .render-steps
+                )) >> .render-steps
   (GFX.Render :Steps .render-steps)
 
   ; Spawned passes

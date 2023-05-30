@@ -3,8 +3,9 @@
 (defloop gfx
   (Setup
    0.0 >= .time
-
-   {:EntryPoint (->
+   
+   (GFX.EffectPass
+    :EntryPoint (->
                  (Shader.ReadInput "texCoord0") >= .uv
                  (| .uv (Take 0) >= .u)
                  (| .uv (Take 1) >= .v)
@@ -42,8 +43,7 @@
 
                  (Float4 .f-0 .f-1 .f-2 1.0)
                  (Shader.WriteOutput "color") ; End shader
-                 )}
-   (GFX.EffectPass) >> .render-steps)
+                 )) >> .render-steps)
 
   (GFX.Render :Steps .render-steps))
 

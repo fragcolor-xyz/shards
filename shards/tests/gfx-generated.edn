@@ -18,8 +18,8 @@
              (Shader.WriteOutput "otherColor"))
             :After ["writeColor"]}]}
          (GFX.Feature) >> .features
-         {:Outputs [{:Name "otherColor" :Format TextureFormat.RGBA8Unorm} {:Name "depth"}]
-          :Features .features :Queue .parent-queue} (GFX.DrawablePass) >> .steps
+         (GFX.DrawablePass :Outputs [{:Name "otherColor" :Format TextureFormat.RGBA8Unorm} {:Name "depth"}]
+                           :Features .features :Queue .parent-queue) >> .steps
 
          (GFX.Texture :Format TextureFormat.RGBA8Unorm) >= .out-texture
          (GFX.RenderInto :Textures {:otherColor .out-texture}
@@ -90,7 +90,7 @@
    (Do create-test-feature) >> .features
 
    (GFX.DrawQueue) >=  .queue
-   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps)
+   (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps)
 
   ; Update view transform
   .view-transform (FreeCamera :FlySpeed 10.0) > .view-transform
