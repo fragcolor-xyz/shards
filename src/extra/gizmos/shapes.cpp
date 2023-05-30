@@ -73,7 +73,7 @@ struct CircleShard : public Base {
   PARAM_PARAMVAR(_color, "Color", "Linear color of the circle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the circle in screen space", {CoreInfo::IntType});
   PARAM_IMPL(CircleShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_radius),
-             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness), );
+             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
@@ -125,7 +125,7 @@ struct RectShard : public Base {
   PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the rectangle in screen space", {CoreInfo::IntType});
   PARAM_IMPL(RectShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
-             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness), );
+             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
