@@ -100,7 +100,7 @@ struct Convolve {
 
     auto output = Var(&_bytes.front(), uint16_t(_kernel), uint16_t(_kernel), input.payload.imageValue.channels,
                       input.payload.imageValue.flags);
-    output.version = input.version;
+    output.version = input.version + 1;
     return output;
   }
 
@@ -155,7 +155,7 @@ struct StripAlpha {
     }
 
     auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 3, input.payload.imageValue.flags);
-    output.version = input.version;
+    output.version = input.version + 1;
     return output;
   }
 
@@ -190,7 +190,7 @@ struct PremultiplyAlpha {
 
     _bytes.resize(w * h * 4 * pixsize);
     auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
-    output.version = input.version;
+    output.version = input.version + 1;
 
     if (pixsize == 1) {
       process<uint8_t>(input, output, w, h);
@@ -234,7 +234,7 @@ struct DemultiplyAlpha {
 
     _bytes.resize(w * h * 4 * pixsize);
     auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
-    output.version = input.version;
+    output.version = input.version + 1;
 
     if (pixsize == 1) {
       process<uint8_t>(input, output, w, h);
@@ -298,7 +298,7 @@ struct FillAlpha {
     }
 
     auto output = Var(&_bytes.front(), uint16_t(w), uint16_t(h), 4, input.payload.imageValue.flags);
-    output.version = input.version;
+    output.version = input.version + 1;
     return output;
   }
 
@@ -386,7 +386,7 @@ struct Resize {
 
     auto output = Var(&_bytes.front(), uint16_t(width), uint16_t(height), input.payload.imageValue.channels,
                       input.payload.imageValue.flags);
-    output.version = input.version;
+    output.version = input.version + 1;
     return output;
   }
 
