@@ -6,7 +6,7 @@
 namespace shards {
 namespace Imaging {
 
-// Premultiplies the alpha channel in input image and writes to a pre-allocated output. 
+// Premultiplies the alpha channel in input image and writes to a pre-allocated output.
 // Assumes input & output are CoreInfo::ImageType. Output flags is set to input's + SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag
 template <typename T> void premultiplyAlpha(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
   const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
@@ -19,8 +19,7 @@ template <typename T> void premultiplyAlpha(const SHVar &input, SHVar &output, i
   output.payload.imageValue.flags |= SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 }
 
-
-// Premultiplies the alpha channel in input image and writes to a pre-allocated bytes buffer. 
+// Premultiplies the alpha channel in input image and writes to a pre-allocated bytes buffer.
 // Assumes input & output are CoreInfo::ImageType. Does NOT add SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag
 template <typename T> void premultiplyAlpha(const SHVar &input, std::vector<uint8_t> &bytes, int32_t w, int32_t h) {
   const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
@@ -45,7 +44,7 @@ template <typename T> inline void premultiplyAlpha(T *from, T *to, int32_t w, in
   }
 }
 
-// Demultiplies the alpha channel in input image and writes to a pre-allocated output. 
+// Demultiplies the alpha channel in input image and writes to a pre-allocated output.
 // Assumes input & output are CoreInfo::ImageType. Output flags is set to input's without SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag
 template <typename T> void demultiplyAlpha(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
   const auto from = reinterpret_cast<T *>(input.payload.imageValue.data);
