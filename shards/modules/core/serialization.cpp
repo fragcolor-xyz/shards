@@ -399,7 +399,7 @@ struct LoadImage : public FileBase {
       }
     }
 
-    _output.version++;
+    _output.version = 0;
     return _output;
   }
 };
