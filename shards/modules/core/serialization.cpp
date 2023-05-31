@@ -4,7 +4,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
-#include "imaging.cpp"
+#include "imaging.hpp"
 #include <shards/core/shared.hpp>
 #include <boost/filesystem.hpp>
 #include <fstream>
@@ -356,14 +356,20 @@ struct LoadImage : public FileBase {
     case BPP::u8:
       _output.payload.imageValue.data =
           reinterpret_cast<uint8_t *>(stbi_load_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
+
+      _output.payload.imageValue.flags = 0;
       break;
     case BPP::u16:
       _output.payload.imageValue.data =
           reinterpret_cast<uint8_t *>(stbi_load_16_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
+
+      _output.payload.imageValue.flags = SHIMAGE_FLAGS_16BITS_INT;
       break;
     default:
       _output.payload.imageValue.data =
           reinterpret_cast<uint8_t *>(stbi_loadf_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
+
+      _output.payload.imageValue.flags = SHIMAGE_FLAGS_32BITS_FLOAT;
       break;
     }
 
@@ -374,17 +380,6 @@ struct LoadImage : public FileBase {
     _output.payload.imageValue.width = uint16_t(x);
     _output.payload.imageValue.height = uint16_t(y);
     _output.payload.imageValue.channels = uint16_t(n);
-    switch (_bpp) {
-    case BPP::u16:
-      _output.payload.imageValue.flags = SHIMAGE_FLAGS_16BITS_INT;
-      break;
-    case BPP::f32:
-      _output.payload.imageValue.flags = SHIMAGE_FLAGS_32BITS_FLOAT;
-      break;
-    default:
-      _output.payload.imageValue.flags = 0;
-      break;
-    }
 
     // Premultiply the alpha channel if premultiply option is chosen
     auto pixsize = getPixelSize(_output);
