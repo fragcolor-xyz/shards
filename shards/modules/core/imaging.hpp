@@ -1,5 +1,5 @@
-#ifndef IMAGING_H
-#define IMAGING_H
+#ifndef B426C31C_17B4_49E6_99FD_7387DBE57320
+#define B426C31C_17B4_49E6_99FD_7387DBE57320
 
 #include "shared.hpp"
 
@@ -85,4 +85,4 @@ template <typename T> inline void demultiplyAlpha(T *from, T *to, int32_t w, int
 } // namespace Imaging
 } // namespace shards
 
-#endif // IMAGING_H
+#endif /* B426C31C_17B4_49E6_99FD_7387DBE57320 */
