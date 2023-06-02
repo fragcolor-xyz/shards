@@ -195,12 +195,17 @@ impl Shard for ScrollArea {
     }
 
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
+      let visibility = if self.alwaysShow.get().try_into()? {
+        egui::scroll_area::ScrollBarVisibility::AlwaysVisible
+      } else {
+        egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded
+      };
       egui::ScrollArea::new([
         self.horizontal.get().try_into()?,
         self.vertical.get().try_into()?,
       ])
       .id_source(EguiId::new(self, 0))
-      .always_show_scroll(self.alwaysShow.get().try_into()?)
+      .scroll_bar_visibility(visibility)
       .show(ui, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })

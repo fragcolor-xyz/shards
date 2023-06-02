@@ -239,7 +239,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
         screen_rect: Some(input.screenRect.into()),
         pixels_per_point: Some(input.pixelsPerPoint),
         max_texture_side: None,
-        has_focus: true, // FIXME
+        focused: true, // FIXME
     })
 }
 
