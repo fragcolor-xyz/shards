@@ -389,6 +389,7 @@ impl Shard for DockArea {
           viewport: _,
           tabs,
           active: _,
+          scroll: _,
         } => Some(tabs),
         _ => None,
       })
@@ -411,8 +412,7 @@ impl Shard for DockArea {
     }
 
     let gui_ctx = util::get_current_context(&self.instance)?;
-    let mut style = egui_dock::Style::from_egui(gui_ctx.style().as_ref());
-    style.show_close_buttons = false;
+    let style = egui_dock::Style::from_egui(gui_ctx.style().as_ref());
 
     let dock = egui_dock::DockArea::new(&mut self.tabs).style(style);
 
