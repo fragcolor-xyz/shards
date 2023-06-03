@@ -43,8 +43,8 @@ lazy_static! {
     )
     .into(),
     (
-      cstr!("Selected"),
-      shccstr!("Predicate that should return selection state of an item, receives the index in the list, should return true/false."),
+      cstr!("Clicked"),
+      shccstr!("Action to perform if an element of the list is being clicked."),
       &SHARDS_OR_NONE_TYPES[..],
     )
       .into(),

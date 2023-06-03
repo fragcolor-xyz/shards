@@ -20,7 +20,7 @@
                    = .i
                    .clicked (If (IsLess 0) (-> false)
                                 (-> (IsLessEqual .i))))
-      :Selected (-> > .clicked)
+      :Clicked (-> > .clicked)
       :Template
       (->
        (ToString) (UI.Label)))
