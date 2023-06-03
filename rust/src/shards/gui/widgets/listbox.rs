@@ -278,7 +278,7 @@ impl Shard for ListBox {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(parent) = util::get_current_parent(self.parents.get())? {
       let current_index = if self.index.is_variable() {
         self.index.get().try_into()?
       } else {
@@ -289,81 +289,83 @@ impl Shard for ListBox {
 
       let seq: Seq = input.try_into()?;
 
-      ui.group(|ui| {
-        for i in 0..seq.len() {
-          let is_selected = {
-            if !self.is_selected.is_empty() {
-              let input = Var::from(i as i64);
-              let mut output = Var::default();
-              self.is_selected.activate(context, &input, &mut output);
-              <bool>::try_from(&output)?
-            } else {
-              i as i64 == current_index
-            }
-          };
-
-          if self.template.is_empty() {
-            let str: &str = (&seq[i]).try_into()?;
-            if ui.selectable_label(is_selected, str.to_owned()).clicked() {
-              if !self.selected.is_empty() {
+      parent
+        .group(|ui| {
+          for i in 0..seq.len() {
+            let is_selected = {
+              if !self.is_selected.is_empty() {
                 let input = Var::from(i as i64);
-                let mut _output = Var::default();
-                self.selected.activate(context, &input, &mut _output);
+                let mut output = Var::default();
+                self.is_selected.activate(context, &input, &mut output);
+                <bool>::try_from(&output)?
               } else {
-                new_index = Some(i as i64);
+                i as i64 == current_index
               }
-            }
-          } else {
-            let inner_margin = egui::style::Margin::same(3.0);
-            let background_id = ui.painter().add(egui::Shape::Noop);
-            let outer_rect = ui.available_rect_before_wrap();
-            let mut inner_rect = outer_rect;
-            inner_rect.min += inner_margin.left_top();
-            inner_rect.max -= inner_margin.right_bottom();
-            // Make sure we don't shrink to the negative:
-            inner_rect.max.x = inner_rect.max.x.max(inner_rect.min.x);
-            inner_rect.max.y = inner_rect.max.y.max(inner_rect.min.y);
+            };
 
-            let mut content_ui = ui.child_ui_with_id_source(inner_rect, *ui.layout(), i);
-            util::activate_ui_contents(
-              context,
-              &seq[i],
-              &mut content_ui,
-              &mut self.parents,
-              &mut self.template,
-            )?;
+            if self.template.is_empty() {
+              let str: &str = (&seq[i]).try_into()?;
+              if ui.selectable_label(is_selected, str.to_owned()).clicked() {
+                if !self.selected.is_empty() {
+                  let input = Var::from(i as i64);
+                  let mut _output = Var::default();
+                  self.selected.activate(context, &input, &mut _output);
+                } else {
+                  new_index = Some(i as i64);
+                }
+              }
+            } else {
+              let inner_margin = egui::style::Margin::same(3.0);
+              let background_id = ui.painter().add(egui::Shape::Noop);
+              let outer_rect = ui.available_rect_before_wrap();
+              let mut inner_rect = outer_rect;
+              inner_rect.min += inner_margin.left_top();
+              inner_rect.max -= inner_margin.right_bottom();
+              // Make sure we don't shrink to the negative:
+              inner_rect.max.x = inner_rect.max.x.max(inner_rect.min.x);
+              inner_rect.max.y = inner_rect.max.y.max(inner_rect.min.y);
 
-            let mut paint_rect = content_ui.min_rect();
-            paint_rect.min -= inner_margin.left_top();
-            paint_rect.max += inner_margin.right_bottom();
+              let mut content_ui = ui.child_ui_with_id_source(inner_rect, *ui.layout(), i);
+              util::activate_ui_contents(
+                context,
+                &seq[i],
+                &mut content_ui,
+                &mut self.parents,
+                &mut self.template,
+              )?;
 
-            let response = ui.allocate_rect(paint_rect, egui::Sense::click());
-            let visuals = ui.style().interact_selectable(&response, is_selected);
-            if is_selected || response.hovered() || response.has_focus() {
-              let rect = paint_rect.expand(visuals.expansion);
-              let shape = egui::Shape::Rect(egui::epaint::RectShape {
-                rect,
-                rounding: visuals.rounding,
-                fill: visuals.bg_fill,
-                stroke: visuals.bg_stroke,
-              });
-              ui.painter().set(background_id, shape);
-            }
+              let mut paint_rect = content_ui.min_rect();
+              paint_rect.min -= inner_margin.left_top();
+              paint_rect.max += inner_margin.right_bottom();
 
-            if response.clicked() {
-              if !self.selected.is_empty() {
-                let input = Var::from(i as i64);
-                let mut _output = Var::default();
-                self.selected.activate(context, &input, &mut _output);
-              } else {
-                new_index = Some(i as i64);
+              let response = ui.allocate_rect(paint_rect, egui::Sense::click());
+              let visuals = ui.style().interact_selectable(&response, is_selected);
+              if is_selected || response.hovered() || response.has_focus() {
+                let rect = paint_rect.expand(visuals.expansion);
+                let shape = egui::Shape::Rect(egui::epaint::RectShape {
+                  rect,
+                  rounding: visuals.rounding,
+                  fill: visuals.bg_fill,
+                  stroke: visuals.bg_stroke,
+                });
+                ui.painter().set(background_id, shape);
+              }
+
+              if response.clicked() {
+                if !self.selected.is_empty() {
+                  let input = Var::from(i as i64);
+                  let mut _output = Var::default();
+                  self.selected.activate(context, &input, &mut _output);
+                } else {
+                  new_index = Some(i as i64);
+                }
               }
             }
           }
-        }
-        Ok::<(), &str>(())
-      })
-      .inner?;
+          ui.set_width(ui.available_width());
+          Ok::<(), &str>(())
+        })
+        .inner?;
 
       let current_index = if let Some(new_index) = new_index {
         new_index

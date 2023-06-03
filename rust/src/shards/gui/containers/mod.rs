@@ -104,10 +104,12 @@ shenum! {
     const NoTitleBar = 1 << 0;
     [description("Do not allow resizing the window.")]
     const NoResize = 1 << 1;
-    [description("Do not display scrollbars.")]
-    const NoScrollbars = 1 << 2;
+    [description("Display scrollbars.")]
+    const Scrollbars = 1 << 2;
     [description("Do not display the collapse button.")]
     const NoCollapse = 1 << 3;
+    [description("Do not allow window movement.")]
+    const Immovable = 1 << 4;
   }
   struct WindowFlagsInfo {}
 }
