@@ -2,12 +2,11 @@
 #define NETWORK_HPP
 
 #include <memory>
-#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
-#include <boost/container/stable_vector.hpp>
-#pragma clang attribute pop
 
 // ASIO must go first!!
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include <boost/asio.hpp>
+#pragma clang attribute pop
 
 #include "shards.h"
 
