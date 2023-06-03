@@ -320,13 +320,13 @@ impl Shard for Window {
       let width = self.width.get();
       if !width.is_none() {
         let width: i64 = width.try_into()?;
-        window = window.default_width(width as f32);
+        window = window.min_width(width as f32);
       }
 
       let height = self.height.get();
       if !height.is_none() {
         let height: i64 = height.try_into()?;
-        window = window.default_height(height as f32);
+        window = window.min_height(height as f32);
       }
 
       for bits in Window::try_get_flags(self.flags.get())? {
@@ -337,11 +337,14 @@ impl Shard for Window {
           WindowFlags::NoResize => {
             window = window.resizable(false);
           }
-          WindowFlags::NoScrollbars => {
-            window = window.scroll2([false, false]);
+          WindowFlags::Scrollbars => {
+            window = window.scroll2([true, true]);
           }
           WindowFlags::NoCollapse => {
             window = window.collapsible(false);
+          }
+          WindowFlags::Immovable => {
+            window = window.movable(false);
           }
           _ => (),
         }
@@ -352,6 +355,9 @@ impl Shard for Window {
           .is_err()
         {
           failed = true;
+        }
+        if !width.is_none() || !height.is_none() {
+          ui.allocate_space(ui.available_size());
         }
       });
 
