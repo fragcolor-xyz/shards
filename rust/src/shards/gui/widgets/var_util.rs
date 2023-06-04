@@ -207,7 +207,8 @@ impl UIRenderer for Var {
                       }
                       response
                     })
-                    .inner.changed();
+                    .inner
+                    .changed();
                 });
                 i += 1;
               }
@@ -235,11 +236,14 @@ impl UIRenderer for Var {
               for (k, _v) in table.iter() {
                 let cstr = CStr::from_ptr(k.0);
                 ui.push_id(cstr, |ui| {
-                  changed |= ui.horizontal(|ui| {
-                    ui.label(cstr.to_str().unwrap_or_default());
-                    // no inner type for now
-                    table.get_mut_fast(cstr).render(read_only, None, ui)
-                  }).inner.changed()
+                  changed |= ui
+                    .horizontal(|ui| {
+                      ui.label(cstr.to_str().unwrap_or_default());
+                      // no inner type for now
+                      table.get_mut_fast(cstr).render(read_only, None, ui)
+                    })
+                    .inner
+                    .changed()
                 });
               }
             });
