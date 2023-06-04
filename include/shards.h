@@ -101,7 +101,7 @@ struct SHTableInterface;
 // 64 bytes should be huge and well enough space for an iterator...
 typedef char SHTableIterator[64];
 struct SHTable {
-  SHTableImpl *opaque;
+  struct SHTableImpl *opaque;
   struct SHTableInterface *api;
 };
 
@@ -109,7 +109,7 @@ struct SHSetInterface;
 // 64 bytes should be huge and well enough space for an iterator...
 typedef char SHSetIterator[64];
 struct SHSet {
-  SHSetImpl *opaque;
+  struct SHSetImpl *opaque;
   struct SHSetInterface *api;
 };
 
