@@ -289,6 +289,10 @@ impl Shard for ListBox {
 
       let seq: Seq = input.try_into()?;
 
+      if seq.is_empty() {
+        return Ok(Var::default());
+      }
+
       parent
         .group(|ui| {
           for i in 0..seq.len() {
@@ -363,6 +367,7 @@ impl Shard for ListBox {
             }
           }
           ui.set_width(ui.available_width());
+          // ui.allocate_space(ui.available_size());
           Ok::<(), &str>(())
         })
         .inner?;

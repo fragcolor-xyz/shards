@@ -202,14 +202,15 @@ impl Shard for super::Sized {
         if fill_height {
           ui.set_height(available_size.y);
         }
-        ui.with_layout(
+        let response = ui.with_layout(
           Layout::top_down(Align::Min).with_cross_justify(true),
           |ui| {
             resp =
               util::activate_ui_contents(context, input, ui, &mut self.parents, &self.contents);
           },
-        )
-        .response
+        ).response;
+        ui.allocate_space(ui.available_size());
+        response
       });
 
       resp

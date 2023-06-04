@@ -356,9 +356,6 @@ impl Shard for Window {
         {
           failed = true;
         }
-        if !width.is_none() || !height.is_none() {
-          ui.allocate_space(ui.available_size());
-        }
       });
 
       if failed {
