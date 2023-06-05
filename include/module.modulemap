@@ -1,4 +1,4 @@
 module shards {
-  header "shards.h"
+  header "shards_swift.h"
   export *
 }

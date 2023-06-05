@@ -335,11 +335,6 @@ extension SHVar : CustomStringConvertible {
     }
 }
 
-public struct ShardSwift {
-    var header: Shard
-    var swiftClass: UnsafeMutableRawPointer
-}
-
 public struct SHContext {
     var context: OpaquePointer?
 }
@@ -371,7 +366,7 @@ func cshardCreate<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
     print("Creating swift shard: \(T.name)")
     #endif
     let shard = T()
-    let cwrapper = UnsafeMutablePointer<ShardSwift>.allocate(capacity: 1)
+    let cwrapper = UnsafeMutablePointer<SwiftShard>.allocate(capacity: 1)
     cwrapper.pointee.header.name = T.nameProc
     if let blk = shard as? IShardWithDestroy {
         cwrapper.pointee.header.destroy = blk.destroyProc
@@ -380,9 +375,10 @@ func cshardCreate<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
     }
     cwrapper.pointee.header.activate = T.activateProc
     cwrapper.pointee.swiftClass = Unmanaged<T>.passRetained(shard).toOpaque()
-    return cwrapper.withMemoryRebound(to: UnsafeMutablePointer<Shard>.self, capacity: 1) {
+    let ptr = cwrapper.withMemoryRebound(to: UnsafeMutablePointer<Shard>.self, capacity: 1) {
         $0.pointee
     }
+    return ptr;
 }
 
 func cshardName<T: IShard>(_: T.Type) -> UnsafePointer<Int8>? {
@@ -395,14 +391,14 @@ func cshardDestroy<T: IShard>(_: T.Type, shard: ShardPtr) {
     #if DEBUG
     print("Destroying swift shard: \(T.name)")
     #endif
-    _ = shard!.withMemoryRebound(to: UnsafeMutablePointer<ShardSwift>.self, capacity: 1) {
+    _ = shard!.withMemoryRebound(to: UnsafeMutablePointer<SwiftShard>.self, capacity: 1) {
         Unmanaged<T>.fromOpaque($0.pointee.pointee.swiftClass).takeRetainedValue()
     }
     // let it release
 }
 
 func cshardActivate<T: IShard>(_: T.Type, shard: ShardPtr, ctx: OpaquePointer?, input: UnsafePointer<SHVar>?) -> SHVar {
-    let b = shard!.withMemoryRebound(to: UnsafeMutablePointer<ShardSwift>.self, capacity: 1) {
+    let b = shard!.withMemoryRebound(to: UnsafeMutablePointer<SwiftShard>.self, capacity: 1) {
         Unmanaged<T>.fromOpaque($0.pointee.pointee.swiftClass).takeUnretainedValue()
     }
     return b.activate(context: SHContext(context: ctx), input: input!.pointee)
