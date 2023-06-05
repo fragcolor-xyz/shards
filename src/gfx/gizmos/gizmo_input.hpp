@@ -5,16 +5,12 @@
 #include "../linalg.hpp"
 #include "../math.hpp"
 #include "../view.hpp"
+#include "gizmo_math.hpp"
 #include <memory>
 #include <optional>
 
 namespace gfx {
 namespace gizmos {
-
-struct Box {
-  float3 min{};
-  float3 max{};
-};
 
 struct InputContext;
 struct Handle;
@@ -32,8 +28,6 @@ struct IGizmoCallbacks {
 };
 
 struct Handle {
-  Box selectionBox;
-  float4x4 selectionBoxTransform;
   IGizmoCallbacks *callbacks{};
   void *userData{};
 };
@@ -81,9 +75,16 @@ public:
   // Call this within the update for each handle in view
   //  when a handle is grabbed, this is allowed to run the move callback directly
   //  since no raycast needs to be performed on the entire set of handles
-  void updateHandle(Handle &handle);
+  void updateHandle(Handle &handle, float hitDistance);
   // Call to end input update and run input callbacks
   void end();
+
+  // Returns normalized world direction vectors of the 3 axes relative to the screen
+  float3x3 getScreenSpacePlaneAxes() const;
+  // Returns the normalized up vector of the camera in world space
+  float3 getUpVector() const;
+  // Returns the normalized forward vector of the camera in world space
+  float3 getForwardVector() const;
 
 private:
   // Computes eye location and cursor ray direction
@@ -92,6 +93,10 @@ private:
   void updateHeldHandle();
   // Updates `hitLocation` variable based on hovered/held handle
   void updateHitLocation();
+
+  // Set to private to prevent using the cached inverse view projection matrix for the 3 axes
+  // Forces the user to use the `getScreenSpacePlaneAxes` function
+  float3 getRightVector() const;
 };
 } // namespace gizmos
 

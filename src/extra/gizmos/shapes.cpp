@@ -73,7 +73,7 @@ struct CircleShard : public Base {
   PARAM_PARAMVAR(_color, "Color", "Linear color of the circle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the circle in screen space", {CoreInfo::IntType});
   PARAM_IMPL(CircleShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_radius),
-             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness), );
+             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
@@ -125,7 +125,7 @@ struct RectShard : public Base {
   PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_VAR(_thickness, "Thickness", "Width of the rectangle in screen space", {CoreInfo::IntType});
   PARAM_IMPL(RectShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
-             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness), );
+             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
@@ -249,12 +249,131 @@ struct PointShard : public Base {
   }
 };
 
+struct SolidRectShard : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Draws a filled rectangle in 3d space"); }
+
+  PARAM_PARAMVAR(_center, "Center", "Starting position of the rectangle", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_xBase, "XBase", "X direction of the plane the rectangle is on",
+                 {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the rectangle is on",
+                 {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
+  PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the rectangle", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(SolidRectShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
+             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    gfx::composeCheckGfxThread(data);
+
+    if (_center->valueType == SHType::None)
+      throw ComposeError("Center is required");
+    if (_xBase->valueType == SHType::None)
+      throw ComposeError("XBase is required");
+    if (_yBase->valueType == SHType::None)
+      throw ComposeError("YBase is required");
+
+    return shards::CoreInfo::NoneType;
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
+    auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
+
+    Var sizeVar(_size.get());
+    float2 size = sizeVar.isNone() ? float2(1.0f, 1.0f) : toFloat2(sizeVar);
+    Var cullingVar(_culling.get());
+    bool culling = cullingVar.isNone() ? true : bool(cullingVar);
+    
+    shapeRenderer.addSolidRect(toFloat3(_center.get()), toFloat3(_xBase.get()), toFloat3(_yBase.get()), size,
+                               colorOrDefault(_color.get()), culling);
+
+    return SHVar{};
+  }
+
+  void warmup(SHContext *context) {
+    baseWarmup(context);
+    PARAM_WARMUP(context);
+  }
+  void cleanup() {
+    baseCleanup();
+    PARAM_CLEANUP();
+  }
+};
+
+struct DiscShard : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Draws a filled disc in 3d space"); }
+
+  PARAM_PARAMVAR(_center, "Center", "Center of the disc", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_xBase, "XBase", "X direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType})
+  PARAM_PARAMVAR(_outerRadius, "OuterRadius", "Radius of the outer circle of the disc",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_innerRadius, "InnerRadius", "Radius of the inner circle of the disc",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_color, "Color", "Linear color of the disc", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the disc", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(DiscShard, PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), 
+             PARAM_IMPL_FOR(_outerRadius), PARAM_IMPL_FOR(_innerRadius), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    gfx::composeCheckGfxThread(data);
+
+    if (_center->valueType == SHType::None)
+      throw ComposeError("Center is required");
+    if (_xBase->valueType == SHType::None)
+      throw ComposeError("XBase is required");
+    if (_yBase->valueType == SHType::None)
+      throw ComposeError("YBase is required");
+
+    return shards::CoreInfo::NoneType;
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
+    auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
+
+    Var outerRadiusVar(_outerRadius.get());
+    Var innerRadiusVar(_innerRadius.get());
+    float outerRadius = outerRadiusVar.isNone() ? 1.0f : float(outerRadiusVar);
+    float innerRadius = innerRadiusVar.isNone() ? outerRadius / 2 : float(innerRadiusVar);
+    Var cullingVar(_culling.get());
+    bool culling = cullingVar.isNone() ? true : bool(cullingVar);
+
+    // currently ensures there will never be an issue where inneradius is larger than outer radius
+    // may want to handle differently in the future
+    if (innerRadius > outerRadius) {
+      std::swap(innerRadius, outerRadius);
+    }
+
+    shapeRenderer.addDisc(toFloat3(_center.get()), toFloat3(_xBase.get()), toFloat3(_yBase.get()), outerRadius, innerRadius,
+                          colorOrDefault(_color.get()), culling, 64);
+
+    return SHVar{};
+  }
+
+  void warmup(SHContext *context) {
+    baseWarmup(context);
+    PARAM_WARMUP(context);
+  }
+  void cleanup() {
+    baseCleanup();
+    PARAM_CLEANUP();
+  }
+};
+
 void registerShapeShards() {
   REGISTER_SHARD("Gizmos.Line", LineShard);
   REGISTER_SHARD("Gizmos.Circle", CircleShard);
   REGISTER_SHARD("Gizmos.Rect", RectShard);
   REGISTER_SHARD("Gizmos.Box", BoxShard);
   REGISTER_SHARD("Gizmos.Point", PointShard);
+  REGISTER_SHARD("Gizmos.SolidRect", SolidRectShard);
+  REGISTER_SHARD("Gizmos.Disc", DiscShard);
 }
 } // namespace Gizmos
 } // namespace shards

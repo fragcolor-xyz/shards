@@ -1,5 +1,6 @@
 #include "gizmo_input.hpp"
 #include <float.h>
+#include <spdlog/spdlog.h>
 
 namespace gfx {
 namespace gizmos {
@@ -10,26 +11,20 @@ void InputContext::begin(const InputState &inputState, ViewPtr view) {
   updateView(view);
 
   // Reset hover state
-  hitDistance = FLT_MAX;
+  hitDistance = std::numeric_limits<float>::infinity();
   hovering = nullptr;
 
   // Reset tracker for held handle
   heldHandleUpdated = false;
 }
 
-void InputContext::updateHandle(Handle &handle) {
+// Call with hit distance from raycast
+void InputContext::updateHandle(Handle &handle, float hitDistance) {
   bool isHeld = &handle == held;
 
-  auto &box = handle.selectionBox;
-  float4x4 invHandleTransform = linalg::inverse(handle.selectionBoxTransform);
-  float3 rayLoc1 = linalg::mul(invHandleTransform, float4(eyeLocation, 1)).xyz();
-  float3 rayDir1 = linalg::mul(invHandleTransform, float4(rayDirection, 0)).xyz();
-  float2 hit = intersectAABB(rayLoc1, rayDir1, box.min, box.max);
-  if (hit.x < hit.y) {
-    if (hit.x < hitDistance) {
-      hitDistance = hit.x;
-      hovering = &handle;
-    }
+  if (hitDistance < this->hitDistance) {
+    this->hitDistance = hitDistance;
+    this->hovering = &handle;
   }
 
   // Movement callback for held handle
@@ -96,6 +91,20 @@ void InputContext::updateView(ViewPtr view) {
   eyeLocation = viewInv.w.xyz();
   rayDirection = linalg::normalize(unprojected.xyz() - eyeLocation);
 }
+
+float3x3 InputContext::getScreenSpacePlaneAxes() const {
+  float3 yBase = getUpVector();
+  float3 normal = getForwardVector();
+  float3 xBase = linalg::normalize(linalg::cross(yBase, normal));
+
+  return {xBase, yBase, normal};
+}
+
+float3 InputContext::getRightVector() const { return linalg::normalize(cachedViewProjInv[0].xyz() / cachedViewProjInv[3].w); }
+
+float3 InputContext::getUpVector() const { return linalg::normalize(cachedViewProjInv[1].xyz() / cachedViewProjInv[3].w); }
+
+float3 InputContext::getForwardVector() const { return linalg::normalize(cachedViewProjInv[2].xyz() / cachedViewProjInv[3].w); }
 
 } // namespace gizmos
 } // namespace gfx

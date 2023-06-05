@@ -76,6 +76,13 @@ FeaturePtr ScreenSpaceSizeFeature::create() {
   return result;
 }
 
+FeaturePtr NoCullingFeature::create() {
+  FeaturePtr result = std::make_shared<Feature>();
+  result->state.set_culling(false);
+
+  return result;
+}
+
 FeaturePtr GizmoLightingFeature::create() {
   FeaturePtr result = std::make_shared<Feature>();
   result->state.set_culling(false);
@@ -221,6 +228,7 @@ void ShapeRenderer::addBox(float3 center, float3 xBase, float3 yBase, float3 zBa
     addLine(a, b, color, thickness);
   }
 }
+
 void ShapeRenderer::addBox(float4x4 transform, float3 center, float3 size, float4 color, uint32_t thickness) {
   float4 x(1, 0, 0, 0);
   float4 y(0, 1, 0, 0);
@@ -263,11 +271,52 @@ void ShapeRenderer::addPoint(float3 center, float4 color, uint32_t thickness) {
   }
 }
 
-void addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness) {}
+void ShapeRenderer::addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, bool culling) {
+  float2 halfSize = size / 2.0f;
+  float3 verts[] = {
+      center - halfSize.x * xBase - halfSize.y * yBase,
+      center + halfSize.x * xBase - halfSize.y * yBase,
+      center + halfSize.x * xBase + halfSize.y * yBase,
+      center - halfSize.x * xBase + halfSize.y * yBase,
+  };
+
+  addSolidQuad(verts[0], verts[1], verts[2], verts[3], color, culling);
+}
+
+void ShapeRenderer::addSolidQuad(float3 a, float3 b, float3 c, float3 d, float4 color, bool culling) {
+  // Render to different vector buffer based on whether culling is enabled
+  std::vector<SolidVertex> &solidVertexVec = culling ? solidVertices : unculledSolidVertices;
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(b), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(d), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(a), .color = UNPACK4(color)});
+  solidVertexVec.push_back(SolidVertex{.position = UNPACK3(c), .color = UNPACK4(color)});
+}
+
+void ShapeRenderer::addDisc(float3 center, float3 xBase, float3 yBase, float outerRadius, float innerRadius, float4 color,
+                            bool culling, uint32_t resolution) {
+
+  float3 prevPos;
+  float3 innerPrevPos;
+  for (size_t i = 0; i < resolution; i++) {
+    float t = i / float(resolution - 1) * pi2;
+    float tCos = std::cos(t);
+    float tSin = std::sin(t);
+    float3 pos = center + tCos * xBase * outerRadius + tSin * yBase * outerRadius;
+    float3 innerPos = center + tCos * xBase * innerRadius + tSin * yBase * innerRadius;
+    if (i > 0) {
+      addSolidQuad(prevPos, pos, innerPos, innerPrevPos, color, culling);
+    }
+    prevPos = pos;
+    innerPrevPos = innerPos;
+  }
+}
 
 void ShapeRenderer::begin() {
   lineVertices.clear();
   solidVertices.clear();
+  unculledSolidVertices.clear();
 }
 
 void ShapeRenderer::end(DrawQueuePtr queue) {
@@ -301,6 +350,22 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
     auto drawable = std::make_shared<MeshDrawable>(solidMesh);
     queue->add(drawable);
   }
+
+  if (unculledSolidVertices.size() > 0) {
+    if (!unculledSolidMesh)
+      unculledSolidMesh = std::make_shared<Mesh>();
+
+    MeshFormat fmt = {
+        .primitiveType = PrimitiveType::TriangleList,
+        .windingOrder = WindingOrder::CCW,
+        .vertexAttributes = SolidVertex::getAttributes(),
+    };
+    unculledSolidMesh->update(fmt, unculledSolidVertices.data(), unculledSolidVertices.size() * sizeof(SolidVertex), nullptr, 0);
+
+    auto drawable = std::make_shared<MeshDrawable>(unculledSolidMesh);
+    drawable->features.push_back(noCullingFeature);
+    queue->add(drawable);
+  }
 }
 
 GizmoRenderer::GizmoRenderer() { loadGeometry(); }
@@ -313,7 +378,7 @@ float GizmoRenderer::getSize(float3 position) const {
   float minPerspective = std::min(projMatrix[0][0], projMatrix[1][1]);
 
   float distanceFromCamera = std::abs(projected.z);
-  float scalingFactor = distanceFromCamera / minPerspective; 
+  float scalingFactor = distanceFromCamera / minPerspective;
   return scalingFactor;
 }
 
