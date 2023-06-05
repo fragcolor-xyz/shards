@@ -3,6 +3,8 @@
 
 // WIP: This is a work in progress
 
+import shards
+
 struct Globals {
     var Core: UnsafeMutablePointer<SHCore>
 
