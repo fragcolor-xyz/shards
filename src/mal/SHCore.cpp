@@ -1266,6 +1266,7 @@ struct Observer : public shards::RuntimeObserver {
   void registerShard(const char *fullName, SHShardConstructor constructor) override {
     // do some reflection
     auto shard = constructor();
+    assert(shard && "Shard constructor returned NULL");
     // add params keywords if any
     auto params = shard->parameters(shard);
     for (uint32_t i = 0; i < params.len; i++) {
