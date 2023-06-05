@@ -1268,6 +1268,7 @@ struct Observer : public shards::RuntimeObserver {
     auto shard = constructor();
     assert(shard && "Shard constructor returned NULL");
     // add params keywords if any
+    assert(shard->parameters && "Shard is missing parameters call");
     auto params = shard->parameters(shard);
     for (uint32_t i = 0; i < params.len; i++) {
       auto param = params.elements[i];
