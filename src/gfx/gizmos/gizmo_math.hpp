@@ -79,6 +79,18 @@ inline float intersectDisc(const float3 &eyeLocation, const float3 &rayDirection
   }
   return std::numeric_limits<float>::infinity();
 }
+
+// Intersects a view ray with a plane based on eye location
+// this is used for draging handles within a single plane
+inline float3 hitOnPlaneUnprojected(float3 eyeLocation, float3 rayDirection, float3 planePoint, float3 planeNormal) {
+  float d;
+  if (intersectPlane(eyeLocation, rayDirection, planePoint, planeNormal, d)) {
+    return eyeLocation + d * rayDirection;
+  }
+
+  return planePoint;
+}
+
 } // namespace gizmos
 } // namespace gfx
 
