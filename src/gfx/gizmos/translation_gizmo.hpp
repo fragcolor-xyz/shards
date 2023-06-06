@@ -56,26 +56,28 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       auto &min = selectionBox.min;
       auto &max = selectionBox.max;
       if (i < 3) {
-        // The size of the selection box for the axis handles is reduced to avoid overlapping with the hitboxes of the plane handles
-        min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.6f;
-        max =
-            (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y * 0.8f;
+        // The size of the selection box for the axis handles is reduced to avoid overlapping with the hitboxes of the plane
+        // handles
+        min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x +
+              fwd * getGlobalAxisLength() * hitboxScale.y * linalg::lerp(0.3f, 0.7f, angleFactor);
+        max = (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x +
+              fwd * getGlobalAxisLength() * hitboxScale.y * 0.8f;
       } else {
         float hitboxSize = getGlobalAxisLength() * 0.3f;
         float hitboxThickness = getGlobalAxisLength() * 0.1f;
         switch (i) {
-          case 3:
-            min = float3(0, 0, hitboxThickness);
-            max = float3(hitboxSize, hitboxSize, -hitboxThickness);
-            break;
-          case 4:
-            min = float3(-hitboxThickness, 0, hitboxSize);
-            max = float3(hitboxThickness, hitboxSize, 0);
-            break;
-          case 5:
-            min = float3(0, -hitboxThickness, hitboxSize);
-            max = float3(hitboxSize, hitboxThickness, 0);
-            break;
+        case 3:
+          min = float3(0, 0, hitboxThickness);
+          max = float3(hitboxSize, hitboxSize, -hitboxThickness);
+          break;
+        case 4:
+          min = float3(-hitboxThickness, 0, hitboxSize);
+          max = float3(hitboxThickness, hitboxSize, 0);
+          break;
+        case 5:
+          min = float3(0, -hitboxThickness, hitboxSize);
+          max = float3(hitboxSize, hitboxThickness, 0);
+          break;
         }
       }
 
@@ -101,22 +103,25 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
     SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
 
     if (index < 3) {
-    dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                getAxisDirection(index, dragStartTransform));
+      dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
+                                  getAxisDirection(index, dragStartTransform));
     } else {
       switch (index) {
-        case 3:
-          // Intersects a view ray with the xy-plane
-          dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(2, dragStartTransform));
-          break;
-        case 4:
-          // Intersects a view ray with the yz-plane
-          dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(0, dragStartTransform));
-          break;
-        case 5:
-          // Intersects a view ray with the xz-plane
-          dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(1, dragStartTransform));
-          break;
+      case 3:
+        // Intersects a view ray with the xy-plane
+        dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
+                                               getAxisDirection(2, dragStartTransform));
+        break;
+      case 4:
+        // Intersects a view ray with the yz-plane
+        dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
+                                               getAxisDirection(0, dragStartTransform));
+        break;
+      case 5:
+        // Intersects a view ray with the xz-plane
+        dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
+                                               getAxisDirection(1, dragStartTransform));
+        break;
       }
     }
   }
@@ -129,28 +134,31 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   virtual void move(InputContext &context, Handle &inHandle) {
     size_t index = getHandleIndex(inHandle);
     float3 fwd = getAxisDirection(getHandleIndex(inHandle), dragStartTransform);
-    
-    if (index < 3) {
-    float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
 
-    float3 delta = hitPoint - dragStartPoint;
-    delta = linalg::dot(delta, fwd) * fwd;
-    transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
+    if (index < 3) {
+      float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
+
+      float3 delta = hitPoint - dragStartPoint;
+      delta = linalg::dot(delta, fwd) * fwd;
+      transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
     } else {
       float3 hitPoint;
       switch (index) {
-        case 3:
-          // Intersects a view ray with the xy-plane
-          hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(2, dragStartTransform));
-          break;
-        case 4:
-          // Intersects a view ray with the yz-plane
-          hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(0, dragStartTransform));
-          break;
-        case 5:
-          // Intersects a view ray with the xz-plane
-          hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), getAxisDirection(1, dragStartTransform));
-          break;
+      case 3:
+        // Intersects a view ray with the xy-plane
+        hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
+                                         getAxisDirection(2, dragStartTransform));
+        break;
+      case 4:
+        // Intersects a view ray with the yz-plane
+        hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
+                                         getAxisDirection(0, dragStartTransform));
+        break;
+      case 5:
+        // Intersects a view ray with the xz-plane
+        hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
+                                         getAxisDirection(1, dragStartTransform));
+        break;
       }
       float3 delta = hitPoint - dragStartPoint;
       transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
@@ -164,7 +172,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
-// #if 0
+      // #if 0
       // Debug draw
       float4 color = float4(.7, .7, .7, 1.);
       uint32_t thickness = 1;
@@ -179,7 +187,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 size = max - min;
 
       renderer.getShapeRenderer().addBox(selectionBox.transform, center, size, color, thickness);
-// #endif
+      // #endif
 
       float3 loc = extractTranslation(selectionBox.transform);
       float3 dir = getAxisDirection(i, selectionBox.transform);
@@ -187,7 +195,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
       if (i < 3) {
         renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
-                          axisColor);
+                           axisColor);
       } else {
         float3 center;
         float3 xBase;
@@ -195,27 +203,27 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
         float2 size = float2(getGlobalAxisLength() * 0.3f, getGlobalAxisLength() * 0.3f);
         float4 color;
         switch (i) {
-          case 3:
-            // handle on the xy-plane
-            xBase = float3(1.0f, 0.0f, 0.0f);
-            yBase = float3(0.0f, 1.0f, 0.0f);
-            center = loc + float3(size.x / 2, size.y / 2, 0.0f);
-            color = float4(axisColors[2].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
-            break;
-          case 4:
-            // handle on the yz-plane
-            xBase = float3(0.0f, 1.0f, 0.0f);
-            yBase = float3(0.0f, 0.0f, 1.0f);
-            center = loc + float3(0.0f, size.x / 2, size.y / 2);
-            color = float4(axisColors[0].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
-            break;
-          case 5:
-            // handle on the xz-plane
-            xBase = float3(0.0f, 0.0f, 1.0f);
-            yBase = float3(1.0f, 0.0f, 0.0f);
-            center = loc + float3(size.y / 2, 0.0f, size.x / 2);
-            color = float4(axisColors[1].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
-            break;
+        case 3:
+          // handle on the xy-plane
+          xBase = float3(1.0f, 0.0f, 0.0f);
+          yBase = float3(0.0f, 1.0f, 0.0f);
+          center = loc + float3(size.x / 2, size.y / 2, 0.0f);
+          color = float4(axisColors[2].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
+          break;
+        case 4:
+          // handle on the yz-plane
+          xBase = float3(0.0f, 1.0f, 0.0f);
+          yBase = float3(0.0f, 0.0f, 1.0f);
+          center = loc + float3(0.0f, size.x / 2, size.y / 2);
+          color = float4(axisColors[0].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
+          break;
+        case 5:
+          // handle on the xz-plane
+          xBase = float3(0.0f, 0.0f, 1.0f);
+          yBase = float3(1.0f, 0.0f, 0.0f);
+          center = loc + float3(size.y / 2, 0.0f, size.x / 2);
+          color = float4(axisColors[1].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
+          break;
         }
         uint32_t thickness = 1;
         renderer.getShapeRenderer().addSolidRect(center, xBase, yBase, size, color, thickness);
