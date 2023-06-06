@@ -418,6 +418,14 @@ void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, flo
   drawables.push_back(cap);
 }
 
+void GizmoRenderer::addCubeHandle(float3 center, float size, float4 color) {
+  MeshDrawable::Ptr drawable = std::make_shared<MeshDrawable>(cubeMesh);
+  drawable->transform = linalg::mul(linalg::translation_matrix(center), linalg::scaling_matrix(float3(size)));
+  drawable->parameters.set("baseColor", color);
+  drawable->features.push_back(gizmoLightingFeature);
+  drawables.push_back(drawable);
+}
+
 void GizmoRenderer::begin(ViewPtr view, float2 viewportSize) {
   this->view = view;
   this->viewportSize = viewportSize;

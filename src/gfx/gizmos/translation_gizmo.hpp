@@ -7,7 +7,7 @@
 namespace gfx {
 namespace gizmos {
 // Note: If multiple gizmos are to be active at any time, ensure that they are created in the same Gizmos.Context
-//       This is to prevent multiple handles from different gizmos being selected at the same time, 
+//       This is to prevent multiple handles from different gizmos being selected at the same time,
 //       resulting in unexpected behaviour.
 struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
@@ -52,16 +52,14 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       // Make hitboxes slightly bigger than the actual visuals
       const float2 hitboxScale = linalg::lerp(float2(2.2f, 1.2f), float2(0.8f, 1.0f), angleFactor);
 
-      auto &min = selectionBox.min;
-      auto &max = selectionBox.max;
-      min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
-      max =
+      selectionBox.min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
+      selectionBox.max =
           (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
 
       selectionBox.transform = transform;
 
-      float hitDistance = intersectBox(inputContext.eyeLocation, inputContext.rayDirection, handleSelectionBoxes[i]);
-      inputContext.updateHandle(handle, hitDistance);
+      inputContext.updateHandle(handle,
+                                intersectBox(inputContext.eyeLocation, inputContext.rayDirection, handleSelectionBoxes[i]));
     }
   }
 
