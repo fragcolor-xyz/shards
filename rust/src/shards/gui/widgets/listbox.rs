@@ -366,7 +366,7 @@ impl Shard for ListBox {
               }
             }
           }
-          ui.set_width(ui.available_width());
+          // ui.set_width(ui.available_width());
           Ok::<(), &str>(())
         })
         .inner?;
