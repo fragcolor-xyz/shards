@@ -320,13 +320,15 @@ impl Shard for Window {
       let width = self.width.get();
       if !width.is_none() {
         let width: i64 = width.try_into()?;
-        window = window.min_width(width as f32);
+        window = window.min_width(width as f32).default_width(width as f32);
       }
 
       let height = self.height.get();
       if !height.is_none() {
         let height: i64 = height.try_into()?;
-        window = window.min_height(height as f32);
+        window = window
+          .min_height(height as f32)
+          .default_height(height as f32)
       }
 
       for bits in Window::try_get_flags(self.flags.get())? {
@@ -351,6 +353,12 @@ impl Shard for Window {
       }
 
       window.show(gui_ctx, |ui| {
+        if !width.is_none() {
+          ui.set_width(ui.available_width());
+        }
+        if !height.is_none() {
+          ui.set_height(ui.available_height());
+        }
         if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
           .is_err()
         {
