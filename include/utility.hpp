@@ -700,6 +700,8 @@ template <class SH_CORE> struct TTableVar : public SHVar {
   }
 
   TOwnedVar<SH_CORE> &asOwned() { return (TOwnedVar<SH_CORE> &)*this; }
+
+  bool hasKey(std::string_view key) const { return payload.tableValue.api->tableContains(payload.tableValue, key.data()); }
 };
 
 template <class SH_CORE> struct TSeqVar : public SHVar {
