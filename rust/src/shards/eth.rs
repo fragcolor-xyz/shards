@@ -248,7 +248,7 @@ impl Shard for EncodeCall {
 
       self.output = func.encode_input(self.input.as_slice()).map_err(|e| {
         shlog!("{}", e);
-        "Failed to parse abi json string"
+        "Failed to encode call input"
       })?;
       Ok(self.output.as_slice().into())
     } else {
