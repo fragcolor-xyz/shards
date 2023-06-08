@@ -136,6 +136,7 @@ jobs:
             -DSKIP_HEAVY_INLINE=${{ steps.setup.outputs.optimized == 'false' }} \
             "-DCMAKE_C_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang.exe" \
             "-DCMAKE_CXX_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang++.exe" \
+            "-DRUST_DEFAULT_TARGET_PATH=C:\shards-rust-target" \
             -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           echo "Building shards"
           ninja ${{ steps.setup.outputs.build-target }}
