@@ -10,15 +10,15 @@ A shard in its most basic code form consists of its name surrounded by parenthes
 
 The above example consists of 3 different predefined shards.
 
-Shards are named to make their purpose rather intuitive. [`(Msg)`](../../../reference/shards/General/Msg) is the Message shard that prints a message to the console, while [`Math.Add`](../../../reference/shards/Math/Add/) is a Mathematics shard that add numbers together.
+Shards are named to make their purpose rather intuitive. [`(Msg)`](../../../../reference/shards/shards/General/Msg) is the Message shard that prints a message to the console, while [`Math.Add`](../../../../reference/shards/shards/Math/Add/) is a Mathematics shard that adds numbers together.
 
 !!! note
-    It is a good practice to name your code based on their purpose. This allows others to easily understand what your code achieves without getting too technical.
+    It is a good practice to name your code based on its purpose. This allows others to easily understand what your code achieves without getting too technical.
 
     For example, the code `(Msg "Hello World!")` can be easily understood to be sending the message "Hello World" to the console. You do not need to delve into how `(Msg)` was coded to understand what it can do.
 
 
-A shard can take in an input, process that input, and produce an output. Shards also have *parameters* which behave as user-defined settings.
+A shard can take in an input, process that input, and produce an output. Shards also have *parameters* that behave as user-defined settings.
 
 For example, `Math.Add` has the parameter `Operand` which is defined by the user. It determines the value that will be added to the input. The final result is then produced as the output.
 
@@ -32,17 +32,17 @@ Let us take a look at the `Repeat` shard which has four parameters: `Action`, `T
 
 We can utilize the `Repeat` shard with its different parameters as shown:
 
-=== "1 Parameter (Implied)"
+=== "1 Parameter (Implicit)"
 
     ```{.clojure .annotate linenums="1"}
     (Repeat
         (-> (Msg "Hello World!"))) ;; (1)(2)
     ```
 
-    1. When no parameters are specified, parameters are treated as *implied* and are resolved in order. In this case, `Action` is the implied parameter for `Repeat` and we set `(Msg "Hello World")` to it.
+    1. When no parameters are specified, parameters are treated as *implicit* and are resolved in order. In this case, `Action` is the implicit parameter for `Repeat` and we set `(Msg "Hello World")` to it.
     2. Since the other parameters are not defined, they will assume their default values. In this case, the `Repeat` shard will not run at all as `Times` has a default value of 0.
 
-=== "2 Parameters (Fully Declared)"
+=== "2 Parameters (Explicit)"
     
     ```{.clojure .annotate linenums="1"}
     (Repeat 
@@ -50,19 +50,20 @@ We can utilize the `Repeat` shard with its different parameters as shown:
         :Times 2) ;; (2)
     ```
 
-    1. The parameters are fully declared for clarity.
+    1. The parameters are explicitly declared for clarity.
     2. Repeats the `Action` twice.
 
-=== "2 Parameters (Implied)"
+=== "2 Parameters (Implicit)"
     
     ```{.clojure .annotate linenums="1"}
-    (Repeat 
-        (-> (Msg "Hello World!")) 2) ;; (1)
+    (Repeat ;; (1)
+        (-> (Msg "Hello World!"))
+        2)
     ```
 
-    1. Both parameters can be implied since they are resolved in order. In this case, `Action` is the first implied parameter, and `Times` is the second implied parameter.
+    1. Both parameters can be implicit since they are resolved in order. In this case, `Action` is the first implicit parameter, and `Times` is the second implicit parameter.
 
-=== "2 Parameters (Implied 1st)"
+=== "2 Parameters (Implicit 1st)"
     
     ```{.clojure .annotate linenums="1"}
     (Repeat 
@@ -70,9 +71,9 @@ We can utilize the `Repeat` shard with its different parameters as shown:
         :Times 2)
     ```
 
-    1. You can still implicitly declare the first parameter, while fully declaring the other parameters. Note that it does not work vice versa. You cannot implicitly declare parameters if the parameter before it has been fully declared.
+    1. You can still implicitly declare the first parameter, while fully declaring the other parameters. Note that it does not work vice versa. You cannot implicitly declare parameters if a parameter before it has been explicitly declared.
 
-=== "(INCORRECT) 2 Parameters (Implied 2nd)"
+=== "(INCORRECT) 2 Parameters (Implicit 2nd)"
     
     ```{.clojure .annotate linenums="1"}
     (Repeat 
@@ -82,14 +83,14 @@ We can utilize the `Repeat` shard with its different parameters as shown:
 
     1. This will not work as you cannot implicitly declare the second parameter if the first has been fully declared.
 
-=== "3 Parameters (Fully Declared)"
+=== "3 Parameters (Explicit)"
     
     ```{.clojure .annotate linenums="1"}
     (Repeat
        :Action (-> (Msg "Hello World!"))
        :Forever true ;; (1)
-       :Until ( ;; some condition
-       )) ;; (2)
+       :Until ( ;; some condition )
+       ) ;; (2)
     ```
 
     1. The `Times` parameter is skipped and `Forever` is declared instead. Since we are skipping a parameter, we must fully declare the parameters that come after it.
@@ -103,7 +104,7 @@ We can utilize the `Repeat` shard with its different parameters as shown:
 To find out more about the input/output/parameter of a shard, you can search for the shard in the search bar above and check out its documentation page.
 
 !!! note "Give it a try!"
-    Type "Msg" in the search bar above and select the first result that appears. It should lead you to the page for `Msg` [here](../../../reference/shards/General/Msg/).
+    Type "Msg" in the search bar above and select the first result that appears. It should lead you to the page for `Msg` [here](../../../../reference/shards/shards/General/Msg/).
 
     From there, you can learn more about:
 
@@ -125,7 +126,7 @@ A shard can take in data, process it, and output the results.
 
 There are many different types of data in the Shards language, and each shard will have specific data types that it can work with. 
 
-For example, the [`Math.Add`](../../../reference/shards/Math/Add/) shard can only work with numeric data types, while the [`Log`](../../../reference/shards/General/Log/) shard that prints information to the console can work with `Any` data type.
+For example, the [`Math.Add`](../../../../reference/shards/shards/Math/Add/) shard can only work with numeric data types, while the [`Log`](../../../../reference/shards/shards/General/Log/) shard that prints information to the console can work with `Any` data type.
 
 Here are some of the data types found in Shards:
 
@@ -143,14 +144,13 @@ Here are some of the data types found in Shards:
 !!! note
     A shard can have multiple data types as its input and output. For example, the shard `Math.Add` can have its input and output as an `Int`, or it can have its input and output as a `Float`.
 
-For the full list of data types and more in-depth reading, check out the `Types` documentation page [here](../../../reference/shards/types/).
-
+For the full list of data types and more in-depth reading, check out the `Types` documentation page [here](../../../../reference/shards/shards/types/).
 
 ## Variables
 
 To better work with data across your code, we can assign them to data containers known as *variables*.
 
-Imagine a scenario where you have a float `3.141592653589793` that you need to reuse in code multiple times. Instead of typing the entire float out each time, you could assign it to a variable called `.pi-value` and simply use that variable whenever its needed.
+Imagine a scenario where you have a float `3.141592653589793` that you need to reuse in code multiple times. Instead of typing out the entire float each time, you could assign it to a variable called `.pi-value` and simply use that variable whenever it is needed.
 
 === "Without Variables"
 
@@ -210,9 +210,6 @@ In summary:
 
 - Use `>` to update variable values.
 
-!!! note "Alias"
-    Some shards have an alias to reduce your code's verbosity. They can represent shards with defined settings, as you will see in `Setup` below.
-
 When defining variables in your program, you can use `Setup` to ensure that variables defined within it will only ever be defined once within a program.
 
 === "Defining Variables in Setup"
@@ -225,7 +222,7 @@ When defining variables in your program, you can use `Setup` to ensure that vari
 
     1. Code within a `Setup` will only be run once. As such, you can prevent variables defined in a loop from being reset each time.
 
-`Setup` is an alias of the shard [`Once`](../../../reference/shards/General/Once/), with its `Every` parameter set to 1 to ensure that code defined in it's `Action` parameter will only be run once.
+`Setup` is an alias of the shard [`Once`](../../../reference/shards/General/Once/), with its `Every` parameter set to 1 to ensure that code defined in its `Action` parameter will only be run once.
 
 ## Grouping shards
 
@@ -242,7 +239,7 @@ When defining variables in your program, you can use `Setup` to ensure that vari
     )
     ```
 
-The square brackets `[]` is where you can define parameters. For example:
+The square brackets `[]` are where you can define parameters. For example:
 
 === "Code"
     
@@ -286,7 +283,7 @@ Let us now take a look at how we can utilize `defshards` in a code snippet that 
      :Times 5)
     ```
 
-We can eliminate the use of `->` and make the code more readable by defining a new shard named `msg-one-to-five`.
+We can replace the use of `->` above with `defshards` to make the count from 1 to 5 code reusable and factor it out under a new shard called `msg-one-to-five`.
 
 === "Code"
     
@@ -298,14 +295,7 @@ We can eliminate the use of `->` and make the code more readable by defining a n
       (Msg "3")
       (Msg "4")
       (Msg "5"))
-    ```
 
-`defshards` inherently behaves as a shards container, thereby removing the need to use `->` for parameters that takes in shards.
-
-=== "Code"
-    
-    ```{.clojure .annotate linenums="1"}
-  
     (Repeat
      :Action (msg-one-to-five)
      :Times 5)
@@ -341,10 +331,10 @@ To create a Wire, we use [`defwire`](../../../reference/lisp/macros/#defwire).
     ```
 
 !!! note
-    The syntax for `defwire` is different from `defshards` as you cannot define parameters. Square brackets `[]` are not used.
+    The syntax for `defwire` is different from `defshards` as you cannot define parameters. Square brackets `[]` are not used. Instead, `defwire` inherits variables from the parent wire unless the variables are pure.
 
 !!! note
-    Unlike `defshards` which groups shards up for organization, `defwire` groups shards up to fulfill a purpose. As Wires are created with a purpose in mind, they should be appropriately named to reflect it.
+    Unlike `defshards` which group shards up for organization, `defwire` groups shards up to fulfill a purpose. As Wires are created with a purpose in mind, they should be appropriately named to reflect it.
 
 A Wire's lifetime ends once the final shard within it has been executed. To keep a Wire alive even after it has reached its end, we can set it to be loopable. This is called a Looped Wire.
 
@@ -385,11 +375,11 @@ To queue a Wire on a Mesh, we use [`schedule`](../../../reference/lisp/misc/#sch
 
 ## Running Shards
 
-In order to actually get Shards running, a specific hierarchy and sequence must be followed. Your shards are first queued into Wires, which are then queued onto a Mesh.
+To get Shards running, a specific hierarchy and sequence must be followed. Your shards are first queued into Wires, which are then queued onto a Mesh.
 
 ![The hierarchy of a Shards program.](assets/shards-hierarchy.png)
 
-When the Mesh is run, the Wires are executed in sequence and your program is started. This is done using the aptly named command [`run`](../../../reference/lisp/misc/#run).
+When the Mesh is run, the Wires are executed in sequence and your program is started. This is done using the aptly named command [`run`](../../../../reference/shards/lisp/misc/#run).
 
 === "Running a Mesh"
     
@@ -401,7 +391,7 @@ When the Mesh is run, the Wires are executed in sequence and your program is sta
 
 - The interval between each iteration of the Mesh.
 
-- The maximum number of iterations, typically used for Debugging purposes.
+- The maximum number of iterations, which is typically used for debugging purposes.
 
 !!! note
     If your program has animations, we recommend that you set the first value to `(/ 1.0 60.0)` which emulates 60 frames per second (60 FPS).
@@ -412,7 +402,7 @@ When the Mesh is run, the Wires are executed in sequence and your program is sta
         (run mesh-name (/ 1.0 60.0))
         ```
 
-Let us now take a look at how a basic Shards program will look like!
+Let us now take a look at what a basic Shards program will look like!
 
 ## Writing a sample program
 
@@ -483,7 +473,7 @@ With the `make-cat-noises` Wire done, let us now look at creating the full `hung
     (defloop hungry-cat)
     ```
 
-We want to first create a variable to track the cat's hunger level. Create the `.hunger` variable and assign the value of 0 to it. Remember to create it within a `Setup` to prevent the variable from being reassigned every loop.
+We want to first create a variable to track the cat's hunger level. Create the `.hunger` variable and assign the value of 0 to it. Remember to create the variable within `Setup` to prevent it from being reassigned at each iteration of the loop.
 
 === "hungry-cat"
     
@@ -495,7 +485,7 @@ We want to first create a variable to track the cat's hunger level. Create the `
 
     1. Code within a `Setup` will only be run once in a program.
 
-Next, use the [`Math.Inc`](../../../reference/shards/Math/Inc/) shard to increase the value of `.hunger` every time the Wire loops.
+Next, use the [`Math.Inc`](../../../../reference/shards/shards/Math/Inc/) shard to increase the value of `.hunger` every time the Wire loops.
 
 === "hungry-cat"
     
@@ -510,12 +500,12 @@ Next, use the [`Math.Inc`](../../../reference/shards/Math/Inc/) shard to increas
 
 A conditional can be used to check if `.hunger` is greater than 0. When the cat's hunger level has risen above 0, we want the cat to start making cat noises. Some conditional shards that you can use are:
 
-- [`When`](../../../reference/shards/General/When/)
-- [`If`](../../../reference/shards/General/If/)
+- [`When`](../../../../reference/shards/shards/General/When/)
+- [`If`](../../../../reference/shards/shards/General/If/)
 
-`When` allows you to specify what happens if a condition is met. The syntax reads as: `When` a condition is met, `Then` a specified action happens.
+`When` allows you to specify what happens if a condition is met. The syntax reads as such: `When` a condition is met, `Then` a specified action happens.
 
-`If` is similar to `When`, but it has an additional parameter `Else` that allows it to have a syntax that reads as: `If` a condition is met, `Then` a specified action occurs, `Else` another action is executed instead.
+`If` is similar to `When`, but it has an additional parameter `Else` that allows it to have a syntax that reads as such: `If` a condition is met, `Then` a specified action occurs, `Else` another action is executed instead.
 
 For this example, using `When` would suffice as we only need `make-cat-noises` to run `When` hunger `IsMore` than 0.
 
@@ -532,12 +522,12 @@ For this example, using `When` would suffice as we only need `make-cat-noises` t
     ```
 
     1. [`IsMore`](../../../reference/shards/General/IsMore/) compares the input to its parameter and outputs `true` if the input has a greater value. In this case, it is comparing the value of `.hunger` to 0.
-    2. [`Detach`](../../../reference/shards/General/Detach/) is used to schedule a Wire on the Mesh. You will learn more about using `Detach` in the following chapter!
+    2. [`Detach`](../../../../reference/shards/shards/General/Detach/) is used to schedule a Wire on the Mesh. You will learn more about using `Detach` in the following chapter!
 
 ### Debugging
 
 What if you wanted to check the value of `.hunger` in each loop iteration? 
-We can employ a shard that is useful when you wish to debug your code - the [`Log`](../../../reference/shards/Math/Log/) shard.
+We can employ a shard that is useful when you wish to debug your code - the [`Log`](../../../../reference/shards/shards/Math/Log/) shard.
 
 !!! note "Debugging"
     Debugging is the process of attempting to find the cause of an error or undesirable behavior in your program. When attempting to debug your code, functions or tools that allow you to check the value of variables at various points in your code can be useful in helping you narrow down where the errors could be originating from.
