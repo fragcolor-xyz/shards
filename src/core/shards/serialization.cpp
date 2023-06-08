@@ -309,7 +309,7 @@ struct LoadImage : public FileBase {
       _output = Var::Empty;
     }
 
-    stbi_set_flip_vertically_on_load_thread(1);
+    stbi_set_flip_vertically_on_load_thread(0);
 
     _output.valueType = SHType::Image;
     int x, y, n;
