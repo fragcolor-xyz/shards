@@ -191,9 +191,9 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
       float3 loc = extractTranslation(selectionBox.transform);
       float3 dir = getAxisDirection(i, selectionBox.transform);
-      float4 axisColor = axisColors[i];
-      axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
       if (i < 3) {
+        float4 axisColor = axisColors[i];
+        axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
         renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
                            axisColor);
       } else {
