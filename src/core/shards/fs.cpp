@@ -2,8 +2,10 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "boost/filesystem/operations.hpp"
+#include "shards.hpp"
 #include "shared.hpp"
 #include "params.hpp"
+#include "utility.hpp"
 #include <boost/algorithm/string.hpp>
 #include <fstream>
 
@@ -300,7 +302,7 @@ struct Read {
 
 struct Write {
   ParamVar _contents{};
-  std::array<SHExposedTypeInfo, 2> _requiring;
+  SHExposedTypeInfo _requiring;
   bool _overwrite = false;
   bool _append = false;
 
@@ -345,16 +347,18 @@ struct Write {
 
   SHExposedTypesInfo requiredVariables() {
     if (_contents.isVariable()) {
-      _requiring[0].name = _contents.variableName();
-      _requiring[0].help = SHCCSTR("The required variable containing the data to be written.");
-      _requiring[0].exposedType = CoreInfo::StringType;
-      _requiring[1].name = _contents.variableName();
-      _requiring[1].help = SHCCSTR("The required variable containing the data to be written.");
-      _requiring[1].exposedType = CoreInfo::BytesType;
-      return {_requiring.data(), 2, 0};
+      return {&_requiring, 1, 0};
     } else {
       return {};
     }
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    auto type = findParamVarExposedType(data, _contents);
+    if (!type)
+      throw ComposeError("Content missing");
+    _requiring = *type;
+    return outputTypes().elements[0];
   }
 
   void cleanup() { _contents.cleanup(); }
