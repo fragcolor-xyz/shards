@@ -809,8 +809,8 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
 }
 
 struct ValidationContext {
-  std::unordered_map<std::string, std::unordered_set<SHExposedTypeInfo>> inherited;
-  std::unordered_map<std::string, std::unordered_set<SHExposedTypeInfo>> exposed;
+  std::unordered_map<std::string, SHExposedTypeInfo> inherited;
+  std::unordered_map<std::string, SHExposedTypeInfo> exposed;
   std::unordered_set<std::string> variables;
   std::unordered_set<std::string> references;
   std::unordered_set<SHExposedTypeInfo> required;
@@ -872,16 +872,12 @@ void validateConnection(ValidationContext &ctx) {
 
     // Pass all we got in the context!
     // notice that shards might add new records to this array
-    for (auto &info : ctx.exposed) {
-      for (auto &type : info.second) {
-        shards::arrayPush(data.shared, type);
-      }
+    for (auto &pair : ctx.exposed) {
+      shards::arrayPush(data.shared, pair.second);
     }
     // and inherited
-    for (auto &info : ctx.inherited) {
-      for (auto &type : info.second) {
-        shards::arrayPush(data.shared, type);
-      }
+    for (auto &pair : ctx.inherited) {
+      shards::arrayPush(data.shared, pair.second);
     }
     DEFER(shards::arrayFree(data.shared));
 
@@ -952,7 +948,7 @@ void validateConnection(ValidationContext &ctx) {
   for (uint32_t i = 0; exposedVars.len > i; i++) {
     auto &exposed_param = exposedVars.elements[i];
     std::string name(exposed_param.name);
-    ctx.exposed[name].emplace(exposed_param);
+    ctx.exposed[name] = exposed_param;
 
     // Reference mutability checks
     if (strcmp(ctx.bottom->name(ctx.bottom), "Ref") == 0) {
@@ -1009,11 +1005,11 @@ void validateConnection(ValidationContext &ctx) {
   // Finally do checks on what we consume
   auto requiredVar = ctx.bottom->requiredVariables(ctx.bottom);
 
-  std::unordered_map<std::string, std::vector<SHExposedTypeInfo>> requiredVars;
+  std::unordered_map<std::string, SHExposedTypeInfo> requiredVars;
   for (uint32_t i = 0; requiredVar.len > i; i++) {
     auto &required_param = requiredVar.elements[i];
     std::string name(required_param.name);
-    requiredVars[name].push_back(required_param);
+    requiredVars[name] = required_param;
   }
 
   // make sure we have the vars we need, collect first
@@ -1021,7 +1017,7 @@ void validateConnection(ValidationContext &ctx) {
     auto matching = false;
     SHExposedTypeInfo match{};
 
-    for (const auto &required_param : required.second) {
+    const auto &required_param = required.second;
       std::string name(required_param.name);
       if (name.find(' ') != std::string::npos) { // take only the first part of variable name
         // the remaining should be a table key which we don't care here
@@ -1039,40 +1035,34 @@ void validateConnection(ValidationContext &ctx) {
         // Warning only, delegate compose to decide
         ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
       } else {
-        for (auto type : findIt->second) {
-          auto exposedType = type.exposedType;
+      auto exposedType = findIt->second.exposedType;
           auto requiredType = required_param.exposedType;
           // Finally deep compare types
           if (matchTypes(exposedType, requiredType, false, true)) {
             matching = true;
-            break;
-          }
         }
       }
+
       if (matching) {
         match = required_param;
-        break;
-      }
     }
 
     if (!matching) {
       std::stringstream ss;
       ss << "Required types do not match currently exposed ones for variable '" << required.first
          << "' required possible types: ";
-      for (auto type : required.second) {
+      auto& type = required.second;
         ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
-      }
+      
       ss << "exposed types: ";
       for (const auto &info : ctx.exposed) {
-        for (auto type : info.second) {
+        auto &type = info.second;
           ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
         }
-      }
       for (const auto &info : ctx.inherited) {
-        for (auto type : info.second) {
+        auto &type = info.second;
           ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
         }
-      }
       auto sss = ss.str();
       ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
     } else {
@@ -1108,14 +1098,14 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
         info = &ctx.wire->typesCache.at(hash);
       }
 
-      ctx.inherited[key].insert(SHExposedTypeInfo{key.c_str(), {}, *info, true /* mutable */});
+      ctx.inherited[key] = SHExposedTypeInfo{key.c_str(), {}, *info, true /* mutable */};
     }
   }
 
   if (data.shared.elements) {
     for (uint32_t i = 0; i < data.shared.len; i++) {
       auto &info = data.shared.elements[i];
-      ctx.inherited[info.name].insert(info);
+      ctx.inherited[info.name] = info;
     }
   }
 
@@ -1143,9 +1133,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
   SHComposeResult result = {ctx.previousOutputType};
 
   for (auto &exposed : ctx.exposed) {
-    for (auto &type : exposed.second) {
-      shards::arrayPush(result.exposedInfo, type);
-    }
+    shards::arrayPush(result.exposedInfo, exposed.second);
   }
 
   if (ctx.fullRequired) {

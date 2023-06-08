@@ -105,6 +105,7 @@ jobs:
           cd build
           chmod +x shards
           ./shards ../shards/tests/general.edn
+          ./shards ../shards/tests/table-compose.edn
           ./shards ../shards/tests/variables.edn
           ./shards ../shards/tests/subwires.clj
           ./shards ../shards/tests/linalg.clj

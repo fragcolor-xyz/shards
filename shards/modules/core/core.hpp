@@ -737,6 +737,54 @@ struct VariableBase {
   }
 };
 
+// Takes an original table type and either adds a new key/type pair or updates an existing one
+// Returns the full new type info, the types/keys are owned by typeStorage/keyStorage
+//  keyToAdd can be null to indicate a variable key, which will convert this into an unkeyed table
+static const SHTypeInfo &updateTableType(SHTypeInfo &typeInfoStorage, const char *keyToAdd, const SHTypeInfo &typeToAdd,
+                                         const SHTypeInfo *existingType = nullptr) {
+  std::optional<size_t> replacedIndex;
+
+  SHTypesInfo &typeStorage = typeInfoStorage.table.types;
+  SHStrings &keyStorage = typeInfoStorage.table.keys;
+  typeInfoStorage.basicType = SHType::Table;
+
+  shards::arrayResize(typeStorage, 0);
+  shards::arrayResize(keyStorage, 0);
+
+  if (existingType) {
+    auto &keys = existingType->table.keys;
+
+    // Add keys, or leave empty
+    // empty key means it's a variable
+    if (keyToAdd) {
+      for (size_t i = 0; i < keys.len; i++) {
+        if (keyToAdd && strcmp(keys.elements[i], keyToAdd) == 0) {
+          replacedIndex = i;
+        }
+        shards::arrayPush(keyStorage, strdup(keys.elements[i]));
+      }
+    }
+
+    for (size_t i = 0; i < existingType->table.types.len; i++) {
+      if (replacedIndex && i == replacedIndex.value()) {
+        // Update an existing key's matching type
+        shards::arrayPush(typeStorage, typeToAdd);
+      } else {
+        shards::arrayPush(typeStorage, existingType->table.types.elements[i]);
+      }
+    }
+  }
+
+  // Add a new type
+  if (!replacedIndex) {
+    if (keyToAdd)
+      shards::arrayPush(keyStorage, strdup(keyToAdd));
+    shards::arrayPush(typeStorage, typeToAdd);
+  }
+
+  return typeInfoStorage;
+}
+
 struct SetBase : public VariableBase {
   Type _tableTypeInfo{};
   SHString _tableContentKey{};
@@ -747,7 +795,10 @@ struct SetBase : public VariableBase {
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  void sanityChecks(const SHInstanceData &data, bool warnIfExists, bool overwrite) {
+  // Runs sanity checks on the target variable, returns the existing exposed type if any
+  SHExposedTypeInfo *setBaseCompose(const SHInstanceData &data, bool warnIfExists, bool overwrite) {
+    SHExposedTypeInfo *existingExposedType{};
+
     for (uint32_t i = 0; i < data.shared.len; i++) {
       auto &reference = data.shared.elements[i];
       if (strcmp(reference.name, _name.c_str()) == 0) {
@@ -779,6 +830,8 @@ struct SetBase : public VariableBase {
               fmt::format("Set/Ref/Update, attempted to write a table variable \"{}\" that is filled using Push shards.", _name));
         }
 
+        existingExposedType = &data.shared.elements[i];
+
         if (data.shared.elements[i].exposed) {
           _isExposed = true;
         } else {
@@ -786,6 +839,8 @@ struct SetBase : public VariableBase {
         }
       }
     }
+
+    return existingExposedType;
   }
 
   void warmup(SHContext *context) {
@@ -845,6 +900,8 @@ struct Set : public SetUpdateBase {
   bool _exposed{false};
   entt::connection _onStartConnection{};
 
+  SHTypeInfo _tableType{};
+
   static SHOptionalString help() { return SHCCSTR("Creates a mutable variable and assigns a value to it."); }
 
   static SHOptionalString inputHelp() { return SHCCSTR("Input becomes the value of the variable being created."); }
@@ -876,21 +933,14 @@ struct Set : public SetUpdateBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     _self = data.shard;
 
-    sanityChecks(data, true, false);
+    SHExposedTypeInfo *existingExposedType = setBaseCompose(data, true, false);
 
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableContentInfo = data.inputType;
-      if (_key.isVariable()) {
-        // only add types info, we don't know keys
-        _tableTypeInfo = SHTypeInfo{SHType::Table, {.table = {.types = {&_tableContentInfo, 1, 0}}}};
-      } else {
-        SHVar kv = _key;
-        _tableContentKey = kv.payload.stringValue;
-        _tableTypeInfo =
-            SHTypeInfo{SHType::Table, {.table = {.keys = {&_tableContentKey, 1, 0}, .types = {&_tableContentInfo, 1, 0}}}};
-      }
+      _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? _key->payload.stringValue : nullptr, data.inputType,
+                                         existingExposedType ? &existingExposedType->exposedType : nullptr);
+
       if (_global) {
         _exposedInfo =
             ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, true, true));
@@ -968,6 +1018,9 @@ struct Set : public SetUpdateBase {
     if (_onStartConnection) {
       _onStartConnection.release();
     }
+
+    shards::arrayFree(_tableType.table.keys);
+    shards::arrayFree(_tableType.table.types);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1021,7 +1074,7 @@ struct Ref : public SetBase {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    sanityChecks(data, true, _overwrite);
+    setBaseCompose(data, true, _overwrite);
 
     // bake exposed types
     if (_isTable) {
@@ -1125,7 +1178,9 @@ struct Update : public SetUpdateBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     _self = data.shard;
 
-    sanityChecks(data, false, false);
+    setBaseCompose(data, false, false);
+
+    SHTypeInfo *originalTableType{};
 
     // make sure we update to the same type
     if (_isTable) {
@@ -1133,6 +1188,9 @@ struct Update : public SetUpdateBase {
         auto &name = data.shared.elements[i].name;
         if (name == _name && data.shared.elements[i].exposedType.basicType == SHType::Table &&
             data.shared.elements[i].exposedType.table.types.elements) {
+
+          originalTableType = &data.shared.elements[i].exposedType;
+
           if (data.shared.elements[i].isPushTable) {
             SHLOG_ERROR("Error with variable: {}", _name);
             throw ComposeError("Set/Ref/Update, attempted to write a table variable that is filled using Push shards.");
@@ -1152,6 +1210,8 @@ struct Update : public SetUpdateBase {
         }
       }
 
+      assert(originalTableType);
+
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateTable;
     } else {
       for (uint32_t i = 0; i < data.shared.len; i++) {
@@ -1169,22 +1229,17 @@ struct Update : public SetUpdateBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableContentInfo = data.inputType;
       if (_key.isVariable()) {
         // only add types info, we don't know keys
         _tableTypeInfo = SHTypeInfo{SHType::Table, {.table = {.types = {&_tableContentInfo, 1, 0}}}};
       } else {
-        SHVar kv = _key;
-        _tableContentKey = kv.payload.stringValue;
-        _tableTypeInfo =
-            SHTypeInfo{SHType::Table, {.table = {.keys = {&_tableContentKey, 1, 0}, .types = {&_tableContentInfo, 1, 0}}}};
+        _tableTypeInfo = *originalTableType;
       }
-      _exposedInfo =
-          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The required table to update."), _tableTypeInfo, true, true));
+      _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), _tableTypeInfo, true));
     } else {
       // just a variable!
-      _exposedInfo = ExposedInfo(
-          ExposedInfo::Variable(_name.c_str(), SHCCSTR("The required variable to update."), SHTypeInfo(data.inputType), true));
+      _exposedInfo =
+          ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), SHTypeInfo(data.inputType), true));
     }
 
     return data.inputType;
@@ -1659,25 +1714,15 @@ struct Push : public SeqBase {
       }
     };
 
-    const auto updateTableInfo = [this, &data](bool firstPush) {
-      _tableInfo.basicType = SHType::Table;
-      if (_tableInfo.table.types.elements) {
-        shards::arrayFree(_tableInfo.table.types);
-      }
-      if (_tableInfo.table.keys.elements) {
-        shards::arrayFree(_tableInfo.table.keys);
-      }
+    const auto updateTableInfo = [this, &data](bool firstPush, const SHTypeInfo* existingTableType = nullptr) {
       _seqInfo.basicType = SHType::Seq;
       _seqInnerInfo = data.inputType;
       _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
-      shards::arrayPush(_tableInfo.table.types, _seqInfo);
-      if (!_key.isVariable()) {
-        SHVar kv = _key;
-        shards::arrayPush(_tableInfo.table.keys, kv.payload.stringValue);
-      }
+      updateTableType(_tableInfo, !_key.isVariable() ? _key->payload.stringValue : nullptr, _seqInfo, existingTableType);
+
       if (_global) {
-        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."),
-                                                               SHTypeInfo(_tableInfo), true, false, firstPush));
+        _exposedInfo = ExposedInfo(
+            ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), _tableInfo, true, false, firstPush));
       } else {
         _exposedInfo = ExposedInfo(
             ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), SHTypeInfo(_tableInfo), true, false, firstPush));
@@ -1687,17 +1732,12 @@ struct Push : public SeqBase {
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         if (data.shared.elements[i].name == _name && data.shared.elements[i].exposedType.table.types.elements) {
-          if (!data.shared.elements[i].isPushTable) {
-            SHLOG_ERROR("Table {} is already assigned using Set/Update/Ref.", _name.c_str());
-            throw ComposeError("Table is already assigned using Set/Update/Ref.");
-          }
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if we got key it's not a variable
-            SHVar kv = _key;
-            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == SHType::Seq) {
-              updateTableInfo(false);
+            if (strcmp(_key->payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == SHType::Seq) {
+              updateTableInfo(false, &data.shared.elements[i].exposedType);
               return data.inputType; // found lets escape
             }
           }
