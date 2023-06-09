@@ -135,4 +135,6 @@ if(EMSCRIPTEN)
 endif()
 
 duplicate_library_target(shards-core SHARED shards-core-shared)
-target_compile_definitions(shards-core-shared PUBLIC SHARDS_CORE_DLL=1 shards_core_EXPORTS=1)
+target_compile_definitions(shards-core-shared
+  PUBLIC SHARDS_CORE_DLL=1 
+  PRIVATE shards_core_EXPORTS=1)
