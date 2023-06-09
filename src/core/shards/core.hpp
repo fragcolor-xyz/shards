@@ -7,6 +7,7 @@
 #include "../shards_macros.hpp"
 #include "../foundation.hpp"
 #include "inlined.hpp"
+#include "runtime.hpp"
 #include "shards.h"
 #include "shards.hpp"
 #include "common_types.hpp"
@@ -740,7 +741,7 @@ struct VariableBase {
 };
 
 // Takes an original table type and either adds a new key/type pair or updates an existing one
-// Returns the full new type info, the types/keys are owned by typeStorage/keyStorage
+// Returns the full new type info, the types/keys are owned by the typeInfoStorage and should be manually freed
 //  keyToAdd can be null to indicate a variable key, which will convert this into an unkeyed table
 static const SHTypeInfo &updateTableType(SHTypeInfo &typeInfoStorage, const char *keyToAdd, const SHTypeInfo &typeToAdd,
                                          const SHTypeInfo *existingType = nullptr) {
@@ -783,6 +784,33 @@ static const SHTypeInfo &updateTableType(SHTypeInfo &typeInfoStorage, const char
       shards::arrayPush(keyStorage, strdup(keyToAdd));
     shards::arrayPush(typeStorage, typeToAdd);
   }
+
+  return typeInfoStorage;
+}
+
+// Takes an original seq type and adds the new type to it
+// Returns the full new type info, the types are owned by typeInfoStorage and should be manually freed
+static const SHTypeInfo &updateSeqType(SHTypeInfo &typeInfoStorage, const SHTypeInfo &typeToAdd,
+                                       const SHTypeInfo *existingType = nullptr) {
+  std::optional<size_t> replacedIndex;
+
+  shards::arrayResize(typeInfoStorage.seqTypes, 0);
+  if (existingType) {
+    for (size_t i = 0; i < existingType->seqTypes.len; i++) {
+      // Already matching type in sequence type
+      if (matchTypes(typeToAdd, existingType->seqTypes.elements[i], false, true)) {
+        replacedIndex = i;
+      }
+      shards::arrayPush(typeInfoStorage.seqTypes, existingType->seqTypes.elements[i]);
+    }
+  }
+
+  // Add new entry
+  if (!replacedIndex) {
+    shards::arrayPush(typeInfoStorage.seqTypes, typeToAdd);
+  }
+
+  typeInfoStorage.basicType = SHType::Seq;
 
   return typeInfoStorage;
 }
@@ -941,7 +969,7 @@ struct Set : public SetUpdateBase {
     if (_isTable) {
       // we are a table!
       _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? _key->payload.stringValue : nullptr, data.inputType,
-                                         existingExposedType ? &existingExposedType->exposedType : nullptr);
+                                       existingExposedType ? &existingExposedType->exposedType : nullptr);
 
       if (_global) {
         _exposedInfo =
@@ -1670,7 +1698,7 @@ struct SeqBase : public VariableBase {
 struct Push : public SeqBase {
   bool _firstPush = false;
   SHTypeInfo _seqInfo{};
-  SHTypeInfo _seqInnerInfo{};
+  SHTypesInfo _seqTypes{};
 
   static SHOptionalString help() {
     return SHCCSTR("Updates sequences and tables by pushing elements and/or sequences into them.");
@@ -1705,10 +1733,9 @@ struct Push : public SeqBase {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    const auto updateSeqInfo = [this, &data] {
-      _seqInfo.basicType = SHType::Seq;
-      _seqInnerInfo = data.inputType;
-      _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
+    const auto updateSeqInfo = [this, &data](const SHTypeInfo *existingSeqType = nullptr) {
+      updateSeqType(_seqInfo, data.inputType, existingSeqType);
+
       if (_global) {
         _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed sequence."), _seqInfo, true));
       } else {
@@ -1716,10 +1743,18 @@ struct Push : public SeqBase {
       }
     };
 
-    const auto updateTableInfo = [this, &data](bool firstPush, const SHTypeInfo* existingTableType = nullptr) {
-      _seqInfo.basicType = SHType::Seq;
-      _seqInnerInfo = data.inputType;
-      _seqInfo.seqTypes = {&_seqInnerInfo, 1, 0};
+    const auto updateTableInfo = [this, &data](bool firstPush, const SHTypeInfo *existingTableType = nullptr) {
+      SHTypeInfo *existingSeqType{};
+      if (existingTableType) {
+        for(size_t i = 0; i < existingTableType->table.keys.len; i++) {
+          if (strcmp(existingTableType->table.keys.elements[i], _key->payload.stringValue) == 0) {
+            existingSeqType = &existingTableType->table.types.elements[i];
+            break;
+          }
+        }
+      }
+
+      updateSeqType(_seqInfo, data.inputType, existingSeqType);
       updateTableType(_tableInfo, !_key.isVariable() ? _key->payload.stringValue : nullptr, _seqInfo, existingTableType);
 
       if (_global) {
@@ -1738,7 +1773,8 @@ struct Push : public SeqBase {
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if we got key it's not a variable
-            if (strcmp(_key->payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == SHType::Seq) {
+            if (strcmp(_key->payload.stringValue, tableKeys.elements[y]) == 0 &&
+                tableTypes.elements[y].basicType == SHType::Seq) {
               updateTableInfo(false, &data.shared.elements[i].exposedType);
               return data.inputType; // found lets escape
             }
@@ -1754,7 +1790,7 @@ struct Push : public SeqBase {
         auto &cv = data.shared.elements[i];
         if (_name == cv.name && cv.exposedType.basicType == SHType::Seq) {
           // found, let's just update our info
-          updateSeqInfo();
+          updateSeqInfo(&cv.exposedType);
           return data.inputType; // found lets escape
         }
       }

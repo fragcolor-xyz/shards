@@ -11,7 +11,7 @@
    "build-tree"
                                         ; organize args from stack
    (Pop) (ExpectInt) = .depth
-   (Pop) = .points
+   (Pop) (ExpectLike [[1]]) = .points
                                         ; count points
    (Count .points)
    (Cond

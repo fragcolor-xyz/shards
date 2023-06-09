@@ -1013,8 +1013,8 @@
 
    (Clear .adder-args)
 
-   (Const [2 3 4]) >> .adder-args >> .adder-args
-   .adder-args (Do adderSeq2)
+   (Const [2 3 4]) >> .adder-args-1 >> .adder-args-1
+   .adder-args-1 (Do adderSeq2)
    (Log)
    (Assert.Is [4 6 8] true)
 
