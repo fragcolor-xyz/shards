@@ -1,8 +1,7 @@
-(defwire
-  hello
+(defwire hello
   (Msg "Hello"))
 
 (Detach hello)
 (Step
-;:Wire
- hello)
+  ;:Wire
+  hello)

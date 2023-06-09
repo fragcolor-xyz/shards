@@ -1,6 +1,7 @@
 # What is Shards
 
-Let us first learn about what makes up the language of Shards.
+Before we delve into the intricacies of Shards, let's familiarize ourselves with its fundamental concepts.
+
 
 ## The shard
 
@@ -76,6 +77,6 @@ After scheduling our Wires, we can finally run the Mesh... and that is when Shar
 !!! note
     If the scheduling of Wires seems rigid to you, fret not! We will be learning more about manipulating [the flow of Shards](the-flow.md) later.
 
-Now that you have a basic understanding of what Shards are, let us take a look at how coding with Shards work.
+Now that you have a basic understanding of what Shards is, let us take a look at how coding with Shards work.
 
 --8<-- "includes/license.md"

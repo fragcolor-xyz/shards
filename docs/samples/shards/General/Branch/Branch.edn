@@ -1,7 +1,9 @@
 (defwire c1
   .msg1 (Log))
+
 (defwire c2
   .msg2 (Log))
+  
 (defwire branch
   "Hello" = .msg1
   "World" = .msg2
