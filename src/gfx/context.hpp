@@ -4,6 +4,7 @@
 #include "enums.hpp"
 #include "gfx_wgpu.hpp"
 #include "platform.hpp"
+#include "platform_surface.hpp"
 #include "types.hpp"
 #include "user_data.hpp"
 #include <cassert>
@@ -110,6 +111,10 @@ public:
   // start tracking an object implementing WithContextData so it's data is released with this context
   void addContextDataInternal(const std::weak_ptr<ContextData> &ptr);
   void removeContextDataInternal(ContextData *ptr);
+
+#if GFX_APPLE
+  MetalViewContainer &getMetalViewContainer() const;
+#endif
 
 private:
   void deviceLost();
