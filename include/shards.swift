@@ -11,7 +11,7 @@ struct Globals {
     init() {
         Core = shardsInterface(UInt32(SHARDS_CURRENT_ABI))
         print("Shards Swift runtime initialized!")
-        Core.pointee.registerShard(MyShard.name, MyShard.factory)
+        // Core.pointee.registerShard(MyShard.name, MyShard.factory)
     }
 }
 
@@ -283,10 +283,23 @@ extension SHVar : CustomStringConvertible {
         self = v
     }
     
+    init(value: ContiguousArray<CChar>) {
+        var v = SHVar()
+        v.valueType = String
+        value.withUnsafeBufferPointer {
+            v.payload.stringValue = $0.baseAddress
+            v.payload.stringLen = UInt32(value.count - 1) // assumes \0 terminator
+            v.payload.stringCapacity = UInt32(value.capacity)
+        }
+        self = v
+    }
+    
     public var string: String {
         get {
             assert(type == .String, "String variable expected!")
-            return .init(cString: payload.stringValue)
+            let stringPtr = UnsafeMutablePointer<CChar>(mutating: payload.stringValue)
+            let buffer = UnsafeMutableBufferPointer<CChar>(start: stringPtr, count: Int(payload.stringLen))
+            return .init(cString: Array(buffer))
         }
     }
     
