@@ -2471,7 +2471,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
   };
 }
 
-void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
+void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out, const ShardsCollection &parent) {
   // TODO out should be a set?
   switch (coll.index()) {
   case 0: {
@@ -2480,7 +2480,7 @@ void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
     if (!gatheringWires().count(wire)) {
       gatheringWires().insert(wire);
       for (auto blk : wire->shards) {
-        _gatherShards(blk, out);
+        _gatherShards(blk, out, coll);
       }
     }
   } break;
@@ -2488,7 +2488,7 @@ void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
     // Single shard
     auto blk = std::get<ShardPtr>(coll);
     std::string_view name(blk->name(blk));
-    out.emplace_back(name, blk);
+    out.emplace_back(name, blk, &parent);
     // Also find nested shards
     const auto params = blk->parameters(blk);
     for (uint32_t i = 0; i < params.len; i++) {
@@ -2509,28 +2509,28 @@ void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
         }
       }
       if (potential)
-        _gatherShards(blk->getParam(blk, i), out);
+        _gatherShards(blk->getParam(blk, i), out, coll);
     }
   } break;
   case 2: {
     // Shards seq
     auto bs = std::get<Shards>(coll);
     for (uint32_t i = 0; i < bs.len; i++) {
-      _gatherShards(bs.elements[i], out);
+      _gatherShards(bs.elements[i], out, coll);
     }
   } break;
   case 3: {
     // Var
     auto var = std::get<SHVar>(coll);
     if (var.valueType == SHType::ShardRef) {
-      _gatherShards(var.payload.shardValue, out);
+      _gatherShards(var.payload.shardValue, out, coll);
     } else if (var.valueType == SHType::Wire) {
       auto wire = SHWire::sharedFromRef(var.payload.wireValue);
-      _gatherShards(wire.get(), out);
+      _gatherShards(wire.get(), out, coll);
     } else if (var.valueType == SHType::Seq) {
       auto bs = var.payload.seqValue;
       for (uint32_t i = 0; i < bs.len; i++) {
-        _gatherShards(bs.elements[i], out);
+        _gatherShards(bs.elements[i], out, coll);
       }
     }
   } break;
@@ -2542,7 +2542,7 @@ void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
 void gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
   gatheringWiresPush();
   DEFER(gatheringWiresPop());
-  _gatherShards(coll, out);
+  _gatherShards(coll, out, coll);
 }
 
 SHVar hash(const SHVar &var) {

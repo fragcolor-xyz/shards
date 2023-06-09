@@ -1314,9 +1314,10 @@ struct VarStringStream {
 using ShardsCollection = std::variant<const SHWire *, ShardPtr, Shards, SHVar>;
 
 struct ShardInfo {
-  ShardInfo(const std::string_view &name, const Shard *shard) : name(name), shard(shard) {}
+  ShardInfo(const std::string_view &name, const Shard *shard, const ShardsCollection *parent) : name(name), shard(shard), parent(parent) {}
   std::string_view name;
   const Shard *shard;
+  const ShardsCollection *parent;
 };
 
 void gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out);
