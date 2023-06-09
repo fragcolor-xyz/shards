@@ -348,7 +348,7 @@ struct DebugUI {
 
   static inline Type EguiUiType = Type::Object(CoreCC, 'eguU');
   static inline Type EguiContextType = Type::Object(CoreCC, 'eguC');
-  static inline char EguiContextName[] = "UI.Context";
+  static inline char EguiContextName[] = "UI.Contexts";
 
   static void mergeRequiredUITypes(ExposedInfo &out) {
     out.push_back(SHExposedTypeInfo{
@@ -378,12 +378,14 @@ struct DebugUI {
 
   std::vector<debug::Layer> _layers;
   std::list<std::string> _strings;
+  std::vector<std::shared_ptr<IInputHandler>> _handlers;
+
   SHVar activate(SHContext *shContext, const SHVar &input) {
     _layers.clear();
     _strings.clear();
 
-    auto handlers = _context->master->getHandlers();
-    for (auto &handler : handlers) {
+    _context->master->getHandlers(_handlers);
+    for (auto &handler : _handlers) {
       auto &layer = _layers.emplace_back();
       layer.priority = handler->getPriority();
 
@@ -393,7 +395,7 @@ struct DebugUI {
       }
     }
 
-    // showInputDebugUI(_uiContext, _layers.data(), _layers.size());
+    showInputDebugUI(_uiContext, _layers.data(), _layers.size());
     return SHVar{};
   }
 };

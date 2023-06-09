@@ -246,6 +246,7 @@ impl<'a> egui::TextBuffer for MutVarTextBuffer<'a> {
   }
 }
 
+#[cfg(not(feature = "no-register"))]
 #[no_mangle]
 pub extern "C" fn shardsRegister_egui_egui(core: *mut shards::shardsc::SHCore) {
   unsafe {

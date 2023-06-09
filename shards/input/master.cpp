@@ -83,15 +83,15 @@ void InputMaster::update(SDL_Window *window) {
 
 void InputMaster::updateAndSortHandlers() {
   std::shared_lock<decltype(mutex)> l(mutex);
-  updateAndSortHandlersLocked();
+  updateAndSortHandlersLocked(handlersLocked);
 }
 
-void InputMaster::updateAndSortHandlersLocked() {
-  handlersLocked.clear();
+void InputMaster::updateAndSortHandlersLocked(std::vector<std::shared_ptr<IInputHandler>>& outVec) {
+  outVec.clear();
   for (auto it = handlers.begin(); it != handlers.end();) {
     auto ptr = it->lock();
     if (ptr) {
-      handlersLocked.insert(std::upper_bound(handlersLocked.begin(), handlersLocked.end(), ptr,
+      outVec.insert(std::upper_bound(outVec.begin(), outVec.end(), ptr,
                                              [](const auto &a, const auto &b) { return a->getPriority() > b->getPriority(); }),
                             ptr);
       ++it;
