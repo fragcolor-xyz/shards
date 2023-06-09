@@ -9,6 +9,8 @@
 #include <gfx/window.hpp>
 #include "../inputs.hpp"
 #include "extra/gfx.hpp"
+#include "foundation.hpp"
+#include "gfx/platform_surface.hpp"
 #include "linalg_shim.hpp"
 #include "params.hpp"
 
@@ -139,6 +141,12 @@ struct MainWindow final {
     contextOptions.debug = _debug;
     _graphicsContext.context = std::make_shared<Context>();
     _graphicsContext.context->init(*_graphicsContext.window.get(), contextOptions);
+
+#if GFX_APPLE
+    auto &mainOutput = _graphicsContext.context->getMetalViewContainer();
+    auto &dispatcher = context->main->dispatcher;
+    dispatcher.trigger(std::ref(mainOutput));
+#endif
 
     _graphicsContext.renderer = std::make_shared<Renderer>(*_graphicsContext.context.get());
     _graphicsContext.renderer->setIgnoreCompilationErrors(_ignoreCompilationErrors);
