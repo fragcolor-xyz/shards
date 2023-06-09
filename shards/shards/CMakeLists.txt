@@ -32,7 +32,7 @@ setup_shards_target(shards)
 # library
 add_library(shards-lib)
 setup_shards_library_target(shards-lib)
-set_target_properties(shards-lib PROPERTIES OUTPUT_NAME "${LIB_PREFIX}shards")
+set_target_properties(shards-lib PROPERTIES OUTPUT_NAME "${LIB_PREFIX}shards-static")
 target_compile_definitions(shards-lib PRIVATE "shards_EXPORTS=1")
 
 if(EMSCRIPTEN)
