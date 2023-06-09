@@ -11,6 +11,8 @@
                                  :Title "Greetings" :Flags WindowFlags.NoCollapse
                                  :Contents
                                  (->
+                                  (Inputs.DebugUI)
+
                                   "Hello shards!" (UI.Label)
                                   (Setup "Text Field" >= .text)
                                   (UI.TextField .text)

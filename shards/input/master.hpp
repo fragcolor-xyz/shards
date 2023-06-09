@@ -75,17 +75,16 @@ public:
   void reset() {}
 
   // Only use from main thread
-  std::vector<std::shared_ptr<IInputHandler>> getHandlers() {
+  void getHandlers(std::vector<std::shared_ptr<IInputHandler>>& outVec) {
     std::unique_lock<decltype(mutex)> l(mutex);
-    updateAndSortHandlersLocked();
-    return handlersLocked;
+    updateAndSortHandlersLocked(outVec);
   }
 
 private:
   void updateAndSortHandlers();
 
   // Assumes already locked
-  void updateAndSortHandlersLocked();
+  void updateAndSortHandlersLocked(std::vector<std::shared_ptr<IInputHandler>>& outVec);
 };
 
 } // namespace shards::input
