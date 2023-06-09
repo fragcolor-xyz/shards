@@ -63,7 +63,7 @@ endforeach()
 add_subdirectory(${SHARDS_DIR}/shards/union src/union)
 
 # Shards library and executable bundle
-add_subdirectory(${SHARDS_DIR}/shards/shards src/shards)
+add_subdirectory(${SHARDS_DIR}/shards/mal src/mal)
 
 add_subdirectory(${SHARDS_DIR}/shards/tests src/tests)
 
