@@ -182,7 +182,7 @@ jobs:
             --output-file coverage/coverage.info
           # remove external dependencies
           lcov \
-            --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/src/shards/*" \
+            --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" "*/shards/shards/shards/*" \
             --output-file coverage/coverage.linux.info
           # convert absolute path to relative path
           sed -i s/${PWD////\\/}/./g coverage/coverage.linux.info
