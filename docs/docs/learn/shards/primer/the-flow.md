@@ -6,7 +6,7 @@ To gain better control of the flow in your Shards program, you can employ some o
 
 ## Do
 
-[`Do`](../../../reference/shards/General/Do) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function. `Do` takes an input, passes it into the Wire being called, and returns the output from it.
+[`Do`](../../../../reference/shards/shards/General/Do) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function. `Do` takes an input, passes it into the Wire being called, and returns the output from it.
 
 In the example below, John and Lucy are taking apples in turn. The Looped Wires are scheduled on the Mesh. When they are run, they each call the unscheduled Wire `take-an-apple`.
 
@@ -38,7 +38,7 @@ In the example below, John and Lucy are taking apples in turn. The Looped Wires 
 
     1. The value passed into the Wire is saved into a variable. In this case, the string "John" or "Lucy" is passed into the Wire and saved into the variable `.name`.
 
-    2. The program starts off with 10 apples. This value decreases each time the Wire `take-an-apple` is called. 
+    2. The program starts with 10 apples. This value decreases each time the Wire `take-an-apple` is called. 
 
 === "Output"
     ```
@@ -66,7 +66,7 @@ In the example below, John and Lucy are taking apples in turn. The Looped Wires 
 
 ## Detach / Spawn
 
-[`Detach`](../../../reference/shards/General/Detach) and [`Spawn`](../../../reference/shards/General/Spawn) schedules a Wire to run on the same Mesh.
+[`Detach`](../../../../reference/shards/shards/General/Detach) and [`Spawn`](../../../../reference/shards/shards/General/Spawn) schedules a Wire to run on the same Mesh.
 
 The difference between `Detach` and `Spawn` is that:
 
@@ -82,7 +82,7 @@ This means that there can only be one instance of the detached Wire running, whi
 
 ### Wait
 
-`Detach` allows you to pause the original Wire to run the detached Wire by calling the [`Wait`](../../../reference/shards/General/Wait/) shard. It is useful when you have to pause a Wire's execution to wait for something. Use cases would include pausing a program to wait for a file to upload, or waiting for an online transaction to go through.
+`Detach` allows you to pause the original Wire to run the detached Wire by calling the [`Wait`](../../../../reference/shards/shards/General/Wait/) shard. It is useful when you have to pause a Wire's execution to wait for something. Use cases would include pausing a program to wait for a file to upload, or waiting for an online transaction to go through.
 
 ![Detach allows you to pause your current Wire to run the detached Wire by calling Wait.](assets/detach-wait.png)
 
@@ -118,7 +118,7 @@ Back to our previous example with apples, if John now requires some time to juic
     (run main 1 4)
     ```
 
-    1. [`Pause`](../../../reference/shards/General/Pause/) pauses the Wire by the specified amount of seconds.
+    1. [`Pause`](../../../../reference/shards/shards/General/Pause/) pauses the Wire by the specified amount of seconds.
 
 === "Output"
     ```
@@ -149,9 +149,9 @@ Back to our previous example with apples, if John now requires some time to juic
 
     ```
 
-If you tried `(Detach juice-apple)` for Lucy too, you will notice that the juicing does not happen on Lucy's end. This is due to how `Detach` is scheduling the original Wire, and only one instance of it can be scheduled at any time. When John is using the juicer to make apple juice, Lucy cannot use it.
+If you tried `(Detach juice-apple)` for Lucy too, you would notice that the juicing does not happen on Lucy's end. This is due to how `Detach` is scheduling the original Wire, and only one instance of it can be scheduled at any time. When John is using the juicer to make apple juice, Lucy cannot use it.
 
-Now say we have a large oven which can bake multiple apples concurrently. We can use `Spawn` to make clones of a `bake-apple` Wire that can be scheduled to run together.
+Now say we have a large oven that bakes multiple apples concurrently. We can use `Spawn` to make clones of a `bake-apple` Wire that can be scheduled to run together.
 
 === "Command"
     ```{.clojure .annotate linenums="1"}
@@ -221,22 +221,22 @@ Now say we have a large oven which can bake multiple apples concurrently. We can
 
 If you added `(Spawn bake-apple)` for Lucy, you will notice that Lucy starts to bake apples along with John! Unlike `Detach`, you can have multiple instances of a spawned Wire running.
 
-Use cases for `Spawn` would include spawning the same projectile (such as bullets fired from a gun), or spawning monster mobs with many instances of one monster type.
+Use cases for `Spawn` would include spawning the same projectile (such as bullets fired from a gun) or spawning monster mobs with many instances of one monster type.
 
 ## Start / Resume
 
 ### Start
 
-[`Start`](../../../reference/shards/General/Start) schedules a Wire to run on the same Mesh, in place of the current Wire.
+[`Start`](../../../../reference/shards/shards/General/Start) scheduling a Wire to run on the same Mesh, in place of the current Wire.
 
 !!! note "Start vs Detach"
-    Even though they both schedules a Wire onto the Mesh, `Start` will stop the current Wire to run the scheduled Wire. With `Detach`, the scheduled Wire will only run when its turn on the Mesh is up.
+    Even though they both schedule a Wire onto the Mesh, `Start` will stop the current Wire to run the scheduled Wire. With `Detach`, the scheduled Wire will only run when its turn on the Mesh is up.
 
-![Start schedules a Wire to run in place of the current Wire.](assets/start.png)
+![Start scheduling a Wire to run in place of the current Wire.](assets/start.png)
 
 ### Resume
 
-[`Resume`](../../../reference/shards/General/Resume) will resume a suspended Wire from where it was last paused at.
+[`Resume`](../../../../reference/shards/shards/General/Resume) will resume a suspended Wire from where it was last paused at.
 
 !!! note
     If `Resume` is used on a Wire that has not been scheduled yet, it will behave as `Start` would and schedule the Wire on the Mesh before starting it.
@@ -255,7 +255,7 @@ For example:
 
 - Any previous changes made by the player in Zone 1 would still persist.
 
-In the example below, we use `Start` and `Resume` to toggle between John's and Lucy's turn. Note how `Resume` redirects the flow back to exactly where `john` was paused at.
+In the example below, we use `Start` and `Resume` to toggle between John's and Lucy's turns. Note how `Resume` redirects the flow back to exactly where `john` was paused at.
 
 === "Command"
     ```{.clojure .annotate linenums="1"}
@@ -291,7 +291,7 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
 
     ```
 
-    1. Returns the flow back to the Wire that started it, which is `john` in this case.
+    1. Returns the flow to the Wire that started it, which is `john` in this case.
     2. Starts the `lucy` Wire and redirects the program's flow to it.
     3. `(/ 1 60)` is read as "1 divided by 60". It is used to get the program to run at 60 FPS (Frames Per Second).
 
@@ -314,7 +314,7 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
 
 ## Stop
 
-[`Stop`](../../../reference/shards/General/Stop) is used to end Wires. It is very useful for managing Wires created with `Detach` or `Spawn`.
+[`Stop`](../../../../reference/shards/shards/General/Stop) is used to end Wires. It is very useful for managing Wires created with `Detach` or `Spawn`.
 For example, if you have spawned multiple monsters, you could set them to `Stop` running once their health reaches 0.
 
 !!! note
@@ -367,19 +367,19 @@ For our example, we use `Stop` to end `bake-apple` looped Wires after they itera
     ```
 ## Step
 
-[`Step`](../../../reference/shards/General/Step) schedules and runs another Wire on the Wire calling `Step` itself. That is, if `X Step Y`, Y  is scheduled to run on X itself.
+[`Step`](../../../../reference/shards/shards/General/Step) schedules and runs another Wire on the Wire calling `Step` itself. That is, if `X Step Y`, Y  is scheduled to run on X itself.
 
 Being scheduled on a Wire (instead of the Mesh) has a few implications:
 
 1. The flow is different.
 
-2. It shares the same environment and scope of the Wire which stepped it.
+2. It shares the same environment and scope as the Wire which stepped it.
 
 3. It can affect variables on the Wire which stepped it.
 
 ### Flow Difference
 
-The stepped Wire runs similar to how `Do` does as the flow shifts into the stepped Wire immediately. It may seem like it is running inline too, but the difference is obvious when calling `Pause` on the stepped Wire. 
+The stepped Wire runs similarly to how `Do` does as the flow shifts into the stepped Wire immediately. It may seem like it is running inline too, but the difference is obvious when calling `Pause` on the stepped Wire. 
 
 For `Do`, the flow is paused and resumed only after the pause is resolved. For `Step`, even though the stepped Wire is paused, the original Wire continues to run.
 
@@ -387,19 +387,15 @@ For `Do`, the flow is paused and resumed only after the pause is resolved. For `
 
 ### Shared Environment
 
-Being scheduled on a Wire allows the stepped Wire to share the same scope and environment as the Wire which stepped it. This is especially useful when working with `UI` shards that can only exist within a single `GFX` window. The topic on `UI` and `GFX` is beyond the scope of this tutorial, but the general idea is that when implementing `UI` elements, they can only be stepped from the Wire that holds the `GFX.MainWindow` shard in your program.
+Being scheduled on a Wire allows the stepped Wire to share the same scope and environment as the Wire which stepped it. This is especially useful when working with `UI` shards that can only exist within a single `GFX` window. The topic of `UI` and `GFX` is beyond the scope of this tutorial, but the general idea is that when implementing `UI` elements, they can only be stepped from the Wire that holds the `GFX.MainWindow` shard in your program.
 
 ### Shared Variables
 
-Most of the methods described in this chapter will only "snapshot" the variables of the Wire that called it.
+Most of the methods described in this chapter will "snapshot" the variables of the Wire that called it. That is:
 
-That is:
+- Variables existing in the caller Wire will be copied and made available to the callee Wire. 
 
-- It makes a copy of variables existing in the original Wire.
-
-- The Wire called knows what those variables are and can work with them.
-
-- **Changes made to variables that are copied will not be reflected on the original.**
+- **Changes made to variable copies will not be reflected on the original variables.**
 
 `Step` is unique in the sense that it has access to the original variables. Changes made to variables from the Wire that called it will persist.
 
@@ -468,12 +464,12 @@ The example also showcases how variables defined in `john` are affected by chang
 
 - Takes a sequence as input.
 
-- `Step`s clones of a Wire for each value in the sequence.
+- `Step`s a clone of a Wire for each value in the sequence.
 
-[`Stepmany`](../../../reference/shards/General/Stepmany) can be used when you wish to `Step` the same Wire multiple times.
+[`Stepmany`](../../../../reference/shards/shards/General/Stepmany) can be used when you wish to `Step` the same Wire multiple times.
 
 !!! note
-    When using `Step`, any variables from the Wire being Stepped from can be modified. As such, it cannot be used interchangeably with `Spawn` that makes a copy of the original variables instead.
+    When using `Step`, any variables from the Wire being Stepped from can be modified. As such, it cannot be used interchangeably with `Spawn` which makes a copy of the original variables instead.
 
 In the example below, five different copies of `take-an-apple` are scheduled on the main Looped Wire `box-of-apples`. Each copy has a different waiting time which we specify in the array passed into `StepMany`.
 
@@ -500,7 +496,7 @@ In the example below, five different copies of `take-an-apple` are scheduled on 
     (run main 1 10)
     ```
 
-    1. `\n` is used in `Msg` to create a newline. This makes the results more readable as you can see in "Output".
+    1. `\n` is used in `Msg` to create a new line. This makes the results more readable as you can see in "Output".
 
 === "Output"
     ```
@@ -634,7 +630,7 @@ In the example below, five different copies of `take-an-apple` are scheduled on 
 
 ## Branch
 
-[`Branch`](../../../reference/shards/General/Branch) is used when you wish to create a Submesh on the current Mesh. You can schedule Wires on the Submesh by placing Wires in its `Wires` parameter. These Wires will behave as if they were run with `Step`.
+[`Branch`](../../../../reference/shards/shards/General/Branch) is used when you wish to create a Submesh on the current Mesh. You can schedule Wires on the Submesh by placing Wires in its `Wires` parameter. These Wires will behave as if they were run with `Step`.
 
 === "Syntax"
     ```{.clojure .annotate linenums="1"}
@@ -649,7 +645,7 @@ In the example below, five different copies of `take-an-apple` are scheduled on 
 
 - Returns an array of the output from all the copies.
 
-[`Expand`](../../../reference/shards/General/Expand) is useful when you need to run code in bulk. The results produced can then be evaluated, which is useful in Machine Learning for example.
+[`Expand`](../../../../reference/shards/shards/General/Expand) is useful when you need to run code in bulk. The results produced can then be evaluated, which is useful in Machine Learning for example.
 
 ??? "Multithreading with `Expand`"
     Simple programs are usually run on a single thread. You can think of a thread as a thought process. For a Computer to be able to "multitask", they require multiple threads.
@@ -695,11 +691,11 @@ In our example below, we will be using `Expand` to teach John about multiplicati
 
 - Takes a sequence as input.
 
-- Creates clones of a specified Wire for each entry in the sequence.
+- Creates a clone of a Wire for each entry in the sequence.
 
- [`TryMany`](../../../reference/shards/General/TryMany) can be used to check for values that would achieve a result desired. This is useful in Machine Learning for example, as it teaches your program how it can achieve a result by using specific values.
+ [`TryMany`](../../../../reference/shards/shards/General/TryMany) can be used to check for values that would achieve the result desired. This is useful in Machine Learning for example, as it teaches your program how it can achieve a result by using specific values.
 
-`TryMany` has a `Policy` parameter that takes a value of [`WaitUntil`](../../../reference/enums/WaitUntil/). The value used determines the output `TryMany` produces.
+`TryMany` has a `Policy` parameter that takes a value of [`WaitUntil`](../../../../reference/shards/enums/WaitUntil/). The value used determines the output `TryMany` produces.
 
 There are three variations of `WaitUntil`:
 
@@ -770,7 +766,7 @@ In the following examples, John attempts to hit a moving target by firing arrows
 === "Output"
     ```
     ;; No result is obtained as the condition for WaitUntil.AllSuccess was not achieved.
-    ;; The Wire with a .distance-shot of 2 would fail the Assert check.
+    ;; The Wire with a .distance-shot of 2 would fail the Assert checks.
     ```
 
 === "SomeSuccess"
@@ -813,21 +809,21 @@ In the following examples, John attempts to hit a moving target by firing arrows
 
 Congratulations! You have now learned new methods of executing and scheduling Wires, which gives you better control of the Flow of Shards. The possibilities of what you can create with Shards just got much wider with this newfound knowledge!
 
-In the next chapter, we will take a look at how working with data in Shards is like.
+In the next chapter, we will take a look at what working with data in Shards is like.
 
 ## Summary
 
 | Shard    | Uses Original Variables? | Restarts Wire? | Continues Loop?  | 1 Instance per run? |
 | :------- | :----------------------- | :------------- | :--------------- | :------------------ |
-| Do       | O                        | X              | O                | O                   |
-| Detach   | X                        | O              | O                | O                   |
-| Spawn    | X                        | O              | O                | X                   | 
-| Start    | X                        | O              | X                | X                   | 
-| Resume   | X                        | O              | O                | O                   |  
-| Step     | O                        | O              | O                | O                   | 
-| StepMany | O                        | O              | O                | X                   |
-| Branch   | O                        | X              | O                | O                   |
-| Expand   | O                        | O              | O                | X                   |
-| TryMany  | O                        | O              | O                | X                   |
+| Do       | Yes                      | No             | Yes              | Yes                 |
+| Detach   | No                       | Yes            | Yes              | Yes                 |
+| Spawn    | No                       | Yes            | Yes              | No                  | 
+| Start    | No                       | Yes            | No               | No                  | 
+| Resume   | No                       | Yes            | Yes              | Yes                 |  
+| Step     | Yes                      | Yes            | Yes              | Yes                 | 
+| StepMany | Yes                      | Yes            | Yes              | No                  |
+| Branch   | Yes                      | No             | Yes              | Yes                 |
+| Expand   | Yes                      | Yes            | Yes              | No                  |
+| TryMany  | Yes                      | Yes            | Yes              | No                  |
 
 --8<-- "includes/license.md"

@@ -1,7 +1,7 @@
 nav:
   - index.md
-  - reference
   - learn
+  - reference
   - contribute
   - ...
   - download
