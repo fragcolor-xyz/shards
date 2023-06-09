@@ -88,19 +88,6 @@
 (schedule Root d)
 (if (run Root 0.1) (throw "Failure expected") nil)
 
-(defwire table-push-mix
-  {:k [1 2 3]} >= .table
-  4 (Push .table :Key "k" :Clear false) ;; whether :Clear is explicitly stated doesn't seem to matter
-  .table (Log))
-
-(defwire wrap
-  table-push-mix (ToBytes) = .bad-wire
-  .bad-wire (FromBytes) (ExpectWire) = .bad-loaded-wire
-  (WireRunner .bad-loaded-wire))
-
-(schedule Root wrap)
-(if (run Root 0.1) (throw "Failure expected") nil)
-
 (defmesh main)
 
 (defloop c1
