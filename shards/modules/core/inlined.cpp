@@ -10,7 +10,7 @@
 #include <shards/modules/core/math.hpp>
 
 namespace shards {
-bool SHARDS_MODULE_FN(setInlineShardId)(Shard *shard, std::string_view name) {
+ALWAYS_INLINE bool SHARDS_MODULE_FN(setInlineShardId)(Shard *shard, std::string_view name) {
   // Hook inline shards to override activation in runWire
   if (name == "Const") {
     shard->inlineShardId = InlineShard::CoreConst;
@@ -76,7 +76,7 @@ bool SHARDS_MODULE_FN(setInlineShardId)(Shard *shard, std::string_view name) {
   return shard->inlineShardId != 0;
 }
 
-bool SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHContext *context, const SHVar &input, SHVar &output) {
+ALWAYS_INLINE bool SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHContext *context, const SHVar &input, SHVar &output) {
   switch (blk->inlineShardId) {
   case InlineShard::NoopShard:
     output = input;
