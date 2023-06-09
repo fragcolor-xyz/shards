@@ -144,7 +144,7 @@ struct MainWindow final {
 
 #if GFX_APPLE
     auto &mainOutput = _graphicsContext.context->getMetalViewContainer();
-    auto &dispatcher = context->main->dispatcher;
+    auto &dispatcher = context->currentWire()->dispatcher;
     dispatcher.trigger(std::ref(mainOutput));
 #endif
 
