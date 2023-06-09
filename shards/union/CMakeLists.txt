@@ -111,7 +111,7 @@ file(APPEND ${GENERATED_TEMP} "\n"
 if(NOT SHARDS_INLINE_EVERYTHING)
   foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
     file(APPEND ${GENERATED_TEMP}
-      "bool setInlineShardId_${MODULE_ID}(Shard*, std::string_view);\n"
+      "ALWAYS_INLINE bool setInlineShardId_${MODULE_ID}(Shard*, std::string_view);\n"
     )
   endforeach()
 
@@ -119,7 +119,7 @@ if(NOT SHARDS_INLINE_EVERYTHING)
 endif()
 
 file(APPEND ${GENERATED_TEMP}
-  "void setInlineShardId(Shard *shard, std::string_view name) {\n")
+  "ALWAYS_INLINE void setInlineShardId(Shard *shard, std::string_view name) {\n")
 
 foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
   file(APPEND ${GENERATED_TEMP}
@@ -133,7 +133,7 @@ file(APPEND ${GENERATED_TEMP} "}\n\n")
 if(NOT SHARDS_INLINE_EVERYTHING)
   foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
     file(APPEND ${GENERATED_TEMP}
-      "bool activateShardInline_${MODULE_ID}(Shard*, SHContext*, const SHVar&, SHVar&);\n"
+      "ALWAYS_INLINE bool activateShardInline_${MODULE_ID}(Shard*, SHContext*, const SHVar&, SHVar&);\n"
     )
   endforeach()
 
@@ -141,7 +141,7 @@ if(NOT SHARDS_INLINE_EVERYTHING)
 endif()
 
 file(APPEND ${GENERATED_TEMP}
-  "bool activateShardInline(Shard *shard, SHContext *context, const SHVar &input, SHVar &output) {\n")
+  "ALWAYS_INLINE bool activateShardInline(Shard *shard, SHContext *context, const SHVar &input, SHVar &output) {\n")
 
 foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
   file(APPEND ${GENERATED_TEMP}
