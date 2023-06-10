@@ -9,8 +9,6 @@
 #include <gfx/window.hpp>
 #include "../inputs.hpp"
 #include "extra/gfx.hpp"
-#include "foundation.hpp"
-#include "gfx/platform_surface.hpp"
 #include "linalg_shim.hpp"
 #include "params.hpp"
 
@@ -225,7 +223,7 @@ struct MainWindow final {
     int numKeys{};
     auto keyStates = SDL_GetKeyboardState(&numKeys);
     _actuallyHeldKeys.clear();
-    for (size_t i = 0; i < numKeys; i++) {
+    for (int i = 0; i < numKeys; i++) {
       SDL_Keycode code = SDL_GetKeyFromScancode((SDL_Scancode)i);
       if (keyStates[i] == 1) {
         _actuallyHeldKeys.insert(code);
