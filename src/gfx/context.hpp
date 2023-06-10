@@ -4,7 +4,6 @@
 #include "enums.hpp"
 #include "gfx_wgpu.hpp"
 #include "platform.hpp"
-#include "platform_surface.hpp"
 #include "types.hpp"
 #include "user_data.hpp"
 #include <cassert>
@@ -17,6 +16,8 @@
 #include <shared_mutex>
 
 namespace gfx {
+struct MetalViewContainer;
+
 struct ContextCreationOptions {
   bool debug = false;
   void *overrideNativeWindowHandle = nullptr;
