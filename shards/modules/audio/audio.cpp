@@ -26,7 +26,7 @@
 
 namespace shards {
 namespace Audio {
-static TableVar experimental{{"experimental", Var(true)}};
+static TableVar experimental{{Var("experimental"), Var(true)}};
 
 /*
 

@@ -1,7 +1,9 @@
 #ifndef FBBE103B_4B4A_462F_BE67_FE59A0C30FB5
 #define FBBE103B_4B4A_462F_BE67_FE59A0C30FB5
 
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include "boost/container/stable_vector.hpp"
+#pragma clang attribute pop
 #include "drawable.hpp"
 #include "fwd.hpp"
 #include "render_target.hpp"

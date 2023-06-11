@@ -206,7 +206,7 @@ void to_json(json &j, const SHVar &var) {
     auto &t = var.payload.tableValue;
     SHTableIterator tit;
     t.api->tableGetIterator(t, &tit);
-    SHString k;
+    SHVar k;
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
       json entry{{"key", k}, {"value", v}};
@@ -462,9 +462,11 @@ void from_json(const json &j, SHVar &var) {
     var.payload.tableValue.opaque = map;
     auto items = j.at("values").get<std::vector<json>>();
     for (const auto &item : items) {
-      auto key = item.at("key").get<std::string>();
+      auto key = item.at("key").get<SHVar>();
       auto value = item.at("value").get<SHVar>();
       (*map)[key] = value;
+      _releaseMemory(key); // key is copied over
+      _releaseMemory(value); // value is copied over
     }
     break;
   }
@@ -475,7 +477,9 @@ void from_json(const json &j, SHVar &var) {
     var.payload.setValue.opaque = set;
     auto items = j.at("values").get<std::vector<json>>();
     for (const auto &item : items) {
-      set->emplace(item.get<SHVar>());
+      auto value = item.get<SHVar>();
+      set->emplace(value);
+      _releaseMemory(value);
     }
     break;
   }
@@ -616,10 +620,13 @@ struct ToJson {
     case SHType::Table: {
       std::unordered_map<std::string, json> table;
       auto &tab = input.payload.tableValue;
-      ForEach(tab, [&](auto key, auto &val) {
+      ForEach(tab, [&](auto &key, auto &val) {
         json sj{};
         anyDump(sj, val);
-        table.emplace(key, sj);
+        if(key.valueType != SHType::String)
+          throw shards::ActivationError("Table keys must be strings.");
+        std::string keyStr(key.payload.stringValue, key.payload.stringLen);
+        table.emplace(std::move(keyStr), sj);
         return true;
       });
       j = table;
@@ -728,7 +735,7 @@ struct FromJson {
       storage.payload.tableValue.api = &shards::GetGlobals().TableInterface;
       storage.payload.tableValue.opaque = map;
       for (auto &[key, value] : j.items()) {
-        anyParse(value, (*map)[key]);
+        anyParse(value, (*map)[Var(key)]);
       }
     }
   }

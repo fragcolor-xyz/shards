@@ -1026,7 +1026,8 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
       auto shv = varify(v);
       vars.emplace_back(shv);
       // key is either a quoted string or a keyword (starting with ':')
-      shMap[k[0] == '"' ? unescape(k) : k.substr(1)] = shv->value();
+      auto ks = k[0] == '"' ? unescape(k) : k.substr(1);
+      shMap[Var(ks)] = shv->value();
     }
     var.valueType = SHType::Table;
     var.payload.tableValue.api = &shards::GetGlobals().TableInterface;
@@ -1107,7 +1108,8 @@ malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
       auto shv = varify(v);
       vars.emplace_back(shv);
       // key is either a quoted string or a keyword (starting with ':')
-      shMap[k[0] == '"' ? unescape(k) : k.substr(1)] = shv->value();
+      auto ks = k[0] == '"' ? unescape(k) : k.substr(1);
+      shMap[Var(ks)] = shv->value();
     }
     SHVar tmp{};
     tmp.valueType = SHType::Table;
@@ -1637,10 +1639,12 @@ static malValuePtr readVar(const SHVar &v) {
     auto &t = v.payload.tableValue;
     SHTableIterator tit;
     t.api->tableGetIterator(t, &tit);
-    SHString k;
+    SHVar k;
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
-      map[escape(k)] = readVar(v);
+      assert(k.valueType == SHType::String && "Table key is not a string");
+      MalString ks(k.payload.stringValue, k.payload.stringLen);
+      map[escape(ks)] = readVar(v);
     }
     return mal::hash(map);
   } else {
@@ -2471,7 +2475,11 @@ BUILTIN("shard-info") {
       auto properties = shard->properties(shard);
       if (unlikely(properties != nullptr)) {
         malHash::Map pmap;
-        ForEach(*properties, [&](auto &key, auto &val) { pmap[escape(key)] = readVar(val); });
+        ForEach(*properties, [&](auto &key, auto &val) {
+          assert(key.valueType == SHType::String && "property key is not a string");
+          MalString ks(key.payload.stringValue, key.payload.stringLen);
+          pmap[escape(ks)] = readVar(val);
+        });
         map[":properties"] = mal::hash(pmap);
       }
     }

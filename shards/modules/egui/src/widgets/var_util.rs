@@ -228,20 +228,19 @@ impl UIRenderer for Var {
           }
         }
         SHType_Table => {
-          let mut table: Table = self
+          let table: Table = self
             .try_into()
             .expect("SHType was Table, but failed to convert to Table");
           if table.len() > 0 {
             let mut changed = false;
             let mut ir = ui.collapsing(format!("Table: {} items", table.len()), |ui| {
-              for (k, _v) in table.iter() {
-                let cstr = CStr::from_ptr(k.0);
-                ui.push_id(cstr, |ui| {
+              for (mut k, mut v) in table.iter() {
+                ui.push_id(k, |ui| {
                   changed |= ui
                     .horizontal(|ui| {
-                      ui.label(cstr.to_str().unwrap_or_default());
+                      k.render(read_only, None, ui);
                       // no inner type for now
-                      table.get_mut_fast(cstr).render(read_only, None, ui)
+                      v.render(read_only, None, ui)
                     })
                     .inner
                     .changed()

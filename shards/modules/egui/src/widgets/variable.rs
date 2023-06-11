@@ -26,7 +26,6 @@ use std::os::raw::c_char;
 
 static ANY_VAR_ONLY_SLICE: &[Type] = &[common_type::any_var];
 
-const WIRE_VAR_NAMES: &[RawString] = &[shstr!("Wire"), shstr!("Name")];
 static WIRE_VAR_TYPES: &[Type] = &[common_type::wire, common_type::string];
 
 lazy_static! {
@@ -44,7 +43,8 @@ lazy_static! {
     )
       .into()
   ];
-  static ref WIRE_VAR_TTYPE: Type = Type::table(WIRE_VAR_NAMES, &WIRE_VAR_TYPES);
+  static ref WIRE_VAR_NAMES: Vec<Var> = vec![shstr!("Wire").into(), shstr!("Name").into()];
+  static ref WIRE_VAR_TTYPE: Type = Type::table(&WIRE_VAR_NAMES, &WIRE_VAR_TYPES);
   static ref WIRE_VAR_INPUT: Vec<Type> = vec![*WIRE_VAR_TTYPE];
 }
 
@@ -278,9 +278,9 @@ impl Shard for WireVariable {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let input: Table = input.try_into()?;
 
-    let name_var = input.get_fast_static(cstr!("Name"));
+    let name_var = input.get_fast_static("Name");
     let name: &str = name_var.try_into()?;
-    let wire_var = input.get_fast_static(cstr!("Wire"));
+    let wire_var = input.get_fast_static("Wire");
     let wire: WireRef = wire_var.try_into()?;
 
     let varPtr = unsafe {

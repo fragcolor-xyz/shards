@@ -15,7 +15,7 @@
 namespace gfx {
 // Retrieves a value directly or from a context variable from a table by name
 // returns false if the table does not contain an entry for that key
-inline bool getFromTable(SHContext *shContext, const SHTable &table, const char *key, SHVar &outVar) {
+inline bool getFromTable(SHContext *shContext, const SHTable &table, const SHVar &key, SHVar &outVar) {
   if (table.api->tableContains(table, key)) {
     const SHVar *var = table.api->tableAt(table, key);
     if (var->valueType == SHType::ContextVar) {

@@ -264,11 +264,11 @@ constexpr const SHError SHError::Success = {SH_ERROR_NONE, nullptr};
 
 // table interface
 typedef void(__cdecl *SHTableGetIterator)(struct SHTable table, SHTableIterator *outIter);
-typedef SHBool(__cdecl *SHTableNext)(struct SHTable table, SHTableIterator *inIter, SHString *outKey, struct SHVar *outValue);
+typedef SHBool(__cdecl *SHTableNext)(struct SHTable table, SHTableIterator *inIter, struct SHVar *outKey, struct SHVar *outValue);
 typedef size_t(__cdecl *SHTableSize)(struct SHTable table);
-typedef SHBool(__cdecl *SHTableContains)(struct SHTable table, SHString key);
-typedef struct SHVar *(__cdecl *SHTableAt)(struct SHTable table, SHString key);
-typedef void(__cdecl *SHTableRemove)(struct SHTable table, SHString key);
+typedef SHBool(__cdecl *SHTableContains)(struct SHTable table, struct SHVar key);
+typedef struct SHVar *(__cdecl *SHTableAt)(struct SHTable table, struct SHVar key);
+typedef void(__cdecl *SHTableRemove)(struct SHTable table, struct SHVar key);
 typedef void(__cdecl *SHTableClear)(struct SHTable table);
 typedef void(__cdecl *SHTableFree)(struct SHTable table);
 
@@ -318,7 +318,7 @@ typedef struct SHTableTypeInfo {
   // If tableKeys is populated, it is expected that
   // tableTypes will be populated as well and that at the same
   // key index there is the key's type
-  SHStrings keys;
+  SHSeq keys;
   // If tableKeys is not populated, len == 0 and tableKeys is populated len
   // > 0 it is assumed that tableTypes contains a sequence with the possible
   // types in the table
@@ -822,6 +822,8 @@ typedef void(__cdecl *SHCloneVar)(struct SHVar *dst, const struct SHVar *src);
 
 typedef void(__cdecl *SHDestroyVar)(struct SHVar *var);
 
+typedef struct SHVar(__cdecl *SHHashVar)(const struct SHVar *var);
+
 typedef SHBool(__cdecl *SHValidateSetParam)(struct Shard *shard, int index, const struct SHVar *param,
                                             SHValidationCallback callback, void *userData);
 
@@ -1050,6 +1052,7 @@ typedef struct _SHCore {
   // Utility to deal with SHVars
   SHCloneVar cloneVar;
   SHDestroyVar destroyVar;
+  SHHashVar hashVar;
 
   // Compressed strings utility
   SHReadCachedString readCachedString;

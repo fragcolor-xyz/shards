@@ -487,7 +487,7 @@ template <> struct hash<SHTypeInfo> {
     if (typeInfo.basicType == SHType::Table) {
       if (typeInfo.table.keys.elements) {
         for (uint32_t i = 0; i < typeInfo.table.keys.len; i++) {
-          res = res ^ hash<string>()(typeInfo.table.keys.elements[i]);
+          res = res ^ hash<SHVar>()(typeInfo.table.keys.elements[i]);
         }
       }
       if (typeInfo.table.types.elements) {

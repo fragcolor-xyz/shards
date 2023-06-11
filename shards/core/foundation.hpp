@@ -30,7 +30,6 @@
 #include <type_traits>
 #include <unordered_set>
 #include <variant>
-#include "untracked_collections.hpp"
 
 #ifdef SHARDS_TRACKING
 #include "tracking.hpp"
@@ -38,13 +37,15 @@
 
 #include <shards/shardwrapper.hpp>
 
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#include <boost/container/stable_vector.hpp>
+#include <boost/container/flat_map.hpp>
+#pragma clang attribute pop
+
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
-#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
-#include <boost/container/stable_vector.hpp>
-#pragma clang attribute pop
-#include <boost/container/flat_map.hpp>
+#include "untracked_collections.hpp"
 
 // TODO make it into a run-time param
 #ifndef NDEBUG
@@ -259,7 +260,7 @@ struct SHAlignedMap : public boost::container::flat_map<
                           boost::container::stable_vector<std::pair<const K, V>,
                                                           boost::alignment::aligned_allocator<std::pair<const K, V>, 16>>> {};
 
-struct SHTableImpl : public SHAlignedMap<std::string, shards::OwnedVar> {
+struct SHTableImpl : public SHAlignedMap<shards::OwnedVar, shards::OwnedVar> {
 #if SHARDS_TRACKING
   SHTableImpl() {}
   ~SHTableImpl() {}
@@ -491,13 +492,13 @@ public:
             *mapIt = map->begin();
           },
       .tableNext =
-          [](SHTable table, SHTableIterator *inIter, SHString *outKey, SHVar *outVar) {
+          [](SHTable table, SHTableIterator *inIter, SHVar *outKey, SHVar *outVar) {
             if (inIter == nullptr)
               SHLOG_FATAL("tableGetIterator - inIter was nullptr");
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
             shards::SHMapIt *mapIt = reinterpret_cast<shards::SHMapIt *>(inIter);
             if ((*mapIt) != map->end()) {
-              *outKey = (*(*mapIt)).first.c_str();
+              *outKey = (*(*mapIt)).first;
               *outVar = (*(*mapIt)).second;
               (*mapIt)++;
               return true;
@@ -511,20 +512,26 @@ public:
             return map->size();
           },
       .tableContains =
-          [](SHTable table, const char *key) {
+          [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            return map->count(key) > 0;
+            // the following is safe cos count takes a const ref
+            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            return map->count(*k) > 0;
           },
       .tableAt =
-          [](SHTable table, const char *key) {
+          [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            SHVar &vRef = (*map)[key];
+            // the following is safe cos []] takes a const ref
+            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            SHVar &vRef = (*map)[*k];
             return &vRef;
           },
       .tableRemove =
-          [](SHTable table, const char *key) {
+          [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            map->erase(key);
+            // the following is safe cos erase takes a const ref
+            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            map->erase(*k);
           },
       .tableClear =
           [](SHTable table) {
@@ -1021,7 +1028,9 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 
 #define ENUM_HELP(_ENUM_, _VALUE_, _STR_)                                                         \
   namespace shards {                                                                              \
-  template <> struct TEnumHelp<_ENUM_, _VALUE_> { static inline SHOptionalString help = _STR_; }; \
+  template <> struct TEnumHelp<_ENUM_, _VALUE_> { \
+    static inline SHOptionalString help = _STR_;  \
+  };                                              \
   }
 
 template <typename E> static E getFlags(SHVar var) {
@@ -1414,7 +1423,7 @@ inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
     shards::ForEach(var.payload.seqValue, [&](const SHVar &v) { collectRequiredVariables(exposed, out, v); });
     break;
   case SHType::Table:
-    shards::ForEach(var.payload.tableValue, [&](const char *key, const SHVar &v) { collectRequiredVariables(exposed, out, v); });
+    shards::ForEach(var.payload.tableValue, [&](const SHVar &key, const SHVar &v) { collectRequiredVariables(exposed, out, v); });
     break;
   default:
     break;

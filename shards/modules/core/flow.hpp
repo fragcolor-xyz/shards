@@ -952,7 +952,7 @@ struct HashedShards {
   SHComposeResult _composition{};
 
   Types _outputTableTypes{{CoreInfo::AnyType, CoreInfo::Int2Type}};
-  static inline std::array<SHString, 2> OutputTableKeys{"Result", "Hash"};
+  static inline std::array<SHVar, 2> OutputTableKeys{Var("Result"), Var("Hash")};
   Type _outputTableType = Type::TableOf(_outputTableTypes, OutputTableKeys);
 
   TableVar _outputTable{};
@@ -990,8 +990,8 @@ struct HashedShards {
     SHVar output{};
     SHVar hash{};
     _shards.activateHashed(context, input, output, hash);
-    _outputTable["Result"] = output;
-    _outputTable["Hash"] = hash;
+    _outputTable[Var("Result")] = output;
+    _outputTable[Var("Hash")] = hash;
     return _outputTable;
   }
 };

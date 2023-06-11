@@ -157,7 +157,7 @@ impl Shard for Table {
         if let Ok(columns) = Seq::try_from(value) {
           for column in columns.iter() {
             let column: shards::types::Table = column.as_ref().try_into()?;
-            if let Some(header) = column.get_static(cstr!("Header")) {
+            if let Some(header) = column.get_static("Header") {
               match header.valueType {
                 SHType_String => {
                   self.header_shards.push(None);
@@ -373,15 +373,15 @@ impl Shard for Table {
 
           for column in columns.iter() {
             let column: shards::types::Table = column.as_ref().try_into()?;
-            let mut size = if let Some(initial) = column.get_static(cstr!("Initial")) {
+            let mut size = if let Some(initial) = column.get_static("Initial") {
               Column::initial(initial.try_into()?)
             } else {
               Column::remainder()
             };
-            if let Some(at_least) = column.get_static(cstr!("AtLeast")) {
+            if let Some(at_least) = column.get_static("AtLeast") {
               size = size.at_least(at_least.try_into()?);
             }
-            if let Some(at_most) = column.get_static(cstr!("AtMost")) {
+            if let Some(at_most) = column.get_static("AtMost") {
               size = size.at_most(at_most.try_into()?);
             }
             builder = builder.column(size);
@@ -397,7 +397,7 @@ impl Shard for Table {
           builder.header(row_height, |mut header_row| {
             for i in 0..columns.len() {
               let column: shards::types::Table = columns[i].as_ref().try_into().unwrap(); // iterated successfully above, qed
-              if let Some(header) = column.get_static(cstr!("Header")) {
+              if let Some(header) = column.get_static("Header") {
                 match header.valueType {
                   SHType_String => {
                     header_row.col(|ui| {

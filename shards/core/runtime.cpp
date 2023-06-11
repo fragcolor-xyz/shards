@@ -772,7 +772,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
 
         // Last element being empty ("") indicates that keys not in the type can match
         // in that case they will be matched against the last type element at the same position
-        const auto lastElementEmpty = strlen(receiverType.table.keys.elements[numReceiverKeys - 1]) == 0;
+        const auto lastElementEmpty = receiverType.table.keys.elements[numReceiverKeys - 1].valueType == SHType::None;
         if (!lastElementEmpty && (numInputKeys != numReceiverKeys || numInputKeys != numInputTypes)) {
           // we need a 1:1 match in this case, fail early
           return false;
@@ -786,7 +786,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
             auto receiverEntryType = receiverType.table.types.elements[y];
             auto receiverEntryKey = receiverType.table.keys.elements[y];
             // Either match the expected key's type or compare against the last type (if it's key is "")
-            if (strcmp(inputEntryKey, receiverEntryKey) == 0 || (lastElementEmpty && y == (numReceiverKeys - 1))) {
+            if (inputEntryKey == receiverEntryKey || (lastElementEmpty && y == (numReceiverKeys - 1))) {
               if (matchTypes(inputEntryType, receiverEntryType, isParameter, strict)) {
                 missingMatches--;
                 y = numReceiverKeys; // break
@@ -1229,7 +1229,7 @@ void freeDerivedInfo(SHTypeInfo info) {
       freeDerivedInfo(info.table.types.elements[i]);
     }
     for (uint32_t i = 0; info.table.keys.len > i; i++) {
-      free((void *)info.table.keys.elements[i]);
+      destroyVar(info.table.keys.elements[i]);
     }
     shards::arrayFree(info.table.types);
     shards::arrayFree(info.table.keys);
@@ -1273,12 +1273,14 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
     auto &t = value.payload.tableValue;
     SHTableIterator tit;
     t.api->tableGetIterator(t, &tit);
-    SHString k;
+    SHVar k;
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
       auto derived = deriveTypeInfo(v, data, expInfo);
       shards::arrayPush(varType.table.types, derived);
-      shards::arrayPush(varType.table.keys, strdup(k));
+      auto idx = varType.table.keys.len;
+      shards::arrayResize(varType.table.keys, idx + 1);
+      cloneVar(varType.table.keys.elements[idx], k);
     }
   } break;
   case SHType::Set: {
@@ -1344,7 +1346,9 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
       shards::arrayPush(varType.table.types, cloned);
     }
     for (uint32_t i = 0; i < other.table.keys.len; i++) {
-      shards::arrayPush(varType.table.keys, strdup(other.table.keys.elements[i]));
+      auto idx = varType.table.keys.len;
+      shards::arrayResize(varType.table.keys, idx + 1);
+      cloneVar(varType.table.keys.elements[idx], other.table.keys.elements[i]);
     }
     break;
   }
@@ -1390,28 +1394,16 @@ void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
     }
   } break;
   case SHType::Table: {
-    // this is unsafe because allocates on the stack
-    // but we need to sort hashes
-    boost::container::small_vector<std::pair<SHString, uint64_t>, 8> hashes;
-
-    // table is unordered so just collect
-    {
       auto &t = var.payload.tableValue;
       SHTableIterator tit;
       t.api->tableGetIterator(t, &tit);
-      SHString k;
+    SHVar k;
       SHVar v;
       while (t.api->tableNext(t, &tit, &k, &v)) {
-        hashes.emplace_back(k, _deriveTypeHash(v));
-      }
-    }
-
-    // sort and actually do the hashing
-    std::sort(hashes.begin(), hashes.end(), [](const auto &a, const auto &b) { return strcmp(a.first, b.first) < 0; });
-    for (const auto &pair : hashes) {
-      // SHLOG_TRACE("hashing key {}, type hash {}", pair.first, pair.second);
-      XXH3_64bits_update(state, pair.first, strlen(pair.first));
-      XXH3_64bits_update(state, &pair.second, sizeof(uint64_t));
+      auto hk = shards::hash(k);
+      XXH3_64bits_update(state, &hk.payload.int2Value, sizeof(SHInt2));
+      auto hv = _deriveTypeHash(v);
+      XXH3_64bits_update(state, &hv, sizeof(uint64_t));
     }
   } break;
   case SHType::Set: {
@@ -1493,19 +1485,11 @@ void updateTypeHash(const SHTypeInfo &t, XXH3_state_s *state) {
   } break;
   case SHType::Table: {
     if (t.table.keys.len == t.table.types.len) {
-      boost::container::small_vector<std::pair<SHString, uint64_t>, 8> hashes;
-
       for (uint32_t i = 0; i < t.table.types.len; i++) {
+        auto keyHash = shards::hash(t.table.keys.elements[i]);
+        XXH3_64bits_update(state, &keyHash.payload.int2Value, sizeof(SHInt2));
         auto typeHash = deriveTypeHash(t.table.types.elements[i]);
-        const char *key = t.table.keys.elements[i];
-        hashes.emplace_back(key, typeHash);
-      }
-
-      std::sort(hashes.begin(), hashes.end(), [](const auto &a, const auto &b) { return strcmp(a.first, b.first) < 0; });
-      for (const auto &hash : hashes) {
-        // SHLOG_TRACE("hashing key {}, type hash {}", hash.first, hash.second);
-        XXH3_64bits_update(state, hash.first, strlen(hash.first));
-        XXH3_64bits_update(state, &hash.second, sizeof(uint64_t));
+        XXH3_64bits_update(state, &typeHash, sizeof(uint64_t));
       }
     } else {
       std::set<uint64_t, std::less<uint64_t>, stack_allocator<uint64_t>> hashes;
@@ -2040,7 +2024,10 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
         return;
     }
 
+    if (srcSize > 0) {
+      assert(src.payload.stringValue != nullptr && "string value is null but length is not 0");
     memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue, srcSize);
+    }
     ((char *)dst.payload.stringValue)[srcSize] = 0;
 
     // fill the optional len field
@@ -2147,7 +2134,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     auto &t = src.payload.tableValue;
     SHTableIterator tit;
     t.api->tableGetIterator(t, &tit);
-    SHString k;
+    SHVar k;
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
       (*map)[k] = v;
@@ -2403,23 +2390,17 @@ void hash_update(const SHVar &var, void *state) {
     }
   } break;
   case SHType::Table: {
-    boost::container::small_vector<std::pair<std::pair<uint64_t, uint64_t>, SHString>, 8> hashes;
-
+    // table is sorted, do all in 1 iteration
     auto &t = var.payload.tableValue;
     SHTableIterator it;
     t.api->tableGetIterator(t, &it);
-    SHString key;
+    SHVar key;
     SHVar value;
     while (t.api->tableNext(t, &it, &key, &value)) {
+      const auto kh = hash(key);
+      XXH3_128bits_update(hashState, &kh, sizeof(SHInt2));
       const auto h = hash(value);
-      hashes.emplace_back(std::make_pair(uint64_t(h.payload.int2Value[0]), uint64_t(h.payload.int2Value[1])), key);
-    }
-
-    std::sort(hashes.begin(), hashes.end());
-    for (const auto &pair : hashes) {
-      error = XXH3_128bits_update(hashState, pair.second, strlen(pair.second));
-      assert(error == XXH_OK);
-      XXH3_128bits_update(hashState, &pair.first, sizeof(std::pair<uint64_t, uint64_t>));
+      XXH3_128bits_update(hashState, &h, sizeof(SHInt2));
     }
   } break;
   case SHType::Set: {
@@ -2943,6 +2924,8 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->cloneVar = [](SHVar *dst, const SHVar *src) noexcept { shards::cloneVar(*dst, *src); };
 
   result->destroyVar = [](SHVar *var) noexcept { shards::destroyVar(*var); };
+
+  result->hashVar = [](const SHVar *var) noexcept { return shards::hash(*var); };
 
 #define SH_ARRAY_IMPL(_arr_, _val_, _name_)                                                                    \
   result->_name_##Free = [](_arr_ *seq) noexcept { shards::arrayFree(*seq); };                                 \

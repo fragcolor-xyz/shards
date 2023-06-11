@@ -352,7 +352,7 @@ struct RenderTargetShard {
     return SHCCSTR("Groups a collection of textures into a render target that can be rendered into");
   }
 
-  static inline std::array<SHString, 2> AttachmentTableKeys{"Texture", "Name"};
+  static inline std::array<SHVar, 2> AttachmentTableKeys{Var("Texture"), Var("Name")};
   static inline shards::Types AttachmentTableTypes{{CoreInfo::StringType}};
   static inline shards::Type AttachmentTable = Type::TableOf(AttachmentTableTypes, AttachmentTableKeys);
 
@@ -376,9 +376,12 @@ struct RenderTargetShard {
     auto &attachments = rt->attachments;
     auto &table = _attachments.payload.tableValue;
     attachments.clear();
-    ForEach(table, [&](SHString &k, SHVar &v) {
+    ForEach(table, [&](SHVar &k, SHVar &v) {
+      if(k.valueType != SHType::String)
+        throw formatException("Invalid attachment name: {}", k);
       TexturePtr texture = varAsObjectChecked<TexturePtr>(v, Types::Texture);
-      attachments.emplace(k, texture);
+      std::string ks(k.payload.stringValue, k.payload.stringLen);
+      attachments.emplace(std::move(ks), texture);
     });
 
     return _renderTargetVar;

@@ -847,16 +847,16 @@ TEST_CASE("VarPayload") {
 
 TEST_CASE("SHMap") {
   SHMap x;
-  x.emplace("x", Var(10));
-  x.emplace("y", Var("Hello Set"));
+  x.emplace(Var("x"), Var(10));
+  x.emplace(Var("y"), Var("Hello Set"));
   SHVar vx{};
   vx.valueType = SHType::Table;
   vx.payload.tableValue.opaque = &x;
   vx.payload.tableValue.api = &GetGlobals().TableInterface;
 
   SHMap y;
-  y.emplace("y", Var("Hello Set"));
-  y.emplace("x", Var(10));
+  y.emplace(Var("y"), Var("Hello Set"));
+  y.emplace(Var("x"), Var(10));
 
   SHVar vy{};
   vy.valueType = SHType::Table;
@@ -864,8 +864,8 @@ TEST_CASE("SHMap") {
   vy.payload.tableValue.api = &GetGlobals().TableInterface;
 
   SHMap z;
-  z.emplace("y", Var("Hello Set"));
-  z.emplace("x", Var(11));
+  z.emplace(Var("y"), Var("Hello Set"));
+  z.emplace(Var("x"), Var(11));
 
   SHVar vz{};
   vz.valueType = SHType::Table;
@@ -888,12 +888,12 @@ TEST_CASE("SHMap") {
   SET_TABLE_COMMON_TESTS;
 
   REQUIRE(x.size() == 2);
-  REQUIRE(x.count("x") == 1);
-  x.erase("x");
-  REQUIRE(x.count("x") == 0);
-  REQUIRE(x.count("y") == 1);
-  x.erase("y");
-  REQUIRE(x.count("y") == 0);
+  REQUIRE(x.count(Var("x")) == 1);
+  x.erase(Var("x"));
+  REQUIRE(x.count(Var("x")) == 0);
+  REQUIRE(x.count(Var("y")) == 1);
+  x.erase(Var("y"));
+  REQUIRE(x.count(Var("y")) == 0);
 
   REQUIRE(vx != vy);
 }
@@ -1026,15 +1026,15 @@ TEST_CASE("Type") {
     }};
     Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
     Types InputTableTypes{{VerticesSeq, IndicesSeq}};
-    std::array<SHString, 2> InputTableKeys{"Vertices", "Indices"};
+    std::array<SHVar, 2> InputTableKeys{Var("Vertices"), Var("Indices")};
     Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
     SHTypeInfo t1 = InputTable;
     REQUIRE(t1.basicType == SHType::Table);
     REQUIRE(t1.table.types.len == 2);
     REQUIRE(t1.table.keys.len == 2);
-    REQUIRE(std::string(t1.table.keys.elements[0]) == "Vertices");
-    REQUIRE(std::string(t1.table.keys.elements[1]) == "Indices");
+    REQUIRE(t1.table.keys.elements[0] == Var("Vertices"));
+    REQUIRE(t1.table.keys.elements[1] == Var("Indices"));
     SHTypeInfo verticesSeq = VerticesSeq;
     SHTypeInfo indicesSeq = IndicesSeq;
     REQUIRE(t1.table.types.elements[0] == verticesSeq);
@@ -1110,10 +1110,10 @@ enum class XRHand { Left, Right };
 struct GamePadTable : public TableVar {
   GamePadTable()
       : TableVar(),                      //
-        buttons(get<SeqVar>("buttons")), //
-        sticks(get<SeqVar>("sticks")),   //
-        id((*this)["id"]),               //
-        connected((*this)["connected"]) {
+        buttons(get<SeqVar>(Var("buttons"))), //
+        sticks(get<SeqVar>(Var("sticks"))),   //
+        id((*this)[Var("id")]),               //
+        connected((*this)[Var("connected")]) {
     connected = Var(false);
   }
 
@@ -1128,9 +1128,9 @@ struct HandTable : public GamePadTable {
 
   HandTable()
       : GamePadTable(),                      //
-        handedness((*this)["handedness"]),   //
-        transform(get<SeqVar>("transform")), //
-        inverseTransform(get<SeqVar>("inverseTransform")) {
+        handedness((*this)[Var("handedness")]),   //
+        transform(get<SeqVar>(Var("transform"))), //
+        inverseTransform(get<SeqVar>(Var("inverseTransform"))) {
     handedness = Var::Enum(XRHand::Left, XrHandEnumInfo::VendorId, XrHandEnumInfo::TypeId);
   }
 
@@ -1337,4 +1337,69 @@ TEST_CASE("AWAIT/AWAITNE") {
   // number should be back now to normal
   CHECK(getTidePool()._workers.size() == TidePool::NumWorkers);
 #endif
+}
+TEST_CASE("TTableVar initialization", "[TTableVar]") {
+  SECTION("Default construction") {
+    TableVar tv;
+    REQUIRE(tv.valueType == SHType::Table);
+    REQUIRE(tv.payload.tableValue.opaque != nullptr);
+  }
+
+  SECTION("Copy construction") {
+    TableVar tv1;
+    tv1.insert("key1", Var("value1"));
+    TableVar tv2(tv1);
+    REQUIRE(tv2["key1"] == Var("value1"));
+  }
+
+  SECTION("Move construction") {
+    TableVar tv1;
+    tv1.insert("key1", Var("value1"));
+    TableVar tv2(std::move(tv1));
+    REQUIRE(tv2["key1"] == Var("value1"));
+  }
+
+  SECTION("Initializer list construction") {
+    TableVar tv1{{Var("key1"), Var("value1")}, {Var("key2"), Var("value2")}};
+    REQUIRE(tv1["key1"] == Var("value1"));
+    REQUIRE(tv1["key2"] == Var("value2"));
+  }
+}
+
+TEST_CASE("TTableVar operations", "[TTableVar]") {
+  SECTION("Assignment operator") {
+    TableVar tv1;
+    tv1.insert("key1", Var("value1"));
+    TableVar tv2;
+    tv2 = tv1;
+    REQUIRE(tv2["key1"] == Var("value1"));
+  }
+
+  SECTION("Move assignment operator") {
+    TableVar tv1;
+    tv1.insert("key1", Var("value1"));
+    TableVar tv2;
+    tv2 = std::move(tv1);
+    REQUIRE(tv2["key1"] == Var("value1"));
+  }
+
+  SECTION("Access operator") {
+    TableVar tv;
+    tv.insert("key1", Var("value1"));
+    REQUIRE(tv["key1"] == Var("value1"));
+  }
+
+  SECTION("Check key existence") {
+    TableVar tv;
+    tv.insert("key1", Var("value1"));
+    REQUIRE(tv.hasKey("key1"));
+    REQUIRE_FALSE(tv.hasKey("key2"));
+  }
+
+  SECTION("Remove key") {
+    TableVar tv;
+    tv.insert("key1", Var("value1"));
+    tv.remove("key1");
+    REQUIRE_FALSE(tv.hasKey("key1"));
+  }
 }

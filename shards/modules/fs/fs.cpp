@@ -4,7 +4,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
-#include <shards/core/utility.hpp>
+#include <shards/utility.hpp>
 #include <boost/algorithm/string.hpp>
 #include <fstream>
 

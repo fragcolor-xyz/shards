@@ -815,14 +815,12 @@ struct Serialization {
       }
 
       uint64_t len;
-      std::string keyBuf;
       read((uint8_t *)&len, sizeof(uint64_t));
       for (uint64_t i = 0; i < len; i++) {
-        uint32_t klen;
-        read((uint8_t *)&klen, sizeof(uint32_t));
-        keyBuf.resize(klen);
-        read((uint8_t *)keyBuf.c_str(), klen);
+        SHVar keyBuf{};
+        deserialize(read, keyBuf);
         auto &dst = (*map)[keyBuf];
+        destroyVar(keyBuf); // we don't need the key anymore
         deserialize(read, dst);
       }
       break;
@@ -1135,14 +1133,10 @@ struct Serialization {
         total += sizeof(uint64_t);
         SHTableIterator tit;
         t.api->tableGetIterator(t, &tit);
-        SHString k;
+        SHVar k;
         SHVar v;
         while (t.api->tableNext(t, &tit, &k, &v)) {
-          auto klen = uint32_t(strlen(k));
-          write((const uint8_t *)&klen, sizeof(uint32_t));
-          total += sizeof(uint32_t);
-          write((const uint8_t *)k, klen);
-          total += klen;
+          total += serialize(k, write);
           total += serialize(v, write);
         }
       } else {
