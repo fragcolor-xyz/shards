@@ -623,7 +623,8 @@ struct ToJson {
       ForEach(tab, [&](auto &key, auto &val) {
         json sj{};
         anyDump(sj, val);
-        assert(key.valueType == SHType::String);
+        if(key.valueType != SHType::String)
+          throw shards::ActivationError("Table keys must be strings.");
         std::string keyStr(key.payload.stringValue, key.payload.stringLen);
         table.emplace(std::move(keyStr), sj);
         return true;
