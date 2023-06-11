@@ -15,9 +15,9 @@ struct MeshShard {
   static inline shards::Types IndicesSeqTypes{{CoreInfo::IntType}};
   static inline Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
   static inline shards::Types InputTableTypes{{VerticesSeq, IndicesSeq}};
-  static inline const char *InputVerticesTableKey = "Vertices";
-  static inline const char *InputIndicesTableKey = "Indices";
-  static inline std::array<SHString, 2> InputTableKeys{InputVerticesTableKey, InputIndicesTableKey};
+  static inline Var InputVerticesTableKey = Var("Vertices");
+  static inline Var InputIndicesTableKey = Var("Indices");
+  static inline std::array<SHVar, 2> InputTableKeys{InputVerticesTableKey, InputIndicesTableKey};
   static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
   static SHTypesInfo inputTypes() { return InputTable; }

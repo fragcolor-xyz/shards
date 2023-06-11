@@ -743,12 +743,12 @@ struct VariableBase {
 // Takes an original table type and either adds a new key/type pair or updates an existing one
 // Returns the full new type info, the types/keys are owned by the typeInfoStorage and should be manually freed
 //  keyToAdd can be null to indicate a variable key, which will convert this into an unkeyed table
-static const SHTypeInfo &updateTableType(SHTypeInfo &typeInfoStorage, const char *keyToAdd, const SHTypeInfo &typeToAdd,
+static const SHTypeInfo &updateTableType(SHTypeInfo &typeInfoStorage, const SHVar* keyToAdd, const SHTypeInfo &typeToAdd,
                                          const SHTypeInfo *existingType = nullptr) {
   std::optional<size_t> replacedIndex;
 
   SHTypesInfo &typeStorage = typeInfoStorage.table.types;
-  SHStrings &keyStorage = typeInfoStorage.table.keys;
+  SHSeq &keyStorage = typeInfoStorage.table.keys;
   typeInfoStorage.basicType = SHType::Table;
 
   shards::arrayResize(typeStorage, 0);
@@ -761,10 +761,11 @@ static const SHTypeInfo &updateTableType(SHTypeInfo &typeInfoStorage, const char
     // empty key means it's a variable
     if (keyToAdd) {
       for (size_t i = 0; i < keys.len; i++) {
-        if (keyToAdd && strcmp(keys.elements[i], keyToAdd) == 0) {
+        if (keyToAdd && keys.elements[i] == *keyToAdd) {
           replacedIndex = i;
         }
-        shards::arrayPush(keyStorage, strdup(keys.elements[i]));
+
+        shards::arrayPush(keyStorage, keys.elements[i]);
       }
     }
 
@@ -781,7 +782,7 @@ static const SHTypeInfo &updateTableType(SHTypeInfo &typeInfoStorage, const char
   // Add a new type
   if (!replacedIndex) {
     if (keyToAdd)
-      shards::arrayPush(keyStorage, strdup(keyToAdd));
+      shards::arrayPush(keyStorage, keyToAdd);
     shards::arrayPush(typeStorage, typeToAdd);
   }
 
@@ -817,7 +818,6 @@ static const SHTypeInfo &updateSeqType(SHTypeInfo &typeInfoStorage, const SHType
 
 struct SetBase : public VariableBase {
   Type _tableTypeInfo{};
-  SHString _tableContentKey{};
   SHTypeInfo _tableContentInfo{};
   bool _isExposed{false}; // notice this is used in Update only
 
@@ -904,7 +904,7 @@ struct SetUpdateBase : public SetBase {
     }
 
     auto &kv = _key.get();
-    SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+    SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
 
     // Clone will try to recycle memory and such
     cloneVar(*vptr, input);
@@ -968,7 +968,7 @@ struct Set : public SetUpdateBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? _key->payload.stringValue : nullptr, data.inputType,
+      _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? &_key : nullptr, data.inputType,
                                        existingExposedType ? &existingExposedType->exposedType : nullptr);
 
       if (_global) {
@@ -1049,6 +1049,9 @@ struct Set : public SetUpdateBase {
       _onStartConnection.release();
     }
 
+    // for (size_t i = 0; i < _tableType.table.keys.len; i++) {
+    //   shards::destroyVar(_tableType.table.keys.elements[i]);
+    // }
     shards::arrayFree(_tableType.table.keys);
     shards::arrayFree(_tableType.table.types);
   }
@@ -1115,9 +1118,7 @@ struct Ref : public SetBase {
         _tableTypeInfo = SHTypeInfo{SHType::Table, {.table = {.types = {&_tableContentInfo, 1, 0}}}};
       } else {
         SHVar kv = _key;
-        _tableContentKey = kv.payload.stringValue;
-        _tableTypeInfo =
-            SHTypeInfo{SHType::Table, {.table = {.keys = {&_tableContentKey, 1, 0}, .types = {&_tableContentInfo, 1, 0}}}};
+        _tableTypeInfo = SHTypeInfo{SHType::Table, {.table = {.keys = {&kv, 1, 0}, .types = {&_tableContentInfo, 1, 0}}}};
       }
       _exposedInfo =
           ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, false, true));
@@ -1174,7 +1175,7 @@ struct Ref : public SetBase {
       }
 
       auto &kv = _key.get();
-      SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+      SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
 
       // Notice, NO Cloning!
       memcpy(vptr, &input, sizeof(SHVar));
@@ -1231,7 +1232,7 @@ struct Update : public SetUpdateBase {
             // if keys are populated they are not variables
             SHVar kv = _key;
             auto &key = tableKeys.elements[y];
-            if (strcmp(kv.payload.stringValue, key) == 0) {
+            if (key != kv) {
               if (data.inputType != tableTypes.elements[y]) {
                 throw SHException("Update: error, update is changing the variable type.");
               }
@@ -1317,7 +1318,7 @@ struct Get : public VariableBase {
   SHVar _defaultValue{};
   SHTypeInfo _defaultType{};
   std::vector<SHTypeInfo> _tableTypes{};
-  std::vector<SHString> _tableKeys{};
+  std::vector<SHVar> _tableKeys{}; // should be fine not to be OwnedVar
   Shard *_shard{nullptr};
 
   static inline shards::ParamsInfo getParamsInfo = shards::ParamsInfo(
@@ -1368,7 +1369,7 @@ struct Get : public VariableBase {
               // if keys are populated they are not variables
               SHVar kv = _key;
               auto &key = tableKeys.elements[y];
-              if (strcmp(kv.payload.stringValue, key) == 0) {
+              if (key == kv) {
                 return tableTypes.elements[y];
               }
             }
@@ -1424,7 +1425,7 @@ struct Get : public VariableBase {
             if (cv.exposedType.table.keys.len == 1) {
               _tableKeys.emplace_back(cv.exposedType.table.keys.elements[0]);
             } else {
-              _tableKeys.emplace_back("");
+              _tableKeys.emplace_back(Var(""));
             }
           } else {
             return cv.exposedType;
@@ -1511,9 +1512,9 @@ struct Get : public VariableBase {
       if (_isTable) {
         if (_target->valueType == SHType::Table) {
           auto &kv = _key.get();
-          if (_target->payload.tableValue.api->tableContains(_target->payload.tableValue, kv.payload.stringValue)) {
+          if (_target->payload.tableValue.api->tableContains(_target->payload.tableValue, kv)) {
             // Has it
-            SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+            SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
 
             if (unlikely(_defaultValue.valueType != SHType::None && !defaultTypeCheck(*vptr))) {
               return _defaultValue;
@@ -1640,7 +1641,7 @@ struct SeqBase : public VariableBase {
 
       if (!_key.isVariable()) {
         auto &kv = _key.get();
-        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
 
         auto &seq = *_cell;
         if (seq.valueType != SHType::Seq) {
@@ -1663,7 +1664,7 @@ struct SeqBase : public VariableBase {
 
   void fillVariableCell() {
     auto &kv = _key.get();
-    _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+    _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
 
     auto &seq = *_cell;
     if (seq.valueType != SHType::Seq) {
@@ -1688,10 +1689,11 @@ struct SeqBase : public VariableBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void destroy() {
-    if (_tableInfo.table.keys.elements)
-      shards::arrayFree(_tableInfo.table.keys);
-    if (_tableInfo.table.types.elements)
-      shards::arrayFree(_tableInfo.table.types);
+    // for (size_t i = 0; i < _tableInfo.table.keys.len; i++) {
+    //   shards::destroyVar(_tableInfo.table.keys.elements[i]);
+    // }
+    shards::arrayFree(_tableInfo.table.keys);
+    shards::arrayFree(_tableInfo.table.types);
   }
 };
 
@@ -1747,7 +1749,7 @@ struct Push : public SeqBase {
       SHTypeInfo *existingSeqType{};
       if (existingTableType) {
         for(size_t i = 0; i < existingTableType->table.keys.len; i++) {
-          if (strcmp(existingTableType->table.keys.elements[i], _key->payload.stringValue) == 0) {
+          if (existingTableType->table.keys.elements[i] == _key) {
             existingSeqType = &existingTableType->table.types.elements[i];
             break;
           }
@@ -1755,7 +1757,7 @@ struct Push : public SeqBase {
       }
 
       updateSeqType(_seqInfo, data.inputType, existingSeqType);
-      updateTableType(_tableInfo, !_key.isVariable() ? _key->payload.stringValue : nullptr, _seqInfo, existingTableType);
+      updateTableType(_tableInfo, !_key.isVariable() ? &(SHVar&)_key : nullptr, _seqInfo, existingTableType);
 
       if (_global) {
         _exposedInfo = ExposedInfo(
@@ -1773,7 +1775,7 @@ struct Push : public SeqBase {
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if we got key it's not a variable
-            if (strcmp(_key->payload.stringValue, tableKeys.elements[y]) == 0 &&
+            if (_key == tableKeys.elements[y] &&
                 tableTypes.elements[y].basicType == SHType::Seq) {
               updateTableInfo(false, &data.shared.elements[i].exposedType);
               return data.inputType; // found lets escape
@@ -1953,7 +1955,7 @@ struct Sequence : public SeqBase {
       shards::arrayPush(_tableInfo.table.types, stype);
       if (!_key.isVariable()) {
         SHVar kv = _key;
-        shards::arrayPush(_tableInfo.table.keys, kv.payload.stringValue);
+        shards::arrayPush(_tableInfo.table.keys, kv);
       }
       if (_global) {
         _exposedInfo =
@@ -1979,7 +1981,7 @@ struct Sequence : public SeqBase {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here, key is not variable
             SHVar kv = _key;
-            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0) {
+            if (kv == tableKeys.elements[y]) {
               throw ComposeError("Sequence - Variable " + std::string(kv.payload.stringValue) + " in table " + _name +
                                  " already exists.");
             }
@@ -2042,7 +2044,7 @@ struct TableDecl : public VariableBase {
 
       if (!_key.isVariable()) {
         auto &kv = _key.get();
-        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
 
         auto table = _cell;
         if (table->valueType != SHType::Table) {
@@ -2068,7 +2070,7 @@ struct TableDecl : public VariableBase {
 
   void fillVariableCell() {
     auto &kv = _key.get();
-    _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+    _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
 
     auto table = _cell;
     if (table->valueType != SHType::Table) {
@@ -2099,10 +2101,8 @@ struct TableDecl : public VariableBase {
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   void destroy() {
-    if (_tableInfo.table.keys.elements)
-      shards::arrayFree(_tableInfo.table.keys);
-    if (_tableInfo.table.types.elements)
-      shards::arrayFree(_tableInfo.table.types);
+    shards::arrayFree(_tableInfo.table.keys);
+    shards::arrayFree(_tableInfo.table.types);
   }
 
   ParamVar _types{shards::Var::Enum(BasicTypes::Any, CoreCC, 'type')};
@@ -2215,17 +2215,13 @@ struct TableDecl : public VariableBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     const auto updateTableInfo = [this] {
       _tableInfo.basicType = SHType::Table;
-      if (_tableInfo.table.types.elements) {
-        shards::arrayFree(_tableInfo.table.types);
-      }
-      if (_tableInfo.table.keys.elements) {
-        shards::arrayFree(_tableInfo.table.keys);
-      }
+      shards::arrayFree(_tableInfo.table.types);
+      shards::arrayFree(_tableInfo.table.keys);
       auto stype = SHTypeInfo{SHType::Table, {.table = {.keys = {nullptr, 0, 0}, .types = _seqTypes}}};
       shards::arrayPush(_tableInfo.table.types, stype);
       if (!_key.isVariable()) {
         SHVar kv = _key;
-        shards::arrayPush(_tableInfo.table.keys, kv.payload.stringValue);
+        shards::arrayPush(_tableInfo.table.keys, kv);
       }
       if (_global) {
         _exposedInfo =
@@ -2252,7 +2248,7 @@ struct TableDecl : public VariableBase {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here, key is not variable
             SHVar kv = _key;
-            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0) {
+            if (kv == tableKeys.elements[y]) {
               throw ComposeError("Table - Variable " + std::string(kv.payload.stringValue) + " in table " + _name +
                                  " already exists.");
             }
@@ -2313,7 +2309,7 @@ struct SeqUser : VariableBase {
 
       if (!_key.isVariable()) {
         SHVar kv = _key;
-        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
       } else {
         return; // checked during activate
       }
@@ -2326,7 +2322,7 @@ struct SeqUser : VariableBase {
 
   void fillVariableCell() {
     auto &kv = _key.get();
-    _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+    _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
   }
 
   void warmup(SHContext *context) {
@@ -2523,7 +2519,7 @@ struct Pop : SeqUser {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here _key is not variable
             SHVar kv = _key;
-            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == SHType::Seq) {
+            if (kv == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
               // if we have 1 type we can predict the output
               // with more just make us a any seq, will need ExpectX shards
               // likely
@@ -2597,7 +2593,7 @@ struct PopFront : SeqUser {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here _key is not variable
             SHVar kv = _key;
-            if (strcmp(kv.payload.stringValue, tableKeys.elements[y]) == 0 && tableTypes.elements[y].basicType == SHType::Seq) {
+            if (kv == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
               // if we have 1 type we can predict the output
               // with more just make us a any seq, will need ExpectX shards
               // likely
@@ -2830,7 +2826,7 @@ struct Take {
                 throw ComposeError("Take: Expected a sequence of strings as keys.");
               }
               for (uint32_t i = 0; i < data.inputType.table.keys.len; i++) {
-                if (strcmp(record.payload.stringValue, data.inputType.table.keys.elements[i]) == 0) {
+                if (record == data.inputType.table.keys.elements[i]) {
                   _seqOutputTypes.emplace_back(data.inputType.table.types.elements[i]);
                 }
               }
@@ -2845,7 +2841,7 @@ struct Take {
             return _seqOutputType;
           } else {
             for (uint32_t i = 0; i < data.inputType.table.keys.len; i++) {
-              if (strcmp(_indices.payload.stringValue, data.inputType.table.keys.elements[i]) == 0) {
+              if (_indices == data.inputType.table.keys.elements[i]) {
                 return data.inputType.table.types.elements[i];
               }
             }
@@ -2951,14 +2947,14 @@ struct Take {
     // return value
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
     if (!_seqOutput) {
-      const auto key = indices.payload.stringValue;
+      const auto key = indices;
       const auto val = input.payload.tableValue.api->tableAt(input.payload.tableValue, key);
       return *val;
     } else {
       const uint32_t nkeys = indices.payload.seqValue.len;
       shards::arrayResize(_cachedSeq, nkeys);
       for (uint32_t i = 0; nkeys > i; i++) {
-        const auto key = indices.payload.seqValue.elements[i].payload.stringValue;
+        const auto key = indices.payload.seqValue.elements[i];
         const auto val = input.payload.tableValue.api->tableAt(input.payload.tableValue, key);
         _cachedSeq.elements[i] = *val;
       }

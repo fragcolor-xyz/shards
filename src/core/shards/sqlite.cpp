@@ -183,11 +183,12 @@ struct Query : public Base {
       if (colSeqs.empty()) {
         for (int i = 0; i < count; i++) {
           auto colName = sqlite3_column_name(prepared->get(), i);
-          auto &col = output[colName];
+          auto colNameVar = Var(colName);
+          auto &col = output[colNameVar];
           if (col.valueType == SHType::None) {
             SeqVar seq;
-            output.insert(colName, std::move(seq));
-            colSeqs.push_back(&asSeq(output[colName]));
+            output.insert(colNameVar, std::move(seq));
+            colSeqs.push_back(&asSeq(output[colNameVar]));
           } else {
             auto &seq = asSeq(col);
             seq.clear();

@@ -122,9 +122,9 @@ struct Type {
     return res;
   }
 
-  template <size_t N> static Type TableOf(SHTypesInfo types, const std::array<SHString, N> &keys) {
+  template <size_t N> static Type TableOf(SHTypesInfo types, const std::array<SHVar, N> &keys) {
     Type res;
-    auto &k = const_cast<std::array<SHString, N> &>(keys);
+    auto &k = const_cast<std::array<SHVar, N> &>(keys);
     res._type = {SHType::Table, {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
     return res;
   }
@@ -969,7 +969,7 @@ using VarPayload = std::variant<IntVarPayload, Int2VarPayload, Int3VarPayload, I
 template <class Function> inline void ForEach(const SHTable &table, Function &&f) {
   SHTableIterator tit;
   table.api->tableGetIterator(table, &tit);
-  SHString k;
+  SHVar k;
   SHVar v;
   while (table.api->tableNext(table, &tit, &k, &v)) {
     f(k, v);

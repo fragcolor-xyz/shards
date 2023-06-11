@@ -22,10 +22,10 @@ namespace shards::Animations {
 using namespace linalg::aliases;
 using shards::Time::DeltaTimer;
 
-static auto getKeyframeTime(const SHVar &keyframe) { return (float)((TableVar &)keyframe).get<Var>("Time"); };
-static auto getKeyframeValue(const SHVar &keyframe) { return ((TableVar &)keyframe).get<Var>("Value"); };
+static auto getKeyframeTime(const SHVar &keyframe) { return (float)((TableVar &)keyframe).get<Var>(Var("Time")); };
+static auto getKeyframeValue(const SHVar &keyframe) { return ((TableVar &)keyframe).get<Var>(Var("Value")); };
 static auto getKeyframeInterpolation(const SHVar &keyframe) {
-  Var &v = ((TableVar &)keyframe).get<Var>("Interpolation");
+  Var &v = ((TableVar &)keyframe).get<Var>(Var("Interpolation"));
   if (v.valueType == SHType::Enum) {
     return (Interpolation)v.payload.enumValue;
   }
@@ -34,7 +34,7 @@ static auto getKeyframeInterpolation(const SHVar &keyframe) {
 static float getAnimationDuration(const SHVar &animation) {
   float duration{};
   for (auto &track : ((SeqVar &)animation)) {
-    auto &keyframes = ((TableVar &)track).get<SeqVar>("Frames");
+    auto &keyframes = ((TableVar &)track).get<SeqVar>(Var("Frames"));
     if (keyframes.size() > 0) {
       auto &last = keyframes.data()[keyframes.size() - 1];
       duration = std::max(duration, getKeyframeTime(last));
@@ -192,7 +192,7 @@ struct PlayShard {
     }
     size_t indexB = std::distance(keyframes.begin(), it);
     size_t indexA = indexB - 1;
-    if (indexA == ~0) {
+    if (indexA == size_t(~0)) {
       outputValue = getKeyframeValue(keyframes[indexB]);
       return;
     }
@@ -239,16 +239,16 @@ struct PlayShard {
     float time{(Var &)input};
     for (auto &trackVar : _animation.get()) {
       TableVar &trackTable = (TableVar &)trackVar;
-      SeqVar &pathVar = trackTable.get<SeqVar>("Path");
+      SeqVar &pathVar = trackTable.get<SeqVar>(Var("Path"));
 
       Path path(pathVar.data(), pathVar.size());
 
       SHVar value;
-      evaluateTrack(value, trackTable.get<SeqVar>("Frames"), time);
+      evaluateTrack(value, trackTable.get<SeqVar>(Var("Frames")), time);
 
       TableVar outFrame;
-      outFrame.get<OwnedVar>("Path") = pathVar;
-      outFrame.get<OwnedVar>("Value") = value;
+      outFrame.get<OwnedVar>(Var("Path")) = pathVar;
+      outFrame.get<OwnedVar>(Var("Value")) = value;
 
       (TableVar &)_output.emplace_back() = std::move(outFrame);
     }
