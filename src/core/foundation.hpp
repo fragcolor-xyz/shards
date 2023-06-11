@@ -5,6 +5,7 @@
 #define SH_CORE_FOUNDATION
 
 // must go first
+#include "utility.hpp"
 #if _WIN32
 #include <winsock2.h>
 #endif
@@ -259,7 +260,7 @@ struct SHAlignedMap : public boost::container::flat_map<
                           boost::container::stable_vector<std::pair<const K, V>,
                                                           boost::alignment::aligned_allocator<std::pair<const K, V>, 16>>> {};
 
-struct SHTableImpl : public SHAlignedMap<std::string, shards::OwnedVar> {
+struct SHTableImpl : public SHAlignedMap<shards::OwnedVar, shards::OwnedVar> {
 #if SHARDS_TRACKING
   SHTableImpl() {}
   ~SHTableImpl() {}
@@ -491,13 +492,13 @@ public:
             *mapIt = map->begin();
           },
       .tableNext =
-          [](SHTable table, SHTableIterator *inIter, SHString *outKey, SHVar *outVar) {
+          [](SHTable table, SHTableIterator *inIter, SHVar *outKey, SHVar *outVar) {
             if (inIter == nullptr)
               SHLOG_FATAL("tableGetIterator - inIter was nullptr");
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
             shards::SHMapIt *mapIt = reinterpret_cast<shards::SHMapIt *>(inIter);
             if ((*mapIt) != map->end()) {
-              *outKey = (*(*mapIt)).first.c_str();
+              *outKey = (*(*mapIt)).first;
               *outVar = (*(*mapIt)).second;
               (*mapIt)++;
               return true;
@@ -511,20 +512,26 @@ public:
             return map->size();
           },
       .tableContains =
-          [](SHTable table, const char *key) {
+          [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            return map->count(key) > 0;
+            // the following is safe cos count takes a const ref
+            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            return map->count(*k) > 0;
           },
       .tableAt =
-          [](SHTable table, const char *key) {
+          [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            SHVar &vRef = (*map)[key];
+            // the following is safe cos []] takes a const ref
+            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            SHVar &vRef = (*map)[*k];
             return &vRef;
           },
       .tableRemove =
-          [](SHTable table, const char *key) {
+          [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            map->erase(key);
+            // the following is safe cos erase takes a const ref
+            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            map->erase(*k);
           },
       .tableClear =
           [](SHTable table) {
@@ -1414,7 +1421,7 @@ inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
     shards::ForEach(var.payload.seqValue, [&](const SHVar &v) { collectRequiredVariables(exposed, out, v); });
     break;
   case SHType::Table:
-    shards::ForEach(var.payload.tableValue, [&](const char *key, const SHVar &v) { collectRequiredVariables(exposed, out, v); });
+    shards::ForEach(var.payload.tableValue, [&](const SHVar &key, const SHVar &v) { collectRequiredVariables(exposed, out, v); });
     break;
   default:
     break;

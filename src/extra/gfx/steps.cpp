@@ -54,15 +54,15 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
     auto &table = elem.payload.tableValue;
 
     SHVar nameVar;
-    if (!getFromTable(context, table, "Name", nameVar)) {
+    if (!getFromTable(context, table, Var("Name"), nameVar)) {
       throw std::runtime_error("Output :Name is required");
     }
 
     SHVar formatVar{};
-    bool hasFormat = getFromTable(context, table, "Format", formatVar);
+    bool hasFormat = getFromTable(context, table, Var("Format"), formatVar);
 
     SHVar textureVar;
-    bool hasTexture = getFromTable(context, table, "Texture", textureVar);
+    bool hasTexture = getFromTable(context, table, Var("Texture"), textureVar);
 
     if (hasTexture && hasFormat)
       throw std::runtime_error(":Format and :Texture are exclusive");
@@ -84,7 +84,7 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
     std::optional<ClearValues> clearValues;
 
     SHVar clearValueVar;
-    if (getFromTable(context, table, "Clear", clearValueVar)) {
+    if (getFromTable(context, table, Var("Clear"), clearValueVar)) {
       if (clearValueVar.valueType == SHType::Bool) {
         // Clear with default values
         if (clearValueVar.payload.boolValue) {
@@ -101,11 +101,11 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
       float depth = 1.0f;
       uint32_t stencil = 0;
       bool anySet = false;
-      if (getFromTable(context, table, "ClearDepth", clearValueVar)) {
+      if (getFromTable(context, table, Var("ClearDepth"), clearValueVar)) {
         depth = toVec<float>(clearValueVar);
         anySet = true;
       }
-      if (getFromTable(context, table, "ClearStencil", clearValueVar)) {
+      if (getFromTable(context, table, Var("ClearStencil"), clearValueVar)) {
         checkType(clearValueVar.valueType, SHType::Int, "ClearStencil");
         stencil = clearValueVar.payload.intValue;
         anySet = true;
@@ -146,7 +146,7 @@ template <typename T> void applyOutputScale(SHContext *context, T &step, const S
 
 template <typename T> void applyAll(SHContext *context, T &step, const SHTable &inputTable) {
   SHVar outputsVar;
-  if (getFromTable(context, inputTable, "Outputs", outputsVar))
+  if (getFromTable(context, inputTable, Var("Outputs"), outputsVar))
     shared::applyOutputs(context, step, outputsVar);
   else {
     if (step.output)
@@ -154,7 +154,7 @@ template <typename T> void applyAll(SHContext *context, T &step, const SHTable &
   }
 
   SHVar outputScaleVar;
-  if (getFromTable(context, inputTable, "OutputScale", outputScaleVar)) {
+  if (getFromTable(context, inputTable, Var("OutputScale"), outputScaleVar)) {
     shared::applyOutputScale(context, step, outputScaleVar);
   } else {
     if (step.output)
@@ -163,7 +163,7 @@ template <typename T> void applyAll(SHContext *context, T &step, const SHTable &
 
   step.features.clear();
   SHVar featuresVar;
-  if (getFromTable(context, inputTable, "Features", featuresVar))
+  if (getFromTable(context, inputTable, Var("Features"), featuresVar))
     applyFeatures(context, step.features, featuresVar);
 }
 
@@ -246,14 +246,14 @@ struct DrawablePassShard {
     shared::applyAll(context, step, inputTable);
 
     SHVar sortVar;
-    if (getFromTable(context, inputTable, "Sort", sortVar))
+    if (getFromTable(context, inputTable, Var("Sort"), sortVar))
       applySorting(context, step, sortVar);
     else {
       step.sortMode = SortMode::Batch;
     }
 
     SHVar queueVar;
-    if (getFromTable(context, inputTable, "Queue", queueVar))
+    if (getFromTable(context, inputTable, Var("Queue"), queueVar))
       applyQueue(context, step, queueVar);
     else {
       throw formatException("DrawablePass requires a queue");
@@ -312,9 +312,12 @@ struct EffectPassShard {
 
     _composedWith.clear();
     for (auto &[k, v] : input.payload.tableValue) {
+      if (k.valueType != SHType::String)
+        throw formatException("ComposeWith key must be a string");
+      std::string keyStr(k.payload.stringValue, k.payload.stringLen);
       ParamVar pv(v);
       pv.warmup(context);
-      auto &var = _composedWith.emplace(k, pv.get()).first->second;
+      auto &var = _composedWith.emplace(std::move(keyStr), pv.get()).first->second;
       if (var.valueType == SHType::None) {
         throw formatException("Required variable {} not found", k);
       }
@@ -349,19 +352,19 @@ struct EffectPassShard {
     shared::applyAll(context, step, inputTable);
 
     SHVar inputsVar;
-    if (getFromTable(context, inputTable, "Inputs", inputsVar))
+    if (getFromTable(context, inputTable, Var("Inputs"), inputsVar))
       applyInputs(context, step, inputsVar);
     else {
       step.inputs = RenderStepInputs{"color"};
     }
 
     SHVar paramsVar;
-    if (getFromTable(context, inputTable, "Params", paramsVar))
+    if (getFromTable(context, inputTable, Var("Params"), paramsVar))
       applyParams(context, step, paramsVar);
 
     // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
     SHVar composeWithVar;
-    if (getFromTable(context, inputTable, "ComposeWith", composeWithVar)) {
+    if (getFromTable(context, inputTable, Var("ComposeWith"), composeWithVar)) {
       // Always create a new object to force shader recompile
       wrapperFeature = std::make_shared<Feature>();
       applyComposeWith(context, composeWithVar);
@@ -372,7 +375,7 @@ struct EffectPassShard {
       _generatedFeatures.clear();
 
       SHVar entryPointVar;
-      if (getFromTable(context, inputTable, "EntryPoint", entryPointVar)) {
+      if (getFromTable(context, inputTable, Var("EntryPoint"), entryPointVar)) {
         // Add default base transform
         _generatedFeatures.push_back(features::Transform::create(false, false));
 

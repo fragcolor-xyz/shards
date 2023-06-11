@@ -20,6 +20,7 @@
 #include "shards_utils.hpp"
 #include "brancher.hpp"
 #include "iterator.hpp"
+#include "utility.hpp"
 #include <algorithm>
 #include <array>
 #include <deque>
@@ -136,13 +137,13 @@ struct FeatureShard {
   */
 
   static inline shards::Types GeneratedViewInputTableTypes{{Types::DrawQueue, Types::View, Types::FeatureSeq}};
-  static inline std::array<SHString, 3> GeneratedViewInputTableKeys{"Queue", "View", "Features"};
+  static inline std::array<SHVar, 3> GeneratedViewInputTableKeys{Var("Queue"), Var("View"), Var("Features")};
   static inline Type GeneratedViewInputTableType = Type::TableOf(GeneratedViewInputTableTypes, GeneratedViewInputTableKeys);
 
   static inline shards::Type DrawableDataSeqType = Type::SeqOf(CoreInfo::IntType);
   static inline shards::Types GeneratedDrawInputTableTypes{
       {Types::DrawQueue, Types::View, Types::FeatureSeq, DrawableDataSeqType}};
-  static inline std::array<SHString, 4> GeneratedDrawInputTableKeys{"Queue", "View", "Features", "Drawables"};
+  static inline std::array<SHVar, 4> GeneratedDrawInputTableKeys{Var("Queue"), Var("View"), Var("Features"), Var("Drawables")};
   static inline Type GeneratedDrawInputTableType = Type::TableOf(GeneratedDrawInputTableTypes, GeneratedDrawInputTableKeys);
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
@@ -245,10 +246,18 @@ public:
             [&](auto &&arg) {
               using T = std::decay_t<decltype(arg)>;
               if constexpr (std::is_same_v<T, shader::NumFieldType>) {
-                auto &param = outBasicParams.emplace_back(k, arg);
+                if (k.valueType != SHType::String) {
+                  throw formatException("Generator wire returns invalid type {} for key {}", v, k);
+                }
+                std::string ks(k.payload.stringValue, k.payload.stringLen);
+                auto &param = outBasicParams.emplace_back(std::move(ks), arg);
                 param.bindingFrequency = bindingFreq;
               } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
-                auto &param = outTextureParams.emplace_back(k, arg);
+                if (k.valueType != SHType::String) {
+                  throw formatException("Generator wire returns invalid type {} for key {}", v, k);
+                }
+                std::string ks(k.payload.stringValue, k.payload.stringLen);
+                auto &param = outTextureParams.emplace_back(std::move(ks), arg);
                 param.bindingFrequency = bindingFreq;
               } else {
                 throw formatException("Generator wire returns invalid type {} for key {}", v, k);
@@ -318,13 +327,13 @@ public:
     const SHTable &inputTable = input.payload.tableValue;
 
     SHVar operationVar;
-    if (getFromTable(context, inputTable, "Operation", operationVar)) {
+    if (getFromTable(context, inputTable, Var("Operation"), operationVar)) {
       blendComponent.operation = WGPUBlendOperation(operationVar.payload.enumValue);
     } else {
       throw formatException(":Blend table require an :Operation");
     }
 
-    auto applyFactor = [](SHContext *context, WGPUBlendFactor &factor, const char *key, const SHTable &inputTable) {
+    auto applyFactor = [](SHContext *context, WGPUBlendFactor &factor, const SHVar &key, const SHTable &inputTable) {
       SHVar factorVar;
       if (getFromTable(context, inputTable, key, factorVar)) {
         factor = WGPUBlendFactor(factorVar.payload.enumValue);
@@ -332,8 +341,8 @@ public:
         throw formatException(":Blend table require a :{} factor", key);
       }
     };
-    applyFactor(context, blendComponent.srcFactor, "Src", inputTable);
-    applyFactor(context, blendComponent.dstFactor, "Dst", inputTable);
+    applyFactor(context, blendComponent.srcFactor, Var("Src"), inputTable);
+    applyFactor(context, blendComponent.dstFactor, Var("Dst"), inputTable);
   }
 
   void applyBlendState(SHContext *context, BlendState &blendState, const SHVar &input) {
@@ -341,11 +350,11 @@ public:
     const SHTable &inputTable = input.payload.tableValue;
 
     SHVar colorVar;
-    if (getFromTable(context, inputTable, "Color", colorVar)) {
+    if (getFromTable(context, inputTable, Var("Color"), colorVar)) {
       applyBlendComponent(context, blendState.color, colorVar);
     }
     SHVar alphaVar;
-    if (getFromTable(context, inputTable, "Alpha", alphaVar)) {
+    if (getFromTable(context, inputTable, Var("Alpha"), alphaVar)) {
       applyBlendComponent(context, blendState.alpha, alphaVar);
     }
   }
@@ -355,18 +364,18 @@ public:
     const SHTable &inputTable = input.payload.tableValue;
 
     SHVar depthCompareVar;
-    if (getFromTable(context, inputTable, "DepthCompare", depthCompareVar)) {
+    if (getFromTable(context, inputTable, Var("DepthCompare"), depthCompareVar)) {
       checkEnumType(depthCompareVar, Types::CompareFunctionEnumInfo::Type, ":Shaders DepthCompare");
       state.set_depthCompare(WGPUCompareFunction(depthCompareVar.payload.enumValue));
     }
 
     SHVar depthWriteVar;
-    if (getFromTable(context, inputTable, "DepthWrite", depthWriteVar)) {
+    if (getFromTable(context, inputTable, Var("DepthWrite"), depthWriteVar)) {
       state.set_depthWrite(depthWriteVar.payload.boolValue);
     }
 
     SHVar colorWriteVar;
-    if (getFromTable(context, inputTable, "ColorWrite", colorWriteVar)) {
+    if (getFromTable(context, inputTable, Var("ColorWrite"), colorWriteVar)) {
       WGPUColorWriteMask mask{};
       auto apply = [&mask](SHVar &var) {
         checkEnumType(var, Types::ColorMaskEnumInfo::Type, ":ColorWrite");
@@ -389,7 +398,7 @@ public:
     }
 
     SHVar blendVar;
-    if (getFromTable(context, inputTable, "Blend", blendVar)) {
+    if (getFromTable(context, inputTable, Var("Blend"), blendVar)) {
       BlendState blendState{
           .color = BlendComponent::Opaque,
           .alpha = BlendComponent::Opaque,
@@ -399,12 +408,12 @@ public:
     }
 
     SHVar flipFrontFaceVar;
-    if (getFromTable(context, inputTable, "FlipFrontFace", flipFrontFaceVar)) {
+    if (getFromTable(context, inputTable, Var("FlipFrontFace"), flipFrontFaceVar)) {
       state.set_flipFrontFace(flipFrontFaceVar.payload.boolValue);
     }
 
     SHVar cullingVar;
-    if (getFromTable(context, inputTable, "Culling", cullingVar)) {
+    if (getFromTable(context, inputTable, Var("Culling"), cullingVar)) {
       state.set_culling(cullingVar.payload.boolValue);
     }
   }
@@ -424,9 +433,12 @@ public:
 
     _composedWith.clear();
     for (auto &[k, v] : input.payload.tableValue) {
+      if (k.valueType != SHType::String)
+        throw formatException("ComposeWith key must be a string");
+      std::string keyStr(k.payload.stringValue, k.payload.stringLen);
       ParamVar pv(v);
       pv.warmup(context);
-      auto &var = _composedWith.emplace(k, pv.get()).first->second;
+      auto &var = _composedWith.emplace(std::move(keyStr), pv.get()).first->second;
       if (var.valueType == SHType::None) {
         throw formatException("Required variable {} not found", k);
       }
@@ -440,21 +452,21 @@ public:
     const SHTable &inputTable = input.payload.tableValue;
 
     SHVar stageVar;
-    if (getFromTable(context, inputTable, "Stage", stageVar)) {
+    if (getFromTable(context, inputTable, Var("Stage"), stageVar)) {
       checkEnumType(stageVar, Types::ProgrammableGraphicsStageEnumInfo::Type, ":Shaders Stage");
       entryPoint.stage = ProgrammableGraphicsStage(stageVar.payload.enumValue);
     } else
       entryPoint.stage = ProgrammableGraphicsStage::Fragment;
 
     SHVar depsVar;
-    if (getFromTable(context, inputTable, "Before", depsVar)) {
+    if (getFromTable(context, inputTable, Var("Before"), depsVar)) {
       checkType(depsVar.valueType, SHType::Seq, ":Shaders Dependencies (Before)");
       const SHSeq &seq = depsVar.payload.seqValue;
       for (size_t i = 0; i < seq.len; i++) {
         applyShaderDependency(context, entryPoint, shader::DependencyType::Before, seq.elements[i]);
       }
     }
-    if (getFromTable(context, inputTable, "After", depsVar)) {
+    if (getFromTable(context, inputTable, Var("After"), depsVar)) {
       checkType(depsVar.valueType, SHType::Seq, ":Shaders Dependencies (After)");
       const SHSeq &seq = depsVar.payload.seqValue;
       for (size_t i = 0; i < seq.len; i++) {
@@ -463,13 +475,13 @@ public:
     }
 
     SHVar nameVar;
-    if (getFromTable(context, inputTable, "Name", nameVar)) {
+    if (getFromTable(context, inputTable, Var("Name"), nameVar)) {
       checkType(nameVar.valueType, SHType::String, ":Shaders Name");
       entryPoint.name = nameVar.payload.stringValue;
     }
 
     SHVar entryPointVar;
-    if (getFromTable(context, inputTable, "EntryPoint", entryPointVar)) {
+    if (getFromTable(context, inputTable, Var("EntryPoint"), entryPointVar)) {
       applyShaderEntryPoint(context, entryPoint, entryPointVar, _composedWith);
     } else {
       throw formatException(":Shader table requires an :EntryPoint");
@@ -505,7 +517,7 @@ public:
     std::optional<shader::FieldType> fieldType;
 
     SHVar typeVar;
-    if (getFromTable(context, inputTable, "Type", typeVar)) {
+    if (getFromTable(context, inputTable, Var("Type"), typeVar)) {
       auto enumType = Type::Enum(typeVar.payload.enumVendorId, typeVar.payload.enumTypeId);
       if (enumType == Types::ShaderFieldBaseTypeEnumInfo::Type) {
         checkEnumType(typeVar, Types::ShaderFieldBaseTypeEnumInfo::Type, ":Type");
@@ -518,7 +530,7 @@ public:
     }
 
     SHVar dimVar;
-    if (getFromTable(context, inputTable, "Dimension", dimVar)) {
+    if (getFromTable(context, inputTable, Var("Dimension"), dimVar)) {
       checkType(dimVar.valueType, SHType::Int, ":Dimension");
       if (!fieldType)
         fieldType = shader::NumFieldType();
@@ -530,14 +542,14 @@ public:
     return fieldType;
   }
 
-  void applyParam(SHContext *context, Feature &feature, const char *name, const SHVar &value) {
+  void applyParam(SHContext *context, Feature &feature, const std::string &name, const SHVar &value) {
     SHVar defaultVar;
     std::optional<std::variant<ParamVariant, TextureParameter>> defaultValue;
     std::optional<shader::FieldType> explicitType;
     if (value.valueType == SHType::Table) {
       const SHTable &inputTable = value.payload.tableValue;
 
-      if (getFromTable(context, inputTable, "Default", defaultVar)) {
+      if (getFromTable(context, inputTable, Var("Default"), defaultVar)) {
         defaultValue = paramVarToShaderParameter(context, defaultVar);
       }
 
@@ -583,7 +595,12 @@ public:
     checkType(input.valueType, SHType::Table, ":Params");
     const SHTable &inputTable = input.payload.tableValue;
 
-    ForEach(inputTable, [&](const char *key, SHVar v) { applyParam(context, feature, key, v); });
+    ForEach(inputTable, [&](SHVar key, SHVar v) {
+      if (key.valueType != SHType::String)
+        throw formatException("Shader parameter key must be a string");
+      std::string keyStr(key.payload.stringValue, key.payload.stringLen);
+      applyParam(context, feature, keyStr, v);
+    });
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -600,7 +617,7 @@ public:
 
     // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
     SHVar composeWithVar;
-    if (getFromTable(context, inputTable, "ComposeWith", composeWithVar)) {
+    if (getFromTable(context, inputTable, Var("ComposeWith"), composeWithVar)) {
       // Always create a new object to force shader recompile
       *_featurePtr = std::make_shared<Feature>();
       applyComposeWith(context, composeWithVar);
@@ -610,11 +627,11 @@ public:
     feature.shaderEntryPoints.clear();
 
     SHVar shadersVar;
-    if (getFromTable(context, inputTable, "Shaders", shadersVar))
+    if (getFromTable(context, inputTable, Var("Shaders"), shadersVar))
       applyShaders(context, feature, shadersVar);
 
     SHVar stateVar;
-    if (getFromTable(context, inputTable, "State", stateVar))
+    if (getFromTable(context, inputTable, Var("State"), stateVar))
       applyState(context, feature.state, stateVar);
 
     // Reset to default
@@ -622,7 +639,7 @@ public:
     feature.textureParams = _derivedTextureParams;
 
     SHVar paramsVar;
-    if (getFromTable(context, inputTable, "Params", paramsVar))
+    if (getFromTable(context, inputTable, Var("Params"), paramsVar))
       applyParams(context, feature, paramsVar);
 
     feature.generators.clear();
@@ -658,12 +675,15 @@ public:
   }
 
   static void collectParameters(IParameterCollector &collector, SHContext *context, const SHTable &table) {
-    ForEach(table, [&](const SHString &k, const SHVar &v) {
+    ForEach(table, [&](const SHVar &k, const SHVar &v) {
+      if (k.valueType != SHType::String)
+        throw formatException("Shader parameter key must be a string");
+      std::string keyStr(k.payload.stringValue, k.payload.stringLen);
       if (v.valueType == SHType::Object) {
-        collector.setTexture(k, varToTexture(v));
+        collector.setTexture(keyStr, varToTexture(v));
       } else {
         auto shaderParam = paramVarToShaderParameter(context, v);
-        collector.setParam(k, std::get<ParamVariant>(shaderParam));
+        collector.setParam(keyStr, std::get<ParamVariant>(shaderParam));
       }
     });
   }
@@ -687,19 +707,19 @@ public:
     SHDrawQueue queue{ctx.queue};
     SHView view{.view = ctx.view};
     TableVar input;
-    input.get<Var>("Queue") = Var::Object(&queue, Types::DrawQueue);
-    input.get<Var>("View") = Var::Object(&view, Types::View);
+    input.get<Var>(Var("Queue")) = Var::Object(&queue, Types::DrawQueue);
+    input.get<Var>(Var("View")) = Var::Object(&view, Types::View);
 
     if constexpr (PerDrawable) {
       FeatureDrawableGeneratorContext &drawableCtx = ctx;
-      auto &drawablesSeq = input.get<SeqVar>("Drawables");
+      auto &drawablesSeq = input.get<SeqVar>(Var("Drawables"));
       for (size_t i = 0; i < drawableCtx.getSize(); i++) {
         drawablesSeq.push_back(Var(reinterpret_cast<SHInt &>(drawableCtx.getDrawable(i).getId().value)));
       }
     }
 
     _featurePtrsTemp.clear();
-    SeqVar &features = input.get<SeqVar>("Features");
+    SeqVar &features = input.get<SeqVar>(Var("Features"));
     for (auto &weakFeature : ctx.features) {
       FeaturePtr feature = weakFeature.lock();
       if (feature) {

@@ -356,10 +356,10 @@ SHVar Inverse::activate(SHContext *context, const SHVar &input) {
 }
 
 struct Decompose {
-  static constexpr std::array<SHString, 3> _keys{
-      "translation",
-      "rotation",
-      "scale",
+  static inline std::array<SHVar, 3> _keys{
+      Var("translation"),
+      Var("rotation"),
+      Var("scale"),
   };
   static inline Types _types{{
       CoreInfo::Float3Type,
@@ -381,9 +381,9 @@ struct Decompose {
     float3 translation;
     gfx::decomposeTRS(mat, translation, scale, rotation);
     float4 qRot = linalg::rotation_quat(rotation);
-    output["translation"] = toVar(translation);
-    output["rotation"] = toVar(qRot);
-    output["scale"] = toVar(scale);
+    output[Var("translation")] = toVar(translation);
+    output[Var("rotation")] = toVar(qRot);
+    output[Var("scale")] = toVar(scale);
     return output;
   }
 };

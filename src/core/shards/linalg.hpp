@@ -4,6 +4,7 @@
 #include "foundation.hpp"
 #include "linalg.h"
 #include "shards.h"
+#include "shards.hpp"
 #include "shared.hpp"
 #include "math.hpp"
 #include "core.hpp"
@@ -357,7 +358,7 @@ struct Rotation {
 
 struct LookAt {
   static inline Types InputTableTypes{{CoreInfo::Float3Type, CoreInfo::Float3Type}};
-  static inline std::array<SHString, 2> InputTableKeys{"Position", "Target"};
+  static inline std::array<SHVar, 2> InputTableKeys{Var("Position"), Var("Target")};
   static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
   static SHTypesInfo inputTypes() { return InputTable; }
@@ -372,12 +373,15 @@ struct LookAt {
     SHVar position{};
     SHVar target{};
     while (true) {
-      SHString k;
+      SHVar k;
       SHVar v;
       if (!table.api->tableNext(table, &it, &k, &v))
         break;
 
-      switch (k[0]) {
+      if (k.valueType != SHType::String)
+        throw ActivationError("LookAt: Table keys must be strings.");
+
+      switch (k.payload.stringValue[0]) {
       case 'P':
         position = v;
         break;

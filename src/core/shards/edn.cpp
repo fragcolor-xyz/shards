@@ -155,7 +155,7 @@ struct Uglify {
       if (key.valueType != SHType::String)
         throw ActivationError("Map key must be a string");
       OwnedVar value = to_var(item.second.form);
-      res[key.payload.stringValue] = value;
+      res[key] = value;
     }
     return res;
   }

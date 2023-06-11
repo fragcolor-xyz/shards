@@ -15,13 +15,16 @@ namespace shader {
 inline std::unique_ptr<IWGSLGenerated> translateConst(const SHVar &var, TranslationContext &context);
 inline std::unique_ptr<IWGSLGenerated> translateTable(const SHVar &var, TranslationContext &context) {
   VirtualTable vt;
-  shards::ForEach(var.payload.tableValue, [&](const std::string &key, const SHVar &value) {
+  shards::ForEach(var.payload.tableValue, [&](const SHVar &key, const SHVar &value) {
+    if(key.valueType != SHType::String)
+      throw std::runtime_error("Table key must be string");
+    std::string keyStr(key.payload.stringValue, key.payload.stringLen);
     std::unique_ptr<IWGSLGenerated> generatedValue;
     if (value.valueType == SHType::ContextVar)
       generatedValue = std::make_unique<WGSLBlock>(context.reference(value.payload.stringValue));
     else
       generatedValue = translateConst(value, context);
-    vt.elements.emplace(std::make_pair(key, std::move(generatedValue)));
+    vt.elements.emplace(std::make_pair(std::move(keyStr), std::move(generatedValue)));
   });
 
   return std::make_unique<VirtualTableOnStack>(std::move(vt));

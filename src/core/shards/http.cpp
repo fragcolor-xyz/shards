@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
+#include "boost/core/detail/string_view.hpp"
 #ifndef SHARDS_NO_HTTP_SHARDS
 
 #ifndef __EMSCRIPTEN__
@@ -642,25 +643,25 @@ struct Read {
 
     switch (request.method()) {
     case http::verb::get:
-      _output["method"] = Var("GET", 3);
+      _output[Var("method")] = Var("GET", 3);
       break;
     case http::verb::post:
-      _output["method"] = Var("POST", 4);
+      _output[Var("method")] = Var("POST", 4);
       break;
     case http::verb::put:
-      _output["method"] = Var("PUT", 3);
+      _output[Var("method")] = Var("PUT", 3);
       break;
     case http::verb::delete_:
-      _output["method"] = Var("DELETE", 6);
+      _output[Var("method")] = Var("DELETE", 6);
       break;
     default:
       throw ActivationError("Unsupported HTTP method.");
     }
 
     auto target = request.target();
-    _output["target"] = Var(target.data(), target.size());
+    _output[Var("target")] = Var(target.data(), target.size());
 
-    _output["body"] = Var(request.body());
+    _output[Var("body")] = Var(request.body());
 
     auto res = SHVar();
     res.valueType = SHType::Table;
@@ -733,8 +734,12 @@ struct Response {
     // add custom headers (or replace current ones!)
     if (_headers.get().valueType == SHType::Table) {
       auto htab = _headers.get().payload.tableValue;
-      ForEach(htab, [&](auto key, auto &value) {
-        _response.set(key, value.payload.stringValue);
+      ForEach(htab, [&](auto &key, auto &value) {
+        if (key.valueType != SHType::String || value.valueType != SHType::String)
+          throw ActivationError("Headers must be a table of strings.");
+        boost::core::string_view s(key.payload.stringValue, key.payload.stringLen);
+        boost::core::string_view v(value.payload.stringValue, value.payload.stringLen);
+        _response.set(s, v);
         return true;
       });
     }
@@ -884,8 +889,13 @@ struct SendFile {
       // add custom headers
       if (_headers.get().valueType == SHType::Table) {
         auto htab = _headers.get().payload.tableValue;
-        ForEach(htab, [&](auto key, auto &value) {
-          _response.set(key, value.payload.stringValue);
+        ForEach(htab, [&](auto &key, auto &value) {
+          if(key.valueType != SHType::String || value.valueType != SHType::String) {
+            throw std::runtime_error("Headers must be a table of strings");
+          }
+          boost::core::string_view k{key.payload.stringValue};
+          boost::core::string_view v{value.payload.stringValue};
+          _response.set(k, v);
           return true;
         });
       }

@@ -645,7 +645,7 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   TTableVar(TTableVar &&other) : SHVar() { std::swap<SHVar>(*this, other); }
 
-  TTableVar(std::initializer_list<std::pair<std::string_view, SHVar>> pairs) : TTableVar() {
+  TTableVar(std::initializer_list<std::pair<SHVar, SHVar>> pairs) : TTableVar() {
     for (auto &kv : pairs) {
       auto &rDst = (*this)[kv.first];
       SH_CORE::cloneVar(rDst, kv.second);
@@ -660,7 +660,7 @@ template <class SH_CORE> struct TTableVar : public SHVar {
     });
 
     for (auto &kv : pairs) {
-      auto &rDst = (*this)[kv.first];
+      auto &rDst = (*this)[Var(kv.first)];
       SH_CORE::cloneVar(rDst, kv.second);
     }
   }
@@ -673,25 +673,25 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   ~TTableVar() { SH_CORE::destroyVar(*this); }
 
-  TOwnedVar<SH_CORE> &operator[](std::string_view key) {
-    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+  TOwnedVar<SH_CORE> &operator[](const SHVar &key) {
+    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key);
     return (TOwnedVar<SH_CORE> &)*vp;
   }
 
-  const TOwnedVar<SH_CORE> &operator[](std::string_view key) const {
-    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+  const TOwnedVar<SH_CORE> &operator[](const SHVar &key) const {
+    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key);
     return (const TOwnedVar<SH_CORE> &)*vp;
   }
 
-  TOwnedVar<SH_CORE> &insert(std::string_view key, const SHVar &val) {
-    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+  TOwnedVar<SH_CORE> &insert(const SHVar &key, const SHVar &val) {
+    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key);
     SH_CORE::cloneVar(*vp, val);
     return (TOwnedVar<SH_CORE> &)*vp;
   }
 
-  template <typename T> T &get(std::string_view key) {
+  template <typename T> T &get(const SHVar &key) {
     static_assert(sizeof(T) == sizeof(SHVar), "Invalid T size, should be sizeof(SHVar)");
-    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key.data());
+    auto vp = payload.tableValue.api->tableAt(payload.tableValue, key);
     if (vp->valueType == SHType::None) {
       // try initialize in this case
       new (vp) T();

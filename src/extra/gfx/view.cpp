@@ -149,7 +149,7 @@ struct RenderIntoShard {
       auto &table = input.payload.tableValue;
 
       Var textureVar;
-      if (!getFromTable(shContext, table, "Texture", textureVar)) {
+      if (!getFromTable(shContext, table, Var("Texture"), textureVar)) {
         throw formatException("Texture is required");
       }
 
@@ -157,14 +157,14 @@ struct RenderIntoShard {
 
       uint8_t faceIndex{};
       Var faceIndexVar;
-      if (getFromTable(shContext, table, "Face", faceIndexVar)) {
+      if (getFromTable(shContext, table, Var("Face"), faceIndexVar)) {
         checkType(faceIndexVar.valueType, SHType::Int, "Face should be an integer(variable)");
         faceIndex = uint8_t(int(faceIndexVar));
       }
 
       uint8_t mipIndex{};
       Var mipIndexVar;
-      if (getFromTable(shContext, table, "Mip", mipIndexVar)) {
+      if (getFromTable(shContext, table, Var("Mip"), mipIndexVar)) {
         checkType(mipIndexVar.valueType, SHType::Int, "Mip should be an integer(variable)");
         mipIndex = uint8_t(int(mipIndexVar));
       }
@@ -176,7 +176,12 @@ struct RenderIntoShard {
   void applyAttachments(SHContext *shContext, std::map<std::string, TextureSubResource> &outAttachments) {
     auto &table = _textures.payload.tableValue;
     outAttachments.clear();
-    ForEach(table, [&](SHString &k, SHVar &v) { outAttachments.emplace(k, applyAttachment(shContext, v)); });
+    ForEach(table, [&](SHVar &k, SHVar &v) {
+      if (k.valueType != SHType::String)
+        throw formatException("RenderInto attachment key should be a string");
+      std::string keyStr(k.payload.stringValue, k.payload.stringLen);
+      outAttachments.emplace(std::move(keyStr), applyAttachment(shContext, v));
+    });
 
     if (outAttachments.size() == 0) {
       throw formatException("RenderInto is missing at least one output texture");

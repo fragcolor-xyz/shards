@@ -198,7 +198,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     bool first = true;
     SHTableIterator tit;
     t.api->tableGetIterator(t, &tit);
-    SHString k;
+    SHVar k;
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
       if (first) {
@@ -390,7 +390,7 @@ bool _tableEq(const SHVar &a, const SHVar &b) {
 
   SHTableIterator it;
   ta.api->tableGetIterator(ta, &it);
-  SHString k;
+  SHVar k;
   SHVar v;
   while (ta.api->tableNext(ta, &it, &k, &v)) {
     if (!tb.api->tableContains(tb, k)) {
@@ -435,7 +435,7 @@ bool _tableLess(const SHVar &a, const SHVar &b) {
 
   SHTableIterator it;
   ta.api->tableGetIterator(ta, &it);
-  SHString k;
+  SHVar k;
   SHVar v;
   size_t len = 0;
   while (ta.api->tableNext(ta, &it, &k, &v)) {
@@ -488,7 +488,7 @@ bool _tableLessEq(const SHVar &a, const SHVar &b) {
 
   SHTableIterator it;
   ta.api->tableGetIterator(ta, &it);
-  SHString k;
+  SHVar k;
   SHVar v;
   size_t len = 0;
   while (ta.api->tableNext(ta, &it, &k, &v)) {
@@ -596,7 +596,7 @@ bool operator==(const SHTypeInfo &a, const SHTypeInfo &b) {
         if (a.table.types.elements[i] == b.table.types.elements[j]) {
           if (a.table.keys.elements) { // this is enough to know they exist
             assert(i < akeys);
-            if (!strcmp(a.table.keys.elements[i], b.table.keys.elements[j])) {
+            if (a.table.keys.elements[i] == b.table.keys.elements[j]) {
               goto matched_table;
             }
           } else {

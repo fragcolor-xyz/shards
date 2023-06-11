@@ -964,13 +964,13 @@ struct Erase : SeqUser {
     if (unlikely(_target->valueType == SHType::Table)) {
       if (indices.valueType == SHType::String) {
         // single key
-        const auto key = indices.payload.stringValue;
+        const auto key = indices;
         _target->payload.tableValue.api->tableRemove(_target->payload.tableValue, key);
       } else {
         // multiple keys
         const uint32_t nkeys = indices.payload.seqValue.len;
         for (uint32_t i = 0; nkeys > i; i++) {
-          const auto key = indices.payload.seqValue.elements[i].payload.stringValue;
+          const auto key = indices.payload.seqValue.elements[i];
           _target->payload.tableValue.api->tableRemove(_target->payload.tableValue, key);
         }
       }
@@ -1094,7 +1094,7 @@ struct Assoc : public VariableBase {
             throw ActivationError("Expected a SHType::String for key.");
           }
           auto &v = input.payload.seqValue.elements[(i * 2) + 1];
-          SHVar *record = t.api->tableAt(t, k.payload.stringValue);
+          SHVar *record = t.api->tableAt(t, k);
           cloneVar(*record, v);
         }
       } else {
@@ -1109,9 +1109,9 @@ struct Assoc : public VariableBase {
       if (_isTable) {
         if (_target->valueType == SHType::Table) {
           auto &kv = _key.get();
-          if (_target->payload.tableValue.api->tableContains(_target->payload.tableValue, kv.payload.stringValue)) {
+          if (_target->payload.tableValue.api->tableContains(_target->payload.tableValue, kv)) {
             // Has it
-            SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv.payload.stringValue);
+            SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
             // Pin fast cell
             _cell = vptr;
           } else {

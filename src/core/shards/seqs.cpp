@@ -165,10 +165,10 @@ struct Flatten {
       auto &t = input.payload.tableValue;
       SHTableIterator tit;
       t.api->tableGetIterator(t, &tit);
-      SHString k;
+      SHVar k;
       SHVar v;
       while (t.api->tableNext(t, &tit, &k, &v)) {
-        add(Var(k));
+        add(k);
         add(v);
       }
     } break;
@@ -355,7 +355,7 @@ struct Merge {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto target = _target.get();
     auto &targetTable = asTable(target);
-    ForEach(input.payload.tableValue, [&](auto key, auto &val) { targetTable[key] = val; });
+    ForEach(input.payload.tableValue, [&](auto &key, auto &val) { targetTable[key] = val; });
     return target;
   }
 };

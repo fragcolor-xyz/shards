@@ -13,7 +13,7 @@
 
 namespace shards {
 namespace DSP {
-static TableVar experimental{{"experimental", Var(true)}};
+static TableVar experimental{{Var("experimental"), Var(true)}};
 
 struct FFTBase {
   kiss_fft_cfg _state{nullptr};

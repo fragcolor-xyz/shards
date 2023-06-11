@@ -694,7 +694,7 @@
    (When (FS.IsDirectory)
          (-> (FS.Iterate :Recursive true) (Log)
              (Take 4) (FS.Extension) (Log)))
-   
+
 
    "a/b/c/d" (FS.RelativeTo "a")
    (Regex.Replace #"\\" "/")
@@ -778,7 +778,7 @@
    (Get "tab1new")
    (ToJson :Pure false)
    (Log)
-   (Assert.Is "{\"type\":\"Table\",\"values\":[{\"key\":\"myseq\",\"value\":{\"type\":\"Seq\",\"values\":[{\"type\":\"Int\",\"value\":12},{\"type\":\"Int\",\"value\":22},{\"type\":\"Int\",\"value\":32}]}}]}" true)
+   (Assert.Is "{\"type\":\"Table\",\"values\":[{\"key\":{\"type\":\"String\",\"value\":\"myseq\"},\"value\":{\"type\":\"Seq\",\"values\":[{\"type\":\"Int\",\"value\":12},{\"type\":\"Int\",\"value\":22},{\"type\":\"Int\",\"value\":32}]}}]}" true)
 
    (Float4 1 2 3 4)
    (Take 0)

@@ -6,6 +6,7 @@
 #include "shards.h"
 #include "shards_types.hpp"
 #include "shards_utils.hpp"
+#include "utility.hpp"
 #include <ops_internal.hpp>
 #include <foundation.hpp>
 #include <gfx/material.hpp>
@@ -113,7 +114,12 @@ inline std::optional<std::variant<ParamVariant, TextureParameter>> tryVarToParam
 }
 
 inline void initShaderParams(SHContext *shContext, const SHTable &paramsTable, MaterialParameters &out) {
-  shards::ForEach(paramsTable, [&](SHString key, SHVar v) {
+  shards::ForEach(paramsTable, [&](SHVar &key, SHVar v) {
+    if(key.valueType != SHType::String) {
+      throw formatException("Invalid shader parameter key type: {}", key.valueType);
+    }
+    auto kv = SHSTRVIEW(key);
+
     shards::ParamVar paramVar{v};
     paramVar.warmup(shContext);
     DEFER({ paramVar.cleanup(); });
@@ -121,7 +127,7 @@ inline void initShaderParams(SHContext *shContext, const SHTable &paramsTable, M
 
     auto param = tryVarToParam(value);
     if (param) {
-      std::visit([&](auto &&arg) { out.set(key, std::move(arg)); }, std::move(param.value()));
+      std::visit([&](auto &&arg) { out.set(kv, std::move(arg)); }, std::move(param.value()));
     }
   });
 }

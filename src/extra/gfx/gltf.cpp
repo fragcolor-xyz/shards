@@ -171,10 +171,10 @@ struct GLTFShard {
   void shardifyAnimationData() {
     ZoneScoped;
     for (auto &[name, animation] : _model->animations) {
-      SeqVar &tracks = _animations.get<SeqVar>(name);
+      SeqVar &tracks = _animations.get<SeqVar>(Var(name));
       for (auto &track : animation.tracks) {
         TableVar trackTable;
-        trackTable.get<SeqVar>("Path") = getAnimationPath(track.targetNode.lock(), track.target);
+        trackTable.get<SeqVar>(Var("Path")) = getAnimationPath(track.targetNode.lock(), track.target);
 
         std::optional<Var> interpolationValue;
         if (track.interpolation != animation::Interpolation::Linear) {
@@ -199,18 +199,21 @@ struct GLTFShard {
         for (auto &time : track.times) {
           TableVar frameTableVar;
 
-          frameTableVar.get<Var>("Time") = Var{time};
+          frameTableVar.get<Var>(Var("Time")) = Var{time};
 
           if (interpolationValue) {
-            frameTableVar.get<Var>("Interpolation") = *interpolationValue;
+            frameTableVar.get<Var>(Var("Interpolation")) = *interpolationValue;
           }
 
           if (track.interpolation == animation::Interpolation::Cubic) {
-            std::visit([&](auto &&v) -> void { frameTableVar.get<Var>("In") = toVar(v); }, track.getValue(frameIndex * 3 + 0));
-            std::visit([&](auto &&v) -> void { frameTableVar.get<Var>("Value") = toVar(v); }, track.getValue(frameIndex * 3 + 1));
-            std::visit([&](auto &&v) -> void { frameTableVar.get<Var>("Out") = toVar(v); }, track.getValue(frameIndex * 3 + 2));
+            std::visit([&](auto &&v) -> void { frameTableVar.get<Var>(Var("In")) = toVar(v); },
+                       track.getValue(frameIndex * 3 + 0));
+            std::visit([&](auto &&v) -> void { frameTableVar.get<Var>(Var("Value")) = toVar(v); },
+                       track.getValue(frameIndex * 3 + 1));
+            std::visit([&](auto &&v) -> void { frameTableVar.get<Var>(Var("Out")) = toVar(v); },
+                       track.getValue(frameIndex * 3 + 2));
           } else {
-            Var &value = frameTableVar.get<Var>("Value");
+            Var &value = frameTableVar.get<Var>(Var("Value"));
             std::visit([&](auto &&v) -> void { value = toVar(v); }, track.getValue(frameIndex));
           }
 
@@ -218,7 +221,7 @@ struct GLTFShard {
           ++frameIndex;
         }
 
-        trackTable.get<SeqVar>("Frames") = std::move(frames);
+        trackTable.get<SeqVar>(Var("Frames")) = std::move(frames);
         tracks.emplace_back() = std::move(trackTable.asOwned());
       }
     }
@@ -324,7 +327,7 @@ struct GLTFShard {
     ZoneScoped;
     for (auto &v : data) {
       TableVar &valueTable = (TableVar &)v;
-      auto &pathSeq = valueTable.get<SeqVar>("Path");
+      auto &pathSeq = valueTable.get<SeqVar>(Var("Path"));
 
       Animations::Path path(pathSeq);
       MeshTreeDrawable::Ptr node = findNode(path);
@@ -338,7 +341,7 @@ struct GLTFShard {
         continue;
       }
 
-      auto &value = valueTable.get<Var>("Value");
+      auto &value = valueTable.get<Var>(Var("Value"));
       applyFrame(node, target.value(), value);
     }
   }
