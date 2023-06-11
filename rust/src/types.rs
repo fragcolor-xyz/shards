@@ -4888,7 +4888,6 @@ impl Table {
   }
 
   pub fn get_mut_fast_static(&mut self, k: &'static str) -> &mut Var {
-    debug_assert!(k.ends_with('\0'));
     unsafe {
       let k = Var::ephemeral_string(k);
       &mut *(*self.t.api).tableAt.unwrap()(self.t, k)
