@@ -28,8 +28,6 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE, USER_AGE
 use std::convert::TryInto;
 use std::ffi::CStr;
 
-const FULL_OUTPUT_KEYS: &[RawString] = &[shstr!("status"), shstr!("headers"), shstr!("body")];
-
 static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
 static HEADERS_TYPES: &[Type] = &[
   common_type::none,
@@ -55,9 +53,14 @@ lazy_static! {
     common_type::string_table,
     common_type::bytes
   ];
-  static ref STR_FULL_OUTPUT_TTYPE: Type = Type::table(FULL_OUTPUT_KEYS, &_STR_FULL_OUTPUT_TYPES);
+  static ref FULL_OUTPUT_KEYS: Vec<Var> = vec![
+    shstr!("status").into(),
+    shstr!("headers").into(),
+    shstr!("body").into()
+  ];
+  static ref STR_FULL_OUTPUT_TTYPE: Type = Type::table(&FULL_OUTPUT_KEYS, &_STR_FULL_OUTPUT_TYPES);
   static ref BYTES_FULL_OUTPUT_TTYPE: Type =
-    Type::table(FULL_OUTPUT_KEYS, &_BYTES_FULL_OUTPUT_TYPES);
+    Type::table(&FULL_OUTPUT_KEYS, &_BYTES_FULL_OUTPUT_TYPES);
   static ref ALL_OUTPUT_TYPES: Vec<Type> = vec![
     *BYTES_FULL_OUTPUT_TTYPE,
     common_type::bytes,
@@ -196,15 +199,12 @@ impl RequestBase {
       let headers = self.output_table.get_mut_fast_static(cstr!("headers"));
       let mut headers: Table = headers.as_ref().try_into()?;
       for (key, value) in response.headers() {
-        let key = CString::new(key.as_str()).map_err(|e| {
+        let key = Var::ephemeral_string(key.as_str());
+        let value = Var::ephemeral_string(value.to_str().map_err(|e| {
           shlog!("Failure details: {}", e);
-          "Failed to convert header string"
-        })?;
-        let value = CString::new(value.as_bytes()).map_err(|e| {
-          shlog!("Failure details: {}", e);
-          "Failed to convert header value"
-        })?;
-        headers.insert_fast(&key, &value.as_ref().into());
+          "Failed to decode the response"
+        })?);
+        headers.insert_fast(key, &value);
       }
     }
 
@@ -308,7 +308,7 @@ macro_rules! get_like {
         if !headers.is_none() {
           let headers_table: Table = headers.try_into()?;
           for (k, v) in headers_table.iter() {
-            let key: &str = k.into();
+            let key: &str = k.as_ref().try_into()?;
             let hname: HeaderName = key
               .try_into()
               .map_err(|_| "Could not convert into HeaderName")?;
@@ -321,7 +321,7 @@ macro_rules! get_like {
         if !input.is_none() {
           let input_table: Table = input.try_into()?;
           for (k, v) in input_table.iter() {
-            let key: &str = k.into();
+            let key: &str = k.as_ref().try_into()?;
             let value: &str = v.as_ref().try_into()?;
             request = request.query(&[(key, value)]);
           }
@@ -413,7 +413,7 @@ macro_rules! post_like {
           let input_table: Result<Table, &str> = input.try_into();
           if let Ok(input_table) = input_table {
             for (k, v) in input_table.iter() {
-              let key: &str = k.into();
+              let key: &str = k.as_ref().try_into()?;
               let value: &str = v.as_ref().try_into()?;
               request = request.form(&[(key, value)]);
             }
@@ -441,7 +441,7 @@ macro_rules! post_like {
         if !headers.is_none() {
           let headers_table: Table = headers.as_ref().try_into()?;
           for (k, v) in headers_table.iter() {
-            let key: &str = k.into();
+            let key: &str = k.as_ref().try_into()?;
             let hname: HeaderName = key
               .try_into()
               .map_err(|_| "Could not convert into HeaderName")?;

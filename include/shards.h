@@ -822,6 +822,8 @@ typedef void(__cdecl *SHCloneVar)(struct SHVar *dst, const struct SHVar *src);
 
 typedef void(__cdecl *SHDestroyVar)(struct SHVar *var);
 
+typedef struct SHVar(__cdecl *SHHashVar)(const struct SHVar *var);
+
 typedef SHBool(__cdecl *SHValidateSetParam)(struct Shard *shard, int index, const struct SHVar *param,
                                             SHValidationCallback callback, void *userData);
 
@@ -1046,6 +1048,7 @@ typedef struct _SHCore {
   // Utility to deal with SHVars
   SHCloneVar cloneVar;
   SHDestroyVar destroyVar;
+  SHHashVar hashVar;
 
   // Compressed strings utility
   SHReadCachedString readCachedString;

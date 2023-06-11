@@ -78,6 +78,7 @@ use crate::shardsc::Shards;
 use crate::shardsc::SHIMAGE_FLAGS_16BITS_INT;
 use crate::shardsc::SHIMAGE_FLAGS_32BITS_FLOAT;
 use crate::shardsc::SHVAR_FLAGS_REF_COUNTED;
+use crate::SHObjectInfo;
 use crate::SHWireState_Error;
 use crate::SHVAR_FLAGS_EXTERNAL;
 use core::convert::TryFrom;
@@ -333,6 +334,7 @@ unsafe impl Send for Var {}
 unsafe impl Send for Context {}
 unsafe impl Send for Shard {}
 unsafe impl Send for Table {}
+unsafe impl Sync for Var {}
 unsafe impl Sync for Table {}
 unsafe impl Sync for OptionalString {}
 unsafe impl Sync for WireRef {}
@@ -343,10 +345,10 @@ unsafe impl Sync for ExternalVar {}
 /*
 SHTypeInfo & co
 */
-unsafe impl std::marker::Sync for SHTypeInfo {}
-unsafe impl std::marker::Sync for SHExposedTypeInfo {}
-unsafe impl std::marker::Sync for SHParameterInfo {}
-unsafe impl std::marker::Sync for SHStrings {}
+unsafe impl Sync for SHTypeInfo {}
+unsafe impl Sync for SHExposedTypeInfo {}
+unsafe impl Sync for SHParameterInfo {}
+unsafe impl Sync for SHStrings {}
 
 // Todo SHTypeInfo proper wrapper Type with helpers
 
@@ -593,6 +595,7 @@ Static common type infos utility
 */
 pub mod common_type {
   use crate::shardsc::util_type2Name;
+  use crate::shardsc::SHSeq;
   use crate::shardsc::SHStrings;
   use crate::shardsc::SHTableTypeInfo;
   use crate::shardsc::SHType;
@@ -680,7 +683,7 @@ pub mod common_type {
         basicType: SHType_Table,
         details: SHTypeInfo_Details {
           table: SHTableTypeInfo {
-            keys: SHStrings {
+            keys: SHSeq {
               elements: core::ptr::null_mut(),
               len: 0,
               cap: 0,
@@ -994,12 +997,12 @@ impl Type {
     }
   }
 
-  pub const fn table(keys: &[SHString], types: &[Type]) -> Type {
+  pub const fn table(keys: &[Var], types: &[Type]) -> Type {
     Type {
       basicType: SHType_Table,
       details: SHTypeInfo_Details {
         table: SHTableTypeInfo {
-          keys: SHStrings {
+          keys: SHSeq {
             elements: keys.as_ptr() as *mut _,
             len: keys.len() as u32,
             cap: 0,
@@ -1064,10 +1067,8 @@ impl Serialize for Table {
   {
     let mut t = se.serialize_map(None)?;
     for (key, value) in self.iter() {
-      unsafe {
-        let key = CStr::from_ptr(key.0).to_str().unwrap();
-        t.serialize_entry(&key, &value)?;
-      }
+      let key: &str = key.as_ref().try_into().map_err(serde::ser::Error::custom)?;
+      t.serialize_entry(&key, &value)?;
     }
     t.end()
   }
@@ -1303,8 +1304,8 @@ impl<'de> Deserialize<'de> for Table {
       {
         let mut table = Table::new();
         while let Some((key, value)) = map.next_entry::<&str, ClonedVar>()? {
-          let cstr = CString::new(key).unwrap();
-          table.insert_fast(&cstr, &value.0);
+          let key = Var::ephemeral_string(key);
+          table.insert_fast(key, &value.0);
         }
         Ok(table)
       }
@@ -4674,28 +4675,26 @@ impl TryFrom<&Var> for Seq {
 pub struct TableVar(Var);
 
 impl TableVar {
-  pub fn insert(&mut self, k: &CString, v: &Var) -> Option<Var> {
+  pub fn insert(&mut self, k: Var, v: &Var) -> Option<Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
-      if (*t.api).tableContains.unwrap()(t, cstr) {
-        let p = (*t.api).tableAt.unwrap()(t, cstr);
+      if (*t.api).tableContains.unwrap()(t, k) {
+        let p = (*t.api).tableAt.unwrap()(t, k);
         let old = *p;
         cloneVar(&mut *p, &v);
         Some(old)
       } else {
-        let p = (*t.api).tableAt.unwrap()(t, cstr);
+        let p = (*t.api).tableAt.unwrap()(t, k);
         cloneVar(&mut *p, &v);
         None
       }
     }
   }
 
-  pub fn insert_fast(&mut self, k: &CString, v: &Var) {
+  pub fn insert_fast(&mut self, k: Var, v: &Var) {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
-      let p = (*t.api).tableAt.unwrap()(t, cstr);
+      let p = (*t.api).tableAt.unwrap()(t, k);
       cloneVar(&mut *p, &v);
     }
   }
@@ -4703,18 +4702,17 @@ impl TableVar {
   pub fn insert_fast_static(&mut self, k: &str, v: &Var) {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let cstr = k.as_ptr() as *const std::os::raw::c_char;
-      let p = (*t.api).tableAt.unwrap()(t, cstr);
+      let str_key = Var::ephemeral_string(k);
+      let p = (*t.api).tableAt.unwrap()(t, str_key);
       cloneVar(&mut *p, &v);
     }
   }
 
-  pub fn get_mut(&self, k: &CStr) -> Option<&mut Var> {
+  pub fn get_mut(&self, k: Var) -> Option<&mut Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
-      if (*t.api).tableContains.unwrap()(t, cstr) {
-        let p = (*t.api).tableAt.unwrap()(t, cstr);
+      if (*t.api).tableContains.unwrap()(t, k) {
+        let p = (*t.api).tableAt.unwrap()(t, k);
         Some(&mut *p)
       } else {
         None
@@ -4722,11 +4720,10 @@ impl TableVar {
     }
   }
 
-  pub fn get_mut_fast(&mut self, k: &CStr) -> &mut Var {
+  pub fn get_mut_fast(&mut self, k: Var) -> &mut Var {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
-      &mut *(*t.api).tableAt.unwrap()(t, cstr)
+      &mut *(*t.api).tableAt.unwrap()(t, k)
     }
   }
 
@@ -4734,17 +4731,16 @@ impl TableVar {
     debug_assert!(k.ends_with('\0'));
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let cstr = k.as_ptr() as *const std::os::raw::c_char;
-      &mut *(*t.api).tableAt.unwrap()(t, cstr)
+      let str_key = Var::ephemeral_string(k);
+      &mut *(*t.api).tableAt.unwrap()(t, str_key)
     }
   }
 
-  pub fn get(&self, k: &CStr) -> Option<&Var> {
+  pub fn get(&self, k: Var) -> Option<&Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
-      if (*t.api).tableContains.unwrap()(t, cstr) {
-        let p = (*t.api).tableAt.unwrap()(t, cstr);
+      if (*t.api).tableContains.unwrap()(t, k) {
+        let p = (*t.api).tableAt.unwrap()(t, k);
         Some(&*p)
       } else {
         None
@@ -4756,9 +4752,9 @@ impl TableVar {
     debug_assert!(k.ends_with('\0'));
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let cstr = k.as_ptr() as *const std::os::raw::c_char;
-      if (*t.api).tableContains.unwrap()(t, cstr) {
-        let p = (*t.api).tableAt.unwrap()(t, cstr);
+      let key_str = Var::ephemeral_string(k);
+      if (*t.api).tableContains.unwrap()(t, key_str) {
+        let p = (*t.api).tableAt.unwrap()(t, key_str);
         Some(&*p)
       } else {
         None
@@ -4770,8 +4766,8 @@ impl TableVar {
     debug_assert!(k.ends_with('\0'));
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      let cstr = k.as_ptr() as *const std::os::raw::c_char;
-      &*(*t.api).tableAt.unwrap()(t, cstr)
+      let key_str = Var::ephemeral_string(k);
+      &*(*t.api).tableAt.unwrap()(t, key_str)
     }
   }
 
@@ -4846,43 +4842,40 @@ impl Table {
     }
   }
 
-  pub fn insert(&mut self, k: &CString, v: &Var) -> Option<Var> {
+  pub fn insert(&mut self, k: Var, v: &Var) -> Option<Var> {
     unsafe {
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
-      if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
-        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+      if (*self.t.api).tableContains.unwrap()(self.t, k) {
+        let p = (*self.t.api).tableAt.unwrap()(self.t, k);
         let old = *p;
         cloneVar(&mut *p, &v);
         Some(old)
       } else {
-        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+        let p = (*self.t.api).tableAt.unwrap()(self.t, k);
         cloneVar(&mut *p, &v);
         None
       }
     }
   }
 
-  pub fn insert_fast(&mut self, k: &CString, v: &Var) {
+  pub fn insert_fast(&mut self, k: Var, v: &Var) {
     unsafe {
-      let cstr = k.as_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
-      let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+      let p = (*self.t.api).tableAt.unwrap()(self.t, k);
       cloneVar(&mut *p, &v);
     }
   }
 
   pub fn insert_fast_static(&mut self, k: &str, v: &Var) {
     unsafe {
-      let cstr = k.as_ptr() as *const std::os::raw::c_char;
-      let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+      let k = Var::ephemeral_string(k);
+      let p = (*self.t.api).tableAt.unwrap()(self.t, k);
       cloneVar(&mut *p, &v);
     }
   }
 
-  pub fn get_mut(&self, k: &CStr) -> Option<&mut Var> {
+  pub fn get_mut(&self, k: Var) -> Option<&mut Var> {
     unsafe {
-      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
-      if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
-        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+      if (*self.t.api).tableContains.unwrap()(self.t, k) {
+        let p = (*self.t.api).tableAt.unwrap()(self.t, k);
         Some(&mut *p)
       } else {
         None
@@ -4890,26 +4883,22 @@ impl Table {
     }
   }
 
-  pub fn get_mut_fast(&mut self, k: &CStr) -> &mut Var {
-    unsafe {
-      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
-      &mut *(*self.t.api).tableAt.unwrap()(self.t, cstr)
-    }
+  pub fn get_mut_fast(&mut self, k: Var) -> &mut Var {
+    unsafe { &mut *(*self.t.api).tableAt.unwrap()(self.t, k) }
   }
 
   pub fn get_mut_fast_static(&mut self, k: &'static str) -> &mut Var {
     debug_assert!(k.ends_with('\0'));
     unsafe {
-      let cstr = k.as_ptr() as *const std::os::raw::c_char;
-      &mut *(*self.t.api).tableAt.unwrap()(self.t, cstr)
+      let k = Var::ephemeral_string(k);
+      &mut *(*self.t.api).tableAt.unwrap()(self.t, k)
     }
   }
 
-  pub fn get(&self, k: &CStr) -> Option<&Var> {
+  pub fn get(&self, k: Var) -> Option<&Var> {
     unsafe {
-      let cstr = k.to_bytes_with_nul().as_ptr() as *const std::os::raw::c_char;
-      if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
-        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+      if (*self.t.api).tableContains.unwrap()(self.t, k) {
+        let p = (*self.t.api).tableAt.unwrap()(self.t, k);
         Some(&*p)
       } else {
         None
@@ -4918,11 +4907,10 @@ impl Table {
   }
 
   pub fn get_static(&self, k: &'static str) -> Option<&Var> {
-    debug_assert!(k.ends_with('\0'));
+    let k = Var::ephemeral_string(k);
     unsafe {
-      let cstr = k.as_ptr() as *const std::os::raw::c_char;
-      if (*self.t.api).tableContains.unwrap()(self.t, cstr) {
-        let p = (*self.t.api).tableAt.unwrap()(self.t, cstr);
+      if (*self.t.api).tableContains.unwrap()(self.t, k) {
+        let p = (*self.t.api).tableAt.unwrap()(self.t, k);
         Some(&*p)
       } else {
         None
@@ -4931,11 +4919,8 @@ impl Table {
   }
 
   pub fn get_fast_static(&self, k: &'static str) -> &Var {
-    debug_assert!(k.ends_with('\0'));
-    unsafe {
-      let cstr = k.as_ptr() as *const std::os::raw::c_char;
-      &*(*self.t.api).tableAt.unwrap()(self.t, cstr)
-    }
+    let k = Var::ephemeral_string(k);
+    unsafe { &*(*self.t.api).tableAt.unwrap()(self.t, k) }
   }
 
   pub fn len(&self) -> usize {
@@ -4960,11 +4945,11 @@ pub struct TableIterator {
 }
 
 impl Iterator for TableIterator {
-  type Item = (String, Var);
+  type Item = (Var, Var);
   fn next(&mut self) -> Option<Self::Item> {
     unsafe {
-      let k: SHString = core::ptr::null();
-      let v: SHVar = SHVar::default();
+      let k: Var = Var::default();
+      let v: Var = Var::default();
       let hasValue = (*(self.table.api)).tableNext.unwrap()(
         self.table,
         &self.citer as *const _ as *mut _,
@@ -4972,7 +4957,7 @@ impl Iterator for TableIterator {
         &v as *const _ as *mut _,
       );
       if hasValue {
-        Some((String(k), v))
+        Some((k, v))
       } else {
         None
       }
