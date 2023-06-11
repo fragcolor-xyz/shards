@@ -19,8 +19,8 @@ pub(crate) fn get_font_family(family: &str) -> Option<egui::FontFamily> {
 
 pub(crate) fn get_font_id(font_id: Table) -> Option<egui::FontId> {
   if let (Some(size), Some(family)) = (
-    font_id.get_static(cstr!("size")),
-    font_id.get_static(cstr!("family")),
+    font_id.get_static("size"),
+    font_id.get_static("family"),
   ) {
     let size: f32 = size.try_into().unwrap_or_default();
     let family: &str = family.try_into().unwrap_or_default();
@@ -50,8 +50,8 @@ pub(crate) fn get_rounding(rounding: (f32, f32, f32, f32)) -> egui::Rounding {
 
 pub(crate) fn get_shadow(shadow: Table) -> egui::epaint::Shadow {
   if let (Some(extrusion), Some(color)) = (
-    shadow.get_static(cstr!("extrusion")),
-    shadow.get_static(cstr!("color")),
+    shadow.get_static("extrusion"),
+    shadow.get_static("color"),
   ) {
     egui::epaint::Shadow {
       extrusion: extrusion.try_into().unwrap_or_default(),
@@ -64,8 +64,8 @@ pub(crate) fn get_shadow(shadow: Table) -> egui::epaint::Shadow {
 
 pub(crate) fn get_stroke(stroke: Table) -> egui::Stroke {
   if let (Some(width), Some(color)) = (
-    stroke.get_static(cstr!("width")),
-    stroke.get_static(cstr!("color")),
+    stroke.get_static("width"),
+    stroke.get_static("color"),
   ) {
     egui::Stroke {
       width: width.try_into().unwrap_or_default(),
@@ -95,34 +95,34 @@ pub(crate) fn get_text_style(name: &str) -> Option<egui::TextStyle> {
 }
 
 pub(crate) fn update_text_format(text_format: &mut egui::TextFormat, format: Table) {
-  if let Some(font_id) = format.get_static(cstr!("font_id")) {
+  if let Some(font_id) = format.get_static("font_id") {
     let font_id: Table = font_id.try_into().unwrap_or_default();
     if let Some(font_id) = get_font_id(font_id) {
       text_format.font_id = font_id;
     }
   }
 
-  if let Some(color) = format.get_static(cstr!("color")) {
+  if let Some(color) = format.get_static("color") {
     let color: SHColor = color.try_into().unwrap_or_default();
     text_format.color = get_color(color);
   }
 
-  if let Some(background) = format.get_static(cstr!("background")) {
+  if let Some(background) = format.get_static("background") {
     let background: SHColor = background.try_into().unwrap_or_default();
     text_format.background =
       egui::Color32::from_rgba_unmultiplied(background.r, background.g, background.b, background.a);
   }
 
-  if let Some(italics) = format.get_static(cstr!("italics")) {
+  if let Some(italics) = format.get_static("italics") {
     text_format.italics = italics.try_into().unwrap_or_default();
   }
 
-  if let Some(underline) = format.get_static(cstr!("underline")) {
+  if let Some(underline) = format.get_static("underline") {
     let underline: Table = underline.try_into().unwrap_or_default();
     text_format.underline = get_stroke(underline);
   }
 
-  if let Some(strikethrough) = format.get_static(cstr!("strikethrough")) {
+  if let Some(strikethrough) = format.get_static("strikethrough") {
     let strikethrough: Table = strikethrough.try_into().unwrap_or_default();
     text_format.strikethrough = get_stroke(strikethrough);
   }

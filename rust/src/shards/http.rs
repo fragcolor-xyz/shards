@@ -123,7 +123,7 @@ impl Default for RequestBase {
     };
     let table = Table::new();
     s.output_table
-      .insert_fast_static(cstr!("headers"), &table.as_ref().into());
+      .insert_fast_static("headers", &table.as_ref().into());
     s
   }
 }
@@ -194,11 +194,11 @@ impl RequestBase {
     if self.full_response {
       self
         .output_table
-        .insert_fast_static(cstr!("status"), &response.status().as_u16().try_into()?);
+        .insert_fast_static("status", &response.status().as_u16().try_into()?);
 
       let headers = self
         .output_table
-        .get_mut_fast_static(cstr!("headers"))
+        .get_mut_fast_static("headers")
         .as_mut_table()
         .unwrap(); // we know it's a table because we inserted at construction time
       for (key, value) in response.headers() {
@@ -218,7 +218,7 @@ impl RequestBase {
       })?;
       self
         .output_table
-        .insert_fast_static(cstr!("body"), &bytes.as_ref().into());
+        .insert_fast_static("body", &bytes.as_ref().into());
     } else {
       let str = response.text().map_err(|e| {
         shlog!("Failure details: {}", e);
@@ -226,14 +226,14 @@ impl RequestBase {
       })?;
       self
         .output_table
-        .insert_fast_static(cstr!("body"), &Var::ephemeral_string(str.as_str()));
+        .insert_fast_static("body", &Var::ephemeral_string(str.as_str()));
       // will clone
     }
 
     if self.full_response {
       Ok(self.output_table.as_ref().into())
     } else {
-      Ok(*self.output_table.get_fast_static(cstr!("body")))
+      Ok(*self.output_table.get_fast_static("body"))
     }
   }
 }

@@ -11,7 +11,7 @@ pub(crate) fn get_styled_text(
 ) -> Result<egui::RichText, &'static str> {
   let mut text = text;
 
-  if let Some(text_style) = style.get_static(cstr!("text_style")) {
+  if let Some(text_style) = style.get_static("text_style") {
     if !text_style.is_none() {
       let text_style: &str = text_style.try_into()?;
       if let Some(text_style) = style_util::get_text_style(text_style) {
@@ -20,7 +20,7 @@ pub(crate) fn get_styled_text(
     }
   }
 
-  if let Some(color) = style.get_static(cstr!("color")) {
+  if let Some(color) = style.get_static("color") {
     if !color.is_none() {
       let color: SHColor = color.try_into()?;
       text = text.color(egui::Color32::from_rgba_unmultiplied(
@@ -29,25 +29,25 @@ pub(crate) fn get_styled_text(
     }
   }
 
-  if let Some(italics) = style.get_static(cstr!("italics")) {
+  if let Some(italics) = style.get_static("italics") {
     if !italics.is_none() && italics.try_into()? {
       text = text.italics();
     }
   }
 
-  if let Some(size) = style.get_static(cstr!("size")) {
+  if let Some(size) = style.get_static("size") {
     if !size.is_none() {
       text = text.size(size.try_into()?);
     }
   }
 
-  if let Some(strikethrough) = style.get_static(cstr!("strikethrough")) {
+  if let Some(strikethrough) = style.get_static("strikethrough") {
     if !strikethrough.is_none() && strikethrough.try_into()? {
       text = text.strikethrough();
     }
   }
 
-  if let Some(underline) = style.get_static(cstr!("underline")) {
+  if let Some(underline) = style.get_static("underline") {
     if !underline.is_none() && underline.try_into()? {
       text = text.underline();
     }
