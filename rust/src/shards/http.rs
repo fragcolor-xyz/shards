@@ -196,8 +196,11 @@ impl RequestBase {
         .output_table
         .insert_fast_static(cstr!("status"), &response.status().as_u16().try_into()?);
 
-      let headers = self.output_table.get_mut_fast_static(cstr!("headers"));
-      let mut headers: Table = headers.as_ref().try_into()?;
+      let headers = self
+        .output_table
+        .get_mut_fast_static(cstr!("headers"))
+        .as_mut_table()
+        .unwrap(); // we know it's a table because we inserted at construction time
       for (key, value) in response.headers() {
         let key = Var::ephemeral_string(key.as_str());
         let value = Var::ephemeral_string(value.to_str().map_err(|e| {
