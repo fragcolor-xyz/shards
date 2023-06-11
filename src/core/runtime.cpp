@@ -3045,6 +3045,8 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->destroyVar = [](SHVar *var) noexcept { shards::destroyVar(*var); };
 
+  result->hashVar = [](const SHVar *var) noexcept { return shards::hash(*var); };
+
 #define SH_ARRAY_IMPL(_arr_, _val_, _name_)                                                                    \
   result->_name_##Free = [](_arr_ *seq) noexcept { shards::arrayFree(*seq); };                                 \
                                                                                                                \

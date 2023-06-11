@@ -677,3 +677,15 @@ impl ShardInstance {
     unsafe { (*self.ptr).getParam.unwrap()(self.ptr, index) }
   }
 }
+
+use std::hash::{Hash, Hasher};
+
+impl Hash for Var {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    let hash = unsafe { (*Core).hashVar.unwrap()(self as *const _) };
+    unsafe {
+      state.write_u64(hash.payload.__bindgen_anon_1.int2Value[0] as u64);
+      state.write_u64(hash.payload.__bindgen_anon_1.int2Value[1] as u64);
+    }
+  }
+}
