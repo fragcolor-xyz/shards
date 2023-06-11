@@ -274,7 +274,7 @@ mod dummy_shard {
   lazy_static! {
     static ref PROPERTIES: Table = {
       let mut table = Table::default();
-      table.insert_fast_static(cstr!("experimental"), &true.into());
+      table.insert_fast_static("experimental", &true.into());
       table
     };
   }

@@ -25,13 +25,13 @@ use crate::types::ANY_TYPES;
 
 macro_rules! apply_style {
   ($table:ident, $name:literal, $type:ty, $style_path:expr) => {
-    if let Some(value) = $table.get_static(cstr!($name)) {
+    if let Some(value) = $table.get_static($name) {
       let value: $type = value.try_into()?;
       $style_path = value.into();
     }
   };
   ($table:ident, $name:literal, $type:ty, $style_path:expr, $convert:expr) => {
-    if let Some(value) = $table.get_static(cstr!($name)) {
+    if let Some(value) = $table.get_static($name) {
       let value: $type = value.try_into()?;
       $style_path = $convert(value).into();
     }
@@ -147,12 +147,12 @@ impl Shard for Style {
     );
 
     // text styles
-    if let Some(text_styles) = table.get_static(cstr!("text_styles")) {
+    if let Some(text_styles) = table.get_static("text_styles") {
       let text_styles: Seq = text_styles.try_into()?;
 
       for var in text_styles.iter() {
         let text_style: Table = var.try_into()?;
-        if let Some(name) = text_style.get_static(cstr!("name")) {
+        if let Some(name) = text_style.get_static("name") {
           if let Some(key) = style_util::get_text_style(name.try_into()?) {
             if let Some(fontId) = style_util::get_font_id(text_style) {
               style
@@ -169,7 +169,7 @@ impl Shard for Style {
     apply_style!(table, "wrap", bool, style.wrap);
 
     // spacing
-    if let Some(spacing) = table.get_static(cstr!("spacing")) {
+    if let Some(spacing) = table.get_static("spacing") {
       let spacing: Table = spacing.try_into()?;
 
       apply_style!(
@@ -229,7 +229,7 @@ impl Shard for Style {
     }
 
     // interaction
-    if let Some(interaction) = table.get_static(cstr!("interaction")) {
+    if let Some(interaction) = table.get_static("interaction") {
       let interaction: Table = interaction.try_into()?;
 
       apply_style!(
@@ -253,7 +253,7 @@ impl Shard for Style {
     }
 
     // visuals
-    if let Some(visuals) = table.get_static(cstr!("visuals")) {
+    if let Some(visuals) = table.get_static("visuals") {
       let visuals: Table = visuals.try_into()?;
 
       apply_style!(visuals, "dark_mode", bool, style.visuals.dark_mode);
@@ -265,7 +265,7 @@ impl Shard for Style {
         style_util::get_color
       );
 
-      if let Some(widgets) = visuals.get_static(cstr!("widgets")) {
+      if let Some(widgets) = visuals.get_static("widgets") {
         let widgets: Table = widgets.try_into()?;
 
         Style::apply_widget_visuals(
@@ -287,7 +287,7 @@ impl Shard for Style {
         Style::apply_widget_visuals(&mut style.visuals.widgets.open, &widgets, cstr!("open"))?;
       }
 
-      if let Some(selection) = visuals.get_static(cstr!("selection")) {
+      if let Some(selection) = visuals.get_static("selection") {
         let selection: Table = selection.try_into()?;
 
         apply_style!(
@@ -405,7 +405,7 @@ impl Shard for Style {
     apply_style!(table, "animation_time", f32, style.animation_time);
 
     // debug
-    if let Some(debug) = table.get_static(cstr!("debug")) {
+    if let Some(debug) = table.get_static("debug") {
       let debug: Table = debug.try_into()?;
 
       apply_style!(debug, "debug_on_hover", bool, style.debug.debug_on_hover);
