@@ -11,10 +11,8 @@ struct Base {
       ParamsInfo(ParamsInfo::Param("Value", SHCCSTR("The value to test against for equality."), CoreInfo::AnyType),
                  ParamsInfo::Param("Abort", SHCCSTR("If we should abort the process on failure."), CoreInfo::BoolType));
 
-  SHVar value{};
+  ParamVar _value{};
   bool aborting;
-
-  void destroy() { destroyVar(value); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any type."); }
@@ -24,11 +22,12 @@ struct Base {
 
   SHParametersInfo parameters() { return SHParametersInfo(assertParamsInfo); }
 
+  SHVar& value() { return _value.get(); }
+
   void setParam(int index, const SHVar &inValue) {
     switch (index) {
     case 0:
-      destroyVar(value);
-      cloneVar(value, inValue);
+      _value = inValue;
       break;
     case 1:
       aborting = inValue.payload.boolValue;
@@ -42,7 +41,7 @@ struct Base {
     auto res = SHVar();
     switch (index) {
     case 0:
-      res = value;
+      res = _value;
       break;
     case 1:
       res.valueType = SHType::Bool;
@@ -53,6 +52,9 @@ struct Base {
     }
     return res;
   }
+
+  void warmup(SHContext *context) { _value.warmup(context); }
+  void cleanup() { _value.cleanup(); }
 };
 
 struct Is : public Base {
@@ -62,8 +64,8 @@ struct Is : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input != value) {
-      SHLOG_ERROR("Failed assertion Is, input: {} expected: {}", input, value);
+    if (input != value()) {
+      SHLOG_ERROR("Failed assertion Is, input: {} expected: {}", input, value());
       if (aborting)
         abort();
       else
@@ -80,8 +82,8 @@ struct IsNot : public Base {
                    "different from a given value.");
   }
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input == value) {
-      SHLOG_ERROR("Failed assertion IsNot, input: {} not expected: {}", input, value);
+    if (input == value()) {
+      SHLOG_ERROR("Failed assertion IsNot, input: {} not expected: {}", input, value());
       if (aborting)
         abort();
       else
@@ -108,8 +110,7 @@ struct IsAlmost {
   void setParam(int index, const SHVar &inValue) {
     switch (index) {
     case 0:
-      destroyVar(_value);
-      cloneVar(_value, inValue);
+      _value = inValue;
       break;
     case 1:
       _aborting = inValue.payload.boolValue;
@@ -138,10 +139,11 @@ struct IsAlmost {
     }
   }
 
-  void destroy() { destroyVar(_value); }
+  void warmup(SHContext *context) { _value.warmup(context); }
+  void cleanup() { _value.cleanup(); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_value.valueType != data.inputType.basicType)
+    if (_value.get().valueType != data.inputType.basicType)
       throw SHException("Input and value types must match.");
 
     if (_threshold <= 0.0)
@@ -151,8 +153,8 @@ struct IsAlmost {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!_almostEqual(input, _value, _threshold)) {
-      SHLOG_ERROR("Failed assertion IsAlmost, input: {} expected: {}", input, _value);
+    if (!_almostEqual(input, _value.get(), _threshold)) {
+      SHLOG_ERROR("Failed assertion IsAlmost, input: {} expected: {}", input, _value.get());
       if (_aborting)
         abort();
       else
@@ -176,7 +178,9 @@ private:
       CoreInfo::Int16Type,
       CoreInfo::AnySeqType,
   }};
-  static inline Parameters _params = {{"Value", SHCCSTR("The value to test against for almost equality."), MathTypes},
+  static inline Type MathVarType = Type::VariableOf(MathTypes);
+  static inline Parameters _params = {
+      {"Value", SHCCSTR("The value to test against for almost equality."), {MathTypes, {MathVarType}}},
                                       {"Abort", SHCCSTR("If we should abort the process on failure."), {CoreInfo::BoolType}},
                                       {"Threshold",
                                        SHCCSTR("The smallest difference to be considered equal. Should be greater than zero."),
@@ -184,7 +188,7 @@ private:
 
   bool _aborting;
   SHFloat _threshold{FLT_EPSILON};
-  SHVar _value{};
+  ParamVar _value{};
 };
 } // namespace Assert
 } // namespace shards
