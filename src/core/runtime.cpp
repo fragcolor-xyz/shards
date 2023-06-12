@@ -3363,11 +3363,11 @@ void incRef(ShardPtr shard) {
 } // namespace shards
 
 #ifdef _WIN32
-  // This code will only be compiled on 32-bit or 64-bit Windows.
+// This code will only be compiled on 32-bit or 64-bit Windows.
 // Note that _WIN32 is defined for both 32-bit and 64-bit Windows,
 // so you might want to exclude 64-bit windows like this:
 #ifndef _WIN64
-  // This code will only be compiled on 32-bit Windows.
+// This code will only be compiled on 32-bit Windows.
 void *operator new(std::size_t count) {
   void *ptr = _aligned_malloc(count, 16);
   return ptr;
@@ -3381,6 +3381,10 @@ void *operator new[](std::size_t count) {
 void operator delete(void *ptr) noexcept { _aligned_free(ptr); }
 
 void operator delete[](void *ptr) noexcept { _aligned_free(ptr); }
+
+void operator delete(void *ptr, std::size_t count) noexcept { _aligned_free(ptr); }
+
+void operator delete[](void *ptr, std::size_t count) noexcept { _aligned_free(ptr); }
 #endif
 #endif
 
