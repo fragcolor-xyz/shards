@@ -10,8 +10,10 @@
 #include <shards/input/state.hpp>
 #include <shards/input/detached.hpp>
 #include <shards/core/module.hpp>
+#include "input/events.hpp"
 #include "inputs.hpp"
 #include "debug_ui.hpp"
+#include "modules/inputs/debug_ui.hpp"
 #include <boost/lockfree/spsc_queue.hpp>
 
 namespace shards {
@@ -69,7 +71,7 @@ struct Detached {
   };
   using EventBuffer = input::EventBuffer<Frame>;
 
-  struct InputThreadHandler : public IInputHandler {
+  struct InputThreadHandler : public IInputHandler, public debug::IDebug {
     Brancher brancher;
     CapturedVariablesQueue variables{32};
     CapturedVariables variableState;
@@ -83,9 +85,28 @@ struct Detached {
     std::atomic<bool> wantsPointerInput{};
     std::atomic<bool> wantsKeyboardInput{};
 
+    bool canReceiveInput{};
+
     int priority{};
 
     InputThreadHandler(EventBuffer &eventBuffer, int priority) : eventBuffer(eventBuffer), priority(priority) {}
+
+    const std::vector<input::ConsumableEvent> *getDebugFrame(size_t frameIndex) override {
+      for (auto &[gen, frame] : eventBuffer.getEvents(frameIndex, frameIndex + 1)) {
+        return &frame.events;
+      }
+      return nullptr;
+    }
+    size_t getLastFrameIndex() const override { return eventBuffer.head - 1; }
+    const char *getDebugName() override { return name.c_str(); }
+    debug::ConsumeFlags getDebugConsumeFlags() const override {
+      return debug::ConsumeFlags{
+          .canReceiveInput = canReceiveInput,
+          .requestFocus = requestFocus,
+          .wantsPointerInput = wantsPointerInput,
+          .wantsKeyboardInput = wantsKeyboardInput,
+      };
+    }
 
     int getPriority() const override { return priority; }
 
@@ -122,8 +143,7 @@ struct Detached {
 
     // Runs on input thread callback
     void handle(const InputState &state, std::vector<ConsumableEvent> &events, FocusTracker &focusTracker) override {
-      bool canReceiveInput{};
-      bool requestedFocus{};
+      bool requestedFocus;
       if (requestFocus) {
         canReceiveInput = requestedFocus = focusTracker.requestFocus(this);
       } else {
@@ -142,9 +162,9 @@ struct Detached {
         }
       }
 
-      if (!frame.canReceiveInput || requestedFocus) {
-        SPDLOG_INFO("DI {}, canReceiveInput {}, requestedFocus {}", name, frame.canReceiveInput, requestedFocus);
-      }
+      // if (!frame.canReceiveInput || requestedFocus) {
+      //   SPDLOG_INFO("DI {}, canReceiveInput {}, requestedFocus {}", name, frame.canReceiveInput, requestedFocus);
+      // }
 
       eventBuffer.nextFrame();
 
@@ -378,11 +398,14 @@ struct DebugUI {
 
   std::vector<debug::Layer> _layers;
   std::list<std::string> _strings;
+  // std::list<input::ConsumableEvent> _eventStorage;
+  std::list<std::vector<const input::ConsumableEvent *>> _eventVectors;
   std::vector<std::shared_ptr<IInputHandler>> _handlers;
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     _layers.clear();
     _strings.clear();
+    _eventVectors.clear();
 
     _context->master->getHandlers(_handlers);
     for (auto &handler : _handlers) {
@@ -392,15 +415,46 @@ struct DebugUI {
       if (debug::IDebug *debug = dynamic_cast<debug::IDebug *>(handler.get())) {
         auto &str = _strings.emplace_back(debug->getDebugName());
         layer.name = str.c_str();
+
+        auto &vec = _eventVectors.emplace_back();
+        size_t head = debug->getLastFrameIndex();
+        const size_t historyLength = 32;
+        size_t tail = head > historyLength ? (head - historyLength) : 0;
+        for (size_t i = tail; i <= head; i++) {
+          if (auto frame = debug->getDebugFrame(i)) {
+            for (auto &evt : *frame) {
+              vec.push_back(&evt);
+            }
+          }
+        }
+
+        layer.debugEvents = (debug::OpaqueEvent *)vec.data();
+        layer.numDebugEvents = vec.size();
+
+        layer.consumeFlags = debug->getDebugConsumeFlags();
       }
     }
 
-    showInputDebugUI(_uiContext, _layers.data(), _layers.size());
+    shards_input_showDebugUI(_uiContext, _layers.data(), _layers.size());
     return SHVar{};
   }
 };
 } // namespace input
 } // namespace shards
+
+extern "C" {
+const char *shards_input_eventToString(shards::input::debug::OpaqueEvent opaque) {
+  auto &evt = *(shards::input::ConsumableEvent *)opaque;
+  auto str = shards::input::debugFormat(evt.event);
+  auto result = strdup(str.c_str());
+  return result;
+}
+void shards_input_freeString(const char *str) { free((void *)str); }
+bool shards_input_eventIsConsumed(shards::input::debug::OpaqueEvent opaque) {
+  auto &evt = *(shards::input::ConsumableEvent *)opaque;
+  return evt.consumed;
+}
+}
 
 SHARDS_REGISTER_FN(inputs1) {
   using namespace shards::input;
