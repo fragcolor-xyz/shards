@@ -484,6 +484,10 @@ struct ReadTextureShard {
     TexturePtr texture = varToTexture(input);
     _requiredGraphicsContext->renderer->copyTexture(TextureSubResource(texture), _readBuffer, (bool)*_wait);
 
+    // Poll for previously queued operation completion
+    if (!_wait)
+      _requiredGraphicsContext->renderer->pollTextureCopies();
+
     _image.valueType = SHType::Image;
     auto &outImage = _image.payload.imageValue;
     if (_readBuffer->pixelFormat == WGPUTextureFormat_Undefined) {
