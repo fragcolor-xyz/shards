@@ -36,7 +36,7 @@
 (defloop test-copy-async
   (base)
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Title "SDL Window" :Width 1280 :Height 720
    :Contents
    (->
     (Setup 0 >= .frame-index)
