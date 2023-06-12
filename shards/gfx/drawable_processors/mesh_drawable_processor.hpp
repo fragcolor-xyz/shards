@@ -142,7 +142,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
   }
 
-  void buildPipeline(PipelineBuilder &builder) override {
+  void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions &options) override {
     using namespace shader;
 
     auto &viewBinding = builder.getOrCreateBufferBinding("view");
@@ -164,9 +164,12 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(builder.firstDrawable);
 
     builder.meshFormat = meshDrawable.mesh->getFormat();
+
+    if (!options.ignoreDrawableFeatures) {
     for (auto &feature : meshDrawable.features) {
       builder.features.push_back(feature.get());
     }
+  }
   }
 
   void generateDrawableData(DrawableData &data, Context &context, const CachedPipeline &cachedPipeline, const IDrawable *drawable,
