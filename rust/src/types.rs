@@ -4936,6 +4936,19 @@ impl Table {
       it
     }
   }
+
+  pub fn remove(&mut self, k: Var) {
+    unsafe {
+      (*self.t.api).tableRemove.unwrap()(self.t, k);
+    }
+  }
+
+  pub fn remove_static(&mut self, k: &'static str) {
+    let k = Var::ephemeral_string(k);
+    unsafe {
+      (*self.t.api).tableRemove.unwrap()(self.t, k);
+    }
+  }
 }
 
 pub struct TableIterator {
