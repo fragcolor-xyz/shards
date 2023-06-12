@@ -24,10 +24,10 @@ SHTypeInfo *gfx_getWindowContextType() {
 const char *gfx_getWindowContextVarName() { return WindowContext::VariableName; }
 
 SHTypeInfo *gfx_getInputContextType() {
-  static SHTypeInfo type = InputContext::Type;
+  static SHTypeInfo type = IInputContext::Type;
   return &type;
 }
-const char *gfx_getInputContextVarName() { return InputContext::VariableName; }
+const char *gfx_getInputContextVarName() { return IInputContext::VariableName; }
 
 SHTypeInfo *gfx_getQueueType() {
   static SHTypeInfo type = GFXTypes::DrawQueue;
@@ -74,14 +74,14 @@ gfx::int4 gfx_getViewport(const SHVar &graphicsContextVar) {
 
 const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar *graphicsContextVar,
                                            const SHVar &inputContextVar, float scalingFactor) {
-  InputContext &inputContext = varAsObjectChecked<InputContext>(inputContextVar, InputContext::Type);
-  auto &window = inputContext.window;
+  IInputContext &inputContext = varAsObjectChecked<IInputContext>(inputContextVar, IInputContext::Type);
+  // auto &window = inputContext.window;
 
   // static std::vector<Event> noEvents{};
   // const std::vector<Event> *eventsPtr = &noEvents;
   // int4 mappedWindowRegion{};
 
-  int2 viewportSize{};
+  InputRegion region = inputContext.getState().region;
   if (graphicsContextVar) {
     GraphicsContext &graphicsContext = varAsObjectChecked<GraphicsContext>(*graphicsContextVar, GraphicsContext::Type);
 
@@ -89,10 +89,11 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
     auto viewStackOutput = viewStack.getOutput();
 
     // Get viewport size from view stack
-    viewportSize = viewStackOutput.viewport.getSize();
-  } else {
-    viewportSize = window->getDrawableSize();
+    region.size = (float2)viewStackOutput.viewport.getSize();
   }
+  //  else {
+  //   viewportSize = window->getDrawableSize();
+  // }
 
   // Get events based on input stack
   // TODO: Input
@@ -112,31 +113,28 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
   // }
 
   return translator->translateFromInputEvents(EguiInputTranslatorArgs{
-      .events = inputContext.detached.virtualInputEvents,
-      // .window = *window.get(),
-      .time = inputContext.time,
-      .deltaTime = inputContext.deltaTime,
-      .region = inputContext.getState().region,
-      // .viewportSize = viewportSize,
-      // .mappedWindowRegion = mappedWindowRegion,
-      // .scalingFactor = scalingFactor,
+      .events = inputContext.getEvents(),
+      .time = inputContext.getTime(),
+      .deltaTime = inputContext.getDeltaTime(),
+      .region = region,
   });
 }
 
 void gfx_applyEguiOutputs(gfx::EguiInputTranslator *translator, const egui::FullOutput &output, const SHVar &inputContextVar) {
-  InputContext &inputContext = varAsObjectChecked<InputContext>(inputContextVar, InputContext::Type);
+  IInputContext &inputContext = varAsObjectChecked<IInputContext>(inputContextVar, IInputContext::Type);
 
   translator->applyOutput(output);
   for (auto &msg : translator->getOutputMessages()) {
-    inputContext.master->postMessage(msg);
+    inputContext.postMessage(msg);
   }
 
   // Update these
-  if (inputContext.wantsPointerInput != output.wantsPointerInput)
+  auto &consumeFlags = inputContext.getConsumeFlags();
+  if (consumeFlags.wantsPointerInput != output.wantsPointerInput)
     SPDLOG_INFO("EGUI: wantsPointerInput = {}", output.wantsPointerInput);
-  inputContext.wantsPointerInput = output.wantsPointerInput;
+  consumeFlags.wantsPointerInput = output.wantsPointerInput;
 
-  if (inputContext.wantsKeyboardInput != output.wantsKeyboardInput)
+  if (consumeFlags.wantsKeyboardInput != output.wantsKeyboardInput)
     SPDLOG_INFO("EGUI: wantsKeyboardInput = {}", output.wantsKeyboardInput);
-  inputContext.wantsKeyboardInput = output.wantsKeyboardInput;
+  consumeFlags.wantsKeyboardInput = output.wantsKeyboardInput;
 }

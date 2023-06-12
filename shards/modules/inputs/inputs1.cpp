@@ -47,6 +47,30 @@ struct GetWindowContext {
 
 using VariableRefs = std::unordered_map<std::string, SHVar *>;
 
+struct DetachedInputContext : public IInputContext {
+  std::shared_ptr<gfx::Window> window;
+  input::InputMaster *master{};
+  input::DetachedInput detached;
+
+  ConsumeFlags consumeFlags{};
+
+  double time{};
+  float deltaTime{};
+
+  virtual shards::input::InputMaster *getMaster() const override { return master; }
+
+  const input::InputState &getState() const override { return detached.state; }
+  const std::vector<input::Event> &getEvents() const override { return detached.virtualInputEvents; }
+
+  // Writable, controls how events are consumed
+  ConsumeFlags &getConsumeFlags() override { return consumeFlags; }
+
+  float getTime() const override { return time; }
+  float getDeltaTime() const override { return deltaTime; }
+
+  void postMessage(const input::Message &message) override { master->postMessage(message); }
+};
+
 struct Detached {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -165,10 +189,6 @@ struct Detached {
         }
       }
 
-      // if (!frame.canReceiveInput || requestedFocus) {
-      //   SPDLOG_INFO("DI {}, canReceiveInput {}, requestedFocus {}", name, frame.canReceiveInput, requestedFocus);
-      // }
-
       eventBuffer.nextFrame();
 
       if (!brancher.wires.empty()) {
@@ -193,7 +213,7 @@ struct Detached {
   std::shared_ptr<InputThreadHandler> _handler;
   VariableRefs _capturedVariables;
   SHVar *_contextVarRef{};
-  InputContext _inputContext{};
+  DetachedInputContext _inputContext{};
 
   // The channel that receives input events from the input thread
   EventBuffer _eventBuffer;
@@ -221,7 +241,7 @@ struct Detached {
       SHInstanceData innerData = data;
 
       ExposedInfo innerExposedInfo{data.shared};
-      innerExposedInfo.push_back(InputContext::VariableInfo);
+      innerExposedInfo.push_back(IInputContext::VariableInfo);
       innerData.shared = (SHExposedTypesInfo)innerExposedInfo;
 
       auto result = _mainShards.compose(innerData);
@@ -234,9 +254,9 @@ struct Detached {
   }
 
   void warmup(SHContext *context) {
-    _contextVarRef = referenceVariable(context, InputContext::VariableName);
+    _contextVarRef = referenceVariable(context, IInputContext::VariableName);
 
-    withObjectVariable(*_contextVarRef, &_inputContext, InputContext::Type, [&] { PARAM_WARMUP(context); });
+    withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_WARMUP(context); });
 
     _deltaTimer.reset();
     _inputContext.time = 0.0f;
@@ -244,7 +264,7 @@ struct Detached {
   }
 
   void cleanup() {
-    withObjectVariable(*_contextVarRef, &_inputContext, InputContext::Type, [&] { PARAM_CLEANUP(); });
+    withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_CLEANUP(); });
 
     _handler.reset();
     cleanupCaptures();
@@ -303,7 +323,7 @@ struct Detached {
 
     SHVar output{};
     if (_mainShards) {
-      withObjectVariable(*_contextVarRef, &_inputContext, InputContext::Type, [&] {
+      withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] {
         double deltaTime = _deltaTimer.update();
         _inputContext.deltaTime = deltaTime;
         _inputContext.time += deltaTime;
@@ -328,7 +348,7 @@ struct Detached {
           _lastReceivedEventBufferFrame = eventUpdate.lastGeneration;
         });
 
-        // Update input region 
+        // Update input region
         if (mostRecentFrame) {
           _inputContext.detached.state.region = mostRecentFrame->region;
         }
@@ -341,9 +361,9 @@ struct Detached {
         _mainShards.activate(context, input, output); //
 
         // Update consume callbacks
-        _handler->wantsKeyboardInput = _inputContext.wantsKeyboardInput;
-        _handler->wantsPointerInput = _inputContext.wantsPointerInput;
-        _handler->requestFocus = _inputContext.requestFocus;
+        _handler->wantsKeyboardInput = _inputContext.consumeFlags.wantsKeyboardInput;
+        _handler->wantsPointerInput = _inputContext.consumeFlags.wantsPointerInput;
+        _handler->requestFocus = _inputContext.consumeFlags.requestFocus;
       });
     } else {
       output = input;
@@ -418,7 +438,7 @@ struct DebugUI {
     _strings.clear();
     _eventVectors.clear();
 
-    _context->master->getHandlers(_handlers);
+    _context->getMaster()->getHandlers(_handlers);
     for (auto &handler : _handlers) {
       auto &layer = _layers.emplace_back();
       layer.priority = handler->getPriority();

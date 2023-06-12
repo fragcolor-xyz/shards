@@ -4,6 +4,7 @@
 #include "events.hpp"
 #include "event_buffer.hpp"
 #include "detached.hpp"
+#include "input/events.hpp"
 #include "messages.hpp"
 #include <shared_mutex>
 #include <boost/lockfree/spsc_queue.hpp>
@@ -83,6 +84,9 @@ public:
     std::unique_lock<decltype(mutex)> l(mutex);
     updateAndSortHandlersLocked(outVec);
   }
+
+  const InputState& getState() const { return state; }
+  const std::vector<Event>& getEvents() const { return input.virtualInputEvents; }
 
 private:
   void updateAndSortHandlers();
