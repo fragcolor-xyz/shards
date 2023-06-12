@@ -107,6 +107,9 @@ struct RenderDrawablesStep {
   SortMode sortMode = SortMode::Batch;
   std::vector<FeaturePtr> features;
 
+  // When enabled, features on drawables are ignored
+  bool ignoreDrawableFeatures{};
+
   std::optional<RenderStepOutput> output;
 
   std::shared_ptr<RenderDrawablesStep> clone() { return cloneSelfWithId(this, renderStepIdGenerator.getNext()); };

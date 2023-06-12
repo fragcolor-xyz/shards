@@ -174,7 +174,7 @@ void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
 
     // Apply modifiers
     if (feature->pipelineModifier) {
-      feature->pipelineModifier->buildPipeline(*this);
+      feature->pipelineModifier->buildPipeline(*this, options);
     }
 
     std::vector<std::weak_ptr<Feature>> otherFeatures;

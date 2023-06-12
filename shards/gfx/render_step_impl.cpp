@@ -119,7 +119,8 @@ GeneratorData *runGenerators(RenderGraphEvaluator &eval, PipelineGroup &group, c
 }
 
 void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr queue,
-                     const shards::pmr::vector<Feature *> &features, SortMode sortMode) {
+                     const shards::pmr::vector<Feature *> &features, SortMode sortMode,
+                     const BuildPipelineOptions &buildPipelineOptions) {
   ZoneScoped;
 
   const std::vector<const IDrawable *> &drawables = queue->getDrawables();
@@ -134,6 +135,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   HasherXXH128<PipelineHashVisitor> sharedHasher;
   sharedHasher(rtl);
   sharedHasher(evaluateContext.viewData.cachedView.isFlipped);
+  sharedHasher(buildPipelineOptions);
   Hash128 stepSharedHash = sharedHasher.getDigest();
 
   shards::pmr::vector<const IDrawable *> expandedDrawables(workerMemory);
@@ -205,6 +207,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
 
     PipelineBuilder builder(*group.pipeline.get(), rtl, firstDrawable);
 
+    builder.options = buildPipelineOptions;
     builder.isRenderingFlipped = evaluateContext.viewData.cachedView.isFlipped;
 
     // Add base features
@@ -214,7 +217,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
 
     // Assume same processor
     try {
-      processor.buildPipeline(builder);
+      processor.buildPipeline(builder, buildPipelineOptions);
       builder.build(context.wgpuDevice, storage.deviceLimits.limits);
     } catch (std::exception &ex) {
       if (storage.ignoreCompilationErrors) {
@@ -321,7 +324,8 @@ void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const Rende
   for (auto &feature : step.features)
     evaluateFeatures.push_back(feature.get());
 
-  renderDrawables(evaluateContext, step.drawQueue, evaluateFeatures, step.sortMode);
+  renderDrawables(evaluateContext, step.drawQueue, evaluateFeatures, step.sortMode,
+                  BuildPipelineOptions{.ignoreDrawableFeatures = step.ignoreDrawableFeatures});
 }
 
 using Data = RenderGraphBuilder::NodeBuildData;
@@ -400,7 +404,7 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
       data->drawable->parameters.set(frame.name, texture);
     }
 
-    renderDrawables(ctx, data->queue, data->features, SortMode::Queue);
+    renderDrawables(ctx, data->queue, data->features, SortMode::Queue, BuildPipelineOptions{});
   };
 }
 
