@@ -101,7 +101,8 @@ public:
       if (frame.outputIndex.has_value())
         outSuffix += fmt::format("out: {}", frame.outputIndex.value());
       if (frame.textureOverride.texture)
-        outSuffix += fmt::format("overriden", frame.outputIndex.value());
+        outSuffix += fmt::format("overriden: {}, \"{}\"", (void *)frame.textureOverride.texture.get(),
+                                 frame.textureOverride.texture->getLabel());
       if (!outSuffix.empty())
         outSuffix = fmt::format(", {}", outSuffix);
       SPDLOG_LOGGER_DEBUG(logger, " - {} fmt: {}, size: {}{}", frame.name, frame.format, frame.size, outSuffix);
