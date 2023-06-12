@@ -8,6 +8,10 @@
 #include <shared_mutex>
 #include <boost/lockfree/spsc_queue.hpp>
 
+namespace gfx {
+struct Window;
+}
+
 namespace shards::input {
 struct FocusTracker {
   void *previous{};
@@ -71,11 +75,11 @@ public:
     handlers.emplace_back(ptr);
   }
 
-  void update(SDL_Window *window);
+  void update(gfx::Window &window);
   void reset() {}
 
   // Only use from main thread
-  void getHandlers(std::vector<std::shared_ptr<IInputHandler>>& outVec) {
+  void getHandlers(std::vector<std::shared_ptr<IInputHandler>> &outVec) {
     std::unique_lock<decltype(mutex)> l(mutex);
     updateAndSortHandlersLocked(outVec);
   }
@@ -84,7 +88,7 @@ private:
   void updateAndSortHandlers();
 
   // Assumes already locked
-  void updateAndSortHandlersLocked(std::vector<std::shared_ptr<IInputHandler>>& outVec);
+  void updateAndSortHandlersLocked(std::vector<std::shared_ptr<IInputHandler>> &outVec);
 };
 
 } // namespace shards::input
