@@ -30,7 +30,6 @@
 #include <type_traits>
 #include <unordered_set>
 #include <variant>
-#include "untracked_collections.hpp"
 
 #ifdef SHARDS_TRACKING
 #include "tracking.hpp"
@@ -38,13 +37,15 @@
 
 #include "shardwrapper.hpp"
 
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#include <boost/container/stable_vector.hpp>
+#include <boost/container/flat_map.hpp>
+#pragma clang attribute pop
+
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
-#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
-#include <boost/container/stable_vector.hpp>
-#pragma clang attribute pop
-#include <boost/container/flat_map.hpp>
+#include "untracked_collections.hpp"
 
 // TODO make it into a run-time param
 #ifndef NDEBUG
@@ -514,14 +515,14 @@ public:
           [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
             // the following is safe cos count takes a const ref
-            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            auto k = reinterpret_cast<shards::OwnedVar *>(&key);
             return map->count(*k) > 0;
           },
       .tableAt =
           [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
             // the following is safe cos []] takes a const ref
-            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            auto k = reinterpret_cast<shards::OwnedVar *>(&key);
             SHVar &vRef = (*map)[*k];
             return &vRef;
           },
@@ -529,7 +530,7 @@ public:
           [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
             // the following is safe cos erase takes a const ref
-            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            auto k = reinterpret_cast<shards::OwnedVar *>(&key);
             map->erase(*k);
           },
       .tableClear =
@@ -1025,9 +1026,11 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 #define REGISTER_ENUM(_ENUM_INFO_) \
   static shards::EnumRegisterImpl SH_GENSYM(__registeredEnum) = shards::EnumRegisterImpl::registerEnum<_ENUM_INFO_>()
 
-#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)                                                         \
-  namespace shards {                                                                              \
-  template <> struct TEnumHelp<_ENUM_, _VALUE_> { static inline SHOptionalString help = _STR_; }; \
+#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)         \
+  namespace shards {                              \
+  template <> struct TEnumHelp<_ENUM_, _VALUE_> { \
+    static inline SHOptionalString help = _STR_;  \
+  };                                              \
   }
 
 template <typename E> static E getFlags(SHVar var) {

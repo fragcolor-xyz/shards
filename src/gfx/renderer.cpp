@@ -1,5 +1,7 @@
 #include "renderer.hpp"
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include "boost/container/stable_vector.hpp"
+#pragma clang attribute pop
 #include "context.hpp"
 #include "drawable.hpp"
 #include "feature.hpp"
