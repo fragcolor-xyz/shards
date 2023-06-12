@@ -22,13 +22,6 @@ struct WindowContext {
   std::shared_ptr<gfx::Window> window;
   input::InputMaster inputMaster;
 
-  // WindowEventBuffer windowEvents;
-  // std::vector<SDL_Event> events;
-  // std::vector<SDL_Event> virtualInputEvents;
-  // boost::container::flat_set<SDL_Keycode> heldKeys;
-  // shards::input::InputStack inputStack;
-  // void *lastFocusStack[2]{};
-
   double time;
   float deltaTime;
 

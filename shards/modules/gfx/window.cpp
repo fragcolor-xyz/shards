@@ -1,6 +1,10 @@
 #include "gfx.hpp"
 #include "window.hpp"
+#include "renderer.hpp"
+#include <modules/inputs/inputs.hpp>
+#include <shards/input/master.hpp>
 #include <shards/linalg_shim.hpp>
+#include <shards/core/foundation.hpp>
 #include <shards/core/params.hpp>
 #include <SDL_events.h>
 #include <SDL_keyboard.h>
@@ -10,6 +14,7 @@
 #include <gfx/window.hpp>
 
 using namespace shards;
+using namespace shards::input;
 
 namespace shards {
 void WindowContext::nextFrame() {}
@@ -18,12 +23,36 @@ SDL_Window *WindowContext::getSdlWindow() { return getWindow().window; }
 } // namespace shards
 
 namespace gfx {
+
+struct InlineInputContext : public IInputContext {
+  InputMaster *master{};
+  ConsumeFlags dummyConsumeFlags{};
+
+  float time{};
+  float deltaTime{};
+
+  virtual shards::input::InputMaster *getMaster() const override { return master; }
+
+  virtual void postMessage(const Message &message) override { master->postMessage(message); }
+  virtual const InputState &getState() const override { return master->getState(); }
+  virtual const std::vector<Event> &getEvents() const override { return master->getEvents(); }
+
+  // Writable, controls how events are consumed
+  virtual ConsumeFlags &getConsumeFlags() override { return dummyConsumeFlags; }
+
+  virtual float getTime() const override { return time; }
+  virtual float getDeltaTime() const override { return deltaTime; }
+};
+
 struct MainWindow final {
   PARAM(OwnedVar, _title, "Title", "The title of the window to create.", {CoreInfo::StringType});
   PARAM(OwnedVar, _width, "Width", "The width of the window to create. In pixels and DPI aware.", {CoreInfo::IntType});
   PARAM(OwnedVar, _height, "Height", "The height of the window to create. In pixels and DPI aware.", {CoreInfo::IntType});
   PARAM(ShardsVar, _contents, "Contents", "The main input loop of this window.", {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(PARAM_IMPL_FOR(_title), PARAM_IMPL_FOR(_width), PARAM_IMPL_FOR(_height), PARAM_IMPL_FOR(_contents));
+  PARAM(OwnedVar, _detachRenderer, "DetachRenderer",
+        "When enabled, no default graphics renderer will be available in the contents wire.", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_title), PARAM_IMPL_FOR(_width), PARAM_IMPL_FOR(_height), PARAM_IMPL_FOR(_contents),
+             PARAM_IMPL_FOR(_detachRenderer));
 
   static inline Type OutputType = Type(WindowContext::Type);
 
@@ -38,11 +67,16 @@ struct MainWindow final {
 
   Window _window;
 
-  WindowContext _windowContext;
+  std::optional<WindowContext> _windowContext;
   SHVar *_windowContextVar{};
+
+  std::optional<InlineInputContext> _inlineInputContext;
+  SHVar *_inputContextVar{};
 
   ExposedInfo _innerExposedVariables;
   ExposedInfo _exposedVariables;
+
+  std::optional<ShardsRenderer> _renderer;
 
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedVariables); }
 
@@ -61,9 +95,23 @@ struct MainWindow final {
     _innerExposedVariables = ExposedInfo(data.shared);
     _innerExposedVariables.push_back(WindowContext::VariableInfo);
 
-    SHInstanceData innerData = data;
-    innerData.shared = SHExposedTypesInfo(_innerExposedVariables);
-    _contents.compose(innerData);
+    if (_contents) {
+      if (!*_detachRenderer) {
+        _renderer.emplace();
+        _renderer->compose(data);
+        _renderer->getExposedContextVariables(_innerExposedVariables);
+      } else {
+        _renderer.reset();
+      }
+
+      _inlineInputContext.emplace();
+      _inlineInputContext->master = &_windowContext->inputMaster;
+      _innerExposedVariables.push_back(RequiredInputContext::getExposedTypeInfo());
+
+      SHInstanceData innerData = data;
+      innerData.shared = SHExposedTypesInfo(_innerExposedVariables);
+      _contents.compose(innerData);
+    }
 
     mergeIntoExposedInfo(_exposedVariables, _contents.composeResult().exposedInfo);
 
@@ -85,25 +133,37 @@ struct MainWindow final {
     windowOptions.width = (int)Var(_width);
     windowOptions.height = (int)Var(_height);
     windowOptions.title = SHSTRVIEW(Var(_title));
-    _windowContext.window = std::make_shared<Window>();
-    _windowContext.window->init(windowOptions);
+    _windowContext->window = std::make_shared<Window>();
+    _windowContext->window->init(windowOptions);
   }
 
   void warmup(SHContext *context) {
-    PARAM_WARMUP(context);
-
+    _windowContext.emplace();
+    
     _windowContextVar = referenceVariable(context, WindowContext::VariableName);
-    assignVariableValue(*_windowContextVar, Var::Object(&_windowContext, WindowContext::Type));
+    assignVariableValue(*_windowContextVar, Var::Object(&_windowContext.value(), WindowContext::Type));
 
-    _contents.warmup(context);
+    if (_inlineInputContext) {
+      _inputContextVar = referenceVariable(context, IInputContext::VariableName);
+      assignVariableValue(*_inputContextVar, Var::Object(&_inlineInputContext.value(), IInputContext::Type));
+    }
+
+    if (_renderer) {
+      _renderer->warmup(context);
+    }
+
+    PARAM_WARMUP(context);
   }
 
   void cleanup() {
     PARAM_CLEANUP();
 
-    if (_windowContext.window) {
+    _renderer->cleanup();
+    _renderer.reset();
+
+    if (_windowContext->window) {
       SHLOG_DEBUG("Destroying window");
-      _windowContext.window->cleanup();
+      _windowContext->window->cleanup();
     }
     _windowContext.reset();
 
@@ -115,45 +175,35 @@ struct MainWindow final {
       releaseVariable(_windowContextVar);
       _windowContextVar = nullptr;
     }
+
+    releaseVariable(_inputContextVar);
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    if (!_windowContext.window) {
+    if (!_windowContext->window) {
       initWindow();
     }
 
-    auto &window = _windowContext.window;
-    // auto &events = _windowContext.events;
+    auto &window = _windowContext->window;
 
-    // window->pollEvents(events);
-    // for (auto &event : events) {
-    //   if (event.type == SDL_QUIT) {
-    //     throw ActivationError("Window closed, aborting wire.");
-    //   } else if (event.type == SDL_WINDOWEVENT) {
-    //     if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-    //       throw ActivationError("Window closed, aborting wire.");
-    //     } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-    //     }
-    //   } else if (event.type == SDL_APP_DIDENTERBACKGROUND) {
-    //     // context->suspend();
-    //   } else if (event.type == SDL_APP_DIDENTERFOREGROUND) {
-    //     // context->resume();
-    //   }
-    // }
+    bool shouldRun = true;
+    if (_renderer) {
+      if (!_renderer->begin(shContext, _windowContext.value()))
+        shouldRun = false;
+    }
 
-    // Push root input region
-    // auto &inputStack = _windowContext.inputStack;
-    // inputStack.reset();
-    // inputStack.push(input::InputStack::Item{
-    //     .windowMapping = input::WindowSubRegion::fromEntireWindow(*window.get()),
-    // });
+    if (shouldRun) {
+      _windowContext->inputMaster.update(*window.get());
+      _inlineInputContext->time = _windowContext->time;
+      _inlineInputContext->deltaTime = _windowContext->deltaTime;
 
-    _windowContext.inputMaster.update(*window.get());
+      SHVar _shardsOutput{};
+      _contents.activate(shContext, input, _shardsOutput);
 
-    SHVar _shardsOutput{};
-    _contents.activate(shContext, input, _shardsOutput);
-
-    // inputStack.pop();
+      if (_renderer) {
+        _renderer->end();
+      }
+    }
 
     return *_windowContextVar;
   }

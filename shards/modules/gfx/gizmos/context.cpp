@@ -105,9 +105,10 @@ struct GizmosContextShard {
       gfxGizmoContext.end(_gizmoContext.queue);
     });
 
-    _inputContext->requestFocus = _gizmoContext.gfxGizmoContext.input.held;
-    _inputContext->wantsPointerInput = _gizmoContext.gfxGizmoContext.input.held || _gizmoContext.gfxGizmoContext.input.hovering;
-    _inputContext->wantsKeyboardInput = _inputContext->wantsPointerInput;
+    auto &consumeFlags = _inputContext->getConsumeFlags();
+    consumeFlags.requestFocus = _gizmoContext.gfxGizmoContext.input.held;
+    consumeFlags.wantsPointerInput = _gizmoContext.gfxGizmoContext.input.held || _gizmoContext.gfxGizmoContext.input.hovering;
+    consumeFlags.wantsKeyboardInput = consumeFlags.wantsPointerInput;
 
     return _shardsOutput;
   }

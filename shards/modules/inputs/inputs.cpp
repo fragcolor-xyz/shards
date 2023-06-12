@@ -18,8 +18,6 @@ using namespace linalg::aliases;
 namespace shards {
 namespace input {
 
-void InputContext::postMessage(const input::Message &message) { master->postMessage(message); }
-
 struct Base {
   RequiredWindowContext _windowContext;
 
