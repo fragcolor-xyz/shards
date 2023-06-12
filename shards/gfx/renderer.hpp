@@ -38,6 +38,9 @@ public:
   // When setting wait=true, this will block until it has actually been read
   void copyTexture(TextureSubResource texture, GpuTextureReadBufferPtr destination, bool wait = false);
 
+  // poll pending  texture copy commands
+  void pollTextureCopies();
+
   /// <div rustbindgen hide></div>
   void setMainOutput(const MainOutput &output);
 
