@@ -28,7 +28,7 @@ In code form, parameters are defined by the user within the parentheses of the s
  
 Some shards have multiple parameters. When specifying values for multiple parameters, you will have to prepend your values with the parameter they are for if some parameters are skipped.
 
-Let us take a look at the `Repeat` shard which has four parameters: `Action`, `Times`, `Forever`, `Until`.
+Let us take a look at the [`Repeat`](../../../../reference/shards/shards/General/Repeat/) shard which has four parameters: `Action`, `Times`, `Forever`, `Until`.
 
 We can utilize the `Repeat` shard with its different parameters as shown:
 
@@ -226,7 +226,7 @@ When defining variables in your program, you can use `Setup` to ensure that vari
 
 ## Grouping shards
 
-[`defshards`](../../../reference/lisp/macros/#defshards) allows you to group multiple shards together to form a new shard, thereby eliminating the use of `->`. It is useful for organizing your code and improving readability.
+[`defshards`](../../../../reference/shards/lisp/macros/#defshards) allows you to group multiple shards together to form a new shard, thereby eliminating the use of `->`. It is useful for organizing your code and improving readability.
 
 `defshards` has a syntax as such:
 

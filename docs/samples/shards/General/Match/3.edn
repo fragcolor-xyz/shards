@@ -1,7 +1,6 @@
 ;; multiple matches + nil match at start + with passthrough
 1
-(Match [
-        nil (-> (Msg "Matched nil"))     ;; case processed, match found
+(Match [nil (-> (Msg "Matched nil"))     ;; case processed, match found
         1 (-> (Msg "Matched 1"))         ;; case ignored
         (+ 0 1) (-> (Msg "Matched 1a"))  ;; case ignored
         2 (-> (Msg "Matched 2"))]        ;; case ignored

@@ -12,7 +12,7 @@ Scope determines the visibility of data at different points in your program. Whe
 
 - Global: The variable is known throughout the entire Mesh.
 
-In the example below, the Wire `get-x` attempts to retrieve the value of `.x` defined in the Wire `define-x`. Note how it is able to retrieve the value of 1 even though it was defined in a separate Wire. This is due to how `.x` has been defined as a global variable, making its value available to all Wires on the Mesh.
+In the example below, the Wire `get-x` attempts to retrieve the value of `.x` defined in the Wire `define-x`. Note how it can retrieve the value of 1 even though it was defined in a separate Wire. This is due to how `.x` has been defined as a global variable, making its value available to all Wires on the Mesh.
 
 === "Command"
     ```{.clojure .annotate linenums="1"}
@@ -62,11 +62,11 @@ For the following example, `get-x` fails to retrieve the value of `.x` defined i
 
 ### Flow Methods
 
-If Wire Y is run from a separate Wire X using methods such as [`Detach`](../../../reference/shards/General/Detach), the variables on Wire X will be copied such that Y has access to its value at the moment it was called.
+If Wire Y is run from a separate Wire X using methods such as [`Detach`](../../../../reference/shards/shards/General/Detach/), the variables on Wire X will be copied such that Y has access to its value at the moment it was called.
 
 However, this does not mean that Wire Y is in the same scope as X. Wire Y holds only a copy of the value - it does not have access to the actual variable.
 
-If a method such as [`Step`](../../../reference/shards/General/Step) is used instead, Wire Y would be scheduled on Wire X itself, giving it the same scope and access to X's actual variables.
+If a method such as [`Step`](../../../../reference/shards/shards/General/Step) is used instead, Wire Y would be scheduled on Wire X itself, giving it the same scope and access to X's actual variables.
 
 === "Detach"
     ```{.clojure .annotate linenums="1"}
@@ -124,9 +124,9 @@ If a method such as [`Step`](../../../reference/shards/General/Step) is used ins
 
 ### Pure Wires
 
-Pure Wires are Wires that exist in their own scope. When run from another Wire, they do not copy that Wire's variables. 
+Pure Wires are Wires that exist in their scope. When run from another Wire, they do not copy that Wire's variables. 
 
-To create a Pure Wire, we use [`defpure`](../../../reference/lisp/macros/#defpure).
+To create a Pure Wire, we use `defpure`.
 
 === "Syntax"
     ```{.clojure .annotate linenums="1"}
@@ -191,9 +191,9 @@ If you define a constant in your program, it will have a global scope and can be
 
 Passthrough determines if data can pass through shards unaltered. It allows you to better control the state of the data moving through your program.
 
-Most shards take in data, processes the data, and outputs the results. In order to allow data to emerge from these shards unaltered, we can employ the shard [`Sub`](../../../reference/shards/General/Sub/). `Sub` saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the `Shards` parameter of `Sub` will run as per usual, except that the final output will be replaced with the initial input passed into `Sub`, thereby creating a passthrough effect.
+Most shards take in data, process the data, and output the results. To allow data to emerge from these shards unaltered, we can employ the shard [`Sub`](../../../../reference/shards/shards/General/Sub/). `Sub` saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the `Shards` parameter of `Sub` will run as per usual, except that the final output will be replaced with the initial input passed into `Sub`, thereby creating a passthrough effect.
 
-`Sub` has an alias `|` which eliminates the need for `->` to group shards together when passed into its `Shards` parameter.
+`Sub` has an alias `|` which eliminates the need for `->` to group shards when passed into its `Shards` parameter.
 
 === "Sub Example"
     ```{.clojure .annotate linenums="1"}
@@ -232,9 +232,9 @@ Most shards take in data, processes the data, and outputs the results. In order 
     [sub-test] After Sub: 1
     ```
 
-In the example below, John wishes to check the price of an apple in different currencies. The base price of 1 USD is passed into the Wire, and goes through a series of shards that each performs mathematical operations on it to obtain its foreign value.
+In the example below, John wishes to check the price of an apple in different currencies. The base price of 1 USD is passed into a Wire and goes through a series of shards that each performs mathematical operations on it to obtain its foreign value.
 
-In order to keep the initial value unchanged as it passes through the different shards, passthrough is required.
+To keep the initial value unchanged as it passes through the different shards, a passthrough is required.
 
 ![Passthrough has to be enabled for data to pass through shards unaltered.](assets/with-passthrough.png)
 
@@ -254,17 +254,17 @@ Some shards can only accept specific data types and will require you to either:
 
 You do not have to declare the data types of most data in Shards. Shards can smartly infer and determine the data types when it is run, thereby removing the hassle of having to explicitly specify data types.
     
-However, when data is output dynamically, you are still required to declare its data type as it cannot be determined easily. Examples would include data output from the shards [`FromBytes`](../../../reference/shards/General/FromBytes/) and [`FromJson`](../../../reference/shards/General/FromJson/).
+However, when data is output dynamically, you are still required to declare its data type as it cannot be determined easily. Examples would include data output from the shards [`FromBytes`](../../../../reference/shards/shards/General/FromBytes/) and [`FromJson`](../../../../reference/shards/shards/General/FromJson/).
 
-You will also have to declare data types when trying to [`Take`](../../../reference/shards/General/Take/) from a mixed type [Sequence](../../../reference/shards/types/#sequence).
+You will also have to declare data types when trying to [`Take`](../../../../reference/shards/shards/General/Take/) from a mixed type [Sequence](../../../../reference/shards/shards/types/#sequence).
 
-To declare a data type, you can use "Expect" shards to indicate the type of incoming data. Examples of "Expect" shards are [ExpectInt](../../../reference/shards/General/ExpectInt/) and [ExpectString](../../../reference/shards/General/ExpectString/).
+To declare a data type, you can use "Expect" shards to indicate the type of incoming data. Examples of "Expect" shards are [ExpectInt](../../../../reference/shards/shards/General/ExpectInt/) and [ExpectString](../../../../reference/shards/shards/General/ExpectString/).
 
 ### Converting Types
 
-When you have to convert a data's type to allow for it to be used by shards, you can employ type conversion shards such as [`ToString`](../../../reference/shards/General/ToString/) and [`ToInt`](../../../reference/shards/General/ToInt/).
+When you have to convert data's type to allow for it to be used by shards, you can employ type conversion shards such as [`ToString`](../../../../reference/shards/shards/General/ToString/) and [`ToInt`](../../../../reference/shards/shards/General/ToInt/).
 
-In the example below, [`String.Join`](../../../reference/shards/String/Join/) retrieves elements in a sequence and combines them. It only accepts strings and will throw an error if the sequence passed into it contains non-strings. In order to get `String.Join` to use integer values to form a sentence, the integer will have to be converted to a string first.
+In the example below, [`String.Join`](../../../../reference/shards/shards/String/Join/) retrieves elements in a sequence and combines them. It only accepts strings and will throw an error if the sequence passed into it contains non-strings. To get `String.Join` to use integer values to form a sentence, the integer will have to be converted to a string first.
 
 === "ToString"
     ```{.clojure .annotate linenums="1"}
