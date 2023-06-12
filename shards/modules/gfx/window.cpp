@@ -148,7 +148,7 @@ struct MainWindow final {
     //     .windowMapping = input::WindowSubRegion::fromEntireWindow(*window.get()),
     // });
 
-    _windowContext.inputMaster.update(window->window);
+    _windowContext.inputMaster.update(*window.get());
 
     SHVar _shardsOutput{};
     _contents.activate(shContext, input, _shardsOutput);
