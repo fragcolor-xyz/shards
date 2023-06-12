@@ -1,4 +1,4 @@
-#include "core/module.hpp"
+#include <shards/core/module.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
@@ -78,29 +78,17 @@ struct Statement {
 };
 
 struct Base {
-  std::shared_ptr<entt::any> _connectionStorage;
-  Connection *_connection = nullptr;
+  AnyStorage<Connection> _connection;
   std::string_view _dbName{"shards.db"};
 
   void warmup(SHContext *context) {
     auto storageKey = fmt::format("DB.Connection_{}", _dbName);
-    auto dbCtx = context->anyStorage[storageKey].lock();
-    if (!dbCtx) {
-      Connection conn(_dbName.data());
-      _connectionStorage = std::make_shared<entt::any>(std::move(conn));
-      context->anyStorage[storageKey] = _connectionStorage;
-      auto anyPtr = _connectionStorage.get();
-      _connection = &entt::any_cast<Connection &>(*anyPtr);
-    } else {
-      _connectionStorage = dbCtx;
-      auto anyPtr = _connectionStorage.get();
-      _connection = &entt::any_cast<Connection &>(*anyPtr);
-    }
+    _connection = getOrCreateContextStorage(context, storageKey, [&]() { return Connection(_dbName.data()); });
+
   }
 
   void cleanup() {
-    _connectionStorage.reset();
-    _connection = nullptr;
+    _connection.reset();
   }
 };
 
