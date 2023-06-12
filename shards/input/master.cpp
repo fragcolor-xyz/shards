@@ -1,7 +1,9 @@
 #include "master.hpp"
 #include "cursor_map.hpp"
 #include "debug.hpp"
+#include "window_input.hpp"
 #include <spdlog/spdlog.h>
+#include <gfx/window.hpp>
 #include <SDL_keyboard.h>
 #include <SDL_events.h>
 
@@ -21,7 +23,7 @@ InputMaster::~InputMaster() {
   instance = nullptr;
 }
 
-void InputMaster::update(SDL_Window *window) {
+void InputMaster::update(gfx::Window &window) {
   updateAndSortHandlers();
 
   input.beginUpdate();
@@ -34,6 +36,8 @@ void InputMaster::update(SDL_Window *window) {
   } while (hasEvent);
 
   state.update();
+  state.region = getWindowInputRegion(window);
+
   input.endUpdate(state);
 
   // Convert events to ConsumableEvents
@@ -86,14 +90,14 @@ void InputMaster::updateAndSortHandlers() {
   updateAndSortHandlersLocked(handlersLocked);
 }
 
-void InputMaster::updateAndSortHandlersLocked(std::vector<std::shared_ptr<IInputHandler>>& outVec) {
+void InputMaster::updateAndSortHandlersLocked(std::vector<std::shared_ptr<IInputHandler>> &outVec) {
   outVec.clear();
   for (auto it = handlers.begin(); it != handlers.end();) {
     auto ptr = it->lock();
     if (ptr) {
       outVec.insert(std::upper_bound(outVec.begin(), outVec.end(), ptr,
-                                             [](const auto &a, const auto &b) { return a->getPriority() > b->getPriority(); }),
-                            ptr);
+                                     [](const auto &a, const auto &b) { return a->getPriority() > b->getPriority(); }),
+                    ptr);
       ++it;
     } else {
       it = handlers.erase(it);

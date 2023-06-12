@@ -85,7 +85,8 @@ void EguiInputTranslator::setupInputRegion(const shards::input::InputRegion &reg
   windowToEguiScale = inputScale / eguiDrawScale;
 
   // Convert from pixel to window coordinates
-  this->mappedWindowRegion = float4(float4(0.0f, 0.0f, region.size.x, region.size.y)) / float4(inputScale.x, inputScale.y, inputScale.x, inputScale.y);
+  this->mappedWindowRegion =
+      float4(float4(0.0f, 0.0f, region.size.x, region.size.y)) / float4(inputScale.x, inputScale.y, inputScale.x, inputScale.y);
 
   // Take viewport size and scale it by the draw scale
   float2 viewportSizeFloat = float2(float(region.size.x), float(region.size.y));
@@ -163,6 +164,17 @@ bool EguiInputTranslator::translateEvent(const shards::input::Event &event) {
           oevent.key = SDL_KeyCode(arg.key);
           oevent.pressed = arg.pressed;
           oevent.modifiers = translateModifierKeys(arg.modifiers);
+
+          if (arg.pressed) {
+            if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_c) {
+              newEvent(InputEventType::Copy);
+            } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_v) {
+              auto &evt = newEvent(InputEventType::Paste);
+              evt.paste.str = strings.emplace_back(SDL_GetClipboardText()).c_str();
+            } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_x) {
+              newEvent(InputEventType::Cut);
+            }
+          }
         } else if constexpr (std::is_same_v<T, TextEvent>) {
           if (imeComposing) {
             imeComposing = false;
@@ -185,101 +197,6 @@ bool EguiInputTranslator::translateEvent(const shards::input::Event &event) {
         }
       },
       event);
-
-  // switch (sdlEvent.type) {
-  // case SDL_MOUSEBUTTONDOWN:
-  // case SDL_MOUSEBUTTONUP: {
-  //   auto &ievent = sdlEvent.button;
-  //   auto &oevent = newEvent(InputEventType::PointerButton).pointerButton;
-  //   switch (ievent.button) {
-  //   case SDL_BUTTON_LEFT:
-  //     oevent.button = egui::PointerButton::Primary;
-  //     break;
-  //   case SDL_BUTTON_MIDDLE:
-  //     oevent.button = egui::PointerButton::Middle;
-  //     break;
-  //   case SDL_BUTTON_RIGHT:
-  //     oevent.button = egui::PointerButton::Secondary;
-  //     break;
-  //   default:
-  //     // ignore this button
-  //     events.pop_back();
-  //     break;
-  //   }
-  //   oevent.pressed = ievent.type == SDL_MOUSEBUTTONDOWN;
-  //   oevent.modifiers = input.modifierKeys;
-  //   oevent.pos = translatePointerPos(updateCursorPosition(ievent.x, ievent.y));
-
-  //   // Synthesize PointerGone event to indicate there's no more fingers
-  //   if (!oevent.pressed) {
-  //     (void)newEvent(InputEventType::PointerGone).pointerGone;
-  //   }
-  //   break;
-  // }
-  // case SDL_MOUSEMOTION: {
-  //   auto &ievent = sdlEvent.motion;
-  //   auto &oevent = newEvent(InputEventType::PointerMoved).pointerMoved;
-  //   oevent.pos = translatePointerPos(updateCursorPosition(ievent.x, ievent.y));
-  //   break;
-  // }
-  // case SDL_MOUSEWHEEL: {
-  //   auto &ievent = sdlEvent.wheel;
-  //   auto &oevent = newEvent(InputEventType::Scroll).scroll;
-  //   oevent.delta = egui::Pos2{
-  //       .x = float(ievent.preciseX),
-  //       .y = float(ievent.preciseY),
-  //   };
-  //   break;
-  // }
-  // case SDL_TEXTEDITING: {
-  //   auto &ievent = sdlEvent.edit;
-
-  //   std::string editingText = ievent.text;
-  //   if (!imeComposing) {
-  //     imeComposing = true;
-  //     newEvent(InputEventType::CompositionStart);
-  //   }
-
-  //   auto &evt = newEvent(InputEventType::CompositionUpdate);
-  //   evt.compositionUpdate.text = strings.emplace_back(ievent.text).c_str();
-  //   break;
-  // }
-  // case SDL_TEXTINPUT: {
-  //   auto &ievent = sdlEvent.text;
-
-  //   if (imeComposing) {
-  //     auto &evt = newEvent(InputEventType::CompositionEnd);
-  //     evt.compositionEnd.text = strings.emplace_back(ievent.text).c_str();
-  //     imeComposing = false;
-  //   } else {
-  //     auto &evt = newEvent(InputEventType::Text);
-  //     evt.text.text = strings.emplace_back(ievent.text).c_str();
-  //   }
-  //   break;
-  // }
-  // case SDL_KEYDOWN:
-  // case SDL_KEYUP: {
-  //   auto &ievent = sdlEvent.key;
-  //   auto &oevent = newEvent(InputEventType::Key).key;
-  //   oevent.key = SDL_KeyCode(ievent.keysym.sym);
-  //   oevent.pressed = ievent.type == SDL_KEYDOWN;
-  //   oevent.modifiers = translateModifierKeys(SDL_Keymod(ievent.keysym.mod));
-
-  //   // Translate cut/copy/paste using the standard keys combos
-  //   if (ievent.type == SDL_KEYDOWN) {
-  //     if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_c) {
-  //       newEvent(InputEventType::Copy);
-  //     } else if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_v) {
-  //       auto &evt = newEvent(InputEventType::Paste);
-
-  //       evt.paste.str = strings.emplace_back(SDL_GetClipboardText()).c_str();
-  //     } else if ((ievent.keysym.mod & KMOD_PRIMARY) && ievent.keysym.sym == SDLK_x) {
-  //       newEvent(InputEventType::Cut);
-  //     }
-  //   }
-  //   break;
-  // }
-  // }
   return handled;
 }
 

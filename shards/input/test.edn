@@ -68,7 +68,7 @@
    >= .camera-matrix
    (Math.MatIdentity) >= .object-matrix)
 
-  (Once :Every (/ 1.0 40.0)
+  (Once :Every (/ 1.0 10.0)
         :Action
         (->
          (Do update-camera)
@@ -119,4 +119,4 @@
 (schedule root-mesh start)
 (schedule gfx-mesh gfx)
 
-(if (run-many [root-mesh gfx-mesh] (/ 1.0 500.0)) nil (throw "root-mesh tick failed"))
+(if (run-many [root-mesh gfx-mesh] (/ 1.0 60.0)) nil (throw "root-mesh tick failed"))
