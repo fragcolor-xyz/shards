@@ -321,19 +321,12 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  void processTextureCopies() {
+  void queueTextureCopies() {
     boost::container::small_vector<DeferredTextureReadCommand *, 16> buffersToMap;
-
     WGPUCommandEncoderDescriptor encDesc{};
     WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
     for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
-      if (it->isQueued()) {
-        if (pollQueuedTextureReadCommand(*it)) {
-          // Finished, remove from queue
-          it = deferredTextureReadCommands.erase(it);
-          continue;
-        }
-      } else {
+      if (!it->isQueued()) {
         queueTextureReadCommand(encoder, *it);
         buffersToMap.push_back(&*it);
       }
@@ -351,9 +344,22 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  void beginFrame() {
+  void pollTextureCopies() {
     context.poll(false);
 
+    for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
+      if (it->isQueued()) {
+        if (pollQueuedTextureReadCommand(*it)) {
+          // Finished, remove from queue
+          it = deferredTextureReadCommands.erase(it);
+          continue;
+        }
+      }
+      ++it;
+    }
+  }
+
+  void beginFrame() {
     // This registers ContextData so that releaseContextData is called when GPU resources are invalidated
     if (!isBoundToContext())
       initializeContextData();
@@ -392,7 +398,8 @@ struct RendererImpl final : public ContextData {
     popView();
     viewStack.reset();
 
-    processTextureCopies();
+    pollTextureCopies();
+    queueTextureCopies();
 
     clearOldCacheItems();
 
@@ -438,6 +445,8 @@ void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps) { impl->
 void Renderer::copyTexture(TextureSubResource texture, GpuTextureReadBufferPtr destination, bool wait) {
   impl->copyTexture(texture, destination, wait);
 }
+
+void Renderer::pollTextureCopies() { impl->pollTextureCopies(); }
 
 void Renderer::setMainOutput(const MainOutput &output) {
   impl->mainOutput = output;
