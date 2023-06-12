@@ -2,17 +2,14 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include <shards/core/shared.hpp>
+#include <shards/core/params.hpp>
 
 namespace shards {
 namespace Assert {
-
 struct Base {
-  static inline ParamsInfo assertParamsInfo =
-      ParamsInfo(ParamsInfo::Param("Value", SHCCSTR("The value to test against for equality."), CoreInfo::AnyType),
-                 ParamsInfo::Param("Abort", SHCCSTR("If we should abort the process on failure."), CoreInfo::BoolType));
-
-  ParamVar _value{};
-  bool aborting;
+  PARAM_PARAMVAR(_value, "Value", "The value to test against for equality.", {CoreInfo::AnyType});
+  PARAM_VAR(_aborting, "Abort", "If we should abort the process on failure.", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_value), PARAM_IMPL_FOR(_aborting));
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any type."); }
@@ -20,41 +17,16 @@ struct Base {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The output will be the input (passthrough)."); }
 
-  SHParametersInfo parameters() { return SHParametersInfo(assertParamsInfo); }
+  Base() { _aborting = Var(false); }
 
-  SHVar& value() { return _value.get(); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup() { PARAM_CLEANUP(); }
 
-  void setParam(int index, const SHVar &inValue) {
-    switch (index) {
-    case 0:
-      _value = inValue;
-      break;
-    case 1:
-      aborting = inValue.payload.boolValue;
-      break;
-    default:
-      break;
-    }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return data.inputType;
   }
-
-  SHVar getParam(int index) {
-    auto res = SHVar();
-    switch (index) {
-    case 0:
-      res = _value;
-      break;
-    case 1:
-      res.valueType = SHType::Bool;
-      res.payload.boolValue = aborting;
-      break;
-    default:
-      break;
-    }
-    return res;
-  }
-
-  void warmup(SHContext *context) { _value.warmup(context); }
-  void cleanup() { _value.cleanup(); }
 };
 
 struct Is : public Base {
@@ -64,9 +36,9 @@ struct Is : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input != value()) {
-      SHLOG_ERROR("Failed assertion Is, input: {} expected: {}", input, value());
-      if (aborting)
+    if (input != _value.get()) {
+      SHLOG_ERROR("Failed assertion Is, input: {} expected: {}", input, _value.get());
+      if (*_aborting)
         abort();
       else
         throw ActivationError("Assert failed - Is");
@@ -82,9 +54,9 @@ struct IsNot : public Base {
                    "different from a given value.");
   }
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input == value()) {
-      SHLOG_ERROR("Failed assertion IsNot, input: {} not expected: {}", input, value());
-      if (aborting)
+    if (input == _value.get()) {
+      SHLOG_ERROR("Failed assertion IsNot, input: {} not expected: {}", input, _value.get());
+      if (*_aborting)
         abort();
       else
         throw ActivationError("Assert failed - IsNot");
@@ -141,8 +113,12 @@ struct IsAlmost {
 
   void warmup(SHContext *context) { _value.warmup(context); }
   void cleanup() { _value.cleanup(); }
+  SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredVariables.clear();
+    collectRequiredVariables(data.shared, _requiredVariables, _value);
+
     if (_value.get().valueType != data.inputType.basicType)
       throw SHException("Input and value types must match.");
 
@@ -189,6 +165,7 @@ private:
   bool _aborting;
   SHFloat _threshold{FLT_EPSILON};
   ParamVar _value{};
+  shards::ExposedInfo _requiredVariables;
 };
 } // namespace Assert
 } // namespace shards
