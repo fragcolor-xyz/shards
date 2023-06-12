@@ -6,6 +6,22 @@
 namespace shards {
 namespace Imaging {
 
+template <typename T> void premultiplyAlpha(T *from, T *to, int32_t w, int32_t h) {
+  const auto max = std::numeric_limits<T>::max(); // set to respective max value for uint8_t uint16_t and float
+  for (auto y = 0; y < h; y++) {
+    for (auto x = 0; x < w; x++) {
+      const auto addr = ((w * y) + x) * 4;
+      // premultiply RGB values
+      for (auto z = 0; z < 3; z++) {
+        // do calculation in float for better accuracy
+        to[addr + z] = static_cast<T>(static_cast<float>(from[addr + z]) / max * from[addr + 3]);
+      }
+      // copy A value
+      to[addr + 3] = from[addr + 3];
+    }
+  }
+}
+
 // Premultiplies the alpha channel in input image and writes to a pre-allocated output.
 // Assumes input & output are CoreInfo::ImageType. Output flags is set to input's + SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA flag
 template <typename T> void premultiplyAlpha(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
@@ -28,15 +44,15 @@ template <typename T> void premultiplyAlpha(const SHVar &input, std::vector<uint
   premultiplyAlpha<T>(from, to, w, h);
 }
 
-template <typename T> inline void premultiplyAlpha(T *from, T *to, int32_t w, int32_t h) {
+template <typename T> void demultiplyAlpha(T *from, T *to, int32_t w, int32_t h) {
   const auto max = std::numeric_limits<T>::max(); // set to respective max value for uint8_t uint16_t and float
+
   for (auto y = 0; y < h; y++) {
     for (auto x = 0; x < w; x++) {
       const auto addr = ((w * y) + x) * 4;
-      // premultiply RGB values
+      // un-premultiply RGB values
       for (auto z = 0; z < 3; z++) {
-        // do calculation in float for better accuracy
-        to[addr + z] = static_cast<T>(static_cast<float>(from[addr + z]) / max * from[addr + 3]);
+        to[addr + z] = static_cast<T>(static_cast<float>(from[addr + z]) / from[addr + 3] * max);
       }
       // copy A value
       to[addr + 3] = from[addr + 3];
@@ -65,22 +81,6 @@ template <typename T> void demultiplyAlpha(const SHVar &input, std::vector<uint8
   auto to = reinterpret_cast<T *>(&bytes[0]);
 
   demultiplyAlpha<T>(from, to, w, h);
-}
-
-template <typename T> inline void demultiplyAlpha(T *from, T *to, int32_t w, int32_t h) {
-  const auto max = std::numeric_limits<T>::max(); // set to respective max value for uint8_t uint16_t and float
-
-  for (auto y = 0; y < h; y++) {
-    for (auto x = 0; x < w; x++) {
-      const auto addr = ((w * y) + x) * 4;
-      // un-premultiply RGB values
-      for (auto z = 0; z < 3; z++) {
-        to[addr + z] = static_cast<T>(static_cast<float>(from[addr + z]) / from[addr + 3] * max);
-      }
-      // copy A value
-      to[addr + 3] = from[addr + 3];
-    }
-  }
 }
 } // namespace Imaging
 } // namespace shards
