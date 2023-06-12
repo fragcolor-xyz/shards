@@ -684,13 +684,9 @@ template <class SH_CORE> struct TTableVar : public SHVar {
     return (const TOwnedVar<SH_CORE> &)*vp;
   }
 
-  TOwnedVar<SH_CORE> &operator[](std::string_view key) {
-    return operator[](Var(key));
-  }
+  TOwnedVar<SH_CORE> &operator[](std::string_view key) { return operator[](Var(key)); }
 
-  const TOwnedVar<SH_CORE> &operator[](std::string_view key) const {
-    return operator[](Var(key));
-  }
+  const TOwnedVar<SH_CORE> &operator[](std::string_view key) const { return operator[](Var(key)); }
 
   TOwnedVar<SH_CORE> &insert(const SHVar &key, const SHVar &val) {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key);
@@ -698,9 +694,7 @@ template <class SH_CORE> struct TTableVar : public SHVar {
     return (TOwnedVar<SH_CORE> &)*vp;
   }
 
-  TOwnedVar<SH_CORE> &insert(std::string_view key, const SHVar &val) {
-    return insert(Var(key), val);
-  }
+  TOwnedVar<SH_CORE> &insert(std::string_view key, const SHVar &val) { return insert(Var(key), val); }
 
   template <typename T> T &get(const SHVar &key) {
     static_assert(sizeof(T) == sizeof(SHVar), "Invalid T size, should be sizeof(SHVar)");
@@ -712,13 +706,15 @@ template <class SH_CORE> struct TTableVar : public SHVar {
     return (T &)*vp;
   }
 
-  template <typename T> T &get(std::string_view key) {
-    return get<T>(Var(key));
-  }
+  template <typename T> T &get(std::string_view key) { return get<T>(Var(key)); }
 
   bool hasKey(const SHVar &key) const { return payload.tableValue.api->tableContains(payload.tableValue, key); }
 
   bool hasKey(std::string_view key) const { return hasKey(Var(key)); }
+
+  void remove(const SHVar &key) { payload.tableValue.api->tableRemove(payload.tableValue, key); }
+
+  void remove(std::string_view key) { remove(Var(key)); }
 
   TOwnedVar<SH_CORE> &asOwned() { return (TOwnedVar<SH_CORE> &)*this; }
 };
