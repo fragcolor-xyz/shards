@@ -403,13 +403,15 @@ private:
 
 struct ImageGetPixel {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
-  static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
+
+  static inline Types OutputTypes{CoreInfo::Int4Type, CoreInfo::Float4Type};
+  static SHTypesInfo outputTypes() { return OutputTypes; }
 
   PARAM_PARAMVAR(_image, "Position", "The position of the pixel to retrieve", {CoreInfo::ImageType, CoreInfo::ImageVarType});
   PARAM_VAR(_asInteger, "AsInteger", "Read the pixel as an integer", {CoreInfo::BoolType});
   PARAM_VAR(_default, "Default",
             "When specified, out of bounds or otherwise failed reads will returns this value instead of failing",
-            {CoreInfo::NoneType, CoreInfo::Float4Type});
+            {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Int4Type});
   PARAM_IMPL(PARAM_IMPL_FOR(_image), PARAM_IMPL_FOR(_asInteger), PARAM_IMPL_FOR(_default));
 
   ImageGetPixel() { _asInteger = Var(false); }
@@ -417,7 +419,15 @@ struct ImageGetPixel {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return outputTypes().elements[0];
+    if (_asInteger) {
+      if (!_default.isNone() && _default.valueType != SHType::Int4)
+        throw ComposeError("Default value should be an Int4");
+      return CoreInfo::Int4Type;
+    } else {
+      if (!_default.isNone() && _default.valueType != SHType::Float4)
+        throw ComposeError("Default value should be a Float4");
+      return CoreInfo::Float4Type;
+    }
   }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
