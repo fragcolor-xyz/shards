@@ -214,6 +214,35 @@ void triggerVarValueChange(SHWire *wire, const SHVar *name, const SHVar *var);
 
 void installSignalHandlers();
 
+template <typename T> struct AnyStorage {
+private:
+  std::shared_ptr<entt::any> _anyStorage;
+  T *_ptr{};
+
+public:
+  AnyStorage() = default;
+  AnyStorage(std::shared_ptr<entt::any> &&any) : _anyStorage(any) { _ptr = &entt::any_cast<T &>(*any.get()); }
+  operator bool() const { return _ptr; }
+  T *operator->() const { return _ptr; }
+  operator T &() const { return *_ptr; }
+  void reset() {
+    _anyStorage->reset();
+    _ptr = nullptr;
+  }
+};
+
+template <typename TInit, typename T = decltype((*(TInit *)0)())>
+AnyStorage<T> getOrCreateContextStorage(SHContext *context, const std::string &storageKey, TInit init) {
+  auto ptr = context->anyStorage[storageKey].lock();
+  if (!ptr) {
+    ptr = std::make_shared<entt::any>(init());
+    context->anyStorage[storageKey] = ptr;
+    return ptr;
+  } else {
+    return ptr;
+  }
+}
+
 FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
   ZoneScoped;
   ZoneName(blk->name(blk), blk->nameLength);
