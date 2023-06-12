@@ -24,8 +24,12 @@ endif()
 
 # Default arch if ARCH is not set
 if(NOT ARCH)
-  if(X86 AND NOT (EMSCRIPTEN OR APPLE))
-    set(ARCH "sandybridge")
+  if(X86)
+    if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+      set(ARCH "core2")
+    else()
+      set(ARCH "broadwell")
+    endif()
   endif()
 endif()
 
@@ -81,7 +85,7 @@ if(WIN32)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
   add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS=1)
   add_compile_definitions(NOMINMAX=1)
-  if(X86)
+  if(X86 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
     # align stack to 16 bytes
     add_compile_options(-mstackrealign)
   endif()
