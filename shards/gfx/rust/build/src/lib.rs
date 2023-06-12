@@ -1,13 +1,9 @@
 extern crate bindgen;
 
 pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindgen::Builder {
-    let egui_path = format!("{}/egui", gfx_path);
     let deps_path = format!("{}/../../deps", gfx_path);
 
     println!("cargo:rerun-if-changed={}/rust_interop.hpp", gfx_path);
-    println!("cargo:rerun-if-changed={}/rust_interop.hpp", egui_path);
-    println!("cargo:rerun-if-changed={}/renderer.hpp", egui_path);
-    println!("cargo:rerun-if-changed={}/egui_types.hpp", egui_path);
 
     builder
         .allowlist_function("gfx::.*")
