@@ -4746,7 +4746,6 @@ impl TableVar {
   }
 
   pub fn get_mut_fast_static(&mut self, k: &'static str) -> &mut Var {
-    debug_assert!(k.ends_with('\0'));
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let str_key = Var::ephemeral_string(k);
@@ -4767,7 +4766,6 @@ impl TableVar {
   }
 
   pub fn get_static(&self, k: &'static str) -> Option<&Var> {
-    debug_assert!(k.ends_with('\0'));
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let key_str = Var::ephemeral_string(k);
@@ -4781,7 +4779,6 @@ impl TableVar {
   }
 
   pub fn get_fast_static(&self, k: &'static str) -> &Var {
-    debug_assert!(k.ends_with('\0'));
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
       let key_str = Var::ephemeral_string(k);
