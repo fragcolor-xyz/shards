@@ -31,7 +31,7 @@ For Shards API Documentation:
 
 - `/docs/samples`: contains the code and output of the examples for each shard.
 
-Content from the three folders above are combined to make up each API documentation page.
+Content from the three folders above is combined to make up each API documentation page.
 
 ![A shard's API page and their associated folders.](assets/docs-folders.png)
 
@@ -62,7 +62,7 @@ For the other documentation pages:
 
 ## Pages and Levels
 
-The root directory for our site is located at `/docs/docs`, with `index.md` being the file for our homepage. Subsequent directories are placed within folders.
+The root directory for our site is located at `/docs/docs`, with `index.md` as the file for our homepage. Subsequent directories are placed within folders.
 
 ![A level in the doc's hierarchy.](assets/docs-hierarchy.png)
 
@@ -77,7 +77,7 @@ Each level contains:
     ![The .pages file helps to structure the hierarchy of each level.](assets/editing-ref-pages.png)
 
     !!! note
-        If `...` is used within `.pages`, files in the same hierarchy that have not been mentioned in `.pages` will be arranged in alphabetical order.
+        If `...` is used within `.pages`, files in the same hierarchy, that have not been mentioned in `.pages` will be arranged in alphabetical order.
 
         ![Using ... to automatically list pages.](assets/editing-ref-pages-dots.png)
 
@@ -138,7 +138,7 @@ As you have seen from the segment on [navigating the docs](#navigating-the-docs)
 
 3. `/docs/docs/reference` folder
 
-Each segment will require a different approach for making changes. The following are the steps required to work with each segment:
+Each segment will require a different approach to making changes. The following are the steps required to work with each segment:
 
 ### Details
 
@@ -153,11 +153,11 @@ Each segment will require a different approach for making changes. The following
 
 3. Amend the text within the `.md` file.
 
-    ![The details within the .md file.](assets/editing-details-md.png)
+    ![The details are in the .md file.](assets/editing-details-md.png)
 
 4. The changes will be reflected on the site.
 
-    ![The details reflected on the site.](assets/editing-details-site.png)
+    ![The details are on the site.](assets/editing-details-site.png)
 
 ### Examples
 
@@ -177,11 +177,11 @@ Each segment will require a different approach for making changes. The following
 
 5. The changes to the `.edn` file will be reflected in the "Code" portion of the "Examples" segment on the site.
 
-    ![The code reflected on the site.](assets/editing-examples-site-code.png)
+    ![The code is reflected on the site.](assets/editing-examples-site-code.png)
 
 6. The changes to the `.edn.log` file will be reflected in the "Output" portion of the "Examples" segment on the site.
 
-    ![The results reflected on the site.](assets/editing-examples-site-output.png)
+    ![The results are reflected on the site.](assets/editing-examples-site-output.png)
 
 
 ### Reference
@@ -196,13 +196,13 @@ In this segment, we will learn how to edit the following:
 
 - The description text for the shard's parameters
 
-![A breakdown of the description text being covered.](assets/docs-reference-breakdown.png)
+![A breakdown of the description texts being covered.](assets/docs-reference-breakdown.png)
 
-Editing these description text will require looking to the source .cpp and .hpp files.
+Editing these description texts will require looking at the source .cpp and .hpp files.
 
 #### Basic Description 
 
-Firstly, locate the struct of the shard you wish to make amendments to. For this tutorial, we will be using the `String.Join` shard as an example.
+Firstly, locate the struct of the shard you wish to amend. For this tutorial, we will be using the `String.Join` shard as an example.
 
 1. Navigate to the `/src/core/shards` folder and select the file that most likely contains the target shard. For this example, we will select the `strings.cpp` file.
 
@@ -235,7 +235,7 @@ You will see either:
 
 - OR a variable being returned. 
     
-In the case for `String.Join`, a variable `params` is returned. Search for the variable used to find the description text of the parameters.
+In the case of `String.Join`, a variable `params` is returned. Search for the variable used to find the description text of the parameters.
 
 ![The descriptions of the parameters are placed within a params variable.](assets/editing-ref-cpp-struct-parameters.png) 
 
