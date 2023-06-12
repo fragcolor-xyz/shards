@@ -1,6 +1,7 @@
 (def timestep (/ 1.0 120.0))
 (defmesh root)
-(defloop test-wire
+
+(defshards base []
   (Setup
    (GFX.BuiltinMesh :Type BuiltinMeshType.Cube) >= .mesh
 
@@ -30,7 +31,10 @@
    {:Position (Float3 0 1 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
 
 
-   (GFX.View :View .view-transform) >= .view)
+   (GFX.View :View .view-transform) >= .view))
+
+(defloop test-copy-async
+  (base)
   (GFX.MainWindow
    :Title "SDL Window" :Width 1280 :Height 720 :Debug false
    :Contents
@@ -65,5 +69,29 @@
 
     (Math.Inc .frame-index))))
 
-(schedule root test-wire)
+(defloop test-copy-sync
+  (base)
+  ;; Sync test
+  (GFX.MainWindow
+   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Contents
+   (->
+    (Float3 -1.0 0.0 0.0) (Math.Translation)
+    (GFX.Drawable :Mesh .mesh :Params {:index 0xffff}) (GFX.Draw .queue)
+
+    (GFX.Render :Steps .render-steps :View .view)
+
+    ;; This end frame is required when using `:Wait true` with the ReadTexture shard,
+    ;;  since rendering command buffers are queued in EndFrame
+    ;;  and texture copy needs to happen afterwards
+    (GFX.EndFrame)
+
+    .u8-tex (GFX.ReadTexture :Wait true) = .image
+    (Int2 400 400) (GetImagePixel .image :AsInteger true :Default (Int4 0)) = .p0 (Log "Pixel (400, 400)")
+    .p0 (Assert.Is (Int4 0xffff 0 0 0)))))
+
+(schedule root test-copy-async)
+(if (run root timestep 32) nil (throw "Root tick failed"))
+
+(schedule root test-copy-sync)
 (if (run root timestep 32) nil (throw "Root tick failed"))
