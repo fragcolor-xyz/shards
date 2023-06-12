@@ -968,7 +968,7 @@ struct Set : public SetUpdateBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? &_key : nullptr, data.inputType,
+      _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? &(SHVar&)_key : nullptr, data.inputType,
                                        existingExposedType ? &existingExposedType->exposedType : nullptr);
 
       if (_global) {
@@ -1117,8 +1117,7 @@ struct Ref : public SetBase {
         // only add types info, we don't know keys
         _tableTypeInfo = SHTypeInfo{SHType::Table, {.table = {.types = {&_tableContentInfo, 1, 0}}}};
       } else {
-        SHVar kv = _key;
-        _tableTypeInfo = SHTypeInfo{SHType::Table, {.table = {.keys = {&kv, 1, 0}, .types = {&_tableContentInfo, 1, 0}}}};
+        _tableTypeInfo = SHTypeInfo{SHType::Table, {.table = {.keys = {&(*_key), 1, 0}, .types = {&_tableContentInfo, 1, 0}}}};
       }
       _exposedInfo =
           ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _tableTypeInfo, false, true));
@@ -1230,9 +1229,8 @@ struct Update : public SetUpdateBase {
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if keys are populated they are not variables
-            SHVar kv = _key;
             auto &key = tableKeys.elements[y];
-            if (key != kv) {
+            if (key != *_key) {
               if (data.inputType != tableTypes.elements[y]) {
                 throw SHException("Update: error, update is changing the variable type.");
               }
@@ -1366,10 +1364,9 @@ struct Get : public VariableBase {
           if (tableKeys.len == tableTypes.len) {
             // if we have a name use it
             for (uint32_t y = 0; y < tableKeys.len; y++) {
-              // if keys are populated they are not variables
-              SHVar kv = _key;
+              // if keys are populated they are not variables;
               auto &key = tableKeys.elements[y];
-              if (key == kv) {
+              if (key == _key) {
                 return tableTypes.elements[y];
               }
             }
@@ -1404,10 +1401,15 @@ struct Get : public VariableBase {
                              "[variable]): Could not infer an output type, key not found "
                              "and no Default value provided.");
         } else {
-          SHVar kv = _key;
-          throw ComposeError("Get (" + _name + "/" + std::string(kv.payload.stringValue) +
-                             "): Could not infer an output type, key not found "
-                             "and no Default value provided.");
+          if (_key->valueType == SHType::String) {
+            throw ComposeError("Get (" + _name + "/" + std::string((*_key).payload.stringValue) +
+                               "): Could not infer an output type, key not found "
+                               "and no Default value provided.");
+          } else {
+            throw ComposeError("Get (" + _name + "/(complex type)" + // TODO improve
+                               "): Could not infer an output type, key not found "
+                               "and no Default value provided.");
+          }
         }
       }
     } else {
@@ -1954,8 +1956,7 @@ struct Sequence : public SeqBase {
       SHTypeInfo stype{SHType::Seq, {.seqTypes = _seqTypes}};
       shards::arrayPush(_tableInfo.table.types, stype);
       if (!_key.isVariable()) {
-        SHVar kv = _key;
-        shards::arrayPush(_tableInfo.table.keys, kv);
+        shards::arrayPush(_tableInfo.table.keys, *_key);
       }
       if (_global) {
         _exposedInfo =
@@ -1980,10 +1981,14 @@ struct Sequence : public SeqBase {
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here, key is not variable
-            SHVar kv = _key;
-            if (kv == tableKeys.elements[y]) {
-              throw ComposeError("Sequence - Variable " + std::string(kv.payload.stringValue) + " in table " + _name +
-                                 " already exists.");
+            if (*_key == tableKeys.elements[y]) {
+              if (_key->valueType == SHType::String) {
+                throw ComposeError("Sequence - Variable " + std::string((*_key).payload.stringValue) + " in table " + _name +
+                                   " already exists.");
+              } else {
+                throw ComposeError("Sequence - Variable (complex type) in table " + _name + // TODO improve
+                                   " already exists.");
+              }
             }
           }
         }
@@ -2220,8 +2225,7 @@ struct TableDecl : public VariableBase {
       auto stype = SHTypeInfo{SHType::Table, {.table = {.keys = {nullptr, 0, 0}, .types = _seqTypes}}};
       shards::arrayPush(_tableInfo.table.types, stype);
       if (!_key.isVariable()) {
-        SHVar kv = _key;
-        shards::arrayPush(_tableInfo.table.keys, kv);
+        shards::arrayPush(_tableInfo.table.keys, *_key);
       }
       if (_global) {
         _exposedInfo =
@@ -2247,10 +2251,14 @@ struct TableDecl : public VariableBase {
           auto &tableKeys = data.shared.elements[i].exposedType.table.keys;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here, key is not variable
-            SHVar kv = _key;
-            if (kv == tableKeys.elements[y]) {
-              throw ComposeError("Table - Variable " + std::string(kv.payload.stringValue) + " in table " + _name +
-                                 " already exists.");
+            if (*_key == tableKeys.elements[y]) {
+              if (_key->valueType == SHType::String) {
+                throw ComposeError("Table - Variable " + std::string(_key->payload.stringValue) + " in table " + _name +
+                                   " already exists.");
+              } else {
+                throw ComposeError("Table - Variable (complex type) in table " + _name + // TODO
+                                   " already exists.");
+              }
             }
           }
         }
@@ -2308,8 +2316,7 @@ struct SeqUser : VariableBase {
       }
 
       if (!_key.isVariable()) {
-        SHVar kv = _key;
-        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
+        _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, *_key);
       } else {
         return; // checked during activate
       }
@@ -2518,8 +2525,7 @@ struct Pop : SeqUser {
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here _key is not variable
-            SHVar kv = _key;
-            if (kv == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
+            if (*_key == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
               // if we have 1 type we can predict the output
               // with more just make us a any seq, will need ExpectX shards
               // likely
@@ -2592,8 +2598,7 @@ struct PopFront : SeqUser {
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if here _key is not variable
-            SHVar kv = _key;
-            if (kv == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
+            if (*_key == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
               // if we have 1 type we can predict the output
               // with more just make us a any seq, will need ExpectX shards
               // likely

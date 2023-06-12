@@ -5,7 +5,6 @@
 #define SH_CORE_FOUNDATION
 
 // must go first
-#include "utility.hpp"
 #if _WIN32
 #include <winsock2.h>
 #endif
