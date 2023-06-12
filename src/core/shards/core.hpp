@@ -782,7 +782,7 @@ static const SHTypeInfo &updateTableType(SHTypeInfo &typeInfoStorage, const SHVa
   // Add a new type
   if (!replacedIndex) {
     if (keyToAdd)
-      shards::arrayPush(keyStorage, keyToAdd);
+      shards::arrayPush(keyStorage, *keyToAdd);
     shards::arrayPush(typeStorage, typeToAdd);
   }
 
