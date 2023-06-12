@@ -1339,3 +1339,69 @@ TEST_CASE("AWAIT/AWAITNE") {
   CHECK(getTidePool()._workers.size() == TidePool::NumWorkers);
 #endif
 }
+
+TEST_CASE("TTableVar initialization", "[TTableVar]") {
+  SECTION("Default construction") {
+    TableVar tv;
+    REQUIRE(tv.valueType == SHType::Table);
+    REQUIRE(tv.payload.tableValue.opaque != nullptr);
+  }
+
+  SECTION("Copy construction") {
+    TableVar tv1;
+    tv1.insert("key1", Var("value1"));
+    TableVar tv2(tv1);
+    REQUIRE(tv2["key1"] == Var("value1"));
+  }
+
+  SECTION("Move construction") {
+    TableVar tv1;
+    tv1.insert("key1", Var("value1"));
+    TableVar tv2(std::move(tv1));
+    REQUIRE(tv2["key1"] == Var("value1"));
+  }
+
+  SECTION("Initializer list construction") {
+    TableVar tv1{{Var("key1"), Var("value1")}, {Var("key2"), Var("value2")}};
+    REQUIRE(tv1["key1"] == Var("value1"));
+    REQUIRE(tv1["key2"] == Var("value2"));
+  }
+}
+
+TEST_CASE("TTableVar operations", "[TTableVar]") {
+  SECTION("Assignment operator") {
+    TableVar tv1;
+    tv1.insert("key1", Var("value1"));
+    TableVar tv2;
+    tv2 = tv1;
+    REQUIRE(tv2["key1"] == Var("value1"));
+  }
+
+  SECTION("Move assignment operator") {
+    TableVar tv1;
+    tv1.insert("key1", Var("value1"));
+    TableVar tv2;
+    tv2 = std::move(tv1);
+    REQUIRE(tv2["key1"] == Var("value1"));
+  }
+
+  SECTION("Access operator") {
+    TableVar tv;
+    tv.insert("key1", Var("value1"));
+    REQUIRE(tv["key1"] == Var("value1"));
+  }
+
+  SECTION("Check key existence") {
+    TableVar tv;
+    tv.insert("key1", Var("value1"));
+    REQUIRE(tv.hasKey("key1"));
+    REQUIRE_FALSE(tv.hasKey("key2"));
+  }
+
+  SECTION("Remove key") {
+    TableVar tv;
+    tv.insert("key1", Var("value1"));
+    tv.remove("key1");
+    REQUIRE_FALSE(tv.hasKey("key1"));
+  }
+}
