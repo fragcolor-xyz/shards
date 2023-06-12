@@ -57,10 +57,9 @@ struct CameraInputs {
 };
 
 // Update tracked buttons and pointers
-inline void updateInputState(InputState &inputState, InputContext &inputContext) {
+inline void updateInputState(InputState &inputState, IInputContext &inputContext) {
   inputState.pointer.prevPosition = inputState.pointer.position;
   inputState.pointer.position = inputContext.getState().cursorPosition;
-  inputState.mouseWheel = inputContext.detached.getScrollDelta();
 
   for (auto &event : inputContext.getEvents()) {
     std::visit(
@@ -101,7 +100,7 @@ inline void updateInputState(InputState &inputState, InputContext &inputContext)
         event);
   }
 
-  inputState.deltaTime = inputContext.deltaTime;
+  inputState.deltaTime = inputContext.getDeltaTime();
 }
 
 template <typename T> inline T getParamVarOrDefault(ParamVar &paramVar, const T &_default) {
@@ -203,14 +202,15 @@ struct FreeCameraShard {
   SHVar activate(SHContext *context, const SHVar &input) {
     updateInputState(_inputState, _inputContext);
     bool anyButtonHeld = _inputState.pointer.secondaryButton || _inputState.pointer.tertiaryButton;
+    auto& consumeFlags = _inputContext->getConsumeFlags();
     if (anyButtonHeld) {
-      _inputContext->requestFocus = true;
-      _inputContext->wantsPointerInput = true;
-      _inputContext->wantsKeyboardInput = true;
+      consumeFlags.requestFocus = true;
+      consumeFlags.wantsPointerInput = true;
+      consumeFlags.wantsKeyboardInput = true;
     } else {
-      _inputContext->requestFocus = false;
-      _inputContext->wantsPointerInput = true;
-      _inputContext->wantsKeyboardInput = false;
+      consumeFlags.requestFocus = false;
+      consumeFlags.wantsPointerInput = true;
+      consumeFlags.wantsKeyboardInput = false;
     }
 
     CameraInputs cameraInputs = getCameraInputs(_inputState);
