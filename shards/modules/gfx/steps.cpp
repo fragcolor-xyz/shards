@@ -257,6 +257,14 @@ struct DrawablePassShard {
       throw formatException("DrawablePass requires a queue");
     }
 
+    Var ignoreDrawableFeaturesVar;
+    if (getFromTable(context, inputTable, "IgnoreDrawableFeatures", ignoreDrawableFeaturesVar)) {
+      checkType(ignoreDrawableFeaturesVar.valueType, SHType::Bool, "IgnoreDrawableFeatures");
+      step.ignoreDrawableFeatures = (bool)ignoreDrawableFeaturesVar;
+    } else {
+      step.ignoreDrawableFeatures = false;
+    }
+
     if (_hashState.update(step)) {
       step.id = renderStepIdGenerator.getNext();
     }

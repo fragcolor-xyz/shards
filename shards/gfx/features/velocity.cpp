@@ -46,7 +46,7 @@ FeaturePtr Velocity::create(bool applyView, bool applyProjection) {
   using namespace shader::blocks;
 
   struct PipelineModifier : public IPipelineModifier {
-    void buildPipeline(PipelineBuilder &builder) {
+    void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions& options) {
       auto &objectBinding = builder.getOrCreateBufferBinding("object");
       objectBinding.frequency = BindingFrequency::Draw;
       objectBinding.layoutBuilder.push("previousWorld", FieldTypes::Float4x4);
