@@ -44,13 +44,18 @@
 
     (GFX.Render :Steps .render-steps :View .view)
 
+    ;; This end frame is required when using `:Wait true` with the ReadTexture shard,
+    ;;  since rendering command buffers are queued in EndFrame
+    ;;  and texture copy needs to happen afterwards
     ;; (GFX.EndFrame)
+
     .u8-tex (GFX.ReadTexture) = .image
     .frame-index (Log "This frame index")
-    (Int2 400 400) (GetImagePixel .image true :Default (Float4 0)) (ToInt4) = .p0 (Log "Pixel (400, 400)")
-    (Int2 800 400) (GetImagePixel .image true :Default (Float4 0)) (ToInt4) = .p1 (Log "Pixel (800, 400)")
+    (Int2 400 400) (GetImagePixel .image :AsInteger true :Default (Int4 0)) = .p0 (Log "Pixel (400, 400)")
+    (Int2 800 400) (GetImagePixel .image :AsInteger true :Default (Int4 0)) = .p1 (Log "Pixel (800, 400)")
 
-    .frame-index (When (IsMore 1)
+    ; With a frame delay, check that the values match the expected ones
+    .frame-index (When (IsMore 0)
                        (->
                         .p0:0 = .p0-x
                         .p1:0 = .p1-x
@@ -58,8 +63,7 @@
                         .p0-x (Assert.Is .expected-frame-index)
                         .p1-x (Assert.Is 0xffff)))
 
-    (Math.Inc .frame-index)
-    nil)))
+    (Math.Inc .frame-index))))
 
 (schedule root test-wire)
 (if (run root timestep 32) nil (throw "Root tick failed"))
