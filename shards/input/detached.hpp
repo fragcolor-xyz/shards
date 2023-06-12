@@ -1,6 +1,7 @@
 #ifndef BB4427B0_5641_4FB1_86E3_6E9D1AD7C986
 #define BB4427B0_5641_4FB1_86E3_6E9D1AD7C986
 #include "input.hpp"
+#include "input/events.hpp"
 #include "state.hpp"
 #include "events.hpp"
 #include <SDL_events.h>
@@ -54,6 +55,15 @@ public:
       } else {
         virtualInputEvents.push_back(TextEvent{.text = ievent.text});
       }
+    } else if (event.type == SDL_WINDOWEVENT) {
+      if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
+        virtualInputEvents.push_back(RequestCloseEvent{});
+      } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+      }
+    } else if (event.type == SDL_APP_DIDENTERBACKGROUND) {
+      virtualInputEvents.push_back(SupendEvent{});
+    } else if (event.type == SDL_APP_DIDENTERFOREGROUND) {
+      virtualInputEvents.push_back(ResumeEvent{});
     }
   }
 

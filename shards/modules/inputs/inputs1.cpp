@@ -11,6 +11,7 @@
 #include <shards/input/detached.hpp>
 #include <shards/core/module.hpp>
 #include "input/events.hpp"
+#include "input/input.hpp"
 #include "inputs.hpp"
 #include "debug_ui.hpp"
 #include "modules/inputs/debug_ui.hpp"
@@ -63,6 +64,7 @@ struct Detached {
   struct Frame {
     std::vector<input::ConsumableEvent> events;
     bool canReceiveInput{};
+    InputRegion region;
 
     void clear() {
       canReceiveInput = false;
@@ -151,6 +153,7 @@ struct Detached {
       }
 
       auto &frame = eventBuffer.getNextFrame();
+      frame.region = state.region;
       frame.canReceiveInput = canReceiveInput;
       for (auto &event : events) {
         frame.events.push_back(event);
@@ -305,6 +308,7 @@ struct Detached {
         _inputContext.deltaTime = deltaTime;
         _inputContext.time += deltaTime;
 
+        Frame *mostRecentFrame{};
         _inputContext.detached.update([&](auto &apply) {
           bool logStarted{};
           auto eventUpdate = _eventBuffer.getEvents(_lastReceivedEventBufferFrame);
@@ -318,9 +322,16 @@ struct Detached {
                           event.consumed, frame.canReceiveInput);
               apply(event, frame.canReceiveInput);
             }
+
+            mostRecentFrame = &frame;
           }
           _lastReceivedEventBufferFrame = eventUpdate.lastGeneration;
         });
+
+        // Update input region 
+        if (mostRecentFrame) {
+          _inputContext.detached.state.region = mostRecentFrame->region;
+        }
 
         for (auto &evt : _inputContext.detached.virtualInputEvents) {
           if (!std::get_if<PointerMoveEvent>(&evt))
