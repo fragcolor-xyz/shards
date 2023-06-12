@@ -817,7 +817,7 @@ struct Serialization {
       uint64_t len;
       read((uint8_t *)&len, sizeof(uint64_t));
       for (uint64_t i = 0; i < len; i++) {
-        SHVar keyBuf;
+        SHVar keyBuf{};
         deserialize(read, keyBuf);
         auto &dst = (*map)[keyBuf];
         destroyVar(keyBuf); // we don't need the key anymore
