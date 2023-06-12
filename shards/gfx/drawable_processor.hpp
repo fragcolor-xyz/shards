@@ -56,7 +56,7 @@ struct IDrawableProcessor : public IPipelineModifier {
 
   // Hook for modifying the built pipeline for the referenceDrawable.
   // Whenever a group of objects is grouped under new pipeline, this function is called once before building.
-  virtual void buildPipeline(PipelineBuilder &builder) override = 0;
+  virtual void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions& options) override = 0;
 
   // Request to prepare draw data (buffers/bindings/etc.)
   // the returned value is passed to encode through DrawableEncodeContext
