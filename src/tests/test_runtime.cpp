@@ -1401,7 +1401,9 @@ TEST_CASE("TTableVar operations", "[TTableVar]") {
   SECTION("Remove key") {
     TableVar tv;
     tv.insert("key1", Var("value1"));
+    REQUIRE(tv.size() == 1);
     tv.remove("key1");
+    REQUIRE(tv.size() == 0);
     REQUIRE_FALSE(tv.hasKey("key1"));
   }
 }
