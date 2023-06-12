@@ -684,10 +684,22 @@ template <class SH_CORE> struct TTableVar : public SHVar {
     return (const TOwnedVar<SH_CORE> &)*vp;
   }
 
+  TOwnedVar<SH_CORE> &operator[](std::string_view key) {
+    return operator[](Var(key));
+  }
+
+  const TOwnedVar<SH_CORE> &operator[](std::string_view key) const {
+    return operator[](Var(key));
+  }
+
   TOwnedVar<SH_CORE> &insert(const SHVar &key, const SHVar &val) {
     auto vp = payload.tableValue.api->tableAt(payload.tableValue, key);
     SH_CORE::cloneVar(*vp, val);
     return (TOwnedVar<SH_CORE> &)*vp;
+  }
+
+  TOwnedVar<SH_CORE> &insert(std::string_view key, const SHVar &val) {
+    return insert(Var(key), val);
   }
 
   template <typename T> T &get(const SHVar &key) {
@@ -700,7 +712,13 @@ template <class SH_CORE> struct TTableVar : public SHVar {
     return (T &)*vp;
   }
 
-  bool hasKey(std::string_view key) const { return payload.tableValue.api->tableContains(payload.tableValue, key.data()); }
+  template <typename T> T &get(std::string_view key) {
+    return get<T>(Var(key));
+  }
+
+  bool hasKey(const SHVar &key) const { return payload.tableValue.api->tableContains(payload.tableValue, key); }
+
+  bool hasKey(std::string_view key) const { return hasKey(Var(key)); }
 
   TOwnedVar<SH_CORE> &asOwned() { return (TOwnedVar<SH_CORE> &)*this; }
 };
