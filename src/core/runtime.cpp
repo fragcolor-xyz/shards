@@ -1439,9 +1439,9 @@ void freeDerivedInfo(SHTypeInfo info) {
     for (uint32_t i = 0; info.table.types.len > i; i++) {
       freeDerivedInfo(info.table.types.elements[i]);
     }
-    // for (uint32_t i = 0; info.table.keys.len > i; i++) {
-    //   destroyVar(info.table.keys.elements[i]);
-    // } <-- borrowed
+    for (uint32_t i = 0; info.table.keys.len > i; i++) {
+      destroyVar(info.table.keys.elements[i]);
+    }
     shards::arrayFree(info.table.types);
     shards::arrayFree(info.table.keys);
   } break;
@@ -1489,7 +1489,9 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
     while (t.api->tableNext(t, &tit, &k, &v)) {
       auto derived = deriveTypeInfo(v, data, expInfo);
       shards::arrayPush(varType.table.types, derived);
-      shards::arrayPush(varType.table.keys, k); // notice, we borrow here!
+      auto idx = varType.table.keys.len;
+      shards::arrayResize(varType.table.keys, idx + 1);
+      cloneVar(varType.table.keys.elements[idx], k);
     }
   } break;
   case SHType::Set: {
@@ -1555,7 +1557,9 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
       shards::arrayPush(varType.table.types, cloned);
     }
     for (uint32_t i = 0; i < other.table.keys.len; i++) {
-      shards::arrayPush(varType.table.keys, other.table.keys.elements[i]); // borrow
+      auto idx = varType.table.keys.len;
+      shards::arrayResize(varType.table.keys, idx + 1);
+      cloneVar(varType.table.keys.elements[idx], other.table.keys.elements[i]);
     }
     break;
   }
@@ -2231,7 +2235,10 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
         return;
     }
 
-    memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue, srcSize);
+    if (srcSize > 0) {
+      assert(src.payload.stringValue != nullptr && "string value is null but length is not 0");
+      memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue, srcSize);
+    }
     ((char *)dst.payload.stringValue)[srcSize] = 0;
 
     // fill the optional len field
