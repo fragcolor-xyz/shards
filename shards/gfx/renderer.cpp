@@ -239,8 +239,12 @@ struct RendererImpl final : public ContextData {
 
   std::list<DeferredTextureReadCommand> deferredTextureReadCommands;
 
-  void queueTextureReadCommand(WGPUCommandEncoder encoder, DeferredTextureReadCommand &cmd) {
+  bool queueTextureReadCommand(WGPUCommandEncoder encoder, DeferredTextureReadCommand &cmd) {
     auto &textureData = cmd.texture.texture->createContextDataConditional(context);
+    if (!textureData.texture) {
+      SPDLOG_LOGGER_WARN(logger, "Invalid texture queued for reading, ignoring");
+      return false;
+    }
 
     cmd.size = int2(textureData.size.width, textureData.size.height);
     auto &pixelFormatDesc = getTextureFormatDescription(textureData.format.pixelFormat);
@@ -270,6 +274,7 @@ struct RendererImpl final : public ContextData {
         .depthOrArrayLayers = 1,
     };
     wgpuCommandEncoderCopyTextureToBuffer(encoder, &srcDesc, &dstDesc, &sizeDesc);
+    return true;
   }
 
   void queueTextureReadBufferMap(DeferredTextureReadCommand &cmd) {
@@ -306,7 +311,8 @@ struct RendererImpl final : public ContextData {
       WGPUCommandEncoderDescriptor encDesc{};
       WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
 
-      queueTextureReadCommand(encoder, tmpCommand);
+      if (!queueTextureReadCommand(encoder, tmpCommand))
+        return;
 
       WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture (blocking)"};
       WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
@@ -327,8 +333,12 @@ struct RendererImpl final : public ContextData {
     WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
     for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
       if (!it->isQueued()) {
-        queueTextureReadCommand(encoder, *it);
+        if (queueTextureReadCommand(encoder, *it)) {
         buffersToMap.push_back(&*it);
+        } else {
+          // Invalid texture, remove from queue
+          it = deferredTextureReadCommands.erase(it);
+        }
       }
       ++it;
     }
