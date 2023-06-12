@@ -105,6 +105,12 @@ struct IterableParam {
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
 
 // Implements collection of required variables
+// Usage:
+//  PARAM_REQUIRED_VARIABLES();
+//  SHTypeInfo compose(SHInstanceData &data) {
+//    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+//    return outputTypes().elements[0];
+//  }
 #define PARAM_COMPOSE_REQUIRED_VARIABLES(__data)                                                             \
   {                                                                                                          \
     size_t numParams;                                                                                        \
