@@ -3247,6 +3247,10 @@ void *operator new[](std::size_t count) {
 void operator delete(void *ptr) noexcept { _aligned_free(ptr); }
 
 void operator delete[](void *ptr) noexcept { _aligned_free(ptr); }
+
+void operator delete(void *ptr, std::size_t count) noexcept { _aligned_free(ptr); }
+
+void operator delete[](void *ptr, std::size_t count) noexcept { _aligned_free(ptr); }
 #endif
 #endif
 
