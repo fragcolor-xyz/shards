@@ -238,7 +238,13 @@ impl UIRenderer for Var {
                 ui.push_id(k, |ui| {
                   changed |= ui
                     .horizontal(|ui| {
-                      k.render(true, None, ui);
+                      if k.is_string() {
+                        let k: &str = k.as_ref().try_into().unwrap();
+                        ui.label(k);
+                      } else {
+                        k.render(read_only, None, ui);
+                      }
+
                       // no inner type for now
                       table.get_mut_fast(k).render(read_only, None, ui)
                     })
