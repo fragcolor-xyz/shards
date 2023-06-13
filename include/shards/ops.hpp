@@ -280,7 +280,7 @@ bool _tableLess(const SHVar &a, const SHVar &b);
 
 ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
   if (a.valueType != b.valueType)
-    return a.valueType < b.valueType;
+    throw shards::InvalidVarTypeError("Comparison < between two different value types");
 
   switch (a.valueType) {
   case SHType::Enum: {

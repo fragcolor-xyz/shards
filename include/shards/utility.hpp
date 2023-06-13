@@ -611,6 +611,14 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
   const Var &operator*() const { return *reinterpret_cast<const Var *>(this); }
   Var *operator->() { return reinterpret_cast<Var *>(this); }
   const Var *operator->() const { return reinterpret_cast<const Var *>(this); }
+  bool operator<(const TOwnedVar &other) const {
+    // the default comparison will throw if types are different!
+    if (valueType != other.valueType) {
+      return valueType < other.valueType;
+    }
+    // use default SHVar comparison
+    return static_cast<const SHVar &>(*this) < static_cast<const SHVar &>(other);
+  }
 };
 
 // helper to create structured data tables
