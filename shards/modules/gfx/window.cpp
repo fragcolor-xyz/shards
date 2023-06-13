@@ -143,11 +143,15 @@ struct MainWindow final {
     SHLOG_DEBUG("Creating window");
 
     WindowCreationOptions windowOptions = {};
-    windowOptions.width = (int)Var(_width);
-    windowOptions.height = (int)Var(_height);
-    windowOptions.title = (const char *)Var(_title);
+    windowOptions.width = (int)*_width;
+    windowOptions.height = (int)*_height;
+    windowOptions.title = (const char *)*_title;
     _windowContext->window = std::make_shared<Window>();
     _windowContext->window->init(windowOptions);
+
+    // Adjust window size so they're specified in virtual points
+    float scaling = _windowContext->window->getUIScale();
+    _windowContext->window->resize((int2)(float2(int2((int)*_width, (int)*_height)) * scaling));
   }
 
   void warmup(SHContext *context) {
