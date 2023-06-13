@@ -23,8 +23,14 @@ struct FocusTracker {
     current = nullptr;
   }
 
+  // Checks current or previous acquisition of focus
+  bool hasFocus(void *token) const { return token == current || (!current && token == previous); }
+
+  // Check is the target can receive input based on focus rules
+  // If no element has requested any focus, any element can receive input
   bool canReceiveInput(void *token) const { return token == current || (!current && (!previous || token == previous)); }
 
+  // Request exclusive focus on the given element
   bool requestFocus(void *token) {
     // Same frame early out
     if (current == token)
@@ -85,8 +91,8 @@ public:
     updateAndSortHandlersLocked(outVec);
   }
 
-  const InputState& getState() const { return state; }
-  const std::vector<Event>& getEvents() const { return input.virtualInputEvents; }
+  const InputState &getState() const { return state; }
+  const std::vector<Event> &getEvents() const { return input.virtualInputEvents; }
 
 private:
   void updateAndSortHandlers();

@@ -113,12 +113,12 @@ struct RenderIntoShard {
              PARAM_IMPL_FOR(_matchOutputSize), PARAM_IMPL_FOR(_viewport), PARAM_IMPL_FOR(_windowRegion));
 
   RequiredGraphicsRendererContext _graphicsRendererContext;
-  OptionalWindowContext _windowContext;
+  shards::input::OptionalInputContext _inputContext;
   RenderTargetPtr _renderTarget;
 
   void warmup(SHContext *context) {
     _graphicsRendererContext.warmup(context);
-    _windowContext.warmup(context);
+    _inputContext.warmup(context);
     _renderTarget = std::make_shared<RenderTarget>();
     PARAM_WARMUP(context);
   }
@@ -126,7 +126,7 @@ struct RenderIntoShard {
   void cleanup() {
     PARAM_CLEANUP();
     _graphicsRendererContext.cleanup();
-    _windowContext.cleanup();
+    _inputContext.cleanup();
     _renderTarget.reset();
   }
 
@@ -135,6 +135,10 @@ struct RenderIntoShard {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
+
+    if(findExposedVariable(data.shared, decltype(_inputContext)::getExposedTypeInfo().name)) {
+      _requiredVariables.push_back(decltype(_inputContext)::getExposedTypeInfo());
+    }
 
     return _contents.compose(data).outputType;
   }
@@ -219,7 +223,7 @@ struct RenderIntoShard {
       }
     }
 
-    if (_windowContext) {
+    if (_inputContext) {
       // (optional) Push window region for input
       Var windowRegionVar{_windowRegion.get()};
       if (!windowRegionVar.isNone()) {
@@ -259,20 +263,19 @@ struct RenderIntoShard {
 
     ctx.renderer->pushView(std::move(viewItem));
 
-    // TODO: Input
-    // if (_windowContext) {
-    //   _windowContext->inputStack.push(std::move(inputItem));
-    // }
+    input::InputStack *inputStack = _inputContext ? &_inputContext->getInputStack() : nullptr;
+    if (inputStack) {
+      inputStack->push(std::move(inputItem));
+    }
 
     SHVar contentOutput;
     _contents.activate(shContext, input, contentOutput);
 
     ctx.renderer->popView();
 
-    // TODO: Input
-    // if (_windowContext) {
-    //   _windowContext->inputStack.pop();
-    // }
+    if (inputStack) {
+      inputStack->pop();
+    }
 
     return contentOutput;
   }

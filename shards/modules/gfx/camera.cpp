@@ -60,6 +60,7 @@ struct CameraInputs {
 inline void updateInputState(InputState &inputState, IInputContext &inputContext) {
   inputState.pointer.prevPosition = inputState.pointer.position;
   inputState.pointer.position = inputContext.getState().cursorPosition;
+  inputState.mouseWheel = 0;
 
   for (auto &event : inputContext.getEvents()) {
     std::visit(

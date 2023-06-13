@@ -1,9 +1,11 @@
 #ifndef FAD79EC4_CD09_4DDB_88A1_E168CCE2B4F5
 #define FAD79EC4_CD09_4DDB_88A1_E168CCE2B4F5
 
+#include "input/input_stack.hpp"
 #include <input/messages.hpp>
 #include <input/state.hpp>
 #include <input/events.hpp>
+#include <input/input_stack.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/core/exposed_type_utils.hpp>
@@ -29,6 +31,8 @@ struct IInputContext {
 
   virtual shards::input::InputMaster *getMaster() const = 0;
 
+  virtual shards::input::InputStack& getInputStack() = 0;
+
   virtual void postMessage(const Message &message) = 0;
   virtual const InputState &getState() const = 0;
   virtual const std::vector<Event> &getEvents() const = 0;
@@ -41,6 +45,7 @@ struct IInputContext {
 };
 
 using RequiredInputContext = shards::RequiredContextVariable<IInputContext, IInputContext::Type, IInputContext::VariableName>;
+using OptionalInputContext = shards::RequiredContextVariable<IInputContext, IInputContext::Type, IInputContext::VariableName, false>;
 
 } // namespace shards::input
 

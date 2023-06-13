@@ -1,4 +1,5 @@
 #include "gfx.hpp"
+#include "input/input_stack.hpp"
 #include "modules/gfx/gfx.hpp"
 #include "window.hpp"
 #include "renderer.hpp"
@@ -31,6 +32,10 @@ struct InlineInputContext : public IInputContext {
 
   float time{};
   float deltaTime{};
+
+  InputStack inputStack;
+
+  virtual InputStack &getInputStack() override { return inputStack; }
 
   virtual shards::input::InputMaster *getMaster() const override { return master; }
 
@@ -199,15 +204,28 @@ struct MainWindow final {
     }
 
     if (shouldRun) {
+      // Poll & distribute input events
       _windowContext->inputMaster.update(*window.get());
-      _inlineInputContext->time = _windowContext->time;
-      _inlineInputContext->deltaTime = _windowContext->deltaTime;
 
-      SHVar _shardsOutput{};
-      _contents.activate(shContext, input, _shardsOutput);
+      if (_contents) {
+        _inlineInputContext->time = _windowContext->time;
+        _inlineInputContext->deltaTime = _windowContext->deltaTime;
 
-      if (_renderer) {
-        _renderer->end();
+        // Push root input region
+        auto &inputStack = _inlineInputContext->inputStack;
+        inputStack.reset();
+        inputStack.push(input::InputStack::Item{
+            .windowMapping = input::WindowSubRegion::fromEntireWindow(*window.get()),
+        });
+
+        SHVar _shardsOutput{};
+        _contents.activate(shContext, input, _shardsOutput);
+
+        inputStack.pop();
+
+        if (_renderer) {
+          _renderer->end();
+        }
       }
     }
 
