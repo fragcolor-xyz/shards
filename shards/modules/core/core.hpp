@@ -1213,8 +1213,7 @@ struct Update : public SetUpdateBase {
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         auto &name = data.shared.elements[i].name;
-        if (name == _name && data.shared.elements[i].exposedType.basicType == SHType::Table &&
-            data.shared.elements[i].exposedType.table.types.elements) {
+        if (name == _name && data.shared.elements[i].exposedType.basicType == SHType::Table) {
 
           originalTableType = &data.shared.elements[i].exposedType;
 
