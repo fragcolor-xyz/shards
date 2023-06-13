@@ -249,7 +249,7 @@ TEST_CASE("SHVar-comparison", "[ops]") {
   REQUIRE(f1 != f3);                \
   REQUIRE(v1 != v3);                \
   REQUIRE(f1 != i1);                \
-  REQUIRE_THROWS(f1 < i1);          \
+  REQUIRE(i1 < f1);                 \
   REQUIRE_THROWS(f1 <= i1);         \
   REQUIRE(f1 <= f2);                \
   REQUIRE(v1 <= v2);                \
