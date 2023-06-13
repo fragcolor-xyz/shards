@@ -2511,7 +2511,13 @@ impl Var {
 
   pub fn as_mut_table(&mut self) -> Result<&mut TableVar, &str> {
     if self.valueType != SHType_Table {
+      if self.valueType == SHType_None {
+        let sv = TableVar::new();
+        *self = sv.0;
+        Ok(unsafe { &mut *(self as *mut Var as *mut TableVar) })
+      } else {
       Err("Variable is not a table")
+      }
     } else {
       Ok(unsafe { &mut *(self as *mut Var as *mut TableVar) })
     }
@@ -4676,6 +4682,18 @@ impl TryFrom<&Var> for Seq {
 pub struct TableVar(Var);
 
 impl TableVar {
+  pub fn new() -> TableVar {
+    TableVar(Var {
+      valueType: SHType_Table,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          tableValue: unsafe { (*Core).tableNew.unwrap()() },
+        },
+      },
+      ..Default::default()
+    })
+  }
+
   pub fn insert(&mut self, k: Var, v: &Var) -> Option<Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
