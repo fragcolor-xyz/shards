@@ -81,6 +81,10 @@ if(WIN32)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
   add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS=1)
   add_compile_definitions(NOMINMAX=1)
+  if(X86)
+    # align stack to 16 bytes
+    add_compile_options(-mstackrealign)
+  endif()
 endif()
 
 if(MSVC OR CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
