@@ -73,7 +73,7 @@
   (base)
   ;; Sync test
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Title "SDL Window" :Width 1280 :Height 720 
    :Contents
    (->
     (Float3 -1.0 0.0 0.0) (Math.Translation)
