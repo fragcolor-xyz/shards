@@ -71,7 +71,7 @@
    "Something" >= .text)
 
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Title "SDL Window" :Width 1280 :Height 720 
    :Contents
    (->
     (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb) >= .rt-0

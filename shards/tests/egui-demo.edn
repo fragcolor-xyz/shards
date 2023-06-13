@@ -37,7 +37,7 @@
 (defloop ui-wire
   input_value ;; some input
   (GFX.MainWindow
-   :Title "egui Shards Example" :Width 1280 :Height 768 :Debug false
+   :Title "egui Shards Example" :Width 1280 :Height 768 
    :Contents
    (->
     (Setup
