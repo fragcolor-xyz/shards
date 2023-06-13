@@ -5,6 +5,7 @@
 #define SH_UTILITY_HPP
 
 #include "shards.hpp"
+#include "ops.hpp"
 #include <spdlog/fmt/fmt.h>
 #include <cassert>
 #include <future>
