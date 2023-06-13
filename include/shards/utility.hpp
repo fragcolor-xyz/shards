@@ -716,6 +716,8 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   void remove(std::string_view key) { remove(Var(key)); }
 
+  size_t size() const { return payload.tableValue.api->tableSize(payload.tableValue); }
+
   TOwnedVar<SH_CORE> &asOwned() { return (TOwnedVar<SH_CORE> &)*this; }
 };
 
