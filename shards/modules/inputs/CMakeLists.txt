@@ -1,6 +1,6 @@
 set(SOURCES
   inputs.cpp
-  inputs1.cpp
+  detached.cpp
 )
 
 add_shards_module(inputs SOURCES ${SOURCES}
