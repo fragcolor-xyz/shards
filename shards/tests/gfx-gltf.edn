@@ -25,7 +25,7 @@
 
 (defshards default-window []
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Title "SDL Window" :Width 1280 :Height 720 
    :Contents
    (->
     ;; Rotate camera
@@ -73,7 +73,7 @@
    (Float3 0.05 0 0) (Math.Translation) >= .t3)
 
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Title "SDL Window" :Width 1280 :Height 720 
    :Contents
    (->
     ;; Rotate camera
