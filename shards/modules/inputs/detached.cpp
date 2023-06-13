@@ -10,12 +10,16 @@
 #include <shards/input/state.hpp>
 #include <shards/input/detached.hpp>
 #include <shards/core/module.hpp>
+#include "core/foundation.hpp"
 #include "input/events.hpp"
 #include "input/input.hpp"
+#include "input/input_stack.hpp"
 #include "inputs.hpp"
 #include "debug_ui.hpp"
 #include "modules/inputs/debug_ui.hpp"
+#include "modules/inputs/inputs.hpp"
 #include <boost/lockfree/spsc_queue.hpp>
+#include <stdexcept>
 
 namespace shards {
 namespace input {
@@ -57,6 +61,10 @@ struct DetachedInputContext : public IInputContext {
   double time{};
   float deltaTime{};
 
+  InputStack inputStack;
+
+  virtual InputStack &getInputStack() override { return inputStack; }
+
   virtual shards::input::InputMaster *getMaster() const override { return master; }
 
   const input::InputState &getState() const override { return detached.state; }
@@ -88,6 +96,7 @@ struct Detached {
   struct Frame {
     std::vector<input::ConsumableEvent> events;
     bool canReceiveInput{};
+    bool isCursorWithinRegion{};
     InputRegion region;
 
     void clear() {
@@ -115,6 +124,8 @@ struct Detached {
 
     int priority{};
 
+    int4 mappedRegion;
+
     InputThreadHandler(EventBuffer &eventBuffer, int priority) : eventBuffer(eventBuffer), priority(priority) {}
 
     const std::vector<input::ConsumableEvent> *getDebugFrame(size_t frameIndex) override {
@@ -123,7 +134,7 @@ struct Detached {
       }
       return nullptr;
     }
-    size_t getLastFrameIndex() const override { return eventBuffer.head - 1; }
+    size_t getLastFrameIndex() const override { return eventBuffer.head > 0 ? eventBuffer.head - 1 : 0; }
     const char *getDebugName() override { return name.c_str(); }
     debug::ConsumeFlags getDebugConsumeFlags() const override {
       return debug::ConsumeFlags{
@@ -167,23 +178,32 @@ struct Detached {
       return false;
     }
 
+    bool isCursorWithinRegion{};
+
     // Runs on input thread callback
     void handle(const InputState &state, std::vector<ConsumableEvent> &events, FocusTracker &focusTracker) override {
-      bool requestedFocus;
-      if (requestFocus) {
-        canReceiveInput = requestedFocus = focusTracker.requestFocus(this);
-      } else {
+
+      float2 pixelCursorPos = state.cursorPosition * (float2(state.region.pixelSize) / state.region.size);
+      isCursorWithinRegion = pixelCursorPos.x >= mappedRegion.x && pixelCursorPos.x <= mappedRegion[2] &&
+                             pixelCursorPos.y >= mappedRegion.y && pixelCursorPos.y <= mappedRegion[3];
+
+      // Only request focus if cursor is within region or we already have focus
+      if (requestFocus && (isCursorWithinRegion || focusTracker.hasFocus(this))) {
+        canReceiveInput = focusTracker.requestFocus(this);
+      } else if (isCursorWithinRegion) {
         canReceiveInput = focusTracker.canReceiveInput(this);
+      } else {
+        canReceiveInput = false;
       }
 
       auto &frame = eventBuffer.getNextFrame();
       frame.region = state.region;
       frame.canReceiveInput = canReceiveInput;
+      frame.isCursorWithinRegion = isCursorWithinRegion;
       for (auto &event : events) {
         frame.events.push_back(event);
 
         if (wantToConsumeEvent(event.event) && canReceiveInput) {
-          requestedFocus = true;
           frame.canReceiveInput = true;
           event.consumed = true;
         }
@@ -222,6 +242,8 @@ struct Detached {
   // Separate timer for this input context
   shards::Time::DeltaTimer _deltaTimer;
 
+  bool _hasParentInputContext{};
+
   Detached() { _priority = Var(0); }
 
   bool hasInputThreadCallback() const { return _inputShards.valueType != SHType::None; }
@@ -248,6 +270,10 @@ struct Detached {
       outputType = result.outputType;
     } else {
       outputType = data.inputType;
+    }
+
+    if (findExposedVariable(data.shared, decltype(_inputContext)::VariableName)) {
+      _hasParentInputContext = true;
     }
 
     return outputType;
@@ -314,6 +340,11 @@ struct Detached {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    IInputContext *parentContext{};
+    if (_hasParentInputContext) {
+      parentContext = &varAsObjectChecked<IInputContext>(*_contextVarRef, IInputContext::Type);
+    }
+
     if (!_inputContext.window) {
       init(context);
     } else {
@@ -327,6 +358,32 @@ struct Detached {
         double deltaTime = _deltaTimer.update();
         _inputContext.deltaTime = deltaTime;
         _inputContext.time += deltaTime;
+
+        // Push root input region
+        auto &inputStack = _inputContext.inputStack;
+        inputStack.reset();
+        if (parentContext) {
+          // Inherit parent context's input stack
+          inputStack.push(InputStack::Item(parentContext->getInputStack().getTop()));
+        } else {
+          inputStack.push(input::InputStack::Item{
+              .windowMapping = input::WindowSubRegion::fromEntireWindow(*_inputContext.window.get()),
+          });
+        }
+
+        if (inputStack.getTop().windowMapping) {
+          auto &windowRegion = inputStack.getTop().windowMapping.value();
+          std::visit(
+              [&](const auto &arg) {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, input::WindowSubRegion>) {
+                  _handler->mappedRegion = arg.region;
+                } else {
+                  throw std::logic_error("Unsupported window region");
+                }
+              },
+              windowRegion);
+        }
 
         Frame *mostRecentFrame{};
         _inputContext.detached.update([&](auto &apply) {
@@ -360,6 +417,8 @@ struct Detached {
 
         _mainShards.activate(context, input, output); //
 
+        inputStack.pop();
+
         // Update consume callbacks
         _handler->wantsKeyboardInput = _inputContext.consumeFlags.wantsKeyboardInput;
         _handler->wantsPointerInput = _inputContext.consumeFlags.wantsPointerInput;
@@ -368,19 +427,6 @@ struct Detached {
     } else {
       output = input;
     }
-
-    // _handler->updateCapturedVariables(SHContext * mainContext)
-
-    // Need to capture variables
-    // _handler->capturedVariables
-
-    // _inputContext.input.
-
-    // windowContext.window->pollEvents(_events);
-    // windowContext.
-    // _state.update();
-    // Poll here
-    // windowContext
 
     return output;
   }
@@ -429,7 +475,6 @@ struct DebugUI {
 
   std::vector<debug::Layer> _layers;
   std::list<std::string> _strings;
-  // std::list<input::ConsumableEvent> _eventStorage;
   std::list<std::vector<const input::ConsumableEvent *>> _eventVectors;
   std::vector<std::shared_ptr<IInputHandler>> _handlers;
 

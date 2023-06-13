@@ -76,7 +76,7 @@ static egui::ModifierKeys translateModifierKeys(SDL_Keymod flags) {
   };
 }
 
-void EguiInputTranslator::setupInputRegion(const shards::input::InputRegion &region) {
+void EguiInputTranslator::setupInputRegion(const shards::input::InputRegion &region, const int4& mappedWindowRegion) {
   // UI Points per pixel
   float eguiDrawScale = region.uiScalingFactor;
 
@@ -84,9 +84,8 @@ void EguiInputTranslator::setupInputRegion(const shards::input::InputRegion &reg
   float2 inputScale = float2(region.pixelSize) / float2(region.size);
   windowToEguiScale = inputScale / eguiDrawScale;
 
-  // Convert from pixel to window coordinates
-  this->mappedWindowRegion =
-      float4(float4(0.0f, 0.0f, region.size.x, region.size.y)) / float4(inputScale.x, inputScale.y, inputScale.x, inputScale.y);
+  // Convert from pixel to window coordinatesmapping
+  this->mappedWindowRegion = float4(mappedWindowRegion) / float4(inputScale.x, inputScale.y, inputScale.x, inputScale.y);
 
   // Take viewport size and scale it by the draw scale
   float2 viewportSizeFloat = float2(float(region.size.x), float(region.size.y));
@@ -103,7 +102,6 @@ void EguiInputTranslator::begin(double time, float deltaTime) {
   reset();
 
   egui::ModifierKeys modifierKeys{};
-  //= translateModifierKeys(SDL_GetModState());
 
   input.time = time;
   input.predictedDeltaTime = deltaTime;
@@ -210,7 +208,7 @@ void EguiInputTranslator::end() {
 
 const egui::Input *EguiInputTranslator::translateFromInputEvents(const EguiInputTranslatorArgs &args) {
   begin(args.time, args.deltaTime);
-  setupInputRegion(args.region);
+  setupInputRegion(args.region, args.mappedWindowRegion);
   for (const auto &event : args.events)
     translateEvent(event);
   end();
