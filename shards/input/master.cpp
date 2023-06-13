@@ -9,6 +9,8 @@
 
 namespace shards::input {
 
+// Add a singleton check since SDL_PollEvent is global
+// having more than one of these would break input distribution
 static std::atomic<InputMaster *> instance{};
 
 InputMaster::InputMaster() : messageQueue(128) {
