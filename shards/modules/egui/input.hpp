@@ -19,7 +19,10 @@ struct EguiInputTranslatorArgs {
   const std::vector<shards::input::Event> &events;
   double time;
   float deltaTime;
+  // The sizes of the input surface
   shards::input::InputRegion region;
+  // The sub-section of the physical size that is mapped to this UI
+  int4 mappedWindowRegion;
 };
 #endif
 
@@ -46,7 +49,7 @@ public:
 
 #ifndef RUST_BINDGEN
   // Setup input mapping from a window to a specific subregion
-  void setupInputRegion(const shards::input::InputRegion &region);
+  void setupInputRegion(const shards::input::InputRegion &region, const int4& mappedWindowRegion);
 
   // Resets the conversion output
   void begin(double time, float deltaTime);

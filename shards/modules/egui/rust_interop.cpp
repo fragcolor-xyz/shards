@@ -48,20 +48,6 @@ DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var) {
   return &shDrawQueue.queue;
 }
 
-gfx::int4 gfx_getEguiMappedRegion(const SHVar &windowContextVar) {
-  WindowContext &windowContext = varAsObjectChecked<WindowContext>(windowContextVar, WindowContext::Type);
-  (void)windowContext;
-
-  // TODO? input
-  // auto &inputStack = windowContext.inputStack;
-  // InputStack::Item inputStackOutput = inputStack.getTop();
-
-  int4 result{};
-  // if (inputStackOutput.windowMapping) {
-  // }
-  return result;
-}
-
 gfx::int4 gfx_getViewport(const SHVar &graphicsContextVar) {
   GraphicsContext &graphicsContext = varAsObjectChecked<GraphicsContext>(graphicsContextVar, GraphicsContext::Type);
 
@@ -75,48 +61,47 @@ gfx::int4 gfx_getViewport(const SHVar &graphicsContextVar) {
 const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar *graphicsContextVar,
                                            const SHVar &inputContextVar, float scalingFactor) {
   IInputContext &inputContext = varAsObjectChecked<IInputContext>(inputContextVar, IInputContext::Type);
-  // auto &window = inputContext.window;
 
-  // static std::vector<Event> noEvents{};
-  // const std::vector<Event> *eventsPtr = &noEvents;
-  // int4 mappedWindowRegion{};
+  static std::vector<Event> noEvents{};
+  const std::vector<Event> *eventsPtr = &noEvents;
+  int4 mappedWindowRegion{};
 
   InputRegion region = inputContext.getState().region;
-  if (graphicsContextVar) {
-    GraphicsContext &graphicsContext = varAsObjectChecked<GraphicsContext>(*graphicsContextVar, GraphicsContext::Type);
 
-    auto &viewStack = graphicsContext.renderer->getViewStack();
-    auto viewStackOutput = viewStack.getOutput();
+  // if (graphicsContextVar) {
+  //   GraphicsContext &graphicsContext = varAsObjectChecked<GraphicsContext>(*graphicsContextVar, GraphicsContext::Type);
 
-    // Get viewport size from view stack
-    region.size = (float2)viewStackOutput.viewport.getSize();
-  }
-  //  else {
-  //   viewportSize = window->getDrawableSize();
+  //   auto &viewStack = graphicsContext.renderer->getViewStack();
+  //   auto viewStackOutput = viewStack.getOutput();
+
+  //   // Get viewport size from view stack
+  //   region.pixelSize = (int2)viewStackOutput.viewport.getSize();
+  //   region.size = (float2)viewStackOutput.viewport.getSize();
   // }
 
   // Get events based on input stack
   // TODO: Input
-  // auto &inputStack = windowContext.inputStack;
-  // InputStack::Item inputStackOutput = inputStack.getTop();
-  // if (inputStackOutput.windowMapping) {
-  //   auto &windowMapping = inputStackOutput.windowMapping.value();
-  //   std::visit(
-  //       [&](auto &&arg) {
-  //         using T = std::decay_t<decltype(arg)>;
-  //         if constexpr (std::is_same_v<T, WindowSubRegion>) {
-  //           mappedWindowRegion = arg.region;
-  // eventsPtr = &inputContext.detached.virtualInputEvents;
-  //         }
-  //       },
-  //       windowMapping);
-  // }
+  auto &inputStack = inputContext.getInputStack();
+  InputStack::Item inputStackOutput = inputStack.getTop();
+  if (inputStackOutput.windowMapping) {
+    auto &windowMapping = inputStackOutput.windowMapping.value();
+    std::visit(
+        [&](auto &&arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, WindowSubRegion>) {
+            mappedWindowRegion = arg.region;
+            eventsPtr = &inputContext.getEvents();
+          }
+        },
+        windowMapping);
+  }
 
   return translator->translateFromInputEvents(EguiInputTranslatorArgs{
-      .events = inputContext.getEvents(),
+      .events = *eventsPtr,
       .time = inputContext.getTime(),
       .deltaTime = inputContext.getDeltaTime(),
       .region = region,
+      .mappedWindowRegion = mappedWindowRegion,
   });
 }
 
@@ -130,11 +115,18 @@ void gfx_applyEguiOutputs(gfx::EguiInputTranslator *translator, const egui::Full
 
   // Update these
   auto &consumeFlags = inputContext.getConsumeFlags();
-  if (consumeFlags.wantsPointerInput != output.wantsPointerInput)
-    SPDLOG_INFO("EGUI: wantsPointerInput = {}", output.wantsPointerInput);
+  // if (consumeFlags.wantsPointerInput != output.wantsPointerInput)
+  //   SPDLOG_INFO("EGUI: wantsPointerInput = {}", output.wantsPointerInput);
   consumeFlags.wantsPointerInput = output.wantsPointerInput;
 
-  if (consumeFlags.wantsKeyboardInput != output.wantsKeyboardInput)
-    SPDLOG_INFO("EGUI: wantsKeyboardInput = {}", output.wantsKeyboardInput);
+  // if (consumeFlags.wantsKeyboardInput != output.wantsKeyboardInput)
+  //   SPDLOG_INFO("EGUI: wantsKeyboardInput = {}", output.wantsKeyboardInput);
   consumeFlags.wantsKeyboardInput = output.wantsKeyboardInput;
+
+  // Request focus during drag operations
+  if (inputContext.getState().mouseButtonState != 0) {
+    consumeFlags.requestFocus = true;
+  } else {
+    consumeFlags.requestFocus = false;
+  }
 }
