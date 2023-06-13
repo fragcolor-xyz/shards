@@ -265,7 +265,7 @@ struct RendererImpl final : public ContextData {
         .origin = {.x = 0, .y = 0, .z = cmd.texture.faceIndex},
     };
     WGPUImageCopyBuffer dstDesc{
-        .layout = {.offset = 0, .bytesPerRow = uint32_t(cmd.rowSizeAligned), .rowsPerImage = 0},
+        .layout = {.offset = 0, .bytesPerRow = uint32_t(cmd.rowSizeAligned), .rowsPerImage = uint32_t(cmd.size.y)},
         .buffer = cmd.buffer,
     };
     WGPUExtent3D sizeDesc{
