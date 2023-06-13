@@ -4,7 +4,7 @@
 #ifndef SHARDS_SWIFT_H
 #define SHARDS_SWIFT_H
 
-#include "shards.h"
+#include "shards/shards.h"
 
 struct SwiftShard {
   struct Shard header;
