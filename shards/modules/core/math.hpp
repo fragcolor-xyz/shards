@@ -327,7 +327,7 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
       shards::arrayResize(output.payload.seqValue, 0);
       for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
         // notice, we use scratch _output here
-        SHVar scratch;
+        SHVar scratch{};
         op.operateDirect(scratch, a.payload.seqValue.elements[i], b);
         shards::arrayPush(output.payload.seqValue, scratch);
       }
@@ -419,7 +419,7 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
       shards::arrayResize(output.payload.seqValue, 0);
       for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
         // notice, we use scratch _output here
-        SHVar scratch;
+        SHVar scratch{};
         op.operateDirect(scratch, a.payload.seqValue.elements[i]);
         shards::arrayPush(output.payload.seqValue, scratch);
       }
