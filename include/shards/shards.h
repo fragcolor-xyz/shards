@@ -577,6 +577,9 @@ struct SHVarPayload {
 #define SHVAR_FLAGS_EXTERNAL (1 << 2)
 // this marks the variable exported, can be set inside a (Set) shard
 #define SHVAR_FLAGS_EXPOSED (1 << 3)
+// this marks the variable as a foreign variable, to prevent destruction
+// when used inside seq and table
+#define SHVAR_FLAGS_FOREIGN (1 << 4)
 
 struct SHVar {
   struct SHVarPayload payload;

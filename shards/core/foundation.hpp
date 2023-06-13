@@ -890,6 +890,11 @@ NO_INLINE void _destroyVarSlow(SHVar &var);
 NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src);
 
 ALWAYS_INLINE inline void destroyVar(SHVar &var) {
+  // if var.flags contains SHVAR_FLAGS_FOREIGN, then the var should not be destroyed
+  if((var.flags & SHVAR_FLAGS_FOREIGN) == SHVAR_FLAGS_FOREIGN) {
+    return;
+  }
+
   switch (var.valueType) {
   case SHType::Table:
   case SHType::Set:

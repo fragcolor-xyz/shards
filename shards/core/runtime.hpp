@@ -1025,6 +1025,8 @@ struct Serialization {
       }
       break;
     }
+    default:
+      SHLOG_FATAL("Unknown SHType during deserialization.");
     }
   }
 
@@ -1312,6 +1314,8 @@ struct Serialization {
       }
       break;
     }
+    default:
+      SHLOG_FATAL("Unknown SHType during serialization");
     }
     return total;
   }
