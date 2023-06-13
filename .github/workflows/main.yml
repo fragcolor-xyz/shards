@@ -94,7 +94,7 @@ jobs:
   #
   # Build shards for Windows
   #
-  Windows-64bits-Debug:
+  Windows-Debug:
     needs: Setup
     uses: ./.github/workflows/build-windows.yml
     secrets: inherit
@@ -102,24 +102,9 @@ jobs:
       build-type: Debug
       runtime-tests: true
       run-tests: true
-  Windows-64bits-Release:
+  Windows-Release:
     needs: Setup
     uses: ./.github/workflows/build-windows.yml
-    secrets: inherit
-    with:
-      build-type: Release
-      run-tests: true
-  Windows-32bits-Debug:
-    needs: Setup
-    uses: ./.github/workflows/build-windows-32bit.yml
-    secrets: inherit
-    with:
-      build-type: Debug
-      runtime-tests: true
-      run-tests: false
-  Windows-32bits-Release:
-    needs: Setup
-    uses: ./.github/workflows/build-windows-32bit.yml
     secrets: inherit
     with:
       build-type: Release
@@ -129,7 +114,7 @@ jobs:
   # Build the documentation
   #
   docs:
-    needs: [Windows-64bits-Debug, Windows-64bits-Release]
+    needs: [Windows-Debug, Windows-Release]
     uses: ./.github/workflows/build-doc.yml
     secrets: inherit
     with:
