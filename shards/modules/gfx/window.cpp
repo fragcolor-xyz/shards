@@ -1,4 +1,5 @@
 #include "gfx.hpp"
+#include "modules/gfx/gfx.hpp"
 #include "window.hpp"
 #include "renderer.hpp"
 #include <shards/input/input_stack.hpp>
@@ -69,6 +70,7 @@ struct MainWindow final {
     _width = Var(1280);
     _height = Var(1280);
     _title = Var("Shards Window");
+    _detachRenderer = Var(false);
   }
 
   Window _window;
@@ -101,8 +103,10 @@ struct MainWindow final {
     _innerExposedVariables = ExposedInfo(data.shared);
     _innerExposedVariables.push_back(WindowContext::VariableInfo);
 
+    _windowContext.emplace();
+
     if (_contents) {
-      if (!*_detachRenderer) {
+      if (!(bool)*_detachRenderer) {
         _renderer.emplace();
         _renderer->compose(data);
         _renderer->getExposedContextVariables(_innerExposedVariables);
@@ -126,6 +130,10 @@ struct MainWindow final {
       std::string_view varName(required.name);
       if (varName == WindowContext::VariableName)
         continue;
+      if (_inlineInputContext && varName == IInputContext::VariableName)
+        continue;
+      if (_renderer && (varName == GraphicsContext::VariableName || varName == GraphicsRendererContext::VariableName))
+        continue;
       _requiredVariables.push_back(required);
     }
 
@@ -144,8 +152,6 @@ struct MainWindow final {
   }
 
   void warmup(SHContext *context) {
-    _windowContext.emplace();
-    
     _windowContextVar = referenceVariable(context, WindowContext::VariableName);
     assignVariableValue(*_windowContextVar, Var::Object(&_windowContext.value(), WindowContext::Type));
 
