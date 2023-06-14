@@ -47,7 +47,6 @@ struct Context {
   const float resolutionGranularity = 0.25f;
 
   struct PointerInput {
-    input::InputBufferIterator iterator;
     gfx::ViewRay ray;
 
     float hitDistance = FLT_MAX;
@@ -56,13 +55,13 @@ struct Context {
     gfx::float2 panelCoord;
   };
   std::vector<PointerInput> pointerInputs;
-  std::vector<input::InputBufferIterator> otherEvents;
+  // std::vector<input::InputBufferIterator> otherEvents;
   std::optional<PointerInput> lastPointerInput;
 
   // Prepare input raycast
   //  needs to be called before evaluate
   //  inputToViewScale is used to convert coordinates from pointer events to view coordinates
-  void prepareInputs(input::InputBuffer &input, gfx::float2 inputToViewScale, const gfx::SizedView &sizedView);
+  void prepareInputs(/* input::InputBuffer &input, */ gfx::float2 inputToViewScale, const gfx::SizedView &sizedView);
 
   // Renders all the UI
   //  prepareInputs needs to be called before evaluate
