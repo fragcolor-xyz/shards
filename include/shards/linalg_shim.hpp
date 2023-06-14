@@ -4,7 +4,7 @@
 #ifndef SH_LINALG_SHIM_HPP
 #define SH_LINALG_SHIM_HPP
 
-#include "shards.h"
+#include "shards.hpp"
 #include "math_ops.hpp"
 #include <linalg.h>
 #include <vector>

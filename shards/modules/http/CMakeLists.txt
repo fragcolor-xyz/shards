@@ -8,10 +8,6 @@ if(EMSCRIPTEN)
   endif()
 endif()
 
-if(IOS)
-  set(HTTP_SUPPORTED OFF)
-endif()
-
 if(HTTP_SUPPORTED)
   set(SOURCES
     http.cpp

@@ -6,6 +6,12 @@ if(APPLE AND NOT IOS)
   set(MACOSX TRUE)
 endif()
 
+if(IOS)
+  enable_language(Swift)
+  set(CMAKE_Swift_LANGUAGE_VERSION 5.0)
+  set(CMAKE_Swift_COMPILER swiftc)
+endif()
+
 if(NOT EMSCRIPTEN AND (WIN32 OR MACOSX OR DESKTOP_LINUX))
   set(DESKTOP TRUE)
 endif()
@@ -118,9 +124,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
     # this works with emscripten too but makes the final binary much bigger
     # for now let's keep it disabled
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-      set(INLINING_FLAGS -mllvm -inline-threshold=100000)
+      set(INLINING_FLAGS 
+        $<$<COMPILE_LANGUAGE:CXX>:-mllvm>
+        $<$<COMPILE_LANGUAGE:CXX>:-inline-threshold=100000>
+      )
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-      set(INLINING_FLAGS -finline-limit=100000)
+      set(INLINING_FLAGS 
+        $<$<COMPILE_LANGUAGE:CXX>:-finline-limit=100000>
+      )
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
       # using Intel C++
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -134,10 +145,18 @@ if(USE_LTO)
   add_link_options(-flto)
 endif()
 
-add_compile_options(-Wall ${INLINING_FLAGS})
+add_compile_options(
+  ${INLINING_FLAGS}
+  $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+)
 
 if(NOT MSVC)
-  add_compile_options(-ffast-math -fno-finite-math-only -funroll-loops -Wno-multichar)
+  add_compile_options(
+    $<$<COMPILE_LANGUAGE:CXX>:-ffast-math>
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-finite-math-only>
+    $<$<COMPILE_LANGUAGE:CXX>:-funroll-loops>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-multichar>
+  )
 endif()
 
 if(WIN32 AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (CMAKE_BUILD_TYPE STREQUAL "Debug"))
@@ -220,7 +239,11 @@ endif()
 
 if(APPLE)
   add_compile_definitions(BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED)
-  add_compile_options(-Wextra -Wno-unused-parameter -Wno-missing-field-initializers)
+  add_compile_options(
+    $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-unused-parameter>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-missing-field-initializers>
+  )
 endif()
 
 
