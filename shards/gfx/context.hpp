@@ -113,10 +113,6 @@ public:
   void addContextDataInternal(const std::weak_ptr<ContextData> &ptr);
   void removeContextDataInternal(ContextData *ptr);
 
-#if GFX_APPLE
-  MetalViewContainer &getMetalViewContainer() const;
-#endif
-
 private:
   void deviceLost();
 
