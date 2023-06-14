@@ -258,7 +258,7 @@ struct DrawablePassShard {
     }
 
     Var ignoreDrawableFeaturesVar;
-    if (getFromTable(context, inputTable, "IgnoreDrawableFeatures", ignoreDrawableFeaturesVar)) {
+    if (getFromTable(context, inputTable, Var("IgnoreDrawableFeatures"), ignoreDrawableFeaturesVar)) {
       checkType(ignoreDrawableFeaturesVar.valueType, SHType::Bool, "IgnoreDrawableFeatures");
       step.ignoreDrawableFeatures = (bool)ignoreDrawableFeaturesVar;
     } else {
