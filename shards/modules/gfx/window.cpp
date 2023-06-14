@@ -1,4 +1,5 @@
 #include "gfx.hpp"
+#include "gfx/platform_surface.hpp"
 #include "input/input_stack.hpp"
 #include "modules/gfx/gfx.hpp"
 #include "window.hpp"
@@ -139,7 +140,7 @@ struct MainWindow final {
     return CoreInfo::NoneType;
   }
 
-  void initWindow() {
+  void initWindow(SHContext *shContext) {
     SHLOG_DEBUG("Creating window");
 
     WindowCreationOptions windowOptions = {};
@@ -152,6 +153,12 @@ struct MainWindow final {
     // Adjust window size so they're specified in virtual points
     float scaling = _windowContext->window->getUIScale();
     _windowContext->window->resize((int2)(float2(int2((int)*_width, (int)*_height)) * scaling));
+
+#if GFX_APPLE
+    gfx::MetalViewContainer &metalView = _windowContext->window->metalView.value();
+    auto &dispatcher = shContext->main->dispatcher;
+    dispatcher.trigger(std::ref(metalView));
+#endif
   }
 
   void warmup(SHContext *context) {
@@ -196,7 +203,7 @@ struct MainWindow final {
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (!_windowContext->window) {
-      initWindow();
+      initWindow(shContext);
     }
 
     auto &window = _windowContext->window;

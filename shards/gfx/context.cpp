@@ -613,8 +613,4 @@ void Context::present() {
   mainOutput->present();
 }
 
-#if GFX_APPLE
-MetalViewContainer &Context::getMetalViewContainer() const { return *mainOutput->metalViewContainer; }
-#endif
-
 } // namespace gfx
