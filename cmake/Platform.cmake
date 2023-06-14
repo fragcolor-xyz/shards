@@ -7,9 +7,9 @@ if(APPLE AND NOT IOS)
 endif()
 
 if(IOS)
+  set(CMAKE_Swift_COMPILER /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc)
   enable_language(Swift)
   set(CMAKE_Swift_LANGUAGE_VERSION 5.0)
-  set(CMAKE_Swift_COMPILER swiftc)
 endif()
 
 if(NOT EMSCRIPTEN AND (WIN32 OR MACOSX OR DESKTOP_LINUX))
@@ -124,12 +124,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
     # this works with emscripten too but makes the final binary much bigger
     # for now let's keep it disabled
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-      set(INLINING_FLAGS 
+      set(INLINING_FLAGS
         $<$<COMPILE_LANGUAGE:CXX>:-mllvm>
         $<$<COMPILE_LANGUAGE:CXX>:-inline-threshold=100000>
       )
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-      set(INLINING_FLAGS 
+      set(INLINING_FLAGS
         $<$<COMPILE_LANGUAGE:CXX>:-finline-limit=100000>
       )
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
