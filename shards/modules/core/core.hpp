@@ -1228,7 +1228,7 @@ struct Update : public SetUpdateBase {
             auto &key = tableKeys.elements[y];
             if (key != *_key) {
               if (data.inputType != tableTypes.elements[y]) {
-                throw SHException("Update: error, update is changing the variable type.");
+                throw SHException(fmt::format("Update: error, update is changing the variable type for key {} from {} => {}", *_key, tableTypes.elements[y], data.inputType));
               }
             }
           }
