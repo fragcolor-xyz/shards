@@ -88,7 +88,7 @@ void EguiInputTranslator::setupInputRegion(const shards::input::InputRegion &reg
   this->mappedWindowRegion = float4(mappedWindowRegion) / float4(inputScale.x, inputScale.y, inputScale.x, inputScale.y);
 
   // Take viewport size and scale it by the draw scale
-  float2 viewportSizeFloat = float2(float(region.size.x), float(region.size.y));
+  float2 viewportSizeFloat = float2(float(region.pixelSize.x), float(region.pixelSize.y));
   float2 eguiScreenSize = viewportSizeFloat / eguiDrawScale;
 
   input.screenRect = egui::Rect{
