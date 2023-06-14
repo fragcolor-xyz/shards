@@ -2,6 +2,7 @@
 #define D9559C5B_F728_4B73_B3D2_372D625A794D
 
 #include <stdint.h>
+#include <stddef.h>
 
 namespace shards::input::debug {
 using OpaqueEvent = void *;
