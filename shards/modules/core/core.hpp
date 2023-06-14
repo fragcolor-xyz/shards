@@ -1226,7 +1226,7 @@ struct Update : public SetUpdateBase {
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if keys are populated they are not variables
             auto &key = tableKeys.elements[y];
-            if (key != *_key) {
+            if (key == *_key) {
               if (data.inputType != tableTypes.elements[y]) {
                 throw SHException(fmt::format("Update: error, update is changing the variable type for key {} from {} => {}", *_key, tableTypes.elements[y], data.inputType));
               }
