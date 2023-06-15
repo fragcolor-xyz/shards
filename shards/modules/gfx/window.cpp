@@ -180,14 +180,19 @@ struct MainWindow final {
   void cleanup() {
     PARAM_CLEANUP();
 
-    _renderer->cleanup();
-    _renderer.reset();
-
-    if (_windowContext->window) {
-      SHLOG_DEBUG("Destroying window");
-      _windowContext->window->cleanup();
+    if (_renderer) {
+      _renderer->cleanup();
+      _renderer.reset();
     }
-    _windowContext.reset();
+
+    if (_windowContext) {
+      if (_windowContext->window) {
+        SHLOG_DEBUG("Destroying window");
+        _windowContext->window->cleanup();
+      }
+
+      _windowContext.reset();
+    }
 
     if (_windowContextVar) {
       if (_windowContextVar->refcount > 1) {
