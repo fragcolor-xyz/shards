@@ -320,7 +320,7 @@ struct Merge {
                  {
                      CoreInfo::AnyVarTableType,
                  });
-  PARAM_IMPL(Merge, PARAM_IMPL_FOR(_target));
+  PARAM_IMPL(PARAM_IMPL_FOR(_target));
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }

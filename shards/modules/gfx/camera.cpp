@@ -25,7 +25,7 @@ struct FreeCameraShard {
                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_lookSpeed, "LookSpeed", "Controls right mouse look speed",
                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_IMPL(FreeCameraShard, PARAM_IMPL_FOR(_flySpeed), PARAM_IMPL_FOR(_scrollSpeed), PARAM_IMPL_FOR(_panSpeed),
+  PARAM_IMPL(PARAM_IMPL_FOR(_flySpeed), PARAM_IMPL_FOR(_scrollSpeed), PARAM_IMPL_FOR(_panSpeed),
              PARAM_IMPL_FOR(_lookSpeed));
 
   RequiredGraphicsContext _graphicsContext;

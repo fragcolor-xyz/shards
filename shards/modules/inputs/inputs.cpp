@@ -511,7 +511,7 @@ struct HandleURL : public Base {
   std::string _url;
 
   PARAM(ShardsVar, _action, "Action", "The Shards to run if a text/file drop event happened.", {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(HandleURL, PARAM_IMPL_FOR(_action));
+  PARAM_IMPL(PARAM_IMPL_FOR(_action));
 
   void cleanup() {
     PARAM_CLEANUP();

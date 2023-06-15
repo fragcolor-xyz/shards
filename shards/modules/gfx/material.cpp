@@ -15,7 +15,7 @@ struct MaterialShard {
   PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
 
-  PARAM_IMPL(MaterialShard, PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
+  PARAM_IMPL(PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
 
   SHMaterial *_material{};
 

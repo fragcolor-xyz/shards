@@ -448,7 +448,7 @@ struct Rad2Deg {
 
 struct MatIdentity {
   PARAM_VAR(_type, "Type", "The matrix row type of the corresponding matrix", {CoreInfo2::TypeEnumInfo::Type});
-  PARAM_IMPL(MatIdentity, PARAM_IMPL_FOR(_type));
+  PARAM_IMPL(PARAM_IMPL_FOR(_type));
 
   static SHOptionalString help() { return SHCCSTR("Gives identity values for square matrix types"); }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }

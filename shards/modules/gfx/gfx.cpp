@@ -30,7 +30,7 @@ struct RenderShard {
 
   PARAM_PARAMVAR(_steps, "Steps", "Render steps to follow.", {Type::VariableOf(Types::PipelineStepSeq), Types::PipelineStepSeq});
   PARAM_PARAMVAR(_view, "View", "The view to render. (Optional)", {CoreInfo::NoneType, Type::VariableOf(Types::View)});
-  PARAM_IMPL(RenderShard, PARAM_IMPL_FOR(_steps), PARAM_IMPL_FOR(_view));
+  PARAM_IMPL(PARAM_IMPL_FOR(_steps), PARAM_IMPL_FOR(_view));
 
   OptionalGraphicsContext _graphicsContext;
   RequiredGraphicsRendererContext _graphicsRendererContext;
