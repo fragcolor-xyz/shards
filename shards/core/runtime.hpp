@@ -433,6 +433,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   ~SHMesh() { terminate(); }
 
   void compose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
+    ZoneScoped;
+
     SHLOG_TRACE("Pre-composing wire {}", wire->name);
 
     if (wire->warmedUp) {
@@ -480,6 +482,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   template <class Observer>
   void schedule(Observer observer, const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty, bool compose = true) {
+    ZoneScoped;
+
     SHLOG_TRACE("Scheduling wire {}", wire->name);
 
     if (wire->warmedUp) {
@@ -1341,6 +1345,8 @@ template <typename T> struct WireDoppelgangerPool {
   }
 
   template <class Composer, typename Anything> std::shared_ptr<T> acquire(Composer &composer, Anything *anything) {
+    ZoneScoped;
+
     if (_avail.size() == 0) {
       Serialization serializer;
       std::stringstream stream(_wireStr);

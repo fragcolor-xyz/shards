@@ -145,9 +145,13 @@ static void makeArgv(malEnvPtr env, int argc, const char *argv[]) {
 
 MalString rep(const MalString &input, malEnvPtr env) { return PRINT(EVAL(READ(input), env)); }
 
-malValuePtr READ(const MalString &input) { return readStr(input); }
+malValuePtr READ(const MalString &input) {
+  ZoneScoped;
+  return readStr(input);
+}
 
 malValuePtr EVAL(malValuePtr ast, malEnvPtr env) {
+  ZoneScoped;
   if (!env) {
     env = currentEnv;
     assert(env);
