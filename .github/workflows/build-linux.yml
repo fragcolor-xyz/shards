@@ -122,7 +122,7 @@ jobs:
           ./shards ../shards/tests/bigint.clj
           ./shards ../shards/tests/brotli.clj
           ./shards ../shards/tests/snappy.clj
-          ./shards ../shards/tests/expect-like.edn
+          ./shards ../shards/tests/expect.edn
           ./shards ../shards/tests/failures.clj
           ./shards ../shards/tests/wasm.clj
           ./shards ../shards/tests/rust.clj

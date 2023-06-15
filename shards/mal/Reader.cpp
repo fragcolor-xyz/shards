@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 /* Copyright (C) 2015 Joel Martin <github@martintribe.org> */
 
+#include "mal/MAL.h"
 #if defined(__clang__) && defined(_WIN32)
 #define _REGEX_MAX_STACK_COUNT 200000
 #endif
@@ -166,6 +167,8 @@ static malValuePtr readForm(Tokeniser &tokeniser) {
     return readAtom(tokeniser);
   }
 }
+
+static malValuePtr convertToType(malValuePtr value) { return value; }
 
 static malValuePtr readAtom(Tokeniser &tokeniser) {
   struct ReaderMacro {

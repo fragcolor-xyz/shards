@@ -1,16 +1,21 @@
 /* SPDX-License-Identifier: MPL-2.0 AND BSD-3-Clause */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
+#include <optional>
 #include <shards/core/foundation.hpp>
 #include "Environment.h"
 #include "MAL.h"
 #include "StaticList.h"
 #include "Types.h"
 #include "SHLisp.h"
+#include "mal/MAL.h"
+#include "mal/Types.h"
+#include "shards/shards.h"
 #include <shards/core/shared.hpp>
 #include <shards/core/runtime.hpp>
 #include <algorithm>
 #include <boost/lockfree/queue.hpp>
+#include <stdexcept>
 #ifdef SHARDS_DESKTOP
 #include <boost/process/environment.hpp>
 #endif
@@ -142,174 +147,6 @@ private:
   ParamVar prefix;
 };
 } // namespace shards
-
-void installSHCore(const malEnvPtr &env, const char *exePath, const char *scriptPath) {
-  // Setup logging first
-  logging::setupDefaultLoggerConditional();
-
-  std::shared_ptr<Observer> obs;
-  setupObserver(obs, env);
-
-  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
-
-  static bool initDoneOnce = false;
-  if (!initDoneOnce) {
-    shards::GetGlobals().ExePath = exePath;
-    shards::GetGlobals().RootPath = scriptPath;
-
-    SHLOG_DEBUG("Exe path: {}", exePath);
-    SHLOG_DEBUG("Script path: {}", scriptPath);
-
-#ifndef __EMSCRIPTEN__
-    shards::installSignalHandlers();
-#endif
-
-    // initialize shards
-    (void)shardsInterface(SHARDS_CURRENT_ABI);
-
-    REGISTER_SHARD("EDN.Eval", EdnEval);
-
-    initDoneOnce = true;
-
-#if defined(SHARDS_WITH_RUST_SHARDS) && !defined(NDEBUG)
-    // TODO fix running rust tests...
-    runRuntimeTests();
-#endif
-  }
-
-  // Wire params
-  env->set(":Looped", mal::keyword(":Looped"));
-  env->set(":Unsafe", mal::keyword(":Unsafe"));
-  env->set(":LStack", mal::keyword(":LStack"));
-  env->set(":SStack", mal::keyword(":SStack"));
-  // SHType
-  env->set(":None", mal::keyword(":None"));
-  env->set(":Any", mal::keyword(":Any"));
-  env->set(":Object", mal::keyword(":Object"));
-  env->set(":Enum", mal::keyword(":Enum"));
-  env->set(":Bool", mal::keyword(":Bool"));
-  env->set(":Int", mal::keyword(":Int"));
-  env->set(":Int2", mal::keyword(":Int2"));
-  env->set(":Int3", mal::keyword(":Int3"));
-  env->set(":Int4", mal::keyword(":Int4"));
-  env->set(":Int8", mal::keyword(":Int8"));
-  env->set(":Int16", mal::keyword(":Int16"));
-  env->set(":Float", mal::keyword(":Float"));
-  env->set(":Float2", mal::keyword(":Float2"));
-  env->set(":Float3", mal::keyword(":Float3"));
-  env->set(":Float4", mal::keyword(":Float4"));
-  env->set(":Color", mal::keyword(":Color"));
-  env->set(":Wire", mal::keyword(":Wire"));
-  env->set(":Shard", mal::keyword(":Shard"));
-  env->set(":String", mal::keyword(":String"));
-  env->set(":Path", mal::keyword(":Path"));
-  env->set(":ContextVar", mal::keyword(":ContextVar"));
-  env->set(":Image", mal::keyword(":Image"));
-  env->set(":Seq", mal::keyword(":Seq"));
-  env->set(":Array", mal::keyword(":Array"));
-  env->set(":Set", mal::keyword(":Set"));
-  env->set(":Table", mal::keyword(":Table"));
-  env->set(":Bytes", mal::keyword(":Bytes"));
-
-  // inject static handlers
-  for (auto it = handlers.begin(), end = handlers.end(); it != end; ++it) {
-    malBuiltIn *handler = *it;
-    env->set(handler->name(), handler);
-  }
-
-  // inject discovered loaded values
-  // TODO
-  // this is not efficient as it likely will repeat inserting the first time!
-  // See Observer down
-  for (auto &v : builtIns) {
-    // SPDLOG_TRACE("env->set({})", v.first);
-    env->set(v.first, v.second.ptr());
-  }
-
-  rep("(def! inc (fn* [a] (+ a 1)))", env);
-  rep("(def! dec (fn* (a) (- a 1)))", env);
-  rep("(def! zero? (fn* (n) (= 0 n)))", env);
-  rep("(def! identity (fn* (x) x))", env);
-  rep("(def! gensym (let* [counter (atom 0)] (fn* [] (symbol (str \"G__\" "
-      "(swap! counter inc))))))",
-      env);
-  rep("(defmacro! or (fn* [& xs] (if (< (count xs) 2) (first xs) (let* [r "
-      "(gensym)] `(let* (~r ~(first xs)) (if ~r ~r (or ~@(rest xs))))))))",
-      env);
-  rep("(defmacro! and (fn* (& xs) (cond (empty? xs) true (= 1 (count xs)) "
-      "(first xs) true (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) "
-      "(if ~condvar (and ~@(rest xs)) ~condvar))))))",
-      env);
-  rep("(def! _alias_add_implicit (fn* [special added] (fn* [x & xs] (list "
-      "special x (cons added xs)))))",
-      env);
-  rep("(defmacro! let  (_alias_add_implicit 'let* 'do))", env);
-  rep("(defmacro! when (_alias_add_implicit 'if   'do))", env);
-  rep("(defmacro! def  (_alias_add_implicit 'def! 'do))", env);
-  rep("(defmacro! deflocal  (_alias_add_implicit 'deflocal! 'do))", env);
-  rep("(defmacro! fn   (_alias_add_implicit 'fn*  'do))", env);
-  rep("(defmacro! defn (_alias_add_implicit 'def! 'fn))", env);
-  rep("(def! partial (fn* [pfn & args] (fn* [& args-inner] (apply pfn (concat "
-      "args args-inner)))))",
-      env);
-  rep("(def! reduce (fn* (f init xs) (if (empty? xs) init (reduce f (f init (first xs)) (rest xs)))))", env);
-  rep("(def! foldr (let* [rec (fn* [f xs acc index] (if (< index 0) acc (rec f xs (f (nth xs index) acc) (- index 1))))] (fn* [f "
-      "init xs] (rec f xs init (- (count xs) 1)))))",
-      env);
-  rep("(def || Await)", env);
-  rep("(defn for [from to pfn] (map (fn* [n] (apply pfn [n])) (range from to)))", env);
-#if defined(_WIN32)
-  rep("(def platform \"windows\")", env);
-#elif defined(__ANDROID__)
-  rep("(def platform \"android\")", env);
-#elif defined(__EMSCRIPTEN__)
-  rep("(def platform \"emscripten\")", env);
-#elif defined(__linux__)
-  rep("(def platform \"linux\")", env);
-#elif defined(__APPLE__)
-#if TARGET_OS_IOS
-  rep("(def platform \"ios\")", env);
-#else
-  rep("(def platform \"macos\")", env);
-#endif
-#endif
-  rep("(defmacro! defwire (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
-      "name)) (wireify (vector ~@shards))))))",
-      env);
-  rep("(defmacro! defloop (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
-      "name)) :Looped (wireify (vector ~@shards))))))",
-      env);
-  rep("(defmacro! defpure (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
-      "name)) :Pure (wireify (vector ~@shards))))))",
-      env);
-  rep("(defmacro! patch (fn* [name & shards] `(do (ImplWire ~(symbol (str name)) :Pure (wireify (vector ~@shards))))))", env);
-  rep("(defmacro! deftrait (fn* [name & shards] `(def! ~(symbol (str name)) (hash-map ~@shards))))", env);
-  rep("(defmacro! defmesh (fn* [name] `(def ~(symbol (str name)) (Mesh))))", env);
-  rep("(defmacro! | (fn* [& shards] `(Sub (wireify (vector ~@shards)))))", env);
-  rep("(defmacro! |# (fn* [& shards] `(Hashed (wireify (vector ~@shards)))))", env);
-  rep("(defmacro! || (fn* [& shards] `(Await (wireify (vector ~@shards)))))", env);
-  rep("(defmacro! Setup (fn* [& shards] `(Once (wireify (vector ~@shards)))))", env);
-  rep("(defmacro! defshards (fn* [name args & shards] `(defn ~(symbol (str name)) ~args (wireify (vector ~@shards)))))", env);
-  rep("(defmacro! $ (fn* [prefix sym] (symbol (str prefix \"/\" sym))))", env);
-
-  // overrides for some built-in types
-  rep("(def! Bytes bytes)", env);
-  rep("(def! Color color)", env);
-  rep("(def! ContextVar context-var)", env);
-  rep("(def! Enum enum)", env);
-  rep("(def! Float float)", env);
-  rep("(def! Float2 float2)", env);
-  rep("(def! Float3 float3)", env);
-  rep("(def! Float4 float4)", env);
-  rep("(def! Int int)", env);
-  rep("(def! Int2 int2)", env);
-  rep("(def! Int3 int3)", env);
-  rep("(def! Int4 int4)", env);
-  rep("(def! Int8 int8)", env);
-  rep("(def! Int16 int16)", env);
-  rep("(def! Path path)", env);
-  rep("(def! String string)", env);
-}
 
 class malRoot {
 public:
@@ -497,6 +334,7 @@ public:
   virtual bool doIsEqualTo(const malValue *rhs) const { return m_var == static_cast<const malSHVar *>(rhs)->m_var; }
 
   SHVar &value() { return m_var; }
+  const SHVar &value() const { return m_var; }
 
   WITH_META(malSHVar);
 
@@ -504,6 +342,191 @@ private:
   SHVar m_var;
   bool m_owned;
 };
+
+class malSHTypeInfo : public malValue, public malRoot {
+public:
+  malSHTypeInfo(const SHTypeInfo &var, bool owned) : m_owned(owned) { m_typeInfo = var; }
+
+  malSHTypeInfo(const malSHTypeInfo &that, const malValuePtr &meta) : malValue(meta), m_owned(true) {
+    m_typeInfo = shards::cloneTypeInfo(that.m_typeInfo);
+  }
+
+  static malSHTypeInfo *newCloned(const SHTypeInfo &var) { return new malSHTypeInfo(cloneTypeInfo(var), true); }
+
+  ~malSHTypeInfo() {
+    // unref all we hold  first
+    m_refs.clear();
+
+    if (m_owned)
+      shards::freeDerivedInfo(m_typeInfo);
+  }
+
+  virtual MalString print(bool readably) const {
+    std::ostringstream stream;
+    stream << m_typeInfo;
+    return stream.str();
+  }
+
+  virtual bool doIsEqualTo(const malValue *rhs) const {
+    return m_typeInfo == static_cast<const malSHTypeInfo *>(rhs)->m_typeInfo;
+  }
+
+  SHTypeInfo &value() { return m_typeInfo; }
+  const SHTypeInfo &value() const { return m_typeInfo; }
+
+  WITH_META(malSHTypeInfo);
+
+private:
+  SHTypeInfo m_typeInfo;
+  bool m_owned;
+};
+
+void installSHCore(const malEnvPtr &env, const char *exePath, const char *scriptPath) {
+  // Setup logging first
+  logging::setupDefaultLoggerConditional();
+
+  std::shared_ptr<Observer> obs;
+  setupObserver(obs, env);
+
+  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
+
+  static bool initDoneOnce = false;
+  if (!initDoneOnce) {
+    shards::GetGlobals().ExePath = exePath;
+    shards::GetGlobals().RootPath = scriptPath;
+
+    SHLOG_DEBUG("Exe path: {}", exePath);
+    SHLOG_DEBUG("Script path: {}", scriptPath);
+
+#ifndef __EMSCRIPTEN__
+    shards::installSignalHandlers();
+#endif
+
+    // initialize shards
+    (void)shardsInterface(SHARDS_CURRENT_ABI);
+
+    REGISTER_SHARD("EDN.Eval", EdnEval);
+
+    initDoneOnce = true;
+
+#if defined(SHARDS_WITH_RUST_SHARDS) && !defined(NDEBUG)
+    // TODO fix running rust tests...
+    runRuntimeTests();
+#endif
+  }
+
+  // Wire params
+  env->set(":Looped", mal::keyword(":Looped"));
+  env->set(":Unsafe", mal::keyword(":Unsafe"));
+  env->set(":LStack", mal::keyword(":LStack"));
+  env->set(":SStack", mal::keyword(":SStack"));
+
+  // inject static handlers
+  for (auto it = handlers.begin(), end = handlers.end(); it != end; ++it) {
+    malBuiltIn *handler = *it;
+    env->set(handler->name(), handler);
+  }
+
+  // inject discovered loaded values
+  // TODO
+  // this is not efficient as it likely will repeat inserting the first time!
+  // See Observer down
+  for (auto &v : builtIns) {
+    // SPDLOG_TRACE("env->set({})", v.first);
+    env->set(v.first, v.second.ptr());
+  }
+
+  rep("(def! inc (fn* [a] (+ a 1)))", env);
+  rep("(def! dec (fn* (a) (- a 1)))", env);
+  rep("(def! zero? (fn* (n) (= 0 n)))", env);
+  rep("(def! identity (fn* (x) x))", env);
+  rep("(def! gensym (let* [counter (atom 0)] (fn* [] (symbol (str \"G__\" "
+      "(swap! counter inc))))))",
+      env);
+  rep("(defmacro! or (fn* [& xs] (if (< (count xs) 2) (first xs) (let* [r "
+      "(gensym)] `(let* (~r ~(first xs)) (if ~r ~r (or ~@(rest xs))))))))",
+      env);
+  rep("(defmacro! and (fn* (& xs) (cond (empty? xs) true (= 1 (count xs)) "
+      "(first xs) true (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) "
+      "(if ~condvar (and ~@(rest xs)) ~condvar))))))",
+      env);
+  rep("(def! _alias_add_implicit (fn* [special added] (fn* [x & xs] (list "
+      "special x (cons added xs)))))",
+      env);
+  rep("(defmacro! let  (_alias_add_implicit 'let* 'do))", env);
+  rep("(defmacro! when (_alias_add_implicit 'if   'do))", env);
+  rep("(defmacro! def  (_alias_add_implicit 'def! 'do))", env);
+  rep("(defmacro! deflocal  (_alias_add_implicit 'deflocal! 'do))", env);
+  rep("(defmacro! fn   (_alias_add_implicit 'fn*  'do))", env);
+  rep("(defmacro! defn (_alias_add_implicit 'def! 'fn))", env);
+  rep("(def! partial (fn* [pfn & args] (fn* [& args-inner] (apply pfn (concat "
+      "args args-inner)))))",
+      env);
+  rep("(def! reduce (fn* (f init xs) (if (empty? xs) init (reduce f (f init (first xs)) (rest xs)))))", env);
+  rep("(def! foldr (let* [rec (fn* [f xs acc index] (if (< index 0) acc (rec f xs (f (nth xs index) acc) (- index 1))))] (fn* [f "
+      "init xs] (rec f xs init (- (count xs) 1)))))",
+      env);
+  rep("(def || Await)", env);
+  rep("(defn for [from to pfn] (map (fn* [n] (apply pfn [n])) (range from to)))", env);
+#if defined(_WIN32)
+  rep("(def platform \"windows\")", env);
+#elif defined(__ANDROID__)
+  rep("(def platform \"android\")", env);
+#elif defined(__EMSCRIPTEN__)
+  rep("(def platform \"emscripten\")", env);
+#elif defined(__linux__)
+  rep("(def platform \"linux\")", env);
+#elif defined(__APPLE__)
+#if TARGET_OS_IOS
+  rep("(def platform \"ios\")", env);
+#else
+  rep("(def platform \"macos\")", env);
+#endif
+#endif
+  rep("(defmacro! defwire (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
+      "name)) (wireify (vector ~@shards))))))",
+      env);
+  rep("(defmacro! defloop (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
+      "name)) :Looped (wireify (vector ~@shards))))))",
+      env);
+  rep("(defmacro! defpure (fn* [name & shards] `(do (def! ~(symbol (str name)) (DefWire ~(str name))) (ImplWire ~(symbol (str "
+      "name)) :Pure (wireify (vector ~@shards))))))",
+      env);
+  rep("(defmacro! patch (fn* [name & shards] `(do (ImplWire ~(symbol (str name)) :Pure (wireify (vector ~@shards))))))", env);
+  rep("(defmacro! deftrait (fn* [name & shards] `(def! ~(symbol (str name)) (hash-map ~@shards))))", env);
+  rep("(defmacro! defmesh (fn* [name] `(def ~(symbol (str name)) (Mesh))))", env);
+  rep("(defmacro! | (fn* [& shards] `(Sub (wireify (vector ~@shards)))))", env);
+  rep("(defmacro! |# (fn* [& shards] `(Hashed (wireify (vector ~@shards)))))", env);
+  rep("(defmacro! || (fn* [& shards] `(Await (wireify (vector ~@shards)))))", env);
+  rep("(defmacro! Setup (fn* [& shards] `(Once (wireify (vector ~@shards)))))", env);
+  rep("(defmacro! defshards (fn* [name args & shards] `(defn ~(symbol (str name)) ~args (wireify (vector ~@shards)))))", env);
+  rep("(defmacro! $ (fn* [prefix sym] (symbol (str prefix \"/\" sym))))", env);
+
+  // Type definitions and built-in constructors
+  env->set(MalString("None"), malValuePtr(new malSHTypeInfo(CoreInfo::NoneType, false)));
+  env->set(MalString("Any"), malValuePtr(new malSHTypeInfo(CoreInfo::AnyType, false)));
+  env->set(MalString("Bool"), malValuePtr(new malSHTypeInfo(CoreInfo::BoolType, false)));
+  rep("(def! Enum enum)", env);
+  rep("(def! Int int)", env);
+  rep("(def! Int2 int2)", env);
+  rep("(def! Int3 int3)", env);
+  rep("(def! Int4 int4)", env);
+  rep("(def! Int8 int8)", env);
+  rep("(def! Int16 int16)", env);
+  rep("(def! Float float)", env);
+  rep("(def! Float2 float2)", env);
+  rep("(def! Float3 float3)", env);
+  rep("(def! Float4 float4)", env);
+  rep("(def! Color color)", env);
+  rep("(def! Bytes bytes)", env);
+  rep("(def! String string)", env);
+  rep("(def! Path path)", env);
+  rep("(def! ContextVar context-var)", env);
+  env->set(MalString("Image"), malValuePtr(new malSHTypeInfo(CoreInfo::ImageType, false)));
+  env->set(MalString("Shard"), malValuePtr(new malSHTypeInfo(CoreInfo::ShardRefType, false)));
+  env->set(MalString("Audio"), malValuePtr(new malSHTypeInfo(CoreInfo::AudioType, false)));
+  env->set(MalString("Type"), malValuePtr(new malSHTypeInfo(CoreInfo::TypeType, false)));
+}
 
 struct WireLoadResult {
   bool hasError;
@@ -888,6 +911,8 @@ SHType keywordToType(malKeyword *typeKeyword) {
 
 malValuePtr typeToKeyword(SHType type) {
   switch (type) {
+  case SHType::Type:
+    return mal::keyword(":Type");
   case SHType::EndOfBlittableTypes:
     return mal::keyword(":EndOfBlittableTypes");
   case SHType::None:
@@ -1307,6 +1332,13 @@ struct Observer : public shards::RuntimeObserver {
       builtIns[enumName] = enumValue;
       _env->set(enumName, enumValue);
     }
+
+    // Set type keyword
+    SHTypeInfo typeInfo{
+        .basicType = SHType::Enum,
+        .enumeration{.vendorId = vendorId, .typeId = typeId},
+    };
+    _env->set(MalString(info.name), malValuePtr(new malSHTypeInfo(typeInfo, true)));
   }
 };
 
@@ -2580,6 +2612,144 @@ BUILTIN_ISA("Var?", malSHVar);
 BUILTIN_ISA("Mesh?", malSHMesh);
 BUILTIN_ISA("Wire?", malSHWire);
 BUILTIN_ISA("Shard?", malShard);
+
+static SHTypeInfo deriveTypeInfoFromMal(malValuePtr value);
+
+static SHTypeInfo deriveBasicBuiltinTypeInfo(const malBuiltIn &builtin) {
+  auto &name = builtin.name();
+  if (name == "int") {
+    return SHTypeInfo{.basicType = SHType::Int};
+  } else if (name == "int2") {
+    return SHTypeInfo{.basicType = SHType::Int2};
+  } else if (name == "int3") {
+    return SHTypeInfo{.basicType = SHType::Int3};
+  } else if (name == "int4") {
+    return SHTypeInfo{.basicType = SHType::Int4};
+  } else if (name == "int8") {
+    return SHTypeInfo{.basicType = SHType::Int8};
+  } else if (name == "int16") {
+    return SHTypeInfo{.basicType = SHType::Int16};
+  } else if (name == "float") {
+    return SHTypeInfo{.basicType = SHType::Float};
+  } else if (name == "float2") {
+    return SHTypeInfo{.basicType = SHType::Float2};
+  } else if (name == "float3") {
+    return SHTypeInfo{.basicType = SHType::Float3};
+  } else if (name == "float4") {
+    return SHTypeInfo{.basicType = SHType::Float4};
+  } else if (name == "color") {
+    return SHTypeInfo{.basicType = SHType::Color};
+  } else if (name == "bytes") {
+    return SHTypeInfo{.basicType = SHType::Bytes};
+  } else if (name == "path") {
+    return SHTypeInfo{.basicType = SHType::Path};
+  } else if (name == "string") {
+    return SHTypeInfo{.basicType = SHType::String};
+  } else if (name == "Wire") {
+    return SHTypeInfo{.basicType = SHType::Wire};
+  } else {
+    throw std::logic_error(fmt::format("Can not convert basic type: {}", name));
+  }
+}
+
+static SHTypeInfo deriveSeqType(const malSequence &seq) {
+  SHTypeInfo type{};
+  type.basicType = SHType::Seq;
+  SHTypesInfo seqTypes{};
+  try {
+    for (size_t i = 0; i < seq.count(); i++) {
+      auto item = seq.item(i);
+      arrayPush(seqTypes, deriveTypeInfoFromMal(item));
+    }
+  } catch (...) {
+    type.seqTypes = seqTypes;
+    freeDerivedInfo(type);
+    throw;
+  }
+
+  type.seqTypes = seqTypes;
+  return type;
+}
+
+static SHTypeInfo deriveMapType(const malHash &hash) {
+  SHTypeInfo type{};
+  type.basicType = SHType::Table;
+  try {
+    for (auto &[key, value] : hash.m_map) {
+      Var newKey{};
+      (OwnedVar &)newKey = (Var)key.substr(1);
+      arrayPush(type.table.keys, newKey);
+      arrayPush(type.table.types, deriveTypeInfoFromMal(value));
+    }
+  } catch (...) {
+    freeDerivedInfo(type);
+    throw;
+  }
+
+  return type;
+}
+
+static SHTypeInfo deriveTypeInfoFromMal(malValuePtr value) {
+  std::optional<SHTypeInfo> type;
+  if (const malSHVar *v = DYNAMIC_CAST(malSHVar, value)) {
+    const SHVar &var = v->value();
+    if (var.valueType == SHType::Type) {
+      return cloneTypeInfo(*var.payload.typeValue);
+    }
+  } else if (const malBuiltIn *v = DYNAMIC_CAST(malBuiltIn, value)) {
+    type = deriveBasicBuiltinTypeInfo(*v);
+  } else if (const malSequence *v = DYNAMIC_CAST(malSequence, value)) {
+    type = deriveSeqType(*v);
+  } else if (const malHash *v = DYNAMIC_CAST(malHash, value)) {
+    type = deriveMapType(*v);
+  } else if (const malShard *ms = DYNAMIC_CAST(malShard, value)) {
+    auto *shard = ms->value();
+    auto outputTypes = shard->outputTypes(shard);
+    if (outputTypes.len != 1) {
+      throw std::logic_error(fmt::format("Can retrieve single output type from shard {}", shard->name(shard)));
+    }
+    type = cloneTypeInfo(outputTypes.elements[0]);
+  } else if (const malSHTypeInfo *ti = DYNAMIC_CAST(malSHTypeInfo, value)) {
+    return cloneTypeInfo(ti->value());
+  }
+
+  if (type)
+    return type.value();
+
+  throw std::logic_error(fmt::format("Can not convert value to type info: {}", value->print(true)));
+}
+
+BUILTIN("var-type") {
+  CHECK_ARGS_IS(1);
+  auto &arg = *argsBegin;
+
+  auto innerType = deriveTypeInfoFromMal(arg);
+
+  SHTypesInfo types{};
+  arrayPush(types, innerType);
+
+  SHVar var{
+      .payload{
+          .typeValue =
+              new SHTypeInfo{
+                  .basicType = SHType::ContextVar,
+                  .contextVarTypes = types,
+              },
+      },
+      .valueType = SHType::Type,
+  };
+  return malValuePtr(new malSHVar(var, true));
+}
+
+BUILTIN("type") {
+  CHECK_ARGS_IS(1);
+  auto &arg = *argsBegin;
+
+  auto typeInfo = deriveTypeInfoFromMal(arg);
+
+  SHVar var{.payload{.typeValue = new SHTypeInfo(typeInfo)}, .valueType = SHType::Type};
+  return malValuePtr(new malSHVar(var, true));
+}
 
 extern "C" {
 SHLISP_API __cdecl void *shLispCreate(const char *path) {

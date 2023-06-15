@@ -318,7 +318,7 @@ static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash
     if (inputTypeHash != expectedTypeHash) {
       // Do an even deeper type check
       auto it = typeCache.find(inputTypeHash);
-      if(it == typeCache.end()) {
+      if (it == typeCache.end()) {
         it = typeCache.emplace(inputTypeHash, TypeInfo{input, SHInstanceData{}}).first;
       }
       if (!matchTypes(it->second, expectedType, false, true)) {
@@ -366,6 +366,42 @@ template <Type &ET> struct ExpectXComplex {
   SHVar activate(SHContext *context, const SHVar &input) {
     const static SHTypeInfo info = ET;
     expectTypeCheck(input, ExpectedHash, info, (bool)_unsafe);
+    return input;
+  }
+};
+
+struct Expect {
+  SHTypeInfo _expectedType{};
+  uint64_t _expectedTypeHash{0};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  PARAM_VAR(_type, "Type", "The type to expect", {CoreInfo::TypeType});
+  PARAM_VAR(_unsafe, "Unsafe",
+            "If we should skip performing deep type hashing and comparison. "
+            "(generally fast but this might improve performance)",
+            {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_type), PARAM_IMPL_FOR(_unsafe));
+
+  Expect() { _unsafe = Var(false); }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup() { PARAM_CLEANUP(); }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if(_type->valueType != SHType::Type) {
+      throw std::logic_error("Expect shard type parameter must be a set");
+    }
+
+    _expectedType = *_type->payload.typeValue;
+    _expectedTypeHash = deriveTypeHash(_expectedType);
+
+    return _expectedType;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    expectTypeCheck(input, _expectedTypeHash, _expectedType, (bool)*_unsafe);
     return input;
   }
 };
@@ -593,6 +629,7 @@ SHARDS_REGISTER_FN(casting) {
   REGISTER_CORE_SHARD(BitSwap32);
   REGISTER_CORE_SHARD(BitSwap64);
 
+  REGISTER_SHARD("Expect", Expect);
   using ExpectNone = ExpectX<SHType::None>;
   REGISTER_SHARD("ExpectNone", ExpectNone);
   using ExpectInt = ExpectX<SHType::Int>;

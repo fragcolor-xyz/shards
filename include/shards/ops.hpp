@@ -15,6 +15,8 @@ inline const char *type2Name_raw(SHType type) {
   case SHType::EndOfBlittableTypes:
     // this should never happen
     throw shards::SHException("EndOfBlittableTypes and Error are invalid types");
+  case SHType::Type:
+    return "Type";
   case SHType::None:
     return "None";
   case SHType::Any:
@@ -106,6 +108,8 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     return false;
 
   switch (a.valueType) {
+  case SHType::Type:
+    return *a.payload.typeValue == *b.payload.typeValue;
   case SHType::None:
   case SHType::Any:
   case SHType::EndOfBlittableTypes:

@@ -254,34 +254,34 @@ struct TextureShard {
 
     // Copy the data since we can't keep a reference to the image variable
     ImmutableSharedBuffer isb{};
-    if (image.channels == 3) { 
+    if (image.channels == 3) {
       std::vector<uint8_t> imageDataRGBA = convertToRGBA(image);
-      isb = ImmutableSharedBuffer(std::move(imageDataRGBA)); 
-    } else { 
-      isb = ImmutableSharedBuffer(image.data, imageSize); 
+      isb = ImmutableSharedBuffer(std::move(imageDataRGBA));
+    } else {
+      isb = ImmutableSharedBuffer(image.data, imageSize);
     }
     texture->init(TextureDesc{.format = format, .resolution = int2(image.width, image.height), .data = std::move(isb)});
   }
 
-std::vector<uint8_t> convertToRGBA(const SHImage& image) {
-  std::vector<uint8_t> rgbaData(image.width * image.height * 4);
+  std::vector<uint8_t> convertToRGBA(const SHImage &image) {
+    std::vector<uint8_t> rgbaData(image.width * image.height * 4);
 
-  for (size_t y = 0; y < image.height; ++y) {
-    for (size_t x = 0; x < image.width; ++x) {
-      size_t srcIndex = (y * image.width + x) * 3;
-      size_t dstIndex = (y * image.width + x) * 4;
+    for (size_t y = 0; y < image.height; ++y) {
+      for (size_t x = 0; x < image.width; ++x) {
+        size_t srcIndex = (y * image.width + x) * 3;
+        size_t dstIndex = (y * image.width + x) * 4;
 
-      rgbaData[dstIndex] = image.data[srcIndex];
-      rgbaData[dstIndex + 1] = image.data[srcIndex + 1];
-      rgbaData[dstIndex + 2] = image.data[srcIndex + 2];
+        rgbaData[dstIndex] = image.data[srcIndex];
+        rgbaData[dstIndex + 1] = image.data[srcIndex + 1];
+        rgbaData[dstIndex + 2] = image.data[srcIndex + 2];
 
-      rgbaData[dstIndex + 3] = 255;
+        rgbaData[dstIndex + 3] = 255;
+      }
     }
-  }
 
-  SHLOG_TRACE("RGB conversion completed");
-  return rgbaData;
-}
+    SHLOG_TRACE("RGB conversion completed");
+    return rgbaData;
+  }
 
   void activateRenderableTexture() {
     Var resolutionVar{_resolution.get()};
@@ -377,7 +377,7 @@ struct RenderTargetShard {
     auto &table = _attachments.payload.tableValue;
     attachments.clear();
     ForEach(table, [&](SHVar &k, SHVar &v) {
-      if(k.valueType != SHType::String)
+      if (k.valueType != SHType::String)
         throw formatException("Invalid attachment name: {}", k);
       TexturePtr texture = varAsObjectChecked<TexturePtr>(v, Types::Texture);
       std::string ks(k.payload.stringValue, k.payload.stringLen);

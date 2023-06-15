@@ -251,7 +251,7 @@ public:
     return this == rhs; // these are singletons
   }
 
-  MalString name() const { return m_name; }
+  const MalString& name() const { return m_name; }
 
   WITH_META(malBuiltIn);
 

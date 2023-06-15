@@ -3,6 +3,7 @@
 
 #include "runtime.hpp"
 #include <shards/common_types.hpp>
+#include "core/foundation.hpp"
 #include "foundation.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
@@ -1971,6 +1972,10 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
   case SHType::ShardRef:
     decRef(var.payload.shardValue);
     break;
+  case SHType::Type:
+    freeDerivedInfo(*var.payload.typeValue);
+    delete var.payload.typeValue;
+    break;
   default:
     break;
   };
@@ -2240,6 +2245,11 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       if (src.objectInfo->reference)
         dst.objectInfo->reference(dst.payload.objectValue);
     }
+    break;
+  case SHType::Type:
+    destroyVar(dst);
+    dst.payload.typeValue = new SHTypeInfo(cloneTypeInfo(*src.payload.typeValue));
+    dst.valueType = SHType::Type;
     break;
   default:
     SHLOG_FATAL("Unhandled type {}", src.valueType);
