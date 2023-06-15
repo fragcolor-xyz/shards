@@ -46,12 +46,6 @@ lazy_static! {
 
 impl Default for EguiContext {
   fn default() -> Self {
-    let mut ctx = ParamVar::default();
-    ctx.set_name(CONTEXTS_NAME);
-
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
-
     Self {
       host: EguiHost::default(),
       requiring: Vec::new(),

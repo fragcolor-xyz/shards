@@ -3,6 +3,7 @@
 
 #include "runtime.hpp"
 #include <shards/common_types.hpp>
+#include "core/foundation.hpp"
 #include "foundation.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
@@ -1018,51 +1019,51 @@ void validateConnection(ValidationContext &ctx) {
     SHExposedTypeInfo match{};
 
     const auto &required_param = required.second;
-      std::string name(required_param.name);
-      if (name.find(' ') != std::string::npos) { // take only the first part of variable name
-        // the remaining should be a table key which we don't care here
-        name = name.substr(0, name.find(' '));
-      }
+    std::string name(required_param.name);
+    if (name.find(' ') != std::string::npos) { // take only the first part of variable name
+      // the remaining should be a table key which we don't care here
+      name = name.substr(0, name.find(' '));
+    }
 
-      auto end = ctx.exposed.end();
-      auto findIt = ctx.exposed.find(name);
-      if (findIt == end) {
-        end = ctx.inherited.end();
-        findIt = ctx.inherited.find(name);
-      }
-      if (findIt == end) {
-        std::string err("Required variable not found: " + name);
-        // Warning only, delegate compose to decide
-        ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
-      } else {
+    auto end = ctx.exposed.end();
+    auto findIt = ctx.exposed.find(name);
+    if (findIt == end) {
+      end = ctx.inherited.end();
+      findIt = ctx.inherited.find(name);
+    }
+    if (findIt == end) {
+      std::string err("Required variable not found: " + name);
+      // Warning only, delegate compose to decide
+      ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
+    } else {
       auto exposedType = findIt->second.exposedType;
-          auto requiredType = required_param.exposedType;
-          // Finally deep compare types
-          if (matchTypes(exposedType, requiredType, false, true)) {
-            matching = true;
-        }
+      auto requiredType = required_param.exposedType;
+      // Finally deep compare types
+      if (matchTypes(exposedType, requiredType, false, true)) {
+        matching = true;
       }
+    }
 
-      if (matching) {
-        match = required_param;
+    if (matching) {
+      match = required_param;
     }
 
     if (!matching) {
       std::stringstream ss;
       ss << "Required types do not match currently exposed ones for variable '" << required.first
          << "' required possible types: ";
-      auto& type = required.second;
-        ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
-      
+      auto &type = required.second;
+      ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
+
       ss << "exposed types: ";
       for (const auto &info : ctx.exposed) {
         auto &type = info.second;
-          ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
-        }
+        ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
+      }
       for (const auto &info : ctx.inherited) {
         auto &type = info.second;
-          ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
-        }
+        ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
+      }
       auto sss = ss.str();
       ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
     } else {
@@ -1394,12 +1395,12 @@ void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
     }
   } break;
   case SHType::Table: {
-      auto &t = var.payload.tableValue;
-      SHTableIterator tit;
-      t.api->tableGetIterator(t, &tit);
+    auto &t = var.payload.tableValue;
+    SHTableIterator tit;
+    t.api->tableGetIterator(t, &tit);
     SHVar k;
-      SHVar v;
-      while (t.api->tableNext(t, &tit, &k, &v)) {
+    SHVar v;
+    while (t.api->tableNext(t, &tit, &k, &v)) {
       auto hk = shards::hash(k);
       XXH3_64bits_update(state, &hk.payload.int2Value, sizeof(SHInt2));
       auto hv = _deriveTypeHash(v);
@@ -1972,6 +1973,10 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
   case SHType::ShardRef:
     decRef(var.payload.shardValue);
     break;
+  case SHType::Type:
+    freeDerivedInfo(*var.payload.typeValue);
+    delete var.payload.typeValue;
+    break;
   default:
     break;
   };
@@ -2027,7 +2032,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
 
     if (srcSize > 0) {
       assert(src.payload.stringValue != nullptr && "string value is null but length is not 0");
-    memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue, srcSize);
+      memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue, srcSize);
     }
     ((char *)dst.payload.stringValue)[srcSize] = 0;
 
@@ -2241,6 +2246,11 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       if (src.objectInfo->reference)
         dst.objectInfo->reference(dst.payload.objectValue);
     }
+    break;
+  case SHType::Type:
+    destroyVar(dst);
+    dst.payload.typeValue = new SHTypeInfo(cloneTypeInfo(*src.payload.typeValue));
+    dst.valueType = SHType::Type;
     break;
   default:
     SHLOG_FATAL("Unhandled type {}", src.valueType);

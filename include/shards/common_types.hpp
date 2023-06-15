@@ -73,6 +73,7 @@ struct CoreInfo {
   SH_CORE_TYPE_DEF(Image);
   SH_CORE_TYPE_DEF(Set);
   SH_CORE_TYPE_DEF(Audio);
+  SH_CORE_TYPE_DEF(Type);
 
   static inline Type AnyEnumType = Type::Enum(0, 0);
 

@@ -5,6 +5,7 @@
 #define SH_CORE_FOUNDATION
 
 // must go first
+#include <stdlib.h>
 #if _WIN32
 #include <winsock2.h>
 #endif
@@ -515,14 +516,14 @@ public:
           [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
             // the following is safe cos count takes a const ref
-            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            auto k = reinterpret_cast<shards::OwnedVar *>(&key);
             return map->count(*k) > 0;
           },
       .tableAt =
           [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
             // the following is safe cos []] takes a const ref
-            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            auto k = reinterpret_cast<shards::OwnedVar *>(&key);
             SHVar &vRef = (*map)[*k];
             return &vRef;
           },
@@ -530,7 +531,7 @@ public:
           [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
             // the following is safe cos erase takes a const ref
-            auto k = reinterpret_cast<shards::OwnedVar*>(&key);
+            auto k = reinterpret_cast<shards::OwnedVar *>(&key);
             map->erase(*k);
           },
       .tableClear =
@@ -891,11 +892,12 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src);
 
 ALWAYS_INLINE inline void destroyVar(SHVar &var) {
   // if var.flags contains SHVAR_FLAGS_FOREIGN, then the var should not be destroyed
-  if((var.flags & SHVAR_FLAGS_FOREIGN) == SHVAR_FLAGS_FOREIGN) {
+  if ((var.flags & SHVAR_FLAGS_FOREIGN) == SHVAR_FLAGS_FOREIGN) {
     return;
   }
 
   switch (var.valueType) {
+  case SHType::Type:
   case SHType::Table:
   case SHType::Set:
   case SHType::Seq:
@@ -1031,8 +1033,8 @@ struct SimpleShard : public TSimpleShard<InternalCore, Params, NPARAMS, InputTyp
 #define REGISTER_ENUM(_ENUM_INFO_) \
   static shards::EnumRegisterImpl SH_GENSYM(__registeredEnum) = shards::EnumRegisterImpl::registerEnum<_ENUM_INFO_>()
 
-#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)                                                         \
-  namespace shards {                                                                              \
+#define ENUM_HELP(_ENUM_, _VALUE_, _STR_)         \
+  namespace shards {                              \
   template <> struct TEnumHelp<_ENUM_, _VALUE_> { \
     static inline SHOptionalString help = _STR_;  \
   };                                              \
