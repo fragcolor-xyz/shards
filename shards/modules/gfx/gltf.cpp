@@ -108,7 +108,7 @@ struct GLTFShard {
   PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
   PARAM(ShardsVar, _animController, "AnimationController", "The animation controller", {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(GLTFShard, PARAM_IMPL_FOR(_path), PARAM_IMPL_FOR(_bytes), PARAM_IMPL_FOR(_copy), PARAM_IMPL_FOR(_params),
+  PARAM_IMPL(PARAM_IMPL_FOR(_path), PARAM_IMPL_FOR(_bytes), PARAM_IMPL_FOR(_copy), PARAM_IMPL_FOR(_params),
              PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_animController));
 
   enum LoadMode {

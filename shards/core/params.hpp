@@ -3,12 +3,12 @@
 
 #include "stddef.h"
 #include "foundation.hpp"
+#include "self_macro.h"
 #include <type_traits>
 #include <shards/shardwrapper.hpp>
 
 // Template helpers for setParam/getParam
 namespace shards {
-
 #define PARAM_EXT(_type, _name, _paramInfo)                              \
   static inline shards::ParameterInfo _name##ParameterInfo = _paramInfo; \
   _type _name;
@@ -63,15 +63,15 @@ struct IterableParam {
 };
 
 // Usage:
-//  PARAM_IMPL(Shard,
+//  PARAM_IMPL(
 //    PARAM_IMPL_FOR(Param0),
 //    PARAM_IMPL_FOR(Param1),
 //    PARAM_IMPL_FOR(Param2))
 // Side effects:
 //  - typedefs Self to the current class
 //  - creates a static member named iterableParams
-#define PARAM_IMPL(_type, ...)                                                  \
-  typedef _type Self;                                                           \
+#define PARAM_IMPL(...)                                                  \
+  SELF_MACRO_DEFINE_SELF(Self, public)                                          \
   static const shards::IterableParam *getIterableParams(size_t &outNumParams) { \
     static shards::IterableParam result[] = {__VA_ARGS__};                      \
     outNumParams = std::extent<decltype(result)>::value;                        \

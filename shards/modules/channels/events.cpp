@@ -17,7 +17,7 @@ struct Base {
         {CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_id, "ID", "The optional ID to use to differentiate events with the same name.",
                  {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType});
-  PARAM_IMPL(Base, PARAM_IMPL_FOR(_eventName), PARAM_IMPL_FOR(_id));
+  PARAM_IMPL(PARAM_IMPL_FOR(_eventName), PARAM_IMPL_FOR(_id));
 
   static inline Parameters params{{"Name", SHCCSTR("The name of the event dispatcher to use."), {CoreInfo::StringType}},
                                   {"ID",

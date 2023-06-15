@@ -23,7 +23,7 @@ struct TranslationGizmo : public Base {
   static SHOptionalString help() { return SHCCSTR("Shows a translation gizmo"); }
 
   PARAM_VAR(_scale, "Scale", "Gizmo scale", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_IMPL(TranslationGizmo, PARAM_IMPL_FOR(_scale));
+  PARAM_IMPL(PARAM_IMPL_FOR(_scale));
 
   gfx::gizmos::TranslationGizmo _gizmo{};
 
@@ -96,7 +96,7 @@ struct RotationGizmo : public Base {
 
   // declare parameter named scale
   PARAM_VAR(_scale, "Scale", "Gizmo scale", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_IMPL(RotationGizmo, PARAM_IMPL_FOR(_scale));
+  PARAM_IMPL(PARAM_IMPL_FOR(_scale));
 
   // gizmo from translation_gizmo.hpp, not this file
   gfx::gizmos::RotationGizmo _gizmo{};
@@ -175,7 +175,7 @@ struct ScalingGizmo : public Base {
   static SHOptionalString help() { return SHCCSTR("Shows a scaling gizmo"); }
 
   PARAM_VAR(_scale, "Scale", "Gizmo scale", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_IMPL(ScalingGizmo, PARAM_IMPL_FOR(_scale));
+  PARAM_IMPL(PARAM_IMPL_FOR(_scale));
 
   gfx::gizmos::ScalingGizmo _gizmo{};
 

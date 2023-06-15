@@ -388,7 +388,7 @@ struct ExpectLike {
             "If we should skip performing deep type hashing and comparison. "
             "(generally fast but this might improve performance)",
             {CoreInfo::BoolType});
-  PARAM_IMPL(ExpectLike, PARAM_IMPL_FOR(_typeOf), PARAM_IMPL_FOR(_outputOf), PARAM_IMPL_FOR(_unsafe));
+  PARAM_IMPL(PARAM_IMPL_FOR(_typeOf), PARAM_IMPL_FOR(_outputOf), PARAM_IMPL_FOR(_unsafe));
 
   ExpectLike() { _unsafe = Var(false); }
 

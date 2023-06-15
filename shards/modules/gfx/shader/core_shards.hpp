@@ -180,7 +180,7 @@ struct Literal {
             {CoreInfo::IntType});
   PARAM_VAR(_outMatrixDimension, "OutputMatrixDimension",
             "The matrix dimension that this code is expected to output. (default: 1)", {CoreInfo::IntType});
-  PARAM_IMPL(Literal, PARAM_IMPL_FOR(_source), PARAM_IMPL_FOR(_type), PARAM_IMPL_FOR(_outType), PARAM_IMPL_FOR(_outDimension),
+  PARAM_IMPL(PARAM_IMPL_FOR(_source), PARAM_IMPL_FOR(_type), PARAM_IMPL_FOR(_outType), PARAM_IMPL_FOR(_outDimension),
              PARAM_IMPL_FOR(_outMatrixDimension));
 
   // Constant for unset OutputType parameter
