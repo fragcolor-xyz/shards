@@ -37,6 +37,7 @@ struct KeyEvent {
   SDL_Keycode key;
   bool pressed;
   SDL_Keymod modifiers;
+  uint32_t repeat;
 
   std::partial_ordering operator<=>(const KeyEvent &other) const = default;
 };
