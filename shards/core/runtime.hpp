@@ -1358,7 +1358,7 @@ template <typename T> struct WireDoppelgangerPool {
       auto &fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->wire = wire;
       composer.compose(wire.get(), anything, false);
-      fresh->wire->name = fresh->wire->name + "-" + std::to_string(_pool.size());
+      fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, _pool.size());
       return fresh;
     } else {
       auto res = _avail.extract(_avail.begin());
@@ -1369,6 +1369,8 @@ template <typename T> struct WireDoppelgangerPool {
   }
 
   void release(std::shared_ptr<T> wire) { _avail.emplace(wire); }
+
+  size_t available() const { return _avail.size(); }
 
 private:
   WireDoppelgangerPool() = delete;
