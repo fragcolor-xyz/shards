@@ -48,8 +48,6 @@ public:
 
   bool eof() const { return m_iter == m_end; }
 
-  size_t line() const { return m_currentLine; }
-
 private:
   void skipWhitespace();
   void nextToken();
@@ -62,7 +60,6 @@ private:
   StringIter m_iter;
   StringIter m_begin;
   StringIter m_end;
-  size_t m_currentLine{1};
 };
 
 Tokeniser::Tokeniser(const MalString &input) : m_iter(input.begin()), m_begin(input.begin()), m_end(input.end()) { nextToken(); }
@@ -78,7 +75,7 @@ bool Tokeniser::matchRegex(const Regex &regex) {
     return false;
   }
 
-  ASSERT(match.size() == 1, "Should only have one submatch, not %llu\n", match.size());
+  ASSERT(match.size() == 1, "Should only have one submatch, not %lu\n", match.size());
   ASSERT(match.position(0) == 0, "Need to match first character\n");
   ASSERT(match.length(0) > 0, "Need to match a non-empty string\n");
 
@@ -97,7 +94,6 @@ void Tokeniser::nextToken() {
     return;
   }
 
-  m_currentLine += size_t(std::distance(std::sregex_iterator(m_begin, m_iter, newlineRegex), std::sregex_iterator()));
   m_begin = m_iter;
 
   for (auto &it : tokenRegexes) {
@@ -108,9 +104,9 @@ void Tokeniser::nextToken() {
 
   MalString mismatch(m_iter, m_end);
   if (mismatch[0] == '"') {
-    MAL_CHECK(false, "expected '\"', got EOF, line: %i", line());
+    MAL_CHECK(false, "expected '\"', got EOF");
   } else {
-    MAL_CHECK(false, "unexpected '%s', line: %i", mismatch.c_str(), line());
+    MAL_CHECK(false, "unexpected '%s'", mismatch.c_str());
   }
 }
 
@@ -141,33 +137,33 @@ malValuePtr readStr(const MalString &input) {
 }
 
 static malValuePtr readForm(Tokeniser &tokeniser) {
-  MAL_CHECK(!tokeniser.eof(), "expected form, got EOF, line: %i", tokeniser.line());
+  MAL_CHECK(!tokeniser.eof(), "expected form, got EOF");
   MalString token = tokeniser.peek();
 
-  MAL_CHECK(!std::regex_match(token, closeRegex), "unexpected '%s', line: %i", token.c_str(), tokeniser.line());
+  MAL_CHECK(!std::regex_match(token, closeRegex), "unexpected '%s'", token.c_str());
 
   if (token == "(") {
     tokeniser.next();
     std::unique_ptr<malValueVec> items(new malValueVec);
     readList(tokeniser, items.get(), ")");
-    return VALUE_WITH_LINE(mal::list(items.release()));
+    return mal::list(items.release());
   } else if (token == "[") {
     tokeniser.next();
     std::unique_ptr<malValueVec> items(new malValueVec);
     readList(tokeniser, items.get(), "]");
-    return VALUE_WITH_LINE(mal::vector(items.release()));
+    return mal::vector(items.release());
   } else if (token == "#(") {
     tokeniser.next();
     std::unique_ptr<malValueVec> items(new malValueVec);
     readList(tokeniser, items.get(), ")");
-    return VALUE_WITH_LINE(mal::list(mal::symbol("wireify"), mal::vector(items.release())));
+    return mal::list(mal::symbol("wireify"), mal::vector(items.release()));
   } else if (token == "{") {
     tokeniser.next();
     malValueVec items;
     readList(tokeniser, &items, "}");
-    return VALUE_WITH_LINE(mal::hash(items.begin(), items.end(), false));
+    return mal::hash(items.begin(), items.end(), false);
   } else {
-    return VALUE_WITH_LINE(readAtom(tokeniser));
+    return readAtom(tokeniser);
   }
 }
 
@@ -242,7 +238,7 @@ static malValuePtr readAtom(Tokeniser &tokeniser) {
 
 static void readList(Tokeniser &tokeniser, malValueVec *items, const MalString &end) {
   while (1) {
-    MAL_CHECK(!tokeniser.eof(), "expected '%s', got EOF, line: %i", end.c_str(), tokeniser.line());
+    MAL_CHECK(!tokeniser.eof(), "expected '%s', got EOF", end.c_str());
     if (tokeniser.peek() == end) {
       tokeniser.next();
       return;
