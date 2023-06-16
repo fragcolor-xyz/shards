@@ -2753,6 +2753,25 @@ BUILTIN("type") {
   return malValuePtr(new malSHVar(var, true));
 }
 
+// Gives the input type of the given shard
+BUILTIN("input-type") {
+  CHECK_ARGS_IS(1);
+  auto &arg = *argsBegin;
+
+  if (const malShard *ms = DYNAMIC_CAST(malShard, arg)) {
+    auto *shard = ms->value();
+    auto inputTypes = shard->inputTypes(shard);
+    if (inputTypes.len != 1) {
+      throw std::logic_error(fmt::format("Can retrieve single input type from shard {}", shard->name(shard)));
+    }
+
+    SHVar var{.payload{.typeValue = new SHTypeInfo(cloneTypeInfo(inputTypes.elements[0]))}, .valueType = SHType::Type};
+    return malValuePtr(new malSHVar(var, true));
+  }
+
+  throw std::logic_error(fmt::format("Can not convert value to type info: {}", arg->print(true)));
+}
+
 extern "C" {
 SHLISP_API __cdecl void *shLispCreate(const char *path) {
   try {
