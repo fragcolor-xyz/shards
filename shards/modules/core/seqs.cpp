@@ -30,6 +30,7 @@ struct Flatten {
     case SHType::EndOfBlittableTypes:
       // Nothing
       break;
+    case SHType::Type:
     case SHType::Wire:
     case SHType::ShardRef:
     case SHType::Object:
@@ -101,6 +102,7 @@ struct Flatten {
     case SHType::EndOfBlittableTypes:
       // Nothing
       break;
+    case SHType::Type:
     case SHType::Wire:
     case SHType::ShardRef:
     case SHType::Object:

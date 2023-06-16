@@ -2352,6 +2352,10 @@ void hash_update(const SHVar &var, void *state) {
   assert(error == XXH_OK);
 
   switch (var.valueType) {
+  case SHType::Type: {
+    updateTypeHash(*var.payload.typeValue, hashState);
+
+  } break;
   case SHType::Bytes: {
     error = XXH3_128bits_update(hashState, var.payload.bytesValue, size_t(var.payload.bytesSize));
     assert(error == XXH_OK);

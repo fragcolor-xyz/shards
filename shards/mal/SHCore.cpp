@@ -2732,8 +2732,10 @@ BUILTIN("var-type") {
       .payload{
           .typeValue =
               new SHTypeInfo{
-                  .basicType = SHType::ContextVar,
-                  .contextVarTypes = types,
+                  SHType::ContextVar,
+                  {
+                      .contextVarTypes = types,
+                  },
               },
       },
       .valueType = SHType::Type,
