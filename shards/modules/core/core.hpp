@@ -222,18 +222,18 @@ LOGIC_OP(IsLessEqual, <=);
   };                                                                                         \
   RUNTIME_CORE_SHARD_TYPE(NAME);
 
-LOGIC_ANY_SEQ_OP(Any, ==);
-LOGIC_ALL_SEQ_OP(All, ==);
-LOGIC_ANY_SEQ_OP(AnyNot, !=);
-LOGIC_ALL_SEQ_OP(AllNot, !=);
-LOGIC_ANY_SEQ_OP(AnyMore, >);
-LOGIC_ALL_SEQ_OP(AllMore, >);
-LOGIC_ANY_SEQ_OP(AnyLess, <);
-LOGIC_ALL_SEQ_OP(AllLess, <);
-LOGIC_ANY_SEQ_OP(AnyMoreEqual, >=);
-LOGIC_ALL_SEQ_OP(AllMoreEqual, >=);
-LOGIC_ANY_SEQ_OP(AnyLessEqual, <=);
-LOGIC_ALL_SEQ_OP(AllLessEqual, <=);
+LOGIC_ANY_SEQ_OP(IsAny, ==);
+LOGIC_ALL_SEQ_OP(IsAll, ==);
+LOGIC_ANY_SEQ_OP(IsAnyNot, !=);
+LOGIC_ALL_SEQ_OP(IsAllNot, !=);
+LOGIC_ANY_SEQ_OP(IsAnyMore, >);
+LOGIC_ALL_SEQ_OP(IsAllMore, >);
+LOGIC_ANY_SEQ_OP(IsAnyLess, <);
+LOGIC_ALL_SEQ_OP(IsAllLess, <);
+LOGIC_ANY_SEQ_OP(IsAnyMoreEqual, >=);
+LOGIC_ALL_SEQ_OP(IsAllMoreEqual, >=);
+LOGIC_ANY_SEQ_OP(IsAnyLessEqual, <=);
+LOGIC_ALL_SEQ_OP(IsAllLessEqual, <=);
 
 #define LOGIC_OP_DESC(NAME)              \
   RUNTIME_CORE_SHARD_FACTORY(NAME);      \
