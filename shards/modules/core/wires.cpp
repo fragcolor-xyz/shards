@@ -1419,7 +1419,7 @@ struct ParallelBase : public CapturingSpawners {
     _wires.clear();
   }
 
-  virtual SHVar getInput(const std::shared_ptr<ManyWire> &mc, const SHVar &input) = 0;
+  virtual SHVar getInput(const ManyWire *mc, const SHVar &input) = 0;
 
   virtual size_t getLength(const SHVar &input) = 0;
 
@@ -1622,7 +1622,7 @@ protected:
   Types _outputTypes;
   SHTypeInfo _inputType{};
   std::vector<SHVar> _outputs;
-  std::vector<std::shared_ptr<ManyWire>> _wires;
+  std::vector<ManyWire*> _wires;
   int64_t _threads{1};
   int64_t _coros{1};
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
@@ -1656,7 +1656,7 @@ struct TryMany : public ParallelBase {
     }
   }
 
-  SHVar getInput(const std::shared_ptr<ManyWire> &mc, const SHVar &input) override {
+  SHVar getInput(const ManyWire *mc, const SHVar &input) override {
     return input.payload.seqValue.elements[mc->index];
   }
 
@@ -1702,7 +1702,7 @@ struct Expand : public ParallelBase {
     return _outputSeqType;
   }
 
-  SHVar getInput(const std::shared_ptr<ManyWire> &mc, const SHVar &input) override { return input; }
+  SHVar getInput(const ManyWire *mc, const SHVar &input) override { return input; }
 
   size_t getLength(const SHVar &input) override { return size_t(_width); }
 };
@@ -1811,12 +1811,12 @@ struct Spawn : public CapturingSpawners {
     WireBase::cleanup();
   }
 
-  std::unordered_map<const SHWire *, std::weak_ptr<ManyWire>> _wireContainers;
+  std::unordered_map<const SHWire *, ManyWire*> _wireContainers;
 
   void wireOnCleanup(const SHWire::OnCleanupEvent &e) {
     SHLOG_TRACE("Spawn::wireOnStop {}", e.wire->name);
 
-    auto container = _wireContainers[e.wire].lock();
+    auto container = _wireContainers[e.wire];
     for (auto &var : container->injectedVariables) {
       releaseVariable(var);
     }

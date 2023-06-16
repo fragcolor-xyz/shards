@@ -211,8 +211,8 @@ struct Server : public NetworkBase {
   std::shared_mutex peersMutex;
   udp::endpoint _sender;
 
-  std::unordered_map<udp::endpoint, std::shared_ptr<NetworkPeer>> _end2Peer;
-  std::unordered_map<const SHWire *, std::weak_ptr<NetworkPeer>> _wire2Peer;
+  std::unordered_map<udp::endpoint, NetworkPeer *> _end2Peer;
+  std::unordered_map<const SHWire *, NetworkPeer *> _wire2Peer;
   std::unique_ptr<WireDoppelgangerPool<NetworkPeer>> _pool;
   OwnedVar _handlerMaster{};
 
@@ -282,7 +282,7 @@ struct Server : public NetworkBase {
         const_cast<SHWire *>(toStop)->cleanup();
 
         std::shared_lock<std::shared_mutex> lock(peersMutex);
-        auto container = _wire2Peer[toStop].lock();
+        auto container = _wire2Peer[toStop];
         _pool->release(container);
         lock.unlock();
 
@@ -399,7 +399,7 @@ struct Server : public NetworkBase {
                 _end2Peer[_sender] = peer;
                 peer->endpoint = _sender;
                 peer->user = this;
-                peer->kcp->user = peer.get();
+                peer->kcp->user = peer;
                 peer->kcp->output = &Server::udp_output;
                 SHLOG_DEBUG("Added new peer: {} port: {}", peer->endpoint->address().to_string(), peer->endpoint->port());
 
@@ -411,9 +411,9 @@ struct Server : public NetworkBase {
 
                 // set wire ID, in order for Events to be properly routed
                 // for now we just use ptr as ID, until it causes problems
-                peer->wire->id = reinterpret_cast<entt::id_type>(peer.get());
+                peer->wire->id = reinterpret_cast<entt::id_type>(peer);
 
-                currentPeer = peer.get();
+                currentPeer = peer;
               } catch (std::exception &e) {
                 SHLOG_ERROR("Error acquiring peer: {}", e.what());
 
@@ -425,7 +425,7 @@ struct Server : public NetworkBase {
               // SHLOG_TRACE("Received packet from known peer: {} port: {}", _sender.address().to_string(), _sender.port());
 
               // existing peer
-              currentPeer = it->second.get();
+              currentPeer = it->second;
 
               lock.unlock();
             }

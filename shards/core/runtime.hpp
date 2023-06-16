@@ -1340,11 +1340,11 @@ template <typename T> struct WireDoppelgangerPool {
   void stopAll() {
     for (auto &item : _pool) {
       stop(item->wire.get());
-      _avail.emplace(item);
+      _avail.emplace(item.get());
     }
   }
 
-  template <class Composer, typename Anything> std::shared_ptr<T> acquire(Composer &composer, Anything *anything) {
+  template <class Composer, typename Anything> T *acquire(Composer &composer, Anything *anything) {
     ZoneScoped;
 
     if (_avail.size() == 0) {
@@ -1359,7 +1359,7 @@ template <typename T> struct WireDoppelgangerPool {
       fresh->wire = wire;
       composer.compose(wire.get(), anything, false);
       fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, _pool.size());
-      return fresh;
+      return fresh.get();
     } else {
       auto res = _avail.extract(_avail.begin());
       auto &value = res.value();
@@ -1368,7 +1368,7 @@ template <typename T> struct WireDoppelgangerPool {
     }
   }
 
-  void release(std::shared_ptr<T> wire) { _avail.emplace(wire); }
+  void release(T *wire) { _avail.emplace(wire); }
 
   size_t available() const { return _avail.size(); }
 
@@ -1391,7 +1391,7 @@ private:
   // so users don't have to worry about lifetime
   // just release when possible
   std::deque<std::shared_ptr<T>> _pool;
-  std::unordered_set<std::shared_ptr<T>> _avail;
+  std::unordered_set<T*> _avail;
   std::string _wireStr;
 };
 
