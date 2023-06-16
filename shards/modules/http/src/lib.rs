@@ -10,11 +10,17 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
+use core::time::Duration;
+use reqwest::blocking::Request;
+use reqwest::blocking::RequestBuilder;
+use reqwest::blocking::Response;
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE, USER_AGENT};
 use shards::core::log;
 use shards::core::registerShard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
 use shards::shard::Shard;
+use shards::types;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -25,18 +31,12 @@ use shards::types::RawString;
 use shards::types::Table;
 use shards::types::Type;
 use shards::types::Types;
+use shards::types::Var;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::INT_TYPES_SLICE;
-use std::ffi::CString;
-use shards::types;
-use shards::types::Var;
-use core::time::Duration;
-use reqwest::blocking::Request;
-use reqwest::blocking::RequestBuilder;
-use reqwest::blocking::Response;
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE, USER_AGENT};
 use std::convert::TryInto;
 use std::ffi::CStr;
+use std::ffi::CString;
 
 static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
 static HEADERS_TYPES: &[Type] = &[
@@ -170,12 +170,18 @@ impl RequestBase {
   }
 
   fn _warmup(&mut self, context: &Context) -> Result<(), &str> {
-    self.client = Some(reqwest::blocking::Client::builder().build().map_err(|e| {
-      shlog!("Failure details: {}", e);
-      "Failed to create client"
-    })?);
     self.url.warmup(context);
     self.headers.warmup(context);
+    Ok(())
+  }
+
+  fn _init_client(&mut self) -> Result<(), &str> {
+    if self.client.is_none() {
+      self.client = Some(reqwest::blocking::Client::builder().build().map_err(|e| {
+        shlog!("Failure details: {}", e);
+        "Failed to create client"
+      })?);
+    }
     Ok(())
   }
 
@@ -313,6 +319,13 @@ macro_rules! get_like {
 
     impl BlockingShard for $shard_name {
       fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+        if self.rb.client.is_none() {
+          self.rb.client = Some(reqwest::blocking::Client::builder().build().map_err(|e| {
+            shlog!("Failure details: {}", e);
+            "Failed to create client"
+          })?);
+        }
+
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
@@ -385,7 +398,7 @@ macro_rules! post_like {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         self.rb._setParam(index, value);
-        Ok(()) 
+        Ok(())
       }
 
       fn getParam(&mut self, index: i32) -> Var {
@@ -416,6 +429,13 @@ macro_rules! post_like {
 
     impl BlockingShard for $shard_name {
       fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+        if self.rb.client.is_none() {
+          self.rb.client = Some(reqwest::blocking::Client::builder().build().map_err(|e| {
+            shlog!("Failure details: {}", e);
+            "Failed to create client"
+          })?);
+        }
+
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().unwrap().$call(request_string);
