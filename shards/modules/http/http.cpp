@@ -493,12 +493,12 @@ struct Server {
     return data.inputType;
   }
 
-  std::unordered_map<const SHWire *, std::weak_ptr<Peer>> _wireContainers;
+  std::unordered_map<const SHWire *, Peer*> _wireContainers;
 
   void wireOnStop(const SHWire::OnStopEvent &e) {
     SHLOG_TRACE("Wire {} stopped", e.wire->name);
 
-    auto container = _wireContainers[e.wire].lock();
+    auto container = _wireContainers[e.wire];
     _pool->release(container);
   }
 
@@ -517,7 +517,7 @@ struct Server {
       if (!ec) {
         auto mesh = context->main->mesh.lock();
         if (mesh) {
-          peer->wire->variables["Http.Server.Socket"] = Var::Object(peer.get(), CoreCC, Peer::PeerCC);
+          peer->wire->variables["Http.Server.Socket"] = Var::Object(peer, CoreCC, Peer::PeerCC);
           mesh->schedule(peer->wire, Var::Empty, false);
         } else {
           _pool->release(peer);
