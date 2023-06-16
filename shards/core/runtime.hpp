@@ -1029,6 +1029,13 @@ struct Serialization {
       }
       break;
     }
+    case SHType::Type:
+      if (output.payload.typeValue)
+        freeDerivedInfo(*output.payload.typeValue);
+      else
+        output.payload.typeValue = new SHTypeInfo{};
+      deserialize(read, *output.payload.typeValue);
+      break;
     default:
       SHLOG_FATAL("Unknown SHType during deserialization.");
     }
@@ -1318,8 +1325,139 @@ struct Serialization {
       }
       break;
     }
+    case SHType::Type:
+      serialize(*input.payload.typeValue, write);
+      break;
     default:
       SHLOG_FATAL("Unknown SHType during serialization");
+    }
+    return total;
+  }
+
+  template <class BinaryReader> void deserialize(BinaryReader &read, SHTypeInfo &output) {
+    read((uint8_t *)&output.basicType, sizeof(uint8_t));
+    switch (output.basicType) {
+    case SHType::None:
+    case SHType::Any:
+    case SHType::Bool:
+    case SHType::Int:
+    case SHType::Int2:
+    case SHType::Int3:
+    case SHType::Int4:
+    case SHType::Int8:
+    case SHType::Int16:
+    case SHType::Float:
+    case SHType::Float2:
+    case SHType::Float3:
+    case SHType::Float4:
+    case SHType::Color:
+    case SHType::Bytes:
+    case SHType::String:
+    case SHType::Path:
+    case SHType::ContextVar:
+    case SHType::Image:
+    case SHType::Wire:
+    case SHType::ShardRef:
+    case SHType::Array:
+    case SHType::Set:
+    case SHType::Audio:
+    case SHType::Type:
+      // No extra data
+      break;
+    case SHType::Table:
+      read((uint8_t*)&output.table.keys.len, sizeof(output.table.keys.len));
+      for (size_t i = 0; i < output.table.keys.len; i++) {
+        SHVar key{};
+        deserialize(read, key);
+        arrayPush(output.table.keys, key);
+      }
+      read((uint8_t*)&output.table.types.len, sizeof(output.table.types.len));
+      for (size_t i = 0; i < output.table.types.len; i++) {
+        SHTypeInfo info{};
+        deserialize(read, info);
+        arrayPush(output.table.types, info);
+      }
+      break;
+    case SHType::Seq:
+      read((uint8_t*)&output.seqTypes.len, sizeof(output.seqTypes.len));
+      for (size_t i = 0; i < output.seqTypes.len; i++) {
+        SHTypeInfo info{};
+        deserialize(read, info);
+        arrayPush(output.seqTypes, info);
+      }
+      break;
+    case SHType::Object:
+      read((uint8_t *)&output.object, sizeof(output.object));
+      break;
+    case SHType::Enum:
+      read((uint8_t *)&output.enumeration, sizeof(output.enumeration));
+      break;
+    default:
+      throw std::logic_error("Invalid type to deserialize");
+    }
+  }
+
+  template <class BinaryWriter> size_t serialize(const SHTypeInfo &input, BinaryWriter &write) {
+    size_t total{};
+    write((const uint8_t *)&input.basicType, sizeof(uint8_t));
+    total += sizeof(uint8_t);
+    switch (input.basicType) {
+    case SHType::None:
+    case SHType::Any:
+    case SHType::Bool:
+    case SHType::Int:
+    case SHType::Int2:
+    case SHType::Int3:
+    case SHType::Int4:
+    case SHType::Int8:
+    case SHType::Int16:
+    case SHType::Float:
+    case SHType::Float2:
+    case SHType::Float3:
+    case SHType::Float4:
+    case SHType::Color:
+    case SHType::Bytes:
+    case SHType::String:
+    case SHType::Path:
+    case SHType::ContextVar:
+    case SHType::Image:
+    case SHType::Wire:
+    case SHType::ShardRef:
+    case SHType::Array:
+    case SHType::Set:
+    case SHType::Audio:
+    case SHType::Type:
+      // No extra data
+      break;
+    case SHType::Table:
+      write((const uint8_t *)&input.table.keys.len, sizeof(input.table.keys.len));
+      total += sizeof(input.table.keys.len);
+      for (size_t i = 0; i < input.table.keys.len; i++) {
+        total += serialize(input.table.keys.elements[i], write);
+      }
+      write((const uint8_t *)&input.table.types.len, sizeof(input.table.types.len));
+      total += sizeof(input.table.types.len);
+      for (size_t i = 0; i < input.table.types.len; i++) {
+        total += serialize(input.table.types.elements[i], write);
+      }
+      break;
+    case SHType::Seq:
+      write((const uint8_t *)&input.seqTypes.len, sizeof(input.seqTypes.len));
+      total += sizeof(input.seqTypes.len);
+      for (size_t i = 0; i < input.seqTypes.len; i++) {
+        total += serialize(input.seqTypes.elements[i], write);
+      }
+      break;
+    case SHType::Object:
+      write((const uint8_t *)&input.object, sizeof(input.object));
+      total += sizeof(input.object);
+      break;
+    case SHType::Enum:
+      write((const uint8_t *)&input.enumeration, sizeof(input.enumeration));
+      total += sizeof(input.enumeration);
+      break;
+    default:
+      throw std::logic_error("Invalid type to serialize");
     }
     return total;
   }
