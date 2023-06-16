@@ -809,10 +809,10 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
 }
 
 struct ValidationContext {
-  std::unordered_map<std::string, SHExposedTypeInfo> inherited;
-  std::unordered_map<std::string, SHExposedTypeInfo> exposed;
-  std::unordered_set<std::string> variables;
-  std::unordered_set<std::string> references;
+  std::unordered_map<std::string_view, SHExposedTypeInfo> inherited;
+  std::unordered_map<std::string_view, SHExposedTypeInfo> exposed;
+  std::unordered_set<std::string_view> variables;
+  std::unordered_set<std::string_view> references;
   std::unordered_set<SHExposedTypeInfo> required;
 
   SHTypeInfo previousOutputType{};
@@ -947,7 +947,7 @@ void validateConnection(ValidationContext &ctx) {
   // Add the vars we expose
   for (uint32_t i = 0; exposedVars.len > i; i++) {
     auto &exposed_param = exposedVars.elements[i];
-    std::string name(exposed_param.name);
+    std::string_view name(exposed_param.name);
     ctx.exposed[name] = exposed_param;
 
     // Reference mutability checks
@@ -957,9 +957,9 @@ void validateConnection(ValidationContext &ctx) {
       // it/manage it
       if (ctx.variables.count(name)) {
         // Error
-        std::string err("Ref variable name already used as Set. Overwriting a previously "
-                        "Set variable with Ref is not allowed, name: " +
-                        name);
+        auto err = fmt::format(
+            "Ref variable name already used as Set. Overwriting a previously Set variable with Ref is not allowed, name: {}",
+            name);
         ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
       }
       ctx.references.insert(name);
@@ -969,9 +969,9 @@ void validateConnection(ValidationContext &ctx) {
       // try to deallocate it/manage it
       if (ctx.references.count(name)) {
         // Error
-        std::string err("Set variable name already used as Ref. Overwriting a previously "
-                        "Ref variable with Set is not allowed, name: " +
-                        name);
+        auto err = fmt::format(
+            "Set variable name already used as Ref. Overwriting a previously Ref variable with Set is not allowed, name: {}",
+            name);
         ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
       }
       ctx.variables.insert(name);
@@ -981,10 +981,9 @@ void validateConnection(ValidationContext &ctx) {
       // try to deallocate it/manage it
       if (ctx.references.count(name)) {
         // Error
-        std::string err("Update variable name already used as Ref. Overwriting "
-                        "a previously "
-                        "Ref variable with Update is not allowed, name: " +
-                        name);
+        auto err = fmt::format("Update variable name already used as Ref. Overwriting a previously Ref variable with Update is "
+                               "not allowed, name: {}",
+                               name);
         ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
       }
     } else if (strcmp(ctx.bottom->name(ctx.bottom), "Push") == 0) {
@@ -993,9 +992,9 @@ void validateConnection(ValidationContext &ctx) {
       // will try to deallocate it/manage it
       if (ctx.references.count(name)) {
         // Error
-        std::string err("Push variable name already used as Ref. Overwriting a previously "
-                        "Ref variable with Push is not allowed, name: " +
-                        name);
+        auto err = fmt::format(
+            "Push variable name already used as Ref. Overwriting a previously Ref variable with Push is not allowed, name: {}",
+            name);
         ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
       }
       ctx.variables.insert(name);
@@ -1018,51 +1017,51 @@ void validateConnection(ValidationContext &ctx) {
     SHExposedTypeInfo match{};
 
     const auto &required_param = required.second;
-      std::string name(required_param.name);
-      if (name.find(' ') != std::string::npos) { // take only the first part of variable name
-        // the remaining should be a table key which we don't care here
-        name = name.substr(0, name.find(' '));
-      }
+    std::string_view name(required_param.name);
+    if (name.find(' ') != std::string::npos) { // take only the first part of variable name
+      // the remaining should be a table key which we don't care here
+      name = name.substr(0, name.find(' '));
+    }
 
-      auto end = ctx.exposed.end();
-      auto findIt = ctx.exposed.find(name);
-      if (findIt == end) {
-        end = ctx.inherited.end();
-        findIt = ctx.inherited.find(name);
-      }
-      if (findIt == end) {
-        std::string err("Required variable not found: " + name);
-        // Warning only, delegate compose to decide
-        ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
-      } else {
+    auto end = ctx.exposed.end();
+    auto findIt = ctx.exposed.find(name);
+    if (findIt == end) {
+      end = ctx.inherited.end();
+      findIt = ctx.inherited.find(name);
+    }
+    if (findIt == end) {
+      auto err = fmt::format("Required variable not found: {}", name);
+      // Warning only, delegate compose to decide
+      ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
+    } else {
       auto exposedType = findIt->second.exposedType;
-          auto requiredType = required_param.exposedType;
-          // Finally deep compare types
-          if (matchTypes(exposedType, requiredType, false, true)) {
-            matching = true;
-        }
+      auto requiredType = required_param.exposedType;
+      // Finally deep compare types
+      if (matchTypes(exposedType, requiredType, false, true)) {
+        matching = true;
       }
+    }
 
-      if (matching) {
-        match = required_param;
+    if (matching) {
+      match = required_param;
     }
 
     if (!matching) {
       std::stringstream ss;
       ss << "Required types do not match currently exposed ones for variable '" << required.first
          << "' required possible types: ";
-      auto& type = required.second;
-        ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
-      
+      auto &type = required.second;
+      ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
+
       ss << "exposed types: ";
       for (const auto &info : ctx.exposed) {
         auto &type = info.second;
-          ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
-        }
+        ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
+      }
       for (const auto &info : ctx.inherited) {
         auto &type = info.second;
-          ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
-        }
+        ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
+      }
       auto sss = ss.str();
       ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
     } else {
@@ -1394,12 +1393,12 @@ void updateTypeHash(const SHVar &var, XXH3_state_s *state) {
     }
   } break;
   case SHType::Table: {
-      auto &t = var.payload.tableValue;
-      SHTableIterator tit;
-      t.api->tableGetIterator(t, &tit);
+    auto &t = var.payload.tableValue;
+    SHTableIterator tit;
+    t.api->tableGetIterator(t, &tit);
     SHVar k;
-      SHVar v;
-      while (t.api->tableNext(t, &tit, &k, &v)) {
+    SHVar v;
+    while (t.api->tableNext(t, &tit, &k, &v)) {
       auto hk = shards::hash(k);
       XXH3_64bits_update(state, &hk.payload.int2Value, sizeof(SHInt2));
       auto hv = _deriveTypeHash(v);
@@ -2027,7 +2026,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
 
     if (srcSize > 0) {
       assert(src.payload.stringValue != nullptr && "string value is null but length is not 0");
-    memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue, srcSize);
+      memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue, srcSize);
     }
     ((char *)dst.payload.stringValue)[srcSize] = 0;
 
