@@ -23,7 +23,11 @@ template <typename T> T &getAndInitChannel(std::shared_ptr<Channel> &channel, SH
     impl.type = type;
     return impl;
   } else if (T *impl = std::get_if<T>(channel.get())) {
-    verifyChannelType(*impl, type, name);
+    if (impl->type.basicType == SHType::None) {
+      impl->type = type;
+    } else {
+      verifyChannelType(*impl, type, name);
+    }
     return *impl;
   } else {
     throw SHException(fmt::format("MPMC Channel {} already initialized as another type of channel.", name));
@@ -308,7 +312,7 @@ struct Consume : public Consumers {
 
     return _storage;
   }
-  
+
   void cleanup() {
     Consumers::cleanup();
 
