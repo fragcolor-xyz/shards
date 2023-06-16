@@ -249,7 +249,7 @@ jobs:
           echo "Running test: kdtree"
           ./shards ../shards/tests/kdtree.clj
           echo "Running test: channels"
-          ./shards ../shards/tests/channels.clj
+          ./shards ../shards/tests/channels.edn
           echo "Running test: http"
           ./shards ../shards/tests/http.clj
           echo "Running test: brotli"
