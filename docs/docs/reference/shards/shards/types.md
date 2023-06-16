@@ -5,7 +5,7 @@ license: CC-BY-SA-4.0
 
 # Types
 
-This section documents all the valid data types that are accepted by various shards either as their input value or as their parameter values. These data types also apply to the output created by any shard.
+This section documents all the valid data types that are accepted by various shards either as their input value or as a parameter value. These data types also apply to the output created by any shard.
 
 Valid data types for every shard are listed under the `Type` column of their Parameters, Input, and Output sections (types are enclosed within parentheses and if multiple types apply then they are separated by a space).
 
@@ -25,9 +25,8 @@ Type **Any** indicates that all data types are allowed.
 For example, **Any** as the allowed data type for input and `:Value` parameter of shard [`(All)`](../General/All/) means that `(All)` accepts and compares across all data types.
 
 ```clojure linenums="1"
-(All
-  :Value [(Any)]
-)
+[1]
+(All :Value [(Any)])
 ```
 
 `(All)` compares the input and`:Value` parameter values and returns `true` only if both the value and data type of these entities is equal/same.
@@ -81,17 +80,9 @@ Examples of shards that use this type are [`(Audio.Oscillator)`](../Audio/Oscill
 ## Bool
 
 Type **Bool** allows only two values - `true` or `false`.
-In that sense it can be thought of as a special case of an [**Enum**](#enum) data type.
+In that sense, it can be thought of as a special case of an [**Enum**](#enum) data type.
 
-Consider the shard [`(Is)`](../General/Is/). This shard compares its input and the value in the `:Value` parameter for equality. After the comparison it needs to communicate its result in a yes/no format (yes values are equal; no values are not equal).
-
-```clojure linenums="1"
-(Is
-  :Value [(Any)]
-)
-```
-
-To allow the shard to do this its output type is defined as a **Bool**. If the values are equal this shard emits `true` as its output, if the values are inequal it emits `false`. No other output is allowed.
+Consider the shard [`(Is)`](../General/Is/). This shard compares its input and the value in the `:Value` parameter for equality and returns `true` if values are equal, otherwise `false` if values are not equal. Examples:
 
 === "Code"
 
@@ -122,7 +113,7 @@ A byte is made up of 8 bits (for example, `10111010`) and a **Bytes** type is an
 ??? note "Bits and Bytes"
     Bits are how data is stored in a computer at the level of electrical circuits. A bit can have only two values (1 or 0, representing the circuit is on or off) - hence the name binary data. A group of eight bits make a byte: `11111111`, `10101010`, etc. Since a bit can have only two values, a Byte can represent a total of 256 numbers (2^8): 0 to 255.
 
-Shards like [`(ToBytes)`](../General/ToBytes/),  [`(BytesToString)`](../General/BytesToString/), [`(BytesToInts)`](../General/BytesToInts/), etc. all use the type **Bytes** either for their input or their output.
+Shards like [`(ToBytes)`](../General/ToBytes/),  [`(BytesToString)`](../General/BytesToString/), [`(BytesToInts)`](../General/BytesToInts/), etc, all use the type **Bytes** either for their input or their output.
 
 ## Color
 
@@ -198,9 +189,7 @@ For an overview of all enums and valid values check the [Enums](../../enums) pag
 For example, in [`(Math.Mean)`](../Math/Mean/) the value for `:Kind` parameter needs to be of type [**Mean**](../../enums/Mean/).
 
 ```clojure linenums="1"
-(Math.Mean
-  :Kind Mean
-)
+(Math.Mean :Kind Mean)
 ```
 
 `(Math.Mean)` computes the mean of a sequence of floating-point numbers. But there are three kinds of means - Arithmetic mean, Geometric mean, and Harmonic mean.
@@ -496,9 +485,7 @@ Type **None** indicates that no data type is expected. This implies that no valu
 For example, **None** as one of the valid data types for `:Max` parameter in shard [`(RandomInt)`](../General/RandomInt/) means that setting a value for this parameter is not mandatory.
 
 ```clojure linenums="1"
-(RandomInt
-:Max [(None) (Int) (ContextVar [(Int)])]
-)
+(RandomInt :Max [(None) (Int) (ContextVar [(Int)])])
 ```
 
 `(RandomInt)` generates a random integer and the `:Max` parameter is the upper limit (not inclusive) of the value that can be generated. So it makes sense to have **None** as one of the valid types for this `:Max` parameter for cases when you do not want an upper limit on the random integer (though in this case the system will inherently set the upper limit to the maximum value a 64-bit signed integer can hold: 9,223,372,036,854,775,807).
@@ -533,12 +520,12 @@ For example, the `:Socket` parameter object of [`(WS.ReadString)`](../WS/ReadStr
 Type **Path** is [**String**](#string) type data that is expected to contain a valid path (your operating system or local machine) for loading resources like script files, images, audio files etc.
 
 !!! note
-    Has keyword [`path`](../../lisp/values/#path) and alias `Path`.
+    Has keyword `path` and alias `Path`.
 
 A valid **Path** type data string would look like this: `"../../external/sample-models/Avocado.glb"`
 
 !!! note
-    For shards this type is the same as [**String**](#string) type as far as type validations are concerned (when you execute your script Shards first checks the types before running your code). However,if the path-string passed is invalid, malformed, or missing the resource to be loaded, the shard will complain with an error message at runtime (i.e., when your code actually runs).
+    For shards this type is the same as [**String**](#string) type as far as type validations are concerned (when you execute your script Shards first checks the types before running your code). However, if the path-string passed is invalid, malformed, or missing the resource to be loaded, the shard will complain with an error message at runtime (i.e., when your code actually runs).
 
 A shard that uses this type is [`(Process.Run)`](../Process/Run/). This shard takes a **Path** type in its `:Executable` parameter.
 
@@ -555,7 +542,7 @@ An example of a **Set** type data would be `(22 3 378 4)`.
 Type **Seq** is a collection of values that can be accessed sequentially (i.e., they're iterable).
 
 !!! note
-    Has keyword [`seq`](../../lisp/values/#seq).
+    Has keyword `seq`.
 
 Also called a sequence. An example of **Seq** type would be `[7 2 54 42]`.
 
@@ -581,9 +568,9 @@ The type **Shard** (also called **ShardRef**) represents a shard being passed as
 This type is an important aspect of the homoiconicity feature (i.e., code/data interchangeability) in Shards.
 
 !!! note
-    What's a [`shard`](https://learn.fragcolor.xyz/primer/#shard)?
+    What's a [`shard`](https://docs.fragnova.com/learn/shards/primer/what-is-shards/#the-shard)?
 
-The shard [`(ForEach)`](../General/ForEach/) expects type **Shard** for its `:Apply` parameter (the other option being a sequence of **Shard** type values, i.e., a [`Wire`](#wire) type).
+The shard [`(ForEach)`](../General/ForEach/) expects a value with the type **Shard** for its `:Apply` parameter (the other option being a sequence of **Shard** type values, i.e., a [`Wire`](#wire) type).
 
 `(ForEach)` then applies this shard (or sequence of shards) on its input to transform it into its output.
 
@@ -603,7 +590,7 @@ When more that one shard is accepted it is indicated as a sequence of shards, an
 Type **String** represents string data (any data enclosed within double quotes).
 
 !!! note
-    Has keyword [`string`](../../lisp/values/#string) and alias `String`.
+    Has keyword `string` and alias `String`.
 
 A **String** value looks like this: `(string "Hello @Tom!")`. It may also be represented without the keyword `string`, with just the data within double quotes: `"Hello @Tom!"`.
 
@@ -650,12 +637,12 @@ Its also known as map, data dictionary, or associative array. An example of a **
 Type **Wire** represents a wire being passed as data.
 
 !!! note
-    Has keyword [`Wire`](../../lisp/values/#wire).
+    Has keyword `Wire`.
 
 A **Wire** type thus consists of a sequence of shards (which make up the wire), their shared state (memory) context, name of the wire, and other properties that enable operations on the wire like scheduling it on a mesh, starting/stopping/pausing the wire, etc.
 
 !!! note
-    What's a [`wire`](https://learn.fragcolor.xyz/primer/#wire)?
+    What's a [`wire`](http://127.0.0.1:8000/learn/shards/primer/what-is-shards/#the-wire)?
 
 For example, the shard [`(Stop)`](../General/Stop/) accepts **Wire** type data in its `:Wire` parameter and stops that wire's execution if its currently running.
 
