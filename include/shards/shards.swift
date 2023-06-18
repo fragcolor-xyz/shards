@@ -350,6 +350,14 @@ public struct Context {
 
 public typealias ShardPtr = Optional<UnsafeMutablePointer<Shard>>
 
+public final class ShardError : Error {
+    public var message: String
+    
+    init(message: String) {
+        self.message = message
+    }
+}
+
 public protocol IShard : AnyObject {
     static var name: String { get }
     static var help: String { get }
@@ -361,7 +369,7 @@ public protocol IShard : AnyObject {
     init()
 
     func destroy()
-    func activate(context: Context, input: SHVar) -> Result<SHVar, Error>
+    func activate(context: Context, input: SHVar) -> Result<SHVar, ShardError>
 
     // Need those... cos Swift generics are meh
     // I wasted a lot of time to find the optimal solution, don't think about wasting more
@@ -449,7 +457,7 @@ public extension IShard {
     case .success(let res):
         return res
     case .failure(let error):
-        G.Core.pointee.abortWire(ctx, error.localizedDescription.utf8CString.withUnsafeBufferPointer{
+        G.Core.pointee.abortWire(ctx, error.message.utf8CString.withUnsafeBufferPointer{
             $0.baseAddress
         })
         return SHVar()
@@ -479,7 +487,7 @@ func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
 
 final class MyShard : IShard {
     typealias ShardType = MyShard
-    
+        
     static var name: String = "MyShard"
     static var help: String = ""
 
@@ -487,11 +495,11 @@ final class MyShard : IShard {
     var outputTypes: [SHTypeInfo] = []
     var parameters: [SHParameterInfo] = []
 
-    func activate(context: Context, input: SHVar) -> Result<SHVar, Error> {
-        return .success(SHVar())
+    func activate(context: Context, input: SHVar) -> Result<SHVar, ShardError> {
+        return .failure(ShardError(message: "Not implemented"))
     }
     
-    // Copy paste those to shards...
+    // -- DON'T EDIT THE FOLLOWING --
     static var inputTypesCFunc: SHInputTypesProc {{ bridgeInputTypes(ShardType.self, shard: $0) }}
     static var outputTypesCFunc: SHInputTypesProc {{ bridgeOutputTypes(ShardType.self, shard: $0) }}
     static var destroyCFunc: SHDestroyProc {{ bridgeDestroy(ShardType.self, shard: $0) }}
