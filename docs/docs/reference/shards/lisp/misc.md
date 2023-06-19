@@ -199,6 +199,12 @@ Multiple wires can be scheduled on the same `mesh`. When a mesh is run, all the 
 
 ## with-meta
 
+```
+(with-meta obj m)
+```
+
+Returns an object of the same type and value as obj, with an object as its metadata.
+
 ```clojure linenums="1"
 
 ```

@@ -5,7 +5,7 @@ license: CC-BY-SA-4.0
 
 # Shards
 
-This section contains a reference of all the shards available within the Shards language.
+This section contains a reference for all the shards distributed with Shards.
 
 ## How to read
 
@@ -29,7 +29,7 @@ In this case, the `String.Join` shard accepts a sequence of `Strings` as an inpu
 
 ### &lt;output&gt;
 
-The output will be a single `String`
+The output will be a single `String`.
 
 ### Parameters
 
@@ -40,7 +40,7 @@ After the input and output of the shard, the parameters are listed. The `String.
 <div class="sh-parameters" markdown="1">
 | Name | - {: #sh-flags-row} | Description | Default | Type |
 |------|---------------------|-------------|---------|------|
-| `Window` | :fontawesome-solid-circle-plus:{title="Optional"}  | None or a window variable we wish to use as relative origin. | `None` | `Object ` |
+| `Window` | :fontawesome-solid-circle-plus:{title="Optional"}  | None or a window variable we wish to use as a relative origin. | `None` | `Object ` |
 </div>
 
 Occasionally you will see a :fontawesome-solid-circle-plus: icon next to a parameter. This means that the parameter is optional and its value can be left unset.
@@ -49,7 +49,7 @@ When a variable is not optional and its default value is not `None`, you should 
 
 ## Type descriptions
 
-The type column shows the expected types for an input, output or parameter:
+The type column shows the expected types for input, output, or parameter:
 
 <div class="sh-parameters" markdown="1">
 | Name | Type |
