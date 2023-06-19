@@ -6,7 +6,7 @@ license: CC-BY-SA-4.0
 # Operators
 
 !!! danger
-    These operators only works on numerical values. Comparing with a string or any other type will produce an error.
+    These operators only work on numerical values. Comparing with a string or any other type will produce an error.
 
 ## =
 

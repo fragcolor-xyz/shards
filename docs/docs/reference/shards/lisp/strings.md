@@ -7,7 +7,7 @@ license: CC-BY-SA-4.0
 
 ## pr-str
 
-Prints a variable number of values into a string, separated by a whitespace.
+Prints a variable number of values into a string, separated by whitespace.
 Each collection type follows its own printing rule.
 In addition, strings are escaped.
 

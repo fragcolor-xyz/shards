@@ -8,7 +8,7 @@ license: CC-BY-SA-4.0
 !!! info
     All these functions have an alias starting with an uppercase character.
     
-    In other words, `(int 42)` and `(Int 42)` are both valid, and represent the same value.
+    In other words, `(int 42)` and `(Int 42)` are both valid and represent the same value.
 
 ## bytes
 
@@ -22,7 +22,7 @@ Represents the raw bytes value of a string.
 
 ## color
 
-Represents a RGBA color where each component is within the \[0, 255\] range.
+Represents an RGBA color where each component is within the \[0, 255\] range.
 
 === "Code"
 

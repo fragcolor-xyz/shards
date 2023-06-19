@@ -7,7 +7,7 @@ license: CC-BY-SA-4.0
 
 ## println
 
-Prints a variable number of values into a the standard output, separated by a whitespace.
+Prints a variable number of values into the standard output, separated by whitespace.
 Each collection type follows its own printing rule.
 
 === "Code"
@@ -49,7 +49,7 @@ Each collection type follows its own printing rule.
 
 ## prn
 
-Prints a variable number of values into a the standard output, separated by a whitespace.
+Prints a variable number of values into the standard output, separated by whitespace.
 Each collection type follows its own printing rule.
 In addition, strings are escaped.
 
