@@ -33,26 +33,16 @@ This value may be data, the result of an expression, or the return value of a sh
     * [defloop](#defloop)
     * [defmesh](#defmesh)
 
-## def!
-
-Defines an alias.
-
-=== "Code"
-
-    ```clojure linenums="1"
-
-    ```
-
 ## defshards
 
 Defines new shards that can be grouped together and inserted into an existing wire program.
 
 !!! note
-    What's a [`shard`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#shard)?
+    What's a [`shard`](../../../../learn/shards/primer/what-is-shards/#the-shard?)
 
 A `defshards` shard looks structurally similar to a function (see [defn](#defn)), but unlike a `defn`, it can contain multiple shards in its body without needing to use `->`.
 
-During the execution phase `defshards` is physically replaced by it's inner shards wherever it's invoked.
+During the execution phase, `defshards` is replaced by its inner shards wherever it's invoked.
 
 === "Code"
 
@@ -62,18 +52,22 @@ During the execution phase `defshards` is physically replaced by it's inner shar
         (Msg input))
     ```
 
-Just like a function a `defshards` shard can be invoked by name and can process input parameters.
+Just like a function, a `defshards` shard can be invoked by name and can process input parameters.
 
 === "Code"
 
     ```clojure linenums="1"
     (defmesh main)
+
     (defshards MsgParms [input]
-        (Msg "My name is")
-        (Msg input))
+      (Msg "My name is")
+      (Msg input))
+
     (defwire mywire
-        (MsgParms "Shards"))
+      (MsgParms "Shards"))
+
     (schedule main mywire)
+
     (run main)
     ```
 
@@ -104,13 +98,14 @@ Defines a new non-looped wire.
 !!! note
     What's a [`wire`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#wire)?
 
-`(defwire <wire-name>)` is actually a shorthand for the more verbose non-looped wire definition: `def <wire-name>` + `Wire "wire-name"`.
+`(defwire <wire-name>)` is actually a shorthand for the more verbose non-looped wire definition: `(def <wire-name> (Wire "wire-name"))`.
+
 === "Code"
 
     ```clojure linenums="1"
     ;; def + Wire
     (def my-wire
-    (Wire "my-wire"
+      (Wire "my-wire"
         ;; shards here
     ))
     ```
@@ -124,15 +119,19 @@ A mesh will execute a non-looped wire only once (even though the mesh itself may
     ```clojure linenums="1"
     ;; define a mesh (main)
     (defmesh main)
+
     ;; define a non-looped wire (wire-hello)
     (defwire wire-hello
-        (Msg "Hello World!"))
+      (Msg "Hello World!"))
+
     ;; define another non-looped wire (wire-bye)
     (defwire wire-bye
-        (Msg "Goodbye World"))
+      (Msg "Goodbye World"))
+
     ;; schedule the non-looped wires on the mesh
     (schedule main wire-hello)
     (schedule main wire-bye)
+
     ;; run all the scheduled wires on the mesh
     (run main)
     ```
@@ -150,12 +149,16 @@ A mesh will execute a non-looped wire only once (even though the mesh itself may
 
     ```clojure linenums="1"
     (defmesh main)
+
     (defwire mywire
-        = .wirevar                      ;; save mywire input to wirevar
-        .wirevar (Log "wire input"))    ;; log mywire input to screen
+      = .wirevar                      ;; save mywire input to wirevar
+      .wirevar (Log "wire input"))    ;; log mywire input to screen
+    
     (defwire mainwire
         "shards" (Do mywire))           ;; invoke mywire with an input
+    
     (schedule main mainwire)
+    
     (run main)
     ```
 
@@ -166,7 +169,6 @@ A mesh will execute a non-looped wire only once (even though the mesh itself may
     [info] [2022-05-12 21:25:49.715] [T-17336] [logging.cpp::53] [mywire] wire input: shards
     [debug] [2022-05-12 21:25:49.716] [T-17336] [runtime.cpp::2741] Running cleanup on wire: mainwire users count: 0
     ```
-
 
 ??? info "See also"
     * [def](#def)
@@ -186,9 +188,9 @@ Defines a new function.
 
 The function definition consists of the function name followed by its input parameters (`fn-params`), in `[]`.
 
-If there are no input parameters the `[]` remains empty. Multiple input parameters may be passed as a sequence.
+If there are no input parameters, the `[]` remains empty. Multiple input parameters may be passed as a sequence.
 
-The processing statements (value/expression/shards) following the `[]` is the function's body and its evaluation is the function's return value. A function may return a single or none at all.
+The processing statements (value/expression/shards) following the `[]` are the function's body and its evaluation is the function's return value.
 
 A function can be invoked by calling it by name and passing its required parameters.
 
@@ -198,11 +200,15 @@ Function with no input parameters:
 
     ```clojure linenums="1"
     (defmesh main)
+
     (defn func []
-        (Msg "I got no parameters"))    ;; prints string text to screen
+      (Msg "I got no parameters"))    ;; prints string text to screen
+
     (defwire mywire
-        (func))                         ;; function invoked without any parameters
+      (func))                         ;; function invoked without any parameters
+
     (schedule main mywire)
+
     (run main)
     ```
 === "Result"
@@ -217,11 +223,15 @@ Function with one input parameter:
 
     ```clojure linenums="1"
     (defmesh main)
+    
     (defn func [param]
-        (Msg param))                     ;; prints the parameter to screen
+      (Msg param))                 ;; prints the parameter to screen
+
     (defwire mywire
-        (func "The only parameter"))     ;; function invoked with a single parameter
+      (func "The only parameter")) ;; function invoked with a single parameter
+
     (schedule main mywire)
+
     (run main)
     ```
 === "Result"
@@ -236,11 +246,15 @@ Function with multiple input parameters:
 
     ```clojure linenums="1"
     (defmesh main)
+
     (defn func [param1 param2]
-        (Msg param2))                           ;; prints the 2nd parameter to screen
+      (Msg param2))                           ;; prints the 2nd parameter to screen
+
     (defwire mywire
-        (func "1st parameter" "2nd parameter")) ;; function invoked with multiple parameters
+      (func "1st parameter" "2nd parameter")) ;; function invoked with multiple parameters
+
     (schedule main mywire)
+
     (run main)
     ```
 === "Result"
@@ -255,14 +269,21 @@ A function cannot return multiple values. So if you need to process multiple sha
 
     ```clojure linenums="1"
     (defmesh main)
-    (defshards MsgParams [input]    ;; defshards groups multiple shards for processing
-        (Msg "name is:")
-        (Msg input))
+
+    ;; defshards groups multiple shards for processing
+    (defshards MsgParams [input]
+      (Msg "name is:")
+      (Msg input))
+
     (defn letslog [name]
-        (MsgParams name))           ;; defshards takes function input and returns single value
+      ;; defshards takes function input and returns single value
+      (MsgParams name))
+
     (defwire mywire
-        (letslog "shards"))
+      (letslog "shards"))
+
     (schedule main mywire)
+
     (run main)
     ```
 === "Result"
@@ -278,15 +299,18 @@ or use `(->)` to group and process the multiple shards inside the `(defn)`:
 
     ```clojure linenums="1"
     (defmesh main)
+
     (defn letslog [name]
-        (->                             ;; defshards replaced with `->`
-            (Msg "name is:")            ;; multiple shards can now be written down sequentially
-            (Msg name)
-        )
-    )
+      (-> ;; defshards replaced with `->`
+        (Msg "name is:")
+        ;; multiple shards can now be written down sequentially
+        (Msg name)))
+
     (defwire mywire
-        (letslog "shards"))
+      (letslog "shards"))
+
     (schedule main mywire)
+
     (run main)
     ```
 === "Result"
@@ -299,31 +323,20 @@ or use `(->)` to group and process the multiple shards inside the `(defn)`:
 ??? info "See also"
     * [defshards](#defshards)
 
-## defmacro!
-
-Defines a new macro.
-
-=== "Code"
-
-    ```clojure linenums="1"
-
-    ```
-
 ## defmesh
 
 Defines a new `mesh` on which wires can be scheduled and then run.
 
 !!! note
-    What's a [`mesh`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#mesh)?
+    What's a [`mesh`](../../../../learn/shards/primer/what-is-shards/#the-mesh)?
 
 === "Code"
 
     ```clojure linenums="1"
-    ;; defmesh
-    (defmesh main)     ;; define a mesh named 'main'
+    (defmesh main)     ;; define a mesh called 'main'
     ```
 
-`(defmesh <mesh-name>)` is actually a shorthand for the more verbose mesh definition: `def <mesh-name> (Mesh)`.
+`(defmesh <mesh-name>)` is actually a shorthand for the more verbose mesh definition: `(def <mesh-name> (Mesh))`.
 === "Code"
 
     ```clojure linenums="1"
@@ -337,12 +350,17 @@ Here's an example that schedules a looped and a non-looped wire on a mesh.
 
     ```clojure linenums="1"
     (defmesh main)              ;; define a mesh (main)
+
     (defloop wire-hi            ;; define a looped wire
-        (Msg "Hello World!"))
+      (Msg "Hello World!"))
+
     (defwire wire-bye           ;; define a non-looped wire
-        (Msg "Goodbye World"))
+      (Msg "Goodbye World"))
+
     (schedule main wire-hi)     ;; schedule looped wire (wire-hi) on this mesh
+
     (schedule main wire-bye)    ;; schedule non-looped wire (wire-hi) on this mesh
+
     (run main)                  ;; run all the scheduled wires on this mesh
     ```
 === "Result"
@@ -371,33 +389,36 @@ Defines a new looped wire.
     ```clojure linenums="1"
     ;; defloop
     (defloop my-loop       ;; define a looped wire
-        ;; shards here
+      ;; shards here
     )
     ```
 
 !!! note
-    What's a [`wire`](https://learn.fragcolor.xyz/learn.fragcolor/primer/#wire)?
+    What's a [`wire`](../../../../learn/shards/primer/what-is-shards/#the-wire)?
 
-`(defloop <looped wire-name)` is actually a shorthand for the more verbose looped wire definition: `def <looped wire-name>` + `Wire "looped wire-name"`.
+`(defloop <wire-name>)` is a shorthand for the more verbose looped wire definition: `(def <wire-name> (Wire <wire-name>))`.
 === "Code"
 
     ```clojure linenums="1"
     ;; def + Wire
     (def my-loop
-    (Wire "my-loop" :Looped
+      (Wire "my-loop" :Looped
         ;; shards here
     ))
     ```
 
-For a wire to be executed, it must first be scheduled on a `mesh` and then that that mesh needs to run.
+For a wire to be executed, it must first be scheduled on a `mesh` and then that mesh needs to run.
 
 === "Code"
 
     ```clojure linenums="1"
     (defmesh main)          ;; define a mesh
+
     (defloop my-loop        ;; define a looped wire
-        (Msg "Hello World!"))
-    (schedule main my-loop) ;;
+      (Msg "Hello World!"))
+
+    (schedule main my-loop)
+
     (run main)              ;; run wires scheduled on this mesh
     ```
 === "Result"
@@ -418,12 +439,17 @@ A mesh will continue executing a looped wire till the mesh itself stops running 
 
     ```clojure linenums="1"
     (defmesh main)              ;; define a mesh
+
     (defloop wire-hi            ;; define a looped wire (wire-hello)
-        (Msg "Hello World!"))
+      (Msg "Hello World!"))
+      
     (defloop wire-bye           ;; define another looped wire (wire-bye)
-        (Msg "Goodbye World"))
+      (Msg "Goodbye World"))
+
     (schedule main wire-hi)     ;; schedule the wire (wire-hi) on the mesh
+
     (schedule main wire-bye)    ;; schedule the wire (wire-bye) on the mesh
+
     (run main)                  ;; run all the wires scheduled on this mesh
     ```
 === "Result"
