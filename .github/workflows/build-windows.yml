@@ -249,7 +249,7 @@ jobs:
           echo "Running test: kdtree"
           ./shards ../shards/tests/kdtree.clj
           echo "Running test: channels"
-          ./shards ../shards/tests/channels.clj
+          ./shards ../shards/tests/channels.edn
           echo "Running test: http"
           ./shards ../shards/tests/http.clj
           echo "Running test: brotli"
@@ -257,7 +257,7 @@ jobs:
           echo "Running test: snappy"
           ./shards ../shards/tests/snappy.clj
           echo "Running test: expect-like"
-          ./shards ../shards/tests/expect-like.edn
+          ./shards ../shards/tests/expect.edn
           # echo "Running test: ws"
           # ./shards ../shards/tests/ws.edn
           echo "Running test: bigint"

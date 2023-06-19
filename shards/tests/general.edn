@@ -621,7 +621,7 @@
    (Assert.Is "0x9000070000000000" true)
 
    "Test"
-   (Any ["Test" "A"])
+   (IsAny ["Test" "A"])
    (Log)
 
    0x00070090

@@ -143,14 +143,14 @@ jobs:
           ./shards ../shards/tests/struct.clj
           ./shards ../shards/tests/flows.edn
           ./shards ../shards/tests/kdtree.clj
-          ./shards ../shards/tests/channels.clj
+          ./shards ../shards/tests/channels.edn
           ./shards ../shards/tests/imaging.clj
           ./shards ../shards/tests/http.clj
           # ./shards ../shards/tests/ws.edn
           ./shards ../shards/tests/bigint.clj
           ./shards ../shards/tests/brotli.clj
           ./shards ../shards/tests/snappy.clj
-          ./shards ../shards/tests/expect-like.edn
+          ./shards ../shards/tests/expect.edn
           ./shards ../shards/tests/wasm.clj
           ./shards ../shards/tests/infos.clj
           ./shards ../shards/tests/rust.clj

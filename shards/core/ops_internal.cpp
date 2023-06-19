@@ -11,6 +11,11 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
   switch (var.valueType) {
   case SHType::EndOfBlittableTypes:
     break;
+  case SHType::Type:
+    os << "(type ";
+    format(os, *var.payload.typeValue);
+    os << ")";
+    break;
   case SHType::None:
     os << "None";
     break;

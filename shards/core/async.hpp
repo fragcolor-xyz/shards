@@ -46,7 +46,7 @@ struct TidePool {
       _running = true;
       _future = std::async(std::launch::async, [this]() {
         while (_running) {
-          Work *work;
+          Work *work{};
           if (_queue.pop(work)) {
             // SHLOG_DEBUG("TidePool: calling {}", (void*)work);
             work->call();

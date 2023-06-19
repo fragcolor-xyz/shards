@@ -268,6 +268,8 @@ void to_json(json &j, const SHVar &var) {
     }
     break;
   }
+  case SHType::Type:
+      throw shards::ActivationError("Type can not be serialized to json.");
   };
 }
 
@@ -547,6 +549,8 @@ void from_json(const json &j, SHVar &var) {
     }
     break;
   }
+  case SHType::Type:
+      throw shards::ActivationError("Type can not be deserialized from json.");
   }
 }
 

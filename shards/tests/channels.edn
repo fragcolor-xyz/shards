@@ -18,14 +18,14 @@
   (Wire
    "Consumer1"
    :Looped
-   (Consume "a") ; consumes 1
+   (Consume "a" (type String)) ; consumes 1
    (Log "Consumed 1: ")))
 
 (def consumer2
   (Wire
    "Consumer2"
    :Looped
-   (Consume "a" 5)
+   (Consume "a" (type String) 5)
    (Log "Consumed 2: ")))
 
 (schedule Root producer)
@@ -49,14 +49,14 @@
   (Wire
    (str "Consumer" x)
    :Looped
-   (Listen "b")
+   (Listen "b" (type String))
    (Log (str x ": "))))
 
 (def consumer33
   (Wire
    "Consumer33"
    :Looped
-   (Listen "b" 3)
+   (Listen "b" (type String) 3)
    (Log "Consumed 33: ")))
 (schedule Root producer)
 (schedule Root (consumers 0))

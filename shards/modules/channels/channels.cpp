@@ -9,6 +9,31 @@
 
 namespace shards {
 namespace channels {
+
+template <typename T> void verifyChannelType(T &channel, SHTypeInfo type, const char *name) {
+  if (channel.type != type) {
+    throw SHException(fmt::format("Attempted to change channel type: {}", name));
+  }
+}
+
+template <typename T> T &getAndInitChannel(std::shared_ptr<Channel> &channel, SHTypeInfo type, bool noCopy, const char *name) {
+  if (channel->index() == 0) {
+    T &impl = channel->emplace<T>(noCopy);
+    // no cloning here, this is potentially dangerous if the type is dynamic
+    impl.type = type;
+    return impl;
+  } else if (T *impl = std::get_if<T>(channel.get())) {
+    if (impl->type.basicType == SHType::None) {
+      impl->type = type;
+    } else {
+      verifyChannelType(*impl, type, name);
+    }
+    return *impl;
+  } else {
+    throw SHException(fmt::format("MPMC Channel {} already initialized as another type of channel.", name));
+  }
+}
+
 struct Base {
   std::string _name;
   bool _noCopy = false;
@@ -18,10 +43,6 @@ struct Base {
                                            SHCCSTR("Unsafe flag that will improve performance by not copying "
                                                    "values when sending them thru the channel."),
                                            {CoreInfo::BoolType}}};
-
-  static inline Parameters consumerParams{
-      {"Name", SHCCSTR("The name of the channel."), {CoreInfo::StringType}},
-      {"Buffer", SHCCSTR("The amount of values to buffer before outputting them."), {CoreInfo::IntType}}};
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -45,12 +66,6 @@ struct Base {
     }
     return SHVar();
   }
-
-  template <typename T> void verifyInputType(T &channel, const SHInstanceData &data) {
-    if (channel.type.basicType != SHType::None && channel.type != data.inputType) {
-      throw SHException("Produce attempted to change produced type: " + _name);
-    }
-  }
 };
 
 struct Produce : public Base {
@@ -65,24 +80,7 @@ struct Produce : public Base {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _channel = get(_name);
-    switch (_channel->index()) {
-    case 0: {
-      _channel->emplace<MPMCChannel>(_noCopy);
-      auto &channel = std::get<MPMCChannel>(*_channel);
-      // no cloning here, this is potentially dangerous if the type is dynamic
-      channel.type = data.inputType;
-      _mpChannel = &channel;
-    } break;
-    case 1: {
-      auto &channel = std::get<MPMCChannel>(*_channel);
-      verifyInputType(channel, data);
-      _mpChannel = &channel;
-    } break;
-    default:
-      _channel.reset();
-      SHLOG_ERROR("Channel type expected for channel {}.", _name);
-      throw SHException("Produce/Consume channel type expected.");
-    }
+    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, data.inputType, _noCopy, _name.c_str());
     return data.inputType;
   }
 
@@ -113,7 +111,7 @@ struct Produce : public Base {
 
 struct Broadcast : public Base {
   std::shared_ptr<Channel> _channel;
-  BroadcastChannel *_mpChannel;
+  BroadcastChannel *_bChannel;
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -123,39 +121,19 @@ struct Broadcast : public Base {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _channel = get(_name);
-    switch (_channel->index()) {
-    case 0: {
-      SHLOG_TRACE("Creating broadcast channel: {}", _name);
-
-      _channel->emplace<BroadcastChannel>(_noCopy);
-      auto &channel = std::get<BroadcastChannel>(*_channel);
-      // no cloning here, this is potentially dangerous if the type is dynamic
-      channel.type = data.inputType;
-      _mpChannel = &channel;
-    } break;
-    case 2: {
-      SHLOG_TRACE("Subscribing to broadcast channel: {}", _name);
-
-      auto &channel = std::get<BroadcastChannel>(*_channel);
-      verifyInputType(channel, data);
-      _mpChannel = &channel;
-    } break;
-    default:
-      _channel.reset();
-      throw SHException("Broadcast: channel type expected.");
-    }
+    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, data.inputType, _noCopy, _name.c_str());
     return data.inputType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_mpChannel);
+    assert(_bChannel);
 
     // we need to support subscriptions during run-time
     // so we need to lock this operation
     // furthermore we allow multiple broadcasters so the erase needs this
     // but we use suspend instead of kernel locking!
 
-    std::unique_lock<std::mutex> lock(_mpChannel->subMutex, std::defer_lock);
+    std::unique_lock<std::mutex> lock(_bChannel->subMutex, std::defer_lock);
 
     // try to lock, if we can't we suspend
     while (!lock.try_lock()) {
@@ -163,9 +141,9 @@ struct Broadcast : public Base {
     }
 
     // we locked it!
-    for (auto it = _mpChannel->subscribers.begin(); it != _mpChannel->subscribers.end();) {
+    for (auto it = _bChannel->subscribers.begin(); it != _bChannel->subscribers.end();) {
       if (it->closed) {
-        it = _mpChannel->subscribers.erase(it);
+        it = _bChannel->subscribers.erase(it);
       } else {
         SHVar tmp{};
 
@@ -228,12 +206,17 @@ struct BufferedConsumer {
 
 struct Consumers : public Base {
   std::shared_ptr<Channel> _channel;
-  MPMCChannel *_mpChannel;
   BufferedConsumer _storage;
   int64_t _bufferSize = 1;
   int64_t _current = 1;
   SHTypeInfo _outType{};
   SHTypeInfo _seqType{};
+
+  static inline Parameters consumerParams{
+      {"Name", SHCCSTR("The name of the channel."), {CoreInfo::StringType}},
+      {"Type", SHCCSTR("The expected type to receive."), {CoreInfo::TypeType}},
+      {"Buffer", SHCCSTR("The amount of values to buffer before outputting them."), {CoreInfo::IntType}},
+  };
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
 
@@ -242,49 +225,58 @@ struct Consumers : public Base {
   static SHParametersInfo parameters() { return consumerParams; }
 
   void setParam(int index, const SHVar &value) {
-    if (index == 0)
-      Base::setParam(index, value);
-    else
+    switch (index) {
+    case 0:
+      _name = value.payload.stringValue;
+      break;
+    case 1:
+      _outType = *value.payload.typeValue;
+      break;
+    case 2:
       _bufferSize = value.payload.intValue;
+      break;
+    default:
+      throw std::out_of_range("Invalid parameter index.");
+    }
   }
 
   SHVar getParam(int index) {
-    if (index == 0)
-      return Base::getParam(index);
-    else
-      return Var(_bufferSize);
+    switch (index) {
+    case 0:
+      return Var(_name);
+    case 1:
+      return SHVar{.payload = {.typeValue = &_outType}, .valueType = SHType::Type};
+    case 2:
+      return Var(_noCopy);
+    default:
+      throw std::out_of_range("Invalid parameter index.");
+    }
   }
 
   void cleanup() {
     // reset buffer counter
     _current = _bufferSize;
-    // cleanup storage
-    if (_mpChannel)
-      _storage.recycle(_mpChannel);
   }
 };
 
 struct Consume : public Consumers {
+  MPMCChannel *_mpChannel{};
+
   SHTypeInfo compose(const SHInstanceData &data) {
+    if (_outType.basicType == SHType::None) {
+      throw std::logic_error("Consume: Type parameter is required.");
+    }
+
     _channel = get(_name);
-    switch (_channel->index()) {
-    case 1: {
-      auto &channel = std::get<MPMCChannel>(*_channel);
-      _mpChannel = &channel;
-      _outType = channel.type;
-      if (_bufferSize == 1) {
-        return _outType;
-      } else {
-        _seqType.basicType = SHType::Seq;
-        _seqType.seqTypes.elements = &_outType;
-        _seqType.seqTypes.len = 1;
-        return _seqType;
-      }
-    };
-    default:
-      _channel.reset();
-      SHLOG_ERROR("Channel type expected for channel {}.", _name);
-      throw SHException("Produce/Consume channel type expected.");
+    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, _outType, _noCopy, _name.c_str());
+
+    if (_bufferSize == 1) {
+      return _outType;
+    } else {
+      _seqType.basicType = SHType::Seq;
+      _seqType.seqTypes.elements = &_outType;
+      _seqType.seqTypes.len = 1;
+      return _seqType;
     }
   }
 
@@ -320,49 +312,55 @@ struct Consume : public Consumers {
 
     return _storage;
   }
+
+  void cleanup() {
+    Consumers::cleanup();
+
+    // cleanup storage
+    if (_mpChannel)
+      _storage.recycle(_mpChannel);
+  }
 };
 
 struct Listen : public Consumers {
   BroadcastChannel *_bChannel;
+  MPMCChannel *_subscriptionChannel;
 
-  void destroy() {
-    if (_mpChannel) {
-      _mpChannel->closed = true;
+  void cleanup() {
+    Consumers::cleanup();
+
+    // cleanup storage
+    if (_subscriptionChannel) {
+      _subscriptionChannel->closed = true;
+      _storage.recycle(_subscriptionChannel);
     }
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    _channel = get(_name);
-    switch (_channel->index()) {
-    case 2: {
-      SHLOG_TRACE("Listening broadcast channel: {}", _name);
+    if (_outType.basicType == SHType::None) {
+      throw std::logic_error("Listen: Type parameter is required.");
+    }
 
-      auto &channel = std::get<BroadcastChannel>(*_channel);
-      auto &sub = channel.subscribe();
-      _bChannel = &channel;
-      _mpChannel = &sub;
-      _outType = channel.type;
-      if (_bufferSize == 1) {
-        return _outType;
-      } else {
-        _seqType.basicType = SHType::Seq;
-        _seqType.seqTypes.elements = &_outType;
-        _seqType.seqTypes.len = 1;
-        return _seqType;
-      }
-    };
-    default:
-      _channel.reset();
-      throw SHException("Listen: channel type expected.");
+    _channel = get(_name);
+    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, _outType, _noCopy, _name.c_str());
+    _subscriptionChannel = &_bChannel->subscribe();
+
+    if (_bufferSize == 1) {
+      return _outType;
+    } else {
+      _seqType.basicType = SHType::Seq;
+      _seqType.seqTypes.elements = &_outType;
+      _seqType.seqTypes.len = 1;
+      return _seqType;
     }
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_bChannel);
-    assert(_mpChannel);
+    assert(_subscriptionChannel);
 
     // send previous values to recycle
-    _storage.recycle(_mpChannel);
+    _storage.recycle(_subscriptionChannel);
 
     // reset buffer
     _current = _bufferSize;
@@ -371,7 +369,7 @@ struct Listen : public Consumers {
     // everytime we are resumed we try to pop a value
     while (_current--) {
       SHVar output{};
-      while (!_mpChannel->data.pop(output)) {
+      while (!_subscriptionChannel->data.pop(output)) {
         // check also for channel completion
         if (_bChannel->closed) {
           if (!_storage.empty()) {
@@ -394,29 +392,49 @@ struct Listen : public Consumers {
 
 struct Complete : public Base {
   std::shared_ptr<Channel> _channel;
-  ChannelShared *_mpChannel;
+  ChannelShared *_mpChannel{};
+
+  static inline Parameters completeParams{
+      {"Name", SHCCSTR("The name of the channel."), {CoreInfo::StringType}},
+  };
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static SHParametersInfo parameters() { return consumerParams; }
+  static SHParametersInfo parameters() { return completeParams; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _name = value.payload.stringValue;
+      break;
+    default:
+      throw std::out_of_range("Invalid parameter index.");
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_name);
+    default:
+      throw std::out_of_range("Invalid parameter index.");
+    }
+  }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _channel = get(_name);
-    switch (_channel->index()) {
-    case 1: {
-      auto &channel = std::get<MPMCChannel>(*_channel);
-      _mpChannel = &channel;
-    } break;
-    case 2: {
-      auto &channel = std::get<BroadcastChannel>(*_channel);
-      _mpChannel = &channel;
-    } break;
-    default:
-      _channel.reset();
-      throw SHException("Expected a valid channel.");
-    }
+    _mpChannel = std::visit(
+        [&](auto &arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if (std::is_same_v<T, DummyChannel>) {
+            throw SHException("Expected a valid channel.");
+          } else {
+            return (ChannelShared *)&arg;
+          }
+        },
+        *_channel.get());
+
     return data.inputType;
   }
 

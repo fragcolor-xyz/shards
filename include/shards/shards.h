@@ -54,6 +54,7 @@ enum SH_ENUM_CLASS SHType : uint8_t {
   Array, // Notice: of just blittable types/WIP!
   Set,
   Audio,
+  Type // Describes a type
 };
 
 enum SH_ENUM_CLASS SHWireState : uint8_t {
@@ -565,6 +566,8 @@ struct SHVarPayload {
     };
 
     SHPayloadArray arrayValue;
+
+    struct SHTypeInfo* typeValue;
   };
 } __attribute__((aligned(16)));
 

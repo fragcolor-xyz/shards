@@ -52,7 +52,7 @@
             :Blend {:Color BlendAlpha :Alpha BlendOne}}}
    (GFX.Feature :ViewGenerators
                 (->
-                 (Listen "time") >= .time
+                 (Listen "time" (type Float)) >= .time
                  {:time .time})) >> .features
    (GFX.DrawQueue) >= .queue
    {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps

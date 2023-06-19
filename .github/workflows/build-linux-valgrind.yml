@@ -40,7 +40,7 @@ jobs:
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/flows.edn &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/linalg.clj &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/kdtree.clj &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/channels.clj &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/channels.edn &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/genetic.clj &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/wasm.clj &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/subwires.clj &&\

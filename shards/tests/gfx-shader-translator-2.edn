@@ -74,7 +74,7 @@
                :EntryPoint (-> (shader-main))}]} (GFX.Feature
                                                   :ViewGenerators
                                                   (->
-                                                   (Listen "time") >= .time
+                                                   (Listen "time" (type Float)) >= .time
                                                    {:time .time})) >> .features
 
    (GFX.DrawQueue) >= .queue

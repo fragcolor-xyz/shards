@@ -276,7 +276,7 @@ struct Server : public NetworkBase {
 
   void gcWires() {
     if (!_stopWireQueue.empty()) {
-      SHWire *toStop;
+      SHWire *toStop{};
       while (_stopWireQueue.pop(toStop)) {
         // ensure cleanup is called
         const_cast<SHWire *>(toStop)->cleanup();
