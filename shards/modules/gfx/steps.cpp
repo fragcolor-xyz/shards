@@ -144,7 +144,8 @@ template <typename T> void applyOutputScale(SHContext *context, T &step, const S
   step.output->sizeScale = toVec<float2>(input);
 }
 
-template <typename T> void applyAll(SHContext *context, T &step, const ParamVar& outputs, const ParamVar& outputScale, const ParamVar& features) {
+template <typename T>
+void applyAll(SHContext *context, T &step, const ParamVar &outputs, const ParamVar &outputScale, const ParamVar &features) {
   if (!outputs.isNone()) {
     // Type checking is done in applyOutputs
     shared::applyOutputs(context, step, outputs.get());
@@ -190,49 +191,44 @@ struct HashState {
 };
 
 struct DrawablePassShard {
-  /* Parameters
-    :Outputs [
-      {:Name <string> :Format <format>}
-      {:Name <string> :Format <format> :Clear true}
-      {:Name <string> :Format <format> :Clear (SHType::Float4 0 0 0 0)}
-      {:Name <string> :Format <format> :ClearDepth 1.0 :ClearStencil 0}
-      {:Name <string> :Texture <texture>}
-      ...
-    ]
-    :OutputScale (SHType::Float2 1.0 1.0)
-    :Queue <queue>
-    :Features [<feature> <feature> ...]
-    :Sort <mode>
-*/
-
   static inline Type DrawQueueVarType = Type::VariableOf(Types::DrawQueue);
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
-  PARAM_PARAMVAR(_outputs, "Outputs", "", {CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType});
-  PARAM_PARAMVAR(_outputScale, "OutputScale", "", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
-  PARAM_PARAMVAR(_queue, "Queue", "", {DrawQueueVarType});
+  PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
+  PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
+  PARAM_PARAMVAR(_queue, "Queue", "The queue that this pass should render", {DrawQueueVarType});
   PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
-  PARAM_VAR(_sort, "Sort", "", {CoreInfo::AnyEnumType});
+  PARAM_PARAMVAR(_sort, "Sort",
+                 "The sorting mode to use to sort the drawables. The default sorting behavior is to sort by optimal batching",
+                 {CoreInfo::NoneType, Types::SortModeEnumInfo::Type, Type::VariableOf(Types::SortModeEnumInfo::Type)});
 
-  PARAM_IMPL(PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale),
-             PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_sort));
+  PARAM_IMPL(PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features),
+             PARAM_IMPL_FOR(_sort));
 
   PipelineStepPtr *_step{};
   HashState _hashState;
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
 
   void cleanup() {
     if (_step) {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
+
     PARAM_CLEANUP();
   }
 
   void warmup(SHContext *context) {
     _step = Types::PipelineStepObjectVar.New();
     *_step = makePipelineStep(RenderDrawablesStep());
+
     PARAM_WARMUP(context);
   }
 
@@ -241,8 +237,7 @@ struct DrawablePassShard {
   }
 
   void applySorting(SHContext *context, RenderDrawablesStep &step) {
-    checkEnumType(_sort, Types::SortModeEnumInfo::Type, "DrawablePass Sort");
-    step.sortMode = (gfx::SortMode)_sort.payload.enumValue;
+    step.sortMode = (gfx::SortMode)_sort.get().payload.enumValue;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -250,11 +245,12 @@ struct DrawablePassShard {
 
     shared::applyAll(context, step, _outputs, _outputScale, _features);
 
-    if (!(_sort.valueType == SHType::None)) {
+    if (!_sort.isNone()) {
       applySorting(context, step);
     } else {
       step.sortMode = SortMode::Batch;
     }
+
     if (!_queue.isNone()) {
       applyQueue(context, step);
     } else {
@@ -262,7 +258,6 @@ struct DrawablePassShard {
     }
 
     if (_hashState.update(step)) {
-      // *_step = cloneSelfWithId(_step->get(), );
       step.id = renderStepIdGenerator.getNext();
     }
 
@@ -271,41 +266,38 @@ struct DrawablePassShard {
 };
 
 struct EffectPassShard {
-  /* Input table
-  {
-    :Outputs <same as drawable pass>
-    :OutputScale (SHType::Float2 1.0 1.0)
-    :Inputs [<name1> <name2> ...]
-    :EntryPoint <shader code>
-    :Params {:name <value> ...}
-    :Features [<feature> <feature> ...]
-  }
-*/
-
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
-  // Outputs should be a seq of tables, but no CoreInfo of such type. Type checking done in applyOutputs
-  PARAM_PARAMVAR(_outputs, "Outputs", "", {CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType});
-  PARAM_PARAMVAR(_outputScale, "OutputScale", "", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
+  PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
+  PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
   PARAM_PARAMVAR(_inputs, "Inputs", "", {CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
   PARAM_PARAMVAR(_entryPoint, "EntryPoint", "", {CoreInfo::ShardRefSeqType, CoreInfo::ShardRefVarSeqType});
-  PARAM_PARAMVAR(_params, "Params", "", {CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
-  PARAM_PARAMVAR(_features, "Features", "", {CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType});
+  PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
+  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+  PARAM_PARAMVAR(_composeWith, "ComposeWith", "Any table of values that need to be injected into this feature's shaders",
+                 {CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
 
-  PARAM_IMPL(PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_inputs),
-             PARAM_IMPL_FOR(_entryPoint), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features));
+  PARAM_IMPL(PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_inputs), PARAM_IMPL_FOR(_entryPoint),
+             PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_composeWith));
 
   FeaturePtr wrapperFeature;
   PipelineStepPtr *_step{};
   gfx::shader::VariableMap _composedWith;
   std::vector<FeaturePtr> _generatedFeatures;
 
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
   void cleanup() {
     if (_step) {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
+    
     PARAM_CLEANUP();
   }
 
@@ -316,23 +308,6 @@ struct EffectPassShard {
     wrapperFeature = std::make_shared<Feature>();
 
     PARAM_WARMUP(context);
-  }
-
-  void applyComposeWith(SHContext *context, const SHVar &input) {
-    checkType(input.valueType, SHType::Table, ":ComposeWith table");
-
-    _composedWith.clear();
-    for (auto &[k, v] : input.payload.tableValue) {
-      if (k.valueType != SHType::String)
-        throw formatException("ComposeWith key must be a string");
-      std::string keyStr(k.payload.stringValue, k.payload.stringLen);
-      ParamVar pv(v);
-      pv.warmup(context);
-      auto &var = _composedWith.emplace(std::move(keyStr), pv.get()).first->second;
-      if (var.valueType == SHType::None) {
-        throw formatException("Required variable {} not found", k);
-      }
-    }
   }
 
   void applyInputs(SHContext *context, RenderFullscreenStep &step, const SHVar &input) {
@@ -357,9 +332,14 @@ struct EffectPassShard {
   SHVar activate(SHContext *context, const SHVar &input) {
     RenderFullscreenStep &step = std::get<RenderFullscreenStep>(*_step->get());
 
-    // Basically applyAll but not with table input. Can extract out into a function
+    // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
+    if (!_composeWith.isNone()) {
+      // Always create a new object to force shader recompile
+      wrapperFeature = std::make_shared<Feature>();
+      shader::applyComposeWith(context, _composedWith, _composeWith.get());
+    }
+
     shared::applyAll(context, step, _outputs, _outputScale, _features);
-    // End of applyAll
 
     if (!_inputs.isNone()) {
       applyInputs(context, step, _inputs.get());
@@ -370,16 +350,6 @@ struct EffectPassShard {
     if (!_params.isNone()) {
       applyParams(context, step, _params.get());
     }
-
-    // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
-    // TODO: Check if there should be a ComposeWith parameter in the first place
-    // SHVar composeWithVar;
-    // if(!_composeWith)
-    // if (getFromTable(context, inputTable, "ComposeWith", composeWithVar)) {
-    //   // Always create a new object to force shader recompile
-    //   wrapperFeature = std::make_shared<Feature>();
-    //   applyComposeWith(context, composeWithVar);
-    // }
 
     // Only do this once
     if (wrapperFeature->shaderEntryPoints.empty()) {

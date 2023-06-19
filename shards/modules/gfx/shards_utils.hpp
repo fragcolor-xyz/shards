@@ -53,6 +53,7 @@ inline void applyFeatures(SHContext *context, std::vector<FeaturePtr> &outFeatur
     outFeatures.push_back(varAsObjectChecked<FeaturePtr>(elem, Types::Feature));
   }
 }
+
 } // namespace gfx
 
 #endif /* AD2CA4AE_4D00_49A0_8DD6_323B82813690 */

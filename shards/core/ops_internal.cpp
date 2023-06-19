@@ -298,6 +298,10 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
     if (braced)
       os << "( ";
 
+    if(t.contextVarTypes.len == 0) {
+      os << "Any";
+    }
+
     for (uint32_t i = 0; i < t.contextVarTypes.len; i++) {
       // avoid recursive types
       if (t.contextVarTypes.elements[i].recursiveSelf) {

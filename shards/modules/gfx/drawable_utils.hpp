@@ -19,16 +19,22 @@
 
 namespace gfx {
 inline TexturePtr varToTexture(const SHVar &var) {
+  TexturePtr result;
   if (var.payload.objectTypeId == Types::TextureCubeTypeId) {
-    return varAsObjectChecked<TexturePtr>(var, Types::TextureCube);
+    result = varAsObjectChecked<TexturePtr>(var, Types::TextureCube);
   } else if (var.payload.objectTypeId == Types::TextureTypeId) {
-    return varAsObjectChecked<TexturePtr>(var, Types::Texture);
+    result = varAsObjectChecked<TexturePtr>(var, Types::Texture);
   } else {
     SHInstanceData data{};
     auto varType = shards::deriveTypeInfo(var, data);
     DEFER({ shards::freeDerivedInfo(varType); });
     throw formatException("Invalid texture variable type: {}", varType);
   }
+
+  if (!result) {
+    throw formatException("Texture is null");
+  }
+  return result;
 }
 
 inline std::variant<ParamVariant, TextureParameter> varToShaderParameter(const SHVar &var) {
@@ -114,7 +120,7 @@ inline std::optional<std::variant<ParamVariant, TextureParameter>> tryVarToParam
 
 inline void initShaderParams(SHContext *shContext, const SHTable &paramsTable, MaterialParameters &out) {
   shards::ForEach(paramsTable, [&](SHVar &key, SHVar v) {
-    if(key.valueType != SHType::String) {
+    if (key.valueType != SHType::String) {
       throw formatException("Invalid shader parameter key type: {}", key.valueType);
     }
     auto kv = SHSTRVIEW(key);

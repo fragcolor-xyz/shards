@@ -296,6 +296,8 @@ struct Container {
                                            CoreInfo::FloatType,
                                        }};
 
+// NOTE: Currently accept AnyVarType since mixing types will result in a table of type  {:Default &Any}
+  // static inline Types ShaderParamOrVarTypes{ShaderParamTypes, {CoreInfo::AnyVarType}};
   static inline Types ShaderParamOrVarTypes{ShaderParamTypes, {Type::VariableOf(ShaderParamTypes)}};
 
   // Shared drawable parameters
@@ -307,13 +309,22 @@ struct Container {
   static inline ParameterInfo TransformParameterInfo{
       "Transform", SHCCSTR("The transform to use"), {CoreInfo::NoneType, TransformVarType}};
 
-  static inline ParameterInfo MaterialParameterInfo{"Material", SHCCSTR("The material"), {Type::VariableOf(Material)}};
+  static inline ParameterInfo MaterialParameterInfo{"Material", SHCCSTR("The material"), {CoreInfo::NoneType, Type::VariableOf(Material)}};
 
   static inline ParameterInfo ParamsParameterInfo{
-      "Params", SHCCSTR("Shader parameters for this drawable"), {ShaderParamTable, Type::VariableOf(ShaderParamTable)}};
+      "Params", SHCCSTR("Shader parameters for this drawable"), {CoreInfo::NoneType, ShaderParamTable, Type::VariableOf(ShaderParamTable)}};
 
   static inline ParameterInfo FeaturesParameterInfo{
-      "Features", SHCCSTR("Features to attach to this drawable"), {FeatureSeq, Type::VariableOf(FeatureSeq)}};
+      "Features", SHCCSTR("Features to attach to this drawable"), {CoreInfo::NoneType, FeatureSeq, Type::VariableOf(FeatureSeq)}};
+
+  static inline Type OutputsType = Type::SeqOf(CoreInfo::AnyTableType);
+
+  static inline ParameterInfo OutputsParameterInfo{
+      "Outputs", SHCCSTR("The outputs to render into"), {CoreInfo::NoneType, OutputsType, Type::VariableOf(OutputsType)}};
+
+  static inline ParameterInfo OutputScaleParameterInfo{"OutputScale",
+                                                       SHCCSTR("The scale that the output should be rendered as"),
+                                                       {CoreInfo::NoneType, CoreInfo::Float2Type, CoreInfo::Float2VarType}};
 
 #undef ENUM
 #undef OBJECT
