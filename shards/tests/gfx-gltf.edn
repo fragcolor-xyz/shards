@@ -17,7 +17,7 @@
   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
   (GFX.DrawQueue) >= .queue
-  {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+  (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps
 
   ;; Create view
   0.0 (Do get-view-transform) >= .view-transform

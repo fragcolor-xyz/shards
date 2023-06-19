@@ -17,7 +17,7 @@
     ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps
 
     ; Create view
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
@@ -49,9 +49,8 @@
     ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Features .features :Queue .queue
-    :Outputs [{:Name "color" :Clear (Float4 1.0)}] ;
-    }(GFX.DrawablePass) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .queue
+                     :Outputs [{:Name "color" :Clear (Float4 1.0)}]) >> .render-steps
 
     ; Create view
    {:Position (Float3 0 0 8.0) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform

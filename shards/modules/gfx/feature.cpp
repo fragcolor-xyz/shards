@@ -1,29 +1,28 @@
 #include "gfx.hpp"
 #include "buffer_vars.hpp"
-#include <shards/common_types.hpp>
 #include "drawable_utils.hpp"
 #include "gfx.hpp"
 #include "drawable_utils.hpp"
 #include "shards_types.hpp"
+#include <shards/common_types.hpp>
 #include <shards/core/foundation.hpp>
-#include "gfx/enums.hpp"
-#include "gfx/error_utils.hpp"
-#include "gfx/feature.hpp"
-#include "gfx/params.hpp"
-#include "gfx/shader/types.hpp"
-#include "gfx/texture.hpp"
 #include <shards/core/runtime.hpp>
-#include "shader/translator.hpp"
-#include "shader/composition.hpp"
+#include <shards/core/params.hpp>
+#include <shards/core/shared.hpp>
 #include <shards/shards.h>
 #include <shards/shards.hpp>
-#include "shards_utils.hpp"
 #include <shards/core/brancher.hpp>
 #include <shards/iterator.hpp>
-#include <algorithm>
-#include <array>
-#include <deque>
+#include "shader/translator.hpp"
+#include "shader/composition.hpp"
+#include "shards_utils.hpp"
 #include <gfx/context.hpp>
+#include <gfx/enums.hpp>
+#include <gfx/error_utils.hpp>
+#include <gfx/feature.hpp>
+#include <gfx/params.hpp>
+#include <gfx/shader/types.hpp>
+#include <gfx/texture.hpp>
 #include <gfx/features/base_color.hpp>
 #include <gfx/features/debug_color.hpp>
 #include <gfx/features/transform.hpp>
@@ -31,9 +30,11 @@
 #include <gfx/features/velocity.hpp>
 #include <shards/linalg_shim.hpp>
 #include <magic_enum.hpp>
+#include <algorithm>
+#include <array>
+#include <deque>
 #include <memory>
 #include <queue>
-#include <shards/core/shared.hpp>
 #include <stdexcept>
 #include <string.h>
 #include <unordered_map>
@@ -116,25 +117,6 @@ struct BuiltinFeatureShard {
 };
 
 struct FeatureShard {
-  /* Input table
-    {
-      :Shaders [
-        {:Name <string> :Stage <enum> :Before [...] :After [...] :EntryPoint (-> ...)}
-      ]
-      :ComposeWith {:name <value>}
-      :State {
-        :Blend {...}
-      }
-      :ViewGenerators [(-> ...)]/(-> ...)/[<wire>]/<wire>
-      :DrawableGenerators [(-> ...)]/(-> ...)/[<wire>]/<wire>
-      :Params [
-        :<name> {:Type <type> :Dimension <number>}
-        :<name> {:Default <default>}   (type will be derived from value)
-        :<name> <default-value>        (type will be derived from value)
-      ]
-    }
-  */
-
   static inline shards::Types GeneratedViewInputTableTypes{{Types::DrawQueue, Types::View, Types::FeatureSeq}};
   static inline std::array<SHVar, 3> GeneratedViewInputTableKeys{Var("Queue"), Var("View"), Var("Features")};
   static inline Type GeneratedViewInputTableType = Type::TableOf(GeneratedViewInputTableTypes, GeneratedViewInputTableKeys);
@@ -145,29 +127,55 @@ struct FeatureShard {
   static inline std::array<SHVar, 4> GeneratedDrawInputTableKeys{Var("Queue"), Var("View"), Var("Features"), Var("Drawables")};
   static inline Type GeneratedDrawInputTableType = Type::TableOf(GeneratedDrawInputTableTypes, GeneratedDrawInputTableKeys);
 
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static inline Type ShaderEntryPointType = Type::SeqOf(CoreInfo::AnyTableType);
+
+  static inline shards::Types ParamSpecEntryTypes{Types::ShaderParamOrVarTypes, {CoreInfo::AnyTableType}};
+  static inline Type ParameterSpecType = Type::TableOf(ParamSpecEntryTypes);
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
 
-  static SHParametersInfo parameters() {
-    static Parameters p{
-        {"ViewGenerators",
-         SHCCSTR(
-             "The shards that are run to generate and return shader parameters per view, can use nested rendering commmands."),
-         Brancher::RunnableTypes},
-        {"DrawableGenerators",
-         SHCCSTR("The shards that are run to generate and return shader parameters per drawable, can use nested rendering "
-                 "commmands."),
-         Brancher::RunnableTypes},
-    };
-    return p;
-  }
+  // A shader entry point looks like the following
+  //   {:Name <string> :Stage <ProgrammableGraphicsStage> :Before [...] :After [...] :EntryPoint (-> ...)}
+  // The Before/After parameters are optional and can be used to specify dependencies
+  // Each dependency will make sure that entry point is evaluated before or after the named dependency
+  // You can give each entry point a name for this purpose using the Name parameter
+  PARAM_PARAMVAR(_shaders, "Shaders", "A list of shader entry points", {ShaderEntryPointType});
+  // Any constant undefined variables used in the shader can be injected using this parameter
+  PARAM_PARAMVAR(_composeWith, "ComposeWith", "Any table of values that need to be injected into this feature's shaders",
+                 {CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
+  // A table, any key used in the applyState function can be used here (you can also check shards\gfx\pipeline_states.def for a
+  // list of states) States are applied in the order that the features are references, so features that are added after this one
+  // can override this feature's state Any states not in this table will inherit the parent's values
+  PARAM_PARAMVAR(_state, "State", "The table of render state flags to override",
+                 {CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
+  // [(-> ...)]/(-> ...)/[<wire>]/<wire>
+  // Any variables used in the callback will be copied during this shard's activation
+  // The output should be a single parameter table
+  PARAM_VAR(_viewGenerators, "ViewGenerators",
+            "A collection of callbacks that will be run to generate per-view shader parameters during rendering",
+            {Brancher::RunnableTypes});
+  // [(-> ...)]/(-> ...)/[<wire>]/<wire>
+  // Any variables used in the callback will be copied during this shard's activation
+  // The output should be a sequence of parameter tables (each with the same type)
+  PARAM_VAR(_drawableGenerators, "DrawableGenerators",
+            "A collection of callbacks that will be run to generate per-drawable shader parameters during rendering",
+            {Brancher::RunnableTypes});
+  // Table of shader parameters, can be defined using any of the formats below:
+  //   :<name> {:Type <ShaderFieldBaseType> :Dimension <number>}
+  //   :<name> {:Default <default>}   (type will be derived from value)
+  //   :<name> <default-value>        (type will be derived from value)
+  PARAM_PARAMVAR(_params, "Params",
+            "The parameters to expose to shaders, these default values can later be overriden by materials or drawable Params",
+            {CoreInfo::NoneType, ParameterSpecType, Type::VariableOf(ParameterSpecType)});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_shaders), PARAM_IMPL_FOR(_composeWith), PARAM_IMPL_FOR(_state), PARAM_IMPL_FOR(_viewGenerators),
+             PARAM_IMPL_FOR(_drawableGenerators), PARAM_IMPL_FOR(_params));
 
 private:
   Brancher _viewGeneratorBranch;
-  OwnedVar _viewGeneratorsRaw;
 
   Brancher _drawableGeneratorBranch;
-  OwnedVar _drawableGeneratorsRaw;
 
   bool _branchesWarmedUp{};
 
@@ -177,42 +185,14 @@ private:
 
   FeaturePtr *_featurePtr{};
 
-  ExposedInfo _requiredVariables;
-
   std::list<FeaturePtr> _featurePtrsTemp;
 
   gfx::shader::VariableMap _composedWith;
 
 public:
-  SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _viewGeneratorsRaw = value;
-      _viewGeneratorBranch.setRunnables(_viewGeneratorsRaw);
-      break;
-    case 1:
-      _drawableGeneratorsRaw = value;
-      _drawableGeneratorBranch.setRunnables(_drawableGeneratorsRaw);
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _viewGeneratorsRaw;
-    case 1:
-      return _drawableGeneratorsRaw;
-    default:
-      return Var::Empty;
-    }
-  }
-
   void cleanup() {
+    PARAM_CLEANUP();
+
     _viewGeneratorBranch.cleanup();
     _drawableGeneratorBranch.cleanup();
     _branchesWarmedUp = false;
@@ -224,6 +204,8 @@ public:
   }
 
   void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
     _featurePtr = Types::FeatureObjectVar.New();
     *_featurePtr = std::make_shared<Feature>();
   }
@@ -300,9 +282,11 @@ public:
     generatorInstanceData.shared = SHExposedTypesInfo(exposed);
 
     generatorInstanceData.inputType = GeneratedDrawInputTableType;
+    _drawableGeneratorBranch.setRunnables(_drawableGenerators);
     _drawableGeneratorBranch.compose(generatorInstanceData);
 
     generatorInstanceData.inputType = GeneratedViewInputTableType;
+    _viewGeneratorBranch.setRunnables(_viewGenerators);
     _viewGeneratorBranch.compose(generatorInstanceData);
 
     // Collect derived shader parameters from wire outputs
@@ -316,7 +300,9 @@ public:
     }
   }
 
+  PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     composeGeneratorWires(data);
     return Types::Feature;
   }
@@ -425,23 +411,6 @@ public:
     shader::NamedDependency &dep = entryPoint.dependencies.emplace_back();
     dep.name = inputString;
     dep.type = type;
-  }
-
-  void applyComposeWith(SHContext *context, const SHVar &input) {
-    checkType(input.valueType, SHType::Table, ":ComposeWith table");
-
-    _composedWith.clear();
-    for (auto &[k, v] : input.payload.tableValue) {
-      if (k.valueType != SHType::String)
-        throw formatException("ComposeWith key must be a string");
-      std::string keyStr(k.payload.stringValue, k.payload.stringLen);
-      ParamVar pv(v);
-      pv.warmup(context);
-      auto &var = _composedWith.emplace(std::move(keyStr), pv.get()).first->second;
-      if (var.valueType == SHType::None) {
-        throw formatException("Required variable {} not found", k);
-      }
-    }
   }
 
   void applyShader(SHContext *context, Feature &feature, const SHVar &input) {
@@ -611,39 +580,35 @@ public:
       _branchesWarmedUp = true;
     }
 
-    checkType(input.valueType, SHType::Table, "Input table");
-    const SHTable &inputTable = input.payload.tableValue;
-
     // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
-    SHVar composeWithVar;
-    if (getFromTable(context, inputTable, Var("ComposeWith"), composeWithVar)) {
+    if (!_composeWith.isNone()) {
       // Always create a new object to force shader recompile
       *_featurePtr = std::make_shared<Feature>();
-      applyComposeWith(context, composeWithVar);
+      shader::applyComposeWith(context, _composedWith, _composeWith.get());
     }
 
     Feature &feature = *_featurePtr->get();
     feature.shaderEntryPoints.clear();
 
-    SHVar shadersVar;
-    if (getFromTable(context, inputTable, Var("Shaders"), shadersVar))
-      applyShaders(context, feature, shadersVar);
+    if (!_shaders.isNone()) {
+      applyShaders(context, feature, _shaders);
+    }
 
-    SHVar stateVar;
-    if (getFromTable(context, inputTable, Var("State"), stateVar))
-      applyState(context, feature.state, stateVar);
+    if (!_state.isNone()) {
+      applyState(context, feature.state, _state);
+    }
 
     // Reset to default
     feature.shaderParams = _derivedShaderParams;
     feature.textureParams = _derivedTextureParams;
 
-    SHVar paramsVar;
-    if (getFromTable(context, inputTable, Var("Params"), paramsVar))
-      applyParams(context, feature, paramsVar);
+    if (!_params.isNone()) {
+      applyParams(context, feature, _params.get());
+    }
 
     feature.generators.clear();
 
-    if (!_drawableGeneratorBranch.wires.empty()) {
+    if (!_drawableGeneratorBranch.wires.empty()) { 
       feature.generators.emplace_back([=](FeatureDrawableGeneratorContext &ctx) {
         auto applyResults = [](FeatureDrawableGeneratorContext &ctx, SHContext *shContext, const SHVar &output) {
           size_t index{};

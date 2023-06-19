@@ -172,7 +172,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
-#if 0
+    #if 0
       // Debug draw
       float4 color = float4(.7, .7, .7, 1.);
       uint32_t thickness = 1;
@@ -187,7 +187,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 size = max - min;
 
       renderer.getShapeRenderer().addBox(selectionBox.transform, center, size, color, thickness);
-#endif
+    #endif
 
       float3 loc = extractTranslation(selectionBox.transform);
       float3 dir = getAxisDirection(i, selectionBox.transform);

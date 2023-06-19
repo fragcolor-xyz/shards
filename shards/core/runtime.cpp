@@ -1551,6 +1551,8 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
   DEFER({ freeDerivedInfo(varType); });
 
   for (uint32_t i = 0; param.valueTypes.len > i; i++) {
+    // This only does a quick check to see if the type is roughly correct
+    // ContextVariable types will be checked in validateConnection based on requiredVariables
     if (matchTypes(varType, param.valueTypes.elements[i], true, true)) {
       return true; // we are good just exit
     }

@@ -4,14 +4,15 @@
 #include "composition.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
+#include <shards/common_types.hpp>
+#include <shards/core/foundation.hpp>
+#include <shards/core/runtime.hpp>
+#include <shards/iterator.hpp>
 #include "translator.hpp"
 #include "translator_utils.hpp"
 #include "../shards_utils.hpp"
 #include "spdlog/spdlog.h"
-#include <shards/common_types.hpp>
 #include <deque>
-#include <shards/core/foundation.hpp>
-#include <shards/core/runtime.hpp>
 #include <gfx/shader/log.hpp>
 #include <gfx/shader/block.hpp>
 
@@ -113,6 +114,23 @@ void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, c
   });
 
   entryPoint.code = std::make_unique<DynamicBlockFromShards>(std::move(shards), composeWithVariables);
+}
+
+void applyComposeWith(SHContext *context, gfx::shader::VariableMap &composedWith, const SHVar &input) {
+  checkType(input.valueType, SHType::Table, ":ComposeWith table");
+
+  composedWith.clear();
+  for (auto &[k, v] : input.payload.tableValue) {
+    if (k.valueType != SHType::String)
+      throw formatException("ComposeWith key must be a string");
+    std::string keyStr(k.payload.stringValue, k.payload.stringLen);
+    shards::ParamVar pv(v);
+    pv.warmup(context);
+    auto &var = composedWith.emplace(std::move(keyStr), pv.get()).first->second;
+    if (var.valueType == SHType::None) {
+      throw formatException("Required variable {} not found", k);
+    }
+  }
 }
 
 } // namespace gfx::shader

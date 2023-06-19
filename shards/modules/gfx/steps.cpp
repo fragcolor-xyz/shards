@@ -144,27 +144,29 @@ template <typename T> void applyOutputScale(SHContext *context, T &step, const S
   step.output->sizeScale = toVec<float2>(input);
 }
 
-template <typename T> void applyAll(SHContext *context, T &step, const SHTable &inputTable) {
-  SHVar outputsVar;
-  if (getFromTable(context, inputTable, Var("Outputs"), outputsVar))
-    shared::applyOutputs(context, step, outputsVar);
-  else {
-    if (step.output)
+template <typename T>
+void applyAll(SHContext *context, T &step, const ParamVar &outputs, const ParamVar &outputScale, const ParamVar &features) {
+  if (!outputs.isNone()) {
+    // Type checking is done in applyOutputs
+    shared::applyOutputs(context, step, outputs.get());
+  } else {
+    if (step.output) {
       step.output.reset();
+    }
   }
 
-  SHVar outputScaleVar;
-  if (getFromTable(context, inputTable, Var("OutputScale"), outputScaleVar)) {
-    shared::applyOutputScale(context, step, outputScaleVar);
+  if (!outputScale.isNone()) {
+    shared::applyOutputScale(context, step, outputScale.get());
   } else {
-    if (step.output)
+    if (step.output) {
       step.output->sizeScale.reset();
+    }
   }
 
   step.features.clear();
-  SHVar featuresVar;
-  if (getFromTable(context, inputTable, Var("Features"), featuresVar))
-    applyFeatures(context, step.features, featuresVar);
+  if (!features.isNone()) {
+    applyFeatures(context, step.features, features.get());
+  }
 }
 
 } // namespace shared
@@ -189,78 +191,73 @@ struct HashState {
 };
 
 struct DrawablePassShard {
-  /* Input table
-  {
-    :Outputs [
-      {:Name <string> :Format <format>}
-      {:Name <string> :Format <format> :Clear true}
-      {:Name <string> :Format <format> :Clear (Float4 0 0 0 0)}
-      {:Name <string> :Format <format> :ClearDepth 1.0 :ClearStencil 0}
-      {:Name <string> :Texture <texture>}
-      ...
-    ]
-    :OutputScale (SHType::Float2 1.0 1.0)
-    :Queue <queue>
-    :Features [<feature> <feature> ...]
-    :Sort <mode>
-  }
-*/
+  static inline Type DrawQueueVarType = Type::VariableOf(Types::DrawQueue);
 
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
-  PARAM_IMPL();
+  PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
+  PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
+  PARAM_PARAMVAR(_queue, "Queue", "The queue that this pass should render", {DrawQueueVarType});
+  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+  PARAM_PARAMVAR(_sort, "Sort",
+                 "The sorting mode to use to sort the drawables. The default sorting behavior is to sort by optimal batching",
+                 {CoreInfo::NoneType, Types::SortModeEnumInfo::Type, Type::VariableOf(Types::SortModeEnumInfo::Type)});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features),
+             PARAM_IMPL_FOR(_sort));
 
   PipelineStepPtr *_step{};
   HashState _hashState;
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
 
   void cleanup() {
     if (_step) {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
+
     PARAM_CLEANUP();
   }
 
   void warmup(SHContext *context) {
     _step = Types::PipelineStepObjectVar.New();
     *_step = makePipelineStep(RenderDrawablesStep());
+
     PARAM_WARMUP(context);
   }
 
-  void applyQueue(SHContext *context, RenderDrawablesStep &step, const SHVar &input) {
-    step.drawQueue = varAsObjectChecked<DrawQueuePtr>(input, Types::DrawQueue);
+  void applyQueue(SHContext *context, RenderDrawablesStep &step) {
+    step.drawQueue = varAsObjectChecked<DrawQueuePtr>(_queue.get(), Types::DrawQueue);
   }
 
-  void applySorting(SHContext *context, RenderDrawablesStep &step, const SHVar &input) {
-    checkEnumType(input, Types::SortModeEnumInfo::Type, "DrawablePass Sort");
-    step.sortMode = (gfx::SortMode)input.payload.enumValue;
+  void applySorting(SHContext *context, RenderDrawablesStep &step) {
+    step.sortMode = (gfx::SortMode)_sort.get().payload.enumValue;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     RenderDrawablesStep &step = std::get<RenderDrawablesStep>(*_step->get());
 
-    checkType(input.valueType, SHType::Table, "Input table");
-    const SHTable &inputTable = input.payload.tableValue;
+    shared::applyAll(context, step, _outputs, _outputScale, _features);
 
-    shared::applyAll(context, step, inputTable);
-
-    SHVar sortVar;
-    if (getFromTable(context, inputTable, Var("Sort"), sortVar))
-      applySorting(context, step, sortVar);
-    else {
+    if (!_sort.isNone()) {
+      applySorting(context, step);
+    } else {
       step.sortMode = SortMode::Batch;
     }
 
-    SHVar queueVar;
-    if (getFromTable(context, inputTable, Var("Queue"), queueVar))
-      applyQueue(context, step, queueVar);
-    else {
+    if (!_queue.isNone()) {
+      applyQueue(context, step);
+    } else {
       throw formatException("DrawablePass requires a queue");
     }
 
     if (_hashState.update(step)) {
-      // *_step = cloneSelfWithId(_step->get(), );
       step.id = renderStepIdGenerator.getNext();
     }
 
@@ -269,32 +266,38 @@ struct DrawablePassShard {
 };
 
 struct EffectPassShard {
-  /* Input table
-  {
-    :Outputs <same as drawable pass>
-    :OutputScale (SHType::Float2 1.0 1.0)
-    :Inputs [<name1> <name2> ...]
-    :EntryPoint <shader code>
-    :Params {:name <value> ...}
-    :Features [<feature> <feature> ...]
-  }
-*/
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
-  PARAM_IMPL();
+  PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
+  PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
+  PARAM_PARAMVAR(_inputs, "Inputs", "", {CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
+  PARAM_PARAMVAR(_entryPoint, "EntryPoint", "", {CoreInfo::ShardRefSeqType, CoreInfo::ShardRefVarSeqType});
+  PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
+  PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+  PARAM_PARAMVAR(_composeWith, "ComposeWith", "Any table of values that need to be injected into this feature's shaders",
+                 {CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_inputs), PARAM_IMPL_FOR(_entryPoint),
+             PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_composeWith));
 
   FeaturePtr wrapperFeature;
   PipelineStepPtr *_step{};
   gfx::shader::VariableMap _composedWith;
   std::vector<FeaturePtr> _generatedFeatures;
 
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
   void cleanup() {
     if (_step) {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
+    
     PARAM_CLEANUP();
   }
 
@@ -305,23 +308,6 @@ struct EffectPassShard {
     wrapperFeature = std::make_shared<Feature>();
 
     PARAM_WARMUP(context);
-  }
-
-  void applyComposeWith(SHContext *context, const SHVar &input) {
-    checkType(input.valueType, SHType::Table, ":ComposeWith table");
-
-    _composedWith.clear();
-    for (auto &[k, v] : input.payload.tableValue) {
-      if (k.valueType != SHType::String)
-        throw formatException("ComposeWith key must be a string");
-      std::string keyStr(k.payload.stringValue, k.payload.stringLen);
-      ParamVar pv(v);
-      pv.warmup(context);
-      auto &var = _composedWith.emplace(std::move(keyStr), pv.get()).first->second;
-      if (var.valueType == SHType::None) {
-        throw formatException("Required variable {} not found", k);
-      }
-    }
   }
 
   void applyInputs(SHContext *context, RenderFullscreenStep &step, const SHVar &input) {
@@ -346,42 +332,36 @@ struct EffectPassShard {
   SHVar activate(SHContext *context, const SHVar &input) {
     RenderFullscreenStep &step = std::get<RenderFullscreenStep>(*_step->get());
 
-    checkType(input.valueType, SHType::Table, "Input table");
-    const SHTable &inputTable = input.payload.tableValue;
+    // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
+    if (!_composeWith.isNone()) {
+      // Always create a new object to force shader recompile
+      wrapperFeature = std::make_shared<Feature>();
+      shader::applyComposeWith(context, _composedWith, _composeWith.get());
+    }
 
-    shared::applyAll(context, step, inputTable);
+    shared::applyAll(context, step, _outputs, _outputScale, _features);
 
-    SHVar inputsVar;
-    if (getFromTable(context, inputTable, Var("Inputs"), inputsVar))
-      applyInputs(context, step, inputsVar);
-    else {
+    if (!_inputs.isNone()) {
+      applyInputs(context, step, _inputs.get());
+    } else {
       step.inputs = RenderStepInputs{"color"};
     }
 
-    SHVar paramsVar;
-    if (getFromTable(context, inputTable, Var("Params"), paramsVar))
-      applyParams(context, step, paramsVar);
-
-    // NOTE: First check these variables to see if we need to invalidate the feature Id (to break caching)
-    SHVar composeWithVar;
-    if (getFromTable(context, inputTable, Var("ComposeWith"), composeWithVar)) {
-      // Always create a new object to force shader recompile
-      wrapperFeature = std::make_shared<Feature>();
-      applyComposeWith(context, composeWithVar);
+    if (!_params.isNone()) {
+      applyParams(context, step, _params.get());
     }
 
     // Only do this once
     if (wrapperFeature->shaderEntryPoints.empty()) {
       _generatedFeatures.clear();
 
-      SHVar entryPointVar;
-      if (getFromTable(context, inputTable, Var("EntryPoint"), entryPointVar)) {
+      if (!_entryPoint.isNone()) {
         // Add default base transform
         _generatedFeatures.push_back(features::Transform::create(false, false));
 
         shader::EntryPoint entryPoint;
         entryPoint.stage = ProgrammableGraphicsStage::Fragment;
-        shader::applyShaderEntryPoint(context, entryPoint, entryPointVar, _composedWith);
+        shader::applyShaderEntryPoint(context, entryPoint, _entryPoint.get(), _composedWith);
         wrapperFeature->shaderEntryPoints.emplace_back(std::move(entryPoint));
         _generatedFeatures.push_back(wrapperFeature);
       }

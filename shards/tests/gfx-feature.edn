@@ -25,8 +25,36 @@
     ; Create render steps
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
    "vec3<f32>(0.0, 1.0, 0.2)" = .fconst-str
-   {:ComposeWith {:fconst-str .fconst-str}
-    :Shaders [{:Name "lighting"
+  ;;  {:ComposeWith {:fconst-str .fconst-str}
+  ;;   :Shaders [{:Name "lighting"
+  ;;              :Stage ProgrammableGraphicsStage.Fragment
+  ;;              :EntryPoint (->
+  ;;                           (Shader.ReadInput "worldNormal") >= .normal
+  ;;                           (Shader.ReadBuffer "lightDirection") >= .light-dir
+  ;;                           (Float3 0 0 0) (Math.Subtract .light-dir) >= .inv-light-dir
+  ;;                           .normal (Math.Normalize) (Math.Dot .inv-light-dir) (Max 0.0) >= .n-dot-l
+  ;;                           (Shader.ReadBuffer "lightColor") (Math.Multiply .n-dot-l)
+  ;;                           (| (Float3 0.0) >= .extra-color
+  ;;                              (Shader.Literal [.extra-color " = " .fconst-str ";\n"]))
+  ;;                           (Math.Add .extra-color)
+  ;;                           (Shader.WriteGlobal "lighting"))}
+  ;;             {:Name "mainColor"
+  ;;              :Stage ProgrammableGraphicsStage.Fragment
+  ;;              :EntryPoint (->
+  ;;                           (Shader.ReadBuffer "time") >= .time
+  ;;                           .time (Math.Multiply 2.0) (Math.Cos) (Math.Divide 2.0) (Math.Add 0.5) >= .wave
+  ;;                           (Shader.ReadGlobal "lighting") (ToFloat4) >= .lighting-4
+  ;;                           .wave (Math.Multiply (Float4 0 0 0 1)) (Math.Add .lighting-4)
+  ;;                           (Shader.WriteOutput "color"))}]
+  ;;   :Params {:lightDirection .light-direction
+  ;;            :lightColor (Float3 1.0)}
+  ;;   :State {:DepthCompare CompareFunction.Less
+  ;;           :Blend {:Color BlendAlpha :Alpha BlendOne}}}
+  ;;  (GFX.Feature :ViewGenerators
+  ;;               (->
+  ;;                (Listen "time") >= .time
+  ;;                {:time .time})) >> .features
+   (GFX.Feature :Shaders [{:Name "lighting"
                :Stage ProgrammableGraphicsStage.Fragment
                :EntryPoint (->
                             (Shader.ReadInput "worldNormal") >= .normal
@@ -46,16 +74,17 @@
                             (Shader.ReadGlobal "lighting") (ToFloat4) >= .lighting-4
                             .wave (Math.Multiply (Float4 0 0 0 1)) (Math.Add .lighting-4)
                             (Shader.WriteOutput "color"))}]
-    :Params {:lightDirection .light-direction
-             :lightColor (Float3 1.0)}
+                :ComposeWith {:fconst-str .fconst-str}
     :State {:DepthCompare CompareFunction.Less
-            :Blend {:Color BlendAlpha :Alpha BlendOne}}}
-   (GFX.Feature :ViewGenerators
+                        :Blend {:Color BlendAlpha :Alpha BlendOne}}
+                :ViewGenerators
                 (->
                  (Listen "time" (type Float)) >= .time
-                 {:time .time})) >> .features
+                 {:time .time})
+                :Params {:lightDirection .light-direction
+                         :lightColor (Float3 1.0)}) >> .features
    (GFX.DrawQueue) >= .queue
-   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps
 
     ;; Create view
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform

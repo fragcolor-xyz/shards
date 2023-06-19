@@ -132,7 +132,7 @@
                    (->
                     (Listen "time" (type Float)) >= .time
                     {:time .time})) >> .features
-   {:EntryPoint (-> (shader-main)) :Features .features} (GFX.EffectPass) >> .render-steps)
+   (GFX.EffectPass :EntryPoint (-> (shader-main)) :Features .features) >> .render-steps)
 
   (GFX.Render :Steps .render-steps)
 

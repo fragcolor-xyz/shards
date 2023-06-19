@@ -13,7 +13,7 @@
     ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Features .features :Queue .queue :Sort SortMode.Queue} (GFX.DrawablePass) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .queue :Sort SortMode.Queue) >> .render-steps
    (GFX.UIPass .screen-ui-queue) >> .render-steps
 
    ; Initial panel transforms

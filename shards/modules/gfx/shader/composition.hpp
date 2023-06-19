@@ -42,6 +42,9 @@ private:
 
 void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input,
                            const VariableMap &composeWithVariables = VariableMap());
+
+void applyComposeWith(SHContext *context, gfx::shader::VariableMap &composedWith, const SHVar &input);
+
 } // namespace gfx::shader
 
 #endif /* F7DDD110_DF89_4AA4_A005_18C9BBFDFC40 */

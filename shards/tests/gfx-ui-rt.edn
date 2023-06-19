@@ -22,7 +22,7 @@
          (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features1
          (GFX.BuiltinFeature  BuiltinFeatureId.BaseColor) >> .features1
          (GFX.UIPass :Queue .ui-queue) >> .render-steps1
-         {:Features .features1 :Queue .queue} (GFX.DrawablePass) >> .render-steps1
+         (GFX.DrawablePass :Features .features1 :Queue .queue) >> .render-steps1
 
          ;; Create view
          {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
