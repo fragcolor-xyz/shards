@@ -10,6 +10,11 @@ struct Reset {
   requiring: ExposedTypes,
 }
 
+struct AddFont {
+  instance: ParamVar,
+  requiring: ExposedTypes,
+}
+
 struct Style {
   instance: ParamVar,
   parents: ParamVar,
@@ -19,8 +24,10 @@ struct Style {
 mod reset;
 mod style;
 pub(crate) mod style_util;
+mod add_font;
 
 pub fn registerShards() {
   registerShard::<Reset>();
   registerShard::<Style>();
+  registerShard::<AddFont>();
 }

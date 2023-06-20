@@ -4223,6 +4223,7 @@ impl From<&OptionalStrings> for SHOptionalStrings {
 }
 
 #[repr(transparent)]
+#[derive(Debug, Clone)]
 pub struct SeqVar(Var);
 
 pub struct SeqVarIterator<'a> {
@@ -4334,6 +4335,10 @@ impl SeqVar {
         ..Default::default()
       },
     }
+  }
+
+  pub fn wrap(var: Var) -> SeqVar {
+    SeqVar { 0: var }
   }
 
   pub fn set_len(&mut self, len: usize) {
@@ -5151,6 +5156,8 @@ lazy_static! {
     vec![common_type::none, common_type::shard, common_type::shards];
   pub static ref SEQ_OF_SHARDS: Type = Type::seq(&SHARDS_OR_NONE_TYPES);
   pub static ref SEQ_OF_SHARDS_TYPES: Vec<Type> = vec![*SEQ_OF_SHARDS];
+  pub static ref SEQ_OF_SEQ_OF_ANY: Type = Type::seq(&ANYS_TYPES);
+  pub static ref SEQ_OF_SEQ_OF_ANY_TYPES: Vec<Type> = vec![*SEQ_OF_SEQ_OF_ANY];
 }
 
 macro_rules! test_to_from_vec1 {
