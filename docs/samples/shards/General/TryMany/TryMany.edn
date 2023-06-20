@@ -8,7 +8,5 @@
  ;:Policy
  WaitUntil.AllSuccess
  ;:Threads
- 12
- ;:Coroutine
- 1)
+ 12)
 (Assert.Is ["Ok" "Ok" "Ok"] true)
