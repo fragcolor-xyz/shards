@@ -105,7 +105,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   assert(mesh);
 
   auto currentMesh = wire->mesh.lock();
-  if(currentMesh && currentMesh != mesh)
+  if (currentMesh && currentMesh != mesh)
     throw ComposeError(fmt::format("Attempted to compose a wire ({}) that is already part of another mesh!", wire->name));
 
   wire->mesh = data.wire->mesh;
@@ -1282,8 +1282,7 @@ struct ParallelBase : public CapturingSpawners {
   static inline Parameters _params{
       {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireVarTypes},
       {"Policy", SHCCSTR("The execution policy in terms of wires success."), {WaitUntilEnumInfo::Type}},
-      {"Threads", SHCCSTR("The number of cpu threads to use."), {CoreInfo::IntType}},
-      {"Coroutines", SHCCSTR("The number of coroutines to run on each thread."), {CoreInfo::IntType}}};
+      {"Threads", SHCCSTR("The number of cpu threads to use."), {CoreInfo::IntType}}};
 
   static SHParametersInfo parameters() { return _params; }
 
@@ -1298,9 +1297,6 @@ struct ParallelBase : public CapturingSpawners {
     case 2:
       _threads = std::max(int64_t(1), value.payload.intValue);
       break;
-    case 3:
-      _coros = std::max(int64_t(1), value.payload.intValue);
-      break;
     default:
       break;
     }
@@ -1314,15 +1310,13 @@ struct ParallelBase : public CapturingSpawners {
       return Var::Enum(_policy, CoreCC, 'tryM');
     case 2:
       return Var(_threads);
-    case 3:
-      return Var(_coros);
     default:
       return Var::Empty;
     }
   }
 
   void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
-    if (_threads > 1) {
+    if (_threads > 0) {
       mode = RunWireMode::Detached;
       capturing = true;
     } else {
@@ -1376,7 +1370,7 @@ struct ParallelBase : public CapturingSpawners {
     }
 
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
-    if (_threads > 1) {
+    if (_threads > 0) {
       const auto threads = std::min(_threads, int64_t(std::thread::hardware_concurrency()));
       if (!_exec || _exec->num_workers() != (size_t(threads))) {
         _exec.reset(new tf::Executor(size_t(threads)));
@@ -1419,212 +1413,161 @@ struct ParallelBase : public CapturingSpawners {
     _wires.clear();
   }
 
-  virtual SHVar getInput(const ManyWire *mc, const SHVar &input) = 0;
+  virtual SHVar getInput(const SHVar &input, uint32_t index) = 0;
 
   virtual size_t getLength(const SHVar &input) = 0;
 
   static constexpr size_t MinWiresAdded = 4;
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    assert(_threads > 0);
+
     auto mesh = context->main->mesh.lock();
     auto len = getLength(input);
-    auto current = _wires.size();
+    // auto current = _wires.size();
 
-    if(len == 0) {
-      _outputs.clear();
+    if (len == 0) {
+      _outputs.resize(0);
       return Var(_outputs.data(), 0);
-    }
-
-    // compute the minimum capacity needed
-    size_t minIncrease = len;
-    size_t increase = MinWiresAdded;
-
-    if (minIncrease > increase)
-      increase = minIncrease;
-
-    // increase needed capacity to guarantee O(1) amortized
-    if (increase < 2 * current)
-      increase = 2 * current;
-
-    _outputs.resize(increase);
-    _wires.resize(increase);
-    Defer cleanups([this]() {
-      for (auto &cref : _wires) {
-        if (cref) {
-          if (cref->mesh) {
-            cref->mesh->terminate();
-          }
-
-          stop(cref->wire.get());
-
-          if (capturing) {
-            for (auto &v : _vars) {
-              // notice, this should be already destroyed by the wire releaseVariable
-              destroyVar(cref->wire->variables[v.variableName()]);
-            }
-          }
-
-          _pool->release(cref);
-        }
-      }
-      _wires.clear();
-    });
-
-    for (uint32_t i = 0; i < increase; i++) {
-      _wires[i] = _pool->acquire(_composer, context);
-      _wires[i]->index = i;
-      _wires[i]->done = false;
     }
 
     size_t succeeded = 0;
     size_t failed = 0;
 
-    // wait according to policy
-    while (true) {
-      const auto _suspend_state = shards::suspend(context, 0);
-      if (unlikely(_suspend_state != SHWireState::Continue)) {
-        return Var::Empty;
+    _successes.resize(0);
+    _successes.resize(len, false);
+    _outputs.resize(len);
+
+    // multithreaded
+    tf::Taskflow flow;
+
+    std::atomic_bool anySuccess = false;
+    std::mutex poolLock;
+
+    flow.for_each_index(size_t(0), len, size_t(1), [&](auto &idx) {
+      if (_policy == WaitUntil::FirstSuccess && anySuccess) {
+        // Early exit if FirstSuccess policy
+        return;
+      }
+
+      ManyWire *cref = nullptr;
+      try {
+        std::lock_guard<std::mutex> lock(poolLock);
+        cref = _pool->acquire(_composer, context);
+      } catch (std::exception &e) {
+        SHLOG_ERROR("Failed to acquire wire: {}", e.what());
+      }
+      DEFER({
+        std::lock_guard<std::mutex> lock(poolLock);
+        _pool->release(cref);
+      });
+
+      if (!cref->mesh) {
+        cref->mesh = SHMesh::make();
+      }
+      cref->wire->mesh = cref->mesh;  // swap the mesh
+      DEFER(cref->mesh->terminate()); // ensure it's terminated
+
+      struct Observer {
+        ParallelBase *server;
+        ManyWire *cref;
+
+        void before_compose(SHWire *wire) {}
+        void before_tick(SHWire *wire) {}
+        void before_stop(SHWire *wire) {}
+        void before_prepare(SHWire *wire) {}
+
+        void before_start(SHWire *wire) {
+          // capture variables / we could recycle but better to overwrite in case it was edited before
+          // (remember we recycle wires)
+          for (auto &v : server->_vars) {
+            auto &var = v.get();
+            cloneVar(cref->wire->variables[v.variableName()], var);
+          }
+        }
+      } obs{this, cref};
+
+      bool success = true;
+      cref->mesh->schedule(obs, cref->wire, getInput(input, idx), false); // don't compose
+      while (!cref->mesh->empty()) {
+        if (!cref->mesh->tick() || (_policy == WaitUntil::FirstSuccess && anySuccess)) {
+          success = false;
+          break;
+        }
+      }
+
+      _successes[idx] = success;
+      if (success) {
+        anySuccess = true;
+        stop(cref->wire.get(), &_outputs[idx]);
       } else {
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-        {
-#else
-        if (_threads == 1) {
-#endif
-          // advance our wires and check
-          for (size_t i = 0; i < len; i++) {
-            auto &cref = _wires[i];
-            if (cref->done) {
-              continue;
-            }
+        _outputs[idx] = Var::Empty; // flag as empty to signal failure
+        // ensure it's stopped anyway
+        stop(cref->wire.get());
+      }
+    });
 
-            // Prepare and start if no callc was called
-            if (!cref->wire->coro) {
-              cref->wire->mesh = context->main->mesh;
+    _future = _exec->run(std::move(flow));
 
-              // pre-set wire context with our context
-              // this is used to copy wireStack over to the new one
-              cref->wire->context = context;
+    // we done if we are here
+    while (true) {
+      auto _suspend_state = shards::suspend(context, 0);
+      if (unlikely(_suspend_state != SHWireState::Continue)) {
+        anySuccess = true; // flags early stop as well
+        _future.get();     // wait for all to finish in any case
+        return Var::Empty;
+      } else if ((_policy == WaitUntil::FirstSuccess && anySuccess) ||
+                 _future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+        _future.get(); // wait for all to finish in any case
+        break;
+      }
+    }
 
-              // Notice we don't share our flow!
-              // let the wire create one by passing null
-              shards::prepare(cref->wire.get(), nullptr);
-              shards::start(cref->wire.get(), getInput(cref, input));
-            }
-
-            // Tick the wire on the flow that this wire created
-            SHDuration now = SHClock::now().time_since_epoch();
-            shards::tick(cref->wire->context->flow->wire, now);
-
-            if (!isRunning(cref->wire.get())) {
-              if (cref->wire->state == SHWire::State::Ended) {
-                if (_policy == WaitUntil::FirstSuccess) {
-                  // success, next call clones, make sure to destroy
-                  stop(cref->wire.get(), &_outputs[0]);
-                  return _outputs[0];
-                } else {
-                  stop(cref->wire.get(), &_outputs[i]);
-                  succeeded++;
-                }
-              } else {
-                stop(cref->wire.get());
-                failed++;
-              }
-              cref->done = true;
-            }
-          }
+    for (size_t i = 0; i < len; i++) {
+      auto success = _successes[i];
+      if (success) {
+        if (_policy == WaitUntil::FirstSuccess) {
+          return _outputs[i]; // return the first success
+        } else {
+          succeeded++;
         }
-#if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
-        else {
-          // multithreaded
-          tf::Taskflow flow;
+      } else {
+        failed++;
+      }
+    }
 
-          flow.for_each(_wires.begin(), _wires.end(), [this, input, len](auto &cref) {
-            // skip if failed, ended or not relevant yet
-            if (cref->done || cref->index >= len) {
-              return;
-            }
-
-            // Prepare and start if no callc was called
-            if (!cref->wire->coro) {
-              if (!cref->mesh) {
-                cref->mesh = SHMesh::make();
-              }
-              cref->wire->mesh = cref->mesh;
-
-              // capture variables if needed
-              for (auto &v : _vars) {
-                auto &var = v.get();
-                cloneVar(cref->wire->variables[v.variableName()], var);
-              }
-
-              // Notice we don't share our flow!
-              // let the wire create one by passing null
-              shards::prepare(cref->wire.get(), nullptr);
-              shards::start(cref->wire.get(), getInput(cref, input));
-            }
-
-            // Tick the wire on the flow that this wire created
-            SHDuration now = SHClock::now().time_since_epoch();
-            shards::tick(cref->wire->context->flow->wire, now);
-            // also tick the mesh
-            cref->mesh->tick();
-          });
-
-          _exec->run(flow).get();
-
-          for (size_t i = 0; i < len; i++) {
-            auto &cref = _wires[i];
-            if (!cref->done && !isRunning(cref->wire.get())) {
-              if (cref->wire->state == SHWire::State::Ended) {
-                if (_policy == WaitUntil::FirstSuccess) {
-                  // success, next call clones, make sure to destroy
-                  stop(cref->wire.get(), &_outputs[0]);
-                  return _outputs[0];
-                } else {
-                  stop(cref->wire.get(), &_outputs[i]);
-                  succeeded++;
-                }
-              } else {
-                stop(cref->wire.get());
-                failed++;
-              }
-              cref->done = true;
-            }
-          }
-        }
-#endif
-
-        if ((succeeded + failed) == len) {
-          if (unlikely(succeeded == 0)) {
-            throw ActivationError("TryMany, failed all wires!");
+    if ((succeeded + failed) == len) {
+      if (unlikely(succeeded == 0)) {
+        throw ActivationError("TryMany, failed all wires!");
+      } else {
+        // all ended let's apply policy here
+        if (_policy == WaitUntil::SomeSuccess) {
+          return Var(_outputs.data(), succeeded);
+        } else {
+          assert(_policy == WaitUntil::AllSuccess);
+          if (len == succeeded) {
+            return Var(_outputs.data(), succeeded);
           } else {
-            // all ended let's apply policy here
-            if (_policy == WaitUntil::SomeSuccess) {
-              return Var(_outputs.data(), succeeded);
-            } else {
-              assert(_policy == WaitUntil::AllSuccess);
-              if (len == succeeded) {
-                return Var(_outputs.data(), succeeded);
-              } else {
-                throw ActivationError("TryMany, failed some wires!");
-              }
-            }
+            throw ActivationError("TryMany, failed some wires!");
           }
         }
       }
     }
+
+    throw ActivationError("TryMany, failed to activate wires!");
   }
 
 protected:
+  std::future<void> _future;
   WaitUntil _policy{WaitUntil::AllSuccess};
   std::unique_ptr<WireDoppelgangerPool<ManyWire>> _pool;
   Type _outputSeqType;
   Types _outputTypes;
   SHTypeInfo _inputType{};
-  std::vector<SHVar> _outputs;
-  std::vector<ManyWire*> _wires;
-  int64_t _threads{1};
-  int64_t _coros{1};
+  std::vector<OwnedVar> _outputs;
+  std::vector<bool> _successes;
+  std::vector<ManyWire *> _wires;
+  int64_t _threads{0};
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
   std::unique_ptr<tf::Executor> _exec;
 #endif
@@ -1634,7 +1577,13 @@ struct TryMany : public ParallelBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
+  void setup() { _threads = 1; }
+
   SHTypeInfo compose(const SHInstanceData &data) {
+    if (_threads < 1) {
+      throw ComposeError("TryMany, threads must be >= 1");
+    }
+
     if (data.inputType.seqTypes.len == 1) {
       // copy single input type
       _inputType = data.inputType.seqTypes.elements[0];
@@ -1645,26 +1594,32 @@ struct TryMany : public ParallelBase {
 
     ParallelBase::compose(data, _inputType);
 
-    if (_policy == WaitUntil::FirstSuccess) {
-      // single result
-      return wire->outputType;
-    } else {
+    switch (_policy) {
+    case WaitUntil::AllSuccess: {
       // seq result
       _outputTypes = Types({wire->outputType});
       _outputSeqType = Type::SeqOf(_outputTypes);
       return _outputSeqType;
     }
+    case WaitUntil::SomeSuccess: {
+      return CoreInfo::AnySeqType;
+    }
+    case WaitUntil::FirstSuccess: {
+      // single result
+      return wire->outputType;
+    }
+    }
   }
 
-  SHVar getInput(const ManyWire *mc, const SHVar &input) override {
-    return input.payload.seqValue.elements[mc->index];
-  }
+  SHVar getInput(const SHVar &input, uint32_t index) override { return input.payload.seqValue.elements[index]; }
 
   size_t getLength(const SHVar &input) override { return size_t(input.payload.seqValue.len); }
 };
 
 struct Expand : public ParallelBase {
   int64_t _width{10};
+
+  void setup() { _threads = 1; }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
@@ -1691,6 +1646,10 @@ struct Expand : public ParallelBase {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    if (_threads < 1) {
+      throw ComposeError("Expand, threads must be >= 1");
+    }
+
     // input
     _inputType = data.inputType;
 
@@ -1702,7 +1661,7 @@ struct Expand : public ParallelBase {
     return _outputSeqType;
   }
 
-  SHVar getInput(const ManyWire *mc, const SHVar &input) override { return input; }
+  SHVar getInput(const SHVar &input, uint32_t index) override { return input; }
 
   size_t getLength(const SHVar &input) override { return size_t(_width); }
 };
@@ -1811,7 +1770,7 @@ struct Spawn : public CapturingSpawners {
     WireBase::cleanup();
   }
 
-  std::unordered_map<const SHWire *, ManyWire*> _wireContainers;
+  std::unordered_map<const SHWire *, ManyWire *> _wireContainers;
 
   void wireOnCleanup(const SHWire::OnCleanupEvent &e) {
     SHLOG_TRACE("Spawn::wireOnStop {}", e.wire->name);

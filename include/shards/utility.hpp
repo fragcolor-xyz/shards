@@ -771,6 +771,8 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   SHVar *begin() { return data(); }
   SHVar *end() { return data() + size(); }
+  const SHVar *begin() const { return data(); }
+  const SHVar *end() const { return data() + size(); }
 
   void resize(size_t nsize) { SH_CORE::seqResize(&payload.seqValue, uint32_t(nsize)); }
 
