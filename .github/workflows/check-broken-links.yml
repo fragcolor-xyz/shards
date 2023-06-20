@@ -1,0 +1,34 @@
+name: Workflow to check for broken links
+
+on:
+  push:
+    paths:
+      - '**/*.md'
+
+jobs:
+  check-broken-links:
+    name: Job to check for broken links
+    runs-on: ubuntu-latest
+    steps:
+      - name: Step to set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Step to install mkdocs
+        run: pip install mkdocs mkdocs-material mkdocs-awesome-pages-plugin mkdocs-macros-plugin
+      - name: Step to checkout Shards repository
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/shards
+          fetch-depth: 1
+      - name: Step to start local HTTP server with Fragnova docs
+        run: cd docs && nohup mkdocs serve > nohup.out 2> nohup.err < /dev/null &
+      - name: Step to sleep for 10 seconds
+        run: sleep 10s
+      - name: Step to check for broken links
+        id: link-report
+        uses: roc/link-checker@master
+        with:
+          url: "http://127.0.0.1:8000"
+          blc_args: --recursive --verbose --follow true
+          allow_failures: false
