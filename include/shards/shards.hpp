@@ -105,6 +105,12 @@ struct Type {
     return res;
   }
 
+  static Type VariableOf(SHTypeInfo &type) {
+    Type res;
+    res._type = {SHType::ContextVar, {.contextVarTypes = SHTypesInfo{.elements = &type, .len = 1}}};
+    return res;
+  }
+
   static Type Enum(int32_t vendorId, int32_t typeId) {
     Type res;
     res._type = {SHType::Enum, {.enumeration = {.vendorId = vendorId, .typeId = typeId}}};

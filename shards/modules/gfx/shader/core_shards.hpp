@@ -499,23 +499,33 @@ template <typename TShard> struct Write : public IOBase {
     auto &shaderCtx = ShaderCompositionContext::get();
 
     if constexpr (std::is_same_v<TShard, blocks::WriteOutput>) {
-      auto &outputs = shaderCtx.generatorContext.getDefinitions().outputs;
-      auto outputIt = outputs.find(_name);
-      if (outputIt == outputs.end())
-        throw formatException("Output \"{}\" does not exist", _name);
-
       auto inTypeOpt = deriveShaderFieldType(data.inputType);
       if (!inTypeOpt)
         throw formatException("Invalid output type {}", data.inputType);
 
+      const NumFieldType *outputType{};
+      {
+        auto &outputs = shaderCtx.generatorContext.getDefinitions().outputs;
+        auto outputIt = outputs.find(_name);
+        if (outputIt != outputs.end()) {
+          outputType = &outputIt->second;
+        } else {
+          outputType =
+              shaderCtx.generatorContext.getOrCreateDynamicOutput(_name.c_str(), std::get<NumFieldType>(inTypeOpt.value()));
+          if (!outputType) {
+            throw formatException("Output \"{}\" does not exist", _name);
+          }
+        }
+      }
+
       NumFieldType inType = std::get<NumFieldType>(inTypeOpt.value());
 
       bool needCast{};
-      if (!isCompatibleOutputType(outputIt->second, inType, needCast))
-        throw formatException("Output {} ({}) can not be assigned from type {}", _name, outputIt->second, data.inputType);
+      if (!isCompatibleOutputType(*outputType, inType, needCast))
+        throw formatException("Output {} ({}) can not be assigned from type {}", _name, *outputType, data.inputType);
 
       if (needCast)
-        _castIntoType = outputIt->second;
+        _castIntoType = *outputType;
     }
 
     return CoreInfo::NoneType;
@@ -535,8 +545,8 @@ template <typename TShard> struct Write : public IOBase {
           blocks::makeCompoundBlock(getFieldWGSLTypeName(_castIntoType.value()), "(", wgslValue->toBlock(), ")")));
     } else {
       NumFieldType fieldType = std::get<NumFieldType>(wgslValue->getType());
-    context.addNew(blocks::makeBlock<TShard>(_name, fieldType, wgslValue->toBlock()));
-  }
+      context.addNew(blocks::makeBlock<TShard>(_name, fieldType, wgslValue->toBlock()));
+    }
   }
 };
 

@@ -203,9 +203,12 @@ struct DrawablePassShard {
   PARAM_PARAMVAR(_sort, "Sort",
                  "The sorting mode to use to sort the drawables. The default sorting behavior is to sort by optimal batching",
                  {CoreInfo::NoneType, Types::SortModeEnumInfo::Type, Type::VariableOf(Types::SortModeEnumInfo::Type)});
+  PARAM_VAR(_ignoreDrawableFeatures, "IgnoreDrawableFeatures",
+                 "Ignore any features on drawables and only use the features specified in this pass",
+                 {CoreInfo::NoneType, CoreInfo::BoolType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features),
-             PARAM_IMPL_FOR(_sort));
+             PARAM_IMPL_FOR(_sort), PARAM_IMPL_FOR(_ignoreDrawableFeatures));
 
   PipelineStepPtr *_step{};
   HashState _hashState;
@@ -257,10 +260,8 @@ struct DrawablePassShard {
       throw formatException("DrawablePass requires a queue");
     }
 
-    Var ignoreDrawableFeaturesVar;
-    if (getFromTable(context, inputTable, Var("IgnoreDrawableFeatures"), ignoreDrawableFeaturesVar)) {
-      checkType(ignoreDrawableFeaturesVar.valueType, SHType::Bool, "IgnoreDrawableFeatures");
-      step.ignoreDrawableFeatures = (bool)ignoreDrawableFeaturesVar;
+    if (!_ignoreDrawableFeatures->isNone()) {
+      step.ignoreDrawableFeatures = (bool)*_ignoreDrawableFeatures;
     } else {
       step.ignoreDrawableFeatures = false;
     }

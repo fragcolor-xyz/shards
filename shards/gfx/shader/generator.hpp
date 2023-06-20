@@ -75,6 +75,7 @@ struct IGeneratorContext {
 
   virtual bool hasOutput(const char *name) = 0;
   virtual void writeOutput(const char *name, const NumFieldType &type) = 0;
+  virtual const NumFieldType *getOrCreateDynamicOutput(const char *name, NumFieldType requestedType) = 0;
 
   virtual bool hasTexture(const char *name, bool defaultTexcoordRequired = true) = 0;
   virtual const TextureDefinition *getTexture(const char *name) = 0;

@@ -137,7 +137,7 @@ struct MainWindow final {
       _requiredVariables.push_back(required);
     }
 
-    return CoreInfo::NoneType;
+    return OutputType;
   }
 
   void initWindow(SHContext *shContext) {
@@ -252,21 +252,24 @@ struct WindowSize {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_IMPL();
+  PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
+                 {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
   RequiredWindowContext _requiredWindowContext;
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
+    _requiredWindowContext.compose(data, _requiredVariables, &_window);
     return outputTypes().elements[0];
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    _requiredWindowContext.warmup(context);
+    _requiredWindowContext.warmup(context, &_window);
   }
+
   void cleanup() {
     PARAM_CLEANUP();
     _requiredWindowContext.cleanup();
@@ -279,20 +282,22 @@ struct ResizeWindow {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_IMPL();
+  PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
+                 {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
   RequiredWindowContext _requiredWindowContext;
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    _requiredVariables.push_back(decltype(_requiredWindowContext)::getExposedTypeInfo());
+    _requiredWindowContext.compose(data, _requiredVariables, &_window);
     return data.inputType;
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    _requiredWindowContext.warmup(context);
+    _requiredWindowContext.warmup(context, &_window);
   }
 
   void cleanup() {
@@ -309,20 +314,22 @@ struct WindowPosition {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_IMPL();
+  PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
+                 {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
   RequiredWindowContext _requiredWindowContext;
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    _requiredVariables.push_back(decltype(_requiredWindowContext)::getExposedTypeInfo());
+    _requiredWindowContext.compose(data, _requiredVariables, &_window);
     return outputTypes().elements[0];
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    _requiredWindowContext.warmup(context);
+    _requiredWindowContext.warmup(context, &_window);
   }
   void cleanup() {
     PARAM_CLEANUP();
@@ -336,20 +343,22 @@ struct MoveWindow {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_IMPL();
+  PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
+                 {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
   RequiredWindowContext _requiredWindowContext;
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    _requiredVariables.push_back(decltype(_requiredWindowContext)::getExposedTypeInfo());
+    _requiredWindowContext.compose(data, _requiredVariables, &_window);
     return data.inputType;
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    _requiredWindowContext.warmup(context);
+    _requiredWindowContext.warmup(context, &_window);
   }
 
   void cleanup() {
