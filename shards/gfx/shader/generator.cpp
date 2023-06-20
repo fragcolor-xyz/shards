@@ -625,6 +625,17 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
       }
     }
 
+    const NumFieldType *getOrCreateDynamicOutput(const char *name, NumFieldType requestedType) {
+      NumFieldType newField;
+      for (auto &h : dynamicHandlers) {
+        if (h->createDynamicOutput(name, requestedType)) {
+          return &definitions.outputs.insert_or_assign(name, newField).first->second;
+        }
+      }
+
+      return nullptr;
+    }
+
     bool hasTexture(const char *name, bool defaultTexcoordRequired = true) { return true; }
     const TextureDefinition *getTexture(const char *name) { return nullptr; }
     void texture(const char *name) { findOrAddIndex(result.textureBindings, name); }

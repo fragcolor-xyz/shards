@@ -10,10 +10,10 @@
 #include <shards/input/state.hpp>
 #include <shards/input/detached.hpp>
 #include <shards/core/module.hpp>
-#include "core/foundation.hpp"
-#include "input/events.hpp"
-#include "input/input.hpp"
-#include "input/input_stack.hpp"
+#include <input/events.hpp>
+#include <input/input.hpp>
+#include <input/input_stack.hpp>
+#include <input/log.hpp>
 #include "inputs.hpp"
 #include "debug_ui.hpp"
 #include "modules/inputs/debug_ui.hpp"
@@ -23,6 +23,8 @@
 
 namespace shards {
 namespace input {
+
+static auto logger = getLogger();
 
 using VarQueue = boost::lockfree::spsc_queue<OwnedVar>;
 
@@ -392,10 +394,10 @@ struct Detached {
           for (auto &[gen, frame] : eventUpdate.frames) {
             for (ConsumableEvent &event : frame.events) {
               if (!logStarted) {
-                SPDLOG_INFO("== Detached input begin == ");
+                SPDLOG_LOGGER_DEBUG(logger, "== Detached input begin {} == ", _handler->name);
                 logStarted = true;
               }
-              SPDLOG_INFO("Detached event IN: {}, gen: {}, consumed: {}, focus: {}", debugFormat(event.event), gen,
+              SPDLOG_LOGGER_DEBUG(logger, "Detached event IN: {}, gen: {}, consumed: {}, focus: {}", debugFormat(event.event), gen,
                           event.consumed, frame.canReceiveInput);
               apply(event, frame.canReceiveInput);
             }
@@ -412,7 +414,7 @@ struct Detached {
 
         for (auto &evt : _inputContext.detached.virtualInputEvents) {
           if (!std::get_if<PointerMoveEvent>(&evt))
-            SPDLOG_INFO("Detached event OUT: {}", debugFormat(evt));
+            SPDLOG_LOGGER_DEBUG(logger, "Detached event OUT: {}", debugFormat(evt));
         }
 
         _mainShards.activate(context, input, output); //
