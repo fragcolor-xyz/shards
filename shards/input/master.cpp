@@ -2,12 +2,15 @@
 #include "cursor_map.hpp"
 #include "debug.hpp"
 #include "window_input.hpp"
+#include "log.hpp"
 #include <spdlog/spdlog.h>
 #include <gfx/window.hpp>
 #include <SDL_keyboard.h>
 #include <SDL_events.h>
 
 namespace shards::input {
+
+static auto logger = getLogger();
 
 // Add a singleton check since SDL_PollEvent is global
 // having more than one of these would break input distribution
@@ -48,7 +51,7 @@ void InputMaster::update(gfx::Window &window) {
 
   for (auto &evt : input.virtualInputEvents) {
     if (!std::get_if<PointerMoveEvent>(&evt))
-      SPDLOG_INFO("Generated event: {}", debugFormat(evt));
+      SPDLOG_LOGGER_DEBUG(logger, "Generated event: {}", debugFormat(evt));
     evtFrame.events.emplace_back(evt);
   }
 
@@ -63,7 +66,7 @@ void InputMaster::update(gfx::Window &window) {
 
   // Handle posted messages
   messageQueue.consume_all([&](const Message &message) {
-    SPDLOG_INFO("Handling message: {}", debugFormat(message));
+    SPDLOG_LOGGER_DEBUG(logger, "Handling message: {}", debugFormat(message));
     std::visit(
         [&](auto &&arg) {
           using T = std::decay_t<decltype(arg)>;
