@@ -409,6 +409,7 @@ public protocol IShard : AnyObject {
     static var warmupCFunc: SHWarmupProc { get }
     static var cleanupCFunc: SHCleanupProc { get }
     static var activateCFunc: SHActivateProc { get }
+    var errorCache: ContiguousArray<CChar> { get set }
 }
 
 public extension IShard {
@@ -444,7 +445,8 @@ public extension IShard {
         return error
     case .failure(let err):
         error.code = 1
-        error.message = err.message.utf8CString.withUnsafeBufferPointer{
+        b.errorCache = err.message.utf8CString
+        error.message = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
         return error;
@@ -514,7 +516,8 @@ public extension IShard {
     case .failure(let err):
         var error = SHError()
         error.code = 1
-        error.message = err.message.utf8CString.withUnsafeBufferPointer{
+        b.errorCache = err.message.utf8CString
+        error.message = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
         value.error = error
@@ -534,7 +537,8 @@ public extension IShard {
         return error
     case .failure(let err):
         error.code = 1
-        error.message = err.message.utf8CString.withUnsafeBufferPointer{
+        b.errorCache = err.message.utf8CString
+        error.message = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
         return error;
@@ -552,7 +556,8 @@ public extension IShard {
         return error
     case .failure(let err):
         error.code = 1
-        error.message = err.message.utf8CString.withUnsafeBufferPointer{
+        b.errorCache = err.message.utf8CString
+        error.message = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
         return error;
@@ -686,6 +691,7 @@ final class BaseShard : IShard {
     static var warmupCFunc: SHWarmupProc {{ bridgeWarmup(ShardType.self, shard: $0, ctx: $1) }}
     static var cleanupCFunc: SHCleanupProc {{ bridgeCleanup(ShardType.self, shard: $0) }}
     static var activateCFunc: SHActivateProc {{ bridgeActivate(ShardType.self, shard: $0, ctx: $1, input: $2) }}
+    var errorCache: ContiguousArray<CChar> = []
 }
 
 struct Parameter {
