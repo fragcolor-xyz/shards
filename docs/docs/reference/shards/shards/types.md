@@ -568,7 +568,7 @@ The type **Shard** (also called **ShardRef**) represents a shard being passed as
 This type is an important aspect of the homoiconicity feature (i.e., code/data interchangeability) in Shards.
 
 !!! note
-    What's a [`shard`](https://docs.fragnova.com/learn/shards/primer/what-is-shards/#the-shard)?
+    What's a [`shard`](../../../../learn/shards/primer/what-is-shards/#the-shard)?
 
 The shard [`(ForEach)`](../General/ForEach/) expects a value with the type **Shard** for its `:Apply` parameter (the other option being a sequence of **Shard** type values, i.e., a [`Wire`](#wire) type).
 
@@ -642,7 +642,7 @@ Type **Wire** represents a wire being passed as data.
 A **Wire** type thus consists of a sequence of shards (which make up the wire), their shared state (memory) context, name of the wire, and other properties that enable operations on the wire like scheduling it on a mesh, starting/stopping/pausing the wire, etc.
 
 !!! note
-    What's a [`wire`](http://127.0.0.1:8000/learn/shards/primer/what-is-shards/#the-wire)?
+    What's a [`wire`](../../../../learn/shards/primer/what-is-shards/#the-wire)?
 
 For example, the shard [`(Stop)`](../General/Stop/) accepts **Wire** type data in its `:Wire` parameter and stops that wire's execution if its currently running.
 
