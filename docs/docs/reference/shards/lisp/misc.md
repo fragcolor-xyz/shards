@@ -6,13 +6,13 @@ license: CC-BY-SA-4.0
 # Miscellaneous functions
 
 !!! note "Uncategorized"
-    This page references all other functions that don't fit in the previous categories. Overtime, they might be moved to a different or new category.
+    This page references all other functions that don't fit in the previous categories. Over time, they might be moved to a different or new category.
 
 ## ->
 
 Groups multiple shards together (as if they were a single shard). Also called shard-container.
 
-This is useful for cases where you need multiple shards (to transform your data) but are allowed to have only one: for example, as the return value of a function (see function `print-messages` below).  
+This is useful for cases where you need multiple shards (to transform your data) but is allowed to have only one: for example, as the return value of a function (see function `print-messages` below).  
 
 === "Code"
 
@@ -42,6 +42,15 @@ Applies fn f to the argument list formed by prepending intervening arguments to 
 ```clojure linenums="1"
 (apply str ["cherry " "banana " "apple"])
 ;;=> "cherry banana apple"
+
+(apply str "cherry " ["banana " "apple"])
+;;=> "cherry banana apple"
+
+(apply str "cherry " "banana " ["apple"])
+;;=> "cherry banana apple"
+
+(apply str "cherry " "banana " "apple" [])
+;;=> "cherry banana apple"
 ```
 
 ## atom
@@ -62,7 +71,7 @@ Applies fn f to the argument list formed by prepending intervening arguments to 
 (deref ref)
 ```
 
-Returns the most-recently-committed value of ref. When applied to an atom, returns its current state.
+Returns the most current state of the atom.
 
 ```clojure linenums="1"
 (deref (atom [1 2]))
@@ -88,7 +97,7 @@ Return true if f is a function.
 (hex number)
 ```
 
-Returns an hexidecimal representation for input number.
+Returns a hexadecimal representation for an input number.
 
 ```clojure linenums="1"
 (hex 2)
@@ -101,7 +110,7 @@ Returns an hexidecimal representation for input number.
 (keyword s)
 ```
 
-Returns a keyword with given s string. Do not use `:` in the keyword strings, it will be added automatically.
+Returns a keyword with a given s string. Do not use `:` in the keyword strings, it will be added automatically.
 
 ```clojure linenums="1"
 (keyword "foo/bar")
@@ -111,10 +120,10 @@ Returns a keyword with given s string. Do not use `:` in the keyword strings, it
 ## macro?
 
 ```
-(macro? form)
+(macro? value)
 ```
 
-Checks if form is a macro.
+Checks if a value is a macro.
 
 ```clojure linenums="1"
 (macro? defn)
@@ -160,7 +169,7 @@ Accepts prompt string.
 (reset! atom newval)
 ```
 
-Sets the value of atom to newval without regard for the current value. Returns newval.
+Sets the value of the atom to newval without regard for the current value. Returns newval.
 
 ```clojure linenums="1"
 (reset! (atom "apple") "mango")
@@ -172,7 +181,7 @@ Executes all the wires that have been scheduled on a given `mesh`.
 
 `(run <params>)` takes two arguments: name of the mesh, and mesh iteration interval (no. of seconds between two mesh iterations).
 
-*An optional 3rd argument defines the maximum mesh iterations to run. This argument is a debug parameter - do not use for production.*
+*An optional 3rd argument defines the maximum mesh iterations to run. This argument is a debug parameter - do not use it for production.*
 
 === "Code"
 
@@ -270,7 +279,7 @@ Convert string name to a symbol.
 
 ## throw
 
-Throws Error using input argument as error message.
+Throws Error using input argument as an error message.
 
 ```clojure linenums="1"
 (throw "This is an error..")
