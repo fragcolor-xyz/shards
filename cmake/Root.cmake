@@ -36,6 +36,9 @@ add_subdirectory(${SHARDS_DIR}/shards/gfx src/gfx)
 # Shards core
 add_subdirectory(${SHARDS_DIR}/shards/core src/core)
 
+# Shards core
+add_subdirectory(${SHARDS_DIR}/shards/lang src/lang)
+
 # Modules
 set(SHARDS_MODULE_ROOT ${SHARDS_DIR}/shards/modules)
 macro(add_module NAME)

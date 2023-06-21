@@ -704,6 +704,10 @@ struct Shard {
   // name length, used for profiling and more
   uint32_t nameLength;
 
+  // some debug/utility info
+  uint32_t line;
+  uint32_t column;
+
   // \-- The interface to fill --/
 
   SHNameProc name;             // Returns the name of the shard, do not free the string,

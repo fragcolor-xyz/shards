@@ -272,6 +272,13 @@ impl ShardRef {
     }
   }
 
+  pub fn parameters(&self) -> &[ParameterInfo] {
+    unsafe {
+      let params = (*self.0).parameters.unwrap()(self.0);
+      std::slice::from_raw_parts(params.elements, params.len as usize)
+    }
+  }
+
   pub fn set_parameter(&self, index: i32, value: Var) {
     unsafe {
       (*self.0).setParam.unwrap()(self.0, index, &value);
@@ -280,6 +287,17 @@ impl ShardRef {
 
   pub fn get_parameter(&self, index: i32) -> Var {
     unsafe { (*self.0).getParam.unwrap()(self.0, index) }
+  }
+
+  pub fn set_line_info(&self, line_column: (u32, u32)) {
+    unsafe {
+      (*self.0).line = line_column.0;
+      (*self.0).column = line_column.1;
+    }
+  }
+
+  pub fn get_line_info(&self) -> (u32, u32) {
+    unsafe { ((*self.0).line, (*self.0).column) }
   }
 }
 
@@ -2516,7 +2534,7 @@ impl Var {
         *self = sv.0;
         Ok(unsafe { &mut *(self as *mut Var as *mut TableVar) })
       } else {
-      Err("Variable is not a table")
+        Err("Variable is not a table")
       }
     } else {
       Ok(unsafe { &mut *(self as *mut Var as *mut TableVar) })
@@ -4224,7 +4242,7 @@ impl From<&OptionalStrings> for SHOptionalStrings {
 
 #[repr(transparent)]
 #[derive(Debug, Clone)]
-pub struct SeqVar(Var);
+pub struct SeqVar(pub Var);
 
 pub struct SeqVarIterator<'a> {
   s: &'a SeqVar,
@@ -4684,7 +4702,7 @@ impl TryFrom<&Var> for Seq {
 }
 
 #[repr(transparent)]
-pub struct TableVar(Var);
+pub struct TableVar(pub Var);
 
 impl TableVar {
   pub fn new() -> TableVar {

@@ -145,7 +145,7 @@ pub struct ShardWrapper<T: Shard> {
 ///
 /// Used internally actually
 pub unsafe extern "C" fn shard_construct<T: Default + Shard>() -> *mut CShard {
-  let wrapper: Box<ShardWrapper<T>> = Box::new(create()); 
+  let wrapper: Box<ShardWrapper<T>> = Box::new(create());
   let wptr = Box::into_raw(wrapper);
   wptr as *mut CShard
 }
@@ -363,6 +363,8 @@ pub fn create<T: Default + Shard>() -> ShardWrapper<T> {
       refCount: 0,
       owned: false,
       nameLength: 0,
+      line: 0,
+      column: 0,
       name: Some(shard_name::<T>),
       hash: Some(shard_hash::<T>),
       help: Some(shard_help::<T>),
