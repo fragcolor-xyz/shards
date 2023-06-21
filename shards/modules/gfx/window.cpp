@@ -27,6 +27,10 @@ SDL_Window *WindowContext::getSdlWindow() { return getWindow().window; }
 
 namespace gfx {
 
+struct MainWindowQuitException : public std::runtime_error {
+  MainWindowQuitException() : std::runtime_error("MainWindow Quit Requested") {}
+};
+
 struct InlineInputContext : public IInputContext {
   InputMaster *master{};
   ConsumeFlags dummyConsumeFlags{};
@@ -52,14 +56,18 @@ struct InlineInputContext : public IInputContext {
 };
 
 struct MainWindow final {
-  PARAM(OwnedVar, _title, "Title", "The title of the window to create.", {CoreInfo::StringType});
-  PARAM(OwnedVar, _width, "Width", "The width of the window to create. In pixels and DPI aware.", {CoreInfo::IntType});
-  PARAM(OwnedVar, _height, "Height", "The height of the window to create. In pixels and DPI aware.", {CoreInfo::IntType});
+  PARAM_VAR(_title, "Title", "The title of the window to create.", {CoreInfo::StringType});
+  PARAM_VAR(_width, "Width", "The width of the window to create. In pixels and DPI aware.", {CoreInfo::IntType});
+  PARAM_VAR(_height, "Height", "The height of the window to create. In pixels and DPI aware.", {CoreInfo::IntType});
   PARAM(ShardsVar, _contents, "Contents", "The main input loop of this window.", {CoreInfo::ShardsOrNone});
-  PARAM(OwnedVar, _detachRenderer, "DetachRenderer",
-        "When enabled, no default graphics renderer will be available in the contents wire.", {CoreInfo::BoolType});
+  PARAM_VAR(_detachRenderer, "DetachRenderer",
+            "When enabled, no default graphics renderer will be available in the contents wire.", {CoreInfo::BoolType});
+  PARAM_VAR(
+      _handleCloseEvent, "HandleCloseEvent",
+      "When set to false; the close event will not be handled and abort the wire the window is running in. True by default.",
+      {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_title), PARAM_IMPL_FOR(_width), PARAM_IMPL_FOR(_height), PARAM_IMPL_FOR(_contents),
-             PARAM_IMPL_FOR(_detachRenderer));
+             PARAM_IMPL_FOR(_detachRenderer), PARAM_IMPL_FOR(_handleCloseEvent));
 
   static inline Type OutputType = Type(WindowContext::Type);
 
@@ -71,6 +79,7 @@ struct MainWindow final {
     _height = Var(1280);
     _title = Var("Shards Window");
     _detachRenderer = Var(false);
+    _handleCloseEvent = Var(true);
   }
 
   Window _window;
@@ -221,6 +230,15 @@ struct MainWindow final {
     if (shouldRun) {
       // Poll & distribute input events
       _windowContext->inputMaster.update(*window.get());
+
+      for (auto &event : _windowContext->inputMaster.getEvents()) {
+        if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event)) {
+          bool handleClose = _handleCloseEvent->isNone() || (bool)*_handleCloseEvent;
+          if (handleClose) {
+            throw MainWindowQuitException();
+          }
+        }
+      }
 
       if (_contents) {
         _inlineInputContext->time = _windowContext->time;
