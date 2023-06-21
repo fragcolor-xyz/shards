@@ -1,0 +1,31 @@
+WHITESPACE  = _{ " " | "\t" | "\n" | "\r" | COMMENT }
+COMMENT     = _{ ";" ~ (!"\n" ~ ANY)* ~ "\n" }
+Statement   = _{ Assignment | Pipeline }
+Sequence    =  { Statement* }
+Assignment  =  { AssignRef | AssignSet | AssignUpd | AssignPush }
+AssignRef   =  { Pipeline ~ "=" ~ Identifier }
+AssignSet   =  { Pipeline ~ ">=" ~ Identifier }
+AssignUpd   =  { Pipeline ~ ">" ~ Identifier }
+AssignPush  =  { Pipeline ~ ">>" ~ Identifier }
+Pipeline    =  { Block ~ ("|" ~ Block)* }
+Block       = _{ EvalExpr | Expr | Shard }
+Shard       =  { (TakeTable | TakeSeq | Identifier | Value) ~ Params? }
+Params      =  { "(" ~ Param* ~ Param? ~ ")" }
+Shards      =  { "{" ~ Sequence? ~ "}" }
+TableEntry  =  { ParamName ~ Value }
+Table       =  { "{" ~ TableEntry* ~ "}" }
+RoundParens = _{ "(" ~ Sequence ~ ")" }
+EvalExpr    =  { "#" ~ RoundParens }
+Expr        =  { RoundParens }
+Param       =  { ParamName? ~ Value }
+ParamName   =  { ":" ~ Identifier }
+TakeTable   = @{ Identifier ~ (":" ~ Identifier)+ }
+TakeSeq     = @{ Identifier ~ (":" ~ Integer)+ }
+Value       =  { TakeTable | TakeSeq | Identifier | Number | String | Seq | Table | Shards | EvalExpr | Expr }
+Seq         =  { "[" ~ Value* ~ "]" }
+Identifier  = @{ (ASCII_ALPHA | "_" | "-") ~ (ASCII_ALPHANUMERIC | "_" | "-" | ".")* }
+Number      =  { Hexadecimal | Float | Integer }
+Integer     = @{ ("+" | "-" | "~")? ~ ASCII_DIGIT+ }
+Float       = @{ ("+" | "-" | "~")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+Hexadecimal = @{ "0x" ~ ASCII_HEX_DIGIT+ }
+String      = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
