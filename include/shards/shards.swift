@@ -614,7 +614,7 @@ func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
     let cwrapper = UnsafeMutablePointer<SwiftShard>.allocate(capacity: 1)
     
     cwrapper.pointee.header.name = T.nameCFunc
-    cwrapper.pointee.header.hash = { _ in abort() } // likely we remove .hash
+    cwrapper.pointee.header.hash = { _ in UInt32(SHARDS_CURRENT_ABI) }
     cwrapper.pointee.header.help = T.helpCFunc
     cwrapper.pointee.header.inputHelp = { _ in SHOptionalString() }
     cwrapper.pointee.header.outputHelp = { _ in SHOptionalString() }

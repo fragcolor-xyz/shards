@@ -567,7 +567,7 @@ struct SHVarPayload {
 
     SHPayloadArray arrayValue;
 
-    struct SHTypeInfo* typeValue;
+    struct SHTypeInfo *typeValue;
   };
 } __attribute__((aligned(16)));
 
@@ -715,7 +715,7 @@ struct Shard {
   SHHelpProc outputHelp;       // optional help text for the output
   SHPropertiesProc properties; // optional properties
 
-  SHSetupProc setup;     // A one time construtor setup for the shard
+  SHSetupProc setup;     // A one time constructor setup for the shard
   SHDestroyProc destroy; // A one time finalizer for the shard, shards should
                          // also free all the memory in here!
 
