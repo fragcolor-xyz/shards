@@ -1,16 +1,18 @@
-extern crate bindgen;
-extern crate gfx_build;
+use bindgen;
+use gfx_build;
 
 use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    let gfx_path = "../../gfx";
-    let shards_root = "../../..";
+    let gfx_path = "../gfx";
+    let shards_root = "../..";
 
     println!("cargo:rerun-if-changed=rust_interop.hpp");
     println!("cargo:rerun-if-changed=renderer.hpp");
     println!("cargo:rerun-if-changed=egui_types.hpp");
+    println!("cargo:rerun-if-changed=input.hpp");
+    println!("cargo:rerun-if-changed=context.hpp");
 
     let builder = gfx_build::setup_bindgen_for_gfx(gfx_path, bindgen::Builder::default());
     let bindings = builder
