@@ -15,6 +15,11 @@ using ErrorCode = boost::system::error_code;
 
 namespace shards {
 namespace FS {
+
+struct FileNotFoundException : public std::runtime_error {
+  FileNotFoundException(const std::string& err) : std::runtime_error(err) {}
+};
+
 struct Iterate {
   SHSeq _storage = {};
   std::vector<std::string> _strings;
@@ -285,7 +290,7 @@ struct Read {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     if (!fs::exists(p)) {
       SHLOG_ERROR("File is missing: {}", p);
-      throw ActivationError("FS.Read, file does not exist.");
+      throw FileNotFoundException("FS.Read, file does not exist.");
     }
 
     if (_binary) {
@@ -440,7 +445,7 @@ struct Copy {
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto src = fs::path(SHSTRING_PREFER_SHSTRVIEW(input));
     if (!fs::exists(src))
-      throw ActivationError("Source path does not exist.");
+      throw FileNotFoundException("Source path does not exist.");
 
     fs::copy_options options{};
 
@@ -497,7 +502,7 @@ struct LastWriteTime {
     ErrorCode ec;
     auto lwt = fs::last_write_time(p, ec);
     if (ec.failed()) {
-      throw ActivationError(fmt::format("FS.LastWriteTime, file {} does not exist.", p));
+      throw FileNotFoundException(fmt::format("FS.LastWriteTime, file {} does not exist.", p));
     }
     return Var(static_cast<int64_t>(lwt));
   }
