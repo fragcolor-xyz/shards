@@ -1422,9 +1422,7 @@ struct ParallelBase : public CapturingSpawners {
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_threads > 0);
 
-    auto mesh = context->main->mesh.lock();
     auto len = getLength(input);
-    // auto current = _wires.size();
 
     if (len == 0) {
       _outputs.resize(0);
@@ -1507,18 +1505,19 @@ struct ParallelBase : public CapturingSpawners {
       }
     });
 
-    _future = _exec->run(std::move(flow));
+    auto future = _exec->run(std::move(flow));
 
     // we done if we are here
     while (true) {
       auto _suspend_state = shards::suspend(context, 0);
       if (unlikely(_suspend_state != SHWireState::Continue)) {
+        SHLOG_DEBUG("ParallelBase, interrupted!");
         anySuccess = true; // flags early stop as well
-        _future.get();     // wait for all to finish in any case
+        future.get();      // wait for all to finish in any case
         return Var::Empty;
       } else if ((_policy == WaitUntil::FirstSuccess && anySuccess) ||
-                 _future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-        _future.get(); // wait for all to finish in any case
+                 future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+        future.get(); // wait for all to finish in any case
         break;
       }
     }
@@ -1538,7 +1537,7 @@ struct ParallelBase : public CapturingSpawners {
 
     if ((succeeded + failed) == len) {
       if (unlikely(succeeded == 0)) {
-        throw ActivationError("TryMany, failed all wires!");
+        throw ActivationError("ParallelBase, failed all wires!");
       } else {
         // all ended let's apply policy here
         if (_policy == WaitUntil::SomeSuccess) {
@@ -1548,17 +1547,16 @@ struct ParallelBase : public CapturingSpawners {
           if (len == succeeded) {
             return Var(_outputs.data(), succeeded);
           } else {
-            throw ActivationError("TryMany, failed some wires!");
+            throw ActivationError("ParallelBase, failed some wires!");
           }
         }
       }
     }
 
-    throw ActivationError("TryMany, failed to activate wires!");
+    throw ActivationError("ParallelBase, failed to activate wires!");
   }
 
 protected:
-  std::future<void> _future;
   WaitUntil _policy{WaitUntil::AllSuccess};
   std::unique_ptr<WireDoppelgangerPool<ManyWire>> _pool;
   Type _outputSeqType;
