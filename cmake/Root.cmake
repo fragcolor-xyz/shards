@@ -32,6 +32,7 @@ add_subdirectory(${SHARDS_DIR}/deps deps)
 add_subdirectory(${SHARDS_DIR}/shards/log src/log)
 add_subdirectory(${SHARDS_DIR}/shards/input src/input)
 add_subdirectory(${SHARDS_DIR}/shards/gfx src/gfx)
+add_subdirectory(${SHARDS_DIR}/shards/egui src/egui)
 
 # Shards core
 add_subdirectory(${SHARDS_DIR}/shards/core src/core)
