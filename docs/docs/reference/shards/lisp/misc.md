@@ -60,6 +60,7 @@ Applies fn f to the argument list formed by prepending intervening arguments to 
 ```
 
   Creates and returns an Atom with an initial value of x and zero or more options (in any order).
+  An Atom is a data type in Clojure that provides a way to manage shared, synchronous, independent state. An atom is just like any reference type in any other programming language.
 
 ```clojure linenums="1"
 (atom {})
