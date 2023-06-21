@@ -6,10 +6,10 @@ on:
       threading:
         description: Single or multi-threading?
         required: true
-        default: st
+        default: mt
         type: choice
         options:
-          - st
+          # - st
           - mt
       run-tests:
         description: Run the tests?
@@ -25,7 +25,7 @@ on:
     inputs:
       threading:
         required: true
-        default: st
+        default: mt
         type: string
       run-tests:
         required: false
