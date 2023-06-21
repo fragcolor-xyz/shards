@@ -63,7 +63,12 @@ Applies fn f to the argument list formed by prepending intervening arguments to 
   An Atom is a data type in Clojure that provides a way to manage shared, synchronous, independent state. An atom is just like any reference type in any other programming language.
 
 ```clojure linenums="1"
-(atom {})
+;; Create new atom
+(def my-atom (atom 0))
+
+;; value under 'my-atom' to be replaced with incremented version
+(swap! my-atom inc)
+;;=> 1
 ```
 
 ## deref
