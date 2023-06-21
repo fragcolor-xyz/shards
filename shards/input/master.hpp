@@ -7,6 +7,8 @@
 #include "input/events.hpp"
 #include "messages.hpp"
 #include <shared_mutex>
+#include <mutex>
+#include <atomic>
 #include <boost/lockfree/spsc_queue.hpp>
 
 namespace gfx {

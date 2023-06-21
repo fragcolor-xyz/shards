@@ -25,6 +25,8 @@ struct CoreInfo2 {
   static inline Types BasicTypesTypes{{TypeEnumInfo::Type, BasicTypesSeqType}, true};
 };
 
+// THis shard implements constants 
+// Constants are values like 0, "" 
 struct Const {
   static inline shards::ParamsInfo constParamsInfo = shards::ParamsInfo(
       shards::ParamsInfo::Param("Value", SHCCSTR("The constant value to insert in the wire."), CoreInfo::AnyType));
