@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="SHVar">
+		<DisplayString Condition="valueType == SHType::None">None</DisplayString>
+		<DisplayString Condition="valueType == SHType::String">{payload.stringValue}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Path">{payload.stringValue} (Path)</DisplayString>
+		<DisplayString Condition="valueType == SHType::Int">{payload.intValue}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Int2">{payload.int2Value}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Int3">{payload.int3Value}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Int4">{payload.int4Value}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Int8">{payload.int4Value}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Int16">{payload.int4Value}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Float">{payload.floatValue}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Float2">{payload.float2Value}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Float3">{payload.float3Value}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Float4">{payload.float4Value}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Object">{payload.objectValue}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Enum">{payload.enumValue} (Enum)</DisplayString>
+		<DisplayString Condition="valueType == SHType::Seq">[...]</DisplayString>
+		<DisplayString Condition="valueType == SHType::Table">{{...}}</DisplayString>
+		<Expand>
+			<ArrayItems Condition="valueType == SHType::Seq">
+				<Direction>Forward</Direction>
+				<Rank>1</Rank>
+				<Size>payload.seqValue.len</Size>
+				<ValuePointer>payload.seqValue.elements</ValuePointer>
+			</ArrayItems>
+			<ExpandedItem Condition="valueType == SHType::Table">payload.tableValue.opaque->m_flat_tree.m_data.m_seq</ExpandedItem>
+		</Expand>
+	</Type>
+</AutoVisualizer>
