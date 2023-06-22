@@ -128,7 +128,7 @@
    0.0 >= .time
    .time (Broadcast "time")
 
-   {} (GFX.Feature :ViewGenerators
+   (GFX.Feature :ViewGenerators
                    (->
                     (Listen "time" (type Float)) >= .time
                     {:time .time})) >> .features

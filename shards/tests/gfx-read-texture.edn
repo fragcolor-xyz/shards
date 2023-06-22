@@ -8,25 +8,25 @@
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .features
    (GFX.DrawQueue) >= .queue
-   {:Features .features :Queue .queue} (GFX.DrawablePass) >> .render-steps
+   (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps
 
    (GFX.Texture :Format TextureFormat.R16Uint) >= .u8-tex
    (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .features-1
-   {:State {:DepthCompare CompareFunction.Equal :DepthWrite false}
-    :Params {:index 0}
-    :Shaders
-    [{:Stage ProgrammableGraphicsStage.Fragment
-      :EntryPoint
-      (->
-       ; Write to index output
-       (Shader.ReadBuffer "index")
-       (Shader.WriteOutput "index"))}]} (GFX.Feature) >> .features-1
+   (GFX.Feature :State {:DepthCompare CompareFunction.Equal :DepthWrite false}
+                :Params {:index 0}
+                :Shaders
+                [{:Stage ProgrammableGraphicsStage.Fragment
+                  :EntryPoint
+                  (->
+                   ; Write to index output
+                   (Shader.ReadBuffer "index")
+                   (Shader.WriteOutput "index"))}]) >> .features-1
 
    ; Second pass to render to index texture
-   {:Features .features-1
-    :Outputs [{:Name "index" :Texture .u8-tex}
-              {:Name "depth"}]
-    :Queue .queue} (GFX.DrawablePass) >> .render-steps
+   (GFX.DrawablePass :Features .features-1
+                     :Outputs [{:Name "index" :Texture .u8-tex}
+                               {:Name "depth"}]
+                     :Queue .queue) >> .render-steps
 
    {:Position (Float3 0 1 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
 
@@ -36,7 +36,8 @@
 (defloop test-copy-async
   (base)
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Title "SDL Window" :Width 1280 :Height 720
+   :UseDisplayScaling false
    :Contents
    (->
     (Setup 0 >= .frame-index)
@@ -73,7 +74,8 @@
   (base)
   ;; Sync test
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 :Debug false
+   :Title "SDL Window" :Width 1280 :Height 720
+   :UseDisplayScaling false
    :Contents
    (->
     (Float3 -1.0 0.0 0.0) (Math.Translation)
