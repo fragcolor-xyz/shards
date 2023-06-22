@@ -1,6 +1,7 @@
 name: Workflow to check for broken links
 
 on:
+  workflow_call:
   push:
     paths:
       - 'docs/**'
