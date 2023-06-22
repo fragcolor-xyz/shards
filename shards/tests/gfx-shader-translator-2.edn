@@ -68,14 +68,14 @@
 
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Shaders [{:Stage ProgrammableGraphicsStage.Fragment
-               :After ["readColor"]
-               :Before ["writeColor"]
-               :EntryPoint (-> (shader-main))}]} (GFX.Feature
-                                                  :ViewGenerators
-                                                  (->
-                                                   (Listen "time" (type Float)) >= .time
-                                                   {:time .time})) >> .features
+   (GFX.Feature :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
+                           :After ["readColor"]
+                           :Before ["writeColor"]
+                           :EntryPoint (-> (shader-main))}]
+                :ViewGenerators
+                (->
+                 (Listen "time" (type Float)) >= .time
+                 {:time .time})) >> .features
 
    (GFX.DrawQueue) >= .queue
    (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps)
