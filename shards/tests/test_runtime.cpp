@@ -1409,6 +1409,7 @@ TEST_CASE("TTableVar operations", "[TTableVar]") {
     REQUIRE(tv.size() == 0);
     REQUIRE_FALSE(tv.hasKey("key1"));
   }
+}
 
 #include <shards/core/function.hpp>
 static int staticVal = 0;
