@@ -119,8 +119,19 @@ struct IsAlmost {
     _requiredVariables.clear();
     collectRequiredVariables(data.shared, _requiredVariables, _value);
 
-    if (_value.get().valueType != data.inputType.basicType)
-      throw SHException("Input and value types must match.");
+    if (_value.isVariable()) {
+      auto exposed = findExposedVariable(data.shared, _value);
+      if (!exposed) {
+        throw SHException(fmt::format("Could not find exposed variable: {}", _value.variableName()));
+      }
+      if (exposed->exposedType.basicType != data.inputType.basicType) {
+        throw SHException("Input and value types must match.");
+      }
+    } else {
+      if (_value->valueType != data.inputType.basicType) {
+        throw SHException("Input and value types must match.");
+      }
+    }
 
     if (_threshold <= 0.0)
       throw SHException("Threshold must be greater than 0.");
@@ -157,10 +168,10 @@ private:
   static inline Type MathVarType = Type::VariableOf(MathTypes);
   static inline Parameters _params = {
       {"Value", SHCCSTR("The value to test against for almost equality."), {MathTypes, {MathVarType}}},
-                                      {"Abort", SHCCSTR("If we should abort the process on failure."), {CoreInfo::BoolType}},
-                                      {"Threshold",
-                                       SHCCSTR("The smallest difference to be considered equal. Should be greater than zero."),
-                                       {CoreInfo::FloatType, CoreInfo::IntType}}};
+      {"Abort", SHCCSTR("If we should abort the process on failure."), {CoreInfo::BoolType}},
+      {"Threshold",
+       SHCCSTR("The smallest difference to be considered equal. Should be greater than zero."),
+       {CoreInfo::FloatType, CoreInfo::IntType}}};
 
   bool _aborting;
   SHFloat _threshold{FLT_EPSILON};
