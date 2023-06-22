@@ -44,17 +44,17 @@
   )
 
 (defwire create-test-feature
-  {:State {:Blend {:Color BlendOverwrite :Alpha BlendOverwrite}}
-   :Shaders
-   [{:Stage ProgrammableGraphicsStage.Fragment
-     :EntryPoint
-     (->
-      (Shader.ReadGlobal "color") >= .base-color
-      (Shader.SampleTexture "someTexture") (Math.Add .base-color)
-      (Shader.WriteGlobal "color"))
-     :After ["readColor"] :Before ["writeColor"]}]} (GFX.Feature
-                                                     :ViewGenerators generator
-                                                     :DrawableGenerators draw-generator))
+  (GFX.Feature :State {:Blend {:Color BlendOverwrite :Alpha BlendOverwrite}}
+               :Shaders
+               [{:Stage ProgrammableGraphicsStage.Fragment
+                 :EntryPoint
+                 (->
+                  (Shader.ReadGlobal "color") >= .base-color
+                  (Shader.SampleTexture "someTexture") (Math.Add .base-color)
+                  (Shader.WriteGlobal "color"))
+                 :After ["readColor"] :Before ["writeColor"]}]
+               :ViewGenerators generator
+               :DrawableGenerators draw-generator))
 
 (def timestep (/ 1.0 120.0))
 

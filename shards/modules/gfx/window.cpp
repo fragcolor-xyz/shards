@@ -56,7 +56,7 @@ struct InlineInputContext : public IInputContext {
 };
 
 struct MainWindow final {
-  PARAM_VAR(_title, "Title", "The title of the window to create.", {CoreInfo::StringType});
+  PARAM_VAR(_title, "Title", "The title of the window to create.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_VAR(_width, "Width", "The width of the window to create. In pixels and DPI aware.", {CoreInfo::IntType});
   PARAM_VAR(_height, "Height", "The height of the window to create. In pixels and DPI aware.", {CoreInfo::IntType});
   PARAM(ShardsVar, _contents, "Contents", "The main input loop of this window.", {CoreInfo::ShardsOrNone});
@@ -66,8 +66,11 @@ struct MainWindow final {
       _handleCloseEvent, "HandleCloseEvent",
       "When set to false; the close event will not be handled and abort the wire the window is running in. True by default.",
       {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_VAR(_useDisplayScaling, "UseDisplayScaling",
+            "When enabled, the window size will be scaled using the OS's provided scaling value. True by default.",
+            {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_title), PARAM_IMPL_FOR(_width), PARAM_IMPL_FOR(_height), PARAM_IMPL_FOR(_contents),
-             PARAM_IMPL_FOR(_detachRenderer), PARAM_IMPL_FOR(_handleCloseEvent));
+             PARAM_IMPL_FOR(_detachRenderer), PARAM_IMPL_FOR(_handleCloseEvent), PARAM_IMPL_FOR(_useDisplayScaling));
 
   static inline Type OutputType = Type(WindowContext::Type);
 
@@ -80,6 +83,7 @@ struct MainWindow final {
     _title = Var("Shards Window");
     _detachRenderer = Var(false);
     _handleCloseEvent = Var(true);
+    _useDisplayScaling = Var(true);
   }
 
   Window _window;
@@ -160,7 +164,7 @@ struct MainWindow final {
     _windowContext->window->init(windowOptions);
 
     // Adjust window size so they're specified in virtual points
-    float scaling = _windowContext->window->getUIScale();
+    float scaling = *_useDisplayScaling ? _windowContext->window->getUIScale() : 1.0f;
     _windowContext->window->resize((int2)(float2(int2((int)*_width, (int)*_height)) * scaling));
 
 #if GFX_APPLE
