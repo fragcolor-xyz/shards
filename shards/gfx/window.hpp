@@ -6,6 +6,7 @@
 #include <SDL_events.h>
 #include <string>
 #include <vector>
+#include <optional>
 
 #if GFX_APPLE
 #include "platform_surface.hpp"
