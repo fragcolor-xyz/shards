@@ -3,8 +3,8 @@ name: Workflow to check for broken links
 on:
   workflow_dispatch:
   push:
-    paths:
-      - 'docs/**'
+#    paths:
+#      - 'docs/**'
 
 jobs:
   check-broken-links:
