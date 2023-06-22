@@ -7,19 +7,22 @@
 
 namespace shards {
 
+namespace detail {
+template <bool Required1> struct RequiredFlags {};
+template <> struct RequiredFlags<false> {
+  bool found;
+};
+} // namespace detail
+
 // Defines a reference to a required variable
 // Warmup references the variable, cleanup releases the refence
 // use  getRequiredVariable to get the type
 template <typename T, const SHTypeInfo &VariableType, const char *VariableName, bool Required = true>
 struct RequiredContextVariable {
 private:
-  template <bool Required1> struct RequiredFlags {};
-  template <> struct RequiredFlags<false> {
-    bool found;
-  };
-
+  using Flags = detail::RequiredFlags<Required>;
   SHVar *variable{};
-  RequiredFlags<Required> requiredFlags;
+  Flags requiredFlags;
 
 public:
   RequiredContextVariable() {}
