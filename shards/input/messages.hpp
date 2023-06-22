@@ -8,9 +8,17 @@ namespace shards::input {
 // Request application to begin accepting text input
 struct BeginTextInputMessage {
   SDL_Rect inputRect{};
+
   std::partial_ordering operator<=>(const BeginTextInputMessage &other) const {
-    return std::tie(inputRect.x, inputRect.y, inputRect.w, inputRect.h) <=>
-           std::tie(other.inputRect.x, other.inputRect.y, other.inputRect.w, other.inputRect.h);
+    if (inputRect.x != other.inputRect.x)
+      return inputRect.x <=> other.inputRect.x;
+    if (inputRect.y != other.inputRect.y)
+      return inputRect.y <=> other.inputRect.y;
+    if (inputRect.w != other.inputRect.w)
+      return inputRect.w <=> other.inputRect.w;
+    if (inputRect.h != other.inputRect.h)
+      return inputRect.h <=> other.inputRect.h;
+    return std::partial_ordering::equivalent;
   }
 };
 
