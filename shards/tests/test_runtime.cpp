@@ -1108,7 +1108,7 @@ enum class XRHand { Left, Right };
 
 struct GamePadTable : public TableVar {
   GamePadTable()
-      : TableVar(),                      //
+      : TableVar(),                           //
         buttons(get<SeqVar>(Var("buttons"))), //
         sticks(get<SeqVar>(Var("sticks"))),   //
         id((*this)[Var("id")]),               //
@@ -1126,7 +1126,7 @@ struct HandTable : public GamePadTable {
   DECL_ENUM_INFO(XRHand, XrHand, 'xrha');
 
   HandTable()
-      : GamePadTable(),                      //
+      : GamePadTable(),                           //
         handedness((*this)[Var("handedness")]),   //
         transform(get<SeqVar>(Var("transform"))), //
         inverseTransform(get<SeqVar>(Var("inverseTransform"))) {
@@ -1408,6 +1408,7 @@ TEST_CASE("TTableVar operations", "[TTableVar]") {
     REQUIRE(tv.size() == 0);
     REQUIRE_FALSE(tv.hasKey("key1"));
   }
+}
 
 #include <shards/core/function.hpp>
 static int staticVal = 0;
