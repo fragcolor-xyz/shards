@@ -3,6 +3,10 @@
 
 #include "events.hpp"
 #include "state.hpp"
+#include <atomic>
+#include <tuple>
+#include <vector>
+#include <type_traits>
 
 namespace shards::input {
 
