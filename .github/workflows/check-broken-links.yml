@@ -3,7 +3,7 @@ name: Workflow to check for broken links
 on:
   push:
     paths:
-      - '**/*.md'
+      - 'docs/**'
 
 jobs:
   check-broken-links:
