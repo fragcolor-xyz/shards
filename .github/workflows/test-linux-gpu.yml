@@ -86,6 +86,9 @@ jobs:
             build/shards "$i"
           done
 
+          echo "Running input test"
+          build/shards shards/tests/input.edn
+
           echo "Running UI"
           build/shards shards/tests/ui-0.edn
           build/shards shards/tests/ui-1.edn
