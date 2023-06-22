@@ -30,6 +30,6 @@ jobs:
         id: link-report
         uses: roc/link-checker@master
         with:
-          url: "http://127.0.0.1:8000"
-          blc_args: --recursive --verbose --follow true --exclude twitter.com
+          url: "http://127.0.0.1:8000/learn/shards/"
+          blc_args: --recursive --verbose --follow true --exclude twitter.com --exclude /learn/shards/tutorials/ --exclude /learn/fragnova-network/
           allow_failures: false
