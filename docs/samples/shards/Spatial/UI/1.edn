@@ -22,34 +22,37 @@
  :Contents
  (->
   .queue (GFX.ClearQueue)
-  (Spatial.UI
-   :Queue .queue :View .view :Scale 100.0 :Contents
-   (->
-    (Spatial.Panel
-     :Transform .panel-t-0 :Size (Float2 100 100) :Contents
-     (->
-      (UI.CentralPanel
-       (->
-        "Left panel" (UI.Label)
-        (UI.Button :Label "Button")))))
-    (Spatial.Panel
-     :Transform .panel-t-1 :Size (Float2 100 100) :Contents
-     (->
-      (UI.CentralPanel
-       (->
-        "Right panel" (UI.Label)
-        (UI.Button :Label "Button")))))
-    (Spatial.Panel
-     :Transform .panel-t-2 :Size (Float2 300 60) :Contents
-     (->
-      (UI.CentralPanel
-       (->
-        "Wide panel" (UI.Label)
-        (Setup
-         (LoadImage "../../assets/ShardsLogo.png") (GFX.Texture) >= .button-texture)
-        (UI.Horizontal (->
-                        .button-texture (UI.ImageButton :Scale (Float2 0.01))
-                        .button-texture (UI.ImageButton :Scale (Float2 0.01))
-                        .button-texture (UI.ImageButton :Scale (Float2 0.01))))))))))
+
+  ;; Currently not working with new input system
+  ;; (Spatial.UI
+  ;;  :Queue .queue :View .view :Scale 100.0 :Contents
+  ;;  (->
+  ;;   (Spatial.Panel
+  ;;    :Transform .panel-t-0 :Size (Float2 100 100) :Contents
+  ;;    (->
+  ;;     (UI.CentralPanel
+  ;;      (->
+  ;;       "Left panel" (UI.Label)
+  ;;       (UI.Button :Label "Button")))))
+  ;;   (Spatial.Panel
+  ;;    :Transform .panel-t-1 :Size (Float2 100 100) :Contents
+  ;;    (->
+  ;;     (UI.CentralPanel
+  ;;      (->
+  ;;       "Right panel" (UI.Label)
+  ;;       (UI.Button :Label "Button")))))
+  ;;   (Spatial.Panel
+  ;;    :Transform .panel-t-2 :Size (Float2 300 60) :Contents
+  ;;    (->
+  ;;     (UI.CentralPanel
+  ;;      (->
+  ;;       "Wide panel" (UI.Label)
+  ;;       (Setup
+  ;;        (LoadImage "../../assets/ShardsLogo.png") (GFX.Texture) >= .button-texture)
+  ;;       (UI.Horizontal (->
+  ;;                       .button-texture (UI.ImageButton :Scale (Float2 0.01))
+  ;;                       .button-texture (UI.ImageButton :Scale (Float2 0.01))
+  ;;                       .button-texture (UI.ImageButton :Scale (Float2 0.01))))))))
+
 
   (GFX.Render :Steps .render-steps :View .view)))
