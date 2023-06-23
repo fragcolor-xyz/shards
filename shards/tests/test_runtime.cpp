@@ -1431,4 +1431,27 @@ TEST_CASE("shards-lang") {
     mesh->tick();
     shards_free_wire(wire.wire);
   }
+
+  SECTION("Sub Shards 2") {
+    auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(Value: 3) | Log}) | Log");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("Sub Shards 3") {
+    auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(LOL: 3) | Log}) | Log");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE_FALSE(wire.wire);
+    REQUIRE(wire.error);
+    std::string a(wire.error->message);
+    std::string b("Unknown parameter 'LOL'");
+    REQUIRE(a == b);
+    shards_free_error(wire.error);
+  }
 }
