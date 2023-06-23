@@ -3,6 +3,7 @@
 
 #include <random>
 
+#include <shards/shards_lang.h>
 #include <shards/ops.hpp>
 #include <shards/utility.hpp>
 #include <shards/common_types.hpp>
@@ -27,7 +28,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   shards::GetGlobals().RootPath = "./";
-  shards::registerShards();
+  (void)shardsInterface(SHARDS_CURRENT_ABI);
   int result = Catch::Session().run(argc, argv);
 
 #ifdef TRACY_ENABLE
@@ -1108,7 +1109,7 @@ enum class XRHand { Left, Right };
 
 struct GamePadTable : public TableVar {
   GamePadTable()
-      : TableVar(),                      //
+      : TableVar(),                           //
         buttons(get<SeqVar>(Var("buttons"))), //
         sticks(get<SeqVar>(Var("sticks"))),   //
         id((*this)[Var("id")]),               //
@@ -1126,7 +1127,7 @@ struct HandTable : public GamePadTable {
   DECL_ENUM_INFO(XRHand, XrHand, 'xrha');
 
   HandTable()
-      : GamePadTable(),                      //
+      : GamePadTable(),                           //
         handedness((*this)[Var("handedness")]),   //
         transform(get<SeqVar>(Var("transform"))), //
         inverseTransform(get<SeqVar>(Var("inverseTransform"))) {
@@ -1402,5 +1403,32 @@ TEST_CASE("TTableVar operations", "[TTableVar]") {
     tv.remove("key1");
     REQUIRE(tv.size() == 0);
     REQUIRE_FALSE(tv.hasKey("key1"));
+  }
+}
+
+TEST_CASE("shards-lang") {
+  // initialize shards
+  shards_init(shardsInterface(SHARDS_CURRENT_ABI));
+
+  SECTION("Simple") {
+    auto seq = shards_read("1 | Math.Add(2) | Assert.Is(3) | Log");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("Sub Shards") {
+    auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(3) | Log}) | Log");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
   }
 }

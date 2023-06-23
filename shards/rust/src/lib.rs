@@ -368,7 +368,7 @@ mod dummy_shard {
     unsafe {
       let shlk = (*Core).createShard.unwrap()(blkname.as_ptr());
       (*shlk).setup.unwrap()(shlk);
-      (*shlk).destroy.unwrap()(shlk);
+      (*Core).releaseShard.unwrap()(shlk);
     }
 
     let svar1: Var = Var::ephemeral_string("Hello\0");

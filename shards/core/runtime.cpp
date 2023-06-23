@@ -3069,7 +3069,13 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
                                       msg);
   };
 
-  result->createShard = [](const char *name) noexcept { return shards::createShard(name); };
+  result->createShard = [](const char *name) noexcept {
+    auto shard = shards::createShard(name);
+    incRef(shard);
+    return shard;
+  };
+
+  result->releaseShard = [](struct Shard *shard) noexcept { decRef(shard); };
 
   result->createWire = []() noexcept {
     auto wire = SHWire::make();

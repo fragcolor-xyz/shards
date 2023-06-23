@@ -2,7 +2,7 @@ if(SHARDS_BUILD_TESTS)
   add_executable(test-runtime ../tests/test_runtime.cpp)
 
   target_link_libraries(test-runtime
-    shards-union Catch2 Catch2Main
+    shards-union shards-lang-rust Catch2 Catch2Main
   )
 
   if(EMSCRIPTEN)
