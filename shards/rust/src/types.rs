@@ -233,6 +233,10 @@ impl ShardRef {
     ShardRef(unsafe { (*Core).createShard.unwrap()(c_name.as_ptr()) })
   }
 
+  pub fn setup(&self) {
+    unsafe { (*self.0).setup.unwrap()(self.0) }
+  }
+
   pub fn name(&self) -> &str {
     unsafe {
       let c_name = (*self.0).name.unwrap()(self.0);
@@ -242,7 +246,7 @@ impl ShardRef {
 
   pub fn destroy(&self) {
     unsafe {
-      (*self.0).destroy.unwrap()(self.0);
+      (*Core).releaseShard.unwrap()(self.0);
     }
   }
 
@@ -1665,7 +1669,7 @@ impl From<ShardPtr> for Var {
   #[inline(always)]
   fn from(v: ShardPtr) -> Self {
     SHVar {
-      valueType: SHType_String,
+      valueType: SHType_ShardRef,
       payload: SHVarPayload {
         __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { shardValue: v },
       },

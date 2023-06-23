@@ -860,6 +860,7 @@ typedef void(__cdecl *SHLog)(SHString msg);
 typedef void(__cdecl *SHLogLevel)(int level, SHString msg);
 
 typedef struct Shard *(__cdecl *SHCreateShard)(SHString name);
+typedef void (__cdecl *SHReleaseShard)(struct Shard *shard);
 
 typedef SHWireRef(__cdecl *SHCreateWire)();
 typedef void(__cdecl *SHSetWireName)(SHWireRef wire, SHString name);
@@ -986,6 +987,7 @@ typedef struct _SHCore {
 
   // Wire creation
   SHCreateShard createShard;
+  SHReleaseShard releaseShard;
   SHValidateSetParam validateSetParam;
 
   SHCreateWire createWire;

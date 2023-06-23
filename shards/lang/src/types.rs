@@ -55,7 +55,7 @@ pub enum Value {
   Number(Number),
   String(String),
   Seq(Vec<Value>),
-  Table(Vec<(String, Value)>),
+  Table(Vec<(Value, Value)>),
   Shards(Sequence),
   EvalExpr(Sequence),
   Expr(Sequence),

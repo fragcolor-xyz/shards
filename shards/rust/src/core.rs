@@ -295,7 +295,7 @@ pub fn getRootPath() -> &'static str {
 
 #[inline(always)]
 pub fn createShardPtr(name: &str) -> ShardPtr {
-  let cname = CString::new(name).unwrap();
+  let cname: CString = CString::new(name).unwrap();
   unsafe { (*Core).createShard.unwrap()(cname.as_ptr()) }
 }
 
@@ -639,9 +639,7 @@ pub struct ShardInstance {
 impl Drop for ShardInstance {
   fn drop(&mut self) {
     unsafe {
-      if !(*self.ptr).owned {
-        (*self.ptr).destroy.unwrap()(self.ptr);
-      }
+      (*Core).releaseShard.unwrap()(self.ptr);
     }
   }
 }

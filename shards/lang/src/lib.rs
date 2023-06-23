@@ -16,8 +16,22 @@ use shards::types::Seq;
 use shards::types::SeqVar;
 use shards::types::TableVar;
 use shards::types::{ShardRef, Var, Wire, WireRef};
-use shards::SHType_ContextVar;
+use shards::ShardPtr;
+use shards::{SHType_ContextVar, SHType_ShardRef};
 use std::ffi::CStr;
+
+struct SShardRef(pub(crate) ShardRef);
+
+impl Drop for SShardRef {
+  fn drop(&mut self) {
+    self.0.destroy();
+  }
+}
+
+struct EvalEnv {
+  shards: Vec<SShardRef>,
+  previous: Option<ShardRef>,
+}
 
 enum SVar {
   Cloned(ClonedVar),
@@ -34,7 +48,12 @@ impl AsRef<Var> for SVar {
 }
 
 // we need to implement Value into Var conversion
-fn as_var(value: Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<SVar, ShardsError> {
+fn as_var(
+  value: Value,
+  line_info: LineInfo,
+  shard: Option<ShardRef>,
+  e: &mut EvalEnv,
+) -> Result<SVar, ShardsError> {
   match value {
     Value::Identifier(value) => {
       let mut s = Var::ephemeral_string(value.as_str());
@@ -59,7 +78,7 @@ fn as_var(value: Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<SVar, Sh
       let mut seq = SeqVar::new();
       for value in vec {
         // clone of a clone of a clone 😭
-        let value = as_var(value, line_info, e)?;
+        let value = as_var(value, line_info, shard, e)?;
         match value {
           SVar::Cloned(v) => {
             // push will clone and v will be dropped when out of this scope
@@ -73,21 +92,31 @@ fn as_var(value: Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<SVar, Sh
     Value::Table(value) => {
       let mut table = TableVar::new();
       for (key, value) in value {
-        let value = as_var(value, line_info, e)?;
-        let key = Var::ephemeral_string(key.as_str());
-        match value {
-          SVar::Cloned(v) => {
-            // insert will clone and v will be dropped when out of this scope
-            table.insert(key, &v.0);
-          }
-          SVar::NotCloned(v) => {
-            table.insert(key, &v);
-          }
-        }
+        let key = as_var(key, line_info, shard, e)?;
+        let value = as_var(value, line_info, shard, e)?;
+        let key_ref = key.as_ref();
+        let value_ref = value.as_ref();
+        table.insert(*key_ref, value_ref);
       }
       Ok(SVar::Cloned(ClonedVar(table.0)))
     }
-    Value::Shards(_) => todo!(),
+    Value::Shards(seq) => {
+      let mut sub_env = EvalEnv {
+        shards: Vec::new(),
+        previous: shard,
+      };
+      for stmt in seq.statements {
+        eval_statement(stmt, &mut sub_env)?;
+      }
+      let mut seq = SeqVar::new();
+      for shard in sub_env.shards {
+        let s = shard.0 .0;
+        let s: Var = s.into();
+        debug_assert!(s.valueType == SHType_ShardRef);
+        seq.push(&s);
+      }
+      Ok(SVar::Cloned(ClonedVar(seq.0)))
+    }
     Value::EvalExpr(_) => todo!(),
     Value::Expr(_) => todo!(),
     Value::TakeTable(_, _) => todo!(),
@@ -95,26 +124,23 @@ fn as_var(value: Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<SVar, Sh
   }
 }
 
-struct EvalEnv {
-  wire: Wire,
-  previous: Option<ShardRef>,
-}
-
 fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let s = ShardRef::create(shard.name.as_str());
-  e.wire.add_shard(s); // add immediately to wire to prevent leaks if we have errors
+  s.setup();
+  let s = SShardRef(s);
   let mut idx = 0i32;
   let mut as_idx = true;
-  let info = s.parameters();
+  let info = s.0.parameters();
   if let Some(params) = shard.params {
     for param in params {
-      let value = as_var(param.value, line_info, e)?;
+      let value = as_var(param.value, line_info, Some(s.0), e)?;
       if let Some(name) = param.name {
         as_idx = false;
         for (i, info) in info.iter().enumerate() {
           let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() };
           if param_name == name {
-            s.set_parameter(i.try_into().expect("Too many parameters"), *value.as_ref());
+            s.0
+              .set_parameter(i.try_into().expect("Too many parameters"), *value.as_ref());
             break;
           }
         }
@@ -122,25 +148,28 @@ fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), S
         if !as_idx {
           return Err(("Named parameter after unnamed parameter", line_info).into());
         }
-        s.set_parameter(idx, *value.as_ref());
+        s.0.set_parameter(idx, *value.as_ref());
       }
       idx += 1;
     }
   }
-  e.previous = Some(s);
+  e.previous = Some(s.0);
+  e.shards.push(s);
   Ok(())
 }
 
 fn add_const_shard(value: Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Const");
-  e.wire.add_shard(shard); // add immediately to wire to prevent leaks if we have errors
-  let value = as_var(value, line_info, e)?;
-  shard.set_parameter(0, *value.as_ref());
-  shard.set_line_info((
+  shard.setup();
+  let shard = SShardRef(shard);
+  let value = as_var(value, line_info, Some(shard.0), e)?;
+  shard.0.set_parameter(0, *value.as_ref());
+  shard.0.set_line_info((
     line_info.line.try_into().expect("Too many lines"),
     line_info.column.try_into().expect("Oversized column"),
   ));
-  e.previous = Some(shard);
+  e.previous = Some(shard.0);
+  e.shards.push(shard);
   Ok(())
 }
 
@@ -167,11 +196,13 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
 fn add_assignment_shard(shard_name: &str, name: &str, e: &mut EvalEnv) {
   if let Some(previous) = e.previous {
     let shard = ShardRef::create(shard_name);
-    e.wire.add_shard(shard); // add immediately to wire to prevent leaks if we have errors
+    shard.setup();
+    let shard = SShardRef(shard);
     let name = Var::ephemeral_string(name);
-    shard.set_parameter(0, name);
-    shard.set_line_info(previous.get_line_info());
-    e.previous = Some(shard);
+    shard.0.set_parameter(0, name);
+    shard.0.set_line_info(previous.get_line_info());
+    e.previous = Some(shard.0);
+    e.shards.push(shard);
   }
 }
 
@@ -212,19 +243,24 @@ pub fn read(code: &str) -> Result<Sequence, ShardsError> {
   process_sequence(successful_parse.into_iter().next().unwrap())
 }
 
-pub fn eval(seq: Sequence) -> Result<Wire, ShardsError> {
+pub fn eval(seq: Sequence, name: &str) -> Result<Wire, ShardsError> {
   // eval_statements
   let mut eval_env = EvalEnv {
-    wire: Wire::default(),
+    shards: Vec::new(),
     previous: None,
   };
   for stmt in seq.statements {
     eval_statement(stmt, &mut eval_env)?;
   }
-  Ok(eval_env.wire)
+  let wire = Wire::default();
+  wire.set_name(name);
+  for shard in eval_env.shards {
+    wire.add_shard(shard.0);
+  }
+  Ok(wire)
 }
 
-use std::ffi::{CString};
+use std::ffi::CString;
 use std::os::raw::{c_char, c_void};
 use std::panic::{catch_unwind, UnwindSafe};
 
@@ -233,36 +269,74 @@ pub struct SHLError {
   message: *mut c_char,
 }
 
+#[repr(C)]
+pub struct SHLAst {
+  ast: *mut Sequence,
+  error: *mut SHLError,
+}
+
+#[repr(C)]
+pub struct SHLWire {
+  wire: *mut Wire,
+  error: *mut SHLError,
+}
+
 #[no_mangle]
-pub extern "C" fn shards_read(code: *const c_char) -> *mut Sequence {
-  let code = unsafe { CStr::from_ptr(code).to_str().unwrap() };
-  let result = catch_unwind(|| read(code));
-  match result {
-    Ok(Ok(sequence)) => Box::into_raw(Box::new(sequence)),
-    Ok(Err(error)) => {
-      let error_message = CString::new(error.message).unwrap();
-      let shards_error = SHLError {
-        message: error_message.into_raw(),
-      };
-      Box::into_raw(Box::new(shards_error)) as *mut Sequence
-    }
-    Err(_) => std::ptr::null_mut(),
+pub extern "C" fn shards_init(core: *mut shards::shardsc::SHCore) {
+  unsafe {
+    shards::core::Core = core;
   }
 }
 
 #[no_mangle]
-pub extern "C" fn shards_eval(sequence: *mut Sequence) -> *mut Wire {
-  let result = catch_unwind(|| eval(unsafe { *Box::from_raw(sequence) }));
+pub extern "C" fn shards_read(code: *const c_char) -> SHLAst {
+  let code = unsafe { CStr::from_ptr(code).to_str().unwrap() };
+  let result = catch_unwind(|| read(code));
   match result {
-    Ok(Ok(wire)) => Box::into_raw(Box::new(wire)),
+    Ok(Ok(sequence)) => SHLAst {
+      ast: Box::into_raw(Box::new(sequence)),
+      error: std::ptr::null_mut(),
+    },
     Ok(Err(error)) => {
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
       };
-      Box::into_raw(Box::new(shards_error)) as *mut Wire
+      SHLAst {
+        ast: std::ptr::null_mut(),
+        error: Box::into_raw(Box::new(shards_error)),
+      }
     }
-    Err(_) => std::ptr::null_mut(),
+    Err(_) => SHLAst {
+      ast: std::ptr::null_mut(),
+      error: std::ptr::null_mut(),
+    },
+  }
+}
+
+#[no_mangle]
+pub extern "C" fn shards_eval(sequence: *mut Sequence, name: *const c_char) -> SHLWire {
+  let name = unsafe { CStr::from_ptr(name).to_str().unwrap() };
+  let result = catch_unwind(|| eval(unsafe { *Box::from_raw(sequence) }, name));
+  match result {
+    Ok(Ok(wire)) => SHLWire {
+      wire: Box::into_raw(Box::new(wire)),
+      error: std::ptr::null_mut(),
+    },
+    Ok(Err(error)) => {
+      let error_message = CString::new(error.message).unwrap();
+      let shards_error = SHLError {
+        message: error_message.into_raw(),
+      };
+      SHLWire {
+        wire: std::ptr::null_mut(),
+        error: Box::into_raw(Box::new(shards_error)),
+      }
+    }
+    Err(_) => SHLWire {
+      wire: std::ptr::null_mut(),
+      error: std::ptr::null_mut(),
+    },
   }
 }
 
@@ -287,24 +361,3 @@ pub extern "C" fn shards_free_error(error: *mut SHLError) {
     drop(Box::from_raw(error));
   }
 }
-
-/*
-// Reads a Shards code string and returns a pointer to a Sequence struct.
-// If there is an error, returns a pointer to a SHLError struct.
-// The returned pointer must be freed with shards_free_sequence.
-struct Sequence* shards_read(const char* code);
-
-// Evaluates a Sequence and returns a pointer to a Wire struct.
-// If there is an error, returns a pointer to a SHLError struct.
-// The returned pointer must be freed with shards_free_wire.
-struct Wire* shards_eval(struct Sequence* sequence);
-
-// Frees a Sequence struct.
-void shards_free_sequence(struct Sequence* sequence);
-
-// Frees a Wire struct.
-void shards_free_wire(struct Wire* wire);
-
-// Frees a SHLError struct.
-void shards_free_error(struct SHLError* error);
-*/

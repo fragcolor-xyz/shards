@@ -54,7 +54,10 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
   for pair in pair.into_inner() {
     let pos = pair.as_span().start_pos();
     match pair.as_rule() {
-      Rule::Shard => blocks.push(Block::BlockContent(process_block_content(pair)?, pos.into())),
+      Rule::Shard => blocks.push(Block::BlockContent(
+        process_block_content(pair)?,
+        pos.into(),
+      )),
       Rule::EvalExpr => blocks.push(Block::EvalExpr(process_sequence(
         pair
           .into_inner()
@@ -124,11 +127,21 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
         .map(|pair| {
           let pos = pair.as_span().start_pos();
           let mut inner = pair.into_inner();
+
           let key = inner
             .next()
-            .ok_or(("Expected a key in TableEntry", pos).into())?
-            .as_str()[1..]
-            .to_string();
+            .ok_or(("Expected a value key in TableEntry", pos).into())?;
+          let pos = key.as_span().start_pos();
+          let key = process_value(
+            key
+              .into_inner()
+              .next()
+              .ok_or(("Expected a value key in TableEntry", pos).into())?
+              .into_inner()
+              .next()
+              .ok_or(("Expected a value key in TableEntry", pos).into())?,
+          )?;
+
           let value = inner
             .next()
             .ok_or(("Expected a value in TableEntry", pos).into())?;
@@ -290,7 +303,8 @@ fn process_param(pair: Pair<Rule>) -> Result<Param, ShardsError> {
     .ok_or(("Expected a ParamName or Value in Param", pos).into())?;
   let pos = first.as_span().start_pos();
   let (param_name, param_value) = if first.as_rule() == Rule::ParamName {
-    let name = first.as_str()[1..].to_string();
+    let name = first.as_str();
+    let name = name[0..name.len() - 1].to_string();
     let value = process_value(
       inner
         .next()
