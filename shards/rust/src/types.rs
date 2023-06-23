@@ -29,6 +29,7 @@ use crate::shardsc::SHTable;
 use crate::shardsc::SHTableIterator;
 use crate::shardsc::SHTableTypeInfo;
 use crate::shardsc::SHTypeInfo;
+use crate::shardsc::SHWireInfo;
 use crate::shardsc::SHTypeInfo_Details;
 use crate::shardsc::SHType_Any;
 use crate::shardsc::SHType_Array;
@@ -224,6 +225,14 @@ impl Wire {
   pub fn set_name(&self, name: &str) {
     let c_name = CString::new(name).unwrap();
     unsafe { (*Core).setWireName.unwrap()(self.0 .0, c_name.as_ptr()) }
+  }
+
+  pub fn stop(&self) -> ClonedVar {
+    unsafe { ClonedVar((*Core).stopWire.unwrap()(self.0 .0)) }
+  }
+
+  pub fn get_info(&self) -> SHWireInfo {
+    unsafe { (*Core).getWireInfo.unwrap()(self.0 .0) }
   }
 }
 
