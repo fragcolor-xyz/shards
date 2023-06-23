@@ -19,6 +19,7 @@ use shards::types::{ShardRef, Var, Wire, WireRef};
 use shards::ShardPtr;
 use shards::{SHType_ContextVar, SHType_ShardRef};
 use std::ffi::CStr;
+use std::fmt;
 
 struct SShardRef(pub(crate) ShardRef);
 
@@ -136,13 +137,19 @@ fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), S
       let value = as_var(param.value, line_info, Some(s.0), e)?;
       if let Some(name) = param.name {
         as_idx = false;
+        let mut found = false;
         for (i, info) in info.iter().enumerate() {
           let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() };
           if param_name == name {
             s.0
               .set_parameter(i.try_into().expect("Too many parameters"), *value.as_ref());
+            found = true;
             break;
           }
+        }
+        if !found {
+          let msg = format!("Unknown parameter '{}'", name);
+          return Err((msg, line_info).into());
         }
       } else {
         if !as_idx {

@@ -5,12 +5,13 @@
 
 typedef struct SHSequence SHSequence;
 
-struct SHLWire {
-  SHWireRef *wire;
-};
-
 struct SHLError {
   char *message;
+};
+
+struct SHLWire {
+  SHWireRef *wire;
+  SHLError *error;
 };
 
 struct SHLAst {

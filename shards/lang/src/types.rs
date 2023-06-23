@@ -41,6 +41,16 @@ impl<'a> Into<ShardsError> for (&str, LineInfo) {
   }
 }
 
+impl<'a> Into<ShardsError> for (String, LineInfo) {
+  fn into(self) -> ShardsError {
+    let (message, pos) = self;
+    ShardsError {
+      message: message,
+      loc: pos,
+    }
+  }
+}
+
 impl<'a> Into<LineInfo> for Position<'a> {
   fn into(self) -> LineInfo {
     let line = self.line_col().0;
