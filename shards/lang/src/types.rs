@@ -7,7 +7,7 @@ use shards::types::{ShardRef, Var, Wire, WireRef};
 #[grammar = "shards.pest"]
 pub struct ShardsParser;
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub struct LineInfo {
   pub line: usize,
   pub column: usize,
@@ -61,9 +61,19 @@ impl<'a> Into<LineInfo> for Position<'a> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Value {
+  None,
   Identifier(String),
+  Boolean(bool),
   Number(Number),
   String(String),
+  Int2([i64; 2]),
+  Int3([i32; 3]),
+  Int4([i32; 4]),
+  Int8([i16; 8]),
+  Int16([i8; 16]),
+  Float2([f64; 2]),
+  Float3([f32; 3]),
+  Float4([f32; 4]),
   Seq(Vec<Value>),
   Table(Vec<(Value, Value)>),
   Shards(Sequence),
@@ -112,11 +122,23 @@ pub enum Assignment {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum Operator {
+  Add,
+  Sub,
+  Mul,
+  Div,
+  Mod,
+  Pow,
+  MatMul,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum BlockContent {
   Shard(Shard),
   Const(Value),
   TakeTable(String, Vec<String>),
   TakeSeq(String, Vec<i32>),
+  Operator(Operator, Value),
 }
 
 #[derive(Serialize, Deserialize, Debug)]

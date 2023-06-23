@@ -1421,7 +1421,18 @@ TEST_CASE("shards-lang") {
     shards_free_wire(wire.wire);
   }
 
-  SECTION("Sub Shards") {
+  SECTION("Injected None") {
+    auto seq = shards_read("Log");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("Sub Shards 1") {
     auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(3) | Log}) | Log");
     REQUIRE(seq.ast);
     auto wire = shards_eval(seq.ast, "root");
@@ -1453,5 +1464,49 @@ TEST_CASE("shards-lang") {
     std::string b("Unknown parameter 'LOL'");
     REQUIRE(a == b);
     shards_free_error(wire.error);
+  }
+
+  SECTION("Exp 1") {
+    auto seq = shards_read("1 | Log | (2 | Log (3 | Log))");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("Exp 2") {
+    auto seq = shards_read("[(2 | Math.Multiply(3)) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("Exp 3") {
+    auto seq = shards_read("[(2 | Math.Multiply((3 | Math.Add(6)))) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("Failed EvalExpr") {
+    auto seq = shards_read("#(false | Assert.Is(true))");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.error);
+    // auto mesh = SHMesh::make();
+    // mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    // mesh->tick();
+    // shards_free_wire(wire.wire);
   }
 }

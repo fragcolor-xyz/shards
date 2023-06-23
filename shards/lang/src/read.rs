@@ -43,6 +43,173 @@ fn process_assignment(pair: Pair<Rule>) -> Result<Assignment, ShardsError> {
   }
 }
 
+fn process_vector(pair: Pair<Rule>) -> Result<Value, ShardsError> {
+  assert_eq!(pair.as_rule(), Rule::Vector);
+  let pos = pair.as_span().start_pos();
+  let inner = pair.into_inner();
+  let mut values = Vec::new();
+  for pair in inner {
+    let pos = pair.as_span().start_pos();
+    match pair.as_rule() {
+      Rule::Number => values.push(process_number(
+        pair
+          .into_inner()
+          .next()
+          .ok_or(("Expected a number", pos).into())?,
+      )?),
+      _ => return Err(("Unexpected rule in Vector.", pos).into()),
+    }
+  }
+  // now check that all the values are the same type
+  // and if so, return a Const with a vector value
+  // now, vectors are always 2+ values, so we can safely check first
+  let first = values.first().unwrap(); // qed
+  let is_int = match first {
+    Number::Float(_) => false,
+    _ => true,
+  };
+  if is_int {
+    match values.len() {
+      2 => {
+        let mut vec = Vec::new();
+        for value in values {
+          match value {
+            Number::Integer(i) => vec.push(i),
+            _ => unreachable!(),
+          }
+        }
+        Ok(Value::Int2(vec.try_into().unwrap())) // qed
+      }
+      3 => {
+        let mut vec: Vec<i32> = Vec::new();
+        for value in values {
+          match value {
+            Number::Integer(i) => vec.push(i.try_into().map_err(|_| {
+              (
+                "Expected a signed integer that fits in 32 bits, but found one that doesn't.",
+                pos,
+              )
+                .into()
+            })?),
+            _ => unreachable!(),
+          }
+        }
+        Ok(Value::Int3(vec.try_into().unwrap())) // qed
+      }
+      4 => {
+        let mut vec: Vec<i32> = Vec::new();
+        for value in values {
+          match value {
+            Number::Integer(i) => vec.push(i.try_into().map_err(|_| {
+              (
+                "Expected a signed integer that fits in 32 bits, but found one that doesn't.",
+                pos,
+              )
+                .into()
+            })?),
+            _ => unreachable!(),
+          }
+        }
+        Ok(Value::Int4(vec.try_into().unwrap())) // qed
+      }
+      8 => {
+        let mut vec: Vec<i16> = Vec::new();
+        for value in values {
+          match value {
+            Number::Integer(i) => vec.push(i.try_into().map_err(|_| {
+              (
+                "Expected a signed integer that fits in 16 bits, but found one that doesn't.",
+                pos,
+              )
+                .into()
+            })?),
+            _ => unreachable!(),
+          }
+        }
+        Ok(Value::Int8(vec.try_into().unwrap())) // qed
+      }
+      16 => {
+        let mut vec: Vec<i8> = Vec::new();
+        for value in values {
+          match value {
+            Number::Integer(i) => vec.push(i.try_into().map_err(|_| {
+              (
+                "Expected a signed integer that fits in 8 bits, but found one that doesn't.",
+                pos,
+              )
+                .into()
+            })?),
+            _ => unreachable!(),
+          }
+        }
+        Ok(Value::Int16(vec.try_into().unwrap())) // qed
+      }
+      _ => Err(("Expected an int vector of 2, 3, 4, 8, or 16 numbers.", pos).into()),
+    }
+  } else {
+    match values.len() {
+      2 => {
+        let mut vec = Vec::new();
+        for value in values {
+          match value {
+            Number::Float(f) => vec.push(f),
+            _ => unreachable!(),
+          }
+        }
+        Ok(Value::Float2(vec.try_into().unwrap())) // qed
+      }
+      3 => {
+        let mut vec: Vec<f32> = Vec::new();
+        for value in values {
+          match value {
+            Number::Float(f) => vec.push(f as f32),
+            _ => unreachable!(),
+          }
+        }
+        Ok(Value::Float3(vec.try_into().unwrap())) // qed
+      }
+      4 => {
+        let mut vec: Vec<f32> = Vec::new();
+        for value in values {
+          match value {
+            Number::Float(f) => vec.push(f as f32),
+            _ => unreachable!(),
+          }
+        }
+        Ok(Value::Float4(vec.try_into().unwrap())) // qed
+      }
+      _ => Err(("Expected a float vector of 2, 3, 4 numbers.", pos).into()),
+    }
+  }
+}
+
+fn process_operator(pair: Pair<Rule>) -> Result<BlockContent, ShardsError> {
+  assert_eq!(pair.as_rule(), Rule::Operators);
+  let pos = pair.as_span().start_pos();
+
+  let mut inner = pair.into_inner();
+  let op = inner.next().ok_or(("Expected an operator.", pos).into())?;
+  let op_rule = op.as_rule();
+
+  let mut inner = op.into_inner();
+  let operand_value = inner
+    .next()
+    .ok_or(("Expected an operand value.", pos).into())?;
+  assert_eq!(operand_value.as_rule(), Rule::Value);
+  let operand = process_value(operand_value.into_inner().next().unwrap())?; // qed, we asserted that it was a value
+
+  match op_rule {
+    Rule::OperatorPlus => Ok(BlockContent::Operator(Operator::Add, operand)),
+    Rule::OperatorMinus => Ok(BlockContent::Operator(Operator::Sub, operand)),
+    Rule::OperatorMul => Ok(BlockContent::Operator(Operator::Mul, operand)),
+    Rule::OperatorDiv => Ok(BlockContent::Operator(Operator::Div, operand)),
+    Rule::OperatorMod => Ok(BlockContent::Operator(Operator::Mod, operand)),
+    Rule::OperatorPow => Ok(BlockContent::Operator(Operator::Pow, operand)),
+    Rule::OperatorMatMul => Ok(BlockContent::Operator(Operator::MatMul, operand)),
+    _ => unreachable!(),
+  }
+}
+
 fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Pipeline {
@@ -70,6 +237,15 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
           .next()
           .ok_or(("Expected an expression, but found none.", pos).into())?,
       )?)),
+      Rule::Vector => {
+        // in this case we want a Const with a vector value
+        let value = process_vector(pair)?;
+        blocks.push(Block::BlockContent(BlockContent::Const(value), pos.into()));
+      }
+      Rule::Operators => {
+        let content = process_operator(pair)?;
+        blocks.push(Block::BlockContent(content, pos.into()))
+      }
       _ => return Err(("Unexpected rule in Pipeline.", pos).into()),
     }
   }
@@ -97,7 +273,20 @@ pub(crate) fn process_sequence(pair: Pair<Rule>) -> Result<Sequence, ShardsError
 fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
   let pos = pair.as_span().start_pos();
   match pair.as_rule() {
+    Rule::None => Ok(Value::None),
+    Rule::Bools => {
+      // check if string content is true or false
+      let bool_str = pair.as_str();
+      if bool_str == "true" {
+        Ok(Value::Boolean(true))
+      } else if bool_str == "false" {
+        Ok(Value::Boolean(false))
+      } else {
+        Err(("Expected a boolean value", pos).into())
+      }
+    }
     Rule::Identifier => Ok(Value::Identifier(pair.as_str().to_string())),
+    Rule::Vector => process_vector(pair),
     Rule::Number => process_number(
       pair
         .into_inner()
@@ -238,6 +427,18 @@ fn process_block_content(pair: Pair<Rule>) -> Result<BlockContent, ShardsError> 
   let pos = shard_exp.as_span().start_pos();
 
   match shard_exp.as_rule() {
+    Rule::None => Ok(BlockContent::Const(Value::None)),
+    Rule::Bools => {
+      // check if string content is true or false
+      let bool_str = shard_exp.as_str();
+      if bool_str == "true" {
+        Ok(BlockContent::Const(Value::Boolean(true)))
+      } else if bool_str == "false" {
+        Ok(BlockContent::Const(Value::Boolean(false)))
+      } else {
+        Err(("Expected a boolean value", pos).into())
+      }
+    }
     Rule::Identifier => {
       let shard_name = shard_exp.as_str().to_string();
       let next = inner.next();
