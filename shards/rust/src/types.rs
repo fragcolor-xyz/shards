@@ -29,7 +29,6 @@ use crate::shardsc::SHTable;
 use crate::shardsc::SHTableIterator;
 use crate::shardsc::SHTableTypeInfo;
 use crate::shardsc::SHTypeInfo;
-use crate::shardsc::SHWireInfo;
 use crate::shardsc::SHTypeInfo_Details;
 use crate::shardsc::SHType_Any;
 use crate::shardsc::SHType_Array;
@@ -66,6 +65,7 @@ use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_1;
 use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_2;
 use crate::shardsc::SHVarPayload__bindgen_ty_1__bindgen_ty_4;
 use crate::shardsc::SHWire;
+use crate::shardsc::SHWireInfo;
 use crate::shardsc::SHWireRef;
 use crate::shardsc::SHWireState;
 use crate::shardsc::SHWireState_Continue;
@@ -237,13 +237,17 @@ impl Wire {
 }
 
 impl ShardRef {
-  pub fn create(name: &str) -> Self {
+  pub fn create(name: &str) -> Option<Self> {
     let c_name = CString::new(name).unwrap();
-    ShardRef(unsafe { (*Core).createShard.unwrap()(c_name.as_ptr()) })
-  }
-
-  pub fn setup(&self) {
-    unsafe { (*self.0).setup.unwrap()(self.0) }
+    unsafe {
+      let ptr = (*Core).createShard.unwrap()(c_name.as_ptr());
+      if ptr.is_null() {
+        None
+      } else {
+        (*ptr).setup.unwrap()(ptr);
+        Some(ShardRef(ptr))
+      }
+    }
   }
 
   pub fn name(&self) -> &str {
@@ -1879,34 +1883,54 @@ impl From<&[i32; 3]> for Var {
 impl From<(i32, i32, i32, i32)> for Var {
   #[inline(always)]
   fn from(v: (i32, i32, i32, i32)) -> Self {
-    let mut res = SHVar {
+    Var {
       valueType: SHType_Int4,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          int4Value: [v.0, v.1, v.2, v.3],
+        },
+      },
       ..Default::default()
-    };
-    unsafe {
-      res.payload.__bindgen_anon_1.int4Value[0] = v.0;
-      res.payload.__bindgen_anon_1.int4Value[1] = v.1;
-      res.payload.__bindgen_anon_1.int4Value[2] = v.2;
-      res.payload.__bindgen_anon_1.int4Value[3] = v.3;
     }
-    res
   }
 }
 
 impl From<&[i32; 4]> for Var {
   #[inline(always)]
   fn from(v: &[i32; 4]) -> Self {
-    let mut res = Var {
-      valueType: crate::shardsc::SHType_Int4,
+    Var {
+      valueType: SHType_Int4,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { int4Value: *v },
+      },
       ..Default::default()
-    };
-    unsafe {
-      res.payload.__bindgen_anon_1.int4Value[0] = v[0];
-      res.payload.__bindgen_anon_1.int4Value[1] = v[1];
-      res.payload.__bindgen_anon_1.int4Value[2] = v[2];
-      res.payload.__bindgen_anon_1.int4Value[3] = v[3];
     }
-    res
+  }
+}
+
+impl From<&[i16; 8]> for Var {
+  #[inline(always)]
+  fn from(v: &[i16; 8]) -> Self {
+    Var {
+      valueType: SHType_Int8,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { int8Value: *v },
+      },
+      ..Default::default()
+    }
+  }
+}
+
+impl From<&[i8; 16]> for Var {
+  #[inline(always)]
+  fn from(v: &[i8; 16]) -> Self {
+    Var {
+      valueType: SHType_Int16,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { int16Value: *v },
+      },
+      ..Default::default()
+    }
   }
 }
 

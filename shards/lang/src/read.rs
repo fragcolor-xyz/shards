@@ -382,8 +382,8 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
       // split by ':'
       let splits: Vec<_> = str_expr.split(':').collect();
       let var_name = splits[0];
-      let keys: Result<Vec<i32>, _> = splits[1..].iter().map(|s| s.parse::<i32>()).collect();
-      let keys = keys.map_err(|_| ("Failed to parse integer", pos).into())?;
+      let keys: Result<Vec<u32>, _> = splits[1..].iter().map(|s| s.parse::<u32>()).collect();
+      let keys = keys.map_err(|_| ("Failed to parse unsigned index integer", pos).into())?;
       // wrap the shards into an Expr Sequence
       Ok(Value::TakeSeq(var_name.to_owned(), keys))
     }
@@ -483,7 +483,7 @@ fn process_block_content(pair: Pair<Rule>) -> Result<BlockContent, ShardsError> 
       // split by ':'
       let splits: Vec<_> = str_expr.split(':').collect();
       let var_name = splits[0];
-      let keys: Result<Vec<i32>, _> = splits[1..].iter().map(|s| s.parse::<i32>()).collect();
+      let keys: Result<Vec<u32>, _> = splits[1..].iter().map(|s| s.parse::<u32>()).collect();
       let keys = keys.map_err(|_| ("Failed to parse integer", pos).into())?;
       // wrap the shards into an Expr Sequence
       Ok(BlockContent::TakeSeq(var_name.to_owned(), keys))

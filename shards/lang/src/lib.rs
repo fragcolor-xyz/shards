@@ -11,6 +11,7 @@ use core::convert::TryInto;
 use nanoid::nanoid;
 use pest::{iterators::Pair, Parser, Position};
 use serde::{Deserialize, Serialize};
+use shards::SHType_String;
 use shards::types::ClonedVar;
 use shards::types::Mesh;
 use shards::types::Seq;
@@ -49,6 +50,61 @@ impl AsRef<Var> for SVar {
   }
 }
 
+impl AsMut<Var> for SVar {
+  fn as_mut(&mut self) -> &mut Var {
+    match self {
+      SVar::Cloned(v) => &mut v.0,
+      SVar::NotCloned(v) => v,
+    }
+  }
+}
+
+fn eval_eval_expr(seq: Sequence) -> Result<(ClonedVar, LineInfo), ShardsError> {
+  let sub_env = eval_sequence(seq, None)?;
+  if !sub_env.shards.is_empty() {
+    let line_info = sub_env.shards[0].0.get_line_info();
+    // create an ephemeral wire, execute and grab result
+    let wire = Wire::default();
+    wire.set_name("eval-ephemeral");
+    for shard in sub_env.shards {
+      wire.add_shard(shard.0);
+    }
+    let mesh = Mesh::default();
+    mesh.schedule(wire.0);
+    loop {
+      if !mesh.tick() {
+        break;
+      }
+    }
+    let info = wire.get_info();
+    if info.failed {
+      let msg = unsafe { CStr::from_ptr(info.failureMessage) }
+        .to_str()
+        .expect("Invalid UTF8");
+      Err(
+        (
+          msg,
+          LineInfo {
+            line: line_info.0 as usize,
+            column: line_info.1 as usize,
+          },
+        )
+          .into(),
+      )
+    } else {
+      Ok((
+        unsafe { *info.finalOutput }.into(),
+        LineInfo {
+          line: line_info.0 as usize,
+          column: line_info.1 as usize,
+        },
+      ))
+    }
+  } else {
+    Ok((ClonedVar(Var::default()), LineInfo::default()))
+  }
+}
+
 fn eval_sequence(seq: Sequence, previous: Option<ShardRef>) -> Result<EvalEnv, ShardsError> {
   let mut sub_env = EvalEnv {
     shards: Vec::new(),
@@ -58,6 +114,34 @@ fn eval_sequence(seq: Sequence, previous: Option<ShardRef>) -> Result<EvalEnv, S
     eval_statement(stmt, &mut sub_env)?;
   }
   Ok(sub_env)
+}
+
+fn create_take_table_chain(
+  var_name: String,
+  path: Vec<String>,
+  line: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<(), ShardsError> {
+  add_get_shard(&var_name, line, e);
+  for path_part in path {
+    let s = Var::ephemeral_string(&path_part);
+    add_take_shard(&s, e);
+  }
+  Ok(())
+}
+
+fn create_take_seq_chain(
+  var_name: String,
+  path: Vec<u32>,
+  line: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<(), ShardsError> {
+  add_get_shard(&var_name, line, e);
+  for path_part in path {
+    let idx = path_part.try_into().unwrap(); // read should have caught this
+    add_take_shard(&idx, e);
+  }
+  Ok(())
 }
 
 // we need to implement Value into Var conversion
@@ -73,7 +157,7 @@ fn as_var(
     Value::Identifier(value) => {
       let mut s = Var::ephemeral_string(value.as_str());
       s.valueType = SHType_ContextVar;
-      Ok(SVar::NotCloned(s))
+      Ok(SVar::Cloned(s.into()))
     }
     Value::Number(num) => match num {
       Number::Integer(n) => Ok(SVar::NotCloned(n.into())),
@@ -87,50 +171,33 @@ fn as_var(
     },
     Value::String(s) => {
       let s = Var::ephemeral_string(s.as_str());
-      Ok(SVar::NotCloned(s))
+      Ok(SVar::Cloned(s.into()))
     }
-    Value::Float2(val) => {
-      todo!("Vector not implemented yet")
-    }
-    Value::Float3(val) => {
-      todo!("Vector not implemented yet")
-    }
-    Value::Float4(val) => {
-      todo!("Vector not implemented yet")
-    }
-    Value::Int2(val) => {
-      todo!("Vector not implemented yet")
-    }
-    Value::Int3(val) => {
-      todo!("Vector not implemented yet")
-    }
-    Value::Int4(val) => {
-      todo!("Vector not implemented yet")
-    }
-    Value::Int8(val) => {
-      todo!("Vector not implemented yet")
-    }
-    Value::Int16(val) => {
-      todo!("Vector not implemented yet")
-    }
+    Value::Float2(ref val) => Ok(SVar::NotCloned(val.into())),
+    Value::Float3(ref val) => Ok(SVar::NotCloned(val.into())),
+    Value::Float4(ref val) => Ok(SVar::NotCloned(val.into())),
+    Value::Int2(ref val) => Ok(SVar::NotCloned(val.into())),
+    Value::Int3(ref val) => Ok(SVar::NotCloned(val.into())),
+    Value::Int4(ref val) => Ok(SVar::NotCloned(val.into())),
+    Value::Int8(ref val) => Ok(SVar::NotCloned(val.into())),
+    Value::Int16(ref val) => Ok(SVar::NotCloned(val.into())),
     Value::Seq(vec) => {
       let mut seq = SeqVar::new();
       for value in vec {
         let value = as_var(value, line_info, shard, e)?;
-        match value {
-          SVar::Cloned(v) => {
-            // push will clone and v will be dropped when out of this scope
-            seq.push(&v.0)
-          }
-          SVar::NotCloned(v) => seq.push(&v),
-        }
+        seq.push(value.as_ref());
       }
       Ok(SVar::Cloned(ClonedVar(seq.0)))
     }
     Value::Table(value) => {
       let mut table = TableVar::new();
       for (key, value) in value {
-        let key = as_var(key, line_info, shard, e)?;
+        let mut key = as_var(key, line_info, shard, e)?;
+        if key.as_ref().is_context_var() {
+          // if the key is a context var, we need to convert it to a string
+          // this allows us to have nice keys without quotes
+          key.as_mut().valueType = SHType_String;
+        }
         let value = as_var(value, line_info, shard, e)?;
         let key_ref = key.as_ref();
         let value_ref = value.as_ref();
@@ -149,7 +216,10 @@ fn as_var(
       }
       Ok(SVar::Cloned(ClonedVar(seq.0)))
     }
-    Value::EvalExpr(_) => todo!(),
+    Value::EvalExpr(seq) => {
+      let value = eval_eval_expr(seq)?;
+      Ok(SVar::Cloned(value.0))
+    }
     Value::Expr(seq) => {
       let start_idx = e.shards.len();
       let mut sub_env = eval_sequence(seq, e.previous)?;
@@ -183,16 +253,22 @@ fn as_var(
   }
 }
 
-fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let s = ShardRef::create(shard.name.as_str());
-  s.setup();
+enum AddShardError {
+  ShardsError(ShardsError),
+  InvalidShardName(String),
+}
+
+fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), AddShardError> {
+  let s =
+    ShardRef::create(shard.name.as_str()).ok_or(AddShardError::InvalidShardName(shard.name))?;
   let s = SShardRef(s);
   let mut idx = 0i32;
   let mut as_idx = true;
   let info = s.0.parameters();
   if let Some(params) = shard.params {
     for param in params {
-      let value = as_var(param.value, line_info, Some(s.0), e)?;
+      let value =
+        as_var(param.value, line_info, Some(s.0), e).map_err(|e| AddShardError::ShardsError(e))?;
       if let Some(name) = param.name {
         as_idx = false;
         let mut found = false;
@@ -207,11 +283,13 @@ fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), S
         }
         if !found {
           let msg = format!("Unknown parameter '{}'", name);
-          return Err((msg, line_info).into());
+          return Err(AddShardError::ShardsError((msg, line_info).into()));
         }
       } else {
         if !as_idx {
-          return Err(("Named parameter after unnamed parameter", line_info).into());
+          return Err(AddShardError::ShardsError(
+            ("Named parameter after unnamed parameter", line_info).into(),
+          ));
         }
         s.0.set_parameter(idx, *value.as_ref());
       }
@@ -224,8 +302,7 @@ fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), S
 }
 
 fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Const");
-  shard.setup();
+  let shard = ShardRef::create("Const").unwrap();
   let shard = SShardRef(shard);
   shard.0.set_parameter(0, value);
   shard.0.set_line_info((
@@ -238,8 +315,7 @@ fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
 }
 
 fn add_const_shard(value: Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Const");
-  shard.setup();
+  let shard = ShardRef::create("Const").unwrap();
   let shard = SShardRef(shard);
   let value = as_var(value, line_info, Some(shard.0), e)?;
   shard.0.set_parameter(0, *value.as_ref());
@@ -253,8 +329,7 @@ fn add_const_shard(value: Value, line_info: LineInfo, e: &mut EvalEnv) -> Result
 }
 
 fn make_sub_shard(shards: Vec<SShardRef>, line_info: LineInfo) -> Result<SShardRef, ShardsError> {
-  let shard = ShardRef::create("Sub");
-  shard.setup();
+  let shard = ShardRef::create("Sub").unwrap();
   let shard = SShardRef(shard);
   let mut seq = SeqVar::new();
   for shard in shards {
@@ -271,15 +346,26 @@ fn make_sub_shard(shards: Vec<SShardRef>, line_info: LineInfo) -> Result<SShardR
   Ok(shard)
 }
 
-fn add_get_shard(name: &str, e: &mut EvalEnv) {
-  let shard = ShardRef::create("Get");
-  shard.setup();
+fn add_take_shard(target: &Var, e: &mut EvalEnv) {
+  let shard = ShardRef::create("Take").unwrap();
   let shard = SShardRef(shard);
-  let name = Var::ephemeral_string(name);
-  shard.0.set_parameter(0, name);
+  shard.0.set_parameter(0, *target);
   if let Some(previous) = e.previous {
     shard.0.set_line_info(previous.get_line_info());
   }
+  e.previous = Some(shard.0);
+  e.shards.push(shard);
+}
+
+fn add_get_shard(name: &str, line: LineInfo, e: &mut EvalEnv) {
+  let shard = ShardRef::create("Get").unwrap();
+  let shard = SShardRef(shard);
+  let name = Var::ephemeral_string(name);
+  shard.0.set_parameter(0, name);
+  shard.0.set_line_info((
+    line.line.try_into().unwrap(),
+    line.column.try_into().unwrap(),
+  ));
   e.previous = Some(shard.0);
   e.shards.push(shard);
 }
@@ -293,7 +379,27 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
   for block in pipeline.blocks {
     let _ = match block {
       Block::BlockContent(content, line_info) => match content {
-        BlockContent::Shard(shard) => add_shard(shard, line_info, e),
+        BlockContent::Shard(shard) => {
+          // ok the reality is that we could also be a variable, so we need to check that
+          let has_params = shard.params.is_some();
+          let res = add_shard(shard, line_info, e);
+          match res {
+            Ok(_) => Ok(()),
+            Err(err) => {
+              match err {
+                AddShardError::ShardsError(err) => Err(err),
+                AddShardError::InvalidShardName(name) => {
+                  if !has_params {
+                    // we assume we are a variable
+                    Ok(add_get_shard(&name, line_info, e))
+                  } else {
+                    Err((format!("Invalid shard name: {}", name), line_info).into())
+                  }
+                }
+              }
+            }
+          }
+        }
         BlockContent::Const(value) => {
           // remove the nil shard we injected if this is the first block
           if e.shards.len() == start_idx + 1 {
@@ -301,46 +407,13 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
           }
           add_const_shard(value, line_info, e)
         }
-        BlockContent::TakeTable(_, _) => unimplemented!("TakeTable"),
-        BlockContent::TakeSeq(_, _) => unimplemented!("TakeSeq"),
-        BlockContent::Operator(_, _) => unimplemented!("Operator"),
+        BlockContent::TakeTable(name, path) => create_take_table_chain(name, path, line_info, e),
+        BlockContent::TakeSeq(name, path) => create_take_seq_chain(name, path, line_info, e),
+        BlockContent::Operator(_, _) => todo!("Operator"),
       },
       Block::EvalExpr(seq) => {
-        let sub_env = eval_sequence(seq, None)?;
-        if !sub_env.shards.is_empty() {
-          let line_info = sub_env.shards[0].0.get_line_info();
-          // create an ephemeral wire, execute and grab result
-          let wire = Wire::default();
-          for shard in sub_env.shards {
-            wire.add_shard(shard.0);
-          }
-          let mesh = Mesh::default();
-          mesh.schedule(wire.0);
-          loop {
-            if !mesh.tick() {
-              break;
-            }
-          }
-          let info = wire.get_info();
-          if info.failed {
-            let msg = unsafe { CStr::from_ptr(info.failureMessage) }
-              .to_str()
-              .expect("Invalid UTF8");
-            return Err(
-              (
-                msg,
-                LineInfo {
-                  line: line_info.0 as usize,
-                  column: line_info.1 as usize,
-                },
-              )
-                .into(),
-            );
-          } else {
-            todo!("Grab result from wire")
-          }
-        }
-        Ok(())
+        let value = eval_eval_expr(seq)?;
+        add_const_shard2(value.0 .0, value.1, e)
       }
       Block::Expr(seq) => {
         let mut sub_env = eval_sequence(seq, e.previous)?;
@@ -362,7 +435,14 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
           // add this sub shard before the start of this pipeline!
           e.shards.insert(start_idx, sub);
           // now add a get shard to get the temporary at the end of the pipeline
-          add_get_shard(&tmp_name, e);
+          add_get_shard(
+            &tmp_name,
+            LineInfo {
+              line: line_info.0 as usize,
+              column: line_info.1 as usize,
+            },
+            e,
+          );
         }
         Ok(())
       }
@@ -373,8 +453,7 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
 
 fn add_assignment_shard(shard_name: &str, name: &str, e: &mut EvalEnv) {
   if let Some(previous) = e.previous {
-    let shard = ShardRef::create(shard_name);
-    shard.setup();
+    let shard = ShardRef::create(shard_name).unwrap();
     let shard = SShardRef(shard);
     let name = Var::ephemeral_string(name);
     shard.0.set_parameter(0, name);

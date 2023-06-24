@@ -80,7 +80,7 @@ pub enum Value {
   EvalExpr(Sequence),
   Expr(Sequence),
   TakeTable(String, Vec<String>),
-  TakeSeq(String, Vec<i32>),
+  TakeSeq(String, Vec<u32>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -137,7 +137,7 @@ pub enum BlockContent {
   Shard(Shard),
   Const(Value),
   TakeTable(String, Vec<String>),
-  TakeSeq(String, Vec<i32>),
+  TakeSeq(String, Vec<u32>),
   Operator(Operator, Value),
 }
 
