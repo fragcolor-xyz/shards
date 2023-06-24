@@ -1432,6 +1432,17 @@ TEST_CASE("shards-lang") {
     shards_free_wire(wire.wire);
   }
 
+  SECTION("Assign 1") {
+    auto seq = shards_read("100 = x\n x | Log | Assert.Is(100)");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
   SECTION("Sub Shards 1") {
     auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(3) | Log}) | Log");
     REQUIRE(seq.ast);
@@ -1504,9 +1515,42 @@ TEST_CASE("shards-lang") {
     REQUIRE(seq.ast);
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.error);
-    // auto mesh = SHMesh::make();
-    // mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    // mesh->tick();
-    // shards_free_wire(wire.wire);
+    std::string a(wire.error->message);
+    std::string b("Assert failed - Is");
+    REQUIRE(a == b);
+    shards_free_error(wire.error);
+  }
+
+  SECTION("EvalExpr 1") {
+    auto seq = shards_read("2 | Math.Multiply(#(1 | Math.Add(2) | Log)) | Log | Assert.Is(6)");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("TableTake 1") {
+    auto seq = shards_read("[1 2] | Log = s s:0 | Log | Assert.Is(1) s:1 | Log | Assert.Is(2)");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("TableTake 2") {
+    auto seq = shards_read("{a: 1 b: 2} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
   }
 }

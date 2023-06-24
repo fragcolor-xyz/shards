@@ -3056,7 +3056,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
                     wire,
                     {&wire->shards[0], uint32_t(wire->shards.size()), 0},
                     shards::isRunning(wire),
-                    wire->state == SHWire::State::Failed,
+                    wire->state == SHWire::State::Failed || !wire->finishedError.empty(),
                     wire->finishedError.c_str(),
                     &wire->finishedOutput};
     return info;
@@ -3071,7 +3071,8 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->createShard = [](const char *name) noexcept {
     auto shard = shards::createShard(name);
-    incRef(shard);
+    if (shard)
+      incRef(shard);
     return shard;
   };
 
