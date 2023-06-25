@@ -158,7 +158,8 @@ template <class T> struct ShardWrapper {
           return SHError::Success;
         } catch (const std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
-          return SHError{1, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()};
+          return SHError{1, SHStringWithLen{reinterpret_cast<ShardWrapper<T> *>(b)->lastError.data(),
+                                            reinterpret_cast<ShardWrapper<T> *>(b)->lastError.size()}};
         }
       });
     } else {
@@ -180,7 +181,9 @@ template <class T> struct ShardWrapper {
           return SHShardComposeResult{SHError::Success, reinterpret_cast<ShardWrapper<T> *>(b)->shard.compose(data)};
         } catch (std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
-          return SHShardComposeResult{SHError{1, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()}, SHTypeInfo{}};
+          return SHShardComposeResult{SHError{1, SHStringWithLen{reinterpret_cast<ShardWrapper<T> *>(b)->lastError.data(),
+                                                                 reinterpret_cast<ShardWrapper<T> *>(b)->lastError.size()}},
+                                      SHTypeInfo{}};
         }
       });
     } else {
@@ -196,7 +199,8 @@ template <class T> struct ShardWrapper {
           return SHError::Success;
         } catch (const std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
-          return SHError{1, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()};
+          return SHError{1, SHStringWithLen{reinterpret_cast<ShardWrapper<T> *>(b)->lastError.data(),
+                                            reinterpret_cast<ShardWrapper<T> *>(b)->lastError.size()}};
         }
       });
     } else {
@@ -225,7 +229,8 @@ template <class T> struct ShardWrapper {
           return SHError::Success;
         } catch (const std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
-          return SHError{1, reinterpret_cast<ShardWrapper<T> *>(b)->lastError.c_str()};
+          return SHError{1, SHStringWithLen{reinterpret_cast<ShardWrapper<T> *>(b)->lastError.data(),
+                                            reinterpret_cast<ShardWrapper<T> *>(b)->lastError.size()}};
         }
       });
     } else {
@@ -288,14 +293,15 @@ template <class T> struct ShardWrapper {
   ::shards::registerShard(::shards::ShardWrapper<__type__>::name, &::shards::ShardWrapper<__type__>::create,           \
                           NAMEOF_FULL_TYPE(__type__))
 
-#define OVERRIDE_ACTIVATE(__data__, __func__)                                                                                  \
-  __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {                        \
-    try {                                                                                                                      \
-      return reinterpret_cast<shards::ShardWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b)->shard.__func__(ctx, *v); \
-    } catch (std::exception & e) {                                                                                             \
-      shards::abortWire(ctx, e.what());                                                                                        \
-      return SHVar{};                                                                                                          \
-    }                                                                                                                          \
+#define OVERRIDE_ACTIVATE(__data__, __func__)                                                                                 \
+  __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {                       \
+    try {                                                                                                                     \
+      return reinterpret_cast<shards::ShardWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b)->shard.__func__( \
+          ctx, *v);                                                                                                           \
+    } catch (std::exception & e) {                                                                                            \
+      shards::abortWire(ctx, e.what());                                                                                       \
+      return SHVar{};                                                                                                         \
+    }                                                                                                                         \
   })
 
 template <typename SHCORE, Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType> struct TSimpleShard {

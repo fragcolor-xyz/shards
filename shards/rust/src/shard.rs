@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
+use crate::SHStringWithLen;
 use crate::core::abortWire;
 use crate::core::Core;
 use crate::shardsc::SHContext;
@@ -217,9 +218,11 @@ unsafe extern "C" fn shard_warmup<T: Shard>(arg1: *mut CShard, arg2: *mut SHCont
   match (*blk).shard.warmup(&(*arg2)) {
     Ok(_) => SHError::default(),
     Err(error) => {
-      (*blk).error = Some(CString::new(error).expect("CString::new failed"));
       SHError {
-        message: (*blk).error.as_ref().unwrap().as_ptr(),
+        message: SHStringWithLen {
+          string: error.as_ptr() as *const i8,
+          len: error.len(),
+        },
         code: 1,
       }
     }
@@ -251,9 +254,11 @@ unsafe extern "C" fn shard_cleanup<T: Shard>(arg1: *mut CShard) -> SHError {
   match (*blk).shard.cleanup() {
     Ok(_) => SHError::default(),
     Err(error) => {
-      (*blk).error = Some(CString::new(error).expect("CString::new failed"));
       SHError {
-        message: (*blk).error.as_ref().unwrap().as_ptr(),
+        message: SHStringWithLen {
+          string: error.as_ptr() as *const i8,
+          len: error.len(),
+        },
         code: 1,
       }
     }
@@ -289,10 +294,12 @@ unsafe extern "C" fn shard_compose<T: Shard>(
       result: output,
     },
     Err(error) => {
-      (*blk).error = Some(CString::new(error).expect("CString::new failed"));
       SHShardComposeResult {
         error: SHError {
-          message: (*blk).error.as_ref().unwrap().as_ptr(),
+          message: SHStringWithLen {
+            string: error.as_ptr() as *const i8,
+            len: error.len(),
+          },
           code: 1,
         },
         result: SHTypeInfo::default(),
@@ -327,9 +334,11 @@ unsafe extern "C" fn shard_setParam<T: Shard>(
   match (*blk).shard.setParam(arg2, &*arg3) {
     Ok(_) => SHError::default(),
     Err(error) => {
-      (*blk).error = Some(CString::new(error).expect("CString::new failed"));
       SHError {
-        message: (*blk).error.as_ref().unwrap().as_ptr(),
+        message: SHStringWithLen {
+          string: error.as_ptr() as *const i8,
+          len: error.len(),
+        },
         code: 1,
       }
     }

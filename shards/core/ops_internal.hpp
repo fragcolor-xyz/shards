@@ -16,6 +16,7 @@ namespace shards {
 struct DocsFriendlyFormatter {
   bool ignoreNone{};
 
+  std::ostream &format(std::ostream &os, const SHStringWithLen &var);
   std::ostream &format(std::ostream &os, const SHVar &var);
   std::ostream &format(std::ostream &os, const SHTypeInfo &var);
   std::ostream &format(std::ostream &os, const SHTypesInfo &var);
@@ -24,6 +25,7 @@ struct DocsFriendlyFormatter {
 static inline DocsFriendlyFormatter defaultFormatter{};
 } // namespace shards
 
+inline std::ostream &operator<<(std::ostream &os, const SHStringWithLen &v) { return shards::defaultFormatter.format(os, v); }
 inline std::ostream &operator<<(std::ostream &os, const SHVar &v) { return shards::defaultFormatter.format(os, v); }
 inline std::ostream &operator<<(std::ostream &os, const SHTypeInfo &v) { return shards::defaultFormatter.format(os, v); }
 inline std::ostream &operator<<(std::ostream &os, const SHTypesInfo &v) { return shards::defaultFormatter.format(os, v); }
@@ -40,6 +42,14 @@ template <typename T> struct StringStreamFormatter {
     std::stringstream ss;
     ss << v;
     return fmt::format_to(ctx.out(), "{}", ss.str());
+  }
+};
+
+template <> struct fmt::formatter<SHStringWithLen> {
+  StringStreamFormatter<SHStringWithLen> base;
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) { return base.parse(ctx); }
+  template <typename FormatContext> auto format(const SHStringWithLen &v, FormatContext &ctx) -> decltype(ctx.out()) {
+    return base.format(v, ctx);
   }
 };
 

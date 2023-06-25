@@ -258,7 +258,8 @@ public:
     assert(!_cp);
     if (_v.valueType == SHType::ContextVar) {
       assert(!_cp);
-      _cp = SH_CORE::referenceVariable(ctx, _v.payload.stringValue);
+      auto sv = SHSTRVIEW(_v);
+      _cp = SH_CORE::referenceVariable(ctx, SHStringWithLen{sv.data(), sv.size()});
     } else {
       _cp = &_v;
     }
@@ -468,8 +469,9 @@ private:
       auto blk = *it;
       auto errors = blk->cleanup(blk);
       if (errors.code != SH_ERROR_NONE) {
-        auto msg = "TShardsVar: Error during blocks cleanup: " + std::string(errors.message);
-        SH_CORE::log(msg.c_str());
+        auto msg = std::string_view(errors.message.string, errors.message.len);
+        auto fullMsg = fmt::format("TShardsVar: Error during blocks cleanup: {}", msg);
+        SH_CORE::log(SHStringWithLen{fullMsg.data(), fullMsg.size()});
       }
     }
     _shardsArray.clear();
@@ -492,8 +494,9 @@ public:
 
       auto errors = blk->cleanup(blk);
       if (errors.code != SH_ERROR_NONE) {
-        auto msg = "TShardsVar: Error during blocks cleanup: " + std::string(errors.message);
-        SH_CORE::log(msg.c_str());
+        auto msg = std::string_view(errors.message.string, errors.message.len);
+        auto fullMsg = fmt::format("TShardsVar: Error during blocks cleanup: {}", msg);
+        SH_CORE::log(SHStringWithLen{fullMsg.data(), fullMsg.size()});
       }
     }
   }
@@ -503,7 +506,8 @@ public:
       if (blk->warmup) {
         auto errors = blk->warmup(blk, context);
         if (errors.code != SH_ERROR_NONE) {
-          throw WarmupError(errors.message);
+          std::string_view msg(errors.message.string, errors.message.len);
+          throw WarmupError(msg);
         }
       }
     }
@@ -547,16 +551,17 @@ public:
 
     _wireValidation = SH_CORE::composeShards(
         _shards,
-        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
+          std::string_view msg(errorTxt.string, errorTxt.len);
           if (!nonfatalWarning) {
-            auto msg = "Error during inner wire validation: " + std::string(errorTxt) +
-                       ", shard: " + std::string(errorShard->name(const_cast<Shard *>(errorShard)));
-            SH_CORE::log(msg.c_str());
+            auto fullMsg = fmt::format("Error during inner wire validation: {}, shard: {}, line: {}, column: {}", msg,
+                                       errorShard->name(const_cast<Shard *>(errorShard)), errorShard->line, errorShard->column);
+            SH_CORE::log(SHStringWithLen{fullMsg.data(), fullMsg.size()});
             throw shards::ComposeError("Failed inner wire validation");
           } else {
-            auto msg = "Warning during inner wire validation: " + std::string(errorTxt) +
-                       ", shard: " + std::string(errorShard->name(const_cast<Shard *>(errorShard)));
-            SH_CORE::log(msg.c_str());
+            auto fullMsg = fmt::format("Warning during inner wire validation: {}, shard: {}, line: {}, column: {}", msg,
+                                       errorShard->name(const_cast<Shard *>(errorShard)), errorShard->line, errorShard->column);
+            SH_CORE::log(SHStringWithLen{fullMsg.data(), fullMsg.size()});
           }
         },
         this, data);

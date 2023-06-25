@@ -573,7 +573,7 @@ struct Server {
       wire->mesh = context->main->mesh;
       auto res = composeWire(
           wire,
-          [](const struct Shard *errorShard, const char *errorTxt, SHBool nonfatalWarning, void *userData) {
+          [](const struct Shard *errorShard, SHStringWithLen errorTxt, SHBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
               SHLOG_ERROR(errorTxt);
               throw ActivationError("Http.Server handler wire compose failed");

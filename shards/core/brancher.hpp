@@ -188,7 +188,7 @@ private:
 
     wire->composeResult = composeWire(
         wire.get(),
-        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
             SHLOG_ERROR("Branch: failed inner wire validation, error: {}", errorTxt);
             throw ComposeError("RunWire: failed inner wire validation");

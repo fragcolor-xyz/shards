@@ -359,23 +359,33 @@ entt::id_type findId(SHContext *ctx) noexcept {
   return id;
 }
 
-SHVar *referenceWireVariable(SHWire *wire, const char *name) {
-  SHVar &v = wire->variables[name];
+SHVar *referenceWireVariable(SHWire *wire, std::string_view name) {
+  // let's avoid creating a string every time
+  static thread_local std::string nameStr;
+  nameStr.clear();
+  nameStr.append(name.data(), name.size());
+
+  SHVar &v = wire->variables[nameStr];
   v.refcount++;
   v.flags |= SHVAR_FLAGS_REF_COUNTED;
   return &v;
 }
 
-SHVar *referenceWireVariable(SHWireRef wire, const char *name) {
+SHVar *referenceWireVariable(SHWireRef wire, std::string_view name) {
   auto swire = SHWire::sharedFromRef(wire);
   return referenceWireVariable(swire.get(), name);
 }
 
-SHVar *referenceGlobalVariable(SHContext *ctx, const char *name) {
+SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name) {
+  // let's avoid creating a string every time
+  static thread_local std::string nameStr;
+  nameStr.clear();
+  nameStr.append(name.data(), name.size());
+
   auto mesh = ctx->main->mesh.lock();
   assert(mesh);
 
-  SHVar &v = mesh->variables[name];
+  SHVar &v = mesh->variables[nameStr];
   v.refcount++;
   if (v.refcount == 1) {
     SHLOG_TRACE("Creating a global variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
@@ -384,7 +394,12 @@ SHVar *referenceGlobalVariable(SHContext *ctx, const char *name) {
   return &v;
 }
 
-SHVar *referenceVariable(SHContext *ctx, const char *name) {
+SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
+  // let's avoid creating a string every time
+  static thread_local std::string nameStr;
+  nameStr.clear();
+  nameStr.append(name.data(), name.size());
+
   // try find a wire variable
   // from top to bottom of wire stack
   {
@@ -392,7 +407,7 @@ SHVar *referenceVariable(SHContext *ctx, const char *name) {
     for (; rit != ctx->wireStack.rend(); ++rit) {
       // prioritize local variables
       auto wire = *rit;
-      auto it = wire->variables.find(name);
+      auto it = wire->variables.find(nameStr);
       if (it != wire->variables.end()) {
         // found, lets get out here
         SHVar &cv = it->second;
@@ -401,7 +416,7 @@ SHVar *referenceVariable(SHContext *ctx, const char *name) {
         return &cv;
       }
       // try external variables
-      auto pit = wire->externalVariables.find(name);
+      auto pit = wire->externalVariables.find(nameStr);
       if (pit != wire->externalVariables.end()) {
         // found, lets get out here
         SHVar &cv = *pit->second;
@@ -422,7 +437,7 @@ SHVar *referenceVariable(SHContext *ctx, const char *name) {
 
     // Was not in wires.. find in mesh
     {
-      auto it = mesh->variables.find(name);
+      auto it = mesh->variables.find(nameStr);
       if (it != mesh->variables.end()) {
         // found, lets get out here
         SHVar &cv = it->second;
@@ -434,7 +449,7 @@ SHVar *referenceVariable(SHContext *ctx, const char *name) {
 
     // Was not in mesh directly.. try find in meshs refs
     {
-      auto it = mesh->refs.find(name);
+      auto it = mesh->refs.find(nameStr);
       if (it != mesh->refs.end()) {
         SHLOG_TRACE("Referencing a parent node variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
         // found, lets get out here
@@ -449,7 +464,7 @@ SHVar *referenceVariable(SHContext *ctx, const char *name) {
 create:
   // worst case create in current top wire!
   SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
-  SHVar &cv = ctx->wireStack.back()->variables[name];
+  SHVar &cv = ctx->wireStack.back()->variables[nameStr];
   assert(cv.refcount == 0);
   cv.refcount++;
   // can safely set this here, as we are creating a new variable
@@ -851,11 +866,10 @@ void validateConnection(ValidationContext &ctx) {
   }
 
   if (!inputMatches) {
-    std::stringstream ss;
-    ss << "Could not find a matching input type, shard: " << ctx.bottom->name(ctx.bottom) << " expected: " << inputInfos
-       << " found instead: " << ctx.previousOutputType;
-    const auto sss = ss.str();
-    ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
+    const auto msg =
+        fmt::format("Could not find a matching input type, shard: {} (line: {}, column: {}) expected: {} found instead: {}",
+                    ctx.bottom->name(ctx.bottom), ctx.bottom->line, ctx.bottom->column, inputInfos, ctx.previousOutputType);
+    ctx.cb(ctx.bottom, SHStringWithLen{msg.data(), msg.size()}, false, ctx.userData);
   }
 
   // infer and specialize types if we need to
@@ -886,8 +900,9 @@ void validateConnection(ValidationContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      SHLOG_ERROR("Error composing shard: {}, wire: {}", composeResult.error.message, ctx.wire ? ctx.wire->name : "(unwired)");
-      throw ComposeError(composeResult.error.message);
+      std::string_view msg(composeResult.error.message.string, composeResult.error.message.len);
+      SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
+      throw ComposeError(msg);
     }
     ctx.previousOutputType = composeResult.result;
   } else {
@@ -961,7 +976,7 @@ void validateConnection(ValidationContext &ctx) {
         auto err = fmt::format(
             "Ref variable name already used as Set. Overwriting a previously Set variable with Ref is not allowed, name: {}",
             name);
-        ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+        ctx.cb(ctx.bottom, SHStringWithLen{err.data(), err.size()}, false, ctx.userData);
       }
       ctx.references.insert(name);
     } else if (strcmp(ctx.bottom->name(ctx.bottom), "Set") == 0) {
@@ -973,7 +988,7 @@ void validateConnection(ValidationContext &ctx) {
         auto err = fmt::format(
             "Set variable name already used as Ref. Overwriting a previously Ref variable with Set is not allowed, name: {}",
             name);
-        ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+        ctx.cb(ctx.bottom, SHStringWithLen{err.data(), err.size()}, false, ctx.userData);
       }
       ctx.variables.insert(name);
     } else if (strcmp(ctx.bottom->name(ctx.bottom), "Update") == 0) {
@@ -985,7 +1000,7 @@ void validateConnection(ValidationContext &ctx) {
         auto err = fmt::format("Update variable name already used as Ref. Overwriting a previously Ref variable with Update is "
                                "not allowed, name: {}",
                                name);
-        ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+        ctx.cb(ctx.bottom, SHStringWithLen{err.data(), err.size()}, false, ctx.userData);
       }
     } else if (strcmp(ctx.bottom->name(ctx.bottom), "Push") == 0) {
       // make sure we are not Push-ing a Ref
@@ -996,7 +1011,7 @@ void validateConnection(ValidationContext &ctx) {
         auto err = fmt::format(
             "Push variable name already used as Ref. Overwriting a previously Ref variable with Push is not allowed, name: {}",
             name);
-        ctx.cb(ctx.bottom, err.c_str(), false, ctx.userData);
+        ctx.cb(ctx.bottom, SHStringWithLen{err.data(), err.size()}, false, ctx.userData);
       }
       ctx.variables.insert(name);
     }
@@ -1033,7 +1048,7 @@ void validateConnection(ValidationContext &ctx) {
     if (findIt == end) {
       auto err = fmt::format("Required variable not found: {}", name);
       // Warning only, delegate compose to decide
-      ctx.cb(ctx.bottom, err.c_str(), true, ctx.userData);
+      ctx.cb(ctx.bottom, SHStringWithLen{err.data(), err.size()}, true, ctx.userData);
     } else {
       auto exposedType = findIt->second.exposedType;
       auto requiredType = required_param.exposedType;
@@ -1064,7 +1079,7 @@ void validateConnection(ValidationContext &ctx) {
         ss << "{\"" << type.name << "\" (" << type.exposedType << ")} ";
       }
       auto sss = ss.str();
-      ctx.cb(ctx.bottom, sss.c_str(), false, ctx.userData);
+      ctx.cb(ctx.bottom, SHStringWithLen{sss.data(), sss.size()}, false, ctx.userData);
     } else {
       // Add required stuff that we do not expose ourself
       if (ctx.exposed.find(match.name) == ctx.exposed.end())
@@ -1538,8 +1553,8 @@ uint64_t deriveTypeHash(const SHTypeInfo &value) {
 bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationCallback callback, void *userData) {
   auto params = shard->parameters(shard);
   if (params.len <= (uint32_t)index) {
-    std::string err("Parameter index out of range");
-    callback(shard, err.c_str(), false, userData);
+    std::string_view err("Parameter index out of range");
+    callback(shard, SHStringWithLen{err.data(), err.size()}, false, userData);
     return false;
   }
 
@@ -1560,7 +1575,7 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
 
   std::string err(fmt::format("Parameter {} not accepting this kind of variable: {} (valid types: {})", param.name, varType,
                               param.valueTypes));
-  callback(shard, err.c_str(), false, userData);
+  callback(shard, SHStringWithLen{err.data(), err.size()}, false, userData);
 
   return false;
 }
@@ -2642,8 +2657,10 @@ void SHWire::warmup(SHContext *context) {
         if (blk->warmup) {
           auto status = blk->warmup(blk, context);
           if (status.code != SH_ERROR_NONE) {
-            SHLOG_ERROR("Warmup failed on wire: {}, shard: {}", name, blk->name(blk));
-            throw shards::WarmupError(status.message);
+            std::string_view msg(status.message.string, status.message.len);
+            SHLOG_ERROR("Warmup failed on wire: {}, shard: {} (line: {}, column: {})", name, blk->name(blk), blk->line,
+                        blk->column);
+            throw shards::WarmupError(msg);
           }
         }
         if (context->failed()) {
@@ -2888,40 +2905,46 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     API_TRY_CALL(unregisterExitCallback, shards::unregisterExitCallback(eventName);)
   };
 
-  result->referenceVariable = [](SHContext *context, const char *name) noexcept {
-    return shards::referenceVariable(context, name);
+  result->referenceVariable = [](SHContext *context, SHStringWithLen name) noexcept {
+    std::string_view nameView{name.string, name.len};
+    return shards::referenceVariable(context, nameView);
   };
 
-  result->referenceWireVariable = [](SHWireRef wire, const char *name) noexcept {
-    return shards::referenceWireVariable(wire, name);
+  result->referenceWireVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
+    std::string_view nameView{name.string, name.len};
+    return shards::referenceWireVariable(wire, nameView);
   };
 
   result->releaseVariable = [](SHVar *variable) noexcept { return shards::releaseVariable(variable); };
 
-  result->setExternalVariable = [](SHWireRef wire, const char *name, SHVar *pVar) noexcept {
+  result->setExternalVariable = [](SHWireRef wire, SHStringWithLen name, SHVar *pVar) noexcept {
+    std::string nameView{name.string, name.len};
     auto sc = SHWire::sharedFromRef(wire);
-    sc->externalVariables[name] = pVar;
+    sc->externalVariables[nameView] = pVar;
   };
 
-  result->removeExternalVariable = [](SHWireRef wire, const char *name) noexcept {
+  result->removeExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
+    std::string nameView{name.string, name.len};
     auto sc = SHWire::sharedFromRef(wire);
-    sc->externalVariables.erase(name);
+    sc->externalVariables.erase(nameView);
   };
 
-  result->allocExternalVariable = [](SHWireRef wire, const char *name) noexcept {
+  result->allocExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
+    std::string nameView{name.string, name.len};
     auto sc = SHWire::sharedFromRef(wire);
     auto res = new (std::align_val_t{16}) SHVar();
-    sc->externalVariables[name] = res;
+    sc->externalVariables[nameView] = res;
     return res;
   };
 
-  result->freeExternalVariable = [](SHWireRef wire, const char *name) noexcept {
+  result->freeExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
+    std::string nameView{name.string, name.len};
     auto sc = SHWire::sharedFromRef(wire);
-    auto var = sc->externalVariables[name];
+    auto var = sc->externalVariables[nameView];
     if (var) {
       ::operator delete(var, std::align_val_t{16});
     }
-    sc->externalVariables.erase(name);
+    sc->externalVariables.erase(nameView);
   };
 
   result->suspend = [](SHContext *context, double seconds) noexcept {
@@ -2935,7 +2958,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->getState = [](SHContext *context) noexcept { return context->getState(); };
 
-  result->abortWire = [](SHContext *context, const char *message) noexcept { context->cancelFlow(message); };
+  result->abortWire = [](SHContext *context, SHStringWithLen message) noexcept {
+    std::string_view messageView{message.string, message.len};
+    context->cancelFlow(messageView);
+  };
 
   result->cloneVar = [](SHVar *dst, const SHVar *src) noexcept { shards::cloneVar(*dst, *src); };
 
@@ -3050,27 +3076,32 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->getWireInfo = [](SHWireRef wireref) noexcept {
     auto sc = SHWire::sharedFromRef(wireref);
     auto wire = sc.get();
-    SHWireInfo info{wire->name.c_str(),
+    SHWireInfo info{SHStringWithLen{wire->name.c_str(), wire->name.size()},
                     wire->looped,
                     wire->unsafe,
                     wire,
                     {&wire->shards[0], uint32_t(wire->shards.size()), 0},
                     shards::isRunning(wire),
                     wire->state == SHWire::State::Failed || !wire->finishedError.empty(),
-                    wire->finishedError.c_str(),
+                    SHStringWithLen{wire->finishedError.c_str(), wire->finishedError.size()},
                     &wire->finishedOutput};
     return info;
   };
 
-  result->log = [](const char *msg) noexcept { SHLOG_INFO(msg); };
-
-  result->logLevel = [](int level, const char *msg) noexcept {
-    spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, (spdlog::level::level_enum)level,
-                                      msg);
+  result->log = [](SHStringWithLen msg) noexcept {
+    std::string_view sv(msg.string, msg.len);
+    SHLOG_INFO(sv);
   };
 
-  result->createShard = [](const char *name) noexcept {
-    auto shard = shards::createShard(name);
+  result->logLevel = [](int level, SHStringWithLen msg) noexcept {
+    std::string_view sv(msg.string, msg.len);
+    spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, (spdlog::level::level_enum)level,
+                                      sv);
+  };
+
+  result->createShard = [](SHStringWithLen name) noexcept {
+    std::string_view sv(name.string, name.len);
+    auto shard = shards::createShard(sv);
     if (shard)
       incRef(shard);
     return shard;
@@ -3083,9 +3114,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return wire->newRef();
   };
 
-  result->setWireName = [](SHWireRef wireref, const char *name) noexcept {
+  result->setWireName = [](SHWireRef wireref, SHStringWithLen name) noexcept {
+    std::string_view sv(name.string, name.len);
     auto sc = SHWire::sharedFromRef(wireref);
-    sc->name = name;
+    sc->name = sv;
   };
 
   result->setWireLooped = [](SHWireRef wireref, SHBool looped) noexcept {
@@ -3121,8 +3153,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->destroyWire = [](SHWireRef wire) noexcept { SHWire::deleteRef(wire); };
 
-  result->getGlobalWire = [](SHString name) noexcept {
-    auto it = shards::GetGlobals().GlobalWires.find(name);
+  result->getGlobalWire = [](SHStringWithLen name) noexcept {
+    std::string sv(name.string, name.len);
+    auto it = shards::GetGlobals().GlobalWires.find(std::move(sv));
     if (it != shards::GetGlobals().GlobalWires.end()) {
       return SHWire::weakRef(it->second);
     } else {
@@ -3130,12 +3163,14 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     }
   };
 
-  result->setGlobalWire = [](SHString name, SHWireRef wire) noexcept {
-    shards::GetGlobals().GlobalWires[name] = SHWire::sharedFromRef(wire);
+  result->setGlobalWire = [](SHStringWithLen name, SHWireRef wire) noexcept {
+    std::string sv(name.string, name.len);
+    shards::GetGlobals().GlobalWires[std::move(sv)] = SHWire::sharedFromRef(wire);
   };
 
-  result->unsetGlobalWire = [](SHString name) noexcept {
-    auto it = shards::GetGlobals().GlobalWires.find(name);
+  result->unsetGlobalWire = [](SHStringWithLen name) noexcept {
+    std::string sv(name.string, name.len);
+    auto it = shards::GetGlobals().GlobalWires.find(std::move(sv));
     if (it != shards::GetGlobals().GlobalWires.end()) {
       shards::GetGlobals().GlobalWires.erase(it);
     }

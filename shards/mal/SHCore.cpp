@@ -655,9 +655,9 @@ struct WireFileWatcher {
         // run compose to infer types and specialize
         auto composeResult = composeWire(
             wire.get(),
-            [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+            [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
               if (!nonfatalWarning) {
-                auto msg = "RunWire: failed inner wire validation, error: " + std::string(errorTxt);
+                auto msg = "RunWire: failed inner wire validation, error: " + std::string(errorTxt.string, errorTxt.len);
                 throw shards::SHException(msg);
               } else {
                 SHLOG_INFO("RunWire: warning during inner wire validation: {}", errorTxt);
@@ -1213,7 +1213,7 @@ int findParamIndex(const std::string &name, SHParametersInfo params) {
   return -1;
 }
 
-void validationCallback(const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+void validationCallback(const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
   auto shard = const_cast<Shard *>(errorShard);
   if (!nonfatalWarning) {
     SHLOG_ERROR("Parameter validation failed: {} shard: {}", errorTxt, shard->name(shard));
@@ -1776,9 +1776,9 @@ BUILTIN("prepare") {
   wire->mesh = TLSRootSHMesh->shared_from_this();
   auto composeResult = composeWire(
       wire.get(),
-      [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+      [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
         if (!nonfatalWarning) {
-          auto msg = "RunWire: failed inner wire validation, error: " + std::string(errorTxt);
+          auto msg = "RunWire: failed inner wire validation, error: " + std::string(errorTxt.string, errorTxt.len);
           throw shards::SHException(msg);
         } else {
           SHLOG_INFO("RunWire: warning during inner wire validation: {}", errorTxt);

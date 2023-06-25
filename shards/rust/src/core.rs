@@ -144,14 +144,22 @@ pub fn init() {
 #[inline(always)]
 pub fn log(s: &str) {
   unsafe {
-    (*Core).log.unwrap()(s.as_ptr() as *const std::os::raw::c_char);
+    let msg = SHStringWithLen {
+      string: s.as_ptr() as *const c_char,
+      len: s.len(),
+    };
+    (*Core).log.unwrap()(msg);
   }
 }
 
 #[inline(always)]
 pub fn logLevel(level: i32, s: &str) {
   unsafe {
-    (*Core).logLevel.unwrap()(level, s.as_ptr() as *const std::os::raw::c_char);
+    let msg = SHStringWithLen {
+      string: s.as_ptr() as *const c_char,
+      len: s.len(),
+    };
+    (*Core).logLevel.unwrap()(level, msg);
   }
 }
 
@@ -253,10 +261,13 @@ pub fn getState(context: &SHContext) -> WireState {
 
 #[inline(always)]
 pub fn abortWire(context: &SHContext, message: &str) {
-  let cmsg = CString::new(message).unwrap();
+  let msg = SHStringWithLen {
+    string: message.as_ptr() as *const c_char,
+    len: message.len(),
+  };
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
-    (*Core).abortWire.unwrap()(ctx, cmsg.as_ptr());
+    (*Core).abortWire.unwrap()(ctx, msg);
   }
 }
 
@@ -295,16 +306,22 @@ pub fn getRootPath() -> &'static str {
 
 #[inline(always)]
 pub fn createShardPtr(name: &str) -> ShardPtr {
-  let cname: CString = CString::new(name).unwrap();
-  unsafe { (*Core).createShard.unwrap()(cname.as_ptr()) }
+  let name = SHStringWithLen {
+    string: name.as_ptr() as *const c_char,
+    len: name.len(),
+  };
+  unsafe { (*Core).createShard.unwrap()(name) }
 }
 
 #[inline(always)]
 pub fn createShard(name: &str) -> ShardInstance {
-  let cname = CString::new(name).unwrap();
+  let name = SHStringWithLen {
+    string: name.as_ptr() as *const c_char,
+    len: name.len(),
+  };
   unsafe {
     ShardInstance {
-      ptr: (*Core).createShard.unwrap()(cname.as_ptr()),
+      ptr: (*Core).createShard.unwrap()(name),
     }
   }
 }
@@ -361,7 +378,7 @@ macro_rules! shccstr {
   };
 }
 
-pub fn referenceMutVariable(context: &SHContext, name: SHString) -> &mut SHVar {
+pub fn referenceMutVariable(context: &SHContext, name: SHStringWithLen) -> &mut SHVar {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
     let shptr = (*Core).referenceVariable.unwrap()(ctx, name);
@@ -369,7 +386,7 @@ pub fn referenceMutVariable(context: &SHContext, name: SHString) -> &mut SHVar {
   }
 }
 
-pub fn referenceVariable(context: &SHContext, name: SHString) -> &SHVar {
+pub fn referenceVariable(context: &SHContext, name: SHStringWithLen) -> &SHVar {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
     let shptr = (*Core).referenceVariable.unwrap()(ctx, name);
@@ -411,20 +428,22 @@ pub fn type2Name(t: SHType) -> *const c_char {
 
 impl WireRef {
   pub fn set_external(&self, name: &str, var: &mut ExternalVar) {
-    let cname = CString::new(name).unwrap();
+    let name = SHStringWithLen {
+      string: name.as_ptr() as *const c_char,
+      len: name.len(),
+    };
     unsafe {
-      (*Core).setExternalVariable.unwrap()(
-        self.0,
-        cname.as_ptr() as *const _,
-        &var.0 as *const _ as *mut _,
-      );
+      (*Core).setExternalVariable.unwrap()(self.0, name, &var.0 as *const _ as *mut _);
     }
   }
 
   pub fn remove_external(&self, name: &str) {
-    let cname = CString::new(name).unwrap();
+    let name = SHStringWithLen {
+      string: name.as_ptr() as *const c_char,
+      len: name.len(),
+    };
     unsafe {
-      (*Core).removeExternalVariable.unwrap()(self.0, cname.as_ptr() as *const _);
+      (*Core).removeExternalVariable.unwrap()(self.0, name);
     }
   }
 
@@ -433,7 +452,13 @@ impl WireRef {
 
     if !info.isRunning {
       if info.failed {
-        let msg = unsafe { CStr::from_ptr(info.failureMessage) };
+        let slice = unsafe {
+          slice::from_raw_parts(
+            info.failureMessage.string as *const u8,
+            info.failureMessage.len,
+          )
+        };
+        let msg = CStr::from_bytes_with_nul(slice).unwrap();
         Err(msg.to_str().unwrap())
       } else {
         unsafe { Ok(Some((*info.finalOutput).into())) }

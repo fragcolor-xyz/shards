@@ -41,7 +41,7 @@ struct DynamicBlockFromShards : public blocks::Block {
     auto &definitions = context.getDefinitions();
 
     // Compose the shards
-    auto composeCallback = [](const struct Shard *errorShard, SHString errorTxt, SHBool nonfatalWarning, void *userData) {
+    auto composeCallback = [](const struct Shard *errorShard, SHStringWithLen errorTxt, SHBool nonfatalWarning, void *userData) {
       auto shardName = errorShard->name(const_cast<Shard *>(errorShard));
       throw formatException("Failed to compose shader shards: {} ({})", errorTxt, shardName);
     };

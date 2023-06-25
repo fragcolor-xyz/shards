@@ -115,7 +115,7 @@ struct Evolve {
     bwire->mesh = emptyMesh;
     auto res = composeWire(
         bwire.get(),
-        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
             SHLOG_ERROR("Evolve: failed subject wire validation, error: {}", errorTxt);
             throw SHException("Evolve: failed subject wire validation");
@@ -132,7 +132,7 @@ struct Evolve {
     fwire->mesh = emptyMesh;
     res = composeWire(
         fwire.get(),
-        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
             SHLOG_ERROR("Evolve: failed fitness wire validation, error: {}", errorTxt);
             throw SHException("Evolve: failed fitness wire validation");
@@ -714,7 +714,8 @@ struct Mutant {
           if (blk->compose) {
             auto res0 = blk->compose(blk, dataCopy);
             if (res0.error.code != SH_ERROR_NONE) {
-              throw ComposeError(res0.error.message);
+              std::string_view err(res0.error.message.string, res0.error.message.len);
+              throw ComposeError(err);
             }
             auto res = res0.result;
             if (res != ptype) {
@@ -724,8 +725,8 @@ struct Mutant {
           }
         } else if (mut.valueType == SHType::Seq) {
           auto res = composeWire(
-              mut.payload.seqValue, [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {},
-              nullptr, dataCopy);
+              mut.payload.seqValue,
+              [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {}, nullptr, dataCopy);
           if (res.outputType != ptype) {
             throw SHException("Expected same type as input in parameter "
                               "mutation wire's output.");
@@ -1039,7 +1040,7 @@ struct DShard {
     for (uint32_t i = 0; i < params.len; i++) {
       if (!validateSetParam(
               _wrapped, i, _wrappedParams[i],
-              [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {}, nullptr))
+              [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {}, nullptr))
         throw SHException("Failed to validate a parameter within a wrapped DShard.");
       _wrapped->setParam(_wrapped, int(i), &_wrappedParams[i]);
     }
