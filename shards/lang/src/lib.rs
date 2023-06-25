@@ -9,19 +9,19 @@ use crate::read::*;
 use crate::types::*;
 use core::convert::TryInto;
 use nanoid::nanoid;
-use pest::{iterators::Pair, Parser, Position};
-use serde::{Deserialize, Serialize};
+use pest::{Parser};
+
 use shards::SHType_String;
 use shards::types::ClonedVar;
 use shards::types::Mesh;
-use shards::types::Seq;
+
 use shards::types::SeqVar;
 use shards::types::TableVar;
-use shards::types::{ShardRef, Var, Wire, WireRef};
-use shards::ShardPtr;
+use shards::types::{ShardRef, Var, Wire};
+
 use shards::{SHType_ContextVar, SHType_ShardRef};
 use std::ffi::CStr;
-use std::fmt;
+
 
 struct SShardRef(pub(crate) ShardRef);
 
@@ -511,8 +511,8 @@ pub fn eval(seq: Sequence, name: &str) -> Result<Wire, ShardsError> {
 }
 
 use std::ffi::CString;
-use std::os::raw::{c_char, c_void};
-use std::panic::{catch_unwind, UnwindSafe};
+use std::os::raw::{c_char};
+use std::panic::{catch_unwind};
 
 #[repr(C)]
 pub struct SHLError {
