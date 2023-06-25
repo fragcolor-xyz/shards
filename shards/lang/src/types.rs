@@ -1,7 +1,5 @@
-use core::convert::TryInto;
-use pest::{iterators::Pair, Parser, Position};
+use pest::{Position};
 use serde::{Deserialize, Serialize};
-use shards::types::{ShardRef, Var, Wire, WireRef};
 
 #[derive(Parser)]
 #[grammar = "shards.pest"]

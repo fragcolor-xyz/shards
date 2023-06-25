@@ -1,8 +1,6 @@
 use crate::types::*;
 use core::convert::TryInto;
-use pest::{iterators::Pair, Parser, Position};
-use serde::{Deserialize, Serialize};
-use shards::types::{ShardRef, Var, Wire, WireRef};
+use pest::{iterators::Pair, Parser};
 
 fn process_assignment(pair: Pair<Rule>) -> Result<Assignment, ShardsError> {
   let pos = pair.as_span().start_pos();
