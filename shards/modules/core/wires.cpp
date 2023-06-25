@@ -169,7 +169,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
     wire->composeResult = composeWire(
         wire.get(),
-        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
             SHLOG_ERROR("RunWire: failed inner wire validation, error: {}", errorTxt);
             throw ComposeError("RunWire: failed inner wire validation");
@@ -1129,7 +1129,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     // We need to validate the sub wire to figure it out!
     auto res = composeWire(
         wire.get(),
-        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
           if (!nonfatalWarning) {
             SHLOG_ERROR("RunWire: failed inner wire validation, error: {}", errorTxt);
             throw SHException("RunWire: failed inner wire validation");
@@ -1345,7 +1345,7 @@ struct ParallelBase : public CapturingSpawners {
       wire->mesh = context->main->mesh;
       auto res = composeWire(
           wire,
-          [](const struct Shard *errorShard, const char *errorTxt, SHBool nonfatalWarning, void *userData) {
+          [](const struct Shard *errorShard, SHStringWithLen errorTxt, SHBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
               SHLOG_ERROR(errorTxt);
               throw ActivationError("Http.Server handler wire compose failed");
@@ -1731,7 +1731,7 @@ struct Spawn : public CapturingSpawners {
       wire->mesh = context->main->mesh;
       auto res = composeWire(
           wire,
-          [](const struct Shard *errorShard, const char *errorTxt, SHBool nonfatalWarning, void *userData) {
+          [](const struct Shard *errorShard, SHStringWithLen errorTxt, SHBool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
               SHLOG_ERROR(errorTxt);
               throw ActivationError("Spawn handler wire compose failed");

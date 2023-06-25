@@ -80,6 +80,7 @@ use crate::shardsc::SHIMAGE_FLAGS_16BITS_INT;
 use crate::shardsc::SHIMAGE_FLAGS_32BITS_FLOAT;
 use crate::shardsc::SHVAR_FLAGS_REF_COUNTED;
 use crate::SHObjectInfo;
+use crate::SHStringWithLen;
 use crate::SHWireState_Error;
 use crate::SHVAR_FLAGS_EXTERNAL;
 use core::convert::TryFrom;
@@ -223,8 +224,15 @@ impl Wire {
   }
 
   pub fn set_name(&self, name: &str) {
-    let c_name = CString::new(name).unwrap();
-    unsafe { (*Core).setWireName.unwrap()(self.0 .0, c_name.as_ptr()) }
+    unsafe {
+      (*Core).setWireName.unwrap()(
+        self.0 .0,
+        SHStringWithLen {
+          string: name.as_ptr() as *const i8,
+          len: name.len(),
+        },
+      )
+    }
   }
 
   pub fn stop(&self) -> ClonedVar {
@@ -238,9 +246,11 @@ impl Wire {
 
 impl ShardRef {
   pub fn create(name: &str) -> Option<Self> {
-    let c_name = CString::new(name).unwrap();
     unsafe {
-      let ptr = (*Core).createShard.unwrap()(c_name.as_ptr());
+      let ptr = (*Core).createShard.unwrap()(SHStringWithLen {
+        string: name.as_ptr() as *const i8,
+        len: name.len(),
+      });
       if ptr.is_null() {
         None
       } else {
@@ -269,7 +279,11 @@ impl ShardRef {
       if result.code == 0 {
         Ok(())
       } else {
-        Err(CStr::from_ptr(result.message).to_str().unwrap())
+        let cstr = CStr::from_bytes_with_nul(slice::from_raw_parts(
+          result.message.string as *const u8,
+          result.message.len,
+        ));
+        Err(cstr.unwrap().to_str().unwrap())
       }
     }
   }
@@ -281,7 +295,11 @@ impl ShardRef {
         if result.code == 0 {
           Ok(())
         } else {
-          Err(CStr::from_ptr(result.message).to_str().unwrap())
+          let cstr = CStr::from_bytes_with_nul(slice::from_raw_parts(
+            result.message.string as *const u8,
+            result.message.len,
+          ));
+          Err(cstr.unwrap().to_str().unwrap())
         }
       } else {
         Ok(())
@@ -3632,13 +3650,22 @@ impl ParamVar {
         let ctx = context as *const SHContext as *mut SHContext;
         self.pointee = (*Core).referenceVariable.unwrap()(
           ctx,
-          self
-            .parameter
-            .0
-            .payload
-            .__bindgen_anon_1
-            .__bindgen_anon_2
-            .stringValue,
+          SHStringWithLen {
+            string: self
+              .parameter
+              .0
+              .payload
+              .__bindgen_anon_1
+              .__bindgen_anon_2
+              .stringValue,
+            len: self
+              .parameter
+              .0
+              .payload
+              .__bindgen_anon_1
+              .__bindgen_anon_2
+              .stringLen as usize,
+          },
         );
       }
     } else {
@@ -3745,12 +3772,15 @@ impl Drop for ShardsVar {
 
 unsafe extern "C" fn shardsvar_compose_cb(
   errorShard: *const Shard,
-  errorTxt: SHString,
+  errorTxt: SHStringWithLen,
   nonfatalWarning: SHBool,
   userData: *mut c_void,
 ) {
-  let msg = CStr::from_ptr(errorTxt);
   let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
+  let msg = CStr::from_bytes_with_nul(unsafe {
+    slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len)
+  })
+  .unwrap();
   if !nonfatalWarning {
     shlog_error!(
       "Fatal error: {} shard: {}",

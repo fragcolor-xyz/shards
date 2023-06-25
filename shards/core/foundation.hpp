@@ -129,13 +129,13 @@ SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wire
 SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
 // caller handles return
 SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output, SHVar &outHash) noexcept;
-SHVar *referenceGlobalVariable(SHContext *ctx, const char *name);
-SHVar *referenceVariable(SHContext *ctx, const char *name);
-SHVar *referenceWireVariable(SHWire *wire, const char *name);
+SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name);
+SHVar *referenceVariable(SHContext *ctx, std::string_view name);
+SHVar *referenceWireVariable(SHWire *wire, std::string_view name);
 void releaseVariable(SHVar *variable);
-void setSharedVariable(const char *name, const SHVar &value);
-void unsetSharedVariable(const char *name);
-SHVar getSharedVariable(const char *name);
+void setSharedVariable(std::string_view name, const SHVar &value);
+void unsetSharedVariable(std::string_view name);
+SHVar getSharedVariable(std::string_view name);
 SHWireState suspend(SHContext *context, double seconds);
 entt::id_type findId(SHContext *ctx) noexcept;
 
@@ -963,7 +963,9 @@ struct InternalCore {
     return res;
   }
 
-  static SHVar *referenceVariable(SHContext *context, const char *name) { return shards::referenceVariable(context, name); }
+  static SHVar *referenceVariable(SHContext *context, SHStringWithLen name) {
+    return shards::referenceVariable(context, std::string_view(name.string, name.len));
+  }
 
   static void releaseVariable(SHVar *variable) { shards::releaseVariable(variable); }
 
@@ -979,7 +981,10 @@ struct InternalCore {
 
   static void expTypesFree(SHExposedTypesInfo &arr) { arrayFree(arr); }
 
-  static void log(const char *msg) { SHLOG_INFO(msg); }
+  static void log(SHStringWithLen msg) {
+    std::string_view msgView(msg.string, msg.len);
+    SHLOG_INFO(msgView);
+  }
 
   static void registerEnumType(int32_t vendorId, int32_t enumId, SHEnumInfo info) {
     shards::registerEnumType(vendorId, enumId, info);

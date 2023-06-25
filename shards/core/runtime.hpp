@@ -456,10 +456,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     data.inputType = shards::deriveTypeInfo(input, data);
     auto validation = shards::composeWire(
         wire.get(),
-        [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+        [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
           auto blk = const_cast<Shard *>(errorShard);
           if (!nonfatalWarning) {
-            throw shards::ComposeError(std::string(errorTxt) + ", input shard: " + std::string(blk->name(blk)));
+            throw shards::ComposeError(std::string(errorTxt.string, errorTxt.len) + ", input shard: " + std::string(blk->name(blk)));
           } else {
             SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
           }
@@ -508,10 +508,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       data.inputType = shards::deriveTypeInfo(input, data);
       auto validation = shards::composeWire(
           wire.get(),
-          [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+          [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
             auto blk = const_cast<Shard *>(errorShard);
             if (!nonfatalWarning) {
-              throw shards::ComposeError(std::string(errorTxt) + ", input shard: " + std::string(blk->name(blk)));
+              throw shards::ComposeError(std::string(errorTxt.string, errorTxt.len) + ", input shard: " + std::string(blk->name(blk)));
             } else {
               SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
             }

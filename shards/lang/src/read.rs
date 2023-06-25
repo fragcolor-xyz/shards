@@ -181,33 +181,6 @@ fn process_vector(pair: Pair<Rule>) -> Result<Value, ShardsError> {
   }
 }
 
-fn process_operator(pair: Pair<Rule>) -> Result<BlockContent, ShardsError> {
-  assert_eq!(pair.as_rule(), Rule::Operators);
-  let pos = pair.as_span().start_pos();
-
-  let mut inner = pair.into_inner();
-  let op = inner.next().ok_or(("Expected an operator.", pos).into())?;
-  let op_rule = op.as_rule();
-
-  let mut inner = op.into_inner();
-  let operand_value = inner
-    .next()
-    .ok_or(("Expected an operand value.", pos).into())?;
-  assert_eq!(operand_value.as_rule(), Rule::Value);
-  let operand = process_value(operand_value.into_inner().next().unwrap())?; // qed, we asserted that it was a value
-
-  match op_rule {
-    Rule::OperatorPlus => Ok(BlockContent::Operator(Operator::Add, operand)),
-    Rule::OperatorMinus => Ok(BlockContent::Operator(Operator::Sub, operand)),
-    Rule::OperatorMul => Ok(BlockContent::Operator(Operator::Mul, operand)),
-    Rule::OperatorDiv => Ok(BlockContent::Operator(Operator::Div, operand)),
-    Rule::OperatorMod => Ok(BlockContent::Operator(Operator::Mod, operand)),
-    Rule::OperatorPow => Ok(BlockContent::Operator(Operator::Pow, operand)),
-    Rule::OperatorMatMul => Ok(BlockContent::Operator(Operator::MatMul, operand)),
-    _ => unreachable!(),
-  }
-}
-
 fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Pipeline {
@@ -218,7 +191,8 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
 
   for pair in pair.into_inner() {
     let pos = pair.as_span().start_pos();
-    match pair.as_rule() {
+    let rule = pair.as_rule();
+    match rule {
       Rule::Shard => blocks.push(Block::BlockContent(
         process_block_content(pair)?,
         pos.into(),
@@ -240,11 +214,7 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
         let value = process_vector(pair)?;
         blocks.push(Block::BlockContent(BlockContent::Const(value), pos.into()));
       }
-      Rule::Operators => {
-        let content = process_operator(pair)?;
-        blocks.push(Block::BlockContent(content, pos.into()))
-      }
-      _ => return Err(("Unexpected rule in Pipeline.", pos).into()),
+      _ => return Err((format!("Unexpected rule ({:?}) in Pipeline.", rule), pos).into()),
     }
   }
 
@@ -272,7 +242,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
   let pos = pair.as_span().start_pos();
   match pair.as_rule() {
     Rule::None => Ok(Value::None),
-    Rule::Bools => {
+    Rule::Boolean => {
       // check if string content is true or false
       let bool_str = pair.as_str();
       if bool_str == "true" {
@@ -283,7 +253,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
         Err(("Expected a boolean value", pos).into())
       }
     }
-    Rule::Identifier => Ok(Value::Identifier(pair.as_str().to_string())),
+    Rule::LowIden => Ok(Value::Identifier(pair.as_str().to_string())),
     Rule::Vector => process_vector(pair),
     Rule::Number => process_number(
       pair
@@ -426,7 +396,7 @@ fn process_block_content(pair: Pair<Rule>) -> Result<BlockContent, ShardsError> 
 
   match shard_exp.as_rule() {
     Rule::None => Ok(BlockContent::Const(Value::None)),
-    Rule::Bools => {
+    Rule::Boolean => {
       // check if string content is true or false
       let bool_str = shard_exp.as_str();
       if bool_str == "true" {
@@ -437,7 +407,7 @@ fn process_block_content(pair: Pair<Rule>) -> Result<BlockContent, ShardsError> 
         Err(("Expected a boolean value", pos).into())
       }
     }
-    Rule::Identifier => {
+    Rule::UppIden => {
       let shard_name = shard_exp.as_str().to_string();
       let next = inner.next();
 

@@ -1,17 +1,17 @@
 Repeat({
-  #(inject-template)
   1 | IsMore(2) | Assert.Is(true)
-  (2 3 4) | Log | Assert.Is((2 3 4))
-  2 * 2 | Log | (3 * 3 | Log) | #(false | Assert.Is(true)) | Log
-  3 * ((3 * 3) * 3) | Log
+  (2 3 4) | Log | {1 | Assert.Is(1)} ; this is a Sub({})
+  | Assert.Is((2 3 4))
+  Do(walk)
+  2 | Math.Add(2) | Log | (3 | Math.Add(3) | Log) | #(false | Assert.Is(true)) | Log
   2.2 | Log | Log >= number
   2.2 | Log | Log > number ; hello
   2.2 | Log | Log = number
   2.2 | Log | Log = number
   2.2 | Math.Add(2.0) | Log | Log
-  2.2 | Math.Add((3 @ 3)) | Log | Log
+  2.2 | Math.Add((3 | Math.Add(3))) | Log | Log
   [1 2 3] | Log
-  {a: 1 y: 2} | Log = table
+  {a: 1 y: 2 Z: 3} | Log = table
   table | Log
   table:a:b | Log
   {} | Log
@@ -19,7 +19,7 @@ Repeat({
   2 >> seq
   0x2234 >> seq
   seq:0 | Log
-  number | Math.Multiply(2.0) | Math.Multiply(Operand: seq:0)
+  number | Math.Multiply(2.0) | Math.Multiply(Operand: seq:0 Type.String)
   ; notice no |, we inject always a `nil` in front of a Pipeline,
   ; if the next shard input type is not None
   Repeat({ ; shards
@@ -27,18 +27,18 @@ Repeat({
   } Times: 3 Until: #(1))
 } Times: 3)
 
-schedule(root main)
-run(root)
+Schedule(root main)
+Run(root)
 
 a | Math.Add((a | Math.Subtract(c))) ; generate temps and such at runtime
 
 a | Math.Add(#(a | Math.Subtract(c))) ; run at eval time and write result
 
-wire(w1 {
+Wire(w1 {
   Msg("Hello")
 })
 
-wire(w2 {
+Wire(w2 {
   Msg("Hello")
 })
 

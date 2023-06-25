@@ -191,7 +191,7 @@ struct Cond {
     for (const auto &action : _conditions) {
       auto validation = composeWire(
           action,
-          [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+          [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
               SHLOG_ERROR("Cond: failed inner wire validation, error: {}", errorTxt);
               throw SHException("Cond: failed inner wire validation.");
@@ -215,7 +215,7 @@ struct Cond {
     for (const auto &action : _actions) {
       auto validation = composeWire(
           action,
-          [](const Shard *errorShard, const char *errorTxt, bool nonfatalWarning, void *userData) {
+          [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
             if (!nonfatalWarning) {
               SHLOG_ERROR("Cond: failed inner wire validation, error: {}", errorTxt);
               throw SHException("Cond: failed inner wire validation.");

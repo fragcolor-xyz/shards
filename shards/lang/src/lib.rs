@@ -8,12 +8,13 @@ mod types;
 use crate::read::*;
 use crate::types::*;
 use core::convert::TryInto;
+use core::slice;
 use nanoid::nanoid;
-use pest::{Parser};
+use pest::Parser;
 
-use shards::SHType_String;
 use shards::types::ClonedVar;
 use shards::types::Mesh;
+use shards::SHType_String;
 
 use shards::types::SeqVar;
 use shards::types::TableVar;
@@ -21,7 +22,6 @@ use shards::types::{ShardRef, Var, Wire};
 
 use shards::{SHType_ContextVar, SHType_ShardRef};
 use std::ffi::CStr;
-
 
 struct SShardRef(pub(crate) ShardRef);
 
@@ -78,9 +78,15 @@ fn eval_eval_expr(seq: Sequence) -> Result<(ClonedVar, LineInfo), ShardsError> {
     }
     let info = wire.get_info();
     if info.failed {
-      let msg = unsafe { CStr::from_ptr(info.failureMessage) }
-        .to_str()
-        .expect("Invalid UTF8");
+      let msg = CStr::from_bytes_with_nul(unsafe {
+        slice::from_raw_parts(
+          info.failureMessage.string as *const u8,
+          info.failureMessage.len,
+        )
+      })
+      .unwrap()
+      .to_str()
+      .expect("Invalid UTF8");
       Err(
         (
           msg,
@@ -511,8 +517,8 @@ pub fn eval(seq: Sequence, name: &str) -> Result<Wire, ShardsError> {
 }
 
 use std::ffi::CString;
-use std::os::raw::{c_char};
-use std::panic::{catch_unwind};
+use std::os::raw::c_char;
+use std::panic::catch_unwind;
 
 #[repr(C)]
 pub struct SHLError {

@@ -159,6 +159,12 @@ typedef struct _SHOptionalString {
 } SHOptionalString;
 SH_ARRAY_DECL(SHOptionalStrings, SHOptionalString);
 
+// used in hot paths to avoid extra strlen calls
+typedef struct SHStringWithLen {
+  SHString string;
+  size_t len;
+} SHStringWithLen;
+
 #if defined(__clang__) || defined(__GNUC__)
 #define likely(x) __builtin_expect((x), 1)
 #define unlikely(x) __builtin_expect((x), 0)
@@ -250,7 +256,7 @@ struct SHAudio {
 
 struct SHError {
   uint8_t code; // 0 if no error, 1 if error so far
-  SHString message;
+  struct SHStringWithLen message;
 
 #ifdef __cplusplus
   static const SHError Success;
@@ -260,7 +266,7 @@ struct SHError {
 #define SH_ERROR_NONE (0)
 
 #ifdef __cplusplus
-constexpr const SHError SHError::Success = {SH_ERROR_NONE, nullptr};
+constexpr const SHError SHError::Success = {SH_ERROR_NONE, {nullptr, 0}};
 #endif
 
 // table interface
@@ -788,7 +794,7 @@ struct SHWireProvider {
   void *userData;
 };
 
-typedef void(__cdecl *SHValidationCallback)(const struct Shard *errorShard, SHString errorTxt, SHBool nonfatalWarning,
+typedef void(__cdecl *SHValidationCallback)(const struct Shard *errorShard, struct SHStringWithLen errorTxt, SHBool nonfatalWarning,
                                             void *userData);
 
 typedef void(__cdecl *SHRegisterShard)(SHString fullName, SHShardConstructor constructor);
@@ -805,20 +811,20 @@ typedef void(__cdecl *SHUnregisterRunLoopCallback)(SHString eventName);
 
 typedef void(__cdecl *SHUnregisterExitCallback)(SHString eventName);
 
-typedef struct SHVar *(__cdecl *SHReferenceVariable)(struct SHContext *context, SHString name);
-typedef struct SHVar *(__cdecl *SHReferenceWireVariable)(SHWireRef wire, SHString name);
+typedef struct SHVar *(__cdecl *SHReferenceVariable)(struct SHContext *context, struct SHStringWithLen name);
+typedef struct SHVar *(__cdecl *SHReferenceWireVariable)(SHWireRef wire, struct SHStringWithLen name);
 
-typedef void(__cdecl *SHSetExternalVariable)(SHWireRef wire, SHString name, struct SHVar *pVar);
+typedef void(__cdecl *SHSetExternalVariable)(SHWireRef wire, struct SHStringWithLen name, struct SHVar *pVar);
 
-typedef void(__cdecl *SHRemoveExternalVariable)(SHWireRef wire, SHString name);
+typedef void(__cdecl *SHRemoveExternalVariable)(SHWireRef wire, struct SHStringWithLen name);
 
-typedef struct SHVar *(__cdecl *SHAllocExternalVariable)(SHWireRef wire, SHString name);
+typedef struct SHVar *(__cdecl *SHAllocExternalVariable)(SHWireRef wire, struct SHStringWithLen name);
 
-typedef void(__cdecl *SHFreeExternalVariable)(SHWireRef wire, SHString name);
+typedef void(__cdecl *SHFreeExternalVariable)(SHWireRef wire, struct SHStringWithLen name);
 
 typedef void(__cdecl *SHReleaseVariable)(struct SHVar *variable);
 
-typedef void(__cdecl *SHAbortWire)(struct SHContext *context, SHString errorText);
+typedef void(__cdecl *SHAbortWire)(struct SHContext *context, struct SHStringWithLen errorText);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 typedef SH_ENUM_DECL SHWireState(__cdecl *SHSuspend)(struct SHContext *context, double seconds);
@@ -856,14 +862,14 @@ typedef SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext 
                                                 struct SHVar *output, struct SHVar *outHash);
 #endif
 
-typedef void(__cdecl *SHLog)(SHString msg);
-typedef void(__cdecl *SHLogLevel)(int level, SHString msg);
+typedef void(__cdecl *SHLog)(struct SHStringWithLen msg);
+typedef void(__cdecl *SHLogLevel)(int level, struct SHStringWithLen msg);
 
-typedef struct Shard *(__cdecl *SHCreateShard)(SHString name);
-typedef void (__cdecl *SHReleaseShard)(struct Shard *shard);
+typedef struct Shard *(__cdecl *SHCreateShard)(struct SHStringWithLen name);
+typedef void(__cdecl *SHReleaseShard)(struct Shard *shard);
 
 typedef SHWireRef(__cdecl *SHCreateWire)();
-typedef void(__cdecl *SHSetWireName)(SHWireRef wire, SHString name);
+typedef void(__cdecl *SHSetWireName)(SHWireRef wire, struct SHStringWithLen name);
 typedef void(__cdecl *SHSetWireLooped)(SHWireRef wire, SHBool looped);
 typedef void(__cdecl *SHSetWireUnsafe)(SHWireRef wire, SHBool unsafe);
 typedef void(__cdecl *SHAddShard)(SHWireRef wire, ShardPtr shard);
@@ -873,9 +879,9 @@ typedef struct SHVar(__cdecl *SHStopWire)(SHWireRef wire);
 typedef struct SHComposeResult(__cdecl *SHComposeWire)(SHWireRef wire, SHValidationCallback callback, void *userData,
                                                        struct SHInstanceData data);
 typedef struct SHRunWireOutput(__cdecl *SHRunWire)(SHWireRef wire, struct SHContext *context, const struct SHVar *input);
-typedef SHWireRef(__cdecl *SHGetGlobalWire)(SHString name);
-typedef void(__cdecl *SHSetGlobalWire)(SHString name, SHWireRef wire);
-typedef void(__cdecl *SHUnsetGlobalWire)(SHString name);
+typedef SHWireRef(__cdecl *SHGetGlobalWire)(struct SHStringWithLen name);
+typedef void(__cdecl *SHSetGlobalWire)(struct SHStringWithLen name, SHWireRef wire);
+typedef void(__cdecl *SHUnsetGlobalWire)(struct SHStringWithLen name);
 
 typedef SHMeshRef(__cdecl *SHCreateMesh)();
 typedef void(__cdecl *SHDestroyMesh)(SHMeshRef mesh);
@@ -926,14 +932,14 @@ typedef struct SHVar(__cdecl *SHRunAsyncActivate)(struct SHContext *context, voi
 typedef SHStrings(__cdecl *SHGetShards)();
 
 struct SHWireInfo {
-  SHString name;
+  const struct SHStringWithLen name;
   SHBool looped;
   SHBool unsafe;
   const struct SHWire *wire;
   const Shards shards;
   SHBool isRunning;
   SHBool failed;
-  SHString failureMessage;
+  const struct SHStringWithLen failureMessage;
   struct SHVar *finalOutput;
 };
 

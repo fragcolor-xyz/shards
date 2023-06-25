@@ -235,6 +235,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
   }
   return os;
 }
+
 std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &t) {
   // This code outputs non-breaking spaces for cleaner wrapping on the documentation page
   if (t.basicType == SHType::Seq) {
@@ -337,6 +338,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
   }
   return os;
 }
+
 std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypesInfo &ts) {
   for (uint32_t i = 0; i < ts.len; i++) {
     if (ignoreNone && ts.elements[i].basicType == SHType::None)
@@ -346,6 +348,12 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypesInfo 
       os << " ";
     }
   }
+  return os;
+}
+
+std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHStringWithLen &s) {
+  std::string_view sv(s.string, s.len);
+  os << sv;
   return os;
 }
 } // namespace shards
