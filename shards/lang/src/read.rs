@@ -1,6 +1,8 @@
 use crate::types::*;
 use core::convert::TryInto;
-use pest::{iterators::Pair, Parser};
+use pest::iterators::Pair;
+#[cfg(test)]
+use pest::Parser;
 
 fn process_assignment(pair: Pair<Rule>) -> Result<Assignment, ShardsError> {
   let pos = pair.as_span().start_pos();
@@ -181,7 +183,7 @@ fn process_vector(pair: Pair<Rule>) -> Result<Value, ShardsError> {
   }
 }
 
-fn process_shard(pair: Pair<Rule>) -> Result<Shard, ShardsError> {
+fn process_function(pair: Pair<Rule>) -> Result<Function, ShardsError> {
   let pos = pair.as_span().start_pos();
 
   let mut inner = pair.into_inner();
@@ -192,7 +194,7 @@ fn process_shard(pair: Pair<Rule>) -> Result<Shard, ShardsError> {
   let pos = shard_exp.as_span().start_pos();
 
   match shard_exp.as_rule() {
-    Rule::UppIden => {
+    Rule::UppIden | Rule::LowIden => {
       let shard_name = shard_exp.as_str().to_string();
       let next = inner.next();
 
@@ -207,12 +209,18 @@ fn process_shard(pair: Pair<Rule>) -> Result<Shard, ShardsError> {
         None => None,
       };
 
-      Ok(Shard {
+      Ok(Function {
         name: shard_name,
         params,
       })
     }
-    _ => Err(("Unexpected rule in Shard.", pos).into()),
+    _ => Err(
+      (
+        format!("Unexpected rule {:?} in Function.", shard_exp.as_rule()),
+        pos,
+      )
+        .into(),
+    ),
   }
 }
 
@@ -278,7 +286,11 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
         line_info: pos.into(),
       }),
       Rule::Shard => blocks.push(Block {
-        content: BlockContent::Shard(process_shard(pair)?),
+        content: BlockContent::Shard(process_function(pair)?),
+        line_info: pos.into(),
+      }),
+      Rule::BuiltIn => blocks.push(Block {
+        content: BlockContent::BuiltIn(process_function(pair)?),
         line_info: pos.into(),
       }),
       Rule::TakeTable => blocks.push(Block {
@@ -312,7 +324,6 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
       _ => return Err((format!("Unexpected rule ({:?}) in Pipeline.", rule), pos).into()),
     }
   }
-
   Ok(Pipeline { blocks })
 }
 
@@ -331,6 +342,15 @@ pub(crate) fn process_sequence(pair: Pair<Rule>) -> Result<Sequence, ShardsError
     .map(process_statement)
     .collect::<Result<Vec<_>, _>>()?;
   Ok(Sequence { statements })
+}
+
+pub(crate) fn process_program(pair: Pair<Rule>) -> Result<Sequence, ShardsError> {
+  let pos = pair.as_span().start_pos();
+  if pair.as_rule() != Rule::Program {
+    return Err(("Expected a Program rule, but found a different rule.", pos).into());
+  }
+  let pair = pair.into_inner().next().unwrap();
+  process_sequence(pair)
 }
 
 fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
@@ -372,11 +392,22 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
         .ok_or(("Expected a Number value", pos).into())?,
     )
     .map(Value::Number),
-    Rule::String => Ok(Value::String({
-      let full_str = pair.as_str().to_string();
-      // remove quotes
-      full_str[1..full_str.len() - 1].to_string()
-    })),
+    Rule::String => {
+      let inner = pair.into_inner().next().unwrap();
+      match inner.as_rule() {
+        Rule::SimpleString => Ok(Value::String({
+          let full_str = inner.as_str().to_string();
+          // remove quotes
+          full_str[1..full_str.len() - 1].to_string()
+        })),
+        Rule::ComplexString => Ok(Value::String({
+          let full_str = inner.as_str().to_string();
+          // remove triple quotes
+          full_str[3..full_str.len() - 3].to_string()
+        })),
+        _ => unreachable!(),
+      }
+    }
     Rule::Seq => {
       let values = pair
         .into_inner()
@@ -538,10 +569,36 @@ fn process_params(pair: Pair<Rule>) -> Result<Vec<Param>, ShardsError> {
 }
 
 #[test]
-fn test_parsing() {
+fn test_parsing1() {
   let code = include_str!("sample1.shs");
-  let successful_parse = ShardsParser::parse(Rule::Sequence, code).unwrap();
-  let seq = process_sequence(successful_parse.into_iter().next().unwrap()).unwrap();
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let seq = process_program(successful_parse.into_iter().next().unwrap()).unwrap();
+
+  // Serialize using bincode
+  let encoded_bin: Vec<u8> = bincode::serialize(&seq).unwrap();
+
+  // Deserialize using bincode
+  let decoded_bin: Sequence = bincode::deserialize(&encoded_bin[..]).unwrap();
+
+  // Serialize using json
+  let encoded_json = serde_json::to_string(&seq).unwrap();
+  println!("Json Serialized = {}", encoded_json);
+
+  let encoded_json2 = serde_json::to_string(&decoded_bin).unwrap();
+  assert_eq!(encoded_json, encoded_json2);
+
+  // Deserialize using json
+  let decoded_json: Sequence = serde_json::from_str(&encoded_json).unwrap();
+
+  let encoded_bin2: Vec<u8> = bincode::serialize(&decoded_json).unwrap();
+  assert_eq!(encoded_bin, encoded_bin2);
+}
+
+#[test]
+fn test_parsing2() {
+  let code = include_str!("explained.shs");
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let seq = process_program(successful_parse.into_iter().next().unwrap()).unwrap();
 
   // Serialize using bincode
   let encoded_bin: Vec<u8> = bincode::serialize(&seq).unwrap();
