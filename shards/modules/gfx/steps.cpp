@@ -197,19 +197,19 @@ struct DrawablePassShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::PipelineStep; }
 
-  PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
-  PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
   PARAM_PARAMVAR(_queue, "Queue", "The queue that this pass should render", {DrawQueueVarType});
   PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
+  PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
+  PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
   PARAM_PARAMVAR(_sort, "Sort",
                  "The sorting mode to use to sort the drawables. The default sorting behavior is to sort by optimal batching",
                  {CoreInfo::NoneType, Types::SortModeEnumInfo::Type, Type::VariableOf(Types::SortModeEnumInfo::Type)});
   PARAM_VAR(_ignoreDrawableFeatures, "IgnoreDrawableFeatures",
-                 "Ignore any features on drawables and only use the features specified in this pass",
-                 {CoreInfo::NoneType, CoreInfo::BoolType});
+            "Ignore any features on drawables and only use the features specified in this pass",
+            {CoreInfo::NoneType, CoreInfo::BoolType});
 
-  PARAM_IMPL(PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features),
-             PARAM_IMPL_FOR(_sort), PARAM_IMPL_FOR(_ignoreDrawableFeatures));
+  PARAM_IMPL(PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_outputs),
+             PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_sort), PARAM_IMPL_FOR(_ignoreDrawableFeatures));
 
   PipelineStepPtr *_step{};
   HashState _hashState;
