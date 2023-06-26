@@ -18,9 +18,6 @@ use shards::types::ClonedVar;
 use shards::types::Mesh;
 use shards::SHType_Enum;
 use shards::SHType_String;
-use shards::SHVarPayload;
-use shards::SHVarPayload__bindgen_ty_1;
-use shards::SHVarPayload__bindgen_ty_1__bindgen_ty_3;
 
 use shards::types::SeqVar;
 use shards::types::TableVar;
@@ -154,7 +151,6 @@ fn create_take_seq_chain(
   Ok(())
 }
 
-// we need to implement Value into Var conversion
 fn as_var(
   value: Value,
   line_info: LineInfo,
@@ -298,8 +294,60 @@ fn as_var(
         Ok(SVar::NotCloned(().into()))
       }
     }
-    Value::TakeTable(_, _) => todo!(),
-    Value::TakeSeq(_, _) => todo!(),
+    Value::TakeTable(var_name, path) => {
+      let start_idx = e.shards.len();
+      let mut sub_env = EvalEnv {
+        shards: Vec::new(),
+        previous: None,
+      };
+      create_take_table_chain(var_name, path, line_info, &mut sub_env)?;
+      if !sub_env.shards.is_empty() {
+        // create a temporary variable to hold the result of the expression
+        let tmp_name = nanoid!();
+        // ensure name starts with a letter
+        let tmp_name = format!("t{}", tmp_name);
+        add_assignment_shard("Ref", &tmp_name, &mut sub_env);
+        // wrap into a Sub Shard
+        let sub = make_sub_shard(sub_env.shards, line_info)?;
+        // add this sub shard before the start of this pipeline!
+        e.shards.insert(start_idx, sub);
+        // now add a get shard to get the temporary at the end of the pipeline
+        add_get_shard(&tmp_name, line_info, e);
+
+        let mut s = Var::ephemeral_string(tmp_name.as_str());
+        s.valueType = SHType_ContextVar;
+        Ok(SVar::Cloned(s.into()))
+      } else {
+        panic!("TakeTable should always return a shard")
+      }
+    }
+    Value::TakeSeq(var_name, path) => {
+      let start_idx = e.shards.len();
+      let mut sub_env = EvalEnv {
+        shards: Vec::new(),
+        previous: None,
+      };
+      create_take_seq_chain(var_name, path, line_info, &mut sub_env)?;
+      if !sub_env.shards.is_empty() {
+        // create a temporary variable to hold the result of the expression
+        let tmp_name = nanoid!();
+        // ensure name starts with a letter
+        let tmp_name = format!("t{}", tmp_name);
+        add_assignment_shard("Ref", &tmp_name, &mut sub_env);
+        // wrap into a Sub Shard
+        let sub = make_sub_shard(sub_env.shards, line_info)?;
+        // add this sub shard before the start of this pipeline!
+        e.shards.insert(start_idx, sub);
+        // now add a get shard to get the temporary at the end of the pipeline
+        add_get_shard(&tmp_name, line_info, e);
+
+        let mut s = Var::ephemeral_string(tmp_name.as_str());
+        s.valueType = SHType_ContextVar;
+        Ok(SVar::Cloned(s.into()))
+      } else {
+        panic!("TakeTable should always return a shard")
+      }
+    }
   }
 }
 
@@ -425,9 +473,7 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
   let start_idx = e.shards.len();
   for block in pipeline.blocks {
     let _ = match block.content {
-      BlockContent::Shard(shard) => {
-        add_shard(shard, block.line_info, e)
-      }
+      BlockContent::Shard(shard) => add_shard(shard, block.line_info, e),
       BlockContent::Shards(seq) => {
         let mut sub_env = eval_sequence(seq, e.previous)?;
         if !sub_env.shards.is_empty() {

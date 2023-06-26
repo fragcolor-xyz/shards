@@ -1532,7 +1532,7 @@ TEST_CASE("shards-lang") {
     shards_free_wire(wire.wire);
   }
 
-  SECTION("TableTake 1") {
+  SECTION("SeqTake 1") {
     auto seq = shards_read("[1 2] | Log = s s:0 | Log | Assert.Is(1) s:1 | Log | Assert.Is(2)");
     REQUIRE(seq.ast);
     auto wire = shards_eval(seq.ast, "root");
@@ -1543,8 +1543,30 @@ TEST_CASE("shards-lang") {
     shards_free_wire(wire.wire);
   }
 
-  SECTION("TableTake 2") {
+  SECTION("SeqTake 2") {
+    auto seq = shards_read("[1 2] | Log = s 1 | Math.Add(s:0) | Assert.Is(2)");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("TableTake 1") {
     auto seq = shards_read("{a: 1 b: 2} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("TableTake 2") {
+    auto seq = shards_read("{a: 1 b: 2} | Log = t 1 | Math.Add(t:a) | Assert.Is(2)");
     REQUIRE(seq.ast);
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
