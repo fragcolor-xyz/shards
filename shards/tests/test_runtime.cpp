@@ -1553,4 +1553,15 @@ TEST_CASE("shards-lang") {
     mesh->tick();
     shards_free_wire(wire.wire);
   }
+
+  SECTION("Sub 1") {
+    auto seq = shards_read("{a: 1 b: 2} | {ToString | Assert.Is(\"{a: 1, b: 2}\") | Log} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
 }

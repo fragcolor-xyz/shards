@@ -372,7 +372,11 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
         .ok_or(("Expected a Number value", pos).into())?,
     )
     .map(Value::Number),
-    Rule::String => Ok(Value::String(pair.as_str().to_string())),
+    Rule::String => Ok(Value::String({
+      let full_str = pair.as_str().to_string();
+      // remove quotes
+      full_str[1..full_str.len() - 1].to_string()
+    })),
     Rule::Seq => {
       let values = pair
         .into_inner()
