@@ -1,4 +1,4 @@
-use pest::{Position};
+use pest::Position;
 use serde::{Deserialize, Serialize};
 
 #[derive(Parser)]
@@ -70,10 +70,18 @@ impl<'a> Into<LineInfo> for Position<'a> {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum Number {
+  Integer(i64),
+  Float(f64),
+  Hexadecimal(String),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Value {
   None,
   Identifier(String),
   Boolean(bool),
+  Enum(String, String),
   Number(Number),
   String(String),
   Int2([i64; 2]),
@@ -94,10 +102,9 @@ pub enum Value {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum Number {
-  Integer(i64),
-  Float(f64),
-  Hexadecimal(String),
+pub struct Param {
+  pub name: Option<String>,
+  pub value: Value,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -107,20 +114,25 @@ pub struct Shard {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Param {
-  pub name: Option<String>,
-  pub value: Value,
+pub enum BlockContent {
+  Shard(Shard),                   // Rule: Shard
+  Shards(Sequence),               // Rule: Shards
+  Const(Value),                   // Rules: ConstValue, Vector
+  TakeTable(String, Vec<String>), // Rule: TakeTable
+  TakeSeq(String, Vec<u32>),      // Rule: TakeSeq
+  EvalExpr(Sequence),             // Rule: EvalExpr
+  Expr(Sequence),                 // Rule: Expr
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum Statement {
-  Assignment(Assignment),
-  Pipeline(Pipeline),
+pub struct Block {
+  pub content: BlockContent,
+  pub line_info: LineInfo,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Sequence {
-  pub statements: Vec<Statement>,
+pub struct Pipeline {
+  pub blocks: Vec<Block>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -132,33 +144,12 @@ pub enum Assignment {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum Operator {
-  Add,
-  Sub,
-  Mul,
-  Div,
-  Mod,
-  Pow,
-  MatMul,
+pub enum Statement {
+  Assignment(Assignment),
+  Pipeline(Pipeline),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum BlockContent {
-  Shard(Shard),
-  Const(Value),
-  TakeTable(String, Vec<String>),
-  TakeSeq(String, Vec<u32>),
-  Operator(Operator, Value),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum Block {
-  BlockContent(BlockContent, LineInfo),
-  EvalExpr(Sequence),
-  Expr(Sequence),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Pipeline {
-  pub blocks: Vec<Block>,
+pub struct Sequence {
+  pub statements: Vec<Statement>,
 }

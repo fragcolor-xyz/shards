@@ -78,15 +78,13 @@ fn eval_eval_expr(seq: Sequence) -> Result<(ClonedVar, LineInfo), ShardsError> {
     }
     let info = wire.get_info();
     if info.failed {
-      let msg = CStr::from_bytes_with_nul(unsafe {
+      let msg = std::str::from_utf8(unsafe {
         slice::from_raw_parts(
           info.failureMessage.string as *const u8,
           info.failureMessage.len,
         )
       })
-      .unwrap()
-      .to_str()
-      .expect("Invalid UTF8");
+      .unwrap();
       Err(
         (
           msg,
@@ -164,6 +162,9 @@ fn as_var(
       let mut s = Var::ephemeral_string(value.as_str());
       s.valueType = SHType_ContextVar;
       Ok(SVar::Cloned(s.into()))
+    }
+    Value::Enum(prefix, value) => {
+      todo!()
     }
     Value::Number(num) => match num {
       Number::Integer(n) => Ok(SVar::NotCloned(n.into())),
@@ -383,45 +384,45 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
   e.previous = None;
   let start_idx = e.shards.len();
   for block in pipeline.blocks {
-    let _ = match block {
-      Block::BlockContent(content, line_info) => match content {
-        BlockContent::Shard(shard) => {
-          // ok the reality is that we could also be a variable, so we need to check that
-          let has_params = shard.params.is_some();
-          let res = add_shard(shard, line_info, e);
-          match res {
-            Ok(_) => Ok(()),
-            Err(err) => {
-              match err {
-                AddShardError::ShardsError(err) => Err(err),
-                AddShardError::InvalidShardName(name) => {
-                  if !has_params {
-                    // we assume we are a variable
-                    Ok(add_get_shard(&name, line_info, e))
-                  } else {
-                    Err((format!("Invalid shard name: {}", name), line_info).into())
-                  }
+    let _ = match block.content {
+      BlockContent::Shard(shard) => {
+        // ok the reality is that we could also be a variable, so we need to check that
+        let has_params = shard.params.is_some();
+        let res = add_shard(shard, block.line_info, e);
+        match res {
+          Ok(_) => Ok(()),
+          Err(err) => {
+            match err {
+              AddShardError::ShardsError(err) => Err(err),
+              AddShardError::InvalidShardName(name) => {
+                if !has_params {
+                  // we assume we are a variable
+                  Ok(add_get_shard(&name, block.line_info, e))
+                } else {
+                  Err((format!("Invalid shard name: {}", name), block.line_info).into())
                 }
               }
             }
           }
         }
-        BlockContent::Const(value) => {
-          // remove the nil shard we injected if this is the first block
-          if e.shards.len() == start_idx + 1 {
-            e.shards.pop();
-          }
-          add_const_shard(value, line_info, e)
+      }
+      BlockContent::Shards(_) => todo!(),
+      BlockContent::Const(value) => {
+        // remove the nil shard we injected if this is the first block
+        if e.shards.len() == start_idx + 1 {
+          e.shards.pop();
         }
-        BlockContent::TakeTable(name, path) => create_take_table_chain(name, path, line_info, e),
-        BlockContent::TakeSeq(name, path) => create_take_seq_chain(name, path, line_info, e),
-        BlockContent::Operator(_, _) => todo!("Operator"),
-      },
-      Block::EvalExpr(seq) => {
+        add_const_shard(value, block.line_info, e)
+      }
+      BlockContent::TakeTable(name, path) => {
+        create_take_table_chain(name, path, block.line_info, e)
+      }
+      BlockContent::TakeSeq(name, path) => create_take_seq_chain(name, path, block.line_info, e),
+      BlockContent::EvalExpr(seq) => {
         let value = eval_eval_expr(seq)?;
         add_const_shard2(value.0 .0, value.1, e)
       }
-      Block::Expr(seq) => {
+      BlockContent::Expr(seq) => {
         let mut sub_env = eval_sequence(seq, e.previous)?;
         if !sub_env.shards.is_empty() {
           // create a temporary variable to hold the result of the expression

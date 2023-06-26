@@ -181,6 +181,64 @@ fn process_vector(pair: Pair<Rule>) -> Result<Value, ShardsError> {
   }
 }
 
+fn process_shard(pair: Pair<Rule>) -> Result<Shard, ShardsError> {
+  let pos = pair.as_span().start_pos();
+
+  let mut inner = pair.into_inner();
+  let shard_exp = inner
+    .next()
+    .ok_or(("Expected a Name or Const in Shard", pos).into())?;
+
+  let pos = shard_exp.as_span().start_pos();
+
+  match shard_exp.as_rule() {
+    Rule::UppIden => {
+      let shard_name = shard_exp.as_str().to_string();
+      let next = inner.next();
+
+      let params = match next {
+        Some(pair) => {
+          if pair.as_rule() == Rule::Params {
+            Some(process_params(pair)?)
+          } else {
+            return Err(("Expected Params in Shard", pos).into());
+          }
+        }
+        None => None,
+      };
+
+      Ok(Shard {
+        name: shard_name,
+        params,
+      })
+    }
+    _ => Err(("Unexpected rule in Shard.", pos).into()),
+  }
+}
+
+fn process_take_table(pair: Pair<Rule>) -> (String, Vec<String>) {
+  let str_expr = pair.as_str();
+  // split by ':'
+  let splits: Vec<_> = str_expr.split(':').collect();
+  let var_name = splits[0];
+  let keys: Vec<String> = splits[1..].iter().map(|s| s.to_string()).collect();
+  // wrap the shards into an Expr Sequence
+  (var_name.to_owned(), keys)
+}
+
+fn process_take_seq(pair: Pair<Rule>) -> Result<(String, Vec<u32>), ShardsError> {
+  let pos = pair.as_span().start_pos();
+  // do the same as TakeTable but with a sequence of values where index is an integer int32
+  let str_expr = pair.as_str();
+  // split by ':'
+  let splits: Vec<_> = str_expr.split(':').collect();
+  let var_name = splits[0];
+  let keys: Result<Vec<u32>, _> = splits[1..].iter().map(|s| s.parse::<u32>()).collect();
+  let keys = keys.map_err(|_| ("Failed to parse unsigned index integer", pos).into())?;
+  // wrap the shards into an Expr Sequence
+  Ok((var_name.to_owned(), keys))
+}
+
 fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Pipeline {
@@ -193,27 +251,64 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
     let pos = pair.as_span().start_pos();
     let rule = pair.as_rule();
     match rule {
-      Rule::Shard => blocks.push(Block::BlockContent(
-        process_block_content(pair)?,
-        pos.into(),
-      )),
-      Rule::EvalExpr => blocks.push(Block::EvalExpr(process_sequence(
-        pair
-          .into_inner()
-          .next()
-          .ok_or(("Expected an eval time expression, but found none.", pos).into())?,
-      )?)),
-      Rule::Expr => blocks.push(Block::Expr(process_sequence(
-        pair
-          .into_inner()
-          .next()
-          .ok_or(("Expected an expression, but found none.", pos).into())?,
-      )?)),
       Rule::Vector => {
         // in this case we want a Const with a vector value
         let value = process_vector(pair)?;
-        blocks.push(Block::BlockContent(BlockContent::Const(value), pos.into()));
+        blocks.push(Block {
+          content: BlockContent::Const(value),
+          line_info: pos.into(),
+        });
       }
+      Rule::EvalExpr => blocks.push(Block {
+        content: BlockContent::EvalExpr(process_sequence(
+          pair
+            .into_inner()
+            .next()
+            .ok_or(("Expected an eval time expression, but found none.", pos).into())?,
+        )?),
+        line_info: pos.into(),
+      }),
+      Rule::Expr => blocks.push(Block {
+        content: BlockContent::Expr(process_sequence(
+          pair
+            .into_inner()
+            .next()
+            .ok_or(("Expected an expression, but found none.", pos).into())?,
+        )?),
+        line_info: pos.into(),
+      }),
+      Rule::Shard => blocks.push(Block {
+        content: BlockContent::Shard(process_shard(pair)?),
+        line_info: pos.into(),
+      }),
+      Rule::TakeTable => blocks.push(Block {
+        content: {
+          let pair = process_take_table(pair);
+          BlockContent::TakeTable(pair.0, pair.1)
+        },
+        line_info: pos.into(),
+      }),
+      Rule::TakeSeq => blocks.push(Block {
+        content: {
+          let pair = process_take_seq(pair)?;
+          BlockContent::TakeSeq(pair.0, pair.1)
+        },
+        line_info: pos.into(),
+      }),
+      Rule::ConstValue => blocks.push(Block {
+        // this is an indirection, process_value will handle the case of a ConstValue
+        content: BlockContent::Const(process_value(pair)?),
+        line_info: pos.into(),
+      }),
+      Rule::Shards => blocks.push(Block {
+        content: BlockContent::Shards(process_sequence(
+          pair
+            .into_inner()
+            .next()
+            .ok_or(("Expected an expression, but found none.", pos).into())?,
+        )?),
+        line_info: pos.into(),
+      }),
       _ => return Err((format!("Unexpected rule ({:?}) in Pipeline.", rule), pos).into()),
     }
   }
@@ -241,6 +336,11 @@ pub(crate) fn process_sequence(pair: Pair<Rule>) -> Result<Sequence, ShardsError
 fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
   let pos = pair.as_span().start_pos();
   match pair.as_rule() {
+    Rule::ConstValue => {
+      // unwrap the inner rule
+      let pair = pair.into_inner().next().unwrap();
+      process_value(pair)
+    }
     Rule::None => Ok(Value::None),
     Rule::Boolean => {
       // check if string content is true or false
@@ -254,6 +354,16 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
       }
     }
     Rule::LowIden => Ok(Value::Identifier(pair.as_str().to_string())),
+    Rule::Enum => {
+      let text = pair.as_str();
+      let splits: Vec<_> = text.split('.').collect();
+      if splits.len() != 2 {
+        return Err(("Expected an enum value", pos).into());
+      }
+      let enum_name = splits[0];
+      let variant_name = splits[1];
+      Ok(Value::Enum(enum_name.to_owned(), variant_name.to_owned()))
+    }
     Rule::Vector => process_vector(pair),
     Rule::Number => process_number(
       pair
@@ -282,22 +392,22 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
       let pairs = pair
         .into_inner()
         .map(|pair| {
-          let pos = pair.as_span().start_pos();
+          assert_eq!(pair.as_rule(), Rule::TableEntry);
+
           let mut inner = pair.into_inner();
 
-          let key = inner
-            .next()
-            .ok_or(("Expected a value key in TableEntry", pos).into())?;
+          let key = inner.next().unwrap(); // should not fail
+          assert_eq!(key.as_rule(), Rule::TableKey);
           let pos = key.as_span().start_pos();
-          let key = process_value(
-            key
-              .into_inner()
-              .next()
-              .ok_or(("Expected a value key in TableEntry", pos).into())?
-              .into_inner()
-              .next()
-              .ok_or(("Expected a value key in TableEntry", pos).into())?,
-          )?;
+          let key = key
+            .into_inner()
+            .next()
+            .ok_or(("Expected a Table key", pos).into())?;
+          let key = match key.as_rule() {
+            Rule::Iden => Value::String(key.as_str().to_string()),
+            Rule::Value => process_value(key.into_inner().next().unwrap())?,
+            _ => unreachable!(),
+          };
 
           let value = inner
             .next()
@@ -336,26 +446,20 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
     )
     .map(Value::Expr),
     Rule::TakeTable => {
-      let str_expr = pair.as_str();
-      // split by ':'
-      let splits: Vec<_> = str_expr.split(':').collect();
-      let var_name = splits[0];
-      let keys: Vec<String> = splits[1..].iter().map(|s| s.to_string()).collect();
-      // wrap the shards into an Expr Sequence
-      Ok(Value::TakeTable(var_name.to_owned(), keys))
+      let pair = process_take_table(pair);
+      Ok(Value::TakeTable(pair.0, pair.1))
     }
     Rule::TakeSeq => {
-      // do the same as TakeTable but with a sequence of values where index is an integer int32
-      let str_expr = pair.as_str();
-      // split by ':'
-      let splits: Vec<_> = str_expr.split(':').collect();
-      let var_name = splits[0];
-      let keys: Result<Vec<u32>, _> = splits[1..].iter().map(|s| s.parse::<u32>()).collect();
-      let keys = keys.map_err(|_| ("Failed to parse unsigned index integer", pos).into())?;
-      // wrap the shards into an Expr Sequence
-      Ok(Value::TakeSeq(var_name.to_owned(), keys))
+      let pair = process_take_seq(pair)?;
+      Ok(Value::TakeSeq(pair.0, pair.1))
     }
-    _ => Err(("Unexpected rule in Value", pos).into()),
+    _ => Err(
+      (
+        format!("Unexpected rule ({:?}) in Value", pair.as_rule()),
+        pos,
+      )
+        .into(),
+    ),
   }
 }
 
@@ -381,82 +485,6 @@ fn process_number(pair: Pair<Rule>) -> Result<Number, ShardsError> {
         .map_err(|_| ("Failed to parse Hexadecimal", pos).into())?,
     )),
     _ => Err(("Unexpected rule in Number", pos).into()),
-  }
-}
-
-fn process_block_content(pair: Pair<Rule>) -> Result<BlockContent, ShardsError> {
-  let pos = pair.as_span().start_pos();
-
-  let mut inner = pair.into_inner();
-  let shard_exp = inner
-    .next()
-    .ok_or(("Expected a Name or Const in Shard", pos).into())?;
-
-  let pos = shard_exp.as_span().start_pos();
-
-  match shard_exp.as_rule() {
-    Rule::None => Ok(BlockContent::Const(Value::None)),
-    Rule::Boolean => {
-      // check if string content is true or false
-      let bool_str = shard_exp.as_str();
-      if bool_str == "true" {
-        Ok(BlockContent::Const(Value::Boolean(true)))
-      } else if bool_str == "false" {
-        Ok(BlockContent::Const(Value::Boolean(false)))
-      } else {
-        Err(("Expected a boolean value", pos).into())
-      }
-    }
-    Rule::UppIden => {
-      let shard_name = shard_exp.as_str().to_string();
-      let next = inner.next();
-
-      let params = match next {
-        Some(pair) => {
-          if pair.as_rule() == Rule::Params {
-            Some(process_params(pair)?)
-          } else {
-            return Err(("Expected Params in Shard", pos).into());
-          }
-        }
-        None => None,
-      };
-
-      Ok(BlockContent::Shard(Shard {
-        name: shard_name,
-        params,
-      }))
-    }
-    Rule::Value => {
-      let value = process_value(
-        shard_exp
-          .into_inner()
-          .next()
-          .ok_or(("Expected a Value in Shard", pos).into())?,
-      )?;
-      Ok(BlockContent::Const(value))
-    }
-    Rule::TakeTable => {
-      let str_expr = shard_exp.as_str();
-      // split by ':'
-      let splits: Vec<_> = str_expr.split(':').collect();
-      let var_name = splits[0];
-      let keys: Vec<String> = splits[1..].iter().map(|s| s.to_string()).collect();
-      // wrap the shards into an Expr Sequence
-      Ok(BlockContent::TakeTable(var_name.to_owned(), keys))
-    }
-    Rule::TakeSeq => {
-      // do the same as TakeTable but with a sequence of values where index is an integer int32
-      let str_expr = shard_exp.as_str();
-      // split by ':'
-      let splits: Vec<_> = str_expr.split(':').collect();
-      let var_name = splits[0];
-      let keys: Result<Vec<u32>, _> = splits[1..].iter().map(|s| s.parse::<u32>()).collect();
-      let keys = keys.map_err(|_| ("Failed to parse integer", pos).into())?;
-      // wrap the shards into an Expr Sequence
-      Ok(BlockContent::TakeSeq(var_name.to_owned(), keys))
-    }
-    _ => Err(("Unexpected rule in Shard", pos).into()),
   }
 }
 
