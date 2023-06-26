@@ -88,9 +88,10 @@ struct Msg : public LoggingBase {
 
   void setParam(int index, const SHVar &inValue) {
     switch (index) {
-    case 0:
-      _msg = inValue.payload.stringValue;
-      break;
+    case 0: {
+      auto sv = SHSTRVIEW(inValue);
+      _msg = sv;
+    } break;
     case 1:
       _level = Enums::LogLevel(inValue.payload.enumValue);
       break;

@@ -12,9 +12,15 @@ use core::slice;
 use nanoid::nanoid;
 use pest::Parser;
 
+use shards::core::findEnumId;
+use shards::core::findEnumInfo;
 use shards::types::ClonedVar;
 use shards::types::Mesh;
+use shards::SHType_Enum;
 use shards::SHType_String;
+use shards::SHVarPayload;
+use shards::SHVarPayload__bindgen_ty_1;
+use shards::SHVarPayload__bindgen_ty_1__bindgen_ty_3;
 
 use shards::types::SeqVar;
 use shards::types::TableVar;
@@ -164,7 +170,44 @@ fn as_var(
       Ok(SVar::Cloned(s.into()))
     }
     Value::Enum(prefix, value) => {
-      todo!()
+      let id = findEnumId(&prefix);
+      if let Some(id) = id {
+        // decompose bits to split id into vendor and type
+        // consider this is how id is composed: int64_t id = (int64_t)vendorId << 32 | typeId;
+        let vendor_id = (id >> 32) as i32;
+        let type_id = id as i32;
+        let info = findEnumInfo(vendor_id, type_id).unwrap();
+        for i in 0..info.labels.len {
+          let c_str = unsafe { CStr::from_ptr(*info.labels.elements.offset(i as isize)) };
+          if value == c_str.to_str().unwrap() {
+            // we found the enum value
+            let mut enum_var = Var::default();
+            enum_var.valueType = SHType_Enum;
+            let value = unsafe { *info.values.elements.offset(i as isize) };
+            enum_var.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue = value;
+            enum_var
+              .payload
+              .__bindgen_anon_1
+              .__bindgen_anon_3
+              .enumVendorId = vendor_id;
+            enum_var
+              .payload
+              .__bindgen_anon_1
+              .__bindgen_anon_3
+              .enumTypeId = type_id;
+            return Ok(SVar::NotCloned(enum_var));
+          }
+        }
+        Err(
+          (
+            format!("Enum value {}.{} not found", prefix, value),
+            line_info,
+          )
+            .into(),
+        )
+      } else {
+        Err((format!("Enum {} not found", prefix), line_info).into())
+      }
     }
     Value::Number(num) => match num {
       Number::Integer(n) => Ok(SVar::NotCloned(n.into())),
@@ -260,22 +303,21 @@ fn as_var(
   }
 }
 
-enum AddShardError {
-  ShardsError(ShardsError),
-  InvalidShardName(String),
-}
-
-fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), AddShardError> {
-  let s =
-    ShardRef::create(shard.name.as_str()).ok_or(AddShardError::InvalidShardName(shard.name))?;
+fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+  let s = ShardRef::create(shard.name.as_str()).ok_or(
+    (
+      format!("Shard {} does not exist", shard.name.as_str()),
+      line_info,
+    )
+      .into(),
+  )?;
   let s = SShardRef(s);
   let mut idx = 0i32;
   let mut as_idx = true;
   let info = s.0.parameters();
   if let Some(params) = shard.params {
     for param in params {
-      let value =
-        as_var(param.value, line_info, Some(s.0), e).map_err(|e| AddShardError::ShardsError(e))?;
+      let value = as_var(param.value, line_info, Some(s.0), e).map_err(|e| e)?;
       if let Some(name) = param.name {
         as_idx = false;
         let mut found = false;
@@ -290,13 +332,11 @@ fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), A
         }
         if !found {
           let msg = format!("Unknown parameter '{}'", name);
-          return Err(AddShardError::ShardsError((msg, line_info).into()));
+          return Err((msg, line_info).into());
         }
       } else {
         if !as_idx {
-          return Err(AddShardError::ShardsError(
-            ("Named parameter after unnamed parameter", line_info).into(),
-          ));
+          return Err(("Named parameter after unnamed parameter", line_info).into());
         }
         s.0.set_parameter(idx, *value.as_ref());
       }
@@ -386,25 +426,7 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
   for block in pipeline.blocks {
     let _ = match block.content {
       BlockContent::Shard(shard) => {
-        // ok the reality is that we could also be a variable, so we need to check that
-        let has_params = shard.params.is_some();
-        let res = add_shard(shard, block.line_info, e);
-        match res {
-          Ok(_) => Ok(()),
-          Err(err) => {
-            match err {
-              AddShardError::ShardsError(err) => Err(err),
-              AddShardError::InvalidShardName(name) => {
-                if !has_params {
-                  // we assume we are a variable
-                  Ok(add_get_shard(&name, block.line_info, e))
-                } else {
-                  Err((format!("Invalid shard name: {}", name), block.line_info).into())
-                }
-              }
-            }
-          }
-        }
+        add_shard(shard, block.line_info, e)
       }
       BlockContent::Shards(seq) => {
         let mut sub_env = eval_sequence(seq, e.previous)?;

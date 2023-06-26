@@ -241,13 +241,22 @@ void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
   // SHLOG_TRACE("registerObjectType({})", info.name);
 
   int64_t id = (int64_t)vendorId << 32 | typeId;
-  auto typeName = std::string(info.name);
+  auto typeName = std::string_view(info.name);
+
   auto findIt = GetGlobals().ObjectTypesRegister.find(id);
   if (findIt == GetGlobals().ObjectTypesRegister.end()) {
     GetGlobals().ObjectTypesRegister.insert(std::make_pair(id, info));
   } else {
     GetGlobals().ObjectTypesRegister[id] = info;
     SHLOG_WARNING("Overriding object type: {}", typeName);
+  }
+
+  auto findIt2 = GetGlobals().ObjectTypesRegisterByName.find(typeName);
+  if (findIt2 == GetGlobals().ObjectTypesRegisterByName.end()) {
+    GetGlobals().ObjectTypesRegisterByName.emplace(info.name, id);
+  } else {
+    GetGlobals().ObjectTypesRegisterByName[info.name] = id;
+    SHLOG_WARNING("Overriding enum type by name: {}", typeName);
   }
 
   for (auto &pobs : GetGlobals().Observers) {
@@ -263,13 +272,22 @@ void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) {
   // SHLOG_TRACE("registerEnumType({})", info.name);
 
   int64_t id = (int64_t)vendorId << 32 | typeId;
-  auto typeName = std::string(info.name);
+  auto enumName = std::string_view(info.name);
+
   auto findIt = GetGlobals().EnumTypesRegister.find(id);
   if (findIt == GetGlobals().EnumTypesRegister.end()) {
     GetGlobals().EnumTypesRegister.insert(std::make_pair(id, info));
   } else {
     GetGlobals().EnumTypesRegister[id] = info;
-    SHLOG_WARNING("Overriding enum type: {}", typeName);
+    SHLOG_WARNING("Overriding enum type: {}", enumName);
+  }
+
+  auto findIt2 = GetGlobals().EnumTypesRegisterByName.find(enumName);
+  if (findIt2 == GetGlobals().EnumTypesRegisterByName.end()) {
+    GetGlobals().EnumTypesRegisterByName.emplace(info.name, id);
+  } else {
+    GetGlobals().EnumTypesRegisterByName[info.name] = id;
+    SHLOG_WARNING("Overriding enum type by name: {}", enumName);
   }
 
   for (auto &pobs : GetGlobals().Observers) {
@@ -289,6 +307,14 @@ const SHObjectInfo *findObjectInfo(int32_t vendorId, int32_t typeId) {
   return nullptr;
 }
 
+int64_t findObjectTypeId(std::string_view name) {
+  auto it = shards::GetGlobals().ObjectTypesRegisterByName.find(name);
+  if (it != shards::GetGlobals().ObjectTypesRegisterByName.end()) {
+    return it->second;
+  }
+  return 0;
+}
+
 const SHEnumInfo *findEnumInfo(int32_t vendorId, int32_t typeId) {
   int64_t id = (int64_t)vendorId << 32 | typeId;
   auto it = shards::GetGlobals().EnumTypesRegister.find(id);
@@ -296,6 +322,14 @@ const SHEnumInfo *findEnumInfo(int32_t vendorId, int32_t typeId) {
     return &it->second;
   }
   return nullptr;
+}
+
+int64_t findEnumId(std::string_view name) {
+  auto it = shards::GetGlobals().EnumTypesRegisterByName.find(name);
+  if (it != shards::GetGlobals().EnumTypesRegisterByName.end()) {
+    return it->second;
+  }
+  return 0;
 }
 
 void registerRunLoopCallback(std::string_view eventName, SHCallback callback) {
@@ -2885,9 +2919,15 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     API_TRY_CALL(registerObjectType, shards::registerObjectType(vendorId, typeId, info);)
   };
 
+  result->findObjectTypeId = [](SHStringWithLen name) noexcept {
+    return shards::findObjectTypeId(std::string_view{name.string, name.len});
+  };
+
   result->registerEnumType = [](int32_t vendorId, int32_t typeId, SHEnumInfo info) noexcept {
     API_TRY_CALL(registerEnumType, shards::registerEnumType(vendorId, typeId, info);)
   };
+
+  result->findEnumId = [](SHStringWithLen name) noexcept { return shards::findEnumId(std::string_view{name.string, name.len}); };
 
   result->registerRunLoopCallback = [](const char *eventName, SHCallback callback) noexcept {
     API_TRY_CALL(registerRunLoopCallback, shards::registerRunLoopCallback(eventName, callback);)
@@ -3259,9 +3299,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->freeDerivedTypeInfo = [](SHTypeInfo *t) { freeDerivedInfo(*t); };
 
-  result->findEnumInfo =
-      &shards::findEnumInfo; //[](int32_t vendorId, int32_t typeId) { return shards::findEnumInfo(vendorId, typeId); };
-  result->findObjectInfo = [](int32_t vendorId, int32_t typeId) { return shards::findObjectInfo(vendorId, typeId); };
+  result->findEnumInfo = &shards::findEnumInfo;
+
+  result->findObjectInfo = &shards::findObjectInfo;
+
   result->type2Name = [](SHType type) { return type2Name_raw(type); };
 
   return result;

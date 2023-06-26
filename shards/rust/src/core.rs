@@ -414,8 +414,26 @@ pub fn registerEnumType(vendorId: i32, typeId: i32, info: SHEnumInfo) {
   }
 }
 
-pub fn findEnumInfo(vendorId: i32, typeId: i32) -> *const SHEnumInfo {
-  unsafe { (*Core).findEnumInfo.unwrap()(vendorId, typeId) }
+pub fn findEnumInfo(vendorId: i32, typeId: i32) -> Option<SHEnumInfo> {
+  let info = unsafe { (*Core).findEnumInfo.unwrap()(vendorId, typeId) };
+  if info == std::ptr::null() {
+    None
+  } else {
+    Some(unsafe { *info })
+  }
+}
+
+pub fn findEnumId(name: &str) -> Option<i64> {
+  let s = SHStringWithLen {
+    string: name.as_ptr() as *const c_char,
+    len: name.len(),
+  };
+  let info = unsafe { (*Core).findEnumId.unwrap()(s) };
+  if info == 0 {
+    None
+  } else {
+    Some(info)
+  }
 }
 
 pub fn findObjectInfo(vendorId: i32, typeId: i32) -> *const SHObjectInfo {

@@ -1555,7 +1555,8 @@ TEST_CASE("shards-lang") {
   }
 
   SECTION("Sub 1") {
-    auto seq = shards_read("{a: 1 b: 2} | {ToString | Assert.Is(\"{a: 1, b: 2}\") | Log} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)");
+    auto seq = shards_read("{a: 1 b: 2} | {ToString | Assert.Is(\"{a: 1, b: 2}\") | Log} | Log = t t:a | Log | Assert.Is(1) t:b "
+                           "| Log | Assert.Is(2)");
     REQUIRE(seq.ast);
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
@@ -1563,5 +1564,38 @@ TEST_CASE("shards-lang") {
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
     shards_free_wire(wire.wire);
+  }
+
+  SECTION("Enums 1") {
+    auto seq = shards_read("Msg(Enum.NotExisting)");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.error);
+    std::string a(wire.error->message);
+    std::string b("Enum Enum not found");
+    REQUIRE(a == b);
+    shards_free_error(wire.error);
+  }
+
+  SECTION("Enums 2") {
+    auto seq = shards_read("Const(Type.String) | Log");
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+    shards_free_wire(wire.wire);
+  }
+
+  SECTION("Enums 3") {
+    auto seq = shards_read("Type.String | Log"); // Enums can't be used like this
+    REQUIRE(seq.ast);
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.error);
+    std::string a(wire.error->message);
+    std::string b("Shard Type.String does not exist");
+    REQUIRE(a == b);
+    shards_free_error(wire.error);
   }
 }
