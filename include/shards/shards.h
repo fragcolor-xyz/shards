@@ -794,8 +794,8 @@ struct SHWireProvider {
   void *userData;
 };
 
-typedef void(__cdecl *SHValidationCallback)(const struct Shard *errorShard, struct SHStringWithLen errorTxt, SHBool nonfatalWarning,
-                                            void *userData);
+typedef void(__cdecl *SHValidationCallback)(const struct Shard *errorShard, struct SHStringWithLen errorTxt,
+                                            SHBool nonfatalWarning, void *userData);
 
 typedef void(__cdecl *SHRegisterShard)(SHString fullName, SHShardConstructor constructor);
 
@@ -962,7 +962,9 @@ typedef void *(__cdecl *SHAlloc)(uint32_t size);
 typedef void(__cdecl *SHFree)(void *ptr);
 
 typedef const struct SHEnumInfo *(__cdecl *SHFindEnumInfo)(int32_t vendorId, int32_t typeId);
+typedef int64_t(__cdecl *SHFindEnumId)(SHStringWithLen name);
 typedef const struct SHObjectInfo *(__cdecl *SHFindObjectInfo)(int32_t vendorId, int32_t typeId);
+typedef int64_t(__cdecl *SHFindObjectTypeId)(SHStringWithLen name);
 typedef SHString(__cdecl *SHType2Name)(SH_ENUM_DECL SHType type);
 
 typedef struct _SHCore {
@@ -1083,7 +1085,9 @@ typedef struct _SHCore {
   SHFreeDerivedTypeInfo freeDerivedTypeInfo;
 
   SHFindEnumInfo findEnumInfo;
+  SHFindEnumId findEnumId;
   SHFindObjectInfo findObjectInfo;
+  SHFindObjectTypeId findObjectTypeId;
   SHType2Name type2Name;
 
   // Utility to deal with SHSeqs

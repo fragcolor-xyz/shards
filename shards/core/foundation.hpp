@@ -145,7 +145,9 @@ void registerShard(std::string_view name, SHShardConstructor constructor, std::s
 void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info);
 void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info);
 const SHObjectInfo *findObjectInfo(int32_t vendorId, int32_t typeId);
+int64_t findObjectTypeId(std::string_view name);
 const SHEnumInfo *findEnumInfo(int32_t vendorId, int32_t typeId);
+int64_t findEnumId(std::string_view name);
 void registerRunLoopCallback(std::string_view eventName, SHCallback callback);
 void unregisterRunLoopCallback(std::string_view eventName);
 void registerExitCallback(std::string_view eventName, SHCallback callback);
@@ -466,7 +468,9 @@ public:
   UntrackedUnorderedMap<std::string_view, SHShardConstructor> ShardsRegister;
   UntrackedUnorderedMap<std::string_view, std::string_view> ShardNamesToFullTypeNames;
   UntrackedUnorderedMap<int64_t, SHObjectInfo> ObjectTypesRegister;
+  UntrackedUnorderedMap<std::string_view, int64_t> ObjectTypesRegisterByName;
   UntrackedUnorderedMap<int64_t, SHEnumInfo> EnumTypesRegister;
+  UntrackedUnorderedMap<std::string_view, int64_t> EnumTypesRegisterByName;
 
   // map = ordered! we need that for those
   UntrackedMap<std::string_view, SHCallback> RunLoopHooks;
