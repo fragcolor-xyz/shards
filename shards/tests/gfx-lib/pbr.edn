@@ -1,26 +1,26 @@
 (defn setup-pbr-lib [pbr-wgsl filter-cubemap render-cubemap-0]
   (defshards shader-integrate [texture sampler base-dir body num-samples args]
     (Shader.Literal :Type ShaderLiteralType.Header :Source ["fn integrate(args: vec4<f32>, baseDir: vec3<f32>, _texture: texture_cube<f32>, _sampler: sampler) -> vec3<f32> {
-	let tbn = generateFrameFromZDirection(baseDir);
-	var weight = 0.0;
-	var result = vec3<f32>(0.0);" "
+  let tbn = generateFrameFromZDirection(baseDir);
+  var weight = 0.0;
+  var result = vec3<f32>(0.0);" "
   var sampleIndex = 0;
   loop {
     if(sampleIndex >= " num-samples ") {
       break;
     }" "
     var mci: IntegrateInput;
-		mci.baseDirection = baseDir;
-		mci.coord = hammersley2d(sampleIndex, " num-samples ");
-		let mco = " body ";
-		let lod = getWeightedLod(mco.pdf, " num-samples ", _texture);" "
+    mci.baseDirection = baseDir;
+    mci.coord = hammersley2d(sampleIndex, " num-samples ");
+    let mco = " body ";
+    let lod = getWeightedLod(mco.pdf, " num-samples ", _texture);" "
     let direction = tbn * mco.localDirection;
-		let s = sampleEnvironmentLod(_texture, _sampler, direction, lod);" "
-		result = result + s * mco.sampleScale;
-		weight = weight + mco.sampleWeight;" "
+    let s = sampleEnvironmentLod(_texture, _sampler, direction, lod);" "
+    result = result + s * mco.sampleScale;
+    weight = weight + mco.sampleWeight;" "
     sampleIndex = sampleIndex + 1;
-	}
-	return result / weight;
+  }
+  return result / weight;
 }"])
     (Shader.Literal ["integrate(" args "," base-dir "," texture "," sampler ")"] :OutputDimension 3))
 
@@ -122,6 +122,12 @@
     >= .parameters
     1.0 (Set .parameters "roughness")
     0.0 (Set .parameters "metallic")
+    (Setup
+     (Float4 0 0 1 0) = .init
+     [.init .init .init .init] (Flatten) (FloatsToImage 2 2 4)
+     (GFX.Texture) = .normal-placeholder-texture)
+    .normal-placeholder-texture  (Set .parameters "normalTexture")
+    {:Type TextureDimension.D2} (Set .parameters "metallicRoughnessTexture")
     (GFX.Feature
      :Params .parameters
      :ComposeWith {:pbr-wgsl pbr-wgsl}
@@ -151,7 +157,23 @@
         (Shader.Literal ["
         var lgp: LightingGeneralParams;
         lgp.surfaceNormal = " .world-normal ";
-	      lgp.viewDirection = " .view-direction ";"])
+        lgp.viewDirection = " .view-direction ";"])
+
+        ; Apply metallic-roughness texture
+        ; glTF Spec:
+        ; The metalness values are sampled from the B channel. The roughness values are sampled from the G channel.
+        (Shader.SampleTexture "metallicRoughnessTexture") = .metallic-roughness
+        .metallic-roughness:2 (Math.Multiply .metallic) > .metallic
+        .metallic-roughness:1 (Math.Multiply .roughness) > .roughness
+
+        ; Apply normal map
+        ; glTF Spec:
+        ; The normal vectors use the convention +X is right and +Y is up. +Z points toward the viewer.
+        ;; (Shader.ReadInput "worldTangent0") = .world-tangent0
+        ;; (Shader.ReadInput "worldTangent1") = .world-tangent1
+        ;; (Shader.SampleTexture "normalTexture") = .local-normal
+        ;; (Shader.Literal ["var tbnMat = mat3<f32>(" .world-tangent0 "," .world-tangent1 "," .world-normal ");"])
+        ;; (Shader.Literal ["lgp.surfaceNormal = tbnMat * " .local-normal])
 
         (Shader.Literal ["
         var mi = getDefaultMaterialInfo();
@@ -178,12 +200,4 @@
       :offset .global-probe-location} (Do generate-probes)
      (Do setup-pbr-feature) >= .pbr-feature-1)
 
-    .pbr-feature-1
-    ;; (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .main-features
-    ;; (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .main-features
-    ;; .pbr-feature >> .main-features
-    ;; (GFX.DrawablePass :Queue main-queue :Features .main-features) >> .main-steps
-
-    ;; ; Render all the objects
-    ;; (GFX.Render .main-steps view)
-    ))
+    .pbr-feature-1))

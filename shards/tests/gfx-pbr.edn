@@ -4,18 +4,64 @@
 (setup-pbr-lib (slurp "gfx-lib/pbr.wgsl") filter-cubemap render-cubemap-0)
 
 (def timestep (/ 1.0 120.0))
+(def pi 3.14159265359)
+(def pi2 (* pi 2.0))
 (defmesh Root)
+
+(defshards sky-sphere-fs []
+  ; Just sample the cubemap
+  (Shader.ReadInput "texCoord0") >= .uv
+  ;; (Shader.ReadInput "worldNormal") >= .world-normal
+  ;; .world-normal:0 = .x
+  ;; .world-normal:1 = .y
+  ;; .world-normal:2 = .z
+
+  ;; ; Convert cartesian to polar
+  ;; .x (Math.Divide .z) (Math.Atan) = .theta
+  ;; .x (Math.Multiply .x) = .x-sqr
+  ;; .y (Math.Multiply .y) = .y-sqr
+  ;; .x-sqr (Math.Add .y-sqr) (Math.Divide .z) (Math.Atan) = .phi
+
+  ;; .theta (Math.Add pi) (Math.Divide pi) = .u
+  ;; .phi (Math.Divide pi) = .v
+
+  ;; (Float2 .u .v) 
+  .uv (Shader.SampleTextureCoord "sky")
+  ;; (Float4 .u 0.0 0.0 1.0) 
+  (Shader.WriteOutput "color")
+
+  ; NOTE: Write depth to compare to (>=) and render sky where it passes
+  1.0 (Shader.WriteOutput "depth"))
+
+(defshards sphere-map-pass [texture]
+  (Setup
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .sky-sphere-features
+   (GFX.Feature
+    :Params {:sky texture}
+    :Shaders [{:Stage ProgrammableGraphicsStage.Vertex
+               :EntryPoint (sky-sphere-vs)
+               :After ["initScreenPosition"]
+               :Before ["writePosition"]}
+              {:Stage ProgrammableGraphicsStage.Fragment
+               :EntryPoint (sky-sphere-fs)}]
+    :State {:FlipFrontFace true :DepthWrite false :DepthCompare CompareFunction.LessEqual}) >> .sky-sphere-features
+   (render-sky-sphere-queue "sky-sphere-queue" {}))
+  (GFX.DrawablePass :Features .sky-sphere-features :Queue .sky-sphere-queue))
+
 (defloop test-wire
   :Looped
   (GFX.MainWindow
    :Title "SDL Window" :Width 1280 :Height 720
    :Contents (->
-              (skybox-pass (slurp "gfx-lib/atmosphere.wgsl") filter-cubemap render-sky-sphere-queue sky-sphere-vs) = .skybox-step
+              (Setup
+               (LoadImage "data/helipad.hdr") (GFX.Texture) = .sphere-map-texture)
+              (sphere-map-pass .sphere-map-texture) = .skybox-step
+              ;; (skybox-pass (slurp "gfx-lib/atmosphere.wgsl") filter-cubemap render-sky-sphere-queue sky-sphere-vs) = .skybox-step
               .skybox-step >> .render-steps
               (GFX.DrawQueue) = .queue
 
-              (Animation.Timer) = .t
-              10.0 = .r
+              (Animation.Timer :Rate 0.2) = .t
+              7.0 = .r
               .t (Math.Cos) (Math.Multiply .r) >= .x
               .t (Math.Sin) (Math.Multiply .r) >= .z
               .t (Math.Multiply 0.4) (Math.Sin) (Math.Multiply 3.0) >= .y
@@ -44,8 +90,7 @@
               (GFX.DrawablePass :Queue .queue :Features .features) >> .steps
               .skybox-step >> .steps
 
-              (GFX.Render .steps .view)
-              )))
+              (GFX.Render .steps .view))))
 
 (schedule Root test-wire)
 (if (run Root timestep) nil (throw "Root tick failed"))

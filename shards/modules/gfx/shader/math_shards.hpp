@@ -281,6 +281,58 @@ struct OperatorIsLessEqual {
   static inline NumFieldType validateTypes(NumFieldType a, NumFieldType b) { return validateTypesComparison(a, b); }
 };
 
+struct OperatorExp2 {
+  static inline const char *call = "exp2";
+};
+
+struct OperatorLog2 {
+  static inline const char *call = "log2";
+};
+
+struct OperatorSqrt {
+  static inline const char *call = "sqrt";
+};
+
+struct OperatorAsin {
+  static inline const char *call = "asin";
+};
+
+struct OperatorAcos {
+  static inline const char *call = "acos";
+};
+
+struct OperatorAtan {
+  static inline const char *call = "atan";
+};
+
+struct OperatorSinh {
+  static inline const char *call = "sinh";
+};
+
+struct OperatorCosh {
+  static inline const char *call = "cosh";
+};
+
+struct OperatorTanh {
+  static inline const char *call = "tanh";
+};
+
+struct OperatorAsinh {
+  static inline const char *call = "asinh";
+};
+
+struct OperatorAcosh {
+  static inline const char *call = "acosh";
+};
+
+struct OperatorAtanh {
+  static inline const char *call = "atanh";
+};
+
+struct OperatorTrunc {
+  static inline const char *call = "trunc";
+};
+
 } // namespace shader
 } // namespace gfx
 

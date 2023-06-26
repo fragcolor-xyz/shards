@@ -19,6 +19,8 @@ MeshPtr createMesh(const std::vector<TVert> &verts, const std::vector<TIndex> &i
   mesh->update(format, verts.data(), verts.size() * sizeof(TVert), indices.data(), indices.size() * sizeof(TIndex));
   return mesh;
 }
+
+MeshPtr generateTangentInfo(MeshPtr mesh);
 } // namespace gfx
 
 #endif /* DC6B12F5_63B6_4FBD_BC92_DFF99E0E3323 */

@@ -549,7 +549,7 @@ public:
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, shader::NumFieldType>) {
               feature.shaderParams.emplace_back(name, arg);
-            } else if constexpr (std::is_same_v<T, TextureDimension>) {
+            } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
               feature.textureParams.emplace_back(name, arg);
             }
           },

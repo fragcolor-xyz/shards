@@ -74,3 +74,14 @@
   (render-sky-sphere-queue "filter-cubemap-queue" shader-params)
   (GFX.DrawablePass :Features .filter-cubemap-features :Queue .filter-cubemap-queue) >> .filter-cubemap-steps
   (render-cubemap .filter-cubemap-steps out-texture (Float3 0.0) mip-level))
+
+;; (defshards sphere-map-fs []
+;;   (Shader.ReadInput "texCoord0") = .coord
+;;   .coord:0 = .u
+;;   .coord:1 = .v
+;;   (Float4 .u .v 0 1) (Shader.WriteGlobal "color"))
+
+;; (defshards capture-probe [probe-inner-steps probe-offset resolution]
+;;   (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution resolution :Dimension TextureDimension.Cube) >= .cube-tex
+;;   {:steps probe-inner-steps :texture .cube-tex :offset probe-offset}
+;;   (render-cubemap-0 probe-inner-steps .cube-tex probe-offset))
