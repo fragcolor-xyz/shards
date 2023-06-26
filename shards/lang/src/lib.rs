@@ -406,7 +406,16 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
           }
         }
       }
-      BlockContent::Shards(_) => todo!(),
+      BlockContent::Shards(seq) => {
+        let mut sub_env = eval_sequence(seq, e.previous)?;
+        if !sub_env.shards.is_empty() {
+          // remove the injected nil shard
+          sub_env.shards.remove(0);
+          let sub = make_sub_shard(sub_env.shards, block.line_info)?;
+          e.shards.push(sub);
+        }
+        Ok(())
+      }
       BlockContent::Const(value) => {
         // remove the nil shard we injected if this is the first block
         if e.shards.len() == start_idx + 1 {
@@ -431,25 +440,11 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
           let tmp_name = format!("t{}", tmp_name);
           add_assignment_shard("Ref", &tmp_name, &mut sub_env);
           // wrap into a Sub Shard
-          let line_info = sub_env.shards[0].0.get_line_info();
-          let sub = make_sub_shard(
-            sub_env.shards,
-            LineInfo {
-              line: line_info.0 as usize,
-              column: line_info.1 as usize,
-            },
-          )?;
+          let sub = make_sub_shard(sub_env.shards, block.line_info)?;
           // add this sub shard before the start of this pipeline!
           e.shards.insert(start_idx, sub);
           // now add a get shard to get the temporary at the end of the pipeline
-          add_get_shard(
-            &tmp_name,
-            LineInfo {
-              line: line_info.0 as usize,
-              column: line_info.1 as usize,
-            },
-            e,
-          );
+          add_get_shard(&tmp_name, block.line_info, e);
         }
         Ok(())
       }

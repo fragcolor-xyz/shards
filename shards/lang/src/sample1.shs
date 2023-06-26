@@ -22,6 +22,7 @@ Repeat({
   number | Math.Multiply(2.0) | Math.Multiply(Operand: seq:0 Type.String)
   ; notice no |, we inject always a `nil` in front of a Pipeline,
   ; if the next shard input type is not None
+  {a: 1 b: 2} | {ToString | Assert.Is("{a: 1, b: 2}") | Log} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)
   Repeat({ ; shards
     10 | Log
   } Times: 3 Until: #(1))
