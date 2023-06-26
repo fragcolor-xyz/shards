@@ -1413,211 +1413,266 @@ TEST_CASE("shards-lang") {
   SECTION("Simple") {
     auto seq = shards_read("1 | Math.Add(2) | Assert.Is(3) | Log");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Injected None") {
     auto seq = shards_read("Log");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Assign 1") {
     auto seq = shards_read("100 = x\n x | Log | Assert.Is(100)");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Sub Shards 1") {
     auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(3) | Log}) | Log");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Sub Shards 2") {
     auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(Value: 3) | Log}) | Log");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Sub Shards 3") {
     auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(LOL: 3) | Log}) | Log");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE_FALSE(wire.wire);
     REQUIRE(wire.error);
+    DEFER(shards_free_error(wire.error));
     std::string a(wire.error->message);
     std::string b("Unknown parameter 'LOL'");
     REQUIRE(a == b);
-    shards_free_error(wire.error);
   }
 
   SECTION("Exp 1") {
     auto seq = shards_read("1 | Log | (2 | Log (3 | Log))");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Exp 2") {
     auto seq = shards_read("[(2 | Math.Multiply(3)) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Exp 3") {
     auto seq = shards_read("[(2 | Math.Multiply((3 | Math.Add(6)))) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Failed EvalExpr") {
     auto seq = shards_read("#(false | Assert.Is(true))");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.error);
+    DEFER(shards_free_error(wire.error));
     std::string a(wire.error->message);
     std::string b("Assert failed - Is");
     REQUIRE(a == b);
-    shards_free_error(wire.error);
   }
 
   SECTION("EvalExpr 1") {
     auto seq = shards_read("2 | Math.Multiply(#(1 | Math.Add(2) | Log)) | Log | Assert.Is(6)");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("SeqTake 1") {
     auto seq = shards_read("[1 2] | Log = s s:0 | Log | Assert.Is(1) s:1 | Log | Assert.Is(2)");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("SeqTake 2") {
     auto seq = shards_read("[1 2] | Log = s 1 | Math.Add(s:0) | Assert.Is(2)");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("TableTake 1") {
     auto seq = shards_read("{a: 1 b: 2} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("TableTake 2") {
     auto seq = shards_read("{a: 1 b: 2} | Log = t 1 | Math.Add(t:a) | Assert.Is(2)");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Sub 1") {
     auto seq = shards_read("{a: 1 b: 2} | {ToString | Assert.Is(\"{a: 1, b: 2}\") | Log} | Log = t t:a | Log | Assert.Is(1) t:b "
                            "| Log | Assert.Is(2)");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Enums 1") {
     auto seq = shards_read("Msg(Enum.NotExisting)");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.error);
+    DEFER(shards_free_error(wire.error));
     std::string a(wire.error->message);
     std::string b("Enum Enum not found");
     REQUIRE(a == b);
-    shards_free_error(wire.error);
   }
 
   SECTION("Enums 2") {
     auto seq = shards_read("Const(Type.String) | Log");
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
-    shards_free_wire(wire.wire);
   }
 
   SECTION("Enums 3") {
     auto seq = shards_read("Type.String | Log"); // Enums can't be used like this
     REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
     REQUIRE(wire.error);
+    DEFER(shards_free_error(wire.error));
     std::string a(wire.error->message);
     std::string b("Shard Type.String does not exist");
     REQUIRE(a == b);
-    shards_free_error(wire.error);
+  }
+
+  SECTION("@wire 1") {
+    auto code = R"(
+      @wire(wire1 {
+        Log | Math.Add(1) | Log
+      })
+      2 | Do(wire1) | Assert.Is(3)
+    )";
+    auto seq = shards_read(code); // Enums can't be used like this
+    REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+  }
+
+  SECTION("String 1") {
+    auto code = R"(
+      "Hello" | Log >= s
+      " " | AppendTo(s)
+      "World" | AppendTo(s)
+      s | Log
+    )";
+    auto seq = shards_read(code); // Enums can't be used like this
+    REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
   }
 }

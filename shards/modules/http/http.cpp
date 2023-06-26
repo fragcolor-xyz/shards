@@ -99,7 +99,7 @@ struct Base {
        SHCCSTR("The headers to use for the request."),
        {CoreInfo::NoneType, CoreInfo::StringTableType, CoreInfo::StringVarTableType}},
       {"Timeout", SHCCSTR("How many seconds to wait for the request to complete."), {CoreInfo::IntType}},
-      {"Bytes", SHCCSTR("If instead of a string the shard should outout bytes."), {CoreInfo::BoolType}},
+      {"Bytes", SHCCSTR("If instead of a string the shard should output bytes."), {CoreInfo::BoolType}},
       {"FullResponse",
        SHCCSTR("If the output should be a table with the full response, "
                "including headers and status."),

@@ -69,14 +69,14 @@ impl<'a> Into<LineInfo> for Position<'a> {
   }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Number {
   Integer(i64),
   Float(f64),
   Hexadecimal(String),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Value {
   None,
   Identifier(String),
@@ -101,41 +101,42 @@ pub enum Value {
   TakeSeq(String, Vec<u32>),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Param {
   pub name: Option<String>,
   pub value: Value,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Shard {
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Function {
   pub name: String,
   pub params: Option<Vec<Param>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum BlockContent {
-  Shard(Shard),                   // Rule: Shard
+  Shard(Function),                // Rule: Shard
   Shards(Sequence),               // Rule: Shards
   Const(Value),                   // Rules: ConstValue, Vector
   TakeTable(String, Vec<String>), // Rule: TakeTable
   TakeSeq(String, Vec<u32>),      // Rule: TakeSeq
   EvalExpr(Sequence),             // Rule: EvalExpr
   Expr(Sequence),                 // Rule: Expr
+  BuiltIn(Function),              // Rule: BuiltIn
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Block {
   pub content: BlockContent,
   pub line_info: LineInfo,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Pipeline {
   pub blocks: Vec<Block>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Assignment {
   AssignRef(Pipeline, String),
   AssignSet(Pipeline, String),
@@ -143,13 +144,13 @@ pub enum Assignment {
   AssignPush(Pipeline, String),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Statement {
   Assignment(Assignment),
   Pipeline(Pipeline),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sequence {
   pub statements: Vec<Statement>,
 }

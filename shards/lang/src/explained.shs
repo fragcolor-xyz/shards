@@ -1,0 +1,70 @@
+Msg("Hello World") ; this is a Shard, with a parameter
+
+; Multiple shards can be chained into a Pipeline
+; 1 will be automatically transformed into a Const(1) and it will be piped into Log
+1 | Log
+
+; at the end of a pipeline we can have an assignment, = will not copy but just reference the previous value
+1 | Log = one
+
+; Remember a Shard will always start with a Capital letter
+Log
+; while a variable or wire name will be always lower case
+one
+
+; boolean values are traditional
+true | false
+
+; we also have
+none
+
+; passthrough sub expressions can be written wrapping shards in a shards sequence
+1 | Math.Add(1) {Math.Add(2) | Assert.Is(4)} | Assert.Is(2)
+
+; shards sequences can be passed as parameters too
+0 >= count
+Repeat({ Math.Inc(count) | Log } Times: 3) ; params can be named, after you use names you need to always specify names
+count | Assert.Is(3)
+
+; A Table
+{A: 1 b: 2 33: 3} = table ; almost any value can be a key
+; easy access
+table:b | Assert.Is(2)
+1 | Math.Add(table:A) | Assert.Is(2)
+
+; A Sequence
+[1 2 3 "a" "b" 1.0 0x11] = seq1
+; easy access
+seq1:1 | Assert.Is(2)
+2 | Math.Add(seq1:0) | Assert.Is(3)
+
+; we got also some built ins, prefixed by @
+; to create a wire:
+@wire(my-wire {
+  Math.Add(22) | Log("From within the wire")
+})
+1 | Do(my-wire) | Assert.Is(23)
+
+; () can be used to write expressions that will be evaluated ahead
+[(1 | Do(my-wire)) (2 | Do(my-wire))] | Assert.Is([23 24])
+
+; eval time expressions can be written by prefixing #
+[#(1 | Math.Add(1)) #(1 | Math.Add(1))] ; [2 2] will be the actual runtime value
+| Assert.Is([2 2])
+
+; macros and magic
+@macro(my-macro [n] {
+  Repeat({
+    {Pipeline: {blocks: [{content:
+      {Shard: {name: "Msg"
+              params:[{name: none value: {String: "Hello"}}]
+      }}}]}} >> pipelines
+  } Times: n)
+  pipelines ; basically Sequence.statements content!
+})
+; then
+@my-macro(3)
+; becomes
+Msg("Hello")
+Msg("Hello")
+Msg("Hello")

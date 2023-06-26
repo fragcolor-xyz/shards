@@ -1,10 +1,15 @@
+
+
 Repeat({
+  """hello
+ 	"Hello"
+"""
   1 | IsMore(2) | Assert.Is(true)
   (2 3 4) | Log | {1 | Assert.Is(1)} ; this is a Sub({})
   | Assert.Is((2 3 4))
   Do(walk)
   2 | Math.Add(2) | Log | (3 | Math.Add(3) | Log) | #(false | Assert.Is(true)) | Log
-  2.2 | Log | Log >= number
+  			2.2 | Log | Log >= number
   2.2 | Log | Log > number ; hello
   2.2 | Log | Log = number
   2.2 | Log | Log = number
@@ -35,13 +40,16 @@ a | Math.Add((a | Math.Subtract(c))) ; generate temps and such at runtime
 
 a | Math.Add(#(a | Math.Subtract(c))) ; run at eval time and write result
 
-Wire(w1 {
+@wire(w1 {
   Msg("Hello")
 })
 
-Wire(w2 {
+@wire(w2 {
   Msg("Hello")
 })
+
+@exit
+@exit()
 
 Do(w1)
 Do(w2)

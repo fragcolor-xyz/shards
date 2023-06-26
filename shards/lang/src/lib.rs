@@ -2,6 +2,7 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
+mod print;
 mod read;
 mod types;
 
@@ -11,6 +12,9 @@ use core::convert::TryInto;
 use core::slice;
 use nanoid::nanoid;
 use pest::Parser;
+use print::print_ast;
+use shards::core::cloneVar;
+use std::collections::HashMap;
 
 use shards::core::findEnumId;
 use shards::core::findEnumInfo;
@@ -37,6 +41,13 @@ impl Drop for SShardRef {
 struct EvalEnv {
   shards: Vec<SShardRef>,
   previous: Option<ShardRef>,
+  deferred_wires: HashMap<String, (Wire, Vec<Param>, LineInfo)>, // ideally we should not clone Vec<Param> (Params)
+}
+
+impl Drop for EvalEnv {
+  fn drop(&mut self) {
+    // keep this because we want borrow checker warnings
+  }
 }
 
 enum SVar {
@@ -62,14 +73,75 @@ impl AsMut<Var> for SVar {
   }
 }
 
-fn eval_eval_expr(seq: Sequence) -> Result<(ClonedVar, LineInfo), ShardsError> {
-  let sub_env = eval_sequence(seq, None)?;
+fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
+  for (name, (wire, params, line_info)) in env.deferred_wires.drain() {
+    wire.set_name(&name);
+    let mut idx = 0;
+    let mut as_idx = true;
+    for param in params {
+      if let Some(name) = param.name {
+        as_idx = false;
+        if name == "Looped" {
+          wire.set_looped({
+            match param.value {
+              Value::Boolean(b) => b,
+              _ => return Err(("Looped parameter must be a boolean", line_info).into()),
+            }
+          })
+        } else if name == "Shards" {
+          let mut sub_env = match param.value {
+            Value::Shards(seq) => eval_sequence(&seq, None)?,
+            _ => return Err(("Shards parameter must be a sequence", line_info).into()),
+          };
+          finalize_env(&mut sub_env)?;
+          for shard in sub_env.shards.drain(..) {
+            wire.add_shard(shard.0);
+          }
+        } else if name == "Name" {
+        } else {
+          return Err(("Unknown parameter", line_info).into());
+        }
+      } else {
+        if !as_idx {
+          return Err(("Named parameter after unnamed parameter", line_info).into());
+        }
+
+        if idx == 0 {
+        } else if idx == 1 {
+          let mut sub_env = match param.value {
+            Value::Shards(seq) => eval_sequence(&seq, None)?,
+            _ => return Err(("Shards parameter must be a sequence", line_info).into()),
+          };
+          finalize_env(&mut sub_env)?;
+          for shard in sub_env.shards.drain(..) {
+            wire.add_shard(shard.0);
+          }
+        } else if idx == 2 {
+          wire.set_looped({
+            match param.value {
+              Value::Boolean(b) => b,
+              _ => return Err(("Looped parameter must be a boolean", line_info).into()),
+            }
+          })
+        } else {
+          return Err(("Unknown parameter", line_info).into());
+        }
+      }
+      idx += 1;
+    }
+  }
+  Ok(())
+}
+
+fn eval_eval_expr(seq: &Sequence) -> Result<(ClonedVar, LineInfo), ShardsError> {
+  let mut sub_env = eval_sequence(seq, None)?;
   if !sub_env.shards.is_empty() {
     let line_info = sub_env.shards[0].0.get_line_info();
     // create an ephemeral wire, execute and grab result
     let wire = Wire::default();
     wire.set_name("eval-ephemeral");
-    for shard in sub_env.shards {
+    finalize_env(&mut sub_env)?;
+    for shard in sub_env.shards.drain(..) {
       wire.add_shard(shard.0);
     }
     let mesh = Mesh::default();
@@ -100,7 +172,7 @@ fn eval_eval_expr(seq: Sequence) -> Result<(ClonedVar, LineInfo), ShardsError> {
       )
     } else {
       Ok((
-        unsafe { *info.finalOutput }.into(),
+        ClonedVar(unsafe { *info.finalOutput }),
         LineInfo {
           line: line_info.0 as usize,
           column: line_info.1 as usize,
@@ -112,20 +184,21 @@ fn eval_eval_expr(seq: Sequence) -> Result<(ClonedVar, LineInfo), ShardsError> {
   }
 }
 
-fn eval_sequence(seq: Sequence, previous: Option<ShardRef>) -> Result<EvalEnv, ShardsError> {
+fn eval_sequence(seq: &Sequence, previous: Option<ShardRef>) -> Result<EvalEnv, ShardsError> {
   let mut sub_env = EvalEnv {
     shards: Vec::new(),
     previous,
+    deferred_wires: HashMap::new(),
   };
-  for stmt in seq.statements {
+  for stmt in &seq.statements {
     eval_statement(stmt, &mut sub_env)?;
   }
   Ok(sub_env)
 }
 
 fn create_take_table_chain(
-  var_name: String,
-  path: Vec<String>,
+  var_name: &String,
+  path: &Vec<String>,
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
@@ -138,32 +211,37 @@ fn create_take_table_chain(
 }
 
 fn create_take_seq_chain(
-  var_name: String,
-  path: Vec<u32>,
+  var_name: &String,
+  path: &Vec<u32>,
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
   add_get_shard(&var_name, line, e);
   for path_part in path {
-    let idx = path_part.try_into().unwrap(); // read should have caught this
+    let idx = (*path_part).try_into().unwrap(); // read should have caught this
     add_take_shard(&idx, e);
   }
   Ok(())
 }
 
 fn as_var(
-  value: Value,
+  value: &Value,
   line_info: LineInfo,
   shard: Option<ShardRef>,
   e: &mut EvalEnv,
 ) -> Result<SVar, ShardsError> {
   match value {
     Value::None => Ok(SVar::NotCloned(Var::default())),
-    Value::Boolean(value) => Ok(SVar::NotCloned(value.into())),
-    Value::Identifier(value) => {
-      let mut s = Var::ephemeral_string(value.as_str());
-      s.valueType = SHType_ContextVar;
-      Ok(SVar::Cloned(s.into()))
+    Value::Boolean(value) => Ok(SVar::NotCloned((*value).into())),
+    Value::Identifier(ref name) => {
+      if let Some(wire) = e.deferred_wires.get(name) {
+        let wire: Var = wire.0 .0.into();
+        Ok(SVar::NotCloned(wire.into()))
+      } else {
+        let mut s = Var::ephemeral_string(name.as_str());
+        s.valueType = SHType_ContextVar;
+        Ok(SVar::NotCloned(s.into()))
+      }
     }
     Value::Enum(prefix, value) => {
       let id = findEnumId(&prefix);
@@ -206,8 +284,8 @@ fn as_var(
       }
     }
     Value::Number(num) => match num {
-      Number::Integer(n) => Ok(SVar::NotCloned(n.into())),
-      Number::Float(n) => Ok(SVar::NotCloned(n.into())),
+      Number::Integer(n) => Ok(SVar::NotCloned((*n).into())),
+      Number::Float(n) => Ok(SVar::NotCloned((*n).into())),
       Number::Hexadecimal(s) => {
         let s = s.as_str();
         let s = &s[2..]; // remove 0x
@@ -215,9 +293,9 @@ fn as_var(
         Ok(SVar::NotCloned(z.into()))
       }
     },
-    Value::String(s) => {
-      let s = Var::ephemeral_string(s.as_str());
-      Ok(SVar::Cloned(s.into()))
+    Value::String(ref s) => {
+      let s = Var::ephemeral_string(s);
+      Ok(SVar::NotCloned(s.into()))
     }
     Value::Float2(ref val) => Ok(SVar::NotCloned(val.into())),
     Value::Float3(ref val) => Ok(SVar::NotCloned(val.into())),
@@ -252,9 +330,10 @@ fn as_var(
       Ok(SVar::Cloned(ClonedVar(table.0)))
     }
     Value::Shards(seq) => {
-      let sub_env = eval_sequence(seq, shard)?;
+      let mut sub_env = eval_sequence(&seq, shard)?;
       let mut seq = SeqVar::new();
-      for shard in sub_env.shards {
+      finalize_env(&mut sub_env)?;
+      for shard in sub_env.shards.drain(..) {
         let s = shard.0 .0;
         let s: Var = s.into();
         debug_assert!(s.valueType == SHType_ShardRef);
@@ -263,12 +342,12 @@ fn as_var(
       Ok(SVar::Cloned(ClonedVar(seq.0)))
     }
     Value::EvalExpr(seq) => {
-      let value = eval_eval_expr(seq)?;
+      let value = eval_eval_expr(&seq)?;
       Ok(SVar::Cloned(value.0))
     }
     Value::Expr(seq) => {
       let start_idx = e.shards.len();
-      let mut sub_env = eval_sequence(seq, e.previous)?;
+      let mut sub_env = eval_sequence(&seq, e.previous)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
         let tmp_name = nanoid!();
@@ -277,8 +356,9 @@ fn as_var(
         add_assignment_shard("Ref", &tmp_name, &mut sub_env);
         // wrap into a Sub Shard
         let line_info = sub_env.shards[0].0.get_line_info();
+        finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(
-          sub_env.shards,
+          sub_env.shards.drain(..).collect(),
           LineInfo {
             line: line_info.0 as usize,
             column: line_info.1 as usize,
@@ -299,6 +379,7 @@ fn as_var(
       let mut sub_env = EvalEnv {
         shards: Vec::new(),
         previous: None,
+        deferred_wires: HashMap::new(),
       };
       create_take_table_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
@@ -308,7 +389,8 @@ fn as_var(
         let tmp_name = format!("t{}", tmp_name);
         add_assignment_shard("Ref", &tmp_name, &mut sub_env);
         // wrap into a Sub Shard
-        let sub = make_sub_shard(sub_env.shards, line_info)?;
+        finalize_env(&mut sub_env)?;
+        let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
         // add this sub shard before the start of this pipeline!
         e.shards.insert(start_idx, sub);
         // now add a get shard to get the temporary at the end of the pipeline
@@ -326,6 +408,7 @@ fn as_var(
       let mut sub_env = EvalEnv {
         shards: Vec::new(),
         previous: None,
+        deferred_wires: HashMap::new(),
       };
       create_take_seq_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
@@ -335,7 +418,8 @@ fn as_var(
         let tmp_name = format!("t{}", tmp_name);
         add_assignment_shard("Ref", &tmp_name, &mut sub_env);
         // wrap into a Sub Shard
-        let sub = make_sub_shard(sub_env.shards, line_info)?;
+        finalize_env(&mut sub_env)?;
+        let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
         // add this sub shard before the start of this pipeline!
         e.shards.insert(start_idx, sub);
         // now add a get shard to get the temporary at the end of the pipeline
@@ -351,7 +435,7 @@ fn as_var(
   }
 }
 
-fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let s = ShardRef::create(shard.name.as_str()).ok_or(
     (
       format!("Shard {} does not exist", shard.name.as_str()),
@@ -363,10 +447,10 @@ fn add_shard(shard: Shard, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), S
   let mut idx = 0i32;
   let mut as_idx = true;
   let info = s.0.parameters();
-  if let Some(params) = shard.params {
+  if let Some(ref params) = shard.params {
     for param in params {
-      let value = as_var(param.value, line_info, Some(s.0), e).map_err(|e| e)?;
-      if let Some(name) = param.name {
+      let value = as_var(&param.value, line_info, Some(s.0), e).map_err(|e| e)?;
+      if let Some(ref name) = param.name {
         as_idx = false;
         let mut found = false;
         for (i, info) in info.iter().enumerate() {
@@ -409,8 +493,11 @@ fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
   Ok(())
 }
 
-fn add_const_shard(value: Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Const").unwrap();
+fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+  let (shard, value) = match value {
+    Value::Identifier(_) => (ShardRef::create("Get").unwrap(), value),
+    _ => (ShardRef::create("Const").unwrap(), value),
+  };
   let shard = SShardRef(shard);
   let value = as_var(value, line_info, Some(shard.0), e)?;
   shard.0.set_parameter(0, *value.as_ref());
@@ -465,28 +552,34 @@ fn add_get_shard(name: &str, line: LineInfo, e: &mut EvalEnv) {
   e.shards.push(shard);
 }
 
-fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError> {
+fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError> {
   // a pipeline starts with no previous shard and an implicit nil
   // this is useful for many shards such as Http.
-  add_const_shard2(Var::default(), LineInfo::default(), e)?;
+  // we must avoid doing this for the first shard in an env though
+  let mut added_nil = false;
+  if !e.shards.is_empty() {
+    add_const_shard2(Var::default(), LineInfo::default(), e)?;
+    added_nil = true;
+  }
   e.previous = None;
   let start_idx = e.shards.len();
-  for block in pipeline.blocks {
-    let _ = match block.content {
+  for block in &pipeline.blocks {
+    let _ = match &block.content {
       BlockContent::Shard(shard) => add_shard(shard, block.line_info, e),
       BlockContent::Shards(seq) => {
-        let mut sub_env = eval_sequence(seq, e.previous)?;
+        let mut sub_env = eval_sequence(&seq, e.previous)?;
         if !sub_env.shards.is_empty() {
           // remove the injected nil shard
           sub_env.shards.remove(0);
-          let sub = make_sub_shard(sub_env.shards, block.line_info)?;
+          finalize_env(&mut sub_env)?;
+          let sub = make_sub_shard(sub_env.shards.drain(..).collect(), block.line_info)?;
           e.shards.push(sub);
         }
         Ok(())
       }
       BlockContent::Const(value) => {
         // remove the nil shard we injected if this is the first block
-        if e.shards.len() == start_idx + 1 {
+        if added_nil && e.shards.len() == start_idx {
           e.shards.pop();
         }
         add_const_shard(value, block.line_info, e)
@@ -496,11 +589,11 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
       }
       BlockContent::TakeSeq(name, path) => create_take_seq_chain(name, path, block.line_info, e),
       BlockContent::EvalExpr(seq) => {
-        let value = eval_eval_expr(seq)?;
+        let value = eval_eval_expr(&seq)?;
         add_const_shard2(value.0 .0, value.1, e)
       }
       BlockContent::Expr(seq) => {
-        let mut sub_env = eval_sequence(seq, e.previous)?;
+        let mut sub_env = eval_sequence(&seq, e.previous)?;
         if !sub_env.shards.is_empty() {
           // create a temporary variable to hold the result of the expression
           let tmp_name = nanoid!();
@@ -508,7 +601,8 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
           let tmp_name = format!("t{}", tmp_name);
           add_assignment_shard("Ref", &tmp_name, &mut sub_env);
           // wrap into a Sub Shard
-          let sub = make_sub_shard(sub_env.shards, block.line_info)?;
+          finalize_env(&mut sub_env)?;
+          let sub = make_sub_shard(sub_env.shards.drain(..).collect(), block.line_info)?;
           // add this sub shard before the start of this pipeline!
           e.shards.insert(start_idx, sub);
           // now add a get shard to get the temporary at the end of the pipeline
@@ -516,6 +610,114 @@ fn eval_pipeline(pipeline: Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError>
         }
         Ok(())
       }
+      BlockContent::BuiltIn(func) => match func.name.as_str() {
+        "wire" => {
+          if let Some(ref params) = func.params {
+            if params[0].name.is_none() {
+              e.deferred_wires.insert(
+                match params[0].value {
+                  Value::String(ref name) => name.clone(),
+                  Value::Identifier(ref name) => name.clone(),
+                  _ => {
+                    return Err(
+                      (
+                        "wire built-in function requires a string parameter".to_string(),
+                        block.line_info,
+                      )
+                        .into(),
+                    )
+                  }
+                },
+                (
+                  Wire::default(),
+                  func.params.as_ref().unwrap().to_vec(),
+                  block.line_info,
+                ), // empty wire, we resolve at end of pipeline
+              );
+              Ok(())
+            } else {
+              // find if we have a named parameter called "Name"
+              let mut name = None;
+              for param in params {
+                if let Some(ref param_name) = param.name {
+                  if param_name == "Name" {
+                    name = Some(param);
+                    break;
+                  }
+                }
+              }
+              if let Some(name) = name {
+                e.deferred_wires.insert(
+                  match name.value {
+                    Value::String(ref name) => name.clone(),
+                    _ => {
+                      return Err(
+                        (
+                          "wire built-in function requires a string parameter".to_string(),
+                          block.line_info,
+                        )
+                          .into(),
+                      )
+                    }
+                  },
+                  (
+                    Wire::default(),
+                    func.params.as_ref().unwrap().to_vec(),
+                    block.line_info,
+                  ), // empty wire, we resolve at end of pipeline
+                );
+                Ok(())
+              } else {
+                Err(
+                  (
+                    "wire built-in function requires a name parameter".to_string(),
+                    block.line_info,
+                  )
+                    .into(),
+                )
+              }
+            }
+          } else {
+            Err(
+              (
+                "wire built-in function requires proper parameters".to_string(),
+                block.line_info,
+              )
+                .into(),
+            )
+          }
+        }
+        "shards" => {
+          if let Some(ref params) = func.params {
+            if params.len() != 3 {
+              Err(
+                (
+                  "shards built-in function requires 3 parameters".to_string(),
+                  block.line_info,
+                )
+                  .into(),
+              )
+            } else {
+              Ok(())
+            }
+          } else {
+            Err(
+              (
+                "shards built-in function requires 3 parameters".to_string(),
+                block.line_info,
+              )
+                .into(),
+            )
+          }
+        }
+        _ => Err(
+          (
+            format!("Unknown built-in function: {}", func.name),
+            block.line_info,
+          )
+            .into(),
+        ),
+      },
     }?;
   }
   Ok(())
@@ -533,7 +735,7 @@ fn add_assignment_shard(shard_name: &str, name: &str, e: &mut EvalEnv) {
   }
 }
 
-fn eval_assignment(assignment: Assignment, e: &mut EvalEnv) -> Result<(), ShardsError> {
+fn eval_assignment(assignment: &Assignment, e: &mut EvalEnv) -> Result<(), ShardsError> {
   match assignment {
     Assignment::AssignRef(pipe, name) => {
       eval_pipeline(pipe, e)?;
@@ -558,7 +760,7 @@ fn eval_assignment(assignment: Assignment, e: &mut EvalEnv) -> Result<(), Shards
   }
 }
 
-fn eval_statement(stmt: Statement, e: &mut EvalEnv) -> Result<(), ShardsError> {
+fn eval_statement(stmt: &Statement, e: &mut EvalEnv) -> Result<(), ShardsError> {
   match stmt {
     Statement::Assignment(a) => eval_assignment(a, e),
     Statement::Pipeline(p) => eval_pipeline(p, e),
@@ -566,15 +768,16 @@ fn eval_statement(stmt: Statement, e: &mut EvalEnv) -> Result<(), ShardsError> {
 }
 
 pub fn read(code: &str) -> Result<Sequence, ShardsError> {
-  let successful_parse = ShardsParser::parse(Rule::Sequence, code).expect("Code parsing failed");
-  process_sequence(successful_parse.into_iter().next().unwrap())
+  let successful_parse = ShardsParser::parse(Rule::Program, code).expect("Code parsing failed");
+  process_program(successful_parse.into_iter().next().unwrap())
 }
 
-pub fn eval(seq: Sequence, name: &str) -> Result<Wire, ShardsError> {
-  let env = eval_sequence(seq, None)?;
+pub fn eval(seq: &Sequence, name: &str) -> Result<Wire, ShardsError> {
+  let mut env = eval_sequence(seq, None)?;
   let wire = Wire::default();
   wire.set_name(name);
-  for shard in env.shards {
+  finalize_env(&mut env)?;
+  for shard in env.shards.drain(..) {
     wire.add_shard(shard.0);
   }
   Ok(wire)
@@ -637,7 +840,9 @@ pub extern "C" fn shards_read(code: *const c_char) -> SHLAst {
 #[no_mangle]
 pub extern "C" fn shards_eval(sequence: *mut Sequence, name: *const c_char) -> SHLWire {
   let name = unsafe { CStr::from_ptr(name).to_str().unwrap() };
-  let result = catch_unwind(|| eval(unsafe { *Box::from_raw(sequence) }, name));
+  // we just want a reference to the sequence, not ownership
+  let seq = unsafe { &*sequence };
+  let result = catch_unwind(|| eval(seq, name));
   match result {
     Ok(Ok(wire)) => SHLWire {
       wire: Box::into_raw(Box::new(wire)),
@@ -658,6 +863,16 @@ pub extern "C" fn shards_eval(sequence: *mut Sequence, name: *const c_char) -> S
       error: std::ptr::null_mut(),
     },
   }
+}
+
+#[no_mangle]
+pub extern "C" fn shards_print_ast(ast: *mut Sequence) -> Var {
+  let seq = unsafe { &*ast };
+  let s = print_ast(seq);
+  let s = Var::ephemeral_string(&s);
+  let mut v = Var::default();
+  cloneVar(&mut v, &s);
+  v
 }
 
 #[no_mangle]
