@@ -279,11 +279,11 @@ impl ShardRef {
       if result.code == 0 {
         Ok(())
       } else {
-        let cstr = CStr::from_bytes_with_nul(slice::from_raw_parts(
+        let cstr = std::str::from_utf8(slice::from_raw_parts(
           result.message.string as *const u8,
           result.message.len,
         ));
-        Err(cstr.unwrap().to_str().unwrap())
+        Err(cstr.unwrap())
       }
     }
   }
@@ -295,11 +295,11 @@ impl ShardRef {
         if result.code == 0 {
           Ok(())
         } else {
-          let cstr = CStr::from_bytes_with_nul(slice::from_raw_parts(
+          let cstr = std::str::from_utf8(slice::from_raw_parts(
             result.message.string as *const u8,
             result.message.len,
           ));
-          Err(cstr.unwrap().to_str().unwrap())
+          Err(cstr.unwrap())
         }
       } else {
         Ok(())
@@ -3777,24 +3777,20 @@ unsafe extern "C" fn shardsvar_compose_cb(
   userData: *mut c_void,
 ) {
   let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
-  let msg = CStr::from_bytes_with_nul(unsafe {
+  let msg = std::str::from_utf8(unsafe {
     slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len)
   })
   .unwrap();
   if !nonfatalWarning {
     shlog_error!(
       "Fatal error: {} shard: {}",
-      msg.to_str().unwrap(),
+      msg,
       shard_name.to_str().unwrap()
     );
     let failed = userData as *mut bool;
     *failed = true;
   } else {
-    shlog_error!(
-      "Error: {} shard: {}",
-      msg.to_str().unwrap(),
-      shard_name.to_str().unwrap()
-    );
+    shlog_error!("Error: {} shard: {}", msg, shard_name.to_str().unwrap());
   }
 }
 

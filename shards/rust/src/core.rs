@@ -458,8 +458,8 @@ impl WireRef {
             info.failureMessage.len,
           )
         };
-        let msg = CStr::from_bytes_with_nul(slice).unwrap();
-        Err(msg.to_str().unwrap())
+        let msg = std::str::from_utf8(slice).unwrap();
+        Err(msg)
       } else {
         unsafe { Ok(Some((*info.finalOutput).into())) }
       }

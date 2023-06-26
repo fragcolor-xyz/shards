@@ -11,7 +11,7 @@ Repeat({
   2.2 | Math.Add(2.0) | Log | Log
   2.2 | Math.Add((3 | Math.Add(3))) | Log | Log
   [1 2 3] | Log
-  {a: 1 y: 2 Z: 3} | Log = table
+  {a: 1 y: 2 Z: 3 22: 2} | Log = table
   table | Log
   table:a:b | Log
   {} | Log
