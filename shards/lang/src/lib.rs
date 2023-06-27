@@ -14,7 +14,9 @@ use nanoid::nanoid;
 use pest::Parser;
 use print::print_ast;
 use shards::core::cloneVar;
+use shards::core::destroyVar;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use shards::core::findEnumId;
 use shards::core::findEnumInfo;
@@ -41,12 +43,36 @@ impl Drop for SShardRef {
 struct EvalEnv {
   shards: Vec<SShardRef>,
   previous: Option<ShardRef>,
+
   deferred_wires: HashMap<String, (Wire, Vec<Param>, LineInfo)>, // ideally we should not clone Vec<Param> (Params)
+
+  shards_groups: HashMap<String, (Vec<Value>, Sequence)>, // more cloning we don't need...
+
+  // used during @shards evaluation, but also by @const
+  replacements: HashMap<String, Value>, // more cloning we don't need...
+
+  // used during @shards evaluation
+  suffix: Option<String>,
+  suffix_assigned: HashSet<String>,
 }
 
 impl Drop for EvalEnv {
   fn drop(&mut self) {
     // keep this because we want borrow checker warnings
+  }
+}
+
+impl Default for EvalEnv {
+  fn default() -> Self {
+    EvalEnv {
+      shards: Vec::new(),
+      previous: None,
+      deferred_wires: HashMap::new(),
+      shards_groups: HashMap::new(),
+      replacements: HashMap::new(),
+      suffix: None,
+      suffix_assigned: HashSet::new(),
+    }
   }
 }
 
@@ -74,7 +100,7 @@ impl AsMut<Var> for SVar {
 }
 
 fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
-  for (name, (wire, params, line_info)) in env.deferred_wires.drain() {
+  for (name, (wire, params, line_info)) in env.deferred_wires.drain().collect::<Vec<_>>() {
     wire.set_name(&name);
     let mut idx = 0;
     let mut as_idx = true;
@@ -90,7 +116,7 @@ fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
           })
         } else if name == "Shards" {
           let mut sub_env = match param.value {
-            Value::Shards(seq) => eval_sequence(&seq, None)?,
+            Value::Shards(seq) => eval_sequence(&seq, None, Some(env))?,
             _ => return Err(("Shards parameter must be a sequence", line_info).into()),
           };
           finalize_env(&mut sub_env)?;
@@ -109,7 +135,7 @@ fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
         if idx == 0 {
         } else if idx == 1 {
           let mut sub_env = match param.value {
-            Value::Shards(seq) => eval_sequence(&seq, None)?,
+            Value::Shards(seq) => eval_sequence(&seq, None, Some(env))?,
             _ => return Err(("Shards parameter must be a sequence", line_info).into()),
           };
           finalize_env(&mut sub_env)?;
@@ -133,8 +159,8 @@ fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
   Ok(())
 }
 
-fn eval_eval_expr(seq: &Sequence) -> Result<(ClonedVar, LineInfo), ShardsError> {
-  let mut sub_env = eval_sequence(seq, None)?;
+fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineInfo), ShardsError> {
+  let mut sub_env = eval_sequence(seq, None, Some(env))?;
   if !sub_env.shards.is_empty() {
     let line_info = sub_env.shards[0].0.get_line_info();
     // create an ephemeral wire, execute and grab result
@@ -184,12 +210,20 @@ fn eval_eval_expr(seq: &Sequence) -> Result<(ClonedVar, LineInfo), ShardsError> 
   }
 }
 
-fn eval_sequence(seq: &Sequence, previous: Option<ShardRef>) -> Result<EvalEnv, ShardsError> {
-  let mut sub_env = EvalEnv {
-    shards: Vec::new(),
-    previous,
-    deferred_wires: HashMap::new(),
-  };
+fn eval_sequence(
+  seq: &Sequence,
+  previous: Option<ShardRef>,
+  parent: Option<&mut EvalEnv>,
+) -> Result<EvalEnv, ShardsError> {
+  let mut sub_env = EvalEnv::default();
+  // inherit previous state for certain things
+  sub_env.previous = previous;
+  if let Some(parent) = parent {
+    sub_env.shards_groups = parent.shards_groups.clone();
+    sub_env.replacements = parent.replacements.clone();
+    sub_env.suffix = parent.suffix.clone();
+    sub_env.suffix_assigned = parent.suffix_assigned.clone();
+  }
   for stmt in &seq.statements {
     eval_statement(stmt, &mut sub_env)?;
   }
@@ -202,7 +236,7 @@ fn create_take_table_chain(
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  add_get_shard(&var_name, line, e);
+  add_get_shard(&var_name, true, line, e);
   for path_part in path {
     let s = Var::ephemeral_string(&path_part);
     add_take_shard(&s, e);
@@ -216,7 +250,7 @@ fn create_take_seq_chain(
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  add_get_shard(&var_name, line, e);
+  add_get_shard(&var_name, true, line, e);
   for path_part in path {
     let idx = (*path_part).try_into().unwrap(); // read should have caught this
     add_take_shard(&idx, e);
@@ -236,11 +270,23 @@ fn as_var(
     Value::Identifier(ref name) => {
       if let Some(wire) = e.deferred_wires.get(name) {
         let wire: Var = wire.0 .0.into();
-        Ok(SVar::NotCloned(wire.into()))
+        Ok(SVar::NotCloned(wire))
+      } else if let Some(replacement) = e.replacements.get(name) {
+        as_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
       } else {
-        let mut s = Var::ephemeral_string(name.as_str());
-        s.valueType = SHType_ContextVar;
-        Ok(SVar::NotCloned(s.into()))
+        match (&e.suffix, e.suffix_assigned.contains(name)) {
+          (Some(suffix), true) => {
+            let name = format!("{}{}", name, suffix);
+            let mut s = Var::ephemeral_string(name.as_str());
+            s.valueType = SHType_ContextVar;
+            Ok(SVar::Cloned(s.into()))
+          }
+          _ => {
+            let mut s = Var::ephemeral_string(name.as_str());
+            s.valueType = SHType_ContextVar;
+            Ok(SVar::NotCloned(s))
+          }
+        }
       }
     }
     Value::Enum(prefix, value) => {
@@ -295,7 +341,7 @@ fn as_var(
     },
     Value::String(ref s) => {
       let s = Var::ephemeral_string(s);
-      Ok(SVar::NotCloned(s.into()))
+      Ok(SVar::NotCloned(s))
     }
     Value::Float2(ref val) => Ok(SVar::NotCloned(val.into())),
     Value::Float3(ref val) => Ok(SVar::NotCloned(val.into())),
@@ -306,7 +352,7 @@ fn as_var(
     Value::Int8(ref val) => Ok(SVar::NotCloned(val.into())),
     Value::Int16(ref val) => Ok(SVar::NotCloned(val.into())),
     Value::Seq(vec) => {
-      let mut seq = SeqVar::new();
+      let mut seq = SeqVar::leaking_new();
       for value in vec {
         let value = as_var(value, line_info, shard, e)?;
         seq.push(value.as_ref());
@@ -314,7 +360,7 @@ fn as_var(
       Ok(SVar::Cloned(ClonedVar(seq.0)))
     }
     Value::Table(value) => {
-      let mut table = TableVar::new();
+      let mut table = TableVar::leaking_new();
       for (key, value) in value {
         let mut key = as_var(key, line_info, shard, e)?;
         if key.as_ref().is_context_var() {
@@ -330,8 +376,8 @@ fn as_var(
       Ok(SVar::Cloned(ClonedVar(table.0)))
     }
     Value::Shards(seq) => {
-      let mut sub_env = eval_sequence(&seq, shard)?;
-      let mut seq = SeqVar::new();
+      let mut sub_env = eval_sequence(&seq, shard, Some(e))?;
+      let mut seq = SeqVar::leaking_new();
       finalize_env(&mut sub_env)?;
       for shard in sub_env.shards.drain(..) {
         let s = shard.0 .0;
@@ -342,18 +388,18 @@ fn as_var(
       Ok(SVar::Cloned(ClonedVar(seq.0)))
     }
     Value::EvalExpr(seq) => {
-      let value = eval_eval_expr(&seq)?;
+      let value = eval_eval_expr(&seq, e)?;
       Ok(SVar::Cloned(value.0))
     }
     Value::Expr(seq) => {
       let start_idx = e.shards.len();
-      let mut sub_env = eval_sequence(&seq, e.previous)?;
+      let mut sub_env = eval_sequence(&seq, e.previous, Some(e))?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
-        let tmp_name = nanoid!();
+        let tmp_name = nanoid!(16);
         // ensure name starts with a letter
         let tmp_name = format!("t{}", tmp_name);
-        add_assignment_shard("Ref", &tmp_name, &mut sub_env);
+        add_assignment_shard("Ref", &tmp_name, false, &mut sub_env);
         // wrap into a Sub Shard
         let line_info = sub_env.shards[0].0.get_line_info();
         finalize_env(&mut sub_env)?;
@@ -376,25 +422,21 @@ fn as_var(
     }
     Value::TakeTable(var_name, path) => {
       let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv {
-        shards: Vec::new(),
-        previous: None,
-        deferred_wires: HashMap::new(),
-      };
+      let mut sub_env = EvalEnv::default();
       create_take_table_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
-        let tmp_name = nanoid!();
+        let tmp_name = nanoid!(16);
         // ensure name starts with a letter
         let tmp_name = format!("t{}", tmp_name);
-        add_assignment_shard("Ref", &tmp_name, &mut sub_env);
+        add_assignment_shard("Ref", &tmp_name, false, &mut sub_env);
         // wrap into a Sub Shard
         finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
         // add this sub shard before the start of this pipeline!
         e.shards.insert(start_idx, sub);
         // now add a get shard to get the temporary at the end of the pipeline
-        add_get_shard(&tmp_name, line_info, e);
+        add_get_shard(&tmp_name, true, line_info, e);
 
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
@@ -405,25 +447,21 @@ fn as_var(
     }
     Value::TakeSeq(var_name, path) => {
       let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv {
-        shards: Vec::new(),
-        previous: None,
-        deferred_wires: HashMap::new(),
-      };
+      let mut sub_env = EvalEnv::default();
       create_take_seq_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
-        let tmp_name = nanoid!();
+        let tmp_name = nanoid!(16);
         // ensure name starts with a letter
         let tmp_name = format!("t{}", tmp_name);
-        add_assignment_shard("Ref", &tmp_name, &mut sub_env);
+        add_assignment_shard("Ref", &tmp_name, false, &mut sub_env);
         // wrap into a Sub Shard
         finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
         // add this sub shard before the start of this pipeline!
         e.shards.insert(start_idx, sub);
         // now add a get shard to get the temporary at the end of the pipeline
-        add_get_shard(&tmp_name, line_info, e);
+        add_get_shard(&tmp_name, true, line_info, e);
 
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
@@ -432,6 +470,16 @@ fn as_var(
         panic!("TakeTable should always return a shard")
       }
     }
+    Value::Func(func) => Err(
+      (
+        format!(
+          "Unsupported function as value or parameter {}",
+          func.name.as_str()
+        ),
+        line_info,
+      )
+        .into(),
+    ),
   }
 }
 
@@ -494,13 +542,31 @@ fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
 }
 
 fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let (shard, value) = match value {
-    Value::Identifier(_) => (ShardRef::create("Get").unwrap(), value),
-    _ => (ShardRef::create("Const").unwrap(), value),
+  let shard = match value {
+    Value::Identifier(name) => {
+      // we might be a replacement though!
+      if let Some(replacement) = e.replacements.get(name) {
+        let shard = ShardRef::create("Const").unwrap();
+        let shard = SShardRef(shard);
+        let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
+        shard.0.set_parameter(0, *value.as_ref());
+        shard
+      } else {
+        let shard = ShardRef::create("Get").unwrap();
+        let shard = SShardRef(shard);
+        let value = as_var(value, line_info, Some(shard.0), e)?;
+        shard.0.set_parameter(0, *value.as_ref());
+        shard
+      }
+    }
+    _ => {
+      let shard = ShardRef::create("Const").unwrap();
+      let shard = SShardRef(shard);
+      let value = as_var(value, line_info, Some(shard.0), e)?;
+      shard.0.set_parameter(0, *value.as_ref());
+      shard
+    }
   };
-  let shard = SShardRef(shard);
-  let value = as_var(value, line_info, Some(shard.0), e)?;
-  shard.0.set_parameter(0, *value.as_ref());
   shard.0.set_line_info((
     line_info.line.try_into().expect("Too many lines"),
     line_info.column.try_into().expect("Oversized column"),
@@ -513,7 +579,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
 fn make_sub_shard(shards: Vec<SShardRef>, line_info: LineInfo) -> Result<SShardRef, ShardsError> {
   let shard = ShardRef::create("Sub").unwrap();
   let shard = SShardRef(shard);
-  let mut seq = SeqVar::new();
+  let mut seq = SeqVar::leaking_new();
   for shard in shards {
     let s = shard.0 .0;
     let s: Var = s.into();
@@ -521,6 +587,7 @@ fn make_sub_shard(shards: Vec<SShardRef>, line_info: LineInfo) -> Result<SShardR
     seq.push(&s);
   }
   shard.0.set_parameter(0, seq.0.into());
+  destroyVar(&mut seq.0);
   shard.0.set_line_info((
     line_info.line.try_into().expect("Too many lines"),
     line_info.column.try_into().expect("Oversized column"),
@@ -539,11 +606,20 @@ fn add_take_shard(target: &Var, e: &mut EvalEnv) {
   e.shards.push(shard);
 }
 
-fn add_get_shard(name: &str, line: LineInfo, e: &mut EvalEnv) {
+fn add_get_shard(name: &str, suffixed: bool, line: LineInfo, e: &mut EvalEnv) {
   let shard = ShardRef::create("Get").unwrap();
   let shard = SShardRef(shard);
-  let name = Var::ephemeral_string(name);
-  shard.0.set_parameter(0, name);
+  match (suffixed, &e.suffix, e.suffix_assigned.contains(name)) {
+    (true, Some(suffix), true) => {
+      let name = format!("{}{}", name, suffix);
+      let name = Var::ephemeral_string(&name);
+      shard.0.set_parameter(0, name);
+    }
+    _ => {
+      let name = Var::ephemeral_string(name);
+      shard.0.set_parameter(0, name);
+    }
+  }
   shard.0.set_line_info((
     line.line.try_into().unwrap(),
     line.column.try_into().unwrap(),
@@ -553,35 +629,46 @@ fn add_get_shard(name: &str, line: LineInfo, e: &mut EvalEnv) {
 }
 
 fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  // a pipeline starts with no previous shard and an implicit nil
-  // this is useful for many shards such as Http.
-  // we must avoid doing this for the first shard in an env though
-  let mut added_nil = false;
-  if !e.shards.is_empty() {
-    add_const_shard2(Var::default(), LineInfo::default(), e)?;
-    added_nil = true;
-  }
+  // // a pipeline starts with no previous shard and an implicit nil
+  // // this is useful for many shards such as Http.
+  // // we must avoid doing this for the first shard in an env though
+  // let mut added_nil = false;
+  // if !e.shards.is_empty() {
+  //   add_const_shard2(Var::default(), LineInfo::default(), e)?;
+  //   added_nil = true;
+  // }
+
   e.previous = None;
   let start_idx = e.shards.len();
   for block in &pipeline.blocks {
     let _ = match &block.content {
       BlockContent::Shard(shard) => add_shard(shard, block.line_info, e),
       BlockContent::Shards(seq) => {
-        let mut sub_env = eval_sequence(&seq, e.previous)?;
+        let mut sub_env = eval_sequence(&seq, e.previous, Some(e))?;
+
+        // if we have a sub env, we need to finalize it
         if !sub_env.shards.is_empty() {
-          // remove the injected nil shard
-          sub_env.shards.remove(0);
+          // eval leaks assignments to the parent env
+          for name in sub_env.suffix_assigned.drain() {
+            e.suffix_assigned.insert(name);
+          }
+
+          // // remove the injected nil shard
+          // sub_env.shards.remove(0);
+
           finalize_env(&mut sub_env)?;
           let sub = make_sub_shard(sub_env.shards.drain(..).collect(), block.line_info)?;
           e.shards.push(sub);
         }
+
         Ok(())
       }
       BlockContent::Const(value) => {
-        // remove the nil shard we injected if this is the first block
-        if added_nil && e.shards.len() == start_idx {
-          e.shards.pop();
-        }
+        // // remove the nil shard we injected if this is the first block
+        // if added_nil && e.shards.len() == start_idx {
+        //   e.shards.pop();
+        // }
+
         add_const_shard(value, block.line_info, e)
       }
       BlockContent::TakeTable(name, path) => {
@@ -589,98 +676,72 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
       }
       BlockContent::TakeSeq(name, path) => create_take_seq_chain(name, path, block.line_info, e),
       BlockContent::EvalExpr(seq) => {
-        let value = eval_eval_expr(&seq)?;
+        let value = eval_eval_expr(&seq, e)?;
         add_const_shard2(value.0 .0, value.1, e)
       }
       BlockContent::Expr(seq) => {
-        let mut sub_env = eval_sequence(&seq, e.previous)?;
+        let mut sub_env = eval_sequence(&seq, e.previous, Some(e))?;
         if !sub_env.shards.is_empty() {
           // create a temporary variable to hold the result of the expression
-          let tmp_name = nanoid!();
+          let tmp_name = nanoid!(16);
           // ensure name starts with a letter
           let tmp_name = format!("t{}", tmp_name);
-          add_assignment_shard("Ref", &tmp_name, &mut sub_env);
+          add_assignment_shard("Ref", &tmp_name, false, &mut sub_env);
           // wrap into a Sub Shard
           finalize_env(&mut sub_env)?;
           let sub = make_sub_shard(sub_env.shards.drain(..).collect(), block.line_info)?;
           // add this sub shard before the start of this pipeline!
           e.shards.insert(start_idx, sub);
           // now add a get shard to get the temporary at the end of the pipeline
-          add_get_shard(&tmp_name, block.line_info, e);
+          add_get_shard(&tmp_name, false, block.line_info, e);
         }
         Ok(())
       }
-      BlockContent::BuiltIn(func) => match func.name.as_str() {
+      BlockContent::Func(func) => match func.name.as_str() {
         "wire" => {
           if let Some(ref params) = func.params {
-            if params[0].name.is_none() {
-              e.deferred_wires.insert(
-                match params[0].value {
-                  Value::String(ref name) => name.clone(),
-                  Value::Identifier(ref name) => name.clone(),
-                  _ => {
-                    return Err(
-                      (
-                        "wire built-in function requires a string parameter".to_string(),
-                        block.line_info,
-                      )
-                        .into(),
-                    )
-                  }
-                },
-                (
-                  Wire::default(),
-                  func.params.as_ref().unwrap().to_vec(),
-                  block.line_info,
-                ), // empty wire, we resolve at end of pipeline
-              );
-              Ok(())
+            // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
+            let name = if params[0].name.is_none() {
+              Some(&params[0])
             } else {
-              // find if we have a named parameter called "Name"
-              let mut name = None;
-              for param in params {
-                if let Some(ref param_name) = param.name {
-                  if param_name == "Name" {
-                    name = Some(param);
-                    break;
-                  }
+              params
+                .iter()
+                .find(|param| param.name.as_deref() == Some("Name"))
+            };
+
+            match name {
+              Some(name_param) => match &name_param.value {
+                Value::String(name) | Value::Identifier(name) => {
+                  e.deferred_wires.insert(
+                    name.clone(),
+                    (
+                      Wire::default(),
+                      func.params.as_ref().unwrap().to_vec(),
+                      block.line_info,
+                    ),
+                  );
+                  Ok(())
                 }
-              }
-              if let Some(name) = name {
-                e.deferred_wires.insert(
-                  match name.value {
-                    Value::String(ref name) => name.clone(),
-                    _ => {
-                      return Err(
-                        (
-                          "wire built-in function requires a string parameter".to_string(),
-                          block.line_info,
-                        )
-                          .into(),
-                      )
-                    }
-                  },
+                _ => Err(
                   (
-                    Wire::default(),
-                    func.params.as_ref().unwrap().to_vec(),
-                    block.line_info,
-                  ), // empty wire, we resolve at end of pipeline
-                );
-                Ok(())
-              } else {
-                Err(
-                  (
-                    "wire built-in function requires a name parameter".to_string(),
+                    "wire built-in function requires a string parameter",
                     block.line_info,
                   )
                     .into(),
+                ),
+              },
+              None => Err(
+                (
+                  "wire built-in function requires a name parameter",
+                  block.line_info,
                 )
-              }
+                  .into(),
+              ),
             }
           } else {
             Err(
               (
-                "wire built-in function requires proper parameters".to_string(),
+                "wire built-in function requires proper parameters",
                 block.line_info,
               )
                 .into(),
@@ -692,43 +753,184 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
             if params.len() != 3 {
               Err(
                 (
-                  "shards built-in function requires 3 parameters".to_string(),
+                  "shards built-in function requires 3 parameters",
                   block.line_info,
                 )
                   .into(),
               )
             } else {
-              Ok(())
+              // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
+              let name = if params[0].name.is_none() {
+                Some(&params[0])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("Name"))
+              };
+
+              // Obtain the name of the wire either from unnamed second parameter or named parameter "Args"
+              let args = if params[0].name.is_none() && params[1].name.is_none() {
+                Some(&params[1])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("Args"))
+              };
+
+              // Obtain the name of the wire either from unnamed third parameter or named parameter "Shards"
+              let shards =
+                if params[0].name.is_none() && params[1].name.is_none() && params[2].name.is_none()
+                {
+                  Some(&params[2])
+                } else {
+                  params
+                    .iter()
+                    .find(|param| param.name.as_deref() == Some("Shards"))
+                };
+
+              match (name, args, shards) {
+                (Some(name_param), Some(args_param), Some(shards_param)) => {
+                  match (&name_param.value, &args_param.value, &shards_param.value) {
+                    (
+                      Value::String(name) | Value::Identifier(name),
+                      Value::Seq(args),
+                      Value::Shards(shards),
+                    ) => {
+                      e.shards_groups
+                        .insert(name.to_owned(), (args.clone(), shards.clone()));
+                      Ok(())
+                    }
+                    _ => Err(
+                      (
+                        "shards built-in function requires valid parameters",
+                        block.line_info,
+                      )
+                        .into(),
+                    ),
+                  }
+                }
+                _ => Err(
+                  (
+                    "shards built-in function requires a name parameter",
+                    block.line_info,
+                  )
+                    .into(),
+                ),
+              }
             }
           } else {
             Err(
               (
-                "shards built-in function requires 3 parameters".to_string(),
+                "shards built-in function requires 3 parameters",
                 block.line_info,
               )
                 .into(),
             )
           }
         }
-        _ => Err(
-          (
-            format!("Unknown built-in function: {}", func.name),
-            block.line_info,
-          )
-            .into(),
-        ),
+        unknown => {
+          let mut shards_env = {
+            let shards = e.shards_groups.get(unknown);
+            if let Some((args, shards)) = shards {
+              if args.len() != func.params.as_ref().unwrap().len() {
+                return Err(
+                  (
+                    format!(
+                      "Shards template {} requires {} parameters",
+                      unknown,
+                      args.len()
+                    ),
+                    block.line_info,
+                  )
+                    .into(),
+                );
+              }
+
+              let mut sub_env = EvalEnv::default();
+
+              // inherit current_replacements from parent
+              sub_env.replacements = e.replacements.clone();
+              // set a random suffix
+              sub_env.suffix = Some(nanoid!(16));
+
+              for i in 0..args.len() {
+                let arg = &args[i];
+                // arg has to be Identifier
+                let arg = match arg {
+                  Value::Identifier(arg) => arg,
+                  _ => {
+                    return Err(
+                      (
+                        format!(
+                          "Shards template {} parameters should be identifiers",
+                          unknown,
+                        ),
+                        block.line_info,
+                      )
+                        .into(),
+                    );
+                  }
+                };
+                let param = &func.params.as_ref().unwrap()[i];
+                if param.name.is_some() {
+                  return Err(
+                    (
+                      format!(
+                        "Shards template {} does not accept named parameters",
+                        unknown
+                      ),
+                      block.line_info,
+                    )
+                      .into(),
+                  );
+                }
+
+                // and add new replacement
+                sub_env
+                  .replacements
+                  .insert(arg.to_owned(), param.value.clone());
+              }
+
+              for stmt in &shards.statements {
+                eval_statement(stmt, &mut sub_env)?;
+              }
+
+              Some(sub_env)
+            } else {
+              None
+            }
+          };
+          if let Some(shards_env) = &mut shards_env {
+            for shard in shards_env.shards.drain(..) {
+              e.shards.push(shard);
+            }
+            Ok(())
+          } else {
+            Err((format!("Unknown function: {}", func.name), block.line_info).into())
+          }
+        }
       },
     }?;
   }
   Ok(())
 }
 
-fn add_assignment_shard(shard_name: &str, name: &str, e: &mut EvalEnv) {
+fn add_assignment_shard(shard_name: &str, name: &str, suffixed: bool, e: &mut EvalEnv) {
   if let Some(previous) = e.previous {
     let shard = ShardRef::create(shard_name).unwrap();
     let shard = SShardRef(shard);
-    let name = Var::ephemeral_string(name);
-    shard.0.set_parameter(0, name);
+    match (suffixed, &e.suffix) {
+      (true, Some(suffix)) => {
+        e.suffix_assigned.insert(name.to_owned());
+        let name = format!("{}{}", name, suffix);
+        let name = Var::ephemeral_string(&name);
+        shard.0.set_parameter(0, name);
+      }
+      _ => {
+        let name = Var::ephemeral_string(name);
+        shard.0.set_parameter(0, name);
+      }
+    }
     shard.0.set_line_info(previous.get_line_info());
     e.previous = Some(shard.0);
     e.shards.push(shard);
@@ -739,22 +941,22 @@ fn eval_assignment(assignment: &Assignment, e: &mut EvalEnv) -> Result<(), Shard
   match assignment {
     Assignment::AssignRef(pipe, name) => {
       eval_pipeline(pipe, e)?;
-      add_assignment_shard("Ref", &name, e);
+      add_assignment_shard("Ref", &name, true, e);
       Ok(())
     }
     Assignment::AssignSet(pipe, name) => {
       eval_pipeline(pipe, e)?;
-      add_assignment_shard("Set", &name, e);
+      add_assignment_shard("Set", &name, true, e);
       Ok(())
     }
     Assignment::AssignUpd(pipe, name) => {
       eval_pipeline(pipe, e)?;
-      add_assignment_shard("Update", &name, e);
+      add_assignment_shard("Update", &name, true, e);
       Ok(())
     }
     Assignment::AssignPush(pipe, name) => {
       eval_pipeline(pipe, e)?;
-      add_assignment_shard("Push", &name, e);
+      add_assignment_shard("Push", &name, true, e);
       Ok(())
     }
   }
@@ -773,7 +975,7 @@ pub fn read(code: &str) -> Result<Sequence, ShardsError> {
 }
 
 pub fn eval(seq: &Sequence, name: &str) -> Result<Wire, ShardsError> {
-  let mut env = eval_sequence(seq, None)?;
+  let mut env = eval_sequence(seq, None, None)?;
   let wire = Wire::default();
   wire.set_name(name);
   finalize_env(&mut env)?;

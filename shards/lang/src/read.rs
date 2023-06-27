@@ -289,8 +289,8 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
         content: BlockContent::Shard(process_function(pair)?),
         line_info: pos.into(),
       }),
-      Rule::BuiltIn => blocks.push(Block {
-        content: BlockContent::BuiltIn(process_function(pair)?),
+      Rule::Func => blocks.push(Block {
+        content: BlockContent::Func(process_function(pair)?),
         line_info: pos.into(),
       }),
       Rule::TakeTable => blocks.push(Block {
@@ -487,6 +487,10 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
     Rule::TakeSeq => {
       let pair = process_take_seq(pair)?;
       Ok(Value::TakeSeq(pair.0, pair.1))
+    }
+    Rule::Func => {
+      let pair = process_function(pair)?;
+      Ok(Value::Func(pair))
     }
     _ => Err(
       (
