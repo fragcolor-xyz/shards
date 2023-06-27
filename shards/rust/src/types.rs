@@ -4400,7 +4400,8 @@ impl IndexMut<usize> for SeqVar {
 }
 
 impl SeqVar {
-  pub fn new() -> SeqVar {
+  #[inline(always)]
+  pub(crate) fn new() -> SeqVar {
     SeqVar {
       0: Var {
         payload: SHVarPayload {
@@ -4418,10 +4419,19 @@ impl SeqVar {
     }
   }
 
+  #[inline(always)]
+  /// Creates a new `SeqVar` that IS NOT DROPPED when it goes out of scope.
+  /// The resulting variable should be wrapped inside a `ClonedVar(v)` or `destroyVar` should be called.
+  pub fn leaking_new() -> SeqVar {
+    Self::new()
+  }
+
+  #[inline(always)]
   pub fn wrap(var: Var) -> SeqVar {
     SeqVar { 0: var }
   }
 
+  #[inline(always)]
   pub fn set_len(&mut self, len: usize) {
     unsafe {
       (*Core).seqResize.unwrap()(
@@ -4431,6 +4441,7 @@ impl SeqVar {
     }
   }
 
+  #[inline(always)]
   pub fn push(&mut self, value: &Var) {
     // we need to clone to own the memory shards side
     let idx = self.len();
@@ -4438,6 +4449,7 @@ impl SeqVar {
     cloneVar(&mut self[idx], &value);
   }
 
+  #[inline(always)]
   pub fn insert(&mut self, index: usize, value: &Var) {
     // we need to clone to own the memory shards side
     let mut tmp = SHVar::default();
@@ -4451,6 +4463,7 @@ impl SeqVar {
     }
   }
 
+  #[inline(always)]
   pub fn len(&self) -> usize {
     unsafe {
       self
@@ -4464,10 +4477,12 @@ impl SeqVar {
     }
   }
 
+  #[inline(always)]
   pub fn is_empty(&self) -> bool {
     self.len() == 0
   }
 
+  #[inline(always)]
   pub fn pop(&mut self) -> Option<ClonedVar> {
     unsafe {
       if !self.is_empty() {
@@ -4481,6 +4496,7 @@ impl SeqVar {
     }
   }
 
+  #[inline(always)]
   pub fn remove(&mut self, index: usize) {
     unsafe {
       (*Core).seqSlowDelete.unwrap()(
@@ -4490,6 +4506,7 @@ impl SeqVar {
     }
   }
 
+  #[inline(always)]
   pub fn remove_fast(&mut self, index: usize) {
     unsafe {
       (*Core).seqFastDelete.unwrap()(
@@ -4499,6 +4516,7 @@ impl SeqVar {
     }
   }
 
+  #[inline(always)]
   pub fn clear(&mut self) {
     unsafe {
       (*Core).seqResize.unwrap()(
@@ -4508,6 +4526,7 @@ impl SeqVar {
     }
   }
 
+  #[inline(always)]
   pub fn iter(&self) -> SeqVarIterator {
     SeqVarIterator { s: self, i: 0 }
   }
@@ -4768,7 +4787,8 @@ impl TryFrom<&Var> for Seq {
 pub struct TableVar(pub Var);
 
 impl TableVar {
-  pub fn new() -> TableVar {
+  #[inline(always)]
+  pub(crate) fn new() -> TableVar {
     TableVar(Var {
       valueType: SHType_Table,
       payload: SHVarPayload {
@@ -4780,6 +4800,14 @@ impl TableVar {
     })
   }
 
+  /// Creates a new `SeqVar` that IS NOT DROPPED when it goes out of scope.
+  /// The resulting variable should be wrapped inside a `ClonedVar(v)` or `destroyVar` should be called.
+  #[inline(always)]
+  pub fn leaking_new() -> TableVar {
+    Self::new()
+  }
+
+  #[inline(always)]
   pub fn insert(&mut self, k: Var, v: &Var) -> Option<Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
@@ -4796,6 +4824,7 @@ impl TableVar {
     }
   }
 
+  #[inline(always)]
   pub fn insert_fast(&mut self, k: Var, v: &Var) {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
@@ -4804,6 +4833,7 @@ impl TableVar {
     }
   }
 
+  #[inline(always)]
   pub fn insert_fast_static(&mut self, k: &str, v: &Var) {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
@@ -4813,6 +4843,7 @@ impl TableVar {
     }
   }
 
+  #[inline(always)]
   pub fn get_mut(&self, k: Var) -> Option<&mut Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
@@ -4825,6 +4856,7 @@ impl TableVar {
     }
   }
 
+  #[inline(always)]
   pub fn get_mut_fast(&mut self, k: Var) -> &mut Var {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
@@ -4832,6 +4864,7 @@ impl TableVar {
     }
   }
 
+  #[inline(always)]
   pub fn get_mut_fast_static(&mut self, k: &'static str) -> &mut Var {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
@@ -4840,6 +4873,7 @@ impl TableVar {
     }
   }
 
+  #[inline(always)]
   pub fn get(&self, k: Var) -> Option<&Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
@@ -4852,6 +4886,7 @@ impl TableVar {
     }
   }
 
+  #[inline(always)]
   pub fn get_static(&self, k: &'static str) -> Option<&Var> {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
@@ -4865,6 +4900,7 @@ impl TableVar {
     }
   }
 
+  #[inline(always)]
   pub fn get_fast_static(&self, k: &'static str) -> &Var {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
@@ -4873,6 +4909,7 @@ impl TableVar {
     }
   }
 
+  #[inline(always)]
   pub fn len(&self) -> usize {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
@@ -4880,6 +4917,7 @@ impl TableVar {
     }
   }
 
+  #[inline(always)]
   pub fn iter(&self) -> TableIterator {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;

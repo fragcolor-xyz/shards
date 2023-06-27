@@ -1675,4 +1675,24 @@ TEST_CASE("shards-lang") {
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
   }
+
+  SECTION("Test @shards 1") {
+    auto code = R"(
+      @shards(group1 [n] {
+        {n = n1} ; this will be made unique internally!
+        Log | Math.Add(n1) | Log
+      })
+      2 | @group1(1) | Assert.Is(3)
+      3 | @group1(2) | Assert.Is(5)
+    )";
+    auto seq = shards_read(code); // Enums can't be used like this
+    REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
+    auto wire = shards_eval(seq.ast, "root");
+    REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+  }
 }

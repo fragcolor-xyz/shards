@@ -99,6 +99,7 @@ pub enum Value {
   Expr(Sequence),
   TakeTable(String, Vec<String>),
   TakeSeq(String, Vec<u32>),
+  Func(Function),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -122,7 +123,7 @@ pub enum BlockContent {
   TakeSeq(String, Vec<u32>),      // Rule: TakeSeq
   EvalExpr(Sequence),             // Rule: EvalExpr
   Expr(Sequence),                 // Rule: Expr
-  BuiltIn(Function),              // Rule: BuiltIn
+  Func(Function),              // Rule: BuiltIn
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

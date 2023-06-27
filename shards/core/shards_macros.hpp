@@ -174,39 +174,43 @@
 #define RUNTIME_SHARD_parameters(_name_) \
   result->parameters =                   \
       static_cast<SHParametersProc>([](Shard *shard) { return reinterpret_cast<_name_##Runtime *>(shard)->core.parameters(); });
-#define RUNTIME_SHARD_setParam(_name_)                                                             \
-  result->setParam = static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) { \
-    try {                                                                                          \
-      reinterpret_cast<_name_##Runtime *>(shard)->core.setParam(index, *value);                    \
-      return SHError::Success;                                                                     \
-    } catch (std::exception & ex) {                                                                \
-      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(ex.what());                     \
-      return SHError{1, reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()};            \
-    }                                                                                              \
+#define RUNTIME_SHARD_setParam(_name_)                                                                  \
+  result->setParam = static_cast<SHSetParamProc>([](Shard *shard, int index, const SHVar *value) {      \
+    try {                                                                                               \
+      reinterpret_cast<_name_##Runtime *>(shard)->core.setParam(index, *value);                         \
+      return SHError::Success;                                                                          \
+    } catch (std::exception & ex) {                                                                     \
+      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(ex.what());                          \
+      return SHError{1, SHStringWithLen{reinterpret_cast<_name_##Runtime *>(shard)->lastError.data(),   \
+                                        reinterpret_cast<_name_##Runtime *>(shard)->lastError.size()}}; \
+    }                                                                                                   \
   });
 #define RUNTIME_SHARD_getParam(_name_)            \
   result->getParam = static_cast<SHGetParamProc>( \
       [](Shard *shard, int index) { return reinterpret_cast<_name_##Runtime *>(shard)->core.getParam(index); });
 
-#define RUNTIME_SHARD_compose(_name_)                                                                                       \
-  result->compose = static_cast<SHComposeProc>([](Shard *shard, SHInstanceData data) {                                      \
-    try {                                                                                                                   \
-      return SHShardComposeResult{SHError::Success, reinterpret_cast<_name_##Runtime *>(shard)->core.compose(data)};        \
-    } catch (std::exception & e) {                                                                                          \
-      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(e.what());                                               \
-      return SHShardComposeResult{SHError{1, reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()}, SHTypeInfo{}}; \
-    }                                                                                                                       \
+#define RUNTIME_SHARD_compose(_name_)                                                                                        \
+  result->compose = static_cast<SHComposeProc>([](Shard *shard, SHInstanceData data) {                                       \
+    try {                                                                                                                    \
+      return SHShardComposeResult{SHError::Success, reinterpret_cast<_name_##Runtime *>(shard)->core.compose(data)};         \
+    } catch (std::exception & e) {                                                                                           \
+      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(e.what());                                                \
+      return SHShardComposeResult{SHError{1, SHStringWithLen{reinterpret_cast<_name_##Runtime *>(shard)->lastError.data(),   \
+                                                             reinterpret_cast<_name_##Runtime *>(shard)->lastError.size()}}, \
+                                  SHTypeInfo{}};                                                                             \
+    }                                                                                                                        \
   });
 
-#define RUNTIME_SHARD_warmup(_name_)                                                    \
-  result->warmup = static_cast<SHWarmupProc>([](Shard *shard, SHContext *ctx) {         \
-    try {                                                                               \
-      reinterpret_cast<_name_##Runtime *>(shard)->core.warmup(ctx);                     \
-      return SHError::Success;                                                          \
-    } catch (std::exception & ex) {                                                     \
-      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(ex.what());          \
-      return SHError{1, reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()}; \
-    }                                                                                   \
+#define RUNTIME_SHARD_warmup(_name_)                                                                    \
+  result->warmup = static_cast<SHWarmupProc>([](Shard *shard, SHContext *ctx) {                         \
+    try {                                                                                               \
+      reinterpret_cast<_name_##Runtime *>(shard)->core.warmup(ctx);                                     \
+      return SHError::Success;                                                                          \
+    } catch (std::exception & ex) {                                                                     \
+      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(ex.what());                          \
+      return SHError{1, SHStringWithLen{reinterpret_cast<_name_##Runtime *>(shard)->lastError.data(),   \
+                                        reinterpret_cast<_name_##Runtime *>(shard)->lastError.size()}}; \
+    }                                                                                                   \
   });
 
 #define RUNTIME_SHARD_activate(_name_)                                                                      \
@@ -219,15 +223,16 @@
     }                                                                                                       \
   });
 
-#define RUNTIME_SHARD_cleanup(_name_)                                                   \
-  result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) {                       \
-    try {                                                                               \
-      reinterpret_cast<_name_##Runtime *>(shard)->core.cleanup();                       \
-      return SHError::Success;                                                          \
-    } catch (std::exception & ex) {                                                     \
-      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(ex.what());          \
-      return SHError{1, reinterpret_cast<_name_##Runtime *>(shard)->lastError.c_str()}; \
-    }                                                                                   \
+#define RUNTIME_SHARD_cleanup(_name_)                                                                   \
+  result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) {                                       \
+    try {                                                                                               \
+      reinterpret_cast<_name_##Runtime *>(shard)->core.cleanup();                                       \
+      return SHError::Success;                                                                          \
+    } catch (std::exception & ex) {                                                                     \
+      reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(ex.what());                          \
+      return SHError{1, SHStringWithLen{reinterpret_cast<_name_##Runtime *>(shard)->lastError.data(),   \
+                                        reinterpret_cast<_name_##Runtime *>(shard)->lastError.size()}}; \
+    }                                                                                                   \
   });
 
 #define RUNTIME_SHARD_mutate(_name_)          \

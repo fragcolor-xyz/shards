@@ -115,6 +115,7 @@ impl Value {
       Value::Shards(seq) => format!("{{{}}}", seq.to_string()),
       Value::EvalExpr(seq) => format!("#({})", seq.to_string()),
       Value::Expr(seq) => format!("({})", seq.to_string()),
+      Value::Func(func) => format!("@{}", func.to_string()),
     }
   }
 }
@@ -146,7 +147,7 @@ impl BlockContent {
   fn to_string(&self) -> String {
     match self {
       BlockContent::Shard(func) => func.to_string(),
-      BlockContent::BuiltIn(func) => format!("@{}", func.to_string()),
+      BlockContent::Func(func) => format!("@{}", func.to_string()),
       BlockContent::Shards(seq) => format!("{{{}}}", seq.to_string()),
       BlockContent::Const(value) => value.to_string(),
       BlockContent::TakeTable(name, path) => {

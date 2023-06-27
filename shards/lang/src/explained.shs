@@ -68,3 +68,7 @@ seq1:1 | Assert.Is(2)
 Msg("Hello")
 Msg("Hello")
 Msg("Hello")
+
+@const(value 10)
+
+@range(0 5) ; [0 1 2 3 4 5]
