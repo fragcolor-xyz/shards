@@ -93,3 +93,6 @@
 	path = deps/sqlite/cr-sqlite
 	url = https://github.com/shards-lang/cr-sqlite.git
 	branch = shards
+[submodule "deps/libigl"]
+	path = deps/libigl
+	url = https://github.com/libigl/libigl.git

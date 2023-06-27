@@ -20,6 +20,7 @@ add_subdirectory(nameof)
 add_subdirectory(replxx)
 add_subdirectory(spdlog)
 add_subdirectory(sqlite)
+add_subdirectory(libigl)
 
 if(NOT EMSCRIPTEN)
   if(DESKTOP_LINUX)
