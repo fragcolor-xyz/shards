@@ -300,7 +300,7 @@ public:
 
   const char *variableName() const {
     if (isVariable())
-      return _v.payload.stringValue;
+      return _v.payload.stringValue; // should be safe as we clone into, so should have 0 termination
     else
       return nullptr;
   }
@@ -853,7 +853,7 @@ template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHI
     return nullptr;
 
   for (const auto &share : data.shared) {
-    if (!strcmp(share.name, var->payload.stringValue)) {
+    if (!strcmp(share.name, var->payload.stringValue)) { // safe cos ParamVar should be null terminated
       return &share;
     }
   }
@@ -862,7 +862,7 @@ template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHI
 template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
   const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);
   if (!ti)
-    throw ComposeError(fmt::format("Parameter {} not found", var->payload.stringValue));
+    throw ComposeError(fmt::format("Parameter {} not found", var->payload.stringValue));  // safe cos ParamVar should be null terminated
   return *ti;
 }
 

@@ -470,16 +470,18 @@ fn as_var(
         panic!("TakeTable should always return a shard")
       }
     }
-    Value::Func(func) => Err(
-      (
-        format!(
-          "Unsupported function as value or parameter {}",
-          func.name.as_str()
-        ),
-        line_info,
-      )
-        .into(),
-    ),
+    Value::Func(func) => match func.name.as_str() {
+      _ => Err(
+        (
+          format!(
+            "Unsupported function as value or parameter {}",
+            func.name.as_str()
+          ),
+          line_info,
+        )
+          .into(),
+      ),
+    },
   }
 }
 
@@ -698,6 +700,10 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
         Ok(())
       }
       BlockContent::Func(func) => match func.name.as_str() {
+        "ignore" => {
+          // ignore is a special function that does nothing
+          Ok(())
+        }
         "wire" => {
           if let Some(ref params) = func.params {
             // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"

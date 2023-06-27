@@ -408,7 +408,8 @@ struct RenderTargetTextureShard {
     isNameStatic = !_nameVar.isVariable();
     if (isNameStatic) {
       if (_nameVar->valueType == SHType::String) {
-        _name = (const char *)Var(_nameVar.get());
+        auto sv = SHSTRVIEW(_nameVar.get());
+        _name = sv;
       } else {
         _name = "color";
       }
@@ -421,7 +422,8 @@ struct RenderTargetTextureShard {
     auto &renderTarget = varAsObjectChecked<RenderTargetPtr>(input, Types::RenderTarget);
 
     if (!isNameStatic) {
-      _name = (const char *)(Var(_nameVar.get()));
+      auto sv = SHSTRVIEW(_nameVar.get());
+      _name = sv;
     }
 
     texture = renderTarget->getAttachment(_name);

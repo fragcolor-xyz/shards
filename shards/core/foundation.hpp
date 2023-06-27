@@ -1355,7 +1355,8 @@ struct VariableResolver {
 
   void warmup(const SHVar &base, SHVar &slot, SHContext *context) {
     if (base.valueType == SHType::ContextVar) {
-      _refs.emplace_back(referenceVariable(context, base.payload.stringValue));
+      auto sv = SHSTRVIEW(base);
+      _refs.emplace_back(referenceVariable(context, sv));
       _vals.emplace_back(&slot);
     } else if (base.valueType == SHType::Seq) {
       for (uint32_t i = 0; i < base.payload.seqValue.len; i++) {
@@ -1410,7 +1411,7 @@ template <typename T> T &varAsObjectChecked(const SHVar &var, const shards::Type
 inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, const SHVar &var) {
   assert(var.valueType == SHType::ContextVar);
 
-  auto sv = std::string_view(var.payload.stringValue);
+  auto sv = SHSTRVIEW(var);
   for (const auto &entry : exposed) {
     if (sv == entry.name) {
       return entry;
@@ -1424,7 +1425,8 @@ inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
   using namespace std::literals;
   switch (var.valueType) {
   case SHType::ContextVar: {
-    auto sv = std::string_view(var.payload.stringValue);
+
+    auto sv = SHSTRVIEW(var);
     for (const auto &entry : exposed) {
       if (sv == entry.name) {
         out.push_back(SHExposedTypeInfo{

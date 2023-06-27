@@ -633,14 +633,6 @@ struct Var : public SHVar {
     }
   }
 
-  explicit operator const char *() const {
-    if (valueType == SHType::String || valueType == SHType::Path || valueType == SHType::ContextVar) {
-      return payload.stringValue;
-    } else {
-      throw InvalidVarTypeError("Invalid variable casting! expected String/Path/ContextVar");
-    }
-  }
-
   template <typename T> void intoVector(std::vector<T> &outVec) const {
     if (valueType != SHType::Seq) {
       throw InvalidVarTypeError("Invalid variable casting! expected Seq");

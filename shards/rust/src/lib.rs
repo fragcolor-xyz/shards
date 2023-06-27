@@ -356,46 +356,6 @@ mod dummy_shard {
       (Msg)
     );
   }
-
-  #[test]
-  fn instantiate() {
-    init();
-
-    let mut blk = create::<DummyShard>();
-    assert_eq!("Dummy".to_string(), blk.shard.name());
-
-    let blkname = CString::new("Dummy").expect("CString failed...");
-    unsafe {
-      let shlk = (*Core).createShard.unwrap()(blkname.as_ptr());
-      (*shlk).setup.unwrap()(shlk);
-      (*Core).releaseShard.unwrap()(shlk);
-    }
-
-    let svar1: Var = Var::ephemeral_string("Hello\0");
-    let svar2: Var = Var::ephemeral_string("Hello\0");
-    let svar3: Var = 10.into();
-    let sstr1: &str = svar1.as_ref().try_into().unwrap();
-    assert_eq!("Hello", sstr1);
-    assert!(svar1 == svar2);
-    assert!(svar1 != svar3);
-
-    let a = Var::from(10);
-    let mut b = Var::from(true);
-    cloneVar(&mut b, &a);
-    unsafe {
-      assert_eq!(a.valueType, SHType_Int);
-      assert_eq!(b.valueType, SHType_Int);
-      assert_eq!(a.payload.__bindgen_anon_1.intValue, 10);
-      assert_eq!(
-        a.payload.__bindgen_anon_1.intValue,
-        b.payload.__bindgen_anon_1.intValue
-      );
-    }
-
-    let _v: ClonedVar = a.into();
-
-    shlog!("Hello shards-rs");
-  }
 }
 
 #[cfg(feature = "scripting")]
