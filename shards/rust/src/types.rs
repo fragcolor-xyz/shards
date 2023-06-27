@@ -2560,7 +2560,9 @@ impl Var {
     }
   }
 
-  pub fn as_mut_seq(&mut self) -> Result<&mut SeqVar, &str> {
+  /// The returned SeqVar needs to be wrapped in ClonedVar or destroyed with destroyVar or ownership should be delegated to another Var
+  /// SeqVar WON'T call DROP
+  pub fn as_mut_seq_creating(&mut self) -> Result<&mut SeqVar, &str> {
     if self.valueType != SHType_Seq {
       if self.valueType == SHType_None {
         let sv = SeqVar::new();
@@ -2574,6 +2576,14 @@ impl Var {
     }
   }
 
+  pub fn as_mut_seq(&mut self) -> Result<&mut SeqVar, &str> {
+    if self.valueType != SHType_Seq {
+      Err("Variable is not a sequence")
+    } else {
+      Ok(unsafe { &mut *(self as *mut Var as *mut SeqVar) })
+    }
+  }
+
   pub fn as_table(&self) -> Result<&TableVar, &str> {
     if self.valueType != SHType_Table {
       Err("Variable is not a table")
@@ -2582,7 +2592,9 @@ impl Var {
     }
   }
 
-  pub fn as_mut_table(&mut self) -> Result<&mut TableVar, &str> {
+  /// The returned TableVar needs to be wrapped in ClonedVar or destroyed with destroyVar or ownership should be delegated to another Var
+  /// TableVar WON'T call DROP
+  pub fn as_mut_table_creating(&mut self) -> Result<&mut TableVar, &str> {
     if self.valueType != SHType_Table {
       if self.valueType == SHType_None {
         let sv = TableVar::new();
@@ -2591,6 +2603,14 @@ impl Var {
       } else {
         Err("Variable is not a table")
       }
+    } else {
+      Ok(unsafe { &mut *(self as *mut Var as *mut TableVar) })
+    }
+  }
+
+  pub fn as_mut_table(&mut self) -> Result<&mut TableVar, &str> {
+    if self.valueType != SHType_Table {
+      Err("Variable is not a table")
     } else {
       Ok(unsafe { &mut *(self as *mut Var as *mut TableVar) })
     }
