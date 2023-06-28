@@ -48,5 +48,5 @@ jobs:
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/wires-embed-issue.edn &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/network.edn &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/capture-logs.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --leak-check=full ./test-runtime &&\
+          valgrind --exit-on-first-error=no --error-exitcode=1 --leak-check=full ./test-runtime &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/complex-deserialize.edn"

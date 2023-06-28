@@ -1,6 +1,8 @@
 use pest::Position;
 use serde::{Deserialize, Serialize};
 
+use crate::RcStrWrapper;
+
 #[derive(Parser)]
 #[grammar = "shards.pest"]
 pub struct ShardsParser;
@@ -73,17 +75,17 @@ impl<'a> Into<LineInfo> for Position<'a> {
 pub enum Number {
   Integer(i64),
   Float(f64),
-  Hexadecimal(String),
+  Hexadecimal(RcStrWrapper),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Value {
   None,
-  Identifier(String),
+  Identifier(RcStrWrapper),
   Boolean(bool),
-  Enum(String, String),
+  Enum(RcStrWrapper, RcStrWrapper),
   Number(Number),
-  String(String),
+  String(RcStrWrapper),
   Int2([i64; 2]),
   Int3([i32; 3]),
   Int4([i32; 4]),
@@ -97,20 +99,20 @@ pub enum Value {
   Shards(Sequence),
   EvalExpr(Sequence),
   Expr(Sequence),
-  TakeTable(String, Vec<String>),
-  TakeSeq(String, Vec<u32>),
+  TakeTable(RcStrWrapper, Vec<RcStrWrapper>),
+  TakeSeq(RcStrWrapper, Vec<u32>),
   Func(Function),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Param {
-  pub name: Option<String>,
+  pub name: Option<RcStrWrapper>,
   pub value: Value,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Function {
-  pub name: String,
+  pub name: RcStrWrapper,
   pub params: Option<Vec<Param>>,
 }
 
@@ -119,8 +121,8 @@ pub enum BlockContent {
   Shard(Function),                // Rule: Shard
   Shards(Sequence),               // Rule: Shards
   Const(Value),                   // Rules: ConstValue, Vector
-  TakeTable(String, Vec<String>), // Rule: TakeTable
-  TakeSeq(String, Vec<u32>),      // Rule: TakeSeq
+  TakeTable(RcStrWrapper, Vec<RcStrWrapper>), // Rule: TakeTable
+  TakeSeq(RcStrWrapper, Vec<u32>),      // Rule: TakeSeq
   EvalExpr(Sequence),             // Rule: EvalExpr
   Expr(Sequence),                 // Rule: Expr
   Func(Function),              // Rule: BuiltIn
@@ -139,10 +141,10 @@ pub struct Pipeline {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Assignment {
-  AssignRef(Pipeline, String),
-  AssignSet(Pipeline, String),
-  AssignUpd(Pipeline, String),
-  AssignPush(Pipeline, String),
+  AssignRef(Pipeline, RcStrWrapper),
+  AssignSet(Pipeline, RcStrWrapper),
+  AssignUpd(Pipeline, RcStrWrapper),
+  AssignPush(Pipeline, RcStrWrapper),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -154,15 +156,4 @@ pub enum Statement {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sequence {
   pub statements: Vec<Statement>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Program {
-  pub main: Sequence,
-  pub comments: Vec<(String, LineInfo)>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ProgramWithoutComments {
-  pub main: Sequence,
 }

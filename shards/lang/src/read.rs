@@ -1,4 +1,4 @@
-use crate::ast::*;
+use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
 use pest::iterators::Pair;
 #[cfg(test)]
@@ -28,11 +28,12 @@ fn process_assignment(pair: Pair<Rule>) -> Result<Assignment, ShardsError> {
       .next()
       .ok_or(("Expected a Pipeline in Assignment, but found none.", pos).into())?,
   )?;
+
   let identifier = sub_inner
     .next()
     .ok_or(("Expected an identifier in Assignment, but found none.", pos).into())?
-    .as_str()
-    .to_string();
+    .as_str();
+  let identifier = RcStrWrapper::new(identifier);
 
   match sub_rule {
     Rule::AssignRef => Ok(Assignment::AssignRef(pipeline, identifier)),
@@ -195,7 +196,7 @@ fn process_function(pair: Pair<Rule>) -> Result<Function, ShardsError> {
 
   match shard_exp.as_rule() {
     Rule::UppIden | Rule::LowIden => {
-      let shard_name = shard_exp.as_str().to_string();
+      let shard_name = shard_exp.as_str();
       let next = inner.next();
 
       let params = match next {
@@ -210,7 +211,7 @@ fn process_function(pair: Pair<Rule>) -> Result<Function, ShardsError> {
       };
 
       Ok(Function {
-        name: shard_name,
+        name: RcStrWrapper::new(shard_name),
         params,
       })
     }
@@ -224,17 +225,17 @@ fn process_function(pair: Pair<Rule>) -> Result<Function, ShardsError> {
   }
 }
 
-fn process_take_table(pair: Pair<Rule>) -> (String, Vec<String>) {
+fn process_take_table(pair: Pair<Rule>) -> (RcStrWrapper, Vec<RcStrWrapper>) {
   let str_expr = pair.as_str();
   // split by ':'
   let splits: Vec<_> = str_expr.split(':').collect();
   let var_name = splits[0];
-  let keys: Vec<String> = splits[1..].iter().map(|s| s.to_string()).collect();
+  let keys: Vec<RcStrWrapper> = splits[1..].iter().map(|s| (*s).into()).collect();
   // wrap the shards into an Expr Sequence
-  (var_name.to_owned(), keys)
+  (var_name.into(), keys)
 }
 
-fn process_take_seq(pair: Pair<Rule>) -> Result<(String, Vec<u32>), ShardsError> {
+fn process_take_seq(pair: Pair<Rule>) -> Result<(RcStrWrapper, Vec<u32>), ShardsError> {
   let pos = pair.as_span().start_pos();
   // do the same as TakeTable but with a sequence of values where index is an integer int32
   let str_expr = pair.as_str();
@@ -244,7 +245,7 @@ fn process_take_seq(pair: Pair<Rule>) -> Result<(String, Vec<u32>), ShardsError>
   let keys: Result<Vec<u32>, _> = splits[1..].iter().map(|s| s.parse::<u32>()).collect();
   let keys = keys.map_err(|_| ("Failed to parse unsigned index integer", pos).into())?;
   // wrap the shards into an Expr Sequence
-  Ok((var_name.to_owned(), keys))
+  Ok((var_name.into(), keys))
 }
 
 fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
@@ -373,7 +374,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
         Err(("Expected a boolean value", pos).into())
       }
     }
-    Rule::LowIden => Ok(Value::Identifier(pair.as_str().to_string())),
+    Rule::LowIden => Ok(Value::Identifier(pair.as_str().into())),
     Rule::Enum => {
       let text = pair.as_str();
       let splits: Vec<_> = text.split('.').collect();
@@ -382,7 +383,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
       }
       let enum_name = splits[0];
       let variant_name = splits[1];
-      Ok(Value::Enum(enum_name.to_owned(), variant_name.to_owned()))
+      Ok(Value::Enum(enum_name.into(), variant_name.into()))
     }
     Rule::Vector => process_vector(pair),
     Rule::Number => process_number(
@@ -396,14 +397,14 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
       let inner = pair.into_inner().next().unwrap();
       match inner.as_rule() {
         Rule::SimpleString => Ok(Value::String({
-          let full_str = inner.as_str().to_string();
+          let full_str = inner.as_str();
           // remove quotes
-          full_str[1..full_str.len() - 1].to_string()
+          full_str[1..full_str.len() - 1].into()
         })),
         Rule::ComplexString => Ok(Value::String({
-          let full_str = inner.as_str().to_string();
+          let full_str = inner.as_str();
           // remove triple quotes
-          full_str[3..full_str.len() - 3].to_string()
+          full_str[3..full_str.len() - 3].into()
         })),
         _ => unreachable!(),
       }
@@ -439,7 +440,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
             .next()
             .ok_or(("Expected a Table key", pos).into())?;
           let key = match key.as_rule() {
-            Rule::Iden => Value::String(key.as_str().to_string()),
+            Rule::Iden => Value::String(key.as_str().into()),
             Rule::Value => process_value(key.into_inner().next().unwrap())?,
             _ => unreachable!(),
           };
@@ -517,12 +518,7 @@ fn process_number(pair: Pair<Rule>) -> Result<Number, ShardsError> {
         .parse()
         .map_err(|_| ("Failed to parse Float", pos).into())?,
     )),
-    Rule::Hexadecimal => Ok(Number::Hexadecimal(
-      pair
-        .as_str()
-        .parse()
-        .map_err(|_| ("Failed to parse Hexadecimal", pos).into())?,
-    )),
+    Rule::Hexadecimal => Ok(Number::Hexadecimal(pair.as_str().into())),
     _ => Err(("Unexpected rule in Number", pos).into()),
   }
 }
@@ -540,7 +536,7 @@ fn process_param(pair: Pair<Rule>) -> Result<Param, ShardsError> {
   let pos = first.as_span().start_pos();
   let (param_name, param_value) = if first.as_rule() == Rule::ParamName {
     let name = first.as_str();
-    let name = name[0..name.len() - 1].to_string();
+    let name = name[0..name.len() - 1].into();
     let value = process_value(
       inner
         .next()
