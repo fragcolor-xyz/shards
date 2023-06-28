@@ -129,8 +129,8 @@
   (if test-rpcs  ; this one requires --enable-offchain-indexing 1 --rpc-methods=Unsafe
     (-> {"id" 1 "jsonrpc" "2.0" "method" "offchain_localStorageGet" "params" ["PERSISTENT" .offchain-req]} (ToJson) (Http.Post rpc-server)
         (FromJson) (Log)))
-  
-  
+
+
   [1000000] (Substrate.Encode ["c"]) = .compact-num (| (ToHex) (Log))
   .compact-num (Substrate.Decode [Type.Bytes] ["c"]) (Take 0) (ExpectBytes)
   (Substrate.Decode [Type.Int] ["c"]) (Take 0) (ExpectInt) (Log) (Assert.Is 1000000 true)

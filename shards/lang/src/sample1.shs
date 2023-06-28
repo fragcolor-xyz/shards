@@ -31,6 +31,12 @@ Repeat({
   Repeat({ ; shards
     10 | Log
   } Times: 3 Until: #(1))
+
+  10 | If({ ; shards
+    10 | Log
+  } Else: {
+    20 | Log
+  }) | Log
 } Times: 3)
 
 Schedule(root main)
