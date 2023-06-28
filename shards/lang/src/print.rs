@@ -3,7 +3,7 @@ use crate::read::process_program;
 #[cfg(test)]
 use pest::Parser;
 
-use crate::types::*;
+use crate::ast::*;
 
 impl Number {
   fn to_string(&self) -> String {
