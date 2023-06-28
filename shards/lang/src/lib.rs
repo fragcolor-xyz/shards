@@ -2,17 +2,18 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
+mod ast;
 mod print;
 mod read;
-mod ast;
 
-use crate::read::*;
 use crate::ast::*;
+use crate::read::*;
 use core::convert::TryInto;
 use core::slice;
 use nanoid::nanoid;
 use pest::Parser;
 use print::print_ast;
+use serde::de::value;
 use shards::core::cloneVar;
 use shards::core::destroyVar;
 use std::collections::HashMap;
@@ -41,8 +42,8 @@ impl Drop for SShardRef {
 }
 
 struct ShardsGroup {
-  args: Vec<Value>,
-  shards: Sequence,
+  args: *const Vec<Value>,
+  shards: *const Sequence,
 }
 
 struct EvalEnv {
@@ -51,12 +52,12 @@ struct EvalEnv {
   shards: Vec<SShardRef>,
   previous: Option<ShardRef>,
 
-  deferred_wires: HashMap<String, (Wire, Vec<Param>, LineInfo)>, // ideally we should not clone Vec<Param> (Params)
+  deferred_wires: HashMap<String, (Wire, *const Vec<Param>, LineInfo)>,
 
   shards_groups: HashMap<String, ShardsGroup>, // more cloning we don't need...
 
   // used during @shards evaluation, but also by @const
-  replacements: HashMap<String, Value>, // more cloning we don't need...
+  replacements: HashMap<String, *const Value>, // more cloning we don't need...
 
   // used during @shards evaluation
   suffix: Option<String>,
@@ -109,11 +110,11 @@ impl AsMut<Var> for SVar {
 
 fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
   for (name, (wire, params, line_info)) in env.deferred_wires.drain().collect::<Vec<_>>() {
-    wire.set_name(&name);
+    wire.set_name(unsafe { &*name });
     let mut idx = 0;
     let mut as_idx = true;
-    for param in params {
-      if let Some(name) = param.name {
+    for param in unsafe { &*params } {
+      if let Some(name) = &param.name {
         as_idx = false;
         if name == "Looped" {
           wire.set_looped({
@@ -123,7 +124,7 @@ fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
             }
           })
         } else if name == "Shards" {
-          let mut sub_env = match param.value {
+          let mut sub_env = match &param.value {
             Value::Shards(seq) => eval_sequence(&seq, None, Some(env))?,
             _ => return Err(("Shards parameter must be a sequence", line_info).into()),
           };
@@ -142,7 +143,7 @@ fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
 
         if idx == 0 {
         } else if idx == 1 {
-          let mut sub_env = match param.value {
+          let mut sub_env = match &param.value {
             Value::Shards(seq) => eval_sequence(&seq, None, Some(env))?,
             _ => return Err(("Shards parameter must be a sequence", line_info).into()),
           };
@@ -301,6 +302,8 @@ fn find_replacement<'a>(name: &'a str, e: &'a EvalEnv) -> Option<&'a Value> {
   let mut env = e;
   loop {
     if let Some(replacement) = env.replacements.get(name) {
+      let replacement = *replacement;
+      let replacement = unsafe { &*replacement };
       return Some(replacement);
     }
     if let Some(parent) = env.parent {
@@ -678,7 +681,7 @@ fn add_get_shard(name: &str, line: LineInfo, e: &mut EvalEnv) {
 }
 
 /// Recurse into environment and find the replacement for a given @ call name if it exists
-fn find_shards_group<'a>(name: &'a str, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
+fn find_shards_group<'a>(name: &'a String, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
   let mut env = e;
   loop {
     if let Some(group) = env.shards_groups.get(name) {
@@ -781,14 +784,9 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
             match name {
               Some(name_param) => match &name_param.value {
                 Value::String(name) | Value::Identifier(name) => {
-                  e.deferred_wires.insert(
-                    name.clone(),
-                    (
-                      Wire::default(),
-                      func.params.as_ref().unwrap().to_vec(),
-                      block.line_info,
-                    ),
-                  );
+                  let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
+                  e.deferred_wires
+                    .insert(name.clone(), (Wire::default(), params_ptr, block.line_info));
                   Ok(())
                 }
                 _ => Err(
@@ -865,11 +863,13 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                       Value::Seq(args),
                       Value::Shards(shards),
                     ) => {
+                      let args_ptr = args as *const _;
+                      let shards_ptr = shards as *const _;
                       e.shards_groups.insert(
-                        name.to_owned(),
+                        name.clone(),
                         ShardsGroup {
-                          args: args.clone(),
-                          shards: shards.clone(),
+                          args: args_ptr,
+                          shards: shards_ptr,
                         },
                       );
                       Ok(())
@@ -904,14 +904,17 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
         }
         unknown => {
           let mut shards_env = {
-            if let Some(group) = find_shards_group(unknown, e) {
-              if group.args.len() != func.params.as_ref().unwrap().len() {
+            if let Some(group) = find_shards_group(&func.name, e) {
+              let args = unsafe { &*group.args };
+              let shards = unsafe { &*group.shards };
+
+              if args.len() != func.params.as_ref().unwrap().len() {
                 return Err(
                   (
                     format!(
                       "Shards template {} requires {} parameters",
                       unknown,
-                      group.args.len()
+                      args.len()
                     ),
                     block.line_info,
                   )
@@ -925,8 +928,8 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               // set a random suffix
               sub_env.suffix = Some(nanoid!(16));
 
-              for i in 0..group.args.len() {
-                let arg = &group.args[i];
+              for i in 0..args.len() {
+                let arg = &args[i];
                 // arg has to be Identifier
                 let arg = match arg {
                   Value::Identifier(arg) => arg,
@@ -958,12 +961,11 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 }
 
                 // and add new replacement
-                sub_env
-                  .replacements
-                  .insert(arg.to_owned(), param.value.clone());
+                let value_ptr = &param.value as *const _;
+                sub_env.replacements.insert(arg.to_owned(), value_ptr);
               }
 
-              for stmt in &group.shards.statements {
+              for stmt in &shards.statements {
                 eval_statement(stmt, &mut sub_env)?;
               }
 
