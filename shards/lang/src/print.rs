@@ -1,9 +1,14 @@
+use std::char::MAX;
+
 #[cfg(test)]
 use crate::read::process_program;
 #[cfg(test)]
 use pest::Parser;
 
 use crate::ast::*;
+
+const INDENT_LENGTH: usize = 2;
+const MAX_SHARDS_SEQUENCE_LENGTH: usize = 6;
 
 impl Number {
   fn to_string(&self) -> String {
@@ -31,8 +36,24 @@ fn format_f32(f: f32) -> String {
   }
 }
 
+struct Context {
+  indent: usize,
+  max_line_length: usize,
+  previous: Option<*const Context>,
+}
+
+impl Default for Context {
+  fn default() -> Self {
+    Context {
+      indent: 0,
+      max_line_length: 40,
+      previous: None,
+    }
+  }
+}
+
 impl Value {
-  fn to_string(&self) -> String {
+  fn to_string(&self, context: &mut Context) -> String {
     match self {
       Value::None => String::from("none"),
       Value::Identifier(s) => s.clone(),
@@ -64,7 +85,7 @@ impl Value {
       Value::Seq(values) => {
         let values_str = values
           .iter()
-          .map(|v| v.to_string())
+          .map(|v| v.to_string(context))
           .collect::<Vec<String>>()
           .join(" ");
         format!("[{}]", values_str)
@@ -107,32 +128,32 @@ impl Value {
       Value::Table(values) => {
         let values_str = values
           .iter()
-          .map(|(k, v)| format!("{}: {}", k.to_string(), v.to_string()))
+          .map(|(k, v)| format!("{}: {}", k.to_string(context), v.to_string(context)))
           .collect::<Vec<String>>()
           .join(" ");
         format!("{{{}}}", values_str)
       }
-      Value::Shards(seq) => format!("{{{}}}", seq.to_string()),
-      Value::EvalExpr(seq) => format!("#({})", seq.to_string()),
-      Value::Expr(seq) => format!("({})", seq.to_string()),
-      Value::Func(func) => format!("@{}", func.to_string()),
+      Value::Shards(seq) => format!("{{{}}}", seq.to_string(context)),
+      Value::EvalExpr(seq) => format!("#({})", seq.to_string(context)),
+      Value::Expr(seq) => format!("({})", seq.to_string(context)),
+      Value::Func(func) => format!("@{}", func.to_string(context)),
     }
   }
 }
 
 impl Param {
-  fn to_string(&self) -> String {
+  fn to_string(&self, context: &mut Context) -> String {
     match &self.name {
-      Some(name) => format!("{}: {}", name, self.value.to_string()),
-      None => self.value.to_string(),
+      Some(name) => format!("{}: {}", name, self.value.to_string(context)),
+      None => self.value.to_string(context),
     }
   }
 }
 
 impl Function {
-  fn to_string(&self) -> String {
+  fn to_string(&self, context: &mut Context) -> String {
     let params: Vec<String> = match &self.params {
-      Some(params) => params.iter().map(|p| p.to_string()).collect(),
+      Some(params) => params.iter().map(|p| p.to_string(context)).collect(),
       None => vec![],
     };
     if params.is_empty() {
@@ -144,12 +165,12 @@ impl Function {
 }
 
 impl BlockContent {
-  fn to_string(&self) -> String {
+  fn to_string(&self, context: &mut Context) -> String {
     match self {
-      BlockContent::Shard(func) => func.to_string(),
-      BlockContent::Func(func) => format!("@{}", func.to_string()),
-      BlockContent::Shards(seq) => format!("{{{}}}", seq.to_string()),
-      BlockContent::Const(value) => value.to_string(),
+      BlockContent::Shard(func) => func.to_string(context),
+      BlockContent::Func(func) => format!("@{}", func.to_string(context)),
+      BlockContent::Shards(seq) => format!("{{{}}}", seq.to_string(context)),
+      BlockContent::Const(value) => value.to_string(context),
       BlockContent::TakeTable(name, path) => {
         let path = path.join(":");
         format!("{}:{}", name, path)
@@ -162,24 +183,24 @@ impl BlockContent {
           .join(":");
         format!("{}:{}", name, path_str)
       }
-      BlockContent::EvalExpr(seq) => format!("#({})", seq.to_string()),
-      BlockContent::Expr(seq) => format!("({})", seq.to_string()),
+      BlockContent::EvalExpr(seq) => format!("#({})", seq.to_string(context)),
+      BlockContent::Expr(seq) => format!("({})", seq.to_string(context)),
     }
   }
 }
 
 impl Block {
-  fn to_string(&self) -> String {
-    self.content.to_string()
+  fn to_string(&self, context: &mut Context) -> String {
+    self.content.to_string(context)
   }
 }
 
 impl Pipeline {
-  fn to_string(&self) -> String {
+  fn to_string(&self, context: &mut Context) -> String {
     let blocks_str = self
       .blocks
       .iter()
-      .map(|b| b.to_string())
+      .map(|b| b.to_string(context))
       .collect::<Vec<String>>()
       .join(" | ");
     format!("{}", blocks_str)
@@ -187,44 +208,75 @@ impl Pipeline {
 }
 
 impl Assignment {
-  fn to_string(&self) -> String {
+  fn to_string(&self, context: &mut Context) -> String {
     match self {
-      Assignment::AssignRef(pipeline, name) => format!("{} = {}", pipeline.to_string(), name),
-      Assignment::AssignSet(pipeline, name) => format!("{} >= {}", pipeline.to_string(), name),
-      Assignment::AssignUpd(pipeline, name) => format!("{} > {}", pipeline.to_string(), name),
-      Assignment::AssignPush(pipeline, name) => format!("{} >> {}", pipeline.to_string(), name),
+      Assignment::AssignRef(pipeline, name) => {
+        format!("{} = {}", pipeline.to_string(context), name)
+      }
+      Assignment::AssignSet(pipeline, name) => {
+        format!("{} >= {}", pipeline.to_string(context), name)
+      }
+      Assignment::AssignUpd(pipeline, name) => {
+        format!("{} > {}", pipeline.to_string(context), name)
+      }
+      Assignment::AssignPush(pipeline, name) => {
+        format!("{} >> {}", pipeline.to_string(context), name)
+      }
     }
   }
 }
 
 impl Statement {
-  fn to_string(&self) -> String {
+  fn to_string(&self, context: &mut Context) -> String {
     match self {
-      Statement::Assignment(assign) => assign.to_string(),
-      Statement::Pipeline(pipeline) => pipeline.to_string(),
+      Statement::Assignment(assign) => assign.to_string(context),
+      Statement::Pipeline(pipeline) => pipeline.to_string(context),
     }
   }
 }
 
 impl Sequence {
-  fn to_string(&self) -> String {
+  fn to_string(&self, context: &mut Context) -> String {
+    let mut inner_context = Context::default();
+    inner_context.previous = Some(context);
+    if self.statements.len() > 1 && context.previous.is_some() {
+      inner_context.indent = context.indent + INDENT_LENGTH;
+    }
+
     let statements_str = self
       .statements
       .iter()
-      .map(|s| s.to_string())
+      .map(|s| s.to_string(&mut inner_context))
       .collect::<Vec<String>>()
       .join("\n");
-    format!("{}", statements_str)
+
+    let indent_str = " ".repeat(inner_context.indent);
+    let new_line = if inner_context.indent > 0 { "\n" } else { "" };
+    let indented_blocks_str = statements_str.replace("\n", &format!("\n{}", indent_str));
+    format!(
+      "{}{}{}{}",
+      new_line, indent_str, indented_blocks_str, new_line
+    )
   }
 }
 
 pub fn print_ast(ast: &Sequence) -> String {
-  ast.to_string()
+  let mut context = Context::default();
+  ast.to_string(&mut context)
 }
 
 #[test]
 fn test_print1() {
   let code = include_str!("sample1.shs");
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let seq = process_program(successful_parse.into_iter().next().unwrap()).unwrap();
+  let s = print_ast(&seq);
+  println!("{}", s);
+}
+
+#[test]
+fn test_print2() {
+  let code = include_str!("explained.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
   let seq = process_program(successful_parse.into_iter().next().unwrap()).unwrap();
   let s = print_ast(&seq);

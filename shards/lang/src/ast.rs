@@ -155,3 +155,14 @@ pub enum Statement {
 pub struct Sequence {
   pub statements: Vec<Statement>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Program {
+  pub main: Sequence,
+  pub comments: Vec<(String, LineInfo)>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ProgramWithoutComments {
+  pub main: Sequence,
+}
