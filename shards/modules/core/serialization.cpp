@@ -56,7 +56,7 @@ struct FileBase {
     if (ctxFile.valueType != SHType::String)
       return false;
 
-    filename = ctxFile.payload.stringValue;
+    filename = SHSTRVIEW(ctxFile);
     _currentFileName = _filename.get();
 
     // if absolute we are fine to begin with

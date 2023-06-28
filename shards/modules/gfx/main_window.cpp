@@ -62,7 +62,7 @@ struct MainWindow final {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _title = value.payload.stringValue;
+      _title = SHSTRVIEW(value);
       break;
     case 1:
       _pwidth = int(value.payload.intValue);

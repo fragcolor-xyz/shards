@@ -34,7 +34,7 @@ template <typename TShard, typename TOp> struct BinaryOperatorTranslator {
 
     SHVar varB = shard->_operand;
     if (varB.valueType == SHType::ContextVar) {
-      operandB = std::make_unique<WGSLBlock>(context.reference(varB.payload.stringValue));
+      operandB = std::make_unique<WGSLBlock>(context.reference(varB.payload.stringValue)); // should be safe as operand is cloned
     } else {
       operandB = translateConst(varB, context);
     }

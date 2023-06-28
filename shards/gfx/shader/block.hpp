@@ -23,6 +23,7 @@ struct Direct : public Block {
   String code;
 
   Direct(const char *code) : code(code) {}
+  Direct(std::string_view code) : code(code) {}
   Direct(const String &code) : code(code) {}
   Direct(String &&code) : code(code) {}
   void apply(IGeneratorContext &context) const;
@@ -32,6 +33,7 @@ struct Direct : public Block {
 struct ConvertibleToBlock {
   UniquePtr<Block> block;
   ConvertibleToBlock(const char *str) { block = std::make_unique<Direct>(str); }
+  ConvertibleToBlock(std::string_view str) { block = std::make_unique<Direct>(str); }
   ConvertibleToBlock(const std::string &str) { block = std::make_unique<Direct>(str); }
   ConvertibleToBlock(std::string &&str) { block = std::make_unique<Direct>(std::move(str)); }
   ConvertibleToBlock(BlockPtr &&block) : block(std::move(block)) {}

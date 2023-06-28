@@ -31,7 +31,7 @@ struct Log : public LoggingBase {
   void setParam(int index, const SHVar &inValue) {
     switch (index) {
     case 0:
-      _prefix = inValue.payload.stringValue;
+      _prefix = SHSTRVIEW(inValue);
       break;
     case 1:
       _level = Enums::LogLevel(inValue.payload.enumValue);
@@ -192,13 +192,13 @@ struct CaptureLog {
       _n_items = size_t(value.payload.intValue);
       break;
     case 1:
-      _min_level = value.payload.stringValue;
+      _min_level = SHSTRVIEW(value);
       break;
     case 2:
-      _pattern = value.payload.stringValue;
+      _pattern = SHSTRVIEW(value);
       break;
     case 3:
-      _suspend = value.payload.stringValue;
+      _suspend = value.payload.boolValue;
       break;
     default:
       break;

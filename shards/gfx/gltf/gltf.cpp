@@ -594,16 +594,15 @@ template <typename T> glTF load(T loader) {
   return result;
 }
 
-static inline bool isPossiblyText(const char *inFilepath) {
-  fs::path filepath(inFilepath);
-  const auto &ext = filepath.extension();
+static inline bool isPossiblyText(const fs::path &inFilepath) {
+  const auto &ext = inFilepath.extension();
   return ext == ".gltf" || ext == ".json" || ext == ".txt";
 }
 
-glTF loadGltfFromFile(const char *inFilepath) {
+glTF loadGltfFromFile(std::string_view inFilepath) {
   tinygltf::TinyGLTF context;
   auto loader = [&](tinygltf::Model &model) {
-    fs::path filepath(inFilepath);
+    fs::path filepath((std::string(inFilepath)));
 
     if (!fs::exists(filepath)) {
       throw formatException("glTF model file \"{}\" does not exist", filepath.string());
@@ -612,7 +611,7 @@ glTF loadGltfFromFile(const char *inFilepath) {
     std::string err;
     std::string warn;
     bool success{};
-    if (isPossiblyText(inFilepath)) {
+    if (isPossiblyText(filepath)) {
       success = context.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
     } else {
       success = context.LoadBinaryFromFile(&model, &err, &warn, filepath.string());

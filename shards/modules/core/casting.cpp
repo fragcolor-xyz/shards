@@ -265,7 +265,7 @@ struct VarAddr {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto v = referenceVariable(context, input.payload.stringValue);
+    auto v = referenceVariable(context, SHSTRVIEW(input));
     auto res = Var(reinterpret_cast<int64_t>(v));
     releaseVariable(v);
     return res;
@@ -390,7 +390,7 @@ struct Expect {
   void cleanup() { PARAM_CLEANUP(); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if(_type->valueType != SHType::Type) {
+    if (_type->valueType != SHType::Type) {
       throw std::logic_error("Expect shard type parameter must be a set");
     }
 
@@ -451,7 +451,7 @@ struct ExpectLike {
     if (_typeOf.isVariable()) {
       auto type = findExposedVariable(data.shared, _typeOf);
       if (!type.has_value())
-        throw ComposeError(fmt::format("Can not derive type of variable {}, it was not found", _typeOf->payload.stringValue));
+        throw ComposeError(fmt::format("Can not derive type of variable {}, it was not found", SHSTRVIEW((*_typeOf))));
       _expectedType = type->exposedType;
     } else if (_typeOf.isNotNullConstant()) {
       clearDerived();

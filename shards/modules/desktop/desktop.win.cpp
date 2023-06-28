@@ -352,7 +352,7 @@ struct PixelBase {
     switch (index) {
     case 0:
       if (value.valueType == SHType::ContextVar) {
-        variableName = value.payload.stringValue;
+        variableName = SHSTRVIEW(value);
         exposedInfo = ExposedInfo(
             ExposedInfo::Variable(variableName.c_str(), SHCCSTR("The window to use as origin."), Globals::windowType));
       } else {
@@ -375,6 +375,7 @@ struct PixelBase {
         SHVar v{};
         v.valueType = SHType::ContextVar;
         v.payload.stringValue = variableName.c_str();
+        v.payload.stringLen = variableName.size();
         return v;
       }
     default:

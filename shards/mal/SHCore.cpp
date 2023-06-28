@@ -1001,6 +1001,7 @@ std::vector<malShardPtr> shardify(const malValuePtr &arg) {
     strVar.valueType = SHType::String;
     auto &s = v->ref();
     strVar.payload.stringValue = s.c_str();
+    strVar.payload.stringLen = s.size();
     WRAP_TO_CONST(strVar);
   } else if (const malNumber *v = DYNAMIC_CAST(malNumber, arg)) {
     auto value = v->value();
@@ -1089,6 +1090,7 @@ malSHVarPtr varify(const malValuePtr &arg, bool consumeShard) {
     SHVar var{};
     var.valueType = SHType::String;
     var.payload.stringValue = s.c_str();
+    var.payload.stringLen = s.size();
     // notice, we don't clone in this case
     auto svar = new malSHVar(var, false);
     svar->reference(v);
@@ -1381,8 +1383,8 @@ std::vector<malShardPtr> wireify(malValueIter begin, malValueIter end) {
     if (auto *v = DYNAMIC_CAST(malSHVar, next)) {
       if (v->value().valueType == SHType::ContextVar) {
         if (state == Get) {
-          std::string fullVar(v->value().payload.stringValue, v->value().payload.stringLen);
-
+          auto sv = SHSTRVIEW(v->value());
+          std::string fullVar(sv);
           std::vector<std::string> components;
           std::string component;
           std::istringstream input_stream(fullVar);
@@ -1593,12 +1595,16 @@ SHVar shards::EdnEval::activate(SHContext *context, const SHVar &input) {
 
   auto p = prefix.get();
   if (p.valueType == SHType::String) {
-    malEnv::setPrefix(p.payload.stringValue);
+    auto sv = SHSTRVIEW(p);
+    std::string s(sv.data(), sv.size());
+    malEnv::setPrefix(s);
   }
   DEFER(malEnv::unsetPrefix());
 
   try {
-    auto malRes = EVAL(READ(input.payload.stringValue), env);
+    auto sv = SHSTRVIEW(input);
+    std::string s(sv);
+    auto malRes = EVAL(READ(s), env);
     auto malVar = varify(malRes);
     output = malVar->value();
   } catch (const MalString &exStr) {
@@ -1675,7 +1681,8 @@ static malValuePtr readVar(const SHVar &v) {
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
       assert(k.valueType == SHType::String && "Table key is not a string");
-      MalString ks(k.payload.stringValue, k.payload.stringLen);
+      auto sv = SHSTRVIEW(k);
+      MalString ks(sv);
       map[escape(ks)] = readVar(v);
     }
     return mal::hash(map);
@@ -2051,6 +2058,7 @@ BUILTIN("path") {
   SHVar var{};
   var.valueType = SHType::Path;
   var.payload.stringValue = s.c_str();
+  var.payload.stringLen = s.size();
   auto mvar = new malSHVar(var, false);
   mvar->reference(value);
   return malValuePtr(mvar);
@@ -2076,6 +2084,7 @@ BUILTIN("string") {
   var.valueType = SHType::String;
   auto &s = value->ref();
   var.payload.stringValue = s.c_str();
+  var.payload.stringLen = s.size();
   auto mvar = new malSHVar(var, false);
   mvar->reference(value);
   return malValuePtr(mvar);
@@ -2481,10 +2490,12 @@ BUILTIN("shard-info") {
       {
         std::ostringstream ss;
         auto param = shard->getParam(shard, (int)i);
-        if (param.valueType == SHType::String)
-          ss << "\"" << param.payload.stringValue << "\"";
-        else
+        if (param.valueType == SHType::String) {
+          auto sv = SHSTRVIEW(param);
+          ss << "\"" << sv << "\"";
+        } else {
           ss << param;
+        }
         pmap[":default"] = mal::string(ss.str());
       }
       pvec.emplace_back(mal::hash(pmap));
@@ -2509,7 +2520,8 @@ BUILTIN("shard-info") {
         malHash::Map pmap;
         ForEach(*properties, [&](auto &key, auto &val) {
           assert(key.valueType == SHType::String && "property key is not a string");
-          MalString ks(key.payload.stringValue, key.payload.stringLen);
+          auto sv = SHSTRVIEW(key);
+          MalString ks(sv);
           pmap[escape(ks)] = readVar(val);
         });
         map[":properties"] = mal::hash(pmap);

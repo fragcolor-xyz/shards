@@ -70,7 +70,7 @@ struct JointOp {
 
   void warmup(SHContext *context) {
     if (!_input) {
-      _input = referenceVariable(context, _inputVar.payload.stringValue);
+      _input = referenceVariable(context, SHSTRVIEW(_inputVar));
     }
   }
 
@@ -80,7 +80,7 @@ struct JointOp {
       if (_multiSortColumns.size() == 0) {
         if (_columns.valueType == SHType::Seq) {
           for (const auto &col : _columns) {
-            auto target = referenceVariable(context, col.payload.stringValue);
+            auto target = referenceVariable(context, SHSTRVIEW(col));
             if (target && target->valueType == SHType::Seq) {
               auto mseqLen = target->payload.seqValue.len;
               if (len != mseqLen) {
@@ -91,7 +91,7 @@ struct JointOp {
             }
           }
         } else if (_columns.valueType == SHType::ContextVar) { // normal single context var
-          auto target = referenceVariable(context, _columns.payload.stringValue);
+          auto target = referenceVariable(context, SHSTRVIEW(_columns));
           if (target && target->valueType == SHType::Seq) {
             auto mseqLen = target->payload.seqValue.len;
             if (len != mseqLen) {
@@ -190,7 +190,8 @@ struct Sort : public ActionJointOp {
 
     SHExposedTypeInfo info{};
     for (auto &reference : data.shared) {
-      if (strcmp(reference.name, _inputVar.payload.stringValue) == 0) {
+      std::string_view name(reference.name);
+      if (name == SHSTRVIEW(_inputVar)) {
         info = reference;
         goto found;
       }
@@ -356,7 +357,8 @@ struct Remove : public ActionJointOp {
 
     SHExposedTypeInfo info{};
     for (auto &reference : data.shared) {
-      if (strcmp(reference.name, _inputVar.payload.stringValue) == 0) {
+      std::string_view name(reference.name);
+      if (name == SHSTRVIEW(_inputVar)) {
         info = reference;
         goto found;
       }
@@ -445,7 +447,7 @@ struct Profile {
       _shards = value;
       break;
     case 1:
-      _label = value.payload.stringValue;
+      _label = SHSTRVIEW(value);
       break;
     default:
       break;
@@ -934,7 +936,7 @@ struct Erase : SeqUser {
       valid = true;
     } else { // SHType::ContextVar
       for (auto &info : data.shared) {
-        if (strcmp(info.name, _indices->payload.stringValue) == 0) {
+        if (info.name == SHSTRVIEW((*_indices))) {
           if (info.exposedType.basicType == SHType::Seq && info.exposedType.seqTypes.len == 1 &&
               ((info.exposedType.seqTypes.elements[0].basicType == SHType::Int && !isTable) ||
                (info.exposedType.seqTypes.elements[0].basicType == SHType::String && isTable))) {

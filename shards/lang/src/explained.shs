@@ -71,8 +71,6 @@ Msg("Hello")
 
 @const(value 10)
 
-@range(0 5) ; [0 1 2 3 4 5]
-
 @shards(range [from to] {
   [] = s
   from >= n

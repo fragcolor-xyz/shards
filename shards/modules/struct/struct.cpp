@@ -112,7 +112,7 @@ struct StructBase {
   size_t _size;
 
   void setParam(int index, const SHVar &value) {
-    _def = value.payload.stringValue;
+    _def = SHSTRVIEW(value);
 
     // compile members
     _members.clear();
@@ -294,7 +294,7 @@ struct Pack : public StructBase {
         break;
       case Tags::String:
         ensureType(seq.elements[idx], SHType::String);
-        write<const char *>(seq.elements[idx].payload.stringValue, member.offset);
+        write<const char *>(seq.elements[idx].payload.stringValue, member.offset); // just writing a pointer
       }
       idx++;
     }
@@ -456,7 +456,7 @@ struct Unpack : public StructBase {
         read<uintptr_t>(_output.elements[idx].payload.intValue, input, member.offset);
         break;
       case Tags::String:
-        read<const char *>(_output.elements[idx].payload.stringValue, input, member.offset);
+        read<const char *>(_output.elements[idx].payload.stringValue, input, member.offset); // just reading a pointer
         break;
       }
       idx++;

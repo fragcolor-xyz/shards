@@ -28,7 +28,7 @@ template <Type &OUTTYPE, SHType SHTYPE> struct Rand : public RandBase {
   void warmup(SHContext *context) { _max.warmup(context); }
 
   SHExposedTypesInfo requiredVariables() {
-    SHVar variable = _max;
+    SHVar variable = _max; // ParamVar
     if (variable.valueType == SHType::ContextVar) {
       _requiredInfo =
           ExposedInfo(ExposedInfo::Variable(variable.payload.stringValue, SHCCSTR("The required variable."), OUTTYPE));

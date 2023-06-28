@@ -1100,13 +1100,13 @@ struct Run {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _moduleName = value.payload.stringValue;
+      _moduleName = SHSTRVIEW(value);
       break;
     case 1:
       _arguments = value;
       break;
     case 2:
-      _entryPoint = value.payload.stringValue;
+      _entryPoint = SHSTRVIEW(value);
       break;
     case 3:
       _stackSize = size_t(value.payload.intValue * 1024);
@@ -1233,7 +1233,7 @@ struct Run {
             if (argsVar.valueType == SHType::Seq) {
               for (auto &arg : argsVar) {
                 if (arg.payload.stringLen > 0) {
-                  _argsArray.emplace_back(arg.payload.stringValue);
+                  _argsArray.emplace_back(arg.payload.stringValue); // should be safe cos ParamVar
                 } else {
                   // if really empty likely it's an error
                   if (strlen(arg.payload.stringValue) == 0) {
@@ -1306,7 +1306,6 @@ struct Run {
         });
   }
 };
-
 
 } // namespace Wasm
 SHARDS_REGISTER_FN(wasm) { REGISTER_SHARD("Wasm.Run", Wasm::Run); }

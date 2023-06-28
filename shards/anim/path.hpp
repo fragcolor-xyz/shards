@@ -1,8 +1,7 @@
 #ifndef CA26CBD3_868D_4C65_B50F_82E471917DB3
 #define CA26CBD3_868D_4C65_B50F_82E471917DB3
 
-#include <shards/shards.h>
-#include <shards/shards.hpp>
+#include <shards/utility.hpp>
 
 namespace shards::Animations {
 struct Path {
@@ -26,10 +25,11 @@ struct Path {
   operator bool() const { return length > 0; }
 
   // Gets the head path component
-  const char *getHead() const {
+  std::string_view getHead() const {
     assert(*this);
     assert(first->valueType == SHType::String);
-    return first->payload.stringValue;
+    auto sv = SHSTRVIEW((*first));
+    return sv;
   }
 };
 } // namespace shards::Animations

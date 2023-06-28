@@ -127,14 +127,14 @@ struct BinaryBase : public Base {
       bool variableFound = false;
       for (uint32_t i = 0; i < data.shared.len; i++) {
         // normal variable
-        if (strcmp(data.shared.elements[i].name, operandSpec.payload.stringValue) == 0) {
+        if (data.shared.elements[i].name == SHSTRVIEW(operandSpec)) {
           _opType = validator.validateTypes(data.inputType, data.shared.elements[i].exposedType.basicType, resultType);
           variableFound = true;
           break;
         }
       }
       if (!variableFound)
-        throw ComposeError(fmt::format("Operand variable {} not found", operandSpec.payload.stringValue));
+        throw ComposeError(fmt::format("Operand variable {} not found", SHSTRVIEW(operandSpec)));
     } else {
       _opType = validator.validateTypes(data.inputType, operandSpec.valueType, resultType);
     }
@@ -149,6 +149,7 @@ struct BinaryBase : public Base {
   SHTypeInfo compose(const SHInstanceData &data) { return genericCompose(*this, data); }
 
   SHExposedTypesInfo requiredVariables() {
+    // operandSpec should be null terminated cos cloned over
     SHVar operandSpec = _operand;
     if (operandSpec.valueType == SHType::ContextVar) {
       _requiredInfo = ExposedInfo(
@@ -436,7 +437,7 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
 
 template <class TOp> struct UnaryFloatOperation : public UnaryOperation<TOp> {
   static inline Types FloatOrSeqTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type,
-                                  CoreInfo::ColorType, CoreInfo::AnySeqType}};
+                                       CoreInfo::ColorType, CoreInfo::AnySeqType}};
 
   static SHTypesInfo inputTypes() { return FloatOrSeqTypes; }
   static SHOptionalString inputHelp() {
@@ -473,7 +474,7 @@ template <class TOp> struct UnaryVarOperation final : public UnaryOperation<TOp>
     }
 
     for (const auto &share : data.shared) {
-      if (!strcmp(share.name, _value->payload.stringValue)) {
+      if (share.name == SHSTRVIEW((*_value))) {
         if (share.isProtected)
           throw ComposeError("UnaryVarOperation cannot write protected variables");
         if (!share.isMutable)
@@ -486,7 +487,7 @@ template <class TOp> struct UnaryVarOperation final : public UnaryOperation<TOp>
       }
     }
 
-    throw ComposeError(fmt::format("Math.Inc/Dec variable {} not found", _value->payload.stringValue));
+    throw ComposeError(fmt::format("Math.Inc/Dec variable {} not found", SHSTRVIEW((*_value))));
   }
 
   SHExposedTypesInfo requiredVariables() {
@@ -527,10 +528,10 @@ MATH_BINARY_INT_OPERATION(Mod, %);
 MATH_BINARY_INT_OPERATION(LShift, <<);
 MATH_BINARY_INT_OPERATION(RShift, >>);
 
-#define MATH_UNARY_FLOAT_OPERATION(NAME, FUNC, FUNCF)                                   \
-  struct NAME##Op final {                                                               \
-    template <typename T> T apply(const T &lhs) { return FUNC(lhs); }                   \
-  };                                                                                    \
+#define MATH_UNARY_FLOAT_OPERATION(NAME, FUNC, FUNCF)                                        \
+  struct NAME##Op final {                                                                    \
+    template <typename T> T apply(const T &lhs) { return FUNC(lhs); }                        \
+  };                                                                                         \
   using NAME = UnaryFloatOperation<BasicUnaryOperation<NAME##Op, DispatchType::FloatTypes>>; \
   RUNTIME_SHARD_TYPE(Math, NAME);
 

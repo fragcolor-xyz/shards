@@ -181,9 +181,10 @@ template <SHType ToType> struct ToNumber {
     case SHType::Enum:
       parseEnumValue(output, input.payload.enumValue);
       break;
-    case SHType::String:
-      parseStringElements(output, input.payload.stringValue, input.payload.stringLen);
-      break;
+    case SHType::String: {
+      auto len = SHSTRLEN(input);
+      parseStringElements(output, input.payload.stringValue, len);
+    } break;
     default:
       parseVector(output, input);
       break;

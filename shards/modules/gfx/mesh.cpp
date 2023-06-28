@@ -64,7 +64,7 @@ struct MeshShard {
 
     // Fill vertex attribute names from the Layout parameter
     for (size_t i = 0; i < layoutSeq.len; i++) {
-      meshFormat.vertexAttributes[i].name = layoutSeq.elements[i].payload.stringValue;
+      meshFormat.vertexAttributes[i].name = SHSTRVIEW(layoutSeq.elements[i]);
     }
 
     validateVertexFormat(meshFormat.vertexAttributes, *verticesVar);

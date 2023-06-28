@@ -110,6 +110,7 @@ struct BaseRunner : public WireBase {
           SHVar ctxVar{};
           ctxVar.valueType = SHType::ContextVar;
           ctxVar.payload.stringValue = avail.name;
+          ctxVar.payload.stringLen = strlen(avail.name);
           auto &p = _vars.emplace_back();
           p = ctxVar;
         }

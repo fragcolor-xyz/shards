@@ -244,12 +244,12 @@ struct Literal {
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
-  std::optional<const char *> getComposeTimeConstant(ShaderCompositionContext &compositionContext, const std::string &key) {
+  std::optional<std::string_view> getComposeTimeConstant(ShaderCompositionContext &compositionContext, const std::string &key) {
     if (auto constValue = compositionContext.getComposeTimeConstant(key)) {
       if (constValue->valueType != SHType::String) {
         throw formatError("Composition variable {}, has an invalid value {} (Only string is allowed)", key, *constValue);
       }
-      return constValue->payload.stringValue;
+      return SHSTRVIEW((*constValue));
     }
     return std::nullopt;
   }
@@ -257,13 +257,13 @@ struct Literal {
   void generateSourceElement(ShaderCompositionContext &compositionContext, TranslationContext &context, blocks::Compound &output,
                              const SHVar &elem) {
     if (elem.valueType == SHType::String) {
-      output.append(elem.payload.stringValue);
+      output.append(SHSTRVIEW(elem));
     } else if (elem.valueType == SHType::ContextVar) {
-      std::string key = elem.payload.stringValue;
+      std::string key = SHSTRING_PREFER_SHSTRVIEW(elem);
       if (auto constValue = getComposeTimeConstant(compositionContext, key)) {
         output.append(*constValue);
       } else {
-        WGSLBlock ref = context.reference(elem.payload.stringValue);
+        WGSLBlock ref = context.reference(key);
         output.append(std::move(ref.block));
       }
     } else {
@@ -274,10 +274,10 @@ struct Literal {
   BlockPtr generateBlock(TranslationContext &context) {
     auto &compositionContext = ShaderCompositionContext::get();
 
-    if (_source.valueType == SHType::String)
-      return blocks::makeBlock<blocks::Direct>(_source.payload.stringValue);
-    else if (_source.valueType == SHType::ContextVar) {
-      auto key = _source.payload.stringValue;
+    if (_source.valueType == SHType::String) {
+      return blocks::makeBlock<blocks::Direct>(SHSTRVIEW(_source));
+    } else if (_source.valueType == SHType::ContextVar) {
+      auto key = SHSTRING_PREFER_SHSTRVIEW(_source);
       if (auto constValue = getComposeTimeConstant(compositionContext, key)) {
         return blocks::makeBlock<blocks::Direct>(*constValue);
       } else {
@@ -300,7 +300,7 @@ struct Literal {
 
     bool isDynamic = _source.valueType != SHType::String;
     SPDLOG_LOGGER_INFO(context.logger, "gen(literal/{})> {}", magic_enum::enum_name(type),
-                       isDynamic ? "dynamic" : _source.payload.stringValue);
+                       isDynamic ? "dynamic" : SHSTRVIEW(_source));
 
     auto outputFieldType = getOutputType();
     blocks::BlockPtr block;
@@ -341,7 +341,7 @@ struct IOBase {
     using shards::Var;
     switch (index) {
     case 0:
-      this->_name = value.payload.stringValue;
+      this->_name = SHSTRVIEW(value);
       break;
     }
   }
@@ -457,7 +457,7 @@ struct ReadBuffer final : public IOBase {
 
   void setParam(int index, const SHVar &value) {
     if (index == 1) {
-      _bufferName = value.payload.stringValue;
+      _bufferName = SHSTRVIEW(value);
     }
     IOBase::setParam(index, value);
   }
@@ -516,7 +516,7 @@ struct SampleTexture {
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = _name.payload.stringValue;
+    auto name = _name.payload.stringValue; // null term ok
     auto &shaderCtx = ShaderCompositionContext::get();
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(name);
@@ -532,7 +532,7 @@ struct SampleTexture {
   }
 
   void translate(TranslationContext &context) {
-    const SHString &textureName = _name.payload.stringValue;
+    const SHString &textureName = _name.payload.stringValue; // null term ok
     SPDLOG_LOGGER_INFO(context.logger, "gen(sample)> {}", textureName);
 
     context.setWGSLTopVar(FieldTypes::Float4, blocks::makeBlock<blocks::SampleTexture>(textureName));
@@ -563,7 +563,7 @@ struct SampleTextureCoord : public SampleTexture {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = _name.payload.stringValue;
+    auto name = _name.payload.stringValue; // should be safe null term wise
     auto &shaderCtx = ShaderCompositionContext::get();
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(name);
@@ -580,7 +580,7 @@ struct SampleTextureCoord : public SampleTexture {
   }
 
   void translate(TranslationContext &context) {
-    const SHString &textureName = _name.payload.stringValue;
+    const SHString &textureName = _name.payload.stringValue; // null term ok
     SPDLOG_LOGGER_INFO(context.logger, "gen(sample/uv)> {}", textureName);
 
     if (!context.wgslTop)
@@ -608,7 +608,7 @@ struct RefTexture {
   SHVar getParam(int index) { return _name; }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = _name.payload.stringValue;
+    auto name = _name.payload.stringValue; // null term ok
     auto &shaderCtx = ShaderCompositionContext::get();
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(name);
@@ -621,7 +621,7 @@ struct RefTexture {
   }
 
   void translate(TranslationContext &context) {
-    const SHString &textureName = _name.payload.stringValue;
+    const SHString &textureName = _name.payload.stringValue; // null term ok
     SPDLOG_LOGGER_INFO(context.logger, "gen(ref/texture)> {}", textureName);
 
     auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { ctx.texture(textureName); });
@@ -646,7 +646,7 @@ struct RefSampler {
   SHVar getParam(int index) { return _name; }
 
   SHTypeInfo compose(SHInstanceData &data) {
-    auto name = _name.payload.stringValue;
+    auto name = _name.payload.stringValue; // null term ok
     auto &shaderCtx = ShaderCompositionContext::get();
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(name);
@@ -658,7 +658,7 @@ struct RefSampler {
   }
 
   void translate(TranslationContext &context) {
-    const SHString &textureName = _name.payload.stringValue;
+    const SHString &textureName = _name.payload.stringValue; // null term ok
     SPDLOG_LOGGER_INFO(context.logger, "gen(ref/sampler)> {}", textureName);
 
     auto block = std::make_unique<blocks::Custom>([=](IGeneratorContext &ctx) { ctx.textureDefaultSampler(textureName); });

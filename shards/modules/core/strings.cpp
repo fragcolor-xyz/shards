@@ -22,7 +22,7 @@ struct Common {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _re_str = value.payload.stringValue;
+      _re_str = SHSTRVIEW(value);
       _re.assign(_re_str);
       break;
     default:
@@ -166,7 +166,7 @@ struct Join {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _separator = value.payload.stringValue;
+      _separator = SHSTRVIEW(value);
       break;
     default:
       break;
@@ -215,9 +215,12 @@ struct ToUpper {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   static SHOptionalString outputHelp() { return SHCCSTR("A string in uppercase."); }
 
+  OwnedVar nullTermBuffer;
+
   SHVar activate(SHContext *context, const SHVar &input) {
-    utf8upr(const_cast<char *>(input.payload.stringValue));
-    return input;
+    nullTermBuffer = input;
+    utf8upr(const_cast<char *>(nullTermBuffer.payload.stringValue));
+    return nullTermBuffer;
   }
 };
 
@@ -229,9 +232,13 @@ struct ToLower {
 
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   static SHOptionalString outputHelp() { return SHCCSTR("A string in lowercase."); }
+
+  OwnedVar nullTermBuffer;
+
   SHVar activate(SHContext *context, const SHVar &input) {
-    utf8lwr(const_cast<char *>(input.payload.stringValue));
-    return input;
+    nullTermBuffer = input;
+    utf8lwr(const_cast<char *>(nullTermBuffer.payload.stringValue));
+    return nullTermBuffer;
   }
 };
 

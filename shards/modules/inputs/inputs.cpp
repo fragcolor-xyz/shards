@@ -391,7 +391,7 @@ template <SDL_EventType EVENT_TYPE> struct KeyUpDown : public Base {
       if (value.valueType == SHType::None) {
         _key.clear();
       } else {
-        _key = value.payload.stringValue;
+        _key = SHSTRVIEW(value);
       }
       _keyCode = keyStringToKeyCode(_key);
     } break;
@@ -483,7 +483,7 @@ struct IsKeyDown : public Base {
       if (value.valueType == SHType::None) {
         _keyName.clear();
       } else {
-        _keyName = value.payload.stringValue;
+        _keyName = SHSTRVIEW(value);
       }
       _keyCode = keyStringToKeyCode(_keyName);
     } break;

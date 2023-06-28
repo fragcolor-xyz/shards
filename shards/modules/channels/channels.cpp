@@ -47,7 +47,8 @@ struct Base {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
-      _name = value.payload.stringValue;
+      auto sv = SHSTRVIEW(value);
+      _name = sv;
     } break;
     case 1: {
       _noCopy = value.payload.boolValue;
@@ -227,7 +228,7 @@ struct Consumers : public Base {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _name = value.payload.stringValue;
+      _name = SHSTRVIEW(value);
       break;
     case 1:
       _outType = *value.payload.typeValue;
@@ -406,7 +407,7 @@ struct Complete : public Base {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _name = value.payload.stringValue;
+      _name = SHSTRVIEW(value);
       break;
     default:
       throw std::out_of_range("Invalid parameter index.");

@@ -56,7 +56,7 @@ struct Iterate {
     _strings.clear();
 
     if (_recursive) {
-      fs::path p(input.payload.stringValue);
+      fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
       auto diterator = fs::recursive_directory_iterator(p);
       for (auto &subp : diterator) {
         auto &path = subp.path();
@@ -67,7 +67,7 @@ struct Iterate {
         _strings.push_back(str);
       }
     } else {
-      fs::path p(input.payload.stringValue);
+      fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
       auto diterator = fs::directory_iterator(p);
       for (auto &subp : diterator) {
         auto &path = subp.path();
@@ -97,8 +97,10 @@ struct Join {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _buffer.clear();
+
     for (auto &v : input) {
-      _buffer /= v.payload.stringValue;
+      fs::path path(SHSTRING_PREFER_SHSTRVIEW(v));
+      _buffer /= path;
     }
     _result = _buffer.string();
     return Var(_result);
@@ -113,7 +115,7 @@ struct Extension {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _output.clear();
-    fs::path p(input.payload.stringValue);
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     auto ext = p.extension();
     _output.assign(ext.string());
     return Var(_output);
@@ -124,7 +126,7 @@ struct IsFile {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   SHVar activate(SHContext *context, const SHVar &input) {
-    fs::path p(input.payload.stringValue);
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     if (fs::exists(p) && !fs::is_directory(p)) {
       return Var::True;
     } else {
@@ -137,7 +139,7 @@ struct IsDirectory {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   SHVar activate(SHContext *context, const SHVar &input) {
-    fs::path p(input.payload.stringValue);
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     if (fs::exists(p) && fs::is_directory(p)) {
       return Var::True;
     } else {
@@ -150,7 +152,7 @@ struct Remove {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
   SHVar activate(SHContext *context, const SHVar &input) {
-    fs::path p(input.payload.stringValue);
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     if (fs::exists(p)) {
       return Var(fs::remove(p));
     } else {
@@ -189,7 +191,7 @@ struct Filename {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _output.clear();
-    fs::path p(input.payload.stringValue);
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     p = p.filename();
     if (_noExt && p.has_extension()) {
       p = p.replace_extension("");
@@ -222,8 +224,8 @@ struct RelativeTo {
   SHVar activate(SHContext *context, const SHVar &input) {
     _output.clear();
 
-    _cachedPath = input.payload.stringValue;
-    _cachedBasePath = _basePath.get().payload.stringValue;
+    _cachedPath = SHSTRING_PREFER_SHSTRVIEW(input);
+    _cachedBasePath = SHSTRING_PREFER_SHSTRVIEW(_basePath.get());
 
     _output.assign(fs::relative(_cachedPath, _cachedBasePath).string());
     return Var(_output);
@@ -238,7 +240,7 @@ struct Parent {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _output.clear();
-    fs::path p(input.payload.stringValue);
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     p = p.parent_path();
     _output.assign(p.string());
     return Var(_output);
@@ -280,7 +282,7 @@ struct Read {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _buffer.clear();
-    fs::path p(input.payload.stringValue);
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     if (!fs::exists(p)) {
       SHLOG_ERROR("File is missing: {}", p);
       throw ActivationError("FS.Read, file does not exist.");
@@ -366,7 +368,7 @@ struct Write {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto contents = _contents.get();
     if (contents.valueType != SHType::None) {
-      fs::path p(input.payload.stringValue);
+      fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
       if (!_overwrite && !_append && fs::exists(p)) {
         throw ActivationError("FS.Write, file already exists and overwrite flag is not on!.");
       }
@@ -436,7 +438,7 @@ struct Copy {
   void warmup(SHContext *context) { _destination.warmup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    const auto src = fs::path(input.payload.stringValue);
+    const auto src = fs::path(SHSTRING_PREFER_SHSTRVIEW(input));
     if (!fs::exists(src))
       throw ActivationError("Source path does not exist.");
 
@@ -459,7 +461,7 @@ struct Copy {
     const auto dstVar = _destination.get();
     if (dstVar.valueType != SHType::String && dstVar.valueType != SHType::Path)
       throw ActivationError("Destination is not a valid");
-    const auto dst = fs::path(dstVar.payload.stringValue);
+    const auto dst = fs::path(SHSTRING_PREFER_SHSTRVIEW(dstVar));
 
     ErrorCode err;
     if (fs::is_regular_file(src) && (!fs::exists(dst) || fs::is_regular_file(dst))) {
@@ -491,7 +493,7 @@ struct LastWriteTime {
   SHVar getParam(int index) { return Var::Empty; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    fs::path p(input.payload.stringValue);
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     ErrorCode ec;
     auto lwt = fs::last_write_time(p, ec);
     if (ec.failed()) {

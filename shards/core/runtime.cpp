@@ -1344,9 +1344,11 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
   } break;
   case SHType::ContextVar: {
     if (expInfo) {
-      const auto varName = value.payload.stringValue;
+      auto sv = SHSTRVIEW(value);
+      const auto varName = sv;
       for (auto info : data.shared) {
-        if (strcmp(info.name, varName) == 0) {
+        std::string_view name(info.name);
+        if (name == sv) {
           expInfo->push_back(SHExposedTypeInfo{.name = info.name, .exposedType = info.exposedType});
           return cloneTypeInfo(info.exposedType);
         }
@@ -3143,8 +3145,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->createShard = [](SHStringWithLen name) noexcept {
     std::string_view sv(name.string, name.len);
     auto shard = shards::createShard(sv);
-    if (shard)
+    if (shard) {
+      assert(shard->refCount== 0 && "shard should have zero refcount");
       incRef(shard);
+    }
     return shard;
   };
 

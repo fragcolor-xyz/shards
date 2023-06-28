@@ -652,7 +652,7 @@ struct Client : public NetworkBase {
       boost::asio::io_service io_service;
       udp::resolver resolver(io_service);
       auto sport = std::to_string(_port.get().payload.intValue);
-      udp::resolver::query query(udp::v4(), _addr.get().payload.stringValue, sport);
+      udp::resolver::query query(udp::v4(), SHSTRING_PREFER_SHSTRVIEW(_addr.get()), sport);
       _server = *resolver.resolve(query);
       _peer.endpoint = _server;
 
