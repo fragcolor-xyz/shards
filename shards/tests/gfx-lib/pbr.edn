@@ -167,7 +167,9 @@
         ; The normal vectors use the convention +X is right and +Y is up. +Z points toward the viewer.
         ;; (Shader.ReadInput "worldTangent0") = .world-tangent0
         ;; (Shader.ReadInput "worldTangent1") = .world-tangent1
-        (Shader.SampleTexture "normalTexture") (ToFloat3) = .local-normal
+        (Shader.SampleTexture "normalTexture")
+        (Float3 1 0 0)
+        (ToFloat3) = .local-normal
         (Shader.ReadInput "qbase") = .qbase
         (Shader.ReadBuffer "world") = .world-mat
         (Shader.Literal ["normalize((" .world-mat " * vec4f(transform_qrot(" .qbase "," .local-normal "), 0.0)).xyz)"] :OutputDimension 3) >= .world-normal
@@ -194,7 +196,8 @@
         (Math.Multiply (Float4 1 1 1 0)) (Math.Add (Float4 0 0 0 1))
         (Shader.WriteOutput "color")
 
-        ;; .world-normal (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
+        .world-normal (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
+        (Shader.ReadInput "qbase") (ToFloat3) (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
         )}]))
 
   (defshards render-pbr-base [capture-steps]

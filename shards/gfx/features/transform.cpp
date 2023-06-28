@@ -19,13 +19,13 @@ fn transform_qmul(a: vec4<f32>, b: vec4<f32>) -> vec4<f32> {
     a.z*b.w+a.w*b.z+a.x*b.y-a.y*b.x,
     a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z);
 }
-fn transform_qrot(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
-  return transform_qmul(transform_qmul(q, vec4<f32>(v, 0.0)), transform_qconj(q)).xyz;
-}
 // fn transform_qrot(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
-//   let t = 2.0 * cross(q.xyz, v);
-//   return v + q.w * t + cross(q.xyz, t);
+//   return transform_qmul(transform_qmul(q, vec4<f32>(v, 0.0)), transform_qconj(q)).xyz;
 // }
+fn transform_qrot(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
+  let t = 2.0 * cross(q.xyz, v);
+  return v + q.w * t + cross(q.xyz, t);
+}
 )";
 
 FeaturePtr Transform::create(bool applyView, bool applyProjection) {
