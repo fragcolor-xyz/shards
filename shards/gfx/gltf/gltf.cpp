@@ -418,7 +418,7 @@ struct Loader {
 
       const tinygltf::Material &gltfMaterial = model.materials[i];
 
-      auto convertTextureParam = [&](const char *name, const TextureInfo &textureInfo) {
+      auto convertTextureParam = [&](const char *name, const auto &textureInfo) {
         if (textureInfo.index >= 0) {
           TexturePtr texture = textureMap[textureInfo.index];
           material->parameters.set(name, TextureParameter(texture, textureInfo.texCoord));
@@ -442,6 +442,8 @@ struct Loader {
       convertOptionalFloatParam("metallic", gltfMaterial.pbrMetallicRoughness.metallicFactor, 0.0f);
       convertTextureParam("baseColorTexture", gltfMaterial.pbrMetallicRoughness.baseColorTexture);
       convertTextureParam("metallicRoughnessTexture", gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture);
+      convertTextureParam("normalTexture", gltfMaterial.normalTexture);
+      convertTextureParam("emissiveTexture", gltfMaterial.emissiveTexture);
     }
   }
 

@@ -742,6 +742,80 @@ struct LinearizeDepth {
   }
 };
 
+struct WithInput {
+  PARAM_VAR(_name, "Name", "The name of the input", {CoreInfo::StringType});
+  PARAM(shards::ShardsVar, _then, "Then", "The shards to execute if the input exists", {CoreInfo::ShardsOrNone});
+  PARAM(shards::ShardsVar, _else, "Else", "The shards to execute if the input does not exist", {CoreInfo::ShardsOrNone});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_then), PARAM_IMPL_FOR(_else));
+
+  WithInput() { _name = shards::Var(""); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::NoneType;
+  }
+
+  void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
+  void cleanup() { PARAM_CLEANUP(); }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
+
+  void translate(TranslationContext &context) {
+    ShaderCompositionContext &shaderCompositionContext = ShaderCompositionContext::get();
+    bool hasInput = shaderCompositionContext.generatorContext.hasInput(SHSTRING_PREFER_SHSTRVIEW(*_name).c_str());
+
+    if (hasInput) {
+      if (_then)
+        processShardsVar(_then, context);
+    } else {
+      if (_else)
+        processShardsVar(_else, context);
+    }
+  }
+};
+
+struct WithTexture {
+  PARAM_VAR(_name, "Name", "The name of the texture", {CoreInfo::StringType});
+  PARAM(shards::ShardsVar, _then, "Then", "The shards to execute if the texture exists", {CoreInfo::ShardsOrNone});
+  PARAM(shards::ShardsVar, _else, "Else", "The shards to execute if the texture does not exist", {CoreInfo::ShardsOrNone});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_then), PARAM_IMPL_FOR(_else));
+
+  WithTexture() { _name = shards::Var(""); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::NoneType;
+  }
+
+  void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
+  void cleanup() { PARAM_CLEANUP(); }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
+
+  void translate(TranslationContext &context) {
+    ShaderCompositionContext &shaderCompositionContext = ShaderCompositionContext::get();
+    bool hasTexture = shaderCompositionContext.generatorContext.hasTexture(SHSTRING_PREFER_SHSTRVIEW(*_name).c_str());
+
+    if (hasTexture) {
+      if (_then)
+        processShardsVar(_then, context);
+    } else {
+      if (_else)
+        processShardsVar(_else, context);
+    }
+  }
+};
+
 } // namespace shader
 } // namespace gfx
 

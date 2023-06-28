@@ -96,7 +96,6 @@
 
     (Msg "Generating pre-rendered PBR textures")
     (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 512) :Dimension TextureDimension.Cube) >= .cube-tex
-    {:steps .probe-inner-steps :texture .cube-tex :offset .probe-offset}
     (render-cubemap-0 .probe-inner-steps .cube-tex .probe-offset)
 
     ; Precompute reflective
@@ -128,6 +127,7 @@
      (GFX.Texture) = .normal-placeholder-texture)
     .normal-placeholder-texture  (Set .parameters "normalTexture")
     {:Type TextureDimension.D2} (Set .parameters "metallicRoughnessTexture")
+    {:Type TextureDimension.D2} (Set .parameters "emissiveTexture")
     (GFX.Feature
      :Params .parameters
      :ComposeWith {:pbr-wgsl pbr-wgsl}
@@ -139,7 +139,7 @@
        (->
         (Shader.ReadBuffer "invView" :BufferName "view") >= .camera-matrix
         (Shader.Literal [.camera-matrix "[3].xyz"] :OutputDimension 3) >= .eye-pos
-        (Shader.ReadInput "worldNormal") >= .world-normal
+        ;; (Shader.ReadInput "worldNormal") >= .world-normal
         (Shader.ReadInput "worldPosition") >= .world-position
         .eye-pos (Math.Subtract .world-position) (Math.Normalize) >= .view-direction
 
@@ -154,10 +154,6 @@
         (Shader.RefSampler "ggx") = .ggx-sampler
         (Shader.RefTexture "ggxLUT") = .ggx-lut-texture
         (Shader.RefSampler "ggxLUT") = .ggx-lut-sampler
-        (Shader.Literal ["
-        var lgp: LightingGeneralParams;
-        lgp.surfaceNormal = " .world-normal ";
-        lgp.viewDirection = " .view-direction ";"])
 
         ; Apply metallic-roughness texture
         ; glTF Spec:
@@ -171,9 +167,17 @@
         ; The normal vectors use the convention +X is right and +Y is up. +Z points toward the viewer.
         ;; (Shader.ReadInput "worldTangent0") = .world-tangent0
         ;; (Shader.ReadInput "worldTangent1") = .world-tangent1
-        ;; (Shader.SampleTexture "normalTexture") = .local-normal
+        (Shader.SampleTexture "normalTexture") (ToFloat3) = .local-normal
+        (Shader.ReadInput "qbase") = .qbase
+        (Shader.ReadBuffer "world") = .world-mat
+        (Shader.Literal ["normalize((" .world-mat " * vec4f(transform_qrot(" .qbase "," .local-normal "), 0.0)).xyz)"] :OutputDimension 3) >= .world-normal
         ;; (Shader.Literal ["var tbnMat = mat3<f32>(" .world-tangent0 "," .world-tangent1 "," .world-normal ");"])
         ;; (Shader.Literal ["lgp.surfaceNormal = tbnMat * " .local-normal])
+
+        (Shader.Literal ["
+        var lgp: LightingGeneralParams;
+        lgp.surfaceNormal = " .world-normal ";
+        lgp.viewDirection = " .view-direction ";"])
 
         (Shader.Literal ["
         var mi = getDefaultMaterialInfo();
@@ -188,7 +192,10 @@
 
         .light-color (ToFloat4)
         (Math.Multiply (Float4 1 1 1 0)) (Math.Add (Float4 0 0 0 1))
-        (Shader.WriteOutput "color"))}]))
+        (Shader.WriteOutput "color")
+
+        ;; .world-normal (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
+        )}]))
 
   (defshards render-pbr-base [capture-steps]
     (Setup

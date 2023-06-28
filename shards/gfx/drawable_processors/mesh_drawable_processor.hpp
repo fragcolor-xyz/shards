@@ -9,7 +9,9 @@
 #include "../sampler_cache.hpp"
 #include "../pmr/list.hpp"
 #include "../pmr/unordered_map.hpp"
+#include "../mesh_utils.hpp"
 #include "drawable_processor_helpers.hpp"
+#include <spdlog/spdlog.h>
 #include <tracy/Tracy.hpp>
 
 namespace gfx::detail {
@@ -105,6 +107,11 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       []() { return PlaceholderTexture::create(TextureDimension::Cube, int2(2, 2), float4(1, 1, 1, 1)); }(),
   };
 
+  struct CachedDrawable {
+    MeshPtr mesh;
+  };
+  std::unordered_map<UniqueId, CachedDrawable> drawableCache;
+
   MeshDrawableProcessor(Context &context)
       : drawBufferPool(getDrawBufferInitializer(context)), viewBufferPool(getViewBufferInitializer(context)),
         samplerCache(context.wgpuDevice) {
@@ -162,14 +169,15 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     objectLayoutBuilder.push("invTransWorld", FieldTypes::Float4x4);
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(builder.firstDrawable);
+    auto &cached = drawableCache[meshDrawable.getId()];
 
-    builder.meshFormat = meshDrawable.mesh->getFormat();
+    builder.meshFormat = cached.mesh->getFormat();
 
     if (!options.ignoreDrawableFeatures) {
-    for (auto &feature : meshDrawable.features) {
-      builder.features.push_back(feature.get());
+      for (auto &feature : meshDrawable.features) {
+        builder.features.push_back(feature.get());
+      }
     }
-  }
   }
 
   void generateDrawableData(DrawableData &data, Context &context, const CachedPipeline &cachedPipeline, const IDrawable *drawable,
@@ -178,6 +186,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     ZoneScoped;
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
+    const auto &cachedData = drawableCache[meshDrawable.getId()];
+    const auto &mesh = cachedData.mesh;
 
     // Optionally compute projected depth based on transform center
     if (needProjectedDepth) {
@@ -233,7 +243,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       applyParameters(*baseDrawData);
     }
 
-    std::shared_ptr<MeshContextData> meshContextData = meshDrawable.mesh->contextData;
+    std::shared_ptr<MeshContextData> meshContextData = mesh->contextData;
 
     data.mesh = meshContextData.get();
     data.clipRect = meshDrawable.clipRect;
@@ -303,7 +313,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     for (auto &drawable : context.drawables) {
       const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
-      meshDrawable.mesh->createContextDataConditional(context.context);
+      const auto &cached = drawableCache[meshDrawable.getId()];
+      cached.mesh->createContextDataConditional(context.context);
     }
 
     auto *drawableDatas = allocator->new_object<shards::pmr::list<DrawableData>>();
@@ -544,6 +555,62 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       } else {
         wgpuRenderPassEncoderDraw(encoder, (uint32_t)meshContextData->numVertices, group.numInstances, 0, 0);
       }
+    }
+  }
+
+  void preprocess(const DrawablePreprocessContext &context) override {
+    auto &workerMemory = context.storage.workerMemory;
+
+    auto &hashCache = *workerMemory->new_object<PipelineHashCache>();
+    PipelineHashCollector pipelineHashCollector{.storage = &hashCache};
+
+    // Generate another shared hash including base features
+    pipelineHashCollector(context.sharedHash);
+    for (auto stepFeature : context.features)
+      pipelineHashCollector.hashObject(*stepFeature);
+    Hash128 sharedHash = pipelineHashCollector.getDigest();
+
+    RequiredAttributes sharedRequiredAttributes;
+    for (auto &feature : context.features) {
+      sharedRequiredAttributes = sharedRequiredAttributes | feature->requiredAttributes;
+    }
+
+    for (size_t i = 0; i < context.drawables.size(); i++) {
+      auto &drawable = reinterpret_cast<const MeshDrawable &>(*context.drawables[i]);
+      auto &mesh = drawable.mesh;
+
+      pipelineHashCollector.reset();
+      pipelineHashCollector(sharedHash);
+
+      RequiredAttributes requiredAttributes = sharedRequiredAttributes;
+      if (!context.buildPipelineOptions.ignoreDrawableFeatures) {
+        for (auto &feature : drawable.features) {
+          pipelineHashCollector(feature);
+          requiredAttributes = requiredAttributes | feature->requiredAttributes;
+        }
+      }
+
+      auto &entry = detail::getCacheEntry(drawableCache, drawable.getId());
+      if (!entry.mesh) {
+        entry.mesh = mesh;
+
+        if (requiredAttributes.requirePerVertexLocalBasis) {
+          // Optionally generate tangent mesh
+          try {
+            entry.mesh = generateLocalBasisAttribute(entry.mesh);
+          } catch (...) {
+            SPDLOG_LOGGER_WARN(getLogger(), "Failed to generate qbase for mesh {}", drawable.getId().value);
+          }
+        }
+      }
+
+      pipelineHashCollector(mesh);
+      if (drawable.material) {
+        pipelineHashCollector(drawable.material);
+      }
+      drawable.parameters.pipelineHashCollect(pipelineHashCollector);
+
+      context.outHashes[i] = pipelineHashCollector.getDigest();
     }
   }
 };

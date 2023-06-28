@@ -30,6 +30,7 @@ add_library(gfx
   shader/blocks.cpp
   shader/types.cpp
   features/velocity.cpp
+  features/transform.cpp
   rust_interop.cpp
   view_stack.cpp
   render_target.cpp
@@ -75,6 +76,8 @@ if(GFX_THREADING)
 endif()
 
 target_link_libraries(gfx Taskflow)
+
+target_link_libraries(gfx igl_core Eigen3::Eigen)
 
 add_library(gfx-texture-file texture_file/texture_file.cpp)
 target_link_libraries(gfx-texture-file gfx)

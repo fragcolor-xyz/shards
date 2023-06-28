@@ -61,10 +61,10 @@
               (GFX.DrawQueue) = .queue
 
               (Animation.Timer :Rate 0.2) = .t
-              7.0 = .r
+              5.0 = .r
               .t (Math.Cos) (Math.Multiply .r) >= .x
               .t (Math.Sin) (Math.Multiply .r) >= .z
-              .t (Math.Multiply 0.4) (Math.Sin) (Math.Multiply 3.0) >= .y
+              .t (Math.Multiply 0.4) (Math.Sin) (Math.Multiply 2.0) >= .y
 
               {:Target (Float3 0.0 0.0 0.0) :Position (Float3 0.0)} >= .lookat
               (Float3 .x .y .z) (Update .lookat "Position")

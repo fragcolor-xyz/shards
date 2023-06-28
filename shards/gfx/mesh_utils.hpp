@@ -20,7 +20,7 @@ MeshPtr createMesh(const std::vector<TVert> &verts, const std::vector<TIndex> &i
   return mesh;
 }
 
-MeshPtr generateTangentInfo(MeshPtr mesh);
+MeshPtr generateLocalBasisAttribute(MeshPtr mesh);
 } // namespace gfx
 
 #endif /* DC6B12F5_63B6_4FBD_BC92_DFF99E0E3323 */
