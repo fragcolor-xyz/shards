@@ -72,3 +72,14 @@ Msg("Hello")
 @const(value 10)
 
 @range(0 5) ; [0 1 2 3 4 5]
+
+@shards(range [from to] {
+  [] = s
+  from >= n
+  Repeat({
+    n >> s
+    n | Math.Add(1) > n
+  } Times: to)
+  s
+})
+#(@range(0 5)) | Log | Assert.Is([0 1 2 3 4 5])

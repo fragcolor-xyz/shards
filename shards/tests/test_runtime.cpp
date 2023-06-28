@@ -1695,4 +1695,35 @@ TEST_CASE("shards-lang") {
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
   }
+
+  SECTION("Test @shards 2") {
+    auto code = R"(
+      @shards(range [from to] {
+        [] = s
+        from >= n
+        Repeat({
+          n >> s
+          n | Math.Add(1) > n
+        } Times: to)
+        s
+      })
+      #(@range(0 5)) | Log
+    )";
+    auto seq = shards_read(code); // Enums can't be used like this
+    REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
+    auto wire = shards_eval(seq.ast, "root");
+
+    REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+
+    // REQUIRE(wire.error);
+    // DEFER(shards_free_error(wire.error));
+    // std::string a(wire.error->message);
+    // std::string b("Assert failed - Is");
+    // REQUIRE(a == b);
+  }
 }
