@@ -1747,7 +1747,7 @@ impl From<&CStr> for Var {
         __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
           __bindgen_anon_2: SHVarPayload__bindgen_ty_1__bindgen_ty_2 {
             stringValue: v.as_ptr(),
-            stringLen: 0,
+            stringLen: v.to_bytes().len() as u32,
             stringCapacity: 0,
           },
         },

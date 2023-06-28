@@ -128,7 +128,6 @@ jobs:
           ./shards ../shards/tests/rust.clj
           ./shards ../shards/tests/crypto.edn
           ./shards ../shards/tests/wire-macro.edn
-          ./shards ../shards/tests/edn.edn
           ./shards ../shards/tests/const-vars.edn
           ./shards ../shards/tests/branch.edn
           ./shards ../shards/tests/audio.edn
@@ -136,7 +135,6 @@ jobs:
           ./shards ../shards/tests/eth.edn
           ./shards ../shards/tests/take.edn
           ./shards ../shards/tests/casting-numbers.edn
-          ./shards ../shards/tests/edn.edn
           ./shards ../shards/tests/pure.edn
           # ./shards ../shards/tests/shell.clj
           ./shards ../shards/tests/infos.clj

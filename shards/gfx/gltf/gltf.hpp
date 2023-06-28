@@ -22,7 +22,7 @@ struct glTF {
   glTF &operator=(const glTF &) = delete;
 };
 
-glTF loadGltfFromFile(const char *file);
+glTF loadGltfFromFile(std::string_view file);
 glTF loadGltfFromMemory(const uint8_t *data, size_t dataLength);
 
 } // namespace gfx

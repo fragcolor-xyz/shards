@@ -73,7 +73,7 @@ SeqVar getAnimationPath(MeshTreeDrawable::Ptr node) {
   auto rootNode = MeshTreeDrawable::findRoot(node);
   MeshTreeDrawable::traverseDown(rootNode, node, [&](auto &node) {
     SHVar tmp{
-        .payload = {.stringValue = node->label.c_str()},
+        .payload = {.stringValue = node->label.c_str(), .stringLen = uint32_t(node->label.size())},
         .valueType = SHType::String,
     };
     SHVar cloned{};
@@ -235,7 +235,7 @@ struct GLTFShard {
 
     switch (_loadMode) {
     case LoadMode::LoadFileStatic:
-      _model.emplace(loadGltfFromFile(_path.get().payload.stringValue));
+      _model.emplace(loadGltfFromFile(SHSTRVIEW(_path.get())));
       break;
     case LoadMode::LoadFileDynamic:
     case LoadMode::LoadMemory:
@@ -351,7 +351,7 @@ struct GLTFShard {
     if (!drawable) {
       switch (_loadMode) {
       case LoadFileDynamic:
-        _model.emplace(loadGltfFromFile(_path.get().payload.stringValue));
+        _model.emplace(loadGltfFromFile(SHSTRVIEW(_path.get())));
         break;
       case LoadMemory:
         _model.emplace(loadGltfFromMemory(_bytes.get().payload.bytesValue, _bytes.get().payload.bytesSize));

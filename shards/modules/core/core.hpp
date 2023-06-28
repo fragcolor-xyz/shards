@@ -535,7 +535,7 @@ struct Fail {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
   SHVar activate(SHContext *context, const SHVar &input) {
-    context->cancelFlow(input.payload.stringValue);
+    context->cancelFlow(SHSTRVIEW(input));
     return input;
   }
 };
@@ -740,7 +740,7 @@ struct VariableBase {
 // Takes an original table type and either adds a new key/type pair or updates an existing one
 // Returns the full new type info, the types/keys are owned by the typeInfoStorage and should be manually freed
 //  keyToAdd can be null to indicate a variable key, which will convert this into an unkeyed table
-static const SHTypeInfo &updateTableType(SHTypeInfo &typeInfoStorage, const SHVar* keyToAdd, const SHTypeInfo &typeToAdd,
+static const SHTypeInfo &updateTableType(SHTypeInfo &typeInfoStorage, const SHVar *keyToAdd, const SHTypeInfo &typeToAdd,
                                          const SHTypeInfo *existingType = nullptr) {
   std::optional<size_t> replacedIndex;
 
@@ -965,8 +965,8 @@ struct Set : public SetUpdateBase {
     // bake exposed types
     if (_isTable) {
       // we are a table!
-      _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? &(SHVar&)_key : nullptr, data.inputType,
-                                         existingExposedType ? &existingExposedType->exposedType : nullptr);
+      _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? &(SHVar &)_key : nullptr, data.inputType,
+                                       existingExposedType ? &existingExposedType->exposedType : nullptr);
 
       if (_global) {
         _exposedInfo =
@@ -1228,7 +1228,8 @@ struct Update : public SetUpdateBase {
             auto &key = tableKeys.elements[y];
             if (key == *_key) {
               if (data.inputType != tableTypes.elements[y]) {
-                throw SHException(fmt::format("Update: error, update is changing the variable type for key {} from {} => {}", *_key, tableTypes.elements[y], data.inputType));
+                throw SHException(fmt::format("Update: error, update is changing the variable type for key {} from {} => {}",
+                                              *_key, tableTypes.elements[y], data.inputType));
               }
             }
           }
@@ -1398,15 +1399,15 @@ struct Get : public VariableBase {
                              "and no Default value provided.");
         } else {
           if (_key->valueType == SHType::String) {
-            throw ComposeError("Get (" + _name + "/" + std::string((*_key).payload.stringValue) +
+            throw ComposeError("Get (" + _name + "/" + std::string(SHSTRVIEW((*_key))) +
                                "): Could not infer an output type, key not found "
                                "and no Default value provided.");
           } else {
             throw ComposeError("Get (" + _name + "/(complex type)" + // TODO improve
-                             "): Could not infer an output type, key not found "
-                             "and no Default value provided.");
+                               "): Could not infer an output type, key not found "
+                               "and no Default value provided.");
+          }
         }
-      }
       }
     } else {
       _tableTypes.clear();
@@ -1690,8 +1691,8 @@ struct SeqBase : public VariableBase {
     // for (size_t i = 0; i < _tableInfo.table.keys.len; i++) {
     //   shards::destroyVar(_tableInfo.table.keys.elements[i]);
     // }
-      shards::arrayFree(_tableInfo.table.keys);
-      shards::arrayFree(_tableInfo.table.types);
+    shards::arrayFree(_tableInfo.table.keys);
+    shards::arrayFree(_tableInfo.table.types);
   }
 };
 
@@ -1743,10 +1744,10 @@ struct Push : public SeqBase {
       }
     };
 
-    const auto updateTableInfo = [this, &data](bool firstPush, const SHTypeInfo* existingTableType = nullptr) {
+    const auto updateTableInfo = [this, &data](bool firstPush, const SHTypeInfo *existingTableType = nullptr) {
       SHTypeInfo *existingSeqType{};
       if (existingTableType) {
-        for(size_t i = 0; i < existingTableType->table.keys.len; i++) {
+        for (size_t i = 0; i < existingTableType->table.keys.len; i++) {
           if (existingTableType->table.keys.elements[i] == _key) {
             existingSeqType = &existingTableType->table.types.elements[i];
             break;
@@ -1755,7 +1756,7 @@ struct Push : public SeqBase {
       }
 
       updateSeqType(_seqInfo, data.inputType, existingSeqType);
-      updateTableType(_tableInfo, !_key.isVariable() ? &(SHVar&)_key : nullptr, _seqInfo, existingTableType);
+      updateTableType(_tableInfo, !_key.isVariable() ? &(SHVar &)_key : nullptr, _seqInfo, existingTableType);
 
       if (_global) {
         _exposedInfo = ExposedInfo(
@@ -1773,8 +1774,7 @@ struct Push : public SeqBase {
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           for (uint32_t y = 0; y < tableKeys.len; y++) {
             // if we got key it's not a variable
-            if (_key == tableKeys.elements[y] &&
-                tableTypes.elements[y].basicType == SHType::Seq) {
+            if (_key == tableKeys.elements[y] && tableTypes.elements[y].basicType == SHType::Seq) {
               updateTableInfo(false, &data.shared.elements[i].exposedType);
               return data.inputType; // found lets escape
             }
@@ -1979,16 +1979,16 @@ struct Sequence : public SeqBase {
             // if here, key is not variable
             if (*_key == tableKeys.elements[y]) {
               if (_key->valueType == SHType::String) {
-                throw ComposeError("Sequence - Variable " + std::string((*_key).payload.stringValue) + " in table " + _name +
+                throw ComposeError("Sequence - Variable " + std::string(SHSTRVIEW((*_key))) + " in table " + _name +
                                    " already exists.");
               } else {
                 throw ComposeError("Sequence - Variable (complex type) in table " + _name + // TODO improve
-                                 " already exists.");
+                                   " already exists.");
+              }
             }
           }
         }
       }
-    }
     }
 
     // Process types to expose
@@ -2102,8 +2102,8 @@ struct TableDecl : public VariableBase {
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
   void destroy() {
-      shards::arrayFree(_tableInfo.table.keys);
-      shards::arrayFree(_tableInfo.table.types);
+    shards::arrayFree(_tableInfo.table.keys);
+    shards::arrayFree(_tableInfo.table.types);
   }
 
   ParamVar _types{shards::Var::Enum(BasicTypes::Any, CoreCC, 'type')};
@@ -2216,8 +2216,8 @@ struct TableDecl : public VariableBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     const auto updateTableInfo = [this] {
       _tableInfo.basicType = SHType::Table;
-        shards::arrayFree(_tableInfo.table.types);
-        shards::arrayFree(_tableInfo.table.keys);
+      shards::arrayFree(_tableInfo.table.types);
+      shards::arrayFree(_tableInfo.table.keys);
       auto stype = SHTypeInfo{SHType::Table, {.table = {.keys = {nullptr, 0, 0}, .types = _seqTypes}}};
       shards::arrayPush(_tableInfo.table.types, stype);
       if (!_key.isVariable()) {
@@ -2249,16 +2249,16 @@ struct TableDecl : public VariableBase {
             // if here, key is not variable
             if (*_key == tableKeys.elements[y]) {
               if (_key->valueType == SHType::String) {
-                throw ComposeError("Table - Variable " + std::string(_key->payload.stringValue) + " in table " + _name +
+                throw ComposeError("Table - Variable " + std::string(SHSTRVIEW((*_key))) + " in table " + _name +
                                    " already exists.");
               } else {
                 throw ComposeError("Table - Variable (complex type) in table " + _name + // TODO
-                                 " already exists.");
+                                   " already exists.");
+              }
             }
           }
         }
       }
-    }
     }
 
     // Process types to expose
@@ -2721,7 +2721,7 @@ struct Take {
       valid = true;
     } else { // SHType::ContextVar
       for (auto &info : data.shared) {
-        if (strcmp(info.name, _indices.payload.stringValue) == 0) {
+        if (info.name == SHSTRVIEW(_indices)) {
           if (info.exposedType.basicType == SHType::Seq && info.exposedType.seqTypes.len == 1 &&
               ((info.exposedType.seqTypes.elements[0].basicType == SHType::Int && !isTable) ||
                (info.exposedType.seqTypes.elements[0].basicType == SHType::String && isTable))) {
@@ -2870,6 +2870,7 @@ struct Take {
 
   SHExposedTypesInfo requiredVariables() {
     if (_indices.valueType == SHType::ContextVar) {
+      // the following stringValue are cloned so null terminated safe
       if (_seqOutput)
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_indices.payload.stringValue, SHCCSTR("The required variables."),
                                                          _tableOutput ? CoreInfo::StringSeqType : CoreInfo::IntSeqType));
@@ -2911,7 +2912,7 @@ struct Take {
 
   void warmup(SHContext *context) {
     if (_indices.valueType == SHType::ContextVar && !_indicesVar) {
-      _indicesVar = referenceVariable(context, _indices.payload.stringValue);
+      _indicesVar = referenceVariable(context, SHSTRVIEW(_indices));
     }
   }
 
@@ -3121,7 +3122,7 @@ struct Slice {
       valid = true;
     } else { // SHType::ContextVar
       for (auto &info : data.shared) {
-        if (strcmp(info.name, _from.payload.stringValue) == 0) {
+        if (info.name == SHSTRVIEW(_from)) {
           valid = true;
           break;
         }
@@ -3135,7 +3136,7 @@ struct Slice {
       valid = true;
     } else { // SHType::ContextVar
       for (auto &info : data.shared) {
-        if (strcmp(info.name, _to.payload.stringValue) == 0) {
+        if (info.name == SHSTRVIEW(_to)) {
           valid = true;
           break;
         }
@@ -3157,6 +3158,7 @@ struct Slice {
   }
 
   SHExposedTypesInfo requiredVariables() {
+    // stringValue should be null terminated cos from and to are cloned!
     if (_from.valueType == SHType::ContextVar && _to.valueType == SHType::ContextVar) {
       _exposedInfo =
           ExposedInfo(ExposedInfo::Variable(_from.payload.stringValue, SHCCSTR("The required variable."), CoreInfo::IntType),
@@ -3214,10 +3216,10 @@ struct Slice {
 
   SHVar activateBytes(SHContext *context, const SHVar &input) {
     if (_from.valueType == SHType::ContextVar && !_fromVar) {
-      _fromVar = referenceVariable(context, _from.payload.stringValue);
+      _fromVar = referenceVariable(context, SHSTRVIEW(_from));
     }
     if (_to.valueType == SHType::ContextVar && !_toVar) {
-      _toVar = referenceVariable(context, _to.payload.stringValue);
+      _toVar = referenceVariable(context, SHSTRVIEW(_to));
     }
 
     const auto inputLen = input.payload.bytesSize;
@@ -3253,10 +3255,10 @@ struct Slice {
 
   SHVar activateString(SHContext *context, const SHVar &input) {
     if (_from.valueType == SHType::ContextVar && !_fromVar) {
-      _fromVar = referenceVariable(context, _from.payload.stringValue);
+      _fromVar = referenceVariable(context, SHSTRVIEW(_from));
     }
     if (_to.valueType == SHType::ContextVar && !_toVar) {
-      _toVar = referenceVariable(context, _to.payload.stringValue);
+      _toVar = referenceVariable(context, SHSTRVIEW(_to));
     }
 
     const auto inputLen = input.payload.stringLen > 0 || input.payload.stringValue == nullptr
@@ -3295,10 +3297,10 @@ struct Slice {
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
     if (_from.valueType == SHType::ContextVar && !_fromVar) {
-      _fromVar = referenceVariable(context, _from.payload.stringValue);
+      _fromVar = referenceVariable(context, SHSTRVIEW(_from));
     }
     if (_to.valueType == SHType::ContextVar && !_toVar) {
-      _toVar = referenceVariable(context, _to.payload.stringValue);
+      _toVar = referenceVariable(context, SHSTRVIEW(_to));
     }
 
     const auto inputLen = input.payload.seqValue.len;
@@ -3567,7 +3569,7 @@ struct Repeat {
         _ctxVar.clear();
         _times = value.payload.intValue;
       } else {
-        _ctxVar.assign(value.payload.stringValue);
+        _ctxVar.assign(SHSTRVIEW(value));
         _ctxTimes = nullptr;
       }
       break;

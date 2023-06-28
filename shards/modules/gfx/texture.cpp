@@ -380,7 +380,7 @@ struct RenderTargetShard {
       if (k.valueType != SHType::String)
         throw formatException("Invalid attachment name: {}", k);
       TexturePtr texture = varAsObjectChecked<TexturePtr>(v, Types::Texture);
-      std::string ks(k.payload.stringValue, k.payload.stringLen);
+      std::string ks(SHSTRVIEW(k));
       attachments.emplace(std::move(ks), texture);
     });
 

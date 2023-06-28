@@ -53,7 +53,8 @@ struct ToBigInt {
       bi = cpp_int(input.payload.floatValue);
     } break;
     case SHType::String: {
-      bi = cpp_int(input.payload.stringValue);
+      auto sv = SHSTRVIEW(input);
+      bi = cpp_int(sv);
     } break;
     case SHType::Bytes: {
       import_bits(bi, input.payload.bytesValue, input.payload.bytesValue + input.payload.bytesSize);
@@ -498,7 +499,7 @@ struct Abs {
 private:
   std::vector<uint8_t> _buffer;
 };
-}
+} // namespace BigInt
 
 SHARDS_REGISTER_FN(bigint) {
   REGISTER_SHARD("BigInt", BigInt::ToBigInt);

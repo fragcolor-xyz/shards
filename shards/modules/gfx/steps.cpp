@@ -69,7 +69,7 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
 
     auto &attachment = output.attachments.emplace_back();
 
-    std::string attachmentName = nameVar.payload.stringValue;
+    std::string attachmentName(SHSTRVIEW(nameVar));
     WGPUTextureFormat textureFormat{};
     TexturePtr texture;
     if (hasTexture) {
@@ -122,8 +122,9 @@ template <typename T> void applyOutputs(SHContext *context, T &step, const SHVar
         throw std::runtime_error("Invalid output texture, it wasn't created as a render target");
       }
 
+      std::string name(SHSTRVIEW(nameVar));
       attachment = RenderStepOutput::Texture{
-          .name = nameVar.payload.stringValue,
+          .name = std::move(name),
           .subResource = texture,
           .clearValues = clearValues,
       };
@@ -297,7 +298,7 @@ struct EffectPassShard {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
     }
-    
+
     PARAM_CLEANUP();
   }
 
@@ -317,8 +318,7 @@ struct EffectPassShard {
     for (size_t i = 0; i < input.payload.seqValue.len; i++) {
       auto &elem = input.payload.seqValue.elements[i];
       checkType(elem.valueType, SHType::String, "Input");
-
-      step.inputs.emplace_back(elem.payload.stringValue);
+      step.inputs.emplace_back(SHSTRVIEW(elem));
     }
   }
 

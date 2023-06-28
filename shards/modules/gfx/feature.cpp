@@ -230,14 +230,14 @@ public:
                 if (k.valueType != SHType::String) {
                   throw formatException("Generator wire returns invalid type {} for key {}", v, k);
                 }
-                std::string ks(k.payload.stringValue, k.payload.stringLen);
+                std::string ks(SHSTRVIEW(k));
                 auto &param = outBasicParams.emplace_back(std::move(ks), arg);
                 param.bindingFrequency = bindingFreq;
               } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
                 if (k.valueType != SHType::String) {
                   throw formatException("Generator wire returns invalid type {} for key {}", v, k);
                 }
-                std::string ks(k.payload.stringValue, k.payload.stringLen);
+                std::string ks(SHSTRVIEW(k));
                 auto &param = outTextureParams.emplace_back(std::move(ks), arg);
                 param.bindingFrequency = bindingFreq;
               } else {
@@ -406,10 +406,8 @@ public:
   void applyShaderDependency(SHContext *context, shader::EntryPoint &entryPoint, shader::DependencyType type,
                              const SHVar &input) {
     checkType(input.valueType, SHType::String, "Shader dependency");
-    const SHString &inputString = input.payload.stringValue;
-
     shader::NamedDependency &dep = entryPoint.dependencies.emplace_back();
-    dep.name = inputString;
+    dep.name = SHSTRVIEW(input);
     dep.type = type;
   }
 
@@ -445,7 +443,7 @@ public:
     SHVar nameVar;
     if (getFromTable(context, inputTable, Var("Name"), nameVar)) {
       checkType(nameVar.valueType, SHType::String, ":Shaders Name");
-      entryPoint.name = nameVar.payload.stringValue;
+      entryPoint.name = SHSTRVIEW(nameVar);
     }
 
     SHVar entryPointVar;
@@ -468,7 +466,7 @@ public:
   static std::variant<ParamVariant, TextureParameter> paramVarToShaderParameter(SHContext *context, SHVar v) {
     SHVar *ref{};
     if (v.valueType == SHType::ContextVar) {
-      ref = referenceVariable(context, v.payload.stringValue);
+      ref = referenceVariable(context, SHSTRVIEW(v));
       v = *ref;
     }
 
@@ -566,7 +564,7 @@ public:
     ForEach(inputTable, [&](SHVar key, SHVar v) {
       if (key.valueType != SHType::String)
         throw formatException("Shader parameter key must be a string");
-      std::string keyStr(key.payload.stringValue, key.payload.stringLen);
+      std::string keyStr(SHSTRVIEW(key));
       applyParam(context, feature, keyStr, v);
     });
   }
@@ -608,7 +606,7 @@ public:
 
     feature.generators.clear();
 
-    if (!_drawableGeneratorBranch.wires.empty()) { 
+    if (!_drawableGeneratorBranch.wires.empty()) {
       feature.generators.emplace_back([=](FeatureDrawableGeneratorContext &ctx) {
         auto applyResults = [](FeatureDrawableGeneratorContext &ctx, SHContext *shContext, const SHVar &output) {
           size_t index{};
@@ -642,7 +640,7 @@ public:
     ForEach(table, [&](const SHVar &k, const SHVar &v) {
       if (k.valueType != SHType::String)
         throw formatException("Shader parameter key must be a string");
-      std::string keyStr(k.payload.stringValue, k.payload.stringLen);
+      std::string keyStr(SHSTRVIEW(k));
       if (v.valueType == SHType::Object) {
         collector.setTexture(keyStr, varToTexture(v));
       } else {

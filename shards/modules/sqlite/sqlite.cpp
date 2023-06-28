@@ -139,7 +139,7 @@ struct Query : public Base {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (!prepared) {
-      prepared.reset(new Statement(_connection->get(), _query.payload.stringValue));
+      prepared.reset(new Statement(_connection->get(), _query.payload.stringValue)); // _query is full terminated cos cloned
     }
 
     sqlite3_reset(prepared->get());
@@ -160,9 +160,10 @@ struct Query : public Base {
       case SHType::Float:
         rc = sqlite3_bind_double(prepared->get(), idx, value.payload.floatValue);
         break;
-      case SHType::String:
-        rc = sqlite3_bind_text(prepared->get(), idx, value.payload.stringValue, value.payload.stringLen, SQLITE_STATIC);
-        break;
+      case SHType::String: {
+        auto sv = SHSTRVIEW(value);
+        rc = sqlite3_bind_text(prepared->get(), idx, sv.data(), sv.size(), SQLITE_STATIC);
+      } break;
       case SHType::Bytes:
         rc = sqlite3_bind_blob(prepared->get(), idx, value.payload.bytesValue, value.payload.bytesSize, SQLITE_STATIC);
         break;

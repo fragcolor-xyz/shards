@@ -48,7 +48,7 @@ struct Run {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _moduleName = value.payload.stringValue;
+      _moduleName = SHSTRVIEW(value);
       break;
     case 1:
       _arguments = value;
@@ -108,7 +108,7 @@ struct Run {
                 if (strlen(arg.payload.stringValue) == 0) {
                   throw ActivationError("Empty argument passed, this most likely is a mistake.");
                 } else {
-                  argsArray.emplace_back(arg.payload.stringValue);
+                  argsArray.emplace_back(arg.payload.stringValue); // ParamVar so should be same
                 }
               }
             }
@@ -142,7 +142,7 @@ struct Run {
             throw ActivationError("Failed to open streams for child process");
           }
 
-          ipipe << input.payload.stringValue << std::endl;
+          ipipe << SHSTRVIEW(input) << std::endl;
           ipipe.pipe().close(); // send EOF
 
           SHLOG_TRACE("Process started");

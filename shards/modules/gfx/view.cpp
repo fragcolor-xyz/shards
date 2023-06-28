@@ -178,7 +178,7 @@ struct RenderIntoShard {
     ForEach(table, [&](SHVar &k, SHVar &v) {
       if (k.valueType != SHType::String)
         throw formatException("RenderInto attachment key should be a string");
-      std::string keyStr(k.payload.stringValue, k.payload.stringLen);
+      std::string keyStr(SHSTRVIEW(k));
       outAttachments.emplace(std::move(keyStr), applyAttachment(shContext, v));
     });
 

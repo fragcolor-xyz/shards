@@ -463,7 +463,7 @@ struct Server {
         _pool.reset(new WireDoppelgangerPool<Peer>(_handlerMaster.payload.wireValue));
     } break;
     case 1:
-      _endpoint = val.payload.stringValue;
+      _endpoint = SHSTRVIEW(val);
       break;
     case 2:
       _port = uint16_t(val.payload.intValue);
@@ -493,7 +493,7 @@ struct Server {
     return data.inputType;
   }
 
-  std::unordered_map<const SHWire *, Peer*> _wireContainers;
+  std::unordered_map<const SHWire *, Peer *> _wireContainers;
 
   void wireOnStop(const SHWire::OnStopEvent &e) {
     SHLOG_TRACE("Wire {} stopped", e.wire->name);
@@ -858,7 +858,7 @@ struct SendFile {
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
     fs::path p{GetGlobals().RootPath};
-    p += input.payload.stringValue;
+    p += SHSTRING_PREFER_SHSTRVIEW(input);
 
     http::file_body::value_type file;
     boost::beast::error_code ec;
@@ -882,14 +882,14 @@ struct SendFile {
     } else {
       _response.clear();
       _response.result(http::status::ok);
-      _response.set(http::field::content_type, mime_type(input.payload.stringValue));
+      _response.set(http::field::content_type, mime_type(SHSTRVIEW(input)));
       _response.body() = std::move(file);
 
       // add custom headers
       if (_headers.get().valueType == SHType::Table) {
         auto htab = _headers.get().payload.tableValue;
         ForEach(htab, [&](auto &key, auto &value) {
-          if(key.valueType != SHType::String || value.valueType != SHType::String) {
+          if (key.valueType != SHType::String || value.valueType != SHType::String) {
             throw std::runtime_error("Headers must be a table of strings");
           }
           boost::core::string_view k{key.payload.stringValue};

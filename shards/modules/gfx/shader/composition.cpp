@@ -123,7 +123,7 @@ void applyComposeWith(SHContext *context, gfx::shader::VariableMap &composedWith
   for (auto &[k, v] : input.payload.tableValue) {
     if (k.valueType != SHType::String)
       throw formatException("ComposeWith key must be a string");
-    std::string keyStr(k.payload.stringValue, k.payload.stringLen);
+    std::string keyStr(SHSTRVIEW(k));
     shards::ParamVar pv(v);
     pv.warmup(context);
     auto &var = composedWith.emplace(std::move(keyStr), pv.get()).first->second;

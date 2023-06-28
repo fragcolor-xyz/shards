@@ -29,17 +29,17 @@
 (schedule root main1)
 (if (run root 0.1) nil (throw "Root tick failed"))
 
-; This should fail, wrapped in eval to catch compose error
-(defwire failure-case "(do
-  (defpure pure
-    (ForRange 0 10 (->
-                    .value (Math.Add .value) > .value))
-    .value)
-  (defwire main
-    4 >= .value
-    (Do pure))
-  (prepare main))"
-  (EDN.Eval))
+;; ; This should fail, wrapped in eval to catch compose error
+;; (defwire failure-case "(do
+;;   (defpure pure
+;;     (ForRange 0 10 (->
+;;                     .value (Math.Add .value) > .value))
+;;     .value)
+;;   (defwire main
+;;     4 >= .value
+;;     (Do pure))
+;;   (prepare main))"
+;;   (EDN.Eval))
 
 (schedule root failure-case)
 (if (run root 0.1) (throw "Expected failure") nil)

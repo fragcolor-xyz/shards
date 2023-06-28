@@ -11,8 +11,11 @@ struct SetClipboard {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
+  OwnedVar nullTerminatedCache;
+
   SHVar activate(SHContext *context, const SHVar &input) {
-    SDL_SetClipboardText(input.payload.stringValue);
+    nullTerminatedCache = input; // clone will null terminate inputs don't guarantee null termination
+    SDL_SetClipboardText(nullTerminatedCache.payload.stringValue);
     return input;
   }
 };

@@ -31,10 +31,10 @@ public:
   virtual void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _winName = value.payload.stringValue;
+      _winName = SHSTRVIEW(value);
       break;
     case 1:
-      _winClass = value.payload.stringValue;
+      _winClass = SHSTRVIEW(value);
       break;
     default:
       break;
@@ -170,7 +170,7 @@ struct SetTitleBase : public WinOpBase {
 
   SHVar getParam(int index) { return shards::Var(_title); }
 
-  virtual void setParam(int index, const SHVar &value) { _title = value.payload.stringValue; }
+  virtual void setParam(int index, const SHVar &value) { _title = SHSTRVIEW(value); }
 };
 
 struct WaitKeyEventBase {
@@ -219,7 +219,7 @@ struct SendKeyEventBase {
     if (value.valueType == SHType::None) {
       _windowVarName.clear();
     } else {
-      _windowVarName = value.payload.stringValue;
+      _windowVarName = SHSTRVIEW(value);
       _exposedInfo = shards::ExposedInfo(
           shards::ExposedInfo::Variable(_windowVarName.c_str(), SHCCSTR("The window to send events to."), Globals::windowType));
     }

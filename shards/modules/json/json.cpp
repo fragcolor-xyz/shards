@@ -127,7 +127,7 @@ void to_json(json &j, const SHVar &var) {
   case SHType::Path:
   case SHType::ContextVar:
   case SHType::String: {
-    j = json{{"type", valType}, {"value", var.payload.stringValue}};
+    j = json{{"type", valType}, {"value", SHSTRVIEW(var)}};
     break;
   }
   case SHType::Color: {
@@ -269,7 +269,7 @@ void to_json(json &j, const SHVar &var) {
     break;
   }
   case SHType::Type:
-      throw shards::ActivationError("Type can not be serialized to json.");
+    throw shards::ActivationError("Type can not be serialized to json.");
   };
 }
 
@@ -467,7 +467,7 @@ void from_json(const json &j, SHVar &var) {
       auto key = item.at("key").get<SHVar>();
       auto value = item.at("value").get<SHVar>();
       (*map)[key] = value;
-      _releaseMemory(key); // key is copied over
+      _releaseMemory(key);   // key is copied over
       _releaseMemory(value); // value is copied over
     }
     break;
@@ -541,7 +541,7 @@ void from_json(const json &j, SHVar &var) {
       auto data = j.at("data").get<std::vector<uint8_t>>();
       var.payload.objectValue = objectInfo->deserialize(&data.front(), data.size());
       var.flags |= SHVAR_FLAGS_USES_OBJINFO;
-      var.objectInfo = const_cast<SHObjectInfo*>(objectInfo);
+      var.objectInfo = const_cast<SHObjectInfo *>(objectInfo);
       if (objectInfo->reference)
         objectInfo->reference(var.payload.objectValue);
     } else {
@@ -550,7 +550,7 @@ void from_json(const json &j, SHVar &var) {
     break;
   }
   case SHType::Type:
-      throw shards::ActivationError("Type can not be deserialized from json.");
+    throw shards::ActivationError("Type can not be deserialized from json.");
   }
 }
 
@@ -627,7 +627,7 @@ struct ToJson {
       ForEach(tab, [&](auto &key, auto &val) {
         json sj{};
         anyDump(sj, val);
-        if(key.valueType != SHType::String)
+        if (key.valueType != SHType::String)
           throw shards::ActivationError("Table keys must be strings.");
         std::string keyStr(key.payload.stringValue, key.payload.stringLen);
         table.emplace(std::move(keyStr), sj);
@@ -646,7 +646,7 @@ struct ToJson {
       j = array;
     } break;
     case SHType::String: {
-      j = input.payload.stringValue;
+      j = SHSTRVIEW(input);
     } break;
     case SHType::Int: {
       j = input.payload.intValue;
@@ -748,7 +748,7 @@ struct FromJson {
     _releaseMemory(_output); // release previous
 
     try {
-      json j = json::parse(input.payload.stringValue);
+      json j = json::parse(SHSTRVIEW(input));
 
       if (_pure) {
         anyParse(j, _output);

@@ -19,7 +19,7 @@ inline bool getFromTable(SHContext *shContext, const SHTable &table, const SHVar
   if (table.api->tableContains(table, key)) {
     const SHVar *var = table.api->tableAt(table, key);
     if (var->valueType == SHType::ContextVar) {
-      SHVar *refencedVariable = shards::referenceVariable(shContext, var->payload.stringValue);
+      SHVar *refencedVariable = shards::referenceVariable(shContext, SHSTRVIEW((*var)));
       outVar = *refencedVariable;
       shards::releaseVariable(refencedVariable);
     } else {

@@ -989,7 +989,7 @@ struct DShard {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
-      _name = value.payload.stringValue;
+      _name = SHSTRVIEW(value);
 
       // destroy if we had a shard already
       if (_wrapped)

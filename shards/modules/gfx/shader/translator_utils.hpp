@@ -21,7 +21,7 @@ inline std::unique_ptr<IWGSLGenerated> translateTable(const SHVar &var, Translat
     std::string keyStr(key.payload.stringValue, key.payload.stringLen);
     std::unique_ptr<IWGSLGenerated> generatedValue;
     if (value.valueType == SHType::ContextVar)
-      generatedValue = std::make_unique<WGSLBlock>(context.reference(value.payload.stringValue));
+      generatedValue = std::make_unique<WGSLBlock>(context.reference(value.payload.stringValue)); // null term fine cos table values are cloned
     else
       generatedValue = translateConst(value, context);
     vt.elements.emplace(std::make_pair(std::move(keyStr), std::move(generatedValue)));

@@ -78,8 +78,10 @@ void WireBase::resolveWire() {
     if (wireref->valueType == SHType::Wire) {
       wire = SHWire::sharedFromRef(wireref->payload.wireValue);
     } else if (wireref->valueType == SHType::String) {
-      SHLOG_DEBUG("WireBase: Resolving wire {}", wireref->payload.stringValue);
-      wire = GetGlobals().GlobalWires[wireref->payload.stringValue];
+      auto sv = SHSTRVIEW((*wireref));
+      std::string s(sv);
+      SHLOG_DEBUG("WireBase: Resolving wire {}", sv);
+      wire = GetGlobals().GlobalWires[s];
     } else {
       wire = nullptr;
       SHLOG_DEBUG("WireBase::compose on a null wire");
@@ -294,8 +296,10 @@ struct Wait : public WireBase {
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       } else if (vwire.valueType == SHType::String) {
-        SHLOG_DEBUG("Wait: Resolving wire {}", vwire.payload.stringValue);
-        wire = GetGlobals().GlobalWires[vwire.payload.stringValue];
+        auto sv = SHSTRVIEW(vwire);
+        std::string s(sv);
+        SHLOG_DEBUG("Wait: Resolving wire {}", sv);
+        wire = GetGlobals().GlobalWires[s];
       } else {
         wire = nullptr;
       }
@@ -407,8 +411,10 @@ struct Peek : public WireBase {
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       } else if (vwire.valueType == SHType::String) {
-        SHLOG_DEBUG("Wait: Resolving wire {}", vwire.payload.stringValue);
-        wire = GetGlobals().GlobalWires[vwire.payload.stringValue];
+        auto sv = SHSTRVIEW(vwire);
+        std::string s(sv);
+        SHLOG_DEBUG("Wait: Resolving wire {}", sv);
+        wire = GetGlobals().GlobalWires[s];
       } else {
         wire = nullptr;
       }
@@ -521,8 +527,10 @@ struct StopWire : public WireBase {
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       } else if (vwire.valueType == SHType::String) {
-        SHLOG_DEBUG("Stop: Resolving wire {}", vwire.payload.stringValue);
-        wire = GetGlobals().GlobalWires[vwire.payload.stringValue];
+        auto sv = SHSTRVIEW(vwire);
+        std::string s(sv);
+        SHLOG_DEBUG("Stop: Resolving wire {}", sv);
+        wire = GetGlobals().GlobalWires[s];
       } else {
         wire = nullptr;
       }
@@ -591,6 +599,7 @@ struct Resume : public WireBase {
           SHVar ctxVar{};
           ctxVar.valueType = SHType::ContextVar;
           ctxVar.payload.stringValue = avail.name;
+          ctxVar.payload.stringLen = strlen(avail.name);
           auto &p = _vars.emplace_back();
           p = ctxVar;
         }
@@ -788,6 +797,7 @@ struct Recur : public WireBase {
         SHVar ctxVar{};
         ctxVar.valueType = SHType::ContextVar;
         ctxVar.payload.stringValue = shared.name;
+        ctxVar.payload.stringLen = strlen(shared.name);
         auto &p = _vars.emplace_back();
         p = ctxVar;
       }
@@ -1241,6 +1251,7 @@ struct CapturingSpawners : public WireBase {
           SHVar ctxVar{};
           ctxVar.valueType = SHType::ContextVar;
           ctxVar.payload.stringValue = avail.name;
+          ctxVar.payload.stringLen = strlen(avail.name);
           auto &p = _vars.emplace_back();
           p = ctxVar;
         }
