@@ -150,8 +150,10 @@ jobs:
       - name: Step to start local HTTP server with Fragnova docs
         run: |
           cd shards/docs && nohup mkdocs serve > nohup.out 2> nohup.err < /dev/null &
-      - name: Step to sleep for 15 seconds
-        run: sleep 15s
+      - name: Wait for the database to start
+        run: wget -qO- https://raw.githubusercontent.com/eficode/wait-for/WAIT_FOR_VERSION/wait-for | sh -s -- 127.0.0.1:8000 -- echo "Docs website is up"
+        env:
+          WAIT_FOR_VERSION: 4df3f9262d84cab0039c07bf861045fbb3c20ab7 # v2.2.3
       - name: Step to check for broken links
         id: link-report
         uses: roc/link-checker@master

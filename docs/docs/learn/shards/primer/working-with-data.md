@@ -29,7 +29,7 @@ In the example below, the Wire `get-x` attempts to retrieve the value of `.x` de
     (run main)
     ```
 
-    1. `>==` is the alias for the [`Set`](../../../reference/shards/General/Set/) shard, with the parameter `Global` set to **true**. This makes `.x` a global variable.
+    1. `>==` is the alias for the [`Set`](../../../../reference/shards/shards/General/Set/) shard, with the parameter `Global` set to **true**. This makes `.x` a global variable.
 
 === "Output"
     ```{.clojure .annotate linenums="1"}

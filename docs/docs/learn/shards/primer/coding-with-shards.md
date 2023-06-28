@@ -99,7 +99,7 @@ We can utilize the `Repeat` shard with its different parameters as shown:
 !!! note "`->`"
     When using shards for a parameter (e.g., `Action`), you must always place `->` before the first shard.
 
-    [`->`](../../../reference/lisp/misc/) is a shard container used to group multiple shards together. We will see how to eliminate the use of `->` later in the segment for `defshards`.
+    [`->`](../../../../reference/shards/lisp/misc/) is a shard container used to group multiple shards together. We will see how to eliminate the use of `->` later in the segment for `defshards`.
 
 To find out more about the input/output/parameter of a shard, you can search for the shard in the search bar above and check out its documentation page.
 
@@ -222,11 +222,11 @@ When defining variables in your program, you can use `Setup` to ensure that vari
 
     1. Code within a `Setup` will only be run once. As such, you can prevent variables defined in a loop from being reset each time.
 
-`Setup` is an alias of the shard [`Once`](../../../reference/shards/General/Once/), with its `Every` parameter set to 1 to ensure that code defined in its `Action` parameter will only be run once.
+`Setup` is an alias of the shard [`Once`](../../../../reference/shards/shards/General/Once/), with its `Every` parameter set to 1 to ensure that code defined in its `Action` parameter will only be run once.
 
 ## Grouping shards
 
-[`defshards`](../../../../reference/shards/lisp/macros/#defshards) allows you to group multiple shards together to form a new shard, thereby eliminating the use of `->`. It is useful for organizing your code and improving readability.
+[`defshards`](../../../../reference/shards/lisp/macros/#defshards) allows you to group multiple shards to form a new shard, thereby eliminating the use of `->`. It is useful for organizing your code and improving readability.
 
 `defshards` has a syntax as such:
 
@@ -320,7 +320,7 @@ A Wire is made up of a sequence of shards, queued for execution from left to rig
 
 ![A Wire is made up of a sequence of shards.](assets/what-is-a-wire.png)
 
-To create a Wire, we use [`defwire`](../../../reference/lisp/macros/#defwire).
+To create a Wire, we use [`defwire`](../../../../reference/shards/lisp/macros/#defwire).
 
 === "Creating a Wire"
     
@@ -345,7 +345,7 @@ A Looped Wire will continue running until its exit conditions have been met.
 !!! note
     You will learn more about the entering and exiting of Looped Wires in the next chapter!
 
-To create a Looped Wire, we use [`defloop`](../../../reference/lisp/macros/#defloop).
+To create a Looped Wire, we use [`defloop`](../../../../reference/shards/lisp/macros/#defloop).
 
 === "Creating a Looped Wire"
     
@@ -361,7 +361,7 @@ Wires are queued for execution within a Mesh, from left to right, top to bottom.
 
 ![Wires are queued for execution within a Mesh.](assets/what-is-a-mesh.png)
 
-To queue a Wire on a Mesh, we use [`schedule`](../../../reference/lisp/misc/#schedule).
+To queue a Wire on a Mesh, we use [`schedule`](../../../../reference/shards/lisp/misc/#schedule).
 
 === "Scheduling a Wire"
     
@@ -521,7 +521,7 @@ For this example, using `When` would suffice as we only need `make-cat-noises` t
       (Math.Inc .hunger))
     ```
 
-    1. [`IsMore`](../../../reference/shards/General/IsMore/) compares the input to its parameter and outputs `true` if the input has a greater value. In this case, it is comparing the value of `.hunger` to 0.
+    1. [`IsMore`](../../../../reference/shards/shards/General/IsMore/) compares the input to its parameter and outputs `true` if the input has a greater value. In this case, it is comparing the value of `.hunger` to 0.
     2. [`Detach`](../../../../reference/shards/shards/General/Detach/) is used to schedule a Wire on the Mesh. You will learn more about using `Detach` in the following chapter!
 
 ### Debugging
