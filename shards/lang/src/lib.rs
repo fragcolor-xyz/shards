@@ -9,15 +9,16 @@ mod read;
 use crate::ast::*;
 use crate::read::*;
 use core::convert::TryInto;
+use core::fmt;
 use core::slice;
 use nanoid::nanoid;
 use pest::Parser;
 use print::print_ast;
-use serde::de::value;
 use shards::core::cloneVar;
 use shards::core::destroyVar;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::ops::Deref;
 
 use shards::core::findEnumId;
 use shards::core::findEnumInfo;
@@ -32,6 +33,79 @@ use shards::types::{ShardRef, Var, Wire};
 
 use shards::{SHType_ContextVar, SHType_ShardRef};
 use std::ffi::CStr;
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::hash::Hash;
+use std::rc::Rc;
+
+#[derive(Hash, Debug, Clone, PartialEq, Eq)]
+pub struct RcStrWrapper(Rc<str>);
+
+impl Serialize for RcStrWrapper {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: Serializer,
+  {
+    serializer.serialize_str(&self.0)
+  }
+}
+
+impl<'de> Deserialize<'de> for RcStrWrapper {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    let s = String::deserialize(deserializer)?;
+    Ok(RcStrWrapper(Rc::from(s)))
+  }
+}
+
+impl RcStrWrapper {
+  pub fn new<S: Into<Rc<str>>>(s: S) -> Self {
+    RcStrWrapper(s.into())
+  }
+
+  pub fn to_string(&self) -> String {
+    self.0.to_string()
+  }
+
+  pub fn as_str(&self) -> &str {
+    &self.0
+  }
+}
+
+impl From<&str> for RcStrWrapper {
+  fn from(s: &str) -> Self {
+    RcStrWrapper::new(s)
+  }
+}
+
+impl From<String> for RcStrWrapper {
+  fn from(s: String) -> Self {
+    RcStrWrapper::new(s)
+  }
+}
+
+impl PartialEq<str> for RcStrWrapper {
+  fn eq(&self, other: &str) -> bool {
+    let s: &str = &self.0;
+    s == other
+  }
+}
+
+impl fmt::Display for RcStrWrapper {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+impl Deref for RcStrWrapper {
+  type Target = str;
+
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
 
 struct SShardRef(pub(crate) ShardRef);
 
@@ -52,16 +126,16 @@ struct EvalEnv {
   shards: Vec<SShardRef>,
   previous: Option<ShardRef>,
 
-  deferred_wires: HashMap<String, (Wire, *const Vec<Param>, LineInfo)>,
+  deferred_wires: HashMap<RcStrWrapper, (Wire, *const Vec<Param>, LineInfo)>,
 
-  shards_groups: HashMap<String, ShardsGroup>, // more cloning we don't need...
+  shards_groups: HashMap<RcStrWrapper, ShardsGroup>, // more cloning we don't need...
 
   // used during @shards evaluation, but also by @const
-  replacements: HashMap<String, *const Value>, // more cloning we don't need...
+  replacements: HashMap<RcStrWrapper, *const Value>, // more cloning we don't need...
 
   // used during @shards evaluation
-  suffix: Option<String>,
-  suffix_assigned: HashSet<String>,
+  suffix: Option<RcStrWrapper>,
+  suffix_assigned: HashSet<RcStrWrapper>,
 }
 
 impl Drop for EvalEnv {
@@ -110,7 +184,7 @@ impl AsMut<Var> for SVar {
 
 fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
   for (name, (wire, params, line_info)) in env.deferred_wires.drain().collect::<Vec<_>>() {
-    wire.set_name(unsafe { &*name });
+    wire.set_name(&name.0);
     let mut idx = 0;
     let mut as_idx = true;
     for param in unsafe { &*params } {
@@ -238,26 +312,26 @@ fn eval_sequence(
 }
 
 fn create_take_table_chain(
-  var_name: &String,
-  path: &Vec<String>,
+  var_name: &RcStrWrapper,
+  path: &Vec<RcStrWrapper>,
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  add_get_shard(&var_name, line, e);
+  add_get_shard(var_name, line, e);
   for path_part in path {
-    let s = Var::ephemeral_string(&path_part);
+    let s = Var::ephemeral_string(path_part.as_str());
     add_take_shard(&s, e);
   }
   Ok(())
 }
 
 fn create_take_seq_chain(
-  var_name: &String,
+  var_name: &RcStrWrapper,
   path: &Vec<u32>,
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  add_get_shard(&var_name, line, e);
+  add_get_shard(var_name, line, e);
   for path_part in path {
     let idx = (*path_part).try_into().unwrap(); // read should have caught this
     add_take_shard(&idx, e);
@@ -266,7 +340,7 @@ fn create_take_seq_chain(
 }
 
 /// Recurse into environment and find the suffix
-fn find_current_suffix<'a>(e: &'a EvalEnv) -> Option<&'a str> {
+fn find_current_suffix<'a>(e: &'a EvalEnv) -> Option<&'a RcStrWrapper> {
   let mut env = e;
   loop {
     if let Some(suffix) = &env.suffix {
@@ -281,7 +355,7 @@ fn find_current_suffix<'a>(e: &'a EvalEnv) -> Option<&'a str> {
 }
 
 /// Recurse into environment and find the suffix for a given variable name if it exists
-fn find_suffix<'a>(name: &'a str, e: &'a EvalEnv) -> Option<&'a str> {
+fn find_suffix<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a RcStrWrapper> {
   let mut env = e;
   loop {
     if let Some(suffix) = &env.suffix {
@@ -298,7 +372,7 @@ fn find_suffix<'a>(name: &'a str, e: &'a EvalEnv) -> Option<&'a str> {
 }
 
 /// Recurse into environment and find the replacement for a given variable name if it exists
-fn find_replacement<'a>(name: &'a str, e: &'a EvalEnv) -> Option<&'a Value> {
+fn find_replacement<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a Value> {
   let mut env = e;
   loop {
     if let Some(replacement) = env.replacements.get(name) {
@@ -343,7 +417,7 @@ fn as_var(
       }
     }
     Value::Enum(prefix, value) => {
-      let id = findEnumId(&prefix);
+      let id = findEnumId(prefix.as_str());
       if let Some(id) = id {
         // decompose bits to split id into vendor and type
         // consider this is how id is composed: int64_t id = (int64_t)vendorId << 32 | typeId;
@@ -393,7 +467,7 @@ fn as_var(
       }
     },
     Value::String(ref s) => {
-      let s = Var::ephemeral_string(s);
+      let s = Var::ephemeral_string(s.as_str());
       Ok(SVar::NotCloned(s))
     }
     Value::Float2(ref val) => Ok(SVar::NotCloned(val.into())),
@@ -452,7 +526,7 @@ fn as_var(
         let tmp_name = nanoid!(16);
         // ensure name starts with a letter
         let tmp_name = format!("t{}", tmp_name);
-        add_assignment_shard("Ref", &tmp_name, &mut sub_env);
+        add_assignment_shard_no_suffix("Ref", &tmp_name, &mut sub_env);
         // wrap into a Sub Shard
         let line_info = sub_env.shards[0].0.get_line_info();
         finalize_env(&mut sub_env)?;
@@ -482,14 +556,14 @@ fn as_var(
         let tmp_name = nanoid!(16);
         // ensure name starts with a letter
         let tmp_name = format!("t{}", tmp_name);
-        add_assignment_shard("Ref", &tmp_name, &mut sub_env);
+        add_assignment_shard_no_suffix("Ref", &tmp_name, &mut sub_env);
         // wrap into a Sub Shard
         finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
         // add this sub shard before the start of this pipeline!
         e.shards.insert(start_idx, sub);
         // now add a get shard to get the temporary at the end of the pipeline
-        add_get_shard(&tmp_name, line_info, e);
+        add_get_shard_no_suffix(&tmp_name, line_info, e);
 
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
@@ -507,14 +581,14 @@ fn as_var(
         let tmp_name = nanoid!(16);
         // ensure name starts with a letter
         let tmp_name = format!("t{}", tmp_name);
-        add_assignment_shard("Ref", &tmp_name, &mut sub_env);
+        add_assignment_shard_no_suffix("Ref", &tmp_name, &mut sub_env);
         // wrap into a Sub Shard
         finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
         // add this sub shard before the start of this pipeline!
         e.shards.insert(start_idx, sub);
         // now add a get shard to get the temporary at the end of the pipeline
-        add_get_shard(&tmp_name, line_info, e);
+        add_get_shard_no_suffix(&tmp_name, line_info, e);
 
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
@@ -558,7 +632,7 @@ fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(
         let mut found = false;
         for (i, info) in info.iter().enumerate() {
           let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() };
-          if param_name == name {
+          if param_name == name.as_str() {
             s.0
               .set_parameter(i.try_into().expect("Too many parameters"), *value.as_ref());
             found = true;
@@ -661,7 +735,7 @@ fn add_take_shard(target: &Var, e: &mut EvalEnv) {
   e.shards.push(shard);
 }
 
-fn add_get_shard(name: &str, line: LineInfo, e: &mut EvalEnv) {
+fn add_get_shard(name: &RcStrWrapper, line: LineInfo, e: &mut EvalEnv) {
   let shard = ShardRef::create("Get").unwrap();
   let shard = SShardRef(shard);
   if let Some(suffix) = find_suffix(name, e) {
@@ -669,7 +743,7 @@ fn add_get_shard(name: &str, line: LineInfo, e: &mut EvalEnv) {
     let name = Var::ephemeral_string(&name);
     shard.0.set_parameter(0, name);
   } else {
-    let name = Var::ephemeral_string(name);
+    let name = Var::ephemeral_string(name.as_str());
     shard.0.set_parameter(0, name);
   }
   shard.0.set_line_info((
@@ -680,8 +754,21 @@ fn add_get_shard(name: &str, line: LineInfo, e: &mut EvalEnv) {
   e.shards.push(shard);
 }
 
+fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) {
+  let shard = ShardRef::create("Get").unwrap();
+  let shard = SShardRef(shard);
+  let name = Var::ephemeral_string(name);
+  shard.0.set_parameter(0, name);
+  shard.0.set_line_info((
+    line.line.try_into().unwrap(),
+    line.column.try_into().unwrap(),
+  ));
+  e.previous = Some(shard.0);
+  e.shards.push(shard);
+}
+
 /// Recurse into environment and find the replacement for a given @ call name if it exists
-fn find_shards_group<'a>(name: &'a String, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
+fn find_shards_group<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
   let mut env = e;
   loop {
     if let Some(group) = env.shards_groups.get(name) {
@@ -754,14 +841,14 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           let tmp_name = nanoid!(16);
           // ensure name starts with a letter
           let tmp_name = format!("t{}", tmp_name);
-          add_assignment_shard("Ref", &tmp_name, &mut sub_env);
+          add_assignment_shard_no_suffix("Ref", &tmp_name, &mut sub_env);
           // wrap into a Sub Shard
           finalize_env(&mut sub_env)?;
           let sub = make_sub_shard(sub_env.shards.drain(..).collect(), block.line_info)?;
           // add this sub shard before the start of this pipeline!
           e.shards.insert(start_idx, sub);
           // now add a get shard to get the temporary at the end of the pipeline
-          add_get_shard(&tmp_name, block.line_info, e);
+          add_get_shard_no_suffix(&tmp_name, block.line_info, e);
         }
         Ok(())
       }
@@ -926,7 +1013,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               sub_env.parent = Some(e as *const EvalEnv);
 
               // set a random suffix
-              sub_env.suffix = Some(nanoid!(16));
+              sub_env.suffix = Some(nanoid!(16).into());
 
               for i in 0..args.len() {
                 let arg = &args[i];
@@ -989,7 +1076,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
   Ok(())
 }
 
-fn add_assignment_shard(shard_name: &str, name: &str, e: &mut EvalEnv) {
+fn add_assignment_shard(shard_name: &str, name: &RcStrWrapper, e: &mut EvalEnv) {
   if let Some(previous) = e.previous {
     let shard = ShardRef::create(shard_name).unwrap();
     let shard = SShardRef(shard);
@@ -1004,8 +1091,20 @@ fn add_assignment_shard(shard_name: &str, name: &str, e: &mut EvalEnv) {
       false
     };
     if assigned {
-      e.suffix_assigned.insert(name.to_owned());
+      e.suffix_assigned.insert(name.clone());
     }
+    shard.0.set_line_info(previous.get_line_info());
+    e.previous = Some(shard.0);
+    e.shards.push(shard);
+  }
+}
+
+fn add_assignment_shard_no_suffix(shard_name: &str, name: &str, e: &mut EvalEnv) {
+  if let Some(previous) = e.previous {
+    let shard = ShardRef::create(shard_name).unwrap();
+    let shard = SShardRef(shard);
+    let name = Var::ephemeral_string(name);
+    shard.0.set_parameter(0, name);
     shard.0.set_line_info(previous.get_line_info());
     e.previous = Some(shard.0);
     e.shards.push(shard);

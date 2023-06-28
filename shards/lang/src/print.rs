@@ -1,5 +1,3 @@
-
-
 #[cfg(test)]
 use crate::read::process_program;
 #[cfg(test)]
@@ -56,7 +54,7 @@ impl Value {
   fn to_string(&self, context: &mut Context) -> String {
     match self {
       Value::None => String::from("none"),
-      Value::Identifier(s) => s.clone(),
+      Value::Identifier(s) => s.to_string(),
       Value::Boolean(b) => format!("{}", b),
       Value::Enum(a, b) => format!("{}.{}", a, b),
       Value::Number(n) => n.to_string(),
@@ -91,6 +89,7 @@ impl Value {
         format!("[{}]", values_str)
       }
       Value::TakeTable(name, path) => {
+        let path = path.iter().map(|p| p.to_string()).collect::<Vec<String>>();
         let path = path.join(":");
         format!("{}:{}", name, path)
       }
@@ -157,7 +156,7 @@ impl Function {
       None => vec![],
     };
     if params.is_empty() {
-      self.name.clone()
+      self.name.to_string()
     } else {
       format!("{}({})", self.name, params.join(" "))
     }
@@ -172,6 +171,7 @@ impl BlockContent {
       BlockContent::Shards(seq) => format!("{{{}}}", seq.to_string(context)),
       BlockContent::Const(value) => value.to_string(context),
       BlockContent::TakeTable(name, path) => {
+        let path = path.iter().map(|p| p.to_string()).collect::<Vec<String>>();
         let path = path.join(":");
         format!("{}:{}", name, path)
       }
