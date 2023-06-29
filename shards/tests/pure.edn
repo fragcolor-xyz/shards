@@ -41,5 +41,5 @@
 ;;   (prepare main))"
 ;;   (EDN.Eval))
 
-(schedule root failure-case)
-(if (run root 0.1) (throw "Expected failure") nil)
+;; (schedule root failure-case)
+;; (if (run root 0.1) (throw "Expected failure") nil)

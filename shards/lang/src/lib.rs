@@ -28,7 +28,7 @@ use std::ffi::CString;
 use std::os::raw::c_char;
 use std::panic::catch_unwind;
 
-#[derive(Hash, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct RcStrWrapper(Rc<str>);
 
 impl Serialize for RcStrWrapper {
@@ -90,6 +90,13 @@ impl PartialEq<str> for RcStrWrapper {
   fn eq(&self, other: &str) -> bool {
     let s: &str = &self.0;
     s == other
+  }
+}
+
+impl Hash for RcStrWrapper {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    let s: &str = &self.0;
+    s.hash(state);
   }
 }
 

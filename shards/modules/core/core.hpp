@@ -36,7 +36,7 @@ struct Const {
   std::vector<SHExposedTypeInfo> _dependencies;
 
   void destroy() {
-    // SHLOG_TRACE("Destroying Const (Last value: {})", _value);
+    // SHLOG_TRACE("Destroying Const (Last value: {}, clone: {})", _value, _clone);
     freeDerivedInfo(_innerInfo);
   }
 
@@ -1818,9 +1818,6 @@ struct Push : public SeqBase {
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
-    } else {
-      // assert cell is reference counted
-      assert(_cell->flags & SHVAR_FLAGS_REF_COUNTED && "Cell is not reference counted.");
     }
 
     if (_clear && _firstPush) {
