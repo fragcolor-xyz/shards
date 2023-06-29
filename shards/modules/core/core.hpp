@@ -1699,7 +1699,11 @@ struct SeqBase : public VariableBase {
 struct Push : public SeqBase {
   bool _firstPush = false;
   SHTypeInfo _seqInfo{};
-  SHTypesInfo _seqTypes{};
+
+  void destroy() {
+    SeqBase::destroy();
+    shards::arrayFree(_seqInfo.seqTypes);
+  }
 
   static SHOptionalString help() {
     return SHCCSTR("Updates sequences and tables by pushing elements and/or sequences into them.");
@@ -1805,6 +1809,9 @@ struct Push : public SeqBase {
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable && _key.isVariable())) {
       fillVariableCell();
+    } else {
+      // assert cell is reference counted
+      assert(_cell->flags & SHVAR_FLAGS_REF_COUNTED && "Cell is not reference counted.");
     }
 
     if (_clear && _firstPush) {

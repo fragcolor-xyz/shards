@@ -3222,13 +3222,14 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->createMesh = []() noexcept {
-    SHLOG_TRACE("createMesh");
-    return reinterpret_cast<SHMeshRef>(SHMesh::makePtr());
+    auto mesh = SHMesh::makePtr();
+    SHLOG_TRACE("createMesh {}", (void*)(*mesh).get());
+    return reinterpret_cast<SHMeshRef>(mesh);
   };
 
   result->destroyMesh = [](SHMeshRef mesh) noexcept {
-    SHLOG_TRACE("destroyMesh");
     auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+    SHLOG_TRACE("destroyMesh {}", (void*)(*smesh).get());
     delete smesh;
   };
 
