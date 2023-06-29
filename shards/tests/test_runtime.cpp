@@ -1726,4 +1726,31 @@ TEST_CASE("shards-lang") {
     // std::string b("Assert failed - Is");
     // REQUIRE(a == b);
   }
+
+  SECTION("Test @mesh & @schedule & @run") {
+    auto code = R"(
+      @wire(wire1 {
+        Msg("Hello")
+      } Looped: true)
+      @mesh(main)
+      @schedule(main wire1)
+      @run(main 1.0 5)
+    )";
+    auto seq = shards_read(code); // Enums can't be used like this
+    REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
+    auto wire = shards_eval(seq.ast, "root");
+
+    REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+
+    // REQUIRE(wire.error);
+    // DEFER(shards_free_error(wire.error));
+    // std::string a(wire.error->message);
+    // std::string b("Assert failed - Is");
+    // REQUIRE(a == b);
+  }
 }

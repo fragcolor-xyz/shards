@@ -7,6 +7,7 @@ use core::slice;
 use nanoid::nanoid;
 
 use shards::core::destroyVar;
+use shards::core::sleep;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -809,8 +810,10 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           }
           "wire" => {
             if let Some(ref params) = func.params {
+              let n_params = params.len();
+
               // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
-              let name = if params[0].name.is_none() {
+              let name = if n_params > 0 && params[0].name.is_none() {
                 Some(&params[0])
               } else {
                 params
@@ -942,8 +945,10 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           }
           "mesh" => {
             if let Some(ref params) = func.params {
+              let n_params = params.len();
+
               // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
-              let name = if params[0].name.is_none() {
+              let name = if n_params > 0 && params[0].name.is_none() {
                 Some(&params[0])
               } else {
                 params
@@ -986,8 +991,10 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           }
           "schedule" => {
             if let Some(ref params) = func.params {
+              let n_params: usize = params.len();
+
               // Obtain the name of the mesh either from unnamed first parameter or named parameter "Mesh"
-              let mesh_id = if params[0].name.is_none() {
+              let mesh_id = if n_params > 0 && params[0].name.is_none() {
                 Some(&params[0])
               } else {
                 params
@@ -996,8 +1003,9 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               };
 
               // Obtain the name of the wire either from unnamed first parameter or named parameter "Wire"
-              let wire_id = if params[0].name.is_none() && params[1].name.is_none() {
-                Some(&params[0])
+              let wire_id = if n_params > 1 && params[0].name.is_none() && params[1].name.is_none()
+              {
+                Some(&params[1])
               } else {
                 params
                   .iter()
@@ -1084,7 +1092,199 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "run" => Ok(()),
+          "run" => {
+            if let Some(ref params) = func.params {
+              let n_params: usize = params.len();
+
+              // Obtain the name of the mesh either from unnamed first parameter or named parameter "Mesh"
+              let mesh_id = if n_params > 0 && params[0].name.is_none() {
+                Some(&params[0])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("Mesh"))
+              }
+              .ok_or(
+                (
+                  "run built-in function requires a mesh parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )?;
+
+              let tick_param = if n_params > 1 && params[1].name.is_none() {
+                Some(&params[1])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("TickTime"))
+              };
+
+              let iterations_param = if n_params > 2 && params[2].name.is_none() {
+                Some(&params[2])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("Iterations"))
+              };
+
+              let fps_param = if n_params > 3 && params[3].name.is_none() {
+                Some(&params[3])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("FPS"))
+              };
+
+              let tick = match (tick_param, fps_param) {
+                (Some(_), Some(_)) => Err(
+                  (
+                    "run built-in function requires either a rate or fps parameter",
+                    block.line_info,
+                  )
+                    .into(),
+                ),
+                (Some(rate), None) => match &rate.value {
+                  Value::Number(n) => match n {
+                    Number::Float(n) => Ok(Some(*n)),
+                    _ => Err(
+                      (
+                        "run built-in function requires a float number rate parameter",
+                        block.line_info,
+                      )
+                        .into(),
+                    ),
+                  },
+                  _ => Err(
+                    (
+                      "run built-in function requires a float number rate parameter",
+                      block.line_info,
+                    )
+                      .into(),
+                  ),
+                },
+                (None, Some(fps)) => match &fps.value {
+                  Value::Number(n) => match n {
+                    Number::Integer(n) => Ok(Some(1.0 / (*n as f64))),
+                    Number::Float(n) => Ok(Some(1.0 / *n)),
+                    _ => Err(
+                      (
+                        "run built-in function requires a float number rate parameter",
+                        block.line_info,
+                      )
+                        .into(),
+                    ),
+                  },
+                  _ => Err(
+                    (
+                      "run built-in function requires a float number rate parameter",
+                      block.line_info,
+                    )
+                      .into(),
+                  ),
+                },
+                _ => Ok(None),
+              }?;
+
+              let iterations = match iterations_param {
+                Some(iterations) => match &iterations.value {
+                  Value::Number(n) => match n {
+                    Number::Integer(n) => {
+                      let iterations = u64::try_from(*n).map_err(|_| {
+                        (
+                          "run built-in function requires an integer number in range of i64 iterations parameter",
+                          block.line_info,
+                        )
+                          .into()
+                      })?;
+                      Ok(Some(iterations))
+                    }
+                    _ => Err(
+                      (
+                        "run built-in function requires an integer number iterations parameter",
+                        block.line_info,
+                      )
+                        .into(),
+                    ),
+                  },
+                  _ => Err(
+                    (
+                      "run built-in function requires an integer number iterations parameter",
+                      block.line_info,
+                    )
+                      .into(),
+                  ),
+                },
+                None => Ok(None),
+              }?;
+
+              match &mesh_id.value {
+                Value::String(name) | Value::Identifier(name) => {
+                  if let Some(mesh) = find_mesh(name, e) {
+                    use std::time::{Duration, Instant};
+
+                    let mut now = Instant::now();
+                    let mut next = now + Duration::from_secs_f64(tick.unwrap_or(0.0));
+                    let mut iteration = 0u64;
+
+                    loop {
+                      if let Some(tick) = tick {
+                        if !mesh.tick() {
+                          break;
+                        }
+
+                        now = Instant::now();
+                        let real_sleep_time = next - now;
+
+                        if real_sleep_time <= Duration::from_secs_f64(0.0) {
+                          next = now + Duration::from_secs_f64(tick);
+                        } else {
+                          sleep(real_sleep_time.as_secs_f64());
+                          next = next + Duration::from_secs_f64(tick);
+                        }
+                      } else {
+                        if !mesh.tick() {
+                          break;
+                        }
+                      }
+
+                      iteration += 1;
+                      if let Some(max_iterations) = iterations {
+                        if iteration >= max_iterations {
+                          break;
+                        }
+                      }
+                    }
+
+                    Ok(())
+                  } else {
+                    Err(
+                      (
+                        "run built-in function requires a valid mesh parameter",
+                        block.line_info,
+                      )
+                        .into(),
+                    )
+                  }
+                }
+                _ => Err(
+                  (
+                    "run built-in function requires a mesh parameter",
+                    block.line_info,
+                  )
+                    .into(),
+                ),
+              }
+            } else {
+              Err(
+                (
+                  "run built-in function requires a parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )
+            }
+          }
           unknown => {
             let mut shards_env = {
               if let Some(group) = find_shards_group(&func.name, e) {

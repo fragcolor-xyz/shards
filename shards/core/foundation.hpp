@@ -1358,6 +1358,8 @@ struct VariableResolver {
       auto sv = SHSTRVIEW(base);
       _refs.emplace_back(referenceVariable(context, sv));
       _vals.emplace_back(&slot);
+      // also destroy the previous value to avoid leaks
+      destroyVar(slot);
     } else if (base.valueType == SHType::Seq) {
       for (uint32_t i = 0; i < base.payload.seqValue.len; i++) {
         warmup(base.payload.seqValue.elements[i], slot.payload.seqValue.elements[i], context);
