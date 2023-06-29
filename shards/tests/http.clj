@@ -19,13 +19,12 @@
    (Set .params "postId")
                                         ; GET
    .params
-   (Http.Get "https://jsonplaceholder.typicode.com/comments")
+   (Http.Get "https://raw.githubusercontent.com/fragcolor-xyz/vscode-shards-syntax/main/package.json")
    (FromJson)
-   (ExpectSeq)
-   (Take 0)
    (ExpectTable)
-   (Take "name")
-   (Assert.Is "id labore ex et quam laborum" true)
+   (Take "author")
+   (ExpectString)
+   (Assert.Is "Fragcolor and contributors" true)
    (Log)
 
    (Maybe
@@ -34,13 +33,6 @@
      (Http.Get "https://httpstat.us/200?sleep=5000" :Timeout 1)
      (Log)))
                                         ; POST
-   .params
-   (Http.Post "https://jsonplaceholder.typicode.com/posts") &> .json
-   (FromJson)
-   (ExpectTable)
-   (Take "id")
-   (Assert.Is 101 true)
-   (Log)
 
    .json
    (Http.Post "https://postman-echo.com/post")

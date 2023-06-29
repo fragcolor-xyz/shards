@@ -24,18 +24,18 @@
 ;;   (WireRunner .c3 :Mode RunWireMode.Detached)
 ;;   (Wait .c3))
 
-(defmesh internally-used)
+;; (defmesh internally-used)
 
-(defloop internally-ran
-  (Msg "Hello?"))
+;; (defloop internally-ran
+;;   (Msg "Hello?"))
 
-(schedule internally-used internally-ran)
+;; (schedule internally-used internally-ran)
 
-(defloop c
-  "Hello" = .msg1
-  (Branch [c4]
-          :CaptureAll true
-          :Mesh internally-used))
+;; (defloop c
+;;   "Hello" = .msg1
+;;   (Branch [c4]
+;;           :CaptureAll true
+;;           :Mesh internally-used))
 
-(schedule main c)
-(if (run main 0.2 25) nil (throw "Root tick failed"))
+;; (schedule main c)
+;; (if (run main 0.2 25) nil (throw "Root tick failed"))
