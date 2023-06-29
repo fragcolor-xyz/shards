@@ -1699,7 +1699,7 @@ TEST_CASE("shards-lang") {
   SECTION("Test @shards 2") {
     auto code = R"(
       @shards(range [from to] {
-        [] = s
+        [] >= s
         from >= n
         Repeat({
           n >> s

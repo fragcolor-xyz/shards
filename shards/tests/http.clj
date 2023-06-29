@@ -19,7 +19,7 @@
    (Set .params "postId")
                                         ; GET
    .params
-   (Http.Get "https://raw.githubusercontent.com/fragcolor-xyz/vscode-shards-syntax/main/package.json")
+   (Http.Get "https://raw.githubusercontent.com/fragcolor-xyz/vscode-shards-syntax/main/package.json") = .json
    (FromJson)
    (ExpectTable)
    (Take "author")
