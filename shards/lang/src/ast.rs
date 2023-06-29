@@ -118,14 +118,14 @@ pub struct Function {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum BlockContent {
-  Shard(Function),                // Rule: Shard
-  Shards(Sequence),               // Rule: Shards
-  Const(Value),                   // Rules: ConstValue, Vector
+  Shard(Function),                            // Rule: Shard
+  Shards(Sequence),                           // Rule: Shards
+  Const(Value),                               // Rules: ConstValue, Vector
   TakeTable(RcStrWrapper, Vec<RcStrWrapper>), // Rule: TakeTable
-  TakeSeq(RcStrWrapper, Vec<u32>),      // Rule: TakeSeq
-  EvalExpr(Sequence),             // Rule: EvalExpr
-  Expr(Sequence),                 // Rule: Expr
-  Func(Function),              // Rule: BuiltIn
+  TakeSeq(RcStrWrapper, Vec<u32>),            // Rule: TakeSeq
+  EvalExpr(Sequence),                         // Rule: EvalExpr
+  Expr(Sequence),                             // Rule: Expr
+  Func(Function),                             // Rule: BuiltIn
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
