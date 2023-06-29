@@ -1,7 +1,6 @@
 use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
 use pest::iterators::Pair;
-#[cfg(test)]
 use pest::Parser;
 
 fn process_assignment(pair: Pair<Rule>) -> Result<Assignment, ShardsError> {
@@ -566,6 +565,11 @@ fn process_param(pair: Pair<Rule>) -> Result<Param, ShardsError> {
 
 fn process_params(pair: Pair<Rule>) -> Result<Vec<Param>, ShardsError> {
   pair.into_inner().map(process_param).collect()
+}
+
+pub fn read(code: &str) -> Result<Sequence, ShardsError> {
+  let successful_parse = ShardsParser::parse(Rule::Program, code).expect("Code parsing failed");
+  process_program(successful_parse.into_iter().next().unwrap())
 }
 
 #[test]
