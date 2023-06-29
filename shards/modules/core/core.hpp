@@ -35,7 +35,10 @@ struct Const {
   VariableResolver resolver;
   std::vector<SHExposedTypeInfo> _dependencies;
 
-  void destroy() { freeDerivedInfo(_innerInfo); }
+  void destroy() {
+    // SHLOG_TRACE("Destroying Const (Last value: {})", _value);
+    freeDerivedInfo(_innerInfo);
+  }
 
   static SHOptionalString help() { return SHCCSTR("Declares an un-named constant value (of any data type)."); }
 
@@ -1793,7 +1796,13 @@ struct Push : public SeqBase {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &cv = data.shared.elements[i];
         if (_name == cv.name && cv.exposedType.basicType == SHType::Seq) {
-          // found, let's just update our info
+          // found, can we mutate it?
+          if (!cv.isMutable) {
+            throw ComposeError("Cannot mutate a non-mutable variable");
+          } else if (cv.isProtected) {
+            throw ComposeError("Cannot mutate a protected variable");
+          }
+          // ok now update into
           updateSeqInfo(&cv.exposedType);
           return data.inputType; // found lets escape
         }

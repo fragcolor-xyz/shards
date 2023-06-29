@@ -43,6 +43,7 @@ struct EvalEnv {
   shards: Vec<SShardRef>,
 
   deferred_wires: HashMap<RcStrWrapper, (Wire, *const Vec<Param>, LineInfo)>,
+  finalized_wires: HashMap<RcStrWrapper, Wire>,
 
   shards_groups: HashMap<RcStrWrapper, ShardsGroup>, // more cloning we don't need...
 
@@ -55,6 +56,8 @@ struct EvalEnv {
 
   // Shards and functions that are forbidden to be used
   forbidden_funcs: HashSet<RcStrWrapper>,
+
+  meshes: HashMap<RcStrWrapper, Mesh>,
 }
 
 impl Drop for EvalEnv {
@@ -69,11 +72,13 @@ impl Default for EvalEnv {
       parent: None,
       shards: Vec::new(),
       deferred_wires: HashMap::new(),
+      finalized_wires: HashMap::new(),
       shards_groups: HashMap::new(),
       replacements: HashMap::new(),
       suffix: None,
       suffix_assigned: HashSet::new(),
       forbidden_funcs: HashSet::new(),
+      meshes: HashMap::new(),
     }
   }
 }
@@ -101,62 +106,97 @@ impl AsMut<Var> for SVar {
   }
 }
 
+fn find_mesh<'a>(name: &'a RcStrWrapper, env: &'a mut EvalEnv) -> Option<&'a mut Mesh> {
+  if let Some(mesh) = env.meshes.get_mut(name) {
+    Some(mesh)
+  } else if let Some(parent) = env.parent {
+    find_mesh(name, unsafe { &mut *(parent as *mut EvalEnv) })
+  } else {
+    None
+  }
+}
+
+fn find_wire<'a>(name: &'a RcStrWrapper, env: &'a EvalEnv) -> Option<(&'a Wire, bool)> {
+  if let Some(wire) = env.finalized_wires.get(name) {
+    Some((wire, true))
+  } else if let Some(wire) = env.deferred_wires.get(name) {
+    Some((&wire.0, false))
+  } else if let Some(parent) = env.parent {
+    find_wire(name, unsafe { &mut *(parent as *mut EvalEnv) })
+  } else {
+    None
+  }
+}
+
+fn finalize_wire(
+  wire: Wire,
+  name: &RcStrWrapper,
+  params: *const Vec<Param>,
+  line_info: LineInfo,
+  env: &mut EvalEnv,
+) -> Result<Wire, ShardsError> {
+  wire.set_name(&name.0);
+  let mut idx = 0;
+  let mut as_idx = true;
+  for param in unsafe { &*params } {
+    if let Some(name) = &param.name {
+      as_idx = false;
+      if name == "Looped" {
+        wire.set_looped({
+          match param.value {
+            Value::Boolean(b) => b,
+            _ => return Err(("Looped parameter must be a boolean", line_info).into()),
+          }
+        })
+      } else if name == "Shards" {
+        let mut sub_env = match &param.value {
+          Value::Shards(seq) => eval_sequence(&seq, Some(env))?,
+          _ => return Err(("Shards parameter must be a sequence", line_info).into()),
+        };
+        finalize_env(&mut sub_env)?;
+        for shard in sub_env.shards.drain(..) {
+          wire.add_shard(shard.0);
+        }
+      } else if name == "Name" {
+      } else {
+        return Err(("Unknown parameter", line_info).into());
+      }
+    } else {
+      if !as_idx {
+        return Err(("Named parameter after unnamed parameter", line_info).into());
+      }
+
+      if idx == 0 {
+        // name param
+      } else if idx == 1 {
+        let mut sub_env = match &param.value {
+          Value::Shards(seq) => eval_sequence(&seq, Some(env))?,
+          _ => return Err(("Shards parameter must be a sequence", line_info).into()),
+        };
+        finalize_env(&mut sub_env)?;
+        for shard in sub_env.shards.drain(..) {
+          wire.add_shard(shard.0);
+        }
+      } else if idx == 2 {
+        wire.set_looped({
+          match param.value {
+            Value::Boolean(b) => b,
+            _ => return Err(("Looped parameter must be a boolean", line_info).into()),
+          }
+        })
+      } else {
+        return Err(("Unknown parameter", line_info).into());
+      }
+    }
+    idx += 1;
+  }
+  Ok(wire)
+}
+
 fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
   for (name, (wire, params, line_info)) in env.deferred_wires.drain().collect::<Vec<_>>() {
-    wire.set_name(&name.0);
-    let mut idx = 0;
-    let mut as_idx = true;
-    for param in unsafe { &*params } {
-      if let Some(name) = &param.name {
-        as_idx = false;
-        if name == "Looped" {
-          wire.set_looped({
-            match param.value {
-              Value::Boolean(b) => b,
-              _ => return Err(("Looped parameter must be a boolean", line_info).into()),
-            }
-          })
-        } else if name == "Shards" {
-          let mut sub_env = match &param.value {
-            Value::Shards(seq) => eval_sequence(&seq, Some(env))?,
-            _ => return Err(("Shards parameter must be a sequence", line_info).into()),
-          };
-          finalize_env(&mut sub_env)?;
-          for shard in sub_env.shards.drain(..) {
-            wire.add_shard(shard.0);
-          }
-        } else if name == "Name" {
-        } else {
-          return Err(("Unknown parameter", line_info).into());
-        }
-      } else {
-        if !as_idx {
-          return Err(("Named parameter after unnamed parameter", line_info).into());
-        }
-
-        if idx == 0 {
-        } else if idx == 1 {
-          let mut sub_env = match &param.value {
-            Value::Shards(seq) => eval_sequence(&seq, Some(env))?,
-            _ => return Err(("Shards parameter must be a sequence", line_info).into()),
-          };
-          finalize_env(&mut sub_env)?;
-          for shard in sub_env.shards.drain(..) {
-            wire.add_shard(shard.0);
-          }
-        } else if idx == 2 {
-          wire.set_looped({
-            match param.value {
-              Value::Boolean(b) => b,
-              _ => return Err(("Looped parameter must be a boolean", line_info).into()),
-            }
-          })
-        } else {
-          return Err(("Unknown parameter", line_info).into());
-        }
-      }
-      idx += 1;
-    }
+    let wire = finalize_wire(wire, &name, params, line_info, env)?;
+    env.finalized_wires.insert(name, wire);
   }
   Ok(())
 }
@@ -172,7 +212,7 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
     for shard in sub_env.shards.drain(..) {
       wire.add_shard(shard.0);
     }
-    let mesh = Mesh::default();
+    let mut mesh = Mesh::default();
     mesh.schedule(wire.0);
     loop {
       if !mesh.tick() {
@@ -327,8 +367,8 @@ fn as_var(
     Value::None => Ok(SVar::NotCloned(Var::default())),
     Value::Boolean(value) => Ok(SVar::NotCloned((*value).into())),
     Value::Identifier(ref name) => {
-      if let Some(wire) = e.deferred_wires.get(name) {
-        let wire: Var = wire.0 .0.into();
+      if let Some((wire, _finalized)) = find_wire(name, e) {
+        let wire: Var = wire.0.into();
         Ok(SVar::NotCloned(wire))
       } else if let Some(replacement) = find_replacement(name, e) {
         as_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
@@ -900,8 +940,150 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "mesh" => Ok(()),
-          "schedule" => Ok(()),
+          "mesh" => {
+            if let Some(ref params) = func.params {
+              // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
+              let name = if params[0].name.is_none() {
+                Some(&params[0])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("Name"))
+              };
+
+              if let Some(name) = name {
+                match &name.value {
+                  Value::String(name) | Value::Identifier(name) => {
+                    e.meshes.insert(name.clone(), Mesh::default());
+                    Ok(())
+                  }
+                  _ => Err(
+                    (
+                      "mesh built-in function requires a string parameter",
+                      block.line_info,
+                    )
+                      .into(),
+                  ),
+                }
+              } else {
+                Err(
+                  (
+                    "mesh built-in function requires a name parameter",
+                    block.line_info,
+                  )
+                    .into(),
+                )
+              }
+            } else {
+              Err(
+                (
+                  "mesh built-in function requires a parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )
+            }
+          }
+          "schedule" => {
+            if let Some(ref params) = func.params {
+              // Obtain the name of the mesh either from unnamed first parameter or named parameter "Mesh"
+              let mesh_id = if params[0].name.is_none() {
+                Some(&params[0])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("Mesh"))
+              };
+
+              // Obtain the name of the wire either from unnamed first parameter or named parameter "Wire"
+              let wire_id = if params[0].name.is_none() && params[1].name.is_none() {
+                Some(&params[0])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("Wire"))
+              };
+
+              if let (Some(mesh_param), Some(wire_param)) = (mesh_id, wire_id) {
+                // wire is likely lazy so we need to evaluate it
+                let wire = match &wire_param.value {
+                  // can be only identifier or string
+                  Value::Identifier(name) | Value::String(name) => {
+                    if let Some((wire, finalized)) = find_wire(name, e) {
+                      if !finalized {
+                        // wire is not finalized, we need to finalize it now
+                        let wire = e.deferred_wires.remove(name).unwrap();
+                        let wire = finalize_wire(wire.0, name, wire.1, wire.2, e)?;
+                        e.finalized_wires.insert(name.clone(), wire);
+                        let wire = e.finalized_wires.get(name).unwrap();
+                        Ok(wire.0)
+                      } else {
+                        Ok(wire.0)
+                      }
+                    } else {
+                      Err(
+                        (
+                          "schedule built-in function requires a valid wire parameter",
+                          block.line_info,
+                        )
+                          .into(),
+                      )
+                    }
+                  }
+                  _ => Err(
+                    (
+                      "schedule built-in function requires a wire parameter",
+                      block.line_info,
+                    )
+                      .into(),
+                  ),
+                }?;
+
+                let mesh = match &mesh_param.value {
+                  Value::String(name) | Value::Identifier(name) => {
+                    if let Some(mesh) = find_mesh(name, e) {
+                      Ok(mesh)
+                    } else {
+                      Err(
+                        (
+                          "schedule built-in function requires a valid mesh parameter",
+                          block.line_info,
+                        )
+                          .into(),
+                      )
+                    }
+                  }
+                  _ => Err(
+                    (
+                      "schedule built-in function requires a mesh parameter",
+                      block.line_info,
+                    )
+                      .into(),
+                  ),
+                }?;
+
+                mesh.schedule(wire);
+
+                Ok(())
+              } else {
+                Err(
+                  (
+                    "mesh built-in function requires a name parameter",
+                    block.line_info,
+                  )
+                    .into(),
+                )
+              }
+            } else {
+              Err(
+                (
+                  "mesh built-in function requires a parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )
+            }
+          }
           "run" => Ok(()),
           unknown => {
             let mut shards_env = {
