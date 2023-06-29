@@ -52,6 +52,9 @@ struct EvalEnv {
   // used during @shards evaluation
   suffix: Option<RcStrWrapper>,
   suffix_assigned: HashSet<RcStrWrapper>,
+
+  // Shards and functions that are forbidden to be used
+  forbidden_funcs: HashSet<RcStrWrapper>,
 }
 
 impl Drop for EvalEnv {
@@ -70,6 +73,7 @@ impl Default for EvalEnv {
       replacements: HashMap::new(),
       suffix: None,
       suffix_assigned: HashSet::new(),
+      forbidden_funcs: HashSet::new(),
     }
   }
 }
@@ -247,6 +251,21 @@ fn create_take_seq_chain(
     add_take_shard(&idx, line, e);
   }
   Ok(())
+}
+
+fn is_forbidden_func(name: &RcStrWrapper, e: &EvalEnv) -> bool {
+  //recurse env and check
+  let mut env = e;
+  loop {
+    if env.forbidden_funcs.contains(name) {
+      return true;
+    }
+    if let Some(parent) = env.parent {
+      env = unsafe { &*parent };
+    } else {
+      return false;
+    }
+  }
 }
 
 /// Recurse into environment and find the suffix
@@ -522,6 +541,10 @@ fn as_var(
 }
 
 fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+  if is_forbidden_func(&shard.name, e) {
+    return Err((format!("Forbidden shard {}", shard.name), line_info).into());
+  }
+
   let s = ShardRef::create(shard.name.as_str()).ok_or(
     (
       format!("Shard {} does not exist", shard.name.as_str()),
@@ -735,67 +758,17 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
         }
         Ok(())
       }
-      BlockContent::Func(func) => match func.name.as_str() {
-        "ignore" => {
-          // ignore is a special function that does nothing
-          Ok(())
+      BlockContent::Func(func) => {
+        if is_forbidden_func(&func.name, e) {
+          return Err((format!("Forbidden function {}", func.name), block.line_info).into());
         }
-        "wire" => {
-          if let Some(ref params) = func.params {
-            // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
-            let name = if params[0].name.is_none() {
-              Some(&params[0])
-            } else {
-              params
-                .iter()
-                .find(|param| param.name.as_deref() == Some("Name"))
-            };
-
-            match name {
-              Some(name_param) => match &name_param.value {
-                Value::String(name) | Value::Identifier(name) => {
-                  let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
-                  e.deferred_wires
-                    .insert(name.clone(), (Wire::default(), params_ptr, block.line_info));
-                  Ok(())
-                }
-                _ => Err(
-                  (
-                    "wire built-in function requires a string parameter",
-                    block.line_info,
-                  )
-                    .into(),
-                ),
-              },
-              None => Err(
-                (
-                  "wire built-in function requires a name parameter",
-                  block.line_info,
-                )
-                  .into(),
-              ),
-            }
-          } else {
-            Err(
-              (
-                "wire built-in function requires proper parameters",
-                block.line_info,
-              )
-                .into(),
-            )
+        match func.name.as_str() {
+          "ignore" => {
+            // ignore is a special function that does nothing
+            Ok(())
           }
-        }
-        "shards" => {
-          if let Some(ref params) = func.params {
-            if params.len() != 3 {
-              Err(
-                (
-                  "shards built-in function requires 3 parameters",
-                  block.line_info,
-                )
-                  .into(),
-              )
-            } else {
+          "wire" => {
+            if let Some(ref params) = func.params {
               // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
               let name = if params[0].name.is_none() {
                 Some(&params[0])
@@ -805,18 +778,73 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   .find(|param| param.name.as_deref() == Some("Name"))
               };
 
-              // Obtain the name of the wire either from unnamed second parameter or named parameter "Args"
-              let args = if params[0].name.is_none() && params[1].name.is_none() {
-                Some(&params[1])
+              match name {
+                Some(name_param) => match &name_param.value {
+                  Value::String(name) | Value::Identifier(name) => {
+                    let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
+                    e.deferred_wires
+                      .insert(name.clone(), (Wire::default(), params_ptr, block.line_info));
+                    Ok(())
+                  }
+                  _ => Err(
+                    (
+                      "wire built-in function requires a string parameter",
+                      block.line_info,
+                    )
+                      .into(),
+                  ),
+                },
+                None => Err(
+                  (
+                    "wire built-in function requires a name parameter",
+                    block.line_info,
+                  )
+                    .into(),
+                ),
+              }
+            } else {
+              Err(
+                (
+                  "wire built-in function requires proper parameters",
+                  block.line_info,
+                )
+                  .into(),
+              )
+            }
+          }
+          "shards" => {
+            if let Some(ref params) = func.params {
+              if params.len() != 3 {
+                Err(
+                  (
+                    "shards built-in function requires 3 parameters",
+                    block.line_info,
+                  )
+                    .into(),
+                )
               } else {
-                params
-                  .iter()
-                  .find(|param| param.name.as_deref() == Some("Args"))
-              };
+                // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
+                let name = if params[0].name.is_none() {
+                  Some(&params[0])
+                } else {
+                  params
+                    .iter()
+                    .find(|param| param.name.as_deref() == Some("Name"))
+                };
 
-              // Obtain the name of the wire either from unnamed third parameter or named parameter "Shards"
-              let shards =
-                if params[0].name.is_none() && params[1].name.is_none() && params[2].name.is_none()
+                // Obtain the name of the wire either from unnamed second parameter or named parameter "Args"
+                let args = if params[0].name.is_none() && params[1].name.is_none() {
+                  Some(&params[1])
+                } else {
+                  params
+                    .iter()
+                    .find(|param| param.name.as_deref() == Some("Args"))
+                };
+
+                // Obtain the name of the wire either from unnamed third parameter or named parameter "Shards"
+                let shards = if params[0].name.is_none()
+                  && params[1].name.is_none()
+                  && params[2].name.is_none()
                 {
                   Some(&params[2])
                 } else {
@@ -825,104 +853,69 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                     .find(|param| param.name.as_deref() == Some("Shards"))
                 };
 
-              match (name, args, shards) {
-                (Some(name_param), Some(args_param), Some(shards_param)) => {
-                  match (&name_param.value, &args_param.value, &shards_param.value) {
-                    (
-                      Value::String(name) | Value::Identifier(name),
-                      Value::Seq(args),
-                      Value::Shards(shards),
-                    ) => {
-                      let args_ptr = args as *const _;
-                      let shards_ptr = shards as *const _;
-                      e.shards_groups.insert(
-                        name.clone(),
-                        ShardsGroup {
-                          args: args_ptr,
-                          shards: shards_ptr,
-                        },
-                      );
-                      Ok(())
+                match (name, args, shards) {
+                  (Some(name_param), Some(args_param), Some(shards_param)) => {
+                    match (&name_param.value, &args_param.value, &shards_param.value) {
+                      (
+                        Value::String(name) | Value::Identifier(name),
+                        Value::Seq(args),
+                        Value::Shards(shards),
+                      ) => {
+                        let args_ptr = args as *const _;
+                        let shards_ptr = shards as *const _;
+                        e.shards_groups.insert(
+                          name.clone(),
+                          ShardsGroup {
+                            args: args_ptr,
+                            shards: shards_ptr,
+                          },
+                        );
+                        Ok(())
+                      }
+                      _ => Err(
+                        (
+                          "shards built-in function requires valid parameters",
+                          block.line_info,
+                        )
+                          .into(),
+                      ),
                     }
-                    _ => Err(
-                      (
-                        "shards built-in function requires valid parameters",
-                        block.line_info,
-                      )
-                        .into(),
-                    ),
                   }
+                  _ => Err(
+                    (
+                      "shards built-in function requires a name parameter",
+                      block.line_info,
+                    )
+                      .into(),
+                  ),
                 }
-                _ => Err(
-                  (
-                    "shards built-in function requires a name parameter",
-                    block.line_info,
-                  )
-                    .into(),
-                ),
               }
-            }
-          } else {
-            Err(
-              (
-                "shards built-in function requires 3 parameters",
-                block.line_info,
+            } else {
+              Err(
+                (
+                  "shards built-in function requires 3 parameters",
+                  block.line_info,
+                )
+                  .into(),
               )
-                .into(),
-            )
+            }
           }
-        }
-        unknown => {
-          let mut shards_env = {
-            if let Some(group) = find_shards_group(&func.name, e) {
-              let args = unsafe { &*group.args };
-              let shards = unsafe { &*group.shards };
+          "mesh" => Ok(()),
+          "schedule" => Ok(()),
+          "run" => Ok(()),
+          unknown => {
+            let mut shards_env = {
+              if let Some(group) = find_shards_group(&func.name, e) {
+                let args = unsafe { &*group.args };
+                let shards = unsafe { &*group.shards };
 
-              if args.len() != func.params.as_ref().unwrap().len() {
-                return Err(
-                  (
-                    format!(
-                      "Shards template {} requires {} parameters",
-                      unknown,
-                      args.len()
-                    ),
-                    block.line_info,
-                  )
-                    .into(),
-                );
-              }
-
-              let mut sub_env = EvalEnv::default();
-              sub_env.parent = Some(e as *const EvalEnv);
-
-              // set a random suffix
-              sub_env.suffix = Some(nanoid!(16).into());
-
-              for i in 0..args.len() {
-                let arg = &args[i];
-                // arg has to be Identifier
-                let arg = match arg {
-                  Value::Identifier(arg) => arg,
-                  _ => {
-                    return Err(
-                      (
-                        format!(
-                          "Shards template {} parameters should be identifiers",
-                          unknown,
-                        ),
-                        block.line_info,
-                      )
-                        .into(),
-                    );
-                  }
-                };
-                let param = &func.params.as_ref().unwrap()[i];
-                if param.name.is_some() {
+                if args.len() != func.params.as_ref().unwrap().len() {
                   return Err(
                     (
                       format!(
-                        "Shards template {} does not accept named parameters",
-                        unknown
+                        "Shards template {} requires {} parameters",
+                        unknown,
+                        args.len()
                       ),
                       block.line_info,
                     )
@@ -930,30 +923,69 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   );
                 }
 
-                // and add new replacement
-                let value_ptr = &param.value as *const _;
-                sub_env.replacements.insert(arg.to_owned(), value_ptr);
-              }
+                let mut sub_env = EvalEnv::default();
+                sub_env.parent = Some(e as *const EvalEnv);
 
-              for stmt in &shards.statements {
-                eval_statement(stmt, &mut sub_env)?;
-              }
+                // set a random suffix
+                sub_env.suffix = Some(nanoid!(16).into());
 
-              Some(sub_env)
+                for i in 0..args.len() {
+                  let arg = &args[i];
+                  // arg has to be Identifier
+                  let arg = match arg {
+                    Value::Identifier(arg) => arg,
+                    _ => {
+                      return Err(
+                        (
+                          format!(
+                            "Shards template {} parameters should be identifiers",
+                            unknown,
+                          ),
+                          block.line_info,
+                        )
+                          .into(),
+                      );
+                    }
+                  };
+                  let param = &func.params.as_ref().unwrap()[i];
+                  if param.name.is_some() {
+                    return Err(
+                      (
+                        format!(
+                          "Shards template {} does not accept named parameters",
+                          unknown
+                        ),
+                        block.line_info,
+                      )
+                        .into(),
+                    );
+                  }
+
+                  // and add new replacement
+                  let value_ptr = &param.value as *const _;
+                  sub_env.replacements.insert(arg.to_owned(), value_ptr);
+                }
+
+                for stmt in &shards.statements {
+                  eval_statement(stmt, &mut sub_env)?;
+                }
+
+                Some(sub_env)
+              } else {
+                None
+              }
+            };
+            if let Some(shards_env) = &mut shards_env {
+              for shard in shards_env.shards.drain(..) {
+                e.shards.push(shard);
+              }
+              Ok(())
             } else {
-              None
+              Err((format!("Unknown function: {}", func.name), block.line_info).into())
             }
-          };
-          if let Some(shards_env) = &mut shards_env {
-            for shard in shards_env.shards.drain(..) {
-              e.shards.push(shard);
-            }
-            Ok(())
-          } else {
-            Err((format!("Unknown function: {}", func.name), block.line_info).into())
           }
         }
-      },
+      }
     }?;
   }
   Ok(())
