@@ -2,17 +2,32 @@ use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
 use pest::iterators::Pair;
 use pest::Parser;
+use std::collections::HashSet;
 use std::path::Path;
 
 pub(crate) struct ReadEnv {
   directory: String,
+  included: HashSet<RcStrWrapper>,
+  parent: Option<*const ReadEnv>,
 }
 
 impl ReadEnv {
   pub(crate) fn new(directory: &str) -> Self {
     Self {
       directory: directory.to_string(),
+      included: HashSet::new(),
+      parent: None,
     }
+  }
+}
+
+fn check_included<'a>(name: &'a RcStrWrapper, env: &'a ReadEnv) -> bool {
+  if env.included.contains(name) {
+    true
+  } else if let Some(parent) = env.parent {
+    check_included(name, unsafe { &*parent })
+  } else {
+    false
   }
 }
 
@@ -199,9 +214,9 @@ fn process_vector(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsEr
 }
 
 enum FunctionValue {
-  None,
   Const(Value),
   Function(Function),
+  Sequence(Sequence),
 }
 
 fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue, ShardsError> {
@@ -231,9 +246,8 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
       };
 
       match name {
-        "include" => todo!(),
-        "read" => {
-          let params = params.ok_or(("Expected Params in @read", pos).into())?;
+        "include" => {
+          let params = params.ok_or(("Expected 2 parameters", pos).into())?;
           let n_params = params.len();
 
           let file_name = if n_params > 0 && params[0].name.is_none() {
@@ -243,10 +257,99 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               .iter()
               .find(|param| param.name.as_deref() == Some("File"))
           };
-          let file_name = file_name.ok_or(("Expected a file name (File:) in @read", pos).into())?;
+          let file_name = file_name.ok_or(("Expected a file name (File:)", pos).into())?;
           let file_name = match &file_name.value {
             Value::String(s) => Ok(s),
-            _ => Err(("Expected a string value for File in @read", pos).into()),
+            _ => Err(("Expected a string value for File", pos).into()),
+          }?;
+
+          let once = if n_params > 1 && params[0].name.is_none() && params[1].name.is_none() {
+            Some(&params[1])
+          } else {
+            params
+              .iter()
+              .find(|param| param.name.as_deref() == Some("Once"))
+          };
+
+          let once = once
+            .map(|param| match &param.value {
+              Value::Boolean(b) => Ok(*b),
+              _ => Err(("Expected a boolean value for Once", pos).into()),
+            })
+            .unwrap_or(Ok(false))?;
+
+          if once && check_included(file_name, env) {
+            return Err((format!("File {:?} already included", file_name), pos).into());
+          }
+
+          let parent = Path::new(&env.directory);
+          let file_path = parent.join(&file_name.as_str());
+          let file_path = std::fs::canonicalize(&file_path).map_err(|e| {
+            (
+              format!("Failed to canonicalize file {:?}: {}", file_name, e),
+              pos,
+            )
+              .into()
+          })?;
+
+          println!("Including file {:?}", file_path);
+
+          let rc_path = file_path
+            .to_str()
+            .ok_or(
+              (
+                format!("Failed to convert file path {:?} to string", file_path),
+                pos,
+              )
+                .into(),
+            )?
+            .into();
+
+          if once && check_included(&rc_path, env) {
+            return Err((format!("File {:?} already included", file_name), pos).into());
+          }
+
+          env.included.insert(rc_path);
+
+          // read string from file
+          let code = std::fs::read_to_string(&file_path)
+            .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
+
+          let parent = file_path.parent().unwrap_or(Path::new("."));
+          let successful_parse = ShardsParser::parse(Rule::Program, &code)
+            .map_err(|e| (format!("Failed to parse file {:?}: {}", file_path, e), pos).into())?;
+          let mut sub_env: ReadEnv = ReadEnv::new(
+            parent
+              .to_str()
+              .ok_or(
+                (
+                  format!("Failed to convert file path {:?} to string", parent),
+                  pos,
+                )
+                  .into(),
+              )?
+              .into(),
+          );
+          sub_env.parent = Some(env);
+          let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut sub_env)?;
+
+          Ok(FunctionValue::Sequence(seq))
+        }
+        "read" => {
+          let params = params.ok_or(("Expected 2 parameters", pos).into())?;
+          let n_params = params.len();
+
+          let file_name = if n_params > 0 && params[0].name.is_none() {
+            Some(&params[0])
+          } else {
+            params
+              .iter()
+              .find(|param| param.name.as_deref() == Some("File"))
+          };
+          let file_name = file_name.ok_or(("Expected a file name (File:)", pos).into())?;
+          let file_name = match &file_name.value {
+            Value::String(s) => Ok(s),
+            _ => Err(("Expected a string value for File", pos).into()),
           }?;
 
           let as_bytes = if n_params > 1 && params[0].name.is_none() && params[1].name.is_none() {
@@ -260,7 +363,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
           let as_bytes = as_bytes
             .map(|param| match &param.value {
               Value::Boolean(b) => Ok(*b),
-              _ => Err(("Expected a boolean value for AsBytes in @read", pos).into()),
+              _ => Err(("Expected a boolean value for AsBytes", pos).into()),
             })
             .unwrap_or(Ok(false))?;
 
@@ -294,7 +397,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
   }
 }
 
-fn process_take_table(pair: Pair<Rule>, env: &mut ReadEnv) -> (RcStrWrapper, Vec<RcStrWrapper>) {
+fn process_take_table(pair: Pair<Rule>, _env: &mut ReadEnv) -> (RcStrWrapper, Vec<RcStrWrapper>) {
   let str_expr = pair.as_str();
   // split by ':'
   let splits: Vec<_> = str_expr.split(':').collect();
@@ -306,7 +409,7 @@ fn process_take_table(pair: Pair<Rule>, env: &mut ReadEnv) -> (RcStrWrapper, Vec
 
 fn process_take_seq(
   pair: Pair<Rule>,
-  env: &mut ReadEnv,
+  _env: &mut ReadEnv,
 ) -> Result<(RcStrWrapper, Vec<u32>), ShardsError> {
   let pos = pair.as_span().start_pos();
   // do the same as TakeTable but with a sequence of values where index is an integer int32
@@ -361,7 +464,6 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
         line_info: pos.into(),
       }),
       Rule::Shard => match process_function(pair, env)? {
-        FunctionValue::None => (),
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
           line_info: pos.into(),
@@ -370,15 +472,22 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           content: BlockContent::Shard(func),
           line_info: pos.into(),
         }),
+        FunctionValue::Sequence(seq) => blocks.push(Block {
+          content: BlockContent::Expr(seq),
+          line_info: pos.into(),
+        }),
       },
       Rule::Func => match process_function(pair, env)? {
-        FunctionValue::None => (),
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
           line_info: pos.into(),
         }),
         FunctionValue::Function(func) => blocks.push(Block {
           content: BlockContent::Func(func),
+          line_info: pos.into(),
+        }),
+        FunctionValue::Sequence(seq) => blocks.push(Block {
+          content: BlockContent::Embed(seq),
           line_info: pos.into(),
         }),
       },
@@ -593,7 +702,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
     Rule::Func => match process_function(pair, env)? {
       FunctionValue::Const(val) => return Ok(val),
       FunctionValue::Function(func) => Ok(Value::Func(func)),
-      FunctionValue::None => Err(("Function cannot be used as value", pos).into()),
+      _ => Err(("Function cannot be used as value", pos).into()),
     },
     _ => Err(
       (
@@ -605,7 +714,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
   }
 }
 
-fn process_number(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Number, ShardsError> {
+fn process_number(pair: Pair<Rule>, _env: &mut ReadEnv) -> Result<Number, ShardsError> {
   let pos = pair.as_span().start_pos();
   match pair.as_rule() {
     Rule::Integer => Ok(Number::Integer(

@@ -196,6 +196,7 @@ impl BlockContent {
       }
       BlockContent::EvalExpr(seq) => format!("#({})", seq.to_string(context)),
       BlockContent::Expr(seq) => format!("({})", seq.to_string(context)),
+      BlockContent::Embed(seq) => format!("{}", seq.to_string(context)),
     }
   }
 }

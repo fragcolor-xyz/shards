@@ -1,2 +1,5 @@
+@include("hello2.shs")
+
 "Hello World!" | Log
 @read(AsBytes: true File: "data/hello.txt") | Log
+@say("Ciao")

@@ -1,5 +1,5 @@
 use crate::{eval::eval, read::read};
-use clap::{arg, Arg, ArgAction, Command};
+use clap::{arg, Command};
 use shards::types::Mesh;
 use shards::{SHCore, SHARDS_CURRENT_ABI};
 use std::ffi::CStr;
@@ -12,10 +12,6 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> i32 {
-  unsafe {
-    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
-  }
-
   let args: Vec<String> = unsafe {
     std::slice::from_raw_parts(argv, argc as usize)
       .iter()
@@ -45,6 +41,11 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
 
   match matches.subcommand() {
     Some(("run", matches)) => {
+      // we need to do this here or old path will fail
+      unsafe {
+        shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+      }
+
       let file = matches
         .get_one::<String>("FILE")
         .expect("A file to execute");
