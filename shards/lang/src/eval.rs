@@ -46,10 +46,11 @@ struct EvalEnv {
   deferred_wires: HashMap<RcStrWrapper, (Wire, *const Vec<Param>, LineInfo)>,
   finalized_wires: HashMap<RcStrWrapper, Wire>,
 
-  shards_groups: HashMap<RcStrWrapper, ShardsGroup>, // more cloning we don't need...
+  shards_groups: HashMap<RcStrWrapper, ShardsGroup>,
+  definitions: HashMap<RcStrWrapper, *const Value>,
 
-  // used during @shards evaluation, but also by @const
-  replacements: HashMap<RcStrWrapper, *const Value>, // more cloning we don't need...
+  // used during @shards evaluations, to replace [x y z] arguments
+  replacements: HashMap<RcStrWrapper, *const Value>,
 
   // used during @shards evaluation
   suffix: Option<RcStrWrapper>,
@@ -75,6 +76,7 @@ impl Default for EvalEnv {
       deferred_wires: HashMap::new(),
       finalized_wires: HashMap::new(),
       shards_groups: HashMap::new(),
+      definitions: HashMap::new(),
       replacements: HashMap::new(),
       suffix: None,
       suffix_assigned: HashSet::new(),
@@ -830,6 +832,22 @@ fn find_shards_group<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a S
   }
 }
 
+/// Recurse into environment and find the replacement for a given @ call name if it exists
+fn find_defined<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<*const Value> {
+  let mut env = e;
+  loop {
+    if let Some(val) = env.definitions.get(name) {
+      return Some(*val);
+    }
+
+    if let Some(parent) = env.parent {
+      env = unsafe { &*parent };
+    } else {
+      return None;
+    }
+  }
+}
+
 fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let start_idx = e.shards.len();
   for block in &pipeline.blocks {
@@ -861,22 +879,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
         add_const_shard2(value.0 .0, value.1, e)
       }
       BlockContent::Expr(seq) => {
-        let mut sub_env = eval_sequence(&seq, Some(e))?;
-        if !sub_env.shards.is_empty() {
-          // create a temporary variable to hold the result of the expression
-          let tmp_name = nanoid!(16);
-          // ensure name starts with a letter
-          let tmp_name = format!("t{}", tmp_name);
-          add_assignment_shard_no_suffix("Ref", &tmp_name, block.line_info, &mut sub_env)
-            .map_err(|_| ("Failed to set parameter", block.line_info).into())?;
-          // wrap into a Sub Shard
-          finalize_env(&mut sub_env)?;
-          let sub = make_sub_shard(sub_env.shards.drain(..).collect(), block.line_info)?;
-          // add this sub shard before the start of this pipeline!
-          e.shards.insert(start_idx, sub);
-          // now add a get shard to get the temporary at the end of the pipeline
-          add_get_shard_no_suffix(&tmp_name, block.line_info, e)?;
-        }
+        eval_expr(seq, e, block, start_idx)?;
         Ok(())
       }
       BlockContent::Embed(seq) => {
@@ -894,6 +897,80 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           "ignore" => {
             // ignore is a special function that does nothing
             Ok(())
+          }
+          "define" => {
+            if let Some(ref params) = func.params {
+              let n_params = params.len();
+              if n_params != 2 {
+                return Err(
+                  (
+                    format!(
+                      "const built-in function requires 2 parameters, found {}",
+                      n_params
+                    ),
+                    block.line_info,
+                  )
+                    .into(),
+                );
+              }
+
+              // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
+              let name = if params[0].name.is_none() {
+                Some(&params[0])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("Name"))
+              };
+              let name = name
+                .map(|param| match &param.value {
+                  Value::Identifier(name) => Ok(name),
+                  _ => Err(
+                    (
+                      "const built-in function requires Name parameter to be an identifier",
+                      block.line_info,
+                    )
+                      .into(),
+                  ),
+                })
+                .ok_or(
+                  (
+                    "const built-in function requires a Name parameter",
+                    block.line_info,
+                  )
+                    .into(),
+                )??;
+
+              // Obtain the value of the const from the second parameter
+              let value = if params[0].name.is_none() && params[1].name.is_none() {
+                Some(&params[1])
+              } else {
+                params
+                  .iter()
+                  .find(|param| param.name.as_deref() == Some("Value"))
+              };
+              let value = &value
+                .ok_or(
+                  (
+                    "const built-in function requires a Value parameter",
+                    block.line_info,
+                  )
+                    .into(),
+                )?
+                .value;
+
+              e.definitions.insert(name.clone(), value);
+
+              Ok(())
+            } else {
+              Err(
+                (
+                  "const built-in function requires proper parameters",
+                  block.line_info,
+                )
+                  .into(),
+              )
+            }
           }
           "wire" => {
             if let Some(ref params) = func.params {
@@ -1444,9 +1521,54 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 None
               }
             };
+
+            let defined_value = {
+              if let Some(val) = find_defined(&func.name, e) {
+                Some(val)
+              } else {
+                None
+              }
+            };
+
             if let Some(shards_env) = &mut shards_env {
               for shard in shards_env.shards.drain(..) {
                 e.shards.push(shard);
+              }
+              Ok(())
+            } else if let Some(defined_value) = defined_value {
+              let replacement = unsafe { &*defined_value };
+              match replacement {
+                Value::None
+                | Value::Identifier(_)
+                | Value::Boolean(_)
+                | Value::Enum(_, _)
+                | Value::Number(_)
+                | Value::String(_)
+                | Value::Bytes(_)
+                | Value::Int2(_)
+                | Value::Int3(_)
+                | Value::Int4(_)
+                | Value::Int8(_)
+                | Value::Int16(_)
+                | Value::Float2(_)
+                | Value::Float3(_)
+                | Value::Float4(_)
+                | Value::Seq(_)
+                | Value::Table(_) => add_const_shard(replacement, block.line_info, e)?,
+                Value::Shards(seq) => {
+                  // purely include the ast of the sequence
+                  for stmt in &seq.statements {
+                    eval_statement(stmt, e)?;
+                  }
+                }
+                Value::EvalExpr(seq) => {
+                  let value = eval_eval_expr(&seq, e)?;
+                  add_const_shard2(value.0 .0, block.line_info, e)?
+                }
+                Value::Expr(seq) => eval_expr(seq, e, block, start_idx)?,
+                _ => {
+                  return Err((format!("Invalid value: {:?}", replacement), block.line_info).into())
+                }
               }
               Ok(())
             } else {
@@ -1458,6 +1580,30 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
     }?;
   }
   Ok(())
+}
+
+fn eval_expr(
+  seq: &Sequence,
+  e: &mut EvalEnv,
+  block: &Block,
+  start_idx: usize,
+) -> Result<(), ShardsError> {
+  let mut sub_env = eval_sequence(&seq, Some(e))?;
+  Ok(if !sub_env.shards.is_empty() {
+    // create a temporary variable to hold the result of the expression
+    let tmp_name = nanoid!(16);
+    // ensure name starts with a letter
+    let tmp_name = format!("t{}", tmp_name);
+    add_assignment_shard_no_suffix("Ref", &tmp_name, block.line_info, &mut sub_env)
+      .map_err(|_| ("Failed to set parameter", block.line_info).into())?;
+    // wrap into a Sub Shard
+    finalize_env(&mut sub_env)?;
+    let sub = make_sub_shard(sub_env.shards.drain(..).collect(), block.line_info)?;
+    // add this sub shard before the start of this pipeline!
+    e.shards.insert(start_idx, sub);
+    // now add a get shard to get the temporary at the end of the pipeline
+    add_get_shard_no_suffix(&tmp_name, block.line_info, e)?;
+  })
 }
 
 fn add_assignment_shard(

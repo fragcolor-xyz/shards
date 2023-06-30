@@ -1,5 +1,13 @@
 @include("hello2.shs")
 
+@define(x 1)
+
 "Hello World!" | Log
 @read(AsBytes: true File: "data/hello.txt") | Log
 @say("Ciao")
+
+@x | Assert.Is(1)
+
+@define(things (1 | Math.Add(2)))
+
+@things | @things | Log
