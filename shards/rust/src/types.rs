@@ -244,6 +244,30 @@ impl Wire {
   }
 }
 
+unsafe extern "C" fn error_cb(
+  errorShard: *const Shard,
+  errorTxt: SHStringWithLen,
+  nonfatalWarning: SHBool,
+  userData: *mut c_void,
+) {
+  let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
+  let msg = std::str::from_utf8(unsafe {
+    slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len)
+  })
+  .unwrap();
+  if !nonfatalWarning {
+    shlog_error!(
+      "Fatal error: {} shard: {}",
+      msg,
+      shard_name.to_str().unwrap()
+    );
+    let failed = userData as *mut bool;
+    *failed = true;
+  } else {
+    shlog_warn!("Warning: {} shard: {}", msg, shard_name.to_str().unwrap());
+  }
+}
+
 impl ShardRef {
   pub fn create(name: &str) -> Option<Self> {
     unsafe {
@@ -314,9 +338,22 @@ impl ShardRef {
     }
   }
 
-  pub fn set_parameter(&self, index: i32, value: Var) {
+  pub fn set_parameter(&self, index: i32, value: Var) -> Result<(), &str> {
     unsafe {
-      (*self.0).setParam.unwrap()(self.0, index, &value);
+      let mut failed = false;
+      (*Core).validateSetParam.unwrap()(
+        self.0,
+        index,
+        &value,
+        Some(error_cb),
+        &mut failed as *mut _ as *mut _,
+      );
+      if failed {
+        Err("Set parameter validation failed")
+      } else {
+        (*self.0).setParam.unwrap()(self.0, index, &value);
+        Ok(())
+      }
     }
   }
 
