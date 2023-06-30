@@ -15,7 +15,7 @@ function(setup_shards_target TARGET)
   if(NOT EMSCRIPTEN)
     target_link_libraries(${TARGET} Boost::process)
   endif()
-  target_link_libraries(${TARGET} replxx shards-union)
+  target_link_libraries(${TARGET} replxx shards-union shards-lang-rust)
 endfunction()
 
 function(setup_shards_library_target TARGET)

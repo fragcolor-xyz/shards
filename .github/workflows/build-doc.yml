@@ -36,12 +36,12 @@ jobs:
           for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' ! -path '*Dialog*' \));
           do
             echo "Running sample $i";
-            LOG_shards_FORMAT="[%l] %v" ./shards.exe run-sample.edn --file "$i" > >(tee "$i.log");
+            LOG_shards_FORMAT="[%l] %v" ./shards.exe -- run-sample.edn --file "$i" > >(tee "$i.log");
           done
           for i in $(find shards -name '*.edn' \( -path '*UI*' -or -path '*GFX*' \));
           do
             echo "Running sample $i";
-            LOG_shards_FORMAT="[%l] %v" ./shards.exe run-sample.edn --looped true --file "$i" > >(tee "$i.log");
+            LOG_shards_FORMAT="[%l] %v" ./shards.exe -- run-sample.edn --looped true --file "$i" > >(tee "$i.log");
           done
       - name: Upload samples logs
         uses: actions/upload-artifact@v3
@@ -71,7 +71,7 @@ jobs:
       - name: Generate markdown
         shell: bash
         run: |
-          ./shards.exe docs/generate.edn
+          ./shards.exe -- docs/generate.edn
       - name: Upload markdown
         uses: actions/upload-artifact@v3
         with:

@@ -33,20 +33,20 @@ jobs:
           cmake -G Ninja -DSHARDS_VALGRIND=1 -DUSE_VALGRIND=1 -DSHARDS_WITH_EXTRA_SHARDS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo .. &&\
           ninja shards &&\
           ninja test-runtime &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/bug1.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/general.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/table-compose.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/variables.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/flows.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/linalg.clj &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/kdtree.clj &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/channels.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/genetic.clj &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/wasm.clj &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/subwires.clj &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/const-vars.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/wires-embed-issue.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/network.edn &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/capture-logs.edn &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/bug1.edn &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/general.edn &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/table-compose.edn &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/variables.edn &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/flows.edn &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/linalg.clj &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/kdtree.clj &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/channels.edn &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/genetic.clj &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/wasm.clj &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/subwires.clj &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/const-vars.edn &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/wires-embed-issue.edn &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/network.edn &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/capture-logs.edn &&\
           valgrind --exit-on-first-error=no --error-exitcode=1 --leak-check=full ./test-runtime &&\
-          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/complex-deserialize.edn"
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards -- ../shards/tests/complex-deserialize.edn"

@@ -35,6 +35,8 @@ void shards_free_wire(SHWireRef *wire);
 
 void shards_free_error(SHLError *error);
 
+int shards_process_args(int argc, char **argv);
+
 #ifdef __cplusplus
 }
 #endif
