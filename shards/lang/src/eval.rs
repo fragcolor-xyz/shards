@@ -440,6 +440,10 @@ fn as_var(
       let s = Var::ephemeral_string(s.as_str());
       Ok(SVar::NotCloned(s))
     }
+    Value::Bytes(ref b) => {
+      let bytes = b.0.as_ref();
+      Ok(SVar::NotCloned(bytes.into()))
+    }
     Value::Float2(ref val) => Ok(SVar::NotCloned(val.into())),
     Value::Float3(ref val) => Ok(SVar::NotCloned(val.into())),
     Value::Float4(ref val) => Ok(SVar::NotCloned(val.into())),

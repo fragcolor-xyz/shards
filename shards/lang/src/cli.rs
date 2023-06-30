@@ -1,11 +1,21 @@
 use crate::{eval::eval, read::read};
 use clap::{arg, Arg, ArgAction, Command};
 use shards::types::Mesh;
+use shards::{SHCore, SHARDS_CURRENT_ABI};
 use std::ffi::CStr;
 use std::os::raw::c_char;
+use std::path::Path;
+
+extern "C" {
+  fn shardsInterface(version: u32) -> *mut SHCore;
+}
 
 #[no_mangle]
 pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> i32 {
+  unsafe {
+    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+  }
+
   let args: Vec<String> = unsafe {
     std::slice::from_raw_parts(argv, argc as usize)
       .iter()
@@ -42,8 +52,10 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
 
       let wire = {
         let ast = {
+          let file_path = Path::new(&file);
           let file_content = std::fs::read_to_string(file).expect("File not found");
-          read(&file_content).expect("Failed to parse file")
+          read(&file_content, file_path.parent().unwrap().to_str().unwrap())
+            .expect("Failed to parse file")
         };
         eval(&ast, "root").expect("Failed to evaluate file")
       };
@@ -67,7 +79,6 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
         println!("Failed: {}", msg);
         -1
       } else {
-        println!("Success!");
         0
       }
     }

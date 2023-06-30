@@ -2,8 +2,21 @@ use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
 use pest::iterators::Pair;
 use pest::Parser;
+use std::path::Path;
 
-fn process_assignment(pair: Pair<Rule>) -> Result<Assignment, ShardsError> {
+pub(crate) struct ReadEnv {
+  directory: String,
+}
+
+impl ReadEnv {
+  pub(crate) fn new(directory: &str) -> Self {
+    Self {
+      directory: directory.to_string(),
+    }
+  }
+}
+
+fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Assignment {
     return Err(
@@ -26,6 +39,7 @@ fn process_assignment(pair: Pair<Rule>) -> Result<Assignment, ShardsError> {
     sub_inner
       .next()
       .ok_or(("Expected a Pipeline in Assignment, but found none.", pos).into())?,
+    env,
   )?;
 
   let identifier = sub_inner
@@ -43,7 +57,7 @@ fn process_assignment(pair: Pair<Rule>) -> Result<Assignment, ShardsError> {
   }
 }
 
-fn process_vector(pair: Pair<Rule>) -> Result<Value, ShardsError> {
+fn process_vector(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsError> {
   assert_eq!(pair.as_rule(), Rule::Vector);
   let pos = pair.as_span().start_pos();
   let inner = pair.into_inner();
@@ -56,6 +70,7 @@ fn process_vector(pair: Pair<Rule>) -> Result<Value, ShardsError> {
           .into_inner()
           .next()
           .ok_or(("Expected a number", pos).into())?,
+        env,
       )?),
       _ => return Err(("Unexpected rule in Vector.", pos).into()),
     }
@@ -183,25 +198,31 @@ fn process_vector(pair: Pair<Rule>) -> Result<Value, ShardsError> {
   }
 }
 
-fn process_function(pair: Pair<Rule>) -> Result<Function, ShardsError> {
+enum FunctionValue {
+  None,
+  Const(Value),
+  Function(Function),
+}
+
+fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue, ShardsError> {
   let pos = pair.as_span().start_pos();
 
   let mut inner = pair.into_inner();
-  let shard_exp = inner
+  let exp = inner
     .next()
     .ok_or(("Expected a Name or Const in Shard", pos).into())?;
 
-  let pos = shard_exp.as_span().start_pos();
+  let pos = exp.as_span().start_pos();
 
-  match shard_exp.as_rule() {
+  match exp.as_rule() {
     Rule::UppIden | Rule::LowIden => {
-      let shard_name = shard_exp.as_str();
+      let name = exp.as_str();
       let next = inner.next();
 
       let params = match next {
         Some(pair) => {
           if pair.as_rule() == Rule::Params {
-            Some(process_params(pair)?)
+            Some(process_params(pair, env)?)
           } else {
             return Err(("Expected Params in Shard", pos).into());
           }
@@ -209,14 +230,63 @@ fn process_function(pair: Pair<Rule>) -> Result<Function, ShardsError> {
         None => None,
       };
 
-      Ok(Function {
-        name: RcStrWrapper::new(shard_name),
-        params,
-      })
+      match name {
+        "include" => todo!(),
+        "read" => {
+          let params = params.ok_or(("Expected Params in @read", pos).into())?;
+          let n_params = params.len();
+
+          let file_name = if n_params > 0 && params[0].name.is_none() {
+            Some(&params[0])
+          } else {
+            params
+              .iter()
+              .find(|param| param.name.as_deref() == Some("File"))
+          };
+          let file_name = file_name.ok_or(("Expected a file name (File:) in @read", pos).into())?;
+          let file_name = match &file_name.value {
+            Value::String(s) => Ok(s),
+            _ => Err(("Expected a string value for File in @read", pos).into()),
+          }?;
+
+          let as_bytes = if n_params > 1 && params[0].name.is_none() && params[1].name.is_none() {
+            Some(&params[1])
+          } else {
+            params
+              .iter()
+              .find(|param| param.name.as_deref() == Some("AsBytes"))
+          };
+
+          let as_bytes = as_bytes
+            .map(|param| match &param.value {
+              Value::Boolean(b) => Ok(*b),
+              _ => Err(("Expected a boolean value for AsBytes in @read", pos).into()),
+            })
+            .unwrap_or(Ok(false))?;
+
+          let parent = Path::new(&env.directory);
+          let file_path = parent.join(&file_name.as_str());
+          if as_bytes {
+            // read bytes from file
+            let bytes = std::fs::read(&file_path)
+              .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
+            Ok(FunctionValue::Const(Value::Bytes(bytes.into())))
+          } else {
+            // read string from file
+            let string = std::fs::read_to_string(&file_path)
+              .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
+            Ok(FunctionValue::Const(Value::String(string.into())))
+          }
+        }
+        _ => Ok(FunctionValue::Function(Function {
+          name: RcStrWrapper::new(name),
+          params,
+        })),
+      }
     }
     _ => Err(
       (
-        format!("Unexpected rule {:?} in Function.", shard_exp.as_rule()),
+        format!("Unexpected rule {:?} in Function.", exp.as_rule()),
         pos,
       )
         .into(),
@@ -224,7 +294,7 @@ fn process_function(pair: Pair<Rule>) -> Result<Function, ShardsError> {
   }
 }
 
-fn process_take_table(pair: Pair<Rule>) -> (RcStrWrapper, Vec<RcStrWrapper>) {
+fn process_take_table(pair: Pair<Rule>, env: &mut ReadEnv) -> (RcStrWrapper, Vec<RcStrWrapper>) {
   let str_expr = pair.as_str();
   // split by ':'
   let splits: Vec<_> = str_expr.split(':').collect();
@@ -234,7 +304,10 @@ fn process_take_table(pair: Pair<Rule>) -> (RcStrWrapper, Vec<RcStrWrapper>) {
   (var_name.into(), keys)
 }
 
-fn process_take_seq(pair: Pair<Rule>) -> Result<(RcStrWrapper, Vec<u32>), ShardsError> {
+fn process_take_seq(
+  pair: Pair<Rule>,
+  env: &mut ReadEnv,
+) -> Result<(RcStrWrapper, Vec<u32>), ShardsError> {
   let pos = pair.as_span().start_pos();
   // do the same as TakeTable but with a sequence of values where index is an integer int32
   let str_expr = pair.as_str();
@@ -247,7 +320,7 @@ fn process_take_seq(pair: Pair<Rule>) -> Result<(RcStrWrapper, Vec<u32>), Shards
   Ok((var_name.into(), keys))
 }
 
-fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
+fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Pipeline {
     return Err(("Expected a Pipeline rule, but found a different rule.", pos).into());
@@ -261,7 +334,7 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
     match rule {
       Rule::Vector => {
         // in this case we want a Const with a vector value
-        let value = process_vector(pair)?;
+        let value = process_vector(pair, env)?;
         blocks.push(Block {
           content: BlockContent::Const(value),
           line_info: pos.into(),
@@ -273,6 +346,7 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
             .into_inner()
             .next()
             .ok_or(("Expected an eval time expression, but found none.", pos).into())?,
+          env,
         )?),
         line_info: pos.into(),
       }),
@@ -282,34 +356,49 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
             .into_inner()
             .next()
             .ok_or(("Expected an expression, but found none.", pos).into())?,
+          env,
         )?),
         line_info: pos.into(),
       }),
-      Rule::Shard => blocks.push(Block {
-        content: BlockContent::Shard(process_function(pair)?),
-        line_info: pos.into(),
-      }),
-      Rule::Func => blocks.push(Block {
-        content: BlockContent::Func(process_function(pair)?),
-        line_info: pos.into(),
-      }),
+      Rule::Shard => match process_function(pair, env)? {
+        FunctionValue::None => (),
+        FunctionValue::Const(value) => blocks.push(Block {
+          content: BlockContent::Const(value),
+          line_info: pos.into(),
+        }),
+        FunctionValue::Function(func) => blocks.push(Block {
+          content: BlockContent::Shard(func),
+          line_info: pos.into(),
+        }),
+      },
+      Rule::Func => match process_function(pair, env)? {
+        FunctionValue::None => (),
+        FunctionValue::Const(value) => blocks.push(Block {
+          content: BlockContent::Const(value),
+          line_info: pos.into(),
+        }),
+        FunctionValue::Function(func) => blocks.push(Block {
+          content: BlockContent::Func(func),
+          line_info: pos.into(),
+        }),
+      },
       Rule::TakeTable => blocks.push(Block {
         content: {
-          let pair = process_take_table(pair);
+          let pair = process_take_table(pair, env);
           BlockContent::TakeTable(pair.0, pair.1)
         },
         line_info: pos.into(),
       }),
       Rule::TakeSeq => blocks.push(Block {
         content: {
-          let pair = process_take_seq(pair)?;
+          let pair = process_take_seq(pair, env)?;
           BlockContent::TakeSeq(pair.0, pair.1)
         },
         line_info: pos.into(),
       }),
       Rule::ConstValue => blocks.push(Block {
         // this is an indirection, process_value will handle the case of a ConstValue
-        content: BlockContent::Const(process_value(pair)?),
+        content: BlockContent::Const(process_value(pair, env)?),
         line_info: pos.into(),
       }),
       Rule::Shards => blocks.push(Block {
@@ -318,6 +407,7 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
             .into_inner()
             .next()
             .ok_or(("Expected an expression, but found none.", pos).into())?,
+          env,
         )?),
         line_info: pos.into(),
       }),
@@ -327,39 +417,45 @@ fn process_pipeline(pair: Pair<Rule>) -> Result<Pipeline, ShardsError> {
   Ok(Pipeline { blocks })
 }
 
-fn process_statement(pair: Pair<Rule>) -> Result<Statement, ShardsError> {
+fn process_statement(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Statement, ShardsError> {
   let pos = pair.as_span().start_pos();
   match pair.as_rule() {
-    Rule::Assignment => process_assignment(pair).map(Statement::Assignment),
-    Rule::Pipeline => process_pipeline(pair).map(Statement::Pipeline),
+    Rule::Assignment => process_assignment(pair, env).map(Statement::Assignment),
+    Rule::Pipeline => process_pipeline(pair, env).map(Statement::Pipeline),
     _ => Err(("Expected an Assignment or a Pipeline", pos).into()),
   }
 }
 
-pub(crate) fn process_sequence(pair: Pair<Rule>) -> Result<Sequence, ShardsError> {
+pub(crate) fn process_sequence(
+  pair: Pair<Rule>,
+  env: &mut ReadEnv,
+) -> Result<Sequence, ShardsError> {
   let statements = pair
     .into_inner()
-    .map(process_statement)
+    .map(|x| process_statement(x, env))
     .collect::<Result<Vec<_>, _>>()?;
   Ok(Sequence { statements })
 }
 
-pub(crate) fn process_program(pair: Pair<Rule>) -> Result<Sequence, ShardsError> {
+pub(crate) fn process_program(
+  pair: Pair<Rule>,
+  env: &mut ReadEnv,
+) -> Result<Sequence, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Program {
     return Err(("Expected a Program rule, but found a different rule.", pos).into());
   }
   let pair = pair.into_inner().next().unwrap();
-  process_sequence(pair)
+  process_sequence(pair, env)
 }
 
-fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
+fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsError> {
   let pos = pair.as_span().start_pos();
   match pair.as_rule() {
     Rule::ConstValue => {
       // unwrap the inner rule
       let pair = pair.into_inner().next().unwrap();
-      process_value(pair)
+      process_value(pair, env)
     }
     Rule::None => Ok(Value::None),
     Rule::Boolean => {
@@ -384,12 +480,13 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
       let variant_name = splits[1];
       Ok(Value::Enum(enum_name.into(), variant_name.into()))
     }
-    Rule::Vector => process_vector(pair),
+    Rule::Vector => process_vector(pair, env),
     Rule::Number => process_number(
       pair
         .into_inner()
         .next()
         .ok_or(("Expected a Number value", pos).into())?,
+      env,
     )
     .map(Value::Number),
     Rule::String => {
@@ -418,6 +515,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
               .into_inner()
               .next()
               .ok_or(("Expected a Value in the sequence", pos).into())?,
+            env,
           )
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -440,7 +538,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
             .ok_or(("Expected a Table key", pos).into())?;
           let key = match key.as_rule() {
             Rule::Iden => Value::String(key.as_str().into()),
-            Rule::Value => process_value(key.into_inner().next().unwrap())?,
+            Rule::Value => process_value(key.into_inner().next().unwrap(), env)?,
             _ => unreachable!(),
           };
 
@@ -453,6 +551,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
               .into_inner()
               .next()
               .ok_or(("Expected a value in TableEntry", pos).into())?,
+            env,
           )?;
           Ok((key, value))
         })
@@ -464,6 +563,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
         .into_inner()
         .next()
         .ok_or(("Expected a Sequence in Value", pos).into())?,
+      env,
     )
     .map(Value::Shards),
     Rule::EvalExpr => process_sequence(
@@ -471,6 +571,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
         .into_inner()
         .next()
         .ok_or(("Expected a Sequence in Value", pos).into())?,
+      env,
     )
     .map(Value::EvalExpr),
     Rule::Expr => process_sequence(
@@ -478,20 +579,22 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
         .into_inner()
         .next()
         .ok_or(("Expected a Sequence in Value", pos).into())?,
+      env,
     )
     .map(Value::Expr),
     Rule::TakeTable => {
-      let pair = process_take_table(pair);
+      let pair = process_take_table(pair, env);
       Ok(Value::TakeTable(pair.0, pair.1))
     }
     Rule::TakeSeq => {
-      let pair = process_take_seq(pair)?;
+      let pair = process_take_seq(pair, env)?;
       Ok(Value::TakeSeq(pair.0, pair.1))
     }
-    Rule::Func => {
-      let pair = process_function(pair)?;
-      Ok(Value::Func(pair))
-    }
+    Rule::Func => match process_function(pair, env)? {
+      FunctionValue::Const(val) => return Ok(val),
+      FunctionValue::Function(func) => Ok(Value::Func(func)),
+      FunctionValue::None => Err(("Function cannot be used as value", pos).into()),
+    },
     _ => Err(
       (
         format!("Unexpected rule ({:?}) in Value", pair.as_rule()),
@@ -502,7 +605,7 @@ fn process_value(pair: Pair<Rule>) -> Result<Value, ShardsError> {
   }
 }
 
-fn process_number(pair: Pair<Rule>) -> Result<Number, ShardsError> {
+fn process_number(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Number, ShardsError> {
   let pos = pair.as_span().start_pos();
   match pair.as_rule() {
     Rule::Integer => Ok(Number::Integer(
@@ -522,7 +625,7 @@ fn process_number(pair: Pair<Rule>) -> Result<Number, ShardsError> {
   }
 }
 
-fn process_param(pair: Pair<Rule>) -> Result<Param, ShardsError> {
+fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Param {
     return Err(("Expected a Param rule", pos).into());
@@ -543,6 +646,7 @@ fn process_param(pair: Pair<Rule>) -> Result<Param, ShardsError> {
         .into_inner()
         .next()
         .ok_or(("Expected a Value in Param", pos).into())?,
+      env,
     )?;
     (Some(name), value)
   } else {
@@ -553,6 +657,7 @@ fn process_param(pair: Pair<Rule>) -> Result<Param, ShardsError> {
           .into_inner()
           .next()
           .ok_or(("Expected a Value in Param", pos).into())?,
+        env,
       )?,
     )
   };
@@ -563,20 +668,22 @@ fn process_param(pair: Pair<Rule>) -> Result<Param, ShardsError> {
   })
 }
 
-fn process_params(pair: Pair<Rule>) -> Result<Vec<Param>, ShardsError> {
-  pair.into_inner().map(process_param).collect()
+fn process_params(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Vec<Param>, ShardsError> {
+  pair.into_inner().map(|x| process_param(x, env)).collect()
 }
 
-pub fn read(code: &str) -> Result<Sequence, ShardsError> {
+pub fn read(code: &str, path: &str) -> Result<Sequence, ShardsError> {
   let successful_parse = ShardsParser::parse(Rule::Program, code).expect("Code parsing failed");
-  process_program(successful_parse.into_iter().next().unwrap())
+  let mut env = ReadEnv::new(path);
+  process_program(successful_parse.into_iter().next().unwrap(), &mut env)
 }
 
 #[test]
 fn test_parsing1() {
   let code = include_str!("sample1.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let seq = process_program(successful_parse.into_iter().next().unwrap()).unwrap();
+  let mut env = ReadEnv::new(".");
+  let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
 
   // Serialize using bincode
   let encoded_bin: Vec<u8> = bincode::serialize(&seq).unwrap();
@@ -602,7 +709,8 @@ fn test_parsing1() {
 fn test_parsing2() {
   let code = include_str!("explained.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let seq = process_program(successful_parse.into_iter().next().unwrap()).unwrap();
+  let mut env = ReadEnv::new(".");
+  let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
 
   // Serialize using bincode
   let encoded_bin: Vec<u8> = bincode::serialize(&seq).unwrap();

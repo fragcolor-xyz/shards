@@ -1,7 +1,7 @@
 use pest::Position;
 use serde::{Deserialize, Serialize};
 
-use crate::RcStrWrapper;
+use crate::{RcBytesWrapper, RcStrWrapper};
 
 #[derive(Parser)]
 #[grammar = "shards.pest"]
@@ -86,6 +86,7 @@ pub enum Value {
   Enum(RcStrWrapper, RcStrWrapper),
   Number(Number),
   String(RcStrWrapper),
+  Bytes(RcBytesWrapper),
   Int2([i64; 2]),
   Int3([i32; 3]),
   Int4([i32; 4]),

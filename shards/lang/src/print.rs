@@ -4,6 +4,8 @@ use crate::read::process_program;
 use pest::Parser;
 
 use crate::ast::*;
+#[cfg(test)]
+use crate::read::ReadEnv;
 
 const INDENT_LENGTH: usize = 2;
 const MAX_SHARDS_SEQUENCE_LENGTH: usize = 6;
@@ -62,6 +64,15 @@ impl Value {
         // if within the string there are quotes, we need to escape them
         let escaped = s.replace("\"", "\\\"");
         format!("\"{}\"", escaped)
+      }
+      Value::Bytes(b) => {
+        let bytes_slice = b.0.as_ref();
+        // build a big hex string from the bytes
+        let mut hex_string = String::new();
+        for byte in bytes_slice {
+          hex_string.push_str(&format!("{:02x}", byte));
+        }
+        format!("@bytes(0x{})", hex_string)
       }
       Value::Int2(arr) => format!("({} {})", arr[0], arr[1]),
       Value::Int3(arr) => format!("({} {} {})", arr[0], arr[1], arr[2]),
@@ -269,7 +280,8 @@ pub fn print_ast(ast: &Sequence) -> String {
 fn test_print1() {
   let code = include_str!("sample1.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let seq = process_program(successful_parse.into_iter().next().unwrap()).unwrap();
+  let mut env = ReadEnv::new(".");
+  let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
   let s = print_ast(&seq);
   println!("{}", s);
 }
@@ -278,7 +290,8 @@ fn test_print1() {
 fn test_print2() {
   let code = include_str!("explained.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let seq = process_program(successful_parse.into_iter().next().unwrap()).unwrap();
+  let mut env = ReadEnv::new(".");
+  let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
   let s = print_ast(&seq);
   println!("{}", s);
 }
