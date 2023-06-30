@@ -127,6 +127,7 @@ pub enum BlockContent {
   EvalExpr(Sequence),                         // Rule: EvalExpr
   Expr(Sequence),                             // Rule: Expr
   Func(Function),                             // Rule: BuiltIn
+  Embed(Sequence), // This is a sequence that will include itself when evaluated
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

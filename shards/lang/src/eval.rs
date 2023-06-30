@@ -803,6 +803,13 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
         }
         Ok(())
       }
+      BlockContent::Embed(seq) => {
+        // purely include the ast of the sequence
+        for stmt in &seq.statements {
+          eval_statement(stmt, e)?;
+        }
+        Ok(())
+      }
       BlockContent::Func(func) => {
         if is_forbidden_func(&func.name, e) {
           return Err((format!("Forbidden function {}", func.name), block.line_info).into());
