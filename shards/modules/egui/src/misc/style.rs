@@ -33,7 +33,7 @@ macro_rules! apply_style {
   ($table:ident, $name:literal, $type:ty, $style_path:expr, $convert:expr) => {
     if let Some(value) = $table.get_static($name) {
       let value: $type = value.try_into()?;
-      $style_path = $convert(value).into();
+      $style_path = $convert(value)?.into();
     }
   };
 }
@@ -153,15 +153,15 @@ impl Shard for Style {
       for var in text_styles.iter() {
         let text_style: Table = var.try_into()?;
         if let Some(name) = text_style.get_static("name") {
-          if let Some(key) = style_util::get_text_style(name.try_into()?) {
-            if let Some(fontId) = style_util::get_font_id(text_style) {
-              style
-                .text_styles
-                .entry(key)
-                .and_modify(|x| *x = fontId.clone())
-                .or_insert(fontId);
-            }
-          }
+          let key: egui::TextStyle = style_util::get_text_style(name.try_into()?)?;
+          let fontId: egui::FontId = style_util::get_font_id(text_style)?;
+          style
+              .text_styles
+              .entry(key)
+              .and_modify(|x| *x = fontId.clone())
+              .or_insert(fontId);
+        } else {
+          return Err("name is missing from a table provided in text_styles");
         }
       }
     }
