@@ -8,7 +8,6 @@ use crate::ast::*;
 use crate::read::ReadEnv;
 
 const INDENT_LENGTH: usize = 2;
-const MAX_SHARDS_SEQUENCE_LENGTH: usize = 6;
 
 impl Number {
   fn to_string(&self) -> String {
@@ -38,7 +37,6 @@ fn format_f32(f: f32) -> String {
 
 struct Context {
   indent: usize,
-  max_line_length: usize,
   previous: Option<*const Context>,
 }
 
@@ -46,7 +44,6 @@ impl Default for Context {
   fn default() -> Self {
     Context {
       indent: 0,
-      max_line_length: 40,
       previous: None,
     }
   }

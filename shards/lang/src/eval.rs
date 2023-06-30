@@ -272,10 +272,10 @@ fn create_take_table_chain(
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  add_get_shard(var_name, line, e);
+  add_get_shard(var_name, line, e)?;
   for path_part in path {
     let s = Var::ephemeral_string(path_part.as_str());
-    add_take_shard(&s, line, e);
+    add_take_shard(&s, line, e)?;
   }
   Ok(())
 }
@@ -286,10 +286,10 @@ fn create_take_seq_chain(
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  add_get_shard(var_name, line, e);
+  add_get_shard(var_name, line, e)?;
   for path_part in path {
     let idx = (*path_part).try_into().unwrap(); // read should have caught this
-    add_take_shard(&idx, line, e);
+    add_take_shard(&idx, line, e)?;
   }
   Ok(())
 }
@@ -506,7 +506,8 @@ fn as_var(
           line: line_info.0 as usize,
           column: line_info.1 as usize,
         };
-        add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env);
+        add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
+          .map_err(|_| ("Failed to set parameter", line_info).into())?;
         // wrap into a Sub Shard
         finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
@@ -529,14 +530,15 @@ fn as_var(
         let tmp_name = nanoid!(16);
         // ensure name starts with a letter
         let tmp_name = format!("t{}", tmp_name);
-        add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env);
+        add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
+          .map_err(|_| ("Failed to set parameter", line_info).into())?;
         // wrap into a Sub Shard
         finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
         // add this sub shard before the start of this pipeline!
         e.shards.insert(start_idx, sub);
         // now add a get shard to get the temporary at the end of the pipeline
-        add_get_shard_no_suffix(&tmp_name, line_info, e);
+        add_get_shard_no_suffix(&tmp_name, line_info, e)?;
 
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
@@ -554,14 +556,15 @@ fn as_var(
         let tmp_name = nanoid!(16);
         // ensure name starts with a letter
         let tmp_name = format!("t{}", tmp_name);
-        add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env);
+        add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
+          .map_err(|_| ("Failed to set parameter", line_info).into())?;
         // wrap into a Sub Shard
         finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
         // add this sub shard before the start of this pipeline!
         e.shards.insert(start_idx, sub);
         // now add a get shard to get the temporary at the end of the pipeline
-        add_get_shard_no_suffix(&tmp_name, line_info, e);
+        add_get_shard_no_suffix(&tmp_name, line_info, e)?;
 
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
@@ -610,8 +613,12 @@ fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(
         for (i, info) in info.iter().enumerate() {
           let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() };
           if param_name == name.as_str() {
-            s.0
-              .set_parameter(i.try_into().expect("Too many parameters"), *value.as_ref());
+            if let Err(_) = s
+              .0
+              .set_parameter(i.try_into().expect("Too many parameters"), *value.as_ref())
+            {
+              return Err(("Failed to set parameter", line_info).into());
+            }
             found = true;
             break;
           }
@@ -624,7 +631,9 @@ fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(
         if !as_idx {
           return Err(("Named parameter after unnamed parameter", line_info).into());
         }
-        s.0.set_parameter(idx, *value.as_ref());
+        if let Err(_) = s.0.set_parameter(idx, *value.as_ref()) {
+          return Err(("Failed to set parameter", line_info).into());
+        }
       }
       idx += 1;
     }
@@ -636,7 +645,10 @@ fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(
 fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Const").unwrap();
   let shard = SShardRef(shard);
-  shard.0.set_parameter(0, value);
+  shard
+    .0
+    .set_parameter(0, value)
+    .map_err(|_| ("Failed to set parameter", line_info).into())?;
   shard.0.set_line_info((
     line_info.line.try_into().expect("Too many lines"),
     line_info.column.try_into().expect("Oversized column"),
@@ -653,13 +665,19 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
         let shard = ShardRef::create("Const").unwrap();
         let shard = SShardRef(shard);
         let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
-        shard.0.set_parameter(0, *value.as_ref());
+        shard
+          .0
+          .set_parameter(0, *value.as_ref())
+          .map_err(|_| ("Failed to set parameter", line_info).into())?;
         shard
       } else {
         let shard = ShardRef::create("Get").unwrap();
         let shard = SShardRef(shard);
         let value = as_var(value, line_info, Some(shard.0), e)?;
-        shard.0.set_parameter(0, *value.as_ref());
+        shard
+          .0
+          .set_parameter(0, *value.as_ref())
+          .map_err(|_| ("Failed to set parameter", line_info).into())?;
         shard
       }
     }
@@ -667,7 +685,10 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
       let shard = ShardRef::create("Const").unwrap();
       let shard = SShardRef(shard);
       let value = as_var(value, line_info, Some(shard.0), e)?;
-      shard.0.set_parameter(0, *value.as_ref());
+      shard
+        .0
+        .set_parameter(0, *value.as_ref())
+        .map_err(|_| ("Failed to set parameter", line_info).into())?;
       shard
     }
   };
@@ -689,7 +710,10 @@ fn make_sub_shard(shards: Vec<SShardRef>, line_info: LineInfo) -> Result<SShardR
     debug_assert!(s.valueType == SHType_ShardRef);
     seq.push(&s);
   }
-  shard.0.set_parameter(0, seq.0.into());
+  shard
+    .0
+    .set_parameter(0, seq.0.into())
+    .map_err(|_| ("Failed to set parameter", line_info).into())?;
   destroyVar(&mut seq.0);
   shard.0.set_line_info((
     line_info.line.try_into().expect("Too many lines"),
@@ -698,45 +722,60 @@ fn make_sub_shard(shards: Vec<SShardRef>, line_info: LineInfo) -> Result<SShardR
   Ok(shard)
 }
 
-fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) {
+fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Take").unwrap();
   let shard = SShardRef(shard);
-  shard.0.set_parameter(0, *target);
+  shard
+    .0
+    .set_parameter(0, *target)
+    .map_err(|_| ("Failed to set parameter", line_info).into())?;
   shard.0.set_line_info((
     line_info.line.try_into().unwrap(),
     line_info.column.try_into().unwrap(),
   ));
   e.shards.push(shard);
+  Ok(())
 }
 
-fn add_get_shard(name: &RcStrWrapper, line: LineInfo, e: &mut EvalEnv) {
+fn add_get_shard(name: &RcStrWrapper, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Get").unwrap();
   let shard = SShardRef(shard);
   if let Some(suffix) = find_suffix(name, e) {
     let name = format!("{}{}", name, suffix);
     let name = Var::ephemeral_string(&name);
-    shard.0.set_parameter(0, name);
+    shard
+      .0
+      .set_parameter(0, name)
+      .map_err(|_| ("Failed to set parameter", line).into())?;
   } else {
     let name = Var::ephemeral_string(name.as_str());
-    shard.0.set_parameter(0, name);
+    shard
+      .0
+      .set_parameter(0, name)
+      .map_err(|_| ("Failed to set parameter", line).into())?;
   }
   shard.0.set_line_info((
     line.line.try_into().unwrap(),
     line.column.try_into().unwrap(),
   ));
   e.shards.push(shard);
+  Ok(())
 }
 
-fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) {
+fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Get").unwrap();
   let shard = SShardRef(shard);
   let name = Var::ephemeral_string(name);
-  shard.0.set_parameter(0, name);
+  shard
+    .0
+    .set_parameter(0, name)
+    .map_err(|_| ("Failed to set parameter", line).into())?;
   shard.0.set_line_info((
     line.line.try_into().unwrap(),
     line.column.try_into().unwrap(),
   ));
   e.shards.push(shard);
+  Ok(())
 }
 
 /// Recurse into environment and find the replacement for a given @ call name if it exists
@@ -792,14 +831,15 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           let tmp_name = nanoid!(16);
           // ensure name starts with a letter
           let tmp_name = format!("t{}", tmp_name);
-          add_assignment_shard_no_suffix("Ref", &tmp_name, block.line_info, &mut sub_env);
+          add_assignment_shard_no_suffix("Ref", &tmp_name, block.line_info, &mut sub_env)
+            .map_err(|_| ("Failed to set parameter", block.line_info).into())?;
           // wrap into a Sub Shard
           finalize_env(&mut sub_env)?;
           let sub = make_sub_shard(sub_env.shards.drain(..).collect(), block.line_info)?;
           // add this sub shard before the start of this pipeline!
           e.shards.insert(start_idx, sub);
           // now add a get shard to get the temporary at the end of the pipeline
-          add_get_shard_no_suffix(&tmp_name, block.line_info, e);
+          add_get_shard_no_suffix(&tmp_name, block.line_info, e)?;
         }
         Ok(())
       }
@@ -1389,17 +1429,23 @@ fn add_assignment_shard(
   name: &RcStrWrapper,
   line_info: LineInfo,
   e: &mut EvalEnv,
-) {
+) -> Result<(), ShardsError> {
   let shard = ShardRef::create(shard_name).unwrap();
   let shard = SShardRef(shard);
   let assigned = if let Some(suffix) = find_current_suffix(e) {
     let name = format!("{}{}", name, suffix);
     let name = Var::ephemeral_string(&name);
-    shard.0.set_parameter(0, name);
+    shard
+      .0
+      .set_parameter(0, name)
+      .map_err(|_| ("Failed to set parameter", line_info).into())?;
     true
   } else {
     let name = Var::ephemeral_string(name);
-    shard.0.set_parameter(0, name);
+    shard
+      .0
+      .set_parameter(0, name)
+      .map_err(|_| ("Failed to set parameter", line_info).into())?;
     false
   };
   if assigned {
@@ -1410,6 +1456,7 @@ fn add_assignment_shard(
     line_info.column.try_into().unwrap(),
   ));
   e.shards.push(shard);
+  Ok(())
 }
 
 fn add_assignment_shard_no_suffix(
@@ -1417,16 +1464,20 @@ fn add_assignment_shard_no_suffix(
   name: &str,
   line_info: LineInfo,
   e: &mut EvalEnv,
-) {
+) -> Result<(), ShardsError> {
   let shard = ShardRef::create(shard_name).unwrap();
   let shard = SShardRef(shard);
   let name = Var::ephemeral_string(name);
-  shard.0.set_parameter(0, name);
+  shard
+    .0
+    .set_parameter(0, name)
+    .map_err(|_| ("Failed to set parameter", line_info).into())?;
   shard.0.set_line_info((
     line_info.line.try_into().unwrap(),
     line_info.column.try_into().unwrap(),
   ));
   e.shards.push(shard);
+  Ok(())
 }
 
 fn eval_assignment(assignment: &Assignment, e: &mut EvalEnv) -> Result<(), ShardsError> {
@@ -1444,7 +1495,8 @@ fn eval_assignment(assignment: &Assignment, e: &mut EvalEnv) -> Result<(), Shard
     line: line_info.0.try_into().unwrap(),
     column: line_info.1.try_into().unwrap(),
   };
-  add_assignment_shard(op, &name, line_info, e);
+  add_assignment_shard(op, &name, line_info, e)
+    .map_err(|_| ("Failed to set parameter", line_info).into())?;
   Ok(())
 }
 
