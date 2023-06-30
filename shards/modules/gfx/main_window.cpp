@@ -177,6 +177,7 @@ struct MainWindow final {
                     GraphicsContext::VariableName);
       }
       releaseVariable(_graphicsContextVar);
+      _graphicsContextVar = nullptr;
     }
 
     if (_graphicsRendererContextVar) {
@@ -185,6 +186,7 @@ struct MainWindow final {
                     GraphicsRendererContext::VariableName);
       }
       releaseVariable(_graphicsRendererContextVar);
+      _graphicsRendererContextVar = nullptr;
     }
 
     if (_inputContextVar) {
@@ -193,6 +195,7 @@ struct MainWindow final {
                     InputContext::VariableName);
       }
       releaseVariable(_inputContextVar);
+      _inputContextVar = nullptr;
     }
   }
 
