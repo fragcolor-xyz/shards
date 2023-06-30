@@ -5,10 +5,10 @@ extern crate pest_derive;
 extern crate clap;
 
 mod ast;
+mod cli;
 mod eval;
 mod print;
 mod read;
-mod cli;
 
 use crate::ast::*;
 
@@ -30,6 +30,54 @@ use std::rc::Rc;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::panic::catch_unwind;
+
+#[derive(Debug, Clone)]
+pub struct RcBytesWrapper(Rc<[u8]>);
+
+impl Serialize for RcBytesWrapper {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: Serializer,
+  {
+    serializer.serialize_bytes(&self.0)
+  }
+}
+
+impl<'de> Deserialize<'de> for RcBytesWrapper {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    let s: &[u8] = Deserialize::deserialize(deserializer)?;
+    Ok(RcBytesWrapper(Rc::from(s)))
+  }
+}
+
+impl RcBytesWrapper {
+  pub fn new<S: Into<Rc<[u8]>>>(s: S) -> Self {
+    RcBytesWrapper(s.into())
+  }
+
+  pub fn to_vec(&self) -> Vec<u8> {
+    self.0.to_vec()
+  }
+
+  pub fn as_slice(&self) -> &[u8] {
+    &self.0
+  }
+}
+
+impl From<&[u8]> for RcBytesWrapper {
+  fn from(s: &[u8]) -> Self {
+    RcBytesWrapper::new(s)
+  }
+}
+
+impl From<Vec<u8>> for RcBytesWrapper {
+  fn from(s: Vec<u8>) -> Self {
+    RcBytesWrapper::new(s)
+  }
+}
 
 #[derive(Debug, Clone)]
 pub struct RcStrWrapper(Rc<str>);
@@ -144,7 +192,7 @@ pub extern "C" fn shards_init(core: *mut shards::shardsc::SHCore) {
 #[no_mangle]
 pub extern "C" fn shards_read(code: *const c_char) -> SHLAst {
   let code = unsafe { CStr::from_ptr(code).to_str().unwrap() };
-  let result = catch_unwind(|| read::read(code));
+  let result = catch_unwind(|| read::read(code, "."));
   match result {
     Ok(Ok(sequence)) => SHLAst {
       ast: Box::into_raw(Box::new(sequence)),

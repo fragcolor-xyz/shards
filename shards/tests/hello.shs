@@ -1,0 +1,2 @@
+"Hello World!" | Log
+@read(AsBytes: true File: "data/hello.txt") | Log
