@@ -1544,6 +1544,8 @@ fn eval_statement(stmt: &Statement, e: &mut EvalEnv) -> Result<(), ShardsError> 
 }
 
 pub fn eval(seq: &Sequence, name: &str) -> Result<Wire, ShardsError> {
+  profiling::scope!("eval", name);
+
   let mut env = eval_sequence(seq, None)?;
   let wire = Wire::default();
   wire.set_name(name);
