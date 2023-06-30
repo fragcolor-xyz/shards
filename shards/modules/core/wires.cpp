@@ -1459,6 +1459,8 @@ struct ParallelBase : public CapturingSpawners {
         return;
       }
 
+      SHLOG_DEBUG("ParallelBase: activating wire {}", idx);
+
       ManyWire *cref = nullptr;
       try {
         std::lock_guard<std::mutex> lock(poolLock);
@@ -1467,6 +1469,7 @@ struct ParallelBase : public CapturingSpawners {
         SHLOG_ERROR("Failed to acquire wire: {}", e.what());
       }
       DEFER({
+        SHLOG_DEBUG("ParallelBase: releasing wire {}", idx);
         std::lock_guard<std::mutex> lock(poolLock);
         _pool->release(cref);
       });
@@ -1507,9 +1510,11 @@ struct ParallelBase : public CapturingSpawners {
 
       _successes[idx] = success;
       if (success) {
+        SHLOG_DEBUG("ParallelBase: wire {} succeeded", idx);
         anySuccess = true;
         stop(cref->wire.get(), &_outputs[idx]);
       } else {
+        SHLOG_DEBUG("ParallelBase: wire {} failed", idx);
         _outputs[idx] = Var::Empty; // flag as empty to signal failure
         // ensure it's stopped anyway
         stop(cref->wire.get());
@@ -1539,9 +1544,11 @@ struct ParallelBase : public CapturingSpawners {
         if (_policy == WaitUntil::FirstSuccess) {
           return _outputs[i]; // return the first success
         } else {
+          SHLOG_DEBUG("ParallelBase, reading succeeded wire {}", i);
           succeeded++;
         }
       } else {
+        SHLOG_DEBUG("ParallelBase, reading failed wire {}", i);
         failed++;
       }
     }
@@ -1633,8 +1640,7 @@ struct Expand : public ParallelBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
-  static inline Parameters _params{{{"Size", SHCCSTR("The maximum expansion size."), {CoreInfo::IntType}}},
-                                   ParallelBase::_params};
+  static inline Parameters _params{{{"Size", SHCCSTR("The expansion size."), {CoreInfo::IntType}}}, ParallelBase::_params};
 
   static SHParametersInfo parameters() { return _params; }
 

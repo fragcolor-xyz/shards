@@ -124,7 +124,7 @@ jobs:
           for i in $(find shards -name '*.edn' \( -path '*UI*' -or -path '*GFX*' \));
           do
             echo "Running sample $i";
-            ../../build/shards run-sample.edn --looped true --file "$i";
+            ../../build/shards -- run-sample.edn --looped true --file "$i";
           done
       - name: Coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}

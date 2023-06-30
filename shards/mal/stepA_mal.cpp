@@ -10,6 +10,7 @@
 #endif
 #include "Types.h"
 #include <shards/core/runtime.hpp>
+#include <include/shards/shards_lang.h>
 
 #include <boost/filesystem.hpp>
 #include <cassert>
@@ -109,7 +110,17 @@ int malmain(int argc, const char *argv[]) {
 
 #ifndef NO_MAL_MAIN
 
-int main(int argc, const char *argv[]) { return malmain(argc, argv); }
+int main(int argc, const char *argv[]) {
+  auto result = shards_process_args(argc, const_cast<char **>(argv));
+  if (result != 99) // 99 triggers our old main
+    return result;
+
+  // we need to skip the second arg in this compatibility mode
+  argc--;
+  auto argv2 = argv + 1;
+  argv2[0] = argv[0]; // replace argv[1] with argv[0]
+  return malmain(argc, argv2);
+}
 
 #endif
 
