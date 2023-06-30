@@ -83,25 +83,25 @@ jobs:
           for i in $(find shards/tests -name 'gfx*.edn');
           do
             echo "Running $i"
-            build/shards "$i"
+            build/shards -- "$i"
           done
 
           echo "Running UI"
-          build/shards shards/tests/ui-0.edn
-          build/shards shards/tests/ui-1.edn
-          build/shards shards/tests/ui-2.edn
+          build/shards -- shards/tests/ui-0.edn
+          build/shards -- shards/tests/ui-1.edn
+          build/shards -- shards/tests/ui-2.edn
 
           echo "Running UI (nested)"
-          build/shards shards/tests/ui-nested.edn
+          build/shards -- shards/tests/ui-nested.edn
 
           echo "Running egui demo"
-          build/shards shards/tests/egui-demo.edn
+          build/shards -- shards/tests/egui-demo.edn
 
           echo "Running egui plot"
-          build/shards shards/tests/egui-plot.edn
+          build/shards -- shards/tests/egui-plot.edn
 
           echo "Running onnx test"
-          build/shards shards/tests/onnx.edn
+          build/shards -- shards/tests/onnx.edn
       - name: Test Physics
         env:
           RUST_BACKTRACE: full
@@ -111,7 +111,7 @@ jobs:
           Xvfb "$DISPLAY" &
 
           echo "Running physics"
-          build/shards shards/tests/physics.edn
+          build/shards -- shards/tests/physics.edn
       - name: Test doc samples (GFX)
         env:
           RUST_BACKTRACE: full

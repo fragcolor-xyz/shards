@@ -11,6 +11,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 #include <type_traits>
+#include <taskflow/algorithm/for_each.hpp>
 #include <taskflow/taskflow.hpp>
 #include <chrono>
 
@@ -51,8 +52,7 @@ TEST_CASE("Taskflow No Threads", "[MT]") {
   auto c = flow.emplace([&]() { counter = counter + 1; });
   c.succeed(b);
 
-  auto task = executor.run(flow);
-  executor.loop_until([&]() { return task.wait_for(0ms) == std::future_status::ready; });
+  executor.run(flow).wait();
 
   CHECK(counter == 201);
 }

@@ -22,6 +22,7 @@
 #undef MAX_PRIORITY
 #endif
 #include <taskflow/taskflow.hpp>
+#include <taskflow/algorithm/for_each.hpp>
 #endif
 
 namespace shards {
@@ -1443,8 +1444,8 @@ struct ParallelBase : public CapturingSpawners {
     size_t succeeded = 0;
     size_t failed = 0;
 
-    _successes.resize(0);
-    _successes.resize(len, false);
+    _successes.resize(len);
+    std::fill(_successes.begin(), _successes.end(), false);
     _outputs.resize(len);
 
     // multithreaded
@@ -1509,6 +1510,7 @@ struct ParallelBase : public CapturingSpawners {
       }
 
       _successes[idx] = success;
+
       if (success) {
         SHLOG_DEBUG("ParallelBase: wire {} succeeded", idx);
         anySuccess = true;
@@ -1525,8 +1527,8 @@ struct ParallelBase : public CapturingSpawners {
 
     // we done if we are here
     while (true) {
-      auto _suspend_state = shards::suspend(context, 0);
-      if (unlikely(_suspend_state != SHWireState::Continue)) {
+      auto suspend_state = shards::suspend(context, 0);
+      if (unlikely(suspend_state != SHWireState::Continue)) {
         SHLOG_DEBUG("ParallelBase, interrupted!");
         anySuccess = true; // flags early stop as well
         future.get();      // wait for all to finish in any case

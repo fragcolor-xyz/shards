@@ -18,6 +18,7 @@
 #undef MAX_PRIORITY
 #endif
 #include <taskflow/taskflow.hpp>
+#include <taskflow/algorithm/for_each.hpp>
 
 namespace shards {
 namespace Genetic {
