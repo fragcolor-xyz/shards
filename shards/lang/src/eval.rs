@@ -611,18 +611,14 @@ fn as_var(
         panic!("TakeTable should always return a shard")
       }
     }
-    Value::Func(func) => match func.name.as_str() {
-      _ => Err(
-        (
-          format!(
-            "Unsupported function as value or parameter {}",
-            func.name.as_str()
-          ),
-          line_info,
-        )
-          .into(),
-      ),
-    },
+    Value::Func(func) => {
+      if let Some(defined_value) = find_defined(&func.name, e) {
+        let replacement = unsafe { &*defined_value };
+        as_var(replacement, line_info, shard, e)
+      } else {
+        Err((format!("Undefined function {}", func.name), line_info).into())
+      }
+    }
   }
 }
 

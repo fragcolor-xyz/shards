@@ -1,3 +1,5 @@
 @shards(say [what] {
   what | Log
 })
+
+@define(one 1)

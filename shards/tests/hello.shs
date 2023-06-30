@@ -8,6 +8,6 @@
 
 @x | Assert.Is(1)
 
-@define(things (1 | Math.Add(2)))
+@define(things (2 | Math.Add(@one)))
 
 @things | @things | Log
