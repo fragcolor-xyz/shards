@@ -2962,19 +2962,19 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->setExternalVariable = [](SHWireRef wire, SHStringWithLen name, SHVar *pVar) noexcept {
     std::string nameView{name.string, name.len};
-    auto sc = SHWire::sharedFromRef(wire);
+    auto &sc = SHWire::sharedFromRef(wire);
     sc->externalVariables[nameView] = pVar;
   };
 
   result->removeExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
     std::string nameView{name.string, name.len};
-    auto sc = SHWire::sharedFromRef(wire);
+    auto &sc = SHWire::sharedFromRef(wire);
     sc->externalVariables.erase(nameView);
   };
 
   result->allocExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
     std::string nameView{name.string, name.len};
-    auto sc = SHWire::sharedFromRef(wire);
+    auto &sc = SHWire::sharedFromRef(wire);
     auto res = new (std::align_val_t{16}) SHVar();
     sc->externalVariables[nameView] = res;
     return res;
@@ -2982,7 +2982,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->freeExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
     std::string nameView{name.string, name.len};
-    auto sc = SHWire::sharedFromRef(wire);
+    auto &sc = SHWire::sharedFromRef(wire);
     auto var = sc->externalVariables[nameView];
     if (var) {
       ::operator delete(var, std::align_val_t{16});
@@ -3052,7 +3052,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->composeWire = [](SHWireRef wire, SHValidationCallback callback, void *userData, SHInstanceData data) noexcept {
-    auto sc = SHWire::sharedFromRef(wire);
+    auto &sc = SHWire::sharedFromRef(wire);
     try {
       return composeWire(sc.get(), callback, userData, data);
     } catch (const std::exception &e) {
@@ -3071,7 +3071,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->runWire = [](SHWireRef wire, SHContext *context, const SHVar *input) noexcept {
-    auto sc = SHWire::sharedFromRef(wire);
+    auto &sc = SHWire::sharedFromRef(wire);
     return shards::runSubWire(sc.get(), context, *input);
   };
 
@@ -3117,7 +3117,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->getWireInfo = [](SHWireRef wireref) noexcept {
-    auto sc = SHWire::sharedFromRef(wireref);
+    auto &sc = SHWire::sharedFromRef(wireref);
     auto wire = sc.get();
     SHWireInfo info{SHStringWithLen{wire->name.c_str(), wire->name.size()},
                     wire->looped,
@@ -3146,7 +3146,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     std::string_view sv(name.string, name.len);
     auto shard = shards::createShard(sv);
     if (shard) {
-      assert(shard->refCount== 0 && "shard should have zero refcount");
+      assert(shard->refCount == 0 && "shard should have zero refcount");
       incRef(shard);
     }
     return shard;
@@ -3161,34 +3161,44 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->setWireName = [](SHWireRef wireref, SHStringWithLen name) noexcept {
     std::string_view sv(name.string, name.len);
-    auto sc = SHWire::sharedFromRef(wireref);
+    auto &sc = SHWire::sharedFromRef(wireref);
     sc->name = sv;
   };
 
   result->setWireLooped = [](SHWireRef wireref, SHBool looped) noexcept {
-    auto sc = SHWire::sharedFromRef(wireref);
+    auto &sc = SHWire::sharedFromRef(wireref);
     sc->looped = looped;
   };
 
   result->setWireUnsafe = [](SHWireRef wireref, SHBool unsafe) noexcept {
-    auto sc = SHWire::sharedFromRef(wireref);
+    auto &sc = SHWire::sharedFromRef(wireref);
     sc->unsafe = unsafe;
   };
 
+  result->setWirePure = [](SHWireRef wireref, SHBool pure) noexcept {
+    auto &sc = SHWire::sharedFromRef(wireref);
+    sc->pure = pure;
+  };
+
+  result->setWireStackSize = [](SHWireRef wireref, size_t size) noexcept {
+    auto &sc = SHWire::sharedFromRef(wireref);
+    sc->stackSize = size;
+  };
+
   result->addShard = [](SHWireRef wireref, ShardPtr blk) noexcept {
-    auto sc = SHWire::sharedFromRef(wireref);
+    auto &sc = SHWire::sharedFromRef(wireref);
     sc->addShard(blk);
   };
 
   result->removeShard = [](SHWireRef wireref, ShardPtr blk) noexcept {
-    auto sc = SHWire::sharedFromRef(wireref);
+    auto &sc = SHWire::sharedFromRef(wireref);
     sc->removeShard(blk);
   };
 
   result->destroyWire = [](SHWireRef wire) noexcept { SHWire::deleteRef(wire); };
 
   result->stopWire = [](SHWireRef wire) {
-    auto sc = SHWire::sharedFromRef(wire);
+    auto &sc = SHWire::sharedFromRef(wire);
     SHVar output{};
     shards::stop(sc.get(), &output);
     return output;
@@ -3223,13 +3233,13 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->createMesh = []() noexcept {
     auto mesh = SHMesh::makePtr();
-    SHLOG_TRACE("createMesh {}", (void*)(*mesh).get());
+    SHLOG_TRACE("createMesh {}", (void *)(*mesh).get());
     return reinterpret_cast<SHMeshRef>(mesh);
   };
 
   result->destroyMesh = [](SHMeshRef mesh) noexcept {
     auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
-    SHLOG_TRACE("destroyMesh {}", (void*)(*smesh).get());
+    SHLOG_TRACE("destroyMesh {}", (void *)(*smesh).get());
     delete smesh;
   };
 

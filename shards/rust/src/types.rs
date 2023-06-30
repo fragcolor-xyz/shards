@@ -223,6 +223,18 @@ impl Wire {
     unsafe { (*Core).setWireLooped.unwrap()(self.0 .0, looped) }
   }
 
+  pub fn set_unsafe(&self, unsafe_: bool) {
+    unsafe { (*Core).setWireUnsafe.unwrap()(self.0 .0, unsafe_) }
+  }
+
+  pub fn set_pure(&self, pure: bool) {
+    unsafe { (*Core).setWirePure.unwrap()(self.0 .0, pure) }
+  }
+
+  pub fn set_stack_size(&self, stack_size: usize) {
+    unsafe { (*Core).setWireStackSize.unwrap()(self.0 .0, stack_size) }
+  }
+
   pub fn set_name(&self, name: &str) {
     unsafe {
       (*Core).setWireName.unwrap()(

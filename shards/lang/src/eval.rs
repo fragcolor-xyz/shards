@@ -159,6 +159,24 @@ fn finalize_wire(
           wire.add_shard(shard.0);
         }
       } else if name == "Name" {
+      } else if name == "Unsafe" {
+        wire.set_unsafe({
+          match param.value {
+            Value::Boolean(b) => b,
+            _ => return Err(("Unsafe parameter must be a boolean", line_info).into()),
+          }
+        })
+      } else if name == "Pure" {
+        wire.set_pure({
+          match param.value {
+            Value::Boolean(b) => b,
+            _ => return Err(("Pure parameter must be a boolean", line_info).into()),
+          }
+        })
+      } else if name == "LargeStack" {
+        wire.set_stack_size(4 * 1024 * 1024)
+      } else if name == "SmallStack" {
+        wire.set_stack_size(32 * 1024)
       } else {
         return Err(("Unknown parameter", line_info).into());
       }
@@ -185,6 +203,24 @@ fn finalize_wire(
             _ => return Err(("Looped parameter must be a boolean", line_info).into()),
           }
         })
+      } else if idx == 3 {
+        wire.set_pure({
+          match param.value {
+            Value::Boolean(b) => b,
+            _ => return Err(("Pure parameter must be a boolean", line_info).into()),
+          }
+        })
+      } else if idx == 4 {
+        wire.set_unsafe({
+          match param.value {
+            Value::Boolean(b) => b,
+            _ => return Err(("Unsafe parameter must be a boolean", line_info).into()),
+          }
+        })
+      } else if idx == 5 {
+        wire.set_stack_size(4 * 1024 * 1024)
+      } else if idx == 6 {
+        wire.set_stack_size(32 * 1024)
       } else {
         return Err(("Unknown parameter", line_info).into());
       }
