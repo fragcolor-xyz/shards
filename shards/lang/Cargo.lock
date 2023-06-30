@@ -506,6 +506,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "profiling"
+version = "1.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "332cd62e95873ea4f41f3dfd6bbbfc5b52aec892d7e8d534197c4720a0bbbab2"
+
+[[package]]
 name = "quote"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -648,6 +654,7 @@ dependencies = [
  "nanoid",
  "pest",
  "pest_derive",
+ "profiling",
  "serde",
  "serde_json",
  "shards",
