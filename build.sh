@@ -1,16 +1,13 @@
 #!/bin/sh
 
+set -e
+
 git submodule update --init --recursive
 
 ./bootstrap
 
-test -d build || mkdir build
-test -d build/debug || mkdir build/debug
+mkdir -p build/debug
 
-pushd build
+cmake -Bbuild/Debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
 
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -B./Debug ..
-
-ninja -C Debug shards
-
-popd build
+cmake --build build/debug --target shards
