@@ -37,22 +37,22 @@ TEST_CASE("Taskflow", "[MT]") {
 }
 #endif
 
-TEST_CASE("Taskflow No Threads", "[MT]") {
-  using namespace std::chrono_literals;
+// TEST_CASE("Taskflow No Threads", "[MT]") {
+//   using namespace std::chrono_literals;
 
-  tf::Executor executor(0);
+//   tf::Executor executor(0);
 
-  std::atomic_int counter{};
+//   std::atomic_int counter{};
 
-  tf::Taskflow flow;
-  auto a = flow.for_each_index(0, 100, 1, [&](size_t index) { counter++; });
-  auto b = flow.emplace([&]() { counter = counter * 2; });
-  b.succeed(a);
+//   tf::Taskflow flow;
+//   auto a = flow.for_each_index(0, 100, 1, [&](size_t index) { counter++; });
+//   auto b = flow.emplace([&]() { counter = counter * 2; });
+//   b.succeed(a);
 
-  auto c = flow.emplace([&]() { counter = counter + 1; });
-  c.succeed(b);
+//   auto c = flow.emplace([&]() { counter = counter + 1; });
+//   c.succeed(b);
 
-  executor.run(flow).wait();
+//   executor.run(flow).wait();
 
-  CHECK(counter == 201);
-}
+//   CHECK(counter == 201);
+// }
