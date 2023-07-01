@@ -2406,6 +2406,57 @@ impl From<&[u8]> for Var {
 }
 
 impl Var {
+  pub fn color_u8s(r: u8, g: u8, b: u8, a: u8) -> Var {
+    SHVar {
+      valueType: SHType_Color,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+          colorValue: SHColor { r, g, b, a },
+        },
+      },
+      ..Default::default()
+    }
+  }
+
+  pub fn color_ints(r: i32, g: i32, b: i32, a: i32) -> Result<Var, &'static str> {
+    // ensure all values are in range [0, 255]
+    if r < 0 || r > 255 {
+      return Err("r is out of range");
+    }
+    if g < 0 || g > 255 {
+      return Err("g is out of range");
+    }
+    if b < 0 || b > 255 {
+      return Err("b is out of range");
+    }
+    if a < 0 || a > 255 {
+      return Err("a is out of range");
+    }
+    Ok(Var::color_u8s(r as u8, g as u8, b as u8, a as u8))
+  }
+
+  pub fn color_floats(r: f32, g: f32, b: f32, a: f32) -> Result<Var, &'static str> {
+    // ensure all values are in range [0.0, 1.0]
+    if r < 0.0 || r > 1.0 {
+      return Err("r is out of range");
+    }
+    if g < 0.0 || g > 1.0 {
+      return Err("g is out of range");
+    }
+    if b < 0.0 || b > 1.0 {
+      return Err("b is out of range");
+    }
+    if a < 0.0 || a > 1.0 {
+      return Err("a is out of range");
+    }
+    Ok(Var::color_u8s(
+      (r * 255.0) as u8,
+      (g * 255.0) as u8,
+      (b * 255.0) as u8,
+      (a * 255.0) as u8,
+    ))
+  }
+
   /// To be used while &str is in scope.
   /// Such string likely doesn't have NULL terminator!
   /// CloneVar is safe but the rest might not be!

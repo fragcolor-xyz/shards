@@ -8,6 +8,7 @@ use nanoid::nanoid;
 
 use shards::core::destroyVar;
 use shards::core::sleep;
+use shards::types::common_type::color;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -107,6 +108,151 @@ impl AsMut<Var> for SVar {
       SVar::NotCloned(v) => v,
     }
   }
+}
+
+fn handle_color_built_in_function(
+  func: &Function,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<Var, ShardsError> {
+  let params = func.params.as_ref().ok_or(
+    (
+      "color built-in function requires at least 1 parameter",
+      line_info,
+    )
+      .into(),
+  )?;
+  let len = params.len();
+  if len > 4 {
+    return Err(
+      (
+        "color built-in function requires at most 4 parameters",
+        line_info,
+      )
+        .into(),
+    );
+  }
+
+  let color_int = |n: i64| {
+    let n: i32 = n.try_into().map_err(|_| {
+      (
+        "color built-in function requires a number parameter in range of i32",
+        line_info,
+      )
+        .into()
+    })?;
+    if n < 0 || n > 255 {
+      Err(
+        (
+          "color built-in function requires a number parameter in range of u8",
+          line_info,
+        )
+          .into(),
+      )
+    } else {
+      Ok(n as u8)
+    }
+  };
+
+  let color_float = |n: f64| {
+    let n = n as f32;
+    if n < 0.0 || n > 1.0 {
+      Err(
+        (
+          "color built-in function requires a number parameter in range of 0.0 and 1.0",
+          line_info,
+        )
+          .into(),
+      )
+    } else {
+      Ok((n * 255.0) as u8)
+    }
+  };
+
+  let mut colors = [255; 4];
+
+  fn error_invalid_hex(line_info: LineInfo) -> Result<Var, ShardsError> {
+    Err(
+      (
+        "color built-in function has an invalid hexadecimal parameter",
+        line_info,
+      )
+        .into(),
+    )
+  }
+
+  fn error_requires_number(line_info: LineInfo) -> Result<Var, ShardsError> {
+    Err(
+      (
+        "color built-in function requires a number parameter",
+        line_info,
+      )
+        .into(),
+    )
+  }
+
+  let assign_colors = |n: u32, len: usize, colors: &mut [u8; 4]| match len {
+    1 => {
+      colors[0] = n as u8;
+      colors[1] = 0;
+      colors[2] = 0;
+      colors[3] = 255;
+    }
+    2 => {
+      colors[0] = (n >> 8) as u8;
+      colors[1] = n as u8;
+      colors[2] = 0;
+      colors[3] = 255;
+    }
+    3 => {
+      colors[0] = (n >> 16) as u8;
+      colors[1] = (n >> 8) as u8;
+      colors[2] = n as u8;
+      colors[3] = 255;
+    }
+    4 => {
+      colors[0] = (n >> 24) as u8;
+      colors[1] = (n >> 16) as u8;
+      colors[2] = (n >> 8) as u8;
+      colors[3] = n as u8;
+    }
+    _ => {}
+  };
+
+  if len == 1 {
+    match &params[0].value {
+      Value::Number(n) => match n {
+        Number::Integer(n) => colors.fill(color_int(*n)?),
+        Number::Float(n) => colors.fill(color_float(*n)?),
+        Number::Hexadecimal(n) => {
+          let n = &n.as_str()[2..];
+          let s_len = n.len();
+          if s_len > 8 {
+            return error_invalid_hex(line_info);
+          }
+          if let Ok(n) = u32::from_str_radix(n, 16) {
+            assign_colors(n, s_len / 2, &mut colors);
+          } else {
+            return error_invalid_hex(line_info);
+          }
+        }
+      },
+      _ => return error_requires_number(line_info),
+    }
+  } else {
+    for i in 0..params.len() {
+      colors[i] = match &params[i].value {
+        Value::Number(n) => match n {
+          Number::Integer(n) => color_int(*n)?,
+          Number::Float(n) => color_float(*n)?,
+          Number::Hexadecimal(_) => return error_invalid_hex(line_info),
+        },
+        _ => return error_requires_number(line_info),
+      };
+    }
+  }
+
+  Ok(Var::color_u8s(colors[0], colors[1], colors[2], colors[3]))
 }
 
 fn find_mesh<'a>(name: &'a RcStrWrapper, env: &'a mut EvalEnv) -> Option<&'a mut Mesh> {
@@ -611,14 +757,19 @@ fn as_var(
         panic!("TakeTable should always return a shard")
       }
     }
-    Value::Func(func) => {
-      if let Some(defined_value) = find_defined(&func.name, e) {
-        let replacement = unsafe { &*defined_value };
-        as_var(replacement, line_info, shard, e)
-      } else {
-        Err((format!("Undefined function {}", func.name), line_info).into())
+    Value::Func(func) => match func.name.as_str() {
+      "color" => Ok(SVar::NotCloned(handle_color_built_in_function(
+        func, line_info, e,
+      )?)),
+      _ => {
+        if let Some(defined_value) = find_defined(&func.name, e) {
+          let replacement = unsafe { &*defined_value };
+          as_var(replacement, line_info, shard, e)
+        } else {
+          Err((format!("Undefined function {}", func.name), line_info).into())
+        }
       }
-    }
+    },
   }
 }
 
@@ -1444,6 +1595,10 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   .into(),
               )
             }
+          }
+          "color" => {
+            let value = handle_color_built_in_function(func, block.line_info, e)?;
+            add_const_shard2(value, block.line_info, e)
           }
           unknown => {
             let mut shards_env = {

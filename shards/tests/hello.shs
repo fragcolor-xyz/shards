@@ -11,3 +11,29 @@
 @define(things (2 | Math.Add(@one)))
 
 @things | @things | Log
+
+@color(0x112233) | Log
+@color(0x1122) | Log
+@color(0x11223344) | Log
+@color(0.1 0.3 0.7 1.0) | Log
+@color(10 30 60 255) | Log
+@color(1.0) | Log
+
+; @i2(1) | Log
+; @i2(1 2) | Log
+
+; @i3(1) | Log
+; @i3(1 2) | Log
+; @i3(1 2 3) | Log
+
+; @i4(1) | Log
+; @i4(1 2) | Log
+; @i4(1 2 3) | Log
+; @i4(1 2 3 4) | Log
+
+; ; etc i8 and i16
+
+; ; same for floats
+
+; @f2(1) | Log
+; @f2(1 2) | Log
