@@ -32,7 +32,7 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
         .about("Reads a Shards file and builds a binary version of it, ready to be executed."),
     )
     .subcommand(
-      Command::new("run")
+      Command::new("new")
         .about("Reads and executes a Shards file.")
         .arg(arg!(<FILE> "The script to execute")),
     )
@@ -40,7 +40,7 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
     .get_matches_from(args);
 
   match matches.subcommand() {
-    Some(("run", matches)) => {
+    Some(("new", matches)) => {
       // we need to do this here or old path will fail
       unsafe {
         shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);

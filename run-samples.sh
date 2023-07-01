@@ -48,6 +48,6 @@ pushd $script_dir/docs/samples
 for i in $(find shards -name '*.edn' $negative $pattern);
 do
     echo "running sample $i";
-    $script_dir/build/$build_type/shards -- $script_dir/docs/samples/run-sample.edn --looped $looped --file "$i" > >(tee "$i.log");
+    $script_dir/build/$build_type/shards $script_dir/docs/samples/run-sample.edn --looped $looped --file "$i" > >(tee "$i.log");
 done
 popd

@@ -37,7 +37,7 @@ jobs:
           buildargs: RUSTUP_TOOLCHAIN
       - name: Build and Test
         run: |
-          docker run --name shards -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja shards && ./shards -- ../shards/tests/general.edn && ./shards -- ../shards/tests/variables.edn && ./shards -- ../shards/tests/linalg.clj && ./shards -- ../shards/tests/channels.edn"
+          docker run --name shards -t --cap-add=SYS_PTRACE chainblocks/devenv:latest bash -c "./bootstrap && mkdir build && cd build && cmake -G Ninja -DFORCE_CORE2=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo .. && ninja shards && ./shards ../shards/tests/general.edn && ./shards ../shards/tests/variables.edn && ./shards ../shards/tests/linalg.clj && ./shards ../shards/tests/channels.edn"
           mkdir build
           docker cp shards:/home/shards/repo/build/shards ./build/shards
       - name: Build and upload to hub runtime image

@@ -115,11 +115,7 @@ int main(int argc, const char *argv[]) {
   if (result != 99) // 99 triggers our old main
     return result;
 
-  // we need to skip the second arg in this compatibility mode
-  argc--;
-  auto argv2 = argv + 1;
-  argv2[0] = argv[0]; // replace argv[1] with argv[0]
-  return malmain(argc, argv2);
+  return malmain(argc, argv);
 }
 
 #endif

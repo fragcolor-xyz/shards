@@ -133,37 +133,37 @@ jobs:
         run: |
           cd build
           chmod +x shards
-          ./shards -- ../shards/tests/general.edn
-          ./shards -- ../shards/tests/table-compose.edn
-          ./shards -- ../shards/tests/variables.edn
-          ./shards -- ../shards/tests/subwires.clj
-          ./shards -- ../shards/tests/linalg.clj
-          ./shards -- ../shards/tests/loader.clj
-          ./shards -- ../shards/tests/network.edn
-          ./shards -- ../shards/tests/struct.clj
-          ./shards -- ../shards/tests/flows.edn
-          ./shards -- ../shards/tests/kdtree.clj
-          ./shards -- ../shards/tests/channels.edn
-          ./shards -- ../shards/tests/imaging.clj
-          ./shards -- ../shards/tests/http.clj
-          # ./shards -- ../shards/tests/ws.edn
-          ./shards -- ../shards/tests/bigint.clj
-          ./shards -- ../shards/tests/brotli.clj
-          ./shards -- ../shards/tests/snappy.clj
-          ./shards -- ../shards/tests/expect.edn
-          ./shards -- ../shards/tests/wasm.clj
-          ./shards -- ../shards/tests/infos.clj
-          ./shards -- ../shards/tests/rust.clj
-          ./shards -- ../shards/tests/crypto.edn
-          ./shards -- ../shards/tests/wire-macro.edn
-          ./shards -- ../shards/tests/branch.edn
-          ./shards -- ../shards/tests/audio.edn
-          ./shards -- ../shards/tests/time.edn
-          ./shards -- ../shards/tests/eth.edn
-          ./shards -- ../shards/tests/many.edn
-          ./shards -- ../shards/tests/events.edn
-          ./shards -- ../shards/tests/complex-deserialize.edn
-          ./shards -- ../shards/tests/db.edn
+          ./shards ../shards/tests/general.edn
+          ./shards ../shards/tests/table-compose.edn
+          ./shards ../shards/tests/variables.edn
+          ./shards ../shards/tests/subwires.clj
+          ./shards ../shards/tests/linalg.clj
+          ./shards ../shards/tests/loader.clj
+          ./shards ../shards/tests/network.edn
+          ./shards ../shards/tests/struct.clj
+          ./shards ../shards/tests/flows.edn
+          ./shards ../shards/tests/kdtree.clj
+          ./shards ../shards/tests/channels.edn
+          ./shards ../shards/tests/imaging.clj
+          ./shards ../shards/tests/http.clj
+          # ./shards ../shards/tests/ws.edn
+          ./shards ../shards/tests/bigint.clj
+          ./shards ../shards/tests/brotli.clj
+          ./shards ../shards/tests/snappy.clj
+          ./shards ../shards/tests/expect.edn
+          ./shards ../shards/tests/wasm.clj
+          ./shards ../shards/tests/infos.clj
+          ./shards ../shards/tests/rust.clj
+          ./shards ../shards/tests/crypto.edn
+          ./shards ../shards/tests/wire-macro.edn
+          ./shards ../shards/tests/branch.edn
+          ./shards ../shards/tests/audio.edn
+          ./shards ../shards/tests/time.edn
+          ./shards ../shards/tests/eth.edn
+          ./shards ../shards/tests/many.edn
+          ./shards ../shards/tests/events.edn
+          ./shards ../shards/tests/complex-deserialize.edn
+          ./shards ../shards/tests/db.edn
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full
@@ -172,5 +172,5 @@ jobs:
           for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' ! -path '*Dialog*' \));
           do
             echo "Running sample $i";
-            ../../build/shards -- run-sample.edn --file "$i";
+            ../../build/shards run-sample.edn --file "$i";
           done
