@@ -174,31 +174,27 @@ impl<'a> ParamHelper<'a> {
     Self { params }
   }
 
-  pub fn get_param_by_name_or_index(
-    &self,
-    param_name: &str,
-    index: usize,
-    line_info: LineInfo,
-  ) -> Result<Option<&'a Param>, ShardsError> {
-    debug_assert!(
-      index < self.params.len(),
-      "Index out of bounds in get_param_by_name_or_index"
-    );
-
-    if index > 0 && self.params[index - 1].name.is_some() {
-      // Previous parameter is named, we forbid indexed parameters after named parameters
-      Err(("Indexed parameter after named parameter", line_info).into())
-    } else if self.params[index].name.is_none() {
-      // Parameter is unnamed and its index is the one we want
-      Ok(Some(&self.params[index]))
-    } else {
-      // Parameter is named, we look for a parameter with the given name
-      Ok(
+  pub fn get_param_by_name_or_index(&self, param_name: &str, index: usize) -> Option<&'a Param> {
+    if index < self.params.len() {
+      if index > 0 && self.params[index - 1].name.is_some() {
+        // Previous parameter is named, we forbid indexed parameters after named parameters
+        None
+      } else if self.params[index].name.is_none() {
+        // Parameter is unnamed and its index is the one we want
+        Some(&self.params[index])
+      } else {
+        // Parameter is named, we look for a parameter with the given name
         self
           .params
           .iter()
-          .find(|param| param.name.as_deref() == Some(param_name)),
-      )
+          .find(|param| param.name.as_deref() == Some(param_name))
+      }
+    } else {
+      // Index is out of bounds, we look for a parameter with the given name
+      self
+        .params
+        .iter()
+        .find(|param| param.name.as_deref() == Some(param_name))
     }
   }
 }

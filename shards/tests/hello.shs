@@ -19,6 +19,13 @@
 @color(10 30 60 255) | Log
 @color(1.0) | Log
 
+@mesh(root)
+@wire(test {
+  "This is a test" | Log
+})
+@schedule(root test)
+@run(root)
+
 ; @i2(1) | Log
 ; @i2(1 2) | Log
 
