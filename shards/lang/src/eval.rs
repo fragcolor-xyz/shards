@@ -1001,7 +1001,7 @@ fn get_mesh<'a>(
   block: &Block,
 ) -> Result<&'a mut Mesh, ShardsError> {
   match &param.value {
-    Value::String(name) | Value::Identifier(name) => find_mesh(name, e).ok_or_else(|| {
+    Value::Identifier(name) => find_mesh(name, e).ok_or_else(|| {
       (
         "run built-in function requires a valid mesh parameter",
         block.line_info,
@@ -1070,68 +1070,43 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           }
           "define" => {
             if let Some(ref params) = func.params {
-              let n_params = params.len();
-              if n_params != 2 {
-                return Err(
+              let param_helper = ParamHelper::new(params);
+
+              let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
+                (
+                  "define built-in function requires Name parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )?;
+
+              let value = param_helper.get_param_by_name_or_index("Value", 1).ok_or(
+                (
+                  "define built-in function requires Value parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )?;
+
+              match (name, value) {
+                (
+                  Param {
+                    value: Value::Identifier(name),
+                    ..
+                  },
+                  value,
+                ) => {
+                  e.definitions.insert(name.clone(), &value.value);
+                  Ok(())
+                }
+                _ => Err(
                   (
-                    format!(
-                      "const built-in function requires 2 parameters, found {}",
-                      n_params
-                    ),
+                    "define built-in function requires Name parameter to be an identifier",
                     block.line_info,
                   )
                     .into(),
-                );
+                ),
               }
-
-              // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
-              let name = if params[0].name.is_none() {
-                Some(&params[0])
-              } else {
-                params
-                  .iter()
-                  .find(|param| param.name.as_deref() == Some("Name"))
-              };
-              let name = name
-                .map(|param| match &param.value {
-                  Value::Identifier(name) => Ok(name),
-                  _ => Err(
-                    (
-                      "const built-in function requires Name parameter to be an identifier",
-                      block.line_info,
-                    )
-                      .into(),
-                  ),
-                })
-                .ok_or(
-                  (
-                    "const built-in function requires a Name parameter",
-                    block.line_info,
-                  )
-                    .into(),
-                )??;
-
-              // Obtain the value of the const from the second parameter
-              let value = if params[0].name.is_none() && params[1].name.is_none() {
-                Some(&params[1])
-              } else {
-                params
-                  .iter()
-                  .find(|param| param.name.as_deref() == Some("Value"))
-              };
-              let value = &value
-                .ok_or(
-                  (
-                    "const built-in function requires a Value parameter",
-                    block.line_info,
-                  )
-                    .into(),
-                )?
-                .value;
-
-              e.definitions.insert(name.clone(), value);
-
-              Ok(())
             } else {
               Err(
                 (
@@ -1144,36 +1119,26 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           }
           "wire" => {
             if let Some(ref params) = func.params {
-              let n_params = params.len();
+              let param_helper = ParamHelper::new(params);
 
-              // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
-              let name = if n_params > 0 && params[0].name.is_none() {
-                Some(&params[0])
-              } else {
-                params
-                  .iter()
-                  .find(|param| param.name.as_deref() == Some("Name"))
-              };
+              let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
+                (
+                  "wire built-in function requires a Name parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )?;
 
-              match name {
-                Some(name_param) => match &name_param.value {
-                  Value::String(name) | Value::Identifier(name) => {
-                    let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
-                    e.deferred_wires
-                      .insert(name.clone(), (Wire::default(), params_ptr, block.line_info));
-                    Ok(())
-                  }
-                  _ => Err(
-                    (
-                      "wire built-in function requires a string parameter",
-                      block.line_info,
-                    )
-                      .into(),
-                  ),
-                },
-                None => Err(
+              match &name.value {
+                Value::Identifier(name) => {
+                  let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
+                  e.deferred_wires
+                    .insert(name.clone(), (Wire::default(), params_ptr, block.line_info));
+                  Ok(())
+                }
+                _ => Err(
                   (
-                    "wire built-in function requires a name parameter",
+                    "wire built-in function requires a string parameter",
                     block.line_info,
                   )
                     .into(),
@@ -1191,81 +1156,52 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           }
           "shards" => {
             if let Some(ref params) = func.params {
-              if params.len() != 3 {
-                Err(
+              let param_helper = ParamHelper::new(params);
+
+              let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
+                (
+                  "shards built-in function requires a Name parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )?;
+
+              let args = param_helper.get_param_by_name_or_index("Args", 1).ok_or(
+                (
+                  "shards built-in function requires an Args parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )?;
+
+              let shards = param_helper.get_param_by_name_or_index("Shards", 2).ok_or(
+                (
+                  "shards built-in function requires a Shards parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )?;
+
+              match (&name.value, &args.value, &shards.value) {
+                (Value::Identifier(name), Value::Seq(args), Value::Shards(shards)) => {
+                  let args_ptr = args as *const _;
+                  let shards_ptr = shards as *const _;
+                  e.shards_groups.insert(
+                    name.clone(),
+                    ShardsGroup {
+                      args: args_ptr,
+                      shards: shards_ptr,
+                    },
+                  );
+                  Ok(())
+                }
+                _ => Err(
                   (
-                    "shards built-in function requires 3 parameters",
+                    "shards built-in function requires valid parameters",
                     block.line_info,
                   )
                     .into(),
-                )
-              } else {
-                // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
-                let name = if params[0].name.is_none() {
-                  Some(&params[0])
-                } else {
-                  params
-                    .iter()
-                    .find(|param| param.name.as_deref() == Some("Name"))
-                };
-
-                // Obtain the name of the wire either from unnamed second parameter or named parameter "Args"
-                let args = if params[0].name.is_none() && params[1].name.is_none() {
-                  Some(&params[1])
-                } else {
-                  params
-                    .iter()
-                    .find(|param| param.name.as_deref() == Some("Args"))
-                };
-
-                // Obtain the name of the wire either from unnamed third parameter or named parameter "Shards"
-                let shards = if params[0].name.is_none()
-                  && params[1].name.is_none()
-                  && params[2].name.is_none()
-                {
-                  Some(&params[2])
-                } else {
-                  params
-                    .iter()
-                    .find(|param| param.name.as_deref() == Some("Shards"))
-                };
-
-                match (name, args, shards) {
-                  (Some(name_param), Some(args_param), Some(shards_param)) => {
-                    match (&name_param.value, &args_param.value, &shards_param.value) {
-                      (
-                        Value::String(name) | Value::Identifier(name),
-                        Value::Seq(args),
-                        Value::Shards(shards),
-                      ) => {
-                        let args_ptr = args as *const _;
-                        let shards_ptr = shards as *const _;
-                        e.shards_groups.insert(
-                          name.clone(),
-                          ShardsGroup {
-                            args: args_ptr,
-                            shards: shards_ptr,
-                          },
-                        );
-                        Ok(())
-                      }
-                      _ => Err(
-                        (
-                          "shards built-in function requires valid parameters",
-                          block.line_info,
-                        )
-                          .into(),
-                      ),
-                    }
-                  }
-                  _ => Err(
-                    (
-                      "shards built-in function requires a name parameter",
-                      block.line_info,
-                    )
-                      .into(),
-                  ),
-                }
+                ),
               }
             } else {
               Err(
@@ -1279,39 +1215,28 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           }
           "mesh" => {
             if let Some(ref params) = func.params {
-              let n_params = params.len();
+              let param_helper = ParamHelper::new(params);
 
-              // Obtain the name of the wire either from unnamed first parameter or named parameter "Name"
-              let name = if n_params > 0 && params[0].name.is_none() {
-                Some(&params[0])
-              } else {
-                params
-                  .iter()
-                  .find(|param| param.name.as_deref() == Some("Name"))
-              };
+              let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
+                (
+                  "mesh built-in function requires a name parameter",
+                  block.line_info,
+                )
+                  .into(),
+              )?;
 
-              if let Some(name) = name {
-                match &name.value {
-                  Value::String(name) | Value::Identifier(name) => {
-                    e.meshes.insert(name.clone(), Mesh::default());
-                    Ok(())
-                  }
-                  _ => Err(
-                    (
-                      "mesh built-in function requires a string parameter",
-                      block.line_info,
-                    )
-                      .into(),
-                  ),
+              match &name.value {
+                Value::Identifier(name) => {
+                  e.meshes.insert(name.clone(), Mesh::default());
+                  Ok(())
                 }
-              } else {
-                Err(
+                _ => Err(
                   (
-                    "mesh built-in function requires a name parameter",
+                    "mesh built-in function requires an identifier parameter",
                     block.line_info,
                   )
                     .into(),
-                )
+                ),
               }
             } else {
               Err(
