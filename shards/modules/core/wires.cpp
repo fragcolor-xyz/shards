@@ -1583,7 +1583,8 @@ protected:
   Types _outputTypes;
   SHTypeInfo _inputType{};
   std::vector<OwnedVar> _outputs;
-  std::vector<bool> _successes;
+  std::vector<char>
+      _successes; // don't use bool cos std lib uses bit vectors behind the scenes and won't work with multiple threads
   std::vector<ManyWire *> _wires;
   int64_t _threads{0};
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
