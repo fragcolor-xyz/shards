@@ -73,7 +73,7 @@ jobs:
         run: |
           cd build
           chmod +x shards
-          ./shards -- ../shards/core/compress-strings.edn
+          ./shards ../shards/core/compress-strings.edn
 
           cd ..
           ./format

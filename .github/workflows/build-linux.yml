@@ -104,46 +104,46 @@ jobs:
         run: |
           cd build
           chmod +x shards
-          ./shards -- ../shards/tests/general.edn
-          ./shards -- ../shards/tests/table-compose.edn
-          ./shards -- ../shards/tests/variables.edn
-          ./shards -- ../shards/tests/subwires.clj
-          ./shards -- ../shards/tests/linalg.clj
-          ./shards -- ../shards/tests/loader.clj
-          ./shards -- ../shards/tests/network.edn
-          ./shards -- ../shards/tests/struct.clj
-          ./shards -- ../shards/tests/flows.edn
-          ./shards -- ../shards/tests/kdtree.clj
-          ./shards -- ../shards/tests/channels.edn
-          ./shards -- ../shards/tests/genetic.clj
-          ./shards -- ../shards/tests/imaging.clj
-          ./shards -- ../shards/tests/http.clj
-          ./shards -- ../shards/tests/ws.edn
-          ./shards -- ../shards/tests/bigint.clj
-          ./shards -- ../shards/tests/brotli.clj
-          ./shards -- ../shards/tests/snappy.clj
-          ./shards -- ../shards/tests/expect.edn
-          ./shards -- ../shards/tests/failures.clj
-          ./shards -- ../shards/tests/wasm.clj
-          ./shards -- ../shards/tests/rust.clj
-          ./shards -- ../shards/tests/crypto.edn
-          ./shards -- ../shards/tests/wire-macro.edn
-          ./shards -- ../shards/tests/const-vars.edn
-          ./shards -- ../shards/tests/branch.edn
-          ./shards -- ../shards/tests/audio.edn
-          ./shards -- ../shards/tests/time.edn
-          ./shards -- ../shards/tests/eth.edn
-          ./shards -- ../shards/tests/take.edn
-          ./shards -- ../shards/tests/casting-numbers.edn
-          ./shards -- ../shards/tests/pure.edn
-          # ./shards -- ../shards/tests/shell.clj
-          ./shards -- ../shards/tests/infos.clj
-          ./shards -- ../shards/tests/many.edn
-          ./shards -- ../shards/tests/events.edn
-          ./shards -- ../shards/tests/tablecase.edn
-          ./shards -- ../shards/tests/types.edn
-          ./shards -- ../shards/tests/complex-deserialize.edn
-          ./shards -- ../shards/tests/db.edn
+          ./shards ../shards/tests/general.edn
+          ./shards ../shards/tests/table-compose.edn
+          ./shards ../shards/tests/variables.edn
+          ./shards ../shards/tests/subwires.clj
+          ./shards ../shards/tests/linalg.clj
+          ./shards ../shards/tests/loader.clj
+          ./shards ../shards/tests/network.edn
+          ./shards ../shards/tests/struct.clj
+          ./shards ../shards/tests/flows.edn
+          ./shards ../shards/tests/kdtree.clj
+          ./shards ../shards/tests/channels.edn
+          ./shards ../shards/tests/genetic.clj
+          ./shards ../shards/tests/imaging.clj
+          ./shards ../shards/tests/http.clj
+          ./shards ../shards/tests/ws.edn
+          ./shards ../shards/tests/bigint.clj
+          ./shards ../shards/tests/brotli.clj
+          ./shards ../shards/tests/snappy.clj
+          ./shards ../shards/tests/expect.edn
+          ./shards ../shards/tests/failures.clj
+          ./shards ../shards/tests/wasm.clj
+          ./shards ../shards/tests/rust.clj
+          ./shards ../shards/tests/crypto.edn
+          ./shards ../shards/tests/wire-macro.edn
+          ./shards ../shards/tests/const-vars.edn
+          ./shards ../shards/tests/branch.edn
+          ./shards ../shards/tests/audio.edn
+          ./shards ../shards/tests/time.edn
+          ./shards ../shards/tests/eth.edn
+          ./shards ../shards/tests/take.edn
+          ./shards ../shards/tests/casting-numbers.edn
+          ./shards ../shards/tests/pure.edn
+          # ./shards ../shards/tests/shell.clj
+          ./shards ../shards/tests/infos.clj
+          ./shards ../shards/tests/many.edn
+          ./shards ../shards/tests/events.edn
+          ./shards ../shards/tests/tablecase.edn
+          ./shards ../shards/tests/types.edn
+          ./shards ../shards/tests/complex-deserialize.edn
+          ./shards ../shards/tests/db.edn
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
@@ -151,7 +151,7 @@ jobs:
           RUST_BACKTRACE: full
         run: |
           cd build
-          ./shards -- ../shards/tests/export-strings.edn
+          ./shards ../shards/tests/export-strings.edn
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full
@@ -160,7 +160,7 @@ jobs:
           for i in $(find shards -name '*.edn' \( ! -path '*UI*' ! -path '*GFX*' ! -path '*Dialog*' \));
           do
             echo "Running sample $i";
-            ../../build/shards -- run-sample.edn --file "$i";
+            ../../build/shards run-sample.edn --file "$i";
           done
       - name: Test runtime
         env:
