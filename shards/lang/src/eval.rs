@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::ParamHelper;
 use crate::RcStrWrapper;
 
 use core::convert::TryInto;
@@ -8,7 +9,6 @@ use nanoid::nanoid;
 
 use shards::core::destroyVar;
 use shards::core::sleep;
-use shards::types::common_type::color;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -113,7 +113,6 @@ impl AsMut<Var> for SVar {
 fn handle_color_built_in_function(
   func: &Function,
   line_info: LineInfo,
-  e: &mut EvalEnv,
 ) -> Result<Var, ShardsError> {
   let params = func.params.as_ref().ok_or(
     (
@@ -759,7 +758,7 @@ fn as_var(
     }
     Value::Func(func) => match func.name.as_str() {
       "color" => Ok(SVar::NotCloned(handle_color_built_in_function(
-        func, line_info, e,
+        func, line_info,
       )?)),
       _ => {
         if let Some(defined_value) = find_defined(&func.name, e) {
@@ -1302,32 +1301,16 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           }
           "schedule" => {
             if let Some(ref params) = func.params {
-              let n_params: usize = params.len();
+              let param_helper = ParamHelper::new(params);
 
-              // Obtain the name of the mesh either from unnamed first parameter or named parameter "Mesh"
-              let mesh_id = if n_params > 0 && params[0].name.is_none() {
-                Some(&params[0])
-              } else {
-                params
-                  .iter()
-                  .find(|param| param.name.as_deref() == Some("Mesh"))
-              };
-
-              // Obtain the name of the wire either from unnamed first parameter or named parameter "Wire"
-              let wire_id = if n_params > 1 && params[0].name.is_none() && params[1].name.is_none()
-              {
-                Some(&params[1])
-              } else {
-                params
-                  .iter()
-                  .find(|param| param.name.as_deref() == Some("Wire"))
-              };
+              let mesh_id = param_helper.get_param_by_name_or_index("Mesh", 0, block.line_info)?;
+              let wire_id = param_helper.get_param_by_name_or_index("Wire", 1, block.line_info)?;
 
               if let (Some(mesh_param), Some(wire_param)) = (mesh_id, wire_id) {
                 // wire is likely lazy so we need to evaluate it
                 let wire = match &wire_param.value {
                   // can be only identifier or string
-                  Value::Identifier(name) | Value::String(name) => {
+                  Value::Identifier(name) => {
                     if let Some((wire, finalized)) = find_wire(name, e) {
                       if !finalized {
                         // wire is not finalized, we need to finalize it now
@@ -1359,7 +1342,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 }?;
 
                 let mesh = match &mesh_param.value {
-                  Value::String(name) | Value::Identifier(name) => {
+                  Value::Identifier(name) => {
                     if let Some(mesh) = find_mesh(name, e) {
                       Ok(mesh)
                     } else {
@@ -1597,7 +1580,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
             }
           }
           "color" => {
-            let value = handle_color_built_in_function(func, block.line_info, e)?;
+            let value = handle_color_built_in_function(func, block.line_info)?;
             add_const_shard2(value, block.line_info, e)
           }
           unknown => {
