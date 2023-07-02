@@ -39,7 +39,14 @@ struct ShardsGroup {
   shards: *const Sequence,
 }
 
-struct EvalEnv {
+#[repr(C)]
+pub struct Setting {
+  allow_unsafe: bool,
+  allow_custom_stack_sizes: bool,
+  allow_only_pure_wires: bool,
+}
+
+pub struct EvalEnv {
   parent: Option<*const EvalEnv>,
 
   shards: Vec<SShardRef>,
@@ -58,7 +65,8 @@ struct EvalEnv {
   suffix_assigned: HashSet<RcStrWrapper>,
 
   // Shards and functions that are forbidden to be used
-  forbidden_funcs: HashSet<RcStrWrapper>,
+  pub forbidden_funcs: HashSet<RcStrWrapper>,
+  pub settings: Vec<Setting>,
 
   meshes: HashMap<RcStrWrapper, Mesh>,
 }
@@ -82,6 +90,7 @@ impl Default for EvalEnv {
       suffix: None,
       suffix_assigned: HashSet::new(),
       forbidden_funcs: HashSet::new(),
+      settings: Vec::new(),
       meshes: HashMap::new(),
     }
   }
@@ -284,96 +293,78 @@ fn finalize_wire(
   env: &mut EvalEnv,
 ) -> Result<Wire, ShardsError> {
   wire.set_name(&name.0);
-  let mut idx = 0;
-  let mut as_idx = true;
-  for param in unsafe { &*params } {
-    if let Some(name) = &param.name {
-      as_idx = false;
-      if name == "Looped" {
-        wire.set_looped({
-          match param.value {
-            Value::Boolean(b) => b,
-            _ => return Err(("Looped parameter must be a boolean", line_info).into()),
-          }
-        })
-      } else if name == "Shards" {
-        let mut sub_env = match &param.value {
-          Value::Shards(seq) => eval_sequence(&seq, Some(env))?,
-          _ => return Err(("Shards parameter must be a sequence", line_info).into()),
-        };
-        finalize_env(&mut sub_env)?;
-        for shard in sub_env.shards.drain(..) {
-          wire.add_shard(shard.0);
-        }
-      } else if name == "Name" {
-      } else if name == "Unsafe" {
-        wire.set_unsafe({
-          match param.value {
-            Value::Boolean(b) => b,
-            _ => return Err(("Unsafe parameter must be a boolean", line_info).into()),
-          }
-        })
-      } else if name == "Pure" {
-        wire.set_pure({
-          match param.value {
-            Value::Boolean(b) => b,
-            _ => return Err(("Pure parameter must be a boolean", line_info).into()),
-          }
-        })
-      } else if name == "LargeStack" {
-        wire.set_stack_size(4 * 1024 * 1024)
-      } else if name == "SmallStack" {
-        wire.set_stack_size(32 * 1024)
-      } else {
-        return Err(("Unknown parameter", line_info).into());
-      }
-    } else {
-      if !as_idx {
-        return Err(("Named parameter after unnamed parameter", line_info).into());
-      }
 
-      if idx == 0 {
-        // name param
-      } else if idx == 1 {
-        let mut sub_env = match &param.value {
-          Value::Shards(seq) => eval_sequence(&seq, Some(env))?,
-          _ => return Err(("Shards parameter must be a sequence", line_info).into()),
-        };
-        finalize_env(&mut sub_env)?;
-        for shard in sub_env.shards.drain(..) {
-          wire.add_shard(shard.0);
-        }
-      } else if idx == 2 {
-        wire.set_looped({
-          match param.value {
-            Value::Boolean(b) => b,
-            _ => return Err(("Looped parameter must be a boolean", line_info).into()),
-          }
-        })
-      } else if idx == 3 {
-        wire.set_pure({
-          match param.value {
-            Value::Boolean(b) => b,
-            _ => return Err(("Pure parameter must be a boolean", line_info).into()),
-          }
-        })
-      } else if idx == 4 {
-        wire.set_unsafe({
-          match param.value {
-            Value::Boolean(b) => b,
-            _ => return Err(("Unsafe parameter must be a boolean", line_info).into()),
-          }
-        })
-      } else if idx == 5 {
-        wire.set_stack_size(4 * 1024 * 1024)
-      } else if idx == 6 {
-        wire.set_stack_size(32 * 1024)
-      } else {
-        return Err(("Unknown parameter", line_info).into());
-      }
-    }
-    idx += 1;
+  let param_helper = ParamHelper::new(unsafe { &*params });
+
+  // ignore first parameter, which is the name
+
+  let mut sub_env = param_helper
+    .get_param_by_name_or_index("Shards", 1)
+    .map(|param| match &param.value {
+      Value::Shards(seq) => eval_sequence(&seq, Some(env)),
+      _ => Err(("Shards parameter must be shards", line_info).into()),
+    })
+    .unwrap_or(Ok(EvalEnv::default()))?;
+  finalize_env(&mut sub_env)?;
+  for shard in sub_env.shards.drain(..) {
+    wire.add_shard(shard.0);
   }
+
+  let looped = param_helper
+    .get_param_by_name_or_index("Looped", 2)
+    .map(|param| match &param.value {
+      Value::Boolean(b) => Ok(*b),
+      _ => Err(("Looped parameter must be a boolean", line_info).into()),
+    })
+    .unwrap_or(Ok(false))?;
+  wire.set_looped(looped);
+
+  if let Some(_) = env.settings.iter().find(|&s| s.allow_only_pure_wires) {
+    wire.set_pure(true);
+  } else {
+    let pure = param_helper
+      .get_param_by_name_or_index("Pure", 3)
+      .map(|param| match &param.value {
+        Value::Boolean(b) => Ok(*b),
+        _ => Err(("Pure parameter must be a boolean", line_info).into()),
+      })
+      .unwrap_or(Ok(false))?;
+    wire.set_pure(pure);
+  }
+
+  if let Some(_) = env.settings.iter().find(|&s| s.allow_unsafe) {
+    let unsafe_ = param_helper
+      .get_param_by_name_or_index("Unsafe", 4)
+      .map(|param| match &param.value {
+        Value::Boolean(b) => Ok(*b),
+        _ => Err(("Unsafe parameter must be a boolean", line_info).into()),
+      })
+      .unwrap_or(Ok(false))?;
+    wire.set_unsafe(unsafe_);
+  }
+
+  if let Some(_) = env.settings.iter().find(|&s| s.allow_custom_stack_sizes) {
+    let stack_size = param_helper
+      .get_param_by_name_or_index("StackSize", 5)
+      .map(|param| match &param.value {
+        Value::Number(n) => match n {
+          Number::Integer(n) => Ok(*n),
+          _ => Err(("StackSize parameter must be an integer", line_info).into()),
+        },
+        _ => Err(("StackSize parameter must be an integer", line_info).into()),
+      })
+      .unwrap_or(Ok(0))?;
+    // ensure stack size is a multiple of 4 and minimum 1024 bytes
+    let stack_size = if stack_size < 1024 {
+      1024
+    } else if stack_size % 4 != 0 {
+      stack_size + 4 - (stack_size % 4)
+    } else {
+      stack_size
+    };
+    wire.set_stack_size(stack_size as usize);
+  }
+
   Ok(wire)
 }
 
