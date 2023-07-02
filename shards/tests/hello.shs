@@ -26,21 +26,18 @@
 @schedule(root test)
 @run(root)
 
-; @i2(1) | Log
-; @i2(1 2) | Log
+@i2(1) | Log
+@i2(1 2) | Log
 
-; @i3(1) | Log
-; @i3(1 2) | Log
-; @i3(1 2 3) | Log
+@i3(1) | Log
+@i3(1 2 3) | Log
 
-; @i4(1) | Log
-; @i4(1 2) | Log
-; @i4(1 2 3) | Log
-; @i4(1 2 3 4) | Log
+@i4(1) | Log
+@i4(1 2 3 4) | Log
 
-; ; etc i8 and i16
+; etc i8 and i16
 
-; ; same for floats
+; same for floats
 
-; @f2(1) | Log
-; @f2(1 2) | Log
+@f2(1) | Log
+@f2(1 2) | Log
