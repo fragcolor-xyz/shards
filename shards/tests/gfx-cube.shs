@@ -1,13 +1,13 @@
 @define(cube-layout ["position" "color"])
 @define(cube {"Vertices": [
-    (-1.0  1.0  1.0) (0x00 0x00 0x00 0xff)
-    ( 1.0  1.0  1.0) (0x00 0x00 0xff 0xff)
-    (-1.0 -1.0  1.0) (0x00 0xff 0x00 0xff)
-    ( 1.0 -1.0  1.0) (0x00 0xff 0xff 0xff)
-    (-1.0  1.0 -1.0) (0xff 0x00 0x00 0xff)
-    ( 1.0  1.0 -1.0) (0xff 0x00 0xff 0xff)
-    (-1.0 -1.0 -1.0) (0xff 0xff 0x00 0xff)
-    ( 1.0 -1.0 -1.0) (0xff 0xff 0xff 0xff)
+    (-1.0  1.0  1.0) @color(0x000000)
+    ( 1.0  1.0  1.0) @color(0x0000ff)
+    (-1.0 -1.0  1.0) @color(0x00ff00)
+    ( 1.0 -1.0  1.0) @color(0x00ffff)
+    (-1.0  1.0 -1.0) @color(0xff0000)
+    ( 1.0  1.0 -1.0) @color(0xff00ff)
+    (-1.0 -1.0 -1.0) @color(0xffff00)
+    ( 1.0 -1.0 -1.0) @color(0xffffff)
   ] "Indices": [
     0 1 2
     1 3 2
@@ -23,33 +23,37 @@
     6 3 7
   ]})
 
-@define(timestep #(1.0 | Math.Divide(120.0)))
-@mesh(root)
+@define(timestep #(1.0 | Math.Divide(60.0)))
+
 @wire(test-wire {
   Once({
     0.0 >= time
     @cube | GFX.Mesh(Layout: @cube-layout WindingOrder: WindingOrder.CW) = mesh
-    (0.0 0.0 0.0) | Math.Translation >= transform
+    @f3(0) | Math.Translation >= transform
 
     ; Create render steps
     GFX.BuiltinFeature(Id: BuiltinFeatureId.Transform) >> features
     GFX.BuiltinFeature(Id: BuiltinFeatureId.BaseColor) >> features
     GFX.DrawQueue = queue
-    GFX.DrawablePass(Features: features Queue: queue) = render-steps
+    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
 
     ; Create view
-    {Position: (0.0 0.0 0.0) Target: (0.0 0.0 0.0)} | Math.LookAt = view-transform
+    {Position: @f3(0) Target: @f3(0)} | Math.LookAt = view-transform
     GFX.View(View: view-transform) = view
   })
 
   GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Debug: false Contents: {
-    time | Math.Add(@timestep) = time
-    time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation |
-    Math.MatMul((time | Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation)) |
-    Math.MatMul((time | Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation)) |
-    GFX.Drawable(Mesh: mesh) | GFX.Draw(queue) | GFX.Render(Steps: render-steps View: view)
+    time | Math.Add(@timestep) > time ; | Log
+
+    time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation | ; Rotation X
+    Math.MatMul((time | Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation)) | ; Rotation Y
+    Math.MatMul((time | Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation)) | ; Rotation Z
+    GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
+
+    GFX.Render(Steps: render-steps View: view)
   })
 } Looped: true)
 
+@mesh(root)
 @schedule(root test-wire)
 @run(root FPS: 60)

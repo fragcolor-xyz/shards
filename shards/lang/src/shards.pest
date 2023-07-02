@@ -6,7 +6,7 @@ AssignRef     =  { Pipeline ~ "=" ~ LowIden }
 AssignSet     =  { Pipeline ~ ">=" ~ LowIden }
 AssignUpd     =  { Pipeline ~ ">" ~ LowIden }
 AssignPush    =  { Pipeline ~ ">>" ~ LowIden }
-Assignment    =  { AssignRef | AssignSet | AssignUpd | AssignPush }
+Assignment    =  { (AssignRef | AssignSet | AssignUpd | AssignPush) ~ ("|")? }
 Pipeline      =  { Block ~ ("|" ~ Block)* }
 Statement     = _{ (Assignment | Pipeline) }
 Sequence      =  { Statement* }
