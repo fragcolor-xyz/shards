@@ -33,6 +33,7 @@ jobs:
           cmake -G Ninja -DSHARDS_VALGRIND=1 -DUSE_VALGRIND=1 -DSHARDS_WITH_EXTRA_SHARDS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo .. &&\
           ninja shards &&\
           ninja test-runtime &&\
+          valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards new ../shards/tests/hello.shs &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/bug1.edn &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/general.edn &&\
           valgrind --exit-on-first-error=yes --error-exitcode=1 ./shards ../shards/tests/table-compose.edn &&\
