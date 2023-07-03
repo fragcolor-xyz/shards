@@ -45,7 +45,7 @@ Msg(@macro1("Ciao")) | Log
   "TEST" = texture
 })
 
-; @base(test-shards-1)
-; test-shards-1 | Log | Assert.Is("TEST")
+@base(test-shards-1)
+test-shards-1 | Log | Assert.Is("TEST")
 
-; @base(test-shards-1) | Log | Assert.Is("TEST")
+@base(test-shards-2) | Log | Assert.Is("TEST")

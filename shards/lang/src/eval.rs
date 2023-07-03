@@ -2229,22 +2229,36 @@ fn add_assignment_shard(
 ) -> Result<(), ShardsError> {
   let shard = ShardRef::create(shard_name).unwrap();
   let shard = SShardRef(shard);
-  let (assigned, suffix) = if let Some(suffix) = find_current_suffix(e) {
-    let name = format!("{}{}", name, suffix);
-    let name = Var::ephemeral_string(&name);
-    shard
-      .0
-      .set_parameter(0, name)
-      .map_err(|_| ("Failed to set parameter", line_info).into())?;
-    (true, Some(suffix.clone()))
-  } else {
-    let name = Var::ephemeral_string(name);
-    shard
-      .0
-      .set_parameter(0, name)
-      .map_err(|_| ("Failed to set parameter", line_info).into())?;
-    (false, None)
+
+  let (assigned, suffix) = match (find_replacement(name, e), find_current_suffix(e)) {
+    (Some(Value::Identifier(name)), _) => {
+      let name = Var::ephemeral_string(name);
+      shard
+        .0
+        .set_parameter(0, name)
+        .map_err(|_| ("Failed to set parameter", line_info).into())?;
+      (false, None)
+    }
+    (None, Some(suffix)) => {
+      let name = format!("{}{}", name, suffix);
+      let name = Var::ephemeral_string(&name);
+      shard
+        .0
+        .set_parameter(0, name)
+        .map_err(|_| ("Failed to set parameter", line_info).into())?;
+      (true, Some(suffix.clone()))
+    }
+    (None, None) => {
+      let name = Var::ephemeral_string(name);
+      shard
+        .0
+        .set_parameter(0, name)
+        .map_err(|_| ("Failed to set parameter", line_info).into())?;
+      (false, None)
+    }
+    _ => unreachable!(), // Read should prevent this...
   };
+
   if assigned {
     e.suffix_assigned.insert(name.clone(), suffix.unwrap());
   }
