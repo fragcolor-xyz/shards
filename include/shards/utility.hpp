@@ -15,15 +15,16 @@
 #include <nameof.hpp>
 #include <string>
 #include <vector>
+#include <string.h>
 
 namespace shards {
 // SHVar strings can have an optional len field populated
 #define SHSTRLEN(_v_) \
-  (_v_.payload.stringLen > 0 || _v_.payload.stringValue == nullptr ? _v_.payload.stringLen : strlen(_v_.payload.stringValue))
+  ((_v_).payload.stringLen > 0 || (_v_).payload.stringValue == nullptr ? (_v_).payload.stringLen : strlen((_v_).payload.stringValue))
 
-#define SHSTRVIEW(_v_) std::string_view(_v_.payload.stringValue, SHSTRLEN(_v_))
+#define SHSTRVIEW(_v_) std::string_view((_v_).payload.stringValue, SHSTRLEN(_v_))
 // the following is ugly on purpose, to make it obvious that it's a copy and to be avoided
-#define SHSTRING_PREFER_SHSTRVIEW(_v_) std::string(_v_.payload.stringValue, SHSTRLEN(_v_))
+#define SHSTRING_PREFER_SHSTRVIEW(_v_) std::string((_v_).payload.stringValue, SHSTRLEN(_v_))
 
 // compile time CRC32
 constexpr uint32_t crc32(std::string_view str) {
