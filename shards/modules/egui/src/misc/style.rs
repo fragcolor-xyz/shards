@@ -26,13 +26,19 @@ use shards::types::ANY_TYPES;
 macro_rules! apply_style {
   ($table:ident, $name:literal, $type:ty, $style_path:expr) => {
     if let Some(value) = $table.get_static($name) {
-      let value: $type = value.try_into()?;
+      let value: $type = value.try_into().map_err(|e| {
+        shlog!("{}: {}", $name, e);
+        "Invalid attribute value received."
+      })?;
       $style_path = value.into();
     }
   };
   ($table:ident, $name:literal, $type:ty, $style_path:expr, $convert:expr) => {
     if let Some(value) = $table.get_static($name) {
-      let value: $type = value.try_into()?;
+      let value: $type = value.try_into().map_err(|e| {
+        shlog!("{}: {}", $name, e);
+        "Invalid attribute value received."
+      })?;
       $style_path = $convert(value)?.into();
     }
   };
