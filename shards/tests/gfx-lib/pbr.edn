@@ -211,20 +211,6 @@
         .light-color (Math.Add .emissive-color)
         (ToFloat4) (Math.Add (Float4 0 0 0 1))
         (Shader.WriteOutput "color")
-
-        ;; (Shader.Literal ["biTangent"] :OutputDimension 3)
-        ;; .world-tangent (Math.Multiply .normal-scale)
-        ;; (Shader.ReadInput "worldNormal") (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
-        ;; (Shader.ReadInput "worldNormal") 
-        ;; .world-tangent
-        
-        ;; .world-normal
-        ;; (Math.Add 1.0) (Math.Divide 2.0) = .tmp-3
-        ;; (Shader.Literal ["sRGBToLinear(" .tmp-3 ")"] :OutputDimension 3)
-        ;; (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
-        ;; (Shader.ReadInput "qbase") (ToFloat3) (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
-        ;; .world-tangent (Math.Normalize)
-        ;; (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
         )}]))
 
   (defshards render-pbr-base [capture-steps]

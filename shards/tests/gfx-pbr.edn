@@ -11,23 +11,7 @@
 (defshards sky-sphere-fs []
   ; Just sample the cubemap
   (Shader.ReadInput "texCoord0") >= .uv
-  ;; (Shader.ReadInput "worldNormal") >= .world-normal
-  ;; .world-normal:0 = .x
-  ;; .world-normal:1 = .y
-  ;; .world-normal:2 = .z
-
-  ;; ; Convert cartesian to polar
-  ;; .x (Math.Divide .z) (Math.Atan) = .theta
-  ;; .x (Math.Multiply .x) = .x-sqr
-  ;; .y (Math.Multiply .y) = .y-sqr
-  ;; .x-sqr (Math.Add .y-sqr) (Math.Divide .z) (Math.Atan) = .phi
-
-  ;; .theta (Math.Add pi) (Math.Divide pi) = .u
-  ;; .phi (Math.Divide pi) = .v
-
-  ;; (Float2 .u .v) 
   .uv (Shader.SampleTextureCoord "sky")
-  ;; (Float4 .u 0.0 0.0 1.0) 
   (Shader.WriteOutput "color")
 
   ; NOTE: Write depth to compare to (>=) and render sky where it passes
