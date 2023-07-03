@@ -28,7 +28,7 @@ macro_rules! apply_style {
     if let Some(value) = $table.get_static($name) {
       let value: $type = value.try_into().map_err(|e| {
         shlog!("{}: {}", $name, e);
-        "Invalid attribute value received."
+        "Invalid attribute value received"
       })?;
       $style_path = value.into();
     }
@@ -37,7 +37,7 @@ macro_rules! apply_style {
     if let Some(value) = $table.get_static($name) {
       let value: $type = value.try_into().map_err(|e| {
         shlog!("{}: {}", $name, e);
-        "Invalid attribute value received."
+        "Invalid attribute value received"
       })?;
       $style_path = $convert(value)?.into();
     }
@@ -161,7 +161,7 @@ impl Shard for Style {
         if let Some(name) = text_style.get_static("name") {
           let key: egui::TextStyle = style_util::get_text_style(name.try_into().map_err(|e| {
             shlog!("{}: {}", "name", e);
-            "Invalid attribute value received."
+            "Invalid attribute value received"
           })?)?;
           let fontId: egui::FontId = style_util::get_font_id(text_style)?;
           style
