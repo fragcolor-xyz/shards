@@ -4,6 +4,8 @@ Repeat({
   """hello
  	"Hello"
 """
+  rare/pose
+
   1 | IsMore(2) | Assert.Is(true)
   (2 3 4) | Log | {1 | Assert.Is(1)} ; this is a Sub({})
   | Assert.Is((2 3 4))

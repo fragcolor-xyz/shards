@@ -232,6 +232,7 @@ jobs:
         shell: bash
         run: |
           cd build
+          ./shards new ../shards/tests/hello.shs
           echo "Running test: general"
           ./shards ../shards/tests/general.edn
           echo "Running test: variables"
