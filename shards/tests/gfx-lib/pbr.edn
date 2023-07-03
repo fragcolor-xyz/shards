@@ -124,10 +124,14 @@
     (Setup
      (Float4 0 0 1 0) = .init
      [.init .init .init .init] (Flatten) (FloatsToImage 2 2 4)
-     (GFX.Texture) = .normal-placeholder-texture)
+     (GFX.Texture) = .normal-placeholder-texture
+
+     (Float4 0 0 0 0) = .init-0
+     [.init-0 .init-0 .init-0 .init-0] (Flatten) (FloatsToImage 2 2 4)
+     (GFX.Texture) = .zero-placeholder-texture)
     .normal-placeholder-texture  (Set .parameters "normalTexture")
     {:Type TextureDimension.D2} (Set .parameters "metallicRoughnessTexture")
-    {:Type TextureDimension.D2} (Set .parameters "emissiveTexture")
+    .zero-placeholder-texture (Set .parameters "emissiveTexture")
     1.0 (Set .parameters "normalScale")
     (GFX.Feature
      :Params .parameters
@@ -176,7 +180,7 @@
         (Float3 .normal-scale .normal-scale 1.0) = .normal-scale-3
         (Shader.SampleTexture "normalTexture") (ToFloat3)
         (Math.Multiply (Float3 2.0 2.0 1.0))
-        (Math.Subtract (Float3 -1 -1 0))
+        (Math.Subtract (Float3 1 1 0))
         (Math.Multiply .normal-scale-3) (Math.Normalize) = .local-normal
 
         (Shader.ReadInput "worldNormal") >= .world-normal
@@ -184,9 +188,9 @@
         (Shader.ReadInput "biTangentSign") = .bi-tangent-sign
 
         (Shader.ReadBuffer "world") = .world-mat
-        (Shader.Literal ["var biTangent = cross(" .world-tangent "," .world-normal ") * " .bi-tangent-sign ";"
+        (Shader.Literal ["var biTangent = normalize(cross(" .world-normal "," .world-tangent ") * " .bi-tangent-sign ");"
                          "var tbnMat = mat3x3<f32>(" .world-tangent ", biTangent ," .world-normal ");"
-                         .world-normal " = (tbnMat * " .local-normal ").xyz;"])
+                         .world-normal " = normalize((tbnMat * " .local-normal ").xyz);"])
 
         (Shader.Literal ["
         var lgp: LightingGeneralParams;
@@ -210,7 +214,14 @@
 
         ;; (Shader.Literal ["biTangent"] :OutputDimension 3)
         ;; .world-tangent (Math.Multiply .normal-scale)
-        ;; .world-normal (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
+        ;; (Shader.ReadInput "worldNormal") (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
+        ;; (Shader.ReadInput "worldNormal") 
+        ;; .world-tangent
+        
+        ;; .world-normal
+        ;; (Math.Add 1.0) (Math.Divide 2.0) = .tmp-3
+        ;; (Shader.Literal ["sRGBToLinear(" .tmp-3 ")"] :OutputDimension 3)
+        ;; (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
         ;; (Shader.ReadInput "qbase") (ToFloat3) (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
         ;; .world-tangent (Math.Normalize)
         ;; (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;

@@ -90,16 +90,16 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
 
   BlockPtr localNormal = std::make_unique<WithInput>("normal", ReadInput("normal"), "vec3<f32>(0.0, 0.0, 1.0)");
 
-  auto transformDirection = [](auto &&in) {
-    return blocks::makeCompoundBlock("normalize((", ReadBuffer("invTransWorld", FieldTypes::Float4x4), "*", "vec4<f32>(",
-                                     std::move(in), ".xyz, 0.0)", ").xyz)");
+  auto transformDirection = [](auto &&in, const char *matName) {
+    return blocks::makeCompoundBlock("((", ReadBuffer(matName, FieldTypes::Float4x4), "*", "vec4<f32>(", std::move(in),
+                                     ".xyz, 0.0)", ").xyz)");
   };
 
   auto applyTBNTransform = blocks::makeCompoundBlock(
-      WriteGlobal("worldNormal", FieldTypes::Float3, transformDirection(std::move(localNormal))),
+      WriteGlobal("worldNormal", FieldTypes::Float3, transformDirection(std::move(localNormal), "invTransWorld")),
       WithInput("tangent",
                 makeCompoundBlock( //
-                    WriteGlobal("worldTangent", FieldTypes::Float3, transformDirection(ReadInput("tangent"))),
+                    WriteGlobal("worldTangent", FieldTypes::Float3, transformDirection(ReadInput("tangent"), "world")),
                     WriteGlobal("biTangentSign", FieldTypes::Float, ReadInput("tangent"), ".w"))));
 
   auto &initWorldNormal =

@@ -56,24 +56,31 @@
               (Setup
                (LoadImage "data/footprint_court.hdr") (GFX.Texture) = .sphere-map-texture)
               (sphere-map-pass .sphere-map-texture) = .skybox-step
-              ;; (skybox-pass (slurp "gfx-lib/atmosphere.wgsl") filter-cubemap render-sky-sphere-queue sky-sphere-vs) = .skybox-step
               .skybox-step >> .render-steps
               (GFX.DrawQueue) = .queue
 
               (Animation.Timer :Rate 0.2) = .t
+
               5.0 = .r
               .t (Math.Cos) (Math.Multiply .r) >= .x
               .t (Math.Sin) (Math.Multiply .r) >= .z
               .t (Math.Multiply 0.4) (Math.Sin) (Math.Multiply 2.0) >= .y
 
+              ; Rotating camera
               {:Target (Float3 0.0 0.0 0.0) :Position (Float3 0.0)} >= .lookat
               (Float3 .x .y .z) (Update .lookat "Position")
-              .lookat (Math.LookAt) = .view-transform
+              .lookat (Math.LookAt) >= .view-transform
+
+              ; Static Camera
+              ;; {:Target (Float3 0.0) :Position (Float3 0.0 0.0 5.5)} (Math.LookAt) >= .view-transform
 
               90.0 (Math.DegreesToRadians) (Math.AxisAngleX) (Math.Rotation) = .rot-z
               (Float3 0 0 0) (Math.Translation) = .tsl
               .tsl (Math.MatMul .rot-z)
               (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb") (GFX.Draw .queue)
+
+              ;; (Math.MatIdentity)
+              ;; (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/NormalTangentTest/glTF-Binary/NormalTangentTest.glb") (GFX.Draw .queue)
 
               (GFX.View .view-transform) = .view
 

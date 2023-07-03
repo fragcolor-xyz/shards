@@ -409,12 +409,12 @@ MeshPtr generateLocalBasisAttribute(MeshPtr mesh) {
     //  decltype(type)
     auto vec = ((Context *)ctx)->texCoordBuffer.read<float, 2, false>(iFace * 3 + iVert);
     fvPosOut[0] = fmod(float(vec.x), 1.0f);
-    fvPosOut[1] = fmod(float(vec.y), 1.0f);
+    fvPosOut[1] = 1.0f - fmod(float(vec.y), 1.0f);
   };
 
   iface.m_setTSpaceBasic = [](const SMikkTSpaceContext *ctx, const float fvTangent[], const float fSign, const int iFace,
                               const int iVert) {
-    auto z = linalg::normalize(((Context *)ctx)->normalBuffer.read<float, 3, false>(iFace * 3 + iVert));
+    // auto z = linalg::normalize(((Context *)ctx)->normalBuffer.read<float, 3, false>(iFace * 3 + iVert));
     float3 x = float3(fvTangent);
 
     // if (linalg::length2(y) == 0.0f) {
