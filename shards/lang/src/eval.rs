@@ -1120,14 +1120,13 @@ fn set_shard_parameter(
       Value::Identifier(name) => name,
       _ => panic!("Expected an identifier"), // The actual Shard is violating the standard - panic here
     };
+    if var_value.as_ref().valueType != SHType_ContextVar {
+      panic!("Expected a context variable") // The actual Shard is violating the standard - panic here
+    }
     let suffix = find_current_suffix(e);
     if let Some(suffix) = suffix {
       // fix up the value to be a suffixed variable if we have a suffix
-      if var_value.as_ref().valueType != SHType_ContextVar {
-        panic!("Expected a context variable") // The actual Shard is violating the standard - panic here
-      }
-      let current_name: &str = var_value.as_ref().try_into().expect("Expected a string");
-      let new_name = format!("{}{}", current_name, suffix);
+      let new_name = format!("{}{}", name, suffix);
       // also add to suffix_assigned
       e.suffix_assigned
         .insert(name.clone().into(), suffix.clone());
