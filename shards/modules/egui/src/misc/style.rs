@@ -159,7 +159,10 @@ impl Shard for Style {
       for var in text_styles.iter() {
         let text_style: Table = var.try_into()?;
         if let Some(name) = text_style.get_static("name") {
-          let key: egui::TextStyle = style_util::get_text_style(name.try_into()?)?;
+          let key: egui::TextStyle = style_util::get_text_style(name.try_into().map_err(|e| {
+            shlog!("{}: {}", "name", e);
+            "Invalid attribute value received."
+          })?)?;
           let fontId: egui::FontId = style_util::get_font_id(text_style)?;
           style
             .text_styles
