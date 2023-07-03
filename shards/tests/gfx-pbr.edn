@@ -54,7 +54,7 @@
    :Title "SDL Window" :Width 1280 :Height 720
    :Contents (->
               (Setup
-               (LoadImage "data/helipad.hdr") (GFX.Texture) = .sphere-map-texture)
+               (LoadImage "data/footprint_court.hdr") (GFX.Texture) = .sphere-map-texture)
               (sphere-map-pass .sphere-map-texture) = .skybox-step
               ;; (skybox-pass (slurp "gfx-lib/atmosphere.wgsl") filter-cubemap render-sky-sphere-queue sky-sphere-vs) = .skybox-step
               .skybox-step >> .render-steps

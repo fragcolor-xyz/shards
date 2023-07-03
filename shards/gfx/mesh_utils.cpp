@@ -1,5 +1,6 @@
 #include "mesh_utils.hpp"
 #include "linalg.hpp"
+#include "math.hpp"
 #include <boost/container/small_vector.hpp>
 #include <spdlog/spdlog.h>
 #include "xxh3.h"
@@ -12,6 +13,14 @@
 using namespace boost::container;
 
 namespace gfx {
+
+inline bool isFlippedCoordinateSpace(float3 right, float3 forward, float3 up) {
+  float3 expectedForward = linalg::normalize(linalg::cross(right, up));
+  if (linalg::dot(forward, expectedForward) < 0) {
+    return true;
+  }
+  return false;
+}
 
 StorageType indexFormatToStorageType(IndexFormat fmt) {
   switch (fmt) {
@@ -290,7 +299,6 @@ MeshPtr generateLocalBasisAttribute(MeshPtr mesh) {
       positionIndex = index;
     } else if (attrib.name == "normal") {
       normalIndex = index;
-      return false;
     } else if (attrib.name == "texCoord0") {
       texCoordIndex = index;
     } else if (attrib.name == "tangent" || attrib.name == "bitangent") {
@@ -360,8 +368,8 @@ MeshPtr generateLocalBasisAttribute(MeshPtr mesh) {
   //   dstStride += attrib.numComponents * getStorageTypeSize(attrib.type);
   // }
 
-  AttribBuffer qbaseBuffer;
-  qbaseBuffer.initZero(StorageType::Float32, 4, numIndices);
+  AttribBuffer tangentBuffer;
+  tangentBuffer.initZero(StorageType::Float32, 4, numIndices);
 
   struct Context {
     SMikkTSpaceContext ctx;
@@ -369,13 +377,13 @@ MeshPtr generateLocalBasisAttribute(MeshPtr mesh) {
     const AttribBuffer &positionBuffer;
     const AttribBuffer &normalBuffer;
     const AttribBuffer &texCoordBuffer;
-    AttribBuffer &qbaseBuffer;
+    AttribBuffer &tangentBuffer;
   } context{
       .indexBuffer = indexBuffer,
       .positionBuffer = srcAttributes[positionIndex.value()],
       .normalBuffer = srcAttributes[normalIndex.value()],
       .texCoordBuffer = srcAttributes[texCoordIndex.value()],
-      .qbaseBuffer = qbaseBuffer,
+      .tangentBuffer = tangentBuffer,
   };
 
   SMikkTSpaceInterface iface{
@@ -403,44 +411,95 @@ MeshPtr generateLocalBasisAttribute(MeshPtr mesh) {
     fvPosOut[0] = fmod(float(vec.x), 1.0f);
     fvPosOut[1] = fmod(float(vec.y), 1.0f);
   };
-  // iface.m_setTSpaceBasic = [](const SMikkTSpaceContext *ctx, const float fvTangent[], const float fSign, const int iFace,
-  //                             const int iVert) {
+
+  iface.m_setTSpaceBasic = [](const SMikkTSpaceContext *ctx, const float fvTangent[], const float fSign, const int iFace,
+                              const int iVert) {
+    auto z = linalg::normalize(((Context *)ctx)->normalBuffer.read<float, 3, false>(iFace * 3 + iVert));
+    float3 x = float3(fvTangent);
+
+    // if (linalg::length2(y) == 0.0f) {
+    //   y = -generateTangent(z); // prevent NAN
+    // }
+
+    // float3 y = linalg::normalize(linalg::cross(z, x));
+    // x = linalg::normalize(linalg::cross(y, z));
+
+    // if (isFlippedCoordinateSpace(x, z, y)) {
+    //   SPDLOG_INFO("flipped");
+    // }
+
+    // float d0 = linalg::dot(x, y);
+    // float d1 = linalg::dot(y, z);
+    // float d2 = linalg::dot(z, x);
+    // if (!isRoughlyEqual(d0, 0.0f) || !isRoughlyEqual(d1, 0.0f) || !isRoughlyEqual(d2, 0.0f)) {
+    //   SPDLOG_INFO("non-orthogonal");
+    // }
+
+    // float4 qbase = linalg::normalize(linalg::rotation_quat(float3x3(x, y, z)));
+
+    // auto &qbaseBuffer = ((Context *)ctx)->qbaseBuffer;
+    // qbaseBuffer.write(iFace * 3 + iVert, qbase);
+    auto &tangentBuffer = ((Context *)ctx)->tangentBuffer;
+    tangentBuffer.write(iFace * 3 + iVert, float4(x, fSign));
+  };
+  // iface.m_setTSpace = [](const SMikkTSpaceContext *ctx, const float fvTangent[], const float fvBiTangent[], const float fMagS,
+  //                        const float fMagT, const tbool bIsOrientationPreserving, const int iFace, const int iVert) {
   //   auto z = linalg::normalize(((Context *)ctx)->normalBuffer.read<float, 3, false>(iFace * 3 + iVert));
 
   //   float3 x(fvTangent);
-  //   float3 y = linalg::normalize(fSign * linalg::cross(z, x));
-  //   x = linalg::normalize(linalg::cross(y, z));
-  //   float4 qbase = linalg::normalize(linalg::rotation_quat(float3x3(x, y, z)));
+  //   float3 y(fvBiTangent);
+
+  //   float fSign = bIsOrientationPreserving ? 1.0f : (-1.0f);
+  //   float3 bitangent = fSign * cross(z, x);
+  //   // float3 y = linalg::normalize(fSign * linalg::cross(z, x));
+  //   // x = linalg::normalize(linalg::cross(y, z));
+  //   // float4 qbase = linalg::normalize(linalg::rotation_quat(float3x3(x, y, z)));
+  //   float4 qbase = float4(x * fMagS, 0.0);
 
   //   auto &qbaseBuffer = ((Context *)ctx)->qbaseBuffer;
   //   qbaseBuffer.write(iFace * 3 + iVert, qbase);
   // };
-  iface.m_setTSpace = [](const SMikkTSpaceContext *ctx, const float fvTangent[], const float fvBiTangent[], const float fMagS,
-                         const float fMagT, const tbool bIsOrientationPreserving, const int iFace, const int iVert) {
-    auto z = linalg::normalize(((Context *)ctx)->normalBuffer.read<float, 3, false>(iFace * 3 + iVert));
-
-
-    float3 x(fvTangent);
-    float3 y(fvBiTangent);
-
-    float fSign = bIsOrientationPreserving ? 1.0f : (-1.0f);
-    float3 bitangent = fSign * cross(z, x);
-    // float3 y = linalg::normalize(fSign * linalg::cross(z, x));
-    // x = linalg::normalize(linalg::cross(y, z));
-    // float4 qbase = linalg::normalize(linalg::rotation_quat(float3x3(x, y, z)));
-    float4 qbase = float4(x * fMagS, 0.0);
-
-    auto &qbaseBuffer = ((Context *)ctx)->qbaseBuffer;
-    qbaseBuffer.write(iFace * 3 + iVert, qbase);
-  };
   context.ctx.m_pInterface = &iface;
   genTangSpaceDefault(&context.ctx);
+
+  // if (normalIndex) {
+  //   auto& posBuffer = srcAttributes[positionIndex.value()];
+  //   auto& uvBuffer = srcAttributes[positionIndex.value()];
+  //   auto& normalBuffer = srcAttributes[positionIndex.value()];
+  //   // Normals are either present as vertex attributes or approximated.
+  //   for (size_t ti = 0; ti < numIndices / 3; ti++) {
+  //     // vec2 UV = getNormalUV();
+  //     // vec2 uv_dx = dFdx(UV);
+  //     // vec2 uv_dy = dFdy(UV);
+
+  //     // if (length(uv_dx) + length(uv_dy) <= 1e-6) {
+  //     //   uv_dx = vec2(1.0, 0.0);
+  //     //   uv_dy = vec2(0.0, 1.0);
+  //     // }
+
+  //     // vec3 t_ = (uv_dy.t * dFdx(v_Position) - uv_dx.t * dFdy(v_Position)) / (uv_dx.s * uv_dy.t - uv_dy.s * uv_dx.t);
+
+  //     // vec3 n, t, b, ng;
+  //     float3 positions[3];
+  //     float2 uvs[3];
+  //     for (size_t i = 0; i < 3; i++) {
+  //       positions[i] =
+  //     }
+  //     ng = normalize(v_Normal);
+  //     t = normalize(t_ - ng * dot(ng, t_));
+  //     b = cross(ng, t);
+  //   }
+  // } else {
+  //   ng = normalize(cross(dFdx(v_Position), dFdy(v_Position)));
+  //   t = normalize(t_ - ng * dot(ng, t_));
+  //   b = cross(ng, t);
+  // }
 
   small_vector<std::tuple<AttribBuffer *, std::string>, 16> outAttribs;
   for (size_t i : attributesToCopy) {
     outAttribs.push_back({&srcAttributes[i], srcFormat.vertexAttributes[i].name});
   }
-  outAttribs.push_back({&qbaseBuffer, "qbase"});
+  outAttribs.push_back({&tangentBuffer, "tangent"});
   return generateMesh(std::nullopt, outAttribs);
   // MeshPtr newMesh = std::make_shared<Mesh>();
   // newMesh->update(dstFormat, std::move(newVertexData), std::vector<uint8_t>(indexData));

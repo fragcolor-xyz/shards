@@ -757,6 +757,8 @@ struct WithInput {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _then.compose(data);
+    _else.compose(data);
     return CoreInfo::NoneType;
   }
 
@@ -794,6 +796,8 @@ struct WithTexture {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _then.compose(data);
+    _else.compose(data);
     return CoreInfo::NoneType;
   }
 

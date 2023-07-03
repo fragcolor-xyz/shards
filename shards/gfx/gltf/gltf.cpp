@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <string>
 
@@ -82,7 +83,7 @@ static SamplerState convertSampler(const tinygltf::Sampler &sampler) {
   return samplerState;
 }
 
-static TextureFormat convertTextureFormat(const tinygltf::Image &image) {
+static TextureFormat convertTextureFormat(const tinygltf::Image &image, bool asSrgb) {
   TextureFormat result{
       .dimension = TextureDimension::D2,
   };
@@ -92,7 +93,7 @@ static TextureFormat convertTextureFormat(const tinygltf::Image &image) {
   };
   if (image.component == 4) {
     if (image.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
-      result.pixelFormat = WGPUTextureFormat_RGBA8UnormSrgb;
+      result.pixelFormat = asSrgb ? WGPUTextureFormat_RGBA8UnormSrgb : WGPUTextureFormat_RGBA8Unorm;
     else if (image.pixel_type == TINYGLTF_COMPONENT_TYPE_FLOAT)
       result.pixelFormat = WGPUTextureFormat_RGBA32Float;
     else
@@ -401,7 +402,7 @@ struct Loader {
       int2 resolution(gltfImage.width, gltfImage.height);
       texture
           ->init(TextureDesc{
-              .format = convertTextureFormat(gltfImage),
+              .format = convertTextureFormat(gltfImage, false),
               .resolution = resolution,
               .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
           })
@@ -418,10 +419,16 @@ struct Loader {
 
       const tinygltf::Material &gltfMaterial = model.materials[i];
 
-      auto convertTextureParam = [&](const char *name, const auto &textureInfo) {
+      auto convertTextureParam = [&](const char *name, const auto &textureInfo, bool asSrgb) {
         if (textureInfo.index >= 0) {
+          const tinygltf::Texture &gltfTexture = model.textures[textureInfo.index];
+          const tinygltf::Image &gltfImage = model.images[gltfTexture.source];
           TexturePtr texture = textureMap[textureInfo.index];
           material->parameters.set(name, TextureParameter(texture, textureInfo.texCoord));
+
+          // Update texture format to apply srgb/gamma hint from usage
+          WGPUTextureFormat targetFormat = convertTextureFormat(gltfImage, asSrgb).pixelFormat;
+          texture->initWithPixelFormat(targetFormat);
         }
       };
 
@@ -440,10 +447,11 @@ struct Loader {
       convertOptionalFloat4Param("baseColor", gltfMaterial.pbrMetallicRoughness.baseColorFactor, float4(1, 1, 1, 1));
       convertOptionalFloatParam("roughness", gltfMaterial.pbrMetallicRoughness.roughnessFactor, 1.0f);
       convertOptionalFloatParam("metallic", gltfMaterial.pbrMetallicRoughness.metallicFactor, 0.0f);
-      convertTextureParam("baseColorTexture", gltfMaterial.pbrMetallicRoughness.baseColorTexture);
-      convertTextureParam("metallicRoughnessTexture", gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture);
-      convertTextureParam("normalTexture", gltfMaterial.normalTexture);
-      convertTextureParam("emissiveTexture", gltfMaterial.emissiveTexture);
+      convertOptionalFloatParam("normalScale", gltfMaterial.normalTexture.scale, 1.0f);
+      convertTextureParam("baseColorTexture", gltfMaterial.pbrMetallicRoughness.baseColorTexture, true);
+      convertTextureParam("emissiveTexture", gltfMaterial.emissiveTexture, true);
+      convertTextureParam("metallicRoughnessTexture", gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture, false);
+      convertTextureParam("normalTexture", gltfMaterial.normalTexture, false);
     }
   }
 

@@ -88,16 +88,22 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
 
   initScreenPosition.dependencies.emplace_back("initWorldPosition");
 
-  BlockPtr localNormal = std::make_unique<WithInput>(
-      "normal", ReadInput("normal"),
-      WithInput("qbase", makeCompoundBlock("transform_qrot(", ReadInput("qbase"), ", vec3<f32>(0.0, 0.0, 1.0))"),
-                "vec3<f32>(0.0, 0.0, 1.0)"));
-  BlockPtr transformNormal = blocks::makeCompoundBlock("normalize((", ReadBuffer("invTransWorld", FieldTypes::Float4x4), "*",
-                                                       "vec4<f32>(", std::move(localNormal), ", 0.0)", ").xyz)");
+  BlockPtr localNormal = std::make_unique<WithInput>("normal", ReadInput("normal"), "vec3<f32>(0.0, 0.0, 1.0)");
+
+  auto transformDirection = [](auto &&in) {
+    return blocks::makeCompoundBlock("normalize((", ReadBuffer("invTransWorld", FieldTypes::Float4x4), "*", "vec4<f32>(",
+                                     std::move(in), ".xyz, 0.0)", ").xyz)");
+  };
+
+  auto applyTBNTransform = blocks::makeCompoundBlock(
+      WriteGlobal("worldNormal", FieldTypes::Float3, transformDirection(std::move(localNormal))),
+      WithInput("tangent",
+                makeCompoundBlock( //
+                    WriteGlobal("worldTangent", FieldTypes::Float3, transformDirection(ReadInput("tangent"))),
+                    WriteGlobal("biTangentSign", FieldTypes::Float, ReadInput("tangent"), ".w"))));
 
   auto &initWorldNormal =
-      feature->shaderEntryPoints.emplace_back("initWorldNormal", ProgrammableGraphicsStage::Vertex,
-                                              WriteGlobal("worldNormal", FieldTypes::Float3, std::move(transformNormal)));
+      feature->shaderEntryPoints.emplace_back("initWorldNormal", ProgrammableGraphicsStage::Vertex, std::move(applyTBNTransform));
   initWorldNormal.dependencies.emplace_back("transformLib");
 
   auto &writePosition =
@@ -105,13 +111,14 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
                                               WriteOutput("position", FieldTypes::Float4, ReadGlobal("screenPosition")));
   writePosition.dependencies.emplace_back("initScreenPosition");
 
-  auto &writeNormal =
-      feature->shaderEntryPoints.emplace_back("writeNormal", ProgrammableGraphicsStage::Vertex,
-                                              WriteOutput("worldNormal", FieldTypes::Float3, ReadGlobal("worldNormal")));
+  auto &writeNormal = feature->shaderEntryPoints.emplace_back(
+      "writeNormal", ProgrammableGraphicsStage::Vertex,
+      makeCompoundBlock(WriteOutput("worldNormal", FieldTypes::Float3, ReadGlobal("worldNormal")),
+                        WithInput("tangent", makeCompoundBlock( //
+                                                 WriteOutput("worldTangent", FieldTypes::Float3, ReadGlobal("worldTangent")),
+                                                 WriteOutput("biTangentSign", FieldTypes::Float, ReadGlobal("biTangentSign"))))));
+  ;
   writeNormal.dependencies.emplace_back("initWorldNormal");
-
-  feature->shaderEntryPoints.emplace_back("writeQbase", ProgrammableGraphicsStage::Vertex,
-                                          WithInput("qbase", WriteOutput("qbase", FieldTypes::Float4, ReadInput("qbase"))));
 
   auto &writeWorldPosition = feature->shaderEntryPoints.emplace_back(
       "writeWorldPosition", ProgrammableGraphicsStage::Vertex,

@@ -128,6 +128,7 @@
     .normal-placeholder-texture  (Set .parameters "normalTexture")
     {:Type TextureDimension.D2} (Set .parameters "metallicRoughnessTexture")
     {:Type TextureDimension.D2} (Set .parameters "emissiveTexture")
+    1.0 (Set .parameters "normalScale")
     (GFX.Feature
      :Params .parameters
      :ComposeWith {:pbr-wgsl pbr-wgsl}
@@ -139,7 +140,6 @@
        (->
         (Shader.ReadBuffer "invView" :BufferName "view") >= .camera-matrix
         (Shader.Literal [.camera-matrix "[3].xyz"] :OutputDimension 3) >= .eye-pos
-        ;; (Shader.ReadInput "worldNormal") >= .world-normal
         (Shader.ReadInput "worldPosition") >= .world-position
         .eye-pos (Math.Subtract .world-position) (Math.Normalize) >= .view-direction
 
@@ -162,19 +162,31 @@
         .metallic-roughness:2 (Math.Multiply .metallic) > .metallic
         .metallic-roughness:1 (Math.Multiply .roughness) > .roughness
 
+        (Float3 0 0 0) >= .emissive-color
+        (Shader.WithTexture "emissiveTexture" (->
+                                               (Shader.SampleTexture "emissiveTexture") (ToFloat3) > .emissive-color))
+
         ; Apply normal map
         ; glTF Spec:
         ; The normal vectors use the convention +X is right and +Y is up. +Z points toward the viewer.
-        ;; (Shader.ReadInput "worldTangent0") = .world-tangent0
-        ;; (Shader.ReadInput "worldTangent1") = .world-tangent1
-        (Shader.SampleTexture "normalTexture")
-        (Float3 1 0 0)
-        (ToFloat3) = .local-normal
-        (Shader.ReadInput "qbase") = .qbase
+        ; The scalar parameter applied to each normal vector of the texture.
+        ; This value scales the normal vector in X and Y directions using the formula: 
+        ;  scaledNormal =  normalize((<sampled normal texture value> * 2.0 - 1.0) * vec3(<normal scale>, <normal scale>, 1.0))
+        (Shader.ReadBuffer "normalScale") = .normal-scale
+        (Float3 .normal-scale .normal-scale 1.0) = .normal-scale-3
+        (Shader.SampleTexture "normalTexture") (ToFloat3)
+        (Math.Multiply (Float3 2.0 2.0 1.0))
+        (Math.Subtract (Float3 -1 -1 0))
+        (Math.Multiply .normal-scale-3) (Math.Normalize) = .local-normal
+
+        (Shader.ReadInput "worldNormal") >= .world-normal
+        (Shader.ReadInput "worldTangent") = .world-tangent
+        (Shader.ReadInput "biTangentSign") = .bi-tangent-sign
+
         (Shader.ReadBuffer "world") = .world-mat
-        (Shader.Literal ["normalize((" .world-mat " * vec4f(transform_qrot(" .qbase "," .local-normal "), 0.0)).xyz)"] :OutputDimension 3) >= .world-normal
-        ;; (Shader.Literal ["var tbnMat = mat3<f32>(" .world-tangent0 "," .world-tangent1 "," .world-normal ");"])
-        ;; (Shader.Literal ["lgp.surfaceNormal = tbnMat * " .local-normal])
+        (Shader.Literal ["var biTangent = cross(" .world-tangent "," .world-normal ") * " .bi-tangent-sign ";"
+                         "var tbnMat = mat3x3<f32>(" .world-tangent ", biTangent ," .world-normal ");"
+                         .world-normal " = (tbnMat * " .local-normal ").xyz;"])
 
         (Shader.Literal ["
         var lgp: LightingGeneralParams;
@@ -192,12 +204,16 @@
                          .ggx-texture "," .ggx-sampler ","
                          .ggx-lut-texture "," .ggx-lut-sampler ")"] :OutputDimension 3) >= .light-color
 
-        .light-color (ToFloat4)
-        (Math.Multiply (Float4 1 1 1 0)) (Math.Add (Float4 0 0 0 1))
+        .light-color (Math.Add .emissive-color)
+        (ToFloat4) (Math.Add (Float4 0 0 0 1))
         (Shader.WriteOutput "color")
 
-        .world-normal (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
-        (Shader.ReadInput "qbase") (ToFloat3) (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
+        ;; (Shader.Literal ["biTangent"] :OutputDimension 3)
+        ;; .world-tangent (Math.Multiply .normal-scale)
+        ;; .world-normal (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
+        ;; (Shader.ReadInput "qbase") (ToFloat3) (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
+        ;; .world-tangent (Math.Normalize)
+        ;; (ToFloat4) (Math.Add (Float4 0 0 0 1)) (Shader.WriteOutput "color") ;
         )}]))
 
   (defshards render-pbr-base [capture-steps]
