@@ -440,7 +440,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
         let value = process_vector(pair, env)?;
         blocks.push(Block {
           content: BlockContent::Const(value),
-          line_info: pos.into(),
+          line_info: Some(pos.into()),
         });
       }
       Rule::EvalExpr => blocks.push(Block {
@@ -451,7 +451,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
             .ok_or(("Expected an eval time expression, but found none.", pos).into())?,
           env,
         )?),
-        line_info: pos.into(),
+        line_info: Some(pos.into()),
       }),
       Rule::Expr => blocks.push(Block {
         content: BlockContent::Expr(process_sequence(
@@ -461,34 +461,34 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
             .ok_or(("Expected an expression, but found none.", pos).into())?,
           env,
         )?),
-        line_info: pos.into(),
+        line_info: Some(pos.into()),
       }),
       Rule::Shard => match process_function(pair, env)? {
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
-          line_info: pos.into(),
+          line_info: Some(pos.into()),
         }),
         FunctionValue::Function(func) => blocks.push(Block {
           content: BlockContent::Shard(func),
-          line_info: pos.into(),
+          line_info: Some(pos.into()),
         }),
         FunctionValue::Sequence(seq) => blocks.push(Block {
           content: BlockContent::Expr(seq),
-          line_info: pos.into(),
+          line_info: Some(pos.into()),
         }),
       },
       Rule::Func => match process_function(pair, env)? {
         FunctionValue::Const(value) => blocks.push(Block {
           content: BlockContent::Const(value),
-          line_info: pos.into(),
+          line_info: Some(pos.into()),
         }),
         FunctionValue::Function(func) => blocks.push(Block {
           content: BlockContent::Func(func),
-          line_info: pos.into(),
+          line_info: Some(pos.into()),
         }),
         FunctionValue::Sequence(seq) => blocks.push(Block {
           content: BlockContent::Embed(seq),
-          line_info: pos.into(),
+          line_info: Some(pos.into()),
         }),
       },
       Rule::TakeTable => blocks.push(Block {
@@ -496,19 +496,19 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           let pair = process_take_table(pair, env);
           BlockContent::TakeTable(pair.0, pair.1)
         },
-        line_info: pos.into(),
+        line_info: Some(pos.into()),
       }),
       Rule::TakeSeq => blocks.push(Block {
         content: {
           let pair = process_take_seq(pair, env)?;
           BlockContent::TakeSeq(pair.0, pair.1)
         },
-        line_info: pos.into(),
+        line_info: Some(pos.into()),
       }),
       Rule::ConstValue => blocks.push(Block {
         // this is an indirection, process_value will handle the case of a ConstValue
         content: BlockContent::Const(process_value(pair, env)?),
-        line_info: pos.into(),
+        line_info: Some(pos.into()),
       }),
       Rule::Shards => blocks.push(Block {
         content: BlockContent::Shards(process_sequence(
@@ -518,7 +518,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
             .ok_or(("Expected an expression, but found none.", pos).into())?,
           env,
         )?),
-        line_info: pos.into(),
+        line_info: Some(pos.into()),
       }),
       _ => return Err((format!("Unexpected rule ({:?}) in Pipeline.", rule), pos).into()),
     }

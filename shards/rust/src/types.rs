@@ -614,6 +614,7 @@ impl ParameterInfo {
         crc: 0,
       },
       valueTypes: internal_from_types(types),
+      variableSetter: false,
     }
   }
 
@@ -625,6 +626,7 @@ impl ParameterInfo {
         crc: 0,
       },
       valueTypes: internal_from_types(types),
+      variableSetter: false,
     }
   }
 
@@ -633,6 +635,7 @@ impl ParameterInfo {
       name: name.as_ptr() as *mut std::os::raw::c_char,
       help,
       valueTypes: internal_from_types(types),
+      variableSetter: false,
     }
   }
 }

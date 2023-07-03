@@ -35,9 +35,17 @@
 @i4(1) | Log
 @i4(1 2 3 4) | Log
 
-; etc i8 and i16
-
-; same for floats
-
 @f2(1) | Log
 @f2(1 2) | Log
+
+@my-macro(3)
+Msg(@macro1("Ciao")) | Log
+
+@shards(base [texture] {
+  "TEST" = texture
+})
+
+; @base(test-shards-1)
+; test-shards-1 | Log | Assert.Is("TEST")
+
+; @base(test-shards-1) | Log | Assert.Is("TEST")

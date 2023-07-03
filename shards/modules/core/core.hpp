@@ -674,20 +674,25 @@ struct VariableBase {
   void *_tablePtr{nullptr};
   uint64_t _tableVersion{0};
 
-  static inline ParamsInfo variableParamsInfo =
-      ParamsInfo(ParamsInfo::Param("Name", SHCCSTR("The name of the variable."), CoreInfo::StringOrAnyVar),
-                 ParamsInfo::Param("Key",
-                                   SHCCSTR("The key of the value to read/write from/in the table (parameter applicable only if "
-                                           "the target variable is or will become a table)."),
-                                   CoreInfo::StringStringVarOrNone),
-                 ParamsInfo::Param("Global",
-                                   SHCCSTR("If the variable is or should be available to "
-                                           "all of the wires in the same mesh."),
-                                   CoreInfo::BoolType));
+  static inline Parameters getterParams{
+      {"Name", SHCCSTR("The name of the variable."), {CoreInfo::StringOrAnyVar}},
+      {"Key",
+       SHCCSTR("The key of the value to read from the table (parameter applicable only if "
+               "the target variable is a table)."),
+       {CoreInfo::StringStringVarOrNone}},
+      {"Global", SHCCSTR("If the variable is available to all of the wires in the same mesh."), {CoreInfo::BoolType}}};
+
+  static inline Parameters setterParams{
+      {"Name", SHCCSTR("The name of the variable."), {CoreInfo::StringOrAnyVar}, true}, // flagged as setter
+      {"Key",
+       SHCCSTR("The key of the value to write in the table (parameter applicable only if "
+               "the target variable is a table)."),
+       {CoreInfo::StringStringVarOrNone}},
+      {"Global", SHCCSTR("If the variable is available to all of the wires in the same mesh."), {CoreInfo::BoolType}}};
 
   static constexpr int variableParamsInfoLen = 3;
 
-  static SHParametersInfo parameters() { return SHParametersInfo(variableParamsInfo); }
+  static SHParametersInfo parameters() { return getterParams; }
 
   void cleanup() {
     if (_target) {
@@ -938,11 +943,10 @@ struct Set : public SetUpdateBase {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
-  static inline shards::ParamsInfo setParamsInfo =
-      shards::ParamsInfo(variableParamsInfo, ParamsInfo::Param("Exposed", SHCCSTR("If the variable should be marked as exposed."),
-                                                               CoreInfo::BoolType));
+  static inline Parameters setParamsInfo{
+      setterParams, {{"Exposed", SHCCSTR("If the variable should be marked as exposed."), {CoreInfo::BoolType}}}};
 
-  static SHParametersInfo parameters() { return SHParametersInfo(setParamsInfo); }
+  static SHParametersInfo parameters() { return setParamsInfo; }
 
   void setParam(int index, const SHVar &value) {
     if (index < variableParamsInfoLen)
@@ -1083,12 +1087,11 @@ struct Ref : public SetBase {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
-  static inline shards::ParamsInfo getParamsInfo = shards::ParamsInfo(
-      variableParamsInfo,
-      shards::ParamsInfo::Param("Overwrite", SHCCSTR("If the variable should be overwritten if it already exists."),
-                                CoreInfo::AnyType));
+  static inline Parameters getParamsInfo{
+      getterParams,
+      {{"Overwrite", SHCCSTR("If the variable should be overwritten if it already exists."), {CoreInfo::BoolType}}}};
 
-  static SHParametersInfo parameters() { return SHParametersInfo(getParamsInfo); }
+  static SHParametersInfo parameters() { return getParamsInfo; }
 
   void setParam(int index, const SHVar &value) {
     if (index < variableParamsInfoLen)
@@ -1319,14 +1322,13 @@ struct Get : public VariableBase {
   std::vector<SHVar> _tableKeys{}; // should be fine not to be OwnedVar
   Shard *_shard{nullptr};
 
-  static inline shards::ParamsInfo getParamsInfo = shards::ParamsInfo(
-      variableParamsInfo, shards::ParamsInfo::Param("Default",
-                                                    SHCCSTR("The default value to use to infer types and output if the "
-                                                            "variable is not set, key is not there and/or type "
-                                                            "mismatches."),
-                                                    CoreInfo::AnyType));
+  static inline Parameters getParamsInfo{getterParams,
+                                         {{"Default",
+                                           SHCCSTR("The default value to use to infer types and output if the variable is not "
+                                                   "set, key is not there and/or type mismatches."),
+                                           {CoreInfo::AnyType}}}};
 
-  static SHParametersInfo parameters() { return SHParametersInfo(getParamsInfo); }
+  static SHParametersInfo parameters() { return getParamsInfo; }
 
   void setParam(int index, const SHVar &value) {
     if (index < variableParamsInfoLen)
@@ -1716,13 +1718,13 @@ struct Push : public SeqBase {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
-  static inline shards::ParamsInfo pushParams = shards::ParamsInfo(
-      variableParamsInfo, shards::ParamsInfo::Param("Clear",
-                                                    SHCCSTR("If we should clear this sequence at every wire iteration; "
-                                                            "works only if this is the first push; default: true."),
-                                                    CoreInfo::BoolType));
+  static inline Parameters pushParams{
+      setterParams,
+      {{"Clear",
+        SHCCSTR("If we should clear this sequence at every wire iteration; works only if this is the first push; default: true."),
+        {CoreInfo::BoolType}}}};
 
-  static SHParametersInfo parameters() { return SHParametersInfo(pushParams); }
+  static SHParametersInfo parameters() { return pushParams; }
 
   void setParam(int index, const SHVar &value) {
     if (index < variableParamsInfoLen)
@@ -1842,15 +1844,14 @@ struct Sequence : public SeqBase {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
-  static inline shards::ParamsInfo pushParams = shards::ParamsInfo(
-      variableParamsInfo,
-      shards::ParamsInfo::Param("Clear",
-                                SHCCSTR("If we should clear this sequence at every wire iteration; "
-                                        "works only if this is the first push; default: true."),
-                                CoreInfo::BoolType),
-      shards::ParamsInfo::Param("Types", SHCCSTR("The sequence inner types to forward declare."), CoreInfo2::BasicTypesTypes));
+  static inline Parameters pushParams{
+      setterParams,
+      {{"Clear",
+        SHCCSTR("If we should clear this sequence at every wire iteration; works only if this is the first push; default: true."),
+        {CoreInfo::BoolType}},
+       {"Types", SHCCSTR("The sequence inner types to forward declare."), {CoreInfo2::BasicTypesTypes}}}};
 
-  static SHParametersInfo parameters() { return SHParametersInfo(pushParams); }
+  static SHParametersInfo parameters() { return pushParams; }
 
   void setParam(int index, const SHVar &value) {
     if (index < variableParamsInfoLen)
@@ -2123,11 +2124,10 @@ struct TableDecl : public VariableBase {
   Types _seqTypes{};
   std::deque<Types> _innerTypes;
 
-  static inline shards::ParamsInfo pushParams = shards::ParamsInfo(
-      variableParamsInfo,
-      shards::ParamsInfo::Param("Types", SHCCSTR("The table inner types to forward declare."), CoreInfo2::BasicTypesTypes));
+  static inline Parameters tableParams{
+      setterParams, {{"Types", SHCCSTR("The sequence inner types to forward declare."), {CoreInfo2::BasicTypesTypes}}}};
 
-  static SHParametersInfo parameters() { return SHParametersInfo(pushParams); }
+  static SHParametersInfo parameters() { return tableParams; }
 
   void setParam(int index, const SHVar &value) {
     if (index < variableParamsInfoLen)

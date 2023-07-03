@@ -1,5 +1,25 @@
 @shards(say [what] {
+  what >= hello
+  " World!" | AppendTo(hello)
   what | Log
+  hello | Log
 })
 
 @define(one 1)
+
+@macro(macro1 [v] {
+  v >= hello
+  " World!" | AppendTo(hello)
+  {String: hello} | ToJson
+})
+
+@macro(my-macro [n] {
+  Sequence(pipelines)
+  Repeat({
+    {Pipeline: {blocks: [{content:
+      {Shard: {name: "Msg"
+              params:[{name: none value: {String: "Hello"}}]
+      }}}]}} >> pipelines
+  } Times: n)
+  {statements: pipelines} | ToJson
+})

@@ -1145,8 +1145,8 @@ struct ParamsInfo {
     }
   }
 
-  static SHParameterInfo Param(SHString name, SHOptionalString help, SHTypesInfo types) {
-    SHParameterInfo res = {name, help, types};
+  static SHParameterInfo Param(SHString name, SHOptionalString help, SHTypesInfo types, bool variableSetter = false) {
+    SHParameterInfo res = {name, help, types, variableSetter};
     return res;
   }
 
