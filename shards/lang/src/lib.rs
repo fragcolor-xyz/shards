@@ -176,7 +176,7 @@ impl<'a> ParamHelper<'a> {
 
   pub fn get_param_by_name_or_index(&self, param_name: &str, index: usize) -> Option<&'a Param> {
     if index < self.params.len() {
-      if index > 0 && self.params[index - 1].name.is_some() {
+      if self.params[index].name.is_none() && index > 0 && self.params[index - 1].name.is_some() {
         // Previous parameter is named, we forbid indexed parameters after named parameters
         None
       } else if self.params[index].name.is_none() {

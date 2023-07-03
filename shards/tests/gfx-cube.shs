@@ -29,7 +29,6 @@
   Once({
     0.0 >= time
     @cube | GFX.Mesh(Layout: @cube-layout WindingOrder: WindingOrder.CW) = mesh
-    @f3(0) | Math.Translation >= transform
 
     ; Create render steps
     GFX.BuiltinFeature(Id: BuiltinFeatureId.Transform) >> features
@@ -38,7 +37,7 @@
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
 
     ; Create view
-    {Position: @f3(0) Target: @f3(0)} | Math.LookAt = view-transform
+    {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
     GFX.View(View: view-transform) = view
   })
 
@@ -48,7 +47,7 @@
     time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation ; Rotation X
     | Math.MatMul((time | Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation)) ; Rotation Y
     | Math.MatMul((time | Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation)) ; Rotation Z
-    | GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
+    | Log | GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
 
     GFX.Render(Steps: render-steps View: view)
   })
@@ -56,4 +55,4 @@
 
 @mesh(root)
 @schedule(root test-wire)
-@run(root FPS: 60)
+@run(root FPS: 60 Iterations: 100)

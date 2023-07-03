@@ -23,13 +23,12 @@
     2 3 6
     6 3 7]})
 
-(def timestep (/ 1.0 120.0))
+(def timestep (/ 1.0 60.0))
 (defmesh Root)
 (defloop test-wire
   (Setup
    0.0 >= .time
    cube (GFX.Mesh :Layout cube-layout :WindingOrder WindingOrder.CW) >= .mesh
-   (Float3 0 0 0) (Math.Translation) >= .transform
 
     ; Create render steps
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
@@ -48,8 +47,8 @@
     .time (Math.Multiply 0.2) (Math.AxisAngleX) (Math.Rotation) >= .rotX
     .time (Math.Multiply 0.7) (Math.AxisAngleY) (Math.Rotation) >= .rotY
     .time (Math.Multiply 0.9) (Math.AxisAngleZ) (Math.Rotation) >= .rotZ
-    .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) > .transform
-    .transform (GFX.Drawable :Mesh .mesh) (GFX.Draw .queue)
+    .rotX (Math.MatMul .rotY) (Math.MatMul .rotZ) (Log)
+    (GFX.Drawable :Mesh .mesh) (GFX.Draw .queue)
     (GFX.Render :Steps .render-steps :View .view))))
 
 (schedule Root test-wire)
