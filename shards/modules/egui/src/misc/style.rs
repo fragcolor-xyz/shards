@@ -272,7 +272,10 @@ impl Shard for Style {
 
     // visuals
     if let Some(visuals) = table.get_static("visuals") {
-      let visuals: Table = visuals.try_into()?;
+      let visuals: Table = visuals.try_into().map_err(|e| {
+        shlog!("{}: {}", "visuals", e);
+          "Invalid attribute value received"
+      })?;
 
       apply_style!(visuals, "dark_mode", bool, style.visuals.dark_mode);
       apply_style!(
@@ -284,7 +287,10 @@ impl Shard for Style {
       );
 
       if let Some(widgets) = visuals.get_static("widgets") {
-        let widgets: Table = widgets.try_into()?;
+        let widgets: Table = widgets.try_into().map_err(|e| {
+          shlog!("{}: {}", "widgets", e);
+            "Invalid attribute value received"
+        })?;
 
         Style::apply_widget_visuals(
           &mut style.visuals.widgets.noninteractive,
@@ -306,7 +312,10 @@ impl Shard for Style {
       }
 
       if let Some(selection) = visuals.get_static("selection") {
-        let selection: Table = selection.try_into()?;
+        let selection: Table = selection.try_into().map_err(|e| {
+          shlog!("{}: {}", "selection", e);
+            "Invalid attribute value received"
+        })?;
 
         apply_style!(
           selection,
@@ -424,7 +433,10 @@ impl Shard for Style {
 
     // debug
     if let Some(debug) = table.get_static("debug") {
-      let debug: Table = debug.try_into()?;
+      let debug: Table = debug.try_into().map_err(|e| {
+        shlog!("{}: {}", "debug", e);
+          "Invalid attribute value received"
+      })?;
 
       apply_style!(debug, "debug_on_hover", bool, style.debug.debug_on_hover);
       apply_style!(
