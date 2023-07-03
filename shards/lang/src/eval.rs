@@ -6,6 +6,7 @@ use core::convert::TryInto;
 
 use core::slice;
 use nanoid::nanoid;
+use std::cell::RefCell;
 
 use shards::core::destroyVar;
 use shards::core::sleep;
@@ -55,6 +56,7 @@ pub struct EvalEnv {
   finalized_wires: HashMap<RcStrWrapper, Wire>,
 
   shards_groups: HashMap<RcStrWrapper, ShardsGroup>,
+  macro_groups: HashMap<RcStrWrapper, ShardsGroup>,
   definitions: HashMap<RcStrWrapper, *const Value>,
 
   // used during @shards evaluations, to replace [x y z] arguments
@@ -62,7 +64,7 @@ pub struct EvalEnv {
 
   // used during @shards evaluation
   suffix: Option<RcStrWrapper>,
-  suffix_assigned: HashSet<RcStrWrapper>,
+  suffix_assigned: HashMap<RcStrWrapper, RcStrWrapper>, // maps var names to their suffix
 
   // Shards and functions that are forbidden to be used
   pub forbidden_funcs: HashSet<RcStrWrapper>,
@@ -85,10 +87,11 @@ impl Default for EvalEnv {
       deferred_wires: HashMap::new(),
       finalized_wires: HashMap::new(),
       shards_groups: HashMap::new(),
+      macro_groups: HashMap::new(),
       definitions: HashMap::new(),
       replacements: HashMap::new(),
       suffix: None,
-      suffix_assigned: HashSet::new(),
+      suffix_assigned: HashMap::new(),
       forbidden_funcs: HashSet::new(),
       settings: Vec::new(),
       meshes: HashMap::new(),
@@ -737,10 +740,8 @@ fn find_current_suffix<'a>(e: &'a EvalEnv) -> Option<&'a RcStrWrapper> {
 fn find_suffix<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a RcStrWrapper> {
   let mut env = e;
   loop {
-    if let Some(suffix) = &env.suffix {
-      if env.suffix_assigned.contains(name) {
-        return Some(suffix);
-      }
+    if let Some(suffix) = env.suffix_assigned.get(name) {
+      return Some(suffix);
     }
     if let Some(parent) = env.parent {
       env = unsafe { &*parent };
@@ -881,7 +882,7 @@ fn as_var(
         let value = as_var(value, line_info, shard, e)?;
         let key_ref = key.as_ref();
         let value_ref = value.as_ref();
-        table.insert(*key_ref, value_ref);
+        table.insert_fast(*key_ref, value_ref);
       }
       Ok(SVar::Cloned(ClonedVar(table.0)))
     }
@@ -1014,6 +1015,36 @@ fn as_var(
         if let Some(defined_value) = find_defined(&func.name, e) {
           let replacement = unsafe { &*defined_value };
           as_var(replacement, line_info, shard, e)
+        } else if let Some(ast_json) = process_macro(func, func.name.as_str(), line_info, e)? {
+          let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
+            (
+              "macro built-in function Shards should output a Json string",
+              line_info,
+            )
+              .into()
+          })?;
+
+          thread_local! {
+            pub static TMP_VALUE: RefCell<Option<Value>> = RefCell::new(None);
+          }
+
+          // in this case we expect the ast to be a value
+          let decoded_json: Value = serde_json::from_str(ast_json).map_err(|e| {
+            (
+              format!(
+                "macro built-in function Shards should return a valid Json string: {}",
+                e
+              ),
+              line_info,
+            )
+              .into()
+          })?;
+
+          TMP_VALUE.with(|f| {
+            let mut v = f.borrow_mut();
+            *v = Some(decoded_json.clone());
+            as_var(v.as_ref().unwrap(), line_info, shard, e)
+          })
         } else {
           Err((format!("Undefined function {}", func.name), line_info).into())
         }
@@ -1040,19 +1071,13 @@ fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(
   let info = s.0.parameters();
   if let Some(ref params) = shard.params {
     for param in params {
-      let value = as_var(&param.value, line_info, Some(s.0), e).map_err(|e| e)?;
       if let Some(ref name) = param.name {
         as_idx = false;
         let mut found = false;
         for (i, info) in info.iter().enumerate() {
           let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() };
           if param_name == name.as_str() {
-            if let Err(_) = s
-              .0
-              .set_parameter(i.try_into().expect("Too many parameters"), *value.as_ref())
-            {
-              return Err(("Failed to set parameter", line_info).into());
-            }
+            set_shard_parameter(info, e, &param.value, &s, i, line_info)?;
             found = true;
             break;
           }
@@ -1065,15 +1090,77 @@ fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(
         if !as_idx {
           return Err(("Named parameter after unnamed parameter", line_info).into());
         }
-        if let Err(_) = s.0.set_parameter(idx, *value.as_ref()) {
-          return Err(("Failed to set parameter", line_info).into());
-        }
+        set_shard_parameter(
+          &info[idx as usize],
+          e,
+          &param.value,
+          &s,
+          idx as usize,
+          line_info,
+        )?;
       }
       idx += 1;
     }
   }
   e.shards.push(s);
   Ok(())
+}
+
+fn set_shard_parameter(
+  info: &shards::SHParameterInfo,
+  e: &mut EvalEnv,
+  value: &Value,
+  s: &SShardRef,
+  i: usize,
+  line_info: LineInfo,
+) -> Result<(), ShardsError> {
+  let var_value = as_var(value, line_info, Some(s.0), e).map_err(|e| e)?;
+  if info.variableSetter {
+    let name = match value {
+      Value::Identifier(name) => name,
+      _ => panic!("Expected an identifier"), // The actual Shard is violating the standard - panic here
+    };
+    let suffix = find_current_suffix(e);
+    if let Some(suffix) = suffix {
+      // fix up the value to be a suffixed variable if we have a suffix
+      if var_value.as_ref().valueType != SHType_ContextVar {
+        panic!("Expected a context variable") // The actual Shard is violating the standard - panic here
+      }
+      let current_name: &str = var_value.as_ref().try_into().expect("Expected a string");
+      let new_name = format!("{}{}", current_name, suffix);
+      // also add to suffix_assigned
+      e.suffix_assigned
+        .insert(name.clone().into(), suffix.clone());
+      let mut new_name = Var::ephemeral_string(new_name.as_str());
+      new_name.valueType = SHType_ContextVar;
+      if let Err(_) = s.0.set_parameter(
+        i.try_into().expect("Too many parameters"),
+        *new_name.as_ref(),
+      ) {
+        Err(("Failed to set parameter", line_info).into())
+      } else {
+        Ok(())
+      }
+    } else {
+      if let Err(_) = s.0.set_parameter(
+        i.try_into().expect("Too many parameters"),
+        *var_value.as_ref(),
+      ) {
+        Err(("Failed to set parameter", line_info).into())
+      } else {
+        Ok(())
+      }
+    }
+  } else {
+    if let Err(_) = s.0.set_parameter(
+      i.try_into().expect("Too many parameters"),
+      *var_value.as_ref(),
+    ) {
+      Err(("Failed to set parameter", line_info).into())
+    } else {
+      Ok(())
+    }
+  }
 }
 
 fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
@@ -1229,6 +1316,22 @@ fn find_shards_group<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a S
 }
 
 /// Recurse into environment and find the replacement for a given @ call name if it exists
+fn find_macro_group<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
+  let mut env = e;
+  loop {
+    if let Some(group) = env.macro_groups.get(name) {
+      return Some(group);
+    }
+
+    if let Some(parent) = env.parent {
+      env = unsafe { &*parent };
+    } else {
+      return None;
+    }
+  }
+}
+
+/// Recurse into environment and find the replacement for a given @ call name if it exists
 fn find_defined<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<*const Value> {
   let mut env = e;
   loop {
@@ -1254,17 +1357,165 @@ fn get_mesh<'a>(
     Value::Identifier(name) => find_mesh(name, e).ok_or_else(|| {
       (
         "run built-in function requires a valid mesh parameter",
-        block.line_info,
+        block.line_info.unwrap_or_default(),
       )
         .into()
     }),
     _ => Err(
       (
         "run built-in function requires a mesh parameter",
-        block.line_info,
+        block.line_info.unwrap_or_default(),
       )
         .into(),
     ),
+  }
+}
+
+fn process_macro(
+  func: &Function,
+  unknown: &str,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<Option<ClonedVar>, ShardsError> {
+  if let Some(group) = find_macro_group(&func.name, e) {
+    let args = unsafe { &*group.args };
+    let shards = unsafe { &*group.shards };
+
+    if args.len() != func.params.as_ref().unwrap().len() {
+      return Err(
+        (
+          format!("Macro {} requires {} parameters", unknown, args.len()),
+          line_info,
+        )
+          .into(),
+      );
+    }
+
+    let mut eval_env = EvalEnv::default();
+    eval_env.parent = Some(e as *const EvalEnv);
+
+    // set a random suffix
+    eval_env.suffix = Some(nanoid!(16).into());
+
+    for i in 0..args.len() {
+      let arg = &args[i];
+      // arg has to be Identifier
+      let arg = match arg {
+        Value::Identifier(arg) => arg,
+        _ => {
+          return Err(
+            (
+              format!(
+                "Shards template {} parameters should be identifiers",
+                unknown,
+              ),
+              line_info,
+            )
+              .into(),
+          );
+        }
+      };
+      let param = &func.params.as_ref().unwrap()[i];
+      if param.name.is_some() {
+        return Err(
+          (
+            format!(
+              "Shards template {} does not accept named parameters",
+              unknown
+            ),
+            line_info,
+          )
+            .into(),
+        );
+      }
+
+      // and add new replacement
+      let value_ptr = &param.value as *const _;
+      eval_env.replacements.insert(arg.to_owned(), value_ptr);
+    }
+
+    // ok so a macro is AST in Shards tables that we translate into Json and deserialize as AST
+    let (ast_json, _) = eval_eval_expr(shards, &mut eval_env)?;
+    Ok(Some(ast_json))
+  } else {
+    Ok(None)
+  }
+}
+
+fn process_shards(
+  func: &Function,
+  unknown: &str,
+  block: &Block,
+  e: &mut EvalEnv,
+) -> Result<Option<EvalEnv>, ShardsError> {
+  if let Some(group) = find_shards_group(&func.name, e) {
+    let args = unsafe { &*group.args };
+    let shards = unsafe { &*group.shards };
+
+    if args.len() != func.params.as_ref().unwrap().len() {
+      return Err(
+        (
+          format!(
+            "Shards template {} requires {} parameters",
+            unknown,
+            args.len()
+          ),
+          block.line_info.unwrap_or_default(),
+        )
+          .into(),
+      );
+    }
+
+    let mut sub_env = EvalEnv::default();
+    sub_env.parent = Some(e as *const EvalEnv);
+
+    // set a random suffix
+    sub_env.suffix = Some(nanoid!(16).into());
+
+    for i in 0..args.len() {
+      let arg = &args[i];
+      // arg has to be Identifier
+      let arg = match arg {
+        Value::Identifier(arg) => arg,
+        _ => {
+          return Err(
+            (
+              format!(
+                "Shards template {} parameters should be identifiers",
+                unknown,
+              ),
+              block.line_info.unwrap_or_default(),
+            )
+              .into(),
+          );
+        }
+      };
+      let param = &func.params.as_ref().unwrap()[i];
+      if param.name.is_some() {
+        return Err(
+          (
+            format!(
+              "Shards template {} does not accept named parameters",
+              unknown
+            ),
+            block.line_info.unwrap_or_default(),
+          )
+            .into(),
+        );
+      }
+
+      // and add new replacement
+      let value_ptr = &param.value as *const _;
+      sub_env.replacements.insert(arg.to_owned(), value_ptr);
+    }
+
+    for stmt in &shards.statements {
+      eval_statement(stmt, &mut sub_env)?;
+    }
+
+    Ok(Some(sub_env))
+  } else {
+    Ok(None)
   }
 }
 
@@ -1272,7 +1523,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
   let start_idx = e.shards.len();
   for block in &pipeline.blocks {
     let _ = match &block.content {
-      BlockContent::Shard(shard) => add_shard(shard, block.line_info, e),
+      BlockContent::Shard(shard) => add_shard(shard, block.line_info.unwrap_or_default(), e),
       BlockContent::Shards(seq) => {
         let mut sub_env = eval_sequence(&seq, Some(e))?;
 
@@ -1280,20 +1531,25 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
         if !sub_env.shards.is_empty() {
           // sub shards leaks assignments to the parent env
           for name in sub_env.suffix_assigned.drain() {
-            e.suffix_assigned.insert(name);
+            e.suffix_assigned.insert(name.0, name.1);
           }
           finalize_env(&mut sub_env)?;
-          let sub = make_sub_shard(sub_env.shards.drain(..).collect(), block.line_info)?;
+          let sub = make_sub_shard(
+            sub_env.shards.drain(..).collect(),
+            block.line_info.unwrap_or_default(),
+          )?;
           e.shards.push(sub);
         }
 
         Ok(())
       }
-      BlockContent::Const(value) => add_const_shard(value, block.line_info, e),
+      BlockContent::Const(value) => add_const_shard(value, block.line_info.unwrap_or_default(), e),
       BlockContent::TakeTable(name, path) => {
-        create_take_table_chain(name, path, block.line_info, e)
+        create_take_table_chain(name, path, block.line_info.unwrap_or_default(), e)
       }
-      BlockContent::TakeSeq(name, path) => create_take_seq_chain(name, path, block.line_info, e),
+      BlockContent::TakeSeq(name, path) => {
+        create_take_seq_chain(name, path, block.line_info.unwrap_or_default(), e)
+      }
       BlockContent::EvalExpr(seq) => {
         let value = eval_eval_expr(&seq, e)?;
         add_const_shard2(value.0 .0, value.1, e)
@@ -1311,7 +1567,13 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
       }
       BlockContent::Func(func) => {
         if is_forbidden_func(&func.name, e) {
-          return Err((format!("Forbidden function {}", func.name), block.line_info).into());
+          return Err(
+            (
+              format!("Forbidden function {}", func.name),
+              block.line_info.unwrap_or_default(),
+            )
+              .into(),
+          );
         }
         match func.name.as_str() {
           "ignore" => {
@@ -1325,7 +1587,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
                 (
                   "define built-in function requires Name parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )?;
@@ -1333,7 +1595,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               let value = param_helper.get_param_by_name_or_index("Value", 1).ok_or(
                 (
                   "define built-in function requires Value parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )?;
@@ -1352,7 +1614,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 _ => Err(
                   (
                     "define built-in function requires Name parameter to be an identifier",
-                    block.line_info,
+                    block.line_info.unwrap_or_default(),
                   )
                     .into(),
                 ),
@@ -1361,7 +1623,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               Err(
                 (
                   "const built-in function requires proper parameters",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )
@@ -1374,7 +1636,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
                 (
                   "wire built-in function requires a Name parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )?;
@@ -1382,14 +1644,20 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               match &name.value {
                 Value::Identifier(name) => {
                   let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
-                  e.deferred_wires
-                    .insert(name.clone(), (Wire::default(), params_ptr, block.line_info));
+                  e.deferred_wires.insert(
+                    name.clone(),
+                    (
+                      Wire::default(),
+                      params_ptr,
+                      block.line_info.unwrap_or_default(),
+                    ),
+                  );
                   Ok(())
                 }
                 _ => Err(
                   (
                     "wire built-in function requires a string parameter",
-                    block.line_info,
+                    block.line_info.unwrap_or_default(),
                   )
                     .into(),
                 ),
@@ -1398,7 +1666,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               Err(
                 (
                   "wire built-in function requires proper parameters",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )
@@ -1411,7 +1679,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
                 (
                   "shards built-in function requires a Name parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )?;
@@ -1419,7 +1687,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               let args = param_helper.get_param_by_name_or_index("Args", 1).ok_or(
                 (
                   "shards built-in function requires an Args parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )?;
@@ -1427,7 +1695,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               let shards = param_helper.get_param_by_name_or_index("Shards", 2).ok_or(
                 (
                   "shards built-in function requires a Shards parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )?;
@@ -1448,7 +1716,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 _ => Err(
                   (
                     "shards built-in function requires valid parameters",
-                    block.line_info,
+                    block.line_info.unwrap_or_default(),
                   )
                     .into(),
                 ),
@@ -1456,8 +1724,8 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
             } else {
               Err(
                 (
-                  "shards built-in function requires 3 parameters",
-                  block.line_info,
+                  "shards built-in function requires a Name, Args and Shards parameters",
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )
@@ -1470,7 +1738,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
                 (
                   "mesh built-in function requires a name parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )?;
@@ -1483,7 +1751,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 _ => Err(
                   (
                     "mesh built-in function requires an identifier parameter",
-                    block.line_info,
+                    block.line_info.unwrap_or_default(),
                   )
                     .into(),
                 ),
@@ -1492,7 +1760,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               Err(
                 (
                   "mesh built-in function requires a parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )
@@ -1505,14 +1773,14 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               let mesh_id = param_helper.get_param_by_name_or_index("Mesh", 0).ok_or(
                 (
                   "schedule built-in function requires a mesh parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )?;
               let wire_id = param_helper.get_param_by_name_or_index("Wire", 1).ok_or(
                 (
                   "schedule built-in function requires a wire parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )?;
@@ -1536,7 +1804,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                     Err(
                       (
                         "schedule built-in function requires a valid wire parameter",
-                        block.line_info,
+                        block.line_info.unwrap_or_default(),
                       )
                         .into(),
                     )
@@ -1545,7 +1813,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 _ => Err(
                   (
                     "schedule built-in function requires a wire parameter",
-                    block.line_info,
+                    block.line_info.unwrap_or_default(),
                   )
                     .into(),
                 ),
@@ -1560,7 +1828,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               Err(
                 (
                   "schedule built-in function requires 2 parameters",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )
@@ -1573,7 +1841,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               let mesh_id = param_helper.get_param_by_name_or_index("Mesh", 0).ok_or(
                 (
                   "run built-in function requires a mesh parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )?;
@@ -1589,7 +1857,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                     Err(
                       (
                         "run built-in function requires a float number rate parameter",
-                        block.line_info,
+                        block.line_info.unwrap_or_default(),
                       )
                         .into(),
                     )
@@ -1604,7 +1872,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                         return Err(
                           (
                             "run built-in function requires a float number rate parameter",
-                            block.line_info,
+                            block.line_info.unwrap_or_default(),
                           )
                             .into(),
                         )
@@ -1615,7 +1883,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                     Err(
                       (
                         "run built-in function requires a float number rate parameter",
-                        block.line_info,
+                        block.line_info.unwrap_or_default(),
                       )
                         .into(),
                     )
@@ -1624,7 +1892,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 (Some(_), Some(_)) => Err(
                   (
                     "run built-in function requires either a rate or fps parameter",
-                    block.line_info,
+                    block.line_info.unwrap_or_default(),
                   )
                     .into(),
                 ),
@@ -1635,14 +1903,14 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 if let Value::Number(Number::Integer(n)) = &iterations.value {
                   let iterations = u64::try_from(*n).map_err(|_| (
                         "run built-in function requires an integer number in range of i64 iterations parameter",
-                        block.line_info,
+                        block.line_info.unwrap_or_default(),
                     ).into())?;
                   Ok(Some(iterations))
                 } else {
                   Err(
                     (
                       "run built-in function requires an integer number iterations parameter",
-                      block.line_info,
+                      block.line_info.unwrap_or_default(),
                     )
                       .into(),
                   )
@@ -1697,172 +1965,215 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               Err(
                 (
                   "run built-in function requires a parameter",
-                  block.line_info,
+                  block.line_info.unwrap_or_default(),
                 )
                   .into(),
               )
             }
           }
           "color" => {
-            let value = handle_color_built_in_function(func, block.line_info)?;
-            add_const_shard2(value, block.line_info, e)
+            let value = handle_color_built_in_function(func, block.line_info.unwrap_or_default())?;
+            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
           }
           "i2" => {
-            let value = handle_vector_built_in_function_ints::<2>(func, block.line_info)?;
-            add_const_shard2(value, block.line_info, e)
+            let value =
+              handle_vector_built_in_function_ints::<2>(func, block.line_info.unwrap_or_default())?;
+            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
           }
           "i3" => {
-            let value = handle_vector_built_in_function_ints::<3>(func, block.line_info)?;
-            add_const_shard2(value, block.line_info, e)
+            let value =
+              handle_vector_built_in_function_ints::<3>(func, block.line_info.unwrap_or_default())?;
+            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
           }
           "i4" => {
-            let value = handle_vector_built_in_function_ints::<4>(func, block.line_info)?;
-            add_const_shard2(value, block.line_info, e)
+            let value =
+              handle_vector_built_in_function_ints::<4>(func, block.line_info.unwrap_or_default())?;
+            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
           }
           "i8" => {
-            let value = handle_vector_built_in_function_ints::<8>(func, block.line_info)?;
-            add_const_shard2(value, block.line_info, e)
+            let value =
+              handle_vector_built_in_function_ints::<8>(func, block.line_info.unwrap_or_default())?;
+            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
           }
           "i16" => {
-            let value = handle_vector_built_in_function_ints::<16>(func, block.line_info)?;
-            add_const_shard2(value, block.line_info, e)
+            let value = handle_vector_built_in_function_ints::<16>(
+              func,
+              block.line_info.unwrap_or_default(),
+            )?;
+            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
           }
           "f2" => {
-            let value = handle_vector_built_in_function_floats::<2>(func, block.line_info)?;
-            add_const_shard2(value, block.line_info, e)
+            let value = handle_vector_built_in_function_floats::<2>(
+              func,
+              block.line_info.unwrap_or_default(),
+            )?;
+            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
           }
           "f3" => {
-            let value = handle_vector_built_in_function_floats::<3>(func, block.line_info)?;
-            add_const_shard2(value, block.line_info, e)
+            let value = handle_vector_built_in_function_floats::<3>(
+              func,
+              block.line_info.unwrap_or_default(),
+            )?;
+            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
           }
           "f4" => {
-            let value = handle_vector_built_in_function_floats::<4>(func, block.line_info)?;
-            add_const_shard2(value, block.line_info, e)
+            let value = handle_vector_built_in_function_floats::<4>(
+              func,
+              block.line_info.unwrap_or_default(),
+            )?;
+            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
+          }
+          "macro" => {
+            if let Some(ref params) = func.params {
+              let param_helper = ParamHelper::new(params);
+
+              let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
+                (
+                  "macro built-in function requires a Name parameter",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )?;
+
+              let args = param_helper.get_param_by_name_or_index("Args", 1).ok_or(
+                (
+                  "macro built-in function requires an Args parameter",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )?;
+
+              let shards = param_helper.get_param_by_name_or_index("Shards", 2).ok_or(
+                (
+                  "macro built-in function requires a Shards parameter",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )?;
+
+              match (&name.value, &args.value, &shards.value) {
+                (Value::Identifier(name), Value::Seq(args), Value::Shards(shards)) => {
+                  let args_ptr = args as *const _;
+                  let shards_ptr = shards as *const _;
+                  e.macro_groups.insert(
+                    name.clone(),
+                    ShardsGroup {
+                      args: args_ptr,
+                      shards: shards_ptr,
+                    },
+                  );
+                  Ok(())
+                }
+                _ => Err(
+                  (
+                    "macro built-in function requires a Name, Args and Shards parameters",
+                    block.line_info.unwrap_or_default(),
+                  )
+                    .into(),
+                ),
+              }
+            } else {
+              Err(
+                (
+                  "macro built-in function requires parameters",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )
+            }
           }
           unknown => {
-            let mut shards_env = {
-              if let Some(group) = find_shards_group(&func.name, e) {
-                let args = unsafe { &*group.args };
-                let shards = unsafe { &*group.shards };
+            match (
+              find_defined(&func.name, e),
+              process_shards(func, unknown, block, e)?,
+              process_macro(func, unknown, block.line_info.unwrap_or_default(), e)?,
+            ) {
+              (None, Some(mut shards_env), None) => {
+                for shard in shards_env.shards.drain(..) {
+                  e.shards.push(shard);
+                }
+                Ok(())
+              }
+              (None, None, Some(ast_json)) => {
+                let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
+                  (
+                    "macro built-in function Shards should return a Json string",
+                    block.line_info.unwrap_or_default(),
+                  )
+                    .into()
+                })?;
 
-                if args.len() != func.params.as_ref().unwrap().len() {
-                  return Err(
-                    (
-                      format!(
-                        "Shards template {} requires {} parameters",
-                        unknown,
-                        args.len()
-                      ),
-                      block.line_info,
-                    )
-                      .into(),
-                  );
+                // in this case we expect the ast to be a sequence of statements
+                let decoded_json: Sequence = serde_json::from_str(ast_json).map_err(|e| {
+                  (
+                    format!(
+                      "macro built-in function Shards should return a valid Json string: {}",
+                      e
+                    ),
+                    block.line_info.unwrap_or_default(),
+                  )
+                    .into()
+                })?;
+
+                // which we directly evaluate
+                for stmt in &decoded_json.statements {
+                  eval_statement(stmt, e)?;
                 }
 
-                let mut sub_env = EvalEnv::default();
-                sub_env.parent = Some(e as *const EvalEnv);
-
-                // set a random suffix
-                sub_env.suffix = Some(nanoid!(16).into());
-
-                for i in 0..args.len() {
-                  let arg = &args[i];
-                  // arg has to be Identifier
-                  let arg = match arg {
-                    Value::Identifier(arg) => arg,
-                    _ => {
-                      return Err(
-                        (
-                          format!(
-                            "Shards template {} parameters should be identifiers",
-                            unknown,
-                          ),
-                          block.line_info,
-                        )
-                          .into(),
-                      );
+                Ok(())
+              }
+              (Some(value), None, None) => {
+                let replacement = unsafe { &*value };
+                match replacement {
+                  Value::None
+                  | Value::Identifier(_)
+                  | Value::Boolean(_)
+                  | Value::Enum(_, _)
+                  | Value::Number(_)
+                  | Value::String(_)
+                  | Value::Bytes(_)
+                  | Value::Int2(_)
+                  | Value::Int3(_)
+                  | Value::Int4(_)
+                  | Value::Int8(_)
+                  | Value::Int16(_)
+                  | Value::Float2(_)
+                  | Value::Float3(_)
+                  | Value::Float4(_)
+                  | Value::Seq(_)
+                  | Value::Table(_) => {
+                    add_const_shard(replacement, block.line_info.unwrap_or_default(), e)?
+                  }
+                  Value::Shards(seq) => {
+                    // purely include the ast of the sequence
+                    for stmt in &seq.statements {
+                      eval_statement(stmt, e)?;
                     }
-                  };
-                  let param = &func.params.as_ref().unwrap()[i];
-                  if param.name.is_some() {
+                  }
+                  Value::EvalExpr(seq) => {
+                    let value = eval_eval_expr(&seq, e)?;
+                    add_const_shard2(value.0 .0, block.line_info.unwrap_or_default(), e)?
+                  }
+                  Value::Expr(seq) => eval_expr(seq, e, block, start_idx)?,
+                  _ => {
                     return Err(
                       (
-                        format!(
-                          "Shards template {} does not accept named parameters",
-                          unknown
-                        ),
-                        block.line_info,
+                        format!("Invalid value: {:?}", replacement),
+                        block.line_info.unwrap_or_default(),
                       )
                         .into(),
-                    );
-                  }
-
-                  // and add new replacement
-                  let value_ptr = &param.value as *const _;
-                  sub_env.replacements.insert(arg.to_owned(), value_ptr);
-                }
-
-                for stmt in &shards.statements {
-                  eval_statement(stmt, &mut sub_env)?;
-                }
-
-                Some(sub_env)
-              } else {
-                None
-              }
-            };
-
-            let defined_value = {
-              if let Some(val) = find_defined(&func.name, e) {
-                Some(val)
-              } else {
-                None
-              }
-            };
-
-            if let Some(shards_env) = &mut shards_env {
-              for shard in shards_env.shards.drain(..) {
-                e.shards.push(shard);
-              }
-              Ok(())
-            } else if let Some(defined_value) = defined_value {
-              let replacement = unsafe { &*defined_value };
-              match replacement {
-                Value::None
-                | Value::Identifier(_)
-                | Value::Boolean(_)
-                | Value::Enum(_, _)
-                | Value::Number(_)
-                | Value::String(_)
-                | Value::Bytes(_)
-                | Value::Int2(_)
-                | Value::Int3(_)
-                | Value::Int4(_)
-                | Value::Int8(_)
-                | Value::Int16(_)
-                | Value::Float2(_)
-                | Value::Float3(_)
-                | Value::Float4(_)
-                | Value::Seq(_)
-                | Value::Table(_) => add_const_shard(replacement, block.line_info, e)?,
-                Value::Shards(seq) => {
-                  // purely include the ast of the sequence
-                  for stmt in &seq.statements {
-                    eval_statement(stmt, e)?;
+                    )
                   }
                 }
-                Value::EvalExpr(seq) => {
-                  let value = eval_eval_expr(&seq, e)?;
-                  add_const_shard2(value.0 .0, block.line_info, e)?
-                }
-                Value::Expr(seq) => eval_expr(seq, e, block, start_idx)?,
-                _ => {
-                  return Err((format!("Invalid value: {:?}", replacement), block.line_info).into())
-                }
+                Ok(())
               }
-              Ok(())
-            } else {
-              Err((format!("Unknown function: {}", func.name), block.line_info).into())
+              _ => Err(
+                (
+                  format!("unknown built-in function: {}", unknown),
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              ),
             }
           }
         }
@@ -1884,15 +2195,29 @@ fn eval_expr(
     let tmp_name = nanoid!(16);
     // ensure name starts with a letter
     let tmp_name = format!("t{}", tmp_name);
-    add_assignment_shard_no_suffix("Ref", &tmp_name, block.line_info, &mut sub_env)
-      .map_err(|_| ("Failed to set parameter", block.line_info).into())?;
+    add_assignment_shard_no_suffix(
+      "Ref",
+      &tmp_name,
+      block.line_info.unwrap_or_default(),
+      &mut sub_env,
+    )
+    .map_err(|_| {
+      (
+        "Failed to set parameter",
+        block.line_info.unwrap_or_default(),
+      )
+        .into()
+    })?;
     // wrap into a Sub Shard
     finalize_env(&mut sub_env)?;
-    let sub = make_sub_shard(sub_env.shards.drain(..).collect(), block.line_info)?;
+    let sub = make_sub_shard(
+      sub_env.shards.drain(..).collect(),
+      block.line_info.unwrap_or_default(),
+    )?;
     // add this sub shard before the start of this pipeline!
     e.shards.insert(start_idx, sub);
     // now add a get shard to get the temporary at the end of the pipeline
-    add_get_shard_no_suffix(&tmp_name, block.line_info, e)?;
+    add_get_shard_no_suffix(&tmp_name, block.line_info.unwrap_or_default(), e)?;
   })
 }
 
@@ -1904,24 +2229,24 @@ fn add_assignment_shard(
 ) -> Result<(), ShardsError> {
   let shard = ShardRef::create(shard_name).unwrap();
   let shard = SShardRef(shard);
-  let assigned = if let Some(suffix) = find_current_suffix(e) {
+  let (assigned, suffix) = if let Some(suffix) = find_current_suffix(e) {
     let name = format!("{}{}", name, suffix);
     let name = Var::ephemeral_string(&name);
     shard
       .0
       .set_parameter(0, name)
       .map_err(|_| ("Failed to set parameter", line_info).into())?;
-    true
+    (true, Some(suffix.clone()))
   } else {
     let name = Var::ephemeral_string(name);
     shard
       .0
       .set_parameter(0, name)
       .map_err(|_| ("Failed to set parameter", line_info).into())?;
-    false
+    (false, None)
   };
   if assigned {
-    e.suffix_assigned.insert(name.clone());
+    e.suffix_assigned.insert(name.clone(), suffix.unwrap());
   }
   shard.0.set_line_info((
     line_info.line.try_into().unwrap(),

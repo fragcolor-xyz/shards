@@ -443,6 +443,7 @@ struct SHParameterInfo {
   SHString name;
   SHOptionalString help;
   SHTypesInfo valueTypes;
+  SHBool variableSetter;
 };
 
 struct SHExposedTypeInfo {

@@ -245,7 +245,8 @@ template <SHType ToType> struct MakeVector {
       const Type &paramType = getCompatibleUnitType(vectorType->numberType);
 
       for (size_t i = 0; i < vectorType->dimension; i++) {
-        params._infos.emplace_back(componentNames[i].c_str(), Types({Type::VariableOf(paramType), paramType}));
+        params._infos.emplace_back(componentNames[i].c_str(), "Vector component"_optional,
+                                   Types({Type::VariableOf(paramType), paramType}));
       }
 
       for (auto &param : params._infos)

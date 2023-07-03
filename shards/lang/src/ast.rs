@@ -133,7 +133,7 @@ pub enum BlockContent {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Block {
   pub content: BlockContent,
-  pub line_info: LineInfo,
+  pub line_info: Option<LineInfo>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

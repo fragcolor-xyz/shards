@@ -186,13 +186,14 @@ struct Types {
 struct ParameterInfo {
   SHString _name;
   SHOptionalString _help;
+  bool _variableSetter;
   Types _types;
 
-  ParameterInfo(SHString name, SHOptionalString help, Types types) : _name(name), _help(help), _types(types) {}
-  ParameterInfo(SHString name, Types types) : _name(name), _help({}), _types(types) {}
+  ParameterInfo(SHString name, SHOptionalString help, Types types, bool variableSetter = false)
+      : _name(name), _help(help), _variableSetter(variableSetter), _types(types) {}
 
   operator SHParameterInfo() {
-    SHParameterInfo res{_name, _help, _types};
+    SHParameterInfo res{_name, _help, _types, _variableSetter};
     return res;
   }
 };
