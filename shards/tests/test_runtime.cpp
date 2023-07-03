@@ -1406,178 +1406,49 @@ TEST_CASE("TTableVar operations", "[TTableVar]") {
   }
 }
 
+#define TEST_SUCCESS_CASE(testName, code)                \
+  SECTION(testName) {                                    \
+    auto seq = shards_read(code);                        \
+    REQUIRE(seq.ast);                                    \
+    auto wire = shards_eval(seq.ast, "root");            \
+    shards_free_sequence(seq.ast);                       \
+    REQUIRE(wire.wire);                                  \
+    auto mesh = SHMesh::make();                          \
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire))); \
+    mesh->tick();                                        \
+    shards_free_wire(wire.wire);                         \
+  }
+
+#define TEST_EVAL_ERROR_CASE(testName, code, expectedErrorMessage) \
+  SECTION(testName) {                                              \
+    auto seq = shards_read(code);                                  \
+    REQUIRE(seq.ast);                                              \
+    auto wire = shards_eval(seq.ast, "root");                      \
+    shards_free_sequence(seq.ast);                                 \
+    REQUIRE(wire.error);                                           \
+    std::string a(wire.error->message);                            \
+    std::string b(expectedErrorMessage);                           \
+    REQUIRE(a == b);                                               \
+    shards_free_error(wire.error);                                 \
+  }
+
 TEST_CASE("shards-lang") {
   // initialize shards
   shards_init(shardsInterface(SHARDS_CURRENT_ABI));
 
-  SECTION("Simple") {
-    auto seq = shards_read("1 | Math.Add(2) | Assert.Is(3) | Log");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("Injected None") {
-    auto seq = shards_read("Log");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("Assign 1") {
-    auto seq = shards_read("100 = x\n x | Log | Assert.Is(100)");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("Sub Shards 1") {
-    auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(3) | Log}) | Log");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("Sub Shards 2") {
-    auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(Value: 3) | Log}) | Log");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("Sub Shards 3") {
-    auto seq = shards_read("1 | Math.Add(2) | Sub({Assert.Is(LOL: 3) | Log}) | Log");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE_FALSE(wire.wire);
-    REQUIRE(wire.error);
-    DEFER(shards_free_error(wire.error));
-    std::string a(wire.error->message);
-    std::string b("Unknown parameter 'LOL'");
-    REQUIRE(a == b);
-  }
-
-  SECTION("Exp 1") {
-    auto seq = shards_read("1 | Log | (2 | Log (3 | Log))");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("Exp 2") {
-    auto seq = shards_read("[(2 | Math.Multiply(3)) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("Exp 3") {
-    auto seq = shards_read("[(2 | Math.Multiply((3 | Math.Add(6)))) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("Failed EvalExpr") {
-    auto seq = shards_read("#(false | Assert.Is(true))");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.error);
-    DEFER(shards_free_error(wire.error));
-    std::string a(wire.error->message);
-    std::string b("Assert failed - Is");
-    REQUIRE(a == b);
-  }
-
-  SECTION("EvalExpr 1") {
-    auto seq = shards_read("2 | Math.Multiply(#(1 | Math.Add(2) | Log)) | Log | Assert.Is(6)");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("SeqTake 1") {
-    auto seq = shards_read("[1 2] | Log = s s:0 | Log | Assert.Is(1) s:1 | Log | Assert.Is(2)");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("SeqTake 2") {
-    auto seq = shards_read("[1 2] | Log = s 1 | Math.Add(s:0) | Assert.Is(2)");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
-
-  SECTION("TableTake 1") {
-    auto seq = shards_read("{a: 1 b: 2} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)");
-    REQUIRE(seq.ast);
-    DEFER(shards_free_sequence(seq.ast));
-    auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.wire);
-    DEFER(shards_free_wire(wire.wire));
-    auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
-    mesh->tick();
-  }
+  TEST_SUCCESS_CASE("Simple", "1 | Math.Add(2) | Assert.Is(3) | Log");
+  TEST_SUCCESS_CASE("Assign 1", "100 = x\n x | Log | Assert.Is(100)");
+  TEST_SUCCESS_CASE("Sub Shards 1", "1 | Math.Add(2) | Sub({Assert.Is(3) | Log}) | Log");
+  TEST_SUCCESS_CASE("Sub Shards 2", "1 | Math.Add(2) | Sub({Assert.Is(Value: 3) | Log}) | Log");
+  TEST_EVAL_ERROR_CASE("Sub Shards 3", "1 | Math.Add(2) | Sub({Assert.Is(LOL: 3) | Log}) | Log", "Unknown parameter 'LOL'");
+  TEST_SUCCESS_CASE("Exp 1", "1 | Log | (2 | Log (3 | Log))");
+  TEST_SUCCESS_CASE("Exp 2", "[(2 | Math.Multiply(3)) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log")
+  TEST_SUCCESS_CASE("Exp 3", "[(2 | Math.Multiply((3 | Math.Add(6)))) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log")
+  TEST_EVAL_ERROR_CASE("Failed EvalExpr", "#(false | Assert.Is(true))", "Assert failed - Is");
+  TEST_SUCCESS_CASE("EvalExpr 1", "2 | Math.Multiply(#(1 | Math.Add(2) | Log)) | Log | Assert.Is(6)");
+  TEST_SUCCESS_CASE("SeqTake 1", "[1 2] | Log = s s:0 | Log | Assert.Is(1) s:1 | Log | Assert.Is(2)");
+  TEST_SUCCESS_CASE("SeqTake 2", "[1 2] | Log = s 1 | Math.Add(s:0) | Assert.Is(2)");
+  TEST_SUCCESS_CASE("TableTake 1", "{a: 1 b: 2} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)");
 
   SECTION("TableTake 2") {
     auto seq = shards_read("{a: 1 b: 2} | Log = t 1 | Math.Add(t:a) | Assert.Is(2)");
@@ -1753,4 +1624,13 @@ TEST_CASE("shards-lang") {
     // std::string b("Assert failed - Is");
     // REQUIRE(a == b);
   }
+
+  TEST_SUCCESS_CASE("Color Log Test", "@color(0x112233) | Log \n @color(0x1122) | Log \n @color(0x11223344) | Log \n @color(0.1 "
+                                      "0.3 0.7 1.0) | Log \n @color(10 30 60 255) | Log \n @color(1.0) | Log")
+
+  TEST_SUCCESS_CASE("Log Various Data Test", "@i2(1) | Log \n @i2(1 2) | Log \n @i3(1) | Log \n @i3(1 2 3) | Log \n @i4(1) | Log "
+                                             "\n @i4(1 2 3 4) | Log \n @f2(1) | Log \n @f2(1 2) | Log")
+
+  TEST_SUCCESS_CASE("Shards Test", "@shards(base [texture] { \"TEST\" = texture }) \n @base(test-shards-1) \n test-shards-1 | "
+                                   "Log | Assert.Is(\"TEST\") \n @base(test-shards-2) | Log | Assert.Is(\"TEST\")")
 }

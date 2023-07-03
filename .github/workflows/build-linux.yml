@@ -104,6 +104,7 @@ jobs:
         run: |
           cd build
           chmod +x shards
+          ./shards new ../shards/tests/hello.shs
           ./shards ../shards/tests/general.edn
           ./shards ../shards/tests/table-compose.edn
           ./shards ../shards/tests/variables.edn
