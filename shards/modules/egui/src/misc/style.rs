@@ -2,7 +2,6 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Style;
-use shards::shard::Shard;
 use crate::misc::style_util;
 use crate::util;
 use crate::ANY_TABLE_SLICE;
@@ -10,6 +9,7 @@ use crate::CONTEXTS_NAME;
 use crate::EGUI_UI_SEQ_TYPE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
+use shards::shard::Shard;
 use shards::shardsc::SHColor;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -156,13 +156,22 @@ impl Shard for Style {
           let key: egui::TextStyle = style_util::get_text_style(name.try_into()?)?;
           let fontId: egui::FontId = style_util::get_font_id(text_style)?;
           style
-              .text_styles
-              .entry(key)
-              .and_modify(|x| *x = fontId.clone())
-              .or_insert(fontId);
+            .text_styles
+            .entry(key)
+            .and_modify(|x| *x = fontId.clone())
+            .or_insert(fontId);
         } else {
           return Err("name is missing from a table provided in text_styles");
         }
+      }
+    }
+
+    if let Some(name) = table.get_static("override_text_style") {
+      if !style
+        .text_styles
+        .contains_key(&style_util::get_text_style(name.try_into()?)?)
+      {
+        return Err("Provided override_text_style does not match any existing text style");
       }
     }
 

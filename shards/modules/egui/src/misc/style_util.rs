@@ -14,8 +14,7 @@ pub(crate) fn get_font_family(family: &str) -> Result<egui::FontFamily, &'static
   match family {
     "Proportional" => Ok(egui::FontFamily::Proportional),
     "Monospace" => Ok(egui::FontFamily::Monospace),
-    "" => Err("No font family provided"),
-    name => Ok(egui::FontFamily::Name(name.into())), // TODO: Check if this is ok or how to return Err if cannot construct
+    _ => Err("No such font family found. Available font families are 'Proportional' and 'Monospace'"),
   }
 }
 
@@ -104,8 +103,8 @@ pub(crate) fn get_text_style(name: &str) -> Result<egui::TextStyle, &'static str
     "Monospace" => Ok(egui::TextStyle::Monospace),
     "Button" => Ok(egui::TextStyle::Button),
     "Heading" => Ok(egui::TextStyle::Heading),
-    "" => Err("No text style provided"),
-    name => Ok(egui::TextStyle::Name(name.into())), // TODO: Check if this is ok or how to return Err if cannot construct
+    "" => Err("Empty text style name provided"),
+    name => Ok(egui::TextStyle::Name(name.into())),
   }
 }
 
