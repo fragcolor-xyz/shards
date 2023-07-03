@@ -2845,12 +2845,12 @@ impl TryFrom<&Var> for &str {
     {
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
-      unsafe {
-        let cstr = CStr::from_ptr(
-          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *mut std::os::raw::c_char,
-        );
-        cstr.to_str().map_err(|_| "UTF8 string conversion failed!")
-      }
+      std::str::from_utf8(unsafe {
+        slice::from_raw_parts(
+          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *const u8,
+          var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
+        )
+      }).map_err(|_| "Expected valid UTF-8 string, but casting failed.")
     }
   }
 }
