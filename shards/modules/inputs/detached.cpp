@@ -319,7 +319,7 @@ struct Detached {
       _handler->warmup(_capturedVariables);
     }
 
-    _handler->name = !_name->isNone() ? (const char *)*_name : "";
+    _handler->name = !_name->isNone() ? SHSTRVIEW(*_name) : "";
 
     windowCtx.inputMaster.addHandler(_handler);
   }
