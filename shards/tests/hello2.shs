@@ -1,4 +1,4 @@
-@shards(say [what] {
+@template(say [what] {
   what >= hello
   " World!" | AppendTo(hello)
   what | Log

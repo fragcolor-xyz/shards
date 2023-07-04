@@ -41,7 +41,7 @@
 @my-macro(3)
 Msg(@macro1("Ciao")) | Log
 
-@shards(base [texture] {
+@template(base [texture] {
   "TEST" = texture
 })
 
@@ -49,3 +49,16 @@ Msg(@macro1("Ciao")) | Log
 test-shards-1 | Log | Assert.Is("TEST")
 
 @base(test-shards-2) | Log | Assert.Is("TEST")
+
+none | When(IsNone {Msg("None")})
+
+Type::Int | Log
+
+; @type(Type: Type::Int Variable: true) | Log
+; @type(Type.Int true) | Log
+; @type(Type.Int) | Log ; Not a variable
+; @type([Type.Int]) | Log ; a sequence of Ints
+; @type({*: Type.Int}) | Log ; a map of Ints with any key value possible
+; @define(int-var @type(Type.Int true)) | Log
+; @type({GFX.Mesh}) | Log
+; @type([@int-var]) | Log

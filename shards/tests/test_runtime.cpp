@@ -1476,7 +1476,7 @@ TEST_CASE("shards-lang") {
   }
 
   SECTION("Enums 1") {
-    auto seq = shards_read("Msg(Enum.NotExisting)");
+    auto seq = shards_read("Msg(Enum::NotExisting)");
     REQUIRE(seq.ast);
     DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
@@ -1488,7 +1488,7 @@ TEST_CASE("shards-lang") {
   }
 
   SECTION("Enums 2") {
-    auto seq = shards_read("Const(Type.String) | Log");
+    auto seq = shards_read("Const(Type::String) | Log");
     REQUIRE(seq.ast);
     DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
@@ -1500,15 +1500,15 @@ TEST_CASE("shards-lang") {
   }
 
   SECTION("Enums 3") {
-    auto seq = shards_read("Type.String | Log"); // Enums can't be used like this
+    auto seq = shards_read("Type::String | Log"); // Enums can't be used like this
     REQUIRE(seq.ast);
     DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, "root");
-    REQUIRE(wire.error);
-    DEFER(shards_free_error(wire.error));
-    std::string a(wire.error->message);
-    std::string b("Shard Type.String does not exist");
-    REQUIRE(a == b);
+    REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
   }
 
   SECTION("@wire 1") {
@@ -1547,9 +1547,9 @@ TEST_CASE("shards-lang") {
     mesh->tick();
   }
 
-  SECTION("Test @shards 1") {
+  SECTION("Test @template 1") {
     auto code = R"(
-      @shards(group1 [n] {
+      @template(group1 [n] {
         {n = n1} ; this will be made unique internally!
         Log | Math.Add(n1) | Log
       })
@@ -1567,9 +1567,9 @@ TEST_CASE("shards-lang") {
     mesh->tick();
   }
 
-  SECTION("Test @shards 2") {
+  SECTION("Test @template 2") {
     auto code = R"(
-      @shards(range [from to] {
+      @template(range [from to] {
         [] >= s
         from >= n
         Repeat({
@@ -1631,6 +1631,6 @@ TEST_CASE("shards-lang") {
   TEST_SUCCESS_CASE("Log Various Data Test", "@i2(1) | Log \n @i2(1 2) | Log \n @i3(1) | Log \n @i3(1 2 3) | Log \n @i4(1) | Log "
                                              "\n @i4(1 2 3 4) | Log \n @f2(1) | Log \n @f2(1 2) | Log")
 
-  TEST_SUCCESS_CASE("Shards Test", "@shards(base [texture] { \"TEST\" = texture }) \n @base(test-shards-1) \n test-shards-1 | "
+  TEST_SUCCESS_CASE("Shards Test", "@template(base [texture] { \"TEST\" = texture }) \n @base(test-shards-1) \n test-shards-1 | "
                                    "Log | Assert.Is(\"TEST\") \n @base(test-shards-2) | Log | Assert.Is(\"TEST\")")
 }

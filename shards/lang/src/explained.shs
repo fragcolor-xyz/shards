@@ -71,7 +71,7 @@ Msg("Hello")
 
 @const(value 10)
 
-@shards(range [from to] {
+@template(range [from to] {
   [] = s
   from >= n
   Repeat({

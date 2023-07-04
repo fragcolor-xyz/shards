@@ -81,6 +81,7 @@ use crate::shardsc::SHIMAGE_FLAGS_32BITS_FLOAT;
 use crate::shardsc::SHVAR_FLAGS_REF_COUNTED;
 use crate::SHObjectInfo;
 use crate::SHStringWithLen;
+use crate::SHType_Type;
 use crate::SHWireState_Error;
 use crate::SHVAR_FLAGS_EXTERNAL;
 use core::convert::TryFrom;
@@ -281,6 +282,13 @@ unsafe extern "C" fn error_cb(
 }
 
 impl ShardRef {
+  pub fn output_types(&self) -> &[Type] {
+    unsafe {
+      let info = (*self.0).outputTypes.unwrap()(self.0);
+      core::slice::from_raw_parts(info.elements, info.len as usize)
+    }
+  }
+
   pub fn create(name: &str) -> Option<Self> {
     unsafe {
       let ptr = (*Core).createShard.unwrap()(SHStringWithLen {
@@ -695,6 +703,17 @@ impl From<SHParametersInfo> for &[SHParameterInfo] {
   }
 }
 
+impl From<SHTypeInfo> for ClonedVar {
+  fn from(t: SHTypeInfo) -> Self {
+    let mut var = Var::default();
+    var.valueType = SHType_Type;
+    var.payload.__bindgen_anon_1.typeValue = Box::into_raw(Box::new(t)) as *mut SHTypeInfo;
+    let mut cloned = ClonedVar::default();
+    cloneVar(&mut cloned.0, &var);
+    cloned
+  }
+}
+
 /*
 Static common type infos utility
 */
@@ -706,6 +725,7 @@ pub mod common_type {
   use crate::shardsc::SHTypeInfo;
   use crate::shardsc::SHTypeInfo_Details;
   use crate::shardsc::SHType_Any;
+  use crate::shardsc::SHType_Audio;
   use crate::shardsc::SHType_Bool;
   use crate::shardsc::SHType_Bytes;
   use crate::shardsc::SHType_Color;
@@ -1057,6 +1077,16 @@ pub mod common_type {
     paths_var,
     path_table,
     path_table_var
+  );
+  shtype!(
+    make_audio,
+    SHType_Audio,
+    audio,
+    audios,
+    audio_var,
+    audios_var,
+    audio_table,
+    audio_table_var
   );
 }
 
@@ -2850,7 +2880,8 @@ impl TryFrom<&Var> for &str {
           var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue as *const u8,
           var.payload.__bindgen_anon_1.__bindgen_anon_2.stringLen as usize,
         )
-      }).map_err(|_| "Expected valid UTF-8 string, but casting failed.")
+      })
+      .map_err(|_| "Expected valid UTF-8 string, but casting failed.")
     }
   }
 }

@@ -512,6 +512,10 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
         content: BlockContent::Const(process_value(pair, env)?),
         line_info: Some(pos.into()),
       }),
+      Rule::Enum => blocks.push(Block {
+        content: BlockContent::Const(process_value(pair, env)?),
+        line_info: Some(pos.into()),
+      }),
       Rule::Shards => blocks.push(Block {
         content: BlockContent::Shards(process_sequence(
           pair
@@ -583,7 +587,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
     Rule::LowIden => Ok(Value::Identifier(pair.as_str().into())),
     Rule::Enum => {
       let text = pair.as_str();
-      let splits: Vec<_> = text.split('.').collect();
+      let splits: Vec<_> = text.split("::").collect();
       if splits.len() != 2 {
         return Err(("Expected an enum value", pos).into());
       }
@@ -677,6 +681,10 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       env,
     )
     .map(Value::Shards),
+    Rule::Shard => match process_function(pair, env)? {
+      FunctionValue::Function(func) => Ok(Value::Shard(func)),
+      _ => Err(("Invalid Shard in value", pos).into()),
+    },
     Rule::EvalExpr => process_sequence(
       pair
         .into_inner()

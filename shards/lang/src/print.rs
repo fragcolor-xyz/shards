@@ -141,6 +141,7 @@ impl Value {
         format!("{{{}}}", values_str)
       }
       Value::Shards(seq) => format!("{{{}}}", seq.to_string(context)),
+      Value::Shard(func) => format!("{}", func.to_string(context)),
       Value::EvalExpr(seq) => format!("#({})", seq.to_string(context)),
       Value::Expr(seq) => format!("({})", seq.to_string(context)),
       Value::Func(func) => format!("@{}", func.to_string(context)),

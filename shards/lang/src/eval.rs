@@ -6,6 +6,10 @@ use core::convert::TryInto;
 
 use core::slice;
 use nanoid::nanoid;
+use shards::types::common_type;
+use shards::types::Type;
+use shards::SHType_Object;
+use shards::SHType_Type;
 use std::cell::RefCell;
 
 use shards::core::destroyVar;
@@ -59,10 +63,10 @@ pub struct EvalEnv {
   macro_groups: HashMap<RcStrWrapper, ShardsGroup>,
   definitions: HashMap<RcStrWrapper, *const Value>,
 
-  // used during @shards evaluations, to replace [x y z] arguments
+  // used during @template evaluations, to replace [x y z] arguments
   replacements: HashMap<RcStrWrapper, *const Value>,
 
-  // used during @shards evaluation
+  // used during @template evaluation
   suffix: Option<RcStrWrapper>,
   suffix_assigned: HashMap<RcStrWrapper, RcStrWrapper>, // maps var names to their suffix
 
@@ -901,6 +905,12 @@ fn as_var(
       }
       Ok(SVar::Cloned(ClonedVar(seq.0)))
     }
+    Value::Shard(shard) => {
+      let s = create_shard(shard, e, line_info)?;
+      let s: Var = s.0 .0.into();
+      debug_assert!(s.valueType == SHType_ShardRef);
+      Ok(SVar::Cloned(s.into()))
+    }
     Value::EvalExpr(seq) => {
       let value = eval_eval_expr(&seq, e)?;
       Ok(SVar::Cloned(value.0))
@@ -1014,6 +1024,7 @@ fn as_var(
       "f4" => Ok(SVar::NotCloned(
         handle_vector_built_in_function_floats::<4>(func, line_info)?,
       )),
+      "type" => process_type(func, line_info, e),
       _ => {
         if let Some(defined_value) = find_defined(&func.name, e) {
           let replacement = unsafe { &*defined_value };
@@ -1056,11 +1067,276 @@ fn as_var(
   }
 }
 
+fn process_type(
+  func: &Function,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<SVar, ShardsError> {
+  if let Some(ref params) = func.params {
+    let param_helper = ParamHelper::new(params);
+
+    let type_ = param_helper.get_param_by_name_or_index("Type", 0).ok_or(
+      (
+        "type built-in function requires a Type parameter",
+        line_info,
+      )
+        .into(),
+    )?;
+
+    let is_var = param_helper
+      .get_param_by_name_or_index("Variable", 1)
+      .map(|param| match &param.value {
+        Value::Boolean(b) => Ok(*b),
+        _ => Err(("Variable parameter must be a boolean", line_info).into()),
+      })
+      .unwrap_or(Ok(false))?;
+
+    let vendor_id = param_helper.get_param_by_name_or_index("ObjectVendor", 2);
+    let object_id = param_helper.get_param_by_name_or_index("ObjectTypeId", 3);
+
+    let mut type_ = process_type_desc(type_, line_info, e)?;
+
+    match (vendor_id, object_id) {
+        (Some(vendor_id), Some(object_id)) => {
+          // fix up the type
+            let native_type = unsafe {type_.as_mut().payload.__bindgen_anon_1.typeValue};
+            let native_type = unsafe {&mut *native_type};
+            if native_type.basicType != SHType_Object {
+              return Err(
+                (
+                  "type built-in function, when Type.Object, requires both ObjectVendor and ObjectTypeId parameters",
+                  line_info,
+                )
+                  .into(),
+              )
+            }
+
+          fn parse_vendor_or_object_id(
+              value: &Value,
+              err_msg: &'static str,
+              line_info: &LineInfo // assuming this type, replace with the actual one
+          ) -> Result<i32, ShardsError> { // assuming this Error type, replace with the actual one
+              match value {
+                  Value::Number(n) => match n {
+                      Number::Integer(v) => i32::try_from(*v).map_err(|_| {
+                          (format!("{} failed to parse parameter as integer", err_msg), *line_info).into()
+                      }),
+                      Number::Hexadecimal(v) => i32::from_str_radix(v.as_str(), 16).map_err(|_| {
+                          (format!("{} failed to parse parameter as hexadecimal", err_msg), *line_info).into()
+                      }),
+                      _ => Err((
+                          format!("{} requires both parameters as integer or hexadecimal", err_msg),
+                          *line_info,
+                      ).into())
+                  },
+                  _ => Err((
+                      format!("{} requires both parameters", err_msg),
+                      *line_info,
+                  ).into())
+              }
+          }
+
+          let vendor_id = parse_vendor_or_object_id(&vendor_id.value, "type built-in function, when Type.Object", &line_info)?;
+          let object_id = parse_vendor_or_object_id(&object_id.value, "type built-in function, when Type.Object", &line_info)?;
+
+          native_type.details.object.vendorId = vendor_id;
+          native_type.details.object.typeId = object_id;
+        },
+        (None, None) => {},
+        _ => {
+          return Err(
+            (
+              "type built-in function, when Type.Object, requires both ObjectVendor and ObjectTypeId parameters",
+              line_info,
+            )
+              .into(),
+          )
+        }
+      }
+
+    if is_var {
+      let inner_type = unsafe { *type_.as_ref().payload.__bindgen_anon_1.typeValue };
+      let inner_types = [inner_type];
+      Ok(SVar::Cloned(ClonedVar::from(Type::context_variable(
+        &inner_types,
+      ))))
+    } else {
+      Ok(type_)
+    }
+  } else {
+    Err(
+      (
+        "type built-in function requires at least a Type parameter",
+        line_info,
+      )
+        .into(),
+    )
+  }
+}
+
+fn process_type_desc(
+  type_: &Param,
+  line_info: LineInfo,
+  env: &mut EvalEnv,
+) -> Result<SVar, ShardsError> {
+  let type_ = match &type_.value {
+    Value::Shards(seq) => {
+      // ensure there is a single shard
+      // and ensure that shard only has a single output type
+      let sub_env = eval_sequence(&seq, None)?;
+      if sub_env.shards.len() != 1 {
+        return Err(
+          (
+            "Type Shards parameter must contain a single shard",
+            line_info,
+          )
+            .into(),
+        );
+      }
+      let shard = &sub_env.shards[0].0;
+      let output_types = shard.output_types();
+      if output_types.len() != 1 {
+        return Err(
+          (
+            "Type Shards parameter must contain a shard with a single output type",
+            line_info,
+          )
+            .into(),
+        );
+      }
+      Ok(SVar::Cloned(ClonedVar::from(output_types[0])))
+    }
+    Value::Enum(_, _) => process_type_enum(&type_.value, line_info),
+    Value::Seq(seq) => {
+      // iterate all and as_var them, ensure it's a Type Type though
+
+      let mut types = Vec::new(); // actual storage
+      for value in seq {
+        let value = process_type_enum(value, line_info)?;
+        if value.as_ref().valueType != SHType_Type {
+          return Err(("Type Seq parameter can only contain Type values", line_info).into());
+        }
+        types.push(value);
+      }
+
+      let mut inner_types = Vec::new(); // actually weak storage
+      for inner_type in &types {
+        let inner_type = inner_type.as_ref();
+        if inner_type.valueType != SHType_Type {
+          return Err(("Type Seq parameter can only contain Type values", line_info).into());
+        }
+        let inner_type = unsafe { &*inner_type.payload.__bindgen_anon_1.typeValue };
+        inner_types.push(*inner_type);
+      }
+
+      Ok(SVar::Cloned(ClonedVar::from(Type::seq(&inner_types))))
+    }
+    Value::Table(pairs) => {
+      let mut keys = Vec::new(); // actual storage
+      let mut types = Vec::new(); // actual storage
+      for (key, value) in pairs {
+        let key = as_var(key, line_info, None, env)?;
+        let value = process_type_enum(value, line_info)?;
+        keys.push(key);
+        types.push(value);
+      }
+
+      // we need to wrap it into a Table Type
+      let mut inner_keys = Vec::new(); // actually weak storage
+      let mut inner_types = Vec::new(); // actually weak storage
+      for (ref key, ref value) in keys.into_iter().zip(types.into_iter()) {
+        let key = key.as_ref();
+        inner_keys.push(*key);
+
+        let value = value.as_ref();
+        if value.valueType != SHType_Type {
+          return Err(
+            (
+              "Type Table parameter can only contain Type values",
+              line_info,
+            )
+              .into(),
+          );
+        }
+        let value = unsafe { &*value.payload.__bindgen_anon_1.typeValue };
+        inner_types.push(*value);
+      }
+
+      Ok(SVar::Cloned(ClonedVar::from(Type::table(
+        &inner_keys,
+        &inner_types,
+      ))))
+    }
+    Value::Func(_) => {
+      // just as_var bypass it
+      as_var(&type_.value, line_info, None, env)
+    }
+    _ => Err(
+      (
+        "Type parameter can be any of the following: Enum, Seq, Table, Func",
+        line_info,
+      )
+        .into(),
+    ),
+  }?;
+  Ok(type_)
+}
+
+fn process_type_enum(value: &Value, line_info: LineInfo) -> Result<SVar, ShardsError> {
+  let (prefix, value) = match value {
+    Value::Enum(prefix, value) => (prefix, value),
+    _ => return Err(("Type Enum parameter must be an Enum", line_info).into()),
+  };
+  if prefix == "Type" {
+    match value.as_str() {
+      "None" => Ok(SVar::Cloned(ClonedVar::from(common_type::none))),
+      "Any" => Ok(SVar::Cloned(ClonedVar::from(common_type::any))),
+      "Bool" => Ok(SVar::Cloned(ClonedVar::from(common_type::bool))),
+      "Int" => Ok(SVar::Cloned(ClonedVar::from(common_type::int))),
+      "Int2" => Ok(SVar::Cloned(ClonedVar::from(common_type::int2))),
+      "Int3" => Ok(SVar::Cloned(ClonedVar::from(common_type::int3))),
+      "Int4" => Ok(SVar::Cloned(ClonedVar::from(common_type::int4))),
+      "Int8" => Ok(SVar::Cloned(ClonedVar::from(common_type::int8))),
+      "Int16" => Ok(SVar::Cloned(ClonedVar::from(common_type::int16))),
+      "Float" => Ok(SVar::Cloned(ClonedVar::from(common_type::float))),
+      "Float2" => Ok(SVar::Cloned(ClonedVar::from(common_type::float2))),
+      "Float3" => Ok(SVar::Cloned(ClonedVar::from(common_type::float3))),
+      "Float4" => Ok(SVar::Cloned(ClonedVar::from(common_type::float4))),
+      "Color" => Ok(SVar::Cloned(ClonedVar::from(common_type::color))),
+      "Wire" => Ok(SVar::Cloned(ClonedVar::from(common_type::wire))),
+      "Shard" => Ok(SVar::Cloned(ClonedVar::from(common_type::shard))),
+      "Bytes" => Ok(SVar::Cloned(ClonedVar::from(common_type::bytes))),
+      "String" => Ok(SVar::Cloned(ClonedVar::from(common_type::string))),
+      "Image" => Ok(SVar::Cloned(ClonedVar::from(common_type::image))),
+      "Audio" => Ok(SVar::Cloned(ClonedVar::from(common_type::audio))),
+      "Object" => Ok(SVar::Cloned(ClonedVar::from(common_type::object))),
+      _ => Err((format!("Unknown Type enum value {}", value), line_info).into()),
+    }
+  } else {
+    let id = findEnumId(prefix.as_str())
+      .ok_or((format!("Enum {} not found", prefix), line_info).into())?;
+    let vendor_id = (id >> 32) as i32;
+    let type_id = id as i32;
+    Ok(SVar::Cloned(ClonedVar::from(Type::enumeration(
+      vendor_id, type_id,
+    ))))
+  }
+}
+
 fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+  let s = create_shard(shard, e, line_info)?;
+  e.shards.push(s);
+  Ok(())
+}
+
+fn create_shard(
+  shard: &Function,
+  e: &mut EvalEnv,
+  line_info: LineInfo,
+) -> Result<SShardRef, ShardsError> {
   if is_forbidden_func(&shard.name, e) {
     return Err((format!("Forbidden shard {}", shard.name), line_info).into());
   }
-
   let s = ShardRef::create(shard.name.as_str()).ok_or(
     (
       format!("Shard {} does not exist", shard.name.as_str()),
@@ -1105,8 +1381,7 @@ fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(
       idx += 1;
     }
   }
-  e.shards.push(s);
-  Ok(())
+  Ok(s)
 }
 
 fn set_shard_parameter(
@@ -1674,7 +1949,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "shards" => {
+          "template" => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
 
@@ -2083,6 +2358,10 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   .into(),
               )
             }
+          }
+          "type" => {
+            let info = process_type(func, block.line_info.unwrap_or_default(), e)?;
+            add_const_shard2(*info.as_ref(), block.line_info.unwrap_or_default(), e)
           }
           unknown => {
             match (
