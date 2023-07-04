@@ -906,7 +906,7 @@ fn as_var(
       Ok(SVar::Cloned(ClonedVar(seq.0)))
     }
     Value::Shard(shard) => {
-      let s = create_shard(shard, e, line_info)?;
+      let s = create_shard(shard, line_info, e)?;
       let s: Var = s.0 .0.into();
       debug_assert!(s.valueType == SHType_ShardRef);
       Ok(SVar::Cloned(s.into()))
@@ -1324,15 +1324,15 @@ fn process_type_enum(value: &Value, line_info: LineInfo) -> Result<SVar, ShardsE
 }
 
 fn add_shard(shard: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let s = create_shard(shard, e, line_info)?;
+  let s = create_shard(shard, line_info, e)?;
   e.shards.push(s);
   Ok(())
 }
 
 fn create_shard(
   shard: &Function,
-  e: &mut EvalEnv,
   line_info: LineInfo,
+  e: &mut EvalEnv,
 ) -> Result<SShardRef, ShardsError> {
   if is_forbidden_func(&shard.name, e) {
     return Err((format!("Forbidden shard {}", shard.name), line_info).into());
@@ -1460,14 +1460,54 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
     Value::Identifier(name) => {
       // we might be a replacement though!
       if let Some(replacement) = find_replacement(name, e) {
-        let shard = ShardRef::create("Const").unwrap();
-        let shard = SShardRef(shard);
-        let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
-        shard
-          .0
-          .set_parameter(0, *value.as_ref())
-          .map_err(|_| ("Failed to set parameter", line_info).into())?;
-        shard
+        // we need to evaluate the replacement as not everything can be a const
+        match replacement {
+          Value::None
+          | Value::Boolean(_)
+          | Value::Enum(_, _)
+          | Value::Number(_)
+          | Value::String(_)
+          | Value::Bytes(_)
+          | Value::Int2(_)
+          | Value::Int3(_)
+          | Value::Int4(_)
+          | Value::Int8(_)
+          | Value::Int16(_)
+          | Value::Float2(_)
+          | Value::Float3(_)
+          | Value::Float4(_)
+          | Value::Seq(_)
+          | Value::EvalExpr(_)
+          | Value::Table(_) => {
+            let shard = ShardRef::create("Const").unwrap();
+            let shard = SShardRef(shard);
+            let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
+            shard
+              .0
+              .set_parameter(0, *value.as_ref())
+              .map_err(|_| ("Failed to set parameter", line_info).into())?;
+            shard
+          }
+          Value::Identifier(_) => {
+            let shard = ShardRef::create("Get").unwrap();
+            let shard = SShardRef(shard);
+            let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
+            shard
+              .0
+              .set_parameter(0, *value.as_ref())
+              .map_err(|_| ("Failed to set parameter", line_info).into())?;
+            shard
+          }
+          Value::Shard(shard) => {
+            // add ourselves
+            create_shard(&shard.clone(), line_info, e)?
+          }
+          Value::Shards(_) => todo!(),
+          Value::Expr(_) => todo!(),
+          Value::TakeTable(_, _) => todo!(),
+          Value::TakeSeq(_, _) => todo!(),
+          Value::Func(_) => todo!(),
+        }
       } else {
         let shard = ShardRef::create("Get").unwrap();
         let shard = SShardRef(shard);
