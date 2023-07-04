@@ -4,9 +4,12 @@
 #include "shards.h"
 
 typedef struct SHSequence SHSequence;
+typedef struct SHEnvironment SHEnvironment;
 
 struct SHLError {
   char *message;
+  size_t line;
+  size_t column;
 };
 
 struct SHLWire {
@@ -26,6 +29,14 @@ extern "C" {
 void shards_init(void *core);
 
 SHLAst shards_read(const char *code);
+
+SHEnvironment *shards_create_env(void);
+
+void shards_free_env(SHEnvironment *env);
+
+SHEnvironment *shards_create_sub_env(SHEnvironment *env);
+
+SHLError *shards_eval_env(SHEnvironment *env, SHSequence *sequence);
 
 SHLWire shards_eval(SHSequence *sequence, const char *name);
 

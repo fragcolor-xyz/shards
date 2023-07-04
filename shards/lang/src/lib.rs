@@ -275,7 +275,7 @@ pub extern "C" fn shards_create_sub_env(env: *mut EvalEnv) -> *mut EvalEnv {
 }
 
 #[no_mangle]
-pub extern "C" fn shards_env_eval(env: *mut EvalEnv, ast: *mut Sequence) -> *const SHLError {
+pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *const SHLError {
   let env = unsafe { &mut *env };
   let ast = unsafe { &*ast };
   for stmt in &ast.statements {
