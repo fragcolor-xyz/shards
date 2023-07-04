@@ -1374,19 +1374,13 @@ SHTypeInfo cloneTypeInfo(const SHTypeInfo &other) {
   SHTypeInfo varType;
   memcpy(&varType, &other, sizeof(SHTypeInfo));
   switch (varType.basicType) {
+  case SHType::ContextVar:
+  case SHType::Set:
   case SHType::Seq: {
     varType.seqTypes = {};
     for (uint32_t i = 0; i < other.seqTypes.len; i++) {
       auto cloned = cloneTypeInfo(other.seqTypes.elements[i]);
       shards::arrayPush(varType.seqTypes, cloned);
-    }
-    break;
-  }
-  case SHType::Set: {
-    varType.setTypes = {};
-    for (uint32_t i = 0; i < other.setTypes.len; i++) {
-      auto cloned = cloneTypeInfo(other.setTypes.elements[i]);
-      shards::arrayPush(varType.setTypes, cloned);
     }
     break;
   }

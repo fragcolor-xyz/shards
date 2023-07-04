@@ -54,6 +54,12 @@ none | When(IsNone {Msg("None")})
 
 Type::Int | Log
 
+@template(add-and [operation operand1 operand2] {
+   operand2 | Math.Add(operand1) | operation
+})
+
+@add-and(Math.Multiply(2) 2 3) | Log
+
 ; @type(Type: Type::Int Variable: true) | Log
 ; @type(Type.Int true) | Log
 ; @type(Type.Int) | Log ; Not a variable
