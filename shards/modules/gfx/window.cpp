@@ -305,7 +305,7 @@ struct ResizeWindow {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_PARAMVAR(_window, "Window", "The window to get the size of.",
+  PARAM_PARAMVAR(_window, "Window", "The window to resize",
                  {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
@@ -333,6 +333,7 @@ struct ResizeWindow {
     return input;
   }
 };
+
 struct WindowPosition {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
