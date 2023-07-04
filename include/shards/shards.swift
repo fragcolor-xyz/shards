@@ -446,9 +446,10 @@ public extension IShard {
     case .failure(let err):
         error.code = 1
         b.errorCache = err.message.utf8CString
-        error.message = b.errorCache.withUnsafeBufferPointer{
+        error.message.string = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
+        error.message.len = b.errorCache.count
         return error;
     }
 }
@@ -517,9 +518,10 @@ public extension IShard {
         var error = SHError()
         error.code = 1
         b.errorCache = err.message.utf8CString
-        error.message = b.errorCache.withUnsafeBufferPointer{
+        error.message.string = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
+        error.message.len = b.errorCache.count
         value.error = error
         return value;
     }
@@ -538,9 +540,10 @@ public extension IShard {
     case .failure(let err):
         error.code = 1
         b.errorCache = err.message.utf8CString
-        error.message = b.errorCache.withUnsafeBufferPointer{
+        error.message.string = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
+        error.message.len = b.errorCache.count
         return error;
     }
 }
@@ -557,9 +560,10 @@ public extension IShard {
     case .failure(let err):
         error.code = 1
         b.errorCache = err.message.utf8CString
-        error.message = b.errorCache.withUnsafeBufferPointer{
+        error.message.string = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
+        error.message.len = b.errorCache.count
         return error;
     }
 }
@@ -573,9 +577,13 @@ public extension IShard {
     case .success(let res):
         return res
     case .failure(let error):
-        G.Core.pointee.abortWire(ctx, error.message.utf8CString.withUnsafeBufferPointer{
+        var errorMsg = SHStringWithLen()
+        let error = error.message.utf8CString
+        errorMsg.string = error.withUnsafeBufferPointer{
             $0.baseAddress
-        })
+        }
+        errorMsg.len = error.count
+        G.Core.pointee.abortWire(ctx, errorMsg)
         return SHVar()
     }
 }
@@ -742,7 +750,13 @@ class ShardController : Equatable, Identifiable {
     }
     
     convenience init(name: String) {
-        self.init(native: G.Core.pointee.createShard(name)!)
+        let n = name.utf8CString
+        var cname = SHStringWithLen()
+        cname.string = n.withUnsafeBufferPointer{
+            $0.baseAddress
+        }
+        cname.len = n.count
+        self.init(native: G.Core.pointee.createShard(cname)!)
     }
     
     init(native: ShardPtr) {
@@ -986,7 +1000,13 @@ class WireController {
     
     var name: String = "" {
         didSet {
-            G.Core.pointee.setWireName(nativeRef, name)
+            let n = name.utf8CString
+            var cname = SHStringWithLen()
+            cname.string = n.withUnsafeBufferPointer{
+                $0.baseAddress
+            }
+            cname.len = n.count
+            G.Core.pointee.setWireName(nativeRef, cname)
         }
     }
     
@@ -994,7 +1014,13 @@ class WireController {
         if let current = refs[name] {
             return current
         } else {
-            let r = G.Core.pointee.referenceWireVariable(nativeRef, name)!
+            let n = name.utf8CString
+            var cname = SHStringWithLen()
+            cname.string = n.withUnsafeBufferPointer{
+                $0.baseAddress
+            }
+            cname.len = n.count
+            let r = G.Core.pointee.referenceWireVariable(nativeRef, cname)!
             refs[name] = r
             return r
         }
