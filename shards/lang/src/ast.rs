@@ -97,6 +97,7 @@ pub enum Value {
   Float4([f32; 4]),
   Seq(Vec<Value>),
   Table(Vec<(Value, Value)>),
+  Shard(Function),
   Shards(Sequence),
   EvalExpr(Sequence),
   Expr(Sequence),
