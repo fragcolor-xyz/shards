@@ -48,7 +48,7 @@ pub struct Setting {
 }
 
 pub struct EvalEnv {
-  parent: Option<*const EvalEnv>,
+  pub(crate) parent: Option<*const EvalEnv>,
 
   shards: Vec<SShardRef>,
 
@@ -666,7 +666,10 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
   }
 }
 
-fn eval_sequence(seq: &Sequence, parent: Option<&mut EvalEnv>) -> Result<EvalEnv, ShardsError> {
+pub(crate) fn eval_sequence(
+  seq: &Sequence,
+  parent: Option<&mut EvalEnv>,
+) -> Result<EvalEnv, ShardsError> {
   let mut sub_env = EvalEnv::default();
   // inherit previous state for certain things
   if let Some(parent) = parent {
@@ -2310,7 +2313,7 @@ fn eval_assignment(assignment: &Assignment, e: &mut EvalEnv) -> Result<(), Shard
   Ok(())
 }
 
-fn eval_statement(stmt: &Statement, e: &mut EvalEnv) -> Result<(), ShardsError> {
+pub(crate) fn eval_statement(stmt: &Statement, e: &mut EvalEnv) -> Result<(), ShardsError> {
   match stmt {
     Statement::Assignment(a) => eval_assignment(a, e),
     Statement::Pipeline(p) => eval_pipeline(p, e),

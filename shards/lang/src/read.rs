@@ -312,8 +312,10 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
           env.included.insert(rc_path);
 
           // read string from file
-          let code = std::fs::read_to_string(&file_path)
+          let mut code = std::fs::read_to_string(&file_path)
             .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
+          // add new line at the end of the file to be able to parse it correctly
+          code.push('\n');
 
           let parent = file_path.parent().unwrap_or(Path::new("."));
           let successful_parse = ShardsParser::parse(Rule::Program, &code)
@@ -783,7 +785,6 @@ fn process_params(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Vec<Param>, Sha
 
 pub fn read(code: &str, path: &str) -> Result<Sequence, ShardsError> {
   profiling::scope!("read", path);
-
   let successful_parse = ShardsParser::parse(Rule::Program, code).expect("Code parsing failed");
   let mut env = ReadEnv::new(path);
   process_program(successful_parse.into_iter().next().unwrap(), &mut env)

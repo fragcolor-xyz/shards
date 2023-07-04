@@ -54,7 +54,9 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
       let wire = {
         let ast = {
           let file_path = Path::new(&file);
-          let file_content = std::fs::read_to_string(file).expect("File not found");
+          let mut file_content = std::fs::read_to_string(file).expect("File not found");
+          // add new line at the end of the file to be able to parse it correctly
+          file_content.push('\n');
           read(&file_content, file_path.parent().unwrap().to_str().unwrap())
             .expect("Failed to parse file")
         };

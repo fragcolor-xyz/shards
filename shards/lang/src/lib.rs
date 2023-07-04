@@ -14,6 +14,7 @@ use crate::ast::*;
 
 use core::fmt;
 
+use eval::EvalEnv;
 use print::print_ast;
 use shards::core::cloneVar;
 
@@ -202,6 +203,8 @@ impl<'a> ParamHelper<'a> {
 #[repr(C)]
 pub struct SHLError {
   message: *mut c_char,
+  line: usize,
+  column: usize,
 }
 
 #[repr(C)]
@@ -236,6 +239,8 @@ pub extern "C" fn shards_read(code: *const c_char) -> SHLAst {
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
+        line: error.loc.line,
+        column: error.loc.column,
       };
       SHLAst {
         ast: std::ptr::null_mut(),
@@ -247,6 +252,44 @@ pub extern "C" fn shards_read(code: *const c_char) -> SHLAst {
       error: std::ptr::null_mut(),
     },
   }
+}
+
+#[no_mangle]
+pub extern "C" fn shards_create_env() -> *mut EvalEnv {
+  Box::into_raw(Box::new(EvalEnv::default()))
+}
+
+#[no_mangle]
+pub extern "C" fn shards_free_env(env: *mut EvalEnv) {
+  unsafe {
+    drop(Box::from_raw(env));
+  }
+}
+
+#[no_mangle]
+pub extern "C" fn shards_create_sub_env(env: *mut EvalEnv) -> *mut EvalEnv {
+  let env = unsafe { &mut *env };
+  let mut new_env = EvalEnv::default();
+  new_env.parent = Some(env);
+  Box::into_raw(Box::new(new_env))
+}
+
+#[no_mangle]
+pub extern "C" fn shards_env_eval(env: *mut EvalEnv, ast: *mut Sequence) -> *const SHLError {
+  let env = unsafe { &mut *env };
+  let ast = unsafe { &*ast };
+  for stmt in &ast.statements {
+    if let Err(e) = eval::eval_statement(stmt, env) {
+      let error_message = CString::new(e.message).unwrap();
+      let shards_error = SHLError {
+        message: error_message.into_raw(),
+        line: e.loc.line,
+        column: e.loc.column,
+      };
+      return Box::into_raw(Box::new(shards_error));
+    }
+  }
+  core::ptr::null_mut()
 }
 
 #[no_mangle]
@@ -264,6 +307,8 @@ pub extern "C" fn shards_eval(sequence: *mut Sequence, name: *const c_char) -> S
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
+        line: error.loc.line,
+        column: error.loc.column,
       };
       SHLWire {
         wire: std::ptr::null_mut(),
