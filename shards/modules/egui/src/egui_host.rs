@@ -8,7 +8,11 @@ use super::GFX_QUEUE_VAR_TYPES;
 use super::HELP_OUTPUT_EQUAL_INPUT;
 use super::INPUT_CONTEXT_TYPE;
 use super::PARENTS_UI_NAME;
-use shards::core::Core; 
+use crate::bindings::egui_FullOutput;
+use crate::bindings::egui_Input;
+use crate::bindings::make_native_full_output;
+use crate::bindings::NativeFullOutput;
+use shards::core::Core;
 use shards::shard::Shard;
 use shards::shardsc;
 use shards::shardsc::Shards;
@@ -27,10 +31,6 @@ use shards::types::Var;
 use shards::types::WireState;
 use shards::types::ANY_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
-use crate::bindings::egui_FullOutput;
-use crate::bindings::egui_Input;
-use crate::bindings::make_native_full_output;
-use crate::bindings::NativeFullOutput;
 use std::ffi::CStr;
 
 pub struct EguiHost {

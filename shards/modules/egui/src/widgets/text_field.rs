@@ -2,13 +2,13 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::TextField;
-use shards::shard::Shard;
+use crate::util;
 use crate::MutVarTextBuffer;
 use crate::VarTextBuffer;
-use crate::util;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
+use shards::shard::Shard;
 use shards::shardsc;
 use shards::types::common_type;
 use shards::types::Context;

@@ -4,11 +4,11 @@
 use super::CloseMenu;
 use super::Menu;
 use super::MenuBar;
-use shards::shard::Shard;
 use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
+use shards::shard::Shard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedTypes;

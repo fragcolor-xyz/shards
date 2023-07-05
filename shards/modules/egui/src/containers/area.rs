@@ -3,7 +3,6 @@
 
 use super::Anchor;
 use super::Area;
-use shards::shard::Shard;
 use crate::containers::ANCHOR_TYPES;
 use crate::util;
 use crate::EguiId;
@@ -12,6 +11,7 @@ use crate::EGUI_CTX_TYPE;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
+use shards::shard::Shard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;

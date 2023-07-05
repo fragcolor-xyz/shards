@@ -9,7 +9,7 @@ fn generate_shardsc() {
   let shards_dir = "../..";
   let shards_include_dir = format!("{}/include", shards_dir);
   let main_header_path = format!("{}/shards/shards.h", shards_include_dir);
-  
+
   // Tell cargo to regenerate the bindings whenever the headers change
   println!("cargo:rerun-if-changed={}", main_header_path);
 

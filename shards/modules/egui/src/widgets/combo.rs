@@ -2,7 +2,6 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Combo;
-use shards::shard::Shard;
 use crate::util;
 use crate::widgets::text_util;
 use crate::EguiId;
@@ -10,6 +9,7 @@ use crate::ANY_TABLE_SLICE;
 use crate::FLOAT_VAR_SLICE;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
+use shards::shard::Shard;
 use shards::shardsc;
 use shards::types::common_type;
 use shards::types::Context;

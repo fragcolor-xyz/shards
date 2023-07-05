@@ -2,12 +2,12 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Checkbox;
-use shards::shard::Shard;
 use crate::util;
 use crate::widgets::text_util;
 use crate::ANY_TABLE_SLICE;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
+use shards::shard::Shard;
 use shards::shardsc;
 use shards::types::common_type;
 use shards::types::Context;

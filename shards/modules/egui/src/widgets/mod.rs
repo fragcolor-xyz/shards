@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use egui_memory_editor::MemoryEditor;
 use shards::core::registerShard;
 use shards::shardsc;
 use shards::types::common_type;
@@ -11,7 +12,6 @@ use shards::types::ShardsVar;
 use shards::types::Type;
 use shards::types::Var;
 use std::ops::Range;
-use egui_memory_editor::MemoryEditor;
 
 mod image_util;
 

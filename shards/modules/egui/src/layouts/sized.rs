@@ -2,10 +2,19 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Vertical;
-use shards::shard::Shard;
 use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
+use egui::vec2;
+use egui::Align;
+use egui::Area;
+use egui::Frame;
+use egui::Layout;
+use egui::Response;
+use egui::Sense;
+use egui::Ui;
+use egui::Vec2;
+use shards::shard::Shard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -21,15 +30,6 @@ use shards::types::BOOL_TYPES;
 use shards::types::FLOAT2_TYPES;
 use shards::types::FLOAT_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
-use egui::vec2;
-use egui::Align;
-use egui::Area;
-use egui::Frame;
-use egui::Layout;
-use egui::Response;
-use egui::Sense;
-use egui::Ui;
-use egui::Vec2;
 
 lazy_static! {
   static ref SIZED_PARAMETERS: Parameters = vec![
