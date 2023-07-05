@@ -339,7 +339,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   bool unsafe{false};
   bool pure{false};
 
-  std::string name;
+  std::string name{"unnamed"};
   entt::id_type id{entt::null};
 
   std::optional<SHCoro> coro;

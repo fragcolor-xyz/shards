@@ -73,3 +73,10 @@ Type::Int | Log
 
 @define(my-trait @type({x: Type::Int y: Type::Int}))
 @my-trait | Log
+
+@wire(too-early {Msg("But it's") Do(wire-3)})
+@wire(wire-1 {Msg("Ok")})
+@wire(wire-2 {Do(wire-1)})
+@wire(wire-3 {Do(wire-2)})
+
+Do(too-early)

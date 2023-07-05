@@ -6,6 +6,7 @@ use core::convert::TryInto;
 
 use core::slice;
 use nanoid::nanoid;
+use shards::shlog_trace;
 use shards::types::common_type;
 use shards::types::Type;
 use shards::SHType_Object;
@@ -57,7 +58,7 @@ pub struct EvalEnv {
   shards: Vec<SShardRef>,
 
   deferred_wires: HashMap<RcStrWrapper, (Wire, *const Vec<Param>, LineInfo)>,
-  finalized_wires: HashMap<RcStrWrapper, Wire>,
+  finalized_wires: HashMap<RcStrWrapper, ClonedVar>,
 
   shards_groups: HashMap<RcStrWrapper, ShardsGroup>,
   macro_groups: HashMap<RcStrWrapper, ShardsGroup>,
@@ -515,11 +516,11 @@ fn find_mesh<'a>(name: &'a RcStrWrapper, env: &'a mut EvalEnv) -> Option<&'a mut
   }
 }
 
-fn find_wire<'a>(name: &'a RcStrWrapper, env: &'a EvalEnv) -> Option<(&'a Wire, bool)> {
+fn find_wire<'a>(name: &'a RcStrWrapper, env: &'a EvalEnv) -> Option<(Var, bool)> {
   if let Some(wire) = env.finalized_wires.get(name) {
-    Some((wire, true))
+    Some((wire.0.into(), true))
   } else if let Some(wire) = env.deferred_wires.get(name) {
-    Some((&wire.0, false))
+    Some((wire.0 .0.into(), false))
   } else if let Some(parent) = env.parent {
     find_wire(name, unsafe { &mut *(parent as *mut EvalEnv) })
   } else {
@@ -528,13 +529,15 @@ fn find_wire<'a>(name: &'a RcStrWrapper, env: &'a EvalEnv) -> Option<(&'a Wire, 
 }
 
 fn finalize_wire(
-  wire: Wire,
+  wire: &Wire,
   name: &RcStrWrapper,
   params: *const Vec<Param>,
   line_info: LineInfo,
   env: &mut EvalEnv,
-) -> Result<Wire, ShardsError> {
+) -> Result<(), ShardsError> {
   wire.set_name(&name.0);
+
+  shlog_trace!("Finalizing wire {}", name);
 
   let param_helper = ParamHelper::new(unsafe { &*params });
 
@@ -606,14 +609,17 @@ fn finalize_wire(
     };
     wire.set_stack_size(stack_size as usize);
   }
-
-  Ok(wire)
+  Ok(())
 }
 
 fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
+  for wire in &env.deferred_wires {
+    env
+      .finalized_wires
+      .insert(wire.0.clone(), wire.1 .0 .0.into());
+  }
   for (name, (wire, params, line_info)) in env.deferred_wires.drain().collect::<Vec<_>>() {
-    let wire = finalize_wire(wire, &name, params, line_info, env)?;
-    env.finalized_wires.insert(name, wire);
+    finalize_wire(&wire, &name, params, line_info, env)?;
   }
   Ok(())
 }
@@ -786,8 +792,7 @@ fn as_var(
     Value::Boolean(value) => Ok(SVar::NotCloned((*value).into())),
     Value::Identifier(ref name) => {
       if let Some((wire, _finalized)) = find_wire(name, e) {
-        let wire: Var = wire.0.into();
-        Ok(SVar::NotCloned(wire))
+        Ok(SVar::Cloned(wire.into()))
       } else if let Some(replacement) = find_replacement(name, e) {
         as_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
       } else {
@@ -930,7 +935,7 @@ fn as_var(
           column: line_info.1 as usize,
         };
         add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
-          .map_err(|_| ("Failed to set parameter", line_info).into())?;
+          .map_err(|e| (format!("{:?}", e), line_info).into())?;
         // wrap into a Sub Shard
         finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
@@ -954,7 +959,7 @@ fn as_var(
         // ensure name starts with a letter
         let tmp_name = format!("t{}", tmp_name);
         add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
-          .map_err(|_| ("Failed to set parameter", line_info).into())?;
+          .map_err(|e| (format!("{:?}", e), line_info).into())?;
         // wrap into a Sub Shard
         finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
@@ -980,7 +985,7 @@ fn as_var(
         // ensure name starts with a letter
         let tmp_name = format!("t{}", tmp_name);
         add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
-          .map_err(|_| ("Failed to set parameter", line_info).into())?;
+          .map_err(|e| (format!("{:?}", e), line_info).into())?;
         // wrap into a Sub Shard
         finalize_env(&mut sub_env)?;
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
@@ -1386,13 +1391,13 @@ fn create_shard(
 
 fn set_shard_parameter(
   info: &shards::SHParameterInfo,
-  e: &mut EvalEnv,
+  env: &mut EvalEnv,
   value: &Value,
   s: &SShardRef,
   i: usize,
   line_info: LineInfo,
 ) -> Result<(), ShardsError> {
-  let var_value = as_var(value, line_info, Some(s.0), e).map_err(|e| e)?;
+  let var_value = as_var(value, line_info, Some(s.0), env).map_err(|e| e)?;
   if info.variableSetter {
     let name = match value {
       Value::Identifier(name) => name,
@@ -1401,39 +1406,58 @@ fn set_shard_parameter(
     if var_value.as_ref().valueType != SHType_ContextVar {
       panic!("Expected a context variable") // The actual Shard is violating the standard - panic here
     }
-    let suffix = find_current_suffix(e);
+    let suffix = find_current_suffix(env);
     if let Some(suffix) = suffix {
       // fix up the value to be a suffixed variable if we have a suffix
       let new_name = format!("{}{}", name, suffix);
       // also add to suffix_assigned
-      e.suffix_assigned
+      env
+        .suffix_assigned
         .insert(name.clone().into(), suffix.clone());
       let mut new_name = Var::ephemeral_string(new_name.as_str());
       new_name.valueType = SHType_ContextVar;
-      if let Err(_) = s.0.set_parameter(
+      if let Err(e) = s.0.set_parameter(
         i.try_into().expect("Too many parameters"),
         *new_name.as_ref(),
       ) {
-        Err(("Failed to set parameter", line_info).into())
+        Err(
+          (
+            format!("Failed to set parameter (1), error: {}", e),
+            line_info,
+          )
+            .into(),
+        )
       } else {
         Ok(())
       }
     } else {
-      if let Err(_) = s.0.set_parameter(
+      if let Err(e) = s.0.set_parameter(
         i.try_into().expect("Too many parameters"),
         *var_value.as_ref(),
       ) {
-        Err(("Failed to set parameter", line_info).into())
+        Err(
+          (
+            format!("Failed to set parameter (2), error: {}", e),
+            line_info,
+          )
+            .into(),
+        )
       } else {
         Ok(())
       }
     }
   } else {
-    if let Err(_) = s.0.set_parameter(
+    if let Err(e) = s.0.set_parameter(
       i.try_into().expect("Too many parameters"),
       *var_value.as_ref(),
     ) {
-      Err(("Failed to set parameter", line_info).into())
+      Err(
+        (
+          format!("Failed to set parameter (3), error: {}", e),
+          line_info,
+        )
+          .into(),
+      )
     } else {
       Ok(())
     }
@@ -1446,7 +1470,7 @@ fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
   shard
     .0
     .set_parameter(0, value)
-    .map_err(|_| ("Failed to set parameter", line_info).into())?;
+    .map_err(|e| (e, line_info).into())?;
   shard.0.set_line_info((
     line_info.line.try_into().expect("Too many lines"),
     line_info.column.try_into().expect("Oversized column"),
@@ -1489,7 +1513,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
             shard
               .0
               .set_parameter(0, *value.as_ref())
-              .map_err(|_| ("Failed to set parameter", line_info).into())?;
+              .map_err(|e| (format!("{}", e), line_info).into())?;
             Some(shard)
           }
           Value::Identifier(_) => {
@@ -1500,7 +1524,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
             shard
               .0
               .set_parameter(0, *value.as_ref())
-              .map_err(|_| ("Failed to set parameter", line_info).into())?;
+              .map_err(|e| (format!("{}", e), line_info).into())?;
             Some(shard)
           }
           Value::Shard(shard) => {
@@ -1524,7 +1548,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
         shard
           .0
           .set_parameter(0, *value.as_ref())
-          .map_err(|_| ("Failed to set parameter", line_info).into())?;
+          .map_err(|e| (format!("{}", e), line_info).into())?;
         Some(shard)
       }
     }
@@ -1535,7 +1559,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
       shard
         .0
         .set_parameter(0, *value.as_ref())
-        .map_err(|_| ("Failed to set parameter", line_info).into())?;
+        .map_err(|e| (format!("{}", e), line_info).into())?;
       Some(shard)
     }
   };
@@ -1562,7 +1586,7 @@ fn make_sub_shard(shards: Vec<SShardRef>, line_info: LineInfo) -> Result<SShardR
   shard
     .0
     .set_parameter(0, seq.0.into())
-    .map_err(|_| ("Failed to set parameter", line_info).into())?;
+    .map_err(|e| (format!("{}", e), line_info).into())?;
   destroyVar(&mut seq.0);
   shard.0.set_line_info((
     line_info.line.try_into().expect("Too many lines"),
@@ -1577,7 +1601,7 @@ fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
   shard
     .0
     .set_parameter(0, *target)
-    .map_err(|_| ("Failed to set parameter", line_info).into())?;
+    .map_err(|e| (format!("{}", e), line_info).into())?;
   shard.0.set_line_info((
     line_info.line.try_into().unwrap(),
     line_info.column.try_into().unwrap(),
@@ -1595,13 +1619,13 @@ fn add_get_shard(name: &RcStrWrapper, line: LineInfo, e: &mut EvalEnv) -> Result
     shard
       .0
       .set_parameter(0, name)
-      .map_err(|_| ("Failed to set parameter", line).into())?;
+      .map_err(|e| (format!("{}", e), line).into())?;
   } else {
     let name = Var::ephemeral_string(name.as_str());
     shard
       .0
       .set_parameter(0, name)
-      .map_err(|_| ("Failed to set parameter", line).into())?;
+      .map_err(|e| (format!("{}", e), line).into())?;
   }
   shard.0.set_line_info((
     line.line.try_into().unwrap(),
@@ -1618,7 +1642,7 @@ fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) -> Resul
   shard
     .0
     .set_parameter(0, name)
-    .map_err(|_| ("Failed to set parameter", line).into())?;
+    .map_err(|e| (e, line).into())?;
   shard.0.set_line_info((
     line.line.try_into().unwrap(),
     line.column.try_into().unwrap(),
@@ -1969,9 +1993,11 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   .into(),
               )?;
 
+              // just add to deferred wires, evaluate later!
               match &name.value {
                 Value::Identifier(name) => {
                   let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
+                  shlog_trace!("Adding deferred wire {}", name);
                   e.deferred_wires.insert(
                     name.clone(),
                     (
@@ -2117,17 +2143,14 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               let wire = match &wire_id.value {
                 // can be only identifier or string
                 Value::Identifier(name) => {
-                  if let Some((wire, finalized)) = find_wire(name, e) {
-                    if !finalized {
-                      // wire is not finalized, we need to finalize it now
-                      let wire = e.deferred_wires.remove(name).unwrap();
-                      let wire = finalize_wire(wire.0, name, wire.1, wire.2, e)?;
-                      e.finalized_wires.insert(name.clone(), wire);
-                      let wire = e.finalized_wires.get(name).unwrap();
-                      Ok(wire.0)
-                    } else {
-                      Ok(wire.0)
-                    }
+                  // schedule accesses only wires in env scope, not parent ones
+                  if let Some((wire, params, line_info)) = e.deferred_wires.remove(name) {
+                    // wire is not finalized, we need to finalize it now
+                    e.finalized_wires.insert(name.clone(), wire.0.into());
+                    finalize_wire(&wire, name, params, line_info, e)?;
+                  }
+                  if let Some(wire) = e.finalized_wires.get(name) {
+                    Ok(wire.0)
                   } else {
                     Err(
                       (
@@ -2149,7 +2172,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
 
               let mesh = get_mesh(&mesh_id, find_mesh, e, block)?;
 
-              mesh.schedule(wire);
+              mesh.schedule(wire.as_ref().try_into().unwrap());
 
               Ok(())
             } else {
@@ -2531,13 +2554,7 @@ fn eval_expr(
       block.line_info.unwrap_or_default(),
       &mut sub_env,
     )
-    .map_err(|_| {
-      (
-        "Failed to set parameter",
-        block.line_info.unwrap_or_default(),
-      )
-        .into()
-    })?;
+    .map_err(|e| (format!("{:?}", e), block.line_info.unwrap_or_default()).into())?;
     // wrap into a Sub Shard
     finalize_env(&mut sub_env)?;
     let sub = make_sub_shard(
@@ -2566,7 +2583,7 @@ fn add_assignment_shard(
       shard
         .0
         .set_parameter(0, name)
-        .map_err(|_| ("Failed to set parameter", line_info).into())?;
+        .map_err(|e| (e, line_info).into())?;
       (false, None)
     }
     (None, Some(suffix)) => {
@@ -2575,7 +2592,7 @@ fn add_assignment_shard(
       shard
         .0
         .set_parameter(0, name)
-        .map_err(|_| ("Failed to set parameter", line_info).into())?;
+        .map_err(|e| (e, line_info).into())?;
       (true, Some(suffix.clone()))
     }
     (None, None) => {
@@ -2583,7 +2600,7 @@ fn add_assignment_shard(
       shard
         .0
         .set_parameter(0, name)
-        .map_err(|_| ("Failed to set parameter", line_info).into())?;
+        .map_err(|e| (e, line_info).into())?;
       (false, None)
     }
     _ => unreachable!(), // Read should prevent this...
@@ -2612,7 +2629,7 @@ fn add_assignment_shard_no_suffix(
   shard
     .0
     .set_parameter(0, name)
-    .map_err(|_| ("Failed to set parameter", line_info).into())?;
+    .map_err(|e| (e, line_info).into())?;
   shard.0.set_line_info((
     line_info.line.try_into().unwrap(),
     line_info.column.try_into().unwrap(),
@@ -2637,7 +2654,7 @@ fn eval_assignment(assignment: &Assignment, e: &mut EvalEnv) -> Result<(), Shard
     column: line_info.1.try_into().unwrap(),
   };
   add_assignment_shard(op, &name, line_info, e)
-    .map_err(|_| ("Failed to set parameter", line_info).into())?;
+    .map_err(|e| (format!("{:?}", e), line_info).into())?;
   Ok(())
 }
 
