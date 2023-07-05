@@ -165,6 +165,31 @@ pub fn logLevel(level: i32, s: &str) {
 
 #[macro_export]
 #[cfg(debug_assertions)]
+macro_rules! shlog_trace {
+  ($text:expr, $($arg:expr),*) => {
+    {
+      use std::io::Write as __stdWrite;
+      let mut buf = vec![];
+      ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+      $crate::core::logLevel(0, ::std::str::from_utf8(&buf).unwrap());
+    }
+  };
+
+  ($text:expr) => {
+    $crate::core::logLevel(0, concat!($text, "\0"));
+  };
+}
+
+#[macro_export]
+#[cfg(not(debug_assertions))]
+macro_rules! shlog_trace {
+  ($text:expr, $($arg:expr),*) => {};
+
+  ($text:expr) => {};
+}
+
+#[macro_export]
+#[cfg(debug_assertions)]
 macro_rules! shlog_debug {
   ($text:expr, $($arg:expr),*) => {
     {
