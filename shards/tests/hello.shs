@@ -68,3 +68,5 @@ Type::Int | Log
 @define(int-var @type(Type::Int true)) | Log
 @type({GFX.Mesh}) | Log
 @type([@int-var]) | Log
+
+{x: 1 y: 2} | @to-j-from-j | HexToBytes | BytesToString | Log | Assert.Is("""{"x":1,"y":2}""")

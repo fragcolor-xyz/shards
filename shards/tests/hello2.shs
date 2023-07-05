@@ -23,3 +23,5 @@
   } Times: n)
   {statements: pipelines} | ToJson
 })
+
+@define(to-j-from-j {ToJson | ToHex})
