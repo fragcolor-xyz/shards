@@ -67,4 +67,4 @@ Type::Int | Log
 @type({*: Type::Int}) | Log ; a map of Ints with any key value possible
 @define(int-var @type(Type::Int true)) | Log
 @type({GFX.Mesh}) | Log
-; @type([@int-var]) | Log
+@type([@int-var]) | Log
