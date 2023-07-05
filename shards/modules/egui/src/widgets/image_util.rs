@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use shards::fourCharacterCode;
 use crate::bindings::gfx_TexturePtr;
 use crate::bindings::gfx_TexturePtr_getResolution_ext;
+use shards::fourCharacterCode;
 use shards::shardsc::SHImage;
 use shards::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use shards::types::common_type;

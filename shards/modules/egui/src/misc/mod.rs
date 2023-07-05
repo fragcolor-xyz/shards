@@ -21,10 +21,10 @@ struct Style {
   requiring: ExposedTypes,
 }
 
+mod add_font;
 mod reset;
 mod style;
 pub(crate) mod style_util;
-mod add_font;
 
 pub fn registerShards() {
   registerShard::<Reset>();

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use crate::bindings;
 use crate::egui_host::EguiHost;
 use crate::util;
 use crate::EguiContext;
@@ -10,7 +11,6 @@ use crate::GFX_QUEUE_VAR_TYPES;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INPUT_CONTEXT_TYPE;
 use crate::PARENTS_UI_NAME;
-use crate::bindings;
 use shards::shard::Shard;
 use shards::shardsc;
 use shards::types::Context;
@@ -232,7 +232,8 @@ impl Shard for EguiContext {
         egui_output,
       );
 
-      let queue = bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar);
+      let queue =
+        bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar);
       self
         .renderer
         .render_with_native_output(egui_output, queue as *const bindings::gfx_DrawQueuePtr);

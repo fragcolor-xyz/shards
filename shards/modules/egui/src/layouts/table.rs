@@ -2,12 +2,12 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Table;
-use shards::shard::Shard;
 use crate::util;
 use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
+use shards::shard::Shard;
 use shards::shardsc::SHType_Int;
 use shards::shardsc::SHType_Seq;
 use shards::shardsc::SHType_ShardRef;

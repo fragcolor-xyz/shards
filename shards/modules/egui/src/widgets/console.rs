@@ -2,13 +2,13 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Console;
-use shards::shard::Shard;
 use crate::misc::style_util;
 use crate::util;
 use crate::EguiId;
 use crate::EGUI_UI_SEQ_TYPE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
+use shards::shard::Shard;
 use shards::shardsc::SHColor;
 use shards::types::Context;
 use shards::types::ExposedInfo;

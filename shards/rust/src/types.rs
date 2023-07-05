@@ -2516,7 +2516,7 @@ impl Var {
         *self = sv.0;
         Ok(unsafe { &mut *(self as *mut Var as *mut TableVar) })
       } else {
-      Err("Variable is not a table")
+        Err("Variable is not a table")
       }
     } else {
       Ok(unsafe { &mut *(self as *mut Var as *mut TableVar) })

@@ -3,11 +3,11 @@ use std::ops::DerefMut;
 use egui::Memory;
 use lazy_static::__Deref;
 
-use shards::core::registerShard;
-use shards::shard::Shard;
 use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
+use shards::core::registerShard;
+use shards::shard::Shard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;

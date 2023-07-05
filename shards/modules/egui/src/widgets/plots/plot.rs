@@ -4,12 +4,12 @@
 use super::Plot;
 use super::EGUI_PLOT_UI_TYPE;
 use super::PLOT_UI_NAME;
-use shards::shard::Shard;
 use crate::util;
 use crate::EguiId;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
+use shards::shard::Shard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;

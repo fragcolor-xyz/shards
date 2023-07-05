@@ -1,11 +1,11 @@
 use super::DockArea;
 use super::Tab;
-use shards::core::registerShard;
-use shards::shard::Shard;
 use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
 use crate::PARENTS_UI_NAME;
+use shards::core::registerShard;
+use shards::shard::Shard;
 use shards::shardsc;
 use shards::types::Context;
 use shards::types::ExposedInfo;

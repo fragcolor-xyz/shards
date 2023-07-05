@@ -3,10 +3,10 @@
 
 use super::image_util;
 use super::ImageButton;
-use shards::shard::Shard;
 use crate::util;
 use crate::FLOAT2_VAR_SLICE;
 use crate::PARENTS_UI_NAME;
+use shards::shard::Shard;
 use shards::shardsc::SHType_Bool;
 use shards::shardsc::SHType_Image;
 use shards::shardsc::SHType_Object;
