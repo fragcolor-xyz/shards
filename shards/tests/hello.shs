@@ -60,11 +60,11 @@ Type::Int | Log
 
 @add-and(Math.Multiply(2) 2 3) | Log
 
-; @type(Type: Type::Int Variable: true) | Log
-; @type(Type.Int true) | Log
-; @type(Type.Int) | Log ; Not a variable
-; @type([Type.Int]) | Log ; a sequence of Ints
-; @type({*: Type.Int}) | Log ; a map of Ints with any key value possible
-; @define(int-var @type(Type.Int true)) | Log
-; @type({GFX.Mesh}) | Log
+@type(Type: Type::Int Variable: true) | Log
+@type(Type::Int true) | Log
+@type(Type::Int) | Log ; Not a variable
+@type([Type::Int]) | Log ; a sequence of Ints
+@type({*: Type::Int}) | Log ; a map of Ints with any key value possible
+@define(int-var @type(Type::Int true)) | Log
+@type({GFX.Mesh}) | Log
 ; @type([@int-var]) | Log
