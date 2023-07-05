@@ -1094,7 +1094,7 @@ fn process_type(
     let vendor_id = param_helper.get_param_by_name_or_index("ObjectVendor", 2);
     let object_id = param_helper.get_param_by_name_or_index("ObjectTypeId", 3);
 
-    let mut type_ = process_type_desc(type_, line_info, e)?;
+    let mut type_ = process_type_desc(&type_.value, line_info, e)?;
 
     match (vendor_id, object_id) {
         (Some(vendor_id), Some(object_id)) => {
@@ -1175,11 +1175,11 @@ fn process_type(
 }
 
 fn process_type_desc(
-  type_: &Param,
+  value: &Value,
   line_info: LineInfo,
   env: &mut EvalEnv,
 ) -> Result<SVar, ShardsError> {
-  let type_ = match &type_.value {
+  let type_ = match &value {
     Value::Shards(seq) => {
       // ensure there is a single shard
       // and ensure that shard only has a single output type
@@ -1206,13 +1206,13 @@ fn process_type_desc(
       }
       Ok(SVar::Cloned(ClonedVar::from(output_types[0])))
     }
-    Value::Enum(_, _) => process_type_enum(&type_.value, line_info),
+    Value::Enum(_, _) => process_type_enum(&value, line_info),
     Value::Seq(seq) => {
       // iterate all and as_var them, ensure it's a Type Type though
 
       let mut types = Vec::new(); // actual storage
       for value in seq {
-        let value = process_type_enum(value, line_info)?;
+        let value = process_type_desc(value, line_info, env)?;
         if value.as_ref().valueType != SHType_Type {
           return Err(("Type Seq parameter can only contain Type values", line_info).into());
         }
@@ -1236,7 +1236,7 @@ fn process_type_desc(
       let mut types = Vec::new(); // actual storage
       for (key, value) in pairs {
         let key = as_var(key, line_info, None, env)?;
-        let value = process_type_enum(value, line_info)?;
+        let value = process_type_desc(value, line_info, env)?;
         keys.push(key);
         types.push(value);
       }
@@ -1269,7 +1269,7 @@ fn process_type_desc(
     }
     Value::Func(_) => {
       // just as_var bypass it
-      as_var(&type_.value, line_info, None, env)
+      as_var(&value, line_info, None, env)
     }
     _ => Err(
       (
