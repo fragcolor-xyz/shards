@@ -1478,6 +1478,10 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           | Value::Float4(_)
           | Value::Seq(_)
           | Value::EvalExpr(_)
+          | Value::Expr(_)
+          | Value::TakeTable(_, _)
+          | Value::TakeSeq(_, _)
+          | Value::Func(_)
           | Value::Table(_) => {
             let shard = ShardRef::create("Const").unwrap();
             let shard = SShardRef(shard);
@@ -1486,27 +1490,32 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
               .0
               .set_parameter(0, *value.as_ref())
               .map_err(|_| ("Failed to set parameter", line_info).into())?;
-            shard
+            Some(shard)
           }
           Value::Identifier(_) => {
             let shard = ShardRef::create("Get").unwrap();
             let shard = SShardRef(shard);
+             // todo - avoid clone
             let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
             shard
               .0
               .set_parameter(0, *value.as_ref())
               .map_err(|_| ("Failed to set parameter", line_info).into())?;
-            shard
+            Some(shard)
           }
           Value::Shard(shard) => {
             // add ourselves
-            create_shard(&shard.clone(), line_info, e)?
+             // todo - avoid clone
+            Some(create_shard(&shard.clone(), line_info, e)?)
           }
-          Value::Shards(_) => todo!(),
-          Value::Expr(_) => todo!(),
-          Value::TakeTable(_, _) => todo!(),
-          Value::TakeSeq(_, _) => todo!(),
-          Value::Func(_) => todo!(),
+          Value::Shards(seq) => {
+            // purely include the ast of the sequence
+            let seq = seq.clone(); // todo - avoid clone
+            for stmt in &seq.statements {
+              eval_statement(stmt, e)?;
+            }
+            None
+          }
         }
       } else {
         let shard = ShardRef::create("Get").unwrap();
@@ -1516,7 +1525,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           .0
           .set_parameter(0, *value.as_ref())
           .map_err(|_| ("Failed to set parameter", line_info).into())?;
-        shard
+        Some(shard)
       }
     }
     _ => {
@@ -1527,14 +1536,16 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
         .0
         .set_parameter(0, *value.as_ref())
         .map_err(|_| ("Failed to set parameter", line_info).into())?;
-      shard
+      Some(shard)
     }
   };
-  shard.0.set_line_info((
-    line_info.line.try_into().expect("Too many lines"),
-    line_info.column.try_into().expect("Oversized column"),
-  ));
-  e.shards.push(shard);
+  if let Some(shard) = shard {
+    shard.0.set_line_info((
+      line_info.line.try_into().expect("Too many lines"),
+      line_info.column.try_into().expect("Oversized column"),
+    ));
+    e.shards.push(shard);
+  }
   Ok(())
 }
 
@@ -2410,12 +2421,14 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               process_macro(func, unknown, block.line_info.unwrap_or_default(), e)?,
             ) {
               (None, Some(mut shards_env), None) => {
+                // shards
                 for shard in shards_env.shards.drain(..) {
                   e.shards.push(shard);
                 }
                 Ok(())
               }
               (None, None, Some(ast_json)) => {
+                // macro
                 let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
                   (
                     "macro built-in function Shards should return a Json string",
@@ -2444,6 +2457,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 Ok(())
               }
               (Some(value), None, None) => {
+                // defined
                 let replacement = unsafe { &*value };
                 match replacement {
                   Value::None
