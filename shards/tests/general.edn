@@ -224,10 +224,10 @@
    (Float4 4 4 4 4)
    (Math.FastSqrt)
    (| (ToString)
-      (Assert.Is "(1.99999, 1.99999, 1.99999, 1.99999)" true))
+      (Assert.Is "@f4(1.99999 1.99999 1.99999 1.99999)" true))
    (Math.FastInvSqrt)
    (| (ToString)
-      (Assert.Is "(0.707108, 0.707108, 0.707108, 0.707108)" true))
+      (Assert.Is "@f4(0.707108 0.707108 0.707108 0.707108)" true))
 
    10
    (Push "list1")
