@@ -127,36 +127,104 @@ impl AsMut<Var> for SVar {
   }
 }
 
-fn handle_vector_built_in_function_ints<const WIDTH: usize>(
+fn process_vector_built_in_ints_block<const WIDTH: usize>(
+  func: &Function,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<(), ShardsError> {
+  // it's either a Const or a MakeVector in this case
+
+  let (params, len) = get_vec_params::<WIDTH, 16>(func, line_info)?;
+
+  let has_variables = params.iter().any(|x| {
+    if let Value::Identifier(_) = &x.value {
+      true
+    } else {
+      false
+    }
+  });
+
+  if !has_variables {
+    let value = extract_ints_vector_var::<WIDTH>(len, params, line_info)?;
+    add_const_shard2(value, line_info, e)
+  } else {
+    let shard = extract_make_ints_shard::<WIDTH>(len, params, line_info, e)?;
+    e.shards.push(shard);
+    Ok(())
+  }
+}
+
+fn handle_vector_built_in_ints<const WIDTH: usize>(
   func: &Function,
   line_info: LineInfo,
 ) -> Result<Var, ShardsError> {
-  let params = func.params.as_ref().ok_or(
-    (
-      "vector built-in function requires at least 1 parameter",
-      line_info,
+  let (params, len) = get_vec_params::<WIDTH, 16>(func, line_info)?;
+  extract_ints_vector_var::<WIDTH>(len, params, line_info)
+}
+
+fn extract_make_ints_shard<const WIDTH: usize>(
+  len: usize,
+  params: &Vec<Param>,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<SShardRef, ShardsError> {
+  fn error_requires_number(line_info: LineInfo) -> Result<SShardRef, ShardsError> {
+    Err(
+      (
+        "vector built-in function requires a floating point number or identifier parameter",
+        line_info,
+      )
+        .into(),
     )
-      .into(),
-  )?;
-  let len = params.len();
-  if len > 16 {
-    return Err(
-      (
-        "vector built-in function requires at most 16 parameters",
-        line_info,
-      )
-        .into(),
-    );
-  } else if len != 1 && WIDTH != len {
-    return Err(
-      (
-        "vector built-in function requires 1 or the same number of parameters as the vector width",
-        line_info,
-      )
-        .into(),
-    );
   }
 
+  let shard = match WIDTH {
+    2 => ShardRef::create("MakeInt2"),
+    3 => ShardRef::create("MakeInt3"),
+    4 => ShardRef::create("MakeInt4"),
+    8 => ShardRef::create("MakeInt8"),
+    16 => ShardRef::create("MakeInt16"),
+    _ => {
+      return Err(
+        (
+          "float vector built-in function requires 2, 3, 4, 8 or 16 parameters",
+          line_info,
+        )
+          .into(),
+      )
+    }
+  }
+  .unwrap();
+  let shard = SShardRef(shard);
+
+  for i in 0..len {
+    let var = match &params[i].value {
+      Value::Identifier(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
+      Value::Number(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
+      _ => return error_requires_number(line_info),
+    }?;
+    shard
+      .0
+      .set_parameter(i as i32, *var.as_ref()) // Type conversion should be handled by the shard!
+      .map_err(|err| {
+        (
+          format!(
+            "Error setting parameter for MakeInt{}, error: {}",
+            WIDTH, err
+          ),
+          line_info,
+        )
+          .into()
+      })?;
+  }
+  Ok(shard)
+}
+
+fn extract_ints_vector_var<const WIDTH: usize>(
+  len: usize,
+  params: &Vec<Param>,
+  line_info: LineInfo,
+) -> Result<shards::SHVar, ShardsError> {
   let mut vector_values: [i64; WIDTH] = [0; WIDTH];
 
   fn error_requires_number(line_info: LineInfo) -> Result<Var, ShardsError> {
@@ -273,10 +341,10 @@ fn handle_vector_built_in_function_ints<const WIDTH: usize>(
   }
 }
 
-fn handle_vector_built_in_function_floats<const WIDTH: usize>(
+fn get_vec_params<const WIDTH: usize, const MAX: usize>(
   func: &Function,
   line_info: LineInfo,
-) -> Result<Var, ShardsError> {
+) -> Result<(&Vec<Param>, usize), ShardsError> {
   let params = func.params.as_ref().ok_or(
     (
       "vector built-in function requires at least 1 parameter",
@@ -285,10 +353,10 @@ fn handle_vector_built_in_function_floats<const WIDTH: usize>(
       .into(),
   )?;
   let len = params.len();
-  if len > 4 {
+  if len > 16 {
     return Err(
       (
-        "vector built-in function requires at most 4 parameters",
+        "vector built-in function requires at most 16 parameters",
         line_info,
       )
         .into(),
@@ -302,7 +370,105 @@ fn handle_vector_built_in_function_floats<const WIDTH: usize>(
         .into(),
     );
   }
+  Ok((params, len))
+}
 
+fn process_vector_built_in_floats_block<const WIDTH: usize>(
+  func: &Function,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<(), ShardsError> {
+  // it's either a Const or a MakeVector in this case
+
+  let (params, len) = get_vec_params::<WIDTH, 16>(func, line_info)?;
+
+  let has_variables = params.iter().any(|x| {
+    if let Value::Identifier(_) = &x.value {
+      true
+    } else {
+      false
+    }
+  });
+
+  if !has_variables {
+    let value = extract_floats_vector_var::<WIDTH>(len, params, line_info)?;
+    add_const_shard2(value, line_info, e)
+  } else {
+    let shard = extract_make_floats_shard::<WIDTH>(len, params, line_info, e)?;
+    e.shards.push(shard);
+    Ok(())
+  }
+}
+
+fn handle_vector_built_in_floats<const WIDTH: usize>(
+  func: &Function,
+  line_info: LineInfo,
+) -> Result<Var, ShardsError> {
+  let (params, len) = get_vec_params::<WIDTH, 4>(func, line_info)?;
+  extract_floats_vector_var::<WIDTH>(len, params, line_info)
+}
+
+fn extract_make_floats_shard<const WIDTH: usize>(
+  len: usize,
+  params: &Vec<Param>,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<SShardRef, ShardsError> {
+  fn error_requires_number(line_info: LineInfo) -> Result<SShardRef, ShardsError> {
+    Err(
+      (
+        "vector built-in function requires a floating point number or identifier parameter",
+        line_info,
+      )
+        .into(),
+    )
+  }
+
+  let shard = match WIDTH {
+    2 => ShardRef::create("MakeFloat2"),
+    3 => ShardRef::create("MakeFloat3"),
+    4 => ShardRef::create("MakeFloat4"),
+    _ => {
+      return Err(
+        (
+          "float vector built-in function requires 2, 3, or 4 parameters",
+          line_info,
+        )
+          .into(),
+      )
+    }
+  }
+  .unwrap();
+  let shard = SShardRef(shard);
+
+  for i in 0..len {
+    let var = match &params[i].value {
+      Value::Identifier(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
+      Value::Number(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
+      _ => return error_requires_number(line_info),
+    }?;
+    shard
+      .0
+      .set_parameter(i as i32, *var.as_ref()) // Type conversion should be handled by the shard!
+      .map_err(|err| {
+        (
+          format!(
+            "Error setting parameter for MakeFloat{}, error: {}",
+            WIDTH, err
+          ),
+          line_info,
+        )
+          .into()
+      })?;
+  }
+  Ok(shard)
+}
+
+fn extract_floats_vector_var<const WIDTH: usize>(
+  len: usize,
+  params: &Vec<Param>,
+  line_info: LineInfo,
+) -> Result<shards::SHVar, ShardsError> {
   let mut vector_values: [f64; WIDTH] = [0.0; WIDTH];
 
   fn error_requires_number(line_info: LineInfo) -> Result<Var, ShardsError> {
@@ -1005,30 +1171,30 @@ fn as_var(
       "color" => Ok(SVar::NotCloned(handle_color_built_in_function(
         func, line_info,
       )?)),
-      "i2" => Ok(SVar::NotCloned(handle_vector_built_in_function_ints::<2>(
+      "i2" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<2>(
         func, line_info,
       )?)),
-      "i3" => Ok(SVar::NotCloned(handle_vector_built_in_function_ints::<3>(
+      "i3" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<3>(
         func, line_info,
       )?)),
-      "i4" => Ok(SVar::NotCloned(handle_vector_built_in_function_ints::<4>(
+      "i4" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<4>(
         func, line_info,
       )?)),
-      "i8" => Ok(SVar::NotCloned(handle_vector_built_in_function_ints::<8>(
+      "i8" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<8>(
         func, line_info,
       )?)),
-      "i16" => Ok(SVar::NotCloned(handle_vector_built_in_function_ints::<16>(
+      "i16" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<16>(
         func, line_info,
       )?)),
-      "f2" => Ok(SVar::NotCloned(
-        handle_vector_built_in_function_floats::<2>(func, line_info)?,
-      )),
-      "f3" => Ok(SVar::NotCloned(
-        handle_vector_built_in_function_floats::<3>(func, line_info)?,
-      )),
-      "f4" => Ok(SVar::NotCloned(
-        handle_vector_built_in_function_floats::<4>(func, line_info)?,
-      )),
+      "f2" => Ok(SVar::NotCloned(handle_vector_built_in_floats::<2>(
+        func, line_info,
+      )?)),
+      "f3" => Ok(SVar::NotCloned(handle_vector_built_in_floats::<3>(
+        func, line_info,
+      )?)),
+      "f4" => Ok(SVar::NotCloned(handle_vector_built_in_floats::<4>(
+        func, line_info,
+      )?)),
       "type" => process_type(func, line_info, e),
       _ => {
         if let Some(defined_value) = find_defined(&func.name, e) {
@@ -2327,52 +2493,28 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
             add_const_shard2(value, block.line_info.unwrap_or_default(), e)
           }
           "i2" => {
-            let value =
-              handle_vector_built_in_function_ints::<2>(func, block.line_info.unwrap_or_default())?;
-            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_ints_block::<2>(func, block.line_info.unwrap_or_default(), e)
           }
           "i3" => {
-            let value =
-              handle_vector_built_in_function_ints::<3>(func, block.line_info.unwrap_or_default())?;
-            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_ints_block::<3>(func, block.line_info.unwrap_or_default(), e)
           }
           "i4" => {
-            let value =
-              handle_vector_built_in_function_ints::<4>(func, block.line_info.unwrap_or_default())?;
-            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_ints_block::<4>(func, block.line_info.unwrap_or_default(), e)
           }
           "i8" => {
-            let value =
-              handle_vector_built_in_function_ints::<8>(func, block.line_info.unwrap_or_default())?;
-            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_ints_block::<8>(func, block.line_info.unwrap_or_default(), e)
           }
           "i16" => {
-            let value = handle_vector_built_in_function_ints::<16>(
-              func,
-              block.line_info.unwrap_or_default(),
-            )?;
-            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_ints_block::<16>(func, block.line_info.unwrap_or_default(), e)
           }
           "f2" => {
-            let value = handle_vector_built_in_function_floats::<2>(
-              func,
-              block.line_info.unwrap_or_default(),
-            )?;
-            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_floats_block::<2>(func, block.line_info.unwrap_or_default(), e)
           }
           "f3" => {
-            let value = handle_vector_built_in_function_floats::<3>(
-              func,
-              block.line_info.unwrap_or_default(),
-            )?;
-            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_floats_block::<3>(func, block.line_info.unwrap_or_default(), e)
           }
           "f4" => {
-            let value = handle_vector_built_in_function_floats::<4>(
-              func,
-              block.line_info.unwrap_or_default(),
-            )?;
-            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
+            process_vector_built_in_floats_block::<4>(func, block.line_info.unwrap_or_default(), e)
           }
           "macro" => {
             if let Some(ref params) = func.params {

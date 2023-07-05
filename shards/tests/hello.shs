@@ -3,7 +3,7 @@
 @define(x 1)
 
 "Hello World!" | Log
-@read(AsBytes: true File: "data/hello.txt") | Log
+@read(Bytes: true File: "data/hello.txt") | Log
 @say("Ciao")
 
 @x | Assert.Is(1)
@@ -37,6 +37,9 @@
 
 @f2(1) | Log
 @f2(1 2) | Log
+
+2.5 = x
+@f2(1.0 x) | Log
 
 @my-macro(3)
 Msg(@macro1("Ciao")) | Log
