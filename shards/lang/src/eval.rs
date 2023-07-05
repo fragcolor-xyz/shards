@@ -1442,6 +1442,20 @@ fn process_type_desc(
       // just as_var bypass it
       as_var(&value, line_info, None, env)
     }
+    Value::Shard(shard) => {
+      let s = create_shard(shard, line_info, env)?;
+      let output_types = s.0.output_types();
+      if output_types.len() != 1 {
+        return Err(
+          (
+            "Type Shards parameter must contain a shard with a single output type",
+            line_info,
+          )
+            .into(),
+        );
+      }
+      Ok(SVar::Cloned(ClonedVar::from(output_types[0])))
+    }
     _ => Err(
       (
         "Type parameter can be any of the following: Enum, Seq, Table, Func",
