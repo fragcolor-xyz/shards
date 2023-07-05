@@ -14,7 +14,9 @@ pub(crate) fn get_font_family(family: &str) -> Result<egui::FontFamily, &'static
   match family {
     "Proportional" => Ok(egui::FontFamily::Proportional),
     "Monospace" => Ok(egui::FontFamily::Monospace),
-    _ => Err("No such font family found. Available font families are 'Proportional' and 'Monospace'"),
+    _ => {
+      Err("No such font family found. Available font families are 'Proportional' and 'Monospace'")
+    }
   }
 }
 
@@ -29,7 +31,7 @@ pub(crate) fn get_font_id(font_id: Table) -> Result<egui::FontId, &'static str> 
     }
     let family: &str = family.try_into().map_err(|e| {
       shlog!("{}: {}", "family", e);
-        "Invalid attribute value received"
+      "Invalid attribute value received"
     })?;
     get_font_family(family).map(|family| egui::FontId { family, size })
   } else {
@@ -64,11 +66,11 @@ pub(crate) fn get_shadow(shadow: Table) -> Result<egui::epaint::Shadow, &'static
     Ok(egui::epaint::Shadow {
       extrusion: extrusion.try_into().map_err(|e| {
         shlog!("{}: {}", "extrusion", e);
-          "Invalid attribute value received"
+        "Invalid attribute value received"
       })?,
       color: get_color(color.try_into().map_err(|e| {
         shlog!("{}: {}", "color", e);
-          "Invalid attribute value received"
+        "Invalid attribute value received"
       })?)?,
     })
   } else {
@@ -81,11 +83,11 @@ pub(crate) fn get_stroke(stroke: Table) -> Result<egui::Stroke, &'static str> {
     Ok(egui::Stroke {
       width: width.try_into().map_err(|e| {
         shlog!("{}: {}", "width", e);
-          "Invalid attribute value received"
+        "Invalid attribute value received"
       })?,
       color: get_color(color.try_into().map_err(|e| {
         shlog!("{}: {}", "color", e);
-          "Invalid attribute value received"
+        "Invalid attribute value received"
       })?)?,
     })
   } else {
@@ -118,7 +120,7 @@ pub(crate) fn update_text_format(
   if let Some(font_id) = format.get_static("font_id") {
     let font_id: Table = font_id.try_into().map_err(|e| {
       shlog!("{}: {}", "font_id", e);
-        "Invalid attribute value received"
+      "Invalid attribute value received"
     })?;
     text_format.font_id = get_font_id(font_id)?;
   }
@@ -126,7 +128,7 @@ pub(crate) fn update_text_format(
   if let Some(color) = format.get_static("color") {
     let color: SHColor = color.try_into().map_err(|e| {
       shlog!("{}: {}", "color", e);
-        "Invalid attribute value received"
+      "Invalid attribute value received"
     })?;
     text_format.color = get_color(color)?;
   }
@@ -134,7 +136,7 @@ pub(crate) fn update_text_format(
   if let Some(background) = format.get_static("background") {
     let background: SHColor = background.try_into().map_err(|e| {
       shlog!("{}: {}", "background", e);
-        "Invalid attribute value received"
+      "Invalid attribute value received"
     })?;
     text_format.background =
       egui::Color32::from_rgba_unmultiplied(background.r, background.g, background.b, background.a);
@@ -143,14 +145,14 @@ pub(crate) fn update_text_format(
   if let Some(italics) = format.get_static("italics") {
     text_format.italics = italics.try_into().map_err(|e| {
       shlog!("{}: {}", "italics", e);
-        "Invalid attribute value received"
+      "Invalid attribute value received"
     })?;
   }
 
   if let Some(underline) = format.get_static("underline") {
     let underline: Table = underline.try_into().map_err(|e| {
       shlog!("{}: {}", "underline", e);
-        "Invalid attribute value received"
+      "Invalid attribute value received"
     })?;
     text_format.underline = get_stroke(underline)?;
   }
@@ -158,7 +160,7 @@ pub(crate) fn update_text_format(
   if let Some(strikethrough) = format.get_static("strikethrough") {
     let strikethrough: Table = strikethrough.try_into().map_err(|e| {
       shlog!("{}: {}", "strikethrough", e);
-        "Invalid attribute value received"
+      "Invalid attribute value received"
     })?;
     text_format.strikethrough = get_stroke(strikethrough)?;
   }
