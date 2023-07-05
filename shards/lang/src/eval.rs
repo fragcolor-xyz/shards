@@ -1495,7 +1495,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           Value::Identifier(_) => {
             let shard = ShardRef::create("Get").unwrap();
             let shard = SShardRef(shard);
-             // todo - avoid clone
+            // todo - avoid clone
             let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
             shard
               .0
@@ -1505,7 +1505,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           }
           Value::Shard(shard) => {
             // add ourselves
-             // todo - avoid clone
+            // todo - avoid clone
             Some(create_shard(&shard.clone(), line_info, e)?)
           }
           Value::Shards(seq) => {
@@ -2476,6 +2476,9 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   | Value::Float3(_)
                   | Value::Float4(_)
                   | Value::Seq(_)
+                  | Value::Func(_)
+                  | Value::TakeTable(_, _)
+                  | Value::TakeSeq(_, _)
                   | Value::Table(_) => {
                     add_const_shard(replacement, block.line_info.unwrap_or_default(), e)?
                   }
@@ -2490,15 +2493,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                     add_const_shard2(value.0 .0, block.line_info.unwrap_or_default(), e)?
                   }
                   Value::Expr(seq) => eval_expr(seq, e, block, start_idx)?,
-                  _ => {
-                    return Err(
-                      (
-                        format!("Invalid value: {:?}", replacement),
-                        block.line_info.unwrap_or_default(),
-                      )
-                        .into(),
-                    )
-                  }
+                  Value::Shard(shard) => add_shard(shard, block.line_info.unwrap_or_default(), e)?,
                 }
                 Ok(())
               }
