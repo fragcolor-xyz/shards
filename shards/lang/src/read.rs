@@ -359,13 +359,13 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
           } else {
             params
               .iter()
-              .find(|param| param.name.as_deref() == Some("AsBytes"))
+              .find(|param| param.name.as_deref() == Some("Bytes"))
           };
 
           let as_bytes = as_bytes
             .map(|param| match &param.value {
               Value::Boolean(b) => Ok(*b),
-              _ => Err(("Expected a boolean value for AsBytes", pos).into()),
+              _ => Err(("Expected a boolean value for Bytes", pos).into()),
             })
             .unwrap_or(Ok(false))?;
 
