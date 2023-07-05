@@ -153,8 +153,8 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << ")";
     break;
   case SHType::Color:
-    os << int(var.payload.colorValue.r) << ", " << int(var.payload.colorValue.g) << ", " << int(var.payload.colorValue.b) << ", "
-       << int(var.payload.colorValue.a);
+    os << "@color(" << int(var.payload.colorValue.r) << " " << int(var.payload.colorValue.g) << " "
+       << int(var.payload.colorValue.b) << " " << int(var.payload.colorValue.a) << ")";
     break;
   case SHType::ShardRef:
     os << "Shard: " << var.payload.shardValue->name(var.payload.shardValue);
