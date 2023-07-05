@@ -70,3 +70,6 @@ Type::Int | Log
 @type([@int-var]) | Log
 
 {x: 1 y: 2} | @to-j-from-j | HexToBytes | BytesToString | Log | Assert.Is("""{"x":1,"y":2}""")
+
+@define(my-trait @type({x: Type::Int y: Type::Int}))
+@my-trait | Log
