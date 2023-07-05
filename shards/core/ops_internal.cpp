@@ -70,52 +70,52 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << var.payload.intValue;
     break;
   case SHType::Int2:
-    os << "(";
+    os << "@i2(";
     for (auto i = 0; i < 2; i++) {
       if (i == 0)
         os << var.payload.int2Value[i];
       else
-        os << ", " << var.payload.int2Value[i];
+        os << " " << var.payload.int2Value[i];
     }
     os << ")";
     break;
   case SHType::Int3:
-    os << "(";
+    os << "@i3(";
     for (auto i = 0; i < 3; i++) {
       if (i == 0)
         os << var.payload.int3Value[i];
       else
-        os << ", " << var.payload.int3Value[i];
+        os << " " << var.payload.int3Value[i];
     }
     os << ")";
     break;
   case SHType::Int4:
-    os << "(";
+    os << "@i4(";
     for (auto i = 0; i < 4; i++) {
       if (i == 0)
         os << var.payload.int4Value[i];
       else
-        os << ", " << var.payload.int4Value[i];
+        os << " " << var.payload.int4Value[i];
     }
     os << ")";
     break;
   case SHType::Int8:
-    os << "(";
+    os << "@i8(";
     for (auto i = 0; i < 8; i++) {
       if (i == 0)
         os << var.payload.int8Value[i];
       else
-        os << ", " << var.payload.int8Value[i];
+        os << " " << var.payload.int8Value[i];
     }
     os << ")";
     break;
   case SHType::Int16:
-    os << "(";
+    os << "@i16(";
     for (auto i = 0; i < 16; i++) {
       if (i == 0)
         os << int(var.payload.int16Value[i]);
       else
-        os << ", " << int(var.payload.int16Value[i]);
+        os << " " << int(var.payload.int16Value[i]);
     }
     os << ")";
     break;
@@ -123,32 +123,32 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << var.payload.floatValue;
     break;
   case SHType::Float2:
-    os << "(";
+    os << "@f2(";
     for (auto i = 0; i < 2; i++) {
       if (i == 0)
         os << var.payload.float2Value[i];
       else
-        os << ", " << var.payload.float2Value[i];
+        os << " " << var.payload.float2Value[i];
     }
     os << ")";
     break;
   case SHType::Float3:
-    os << "(";
+    os << "@f3(";
     for (auto i = 0; i < 3; i++) {
       if (i == 0)
         os << var.payload.float3Value[i];
       else
-        os << ", " << var.payload.float3Value[i];
+        os << " " << var.payload.float3Value[i];
     }
     os << ")";
     break;
   case SHType::Float4:
-    os << "(";
+    os << "@f4(";
     for (auto i = 0; i < 4; i++) {
       if (i == 0)
         os << var.payload.float4Value[i];
       else
-        os << ", " << var.payload.float4Value[i];
+        os << " " << var.payload.float4Value[i];
     }
     os << ")";
     break;
@@ -160,20 +160,17 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     os << "Shard: " << var.payload.shardValue->name(var.payload.shardValue);
     break;
   case SHType::String: {
-      auto sView = SHSTRVIEW(var);
-      os << sView;
-    }
-    break;
+    auto sView = SHSTRVIEW(var);
+    os << sView;
+  } break;
   case SHType::ContextVar: {
-      auto sView = SHSTRVIEW(var);
-      os << "ContextVariable: " << sView;
-    }
-    break;
+    auto sView = SHSTRVIEW(var);
+    os << "ContextVariable: " << sView;
+  } break;
   case SHType::Path: {
-      auto sView = SHSTRVIEW(var);
-      os << "Path: " << sView;
-    }
-    break;
+    auto sView = SHSTRVIEW(var);
+    os << "Path: " << sView;
+  } break;
   case SHType::Image:
     os << "Image";
     os << " Width: " << var.payload.imageValue.width;
@@ -193,7 +190,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
       if (i == 0)
         os << v;
       else
-        os << ", " << v;
+        os << " " << v;
     }
     os << "]";
     break;
@@ -210,7 +207,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
         os << k << ": " << v;
         first = false;
       } else {
-        os << ", " << k << ": " << v;
+        os << " " << k << ": " << v;
       }
     }
     os << "}";
@@ -227,7 +224,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
         os << v;
         first = false;
       } else {
-        os << ", " << v;
+        os << " " << v;
       }
     }
     os << "}";
@@ -239,7 +236,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
 std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &t) {
   // This code outputs non-breaking spaces for cleaner wrapping on the documentation page
   if (t.basicType == SHType::Seq) {
-    os << "[ ";
+    os << "[";
     for (uint32_t i = 0; i < t.seqTypes.len; i++) {
       if (t.seqTypes.elements[i].recursiveSelf) {
         os << "Self";
@@ -250,9 +247,9 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
         os << " ";
       }
     }
-    os << " ]";
+    os << "]";
   } else if (t.basicType == SHType::Set) {
-    os << "< ";
+    os << "<";
     for (uint32_t i = 0; i < t.setTypes.len; i++) {
       // avoid recursive types
       if (t.setTypes.elements[i].recursiveSelf) {
@@ -264,20 +261,21 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
         os << " ";
       }
     }
-    os << " >";
+    os << ">";
   } else if (t.basicType == SHType::Table) {
     if (t.table.types.len == t.table.keys.len) {
-      os << "{ ";
+      os << "{";
       for (uint32_t i = 0; i < t.table.types.len; i++) {
-        os << ":" << t.table.keys.elements[i] << " ";
+        os << t.table.keys.elements[i] << ":"
+           << " ";
         os << t.table.types.elements[i];
         if (i < (t.table.types.len - 1)) {
           os << " ";
         }
       }
-      os << " }";
+      os << "}";
     } else {
-      os << "{ ";
+      os << "{";
       for (uint32_t i = 0; i < t.table.types.len; i++) {
         if (t.table.types.elements[i].recursiveSelf) {
           os << "Self";
@@ -288,7 +286,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
           os << " ";
         }
       }
-      os << " }";
+      os << "}";
     }
   } else if (t.basicType == SHType::ContextVar) {
     bool braced = false;
@@ -297,9 +295,9 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
 
     os << "&";
     if (braced)
-      os << "( ";
+      os << "(";
 
-    if(t.contextVarTypes.len == 0) {
+    if (t.contextVarTypes.len == 0) {
       os << "Any";
     }
 
@@ -316,7 +314,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypeInfo &
     }
 
     if (braced)
-      os << " )";
+      os << ")";
   } else if (t.basicType == SHType::Object) {
     const SHObjectInfo *objectInfo = findObjectInfo(t.object.vendorId, t.object.typeId);
     if (objectInfo) {
