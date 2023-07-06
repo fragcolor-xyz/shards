@@ -3962,20 +3962,10 @@ impl ShardsVar {
       if let Err(e) = shard.cleanup() {
         shlog!("Errors during shard cleanup: {}", e);
       }
-
-      let mut tmp = SHVar {
-        valueType: SHType_ShardRef,
-        payload: SHVarPayload {
-          __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
-            shardValue: shard.0,
-          },
-        },
-        ..Default::default()
-      };
-      destroyVar(&mut tmp);
     }
     self.shards.clear();
-
+    destroyVar(&mut self.param.0);
+ 
     // clear old results if any
     if let Some(compose_result) = self.compose_result {
       unsafe {
