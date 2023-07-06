@@ -1385,7 +1385,7 @@ struct ParallelBase : public CapturingSpawners {
     if (_threads > 0) {
       const auto threads = std::min(_threads, int64_t(std::thread::hardware_concurrency()));
       if (!_exec || _exec->num_workers() != (size_t(threads))) {
-        _exec.emplace(size_t(threads));
+        _exec = std::make_unique<tf::Executor>(size_t(threads));
       }
     }
 #endif
@@ -1587,7 +1587,7 @@ protected:
       _successes; // don't use bool cos std lib uses bit vectors behind the scenes and won't work with multiple threads
   std::vector<ManyWire *> _wires;
   int64_t _threads{0};
-  std::optional<tf::Executor> _exec;
+  std::unique_ptr<tf::Executor> _exec;
 };
 
 struct TryMany : public ParallelBase {
