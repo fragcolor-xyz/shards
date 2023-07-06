@@ -13,7 +13,7 @@ use shards::types::Var;
 use std::ops::Range;
 use egui_memory_editor::MemoryEditor;
 
-mod image_util;
+pub mod image_util;
 
 /// Clickable button with a text label.
 struct Button {

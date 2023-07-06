@@ -39,7 +39,7 @@ static FLOAT_VAR_OR_NONE_SLICE: &[Type] = &[
   common_type::float_var,
   common_type::none,
 ];
-static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
+pub static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
 static HASH_VAR_OR_NONE_SLICE: &[Type] = &[common_type::none, common_type::int2_var];
 static INT_VAR_OR_NONE_SLICE: &[Type] =
   &[common_type::int, common_type::int_var, common_type::none];
@@ -76,7 +76,7 @@ lazy_static! {
 }
 
 const CONTEXTS_NAME: &str = "UI.Contexts";
-const PARENTS_UI_NAME: &str = "UI.Parents";
+pub const PARENTS_UI_NAME: &str = "UI.Parents";
 
 #[derive(Hash)]
 struct EguiId {
