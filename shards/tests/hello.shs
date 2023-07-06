@@ -84,3 +84,11 @@ Type::Int | Log
 @wire(wire-3 {Do(wire-2)})
 
 Do(too-early)
+
+@mesh(branched-mesh)
+
+@wire(test-branched-mesh {
+  Msg("Test branched mesh")
+})
+
+Branch([test-branched-mesh] Mesh: branched-mesh)

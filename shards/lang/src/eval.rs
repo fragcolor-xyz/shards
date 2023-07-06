@@ -6,7 +6,9 @@ use core::convert::TryInto;
 
 use core::slice;
 use nanoid::nanoid;
+use shards::fourCharacterCode;
 use shards::shlog_trace;
+use shards::types::FRAG_CC;
 use shards::types::common_type;
 use shards::types::Type;
 use shards::SHType_Object;
@@ -957,8 +959,18 @@ fn as_var(
     Value::None => Ok(SVar::NotCloned(Var::default())),
     Value::Boolean(value) => Ok(SVar::NotCloned((*value).into())),
     Value::Identifier(ref name) => {
+      // could be wire or mesh as "special" cases
       if let Some((wire, _finalized)) = find_wire(name, e) {
         Ok(SVar::Cloned(wire.into()))
+      } else if let Some(mesh) = find_mesh(name, e) {
+        // CoreCC, 'brcM'
+        let mesh_cc = fourCharacterCode(*b"brcM");
+        let mut var = Var::default();
+        var.valueType = SHType_Object;
+        var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId = FRAG_CC;
+        var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId = mesh_cc;
+        var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue = mesh.0 as *mut _;
+        Ok(SVar::NotCloned(var))
       } else if let Some(replacement) = find_replacement(name, e) {
         as_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
       } else {
