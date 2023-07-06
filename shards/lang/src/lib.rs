@@ -20,7 +20,7 @@ use shards::core::cloneVar;
 
 use std::ops::Deref;
 
-use shards::types::{Var, Wire};
+use shards::types::{AutoShardRef, ClonedVar, Var, Wire};
 
 use std::ffi::CStr;
 
@@ -198,6 +198,20 @@ impl<'a> ParamHelper<'a> {
         .find(|param| param.name.as_deref() == Some(param_name))
     }
   }
+}
+
+pub trait ShardsExtension {
+  fn name(&self) -> &str;
+  fn process_to_var(
+    &mut self,
+    func: &Function,
+    line_info: LineInfo,
+  ) -> Result<ClonedVar, ShardsError>;
+  fn process_to_shard(
+    &mut self,
+    func: &Function,
+    line_info: LineInfo,
+  ) -> Result<AutoShardRef, ShardsError>;
 }
 
 #[repr(C)]

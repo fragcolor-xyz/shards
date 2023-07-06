@@ -179,6 +179,14 @@ pub struct WireRef(pub SHWireRef);
 #[derive(Copy, Clone)]
 pub struct ShardRef(pub ShardPtr);
 
+pub struct AutoShardRef(pub ShardRef);
+
+impl Drop for AutoShardRef {
+  fn drop(&mut self) {
+    self.0.destroy();
+  }
+}
+
 impl Default for Mesh {
   fn default() -> Self {
     Mesh(unsafe { (*Core).createMesh.unwrap()() })

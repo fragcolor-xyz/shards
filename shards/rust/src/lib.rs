@@ -242,7 +242,6 @@ mod dummy_shard {
   use super::shard::create;
   use super::Types;
   use crate::core::cloneVar;
-  use crate::core::createShard;
   use crate::core::init;
   use crate::core::log;
   use crate::core::registerShard;

@@ -1,6 +1,7 @@
 use crate::ast::*;
 use crate::ParamHelper;
 use crate::RcStrWrapper;
+use crate::ShardsExtension;
 
 use core::convert::TryInto;
 
@@ -8,9 +9,10 @@ use core::slice;
 use nanoid::nanoid;
 use shards::fourCharacterCode;
 use shards::shlog_trace;
-use shards::types::FRAG_CC;
 use shards::types::common_type;
+use shards::types::AutoShardRef;
 use shards::types::Type;
+use shards::types::FRAG_CC;
 use shards::SHType_Object;
 use shards::SHType_Type;
 use std::cell::RefCell;
@@ -34,14 +36,6 @@ use shards::types::{ShardRef, Var, Wire};
 use shards::{SHType_ContextVar, SHType_ShardRef};
 use std::ffi::CStr;
 
-struct SShardRef(pub(crate) ShardRef);
-
-impl Drop for SShardRef {
-  fn drop(&mut self) {
-    self.0.destroy();
-  }
-}
-
 struct ShardsGroup {
   args: *const Vec<Value>,
   shards: *const Sequence,
@@ -57,7 +51,7 @@ pub struct Setting {
 pub struct EvalEnv {
   pub(crate) parent: Option<*const EvalEnv>,
 
-  shards: Vec<SShardRef>,
+  shards: Vec<AutoShardRef>,
 
   deferred_wires: HashMap<RcStrWrapper, (Wire, *const Vec<Param>, LineInfo)>,
   finalized_wires: HashMap<RcStrWrapper, ClonedVar>,
@@ -78,6 +72,8 @@ pub struct EvalEnv {
   pub settings: Vec<Setting>,
 
   meshes: HashMap<RcStrWrapper, Mesh>,
+
+  extensions: HashMap<RcStrWrapper, Box<dyn ShardsExtension>>,
 }
 
 impl Drop for EvalEnv {
@@ -102,6 +98,7 @@ impl Default for EvalEnv {
       forbidden_funcs: HashSet::new(),
       settings: Vec::new(),
       meshes: HashMap::new(),
+      extensions: HashMap::new(),
     }
   }
 }
@@ -169,8 +166,8 @@ fn extract_make_ints_shard<const WIDTH: usize>(
   params: &Vec<Param>,
   line_info: LineInfo,
   e: &mut EvalEnv,
-) -> Result<SShardRef, ShardsError> {
-  fn error_requires_number(line_info: LineInfo) -> Result<SShardRef, ShardsError> {
+) -> Result<AutoShardRef, ShardsError> {
+  fn error_requires_number(line_info: LineInfo) -> Result<AutoShardRef, ShardsError> {
     Err(
       (
         "vector built-in function requires a floating point number or identifier parameter",
@@ -197,7 +194,7 @@ fn extract_make_ints_shard<const WIDTH: usize>(
     }
   }
   .unwrap();
-  let shard = SShardRef(shard);
+  let shard = AutoShardRef(shard);
 
   for i in 0..len {
     let var = match &params[i].value {
@@ -415,8 +412,8 @@ fn extract_make_floats_shard<const WIDTH: usize>(
   params: &Vec<Param>,
   line_info: LineInfo,
   e: &mut EvalEnv,
-) -> Result<SShardRef, ShardsError> {
-  fn error_requires_number(line_info: LineInfo) -> Result<SShardRef, ShardsError> {
+) -> Result<AutoShardRef, ShardsError> {
+  fn error_requires_number(line_info: LineInfo) -> Result<AutoShardRef, ShardsError> {
     Err(
       (
         "vector built-in function requires a floating point number or identifier parameter",
@@ -441,7 +438,7 @@ fn extract_make_floats_shard<const WIDTH: usize>(
     }
   }
   .unwrap();
-  let shard = SShardRef(shard);
+  let shard = AutoShardRef(shard);
 
   for i in 0..len {
     let var = match &params[i].value {
@@ -691,6 +688,19 @@ fn find_wire<'a>(name: &'a RcStrWrapper, env: &'a EvalEnv) -> Option<(Var, bool)
     Some((wire.0 .0.into(), false))
   } else if let Some(parent) = env.parent {
     find_wire(name, unsafe { &mut *(parent as *mut EvalEnv) })
+  } else {
+    None
+  }
+}
+
+fn find_extension<'a>(
+  name: &'a RcStrWrapper,
+  env: &'a mut EvalEnv,
+) -> Option<&'a mut Box<dyn ShardsExtension>> {
+  if let Some(extension) = env.extensions.get_mut(name) {
+    Some(extension)
+  } else if let Some(parent) = env.parent {
+    find_extension(name, unsafe { &mut *(parent as *mut EvalEnv) })
   } else {
     None
   }
@@ -1242,6 +1252,9 @@ fn as_var(
             *v = Some(decoded_json.clone());
             as_var(v.as_ref().unwrap(), line_info, shard, e)
           })
+        } else if let Some(extension) = find_extension(&func.name, e) {
+          let v = extension.process_to_var(func, line_info)?;
+          Ok(SVar::Cloned(v))
         } else {
           Err((format!("Undefined function {}", func.name), line_info).into())
         }
@@ -1530,7 +1543,7 @@ fn create_shard(
   shard: &Function,
   line_info: LineInfo,
   e: &mut EvalEnv,
-) -> Result<SShardRef, ShardsError> {
+) -> Result<AutoShardRef, ShardsError> {
   if is_forbidden_func(&shard.name, e) {
     return Err((format!("Forbidden shard {}", shard.name), line_info).into());
   }
@@ -1541,7 +1554,7 @@ fn create_shard(
     )
       .into(),
   )?;
-  let s = SShardRef(s);
+  let s = AutoShardRef(s);
   let mut idx = 0i32;
   let mut as_idx = true;
   let info = s.0.parameters();
@@ -1585,7 +1598,7 @@ fn set_shard_parameter(
   info: &shards::SHParameterInfo,
   env: &mut EvalEnv,
   value: &Value,
-  s: &SShardRef,
+  s: &AutoShardRef,
   i: usize,
   line_info: LineInfo,
 ) -> Result<(), ShardsError> {
@@ -1658,7 +1671,7 @@ fn set_shard_parameter(
 
 fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Const").unwrap();
-  let shard = SShardRef(shard);
+  let shard = AutoShardRef(shard);
   shard
     .0
     .set_parameter(0, value)
@@ -1700,7 +1713,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           | Value::Func(_)
           | Value::Table(_) => {
             let shard = ShardRef::create("Const").unwrap();
-            let shard = SShardRef(shard);
+            let shard = AutoShardRef(shard);
             let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
             shard
               .0
@@ -1710,7 +1723,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           }
           Value::Identifier(_) => {
             let shard = ShardRef::create("Get").unwrap();
-            let shard = SShardRef(shard);
+            let shard = AutoShardRef(shard);
             // todo - avoid clone
             let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
             shard
@@ -1735,7 +1748,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
         }
       } else {
         let shard = ShardRef::create("Get").unwrap();
-        let shard = SShardRef(shard);
+        let shard = AutoShardRef(shard);
         let value = as_var(value, line_info, Some(shard.0), e)?;
         shard
           .0
@@ -1746,7 +1759,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
     }
     _ => {
       let shard = ShardRef::create("Const").unwrap();
-      let shard = SShardRef(shard);
+      let shard = AutoShardRef(shard);
       let value = as_var(value, line_info, Some(shard.0), e)?;
       shard
         .0
@@ -1765,9 +1778,12 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
   Ok(())
 }
 
-fn make_sub_shard(shards: Vec<SShardRef>, line_info: LineInfo) -> Result<SShardRef, ShardsError> {
+fn make_sub_shard(
+  shards: Vec<AutoShardRef>,
+  line_info: LineInfo,
+) -> Result<AutoShardRef, ShardsError> {
   let shard = ShardRef::create("Sub").unwrap();
-  let shard = SShardRef(shard);
+  let shard = AutoShardRef(shard);
   let mut seq = SeqVar::leaking_new();
   for shard in shards {
     let s = shard.0 .0;
@@ -1789,7 +1805,7 @@ fn make_sub_shard(shards: Vec<SShardRef>, line_info: LineInfo) -> Result<SShardR
 
 fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Take").unwrap();
-  let shard = SShardRef(shard);
+  let shard = AutoShardRef(shard);
   shard
     .0
     .set_parameter(0, *target)
@@ -1804,7 +1820,7 @@ fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
 
 fn add_get_shard(name: &RcStrWrapper, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Get").unwrap();
-  let shard = SShardRef(shard);
+  let shard = AutoShardRef(shard);
   if let Some(suffix) = find_suffix(name, e) {
     let name = format!("{}{}", name, suffix);
     let name = Var::ephemeral_string(&name);
@@ -1829,7 +1845,7 @@ fn add_get_shard(name: &RcStrWrapper, line: LineInfo, e: &mut EvalEnv) -> Result
 
 fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Get").unwrap();
-  let shard = SShardRef(shard);
+  let shard = AutoShardRef(shard);
   let name = Var::ephemeral_string(name);
   shard
     .0
@@ -2607,18 +2623,26 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           }
           unknown => {
             match (
+              // Notice, By precedence!
               find_defined(&func.name, e),
               process_shards(func, unknown, block, e)?,
               process_macro(func, unknown, block.line_info.unwrap_or_default(), e)?,
+              find_extension(&func.name, e),
             ) {
-              (None, Some(mut shards_env), None) => {
+              (None, None, None, Some(extension)) => {
+                let shard =
+                  extension.process_to_shard(func, block.line_info.unwrap_or_default())?;
+                e.shards.push(shard);
+                Ok(())
+              }
+              (None, Some(mut shards_env), _, _) => {
                 // shards
                 for shard in shards_env.shards.drain(..) {
                   e.shards.push(shard);
                 }
                 Ok(())
               }
-              (None, None, Some(ast_json)) => {
+              (None, None, Some(ast_json), _) => {
                 // macro
                 let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
                   (
@@ -2647,7 +2671,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
 
                 Ok(())
               }
-              (Some(value), None, None) => {
+              (Some(value), _, _, _) => {
                 // defined
                 let replacement = unsafe { &*value };
                 match replacement {
@@ -2743,7 +2767,7 @@ fn add_assignment_shard(
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
   let shard = ShardRef::create(shard_name).unwrap();
-  let shard = SShardRef(shard);
+  let shard = AutoShardRef(shard);
 
   let (assigned, suffix) = match (find_replacement(name, e), find_current_suffix(e)) {
     (Some(Value::Identifier(name)), _) => {
@@ -2792,7 +2816,7 @@ fn add_assignment_shard_no_suffix(
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
   let shard = ShardRef::create(shard_name).unwrap();
-  let shard = SShardRef(shard);
+  let shard = AutoShardRef(shard);
   let name = Var::ephemeral_string(name);
   shard
     .0
@@ -2844,4 +2868,10 @@ pub fn eval(seq: &Sequence, name: &str) -> Result<Wire, ShardsError> {
     wire.add_shard(shard.0);
   }
   Ok(wire)
+}
+
+/// Register an extension which is a type that implements the `ShardsExtension` trait to the environment.
+#[allow(dead_code)]
+pub fn register_extension<T: ShardsExtension>(ext: Box<dyn ShardsExtension>, env: &mut EvalEnv) {
+  env.extensions.insert(ext.name().into(), ext);
 }

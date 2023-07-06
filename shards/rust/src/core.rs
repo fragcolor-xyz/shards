@@ -339,19 +339,6 @@ pub fn createShardPtr(name: &str) -> ShardPtr {
 }
 
 #[inline(always)]
-pub fn createShard(name: &str) -> ShardInstance {
-  let name = SHStringWithLen {
-    string: name.as_ptr() as *const c_char,
-    len: name.len(),
-  };
-  unsafe {
-    ShardInstance {
-      ptr: (*Core).createShard.unwrap()(name),
-    }
-  }
-}
-
-#[inline(always)]
 pub fn cloneVar(dst: &mut Var, src: &Var) {
   unsafe {
     (*Core).cloneVar.unwrap()(dst, src);
@@ -697,60 +684,6 @@ impl core::fmt::Debug for SHVarPayloadDebugView<'_> {
         _ => f.write_str("???"),
       }
     }
-  }
-}
-
-pub struct ShardInstance {
-  ptr: ShardPtr,
-}
-
-impl Drop for ShardInstance {
-  fn drop(&mut self) {
-    unsafe {
-      (*Core).releaseShard.unwrap()(self.ptr);
-    }
-  }
-}
-
-impl ShardInstance {
-  pub fn name(&self) -> SHString {
-    assert_ne!(self.ptr, std::ptr::null_mut());
-    unsafe { (*self.ptr).name.unwrap()(self.ptr) }
-  }
-
-  pub fn help(&self) -> SHOptionalString {
-    assert_ne!(self.ptr, std::ptr::null_mut());
-    unsafe { (*self.ptr).help.unwrap()(self.ptr) }
-  }
-
-  pub fn inputHelp(&self) -> SHOptionalString {
-    assert_ne!(self.ptr, std::ptr::null_mut());
-    unsafe { (*self.ptr).inputHelp.unwrap()(self.ptr) }
-  }
-
-  pub fn outputHelp(&self) -> SHOptionalString {
-    assert_ne!(self.ptr, std::ptr::null_mut());
-    unsafe { (*self.ptr).outputHelp.unwrap()(self.ptr) }
-  }
-
-  pub fn inputTypes(&self) -> SHTypesInfo {
-    assert_ne!(self.ptr, std::ptr::null_mut());
-    unsafe { (*self.ptr).inputTypes.unwrap()(self.ptr) }
-  }
-
-  pub fn outputTypes(&self) -> SHTypesInfo {
-    assert_ne!(self.ptr, std::ptr::null_mut());
-    unsafe { (*self.ptr).outputTypes.unwrap()(self.ptr) }
-  }
-
-  pub fn parameters(&self) -> SHParametersInfo {
-    assert_ne!(self.ptr, std::ptr::null_mut());
-    unsafe { (*self.ptr).parameters.unwrap()(self.ptr) }
-  }
-
-  pub fn getParam(&self, index: i32) -> SHVar {
-    assert_ne!(self.ptr, std::ptr::null_mut());
-    unsafe { (*self.ptr).getParam.unwrap()(self.ptr, index) }
   }
 }
 
