@@ -108,8 +108,6 @@ impl Highlighter {
       .or_else(|| self.syntaxes.find_syntax_by_extension(language))?;
 
     let theme = theme.syntect_theme.syntect_key_name();
-    let theme = self.themes.themes.get(theme)?;
-    theme.settings.brackets_options = syntect::highlighting::BracketOptions::default();
     let mut h = HighlightLines::new(syntax, &self.themes.themes[theme]);
 
     use egui::text::{LayoutSection, TextFormat};
