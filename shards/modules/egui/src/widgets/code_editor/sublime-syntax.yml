@@ -44,10 +44,17 @@ contexts:
     - match: '[a-z_][a-zA-Z0-9_.-]*'
       scope: variable.other.readwrite.shards
   strings:
-    - match: '"|"""'
-      scope: string.quoted.shards
+    - match: '"'
+      scope: string.quoted.double.shards
       push:
-        - meta_content_scope: string.quoted.shards
-        - match: '"|"""'
-          scope: string.quoted.shards
+        - meta_content_scope: string.quoted.double.shards
+        - match: '"'
+          scope: string.quoted.double.shards
+          pop: true
+    - match: '"""'
+      scope: string.quoted.triple.shards
+      push:
+        - meta_content_scope: string.quoted.triple.shards
+        - match: '"""'
+          scope: string.quoted.triple.shards
           pop: true
