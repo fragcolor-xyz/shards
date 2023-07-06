@@ -1,7 +1,7 @@
 %YAML 1.2
 ---
 # See http://www.sublimetext.com/docs/3/syntax.html
-name: Shards
+name: shards
 file_extensions: ["shs"]
 scope: source.shards
 contexts:
@@ -37,14 +37,17 @@ contexts:
     - match: '\b(true|false)\b'
       scope: constant.language.boolean.shards
     - match: '\b(0x[a-fA-F0-9]+|\d+)\b'
-      scope: constant.numeric.decimal.shards
+      scope: constant.other.shards
     - match: '\b(none)\b'
       scope: constant.language.null.shards
   variables:
     - match: '[a-z_][a-zA-Z0-9_.-]*'
       scope: variable.other.readwrite.shards
   strings:
-    - match: '".*"'
-      scope: string.quoted.double.shards
-    - match: '""".*"""'
-      scope: string.quoted.triple.shards
+    - match: '"|"""'
+      scope: string.quoted.shards
+      push:
+        - meta_content_scope: string.quoted.shards
+        - match: '"|"""'
+          scope: string.quoted.shards
+          pop: true
