@@ -1385,7 +1385,7 @@ struct ParallelBase : public CapturingSpawners {
     if (_threads > 0) {
       const auto threads = std::min(_threads, int64_t(std::thread::hardware_concurrency()));
       if (!_exec || _exec->num_workers() != (size_t(threads))) {
-        _exec.reset(new tf::Executor(size_t(threads)));
+        _exec.emplace(size_t(threads));
       }
     }
 #endif
@@ -1587,9 +1587,7 @@ protected:
       _successes; // don't use bool cos std lib uses bit vectors behind the scenes and won't work with multiple threads
   std::vector<ManyWire *> _wires;
   int64_t _threads{0};
-#if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
-  std::unique_ptr<tf::Executor> _exec;
-#endif
+  std::optional<tf::Executor> _exec;
 };
 
 struct TryMany : public ParallelBase {
@@ -1902,11 +1900,41 @@ struct StepMany : public TryMany {
 };
 
 struct DoMany : public TryMany {
+  void setup() { _threads = 0; } // we don't use threads
+
   static inline Parameters _params{
       {"Wire", SHCCSTR("The wire to run many times sequentially."), WireBase::WireVarTypes},
   };
 
   static SHParametersInfo parameters() { return _params; }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.seqTypes.len == 1) {
+      // copy single input type
+      _inputType = data.inputType.seqTypes.elements[0];
+    } else {
+      // else just mark as generic any
+      _inputType = CoreInfo::AnyType;
+    }
+
+    ParallelBase::compose(data, _inputType);
+
+    switch (_policy) {
+    case WaitUntil::AllSuccess: {
+      // seq result
+      _outputTypes = Types({wire->outputType});
+      _outputSeqType = Type::SeqOf(_outputTypes);
+      return _outputSeqType;
+    }
+    case WaitUntil::SomeSuccess: {
+      return CoreInfo::AnySeqType;
+    }
+    case WaitUntil::FirstSuccess: {
+      // single result
+      return wire->outputType;
+    }
+    }
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto len = getLength(input);
