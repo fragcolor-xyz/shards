@@ -1,0 +1,50 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+name: Shards
+file_extensions: ["shs"]
+scope: source.shards
+contexts:
+  main:
+    - include: comments
+    - include: commas
+    - include: assignments
+    - include: enums
+    - include: parameters
+    - include: shards
+    - include: literals
+    - include: variables
+    - include: strings
+  comments:
+    - match: ';.*'
+      scope: comment.line.semicolon.shards
+  commas:
+    - match: ','
+      scope: punctuation.separator.comma.shards
+  assignments:
+    - match: '=|>|>=|>>|>>=|>>!'
+      scope: keyword.operator.assignment.shards
+  enums:
+    - match: '\b([A-Z][a-zA-Z0-9_]*::[A-Z][a-zA-Z0-9_]*)\b'
+      scope: support.function.shards
+  parameters:
+    - match: '\b[A-Z][A-Za-z0-9-._]*:'
+      scope: keyword.control.shards
+  shards:
+    - match: '(@[a-z]|[A-Z])[a-zA-Z0-9_./-]*'
+      scope: entity.name.type.class.shards
+  literals:
+    - match: '\b(true|false)\b'
+      scope: constant.language.boolean.shards
+    - match: '\b(0x[a-fA-F0-9]+|\d+)\b'
+      scope: constant.numeric.decimal.shards
+    - match: '\b(none)\b'
+      scope: constant.language.null.shards
+  variables:
+    - match: '[a-z_][a-zA-Z0-9_.-]*'
+      scope: variable.other.readwrite.shards
+  strings:
+    - match: '".*"'
+      scope: string.quoted.double.shards
+    - match: '""".*"""'
+      scope: string.quoted.triple.shards

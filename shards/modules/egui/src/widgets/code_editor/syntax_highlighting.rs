@@ -9,6 +9,7 @@ use egui::epaint::text::layout;
 use egui::text::LayoutJob;
 use syntect::highlighting::Theme;
 use syntect::highlighting::ThemeSet;
+use syntect::parsing::SyntaxDefinition;
 use syntect::parsing::SyntaxSet;
 
 /// Memoized Code highlighting
@@ -48,7 +49,7 @@ impl CodeTheme {
   pub fn dark() -> Self {
     Self {
       dark_mode: true,
-      syntect_theme: SyntectTheme::Base16MochaDark,
+      syntect_theme: SyntectTheme::SolarizedDark,
     }
   }
 
@@ -67,8 +68,12 @@ struct Highlighter {
 
 impl Default for Highlighter {
   fn default() -> Self {
-    Self {
-      syntaxes: SyntaxSet::load_defaults_newlines(),
+    let mut builder = SyntaxSet::load_defaults_newlines().into_builder();
+    builder.add(
+      SyntaxDefinition::load_from_str(include_str!("sublime-syntax.yml"), true, None).unwrap(),
+    );
+    Highlighter {
+      syntaxes: builder.build(),
       themes: ThemeSet::load_defaults(),
     }
   }
@@ -103,6 +108,8 @@ impl Highlighter {
       .or_else(|| self.syntaxes.find_syntax_by_extension(language))?;
 
     let theme = theme.syntect_theme.syntect_key_name();
+    let theme = self.themes.themes.get(theme)?;
+    theme.settings.brackets_options = syntect::highlighting::BracketOptions::default();
     let mut h = HighlightLines::new(syntax, &self.themes.themes[theme]);
 
     use egui::text::{LayoutSection, TextFormat};
