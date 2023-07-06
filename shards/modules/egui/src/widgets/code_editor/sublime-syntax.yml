@@ -1,7 +1,7 @@
 %YAML 1.2
 ---
 # See http://www.sublimetext.com/docs/3/syntax.html
-name: shards
+name: Shards
 file_extensions: ["shs"]
 scope: source.shards
 contexts:
@@ -37,7 +37,7 @@ contexts:
     - match: '\b(true|false)\b'
       scope: constant.language.boolean.shards
     - match: '\b(0x[a-fA-F0-9]+|\d+)\b'
-      scope: constant.other.shards
+      scope: constant.numeric.decimal.shards
     - match: '\b(none)\b'
       scope: constant.language.null.shards
   variables:
