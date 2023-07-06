@@ -48,6 +48,8 @@ contexts:
       scope: string.quoted.double.shards
       push:
         - meta_content_scope: string.quoted.double.shards
+        - match: '\\.'
+          scope: constant.character.escape.shards
         - match: '"'
           scope: string.quoted.double.shards
           pop: true
@@ -55,6 +57,8 @@ contexts:
       scope: string.quoted.triple.shards
       push:
         - meta_content_scope: string.quoted.triple.shards
+        - match: '\\.'
+          scope: constant.character.escape.shards
         - match: '"""'
           scope: string.quoted.triple.shards
           pop: true
