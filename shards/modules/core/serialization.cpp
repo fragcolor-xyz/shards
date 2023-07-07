@@ -4,7 +4,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
-#include "imaging.hpp"
+#include <shards/modules/imaging/imaging.hpp>
 #include <shards/core/shared.hpp>
 #include <boost/filesystem.hpp>
 #include <fstream>
