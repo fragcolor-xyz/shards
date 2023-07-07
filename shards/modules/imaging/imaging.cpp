@@ -3,7 +3,6 @@
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "core/module.hpp"
-#include <shards/core/shared.hpp>
 #include <stb_image_resize.h>
 #include "imaging.hpp"
 
