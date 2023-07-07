@@ -1,7 +1,7 @@
 #ifndef B426C31C_17B4_49E6_99FD_7387DBE57320
 #define B426C31C_17B4_49E6_99FD_7387DBE57320
 
-#include "shared.hpp"
+#include <shards/core/shared.hpp>
 
 namespace shards {
 namespace Imaging {
