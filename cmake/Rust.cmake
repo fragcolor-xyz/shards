@@ -169,7 +169,7 @@ function(add_rust_library)
       file(MAKE_DIRECTORY ${RUST_DEFAULT_TARGET_PATH})
       set(RUST_TARGET_PATH ${RUST_DEFAULT_TARGET_PATH})
     else()
-      set(RUST_TARGET_PATH ${PROJECT_SOURCE_DIR}/target)
+      set(RUST_TARGET_PATH ${shards_BINARY_DIR}/target)
     endif()
   endif()
   message(VERBOSE "  Rust target path: ${RUST_TARGET_PATH}")
@@ -240,6 +240,9 @@ function(add_rust_library)
   set_target_properties(${RUST_TARGET_NAME} PROPERTIES
     IMPORTED_LOCATION ${GENERATED_LIB_PATH}
   )
+
+  set_property(TARGET ${RUST_TARGET_NAME} PROPERTY RUST_PROJECT_PATH ${RUST_PROJECT_PATH})
+  set_property(TARGET ${RUST_TARGET_NAME} PROPERTY RUST_NAME ${RUST_NAME})
 
   # Add default required libraries for windows
   if(WIN32)

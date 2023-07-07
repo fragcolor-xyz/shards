@@ -15,5 +15,7 @@ add_rust_library(NAME shards-egui-register
 target_link_libraries(shards-egui-register-rust INTERFACE egui-gfx-integration)
 
 add_shards_module(egui
+  RUST_TARGETS shards-egui-register-rust
   REGISTER_SHARDS egui pass)
-target_link_libraries(shards-module-egui egui-gfx-integration shards-egui-register-rust)
+  
+# target_link_libraries(shards-module-egui egui-gfx-integration shards-egui-register-rust)
