@@ -1,0 +1,95 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2021 Fragcolor Pte. Ltd.
+
+@mesh(main)
+
+@wire(play-files {
+    Audio.ReadFile("./data/Ode_to_Joy.ogg" From: 1.0 To: 1.023219954648526) | Log
+} Looped: true)
+
+@schedule(main play-files)
+@run(main)
+@schedule(main play-files)
+@run(main)
+
+@wire(play-file-fft {
+    Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) | DSP.FFT = freq-domain
+    DSP.IFFT(Audio: true) | 
+    Audio.WriteFile("example-fft.wav" Channels: 1)
+    freq-domain | DSP.IFFT(Complex: true) | DSP.FFT ; FOR COVERAGE
+    freq-domain | DSP.IFFT(Complex: false) | 
+    Math.Normalize(Positive: true) | 
+    FloatsToImage(32 32 1) | WritePNG("example.wav.png") | ; again, just for coverage
+    Log
+} Looped: true)
+
+@schedule(main play-file-fft)
+@run(main)
+
+; @wire(play-file-dwt {
+;     Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) |
+;     DSP.Wavelet |
+;     DSP.InverseWavelet |
+;     Audio.WriteFile("example-dwt.wav" Channels: 1)
+; } Looped: true)
+
+; @schedule(main play-file-dwt)
+; @run(main)
+
+@wire(device-test {
+    Audio.Device |
+    Audio.Channel(Shards: {Input})
+} Looped: true)
+
+@schedule(main device-test)
+@run(main 0.1 25)
+
+@wire(device-test {
+    Audio.Device |
+    Audio.Channel(Shards: {
+        Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 2 From: 4.0 To: 6.0)
+    })
+} Looped: true)
+
+@schedule(main device-test)
+@run(main)
+
+@wire(device-test {
+    Audio.Device |
+    Audio.Channel(Shards: {
+        440.0 | Audio.Oscillator
+    })
+} Looped: true)
+
+@schedule(main device-test)
+@run(main 0.1 25)
+
+@wire(device-test {
+    Audio.Device |
+    Audio.Channel(Shards: {
+        440.0 | Audio.Oscillator(Waveform.Triangle)
+    })
+} Looped: true)
+
+@schedule(main device-test)
+@run(main 0.1 25)
+
+@wire(device-test {
+    Audio.Device |
+    Audio.Channel(Shards: {
+        440.0 | Audio.Oscillator(Waveform.Square)
+    })
+} Looped: true)
+
+@schedule(main device-test)
+@run(main 0.1 25)
+
+@wire(device-test {
+    Audio.Device |
+    Audio.Channel(Shards: {
+        440.0 | Audio.Oscillator(Waveform.Sawtooth)
+    })
+} Looped: true)
+
+@schedule(main device-test)
+@run(main 0.1 25)
