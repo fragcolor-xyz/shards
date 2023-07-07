@@ -387,7 +387,10 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   uint8_t *stackMem{nullptr};
   size_t stackSize{SH_BASE_STACK_SIZE};
 
-  static std::shared_ptr<SHWire> &sharedFromRef(SHWireRef ref) { return *reinterpret_cast<std::shared_ptr<SHWire> *>(ref); }
+  static std::shared_ptr<SHWire> &sharedFromRef(SHWireRef ref) {
+    assert(ref && "sharedFromRef - ref was nullptr");
+    return *reinterpret_cast<std::shared_ptr<SHWire> *>(ref);
+  }
 
   static void deleteRef(SHWireRef ref) {
     auto pref = reinterpret_cast<std::shared_ptr<SHWire> *>(ref);
