@@ -13,7 +13,15 @@ if(HTTP_SUPPORTED)
     http.cpp
   )
 
+  # The rust shards use reqwest, which can not run on emscripten
+  if(NOT EMSCRIPTEN)
+    add_rust_library(NAME shards-http
+      PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
+    set(RUST_TARGETS_ARG RUST_TARGETS shards-http-rust)
+  endif()
+
   add_shards_module(http SOURCES ${SOURCES}
+    ${RUST_TARGETS_ARG}
     REGISTER_SHARDS http rust)
 
   target_include_directories(shards-module-http PRIVATE ../core)
@@ -28,13 +36,6 @@ if(HTTP_SUPPORTED)
   if(EMSCRIPTEN)
     em_link_js_library(shards-module-http http.js)
     target_link_options(shards-module-http PUBLIC
-      "SHELL:-s FETCH=1")  
-  endif()
-
-  # The rust shards use reqwest, which can not run on emscripten
-  if(NOT EMSCRIPTEN)
-    add_rust_library(NAME shards-http 
-      PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
-    target_link_libraries(shards-module-http shards-http-rust)
+      "SHELL:-s FETCH=1")
   endif()
 endif()
