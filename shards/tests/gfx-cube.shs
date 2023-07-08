@@ -28,11 +28,11 @@
 @wire(test-wire {
   Once({
     0.0 >= time
-    @cube | GFX.Mesh(Layout: @cube-layout WindingOrder: WindingOrder.CW) = mesh
+    @cube | GFX.Mesh(Layout: @cube-layout WindingOrder: WindingOrder::CW) = mesh
 
     ; Create render steps
-    GFX.BuiltinFeature(Id: BuiltinFeatureId.Transform) >> features
-    GFX.BuiltinFeature(Id: BuiltinFeatureId.BaseColor) >> features
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
     GFX.DrawQueue = queue
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
 
