@@ -722,6 +722,24 @@ impl From<SHTypeInfo> for ClonedVar {
   }
 }
 
+impl From<SHStringWithLen> for &str {
+  fn from(s: SHStringWithLen) -> Self {
+    unsafe {
+      let slice = slice::from_raw_parts(s.string as *const u8, s.len);
+      std::str::from_utf8(slice).unwrap()
+    }
+  }
+}
+
+impl From<&str> for SHStringWithLen {
+  fn from(s: &str) -> Self {
+    SHStringWithLen {
+      string: s.as_ptr() as *const i8,
+      len: s.len(),
+    }
+  }
+}
+
 /*
 Static common type infos utility
 */
@@ -3965,7 +3983,7 @@ impl ShardsVar {
     }
     self.shards.clear();
     destroyVar(&mut self.param.0);
- 
+
     // clear old results if any
     if let Some(compose_result) = self.compose_result {
       unsafe {
