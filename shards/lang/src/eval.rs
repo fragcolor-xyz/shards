@@ -2347,16 +2347,13 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   .into(),
               )?;
 
+              // make sure the env is fully resolved before schedule cos that will calls compose and what not!
+              finalize_env(e)?;
+
               // wire is likely lazy so we need to evaluate it
               let wire = match &wire_id.value {
                 // can be only identifier or string
                 Value::Identifier(name) => {
-                  // schedule accesses only wires in env scope, not parent ones
-                  if let Some((wire, params, line_info)) = e.deferred_wires.remove(name) {
-                    // wire is not finalized, we need to finalize it now
-                    e.finalized_wires.insert(name.clone(), wire.0.into());
-                    finalize_wire(&wire, name, params, line_info, e)?;
-                  }
                   if let Some(wire) = e.finalized_wires.get(name) {
                     Ok(wire.0)
                   } else {
