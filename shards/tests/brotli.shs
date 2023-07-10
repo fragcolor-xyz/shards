@@ -22,5 +22,5 @@
     Log
 })
 
-@schedule(root test)
+@schedule(root brotli-test)
 @run(root)
