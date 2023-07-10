@@ -132,7 +132,7 @@ inline void initShaderParams(SHContext *shContext, const SHTable &paramsTable, M
 
     auto param = tryVarToParam(value);
     if (param) {
-      std::visit([&](auto &&arg) { out.set(kv, std::move(arg)); }, std::move(param.value()));
+      std::visit([&](auto &&arg) { out.set(kv, arg); }, std::move(param.value()));
     }
   });
 }
