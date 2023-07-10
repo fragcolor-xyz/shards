@@ -1,0 +1,38 @@
+@mesh(root)
+
+@wire(inline-capture {
+    Sequence(log Types: [Type.String]) |
+    Repeat({
+        Msg("Hello shards!") |
+        CaptureLog(
+            Size: 8
+            MinLevel: "trace"
+            Pattern: "%^[%l]%$ [%Y-%m-%d %T.%e] %v"
+        ) > log
+    } Times: 16)
+    log | Msg("Captured log")
+} Looped: true)
+
+@schedule(root inline-capture)
+@run(root 0.05 1)
+
+@wire(capture {
+    CaptureLog(
+        Size: 8
+        MinLevel: "trace"
+        Pattern: "%^[%l]%$ [%Y-%m-%d %T.%e] %v"
+        Suspend: true
+    ) | ExpectStringSeq = log
+    Count(log) | Msg("Got log messages")
+} Looped: true)
+
+@wire(detach-capture {
+    Once({
+        Detach(capture)
+    })
+    Pause(0.4) |
+    Msg("Hello shards!")
+} Looped: true)
+
+@schedule(root detach-capture)
+@run(root 0.1 16)
