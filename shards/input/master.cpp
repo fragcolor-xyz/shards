@@ -32,13 +32,14 @@ void InputMaster::update(gfx::Window &window) {
   updateAndSortHandlers();
 
   input.beginUpdate();
-  bool hasEvent = false;
   do {
     SDL_Event event{};
-    hasEvent = SDL_PollEvent(&event) > 0;
-
-    input.apply(event);
-  } while (hasEvent);
+    bool hasEvent = SDL_PollEvent(&event) > 0;
+    if (hasEvent)
+      input.apply(event);
+    else
+      break;
+  } while (true);
 
   state.update();
   state.region = getWindowInputRegion(window);
