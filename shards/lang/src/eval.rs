@@ -42,10 +42,11 @@ struct ShardsGroup {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct Setting {
-  allow_unsafe: bool,
-  allow_custom_stack_sizes: bool,
-  allow_only_pure_wires: bool,
+  disallow_unsafe: bool,
+  disallow_custom_stack_sizes: bool,
+  disallow_impure_wires: bool,
 }
 
 pub struct EvalEnv {
@@ -742,7 +743,7 @@ fn finalize_wire(
     .unwrap_or(Ok(false))?;
   wire.set_looped(looped);
 
-  if let Some(_) = env.settings.iter().find(|&s| s.allow_only_pure_wires) {
+  if env.settings.iter().any(|&s| s.disallow_impure_wires) {
     wire.set_pure(true);
   } else {
     let pure = param_helper
@@ -755,7 +756,7 @@ fn finalize_wire(
     wire.set_pure(pure);
   }
 
-  if let Some(_) = env.settings.iter().find(|&s| s.allow_unsafe) {
+  if !env.settings.iter().any(|&s| s.disallow_unsafe) {
     let unsafe_ = param_helper
       .get_param_by_name_or_index("Unsafe", 4)
       .map(|param| match &param.value {
@@ -766,7 +767,7 @@ fn finalize_wire(
     wire.set_unsafe(unsafe_);
   }
 
-  if let Some(_) = env.settings.iter().find(|&s| s.allow_custom_stack_sizes) {
+  if !env.settings.iter().any(|&s| s.disallow_custom_stack_sizes) {
     let stack_size = param_helper
       .get_param_by_name_or_index("StackSize", 5)
       .map(|param| match &param.value {
@@ -862,6 +863,7 @@ pub(crate) fn eval_sequence(
   // inherit previous state for certain things
   if let Some(parent) = parent {
     sub_env.parent = Some(parent as *mut EvalEnv);
+    sub_env.settings = parent.settings.clone(); // clone parent settings
   }
   for stmt in &seq.statements {
     eval_statement(stmt, &mut sub_env)?;
@@ -1953,6 +1955,7 @@ fn process_macro(
 
     let mut eval_env = EvalEnv::default();
     eval_env.parent = Some(e as *const EvalEnv);
+    eval_env.settings = e.settings.clone(); // clone parent settings
 
     // set a random suffix
     eval_env.suffix = Some(nanoid!(16).into());
@@ -2028,6 +2031,7 @@ fn process_shards(
 
     let mut sub_env = EvalEnv::default();
     sub_env.parent = Some(e as *const EvalEnv);
+    sub_env.settings = e.settings.clone(); // clone parent settings
 
     // set a random suffix
     sub_env.suffix = Some(nanoid!(16).into());
