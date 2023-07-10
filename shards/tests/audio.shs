@@ -13,7 +13,8 @@
 @run(main)
 
 @wire(play-file-fft {
-    Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) | DSP.FFT = freq-domain
+    Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) | 
+    DSP.FFT = freq-domain
     DSP.IFFT(Audio: true) | 
     Audio.WriteFile("example-fft.wav" Channels: 1)
     freq-domain | DSP.IFFT(Complex: true) | DSP.FFT ; FOR COVERAGE
