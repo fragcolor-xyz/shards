@@ -777,10 +777,10 @@ fn finalize_wire(
         },
         _ => Err(("StackSize parameter must be an integer", line_info).into()),
       })
-      .unwrap_or(Ok(0))?;
+      .unwrap_or(Ok(128 * 1024))?;
     // ensure stack size is a multiple of 4 and minimum 1024 bytes
-    let stack_size = if stack_size < 1024 {
-      1024
+    let stack_size = if stack_size < 32 * 1024 {
+      32 * 1024
     } else if stack_size % 4 != 0 {
       stack_size + 4 - (stack_size % 4)
     } else {
