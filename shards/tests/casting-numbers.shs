@@ -1,0 +1,78 @@
+@mesh(root)
+
+@wire(test {
+    @f3(1, 2, 3) >= vec3
+    2.0 >= flt
+
+    vec3 | ToFloat2 | Assert.Is(@f2(1, 2) true) | Log("Float2")
+    vec3 | ToFloat4 | Assert.Is(@f4(1, 2, 3, 0) true) | Log("Float4")
+    vec3 | ToFloat | Assert.Is(1.0 true) | Log("Float")
+    vec3 | ToInt | Assert.Is(1 true) | Log("Int")
+    vec3 | ToInt4 | Assert.Is(@i4(1, 2, 3, 0) true) | Log("Int4")
+
+    vec3 | ToString >= vec3str | Log("Float3 to string")
+    vec3str | ToFloat3 | Assert.Is(@f3(1, 2, 3) true) | Log("Float3 from string")
+
+    vec3 | ToInt3 | ToString >= int3str | Log("Int3 to string")
+    int3str | ToInt3 | Assert.Is(@i3(1, 2, 3) true) | Log("Int3 from string")
+
+    [3.0 4.0 5.0] >= vec3seqFixed | Log("Float3 seq (fixed)")
+    vec3seqFixed | ToFloat3 | Assert.Is(@f3(3, 4, 5) true) | Log("Float3 from seq (fixed)")
+
+    3.0 >> vec3seqVariable
+    4 >> vec3seqVariable
+    5 >> vec3seqVariable
+    vec3seqVariable | ToFloat3 | Assert.Is(@f3(3, 4, 5) true) | Log("Float3 from seq (variable)")
+
+    @f3(0.0, 1.0, 2.0) | Assert.Is(@f3(0.0, 1.0, 2.0)) | Log("MakeFloat3")
+    @f2(2.0, 3.0) |Assert.Is(@f2(2.0, 3.0)) | Log("MakeFloat2")
+
+    1.0 >= x
+    4.0 = y
+    3.0 = z
+    4.0 | Assert.Is(4.0) | Log("Float (reference)") ;; Not sure if this is still needed
+
+    @f2(x, y) | Assert.Is(@f2(1.0, 4.0)) | Log("MakeFloat2 (variables)")
+    @f3(x, y, z) | Assert.Is(@f3(1.0, 4.0, 3.0)) | Log("MakeFloat3 (variables)")
+    @f4(x, y, z, x) | Assert.Is(@f4(1.0, 4.0, 3.0, 1.0)) | Log("MakeFloat4 (variables)")
+
+    @f2(-1.0, y) | Assert.Is(@f2(-1.0, 4.0)) | Log("MakeFloat2 (variables/mixed)")
+    @f3(x, y, -1.0) | Assert.Is(@f3(1.0, 4.0, -1.0)) | Log("MakeFloat3 (variables/mixed)")
+    @f4(x, -1.0, z, x) | Assert.Is(@f4(1.0, -1.0, 3.0, 1.0)) | Log("MakeFloat4 (variables/mixed)")
+
+    @f2(-1.0) | Assert.Is(@f2(-1.0, -1.0)) | Log("MakeFloat2 (broadcast)")
+    @f3(-1.0) | Assert.Is(@f3(-1.0, -1.0, -1.0)) | Log("MakeFloat3 (broadcast)")
+    @f4(-1.0) | Assert.Is(@f4(-1.0, -1.0, -1.0, -1.0)) | Log("MakeFloat4 (broadcast)")
+
+    @f2(x) | Assert.Is(@f2(1.0, 1.0)) | Log("MakeFloat2 (variable/broadcast)")
+    @f3(x) | Assert.Is(@f3(1.0, 1.0, 1.0)) | Log("MakeFloat3 (variable/broadcast)")
+    @f4(x) | Assert.Is(@f4(1.0, 1.0, 1.0, 1.0)) | Log("MakeFloat4 (variable/broadcast)")
+
+    2 >= i2
+    @i2(i2, i2) | Assert.Is(@i2(2, 2)) | Log("MakeInt2 (variable)")
+    @i3(i2, i2, i2) | Assert.Is(@i3(2, 2, 2)) | Log("MakeInt3 (variable)")
+    @i4(i2, i2, i2, i2) | Assert.Is(@i4(2, 2, 2, 2)) | Log("MakeInt4 (variable)")
+    @i8(i2, i2, i2, i2, i2, i2, i2, i2) | Assert.Is(@i8(2, 2, 2, 2, 2, 2, 2, 2)) | Log("MakeInt8 (variable)")
+    @i16(i2, i2, i2, i2, i2, i2, i2, i2, i2, i2, i2, i2, i2, i2, i2, i2) | Assert.Is(@i16(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)) | Log("MakeInt16 (variable)")
+
+    @i2(i2, 1) | Assert.Is(@i2(2, 1)) | Log("MakeInt2 (variable/mixed)")
+    @i3(i2, 1, i2) | Assert.Is(@i3(2, 1, 2)) | Log("MakeInt3 (variable/mixed)")
+    @i4(i2, 1, i2, i2) | Assert.Is(@i4(2, 1, 2, 2)) | Log("MakeInt4 (variable/mixed)")
+
+    @i2(i2) | Assert.Is(@i2(2, 2)) | Log("MakeInt2 (variable/broadcast)")
+    @i3(i2) | Assert.Is(@i3(2, 2, 2)) | Log("MakeInt3 (variable/broadcast)")
+    @i4(i2) | Assert.Is(@i4(2, 2, 2, 2)) | Log("MakeInt4 (variable/broadcast)")
+
+    @color(255, 255, 255) | Assert.Is(@color(255, 255, 255, 255)) | Log("MakeColor (extended)")
+    @color(0) | Assert.Is(@color(0, 0, 0, 0)) | Log("MakeColor (broadcast)")
+    @color(i2, 255, 100) | Assert.Is(@color(2, 255, 100, 255)) | Log("MakeColor (variable/mixed/extended)")
+    @color(i2) | Assert.Is(@color(2, 2, 2, 2)) | Log("MakeColor (variable/broadcast)")
+
+    ; Enum conversion
+    Type.None | ToInt | Assert.Is(0)
+    Type.Any | ToInt | Assert.Is(1)
+    Type.Float | ToInt | Assert.Is(9)
+})
+
+@schedule(root test)
+@run(root)
