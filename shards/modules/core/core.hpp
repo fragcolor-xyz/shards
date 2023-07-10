@@ -1935,6 +1935,8 @@ struct Sequence : public SeqBase {
     case BasicTypes::Audio:
       inner._types.emplace_back(CoreInfo::AudioType);
       break;
+    default:
+      assert(false && "Type not supported");
     }
   }
 
