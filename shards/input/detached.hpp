@@ -47,6 +47,11 @@ public:
 
         virtualInputEvents.push_back(TextCompositionEvent{.text = ievent.text});
       }
+    } else if (event.type == SDL_KEYDOWN) {
+      if (event.key.repeat > 0 && state.isKeyHeld(event.key.keysym.sym)) {
+        virtualInputEvents.push_back(
+            KeyEvent{.key = event.key.keysym.sym, .pressed = true, .modifiers = state.modifiers, .repeat = event.key.repeat});
+      }
     } else if (event.type == SDL_TEXTINPUT) {
       auto &ievent = event.text;
       if (imeComposing) {
@@ -153,13 +158,22 @@ private:
                   .modifiers = arg.modifiers,
               });
             }
-            if (!arg.pressed && newState.isKeyHeld(arg.key)) {
-              newState.heldKeys.erase(arg.key);
-              virtualInputEvents.push_back(KeyEvent{
-                  .key = arg.key,
-                  .pressed = false,
-                  .modifiers = arg.modifiers,
-              });
+            if (newState.isKeyHeld(arg.key)) {
+              if (!arg.pressed) {
+                newState.heldKeys.erase(arg.key);
+                virtualInputEvents.push_back(KeyEvent{
+                    .key = arg.key,
+                    .pressed = false,
+                    .modifiers = arg.modifiers,
+                });
+              } else if (arg.repeat > 0) {
+                virtualInputEvents.push_back(KeyEvent{
+                    .key = arg.key,
+                    .pressed = true,
+                    .modifiers = arg.modifiers,
+                    .repeat = arg.repeat,
+                });
+              }
             }
           } else if constexpr (std::is_same_v<T, ScrollEvent>) {
             if (!consumed && hasFocus)

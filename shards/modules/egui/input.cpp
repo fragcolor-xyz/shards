@@ -76,7 +76,7 @@ static egui::ModifierKeys translateModifierKeys(SDL_Keymod flags) {
   };
 }
 
-void EguiInputTranslator::setupInputRegion(const shards::input::InputRegion &region, const int4& mappedWindowRegion) {
+void EguiInputTranslator::setupInputRegion(const shards::input::InputRegion &region, const int4 &mappedWindowRegion) {
   // UI Points per pixel
   float eguiDrawScale = region.uiScalingFactor;
 
@@ -162,6 +162,10 @@ bool EguiInputTranslator::translateEvent(const shards::input::Event &event) {
           oevent.key = SDL_KeyCode(arg.key);
           oevent.pressed = arg.pressed;
           oevent.modifiers = translateModifierKeys(arg.modifiers);
+          oevent.repeat = arg.repeat > 0;
+          if (arg.repeat) {
+            oevent.repeat = true;
+          }
 
           if (arg.pressed) {
             if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_c) {
