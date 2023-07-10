@@ -653,6 +653,7 @@ template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
   if ((arr.len + 1) > arr.cap) {
     shards::arrayGrow(arr, 1);
   }
+  assert(arr.elements && "array elements cannot be null");
   arr.elements[arr.len++] = val;
 }
 

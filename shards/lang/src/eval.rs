@@ -42,10 +42,11 @@ struct ShardsGroup {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct Setting {
-  allow_unsafe: bool,
-  allow_custom_stack_sizes: bool,
-  allow_only_pure_wires: bool,
+  disallow_unsafe: bool,
+  disallow_custom_stack_sizes: bool,
+  disallow_impure_wires: bool,
 }
 
 pub struct EvalEnv {
@@ -742,7 +743,7 @@ fn finalize_wire(
     .unwrap_or(Ok(false))?;
   wire.set_looped(looped);
 
-  if let Some(_) = env.settings.iter().find(|&s| s.allow_only_pure_wires) {
+  if env.settings.iter().any(|&s| s.disallow_impure_wires) {
     wire.set_pure(true);
   } else {
     let pure = param_helper
@@ -755,7 +756,7 @@ fn finalize_wire(
     wire.set_pure(pure);
   }
 
-  if let Some(_) = env.settings.iter().find(|&s| s.allow_unsafe) {
+  if !env.settings.iter().any(|&s| s.disallow_unsafe) {
     let unsafe_ = param_helper
       .get_param_by_name_or_index("Unsafe", 4)
       .map(|param| match &param.value {
@@ -766,7 +767,7 @@ fn finalize_wire(
     wire.set_unsafe(unsafe_);
   }
 
-  if let Some(_) = env.settings.iter().find(|&s| s.allow_custom_stack_sizes) {
+  if !env.settings.iter().any(|&s| s.disallow_custom_stack_sizes) {
     let stack_size = param_helper
       .get_param_by_name_or_index("StackSize", 5)
       .map(|param| match &param.value {
@@ -776,10 +777,10 @@ fn finalize_wire(
         },
         _ => Err(("StackSize parameter must be an integer", line_info).into()),
       })
-      .unwrap_or(Ok(0))?;
+      .unwrap_or(Ok(128 * 1024))?;
     // ensure stack size is a multiple of 4 and minimum 1024 bytes
-    let stack_size = if stack_size < 1024 {
-      1024
+    let stack_size = if stack_size < 32 * 1024 {
+      32 * 1024
     } else if stack_size % 4 != 0 {
       stack_size + 4 - (stack_size % 4)
     } else {
@@ -862,6 +863,7 @@ pub(crate) fn eval_sequence(
   // inherit previous state for certain things
   if let Some(parent) = parent {
     sub_env.parent = Some(parent as *mut EvalEnv);
+    sub_env.settings = parent.settings.clone(); // clone parent settings
   }
   for stmt in &seq.statements {
     eval_statement(stmt, &mut sub_env)?;
@@ -1953,6 +1955,7 @@ fn process_macro(
 
     let mut eval_env = EvalEnv::default();
     eval_env.parent = Some(e as *const EvalEnv);
+    eval_env.settings = e.settings.clone(); // clone parent settings
 
     // set a random suffix
     eval_env.suffix = Some(nanoid!(16).into());
@@ -2028,6 +2031,7 @@ fn process_shards(
 
     let mut sub_env = EvalEnv::default();
     sub_env.parent = Some(e as *const EvalEnv);
+    sub_env.settings = e.settings.clone(); // clone parent settings
 
     // set a random suffix
     sub_env.suffix = Some(nanoid!(16).into());
@@ -2168,6 +2172,16 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   },
                   value,
                 ) => {
+                  if let Some(_) = find_defined(name, e) {
+                    return Err(
+                      (
+                        format!("{} already defined", name),
+                        block.line_info.unwrap_or_default(),
+                      )
+                        .into(),
+                    );
+                  }
+
                   e.definitions.insert(name.clone(), &value.value);
                   Ok(())
                 }
@@ -2204,6 +2218,16 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               // just add to deferred wires, evaluate later!
               match &name.value {
                 Value::Identifier(name) => {
+                  if let Some(_) = find_wire(name, e) {
+                    return Err(
+                      (
+                        format!("wire {} already exists", name),
+                        block.line_info.unwrap_or_default(),
+                      )
+                        .into(),
+                    );
+                  }
+
                   let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
                   shlog_trace!("Adding deferred wire {}", name);
                   e.deferred_wires.insert(
@@ -2264,6 +2288,16 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
 
               match (&name.value, &args.value, &shards.value) {
                 (Value::Identifier(name), Value::Seq(args), Value::Shards(shards)) => {
+                  if let Some(_) = find_shards_group(name, e) {
+                    return Err(
+                      (
+                        format!("template {} already exists", name),
+                        block.line_info.unwrap_or_default(),
+                      )
+                        .into(),
+                    );
+                  }
+
                   let args_ptr = args as *const _;
                   let shards_ptr = shards as *const _;
                   e.shards_groups.insert(
@@ -2307,6 +2341,16 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
 
               match &name.value {
                 Value::Identifier(name) => {
+                  if let Some(_) = find_mesh(name, e) {
+                    return Err(
+                      (
+                        format!("mesh {} already exists", name),
+                        block.line_info.unwrap_or_default(),
+                      )
+                        .into(),
+                    );
+                  }
+
                   e.meshes.insert(name.clone(), Mesh::default());
                   Ok(())
                 }
@@ -2347,16 +2391,13 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   .into(),
               )?;
 
+              // make sure the env is fully resolved before schedule cos that will calls compose and what not!
+              finalize_env(e)?;
+
               // wire is likely lazy so we need to evaluate it
               let wire = match &wire_id.value {
                 // can be only identifier or string
                 Value::Identifier(name) => {
-                  // schedule accesses only wires in env scope, not parent ones
-                  if let Some((wire, params, line_info)) = e.deferred_wires.remove(name) {
-                    // wire is not finalized, we need to finalize it now
-                    e.finalized_wires.insert(name.clone(), wire.0.into());
-                    finalize_wire(&wire, name, params, line_info, e)?;
-                  }
                   if let Some(wire) = e.finalized_wires.get(name) {
                     Ok(wire.0)
                   } else {

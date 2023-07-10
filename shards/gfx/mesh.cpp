@@ -59,6 +59,8 @@ void Mesh::update(const MeshFormat &format, std::vector<uint8_t> &&vertexData, s
 }
 
 void Mesh::calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize) {
+  assert(vertexSize > 0 && "vertexSize was 0");
+  
   numVertices = vertexDataLength / vertexSize;
   assert(numVertices * vertexSize == vertexDataLength);
 

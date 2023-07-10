@@ -15,6 +15,7 @@ struct TableIterator : public std::tuple<SHVar, SHVar> {
     memcpy(this->it, it, sizeof(SHTableIterator));
   }
   const TableIterator &operator++() {
+    assert(table && table->api && "invalid SHTable for table iterator");
     if(!table->api->tableNext(*table, &it, &std::get<0>(*this), &std::get<1>(*this))) {
       table = nullptr;
     }

@@ -285,6 +285,7 @@ pub extern "C" fn shards_create_sub_env(env: *mut EvalEnv) -> *mut EvalEnv {
   let env = unsafe { &mut *env };
   let mut new_env = EvalEnv::default();
   new_env.parent = Some(env);
+  new_env.settings = env.settings.clone(); // clone parent settings
   Box::into_raw(Box::new(new_env))
 }
 
