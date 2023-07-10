@@ -10,6 +10,7 @@
 #include <gfx/mesh.hpp>
 #endif
 
+extern "C" {
 namespace egui {
 struct Pos2 {
   float x, y;
@@ -88,8 +89,9 @@ union InputEvent {
   struct {
     InputEventType type;
     SDL_KeyCode key;
-    bool pressed;
     ModifierKeys modifiers;
+    bool pressed;
+    bool repeat;
   } key;
   struct {
     InputEventType type;
@@ -262,5 +264,6 @@ struct FullOutput {
   bool wantsKeyboardInput;
 };
 } // namespace egui
+}
 
 #endif /* DBE976AE_DBE6_4455_8698_E341D3B8223F */
