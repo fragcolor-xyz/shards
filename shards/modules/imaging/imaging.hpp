@@ -51,8 +51,15 @@ template <typename T> void demultiplyAlpha(T *from, T *to, int32_t w, int32_t h)
     for (auto x = 0; x < w; x++) {
       const auto addr = ((w * y) + x) * 4;
       // un-premultiply RGB values
-      for (auto z = 0; z < 3; z++) {
-        to[addr + z] = static_cast<T>(static_cast<float>(from[addr + z]) / from[addr + 3] * max);
+      if (from[addr + 3] == 0.0f) {
+        // If alpha is zero, set RGB to zero
+        for (auto z = 0; z < 3; z++) {
+          to[addr + z] = static_cast<T>(0);
+        }
+      } else {
+        for (auto z = 0; z < 3; z++) {
+          to[addr + z] = static_cast<T>(static_cast<float>(from[addr + z]) / from[addr + 3] * max);
+        }
       }
       // copy A value
       to[addr + 3] = from[addr + 3];
