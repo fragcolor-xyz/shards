@@ -2172,6 +2172,16 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   },
                   value,
                 ) => {
+                  if let Some(_) = find_defined(name, e) {
+                    return Err(
+                      (
+                        format!("{} already defined", name),
+                        block.line_info.unwrap_or_default(),
+                      )
+                        .into(),
+                    );
+                  }
+
                   e.definitions.insert(name.clone(), &value.value);
                   Ok(())
                 }
@@ -2208,6 +2218,16 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               // just add to deferred wires, evaluate later!
               match &name.value {
                 Value::Identifier(name) => {
+                  if let Some(_) = find_wire(name, e) {
+                    return Err(
+                      (
+                        format!("wire {} already exists", name),
+                        block.line_info.unwrap_or_default(),
+                      )
+                        .into(),
+                    );
+                  }
+
                   let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
                   shlog_trace!("Adding deferred wire {}", name);
                   e.deferred_wires.insert(
@@ -2268,6 +2288,16 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
 
               match (&name.value, &args.value, &shards.value) {
                 (Value::Identifier(name), Value::Seq(args), Value::Shards(shards)) => {
+                  if let Some(_) = find_shards_group(name, e) {
+                    return Err(
+                      (
+                        format!("template {} already exists", name),
+                        block.line_info.unwrap_or_default(),
+                      )
+                        .into(),
+                    );
+                  }
+
                   let args_ptr = args as *const _;
                   let shards_ptr = shards as *const _;
                   e.shards_groups.insert(
@@ -2311,6 +2341,16 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
 
               match &name.value {
                 Value::Identifier(name) => {
+                  if let Some(_) = find_mesh(name, e) {
+                    return Err(
+                      (
+                        format!("mesh {} already exists", name),
+                        block.line_info.unwrap_or_default(),
+                      )
+                        .into(),
+                    );
+                  }
+
                   e.meshes.insert(name.clone(), Mesh::default());
                   Ok(())
                 }
