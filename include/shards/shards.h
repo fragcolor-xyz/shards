@@ -890,6 +890,7 @@ typedef SHMeshRef(__cdecl *SHCreateMesh)();
 typedef void(__cdecl *SHDestroyMesh)(SHMeshRef mesh);
 typedef void(__cdecl *SHSchedule)(SHMeshRef mesh, SHWireRef wire);
 typedef SHBool(__cdecl *SHTick)(SHMeshRef mesh);
+typedef void(__cdecl *SHTerminate)(SHMeshRef mesh);
 typedef void(__cdecl *SHSleep)(double seconds, SHBool runCallbacks);
 
 #define SH_ARRAY_TYPE(_array_, _value_)                                          \
@@ -1024,6 +1025,7 @@ typedef struct _SHCore {
   SHSchedule schedule;
   SHSchedule unschedule;
   SHTick tick; // returns false if all wires are done!
+  SHTerminate terminate;
   SHSleep sleep;
 
   // Environment utilities
