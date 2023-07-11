@@ -254,7 +254,7 @@ jobs:
           echo "Running test: http"
           ./shards ../shards/tests/http.clj
           echo "Running test: brotli"
-          ./shards ../shards/tests/brotli.clj
+          ./shards new ../shards/tests/brotli.shs
           echo "Running test: snappy"
           ./shards ../shards/tests/snappy.clj
           echo "Running test: expect-like"
@@ -262,7 +262,7 @@ jobs:
           # echo "Running test: ws"
           # ./shards ../shards/tests/ws.edn
           echo "Running test: bigint"
-          ./shards ../shards/tests/bigint.clj
+          ./shards new ../shards/tests/bigint.shs
           echo "Running test: wasm"
           ./shards ../shards/tests/wasm.clj
           echo "Running test: eth"

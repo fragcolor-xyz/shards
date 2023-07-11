@@ -147,8 +147,8 @@ jobs:
           ./shards ../shards/tests/imaging.clj
           ./shards ../shards/tests/http.clj
           # ./shards ../shards/tests/ws.edn
-          ./shards ../shards/tests/bigint.clj
-          ./shards ../shards/tests/brotli.clj
+          ./shards new ../shards/tests/bigint.shs
+          ./shards new ../shards/tests/brotli.shs
           ./shards ../shards/tests/snappy.clj
           ./shards ../shards/tests/expect.edn
           ./shards ../shards/tests/wasm.clj
@@ -156,8 +156,8 @@ jobs:
           ./shards ../shards/tests/rust.clj
           ./shards ../shards/tests/crypto.edn
           ./shards ../shards/tests/wire-macro.edn
-          ./shards ../shards/tests/branch.edn
-          ./shards ../shards/tests/audio.edn
+          ./shards new ../shards/tests/branch.shs
+          ./shards new ../shards/tests/audio.shs
           ./shards ../shards/tests/time.edn
           ./shards ../shards/tests/eth.edn
           ./shards ../shards/tests/many.edn

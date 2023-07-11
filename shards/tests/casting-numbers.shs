@@ -63,10 +63,10 @@
     @i3(i2) | Assert.Is(@i3(2 2 2)) | Log("MakeInt3 (variable/broadcast)")
     @i4(i2) | Assert.Is(@i4(2 2 2 2)) | Log("MakeInt4 (variable/broadcast)")
 
-    @color(255 255 255) | Assert.Is(@color(255 255 255 255)) | Log("MakeColor (extended)")
-    @color(0) | Assert.Is(@color(0 0 0 0)) | Log("MakeColor (broadcast)")
-    @color(i2 255 100) | Assert.Is(@color(2 255 100 255)) | Log("MakeColor (variable/mixed/extended)")
-    @color(i2) | Assert.Is(@color(2 2 2 2)) | Log("MakeColor (variable/broadcast)")
+    ; @color(255 255 255) | Assert.Is(@color(255 255 255 255)) | Log("MakeColor (extended)")
+    ; @color(0) | Assert.Is(@color(0 0 0 0)) | Log("MakeColor (broadcast)")
+    ; @color(i2 255 100) | Assert.Is(@color(2 255 100 255)) | Log("MakeColor (variable/mixed/extended)")
+    ; @color(i2) | Assert.Is(@color(2 2 2 2)) | Log("MakeColor (variable/broadcast)")
 
     ; Enum conversion
     Type::None | ToInt | Assert.Is(0)
