@@ -485,7 +485,7 @@ struct ReadTextureShard {
     _requiredGraphicsContext->renderer->copyTexture(TextureSubResource(texture), _readBuffer, (bool)*_wait);
 
     // Poll for previously queued operation completion
-    if (!_wait)
+    if (!*_wait)
       _requiredGraphicsContext->renderer->pollTextureCopies();
 
     _image.valueType = SHType::Image;

@@ -419,12 +419,12 @@ struct ImageGetPixel {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    if (_asInteger) {
-      if (!_default.isNone() && _default.valueType != SHType::Int4)
+    if (*_asInteger) {
+      if (!_default->isNone() && _default.valueType != SHType::Int4)
         throw ComposeError("Default value should be an Int4");
       return CoreInfo::Int4Type;
     } else {
-      if (!_default.isNone() && _default.valueType != SHType::Float4)
+      if (!_default->isNone() && _default.valueType != SHType::Float4)
         throw ComposeError("Default value should be a Float4");
       return CoreInfo::Float4Type;
     }
@@ -476,12 +476,12 @@ struct ImageGetPixel {
 
     SHInt2 coord = input.payload.int2Value;
     if (coord[0] < 0 || coord[0] >= w) {
-      if (!_default.isNone())
+      if (!_default->isNone())
         return _default;
       throw std::out_of_range("Image fetch x coordinate out of range");
     }
     if (coord[1] < 0 || coord[1] >= h) {
-      if (!_default.isNone())
+      if (!_default->isNone())
         return _default;
       throw std::out_of_range("Image fetch y coordinate out of range");
     }
