@@ -68,7 +68,7 @@
 @wire(device-test-4 {
     Audio.Device |
     Audio.Channel(Shards: {
-        440.0 | Audio.Oscillator(Waveform.Triangle)
+        440.0 | Audio.Oscillator(Waveform::Triangle)
     })
 } Looped: true)
 
@@ -78,7 +78,7 @@
 @wire(device-test-5 {
     Audio.Device |
     Audio.Channel(Shards: {
-        440.0 | Audio.Oscillator(Waveform.Square)
+        440.0 | Audio.Oscillator(Waveform::Square)
     })
 } Looped: true)
 
@@ -88,7 +88,7 @@
 @wire(device-test-6 {
     Audio.Device |
     Audio.Channel(Shards: {
-        440.0 | Audio.Oscillator(Waveform.Sawtooth)
+        440.0 | Audio.Oscillator(Waveform::Sawtooth)
     })
 } Looped: true)
 
