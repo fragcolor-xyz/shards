@@ -9,7 +9,7 @@
 @wire(main-wire {
     837799 | Do(count-wire) |
     Log("Answer")
-} LStack: true)
+} StackSize: 41943040)
 
 @mesh(root)
 @schedule(root main-wire)
