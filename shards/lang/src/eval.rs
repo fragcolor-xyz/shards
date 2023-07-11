@@ -1579,7 +1579,7 @@ fn create_shard(
         }
       } else {
         if !as_idx {
-          return Err(("Named parameter after unnamed parameter", line_info).into());
+          return Err(("Unnamed parameter after named parameter", line_info).into());
         }
         set_shard_parameter(
           &info[idx as usize],
