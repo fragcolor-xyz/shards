@@ -5,8 +5,10 @@
 #include <shards/core/runtime.hpp>
 #include <boost/lockfree/queue.hpp>
 
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #define STB_VORBIS_HEADER_ONLY
 #include "extras/stb_vorbis.c" // Enables Vorbis decoding.
+#pragma clang attribute pop
 
 #ifdef __APPLE__
 #define MA_NO_RUNTIME_LINKING
@@ -19,10 +21,11 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
-// The stb_vorbis implementation must come after the implementation of
-// miniaudio.
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+// The stb_vorbis implementation must come after the implementation of miniaudio.
 #undef STB_VORBIS_HEADER_ONLY
 #include "extras/stb_vorbis.c"
+#pragma clang attribute pop
 
 namespace shards {
 namespace Audio {
@@ -812,7 +815,11 @@ struct ReadFile {
     }
 
     // read pcm data every iteration
-    ma_uint64 framesRead = ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading, NULL);
+    ma_uint64 framesRead;
+    ma_result res = ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading, &framesRead);
+    if(res != MA_SUCCESS) {
+      throw ActivationError("Failed to read");
+    }
     _progress += framesRead;
     if (framesRead < _nsamples) {
       // Reached the end.
