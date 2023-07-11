@@ -3,7 +3,7 @@
 
 @mesh(root)
 
-@wire(test {
+@wire(bigints {
     1000 | BigInt | BigInt.Shift(By: 18) >= t1000x1e18 |
     BigInt.ToString | Log("bigint")
     t1000x1e18 | BigInt.ToFloat(ShiftedBy: -18) | Log("bigint as shifted float") |
@@ -30,7 +30,7 @@
 
     "18446744073709551615" | BigInt | BigInt.ToBytes(64) = max-u64 |
     BigInt | BigInt.ToString | Assert.Is("18446744073709551615" true) | Log("Returned")
-    max-u64 | Substrate.Decode([Type.Int] ["u64"]) | Log("Decoded")
+    max-u64 | Substrate.Decode([Type::Int] ["u64"]) | Log("Decoded")
 
     "4e2" | HexToBytes | BigInt | BigInt.ToString | Assert.Is("1250" true) | Log("Returned")
 
@@ -62,5 +62,5 @@
     {BigInt.Sqrt | BigInt.ToString | Assert.Is("100000000000000000000" true) | Log("Sqrt")}
 } Looped: true)
 
-@schedule(root test)
+@schedule(root bigints)
 @run(root 0.1 10)
