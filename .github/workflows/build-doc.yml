@@ -150,7 +150,7 @@ jobs:
       - name: Step to start local HTTP server with Fragnova docs
         run: |
           cd shards/docs && nohup mkdocs serve > nohup.out 2> nohup.err < /dev/null &
-      - name: Wait for the database to start
+      - name: Wait for the docs website to start
         run: wget -qO- https://raw.githubusercontent.com/fragcolor-xyz/wait-for/WAIT_FOR_VERSION/wait-for | sh -s -- 127.0.0.1:8000 -- echo "Docs website is up"
         env:
           WAIT_FOR_VERSION: b90dabffc34fdae1f8bc84c4d442de60e5b47b35 # v2.2.4
