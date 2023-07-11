@@ -122,7 +122,7 @@ function(shards_generate_rust_union TARGET_NAME)
       get_property(MODULE_RUST_TARGETS TARGET ${TARGET_NAME} PROPERTY SHARDS_RUST_TARGETS)
 
       if(MODULE_RUST_TARGETS)
-        message(STATUS "${TARGET_NAME}: Adding rust targets {${MODULE_RUST_TARGETS}} from module ${MODULE_ID}")
+        # message(STATUS "${TARGET_NAME}: Adding rust targets {${MODULE_RUST_TARGETS}} from module ${MODULE_ID}")
         list(APPEND RUST_TARGETS ${MODULE_RUST_TARGETS})
       endif()
     endif()
@@ -175,8 +175,8 @@ endfunction()
 
 # The union libary is responsible for combining all required shards modules
 # into a single library alongside the registration and indexing boilerplate
-function(shards_generate_union TARGET_NAME)
-  message(STATUS "Generating union target ${TARGET_NAME}")
+function(shards_generate_union UNION_TARGET_NAME)
+  message(STATUS "Generating union target ${UNION_TARGET_NAME}")
 
   set(GENERATED_ROOT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
   set(DUMMY_FILE_PATH "${GENERATED_ROOT_DIR}/dummy.cpp")
@@ -185,15 +185,15 @@ function(shards_generate_union TARGET_NAME)
 
   set(union_SOURCES ${DUMMY_FILE_PATH})
 
-  add_library(shards-union ${union_SOURCES})
-  target_link_libraries(shards-union shards-core)
+  add_library(${UNION_TARGET_NAME} ${union_SOURCES})
+  target_link_libraries(${UNION_TARGET_NAME} shards-core)
 
   get_property(SHARDS_MODULE_TARGETS GLOBAL PROPERTY SHARDS_MODULE_TARGETS)
 
   if(NOT SHARDS_INLINE_EVERYTHING)
     # Compile normally inlined sources separately
     # NOTE: You should make sure the source files listed here are included inside core_inlined.cpp as well
-    target_sources(shards-union PRIVATE
+    target_sources(${UNION_TARGET_NAME} PRIVATE
       ${SHARDS_DIR}/shards/core/runtime.cpp
     )
   endif()
@@ -203,8 +203,8 @@ function(shards_generate_union TARGET_NAME)
     is_module_enabled(MODULE_ENABLED ${MODULE_ID})
 
     if(${MODULE_ENABLED})
-      # message(STATUS "shards-union: Adding module ${TARGET_NAME} (id: ${MODULE_ID})")
-      target_link_libraries(shards-union ${TARGET_NAME})
+      # message(STATUS "${UNION_TARGET_NAME}: Adding module ${TARGET_NAME} (id: ${MODULE_ID})")
+      target_link_libraries(${UNION_TARGET_NAME} ${TARGET_NAME})
       list(APPEND ENABLED_MODULE_IDS ${MODULE_ID})
       list(APPEND ENABLED_MODULE_TARGETS ${TARGET_NAME})
     endif()
@@ -339,7 +339,7 @@ function(shards_generate_union TARGET_NAME)
   file(APPEND ${GENERATED_TEMP} "}\n")
   file(COPY_FILE ${GENERATED_TEMP} ${GENERATED_INLINE_SOURCE} ONLY_IF_DIFFERENT)
 
-  target_sources(shards-union PRIVATE ${GENERATED_INLINE_SOURCE})
+  target_sources(${UNION_TARGET_NAME} PRIVATE ${GENERATED_INLINE_SOURCE})
   set_source_files_properties(${GENERATED_INLINE_SOURCE} PROPERTIES GENERATED TRUE)
 
   # Registry header
@@ -390,6 +390,6 @@ function(shards_generate_union TARGET_NAME)
   file(APPEND ${GENERATED_TEMP} "}\n")
   file(COPY_FILE ${GENERATED_TEMP} ${GENERATED_REGISTRY_SOURCE} ONLY_IF_DIFFERENT)
 
-  target_sources(shards-union PRIVATE ${GENERATED_REGISTRY_SOURCE})
+  target_sources(${UNION_TARGET_NAME} PRIVATE ${GENERATED_REGISTRY_SOURCE})
   set_source_files_properties(${GENERATED_REGISTRY_SOURCE} PROPERTIES GENERATED TRUE)
 endfunction()
