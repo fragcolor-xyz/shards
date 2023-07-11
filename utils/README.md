@@ -9,7 +9,7 @@ This directory contains an editor configured to highlight Shards syntax. The edi
 
 Use the following command to run the Shards editor:
 ```sh
-shards new run-editor.shs
+../build/debug/shards new run-editor.shs
 ```
 
 To debug syntax highlighting of Shards new syntax, copy+paste code into the editor.
