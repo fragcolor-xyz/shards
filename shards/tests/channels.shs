@@ -1,0 +1,60 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2020 Fragcolor Pte. Ltd.
+
+@mesh(root)
+
+@wire(producer {
+    Repeat({
+        "A message" |
+        Produce("a") |
+        Log("Produced: ")
+    } 10)
+    Complete("a")
+})
+
+@wire(consumer-1 {
+    Consume("a" @type(Type::String)) |
+    Log("Consumed 1: ")
+} Looped: true)
+
+@wire(consumer-2 {
+    Consume("a" @type(Type::String) 5) |
+    Log("Consumed 2: ")
+} Looped: true)
+
+@schedule(root producer)
+@schedule(root consumer-1)
+@schedule(root consumer-2)
+@run(root 0.1)
+
+@wire(producer-2 {
+    Repeat({
+        "A message" |
+        ; Broadcast("b"  NoCopy!!: true) |
+        Broadcast("b" true) |
+        Log("Broadcasted: ")
+        Pause(0.1)
+    } 10)
+    Complete("b")
+})
+
+@template(consumers [x] {
+    @wire(#(["consumer" x] | String.Join) {
+        Listen("b" @type(Type::String)) |
+        Log(#([x ": "] | String.Join))
+    } Looped: true)
+})
+
+@wire(consumer-33 {
+    Listen("b" @type(Type::String) 3) |
+    Log("Consumed 33: ")
+} Looped: true)
+
+@schedule(root producer-2)
+; @schedule(root @consumers(0))
+; @schedule(root @consumers(1))
+; @schedule(root @consumers(2))
+@schedule(root consumer-33)
+@run(root 0.1)
+
+; (prn "Done")
