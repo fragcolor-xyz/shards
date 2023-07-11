@@ -246,7 +246,7 @@ struct Device {
     deviceConfig.periodSizeInFrames = bufferSize;
     deviceConfig.periods = 1;
     deviceConfig.performanceProfile = ma_performance_profile_low_latency;
-    deviceConfig.noPreZeroedOutputBuffer = 1; // we do that only if needed
+    deviceConfig.noPreSilencedOutputBuffer = 1; // we do that only if needed
     deviceConfig.dataCallback = pcmCallback;
     deviceConfig.pUserData = this;
 #ifdef __APPLE__
@@ -619,7 +619,7 @@ struct Oscillator {
     ma_waveform_set_amplitude(&_wave, _amplitude.get().payload.floatValue);
     ma_waveform_set_frequency(&_wave, input.payload.floatValue);
 
-    ma_waveform_read_pcm_frames(&_wave, _buffer.data(), _nsamples);
+    ma_waveform_read_pcm_frames(&_wave, _buffer.data(), _nsamples, NULL);
 
     return Var(SHAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels), _buffer.data()});
   }
@@ -812,7 +812,7 @@ struct ReadFile {
     }
 
     // read pcm data every iteration
-    ma_uint64 framesRead = ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading);
+    ma_uint64 framesRead = ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading, NULL);
     _progress += framesRead;
     if (framesRead < _nsamples) {
       // Reached the end.
@@ -877,7 +877,7 @@ struct WriteFile {
   }
 
   void initFile(const std::string_view &filename) {
-    ma_encoder_config config = ma_encoder_config_init(ma_resource_format_wav, ma_format_f32, _channels, _sampleRate);
+    ma_encoder_config config = ma_encoder_config_init(ma_encoding_format_wav, ma_format_f32, _channels, _sampleRate);
     ma_result res = ma_encoder_init_file(filename.data(), &config, &_encoder);
     if (res != MA_SUCCESS) {
       SHLOG_ERROR("Failed to open audio encoder on file {}", filename);
@@ -912,7 +912,7 @@ struct WriteFile {
     if (input.payload.audioValue.channels != _channels) {
       throw ActivationError("Input has an invalid number of audio channels");
     }
-    ma_encoder_write_pcm_frames(&_encoder, input.payload.audioValue.samples, input.payload.audioValue.nsamples);
+    ma_encoder_write_pcm_frames(&_encoder, input.payload.audioValue.samples, input.payload.audioValue.nsamples, NULL);
     return input;
   }
 };
