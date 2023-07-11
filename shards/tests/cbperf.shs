@@ -1,0 +1,21 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2019 Fragcolor Pte. Ltd.
+
+; valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes ./cblp ../../shards/src/tests/cbperf.shs
+@mesh(root)
+
+@wire(analysis {
+    18000000 |
+    Set(nfloats) |
+    Profile({
+        0 | Set(idx)
+        Repeat({
+            Get(idx) |
+            Math.Add(1) |
+            Update(idx)
+        } nfloats)
+    })
+})
+
+@schedule(root analysis)
+@run(root 0.01)
