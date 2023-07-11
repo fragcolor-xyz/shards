@@ -675,7 +675,7 @@ In our example below, we will be using `Expand` to teach John about multiplicati
 
     1. Creates and runs 100 copies of the Wire `zero-multiplication`.
     2. Generates a random number from 0 to 99 and multiplies it with 0.
-    3. `Expand` outputs an array of the results. We use [`ForEach`](../../../reference/shards/General/ForEach/) to check if each result [`Is`](../../../reference/shards/General/Is/) 0.
+    3. `Expand` outputs an array of the results. We use [`ForEach`](../../../../reference/shards/shards/General/ForEach/) to check if each result [`Is`](../../../../reference/shards/shards/General/Is/) 0.
 
 === "Output"
     ```
@@ -731,7 +731,7 @@ In the following examples, John attempts to hit a moving target by firing arrows
     ```
 
     1. Only the first successful result will be used as output. Once a Wire is successful, the rest are ignored.
-    2. Odd numbers will have a remainder of 1 when divided by 2. We use [`Math.Mod`](../../../reference/shards/Math/Mod/) to get the remainder from the division.
+    2. Odd numbers will have a remainder of 1 when divided by 2. We use [`Math.Mod`](../../../../reference/shards/shards/Math/Mod/) to get the remainder from the division.
 
 === "Output"
     ```

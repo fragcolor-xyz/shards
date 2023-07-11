@@ -11,6 +11,7 @@ Here at Fragnova, we're passionate about the potential of technology to change t
 
 We believe that we're on the brink of a major revolution, where traditional interfaces will be replaced by more flexible and intuitive virtual interfaces that can be seamlessly integrated into the user's environment.
 
+
 To make this vision a reality, we're dedicated to creating programming tools that will empower developers to build the future.
 
 <br>
