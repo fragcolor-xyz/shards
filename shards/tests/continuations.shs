@@ -1,0 +1,32 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2020 Fragcolor Pte. Ltd.
+
+@mesh(root-mesh)
+
+@wire(d1 {
+    Msg("D1 started")
+    Resume(d2)
+    Msg("D1 returned")
+    Resume(main)
+} Looped: true)
+
+@wire(d2 {
+    Msg("D2 started")
+    Resume(d1)
+    Msg("D2 returned")
+} Looped: true)
+
+@wire(main {
+    Msg("Main started")
+    Resume(d1)
+    Msg("Main returned")
+} Looped: true)
+
+@wire(root {
+    Msg("Root started")
+    Step(main)
+    Msg("Root returned")
+} Looped: true)
+
+@schedule(root-mesh root)
+@run(root-mesh 0.1 10)
