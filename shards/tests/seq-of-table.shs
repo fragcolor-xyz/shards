@@ -1,0 +1,11 @@
+[{a: 1 b: 2} {a: 1 b: 2}] >= x
+[{a: 1 b: 2}] >= y
+
+x | Log
+y | Log
+
+x > y
+; y > x
+
+x | Log
+y | Log
