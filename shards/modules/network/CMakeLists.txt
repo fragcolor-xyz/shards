@@ -12,5 +12,6 @@ if(NOT EMSCRIPTEN)
 
   target_include_directories(shards-module-network PRIVATE ../core)
 
+  target_link_libraries(shards-network-rust INTERFACE OpenSSL)
   target_link_libraries(shards-module-network OpenSSL kcp-wrapper)
 endif()
