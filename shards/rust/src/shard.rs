@@ -220,7 +220,7 @@ unsafe extern "C" fn shard_warmup<T: Shard>(arg1: *mut CShard, arg2: *mut SHCont
     Err(error) => {
       SHError {
         message: SHStringWithLen {
-          string: error.as_ptr() as *const i8,
+          string: error.as_ptr() as *const c_char,
           len: error.len(),
         },
         code: 1,
@@ -256,7 +256,7 @@ unsafe extern "C" fn shard_cleanup<T: Shard>(arg1: *mut CShard) -> SHError {
     Err(error) => {
       SHError {
         message: SHStringWithLen {
-          string: error.as_ptr() as *const i8,
+          string: error.as_ptr() as *const c_char,
           len: error.len(),
         },
         code: 1,
@@ -297,7 +297,7 @@ unsafe extern "C" fn shard_compose<T: Shard>(
       SHShardComposeResult {
         error: SHError {
           message: SHStringWithLen {
-            string: error.as_ptr() as *const i8,
+            string: error.as_ptr() as *const c_char,
             len: error.len(),
           },
           code: 1,
@@ -336,7 +336,7 @@ unsafe extern "C" fn shard_setParam<T: Shard>(
     Err(error) => {
       SHError {
         message: SHStringWithLen {
-          string: error.as_ptr() as *const i8,
+          string: error.as_ptr() as *const c_char,
           len: error.len(),
         },
         code: 1,

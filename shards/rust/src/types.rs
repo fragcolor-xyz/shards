@@ -102,6 +102,7 @@ use std::ffi::CStr;
 use std::ffi::CString;
 use std::i32::MAX;
 use std::rc::Rc;
+use std::os::raw::c_char;
 
 #[macro_export]
 macro_rules! cstr {
@@ -253,7 +254,7 @@ impl Wire {
       (*Core).setWireName.unwrap()(
         self.0 .0,
         SHStringWithLen {
-          string: name.as_ptr() as *const i8,
+          string: name.as_ptr() as *const c_char,
           len: name.len(),
         },
       )
@@ -304,7 +305,7 @@ impl ShardRef {
   pub fn create(name: &str) -> Option<Self> {
     unsafe {
       let ptr = (*Core).createShard.unwrap()(SHStringWithLen {
-        string: name.as_ptr() as *const i8,
+        string: name.as_ptr() as *const c_char,
         len: name.len(),
       });
       if ptr.is_null() {
@@ -738,7 +739,7 @@ impl From<SHStringWithLen> for &str {
 impl From<&str> for SHStringWithLen {
   fn from(s: &str) -> Self {
     SHStringWithLen {
-      string: s.as_ptr() as *const i8,
+      string: s.as_ptr() as *const c_char,
       len: s.len(),
     }
   }
