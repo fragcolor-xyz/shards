@@ -996,11 +996,16 @@ struct Set : public SetUpdateBase {
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
     }
+
     if (_exposed) {
       _exposedInfo._innerInfo.elements[0].exposed = true;
     } else {
       _exposedInfo._innerInfo.elements[0].exposed = false;
     }
+
+    // always lift this limit in a Set/Update
+    _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
+
     return data.inputType;
   }
 
@@ -1134,6 +1139,7 @@ struct Ref : public SetBase {
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreRefRegular;
     }
+
     return data.inputType;
   }
 
@@ -1273,6 +1279,9 @@ struct Update : public SetUpdateBase {
       _exposedInfo =
           ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The updated table."), SHTypeInfo(data.inputType), true));
     }
+
+    // always lift this limit in a Set/Update
+    _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
 
     return data.inputType;
   }
