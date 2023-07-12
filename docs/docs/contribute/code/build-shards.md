@@ -50,7 +50,7 @@ Navigate to where your Shards repository is located using the command `cd $(cygp
 ??? "cygpath"
     The Git Bash terminal requires you to convert the backslashes(\\) in your directory address to forward slashes(/). You will also have to remove the colon(:) after the drive alphabet. 
     
-    This is the Unix form of an address, and can be done automatically by using the cygpath program.
+    This is the Unix form of an address and can be done automatically by using the cygpath program.
 
     e.g. `cygpath -u 'C:\Projects\Shards'` will output `/c/Projects/Shards`
 
@@ -63,11 +63,21 @@ If your Shards repository is located at `C:\Projects\Shards`, the command used i
 
     ![Copy the directory’s address as text.](assets/location-shards-repo-copy-address.png)
 
+## Single command to build Shards
+
+To build shards using a single command, execute the following command in the root of the repository:
+```
+./build.sh
+```
+
+!!! note
+    If you're unable to construct Shards using the [`build.sh`](../../../../build.sh) script, continue reading for a step-by-step approach to building Shards.
+
 ## Updating the Repository and Submodules ##
 
 When new changes are made to the Shards repository, you will want to Pull these changes into your local copy of it. 
 
-To do so with Github Desktop, first select the “Fetch origin” button.
+To do so with Github Desktop, first, select the “Fetch origin” button.
 
 ![Select the “Fetch origin” button to check for updates.](assets/github-desktop-fetch.png)
 
