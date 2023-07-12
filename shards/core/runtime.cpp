@@ -753,7 +753,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
         return false;
       }
       // if a fixed size is requested make sure it fits at least enough elements
-      if (receiverType.fixedSize != 0 && inputType.fixedSize < receiverType.fixedSize) {
+      if (receiverType.fixedSize != 0 && receiverType.fixedSize > inputType.fixedSize) {
         return false;
       }
     }

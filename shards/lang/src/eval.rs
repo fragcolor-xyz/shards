@@ -2954,10 +2954,25 @@ pub(crate) fn eval_statement(stmt: &Statement, e: &mut EvalEnv) -> Result<(), Sh
   }
 }
 
-pub fn eval(seq: &Sequence, name: &str) -> Result<Wire, ShardsError> {
+pub fn eval(
+  seq: &Sequence,
+  name: &str,
+  defines: HashMap<String, String>,
+) -> Result<Wire, ShardsError> {
   profiling::scope!("eval", name);
 
-  let mut env = eval_sequence(seq, None)?;
+  let mut parent = EvalEnv::default();
+  // add defines
+  let defines: Vec<(RcStrWrapper, Value)> = defines
+    .iter()
+    .map(|(k, v)| (k.as_str().into(), Value::String(v.as_str().into())))
+    .collect::<Vec<_>>();
+  for (name, value) in &defines {
+    parent.definitions.insert(name.clone(), value);
+  }
+
+  let mut env = eval_sequence(seq, Some(&mut parent))?;
+
   let wire = Wire::default();
   wire.set_name(name);
   finalize_env(&mut env)?;
