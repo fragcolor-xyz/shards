@@ -2080,9 +2080,9 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
       assert(src.payload.stringValue != nullptr && "string value is null but length is not 0");
       memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue, srcSize);
     }
-    
+
     assert(dst.payload.stringValue && "destination stringValue cannot be null");
-      
+
     // make sure to 0 terminate
     ((char *)dst.payload.stringValue)[srcSize] = 0;
 
@@ -3263,6 +3263,11 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
       return false;
     else
       return true;
+  };
+
+  result->terminate = [](SHMeshRef mesh) noexcept {
+    auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+    (*smesh)->terminate();
   };
 
   result->sleep = [](double seconds, bool runCallbacks) noexcept { shards::sleep(seconds, runCallbacks); };

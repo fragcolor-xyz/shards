@@ -2555,6 +2555,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 iteration += 1;
                 if let Some(max_iterations) = iterations {
                   if iteration >= max_iterations {
+                    mesh.terminate();
                     break;
                   }
                 }

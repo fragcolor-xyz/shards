@@ -4,7 +4,7 @@
 (defmesh main)
 
 (defloop play-files
-  (Audio.ReadFile "./data/Ode_to_Joy.ogg" :From 1.0 :To 1.023219954648526)
+  (Audio.ReadFile "./data/Ode_to_Joy.ogg" :From 1.0 :To 2.0)
   (Log))
 
 (schedule main play-files)

@@ -207,6 +207,10 @@ impl Mesh {
   pub fn tick(&mut self) -> bool {
     unsafe { (*Core).tick.unwrap()(self.0) }
   }
+
+  pub fn terminate(&mut self) {
+    unsafe { (*Core).terminate.unwrap()(self.0) }
+  }
 }
 
 pub struct Wire(pub WireRef);

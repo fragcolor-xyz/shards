@@ -1,5 +1,6 @@
 use crate::{eval::eval, read::read};
 use clap::{arg, Command};
+use shards::core::Core;
 use shards::types::Mesh;
 use shards::{SHCore, SHARDS_CURRENT_ABI};
 use std::ffi::CStr;
@@ -54,11 +55,18 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
       let wire = {
         let ast = {
           let file_path = Path::new(&file);
+          let file_path = std::fs::canonicalize(file_path).unwrap();
           let mut file_content = std::fs::read_to_string(file).expect("File not found");
           // add new line at the end of the file to be able to parse it correctly
           file_content.push('\n');
-          read(&file_content, file_path.parent().unwrap().to_str().unwrap())
-            .expect("Failed to parse file")
+
+          // get absolute parent path of the file
+          let parent_path = file_path.parent().unwrap().to_str().unwrap();
+          let c_parent_path = std::ffi::CString::new(parent_path).unwrap();
+          // set it as root path
+          unsafe { (*Core).setRootPath.unwrap()(c_parent_path.as_ptr() as *const c_char) };
+
+          read(&file_content, parent_path).expect("Failed to parse file")
         };
         eval(&ast, "root").expect("Failed to evaluate file")
       };
