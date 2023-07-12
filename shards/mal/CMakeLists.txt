@@ -28,7 +28,7 @@ endfunction()
 # Executable
 add_executable(shards ${shards_SOURCES})
 setup_shards_target(shards)
-target_link_libraries(shards shards-union shards-rust-union)
+target_link_libraries(shards shards-union)
 
 # library
 add_library(shards-lib)
