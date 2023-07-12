@@ -13,6 +13,7 @@ mod read;
 use crate::ast::*;
 
 use core::fmt;
+use std::collections::HashMap;
 
 use eval::EvalEnv;
 use print::print_ast;
@@ -312,7 +313,7 @@ pub extern "C" fn shards_eval(sequence: *mut Sequence, name: *const c_char) -> S
   let name = unsafe { CStr::from_ptr(name).to_str().unwrap() };
   // we just want a reference to the sequence, not ownership
   let seq = unsafe { &*sequence };
-  let result = catch_unwind(|| eval::eval(seq, name));
+  let result = catch_unwind(|| eval::eval(seq, name, HashMap::new()));
   match result {
     Ok(Ok(wire)) => SHLWire {
       wire: Box::into_raw(Box::new(wire)),

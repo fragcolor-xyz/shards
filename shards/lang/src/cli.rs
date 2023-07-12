@@ -1,8 +1,9 @@
 use crate::{eval::eval, read::read};
-use clap::{arg, Command};
+use clap::{arg, Arg, Command};
 use shards::core::Core;
 use shards::types::Mesh;
 use shards::{SHCore, SHARDS_CURRENT_ABI};
+use std::collections::HashMap;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::path::Path;
@@ -35,7 +36,8 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
     .subcommand(
       Command::new("new")
         .about("Reads and executes a Shards file.")
-        .arg(arg!(<FILE> "The script to execute")),
+        .arg(arg!(<FILE> "The script to execute"))
+        .arg(Arg::new("args").num_args(0..)),
     )
     // Add your arguments here
     .get_matches_from(args);
@@ -45,6 +47,24 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
       // we need to do this here or old path will fail
       unsafe {
         shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+      }
+
+      let mut defines = HashMap::new();
+      let args = matches.get_many::<String>("args");
+      if let Some(args) = args {
+        for arg in args {
+          println!("arg: {}", arg);
+          // find the first column and split it, the rest is the value
+          let mut split = arg.split(':');
+          let key = split.next().unwrap();
+          // value should be all the rest, could contain ':' even
+          let value = split.collect::<Vec<&str>>().join(":");
+          // finally unescape the value if needed
+          let value = value.replace("\\:", ":");
+          // and remove quotes if quoted
+          let value = value.trim_matches('"');
+          defines.insert(key.to_owned(), value.to_owned());
+        }
       }
 
       let file = matches
@@ -68,7 +88,7 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
 
           read(&file_content, parent_path).expect("Failed to parse file")
         };
-        eval(&ast, "root").expect("Failed to evaluate file")
+        eval(&ast, "root", defines).expect("Failed to evaluate file")
       };
 
       let mut mesh = Mesh::default();
@@ -97,113 +117,3 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
     _ => 0,
   }
 }
-
-// fn main() {
-//   let matches = Command::new("pacman")
-//     .about("package manager utility")
-//     .version("5.2.1")
-//     .subcommand_required(true)
-//     .arg_required_else_help(true)
-//     .author("Pacman Development Team")
-//     // Query subcommand
-//     //
-//     // Only a few of its arguments are implemented below.
-//     .subcommand(
-//       Command::new("query")
-//         .short_flag('Q')
-//         .long_flag("query")
-//         .about("Query the package database.")
-//         .arg(
-//           Arg::new("search")
-//             .short('s')
-//             .long("search")
-//             .help("search locally installed packages for matching strings")
-//             .conflicts_with("info")
-//             .action(ArgAction::Set)
-//             .num_args(1..),
-//         )
-//         .arg(
-//           Arg::new("info")
-//             .long("info")
-//             .short('i')
-//             .conflicts_with("search")
-//             .help("view package information")
-//             .action(ArgAction::Set)
-//             .num_args(1..),
-//         ),
-//     )
-//     // Sync subcommand
-//     //
-//     // Only a few of its arguments are implemented below.
-//     .subcommand(
-//       Command::new("sync")
-//         .short_flag('S')
-//         .long_flag("sync")
-//         .about("Synchronize packages.")
-//         .arg(
-//           Arg::new("search")
-//             .short('s')
-//             .long("search")
-//             .conflicts_with("info")
-//             .action(ArgAction::Set)
-//             .num_args(1..)
-//             .help("search remote repositories for matching strings"),
-//         )
-//         .arg(
-//           Arg::new("info")
-//             .long("info")
-//             .conflicts_with("search")
-//             .short('i')
-//             .action(ArgAction::SetTrue)
-//             .help("view package information"),
-//         )
-//         .arg(
-//           Arg::new("package")
-//             .help("packages")
-//             .required_unless_present("search")
-//             .action(ArgAction::Set)
-//             .num_args(1..),
-//         ),
-//     )
-//     .get_matches();
-
-//   match matches.subcommand() {
-//     Some(("sync", sync_matches)) => {
-//       if sync_matches.contains_id("search") {
-//         let packages: Vec<_> = sync_matches
-//           .get_many::<String>("search")
-//           .expect("contains_id")
-//           .map(|s| s.as_str())
-//           .collect();
-//         let values = packages.join(", ");
-//         println!("Searching for {values}...");
-//         return;
-//       }
-
-//       let packages: Vec<_> = sync_matches
-//         .get_many::<String>("package")
-//         .expect("is present")
-//         .map(|s| s.as_str())
-//         .collect();
-//       let values = packages.join(", ");
-
-//       if sync_matches.get_flag("info") {
-//         println!("Retrieving info for {values}...");
-//       } else {
-//         println!("Installing {values}...");
-//       }
-//     }
-//     Some(("query", query_matches)) => {
-//       if let Some(packages) = query_matches.get_many::<String>("info") {
-//         let comma_sep = packages.map(|s| s.as_str()).collect::<Vec<_>>().join(", ");
-//         println!("Retrieving info for {comma_sep}...");
-//       } else if let Some(queries) = query_matches.get_many::<String>("search") {
-//         let comma_sep = queries.map(|s| s.as_str()).collect::<Vec<_>>().join(", ");
-//         println!("Searching Locally for {comma_sep}...");
-//       } else {
-//         println!("Displaying all locally installed packages...");
-//       }
-//     }
-//     _ => unreachable!(), // If all subcommands are defined above, anything else is unreachable
-//   }
-// }
