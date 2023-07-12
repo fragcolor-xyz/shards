@@ -528,10 +528,70 @@ fn extract_floats_vector_var<const WIDTH: usize>(
   }
 }
 
-fn handle_color_built_in_function(
+fn process_color_built_in_function(
   func: &Function,
   line_info: LineInfo,
-) -> Result<Var, ShardsError> {
+  e: &mut EvalEnv,
+) -> Result<(), ShardsError> {
+  let (params, len) = get_vec_params::<4, 4>(func, line_info)?;
+
+  let has_variables = params.iter().any(|x| {
+    if let Value::Identifier(_) = &x.value {
+      true
+    } else {
+      false
+    }
+  });
+
+  if !has_variables {
+    let value = handle_color_built_in(func, line_info)?;
+    add_const_shard2(value, line_info, e)
+  } else {
+    let shard = extract_make_colors_shard(len, params, line_info, e)?;
+    e.shards.push(shard);
+    Ok(())
+  }
+}
+
+fn extract_make_colors_shard(
+  len: usize,
+  params: &Vec<Param>,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<AutoShardRef, ShardsError> {
+  fn error_requires_number(line_info: LineInfo) -> Result<AutoShardRef, ShardsError> {
+    Err(
+      (
+        "color built-in function requires a number or identifier parameter",
+        line_info,
+      )
+        .into(),
+    )
+  }
+
+  let shard = AutoShardRef(ShardRef::create("MakeColor").unwrap());
+
+  for i in 0..len {
+    let var = match &params[i].value {
+      Value::Identifier(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
+      Value::Number(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
+      _ => return error_requires_number(line_info),
+    }?;
+    shard
+      .0
+      .set_parameter(i as i32, *var.as_ref()) // Type conversion should be handled by the shard!
+      .map_err(|err| {
+        (
+          format!("Error setting parameter for MakeColor, error: {}", err),
+          line_info,
+        )
+          .into()
+      })?;
+  }
+  Ok(shard)
+}
+
+fn handle_color_built_in(func: &Function, line_info: LineInfo) -> Result<Var, ShardsError> {
   let params = func.params.as_ref().ok_or(
     (
       "color built-in function requires at least 1 parameter",
@@ -1192,9 +1252,7 @@ fn as_var(
       }
     }
     Value::Func(func) => match func.name.as_str() {
-      "color" => Ok(SVar::NotCloned(handle_color_built_in_function(
-        func, line_info,
-      )?)),
+      "color" => Ok(SVar::NotCloned(handle_color_built_in(func, line_info)?)),
       "i2" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<2>(
         func, line_info,
       )?)),
@@ -2572,10 +2630,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "color" => {
-            let value = handle_color_built_in_function(func, block.line_info.unwrap_or_default())?;
-            add_const_shard2(value, block.line_info.unwrap_or_default(), e)
-          }
+          "color" => process_color_built_in_function(func, block.line_info.unwrap_or_default(), e),
           "i2" => {
             process_vector_built_in_ints_block::<2>(func, block.line_info.unwrap_or_default(), e)
           }

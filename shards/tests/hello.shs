@@ -18,6 +18,8 @@
 @color(0.1 0.3 0.7 1.0) | Log
 @color(10 30 60 255) | Log
 @color(1.0) | Log
+244 = red
+@color(red 10 20 255) | Log
 
 @mesh(root)
 @wire(test {
