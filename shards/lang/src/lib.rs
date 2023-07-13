@@ -319,8 +319,8 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *con
 #[no_mangle]
 pub extern "C" fn shards_transform_env(env: *mut EvalEnv, name: SHStringWithLen) -> SHLWire {
   let name = name.into();
-  let env = unsafe { &mut *env };
-  let res = eval::transform_env(env, name);
+  let mut env = unsafe { Box::from_raw(env) };
+  let res = eval::transform_env(&mut env, name);
   match res {
     Ok(wire) => SHLWire {
       wire: Box::into_raw(Box::new(wire)),
@@ -351,10 +351,10 @@ pub extern "C" fn shards_transform_envs(
   let envs = unsafe { std::slice::from_raw_parts_mut(env, len) };
   let mut deref_envs = Vec::with_capacity(len);
   for &env in envs.iter() {
-    let env = unsafe { &mut *env };
+    let env = unsafe { Box::from_raw(env) };
     deref_envs.push(env);
   }
-  let res = eval::transform_envs(&mut deref_envs[..], name);
+  let res = eval::transform_envs(deref_envs.iter_mut().map(|x| x.as_mut()), name);
   match res {
     Ok(wire) => SHLWire {
       wire: Box::into_raw(Box::new(wire)),

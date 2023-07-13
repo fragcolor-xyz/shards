@@ -3097,11 +3097,14 @@ pub(crate) fn eval_statement(stmt: &Statement, e: &mut EvalEnv) -> Result<(), Sh
   }
 }
 
-pub fn transform_envs(envs: &mut [&mut EvalEnv], name: &str) -> Result<Wire, ShardsError> {
+pub(crate) fn transform_envs<'a, I>(envs: I, name: &str) -> Result<Wire, ShardsError>
+where
+    I: Iterator<Item = &'a mut EvalEnv>,
+{
   let wire = Wire::default();
   wire.set_name(name);
   for env in envs {
-    finalize_env(*env)?;
+    finalize_env(env)?;
     for shard in env.shards.drain(..) {
       wire.add_shard(shard.0);
     }
