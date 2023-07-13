@@ -16,12 +16,14 @@ if(NOT RUST_CARGO_TARGET)
   elseif(APPLE)
     if(IOS)
       set(PLATFORM "ios")
+
       if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" AND XCODE_SDK MATCHES ".*simulator$")
         string(APPEND PLATFORM "-sim")
       endif()
     else()
       set(PLATFORM "darwin")
     endif()
+
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
       set(RUST_CARGO_TARGET aarch64-apple-${PLATFORM})
     else()
@@ -51,6 +53,7 @@ message(STATUS "RUST_CARGO_TARGET = ${RUST_CARGO_TARGET}")
 
 set(RUST_CARGO_FLAGS "" CACHE STRING "Flags added to rust builds")
 set(RUST_CARGO_FLAGS_INT ${RUST_CARGO_FLAGS})
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(RUST_BUILD_SUBDIR_CONFIGURATION debug)
 else()
@@ -63,6 +66,7 @@ if(RUST_BUILD_SUBDIR_HAS_TARGET)
 else()
   set(RUST_BUILD_SUBDIR ${RUST_BUILD_SUBDIR_CONFIGURATION})
 endif()
+
 message(STATUS "RUST_BUILD_SUBDIR = ${RUST_BUILD_SUBDIR}")
 
 if(ARCH)
@@ -105,21 +109,21 @@ if(IOS)
 endif()
 
 # Defines a rust target
-#   this creates a static library target named ${NAME}-rust
-#   that you can link against
+# this creates a static library target named ${NAME}-rust
+# that you can link against
 function(add_rust_library)
   set(OPTS)
   set(ARGS
-    NAME                 # (Required) The name of the rust package to build (and the generated static library name)
-    PROJECT_PATH         # (Required) The path to the cargo project to build
-    TARGET_PATH          # (Optional) Override the rust target path to use
-    TARGET_NAME          # (Optional) Override name of the generated target
+    NAME # (Required) The name of the rust package to build (and the generated static library name)
+    PROJECT_PATH # (Required) The path to the cargo project to build
+    TARGET_PATH # (Optional) Override the rust target path to use
+    TARGET_NAME # (Optional) Override name of the generated target
   )
   set(MULTI_ARGS
-    FEATURES             # (Optional) List of features to pass to rust build
-    ENVIRONMENT          # (Optional) Environment variables
-    DEPENDS              # (Optional) Extra file-level dependencies
-    EXCLUDE_DEPENDS      # (Optional) Extra file-level dependencies to ignore
+    FEATURES # (Optional) List of features to pass to rust build
+    ENVIRONMENT # (Optional) Environment variables
+    DEPENDS # (Optional) Extra file-level dependencies
+    EXCLUDE_DEPENDS # (Optional) Extra file-level dependencies to ignore
   )
   cmake_parse_arguments(RUST "${OPTS}" "${ARGS}" "${MULTI_ARGS}" ${ARGN})
 
@@ -143,14 +147,17 @@ function(add_rust_library)
     message(STATUS "  RUST_FEATURES_STRING: ${RUST_FEATURES_STRING}")
   endif()
 
-  file(GLOB_RECURSE RUST_SOURCES "${RUST_PROJECT_PATH}/*.rs" "${RUST_PROJECT_PATH}/*.toml")
+  file(GLOB_RECURSE RUST_SOURCES "${RUST_PROJECT_PATH}/*.rs" "${RUST_PROJECT_PATH}/Cargo.toml" "${RUST_PROJECT_PATH}/Cargo.lock")
   file(GLOB_RECURSE RUST_TEMP_SOURCES "${RUST_PROJECT_PATH}/target/*.rs" "${RUST_PROJECT_PATH}/target/*.toml")
+
   if(RUST_TEMP_SOURCES)
     list(REMOVE_ITEM RUST_SOURCES ${RUST_TEMP_SOURCES})
   endif()
+
   if(RUST_EXCLUDE_DEPENDS)
     list(REMOVE_ITEM RUST_SOURCES ${RUST_EXCLUDE_DEPENDS})
   endif()
+
   message(VERBOSE "  RUST_SOURCES: ${RUST_SOURCES}")
 
   if(RUST_CARGO_TARGET)
@@ -160,18 +167,21 @@ function(add_rust_library)
   if(NOT RUST_TARGET_NAME)
     set(RUST_TARGET_NAME "${RUST_NAME}-rust")
   endif()
+
   set(CUSTOM_TARGET_NAME "cargo-${RUST_TARGET_NAME}")
   message(VERBOSE "  Rust target name: ${RUST_TARGET_NAME}")
 
   set(RUST_DEFAULT_TARGET_PATH "" CACHE STRING "The rust target folder to use, uses the 'target' folder in the shards root if left empty")
+
   if(NOT RUST_TARGET_PATH)
     if(RUST_DEFAULT_TARGET_PATH)
       file(MAKE_DIRECTORY ${RUST_DEFAULT_TARGET_PATH})
       set(RUST_TARGET_PATH ${RUST_DEFAULT_TARGET_PATH})
     else()
-      set(RUST_TARGET_PATH ${PROJECT_SOURCE_DIR}/target)
+      set(RUST_TARGET_PATH ${shards_BINARY_DIR}/target)
     endif()
   endif()
+
   message(VERBOSE "  Rust target path: ${RUST_TARGET_PATH}")
 
   # Derive lib name
@@ -186,7 +196,7 @@ function(add_rust_library)
   set(RUST_CRATE_TYPE_ARG --crate-type staticlib)
 
   # When the compiler can't automatically provide include paths (emscripten):
-  #  pass the sysroot to the bindgen clang arguments
+  # pass the sysroot to the bindgen clang arguments
   if(EMSCRIPTEN_SYSROOT)
     file(TO_CMAKE_PATH "${EMSCRIPTEN_SYSROOT}" TMP_SYSROOT)
     list(APPEND EXTRA_CLANG_ARGS "--sysroot=${TMP_SYSROOT}")
@@ -221,6 +231,7 @@ function(add_rust_library)
 
   add_custom_command(
     OUTPUT ${GENERATED_LIB_PATH}
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${GENERATED_LIB_PATH}
     COMMAND ${CMAKE_COMMAND} -E env ${BINDGEN_EXTRA_CLANG_ARGS} ${RUST_ENVIRONMENT} ${RUST_BUILD_SCRIPT} ${CARGO_EXE} ${RUST_TOOLCHAIN_OVERRIDE} rustc ${RUST_CARGO_UNSTABLE_FLAGS} ${RUST_FEATURES_ARG} ${RUST_CRATE_TYPE_ARG} ${RUST_TARGET_ARG} ${RUST_CARGO_FLAGS_INT}
     WORKING_DIRECTORY ${RUST_PROJECT_PATH}
     DEPENDS ${RUST_SOURCES} ${RUST_DEPENDS}
@@ -239,6 +250,17 @@ function(add_rust_library)
   set_target_properties(${RUST_TARGET_NAME} PROPERTIES
     IMPORTED_LOCATION ${GENERATED_LIB_PATH}
   )
+
+  set_property(TARGET ${RUST_TARGET_NAME} PROPERTY RUST_PROJECT_PATH ${RUST_PROJECT_PATH})
+  set_property(TARGET ${RUST_TARGET_NAME} PROPERTY RUST_NAME ${RUST_NAME})
+
+  # Store absolute dependency paths
+  foreach(SRC_DEP ${RUST_SOURCES} ${RUST_DEPENDS})
+    file(REAL_PATH ${SRC_DEP} SRC_DEP_ABS)
+    list(APPEND RUST_SOURCES_ABS ${SRC_DEP_ABS})
+  endforeach()
+
+  set_property(TARGET ${RUST_TARGET_NAME} PROPERTY RUST_DEPENDS ${RUST_SOURCES_ABS})
 
   # Add default required libraries for windows
   if(WIN32)

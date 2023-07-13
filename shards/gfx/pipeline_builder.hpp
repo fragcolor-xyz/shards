@@ -10,6 +10,13 @@
 
 namespace gfx {
 
+// Use configurable pipeline options
+struct BuildPipelineOptions {
+  bool ignoreDrawableFeatures{};
+
+  template <typename T> void getPipelineHash(T &hasher) const { hasher(ignoreDrawableFeatures); }
+};
+
 // Describes a buffer binding being built
 struct BufferBindingBuilder {
   BindingFrequency frequency = BindingFrequency::Draw;
@@ -32,6 +39,8 @@ struct PipelineBuilder {
   const IDrawable &firstDrawable;
 
   MeshFormat meshFormat;
+
+  BuildPipelineOptions options;
 
   // Indicates that rendering happens with an inverted camera matrix
   // winding order of geometry should be flipped to compensate
@@ -86,7 +95,7 @@ private:
 // Low-level entry-point for modifying render pipelines
 struct IPipelineModifier {
   virtual ~IPipelineModifier() = default;
-  virtual void buildPipeline(PipelineBuilder &builder){};
+  virtual void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions &options){};
 };
 
 } // namespace gfx

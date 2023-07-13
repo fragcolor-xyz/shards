@@ -2,19 +2,14 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include <shards/core/shared.hpp>
+#include <shards/core/params.hpp>
 
 namespace shards {
 namespace Assert {
-
 struct Base {
-  static inline ParamsInfo assertParamsInfo =
-      ParamsInfo(ParamsInfo::Param("Value", SHCCSTR("The value to test against for equality."), CoreInfo::AnyType),
-                 ParamsInfo::Param("Abort", SHCCSTR("If we should abort the process on failure."), CoreInfo::BoolType));
-
-  SHVar value{};
-  bool aborting;
-
-  void destroy() { destroyVar(value); }
+  PARAM_PARAMVAR(_value, "Value", "The value to test against for equality.", {CoreInfo::AnyType});
+  PARAM_VAR(_aborting, "Abort", "If we should abort the process on failure.", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_value), PARAM_IMPL_FOR(_aborting));
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any type."); }
@@ -22,36 +17,15 @@ struct Base {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The output will be the input (passthrough)."); }
 
-  SHParametersInfo parameters() { return SHParametersInfo(assertParamsInfo); }
+  Base() { _aborting = Var(false); }
 
-  void setParam(int index, const SHVar &inValue) {
-    switch (index) {
-    case 0:
-      destroyVar(value);
-      cloneVar(value, inValue);
-      break;
-    case 1:
-      aborting = inValue.payload.boolValue;
-      break;
-    default:
-      break;
-    }
-  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup() { PARAM_CLEANUP(); }
 
-  SHVar getParam(int index) {
-    auto res = SHVar();
-    switch (index) {
-    case 0:
-      res = value;
-      break;
-    case 1:
-      res.valueType = SHType::Bool;
-      res.payload.boolValue = aborting;
-      break;
-    default:
-      break;
-    }
-    return res;
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return data.inputType;
   }
 };
 
@@ -62,9 +36,9 @@ struct Is : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input != value) {
-      SHLOG_ERROR("Failed assertion Is, input: {} expected: {}", input, value);
-      if (aborting)
+    if (input != _value.get()) {
+      SHLOG_ERROR("Failed assertion Is, input: {} expected: {}", input, _value.get());
+      if (*_aborting)
         abort();
       else
         throw ActivationError("Assert failed - Is");
@@ -80,9 +54,9 @@ struct IsNot : public Base {
                    "different from a given value.");
   }
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input == value) {
-      SHLOG_ERROR("Failed assertion IsNot, input: {} not expected: {}", input, value);
-      if (aborting)
+    if (input == _value.get()) {
+      SHLOG_ERROR("Failed assertion IsNot, input: {} not expected: {}", input, _value.get());
+      if (*_aborting)
         abort();
       else
         throw ActivationError("Assert failed - IsNot");
@@ -108,8 +82,7 @@ struct IsAlmost {
   void setParam(int index, const SHVar &inValue) {
     switch (index) {
     case 0:
-      destroyVar(_value);
-      cloneVar(_value, inValue);
+      _value = inValue;
       break;
     case 1:
       _aborting = inValue.payload.boolValue;
@@ -138,11 +111,27 @@ struct IsAlmost {
     }
   }
 
-  void destroy() { destroyVar(_value); }
+  void warmup(SHContext *context) { _value.warmup(context); }
+  void cleanup() { _value.cleanup(); }
+  SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_requiredVariables; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_value.valueType != data.inputType.basicType)
-      throw SHException("Input and value types must match.");
+    _requiredVariables.clear();
+    collectRequiredVariables(data.shared, _requiredVariables, _value);
+
+    if (_value.isVariable()) {
+      auto exposed = findExposedVariable(data.shared, _value);
+      if (!exposed) {
+        throw SHException(fmt::format("Could not find exposed variable: {}", _value.variableName()));
+      }
+      if (exposed->exposedType.basicType != data.inputType.basicType) {
+        throw SHException("Input and value types must match.");
+      }
+    } else {
+      if (_value->valueType != data.inputType.basicType) {
+        throw SHException("Input and value types must match.");
+      }
+    }
 
     if (_threshold <= 0.0)
       throw SHException("Threshold must be greater than 0.");
@@ -151,8 +140,8 @@ struct IsAlmost {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (!_almostEqual(input, _value, _threshold)) {
-      SHLOG_ERROR("Failed assertion IsAlmost, input: {} expected: {}", input, _value);
+    if (!_almostEqual(input, _value.get(), _threshold)) {
+      SHLOG_ERROR("Failed assertion IsAlmost, input: {} expected: {}", input, _value.get());
       if (_aborting)
         abort();
       else
@@ -176,15 +165,18 @@ private:
       CoreInfo::Int16Type,
       CoreInfo::AnySeqType,
   }};
-  static inline Parameters _params = {{"Value", SHCCSTR("The value to test against for almost equality."), MathTypes},
-                                      {"Abort", SHCCSTR("If we should abort the process on failure."), {CoreInfo::BoolType}},
-                                      {"Threshold",
-                                       SHCCSTR("The smallest difference to be considered equal. Should be greater than zero."),
-                                       {CoreInfo::FloatType, CoreInfo::IntType}}};
+  static inline Type MathVarType = Type::VariableOf(MathTypes);
+  static inline Parameters _params = {
+      {"Value", SHCCSTR("The value to test against for almost equality."), {MathTypes, {MathVarType}}},
+      {"Abort", SHCCSTR("If we should abort the process on failure."), {CoreInfo::BoolType}},
+      {"Threshold",
+       SHCCSTR("The smallest difference to be considered equal. Should be greater than zero."),
+       {CoreInfo::FloatType, CoreInfo::IntType}}};
 
   bool _aborting;
   SHFloat _threshold{FLT_EPSILON};
-  SHVar _value{};
+  ParamVar _value{};
+  shards::ExposedInfo _requiredVariables;
 };
 } // namespace Assert
 } // namespace shards

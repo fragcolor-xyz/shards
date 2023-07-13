@@ -38,6 +38,16 @@ inline TexturePtr varToTexture(const SHVar &var) {
 }
 
 inline std::variant<ParamVariant, TextureParameter> varToShaderParameter(const SHVar &var) {
+  auto isTypedSeq = [&](const SHType basicType) {
+    if (var.innerType == SHType::Float4)
+      return true;
+    for (size_t i = 0; i < var.payload.seqValue.len; i++) {
+      if (var.payload.seqValue.elements[i].valueType != basicType)
+        return false;
+    }
+    return true;
+  };
+
   switch (var.valueType) {
   case SHType::Float: {
     float vec = float(var.payload.floatValue);
@@ -59,8 +69,29 @@ inline std::variant<ParamVariant, TextureParameter> varToShaderParameter(const S
     memcpy(&vec.x, &var.payload.float4Value, sizeof(float) * 4);
     return vec;
   }
+  case SHType::Int: {
+    return int32_t(var.payload.intValue);
+  }
+  case SHType::Int2: {
+    int2 vec;
+    vec.x = int(var.payload.int2Value[0]);
+    vec.y = int(var.payload.int2Value[1]);
+    return vec;
+  }
+  case SHType::Int3: {
+    int3 vec;
+    for (size_t i = 0; i < 3; i++)
+      vec[i] = int(var.payload.int3Value[i]);
+    return vec;
+  }
+  case SHType::Int4: {
+    int4 vec;
+    for (size_t i = 0; i < 4; i++)
+      vec[i] = int(var.payload.int4Value[i]);
+    return vec;
+  }
   case SHType::Seq:
-    if (var.innerType == SHType::Float4) {
+    if (isTypedSeq(SHType::Float4)) {
       float4x4 matrix;
       const SHSeq &seq = var.payload.seqValue;
       for (size_t i = 0; i < std::min<size_t>(4, seq.len); i++) {
@@ -90,6 +121,14 @@ inline std::optional<shader::FieldType> deriveShaderFieldType(const SHTypeInfo &
     return FieldTypes::Float3;
   case SHType::Float4:
     return FieldTypes::Float4;
+  case SHType::Int:
+    return FieldTypes::Int32;
+  case SHType::Int2:
+    return FieldTypes::Int2;
+  case SHType::Int3:
+    return FieldTypes::Int3;
+  case SHType::Int4:
+    return FieldTypes::Int4;
   case SHType::Seq:
     if (typeInfo.seqTypes.len == 1 && typeInfo.seqTypes.elements[0].basicType == SHType::Float4) {
       return FieldTypes::Float4x4;

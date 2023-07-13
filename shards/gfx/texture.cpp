@@ -121,7 +121,7 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
     }
 
     if (textureFormatFlagsContains(desc.format.flags, TextureFormatFlags::RenderAttachment)) {
-      wgpuDesc.usage |= WGPUTextureUsage_RenderAttachment;
+      wgpuDesc.usage |= WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopySrc;
     }
 
     if (!textureFormatFlagsContains(desc.format.flags, TextureFormatFlags::NoTextureBinding)) {

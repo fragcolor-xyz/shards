@@ -68,14 +68,14 @@
 
    (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
    (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-   {:Shaders [{:Stage ProgrammableGraphicsStage.Fragment
-               :After ["readColor"]
-               :Before ["writeColor"]
-               :EntryPoint (-> (shader-main))}]} (GFX.Feature
-                                                  :ViewGenerators
-                                                  (->
-                                                   (Listen "time" (type Float)) >= .time
-                                                   {:time .time})) >> .features
+   (GFX.Feature :Shaders [{:Stage ProgrammableGraphicsStage.Fragment
+                           :After ["readColor"]
+                           :Before ["writeColor"]
+                           :EntryPoint (-> (shader-main))}]
+                :ViewGenerators
+                (->
+                 (Listen "time" (type Float)) >= .time
+                 {:time .time})) >> .features
 
    (GFX.DrawQueue) >= .queue
    (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps)
@@ -88,6 +88,6 @@
 
 (defmesh root)
 (schedule root (Wire "test-wire" :Looped :LStack
-                     (GFX.MainWindow :Title "SDL Window" :Width 1280 :Height 720 :Debug false :Contents
+                     (GFX.MainWindow :Title "SDL Window" :Width 1280 :Height 720  :Contents
                                      (Step gfx))))
 (if (run root timestep 200) nil (throw "Root tick failed"))

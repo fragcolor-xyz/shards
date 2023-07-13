@@ -1,4 +1,5 @@
 #include "gfx.hpp"
+#include "drawable_utils.hpp"
 #include <shards/common_types.hpp>
 #include "shards_types.hpp"
 #include <shards/core/foundation.hpp>
@@ -9,6 +10,8 @@
 #include <gfx/texture.hpp>
 #include <gfx/error_utils.hpp>
 #include <gfx/render_target.hpp>
+#include <gfx/gpu_read_buffer.hpp>
+#include <gfx/renderer.hpp>
 #include <shards/core/params.hpp>
 #include <stdexcept>
 #include <vector>
@@ -433,9 +436,97 @@ struct RenderTargetTextureShard {
   }
 };
 
+struct ReadTextureShard {
+  static SHTypesInfo inputTypes() { return Types::TextureTypes; }
+  static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
+  static SHOptionalString help() {
+    return SHCCSTR("Adds a render step that reads back the rendered textures into a images, the returned images ");
+  }
+
+  static inline Type OutputSeqType = Type::SeqOf(CoreInfo::StringType);
+
+  PARAM_VAR(_wait, "Wait", "Wait for read to complete", {CoreInfo::BoolType});
+  // OwnedVar _outputs;
+  PARAM_IMPL(PARAM_IMPL_FOR(_wait));
+
+  RequiredGraphicsContext _requiredGraphicsContext;
+
+  GpuTextureReadBufferPtr _readBuffer = makeGpuTextureReadBuffer();
+  OwnedVar _image;
+  std::vector<uint8_t> _imageBuffer;
+
+  ReadTextureShard() { _wait = Var(false); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredVariables.push_back(RequiredGraphicsContext::getExposedTypeInfo());
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _requiredGraphicsContext.warmup(context);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    _requiredGraphicsContext.cleanup();
+  }
+
+  bool isSupportedFormat(WGPUTextureFormat format) const {
+    auto &fmtDesc = getTextureFormatDescription(format);
+    return isIntegerStorageType(fmtDesc.storageType) || // or float
+           getStorageTypeSize(fmtDesc.storageType) == 4;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    TexturePtr texture = varToTexture(input);
+    _requiredGraphicsContext->renderer->copyTexture(TextureSubResource(texture), _readBuffer, (bool)*_wait);
+
+    // Poll for previously queued operation completion
+    if (!*_wait)
+      _requiredGraphicsContext->renderer->pollTextureCopies();
+
+    _image.valueType = SHType::Image;
+    auto &outImage = _image.payload.imageValue;
+    if (_readBuffer->pixelFormat == WGPUTextureFormat_Undefined) {
+      outImage.data = nullptr;
+      outImage.flags = outImage.width = outImage.height = outImage.channels = 0;
+    } else {
+      if (isSupportedFormat(_readBuffer->pixelFormat)) {
+      auto &fmtDesc = getTextureFormatDescription(_readBuffer->pixelFormat);
+        size_t componentSize = getStorageTypeSize(fmtDesc.storageType);
+        outImage.channels = fmtDesc.numComponents;
+        if (!isIntegerStorageType(fmtDesc.storageType)) {
+          outImage.flags = SHIMAGE_FLAGS_32BITS_FLOAT;
+        } else if (componentSize == 2) {
+          outImage.flags = SHIMAGE_FLAGS_16BITS_INT;
+        } else {
+        outImage.flags = SHIMAGE_FLAGS_NONE;
+        }
+        outImage.width = _readBuffer->size.x;
+        outImage.height = _readBuffer->size.y;
+        size_t rowLength = fmtDesc.pixelSize * fmtDesc.numComponents * _readBuffer->size.x;
+        size_t imageSize = fmtDesc.pixelSize * fmtDesc.numComponents * _readBuffer->size.x * _readBuffer->size.y;
+        _imageBuffer.resize(imageSize);
+        outImage.data = _imageBuffer.data();
+        for (size_t y = 0; y < _readBuffer->size.y; ++y) {
+          memcpy(_imageBuffer.data() + rowLength * y, _readBuffer->data.data() + _readBuffer->stride * y, rowLength);
+        }
+      } else {
+        throw formatException("Unsupported image storage type {}", magic_enum::enum_name(_readBuffer->pixelFormat));
+      }
+    }
+
+    return _image;
+  }
+};
+
 void registerTextureShards() {
   REGISTER_SHARD("GFX.Texture", TextureShard);
   REGISTER_SHARD("GFX.RenderTarget", RenderTargetShard);
   REGISTER_SHARD("GFX.RenderTargetTexture", RenderTargetTextureShard);
+  REGISTER_SHARD("GFX.ReadTexture", ReadTextureShard);
 }
 } // namespace gfx

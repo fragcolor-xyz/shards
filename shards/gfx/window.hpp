@@ -1,10 +1,16 @@
-#ifndef GFX_WINDOW
-#define GFX_WINDOW
+#ifndef AEC3EB9B_7819_42B0_BB31_40818880ECE2
+#define AEC3EB9B_7819_42B0_BB31_40818880ECE2
 
 #include "linalg.hpp"
+#include "platform.hpp"
 #include <SDL_events.h>
 #include <string>
 #include <vector>
+#include <optional>
+
+#if GFX_APPLE
+#include "platform_surface.hpp"
+#endif
 
 struct SDL_Window;
 namespace gfx {
@@ -19,8 +25,14 @@ struct WindowCreationOptions {
 struct Window {
   SDL_Window *window = nullptr;
 
+#if GFX_APPLE
+  std::optional<MetalViewContainer> metalView;
+#endif
+
   void init(const WindowCreationOptions &options = WindowCreationOptions{});
   void cleanup();
+
+  bool isInitialized() const { return window != nullptr; }
 
   template <typename T> void pollEventsForEach(T &&callback) {
     SDL_Event event;
@@ -51,10 +63,10 @@ struct Window {
   void move(int2 targetPosition);
 
   // OS UI scaling factor for the display the window is on
-  float2 getUIScale() const;
+  float getUIScale() const;
 
   ~Window();
 };
 }; // namespace gfx
 
-#endif // GFX_WINDOW
+#endif /* AEC3EB9B_7819_42B0_BB31_40818880ECE2 */

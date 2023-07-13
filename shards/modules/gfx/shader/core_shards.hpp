@@ -10,11 +10,12 @@
 #include <shards/core/foundation.hpp>
 #include "gfx/enums.hpp"
 #include "gfx/error_utils.hpp"
-#include "gfx/shader/block.hpp"
-#include "gfx/shader/blocks.hpp"
-#include "gfx/shader/generator.hpp"
-#include "gfx/shader/types.hpp"
-#include "gfx/shader/uniforms.hpp"
+#include <gfx/shader/fmt.hpp>
+#include <gfx/shader/block.hpp>
+#include <gfx/shader/blocks.hpp>
+#include <gfx/shader/generator.hpp>
+#include <gfx/shader/types.hpp>
+#include <gfx/shader/uniforms.hpp>
 #include "magic_enum.hpp"
 #include <shards/number_types.hpp>
 #include <shards/core/runtime.hpp>
@@ -479,8 +480,56 @@ struct ReadBuffer final : public IOBase {
 };
 
 template <typename TShard> struct Write : public IOBase {
+  std::optional<NumFieldType> _castIntoType;
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+
+  static inline bool isCompatibleOutputType(NumFieldType dstType, NumFieldType srcType, bool &needCast) {
+    // Allow implicit integer type conversions
+    // for example when attachment is uint8/int8 but shader only uses shards types (int32)
+    if (isIntegerType(dstType.baseType) && isIntegerType(srcType.baseType)) {
+      needCast = true;
+      return srcType.numComponents == dstType.numComponents;
+    }
+    return dstType == srcType;
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    auto &shaderCtx = ShaderCompositionContext::get();
+
+    if constexpr (std::is_same_v<TShard, blocks::WriteOutput>) {
+      auto inTypeOpt = deriveShaderFieldType(data.inputType);
+      if (!inTypeOpt)
+        throw formatException("Invalid output type {}", data.inputType);
+
+      const NumFieldType *outputType{};
+      {
+        auto &outputs = shaderCtx.generatorContext.getDefinitions().outputs;
+        auto outputIt = outputs.find(_name);
+        if (outputIt != outputs.end()) {
+          outputType = &outputIt->second;
+        } else {
+          outputType =
+              shaderCtx.generatorContext.getOrCreateDynamicOutput(_name.c_str(), std::get<NumFieldType>(inTypeOpt.value()));
+          if (!outputType) {
+            throw formatException("Output \"{}\" does not exist", _name);
+          }
+        }
+      }
+
+      NumFieldType inType = std::get<NumFieldType>(inTypeOpt.value());
+
+      bool needCast{};
+      if (!isCompatibleOutputType(*outputType, inType, needCast))
+        throw formatException("Output {} ({}) can not be assigned from type {}", _name, *outputType, data.inputType);
+
+      if (needCast)
+        _castIntoType = *outputType;
+    }
+
+    return CoreInfo::NoneType;
+  }
 
   void translate(TranslationContext &context) {
     SPDLOG_LOGGER_INFO(context.logger, "gen(write/{})> {}", NAMEOF_TYPE(TShard), _name);
@@ -489,9 +538,15 @@ template <typename TShard> struct Write : public IOBase {
       throw ShaderComposeError(fmt::format("Can not write: value is required"));
 
     std::unique_ptr<IWGSLGenerated> wgslValue = context.takeWGSLTop();
-    NumFieldType fieldType = std::get<NumFieldType>(wgslValue->getType());
 
-    context.addNew(blocks::makeBlock<TShard>(_name, fieldType, wgslValue->toBlock()));
+    if (_castIntoType) {
+      context.addNew(blocks::makeBlock<TShard>(
+          _name, _castIntoType.value(),
+          blocks::makeCompoundBlock(getFieldWGSLTypeName(_castIntoType.value()), "(", wgslValue->toBlock(), ")")));
+    } else {
+      NumFieldType fieldType = std::get<NumFieldType>(wgslValue->getType());
+      context.addNew(blocks::makeBlock<TShard>(_name, fieldType, wgslValue->toBlock()));
+    }
   }
 };
 

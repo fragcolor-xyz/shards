@@ -1,0 +1,18 @@
+[package]
+name = "shards-inputs-debug-ui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+egui = { version = "0.22.0", features = ["persistence"] }
+shards = { path = "../../../rust" }
+shards-egui = { path = "../../../egui" }
+
+[build-dependencies]
+bindgen = "0.64.0"
+gfx-build = { path = "../../../gfx/rust/build" }
+
+[workspace]
+members = []

@@ -7,28 +7,64 @@
 
 namespace shards {
 
+namespace detail {
+template <bool Required1> struct RequiredFlags {};
+template <> struct RequiredFlags<false> {
+  bool found;
+};
+} // namespace detail
+
 // Defines a reference to a required variable
 // Warmup references the variable, cleanup releases the refence
 // use  getRequiredVariable to get the type
 template <typename T, const SHTypeInfo &VariableType, const char *VariableName, bool Required = true>
 struct RequiredContextVariable {
 private:
+  using Flags = detail::RequiredFlags<Required>;
   SHVar *variable{};
+  Flags requiredFlags;
 
 public:
   RequiredContextVariable() {}
 
-  void warmup(SHContext *context) {
-    assert(!variable);
-    variable = shards::referenceVariable(context, VariableName);
-
-    if constexpr (Required) {
-      // Ensure correct runtime type
-      (void)varAsObjectChecked<T>(*variable, VariableType);
+  void warmup(SHContext *context, ParamVar *paramOverride = nullptr) {
+    if (paramOverride && paramOverride->isVariable()) {
+      variable = shards::referenceVariable(context, paramOverride->variableName());
     } else {
-      if (variable->valueType == SHType::None) {
-        cleanup();
+      // If optional and not found during compose, early out
+      if constexpr (!Required) {
+        if (!requiredFlags.found)
+          return;
       }
+      variable = shards::referenceVariable(context, VariableName);
+    }
+    warmupCommon();
+  }
+
+  void compose(const SHInstanceData &data, ExposedInfo &outRequired, ParamVar *paramOverride = nullptr) {
+    std::optional<SHExposedTypeInfo> exposed;
+    if (paramOverride) {
+      exposed = findExposedVariable(data.shared, *paramOverride);
+    }
+
+    if (!exposed) {
+      exposed = findExposedVariable(data.shared, VariableName);
+      if constexpr (!Required) {
+        requiredFlags.found = exposed.has_value();
+      } else {
+        if (!exposed) {
+          throw ComposeError(fmt::format("Required variable {} not found", VariableName));
+        }
+      }
+    }
+
+    if (exposed && exposed.value().exposedType != VariableType) {
+      throw ComposeError(fmt::format("Required variable {} has the wrong type. Expected: {}, was {}", VariableName, VariableType,
+                                     exposed.value().exposedType));
+    }
+
+    if (exposed) {
+      outRequired.push_back(exposed.value());
     }
   }
 
@@ -39,15 +75,19 @@ public:
     }
   }
 
+  T *get() const {
+    assert(variable);
+    return &varAsObjectChecked<T>(*variable, VariableType);
+  }
+
+  const SHVar &asVar() {
+    assert(variable);
+    return *variable;
+  }
+
   operator bool() const { return variable; }
-  T *operator->() const {
-    assert(variable); // Missing call to warmup?
-    return reinterpret_cast<T *>(variable->payload.objectValue);
-  }
-  operator T &() const {
-    assert(variable); // Missing call to warmup?
-    return *reinterpret_cast<T *>(variable->payload.objectValue);
-  }
+  T *operator->() const { return get(); }
+  operator T &() const { return *get(); }
 
   static constexpr SHExposedTypeInfo getExposedTypeInfo() {
     SHExposedTypeInfo typeInfo{
@@ -56,6 +96,15 @@ public:
         .global = true,
     };
     return typeInfo;
+  }
+
+private:
+  void warmupCommon() {
+    if constexpr (!Required) {
+      if (variable->valueType == SHType::None) {
+        cleanup();
+      }
+    }
   }
 };
 

@@ -1164,7 +1164,9 @@ TEST_CASE("HashedActivations") {
   b1->setParam(b1, 0, &input);
   shards.len = 1;
   shards.elements = &b1;
+  b1->warmup(b1, &ctx);
   activateShards2(shards, &ctx, input, output, hash);
+  b1->cleanup(b1);
   SHLOG_INFO("hash: {} - output: {}", hash, output);
   REQUIRE(hash.payload.int2Value[0] == -4968190569658619693ll);
   REQUIRE(hash.payload.int2Value[1] == 243653811690449199ll);
@@ -1172,12 +1174,14 @@ TEST_CASE("HashedActivations") {
 
   auto wrongValue = Var(12);
   b1->setParam(b1, 0, &wrongValue);
+  b1->warmup(b1, &ctx);
   shards.len = 1;
   shards.elements = &b1;
   try {
     activateShards2(shards, &ctx, input, output, hash);
   } catch (...) {
   }
+  b1->cleanup(b1);
   SHLOG_INFO("hash: {} - output: {}", hash, output);
   REQUIRE(hash.payload.int2Value[0] == -4909704308314863430ll);
   REQUIRE(hash.payload.int2Value[1] == -189837931601462934ll);
@@ -1338,6 +1342,7 @@ TEST_CASE("AWAIT/AWAITNE") {
   CHECK(getTidePool()._workers.size() == TidePool::NumWorkers);
 #endif
 }
+
 TEST_CASE("TTableVar initialization", "[TTableVar]") {
   SECTION("Default construction") {
     TableVar tv;
@@ -1404,6 +1409,48 @@ TEST_CASE("TTableVar operations", "[TTableVar]") {
     REQUIRE(tv.size() == 0);
     REQUIRE_FALSE(tv.hasKey("key1"));
   }
+}
+
+#include <shards/core/function.hpp>
+static int staticVal = 0;
+extern shards::Function<void()> getFunc(int &output, int someValue) {
+  return [&, someValue]() { output += someValue; };
+}
+
+extern void staticFunc() { staticVal = 1; }
+
+TEST_CASE("Function") {
+  shards::Function<void()> f = []() { staticVal = 2; };
+  f();
+  CHECK(staticVal == 2);
+
+  decltype(f) f1 = getFunc(staticVal, 0x100);
+  f1();
+  CHECK(staticVal == (0x100 + 2));
+
+  decltype(f) f2 = f1;
+  f2();
+  CHECK(staticVal == (0x100 * 2 + 2));
+
+  auto f3 = getFunc(staticVal, 0x200);
+  f3();
+  CHECK(staticVal == (0x100 * 2 + 0x200 + 2));
+
+  shards::Function<void()> f4;
+  CHECK(!f4);
+  f4 = []() {};
+  CHECK(f4);
+
+  f4();
+  CHECK(staticVal == (0x100 * 2 + 0x200 + 2)); // Unchanged
+
+  f4 = &staticFunc;
+  CHECK(f4);
+  f4();
+  CHECK(staticVal == 1);
+
+  f4.reset();
+  CHECK(!f4);
 }
 
 #define TEST_SUCCESS_CASE(testName, code)                \

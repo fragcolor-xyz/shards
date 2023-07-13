@@ -118,6 +118,7 @@ struct RenderShard {
 };
 
 extern void registerMainWindowShards();
+extern void registerRendererShards();
 extern void registerMeshShards();
 extern void registerDrawableShards();
 extern void registerMaterialShards();
@@ -134,23 +135,25 @@ extern void registerTranslatorShards();
 
 SHARDS_REGISTER_FN(gfx) {
   using namespace gfx;
-  REGISTER_ENUM(gfx::Types::WindingOrderEnumInfo);
-  REGISTER_ENUM(gfx::Types::ShaderFieldBaseTypeEnumInfo);
-  REGISTER_ENUM(gfx::Types::ProgrammableGraphicsStageEnumInfo);
-  REGISTER_ENUM(gfx::Types::DependencyTypeEnumInfo);
-  REGISTER_ENUM(gfx::Types::BlendFactorEnumInfo);
-  REGISTER_ENUM(gfx::Types::BlendOperationEnumInfo);
-  REGISTER_ENUM(gfx::Types::FilterModeEnumInfo);
-  REGISTER_ENUM(gfx::Types::CompareFunctionEnumInfo);
-  REGISTER_ENUM(gfx::Types::ColorMaskEnumInfo);
-  REGISTER_ENUM(gfx::Types::TextureTypeEnumInfo);
-  REGISTER_ENUM(gfx::Types::SortModeEnumInfo);
-  REGISTER_ENUM(gfx::Types::TextureFormatEnumInfo);
-  REGISTER_ENUM(gfx::Types::TextureDimensionEnumInfo);
-  REGISTER_ENUM(gfx::Types::TextureAddressingEnumInfo);
-  REGISTER_ENUM(gfx::Types::TextureFilteringEnumInfo);
-  REGISTER_SHARD("GFX.Render", RenderShard);
+  using gfx::Types;
+  REGISTER_ENUM(Types::WindingOrderEnumInfo);
+  REGISTER_ENUM(Types::ShaderFieldBaseTypeEnumInfo);
+  REGISTER_ENUM(Types::ProgrammableGraphicsStageEnumInfo);
+  REGISTER_ENUM(Types::DependencyTypeEnumInfo);
+  REGISTER_ENUM(Types::BlendFactorEnumInfo);
+  REGISTER_ENUM(Types::BlendOperationEnumInfo);
+  REGISTER_ENUM(Types::FilterModeEnumInfo);
+  REGISTER_ENUM(Types::CompareFunctionEnumInfo);
+  REGISTER_ENUM(Types::ColorMaskEnumInfo);
+  REGISTER_ENUM(Types::TextureTypeEnumInfo);
+  REGISTER_ENUM(Types::SortModeEnumInfo);
+  REGISTER_ENUM(Types::TextureFormatEnumInfo);
+  REGISTER_ENUM(Types::TextureDimensionEnumInfo);
+  REGISTER_ENUM(Types::TextureAddressingEnumInfo);
+  REGISTER_ENUM(Types::TextureFilteringEnumInfo);
+
   registerMainWindowShards();
+  registerRendererShards();
   registerMeshShards();
   registerDrawableShards();
   registerMaterialShards();
@@ -161,4 +164,5 @@ SHARDS_REGISTER_FN(gfx) {
   registerViewShards();
   registerRenderStepShards();
   shader::registerTranslatorShards();
+  REGISTER_SHARD("GFX.Render", RenderShard);
 }

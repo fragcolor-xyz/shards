@@ -10,11 +10,15 @@ set(SOURCES
   time.cpp
 )
 
+add_rust_library(NAME shards-core 
+  PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
+
 add_shards_module(core SOURCES ${SOURCES}
   REGISTER_SHARDS 
     core casting flow linalg math seqs
     strings wires logging serialization time
     rust
+  RUST_TARGETS shards-core-rust
   INLINE_SOURCES core.cpp math.cpp inlined.cpp
   INLINE_SHARDS
     NotInline
@@ -88,7 +92,3 @@ add_shards_module(core SOURCES ${SOURCES}
 if(EMSCRIPTEN)
   em_link_js_library(shards-module-core core.js)
 endif()
-
-add_rust_library(NAME shards-core 
-  PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
-target_link_libraries(shards-module-core shards-core-rust)

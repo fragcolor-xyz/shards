@@ -5,19 +5,18 @@
   (| (Take "View") >= .parent-view)
   (Once :Every 0.01 :Action
         (->
-         (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
-         (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
-         {:State {:Blend {:Color BlendOverwrite :Alpha BlendOverwrite}}
-          :Shaders
-          [{:Stage ProgrammableGraphicsStage.Fragment
-            :EntryPoint
-            (->
-             (Shader.ReadGlobal "color") >= .scene-color
-             .scene-color
-             (Math.Multiply 0.4)
-             (Shader.WriteOutput "otherColor"))
-            :After ["writeColor"]}]}
-         (GFX.Feature) >> .features
+         (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .inner-features
+         (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .inner-features
+         (GFX.Feature :State {:Blend {:Color BlendOverwrite :Alpha BlendOverwrite}}
+                      :Shaders
+                      [{:Stage ProgrammableGraphicsStage.Fragment
+                        :EntryPoint
+                        (->
+                         (Shader.ReadGlobal "color") >= .scene-color
+                         .scene-color
+                         (Math.Multiply 0.4)
+                         (Shader.WriteOutput "otherColor"))
+                        :After ["writeColor"]}]) >> .features
          (GFX.DrawablePass :Outputs [{:Name "otherColor" :Format TextureFormat.RGBA8Unorm} {:Name "depth"}]
                            :Features .features :Queue .parent-queue) >> .steps
 
@@ -45,17 +44,17 @@
   )
 
 (defwire create-test-feature
-  {:State {:Blend {:Color BlendOverwrite :Alpha BlendOverwrite}}
-   :Shaders
-   [{:Stage ProgrammableGraphicsStage.Fragment
-     :EntryPoint
-     (->
-      (Shader.ReadGlobal "color") >= .base-color
-      (Shader.SampleTexture "someTexture") (Math.Add .base-color)
-      (Shader.WriteGlobal "color"))
-     :After ["readColor"] :Before ["writeColor"]}]} (GFX.Feature
-                                                     :ViewGenerators generator
-                                                     :DrawableGenerators draw-generator))
+  (GFX.Feature :State {:Blend {:Color BlendOverwrite :Alpha BlendOverwrite}}
+               :Shaders
+               [{:Stage ProgrammableGraphicsStage.Fragment
+                 :EntryPoint
+                 (->
+                  (Shader.ReadGlobal "color") >= .base-color
+                  (Shader.SampleTexture "someTexture") (Math.Add .base-color)
+                  (Shader.WriteGlobal "color"))
+                 :After ["readColor"] :Before ["writeColor"]}]
+               :ViewGenerators generator
+               :DrawableGenerators draw-generator))
 
 (def timestep (/ 1.0 120.0))
 
@@ -100,5 +99,5 @@
 
 (schedule root
           (Wire "main-loop-wire" :Looped :LStack
-                (GFX.MainWindow :Title "Test" :Width 1280 :Height 720 :IgnoreCompilationErrors true :Contents (Step content))))
+                (GFX.MainWindow :Title "Test" :Width 1280 :Height 720 :Contents (Step content))))
 (run root timestep 100)

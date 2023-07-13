@@ -94,7 +94,7 @@ void GeneratorContext::writeOutput(const char *name, const NumFieldType &type) {
   }
 
   if (*outputFieldType != type) {
-    pushError(formatError("Output type doesn't match previously expected type"));
+    pushError(formatError("Output {} ({}) doesn't match previously expected type {}", name, *outputFieldType, type));
     return;
   }
 

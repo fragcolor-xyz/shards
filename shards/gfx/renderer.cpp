@@ -145,7 +145,9 @@ struct RendererImpl final : public ContextData {
     }
   }
 
-  CachedView &getCachedView(const ViewPtr &view) { return *getSharedCacheEntry<CachedView>(storage.viewCache, view->getId()).get(); }
+  CachedView &getCachedView(const ViewPtr &view) {
+    return *getSharedCacheEntry<CachedView>(storage.viewCache, view->getId()).get();
+  }
 
   void pushView(ViewStack::Item &&item) {
     viewStack.push(std::move(item));
@@ -194,7 +196,7 @@ struct RendererImpl final : public ContextData {
     throw std::logic_error("No frame queue in view stack");
   }
 
-  void render(ViewPtr view, const PipelineSteps &pipelineSteps, bool immediate) {
+  void render(ViewPtr view, const PipelineSteps &pipelineSteps) {
     ZoneScoped;
 
     ViewData viewData{
@@ -214,6 +216,157 @@ struct RendererImpl final : public ContextData {
     viewData.cachedView.touchWithNewTransform(view->view, view->getProjectionMatrix(float2(viewSize)), storage.frameCounter);
 
     getFrameQueue().enqueue(viewData, pipelineSteps);
+  }
+
+  struct DeferredTextureReadCommand {
+    TextureSubResource texture;
+    GpuTextureReadBufferPtr destination;
+
+    WgpuHandle<WGPUBuffer> buffer;
+    std::optional<void *> mappedBuffer;
+    size_t rowSizeAligned{};
+    size_t bufferSize{};
+    int2 size{};
+
+    DeferredTextureReadCommand(TextureSubResource texture, GpuTextureReadBufferPtr destination)
+        : texture(texture), destination(destination) {}
+    DeferredTextureReadCommand(DeferredTextureReadCommand &&) = default;
+    DeferredTextureReadCommand &operator=(DeferredTextureReadCommand &&) = default;
+
+    // Is queued for read?
+    bool isQueued() const { return bufferSize > 0; }
+  };
+
+  std::list<DeferredTextureReadCommand> deferredTextureReadCommands;
+
+  bool queueTextureReadCommand(WGPUCommandEncoder encoder, DeferredTextureReadCommand &cmd) {
+    auto &textureData = cmd.texture.texture->createContextDataConditional(context);
+    if (!textureData.texture) {
+      SPDLOG_LOGGER_WARN(logger, "Invalid texture queued for reading, ignoring");
+      return false;
+    }
+
+    cmd.size = int2(textureData.size.width, textureData.size.height);
+    auto &pixelFormatDesc = getTextureFormatDescription(textureData.format.pixelFormat);
+
+    size_t rowSize = pixelFormatDesc.pixelSize * pixelFormatDesc.numComponents * cmd.size.x;
+    cmd.rowSizeAligned = alignTo(rowSize, WGPU_COPY_BYTES_PER_ROW_ALIGNMENT);
+    cmd.bufferSize = cmd.rowSizeAligned * cmd.size.y;
+    WGPUBufferDescriptor bufDesc{
+        .label = "Temp copy buffer",
+        .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
+        .size = cmd.bufferSize,
+    };
+    cmd.buffer.reset(wgpuDeviceCreateBuffer(context.wgpuDevice, &bufDesc));
+
+    WGPUImageCopyTexture srcDesc{
+        .texture = textureData.texture,
+        .mipLevel = cmd.texture.mipIndex,
+        .origin = {.x = 0, .y = 0, .z = cmd.texture.faceIndex},
+    };
+    WGPUImageCopyBuffer dstDesc{
+        .layout = {.offset = 0, .bytesPerRow = uint32_t(cmd.rowSizeAligned), .rowsPerImage = uint32_t(cmd.size.y)},
+        .buffer = cmd.buffer,
+    };
+    WGPUExtent3D sizeDesc{
+        .width = uint32_t(cmd.size.x),
+        .height = uint32_t(cmd.size.y),
+        .depthOrArrayLayers = 1,
+    };
+    wgpuCommandEncoderCopyTextureToBuffer(encoder, &srcDesc, &dstDesc, &sizeDesc);
+    return true;
+  }
+
+  void queueTextureReadBufferMap(DeferredTextureReadCommand &cmd) {
+    auto bufferMapped = [](WGPUBufferMapAsyncStatus status, void *ud) {
+      DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)ud;
+      if (status != WGPUBufferMapAsyncStatus_Success)
+        throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
+      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.buffer, 0, cmd.bufferSize);
+    };
+    wgpuBufferMapAsync(cmd.buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+  }
+
+  // Poll for mapped bugfer and copy data to target, returns true when completed
+  bool pollQueuedTextureReadCommand(DeferredTextureReadCommand &cmd) {
+    if (cmd.mappedBuffer) {
+      cmd.destination->data.resize(cmd.bufferSize);
+      memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
+
+      cmd.destination->pixelFormat = cmd.texture.texture->getFormat().pixelFormat;
+      cmd.destination->stride = cmd.rowSizeAligned;
+      cmd.destination->size = cmd.size;
+
+      wgpuBufferUnmap(cmd.buffer);
+      cmd.mappedBuffer.reset();
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void copyTexture(TextureSubResource texture, GpuTextureReadBufferPtr destination, bool wait) {
+    if (wait) {
+      DeferredTextureReadCommand tmpCommand(texture, destination);
+      WGPUCommandEncoderDescriptor encDesc{};
+      WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
+
+      if (!queueTextureReadCommand(encoder, tmpCommand))
+        return;
+
+      WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture (blocking)"};
+      WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
+      wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer);
+
+      queueTextureReadBufferMap(tmpCommand);
+
+      context.poll(true);
+      pollQueuedTextureReadCommand(tmpCommand);
+    } else {
+      deferredTextureReadCommands.emplace_back(texture, destination);
+    }
+  }
+
+  void queueTextureCopies() {
+    boost::container::small_vector<DeferredTextureReadCommand *, 16> buffersToMap;
+    WGPUCommandEncoderDescriptor encDesc{};
+    WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &encDesc);
+    for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
+      if (!it->isQueued()) {
+        if (queueTextureReadCommand(encoder, *it)) {
+        buffersToMap.push_back(&*it);
+        } else {
+          // Invalid texture, remove from queue
+          it = deferredTextureReadCommands.erase(it);
+        }
+      }
+      ++it;
+    }
+
+    // Queue read commands for next frame
+    WGPUCommandBufferDescriptor desc{.label = "Renderer::copyTexture (blocking)"};
+    WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(encoder, &desc);
+    wgpuQueueSubmit(context.wgpuQueue, 1, &cmdBuffer);
+
+    // Need to map buffers after submitting the texture copies
+    for (auto &cmd : buffersToMap) {
+      queueTextureReadBufferMap(*cmd);
+    }
+  }
+
+  void pollTextureCopies() {
+    context.poll(false);
+
+    for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
+      if (it->isQueued()) {
+        if (pollQueuedTextureReadCommand(*it)) {
+          // Finished, remove from queue
+          it = deferredTextureReadCommands.erase(it);
+          continue;
+        }
+      }
+      ++it;
+    }
   }
 
   void beginFrame() {
@@ -255,6 +408,9 @@ struct RendererImpl final : public ContextData {
     popView();
     viewStack.reset();
 
+    pollTextureCopies();
+    queueTextureCopies();
+
     clearOldCacheItems();
 
     processTransientPtrCleanupQueue();
@@ -264,7 +420,6 @@ struct RendererImpl final : public ContextData {
 
     TracyPlotConfig("GFX WorkerMemory", tracy::PlotFormatType::Memory, true, true, 0);
     TracyPlot("GFX WorkerMemory", int64_t(storage.workerMemory.getMemoryResource().totalRequestedBytes));
-
 #endif
   }
 
@@ -295,9 +450,14 @@ Renderer::Renderer(Context &context) {
 
 Context &Renderer::getContext() { return impl->context; }
 
-void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps, bool immediate) {
-  impl->render(view, pipelineSteps, immediate);
+void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps) { impl->render(view, pipelineSteps); }
+
+void Renderer::copyTexture(TextureSubResource texture, GpuTextureReadBufferPtr destination, bool wait) {
+  impl->copyTexture(texture, destination, wait);
 }
+
+void Renderer::pollTextureCopies() { impl->pollTextureCopies(); }
+
 void Renderer::setMainOutput(const MainOutput &output) {
   impl->mainOutput = output;
   impl->shouldUpdateMainOutputFromContext = false;

@@ -6,6 +6,7 @@
 #include "linalg.hpp"
 #include "pipeline_step.hpp"
 #include "view_stack.hpp"
+#include "gpu_read_buffer.hpp"
 #include <functional>
 #include <memory>
 
@@ -30,7 +31,15 @@ public:
   Context &getContext();
 
   /// <div rustbindgen hide></div>
-  void render(ViewPtr view, const PipelineSteps &pipelineSteps, bool immediate = false);
+  void render(ViewPtr view, const PipelineSteps &pipelineSteps);
+
+  // Queues a  copy of texture data from gpu to cpu memory
+  // it will be guaranteed to be written when starting the next frame
+  // When setting wait=true, this will block until it has actually been read
+  void copyTexture(TextureSubResource texture, GpuTextureReadBufferPtr destination, bool wait = false);
+
+  // poll pending  texture copy commands
+  void pollTextureCopies();
 
   /// <div rustbindgen hide></div>
   void setMainOutput(const MainOutput &output);
@@ -39,7 +48,7 @@ public:
   const ViewStack &getViewStack() const;
 
   /// <div rustbindgen hide></div>
-  void pushView(ViewStack::Item&& item);
+  void pushView(ViewStack::Item &&item);
 
   /// <div rustbindgen hide></div>
   void popView();
