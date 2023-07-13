@@ -2994,6 +2994,16 @@ pub(crate) fn eval_statement(stmt: &Statement, e: &mut EvalEnv) -> Result<(), Sh
   }
 }
 
+pub fn transform_env(env: &mut EvalEnv, name: &str) -> Result<Wire, ShardsError> {
+  let wire = Wire::default();
+  wire.set_name(name);
+  finalize_env(env)?;
+  for shard in env.shards.drain(..) {
+    wire.add_shard(shard.0);
+  }
+  Ok(wire)
+}
+
 pub fn eval(
   seq: &Sequence,
   name: &str,
@@ -3013,13 +3023,7 @@ pub fn eval(
 
   let mut env = eval_sequence(seq, Some(&mut parent))?;
 
-  let wire = Wire::default();
-  wire.set_name(name);
-  finalize_env(&mut env)?;
-  for shard in env.shards.drain(..) {
-    wire.add_shard(shard.0);
-  }
-  Ok(wire)
+  transform_env(&mut env, name)
 }
 
 /// Register an extension which is a type that implements the `ShardsExtension` trait to the environment.

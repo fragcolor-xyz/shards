@@ -31,7 +31,7 @@ extern "C" {
 
 void shards_init(SHCore *core);
 
-SHLAst shards_read(const char *code);
+SHLAst shards_read(SHStringWithLen code);
 
 EvalEnv *shards_create_env();
 
@@ -41,7 +41,9 @@ EvalEnv *shards_create_sub_env(EvalEnv *env);
 
 const SHLError *shards_eval_env(EvalEnv *env, Sequence *ast);
 
-SHLWire shards_eval(Sequence *sequence, const char *name);
+SHLWire shards_transform_env(EvalEnv *env, SHStringWithLen name);
+
+SHLWire shards_eval(Sequence *sequence, SHStringWithLen name);
 
 SHVar shards_print_ast(Sequence *ast);
 

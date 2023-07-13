@@ -22,8 +22,7 @@ use shards::core::cloneVar;
 use std::ops::Deref;
 
 use shards::types::{AutoShardRef, ClonedVar, Var, Wire};
-
-use std::ffi::CStr;
+use shards::SHStringWithLen;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::hash::Hash;
@@ -242,8 +241,8 @@ pub extern "C" fn shards_init(core: *mut shards::shardsc::SHCore) {
 }
 
 #[no_mangle]
-pub extern "C" fn shards_read(code: *const c_char) -> SHLAst {
-  let code = unsafe { CStr::from_ptr(code).to_str().unwrap() };
+pub extern "C" fn shards_read(code: SHStringWithLen) -> SHLAst {
+  let code = code.into();
   let result = catch_unwind(|| read::read(code, "."));
   match result {
     Ok(Ok(sequence)) => SHLAst {
@@ -309,8 +308,33 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *con
 }
 
 #[no_mangle]
-pub extern "C" fn shards_eval(sequence: *mut Sequence, name: *const c_char) -> SHLWire {
-  let name = unsafe { CStr::from_ptr(name).to_str().unwrap() };
+pub extern "C" fn shards_transform_env(env: *mut EvalEnv, name: SHStringWithLen) -> SHLWire {
+  let name = name.into();
+  let env = unsafe { &mut *env };
+  let res = eval::transform_env(env, name);
+  match res {
+    Ok(wire) => SHLWire {
+      wire: Box::into_raw(Box::new(wire)),
+      error: std::ptr::null_mut(),
+    },
+    Err(error) => {
+      let error_message = CString::new(error.message).unwrap();
+      let shards_error = SHLError {
+        message: error_message.into_raw(),
+        line: error.loc.line,
+        column: error.loc.column,
+      };
+      SHLWire {
+        wire: std::ptr::null_mut(),
+        error: Box::into_raw(Box::new(shards_error)),
+      }
+    }
+  }
+}
+
+#[no_mangle]
+pub extern "C" fn shards_eval(sequence: *mut Sequence, name: SHStringWithLen) -> SHLWire {
+  let name = name.into();
   // we just want a reference to the sequence, not ownership
   let seq = unsafe { &*sequence };
   let result = catch_unwind(|| eval::eval(seq, name, HashMap::new()));
