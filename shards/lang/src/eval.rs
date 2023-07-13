@@ -5,7 +5,7 @@ use crate::ShardsExtension;
 
 use core::convert::TryInto;
 
-use clap::Id;
+
 use core::slice;
 use nanoid::nanoid;
 use shards::fourCharacterCode;

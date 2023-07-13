@@ -17,11 +17,11 @@ use std::collections::HashMap;
 
 use eval::EvalEnv;
 // use print::print_ast;
-use shards::core::cloneVar;
+
 
 use std::ops::Deref;
 
-use shards::types::{AutoShardRef, ClonedVar, Var, Wire};
+use shards::types::{AutoShardRef, ClonedVar, Wire};
 use shards::SHStringWithLen;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -283,7 +283,7 @@ pub extern "C" fn shards_free_env(env: *mut EvalEnv) {
 #[no_mangle]
 pub extern "C" fn shards_create_sub_env(env: *mut EvalEnv) -> *mut EvalEnv {
   let env = unsafe { &mut *env };
-  let mut new_env = EvalEnv::new(None, Some(env));
+  let new_env = EvalEnv::new(None, Some(env));
   Box::into_raw(Box::new(new_env))
 }
 
