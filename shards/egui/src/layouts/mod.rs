@@ -73,6 +73,20 @@ struct Horizontal {
   exposing: ExposedTypes,
 }
 
+struct Layout {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+  main_dir: ParamVar,
+  main_wrap: ParamVar,
+  main_align: ParamVar,
+  main_justify: ParamVar,
+  cross_align: ParamVar,
+  cross_justify: ParamVar,
+  desired_size: ParamVar, // maybe give (-1, -1) for max available size before wrap
+  exposing: ExposedTypes,
+}
+
 struct Indent {
   parents: ParamVar,
   requiring: ExposedTypes,
@@ -146,6 +160,7 @@ mod grid;
 mod group;
 mod horizontal;
 mod indent;
+mod layout;
 mod scroll_area;
 mod separator;
 mod sized;
@@ -161,6 +176,7 @@ pub fn registerShards() {
   registerShard::<Grid>();
   registerShard::<Group>();
   registerShard::<Horizontal>();
+  registerShard::<Layout>();
   registerShard::<Indent>();
   registerShard::<NextRow>();
   registerShard::<ScrollArea>();
