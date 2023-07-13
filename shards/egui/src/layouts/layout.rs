@@ -177,16 +177,6 @@ impl Shard for Layout {
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring, &self.parents);
 
-    // Add main axis direction to the list of required variables
-    // TODO: Check if this works
-    let main_dir_info = ExposedInfo {
-      exposedType: common_type::string,
-      name: self.main_dir.get_name(),
-      help: cstr!("The main axis direction.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(main_dir_info);
-
     Some(&self.requiring)
   }
 
@@ -252,13 +242,76 @@ impl Shard for Layout {
 
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
 
-      // let main_dir: &str = self.main_dir.get().try_into()?;
-      // let main_wrap = self.main_wrap.get();
-      // let main_align = self.main_align.get();
-      // let main_justify = self.main_justify.get();
-      // let cross_align = self.cross_align.get();
-      // let cross_justify = self.cross_justify.get();
-      // let desired_size = self.desired_size.get();
+      let main_dir = self.main_dir.get();
+
+      if main_dir.is_none()  {
+        return Err("No main direction specified");
+      }
+      
+      let cross_align = if self.cross_align.get().is_none() {
+        egui::Align::Min // default cross align
+      } else {
+        match self.cross_align.get().try_into()? {
+          "Min" => egui::Align::Min,
+          "Center" => egui::Align::Center,
+          "Max" => egui::Align::Max,
+          _ => return Err("Invalid cross alignment"),
+        }
+      };
+
+      let mut layout = match main_dir.try_into()? {
+        "LeftToRight" => egui::Layout::from_main_dir_and_cross_align(egui::Direction::LeftToRight, cross_align),
+        "RightToLeft" => egui::Layout::from_main_dir_and_cross_align(egui::Direction::RightToLeft, cross_align),
+        "TopDown" => egui::Layout::from_main_dir_and_cross_align(egui::Direction::TopDown, cross_align),
+        "BottomUp" => egui::Layout::from_main_dir_and_cross_align(egui::Direction::BottomUp, cross_align),
+        _ => return Err("Invalid main direction"),
+      };
+
+      let main_align = if self.main_align.get().is_none() {
+        egui::Align::Center // default main align
+      } else {
+        match self.main_align.get().try_into()? {
+          "Min" => egui::Align::Min,
+          "Left" => egui::Align::Min,
+          "Top" => egui::Align::Min,
+          "Center" => egui::Align::Center,
+          "Max" => egui::Align::Max,
+          "Right" => egui::Align::Max,
+          "Bottom" => egui::Align::Max,
+          _ => return Err("Invalid main alignment"),
+        }
+      };
+      layout = layout.with_main_align(main_align);
+
+      let main_wrap = if self.main_wrap.get().is_none() {
+        false // default main wrap
+      } else {
+        self.main_wrap.get().try_into()?
+      };
+      layout = layout.with_main_wrap(main_wrap);
+      
+      let main_justify = if self.main_justify.get().is_none() {
+        false // default main justify
+      } else {
+        self.main_justify.get().try_into()?
+      };
+      layout = layout.with_main_justify(main_justify);
+
+
+      let cross_justify = if self.cross_justify.get().is_none() {
+        false // default cross justify
+      } else {
+        self.cross_justify.get().try_into()?
+      };
+      layout = layout.with_cross_justify(cross_justify);
+
+      let desired_size = self.desired_size.get();
+      // TODO
+
+      ui.with_layout(layout, |ui| {
+        util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+      })
+      .inner?;
 
       // let layout = egui::Layout::default();
 
