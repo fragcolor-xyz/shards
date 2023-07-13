@@ -4,6 +4,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
+#include <shards/modules/imaging/imaging.hpp>
 #include <shards/core/shared.hpp>
 #include <boost/filesystem.hpp>
 #include <fstream>
@@ -258,7 +259,10 @@ struct LoadImage : public FileBase {
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
 
   static inline Parameters params{FileBase::params,
-                                  {{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {BPPEnumInfo::Type}}}};
+                                  {{"BPP", SHCCSTR("bits per pixel (HDR images loading and such!)"), {BPPEnumInfo::Type}},
+                                   {"PremultiplyAlpha",
+                                    SHCCSTR("Toggle premultiplication of alpha channels (E.g. To support PNG images)"),
+                                    {CoreInfo::BoolType}}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -266,6 +270,9 @@ struct LoadImage : public FileBase {
     switch (index) {
     case 1:
       _bpp = BPP(value.payload.enumValue);
+      break;
+    case 2:
+      _premultiplyAlpha = value.payload.boolValue;
       break;
     default:
       FileBase::setParam(index, value);
@@ -276,6 +283,8 @@ struct LoadImage : public FileBase {
     switch (index) {
     case 1:
       return Var::Enum(_bpp, CoreCC, BPPEnumInfo::TypeId);
+    case 2:
+      return Var(_premultiplyAlpha);
     default:
       return FileBase::getParam(index);
     }
@@ -283,6 +292,7 @@ struct LoadImage : public FileBase {
 
   SHVar _output{};
   BPP _bpp{BPP::u8};
+  bool _premultiplyAlpha{};
 
   void cleanup() {
     if (_output.valueType == SHType::Image && _output.payload.imageValue.data) {
@@ -296,14 +306,7 @@ struct LoadImage : public FileBase {
   SHVar activate(SHContext *context, const SHVar &input) {
     bool bytesInput = input.valueType == SHType::Bytes;
 
-    std::string filename;
-    if (!bytesInput) {
-      // need a proper filename in this case
-      if (!getFilename(context, filename)) {
-        throw ActivationError(fmt::format("File not found: {}!", filename));
-      }
-    }
-
+    // free the old image if we have one
     if (_output.valueType == SHType::Image && _output.payload.imageValue.data) {
       stbi_image_free(_output.payload.imageValue.data);
       _output = Var::Empty;
@@ -311,57 +314,92 @@ struct LoadImage : public FileBase {
 
     stbi_set_flip_vertically_on_load_thread(0);
 
+    uint8_t *bytesValue;
+    uint32_t bytesSize;
+
+    // if we have a file input, load them into bytes form
+    std::string filename;
+    std::vector<uint8_t> buffer;
+
+    if (!bytesInput) {
+      // need a proper filename in this case
+      if (!getFilename(context, filename)) {
+        throw ActivationError(fmt::format("File not found: {}!", filename));
+      }
+
+      // load the file
+      std::ifstream file(filename, std::ios::binary);
+      if (!file) {
+        throw ActivationError(fmt::format("Error opening file: {}!", filename));
+      }
+
+      // get length of file
+      file.seekg(0, std::ios::end);
+      std::streampos length = file.tellg();
+      file.seekg(0, std::ios::beg);
+
+      // read file into buffer
+      buffer.resize(length);
+      file.read(reinterpret_cast<char *>(buffer.data()), length);
+
+      bytesValue = buffer.data();
+      bytesSize = static_cast<uint32_t>(length);
+    } else {
+      // image already given in bytes form
+      bytesValue = input.payload.bytesValue;
+      bytesSize = input.payload.bytesSize;
+    }
+
     _output.valueType = SHType::Image;
     int x, y, n;
-    if (_bpp == BPP::u8) {
-      if (bytesInput) {
-        _output.payload.imageValue.data =
-            (uint8_t *)stbi_load_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
-      } else {
-        _output.payload.imageValue.data = (uint8_t *)stbi_load(filename.c_str(), &x, &y, &n, 0);
-      }
+    switch (_bpp) {
+    case BPP::u8:
+      _output.payload.imageValue.data =
+          reinterpret_cast<uint8_t *>(stbi_load_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
 
-      if (!_output.payload.imageValue.data) {
-        throw ActivationError("Failed to load image file");
-      }
-    } else if (_bpp == BPP::u16) {
-      if (bytesInput) {
-        _output.payload.imageValue.data =
-            (uint8_t *)stbi_load_16_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
-      } else {
-        _output.payload.imageValue.data = (uint8_t *)stbi_load_16(filename.c_str(), &x, &y, &n, 0);
-      }
+      _output.payload.imageValue.flags = 0;
+      break;
+    case BPP::u16:
+      _output.payload.imageValue.data =
+          reinterpret_cast<uint8_t *>(stbi_load_16_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
 
-      if (!_output.payload.imageValue.data) {
-        throw ActivationError("Failed to load image file");
-      }
-    } else {
-      if (bytesInput) {
-        _output.payload.imageValue.data =
-            (uint8_t *)stbi_loadf_from_memory(input.payload.bytesValue, int(input.payload.bytesSize), &x, &y, &n, 0);
-      } else {
-        _output.payload.imageValue.data = (uint8_t *)stbi_loadf(filename.c_str(), &x, &y, &n, 0);
-      }
+      _output.payload.imageValue.flags = SHIMAGE_FLAGS_16BITS_INT;
+      break;
+    default:
+      _output.payload.imageValue.data =
+          reinterpret_cast<uint8_t *>(stbi_loadf_from_memory(bytesValue, static_cast<int>(bytesSize), &x, &y, &n, 0));
 
-      if (!_output.payload.imageValue.data) {
-        throw ActivationError(fmt::format("Failed to load image file {}", filename));
-      }
+      _output.payload.imageValue.flags = SHIMAGE_FLAGS_32BITS_FLOAT;
+      break;
     }
+
+    if (!_output.payload.imageValue.data) {
+      throw ActivationError("Failed to load image file");
+    }
+
     _output.payload.imageValue.width = uint16_t(x);
     _output.payload.imageValue.height = uint16_t(y);
     _output.payload.imageValue.channels = uint16_t(n);
-    switch (_bpp) {
-    case BPP::u16:
-      _output.payload.imageValue.flags = SHIMAGE_FLAGS_16BITS_INT;
-      break;
-    case BPP::f32:
-      _output.payload.imageValue.flags = SHIMAGE_FLAGS_32BITS_FLOAT;
-      break;
-    default:
-      _output.payload.imageValue.flags = 0;
-      break;
+
+    // Premultiply the alpha channel if premultiply option is chosen
+    auto pixsize = getPixelSize(_output);
+    if (_premultiplyAlpha) {
+      // premultiply the alpha channel
+      switch (pixsize) {
+      case 1:
+        Imaging::premultiplyAlpha<uint8_t>(_output, _output, _output.payload.imageValue.width, _output.payload.imageValue.height);
+        break;
+      case 2:
+        Imaging::premultiplyAlpha<uint16_t>(_output, _output, _output.payload.imageValue.width,
+                                            _output.payload.imageValue.height);
+        break;
+      case 4:
+        Imaging::premultiplyAlpha<float>(_output, _output, _output.payload.imageValue.width, _output.payload.imageValue.height);
+        break;
+      }
     }
-    _output.version++;
+
+    _output.version = 0;
     return _output;
   }
 };
@@ -392,10 +430,6 @@ struct WritePNG : public FileBase {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto pixsize = getPixelSize(input);
 
-    if (pixsize != 1) {
-      throw ActivationError("Bits per pixel must be 8");
-    }
-
     std::string filename;
     if (_filename->valueType != SHType::None) {
       if (!getFilename(context, filename, false)) {
@@ -410,43 +444,18 @@ struct WritePNG : public FileBase {
     // demultiply alpha if needed, limited to 4 channels
     if (c == 4 && (input.payload.imageValue.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
       _scratch.resize(w * h * 4 * pixsize);
-      int lineSize = w * 4;
       for (int ih = 0; ih < h; ih++) {
         for (int iw = 0; iw < w; iw++) {
-          int baseIdx = (ih * lineSize) + (iw * 4);
-          if (pixsize == 1) {
-            uint8_t a = input.payload.imageValue.data[baseIdx + 3];
-            float fa = float(a) / 255.0f;
-            _scratch[baseIdx + 3] = a;
-            uint8_t r = input.payload.imageValue.data[baseIdx + 0];
-            _scratch[baseIdx + 0] = fa > 0.0 ? uint8_t(float(r) / fa) : 0;
-            uint8_t g = input.payload.imageValue.data[baseIdx + 1];
-            _scratch[baseIdx + 1] = fa > 0.0 ? uint8_t(float(g) / fa) : 0;
-            uint8_t b = input.payload.imageValue.data[baseIdx + 2];
-            _scratch[baseIdx + 2] = fa > 0.0 ? uint8_t(float(b) / fa) : 0;
-          } else if (pixsize == 2) {
-            uint16_t *source = reinterpret_cast<uint16_t *>(input.payload.imageValue.data);
-            uint16_t *dest = reinterpret_cast<uint16_t *>(_scratch.data());
-            uint16_t a = source[baseIdx + 3];
-            float fa = float(a) / 65535.0f;
-            dest[baseIdx + 3] = a;
-            uint16_t r = source[baseIdx + 0];
-            dest[baseIdx + 0] = fa > 0.0 ? uint16_t(float(r) / fa) : 0;
-            uint16_t g = source[baseIdx + 1];
-            dest[baseIdx + 1] = fa > 0.0 ? uint16_t(float(g) / fa) : 0;
-            uint16_t b = source[baseIdx + 2];
-            dest[baseIdx + 2] = fa > 0.0 ? uint16_t(float(b) / fa) : 0;
-          } else if (pixsize == 4) {
-            float *source = reinterpret_cast<float *>(input.payload.imageValue.data);
-            float *dest = reinterpret_cast<float *>(_scratch.data());
-            float fa = source[baseIdx + 3];
-            dest[baseIdx + 3] = fa;
-            float r = source[baseIdx + 0];
-            dest[baseIdx + 0] = fa > 0.0 ? r / fa : 0;
-            float g = source[baseIdx + 1];
-            dest[baseIdx + 1] = fa > 0.0 ? g / fa : 0;
-            float b = source[baseIdx + 2];
-            dest[baseIdx + 2] = fa > 0.0 ? b / fa : 0;
+          switch (pixsize) {
+          case 1:
+            Imaging::demultiplyAlpha<uint8_t>(input, _scratch, w, h);
+            break;
+          case 2:
+            Imaging::demultiplyAlpha<uint16_t>(input, _scratch, w, h);
+            break;
+          case 4:
+            Imaging::demultiplyAlpha<float>(input, _scratch, w, h);
+            break;
           }
         }
       }
