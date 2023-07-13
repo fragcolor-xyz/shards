@@ -83,7 +83,7 @@ struct Layout {
   main_justify: ParamVar,
   cross_align: ParamVar,
   cross_justify: ParamVar,
-  desired_size: ParamVar, // TODO: maybe give (0, 0) or default for max available size before wrap
+  size: ParamVar, // TODO: maybe give (0, 0) or default for max available size before wrap
   exposing: ExposedTypes,
 }
 

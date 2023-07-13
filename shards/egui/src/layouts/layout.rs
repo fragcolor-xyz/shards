@@ -3,6 +3,7 @@
 
 use super::Layout;
 use crate::util;
+use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use shards::shard::Shard;
@@ -20,10 +21,9 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
+use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
 use shards::types::STRING_OR_NONE_SLICE;
-use shards::types::BOOL_VAR_OR_NONE_SLICE;
-use crate::FLOAT2_VAR_SLICE;
 
 lazy_static! {
   static ref LAYOUT_PARAMETERS: Parameters = vec![
@@ -70,7 +70,7 @@ lazy_static! {
     )
       .into(),
     (
-      cstr!("DesiredSize"),
+      cstr!("Size"),
       shccstr!("Whether to justify the cross axis. Whether widgets get maximum width/height for vertical/horizontal layouts."),
       FLOAT2_VAR_SLICE,
     )
@@ -92,7 +92,7 @@ impl Default for Layout {
       main_justify: ParamVar::default(),
       cross_align: ParamVar::default(),
       cross_justify: ParamVar::default(),
-      desired_size: ParamVar::default(), 
+      size: ParamVar::default(),
       exposing: Vec::new(),
     }
   }
@@ -118,7 +118,9 @@ impl Shard for Layout {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Versatile layout with many options for customizing the desired UI."))
+    OptionalString(shccstr!(
+      "Versatile layout with many options for customizing the desired UI."
+    ))
   }
 
   fn inputTypes(&mut self) -> &Types {
@@ -152,7 +154,7 @@ impl Shard for Layout {
       4 => Ok(self.main_justify.set_param(value)),
       5 => Ok(self.cross_align.set_param(value)),
       6 => Ok(self.cross_justify.set_param(value)),
-      7 => Ok(self.desired_size.set_param(value)),
+      7 => Ok(self.size.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -166,7 +168,7 @@ impl Shard for Layout {
       4 => self.main_justify.get_param(),
       5 => self.cross_align.get_param(),
       6 => self.cross_justify.get_param(),
-      7 => self.desired_size.get_param(),
+      7 => self.size.get_param(),
       _ => Var::default(),
     }
   }
@@ -214,13 +216,13 @@ impl Shard for Layout {
     self.main_justify.warmup(ctx);
     self.cross_align.warmup(ctx);
     self.cross_justify.warmup(ctx);
-    self.desired_size.warmup(ctx);
+    self.size.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.desired_size.cleanup();
+    self.size.cleanup();
     self.cross_justify.cleanup();
     self.cross_align.cleanup();
     self.main_justify.cleanup();
@@ -241,13 +243,12 @@ impl Shard for Layout {
     }
 
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
-
       let main_dir = self.main_dir.get();
 
-      if main_dir.is_none()  {
+      if main_dir.is_none() {
         return Err("No main direction specified");
       }
-      
+
       let cross_align = if self.cross_align.get().is_none() {
         egui::Align::Min // default cross align
       } else {
@@ -260,10 +261,18 @@ impl Shard for Layout {
       };
 
       let mut layout = match main_dir.try_into()? {
-        "LeftToRight" => egui::Layout::from_main_dir_and_cross_align(egui::Direction::LeftToRight, cross_align),
-        "RightToLeft" => egui::Layout::from_main_dir_and_cross_align(egui::Direction::RightToLeft, cross_align),
-        "TopDown" => egui::Layout::from_main_dir_and_cross_align(egui::Direction::TopDown, cross_align),
-        "BottomUp" => egui::Layout::from_main_dir_and_cross_align(egui::Direction::BottomUp, cross_align),
+        "LeftToRight" => {
+          egui::Layout::from_main_dir_and_cross_align(egui::Direction::LeftToRight, cross_align)
+        }
+        "RightToLeft" => {
+          egui::Layout::from_main_dir_and_cross_align(egui::Direction::RightToLeft, cross_align)
+        }
+        "TopDown" => {
+          egui::Layout::from_main_dir_and_cross_align(egui::Direction::TopDown, cross_align)
+        }
+        "BottomUp" => {
+          egui::Layout::from_main_dir_and_cross_align(egui::Direction::BottomUp, cross_align)
+        }
         _ => return Err("Invalid main direction"),
       };
 
@@ -289,14 +298,13 @@ impl Shard for Layout {
         self.main_wrap.get().try_into()?
       };
       layout = layout.with_main_wrap(main_wrap);
-      
+
       let main_justify = if self.main_justify.get().is_none() {
         false // default main justify
       } else {
         self.main_justify.get().try_into()?
       };
       layout = layout.with_main_justify(main_justify);
-
 
       let cross_justify = if self.cross_justify.get().is_none() {
         false // default cross justify
@@ -305,42 +313,29 @@ impl Shard for Layout {
       };
       layout = layout.with_cross_justify(cross_justify);
 
-      let desired_size = self.desired_size.get();
-      // TODO
+      let size = if self.size.get().is_none() {
+        (
+          ui.available_size_before_wrap().x,
+          ui.available_size_before_wrap().y,
+        ) // if none then take up all available space
+      } else {
+        let mut size: (f32, f32) = self.size.get().try_into()?;
+        if size.0 == 0.0 {
+          size.0 = ui.available_size_before_wrap().x;
+        }
+        if size.1 == 0.0 {
+          size.1 = ui.available_size_before_wrap().y;
+        }
+        size
+      };
 
-      ui.with_layout(layout, |ui| {
+      // TODO: Remove this when done
+      shlog!("available space before wrap: {} {}", ui.available_size_before_wrap().x, ui.available_size_before_wrap().y);
+
+      ui.allocate_ui_with_layout(size.into(), layout, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })
       .inner?;
-
-      // let layout = egui::Layout::default();
-
-      // let layout = if let Ok(main_dir) = self.main_dir.get().try_into()? {
-      //   match main_dir {
-      //     "LeftToRight" => Layout::horizontal(self.main_wrap.get()),
-      //     "RightToLeft" => Layout::horizontal_reverse(self.main_wrap.get()),
-      //     "TopDown" => Layout::vertical(self.main_wrap.get()),
-      //     "BottomUp" => Layout::vertical_reverse(self.main_wrap.get()),
-      //   }
-      // } else {
-      //   Layout::default()
-      // };
-
-      // if !desired_size.is_none() {
-      //   ui.allocate_ui_with_layout(desired_size.try_into()?, )
-      // }
-
-      // if self.centered {
-      //   ui.vertical_centered(|ui| {
-      //     util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-      //   })
-      //   .inner?
-      // } else {
-      //   ui.vertical(|ui| {
-      //     util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-      //   })
-      //   .inner?
-      // };
 
       // Always passthrough the input
       Ok(*input)
