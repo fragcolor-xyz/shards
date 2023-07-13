@@ -10,7 +10,7 @@
 #endif
 #include "Types.h"
 #include <shards/core/runtime.hpp>
-#include <include/shards/shards_lang.h>
+#include <shards/lang/bindings.h>
 
 #include <boost/filesystem.hpp>
 #include <cassert>
