@@ -424,7 +424,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
   }
 }
 
-fn process_take_table(pair: Pair<Rule>, env: &mut ReadEnv) -> (Identifier, Vec<RcStrWrapper>) {
+fn process_take_table(pair: Pair<Rule>, _env: &mut ReadEnv) -> (Identifier, Vec<RcStrWrapper>) {
   let identifier = extract_identifier(pair).unwrap();
 
   let str_expr = identifier.name.as_str();
@@ -445,7 +445,7 @@ fn process_take_table(pair: Pair<Rule>, env: &mut ReadEnv) -> (Identifier, Vec<R
 
 fn process_take_seq(
   pair: Pair<Rule>,
-  env: &mut ReadEnv,
+  _env: &mut ReadEnv,
 ) -> Result<(Identifier, Vec<u32>), ShardsError> {
   let pos = pair.as_span().start_pos();
 

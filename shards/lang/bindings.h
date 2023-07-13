@@ -45,8 +45,6 @@ SHLWire shards_transform_env(EvalEnv *env, SHStringWithLen name);
 
 SHLWire shards_eval(Sequence *sequence, SHStringWithLen name);
 
-SHVar shards_print_ast(Sequence *ast);
-
 void shards_free_sequence(Sequence *sequence);
 
 void shards_free_wire(SHWireRef *wire);
