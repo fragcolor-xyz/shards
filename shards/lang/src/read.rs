@@ -36,13 +36,7 @@ fn extract_identifier(pair: Pair<Rule>) -> Result<Identifier, ShardsError> {
   // complex identifiers are separated by '/'
   // we want to return a vector of identifiers
   let mut identifiers = Vec::new();
-  let first = pair.as_str();
-  identifiers.push(first.into());
   for pair in pair.into_inner() {
-    let pos = pair.as_span().start_pos();
-    if pair.as_rule() != Rule::Iden {
-      return Err(("Expected an identifier, but found none.", pos).into());
-    }
     let identifier = pair.as_str();
     identifiers.push(identifier.into());
   }
@@ -247,7 +241,32 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
   let pos = exp.as_span().start_pos();
 
   match exp.as_rule() {
-    Rule::UppIden | Rule::LowIden => {
+    Rule::UppIden => {
+      // Definitely a Shard!
+      let identifier = Identifier {
+        name: exp.as_str().into(),
+        namespaces: Vec::new(),
+      };
+      let next = inner.next();
+
+      let params = match next {
+        Some(pair) => {
+          if pair.as_rule() == Rule::Params {
+            Some(process_params(pair, env)?)
+          } else {
+            return Err(("Expected Params in Shard", pos).into());
+          }
+        }
+        None => None,
+      };
+
+      Ok(FunctionValue::Function(Function {
+        name: identifier,
+        params,
+      }))
+    }
+    Rule::VarName => {
+      // Many other things...!
       let identifier = extract_identifier(exp)?;
       let next = inner.next();
 
@@ -629,7 +648,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
         Err(("Expected a boolean value", pos).into())
       }
     }
-    Rule::LowIden => Ok(Value::Identifier(extract_identifier(pair)?)),
+    Rule::VarName => Ok(Value::Identifier(extract_identifier(pair)?)),
     Rule::Enum => {
       let text = pair.as_str();
       let splits: Vec<_> = text.split("::").collect();

@@ -1563,6 +1563,39 @@ TEST_CASE("shards-lang") {
     mesh->tick();
   }
 
+  SECTION("Namespaces 1") {
+    auto code1 = "10 = n";
+    auto seq1 = shards_read(SHStringWithLen{code1, strlen(code1)});
+    REQUIRE(seq1.ast);
+    DEFER(shards_free_sequence(seq1.ast));
+
+    auto code2 = "x/n | Math.Add(2) | Log";
+    auto seq2 = shards_read(SHStringWithLen{code2, strlen(code2)});
+    REQUIRE(seq2.ast);
+    DEFER(shards_free_sequence(seq2.ast));
+
+    auto env = shards_create_env(SHStringWithLen{"x", strlen("x")});
+    DEFER(shards_free_env(env));
+
+    auto err = shards_eval_env(env, seq1.ast);
+    REQUIRE_FALSE(err);
+
+    auto sub_env = shards_create_env(SHStringWithLen{});
+    DEFER(shards_free_env(sub_env));
+
+    err = shards_eval_env(sub_env, seq2.ast);
+    REQUIRE_FALSE(err);
+
+    EvalEnv *envs[] = {env, sub_env};
+
+    auto wire = shards_transform_envs(&envs[0], 2, SHStringWithLen{"root", strlen("root")});
+    REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+  }
+
   SECTION("@wire 1") {
     auto code = R"(
       @wire(wire1 {

@@ -2,7 +2,7 @@ WHITESPACE    = _{ SEPARATOR | "," | "\t" | NEWLINE | COMMENT }
 COMMENT       = _{ ";" ~ (!"\n" ~ ANY)* ~ "\n" }
 Program       =  { SOI ~ Sequence ~ EOI }
 LowIden       = @{ (ASCII_ALPHA_LOWER | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-" | ".")* }
-VarName       = _{ LowIden ~ ("/" ~ LowIden)* }
+VarName       =  { LowIden ~ ("/" ~ LowIden)* }
 AssignRef     =  { Pipeline ~ "=" ~ VarName }
 AssignSet     =  { Pipeline ~ ">=" ~ VarName }
 AssignUpd     =  { Pipeline ~ ">" ~ VarName }
