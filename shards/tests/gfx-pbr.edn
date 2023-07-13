@@ -1,7 +1,7 @@
-(load-file "gfx-lib/lib.edn")
-(load-file "gfx-lib/atmosphere.edn")
-(load-file "gfx-lib/pbr.edn")
-(setup-pbr-lib (slurp "gfx-lib/pbr.wgsl") filter-cubemap render-cubemap-0)
+(load-file "../../lib/gfx/cubemap-utils.edn")
+(load-file "../../lib/gfx/atmosphere.edn")
+(load-file "../../lib/gfx/pbr.edn")
+(setup-pbr-lib (slurp "../../lib/gfx/pbr.wgsl") filter-cubemap render-cubemap-0)
 
 (def timestep (/ 1.0 120.0))
 (def pi 3.14159265359)
