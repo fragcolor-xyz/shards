@@ -5,7 +5,6 @@ use crate::ShardsExtension;
 
 use core::convert::TryInto;
 
-
 use core::slice;
 use nanoid::nanoid;
 use shards::fourCharacterCode;
@@ -120,8 +119,12 @@ impl EvalEnv {
 
     if let Some(namespace) = namespace {
       env.namespace = namespace.clone();
-      let s = format!("{}/{}", env.full_namespace, namespace);
-      env.full_namespace = RcStrWrapper::from(s);
+      if !env.full_namespace.is_empty() {
+        let s = format!("{}/{}", env.full_namespace, namespace);
+        env.full_namespace = RcStrWrapper::from(s);
+      } else {
+        env.full_namespace = namespace;
+      }
     }
 
     env
@@ -798,7 +801,7 @@ fn finalize_wire(
   line_info: LineInfo,
   env: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let name = name.resolve();
+  let name = get_full_name(name, env);
   wire.set_name(&name);
 
   shlog_trace!("Finalizing wire {}", name);
@@ -1048,37 +1051,31 @@ fn find_replacement<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Valu
   }
 }
 
-fn combine_namespaces(partial: &str, fully_qualified: &str) -> String {
+fn combine_namespaces(partial: &RcStrWrapper, fully_qualified: &RcStrWrapper) -> RcStrWrapper {
   if fully_qualified.is_empty() {
-    return partial.to_owned();
+    return partial.clone();
   }
 
   let fully_qualified = fully_qualified.split('/').collect::<Vec<_>>();
   let partial = partial.split('/').collect::<Vec<_>>();
 
-  let mut common_namespace = Vec::new();
-  let mut has_common_part = false;
-  for part in partial.iter() {
-    if fully_qualified.contains(part) {
-      common_namespace.push(*part);
-      has_common_part = true;
-    } else if has_common_part {
+  let mut combined = Vec::new();
+
+  // start adding initial parts of fully qualified name we don't know about
+  for part in fully_qualified.iter() {
+    if partial.len() > 1 && partial.contains(part) {
+      // break once we hit a part that is in the partial name
       break;
     }
+    combined.push(*part);
   }
 
-  let common_namespace_str = common_namespace.join("/");
+  // add the rest of the partial name
+  for part in partial.iter() {
+    combined.push(*part);
+  }
 
-  let trimmed_partial = if has_common_part {
-    partial
-      .join("/")
-      .trim_start_matches(&common_namespace_str)
-      .to_owned()
-  } else {
-    partial.join("/").to_owned()
-  };
-
-  format!("{}/{}", fully_qualified.join("/"), trimmed_partial)
+  combined.join("/").into()
 }
 
 fn as_var(
@@ -1386,16 +1383,15 @@ fn as_var(
 }
 
 fn get_full_name(name: &Identifier, e: &mut EvalEnv) -> RcStrWrapper {
-  let full_name = if let Some(full_name) = e.qualified_cache.get(name) {
+  if let Some(full_name) = e.qualified_cache.get(name) {
     full_name.clone()
   } else {
     let resolved = name.resolve();
-    let full_name = combine_namespaces(&resolved, e.full_namespace.as_str());
+    let full_name = combine_namespaces(&resolved, &e.full_namespace);
     let full_name = RcStrWrapper::new(full_name.as_str());
     e.qualified_cache.insert(name.clone(), full_name.clone());
     full_name
-  };
-  full_name
+  }
 }
 
 fn process_ast(func: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<SVar, ShardsError> {
@@ -3101,6 +3097,18 @@ pub(crate) fn eval_statement(stmt: &Statement, e: &mut EvalEnv) -> Result<(), Sh
   }
 }
 
+pub fn transform_envs(envs: &mut [&mut EvalEnv], name: &str) -> Result<Wire, ShardsError> {
+  let wire = Wire::default();
+  wire.set_name(name);
+  for env in envs {
+    finalize_env(*env)?;
+    for shard in env.shards.drain(..) {
+      wire.add_shard(shard.0);
+    }
+  }
+  Ok(wire)
+}
+
 pub fn transform_env(env: &mut EvalEnv, name: &str) -> Result<Wire, ShardsError> {
   let wire = Wire::default();
   wire.set_name(name);
@@ -3155,26 +3163,46 @@ pub fn register_extension<T: ShardsExtension>(ext: Box<dyn ShardsExtension>, env
 fn test_combine_namespaces() {
   let partial = "b/var";
   let fully_qualified = "a/b";
-  let result = combine_namespaces(partial, fully_qualified);
-  assert_eq!(result, "a/b/var");
+  let result = combine_namespaces(&partial.into(), &fully_qualified.into());
+  assert_eq!(result, RcStrWrapper::from("a/b/var"));
 
   let partial = "c/d/e/f";
   let fully_qualified = "a/b";
-  let result = combine_namespaces(partial, fully_qualified);
-  assert_eq!(result, "a/b/c/d/e/f");
+  let result = combine_namespaces(&partial.into(), &fully_qualified.into());
+  assert_eq!(result, RcStrWrapper::from("a/b/c/d/e/f"));
 
   let partial = "b";
   let fully_qualified = "a";
-  let result = combine_namespaces(partial, fully_qualified);
-  assert_eq!(result, "a/b");
+  let result = combine_namespaces(&partial.into(), &fully_qualified.into());
+  assert_eq!(result, RcStrWrapper::from("a/b"));
 
-  let partial = "";
+  let partial = "b";
   let fully_qualified = "a/b";
-  let result = combine_namespaces(partial, fully_qualified);
-  assert_eq!(result, "a/b");
+  let result = combine_namespaces(&partial.into(), &fully_qualified.into());
+  assert_eq!(result, RcStrWrapper::from("a/b/b"));
+
+  let partial = "b/b";
+  let fully_qualified = "a/b";
+  let result = combine_namespaces(&partial.into(), &fully_qualified.into());
+  assert_eq!(result, RcStrWrapper::from("a/b/b"));
 
   let partial = "b";
   let fully_qualified = "";
-  let result = combine_namespaces(partial, fully_qualified);
-  assert_eq!(result, "b");
+  let result = combine_namespaces(&partial.into(), &fully_qualified.into());
+  assert_eq!(result, RcStrWrapper::from("b"));
+
+  let partial = "d/g/p";
+  let fully_qualified = "a/b";
+  let result = combine_namespaces(&partial.into(), &fully_qualified.into());
+  assert_eq!(result, RcStrWrapper::from("a/b/d/g/p"));
+
+  let partial = "b/f/g";
+  let fully_qualified = "a/b/c/d";
+  let result = combine_namespaces(&partial.into(), &fully_qualified.into());
+  assert_eq!(result, RcStrWrapper::from("a/b/f/g"));
+
+  let partial = "b/f/c";
+  let fully_qualified = "a/b/c/d";
+  let result = combine_namespaces(&partial.into(), &fully_qualified.into());
+  assert_eq!(result, RcStrWrapper::from("a/b/f/c"));
 }

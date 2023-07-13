@@ -85,15 +85,19 @@ pub struct Identifier {
 }
 
 impl Identifier {
-  pub fn resolve(&self) -> String {
-    // go thru all namespaces and concatenate them with "/" finally add name
-    let mut result = String::new();
-    for namespace in &self.namespaces {
-      result.push_str(&namespace.to_string());
-      result.push('/');
+  pub fn resolve(&self) -> RcStrWrapper {
+    if self.namespaces.is_empty() {
+      return self.name.clone();
+    } else {
+      // go thru all namespaces and concatenate them with "/" finally add name
+      let mut result = String::new();
+      for namespace in &self.namespaces {
+        result.push_str(&namespace);
+        result.push('/');
+      }
+      result.push_str(&self.name);
+      result.into()
     }
-    result.push_str(&self.name.to_string());
-    result
   }
 }
 

@@ -18,7 +18,6 @@ use std::collections::HashMap;
 use eval::EvalEnv;
 // use print::print_ast;
 
-
 use std::ops::Deref;
 
 use shards::types::{AutoShardRef, ClonedVar, Wire};
@@ -269,8 +268,13 @@ pub extern "C" fn shards_read(code: SHStringWithLen) -> SHLAst {
 }
 
 #[no_mangle]
-pub extern "C" fn shards_create_env() -> *mut EvalEnv {
-  Box::into_raw(Box::new(EvalEnv::new(None, None)))
+pub extern "C" fn shards_create_env(namespace: SHStringWithLen) -> *mut EvalEnv {
+  if namespace.len == 0 {
+    Box::into_raw(Box::new(EvalEnv::new(None, None)))
+  } else {
+    let namespace: &str = namespace.into();
+    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), None)))
+  }
 }
 
 #[no_mangle]
@@ -281,10 +285,17 @@ pub extern "C" fn shards_free_env(env: *mut EvalEnv) {
 }
 
 #[no_mangle]
-pub extern "C" fn shards_create_sub_env(env: *mut EvalEnv) -> *mut EvalEnv {
+pub extern "C" fn shards_create_sub_env(
+  env: *mut EvalEnv,
+  namespace: SHStringWithLen,
+) -> *mut EvalEnv {
   let env = unsafe { &mut *env };
-  let new_env = EvalEnv::new(None, Some(env));
-  Box::into_raw(Box::new(new_env))
+  if namespace.len == 0 {
+    Box::into_raw(Box::new(EvalEnv::new(None, Some(env))))
+  } else {
+    let namespace: &str = namespace.into();
+    Box::into_raw(Box::new(EvalEnv::new(Some(namespace.into()), Some(env))))
+  }
 }
 
 #[no_mangle]
@@ -310,6 +321,40 @@ pub extern "C" fn shards_transform_env(env: *mut EvalEnv, name: SHStringWithLen)
   let name = name.into();
   let env = unsafe { &mut *env };
   let res = eval::transform_env(env, name);
+  match res {
+    Ok(wire) => SHLWire {
+      wire: Box::into_raw(Box::new(wire)),
+      error: std::ptr::null_mut(),
+    },
+    Err(error) => {
+      let error_message = CString::new(error.message).unwrap();
+      let shards_error = SHLError {
+        message: error_message.into_raw(),
+        line: error.loc.line,
+        column: error.loc.column,
+      };
+      SHLWire {
+        wire: std::ptr::null_mut(),
+        error: Box::into_raw(Box::new(shards_error)),
+      }
+    }
+  }
+}
+
+#[no_mangle]
+pub extern "C" fn shards_transform_envs(
+  env: *mut *mut EvalEnv,
+  len: usize,
+  name: SHStringWithLen,
+) -> SHLWire {
+  let name = name.into();
+  let envs = unsafe { std::slice::from_raw_parts_mut(env, len) };
+  let mut deref_envs = Vec::with_capacity(len);
+  for &env in envs.iter() {
+    let env = unsafe { &mut *env };
+    deref_envs.push(env);
+  }
+  let res = eval::transform_envs(&mut deref_envs[..], name);
   match res {
     Ok(wire) => SHLWire {
       wire: Box::into_raw(Box::new(wire)),
