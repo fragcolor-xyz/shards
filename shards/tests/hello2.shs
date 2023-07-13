@@ -25,3 +25,19 @@
 })
 
 @define(to-j-from-j {ToJson | ToHex})
+
+@macro(if [cond yes no] {
+  Sequence(pipelines)
+  cond | If(Is(true) {
+    {Pipeline: {blocks: [{content:
+          {Shard: {name: "Sub"
+                  params:[{name: none value: (@ast(yes) | FromJson)}]
+          }}}]}}
+  } {
+    {Pipeline: {blocks: [{content:
+          {Shard: {name: "Sub"
+                  params:[{name: none value: (@ast(no) | FromJson)}]
+          }}}]}}
+  }) >> pipelines
+  {statements: pipelines} | ToJson | Log
+})

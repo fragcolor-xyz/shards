@@ -1278,6 +1278,7 @@ fn as_var(
         func, line_info,
       )?)),
       "type" => process_type(func, line_info, e),
+      "ast" => process_ast(func, line_info, e),
       _ => {
         if let Some(defined_value) = find_defined(&func.name, e) {
           let replacement = unsafe { &*defined_value };
@@ -1321,6 +1322,41 @@ fn as_var(
       }
     },
   }
+}
+
+fn process_ast(func: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<SVar, ShardsError> {
+  // ast to json
+  //serde_json::to_str(func.params[0].v)
+  let first_param = func.params.as_ref().unwrap().get(0).ok_or(
+    (
+      "ast built-in function requires at least one parameter",
+      line_info,
+    )
+      .into(),
+  )?;
+
+  // if param is an identifier, we need to resolve it
+  let first_param = match &first_param.value {
+    Value::Identifier(name) => {
+      if let Some(replacement) = find_replacement(name, e) {
+        replacement
+      } else {
+        &first_param.value
+      }
+    }
+    _ => &first_param.value,
+  };
+
+  let json = serde_json::to_string(&first_param).map_err(|e| {
+    (
+      format!("ast built-in function failed to convert to json: {}", e),
+      line_info,
+    )
+      .into()
+  })?;
+
+  let s = Var::ephemeral_string(json.as_str());
+  Ok(SVar::Cloned(s.into()))
 }
 
 fn process_type(
@@ -2716,6 +2752,10 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
           }
           "type" => {
             let info = process_type(func, block.line_info.unwrap_or_default(), e)?;
+            add_const_shard2(*info.as_ref(), block.line_info.unwrap_or_default(), e)
+          }
+          "ast" => {
+            let info = process_ast(func, block.line_info.unwrap_or_default(), e)?;
             add_const_shard2(*info.as_ref(), block.line_info.unwrap_or_default(), e)
           }
           unknown => {
