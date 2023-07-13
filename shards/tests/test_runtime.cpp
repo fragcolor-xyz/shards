@@ -1575,13 +1575,11 @@ TEST_CASE("shards-lang") {
     DEFER(shards_free_sequence(seq2.ast));
 
     auto env = shards_create_env(SHStringWithLen{"x", strlen("x")});
-    DEFER(shards_free_env(env));
 
     auto err = shards_eval_env(env, seq1.ast);
     REQUIRE_FALSE(err);
 
     auto sub_env = shards_create_env(SHStringWithLen{});
-    DEFER(shards_free_env(sub_env));
 
     err = shards_eval_env(sub_env, seq2.ast);
     REQUIRE_FALSE(err);
