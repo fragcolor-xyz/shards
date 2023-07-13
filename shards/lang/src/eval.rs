@@ -5,6 +5,7 @@ use crate::ShardsExtension;
 
 use core::convert::TryInto;
 
+use clap::Id;
 use core::slice;
 use nanoid::nanoid;
 use shards::fourCharacterCode;
@@ -52,14 +53,18 @@ pub struct Setting {
 pub struct EvalEnv {
   pub(crate) parent: Option<*const EvalEnv>,
 
+  namespace: RcStrWrapper,
+  full_namespace: RcStrWrapper,
+  qualified_cache: HashMap<Identifier, RcStrWrapper>,
+
   shards: Vec<AutoShardRef>,
 
-  deferred_wires: HashMap<RcStrWrapper, (Wire, *const Vec<Param>, LineInfo)>,
-  finalized_wires: HashMap<RcStrWrapper, ClonedVar>,
+  deferred_wires: HashMap<Identifier, (Wire, *const Vec<Param>, LineInfo)>,
+  finalized_wires: HashMap<Identifier, ClonedVar>,
 
-  shards_groups: HashMap<RcStrWrapper, ShardsGroup>,
-  macro_groups: HashMap<RcStrWrapper, ShardsGroup>,
-  definitions: HashMap<RcStrWrapper, *const Value>,
+  shards_groups: HashMap<Identifier, ShardsGroup>,
+  macro_groups: HashMap<Identifier, ShardsGroup>,
+  definitions: HashMap<Identifier, *const Value>,
 
   // used during @template evaluations, to replace [x y z] arguments
   replacements: HashMap<RcStrWrapper, *const Value>,
@@ -69,12 +74,12 @@ pub struct EvalEnv {
   suffix_assigned: HashMap<RcStrWrapper, RcStrWrapper>, // maps var names to their suffix
 
   // Shards and functions that are forbidden to be used
-  pub forbidden_funcs: HashSet<RcStrWrapper>,
+  pub forbidden_funcs: HashSet<Identifier>,
   pub settings: Vec<Setting>,
 
-  meshes: HashMap<RcStrWrapper, Mesh>,
+  meshes: HashMap<Identifier, Mesh>,
 
-  extensions: HashMap<RcStrWrapper, Box<dyn ShardsExtension>>,
+  extensions: HashMap<Identifier, Box<dyn ShardsExtension>>,
 }
 
 impl Drop for EvalEnv {
@@ -83,10 +88,13 @@ impl Drop for EvalEnv {
   }
 }
 
-impl Default for EvalEnv {
-  fn default() -> Self {
-    EvalEnv {
+impl EvalEnv {
+  pub(crate) fn new(namespace: Option<RcStrWrapper>, parent: Option<*const EvalEnv>) -> Self {
+    let mut env = EvalEnv {
       parent: None,
+      namespace: RcStrWrapper::from(""),
+      full_namespace: RcStrWrapper::from(""),
+      qualified_cache: HashMap::new(),
       shards: Vec::new(),
       deferred_wires: HashMap::new(),
       finalized_wires: HashMap::new(),
@@ -100,7 +108,23 @@ impl Default for EvalEnv {
       settings: Vec::new(),
       meshes: HashMap::new(),
       extensions: HashMap::new(),
+    };
+
+    if let Some(parent) = parent {
+      env.parent = Some(parent);
+      // resolve namespaces
+      let parent = unsafe { &*parent };
+      env.full_namespace = parent.full_namespace.clone();
+      env.settings = parent.settings.clone();
     }
+
+    if let Some(namespace) = namespace {
+      env.namespace = namespace.clone();
+      let s = format!("{}/{}", env.full_namespace, namespace);
+      env.full_namespace = RcStrWrapper::from(s);
+    }
+
+    env
   }
 }
 
@@ -732,7 +756,7 @@ fn handle_color_built_in(func: &Function, line_info: LineInfo) -> Result<Var, Sh
   Ok(Var::color_u8s(colors[0], colors[1], colors[2], colors[3]))
 }
 
-fn find_mesh<'a>(name: &'a RcStrWrapper, env: &'a mut EvalEnv) -> Option<&'a mut Mesh> {
+fn find_mesh<'a>(name: &'a Identifier, env: &'a mut EvalEnv) -> Option<&'a mut Mesh> {
   if let Some(mesh) = env.meshes.get_mut(name) {
     Some(mesh)
   } else if let Some(parent) = env.parent {
@@ -742,7 +766,7 @@ fn find_mesh<'a>(name: &'a RcStrWrapper, env: &'a mut EvalEnv) -> Option<&'a mut
   }
 }
 
-fn find_wire<'a>(name: &'a RcStrWrapper, env: &'a EvalEnv) -> Option<(Var, bool)> {
+fn find_wire<'a>(name: &'a Identifier, env: &'a EvalEnv) -> Option<(Var, bool)> {
   if let Some(wire) = env.finalized_wires.get(name) {
     Some((wire.0.into(), true))
   } else if let Some(wire) = env.deferred_wires.get(name) {
@@ -755,7 +779,7 @@ fn find_wire<'a>(name: &'a RcStrWrapper, env: &'a EvalEnv) -> Option<(Var, bool)
 }
 
 fn find_extension<'a>(
-  name: &'a RcStrWrapper,
+  name: &'a Identifier,
   env: &'a mut EvalEnv,
 ) -> Option<&'a mut Box<dyn ShardsExtension>> {
   if let Some(extension) = env.extensions.get_mut(name) {
@@ -769,12 +793,13 @@ fn find_extension<'a>(
 
 fn finalize_wire(
   wire: &Wire,
-  name: &RcStrWrapper,
+  name: &Identifier,
   params: *const Vec<Param>,
   line_info: LineInfo,
   env: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  wire.set_name(&name.0);
+  let name = name.resolve();
+  wire.set_name(&name);
 
   shlog_trace!("Finalizing wire {}", name);
 
@@ -788,7 +813,7 @@ fn finalize_wire(
       Value::Shards(seq) => eval_sequence(&seq, Some(env)),
       _ => Err(("Shards parameter must be shards", line_info).into()),
     })
-    .unwrap_or(Ok(EvalEnv::default()))?;
+    .ok_or(("Wire must have a Shards parameter", line_info).into())??;
   finalize_env(&mut sub_env)?;
   for shard in sub_env.shards.drain(..) {
     wire.add_shard(shard.0);
@@ -919,12 +944,7 @@ pub(crate) fn eval_sequence(
   seq: &Sequence,
   parent: Option<&mut EvalEnv>,
 ) -> Result<EvalEnv, ShardsError> {
-  let mut sub_env = EvalEnv::default();
-  // inherit previous state for certain things
-  if let Some(parent) = parent {
-    sub_env.parent = Some(parent as *mut EvalEnv);
-    sub_env.settings = parent.settings.clone(); // clone parent settings
-  }
+  let mut sub_env = EvalEnv::new(None, parent.map(|p| p as *const EvalEnv));
   for stmt in &seq.statements {
     eval_statement(stmt, &mut sub_env)?;
   }
@@ -932,7 +952,7 @@ pub(crate) fn eval_sequence(
 }
 
 fn create_take_table_chain(
-  var_name: &RcStrWrapper,
+  var_name: &Identifier,
   path: &Vec<RcStrWrapper>,
   line: LineInfo,
   e: &mut EvalEnv,
@@ -946,7 +966,7 @@ fn create_take_table_chain(
 }
 
 fn create_take_seq_chain(
-  var_name: &RcStrWrapper,
+  var_name: &Identifier,
   path: &Vec<u32>,
   line: LineInfo,
   e: &mut EvalEnv,
@@ -959,7 +979,7 @@ fn create_take_seq_chain(
   Ok(())
 }
 
-fn is_forbidden_func(name: &RcStrWrapper, e: &EvalEnv) -> bool {
+fn is_forbidden_func(name: &Identifier, e: &EvalEnv) -> bool {
   //recurse env and check
   let mut env = e;
   loop {
@@ -1005,7 +1025,14 @@ fn find_suffix<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a RcStrWr
 }
 
 /// Recurse into environment and find the replacement for a given variable name if it exists
-fn find_replacement<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a Value> {
+fn find_replacement<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Value> {
+  if !name.namespaces.is_empty() {
+    // no replacements for qualified names
+    return None;
+  }
+
+  let name = &name.name;
+
   let mut env = e;
   loop {
     if let Some(replacement) = env.replacements.get(name) {
@@ -1019,6 +1046,39 @@ fn find_replacement<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a Va
       return None;
     }
   }
+}
+
+fn combine_namespaces(partial: &str, fully_qualified: &str) -> String {
+  if fully_qualified.is_empty() {
+    return partial.to_owned();
+  }
+
+  let fully_qualified = fully_qualified.split('/').collect::<Vec<_>>();
+  let partial = partial.split('/').collect::<Vec<_>>();
+
+  let mut common_namespace = Vec::new();
+  let mut has_common_part = false;
+  for part in partial.iter() {
+    if fully_qualified.contains(part) {
+      common_namespace.push(*part);
+      has_common_part = true;
+    } else if has_common_part {
+      break;
+    }
+  }
+
+  let common_namespace_str = common_namespace.join("/");
+
+  let trimmed_partial = if has_common_part {
+    partial
+      .join("/")
+      .trim_start_matches(&common_namespace_str)
+      .to_owned()
+  } else {
+    partial.join("/").to_owned()
+  };
+
+  format!("{}/{}", fully_qualified.join("/"), trimmed_partial)
 }
 
 fn as_var(
@@ -1046,13 +1106,14 @@ fn as_var(
       } else if let Some(replacement) = find_replacement(name, e) {
         as_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
       } else {
-        if let Some(suffix) = find_suffix(name, e) {
-          let name = format!("{}{}", name, suffix);
+        let full_name = get_full_name(name, e);
+        if let Some(suffix) = find_suffix(&full_name, e) {
+          let name = format!("{}{}", full_name, suffix);
           let mut s = Var::ephemeral_string(name.as_str());
           s.valueType = SHType_ContextVar;
           Ok(SVar::Cloned(s.into()))
         } else {
-          let mut s = Var::ephemeral_string(name.as_str());
+          let mut s = Var::ephemeral_string(full_name.as_str());
           s.valueType = SHType_ContextVar;
           Ok(SVar::NotCloned(s))
         }
@@ -1201,7 +1262,7 @@ fn as_var(
     }
     Value::TakeTable(var_name, path) => {
       let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv::default();
+      let mut sub_env = EvalEnv::new(None, None);
       create_take_table_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
@@ -1227,7 +1288,7 @@ fn as_var(
     }
     Value::TakeSeq(var_name, path) => {
       let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv::default();
+      let mut sub_env = EvalEnv::new(None, None);
       create_take_seq_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
@@ -1251,39 +1312,39 @@ fn as_var(
         panic!("TakeTable should always return a shard")
       }
     }
-    Value::Func(func) => match func.name.as_str() {
-      "color" => Ok(SVar::NotCloned(handle_color_built_in(func, line_info)?)),
-      "i2" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<2>(
+    Value::Func(func) => match (func.name.name.as_str(), func.name.namespaces.is_empty()) {
+      ("color", true) => Ok(SVar::NotCloned(handle_color_built_in(func, line_info)?)),
+      ("i2", true) => Ok(SVar::NotCloned(handle_vector_built_in_ints::<2>(
         func, line_info,
       )?)),
-      "i3" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<3>(
+      ("i3", true) => Ok(SVar::NotCloned(handle_vector_built_in_ints::<3>(
         func, line_info,
       )?)),
-      "i4" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<4>(
+      ("i4", true) => Ok(SVar::NotCloned(handle_vector_built_in_ints::<4>(
         func, line_info,
       )?)),
-      "i8" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<8>(
+      ("i8", true) => Ok(SVar::NotCloned(handle_vector_built_in_ints::<8>(
         func, line_info,
       )?)),
-      "i16" => Ok(SVar::NotCloned(handle_vector_built_in_ints::<16>(
+      ("i16", true) => Ok(SVar::NotCloned(handle_vector_built_in_ints::<16>(
         func, line_info,
       )?)),
-      "f2" => Ok(SVar::NotCloned(handle_vector_built_in_floats::<2>(
+      ("f2", true) => Ok(SVar::NotCloned(handle_vector_built_in_floats::<2>(
         func, line_info,
       )?)),
-      "f3" => Ok(SVar::NotCloned(handle_vector_built_in_floats::<3>(
+      ("f3", true) => Ok(SVar::NotCloned(handle_vector_built_in_floats::<3>(
         func, line_info,
       )?)),
-      "f4" => Ok(SVar::NotCloned(handle_vector_built_in_floats::<4>(
+      ("f4", true) => Ok(SVar::NotCloned(handle_vector_built_in_floats::<4>(
         func, line_info,
       )?)),
-      "type" => process_type(func, line_info, e),
-      "ast" => process_ast(func, line_info, e),
+      ("type", true) => process_type(func, line_info, e),
+      ("ast", true) => process_ast(func, line_info, e),
       _ => {
         if let Some(defined_value) = find_defined(&func.name, e) {
           let replacement = unsafe { &*defined_value };
           as_var(replacement, line_info, shard, e)
-        } else if let Some(ast_json) = process_macro(func, func.name.as_str(), line_info, e)? {
+        } else if let Some(ast_json) = process_macro(func, &func.name, line_info, e)? {
           let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
             (
               "macro built-in function Shards should output a Json string",
@@ -1317,11 +1378,24 @@ fn as_var(
           let v = extension.process_to_var(func, line_info)?;
           Ok(SVar::Cloned(v))
         } else {
-          Err((format!("Undefined function {}", func.name), line_info).into())
+          Err((format!("Undefined function {}", func.name.name), line_info).into())
         }
       }
     },
   }
+}
+
+fn get_full_name(name: &Identifier, e: &mut EvalEnv) -> RcStrWrapper {
+  let full_name = if let Some(full_name) = e.qualified_cache.get(name) {
+    full_name.clone()
+  } else {
+    let resolved = name.resolve();
+    let full_name = combine_namespaces(&resolved, e.full_namespace.as_str());
+    let full_name = RcStrWrapper::new(full_name.as_str());
+    e.qualified_cache.insert(name.clone(), full_name.clone());
+    full_name
+  };
+  full_name
 }
 
 fn process_ast(func: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<SVar, ShardsError> {
@@ -1641,11 +1715,12 @@ fn create_shard(
   e: &mut EvalEnv,
 ) -> Result<AutoShardRef, ShardsError> {
   if is_forbidden_func(&shard.name, e) {
-    return Err((format!("Forbidden shard {}", shard.name), line_info).into());
+    return Err((format!("Forbidden shard {}", shard.name.name), line_info).into());
   }
-  let s = ShardRef::create(shard.name.as_str()).ok_or(
+
+  let s = ShardRef::create(shard.name.name.as_str()).ok_or(
     (
-      format!("Shard {} does not exist", shard.name.as_str()),
+      format!("Shard {} does not exist", shard.name.name.as_str()),
       line_info,
     )
       .into(),
@@ -1707,14 +1782,13 @@ fn set_shard_parameter(
     if var_value.as_ref().valueType != SHType_ContextVar {
       panic!("Expected a context variable") // The actual Shard is violating the standard - panic here
     }
+    let full_name = get_full_name(name, env);
     let suffix = find_current_suffix(env);
     if let Some(suffix) = suffix {
       // fix up the value to be a suffixed variable if we have a suffix
-      let new_name = format!("{}{}", name, suffix);
+      let new_name = format!("{}{}", full_name, suffix);
       // also add to suffix_assigned
-      env
-        .suffix_assigned
-        .insert(name.clone().into(), suffix.clone());
+      env.suffix_assigned.insert(full_name.into(), suffix.clone());
       let mut new_name = Var::ephemeral_string(new_name.as_str());
       new_name.valueType = SHType_ContextVar;
       if let Err(e) = s.0.set_parameter(
@@ -1784,8 +1858,8 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
   let shard = match value {
     Value::Identifier(name) => {
       // we might be a replacement though!
+      // we need to evaluate the replacement as not everything can be a const
       if let Some(replacement) = find_replacement(name, e) {
-        // we need to evaluate the replacement as not everything can be a const
         match replacement {
           Value::None
           | Value::Boolean(_)
@@ -1914,18 +1988,19 @@ fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
   Ok(())
 }
 
-fn add_get_shard(name: &RcStrWrapper, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
+fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Get").unwrap();
   let shard = AutoShardRef(shard);
-  if let Some(suffix) = find_suffix(name, e) {
-    let name = format!("{}{}", name, suffix);
+  let full_name = get_full_name(name, e);
+  if let Some(suffix) = find_suffix(&full_name, e) {
+    let name = format!("{}{}", full_name, suffix);
     let name = Var::ephemeral_string(&name);
     shard
       .0
       .set_parameter(0, name)
       .map_err(|e| (format!("{}", e), line).into())?;
   } else {
-    let name = Var::ephemeral_string(name.as_str());
+    let name = Var::ephemeral_string(full_name.as_str());
     shard
       .0
       .set_parameter(0, name)
@@ -1956,7 +2031,7 @@ fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) -> Resul
 }
 
 /// Recurse into environment and find the replacement for a given @ call name if it exists
-fn find_shards_group<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
+fn find_shards_group<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
   let mut env = e;
   loop {
     if let Some(group) = env.shards_groups.get(name) {
@@ -1972,7 +2047,7 @@ fn find_shards_group<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a S
 }
 
 /// Recurse into environment and find the replacement for a given @ call name if it exists
-fn find_macro_group<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
+fn find_macro_group<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a ShardsGroup> {
   let mut env = e;
   loop {
     if let Some(group) = env.macro_groups.get(name) {
@@ -1988,7 +2063,7 @@ fn find_macro_group<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<&'a Sh
 }
 
 /// Recurse into environment and find the replacement for a given @ call name if it exists
-fn find_defined<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<*const Value> {
+fn find_defined<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<*const Value> {
   let mut env = e;
   loop {
     if let Some(val) = env.definitions.get(name) {
@@ -2005,7 +2080,7 @@ fn find_defined<'a>(name: &'a RcStrWrapper, e: &'a EvalEnv) -> Option<*const Val
 
 fn get_mesh<'a>(
   param: &'a Param,
-  find_mesh: impl Fn(&'a RcStrWrapper, &'a mut EvalEnv) -> Option<&'a mut Mesh>,
+  find_mesh: impl Fn(&'a Identifier, &'a mut EvalEnv) -> Option<&'a mut Mesh>,
   e: &'a mut EvalEnv,
   block: &Block,
 ) -> Result<&'a mut Mesh, ShardsError> {
@@ -2029,7 +2104,7 @@ fn get_mesh<'a>(
 
 fn process_macro(
   func: &Function,
-  unknown: &str,
+  unknown: &Identifier,
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<Option<ClonedVar>, ShardsError> {
@@ -2040,16 +2115,14 @@ fn process_macro(
     if args.len() != func.params.as_ref().unwrap().len() {
       return Err(
         (
-          format!("Macro {} requires {} parameters", unknown, args.len()),
+          format!("Macro {} requires {} parameters", unknown.name, args.len()),
           line_info,
         )
           .into(),
       );
     }
 
-    let mut eval_env = EvalEnv::default();
-    eval_env.parent = Some(e as *const EvalEnv);
-    eval_env.settings = e.settings.clone(); // clone parent settings
+    let mut eval_env = EvalEnv::new(None, Some(e as *const EvalEnv));
 
     // set a random suffix
     eval_env.suffix = Some(nanoid!(16).into());
@@ -2058,13 +2131,28 @@ fn process_macro(
       let arg = &args[i];
       // arg has to be Identifier
       let arg = match arg {
-        Value::Identifier(arg) => arg,
+        Value::Identifier(arg) => {
+          if arg.namespaces.is_empty() {
+            &arg.name
+          } else {
+            return Err(
+              (
+                format!(
+                  "Shards macro {} identifier parameters should not be namespaced",
+                  unknown.name
+                ),
+                line_info,
+              )
+                .into(),
+            );
+          }
+        }
         _ => {
           return Err(
             (
               format!(
-                "Shards template {} parameters should be identifiers",
-                unknown,
+                "Shards macro {} parameters should be identifiers",
+                unknown.name
               ),
               line_info,
             )
@@ -2077,8 +2165,8 @@ fn process_macro(
         return Err(
           (
             format!(
-              "Shards template {} does not accept named parameters",
-              unknown
+              "Shards macro {} does not accept named parameters",
+              unknown.name
             ),
             line_info,
           )
@@ -2123,9 +2211,7 @@ fn process_shards(
       );
     }
 
-    let mut sub_env = EvalEnv::default();
-    sub_env.parent = Some(e as *const EvalEnv);
-    sub_env.settings = e.settings.clone(); // clone parent settings
+    let mut sub_env = EvalEnv::new(None, Some(e as *const EvalEnv));
 
     // set a random suffix
     sub_env.suffix = Some(nanoid!(16).into());
@@ -2134,7 +2220,22 @@ fn process_shards(
       let arg = &args[i];
       // arg has to be Identifier
       let arg = match arg {
-        Value::Identifier(arg) => arg,
+        Value::Identifier(arg) => {
+          if arg.namespaces.is_empty() {
+            &arg.name
+          } else {
+            return Err(
+              (
+                format!(
+                  "Shards template {} identifier parameters should not be namespaced",
+                  unknown
+                ),
+                block.line_info.unwrap_or_default(),
+              )
+                .into(),
+            );
+          }
+        }
         _ => {
           return Err(
             (
@@ -2227,18 +2328,18 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
         if is_forbidden_func(&func.name, e) {
           return Err(
             (
-              format!("Forbidden function {}", func.name),
+              format!("Forbidden function {:?}", func.name),
               block.line_info.unwrap_or_default(),
             )
               .into(),
           );
         }
-        match func.name.as_str() {
-          "ignore" => {
+        match (func.name.name.as_str(), func.name.namespaces.is_empty()) {
+          ("ignore", true) => {
             // ignore is a special function that does nothing
             Ok(())
           }
-          "define" => {
+          ("define", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
 
@@ -2269,7 +2370,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   if let Some(_) = find_defined(name, e) {
                     return Err(
                       (
-                        format!("{} already defined", name),
+                        format!("{} already defined", name.name),
                         block.line_info.unwrap_or_default(),
                       )
                         .into(),
@@ -2297,7 +2398,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "wire" => {
+          ("wire", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
 
@@ -2315,7 +2416,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   if let Some(_) = find_wire(name, e) {
                     return Err(
                       (
-                        format!("wire {} already exists", name),
+                        format!("wire {} already exists", name.name),
                         block.line_info.unwrap_or_default(),
                       )
                         .into(),
@@ -2323,7 +2424,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   }
 
                   let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
-                  shlog_trace!("Adding deferred wire {}", name);
+                  shlog_trace!("Adding deferred wire {}", name.name);
                   e.deferred_wires.insert(
                     name.clone(),
                     (
@@ -2352,7 +2453,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "template" => {
+          ("template", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
 
@@ -2385,7 +2486,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   if let Some(_) = find_shards_group(name, e) {
                     return Err(
                       (
-                        format!("template {} already exists", name),
+                        format!("template {} already exists", name.name),
                         block.line_info.unwrap_or_default(),
                       )
                         .into(),
@@ -2421,7 +2522,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "mesh" => {
+          ("mesh", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
 
@@ -2438,7 +2539,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   if let Some(_) = find_mesh(name, e) {
                     return Err(
                       (
-                        format!("mesh {} already exists", name),
+                        format!("mesh {} already exists", name.name),
                         block.line_info.unwrap_or_default(),
                       )
                         .into(),
@@ -2466,7 +2567,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "schedule" => {
+          ("schedule", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
 
@@ -2528,7 +2629,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "run" => {
+          ("run", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
 
@@ -2666,32 +2767,34 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "color" => process_color_built_in_function(func, block.line_info.unwrap_or_default(), e),
-          "i2" => {
+          ("color", true) => {
+            process_color_built_in_function(func, block.line_info.unwrap_or_default(), e)
+          }
+          ("i2", true) => {
             process_vector_built_in_ints_block::<2>(func, block.line_info.unwrap_or_default(), e)
           }
-          "i3" => {
+          ("i3", true) => {
             process_vector_built_in_ints_block::<3>(func, block.line_info.unwrap_or_default(), e)
           }
-          "i4" => {
+          ("i4", true) => {
             process_vector_built_in_ints_block::<4>(func, block.line_info.unwrap_or_default(), e)
           }
-          "i8" => {
+          ("i8", true) => {
             process_vector_built_in_ints_block::<8>(func, block.line_info.unwrap_or_default(), e)
           }
-          "i16" => {
+          ("i16", true) => {
             process_vector_built_in_ints_block::<16>(func, block.line_info.unwrap_or_default(), e)
           }
-          "f2" => {
+          ("f2", true) => {
             process_vector_built_in_floats_block::<2>(func, block.line_info.unwrap_or_default(), e)
           }
-          "f3" => {
+          ("f3", true) => {
             process_vector_built_in_floats_block::<3>(func, block.line_info.unwrap_or_default(), e)
           }
-          "f4" => {
+          ("f4", true) => {
             process_vector_built_in_floats_block::<4>(func, block.line_info.unwrap_or_default(), e)
           }
-          "macro" => {
+          ("macro", true) => {
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
 
@@ -2750,11 +2853,11 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               )
             }
           }
-          "type" => {
+          ("type", true) => {
             let info = process_type(func, block.line_info.unwrap_or_default(), e)?;
             add_const_shard2(*info.as_ref(), block.line_info.unwrap_or_default(), e)
           }
-          "ast" => {
+          ("ast", true) => {
             let info = process_ast(func, block.line_info.unwrap_or_default(), e)?;
             add_const_shard2(*info.as_ref(), block.line_info.unwrap_or_default(), e)
           }
@@ -2762,8 +2865,8 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
             match (
               // Notice, By precedence!
               find_defined(&func.name, e),
-              process_shards(func, unknown, block, e)?,
-              process_macro(func, unknown, block.line_info.unwrap_or_default(), e)?,
+              process_shards(func, unknown.0, block, e)?,
+              process_macro(func, &func.name, block.line_info.unwrap_or_default(), e)?,
               find_extension(&func.name, e),
             ) {
               (None, None, None, Some(extension)) => {
@@ -2851,7 +2954,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
               }
               _ => Err(
                 (
-                  format!("unknown built-in function: {}", unknown),
+                  format!("unknown built-in function: {}", unknown.0),
                   block.line_info.unwrap_or_default(),
                 )
                   .into(),
@@ -2899,50 +3002,54 @@ fn eval_expr(
 
 fn add_assignment_shard(
   shard_name: &str,
-  name: &RcStrWrapper,
+  name: &Identifier,
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
   let shard = ShardRef::create(shard_name).unwrap();
   let shard = AutoShardRef(shard);
-
+  let full_name = get_full_name(name, e);
   let (assigned, suffix) = match (find_replacement(name, e), find_current_suffix(e)) {
     (Some(Value::Identifier(name)), _) => {
-      let name = Var::ephemeral_string(name);
+      let name = name.clone();
+      let full_name = get_full_name(&name, e);
+      let name = Var::ephemeral_string(full_name.as_str());
       shard
         .0
         .set_parameter(0, name)
         .map_err(|e| (e, line_info).into())?;
-      (false, None)
+      (None, None)
     }
     (None, Some(suffix)) => {
-      let name = format!("{}{}", name, suffix);
-      let name = Var::ephemeral_string(&name);
+      let name = format!("{}{}", full_name.as_str(), suffix);
       shard
         .0
-        .set_parameter(0, name)
+        .set_parameter(0, Var::ephemeral_string(&name))
         .map_err(|e| (e, line_info).into())?;
-      (true, Some(suffix.clone()))
+      (Some(full_name), Some(suffix.clone()))
     }
     (None, None) => {
-      let name = Var::ephemeral_string(name);
+      let name = Var::ephemeral_string(full_name.as_str());
       shard
         .0
         .set_parameter(0, name)
         .map_err(|e| (e, line_info).into())?;
-      (false, None)
+      (None, None)
     }
     _ => unreachable!(), // Read should prevent this...
   };
 
-  if assigned {
-    e.suffix_assigned.insert(name.clone(), suffix.unwrap());
+  if let Some(name) = assigned {
+    e.suffix_assigned.insert(name, suffix.unwrap());
   }
+
   shard.0.set_line_info((
     line_info.line.try_into().unwrap(),
     line_info.column.try_into().unwrap(),
   ));
+
   e.shards.push(shard);
+
   Ok(())
 }
 
@@ -3011,14 +3118,20 @@ pub fn eval(
 ) -> Result<Wire, ShardsError> {
   profiling::scope!("eval", name);
 
-  let mut parent = EvalEnv::default();
+  let mut parent = EvalEnv::new(None, None);
   // add defines
   let defines: Vec<(RcStrWrapper, Value)> = defines
     .iter()
     .map(|(k, v)| (k.as_str().into(), Value::String(v.as_str().into())))
     .collect::<Vec<_>>();
   for (name, value) in &defines {
-    parent.definitions.insert(name.clone(), value);
+    parent.definitions.insert(
+      Identifier {
+        name: name.clone(),
+        namespaces: Vec::new(),
+      },
+      value,
+    );
   }
 
   let mut env = eval_sequence(seq, Some(&mut parent))?;
@@ -3029,5 +3142,39 @@ pub fn eval(
 /// Register an extension which is a type that implements the `ShardsExtension` trait to the environment.
 #[allow(dead_code)]
 pub fn register_extension<T: ShardsExtension>(ext: Box<dyn ShardsExtension>, env: &mut EvalEnv) {
-  env.extensions.insert(ext.name().into(), ext);
+  env.extensions.insert(
+    Identifier {
+      name: ext.name().into(),
+      namespaces: Vec::new(),
+    },
+    ext,
+  );
+}
+
+#[test]
+fn test_combine_namespaces() {
+  let partial = "b/var";
+  let fully_qualified = "a/b";
+  let result = combine_namespaces(partial, fully_qualified);
+  assert_eq!(result, "a/b/var");
+
+  let partial = "c/d/e/f";
+  let fully_qualified = "a/b";
+  let result = combine_namespaces(partial, fully_qualified);
+  assert_eq!(result, "a/b/c/d/e/f");
+
+  let partial = "b";
+  let fully_qualified = "a";
+  let result = combine_namespaces(partial, fully_qualified);
+  assert_eq!(result, "a/b");
+
+  let partial = "";
+  let fully_qualified = "a/b";
+  let result = combine_namespaces(partial, fully_qualified);
+  assert_eq!(result, "a/b");
+
+  let partial = "b";
+  let fully_qualified = "";
+  let result = combine_namespaces(partial, fully_qualified);
+  assert_eq!(result, "b");
 }

@@ -17,7 +17,7 @@
   Sequence(pipelines)
   Repeat({
     {Pipeline: {blocks: [{content:
-      {Shard: {name: "Msg"
+      {Shard: {name: {name: "Msg" namespaces: []}
               params:[{name: none value: {String: "Hello"}}]
       }}}]}} >> pipelines
   } Times: n)
@@ -30,12 +30,12 @@
   Sequence(pipelines)
   cond | If(Is(true) {
     {Pipeline: {blocks: [{content:
-          {Shard: {name: "Sub"
+          {Shard: {name: {name: "Sub" namespaces: []}
                   params:[{name: none value: (@ast(yes) | FromJson)}]
           }}}]}}
   } {
     {Pipeline: {blocks: [{content:
-          {Shard: {name: "Sub"
+          {Shard: {name: {name: "Sub" namespaces: []}
                   params:[{name: none value: (@ast(no) | FromJson)}]
           }}}]}}
   }) >> pipelines

@@ -7,7 +7,7 @@ extern crate clap;
 mod ast;
 mod cli;
 mod eval;
-mod print;
+// mod print;
 mod read;
 
 use crate::ast::*;
@@ -16,7 +16,7 @@ use core::fmt;
 use std::collections::HashMap;
 
 use eval::EvalEnv;
-use print::print_ast;
+// use print::print_ast;
 use shards::core::cloneVar;
 
 use std::ops::Deref;
@@ -270,7 +270,7 @@ pub extern "C" fn shards_read(code: SHStringWithLen) -> SHLAst {
 
 #[no_mangle]
 pub extern "C" fn shards_create_env() -> *mut EvalEnv {
-  Box::into_raw(Box::new(EvalEnv::default()))
+  Box::into_raw(Box::new(EvalEnv::new(None, None)))
 }
 
 #[no_mangle]
@@ -283,9 +283,7 @@ pub extern "C" fn shards_free_env(env: *mut EvalEnv) {
 #[no_mangle]
 pub extern "C" fn shards_create_sub_env(env: *mut EvalEnv) -> *mut EvalEnv {
   let env = unsafe { &mut *env };
-  let mut new_env = EvalEnv::default();
-  new_env.parent = Some(env);
-  new_env.settings = env.settings.clone(); // clone parent settings
+  let mut new_env = EvalEnv::new(None, Some(env));
   Box::into_raw(Box::new(new_env))
 }
 
@@ -362,15 +360,15 @@ pub extern "C" fn shards_eval(sequence: *mut Sequence, name: SHStringWithLen) ->
   }
 }
 
-#[no_mangle]
-pub extern "C" fn shards_print_ast(ast: *mut Sequence) -> Var {
-  let seq = unsafe { &*ast };
-  let s = print_ast(seq);
-  let s = Var::ephemeral_string(&s);
-  let mut v = Var::default();
-  cloneVar(&mut v, &s);
-  v
-}
+// #[no_mangle]
+// pub extern "C" fn shards_print_ast(ast: *mut Sequence) -> Var {
+//   let seq = unsafe { &*ast };
+//   let s = print_ast(seq);
+//   let s = Var::ephemeral_string(&s);
+//   let mut v = Var::default();
+//   cloneVar(&mut v, &s);
+//   v
+// }
 
 #[no_mangle]
 pub extern "C" fn shards_free_sequence(sequence: *mut Sequence) {

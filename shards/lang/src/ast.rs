@@ -78,10 +78,29 @@ pub enum Number {
   Hexadecimal(RcStrWrapper),
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash, Eq)]
+pub struct Identifier {
+  pub name: RcStrWrapper,
+  pub namespaces: Vec<RcStrWrapper>,
+}
+
+impl Identifier {
+  pub fn resolve(&self) -> String {
+    // go thru all namespaces and concatenate them with "/" finally add name
+    let mut result = String::new();
+    for namespace in &self.namespaces {
+      result.push_str(&namespace.to_string());
+      result.push('/');
+    }
+    result.push_str(&self.name.to_string());
+    result
+  }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Value {
   None,
-  Identifier(RcStrWrapper),
+  Identifier(Identifier),
   Boolean(bool),
   Enum(RcStrWrapper, RcStrWrapper),
   Number(Number),
@@ -101,8 +120,8 @@ pub enum Value {
   Shards(Sequence),
   EvalExpr(Sequence),
   Expr(Sequence),
-  TakeTable(RcStrWrapper, Vec<RcStrWrapper>),
-  TakeSeq(RcStrWrapper, Vec<u32>),
+  TakeTable(Identifier, Vec<RcStrWrapper>),
+  TakeSeq(Identifier, Vec<u32>),
   Func(Function),
 }
 
@@ -114,20 +133,20 @@ pub struct Param {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Function {
-  pub name: RcStrWrapper,
+  pub name: Identifier,
   pub params: Option<Vec<Param>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum BlockContent {
-  Shard(Function),                            // Rule: Shard
-  Shards(Sequence),                           // Rule: Shards
-  Const(Value),                               // Rules: ConstValue, Vector
-  TakeTable(RcStrWrapper, Vec<RcStrWrapper>), // Rule: TakeTable
-  TakeSeq(RcStrWrapper, Vec<u32>),            // Rule: TakeSeq
-  EvalExpr(Sequence),                         // Rule: EvalExpr
-  Expr(Sequence),                             // Rule: Expr
-  Func(Function),                             // Rule: BuiltIn
+  Shard(Function),                          // Rule: Shard
+  Shards(Sequence),                         // Rule: Shards
+  Const(Value),                             // Rules: ConstValue, Vector
+  TakeTable(Identifier, Vec<RcStrWrapper>), // Rule: TakeTable
+  TakeSeq(Identifier, Vec<u32>),            // Rule: TakeSeq
+  EvalExpr(Sequence),                       // Rule: EvalExpr
+  Expr(Sequence),                           // Rule: Expr
+  Func(Function),                           // Rule: BuiltIn
   Embed(Sequence), // This is a sequence that will include itself when evaluated
 }
 
@@ -144,10 +163,10 @@ pub struct Pipeline {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Assignment {
-  AssignRef(Pipeline, RcStrWrapper),
-  AssignSet(Pipeline, RcStrWrapper),
-  AssignUpd(Pipeline, RcStrWrapper),
-  AssignPush(Pipeline, RcStrWrapper),
+  AssignRef(Pipeline, Identifier),
+  AssignSet(Pipeline, Identifier),
+  AssignUpd(Pipeline, Identifier),
+  AssignPush(Pipeline, Identifier),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

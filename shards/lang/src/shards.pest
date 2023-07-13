@@ -1,27 +1,28 @@
 WHITESPACE    = _{ SEPARATOR | "," | "\t" | NEWLINE | COMMENT }
 COMMENT       = _{ ";" ~ (!"\n" ~ ANY)* ~ "\n" }
 Program       =  { SOI ~ Sequence ~ EOI }
-LowIden       = @{ (ASCII_ALPHA_LOWER | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-" | "." | "/")* }
-AssignRef     =  { Pipeline ~ "=" ~ LowIden }
-AssignSet     =  { Pipeline ~ ">=" ~ LowIden }
-AssignUpd     =  { Pipeline ~ ">" ~ LowIden }
-AssignPush    =  { Pipeline ~ ">>" ~ LowIden }
+LowIden       = @{ (ASCII_ALPHA_LOWER | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-" | ".")* }
+VarName       = _{ LowIden ~ ("/" ~ LowIden)* }
+AssignRef     =  { Pipeline ~ "=" ~ VarName }
+AssignSet     =  { Pipeline ~ ">=" ~ VarName }
+AssignUpd     =  { Pipeline ~ ">" ~ VarName }
+AssignPush    =  { Pipeline ~ ">>" ~ VarName }
 Assignment    =  { (AssignRef | AssignSet | AssignUpd | AssignPush) ~ ("|")? }
 Pipeline      =  { Block ~ ("|" ~ Block)* }
 Statement     = _{ (Assignment | Pipeline) }
 Sequence      =  { Statement* }
 Param         =  { ParamName? ~ Value }
 Params        =  { "(" ~ Param* ~ ")" }
-Func          =  { "@" ~ LowIden ~ Params? }
+Func          =  { "@" ~ VarName ~ Params? }
 Vector        =  { "(" ~ Number ~ Number+ ~ ")" }
 EvalExpr      =  { "#" ~ RoundParens }
 Expr          =  { RoundParens }
 Shard         =  { UppIden ~ Params? }
-TakeTable     = @{ LowIden ~ (":" ~ Iden)+ }
-TakeSeq       = @{ LowIden ~ (":" ~ Integer)+ }
+TakeTable     = @{ VarName ~ (":" ~ Iden)+ }
+TakeSeq       = @{ VarName ~ (":" ~ Integer)+ }
 Boolean       =  { "true" | "false" }
 None          =  { "none" }
-ConstValue    =  { None | Boolean | LowIden | Number | String | Seq | Table | Enum }
+ConstValue    =  { None | Boolean | VarName | Number | String | Seq | Table | Enum }
 Shards        =  { "{" ~ Sequence? ~ "}" }
 Block         = _{ Func | Vector | EvalExpr | Expr | Enum | Shard | TakeTable | TakeSeq | ConstValue | Shards }
 Iden          = @{ (ASCII_ALPHA | "_" | "*") ~ (ASCII_ALPHANUMERIC | "_" | "-" | ".")* }
@@ -31,7 +32,7 @@ TableEntry    =  { TableKey ~ Value }
 Table         =  { "{" ~ TableEntry* ~ "}" }
 RoundParens   = _{ "(" ~ Sequence ~ ")" }
 UppIden       = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHANUMERIC | "_" | "-" | "." | "!")* }
-ParamName     = ${ UppIden ~ ":" ~ !":"  }
+ParamName     = ${ UppIden ~ ":" ~ !":" }
 Seq           =  { "[" ~ Value* ~ "]" }
 Enum          = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHANUMERIC | "_")+ ~ "::" ~ (ASCII_ALPHANUMERIC | "_")+ }
 Hexadecimal   = @{ "0x" ~ ASCII_HEX_DIGIT+ }

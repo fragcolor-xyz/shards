@@ -31,6 +31,27 @@ fn check_included<'a>(name: &'a RcStrWrapper, env: &'a ReadEnv) -> bool {
   }
 }
 
+fn extract_identifier(pair: Pair<Rule>) -> Result<Identifier, ShardsError> {
+  // so this can be either a simple identifier or a complex identifier
+  // complex identifiers are separated by '/'
+  // we want to return a vector of identifiers
+  let mut identifiers = Vec::new();
+  let first = pair.as_str();
+  identifiers.push(first.into());
+  for pair in pair.into_inner() {
+    let pos = pair.as_span().start_pos();
+    if pair.as_rule() != Rule::Iden {
+      return Err(("Expected an identifier, but found none.", pos).into());
+    }
+    let identifier = pair.as_str();
+    identifiers.push(identifier.into());
+  }
+  Ok(Identifier {
+    name: identifiers.pop().unwrap(), // qed
+    namespaces: identifiers,
+  })
+}
+
 fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Assignment {
@@ -57,11 +78,7 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
     env,
   )?;
 
-  let identifier = sub_inner
-    .next()
-    .ok_or(("Expected an identifier in Assignment, but found none.", pos).into())?
-    .as_str();
-  let identifier = RcStrWrapper::new(identifier);
+  let identifier = extract_identifier(sub_inner.next().unwrap())?;
 
   match sub_rule {
     Rule::AssignRef => Ok(Assignment::AssignRef(pipeline, identifier)),
@@ -231,7 +248,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
 
   match exp.as_rule() {
     Rule::UppIden | Rule::LowIden => {
-      let name = exp.as_str();
+      let identifier = extract_identifier(exp)?;
       let next = inner.next();
 
       let params = match next {
@@ -245,148 +262,156 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
         None => None,
       };
 
-      match name {
-        "include" => {
-          let params = params.ok_or(("Expected 2 parameters", pos).into())?;
-          let n_params = params.len();
+      if identifier.namespaces.is_empty() {
+        let name = identifier.name.as_str();
+        match name {
+          "include" => {
+            let params = params.ok_or(("Expected 2 parameters", pos).into())?;
+            let n_params = params.len();
 
-          let file_name = if n_params > 0 && params[0].name.is_none() {
-            Some(&params[0])
-          } else {
-            params
-              .iter()
-              .find(|param| param.name.as_deref() == Some("File"))
-          };
-          let file_name = file_name.ok_or(("Expected a file name (File:)", pos).into())?;
-          let file_name = match &file_name.value {
-            Value::String(s) => Ok(s),
-            _ => Err(("Expected a string value for File", pos).into()),
-          }?;
+            let file_name = if n_params > 0 && params[0].name.is_none() {
+              Some(&params[0])
+            } else {
+              params
+                .iter()
+                .find(|param| param.name.as_deref() == Some("File"))
+            };
+            let file_name = file_name.ok_or(("Expected a file name (File:)", pos).into())?;
+            let file_name = match &file_name.value {
+              Value::String(s) => Ok(s),
+              _ => Err(("Expected a string value for File", pos).into()),
+            }?;
 
-          let once = if n_params > 1 && params[0].name.is_none() && params[1].name.is_none() {
-            Some(&params[1])
-          } else {
-            params
-              .iter()
-              .find(|param| param.name.as_deref() == Some("Once"))
-          };
+            let once = if n_params > 1 && params[0].name.is_none() && params[1].name.is_none() {
+              Some(&params[1])
+            } else {
+              params
+                .iter()
+                .find(|param| param.name.as_deref() == Some("Once"))
+            };
 
-          let once = once
-            .map(|param| match &param.value {
-              Value::Boolean(b) => Ok(*b),
-              _ => Err(("Expected a boolean value for Once", pos).into()),
-            })
-            .unwrap_or(Ok(false))?;
+            let once = once
+              .map(|param| match &param.value {
+                Value::Boolean(b) => Ok(*b),
+                _ => Err(("Expected a boolean value for Once", pos).into()),
+              })
+              .unwrap_or(Ok(false))?;
 
-          if once && check_included(file_name, env) {
-            return Err((format!("File {:?} already included", file_name), pos).into());
-          }
+            if once && check_included(file_name, env) {
+              return Err((format!("File {:?} already included", file_name), pos).into());
+            }
 
-          let parent = Path::new(&env.directory);
-          let file_path = parent.join(&file_name.as_str());
-          let file_path = std::fs::canonicalize(&file_path).map_err(|e| {
-            (
-              format!("Failed to canonicalize file {:?}: {}", file_name, e),
-              pos,
-            )
-              .into()
-          })?;
-
-          println!("Including file {:?}", file_path);
-
-          let rc_path = file_path
-            .to_str()
-            .ok_or(
+            let parent = Path::new(&env.directory);
+            let file_path = parent.join(&file_name.as_str());
+            let file_path = std::fs::canonicalize(&file_path).map_err(|e| {
               (
-                format!("Failed to convert file path {:?} to string", file_path),
+                format!("Failed to canonicalize file {:?}: {}", file_name, e),
                 pos,
               )
-                .into(),
-            )?
-            .into();
+                .into()
+            })?;
 
-          if once && check_included(&rc_path, env) {
-            return Err((format!("File {:?} already included", file_name), pos).into());
-          }
+            println!("Including file {:?}", file_path);
 
-          env.included.insert(rc_path);
-
-          // read string from file
-          let mut code = std::fs::read_to_string(&file_path)
-            .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
-          // add new line at the end of the file to be able to parse it correctly
-          code.push('\n');
-
-          let parent = file_path.parent().unwrap_or(Path::new("."));
-          let successful_parse = ShardsParser::parse(Rule::Program, &code)
-            .map_err(|e| (format!("Failed to parse file {:?}: {}", file_path, e), pos).into())?;
-          let mut sub_env: ReadEnv = ReadEnv::new(
-            parent
+            let rc_path = file_path
               .to_str()
               .ok_or(
                 (
-                  format!("Failed to convert file path {:?} to string", parent),
+                  format!("Failed to convert file path {:?} to string", file_path),
                   pos,
                 )
                   .into(),
               )?
-              .into(),
-          );
-          sub_env.parent = Some(env);
-          let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut sub_env)?;
+              .into();
 
-          Ok(FunctionValue::Sequence(seq))
-        }
-        "read" => {
-          let params = params.ok_or(("Expected 2 parameters", pos).into())?;
-          let n_params = params.len();
+            if once && check_included(&rc_path, env) {
+              return Err((format!("File {:?} already included", file_name), pos).into());
+            }
 
-          let file_name = if n_params > 0 && params[0].name.is_none() {
-            Some(&params[0])
-          } else {
-            params
-              .iter()
-              .find(|param| param.name.as_deref() == Some("File"))
-          };
-          let file_name = file_name.ok_or(("Expected a file name (File:)", pos).into())?;
-          let file_name = match &file_name.value {
-            Value::String(s) => Ok(s),
-            _ => Err(("Expected a string value for File", pos).into()),
-          }?;
+            env.included.insert(rc_path);
 
-          let as_bytes = if n_params > 1 && params[0].name.is_none() && params[1].name.is_none() {
-            Some(&params[1])
-          } else {
-            params
-              .iter()
-              .find(|param| param.name.as_deref() == Some("Bytes"))
-          };
-
-          let as_bytes = as_bytes
-            .map(|param| match &param.value {
-              Value::Boolean(b) => Ok(*b),
-              _ => Err(("Expected a boolean value for Bytes", pos).into()),
-            })
-            .unwrap_or(Ok(false))?;
-
-          let parent = Path::new(&env.directory);
-          let file_path = parent.join(&file_name.as_str());
-          if as_bytes {
-            // read bytes from file
-            let bytes = std::fs::read(&file_path)
-              .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
-            Ok(FunctionValue::Const(Value::Bytes(bytes.into())))
-          } else {
             // read string from file
-            let string = std::fs::read_to_string(&file_path)
+            let mut code = std::fs::read_to_string(&file_path)
               .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
-            Ok(FunctionValue::Const(Value::String(string.into())))
+            // add new line at the end of the file to be able to parse it correctly
+            code.push('\n');
+
+            let parent = file_path.parent().unwrap_or(Path::new("."));
+            let successful_parse = ShardsParser::parse(Rule::Program, &code)
+              .map_err(|e| (format!("Failed to parse file {:?}: {}", file_path, e), pos).into())?;
+            let mut sub_env: ReadEnv = ReadEnv::new(
+              parent
+                .to_str()
+                .ok_or(
+                  (
+                    format!("Failed to convert file path {:?} to string", parent),
+                    pos,
+                  )
+                    .into(),
+                )?
+                .into(),
+            );
+            sub_env.parent = Some(env);
+            let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut sub_env)?;
+
+            Ok(FunctionValue::Sequence(seq))
           }
+          "read" => {
+            let params = params.ok_or(("Expected 2 parameters", pos).into())?;
+            let n_params = params.len();
+
+            let file_name = if n_params > 0 && params[0].name.is_none() {
+              Some(&params[0])
+            } else {
+              params
+                .iter()
+                .find(|param| param.name.as_deref() == Some("File"))
+            };
+            let file_name = file_name.ok_or(("Expected a file name (File:)", pos).into())?;
+            let file_name = match &file_name.value {
+              Value::String(s) => Ok(s),
+              _ => Err(("Expected a string value for File", pos).into()),
+            }?;
+
+            let as_bytes = if n_params > 1 && params[0].name.is_none() && params[1].name.is_none() {
+              Some(&params[1])
+            } else {
+              params
+                .iter()
+                .find(|param| param.name.as_deref() == Some("Bytes"))
+            };
+
+            let as_bytes = as_bytes
+              .map(|param| match &param.value {
+                Value::Boolean(b) => Ok(*b),
+                _ => Err(("Expected a boolean value for Bytes", pos).into()),
+              })
+              .unwrap_or(Ok(false))?;
+
+            let parent = Path::new(&env.directory);
+            let file_path = parent.join(&file_name.as_str());
+            if as_bytes {
+              // read bytes from file
+              let bytes = std::fs::read(&file_path)
+                .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
+              Ok(FunctionValue::Const(Value::Bytes(bytes.into())))
+            } else {
+              // read string from file
+              let string = std::fs::read_to_string(&file_path)
+                .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
+              Ok(FunctionValue::Const(Value::String(string.into())))
+            }
+          }
+          _ => Ok(FunctionValue::Function(Function {
+            name: identifier,
+            params,
+          })),
         }
-        _ => Ok(FunctionValue::Function(Function {
-          name: RcStrWrapper::new(name),
+      } else {
+        Ok(FunctionValue::Function(Function {
+          name: identifier,
           params,
-        })),
+        }))
       }
     }
     _ => Err(
@@ -399,30 +424,50 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
   }
 }
 
-fn process_take_table(pair: Pair<Rule>, _env: &mut ReadEnv) -> (RcStrWrapper, Vec<RcStrWrapper>) {
-  let str_expr = pair.as_str();
+fn process_take_table(pair: Pair<Rule>, env: &mut ReadEnv) -> (Identifier, Vec<RcStrWrapper>) {
+  let identifier = extract_identifier(pair).unwrap();
+
+  let str_expr = identifier.name.as_str();
   // split by ':'
   let splits: Vec<_> = str_expr.split(':').collect();
   let var_name = splits[0];
   let keys: Vec<RcStrWrapper> = splits[1..].iter().map(|s| (*s).into()).collect();
+
   // wrap the shards into an Expr Sequence
-  (var_name.into(), keys)
+  (
+    Identifier {
+      name: var_name.into(),
+      namespaces: identifier.namespaces,
+    },
+    keys,
+  )
 }
 
 fn process_take_seq(
   pair: Pair<Rule>,
-  _env: &mut ReadEnv,
-) -> Result<(RcStrWrapper, Vec<u32>), ShardsError> {
+  env: &mut ReadEnv,
+) -> Result<(Identifier, Vec<u32>), ShardsError> {
   let pos = pair.as_span().start_pos();
+
+  let identifier = extract_identifier(pair)?;
+
   // do the same as TakeTable but with a sequence of values where index is an integer int32
-  let str_expr = pair.as_str();
+  let str_expr = identifier.name.as_str();
   // split by ':'
   let splits: Vec<_> = str_expr.split(':').collect();
   let var_name = splits[0];
   let keys: Result<Vec<u32>, _> = splits[1..].iter().map(|s| s.parse::<u32>()).collect();
   let keys = keys.map_err(|_| ("Failed to parse unsigned index integer", pos).into())?;
+
   // wrap the shards into an Expr Sequence
-  Ok((var_name.into(), keys))
+  // wrap the shards into an Expr Sequence
+  Ok((
+    Identifier {
+      name: var_name.into(),
+      namespaces: identifier.namespaces,
+    },
+    keys,
+  ))
 }
 
 fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, ShardsError> {
@@ -584,7 +629,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
         Err(("Expected a boolean value", pos).into())
       }
     }
-    Rule::LowIden => Ok(Value::Identifier(pair.as_str().into())),
+    Rule::LowIden => Ok(Value::Identifier(extract_identifier(pair)?)),
     Rule::Enum => {
       let text = pair.as_str();
       let splits: Vec<_> = text.split("::").collect();
