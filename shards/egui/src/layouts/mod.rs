@@ -235,7 +235,11 @@ pub fn registerShards() {
   registerShard::<Group>();
   registerShard::<Horizontal>();
   registerShard::<Layout>();
-  registerEnumType(FRAG_CC, LayoutDirectionCC, LayoutDirectionEnumInfo.as_ref().into());
+  registerEnumType(
+    FRAG_CC,
+    LayoutDirectionCC,
+    LayoutDirectionEnumInfo.as_ref().into(),
+  );
   registerEnumType(FRAG_CC, LayoutAlignCC, LayoutAlignEnumInfo.as_ref().into());
   registerShard::<Indent>();
   registerShard::<NextRow>();

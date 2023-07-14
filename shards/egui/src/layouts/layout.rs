@@ -258,7 +258,13 @@ impl Shard for Layout {
       } else {
         let cross_align = self.cross_align.get();
         if cross_align.valueType == crate::shardsc::SHType_Enum {
-          let bits = unsafe { cross_align.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
+          let bits = unsafe {
+            cross_align
+              .payload
+              .__bindgen_anon_1
+              .__bindgen_anon_3
+              .enumValue
+          };
           match (LayoutAlign { bits }) {
             LayoutAlign::Min => egui::Align::Min,
             LayoutAlign::Left => egui::Align::Min,
@@ -300,7 +306,13 @@ impl Shard for Layout {
       } else {
         let main_align = self.main_align.get();
         if main_align.valueType == crate::shardsc::SHType_Enum {
-          let bits = unsafe { main_align.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
+          let bits = unsafe {
+            main_align
+              .payload
+              .__bindgen_anon_1
+              .__bindgen_anon_3
+              .enumValue
+          };
           match (LayoutAlign { bits }) {
             LayoutAlign::Min => egui::Align::Min,
             LayoutAlign::Left => egui::Align::Min,
