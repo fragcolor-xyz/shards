@@ -475,7 +475,7 @@ public:
     }
   }
 
-  static std::variant<ParamVariant, TextureParameter> paramVarToShaderParameter(SHContext *context, SHVar v) {
+  static std::variant<NumParameter, TextureParameter> paramVarToShaderParameter(SHContext *context, SHVar v) {
     SHVar *ref{};
     if (v.valueType == SHType::ContextVar) {
       ref = referenceVariable(context, SHSTRVIEW(v));
@@ -522,7 +522,7 @@ public:
 
   void applyParam(SHContext *context, Feature &feature, const std::string &name, const SHVar &value) {
     SHVar defaultVar;
-    std::optional<std::variant<ParamVariant, TextureParameter>> defaultValue;
+    std::optional<std::variant<NumParameter, TextureParameter>> defaultValue;
     std::optional<shader::FieldType> explicitType;
     if (value.valueType == SHType::Table) {
       const SHTable &inputTable = value.payload.tableValue;
@@ -541,9 +541,9 @@ public:
         std::visit(
             [&](auto &&arg) {
               using T = std::decay_t<decltype(arg)>;
-              if constexpr (std::is_same_v<T, ParamVariant>) {
+              if constexpr (std::is_same_v<T, NumParameter>) {
                 // Derive field type from given default value
-                auto fieldType = getParamVariantType(arg);
+                auto fieldType = getNumParameterType(arg);
                 feature.shaderParams.emplace_back(name, fieldType, arg);
               } else if constexpr (std::is_same_v<T, TextureParameter>) {
                 NamedTextureParam &param = feature.textureParams.emplace_back(name);
@@ -667,7 +667,7 @@ public:
         collector.setTexture(keyStr, varToTexture(v));
       } else {
         auto shaderParam = paramVarToShaderParameter(context, v);
-        collector.setParam(keyStr, std::get<ParamVariant>(shaderParam));
+        collector.setParam(keyStr, std::get<NumParameter>(shaderParam));
       }
     });
   }

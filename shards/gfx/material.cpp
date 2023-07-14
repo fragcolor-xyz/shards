@@ -9,9 +9,9 @@ UniqueId Material::getNextId() {
   return gen.getNext();
 }
 
-template <typename H> struct detail::PipelineHash<ParamVariant, H> {
+template <typename H> struct detail::PipelineHash<NumParameter, H> {
   static constexpr bool applies() { return true; }
-  static void apply(const ParamVariant &val, H &hasher) {
+  static void apply(const NumParameter &val, H &hasher) {
     std::visit([&](auto &&arg) { hasher(arg); }, val);
   }
 };

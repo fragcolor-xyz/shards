@@ -84,14 +84,14 @@ struct PackParamVisitor {
   size_t operator()(std::monostate) { return 0; }
 };
 
-size_t packParamVariant(uint8_t *outData, size_t outLength, const ParamVariant &variant) {
+size_t packNumParameter(uint8_t *outData, size_t outLength, const NumParameter &variant) {
   PackParamVisitor visitor{outData, outLength};
   return std::visit(visitor, variant);
 }
 
 using shader::FieldTypes;
 using shader::NumFieldType;
-NumFieldType getParamVariantType(const ParamVariant &variant) {
+NumFieldType getNumParameterType(const NumParameter &variant) {
   NumFieldType result = {};
   std::visit(
       [&](auto &&arg) {
@@ -118,7 +118,7 @@ NumFieldType getParamVariantType(const ParamVariant &variant) {
         } else if constexpr (std::is_same_v<T, uint32_t>) {
           result = FieldTypes::UInt32;
         } else {
-          throw std::logic_error(fmt::format("Type {} not suported by ParamVariant", NAMEOF_TYPE(T)));
+          throw std::logic_error(fmt::format("Type {} not suported by NumParameter", NAMEOF_TYPE(T)));
         }
       },
       variant);
