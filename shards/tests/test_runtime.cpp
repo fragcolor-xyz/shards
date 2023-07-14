@@ -1613,6 +1613,7 @@ TEST_CASE("shards-lang") {
     auto code4 = "x/n | Math.Add(x/y/r2) | Log";
     auto seq4 = shards_read(SHStringWithLen{code4, strlen(code4)});
     REQUIRE(seq4.ast);
+    DEFER(shards_free_sequence(seq4.ast));
 
     auto env = shards_create_env(SHStringWithLen{"x", strlen("x")});
     auto err = shards_eval_env(env, seq1.ast);
