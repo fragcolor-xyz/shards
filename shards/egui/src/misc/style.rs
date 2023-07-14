@@ -295,20 +295,20 @@ impl Shard for Style {
         Style::apply_widget_visuals(
           &mut style.visuals.widgets.noninteractive,
           &widgets,
-          cstr!("noninteractive"),
+          "noninteractive",
         )?;
         Style::apply_widget_visuals(
           &mut style.visuals.widgets.inactive,
           &widgets,
-          cstr!("inactive"),
+          "inactive",
         )?;
         Style::apply_widget_visuals(
           &mut style.visuals.widgets.hovered,
           &widgets,
-          cstr!("hovered"),
+          "hovered",
         )?;
-        Style::apply_widget_visuals(&mut style.visuals.widgets.active, &widgets, cstr!("active"))?;
-        Style::apply_widget_visuals(&mut style.visuals.widgets.open, &widgets, cstr!("open"))?;
+        Style::apply_widget_visuals(&mut style.visuals.widgets.active, &widgets, "active")?;
+        Style::apply_widget_visuals(&mut style.visuals.widgets.open, &widgets, "open")?;
       }
 
       if let Some(selection) = visuals.get_static("selection") {
@@ -480,7 +480,6 @@ impl Style {
   ) -> Result<(), &'static str> {
     if let Some(var) = widgets.get_static(name) {
       let table: Table = var.try_into()?;
-
       apply_style!(
         table,
         "bg_fill",
