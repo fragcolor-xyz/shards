@@ -136,6 +136,7 @@
     (GFX.Feature
      :Params .parameters
      :ComposeWith {:pbr-wgsl pbr-wgsl}
+     :RequiredAttributes [RequiredAttributes.Tangent]
      :Shaders
      [{:Stage ProgrammableGraphicsStage.Fragment
        :After ["writeColor"]
