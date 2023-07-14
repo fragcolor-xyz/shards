@@ -3,11 +3,6 @@ file(GLOB_RECURSE EXTRA_SOURCES
   ${WGPU_NATIVE_PATH}/ffi/*.h
   ${WGPU_NATIVE_PATH}/src/*.rs)
 
-if(NOT EMSCRIPTEN)
-  list(APPEND FEATURES wgpu-native)
-  set(HAS_WGPU_NATIVE ON)
-endif()
-
 if(TRACY_ENABLE)
   message(STATUS "Building gfx crate with tracy profiling enabled")
   list(APPEND FEATURES tracy)
