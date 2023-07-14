@@ -2,6 +2,10 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Layout;
+use super::LayoutAlign;
+use super::LayoutDirection;
+use crate::layouts::LAYOUT_ALIGN_TYPES;
+use crate::layouts::LAYOUT_DIRECTION_TYPES;
 use crate::util;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
@@ -36,7 +40,7 @@ lazy_static! {
     (
       cstr!("Direction"),
       shccstr!("The main axis direction. LeftToRight, RightToLeft, TopDown, or BottomUp."),
-      STRING_OR_NONE_SLICE,
+      &LAYOUT_DIRECTION_TYPES[..],
     )
       .into(),
     (
@@ -48,7 +52,7 @@ lazy_static! {
     (
       cstr!("MainAlign"),
       shccstr!("The alignment of content on the main axis. Min, Center or Max."),
-      STRING_OR_NONE_SLICE,
+      &LAYOUT_ALIGN_TYPES[..],
     )
       .into(),
     (
@@ -60,7 +64,7 @@ lazy_static! {
     (
       cstr!("CrossAlign"),
       shccstr!("The alignment of content on the cross axis. Min, Center or Max."),
-      STRING_OR_NONE_SLICE,
+      &LAYOUT_ALIGN_TYPES[..],
     )
       .into(),
     (
@@ -252,42 +256,63 @@ impl Shard for Layout {
       let cross_align = if self.cross_align.get().is_none() {
         egui::Align::Min // default cross align
       } else {
-        match self.cross_align.get().try_into()? {
-          "Min" => egui::Align::Min,
-          "Center" => egui::Align::Center,
-          "Max" => egui::Align::Max,
-          _ => return Err("Invalid cross alignment"),
+        let cross_align = self.cross_align.get();
+        if cross_align.valueType == crate::shardsc::SHType_Enum {
+          let bits = unsafe { cross_align.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
+          match (LayoutAlign { bits }) {
+            LayoutAlign::Min => egui::Align::Min,
+            LayoutAlign::Left => egui::Align::Min,
+            LayoutAlign::Top => egui::Align::Min,
+            LayoutAlign::Center => egui::Align::Center,
+            LayoutAlign::Max => egui::Align::Max,
+            LayoutAlign::Right => egui::Align::Max,
+            LayoutAlign::Bottom => egui::Align::Max,
+            _ => return Err("Invalid cross alignment provided"),
+          }
+        } else {
+          return Err("Invalid cross alignment type");
         }
       };
 
-      let mut layout = match main_dir.try_into()? {
-        "LeftToRight" => {
-          egui::Layout::from_main_dir_and_cross_align(egui::Direction::LeftToRight, cross_align)
+      let mut layout = if main_dir.valueType == crate::shardsc::SHType_Enum {
+        let bits = unsafe { main_dir.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
+        match (LayoutDirection { bits }) {
+          LayoutDirection::LeftToRight => {
+            egui::Layout::from_main_dir_and_cross_align(egui::Direction::LeftToRight, cross_align)
+          }
+          LayoutDirection::RightToLeft => {
+            egui::Layout::from_main_dir_and_cross_align(egui::Direction::RightToLeft, cross_align)
+          }
+          LayoutDirection::TopDown => {
+            egui::Layout::from_main_dir_and_cross_align(egui::Direction::TopDown, cross_align)
+          }
+          LayoutDirection::BottomUp => {
+            egui::Layout::from_main_dir_and_cross_align(egui::Direction::BottomUp, cross_align)
+          }
+          _ => return Err("Invalid main direction provided"),
         }
-        "RightToLeft" => {
-          egui::Layout::from_main_dir_and_cross_align(egui::Direction::RightToLeft, cross_align)
-        }
-        "TopDown" => {
-          egui::Layout::from_main_dir_and_cross_align(egui::Direction::TopDown, cross_align)
-        }
-        "BottomUp" => {
-          egui::Layout::from_main_dir_and_cross_align(egui::Direction::BottomUp, cross_align)
-        }
-        _ => return Err("Invalid main direction"),
+      } else {
+        return Err("Invalid main direction type");
       };
 
       let main_align = if self.main_align.get().is_none() {
         egui::Align::Center // default main align
       } else {
-        match self.main_align.get().try_into()? {
-          "Min" => egui::Align::Min,
-          "Left" => egui::Align::Min,
-          "Top" => egui::Align::Min,
-          "Center" => egui::Align::Center,
-          "Max" => egui::Align::Max,
-          "Right" => egui::Align::Max,
-          "Bottom" => egui::Align::Max,
-          _ => return Err("Invalid main alignment"),
+        let main_align = self.main_align.get();
+        if main_align.valueType == crate::shardsc::SHType_Enum {
+          let bits = unsafe { main_align.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
+          match (LayoutAlign { bits }) {
+            LayoutAlign::Min => egui::Align::Min,
+            LayoutAlign::Left => egui::Align::Min,
+            LayoutAlign::Top => egui::Align::Min,
+            LayoutAlign::Center => egui::Align::Center,
+            LayoutAlign::Max => egui::Align::Max,
+            LayoutAlign::Right => egui::Align::Max,
+            LayoutAlign::Bottom => egui::Align::Max,
+            _ => return Err("Invalid main alignment provided"),
+          }
+        } else {
+          return Err("Invalid main alignment type");
         }
       };
       layout = layout.with_main_align(main_align);
@@ -328,9 +353,6 @@ impl Shard for Layout {
         }
         size
       };
-
-      // TODO: Remove this when done
-      shlog!("available space before wrap: {} {}", ui.available_size_before_wrap().x, ui.available_size_before_wrap().y);
 
       ui.allocate_ui_with_layout(size.into(), layout, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)

@@ -1,11 +1,15 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use shards::core::registerEnumType;
 use shards::core::registerShard;
+use shards::fourCharacterCode;
 use shards::types::ClonedVar;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::ShardsVar;
+use shards::types::Type;
+use shards::types::FRAG_CC;
 
 struct CollapsingHeader {
   parents: ParamVar,
@@ -83,8 +87,62 @@ struct Layout {
   main_justify: ParamVar,
   cross_align: ParamVar,
   cross_justify: ParamVar,
-  size: ParamVar, // TODO: maybe give (0, 0) or default for max available size before wrap
+  size: ParamVar,
   exposing: ExposedTypes,
+}
+
+shenum! {
+  struct LayoutDirection {
+    [description("Describes a horizontal layout where its contents are arranged from the left to the right.")]
+    const LeftToRight = 1 << 0;
+    [description("Describes a horizontal layout where its contents are arranged from the right to the left.")]
+    const RightToLeft = 1 << 1;
+    [description("Describes a vertical layout where its contents are arranged from the top to the bottom.")]
+    const TopDown = 1 << 2;
+    [description("Describes a vertical layout where its contents are arranged from the bottom to the top.")]
+    const BottomUp = 1 << 3;
+  }
+  struct LayoutDirectionInfo {}
+}
+
+shenum_types! {
+  LayoutDirectionInfo,
+  const LayoutDirectionCC = fourCharacterCode(*b"egLD");
+  static ref LayoutDirectionEnumInfo;
+  static ref LAYOUT_DIRECTION_TYPE: Type;
+  static ref LAYOUT_DIRECTION_TYPES: Vec<Type>;
+  static ref SEQ_OF_LAYOUT_DIRECTION: Type;
+  static ref SEQ_OF_LAYOUT_DIRECTION_TYPES: Vec<Type>;
+}
+
+shenum! {
+  struct LayoutAlign {
+  [description("Left or top alignment for e.g. anchors and layouts.")]
+  const Min = 1 << 0;
+  [description("Left alignment for e.g. anchors and layouts.")]
+  const Left = 1 << 1;
+  [description("Top alignment for e.g. anchors and layouts.")]
+  const Top = 1 << 2;
+  [description("Horizontal or vertical center alignment for e.g. anchors and layouts.")]
+  const Center = 1 << 3;
+  [description("Right or bottom center alignment for e.g. anchors and layouts.")]
+  const Max = 1 << 4;
+  [description("Right alignment for e.g. anchors and layouts.")]
+  const Right = 1 << 5;
+  [description("Bottom center alignment for e.g. anchors and layouts.")]
+  const Bottom = 1 << 6;
+  }
+  struct LayoutAlignInfo {}
+}
+
+shenum_types! {
+  LayoutAlignInfo,
+  const LayoutAlignCC = fourCharacterCode(*b"egLA");
+  static ref LayoutAlignEnumInfo;
+  static ref LAYOUT_ALIGN_TYPE: Type;
+  static ref LAYOUT_ALIGN_TYPES: Vec<Type>;
+  static ref SEQ_OF_LAYOUT_ALIGN: Type;
+  static ref SEQ_OF_LAYOUT_ALIGN_TYPES: Vec<Type>;
 }
 
 struct Indent {
@@ -177,6 +235,8 @@ pub fn registerShards() {
   registerShard::<Group>();
   registerShard::<Horizontal>();
   registerShard::<Layout>();
+  registerEnumType(FRAG_CC, LayoutDirectionCC, LayoutDirectionEnumInfo.as_ref().into());
+  registerEnumType(FRAG_CC, LayoutAlignCC, LayoutAlignEnumInfo.as_ref().into());
   registerShard::<Indent>();
   registerShard::<NextRow>();
   registerShard::<ScrollArea>();
