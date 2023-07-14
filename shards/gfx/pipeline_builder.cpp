@@ -105,6 +105,33 @@ static void buildBaseParameters(ParameterStorage &viewParams, ParameterStorage &
   }
 }
 
+// Compilation helpers
+WgpuHandle<WGPUShaderModule> compileShaderFromWgsl(WGPUDevice device, const char *wgsl) {
+  GFXShaderModuleDescriptor desc{
+      .wgsl = wgsl,
+  };
+  struct Result {
+    WgpuHandle<WGPUShaderModule> handle;
+    std::optional<std::runtime_error> ex;
+  } result;
+  gfxDeviceCreateShaderModule(
+      device, &desc, //
+      [](const GFXShaderModuleResult *result, void *ud) {
+        ((Result *)ud)->handle.reset(result->module);
+        if (result->error) {
+          ((Result *)ud)->ex.emplace(result->error);
+        }
+        //
+      },
+      &result);
+
+  if (result.ex) {
+    throw *result.ex;
+  }
+
+  return std::move(result.handle);
+}
+
 BufferBindingBuilder &PipelineBuilder::getOrCreateBufferBinding(std::string &&name) {
   auto it = std::find_if(bufferBindings.begin(), bufferBindings.end(),
                          [&](const BufferBindingBuilder &builder) { return builder.name == name; });
@@ -275,9 +302,8 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
       WGPUBindGroupLayoutEntry &samplerBinding = bindGroupLayoutEntries.emplace_back();
       samplerBinding.binding = desc.defaultSamplerBinding;
       samplerBinding.visibility = WGPUShaderStage_Fragment;
-      samplerBinding.sampler.type = desc.type.format == TextureSampleType::Float
-                                        ? WGPUSamplerBindingType_Filtering
-                                        : WGPUSamplerBindingType_NonFiltering;
+      samplerBinding.sampler.type =
+          desc.type.format == TextureSampleType::Float ? WGPUSamplerBindingType_Filtering : WGPUSamplerBindingType_NonFiltering;
     }
 
     WGPUBindGroupLayoutDescriptor desc{

@@ -124,13 +124,17 @@ else()
     # Only need SDL2main for setup on mobile platforms
     target_link_libraries(gfx SDL2main)
   endif()
+
+  set(HAS_WGPU_NATIVE ON)
 endif()
 
 if(ANDROID)
   target_link_libraries(gfx android OpenSLES)
 endif()
 
-add_subdirectory(rust)
-target_link_libraries(gfx gfx-rust)
+if(HAS_WGPU_NATIVE)
+  add_subdirectory(rust)
+  target_link_libraries(gfx gfx-rust)
+endif()
 
 add_subdirectory(tests)
