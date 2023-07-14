@@ -143,14 +143,14 @@ enum class BindGroupId {
 struct NamedShaderParam {
   shader::NumFieldType type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4);
   std::string name;
-  ParamVariant defaultValue;
+  NumParameter defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
   BindGroupId bindGroupId = BindGroupId::Draw;
 
   NamedShaderParam() = default;
   NamedShaderParam(std::string name, const shader::NumFieldType &type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4),
-                   ParamVariant defaultValue = ParamVariant());
-  NamedShaderParam(std::string name, ParamVariant defaultValue);
+                   NumParameter defaultValue = NumParameter());
+  NamedShaderParam(std::string name, NumParameter defaultValue);
 
   template <typename T> void getPipelineHash(T &hasher) const {
     hasher(type);

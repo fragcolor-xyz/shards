@@ -145,12 +145,12 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
 #endif
     if (drawDataIt != parameterStorage.basic.end()) {
       const UniformLayout &itemLayout = layout.items[layoutIndex];
-      NumFieldType drawDataFieldType = getParamVariantType(drawDataIt->second);
+      NumFieldType drawDataFieldType = getNumParameterType(drawDataIt->second);
       if (itemLayout.type != drawDataFieldType) {
         SPDLOG_LOGGER_WARN(getLogger(), "Shader field \"{}\" type mismatch layout:{} parameterStorage:{}", fieldName,
                            itemLayout.type, drawDataFieldType);
       } else {
-        packParamVariant(outData + itemLayout.offset, outSize - itemLayout.offset, drawDataIt->second);
+        packNumParameter(outData + itemLayout.offset, outSize - itemLayout.offset, drawDataIt->second);
       }
     }
     layoutIndex++;

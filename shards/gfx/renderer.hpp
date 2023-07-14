@@ -9,6 +9,7 @@
 #include "gpu_read_buffer.hpp"
 #include <functional>
 #include <memory>
+#include <span>
 
 namespace gfx {
 
@@ -32,6 +33,9 @@ public:
 
   /// <div rustbindgen hide></div>
   void render(ViewPtr view, const PipelineSteps &pipelineSteps);
+
+  void dispatch(std::span<NumParameter> params) {
+  }
 
   // Queues a  copy of texture data from gpu to cpu memory
   // it will be guaranteed to be written when starting the next frame
