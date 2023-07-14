@@ -106,7 +106,7 @@
 
 @mesh(main)
 @schedule(main ui-wire)
-@run(main 0.016 120)
+@run(main FPS: 60 Iterations: 120)
 
 @schedule(main ui-wire)
-@run(main 0.016 120)
+@run(main FPS: 60 Iterations: 120)
