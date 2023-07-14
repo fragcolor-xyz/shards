@@ -1594,6 +1594,52 @@ TEST_CASE("shards-lang") {
     mesh->tick();
   }
 
+  SECTION("Namespaces 2") {
+    auto code1 = "10 = n";
+    auto seq1 = shards_read(SHStringWithLen{code1, strlen(code1)});
+    REQUIRE(seq1.ast);
+    DEFER(shards_free_sequence(seq1.ast));
+
+    auto code2 = "x/n | Math.Add(2) | Log = r2"; // access still needs to be explicit
+    auto seq2 = shards_read(SHStringWithLen{code2, strlen(code2)});
+    REQUIRE(seq2.ast);
+    DEFER(shards_free_sequence(seq2.ast));
+
+    auto code3 = "r2 | Math.Add(2) | Log";
+    auto seq3 = shards_read(SHStringWithLen{code3, strlen(code3)});
+    REQUIRE(seq3.ast);
+    DEFER(shards_free_sequence(seq3.ast));
+
+    auto code4 = "x/n | Math.Add(x/y/r2) | Log";
+    auto seq4 = shards_read(SHStringWithLen{code4, strlen(code4)});
+    REQUIRE(seq4.ast);
+
+    auto env = shards_create_env(SHStringWithLen{"x", strlen("x")});
+    auto err = shards_eval_env(env, seq1.ast);
+    REQUIRE_FALSE(err);
+
+    auto sub_env1 = shards_create_sub_env(env, SHStringWithLen{"y", strlen("y")});
+    err = shards_eval_env(sub_env1, seq2.ast);
+    REQUIRE_FALSE(err);
+
+    auto sub_env2 = shards_create_sub_env(sub_env1, SHStringWithLen{});
+    err = shards_eval_env(sub_env2, seq3.ast);
+    REQUIRE_FALSE(err);
+
+    auto another_env = shards_create_env(SHStringWithLen{});
+    err = shards_eval_env(another_env, seq4.ast);
+    REQUIRE_FALSE(err);
+
+    EvalEnv *envs[] = {env, sub_env1, sub_env2, another_env};
+
+    auto wire = shards_transform_envs(&envs[0], 4, SHStringWithLen{"root", strlen("root")});
+    REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+  }
+
   SECTION("@wire 1") {
     auto code = R"(
       @wire(wire1 {
