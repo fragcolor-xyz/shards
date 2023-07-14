@@ -38,6 +38,8 @@ struct IParameterCollector {
   void setTexture(const std::string &name, const TextureParameter &value) { setTexture(name.c_str(), TextureParameter(value)); }
 };
 
+using ShaderParameter = std::variant<NumParameter, TextureParameter>;
+
 } // namespace gfx
 
 #endif // GFX_PARAMS

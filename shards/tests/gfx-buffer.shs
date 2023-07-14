@@ -1,0 +1,49 @@
+@define(timestep #(1.0 | Math.Divide(60.0)))
+@wire(test-wire {
+  Once({
+    16 = x
+    16 = y
+    {x: x y: y z: 1} GFX.Buffer = dispatch-buf
+    [{v: @f3(0.0 0.0 0.0)}
+     {v: @f3(1.0 0.0 0.0)}
+     {v: @f3(0.0 1.0 0.0)}
+     {v: @f3(0.0 0.0 1.0)}] GFX.Buffer = input-buf
+
+    GFX.Buffer(Params: [
+      {Name: "v" Type: ShaderFieldBaseType.Float32 Dimension: 3}
+    ] Length: (x Math.Multiply(y))) = output-buf
+
+    
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
+    GFX.Feature(Params: [
+      {Name: "computed" Default: output-buf}
+    ]
+    EntryPoints: [{ 
+      Stage: ProgrammableGraphicsStage.Fragment
+      EntryPoint: {
+        ; Read value from compute shader
+        computed | Take("v")
+        ToFloat4 | Shader.WriteOutput("color")
+    }}]) >> features
+  })
+
+  GFX.DispatchIndirect(Indirect: dispatch-buf Offset: "x"
+    Params: {
+      in: input-buf
+      out: output-buf
+    }
+    EntryPoint: {
+      = index-3 
+      { Take(0) = x }
+      { Take(1) = y }
+      x | Math.Add(y) | Math.Mod(4) = i
+      Shader.ReadBuffer("in" i) | Take("v")
+      Shader.WriteBuffer("out" 0)
+  })
+
+} Looped: true)
+
+@mesh(root)
+@schedule(root test-wire)
+@run(root FPS: 60 Iterations: 100)
