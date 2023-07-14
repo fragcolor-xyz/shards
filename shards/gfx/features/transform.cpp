@@ -35,7 +35,7 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
 
   FeaturePtr feature = std::make_shared<Feature>();
 
-  feature->requiredAttributes.requirePerVertexLocalBasis = true;
+feature->requiredAttributes.requirePerVertexLocalBasis = true;
 
   auto expandInputVec = [](const char *_name, float lastComponent = 1.0f) {
     return std::make_unique<blocks::Custom>([=, name = std::string(_name)](shader::IGeneratorContext &ctx) {

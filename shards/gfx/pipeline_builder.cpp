@@ -9,7 +9,7 @@
 #include "shader/wgsl_mapping.hpp"
 #include "shader/log.hpp"
 #include "spdlog/spdlog.h"
-#include "gfx_wgpu.hpp"
+#include "gfx_wgpu_pipeline_helper.hpp"
 #include <memory>
 #include <variant>
 
@@ -103,33 +103,6 @@ static void buildBaseParameters(ParameterStorage &viewParams, ParameterStorage &
       }
     }
   }
-}
-
-// Compilation helpers
-WgpuHandle<WGPUShaderModule> compileShaderFromWgsl(WGPUDevice device, const char *wgsl) {
-  GFXShaderModuleDescriptor desc{
-      .wgsl = wgsl,
-  };
-  struct Result {
-    WgpuHandle<WGPUShaderModule> handle;
-    std::optional<std::runtime_error> ex;
-  } result;
-  gfxDeviceCreateShaderModule(
-      device, &desc, //
-      [](const GFXShaderModuleResult *result, void *ud) {
-        ((Result *)ud)->handle.reset(result->module);
-        if (result->error) {
-          ((Result *)ud)->ex.emplace(result->error);
-        }
-        //
-      },
-      &result);
-
-  if (result.ex) {
-    throw *result.ex;
-  }
-
-  return std::move(result.handle);
 }
 
 BufferBindingBuilder &PipelineBuilder::getOrCreateBufferBinding(std::string &&name) {
@@ -452,22 +425,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
     return;
   }
 
-  WGPUShaderModuleDescriptor moduleDesc = {};
-  WGPUShaderModuleWGSLDescriptor wgslModuleDesc = {};
-  moduleDesc.label = "pipeline";
-  moduleDesc.nextInChain = &wgslModuleDesc.chain;
-
-  wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-  wgpuShaderModuleWGSLDescriptorSetCode(wgslModuleDesc, generatorOutput.wgslSource.c_str());
-  SPDLOG_LOGGER_DEBUG(shader::getLogger(), "Generated WGSL:\n{}", generatorOutput.wgslSource);
-
-  output.renderTargetLayout = renderTargetLayout;
-
-  output.shaderModule.reset(wgpuDeviceCreateShaderModule(device, &moduleDesc));
-  if (!output.shaderModule) {
-    output.compilationError.emplace("Failed to compile shader module");
-    return;
-  }
+  output.shaderModule = compileShaderFromWgsl(device, generatorOutput.wgslSource.c_str());
 
   WGPURenderPipelineDescriptor desc = {};
   desc.layout = output.pipelineLayout;
@@ -489,9 +447,11 @@ void PipelineBuilder::finalize(WGPUDevice device) {
   std::vector<WGPUColorTargetState> colorTargets;
   WGPUDepthStencilState depthStencilState{};
 
-  size_t depthIndex = output.renderTargetLayout.depthTargetIndex.value_or(~0);
-  for (size_t index = 0; index < output.renderTargetLayout.targets.size(); index++) {
-    auto &target = output.renderTargetLayout.targets[index];
+  output.renderTargetLayout = renderTargetLayout;
+
+  size_t depthIndex = renderTargetLayout.depthTargetIndex.value_or(~0);
+  for (size_t index = 0; index < renderTargetLayout.targets.size(); index++) {
+    auto &target = renderTargetLayout.targets[index];
     if (index == depthIndex) {
       // Depth target
       depthStencilState.format = target.format;
