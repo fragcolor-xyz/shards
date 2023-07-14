@@ -178,7 +178,7 @@ function(add_rust_library)
       file(MAKE_DIRECTORY ${RUST_DEFAULT_TARGET_PATH})
       set(RUST_TARGET_PATH ${RUST_DEFAULT_TARGET_PATH})
     else()
-      set(RUST_TARGET_PATH ${shards_BINARY_DIR}/target)
+      set(RUST_TARGET_PATH ${CMAKE_BINARY_DIR}/target)
     endif()
   endif()
 
