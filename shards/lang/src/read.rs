@@ -37,8 +37,11 @@ fn extract_identifier(pair: Pair<Rule>) -> Result<Identifier, ShardsError> {
   // we want to return a vector of identifiers
   let mut identifiers = Vec::new();
   for pair in pair.into_inner() {
-    let identifier = pair.as_str();
-    identifiers.push(identifier.into());
+    let rule = pair.as_rule();
+    match rule {
+      Rule::LowIden => identifiers.push(pair.as_str().into()),
+      _ => return Err(("Unexpected rule in Identifier.", pair.as_span().start_pos()).into()),
+    }
   }
   Ok(Identifier {
     name: identifiers.pop().unwrap(), // qed
@@ -443,23 +446,32 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
   }
 }
 
-fn process_take_table(pair: Pair<Rule>, _env: &mut ReadEnv) -> (Identifier, Vec<RcStrWrapper>) {
-  let identifier = extract_identifier(pair).unwrap();
+fn process_take_table(
+  pair: Pair<Rule>,
+  _env: &mut ReadEnv,
+) -> Result<(Identifier, Vec<RcStrWrapper>), ShardsError> {
+  let pos = pair.as_span().start_pos();
+  // first is the identifier which has to be VarName
+  // followed by N Iden which are the keys
 
-  let str_expr = identifier.name.as_str();
-  // split by ':'
-  let splits: Vec<_> = str_expr.split(':').collect();
-  let var_name = splits[0];
-  let keys: Vec<RcStrWrapper> = splits[1..].iter().map(|s| (*s).into()).collect();
+  let mut inner = pair.into_inner();
+  let identity = inner
+    .next()
+    .ok_or(("Expected an identifier in TakeTable", pos).into())?;
+
+  let identifier = extract_identifier(identity)?;
+
+  let mut keys = Vec::new();
+  for pair in inner {
+    let pos = pair.as_span().start_pos();
+    match pair.as_rule() {
+      Rule::Iden => keys.push(pair.as_str().into()),
+      _ => return Err(("Expected an identifier in TakeTable", pos).into()),
+    }
+  }
 
   // wrap the shards into an Expr Sequence
-  (
-    Identifier {
-      name: var_name.into(),
-      namespaces: identifier.namespaces,
-    },
-    keys,
-  )
+  Ok((identifier, keys))
 }
 
 fn process_take_seq(
@@ -467,26 +479,32 @@ fn process_take_seq(
   _env: &mut ReadEnv,
 ) -> Result<(Identifier, Vec<u32>), ShardsError> {
   let pos = pair.as_span().start_pos();
+  // first is the identifier which has to be VarName
+  // followed by N Integer which are the indices
 
-  let identifier = extract_identifier(pair)?;
+  let mut inner = pair.into_inner();
+  let identity = inner
+    .next()
+    .ok_or(("Expected an identifier in TakeSeq", pos).into())?;
 
-  // do the same as TakeTable but with a sequence of values where index is an integer int32
-  let str_expr = identifier.name.as_str();
-  // split by ':'
-  let splits: Vec<_> = str_expr.split(':').collect();
-  let var_name = splits[0];
-  let keys: Result<Vec<u32>, _> = splits[1..].iter().map(|s| s.parse::<u32>()).collect();
-  let keys = keys.map_err(|_| ("Failed to parse unsigned index integer", pos).into())?;
+  let identifier = extract_identifier(identity)?;
 
-  // wrap the shards into an Expr Sequence
-  // wrap the shards into an Expr Sequence
-  Ok((
-    Identifier {
-      name: var_name.into(),
-      namespaces: identifier.namespaces,
-    },
-    keys,
-  ))
+  let mut indices = Vec::new();
+  for pair in inner {
+    let pos = pair.as_span().start_pos();
+    match pair.as_rule() {
+      Rule::Integer => {
+        let value = pair
+          .as_str()
+          .parse()
+          .map_err(|_| ("Failed to parse Integer", pos).into())?;
+        indices.push(value);
+      }
+      _ => return Err(("Expected an integer in TakeSeq", pos).into()),
+    }
+  }
+
+  Ok((identifier, indices))
 }
 
 fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, ShardsError> {
@@ -559,7 +577,7 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
       },
       Rule::TakeTable => blocks.push(Block {
         content: {
-          let pair = process_take_table(pair, env);
+          let pair = process_take_table(pair, env)?;
           BlockContent::TakeTable(pair.0, pair.1)
         },
         line_info: Some(pos.into()),
@@ -766,7 +784,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
     )
     .map(Value::Expr),
     Rule::TakeTable => {
-      let pair = process_take_table(pair, env);
+      let pair = process_take_table(pair, env)?;
       Ok(Value::TakeTable(pair.0, pair.1))
     }
     Rule::TakeSeq => {
