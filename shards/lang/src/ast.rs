@@ -9,8 +9,8 @@ pub struct ShardsParser;
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub struct LineInfo {
-  pub line: usize,
-  pub column: usize,
+  pub line: u32,
+  pub column: u32,
 }
 
 #[derive(Debug)]
@@ -26,7 +26,10 @@ impl<'a> Into<ShardsError> for (&str, Position<'a>) {
     let column = pos.line_col().1;
     ShardsError {
       message: message.to_string(),
-      loc: LineInfo { line, column },
+      loc: LineInfo {
+        line: line as u32,
+        column: column as u32,
+      },
     }
   }
 }
@@ -38,7 +41,10 @@ impl<'a> Into<ShardsError> for (String, Position<'a>) {
     let column = pos.line_col().1;
     ShardsError {
       message: message,
-      loc: LineInfo { line, column },
+      loc: LineInfo {
+        line: line as u32,
+        column: column as u32,
+      },
     }
   }
 }
@@ -67,7 +73,10 @@ impl<'a> Into<LineInfo> for Position<'a> {
   fn into(self) -> LineInfo {
     let line = self.line_col().0;
     let column = self.line_col().1;
-    LineInfo { line, column }
+    LineInfo {
+      line: line as u32,
+      column: column as u32,
+    }
   }
 }
 

@@ -1175,7 +1175,13 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
       ctx.previousOutputType = ctx.originalInputType;
     } else {
       ctx.bottom = blk;
-      validateConnection(ctx);
+      try {
+        validateConnection(ctx);
+      } catch (...) {
+        SHLOG_ERROR("Error validating shard: {}, line: {}, column: {}, wire: {}", blk->name(blk), blk->line, blk->column,
+                    ctx.wire ? ctx.wire->name : "(unwired)");
+        throw;
+      }
     }
   }
 

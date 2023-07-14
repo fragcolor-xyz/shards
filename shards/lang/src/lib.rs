@@ -216,8 +216,8 @@ pub trait ShardsExtension {
 #[repr(C)]
 pub struct SHLError {
   message: *mut c_char,
-  line: usize,
-  column: usize,
+  line: u32,
+  column: u32,
 }
 
 #[repr(C)]
