@@ -38,6 +38,7 @@
 })
 
 @template(consumers [x] {
+    ; TODO construct the name of the wire from the parameter
     @wire(#(["consumer" x] | String.Join) {
         Listen("b" @type(Type::String)) |
         Log(#([x ": "] | String.Join))

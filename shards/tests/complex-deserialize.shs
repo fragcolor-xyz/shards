@@ -1,5 +1,4 @@
 @template(do-things [] {
-    @define(timestep (1.0 | Math.Divide(120.0)))
     @mesh(root)
 
     @wire(main-loop-wire {
@@ -13,8 +12,7 @@
     })
 
     @schedule(root main-loop-wire)
-    ; @run(root timestep 1)
-    @run(root 0.008 1)
+    @run(root FPS:120 Iterations: 1)
     @define(root nil)
 })
 
