@@ -109,6 +109,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   struct CachedDrawable {
     MeshPtr mesh;
+    size_t lastTouched;
   };
   std::unordered_map<UniqueId, CachedDrawable> drawableCache;
 
@@ -147,6 +148,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     viewBufferPool.reset();
 
     textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
+    clearOldCacheItemsIn(drawableCache, frameCounter, 32);
   }
 
   void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions &options) override {
@@ -313,8 +315,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     for (auto &drawable : context.drawables) {
       const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
-      const auto &cached = drawableCache[meshDrawable.getId()];
+      auto &cached = drawableCache[meshDrawable.getId()];
       cached.mesh->createContextDataConditional(context.context);
+      touchCacheItem(cached, frameCounter);
     }
 
     auto *drawableDatas = allocator->new_object<shards::pmr::list<DrawableData>>();
