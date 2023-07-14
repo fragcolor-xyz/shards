@@ -1,6 +1,8 @@
 #include "boost/container/pmr/global_resource.hpp"
 #include <gfx/renderer_cache.hpp>
 #include <gfx/drawables/mesh_drawable.hpp>
+#include <gfx/renderer_storage.hpp>
+#include <gfx/drawable_processor.hpp>
 #include <gfx/feature.hpp>
 #include <catch2/catch_all.hpp>
 
@@ -94,6 +96,10 @@ TEST_CASE("Unique Ids", "[Caching]") {
 TEST_CASE("Drawable caching", "[Caching]") {
   using namespace gfx::detail;
 
+  Context context;
+  context.init();
+  RendererStorage storage(context);
+
   FeaturePtr features[] = {
       make_shared<Feature>(),
       make_shared<Feature>(),
@@ -127,99 +133,57 @@ TEST_CASE("Drawable caching", "[Caching]") {
 
   drawables[1] = clone(drawables[0]);
 
-  PipelineHashCollector collector0;
-  drawables[0]->pipelineHashCollect(collector0);
+  auto processorConstructor = drawables[0]->getProcessor();
+  auto processor = processorConstructor(context);
 
-  PipelineHashCollector collector1;
-  drawables[1]->pipelineHashCollect(collector1);
+  auto computeHashes = [&](Hash128(&outHashes)[2]) {
+    shards::pmr::vector<Feature *> sharedFeatures = {};
+    shards::pmr::vector<const IDrawable *> idrawables = {
+        drawables[0].get(),
+        drawables[1].get(),
+    };
 
-  Hash128 hash0 = collector0.hasher.getDigest();
-  Hash128 hash1 = collector1.hasher.getDigest();
-  CHECK(hash0 == hash1);
+    BuildPipelineOptions opts{};
+    DrawablePreprocessContext ctx{
+        .drawables = idrawables,
+        .features = sharedFeatures,
+        .buildPipelineOptions = opts,
+        .storage = storage,
+        .sharedHash = Hash128{},
+        .outHashes = outHashes,
+    };
+    processor->preprocess(ctx);
+  };
+
+  Hash128 hashes[2];
+  computeHashes(hashes);
+  CHECK(hashes[0] == hashes[1]);
 
   SECTION("Dynamic change doesn't change hashes") {
-    collector1.reset();
     drawables[1]->clipRect = int4(100, 200, 300, 400);
-    drawables[1]->pipelineHashCollect(collector1);
-    hash1 = collector1.hasher.getDigest();
-    CHECK(hash0 == hash1);
+    Hash128 hashes1[2];
+    computeHashes(hashes1);
+    CHECK(hashes[1] == hashes1[1]);
 
-    collector1.reset();
     drawables[1]->parameters.set("SomeVariable", float4(1.0f));
-    drawables[1]->pipelineHashCollect(collector1);
-    hash1 = collector1.hasher.getDigest();
-    CHECK(hash0 == hash1);
+    Hash128 hashes2[2];
+    computeHashes(hashes2);
+    CHECK(hashes[1] == hashes2[1]);
   }
 
   SECTION("Changing references to similar objects doesn't change hashes") {
-    collector1.reset();
     drawables[1]->mesh = meshes[1];
-    drawables[1]->pipelineHashCollect(collector1);
-    hash1 = collector1.hasher.getDigest();
-    CHECK(hash0 == hash1);
+
+    Hash128 hashes1[2];
+    computeHashes(hashes1);
+    CHECK(hashes[1] == hashes1[1]);
   }
 
   SECTION("Add reference to changed object changes hashes") {
-    collector1.reset();
     drawables[1]->features.push_back(features[1]);
-    drawables[1]->pipelineHashCollect(collector1);
-    hash1 = collector1.hasher.getDigest();
-    CHECK(hash0 != hash1);
+
+    Hash128 hashes1[2];
+    computeHashes(hashes1);
+    CHECK(hashes[1] != hashes1[1]);
   }
-}
-
-TEST_CASE("Pipeline cache evictions", "[Caching]") {
-  MaterialPtr materials[] = {
-      make_shared<Material>(),
-  };
-
-  FeaturePtr features[] = {
-      make_shared<Feature>(),
-      make_shared<Feature>(),
-  };
-
-  MeshPtr meshes[] = {
-      make_shared<Mesh>(),
-      make_shared<Mesh>(),
-  };
-
-  meshes[0]->update(
-      MeshFormat{
-          .indexFormat = IndexFormat::UInt16,
-          .vertexAttributes = {MeshVertexAttribute("a", 1, StorageType::UInt8)},
-      },
-      std::vector<uint8_t>{0});
-  meshes[1]->update(
-      MeshFormat{
-          .indexFormat = IndexFormat::UInt32,
-          .vertexAttributes = {MeshVertexAttribute("b", 1, StorageType::UInt8)},
-      },
-      std::vector<uint8_t>{0});
-
-  MeshDrawable::Ptr drawables[] = {
-      make_shared<MeshDrawable>(meshes[0]),
-      make_shared<MeshDrawable>(meshes[0]),
-  };
-
-  detail::PipelineHashCache cache(boost::container::pmr::new_delete_resource());
-
-  Hash128 hash0 = cache.update(*drawables[0].get());
-  CHECK(cache.find(drawables[0]->getId()) != nullptr);
-  CHECK(*cache.find(drawables[0]->getId()) == hash0);
-
-  Hash128 hash1 = cache.update(*drawables[1].get());
-  CHECK(cache.find(drawables[1]->getId()) != nullptr);
-  CHECK(*cache.find(drawables[1]->getId()) == hash1);
-
-  // Same object
-  CHECK(hash0 == hash1);
-
-  drawables[1]->mesh = meshes[1];
-
-  // Check updated hash
-  hash1 = cache.update(drawables[1]);
-  CHECK(cache.find(drawables[1]->getId()) != nullptr);
-  CHECK(*cache.find(drawables[1]->getId()) == hash1);
-
-  CHECK(hash0 != hash1);
 }
