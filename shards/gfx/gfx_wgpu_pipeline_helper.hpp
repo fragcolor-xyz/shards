@@ -39,10 +39,7 @@ inline WgpuHandle<WGPUShaderModule> compileShaderFromWgsl(WGPUDevice device, con
   moduleDesc.nextInChain = &wgslModuleDesc.chain;
 
   wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-  wgslModuleDesc.source = generatorOutput.wgslSource.c_str();
-  SPDLOG_LOGGER_DEBUG(shader::getLogger(), "Generated WGSL:\n{}", generatorOutput.wgslSource);
-
-  output.renderTargetLayout = renderTargetLayout;
+  wgslModuleDesc.source = wgsl;
 
   WGPUShaderModule module = wgpuDeviceCreateShaderModule(device, &moduleDesc);
   if (!module) {
