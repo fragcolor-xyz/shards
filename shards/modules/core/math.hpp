@@ -327,10 +327,9 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
 
       shards::arrayResize(output.payload.seqValue, 0);
       for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-        // notice, we use scratch _output here
-        SHVar scratch{};
-        op.operateDirect(scratch, a.payload.seqValue.elements[i], b);
-        shards::arrayPush(output.payload.seqValue, scratch);
+        const auto len = output.payload.seqValue.len;
+        shards::arrayResize(output.payload.seqValue, len + 1);
+        op.operateDirect(output.payload.seqValue.elements[len], a.payload.seqValue.elements[i], b);
       }
     } else {
       operate(_opType, output, a, b);
@@ -376,16 +375,6 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
   }
 };
 
-///  The Op class has the following interface:
-///
-///  struct Op {
-///    // Return the OpType based on the input types
-///    // when OpType::Invalid is results, will fall back to BinaryOperation behaviour
-///    // resultType needs to be set when OpType is not OpType::Invalid
-///    OpType validateTypes(const SHTypeInfo &a, SHTypeInfo &resultType);
-///    // Apply OpType::Direct
-///    void operateDirect(SHVar &output, const SHVar &a);
-///  };
 template <class TOp> struct UnaryOperation : public UnaryBase {
   TOp op;
 
@@ -419,10 +408,9 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
 
       shards::arrayResize(output.payload.seqValue, 0);
       for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-        // notice, we use scratch _output here
-        SHVar scratch{};
-        op.operateDirect(scratch, a.payload.seqValue.elements[i]);
-        shards::arrayPush(output.payload.seqValue, scratch);
+        const auto len = output.payload.seqValue.len;
+        shards::arrayResize(output.payload.seqValue, len + 1);
+        op.operateDirect(output.payload.seqValue.elements[len], a.payload.seqValue.elements[i]);
       }
     } else {
       throw std::logic_error("Invalid operation type for unary operation");
