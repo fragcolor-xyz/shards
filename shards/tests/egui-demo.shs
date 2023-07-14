@@ -12,7 +12,7 @@
             UI.TopPanel(
                 Contents: {
                     ; input was passed down the UI hierarchy
-                    Assert.Is(input_value Abort: true)
+                    Assert.Is(@input_value Abort: true)
                     "Top Window Panel" | UI.Label
                 }
             )
@@ -43,7 +43,7 @@
 })
 
 @wire(ui-wire {
-    input_value ; some input
+    @input_value ; some input
     GFX.MainWindow(
         Title: "egui Shards Example" Width: 1280 Height: 768 Debug: false
         Contents: {
@@ -90,14 +90,14 @@
                     UI.CentralPanel(
                         Contents: {
                             "Central Panel" | UI.Label
-                            lorem_ipsum | UI.Label
+                            @lorem_ipsum | UI.Label
                         }
                     )
 
-                    ; @window-with-panels
+                    @window-with-panels()
                 }
             ) 
-            Assert.Is(input_value Abort: true)
+            Assert.Is(@input_value Abort: true)
 
             GFX.Render(Steps: render-steps)
         }
