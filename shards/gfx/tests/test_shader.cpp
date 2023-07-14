@@ -7,6 +7,7 @@
 #include <gfx/context.hpp>
 #include <gfx/shader/blocks.hpp>
 #include <gfx/shader/generator.hpp>
+#include <gfx/gfx_wgpu_pipeline_helper.hpp>
 #include <spdlog/spdlog.h>
 
 using namespace gfx;
@@ -95,15 +96,12 @@ string 	with
 }
 
 static bool validateShaderModule(Context &context, const String &code) {
-  WGPUShaderModuleDescriptor desc{};
-  WGPUShaderModuleWGSLDescriptor wgslDesc{};
-  desc.nextInChain = &wgslDesc.chain;
-  wgslDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-  wgpuShaderModuleWGSLDescriptorSetCode(wgslDesc, code.c_str());
-  WGPUShaderModule module = wgpuDeviceCreateShaderModule(context.wgpuDevice, &desc);
-  if (module)
-    wgpuShaderModuleRelease(module);
-  return module != nullptr;
+  try {
+    compileShaderFromWgsl(context.wgpuDevice, code.c_str());
+  } catch (...) {
+    return false;
+  }
+  return true;
 }
 
 void setupDefaultBindings(shader::Generator &generator) {

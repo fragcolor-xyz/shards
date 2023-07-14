@@ -599,7 +599,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
           try {
             entry.mesh = generateLocalBasisAttribute(entry.mesh);
           } catch (...) {
-            SPDLOG_LOGGER_WARN(getLogger(), "Failed to generate qbase for mesh {}", drawable.getId().value);
+            SPDLOG_LOGGER_WARN(getLogger(), "Failed to generate tangents for mesh {}", drawable.getId().value);
           }
         }
       }
