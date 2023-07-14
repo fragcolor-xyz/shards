@@ -358,7 +358,7 @@ TEST_CASE("Reference tracking", "[General]") {
   // Needs to run for at least the amount of frames specified in RendererImpl::clearOldCacheItems()
   // so that the references are freed
   context.poll();
-  for (size_t i = 0; i < 16; i++) {
+  for (size_t i = 0; i < 128; i++) {
     context.beginFrame();
     renderer.beginFrame();
     renderer.endFrame();
