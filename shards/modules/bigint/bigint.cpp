@@ -107,6 +107,7 @@ template <typename TOp> struct BigIntBinaryOperation {
 
     auto &output = _outputs.getOutput();
     outputVar = to_var(bres, output.data);
+    outputVar.flags = SHVAR_FLAGS_FOREIGN; // prevent double frees!
   }
 
   void operateBroadcast(SHVar &output, const SHVar &a, const SHVar &b) {
