@@ -922,8 +922,8 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
         (
           msg,
           LineInfo {
-            line: line_info.0 as usize,
-            column: line_info.1 as usize,
+            line: line_info.0,
+            column: line_info.1,
           },
         )
           .into(),
@@ -933,8 +933,8 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
       Ok((
         result.into(),
         LineInfo {
-          line: line_info.0 as usize,
-          column: line_info.1 as usize,
+          line: line_info.0,
+          column: line_info.1,
         },
       ))
     }
@@ -1239,8 +1239,8 @@ fn as_var(
         // debug info
         let line_info = sub_env.shards[0].0.get_line_info();
         let line_info = LineInfo {
-          line: line_info.0 as usize,
-          column: line_info.1 as usize,
+          line: line_info.0,
+          column: line_info.1,
         };
         add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
           .map_err(|e| (format!("{:?}", e), line_info).into())?;
@@ -3099,7 +3099,7 @@ pub(crate) fn eval_statement(stmt: &Statement, e: &mut EvalEnv) -> Result<(), Sh
 
 pub(crate) fn transform_envs<'a, I>(envs: I, name: &str) -> Result<Wire, ShardsError>
 where
-    I: Iterator<Item = &'a mut EvalEnv>,
+  I: Iterator<Item = &'a mut EvalEnv>,
 {
   let wire = Wire::default();
   wire.set_name(name);

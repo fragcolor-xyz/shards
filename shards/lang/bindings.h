@@ -13,8 +13,8 @@ struct Sequence;
 
 struct SHLError {
   char *message;
-  uintptr_t line;
-  uintptr_t column;
+  uint32_t line;
+  uint32_t column;
 };
 
 struct SHLAst {
