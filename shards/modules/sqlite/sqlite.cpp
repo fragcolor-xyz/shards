@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <shards/core/module.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/core/shared.hpp>
@@ -8,33 +9,18 @@
 
 #include "sqlite3.h"
 
-#ifndef SHARDS_VALGRIND
-extern "C" int sqlite3_crsqlite_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi);
-#endif
-
 namespace shards {
 namespace DB {
 struct Connection {
   sqlite3 *db;
 
-#ifndef SHARDS_VALGRIND
-  static void RegisterExts() {
-    static bool registered = false;
-    if (!registered) {
-      if (sqlite3_auto_extension((void (*)())sqlite3_crsqlite_init) != SQLITE_OK) {
-        throw ActivationError("Failed to register sqlite3_crsqlite_init");
-      }
-      registered = true;
-    }
-  }
-#endif
-
   Connection(const char *path) {
-#ifndef SHARDS_VALGRIND
-    RegisterExts();
-#endif
-
     if (sqlite3_open(path, &db) != SQLITE_OK) {
+      throw ActivationError(sqlite3_errmsg(db));
+    }
+
+    uint32_t res;
+    if(sqlite3_db_config(db, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 2, &res) != SQLITE_OK) {
       throw ActivationError(sqlite3_errmsg(db));
     }
   }
@@ -47,13 +33,16 @@ struct Connection {
   }
 
   ~Connection() {
-#ifndef SHARDS_VALGRIND
-    sqlite3_exec(db, "SELECT crsql_finalize();", nullptr, nullptr, nullptr);
-#endif
     sqlite3_close(db);
   }
 
   sqlite3 *get() { return db; }
+
+  void loadExtension(const std::string &path) {
+    if (sqlite3_load_extension(db, path.c_str(), nullptr, nullptr) != SQLITE_OK) {
+      throw ActivationError(sqlite3_errmsg(db));
+    }
+  }
 };
 
 struct Statement {
@@ -88,7 +77,8 @@ struct Base {
   }
 
   void cleanup() {
-    _connection.reset();
+    if(_connection)
+      _connection.reset();
   }
 };
 
@@ -276,10 +266,45 @@ struct Transaction : public Base {
   }
 };
 
+struct LoadExtension : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  PARAM_VAR(_extPath, "Path", "The path to the extension to load.", {CoreInfo::StringType});
+  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName));
+
+  void cleanup() {
+    PARAM_CLEANUP();
+
+    Base::cleanup();
+  }
+
+  void warmup(SHContext *context) {
+    if (_dbName.valueType != SHType::None) {
+      Base::_dbName = SHSTRVIEW(_dbName);
+    } else {
+      Base::_dbName = "shards.db";
+    }
+
+    Base::warmup(context);
+
+    std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
+    _connection->loadExtension(extPath);
+
+    PARAM_WARMUP(context);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    return input;
+  }
+};
+
 } // namespace DB
 } // namespace shards
 SHARDS_REGISTER_FN(sqlite) {
   using namespace shards::DB;
   REGISTER_SHARD("DB.Query", Query);
   REGISTER_SHARD("DB.Transaction", Transaction);
+  REGISTER_SHARD("DB.LoadExtension", LoadExtension);
 }
