@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::log;
+
 use shards::core::registerShard;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
@@ -10,39 +10,39 @@ use shards::shardsc::SHType_Bool;
 use shards::shardsc::SHType_Bytes;
 use shards::shardsc::SHType_Int;
 use shards::shardsc::SHType_None;
-use shards::shardsc::SHType_Seq;
+
 use shards::shardsc::SHType_String;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::InstanceData;
+
 use shards::types::OptionalString;
-use shards::types::ParamVar;
+
 use shards::types::Parameters;
 use shards::types::Seq;
-use shards::types::Table;
+
 use shards::types::Type;
 use shards::types::ANYS_TYPES;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::BYTES_TYPES;
-use shards::types::ENUMS_TYPE;
+
 use shards::types::ENUMS_TYPES;
 use shards::types::FRAG_CC;
 use shards::types::INT_TYPES_SLICE;
 use shards::types::STRINGS_TYPES;
 use shards::types::STRING_OR_NONE_SLICE;
 use shards::types::STRING_TYPES;
-use std::ffi::CString;
-use shards::types;
+
+
 use shards::types::Var;
-use core::time::Duration;
-use parity_scale_codec::{Compact, Decode, Encode, HasCompact};
+
+use parity_scale_codec::{Compact, Decode, Encode};
 use sp_core::crypto::{AccountId32, Pair, Ss58Codec};
-use sp_core::storage::StorageKey;
-use sp_core::{blake2_128, ecdsa, ed25519, sr25519, twox_128};
-use std::convert::{TryFrom, TryInto};
-use std::ffi::CStr;
-use std::rc::Rc;
+
+use sp_core::{blake2_128, ecdsa, sr25519, twox_128};
+use std::convert::{TryInto};
+
+
 use std::str::FromStr;
 
 lazy_static! {

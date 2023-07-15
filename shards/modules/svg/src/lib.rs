@@ -6,10 +6,9 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
 extern crate compile_time_crc32;
 
-use shards::core::log;
+
 use shards::core::registerShard;
 use shards::shard::Shard;
 use shards::shardsc::SHImage;
@@ -18,19 +17,19 @@ use shards::shardsc::SHVarPayload__bindgen_ty_1;
 use shards::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use shards::shardsc::{SHType_Bytes, SHType_Image, SHType_String};
 use shards::types::common_type;
-use shards::types::ClonedVar;
+
 use shards::types::Context;
-use shards::types::ParamVar;
+
 use shards::types::Parameters;
-use shards::types::Seq;
-use shards::types::Table;
+
+
 use shards::types::Type;
 use shards::types::IMAGE_TYPES;
 use shards::types::INT2_TYPES_SLICE;
-use std::ffi::CString;
-use shards::types;
+
+
 use shards::types::Var;
-use core::ptr::null_mut;
+
 use std::convert::TryInto;
 use tiny_skia::Pixmap;
 use usvg::ScreenSize;

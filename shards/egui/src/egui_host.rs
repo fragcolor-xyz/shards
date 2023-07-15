@@ -1,12 +1,12 @@
 use super::util;
-use super::EguiContext;
+
 use super::CONTEXTS_NAME;
 use super::EGUI_CTX_TYPE;
 use super::EGUI_UI_SEQ_TYPE;
-use super::GFX_CONTEXT_TYPE;
-use super::GFX_QUEUE_VAR_TYPES;
-use super::HELP_OUTPUT_EQUAL_INPUT;
-use super::INPUT_CONTEXT_TYPE;
+
+
+
+
 use super::PARENTS_UI_NAME;
 use crate::bindings::egui_FullOutput;
 use crate::bindings::egui_Input;
@@ -14,24 +14,24 @@ use crate::bindings::make_native_full_output;
 use crate::bindings::NativeFullOutput;
 use shards::core::Core;
 use shards::shard::Shard;
-use shards::shardsc;
+
 use shards::shardsc::Shards;
 use shards::types::Context;
 use shards::types::ExposedInfo;
-use shards::types::ExposedTypes;
-use shards::types::InstanceData;
-use shards::types::OptionalString;
+
+
+
 use shards::types::ParamVar;
-use shards::types::Parameters;
-use shards::types::RawString;
+
+
 use shards::types::Seq;
-use shards::types::ShardsVar;
-use shards::types::Type;
+
+
 use shards::types::Var;
 use shards::types::WireState;
-use shards::types::ANY_TYPES;
-use shards::types::SHARDS_OR_NONE_TYPES;
-use std::ffi::CStr;
+
+
+
 
 pub struct EguiHost {
   context: Option<egui::Context>,
@@ -197,7 +197,7 @@ mod native {
   use super::EguiHost;
   use shards::{
     shardsc::{self, SHVar, Shards},
-    types::{Context, Var},
+    types::{Context},
   };
 
   #[no_mangle]

@@ -11,22 +11,22 @@ use crate::SIMULATION_TYPE;
 use shards::shardsc::SHPointer;
 use shards::types::common_type;
 use shards::types::Context;
-use shards::types::ExposedInfo;
+
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
-use shards::types::Parameters;
+
 use shards::types::Seq;
 use shards::types::Type;
-use shards::types::ANY_TYPES;
+
 use shards::shard::Shard;
-use shards::types;
+
 use shards::types::Var;
-use rapier3d::dynamics::{ImpulseJointSet, IntegrationParameters, RigidBodySet};
+
 use rapier3d::geometry::{
-  BroadPhase, ColliderSet, CollisionEvent, InteractionGroups, NarrowPhase, Ray,
+  Ray,
 };
 use rapier3d::na::{Point3, Vector3};
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryFilter, QueryPipeline};
+use rapier3d::pipeline::{QueryFilter};
 use std::convert::TryInto;
 
 lazy_static! {

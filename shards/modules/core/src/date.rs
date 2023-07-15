@@ -1,28 +1,28 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::log;
+
 use shards::core::registerShard;
 use shards::shard::Shard;
-use shards::types::common_type;
+
 use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::OptionalString;
-use shards::types::ParamVar;
+
 use shards::types::Parameters;
-use shards::types::Seq;
-use shards::types::Table;
+
+
 use shards::types::Type;
-use shards::types::BOOL_TYPES_SLICE;
+
 use shards::types::INT_TYPES;
-use shards::types::SEQ_OF_STRINGS_TYPES;
+
 use shards::types::STRING_TYPES;
 use shards::types::STRING_TYPES_SLICE;
-use std::ffi::CString;
-use shards::types;
+
+
 use shards::types::Var;
-use chrono::{DateTime, LocalResult, TimeZone, Utc};
-use core::convert::TryFrom;
+use chrono::{LocalResult, TimeZone, Utc};
+
 use core::convert::TryInto;
 
 lazy_static! {

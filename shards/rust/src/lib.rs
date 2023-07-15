@@ -35,7 +35,6 @@ pub mod types;
 
 use crate::core::log;
 use crate::core::Core;
-use crate::shard::Shard;
 pub use crate::shardsc::*;
 use crate::types::Types;
 use crate::types::Var;

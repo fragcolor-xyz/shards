@@ -3,11 +3,9 @@
 
 #[macro_use]
 extern crate shards;
-
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
 extern crate compile_time_crc32;
 
 use shards::core::registerShard;
@@ -19,7 +17,7 @@ use shards::shardsc::SHCore;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::ExposedTypes;
+
 use shards::types::InstanceData;
 use shards::types::ParamVar;
 use shards::types::Parameters;

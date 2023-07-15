@@ -8,7 +8,7 @@ use crate::PARENTS_UI_NAME;
 use crate::STRING_OR_SHARDS_OR_NONE_TYPES_SLICE;
 use shards::shard::Shard;
 use shards::types::Context;
-use shards::types::ExposedInfo;
+
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;

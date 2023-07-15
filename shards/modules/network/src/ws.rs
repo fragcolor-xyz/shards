@@ -1,16 +1,15 @@
 use shards::{
   core::{registerShard, run_blocking, BlockingShard},
   types::{
-    ClonedVar, Context, ExposedInfo, ExposedTypes, ParamVar, Parameters, Type, Types, Var,
-    ANYS_TYPES, FRAG_CC, NONE_TYPES, STRING_TYPES,
+    ClonedVar, Context, ExposedInfo, ExposedTypes, ParamVar, Parameters, Type, Types, Var, FRAG_CC, NONE_TYPES, STRING_TYPES,
   },
   shard::Shard,
 };
 use std::net::TcpStream;
 use std::rc::Rc;
-use std::thread::spawn;
+
 use tungstenite::{
-  accept, handshake::client::Response, stream::MaybeTlsStream, Message, WebSocket,
+  stream::MaybeTlsStream, Message, WebSocket,
 };
 
 static WS_CLIENT_TYPE: Type = Type::object(FRAG_CC, 2004042604); // 'wsCl'

@@ -7,31 +7,30 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
 extern crate compile_time_crc32;
 
-use shards::core::log;
+
 use shards::core::registerShard;
 use shards::shard::Shard;
-use shards::types::common_type;
+
 use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::OptionalString;
-use shards::types::ParamVar;
+
 use shards::types::Parameters;
 use shards::types::Seq;
-use shards::types::Table;
+
 use shards::types::Type;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::SEQ_OF_STRINGS_TYPES;
 use shards::types::STRING_TYPES;
 use shards::types::STRING_TYPES_SLICE;
 use std::ffi::CString;
-use shards::types;
+
 use shards::types::Var;
-use core::convert::TryFrom;
+
 use core::convert::TryInto;
-use ext_csv::Reader;
+
 use ext_csv::ReaderBuilder;
 use ext_csv::WriterBuilder;
 

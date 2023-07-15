@@ -5,9 +5,9 @@
 // Code partially extracted from egui_demo_lib
 // https://github.com/emilk/egui/blob/master/crates/egui_demo_lib/src/syntax_highlighting.rs
 
-use egui::epaint::text::layout;
+
 use egui::text::LayoutJob;
-use syntect::highlighting::Theme;
+
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxDefinition;
 use syntect::parsing::SyntaxSet;

@@ -12,7 +12,7 @@ use super::IntSlider;
 use crate::util;
 use crate::widgets::text_util;
 use crate::ANY_TABLE_SLICE;
-use crate::EGUI_UI_TYPE;
+
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
 use shards::shard::Shard;
@@ -24,7 +24,7 @@ use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::Seq;
+
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;

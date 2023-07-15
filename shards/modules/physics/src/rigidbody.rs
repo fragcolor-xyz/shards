@@ -5,7 +5,7 @@ use shards::core::deriveType;
 use shards::core::registerShard;
 use shards::types::Types;
 use crate::fill_seq_from_mat4;
-use crate::mat4_from_seq;
+
 use crate::BaseShape;
 use crate::RigidBody;
 use crate::Simulation;
@@ -13,14 +13,14 @@ use crate::EXPOSED_SIMULATION;
 use crate::POSITIONS_TYPES_SLICE;
 use crate::RIGIDBODY_TYPE;
 use crate::ROTATIONS_TYPES_SLICE;
-use crate::SHAPES_TYPE;
+
 use crate::SHAPES_TYPES_SLICE;
-use crate::SHAPES_VAR_TYPE;
+
 use crate::SHAPE_TYPE;
-use crate::SHAPE_VAR_TYPE;
+
 use crate::SIMULATION_TYPE;
 use shards::types::common_type;
-use shards::types::ClonedVar;
+
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -31,35 +31,34 @@ use shards::types::Parameters;
 use shards::types::Seq;
 use shards::types::Type;
 use shards::types::ANY_TYPES;
-use shards::types::FLOAT4X2_TYPE;
-use shards::types::FLOAT4X2_TYPES;
+
+
 use shards::types::FLOAT4X4S_TYPE;
 use shards::types::FLOAT4X4_TYPE;
-use shards::types::FLOAT4X4_TYPES;
+
 use shards::types::NONE_TYPES;
 use shards::types::STRING_OR_NONE_SLICE;
 use shards::shard::Shard;
-use shards::types;
+
 use shards::types::Var;
 use rapier3d::dynamics::RigidBodyBuilder;
 use rapier3d::dynamics::{
-  ImpulseJointSet, IntegrationParameters, RigidBodyHandle, RigidBodySet, RigidBodyType,
+  RigidBodyHandle, RigidBodyType,
 };
 use rapier3d::geometry::{
-  BroadPhase, ColliderBuilder, ColliderHandle, ColliderSet, CollisionEvent, NarrowPhase,
-  SharedShape,
+  ColliderBuilder, ColliderHandle,
 };
-use rapier3d::math::Real;
+
 use rapier3d::na::Isometry3;
-use rapier3d::na::Projective3;
-use rapier3d::na::Rotation3;
-use rapier3d::na::Transform3;
+
+
+
 use rapier3d::na::{
-  Matrix, Matrix3, Matrix4, Quaternion, Similarity, Similarity3, Translation, UnitQuaternion,
-  Vector3, U3,
+  Matrix4, Quaternion, Translation, UnitQuaternion,
+  Vector3,
 };
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
-use rapier3d::prelude::Collider;
+
+
 use std::convert::TryInto;
 use std::rc::Rc;
 

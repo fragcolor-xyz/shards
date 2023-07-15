@@ -7,17 +7,17 @@ extern crate rapier3d;
 use shards::fourCharacterCode;
 use shards::shardsc::SHObjectTypeInfo;
 use shards::shardsc::SHType_Float4;
-use shards::shardsc::SHType_None;
+
 use shards::types::common_type;
-use shards::types::ClonedVar;
+
 use shards::types::ExposedInfo;
-use shards::types::ExposedTypes;
+
 use shards::types::ParamVar;
 use shards::types::Seq;
 use shards::types::Type;
 use shards::types::FRAG_CC;
-use shards::types::Types;
-use shards::types::Var;
+
+
 use rapier3d::dynamics::{
   CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet,
   RigidBodyHandle, RigidBodySet,

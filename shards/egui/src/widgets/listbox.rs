@@ -23,7 +23,7 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANYS_TYPES;
 use shards::types::ANY_TYPES;
-use shards::types::INT_TYPES;
+
 use shards::types::SHARDS_OR_NONE_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;

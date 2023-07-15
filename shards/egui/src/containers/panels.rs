@@ -20,7 +20,7 @@ use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::RawString;
+
 use shards::types::ShardsVar;
 use shards::types::Type;
 use shards::types::Types;

@@ -5,33 +5,33 @@
 
 use shards::core::registerShard;
 use crate::BaseShape;
-use crate::Simulation;
-use crate::EXPOSED_SIMULATION;
+
+
 use crate::POSITION_TYPES_SLICE;
 use crate::ROTATION_TYPES_SLICE;
 use crate::SHAPE_TYPE;
 use crate::SHAPE_TYPES;
-use crate::SIMULATION_TYPE;
-use shards::types::common_type;
+
+
 use shards::types::Context;
-use shards::types::ExposedInfo;
-use shards::types::ExposedTypes;
+
+
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::Type;
-use shards::types::ANY_TYPES;
+
+
 use shards::types::FLOAT3_TYPES_SLICE;
 use shards::types::FLOAT_TYPES_SLICE;
 use shards::types::NONE_TYPES;
 use shards::shard::Shard;
-use shards::types;
+
 use shards::types::Types;
 use shards::types::Var;
-use rapier3d::dynamics::{ImpulseJointSet, IntegrationParameters, RigidBodySet};
+
 use rapier3d::geometry::SharedShape;
-use rapier3d::geometry::{BroadPhase, ColliderSet, CollisionEvent, NarrowPhase};
+
 use rapier3d::na::{Isometry3, Quaternion, Translation, UnitQuaternion, Vector3};
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline};
+
 use std::convert::TryInto;
 
 lazy_static! {

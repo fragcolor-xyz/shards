@@ -11,13 +11,12 @@ extern crate compile_time_crc32;
 
 use shards::shardsc::SHObjectTypeInfo;
 use shards::types::{
-  ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES,
-  SEQ_OF_SEQ_OF_FLOAT_TYPES, STRINGS_TYPES, STRING_TYPES,
+  ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES, STRING_TYPES,
 };
 use shards::{
   core::registerShard,
   shard::Shard,
-  types::{common_type, Context, Parameters, Type, Types, Var, ANY_TYPES, FRAG_CC},
+  types::{common_type, Context, Parameters, Type, Types, Var, FRAG_CC},
 };
 use std::alloc::Global;
 use std::ffi::CString;

@@ -4,7 +4,7 @@
 use super::Style;
 use crate::misc::style_util;
 use crate::util;
-use crate::ANY_TABLE_SLICE;
+
 use crate::CONTEXTS_NAME;
 use crate::EGUI_UI_SEQ_TYPE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;

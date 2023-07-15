@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::log;
+
 use shards::core::registerShard;
 use shards::shard::Shard;
 use crate::CRYPTO_KEY_TYPES;
@@ -10,16 +10,16 @@ use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::Seq;
-use shards::types::Table;
+
+
 use shards::types::Type;
 use shards::types::BYTES_TYPES;
-use std::ffi::CString;
-use shards::types;
+
+
 use shards::types::Var;
 use chacha20poly1305::aead::{Aead, NewAead};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
-use std::convert::TryInto;
+
 
 lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes,];

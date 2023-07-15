@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use egui::vec2;
-use egui::Area;
-use egui::Frame;
-use egui::Vec2;
+
+
+
+
 
 use super::Anchor;
 use super::Window;
@@ -27,7 +27,7 @@ use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::RawString;
+
 use shards::types::Seq;
 use shards::types::ShardsVar;
 use shards::types::Type;

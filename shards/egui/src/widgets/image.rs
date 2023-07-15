@@ -5,15 +5,15 @@ use super::image_util;
 use super::Image;
 use crate::util;
 use crate::FLOAT2_VAR_SLICE;
-use crate::HASH_VAR_OR_NONE_SLICE;
+
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use shards::shard::Shard;
 use shards::shardsc::SHType_Image;
 use shards::shardsc::SHType_Object;
-use shards::types::common_type;
+
 use shards::types::Context;
-use shards::types::ExposedInfo;
+
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;

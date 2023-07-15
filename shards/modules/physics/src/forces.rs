@@ -5,33 +5,31 @@ use shards::core::registerShard;
 use shards::types::Types;
 use crate::RigidBody;
 use crate::Simulation;
-use crate::EXPOSED_SIMULATION;
-use crate::RIGIDBODIES_TYPE;
+
+
 use crate::RIGIDBODIES_TYPES_SLICE;
 use crate::RIGIDBODY_TYPE;
-use crate::RIGIDBODY_VAR_TYPE;
+
 use crate::SIMULATION_TYPE;
-use shards::shardsc::SHPointer;
+
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::Seq;
+
 use shards::types::Type;
-use shards::types::ANY_TYPES;
+
 use shards::shard::Shard;
-use shards::types;
+
 use shards::types::Var;
-use rapier3d::dynamics::{ImpulseJointSet, IntegrationParameters, RigidBodySet};
-use rapier3d::geometry::{
-  BroadPhase, ColliderSet, CollisionEvent, InteractionGroups, NarrowPhase, Ray,
-};
-use rapier3d::na::{Point3, Vector3};
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
+
+
+use rapier3d::na::{Vector3};
+
 use std::convert::TryInto;
-use std::rc::Rc;
+
 
 lazy_static! {
   pub static ref INPUT_TYPES: Vec<Type> = vec![common_type::float3];

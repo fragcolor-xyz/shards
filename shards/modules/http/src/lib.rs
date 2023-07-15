@@ -10,13 +10,13 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
-use shards::core::log;
+
 use shards::core::registerShard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
 use shards::shard::Shard;
 use shards::types::common_type;
-use shards::types::ClonedVar;
+
 use shards::types::Context;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
@@ -27,16 +27,16 @@ use shards::types::Type;
 use shards::types::Types;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::INT_TYPES_SLICE;
-use std::ffi::CString;
-use shards::types;
+
+
 use shards::types::Var;
 use core::time::Duration;
-use reqwest::blocking::Request;
-use reqwest::blocking::RequestBuilder;
+
+
 use reqwest::blocking::Response;
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE, USER_AGENT};
+use reqwest::header::{HeaderName, HeaderValue};
 use std::convert::TryInto;
-use std::ffi::CStr;
+
 
 static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
 static HEADERS_TYPES: &[Type] = &[

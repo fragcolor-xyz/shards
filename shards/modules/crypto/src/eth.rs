@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::log;
+
 use shards::core::registerShard;
 use shards::shard::Shard;
 use shards::types::common_type;
@@ -10,15 +10,15 @@ use shards::types::Context;
 use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::Seq;
-use shards::types::Table;
+
 use shards::types::Type;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::STRING_OR_NONE_SLICE;
 use shards::types::STRING_VAR_OR_NONE_SLICE;
-use std::ffi::CString;
-use shards::types;
+
+
 use shards::types::Var;
-use core::convert::TryFrom;
+
 use ethabi::Contract;
 use ethabi::ParamType;
 use ethabi::Token;

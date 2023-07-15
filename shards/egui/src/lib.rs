@@ -18,7 +18,7 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 use std::ffi::c_void;
-use std::ffi::CStr;
+
 
 #[macro_use]
 extern crate shards;

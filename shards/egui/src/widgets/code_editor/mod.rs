@@ -26,9 +26,9 @@ use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::BOOL_TYPES;
-use shards::types::BOOL_TYPES_SLICE;
+
 use shards::types::NONE_TYPES;
-use shards::types::STRING_TYPES;
+
 use std::cmp::Ordering;
 use std::ffi::CStr;
 

@@ -1,29 +1,29 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::log;
+
 use shards::core::registerShard;
 use shards::shard::Shard;
 use shards::types::common_type;
-use shards::types::ClonedVar;
+
 use shards::types::Context;
-use shards::types::ParamVar;
-use shards::types::Parameters;
+
+
 use shards::types::Seq;
-use shards::types::Table;
+
 use shards::types::Type;
 use shards::types::BYTES_TYPES;
-use std::ffi::CString;
-use shards::types;
+
+
 use shards::types::Var;
-use core::time::Duration;
+
 use sha2::{Digest, Sha256, Sha512};
 use sp_core::twox_128;
 use sp_core::twox_64;
 use sp_core::{blake2_128, blake2_256};
-use std::convert::TryFrom;
+
 use std::convert::TryInto;
-use std::ffi::CStr;
+
 use tiny_keccak::{Hasher, Keccak, Sha3};
 
 lazy_static! {

@@ -5,25 +5,25 @@ use shards::core::registerShard;
 use crate::Simulation;
 use crate::EXPOSED_SIMULATION;
 use crate::SIMULATION_TYPE;
-use shards::types::common_type;
+
 use shards::types::Context;
-use shards::types::ExposedInfo;
+
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::Type;
+
 use shards::types::ANY_TYPES;
 use shards::types::FLOAT_TYPES_SLICE;
 use shards::shard::Shard;
-use shards::types;
+
 use shards::types::Types;
 use shards::types::Var;
 use rapier3d::dynamics::{
   CCDSolver, ImpulseJointSet, IntegrationParameters, MultibodyJointSet, RigidBodySet,
 };
-use rapier3d::geometry::{BroadPhase, ColliderSet, CollisionEvent, NarrowPhase};
+use rapier3d::geometry::{BroadPhase, ColliderSet, NarrowPhase};
 use rapier3d::na::Vector3;
-use rapier3d::pipeline::{ChannelEventCollector, PhysicsHooks, PhysicsPipeline, QueryPipeline};
+use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
 use rapier3d::prelude::IslandManager;
 use std::convert::TryInto;
 

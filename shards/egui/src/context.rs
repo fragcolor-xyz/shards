@@ -5,12 +5,12 @@ use crate::bindings;
 use crate::egui_host::EguiHost;
 use crate::util;
 use crate::EguiContext;
-use crate::CONTEXTS_NAME;
+
 use crate::GFX_CONTEXT_TYPE;
 use crate::GFX_QUEUE_VAR_TYPES;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INPUT_CONTEXT_TYPE;
-use crate::PARENTS_UI_NAME;
+
 use shards::shard::Shard;
 use shards::shardsc;
 use shards::types::Context;

@@ -1,6 +1,6 @@
 // extern crate shards;
 
-use egui::{self, Ui, *};
+use egui::{self, *};
 use shards::types::Var;
 use shards_egui::util;
 

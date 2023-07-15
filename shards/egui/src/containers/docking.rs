@@ -21,7 +21,7 @@ use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
-use shards::types::SEQ_OF_SHARDS_TYPES;
+
 use shards::types::SHARDS_OR_NONE_TYPES;
 use shards::types::STRING_TYPES;
 

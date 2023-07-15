@@ -1,32 +1,32 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::log;
+
 use shards::core::registerShard;
 use shards::shard::Shard;
 use crate::CRYPTO_KEY_TYPES;
-use shards::shardsc::SHType_String;
+
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::InstanceData;
+
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::Seq;
-use shards::types::Table;
+
+
 use shards::types::Type;
 use shards::types::BYTES_TYPES;
 use shards::types::STRING_TYPES;
-use std::ffi::CString;
-use shards::types;
+
+
 use shards::types::Var;
-use core::time::Duration;
+
 use sp_core::crypto::Pair;
 use sp_core::ed25519;
 use sp_core::sr25519;
-use std::convert::TryFrom;
+
 use std::convert::TryInto;
-use std::ffi::CStr;
+
 
 static SIGNATURE_TYPES: &[Type] = &[common_type::bytezs, common_type::bytess_var];
 
