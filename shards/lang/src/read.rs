@@ -2,6 +2,7 @@ use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
 use pest::iterators::Pair;
 use pest::Parser;
+use shards::shlog;
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -333,7 +334,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
                 .into()
             })?;
 
-            println!("Including file {:?}", file_path);
+            shlog!("Including file {:?}", file_path);
 
             let rc_path = file_path
               .to_str()
