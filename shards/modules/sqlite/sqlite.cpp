@@ -7,7 +7,9 @@
 #include <functional>
 #include <optional>
 
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include "sqlite3.h"
+#pragma clang attribute pop
 
 namespace shards {
 namespace DB {

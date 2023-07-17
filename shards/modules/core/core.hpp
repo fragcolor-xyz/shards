@@ -25,8 +25,8 @@ struct CoreInfo2 {
   static inline Types BasicTypesTypes{{TypeEnumInfo::Type, BasicTypesSeqType}, true};
 };
 
-// THis shard implements constants 
-// Constants are values like 0, "" 
+// THis shard implements constants
+// Constants are values like 0, ""
 struct Const {
   static inline shards::ParamsInfo constParamsInfo = shards::ParamsInfo(
       shards::ParamsInfo::Param("Value", SHCCSTR("The constant value to insert in the wire."), CoreInfo::AnyType));
@@ -2745,7 +2745,7 @@ struct Take {
     } else if ((!isTable && _indices.valueType == SHType::Int) || (isTable && _indices.valueType == SHType::String)) {
       _seqOutput = false;
       valid = true;
-    } else { // SHType::ContextVar
+    } else if (_indices.valueType == SHType::ContextVar) { // SHType::ContextVar
       for (auto &info : data.shared) {
         if (info.name == SHSTRVIEW(_indices)) {
           if (info.exposedType.basicType == SHType::Seq && info.exposedType.seqTypes.len == 1 &&
@@ -2768,6 +2768,8 @@ struct Take {
           }
         }
       }
+    } else {
+      throw ComposeError("Take: Expected indices to be either Seq, Int or String");
     }
 
     _tableOutput = isTable;
