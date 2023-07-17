@@ -46,7 +46,14 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
     .subcommand(
       Command::new("build")
         .about("Reads and executes a Shards file.")
-        .arg(arg!(<FILE> "The script to execute")),
+        .arg(arg!(<FILE> "The script to execute"))
+        .arg(
+          Arg::new("output")
+            .long("output")
+            .short('o')
+            .help("The output file to write to")
+            .default_value("out.sho"),
+        ),
     )
     .subcommand(
       Command::new("load")
@@ -169,8 +176,12 @@ fn build(matches: &ArgMatches) -> i32 {
     read(&file_content, parent_path).expect("Failed to parse file")
   };
 
+  let output = matches
+    .get_one::<String>("output")
+    .expect("An output file to write to");
+
   // write sequence to file
-  let mut file = std::fs::File::create("out.sho").unwrap();
+  let mut file = std::fs::File::create(output).unwrap();
   let mut writer = std::io::BufWriter::new(&mut file);
 
   // Serialize using bincode
