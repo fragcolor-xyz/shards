@@ -955,6 +955,7 @@ typedef SHOptionalString(__cdecl *SHReadCachedString)(uint32_t id);
 // the string is not copied! should be constant.
 // use this when the cache is not precompiled
 typedef SHOptionalString(__cdecl *SHWriteCachedString)(uint32_t id, const char *str);
+typedef void(__cdecl *SHDecompressStrings)(void);
 
 typedef SHBool(__cdecl *SHIsEqualVar)(const struct SHVar *v1, const struct SHVar *v2);
 typedef SHBool(__cdecl *SHIsEqualType)(const struct SHTypeInfo *t1, const struct SHTypeInfo *t2);
@@ -1084,6 +1085,7 @@ typedef struct _SHCore {
   // Compressed strings utility
   SHReadCachedString readCachedString;
   SHWriteCachedString writeCachedString;
+  SHDecompressStrings decompressStrings;
 
   // equality utilities
   SHIsEqualVar isEqualVar;

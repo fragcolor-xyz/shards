@@ -2,7 +2,7 @@ use crate::{eval::eval, read::read};
 use clap::{arg, Arg, Command};
 use shards::core::Core;
 use shards::types::Mesh;
-use shards::{SHCore, SHARDS_CURRENT_ABI};
+use shards::{SHCore, SHARDS_CURRENT_ABI, shlog};
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -37,6 +37,12 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
       Command::new("new")
         .about("Reads and executes a Shards file.")
         .arg(arg!(<FILE> "The script to execute"))
+        .arg(
+          Arg::new("decompress-strings")
+            .long("decompress-strings")
+            .help("Decompress help strings before running the script")
+            .default_value("false"),
+        )
         .arg(Arg::new("args").num_args(0..)),
     )
     // Add your arguments here
@@ -49,11 +55,21 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
         shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
       }
 
+      let decompress = matches
+        .get_one::<String>("decompress-strings")
+        .unwrap();
+      if decompress == "true" {
+        shlog!("Decompressing strings");
+        unsafe {
+          (*Core).decompressStrings.unwrap()();
+        }
+      }
+
       let mut defines = HashMap::new();
       let args = matches.get_many::<String>("args");
       if let Some(args) = args {
         for arg in args {
-          println!("arg: {}", arg);
+          shlog!("arg: {}", arg);
           // find the first column and split it, the rest is the value
           let mut split = arg.split(':');
           let key = split.next().unwrap();
@@ -70,7 +86,7 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
       let file = matches
         .get_one::<String>("FILE")
         .expect("A file to execute");
-      println!("Executing file: {}", file);
+      shlog!("Executing file: {}", file);
 
       let wire = {
         let ast = {
@@ -107,7 +123,7 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
           )
         })
         .unwrap();
-        println!("Failed: {}", msg);
+        shlog!("Failed: {}", msg);
         -1
       } else {
         0

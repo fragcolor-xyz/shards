@@ -77,6 +77,43 @@ SHOptionalString getCompiledCompressedString(uint32_t id) {
   val.crc = id; // make sure we return with crc to allow later lookups!
   return val;
 }
+
+#include <shards/core/shccstrings.hpp>
+
+static std::unordered_map<uint32_t, std::string> strings_storage;
+
+void decompressStrings() {
+  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
+  if (!shards::GetGlobals().CompressedStrings) {
+    throw shards::SHException("String storage was null");
+  }
+  // run the script to populate compressed strings
+  auto bytes = Var(__shards_compressed_strings);
+  auto wire = ::shards::Wire("decompress strings").let(bytes).shard("Brotli.Decompress").shard("FromBytes");
+  auto mesh = SHMesh::make();
+  mesh->schedule(wire);
+  mesh->tick();
+  if (wire->finishedOutput.valueType != SHType::Seq) {
+    throw shards::SHException("Failed to decompress strings!");
+  }
+
+  for (uint32_t i = 0; i < wire->finishedOutput.payload.seqValue.len; i++) {
+    auto pair = wire->finishedOutput.payload.seqValue.elements[i];
+    if (pair.valueType != SHType::Seq || pair.payload.seqValue.len != 2) {
+      throw shards::SHException("Failed to decompress strings!");
+    }
+    auto crc = pair.payload.seqValue.elements[0];
+    auto str = pair.payload.seqValue.elements[1];
+    if (crc.valueType != SHType::Int || str.valueType != SHType::String) {
+      throw shards::SHException("Failed to decompress strings!");
+    }
+    auto emplaced = strings_storage.emplace(uint32_t(crc.payload.intValue), str.payload.stringValue);
+    auto &s = emplaced.first->second;
+    auto &val = (*shards::GetGlobals().CompressedStrings)[uint32_t(crc.payload.intValue)];
+    val.string = s.c_str();
+    val.crc = uint32_t(crc.payload.intValue);
+  }
+}
 #else
 SHOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
   static std::remove_pointer_t<decltype(Globals::CompressedStrings)> CompiledCompressedStrings;
@@ -3311,6 +3348,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->writeCachedString = [](uint32_t crc, SHString str) {
     shards::setString(crc, str);
     return SHOptionalString{str, crc};
+  };
+
+  result->decompressStrings = []() {
+#ifdef SH_COMPRESSED_STRINGS
+    shards::decompressStrings();
+#endif
   };
 
   result->isEqualVar = [](const SHVar *v1, const SHVar *v2) -> SHBool { return *v1 == *v2; };
