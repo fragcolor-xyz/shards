@@ -70,11 +70,6 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
     // Add your arguments here
     .get_matches_from(args);
 
-  // we need to do this here or old path will fail
-  unsafe {
-    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
-  }
-
   match matches.subcommand() {
     Some(("new", matches)) => execute(matches),
     Some(("build", matches)) => build(matches),
@@ -85,6 +80,11 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
 }
 
 fn load(matches: &ArgMatches) -> i32 {
+  // we need to do this here or old path will fail
+  unsafe {
+    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+  }
+
   shlog!("Loading file");
   let file = matches
     .get_one::<String>("FILE")
@@ -160,6 +160,11 @@ fn execute_seq(matches: &ArgMatches, ast: Sequence) -> i32 {
 }
 
 fn build(matches: &ArgMatches) -> i32 {
+  // we need to do this here or old path will fail
+  unsafe {
+    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+  }
+
   let file = matches.get_one::<String>("FILE").expect("A file to parse");
   shlog!("Parsing file: {}", file);
 
@@ -198,6 +203,11 @@ fn build(matches: &ArgMatches) -> i32 {
 }
 
 fn execute(matches: &clap::ArgMatches) -> i32 {
+  // we need to do this here or old path will fail
+  unsafe {
+    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+  }
+
   let decompress = matches.get_one::<String>("decompress-strings").unwrap();
   if decompress == "true" {
     shlog!("Decompressing strings");

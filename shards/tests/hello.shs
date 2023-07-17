@@ -106,3 +106,10 @@ xy | Take("x") | Log | Assert.Is(1) | Math.Add(2) | Log | Assert.Is(3)
 xy | Do(table-input) | Log
 
 @if(true Msg("True") Msg("False"))
+
+"namespaced" = n/text
+
+@define(n/text2 "namespaced")
+
+@n/text2 | Log
+n/text | Log
