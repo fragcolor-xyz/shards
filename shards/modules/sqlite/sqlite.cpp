@@ -22,7 +22,7 @@ struct Connection {
     }
 
     uint32_t res;
-    if(sqlite3_db_config(db, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 2, &res) != SQLITE_OK) {
+    if (sqlite3_db_config(db, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION, 2, &res) != SQLITE_OK) {
       throw ActivationError(sqlite3_errmsg(db));
     }
   }
@@ -34,9 +34,7 @@ struct Connection {
     other.db = nullptr;
   }
 
-  ~Connection() {
-    sqlite3_close(db);
-  }
+  ~Connection() { sqlite3_close(db); }
 
   sqlite3 *get() { return db; }
 
@@ -75,11 +73,10 @@ struct Base {
   void warmup(SHContext *context) {
     auto storageKey = fmt::format("DB.Connection_{}", _dbName);
     _connection = getOrCreateContextStorage(context, storageKey, [&]() { return Connection(_dbName.data()); });
-
   }
 
   void cleanup() {
-    if(_connection)
+    if (_connection)
       _connection.reset();
   }
 };
@@ -297,7 +294,51 @@ struct LoadExtension : public Base {
     PARAM_WARMUP(context);
   }
 
+  SHVar activate(SHContext *context, const SHVar &input) { return input; }
+};
+
+struct RawQuery : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_dbName));
+
+  void cleanup() {
+    PARAM_CLEANUP();
+
+    prepared.reset();
+
+    Base::cleanup();
+  }
+
+  std::unique_ptr<Statement> prepared;
+
+  void warmup(SHContext *context) {
+    if (_dbName.valueType != SHType::None) {
+      Base::_dbName = SHSTRVIEW(_dbName);
+    } else {
+      Base::_dbName = "shards.db";
+    }
+
+    Base::warmup(context);
+
+    PARAM_WARMUP(context);
+  }
+
+  TableVar output;
+  std::vector<SeqVar *> colSeqs;
+
   SHVar activate(SHContext *context, const SHVar &input) {
+    char *errMsg = nullptr;
+    std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
+    int rc = sqlite3_exec(_connection->get(), query.c_str(), nullptr, nullptr, &errMsg);
+
+    if (rc != SQLITE_OK) {
+      throw ActivationError(errMsg);
+      sqlite3_free(errMsg);
+    }
+
     return input;
   }
 };
@@ -309,4 +350,5 @@ SHARDS_REGISTER_FN(sqlite) {
   REGISTER_SHARD("DB.Query", Query);
   REGISTER_SHARD("DB.Transaction", Transaction);
   REGISTER_SHARD("DB.LoadExtension", LoadExtension);
+  REGISTER_SHARD("DB.RawQuery", RawQuery);
 }

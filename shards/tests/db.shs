@@ -1,7 +1,7 @@
 @mesh(root)
 
 @wire(db-test-1 {
-    [] | DB.Query("CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)")
+    "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
     [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")
     [] | DB.Query("SELECT * FROM integers") | Log |
     Assert.Is({x: [88 100 102], y: [99 101 none]})
