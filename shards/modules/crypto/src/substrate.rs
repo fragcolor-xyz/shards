@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-
 use shards::core::registerShard;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
@@ -33,15 +32,13 @@ use shards::types::STRINGS_TYPES;
 use shards::types::STRING_OR_NONE_SLICE;
 use shards::types::STRING_TYPES;
 
-
 use shards::types::Var;
 
 use parity_scale_codec::{Compact, Decode, Encode};
 use sp_core::crypto::{AccountId32, Pair, Ss58Codec};
 
 use sp_core::{blake2_128, ecdsa, sr25519, twox_128};
-use std::convert::{TryInto};
-
+use std::convert::TryInto;
 
 use std::str::FromStr;
 

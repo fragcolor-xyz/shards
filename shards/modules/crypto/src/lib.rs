@@ -9,12 +9,12 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
-pub mod ecdsa;
-pub mod hash;
-pub mod eth;
-pub mod substrate;
-pub mod curve25519;
 pub mod chachapoly;
+pub mod curve25519;
+pub mod ecdsa;
+pub mod eth;
+pub mod hash;
+pub mod substrate;
 
 static CRYPTO_KEY_TYPES: &[Type] = &[
   common_type::bytes,
@@ -22,6 +22,8 @@ static CRYPTO_KEY_TYPES: &[Type] = &[
   common_type::string,
   common_type::string_var,
 ];
+
+static PUB_KEY_TYPES: &[Type] = &[common_type::bytes, common_type::bytes_var];
 
 #[no_mangle]
 pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCore) {

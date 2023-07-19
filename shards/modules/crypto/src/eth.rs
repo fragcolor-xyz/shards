@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-
 use shards::core::registerShard;
 use shards::shard::Shard;
 use shards::types::common_type;
@@ -15,7 +14,6 @@ use shards::types::Type;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::STRING_OR_NONE_SLICE;
 use shards::types::STRING_VAR_OR_NONE_SLICE;
-
 
 use shards::types::Var;
 

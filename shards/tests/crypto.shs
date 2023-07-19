@@ -7,13 +7,13 @@
 @wire(main {
     ; test from hex string
     "0x9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60" |
-    {Sr25519.PublicKey | ToHex | 
+    {Sr25519.PublicKey | ToHex |
      Assert.Is("0x44a996beb1eef7bdcab976ab6d2ca26104834164ecf28fb375600576fcc6eb0f" true)} |
     {Ed25519.PublicKey | ToHex |
      Assert.Is("0xd75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a" true)} |
     {ECDSA.PublicKey | ToHex |
      Assert.Is("0x048db55b05db86c0b1786ca49f095d76344c9e6056b2f02701a7e7f3c20aabfd913ebbe148dd17c56551a52952371071a6c604b3f3abe8f2c8fa742158ea6dd7d4")} |
-    
+
     ; test from bytes
     HexToBytes |
     {Sr25519.PublicKey | ToHex |
@@ -75,7 +75,7 @@
     Substrate.Decode([Type::Bool Type::Int] [none "u8"]) | Log | Assert.Is([false 42] true)
     [false 42] | Substrate.Encode([none "c"]) | {ToHex | Assert.Is("0x00a8" true)} |
     Substrate.Decode([Type::Bool Type::Int] [none "c"]) | Log | Assert.Is([false 42] true)
-    ["Hello world" "And universe" "And planets"] | Substrate.Encode([none none none]) | Substrate.Decode([Type::String Type::String Type::String] [none none none]) | Log | 
+    ["Hello world" "And universe" "And planets"] | Substrate.Encode([none none none]) | Substrate.Decode([Type::String Type::String Type::String] [none none none]) | Log |
     Assert.Is(["Hello world" "And universe" "And planets"] true)
 
     @if(@rpcs {
@@ -111,8 +111,12 @@
     If(IsMore(256) {
         Msg("Big signature")
         signed-payload | Hash.Blake2-256 ; use hashed version if longer bigger than 256
-    } {signed-payload}) |
+    } {signed-payload}) > signed-payload
     Sr25519.Sign("//Alice") | Log >= signature
+    {
+        ; test signature verify
+        Sr25519.Verify(("//Alice" | Sr25519.PublicKey) signed-payload) | Log("verified")
+    }
     ; add enum index 1
     "0x01" | HexToBytes | PrependTo(signature)
     signature | ToHex | Log

@@ -1,10 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-
+use crate::{CRYPTO_KEY_TYPES, PUB_KEY_TYPES};
 use shards::core::registerShard;
 use shards::shard::Shard;
-use crate::CRYPTO_KEY_TYPES;
 
 use shards::types::common_type;
 use shards::types::ClonedVar;
@@ -13,11 +12,10 @@ use shards::types::Context;
 use shards::types::ParamVar;
 use shards::types::Parameters;
 
-
 use shards::types::Type;
+use shards::types::BOOL_TYPES;
 use shards::types::BYTES_TYPES;
 use shards::types::STRING_TYPES;
-
 
 use shards::types::Var;
 
@@ -27,9 +25,6 @@ use sp_core::sr25519;
 
 use std::convert::TryInto;
 
-
-static SIGNATURE_TYPES: &[Type] = &[common_type::bytezs, common_type::bytess_var];
-
 lazy_static! {
   static ref PK_TYPES: Vec<Type> = vec![common_type::bytes, common_type::string];
   static ref PARAMETERS: Parameters = vec![(
@@ -38,13 +33,18 @@ lazy_static! {
     CRYPTO_KEY_TYPES
   )
     .into()];
-  static ref SIG_PARAMETERS: Parameters = vec![(
-    cstr!("Signature"),
-    shccstr!(
-      "The signature and recovery id generated signing the input message with the private key."
-    ),
-    SIGNATURE_TYPES
-  )
+  static ref VER_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Key"),
+      shccstr!("The public key of the keypair that signed the message. This will be used to verify the signature."),
+      PUB_KEY_TYPES
+    )
+      .into(),
+    (
+      cstr!("Message"),
+      shccstr!("The message string that was signed to produce the signature. This is the original plaintext message that the signature was created for. When verifying the signature, this message will be hashed and the resulting digest compared to the signature to validate it was produced by signing this exact message."),
+      CRYPTO_KEY_TYPES
+    )
     .into()];
 }
 
@@ -275,6 +275,106 @@ add_priv_key!(
   32
 );
 
+macro_rules! add_verifier {
+  ($shard_name:ident, $name_str:literal, $hash:literal, $key_type:tt, $size:literal) => {
+    #[derive(Default)]
+    struct $shard_name {
+      key: ParamVar,
+      msg: ParamVar,
+    }
+
+    impl Shard for $shard_name {
+      fn registerName() -> &'static str {
+        cstr!($name_str)
+      }
+
+      fn hash() -> u32 {
+        compile_time_crc32::crc32!($hash)
+      }
+
+      fn name(&mut self) -> &str {
+        $name_str
+      }
+
+      fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+        &BYTES_TYPES
+      }
+
+      fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+        &BOOL_TYPES
+      }
+
+      fn parameters(&mut self) -> Option<&Parameters> {
+        Some(&VER_PARAMETERS)
+      }
+
+      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+        match index {
+          0 => Ok(self.key.set_param(value)),
+          1 => Ok(self.msg.set_param(value)),
+          _ => unreachable!(),
+        }
+      }
+
+      fn getParam(&mut self, index: i32) -> Var {
+        match index {
+          0 => self.key.get_param(),
+          1 => self.msg.get_param(),
+          _ => unreachable!(),
+        }
+      }
+
+      fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+        self.key.warmup(context);
+        self.msg.warmup(context);
+        Ok(())
+      }
+
+      fn cleanup(&mut self) -> Result<(), &str> {
+        self.key.cleanup();
+        self.msg.cleanup();
+        Ok(())
+      }
+
+      fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+        let bytes: &[u8] = input.try_into()?;
+        let mut sig: [u8; $size] = [0; $size];
+        sig.copy_from_slice(&bytes[..$size]);
+        let sig = $key_type::Signature(sig);
+
+        let bytes = self.key.get();
+        let bytes: &[u8] = bytes.try_into()?;
+        let mut pub_key: [u8; 32] = [0; 32];
+        pub_key.copy_from_slice(&bytes[..32]);
+        let pub_key = $key_type::Public::from_raw(pub_key);
+
+        let bytes = self.msg.get();
+        let msg: &[u8] = bytes.try_into()?;
+
+        let ok = $key_type::Pair::verify(&sig, msg, &pub_key);
+
+        Ok(ok.into())
+      }
+    }
+  };
+}
+
+add_verifier!(
+  Sr25519Verify,
+  "Sr25519.Verify",
+  "Sr25519.Verify-rust-0x20200101",
+  sr25519,
+  64
+);
+
+add_verifier!(
+  Ed25519Verify,
+  "Ed25519.Verify",
+  "Ed25519.Verify-rust-0x20200101",
+  ed25519,
+  64
+);
+
 pub fn registerShards() {
   registerShard::<Sr25519Sign>();
   registerShard::<Ed25519Sign>();
@@ -282,4 +382,6 @@ pub fn registerShards() {
   registerShard::<Ed25519PublicKey>();
   registerShard::<Sr25519Seed>();
   registerShard::<Ed25519Seed>();
+  registerShard::<Sr25519Verify>();
+  registerShard::<Ed25519Verify>();
 }
