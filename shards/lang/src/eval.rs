@@ -2193,7 +2193,7 @@ fn process_shards(
     let args = unsafe { &*group.args };
     let shards = unsafe { &*group.shards };
 
-    if args.len() != func.params.as_ref().unwrap().len() {
+    if args.len() != func.params.as_ref().map(|params| params.len()).unwrap_or(0) {
       return Err(
         (
           format!(
