@@ -251,7 +251,8 @@ impl Shard for EguiContext {
           self.input_context.get() as *const _ as *const bindings::SHVar,
         );
 
-        let queue = bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar);
+        let queue =
+          bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar);
         self
           .renderer
           .render_with_native_output(egui_output, queue as *const bindings::gfx_DrawQueuePtr);

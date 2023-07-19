@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2023 Fragcolor Pte. Ltd. */
 
-
 use crate::MutVarTextBuffer;
 use crate::UIRenderer;
 use egui::*;
@@ -10,7 +9,6 @@ use shards::shardsc::*;
 use shards::types::Table;
 use shards::types::Type;
 use shards::types::Var;
-
 
 use super::drag_value::CustomDragValue;
 

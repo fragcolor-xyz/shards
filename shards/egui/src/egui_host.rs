@@ -4,9 +4,6 @@ use super::CONTEXTS_NAME;
 use super::EGUI_CTX_TYPE;
 use super::EGUI_UI_SEQ_TYPE;
 
-
-
-
 use super::PARENTS_UI_NAME;
 use crate::bindings::egui_FullOutput;
 use crate::bindings::egui_Input;
@@ -19,19 +16,12 @@ use shards::shardsc::Shards;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 
-
-
 use shards::types::ParamVar;
-
 
 use shards::types::Seq;
 
-
 use shards::types::Var;
 use shards::types::WireState;
-
-
-
 
 pub struct EguiHost {
   context: Option<egui::Context>,
@@ -197,7 +187,7 @@ mod native {
   use super::EguiHost;
   use shards::{
     shardsc::{self, SHVar, Shards},
-    types::{Context},
+    types::Context,
   };
 
   #[no_mangle]

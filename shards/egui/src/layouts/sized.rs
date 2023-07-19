@@ -1,16 +1,13 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-
 use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use egui::vec2;
 use egui::Align;
 
-
 use egui::Layout;
-
 
 use egui::Ui;
 use egui::Vec2;

@@ -27,7 +27,6 @@ use shards::types::Var;
 use shards::types::ANY_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
 
-
 lazy_static! {
   static ref AREA_PARAMETERS: Parameters = vec![
     (

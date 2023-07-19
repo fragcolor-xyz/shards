@@ -5,7 +5,7 @@
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
 use shards::core::cloneVar;
-use shards::core::registerShard; 
+use shards::core::registerShard;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
 use shards::shardsc;
@@ -18,7 +18,6 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 use std::ffi::c_void;
-
 
 #[macro_use]
 extern crate shards;
@@ -60,10 +59,14 @@ static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
 lazy_static! {
-  static ref GFX_CONTEXT_TYPE: Type = unsafe { *(bindings::gfx_getGraphicsContextType() as *mut shardsc::SHTypeInfo) };
-  static ref WINDOW_CONTEXT_TYPE: Type = unsafe { *(bindings::gfx_getWindowContextType() as *mut shardsc::SHTypeInfo) };
-  static ref INPUT_CONTEXT_TYPE: Type = unsafe { *(bindings::gfx_getInputContextType() as *mut shardsc::SHTypeInfo) };
-  static ref GFX_QUEUE_TYPE: Type = unsafe { *(bindings::gfx_getQueueType() as *mut shardsc::SHTypeInfo) };
+  static ref GFX_CONTEXT_TYPE: Type =
+    unsafe { *(bindings::gfx_getGraphicsContextType() as *mut shardsc::SHTypeInfo) };
+  static ref WINDOW_CONTEXT_TYPE: Type =
+    unsafe { *(bindings::gfx_getWindowContextType() as *mut shardsc::SHTypeInfo) };
+  static ref INPUT_CONTEXT_TYPE: Type =
+    unsafe { *(bindings::gfx_getInputContextType() as *mut shardsc::SHTypeInfo) };
+  static ref GFX_QUEUE_TYPE: Type =
+    unsafe { *(bindings::gfx_getQueueType() as *mut shardsc::SHTypeInfo) };
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
@@ -130,8 +133,8 @@ pub mod menus;
 pub mod misc;
 pub mod properties;
 pub mod state;
-pub mod widgets;
 pub mod util;
+pub mod widgets;
 
 struct VarTextBuffer<'a>(&'a Var);
 struct MutVarTextBuffer<'a>(&'a mut Var);

@@ -5,7 +5,6 @@
 // Code partially extracted from egui_demo_lib
 // https://github.com/emilk/egui/blob/master/crates/egui_demo_lib/src/syntax_highlighting.rs
 
-
 use egui::text::LayoutJob;
 
 use syntect::highlighting::ThemeSet;
