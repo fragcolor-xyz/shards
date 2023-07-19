@@ -692,8 +692,35 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       match inner.as_rule() {
         Rule::SimpleString => Ok(Value::String({
           let full_str = inner.as_str();
-          // remove quotes
-          full_str[1..full_str.len() - 1].into()
+          // remove quotes AND
+          // with this case we need to transform escaped characters
+          // so we need to iterate over the string
+          let mut chars = full_str[1..full_str.len() - 1].chars();
+          let mut new_str = String::new();
+          while let Some(c) = chars.next() {
+            if c == '\\' {
+              // we need to check the next character
+              let c = chars.next().ok_or(("Unexpected end of string", pos).into())?;
+              match c {
+                'n' => new_str.push('\n'),
+                'r' => new_str.push('\r'),
+                't' => new_str.push('\t'),
+                '\\' => new_str.push('\\'),
+                '"' => new_str.push('"'),
+                '\'' => new_str.push('\''),
+                _ => {
+                  return Err((
+                    format!("Unexpected escaped character {:?}", c),
+                    pos,
+                  )
+                    .into())
+                }
+              }
+            } else {
+              new_str.push(c);
+            }
+          }
+          new_str.into()
         })),
         Rule::ComplexString => Ok(Value::String({
           let full_str = inner.as_str();
