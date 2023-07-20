@@ -62,10 +62,7 @@ impl<'a> Into<ShardsError> for (&str, LineInfo) {
 impl<'a> Into<ShardsError> for (String, LineInfo) {
   fn into(self) -> ShardsError {
     let (message, pos) = self;
-    ShardsError {
-      message,
-      loc: pos,
-    }
+    ShardsError { message, loc: pos }
   }
 }
 

@@ -700,7 +700,9 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           while let Some(c) = chars.next() {
             if c == '\\' {
               // we need to check the next character
-              let c = chars.next().ok_or(("Unexpected end of string", pos).into())?;
+              let c = chars
+                .next()
+                .ok_or(("Unexpected end of string", pos).into())?;
               match c {
                 'n' => new_str.push('\n'),
                 'r' => new_str.push('\r'),
@@ -708,13 +710,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
                 '\\' => new_str.push('\\'),
                 '"' => new_str.push('"'),
                 '\'' => new_str.push('\''),
-                _ => {
-                  return Err((
-                    format!("Unexpected escaped character {:?}", c),
-                    pos,
-                  )
-                    .into())
-                }
+                _ => return Err((format!("Unexpected escaped character {:?}", c), pos).into()),
               }
             } else {
               new_str.push(c);
