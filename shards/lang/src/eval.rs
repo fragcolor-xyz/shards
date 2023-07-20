@@ -10,14 +10,16 @@ use nanoid::nanoid;
 use shards::fourCharacterCode;
 use shards::shlog_trace;
 use shards::types::common_type;
+use shards::types::AutoSeqVar;
 use shards::types::AutoShardRef;
+use shards::types::AutoTableVar;
 use shards::types::Type;
 use shards::types::FRAG_CC;
 use shards::SHType_Object;
 use shards::SHType_Type;
 use std::cell::RefCell;
 
-use shards::core::destroyVar;
+
 use shards::core::sleep;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -29,8 +31,8 @@ use shards::types::Mesh;
 use shards::SHType_Enum;
 use shards::SHType_String;
 
-use shards::types::SeqVar;
-use shards::types::TableVar;
+
+
 use shards::types::{ShardRef, Var, Wire};
 
 use shards::{SHType_ContextVar, SHType_ShardRef};
@@ -1183,15 +1185,15 @@ fn as_var(
     Value::Int8(ref val) => Ok(SVar::NotCloned(val.into())),
     Value::Int16(ref val) => Ok(SVar::NotCloned(val.into())),
     Value::Seq(vec) => {
-      let mut seq = SeqVar::leaking_new();
+      let mut seq = AutoSeqVar::new();
       for value in vec {
         let value = as_var(value, line_info, shard, e)?;
-        seq.push(value.as_ref());
+        seq.0.push(value.as_ref());
       }
-      Ok(SVar::Cloned(ClonedVar(seq.0)))
+      Ok(SVar::Cloned(ClonedVar(seq.leak())))
     }
     Value::Table(value) => {
-      let mut table = TableVar::leaking_new();
+      let mut table = AutoTableVar::new();
       for (key, value) in value {
         let mut key = as_var(key, line_info, shard, e)?;
         if key.as_ref().is_context_var() {
@@ -1202,21 +1204,21 @@ fn as_var(
         let value = as_var(value, line_info, shard, e)?;
         let key_ref = key.as_ref();
         let value_ref = value.as_ref();
-        table.insert_fast(*key_ref, value_ref);
+        table.0.insert_fast(*key_ref, value_ref);
       }
-      Ok(SVar::Cloned(ClonedVar(table.0)))
+      Ok(SVar::Cloned(ClonedVar(table.leak())))
     }
     Value::Shards(seq) => {
       let mut sub_env = eval_sequence(&seq, Some(e))?;
-      let mut seq = SeqVar::leaking_new();
+      let mut seq = AutoSeqVar::new();
       finalize_env(&mut sub_env)?;
       for shard in sub_env.shards.drain(..) {
         let s = shard.0 .0;
         let s: Var = s.into();
         debug_assert!(s.valueType == SHType_ShardRef);
-        seq.push(&s);
+        seq.0.push(&s);
       }
-      Ok(SVar::Cloned(ClonedVar(seq.0)))
+      Ok(SVar::Cloned(ClonedVar(seq.leak())))
     }
     Value::Shard(shard) => {
       let s = create_shard(shard, line_info, e)?;
@@ -1942,18 +1944,17 @@ fn make_sub_shard(
 ) -> Result<AutoShardRef, ShardsError> {
   let shard = ShardRef::create("Sub", Some(line_info.into())).unwrap();
   let shard = AutoShardRef(shard);
-  let mut seq = SeqVar::leaking_new();
+  let mut seq = AutoSeqVar::new();
   for shard in shards {
     let s = shard.0 .0;
     let s: Var = s.into();
     debug_assert!(s.valueType == SHType_ShardRef);
-    seq.push(&s);
+    seq.0.push(&s);
   }
   shard
     .0
-    .set_parameter(0, seq.0.into())
+    .set_parameter(0, seq.0 .0.into())
     .map_err(|e| (format!("{}", e), line_info).into())?;
-  destroyVar(&mut seq.0); // this is still not safe cos if error happens, we leak
   Ok(shard)
 }
 

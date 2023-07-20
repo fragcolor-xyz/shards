@@ -4479,6 +4479,56 @@ impl From<&OptionalStrings> for SHOptionalStrings {
 #[derive(Debug, Clone)]
 pub struct SeqVar(pub Var);
 
+/// A wrapper around `SeqVar` that automatically destroys the variable when it goes out of scope.
+#[repr(transparent)] // force it same size of original
+pub struct AutoSeqVar(pub SeqVar);
+
+impl Drop for AutoSeqVar {
+  fn drop(&mut self) {
+    destroyVar(&mut self.0 .0);
+  }
+}
+
+impl AutoSeqVar {
+  /// Creates a new `AutoSeqVar`.
+  pub fn new() -> AutoSeqVar {
+    AutoSeqVar(SeqVar::new())
+  }
+
+  /// Extracts the `Var` from the `AutoSeqVar` and leaks it.
+  ///
+  /// This function destroys the `AutoSeqVar` and returns the `Var` contained within it.
+  /// The `Var` will not be destroyed when it goes out of scope.
+  pub fn leak(&mut self) -> Var {
+    std::mem::replace(&mut self.0 .0, Var::default())
+  }
+}
+
+/// A wrapper around `TableVar` that automatically destroys the variable when it goes out of scope.
+#[repr(transparent)] // force it same size of original
+pub struct AutoTableVar(pub TableVar);
+
+impl Drop for AutoTableVar {
+  fn drop(&mut self) {
+    destroyVar(&mut self.0 .0);
+  }
+}
+
+impl AutoTableVar {
+  /// Creates a new `AutoTableVar`.
+  pub fn new() -> AutoTableVar {
+    AutoTableVar(TableVar::new())
+  }
+
+  /// Extracts the `Var` from the `AutoTableVar` and leaks it.
+  ///
+  /// This function destroys the `AutoTableVar` and returns the `Var` contained within it.
+  /// The `Var` will not be destroyed when it goes out of scope.
+  pub fn leak(&mut self) -> Var {
+    std::mem::replace(&mut self.0 .0, Var::default())
+  }
+}
+
 pub struct SeqVarIterator<'a> {
   s: &'a SeqVar,
   i: u32,
