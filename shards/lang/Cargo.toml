@@ -17,6 +17,7 @@ hex = { version = "0.4.3" }
 nanoid = "0.4.0"
 clap = "4.3.9"
 profiling = { version = "1", default-features = false }
+ctrlc = "3.4.0"
 
 [build-dependencies]
 cbindgen = "0.24.0"

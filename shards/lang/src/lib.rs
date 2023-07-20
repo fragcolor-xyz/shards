@@ -16,6 +16,7 @@ use core::fmt;
 use std::collections::HashMap;
 
 use eval::EvalEnv;
+use eval::new_cancellation_token;
 // use print::print_ast;
 
 use std::ops::Deref;
@@ -303,7 +304,7 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *con
   let env = unsafe { &mut *env };
   let ast = unsafe { &*ast };
   for stmt in &ast.statements {
-    if let Err(e) = eval::eval_statement(stmt, env) {
+    if let Err(e) = eval::eval_statement(stmt, env,  new_cancellation_token()) {
       let error_message = CString::new(e.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -380,7 +381,7 @@ pub extern "C" fn shards_eval(sequence: *mut Sequence, name: SHStringWithLen) ->
   let name = name.into();
   // we just want a reference to the sequence, not ownership
   let seq = unsafe { &*sequence };
-  let result = catch_unwind(|| eval::eval(seq, name, HashMap::new()));
+  let result = catch_unwind(|| eval::eval(seq, name, HashMap::new(), new_cancellation_token()));
   match result {
     Ok(Ok(wire)) => SHLWire {
       wire: Box::into_raw(Box::new(wire)),

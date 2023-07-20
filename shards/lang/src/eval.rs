@@ -18,6 +18,9 @@ use shards::types::FRAG_CC;
 use shards::SHType_Object;
 use shards::SHType_Type;
 use std::cell::RefCell;
+use std::sync::atomic;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 use shards::core::sleep;
 use std::collections::HashMap;
@@ -34,6 +37,10 @@ use shards::types::{ShardRef, Var, Wire};
 
 use shards::{SHType_ContextVar, SHType_ShardRef};
 use std::ffi::CStr;
+
+pub fn new_cancellation_token() -> Arc<AtomicBool> {
+  Arc::new(AtomicBool::new(false))
+}
 
 struct ShardsGroup {
   args: *const Vec<Value>,
@@ -812,7 +819,7 @@ fn finalize_wire(
   let mut sub_env = param_helper
     .get_param_by_name_or_index("Shards", 1)
     .map(|param| match &param.value {
-      Value::Shards(seq) => eval_sequence(&seq, Some(env)),
+      Value::Shards(seq) => eval_sequence(&seq, Some(env), new_cancellation_token()),
       _ => Err(("Shards parameter must be shards", line_info).into()),
     })
     .ok_or(("Wire must have a Shards parameter", line_info).into())??;
@@ -891,7 +898,7 @@ fn finalize_env(env: &mut EvalEnv) -> Result<(), ShardsError> {
 }
 
 fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineInfo), ShardsError> {
-  let mut sub_env = eval_sequence(seq, Some(env))?;
+  let mut sub_env = eval_sequence(seq, Some(env), new_cancellation_token())?;
   if !sub_env.shards.is_empty() {
     let line_info = sub_env.shards[0].0.get_line_info();
     // create an ephemeral wire, execute and grab result
@@ -945,10 +952,11 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
 pub(crate) fn eval_sequence(
   seq: &Sequence,
   parent: Option<&mut EvalEnv>,
+  cancellation_token: Arc<AtomicBool>,
 ) -> Result<EvalEnv, ShardsError> {
   let mut sub_env = EvalEnv::new(None, parent.map(|p| p as *const EvalEnv));
   for stmt in &seq.statements {
-    eval_statement(stmt, &mut sub_env)?;
+    eval_statement(stmt, &mut sub_env, cancellation_token.clone())?;
   }
   Ok(sub_env)
 }
@@ -1206,7 +1214,7 @@ fn as_var(
       Ok(SVar::Cloned(ClonedVar(table.leak())))
     }
     Value::Shards(seq) => {
-      let mut sub_env = eval_sequence(&seq, Some(e))?;
+      let mut sub_env = eval_sequence(&seq, Some(e), new_cancellation_token())?;
       let mut seq = AutoSeqVar::new();
       finalize_env(&mut sub_env)?;
       for shard in sub_env.shards.drain(..) {
@@ -1229,7 +1237,7 @@ fn as_var(
     }
     Value::Expr(seq) => {
       let start_idx = e.shards.len();
-      let mut sub_env = eval_sequence(&seq, Some(e))?;
+      let mut sub_env = eval_sequence(&seq, Some(e), new_cancellation_token())?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
         let tmp_name = nanoid!(16);
@@ -1544,7 +1552,7 @@ fn process_type_desc(
     Value::Shards(seq) => {
       // ensure there is a single shard
       // and ensure that shard only has a single output type
-      let sub_env = eval_sequence(&seq, None)?;
+      let sub_env = eval_sequence(&seq, None, new_cancellation_token())?;
       if sub_env.shards.len() != 1 {
         return Err(
           (
@@ -1902,7 +1910,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
             // purely include the ast of the sequence
             let seq = seq.clone(); // todo - avoid clone
             for stmt in &seq.statements {
-              eval_statement(stmt, e)?;
+              eval_statement(stmt, e, new_cancellation_token())?;
             }
             None
           }
@@ -2239,7 +2247,7 @@ fn process_shards(
     }
 
     for stmt in &shards.statements {
-      eval_statement(stmt, &mut sub_env)?;
+      eval_statement(stmt, &mut sub_env, new_cancellation_token())?;
     }
 
     Ok(Some(sub_env))
@@ -2248,13 +2256,17 @@ fn process_shards(
   }
 }
 
-fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError> {
+fn eval_pipeline(
+  pipeline: &Pipeline,
+  e: &mut EvalEnv,
+  cancellation_token: Arc<AtomicBool>,
+) -> Result<(), ShardsError> {
   let start_idx = e.shards.len();
   for block in &pipeline.blocks {
     let _ = match &block.content {
       BlockContent::Shard(shard) => add_shard(shard, block.line_info.unwrap_or_default(), e),
       BlockContent::Shards(seq) => {
-        let mut sub_env = eval_sequence(&seq, Some(e))?;
+        let mut sub_env = eval_sequence(&seq, Some(e), cancellation_token.clone())?;
 
         // if we have a sub env, we need to finalize it
         if !sub_env.shards.is_empty() {
@@ -2284,13 +2296,13 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
         add_const_shard2(value.0 .0, value.1, e)
       }
       BlockContent::Expr(seq) => {
-        eval_expr(seq, e, block, start_idx)?;
+        eval_expr(seq, e, block, start_idx, cancellation_token.clone())?;
         Ok(())
       }
       BlockContent::Embed(seq) => {
         // purely include the ast of the sequence
         for stmt in &seq.statements {
-          eval_statement(stmt, e)?;
+          eval_statement(stmt, e, cancellation_token.clone())?;
         }
         Ok(())
       }
@@ -2720,6 +2732,15 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                 }
 
                 iteration += 1;
+
+                if cancellation_token.load(atomic::Ordering::Relaxed) {
+                  mesh.terminate();
+                  return Err(ShardsError {
+                    message: String::from("Operation cancelled"),
+                    loc: Default::default(),
+                  });
+                }
+
                 if let Some(max_iterations) = iterations {
                   if iteration >= max_iterations {
                     mesh.terminate();
@@ -2878,7 +2899,7 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
 
                 // which we directly evaluate
                 for stmt in &decoded_json.statements {
-                  eval_statement(stmt, e)?;
+                  eval_statement(stmt, e, cancellation_token.clone())?;
                 }
 
                 Ok(())
@@ -2912,14 +2933,16 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
                   Value::Shards(seq) => {
                     // purely include the ast of the sequence
                     for stmt in &seq.statements {
-                      eval_statement(stmt, e)?;
+                      eval_statement(stmt, e, cancellation_token.clone())?;
                     }
                   }
                   Value::EvalExpr(seq) => {
                     let value = eval_eval_expr(&seq, e)?;
                     add_const_shard2(value.0 .0, block.line_info.unwrap_or_default(), e)?
                   }
-                  Value::Expr(seq) => eval_expr(seq, e, block, start_idx)?,
+                  Value::Expr(seq) => {
+                    eval_expr(seq, e, block, start_idx, new_cancellation_token())?
+                  }
                   Value::Shard(shard) => add_shard(shard, block.line_info.unwrap_or_default(), e)?,
                 }
                 Ok(())
@@ -2945,8 +2968,9 @@ fn eval_expr(
   e: &mut EvalEnv,
   block: &Block,
   start_idx: usize,
+  cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), ShardsError> {
-  let mut sub_env = eval_sequence(&seq, Some(e))?;
+  let mut sub_env = eval_sequence(&seq, Some(e), cancellation_token)?;
   Ok(if !sub_env.shards.is_empty() {
     // create a temporary variable to hold the result of the expression
     let tmp_name = nanoid!(16);
@@ -3037,14 +3061,18 @@ fn add_assignment_shard_no_suffix(
   Ok(())
 }
 
-fn eval_assignment(assignment: &Assignment, e: &mut EvalEnv) -> Result<(), ShardsError> {
+fn eval_assignment(
+  assignment: &Assignment,
+  e: &mut EvalEnv,
+  cancellation_token: Arc<AtomicBool>,
+) -> Result<(), ShardsError> {
   let (pipe, op, name) = match assignment {
     Assignment::AssignRef(pipe, name) => (pipe, "Ref", name),
     Assignment::AssignSet(pipe, name) => (pipe, "Set", name),
     Assignment::AssignUpd(pipe, name) => (pipe, "Update", name),
     Assignment::AssignPush(pipe, name) => (pipe, "Push", name),
   };
-  eval_pipeline(pipe, e)?;
+  eval_pipeline(pipe, e, cancellation_token)?;
   // find last added shard
   let last = e.shards.last().unwrap();
   let line_info = last.0.get_line_info();
@@ -3057,10 +3085,14 @@ fn eval_assignment(assignment: &Assignment, e: &mut EvalEnv) -> Result<(), Shard
   Ok(())
 }
 
-pub(crate) fn eval_statement(stmt: &Statement, e: &mut EvalEnv) -> Result<(), ShardsError> {
+pub(crate) fn eval_statement(
+  stmt: &Statement,
+  e: &mut EvalEnv,
+  cancellation_token: Arc<AtomicBool>,
+) -> Result<(), ShardsError> {
   match stmt {
-    Statement::Assignment(a) => eval_assignment(a, e),
-    Statement::Pipeline(p) => eval_pipeline(p, e),
+    Statement::Assignment(a) => eval_assignment(a, e, cancellation_token),
+    Statement::Pipeline(p) => eval_pipeline(p, e, cancellation_token),
   }
 }
 
@@ -3093,6 +3125,7 @@ pub fn eval(
   seq: &Sequence,
   name: &str,
   defines: HashMap<String, String>,
+  cancellation_token: Arc<AtomicBool>,
 ) -> Result<Wire, ShardsError> {
   profiling::scope!("eval", name);
 
@@ -3112,7 +3145,7 @@ pub fn eval(
     );
   }
 
-  let mut env = eval_sequence(seq, Some(&mut parent))?;
+  let mut env = eval_sequence(seq, Some(&mut parent), cancellation_token.clone())?;
 
   transform_env(&mut env, name)
 }

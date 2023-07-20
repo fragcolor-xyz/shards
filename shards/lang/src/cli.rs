@@ -1,5 +1,5 @@
 use crate::ast::Sequence;
-use crate::{eval::eval, read::read};
+use crate::{eval::eval, read::read, eval::new_cancellation_token};
 use clap::{arg, Arg, ArgMatches, Command};
 use shards::core::Core;
 use shards::types::Mesh;
@@ -9,6 +9,8 @@ use std::ffi::CStr;
 use std::io::Write;
 use std::os::raw::c_char;
 use std::path::Path;
+use std::sync::atomic::AtomicBool;
+use std::sync::{atomic, Arc};
 
 extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
@@ -16,6 +18,13 @@ extern "C" {
 
 #[no_mangle]
 pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> i32 {
+  let cancellation_token = new_cancellation_token();
+  let cancellation_token_1 = cancellation_token.clone();
+  ctrlc::set_handler(move || {
+    cancellation_token_1.store(true, atomic::Ordering::Relaxed);
+  })
+  .expect("Error setting Ctrl-C handler");
+
   let args: Vec<String> = unsafe {
     std::slice::from_raw_parts(argv, argc as usize)
       .iter()
@@ -71,15 +80,15 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
     .get_matches_from(args);
 
   match matches.subcommand() {
-    Some(("new", matches)) => execute(matches),
+    Some(("new", matches)) => execute(matches, cancellation_token),
     Some(("build", matches)) => build(matches),
-    Some(("load", matches)) => load(matches),
+    Some(("load", matches)) => load(matches, cancellation_token),
     Some((_external, _matches)) => 99,
     _ => 0,
   }
 }
 
-fn load(matches: &ArgMatches) -> i32 {
+fn load(matches: &ArgMatches, cancellation_token: Arc<AtomicBool>) -> i32 {
   // we need to do this here or old path will fail
   unsafe {
     shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
@@ -112,10 +121,10 @@ fn load(matches: &ArgMatches) -> i32 {
     bincode::deserialize(&file_content).unwrap()
   };
 
-  execute_seq(matches, ast)
+  execute_seq(matches, ast, cancellation_token)
 }
 
-fn execute_seq(matches: &ArgMatches, ast: Sequence) -> i32 {
+fn execute_seq(matches: &ArgMatches, ast: Sequence, cancellation_token: Arc<AtomicBool>) -> i32 {
   let mut defines = HashMap::new();
   let args = matches.get_many::<String>("args");
   if let Some(args) = args {
@@ -134,11 +143,15 @@ fn execute_seq(matches: &ArgMatches, ast: Sequence) -> i32 {
     }
   }
 
-  let wire = { eval(&ast, "root", defines).expect("Failed to evaluate file") };
+  let wire =
+    { eval(&ast, "root", defines, cancellation_token.clone()).expect("Failed to evaluate file") };
 
   let mut mesh = Mesh::default();
   mesh.schedule(wire.0);
   loop {
+    if !cancellation_token.load(atomic::Ordering::Relaxed) {
+      break;
+    }
     if !mesh.tick() {
       break;
     }
@@ -202,7 +215,7 @@ fn build(matches: &ArgMatches) -> i32 {
   0
 }
 
-fn execute(matches: &clap::ArgMatches) -> i32 {
+fn execute(matches: &clap::ArgMatches, cancellation_token: Arc<AtomicBool>) -> i32 {
   // we need to do this here or old path will fail
   unsafe {
     shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
@@ -237,5 +250,5 @@ fn execute(matches: &clap::ArgMatches) -> i32 {
     read(&file_content, parent_path).expect("Failed to parse file")
   };
 
-  execute_seq(matches, ast)
+  execute_seq(matches, ast, cancellation_token)
 }
