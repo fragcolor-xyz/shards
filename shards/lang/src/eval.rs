@@ -206,11 +206,11 @@ fn extract_make_ints_shard<const WIDTH: usize>(
   }
 
   let shard = match WIDTH {
-    2 => ShardRef::create("MakeInt2"),
-    3 => ShardRef::create("MakeInt3"),
-    4 => ShardRef::create("MakeInt4"),
-    8 => ShardRef::create("MakeInt8"),
-    16 => ShardRef::create("MakeInt16"),
+    2 => ShardRef::create("MakeInt2", Some(line_info.into())),
+    3 => ShardRef::create("MakeInt3", Some(line_info.into())),
+    4 => ShardRef::create("MakeInt4", Some(line_info.into())),
+    8 => ShardRef::create("MakeInt8", Some(line_info.into())),
+    16 => ShardRef::create("MakeInt16", Some(line_info.into())),
     _ => {
       return Err(
         (
@@ -452,9 +452,9 @@ fn extract_make_floats_shard<const WIDTH: usize>(
   }
 
   let shard = match WIDTH {
-    2 => ShardRef::create("MakeFloat2"),
-    3 => ShardRef::create("MakeFloat3"),
-    4 => ShardRef::create("MakeFloat4"),
+    2 => ShardRef::create("MakeFloat2", Some(line_info.into())),
+    3 => ShardRef::create("MakeFloat3", Some(line_info.into())),
+    4 => ShardRef::create("MakeFloat4", Some(line_info.into())),
     _ => {
       return Err(
         (
@@ -596,7 +596,7 @@ fn extract_make_colors_shard(
     )
   }
 
-  let shard = AutoShardRef(ShardRef::create("MakeColor").unwrap());
+  let shard = AutoShardRef(ShardRef::create("MakeColor", Some(line_info.into())).unwrap());
 
   for i in 0..len {
     let var = match &params[i].value {
@@ -1714,7 +1714,7 @@ fn create_shard(
     return Err((format!("Forbidden shard {}", shard.name.name), line_info).into());
   }
 
-  let s = ShardRef::create(shard.name.name.as_str()).ok_or(
+  let s = ShardRef::create(shard.name.name.as_str(), Some(line_info.into())).ok_or(
     (
       format!("Shard {} does not exist", shard.name.name.as_str()),
       line_info,
@@ -1836,16 +1836,12 @@ fn set_shard_parameter(
 }
 
 fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Const").unwrap();
+  let shard = ShardRef::create("Const", Some(line_info.into())).unwrap();
   let shard = AutoShardRef(shard);
   shard
     .0
     .set_parameter(0, value)
     .map_err(|e| (e, line_info).into())?;
-  shard.0.set_line_info((
-    line_info.line.try_into().expect("Too many lines"),
-    line_info.column.try_into().expect("Oversized column"),
-  ));
   e.shards.push(shard);
   Ok(())
 }
@@ -1878,7 +1874,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           | Value::TakeSeq(_, _)
           | Value::Func(_)
           | Value::Table(_) => {
-            let shard = ShardRef::create("Const").unwrap();
+            let shard = ShardRef::create("Const", Some(line_info.into())).unwrap();
             let shard = AutoShardRef(shard);
             let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
             shard
@@ -1888,7 +1884,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
             Some(shard)
           }
           Value::Identifier(_) => {
-            let shard = ShardRef::create("Get").unwrap();
+            let shard = ShardRef::create("Get", Some(line_info.into())).unwrap();
             let shard = AutoShardRef(shard);
             // todo - avoid clone
             let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
@@ -1913,7 +1909,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           }
         }
       } else {
-        let shard = ShardRef::create("Get").unwrap();
+        let shard = ShardRef::create("Get", Some(line_info.into())).unwrap();
         let shard = AutoShardRef(shard);
         let value = as_var(value, line_info, Some(shard.0), e)?;
         shard
@@ -1924,7 +1920,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
       }
     }
     _ => {
-      let shard = ShardRef::create("Const").unwrap();
+      let shard = ShardRef::create("Const", Some(line_info.into())).unwrap();
       let shard = AutoShardRef(shard);
       let value = as_var(value, line_info, Some(shard.0), e)?;
       shard
@@ -1935,10 +1931,6 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
     }
   };
   if let Some(shard) = shard {
-    shard.0.set_line_info((
-      line_info.line.try_into().expect("Too many lines"),
-      line_info.column.try_into().expect("Oversized column"),
-    ));
     e.shards.push(shard);
   }
   Ok(())
@@ -1948,7 +1940,7 @@ fn make_sub_shard(
   shards: Vec<AutoShardRef>,
   line_info: LineInfo,
 ) -> Result<AutoShardRef, ShardsError> {
-  let shard = ShardRef::create("Sub").unwrap();
+  let shard = ShardRef::create("Sub", Some(line_info.into())).unwrap();
   let shard = AutoShardRef(shard);
   let mut seq = SeqVar::leaking_new();
   for shard in shards {
@@ -1961,31 +1953,23 @@ fn make_sub_shard(
     .0
     .set_parameter(0, seq.0.into())
     .map_err(|e| (format!("{}", e), line_info).into())?;
-  destroyVar(&mut seq.0);
-  shard.0.set_line_info((
-    line_info.line.try_into().expect("Too many lines"),
-    line_info.column.try_into().expect("Oversized column"),
-  ));
+  destroyVar(&mut seq.0); // this is still not safe cos if error happens, we leak
   Ok(shard)
 }
 
 fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Take").unwrap();
+  let shard = ShardRef::create("Take", Some(line_info.into())).unwrap();
   let shard = AutoShardRef(shard);
   shard
     .0
     .set_parameter(0, *target)
     .map_err(|e| (format!("{}", e), line_info).into())?;
-  shard.0.set_line_info((
-    line_info.line.try_into().unwrap(),
-    line_info.column.try_into().unwrap(),
-  ));
   e.shards.push(shard);
   Ok(())
 }
 
 fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Get").unwrap();
+  let shard = ShardRef::create("Get", Some(line.into())).unwrap();
   let shard = AutoShardRef(shard);
   let full_name = get_full_name(name, e);
   if let Some(suffix) = find_suffix(&full_name, e) {
@@ -2002,26 +1986,18 @@ fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(
       .set_parameter(0, name)
       .map_err(|e| (format!("{}", e), line).into())?;
   }
-  shard.0.set_line_info((
-    line.line.try_into().unwrap(),
-    line.column.try_into().unwrap(),
-  ));
   e.shards.push(shard);
   Ok(())
 }
 
 fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Get").unwrap();
+  let shard = ShardRef::create("Get", Some(line.into())).unwrap();
   let shard = AutoShardRef(shard);
   let name = Var::ephemeral_string(name);
   shard
     .0
     .set_parameter(0, name)
     .map_err(|e| (e, line).into())?;
-  shard.0.set_line_info((
-    line.line.try_into().unwrap(),
-    line.column.try_into().unwrap(),
-  ));
   e.shards.push(shard);
   Ok(())
 }
@@ -3002,7 +2978,7 @@ fn add_assignment_shard(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let shard = ShardRef::create(shard_name).unwrap();
+  let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap();
   let shard = AutoShardRef(shard);
   let full_name = get_full_name(name, e);
   let (assigned, suffix) = match (find_replacement(name, e), find_current_suffix(e)) {
@@ -3039,11 +3015,6 @@ fn add_assignment_shard(
     e.suffix_assigned.insert(name, suffix.unwrap());
   }
 
-  shard.0.set_line_info((
-    line_info.line.try_into().unwrap(),
-    line_info.column.try_into().unwrap(),
-  ));
-
   e.shards.push(shard);
 
   Ok(())
@@ -3055,17 +3026,13 @@ fn add_assignment_shard_no_suffix(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let shard = ShardRef::create(shard_name).unwrap();
+  let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap();
   let shard = AutoShardRef(shard);
   let name = Var::ephemeral_string(name);
   shard
     .0
     .set_parameter(0, name)
     .map_err(|e| (e, line_info).into())?;
-  shard.0.set_line_info((
-    line_info.line.try_into().unwrap(),
-    line_info.column.try_into().unwrap(),
-  ));
   e.shards.push(shard);
   Ok(())
 }

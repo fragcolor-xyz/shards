@@ -101,8 +101,8 @@ use std::ffi::c_void;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::i32::MAX;
-use std::rc::Rc;
 use std::os::raw::c_char;
+use std::rc::Rc;
 
 #[macro_export]
 macro_rules! cstr {
@@ -302,7 +302,7 @@ impl ShardRef {
     }
   }
 
-  pub fn create(name: &str) -> Option<Self> {
+  pub fn create(name: &str, debug_info: Option<(u32, u32)>) -> Option<Self> {
     unsafe {
       let ptr = (*Core).createShard.unwrap()(SHStringWithLen {
         string: name.as_ptr() as *const c_char,
@@ -311,6 +311,10 @@ impl ShardRef {
       if ptr.is_null() {
         None
       } else {
+        if let Some(debug_info) = debug_info {
+          (*ptr).line = debug_info.0;
+          (*ptr).column = debug_info.1;
+        }
         (*ptr).setup.unwrap()(ptr);
         Some(ShardRef(ptr))
       }
@@ -392,13 +396,6 @@ impl ShardRef {
 
   pub fn get_parameter(&self, index: i32) -> Var {
     unsafe { (*self.0).getParam.unwrap()(self.0, index) }
-  }
-
-  pub fn set_line_info(&self, line_column: (u32, u32)) {
-    unsafe {
-      (*self.0).line = line_column.0;
-      (*self.0).column = line_column.1;
-    }
   }
 
   pub fn get_line_info(&self) -> (u32, u32) {
