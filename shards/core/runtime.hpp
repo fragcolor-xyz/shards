@@ -985,6 +985,9 @@ struct Serialization {
         blk->setState(blk, &state);
         destroyVar(state);
       }
+      // also get line and column
+      read((uint8_t *)&blk->line, sizeof(uint32_t));
+      read((uint8_t *)&blk->column, sizeof(uint32_t));
       incRef(blk);
       output.payload.shardValue = blk;
       break;
@@ -1279,6 +1282,10 @@ struct Serialization {
         auto state = blk->getState(blk);
         total += serialize(state, write);
       }
+      write((const uint8_t *)&blk->line, sizeof(uint32_t));
+      total += sizeof(uint32_t);
+      write((const uint8_t *)&blk->column, sizeof(uint32_t));
+      total += sizeof(uint32_t);
       break;
     }
     case SHType::Wire: {
