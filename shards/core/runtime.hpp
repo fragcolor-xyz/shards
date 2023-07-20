@@ -231,8 +231,8 @@ public:
   }
 };
 
-template <typename TInit, typename T = decltype((*(TInit *)0)())>
-AnyStorage<T> getOrCreateContextStorage(SHContext *context, const std::string &storageKey, TInit init) {
+template <typename TInit, typename T = decltype((*(TInit *)0)()), typename C>
+AnyStorage<T> getOrCreateAnyStorage(C *context, const std::string &storageKey, TInit init) {
   auto ptr = context->anyStorage[storageKey].lock();
   if (!ptr) {
     ptr = std::make_shared<entt::any>(init());
@@ -488,7 +488,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
         [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
           auto blk = const_cast<Shard *>(errorShard);
           if (!nonfatalWarning) {
-            throw shards::ComposeError(std::string(errorTxt.string, errorTxt.len) + ", input shard: " + std::string(blk->name(blk)));
+            throw shards::ComposeError(std::string(errorTxt.string, errorTxt.len) +
+                                       ", input shard: " + std::string(blk->name(blk)));
           } else {
             SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
           }
@@ -540,7 +541,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
           [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
             auto blk = const_cast<Shard *>(errorShard);
             if (!nonfatalWarning) {
-              throw shards::ComposeError(std::string(errorTxt.string, errorTxt.len) + ", input shard: " + std::string(blk->name(blk)));
+              throw shards::ComposeError(std::string(errorTxt.string, errorTxt.len) +
+                                         ", input shard: " + std::string(blk->name(blk)));
             } else {
               SHLOG_INFO("Validation warning: {} input shard: {}", errorTxt, blk->name(blk));
             }
@@ -668,6 +670,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   std::unordered_set<std::shared_ptr<SHWire>> scheduled;
 
   SHInstanceData instanceData{};
+
+  std::unordered_map<std::string, std::weak_ptr<entt::any>> anyStorage;
 
 private:
   SHMesh() = default;
@@ -1402,13 +1406,13 @@ struct Serialization {
       // No extra data
       break;
     case SHType::Table:
-      read((uint8_t*)&output.table.keys.len, sizeof(output.table.keys.len));
+      read((uint8_t *)&output.table.keys.len, sizeof(output.table.keys.len));
       for (size_t i = 0; i < output.table.keys.len; i++) {
         SHVar key{};
         deserialize(read, key);
         arrayPush(output.table.keys, key);
       }
-      read((uint8_t*)&output.table.types.len, sizeof(output.table.types.len));
+      read((uint8_t *)&output.table.types.len, sizeof(output.table.types.len));
       for (size_t i = 0; i < output.table.types.len; i++) {
         SHTypeInfo info{};
         deserialize(read, info);
@@ -1416,7 +1420,7 @@ struct Serialization {
       }
       break;
     case SHType::Seq:
-      read((uint8_t*)&output.seqTypes.len, sizeof(output.seqTypes.len));
+      read((uint8_t *)&output.seqTypes.len, sizeof(output.seqTypes.len));
       for (size_t i = 0; i < output.seqTypes.len; i++) {
         SHTypeInfo info{};
         deserialize(read, info);
@@ -1566,7 +1570,7 @@ private:
   // so users don't have to worry about lifetime
   // just release when possible
   std::deque<std::shared_ptr<T>> _pool;
-  std::unordered_set<T*> _avail;
+  std::unordered_set<T *> _avail;
   std::string _wireStr;
 };
 

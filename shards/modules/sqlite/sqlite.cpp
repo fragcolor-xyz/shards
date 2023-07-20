@@ -72,7 +72,8 @@ struct Base {
 
   void warmup(SHContext *context) {
     auto storageKey = fmt::format("DB.Connection_{}", _dbName);
-    _connection = getOrCreateContextStorage(context, storageKey, [&]() { return Connection(_dbName.data()); });
+    auto mesh = context->main->mesh.lock();
+    _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data()); });
   }
 
   void cleanup() {
