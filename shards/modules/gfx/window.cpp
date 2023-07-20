@@ -216,7 +216,10 @@ struct MainWindow final {
       _windowContextVar = nullptr;
     }
 
-    releaseVariable(_inputContextVar);
+    if (_inputContextVar) {
+      releaseVariable(_inputContextVar);
+      _inputContextVar = nullptr;
+    }
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
@@ -305,8 +308,7 @@ struct ResizeWindow {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_PARAMVAR(_window, "Window", "The window to resize",
-                 {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
+  PARAM_PARAMVAR(_window, "Window", "The window to resize", {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
   PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
   RequiredWindowContext _requiredWindowContext;
