@@ -1,0 +1,12 @@
+@wire(d {Pass})
+
+@wire(f {
+  @wire(e {Do(d)})
+  Do(e)
+})
+
+@wire(g {Do(f)})
+
+@mesh(x)
+@schedule(x g)
+@run(x)
