@@ -391,6 +391,20 @@ impl Shard for Style {
       );
       apply_style!(
         visuals,
+        "window_fill",
+        SHColor,
+        style.visuals.window_fill,
+        style_util::get_color
+      );
+      apply_style!(
+        visuals,
+        "window_stroke",
+        Table,
+        style.visuals.window_stroke,
+        style_util::get_stroke
+      );
+      apply_style!(
+        visuals,
         "popup_shadow",
         Table,
         style.visuals.popup_shadow,
