@@ -76,7 +76,7 @@ void SphereGenerator::generate() {
       // normal
       vertex.setNormal(linalg::normalize(position));
 
-      vertex.setTexCoord(float2(u + uOffset, 1 - v));
+      vertex.setTexCoord(float2(1.0 - (u + uOffset), v));
 
       verticesRow.push_back(index++);
     }
