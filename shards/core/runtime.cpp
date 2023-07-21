@@ -689,7 +689,8 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
           context->continueFlow();
         return SHWireState::Return;
       case SHWireState::Error:
-        SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}", blk->name(blk), context->getErrorMessage());
+        SHLOG_ERROR("Shard activation error, failed shard: {}, error: {}, line: {}, column: {}", blk->name(blk),
+                    context->getErrorMessage(), blk->line, blk->column);
       case SHWireState::Stop:
       case SHWireState::Restart:
         return state;
