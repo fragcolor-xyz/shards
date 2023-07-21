@@ -338,12 +338,18 @@ macro_rules! add_verifier {
 
       fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
         let bytes: &[u8] = input.try_into()?;
+        if bytes.len() < $size {
+          return Err("Invalid signature length");
+        }
         let mut sig: [u8; $size] = [0; $size];
         sig.copy_from_slice(&bytes[..$size]);
         let sig = $key_type::Signature(sig);
 
         let bytes = self.key.get();
         let bytes: &[u8] = bytes.try_into()?;
+        if bytes.len() < 32 {
+          return Err("Invalid public key length");
+        }
         let mut pub_key: [u8; 32] = [0; 32];
         pub_key.copy_from_slice(&bytes[..32]);
         let pub_key = $key_type::Public::from_raw(pub_key);
