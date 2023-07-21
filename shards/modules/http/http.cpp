@@ -457,11 +457,9 @@ struct Server {
 
   void setParam(int idx, const SHVar &val) {
     switch (idx) {
-    case 0: {
+    case 0:
       _handlerMaster = val;
-      if (_handlerMaster.valueType == SHType::Wire)
-        _pool.reset(new WireDoppelgangerPool<Peer>(_handlerMaster.payload.wireValue));
-    } break;
+     break;
     case 1:
       _endpoint = SHSTRVIEW(val);
       break;
@@ -487,6 +485,9 @@ struct Server {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    if (_handlerMaster.valueType == SHType::Wire)
+        _pool.reset(new WireDoppelgangerPool<Peer>(_handlerMaster.payload.wireValue));
+
     const IterableExposedInfo shared(data.shared);
     // copy shared
     _sharedCopy = shared;

@@ -142,7 +142,7 @@ struct NetworkBase {
   }
 
   void warmup(SHContext *context) {
-    auto networkContext = context->anyStorage["Network.Context"].lock();
+    auto &networkContext = context->anyStorage["Network.Context"];
     if (!networkContext) {
       _contextStorage = std::make_shared<entt::any>(std::in_place_type_t<NetworkContext>{});
       context->anyStorage["Network.Context"] = _contextStorage;
@@ -240,8 +240,6 @@ struct Server : public NetworkBase {
       break;
     case 2:
       _handlerMaster = value;
-      if (value.valueType == SHType::Wire)
-        _pool.reset(new WireDoppelgangerPool<NetworkPeer>(_handlerMaster.payload.wireValue));
       break;
     case 3:
       _timeoutSecs = value.payload.floatValue;
@@ -267,6 +265,9 @@ struct Server : public NetworkBase {
   }
 
   SHTypeInfo compose(SHInstanceData &data) {
+    if (_handlerMaster.valueType == SHType::Wire)
+      _pool.reset(new WireDoppelgangerPool<NetworkPeer>(_handlerMaster.payload.wireValue));
+
     // inject our special context vars
     _sharedCopy = ExposedInfo(data.shared);
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));

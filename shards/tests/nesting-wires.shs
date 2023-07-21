@@ -1,4 +1,4 @@
-@wire(d {Pass})
+@wire(d {Msg("hello!")})
 
 @wire(f {
   @wire(e {Do(d)})
@@ -7,6 +7,4 @@
 
 @wire(g {Do(f)})
 
-@mesh(x)
-@schedule(x g)
-@run(x)
+Do(g)

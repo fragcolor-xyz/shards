@@ -1506,6 +1506,7 @@ struct Serialization {
 
 template <typename T> struct WireDoppelgangerPool {
   WireDoppelgangerPool(SHWireRef master) {
+    // Never call this from setParam or earlier...
     auto vwire = shards::Var(master);
     std::stringstream stream;
     Writer w(stream);
