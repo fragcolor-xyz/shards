@@ -3,6 +3,8 @@
 
 use super::Anchor;
 use super::Area;
+use super::Order;
+use crate::containers::ORDER_TYPES;
 use crate::containers::ANCHOR_TYPES;
 use crate::util;
 use crate::EguiId;
@@ -43,6 +45,12 @@ lazy_static! {
     )
       .into(),
     (
+      cstr!("Order"),
+      shccstr!("Paint layer to be used for this UI. Default is background"),
+      &ORDER_TYPES[..],
+    )
+      .into(),
+    (
       cstr!("Contents"),
       shccstr!("The UI contents."),
       &SHARDS_OR_NONE_TYPES[..],
@@ -62,6 +70,7 @@ impl Default for Area {
       requiring: Vec::new(),
       position: ParamVar::default(),
       anchor: ParamVar::default(),
+      order: ParamVar::default(),
       contents: ShardsVar::default(),
       parents,
       exposing: Vec::new(),
@@ -118,7 +127,8 @@ impl Shard for Area {
     match index {
       0 => Ok(self.position.set_param(value)),
       1 => Ok(self.anchor.set_param(value)),
-      2 => self.contents.set_param(value),
+      2 => Ok(self.order.set_param(value)),
+      3 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -127,7 +137,8 @@ impl Shard for Area {
     match index {
       0 => self.position.get_param(),
       1 => self.anchor.get_param(),
-      2 => self.contents.get_param(),
+      2 => self.order.get_param(),
+      3 => self.contents.get_param(),
       _ => Var::default(),
     }
   }
@@ -176,6 +187,7 @@ impl Shard for Area {
     self.instance.warmup(ctx);
     self.position.warmup(ctx);
     self.anchor.warmup(ctx);
+    self.order.warmup(ctx);
     self.parents.warmup(ctx);
 
     if !self.contents.is_empty() {
@@ -191,6 +203,7 @@ impl Shard for Area {
     }
 
     self.parents.cleanup();
+    self.order.cleanup();
     self.anchor.cleanup();
     self.position.cleanup();
     self.instance.cleanup();
@@ -203,7 +216,25 @@ impl Shard for Area {
 
     let mut failed = false;
     if !self.contents.is_empty() {
-      let area = egui::Area::new(EguiId::new(self, 0));
+      let order = self.order.get();
+      let order =  if !order.is_none() {
+        match order.valueType {
+          crate::shardsc::SHType_Enum => Order {
+            bits: unsafe {
+              order
+                .payload
+                .__bindgen_anon_1
+                .__bindgen_anon_3
+                .enumValue
+            },
+          },
+          _ => return Err("Invalid value for order"),
+        }
+      } else {
+        Order::Background
+      };
+
+      let area = egui::Area::new(EguiId::new(self, 0)).order(order.into());
       let area = if self.anchor.get().is_none() {
         let position = self.position.get();
         if !position.is_none() {

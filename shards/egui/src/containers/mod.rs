@@ -11,11 +11,55 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 
+shenum! {
+  pub struct Order {
+  [description("Painted behind all floating windows.")]
+  const Background = 1 << 0;
+  [description("Special layer between panels and windows.")]
+  const PanelResizeLine = 1 << 1;
+  [description("Normal moveable windows that you reorder by click.")]
+  const Middle = 1 << 2;
+  [description("Popups, menus etc that should always be painted on top of windows. Foreground objects can also have tooltips.")]
+  const Foreground = 1 << 3;
+  [description("Things floating on top of everything else, like tooltips. You cannot interact with these.")]
+  const Tooltip = 1 << 4;
+  [description("Debug layer, always painted last / on top.")]
+  const Debug = 1 << 5;
+  }
+
+  pub struct OrderInfo {}
+}
+
+shenum_types! {
+  OrderInfo,
+  const OrderCC = fourCharacterCode(*b"egOr");
+  pub static ref OrderEnumInfo;
+  pub static ref ORDER_TYPE: Type;
+  pub static ref ORDER_TYPES: Vec<Type>;
+  pub static ref SEQ_OF_ORDER: Type;
+  pub static ref SEQ_OF_ORDER_TYPES: Vec<Type>;
+}
+
+impl From<Order> for egui::Order {
+  fn from(order: Order) -> Self {
+    match order {
+      Order::Background => egui::Order::Background,
+      Order::PanelResizeLine => egui::Order::PanelResizeLine,
+      Order::Middle => egui::Order::Middle,
+      Order::Foreground => egui::Order::Foreground,
+      Order::Tooltip => egui::Order::Tooltip,
+      Order::Debug => egui::Order::Debug,
+      _ => unreachable!(),
+    }
+  }
+}
+
 struct Area {
   instance: ParamVar,
   requiring: ExposedTypes,
   position: ParamVar,
   anchor: ParamVar,
+  order: ParamVar,
   contents: ShardsVar,
   parents: ParamVar,
   exposing: ExposedTypes,
@@ -161,6 +205,7 @@ mod window;
 
 pub fn registerShards() {
   registerShard::<Area>();
+  registerEnumType(FRAG_CC, OrderCC, OrderEnumInfo.as_ref().into());
   registerEnumType(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
   docking::registerShards();
   registerShard::<Scope>();

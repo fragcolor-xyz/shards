@@ -273,10 +273,10 @@ impl Shard for Layout {
             LayoutAlign::Max => egui::Align::Max,
             LayoutAlign::Right => egui::Align::Max,
             LayoutAlign::Bottom => egui::Align::Max,
-            _ => return Err("Invalid cross alignment provided"),
+            _ => return Err("Invalid cross alignment"),
           }
         } else {
-          return Err("Invalid cross alignment type");
+          return Err("Invalid value for cross alignment");
         }
       };
 
@@ -324,7 +324,7 @@ impl Shard for Layout {
             _ => return Err("Invalid main alignment provided"),
           }
         } else {
-          return Err("Invalid main alignment type");
+          return Err("Invalid value for main alignment");
         }
       };
       layout = layout.with_main_align(main_align);
