@@ -441,7 +441,7 @@ struct Loader {
       convertOptionalFloatParam("roughness", gltfMaterial.pbrMetallicRoughness.roughnessFactor, 1.0f);
       convertOptionalFloatParam("metallic", gltfMaterial.pbrMetallicRoughness.metallicFactor, 0.0f);
       convertTextureParam("baseColorTexture", gltfMaterial.pbrMetallicRoughness.baseColorTexture);
-      convertTextureParam("metallicRougnessTexture", gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture);
+      convertTextureParam("metallicRoughnessTexture", gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture);
     }
   }
 
