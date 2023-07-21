@@ -225,10 +225,6 @@ public:
   operator bool() const { return _ptr; }
   T *operator->() const { return _ptr; }
   operator T &() const { return *_ptr; }
-  void reset() {
-    _anyStorage->reset();
-    _ptr = nullptr;
-  }
 };
 
 template <typename TInit, typename T = decltype((*(TInit *)0)()), typename C>
@@ -236,6 +232,18 @@ AnyStorage<T> getOrCreateAnyStorage(C *context, const std::string &storageKey, T
   auto ptr = context->anyStorage[storageKey].lock();
   if (!ptr) {
     ptr = std::make_shared<entt::any>(init());
+    context->anyStorage[storageKey] = ptr;
+    return ptr;
+  } else {
+    return ptr;
+  }
+}
+
+template <typename T, typename C>
+AnyStorage<T> getOrCreateAnyStorage(C *context, const std::string &storageKey) {
+  auto ptr = context->anyStorage[storageKey].lock();
+  if (!ptr) {
+    ptr = std::make_shared<entt::any>(std::in_place_type_t<T>{});
     context->anyStorage[storageKey] = ptr;
     return ptr;
   } else {
