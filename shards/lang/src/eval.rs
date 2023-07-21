@@ -19,7 +19,6 @@ use shards::SHType_Object;
 use shards::SHType_Type;
 use std::cell::RefCell;
 
-
 use shards::core::sleep;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -30,8 +29,6 @@ use shards::types::ClonedVar;
 use shards::types::Mesh;
 use shards::SHType_Enum;
 use shards::SHType_String;
-
-
 
 use shards::types::{ShardRef, Var, Wire};
 
@@ -860,14 +857,14 @@ fn finalize_wire(
   if !env.settings.iter().any(|&s| s.disallow_custom_stack_sizes) {
     let stack_size = param_helper
       .get_param_by_name_or_index("StackSize", 5)
-      .map(|param| match &param.value {
-        Value::Number(n) => match n {
-          Number::Integer(n) => Ok(*n),
-          _ => Err(("StackSize parameter must be an integer", line_info).into()),
-        },
-        _ => Err(("StackSize parameter must be an integer", line_info).into()),
+      .map(|param| match as_var(&param.value, line_info, None, env)? {
+        SVar::Cloned(v) => i64::try_from(&v.0)
+          .map_err(|_| ("StackSize parameter must be an integer", line_info).into()),
+        SVar::NotCloned(v) => i64::try_from(&v)
+          .map_err(|_| ("StackSize parameter must be an integer", line_info).into()),
       })
       .unwrap_or(Ok(128 * 1024))?;
+
     // ensure stack size is a multiple of 4 and minimum 1024 bytes
     let stack_size = if stack_size < 32 * 1024 {
       32 * 1024
@@ -2619,42 +2616,44 @@ fn eval_pipeline(pipeline: &Pipeline, e: &mut EvalEnv) -> Result<(), ShardsError
 
               let tick = match (tick_param, fps_param) {
                 (Some(rate), None) => {
-                  if let Value::Number(Number::Float(n)) = &rate.value {
-                    Ok(Some(*n))
-                  } else {
-                    Err(
-                      (
-                        "run built-in function requires a float number rate parameter",
-                        block.line_info.unwrap_or_default(),
-                      )
-                        .into(),
-                    )
+                  let v = as_var(&rate.value, block.line_info.unwrap_or_default(), None, e)?;
+                  let v = match v {
+                    SVar::NotCloned(v) => f64::try_from(&v),
+                    SVar::Cloned(v) => f64::try_from(&v.0),
                   }
+                  .map_err(|_| {
+                    (
+                      "run built-in function requires a float number (or something that evaluates into a float) rate parameter",
+                      block.line_info.unwrap_or_default(),
+                    )
+                      .into()
+                  })?;
+                  Ok(Some(v))
                 }
                 (None, Some(fps)) => {
-                  if let Value::Number(n) = &fps.value {
-                    let tick_val = match n {
-                      Number::Integer(n) => 1.0 / (*n as f64),
-                      Number::Float(n) => 1.0 / *n,
-                      _ => {
-                        return Err(
-                          (
-                            "run built-in function requires a float number rate parameter",
-                            block.line_info.unwrap_or_default(),
-                          )
-                            .into(),
-                        )
-                      }
-                    };
-                    Ok(Some(tick_val))
+                  let v = as_var(&fps.value, block.line_info.unwrap_or_default(), None, e)?;
+                  let fv = match &v {
+                    SVar::NotCloned(v) => f64::try_from(v),
+                    SVar::Cloned(v) => f64::try_from(&v.0),
+                  };
+                  if let Ok(fv) = fv {
+                    Ok(Some(1.0 / fv))
                   } else {
-                    Err(
-                      (
-                        "run built-in function requires a float number rate parameter",
-                        block.line_info.unwrap_or_default(),
+                    let iv = match &v {
+                      SVar::NotCloned(v) => i64::try_from(v),
+                      SVar::Cloned(v) => i64::try_from(&v.0),
+                    };
+                    if let Ok(iv) = iv {
+                      Ok(Some(1.0 / iv as f64))
+                    } else {
+                      Err(
+                        (
+                          "run built-in function requires a float or int number (or something that evaluates into it) fps parameter",
+                          block.line_info.unwrap_or_default(),
+                        )
+                          .into(),
                       )
-                        .into(),
-                    )
+                    }
                   }
                 }
                 (Some(_), Some(_)) => Err(

@@ -53,7 +53,7 @@
     ; [] | DB.Query("select * from foo") | Log
     ; [] | DB.Query("select * from baz") | Log
     ; [] | DB.Query("select * from crsql_changes") | Log
-})
+} StackSize: #(4 | Math.Multiply(1024) | Math.Multiply(1024)))
 
 ; @wire(cleanup {
 ;     [] | DB.Query("DROP TABLE integers")
