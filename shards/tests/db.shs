@@ -55,12 +55,9 @@
     ; [] | DB.Query("select * from crsql_changes") | Log
 } StackSize: #(4 | Math.Multiply(1024) | Math.Multiply(1024)))
 
-; @wire(cleanup {
-;     [] | DB.Query("DROP TABLE integers")
-;     [] | DB.Query("DROP TABLE foo")
-;     [] | DB.Query("DROP TABLE bar")
-;     [] | DB.Query("DROP TABLE baz")
-; })
+; Run cleanup before running tests
+"shards.db" | FS.Remove
+"custom.db" | FS.Remove
 
 ; @schedule(root cleanup)
 @schedule(root db-test-1)

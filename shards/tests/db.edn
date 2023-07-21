@@ -53,5 +53,11 @@
   ;
   )
 
+(defwire cleanup
+  "shards.db" (FS.Remove)
+  "custom.db" (FS.Remove))
+(schedule root cleanup)
+(run root)
+
 (schedule root db-test-1)
 (run root)
