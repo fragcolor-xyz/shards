@@ -5,7 +5,7 @@
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
 use shards::core::cloneVar;
-use shards::core::registerShard; 
+use shards::core::registerShard;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
 use shards::shardsc;
@@ -26,25 +26,25 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
-static ANY_TABLE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var];
-static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
-static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[
+pub static ANY_TABLE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var];
+pub static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
+pub static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[
   common_type::color,
   common_type::color_var,
   common_type::none,
 ];
-static FLOAT_VAR_SLICE: &[Type] = &[common_type::float, common_type::float_var];
-static FLOAT_VAR_OR_NONE_SLICE: &[Type] = &[
+pub static FLOAT_VAR_SLICE: &[Type] = &[common_type::float, common_type::float_var];
+pub static FLOAT_VAR_OR_NONE_SLICE: &[Type] = &[
   common_type::float,
   common_type::float_var,
   common_type::none,
 ];
-static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
-static HASH_VAR_OR_NONE_SLICE: &[Type] = &[common_type::none, common_type::int2_var];
-static INT_VAR_OR_NONE_SLICE: &[Type] =
+pub static FLOAT2_VAR_SLICE: &[Type] = &[common_type::float2, common_type::float2_var];
+pub static HASH_VAR_OR_NONE_SLICE: &[Type] = &[common_type::none, common_type::int2_var];
+pub static INT_VAR_OR_NONE_SLICE: &[Type] =
   &[common_type::int, common_type::int_var, common_type::none];
-static STRING_VAR_SLICE: &[Type] = &[common_type::string, common_type::string_var];
-static STRING_OR_SHARDS_OR_NONE_TYPES_SLICE: &[Type] = &[
+pub static STRING_VAR_SLICE: &[Type] = &[common_type::string, common_type::string_var];
+pub static STRING_OR_SHARDS_OR_NONE_TYPES_SLICE: &[Type] = &[
   common_type::string,
   common_type::shard,
   common_type::shards,
@@ -60,10 +60,14 @@ static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
 lazy_static! {
-  static ref GFX_CONTEXT_TYPE: Type = unsafe { *(bindings::gfx_getGraphicsContextType() as *mut shardsc::SHTypeInfo) };
-  static ref WINDOW_CONTEXT_TYPE: Type = unsafe { *(bindings::gfx_getWindowContextType() as *mut shardsc::SHTypeInfo) };
-  static ref INPUT_CONTEXT_TYPE: Type = unsafe { *(bindings::gfx_getInputContextType() as *mut shardsc::SHTypeInfo) };
-  static ref GFX_QUEUE_TYPE: Type = unsafe { *(bindings::gfx_getQueueType() as *mut shardsc::SHTypeInfo) };
+  static ref GFX_CONTEXT_TYPE: Type =
+    unsafe { *(bindings::gfx_getGraphicsContextType() as *mut shardsc::SHTypeInfo) };
+  static ref WINDOW_CONTEXT_TYPE: Type =
+    unsafe { *(bindings::gfx_getWindowContextType() as *mut shardsc::SHTypeInfo) };
+  static ref INPUT_CONTEXT_TYPE: Type =
+    unsafe { *(bindings::gfx_getInputContextType() as *mut shardsc::SHTypeInfo) };
+  static ref GFX_QUEUE_TYPE: Type =
+    unsafe { *(bindings::gfx_getQueueType() as *mut shardsc::SHTypeInfo) };
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
@@ -76,7 +80,7 @@ lazy_static! {
 }
 
 const CONTEXTS_NAME: &str = "UI.Contexts";
-const PARENTS_UI_NAME: &str = "UI.Parents";
+pub const PARENTS_UI_NAME: &str = "UI.Parents";
 
 #[derive(Hash)]
 struct EguiId {
@@ -130,8 +134,8 @@ pub mod menus;
 pub mod misc;
 pub mod properties;
 pub mod state;
-pub mod widgets;
 pub mod util;
+pub mod widgets;
 
 struct VarTextBuffer<'a>(&'a Var);
 struct MutVarTextBuffer<'a>(&'a mut Var);

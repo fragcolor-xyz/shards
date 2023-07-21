@@ -13,7 +13,7 @@ use shards::types::Type;
 use shards::types::Var;
 use std::ops::Range;
 
-mod image_util;
+pub mod image_util;
 
 /// Clickable button with a text label.
 struct Button {
@@ -271,33 +271,33 @@ decl_ui_slider!(Int2Slider, [i64; 2]);
 decl_ui_slider!(Int3Slider, [i32; 3]);
 decl_ui_slider!(Int4Slider, [i32; 4]);
 
-mod button;
-mod checkbox;
-mod code_editor;
-mod color_input;
-mod combo;
-mod console;
-mod drag_value;
-mod hex_viewer;
-mod hyperlink;
-mod image;
-mod image_button;
-mod label;
-mod link;
-mod listbox;
-mod markdown_viewer;
-mod numeric_input;
-mod numeric_slider;
-mod plots;
-mod progress_bar;
-mod radio_button;
-mod render_target;
-mod spinner;
-mod text_field;
-mod text_util;
-mod tooltip;
-mod var_util;
-mod variable;
+pub mod button;
+pub mod checkbox;
+pub mod code_editor;
+pub mod color_input;
+pub mod combo;
+pub mod console;
+pub mod drag_value;
+pub mod hex_viewer;
+pub mod hyperlink;
+pub mod image;
+pub mod image_button;
+pub mod label;
+pub mod link;
+pub mod listbox;
+pub mod markdown_viewer;
+pub mod numeric_input;
+pub mod numeric_slider;
+pub mod plots;
+pub mod progress_bar;
+pub mod radio_button;
+pub mod render_target;
+pub mod spinner;
+pub mod text_field;
+pub mod text_util;
+pub mod tooltip;
+pub mod var_util;
+pub mod variable;
 
 pub fn registerShards() {
   registerShard::<Button>();
