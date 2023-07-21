@@ -100,8 +100,8 @@ struct NetworkBase {
   ParamVar _addr{Var("localhost")};
   ParamVar _port{Var(9191)};
 
-  std::shared_ptr<entt::any> _contextStorage;
-  NetworkContext *_context = nullptr;
+
+  AnyStorage<NetworkContext> _sharedNetworkContext;
 
   std::optional<udp::socket> _socket;
 
@@ -116,8 +116,8 @@ struct NetworkBase {
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_required); }
 
   void cleanup() {
-    if (_context) {
-      auto &io_context = _context->_io_context;
+    if (_sharedNetworkContext) {
+      auto &io_context = _sharedNetworkContext->_io_context;
 
       // defer all in the context or we will crash!
       if (_socket) {
@@ -127,9 +127,6 @@ struct NetworkBase {
         });
       }
     }
-
-    _contextStorage.reset();
-    _context = nullptr;
 
     // clean context vars
     if (_peerVar) {
@@ -142,16 +139,7 @@ struct NetworkBase {
   }
 
   void warmup(SHContext *context) {
-    auto &networkContext = context->anyStorage["Network.Context"];
-    if (!networkContext) {
-      _contextStorage = std::make_shared<entt::any>(std::in_place_type_t<NetworkContext>{});
-      context->anyStorage["Network.Context"] = _contextStorage;
-      auto anyPtr = _contextStorage.get();
-      _context = &entt::any_cast<NetworkContext &>(*anyPtr);
-    } else {
-      _contextStorage = networkContext;
-      _context = entt::any_cast<NetworkContext *>(*networkContext);
-    }
+    _sharedNetworkContext = getOrCreateAnyStorage<NetworkContext>(context, "Network.Context");
 
     _addr.warmup(context);
     _port.warmup(context);
@@ -466,8 +454,8 @@ struct Server : public NetworkBase {
   Composer _composer{*this};
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_context);
-    auto &io_context = _context->_io_context;
+    assert(_sharedNetworkContext);
+    auto &io_context = _sharedNetworkContext->_io_context;
 
     if (!_socket) {
       // first activation, let's init
@@ -643,8 +631,8 @@ struct Client : public NetworkBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_context);
-    auto &io_context = _context->_io_context;
+    assert(_sharedNetworkContext);
+    auto &io_context = _sharedNetworkContext->_io_context;
 
     if (!_socket) {
       // first activation, let's init

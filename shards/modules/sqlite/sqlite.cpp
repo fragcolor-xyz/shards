@@ -76,10 +76,7 @@ struct Base {
     _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data()); });
   }
 
-  void cleanup() {
-    if (_connection)
-      _connection.reset();
-  }
+  void cleanup() {}
 };
 
 struct Query : public Base {
