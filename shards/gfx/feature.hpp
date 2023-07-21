@@ -19,7 +19,6 @@
 
 namespace gfx {
 namespace detail {
-struct CachedDrawable;
 struct CachedView;
 } // namespace detail
 
@@ -181,6 +180,17 @@ struct NamedTextureParam {
   }
 };
 
+struct RequiredAttributes {
+  // When enabled, each vertex will be guaranteed to have a local basis encoded as a quaternion
+  bool requirePerVertexLocalBasis{};
+};
+
+inline RequiredAttributes operator|(const RequiredAttributes &a, const RequiredAttributes &other) {
+  return RequiredAttributes{
+      .requirePerVertexLocalBasis = a.requirePerVertexLocalBasis || other.requirePerVertexLocalBasis,
+  };
+}
+
 extern UniqueIdGenerator featureIdGenerator;
 struct Feature : public std::enable_shared_from_this<Feature> {
   // Used to identify this feature for caching purposes
@@ -198,6 +208,8 @@ struct Feature : public std::enable_shared_from_this<Feature> {
   std::vector<shader::EntryPoint> shaderEntryPoints;
 
   PipelineModifierPtr pipelineModifier;
+
+  RequiredAttributes requiredAttributes;
 
   virtual ~Feature() = default;
 

@@ -1,6 +1,15 @@
 const PI = 3.1415998935699463;
 const PI2 = 6.28318530717958647693;
 
+const GAMMA = 2.2;
+const INV_GAMMA = 0.45454545454545454545; // 1.0 / GAMMA;
+fn linearTosRGB(color: vec3<f32>) -> vec3<f32> {
+    return pow(color, vec3<f32>(INV_GAMMA));
+}
+fn sRGBToLinear(color: vec3<f32>) -> vec3<f32> {
+    return pow(color, vec3<f32>(GAMMA));
+}
+
 struct MaterialInfo {
   baseColor: vec3<f32>,
   specularColor0: vec3<f32>,

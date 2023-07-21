@@ -1,26 +1,26 @@
 (defn setup-pbr-lib [pbr-wgsl filter-cubemap render-cubemap-0]
   (defshards shader-integrate [texture sampler base-dir body num-samples args]
     (Shader.Literal :Type ShaderLiteralType.Header :Source ["fn integrate(args: vec4<f32>, baseDir: vec3<f32>, _texture: texture_cube<f32>, _sampler: sampler) -> vec3<f32> {
-	let tbn = generateFrameFromZDirection(baseDir);
-	var weight = 0.0;
-	var result = vec3<f32>(0.0);" "
+  let tbn = generateFrameFromZDirection(baseDir);
+  var weight = 0.0;
+  var result = vec3<f32>(0.0);" "
   var sampleIndex = 0;
   loop {
     if(sampleIndex >= " num-samples ") {
       break;
     }" "
     var mci: IntegrateInput;
-		mci.baseDirection = baseDir;
-		mci.coord = hammersley2d(sampleIndex, " num-samples ");
-		let mco = " body ";
-		let lod = getWeightedLod(mco.pdf, " num-samples ", _texture);" "
+    mci.baseDirection = baseDir;
+    mci.coord = hammersley2d(sampleIndex, " num-samples ");
+    let mco = " body ";
+    let lod = getWeightedLod(mco.pdf, " num-samples ", _texture);" "
     let direction = tbn * mco.localDirection;
-		let s = sampleEnvironmentLod(_texture, _sampler, direction, lod);" "
-		result = result + s * mco.sampleScale;
-		weight = weight + mco.sampleWeight;" "
+    let s = sampleEnvironmentLod(_texture, _sampler, direction, lod);" "
+    result = result + s * mco.sampleScale;
+    weight = weight + mco.sampleWeight;" "
     sampleIndex = sampleIndex + 1;
-	}
-	return result / weight;
+  }
+  return result / weight;
 }"])
     (Shader.Literal ["integrate(" args "," base-dir "," texture "," sampler ")"] :OutputDimension 3))
 
@@ -96,7 +96,6 @@
 
     (Msg "Generating pre-rendered PBR textures")
     (GFX.Texture :Format TextureFormat.RGBA8UnormSrgb :Resolution (Int2 512) :Dimension TextureDimension.Cube) >= .cube-tex
-    {:steps .probe-inner-steps :texture .cube-tex :offset .probe-offset}
     (render-cubemap-0 .probe-inner-steps .cube-tex .probe-offset)
 
     ; Precompute reflective
@@ -122,6 +121,18 @@
     >= .parameters
     1.0 (Set .parameters "roughness")
     0.0 (Set .parameters "metallic")
+    (Setup
+     (Float4 0 0 1 0) = .init
+     [.init .init .init .init] (Flatten) (FloatsToImage 2 2 4)
+     (GFX.Texture) = .normal-placeholder-texture
+
+     (Float4 0 0 0 0) = .init-0
+     [.init-0 .init-0 .init-0 .init-0] (Flatten) (FloatsToImage 2 2 4)
+     (GFX.Texture) = .zero-placeholder-texture)
+    .normal-placeholder-texture  (Set .parameters "normalTexture")
+    {:Type TextureDimension.D2} (Set .parameters "metallicRoughnessTexture")
+    .zero-placeholder-texture (Set .parameters "emissiveTexture")
+    1.0 (Set .parameters "normalScale")
     (GFX.Feature
      :Params .parameters
      :ComposeWith {:pbr-wgsl pbr-wgsl}
@@ -133,7 +144,6 @@
        (->
         (Shader.ReadBuffer "invView" :BufferName "view") >= .camera-matrix
         (Shader.Literal [.camera-matrix "[3].xyz"] :OutputDimension 3) >= .eye-pos
-        (Shader.ReadInput "worldNormal") >= .world-normal
         (Shader.ReadInput "worldPosition") >= .world-position
         .eye-pos (Math.Subtract .world-position) (Math.Normalize) >= .view-direction
 
@@ -148,10 +158,44 @@
         (Shader.RefSampler "ggx") = .ggx-sampler
         (Shader.RefTexture "ggxLUT") = .ggx-lut-texture
         (Shader.RefSampler "ggxLUT") = .ggx-lut-sampler
+
+        ; Apply metallic-roughness texture
+        ; glTF Spec:
+        ; The metalness values are sampled from the B channel. The roughness values are sampled from the G channel.
+        (Shader.SampleTexture "metallicRoughnessTexture") = .metallic-roughness
+        .metallic-roughness:2 (Math.Multiply .metallic) > .metallic
+        .metallic-roughness:1 (Math.Multiply .roughness) > .roughness
+
+        (Float3 0 0 0) >= .emissive-color
+        (Shader.WithTexture "emissiveTexture" (->
+                                               (Shader.SampleTexture "emissiveTexture") (ToFloat3) > .emissive-color))
+
+        ; Apply normal map
+        ; glTF Spec:
+        ; The normal vectors use the convention +X is right and +Y is up. +Z points toward the viewer.
+        ; The scalar parameter applied to each normal vector of the texture.
+        ; This value scales the normal vector in X and Y directions using the formula: 
+        ;  scaledNormal =  normalize((<sampled normal texture value> * 2.0 - 1.0) * vec3(<normal scale>, <normal scale>, 1.0))
+        (Shader.ReadBuffer "normalScale") = .normal-scale
+        (Float3 .normal-scale .normal-scale 1.0) = .normal-scale-3
+        (Shader.SampleTexture "normalTexture") (ToFloat3)
+        (Math.Multiply (Float3 2.0 2.0 1.0))
+        (Math.Subtract (Float3 1 1 0))
+        (Math.Multiply .normal-scale-3) (Math.Normalize) = .local-normal
+
+        (Shader.ReadInput "worldNormal") >= .world-normal
+        (Shader.ReadInput "worldTangent") = .world-tangent
+        (Shader.ReadInput "biTangentSign") = .bi-tangent-sign
+
+        (Shader.ReadBuffer "world") = .world-mat
+        (Shader.Literal ["var biTangent = normalize(cross(" .world-normal "," .world-tangent ") * " .bi-tangent-sign ");"
+                         "var tbnMat = mat3x3<f32>(" .world-tangent ", biTangent ," .world-normal ");"
+                         .world-normal " = normalize((tbnMat * " .local-normal ").xyz);"])
+
         (Shader.Literal ["
         var lgp: LightingGeneralParams;
         lgp.surfaceNormal = " .world-normal ";
-	      lgp.viewDirection = " .view-direction ";"])
+        lgp.viewDirection = " .view-direction ";"])
 
         (Shader.Literal ["
         var mi = getDefaultMaterialInfo();
@@ -164,9 +208,10 @@
                          .ggx-texture "," .ggx-sampler ","
                          .ggx-lut-texture "," .ggx-lut-sampler ")"] :OutputDimension 3) >= .light-color
 
-        .light-color (ToFloat4)
-        (Math.Multiply (Float4 1 1 1 0)) (Math.Add (Float4 0 0 0 1))
-        (Shader.WriteOutput "color"))}]))
+        .light-color (Math.Add .emissive-color)
+        (ToFloat4) (Math.Add (Float4 0 0 0 1))
+        (Shader.WriteOutput "color")
+        )}]))
 
   (defshards render-pbr-base [capture-steps]
     (Setup
@@ -178,12 +223,4 @@
       :offset .global-probe-location} (Do generate-probes)
      (Do setup-pbr-feature) >= .pbr-feature-1)
 
-    .pbr-feature-1
-    ;; (GFX.BuiltinFeature BuiltinFeatureId.Transform) >> .main-features
-    ;; (GFX.BuiltinFeature BuiltinFeatureId.BaseColor) >> .main-features
-    ;; .pbr-feature >> .main-features
-    ;; (GFX.DrawablePass :Queue main-queue :Features .main-features) >> .main-steps
-
-    ;; ; Render all the objects
-    ;; (GFX.Render .main-steps view)
-    ))
+    .pbr-feature-1))

@@ -48,6 +48,15 @@ struct DrawableEncodeContext {
   TransientPtr preparedData;
 };
 
+struct DrawablePreprocessContext {
+  const shards::pmr::vector<const IDrawable *>& drawables;
+  const shards::pmr::vector<Feature *> &features;
+  const BuildPipelineOptions &buildPipelineOptions;
+  RendererStorage &storage;
+  Hash128 sharedHash;
+  Hash128 *outHashes;
+};
+
 struct IDrawableProcessor : public IPipelineModifier {
   virtual ~IDrawableProcessor() = default;
 
@@ -56,7 +65,7 @@ struct IDrawableProcessor : public IPipelineModifier {
 
   // Hook for modifying the built pipeline for the referenceDrawable.
   // Whenever a group of objects is grouped under new pipeline, this function is called once before building.
-  virtual void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions& options) override = 0;
+  virtual void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions &options) override = 0;
 
   // Request to prepare draw data (buffers/bindings/etc.)
   // the returned value is passed to encode through DrawableEncodeContext
@@ -64,6 +73,10 @@ struct IDrawableProcessor : public IPipelineModifier {
 
   // Called to encode the render commands
   virtual void encode(DrawableEncodeContext &context) = 0;
+
+  // Precompute and hashing step
+  // The returned hash identifies the pipeline permutation
+  virtual void preprocess(const DrawablePreprocessContext &context) = 0;
 };
 
 } // namespace gfx::detail

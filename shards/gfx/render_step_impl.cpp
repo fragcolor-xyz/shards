@@ -141,7 +141,6 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   shards::pmr::vector<const IDrawable *> expandedDrawables(workerMemory);
 
   auto &pipelineGroups = *workerMemory->new_object<shards::pmr::unordered_map<Hash128, PipelineGroup>>();
-  auto &hashCache = *workerMemory->new_object<PipelineHashCache>();
   auto &context = evaluator.getRenderer().getContext();
 
   // Compute drawable hashes
@@ -157,27 +156,57 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
       }
     }
 
-    // Now hash them
-    for (const IDrawable *drawable : expandedDrawables) {
-      ZoneScopedN("hashDrawable");
+    // Group into processor groups
+    struct ProcessorGroup {
+      using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
-      PipelineHashCollector collector{.storage = &hashCache};
-      collector(size_t(drawable->getProcessor())); // Hash processor to be sure it's tied to the pipeline grouping
-      collector(stepSharedHash);
-      collector.hashObject(*drawable);
-      for (auto stepFeature : features)
-        collector.hashObject(*stepFeature);
-      Hash128 pipelineHash = collector.getDigest();
+      shards::pmr::vector<const IDrawable *> drawables;
+      Hash128 *drawableHashes{};
+      ProcessorGroup(allocator_type allocator) : drawables(allocator) {}
+    };
 
-      auto &entry = getCacheEntry(pipelineGroups, pipelineHash, [&](const Hash128 &hash) {
-        // Setup new PipelineGroup with features from step that apply
-        PipelineGroup newGroup(workerMemory);
-        for (auto stepFeature : features) {
-          newGroup.baseFeatures.push_back(stepFeature);
-        }
-        return newGroup;
+    auto &processorGroups = *workerMemory->new_object<shards::pmr::unordered_map<DrawableProcessorConstructor, ProcessorGroup>>();
+    {
+      ZoneScopedN("groupIntoProcessorGroups");
+      for (size_t index = 0; index < expandedDrawables.size(); index++) {
+        const IDrawable &drawable = *expandedDrawables[index];
+        auto constructor = drawable.getProcessor();
+        auto &group = processorGroups[constructor];
+        group.drawables.push_back(&drawable);
+      }
+    }
+
+    // Preprocess step (grouped by drawable processor)
+    for (auto &[constructor, group] : processorGroups) {
+      ZoneScopedN("preprocessProcessorGroups");
+
+      auto &processor = storage.drawableProcessorCache.get(constructor);
+      group.drawableHashes = workerMemory->new_objects<Hash128>(group.drawables.size());
+      processor.preprocess(DrawablePreprocessContext{
+          .drawables = group.drawables,
+          .features = features,
+          .buildPipelineOptions = buildPipelineOptions,
+          .storage = storage,
+          .sharedHash = stepSharedHash,
+          .outHashes = group.drawableHashes,
       });
-      entry.drawables.push_back(drawable);
+    }
+
+    // Now hash them
+    for (auto &[_, group] : processorGroups) {
+      for (size_t i = 0; i < group.drawables.size(); i++) {
+        const IDrawable *drawable = group.drawables[i];
+
+        auto &entry = getCacheEntry(pipelineGroups, group.drawableHashes[i], [&](const Hash128 &hash) {
+          // Setup new PipelineGroup with features from step that apply
+          PipelineGroup newGroup(workerMemory);
+          for (auto stepFeature : features) {
+            newGroup.baseFeatures.push_back(stepFeature);
+          }
+          return newGroup;
+        });
+        entry.drawables.push_back(drawable);
+      }
     }
   }
 
@@ -390,7 +419,7 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
   // Setup node outputs as texture slots
   for (auto &frame : buildData.readsFrom) {
     auto &entry = baseFeature->textureParams.emplace_back(frame->name);
-     entry.type.format = getDefaultTextureSampleType(frame->format);
+    entry.type.format = getDefaultTextureSampleType(frame->format);
   }
 
   node.encode = [data, &step, drawable](RenderGraphEncodeContext &ctx) {

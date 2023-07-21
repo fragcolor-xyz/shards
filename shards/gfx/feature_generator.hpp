@@ -9,7 +9,6 @@
 #include <vector>
 
 namespace gfx::detail {
-struct CachedDrawable;
 struct CachedView;
 } // namespace gfx::detail
 
