@@ -190,6 +190,20 @@ void registerMathShards() {
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Negate", shards::Math::Negate, OperatorNegate);
   REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Abs", shards::Math::Abs, OperatorAbs);
 
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Exp2", shards::Math::Exp2, OperatorExp2);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Log2", shards::Math::Log2, OperatorLog2);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Sqrt", shards::Math::Sqrt, OperatorSqrt);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Asin", shards::Math::Asin, OperatorAsin);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Acos", shards::Math::Acos, OperatorAcos);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Atan", shards::Math::Atan, OperatorAtan);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Sinh", shards::Math::Sinh, OperatorSinh);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Cosh", shards::Math::Cosh, OperatorCosh);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Tanh", shards::Math::Tanh, OperatorTanh);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Asinh", shards::Math::Asinh, OperatorAsinh);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Acosh", shards::Math::Acosh, OperatorAcosh);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Atanh", shards::Math::Atanh, OperatorAtanh);
+  REGISTER_EXTERNAL_SHADER_SHARD_T2(UnaryOperatorTranslator, "Math.Trunc", shards::Math::Trunc, OperatorTrunc);
+
   REGISTER_EXTERNAL_SHADER_SHARD(LerpTranslator, "Math.Lerp", shards::Math::Lerp);
 
   // Logic operators
