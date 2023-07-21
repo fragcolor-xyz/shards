@@ -9,6 +9,7 @@ add_library(gfx
   gfx_wgpu.cpp
   renderer.cpp
   mesh.cpp
+  mesh_utils.cpp
   geom.cpp
   drawable.cpp
   enums.cpp
@@ -29,6 +30,7 @@ add_library(gfx
   shader/blocks.cpp
   shader/types.cpp
   features/velocity.cpp
+  features/transform.cpp
   rust_interop.cpp
   view_stack.cpp
   render_target.cpp

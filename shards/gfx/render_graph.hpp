@@ -278,7 +278,8 @@ private:
   RenderTargetLayout getLayout(const NodeBuildData &node) const;
   bool isWrittenTo(const FrameBuildData &frame, const decltype(buildingNodes)::const_iterator &it) const;
   void replaceWrittenFrames(const FrameBuildData &frame, FrameBuildData &newFrame);
-  void replaceWrittenFramesAfterNode(const FrameBuildData &frame, FrameBuildData &newFrame, const decltype(buildingNodes)::iterator &it);
+  void replaceWrittenFramesAfterNode(const FrameBuildData &frame, FrameBuildData &newFrame,
+                                     const decltype(buildingNodes)::iterator &it);
 };
 
 struct DrawableProcessorCache {
@@ -289,13 +290,16 @@ struct DrawableProcessorCache {
   DrawableProcessorCache(Context &context) : context(context) {}
 
   IDrawableProcessor &get(DrawableProcessorConstructor constructor) {
-    drawableProcessorsMutex.lock();
+    std::shared_lock<std::shared_mutex> l(drawableProcessorsMutex);
     auto it = drawableProcessors.find(constructor);
     if (it == drawableProcessors.end()) {
+      l.unlock();
+      std::unique_lock<std::shared_mutex> l1(drawableProcessorsMutex);
       it = drawableProcessors.emplace(constructor, constructor(context)).first;
+      return *it->second.get();
+    } else {
+      return *it->second.get();
     }
-    drawableProcessorsMutex.unlock();
-    return *it->second.get();
   }
 
   void beginFrame(size_t frameCounter) {

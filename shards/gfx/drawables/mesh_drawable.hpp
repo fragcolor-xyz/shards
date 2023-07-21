@@ -35,8 +35,6 @@ public:
   UniqueId getId() const override { return id; }
 
   DrawableProcessorConstructor getProcessor() const override;
-
-  void pipelineHashCollect(detail::PipelineHashCollector &pipelineHashCollector) const override;
 };
 } // namespace gfx
 
