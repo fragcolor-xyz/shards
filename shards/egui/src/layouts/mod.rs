@@ -9,7 +9,9 @@ use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::ShardsVar;
 use shards::types::Type;
+use shards::types::Var;
 use shards::types::FRAG_CC;
+use shards::SHType_Enum;
 
 struct CollapsingHeader {
   parents: ParamVar,
@@ -92,7 +94,7 @@ struct Layout {
 }
 
 shenum! {
-  struct LayoutDirection {
+  pub struct LayoutDirection {
     [description("Describes a horizontal layout where its contents are arranged from the left to the right.")]
     const LeftToRight = 1 << 0;
     [description("Describes a horizontal layout where its contents are arranged from the right to the left.")]
@@ -102,21 +104,21 @@ shenum! {
     [description("Describes a vertical layout where its contents are arranged from the bottom to the top.")]
     const BottomUp = 1 << 3;
   }
-  struct LayoutDirectionInfo {}
+  pub struct LayoutDirectionInfo {}
 }
 
 shenum_types! {
   LayoutDirectionInfo,
   const LayoutDirectionCC = fourCharacterCode(*b"egLD");
-  static ref LayoutDirectionEnumInfo;
-  static ref LAYOUT_DIRECTION_TYPE: Type;
-  static ref LAYOUT_DIRECTION_TYPES: Vec<Type>;
-  static ref SEQ_OF_LAYOUT_DIRECTION: Type;
-  static ref SEQ_OF_LAYOUT_DIRECTION_TYPES: Vec<Type>;
+  pub static ref LayoutDirectionEnumInfo;
+  pub static ref LAYOUT_DIRECTION_TYPE: Type;
+  pub static ref LAYOUT_DIRECTION_TYPES: Vec<Type>;
+  pub static ref SEQ_OF_LAYOUT_DIRECTION: Type;
+  pub static ref SEQ_OF_LAYOUT_DIRECTION_TYPES: Vec<Type>;
 }
 
 shenum! {
-  struct LayoutAlign {
+  pub struct LayoutAlign {
   [description("Left or top alignment for e.g. anchors and layouts.")]
   const Min = 1 << 0;
   [description("Left alignment for e.g. anchors and layouts.")]
@@ -132,17 +134,17 @@ shenum! {
   [description("Bottom center alignment for e.g. anchors and layouts.")]
   const Bottom = 1 << 6;
   }
-  struct LayoutAlignInfo {}
+  pub struct LayoutAlignInfo {}
 }
 
 shenum_types! {
   LayoutAlignInfo,
   const LayoutAlignCC = fourCharacterCode(*b"egLA");
-  static ref LayoutAlignEnumInfo;
-  static ref LAYOUT_ALIGN_TYPE: Type;
-  static ref LAYOUT_ALIGN_TYPES: Vec<Type>;
-  static ref SEQ_OF_LAYOUT_ALIGN: Type;
-  static ref SEQ_OF_LAYOUT_ALIGN_TYPES: Vec<Type>;
+  pub static ref LayoutAlignEnumInfo;
+  pub static ref LAYOUT_ALIGN_TYPE: Type;
+  pub static ref LAYOUT_ALIGN_TYPES: Vec<Type>;
+  pub static ref SEQ_OF_LAYOUT_ALIGN: Type;
+  pub static ref SEQ_OF_LAYOUT_ALIGN_TYPES: Vec<Type>;
 }
 
 struct Indent {

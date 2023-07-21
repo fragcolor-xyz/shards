@@ -48,7 +48,7 @@ struct PlotLine {
 }
 
 shenum! {
-  struct MarkerShape {
+  pub struct MarkerShape {
     [description("Display a point as a circle.")]
     const Circle = 0;
     [description("Display a point as a diamond.")]
@@ -70,17 +70,17 @@ shenum! {
     [description("Display a point as an asterisk.")]
     const Asterisk = 9;
   }
-  struct MarkerShapeInfo {}
+  pub struct MarkerShapeInfo {}
 }
 
 shenum_types! {
   MarkerShapeInfo,
   const MarkerShapeCC = fourCharacterCode(*b"egMS");
-  static ref MarkerShapeEnumInfo;
-  static ref MARKER_SHAPE_TYPE: Type;
-  static ref MARKER_SHAPE_TYPES: Vec<Type>;
-  static ref SEQ_OF_MARKER_SHAPE: Type;
-  static ref SEQ_OF_MARKER_SHAPE_TYPES: Vec<Type>;
+  pub static ref MarkerShapeEnumInfo;
+  pub static ref MARKER_SHAPE_TYPE: Type;
+  pub static ref MARKER_SHAPE_TYPES: Vec<Type>;
+  pub static ref SEQ_OF_MARKER_SHAPE: Type;
+  pub static ref SEQ_OF_MARKER_SHAPE_TYPES: Vec<Type>;
 }
 
 // egui::widgets::plot::items::MarkerShape

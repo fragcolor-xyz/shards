@@ -26,21 +26,21 @@ use shards::types::NONE_TYPES;
 use shards::SHType_Enum;
 
 shenum! {
-  struct UIProperty {
+  pub struct UIProperty {
     [description("Return the remaining space within an UI widget.")]
     const RemainingSpace = 0x0;
   }
-  struct UIPropertyInfo {}
+  pub struct UIPropertyInfo {}
 }
 
 shenum_types! {
   UIPropertyInfo,
   const UIPROPERTY_CC = fourCharacterCode(*b"ppty");
-  static ref UIPropertyEnumInfo;
-  static ref UIPROPERTY_TYPE: Type;
-  static ref UIPROPERTY_TYPES: Vec<Type>;
-  static ref SEQ_OF_UIPROPERTY: Type;
-  static ref SEQ_OF_UIPROPERTY_TYPES: Vec<Type>;
+  pub static ref UIPropertyEnumInfo;
+  pub static ref UIPROPERTY_TYPE: Type;
+  pub static ref UIPROPERTY_TYPES: Vec<Type>;
+  pub static ref SEQ_OF_UIPROPERTY: Type;
+  pub static ref SEQ_OF_UIPROPERTY_TYPES: Vec<Type>;
 }
 
 lazy_static! {

@@ -22,7 +22,7 @@ struct Area {
 }
 
 shenum! {
-  struct Anchor {
+  pub struct Anchor {
     [description("Top left corner.")]
     const TopLeft = 0x00;
     [description("Middle left.")]
@@ -43,17 +43,17 @@ shenum! {
     const BottomRight = 0x22;
   }
 
-  struct AnchorInfo {}
+  pub struct AnchorInfo {}
 }
 
 shenum_types! {
   AnchorInfo,
   const AnchorCC = fourCharacterCode(*b"egAn");
-  static ref AnchorEnumInfo;
-  static ref ANCHOR_TYPE: Type;
-  static ref ANCHOR_TYPES: Vec<Type>;
-  static ref SEQ_OF_ANCHOR: Type;
-  static ref SEQ_OF_ANCHOR_TYPES: Vec<Type>;
+  pub static ref AnchorEnumInfo;
+  pub static ref ANCHOR_TYPE: Type;
+  pub static ref ANCHOR_TYPES: Vec<Type>;
+  pub static ref SEQ_OF_ANCHOR: Type;
+  pub static ref SEQ_OF_ANCHOR_TYPES: Vec<Type>;
 }
 
 struct DockArea {
@@ -99,7 +99,7 @@ struct Window {
 }
 
 shenum! {
-  struct WindowFlags {
+  pub struct WindowFlags {
     [description("Do not display the title bar.")]
     const NoTitleBar = 1 << 0;
     [description("Do not allow resizing the window.")]
@@ -111,17 +111,17 @@ shenum! {
     [description("Do not allow window movement.")]
     const Immovable = 1 << 4;
   }
-  struct WindowFlagsInfo {}
+  pub struct WindowFlagsInfo {}
 }
 
 shenum_types! {
   WindowFlagsInfo,
   const WindowFlagsCC = fourCharacterCode(*b"egWF");
-  static ref WindowFlagsEnumInfo;
-  static ref WINDOW_FLAGS_TYPE: Type;
-  static ref WINDOW_FLAGS_TYPES: Vec<Type>;
-  static ref SEQ_OF_WINDOW_FLAGS: Type;
-  static ref SEQ_OF_WINDOW_FLAGS_TYPES: Vec<Type>;
+  pub static ref WindowFlagsEnumInfo;
+  pub static ref WINDOW_FLAGS_TYPE: Type;
+  pub static ref WINDOW_FLAGS_TYPES: Vec<Type>;
+  pub static ref SEQ_OF_WINDOW_FLAGS: Type;
+  pub static ref SEQ_OF_WINDOW_FLAGS_TYPES: Vec<Type>;
 }
 
 macro_rules! decl_panel {

@@ -75,7 +75,7 @@ lazy_static! {
       .into(),
     (
       cstr!("Size"),
-      shccstr!("Whether to justify the cross axis. Whether widgets get maximum width/height for vertical/horizontal layouts."),
+      shccstr!("The size of the space to be reserved by this UI."),
       FLOAT2_VAR_SLICE,
     )
       .into(),

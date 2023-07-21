@@ -5,7 +5,7 @@ use crate::misc::style_util;
 use shards::shardsc::SHColor;
 use shards::types::Table;
 
-pub(crate) fn get_styled_text(
+pub fn get_styled_text(
   text: egui::RichText,
   style: &Table,
 ) -> Result<egui::RichText, &'static str> {
