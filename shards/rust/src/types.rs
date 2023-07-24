@@ -2062,6 +2062,51 @@ impl From<&[i8; 16]> for Var {
   }
 }
 
+impl From<&[u8; 16]> for Var {
+  #[inline(always)]
+  fn from(v: &[u8; 16]) -> Self {
+    let val = v as *const [u8; 16] as *const [i8; 16];
+    let val = unsafe { *val };
+    Var {
+      valueType: SHType_Int16,
+      payload: SHVarPayload {
+        __bindgen_anon_1: SHVarPayload__bindgen_ty_1 { int16Value: val },
+      },
+      ..Default::default()
+    }
+  }
+}
+
+impl TryFrom<&Var> for [i8; 16] {
+  type Error = &'static str;
+
+  // convert int16Value into
+  #[inline(always)]
+  fn try_from(v: &Var) -> Result<Self, Self::Error> {
+    if v.valueType != SHType_Int16 {
+      return Err("Invalid type");
+    }
+    let val = unsafe { v.payload.__bindgen_anon_1.int16Value };
+    Ok(val)
+  }
+}
+
+impl TryFrom<&Var> for [u8; 16] {
+  type Error = &'static str;
+
+  // convert int16Value into
+  #[inline(always)]
+  fn try_from(v: &Var) -> Result<Self, Self::Error> {
+    if v.valueType != SHType_Int16 {
+      return Err("Invalid type");
+    }
+    let val = unsafe { v.payload.__bindgen_anon_1.int16Value };
+    let val = &val as *const [i8; 16] as *const [u8; 16];
+    let val = unsafe { *val };
+    Ok(val)
+  }
+}
+
 // 32-bit precision :[u32;2]
 impl From<(u32, u32)> for Var {
   #[inline(always)]
@@ -5445,6 +5490,7 @@ lazy_static! {
   pub static ref INT2_TYPES: Vec<Type> = vec![common_type::int2];
   pub static ref INT3_TYPES: Vec<Type> = vec![common_type::int3];
   pub static ref INT4_TYPES: Vec<Type> = vec![common_type::int4];
+  pub static ref INT16_TYPES: Vec<Type> = vec![common_type::int16];
   pub static ref FLOAT_TYPES: Vec<Type> = vec![common_type::float];
   pub static ref SEQ_OF_INT: Type = Type::seq(&INT_TYPES);
   pub static ref SEQ_OF_INT_TYPES: Vec<Type> = vec![*SEQ_OF_INT];
