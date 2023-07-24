@@ -1605,7 +1605,7 @@ fn process_type_desc(
       // we need to wrap it into a Table Type
       let mut inner_keys = Vec::new(); // actually weak storage
       let mut inner_types = Vec::new(); // actually weak storage
-      for (ref key, ref value) in keys.into_iter().zip(types.into_iter()) {
+      for (key, value) in keys.iter().zip(types.iter()) {
         let key = key.as_ref();
         inner_keys.push(*key);
 
