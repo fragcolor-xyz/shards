@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-
 use shards::core::registerShard;
 use shards::shard::Shard;
 
@@ -11,7 +10,6 @@ use shards::types::OptionalString;
 
 use shards::types::Parameters;
 
-
 use shards::types::Type;
 
 use shards::types::INT_TYPES;
@@ -19,9 +17,8 @@ use shards::types::INT_TYPES;
 use shards::types::STRING_TYPES;
 use shards::types::STRING_TYPES_SLICE;
 
-
-use shards::types::Var;
 use chrono::{LocalResult, TimeZone, Utc};
+use shards::types::Var;
 
 use core::convert::TryInto;
 
