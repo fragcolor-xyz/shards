@@ -1,5 +1,5 @@
 use crate::ast::Sequence;
-use crate::{eval::eval, read::read, eval::new_cancellation_token};
+use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Arg, ArgMatches, Command};
 use shards::core::Core;
 use shards::types::Mesh;
@@ -19,11 +19,15 @@ extern "C" {
 #[no_mangle]
 pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> i32 {
   let cancellation_token = new_cancellation_token();
-  let cancellation_token_1 = cancellation_token.clone();
-  ctrlc::set_handler(move || {
-    cancellation_token_1.store(true, atomic::Ordering::Relaxed);
-  })
-  .expect("Error setting Ctrl-C handler");
+
+  #[cfg(not(target_arch = "wasm32"))]
+  {
+    let cancellation_token_1 = cancellation_token.clone();
+    ctrlc::set_handler(move || {
+      cancellation_token_1.store(true, atomic::Ordering::Relaxed);
+    })
+    .expect("Error setting Ctrl-C handler");
+  }
 
   let args: Vec<String> = unsafe {
     std::slice::from_raw_parts(argv, argc as usize)
