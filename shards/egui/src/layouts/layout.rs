@@ -79,8 +79,8 @@ lazy_static! {
       FLOAT2_VAR_SLICE,
     )
       .into(),
-    (cstr!("FillWidth"), shccstr!(""), &BOOL_TYPES[..],).into(),
-    (cstr!("FillHeight"), shccstr!(""), &BOOL_TYPES[..],).into(),
+    (cstr!("FillWidth"), shccstr!("Whether the Layout should take up the full width of the available space."), &BOOL_TYPES[..],).into(),
+    (cstr!("FillHeight"), shccstr!("Whether the Layout should take up the full height of the available space."), &BOOL_TYPES[..],).into(),
   ];
 }
 
