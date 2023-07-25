@@ -1,4 +1,3 @@
-build*
 .lsp
 .cache
 .clj-kondo
