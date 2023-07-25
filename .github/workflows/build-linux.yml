@@ -131,7 +131,7 @@ jobs:
           ./shards ../shards/tests/wire-macro.edn
           ./shards ../shards/tests/const-vars.edn
           ./shards new ../shards/tests/branch.shs
-          ./shards new ../shards/tests/audio.shs
+          ./shards new ../shards/tests/audio.shs test-device:false
           ./shards ../shards/tests/time.edn
           ./shards ../shards/tests/eth.edn
           ./shards ../shards/tests/take.edn
