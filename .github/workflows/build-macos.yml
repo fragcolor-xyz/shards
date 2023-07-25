@@ -157,7 +157,7 @@ jobs:
           ./shards ../shards/tests/crypto.edn
           ./shards ../shards/tests/wire-macro.edn
           ./shards new ../shards/tests/branch.shs
-          ./shards new ../shards/tests/audio.shs
+          ./shards new ../shards/tests/audio.shs test-device:true
           ./shards ../shards/tests/time.edn
           ./shards ../shards/tests/eth.edn
           ./shards ../shards/tests/many.edn
