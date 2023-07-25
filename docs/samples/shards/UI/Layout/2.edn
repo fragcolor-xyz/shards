@@ -1,0 +1,34 @@
+(GFX.MainWindow
+ :Contents
+ (->
+  (Setup
+   (GFX.DrawQueue) >= .ui-draw-queue
+   (GFX.UIPass .ui-draw-queue) >> .render-steps
+   false >= .checked
+   1 >= .choice)
+  (UI
+   .ui-draw-queue
+   (UI.CentralPanel
+    (->
+     (UI.Layout
+      :Direction LayoutDirection.TopDown
+      :MainWrap true
+      :CrossAlign LayoutAlign.Center
+      :CrossJustify true
+      :Size (Float2 150 0) ;; column width
+      :FillHeight true
+      :Contents (->
+                 "Wrapping text followed by example widgets:"
+                 (UI.Label)
+                 (UI.Checkbox
+                  :Label "checkbox"
+                  :Variable .checked)
+                 (UI.RadioButton
+                  :Label "radio"
+                  :Variable .choice
+                  :Value 1)
+                 (UI.Button
+                  :Label "button"
+                  :Action (Msg "Clicked")))))))
+
+   (GFX.Render :Steps .render-steps)))
