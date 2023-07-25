@@ -97,4 +97,6 @@
 
     @schedule(main device-test-6)
     @run(main 0.1 25)
+
+    none
 } Pass)
