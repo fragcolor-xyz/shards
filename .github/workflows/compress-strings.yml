@@ -51,7 +51,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake clang ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils
+          sudo apt-get -y install build-essential git cmake clang ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils alsa-source
           ./bootstrap
           RUSTUP_TOOLCHAIN=`cat rust.version`-msvc
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
