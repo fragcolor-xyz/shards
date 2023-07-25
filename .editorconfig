@@ -1,6 +1,6 @@
 root = true
 
-[{*.edn,*.clj,*.cpp,*.hpp,*.h,*.c,*.js}]
+[{*.edn,*.clj,*.cpp,*.hpp,*.h,*.c,*.js,*.shs}]
 charset = utf-8
 indent_size = 2
 indent_style = space

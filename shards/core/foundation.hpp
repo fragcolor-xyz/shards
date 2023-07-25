@@ -1421,18 +1421,12 @@ inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypes
     }
   }
   return std::nullopt;
-}
+} 
 
 inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, const SHVar &var) {
   assert(var.valueType == SHType::ContextVar);
 
-  auto sv = SHSTRVIEW(var);
-  for (const auto &entry : exposed) {
-    if (sv == entry.name) {
-      return entry;
-    }
-  }
-  return std::nullopt;
+  return findExposedVariable(exposed, SHSTRVIEW(var)); 
 }
 
 // Collects all ContextVar references
