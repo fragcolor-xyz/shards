@@ -21,14 +21,12 @@ use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
-use shards::types::RawString;
 use shards::types::ShardsVar;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
-use shards::types::STRING_OR_NONE_SLICE;
 
 lazy_static! {
   static ref AREA_PARAMETERS: Parameters = vec![

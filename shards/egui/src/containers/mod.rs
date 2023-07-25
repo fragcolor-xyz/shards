@@ -8,7 +8,6 @@ use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::ShardsVar;
 use shards::types::Type;
-use shards::types::Var;
 use shards::types::FRAG_CC;
 
 shenum! {

@@ -90,6 +90,8 @@ struct Layout {
   cross_align: ParamVar,
   cross_justify: ParamVar,
   size: ParamVar,
+  fill_width: ParamVar,
+  fill_height: ParamVar,
   exposing: ExposedTypes,
 }
 

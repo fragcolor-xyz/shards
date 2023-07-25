@@ -75,10 +75,12 @@ lazy_static! {
       .into(),
     (
       cstr!("Size"),
-      shccstr!("The size of the space to be reserved by this UI."),
+      shccstr!("The size of the space to be reserved by this UI. May be overidden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
+    (cstr!("FillWidth"), shccstr!(""), &BOOL_TYPES[..],).into(),
+    (cstr!("FillHeight"), shccstr!(""), &BOOL_TYPES[..],).into(),
   ];
 }
 
@@ -97,6 +99,8 @@ impl Default for Layout {
       cross_align: ParamVar::default(),
       cross_justify: ParamVar::default(),
       size: ParamVar::default(),
+      fill_width: ParamVar::default(),
+      fill_height: ParamVar::default(),
       exposing: Vec::new(),
     }
   }
@@ -159,6 +163,8 @@ impl Shard for Layout {
       5 => Ok(self.cross_align.set_param(value)),
       6 => Ok(self.cross_justify.set_param(value)),
       7 => Ok(self.size.set_param(value)),
+      8 => Ok(self.fill_width.set_param(value)),
+      9 => Ok(self.fill_height.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -173,6 +179,8 @@ impl Shard for Layout {
       5 => self.cross_align.get_param(),
       6 => self.cross_justify.get_param(),
       7 => self.size.get_param(),
+      8 => self.fill_width.get_param(),
+      9 => self.fill_height.get_param(),
       _ => Var::default(),
     }
   }
@@ -221,11 +229,15 @@ impl Shard for Layout {
     self.cross_align.warmup(ctx);
     self.cross_justify.warmup(ctx);
     self.size.warmup(ctx);
+    self.fill_width.warmup(ctx);
+    self.fill_height.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.fill_height.cleanup();
+    self.fill_width.cleanup();
     self.size.cleanup();
     self.cross_justify.cleanup();
     self.cross_align.cleanup();
@@ -329,42 +341,58 @@ impl Shard for Layout {
       };
       layout = layout.with_main_align(main_align);
 
-      let main_wrap = if self.main_wrap.get().is_none() {
-        false // default main wrap
-      } else {
+      let main_wrap = if !self.main_wrap.get().is_none() {
         self.main_wrap.get().try_into()?
+      } else {
+        false // default main wrap
       };
       layout = layout.with_main_wrap(main_wrap);
 
-      let main_justify = if self.main_justify.get().is_none() {
-        false // default main justify
-      } else {
+      let main_justify = if !self.main_justify.get().is_none() {
         self.main_justify.get().try_into()?
+      } else {
+        false // default main justify
       };
       layout = layout.with_main_justify(main_justify);
 
-      let cross_justify = if self.cross_justify.get().is_none() {
-        false // default cross justify
-      } else {
+      let cross_justify = if !self.cross_justify.get().is_none() {
         self.cross_justify.get().try_into()?
+      } else {
+        false // default cross justify
       };
       layout = layout.with_cross_justify(cross_justify);
 
-      let size = if self.size.get().is_none() {
-        (
-          ui.available_size_before_wrap().x,
-          ui.available_size_before_wrap().y,
-        ) // if none then take up all available space
+      let mut size = if !self.size.get().is_none() {
+        self.size.get().try_into()?
       } else {
-        let mut size: (f32, f32) = self.size.get().try_into()?;
-        if size.0 == 0.0 {
-          size.0 = ui.available_size_before_wrap().x;
-        }
-        if size.1 == 0.0 {
-          size.1 = ui.available_size_before_wrap().y;
-        }
-        size
+        (0.0, 0.0)
       };
+
+      let fill_width: bool = if !self.fill_width.get().is_none() {
+        self.fill_width.get().try_into()?
+      } else {
+        false // default fill width
+      };
+      let fill_height: bool = if !self.fill_height.get().is_none() {
+        self.fill_height.get().try_into()?
+      } else {
+        false // default fill height
+      };
+
+      if fill_width {
+        size.0 = ui.available_size_before_wrap().x;
+      }
+      if fill_height {
+        size.1 = ui.available_size_before_wrap().y;
+      }
+
+      // If the size is still 0, use only minimum size for an interactive widget
+      if size.0 == 0.0 {
+        size.0 = ui.spacing().interact_size.x;
+      }
+      if size.1 == 0.0 {
+        size.1 = ui.spacing().interact_size.y;
+      }
 
       ui.allocate_ui_with_layout(size.into(), layout, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
