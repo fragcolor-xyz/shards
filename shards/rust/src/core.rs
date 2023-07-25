@@ -170,13 +170,13 @@ macro_rules! shlog_trace {
     {
       use std::io::Write as __stdWrite;
       let mut buf = vec![];
-      ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+      ::std::write!(&mut buf, $text, $($arg),*).unwrap();
       $crate::core::logLevel(0, ::std::str::from_utf8(&buf).unwrap());
     }
   };
 
   ($text:expr) => {
-    $crate::core::logLevel(0, concat!($text, "\0"));
+    $crate::core::logLevel(0, $text);
   };
 }
 
@@ -195,13 +195,13 @@ macro_rules! shlog_debug {
     {
       use std::io::Write as __stdWrite;
       let mut buf = vec![];
-      ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+      ::std::write!(&mut buf, $text, $($arg),*).unwrap();
       $crate::core::logLevel(1, ::std::str::from_utf8(&buf).unwrap());
     }
   };
 
   ($text:expr) => {
-    $crate::core::logLevel(1, concat!($text, "\0"));
+    $crate::core::logLevel(1, $text);
   };
 }
 
@@ -219,13 +219,13 @@ macro_rules! shlog {
       {
         use std::io::Write as __stdWrite;
         let mut buf = vec![];
-        ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+        ::std::write!(&mut buf, $text, $($arg),*).unwrap();
         $crate::core::log(::std::str::from_utf8(&buf).unwrap());
       }
     };
 
     ($text:expr) => {
-      $crate::core::log(concat!($text, "\0"));
+      $crate::core::log($text);
     };
 }
 
@@ -235,13 +235,13 @@ macro_rules! shlog_error {
     {
       use std::io::Write as __stdWrite;
       let mut buf = vec![];
-      ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+      ::std::write!(&mut buf, $text, $($arg),*).unwrap();
       $crate::core::logLevel(4, ::std::str::from_utf8(&buf).unwrap());
     }
   };
 
   ($text:expr) => {
-    $crate::core::logLevel(4, concat!($text, "\0"));
+    $crate::core::logLevel(4, $text);
   };
 }
 
@@ -251,13 +251,13 @@ macro_rules! shlog_warn {
     {
       use std::io::Write as __stdWrite;
       let mut buf = vec![];
-      ::std::write!(&mut buf, concat!($text, "\0"), $($arg),*).unwrap();
+      ::std::write!(&mut buf, $text, $($arg),*).unwrap();
       $crate::core::logLevel(3, ::std::str::from_utf8(&buf).unwrap());
     }
   };
 
   ($text:expr) => {
-    $crate::core::logLevel(3, concat!($text, "\0"));
+    $crate::core::logLevel(3, $text);
   };
 }
 

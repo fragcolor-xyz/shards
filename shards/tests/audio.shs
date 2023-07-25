@@ -4,7 +4,7 @@
 @mesh(main)
 
 @wire(play-files {
-    Audio.ReadFile("./data/Ode_to_Joy.ogg" From: 1.0 To: 1.023219954648526) | Log
+    Audio.ReadFile("./data/Ode_to_Joy.ogg" From: 1.0 To: 2.0) | Log
 } Looped: true)
 
 @schedule(main play-files)
@@ -13,13 +13,13 @@
 @run(main)
 
 @wire(play-file-fft {
-    Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) | 
+    Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) |
     DSP.FFT = freq-domain
-    DSP.IFFT(Audio: true) | 
+    DSP.IFFT(Audio: true) |
     Audio.WriteFile("example-fft.wav" Channels: 1)
     freq-domain | DSP.IFFT(Complex: true) | DSP.FFT ; FOR COVERAGE
-    freq-domain | DSP.IFFT(Complex: false) | 
-    Math.Normalize(Positive: true) | 
+    freq-domain | DSP.IFFT(Complex: false) |
+    Math.Normalize(Positive: true) |
     FloatsToImage(32 32 1) | WritePNG("example.wav.png") | ; again, just for coverage
     Log
 } Looped: true)
