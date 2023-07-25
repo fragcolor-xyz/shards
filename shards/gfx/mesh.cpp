@@ -35,8 +35,11 @@ void Mesh::update(const MeshFormat &format, const void *inVertexData, size_t ver
   vertexData.resize(alignTo<4>(vertexDataLength));
   indexData.resize(alignTo<4>(indexDataLength));
 
-  memcpy(vertexData.data(), inVertexData, vertexDataLength);
-  memcpy(indexData.data(), inIndexData, indexDataLength);
+  if (vertexDataLength > 0)
+    memcpy(vertexData.data(), inVertexData, vertexDataLength);
+
+  if (indexDataLength > 0)
+    memcpy(indexData.data(), inIndexData, indexDataLength);
 
   update();
 }
@@ -60,7 +63,7 @@ void Mesh::update(const MeshFormat &format, std::vector<uint8_t> &&vertexData, s
 
 void Mesh::calculateElementCounts(size_t vertexDataLength, size_t indexDataLength, size_t vertexSize, size_t indexSize) {
   assert(vertexSize > 0 && "vertexSize was 0");
-  
+
   numVertices = vertexDataLength / vertexSize;
   assert(numVertices * vertexSize == vertexDataLength);
 
