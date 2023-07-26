@@ -153,11 +153,11 @@ fn execute_seq(matches: &ArgMatches, ast: Sequence, cancellation_token: Arc<Atom
   let mut mesh = Mesh::default();
   mesh.schedule(wire.0);
   loop {
-    if !mesh.tick() {
+    if cancellation_token.load(atomic::Ordering::Relaxed) {
       break;
     }
 
-    if !cancellation_token.load(atomic::Ordering::Relaxed) {
+    if !mesh.tick() {
       break;
     }
   }
