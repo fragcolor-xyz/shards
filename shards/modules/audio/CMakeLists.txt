@@ -18,5 +18,5 @@ else()
 endif()
 
 if(NOT WIN32)
-  target_compile_definitions(shards-module-audio PUBLIC MA_NO_RUNTIME_LINKING)
+  target_compile_definitions(shards-module-audio PUBLIC MA_NO_RUNTIME_LINKING MA_NO_JACK) # todo add Jack back in once we can select devices etc
 endif()
