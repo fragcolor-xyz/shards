@@ -33,4 +33,4 @@ jobs:
         if: ${{ steps.setup.outputs.update-apt-packages == 'true' }}
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils libasound2-dev
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils libasound2-dev libjack-jackd2-dev libpulse-dev
