@@ -183,7 +183,7 @@ struct NanoIDCreate {
 impl Default for NanoIDCreate {
   fn default() -> Self {
     Self {
-      size: 16,
+      size: 21,
       output: Default::default(),
     }
   }
