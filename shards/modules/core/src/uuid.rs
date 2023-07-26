@@ -6,6 +6,7 @@ use shards::shard::Shard;
 
 use shards::types::ClonedVar;
 use shards::types::Context;
+use shards::types::INT_TYPES_SLICE;
 use shards::types::OptionalString;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::BYTES_TYPES;
@@ -165,8 +166,85 @@ impl Shard for UUIDToBytes {
   }
 }
 
+lazy_static! {
+  static ref NANO_PARAMETERS: Parameters = vec![(
+    cstr!("Size"),
+    shccstr!("The output string length of the created NanoID."),
+    INT_TYPES_SLICE
+  )
+    .into(),];
+}
+
+struct NanoIDCreate {
+  size: i64,
+  output: ClonedVar,
+}
+
+impl Default for NanoIDCreate {
+  fn default() -> Self {
+    Self {
+      size: 16,
+      output: Default::default(),
+    }
+  }
+}
+
+impl Shard for NanoIDCreate {
+  fn registerName() -> &'static str {
+    cstr!("NanoID")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("NanoID-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "NanoID"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "Creates a random NanoID."
+    ))
+  }
+
+  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &NONE_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &STRING_TYPES
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+    match index {
+      0 => Ok(self.size = value.try_into()?),
+      _ => unreachable!(),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.size.into(),
+      _ => unreachable!(),
+    }
+  }
+
+  fn activate(&mut self, _: &Context, _: &Var) -> Result<Var, &str> {
+    let size = self.size as usize;
+    let id = nanoid::nanoid!(size);
+    self.output = id.into();
+    Ok(self.output.0)
+  }
+}
+
 pub fn registerShards() {
   registerShard::<UUIDCreate>();
   registerShard::<UUIDToString>();
   registerShard::<UUIDToBytes>();
+  registerShard::<NanoIDCreate>();
 }

@@ -157,6 +157,7 @@
     uuid | UUID.ToString | Log
     uuid | UUID.ToString(true) | Log
     uuid | UUID.ToBytes | ToHex | Log
+    NanoID | Log
 })
 
 @schedule(root main)
