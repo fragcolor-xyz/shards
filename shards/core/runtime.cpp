@@ -1963,6 +1963,18 @@ endOfWire:
       wire->finishedError = "Generic error";
     }
     SHLOG_DEBUG("Wire {} failed with error {}", wire->name, wire->finishedError);
+
+    if(wire->resumer) {
+      // also stop the resumer parent in this case
+      wire->resumer->context->cancelFlow(wire->finishedError);
+    }
+  }
+
+  // if we have a resumer we return to it
+  if(wire->resumer) {
+    SHLOG_TRACE("Wire {} ending and resuming {}", wire->name, wire->resumer->name);
+    context.flow->wire = wire->resumer;
+    wire->resumer = nullptr;
   }
 
   // run cleanup on all the shards
