@@ -77,7 +77,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils alsa-source
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils libasound2-dev
           ./bootstrap
           RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
@@ -131,7 +131,7 @@ jobs:
           ./shards ../shards/tests/wire-macro.edn
           ./shards ../shards/tests/const-vars.edn
           ./shards new ../shards/tests/branch.shs
-          # ./shards new ../shards/tests/audio.shs test-device:false
+          ./shards new ../shards/tests/audio.shs test-device:true
           ./shards ../shards/tests/time.edn
           ./shards ../shards/tests/eth.edn
           ./shards ../shards/tests/take.edn
@@ -153,7 +153,6 @@ jobs:
         run: |
           cd build
           ./shards ../shards/tests/export-strings.edn
-          ./shards new ../shards/tests/audio.shs test-device:true
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full
