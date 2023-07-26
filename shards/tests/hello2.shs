@@ -28,7 +28,7 @@
 
 @macro(if [cond yes no] {
   Sequence(pipelines)
-  cond | If(Is(true) {
+  cond | If(IsAny([true "true" 1]) {
     {Pipeline: {blocks: [{content:
           {Shard: {name: {name: "Sub" namespaces: []}
                   params:[{name: none value: (@ast(yes) | FromJson)}]
@@ -39,5 +39,5 @@
                   params:[{name: none value: (@ast(no) | FromJson)}]
           }}}]}}
   }) >> pipelines
-  {statements: pipelines} | ToJson | Log
+  {statements: pipelines} | ToJson
 })

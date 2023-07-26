@@ -1,10 +1,12 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2021 Fragcolor Pte. Ltd.
 
+@include("hello2.shs") ; if macro
+
 @mesh(main)
 
 @wire(play-files {
-    Audio.ReadFile("./data/Ode_to_Joy.ogg" From: 1.0 To: 1.023219954648526) | Log
+    Audio.ReadFile("./data/Ode_to_Joy.ogg" From: 1.0 To: 2.0) | Log
 } Looped: true)
 
 @schedule(main play-files)
@@ -13,13 +15,13 @@
 @run(main)
 
 @wire(play-file-fft {
-    Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) | 
+    Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) |
     DSP.FFT = freq-domain
-    DSP.IFFT(Audio: true) | 
+    DSP.IFFT(Audio: true) |
     Audio.WriteFile("example-fft.wav" Channels: 1)
     freq-domain | DSP.IFFT(Complex: true) | DSP.FFT ; FOR COVERAGE
-    freq-domain | DSP.IFFT(Complex: false) | 
-    Math.Normalize(Positive: true) | 
+    freq-domain | DSP.IFFT(Complex: false) |
+    Math.Normalize(Positive: true) |
     FloatsToImage(32 32 1) | WritePNG("example.wav.png") | ; again, just for coverage
     Log
 } Looped: true)
@@ -37,60 +39,64 @@
 ; @schedule(main play-file-dwt)
 ; @run(main)
 
-@wire(device-test-1 {
-    Audio.Device |
-    Audio.Channel(Shards: {Input})
-} Looped: true)
+@if(@test-device {
+    @wire(device-test-1 {
+        Audio.Device |
+        Audio.Channel(Shards: {Input})
+    } Looped: true)
 
-@schedule(main device-test-1)
-@run(main 0.1 25)
+    @schedule(main device-test-1)
+    @run(main 0.1 25)
 
-@wire(device-test-2 {
-    Audio.Device |
-    Audio.Channel(Shards: {
-        Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 2 From: 4.0 To: 6.0)
-    })
-} Looped: true)
+    @wire(device-test-2 {
+        Audio.Device |
+        Audio.Channel(Shards: {
+            Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 2 From: 4.0 To: 6.0)
+        })
+    } Looped: true)
 
-@schedule(main device-test-2)
-@run(main)
+    @schedule(main device-test-2)
+    @run(main)
 
-@wire(device-test-3 {
-    Audio.Device |
-    Audio.Channel(Shards: {
-        440.0 | Audio.Oscillator
-    })
-} Looped: true)
+    @wire(device-test-3 {
+        Audio.Device |
+        Audio.Channel(Shards: {
+            440.0 | Audio.Oscillator
+        })
+    } Looped: true)
 
-@schedule(main device-test-3)
-@run(main 0.1 25)
+    @schedule(main device-test-3)
+    @run(main 0.1 25)
 
-@wire(device-test-4 {
-    Audio.Device |
-    Audio.Channel(Shards: {
-        440.0 | Audio.Oscillator(Waveform::Triangle)
-    })
-} Looped: true)
+    @wire(device-test-4 {
+        Audio.Device |
+        Audio.Channel(Shards: {
+            440.0 | Audio.Oscillator(Waveform::Triangle)
+        })
+    } Looped: true)
 
-@schedule(main device-test-4)
-@run(main 0.1 25)
+    @schedule(main device-test-4)
+    @run(main 0.1 25)
 
-@wire(device-test-5 {
-    Audio.Device |
-    Audio.Channel(Shards: {
-        440.0 | Audio.Oscillator(Waveform::Square)
-    })
-} Looped: true)
+    @wire(device-test-5 {
+        Audio.Device |
+        Audio.Channel(Shards: {
+            440.0 | Audio.Oscillator(Waveform::Square)
+        })
+    } Looped: true)
 
-@schedule(main device-test-5)
-@run(main 0.1 25)
+    @schedule(main device-test-5)
+    @run(main 0.1 25)
 
-@wire(device-test-6 {
-    Audio.Device |
-    Audio.Channel(Shards: {
-        440.0 | Audio.Oscillator(Waveform::Sawtooth)
-    })
-} Looped: true)
+    @wire(device-test-6 {
+        Audio.Device |
+        Audio.Channel(Shards: {
+            440.0 | Audio.Oscillator(Waveform::Sawtooth)
+        })
+    } Looped: true)
 
-@schedule(main device-test-6)
-@run(main 0.1 25)
+    @schedule(main device-test-6)
+    @run(main 0.1 25)
+
+    none
+} Pass)

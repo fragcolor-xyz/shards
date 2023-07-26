@@ -110,15 +110,16 @@ else()
   set(WINDOWS_ABI "gnu")
 endif()
 
-# mingw32 static runtime
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  # static releases
   if(WIN32)
     add_link_options(-static)
     list(APPEND EXTERNAL_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-static -DCMAKE_C_FLAGS=-static)
   endif()
-endif()
+  if(GNU_STATIC_BUILD)
+    add_link_options(-static -static-libgcc -static-libstdc++)
+  endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   # aggressive inlining
   if(NOT SKIP_HEAVY_INLINE)
     # this works with emscripten too but makes the final binary much bigger
