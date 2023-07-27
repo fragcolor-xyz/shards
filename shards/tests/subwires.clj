@@ -49,7 +49,7 @@
    ; check that we can read root variables
    .var-from-root
    (Assert.Is "Ok!" true)
-   
+
    (Msg "message 1")
    1
    (Pause)
@@ -68,9 +68,8 @@
    (Pause)
                                ; make sure main is not stopped in this case
    (Resume "stopping")
-   ;; the flow stopped before!
-   ;; this should be unreachable
-   false (Assert.Is true true)))
+   ;; the flow stopped via Stop, the input of Stop was 4 from previous Resume
+   (Assert.Is 4 true)))
 
 (def tickedWire2
   (Wire
@@ -98,9 +97,8 @@
    "started"
    (Msg "From top!")
    (Resume "root-wire")
-   ;; Should not enter here!
-   false ; fail on purpose here
-   (Assert.Is true true)))
+   ; root-wire should complete, and so output "done"
+   (Assert.Is "done" true)))
 
 (def main
   (Wire
@@ -191,7 +189,8 @@
    (Start startButNotResumed)
    (Msg "root resumed")
 
-   (Msg "done")))
+   "done"
+   (Log)))
 
 (schedule root main)
 
