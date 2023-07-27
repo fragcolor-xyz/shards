@@ -1,0 +1,33 @@
+; ; SPDX-License-Identifier: BSD-3-Clause
+; ; Copyright © 2023 Fragcolor
+
+@wire(handler {
+  Log("Server's Peer Received")
+  | When(Is("The End") {"" Stop})
+  "Ok" Network.Send
+} Looped: true)
+
+@wire(network-test-server {
+  Network.Server("127.0.0.1" 9191 handler)
+} Looped: true)
+
+@wire(client-init {
+  "Hey server" | Network.Send
+  2019 | Network.Send
+  99.9 | Network.Send
+  @f4(3 2 1 0) | Network.Send
+  [1 2 3 4 5] | Network.Send
+  "The End" | Network.Send(peer)
+})
+
+@wire(network-test-client {
+  Network.Client("127.0.0.1" 9191 {
+    Log("Client received")
+  }) = peer
+  Once(Do(client-init))
+} Looped: true)
+
+@mesh(main)
+@schedule(main network-test-server)
+@schedule(main network-test-client)
+@run(main 0.01 100)

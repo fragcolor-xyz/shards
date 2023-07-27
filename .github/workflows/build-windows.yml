@@ -242,7 +242,7 @@ jobs:
           echo "Running test: loader"
           ./shards ../shards/tests/loader.clj
           echo "Running test: network"
-          ./shards ../shards/tests/network.edn
+          ./shards new ../shards/tests/network.shs
           echo "Running test: struct"
           ./shards ../shards/tests/struct.clj
           echo "Running test: flows"
