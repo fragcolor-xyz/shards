@@ -707,8 +707,12 @@ struct Resume : public WireBase {
     // reset resumer
     pWire->resumer = nullptr;
 
-    // return the last output of pWire
-    return pWire->previousOutput;
+    // return the last or final output of pWire
+    if (pWire->state > SHWire::State::IterationEnded) { // failed or ended
+      return pWire->finishedOutput;
+    } else {
+      return pWire->previousOutput;
+    }
   }
 };
 
@@ -781,8 +785,12 @@ struct Start : public Resume {
     // reset resumer
     pWire->resumer = nullptr;
 
-    // return the last output of pWire
-    return pWire->previousOutput;
+    // return the last or final output of pWire
+    if (pWire->state > SHWire::State::IterationEnded) { // failed or ended
+      return pWire->finishedOutput;
+    } else {
+      return pWire->previousOutput;
+    }
   }
 };
 

@@ -1956,7 +1956,8 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
   }
 
 endOfWire:
-  wire->finishedOutput = wire->previousOutput;
+  wire->finishedOutput = wire->previousOutput; // cloning over! (OwnedVar)
+
   if (failed || context.failed()) {
     wire->finishedError = context.getErrorMessage();
     if (wire->finishedError.empty()) {
