@@ -609,7 +609,7 @@ struct Resume : public WireBase {
       }
     }
 
-    return data.inputType;
+    return CoreInfo::AnyType; // can be anything
   }
 
   void setParam(int index, const SHVar &value) { wireref = value; }
@@ -702,11 +702,13 @@ struct Resume : public WireBase {
     shards::suspend(context, 0);
 
     // We will end here when we get resumed!
+    // When we are here, pWire is suspended, (could be in the middle of a loop, anywhere!)
 
     // reset resumer
     pWire->resumer = nullptr;
 
-    return input;
+    // return the last output of pWire
+    return pWire->previousOutput;
   }
 };
 
@@ -774,11 +776,13 @@ struct Start : public Resume {
     shards::suspend(context, 0);
 
     // We will end here when we get resumed!
+    // When we are here, pWire is suspended, (could be in the middle of a loop, anywhere!)
 
     // reset resumer
     pWire->resumer = nullptr;
 
-    return input;
+    // return the last output of pWire
+    return pWire->previousOutput;
   }
 };
 
