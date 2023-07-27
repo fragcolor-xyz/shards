@@ -135,7 +135,8 @@ struct NetworkBase {
   }
 
   void warmup(SHContext *context) {
-    _sharedNetworkContext = getOrCreateAnyStorage<NetworkContext>(context, "Network.Context");
+    auto mesh = context->main->mesh.lock();
+    _sharedNetworkContext = getOrCreateAnyStorage<NetworkContext>(mesh.get(), "Network.Context");
 
     _addr.warmup(context);
     _port.warmup(context);
