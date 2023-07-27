@@ -44,10 +44,7 @@ struct NetworkContext {
 
   ~NetworkContext() {
     SHLOG_TRACE("NetworkContext dtor");
-    boost::asio::post(_io_context, [this]() {
-      // allow end/thread exit
-      _io_context.stop();
-    });
+    _io_context.stop(); // internally it will lock and send stop to all threads
     _io_context_thread.join();
   }
 };
@@ -99,7 +96,6 @@ struct NetworkBase {
 
   ParamVar _addr{Var("localhost")};
   ParamVar _port{Var(9191)};
-
 
   AnyStorage<NetworkContext> _sharedNetworkContext;
 
