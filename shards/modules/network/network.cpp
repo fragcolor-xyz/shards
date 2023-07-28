@@ -201,6 +201,8 @@ struct Server : public NetworkBase {
   std::unique_ptr<WireDoppelgangerPool<NetworkPeer>> _pool;
   OwnedVar _handlerMaster{};
 
+  bool _running = false;
+
   float _timeoutSecs = 30.0f;
 
   static inline Parameters params{
@@ -295,9 +297,13 @@ struct Server : public NetworkBase {
     _contextCopy = context;
 
     NetworkBase::warmup(context);
+
+    _running = true;
   }
 
   void cleanup() {
+    _running = false;
+
     if (_pool) {
       SHLOG_TRACE("Stopping all wires");
       _pool->stopAll();
@@ -404,7 +410,7 @@ struct Server : public NetworkBase {
                 SHLOG_ERROR("Error acquiring peer: {}", e.what());
 
                 // keep receiving
-                if (_socket)
+                if (_socket && _running)
                   return do_receive();
               }
             } else {
@@ -425,7 +431,7 @@ struct Server : public NetworkBase {
             currentPeer->_lastContact = SHClock::now();
 
             // keep receiving
-            if (_socket)
+            if (_socket && _running)
               return do_receive();
           } else {
             SHLOG_DEBUG("Error receiving: {}, peer: {} port: {}", ec.message(), _sender.address().to_string(), _sender.port());
@@ -438,7 +444,7 @@ struct Server : public NetworkBase {
             }
 
             // keep receiving
-            if (_socket)
+            if (_socket && _running)
               return do_receive();
           }
         });
