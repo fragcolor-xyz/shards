@@ -151,7 +151,11 @@ fn execute_seq(matches: &ArgMatches, ast: Sequence, cancellation_token: Arc<Atom
     { eval(&ast, "root", defines, cancellation_token.clone()).expect("Failed to evaluate file") };
 
   let mut mesh = Mesh::default();
-  mesh.schedule(wire.0);
+  if !mesh.compose(wire.0) {
+    shlog!("Failed to compose mesh");
+    return -1;
+  }
+  mesh.schedule(wire.0, false);
   loop {
     if cancellation_token.load(atomic::Ordering::Relaxed) {
       break;

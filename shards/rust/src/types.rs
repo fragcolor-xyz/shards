@@ -201,8 +201,12 @@ impl Drop for Mesh {
 }
 
 impl Mesh {
-  pub fn schedule(&mut self, wire: WireRef) {
-    unsafe { (*Core).schedule.unwrap()(self.0, wire.0) }
+  pub fn compose(&self, wire: WireRef) -> bool {
+    unsafe { (*Core).compose.unwrap()(self.0, wire.0) }
+  }
+
+  pub fn schedule(&mut self, wire: WireRef, compose: bool) {
+    unsafe { (*Core).schedule.unwrap()(self.0, wire.0, compose) }
   }
 
   pub fn tick(&mut self) -> bool {

@@ -1965,14 +1965,14 @@ endOfWire:
     }
     SHLOG_DEBUG("Wire {} failed with error {}", wire->name, wire->finishedError);
 
-    if(wire->resumer) {
+    if (wire->resumer) {
       // also stop the resumer parent in this case
       wire->resumer->context->cancelFlow(wire->finishedError);
     }
   }
 
   // if we have a resumer we return to it
-  if(wire->resumer) {
+  if (wire->resumer) {
     SHLOG_TRACE("Wire {} ending and resuming {}", wire->name, wire->resumer->name);
     context.flow->wire = wire->resumer;
     wire->resumer = nullptr;
@@ -3297,10 +3297,24 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     delete smesh;
   };
 
-  result->schedule = [](SHMeshRef mesh, SHWireRef wire) noexcept {
+  result->compose = [](SHMeshRef mesh, SHWireRef wire) noexcept {
     try {
       auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
-      (*smesh)->schedule(SHWire::sharedFromRef(wire));
+      (*smesh)->compose(SHWire::sharedFromRef(wire));
+    } catch (const std::exception &e) {
+      SHLOG_ERROR("Errors while composing: {}", e.what());
+      return false;
+    } catch (...) {
+      SHLOG_ERROR("Errors while composing");
+      return false;
+    }
+    return true;
+  };
+
+  result->schedule = [](SHMeshRef mesh, SHWireRef wire, SHBool compose) noexcept {
+    try {
+      auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+      (*smesh)->schedule(SHWire::sharedFromRef(wire), shards::Var::Empty, compose);
     } catch (const std::exception &e) {
       SHLOG_ERROR("Errors while scheduling: {}", e.what());
     } catch (...) {
