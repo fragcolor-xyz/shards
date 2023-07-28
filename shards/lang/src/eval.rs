@@ -909,7 +909,19 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
       wire.add_shard(shard.0);
     }
     let mut mesh = Mesh::default();
-    mesh.schedule(wire.0);
+    if !mesh.compose(wire.0) {
+      return Err(
+        (
+          "Error composing eval mesh",
+          LineInfo {
+            line: line_info.0,
+            column: line_info.1,
+          },
+        )
+          .into(),
+      );
+    }
+    mesh.schedule(wire.0, false);
     loop {
       if !mesh.tick() {
         break;
@@ -2597,8 +2609,18 @@ fn eval_pipeline(
               }?;
 
               let mesh = get_mesh(&mesh_id, find_mesh, e, block)?;
+              let wire = wire.as_ref().try_into().unwrap();
 
-              mesh.schedule(wire.as_ref().try_into().unwrap());
+              if !mesh.compose(wire) {
+                return Err(
+                  (
+                    "failed to compose wire into mesh",
+                    block.line_info.unwrap_or_default(),
+                  )
+                    .into(),
+                );
+              }
+              mesh.schedule(wire, false);
 
               Ok(())
             } else {

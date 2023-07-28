@@ -888,7 +888,9 @@ typedef void(__cdecl *SHUnsetGlobalWire)(struct SHStringWithLen name);
 
 typedef SHMeshRef(__cdecl *SHCreateMesh)();
 typedef void(__cdecl *SHDestroyMesh)(SHMeshRef mesh);
-typedef void(__cdecl *SHSchedule)(SHMeshRef mesh, SHWireRef wire);
+typedef SHBool(__cdecl *SHCompose)(SHMeshRef mesh, SHWireRef wire);
+typedef void(__cdecl *SHUnSchedule)(SHMeshRef mesh, SHWireRef wire);
+typedef void(__cdecl *SHSchedule)(SHMeshRef mesh, SHWireRef wire, SHBool compose);
 typedef SHBool(__cdecl *SHTick)(SHMeshRef mesh);
 typedef void(__cdecl *SHTerminate)(SHMeshRef mesh);
 typedef void(__cdecl *SHSleep)(double seconds, SHBool runCallbacks);
@@ -1023,8 +1025,9 @@ typedef struct _SHCore {
   // Wire scheduling
   SHCreateMesh createMesh;
   SHDestroyMesh destroyMesh;
+  SHCompose compose;
   SHSchedule schedule;
-  SHSchedule unschedule;
+  SHUnSchedule unschedule;
   SHTick tick; // returns false if all wires are done!
   SHTerminate terminate;
   SHSleep sleep;
