@@ -45,7 +45,8 @@ struct NetworkContext {
   ~NetworkContext() {
     SHLOG_TRACE("NetworkContext dtor");
     _io_context.stop(); // internally it will lock and send stop to all threads
-    _io_context_thread.join();
+    if(_io_context_thread.joinable())
+      _io_context_thread.join();
   }
 };
 
@@ -117,7 +118,7 @@ struct NetworkBase {
 
       // defer all in the context or we will crash!
       if (_socket) {
-        boost::asio::post(io_context, [&]() {
+        boost::asio::post(io_context, [this]() {
           _socket->close();
           _socket.reset();
         });
