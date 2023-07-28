@@ -210,7 +210,7 @@ struct Consumers : public Base {
   BufferedConsumer _storage;
   int64_t _bufferSize = 1;
   int64_t _current = 1;
-  SHTypeInfo _outType{};
+  OwnedVar _outType{};
   SHTypeInfo _seqType{};
 
   static inline Parameters consumerParams{
@@ -231,7 +231,7 @@ struct Consumers : public Base {
       _name = SHSTRVIEW(value);
       break;
     case 1:
-      _outType = *value.payload.typeValue;
+      _outType = value;
       break;
     case 2:
       _bufferSize = value.payload.intValue;
@@ -246,7 +246,7 @@ struct Consumers : public Base {
     case 0:
       return Var(_name);
     case 1:
-      return SHVar{.payload = {.typeValue = &_outType}, .valueType = SHType::Type};
+      return _outType;
     case 2:
       return Var(_noCopy);
     default:
@@ -264,18 +264,19 @@ struct Consume : public Consumers {
   MPMCChannel *_mpChannel{};
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_outType.basicType == SHType::None) {
+    auto &outType = *_outType.payload.typeValue;
+    if (outType.basicType == SHType::None) {
       throw std::logic_error("Consume: Type parameter is required.");
     }
 
     _channel = get(_name);
-    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, _outType, _noCopy, _name.c_str());
+    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, outType, _noCopy, _name.c_str());
 
     if (_bufferSize == 1) {
-      return _outType;
+      return outType;
     } else {
       _seqType.basicType = SHType::Seq;
-      _seqType.seqTypes.elements = &_outType;
+      _seqType.seqTypes.elements = _outType.payload.typeValue;
       _seqType.seqTypes.len = 1;
       return _seqType;
     }
@@ -338,19 +339,20 @@ struct Listen : public Consumers {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_outType.basicType == SHType::None) {
+    auto &outType = *_outType.payload.typeValue;
+    if (outType.basicType == SHType::None) {
       throw std::logic_error("Listen: Type parameter is required.");
     }
 
     _channel = get(_name);
-    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, _outType, _noCopy, _name.c_str());
+    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, outType, _noCopy, _name.c_str());
     _subscriptionChannel = &_bChannel->subscribe();
 
     if (_bufferSize == 1) {
-      return _outType;
+      return outType;
     } else {
       _seqType.basicType = SHType::Seq;
-      _seqType.seqTypes.elements = &_outType;
+      _seqType.seqTypes.elements = _outType.payload.typeValue;
       _seqType.seqTypes.len = 1;
       return _seqType;
     }
