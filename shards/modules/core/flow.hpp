@@ -411,7 +411,7 @@ struct Maybe : public BaseSubFlow {
     const auto nextIsNone =
         data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None);
 
-    if (!nextIsNone && !elseComp.flowStopper && _composition.outputType != elseComp.outputType) {
+    if (_elseBlks && !nextIsNone && !elseComp.flowStopper && _composition.outputType != elseComp.outputType) {
       SHLOG_ERROR("{} != {}", _composition.outputType, elseComp.outputType);
       throw ComposeError("Maybe: output types mismatch between the two possible flows!");
     }
@@ -419,7 +419,7 @@ struct Maybe : public BaseSubFlow {
     // Maybe won't expose
     _composition.exposedInfo = {};
 
-    return _composition.outputType;
+    return !_elseBlks ? data.inputType : _composition.outputType;
   }
 
   void cleanup() {
@@ -455,11 +455,16 @@ struct Maybe : public BaseSubFlow {
           context->continueFlow();
           if (_elseBlks)
             _elseBlks.activate(context, input, output);
+          else
+            return input;
         } else {
           SHLOG_DEBUG("Maybe shard Ignored an error: {}, when on last resume", context->getErrorMessage());
           // Just continue as the wire is done
           return Var::Empty;
         }
+      } else {
+        if(!_elseBlks)
+          return input; // implicit pass through if no else blks
       }
     }
     return output;
