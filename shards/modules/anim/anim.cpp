@@ -5,6 +5,7 @@
 #include <shards/linalg_shim.hpp>
 #include <shards/modules/core/math.hpp>
 #include <shards/modules/core/time.hpp>
+#include <shards/modules/gfx/shards_utils.hpp>
 #include <shards/math_ops.hpp>
 #include <shards/shardwrapper.hpp>
 #include <shards/core/params.hpp>
@@ -23,6 +24,7 @@ static auto getKeyframeValue(const SHVar &keyframe) { return ((TableVar &)keyfra
 static auto getKeyframeInterpolation(const SHVar &keyframe) {
   Var &v = ((TableVar &)keyframe).get<Var>(Var("Interpolation"));
   if (v.valueType == SHType::Enum) {
+    gfx::checkEnumType(v, Types::InterpolationEnumInfo::Type, "Interpolation");
     return (Interpolation)v.payload.enumValue;
   }
   return Interpolation::Linear;
