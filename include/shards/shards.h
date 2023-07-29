@@ -869,8 +869,7 @@ typedef void(__cdecl *SHLogLevel)(int level, struct SHStringWithLen msg);
 typedef struct Shard *(__cdecl *SHCreateShard)(struct SHStringWithLen name);
 typedef void(__cdecl *SHReleaseShard)(struct Shard *shard);
 
-typedef SHWireRef(__cdecl *SHCreateWire)();
-typedef void(__cdecl *SHSetWireName)(SHWireRef wire, struct SHStringWithLen name);
+typedef SHWireRef(__cdecl *SHCreateWire)(struct SHStringWithLen name);
 typedef void(__cdecl *SHSetWireLooped)(SHWireRef wire, SHBool looped);
 typedef void(__cdecl *SHSetWireUnsafe)(SHWireRef wire, SHBool unsafe);
 typedef void(__cdecl *SHSetWirePure)(SHWireRef wire, SHBool pure);
@@ -1006,7 +1005,6 @@ typedef struct _SHCore {
   SHValidateSetParam validateSetParam;
 
   SHCreateWire createWire;
-  SHSetWireName setWireName;
   SHSetWireLooped setWireLooped;
   SHSetWireUnsafe setWireUnsafe;
   SHSetWirePure setWirePure;

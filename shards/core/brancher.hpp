@@ -35,7 +35,7 @@ public:
     assert(var.valueType == SHType::Seq);
     const SHSeq &seq = var.payload.seqValue;
     assert(seq.len == 0 || seq.elements[0].valueType == SHType::ShardRef);
-    auto wire = wires.emplace_back(SHWire::make());
+    auto wire = wires.emplace_back(SHWire::make("brancher-looped-shards"));
     wire->looped = true;
     ForEach(seq, [&](SHVar &v) {
       assert(v.valueType == SHType::ShardRef);

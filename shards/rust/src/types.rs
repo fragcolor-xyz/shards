@@ -220,12 +220,6 @@ impl Mesh {
 
 pub struct Wire(pub WireRef);
 
-impl Default for Wire {
-  fn default() -> Self {
-    Wire(WireRef(unsafe { (*Core).createWire.unwrap()() }))
-  }
-}
-
 impl Drop for Wire {
   fn drop(&mut self) {
     unsafe { (*Core).destroyWire.unwrap()(self.0 .0) }
@@ -233,6 +227,14 @@ impl Drop for Wire {
 }
 
 impl Wire {
+  pub fn new(name: &str) -> Self {
+    let name = SHStringWithLen {
+      string: name.as_ptr() as *const c_char,
+      len: name.len(),
+    };
+    Wire(WireRef(unsafe { (*Core).createWire.unwrap()(name) }))
+  }
+
   pub fn add_shard(&self, shard: ShardRef) {
     unsafe { (*Core).addShard.unwrap()(self.0 .0, shard.0) }
   }
@@ -251,18 +253,6 @@ impl Wire {
 
   pub fn set_stack_size(&self, stack_size: usize) {
     unsafe { (*Core).setWireStackSize.unwrap()(self.0 .0, stack_size) }
-  }
-
-  pub fn set_name(&self, name: &str) {
-    unsafe {
-      (*Core).setWireName.unwrap()(
-        self.0 .0,
-        SHStringWithLen {
-          string: name.as_ptr() as *const c_char,
-          len: name.len(),
-        },
-      )
-    }
   }
 
   pub fn stop(&self) -> ClonedVar {
