@@ -1290,9 +1290,8 @@ fn as_var(
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
         // add this sub shard before the start of this pipeline!
         e.shards.insert(start_idx, sub);
-        // now add a get shard to get the temporary at the end of the pipeline
-        add_get_shard_no_suffix(&tmp_name, line_info, e)?;
 
+        // simply return the temporary variable
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
         Ok(SVar::Cloned(s.into()))
@@ -1316,9 +1315,8 @@ fn as_var(
         let sub = make_sub_shard(sub_env.shards.drain(..).collect(), line_info)?;
         // add this sub shard before the start of this pipeline!
         e.shards.insert(start_idx, sub);
-        // now add a get shard to get the temporary at the end of the pipeline
-        add_get_shard_no_suffix(&tmp_name, line_info, e)?;
 
+        // simply return the temporary variable
         let mut s = Var::ephemeral_string(tmp_name.as_str());
         s.valueType = SHType_ContextVar;
         Ok(SVar::Cloned(s.into()))
