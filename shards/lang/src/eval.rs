@@ -808,7 +808,6 @@ fn finalize_wire(
   env: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
   let name = get_full_name(name, env);
-  wire.set_name(&name);
 
   shlog_trace!("Finalizing wire {}", name);
 
@@ -902,8 +901,7 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
   if !sub_env.shards.is_empty() {
     let line_info = sub_env.shards[0].0.get_line_info();
     // create an ephemeral wire, execute and grab result
-    let wire = Wire::default();
-    wire.set_name("eval-ephemeral");
+    let wire = Wire::new("eval-ephemeral");
     finalize_env(&mut sub_env)?;
     for shard in sub_env.shards.drain(..) {
       wire.add_shard(shard.0);
@@ -2418,11 +2416,12 @@ fn eval_pipeline(
                   }
 
                   let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
-                  shlog_trace!("Adding deferred wire {}", name.name);
+                  let wire_name = get_full_name(name, e);
+                  shlog_trace!("Adding deferred wire {}", wire_name);
                   e.deferred_wires.insert(
                     name.clone(),
                     (
-                      Wire::default(),
+                      Wire::new(&wire_name),
                       params_ptr,
                       block.line_info.unwrap_or_default(),
                     ),
@@ -3122,8 +3121,7 @@ pub(crate) fn transform_envs<'a, I>(envs: I, name: &str) -> Result<Wire, ShardsE
 where
   I: Iterator<Item = &'a mut EvalEnv>,
 {
-  let wire = Wire::default();
-  wire.set_name(name);
+  let wire = Wire::new(name);
   for env in envs {
     finalize_env(env)?;
     for shard in env.shards.drain(..) {
@@ -3134,8 +3132,7 @@ where
 }
 
 pub fn transform_env(env: &mut EvalEnv, name: &str) -> Result<Wire, ShardsError> {
-  let wire = Wire::default();
-  wire.set_name(name);
+  let wire = Wire::new(name);
   finalize_env(env)?;
   for shard in env.shards.drain(..) {
     wire.add_shard(shard.0);

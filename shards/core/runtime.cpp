@@ -3208,15 +3208,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->releaseShard = [](struct Shard *shard) noexcept { decRef(shard); };
 
-  result->createWire = []() noexcept {
-    auto wire = SHWire::make();
-    return wire->newRef();
-  };
-
-  result->setWireName = [](SHWireRef wireref, SHStringWithLen name) noexcept {
+  result->createWire = [](SHStringWithLen name) noexcept {
     std::string_view sv(name.string, name.len);
-    auto &sc = SHWire::sharedFromRef(wireref);
-    sc->name = sv;
+    auto wire = SHWire::make(sv);
+    return wire->newRef();
   };
 
   result->setWireLooped = [](SHWireRef wireref, SHBool looped) noexcept {

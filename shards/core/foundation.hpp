@@ -296,8 +296,6 @@ struct SHStackAllocator {
 struct SHWire : public std::enable_shared_from_this<SHWire> {
   static std::shared_ptr<SHWire> make(std::string_view wire_name) { return std::shared_ptr<SHWire>(new SHWire(wire_name)); }
 
-  static std::shared_ptr<SHWire> make() { return std::shared_ptr<SHWire>(new SHWire()); }
-
   static std::shared_ptr<SHWire> *makePtr(std::string_view wire_name) {
     return new std::shared_ptr<SHWire>(new SHWire(wire_name));
   }
@@ -439,8 +437,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
 private:
   SHWire(std::string_view wire_name) : name(wire_name) { SHLOG_TRACE("Creating wire: {}", name); }
-
-  SHWire() { SHLOG_TRACE("Creating wire"); }
 
 private:
   void destroy();
@@ -1421,12 +1417,12 @@ inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypes
     }
   }
   return std::nullopt;
-} 
+}
 
 inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, const SHVar &var) {
   assert(var.valueType == SHType::ContextVar);
 
-  return findExposedVariable(exposed, SHSTRVIEW(var)); 
+  return findExposedVariable(exposed, SHSTRVIEW(var));
 }
 
 // Collects all ContextVar references
