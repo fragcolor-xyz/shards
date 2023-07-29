@@ -77,7 +77,10 @@ struct TimerShard {
 
   void cleanup() { PARAM_CLEANUP(); }
 
+  PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
     _durationSource = DurationSource::Infinite;
     const SHExposedTypeInfo *animationType = findParamVarExposedType(data, _animation);
     if (animationType) {
@@ -174,6 +177,12 @@ struct PlayShard {
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup() { PARAM_CLEANUP(); }
 
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
   void evaluateTrack(SHVar &outputValue, const SeqVar &keyframesVar, float time) const {
     SeqVar &keyframes = (SeqVar &)keyframesVar;
     if (keyframes.empty())
@@ -261,7 +270,13 @@ struct DurationShard {
   PARAM_IMPL();
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup() { PARAM_CLEANUP(); }
-  SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
   SHVar activate(SHContext *shContext, const SHVar &input) { return Var{getAnimationDuration(input)}; }
 };
 
