@@ -2882,11 +2882,8 @@ struct Take {
           if (_seqOutput) {
             // multiple values, leave SHType::Seq
             return CoreInfo::AnySeqType;
-          } else if (data.inputType.table.types.len == 1) {
-            // single unique seq type
-            return data.inputType.table.types.elements[0];
           } else {
-            // value from seq but not unique
+            // value from table, can be None
             return CoreInfo::AnyType;
           }
         }
