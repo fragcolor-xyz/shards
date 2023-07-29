@@ -119,6 +119,7 @@ struct NetworkBase {
       // defer all in the context or we will crash!
       if (_socket) {
         boost::asio::post(io_context, [this]() {
+          SHLOG_TRACE("Closing socket");
           _socket->close();
           _socket.reset();
         });
@@ -435,6 +436,11 @@ struct Server : public NetworkBase {
             if (_socket && _running)
               return do_receive();
           } else {
+            if(ec == boost::asio::error::operation_aborted) {
+              SHLOG_DEBUG("Operation aborted");
+              return;
+            }
+
             SHLOG_DEBUG("Error receiving: {}, peer: {} port: {}", ec.message(), _sender.address().to_string(), _sender.port());
 
             std::shared_lock<std::shared_mutex> lock(peersMutex);
