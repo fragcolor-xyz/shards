@@ -63,6 +63,17 @@ struct EpochMs {
   }
 };
 
+struct Epoch {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    using namespace std::chrono;
+    seconds ms = duration_cast<seconds>(system_clock::now().time_since_epoch());
+    return Var(int64_t(ms.count()));
+  }
+};
+
 struct Pop {
   static inline Types PSeqTypes{{CoreInfo::AnyType, CoreInfo::IntType}};
   static inline Type PSeqType = Type::SeqOf(PSeqTypes);
@@ -232,6 +243,7 @@ SHARDS_REGISTER_FN(time) {
   REGISTER_SHARD("Time.Delta", Time::Delta);
   REGISTER_SHARD("Time.DeltaMs", Time::DeltaMs);
   REGISTER_SHARD("Time.EpochMs", Time::EpochMs);
+  REGISTER_SHARD("Time.Epoch", Time::Epoch);
   REGISTER_SHARD("Time.Pop", Time::Pop);
   REGISTER_SHARD("Time.ToString", Time::ToString);
 }
