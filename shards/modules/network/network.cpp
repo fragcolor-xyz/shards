@@ -18,7 +18,10 @@
 #include <thread>
 #include <unordered_map>
 #include <utility>
+
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include <ikcp.h>
+#pragma clang attribute pop
 
 namespace shards {
 namespace Network {
