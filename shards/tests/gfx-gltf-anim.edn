@@ -22,7 +22,7 @@
              (Setup
               .animations (ForEach (-> (Take 0) >> .animation-names)))
              .animation-names (Take .animation-index) >= .animation-name
-             .animations (Take .animation-name) = .animation
+             .animations (Take .animation-name) (Expect (input-type (Animation.Duration))) = .animation
              (Setup
               (Take 1))
 
