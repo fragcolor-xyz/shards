@@ -23,8 +23,6 @@
               .animations (ForEach (-> (Take 0) >> .animation-names)))
              .animation-names (Take .animation-index) >= .animation-name
              .animations (Take .animation-name) (Expect (input-type (Animation.Duration))) = .animation
-             (Setup
-              (Take 1))
 
              (Animation.Timer .animation :Offset 1.0)
              (Animation.Play .animation);
@@ -70,7 +68,7 @@
    (GFX.View :View .view-transform) >= .view)
 
   (GFX.MainWindow
-   :Title "glTF" :Width 1280 :Height 720 
+   :Title "glTF" :Width 1280 :Height 720
    :Contents
    (->
     (Animation.Timer :Rate 0.2 :Offset -0.75) >= .time

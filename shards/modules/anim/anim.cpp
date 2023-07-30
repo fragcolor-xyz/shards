@@ -161,7 +161,7 @@ struct TimerShard {
 };
 
 struct PlayShard {
-  static SHOptionalString help() { return SHCCSTR(R"(Returns the duration of an animation, in seconds)"); }
+  static SHOptionalString help() { return SHCCSTR(R"(Outputs the duration of an animation, in seconds)"); }
 
   static inline shards::Types OutputTypes{{Type::SeqOf(Types::ValueTable)}};
 
@@ -265,7 +265,7 @@ struct PlayShard {
 };
 
 struct DurationShard {
-  static SHOptionalString help() { return SHCCSTR(R"(Returns the duration of an animation, in seconds)"); }
+  static SHOptionalString help() { return SHCCSTR(R"(Outputs the duration of an animation, in seconds)"); }
   static SHTypesInfo inputTypes() { return Types::Animation; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
