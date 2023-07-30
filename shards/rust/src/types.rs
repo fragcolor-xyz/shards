@@ -296,6 +296,13 @@ impl ShardRef {
     }
   }
 
+  pub fn input_types(&self) -> &[Type] {
+    unsafe {
+      let info = (*self.0).inputTypes.unwrap()(self.0);
+      core::slice::from_raw_parts(info.elements, info.len as usize)
+    }
+  }
+
   pub fn create(name: &str, debug_info: Option<(u32, u32)>) -> Option<Self> {
     unsafe {
       let ptr = (*Core).createShard.unwrap()(SHStringWithLen {

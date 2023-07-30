@@ -1468,10 +1468,18 @@ fn process_type(
       })
       .unwrap_or(Ok(false))?;
 
-    let vendor_id = param_helper.get_param_by_name_or_index("ObjectVendor", 2);
-    let object_id = param_helper.get_param_by_name_or_index("ObjectTypeId", 3);
+    let input_type = param_helper
+      .get_param_by_name_or_index("InputType", 2)
+      .map(|param| match &param.value {
+        Value::Boolean(b) => Ok(*b),
+        _ => Err(("InputType parameter must be a boolean", line_info).into()),
+      })
+      .unwrap_or(Ok(false))?;
 
-    let mut type_ = process_type_desc(&type_.value, line_info, e)?;
+    let vendor_id = param_helper.get_param_by_name_or_index("ObjectVendor", 3);
+    let object_id = param_helper.get_param_by_name_or_index("ObjectTypeId", 4);
+
+    let mut type_ = process_type_desc(&type_.value, input_type, line_info, e)?;
 
     match (vendor_id, object_id) {
         (Some(vendor_id), Some(object_id)) => {
@@ -1553,6 +1561,7 @@ fn process_type(
 
 fn process_type_desc(
   value: &Value,
+  input_type: bool,
   line_info: LineInfo,
   env: &mut EvalEnv,
 ) -> Result<SVar, ShardsError> {
@@ -1571,17 +1580,21 @@ fn process_type_desc(
         );
       }
       let shard = &sub_env.shards[0].0;
-      let output_types = shard.output_types();
-      if output_types.len() != 1 {
+      let types = if !input_type {
+        shard.output_types()
+      } else {
+        shard.input_types()
+      };
+      if types.len() != 1 {
         return Err(
           (
-            "Type Shards parameter must contain a shard with a single output type",
+            "Type Shards parameter must contain a shard with a single connection type",
             line_info,
           )
             .into(),
         );
       }
-      Ok(SVar::Cloned(ClonedVar::from(output_types[0])))
+      Ok(SVar::Cloned(ClonedVar::from(types[0])))
     }
     Value::Enum(_, _) => process_type_enum(&value, line_info),
     Value::Seq(seq) => {
@@ -1589,7 +1602,7 @@ fn process_type_desc(
 
       let mut types = Vec::new(); // actual storage
       for value in seq {
-        let value = process_type_desc(value, line_info, env)?;
+        let value = process_type_desc(value, input_type, line_info, env)?;
         if value.as_ref().valueType != SHType_Type {
           return Err(("Type Seq parameter can only contain Type values", line_info).into());
         }
@@ -1613,7 +1626,7 @@ fn process_type_desc(
       let mut types = Vec::new(); // actual storage
       for (key, value) in pairs {
         let key = as_var(key, line_info, None, env)?;
-        let value = process_type_desc(value, line_info, env)?;
+        let value = process_type_desc(value, input_type, line_info, env)?;
         keys.push(key);
         types.push(value);
       }
@@ -1650,17 +1663,21 @@ fn process_type_desc(
     }
     Value::Shard(shard) => {
       let s = create_shard(shard, line_info, env)?;
-      let output_types = s.0.output_types();
-      if output_types.len() != 1 {
+      let types = if !input_type {
+        s.0.output_types()
+      } else {
+        s.0.input_types()
+      };
+      if types.len() != 1 {
         return Err(
           (
-            "Type Shards parameter must contain a shard with a single output type",
+            "Type Shards parameter must contain a shard with a single connection type",
             line_info,
           )
             .into(),
         );
       }
-      Ok(SVar::Cloned(ClonedVar::from(output_types[0])))
+      Ok(SVar::Cloned(ClonedVar::from(types[0])))
     }
     _ => Err(
       (
