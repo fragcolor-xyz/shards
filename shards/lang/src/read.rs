@@ -758,6 +758,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
             .next()
             .ok_or(("Expected a Table key", pos).into())?;
           let key = match key.as_rule() {
+            Rule::None => Value::None,
             Rule::Iden => Value::String(key.as_str().into()),
             Rule::Value => process_value(key.into_inner().next().unwrap(), env)?,
             _ => unreachable!(),
