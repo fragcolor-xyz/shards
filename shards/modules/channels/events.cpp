@@ -45,7 +45,7 @@ struct Send : Base {
     // when we send we store the type of the event
     auto currentType = (*_dispatcher).get().type;
     if (currentType.basicType != SHType::None) {
-      if (!matchTypes(data.inputType, currentType, false, true)) {
+      if (!matchTypes(data.inputType, currentType, false, true, true)) {
         SHLOG_ERROR("Event type mismatch, expected {} got {}", currentType, data.inputType);
         throw ComposeError("Event type mismatch");
       }

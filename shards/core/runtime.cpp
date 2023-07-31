@@ -739,7 +739,8 @@ SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wire
 // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices?redirectedfrom=MSDN
 Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThreadPool{};
 
-bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict) {
+bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
+                bool relaxEmptySeqCheck) {
   if (receiverType.basicType == SHType::Any)
     return true;
 
@@ -773,21 +774,23 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
         for (uint32_t i = 0; i < inputType.seqTypes.len; i++) {
           for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {
             if (receiverType.seqTypes.elements[j].basicType == SHType::Any ||
-                matchTypes(inputType.seqTypes.elements[i], receiverType.seqTypes.elements[j], isParameter, strict))
+                matchTypes(inputType.seqTypes.elements[i], receiverType.seqTypes.elements[j], isParameter, strict,
+                           relaxEmptySeqCheck))
               goto matched;
           }
           return false;
         matched:
           continue;
         }
-      } // Empty input sequence type indicates [ Any ], receiver type needs to explicitly contain Any to match
-      else if (inputType.seqTypes.len == 0 && receiverType.seqTypes.len > 0) {
+      } else if (inputType.seqTypes.len == 0 && receiverType.seqTypes.len > 0 && !relaxEmptySeqCheck) {
+        // Empty input sequence type indicates [ Any ], receiver type needs to explicitly contain Any to match
+        // but if input is a parameter such as `[]` we can let it pass, this is also used in channels!
         for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {
           if (receiverType.seqTypes.elements[j].basicType == SHType::Any)
             return true;
         }
         return false;
-      } else if (inputType.seqTypes.len == 0 || receiverType.seqTypes.len == 0) {
+      } else if ((!relaxEmptySeqCheck && inputType.seqTypes.len == 0) || receiverType.seqTypes.len == 0) {
         return false;
       }
       // if a fixed size is requested make sure it fits at least enough elements
@@ -825,7 +828,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
           SHTypeInfo anyType{SHType::Any};
           for (uint32_t y = 0; y < numReceiverTypes; y++) {
             auto btype = receiverType.table.types.elements[y];
-            if (matchTypes(anyType, btype, isParameter, strict)) {
+            if (matchTypes(anyType, btype, isParameter, strict, relaxEmptySeqCheck)) {
               matched = true;
               break;
             }
@@ -843,7 +846,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
               auto matched = false;
               for (uint32_t y = 0; y < numReceiverTypes; y++) {
                 auto btype = receiverType.table.types.elements[y];
-                if (matchTypes(atype, btype, isParameter, strict)) {
+                if (matchTypes(atype, btype, isParameter, strict, relaxEmptySeqCheck)) {
                   matched = true;
                   break;
                 }
@@ -875,7 +878,7 @@ bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, boo
             auto receiverEntryKey = receiverType.table.keys.elements[y];
             // Either match the expected key's type or compare against the last type (if it's key is "")
             if (inputEntryKey == receiverEntryKey || (lastElementEmpty && y == (numReceiverKeys - 1))) {
-              if (matchTypes(inputEntryType, receiverEntryType, isParameter, strict)) {
+              if (matchTypes(inputEntryType, receiverEntryType, isParameter, strict, relaxEmptySeqCheck)) {
                 missingMatches--;
                 y = numReceiverKeys; // break
               } else
@@ -930,7 +933,7 @@ void validateConnection(ValidationContext &ctx) {
   } else {
     for (uint32_t i = 0; inputInfos.len > i; i++) {
       auto &inputInfo = inputInfos.elements[i];
-      if (matchTypes(previousOutput, inputInfo, false, true)) {
+      if (matchTypes(previousOutput, inputInfo, false, true, false)) {
         inputMatches = true;
         break;
       }
@@ -1125,7 +1128,7 @@ void validateConnection(ValidationContext &ctx) {
       auto exposedType = findIt->second.exposedType;
       auto requiredType = required_param.exposedType;
       // Finally deep compare types
-      if (matchTypes(exposedType, requiredType, false, true)) {
+      if (matchTypes(exposedType, requiredType, false, true, false)) {
         matching = true;
       }
     }
@@ -1642,7 +1645,7 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
   for (uint32_t i = 0; param.valueTypes.len > i; i++) {
     // This only does a quick check to see if the type is roughly correct
     // ContextVariable types will be checked in validateConnection based on requiredVariables
-    if (matchTypes(varType, param.valueTypes.elements[i], true, true)) {
+    if (matchTypes(varType, param.valueTypes.elements[i], true, true, false)) {
       return true; // we are good just exit
     }
   }

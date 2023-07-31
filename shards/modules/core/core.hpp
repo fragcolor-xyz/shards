@@ -806,7 +806,7 @@ static const SHTypeInfo &updateSeqType(SHTypeInfo &typeInfoStorage, const SHType
   if (existingType) {
     for (size_t i = 0; i < existingType->seqTypes.len; i++) {
       // Already matching type in sequence type
-      if (matchTypes(typeToAdd, existingType->seqTypes.elements[i], false, true)) {
+      if (matchTypes(typeToAdd, existingType->seqTypes.elements[i], false, true, false)) {
         replacedIndex = i;
       }
       shards::arrayPush(typeInfoStorage.seqTypes, existingType->seqTypes.elements[i]);
