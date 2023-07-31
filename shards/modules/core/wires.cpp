@@ -1364,7 +1364,9 @@ struct ParallelBase : public CapturingSpawners {
 
       SHInstanceData data{};
       data.inputType = server._inputType;
-      data.shared = server._sharedCopy;
+      if (!wire->pure) {
+        data.shared = server._sharedCopy;
+      }
       data.wire = wire;
       wire->mesh = context->main->mesh;
       auto res = composeWire(
