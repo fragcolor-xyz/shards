@@ -66,6 +66,7 @@ template <auto V> struct constant {
 };
 
 inline SHOptionalString operator"" _optional(const char *s, size_t) { return SHOptionalString{s}; }
+inline SHStringWithLen operator"" _swl(const char *s, size_t l) { return SHStringWithLen{s, l}; }
 
 // SFINAE tests
 #define SH_HAS_MEMBER_TEST(_name_)                               \
