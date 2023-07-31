@@ -1480,6 +1480,7 @@ struct ParallelBase : public CapturingSpawners {
         cref = _pool->acquire(_composer, context);
       } catch (std::exception &e) {
         SHLOG_ERROR("Failed to acquire wire: {}", e.what());
+        throw ActivationError("ParallelBase, failed to acquire wire");
       }
       DEFER({
         SHLOG_DEBUG("ParallelBase: releasing wire {}", idx);
