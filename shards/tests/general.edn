@@ -762,6 +762,8 @@
    (| (FS.LastWriteTime) (Log "Last write time 1") = .test-lwt1)
    .test-lwt1 (IsMore .test-lwt0) (Assert.Is true true)
 
+   "test-lwt.txt" (FS.SetWriteTime .test-lwt1)
+
    (Get "text1")
    (ToJson :Pure false)
    (Log)

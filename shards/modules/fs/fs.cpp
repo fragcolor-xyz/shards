@@ -17,7 +17,7 @@ namespace shards {
 namespace FS {
 
 struct FileNotFoundException : public std::runtime_error {
-  FileNotFoundException(const std::string& err) : std::runtime_error(err) {}
+  FileNotFoundException(const std::string &err) : std::runtime_error(err) {}
 };
 
 struct Iterate {
@@ -507,6 +507,33 @@ struct LastWriteTime {
     return Var(static_cast<int64_t>(lwt));
   }
 };
+
+struct SetWriteTime {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  PARAM_PARAMVAR(_time, "Time", "The new time to set as last write time", {CoreInfo::IntOrIntVar});
+  PARAM_IMPL(PARAM_IMPL_FOR(_time));
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return data.inputType;
+  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup() { PARAM_CLEANUP(); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+    auto time = _time.get();
+    ErrorCode ec;
+    fs::last_write_time(p, time.payload.intValue, ec);
+    if (ec.failed()) {
+      throw FileNotFoundException(fmt::format("FS.SetWriteTime, file {} does not exist.", p));
+    }
+    return input;
+  }
+};
 }; // namespace FS
 
 SHARDS_REGISTER_FN(fs) {
@@ -525,5 +552,6 @@ SHARDS_REGISTER_FN(fs) {
   REGISTER_SHARD("FS.Copy", FS::Copy);
   REGISTER_SHARD("FS.Remove", FS::Remove);
   REGISTER_SHARD("FS.LastWriteTime", FS::LastWriteTime);
+  REGISTER_SHARD("FS.SetWriteTime", FS::SetWriteTime);
 }
 }; // namespace shards
