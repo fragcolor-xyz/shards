@@ -39,7 +39,7 @@ void shards_free_env(EvalEnv *env);
 
 EvalEnv *shards_create_sub_env(EvalEnv *env, SHStringWithLen namespace_);
 
-const SHLError *shards_eval_env(EvalEnv *env, Sequence *ast);
+SHLError *shards_eval_env(EvalEnv *env, Sequence *ast);
 
 SHLWire shards_transform_env(EvalEnv *env, SHStringWithLen name);
 
