@@ -160,7 +160,7 @@ struct GLTFShard {
       childData.inputType = AnimationTable;
       _animController.compose(childData);
       SHLOG_TRACE("Checking animation frame data {}: {}", data.wire->name, _animController.composeResult().outputType);
-      if (!shards::matchTypes(_animController.composeResult().outputType, Animations::Types::AnimationValues, false, true))
+      if (!shards::matchTypes(_animController.composeResult().outputType, Animations::Types::AnimationValues, false, true, false))
         throw std::runtime_error(fmt::format("Invalid animation frame data: {}, expected: {}",
                                              _animController.composeResult().outputType, Animations::Types::AnimationValues));
     }
