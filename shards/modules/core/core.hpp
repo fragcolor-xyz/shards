@@ -2832,9 +2832,9 @@ struct Take {
       } else if (data.inputType.basicType == SHType::String) {
         OVERRIDE_ACTIVATE(data, activateString);
         if (_seqOutput) {
-          return CoreInfo::StringSeqType;
+          return CoreInfo::IntSeqType;
         } else {
-          return CoreInfo::StringType;
+          return CoreInfo::IntType;
         }
       } else if (data.inputType.basicType == SHType::Table) {
         OVERRIDE_ACTIVATE(data, activateTable);
