@@ -17,6 +17,7 @@ use std::collections::HashMap;
 
 use eval::EvalEnv;
 use eval::new_cancellation_token;
+use shards::types::Var;
 // use print::print_ast;
 
 use std::ops::Deref;
@@ -266,6 +267,40 @@ pub extern "C" fn shards_read(code: SHStringWithLen) -> SHLAst {
       error: std::ptr::null_mut(),
     },
   }
+}
+
+#[no_mangle]
+pub extern "C" fn shards_load_ast(bytes: *mut u8, size: u32) -> SHLAst {
+  let bytes = unsafe { std::slice::from_raw_parts(bytes, size as usize) };
+  let decoded_bin: Result<Sequence, _> = bincode::deserialize(bytes);
+  match decoded_bin {
+    Ok(sequence) => SHLAst {
+      ast: Box::into_raw(Box::new(sequence)),
+      error: std::ptr::null_mut(),
+    },
+    Err(error) => {
+      let error_message = CString::new(error.to_string()).unwrap();
+      let shards_error = SHLError {
+        message: error_message.into_raw(),
+        line: 0,
+        column: 0,
+      };
+      SHLAst {
+        ast: std::ptr::null_mut(),
+        error: Box::into_raw(Box::new(shards_error)),
+      }
+    }
+  }
+}
+
+#[no_mangle]
+pub extern "C" fn shards_save_ast(ast: *mut Sequence) -> Var {
+  let ast = unsafe { &*ast };
+  let encoded_bin = bincode::serialize(ast).unwrap();
+  let v: ClonedVar = encoded_bin.as_slice().into();
+  let inner = v.0;
+  std::mem::forget(v);
+  inner
 }
 
 #[no_mangle]

@@ -348,7 +348,8 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               .into();
 
             if once && check_included(&rc_path, env) {
-              return Err((format!("File {:?} already included", file_name), pos).into());
+              // we already included this file
+              return Ok(FunctionValue::Const(Value::None))
             }
 
             env.included.insert(rc_path);

@@ -33,6 +33,10 @@ void shards_init(SHCore *core);
 
 SHLAst shards_read(SHStringWithLen code);
 
+SHLAst shards_load_ast(uint8_t *bytes, uint32_t size);
+
+SHVar shards_save_ast(Sequence *ast);
+
 EvalEnv *shards_create_env(SHStringWithLen namespace_);
 
 void shards_free_env(EvalEnv *env);

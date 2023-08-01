@@ -1763,4 +1763,72 @@ TEST_CASE("shards-lang") {
 
   TEST_SUCCESS_CASE("Shards Test", "@template(base [texture] { \"TEST\" = texture }) \n @base(test-shards-1) \n test-shards-1 | "
                                    "Log | Assert.Is(\"TEST\") \n @base(test-shards-2) | Log | Assert.Is(\"TEST\")")
+
+  SECTION("Namespaces 3") {
+    auto code = R"(
+      @wire(w {
+        Msg("Running")
+      })
+
+      Do(w)
+    )";
+    auto seq = shards_read(SHStringWithLen{code, strlen(code)}); // Enums can't be used like this
+    REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
+
+    auto env = shards_create_env("x"_swl);
+    auto err = shards_eval_env(env, seq.ast);
+    REQUIRE_FALSE(err);
+
+    auto wire = shards_transform_env(env, "x"_swl);
+    REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+
+    // REQUIRE(wire.error);
+    // DEFER(shards_free_error(wire.error));
+    // std::string a(wire.error->message);
+    // std::string b("Assert failed - Is");
+    // REQUIRE(a == b);
+  }
+
+  SECTION("Namespaces 4") {
+    auto code = R"(
+      @template(wt [name param] {
+        @wire(name {
+          Msg("Running")
+          "xyz" | String.Contains(param) | Assert.Is(true)
+        })
+      })
+
+      @wt(w1 "x")
+      @wt(w2 "y")
+
+      Do(w1)
+      Do(w2)
+    )";
+    auto seq = shards_read(SHStringWithLen{code, strlen(code)}); // Enums can't be used like this
+    REQUIRE(seq.ast);
+    DEFER(shards_free_sequence(seq.ast));
+
+    auto env = shards_create_env("x"_swl);
+    auto err = shards_eval_env(env, seq.ast);
+
+    // REQUIRE(err);
+    // DEFER(shards_free_error(err));
+    // std::string a(err->message);
+    // std::string b("Assert failed - Is");
+    // REQUIRE(a == b);
+
+    REQUIRE_FALSE(err);
+
+    auto wire = shards_transform_env(env, "x"_swl);
+    REQUIRE(wire.wire);
+    DEFER(shards_free_wire(wire.wire));
+    auto mesh = SHMesh::make();
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    mesh->tick();
+  }
 }
