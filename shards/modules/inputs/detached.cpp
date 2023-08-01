@@ -292,13 +292,15 @@ struct Detached {
   }
 
   void cleanup() {
-    withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_CLEANUP(); });
+    if(_contextVarRef)
+      withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_CLEANUP(); });
 
     _handler.reset();
     cleanupCaptures();
 
     if (_contextVarRef) {
       releaseVariable(_contextVarRef);
+      _contextVarRef = nullptr;
     }
   }
 
