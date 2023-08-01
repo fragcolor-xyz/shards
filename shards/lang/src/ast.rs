@@ -141,6 +141,15 @@ pub enum Value {
   Func(Function),
 }
 
+impl Value {
+  pub fn get_identifier(&self) -> Option<&Identifier> {
+    match self {
+      Value::Identifier(identifier) => Some(identifier),
+      _ => None,
+    }
+  }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Param {
   pub name: Option<RcStrWrapper>,

@@ -1,7 +1,7 @@
 WHITESPACE    = _{ SEPARATOR | "," | "\t" | NEWLINE | COMMENT }
 COMMENT       = _{ ";" ~ (!"\n" ~ ANY)* ~ "\n" }
 Program       =  { SOI ~ Sequence ~ EOI }
-LowIden       = @{ (ASCII_ALPHA_LOWER | "_") ~ (ASCII_ALPHANUMERIC | "_" | "-" | ".")* }
+LowIden       = @{ "_"? ~ ASCII_ALPHA_LOWER ~ (ASCII_ALPHANUMERIC | "_" | "-" | ".")* }
 VarName       =  { LowIden ~ ("/" ~ LowIden)* }
 AssignRef     =  { Pipeline ~ "=" ~ VarName }
 AssignSet     =  { Pipeline ~ ">=" ~ VarName }
@@ -31,7 +31,7 @@ TableKey      =  { (None | Iden | Value) ~ ":" }
 TableEntry    =  { TableKey ~ Value }
 Table         =  { "{" ~ TableEntry* ~ "}" }
 RoundParens   = _{ "(" ~ Sequence ~ ")" }
-UppIden       = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHANUMERIC | "_" | "-" | "." | "!")* }
+UppIden       = @{ "_"? ~ ASCII_ALPHA_UPPER ~ (ASCII_ALPHANUMERIC | "_" | "-" | "." | "!")* }
 ParamName     = ${ UppIden ~ ":" ~ !":" }
 Seq           =  { "[" ~ Value* ~ "]" }
 Enum          = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHANUMERIC | "_")+ ~ "::" ~ (ASCII_ALPHANUMERIC | "_")+ }

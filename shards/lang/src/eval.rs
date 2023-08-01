@@ -2409,48 +2409,62 @@ fn eval_pipeline(
             if let Some(ref params) = func.params {
               let param_helper = ParamHelper::new(params);
 
-              let name = param_helper.get_param_by_name_or_index("Name", 0).ok_or(
-                (
-                  "wire built-in function requires a Name parameter",
-                  block.line_info.unwrap_or_default(),
-                )
-                  .into(),
-              )?;
-
-              // just add to deferred wires, evaluate later!
-              match &name.value {
-                Value::Identifier(name) => {
-                  if let Some(_) = find_wire(name, e) {
-                    return Err(
-                      (
-                        format!("wire {} already exists", name.name),
-                        block.line_info.unwrap_or_default(),
-                      )
-                        .into(),
-                    );
-                  }
-
-                  let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
-                  let wire_name = get_full_name(name, e);
-                  shlog_trace!("Adding deferred wire {}", wire_name);
-                  e.deferred_wires.insert(
-                    name.clone(),
-                    (
-                      Wire::new(&wire_name),
-                      params_ptr,
-                      block.line_info.unwrap_or_default(),
-                    ),
-                  );
-                  Ok(())
-                }
-                _ => Err(
+              let name = param_helper
+                .get_param_by_name_or_index("Name", 0)
+                .ok_or(
                   (
-                    "wire built-in function requires a string parameter",
+                    "wire built-in function requires a Name parameter",
                     block.line_info.unwrap_or_default(),
                   )
                     .into(),
-                ),
+                )?
+                .value
+                .get_identifier()
+                .ok_or(
+                  (
+                    "wire built-in function requires a Name parameter",
+                    block.line_info.unwrap_or_default(),
+                  )
+                    .into(),
+                )?;
+
+              let name = if let Some(replacement) = find_replacement(name, e) {
+                replacement
+                  .get_identifier()
+                  .ok_or(
+                    (
+                      "wire built-in function requires a Name parameter",
+                      block.line_info.unwrap_or_default(),
+                    )
+                      .into(),
+                  )?
+                  .clone()
+              } else {
+                name.clone()
+              };
+
+              if let Some(_) = find_wire(&name, e) {
+                return Err(
+                  (
+                    format!("wire {} already exists", name.name),
+                    block.line_info.unwrap_or_default(),
+                  )
+                    .into(),
+                );
               }
+
+              let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
+              let wire_name = get_full_name(&name, e);
+              shlog_trace!("Adding deferred wire {}", wire_name);
+              e.deferred_wires.insert(
+                name,
+                (
+                  Wire::new(&wire_name),
+                  params_ptr,
+                  block.line_info.unwrap_or_default(),
+                ),
+              );
+              Ok(())
             } else {
               Err(
                 (
@@ -2905,9 +2919,24 @@ fn eval_pipeline(
                 Ok(())
               }
               (None, Some(mut shards_env), _, _) => {
+                finalize_env(&mut shards_env)?; // finalize the env
                 // shards
                 for shard in shards_env.shards.drain(..) {
                   e.shards.push(shard);
+                }
+                // also move possible other possible things we defined!
+                for (name, value) in shards_env.definitions.drain() {
+                  e.definitions.insert(name, value);
+                }
+                assert_eq!(shards_env.deferred_wires.len(), 0);
+                for (name, value) in shards_env.finalized_wires.drain() {
+                  e.finalized_wires.insert(name, value);
+                }
+                for (name, value) in shards_env.shards_groups.drain() {
+                  e.shards_groups.insert(name, value);
+                }
+                for (name, value) in shards_env.macro_groups.drain() {
+                  e.macro_groups.insert(name, value);
                 }
                 Ok(())
               }

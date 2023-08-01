@@ -116,8 +116,6 @@ struct Receive : Base {
   void cleanup() {
     Base::cleanup();
 
-    assert(_dispatcher);
-
     if (_connection)
       _connection.release();
 
