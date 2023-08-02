@@ -3,11 +3,8 @@ COMMENT       = _{ ";" ~ (!"\n" ~ ANY)* ~ "\n" }
 Program       =  { SOI ~ Sequence ~ EOI }
 LowIden       = @{ "_"? ~ ASCII_ALPHA_LOWER ~ (ASCII_ALPHANUMERIC | "_" | "-" | ".")* }
 VarName       =  { LowIden ~ ("/" ~ LowIden)* }
-AssignRef     =  { Pipeline ~ "=" ~ VarName }
-AssignSet     =  { Pipeline ~ ">=" ~ VarName }
-AssignUpd     =  { Pipeline ~ ">" ~ VarName }
-AssignPush    =  { Pipeline ~ ">>" ~ VarName }
-Assignment    =  { (AssignRef | AssignSet | AssignUpd | AssignPush) ~ ("|")? }
+AssignOp      =  { "=" | ">=" | ">>" | ">" }
+Assignment    =  { Pipeline ~ AssignOp ~ VarName ~ ("|")? }
 Pipeline      =  { Block ~ ("|" ~ Block)* }
 Statement     = _{ (Assignment | Pipeline) }
 Sequence      =  { Statement* }

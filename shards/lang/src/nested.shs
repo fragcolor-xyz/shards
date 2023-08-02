@@ -1,0 +1,22 @@
+@wire(ui-system-advance-inner {
+  UI.BottomPanel({
+      UI.Vertical({
+        UI.Horizontal({
+          ; UI.Group(
+          ;   UI.Button({
+          ;       ; _Rare.FormsAlive |
+          ;       ; ForEach({_Rare.Deform})
+          ;     }
+          ;   )
+          ; )
+          UI.Group({
+            Once({
+              @f3(0 0 10) | Set(rare/camera-position Exposed: true)
+              ; @f3(0 0 -10) | Set(rare/camera-target Exposed: true)
+            })
+          })
+        })
+      })
+    }
+  )
+} Looped: true)
