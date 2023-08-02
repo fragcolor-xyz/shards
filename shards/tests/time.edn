@@ -3,7 +3,7 @@
 
 (defmesh main)
 (defwire producer
-  (Sequence .sink :Types [Type.Any Type.Int] :Global true)
+  (Sequence .sink :Type (type [Any Int]) :Global true)
   "Hi!" = .v
   (Time.EpochMs) >= .t
   (Repeat (->
@@ -16,7 +16,7 @@
 (defloop consumer
   (Setup
    (Sequence .sink
-             :Types [Type.Any Type.Int]
+             :Type (type [Any Int])
              ; to pick producer variable
              :Global true
              ; producer runs before us and then we will clear it!, avoid this data race

@@ -1845,9 +1845,8 @@ struct Push : public SeqBase {
 };
 
 struct Sequence : public SeqBase {
-  ParamVar _types{shards::Var::Enum(BasicTypes::Any, CoreCC, 'type')};
+  OwnedVar _typeDesc{};
   Types _seqTypes{};
-  std::deque<Types> _innerTypes;
 
   static SHOptionalString help() { return SHCCSTR("Creates an empty sequence (or table if a key is passed)."); }
 
@@ -1860,7 +1859,7 @@ struct Sequence : public SeqBase {
       {{"Clear",
         SHCCSTR("If we should clear this sequence at every wire iteration; works only if this is the first push; default: true."),
         {CoreInfo::BoolType}},
-       {"Types", SHCCSTR("The sequence inner types to forward declare."), {CoreInfo2::BasicTypesTypes}}}};
+       {"Type", SHCCSTR("The sequence inner type to forward declare."), {CoreInfo::NoneType, CoreInfo::TypeType}}}};
 
   static SHParametersInfo parameters() { return pushParams; }
 
@@ -1870,7 +1869,7 @@ struct Sequence : public SeqBase {
     else if (index == variableParamsInfoLen + 0) {
       _clear = value.payload.boolValue;
     } else if (index == variableParamsInfoLen + 1) {
-      _types = value;
+      _typeDesc = value;
     }
   }
 
@@ -1880,91 +1879,8 @@ struct Sequence : public SeqBase {
     else if (index == variableParamsInfoLen + 0)
       return shards::Var(_clear);
     else if (index == variableParamsInfoLen + 1)
-      return _types;
+      return _typeDesc;
     throw SHException("Param index out of range.");
-  }
-
-  void addType(Types &inner, BasicTypes type) {
-    switch (type) {
-    case BasicTypes::None:
-      inner._types.emplace_back(CoreInfo::NoneType);
-      break;
-    case BasicTypes::Any:
-      inner._types.emplace_back(CoreInfo::AnyType);
-      break;
-    case BasicTypes::Bool:
-      inner._types.emplace_back(CoreInfo::BoolType);
-      break;
-    case BasicTypes::Int:
-      inner._types.emplace_back(CoreInfo::IntType);
-      break;
-    case BasicTypes::Int2:
-      inner._types.emplace_back(CoreInfo::Int2Type);
-      break;
-    case BasicTypes::Int3:
-      inner._types.emplace_back(CoreInfo::Int3Type);
-      break;
-    case BasicTypes::Int4:
-      inner._types.emplace_back(CoreInfo::Int4Type);
-      break;
-    case BasicTypes::Int8:
-      inner._types.emplace_back(CoreInfo::Int8Type);
-      break;
-    case BasicTypes::Int16:
-      inner._types.emplace_back(CoreInfo::Int16Type);
-      break;
-    case BasicTypes::Float:
-      inner._types.emplace_back(CoreInfo::FloatType);
-      break;
-    case BasicTypes::Float2:
-      inner._types.emplace_back(CoreInfo::Float2Type);
-      break;
-    case BasicTypes::Float3:
-      inner._types.emplace_back(CoreInfo::Float3Type);
-      break;
-    case BasicTypes::Float4:
-      inner._types.emplace_back(CoreInfo::Float4Type);
-      break;
-    case BasicTypes::Color:
-      inner._types.emplace_back(CoreInfo::ColorType);
-      break;
-    case BasicTypes::Wire:
-      inner._types.emplace_back(CoreInfo::WireType);
-      break;
-    case BasicTypes::Shard:
-      inner._types.emplace_back(CoreInfo::ShardRefType);
-      break;
-    case BasicTypes::Bytes:
-      inner._types.emplace_back(CoreInfo::BytesType);
-      break;
-    case BasicTypes::String:
-      inner._types.emplace_back(CoreInfo::StringType);
-      break;
-    case BasicTypes::Image:
-      inner._types.emplace_back(CoreInfo::ImageType);
-      break;
-    case BasicTypes::Audio:
-      inner._types.emplace_back(CoreInfo::AudioType);
-      break;
-    default:
-      assert(false && "Type not supported");
-    }
-  }
-
-  void processTypes(Types &inner, const IterableSeq &s) {
-    for (auto &v : s) {
-      if (v.valueType == SHType::Seq) {
-        auto &sinner = _innerTypes.emplace_back();
-        IterableSeq ss(v);
-        processTypes(sinner, ss);
-        SHTypeInfo stype{SHType::Seq, {.seqTypes = sinner}};
-        inner._types.emplace_back(stype);
-      } else {
-        const auto type = BasicTypes(v.payload.enumValue);
-        // assume enum
-        addType(inner, type);
-      }
-    }
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -2021,13 +1937,18 @@ struct Sequence : public SeqBase {
     // Process types to expose
     // cleaning up previous first
     _seqTypes._types.clear();
-    _innerTypes.clear();
-    if (_types->valueType == SHType::Enum) {
-      // a single type
-      addType(_seqTypes, BasicTypes(_types->payload.enumValue));
+
+    if(_typeDesc.valueType == SHType::None) {
+      _seqTypes._types.emplace_back(CoreInfo::AnyType);
     } else {
-      IterableSeq st(_types);
-      processTypes(_seqTypes, st);
+      assert(_typeDesc.valueType == SHType::Type);
+      auto typeDesc = _typeDesc.payload.typeValue;
+      if(typeDesc->basicType != SHType::Seq) {
+        throw ComposeError("Sequence - Types parameter must be describe a sequence type.");
+      }
+      for(auto type_ : typeDesc->seqTypes) {
+        _seqTypes._types.emplace_back(type_);
+      }
     }
 
     if (!_isTable) {

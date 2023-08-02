@@ -15,7 +15,7 @@
 (def evolveme
   (Wire
    "test"
-   (Sequence .best :Types [Type.Float Type.Wire])
+   (Sequence .best :Type (type [Float Wire]))
    (Repeat
     (->
      (Evolve
@@ -72,7 +72,7 @@
 (def evolveme
   (Wire
    "test"
-   (Sequence .best :Types [Type.Float Type.Wire])
+   (Sequence .best :Type (type [Float Wire]))
    (Repeat
     (->
      (Evolve
