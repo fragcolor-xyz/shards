@@ -63,27 +63,37 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
   }
 
   let mut inner = pair.into_inner();
-  let sub_pair = inner
-    .next()
-    .ok_or(("Expected a sub-pair in Assignment, but found none.", pos).into())?;
-  let sub_rule = sub_pair.as_rule();
 
-  let mut sub_inner = sub_pair.into_inner();
   let pipeline = process_pipeline(
-    sub_inner
+    inner
       .next()
       .ok_or(("Expected a Pipeline in Assignment, but found none.", pos).into())?,
     env,
   )?;
 
-  let identifier = extract_identifier(sub_inner.next().unwrap())?;
+  let assignment_op = inner
+    .next()
+    .ok_or(
+      (
+        "Expected an AssignmentOp in Assignment, but found none.",
+        pos,
+      )
+        .into(),
+    )?
+    .as_str();
 
-  match sub_rule {
-    Rule::AssignRef => Ok(Assignment::AssignRef(pipeline, identifier)),
-    Rule::AssignSet => Ok(Assignment::AssignSet(pipeline, identifier)),
-    Rule::AssignUpd => Ok(Assignment::AssignUpd(pipeline, identifier)),
-    Rule::AssignPush => Ok(Assignment::AssignPush(pipeline, identifier)),
-    _ => Err(("Unexpected sub-rule in Assignment.", pos).into()),
+  let iden = inner
+    .next()
+    .ok_or(("Expected an Identifier in Assignment, but found none.", pos).into())?;
+
+  let identifier = extract_identifier(iden)?;
+
+  match assignment_op {
+    "=" => Ok(Assignment::AssignRef(pipeline, identifier)),
+    ">=" => Ok(Assignment::AssignSet(pipeline, identifier)),
+    ">" => Ok(Assignment::AssignUpd(pipeline, identifier)),
+    ">>" => Ok(Assignment::AssignPush(pipeline, identifier)),
+    _ => Err(("Unexpected assignment operator.", pos).into()),
   }
 }
 
@@ -915,6 +925,9 @@ pub fn read(code: &str, path: &str) -> Result<Sequence, ShardsError> {
 
 #[test]
 fn test_parsing1() {
+  // use std::num::NonZeroUsize;
+  // pest::set_call_limit(NonZeroUsize::new(25000));
+  // let code = include_str!("nested.shs");
   let code = include_str!("sample1.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
   let mut env = ReadEnv::new(".");
