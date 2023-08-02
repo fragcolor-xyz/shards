@@ -1846,7 +1846,7 @@ struct Push : public SeqBase {
 
 struct Sequence : public SeqBase {
   OwnedVar _typeDesc{};
-  Types _seqTypes{};
+  SHTypeInfo _weakType{};
 
   static SHOptionalString help() { return SHCCSTR("Creates an empty sequence (or table if a key is passed)."); }
 
@@ -1859,7 +1859,7 @@ struct Sequence : public SeqBase {
       {{"Clear",
         SHCCSTR("If we should clear this sequence at every wire iteration; works only if this is the first push; default: true."),
         {CoreInfo::BoolType}},
-       {"Type", SHCCSTR("The sequence inner type to forward declare."), {CoreInfo::NoneType, CoreInfo::TypeType}}}};
+       {"Type", SHCCSTR("The sequence type to forward declare."), {CoreInfo::NoneType, CoreInfo::TypeType}}}};
 
   static SHParametersInfo parameters() { return pushParams; }
 
@@ -1892,8 +1892,7 @@ struct Sequence : public SeqBase {
       if (_tableInfo.table.keys.elements) {
         shards::arrayFree(_tableInfo.table.keys);
       }
-      SHTypeInfo stype{SHType::Seq, {.seqTypes = _seqTypes}};
-      shards::arrayPush(_tableInfo.table.types, stype);
+      shards::arrayPush(_tableInfo.table.types, _weakType);
       if (!_key.isVariable()) {
         shards::arrayPush(_tableInfo.table.keys, *_key);
       }
@@ -1934,29 +1933,20 @@ struct Sequence : public SeqBase {
       }
     }
 
-    // Process types to expose
-    // cleaning up previous first
-    _seqTypes._types.clear();
-
-    if(_typeDesc.valueType == SHType::None) {
-      _seqTypes._types.emplace_back(CoreInfo::AnyType);
+    // Process type to expose
+    if (_typeDesc.valueType == SHType::None) {
+      _weakType = CoreInfo::AnySeqType;
     } else {
       assert(_typeDesc.valueType == SHType::Type);
       auto typeDesc = _typeDesc.payload.typeValue;
-      if(typeDesc->basicType != SHType::Seq) {
-        throw ComposeError("Sequence - Types parameter must be describe a sequence type.");
-      }
-      for(auto type_ : typeDesc->seqTypes) {
-        _seqTypes._types.emplace_back(type_);
-      }
+      _weakType = *typeDesc;
     }
 
     if (!_isTable) {
-      SHTypeInfo stype{SHType::Seq, {.seqTypes = _seqTypes}};
       if (_global) {
-        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed sequence."), stype, true));
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed sequence."), _weakType, true));
       } else {
-        _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed sequence."), stype, true));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed sequence."), _weakType, true));
       }
     } else {
       updateTableInfo();
@@ -2054,12 +2044,11 @@ struct TableDecl : public VariableBase {
     shards::arrayFree(_tableInfo.table.types);
   }
 
-  ParamVar _types{shards::Var::Enum(BasicTypes::Any, CoreCC, 'type')};
-  Types _seqTypes{};
-  std::deque<Types> _innerTypes;
+  OwnedVar _typeDesc{};
+  SHTypeInfo _weakType{};
 
   static inline Parameters tableParams{
-      setterParams, {{"Types", SHCCSTR("The sequence inner types to forward declare."), {CoreInfo2::BasicTypesTypes}}}};
+      setterParams, {{"Type", SHCCSTR("The table type to forward declare."), {CoreInfo::NoneType, CoreInfo::TypeType}}}};
 
   static SHParametersInfo parameters() { return tableParams; }
 
@@ -2067,7 +2056,7 @@ struct TableDecl : public VariableBase {
     if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
     else if (index == variableParamsInfoLen + 0) {
-      _types = value;
+      _typeDesc = value;
     }
   }
 
@@ -2075,89 +2064,8 @@ struct TableDecl : public VariableBase {
     if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
     else if (index == variableParamsInfoLen + 0)
-      return _types;
+      return _typeDesc;
     throw SHException("Param index out of range.");
-  }
-
-  void addType(Types &inner, BasicTypes type) {
-    switch (type) {
-    case BasicTypes::None:
-      inner._types.emplace_back(CoreInfo::NoneType);
-      break;
-    case BasicTypes::Any:
-      inner._types.emplace_back(CoreInfo::AnyType);
-      break;
-    case BasicTypes::Bool:
-      inner._types.emplace_back(CoreInfo::BoolType);
-      break;
-    case BasicTypes::Int:
-      inner._types.emplace_back(CoreInfo::IntType);
-      break;
-    case BasicTypes::Int2:
-      inner._types.emplace_back(CoreInfo::Int2Type);
-      break;
-    case BasicTypes::Int3:
-      inner._types.emplace_back(CoreInfo::Int3Type);
-      break;
-    case BasicTypes::Int4:
-      inner._types.emplace_back(CoreInfo::Int4Type);
-      break;
-    case BasicTypes::Int8:
-      inner._types.emplace_back(CoreInfo::Int8Type);
-      break;
-    case BasicTypes::Int16:
-      inner._types.emplace_back(CoreInfo::Int16Type);
-      break;
-    case BasicTypes::Float:
-      inner._types.emplace_back(CoreInfo::FloatType);
-      break;
-    case BasicTypes::Float2:
-      inner._types.emplace_back(CoreInfo::Float2Type);
-      break;
-    case BasicTypes::Float3:
-      inner._types.emplace_back(CoreInfo::Float3Type);
-      break;
-    case BasicTypes::Float4:
-      inner._types.emplace_back(CoreInfo::Float4Type);
-      break;
-    case BasicTypes::Color:
-      inner._types.emplace_back(CoreInfo::ColorType);
-      break;
-    case BasicTypes::Wire:
-      inner._types.emplace_back(CoreInfo::WireType);
-      break;
-    case BasicTypes::Shard:
-      inner._types.emplace_back(CoreInfo::ShardRefType);
-      break;
-    case BasicTypes::Bytes:
-      inner._types.emplace_back(CoreInfo::BytesType);
-      break;
-    case BasicTypes::String:
-      inner._types.emplace_back(CoreInfo::StringType);
-      break;
-    case BasicTypes::Image:
-      inner._types.emplace_back(CoreInfo::ImageType);
-      break;
-    case BasicTypes::Audio:
-      inner._types.emplace_back(CoreInfo::AudioType);
-      break;
-    }
-  }
-
-  void processTypes(Types &inner, const IterableSeq &s) {
-    for (auto &v : s) {
-      if (v.valueType == SHType::Seq) {
-        auto &sinner = _innerTypes.emplace_back();
-        IterableSeq ss(v);
-        processTypes(sinner, ss);
-        SHTypeInfo stype{SHType::Seq, {.seqTypes = sinner}};
-        inner._types.emplace_back(stype);
-      } else {
-        const auto type = BasicTypes(v.payload.enumValue);
-        // assume enum
-        addType(inner, type);
-      }
-    }
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -2165,8 +2073,7 @@ struct TableDecl : public VariableBase {
       _tableInfo.basicType = SHType::Table;
       shards::arrayFree(_tableInfo.table.types);
       shards::arrayFree(_tableInfo.table.keys);
-      auto stype = SHTypeInfo{SHType::Table, {.table = {.keys = {nullptr, 0, 0}, .types = _seqTypes}}};
-      shards::arrayPush(_tableInfo.table.types, stype);
+      shards::arrayPush(_tableInfo.table.types, _weakType);
       if (!_key.isVariable()) {
         shards::arrayPush(_tableInfo.table.keys, *_key);
       }
@@ -2208,24 +2115,20 @@ struct TableDecl : public VariableBase {
       }
     }
 
-    // Process types to expose
-    // cleaning up previous first
-    _seqTypes._types.clear();
-    _innerTypes.clear();
-    if (_types->valueType == SHType::Enum) {
-      // a single type
-      addType(_seqTypes, BasicTypes(_types->payload.enumValue));
+    // Process type to expose
+    if (_typeDesc.valueType == SHType::None) {
+      _weakType = CoreInfo::AnyTableType;
     } else {
-      IterableSeq st(_types);
-      processTypes(_seqTypes, st);
+      assert(_typeDesc.valueType == SHType::Type);
+      auto typeDesc = _typeDesc.payload.typeValue;
+      _weakType = *typeDesc;
     }
 
     if (!_isTable) {
-      auto stype = SHTypeInfo{SHType::Table, {.table = {.keys = {nullptr, 0, 0}, .types = _seqTypes}}};
       if (_global) {
-        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), stype, true));
+        _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), _weakType, true));
       } else {
-        _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), stype, true));
+        _exposedInfo = ExposedInfo(ExposedInfo::Variable(_name.c_str(), SHCCSTR("The exposed table."), _weakType, true));
       }
     } else {
       updateTableInfo();
