@@ -57,7 +57,7 @@ inline std::string filterVariableName(std::string_view varName) {
   result.reserve(varName.size());
   for (size_t i = 0; i < varName.size(); i++) {
     char c = varName[i];
-    if (c == '-') {
+    if (c == '-' || c == '/' || c == '.') {
       c = '_';
     }
     result.push_back(c);
