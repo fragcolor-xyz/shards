@@ -1,7 +1,7 @@
 @mesh(root)
 
 @wire(inline-capture {
-    Sequence(log Types: [Type::String]) |
+    Sequence(log Type: @type([Type::String])) |
     Repeat({
         Msg("Hello shards!") |
         CaptureLog(
