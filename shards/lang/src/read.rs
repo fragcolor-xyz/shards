@@ -349,7 +349,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
 
             if once && check_included(&rc_path, env) {
               // we already included this file
-              return Ok(FunctionValue::Const(Value::None))
+              return Ok(FunctionValue::Const(Value::None));
             }
 
             env.included.insert(rc_path);
@@ -900,14 +900,15 @@ fn process_params(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Vec<Param>, Sha
 }
 
 pub fn read(code: &str, path: &str) -> Result<Sequence, ShardsError> {
-  profiling::scope!("read", path);
-  let successful_parse = ShardsParser::parse(Rule::Program, code).map_err(|e| {
-    (
-      format!("Failed to parse file {:?}: {}", path, e),
-      LineInfo { line: 0, column: 0 },
-    )
-      .into()
-  })?;
+  let successful_parse: pest::iterators::Pairs<'_, Rule> = {
+    ShardsParser::parse(Rule::Program, code).map_err(|e| {
+      (
+        format!("Failed to parse file {:?}: {}", path, e),
+        LineInfo { line: 0, column: 0 },
+      )
+        .into()
+    })?
+  };
   let mut env = ReadEnv::new(path);
   process_program(successful_parse.into_iter().next().unwrap(), &mut env)
 }
