@@ -116,3 +116,9 @@ xy | Do(table-input) | Log
 n/text | Log
 
 {A: 10 B: "Ciao" C: 3.3} | Expect(@type({A: Type::Int B: Type::String none: Type::Any})) | Log
+
+"""
+"Hello World!" | Log
+@x-defined | Log
+""" | Shards.Read | Log | Shards.Distill(Name: "my wire" Defines: {x-defined: 10}) | Log = mey-weired
+WireRunner(mey-weired)
