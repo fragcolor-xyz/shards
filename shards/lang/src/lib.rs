@@ -15,8 +15,9 @@ use crate::ast::*;
 use core::fmt;
 use std::collections::HashMap;
 
-use eval::EvalEnv;
 use eval::new_cancellation_token;
+use eval::EvalEnv;
+use shards::core::registerShard;
 use shards::types::Var;
 // use print::print_ast;
 
@@ -339,7 +340,7 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *mut
   let env = unsafe { &mut *env };
   let ast = unsafe { &*ast };
   for stmt in &ast.statements {
-    if let Err(e) = eval::eval_statement(stmt, env,  new_cancellation_token()) {
+    if let Err(e) = eval::eval_statement(stmt, env, new_cancellation_token()) {
       let error_message = CString::new(e.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -471,4 +472,14 @@ pub extern "C" fn shards_free_error(error: *mut SHLError) {
     drop(CString::from_raw((*error).message));
     drop(Box::from_raw(error));
   }
+}
+
+#[no_mangle]
+pub extern "C" fn shardsRegister_lang_lang(core: *mut shards::shardsc::SHCore) {
+  unsafe {
+    shards::core::Core = core;
+  }
+
+  registerShard::<read::ReadShard>();
+  registerShard::<eval::EvalShard>();
 }

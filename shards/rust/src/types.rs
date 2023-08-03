@@ -5475,9 +5475,16 @@ pub static STRING_VAR_OR_NONE_SLICE: &[Type] = &[
   common_type::none,
 ];
 
+pub static ANY_TABLE_VAR_NONE_SLICE: &[Type] = &[
+  common_type::any_table,
+  common_type::any_table_var,
+  common_type::none,
+];
+
 // TODO share those from C++ ones to reduce binary size
 lazy_static! {
   pub static ref ANY_TYPES: Vec<Type> = vec![common_type::any];
+  pub static ref WIRE_TYPES: Vec<Type> = vec![common_type::wire];
   pub static ref ANYS_TYPES: Vec<Type> = vec![common_type::anys];
   pub static ref ANY_TABLE_VAR_TYPES: Vec<Type> =
     vec![common_type::any_table, common_type::any_table_var];

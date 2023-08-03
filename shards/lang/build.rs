@@ -6,6 +6,7 @@ fn main() {
   cbindgen::Builder::new()
     .with_pragma_once(true)
     .exclude_item("shardsInterface")
+    .exclude_item("shardsRegister_lang_lang")
     .with_documentation(true)
     .rename_item("Var", "SHVar")
     .rename_item("Wire", "SHWireRef")

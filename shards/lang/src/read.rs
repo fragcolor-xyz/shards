@@ -2,7 +2,12 @@ use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
 use pest::iterators::Pair;
 use pest::Parser;
-use shards::shlog;
+use shards::shard::Shard;
+use shards::types::{
+  common_type, ClonedVar, Context, InstanceData, Parameters, Type, Types, Var, BOOL_TYPES_SLICE,
+  STRING_TYPES,
+};
+use shards::{cstr, shccstr, shlog, shlog_error};
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -921,6 +926,124 @@ pub fn read(code: &str, path: &str) -> Result<Sequence, ShardsError> {
   };
   let mut env = ReadEnv::new(path);
   process_program(successful_parse.into_iter().next().unwrap(), &mut env)
+}
+
+use lazy_static::lazy_static;
+
+lazy_static! {
+  pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
+  static ref READ_PARAMETERS: Parameters = vec![(
+    cstr!("Json"),
+    shccstr!("If the output should be a json AST string instead of binary."),
+    BOOL_TYPES_SLICE
+  )
+    .into()];
+}
+
+#[derive(Default)]
+pub(crate) struct ReadShard {
+  output: ClonedVar,
+  as_json: bool,
+}
+
+impl Shard for ReadShard {
+  fn registerName() -> &'static str
+  where
+    Self: Sized,
+  {
+    cstr!("Shards.Read")
+  }
+
+  fn hash() -> u32
+  where
+    Self: Sized,
+  {
+    compile_time_crc32::crc32!("Shards.Read-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "Shards.Read"
+  }
+
+  fn inputTypes(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &Types {
+    &READ_OUTPUT_TYPES
+  }
+
+  fn hasCompose() -> bool
+  where
+    Self: Sized,
+  {
+    true
+  }
+
+  fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
+    if self.as_json {
+      Ok(common_type::string)
+    } else {
+      Ok(common_type::bytes)
+    }
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&READ_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+    match index {
+      0 => {
+        self.as_json = value.try_into()?;
+        Ok(())
+      }
+      _ => Err("Invalid parameter index"),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.as_json.into(),
+      _ => Var::default(),
+    }
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    let code: &str = input.try_into()?;
+
+    let parsed = ShardsParser::parse(Rule::Program, code).map_err(|e| {
+      shlog_error!("Failed to parse shards code: {}", e);
+      "Failed to parse Shards code"
+    })?;
+
+    let seq =
+      process_program(parsed.into_iter().next().unwrap(), &mut ReadEnv::new(".")).map_err(|e| {
+        shlog_error!("Failed to process shards code: {:?}", e);
+        "Failed to tokenize Shards code"
+      })?;
+
+    if self.as_json {
+      // Serialize using json
+      let encoded_json = serde_json::to_string(&seq).map_err(|e| {
+        shlog_error!("Failed to serialize shards code: {}", e);
+        "Failed to serialize Shards code"
+      })?;
+
+      let s = Var::ephemeral_string(encoded_json.as_str());
+      self.output = s.into();
+    } else {
+      // Serialize using bincode
+      let encoded_bin: Vec<u8> = bincode::serialize(&seq).map_err(|e| {
+        shlog_error!("Failed to serialize shards code: {}", e);
+        "Failed to serialize Shards code"
+      })?;
+
+      self.output = encoded_bin.as_slice().into();
+    }
+
+    Ok(self.output.0)
+  }
 }
 
 #[test]

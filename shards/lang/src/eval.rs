@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::read;
 use crate::ParamHelper;
 use crate::RcStrWrapper;
 use crate::ShardsExtension;
@@ -7,14 +8,26 @@ use core::convert::TryInto;
 
 use core::slice;
 use nanoid::nanoid;
+use shards::cstr;
 use shards::fourCharacterCode;
-use shards::shlog_trace;
+use shards::shard::Shard;
 use shards::types::common_type;
 use shards::types::AutoSeqVar;
 use shards::types::AutoShardRef;
 use shards::types::AutoTableVar;
+use shards::types::Context;
+use shards::types::ParamVar;
+use shards::types::Parameters;
+use shards::types::ANY_TABLE_VAR_NONE_SLICE;
+use shards::types::STRING_VAR_OR_NONE_SLICE;
+use shards::{shccstr, shlog_error};
+
 use shards::types::Type;
+use shards::types::Types;
+
+use shards::shlog_trace;
 use shards::types::FRAG_CC;
+use shards::types::WIRE_TYPES;
 use shards::SHType_Object;
 use shards::SHType_Type;
 use std::cell::RefCell;
@@ -3238,6 +3251,161 @@ pub fn register_extension<T: ShardsExtension>(ext: Box<dyn ShardsExtension>, env
     },
     ext,
   );
+}
+
+use lazy_static::lazy_static;
+
+lazy_static! {
+  static ref EVAL_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Name"),
+      shccstr!("The optional output wire name."),
+      STRING_VAR_OR_NONE_SLICE
+    )
+      .into(),
+    (
+      cstr!("Defines"),
+      shccstr!("The optional initial injected defines."),
+      ANY_TABLE_VAR_NONE_SLICE
+    )
+      .into(),
+    (
+      cstr!("Namespace"),
+      shccstr!("The optional namespace name."),
+      STRING_VAR_OR_NONE_SLICE
+    )
+      .into()
+  ];
+}
+
+#[derive(Default)]
+pub(crate) struct EvalShard {
+  output: ClonedVar,
+  namespace: ParamVar,
+  name: ParamVar,
+  defines: ParamVar,
+}
+
+impl Shard for EvalShard {
+  fn registerName() -> &'static str
+  where
+    Self: Sized,
+  {
+    cstr!("Shards.Distill")
+  }
+
+  fn hash() -> u32
+  where
+    Self: Sized,
+  {
+    compile_time_crc32::crc32!("Shards.Distill-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "Shards.Distill"
+  }
+
+  fn inputTypes(&mut self) -> &Types {
+    &read::READ_OUTPUT_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &Types {
+    &WIRE_TYPES
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    Some(&EVAL_PARAMETERS)
+  }
+
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+    match index {
+      0 => Ok(self.name.set_param(value)),
+      1 => Ok(self.defines.set_param(value)),
+      2 => Ok(self.namespace.set_param(value)),
+      _ => Err("invalid parameter index"),
+    }
+  }
+
+  fn getParam(&mut self, index: i32) -> Var {
+    match index {
+      0 => self.name.get_param(),
+      1 => self.defines.get_param(),
+      2 => self.namespace.get_param(),
+      _ => Var::default(),
+    }
+  }
+
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.namespace.cleanup();
+    self.name.cleanup();
+    self.defines.cleanup();
+    Ok(())
+  }
+
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.namespace.warmup(context);
+    self.name.warmup(context);
+    self.defines.warmup(context);
+    Ok(())
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    let maybe_bytes: Result<&[u8], _> = input.try_into();
+    let seq = if let Ok(bytes) = maybe_bytes {
+      // deserialize sequence from bytes
+      let seq: Sequence =
+        bincode::deserialize(&bytes).map_err(|_| "failed to deserialize Shards")?;
+      seq
+    } else {
+      let s: &str = input.try_into()?;
+      // deserialize sequence from string
+      let seq: Sequence = serde_json::from_str(s).map_err(|_| "failed to deserialize Shards")?;
+      seq
+    };
+
+    let namespace = self.namespace.get();
+    let mut env = if namespace.is_string() {
+      let namespace: &str = namespace.try_into()?;
+      EvalEnv::new(Some(namespace.into()), None)
+    } else {
+      EvalEnv::new(None, None)
+    };
+
+    let defines = self.defines.get();
+    if defines.is_table() {
+      let defines = defines.as_table().unwrap();
+      for (ref k, v) in defines.iter() {
+        let k: &str = k.try_into()?;
+        let v: Value = v.try_into()?;
+        env.definitions.insert(
+          Identifier {
+            name: k.into(),
+            namespaces: Vec::new(),
+          },
+          &v,
+        );
+      }
+    }
+
+    let mut env =
+      eval_sequence(&seq, Some(&mut env), Arc::new(AtomicBool::new(false))).map_err(|e| {
+        shlog_error!("failed to evaluate shards: {:?}", e);
+        "failed to evaluate shards"
+      })?;
+
+    let name = self.name.get();
+    let wire = if name.is_string() {
+      let name: &str = name.try_into()?;
+      transform_env(&mut env, name).map_err(|_| "failed to transform shards into wire")?
+    } else {
+      transform_env(&mut env, "_anonymous_wire_")
+        .map_err(|_| "failed to transform shards into wire")?
+    };
+
+    self.output = wire.0.into();
+
+    Ok(self.output.0)
+  }
 }
 
 #[test]

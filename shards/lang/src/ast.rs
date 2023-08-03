@@ -1,5 +1,10 @@
+#![allow(non_upper_case_globals)]
+
 use pest::Position;
 use serde::{Deserialize, Serialize};
+use shards::{
+  types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String,
+};
 
 use crate::{RcBytesWrapper, RcStrWrapper};
 
@@ -139,6 +144,32 @@ pub enum Value {
   TakeTable(Identifier, Vec<RcStrWrapper>),
   TakeSeq(Identifier, Vec<u32>),
   Func(Function),
+}
+
+impl TryFrom<Var> for Value {
+  type Error = &'static str;
+
+  fn try_from(value: Var) -> Result<Self, Self::Error> {
+    match value.valueType {
+      SHType_None => Ok(Value::None),
+      SHType_Bool => Ok(Value::Boolean(value.as_ref().try_into().unwrap())),
+      SHType_Int => Ok(Value::Number(Number::Integer(
+        value.as_ref().try_into().unwrap(),
+      ))),
+      SHType_Float => Ok(Value::Number(Number::Float(
+        value.as_ref().try_into().unwrap(),
+      ))),
+      SHType_String => {
+        let s: &str = value.as_ref().try_into().unwrap();
+        Ok(Value::String(s.into()))
+      }
+      SHType_Bytes => {
+        let b: &[u8] = value.as_ref().try_into().unwrap();
+        Ok(Value::Bytes(b.into()))
+      }
+      _ => Err("Unsupported type"),
+    }
+  }
 }
 
 impl Value {
