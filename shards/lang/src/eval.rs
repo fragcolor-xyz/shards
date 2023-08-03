@@ -2366,6 +2366,17 @@ fn eval_pipeline(
                   .into(),
               )?;
 
+              let ignore_redefined = param_helper
+                .get_param_by_name_or_index("IgnoreRedefined", 2)
+                .map(|v| {
+                  if let Value::Boolean(b) = &v.value {
+                    *b
+                  } else {
+                    false
+                  }
+                })
+                .unwrap_or(false);
+
               match (name, value) {
                 (
                   Param {
@@ -2375,13 +2386,17 @@ fn eval_pipeline(
                   value,
                 ) => {
                   if let Some(_) = find_defined(name, e) {
-                    return Err(
-                      (
-                        format!("{} already defined", name.name),
-                        block.line_info.unwrap_or_default(),
-                      )
-                        .into(),
-                    );
+                    if !ignore_redefined {
+                      return Err(
+                        (
+                          format!("{} already defined", name.name),
+                          block.line_info.unwrap_or_default(),
+                        )
+                          .into(),
+                      );
+                    } else {
+                      return Ok(()); // just do nothing
+                    }
                   }
 
                   e.definitions.insert(name.clone(), &value.value);
@@ -2920,7 +2935,7 @@ fn eval_pipeline(
               }
               (None, Some(mut shards_env), _, _) => {
                 finalize_env(&mut shards_env)?; // finalize the env
-                // shards
+                                                // shards
                 for shard in shards_env.shards.drain(..) {
                   e.shards.push(shard);
                 }
