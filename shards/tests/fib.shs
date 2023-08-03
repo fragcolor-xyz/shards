@@ -1,0 +1,64 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2020 Fragcolor Pte. Ltd.
+
+; Not the best subject for shards at all
+; but still if competitive in this would be nice
+
+@mesh(root)
+
+@wire(fib1 {
+  Input >= n
+  If(
+    Predicate: {IsLess(2)}
+    Then: {Pass}
+    Else: {
+      n | Math.Subtract(2) | Recur >= a
+      n | Math.Subtract(1) | Recur >= b
+      a | Math.Add(b)
+    }
+  )
+})
+
+@wire(fib2 {
+  Input >= n
+  If(
+    Predicate: {IsLess(2)}
+    Then: {Pass}
+    Else: {
+      Math.Subtract(2) | Recur >= a
+      n | Math.Subtract(1) | Recur | Math.Add(a)
+    }
+  )
+})
+
+@wire(fib3 {
+  Push |
+  If(
+    Predicate: {IsLess(2)}
+    Then: {Pass}
+    Else: {
+      Math.Subtract(2) | Recur >= a
+      Pop | Math.Subtract(1) | Recur | Math.Add(a)
+    }
+  )
+})
+
+@wire(fib4 {
+  Math.Subtract(3) = n
+  1 >= a
+  2 >= b
+  Repeat({
+    a | Math.Add(b) = c
+    b > a
+    c > b
+  } Times: n)
+  b
+})
+
+@wire(run {
+  Profile({34 | Do(fib4)}) 
+  Log("result")
+})
+
+@schedule(root run)
+@run(root)
