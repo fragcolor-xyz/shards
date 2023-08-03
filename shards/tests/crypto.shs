@@ -1,5 +1,7 @@
 @include("hello2.shs") ; to use the macro `if`
 
+@define(rpcs false IgnoreRedefined: true)
+
 @define(rpc-server "http://127.0.0.1:9933")
 
 @mesh(root)
@@ -137,7 +139,7 @@
     ; function
     call-data | AppendTo(rpc-data)
     ; must be len prefixed
-    [rpc-data] | Substrate.Encode([none]) | ToHex | Log = rpc-date-hex
+    [rpc-data] | Substrate.Encode([none]) | ToHex | Log = rpc-data-hex
     @if(@rpcs {
         {"id" 1 "jsonrpc" "2.0" "method" "author_submitExtrinsic" "params" [rpc-data-hex]} | ToJson | Http.Post(rpc-server)
         FromJson | Log
