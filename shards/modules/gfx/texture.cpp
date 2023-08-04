@@ -452,7 +452,7 @@ struct ReadTextureShard {
   RequiredGraphicsContext _requiredGraphicsContext;
 
   GpuTextureReadBufferPtr _readBuffer = makeGpuTextureReadBuffer();
-  OwnedVar _image;
+  SHVar _image;
   std::vector<uint8_t> _imageBuffer;
 
   ReadTextureShard() { _wait = Var(false); }
