@@ -41,6 +41,12 @@ lazy_static! {
       BOOL_TYPES_SLICE,
     )
       .into(),
+    (
+      cstr!("Password"),
+      shccstr!("Support multiple lines."),
+      BOOL_TYPES_SLICE,
+    )
+      .into(),
   ];
 }
 
@@ -52,10 +58,11 @@ impl Default for TextField {
       parents,
       requiring: Vec::new(),
       variable: ParamVar::default(),
-      multiline: ParamVar::new(false.into()),
+      multiline: false,
       exposing: Vec::new(),
       should_expose: false,
       mutable_text: true,
+      password: false,
     }
   }
 }
@@ -106,7 +113,8 @@ impl Shard for TextField {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.variable.set_param(value)),
-      1 => Ok(self.multiline.set_param(value)),
+      1 => Ok(self.multiline = value.try_into()?),
+      2 => Ok(self.password = value.try_into()?),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -114,7 +122,8 @@ impl Shard for TextField {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.variable.get_param(),
-      1 => self.multiline.get_param(),
+      1 => self.multiline.into(),
+      2 => self.password.into(),
       _ => Var::default(),
     }
   }
@@ -181,7 +190,6 @@ impl Shard for TextField {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
     self.variable.warmup(ctx);
-    self.multiline.warmup(ctx);
 
     if self.should_expose {
       // new string
@@ -193,7 +201,6 @@ impl Shard for TextField {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.multiline.cleanup();
     self.variable.cleanup();
     self.parents.cleanup();
 
@@ -211,10 +218,10 @@ impl Shard for TextField {
         immutable = VarTextBuffer(self.variable.get());
         &mut immutable
       };
-      let text_edit = if self.multiline.get().try_into()? {
-        egui::TextEdit::multiline(text)
+      let text_edit = if self.multiline {
+        egui::TextEdit::multiline(text).password(self.password)
       } else {
-        egui::TextEdit::singleline(text)
+        egui::TextEdit::singleline(text).password(self.password)
       };
       let response = ui.add(text_edit);
 

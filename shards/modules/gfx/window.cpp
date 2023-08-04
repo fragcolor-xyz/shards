@@ -79,7 +79,7 @@ struct MainWindow final {
 
   MainWindow() {
     _width = Var(1280);
-    _height = Var(1280);
+    _height = Var(720);
     _title = Var("Shards Window");
     _detachRenderer = Var(false);
     _handleCloseEvent = Var(true);

@@ -177,10 +177,11 @@ struct TextField {
   parents: ParamVar,
   requiring: ExposedTypes,
   variable: ParamVar,
-  multiline: ParamVar,
+  multiline: bool,
   exposing: ExposedTypes,
   should_expose: bool,
   mutable_text: bool,
+  password: bool,
 }
 
 struct Tooltip {
