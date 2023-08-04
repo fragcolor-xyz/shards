@@ -1937,9 +1937,10 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
       // must clone over currentInput!
       // restart overwrites currentInput on purpose
       wire->currentInput = context.getFlowStorage();
+      running = true; // keep in this case!
     }
 
-    if (!wire->unsafe && wire->looped) {
+    if (!wire->unsafe && running) {
       // Ensure no while(true), yield anyway every run
       context.next = SHDuration(0);
 #ifndef __EMSCRIPTEN__
