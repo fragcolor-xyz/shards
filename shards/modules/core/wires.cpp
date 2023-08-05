@@ -588,31 +588,34 @@ struct Resume : public WireBase {
     // Start/Resume need to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
     resolveWire();
-    assert(wire && "wire is null in Resume::compose");
-    auto dataCopy = data;
-    dataCopy.requiredVariables = &wire->requirements;
+    if (wire) {
+      auto dataCopy = data;
+      dataCopy.requiredVariables = &wire->requirements;
 
-    WireBase::compose(dataCopy);
+      WireBase::compose(dataCopy);
 
-    // build the list of variables to capture and inject into spawned chain
-    _vars.clear();
-    arrayResize(_mergedReqs, 0);
-    for (auto &avail : data.shared) {
-      auto it = wire->requirements.find(avail.name);
-      if (it != wire->requirements.end()) {
-        if (!avail.global) {
-          // Capture if not global as we need to copy it!
-          SHLOG_TRACE("Start/Resume: adding variable to requirements: {}, wire {}", avail.name, wire->name);
-          SHVar ctxVar{};
-          ctxVar.valueType = SHType::ContextVar;
-          ctxVar.payload.stringValue = avail.name;
-          ctxVar.payload.stringLen = strlen(avail.name);
-          auto &p = _vars.emplace_back();
-          p = ctxVar;
+      // build the list of variables to capture and inject into spawned chain
+      _vars.clear();
+      arrayResize(_mergedReqs, 0);
+      for (auto &avail : data.shared) {
+        auto it = wire->requirements.find(avail.name);
+        if (it != wire->requirements.end()) {
+          if (!avail.global) {
+            // Capture if not global as we need to copy it!
+            SHLOG_TRACE("Start/Resume: adding variable to requirements: {}, wire {}", avail.name, wire->name);
+            SHVar ctxVar{};
+            ctxVar.valueType = SHType::ContextVar;
+            ctxVar.payload.stringValue = avail.name;
+            ctxVar.payload.stringLen = strlen(avail.name);
+            auto &p = _vars.emplace_back();
+            p = ctxVar;
+          }
+
+          arrayPush(_mergedReqs, it->second);
         }
-
-        arrayPush(_mergedReqs, it->second);
       }
+    } else {
+      WireBase::compose(data); // we still need this to have proper state likely
     }
 
     return CoreInfo::AnyType; // can be anything
