@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "wires.hpp"
+#include <cassert>
 #include <shards/core/async.hpp>
 #include <shards/core/brancher.hpp>
 #include <shards/core/module.hpp>
@@ -169,6 +170,10 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   // make sure to compose only once...
   if (!wire->composeResult) {
     SHLOG_TRACE("Running {} compose, pure: {}", wire->name, wire->pure);
+
+    if (data.requiredVariables) {
+      wire->requirements.clear();
+    }
 
     wire->composeResult = composeWire(
         wire.get(),
@@ -582,9 +587,10 @@ struct Resume : public WireBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     // Start/Resume need to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
+    resolveWire();
+    assert(wire && "wire is null in Resume::compose");
     auto dataCopy = data;
-    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
-    dataCopy.requiredVariables = &requirements;
+    dataCopy.requiredVariables = &wire->requirements;
 
     WireBase::compose(dataCopy);
 
@@ -592,8 +598,8 @@ struct Resume : public WireBase {
     _vars.clear();
     arrayResize(_mergedReqs, 0);
     for (auto &avail : data.shared) {
-      auto it = requirements.find(avail.name);
-      if (it != requirements.end()) {
+      auto it = wire->requirements.find(avail.name);
+      if (it != wire->requirements.end()) {
         if (!avail.global) {
           // Capture if not global as we need to copy it!
           SHLOG_TRACE("Start/Resume: adding variable to requirements: {}, wire {}", avail.name, wire->name);
@@ -1196,68 +1202,27 @@ struct CapturingSpawners : public WireBase {
   IterableExposedInfo _sharedCopy;
   std::deque<ParamVar> _vars;
 
-  struct SpawnedWireData {
-    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
-
-    // TODO Add doppelganger serialized bytes here too!
-
-    // refcount the wire as we don't wanna grow the memory too much
-    uint32_t refcount = 0;
-  };
-
-  static inline thread_local UntrackedUnorderedMap<SHWire *, SpawnedWireData> threadSpawnedWires;
-
-  void destroy() {
-    auto it = threadSpawnedWires.find(wire.get());
-    if (it != threadSpawnedWires.end()) {
-      it->second.refcount--;
-      if (it->second.refcount == 0) {
-        SHLOG_TRACE("CapturingSpawners: Destroying wire {} ptr {}", it->first->name, (void *)it->first);
-        threadSpawnedWires.erase(it);
-      }
-    }
-
-    arrayFree(_mergedReqs);
-  }
+  void destroy() { arrayFree(_mergedReqs); }
 
   SHExposedTypesInfo requiredVariables() { return _mergedReqs; }
 
   void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
-    SpawnedWireData *spawnedWireData = nullptr;
-    auto it = threadSpawnedWires.find(wire.get());
-    if (it != threadSpawnedWires.end()) {
-      WireBase::compose(data); // discard the result, we do our thing here
+    resolveWire();
+    assert(wire && "Wire should be resolved at this point");
+    // Wire needs to capture all it needs, so we need deeper informations
+    // this is triggered by populating requiredVariables variable
+    auto dataCopy = data;
+    dataCopy.requiredVariables = &wire->requirements;
+    dataCopy.inputType = inputType;
 
-      // We already have this wire, just increase the refcount
-      it->second.refcount++;
-
-      spawnedWireData = &it->second;
-
-      SHLOG_TRACE("CapturingSpawners: Reusing wire {} ptr {}", wire->name, (void *)wire.get());
-    } else {
-      // Parallel needs to capture all it needs, so we need deeper informations
-      // this is triggered by populating requiredVariables variable
-      auto dataCopy = data;
-      std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
-      dataCopy.requiredVariables = &requirements;
-      dataCopy.inputType = inputType;
-
-      WireBase::compose(dataCopy); // discard the result, we do our thing here
-
-      auto &wireData = threadSpawnedWires[wire.get()];
-      wireData.requirements = std::move(requirements);
-      wireData.refcount = 1;
-      spawnedWireData = &wireData;
-
-      SHLOG_TRACE("CapturingSpawners: New wire {} ptr {}", wire->name, (void *)wire.get());
-    }
+    WireBase::compose(dataCopy); // discard the result, we do our thing here
 
     // build the list of variables to capture and inject into spawned chain
     _vars.clear();
     arrayResize(_mergedReqs, 0);
     for (auto &avail : data.shared) {
-      auto it = spawnedWireData->requirements.find(avail.name);
-      if (it != spawnedWireData->requirements.end()) {
+      auto it = wire->requirements.find(avail.name);
+      if (it != wire->requirements.end()) {
         if (!avail.global) {
           // Capture if not global as we need to copy it!
           SHLOG_TRACE("CapturingSpawners: adding variable to requirements: {}, wire {}", avail.name, wire->name);
