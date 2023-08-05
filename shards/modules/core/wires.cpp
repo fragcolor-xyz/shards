@@ -892,7 +892,7 @@ template <class T> struct BaseLoader : public BaseRunner {
   IterableExposedInfo _sharedCopy;
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    BaseRunner::compose(data);
+    WireBase::compose(data); // notice we skip BaseRunner::compose
 
     _inputTypeCopy = data.inputType;
     const IterableExposedInfo sharedStb(data.shared);
