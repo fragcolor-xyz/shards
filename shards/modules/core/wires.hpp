@@ -1,6 +1,7 @@
 #ifndef EAE30273_C65E_49F0_BEF0_69BE363EAF61
 #define EAE30273_C65E_49F0_BEF0_69BE363EAF61
 
+#include <cassert>
 #include <shards/core/foundation.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/common_types.hpp>
@@ -90,11 +91,12 @@ struct BaseRunner : public WireBase {
   void destroy() { arrayFree(_mergedReqs); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    resolveWire();
+    assert(wire && "wire should be set at this point");
     // Start/Resume need to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;
-    std::unordered_map<std::string_view, SHExposedTypeInfo> requirements;
-    dataCopy.requiredVariables = &requirements;
+    dataCopy.requiredVariables = &wire->requirements;
 
     auto res = WireBase::compose(dataCopy);
 
@@ -102,8 +104,8 @@ struct BaseRunner : public WireBase {
     _vars.clear();
     arrayResize(_mergedReqs, 0);
     for (auto &avail : data.shared) {
-      auto it = requirements.find(avail.name);
-      if (it != requirements.end()) {
+      auto it = wire->requirements.find(avail.name);
+      if (it != wire->requirements.end()) {
         if (!avail.global) {
           // Capture if not global as we need to copy it!
           SHLOG_TRACE("BaseRunner: adding variable to requirements: {}, wire {}", avail.name, wire->name);
@@ -171,7 +173,10 @@ struct BaseRunner : public WireBase {
 
   void warmup(SHContext *ctx) {
     if (capturing) {
+      assert(wire && "wire should be set at this point");
+
       for (auto &v : _vars) {
+        SHLOG_TRACE("BaseRunner: warming up variable: {}, wire: {}", v.variableName(), wire->name);
         v.warmup(ctx);
       }
 
