@@ -214,7 +214,7 @@
   (ExpectWire) >= .wire
   (Log "loaded")
   ;; We must do this here! cos .wire will try to resume self
-  (WireRunner .wire :Mode RunWireMode.Detached)
+  (WireRunner .wire :Mode RunWireMode.Async)
   (Wait .wire)))
 
 (if (run root) nil (throw "Root tick failed"))
