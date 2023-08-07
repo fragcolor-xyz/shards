@@ -122,7 +122,9 @@
 
 (defloop short-wire
   (Detach too-long-wire)
-  (Wait too-long-wire :Timeout 1.0))
+  (Maybe (-> (Wait too-long-wire :Timeout 1.0))
+         (-> (Stop too-long-wire)
+             "timed out" (Fail))))
 
 (schedule Root short-wire)
 (if (run Root 0.2 25) (throw "Failure expected") nil)
