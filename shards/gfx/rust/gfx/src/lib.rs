@@ -1,5 +1,6 @@
 pub use wgpu_native as wgn;
 pub use wgpu_native::native as wgnn;
+pub use naga_native as nn;
 
 use std::borrow::Cow;
 use std::ffi::{c_void, CString};

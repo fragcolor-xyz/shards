@@ -3,6 +3,10 @@ file(GLOB_RECURSE EXTRA_SOURCES
   ${WGPU_NATIVE_PATH}/ffi/*.h
   ${WGPU_NATIVE_PATH}/src/*.rs)
 
+file(GLOB_RECURSE EXTRA_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/naga-native/*.rs
+  ${CMAKE_CURRENT_SOURCE_DIR}/naga-native/Cargo.toml)
+
 if(TRACY_ENABLE)
   message(STATUS "Building gfx crate with tracy profiling enabled")
   list(APPEND FEATURES tracy)

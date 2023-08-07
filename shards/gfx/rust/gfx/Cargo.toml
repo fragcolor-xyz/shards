@@ -6,7 +6,7 @@ edition = "2021"
 [lib]
 crate-type = ["staticlib"]
 
-[features] 
+[features]
 default = []
 tracy = ["profiling/profile-with-tracy", "tracy-client"]
 
@@ -14,7 +14,7 @@ tracy = ["profiling/profile-with-tracy", "tracy-client"]
 wgpu-native = { path = "../wgpu-native" }
 wgpu-core = { path = "../wgpu/wgpu-core" }
 wgpu-types = { path = "../wgpu/wgpu-types" }
-naga = { path = "../naga" }
+naga-native = { path = "../naga-native" }
 profiling = { version = "1", default-features = false }
 tracy-client = { version = "0.15.0", optional = true}
 
@@ -29,6 +29,9 @@ naga = { path = "../naga" }
 [patch."https://github.com/gfx-rs/wgpu"]
 wgpu-types = { path = "../wgpu/wgpu-types" }
 wgpu-core = { path = "../wgpu/wgpu-core" }
+
+[build-dependencies]
+cbindgen = "0.24.0"
 
 [workspace]
 members = []

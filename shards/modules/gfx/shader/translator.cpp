@@ -237,6 +237,9 @@ WGSLBlock TranslationContext::assignVariable(const std::string &varName, bool gl
       parent = &getTop();
     }
 
+    if (!parent)
+      throw ShaderComposeError(fmt::format("Can not assign \"{}\", not a valid scope", varName));
+
     // Store local variable type info & check update
     const std::string &uniqueVariableName = updateStorage(parent->variables, varName, valueType, isNewVariable);
 
