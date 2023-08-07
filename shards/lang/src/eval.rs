@@ -3398,19 +3398,23 @@ impl Shard for EvalShard {
     };
 
     let defines = self.defines.get();
+    let mut defines_storage = Vec::new(); // need to keep this alive until end of activation
     if defines.is_table() {
       let defines = defines.as_table().unwrap();
       for (ref k, v) in defines.iter() {
         let k: &str = k.try_into()?;
         let v: Value = v.try_into()?;
-        env.definitions.insert(
-          Identifier {
-            name: k.into(),
-            namespaces: Vec::new(),
-          },
-          &v,
-        );
+        defines_storage.push((k, v));
       }
+    }
+    for (k, v) in &defines_storage {
+      env.definitions.insert(
+        Identifier {
+          name: (*k).into(),
+          namespaces: Vec::new(),
+        },
+        v,
+      );
     }
 
     let mut env =
@@ -3422,10 +3426,15 @@ impl Shard for EvalShard {
     let name = self.name.get();
     let wire = if name.is_string() {
       let name: &str = name.try_into()?;
-      transform_env(&mut env, name).map_err(|_| "failed to transform shards into wire")?
+      transform_env(&mut env, name).map_err(|e| {
+        shlog_error!("failed to transform shards into wire: {:?}", e);
+        "failed to transform shards into wire"
+      })?
     } else {
-      transform_env(&mut env, "_anonymous_wire_")
-        .map_err(|_| "failed to transform shards into wire")?
+      transform_env(&mut env, "_anonymous_wire_").map_err(|e| {
+        shlog_error!("failed to transform shards into wire: {:?}", e);
+        "failed to transform shards into wire"
+      })?
     };
 
     self.output = wire.0.into();
