@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use std::rc::Rc;
 use shards::core::registerEnumType;
 use shards::core::registerShard;
 use shards::fourCharacterCode;
@@ -79,10 +80,24 @@ struct Horizontal {
   exposing: ExposedTypes,
 }
 
-struct Layout {
+struct LayoutClass {
+  main_dir: egui::Direction,
+  main_wrap: bool,
+  main_align: egui::Align,
+  main_justify: bool,
+  cross_align: egui::Align,
+  cross_justify: bool,
+  size: (f32, f32),
+  fill_width: bool,
+  fill_height: bool,
+  frame: Option<egui::Frame>,
+  scroll_area: Option<egui::ScrollArea>,
+}
+
+struct LayoutConstructor {
   parents: ParamVar,
   requiring: ExposedTypes,
-  contents: ShardsVar,
+  layout: Option<Rc<LayoutClass>>,
   main_dir: ParamVar,
   main_wrap: ParamVar,
   main_align: ParamVar,
@@ -92,7 +107,41 @@ struct Layout {
   size: ParamVar,
   fill_width: ParamVar,
   fill_height: ParamVar,
+  frame: ParamVar,
+  scroll_area: ParamVar,
+}
+
+struct Layout {
+  parents: ParamVar,
+  requiring: ExposedTypes,
+  contents: ShardsVar,
+  layout_class: ParamVar,
+  size: ParamVar,
+  fill_width: ParamVar,
+  fill_height: ParamVar,
   exposing: ExposedTypes,
+}
+
+shenum! {
+  pub struct ScrollVisibility {
+    [description("The scroll bars will always be visible.")]
+    const AlwaysVisible = 1 << 0;
+    [description("The scroll bars will only be visible when needed")]
+    const VisibleWhenNeeded = 1 << 1;
+    [description("The scroll bars will always be hidden.")]
+    const AlwaysHidden = 1 << 2;
+  }
+  pub struct ScrollVisibilityInfo {}
+}
+
+shenum_types! {
+  ScrollVisibilityInfo,
+  const ScrollVisibilityCC = fourCharacterCode(*b"egSV");
+  pub static ref ScrollVisibilityEnumInfo;
+  pub static ref SCROLL_VISIBILITY_TYPE: Type;
+  pub static ref SCROLL_VISIBILITY_TYPES: Vec<Type>;
+  pub static ref SEQ_OF_SCROLL_VISIBILITY: Type;
+  pub static ref SEQ_OF_SCROLL_VISIBILITY_TYPES: Vec<Type>;
 }
 
 shenum! {
@@ -238,7 +287,13 @@ pub fn registerShards() {
   registerShard::<Grid>();
   registerShard::<Group>();
   registerShard::<Horizontal>();
+  registerShard::<LayoutConstructor>();
   registerShard::<Layout>();
+  registerEnumType(
+    FRAG_CC,
+    ScrollVisibilityCC,
+    ScrollVisibilityEnumInfo.as_ref().into(),
+  );
   registerEnumType(
     FRAG_CC,
     LayoutDirectionCC,

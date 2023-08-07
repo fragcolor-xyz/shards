@@ -4,6 +4,7 @@
 // Required for shards-egui C++ bindings
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
+use shards::SHObjectTypeInfo;
 use shards::core::cloneVar;
 use shards::core::registerShard;
 use shards::fourCharacterCode;
@@ -60,6 +61,14 @@ static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
 lazy_static! {
+  static ref LAYOUT_TYPE: Type = {
+    let mut t = common_type::object;
+    t.details.object = SHObjectTypeInfo {
+      vendorId: FRAG_CC, // 'frag'
+      typeId: 0x6C61796F, // 'layo'
+    };
+    t
+  };
   static ref GFX_CONTEXT_TYPE: Type =
     unsafe { *(bindings::gfx_getGraphicsContextType() as *mut shardsc::SHTypeInfo) };
   static ref WINDOW_CONTEXT_TYPE: Type =
@@ -71,6 +80,9 @@ lazy_static! {
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
+  static ref LAYOUT_TYPE_VEC: Vec<Type> = vec![*LAYOUT_TYPE];
+  static ref LAYOUT_VAR_TYPE: Type = Type::context_variable(&LAYOUT_TYPE_VEC);
+  static ref LAYOUT_TYPE_VEC_VAR: Vec<Type> = vec![*LAYOUT_VAR_TYPE];
 }
 
 lazy_static! {
@@ -254,7 +266,6 @@ pub extern "C" fn register(core: *mut shards::shardsc::SHCore) {
   unsafe {
     shards::core::Core = core;
   }
-
   registerShard::<EguiContext>();
   state::registerShards();
   containers::registerShards();
