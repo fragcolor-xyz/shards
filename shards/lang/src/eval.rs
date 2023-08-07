@@ -1363,6 +1363,7 @@ fn as_var(
       ("f4", true) => Ok(SVar::NotCloned(handle_vector_built_in_floats::<4>(
         func, line_info,
       )?)),
+      ("platform", true) => Ok(SVar::NotCloned(process_platform_built_in())),
       ("type", true) => process_type(func, line_info, e),
       ("ast", true) => process_ast(func, line_info, e),
       _ => {
@@ -1407,6 +1408,24 @@ fn as_var(
         }
       }
     },
+  }
+}
+
+fn process_platform_built_in() -> Var {
+  if cfg!(target_os = "android") {
+    Var::ephemeral_string("android")
+  } else if cfg!(target_os = "ios") {
+    Var::ephemeral_string("ios")
+  } else if cfg!(target_os = "emscripten") {
+    Var::ephemeral_string("emscripten")
+  } else if cfg!(target_os = "windows") {
+    Var::ephemeral_string("windows")
+  } else if cfg!(target_os = "linux") {
+    Var::ephemeral_string("linux")
+  } else if cfg!(target_os = "macos") {
+    Var::ephemeral_string("macos")
+  } else {
+    unreachable!("You are running an unknown platform");
   }
 }
 
@@ -2923,6 +2942,10 @@ fn eval_pipeline(
                   .into(),
               )
             }
+          }
+          ("platform", true) => {
+            let info = process_platform_built_in();
+            add_const_shard2(*info.as_ref(), block.line_info.unwrap_or_default(), e)
           }
           ("type", true) => {
             let info = process_type(func, block.line_info.unwrap_or_default(), e)?;
