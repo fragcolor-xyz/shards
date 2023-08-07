@@ -12,102 +12,102 @@ TEST_CASE("Naga Basic", "[naga]") {
 
   std::vector<StructMember> outStructMembers;
   outStructMembers.push_back(StructMember{
-    .name = "position",
-    .ty = ctx.makeType<float4>(),
-    .binding =
-      Binding{
-        .tag = Binding::Tag::BuiltIn,
-        .built_in =
-          Binding::BuiltIn_Body{
-            ._0 = BuiltIn{.tag = BuiltIn::Tag::Position},
+      .name = "position",
+      .ty = ctx.makeType<float4>(),
+      .binding =
+          Binding{
+              .tag = Binding::Tag::BuiltIn,
+              .built_in =
+                  Binding::BuiltIn_Body{
+                      ._0 = BuiltIn{.tag = BuiltIn::Tag::Position},
+                  },
           },
-      },
-    .has_binding = true,
+      .has_binding = true,
   });
   outStructMembers.push_back(StructMember{
-    .name = "color",
-    .ty = ctx.makeType<float4>(),
-    .binding =
-      Binding{
-        .tag = Binding::Tag::Location,
-        .location =
-          Binding::Location_Body{
-            .location = 0,
+      .name = "color",
+      .ty = ctx.makeType<float4>(),
+      .binding =
+          Binding{
+              .tag = Binding::Tag::Location,
+              .location =
+                  Binding::Location_Body{
+                      .location = 0,
+                  },
           },
-      },
-    .has_binding = true,
-    .offset = sizeof(float) * 4,
+      .has_binding = true,
+      .offset = sizeof(float) * 4,
   });
 
   auto t = Type{
-    .name = "Output",
-    .inner =
-      TypeInner{
-        .tag = TypeInner::Tag::Struct,
-        .struct_ =
-          TypeInner::Struct_Body{
-            .members = outStructMembers.data(),
-            .members_len = uint32_t(outStructMembers.size()),
-            .span = sizeof(float) * 4 * 2,
+      .name = "Output",
+      .inner =
+          TypeInner{
+              .tag = TypeInner::Tag::Struct,
+              .struct_ =
+                  TypeInner::Struct_Body{
+                      .members = outStructMembers.data(),
+                      .members_len = uint32_t(outStructMembers.size()),
+                      .span = sizeof(float) * 4 * 2,
+                  },
           },
-      },
   };
   auto structType = nagaStoreType(ctx.ctx, t);
   auto globalOut =
-    nagaStoreGlobal(ctx.ctx, GlobalVariable{.name = "test", .ty = structType, .space = AddressSpace::Tag::Private});
+      nagaStoreGlobal(ctx.ctx, GlobalVariable{.name = "test", .space = AddressSpace::Tag::Private, .ty = structType});
 
   ctx.addEntryPoint(
-    [&](FunctionWriter &fn) {
-      FunctionResult fr{
-        .ty = ctx.makeType<float4>(),
-        .binding =
-          Binding{
-            .tag = Binding::Tag::BuiltIn,
-            .built_in =
-              Binding::BuiltIn_Body{
-                ._0 = BuiltIn{.tag = BuiltIn::Tag::Position},
-              },
-          },
-        .has_binding = true,
-      };
-      nagaFunctionSetResult(fn.functionCtx, &fr);
+      [&](FunctionWriter &fn) {
+        FunctionResult fr{
+            .ty = ctx.makeType<float4>(),
+            .binding =
+                Binding{
+                    .tag = Binding::Tag::BuiltIn,
+                    .built_in =
+                        Binding::BuiltIn_Body{
+                            ._0 = BuiltIn{.tag = BuiltIn::Tag::Position},
+                        },
+                },
+            .has_binding = true,
+        };
+        nagaFunctionSetResult(fn.functionCtx, &fr);
 
-      FunctionArgument arg0{
-        .name = "position",
-        .ty = ctx.makeType<float3>(),
-        .binding =
-          Binding{
-            .tag = Binding::Tag::Location,
-            .location =
-              Binding::Location_Body{
-                .location = 0,
-              },
-          },
-        .has_binding = true,
-      };
-      nagaFunctionAddArgument(fn.functionCtx, &arg0);
+        FunctionArgument arg0{
+            .name = "position",
+            .ty = ctx.makeType<float3>(),
+            .binding =
+                Binding{
+                    .tag = Binding::Tag::Location,
+                    .location =
+                        Binding::Location_Body{
+                            .location = 0,
+                        },
+                },
+            .has_binding = true,
+        };
+        nagaFunctionAddArgument(fn.functionCtx, &arg0);
 
-      auto e0 = fn.makeExpr(Expression::Constant_Body{._0 = ctx.makeConstant(float4(0.0f, 0.0f, 0.0f, 1.0f))});
+        auto e0 = fn.makeExpr(Expression::Constant_Body{._0 = ctx.makeConstant(float4(0.0f, 0.0f, 0.0f, 1.0f))});
 
-      auto &outStructValues = ctx.exprHandles.emplace_back();
-      outStructValues.push_back(fn.makeExpr(Expression::Constant_Body{._0 = ctx.makeConstant(float4(0.0f, 0.0f, 0.0f, 1.0f))}));
-      outStructValues.push_back(fn.makeExpr(Expression::Constant_Body{._0 = ctx.makeConstant(float4(1.0f, 1.0f, 1.0f, 1.0f))}));
+        auto &outStructValues = ctx.exprHandles.emplace_back();
+        outStructValues.push_back(fn.makeExpr(Expression::Constant_Body{._0 = ctx.makeConstant(float4(0.0f, 0.0f, 0.0f, 1.0f))}));
+        outStructValues.push_back(fn.makeExpr(Expression::Constant_Body{._0 = ctx.makeConstant(float4(1.0f, 1.0f, 1.0f, 1.0f))}));
 
-      Expression::Compose_Body compose{};
-      compose.components = outStructValues.data();
-      compose.components_len = uint32_t(outStructValues.size());
-      compose.ty = structType;
-      auto makeResult = fn.makeExpr("result", compose);
+        Expression::Compose_Body compose{};
+        compose.components = outStructValues.data();
+        compose.components_len = uint32_t(outStructValues.size());
+        compose.ty = structType;
+        auto makeResult = fn.makeExpr("result", compose);
 
-      auto gv = fn.makeExpr(Expression::GlobalVariable_Body{._0 = globalOut});
+        auto gv = fn.makeExpr(Expression::GlobalVariable_Body{._0 = globalOut});
 
-      return std::vector<Statement>{
-        makeStmt(Statement::Emit_Body{._0.start = gv.index, ._0.end = gv.index}),
-        makeStmt(Statement::Store_Body{.pointer = gv, .value = makeResult}),
-        makeStmt(Statement::Return_Body{.value = e0, .has_value = true}),
-      };
-    },
-    "main", ShaderStage::Vertex);
+        return std::vector<Statement>{
+            makeStmt(Statement::Emit_Body{._0 = Range<Expression>{.start = gv.index, .end = gv.index}}),
+            makeStmt(Statement::Store_Body{.pointer = gv, .value = makeResult}),
+            makeStmt(Statement::Return_Body{.value = e0, .has_value = true}),
+        };
+      },
+      "main", ShaderStage::Vertex);
 
   CHECK(nagaValidate(ctx.ctx));
 

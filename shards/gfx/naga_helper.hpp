@@ -3,6 +3,8 @@
 
 #include "rust/naga-native/bindings.hpp"
 #include <linalg.h>
+#include <list>
+#include <vector>
 #include <type_traits>
 
 namespace naga {
@@ -157,7 +159,7 @@ struct Writer {
       auto &ti = t.inner;
       ti.scalar.width = sizeof(T);
       ti.scalar.kind = scalarKindOf<T>();
-      return nagaStoreType(ctx, ti);
+      return nagaStoreType(ctx, t);
     }
   }
 
