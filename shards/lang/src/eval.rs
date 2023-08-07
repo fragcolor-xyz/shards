@@ -51,6 +51,8 @@ use shards::types::{ShardRef, Var, Wire};
 use shards::{SHType_ContextVar, SHType_ShardRef};
 use std::ffi::CStr;
 
+pub(crate) const EVAL_STACK_SIZE: usize = 4 * 1024 * 1024;
+
 pub fn new_cancellation_token() -> Arc<AtomicBool> {
   Arc::new(AtomicBool::new(false))
 }
@@ -915,6 +917,7 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
     let line_info = sub_env.shards[0].0.get_line_info();
     // create an ephemeral wire, execute and grab result
     let wire = Wire::new("eval-ephemeral");
+    wire.set_stack_size(EVAL_STACK_SIZE);
     finalize_env(&mut sub_env)?;
     for shard in sub_env.shards.drain(..) {
       wire.add_shard(shard.0);

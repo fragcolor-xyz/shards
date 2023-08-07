@@ -1,4 +1,5 @@
 use crate::ast::Sequence;
+use crate::eval;
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Arg, ArgMatches, Command};
 use shards::core::Core;
@@ -149,6 +150,8 @@ fn execute_seq(matches: &ArgMatches, ast: Sequence, cancellation_token: Arc<Atom
 
   let wire =
     { eval(&ast, "root", defines, cancellation_token.clone()).expect("Failed to evaluate file") };
+  // enlarge stack
+  wire.set_stack_size(eval::EVAL_STACK_SIZE);
 
   let mut mesh = Mesh::default();
   if !mesh.compose(wire.0) {
