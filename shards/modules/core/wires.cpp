@@ -155,7 +155,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   IterableExposedInfo shared(data.shared);
   IterableExposedInfo sharedCopy;
   if (!wire->pure) {
-    if (mode == RunWireMode::Detached && !capturing) {
+    if (mode == RunWireMode::Async && !capturing) {
       // keep only globals
       auto end = std::remove_if(shared.begin(), shared.end(), [](const SHExposedTypeInfo &x) { return !x.global; });
       sharedCopy = IterableExposedInfo(shared.begin(), end);
@@ -569,7 +569,7 @@ struct Resume : public WireBase {
   void setup() {
     // we use those during WireBase::compose
     passthrough = true;
-    mode = RunWireMode::Detached;
+    mode = RunWireMode::Async;
     capturing = true;
   }
 
@@ -936,7 +936,7 @@ template <class T> struct BaseLoader : public BaseRunner {
     if (unlikely(!wire))
       throw WireNotFound();
 
-    if (mode == RunWireMode::Detached) {
+    if (mode == RunWireMode::Async) {
       activateDetached(context, input);
     } else if (mode == RunWireMode::Stepped) {
       activateStepMode(context, input);
@@ -1309,7 +1309,7 @@ struct ParallelBase : public CapturingSpawners {
 
   void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
     if (_threads > 0) {
-      mode = RunWireMode::Detached;
+      mode = RunWireMode::Async;
       capturing = true;
     } else {
       mode = RunWireMode::Inline;
@@ -1667,7 +1667,7 @@ struct Expand : public ParallelBase {
 
 struct Spawn : public CapturingSpawners {
   Spawn() {
-    mode = RunWireMode::Detached;
+    mode = RunWireMode::Async;
     capturing = true;
     passthrough = false;
   }
@@ -2066,7 +2066,7 @@ SHARDS_REGISTER_FN(wires) {
   REGISTER_ENUM(BranchFailureEnumInfo);
 
   using RunWireDo = RunWire<false, RunWireMode::Inline>;
-  using RunWireDetach = RunWire<true, RunWireMode::Detached>;
+  using RunWireDetach = RunWire<true, RunWireMode::Async>;
   using RunWireStep = RunWire<false, RunWireMode::Stepped>;
   REGISTER_SHARD("Resume", Resume);
   REGISTER_SHARD("Start", Start);

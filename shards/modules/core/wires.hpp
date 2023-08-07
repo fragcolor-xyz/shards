@@ -12,7 +12,7 @@
 
 namespace shards {
 
-enum RunWireMode { Inline, Detached, Stepped };
+enum RunWireMode { Inline, Async, Stepped };
 
 struct WireBase {
   DECL_ENUM_INFO(RunWireMode, RunWireMode, 'runc');
@@ -42,8 +42,8 @@ struct WireBase {
 
   // if false, means the Shard is not going to activate the wire, but just wait for it to complete usually or similar
   bool activating{true};
-
   bool capturing{false};
+  bool detached{false};
 
   RunWireMode mode{RunWireMode::Inline};
 
@@ -147,12 +147,15 @@ struct BaseRunner : public WireBase {
       if (mode == RunWireMode::Inline && wire->wireUsers.count(this) != 0) {
         wire->wireUsers.erase(this);
         wire->cleanup();
-      } else {
+      } else if (!wire->detached) {
+        // but avoid stopping if detached and scheduled
         shards::stop(wire.get());
       }
     }
 
     if (onStopConnection) {
+      // noticed that if we are `scheduled` then we don't watch for the onStop event anymore
+      // indeed we assume that the wire will just releaseVariable eventually
       onStopConnection->release();
       onStopConnection.reset();
     }
@@ -212,6 +215,10 @@ struct BaseRunner : public WireBase {
       auto mesh = context->main->mesh.lock();
       if (mesh)
         mesh->schedule(wire, input, false);
+      // also mark this wire as fully detached if needed
+      // this means stopping this Shard will not stop the wire
+      if (detached)
+        wire->detached = true;
     }
   }
 
@@ -253,7 +260,8 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
   void setup() {
     passthrough = INPUT_PASSTHROUGH;
     mode = WIRE_MODE;
-    capturing = WIRE_MODE == RunWireMode::Detached;
+    capturing = WIRE_MODE == RunWireMode::Async; // if Detach we need to capture
+    detached = WIRE_MODE == RunWireMode::Async;  // in RunWire we always detach
   }
 
   static SHParametersInfo parameters() { return runWireParamsInfo; }
@@ -332,7 +340,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if constexpr (WIRE_MODE == RunWireMode::Detached) {
+    if constexpr (WIRE_MODE == RunWireMode::Async) {
       activateDetached(context, input);
       return input;
     } else if constexpr (WIRE_MODE == RunWireMode::Stepped) {
