@@ -98,7 +98,7 @@
    .best
    (Log)
    (Take 1) (ExpectWire) >= .bestWire
-   (WireRunner .bestWire :Mode RunWireMode.Detached)
+   (WireRunner .bestWire :Mode RunWireMode.Async)
    (Msg "Waiting...")
    (Wait .bestWire)
    (Msg "Exiting...")

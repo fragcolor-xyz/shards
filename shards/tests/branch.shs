@@ -24,7 +24,7 @@
 ; @wire(c3 { ; this wire doesn't require msg1 until it's run
 ;     "@wire(c3 {msg1 | Log} Looped:true)" |
 ;     EDN.Eval | ExpectWire = c3
-;     WireRunner(c3 Mode: RunWireMode.Detached)
+;     WireRunner(c3 Mode: RunWireMode.Async)
 ;     Wait(c3)
 ; })
 
