@@ -7,6 +7,7 @@ use super::LayoutClass;
 use super::LayoutConstructor;
 use super::LayoutDirection;
 use super::ScrollVisibility;
+use crate::layouts::ScrollVisibilityCC;
 use crate::layouts::LAYOUT_ALIGN_TYPES;
 use crate::layouts::LAYOUT_DIRECTION_TYPES;
 use crate::misc::style_util;
@@ -19,7 +20,6 @@ use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::LAYOUT_TYPE;
 use crate::LAYOUT_TYPE_VEC;
 use crate::LAYOUT_TYPE_VEC_VAR;
-use crate::LAYOUT_VAR_TYPE;
 use crate::PARENTS_UI_NAME;
 use shards::shard::Shard;
 use shards::types::Context;
@@ -38,31 +38,50 @@ use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
-use shards::types::STRING_OR_NONE_SLICE;
 use shards::SHColor;
 use std::rc::Rc;
 
 macro_rules! retrieve_parameter {
-  ($table:ident, $name:literal, $type:ty, $default:expr) => {
+  ($table:ident, $name:literal, $type:ty) => {
     if let Some(value) = $table.get_static($name) {
       let value: $type = value.try_into().map_err(|e| {
         shlog!("{}: {}", $name, e);
         "Invalid attribute value received"
       })?;
-      value
+      Some(value)
     } else {
-      $default
+      None
     }
   };
-  ($table:ident, $name:literal, $type:ty, $convert:expr, $default:expr) => {
+  ($table:ident, $name:literal, $type:ty, $convert:expr) => {
     if let Some(value) = $table.get_static($name) {
       let value: $type = value.try_into().map_err(|e| {
         shlog!("{}: {}", $name, e);
         "Invalid attribute value received"
       })?;
-      $convert(value)?
+      Some($convert(value)?)
     } else {
-      $default
+      None
+    }
+  };
+}
+
+macro_rules! retrieve_enum_parameter {
+  ($table:ident, $name:literal, $type:ident, $typeId:expr) => {
+    if let Some(value) = $table.get_static($name) {
+      if value.valueType == crate::shardsc::SHType_Enum && unsafe {value.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId == $typeId} {
+        // TODO: can double check that this is correct
+        let bits = unsafe { value.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
+        let value = $type { bits };
+        Some(value)
+      } else {
+        Err("Expected Enum value of same Enum type.").map_err(|e| {
+          shlog!("{}: {}", $name, e);
+          "Invalid attribute value received"
+        })?
+      }
+    } else {
+      None
     }
   };
 }
@@ -113,6 +132,12 @@ lazy_static! {
       .into(),
     (cstr!("FillWidth"), shccstr!("Whether the Layout should take up the full width of the available space."), &BOOL_TYPES[..],).into(),
     (cstr!("FillHeight"), shccstr!("Whether the Layout should take up the full height of the available space."), &BOOL_TYPES[..],).into(),
+    (
+      cstr!("Disabled"),
+      shccstr!("Whether the drawn layout should be disabled or not."),
+      BOOL_VAR_OR_NONE_SLICE,
+    )
+      .into(),
     (
       cstr!("Frame"),
       shccstr!("The frame to be drawn around the layout."),
@@ -169,6 +194,7 @@ impl Default for LayoutConstructor {
       size: ParamVar::default(),
       fill_width: ParamVar::default(),
       fill_height: ParamVar::default(),
+      disabled: ParamVar::default(),
       frame: ParamVar::default(),
       scroll_area: ParamVar::default(),
     }
@@ -211,8 +237,9 @@ impl Shard for LayoutConstructor {
       6 => Ok(self.size.set_param(value)),
       7 => Ok(self.fill_width.set_param(value)),
       8 => Ok(self.fill_height.set_param(value)),
-      9 => Ok(self.frame.set_param(value)),
-      10 => Ok(self.scroll_area.set_param(value)),
+      9 => Ok(self.disabled.set_param(value)),
+      10 => Ok(self.frame.set_param(value)),
+      11 => Ok(self.scroll_area.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -228,8 +255,9 @@ impl Shard for LayoutConstructor {
       6 => self.size.get_param(),
       7 => self.fill_width.get_param(),
       8 => self.fill_height.get_param(),
-      9 => self.frame.get_param(),
-      10 => self.scroll_area.get_param(),
+      9 => self.disabled.get_param(),
+      10 => self.frame.get_param(),
+      11 => self.scroll_area.get_param(),
       _ => Var::default(),
     }
   }
@@ -254,6 +282,7 @@ impl Shard for LayoutConstructor {
     self.size.warmup(ctx);
     self.fill_width.warmup(ctx);
     self.fill_height.warmup(ctx);
+    self.disabled.warmup(ctx);
     self.frame.warmup(ctx);
     self.scroll_area.warmup(ctx);
 
@@ -263,6 +292,7 @@ impl Shard for LayoutConstructor {
   fn cleanup(&mut self) -> Result<(), &str> {
     self.scroll_area.cleanup();
     self.frame.cleanup();
+    self.disabled.cleanup();
     self.fill_height.cleanup();
     self.fill_width.cleanup();
     self.size.cleanup();
@@ -395,62 +425,86 @@ impl Shard for LayoutConstructor {
       false // default fill height
     };
 
+    let disabled = if !self.disabled.get().is_none() {
+      self.disabled.get().try_into()?
+    } else {
+      false // default disabled value
+    };
+
     let frame = if !self.frame.get().is_none() {
       let frame = self.frame.get();
       if frame.valueType == crate::shardsc::SHType_Table {
         let frame: Table = frame.try_into()?;
 
         // uses frame defaults for group as per frame::group
-        let inner_margin = retrieve_parameter!(
+        let inner_margin = if let Some(inner_margin) = retrieve_parameter!(
           frame,
           "inner_margin",
           (f32, f32, f32, f32),
-          style_util::get_margin,
+          style_util::get_margin
+        ) {
+          inner_margin
+        } else {
           egui::style::Margin::same(6.0)
-        );
+        };
 
-        let outer_margin = retrieve_parameter!(
+        let outer_margin = if let Some(outer_margin) =  retrieve_parameter!(
           frame,
           "outer_margin",
           (f32, f32, f32, f32),
-          style_util::get_margin,
+          style_util::get_margin
+        ) {
+          outer_margin
+        } else {
           egui::style::Margin::default()
-        );
+        };
 
-        let rounding = retrieve_parameter!(
+        let rounding = if let Some(rounding) = retrieve_parameter!(
           frame,
           "rounding",
           (f32, f32, f32, f32),
-          style_util::get_rounding,
-          egui::Rounding::same(2.0) // TODO: default value for noninteractive widgets. these values are for light mode, and may not be very good
+          style_util::get_rounding // TODO: default value for noninteractive widgets. these values are for light mode, and may not be very good
                                     // ui.style().visuals.widgets.noninteractive.rounding
-        );
+        ) {
+          rounding
+        } else {
+          egui::Rounding::same(2.0)
+        };
 
-        let stroke = retrieve_parameter!(
+        let stroke = if let Some(stroke) = retrieve_parameter!(
           frame,
           "stroke",
           Table,
-          style_util::get_stroke,
-          egui::Stroke::new(1.0, egui::Color32::from_gray(190)) // TODO: default value for noninteractive widgets
+          style_util::get_stroke // TODO: default value for noninteractive widgets
                                                                 // ui.style().visuals.widgets.noninteractive.bg_stroke
-        );
+        ) {
+          stroke 
+        } else {
+          egui::Stroke::new(1.0, egui::Color32::from_gray(190))
+        };
 
-        let fill = retrieve_parameter!(
+        let fill = if let Some(fill) = retrieve_parameter!(
           frame,
           "fill",
           SHColor,
-          style_util::get_color,
-          egui::Color32::from_gray(248) // TODO: default value for noninteractive widgets
+          style_util::get_color // TODO: default value for noninteractive widgets
                                         // ui.style().visuals.widgets.noninteractive.bg_fill // TODO: maybe default
-        );
+        ) {
+          fill 
+        } else {
+          egui::Color32::from_gray(248)
+        };
 
-        let shadow = retrieve_parameter!(
+        let shadow = if let Some(shadow) = retrieve_parameter!(
           frame,
           "shadow",
           Table,
-          style_util::get_shadow,
+          style_util::get_shadow
+        ) {
+          shadow
+        } else {
           egui::epaint::Shadow::default()
-        );
+        };
 
         Some(egui::Frame {
           inner_margin,
@@ -472,33 +526,26 @@ impl Shard for LayoutConstructor {
       if scroll_area.valueType == crate::shardsc::SHType_Table {
         let scroll_area: Table = scroll_area.try_into()?;
 
-        let horizontal_scroll_enabled =
-          retrieve_parameter!(scroll_area, "horizontal_scroll_enabled", bool, false);
-
-        let vertical_scroll_enabled =
-          retrieve_parameter!(scroll_area, "vertical_scroll_enabled", bool, false);
-
-        let scroll_visibility = if let Some(value) = scroll_area.get_static("scroll_visibility") {
-          if value.valueType == crate::shardsc::SHType_Enum {
-            let bits = unsafe { value.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
-            match (ScrollVisibility { bits }) {
-              ScrollVisibility::AlwaysVisible => {
-                egui::scroll_area::ScrollBarVisibility::AlwaysVisible
-              }
-              ScrollVisibility::VisibleWhenNeeded => {
-                egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded
-              }
-              ScrollVisibility::AlwaysHidden => {
-                egui::scroll_area::ScrollBarVisibility::AlwaysHidden
-              }
-              _ => return Err("Invalid scroll visibility provided"),
-            }
+        let horizontal_scroll_enabled = if let Some(enabled) = 
+          retrieve_parameter!(scroll_area, "horizontal_scroll_enabled", bool) {
+            enabled
           } else {
-            return Err("Invalid type for scroll visibility");
-          }
+            false
+          };
+
+        let vertical_scroll_enabled = if let Some(enabled) =
+          retrieve_parameter!(scroll_area, "vertical_scroll_enabled", bool) {
+            enabled
+          } else {
+            false
+          };
+
+        let scroll_visibility = if let Some(visibility) = retrieve_enum_parameter!(scroll_area, "scroll_visibility", ScrollVisibility, ScrollVisibilityCC) {
+          visibility
         } else {
-          egui::scroll_area::ScrollBarVisibility::AlwaysVisible
+          ScrollVisibility::AlwaysVisible
         };
+        let scroll_visibility: egui::scroll_area::ScrollBarVisibility = scroll_visibility.try_into()?;
 
         Some(
           egui::ScrollArea::new([horizontal_scroll_enabled, vertical_scroll_enabled])
@@ -521,6 +568,7 @@ impl Shard for LayoutConstructor {
       size,
       fill_width,
       fill_height,
+      disabled,
       frame,
       scroll_area,
     }));
@@ -742,18 +790,19 @@ impl Shard for Layout {
         size.1 = ui.spacing().interact_size.y;
       }
 
+      let disabled = layout_class.disabled;
+
       let frame = if let Some(frame) = layout_class.frame {
         Some(frame.clone())
       } else {
         None
       };
+
       let scroll_area = if let Some(scroll_area) = &layout_class.scroll_area {
         Some(scroll_area.clone())
       } else {
         None
       }; // TODO: Why does scroll area not have copy but frame does?
-
-      let disabled = false;
 
       // let horizontal_scroll_enabled = true;
       // let vertical_scroll_enabled = true;

@@ -90,6 +90,7 @@ struct LayoutClass {
   size: (f32, f32),
   fill_width: bool,
   fill_height: bool,
+  disabled: bool,
   frame: Option<egui::Frame>,
   scroll_area: Option<egui::ScrollArea>,
 }
@@ -107,6 +108,7 @@ struct LayoutConstructor {
   size: ParamVar,
   fill_width: ParamVar,
   fill_height: ParamVar,
+  disabled: ParamVar,
   frame: ParamVar,
   scroll_area: ParamVar,
 }
@@ -132,6 +134,19 @@ shenum! {
     const AlwaysHidden = 1 << 2;
   }
   pub struct ScrollVisibilityInfo {}
+}
+
+impl TryFrom<ScrollVisibility> for egui::scroll_area::ScrollBarVisibility {
+  type Error = &'static str;
+
+  fn try_from(value: ScrollVisibility) -> Result<Self, Self::Error> {
+    match value {
+      ScrollVisibility::AlwaysVisible => Ok(egui::scroll_area::ScrollBarVisibility::AlwaysVisible),
+      ScrollVisibility::VisibleWhenNeeded => Ok(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded),
+      ScrollVisibility::AlwaysHidden => Ok(egui::scroll_area::ScrollBarVisibility::AlwaysHidden),
+      _ => unreachable!(),
+    }
+  }
 }
 
 shenum_types! {
