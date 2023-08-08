@@ -640,6 +640,13 @@ struct Var : public SHVar {
     }
   }
 
+  explicit operator SHStringWithLen() const {
+    if (valueType != SHType::String) {
+      throw InvalidVarTypeError("Invalid variable casting! expected String");
+    }
+    return SHStringWithLen{payload.stringValue, payload.stringLen};
+  }
+
   template <typename T> void intoVector(std::vector<T> &outVec) const {
     if (valueType != SHType::Seq) {
       throw InvalidVarTypeError("Invalid variable casting! expected Seq");

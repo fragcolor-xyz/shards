@@ -1813,6 +1813,9 @@ fn create_shard(
         if !as_idx {
           return Err(("Unnamed parameter after named parameter", line_info).into());
         }
+        if idx >= info.len() as i32 {
+          return Err(("Too many parameters", line_info).into());
+        }
         set_shard_parameter(
           &info[idx as usize],
           e,
