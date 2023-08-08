@@ -1292,7 +1292,7 @@ fn as_var(
     }
     Value::TakeTable(var_name, path) => {
       let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv::new(None, None);
+      let mut sub_env = EvalEnv::new(None, Some(e));
       create_take_table_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
@@ -1317,7 +1317,7 @@ fn as_var(
     }
     Value::TakeSeq(var_name, path) => {
       let start_idx = e.shards.len();
-      let mut sub_env = EvalEnv::new(None, None);
+      let mut sub_env = EvalEnv::new(None, Some(e));
       create_take_seq_chain(var_name, path, line_info, &mut sub_env)?;
       if !sub_env.shards.is_empty() {
         // create a temporary variable to hold the result of the expression
