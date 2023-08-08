@@ -589,7 +589,7 @@ struct AppendTo : public XpendTo {
 };
 
 struct PrependTo : public XpendTo {
-  static SHOptionalString help() { return SHCCSTR("Prepends the input to the context variable passed to `:Collection`."); }
+  static SHOptionalString help() { return SHCCSTR("Prepends the input to the context variable passed to `Collection`."); }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to prepend to the collection."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
@@ -600,7 +600,8 @@ struct PrependTo : public XpendTo {
       auto &arr = collection.payload.seqValue;
       const auto len = arr.len;
       shards::arrayResize(arr, len + 1);
-      memmove(&arr.elements[1], &arr.elements[0], sizeof(*arr.elements) * len);
+      memmove(&arr.elements[1], &arr.elements[0], sizeof(SHVar) * len);
+      arr.elements[0] = Var::Empty; // this shifted so we can safely reset it, and we need to otherwise clone would free [1]
       cloneVar(arr.elements[0], input);
       break;
     }

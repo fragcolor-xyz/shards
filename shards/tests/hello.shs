@@ -122,3 +122,8 @@ n/text | Log
 @x-defined | Log
 """ | Shards.Read | Log | Shards.Distill(Name: "my wire" Defines: {x-defined: 10}) | Log = mey-weired
 WireRunner(mey-weired)
+
+["B" "C" "D" "E" "F"] >= bcdef
+
+"A" | PrependTo(bcdef)
+bcdef | Log
