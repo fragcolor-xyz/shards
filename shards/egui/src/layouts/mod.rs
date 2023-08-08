@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use std::rc::Rc;
 use shards::core::registerEnumType;
 use shards::core::registerShard;
 use shards::fourCharacterCode;
@@ -13,6 +12,7 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 use shards::SHType_Enum;
+use std::rc::Rc;
 
 struct CollapsingHeader {
   parents: ParamVar,
@@ -82,12 +82,6 @@ struct Horizontal {
 
 struct LayoutClass {
   layout: egui::Layout,
-  // main_dir: egui::Direction,
-  // main_wrap: bool,
-  // main_align: egui::Align,
-  // main_justify: bool,
-  // cross_align: egui::Align,
-  // cross_justify: bool,
   size: (f32, f32),
   fill_width: bool,
   fill_height: bool,
@@ -101,12 +95,6 @@ struct LayoutConstructor {
   requiring: ExposedTypes,
   layout_class: Option<Rc<LayoutClass>>,
   layout: ParamVar,
-  // main_dir: ParamVar,
-  // main_wrap: ParamVar,
-  // main_align: ParamVar,
-  // main_justify: ParamVar,
-  // cross_align: ParamVar,
-  // cross_justify: ParamVar,
   size: ParamVar,
   fill_width: ParamVar,
   fill_height: ParamVar,
@@ -144,7 +132,9 @@ impl TryFrom<ScrollVisibility> for egui::scroll_area::ScrollBarVisibility {
   fn try_from(value: ScrollVisibility) -> Result<Self, Self::Error> {
     match value {
       ScrollVisibility::AlwaysVisible => Ok(egui::scroll_area::ScrollBarVisibility::AlwaysVisible),
-      ScrollVisibility::VisibleWhenNeeded => Ok(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded),
+      ScrollVisibility::VisibleWhenNeeded => {
+        Ok(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded)
+      }
       ScrollVisibility::AlwaysHidden => Ok(egui::scroll_area::ScrollBarVisibility::AlwaysHidden),
       _ => unreachable!(),
     }
@@ -180,10 +170,10 @@ impl TryFrom<LayoutDirection> for egui::Direction {
 
   fn try_from(value: LayoutDirection) -> Result<Self, Self::Error> {
     match value {
-          LayoutDirection::LeftToRight => Ok(egui::Direction::LeftToRight),
-          LayoutDirection::RightToLeft => Ok(egui::Direction::RightToLeft),
-          LayoutDirection::TopDown => Ok(egui::Direction::TopDown),
-          LayoutDirection::BottomUp => Ok(egui::Direction::BottomUp),
+      LayoutDirection::LeftToRight => Ok(egui::Direction::LeftToRight),
+      LayoutDirection::RightToLeft => Ok(egui::Direction::RightToLeft),
+      LayoutDirection::TopDown => Ok(egui::Direction::TopDown),
+      LayoutDirection::BottomUp => Ok(egui::Direction::BottomUp),
       _ => unreachable!(),
     }
   }

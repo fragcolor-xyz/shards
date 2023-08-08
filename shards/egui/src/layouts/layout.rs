@@ -69,7 +69,9 @@ macro_rules! retrieve_parameter {
 macro_rules! retrieve_enum_parameter {
   ($table:ident, $name:literal, $type:ident, $typeId:expr) => {
     if let Some(value) = $table.get_static($name) {
-      if value.valueType == crate::shardsc::SHType_Enum && unsafe {value.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId == $typeId} {
+      if value.valueType == crate::shardsc::SHType_Enum
+        && unsafe { value.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId == $typeId }
+      {
         // TODO: can double check that this is correct
         let bits = unsafe { value.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
         let value = $type { bits };
@@ -269,12 +271,9 @@ impl Shard for LayoutConstructor {
       if layout_table.valueType == crate::shardsc::SHType_Table {
         let layout_table: Table = layout_table.try_into()?;
 
-        let cross_align = if let Some(cross_align) = retrieve_enum_parameter!(
-          layout_table,
-          "cross_align",
-          LayoutAlign,
-          LayoutAlignCC
-        ) {
+        let cross_align = if let Some(cross_align) =
+          retrieve_enum_parameter!(layout_table, "cross_align", LayoutAlign, LayoutAlignCC)
+        {
           cross_align
         } else {
           LayoutAlign::Min // default cross align
@@ -294,13 +293,10 @@ impl Shard for LayoutConstructor {
         let main_direction: egui::Direction = main_direction.try_into()?;
 
         let mut layout = egui::Layout::from_main_dir_and_cross_align(main_direction, cross_align);
-        
-        let main_align = if let Some(main_align) = retrieve_enum_parameter!(
-          layout_table,
-          "main_align",
-          LayoutAlign,
-          LayoutAlignCC
-        ) {
+
+        let main_align = if let Some(main_align) =
+          retrieve_enum_parameter!(layout_table, "main_align", LayoutAlign, LayoutAlignCC)
+        {
           main_align
         } else {
           LayoutAlign::Center // default main align
@@ -308,37 +304,28 @@ impl Shard for LayoutConstructor {
         let main_align: egui::Align = main_align.try_into()?;
         layout = layout.with_main_align(main_align);
 
-        let main_wrap = if let Some(main_wrap) = retrieve_parameter!(
-          layout_table,
-          "main_wrap",
-          bool
-        ) {
-          main_wrap
-        } else {
-          false // default main wrap
-        };
+        let main_wrap =
+          if let Some(main_wrap) = retrieve_parameter!(layout_table, "main_wrap", bool) {
+            main_wrap
+          } else {
+            false // default main wrap
+          };
         layout = layout.with_main_wrap(main_wrap);
 
-        let main_justify = if let Some(main_justify) = retrieve_parameter!(
-          layout_table,
-          "main_wrap",
-          bool
-        ) {
-          main_justify
-        } else {
-          false // default main justify
-        };
+        let main_justify =
+          if let Some(main_justify) = retrieve_parameter!(layout_table, "main_wrap", bool) {
+            main_justify
+          } else {
+            false // default main justify
+          };
         layout = layout.with_main_justify(main_justify);
 
-        let cross_justify = if let Some(cross_justify) = retrieve_parameter!(
-          layout_table,
-          "main_wrap",
-          bool
-        ) {
-          cross_justify
-        } else {
-          false // default cross justify
-        };
+        let cross_justify =
+          if let Some(cross_justify) = retrieve_parameter!(layout_table, "main_wrap", bool) {
+            cross_justify
+          } else {
+            false // default cross justify
+          };
         layout = layout.with_cross_justify(cross_justify);
 
         layout
@@ -389,7 +376,7 @@ impl Shard for LayoutConstructor {
           egui::style::Margin::same(6.0)
         };
 
-        let outer_margin = if let Some(outer_margin) =  retrieve_parameter!(
+        let outer_margin = if let Some(outer_margin) = retrieve_parameter!(
           frame,
           "outer_margin",
           (f32, f32, f32, f32),
@@ -405,7 +392,7 @@ impl Shard for LayoutConstructor {
           "rounding",
           (f32, f32, f32, f32),
           style_util::get_rounding // TODO: default value for noninteractive widgets. these values are for light mode, and may not be very good
-                                    // ui.style().visuals.widgets.noninteractive.rounding
+                                   // ui.style().visuals.widgets.noninteractive.rounding
         ) {
           rounding
         } else {
@@ -417,9 +404,9 @@ impl Shard for LayoutConstructor {
           "stroke",
           Table,
           style_util::get_stroke // TODO: default value for noninteractive widgets
-                                                                // ui.style().visuals.widgets.noninteractive.bg_stroke
+                                 // ui.style().visuals.widgets.noninteractive.bg_stroke
         ) {
-          stroke 
+          stroke
         } else {
           egui::Stroke::new(1.0, egui::Color32::from_gray(190))
         };
@@ -429,19 +416,16 @@ impl Shard for LayoutConstructor {
           "fill",
           SHColor,
           style_util::get_color // TODO: default value for noninteractive widgets
-                                        // ui.style().visuals.widgets.noninteractive.bg_fill // TODO: maybe default
+                                // ui.style().visuals.widgets.noninteractive.bg_fill // TODO: maybe default
         ) {
-          fill 
+          fill
         } else {
           egui::Color32::from_gray(248)
         };
 
-        let shadow = if let Some(shadow) = retrieve_parameter!(
-          frame,
-          "shadow",
-          Table,
-          style_util::get_shadow
-        ) {
+        let shadow = if let Some(shadow) =
+          retrieve_parameter!(frame, "shadow", Table, style_util::get_shadow)
+        {
           shadow
         } else {
           egui::epaint::Shadow::default()
@@ -467,26 +451,34 @@ impl Shard for LayoutConstructor {
       if scroll_area.valueType == crate::shardsc::SHType_Table {
         let scroll_area: Table = scroll_area.try_into()?;
 
-        let horizontal_scroll_enabled = if let Some(enabled) = 
-          retrieve_parameter!(scroll_area, "horizontal_scroll_enabled", bool) {
-            enabled
-          } else {
-            false
-          };
+        let horizontal_scroll_enabled = if let Some(enabled) =
+          retrieve_parameter!(scroll_area, "horizontal_scroll_enabled", bool)
+        {
+          enabled
+        } else {
+          false
+        };
 
         let vertical_scroll_enabled = if let Some(enabled) =
-          retrieve_parameter!(scroll_area, "vertical_scroll_enabled", bool) {
-            enabled
-          } else {
-            false
-          };
+          retrieve_parameter!(scroll_area, "vertical_scroll_enabled", bool)
+        {
+          enabled
+        } else {
+          false
+        };
 
-        let scroll_visibility = if let Some(visibility) = retrieve_enum_parameter!(scroll_area, "scroll_visibility", ScrollVisibility, ScrollVisibilityCC) {
+        let scroll_visibility = if let Some(visibility) = retrieve_enum_parameter!(
+          scroll_area,
+          "scroll_visibility",
+          ScrollVisibility,
+          ScrollVisibilityCC
+        ) {
           visibility
         } else {
           ScrollVisibility::AlwaysVisible
         };
-        let scroll_visibility: egui::scroll_area::ScrollBarVisibility = scroll_visibility.try_into()?;
+        let scroll_visibility: egui::scroll_area::ScrollBarVisibility =
+          scroll_visibility.try_into()?;
 
         Some(
           egui::ScrollArea::new([horizontal_scroll_enabled, vertical_scroll_enabled])
@@ -785,7 +777,7 @@ impl Shard for Layout {
                           if let Some(ui) = util::get_current_parent(parent_stack_var.get())? {
                             // create the scroll area as the last child_ui, then include all the contents
                             scroll_area
-                            .id_source(scroll_area_id)
+                              .id_source(scroll_area_id)
                               .show(ui, |ui| {
                                 // set whether all widgets in the contents are enabled or disabled
                                 ui.set_enabled(!disabled);
@@ -842,7 +834,7 @@ impl Shard for Layout {
                 if let Some(ui) = util::get_current_parent(parent_stack_var.get())? {
                   // create the scroll area as the last child_ui, then include all the contents
                   scroll_area
-                  .id_source(scroll_area_id)
+                    .id_source(scroll_area_id)
                     .show(ui, |ui| {
                       // set whether all widgets in the contents are enabled or disabled
                       ui.set_enabled(!disabled);
