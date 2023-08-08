@@ -62,10 +62,41 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
   feature->shaderEntryPoints.emplace_back("initLocalPosition", ProgrammableGraphicsStage::Vertex,
                                           WriteGlobal("localPosition", FieldTypes::Float4, expandInputVec("position")));
 
-  auto &entry = feature->shaderEntryPoints.emplace_back("initWorldPosition", ProgrammableGraphicsStage::Vertex,
-                                                        WriteGlobal("worldPosition", FieldTypes::Float4,
-                                                                    ReadBuffer("world", FieldTypes::Float4x4), "*",
-                                                                    ReadGlobal("localPosition")));
+  auto cb = [](IGeneratorContext &ctx) {
+    auto &defs = ctx.getDefinitions();
+    bool needSkinning = ctx.hasInput("joints");
+    if (needSkinning) {
+      auto tmp = ctx.generateTempVariable();
+      ctx.write(fmt::format("let {} = \n", tmp));
+      for (size_t i = 0; i < 4; i++) {
+        ctx.readBuffer("transform", FieldTypes::Float4x4, "joints", [&](IGeneratorContext &ctx) {
+          ctx.readInput("joints");
+          ctx.write(fmt::format(".{}", getComponentName(i)));
+        });
+        ctx.write(" * ");
+        ctx.readInput("weights");
+        if (i < 3) {
+          ctx.write(fmt::format(".{} + ", getComponentName(i)));
+        } else {
+          ctx.write(fmt::format(".{}", getComponentName(i)));
+        }
+      }
+      ctx.write(";\n");
+
+      ctx.writeGlobal("worldPosition", FieldTypes::Float4, [&]() {
+        ctx.readBuffer("world", FieldTypes::Float4x4, "object");
+        ctx.write(fmt::format(" * {} * ", tmp));
+        ctx.readGlobal("localPosition");
+      });
+    } else {
+      ctx.writeGlobal("worldPosition", FieldTypes::Float4, [&]() {
+        ctx.readBuffer("world", FieldTypes::Float4x4, "object");
+        ctx.write(" * ");
+        ctx.readGlobal("localPosition");
+      });
+    }
+  };
+  auto &entry = feature->shaderEntryPoints.emplace_back("initWorldPosition", ProgrammableGraphicsStage::Vertex, Custom(cb));
   entry.dependencies.emplace_back("initLocalPosition");
 
   auto screenPosition = makeCompoundBlock();

@@ -148,6 +148,7 @@ struct Loader {
   std::vector<MeshTreeDrawable::Ptr> nodeMap;
   std::vector<MeshTreeDrawable::Ptr> sceneMap;
   std::unordered_map<std::string, gfx::Animation> animations;
+  std::vector<std::shared_ptr<gfx::Skin>> skins;
 
   Loader(tinygltf::Model &model) : model(model) {}
 
@@ -158,11 +159,17 @@ struct Loader {
 
     const char texcoordPrefix[] = "texcoord_";
     const char colorPrefix[] = "color_";
+    const char jointsPrefix[] = "joints_";
+    const char weightsPrefix[] = "weights_";
     if (nameLower.starts_with(texcoordPrefix)) {
       std::string numberSuffix = nameLower.substr(sizeof(texcoordPrefix) - 1);
       return std::string("texCoord") + (numberSuffix.empty() ? "0" : numberSuffix.c_str());
     } else if (nameLower.starts_with(colorPrefix)) {
       return std::string("color") + nameLower.substr(sizeof(colorPrefix) - 1);
+    } else if (nameLower.starts_with(jointsPrefix)) {
+      return "joints";
+    } else if (nameLower.starts_with(weightsPrefix)) {
+      return "weights";
     } else {
       return nameLower;
     }
@@ -375,10 +382,16 @@ struct Loader {
     }
   }
 
+  void allocateNodes() {
+    nodeMap.resize(model.nodes.size());
+    for (auto &node : nodeMap) {
+      node = nullptr;
+    }
+  }
+
   void loadNodes() {
-    size_t numNodes = model.nodes.size();
-    nodeMap.resize(numNodes);
-    for (size_t i = 0; i < numNodes; i++) {
+    assert(nodeMap.size() == model.nodes.size());
+    for (size_t i = 0; i < nodeMap.size(); i++) {
       if (!nodeMap[i])
         initNode(i);
     }
@@ -557,11 +570,49 @@ struct Loader {
     }
   }
 
+  void loadSkins() {
+    size_t numSkins = model.skins.size();
+    for (size_t i = 0; i < numSkins; i++) {
+      tinygltf::Skin &gltfSkin = model.skins[i];
+      auto &skin = skins.emplace_back();
+      skin = std::make_shared<Skin>();
+
+      // Read inverse bind matrix data
+      auto loadInverseBindMatrix = [&](int jointIndex) {
+        auto &ac = model.accessors[gltfSkin.inverseBindMatrices];
+        auto &bv = model.bufferViews[ac.bufferView];
+        auto &buf = model.buffers[bv.buffer];
+        float *data = (float *)(buf.data.data() + bv.byteOffset + ac.byteOffset + jointIndex * ac.ByteStride(bv));
+        return float4x4(data);
+      };
+
+      size_t jointIndex = 0;
+      for (auto &jointNodeIndex : gltfSkin.joints) {
+        auto &jointNode = nodeMap[jointNodeIndex];
+
+        skin->joints.push_back(jointNode);
+        skin->inverseBindMatrices.push_back(loadInverseBindMatrix(jointIndex));
+        ++jointIndex;
+      }
+    }
+
+    for (size_t i = 0; i < nodeMap.size(); i++) {
+      int skinIndex = model.nodes[i].skin;
+      if (skinIndex >= 0) {
+        for (auto &drawable : nodeMap[i]->drawables) {
+          drawable->skin = skins[skinIndex];
+        }
+      }
+    }
+  }
+
   void load() {
+    allocateNodes();
     loadTextures();
     loadMaterials();
     loadMeshes();
     loadNodes();
+    loadSkins();
     loadAnimations();
 
     size_t numScenes = model.scenes.size();

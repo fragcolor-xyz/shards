@@ -40,6 +40,8 @@ struct DrawablePrepareContext {
 };
 
 struct DrawableEncodeContext {
+  RendererStorage &storage;
+
   WGPURenderPassEncoder encoder;
   const CachedPipeline &cachedPipeline;
   const ViewData &viewData;

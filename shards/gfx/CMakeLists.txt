@@ -36,6 +36,7 @@ add_library(gfx
   render_target.cpp
   render_graph.cpp
   render_step_impl.cpp
+  renderer_types.cpp
   pipeline_builder.cpp
   pipeline_step.cpp
   pipeline_hashes.cpp

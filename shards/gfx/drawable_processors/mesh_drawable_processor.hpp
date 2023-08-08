@@ -1,7 +1,10 @@
 #ifndef FE9A8471_61AF_483B_8D2F_84E570864FB2
 #define FE9A8471_61AF_483B_8D2F_84E570864FB2
 
+#include "../gfx_wgpu.hpp"
+#include "../unique_id.hpp"
 #include "../drawables/mesh_drawable.hpp"
+#include "../drawables/mesh_tree_drawable.hpp"
 #include "../drawable_processor.hpp"
 #include "../renderer_storage.hpp"
 #include "../shader/types.hpp"
@@ -9,14 +12,65 @@
 #include "../sampler_cache.hpp"
 #include "../pmr/list.hpp"
 #include "../pmr/unordered_map.hpp"
+#include "../pmr/vector.hpp"
 #include "../mesh_utils.hpp"
-#include "drawable_processor_helpers.hpp"
+#include "../drawable_processor_helpers.hpp"
+#include "../pipeline_builder.hpp"
+#include "../renderer_types.hpp"
+#include "../shader/uniforms.hpp"
 #include <spdlog/spdlog.h>
+#include <functional>
 #include <tracy/Tracy.hpp>
 
 namespace gfx::detail {
 
+struct SharedBufferPool {
+private:
+  WGPUBufferPool bufferPool;
+  std::mutex mutex;
+
+public:
+  SharedBufferPool(std::function<WGPUBuffer(size_t)> &&init) : bufferPool(std::move(init)) {}
+
+  WGPUBuffer allocate(size_t size) {
+    std::lock_guard<std::mutex> _lock(mutex);
+    return bufferPool.allocateBuffer(size);
+  }
+
+  void reset() {
+    std::lock_guard<std::mutex> _lock(mutex);
+    bufferPool.reset();
+  }
+};
+
+inline void allocateBuffer(SharedBufferPool &pool, PreparedBuffer &preparedBuffer, size_t bindGroup, const BufferBinding &binding,
+                           size_t numElements) {
+  std::visit(
+      [&](auto &&arg) {
+        using T1 = std::decay_t<decltype(arg)>;
+
+        preparedBuffer.binding = binding.index;
+        preparedBuffer.bindGroup = bindGroup;
+        preparedBuffer.stride = binding.layout.getArrayStride();
+        preparedBuffer.bindDimension = bind::PerInstance{};
+        if constexpr (std::is_same_v<T1, shader::dim::One>) {
+          preparedBuffer.length = preparedBuffer.stride;
+          preparedBuffer.bindDimension = bind::One{};
+        } else if constexpr (std::is_same_v<T1, shader::dim::PerInstance>) {
+          preparedBuffer.length = preparedBuffer.stride * numElements;
+          preparedBuffer.bindDimension = bind::PerInstance{};
+        } else if constexpr (std::is_same_v<T1, shader::dim::Fixed> || std::is_same_v<T1, shader::dim::Dynamic>) {
+          preparedBuffer.length = preparedBuffer.stride * numElements;
+          preparedBuffer.bindDimension = bind::Sized{numElements};
+        }
+        preparedBuffer.buffer = pool.allocate(preparedBuffer.length);
+      },
+      binding.dimension);
+}
+
 struct MeshDrawableProcessor final : public IDrawableProcessor {
+  struct SkinData {};
+
   struct DrawableData {
     using allocator_type = shards::pmr::PolymorphicAllocator<>;
 
@@ -25,6 +79,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     size_t queueIndex{}; // Original index in the queue
     MeshContextData *mesh{};
     std::optional<int4> clipRect{};
+    std::optional<SkinData> skin;
     shards::pmr::vector<TextureData> textures;
     ParameterStorage parameters; // TODO: Load values directly into buffer
     float projectedDepth{};      // Projected view depth, only calculated when sorting by depth
@@ -39,14 +94,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   struct GroupData {
     WGPUBindGroup drawBindGroup{};
-    Hash128 bindGroupHash;
     WgpuHandle<WGPUBindGroup> ownedDrawBindGroup;
-  };
-
-  struct PreparedBuffer {
-    WGPUBuffer buffer;
-    size_t length;
-    size_t stride;
+    shards::pmr::vector<PreparedBuffer> buffers;
   };
 
   struct PreparedGroupData {
@@ -66,35 +115,15 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     std::optional<PreparedGroupData> groups;
     shards::pmr::vector<DrawableData *> drawableData{};
 
-    shards::pmr::vector<PreparedBuffer> drawBuffers;
-    shards::pmr::vector<PreparedBuffer> viewBuffers;
+    shards::pmr::vector<PreparedBuffer> globalBuffers;
 
     WgpuHandle<WGPUBindGroup> viewBindGroup;
 
-    PrepareData(allocator_type allocator) : referencedContextData(allocator), drawBuffers(allocator), viewBuffers(allocator) {}
+    PrepareData(allocator_type allocator) : referencedContextData(allocator), globalBuffers(allocator) {}
   };
 
-  struct SharedBufferPool {
-  private:
-    WGPUBufferPool bufferPool;
-    std::mutex mutex;
-
-  public:
-    SharedBufferPool(std::function<WGPUBuffer(size_t)> &&init) : bufferPool(std::move(init)) {}
-
-    WGPUBuffer allocate(size_t size) {
-      std::lock_guard<std::mutex> _lock(mutex);
-      return bufferPool.allocateBuffer(size);
-    }
-
-    void reset() {
-      std::lock_guard<std::mutex> _lock(mutex);
-      bufferPool.reset();
-    }
-  };
-
-  SharedBufferPool drawBufferPool;
-  SharedBufferPool viewBufferPool;
+  SharedBufferPool uniformBufferPool;
+  SharedBufferPool storageBufferPool;
   WGPUSupportedLimits limits{};
 
   TextureViewCache textureViewCache;
@@ -114,15 +143,15 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   std::unordered_map<UniqueId, CachedDrawable> drawableCache;
 
   MeshDrawableProcessor(Context &context)
-      : drawBufferPool(getDrawBufferInitializer(context)), viewBufferPool(getViewBufferInitializer(context)),
+      : uniformBufferPool(getUniformBufferInitializer(context)), storageBufferPool(getStorageBufferInitializer(context)),
         samplerCache(context.wgpuDevice) {
     wgpuDeviceGetLimits(context.wgpuDevice, &limits);
   }
 
-  static std::function<WGPUBuffer(size_t)> getDrawBufferInitializer(Context &context) {
+  static std::function<WGPUBuffer(size_t)> getStorageBufferInitializer(Context &context) {
     return [device = context.wgpuDevice](size_t bufferSize) {
       WGPUBufferDescriptor desc{
-          .label = "<object buffer>",
+          .label = "<storage buffer>",
           .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Storage,
           .size = bufferSize,
       };
@@ -130,10 +159,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     };
   }
 
-  static std::function<WGPUBuffer(size_t)> getViewBufferInitializer(Context &context) {
+  static std::function<WGPUBuffer(size_t)> getUniformBufferInitializer(Context &context) {
     return [device = context.wgpuDevice](size_t bufferSize) {
       WGPUBufferDescriptor desc{
-          .label = "<view buffer>",
+          .label = "<uniform buffer>",
           .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform,
           .size = bufferSize,
       };
@@ -144,8 +173,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
   void reset(size_t frameCounter) override {
     ZoneScoped;
     this->frameCounter = frameCounter;
-    drawBufferPool.reset();
-    viewBufferPool.reset();
+    uniformBufferPool.reset();
+    storageBufferPool.reset();
 
     textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
     clearOldCacheItemsIn(drawableCache, frameCounter, 32);
@@ -155,6 +184,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     using namespace shader;
 
     auto &viewBinding = builder.getOrCreateBufferBinding("view");
+    viewBinding.bindGroupId = BindGroupId::View;
     auto &viewLayoutBuilder = viewBinding.layoutBuilder;
     viewLayoutBuilder.push("view", FieldTypes::Float4x4);
     viewLayoutBuilder.push("proj", FieldTypes::Float4x4);
@@ -163,7 +193,9 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     viewLayoutBuilder.push("viewport", FieldTypes::Float4);
 
     auto &objectBinding = builder.getOrCreateBufferBinding("object");
+    objectBinding.bindGroupId = BindGroupId::Draw;
     objectBinding.bufferType = shader::BufferType::Storage;
+    objectBinding.dimension = dim::PerInstance{};
     objectBinding.hasDynamicOffset = true;
     auto &objectLayoutBuilder = objectBinding.layoutBuilder;
     objectLayoutBuilder.push("world", FieldTypes::Float4x4);
@@ -172,6 +204,15 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(builder.firstDrawable);
     auto &cached = drawableCache[meshDrawable.getId()];
+
+    if (meshDrawable.skin) {
+      auto &jointsBufferBinding = builder.getOrCreateBufferBinding("joints");
+      jointsBufferBinding.bufferType = shader::BufferType::Storage;
+      jointsBufferBinding.bindGroupId = BindGroupId::Draw;
+      jointsBufferBinding.dimension = dim::Dynamic{};
+      auto &layoutBuilder = jointsBufferBinding.layoutBuilder;
+      layoutBuilder.push("transform", FieldTypes::Float4x4);
+    }
 
     builder.meshFormat = cached.mesh->getFormat();
 
@@ -271,6 +312,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     hasher(data.clipRect);
     for (auto &texture : data.textures)
       hasher(size_t(texture.id));
+    if (meshDrawable.skin)
+      hasher(size_t(meshDrawable.skin.get())); // WARNING: by pointer
     data.groupHash = hasher.getDigest();
   }
 
@@ -287,24 +330,20 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       placeholderTextures[i]->createContextDataConditional(context.context);
     }
 
-    // Allocate/map buffer helpers
-    auto allocateBuffers = [&](SharedBufferPool &pool, auto &outBuffers, const auto &bindings, size_t numElements) {
-      outBuffers.resize(bindings.size());
-      for (size_t i = 0; i < bindings.size(); i++) {
-        auto &binding = bindings[i];
-        PreparedBuffer &preparedBuffer = outBuffers[i];
-        preparedBuffer.stride = binding.layout.getArrayStride();
-        preparedBuffer.length = preparedBuffer.stride * numElements;
-        preparedBuffer.buffer = pool.allocate(preparedBuffer.length);
-      }
-    };
-
-    // Allocate and map buffers (per view)
-    allocateBuffers(viewBufferPool, prepareData->viewBuffers, cachedPipeline.viewBuffersBindings, 1);
-
-    // Allocate and map buffers (per draw)
+    // Allocate per instance buffers
     size_t numDrawables = context.drawables.size();
-    allocateBuffers(drawBufferPool, prepareData->drawBuffers, cachedPipeline.drawBufferBindings, numDrawables);
+    for (auto &binding : cachedPipeline.drawBufferBindings) {
+      if (std::get_if<shader::dim::PerInstance>(&binding.dimension)) {
+        auto &preparedBuffer = prepareData->globalBuffers.emplace_back();
+        allocateBuffer(storageBufferPool, preparedBuffer, PipelineBuilder::getDrawBindGroupIndex(), binding, numDrawables);
+      }
+    }
+
+    // Allocate global(view) buffers
+    for (auto &binding : cachedPipeline.viewBuffersBindings) {
+      auto &preparedBuffer = prepareData->globalBuffers.emplace_back();
+      allocateBuffer(uniformBufferPool, preparedBuffer, PipelineBuilder::getViewBindGroupIndex(), binding, 1);
+    }
 
     // Prepare mesh & texture buffers
     for (auto &baseParam : cachedPipeline.baseDrawParameters.textures) {
@@ -374,18 +413,34 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         groupDrawables(prepareData->drawableData.size(), preparedGroupData.groups,
                        [&](size_t index) { return prepareData->drawableData[index]->groupHash; });
         preparedGroupData.groupData.resize(preparedGroupData.groups.size());
+      }
+    }
 
-        for (size_t i = 0; i < preparedGroupData.groups.size(); i++) {
-          auto &group = preparedGroupData.groups[i];
-          auto &groupData = preparedGroupData.groupData[i];
-          auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
+    // Allocate additional data (skinning matrices)
+    auto jointsBinding = cachedPipeline.findDrawBufferBinding("joints");
+    if (jointsBinding) {
+      PreparedGroupData &preparedGroupData = prepareData->groups.value();
+      for (size_t index = 0; index < preparedGroupData.groups.size(); ++index) {
+        auto &group = preparedGroupData.groups[index];
+        auto &groupData = preparedGroupData.groupData[index];
 
-          // Generate texture binding hash
-          HasherXXH128<HasherDefaultVisitor> hasher;
-          for (auto &texture : firstDrawableData.textures)
-            hasher(texture ? size_t(texture.id) : size_t(0));
-          hasher(group.numInstances);
-          groupData.bindGroupHash = hasher.getDigest();
+        auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
+        const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*firstDrawableData.drawable);
+
+        if (meshDrawable.skin) {
+          auto &skin = *meshDrawable.skin.get();
+          auto numJoints = meshDrawable.skin->joints.size();
+          size_t bufferLen = jointsBinding->layout.getArrayStride() * numJoints;
+          uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(bufferLen);
+          for (size_t k = 0; k < numJoints; k++) {
+            float *dst = (float *)(stagingBuffer + jointsBinding->layout.getArrayStride() * k);
+            packMatrix(skin.jointMatrices[k], dst);
+          }
+
+          PreparedBuffer &pb = groupData.buffers.emplace_back();
+          allocateBuffer(storageBufferPool, pb, PipelineBuilder::getDrawBindGroupIndex(), *jointsBinding, numJoints);
+
+          wgpuQueueWriteBuffer(context.context.wgpuQueue, pb.buffer, 0, stagingBuffer, bufferLen);
         }
       }
     }
@@ -413,12 +468,13 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         // TODO: Bind per-view textures here too once bindings are split
       }
 
-      for (size_t bindingIndex = 0; bindingIndex < cachedPipeline.viewBuffersBindings.size(); bindingIndex++) {
-        auto &buffer = prepareData->viewBuffers[bindingIndex];
-        auto &binding = cachedPipeline.viewBuffersBindings[bindingIndex];
-        uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
-        packDrawData(stagingBuffer, buffer.stride, binding.layout, viewParameters);
-        wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
+      for (auto &buffer : prepareData->globalBuffers) {
+        if (buffer.bindGroup == PipelineBuilder::getViewBindGroupIndex()) {
+          auto &binding = cachedPipeline.viewBuffersBindings[buffer.binding];
+          uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
+          packDrawData(stagingBuffer, buffer.stride, binding.layout, viewParameters);
+          wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
+        }
       }
     }
 
@@ -428,19 +484,21 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
       PreparedGroupData &preparedGroupData = prepareData->groups.value();
 
-      for (size_t bindingIndex = 0; bindingIndex < cachedPipeline.drawBufferBindings.size(); bindingIndex++) {
-        auto &buffer = prepareData->drawBuffers[bindingIndex];
-        auto &binding = cachedPipeline.drawBufferBindings[bindingIndex];
-        uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
-        for (auto &group : preparedGroupData.groups) {
-          size_t offset = buffer.stride * group.startIndex;
-          for (size_t i = 0; i < group.numInstances; i++) {
-            packDrawData(stagingBuffer + offset, buffer.stride, binding.layout,
-                         prepareData->drawableData[group.startIndex + i]->parameters);
-            offset += buffer.stride;
+      for (auto &buffer : prepareData->globalBuffers) {
+        if (buffer.bindGroup == PipelineBuilder::getDrawBindGroupIndex() &&
+            std::get_if<bind::PerInstance>(&buffer.bindDimension)) {
+          auto &binding = cachedPipeline.drawBufferBindings[buffer.binding];
+          uint8_t *stagingBuffer = (uint8_t *)allocator->allocate(buffer.length);
+          for (auto &group : preparedGroupData.groups) {
+            size_t offset = buffer.stride * group.startIndex;
+            for (size_t i = 0; i < group.numInstances; i++) {
+              packDrawData(stagingBuffer + offset, buffer.stride, binding.layout,
+                           prepareData->drawableData[group.startIndex + i]->parameters);
+              offset += buffer.stride;
+            }
           }
+          wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
         }
-        wgpuQueueWriteBuffer(context.context.wgpuQueue, buffer.buffer, 0, stagingBuffer, buffer.length);
       }
     }
 
@@ -448,8 +506,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     WGPUBindGroupLayout viewBindGroupLayout = cachedPipeline.bindGroupLayouts[PipelineBuilder::getViewBindGroupIndex()];
 
     BindGroupBuilder viewBindGroupBuilder(allocator);
-    for (size_t i = 0; i < prepareData->viewBuffers.size(); i++) {
-      viewBindGroupBuilder.addBinding(cachedPipeline.viewBuffersBindings[i], prepareData->viewBuffers[i].buffer);
+    for (size_t i = 0; i < prepareData->globalBuffers.size(); i++) {
+      auto &buffer = prepareData->globalBuffers[i];
+      if (buffer.bindGroup == PipelineBuilder::getViewBindGroupIndex())
+        viewBindGroupBuilder.addBinding(cachedPipeline.viewBuffersBindings[buffer.binding], buffer, numDrawables);
     }
     prepareData->viewBindGroup.reset(viewBindGroupBuilder.finalize(context.context.wgpuDevice, viewBindGroupLayout));
 
@@ -467,13 +527,31 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         auto &groupData = preparedGroupData.groupData[index];
         auto &firstDrawableData = *prepareData->drawableData[group.startIndex];
 
-        auto it = cache.find(groupData.bindGroupHash);
+        // Generate texture binding hash
+        HasherXXH128<HasherDefaultVisitor> hasher;
+        for (auto &texture : firstDrawableData.textures)
+          hasher(texture ? size_t(texture.id) : size_t(0));
+        for (auto &buffer : groupData.buffers)
+          hasher(size_t(buffer.buffer));
+        // NOTE: This is hashed since per-index bindings are bound using the required number of instance
+        hasher(size_t(group.numInstances));
+        Hash128 bindGroupHash = hasher.getDigest();
+
+        auto it = cache.find(bindGroupHash);
         if (it == cache.end()) {
           BindGroupBuilder drawBindGroupBuilder(allocator);
-          for (size_t i = 0; i < prepareData->drawBuffers.size(); i++) {
-            auto &binding = cachedPipeline.drawBufferBindings[i];
-            // Drawable buffers are mapped entirely, dynamic offset is applied during encoding
-            drawBindGroupBuilder.addBinding(binding, prepareData->drawBuffers[i].buffer, group.numInstances);
+          for (size_t i = 0; i < prepareData->globalBuffers.size(); i++) {
+            auto &buffer = prepareData->globalBuffers[i];
+            if (buffer.bindGroup == PipelineBuilder::getDrawBindGroupIndex())
+              // NOTE: the buffer contains all drawables
+              //  however only the number of instances for this group is bound, and later offset using dynamic bindings
+              drawBindGroupBuilder.addBinding(cachedPipeline.drawBufferBindings[buffer.binding], buffer, group.numInstances);
+          }
+
+          for (auto &buffer : groupData.buffers) {
+            // NOTE: the buffer contains all drawables
+            //  however only the number of instances for this group is bound, and later offset using dynamic bindings
+            drawBindGroupBuilder.addBinding(cachedPipeline.drawBufferBindings[buffer.binding], buffer, group.numInstances);
           }
 
           // TODO(guusw): Need to split this so that we can have per-view texture bindings
@@ -493,7 +571,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
           groupData.ownedDrawBindGroup.reset(drawBindGroupBuilder.finalize(context.context.wgpuDevice, drawBindGroupLayout));
           groupData.drawBindGroup = groupData.ownedDrawBindGroup;
-          cache.emplace(groupData.bindGroupHash, groupData.drawBindGroup);
+          cache.emplace(bindGroupHash, groupData.drawBindGroup);
         } else {
           groupData.drawBindGroup = it->second;
         }
@@ -508,6 +586,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     const ViewData &viewData = context.viewData;
     const CachedPipeline &cachedPipeline = context.cachedPipeline;
     auto encoder = context.encoder;
+    auto &allocator = context.storage.workerMemory;
 
     wgpuRenderPassEncoderSetPipeline(encoder, cachedPipeline.pipeline);
     wgpuRenderPassEncoderSetBindGroup(encoder, PipelineBuilder::getViewBindGroupIndex(), prepareData.viewBindGroup, 0, nullptr);
@@ -539,11 +618,18 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
                                             viewData.viewport.height);
       }
 
-      auto &binding = cachedPipeline.drawBufferBindings[0];
-      uint32_t dynamicOffsets[] = {uint32_t(group.startIndex * binding.layout.getArrayStride())};
-      assert(dynamicOffsets[0] < binding.layout.getArrayStride() * prepareData.drawableData.size());
+      uint32_t *dynamicOffsets = allocator->new_objects<uint32_t>(cachedPipeline.dynamicBufferRefs.size());
+      for (size_t i = 0; i < cachedPipeline.dynamicBufferRefs.size(); i++) {
+        auto &binding = cachedPipeline.resolveBufferBindingRef(cachedPipeline.dynamicBufferRefs[i]);
+        if (std::get_if<shader::dim::PerInstance>(&binding.dimension)) {
+          dynamicOffsets[i] = uint32_t(group.startIndex * binding.layout.getArrayStride());
+          assert(dynamicOffsets[i] < binding.layout.getArrayStride() * prepareData.drawableData.size());
+        } else {
+          dynamicOffsets[i] = 0;
+        }
+      }
       wgpuRenderPassEncoderSetBindGroup(encoder, PipelineBuilder::getDrawBindGroupIndex(), groupData.drawBindGroup,
-                                        std::size(dynamicOffsets), dynamicOffsets);
+                                        cachedPipeline.dynamicBufferRefs.size(), dynamicOffsets);
 
       MeshContextData *meshContextData = firstDrawable.mesh;
       assert(meshContextData->vertexBuffer);

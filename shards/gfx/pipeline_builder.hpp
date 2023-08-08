@@ -12,6 +12,8 @@ namespace gfx {
 
 // Use configurable pipeline options
 struct BuildPipelineOptions {
+  // If this is set, no features from drawables will be included in rendering
+  // usefull for debug passes or other special cases
   bool ignoreDrawableFeatures{};
 
   template <typename T> void getPipelineHash(T &hasher) const { hasher(ignoreDrawableFeatures); }
@@ -19,18 +21,28 @@ struct BuildPipelineOptions {
 
 // Describes a buffer binding being built
 struct BufferBindingBuilder {
-  BindingFrequency frequency = BindingFrequency::Draw;
+  // The bind group to add this binding to
+  BindGroupId bindGroupId = BindGroupId::Draw;
+  // Identifier of the binding
   std::string name;
+  // The builder that is being used to define the binding's structure layout
   shader::UniformBufferLayoutBuilder layoutBuilder;
+  // Set to true if the binding is not used by any shader function
   bool unused = false;
+  // The type of storage to use
   shader::BufferType bufferType = shader::BufferType::Uniform;
+  // Specifies if the binding is a single structure or a fixed/dynamic array of structures
+  shader::Dimension dimension;
+  // Specifies that this binding accepts a dynamic offset during the setting of the bind group
   bool hasDynamicOffset = false;
+  // Bind group index
   size_t bindGroup{};
+  // Binding index in the bind group
   size_t binding{};
 };
 
 struct PipelineBuilder {
-  // Output
+  // The built pipeline
   detail::CachedPipeline &output;
 
   detail::RenderTargetLayout renderTargetLayout;

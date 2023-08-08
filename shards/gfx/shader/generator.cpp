@@ -50,7 +50,7 @@ template <typename T> static void generatePaddingForArrayStruct(T &output, const
 // Generate buffer struct and binding definitions in shader source
 template <typename T>
 static void generateBuffer(T &output, const String &name, BufferType type, size_t group, size_t binding,
-                           const UniformBufferLayout &layout, bool isArray = false) {
+                           const UniformBufferLayout &layout, const Dimension &dimension) {
 
   String structName = name + "_t";
   output += fmt::format("struct {} {{\n", structName);
@@ -63,10 +63,20 @@ static void generateBuffer(T &output, const String &name, BufferType type, size_
   // array struct wrapper
   const char *varType = structName.c_str();
   String containerTypeName = name + "_container";
-  if (isArray) {
-    output += fmt::format("struct {} {{ elements: array<{}> }};\n", containerTypeName, structName);
-    varType = containerTypeName.c_str();
-  }
+  varType = containerTypeName.c_str();
+
+  std::visit(
+      [&](auto &&arg) {
+        using T1 = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T1, dim::One>) {
+          varType = structName.c_str();
+        } else if constexpr (std::is_same_v<T1, dim::Fixed>) {
+          output += fmt::format("struct {} {{ elements: array<{}, {}> }};\n", containerTypeName, structName, arg.length);
+        } else {
+          output += fmt::format("struct {} {{ elements: array<{}> }};\n", containerTypeName, structName);
+        }
+      },
+      dimension);
 
   // global storage/uniform variable
   const char *varStorageType = nullptr;
@@ -495,16 +505,15 @@ GeneratorOutput Generator::build(const std::vector<const EntryPoint *> &entryPoi
     String variableName = fmt::format("u_{}", binding.name);
 
     if (!binding.layout.fieldNames.empty()) {
-      bool isArray = binding.indexedPerInstance;
-      generateBuffer(headerCode, variableName, binding.type, binding.bindGroup, binding.binding, binding.layout, isArray);
+      generateBuffer(headerCode, variableName, binding.type, binding.bindGroup, binding.binding, binding.layout,
+                     binding.dimension);
     }
 
     auto &bufferDefinition =
         buffers.insert(std::make_pair(binding.name, BufferDefinition{.variableName = variableName, .layout = binding.layout}))
             .first->second;
-    if (binding.indexedPerInstance) {
-      bufferDefinition.indexedBy = instanceIndexer;
-    }
+
+    bufferDefinition.dimension = binding.dimension;
   }
 
   std::map<String, TextureDefinition> textureDefinitions;
@@ -642,8 +651,11 @@ IndexedBindings Generator::indexBindings(const std::vector<const EntryPoint *> &
     void textureDefaultTextureCoordinate(const char *name) { findOrAddIndex(result.textureBindings, name); }
     void textureDefaultSampler(const char *name) { findOrAddIndex(result.textureBindings, name); }
 
-    void readBuffer(const char *fieldName, const NumFieldType &type, const char *bufferName) {
+    void readBuffer(const char *fieldName, const NumFieldType &type, const char *bufferName,
+                    const Function<void(IGeneratorContext &ctx)> &index) {
       findOrAddIndex(result.bufferBindings, bufferName).accessedFields.insert(std::make_pair(fieldName, type));
+      if (index)
+        index(*this);
     }
 
     void pushError(GeneratorError &&error) {}

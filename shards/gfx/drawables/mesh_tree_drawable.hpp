@@ -44,6 +44,7 @@ private:
 
 public:
   std::vector<MeshDrawable::Ptr> drawables;
+  float4x4 resolvedTransform;
   TRS trs;
   Ptr::weak_type parent;
   std::string label;
@@ -55,7 +56,20 @@ public:
   template <typename T> static inline void foreach (const Ptr &item, T && callback);
   template <typename T> static inline void traverseUp(const Ptr &item, T &&callback, Ptr stopAt = Ptr());
   template <typename T> static inline void traverseDown(const Ptr &from, const Ptr &until, T &&callback);
+  template <typename T> static inline bool traverseDepthFirst(const Ptr &from, T &&callback);
   static inline Ptr findRoot(const Ptr &item);
+
+  Ptr findNode(std::string_view label) {
+    Ptr found;
+    traverseDepthFirst(shared_from_this(), [&](Ptr node) {
+      if (node->label == label) {
+        found = node;
+        return false;
+      }
+      return true;
+    });
+    return found;
+  }
 
   void setChildren(std::vector<Ptr> &&children) {
     for (auto &child : children) {
@@ -111,6 +125,16 @@ template <typename T> void MeshTreeDrawable::traverseDown(const Ptr &from, const
   for (auto it = queue.rbegin(); it != queue.rend(); it++) {
     callback(*it);
   }
+}
+
+template <typename T> bool MeshTreeDrawable::traverseDepthFirst(const Ptr &from, T &&callback) {
+  boost::container::small_vector<Ptr, 64> queue;
+  Ptr node = from;
+  for (auto &child : from->children)
+    if (!traverseDepthFirst(child, callback))
+      return false;
+
+  return callback(from);
 }
 
 MeshTreeDrawable::Ptr MeshTreeDrawable::findRoot(const Ptr &item) {

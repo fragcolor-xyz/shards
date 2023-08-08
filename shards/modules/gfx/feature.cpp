@@ -223,7 +223,7 @@ public:
   }
 
   void collectComposeResult(const std::shared_ptr<SHWire> &wire, std::vector<NamedShaderParam> &outBasicParams,
-                            std::vector<NamedTextureParam> &outTextureParams, BindingFrequency bindingFreq,
+                            std::vector<NamedTextureParam> &outTextureParams, BindGroupId bindingFreq,
                             bool expectSeqOutput) {
     auto parseParamTable = [&](const SHTypeInfo &type) {
       for (size_t i = 0; i < type.table.keys.len; i++) {
@@ -244,14 +244,14 @@ public:
                 }
                 std::string ks(SHSTRVIEW(k));
                 auto &param = outBasicParams.emplace_back(std::move(ks), arg);
-                param.bindingFrequency = bindingFreq;
+                param.bindGroupId = bindingFreq;
               } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
                 if (k.valueType != SHType::String) {
                   throw formatException("Generator wire returns invalid type {} for key {}", v, k);
                 }
                 std::string ks(SHSTRVIEW(k));
                 auto &param = outTextureParams.emplace_back(std::move(ks), arg);
-                param.bindingFrequency = bindingFreq;
+                param.bindGroupId = bindingFreq;
               } else {
                 throw formatException("Generator wire returns invalid type {} for key {}", v, k);
               }
@@ -305,10 +305,10 @@ public:
     _derivedShaderParams.clear();
     _derivedTextureParams.clear();
     for (auto &wire : _viewGeneratorBranch.wires) {
-      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindingFrequency::View, false);
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::View, false);
     }
     for (auto &wire : _drawableGeneratorBranch.wires) {
-      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindingFrequency::Draw, true);
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::Draw, true);
     }
   }
 

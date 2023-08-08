@@ -11,6 +11,13 @@
 namespace gfx {
 namespace shader {
 
+inline const char getComponentName(size_t index) {
+  static constexpr const char componentNames[] = {'x', 'y', 'z', 'w'};
+  if (index > 3)
+    throw std::out_of_range("Component index out of range");
+  return componentNames[index];
+}
+
 inline ShaderFieldBaseType getCompatibleShaderFieldBaseType(StorageType type) {
   switch (type) {
   case StorageType::UInt8:

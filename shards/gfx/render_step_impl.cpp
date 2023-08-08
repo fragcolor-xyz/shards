@@ -323,6 +323,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
         continue;
 
       DrawableEncodeContext encodeCtx{
+          .storage = storage,
           .encoder = evaluateContext.encoder,
           .cachedPipeline = *group.pipeline.get(),
           .viewData = evaluateContext.viewData,

@@ -135,7 +135,7 @@ enum class ShaderParamFlags {
   None = 0,
 };
 
-enum class BindingFrequency {
+enum class BindGroupId {
   View,
   Draw,
 };
@@ -145,7 +145,7 @@ struct NamedShaderParam {
   std::string name;
   ParamVariant defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
-  BindingFrequency bindingFrequency = BindingFrequency::Draw;
+  BindGroupId bindGroupId = BindGroupId::Draw;
 
   NamedShaderParam() = default;
   NamedShaderParam(std::string name, const shader::NumFieldType &type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4),
@@ -164,7 +164,7 @@ struct NamedTextureParam {
   shader::TextureFieldType type;
   TexturePtr defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
-  BindingFrequency bindingFrequency = BindingFrequency::Draw;
+  BindGroupId bindGroupId = BindGroupId::Draw;
 
   NamedTextureParam() = default;
   NamedTextureParam(std::string name, TextureDimension dimension = TextureDimension::D2,
