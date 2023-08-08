@@ -61,7 +61,7 @@ static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
 static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
 lazy_static! {
-  static ref LAYOUT_TYPE: Type = {
+  static ref LAYOUTCLASS_TYPE: Type = {
     let mut t = common_type::object;
     t.details.object = SHObjectTypeInfo {
       vendorId: FRAG_CC, // 'frag'
@@ -80,9 +80,9 @@ lazy_static! {
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
-  static ref LAYOUT_TYPE_VEC: Vec<Type> = vec![*LAYOUT_TYPE];
-  static ref LAYOUT_VAR_TYPE: Type = Type::context_variable(&LAYOUT_TYPE_VEC);
-  static ref LAYOUT_TYPE_VEC_VAR: Vec<Type> = vec![*LAYOUT_VAR_TYPE];
+  static ref LAYOUTCLASS_TYPE_VEC: Vec<Type> = vec![*LAYOUTCLASS_TYPE];
+  static ref LAYOUTCLASS_VAR_TYPE: Type = Type::context_variable(&LAYOUTCLASS_TYPE_VEC);
+  static ref LAYOUTCLASS_TYPE_VEC_VAR: Vec<Type> = vec![*LAYOUTCLASS_VAR_TYPE];
 }
 
 lazy_static! {

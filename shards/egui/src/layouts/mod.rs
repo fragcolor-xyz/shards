@@ -81,12 +81,13 @@ struct Horizontal {
 }
 
 struct LayoutClass {
-  main_dir: egui::Direction,
-  main_wrap: bool,
-  main_align: egui::Align,
-  main_justify: bool,
-  cross_align: egui::Align,
-  cross_justify: bool,
+  layout: egui::Layout,
+  // main_dir: egui::Direction,
+  // main_wrap: bool,
+  // main_align: egui::Align,
+  // main_justify: bool,
+  // cross_align: egui::Align,
+  // cross_justify: bool,
   size: (f32, f32),
   fill_width: bool,
   fill_height: bool,
@@ -98,13 +99,14 @@ struct LayoutClass {
 struct LayoutConstructor {
   parents: ParamVar,
   requiring: ExposedTypes,
-  layout: Option<Rc<LayoutClass>>,
-  main_dir: ParamVar,
-  main_wrap: ParamVar,
-  main_align: ParamVar,
-  main_justify: ParamVar,
-  cross_align: ParamVar,
-  cross_justify: ParamVar,
+  layout_class: Option<Rc<LayoutClass>>,
+  layout: ParamVar,
+  // main_dir: ParamVar,
+  // main_wrap: ParamVar,
+  // main_align: ParamVar,
+  // main_justify: ParamVar,
+  // cross_align: ParamVar,
+  // cross_justify: ParamVar,
   size: ParamVar,
   fill_width: ParamVar,
   fill_height: ParamVar,
@@ -173,6 +175,20 @@ shenum! {
   pub struct LayoutDirectionInfo {}
 }
 
+impl TryFrom<LayoutDirection> for egui::Direction {
+  type Error = &'static str;
+
+  fn try_from(value: LayoutDirection) -> Result<Self, Self::Error> {
+    match value {
+          LayoutDirection::LeftToRight => Ok(egui::Direction::LeftToRight),
+          LayoutDirection::RightToLeft => Ok(egui::Direction::RightToLeft),
+          LayoutDirection::TopDown => Ok(egui::Direction::TopDown),
+          LayoutDirection::BottomUp => Ok(egui::Direction::BottomUp),
+      _ => unreachable!(),
+    }
+  }
+}
+
 shenum_types! {
   LayoutDirectionInfo,
   const LayoutDirectionCC = fourCharacterCode(*b"egLD");
@@ -201,6 +217,23 @@ shenum! {
   const Bottom = 1 << 6;
   }
   pub struct LayoutAlignInfo {}
+}
+
+impl TryFrom<LayoutAlign> for egui::Align {
+  type Error = &'static str;
+
+  fn try_from(value: LayoutAlign) -> Result<Self, Self::Error> {
+    match value {
+      LayoutAlign::Min => Ok(egui::Align::Min),
+      LayoutAlign::Left => Ok(egui::Align::Min),
+      LayoutAlign::Top => Ok(egui::Align::Min),
+      LayoutAlign::Center => Ok(egui::Align::Center),
+      LayoutAlign::Max => Ok(egui::Align::Max),
+      LayoutAlign::Right => Ok(egui::Align::Max),
+      LayoutAlign::Bottom => Ok(egui::Align::Max),
+      _ => unreachable!(),
+    }
+  }
 }
 
 shenum_types! {

@@ -3,13 +3,13 @@
 
 use super::Layout;
 use super::LayoutAlign;
+use super::LayoutAlignCC;
 use super::LayoutClass;
 use super::LayoutConstructor;
 use super::LayoutDirection;
+use super::LayoutDirectionCC;
 use super::ScrollVisibility;
 use crate::layouts::ScrollVisibilityCC;
-use crate::layouts::LAYOUT_ALIGN_TYPES;
-use crate::layouts::LAYOUT_DIRECTION_TYPES;
 use crate::misc::style_util;
 use crate::util;
 use crate::EguiId;
@@ -17,9 +17,9 @@ use crate::ANY_TABLE_SLICE;
 use crate::EGUI_UI_TYPE;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use crate::LAYOUT_TYPE;
-use crate::LAYOUT_TYPE_VEC;
-use crate::LAYOUT_TYPE_VEC_VAR;
+use crate::LAYOUTCLASS_TYPE;
+use crate::LAYOUTCLASS_TYPE_VEC;
+use crate::LAYOUTCLASS_TYPE_VEC_VAR;
 use crate::PARENTS_UI_NAME;
 use shards::shard::Shard;
 use shards::types::Context;
@@ -89,39 +89,9 @@ macro_rules! retrieve_enum_parameter {
 lazy_static! {
   static ref LAYOUT_CONSTRUCTOR_PARAMETERS: Parameters = vec![
     (
-      cstr!("Direction"),
-      shccstr!("The main axis direction. LeftToRight, RightToLeft, TopDown, or BottomUp."),
-      &LAYOUT_DIRECTION_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("MainWrap"),
-      shccstr!("If true, wrap around when reaching the end of the main direction."),
-      BOOL_VAR_OR_NONE_SLICE,
-    )
-      .into(),
-    (
-      cstr!("MainAlign"),
-      shccstr!("The alignment of content on the main axis. Min, Center or Max."),
-      &LAYOUT_ALIGN_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("MainJustify"),
-      shccstr!("Whether to justify the main axis."),
-      BOOL_VAR_OR_NONE_SLICE,
-    )
-      .into(),
-    (
-      cstr!("CrossAlign"),
-      shccstr!("The alignment of content on the cross axis. Min, Center or Max."),
-      &LAYOUT_ALIGN_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("CrossJustify"),
-      shccstr!("Whether to justify the cross axis. Whether widgets get maximum width/height for vertical/horizontal layouts."),
-      BOOL_VAR_OR_NONE_SLICE,
+      cstr!("Layout"),
+      shccstr!("The parameters relating to the layout of the UI element."),
+      ANY_TABLE_SLICE,
     )
       .into(),
     (
@@ -141,7 +111,6 @@ lazy_static! {
     (
       cstr!("Frame"),
       shccstr!("The frame to be drawn around the layout."),
-      // &ANY_TABLE_VAR_TYPES
       ANY_TABLE_SLICE,
     )
       .into(),
@@ -163,7 +132,7 @@ lazy_static! {
     (
       cstr!("Class"),
       shccstr!("The Layout class describing all of the options relating to the layout of this UI."),
-      &LAYOUT_TYPE_VEC_VAR[..],
+      &LAYOUTCLASS_TYPE_VEC_VAR[..],
     )
     .into(),
     (
@@ -184,13 +153,8 @@ impl Default for LayoutConstructor {
     Self {
       parents,
       requiring: Vec::new(),
-      layout: None,
-      main_dir: ParamVar::default(),
-      main_wrap: ParamVar::default(),
-      main_align: ParamVar::default(),
-      main_justify: ParamVar::default(),
-      cross_align: ParamVar::default(),
-      cross_justify: ParamVar::default(),
+      layout: ParamVar::default(),
+      layout_class: None,
       size: ParamVar::default(),
       fill_width: ParamVar::default(),
       fill_height: ParamVar::default(),
@@ -219,7 +183,7 @@ impl Shard for LayoutConstructor {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &LAYOUT_TYPE_VEC
+    &LAYOUTCLASS_TYPE_VEC
   }
 
   fn parameters(&mut self) -> Option<&Parameters> {
@@ -228,36 +192,26 @@ impl Shard for LayoutConstructor {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.main_dir.set_param(value)),
-      1 => Ok(self.main_wrap.set_param(value)),
-      2 => Ok(self.main_align.set_param(value)),
-      3 => Ok(self.main_justify.set_param(value)),
-      4 => Ok(self.cross_align.set_param(value)),
-      5 => Ok(self.cross_justify.set_param(value)),
-      6 => Ok(self.size.set_param(value)),
-      7 => Ok(self.fill_width.set_param(value)),
-      8 => Ok(self.fill_height.set_param(value)),
-      9 => Ok(self.disabled.set_param(value)),
-      10 => Ok(self.frame.set_param(value)),
-      11 => Ok(self.scroll_area.set_param(value)),
+      0 => Ok(self.layout.set_param(value)),
+      1 => Ok(self.size.set_param(value)),
+      2 => Ok(self.fill_width.set_param(value)),
+      3 => Ok(self.fill_height.set_param(value)),
+      4 => Ok(self.disabled.set_param(value)),
+      5 => Ok(self.frame.set_param(value)),
+      6 => Ok(self.scroll_area.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.main_dir.get_param(),
-      1 => self.main_wrap.get_param(),
-      2 => self.main_align.get_param(),
-      3 => self.main_justify.get_param(),
-      4 => self.cross_align.get_param(),
-      5 => self.cross_justify.get_param(),
-      6 => self.size.get_param(),
-      7 => self.fill_width.get_param(),
-      8 => self.fill_height.get_param(),
-      9 => self.disabled.get_param(),
-      10 => self.frame.get_param(),
-      11 => self.scroll_area.get_param(),
+      0 => self.layout.get_param(),
+      1 => self.size.get_param(),
+      2 => self.fill_width.get_param(),
+      3 => self.fill_height.get_param(),
+      4 => self.disabled.get_param(),
+      5 => self.frame.get_param(),
+      6 => self.scroll_area.get_param(),
       _ => Var::default(),
     }
   }
@@ -273,12 +227,13 @@ impl Shard for LayoutConstructor {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
-    self.main_dir.warmup(ctx);
-    self.main_wrap.warmup(ctx);
-    self.main_align.warmup(ctx);
-    self.main_justify.warmup(ctx);
-    self.cross_align.warmup(ctx);
-    self.cross_justify.warmup(ctx);
+    // self.main_dir.warmup(ctx);
+    // self.main_wrap.warmup(ctx);
+    // self.main_align.warmup(ctx);
+    // self.main_justify.warmup(ctx);
+    // self.cross_align.warmup(ctx);
+    // self.cross_justify.warmup(ctx);
+    self.layout.warmup(ctx);
     self.size.warmup(ctx);
     self.fill_width.warmup(ctx);
     self.fill_height.warmup(ctx);
@@ -296,117 +251,103 @@ impl Shard for LayoutConstructor {
     self.fill_height.cleanup();
     self.fill_width.cleanup();
     self.size.cleanup();
-    self.cross_justify.cleanup();
-    self.cross_align.cleanup();
-    self.main_justify.cleanup();
-    self.main_align.cleanup();
-    self.main_wrap.cleanup();
-    self.main_dir.cleanup();
+    self.layout.cleanup();
+    // self.cross_justify.cleanup();
+    // self.cross_align.cleanup();
+    // self.main_justify.cleanup();
+    // self.main_align.cleanup();
+    // self.main_wrap.cleanup();
+    // self.main_dir.cleanup();
     self.parents.cleanup();
 
     Ok(())
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let cross_align = if self.cross_align.get().is_none() {
-      egui::Align::Min // default cross align
-    } else {
-      let cross_align = self.cross_align.get();
-      if cross_align.valueType == crate::shardsc::SHType_Enum {
-        let bits = unsafe {
+    let layout = if !self.layout.get().is_none() {
+      let layout_table = self.layout.get();
+      if layout_table.valueType == crate::shardsc::SHType_Table {
+        let layout_table: Table = layout_table.try_into()?;
+
+        let cross_align = if let Some(cross_align) = retrieve_enum_parameter!(
+          layout_table,
+          "cross_align",
+          LayoutAlign,
+          LayoutAlignCC
+        ) {
           cross_align
-            .payload
-            .__bindgen_anon_1
-            .__bindgen_anon_3
-            .enumValue
+        } else {
+          LayoutAlign::Min // default cross align
         };
-        match (LayoutAlign { bits }) {
-          LayoutAlign::Min => egui::Align::Min,
-          LayoutAlign::Left => egui::Align::Min,
-          LayoutAlign::Top => egui::Align::Min,
-          LayoutAlign::Center => egui::Align::Center,
-          LayoutAlign::Max => egui::Align::Max,
-          LayoutAlign::Right => egui::Align::Max,
-          LayoutAlign::Bottom => egui::Align::Max,
-          _ => return Err("Invalid cross alignment"),
-        }
-      } else {
-        return Err("Invalid cross alignment type");
-      }
-    };
+        let cross_align: egui::Align = cross_align.try_into()?;
 
-    let main_dir = if !self.main_dir.get().is_none() {
-      let main_dir = self.main_dir.get();
-      if main_dir.valueType == crate::shardsc::SHType_Enum {
-        let bits = unsafe { main_dir.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
-        match (LayoutDirection { bits }) {
-          LayoutDirection::LeftToRight => egui::Direction::LeftToRight,
+        let main_direction = if let Some(main_direction) = retrieve_enum_parameter!(
+          layout_table,
+          "main_direction",
+          LayoutDirection,
+          LayoutDirectionCC
+        ) {
+          main_direction
+        } else {
+          return Err("Invalid main direction provided. Main direction is a required parameter");
+        };
+        let main_direction: egui::Direction = main_direction.try_into()?;
 
-          LayoutDirection::RightToLeft => egui::Direction::RightToLeft,
-
-          LayoutDirection::TopDown => egui::Direction::TopDown,
-
-          LayoutDirection::BottomUp => egui::Direction::BottomUp,
-
-          _ => return Err("Invalid main direction provided"),
-        }
-      } else {
-        return Err("Invalid main direction type");
-      }
-    } else {
-      egui::Direction::LeftToRight // default main direction
-    };
-
-    let mut layout = egui::Layout::from_main_dir_and_cross_align(main_dir, cross_align);
-
-    let main_align = if self.main_align.get().is_none() {
-      egui::Align::Center // default main align
-    } else {
-      let main_align = self.main_align.get();
-      if main_align.valueType == crate::shardsc::SHType_Enum {
-        let bits = unsafe {
+        let mut layout = egui::Layout::from_main_dir_and_cross_align(main_direction, cross_align);
+        
+        let main_align = if let Some(main_align) = retrieve_enum_parameter!(
+          layout_table,
+          "main_align",
+          LayoutAlign,
+          LayoutAlignCC
+        ) {
           main_align
-            .payload
-            .__bindgen_anon_1
-            .__bindgen_anon_3
-            .enumValue
+        } else {
+          LayoutAlign::Center // default main align
         };
-        match (LayoutAlign { bits }) {
-          LayoutAlign::Min => egui::Align::Min,
-          LayoutAlign::Left => egui::Align::Min,
-          LayoutAlign::Top => egui::Align::Min,
-          LayoutAlign::Center => egui::Align::Center,
-          LayoutAlign::Max => egui::Align::Max,
-          LayoutAlign::Right => egui::Align::Max,
-          LayoutAlign::Bottom => egui::Align::Max,
-          _ => return Err("Invalid main alignment provided"),
-        }
+        let main_align: egui::Align = main_align.try_into()?;
+        layout = layout.with_main_align(main_align);
+
+        let main_wrap = if let Some(main_wrap) = retrieve_parameter!(
+          layout_table,
+          "main_wrap",
+          bool
+        ) {
+          main_wrap
+        } else {
+          false // default main wrap
+        };
+        layout = layout.with_main_wrap(main_wrap);
+
+        let main_justify = if let Some(main_justify) = retrieve_parameter!(
+          layout_table,
+          "main_wrap",
+          bool
+        ) {
+          main_justify
+        } else {
+          false // default main justify
+        };
+        layout = layout.with_main_justify(main_justify);
+
+        let cross_justify = if let Some(cross_justify) = retrieve_parameter!(
+          layout_table,
+          "main_wrap",
+          bool
+        ) {
+          cross_justify
+        } else {
+          false // default cross justify
+        };
+        layout = layout.with_cross_justify(cross_justify);
+
+        layout
       } else {
-        return Err("Invalid value for main alignment");
+        return Err("Invalid attribute value received. Expected Table for Layout");
       }
-    };
-    layout = layout.with_main_align(main_align);
-
-    let main_wrap = if !self.main_wrap.get().is_none() {
-      self.main_wrap.get().try_into()?
     } else {
-      false // default main wrap
+      return Err("Invalid Layout provided. Layout is a required parameter");
     };
-    layout = layout.with_main_wrap(main_wrap);
-
-    let main_justify = if !self.main_justify.get().is_none() {
-      self.main_justify.get().try_into()?
-    } else {
-      false // default main justify
-    };
-    layout = layout.with_main_justify(main_justify);
-
-    let cross_justify = if !self.cross_justify.get().is_none() {
-      self.cross_justify.get().try_into()?
-    } else {
-      false // default cross justify
-    };
-    layout = layout.with_cross_justify(cross_justify);
 
     let size = if !self.size.get().is_none() {
       self.size.get().try_into()?
@@ -558,13 +499,14 @@ impl Shard for LayoutConstructor {
       None
     };
 
-    self.layout = Some(Rc::new(LayoutClass {
-      main_dir,
-      main_wrap,
-      main_align,
-      main_justify,
-      cross_align,
-      cross_justify,
+    self.layout_class = Some(Rc::new(LayoutClass {
+      // main_dir,
+      // main_wrap,
+      // main_align,
+      // main_justify,
+      // cross_align,
+      // cross_justify,
+      layout,
       size,
       fill_width,
       fill_height,
@@ -573,8 +515,8 @@ impl Shard for LayoutConstructor {
       scroll_area,
     }));
 
-    let layout_ref = self.layout.as_ref().unwrap();
-    Ok(Var::new_object(layout_ref, &LAYOUT_TYPE))
+    let layout_class_ref = self.layout_class.as_ref().unwrap();
+    Ok(Var::new_object(layout_class_ref, &LAYOUTCLASS_TYPE))
   }
 }
 
@@ -670,7 +612,7 @@ impl Shard for Layout {
     self.requiring.push(ExposedInfo::new_with_help_from_ptr(
       self.layout_class.get_name(),
       shccstr!("The required layout class."),
-      *LAYOUT_TYPE,
+      *LAYOUTCLASS_TYPE,
     ));
 
     // Add UI.Parents to the list of required variables
@@ -740,23 +682,24 @@ impl Shard for Layout {
 
       let layout_class: Option<Rc<LayoutClass>> = Some(Var::from_object_as_clone(
         self.layout_class.get(),
-        &LAYOUT_TYPE,
+        &LAYOUTCLASS_TYPE,
       )?);
       let layout_class = unsafe {
         let layout_ptr = Rc::as_ptr(layout_class.as_ref().unwrap()) as *mut LayoutClass;
         &*layout_ptr
       };
 
-      // let layout_class: Rc<LayoutClass> = Var::from_object_as_clone(self.layout_class.get(), &LAYOUT_VAR_TYPE)?;
+      // let layout_class: Rc<LayoutClass> = Var::from_object_as_clone(self.layout_class.get(), &LAYOUTCLASS_VAR_TYPE)?;
 
-      let mut layout = egui::Layout::from_main_dir_and_cross_align(
-        layout_class.main_dir,
-        layout_class.cross_align,
-      );
-      layout = layout.with_main_align(layout_class.main_align);
-      layout = layout.with_main_wrap(layout_class.main_wrap);
-      layout = layout.with_main_justify(layout_class.main_justify);
-      layout = layout.with_cross_justify(layout_class.cross_justify);
+      let mut layout = layout_class.layout;
+      // let mut layout = egui::Layout::from_main_dir_and_cross_align(
+      //   layout_class.main_dir,
+      //   layout_class.cross_align,
+      // );
+      // layout = layout.with_main_align(layout_class.main_align);
+      // layout = layout.with_main_wrap(layout_class.main_wrap);
+      // layout = layout.with_main_justify(layout_class.main_justify);
+      // layout = layout.with_cross_justify(layout_class.cross_justify);
 
       let mut size = if !self.size.get().is_none() {
         self.size.get().try_into()?
@@ -804,10 +747,6 @@ impl Shard for Layout {
         None
       }; // TODO: Why does scroll area not have copy but frame does?
 
-      // let horizontal_scroll_enabled = true;
-      // let vertical_scroll_enabled = true;
-      // let has_scroll_area = horizontal_scroll_enabled || vertical_scroll_enabled;
-      // let scroll_visibility = true;
       let scroll_area_id = EguiId::new(self, 0); // TODO: Check if have scroll area first
 
       // let visibility = if scroll_visibility {
@@ -824,17 +763,6 @@ impl Shard for Layout {
       //   color: ui.style().visuals.widgets.noninteractive.bg_stroke.color,
       // };
       // let fill = ui.style().visuals.widgets.noninteractive.bg_fill;
-
-      // egui::ScrollArea::new([
-      //   horizontal_scroll_enabled,
-      //   vertical_scroll_enabled,
-      // ])
-      // .id_source(EguiId::new(self, 0))
-      // .scroll_area_visibility(visibility)
-      // .show(ui, |ui| {
-      //   util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-      // })
-      // .inner?;
 
       if let Some(frame) = frame {
         frame
