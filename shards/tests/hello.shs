@@ -76,6 +76,9 @@ Type::Int | Log
 @type([@int-var]) | Log
 @type(GFX.BuiltinMesh InputType: true) | Is(@type(Type::None)) | Assert.Is(true)
 
+@type([Type::Int]) | ToBytes | FromBytes | Is(@type([Type::Int])) | Assert.Is(true)
+@type({A: Type::Int B: Type::String}) | ToBytes | FromBytes | Is(@type({A: Type::Int B: Type::String})) | Assert.Is(true)
+
 {x: 1 y: 2} | @to-j-from-j | HexToBytes | BytesToString | Log | Assert.Is("""{"x":1,"y":2}""")
 
 @define(my-trait @type({x: Type::Int y: Type::Int}))
