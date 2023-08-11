@@ -8,7 +8,11 @@ use super::LayoutClass;
 use super::LayoutConstructor;
 use super::LayoutDirection;
 use super::LayoutDirectionCC;
+use super::LayoutFrame;
+use super::LayoutFrameCC;
 use super::ScrollVisibility;
+use crate::LAYOUT_FRAME_TYPE_VEC;
+use crate::LAYOUT_FRAME_TYPE_VEC_VAR;
 use crate::layouts::ScrollVisibilityCC;
 use crate::misc::style_util;
 use crate::util;
@@ -113,7 +117,7 @@ lazy_static! {
     (
       cstr!("Frame"),
       shccstr!("The frame to be drawn around the layout."),
-      ANY_TABLE_SLICE,
+      &LAYOUT_FRAME_TYPE_VEC[..],
     )
       .into(),
     (
@@ -229,12 +233,6 @@ impl Shard for LayoutConstructor {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
-    // self.main_dir.warmup(ctx);
-    // self.main_wrap.warmup(ctx);
-    // self.main_align.warmup(ctx);
-    // self.main_justify.warmup(ctx);
-    // self.cross_align.warmup(ctx);
-    // self.cross_justify.warmup(ctx);
     self.layout.warmup(ctx);
     self.size.warmup(ctx);
     self.fill_width.warmup(ctx);
@@ -254,12 +252,6 @@ impl Shard for LayoutConstructor {
     self.fill_width.cleanup();
     self.size.cleanup();
     self.layout.cleanup();
-    // self.cross_justify.cleanup();
-    // self.cross_align.cleanup();
-    // self.main_justify.cleanup();
-    // self.main_align.cleanup();
-    // self.main_wrap.cleanup();
-    // self.main_dir.cleanup();
     self.parents.cleanup();
 
     Ok(())
@@ -361,86 +353,12 @@ impl Shard for LayoutConstructor {
 
     let frame = if !self.frame.get().is_none() {
       let frame = self.frame.get();
-      if frame.valueType == crate::shardsc::SHType_Table {
-        let frame: Table = frame.try_into()?;
-
-        // uses frame defaults for group as per frame::group
-        let inner_margin = if let Some(inner_margin) = retrieve_parameter!(
-          frame,
-          "inner_margin",
-          (f32, f32, f32, f32),
-          style_util::get_margin
-        ) {
-          inner_margin
-        } else {
-          egui::style::Margin::same(6.0)
-        };
-
-        let outer_margin = if let Some(outer_margin) = retrieve_parameter!(
-          frame,
-          "outer_margin",
-          (f32, f32, f32, f32),
-          style_util::get_margin
-        ) {
-          outer_margin
-        } else {
-          egui::style::Margin::default()
-        };
-
-        let rounding = if let Some(rounding) = retrieve_parameter!(
-          frame,
-          "rounding",
-          (f32, f32, f32, f32),
-          style_util::get_rounding // TODO: default value for noninteractive widgets. these values are for light mode, and may not be very good
-                                   // ui.style().visuals.widgets.noninteractive.rounding
-        ) {
-          rounding
-        } else {
-          egui::Rounding::same(2.0)
-        };
-
-        let stroke = if let Some(stroke) = retrieve_parameter!(
-          frame,
-          "stroke",
-          Table,
-          style_util::get_stroke // TODO: default value for noninteractive widgets
-                                 // ui.style().visuals.widgets.noninteractive.bg_stroke
-        ) {
-          stroke
-        } else {
-          egui::Stroke::new(1.0, egui::Color32::from_gray(190))
-        };
-
-        let fill = if let Some(fill) = retrieve_parameter!(
-          frame,
-          "fill",
-          SHColor,
-          style_util::get_color // TODO: default value for noninteractive widgets
-                                // ui.style().visuals.widgets.noninteractive.bg_fill // TODO: maybe default
-        ) {
-          fill
-        } else {
-          egui::Color32::from_gray(248)
-        };
-
-        let shadow = if let Some(shadow) =
-          retrieve_parameter!(frame, "shadow", Table, style_util::get_shadow)
-        {
-          shadow
-        } else {
-          egui::epaint::Shadow::default()
-        };
-
-        Some(egui::Frame {
-          inner_margin,
-          outer_margin,
-          rounding,
-          shadow,
-          fill,
-          stroke,
-        })
+      if frame.valueType == crate::shardsc::SHType_Enum && unsafe { frame.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId == LayoutFrameCC } {
+        let bits = unsafe { frame.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
+        Some(LayoutFrame { bits })
       } else {
-        return Err("Invalid frame type provided");
+        // should be unreachable due to parameter type checking
+        return Err("Invalid frame type provided. Expected LayoutFrame for Frame")
       }
     } else {
       None
@@ -485,19 +403,13 @@ impl Shard for LayoutConstructor {
             .scroll_bar_visibility(scroll_visibility),
         )
       } else {
-        return Err("Invalid scroll bar type provided");
+        return Err("Invalid scroll bar type provided. Expected Table for ScrollArea");
       }
     } else {
       None
     };
 
     self.layout_class = Some(Rc::new(LayoutClass {
-      // main_dir,
-      // main_wrap,
-      // main_align,
-      // main_justify,
-      // cross_align,
-      // cross_justify,
       layout,
       size,
       fill_width,
@@ -668,10 +580,6 @@ impl Shard for Layout {
     }
 
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
-      // if self.layout_class.get().is_none() {
-      //   return Err("No class provided.");
-      // }
-
       let layout_class: Option<Rc<LayoutClass>> = Some(Var::from_object_as_clone(
         self.layout_class.get(),
         &LAYOUTCLASS_TYPE,
@@ -681,17 +589,7 @@ impl Shard for Layout {
         &*layout_ptr
       };
 
-      // let layout_class: Rc<LayoutClass> = Var::from_object_as_clone(self.layout_class.get(), &LAYOUTCLASS_VAR_TYPE)?;
-
       let mut layout = layout_class.layout;
-      // let mut layout = egui::Layout::from_main_dir_and_cross_align(
-      //   layout_class.main_dir,
-      //   layout_class.cross_align,
-      // );
-      // layout = layout.with_main_align(layout_class.main_align);
-      // layout = layout.with_main_wrap(layout_class.main_wrap);
-      // layout = layout.with_main_justify(layout_class.main_justify);
-      // layout = layout.with_cross_justify(layout_class.cross_justify);
 
       let mut size = if !self.size.get().is_none() {
         self.size.get().try_into()?
@@ -728,7 +626,18 @@ impl Shard for Layout {
       let disabled = layout_class.disabled;
 
       let frame = if let Some(frame) = layout_class.frame {
-        Some(frame.clone())
+        let style = ui.style();
+        match frame {
+            LayoutFrame::Widgets => Some(egui::Frame::group(style)),
+            LayoutFrame::SideTopPanel => Some(egui::Frame::side_top_panel(style)),
+            LayoutFrame::CentralPanel => Some(egui::Frame::central_panel(style)),
+            LayoutFrame::Window => Some(egui::Frame::window(style)),
+            LayoutFrame::Menu => Some(egui::Frame::menu(style)),
+            LayoutFrame::Popup => Some(egui::Frame::popup(style)),
+            LayoutFrame::Canvas => Some(egui::Frame::canvas(style)),
+            LayoutFrame::DarkCanvas => Some(egui::Frame::dark_canvas(style)),
+            _ => unreachable!()
+        }
       } else {
         None
       };
@@ -737,24 +646,9 @@ impl Shard for Layout {
         Some(scroll_area.clone())
       } else {
         None
-      }; // TODO: Why does scroll area not have copy but frame does?
+      };
 
       let scroll_area_id = EguiId::new(self, 0); // TODO: Check if have scroll area first
-
-      // let visibility = if scroll_visibility {
-      //   egui::scroll_area::ScrollBarVisibility::AlwaysVisible
-      // } else {
-      //   egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded
-      // };
-
-      // let inner_margin = egui::style::Margin::default();
-      // let outer_margin = egui::style::Margin::default();
-      // let rounding = ui.style().visuals.widgets.noninteractive.rounding;
-      // let stroke = egui::epaint::Stroke {
-      //   width: ui.style().visuals.widgets.noninteractive.bg_stroke.width,
-      //   color: ui.style().visuals.widgets.noninteractive.bg_stroke.color,
-      // };
-      // let fill = ui.style().visuals.widgets.noninteractive.bg_fill;
 
       if let Some(frame) = frame {
         frame

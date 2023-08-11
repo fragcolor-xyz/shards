@@ -86,7 +86,7 @@ struct LayoutClass {
   fill_width: bool,
   fill_height: bool,
   disabled: bool,
-  frame: Option<egui::Frame>,
+  frame: Option<LayoutFrame>,
   scroll_area: Option<egui::ScrollArea>,
 }
 
@@ -149,6 +149,38 @@ shenum_types! {
   pub static ref SCROLL_VISIBILITY_TYPES: Vec<Type>;
   pub static ref SEQ_OF_SCROLL_VISIBILITY: Type;
   pub static ref SEQ_OF_SCROLL_VISIBILITY_TYPES: Vec<Type>;
+}
+
+shenum! {
+  pub struct LayoutFrame {
+  [description("Use the frame styling for grouping widgets together.")]
+  const Widgets = 1 << 0;
+  [description("Use the frame styling for a side top panel.")]
+  const SideTopPanel = 1 << 1;
+  [description("Use the frame styling for the central panel.")]
+  const CentralPanel = 1 << 2;
+  [description("Use the frame styling for a window.")]
+  const Window = 1 << 3;
+  [description("Use the frame styling for a menu.")]
+  const Menu = 1 << 4;
+  [description("Use the frame styling for a popup.")]
+  const Popup = 1 << 5;
+  [description("Use the frame styling for a canvas to draw on.")]
+  const Canvas = 1 << 6;
+  [description("Use the frame styling for a dark canvas to draw on.")]
+  const DarkCanvas = 1 << 7;
+  }
+  pub struct LayoutFrameInfo {}
+}
+
+shenum_types! {
+  LayoutFrameInfo,
+  const LayoutFrameCC = fourCharacterCode(*b"egLF");
+  pub static ref LayoutFrameEnumInfo;
+  pub static ref LAYOUT_FRAME_TYPE: Type;
+  pub static ref LAYOUT_FRAME_TYPES: Vec<Type>;
+  pub static ref SEQ_OF_LAYOUT_FRAME: Type;
+  pub static ref SEQ_OF_LAYOUT_FRAME_TYPES: Vec<Type>;
 }
 
 shenum! {
@@ -336,6 +368,11 @@ pub fn registerShards() {
     FRAG_CC,
     LayoutDirectionCC,
     LayoutDirectionEnumInfo.as_ref().into(),
+  );
+  registerEnumType(
+    FRAG_CC,
+    LayoutFrameCC,
+    LayoutFrameEnumInfo.as_ref().into(),
   );
   registerEnumType(FRAG_CC, LayoutAlignCC, LayoutAlignEnumInfo.as_ref().into());
   registerShard::<Indent>();

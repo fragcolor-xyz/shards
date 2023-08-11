@@ -21,6 +21,8 @@ use shards::types::FRAG_CC;
 use std::ffi::c_void;
 use std::ffi::CStr;
 
+use crate::layouts::LAYOUT_FRAME_TYPE;
+
 #[macro_use]
 extern crate shards;
 
@@ -83,6 +85,9 @@ lazy_static! {
   static ref LAYOUTCLASS_TYPE_VEC: Vec<Type> = vec![*LAYOUTCLASS_TYPE];
   static ref LAYOUTCLASS_VAR_TYPE: Type = Type::context_variable(&LAYOUTCLASS_TYPE_VEC);
   static ref LAYOUTCLASS_TYPE_VEC_VAR: Vec<Type> = vec![*LAYOUTCLASS_VAR_TYPE];
+  static ref LAYOUT_FRAME_TYPE_VEC: Vec<Type> = vec![*LAYOUT_FRAME_TYPE];
+  static ref LAYOUT_FRAME_VAR_TYPE: Type = Type::context_variable(&LAYOUT_FRAME_TYPE_VEC);
+  static ref LAYOUT_FRAME_TYPE_VEC_VAR: Vec<Type> = vec![*LAYOUT_FRAME_VAR_TYPE];
 }
 
 lazy_static! {
