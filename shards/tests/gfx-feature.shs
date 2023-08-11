@@ -31,7 +31,7 @@
     ;             Stage: ProgrammableGraphicsStage::Fragment
     ;             EntryPoint: {
     ;               Shader.ReadInput("worldNormal") >= normal
-    ;               Shader.ReadBuffer("light-direction") >= light-dir
+    ;               Shader.ReadBuffer("lightDirection") >= light-dir
     ;               @f3(0 0 0) | Math.Subtract(light-dir) >= inv-light-dir
     ;               normal | Math.Normalize | Math.Dot(inv-light-dir) | Max(0.0) >= n-dot-l
     ;               Shader.ReadBuffer("lightColor") | Math.Multiply(n-dot-l) |
