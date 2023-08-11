@@ -101,8 +101,7 @@
       @spin-transform(time @f3(-0.6 0 0))
       GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
 
-      time | Math.Multiply(0.5) >= small-time
-      @spin-transform(small-time @f3(0.6 0 0))
+      @spin-transform((time | Math.Multiply(0.5)) @f3(0 0.6 0))
       GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
 
       GFX.Render(View: view Steps: render-steps)
