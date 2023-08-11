@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use eval::new_cancellation_token;
 use eval::EvalEnv;
 use shards::core::registerShard;
+use shards::shlog_error;
 use shards::types::Var;
 // use print::print_ast;
 
@@ -252,6 +253,7 @@ pub extern "C" fn shards_read(code: SHStringWithLen) -> SHLAst {
       error: std::ptr::null_mut(),
     },
     Ok(Err(error)) => {
+      shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -341,6 +343,7 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *mut
   let ast = unsafe { &*ast };
   for stmt in &ast.statements {
     if let Err(e) = eval::eval_statement(stmt, env, new_cancellation_token()) {
+      shlog_error!("{}:{}: {}", e.loc.line, e.loc.column, e.message);
       let error_message = CString::new(e.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -364,6 +367,7 @@ pub extern "C" fn shards_transform_env(env: *mut EvalEnv, name: SHStringWithLen)
       error: std::ptr::null_mut(),
     },
     Err(error) => {
+      shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -398,6 +402,7 @@ pub extern "C" fn shards_transform_envs(
       error: std::ptr::null_mut(),
     },
     Err(error) => {
+      shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),

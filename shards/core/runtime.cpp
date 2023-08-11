@@ -3290,6 +3290,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return reinterpret_cast<SHMeshRef>(mesh);
   };
 
+  result->createMeshVar = []() noexcept {
+    auto mesh = SHMesh::make();
+    auto meshVar = SHMesh::MeshVar.Emplace(std::move(mesh));
+    return SHMesh::MeshVar.Get(meshVar);
+  };
+
   result->destroyMesh = [](SHMeshRef mesh) noexcept {
     auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
     SHLOG_TRACE("destroyMesh {}", (void *)(*smesh).get());

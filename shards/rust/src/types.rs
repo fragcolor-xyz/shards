@@ -218,6 +218,67 @@ impl Mesh {
   }
 }
 
+#[repr(transparent)]
+pub struct MeshVar(pub ClonedVar);
+
+impl MeshVar {
+  pub fn new() -> Self {
+    MeshVar(ClonedVar(unsafe { (*Core).createMeshVar.unwrap()() }))
+  }
+
+  pub fn compose(&self, wire: WireRef) -> bool {
+    unsafe {
+      let mesh_ref = self
+        .0
+         .0
+        .payload
+        .__bindgen_anon_1
+        .__bindgen_anon_1
+        .objectValue as SHMeshRef;
+      (*Core).compose.unwrap()(mesh_ref, wire.0)
+    }
+  }
+
+  pub fn schedule(&mut self, wire: WireRef, compose: bool) {
+    unsafe {
+      let mesh_ref = self
+        .0
+         .0
+        .payload
+        .__bindgen_anon_1
+        .__bindgen_anon_1
+        .objectValue as SHMeshRef;
+      (*Core).schedule.unwrap()(mesh_ref, wire.0, compose)
+    }
+  }
+
+  pub fn tick(&mut self) -> bool {
+    unsafe {
+      let mesh_ref = self
+        .0
+         .0
+        .payload
+        .__bindgen_anon_1
+        .__bindgen_anon_1
+        .objectValue as SHMeshRef;
+      (*Core).tick.unwrap()(mesh_ref)
+    }
+  }
+
+  pub fn terminate(&mut self) {
+    unsafe {
+      let mesh_ref = self
+        .0
+         .0
+        .payload
+        .__bindgen_anon_1
+        .__bindgen_anon_1
+        .objectValue as SHMeshRef;
+      (*Core).terminate.unwrap()(mesh_ref)
+    }
+  }
+}
+
 pub struct Wire(pub WireRef);
 
 impl Drop for Wire {
