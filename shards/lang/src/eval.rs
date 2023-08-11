@@ -1429,10 +1429,13 @@ fn process_platform_built_in() -> Var {
 fn get_full_name(name: &Identifier, e: &mut EvalEnv) -> RcStrWrapper {
   if let Some(full_name) = e.qualified_cache.get(name) {
     full_name.clone()
-  } else {
-    let resolved = name.resolve();
-    let full_name = combine_namespaces(&resolved, &e.full_namespace);
+  } else if name.namespaces.is_empty() {
+    let full_name = combine_namespaces(&name.name, &e.full_namespace);
     let full_name = RcStrWrapper::new(full_name.as_str());
+    e.qualified_cache.insert(name.clone(), full_name.clone());
+    full_name
+  } else {
+    let full_name = name.resolve();
     e.qualified_cache.insert(name.clone(), full_name.clone());
     full_name
   }
@@ -3456,6 +3459,11 @@ fn test_combine_namespaces() {
   let fully_qualified = "a";
   let result = combine_namespaces(&partial.into(), &fully_qualified.into());
   assert_eq!(result, RcStrWrapper::from("a/b"));
+
+  let partial = "x/b";
+  let fully_qualified = "a";
+  let result = combine_namespaces(&partial.into(), &fully_qualified.into());
+  assert_eq!(result, RcStrWrapper::from("a/x/b"));
 
   let partial = "b";
   let fully_qualified = "a/b";
