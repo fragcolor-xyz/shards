@@ -45,6 +45,7 @@ EvalEnv *shards_create_sub_env(EvalEnv *env, SHStringWithLen namespace_);
 
 SHLError *shards_eval_env(EvalEnv *env, Sequence *ast);
 
+/// It will consume the env
 SHLWire shards_transform_env(EvalEnv *env, SHStringWithLen name);
 
 SHLWire shards_transform_envs(EvalEnv **env, uintptr_t len, SHStringWithLen name);
@@ -56,6 +57,9 @@ void shards_free_sequence(Sequence *sequence);
 void shards_free_wire(SHWireRef *wire);
 
 void shards_free_error(SHLError *error);
+
+/// Please note it will consume `from` but not `to`
+void shards_merge_envs(EvalEnv *from, EvalEnv *to);
 
 int32_t shards_process_args(int32_t argc, const char *const *argv);
 

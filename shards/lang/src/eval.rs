@@ -3238,6 +3238,47 @@ pub fn transform_env(env: &mut EvalEnv, name: &str) -> Result<Wire, ShardsError>
   Ok(wire)
 }
 
+pub fn merge_env(mut env: EvalEnv, into: &mut EvalEnv) {
+  env.parent = Some(into);
+
+  for shard in env.shards.drain(..) {
+    into.shards.push(shard);
+  }
+
+  // also move possible other possible things we defined!
+  // the trick here is that we need to decorate identifiers with namespace if they are not
+  for (mut name, value) in env.definitions.drain() {
+    if name.namespaces.is_empty() {
+      name.namespaces.push(env.full_namespace.clone());
+    }
+    into.definitions.insert(name, value);
+  }
+  for (mut name, value) in env.deferred_wires.drain() {
+    if name.namespaces.is_empty() {
+      name.namespaces.push(env.namespace.clone());
+    }
+    into.deferred_wires.insert(name, value);
+  }
+  for (mut name, value) in env.finalized_wires.drain() {
+    if name.namespaces.is_empty() {
+      name.namespaces.push(env.namespace.clone());
+    }
+    into.finalized_wires.insert(name, value);
+  }
+  for (mut name, value) in env.shards_groups.drain() {
+    if name.namespaces.is_empty() {
+      name.namespaces.push(env.namespace.clone());
+    }
+    into.shards_groups.insert(name, value);
+  }
+  for (mut name, value) in env.macro_groups.drain() {
+    if name.namespaces.is_empty() {
+      name.namespaces.push(env.namespace.clone());
+    }
+    into.macro_groups.insert(name, value);
+  }
+}
+
 pub fn eval(
   seq: &Sequence,
   name: &str,
