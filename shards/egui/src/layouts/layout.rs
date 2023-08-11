@@ -12,9 +12,7 @@ use super::LayoutFrame;
 use super::LayoutFrameCC;
 use super::ScrollVisibility;
 use crate::LAYOUT_FRAME_TYPE_VEC;
-use crate::LAYOUT_FRAME_TYPE_VEC_VAR;
 use crate::layouts::ScrollVisibilityCC;
-use crate::misc::style_util;
 use crate::util;
 use crate::EguiId;
 use crate::ANY_TABLE_SLICE;
@@ -42,7 +40,6 @@ use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::SHARDS_OR_NONE_TYPES;
-use shards::SHColor;
 use std::rc::Rc;
 
 macro_rules! retrieve_parameter {
@@ -94,6 +91,12 @@ macro_rules! retrieve_enum_parameter {
 
 lazy_static! {
   static ref LAYOUT_CONSTRUCTOR_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Parent"),
+      shccstr!("The parent Layout class to inherit parameters from."),
+      &LAYOUTCLASS_TYPE_VEC_VAR[..],
+    )
+      .into(),
     (
       cstr!("Layout"),
       shccstr!("The parameters relating to the layout of the UI element."),
@@ -154,11 +157,8 @@ lazy_static! {
 
 impl Default for LayoutConstructor {
   fn default() -> Self {
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
     Self {
-      parents,
-      requiring: Vec::new(),
+      parent: ParamVar::default(),
       layout: ParamVar::default(),
       layout_class: None,
       size: ParamVar::default(),
@@ -198,41 +198,34 @@ impl Shard for LayoutConstructor {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.layout.set_param(value)),
-      1 => Ok(self.size.set_param(value)),
-      2 => Ok(self.fill_width.set_param(value)),
-      3 => Ok(self.fill_height.set_param(value)),
-      4 => Ok(self.disabled.set_param(value)),
-      5 => Ok(self.frame.set_param(value)),
-      6 => Ok(self.scroll_area.set_param(value)),
+      0 => Ok(self.parent.set_param(value)),
+      1 => Ok(self.layout.set_param(value)),
+      2 => Ok(self.size.set_param(value)),
+      3 => Ok(self.fill_width.set_param(value)),
+      4 => Ok(self.fill_height.set_param(value)),
+      5 => Ok(self.disabled.set_param(value)),
+      6 => Ok(self.frame.set_param(value)),
+      7 => Ok(self.scroll_area.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.layout.get_param(),
-      1 => self.size.get_param(),
-      2 => self.fill_width.get_param(),
-      3 => self.fill_height.get_param(),
-      4 => self.disabled.get_param(),
-      5 => self.frame.get_param(),
-      6 => self.scroll_area.get_param(),
+      0 => self.parent.get_param(),
+      1 => self.layout.get_param(),
+      2 => self.size.get_param(),
+      3 => self.fill_width.get_param(),
+      4 => self.fill_height.get_param(),
+      5 => self.disabled.get_param(),
+      6 => self.frame.get_param(),
+      7 => self.scroll_area.get_param(),
       _ => Var::default(),
     }
   }
 
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
-
-    Some(&self.requiring)
-  }
-
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.parents.warmup(ctx);
+    self.parent.warmup(ctx);
     self.layout.warmup(ctx);
     self.size.warmup(ctx);
     self.fill_width.warmup(ctx);
@@ -252,12 +245,27 @@ impl Shard for LayoutConstructor {
     self.fill_width.cleanup();
     self.size.cleanup();
     self.layout.cleanup();
-    self.parents.cleanup();
+    self.parent.cleanup();
 
     Ok(())
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    let parent_layout_class = if !self.parent.get().is_none() {
+      let parent_layout_class: Option<Rc<LayoutClass>> = Some(Var::from_object_as_clone(
+        self.parent.get(),
+        &LAYOUTCLASS_TYPE,
+      )?);
+      let parent_layout_class = unsafe {
+        let parent_layout_ptr = Rc::as_ptr(parent_layout_class.as_ref().unwrap()) as *mut LayoutClass;
+        &*parent_layout_ptr
+      };  
+
+      Some(parent_layout_class)
+    } else {
+      None
+    };
+
     let layout = if !self.layout.get().is_none() {
       let layout_table = self.layout.get();
       if layout_table.valueType == crate::shardsc::SHType_Table {
@@ -325,7 +333,11 @@ impl Shard for LayoutConstructor {
         return Err("Invalid attribute value received. Expected Table for Layout");
       }
     } else {
-      return Err("Invalid Layout provided. Layout is a required parameter");
+      if let Some(parent_layout_class) = parent_layout_class {
+        parent_layout_class.layout
+      } else {
+        return Err("Invalid Layout provided. Layout is a required parameter when there is no parent LayoutClass provided");
+      }
     };
 
     let size = if !self.size.get().is_none() {
@@ -348,7 +360,11 @@ impl Shard for LayoutConstructor {
     let disabled = if !self.disabled.get().is_none() {
       self.disabled.get().try_into()?
     } else {
-      false // default disabled value
+      if let Some(parent_layout_class) = parent_layout_class {
+        parent_layout_class.disabled
+      } else {
+        false // default disabled value
+      }
     };
 
     let frame = if !self.frame.get().is_none() {
@@ -361,7 +377,11 @@ impl Shard for LayoutConstructor {
         return Err("Invalid frame type provided. Expected LayoutFrame for Frame")
       }
     } else {
-      None
+      if let Some(parent_layout_class) = parent_layout_class {
+        parent_layout_class.frame
+      } else {
+        None
+      }
     };
 
     let scroll_area = if !self.scroll_area.get().is_none() {
@@ -406,7 +426,11 @@ impl Shard for LayoutConstructor {
         return Err("Invalid scroll bar type provided. Expected Table for ScrollArea");
       }
     } else {
-      None
+      if let Some(parent_layout_class) = parent_layout_class {
+        parent_layout_class.scroll_area.clone()
+      } else {
+        None
+      }
     };
 
     self.layout_class = Some(Rc::new(LayoutClass {
@@ -705,11 +729,6 @@ impl Shard for Layout {
                 } else {
                   Err("No UI parent")
                 }
-                // let wire_state = contents.activate(context, input, &mut output);
-                // if wire_state == WireState::Error {
-                //   return Err("Failed to activate contents");
-                // }
-                // Ok(())
               },
             )
 

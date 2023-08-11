@@ -9,9 +9,7 @@ use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::ShardsVar;
 use shards::types::Type;
-use shards::types::Var;
 use shards::types::FRAG_CC;
-use shards::SHType_Enum;
 use std::rc::Rc;
 
 struct CollapsingHeader {
@@ -91,8 +89,7 @@ struct LayoutClass {
 }
 
 struct LayoutConstructor {
-  parents: ParamVar,
-  requiring: ExposedTypes,
+  parent: ParamVar,
   layout_class: Option<Rc<LayoutClass>>,
   layout: ParamVar,
   size: ParamVar,

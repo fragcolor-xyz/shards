@@ -19,7 +19,6 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 use std::ffi::c_void;
-use std::ffi::CStr;
 
 use crate::layouts::LAYOUT_FRAME_TYPE;
 
