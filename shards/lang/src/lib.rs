@@ -15,6 +15,7 @@ use crate::ast::*;
 use core::fmt;
 use std::collections::HashMap;
 
+use eval::merge_env;
 use eval::new_cancellation_token;
 use eval::EvalEnv;
 use shards::core::registerShard;
@@ -356,6 +357,7 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: *mut Sequence) -> *mut
   core::ptr::null_mut()
 }
 
+/// It will consume the env
 #[no_mangle]
 pub extern "C" fn shards_transform_env(env: *mut EvalEnv, name: SHStringWithLen) -> SHLWire {
   let name = name.into();
@@ -487,4 +489,12 @@ pub extern "C" fn shardsRegister_lang_lang(core: *mut shards::shardsc::SHCore) {
 
   registerShard::<read::ReadShard>();
   registerShard::<eval::EvalShard>();
+}
+
+/// Please note it will consume `from` but not `to`
+#[no_mangle]
+pub extern "C" fn shards_merge_envs(from: *mut EvalEnv, to: *mut EvalEnv) {
+  let from = unsafe { Box::from_raw(from) };
+  let to = unsafe { &mut *to };
+  merge_env(*from, to);
 }
