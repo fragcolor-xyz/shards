@@ -9,13 +9,14 @@ use core::convert::TryInto;
 use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
-use shards::fourCharacterCode;
+
 use shards::shard::Shard;
 use shards::types::common_type;
 use shards::types::AutoSeqVar;
 use shards::types::AutoShardRef;
 use shards::types::AutoTableVar;
 use shards::types::Context;
+use shards::types::MeshVar;
 use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::ANY_TABLE_VAR_NONE_SLICE;
@@ -26,7 +27,7 @@ use shards::types::Type;
 use shards::types::Types;
 
 use shards::shlog_trace;
-use shards::types::FRAG_CC;
+
 use shards::types::WIRE_TYPES;
 use shards::SHType_Object;
 use shards::SHType_Type;
@@ -97,7 +98,7 @@ pub struct EvalEnv {
   pub forbidden_funcs: HashSet<Identifier>,
   pub settings: Vec<Setting>,
 
-  meshes: HashMap<Identifier, Mesh>,
+  meshes: HashMap<Identifier, MeshVar>,
 
   extensions: HashMap<Identifier, Box<dyn ShardsExtension>>,
 }
@@ -780,7 +781,7 @@ fn handle_color_built_in(func: &Function, line_info: LineInfo) -> Result<Var, Sh
   Ok(Var::color_u8s(colors[0], colors[1], colors[2], colors[3]))
 }
 
-fn find_mesh<'a>(name: &'a Identifier, env: &'a mut EvalEnv) -> Option<&'a mut Mesh> {
+fn find_mesh<'a>(name: &'a Identifier, env: &'a mut EvalEnv) -> Option<&'a mut MeshVar> {
   if let Some(mesh) = env.meshes.get_mut(name) {
     Some(mesh)
   } else if let Some(parent) = env.parent {
@@ -1125,14 +1126,7 @@ fn as_var(
       if let Some((wire, _finalized)) = find_wire(name, e) {
         Ok(SVar::Cloned(wire.into()))
       } else if let Some(mesh) = find_mesh(name, e) {
-        // CoreCC, 'brcM'
-        let mesh_cc = fourCharacterCode(*b"brcM");
-        let mut var = Var::default();
-        var.valueType = SHType_Object;
-        var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId = FRAG_CC;
-        var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId = mesh_cc;
-        var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue = mesh.0 as *mut _;
-        Ok(SVar::NotCloned(var))
+        Ok(SVar::NotCloned(mesh.0 .0))
       } else if let Some(replacement) = find_replacement(name, e) {
         as_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
       } else {
@@ -2121,10 +2115,10 @@ fn find_defined<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<*const Value
 
 fn get_mesh<'a>(
   param: &'a Param,
-  find_mesh: impl Fn(&'a Identifier, &'a mut EvalEnv) -> Option<&'a mut Mesh>,
+  find_mesh: impl Fn(&'a Identifier, &'a mut EvalEnv) -> Option<&'a mut MeshVar>,
   e: &'a mut EvalEnv,
   block: &Block,
-) -> Result<&'a mut Mesh, ShardsError> {
+) -> Result<&'a mut MeshVar, ShardsError> {
   match &param.value {
     Value::Identifier(name) => find_mesh(name, e).ok_or_else(|| {
       (
@@ -2621,7 +2615,7 @@ fn eval_pipeline(
                     );
                   }
 
-                  e.meshes.insert(name.clone(), Mesh::default());
+                  e.meshes.insert(name.clone(), MeshVar::new());
                   Ok(())
                 }
                 _ => Err(

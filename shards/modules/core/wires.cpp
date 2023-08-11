@@ -1964,9 +1964,6 @@ struct DoMany : public TryMany {
 };
 
 struct Branch {
-  static constexpr uint32_t TypeId = 'brcM';
-  static inline Type MeshType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = TypeId}}}};
-
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -1983,7 +1980,7 @@ struct Branch {
          {CoreInfo::BoolType}},
         {"Mesh",
          SHCCSTR("Optional external mesh to use for this branch. If not provided, a new one will be created."),
-         {CoreInfo::NoneType, MeshType}}};
+         {CoreInfo::NoneType, SHMesh::MeshType}}};
     return params;
   }
 
@@ -2027,7 +2024,7 @@ public:
       return Var(_brancher.captureAll);
     case 3:
       assert(_brancher.mesh); // there always should be a mesh
-      return Var::Object(&_brancher.mesh, CoreCC, TypeId);
+      return Var::Object(&_brancher.mesh, CoreCC, SHMesh::TypeId);
     default:
       return Var::Empty;
     }
@@ -2045,7 +2042,7 @@ public:
 
     _brancher.compose(dataCopy);
 
-    return MeshType;
+    return SHMesh::MeshType;
   }
 
   SHExposedTypesInfo requiredVariables() { return _brancher.requiredVariables(); }

@@ -19,8 +19,9 @@
 
 namespace shards {
 // SHVar strings can have an optional len field populated
-#define SHSTRLEN(_v_) \
-  ((_v_).payload.stringLen > 0 || (_v_).payload.stringValue == nullptr ? (_v_).payload.stringLen : strlen((_v_).payload.stringValue))
+#define SHSTRLEN(_v_)                                                                            \
+  ((_v_).payload.stringLen > 0 || (_v_).payload.stringValue == nullptr ? (_v_).payload.stringLen \
+                                                                       : strlen((_v_).payload.stringValue))
 
 #define SHSTRVIEW(_v_) std::string_view((_v_).payload.stringValue, SHSTRLEN(_v_))
 // the following is ugly on purpose, to make it obvious that it's a copy and to be avoided
@@ -435,6 +436,11 @@ public:
   E *New() {
     auto r = new ObjectRef();
     r->refcount = 1;
+    return &r->shared;
+  }
+
+  template <typename ST> E *Emplace(std::shared_ptr<ST> &&obj) {
+    auto r = new ObjectRef{.shared = E(std::move(obj)), .refcount = 1};
     return &r->shared;
   }
 
@@ -866,7 +872,8 @@ template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHI
 template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
   const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);
   if (!ti)
-    throw ComposeError(fmt::format("Parameter {} not found", var->payload.stringValue));  // safe cos ParamVar should be null terminated
+    throw ComposeError(
+        fmt::format("Parameter {} not found", var->payload.stringValue)); // safe cos ParamVar should be null terminated
   return *ti;
 }
 

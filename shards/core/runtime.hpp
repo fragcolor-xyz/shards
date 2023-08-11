@@ -463,6 +463,10 @@ struct RuntimeCallbacks {
 }; // namespace shards
 
 struct SHMesh : public std::enable_shared_from_this<SHMesh> {
+  static constexpr uint32_t TypeId = 'brcM';
+  static inline shards::Type MeshType{{SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = TypeId}}}};
+  static inline shards::ObjectVar<std::shared_ptr<SHMesh>> MeshVar{"Mesh", shards::CoreCC, TypeId};
+
   static std::shared_ptr<SHMesh> make() { return std::shared_ptr<SHMesh>(new SHMesh()); }
 
   static std::shared_ptr<SHMesh> *makePtr() { return new std::shared_ptr<SHMesh>(new SHMesh()); }
