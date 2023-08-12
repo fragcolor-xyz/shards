@@ -286,13 +286,14 @@ struct LoadExtension : public Base {
 
     Base::warmup(context);
 
-    std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
-    _connection->loadExtension(extPath);
-
     PARAM_WARMUP(context);
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return input; }
+  SHVar activate(SHContext *context, const SHVar &input) {
+    std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
+    _connection->loadExtension(extPath);
+    return input;
+  }
 };
 
 struct RawQuery : public Base {
