@@ -1,8 +1,8 @@
-@define(timestap #(1.0 | Math.Divide(120.0)))
+@define(timestep #(1.0 | Math.Divide(120.0)))
 @mesh(root)
-@define(blendadd {Operation: BlendOperation::Add Src: BlendFactor::One Dst: BlendFactor::One})
-@define(blendalpha {Operation: BlendOperation::Add Src: BlendFactor::SrcAlpha Dst: BlendFactor::OneMinusSrcAlpha})
-@define(blendone {Operation: BlendOperation::Add Src: BlendFactor::One Dst: BlendFactor::One})
+@define(blendAdd {Operation: BlendOperation::Add Src: BlendFactor::One Dst: BlendFactor::One})
+@define(blendAlpha {Operation: BlendOperation::Add Src: BlendFactor::SrcAlpha Dst: BlendFactor::OneMinusSrcAlpha})
+@define(blendOne {Operation: BlendOperation::Add Src: BlendFactor::One Dst: BlendFactor::One})
 
 @template(spin-transform [t location] {
   t |
@@ -50,7 +50,7 @@
     ;   Params: {lightDirection: light-direction
     ;            lightColor: @f3(1.0)}
     ;   State: {DepthCompare: CompareFunction::Less
-    ;           Blend: {Color: @blendalpha Alpha: @blendone}}} |
+    ;           Blend: {Color: @blendAlpha Alpha: @blendOne}}} |
     ; GFX.Feature(ViewGenerators: {
     ;   Listen("time") >= time
     ;   {time: time}
@@ -78,7 +78,7 @@
                   Shader.WriteOutput("color")}}]
       ComposeWith: {fconst-str: fconst-str}
       State: {DepthCompare: CompareFunction::Less
-               Blend: {Color: @blendalpha Alpha: @blendone}}
+               Blend: {Color: @blendAlpha Alpha: @blendOne}}
       ViewGenerators: {
         Listen("time" @type(Type::Float)) >= time
         {time: time}}
@@ -95,7 +95,7 @@
   GFX.MainWindow(
     Title: "SDL Window" Width: 1280 Height: 720
     Contents: {
-      time | Math.Add(@timestap) > time
+      time | Math.Add(@timestep) > time
       time | Broadcast("time")
 
       @spin-transform(time @f3(-0.6 0 0))

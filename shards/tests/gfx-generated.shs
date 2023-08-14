@@ -1,0 +1,122 @@
+@define(blendOverwrite {Operation: BlendOperation::Add Src: BlendFactor::One Dst: BlendFactor::Zero})
+
+@wire(generator {
+  {Take("Queue") >= parent-queue} |
+  {Take("View") >= parent-view} |
+  Once(Every: 0.01 Action: {
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> inner-features
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> inner-features
+    GFX.Feature(
+      State: {Blend: {Color: @blendOverwrite Alpha: @blendOverwrite}}
+      Shaders: [{
+        Stage: ProgrammableGraphicsStage::Fragment
+        EntryPoint: {
+          Shader.ReadGlobal("color") >= scene-color
+          scene-color |
+          Math.Multiply(0.4) |
+          Shader.WriteOutput("otherColor")
+        }
+      }]
+    ) >> features
+    GFX.DrawablePass(
+      Outputs: [{Name: "otherColor" Format: TextureFormat::RGBA8Unorm} {Name: "depth"}]
+      Features: features Queue: parent-queue
+    ) >> steps
+
+    GFX.Texture(Format: TextureFormat::RGBA8Unorm) >= out-texture
+    GFX.RenderInto(
+      Textures: {otherColor: out-texture}
+      MatchOutputSize: true
+      Contents: {
+        GFX.Render(View: parent-view Steps: steps)
+      }
+    )
+  })
+  ; Returned parameters from rendered texture above
+  {someTexture: out-texture}
+} Looped: true)
+
+@wire(draw-generator {
+  {Take("Queue") >= parent-queue} |
+  {Take("View") >= parent-view} |
+  {Take("Drawables") >= drawables-1}
+  drawables-1 |
+  {Count(drawables-1) | Assert.Is(2)} |
+  Map({
+    RandomInt(3) >= index
+    index | Match([
+      0 {@f4(1.0 0.0 0.0 1.0)}
+      1 {@f4(0.0 1.0 0.0 1.0)}
+      2 {@f4(0.0 0.0 1.0 1.0)}
+    ] Passthrough: false) | Math.Multiply(0.1) >= color
+    {baseColor: color}
+  })
+} Looped: true)
+
+@wire(create-test-feature {
+  GFX.Feature(
+    State: {Blend: {Color: @blendOverwrite Alpha: @blendOverwrite}}
+    Shaders: [{
+      Stage: ProgrammableGraphicsStage::Fragment
+      EntryPoint: {
+        Shader.ReadGlobal("color") >= base-color
+        Shader.SampleTexture("someTexture") | Math.Add(base-color) |
+        Shader.WriteOutput("color")
+      }
+      After: ["readColor"] Before: ["writeColor"]
+    }]
+    ViewGenerators: generator
+    DrawableGenerators: draw-generator
+  )
+})
+
+@define(timestep #(1.0 | Math.Divide(120.0)))
+
+@mesh(root)
+@wire(content {
+  Once({
+    0.0 >= time
+  })
+  time | Math.Add(@timestep) > time
+
+  Once({
+    {Position: @f3(-1.0 1.5 20.0) Target: @f3(0.0)} | Math.LookAt >= view-transform
+    GFX.View(view-transform) >= view
+
+    @f3(0.0) | Math.Translation >= transform
+    -90.0 | Math.DegreesToRadians | Math.AxisAngleX | Math.Rotation >= tmp-rot
+    @f3(30.0 30.0 1.0) | Math.Scaling >= tmp-scale
+    transform | Math.MatMul(tmp-rot) | Math.MatMul(tmp-scale) >= plane-transform
+
+    @f3(0.0 0.5 0.0) | Math.Translation > transform
+    45.0 | Math.DegreesToRadians | Math.AxisAngleY | Math.Rotation > tmp-rot
+    @f3(1.0 1.0 1.0) | Math.Scaling > tmp-scale
+    transform | Math.MatMul(tmp-rot) | Math.MatMul(tmp-scale) >= cube-transform
+
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Plane) >= plane-mesh
+    plane-transform | GFX.Drawable(Mesh: plane-mesh Params: {baseColor: @f4(0.4 0.4 0.94 1.0)}) >> drawables
+
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= cube-mesh
+    cube-transform | GFX.Drawable(Mesh: cube-mesh Params: {baseColor: @f4(0.12 0.7 0.2 1.0)}) >> drawables
+
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
+    Do(create-test-feature) >> features
+
+    GFX.DrawQueue >= queue
+    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+  })
+
+  ; Update view transform
+  view-transform | FreeCamera(FlySpeed: 10.0) > view-transform
+
+  drawables | GFX.Draw(queue)
+  GFX.Render(Steps: render-steps View: view)
+} Looped: true)
+
+@wire(main-loop-wire {
+  GFX.MainWindow(Title: "Test" Width: 1280 Height: 720 Contents: Step(content))
+} Looped: true LStack: 4194304)
+
+@schedule(root main-loop-wire)
+@run(root FPS: 120 Iterations: 100)
