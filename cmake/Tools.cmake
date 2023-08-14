@@ -102,3 +102,20 @@ function(target_generate_bundle_manifest TARGET HEADER_NAME MANIFEST_VAR_NAME)
   file(APPEND ${GENERATED_C_FILE_PATH} "\};\n")
   message(STATUS "Created bundled file manifest for target ${TARGET} at ${GENERATED_C_FILE_PATH}")
 endfunction()
+
+macro(shards_build INPUT OUTPUT)
+    # Define the full path to the shards command
+    set(SHARDS_COMMAND ${CMAKE_BINARY_DIR}/shards)
+
+    # Create a custom command to build the input file
+    add_custom_command(
+        OUTPUT ${OUTPUT}
+        COMMAND ${SHARDS_COMMAND} build ${INPUT} -o ${OUTPUT}
+        DEPENDS ${INPUT} shards # Depend on the shards target
+        COMMENT "Building ${INPUT} with Shards"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} # Set the working directory
+    )
+
+    # Create a custom target that depends on the custom command
+    add_custom_target(${OUTPUT}_target ALL DEPENDS ${OUTPUT})
+endmacro()
