@@ -69,14 +69,16 @@ struct Statement {
 struct Base {
   AnyStorage<Connection> _connection;
   std::string_view _dbName{"shards.db"};
+  bool ready = false; // mesh is the owner so we don't need cleanup
 
-  void warmup(SHContext *context) {
-    auto storageKey = fmt::format("DB.Connection_{}", _dbName);
-    auto mesh = context->main->mesh.lock();
-    _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data()); });
+  void ensureDb(SHContext *context) {
+    if (!ready) {
+      auto storageKey = fmt::format("DB.Connection_{}", _dbName);
+      auto mesh = context->main->mesh.lock();
+      _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data()); });
+      ready = true;
+    }
   }
-
-  void cleanup() {}
 };
 
 struct Query : public Base {
@@ -91,8 +93,6 @@ struct Query : public Base {
     PARAM_CLEANUP();
 
     prepared.reset();
-
-    Base::cleanup();
   }
 
   std::unique_ptr<Statement> prepared;
@@ -104,8 +104,6 @@ struct Query : public Base {
       Base::_dbName = "shards.db";
     }
 
-    Base::warmup(context);
-
     PARAM_WARMUP(context);
   }
 
@@ -114,6 +112,8 @@ struct Query : public Base {
   std::vector<SeqVar *> colSeqs;
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ensureDb(context);
+
     if (!prepared) {
       prepared.reset(new Statement(_connection->get(), _query.payload.stringValue)); // _query is full terminated cos cloned
     }
@@ -158,7 +158,7 @@ struct Query : public Base {
     bool empty = true;
     while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
       auto count = sqlite3_column_count(prepared->get());
-      if(count == 0) {
+      if (count == 0) {
         continue;
       }
 
@@ -231,8 +231,6 @@ struct Transaction : public Base {
 
   void cleanup() {
     PARAM_CLEANUP();
-
-    Base::cleanup();
   }
 
   void warmup(SHContext *context) {
@@ -242,12 +240,12 @@ struct Transaction : public Base {
       Base::_dbName = "shards.db";
     }
 
-    Base::warmup(context);
-
     PARAM_WARMUP(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ensureDb(context);
+
     auto rc = sqlite3_exec(_connection->get(), "BEGIN TRANSACTION;", nullptr, nullptr, nullptr);
     if (rc != SQLITE_OK) {
       throw ActivationError(sqlite3_errmsg(_connection->get()));
@@ -281,8 +279,6 @@ struct LoadExtension : public Base {
 
   void cleanup() {
     PARAM_CLEANUP();
-
-    Base::cleanup();
   }
 
   void warmup(SHContext *context) {
@@ -292,12 +288,12 @@ struct LoadExtension : public Base {
       Base::_dbName = "shards.db";
     }
 
-    Base::warmup(context);
-
     PARAM_WARMUP(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ensureDb(context);
+
     std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
     _connection->loadExtension(extPath);
     return input;
@@ -315,8 +311,6 @@ struct RawQuery : public Base {
     PARAM_CLEANUP();
 
     prepared.reset();
-
-    Base::cleanup();
   }
 
   std::unique_ptr<Statement> prepared;
@@ -328,8 +322,6 @@ struct RawQuery : public Base {
       Base::_dbName = "shards.db";
     }
 
-    Base::warmup(context);
-
     PARAM_WARMUP(context);
   }
 
@@ -337,6 +329,8 @@ struct RawQuery : public Base {
   std::vector<SeqVar *> colSeqs;
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ensureDb(context);
+
     char *errMsg = nullptr;
     std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
     int rc = sqlite3_exec(_connection->get(), query.c_str(), nullptr, nullptr, &errMsg);

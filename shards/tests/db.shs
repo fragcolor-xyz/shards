@@ -7,9 +7,10 @@
     Assert.Is({x: [88 100 102], y: [99 101 none]})
     Msg("Test 1 passed")
 
-    [] | DB.Query("CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" "custom.db")
-    [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" "custom.db")
-    [] | DB.Query("SELECT * FROM integers" "custom.db") | Log |
+    "test-db-dir" | FS.CreateDirectories
+    [] | DB.Query("CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" "test-db-dir/custom.db")
+    [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" "test-db-dir/custom.db")
+    [] | DB.Query("SELECT * FROM integers" "test-db-dir/custom.db") | Log |
     Assert.Is({x: [88 100 102], y: [99 101 none]})
     Msg("Test 2 passed")
 
@@ -57,7 +58,7 @@
 
 ; Run cleanup before running tests
 "shards.db" | FS.Remove
-"custom.db" | FS.Remove
+"test-db-dir/custom.db" | FS.Remove
 
 ; @schedule(root cleanup)
 @schedule(root db-test-1)

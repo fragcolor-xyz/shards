@@ -534,6 +534,21 @@ struct SetWriteTime {
     return input;
   }
 };
+
+struct CreateDirectories {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+    if (!fs::exists(p)) {
+      if (!fs::create_directories(p)) {
+        throw ActivationError(fmt::format("FS.CreateDirectories, failed to create directories for {}.", p));
+      }
+    }
+    return input;
+  }
+};
 }; // namespace FS
 
 SHARDS_REGISTER_FN(fs) {
@@ -553,5 +568,6 @@ SHARDS_REGISTER_FN(fs) {
   REGISTER_SHARD("FS.Remove", FS::Remove);
   REGISTER_SHARD("FS.LastWriteTime", FS::LastWriteTime);
   REGISTER_SHARD("FS.SetWriteTime", FS::SetWriteTime);
+  REGISTER_SHARD("FS.CreateDirectories", FS::CreateDirectories);
 }
 }; // namespace shards
