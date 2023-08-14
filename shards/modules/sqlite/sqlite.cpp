@@ -110,6 +110,7 @@ struct Query : public Base {
   }
 
   TableVar output;
+  TableVar emptyOutput; // this is a trick to avoid clearing the output on every activation if empty
   std::vector<SeqVar *> colSeqs;
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -154,8 +155,15 @@ struct Query : public Base {
     }
 
     colSeqs.clear();
+    bool empty = true;
     while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
       auto count = sqlite3_column_count(prepared->get());
+      if(count == 0) {
+        continue;
+      }
+
+      empty = false;
+
       // fill column cache on first row
       if (colSeqs.empty()) {
         for (int i = 0; i < count; i++) {
@@ -204,7 +212,7 @@ struct Query : public Base {
       throw ActivationError(sqlite3_errmsg(_connection->get()));
     }
 
-    return output;
+    return empty ? emptyOutput : output;
   }
 };
 
