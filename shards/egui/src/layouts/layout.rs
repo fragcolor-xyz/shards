@@ -10,8 +10,8 @@ use super::LayoutDirection;
 use super::LayoutDirectionCC;
 use super::LayoutFrame;
 use super::LayoutFrameCC;
+use super::EguiScrollAreaSettings;
 use super::ScrollVisibility;
-use crate::LAYOUT_FRAME_TYPE_VEC;
 use crate::layouts::ScrollVisibilityCC;
 use crate::util;
 use crate::EguiId;
@@ -22,6 +22,7 @@ use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::LAYOUTCLASS_TYPE;
 use crate::LAYOUTCLASS_TYPE_VEC;
 use crate::LAYOUTCLASS_TYPE_VEC_VAR;
+use crate::LAYOUT_FRAME_TYPE_VEC;
 use crate::PARENTS_UI_NAME;
 use shards::shard::Shard;
 use shards::types::Context;
@@ -87,6 +88,43 @@ macro_rules! retrieve_enum_parameter {
       None
     }
   };
+}
+
+macro_rules! retrieve_layout_class_attribute {
+  ($layout_class:ident, $attribute:ident) => {{
+    let mut parent = $layout_class as *const LayoutClass;
+    let mut result = None;
+    while !parent.is_null() {
+      unsafe {
+        if let Some(attribute) = &(*parent).$attribute {
+          // found the attribute, can return now
+          result = Some(attribute.clone());
+          break;
+        } else {
+          // attribute not found in parent, continue looking through parents
+          parent = (*parent).parent;
+        }
+      }
+    }
+    result
+  }};
+  ($layout_class:ident, $attribute:ident, $member:ident) => {{
+    let mut parent = $layout_class as *const LayoutClass;
+    let mut result = None;
+    while !parent.is_null() {
+      unsafe {
+        if let Some(attribute) = &(*parent).$attribute {
+          // found the member attribute, can return now
+          result = Some(attribute.$member.clone());
+          break;
+        } else {
+          // attribute not found in parent, continue looking through parents
+          parent = (*parent).parent;
+        }
+      }
+    }
+    result
+  }};
 }
 
 lazy_static! {
@@ -251,16 +289,20 @@ impl Shard for LayoutConstructor {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    let mut has_parent = false;
+
     let parent_layout_class = if !self.parent.get().is_none() {
       let parent_layout_class: Option<Rc<LayoutClass>> = Some(Var::from_object_as_clone(
         self.parent.get(),
         &LAYOUTCLASS_TYPE,
       )?);
       let parent_layout_class = unsafe {
-        let parent_layout_ptr = Rc::as_ptr(parent_layout_class.as_ref().unwrap()) as *mut LayoutClass;
+        let parent_layout_ptr =
+          Rc::as_ptr(parent_layout_class.as_ref().unwrap()) as *mut LayoutClass;
         &*parent_layout_ptr
-      };  
+      };
 
+      has_parent = true;
       Some(parent_layout_class)
     } else {
       None
@@ -274,11 +316,16 @@ impl Shard for LayoutConstructor {
         let cross_align = if let Some(cross_align) =
           retrieve_enum_parameter!(layout_table, "cross_align", LayoutAlign, LayoutAlignCC)
         {
-          cross_align
+          cross_align.into()
         } else {
-          LayoutAlign::Min // default cross align
+          // if there is a parent, retrieve the parent's value over the default
+          if let Some(parent_layout_class) = parent_layout_class {
+            // this is guaranteed to be Some because the parent has already been constructed
+            retrieve_layout_class_attribute!(parent_layout_class, layout, cross_align).unwrap()
+          } else {
+            egui::Align::Min // default cross align
+          }
         };
-        let cross_align: egui::Align = cross_align.try_into()?;
 
         let main_direction = if let Some(main_direction) = retrieve_enum_parameter!(
           layout_table,
@@ -286,29 +333,39 @@ impl Shard for LayoutConstructor {
           LayoutDirection,
           LayoutDirectionCC
         ) {
-          main_direction
+          main_direction.into()
         } else {
-          return Err("Invalid main direction provided. Main direction is a required parameter");
+          if let Some(parent_layout_class) = parent_layout_class {
+            retrieve_layout_class_attribute!(parent_layout_class, layout, main_dir).unwrap()
+          } else {
+            return Err("Invalid main direction provided. Main direction is a required parameter");
+          }
         };
-        let main_direction: egui::Direction = main_direction.try_into()?;
 
         let mut layout = egui::Layout::from_main_dir_and_cross_align(main_direction, cross_align);
 
         let main_align = if let Some(main_align) =
           retrieve_enum_parameter!(layout_table, "main_align", LayoutAlign, LayoutAlignCC)
         {
-          main_align
+          main_align.into()
         } else {
-          LayoutAlign::Center // default main align
+          if let Some(parent_layout_class) = parent_layout_class {
+            retrieve_layout_class_attribute!(parent_layout_class, layout, main_align).unwrap()
+          } else {
+            egui::Align::Center // default main align
+          }
         };
-        let main_align: egui::Align = main_align.try_into()?;
         layout = layout.with_main_align(main_align);
 
         let main_wrap =
           if let Some(main_wrap) = retrieve_parameter!(layout_table, "main_wrap", bool) {
             main_wrap
           } else {
-            false // default main wrap
+            if let Some(parent_layout_class) = parent_layout_class {
+              retrieve_layout_class_attribute!(parent_layout_class, layout, main_wrap).unwrap()
+            } else {
+              false // default main wrap
+            }
           };
         layout = layout.with_main_wrap(main_wrap);
 
@@ -316,7 +373,11 @@ impl Shard for LayoutConstructor {
           if let Some(main_justify) = retrieve_parameter!(layout_table, "main_wrap", bool) {
             main_justify
           } else {
-            false // default main justify
+            if let Some(parent_layout_class) = parent_layout_class {
+              retrieve_layout_class_attribute!(parent_layout_class, layout, main_justify).unwrap()
+            } else {
+              false // default main justify
+            }
           };
         layout = layout.with_main_justify(main_justify);
 
@@ -324,124 +385,147 @@ impl Shard for LayoutConstructor {
           if let Some(cross_justify) = retrieve_parameter!(layout_table, "main_wrap", bool) {
             cross_justify
           } else {
-            false // default cross justify
+            if let Some(parent_layout_class) = parent_layout_class {
+              retrieve_layout_class_attribute!(parent_layout_class, layout, cross_justify).unwrap()
+            } else {
+              false // default cross justify
+            }
           };
         layout = layout.with_cross_justify(cross_justify);
 
-        layout
+        Some(layout)
       } else {
         return Err("Invalid attribute value received. Expected Table for Layout");
       }
     } else {
-      if let Some(parent_layout_class) = parent_layout_class {
-        parent_layout_class.layout
+      if has_parent {
+        // if has parent, then leave it empty and use the reference to the parent to grab the value
+        None
       } else {
         return Err("Invalid Layout provided. Layout is a required parameter when there is no parent LayoutClass provided");
       }
     };
 
     let size = if !self.size.get().is_none() {
-      self.size.get().try_into()?
+      Some(self.size.get().try_into()?)
     } else {
-      (0.0, 0.0)
+      None
     };
 
-    let fill_width: bool = if !self.fill_width.get().is_none() {
-      self.fill_width.get().try_into()?
+    let fill_width: Option<bool> = if !self.fill_width.get().is_none() {
+      Some(self.fill_width.get().try_into()?)
     } else {
-      false // default fill width
+      None // default fill width
     };
-    let fill_height: bool = if !self.fill_height.get().is_none() {
-      self.fill_height.get().try_into()?
+    let fill_height: Option<bool> = if !self.fill_height.get().is_none() {
+      Some(self.fill_height.get().try_into()?)
     } else {
-      false // default fill height
+      None // default fill height
     };
 
     let disabled = if !self.disabled.get().is_none() {
-      self.disabled.get().try_into()?
+      Some(self.disabled.get().try_into()?)
     } else {
-      if let Some(parent_layout_class) = parent_layout_class {
-        parent_layout_class.disabled
-      } else {
-        false // default disabled value
-      }
+      None // default value should be interpreted as false later on
     };
 
     let frame = if !self.frame.get().is_none() {
       let frame = self.frame.get();
-      if frame.valueType == crate::shardsc::SHType_Enum && unsafe { frame.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId == LayoutFrameCC } {
+      if frame.valueType == crate::shardsc::SHType_Enum
+        && unsafe { frame.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId == LayoutFrameCC }
+      {
         let bits = unsafe { frame.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
         Some(LayoutFrame { bits })
       } else {
         // should be unreachable due to parameter type checking
-        return Err("Invalid frame type provided. Expected LayoutFrame for Frame")
+        return Err("Invalid frame type provided. Expected LayoutFrame for Frame");
       }
     } else {
-      if let Some(parent_layout_class) = parent_layout_class {
-        parent_layout_class.frame
-      } else {
-        None
-      }
+      None
     };
 
     let scroll_area = if !self.scroll_area.get().is_none() {
-      let scroll_area = self.scroll_area.get();
-      if scroll_area.valueType == crate::shardsc::SHType_Table {
-        let scroll_area: Table = scroll_area.try_into()?;
+      let scroll_area_table = self.scroll_area.get();
+      if scroll_area_table.valueType == crate::shardsc::SHType_Table {
+        let scroll_area_table: Table = scroll_area_table.try_into()?;
 
         let horizontal_scroll_enabled = if let Some(enabled) =
-          retrieve_parameter!(scroll_area, "horizontal_scroll_enabled", bool)
+          retrieve_parameter!(scroll_area_table, "horizontal_scroll_enabled", bool)
         {
           enabled
         } else {
-          false
+          if let Some(parent_layout_class) = parent_layout_class {
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, horizontal_scroll_enabled).unwrap()
+          } else {
+            false // default horizontal_scroll_enabled
+          }
         };
 
         let vertical_scroll_enabled = if let Some(enabled) =
-          retrieve_parameter!(scroll_area, "vertical_scroll_enabled", bool)
+          retrieve_parameter!(scroll_area_table, "vertical_scroll_enabled", bool)
         {
           enabled
         } else {
-          false
+          if let Some(parent_layout_class) = parent_layout_class {
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, vertical_scroll_enabled).unwrap()
+          } else {
+            false // default vertical_scroll_enabled
+          }
         };
 
         let scroll_visibility = if let Some(visibility) = retrieve_enum_parameter!(
-          scroll_area,
+          scroll_area_table,
           "scroll_visibility",
           ScrollVisibility,
           ScrollVisibilityCC
         ) {
           visibility
         } else {
-          ScrollVisibility::AlwaysVisible
+          if let Some(parent_layout_class) = parent_layout_class {
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility).unwrap()
+          } else {
+            ScrollVisibility::AlwaysVisible
+          }
         };
-        let scroll_visibility: egui::scroll_area::ScrollBarVisibility =
-          scroll_visibility.try_into()?;
 
         Some(
-          egui::ScrollArea::new([horizontal_scroll_enabled, vertical_scroll_enabled])
-            .scroll_bar_visibility(scroll_visibility),
+          EguiScrollAreaSettings {
+            horizontal_scroll_enabled,
+            vertical_scroll_enabled,
+            scroll_visibility,
+          }
         )
       } else {
-        return Err("Invalid scroll bar type provided. Expected Table for ScrollArea");
+          return Err("Invalid scroll bar type provided. Expected Table for ScrollArea");
       }
     } else {
-      if let Some(parent_layout_class) = parent_layout_class {
-        parent_layout_class.scroll_area.clone()
-      } else {
-        None
-      }
+      // if has parent, put None and let shard retrieve from parent. else, default is also None
+      None
     };
 
-    self.layout_class = Some(Rc::new(LayoutClass {
-      layout,
-      size,
-      fill_width,
-      fill_height,
-      disabled,
-      frame,
-      scroll_area,
-    }));
+    if let Some(parent_layout_class) = parent_layout_class {
+      self.layout_class = Some(Rc::new(LayoutClass {
+        parent: parent_layout_class,
+        layout,
+        size,
+        fill_width,
+        fill_height,
+        disabled,
+        frame,
+        scroll_area,
+      }));
+    } else {
+      self.layout_class = Some(Rc::new(LayoutClass {
+        parent: std::ptr::null(),
+        layout,
+        size,
+        fill_width,
+        fill_height,
+        disabled,
+        frame,
+        scroll_area,
+      }));
+    }
 
     let layout_class_ref = self.layout_class.as_ref().unwrap();
     Ok(Var::new_object(layout_class_ref, &LAYOUTCLASS_TYPE))
@@ -613,23 +697,41 @@ impl Shard for Layout {
         &*layout_ptr
       };
 
-      let mut layout = layout_class.layout;
+      let layout = if let Some(layout) = retrieve_layout_class_attribute!(layout_class, layout) {
+        layout
+      } else {
+        return Err("No layout found in LayoutClass. LayoutClass is invalid/corrupted");
+      };
 
       let mut size = if !self.size.get().is_none() {
         self.size.get().try_into()?
       } else {
-        (0.0, 0.0)
+        if let Some(size) = retrieve_layout_class_attribute!(layout_class, size) {
+          size
+        } else {
+          (0.0, 0.0) // default value for size
+        }
       };
 
-      let fill_width: bool = if !self.fill_width.get().is_none() {
+      // shard parameters have higher priority and override layout class
+      let fill_width = if !self.fill_width.get().is_none() {
         self.fill_width.get().try_into()?
       } else {
-        false // default fill width
+        if let Some(fill_width) = retrieve_layout_class_attribute!(layout_class, fill_width) {
+          fill_width
+        } else {
+          false // default value for fill_width
+        }
       };
-      let fill_height: bool = if !self.fill_height.get().is_none() {
+
+      let fill_height = if !self.fill_height.get().is_none() {
         self.fill_height.get().try_into()?
       } else {
-        false // default fill height
+        if let Some(fill_height) = retrieve_layout_class_attribute!(layout_class, fill_height) {
+          fill_height
+        } else {
+          false // default value for fill_height
+        }
       };
 
       if fill_width {
@@ -647,30 +749,35 @@ impl Shard for Layout {
         size.1 = ui.spacing().interact_size.y;
       }
 
-      let disabled = layout_class.disabled;
+      let disabled =
+        if let Some(disabled) = retrieve_layout_class_attribute!(layout_class, disabled) {
+          disabled
+        } else {
+          false // default value for disabled
+        };
 
-      let frame = if let Some(frame) = layout_class.frame {
+      let frame = if let Some(frame) = retrieve_layout_class_attribute!(layout_class, frame) {
         let style = ui.style();
         match frame {
-            LayoutFrame::Widgets => Some(egui::Frame::group(style)),
-            LayoutFrame::SideTopPanel => Some(egui::Frame::side_top_panel(style)),
-            LayoutFrame::CentralPanel => Some(egui::Frame::central_panel(style)),
-            LayoutFrame::Window => Some(egui::Frame::window(style)),
-            LayoutFrame::Menu => Some(egui::Frame::menu(style)),
-            LayoutFrame::Popup => Some(egui::Frame::popup(style)),
-            LayoutFrame::Canvas => Some(egui::Frame::canvas(style)),
-            LayoutFrame::DarkCanvas => Some(egui::Frame::dark_canvas(style)),
-            _ => unreachable!()
+          LayoutFrame::Widgets => Some(egui::Frame::group(style)),
+          LayoutFrame::SideTopPanel => Some(egui::Frame::side_top_panel(style)),
+          LayoutFrame::CentralPanel => Some(egui::Frame::central_panel(style)),
+          LayoutFrame::Window => Some(egui::Frame::window(style)),
+          LayoutFrame::Menu => Some(egui::Frame::menu(style)),
+          LayoutFrame::Popup => Some(egui::Frame::popup(style)),
+          LayoutFrame::Canvas => Some(egui::Frame::canvas(style)),
+          LayoutFrame::DarkCanvas => Some(egui::Frame::dark_canvas(style)),
+          _ => unreachable!(),
         }
       } else {
-        None
+        None // default value for frame
       };
-
-      let scroll_area = if let Some(scroll_area) = &layout_class.scroll_area {
-        Some(scroll_area.clone())
-      } else {
-        None
-      };
+      let scroll_area =
+        if let Some(scroll_area) = retrieve_layout_class_attribute!(layout_class, scroll_area) {
+          Some(scroll_area.to_egui_scrollarea())
+        } else {
+          None // default value for scroll_area
+        };
 
       let scroll_area_id = EguiId::new(self, 0); // TODO: Check if have scroll area first
 

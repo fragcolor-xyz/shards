@@ -78,14 +78,28 @@ struct Horizontal {
   exposing: ExposedTypes,
 }
 
+#[derive(Clone)]
+struct EguiScrollAreaSettings {
+  horizontal_scroll_enabled: bool,
+  vertical_scroll_enabled: bool,
+  scroll_visibility: ScrollVisibility,
+}
+
+impl EguiScrollAreaSettings {
+  pub fn to_egui_scrollarea(&self) -> egui::ScrollArea {
+    egui::ScrollArea::new([self.horizontal_scroll_enabled, self.vertical_scroll_enabled]).scroll_bar_visibility(self.scroll_visibility.into())
+  }
+}
+
 struct LayoutClass {
-  layout: egui::Layout,
-  size: (f32, f32),
-  fill_width: bool,
-  fill_height: bool,
-  disabled: bool,
+  parent: *const LayoutClass,
+  layout: Option<egui::Layout>,
+  size: Option<(f32, f32)>,
+  fill_width: Option<bool>,
+  fill_height: Option<bool>,
+  disabled: Option<bool>,
   frame: Option<LayoutFrame>,
-  scroll_area: Option<egui::ScrollArea>,
+  scroll_area: Option<EguiScrollAreaSettings>,
 }
 
 struct LayoutConstructor {
@@ -123,16 +137,12 @@ shenum! {
   pub struct ScrollVisibilityInfo {}
 }
 
-impl TryFrom<ScrollVisibility> for egui::scroll_area::ScrollBarVisibility {
-  type Error = &'static str;
-
-  fn try_from(value: ScrollVisibility) -> Result<Self, Self::Error> {
+impl From<ScrollVisibility> for egui::scroll_area::ScrollBarVisibility {
+  fn from(value: ScrollVisibility) -> Self {
     match value {
-      ScrollVisibility::AlwaysVisible => Ok(egui::scroll_area::ScrollBarVisibility::AlwaysVisible),
-      ScrollVisibility::VisibleWhenNeeded => {
-        Ok(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded)
-      }
-      ScrollVisibility::AlwaysHidden => Ok(egui::scroll_area::ScrollBarVisibility::AlwaysHidden),
+      ScrollVisibility::AlwaysVisible => egui::scroll_area::ScrollBarVisibility::AlwaysVisible,
+      ScrollVisibility::VisibleWhenNeeded => egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
+      ScrollVisibility::AlwaysHidden => egui::scroll_area::ScrollBarVisibility::AlwaysHidden,
       _ => unreachable!(),
     }
   }
@@ -194,15 +204,13 @@ shenum! {
   pub struct LayoutDirectionInfo {}
 }
 
-impl TryFrom<LayoutDirection> for egui::Direction {
-  type Error = &'static str;
-
-  fn try_from(value: LayoutDirection) -> Result<Self, Self::Error> {
+impl From<LayoutDirection> for egui::Direction {
+  fn from(value: LayoutDirection) -> Self {
     match value {
-      LayoutDirection::LeftToRight => Ok(egui::Direction::LeftToRight),
-      LayoutDirection::RightToLeft => Ok(egui::Direction::RightToLeft),
-      LayoutDirection::TopDown => Ok(egui::Direction::TopDown),
-      LayoutDirection::BottomUp => Ok(egui::Direction::BottomUp),
+      LayoutDirection::LeftToRight => egui::Direction::LeftToRight,
+      LayoutDirection::RightToLeft => egui::Direction::RightToLeft,
+      LayoutDirection::TopDown => egui::Direction::TopDown,
+      LayoutDirection::BottomUp => egui::Direction::BottomUp,
       _ => unreachable!(),
     }
   }
@@ -238,18 +246,16 @@ shenum! {
   pub struct LayoutAlignInfo {}
 }
 
-impl TryFrom<LayoutAlign> for egui::Align {
-  type Error = &'static str;
-
-  fn try_from(value: LayoutAlign) -> Result<Self, Self::Error> {
+impl From<LayoutAlign> for egui::Align {
+  fn from(value: LayoutAlign) -> Self {
     match value {
-      LayoutAlign::Min => Ok(egui::Align::Min),
-      LayoutAlign::Left => Ok(egui::Align::Min),
-      LayoutAlign::Top => Ok(egui::Align::Min),
-      LayoutAlign::Center => Ok(egui::Align::Center),
-      LayoutAlign::Max => Ok(egui::Align::Max),
-      LayoutAlign::Right => Ok(egui::Align::Max),
-      LayoutAlign::Bottom => Ok(egui::Align::Max),
+      LayoutAlign::Min => egui::Align::Min,
+      LayoutAlign::Left => egui::Align::Min,
+      LayoutAlign::Top => egui::Align::Min,
+      LayoutAlign::Center => egui::Align::Center,
+      LayoutAlign::Max => egui::Align::Max,
+      LayoutAlign::Right => egui::Align::Max,
+      LayoutAlign::Bottom => egui::Align::Max,
       _ => unreachable!(),
     }
   }
