@@ -10,7 +10,6 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
-
 use shards::core::registerShard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
@@ -28,15 +27,12 @@ use shards::types::Types;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::INT_TYPES_SLICE;
 
-
-use shards::types::Var;
 use core::time::Duration;
-
+use shards::types::Var;
 
 use reqwest::blocking::Response;
 use reqwest::header::{HeaderName, HeaderValue};
 use std::convert::TryInto;
-
 
 static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
 static HEADERS_TYPES: &[Type] = &[
@@ -345,7 +341,13 @@ macro_rules! get_like {
           "Failed to send the request"
         })?;
 
-        self.rb._finalize(response)
+        if response.status().is_success() {
+          self.rb._finalize(response)
+        } else {
+          shlog_error!("Request failed with status {}", response.status());
+          shlog_error!("Request failed with body {}", response.text().unwrap());
+          Err("Request failed")
+        }
       }
     }
   };
@@ -385,7 +387,7 @@ macro_rules! post_like {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         self.rb._setParam(index, value);
-        Ok(()) 
+        Ok(())
       }
 
       fn getParam(&mut self, index: i32) -> Var {
@@ -465,11 +467,17 @@ macro_rules! post_like {
         }
 
         let response = request.send().map_err(|e| {
-          shlog!("Failure details: {}", e);
+          shlog_error!("Failure details: {}", e);
           "Failed to send the request"
         })?;
 
-        self.rb._finalize(response)
+        if response.status().is_success() {
+          self.rb._finalize(response)
+        } else {
+          shlog_error!("Request failed with status {}", response.status());
+          shlog_error!("Request failed with body {}", response.text().unwrap());
+          Err("Request failed")
+        }
       }
     }
   };
