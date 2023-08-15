@@ -66,10 +66,6 @@
                                   (Gizmos.Point :Center (Float3 -2 -0.2 1)  :Color (Float4 1.0 0.2 1.0 1.0) :Thickness 4)))
 
     ; Draw on top of everything (ignore depth)
-    ;; (Gizmos.Context :Queue .editor-queue-no-depth :View .view
-    ;;                 :Contents (->
-    ;;                           .transform-0 (Gizmos.Translation) > .transform-0))
-
     (Gizmos.Context :Queue .editor-queue-no-depth :View .view
                     :Contents (->
                               .transform-0 (Gizmos.Scaling) > .transform-0))
