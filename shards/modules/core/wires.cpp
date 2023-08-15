@@ -1544,11 +1544,11 @@ struct ParallelBase : public CapturingSpawners {
       } else {
         // all ended let's apply policy here
         if (_policy == WaitUntil::SomeSuccess) {
-          return Var(_outputs.data(), succeeded);
+          return Var(_outputs.data(), len);
         } else {
           assert(_policy == WaitUntil::AllSuccess);
           if (len == succeeded) {
-            return Var(_outputs.data(), succeeded);
+            return Var(_outputs.data(), len);
           } else {
             throw ActivationError("ParallelBase, failed some wires!");
           }
