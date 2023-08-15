@@ -55,6 +55,7 @@ struct GizmosContextShard {
 
     if (_contextVarRef) {
       releaseVariable(_contextVarRef);
+      _contextVarRef = nullptr;
     }
   }
 
