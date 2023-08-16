@@ -32,7 +32,7 @@
 (defshards lighting-feature []
   (Float3 -0.2 -2 -1) (Math.Normalize) = .light-direction
   (Float3 1 1 1) (Math.Multiply 0.5) = .light-color
-  {:Shaders [{:Name "lighting"
+  (GFX.Feature :Shaders [{:Name "lighting"
               :Stage ProgrammableGraphicsStage.Fragment
               :EntryPoint (->
                            (Shader.ReadInput :Name "worldNormal") >= .normal
@@ -50,8 +50,7 @@
               :After ["readColor"]
               :Before ["writeColor"]}]
    :Params {:lightDirection {:Default .light-direction}
-            :lightColor {:Default .light-color}}}
-  (GFX.Feature))
+            :lightColor {:Default .light-color}}))
 
 (defloop test-basic-anim
   (Setup
