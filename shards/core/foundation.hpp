@@ -1433,9 +1433,9 @@ inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
   using namespace std::literals;
   switch (var.valueType) {
   case SHType::ContextVar: {
-
     auto sv = SHSTRVIEW(var);
     for (const auto &entry : exposed) {
+      assert(var.payload.stringValue && entry.name && "Invalid exposed variable name (nullptr)");
       if (sv == entry.name) {
         out.push_back(SHExposedTypeInfo{
             .name = var.payload.stringValue,
