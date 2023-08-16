@@ -24,6 +24,7 @@ use crate::LAYOUTCLASS_TYPE_VEC;
 use crate::LAYOUTCLASS_TYPE_VEC_VAR;
 use crate::LAYOUT_FRAME_TYPE_VEC;
 use crate::PARENTS_UI_NAME;
+use egui::ScrollArea;
 use shards::shard::Shard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -142,8 +143,8 @@ lazy_static! {
     )
       .into(),
     (
-      cstr!("Size"),
-      shccstr!("The size of the space to be reserved by this UI. May be overidden by FillWidth and FillHeight."),
+      cstr!("MinSize"),
+      shccstr!("The minimum size of the space to be reserved by this UI. Can be overidden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
@@ -183,8 +184,8 @@ lazy_static! {
     )
     .into(),
     (
-      cstr!("Size"),
-      shccstr!("The size of the space to be reserved by this UI. May be overidden by FillWidth and FillHeight."),
+      cstr!("MinSize"),
+      shccstr!("The minimum size of the space to be reserved by this UI. Can be overidden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
@@ -199,7 +200,7 @@ impl Default for LayoutConstructor {
       parent: ParamVar::default(),
       layout: ParamVar::default(),
       layout_class: None,
-      size: ParamVar::default(),
+      min_size: ParamVar::default(),
       fill_width: ParamVar::default(),
       fill_height: ParamVar::default(),
       disabled: ParamVar::default(),
@@ -238,7 +239,7 @@ impl Shard for LayoutConstructor {
     match index {
       0 => Ok(self.parent.set_param(value)),
       1 => Ok(self.layout.set_param(value)),
-      2 => Ok(self.size.set_param(value)),
+      2 => Ok(self.min_size.set_param(value)),
       3 => Ok(self.fill_width.set_param(value)),
       4 => Ok(self.fill_height.set_param(value)),
       5 => Ok(self.disabled.set_param(value)),
@@ -252,7 +253,7 @@ impl Shard for LayoutConstructor {
     match index {
       0 => self.parent.get_param(),
       1 => self.layout.get_param(),
-      2 => self.size.get_param(),
+      2 => self.min_size.get_param(),
       3 => self.fill_width.get_param(),
       4 => self.fill_height.get_param(),
       5 => self.disabled.get_param(),
@@ -265,7 +266,7 @@ impl Shard for LayoutConstructor {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parent.warmup(ctx);
     self.layout.warmup(ctx);
-    self.size.warmup(ctx);
+    self.min_size.warmup(ctx);
     self.fill_width.warmup(ctx);
     self.fill_height.warmup(ctx);
     self.disabled.warmup(ctx);
@@ -281,7 +282,7 @@ impl Shard for LayoutConstructor {
     self.disabled.cleanup();
     self.fill_height.cleanup();
     self.fill_width.cleanup();
-    self.size.cleanup();
+    self.min_size.cleanup();
     self.layout.cleanup();
     self.parent.cleanup();
 
@@ -406,8 +407,8 @@ impl Shard for LayoutConstructor {
       }
     };
 
-    let size = if !self.size.get().is_none() {
-      Some(self.size.get().try_into()?)
+    let min_size = if !self.min_size.get().is_none() {
+      Some(self.min_size.get().try_into()?)
     } else {
       None
     };
@@ -507,7 +508,7 @@ impl Shard for LayoutConstructor {
       self.layout_class = Some(Rc::new(LayoutClass {
         parent: parent_layout_class,
         layout,
-        size,
+        min_size,
         fill_width,
         fill_height,
         disabled,
@@ -518,7 +519,7 @@ impl Shard for LayoutConstructor {
       self.layout_class = Some(Rc::new(LayoutClass {
         parent: std::ptr::null(),
         layout,
-        size,
+        min_size,
         fill_width,
         fill_height,
         disabled,
@@ -541,7 +542,7 @@ impl Default for Layout {
       requiring: Vec::new(),
       contents: ShardsVar::default(),
       layout_class: ParamVar::default(),
-      size: ParamVar::default(),
+      min_size: ParamVar::default(),
       fill_width: ParamVar::default(),
       fill_height: ParamVar::default(),
       exposing: Vec::new(),
@@ -600,7 +601,7 @@ impl Shard for Layout {
     match index {
       0 => self.contents.set_param(value),
       1 => Ok(self.layout_class.set_param(value)),
-      2 => Ok(self.size.set_param(value)),
+      2 => Ok(self.min_size.set_param(value)),
       3 => Ok(self.fill_width.set_param(value)),
       4 => Ok(self.fill_height.set_param(value)),
       _ => Err("Invalid parameter index"),
@@ -611,7 +612,7 @@ impl Shard for Layout {
     match index {
       0 => self.contents.get_param(),
       1 => self.layout_class.get_param(),
-      2 => self.size.get_param(),
+      2 => self.min_size.get_param(),
       3 => self.fill_width.get_param(),
       4 => self.fill_height.get_param(),
       _ => Var::default(),
@@ -662,7 +663,7 @@ impl Shard for Layout {
       self.contents.warmup(ctx)?;
     }
     self.layout_class.warmup(ctx);
-    self.size.warmup(ctx);
+    self.min_size.warmup(ctx);
     self.fill_width.warmup(ctx);
     self.fill_height.warmup(ctx);
 
@@ -672,7 +673,7 @@ impl Shard for Layout {
   fn cleanup(&mut self) -> Result<(), &str> {
     self.fill_height.cleanup();
     self.fill_width.cleanup();
-    self.size.cleanup();
+    self.min_size.cleanup();
     self.layout_class.cleanup();
     if !self.contents.is_empty() {
       self.contents.cleanup();
@@ -703,13 +704,13 @@ impl Shard for Layout {
         return Err("No layout found in LayoutClass. LayoutClass is invalid/corrupted");
       };
 
-      let mut size = if !self.size.get().is_none() {
-        self.size.get().try_into()?
+      let mut min_size = if !self.min_size.get().is_none() {
+        self.min_size.get().try_into()?
       } else {
-        if let Some(size) = retrieve_layout_class_attribute!(layout_class, size) {
-          size
+        if let Some(min_size) = retrieve_layout_class_attribute!(layout_class, min_size) {
+          min_size
         } else {
-          (0.0, 0.0) // default value for size
+          (0.0, 0.0) // default value for min_size
         }
       };
 
@@ -735,18 +736,18 @@ impl Shard for Layout {
       };
 
       if fill_width {
-        size.0 = ui.available_size_before_wrap().x;
+        min_size.0 = ui.available_size_before_wrap().x;
       }
       if fill_height {
-        size.1 = ui.available_size_before_wrap().y;
+        min_size.1 = ui.available_size_before_wrap().y;
       }
 
       // If the size is still 0, use only minimum size for an interactive widget
-      if size.0 == 0.0 {
-        size.0 = ui.spacing().interact_size.x;
+      if min_size.0 == 0.0 {
+        min_size.0 = ui.spacing().interact_size.x;
       }
-      if size.1 == 0.0 {
-        size.1 = ui.spacing().interact_size.y;
+      if min_size.1 == 0.0 {
+        min_size.1 = ui.spacing().interact_size.y;
       }
 
       let disabled =
@@ -781,110 +782,109 @@ impl Shard for Layout {
 
       let scroll_area_id = EguiId::new(self, 0); // TODO: Check if have scroll area first
 
+      // if there is a frame, draw it as the outermost ui element
       if let Some(frame) = frame {
-        frame
-          .show(ui, |ui| {
-            // add the new child_ui created by frame onto the stack of parents
-            util::with_object_stack_var_pass_stack_var(
-              &mut self.parents,
-              ui,
-              &EGUI_UI_TYPE,
-              |parent_stack_var| {
-                if let Some(ui) = util::get_current_parent(parent_stack_var.get())? {
-                  ui.allocate_ui_with_layout(size.into(), layout, |ui| {
-                    // add the new child_ui created by layout onto the stack of parents
-                    if let Some(scroll_area) = scroll_area {
-                      util::with_object_stack_var_pass_stack_var(
-                        parent_stack_var,
-                        ui,
-                        &EGUI_UI_TYPE,
-                        |parent_stack_var| {
-                          if let Some(ui) = util::get_current_parent(parent_stack_var.get())? {
-                            // create the scroll area as the last child_ui, then include all the contents
-                            scroll_area
-                              .id_source(scroll_area_id)
-                              .show(ui, |ui| {
-                                // set whether all widgets in the contents are enabled or disabled
-                                ui.set_enabled(!disabled);
-                                util::activate_ui_contents(
-                                  context,
-                                  input,
-                                  ui,
-                                  parent_stack_var,
-                                  &mut self.contents,
-                                )
-                              })
-                              .inner
-                          } else {
-                            Err("No UI parent")
-                          }
-                        },
-                      )
-                    } else {
-                      // else, no need to add child_ui to stack again, we can simply render the contents without scroll area
-                      ui.set_enabled(!disabled);
-                      util::activate_ui_contents(
-                        context,
-                        input,
-                        ui,
-                        parent_stack_var,
-                        &mut self.contents,
-                      )
-                    }
+        frame.show(ui, |ui| {
+          // set whether all widgets in the contents are enabled or disabled
+          ui.set_enabled(!disabled);
+          // add the new child_ui created by frame onto the stack of parents
+          util::with_object_stack_var_pass_stack_var(
+            &mut self.parents,
+            ui,
+            &EGUI_UI_TYPE,
+            |parent_stack_var| {
+              // inside of frame
+              let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
+              // render scroll area and inner layout if there is a scroll area
+              if let Some(scroll_area) = scroll_area {
+                scroll_area
+                  .id_source(scroll_area_id)
+                  .show(ui, |ui| {
+                    util::with_object_stack_var_pass_stack_var(
+                      parent_stack_var,
+                      ui,
+                      &EGUI_UI_TYPE,
+                      |parent_stack_var| {
+                        // inside of scroll area
+                        let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
+                        ui.allocate_ui_with_layout(min_size.into(), layout, |ui| {
+                          ui.set_min_size(min_size.into()); // set minimum size of entire layout
+
+                          util::activate_ui_contents(
+                            context,
+                            input,
+                            ui,
+                            parent_stack_var,
+                            &mut self.contents,
+                          )
+                        })
+                        .inner
+                      })
+                    
                   })
                   .inner
-                } else {
-                  Err("No UI parent")
-                }
-              },
-            )
-
-            // Ok(output)
-          })
-          .inner?;
-      } else {
-        ui.allocate_ui_with_layout(size.into(), layout, |ui| {
-          // add the new child_ui created by layout onto the stack of parents
-          if let Some(scroll_area) = scroll_area {
-            util::with_object_stack_var_pass_stack_var(
-              &mut self.parents,
-              ui,
-              &EGUI_UI_TYPE,
-              |parent_stack_var| {
-                if let Some(ui) = util::get_current_parent(parent_stack_var.get())? {
-                  // create the scroll area as the last child_ui, then include all the contents
-                  scroll_area
-                    .id_source(scroll_area_id)
-                    .show(ui, |ui| {
-                      // set whether all widgets in the contents are enabled or disabled
-                      ui.set_enabled(!disabled);
-                      util::activate_ui_contents(
-                        context,
-                        input,
-                        ui,
-                        parent_stack_var,
-                        &mut self.contents,
-                      )
-                    })
-                    .inner
-                } else {
-                  Err("No UI parent")
-                }
-              },
-            )
-          } else {
-            // else, no need to add child_ui to stack again, we can simply render the contents without scroll area
-            ui.set_enabled(!disabled);
-            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-          }
+              } else {
+                // inside of frame, no scroll area to render, render inner layout
+                ui.allocate_ui_with_layout(min_size.into(), layout, |ui| {
+                  ui.set_min_size(min_size.into()); // set minimum size of entire layout
+                  util::activate_ui_contents(
+                    context,
+                    input,
+                    ui,
+                    parent_stack_var,
+                    &mut self.contents,
+                  )
+                })
+                .inner
+              }
+            }
+          )
         })
         .inner?;
-      }
+      } else {
+        // no frame to render, render only the scroll area (if applicable) and inner layout
+        if let Some(scroll_area) = scroll_area {
+          scroll_area
+            .id_source(scroll_area_id)
+            .show(ui, |ui| {
+              util::with_object_stack_var_pass_stack_var(
+                &mut self.parents,
+                ui,
+                &EGUI_UI_TYPE,
+                |parent_stack_var| {
+                  // inside of scroll area
+                  let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
+                  ui.allocate_ui_with_layout(min_size.into(), layout, |ui| {
+                    ui.set_min_size(min_size.into()); // set minimum size of entire layout
 
-      // ui.allocate_ui_with_layout(size.into(), layout, |ui| {
-      //   util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-      // })
-      // .inner?;
+                    util::activate_ui_contents(
+                      context,
+                      input,
+                      ui,
+                      parent_stack_var,
+                      &mut self.contents,
+                    )
+                  })
+                  .inner
+                })
+              
+            })
+            .inner?;
+        } else {
+          // inside of frame, no scroll area to render, render inner layout
+          ui.allocate_ui_with_layout(min_size.into(), layout, |ui| {
+            ui.set_min_size(min_size.into()); // set minimum size of entire layout
+            util::activate_ui_contents(
+              context,
+              input,
+              ui,
+              &mut self.parents,
+              &mut self.contents,
+            )
+          })
+          .inner?;
+        }
+      }
 
       // Always passthrough the input
       Ok(*input)
