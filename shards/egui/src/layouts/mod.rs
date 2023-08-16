@@ -82,6 +82,9 @@ struct Horizontal {
 struct EguiScrollAreaSettings {
   horizontal_scroll_enabled: bool,
   vertical_scroll_enabled: bool,
+  min_width: f32,
+  min_height: f32,
+  enable_scrolling: bool,
   max_width: f32,
   max_height: f32,
   scroll_visibility: ScrollVisibility,
@@ -89,7 +92,7 @@ struct EguiScrollAreaSettings {
 
 impl EguiScrollAreaSettings {
   pub fn to_egui_scrollarea(&self) -> egui::ScrollArea {
-    egui::ScrollArea::new([self.horizontal_scroll_enabled, self.vertical_scroll_enabled]).scroll_bar_visibility(self.scroll_visibility.into()).max_width(self.max_width).max_height(self.max_height)
+    egui::ScrollArea::new([self.horizontal_scroll_enabled, self.vertical_scroll_enabled]).scroll_bar_visibility(self.scroll_visibility.into()).max_width(self.max_width).max_height(self.max_height).min_scrolled_width(self.min_width).min_scrolled_height(self.min_height).enable_scrolling(self.enable_scrolling)
   }
 }
 

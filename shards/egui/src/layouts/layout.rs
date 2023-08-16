@@ -490,6 +490,44 @@ impl Shard for LayoutConstructor {
           }
         };
 
+        const MIN_SCROLLING_SIZE: f32 = 64.0; // default value for min_scrolling_width and min_scrolling_height as of egui 0.22.0
+
+        let min_width = if let Some(min_width) =
+          retrieve_parameter!(scroll_area_table, "min_width", f32)
+        {
+          min_width
+        } else {
+          if let Some(parent_layout_class) = parent_layout_class {
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_width).unwrap_or(MIN_SCROLLING_SIZE)
+          } else {
+            MIN_SCROLLING_SIZE // default min_width
+          }
+        };
+
+        let min_height = if let Some(min_height) =
+          retrieve_parameter!(scroll_area_table, "min_height", f32)
+        {
+          min_height
+        } else {
+          if let Some(parent_layout_class) = parent_layout_class {
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_height).unwrap_or(MIN_SCROLLING_SIZE)
+          } else {
+            MIN_SCROLLING_SIZE // default min_height
+          }
+        };
+
+        let enable_scrolling = if let Some(enable_scrolling) =
+          retrieve_parameter!(scroll_area_table, "enable_scrolling", bool)
+        {
+          enable_scrolling
+        } else {
+          if let Some(parent_layout_class) = parent_layout_class {
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, enable_scrolling).unwrap_or(true)
+          } else {
+            true // default enable_scrolling
+          }
+        };
+
         let max_width = if let Some(max_width) =
           retrieve_parameter!(scroll_area_table, "max_width", f32)
         {
@@ -518,6 +556,9 @@ impl Shard for LayoutConstructor {
           EguiScrollAreaSettings {
             horizontal_scroll_enabled,
             vertical_scroll_enabled,
+            min_width,
+            min_height,
+            enable_scrolling,
             max_width,
             max_height,
             scroll_visibility,
@@ -802,7 +843,7 @@ impl Shard for Layout {
       };
       let scroll_area =
         if let Some(scroll_area) = retrieve_layout_class_attribute!(layout_class, scroll_area) {
-          Some(scroll_area.to_egui_scrollarea().max_width(200.0))
+          Some(scroll_area.to_egui_scrollarea())
         } else {
           None // default value for scroll_area
         };
