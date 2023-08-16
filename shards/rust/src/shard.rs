@@ -285,10 +285,10 @@ unsafe extern "C" fn shard_requiredVariables<T: Shard>(arg1: *mut CShard) -> SHE
 
 unsafe extern "C" fn shard_compose<T: Shard>(
   arg1: *mut CShard,
-  data: SHInstanceData,
+  data: *mut SHInstanceData,
 ) -> SHShardComposeResult {
   let blk = arg1 as *mut ShardWrapper<T>;
-  match (*blk).shard.compose(&data) {
+  match (*blk).shard.compose(&*data) {
     Ok(output) => SHShardComposeResult {
       error: SHError::default(),
       result: output,
