@@ -3124,7 +3124,12 @@ fn add_assignment_shard(
   let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap();
   let shard = AutoShardRef(shard);
   let full_name = get_full_name(name, e);
-  let (assigned, suffix) = match (find_replacement(name, e), find_current_suffix(e)) {
+  let suffix = if shard_name != "Update" {
+    find_current_suffix(e) // this case we add the current suffix
+  } else {
+    find_suffix(&full_name, e) // this case we want to find a suffix if there is one
+  };
+  let (assigned, suffix) = match (find_replacement(name, e), suffix) {
     (Some(Value::Identifier(name)), _) => {
       let name = name.clone();
       let full_name = get_full_name(&name, e);
@@ -3141,7 +3146,7 @@ fn add_assignment_shard(
         .0
         .set_parameter(0, Var::ephemeral_string(&name))
         .map_err(|e| (e, line_info).into())?;
-      (Some(full_name), Some(suffix.clone()))
+      (Some(full_name.clone()), Some(suffix.clone()))
     }
     (None, None) => {
       let name = Var::ephemeral_string(full_name.as_str());

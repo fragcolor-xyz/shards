@@ -130,3 +130,15 @@ WireRunner(mey-weired)
 
 "A" | PrependTo(bcdef)
 bcdef | Log
+
+"a" >= my-a
+@template(change-a [a] {
+  a > my-a
+  "b" >= my-b
+  my-b | Log
+  a > my-b
+})
+
+@change-a("b")
+
+my-a | Log
