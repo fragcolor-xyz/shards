@@ -1211,7 +1211,10 @@ struct CapturingSpawners : public WireBase {
 
   void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
     resolveWire();
-    assert(wire && "Wire should be resolved at this point");
+    if(!wire) {
+      throw ComposeError("CapturingSpawners: wire not found");
+    }
+
     // Wire needs to capture all it needs, so we need deeper informations
     // this is triggered by populating requiredVariables variable
     auto dataCopy = data;

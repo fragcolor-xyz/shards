@@ -31,7 +31,7 @@
    {:Position (Float3 0 0 8) :Target (Float3 0 0 0)} (Math.LookAt) >= .view-transform
    (GFX.View :View .view-transform) >= .view)
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 
+   :Title "SDL Window" :Width 1280 :Height 720
    :Contents
    (->
     .time (Math.Add timestep) > .time
@@ -40,7 +40,7 @@
     .drawable-0 (GFX.Draw .queue)
 
     (Gizmos.Context :Queue .editor-queue :View .view
-                    :Content (->
+                    :Contents (->
                               .drawable-0 (Gizmos.Highlight)))
 
     (GFX.Render :Steps .render-steps :View .view))))
