@@ -23,7 +23,7 @@ struct GizmosContextShard {
                  "When drawing over a scene, the view should be the same.",
                  {Type::VariableOf(gfx::Types::View)});
   PARAM_PARAMVAR(_queue, "Queue", "The queue to draw into.", {Type::VariableOf(gfx::Types::DrawQueue)});
-  PARAM(ShardsVar, _content, "Content",
+  PARAM(ShardsVar, _content, "Contents",
         "Actual logic to draw the actual gizmos, the input of this flow will be a boolean that will be true if the gizmo is "
         "being pressed and so edited.",
         {CoreInfo::ShardsOrNone});

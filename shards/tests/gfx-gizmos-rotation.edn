@@ -41,12 +41,12 @@
    (GFX.View :View .view-transform) >= .view)
   ;; end setup
   (GFX.MainWindow
-   :Title "SDL Window" :Width 1280 :Height 720 
+   :Title "SDL Window" :Width 1280 :Height 720
    :Contents
    (->
     .time (Math.Add timestep) > .time
 
-    ;; link the transform (?) to the cube mesh and get a drawable 
+    ;; link the transform (?) to the cube mesh and get a drawable
     ;; not linked, transform-0 value is updated by Gizmos.Translation every loop
     .transform-0 (GFX.Drawable :Mesh .mesh :Params {:baseColor (Float4 1 0 0 1)}) >= .drawable-0
     (GFX.Draw .queue)
@@ -54,7 +54,7 @@
     ; Draw helpers (using scene depth)
     ;; provides a context for rendering gizmos
     (Gizmos.Context :Queue .editor-queue :View .view
-                    :Content (->
+                    :Contents (->
                               ;; highlights the object (drawable) attached to gizmo, show wireframe
                               .drawable-0 (Gizmos.Highlight)
                               (Float3 0 0 0) >= .a
@@ -83,14 +83,14 @@
 
                               ;; This green solid rect does not render if back-face culling is enabled
                               (Gizmos.SolidRect :Center (Float3 2 0 2) :XBase .xbase :YBase .norm :Size (Float2 1 1) :Color (Float4 0.2 1.0 0.2 1.0) :Culling false)
-                              
+
                               ;; imaginary object (box)
                               (Gizmos.Box :Center (Float3 1 1 1) :Size (Float3 0.5 0.2 0.3) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 4)))
 
     ; Draw on top of everything (ignore depth)
     ;; translation gizmo itself, attached to .translation-0
     (Gizmos.Context :Queue .editor-queue-no-depth :View .view
-                    :Content (->
+                    :Contents (->
                               .transform-0 (Gizmos.Translation) > .transform-0
                               (Gizmos.Rotation) > .transform-0))
 
