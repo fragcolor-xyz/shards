@@ -12,7 +12,7 @@
   [x tmp-y 0] | ToFloat3 | Math.Translation
 })
 
-@template(default-setup [] {
+@define(default-setup {
   0.0 >= time
 
   ; Render steps
@@ -26,7 +26,7 @@
   GFX.View(View: view-transform) >= view
 })
 
-@template(default-window [] {
+@define(default-window {
   GFX.MainWindow(
     Title: "SDL Window" Width:1280 Height:720
     Contents: {
@@ -42,12 +42,12 @@
 
 @wire(test-path-static {
   Once({
-    @default-setup()
+    @default-setup
     @f3(0.02) | Math.Scaling |
     GFX.glTF(Path: "data/building.glb") >> drawables
   })
 
-  @default-window()
+  @default-window
 } Looped: true)
 
 @schedule(root test-path-static)
@@ -55,15 +55,15 @@
 
 @wire(test-path-dynamic {
   Once({
-    @default-setup()
+    @default-setup
     "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" >= path-var
     Math.MatIdentity | GFX.glTF(Path: path-var) >> drawables
   })
 
-  @default-window()
+  @default-window
 } Looped: true)
 
-@schedule(root test-path-var)
+@schedule(root test-path-dynamic)
 @run(root FPS:120 Iterations: 100)
 
 @wire(test-binary {
@@ -73,7 +73,7 @@
     Math.MatIdentity | GFX.glTF(Bytes: bytes) >> drawables
   })
 
-  @default-window()
+  @default-window
 } Looped: true)
 
 @schedule(root test-binary)
@@ -81,7 +81,7 @@
 
 @wire(test-transforms {
   Once({
-    @default-setup()
+    @default-setup
     @f3(-0.05 0 0) | Math.Translation >= t1
     @get-xy-wave-transform(0.0 0.0) >= t2
     @f3(0.05 0 0) | Math.Translation >= t3
@@ -109,7 +109,7 @@
 
 @wire(test-copy {
   Once({
-    @default-setup()
+    @default-setup
     @f3(-0.05 0 0) | Math.Translation >= t1
     @f3(0.05 0 0) | Math.Translation >= t2
     t1 | GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >= avocado-a
@@ -117,7 +117,7 @@
     t2 | GFX.glTF(Copy: avocado-a) >> drawables
   })
 
-  @default-window()
+  @default-window
 })
 
 @schedule(root test-copy)
