@@ -22,6 +22,7 @@ add_library(crsqlite-extension SHARED
 	cr-sqlite/core/src/ext-data.c
 	cr-sqlite/core/src/get-table.c)
 target_link_libraries(crsqlite-extension PUBLIC crsql_bundle-rust)
+target_include_directories(crsqlite-extension PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 
 set_target_properties(crsqlite-extension PROPERTIES OUTPUT_NAME "crsqlite")
 set_target_properties(crsqlite-extension PROPERTIES PREFIX "")
