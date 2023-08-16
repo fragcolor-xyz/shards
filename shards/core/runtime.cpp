@@ -973,7 +973,7 @@ void validateConnection(ValidationContext &ctx) {
 
     // this ensures e.g. SetVariable exposedVars have right type from the actual
     // input type (previousOutput)!
-    auto composeResult = ctx.bottom->compose(ctx.bottom, data);
+    auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
       std::string_view msg(composeResult.error.message.string, composeResult.error.message.len);
       SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");

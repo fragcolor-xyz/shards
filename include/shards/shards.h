@@ -678,7 +678,7 @@ typedef SHParametersInfo(__cdecl *SHParametersProc)(struct Shard *);
 typedef struct SHError(__cdecl *SHSetParamProc)(struct Shard *, int, const struct SHVar *);
 typedef struct SHVar(__cdecl *SHGetParamProc)(struct Shard *, int);
 
-typedef struct SHShardComposeResult(__cdecl *SHComposeProc)(struct Shard *, struct SHInstanceData data);
+typedef struct SHShardComposeResult(__cdecl *SHComposeProc)(struct Shard *, struct SHInstanceData *data);
 
 // The core of the shard processing, avoid syscalls here
 typedef struct SHVar(__cdecl *SHActivateProc)(struct Shard *, struct SHContext *, const struct SHVar *);
