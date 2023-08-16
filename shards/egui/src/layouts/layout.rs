@@ -456,7 +456,8 @@ impl Shard for LayoutConstructor {
           enabled
         } else {
           if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, horizontal_scroll_enabled).unwrap()
+            // unlike layout, it is possible for this to be none because none of the parents may have had a ScrollArea
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, horizontal_scroll_enabled).unwrap_or(false)
           } else {
             false // default horizontal_scroll_enabled
           }
@@ -468,7 +469,7 @@ impl Shard for LayoutConstructor {
           enabled
         } else {
           if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, vertical_scroll_enabled).unwrap()
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, vertical_scroll_enabled).unwrap_or(false)
           } else {
             false // default vertical_scroll_enabled
           }
@@ -483,9 +484,33 @@ impl Shard for LayoutConstructor {
           visibility
         } else {
           if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility).unwrap()
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility).unwrap_or(ScrollVisibility::AlwaysVisible)
           } else {
             ScrollVisibility::AlwaysVisible
+          }
+        };
+
+        let max_width = if let Some(max_width) =
+          retrieve_parameter!(scroll_area_table, "max_width", f32)
+        {
+          max_width
+        } else {
+          if let Some(parent_layout_class) = parent_layout_class {
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_width).unwrap_or(f32::INFINITY)
+          } else {
+            f32::INFINITY // default max_width
+          }
+        };
+
+        let max_height = if let Some(max_height) =
+          retrieve_parameter!(scroll_area_table, "max_height", f32)
+        {
+          max_height
+        } else {
+          if let Some(parent_layout_class) = parent_layout_class {
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_height).unwrap_or(f32::INFINITY)
+          } else {
+            f32::INFINITY // default max_height
           }
         };
 
@@ -493,6 +518,8 @@ impl Shard for LayoutConstructor {
           EguiScrollAreaSettings {
             horizontal_scroll_enabled,
             vertical_scroll_enabled,
+            max_width,
+            max_height,
             scroll_visibility,
           }
         )
@@ -775,7 +802,7 @@ impl Shard for Layout {
       };
       let scroll_area =
         if let Some(scroll_area) = retrieve_layout_class_attribute!(layout_class, scroll_area) {
-          Some(scroll_area.to_egui_scrollarea())
+          Some(scroll_area.to_egui_scrollarea().max_width(200.0))
         } else {
           None // default value for scroll_area
         };
