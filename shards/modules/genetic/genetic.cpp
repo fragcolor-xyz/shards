@@ -698,7 +698,7 @@ struct Mutant {
 
   void warmup(SHContext *ctx) { _shard.warmup(ctx); }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     auto inner = mutant();
     // validate parameters
     if (_mutations.valueType == SHType::Seq && inner) {
@@ -713,7 +713,7 @@ struct Mutant {
         if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
           if (blk->compose) {
-            auto res0 = blk->compose(blk, dataCopy);
+            auto res0 = blk->compose(blk, &dataCopy);
             if (res0.error.code != SH_ERROR_NONE) {
               std::string_view err(res0.error.message.string, res0.error.message.len);
               throw ComposeError(err);
@@ -1032,7 +1032,7 @@ struct DShard {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
+  SHTypeInfo compose(SHInstanceData &data) {
     if (!_wrapped)
       return {};
 
@@ -1047,7 +1047,7 @@ struct DShard {
     }
     // and compose finally
     if (_wrapped->compose) {
-      auto res = _wrapped->compose(_wrapped, data);
+      auto res = _wrapped->compose(_wrapped, &data);
       if (res.error.code != 0) {
         throw SHException("Failed to compose a wrapped DShard.");
       }
