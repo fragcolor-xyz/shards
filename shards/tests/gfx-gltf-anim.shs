@@ -1,0 +1,89 @@
+@define(timestep #(1.0 | Math.Divide(120.0)))
+@mesh(root)
+
+@wire(get-view-transform {
+  {@f4(0.0 1.0 -5.0 1.0) >= arm-pos} |
+  Math.AxisAngleY | Math.Rotation | Math.MatMul(arm-pos) | ToFloat3 >= arm-pos-3
+  {Position: arm-pos-3 Target: @f3(0 0.025 0)} | Math.LookAt
+} Pure: true)
+
+@wire(character {
+  Take("Position") >= position
+
+  Once({
+    0 >= animation-index
+    "" >> animation-names
+    Clear(animation-names)
+  })
+
+  position | Math.Translation |
+  GFX.glTF(Path: "data/mascot.glb"
+           AnimationController: {
+            Ref(animations)
+            Once({
+              animations | ForEach({Take(0) >> animation-names})
+            })
+            animation-names | Take(animation-index) >= animation-name
+            animations | Take(animation-name) | Expect(@type(Animation.Duration InputType: true)) = animation
+
+            Animation.Timer(animation Offset: 1.0) |
+            Animation.Play(animation) |
+            {Take(1)}
+           }) | GFX.Draw(queue)
+} Looped: true)
+
+@template(lighting-feature [] {
+  @f3(-0.2 -2 -1) | Math.Normalize = light-direction
+  @f3(1 1 1) | Math.Multiply(0.5) = light-color
+  GFX.Feature(Shaders: [{Name: "lighting"
+                         Stage: ProgrammableGraphicsStage::Fragment
+                         EntryPoint: {
+                           Shader.ReadInput(Name: "worldNormal") >= normal
+                           Shader.ReadBuffer(Name: "lightDirection") >= light-dir
+                           @f3(0 0 0) | Math.Subtract(light-dir) >= inv-light-dir
+                           normal | Math.Normalize | Math.Dot(inv-light-dir) | Max(0.0) >= n-dot-l
+                           Shader.ReadBuffer(Name: "lightColor") | Math.Multiply(n-dot-l) |
+                           Shader.WriteGlobal("lighting")}}
+                         {Name: "mainColor"
+                          Stage: ProgrammableGraphicsStage::Fragment
+                          EntryPoint: {
+                            Shader.ReadGlobal("lighting") | ToFloat4 >= lighting-4
+                            Shader.ReadGlobal("color") | Math.Add(lighting-4) |
+                            Shader.WriteGlobal("color")}         
+                          After: ["readColor"]
+                          Before: ["writeColor"]}]
+              Params: {
+                lightDirection: {Default: light-direction}
+                lightColor: {Default: light-color}})
+})
+
+@wire(test-basic-anim {
+  Once({
+    GFX.DrawQueue >= queue
+
+    ; Render steps
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
+    @lighting-feature() >> features
+    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+
+    ; Create view
+    0.0 | Do(get-view-transform) >= view-transform
+    GFX.View(View: view-transform) >= view
+  })
+
+  GFX.MainWindow(
+    Title: "glTF" Width: 1280 Height: 720
+    Contents: {
+      Animation.Timer(Rate: 0.2 Offset: -0.75) >= time
+      time | Do(get-view-transform) > view-transform
+      queue | GFX.ClearQueue
+      {Position: @f3(0.0)} | Step(character)
+
+      GFX.Render(Steps: render-steps View: view)
+    }
+  )
+} Looped: true)
+
+@schedule(root test-basic-anim)
+@run(root FPS: 120 Iterations: 100)
