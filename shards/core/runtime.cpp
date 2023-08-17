@@ -735,10 +735,6 @@ SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wire
   return shardsActivation<Shards, true, true>(shards, context, wireInput, output, &outHash);
 }
 
-// Lazy and also avoid windows Loader (Dead)Lock
-// https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices?redirectedfrom=MSDN
-Shared<boost::asio::thread_pool, SharedThreadPoolConcurrency> SharedThreadPool{};
-
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
                 bool relaxEmptySeqCheck) {
   if (receiverType.basicType == SHType::Any)

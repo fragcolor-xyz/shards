@@ -121,20 +121,6 @@ struct TidePool {
 TidePool &getTidePool();
 #endif
 
-#ifdef __EMSCRIPTEN__
-// limit to 4 under emscripten
-struct SharedThreadPoolConcurrency {
-  static int get() { return 4; }
-};
-#else
-struct SharedThreadPoolConcurrency {
-  static int get() {
-    const auto sys = std::thread::hardware_concurrency();
-    return sys > 4 ? sys : 4;
-  }
-};
-#endif
-
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
 #if !HAS_ASYNC_SUPPORT
