@@ -17,8 +17,10 @@ use crate::types::WireState;
 use core::convert::TryInto;
 use core::ffi::c_void;
 use core::slice;
+use futures_util::pin_mut;
 use std::ffi::CStr;
 use std::ffi::CString;
+use std::future::Future;
 use std::os::raw::c_char;
 
 const ABI_VERSION: u32 = 0x20200101;
@@ -534,6 +536,43 @@ unsafe extern "C" fn cancel_blocking_c_call<T: BlockingShard>(
 ) {
   let data = arg2 as *mut AsyncCallData<T>;
   (*(*data).caller).cancel_activation(&*context);
+}
+
+unsafe extern "C" fn activate_future_c_call<
+  F: Future<Output = Result<R, &'static str>> + Send + 'static,
+  R: Into<ClonedVar>,
+>(
+  context: *mut SHContext,
+  arg2: *mut c_void,
+) -> SHVar {
+  let f = arg2 as *mut F;
+  let res = futures::executor::block_on(f.read());
+  match res {
+    Ok(value) => {
+      let mut output = Var::default();
+      // swap the points to avoid drop etc
+      let mut cloned = value.into();
+      std::mem::swap(&mut output, &mut cloned.0);
+      output
+    },
+    Err(error) => {
+      shlog_debug!("activate_future failure detected"); // in case error leads to crash
+      shlog_debug!("activate_future failure: {}", error);
+      abortWire(&(*context), error);
+      Var::default()
+    }
+  }
+}
+
+pub fn run_future<'a, F: Future<Output = Result<R, &'static str>> + Send + 'static, R: Into<ClonedVar>,>(
+  context: &'a SHContext,
+  f: F,
+) -> ClonedVar {
+  unsafe {
+    let ctx = context as *const SHContext as *mut SHContext;
+    let data_ptr = &f as *const F as *mut F as *mut c_void;
+    ClonedVar((*Core).asyncActivate.unwrap()(ctx, data_ptr, Some(activate_future_c_call::<F, R>), None))
+  }
 }
 
 pub fn run_blocking<'a, T>(caller: &'a mut T, context: &'a SHContext, input: &'a SHVar) -> SHVar
