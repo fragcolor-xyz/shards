@@ -463,7 +463,7 @@ struct Maybe : public BaseSubFlow {
           return Var::Empty;
         }
       } else {
-        if(!_elseBlks)
+        if (!_elseBlks)
           return input; // implicit pass through if no else blks
       }
     }
@@ -777,7 +777,9 @@ struct Match {
   }
 
   static inline Parameters params{
-      {"Cases", SHCCSTR("Values to match against the input. A `nil` case will match anything."), {CoreInfo::AnySeqType}},
+      {"Cases",
+       SHCCSTR("Values to match against the input. A `nil` case will match anything."),
+       {CoreInfo::AnySeqType}}, // TODO PROPER TYPE!
       {"Passthrough",
        SHCCSTR("Parameter to control the shard's output. `true` allows the `Match` shard's input itself to appear as its output; "
                "`false` allows the matched shard's output to appear as `Match` shard's output."),
@@ -808,6 +810,9 @@ struct Match {
       for (uint32_t i = 0; i < counter; i += 2) {
         _cases[idx] = value.payload.seqValue.elements[i];
         _pcases[idx] = value.payload.seqValue.elements[i];
+        if (!(value.valueType == SHType::None || value.valueType == SHType::ShardRef || value.valueType == SHType::Seq)) {
+          throw SHException("Match: action should be either a shard, a sequence of shards or none.");
+        }
         _actions[idx] = value.payload.seqValue.elements[i + 1];
         _full[i] = _pcases[idx];
         _full[i + 1] = _actions[idx];
