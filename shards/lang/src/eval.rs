@@ -2448,7 +2448,7 @@ fn eval_pipeline(
             } else {
               Err(
                 (
-                  "const built-in function requires proper parameters",
+                  "define built-in function requires proper parameters",
                   block.line_info.unwrap_or_default(),
                 )
                   .into(),
