@@ -5,7 +5,7 @@ LowIden       = @{ "_"? ~ ASCII_ALPHA_LOWER ~ (ASCII_ALPHANUMERIC | "_" | "-" | 
 VarName       =  { LowIden ~ ("/" ~ LowIden)* }
 AssignOp      =  { "=" | ">=" | ">>" | ">" }
 Assignment    =  { Pipeline ~ AssignOp ~ VarName ~ ("|")? }
-Pipeline      =  { Block ~ ("|" ~ Block)* }
+Pipeline      =  { "|"? ~ Block ~ ("|" ~ Block)* }
 Statement     = _{ (Assignment | Pipeline) }
 Sequence      =  { Statement* }
 Param         =  { ParamName? ~ Value }
