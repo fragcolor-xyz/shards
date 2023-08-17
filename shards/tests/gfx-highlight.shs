@@ -1,0 +1,51 @@
+@define(timestep #(1.0 | Math.Divide(120.0)))
+@mesh(root)
+@define(blendAlphaPremul {Operation: BlendOperation::Add Src: BlendFactor::One Dst: BlendFactor::OneMinusSrcAlpha})
+@define(blendOne {Operation: BlendOperation::Add Src: BlendFactor::One Dst: BlendFactor::One})
+
+@template(spin-transform [t location] {
+  t >= tmp-0
+  tmp-0 | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation >= rotX
+  tmp-0 | Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation >= rotY
+  tmp-0 | Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation >= rotZ
+  location | Math.Translation | Math.MatMul(rotX) | Math.MatMul(rotY) | Math.MatMul(rotZ)
+})
+
+@wire(test-wire {
+  Once({
+    0.0 >= time
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= mesh
+    @f3(0 0 0) | Math.Translation >= transform-0
+
+    GFX.DrawQueue >= queue
+    GFX.DrawQueue >= editor-queue
+
+    ; Create render steps
+    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
+
+    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+    GFX.DrawablePass(Features: features Queue: editor-queue) >> render-steps
+
+    ; Create view
+    {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
+    GFX.View(View: view-transform) >= view
+  })
+
+  GFX.MainWindow(
+    Title: "SDL Window" Width: 1280 Height: 720
+    Contents: {
+      time | Math.Add(@timestep) > time
+      @spin-transform(time @f3(0.0 0 0)) >= transform-0
+      GFX.Drawable(Mesh: mesh Params: {baseColor: @f4(1 0 0 0.5)}) >= drawable-0
+      drawable-0 | GFX.Draw(queue)
+
+      Gizmos.Context(Queue: editor-queue View: view
+                     Content: {drawable-0 | Gizmos.Highlight})
+
+      GFX.Render(Steps: render-steps View: view)}
+  )
+} Looped: true)
+
+@schedule(root test-wire)
+@run(root FPS: 120 Iterations: 100)
