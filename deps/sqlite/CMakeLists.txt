@@ -2,11 +2,13 @@ set(SQLITE_SOURCES
   cr-sqlite/core/src/sqlite/sqlite3.c
 )
 
-add_library(sqlite-static STATIC ${SQLITE_SOURCES})
-target_compile_definitions(sqlite-static PUBLIC
+set(SQLITE_DEFINES
   SQLITE_THREADSAFE=2 SQLITE_ENABLE_SESSION=1 SQLITE_DEFAULT_MEMSTATUS=0 SQLITE_DEFAULT_WAL_SYNCHRONOUS=1
   SQLITE_MAX_EXPR_DEPTH=0 SQLITE_OMIT_DECLTYPE SQLITE_OMIT_DEPRECATED SQLITE_OMIT_DESERIALIZE SQLITE_OMIT_PROGRESS_CALLBACK
   SQLITE_LIKE_DOESNT_MATCH_BLOBS SQLITE_OMIT_SHARED_CACHE)
+
+add_library(sqlite-static STATIC ${SQLITE_SOURCES})
+target_compile_definitions(sqlite-static PUBLIC ${SQLITE_DEFINES})
 target_include_directories(sqlite-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 
 add_rust_library(NAME crsql_bundle
@@ -22,6 +24,7 @@ add_library(crsqlite-extension SHARED
 	cr-sqlite/core/src/ext-data.c
 	cr-sqlite/core/src/get-table.c)
 target_link_libraries(crsqlite-extension PUBLIC crsql_bundle-rust)
+target_compile_definitions(crsqlite-extension PUBLIC ${SQLITE_DEFINES})
 target_include_directories(crsqlite-extension PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 
 set_target_properties(crsqlite-extension PROPERTIES OUTPUT_NAME "crsqlite")
