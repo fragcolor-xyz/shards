@@ -8,10 +8,12 @@ extern crate lazy_static;
 
 extern crate compile_time_crc32;
 
+use std::cell::UnsafeCell;
+
 use shards::core::registerShard;
-use shards::core::run_blocking;
 use shards::core::BlockingShard;
 use shards::core::Core;
+use shards::core::{run_blocking, run_future};
 use shards::shard::Shard;
 use shards::shardsc::SHCore;
 use shards::types::common_type;
@@ -337,7 +339,36 @@ impl Shard for SaveFileDialog {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    Ok(run_blocking(self, context, input))
+    if cfg!(target_os = "linux") {
+      let mut dialog = rfd::AsyncFileDialog::new();
+      let filters = self.filters.get();
+      if !filters.is_none() {
+        let filters: Seq = filters.try_into()?;
+        for filter in filters.iter() {
+          let filter: &str = filter.try_into()?;
+          dialog = dialog.add_filter(filter, &[filter]);
+        }
+      }
+      let current_dir = self.current_dir.get();
+      if !current_dir.is_none() {
+        let cd: &str = current_dir.try_into()?;
+        if let Ok(start_path) = std::path::PathBuf::from(cd).canonicalize() {
+          dialog = dialog.set_directory(start_path);
+        }
+      }
+
+      self.output = run_future(context, async {
+        if let Some(path) = dialog.save_file().await {
+          Ok(path.path().display().to_string())
+        } else {
+          Err("Operation was cancelled")
+        }
+      });
+
+      Ok(self.output.0)
+    } else {
+      Ok(run_blocking(self, context, input))
+    }
   }
 }
 
