@@ -466,11 +466,16 @@ struct StopWire : public WireBase {
 
   SHTypeInfo compose(SHInstanceData &data) {
     assert(data.wire);
-    _inputType = data.inputType;
-    if (_onComposedConn)
-      _onComposedConn.release();
-    _onComposedConn = data.wire->dispatcher.sink<SHWire::OnComposedEvent>().connect<&StopWire::composed>(this);
-    WireBase::compose(data);
+
+    if (wireref->valueType == SHType::None) {
+      _inputType = data.inputType;
+      if (_onComposedConn)
+        _onComposedConn.release();
+      _onComposedConn = data.wire->dispatcher.sink<SHWire::OnComposedEvent>().connect<&StopWire::composed>(this);
+    } else {
+      resolveWire();
+    }
+
     return data.inputType;
   }
 
@@ -1211,7 +1216,7 @@ struct CapturingSpawners : public WireBase {
 
   void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
     resolveWire();
-    if(!wire) {
+    if (!wire) {
       throw ComposeError("CapturingSpawners: wire not found");
     }
 
