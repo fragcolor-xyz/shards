@@ -1235,8 +1235,15 @@ fn as_var(
     }
     Value::Shards(seq) => {
       let mut sub_env = eval_sequence(&seq, Some(e), new_cancellation_token())?;
-      let mut seq = AutoSeqVar::new();
+
+      // ok if we have any suffixed assigned in the above environment, we need to leak them to the current
+      for (name, suffix) in sub_env.suffix_assigned.drain() {
+        e.suffix_assigned.insert(name, suffix);
+      }
+
       finalize_env(&mut sub_env)?;
+
+      let mut seq = AutoSeqVar::new();
       for shard in sub_env.shards.drain(..) {
         let s = shard.0 .0;
         let s: Var = s.into();
@@ -2973,6 +2980,7 @@ fn eval_pipeline(
                 Ok(())
               }
               (None, Some(mut shards_env), _, _) => {
+                // @template
                 finalize_env(&mut shards_env)?; // finalize the env
                                                 // shards
                 for shard in shards_env.shards.drain(..) {
@@ -2991,6 +2999,9 @@ fn eval_pipeline(
                 }
                 for (name, value) in shards_env.macro_groups.drain() {
                   e.macro_groups.insert(name, value);
+                }
+                for (id, mesh) in shards_env.meshes.drain() {
+                  e.meshes.insert(id, mesh);
                 }
                 Ok(())
               }
@@ -3281,6 +3292,12 @@ pub fn merge_env(mut env: EvalEnv, into: &mut EvalEnv) {
       name.namespaces.push(env.namespace.clone());
     }
     into.macro_groups.insert(name, value);
+  }
+  for (mut name, mesh) in env.meshes.drain() {
+    if name.namespaces.is_empty() {
+      name.namespaces.push(env.namespace.clone());
+    }
+    into.meshes.insert(name, mesh);
   }
 }
 

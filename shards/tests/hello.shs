@@ -142,3 +142,25 @@ bcdef | Log
 @change-a("b")
 
 my-a | Log
+
+@template(test-nesting-var-set [w-name] {
+  @wire(w-name {
+    When(IsNone {
+      3 = x
+    })
+    Once({
+      1 = x
+      2 | Set(y)
+      Sequence(z)
+    })
+    x | Log
+    y | Log
+    z | Log
+  })
+})
+
+@test-nesting-var-set(test-nesting-var-set-1)
+
+Do(test-nesting-var-set-1)
+
+x | Log
