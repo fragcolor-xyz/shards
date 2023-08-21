@@ -40,8 +40,13 @@ struct Connection {
   sqlite3 *get() { return db; }
 
   void loadExtension(const std::string &path) {
-    if (sqlite3_load_extension(db, path.c_str(), nullptr, nullptr) != SQLITE_OK) {
-      throw ActivationError(sqlite3_errmsg(db));
+    char *errorMsg = nullptr;
+    DEFER({
+      if (errorMsg)
+        sqlite3_free(errorMsg);
+    });
+    if (sqlite3_load_extension(db, path.c_str(), nullptr, &errorMsg) != SQLITE_OK) {
+      throw ActivationError(errorMsg);
     }
   }
 };
