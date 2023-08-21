@@ -251,7 +251,8 @@ function(add_rust_library)
     IMPORTED_LOCATION ${GENERATED_LIB_PATH}
   )
 
-  set_property(TARGET ${RUST_TARGET_NAME} PROPERTY RUST_PROJECT_PATH ${RUST_PROJECT_PATH})
+  file(REAL_PATH ${RUST_PROJECT_PATH} RUST_PROJECT_PATH_ABS)
+  set_property(TARGET ${RUST_TARGET_NAME} PROPERTY RUST_PROJECT_PATH ${RUST_PROJECT_PATH_ABS})
   set_property(TARGET ${RUST_TARGET_NAME} PROPERTY RUST_NAME ${RUST_NAME})
 
   # Store absolute dependency paths
@@ -266,4 +267,32 @@ function(add_rust_library)
   if(WIN32)
     target_link_libraries(${RUST_TARGET_NAME} INTERFACE NtDll)
   endif()
+endfunction()
+
+function(rust_copy_cargo_lock TARGET FILE)
+  file(REAL_PATH ${FILE} FILE_ABS)
+
+  if(EXISTS ${FILE_ABS})
+    get_property(RUST_PROJECT_PATH TARGET "${TARGET}-rust" PROPERTY RUST_PROJECT_PATH)
+    if(NOT EXISTS ${RUST_PROJECT_PATH})
+      message(FATAL_ERROR "Invalid rust project ${TARGET}")
+    endif()
+
+    file(COPY_FILE ${FILE_ABS} ${RUST_PROJECT_PATH}/Cargo.lock ONLY_IF_DIFFERENT)
+  else()
+    message(WARNING "Cargo.lock file not found at ${FILE_ABS}")
+  endif()
+
+  add_custom_target(${TARGET}-cargo-update
+    DEPENDS ${RUST_PROJECT_PATH}/Cargo.lock
+    WORKING_DIRECTORY ${RUST_PROJECT_PATH}
+    COMMAND ${CARGO_EXE} update
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RUST_PROJECT_PATH}/Cargo.lock ${FILE_ABS}
+    USES_TERMINAL
+  )
+  add_custom_target(${TARGET}-copy-cargo-lock
+    DEPENDS ${RUST_PROJECT_PATH}/Cargo.lock
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RUST_PROJECT_PATH}/Cargo.lock ${FILE_ABS}
+    USES_TERMINAL
+  )
 endfunction()
