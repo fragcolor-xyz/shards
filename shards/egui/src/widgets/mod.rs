@@ -274,7 +274,7 @@ decl_ui_slider!(Int4Slider, [i32; 4]);
 
 mod button;
 mod checkbox;
-// mod code_editor;
+mod code_editor;
 mod color_input;
 mod combo;
 mod console;
@@ -338,6 +338,6 @@ pub fn registerShards() {
   registerShard::<Tooltip>();
   registerShard::<Variable>();
   registerShard::<WireVariable>();
-  // registerShard::<CodeEditor>();
+  registerShard::<CodeEditor>();
   registerShard::<HexViewer>();
 }
