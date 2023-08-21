@@ -6,11 +6,20 @@
 #include "foundation.hpp"
 #include "runtime.hpp"
 #include <boost/lockfree/queue.hpp>
+#include <boost/thread.hpp>
 
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
 #define HAS_ASYNC_SUPPORT 0
 #else
 #define HAS_ASYNC_SUPPORT 1
+#endif
+
+#ifndef NDEBUG
+// when debugging, set a bigger stack size to accommodate more stack frames
+#define SH_STACK_SIZE 0x400000
+#else
+// when not debugging, set a smaller stack size to reduce memory usage
+#define SH_STACK_SIZE 0x100000
 #endif
 
 namespace shards {
@@ -44,7 +53,9 @@ struct TidePool {
   struct Worker {
     Worker(boost::lockfree::queue<Work *> &queue, std::atomic_size_t &counter) : _queue(queue), _counter(counter) {
       _running = true;
-      _future = std::async(std::launch::async, [this]() {
+      boost::thread::attributes attrs;
+      attrs.set_stack_size(SH_STACK_SIZE);
+      _thread = boost::thread(attrs, [this]() {
         while (_running) {
           Work *work{};
           if (_queue.pop(work)) {
@@ -58,7 +69,7 @@ struct TidePool {
       });
     }
 
-    std::future<void> _future;
+    boost::thread _thread;
     std::atomic_bool _running;
     boost::lockfree::queue<Work *> &_queue;
     std::atomic_size_t &_counter;
@@ -113,7 +124,8 @@ struct TidePool {
 
     for (auto &worker : _workers) {
       worker._running = false;
-      worker._future.wait();
+      if (worker._thread.joinable())
+        worker._thread.join();
     }
   }
 };
