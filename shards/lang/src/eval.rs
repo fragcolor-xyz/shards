@@ -52,7 +52,12 @@ use shards::types::{ShardRef, Var, Wire};
 use shards::{SHType_ContextVar, SHType_ShardRef};
 use std::ffi::CStr;
 
-pub(crate) const EVAL_STACK_SIZE: usize = 4 * 1024 * 1024;
+pub(crate) const EVAL_STACK_SIZE: usize = 2 * 1024 * 1024;
+
+#[cfg(debug_assertions)]
+const MIN_STACK_SIZE: i64 = 2 * 1024 * 1024; // 2 MB for debug builds
+#[cfg(not(debug_assertions))]
+const MIN_STACK_SIZE: i64 = 64 * 1024; // 64 KB for release builds
 
 pub fn new_cancellation_token() -> Arc<AtomicBool> {
   Arc::new(AtomicBool::new(false))
@@ -885,11 +890,11 @@ fn finalize_wire(
         SVar::NotCloned(v) => i64::try_from(&v)
           .map_err(|_| ("StackSize parameter must be an integer", line_info).into()),
       })
-      .unwrap_or(Ok(128 * 1024))?;
+      .unwrap_or(Ok(MIN_STACK_SIZE))?;
 
     // ensure stack size is a multiple of 4 and minimum 1024 bytes
-    let stack_size = if stack_size < 32 * 1024 {
-      32 * 1024
+    let stack_size = if stack_size < MIN_STACK_SIZE {
+      MIN_STACK_SIZE
     } else if stack_size % 4 != 0 {
       stack_size + 4 - (stack_size % 4)
     } else {
