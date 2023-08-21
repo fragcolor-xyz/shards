@@ -62,3 +62,5 @@ src/tests/example.wav.png
 src/tests/svgtest.png
 src/tests/mobilenetv2-7.onnx
 shards/tests/crsqlite.so
+shards/lang/Cargo.lock
+shards/rust/Cargo.lock
