@@ -75,7 +75,7 @@ if(APPLE)
   endif()
 endif()
 
-target_link_libraries(shards-core Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision Boost::atomic)
+target_link_libraries(shards-core Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision Boost::atomic Boost::thread)
 
 if(NOT EMSCRIPTEN)
   target_link_libraries(shards-core Boost::beast Boost::asio Boost::context)
@@ -136,5 +136,5 @@ endif()
 
 duplicate_library_target(shards-core SHARED shards-core-shared)
 target_compile_definitions(shards-core-shared
-  PUBLIC SHARDS_CORE_DLL=1 
+  PUBLIC SHARDS_CORE_DLL=1
   PRIVATE shards_core_EXPORTS=1)
