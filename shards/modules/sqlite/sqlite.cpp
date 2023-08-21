@@ -6,6 +6,7 @@
 #include <shards/utility.hpp>
 #include <functional>
 #include <optional>
+#include <shards/core/async.hpp>
 
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include "sqlite3.h"
@@ -112,107 +113,112 @@ struct Query : public Base {
   std::vector<SeqVar *> colSeqs;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ensureDb(context);
+    return awaitne(
+        context,
+        [&]() -> SHVar {
+          ensureDb(context);
 
-    if (!prepared) {
-      prepared.reset(new Statement(_connection->get(), _query.payload.stringValue)); // _query is full terminated cos cloned
-    }
-
-    sqlite3_reset(prepared->get());
-    sqlite3_clear_bindings(prepared->get());
-
-    int rc;
-
-    int idx = 0;
-    for (auto value : input) {
-      idx++; // starting from 1 with sqlite
-      switch (value.valueType) {
-      case SHType::Bool:
-        rc = sqlite3_bind_int(prepared->get(), idx, int(value.payload.boolValue));
-        break;
-      case SHType::Int:
-        rc = sqlite3_bind_int64(prepared->get(), idx, value.payload.intValue);
-        break;
-      case SHType::Float:
-        rc = sqlite3_bind_double(prepared->get(), idx, value.payload.floatValue);
-        break;
-      case SHType::String: {
-        auto sv = SHSTRVIEW(value);
-        rc = sqlite3_bind_text(prepared->get(), idx, sv.data(), sv.size(), SQLITE_STATIC);
-      } break;
-      case SHType::Bytes:
-        rc = sqlite3_bind_blob(prepared->get(), idx, value.payload.bytesValue, value.payload.bytesSize, SQLITE_STATIC);
-        break;
-      case SHType::None:
-        rc = sqlite3_bind_null(prepared->get(), idx);
-        break;
-      default:
-        throw ActivationError("Unsupported Var type for sqlite");
-      }
-      if (rc != SQLITE_OK) {
-        throw ActivationError(sqlite3_errmsg(_connection->get()));
-      }
-    }
-
-    colSeqs.clear();
-    bool empty = true;
-    while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
-      auto count = sqlite3_column_count(prepared->get());
-      if (count == 0) {
-        continue;
-      }
-
-      empty = false;
-
-      // fill column cache on first row
-      if (colSeqs.empty()) {
-        for (int i = 0; i < count; i++) {
-          auto colName = sqlite3_column_name(prepared->get(), i);
-          auto colNameVar = Var(colName);
-          auto &col = output[colNameVar];
-          if (col.valueType == SHType::None) {
-            SeqVar seq;
-            output.insert(colNameVar, std::move(seq));
-            colSeqs.push_back(&asSeq(output[colNameVar]));
-          } else {
-            auto &seq = asSeq(col);
-            seq.clear();
-            colSeqs.push_back(&seq);
+          if (!prepared) {
+            prepared.reset(new Statement(_connection->get(), _query.payload.stringValue)); // _query is full terminated cos cloned
           }
-        }
-      }
 
-      for (auto i = 0; i < count; i++) {
-        auto &col = *colSeqs[i];
-        auto type = sqlite3_column_type(prepared->get(), i);
-        switch (type) {
-        case SQLITE_INTEGER:
-          col.push_back(Var((int64_t)sqlite3_column_int64(prepared->get(), i)));
-          break;
-        case SQLITE_FLOAT:
-          col.push_back(Var(sqlite3_column_double(prepared->get(), i)));
-          break;
-        case SQLITE_TEXT:
-          col.push_back(Var((const char *)sqlite3_column_text(prepared->get(), i)));
-          break;
-        case SQLITE_BLOB:
-          col.push_back(
-              Var((const uint8_t *)sqlite3_column_blob(prepared->get(), i), (uint32_t)sqlite3_column_bytes(prepared->get(), i)));
-          break;
-        case SQLITE_NULL:
-          col.push_back(Var::Empty);
-          break;
-        default:
-          throw ActivationError("Unsupported Var type for sqlite");
-        }
-      }
-    }
+          sqlite3_reset(prepared->get());
+          sqlite3_clear_bindings(prepared->get());
 
-    if (rc != SQLITE_DONE) {
-      throw ActivationError(sqlite3_errmsg(_connection->get()));
-    }
+          int rc;
 
-    return empty ? emptyOutput : output;
+          int idx = 0;
+          for (auto value : input) {
+            idx++; // starting from 1 with sqlite
+            switch (value.valueType) {
+            case SHType::Bool:
+              rc = sqlite3_bind_int(prepared->get(), idx, int(value.payload.boolValue));
+              break;
+            case SHType::Int:
+              rc = sqlite3_bind_int64(prepared->get(), idx, value.payload.intValue);
+              break;
+            case SHType::Float:
+              rc = sqlite3_bind_double(prepared->get(), idx, value.payload.floatValue);
+              break;
+            case SHType::String: {
+              auto sv = SHSTRVIEW(value);
+              rc = sqlite3_bind_text(prepared->get(), idx, sv.data(), sv.size(), SQLITE_STATIC);
+            } break;
+            case SHType::Bytes:
+              rc = sqlite3_bind_blob(prepared->get(), idx, value.payload.bytesValue, value.payload.bytesSize, SQLITE_STATIC);
+              break;
+            case SHType::None:
+              rc = sqlite3_bind_null(prepared->get(), idx);
+              break;
+            default:
+              throw ActivationError("Unsupported Var type for sqlite");
+            }
+            if (rc != SQLITE_OK) {
+              throw ActivationError(sqlite3_errmsg(_connection->get()));
+            }
+          }
+
+          colSeqs.clear();
+          bool empty = true;
+          while ((rc = sqlite3_step(prepared->get())) == SQLITE_ROW) {
+            auto count = sqlite3_column_count(prepared->get());
+            if (count == 0) {
+              continue;
+            }
+
+            empty = false;
+
+            // fill column cache on first row
+            if (colSeqs.empty()) {
+              for (int i = 0; i < count; i++) {
+                auto colName = sqlite3_column_name(prepared->get(), i);
+                auto colNameVar = Var(colName);
+                auto &col = output[colNameVar];
+                if (col.valueType == SHType::None) {
+                  SeqVar seq;
+                  output.insert(colNameVar, std::move(seq));
+                  colSeqs.push_back(&asSeq(output[colNameVar]));
+                } else {
+                  auto &seq = asSeq(col);
+                  seq.clear();
+                  colSeqs.push_back(&seq);
+                }
+              }
+            }
+
+            for (auto i = 0; i < count; i++) {
+              auto &col = *colSeqs[i];
+              auto type = sqlite3_column_type(prepared->get(), i);
+              switch (type) {
+              case SQLITE_INTEGER:
+                col.push_back(Var((int64_t)sqlite3_column_int64(prepared->get(), i)));
+                break;
+              case SQLITE_FLOAT:
+                col.push_back(Var(sqlite3_column_double(prepared->get(), i)));
+                break;
+              case SQLITE_TEXT:
+                col.push_back(Var((const char *)sqlite3_column_text(prepared->get(), i)));
+                break;
+              case SQLITE_BLOB:
+                col.push_back(Var((const uint8_t *)sqlite3_column_blob(prepared->get(), i),
+                                  (uint32_t)sqlite3_column_bytes(prepared->get(), i)));
+                break;
+              case SQLITE_NULL:
+                col.push_back(Var::Empty);
+                break;
+              default:
+                throw ActivationError("Unsupported Var type for sqlite");
+              }
+            }
+          }
+
+          if (rc != SQLITE_DONE) {
+            throw ActivationError(sqlite3_errmsg(_connection->get()));
+          }
+
+          return empty ? emptyOutput : output;
+        },
+        [] {});
   }
 };
 
@@ -229,9 +235,7 @@ struct Transaction : public Base {
     return data.inputType;
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
-  }
+  void cleanup() { PARAM_CLEANUP(); }
 
   void warmup(SHContext *context) {
     if (_dbName.valueType != SHType::None) {
@@ -250,8 +254,10 @@ struct Transaction : public Base {
     if (rc != SQLITE_OK) {
       throw ActivationError(sqlite3_errmsg(_connection->get()));
     }
+
     SHVar output{};
     auto state = _queries.activate(context, input, output);
+
     if (state != SHWireState::Continue) {
       // likely something went wrong! lets rollback.
       auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
@@ -265,6 +271,7 @@ struct Transaction : public Base {
         throw ActivationError(sqlite3_errmsg(_connection->get()));
       }
     }
+
     return input;
   }
 };
@@ -277,9 +284,7 @@ struct LoadExtension : public Base {
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName));
 
-  void cleanup() {
-    PARAM_CLEANUP();
-  }
+  void cleanup() { PARAM_CLEANUP(); }
 
   void warmup(SHContext *context) {
     if (_dbName.valueType != SHType::None) {
@@ -292,11 +297,16 @@ struct LoadExtension : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ensureDb(context);
+    return awaitne(
+        context,
+        [&] {
+          ensureDb(context);
 
-    std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
-    _connection->loadExtension(extPath);
-    return input;
+          std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
+          _connection->loadExtension(extPath);
+          return input;
+        },
+        [] {});
   }
 };
 
@@ -329,18 +339,23 @@ struct RawQuery : public Base {
   std::vector<SeqVar *> colSeqs;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ensureDb(context);
+    return awaitne(
+        context,
+        [&] {
+          ensureDb(context);
 
-    char *errMsg = nullptr;
-    std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
-    int rc = sqlite3_exec(_connection->get(), query.c_str(), nullptr, nullptr, &errMsg);
+          char *errMsg = nullptr;
+          std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
+          int rc = sqlite3_exec(_connection->get(), query.c_str(), nullptr, nullptr, &errMsg);
 
-    if (rc != SQLITE_OK) {
-      throw ActivationError(errMsg);
-      sqlite3_free(errMsg);
-    }
+          if (rc != SQLITE_OK) {
+            throw ActivationError(errMsg);
+            sqlite3_free(errMsg);
+          }
 
-    return input;
+          return input;
+        },
+        [] {});
   }
 };
 

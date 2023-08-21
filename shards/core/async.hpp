@@ -123,6 +123,9 @@ TidePool &getTidePool();
 
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
+  static_assert(std::is_same_v<decltype(func()), SHVar> || std::is_same_v<decltype(func()), Var>,
+                "func must return SHVar or Var");
+
 #if !HAS_ASYNC_SUPPORT
   return func();
 #else
