@@ -71,6 +71,7 @@ void Mesh::calculateElementCounts(size_t vertexDataLength, size_t indexDataLengt
 void Mesh::update() {
   // This causes the GPU data to be recreated the next time it is requested
   updateData = true;
+  version++;
 }
 
 MeshPtr Mesh::clone() const {

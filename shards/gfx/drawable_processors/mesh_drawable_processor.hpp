@@ -138,9 +138,16 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   struct CachedDrawable {
     MeshPtr mesh;
-    size_t lastTouched;
+    size_t lastTouched{};
   };
   std::unordered_map<UniqueId, CachedDrawable> drawableCache;
+
+  struct CachedMesh {
+    MeshPtr mesh;
+    size_t version{};
+    size_t lastTouched{};
+  };
+  std::unordered_map<UniqueId, CachedMesh> meshCache;
 
   MeshDrawableProcessor(Context &context)
       : uniformBufferPool(getUniformBufferInitializer(context)), storageBufferPool(getStorageBufferInitializer(context)),
@@ -178,6 +185,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     textureViewCache.clearOldCacheItems(frameCounter, 120 * 60 / 2);
     clearOldCacheItemsIn(drawableCache, frameCounter, 32);
+    clearOldCacheItemsIn(meshCache, frameCounter, 32);
   }
 
   void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions &options) override {
@@ -356,7 +364,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       const MeshDrawable &meshDrawable = static_cast<const MeshDrawable &>(*drawable);
       auto &cached = drawableCache[meshDrawable.getId()];
       cached.mesh->createContextDataConditional(context.context);
-      touchCacheItem(cached, frameCounter);
     }
 
     auto *drawableDatas = allocator->new_object<shards::pmr::list<DrawableData>>();
@@ -679,19 +686,25 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         }
       }
 
-      auto &entry = detail::getCacheEntry(drawableCache, drawable.getId());
-      if (!entry.mesh) {
-        entry.mesh = mesh;
+      auto &meshCacheEntry = detail::getCacheEntry(meshCache, mesh->getId());
+      if (!meshCacheEntry.mesh || meshCacheEntry.version != mesh->getVersion()) {
+        meshCacheEntry.mesh = mesh;
+        meshCacheEntry.version = mesh->getVersion();
 
         if (requiredAttributes.requirePerVertexLocalBasis) {
           // Optionally generate tangent mesh
           try {
-            entry.mesh = generateLocalBasisAttribute(entry.mesh);
+            meshCacheEntry.mesh = generateLocalBasisAttribute(meshCacheEntry.mesh);
           } catch (...) {
-            SPDLOG_LOGGER_WARN(getLogger(), "Failed to generate tangents for mesh {}", drawable.getId().value);
+            SPDLOG_LOGGER_WARN(getLogger(), "Failed to generate tangents for mesh {}", mesh->getId().value);
           }
         }
       }
+      touchCacheItem(meshCacheEntry, frameCounter);
+
+      auto &entry = detail::getCacheEntry(drawableCache, drawable.getId());
+      entry.mesh = meshCacheEntry.mesh;
+      touchCacheItem(entry, frameCounter);
 
       pipelineHashCollector(mesh);
       if (drawable.material) {
