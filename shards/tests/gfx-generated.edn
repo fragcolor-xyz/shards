@@ -16,9 +16,9 @@
                          .scene-color
                          (Math.Multiply 0.4)
                          (Shader.WriteOutput "otherColor"))
-                        :After ["writeColor"]}]) >> .features
+                        :After ["writeColor"]}]) >> .inner-features
          (GFX.DrawablePass :Outputs [{:Name "otherColor" :Format TextureFormat.RGBA8Unorm} {:Name "depth"}]
-                           :Features .features :Queue .parent-queue) >> .steps
+                           :Features .inner-features :Queue .parent-queue) >> .steps
 
          (GFX.Texture :Format TextureFormat.RGBA8Unorm) >= .out-texture
          (GFX.RenderInto :Textures {:otherColor .out-texture}
