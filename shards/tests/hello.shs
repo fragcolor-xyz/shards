@@ -164,3 +164,5 @@ my-a | Log
 Do(test-nesting-var-set-1)
 
 x | Log
+
+[[1 2 3] [2 3 4] [3 4 5]] | Reduce(Math.Add($0)) | Assert.Is([6 9 12]) | Log
