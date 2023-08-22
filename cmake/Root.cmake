@@ -90,4 +90,3 @@ foreach(SUBPROJECT_PATH ${SHARDS_SUBPROJECTS})
     add_subdirectory(${SUBPROJECT_PATH_ABS} external/${FILENAME})
   endif()
 endforeach()
-
