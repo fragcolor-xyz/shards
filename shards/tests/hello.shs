@@ -26,7 +26,7 @@
   "This is a test" | Log
 })
 @schedule(root test)
-@run(root)
+@run(root) | Log("@run result") | Assert.Is(true)
 
 @i2(1) | Log
 @i2(1 2) | Log

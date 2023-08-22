@@ -159,15 +159,17 @@ fn execute_seq(matches: &ArgMatches, ast: Sequence, cancellation_token: Arc<Atom
     return -1;
   }
   mesh.schedule(wire.0, false);
+
   loop {
     if cancellation_token.load(atomic::Ordering::Relaxed) {
       break;
     }
 
-    if !mesh.tick() {
+    if !mesh.tick() || mesh.is_empty() {
       break;
     }
   }
+
   let info = wire.get_info();
   if info.failed {
     let msg = std::str::from_utf8(unsafe {

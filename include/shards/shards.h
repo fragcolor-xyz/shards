@@ -1028,7 +1028,8 @@ typedef struct _SHCore {
   SHCompose compose;
   SHSchedule schedule;
   SHUnSchedule unschedule;
-  SHTick tick; // returns false if all wires are done!
+  SHTick tick; // returns false if we had a failure
+  SHTick isEmpty; // returns true if we have no wires to tick
   SHTerminate terminate;
   SHSleep sleep;
 

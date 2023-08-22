@@ -213,6 +213,10 @@ impl Mesh {
     unsafe { (*Core).tick.unwrap()(self.0) }
   }
 
+  pub fn is_empty(&mut self) -> bool {
+    unsafe { (*Core).isEmpty.unwrap()(self.0) }
+  }
+
   pub fn terminate(&mut self) {
     unsafe { (*Core).terminate.unwrap()(self.0) }
   }
@@ -252,6 +256,7 @@ impl MeshVar {
     }
   }
 
+  /// Returns false if we had any wire failure
   pub fn tick(&mut self) -> bool {
     unsafe {
       let mesh_ref = self
@@ -262,6 +267,19 @@ impl MeshVar {
         .__bindgen_anon_1
         .objectValue as SHMeshRef;
       (*Core).tick.unwrap()(mesh_ref)
+    }
+  }
+
+  pub fn is_empty(&mut self) -> bool {
+    unsafe {
+      let mesh_ref = self
+        .0
+         .0
+        .payload
+        .__bindgen_anon_1
+        .__bindgen_anon_1
+        .objectValue as SHMeshRef;
+      (*Core).isEmpty.unwrap()(mesh_ref)
     }
   }
 

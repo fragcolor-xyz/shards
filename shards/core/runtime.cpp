@@ -3330,11 +3330,18 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->tick = [](SHMeshRef mesh) noexcept {
     auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
-    (*smesh)->tick();
-    if ((*smesh)->empty())
-      return false;
+    if ((*smesh)->tick())
+      return true; // continue
     else
+      return false; // had an error
+  };
+
+  result->isEmpty = [](SHMeshRef mesh) noexcept {
+    auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+    if ((*smesh)->empty())
       return true;
+    else
+      return false;
   };
 
   result->terminate = [](SHMeshRef mesh) noexcept {

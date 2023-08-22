@@ -942,11 +942,13 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
       );
     }
     mesh.schedule(wire.0, false);
+
     loop {
-      if !mesh.tick() {
+      if !mesh.tick() || mesh.is_empty() {
         break;
       }
     }
+
     let info = wire.get_info();
     if info.failed {
       let msg = std::str::from_utf8(unsafe {
@@ -2828,10 +2830,13 @@ fn eval_pipeline(
               let mut now = Instant::now();
               let mut next = now + Duration::from_secs_f64(tick.unwrap_or(0.0));
               let mut iteration = 0u64;
+              let mut succeeded = true;
 
               loop {
                 if let Some(tick) = tick {
                   if !mesh.tick() {
+                    // exit on first failure
+                    succeeded = false;
                     break;
                   }
 
@@ -2839,6 +2844,8 @@ fn eval_pipeline(
                   sleep_and_update(&mut next, now, tick);
                 } else {
                   if !mesh.tick() {
+                    // exit on first failure
+                    succeeded = false;
                     break;
                   }
                 }
@@ -2855,11 +2862,20 @@ fn eval_pipeline(
 
                 if let Some(max_iterations) = iterations {
                   if iteration >= max_iterations {
-                    mesh.terminate();
                     break;
                   }
                 }
+
+                if mesh.is_empty() {
+                  break;
+                }
               }
+
+              mesh.terminate();
+
+              // a @run(...) should transform into a boolean const shard so to be used for error handling
+              let succeeded = succeeded.into();
+              add_const_shard2(succeeded, block.line_info.unwrap_or_default(), e)?;
 
               Ok(())
             } else {
