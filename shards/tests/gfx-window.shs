@@ -1,0 +1,10 @@
+@define(timestep #(1.0 | Math.Divide(120.0)))
+@mesh(root)
+@wire(test-wire {
+  GFX.MainWindow(
+    Title: "SDL Window" Width: 1280 Height: 720
+  )
+} Looped: true)
+
+@schedule(root test-wire)
+@run(root FPS: 120 Iterations: 100)
