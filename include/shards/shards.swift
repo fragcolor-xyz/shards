@@ -504,12 +504,12 @@ public extension IShard {
     return result
 }
 
-@inlinable public func bridgeCompose<T: IShard>(_: T.Type, shard: ShardPtr, data: SHInstanceData) -> SHShardComposeResult {
+@inlinable public func bridgeCompose<T: IShard>(_: T.Type, shard: ShardPtr, data: UnsafeMutablePointer<SHInstanceData>?) -> SHShardComposeResult {
     let b = shard!.withMemoryRebound(to: SwiftShard.self, capacity: 1) {
         Unmanaged<T>.fromOpaque($0.pointee.swiftClass).takeUnretainedValue()
     }
     var value = SHShardComposeResult()
-    let result = b.compose(data: data)
+    let result = b.compose(data: data!.pointee)
     switch result {
     case .success(let typ):
         value.result = typ
@@ -937,7 +937,8 @@ class ShardController : Equatable, Identifiable {
 
 class WireController {
     init() {
-        nativeRef = G.Core.pointee.createWire()
+        var cname = SHStringWithLen()
+        nativeRef = G.Core.pointee.createWire(cname)
     }
     
     convenience init(shards: [ShardController]) {
@@ -998,18 +999,6 @@ class WireController {
         }
     }
     
-    var name: String = "" {
-        didSet {
-            let n = name.utf8CString
-            var cname = SHStringWithLen()
-            cname.string = n.withUnsafeBufferPointer{
-                $0.baseAddress
-            }
-            cname.len = n.count
-            G.Core.pointee.setWireName(nativeRef, cname)
-        }
-    }
-    
     func variable(name: String) -> UnsafeMutablePointer<SHVar> {
         if let current = refs[name] {
             return current
@@ -1042,7 +1031,7 @@ class MeshController {
     
     func schedule(wire: WireController) {
         wires.append(wire)
-        G.Core.pointee.schedule(nativeRef, wire.nativeRef)
+        G.Core.pointee.schedule(nativeRef, wire.nativeRef, true)
     }
     
     func unschedule(wire: WireController) {
