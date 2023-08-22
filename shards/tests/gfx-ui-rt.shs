@@ -1,0 +1,179 @@
+@define(timestep #(1.0 | Math.Divide(120.0)))
+@mesh(root)
+
+@template(spin-transform [t location] {
+  t |
+  {Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation >= rotX} |
+  {Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation >= rotY} |
+  {Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation >= rotZ}
+  location | Math.Translation | Math.MatMul(rotX) | Math.MatMul(rotY) | Math.MatMul(rotZ)
+})
+
+@wire(inner-0 {
+  Once({
+    0.0 >= time
+    "<text>" >= text1
+
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= mesh
+
+    GFX.DrawQueue >= queue
+    GFX.DrawQueue >= ui-queue
+
+    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features1
+    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features1
+    GFX.DrawablePass(Features: features1 Queue: queue) >> render-steps1
+    GFX.UIPass(Queue: ui-queue) >> render-steps1
+
+    ; Create view
+    {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
+    GFX.View(View: view-transform) >= view
+  })
+
+  Inputs.Detached(
+    window-ctx Name: "Camera" Priority: 1
+    Contents: {
+      view-transform | FreeCamera > view-transform
+    }
+  )
+
+  time | Math.Add(@timestep) > time
+
+  @spin-transform(time @f3(-0.6 0 0))
+  GFX.Drawable(Mesh: mesh Params: {baseColor: @f4(1 0 1 1)}) | GFX.Draw(queue)
+
+  Inputs.Detached(
+    window-ctx Name: "Child UI" Priority: 2
+    Contents: {
+      UI(ui-queue {
+        ; UI Content
+        UI.Window(Contents: {
+          "This is UI inside a render target" | UI.Label
+          UI.TextField(Variable: text1 Multiline: true)
+        })
+      })
+    }
+  )
+
+  ; This renders to the render target that was pushed in the outer wire
+  GFX.Render(Steps: render-steps1 View: view)
+} Looped: true)
+
+@wire(inner-1 {
+  Once({
+    0.0 >= time
+    "<text>" >= text1
+
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= mesh
+
+    GFX.DrawQueue >= queue
+    GFX.DrawQueue >= ui-queue
+
+    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features1
+    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features1
+    GFX.DrawablePass(Features: features1 Queue: queue) >> render-steps1
+    GFX.UIPass(Queue: ui-queue) >> render-steps1
+
+    ; Create view
+    {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
+    GFX.View(View: view-transform) >= view
+  })
+
+  Inputs.Detached(
+    window-ctx Name: "Camera" Priority: 1
+    Contents: {
+      view-transform | FreeCamera > view-transform
+    }
+  )
+
+  time | Math.Add(@timestep) > time
+
+  @spin-transform(time @f3(-0.6 0 0))
+  GFX.Drawable(Mesh: mesh Params: {baseColor: @f4(0 1 0 1)}) | GFX.Draw(queue)
+
+  Inputs.Detached(
+    window-ctx Name: "Child UI" Priority: 2
+    Contents: {
+      UI(ui-queue {
+        ; UI Content
+        UI.Window(Contents: {
+          "This is UI inside a render target" | UI.Label
+          UI.TextField(Variable: text1 Multiline: true)
+        })
+      })
+    }
+  )
+
+  ; This renders to the render target that was pushed in the outer wire
+  GFX.Render(Steps: render-steps1 View: view)
+} Looped: true)
+
+@template(compute-rt-region-16-9 [] {
+  {Take([0 1]) >= min} |
+  {Take([0]) >= min-x} |
+  {Take([1]) >= min-y} |
+  {Take([2 3]) | Math.Subtract(min) >= size}
+  size | Take([0]) >= size-x | Math.Multiply((9.0 | Math.Divide(16.0))) >= size-y
+
+  size-x | Math.Add(min-x) >= max-x
+  size-y | Math.Add(min-y) >= max-y
+  [min-x min-y max-x max-y] | ToFloat4
+})
+
+@wire(test-wire {
+  Once({
+    ; UI Setup
+    GFX.DrawQueue >= ui-draw-queue
+    GFX.UIPass(ui-draw-queue) >> render-steps
+
+    "Something" >= text
+  })
+
+  GFX.MainWindow(
+    Title: "SDL Window" Width: 1280 Height: 720
+    DetachRenderer: true) >= window-ctx
+
+  GFX.Renderer(
+    window-ctx {
+      GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb) >= rt-0
+      GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb) >= rt-1
+
+      Inputs.Detached(
+        window-ctx Name: "Main" Priority: 0
+        Contents: {
+          UI(ui-draw-queue {
+            ; UI Content
+            UI.Window(Contents: {
+              UI.GetProperty(UIProperty::RemainingSpace) >= rt-region
+              @compute-rt-region-16-9() > rt-region
+
+              GFX.RenderInto(Textures: {color: rt-0} WindowRegion: rt-region Contents: {Step(inner-0)})
+              rt-0 | UI.RenderTarget
+
+              UI.Separator
+              UI.TextField(Variable: text Multiline: true)
+            })
+
+            UI.Window(Title: "Second Window" Contents: {
+              "Header" | UI.Label | UI.Separator
+
+              UI.GetProperty(UIProperty::RemainingSpace) >= rt-region
+              @compute-rt-region-16-9() > rt-region
+
+              GFX.RenderInto(Textures: {color: rt-1} WindowRegion: rt-region Contents: {Step(inner-1)})
+              rt-1 | UI.RenderTarget
+
+              UI.Separator | "Footer" | UI.Label
+            })
+
+            Inputs.DebugUI
+          })
+        }
+      )
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(root test-wire)
+@run(root FPS: 120 Iterations: 100)
