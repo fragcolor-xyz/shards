@@ -1082,6 +1082,12 @@ fn find_replacement<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Valu
     if let Some(replacement) = env.replacements.get(name) {
       let replacement = *replacement;
       let replacement = unsafe { &*replacement };
+      // prevent infinite recursion
+      if let Value::Identifier(inner_name) = &replacement {
+        if name.as_str() == inner_name.name.as_str() {
+          return None;
+        }
+      }
       return Some(replacement);
     }
     if let Some(parent) = env.parent {
@@ -2226,8 +2232,21 @@ fn process_macro(
         );
       }
 
+      // Resolve template arguments, we could be nested
+      let value = if let Value::Identifier(id) = &param.value {
+        let replacement = find_replacement(id, e);
+        if let Some(replacement) = replacement {
+          shlog_trace!("Replacing {:?} with {:?}", id, replacement);
+          replacement
+        } else {
+          &param.value
+        }
+      } else {
+        &param.value
+      };
+
       // and add new replacement
-      let value_ptr = &param.value as *const _;
+      let value_ptr = value as *const _;
       eval_env.replacements.insert(arg.to_owned(), value_ptr);
     }
 
@@ -2315,8 +2334,21 @@ fn process_shards(
         );
       }
 
+      // Resolve template arguments, we could be nested
+      let value = if let Value::Identifier(id) = &param.value {
+        let replacement = find_replacement(id, e);
+        if let Some(replacement) = replacement {
+          shlog_trace!("Replacing {:?} with {:?}", id, replacement);
+          replacement
+        } else {
+          &param.value
+        }
+      } else {
+        &param.value
+      };
+
       // and add new replacement
-      let value_ptr = &param.value as *const _;
+      let value_ptr = value as *const _;
       sub_env.replacements.insert(arg.to_owned(), value_ptr);
     }
 
