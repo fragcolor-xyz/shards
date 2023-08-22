@@ -1,0 +1,12 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2020 Fragcolor Pte. Ltd.
+
+@mesh(root)
+
+@wire(detect {
+  Desktop.LastInput |
+  Log
+} Looped: true)
+
+@schedule(root detect)
+@run(root FPS: 10)
