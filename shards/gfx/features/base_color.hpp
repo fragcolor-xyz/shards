@@ -52,32 +52,31 @@ struct BaseColor {
     const std::string colorAttributeName = "color";
 
     auto initColor = makeBlock<Custom>([=](IGeneratorContext &context) {
-      context.beginWriteGlobal("color", colorFieldType);
+      context.writeGlobal("color", colorFieldType, [&]() {
+        auto &inputs = context.getDefinitions().inputs;
+        if (context.hasInput(colorAttributeName.c_str())) {
+          auto it = inputs.find(colorAttributeName);
+          auto colorInputType = it != inputs.end() ? it->second : FieldTypes::Float4;
 
-      auto &inputs = context.getDefinitions().inputs;
-      if (context.hasInput(colorAttributeName.c_str())) {
-        auto it = inputs.find(colorAttributeName);
-        auto colorInputType = it != inputs.end() ? it->second : FieldTypes::Float4;
-
-        // Convert value to color or use float type directly
-        if (isFloatType(colorInputType.baseType)) {
-          context.readInput("color");
+          // Convert value to color or use float type directly
+          if (isFloatType(colorInputType.baseType)) {
+            context.readInput("color");
+          } else {
+            uint64_t maxValue = getShaderFieldMaxValue(colorInputType.baseType);
+            auto colorFieldTypeName =
+                getFieldWGSLTypeName(NumFieldType(ShaderFieldBaseType::Float32, colorInputType.numComponents));
+            context.write(fmt::format("({}(", colorFieldTypeName));
+            context.readInput("color");
+            context.write(fmt::format(") / {}(f32({:e}))", colorFieldTypeName, double(maxValue)));
+            context.write(")");
+          }
         } else {
-          uint64_t maxValue = getShaderFieldMaxValue(colorInputType.baseType);
-          auto colorFieldTypeName =
-              getFieldWGSLTypeName(NumFieldType(ShaderFieldBaseType::Float32, colorInputType.numComponents));
-          context.write(fmt::format("({}(", colorFieldTypeName));
-          context.readInput("color");
-          context.write(fmt::format(") / {}(f32({:e}))", colorFieldTypeName, double(maxValue)));
-          context.write(")");
+          context.write(defaultColor);
         }
-      } else {
-        context.write(defaultColor);
-      }
 
-      context.write(" * ");
-      context.readBuffer("baseColor", FieldTypes::Float4, "object");
-      context.endWriteGlobal();
+        context.write(" * ");
+        context.readBuffer("baseColor", FieldTypes::Float4, "object");
+      });
     });
     feature->shaderEntryPoints.emplace_back("initColor", ProgrammableGraphicsStage::Vertex, std::move(initColor));
 
