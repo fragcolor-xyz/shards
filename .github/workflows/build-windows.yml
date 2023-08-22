@@ -312,18 +312,18 @@ jobs:
           RUST_BACKTRACE: full
         shell: bash
         run: |
-          echo "Running gfx_window"
-          build/shards shards/tests/gfx-window.edn
-          echo "Running gfx_cube"
+          echo "Running test: gfx_window"
+          build/shards new shards/tests/gfx-window.shs
+          echo "Running test: gfx_cube"
           build/shards new shards/tests/gfx-cube.shs
-          echo "Running gfx_materials"
-          build/shards shards/tests/gfx-materials.edn
+          echo "Running test: gfx_materials"
+          build/shards new shards/tests/gfx-materials.shs
 
 
           echo "Running input test"
           build/shards new shards/tests/input.shs
 
-          echo "Running ui"
+          echo "Running test: ui"
           build/shards shards/tests/ui-0.edn
           build/shards shards/tests/ui-1.edn
           build/shards shards/tests/ui-2.edn
