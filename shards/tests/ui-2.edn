@@ -25,7 +25,7 @@
        :Contents
        (->
         "Hello Shards!" (UI.Label)
-        (Assert.Is "Hello Shards!" :Abort true)))))
+        (Assert.Is "Hello Shards!" :Break true)))))
 
     (GFX.Render :Steps .render-steps))))
 (schedule main label-test)
@@ -170,7 +170,7 @@
         input
         (UI.Spinner)
         ;; input passthrough
-        (Assert.Is input :Abort true)))))
+        (Assert.Is input :Break true)))))
 
     (GFX.Render :Steps .render-steps))))
 (schedule main spinner-test)
@@ -216,17 +216,17 @@
         :Contents
         (->
          ;; input pass into
-         (Assert.Is input :Abort true)
+         (Assert.Is input :Break true)
          "Lorem ipsum" (UI.Label))
         :OnHover
         (->
          ;; input pass into
-         (Assert.Is input :Abort true)
+         (Assert.Is input :Break true)
          "Tooltip" (UI.Label)))
        ;; input passthrough
-       (Assert.Is input :Abort true))))
+       (Assert.Is input :Break true))))
     ;; input passthrough
-    (Assert.Is input :Abort true)
+    (Assert.Is input :Break true)
 
     (GFX.Render :Steps .render-steps))))
 (schedule main tooltip-test)

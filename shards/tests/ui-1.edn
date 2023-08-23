@@ -72,7 +72,7 @@
          "Click me!"
          :Action
          (->
-          (Assert.Is input :Abort true)
+          (Assert.Is input :Break true)
           (Msg "Clicked")))
         (ExpectBool)))))
 
@@ -159,7 +159,7 @@
        :Contents
        (->
         "https://docs.fragnova.com" (UI.Hyperlink "Fragnova documentation")
-        (Assert.Is "https://docs.fragnova.com" :Abort true)))))
+        (Assert.Is "https://docs.fragnova.com" :Break true)))))
 
     (GFX.Render :Steps .render-steps))))
 (schedule main hyperlink-test)

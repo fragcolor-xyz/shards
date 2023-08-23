@@ -1,2 +1,2 @@
 "Hello" (String.ToUpper) (Log)
-(Assert.Is "HELLO" :Abort true)
+(Assert.Is "HELLO" :Break true)
