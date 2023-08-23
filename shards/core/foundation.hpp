@@ -482,8 +482,8 @@ public:
 
   UntrackedList<std::weak_ptr<RuntimeObserver>> Observers;
 
-  std::string RootPath;
-  std::string ExePath;
+  UntrackedString RootPath;
+  UntrackedString ExePath;
 
   UntrackedUnorderedMap<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
 

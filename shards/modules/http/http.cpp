@@ -858,7 +858,7 @@ struct SendFile {
     assert(_peerVar->payload.objectValue);
     auto peer = reinterpret_cast<Peer *>(_peerVar->payload.objectValue);
 
-    fs::path p{GetGlobals().RootPath};
+    fs::path p{GetGlobals().RootPath.c_str()};
     p += SHSTRING_PREFER_SHSTRVIEW(input);
 
     http::file_body::value_type file;
