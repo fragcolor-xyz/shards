@@ -16,11 +16,12 @@
           Math.Multiply(0.4) |
           Shader.WriteOutput("otherColor")
         }
+        After: ["writeColor"]
       }]
-    ) >> features
+    ) >> inner-features
     GFX.DrawablePass(
       Outputs: [{Name: "otherColor" Format: TextureFormat::RGBA8Unorm} {Name: "depth"}]
-      Features: features Queue: parent-queue
+      Features: inner-features Queue: parent-queue
     ) >> steps
 
     GFX.Texture(Format: TextureFormat::RGBA8Unorm) >= out-texture
