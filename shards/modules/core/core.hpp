@@ -284,6 +284,10 @@ struct Pause {
     if (data.onWorkerThread) {
       throw ComposeError("Pause shard cannot be used on a worker thread.");
     }
+
+    reqs.clear();
+    collectAllRequiredVariables(data.shared, reqs, time);
+
     return data.inputType;
   }
 
@@ -292,12 +296,6 @@ struct Pause {
   void cleanup() { time.cleanup(); }
 
   SHExposedTypesInfo requiredVariables() {
-    if (time.isVariable()) {
-      reqs = ExposedInfo(ExposedInfo::Variable(time.variableName(), SHCCSTR("The required variable"), CoreInfo::FloatType),
-                         ExposedInfo::Variable(time.variableName(), SHCCSTR("The required variable"), CoreInfo::IntType));
-    } else {
-      reqs = {};
-    }
     return SHExposedTypesInfo(reqs);
   }
 
