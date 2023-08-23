@@ -24,12 +24,11 @@ function(shards_build INPUT OUTPUT)
     # Create a custom command to build the input file
     add_custom_command(
         OUTPUT ${OUTPUT}
-        COMMAND ${SHARDS_COMMAND} build ${INPUT} -o ${OUTPUT}
+        COMMAND ${SHARDS_COMMAND} build ${INPUT} -o ${OUTPUT} -d ${OUTPUT}.d
         DEPENDS ${INPUT} ${SHARDS_COMMAND_DEPENDS} # Depend on the shards target
+        DEPFILE ${OUTPUT}.d
         COMMENT "Building ${INPUT} with Shards"
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} # Set the working directory
     )
-
-    # Create a custom target that depends on the custom command
-    add_custom_target(${OUTPUT}_target ALL DEPENDS ${OUTPUT})
+    set_source_files_properties(${OUTPUT} PROPERTIES GENERATED TRUE)
 endfunction()
