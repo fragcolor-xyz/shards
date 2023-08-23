@@ -11,9 +11,10 @@ use shards::{cstr, shccstr, shlog, shlog_error};
 use std::collections::HashSet;
 use std::path::Path;
 
-pub(crate) struct ReadEnv {
+pub struct ReadEnv {
   directory: String,
   included: HashSet<RcStrWrapper>,
+  dependencies: Vec<String>,
   parent: Option<*const ReadEnv>,
 }
 
@@ -22,9 +23,14 @@ impl ReadEnv {
     Self {
       directory: directory.to_string(),
       included: HashSet::new(),
+      dependencies: Vec::new(),
       parent: None,
     }
   }
+}
+
+pub fn get_dependencies<'a>(env: &'a ReadEnv) -> core::slice::Iter<'a, String> {
+  env.dependencies.iter()
 }
 
 fn check_included<'a>(name: &'a RcStrWrapper, env: &'a ReadEnv) -> bool {
@@ -367,6 +373,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               return Ok(FunctionValue::Const(Value::None));
             }
 
+            env.dependencies.push(rc_path.to_string());
             env.included.insert(rc_path);
 
             // read string from file
@@ -429,6 +436,11 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
 
             let parent = Path::new(&env.directory);
             let file_path = parent.join(&file_name.as_str());
+
+            env
+              .dependencies
+              .push(file_path.to_string_lossy().to_string());
+
             if as_bytes {
               // read bytes from file
               let bytes = std::fs::read(&file_path)
@@ -914,18 +926,22 @@ fn process_params(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Vec<Param>, Sha
   pair.into_inner().map(|x| process_param(x, env)).collect()
 }
 
-pub fn read(code: &str, path: &str) -> Result<Sequence, ShardsError> {
+pub fn read_with_env(code: &str, env: &mut ReadEnv) -> Result<Sequence, ShardsError> {
   let successful_parse: pest::iterators::Pairs<'_, Rule> = {
     ShardsParser::parse(Rule::Program, code).map_err(|e| {
       (
-        format!("Failed to parse file {:?}: {}", path, e),
+        format!("Failed to parse file {:?}: {}", env.directory, e),
         LineInfo { line: 0, column: 0 },
       )
         .into()
     })?
   };
+  process_program(successful_parse.into_iter().next().unwrap(), env)
+}
+
+pub fn read(code: &str, path: &str) -> Result<Sequence, ShardsError> {
   let mut env = ReadEnv::new(path);
-  process_program(successful_parse.into_iter().next().unwrap(), &mut env)
+  read_with_env(&code, &mut env)
 }
 
 use lazy_static::lazy_static;

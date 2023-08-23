@@ -1,5 +1,6 @@
 use crate::ast::Sequence;
 use crate::eval;
+use crate::read::{get_dependencies, read_with_env, ReadEnv};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Arg, ArgMatches, Command};
 use shards::core::Core;
@@ -67,6 +68,13 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
             .short('o')
             .help("The output file to write to")
             .default_value("out.sho"),
+        )
+        .arg(
+          Arg::new("depfile")
+            .long("depfile")
+            .short('d')
+            .help("The depfile to write, in makefile readable format")
+            .default_value(""),
         ),
     )
     .subcommand(
@@ -195,7 +203,7 @@ fn build(matches: &ArgMatches) -> i32 {
   let file = matches.get_one::<String>("FILE").expect("A file to parse");
   shlog!("Parsing file: {}", file);
 
-  let ast = {
+  let (deps, ast) = {
     let file_path = Path::new(&file);
     let file_path = std::fs::canonicalize(file_path).unwrap();
     let mut file_content = std::fs::read_to_string(file).expect("File not found");
@@ -205,7 +213,17 @@ fn build(matches: &ArgMatches) -> i32 {
     // get absolute parent path of the file
     let parent_path = file_path.parent().unwrap().to_str().unwrap();
 
-    read(&file_content, parent_path).expect("Failed to parse file")
+    let mut env = ReadEnv::new(parent_path);
+    let ast = read_with_env(&file_content, &mut env).expect("Failed to parse file");
+    (
+      get_dependencies(&env).map(|x| {
+        dunce::canonicalize(x)
+          .expect("Failed to canonicalize path")
+          .to_string_lossy()
+          .to_string()
+      }).collect::<Vec<String>>(),
+      ast,
+    )
   };
 
   let output = matches
@@ -225,6 +243,18 @@ fn build(matches: &ArgMatches) -> i32 {
     .write(SHARDS_CURRENT_ABI.to_le_bytes().as_ref())
     .unwrap();
   writer.write_all(&encoded_bin).unwrap();
+
+  if let Some(out_dep_file) = matches.get_one::<String>("depfile") {
+    let mut file = std::fs::File::create(out_dep_file).unwrap();
+    let mut writer = std::io::BufWriter::new(&mut file);
+
+    writer.write_all(output.as_bytes()).unwrap();
+    writer.write_all(b": ").unwrap();
+    for dep in deps {
+      writer.write_all(dep.as_bytes()).unwrap();
+      writer.write_all(b" ").unwrap();
+    }
+  }
 
   0
 }
