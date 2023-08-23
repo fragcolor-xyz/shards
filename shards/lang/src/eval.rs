@@ -1421,7 +1421,7 @@ fn as_var(
           let v = extension.process_to_var(func, line_info)?;
           Ok(SVar::Cloned(v))
         } else {
-          Err((format!("Undefined function {}", func.name.name), line_info).into())
+          Err((format!("Undefined function or definition {:?}", func.name), line_info).into())
         }
       }
     },
