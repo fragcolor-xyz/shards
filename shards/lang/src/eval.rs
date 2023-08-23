@@ -1421,7 +1421,13 @@ fn as_var(
           let v = extension.process_to_var(func, line_info)?;
           Ok(SVar::Cloned(v))
         } else {
-          Err((format!("Undefined function or definition {:?}", func.name), line_info).into())
+          Err(
+            (
+              format!("Undefined function or definition {:?}", func.name),
+              line_info,
+            )
+              .into(),
+          )
         }
       }
     },
@@ -3132,7 +3138,7 @@ fn eval_pipeline(
               }
               _ => Err(
                 (
-                  format!("unknown built-in function: {}", unknown.0),
+                  format!("unknown built-in function or definition: {:?}", func.name),
                   block.line_info.unwrap_or_default(),
                 )
                   .into(),
@@ -3307,8 +3313,11 @@ pub fn transform_env(env: &mut EvalEnv, name: &str) -> Result<Wire, ShardsError>
   Ok(wire)
 }
 
-pub fn merge_env(mut env: EvalEnv, into: &mut EvalEnv) {
+pub fn merge_env(mut env: EvalEnv, into: &mut EvalEnv) -> Result<(), ShardsError> {
   env.parent = Some(into);
+
+  // finalize here, other wise we will have a namespace mismatch
+  finalize_env(&mut env)?;
 
   for shard in env.shards.drain(..) {
     into.shards.push(shard);
@@ -3352,6 +3361,8 @@ pub fn merge_env(mut env: EvalEnv, into: &mut EvalEnv) {
     }
     into.meshes.insert(name, mesh);
   }
+
+  Ok(())
 }
 
 pub fn eval(

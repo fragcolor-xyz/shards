@@ -493,8 +493,19 @@ pub extern "C" fn shardsRegister_lang_lang(core: *mut shards::shardsc::SHCore) {
 
 /// Please note it will consume `from` but not `to`
 #[no_mangle]
-pub extern "C" fn shards_merge_envs(from: *mut EvalEnv, to: *mut EvalEnv) {
+pub extern "C" fn shards_merge_envs(from: *mut EvalEnv, to: *mut EvalEnv) -> *mut SHLError {
   let from = unsafe { Box::from_raw(from) };
   let to = unsafe { &mut *to };
-  merge_env(*from, to);
+  if let Err(e) = merge_env(*from, to) {
+    shlog_error!("{}:{}: {}", e.loc.line, e.loc.column, e.message);
+    let error_message = CString::new(e.message).unwrap();
+    let shards_error = SHLError {
+      message: error_message.into_raw(),
+      line: e.loc.line,
+      column: e.loc.column,
+    };
+    Box::into_raw(Box::new(shards_error))
+  } else {
+    std::ptr::null_mut()
+  }
 }
