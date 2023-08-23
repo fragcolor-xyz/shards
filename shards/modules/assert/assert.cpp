@@ -4,11 +4,33 @@
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
 
+#if defined(_MSC_VER) // Microsoft Visual Studio
+#include <intrin.h>
+#define DEBUG_BREAK() __debugbreak()
+#elif defined(__INTEL_COMPILER) // Intel C++ Compiler
+#include <signal.h>
+#define DEBUG_BREAK() raise(SIGTRAP)
+#elif defined(__IBMCPP__) // IBM XL C/C++ Compiler
+#include <builtins.h>
+#define DEBUG_BREAK() __trap(0)
+#elif defined(__clang__) // Clang
+#define DEBUG_BREAK() __builtin_trap()
+#elif defined(__GNUC__) // GCC
+#define DEBUG_BREAK() __builtin_trap()
+#elif defined(__HP_aCC) // HP C/aC++ Compiler
+#define DEBUG_BREAK() _break()
+#elif defined(__SUNPRO_CC) // Oracle Developer Studio C++
+#include <signal.h>
+#define DEBUG_BREAK() raise(SIGTRAP)
+#else
+#error "Compiler not supported."
+#endif
+
 namespace shards {
 namespace Assert {
 struct Base {
   PARAM_PARAMVAR(_value, "Value", "The value to test against for equality.", {CoreInfo::AnyType});
-  PARAM_VAR(_aborting, "Abort", "If we should abort the process on failure.", {CoreInfo::BoolType});
+  PARAM_VAR(_aborting, "Break", "If we should trigger a debug breakpoint on failure.", {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_value), PARAM_IMPL_FOR(_aborting));
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -39,7 +61,7 @@ struct Is : public Base {
     if (input != _value.get()) {
       SHLOG_ERROR("Failed assertion Is, input: {} expected: {}", input, _value.get());
       if (*_aborting)
-        abort();
+        DEBUG_BREAK();
       else
         throw ActivationError("Assert failed - Is");
     }
@@ -57,7 +79,7 @@ struct IsNot : public Base {
     if (input == _value.get()) {
       SHLOG_ERROR("Failed assertion IsNot, input: {} not expected: {}", input, _value.get());
       if (*_aborting)
-        abort();
+        DEBUG_BREAK();
       else
         throw ActivationError("Assert failed - IsNot");
     }
@@ -143,7 +165,7 @@ struct IsAlmost {
     if (!_almostEqual(input, _value.get(), _threshold)) {
       SHLOG_ERROR("Failed assertion IsAlmost, input: {} expected: {}", input, _value.get());
       if (_aborting)
-        abort();
+        DEBUG_BREAK();
       else
         throw ActivationError("Assert failed - IsAlmost");
     }
@@ -178,6 +200,19 @@ private:
   ParamVar _value{};
   shards::ExposedInfo _requiredVariables;
 };
+
+struct Break {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any type."); }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output will be the input (passthrough)."); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    DEBUG_BREAK();
+    return input;
+  }
+};
 } // namespace Assert
 } // namespace shards
 
@@ -186,4 +221,5 @@ SHARDS_REGISTER_FN(assert) {
   REGISTER_SHARD("Assert.Is", Is);
   REGISTER_SHARD("Assert.IsNot", IsNot);
   REGISTER_SHARD("Assert.IsAlmost", IsAlmost);
+  REGISTER_SHARD("Assert.Break", Break);
 }
