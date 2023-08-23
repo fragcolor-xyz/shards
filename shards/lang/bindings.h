@@ -59,7 +59,7 @@ void shards_free_wire(SHWireRef *wire);
 void shards_free_error(SHLError *error);
 
 /// Please note it will consume `from` but not `to`
-void shards_merge_envs(EvalEnv *from, EvalEnv *to);
+SHLError *shards_merge_envs(EvalEnv *from, EvalEnv *to);
 
 int32_t shards_process_args(int32_t argc, const char *const *argv);
 
