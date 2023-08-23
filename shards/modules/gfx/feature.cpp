@@ -44,7 +44,10 @@ using namespace shards;
 
 namespace gfx {
 enum class BuiltinFeatureId { Transform, BaseColor, VertexColorFromNormal, Wireframe, Velocity };
-}
+enum class RequiredAttributes_ { Tangent };
+} // namespace gfx
+
+ENUM_HELP(gfx::RequiredAttributes_, gfx::RequiredAttributes_::Tangent, SHCCSTR("Require mesh tangents to be available"));
 
 ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::Transform, SHCCSTR("Add basic world/view/projection transform"));
 ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::BaseColor,
@@ -55,6 +58,7 @@ ENUM_HELP(gfx::BuiltinFeatureId, gfx::BuiltinFeatureId::Velocity,
           SHCCSTR("Outputs object velocity into the velocity global & output"));
 
 namespace gfx {
+DECL_ENUM_INFO(RequiredAttributes_, RequiredAttributes, 'fatt');
 
 struct BuiltinFeatureShard {
   DECL_ENUM_INFO(BuiltinFeatureId, BuiltinFeatureId, 'feid');
@@ -132,6 +136,8 @@ struct FeatureShard {
   static inline shards::Types ParamSpecEntryTypes{Types::ShaderParamOrVarTypes, {CoreInfo::AnyTableType}};
   static inline Type ParameterSpecType = Type::TableOf(ParamSpecEntryTypes);
 
+  static inline Type RequiredAttributesSeqType = Type::SeqOf(RequiredAttributesEnumInfo::Type);
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::Feature; }
 
@@ -165,12 +171,18 @@ struct FeatureShard {
   //   :<name> {:Type <ShaderFieldBaseType> :Dimension <number>}
   //   :<name> {:Default <default>}   (type will be derived from value)
   //   :<name> <default-value>        (type will be derived from value)
-  PARAM_PARAMVAR(_params, "Params",
-            "The parameters to expose to shaders, these default values can later be overriden by materials or drawable Params",
-            {CoreInfo::NoneType, ParameterSpecType, Type::VariableOf(ParameterSpecType)});
+  PARAM_PARAMVAR(
+      _params, "Params",
+      "The parameters to expose to shaders, these default values can later be overriden by materials or drawable Params",
+      {CoreInfo::NoneType, ParameterSpecType, Type::VariableOf(ParameterSpecType)});
+
+  PARAM_PARAMVAR(
+      _requiredAttributes, "RequiredAttributes",
+      "The parameters to expose to shaders, these default values can later be overriden by materials or drawable Params",
+      {CoreInfo::NoneType, RequiredAttributesSeqType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_shaders), PARAM_IMPL_FOR(_composeWith), PARAM_IMPL_FOR(_state), PARAM_IMPL_FOR(_viewGenerators),
-             PARAM_IMPL_FOR(_drawableGenerators), PARAM_IMPL_FOR(_params));
+             PARAM_IMPL_FOR(_drawableGenerators), PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_requiredAttributes));
 
 private:
   Brancher _viewGeneratorBranch;
@@ -211,7 +223,7 @@ public:
   }
 
   void collectComposeResult(const std::shared_ptr<SHWire> &wire, std::vector<NamedShaderParam> &outBasicParams,
-                            std::vector<NamedTextureParam> &outTextureParams, BindingFrequency bindingFreq,
+                            std::vector<NamedTextureParam> &outTextureParams, BindGroupId bindingFreq,
                             bool expectSeqOutput) {
     auto parseParamTable = [&](const SHTypeInfo &type) {
       for (size_t i = 0; i < type.table.keys.len; i++) {
@@ -232,14 +244,14 @@ public:
                 }
                 std::string ks(SHSTRVIEW(k));
                 auto &param = outBasicParams.emplace_back(std::move(ks), arg);
-                param.bindingFrequency = bindingFreq;
+                param.bindGroupId = bindingFreq;
               } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
                 if (k.valueType != SHType::String) {
                   throw formatException("Generator wire returns invalid type {} for key {}", v, k);
                 }
                 std::string ks(SHSTRVIEW(k));
                 auto &param = outTextureParams.emplace_back(std::move(ks), arg);
-                param.bindingFrequency = bindingFreq;
+                param.bindGroupId = bindingFreq;
               } else {
                 throw formatException("Generator wire returns invalid type {} for key {}", v, k);
               }
@@ -293,10 +305,10 @@ public:
     _derivedShaderParams.clear();
     _derivedTextureParams.clear();
     for (auto &wire : _viewGeneratorBranch.wires) {
-      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindingFrequency::View, false);
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::View, false);
     }
     for (auto &wire : _drawableGeneratorBranch.wires) {
-      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindingFrequency::Draw, true);
+      collectComposeResult(wire, _derivedShaderParams, _derivedTextureParams, BindGroupId::Draw, true);
     }
   }
 
@@ -549,7 +561,7 @@ public:
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, shader::NumFieldType>) {
               feature.shaderParams.emplace_back(name, arg);
-            } else if constexpr (std::is_same_v<T, TextureDimension>) {
+            } else if constexpr (std::is_same_v<T, shader::TextureFieldType>) {
               feature.textureParams.emplace_back(name, arg);
             }
           },
@@ -633,6 +645,16 @@ public:
       });
     }
 
+    feature.requiredAttributes = RequiredAttributes();
+    if (!_requiredAttributes.isNone()) {
+      ForEach(_requiredAttributes.get().payload.seqValue, [&](SHVar &v) {
+        RequiredAttributes_ e = (RequiredAttributes_)v.payload.enumValue;
+        if (e == RequiredAttributes_::Tangent) {
+          feature.requiredAttributes.requirePerVertexLocalBasis = true;
+        }
+      });
+    }
+
     return Types::FeatureObjectVar.Get(_featurePtr);
   }
 
@@ -704,6 +726,7 @@ public:
 
 void registerFeatureShards() {
   REGISTER_ENUM(BuiltinFeatureShard::BuiltinFeatureIdEnumInfo);
+  REGISTER_ENUM(RequiredAttributesEnumInfo);
 
   REGISTER_SHARD("GFX.BuiltinFeature", BuiltinFeatureShard);
   REGISTER_SHARD("GFX.Feature", FeatureShard);

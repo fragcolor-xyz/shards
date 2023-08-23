@@ -9,6 +9,7 @@ add_library(gfx
   gfx_wgpu.cpp
   renderer.cpp
   mesh.cpp
+  mesh_utils.cpp
   geom.cpp
   drawable.cpp
   enums.cpp
@@ -29,11 +30,13 @@ add_library(gfx
   shader/blocks.cpp
   shader/types.cpp
   features/velocity.cpp
+  features/transform.cpp
   rust_interop.cpp
   view_stack.cpp
   render_target.cpp
   render_graph.cpp
   render_step_impl.cpp
+  renderer_types.cpp
   pipeline_builder.cpp
   pipeline_step.cpp
   pipeline_hashes.cpp
@@ -122,13 +125,17 @@ else()
     # Only need SDL2main for setup on mobile platforms
     target_link_libraries(gfx SDL2main)
   endif()
+
+  set(HAS_WGPU_NATIVE ON)
 endif()
 
 if(ANDROID)
   target_link_libraries(gfx android OpenSLES)
 endif()
 
-add_subdirectory(rust)
-target_link_libraries(gfx gfx-rust)
+if(HAS_WGPU_NATIVE)
+  add_subdirectory(rust)
+  target_link_libraries(gfx gfx-rust)
+endif()
 
 add_subdirectory(tests)

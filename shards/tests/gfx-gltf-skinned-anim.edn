@@ -1,0 +1,88 @@
+(def timestep (/ 1.0 120.0))
+(defmesh root)
+
+(defpure get-view-transform
+  (| (Float4 3.0 3.0 3.0 1.0) >= .arm-pos) 
+  .arm-pos (ToFloat3) >= .arm-pos-3
+  {:Position .arm-pos-3 :Target (Float3 0 0.5 0)} (Math.LookAt))
+
+(defloop character
+  (Take "Position") = .position
+
+  (Setup
+   0 >= .animation-index
+   "" >> .animation-names
+   (Clear .animation-names))
+
+  .position (Math.Translation) = .t0
+  (Float3 0.01) (Math.Scaling) = .s0
+  ;; -1.571 (Math.AxisAngleX) (Math.Rotation) = .r0
+  ;; .s0 (Math.MatMul .r0) = .tmp0
+  .s0 = .tmp0
+  .t0 (Math.MatMul .tmp0)
+  ;; (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/CesiumMan/glTF-Binary/CesiumMan.glb"
+  (GFX.glTF :Path "../../external/glTF-Sample-Models/2.0/Fox/glTF-Binary/Fox.glb"
+            :AnimationController
+            (->
+             = .animations
+             (Setup
+              .animations (ForEach (-> (Take 0) >> .animation-names)))
+             .animation-names (Take .animation-index) >= .animation-name
+             .animations (Take .animation-name) (Expect (input-type (Animation.Duration))) = .animation
+
+             (Animation.Timer .animation :Offset 1.0
+                              :Action (->
+                                       (Count .animations) = .max
+                                       .animation-index (Math.Add 1) (Math.FMod .max) > .animation-index))
+             (Animation.Play .animation))) (GFX.Draw .queue))
+
+(defshards lighting-feature []
+  (Float3 -0.2 -2 -1) (Math.Normalize) = .light-direction
+  (Float3 1 1 1) (Math.Multiply 0.5) = .light-color
+  {:Shaders [{:Name "lighting"
+              :Stage ProgrammableGraphicsStage.Fragment
+              :EntryPoint (->
+                           (Shader.ReadInput :Name "worldNormal") >= .normal
+                           (Shader.ReadBuffer :Name "lightDirection") >= .light-dir
+                           (Float3 0 0 0) (Math.Subtract .light-dir) >= .inv-light-dir
+                           .normal (Math.Normalize) (Math.Dot .inv-light-dir) (Max 0.0) >= .n-dot-l
+                           (Shader.ReadBuffer :Name "lightColor") (Math.Multiply .n-dot-l)
+                           (Shader.WriteGlobal "lighting"))}
+             {:Name "mainColor"
+              :Stage ProgrammableGraphicsStage.Fragment
+              :EntryPoint (->
+                           (Shader.ReadGlobal "lighting") (ToFloat4) >= .lighting-4
+                           (Shader.ReadGlobal "color") (Math.Add .lighting-4)
+                           (Shader.WriteGlobal "color"))
+              :After ["readColor"]
+              :Before ["writeColor"]}]
+   :Params {:lightDirection {:Default .light-direction}
+            :lightColor {:Default .light-color}}}
+  (GFX.Feature))
+
+(defloop test-basic-anim
+  (Setup
+   (GFX.DrawQueue) >= .queue
+
+   ;; Render steps
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.Transform) >> .features
+   (GFX.BuiltinFeature :Id BuiltinFeatureId.BaseColor) >> .features
+   (lighting-feature) >> .features
+   (GFX.DrawablePass :Features .features :Queue .queue) >> .render-steps
+
+   ;; Create view
+   0.0 (Do get-view-transform) >= .view-transform
+   (GFX.View :View .view-transform) >= .view)
+
+  (GFX.MainWindow
+   :Title "glTF" :Width 1280 :Height 720
+   :Contents
+   (->
+    (Animation.Timer :Rate 0.2 :Offset -0.75) >= .time
+    .time (Do get-view-transform) > .view-transform
+    .queue (GFX.ClearQueue)
+    {:Position (Float3 0.0)} (Step character)
+
+    (GFX.Render :Steps .render-steps :View .view))))
+(schedule root test-basic-anim)
+(if (run root timestep 100) nil (throw "Root tick failed"))

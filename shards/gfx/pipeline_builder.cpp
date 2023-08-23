@@ -9,7 +9,7 @@
 #include "shader/wgsl_mapping.hpp"
 #include "shader/log.hpp"
 #include "spdlog/spdlog.h"
-#include "gfx_wgpu.hpp"
+#include "gfx_wgpu_pipeline_helper.hpp"
 #include <memory>
 #include <variant>
 
@@ -27,7 +27,7 @@ size_t alignBufferLayout(size_t inSize, const BufferBindingBuilder &builder, con
 
 static void describeShaderBindings(const std::vector<BufferBindingBuilder *> &bindings, bool isFinal,
                                    std::vector<shader::BufferBinding> &outShaderBindings, size_t &bindingCounter,
-                                   size_t bindGroup, const WGPULimits &deviceLimits, BindingFrequency freq) {
+                                   size_t bindGroup, const WGPULimits &deviceLimits) {
   for (auto &builder : bindings) {
     builder->bindGroup = bindGroup;
     builder->binding = bindingCounter++;
@@ -44,13 +44,14 @@ static void describeShaderBindings(const std::vector<BufferBindingBuilder *> &bi
     layout.maxAlignment = alignBufferLayout(layout.maxAlignment, *builder, deviceLimits);
 
     shaderBinding.type = builder->bufferType;
-    if (freq == BindingFrequency::Draw)
-      shaderBinding.indexedPerInstance = true;
+    shaderBinding.dimension = builder->dimension;
   }
 }
 
 static void describeBindGroup(const std::vector<BufferBindingBuilder *> &builders, size_t bindGroupIndex,
-                              std::vector<WGPUBindGroupLayoutEntry> &outEntries, const WGPULimits &limits) {
+                              std::vector<WGPUBindGroupLayoutEntry> &outEntries,
+                              std::vector<BufferBindingRef> &outDynamicBufferRefs, const WGPULimits &limits) {
+  size_t index = 0;
   for (auto &builder : builders) {
     if (builder->bindGroup != bindGroupIndex)
       continue;
@@ -71,8 +72,13 @@ static void describeBindGroup(const std::vector<BufferBindingBuilder *> &builder
       break;
     }
 
+    if (builder->hasDynamicOffset)
+      outDynamicBufferRefs.push_back(BufferBindingRef{.bindGroup = bindGroupIndex, .bufferIndex = index});
+
     bufferBinding.minBindingSize = builder->layoutBuilder.getCurrentFinalLayout().size;
     bufferBinding.minBindingSize = uint64_t(alignBufferLayout(size_t(bufferBinding.minBindingSize), *builder, limits));
+
+    ++index;
   }
 }
 
@@ -87,7 +93,7 @@ static FeaturePipelineState computePipelineState(const std::vector<const Feature
 static void buildBaseParameters(ParameterStorage &viewParams, ParameterStorage &drawParams,
                                 const std::vector<const Feature *> &features) {
   auto getOutput = [&](auto &param) -> ParameterStorage & {
-    return (param.bindingFrequency == BindingFrequency::Draw) ? drawParams : viewParams;
+    return (param.bindGroupId == BindGroupId::Draw) ? drawParams : viewParams;
   };
   for (const Feature *feature : features) {
     for (auto &param : feature->shaderParams) {
@@ -155,15 +161,15 @@ void PipelineBuilder::optimizeBufferLayouts(const shader::IndexedBindings &index
 
 void PipelineBuilder::build(WGPUDevice device, const WGPULimits &deviceLimits) {
   auto &viewBinding = getOrCreateBufferBinding("view");
-  viewBinding.frequency = BindingFrequency::View;
+  viewBinding.bindGroupId = BindGroupId::View;
 
   auto &objectBinding = getOrCreateBufferBinding("object");
-  objectBinding.frequency = BindingFrequency::Draw;
+  objectBinding.bindGroupId = BindGroupId::Draw;
 
   auto &objectLayoutBuilder = objectBinding.layoutBuilder;
   auto &viewLayoutBuilder = viewBinding.layoutBuilder;
   auto getParamBuilder = [&](auto &param) -> decltype(objectLayoutBuilder) & {
-    return (param.bindingFrequency == BindingFrequency::Draw) ? objectLayoutBuilder : viewLayoutBuilder;
+    return (param.bindGroupId == BindGroupId::Draw) ? objectLayoutBuilder : viewLayoutBuilder;
   };
 
   for (const Feature *feature : features) {
@@ -249,7 +255,7 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
 
   // Create per-draw bind group (0)
   {
-    describeBindGroup(drawBindings, getDrawBindGroupIndex(), bindGroupLayoutEntries, deviceLimits);
+    describeBindGroup(drawBindings, getDrawBindGroupIndex(), bindGroupLayoutEntries, output.dynamicBufferRefs, deviceLimits);
 
     // Append texture bindings to per-draw bind group
     output.textureBindingLayout = generator.textureBindingLayout;
@@ -275,9 +281,8 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
       WGPUBindGroupLayoutEntry &samplerBinding = bindGroupLayoutEntries.emplace_back();
       samplerBinding.binding = desc.defaultSamplerBinding;
       samplerBinding.visibility = WGPUShaderStage_Fragment;
-      samplerBinding.sampler.type = desc.type.format == TextureSampleType::Float
-                                        ? WGPUSamplerBindingType_Filtering
-                                        : WGPUSamplerBindingType_NonFiltering;
+      samplerBinding.sampler.type =
+          desc.type.format == TextureSampleType::Float ? WGPUSamplerBindingType_Filtering : WGPUSamplerBindingType_NonFiltering;
     }
 
     WGPUBindGroupLayoutDescriptor desc{
@@ -291,7 +296,7 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
   // Create per-view bind group (1)
   {
     bindGroupLayoutEntries.clear();
-    describeBindGroup(viewBindings, getViewBindGroupIndex(), bindGroupLayoutEntries, deviceLimits);
+    describeBindGroup(viewBindings, getViewBindGroupIndex(), bindGroupLayoutEntries, output.dynamicBufferRefs, deviceLimits);
 
     WGPUBindGroupLayoutDescriptor desc = WGPUBindGroupLayoutDescriptor{
         .label = "per-view",
@@ -320,6 +325,8 @@ void PipelineBuilder::buildPipelineLayout(WGPUDevice device, const WGPULimits &d
     auto &outBinding = (*outArray).emplace_back();
     outBinding.layout = binding.layout;
     outBinding.index = binding.binding;
+    outBinding.dimension = binding.dimension;
+    outBinding.name = binding.name;
   }
 }
 
@@ -333,11 +340,11 @@ void PipelineBuilder::setupShaderDefinitions(const WGPULimits &deviceLimits, boo
 
   // Sort bindings into per draw/view
   for (auto &binding : bufferBindings) {
-    switch (binding.frequency) {
-    case BindingFrequency::Draw:
+    switch (binding.bindGroupId) {
+    case BindGroupId::Draw:
       drawBindings.push_back(&binding);
       break;
-    case BindingFrequency::View:
+    case BindGroupId::View:
       viewBindings.push_back(&binding);
       break;
     }
@@ -348,8 +355,7 @@ void PipelineBuilder::setupShaderDefinitions(const WGPULimits &deviceLimits, boo
     size_t bindGroup = getDrawBindGroupIndex();
     size_t bindingCounter = 0;
 
-    describeShaderBindings(drawBindings, isFinal, generator.bufferBindings, bindingCounter, bindGroup, deviceLimits,
-                           BindingFrequency::Draw);
+    describeShaderBindings(drawBindings, isFinal, generator.bufferBindings, bindingCounter, bindGroup, deviceLimits);
 
     // Append texture to draw bind group
     generator.textureBindingLayout = !isFinal ? textureBindings.getCurrentFinalLayout(bindingCounter, &bindingCounter)
@@ -362,8 +368,7 @@ void PipelineBuilder::setupShaderDefinitions(const WGPULimits &deviceLimits, boo
     size_t bindGroup = getViewBindGroupIndex();
     size_t bindingCounter = 0;
 
-    describeShaderBindings(viewBindings, isFinal, generator.bufferBindings, bindingCounter, bindGroup, deviceLimits,
-                           BindingFrequency::View);
+    describeShaderBindings(viewBindings, isFinal, generator.bufferBindings, bindingCounter, bindGroup, deviceLimits);
   }
 }
 
@@ -426,22 +431,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
     return;
   }
 
-  WGPUShaderModuleDescriptor moduleDesc = {};
-  WGPUShaderModuleWGSLDescriptor wgslModuleDesc = {};
-  moduleDesc.label = "pipeline";
-  moduleDesc.nextInChain = &wgslModuleDesc.chain;
-
-  wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-  wgpuShaderModuleWGSLDescriptorSetCode(wgslModuleDesc, generatorOutput.wgslSource.c_str());
-  SPDLOG_LOGGER_DEBUG(shader::getLogger(), "Generated WGSL:\n{}", generatorOutput.wgslSource);
-
-  output.renderTargetLayout = renderTargetLayout;
-
-  output.shaderModule.reset(wgpuDeviceCreateShaderModule(device, &moduleDesc));
-  if (!output.shaderModule) {
-    output.compilationError.emplace("Failed to compile shader module");
-    return;
-  }
+  output.shaderModule = compileShaderFromWgsl(device, generatorOutput.wgslSource.c_str());
 
   WGPURenderPipelineDescriptor desc = {};
   desc.layout = output.pipelineLayout;
@@ -463,9 +453,11 @@ void PipelineBuilder::finalize(WGPUDevice device) {
   std::vector<WGPUColorTargetState> colorTargets;
   WGPUDepthStencilState depthStencilState{};
 
-  size_t depthIndex = output.renderTargetLayout.depthTargetIndex.value_or(~0);
-  for (size_t index = 0; index < output.renderTargetLayout.targets.size(); index++) {
-    auto &target = output.renderTargetLayout.targets[index];
+  output.renderTargetLayout = renderTargetLayout;
+
+  size_t depthIndex = renderTargetLayout.depthTargetIndex.value_or(~0);
+  for (size_t index = 0; index < renderTargetLayout.targets.size(); index++) {
+    auto &target = renderTargetLayout.targets[index];
     if (index == depthIndex) {
       // Depth target
       depthStencilState.format = target.format;

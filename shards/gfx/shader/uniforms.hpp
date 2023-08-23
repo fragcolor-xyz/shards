@@ -135,10 +135,25 @@ private:
   }
 };
 
+namespace dim {
+// One single data structure
+struct One {};
+// A dynamically sized array of the data structure, which is indexed based on the draw instance index
+struct PerInstance {};
+// A dynamically sized array
+struct Dynamic {};
+// A fixed size array structures
+struct Fixed {
+  size_t length;
+  Fixed(size_t length) : length(length) {}
+};
+}; // namespace dim
+using Dimension = std::variant<dim::One, dim::PerInstance, dim::Dynamic, dim::Fixed>;
+
 struct BufferDefinition {
   String variableName;
   UniformBufferLayout layout;
-  std::optional<String> indexedBy;
+  Dimension dimension = dim::One{};
 
   inline const UniformLayout *findField(const char *fieldName) const {
     for (size_t i = 0; i < layout.fieldNames.size(); i++) {

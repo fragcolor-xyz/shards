@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <string>
 
@@ -82,7 +83,7 @@ static SamplerState convertSampler(const tinygltf::Sampler &sampler) {
   return samplerState;
 }
 
-static TextureFormat convertTextureFormat(const tinygltf::Image &image) {
+static TextureFormat convertTextureFormat(const tinygltf::Image &image, bool asSrgb) {
   TextureFormat result{
       .dimension = TextureDimension::D2,
   };
@@ -92,7 +93,7 @@ static TextureFormat convertTextureFormat(const tinygltf::Image &image) {
   };
   if (image.component == 4) {
     if (image.pixel_type == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
-      result.pixelFormat = WGPUTextureFormat_RGBA8UnormSrgb;
+      result.pixelFormat = asSrgb ? WGPUTextureFormat_RGBA8UnormSrgb : WGPUTextureFormat_RGBA8Unorm;
     else if (image.pixel_type == TINYGLTF_COMPONENT_TYPE_FLOAT)
       result.pixelFormat = WGPUTextureFormat_RGBA32Float;
     else
@@ -147,6 +148,7 @@ struct Loader {
   std::vector<MeshTreeDrawable::Ptr> nodeMap;
   std::vector<MeshTreeDrawable::Ptr> sceneMap;
   std::unordered_map<std::string, gfx::Animation> animations;
+  std::vector<std::shared_ptr<gfx::Skin>> skins;
 
   Loader(tinygltf::Model &model) : model(model) {}
 
@@ -157,11 +159,17 @@ struct Loader {
 
     const char texcoordPrefix[] = "texcoord_";
     const char colorPrefix[] = "color_";
+    const char jointsPrefix[] = "joints_";
+    const char weightsPrefix[] = "weights_";
     if (nameLower.starts_with(texcoordPrefix)) {
       std::string numberSuffix = nameLower.substr(sizeof(texcoordPrefix) - 1);
       return std::string("texCoord") + (numberSuffix.empty() ? "0" : numberSuffix.c_str());
     } else if (nameLower.starts_with(colorPrefix)) {
       return std::string("color") + nameLower.substr(sizeof(colorPrefix) - 1);
+    } else if (nameLower.starts_with(jointsPrefix)) {
+      return "joints";
+    } else if (nameLower.starts_with(weightsPrefix)) {
+      return "weights";
     } else {
       return nameLower;
     }
@@ -374,10 +382,16 @@ struct Loader {
     }
   }
 
+  void allocateNodes() {
+    nodeMap.resize(model.nodes.size());
+    for (auto &node : nodeMap) {
+      node = nullptr;
+    }
+  }
+
   void loadNodes() {
-    size_t numNodes = model.nodes.size();
-    nodeMap.resize(numNodes);
-    for (size_t i = 0; i < numNodes; i++) {
+    assert(nodeMap.size() == model.nodes.size());
+    for (size_t i = 0; i < nodeMap.size(); i++) {
       if (!nodeMap[i])
         initNode(i);
     }
@@ -401,7 +415,7 @@ struct Loader {
       int2 resolution(gltfImage.width, gltfImage.height);
       texture
           ->init(TextureDesc{
-              .format = convertTextureFormat(gltfImage),
+              .format = convertTextureFormat(gltfImage, false),
               .resolution = resolution,
               .data = ImmutableSharedBuffer(gltfImage.image.data(), gltfImage.image.size()),
           })
@@ -418,10 +432,16 @@ struct Loader {
 
       const tinygltf::Material &gltfMaterial = model.materials[i];
 
-      auto convertTextureParam = [&](const char *name, const TextureInfo &textureInfo) {
+      auto convertTextureParam = [&](const char *name, const auto &textureInfo, bool asSrgb) {
         if (textureInfo.index >= 0) {
+          const tinygltf::Texture &gltfTexture = model.textures[textureInfo.index];
+          const tinygltf::Image &gltfImage = model.images[gltfTexture.source];
           TexturePtr texture = textureMap[textureInfo.index];
           material->parameters.set(name, TextureParameter(texture, textureInfo.texCoord));
+
+          // Update texture format to apply srgb/gamma hint from usage
+          WGPUTextureFormat targetFormat = convertTextureFormat(gltfImage, asSrgb).pixelFormat;
+          texture->initWithPixelFormat(targetFormat);
         }
       };
 
@@ -440,8 +460,11 @@ struct Loader {
       convertOptionalFloat4Param("baseColor", gltfMaterial.pbrMetallicRoughness.baseColorFactor, float4(1, 1, 1, 1));
       convertOptionalFloatParam("roughness", gltfMaterial.pbrMetallicRoughness.roughnessFactor, 1.0f);
       convertOptionalFloatParam("metallic", gltfMaterial.pbrMetallicRoughness.metallicFactor, 0.0f);
-      convertTextureParam("baseColorTexture", gltfMaterial.pbrMetallicRoughness.baseColorTexture);
-      convertTextureParam("metallicRougnessTexture", gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture);
+      convertOptionalFloatParam("normalScale", gltfMaterial.normalTexture.scale, 1.0f);
+      convertTextureParam("baseColorTexture", gltfMaterial.pbrMetallicRoughness.baseColorTexture, true);
+      convertTextureParam("emissiveTexture", gltfMaterial.emissiveTexture, true);
+      convertTextureParam("metallicRoughnessTexture", gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture, false);
+      convertTextureParam("normalTexture", gltfMaterial.normalTexture, false);
     }
   }
 
@@ -547,11 +570,49 @@ struct Loader {
     }
   }
 
+  void loadSkins() {
+    size_t numSkins = model.skins.size();
+    for (size_t i = 0; i < numSkins; i++) {
+      tinygltf::Skin &gltfSkin = model.skins[i];
+      auto &skin = skins.emplace_back();
+      skin = std::make_shared<Skin>();
+
+      // Read inverse bind matrix data
+      auto loadInverseBindMatrix = [&](int jointIndex) {
+        auto &ac = model.accessors[gltfSkin.inverseBindMatrices];
+        auto &bv = model.bufferViews[ac.bufferView];
+        auto &buf = model.buffers[bv.buffer];
+        float *data = (float *)(buf.data.data() + bv.byteOffset + ac.byteOffset + jointIndex * ac.ByteStride(bv));
+        return float4x4(data);
+      };
+
+      size_t jointIndex = 0;
+      for (auto &jointNodeIndex : gltfSkin.joints) {
+        auto &jointNode = nodeMap[jointNodeIndex];
+
+        skin->joints.push_back(jointNode);
+        skin->inverseBindMatrices.push_back(loadInverseBindMatrix(jointIndex));
+        ++jointIndex;
+      }
+    }
+
+    for (size_t i = 0; i < nodeMap.size(); i++) {
+      int skinIndex = model.nodes[i].skin;
+      if (skinIndex >= 0) {
+        for (auto &drawable : nodeMap[i]->drawables) {
+          drawable->skin = skins[skinIndex];
+        }
+      }
+    }
+  }
+
   void load() {
+    allocateNodes();
     loadTextures();
     loadMaterials();
     loadMeshes();
     loadNodes();
+    loadSkins();
     loadAnimations();
 
     size_t numScenes = model.scenes.size();

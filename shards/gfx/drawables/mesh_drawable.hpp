@@ -7,6 +7,14 @@
 #include "../drawable.hpp"
 
 namespace gfx {
+
+struct MeshTreeDrawable;
+struct Skin {
+  std::vector<std::weak_ptr<MeshTreeDrawable>> joints;
+  std::vector<float4x4> inverseBindMatrices;
+  std::vector<float4x4> jointMatrices;
+};
+
 struct MeshDrawable final : public IDrawable {
   typedef std::shared_ptr<MeshDrawable> Ptr;
 
@@ -20,6 +28,9 @@ public:
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;
   float4x4 transform;
+
+  // Optional skin attached to this mesh, it'll be used to transform this mesh's vertices
+  std::shared_ptr<Skin> skin;
 
   std::optional<float4x4> previousTransform;
 
@@ -35,8 +46,6 @@ public:
   UniqueId getId() const override { return id; }
 
   DrawableProcessorConstructor getProcessor() const override;
-
-  void pipelineHashCollect(detail::PipelineHashCollector &pipelineHashCollector) const override;
 };
 } // namespace gfx
 

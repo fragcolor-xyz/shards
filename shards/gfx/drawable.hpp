@@ -32,11 +32,6 @@ struct IDrawable {
 
   // Get the processor used to render this drawable
   virtual DrawableProcessorConstructor getProcessor() const = 0;
-
-  // Compute hash and collect references
-  // The drawable should not be modified while it is being processed by the renderer
-  // After Renderer::render returns you are free to change this drawable again
-  virtual void pipelineHashCollect(detail::PipelineHashCollector &PipelineHashCollector) const = 0;
 };
 
 template <typename T> inline std::shared_ptr<T> clone(const std::shared_ptr<T> &other) {

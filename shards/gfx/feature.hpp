@@ -19,7 +19,6 @@
 
 namespace gfx {
 namespace detail {
-struct CachedDrawable;
 struct CachedView;
 } // namespace detail
 
@@ -136,7 +135,7 @@ enum class ShaderParamFlags {
   None = 0,
 };
 
-enum class BindingFrequency {
+enum class BindGroupId {
   View,
   Draw,
 };
@@ -146,7 +145,7 @@ struct NamedShaderParam {
   std::string name;
   ParamVariant defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
-  BindingFrequency bindingFrequency = BindingFrequency::Draw;
+  BindGroupId bindGroupId = BindGroupId::Draw;
 
   NamedShaderParam() = default;
   NamedShaderParam(std::string name, const shader::NumFieldType &type = shader::NumFieldType(ShaderFieldBaseType::Float32, 4),
@@ -165,7 +164,7 @@ struct NamedTextureParam {
   shader::TextureFieldType type;
   TexturePtr defaultValue;
   ShaderParamFlags flags = ShaderParamFlags::None;
-  BindingFrequency bindingFrequency = BindingFrequency::Draw;
+  BindGroupId bindGroupId = BindGroupId::Draw;
 
   NamedTextureParam() = default;
   NamedTextureParam(std::string name, TextureDimension dimension = TextureDimension::D2,
@@ -180,6 +179,17 @@ struct NamedTextureParam {
     hasher(flags);
   }
 };
+
+struct RequiredAttributes {
+  // When enabled, each vertex will be guaranteed to have a local basis encoded as a quaternion
+  bool requirePerVertexLocalBasis{};
+};
+
+inline RequiredAttributes operator|(const RequiredAttributes &a, const RequiredAttributes &other) {
+  return RequiredAttributes{
+      .requirePerVertexLocalBasis = a.requirePerVertexLocalBasis || other.requirePerVertexLocalBasis,
+  };
+}
 
 extern UniqueIdGenerator featureIdGenerator;
 struct Feature : public std::enable_shared_from_this<Feature> {
@@ -198,6 +208,8 @@ struct Feature : public std::enable_shared_from_this<Feature> {
   std::vector<shader::EntryPoint> shaderEntryPoints;
 
   PipelineModifierPtr pipelineModifier;
+
+  RequiredAttributes requiredAttributes;
 
   virtual ~Feature() = default;
 

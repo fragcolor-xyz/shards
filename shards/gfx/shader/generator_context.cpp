@@ -155,7 +155,8 @@ void GeneratorContext::textureDefaultSampler(const char *name) {
   }
 }
 
-void GeneratorContext::readBuffer(const char *fieldName, const NumFieldType &expectedType, const char *bufferName) {
+void GeneratorContext::readBuffer(const char *fieldName, const NumFieldType &expectedType, const char *bufferName,
+                                  const Function<void(IGeneratorContext &ctx)> &index) {
   auto bufferIt = definitions.buffers.find(bufferName);
   if (bufferIt == definitions.buffers.end()) {
     pushError(formatError("Buffer \"{}\" is not defined", bufferName));
@@ -175,11 +176,23 @@ void GeneratorContext::readBuffer(const char *fieldName, const NumFieldType &exp
     return;
   }
 
-  if (buffer.indexedBy) {
-    getOutput() += fmt::format("{}.elements[{}].{}", buffer.variableName, *buffer.indexedBy, fieldName);
-  } else {
-    getOutput() += fmt::format("{}.{}", buffer.variableName, fieldName);
-  }
+  std::visit(
+      [&](auto &&arg) {
+        using T1 = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T1, dim::One>) {
+          getOutput() += fmt::format("{}.{}", buffer.variableName, fieldName);
+        } else if constexpr (std::is_same_v<T1, dim::PerInstance>) {
+          getOutput() += fmt::format("{}.elements[{}].{}", buffer.variableName, "u_instanceIndex", fieldName);
+        } else {
+          if (!index)
+            pushError(formatError("Can not access buffer \"{}\" without index since it's an array, which requires an index",
+                                  bufferName));
+          getOutput() += fmt::format("{}.elements[", buffer.variableName);
+          index(*this);
+          getOutput() += fmt::format("].{}", fieldName);
+        }
+      },
+      buffer.dimension);
 }
 
 void GeneratorContext::pushError(GeneratorError &&error) { errors.emplace_back(std::move(error)); }

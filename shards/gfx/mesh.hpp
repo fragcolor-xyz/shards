@@ -83,6 +83,7 @@ private:
   std::vector<uint8_t> vertexData;
   std::vector<uint8_t> indexData;
   bool updateData{};
+  size_t version{};
 
   friend struct gfx::UpdateUniqueId<Mesh>;
 
@@ -93,6 +94,9 @@ public:
   size_t getNumIndices() const { return numIndices; }
   const std::vector<uint8_t> &getVertexData() const { return vertexData; }
   const std::vector<uint8_t> &getIndexData() const { return indexData; }
+
+  // This increments every time the mesh is updated
+  size_t getVersion() const { return version; }
 
   // Updates mesh data with length in bytes
   void update(const MeshFormat &format, const void *inVertexData, size_t vertexDataLength, const void *inIndexData,

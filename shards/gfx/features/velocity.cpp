@@ -48,11 +48,11 @@ FeaturePtr Velocity::create(bool applyView, bool applyProjection) {
   struct PipelineModifier : public IPipelineModifier {
     void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions& options) {
       auto &objectBinding = builder.getOrCreateBufferBinding("object");
-      objectBinding.frequency = BindingFrequency::Draw;
+      objectBinding.bindGroupId = BindGroupId::Draw;
       objectBinding.layoutBuilder.push("previousWorld", FieldTypes::Float4x4);
 
       auto &viewBinding = builder.getOrCreateBufferBinding("view");
-      viewBinding.frequency = BindingFrequency::View;
+      viewBinding.bindGroupId = BindGroupId::View;
       viewBinding.layoutBuilder.push("previousView", FieldTypes::Float4x4);
     }
   };

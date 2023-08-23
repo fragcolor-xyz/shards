@@ -1,14 +1,40 @@
 #ifndef DB3B2F03_117E_49DC_93AA_28A94118C09D
 #define DB3B2F03_117E_49DC_93AA_28A94118C09D
 
+#include "pmr/vector.hpp"
 #include "renderer_types.hpp"
 #include "drawable_processor.hpp"
 #include "sampler_cache.hpp"
 #include "view.hpp"
 #include "gfx_wgpu.hpp"
 #include "platform.hpp"
+#include "unique_id.hpp"
+#include <variant>
 
 namespace gfx::detail {
+
+namespace bind {
+// One single data structure
+struct One {};
+// A dynamically sized array of the data structure, which is indexed based on the draw instance index
+struct PerInstance {};
+// A dynamically sized array with a custom length
+struct Sized {
+  size_t length;
+  Sized(size_t length) : length(length) {}
+};
+}; // namespace bind
+using BindDimension = std::variant<bind::One, bind::PerInstance, bind::Sized>;
+
+struct PreparedBuffer {
+  WGPUBuffer buffer;
+  size_t length;
+  size_t stride;
+  BindDimension bindDimension;
+  // Index of original binding
+  size_t binding;
+  size_t bindGroup;
+};
 
 // Defines some helper functions for implementing drawable processors
 struct BindGroupBuilder {
@@ -17,6 +43,22 @@ struct BindGroupBuilder {
   shards::pmr::vector<WGPUBindGroupEntry> entries;
 
   BindGroupBuilder(allocator_type allocator) : entries(allocator) {}
+
+  void addBinding(const detail::BufferBinding &binding, const PreparedBuffer &pb, size_t numInstances) {
+    std::visit(
+        [&](auto &&arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, bind::One>) {
+            addBinding(binding, pb.buffer);
+          } else if constexpr (std::is_same_v<T, bind::Sized>) {
+            addBinding(binding, pb.buffer, arg.length);
+          } else if constexpr (std::is_same_v<T, bind::PerInstance>) {
+            // Per-instance buffers are mapped entirely, dynamic offset is applied during encoding
+            addBinding(binding, pb.buffer, numInstances);
+          }
+        },
+        pb.bindDimension);
+  }
 
   void addBinding(const detail::BufferBinding &binding, WGPUBuffer buffer, size_t numArrayElements = 1, size_t arrayIndex = 0) {
     auto &entry = entries.emplace_back();
@@ -158,7 +200,8 @@ auto applyParameters(const TTextureBindings &textureBindings, TOutTextures &outT
   for (auto &param : srcParam.basic)
     dstParams.setParam(param.first.c_str(), param.second);
   for (auto &param : srcParam.textures)
-    setTextureParameter(textureBindings, outTextures, context, samplerCache, frameCounter, param.first.c_str(), param.second.texture);
+    setTextureParameter(textureBindings, outTextures, context, samplerCache, frameCounter, param.first.c_str(),
+                        param.second.texture);
 };
 
 } // namespace gfx::detail

@@ -186,7 +186,7 @@ struct EguiRendererImpl {
     for (size_t i = 0; i < output.numPrimitives; i++) {
       auto &prim = output.primitives[i];
 
-      MeshPtr mesh = meshPool.allocateBuffer(prim.numVertices);
+      MeshPtr mesh = meshPool.allocateBuffer(prim.numVertices * sizeof(egui::Vertex));
       mesh->update(meshFormat, prim.vertices, prim.numVertices * sizeof(egui::Vertex), prim.indices,
                    prim.numIndices * sizeof(uint32_t));
 

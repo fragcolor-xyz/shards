@@ -1,6 +1,7 @@
 #ifndef GFX_SHADER_GENERATOR
 #define GFX_SHADER_GENERATOR
 
+#include "../../core/function.hpp"
 #include "block.hpp"
 #include "entry_point.hpp"
 #include "spdlog/logger.h"
@@ -28,6 +29,8 @@ enum class BufferType {
   Uniform,
   Storage,
 };
+
+template <typename Sig> using Function = shards::FunctionBase<128, Sig>;
 
 struct IGeneratorDynamicHandler {
   // Entry point for generating stage inputs on-demand
@@ -83,7 +86,9 @@ struct IGeneratorContext {
   virtual void textureDefaultTextureCoordinate(const char *name) = 0;
   virtual void textureDefaultSampler(const char *name) = 0;
 
-  virtual void readBuffer(const char *fieldName, const NumFieldType &type, const char *bufferName) = 0;
+  virtual void readBuffer(
+      const char *fieldName, const NumFieldType &type, const char *bufferName,
+      const Function<void(IGeneratorContext &ctx)> &index = Function<void(IGeneratorContext &ctx)>()) = 0;
 
   virtual void pushError(GeneratorError &&error) = 0;
 
@@ -137,7 +142,7 @@ struct GeneratorContext : public IGeneratorContext {
   void textureDefaultTextureCoordinate(const char *name);
   void textureDefaultSampler(const char *name);
 
-  void readBuffer(const char *fieldName, const NumFieldType &type, const char *bufferName);
+  void readBuffer(const char *fieldName, const NumFieldType &type, const char *bufferName, const Function<void(IGeneratorContext &ctx)> &index);
 
   void pushError(GeneratorError &&error);
 
@@ -159,7 +164,7 @@ struct BufferBinding {
   std::string name;
   UniformBufferLayout layout;
   BufferType type = BufferType::Uniform;
-  bool indexedPerInstance{};
+  Dimension dimension;
 };
 
 struct IndexedBufferBinding {

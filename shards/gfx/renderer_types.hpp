@@ -29,6 +29,7 @@
 #include <vector>
 #include <map>
 #include <compare>
+#include <optional>
 #include <spdlog/spdlog.h>
 
 namespace gfx::detail {
@@ -79,8 +80,10 @@ struct TextureBindings {
 struct PipelineDrawables;
 
 struct BufferBinding {
+  std::string name;
   UniformBufferLayout layout;
   size_t index;
+  shader::Dimension dimension;
 };
 
 struct RenderTargetLayout {
@@ -175,6 +178,11 @@ template <typename CB> struct CachedFeatureGenerator {
   std::vector<std::weak_ptr<Feature>> otherFeatures;
 };
 
+struct BufferBindingRef {
+  size_t bindGroup;
+  size_t bufferIndex;
+};
+
 struct CachedPipeline {
   // The compiled shader module including both vertex/fragment entry points
   WgpuHandle<WGPUShaderModule> shaderModule;
@@ -187,6 +195,9 @@ struct CachedPipeline {
 
   // All compiled bind group layouts used in the pipeline
   std::vector<WgpuHandle<WGPUBindGroupLayout>> bindGroupLayouts;
+
+  // Ordered list of dynamic buffer offsets and in what order they should appear during rendering
+  std::vector<BufferBindingRef> dynamicBufferRefs;
 
   // Supported texture bindings
   TextureBindingLayout textureBindingLayout;
@@ -210,6 +221,18 @@ struct CachedPipeline {
   ParameterStorage baseDrawParameters;
 
   std::optional<CompilationError> compilationError{};
+
+  template <typename T> static const BufferBinding *findBufferBinding(const T &vec, std::string_view name) {
+    auto it = std::find_if(vec.begin(), vec.end(), [&](const auto &binding) { return name == binding.name; });
+    if (it == vec.end())
+      return nullptr;
+    return &*it;
+  }
+
+  const BufferBinding *findDrawBufferBinding(std::string_view name) const { return findBufferBinding(drawBufferBindings, name); }
+  const BufferBinding *findViewBufferBinding(std::string_view name) const { return findBufferBinding(viewBuffersBindings, name); }
+
+  const BufferBinding& resolveBufferBindingRef(BufferBindingRef ref) const;
 };
 typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
 

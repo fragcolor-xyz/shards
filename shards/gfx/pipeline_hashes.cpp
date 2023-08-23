@@ -26,17 +26,6 @@ void Material::pipelineHashCollect(PipelineHashCollector &pipelineHashCollector)
   parameters.pipelineHashCollect(pipelineHashCollector);
 }
 
-void MeshDrawable::pipelineHashCollect(PipelineHashCollector &pipelineHashCollector) const {
-  pipelineHashCollector(mesh);
-  if (material) {
-    pipelineHashCollector(material);
-  }
-  for (auto &feature : features) {
-    pipelineHashCollector(feature);
-  }
-  parameters.pipelineHashCollect(pipelineHashCollector);
-}
-
 void Feature::pipelineHashCollect(PipelineHashCollector &pipelineHashCollector) const { pipelineHashCollector(id); }
 
 void Mesh::pipelineHashCollect(PipelineHashCollector &pipelineHashCollector) const { pipelineHashCollector(format); }
