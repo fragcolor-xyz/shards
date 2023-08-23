@@ -13,7 +13,7 @@
         :Contents
         (->
          ;; input was passed down the UI hierarchy
-         (Assert.Is input_value :Abort true)
+         (Assert.Is input_value :Break true)
          "Top Window Panel" (UI.Label)))
        (UI.BottomPanel
         :Contents
@@ -37,7 +37,7 @@
 (defloop ui-wire
   input_value ;; some input
   (GFX.MainWindow
-   :Title "egui Shards Example" :Width 1280 :Height 768 
+   :Title "egui Shards Example" :Width 1280 :Height 768
    :Contents
    (->
     (Setup
@@ -82,7 +82,7 @@
 
       (window-with-panels)))
     ;; input passed through the whole UI
-    (Assert.Is input_value :Abort true)
+    (Assert.Is input_value :Break true)
 
     (GFX.Render :Steps .render-steps))))
 

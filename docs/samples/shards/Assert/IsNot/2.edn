@@ -1,11 +1,11 @@
-;; :Abort = `true`, assertion false
+;; :Break = `true`, assertion false
 ;; => abort the program
 8
 (Maybe
  (Assert.IsNot
   ;:Value
   8
-  ;:Abort
+  ;:Break
   ;; uncomment next line to abort program on run
   ;true
   ))

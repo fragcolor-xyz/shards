@@ -1,5 +1,5 @@
 false (Not)
-(Assert.Is true :Abort true)
+(Assert.Is true :Break true)
 
 true (Not)
-(Assert.Is false :Abort true)
+(Assert.Is false :Break true)
