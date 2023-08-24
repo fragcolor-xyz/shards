@@ -52,7 +52,7 @@ struct RendererStorage {
         .arrayLayerCount = 1,
         .aspect = WGPUTextureAspect_All,
     };
-    WGPUTextureView result = textureViewCache.getTextureView(frameCounter, textureData.texture, desc);
+    WGPUTextureView result = textureViewCache.getTextureView(frameCounter, textureData, desc);
     assert(result);
     return result;
   }

@@ -60,15 +60,15 @@ struct TextureContextData : public ContextData {
   TextureFormat format;
   WGPUTexture texture{};
   WGPUExtent3D size{};
+  UniqueId id;
+  size_t version;
 
   // Only set for externally managed texture views
   WGPUTextureView externalView{};
 
   ~TextureContextData() { releaseContextDataConditional(); }
 
-  void releaseContextData() override {
-    WGPU_SAFE_RELEASE(wgpuTextureRelease, texture);
-  }
+  void releaseContextData() override { WGPU_SAFE_RELEASE(wgpuTextureRelease, texture); }
 };
 
 /// <div rustbindgen opaque></div>
@@ -93,6 +93,7 @@ private:
   TextureDesc desc = TextureDesc::getDefault();
   SamplerState samplerState{};
   std::string label;
+  size_t version{};
 
   friend struct gfx::UpdateUniqueId<Texture>;
 
@@ -119,6 +120,7 @@ public:
   TexturePtr clone() const;
 
   UniqueId getId() const { return id; }
+  size_t getVersion() const { return version; }
 
   /// <div rustbindgen hide></div>
   static TexturePtr makeRenderAttachment(WGPUTextureFormat format, std::string &&label);
@@ -128,6 +130,9 @@ protected:
   void updateContextData(Context &context, TextureContextData &contextData);
 
   static UniqueId getNextId();
+
+private:
+  void update();
 };
 
 } // namespace gfx

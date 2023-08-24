@@ -38,13 +38,15 @@ struct TextureViewDesc {
 };
 
 struct TextureViewKey {
-  WGPUTexture texture;
+  UniqueId id;
+  size_t version;
   TextureViewDesc desc;
 
   std::strong_ordering operator<=>(const TextureViewKey &) const = default;
   friend size_t hash_value(TextureViewKey const &v) {
     size_t result{};
-    boost::hash_combine(result, size_t(v.texture));
+    boost::hash_combine(result, size_t(v.id));
+    boost::hash_combine(result, size_t(v.version));
     boost::hash_combine(result, v.desc);
     return result;
   }
@@ -68,11 +70,11 @@ struct TextureViewCache {
     mutex.unlock();
   }
 
-  WGPUTextureView getTextureView(size_t frameCounter, WGPUTexture texture, TextureViewDesc desc) {
-    return getTextureView(frameCounter, TextureViewKey{texture, desc});
+  WGPUTextureView getTextureView(size_t frameCounter, TexturePtr texture, WGPUTexture wgpuTexture, TextureViewDesc desc) {
+    return getTextureView(frameCounter, TextureViewKey{texture->getId(), texture->getVersion(), desc}, wgpuTexture);
   }
 
-  WGPUTextureView getTextureView(size_t frameCounter, TextureViewKey key) {
+  WGPUTextureView getTextureView(size_t frameCounter, TextureViewKey key, WGPUTexture texture) {
     mutex.lock_shared();
     auto it = cache.find(key);
     if (it == cache.end()) {
@@ -87,7 +89,7 @@ struct TextureViewCache {
           .arrayLayerCount = key.desc.arrayLayerCount,
           .aspect = key.desc.aspect,
       };
-      WGPUTextureView view = wgpuTextureCreateView(key.texture, &viewDesc);
+      WGPUTextureView view = wgpuTextureCreateView(texture, &viewDesc);
       assert(view);
 
       mutex.lock();
@@ -98,6 +100,10 @@ struct TextureViewCache {
     }
     it->second.touch(frameCounter);
     return it->second.view;
+  }
+
+  WGPUTextureView getTextureView(size_t frameCounter, const TextureContextData &textureData, TextureViewDesc desc) {
+    return getTextureView(frameCounter, TextureViewKey{textureData.id, textureData.version, desc}, textureData.texture);
   }
 
   WGPUTextureView getDefaultTextureView(size_t frameCounter, const TextureContextData &textureData) {
@@ -122,7 +128,7 @@ struct TextureViewCache {
       defaultDesc.arrayLayerCount = 6;
       break;
     }
-    return getTextureView(frameCounter, textureData.texture, defaultDesc);
+    return getTextureView(frameCounter, textureData, defaultDesc);
   }
 };
 } // namespace gfx

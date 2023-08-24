@@ -26,21 +26,24 @@ std::shared_ptr<Texture> Texture::makeRenderAttachment(WGPUTextureFormat format,
 
 Texture &Texture::init(const TextureDesc &desc) {
   if (this->desc != desc) {
-    contextData.reset();
+    update();
     this->desc = desc;
   }
   return *this;
 }
 
 Texture &Texture::initWithSamplerState(const SamplerState &samplerState) {
-  this->samplerState = samplerState;
+  if (this->samplerState != samplerState) {
+    this->samplerState = samplerState;
+    ++version;
+  }
   return *this;
 }
 
 Texture &Texture::initWithResolution(int2 resolution) {
   if (desc.resolution != resolution) {
     desc.resolution = resolution;
-    contextData.reset();
+    update();
   }
   return *this;
 }
@@ -48,7 +51,7 @@ Texture &Texture::initWithResolution(int2 resolution) {
 Texture &Texture::initWithFlags(TextureFormatFlags flags) {
   if (desc.format.flags != flags) {
     desc.format.flags = flags;
-    contextData.reset();
+    update();
   }
   return *this;
 }
@@ -56,20 +59,20 @@ Texture &Texture::initWithFlags(TextureFormatFlags flags) {
 Texture &Texture::initWithPixelFormat(WGPUTextureFormat format) {
   if (desc.format.pixelFormat != format) {
     desc.format.pixelFormat = format;
-    contextData.reset();
+    update();
   }
   return *this;
 }
 
 Texture &Texture::initWithLabel(std::string &&label) {
   this->label = std::move(label);
-  contextData.reset();
+  update();
   return *this;
 }
 
 std::shared_ptr<Texture> Texture::clone() const {
   auto result = cloneSelfWithId(this, getNextId());
-  result->contextData.reset();
+  result->update();
   return result;
 }
 
@@ -103,6 +106,8 @@ void Texture::initContextData(Context &context, TextureContextData &contextData)
   WGPUDevice device = context.wgpuDevice;
   assert(device);
 
+  contextData.id = id;
+  contextData.version = version;
   contextData.size.width = desc.resolution.x;
   contextData.size.height = desc.resolution.y;
   contextData.size.depthOrArrayLayers = 1;
@@ -164,6 +169,11 @@ void Texture::updateContextData(Context &context, TextureContextData &contextDat
 UniqueId Texture::getNextId() {
   static UniqueIdGenerator gen(UniqueIdTag::Texture);
   return gen.getNext();
+}
+
+void Texture::update() {
+  ++version;
+  contextData.reset();
 }
 
 } // namespace gfx
