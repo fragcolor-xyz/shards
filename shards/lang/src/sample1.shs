@@ -1,6 +1,7 @@
 
 
 Repeat({
+  = input-var
   """hello
  	"Hello"
 """

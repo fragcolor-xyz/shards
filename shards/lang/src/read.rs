@@ -75,12 +75,25 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
 
   let mut inner = pair.into_inner();
 
-  let pipeline = process_pipeline(
-    inner
-      .next()
-      .ok_or(("Expected a Pipeline in Assignment, but found none.", pos).into())?,
-    env,
-  )?;
+  let pipeline = if let Some(next) = inner.peek() {
+    if next.as_rule() == Rule::Pipeline {
+      process_pipeline(
+        inner
+          .next()
+          .ok_or(("Expected a Pipeline in Assignment, but found none.", pos).into())?,
+        env,
+      )?
+    } else {
+      Pipeline {
+        blocks: vec![Block {
+          content: BlockContent::Empty,
+          line_info: Some(pos.into()),
+        }],
+      }
+    }
+  } else {
+    unreachable!("Assignment should have at least one inner rule.")
+  };
 
   let assignment_op = inner
     .next()

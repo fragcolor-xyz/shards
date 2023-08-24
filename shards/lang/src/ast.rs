@@ -195,6 +195,8 @@ pub struct Function {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum BlockContent {
+  Empty,
+  Comment(RcStrWrapper),                    // Rule: Comment
   Shard(Function),                          // Rule: Shard
   Shards(Sequence),                         // Rule: Shards
   Const(Value),                             // Rules: ConstValue, Vector

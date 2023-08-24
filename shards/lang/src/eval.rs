@@ -2377,6 +2377,8 @@ fn eval_pipeline(
   let start_idx = e.shards.len();
   for block in &pipeline.blocks {
     let _ = match &block.content {
+      BlockContent::Empty => Ok(()),
+      BlockContent::Comment(_) => Ok(()),
       BlockContent::Shard(shard) => add_shard(shard, block.line_info.unwrap_or_default(), e),
       BlockContent::Shards(seq) => {
         let mut sub_env = eval_sequence(&seq, Some(e), cancellation_token.clone())?;
@@ -3261,13 +3263,8 @@ fn eval_assignment(
     Assignment::AssignPush(pipe, name) => (pipe, "Push", name),
   };
   eval_pipeline(pipe, e, cancellation_token)?;
-  // find last added shard
-  let last = e.shards.last().unwrap();
-  let line_info = last.0.get_line_info();
-  let line_info = LineInfo {
-    line: line_info.0.try_into().unwrap(),
-    column: line_info.1.try_into().unwrap(),
-  };
+  // should always have first and always have line info here!
+  let line_info = pipe.blocks.first().unwrap().line_info.unwrap();
   add_assignment_shard(op, &name, line_info, e)
     .map_err(|e| (format!("{:?}", e), line_info).into())?;
   Ok(())
