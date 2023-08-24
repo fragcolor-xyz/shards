@@ -13,6 +13,7 @@
 #include <shards/core/exposed_type_utils.hpp>
 #include <shards/common_types.hpp>
 #include <shards/inlined.hpp>
+#include <gfx/moving_average.hpp>
 #include <cassert>
 #include <cmath>
 #include <optional>
@@ -295,9 +296,7 @@ struct Pause {
 
   void cleanup() { time.cleanup(); }
 
-  SHExposedTypesInfo requiredVariables() {
-    return SHExposedTypesInfo(reqs);
-  }
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(reqs); }
 
   FLATTEN ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
     const auto &t = time.get();
@@ -3491,127 +3490,6 @@ struct Repeat {
 
       if (!_forever)
         repeats--;
-    }
-    return input;
-  }
-};
-
-struct Once {
-  SHTimeDiff _next;
-  SHDuration _dsleep;
-  int _logCounter;
-
-  ShardsVar _blks;
-  ExposedInfo _requiredInfo{};
-  SHComposeResult _validation{};
-  bool _repeat{false};
-  double _repeatTime{0.0};
-  Shard *self{nullptr};
-
-  void cleanup() {
-    _blks.cleanup();
-    if (self)
-      self->inlineShardId = InlineShard::CoreOnce;
-    _next = {};
-  }
-
-  void warmup(SHContext *ctx) {
-    _blks.warmup(ctx);
-    _dsleep = SHDuration(_repeatTime);
-    _logCounter = 0;
-  }
-
-  static inline Parameters params{{"Action", SHCCSTR("The shard or sequence of shards to execute."), {CoreInfo::Shards}},
-                                  {"Every",
-                                   SHCCSTR("The number of seconds to wait until repeating the action, if 0 "
-                                           "the action will happen only once per wire flow execution."),
-                                   {CoreInfo::FloatType}}};
-
-  static SHOptionalString help() {
-    return SHCCSTR("Executes the shard or sequence of shards with the desired frequency in a wire flow execution.");
-  }
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _blks = value;
-      break;
-    case 1:
-      _repeatTime = value.payload.floatValue;
-      _repeat = _repeatTime != 0.0;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _blks;
-    case 1:
-      return Var(_repeatTime);
-    default:
-      break;
-    }
-    throw SHException("Parameter out of range.");
-  }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    self = data.shard;
-    _validation = _blks.compose(data);
-    return data.inputType;
-  }
-
-  SHExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
-
-  ALWAYS_INLINE void activateOnce(SHContext *context, const SHVar &input) {
-    SHVar output{};
-    _blks.activate(context, input, output);
-    // let's cheat in this case and stop triggering this call
-    self->inlineShardId = InlineShard::NoopShard;
-  }
-
-  ALWAYS_INLINE void activateTimed(SHContext *context, const SHVar &input) {
-    // Get the current time
-    auto now = SHClock::now();
-
-    // If the timer has not been initialized or has expired, reset it
-    if (now >= _next) {
-      // Call the activation function
-      SHVar output{};
-      _blks.activate(context, input, output);
-
-      // Update the next activation time based on how long the activation function took
-      auto elapsed = SHClock::now() - now;
-      if (unlikely(elapsed > _dsleep)) {
-        // If the activation function took longer than dsleep, update the next activation time to be immediately
-        _next = now;
-        // tick took too long!!!
-        if (++_logCounter >= 1000) {
-          _logCounter = 0;
-          auto wire = context->currentWire();
-          SHLOG_WARNING("Once shard took too long to execute, skipping next pause time, wire: {}", wire->name);
-        }
-      } else {
-        ++_logCounter;
-        // If the activation function took less than dsleep, adjust the next activation time based on how much time is remaining
-        _next = now + _dsleep - elapsed;
-      }
-    }
-  }
-
-  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
-    if (!_repeat) {
-      activateOnce(context, input);
-    } else {
-      activateTimed(context, input);
     }
     return input;
   }
