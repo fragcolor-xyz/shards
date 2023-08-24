@@ -290,16 +290,22 @@ struct GetViewProjectionMatrixShard {
                  {CoreInfo::Float2Type, CoreInfo::Float2VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_viewSize));
 
+  Mat4 _result;
+
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     return CoreInfo::Float4x4Type;
   }
 
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup() { PARAM_CLEANUP(); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     ViewPtr view = varAsObjectChecked<ViewPtr>(input, Types::View);
     auto projMatrix = view->getProjectionMatrix(toVec<float2>(_viewSize.get()));
-    return Mat4(linalg::mul(projMatrix, view->view));
+    _result = linalg::mul(projMatrix, view->view);
+    return _result;
   }
 };
 
