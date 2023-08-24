@@ -37,5 +37,5 @@ Float         = @{ ("+" | "-" | "~")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 Integer       = @{ ("+" | "-" | "~")? ~ ASCII_DIGIT+ }
 Number        =  { Hexadecimal | Float | Integer }
 ComplexString = @{ "\"\"\"" ~ (!"\"\"\"" ~ ANY)* ~ "\"\"\"" }
-SimpleString  = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+SimpleString  = @{ "\"" ~ (("\\" ~ ANY) | (!"\"" ~ ANY))* ~ "\"" }
 String        =  { ComplexString | SimpleString }
