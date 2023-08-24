@@ -136,7 +136,7 @@ struct RenderIntoShard {
 
     _requiredVariables.push_back(decltype(_graphicsRendererContext)::getExposedTypeInfo());
 
-    if(findExposedVariable(data.shared, decltype(_inputContext)::getExposedTypeInfo().name)) {
+    if (findExposedVariable(data.shared, decltype(_inputContext)::getExposedTypeInfo().name)) {
       _requiredVariables.push_back(decltype(_inputContext)::getExposedTypeInfo());
     }
 
@@ -281,8 +281,31 @@ struct RenderIntoShard {
   }
 };
 
+struct GetViewProjectionMatrixShard {
+  static SHTypesInfo inputTypes() { return Types::View; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString help() { return SHCCSTR("Returns the combined view projection matrix of the view"); }
+
+  PARAM_PARAMVAR(_viewSize, "ViewSize", "The size of the screen this view is being used with",
+                 {CoreInfo::Float2Type, CoreInfo::Float2VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_viewSize));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::Float4x4Type;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    ViewPtr view = varAsObjectChecked<ViewPtr>(input, Types::View);
+    auto projMatrix = view->getProjectionMatrix(toVec<float2>(_viewSize.get()));
+    return Mat4(linalg::mul(projMatrix, view->view));
+  }
+};
+
 void registerViewShards() {
   REGISTER_SHARD("GFX.View", ViewShard);
   REGISTER_SHARD("GFX.RenderInto", RenderIntoShard);
+  REGISTER_SHARD("GFX.GetViewProjectionMatrix", GetViewProjectionMatrixShard);
 }
 } // namespace gfx

@@ -29,6 +29,8 @@ shenum! {
   struct UIProperty {
     [description("Return the remaining space within an UI widget.")]
     const RemainingSpace = 0x0;
+    [description("The screen size of the UI.")]
+    const ScreenSize = 0x1;
   }
   struct UIPropertyInfo {}
 }
@@ -155,8 +157,15 @@ impl Shard for GetProperty {
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
 
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    let (require_ui_parent) = match self.get_ui_property().unwrap() {
+      UIProperty::RemainingSpace => true,
+      _ => false,
+    };
+
+    if require_ui_parent {
+      // Add UI.Parents to the list of required variables
+      util::require_parents(&mut self.requiring, &self.parents);
+    }
 
     let exp_info = ExposedInfo {
       exposedType: EGUI_CTX_TYPE,
@@ -191,30 +200,39 @@ impl Shard for GetProperty {
     let prop = self.get_ui_property()?;
     match prop {
       UIProperty::RemainingSpace => Ok(common_type::float4),
+      UIProperty::ScreenSize => Ok(common_type::float2),
       _ => Err("Unknown property"),
     }
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
-      match self.get_ui_property()? {
-        UIProperty::RemainingSpace => {
-          let target_size = ui.available_size();
-          let target_pos = ui.next_widget_position().to_vec2();
-
-          let draw_scale = ui.ctx().pixels_per_point();
-
-          let min = target_pos * draw_scale;
-          let max = (target_pos + target_size) * draw_scale;
-
-          // Float4 rect as (X0, Y0, X1, Y1)
-          let result_rect: Var = (min.x, min.y, max.x, max.y).into();
-          Ok(result_rect)
-        }
-        _ => Err("Unknown property"),
-      }
+    let ui = if (!self.parents.is_variable()) {
+      util::get_current_parent(self.parents.get()).map_err(|_| "No parent UI")
     } else {
       Err("No parent UI")
+    };
+
+    match self.get_ui_property()? {
+      UIProperty::RemainingSpace => {
+        let ui = ui?.ok_or("No parent UI")?;
+        let target_size = ui.available_size();
+        let target_pos = ui.next_widget_position().to_vec2();
+
+        let draw_scale = ui.ctx().pixels_per_point();
+
+        let min = target_pos * draw_scale;
+        let max = (target_pos + target_size) * draw_scale;
+
+        // Float4 rect as (X0, Y0, X1, Y1)
+        let result_rect: Var = (min.x, min.y, max.x, max.y).into();
+        Ok(result_rect)
+      }
+      UIProperty::ScreenSize => {
+        let ctx = util::get_current_context(&self.instance)?;
+        let size = ctx.screen_rect().size();
+        Ok((size.x, size.y).into())
+      }
+      _ => Err("Unknown property"),
     }
   }
 }
