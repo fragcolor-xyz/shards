@@ -944,7 +944,8 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
     mesh.schedule(wire.0, false);
 
     loop {
-      if !mesh.tick() || mesh.is_empty() {
+      mesh.tick();
+      if mesh.is_empty() {
         break;
       }
     }
@@ -2872,20 +2873,11 @@ fn eval_pipeline(
 
               loop {
                 if let Some(tick) = tick {
-                  if !mesh.tick() {
-                    // exit on first failure
-                    succeeded = false;
-                    break;
-                  }
-
+                  succeeded = mesh.tick();
                   now = Instant::now();
                   sleep_and_update(&mut next, now, tick);
                 } else {
-                  if !mesh.tick() {
-                    // exit on first failure
-                    succeeded = false;
-                    break;
-                  }
+                  succeeded = mesh.tick();
                 }
 
                 iteration += 1;
@@ -2905,10 +2897,12 @@ fn eval_pipeline(
                 }
 
                 if mesh.is_empty() {
+                  shlog_trace!("Mesh is empty, exiting");
                   break;
                 }
               }
 
+              shlog_trace!("Mesh is done, terminating, succeeded: {}", succeeded);
               mesh.terminate();
 
               // a @run(...) should transform into a boolean const shard so to be used for error handling
