@@ -4,7 +4,7 @@ Program       =  { SOI ~ Sequence ~ EOI }
 LowIden       = @{ (("_"? ~ ASCII_ALPHA_LOWER) | ("$" ~ ASCII_ALPHANUMERIC)) ~ (ASCII_ALPHANUMERIC | "_" | "-" | ".")* }
 VarName       =  { LowIden ~ ("/" ~ LowIden)* }
 AssignOp      =  { "=" | ">=" | ">>" | ">" }
-Assignment    =  { Pipeline ~ AssignOp ~ VarName ~ ("|")? }
+Assignment    =  { Pipeline? ~ AssignOp ~ VarName ~ ("|")? }
 Pipeline      =  { "|"? ~ Block ~ ("|" ~ Block)* }
 Statement     = _{ (Assignment | Pipeline) }
 Sequence      =  { Statement* }
