@@ -206,11 +206,7 @@ impl Shard for GetProperty {
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    let ui = if (!self.parents.is_variable()) {
-      util::get_current_parent(self.parents.get()).map_err(|_| "No parent UI")
-    } else {
-      Err("No parent UI")
-    };
+    let ui = util::get_current_parent(self.parents.get()).map_err(|_| "No parent UI");
 
     match self.get_ui_property()? {
       UIProperty::RemainingSpace => {
