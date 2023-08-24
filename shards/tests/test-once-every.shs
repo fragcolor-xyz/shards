@@ -46,6 +46,7 @@
 
     48.0 >= fps
     0.001 >= chopper
+    0.001 >= delay
   })
 
   Once({
@@ -66,8 +67,11 @@
               "Chopper:" | UI.Label | UI.FloatSlider(Variable: chopper Min: 0.0 Max: 0.1)
             })
             UI.Horizontal({
+              "Fixed delay:" | UI.Label | UI.FloatSlider(Variable: delay Min: 0.0 Max: 0.1)
+            })
+            UI.Horizontal({
               "FPS:" | UI.Label 
-              1.0 | Math.Divide((Time.Delta | Time.MovingAverage)) | ToString | UI.Label
+              1.0 | Math.Divide((Time.Delta | Time.MovingAverage(100))) | ToString | UI.Label
             })
             
           })
@@ -77,7 +81,7 @@
     })
   } Every: (1.0 Math.Divide(fps)))
 
-  RandomFloat(chopper) = f1
+  RandomFloat(chopper) | Math.Add(delay) = f1
   Pause(f1)
 } Looped: true)
 

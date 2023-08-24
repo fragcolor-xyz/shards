@@ -247,6 +247,7 @@ struct MovingAverage {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   PARAM_VAR(_windowSize, "Window", "The moving average window length (in frames)", {CoreInfo::IntType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_windowSize))
 
   MovingAverage() { _windowSize = Var(16); }
 
