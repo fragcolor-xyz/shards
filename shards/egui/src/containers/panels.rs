@@ -134,10 +134,10 @@ macro_rules! impl_panel {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.resizable.set_param(value)),
-          1 => Ok(self.$default_size.set_param(value)),
-          2 => Ok(self.$min_size.set_param(value)),
-          3 => Ok(self.$max_size.set_param(value)),
+          0 => self.resizable.set_param(value),
+          1 => self.$default_size.set_param(value),
+          2 => self.$min_size.set_param(value),
+          3 => self.$max_size.set_param(value),
           4 => self.contents.set_param(value),
           _ => Err("Invalid parameter index"),
         }

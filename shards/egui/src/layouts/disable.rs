@@ -99,7 +99,7 @@ impl Shard for Disable {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.disable.set_param(value)),
+      1 => self.disable.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

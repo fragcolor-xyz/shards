@@ -160,14 +160,14 @@ impl Shard for Window {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.title.set_param(value)),
-      1 => Ok(self.position.set_param(value)),
-      2 => Ok(self.anchor.set_param(value)),
-      3 => Ok(self.width.set_param(value)),
-      4 => Ok(self.height.set_param(value)),
-      5 => Ok(self.flags.set_param(value)),
+      0 => self.title.set_param(value),
+      1 => self.position.set_param(value),
+      2 => self.anchor.set_param(value),
+      3 => self.width.set_param(value),
+      4 => self.height.set_param(value),
+      5 => self.flags.set_param(value),
       6 => self.contents.set_param(value),
-      7 => Ok(self.id.set_param(value)),
+      7 => self.id.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

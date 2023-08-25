@@ -94,8 +94,8 @@ impl Shard for ProgressBar {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.overlay.set_param(value)),
-      1 => Ok(self.desired_width.set_param(value)),
+      0 => self.overlay.set_param(value),
+      1 => self.desired_width.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

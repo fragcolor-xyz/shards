@@ -123,9 +123,9 @@ impl Shard for Plot {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.view_aspect.set_param(value)),
-      2 => Ok(self.data_aspect.set_param(value)),
-      3 => Ok(self.legend.set_param(value)),
+      1 => self.view_aspect.set_param(value),
+      2 => self.data_aspect.set_param(value),
+      3 => self.legend.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

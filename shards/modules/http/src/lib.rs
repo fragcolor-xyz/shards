@@ -153,14 +153,14 @@ impl RequestBase {
     Some(&GET_PARAMETERS)
   }
 
-  fn _setParam(&mut self, index: i32, value: &Var) {
+  fn _setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.url.set_param(value),
       1 => self.headers.set_param(value),
-      2 => self.timeout = value.try_into().unwrap(),
-      3 => self.as_bytes = value.try_into().unwrap(),
-      4 => self.full_response = value.try_into().unwrap(),
-      5 => self.invalid_certs = value.try_into().unwrap(),
+      2 => Ok(self.timeout = value.try_into().map_err(|x| "Failed to set timeout")?),
+      3 => Ok(self.as_bytes = value.try_into().map_err(|x| "Failed to set as_bytes")?),
+      4 => Ok(self.full_response = value.try_into().map_err(|x| "Failed to set full_response")?),
+      5 => Ok(self.invalid_certs = value.try_into().map_err(|x| "Failed to set invalid_certs")?),
       _ => unreachable!(),
     }
   }
@@ -294,8 +294,7 @@ macro_rules! get_like {
       }
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-        self.rb._setParam(index, value);
-        Ok(())
+        self.rb._setParam(index, value)
       }
 
       fn getParam(&mut self, index: i32) -> Var {
@@ -403,8 +402,7 @@ macro_rules! post_like {
       }
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-        self.rb._setParam(index, value);
-        Ok(())
+        self.rb._setParam(index, value)
       }
 
       fn getParam(&mut self, index: i32) -> Var {

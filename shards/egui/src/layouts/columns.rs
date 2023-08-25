@@ -97,7 +97,7 @@ impl Shard for Columns {
           s.set_param(&shard)?;
           self.shards.push(s);
         }
-        Ok(self.contents.set_param(value))
+        self.contents.set_param(value)
       }
       _ => Err("Invalid parameter index"),
     }

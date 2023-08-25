@@ -95,8 +95,8 @@ impl Shard for PlotLine {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.color.set_param(value)),
-      1 => Ok(self.name.set_param(value)),
+      0 => self.color.set_param(value),
+      1 => self.name.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

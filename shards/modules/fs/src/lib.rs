@@ -133,10 +133,10 @@ impl Shard for FileDialog {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.filters.set_param(value)),
-      1 => Ok(self.current_dir.set_param(value)),
+      0 => self.filters.set_param(value),
+      1 => self.current_dir.set_param(value),
       2 => Ok(self.multiple = value.try_into()?),
-      3 => Ok(self.folder.set_param(value)),
+      3 => self.folder.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -308,8 +308,8 @@ impl Shard for SaveFileDialog {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.filters.set_param(value)),
-      1 => Ok(self.current_dir.set_param(value)),
+      0 => self.filters.set_param(value),
+      1 => self.current_dir.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

@@ -80,9 +80,9 @@ macro_rules! shape {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.position.set_param(value)),
-          1 => Ok(self.rotation.set_param(value)),
-          _ => Ok(self._set_param(index, value)),
+          0 => self.position.set_param(value),
+          1 => self.rotation.set_param(value),
+          _ => self._set_param(index, value),
         }
       }
 
@@ -197,7 +197,7 @@ impl BallShape {
     Some(&BALL_PARAMETERS)
   }
 
-  fn _set_param(&mut self, index: i32, value: &Var) {
+  fn _set_param(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       2 => self.radius.set_param(value),
       _ => unreachable!(),
@@ -268,7 +268,7 @@ impl CubeShape {
     Some(&CUBE_PARAMETERS)
   }
 
-  fn _set_param(&mut self, index: i32, value: &Var) {
+  fn _set_param(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       2 => self.half_extents.set_param(value),
       _ => unreachable!(),

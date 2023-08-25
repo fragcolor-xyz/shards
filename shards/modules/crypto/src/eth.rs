@@ -163,8 +163,8 @@ impl Shard for EncodeCall {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.abi.set_param(value)),
-      1 => Ok(self.call_name.set_param(value)),
+      0 => self.abi.set_param(value),
+      1 => self.call_name.set_param(value),
       _ => unreachable!(),
     }
   }
@@ -298,8 +298,8 @@ impl Shard for DecodeCall {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.abi.set_param(value)),
-      1 => Ok(self.call_name.set_param(value)),
+      0 => self.abi.set_param(value),
+      1 => self.call_name.set_param(value),
       2 => Ok(self.is_input = value.try_into()?),
       _ => unreachable!(),
     }

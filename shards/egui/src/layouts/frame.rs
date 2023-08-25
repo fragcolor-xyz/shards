@@ -142,12 +142,12 @@ impl Shard for Frame {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.innerMargin.set_param(value)),
-      2 => Ok(self.outerMargin.set_param(value)),
-      3 => Ok(self.rounding.set_param(value)),
-      4 => Ok(self.fillColor.set_param(value)),
-      5 => Ok(self.strokeColor.set_param(value)),
-      6 => Ok(self.strokeWidth.set_param(value)),
+      1 => self.innerMargin.set_param(value),
+      2 => self.outerMargin.set_param(value),
+      3 => self.rounding.set_param(value),
+      4 => self.fillColor.set_param(value),
+      5 => self.strokeColor.set_param(value),
+      6 => self.strokeWidth.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

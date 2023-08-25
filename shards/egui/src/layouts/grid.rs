@@ -125,10 +125,10 @@ impl Shard for Grid {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.striped.set_param(value)),
-      2 => Ok(self.min_width.set_param(value)),
-      3 => Ok(self.max_width.set_param(value)),
-      4 => Ok(self.spacing.set_param(value)),
+      1 => self.striped.set_param(value),
+      2 => self.min_width.set_param(value),
+      3 => self.max_width.set_param(value),
+      4 => self.spacing.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

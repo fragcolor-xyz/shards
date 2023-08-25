@@ -88,7 +88,7 @@ struct ClientUser {
 }
 
 impl ClientUser {
-  fn set_param(&mut self, index: i32, value: &Var) {
+  fn set_param(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.instance.set_param(value),
       _ => panic!("Invalid index {}", index),
@@ -184,8 +184,7 @@ impl Shard for ReadString {
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    self.client.set_param(index, value);
-    Ok(())
+    self.client.set_param(index, value)
   }
 
   fn getParam(&mut self, index: i32) -> Var {
@@ -283,8 +282,7 @@ impl Shard for WriteString {
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    self.client.set_param(index, value);
-    Ok(())
+    self.client.set_param(index, value)
   }
 
   fn getParam(&mut self, index: i32) -> Var {

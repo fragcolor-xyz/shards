@@ -202,7 +202,7 @@ impl Shard for Activate {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.model_var.set_param(value)),
+      0 => self.model_var.set_param(value),
       _ => unreachable!(),
     }
   }

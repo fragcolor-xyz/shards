@@ -119,8 +119,8 @@ impl Shard for ImageButton {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.action.set_param(value),
-      1 => Ok(self.scale.set_param(value)),
-      2 => Ok(self.selected.set_param(value)),
+      1 => self.scale.set_param(value),
+      2 => self.selected.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

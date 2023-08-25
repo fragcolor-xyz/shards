@@ -122,8 +122,8 @@ macro_rules! impl_ui_input {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.variable.set_param(value)),
-          1 => Ok(self.prefix.set_param(value)),
+          0 => self.variable.set_param(value),
+          1 => self.prefix.set_param(value),
           _ => Err("Invalid parameter index"),
         }
       }
@@ -336,7 +336,7 @@ macro_rules! impl_ui_n_input {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.variable.set_param(value)),
+          0 => self.variable.set_param(value),
           _ => Err("Invalid parameter index"),
         }
       }

@@ -105,9 +105,9 @@ impl Shard for Link {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.label.set_param(value)),
+      0 => self.label.set_param(value),
       1 => self.action.set_param(value),
-      2 => Ok(self.style.set_param(value)),
+      2 => self.style.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

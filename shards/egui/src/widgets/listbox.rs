@@ -120,7 +120,7 @@ impl Shard for ListBox {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.index.set_param(value)),
+      0 => self.index.set_param(value),
       1 => self.is_selected.set_param(value),
       2 => self.selected.set_param(value),
       3 => self.template.set_param(value),

@@ -99,8 +99,8 @@ impl Shard for Console {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.show_filters.set_param(value)),
-      1 => Ok(self.style.set_param(value)),
+      0 => self.show_filters.set_param(value),
+      1 => self.style.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

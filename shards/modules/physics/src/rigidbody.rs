@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
+use crate::fill_seq_from_mat4;
 use shards::core::deriveType;
 use shards::core::registerShard;
 use shards::types::Types;
-use crate::fill_seq_from_mat4;
 
 use crate::BaseShape;
 use crate::RigidBody;
@@ -32,32 +32,21 @@ use shards::types::Seq;
 use shards::types::Type;
 use shards::types::ANY_TYPES;
 
-
 use shards::types::FLOAT4X4S_TYPE;
 use shards::types::FLOAT4X4_TYPE;
 
+use shards::shard::Shard;
 use shards::types::NONE_TYPES;
 use shards::types::STRING_OR_NONE_SLICE;
-use shards::shard::Shard;
 
-use shards::types::Var;
 use rapier3d::dynamics::RigidBodyBuilder;
-use rapier3d::dynamics::{
-  RigidBodyHandle, RigidBodyType,
-};
-use rapier3d::geometry::{
-  ColliderBuilder, ColliderHandle,
-};
+use rapier3d::dynamics::{RigidBodyHandle, RigidBodyType};
+use rapier3d::geometry::{ColliderBuilder, ColliderHandle};
+use shards::types::Var;
 
 use rapier3d::na::Isometry3;
 
-
-
-use rapier3d::na::{
-  Matrix4, Quaternion, Translation, UnitQuaternion,
-  Vector3,
-};
-
+use rapier3d::na::{Matrix4, Quaternion, Translation, UnitQuaternion, Vector3};
 
 use std::convert::TryInto;
 use std::rc::Rc;
@@ -110,7 +99,7 @@ impl Default for RigidBody {
 }
 
 impl RigidBody {
-  fn _set_param(&mut self, index: i32, value: &Var) {
+  fn _set_param(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.shape_var.set_param(value),
       1 => self.position.set_param(value),
@@ -404,11 +393,9 @@ impl Shard for StaticRigidBody {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 | 1 | 2 => Ok(
-        Rc::get_mut(&mut self.rb)
-          .map(|x| x._set_param(index, value))
-          .ok_or_else(|| "Failed to set Rc param")?,
-      ),
+      0 | 1 | 2 => Rc::get_mut(&mut self.rb)
+        .map(|x| x._set_param(index, value))
+        .ok_or_else(|| "Failed to set Rc param")?,
       3 => {
         if !value.is_none() {
           Ok(self.self_obj.set_name(value.try_into()?))
@@ -538,11 +525,9 @@ impl Shard for DynamicRigidBody {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 | 1 | 2 => Ok(
-        Rc::get_mut(&mut self.rb)
-          .map(|x| x._set_param(index, value))
-          .ok_or_else(|| "Failed to set Rc param")?,
-      ),
+      0 | 1 | 2 => Rc::get_mut(&mut self.rb)
+        .map(|x| x._set_param(index, value))
+        .ok_or_else(|| "Failed to set Rc param")?,
       3 => {
         if !value.is_none() {
           Ok(self.self_obj.set_name(value.try_into()?))
@@ -682,11 +667,9 @@ impl Shard for KinematicRigidBody {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 | 1 | 2 => Ok(
-        Rc::get_mut(&mut self.rb)
-          .map(|x| x._set_param(index, value))
-          .ok_or_else(|| "Failed to set Rc param")?,
-      ),
+      0 | 1 | 2 => Rc::get_mut(&mut self.rb)
+        .map(|x| x._set_param(index, value))
+        .ok_or_else(|| "Failed to set Rc param")?,
       3 => {
         if !value.is_none() {
           Ok(self.self_obj.set_name(value.try_into()?))
