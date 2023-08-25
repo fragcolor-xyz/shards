@@ -1280,7 +1280,7 @@ struct ParallelBase : public CapturingSpawners {
   DECL_ENUM_INFO(WaitUntil, WaitUntil, 'tryM');
 
   static inline Parameters _params{
-      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireVarTypes},
+      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireTypes},
       {"Policy", SHCCSTR("The execution policy in terms of wires success."), {WaitUntilEnumInfo::Type}},
       {"Threads", SHCCSTR("The number of cpu threads to use."), {CoreInfo::IntType}}};
 
@@ -1684,7 +1684,7 @@ struct Spawn : public CapturingSpawners {
   static SHTypesInfo outputTypes() { return CoreInfo::WireType; }
 
   static inline Parameters _params{
-      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireVarTypes}};
+      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireTypes}};
 
   static SHParametersInfo parameters() { return _params; }
 
@@ -1818,7 +1818,7 @@ struct Spawn : public CapturingSpawners {
 
 struct StepMany : public TryMany {
   static inline Parameters _params{
-      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireVarTypes},
+      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireTypes},
   };
 
   static SHParametersInfo parameters() { return _params; }
@@ -1894,7 +1894,7 @@ struct DoMany : public TryMany {
   void setup() { _threads = 0; } // we don't use threads
 
   static inline Parameters _params{
-      {"Wire", SHCCSTR("The wire to run many times sequentially."), WireBase::WireVarTypes},
+      {"Wire", SHCCSTR("The wire to run many times sequentially."), WireBase::WireTypes},
   };
 
   static SHParametersInfo parameters() { return _params; }
