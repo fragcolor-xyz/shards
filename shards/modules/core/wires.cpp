@@ -903,9 +903,16 @@ template <class T> struct BaseLoader : public BaseRunner {
     WireBase::compose(data); // notice we skip BaseRunner::compose
 
     _inputTypeCopy = data.inputType;
-    const IterableExposedInfo sharedStb(data.shared);
-    // copy shared
-    _sharedCopy = sharedStb;
+    IterableExposedInfo sharedStb(data.shared);
+
+    if (mode == RunWireMode::Async) {
+      // keep only globals
+      auto end = std::remove_if(sharedStb.begin(), sharedStb.end(), [](const SHExposedTypeInfo &x) { return !x.global; });
+      _sharedCopy = IterableExposedInfo(sharedStb.begin(), end);
+    } else {
+      // full copy
+      _sharedCopy = IterableExposedInfo(sharedStb.begin(), sharedStb.end()); // notice to make full copy
+    }
 
     if (mode == RunWireMode::Inline || mode == RunWireMode::Stepped) {
       // If inline allow wires to receive a result
@@ -1149,7 +1156,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     }
   }
 
-  void doCompose(SHContext *context) {
+  void deferredCompose(SHContext *context) {
     SHInstanceData data{};
     data.inputType = _inputTypeCopy;
     data.shared = _sharedCopy;
@@ -1191,7 +1198,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
       await(
           context,
           [this, context, wireVar]() {
-            doCompose(context);
+            deferredCompose(context);
             wire->composedHash = shards::hash(wireVar);
           },
           [] {});
