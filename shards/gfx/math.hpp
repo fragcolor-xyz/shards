@@ -2,6 +2,7 @@
 #define GFX_MATH
 
 #include <cassert>
+#include <cmath>
 
 namespace gfx {
 constexpr float pi = 3.14159265359f;
@@ -45,6 +46,8 @@ inline bool isRoughlyEqual(T val, T target, T tolerance = T(0.05)) {
   T delta = val - target;
   return delta > -tolerance && delta < tolerance;
 }
+
+template <typename T> inline T mod(T a, T b) { return a - (b * (T)std::floor(double(a) / double(b))); }
 
 } // namespace gfx
 

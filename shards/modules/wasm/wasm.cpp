@@ -458,7 +458,7 @@ m3ApiRawFunction(m3_wasi_unstable_path_filestat_get) {
   SHLOG_TRACE("WASI m3_wasi_unstable_path_filestat_get, path: {}", path);
 
   fs::path fp{path};
-  fs::path rp{shards::GetGlobals().RootPath};
+  fs::path rp{shards::GetGlobals().RootPath.c_str()};
   fs::path p = rp / fp;
   auto ps = p.string();
 

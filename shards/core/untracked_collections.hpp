@@ -6,6 +6,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <string>
 #include <boost/container/allocator.hpp>
 
 namespace shards {
@@ -19,6 +20,7 @@ template <typename V>
 using UntrackedUnorderedSet = std::unordered_set<V, std::hash<V>, std::equal_to<V>, boost::container::allocator<V>>;
 template <typename V> using UntrackedList = std::list<V, boost::container::allocator<V>>;
 template <typename V> using UntrackedVector = std::vector<V, boost::container::allocator<V>>;
+using UntrackedString = std::basic_string<char, std::char_traits<char>, boost::container::allocator<char>>;
 }
 
 #endif /* C00AFEDF_4760_4B00_93F3_8C80A9784211 */

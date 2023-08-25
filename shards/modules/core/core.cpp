@@ -1859,6 +1859,152 @@ SHVar emscriptenBrowseActivation(const SHVar &input) {
 }
 #endif
 
+struct Once {
+  SHTimeDiff _next;
+  int _logCounter;
+
+  ShardsVar _blks;
+  ExposedInfo _requiredInfo{};
+  SHComposeResult _validation{};
+  ParamVar _repeat{};
+  Shard *self{nullptr};
+
+  bool _didActivateLastTick{};
+  SHTimeDiff _lastActivation;
+  gfx::MovingAverage<double> _averageSleepTime{20};
+
+  void cleanup() {
+    _repeat.cleanup();
+    _blks.cleanup();
+    if (self)
+      self->inlineShardId = InlineShard::CoreOnce;
+    _next = {};
+  }
+
+  void warmup(SHContext *ctx) {
+    _repeat.warmup(ctx);
+    _blks.warmup(ctx);
+    _logCounter = 0;
+    _didActivateLastTick = true;
+  }
+
+  static inline Parameters params{{"Action", SHCCSTR("The shard or sequence of shards to execute."), {CoreInfo::Shards}},
+                                  {"Every",
+                                   SHCCSTR("The number of seconds to wait until repeating the action, if 0 "
+                                           "the action will happen only once per wire flow execution."),
+                                   {CoreInfo::FloatType, CoreInfo::FloatVarType}}};
+
+  static SHOptionalString help() {
+    return SHCCSTR("Executes the shard or sequence of shards with the desired frequency in a wire flow execution.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static SHParametersInfo parameters() { return params; }
+
+  bool isRepeating() const { return !_repeat.isNone(); }
+  SHDuration getRepeatTime() const { return SHDuration(_repeat.get().payload.floatValue); }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _blks = value;
+      break;
+    case 1:
+      _repeat = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _blks;
+    case 1:
+      return _repeat;
+    default:
+      break;
+    }
+    throw SHException("Parameter out of range.");
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredInfo.clear();
+
+    self = data.shard;
+    _validation = _blks.compose(data);
+
+    collectRequiredVariables(data.shared, _requiredInfo, _repeat);
+
+    return data.inputType;
+  }
+
+  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_requiredInfo); }
+  SHExposedTypesInfo exposedVariables() { return _validation.exposedInfo; }
+
+  ALWAYS_INLINE void activateOnce(SHContext *context, const SHVar &input) {
+    SHVar output{};
+    _blks.activate(context, input, output);
+    // let's cheat in this case and stop triggering this call
+    self->inlineShardId = InlineShard::NoopShard;
+  }
+
+  ALWAYS_INLINE void activateTimed(SHContext *context, const SHVar &input) {
+    SHDuration dsleep = getRepeatTime();
+
+    // Get the current time
+    auto start = SHClock::now();
+
+    SHDuration timeSinceLastActivation = start - _lastActivation;
+    _lastActivation = start;
+
+    // Keep track of average sleep time so we can schedule activations earlier if we know they might not run in time
+    if (!_didActivateLastTick)
+      _averageSleepTime.add(timeSinceLastActivation.count());
+    _didActivateLastTick = false;
+
+    // If the timer has not been initialized or has expired, reset it
+    SHDuration bias{_averageSleepTime.getAverage()};
+    if (start >= (_next - bias)) {
+      // Call the activation function
+      SHVar output{};
+      _blks.activate(context, input, output);
+      _didActivateLastTick = true;
+
+      // Update the next activation time based on how long the activation function took
+      auto now = SHClock::now();
+      SHDuration elapsed = now - start;
+
+      if (unlikely(elapsed > dsleep)) {
+        _next = start + dsleep;
+
+        // tick took too long!!!
+        if (++_logCounter >= 1000) {
+          _logCounter = 0;
+          auto wire = context->currentWire();
+          SHLOG_WARNING("Once shard took too long to execute, skipping next pause time, wire: {}", wire->name);
+        }
+      } else {
+        _next = _next + dsleep;
+        ++_logCounter;
+      }
+    }
+  }
+
+  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+    if (!isRepeating()) {
+      activateOnce(context, input);
+    } else {
+      activateTimed(context, input);
+    }
+    return input;
+  }
+};
+
 SHARDS_REGISTER_FN(core) {
   REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
 

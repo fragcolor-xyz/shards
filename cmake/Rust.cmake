@@ -260,6 +260,7 @@ function(add_rust_library)
     file(REAL_PATH ${SRC_DEP} SRC_DEP_ABS)
     list(APPEND RUST_SOURCES_ABS ${SRC_DEP_ABS})
   endforeach()
+  message(VERBOSE "  deps: ${RUST_SOURCES_ABS}")
 
   set_property(TARGET ${RUST_TARGET_NAME} PROPERTY RUST_DEPENDS ${RUST_SOURCES_ABS})
 

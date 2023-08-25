@@ -96,7 +96,7 @@
                            (UI.Window
                             :Contents
                             (->
-                             (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
+                             (UI.Property UIProperty.RemainingSpace) >= .rt-region
                              (compute-rt-region-16-9) > .rt-region
 
                              (GFX.RenderInto :Textures {:color .rt-0} :WindowRegion .rt-region :Contents (Step inner-wire-0))
@@ -111,7 +111,7 @@
                             (->
                              "Header" (UI.Label) (UI.Separator)
 
-                             (UI.GetProperty UIProperty.RemainingSpace) >= .rt-region
+                             (UI.Property UIProperty.RemainingSpace) >= .rt-region
                              (compute-rt-region-16-9) > .rt-region
 
                              (GFX.RenderInto :Textures {:color .rt-1} :WindowRegion .rt-region :Contents (Step inner-wire-1))

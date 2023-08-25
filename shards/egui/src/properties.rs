@@ -29,6 +29,8 @@ shenum! {
   struct UIProperty {
     [description("Return the remaining space within an UI widget.")]
     const RemainingSpace = 0x0;
+    [description("The screen size of the UI.")]
+    const ScreenSize = 0x1;
   }
   struct UIPropertyInfo {}
 }
@@ -53,14 +55,14 @@ lazy_static! {
   static ref OUTPUT_TYPES: Types = vec![common_type::float4,];
 }
 
-pub struct GetProperty {
+pub struct PropertyShard {
   instance: ParamVar,
   requiring: ExposedTypes,
   parents: ParamVar,
   property: Var,
 }
 
-impl Default for GetProperty {
+impl Default for PropertyShard {
   fn default() -> Self {
     let mut instance = ParamVar::default();
     instance.set_name(CONTEXTS_NAME);
@@ -75,7 +77,7 @@ impl Default for GetProperty {
   }
 }
 
-impl GetProperty {
+impl PropertyShard {
   fn get_ui_property(&self) -> Result<UIProperty, &str> {
     match self.property.valueType {
       SHType_Enum => Ok(UIProperty {
@@ -93,23 +95,23 @@ impl GetProperty {
   }
 }
 
-impl Shard for GetProperty {
+impl Shard for PropertyShard {
   fn registerName() -> &'static str
   where
     Self: Sized,
   {
-    cstr!("UI.GetProperty")
+    cstr!("UI.Property")
   }
 
   fn hash() -> u32
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.GetProperty-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Property-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "UI.GetProperty"
+    "UI.Property"
   }
 
   fn help(&mut self) -> OptionalString {
@@ -155,8 +157,15 @@ impl Shard for GetProperty {
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
 
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    let (require_ui_parent) = match self.get_ui_property().unwrap() {
+      UIProperty::RemainingSpace => true,
+      _ => false,
+    };
+
+    if require_ui_parent {
+      // Add UI.Parents to the list of required variables
+      util::require_parents(&mut self.requiring, &self.parents);
+    }
 
     let exp_info = ExposedInfo {
       exposedType: EGUI_CTX_TYPE,
@@ -191,35 +200,40 @@ impl Shard for GetProperty {
     let prop = self.get_ui_property()?;
     match prop {
       UIProperty::RemainingSpace => Ok(common_type::float4),
+      UIProperty::ScreenSize => Ok(common_type::float2),
       _ => Err("Unknown property"),
     }
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
-      match self.get_ui_property()? {
-        UIProperty::RemainingSpace => {
-          let target_size = ui.available_size();
-          let target_pos = ui.next_widget_position().to_vec2();
+    let ui = util::get_current_parent(self.parents.get()).map_err(|_| "No parent UI");
 
-          let draw_scale = ui.ctx().pixels_per_point();
+    match self.get_ui_property()? {
+      UIProperty::RemainingSpace => {
+        let ui = ui?.ok_or("No parent UI")?;
+        let target_size = ui.available_size();
+        let target_pos = ui.next_widget_position().to_vec2();
 
-          let min = target_pos * draw_scale;
-          let max = (target_pos + target_size) * draw_scale;
+        let draw_scale = ui.ctx().pixels_per_point();
 
-          // Float4 rect as (X0, Y0, X1, Y1)
-          let result_rect: Var = (min.x, min.y, max.x, max.y).into();
-          Ok(result_rect)
-        }
-        _ => Err("Unknown property"),
+        let min = target_pos * draw_scale;
+        let max = (target_pos + target_size) * draw_scale;
+
+        // Float4 rect as (X0, Y0, X1, Y1)
+        let result_rect: Var = (min.x, min.y, max.x, max.y).into();
+        Ok(result_rect)
       }
-    } else {
-      Err("No parent UI")
+      UIProperty::ScreenSize => {
+        let ctx = util::get_current_context(&self.instance)?;
+        let size = ctx.screen_rect().size();
+        Ok((size.x, size.y).into())
+      }
+      _ => Err("Unknown property"),
     }
   }
 }
 
 pub fn registerShards() {
   registerEnumType(FRAG_CC, UIPROPERTY_CC, UIPropertyEnumInfo.as_ref().into());
-  registerShard::<GetProperty>();
+  registerShard::<PropertyShard>();
 }

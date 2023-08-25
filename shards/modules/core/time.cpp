@@ -2,6 +2,8 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include <shards/core/shared.hpp>
+#include <shards/core/params.hpp>
+#include <gfx/moving_average.hpp>
 #include "time.hpp"
 
 namespace shards {
@@ -236,6 +238,27 @@ private:
     return os.str();
   }
 };
+
+struct MovingAverage {
+  std::optional<gfx::MovingAverage<double>> _ma{};
+
+  static SHOptionalString help() { return SHCCSTR("Computes a moving average of a single floating point number."); }
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  PARAM_VAR(_windowSize, "Window", "The moving average window length (in frames)", {CoreInfo::IntType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_windowSize))
+
+  MovingAverage() { _windowSize = Var(16); }
+
+  void warmup(SHContext *context) { _ma.emplace(_windowSize.payload.intValue); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _ma->add(input.payload.floatValue);
+    return Var(_ma->getAverage());
+  }
+};
+
 } // namespace Time
 SHARDS_REGISTER_FN(time) {
   REGISTER_SHARD("Time.Now", Time::Now);
@@ -246,5 +269,6 @@ SHARDS_REGISTER_FN(time) {
   REGISTER_SHARD("Time.Epoch", Time::Epoch);
   REGISTER_SHARD("Time.Pop", Time::Pop);
   REGISTER_SHARD("Time.ToString", Time::ToString);
+  REGISTER_SHARD("Time.MovingAverage", Time::MovingAverage);
 }
 } // namespace shards

@@ -225,9 +225,9 @@ void registerShards() {
   }
 
   // finally iterate shard directory and load external dlls
-  loadExternalShards(GetGlobals().ExePath);
+  loadExternalShards(std::string(GetGlobals().ExePath.c_str()));
   if (GetGlobals().RootPath != GetGlobals().ExePath) {
-    loadExternalShards(GetGlobals().RootPath);
+    loadExternalShards(std::string(GetGlobals().RootPath.c_str()));
   }
 }
 
@@ -2842,7 +2842,7 @@ void shInit() {
 
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
-    fs::current_path(GetGlobals().RootPath);
+    fs::current_path(GetGlobals().RootPath.c_str());
   } else {
     // set current path as root path
     auto cp = fs::current_path();
@@ -2861,13 +2861,13 @@ void shInit() {
   SetConsoleOutputCP(CP_UTF8);
   namespace fs = boost::filesystem;
   if (GetGlobals().ExePath.size() > 0) {
-    auto pluginPath = fs::absolute(GetGlobals().ExePath) / "shards";
+    auto pluginPath = fs::absolute(GetGlobals().ExePath.c_str()) / "shards";
     auto pluginPathStr = pluginPath.wstring();
     SHLOG_DEBUG("Adding dll path: {}", pluginPath.string());
     AddDllDirectory(pluginPathStr.c_str());
   }
   if (GetGlobals().RootPath.size() > 0) {
-    auto pluginPath = fs::absolute(GetGlobals().RootPath) / "shards";
+    auto pluginPath = fs::absolute(GetGlobals().RootPath.c_str()) / "shards";
     auto pluginPathStr = pluginPath.wstring();
     SHLOG_DEBUG("Adding dll path: {}", pluginPath.string());
     AddDllDirectory(pluginPathStr.c_str());

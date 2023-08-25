@@ -42,6 +42,7 @@ struct RendererStorage {
   WGPUTextureView getTextureView(const TextureContextData &textureData, uint8_t faceIndex, uint8_t mipIndex) {
     if (textureData.externalView)
       return textureData.externalView;
+
     assert(textureData.texture);
     TextureViewDesc desc{
         .format = textureData.format.pixelFormat,
@@ -52,7 +53,7 @@ struct RendererStorage {
         .arrayLayerCount = 1,
         .aspect = WGPUTextureAspect_All,
     };
-    WGPUTextureView result = textureViewCache.getTextureView(frameCounter, textureData.texture, desc);
+    WGPUTextureView result = textureViewCache.getTextureView(frameCounter, textureData, desc);
     assert(result);
     return result;
   }
