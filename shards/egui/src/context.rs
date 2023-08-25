@@ -112,7 +112,7 @@ impl Shard for EguiContext {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.queue.set_param(value)),
+      0 => self.queue.set_param(value),
       1 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }

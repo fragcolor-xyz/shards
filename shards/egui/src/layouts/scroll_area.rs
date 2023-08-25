@@ -116,9 +116,9 @@ impl Shard for ScrollArea {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.horizontal.set_param(value)),
-      2 => Ok(self.vertical.set_param(value)),
-      3 => Ok(self.alwaysShow.set_param(value)),
+      1 => self.horizontal.set_param(value),
+      2 => self.vertical.set_param(value),
+      3 => self.alwaysShow.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

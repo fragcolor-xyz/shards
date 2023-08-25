@@ -221,7 +221,7 @@ Since the shard has parameters, we need to implement their getters and setters. 
 ```rust
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.my_param.set_param(value)),
+      0 => self.my_param.set_param(value),
       1 => self.my_shards.set_param(value),
       2 => Ok(self.my_bool = value.try_into()?),
       _ => Err("Invalid parameter index"),

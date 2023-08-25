@@ -103,7 +103,7 @@ macro_rules! add_signer {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.key.set_param(value)),
+          0 => self.key.set_param(value),
           _ => unreachable!(),
         }
       }
@@ -310,8 +310,8 @@ macro_rules! add_verifier {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.key.set_param(value)),
-          1 => Ok(self.msg.set_param(value)),
+          0 => self.key.set_param(value),
+          1 => self.msg.set_param(value),
           _ => unreachable!(),
         }
       }

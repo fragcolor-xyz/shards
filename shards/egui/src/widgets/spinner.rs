@@ -85,7 +85,7 @@ impl Shard for Spinner {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.size.set_param(value)),
+      0 => self.size.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

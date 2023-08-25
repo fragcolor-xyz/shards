@@ -115,7 +115,7 @@ impl Shard for ECDSASign {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.key.set_param(value)),
+      0 => self.key.set_param(value),
       _ => unreachable!(),
     }
   }
@@ -303,7 +303,7 @@ impl Shard for ECDSARecover {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.signature.set_param(value)),
+      0 => self.signature.set_param(value),
       1 => Ok(self.compressed = value.try_into()?),
       _ => unreachable!(),
     }

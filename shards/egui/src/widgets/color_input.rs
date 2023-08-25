@@ -93,7 +93,7 @@ impl Shard for ColorInput {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.variable.set_param(value)),
+      0 => self.variable.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

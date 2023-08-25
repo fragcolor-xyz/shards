@@ -85,7 +85,7 @@ impl Shard for Space {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.amount.set_param(value)),
+      0 => self.amount.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

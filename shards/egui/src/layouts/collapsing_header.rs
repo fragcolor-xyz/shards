@@ -111,10 +111,10 @@ impl Shard for CollapsingHeader {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 if value.is_none() || value.is_string() => Ok(self.text.set_param(value)),
+      0 if value.is_none() || value.is_string() => self.text.set_param(value),
       0 => self.header.set_param(value),
       1 => self.contents.set_param(value),
-      2 => Ok(self.defaultOpen.set_param(value)),
+      2 => self.defaultOpen.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

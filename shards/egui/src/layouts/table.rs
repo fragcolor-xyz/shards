@@ -177,9 +177,9 @@ impl Shard for Table {
 
         Ok(self.columns = value.into())
       }
-      2 => Ok(self.striped.set_param(value)),
-      3 => Ok(self.resizable.set_param(value)),
-      4 => Ok(self.row_index.set_param(value)),
+      2 => self.striped.set_param(value),
+      3 => self.resizable.set_param(value),
+      4 => self.row_index.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

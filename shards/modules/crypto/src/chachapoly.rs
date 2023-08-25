@@ -61,7 +61,7 @@ impl Shard for Encrypt {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.key.set_param(value)),
+      0 => self.key.set_param(value),
       _ => unreachable!(),
     }
   }
@@ -161,7 +161,7 @@ impl Shard for Decrypt {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.key.set_param(value)),
+      0 => self.key.set_param(value),
       _ => unreachable!(),
     }
   }

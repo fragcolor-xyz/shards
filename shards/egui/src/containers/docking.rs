@@ -111,7 +111,7 @@ impl Shard for Tab {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.title.set_param(value)),
+      0 => self.title.set_param(value),
       1 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }
@@ -298,7 +298,7 @@ impl Shard for DockArea {
           _ => return Err("Invalid parameter type"),
         }
 
-        Ok(self.contents.set_param(value))
+        self.contents.set_param(value)
       }
       _ => Err("Invalid parameter index"),
     }

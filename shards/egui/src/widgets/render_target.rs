@@ -88,7 +88,7 @@ impl Shard for RenderTarget {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.scale.set_param(value)),
+      0 => self.scale.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
