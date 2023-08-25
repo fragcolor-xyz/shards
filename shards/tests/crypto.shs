@@ -156,9 +156,9 @@
     Substrate.Decode([Type::Int] ["c"]) | Take(0) | ExpectInt | Log | Assert.Is(1000000 true)
 
     UUID = uuid
-    uuid | UUID.ToString | Log
-    uuid | UUID.ToString(true) | Log
-    uuid | UUID.ToBytes | ToHex | Log
+    uuid | UUID.ToString | {UUID.Convert | Assert.Is(uuid)} | Log
+    uuid | UUID.ToString(true) | {UUID.Convert | Assert.Is(uuid)} | Log
+    uuid | UUID.ToBytes | {UUID.Convert | Assert.Is(uuid)} ToHex | Log
     NanoID | Log
 })
 
