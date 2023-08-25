@@ -281,7 +281,7 @@ struct RenderIntoShard {
   }
 };
 
-struct GetViewProjectionMatrixShard {
+struct ViewProjectionMatrixShard {
   static SHTypesInfo inputTypes() { return Types::View; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
   static SHOptionalString help() { return SHCCSTR("Returns the combined view projection matrix of the view"); }
@@ -312,6 +312,6 @@ struct GetViewProjectionMatrixShard {
 void registerViewShards() {
   REGISTER_SHARD("GFX.View", ViewShard);
   REGISTER_SHARD("GFX.RenderInto", RenderIntoShard);
-  REGISTER_SHARD("GFX.GetViewProjectionMatrix", GetViewProjectionMatrixShard);
+  REGISTER_SHARD("GFX.ViewProjectionMatrix", ViewProjectionMatrixShard);
 }
 } // namespace gfx
