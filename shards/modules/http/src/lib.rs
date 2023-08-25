@@ -101,6 +101,14 @@ lazy_static! {
       BOOL_TYPES_SLICE
     )
       .into(),
+    (
+      cstr!("AcceptInvalidCerts"),
+      shccstr!(
+        "If we should ignore invalid certificates. This is useful for testing but should not be used in production."
+      ),
+      BOOL_TYPES_SLICE
+    )
+      .into(),
   ];
 }
 
@@ -114,6 +122,7 @@ struct RequestBase {
   timeout: u64,
   as_bytes: bool,
   full_response: bool,
+  invalid_certs: bool,
 }
 
 impl Default for RequestBase {
@@ -126,6 +135,7 @@ impl Default for RequestBase {
       timeout: 10,
       as_bytes: false,
       full_response: false,
+      invalid_certs: false,
     };
     let table = Table::new();
     s.output_table
@@ -150,6 +160,7 @@ impl RequestBase {
       2 => self.timeout = value.try_into().unwrap(),
       3 => self.as_bytes = value.try_into().unwrap(),
       4 => self.full_response = value.try_into().unwrap(),
+      5 => self.invalid_certs = value.try_into().unwrap(),
       _ => unreachable!(),
     }
   }
@@ -161,15 +172,21 @@ impl RequestBase {
       2 => self.timeout.try_into().expect("A valid integer in range"),
       3 => self.as_bytes.into(),
       4 => self.full_response.into(),
+      5 => self.invalid_certs.into(),
       _ => unreachable!(),
     }
   }
 
   fn _warmup(&mut self, context: &Context) -> Result<(), &str> {
-    self.client = Some(reqwest::blocking::Client::builder().build().map_err(|e| {
-      shlog!("Failure details: {}", e);
-      "Failed to create client"
-    })?);
+    self.client = Some(
+      reqwest::blocking::Client::builder()
+        .danger_accept_invalid_certs(self.invalid_certs)
+        .build()
+        .map_err(|e| {
+          shlog!("Failure details: {}", e);
+          "Failed to create client"
+        })?,
+    );
     self.url.warmup(context);
     self.headers.warmup(context);
     Ok(())
