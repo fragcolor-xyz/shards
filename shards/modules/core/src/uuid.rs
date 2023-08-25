@@ -6,11 +6,12 @@ use shards::shard::Shard;
 
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::INT_TYPES_SLICE;
 use shards::types::OptionalString;
 use shards::types::BOOL_TYPES_SLICE;
+use shards::types::BYTES_OR_STRING_TYPES;
 use shards::types::BYTES_TYPES;
 use shards::types::INT16_TYPES;
+use shards::types::INT_TYPES_SLICE;
 use shards::types::NONE_TYPES;
 
 use shards::types::Parameters;
@@ -22,6 +23,7 @@ use shards::types::STRING_TYPES;
 use shards::types::Var;
 
 use core::convert::TryInto;
+use std::str::FromStr;
 
 #[derive(Default)]
 struct UUIDCreate {}
@@ -53,6 +55,52 @@ impl Shard for UUIDCreate {
 
   fn activate(&mut self, _: &Context, _: &Var) -> Result<Var, &str> {
     let uuid = uuid::Uuid::new_v4();
+    Ok(uuid.as_bytes().into())
+  }
+}
+
+#[derive(Default)]
+struct UUIDConvert {}
+
+impl Shard for UUIDConvert {
+  fn registerName() -> &'static str {
+    cstr!("UUID.Convert")
+  }
+
+  fn hash() -> u32 {
+    compile_time_crc32::crc32!("UUID.Convert-rust-0x20200101")
+  }
+
+  fn name(&mut self) -> &str {
+    "UUID.Convert"
+  }
+
+  fn help(&mut self) -> OptionalString {
+    OptionalString(shccstr!(
+      "Outputs a UUID (Universally Unique Identifier) as Int16."
+    ))
+  }
+
+  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &BYTES_OR_STRING_TYPES
+  }
+
+  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+    &INT16_TYPES
+  }
+
+  fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    let uuid = match (<&str>::try_from(input), <&[u8]>::try_from(input)) {
+      (Ok(str), _) => uuid::Uuid::from_str(str).map_err(|e| {
+        shlog_error!("Failed to parse UUID: {}", e);
+        "Failed to parse UUID."
+      })?,
+      (_, Ok(bytes)) => uuid::Uuid::from_slice(bytes).map_err(|e| {
+        shlog_error!("Failed to parse UUID: {}", e);
+        "Failed to parse UUID."
+      })?,
+      _ => return Err("Invalid input type."),
+    };
     Ok(uuid.as_bytes().into())
   }
 }
@@ -203,9 +251,7 @@ impl Shard for NanoIDCreate {
   }
 
   fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "Creates a random NanoID."
-    ))
+    OptionalString(shccstr!("Creates a random NanoID."))
   }
 
   fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
@@ -247,4 +293,5 @@ pub fn registerShards() {
   registerShard::<UUIDToString>();
   registerShard::<UUIDToBytes>();
   registerShard::<NanoIDCreate>();
+  registerShard::<UUIDConvert>();
 }
