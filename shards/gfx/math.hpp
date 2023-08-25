@@ -2,6 +2,7 @@
 #define GFX_MATH
 
 #include <cassert>
+#include <cmath>
 
 namespace gfx {
 constexpr float pi = 3.14159265359f;
