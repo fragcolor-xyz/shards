@@ -9,5 +9,5 @@
    (UI.CentralPanel
     :Contents
     (->
-     (UI.GetProperty UIProperty.RemainingSpace)
+     (UI.Property UIProperty.RemainingSpace)
      (Once (Log)))))))
