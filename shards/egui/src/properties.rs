@@ -55,14 +55,14 @@ lazy_static! {
   static ref OUTPUT_TYPES: Types = vec![common_type::float4,];
 }
 
-pub struct GetProperty {
+pub struct PropertyShard {
   instance: ParamVar,
   requiring: ExposedTypes,
   parents: ParamVar,
   property: Var,
 }
 
-impl Default for GetProperty {
+impl Default for PropertyShard {
   fn default() -> Self {
     let mut instance = ParamVar::default();
     instance.set_name(CONTEXTS_NAME);
@@ -77,7 +77,7 @@ impl Default for GetProperty {
   }
 }
 
-impl GetProperty {
+impl PropertyShard {
   fn get_ui_property(&self) -> Result<UIProperty, &str> {
     match self.property.valueType {
       SHType_Enum => Ok(UIProperty {
@@ -95,23 +95,23 @@ impl GetProperty {
   }
 }
 
-impl Shard for GetProperty {
+impl Shard for PropertyShard {
   fn registerName() -> &'static str
   where
     Self: Sized,
   {
-    cstr!("UI.GetProperty")
+    cstr!("UI.Property")
   }
 
   fn hash() -> u32
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.GetProperty-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Property-rust-0x20200101")
   }
 
   fn name(&mut self) -> &str {
-    "UI.GetProperty"
+    "UI.Property"
   }
 
   fn help(&mut self) -> OptionalString {
@@ -235,5 +235,5 @@ impl Shard for GetProperty {
 
 pub fn registerShards() {
   registerEnumType(FRAG_CC, UIPROPERTY_CC, UIPropertyEnumInfo.as_ref().into());
-  registerShard::<GetProperty>();
+  registerShard::<PropertyShard>();
 }
