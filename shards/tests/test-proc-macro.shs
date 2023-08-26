@@ -1,0 +1,71 @@
+@define(cube-layout ["position" "color"])
+@define(cube {"Vertices": [
+    (-1.0  1.0  1.0) @color(0x000000)
+    ( 1.0  1.0  1.0) @color(0x0000ff)
+    (-1.0 -1.0  1.0) @color(0x00ff00)
+    ( 1.0 -1.0  1.0) @color(0x00ffff)
+    (-1.0  1.0 -1.0) @color(0xff0000)
+    ( 1.0  1.0 -1.0) @color(0xff00ff)
+    (-1.0 -1.0 -1.0) @color(0xffff00)
+    ( 1.0 -1.0 -1.0) @color(0xffffff)
+  ] "Indices": [
+    0 1 2
+    1 3 2
+    4 6 5
+    5 6 7
+    0 2 4
+    4 2 6
+    1 5 3
+    5 7 3
+    0 4 1
+    4 5 1
+    2 3 6
+    6 3 7
+  ]})
+
+@wire(test-wire {
+  Once({
+    @cube | GFX.Mesh(Layout: @cube-layout WindingOrder: WindingOrder::CW) = mesh
+
+    ; Create render steps
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
+    GFX.DrawQueue = queue
+    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+
+    ; Create view
+    {Position: @f3(0 0 8) Target: @f3(0)} | Math.LookAt = view-transform
+    GFX.View(View: view-transform) = view
+
+    Once({
+      GFX.DrawQueue = ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps})
+  })
+
+  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {
+    Animation.Timer = time
+    time | Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation ; Rotation X
+    | Math.MatMul((time | Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation)) ; Rotation Y
+    | Math.MatMul((time | Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation)) ; Rotation Z
+    | GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
+
+    UI(ui-draw-queue {
+        UI.Window(Contents: {
+          UI.Horizontal({
+            "Hello" | UI.Label
+          })
+        })
+
+    })
+
+    GFX.Render(Steps: render-steps View: view)
+
+    @f2(1.0) = s
+    TestMacroShard(Name: "Hello" Size: s Position: @f2(3.0) Test: @f4(4.0))
+  })
+
+} Looped: true)
+
+@mesh(root)
+@schedule(root test-wire)
+@run(root FPS: 60)
