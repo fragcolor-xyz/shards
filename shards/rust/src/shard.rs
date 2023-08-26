@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-use crate::SHStringWithLen;
 use crate::core::abortWire;
 use crate::core::Core;
 use crate::shardsc::SHContext;
@@ -32,6 +31,7 @@ use crate::types::Type;
 use crate::types::Types;
 use crate::types::Var;
 use crate::types::Wire;
+use crate::SHStringWithLen;
 use core::convert::TryInto;
 use core::result::Result;
 use core::slice;
@@ -50,6 +50,16 @@ pub trait Shard {
   fn name(&mut self) -> &str;
   fn help(&mut self) -> OptionalString {
     OptionalString::default()
+  }
+
+  fn parameters(&mut self) -> Option<&Parameters> {
+    None
+  }
+  fn setParam(&mut self, _index: i32, _value: &Var) -> Result<(), &str> {
+    Ok(())
+  }
+  fn getParam(&mut self, _index: i32) -> Var {
+    Var::default()
   }
 
   fn setup(&mut self) {}
@@ -84,16 +94,6 @@ pub trait Shard {
   }
   fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
     Ok(Type::default())
-  }
-
-  fn parameters(&mut self) -> Option<&Parameters> {
-    None
-  }
-  fn setParam(&mut self, _index: i32, _value: &Var) -> Result<(), &str> {
-    Ok(())
-  }
-  fn getParam(&mut self, _index: i32) -> Var {
-    Var::default()
   }
 
   fn warmup(&mut self, _context: &Context) -> Result<(), &str> {
@@ -217,15 +217,13 @@ unsafe extern "C" fn shard_warmup<T: Shard>(arg1: *mut CShard, arg2: *mut SHCont
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.warmup(&(*arg2)) {
     Ok(_) => SHError::default(),
-    Err(error) => {
-      SHError {
-        message: SHStringWithLen {
-          string: error.as_ptr() as *const c_char,
-          len: error.len(),
-        },
-        code: 1,
-      }
-    }
+    Err(error) => SHError {
+      message: SHStringWithLen {
+        string: error.as_ptr() as *const c_char,
+        len: error.len(),
+      },
+      code: 1,
+    },
   }
 }
 
@@ -253,15 +251,13 @@ unsafe extern "C" fn shard_cleanup<T: Shard>(arg1: *mut CShard) -> SHError {
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.cleanup() {
     Ok(_) => SHError::default(),
-    Err(error) => {
-      SHError {
-        message: SHStringWithLen {
-          string: error.as_ptr() as *const c_char,
-          len: error.len(),
-        },
-        code: 1,
-      }
-    }
+    Err(error) => SHError {
+      message: SHStringWithLen {
+        string: error.as_ptr() as *const c_char,
+        len: error.len(),
+      },
+      code: 1,
+    },
   }
 }
 
@@ -293,18 +289,16 @@ unsafe extern "C" fn shard_compose<T: Shard>(
       error: SHError::default(),
       result: output,
     },
-    Err(error) => {
-      SHShardComposeResult {
-        error: SHError {
-          message: SHStringWithLen {
-            string: error.as_ptr() as *const c_char,
-            len: error.len(),
-          },
-          code: 1,
+    Err(error) => SHShardComposeResult {
+      error: SHError {
+        message: SHStringWithLen {
+          string: error.as_ptr() as *const c_char,
+          len: error.len(),
         },
-        result: SHTypeInfo::default(),
-      }
-    }
+        code: 1,
+      },
+      result: SHTypeInfo::default(),
+    },
   }
 }
 
@@ -333,15 +327,13 @@ unsafe extern "C" fn shard_setParam<T: Shard>(
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.setParam(arg2, &*arg3) {
     Ok(_) => SHError::default(),
-    Err(error) => {
-      SHError {
-        message: SHStringWithLen {
-          string: error.as_ptr() as *const c_char,
-          len: error.len(),
-        },
-        code: 1,
-      }
-    }
+    Err(error) => SHError {
+      message: SHStringWithLen {
+        string: error.as_ptr() as *const c_char,
+        len: error.len(),
+      },
+      code: 1,
+    },
   }
 }
 
@@ -504,5 +496,106 @@ macro_rules! impl_override_activate {
         }
       }
     }
+  };
+}
+
+/// This implements some boilerplate shard functions
+/// Given the following usage:
+///
+/// ```ignore (only-for-syntax-highlight)
+/// shard! {
+///   struct MyShard("UI.Test", "Some description for this shard") {
+///     #[Param("Name", "The name", [common_type::string])]
+///     pub name: ClonedVar,
+///     #[Param("Position", "The position", VEC2_TYPES)]
+///     pub position: ParamVar,
+///     #[Param("Action", "Some callback to run", SHARDS_OR_NONE_TYPES)]
+///     pub action: ShardsVar,
+///   }
+///
+///   impl Shard for MyShard {
+///     fn inputTypes(&mut self) -> &Types { &NONE_TYPES }
+///     fn outputTypes(&mut self) -> &Types { &NONE_TYPES }
+///     fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+///       self.warmup_helper(context)?;
+///       Ok(())
+///     }
+///     fn cleanup(&mut self) -> Result<(), &str> {
+///       self.cleanup_helper()?;
+///       Ok(())
+///     }
+///     fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+///       self.compose_helper(data)?;
+///       let cr = self.action.compose(data)?;
+///       for req in &cr.requiredInfo {
+///         self.required.push(req);
+///       }
+///       Ok(NONE_TYPES[0])
+///     }
+///     fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+///       Ok(Var::default())
+///     }
+///   }
+/// }
+/// ```
+///
+/// This macro will derive the implementation of functions:
+/// - registerName
+/// - name
+/// - hash
+/// - help
+/// - parameters
+/// - getParam
+/// - setParam
+/// - requiredVariables
+///
+/// The macro also adds the following struct field:
+/// - required: ExposedTypes
+///
+/// Additionally it will define helper functions on the struct:
+/// - compose_helper
+/// - warmup_helper
+/// - cleanup_helper
+///
+/// These helpers will run compose, warmup, and cleanup on the parameters defined with #Param
+///
+/// Additionally they will collect required variables into self.required inside the compose_helper
+/// WARNING: an exception is made for ShardsVar where you need to manually collect the required variables using:
+///
+/// ```ignore (only-for-syntax-highlight)
+/// let cr = self.action.compose(data)?;
+/// for req in &cr.requiredInfo {
+///   self.required.push(req);
+/// }
+/// ```
+/// After calling compose_helper (since it clears self.required)
+#[macro_export]
+macro_rules! shard {
+  (struct $struct_name: ident ($name_lit: literal, $desc_lit: literal) {
+      $($fields:tt)*
+    }
+
+    impl $shards_type: ident for $struct_name2: ident {
+      $($body:tt)*
+    }) => {
+      #[derive(shards::shards_macro::Shard, Default)]
+      struct $struct_name {
+        $($fields)*
+        pub required: ::shards::types::ExposedTypes,
+      }
+
+      // Generate helper functions compose_params, warmup_params, etc.
+      shards::shards_macro::generate_shard_helper_impl! { struct $struct_name { $($fields)* } }
+
+      // Generate boilerplate (name, hash, etc.) and merge with manually implemented functions
+      #[allow(non_snake_case)]
+      impl $shards_type for $struct_name {
+        $($body)*
+        shards::shards_macro::generate_shard_impl! { $name_lit $desc_lit struct $struct_name { $($fields)* } }
+
+        fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
+          Some(&self.required)
+        }
+      }
   };
 }
