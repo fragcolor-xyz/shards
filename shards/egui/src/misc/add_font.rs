@@ -94,7 +94,7 @@ impl Shard for AddFont {
     let mut fonts = egui::FontDefinitions::default();
 
     for pair in pairs.iter() {
-      let pair = SeqVar::wrap(*pair);
+      let pair = SeqVar::wrap(pair);
       if pair.len() != 2 {
         return Err("Font pair must be a sequence of two elements");
       }

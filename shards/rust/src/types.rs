@@ -4025,8 +4025,13 @@ impl ParamVar {
     }
   }
 
-  pub fn set_param(&mut self, value: &Var) {
+  pub fn assign(&mut self, value: &Var) {
     self.parameter = value.into();
+  }
+
+  pub fn set_param(&mut self, value: &Var) -> Result<(), &'static str> {
+    self.assign(value);
+    Ok(())
   }
 
   pub fn get_param(&self) -> Var {
@@ -4755,17 +4760,17 @@ impl AutoTableVar {
   }
 }
 
-pub struct SeqVarIterator<'a> {
-  s: &'a SeqVar,
+pub struct SeqVarIterator {
+  s: SeqVar,
   i: u32,
 }
 
-impl<'a> Iterator for SeqVarIterator<'a> {
+impl Iterator for SeqVarIterator {
   fn next(&mut self) -> Option<Self::Item> {
     unsafe {
       let res = if self.i < self.s.0.payload.__bindgen_anon_1.seqValue.len {
         Some(
-          &*self
+          *self
             .s
             .0
             .payload
@@ -4781,15 +4786,15 @@ impl<'a> Iterator for SeqVarIterator<'a> {
       res
     }
   }
-  type Item = &'a Var;
+  type Item = Var;
 }
 
-impl<'a> DoubleEndedIterator for SeqVarIterator<'a> {
+impl DoubleEndedIterator for SeqVarIterator {
   fn next_back(&mut self) -> Option<Self::Item> {
     unsafe {
       let res = if self.i < self.s.0.payload.__bindgen_anon_1.seqValue.len {
         Some(
-          &*self.s.0.payload.__bindgen_anon_1.seqValue.elements.offset(
+          *self.s.0.payload.__bindgen_anon_1.seqValue.elements.offset(
             (self.s.0.payload.__bindgen_anon_1.seqValue.len - self.i - 1)
               .try_into()
               .unwrap(),
@@ -4976,7 +4981,7 @@ impl SeqVar {
 
   #[inline(always)]
   pub fn iter(&self) -> SeqVarIterator {
-    SeqVarIterator { s: self, i: 0 }
+    SeqVarIterator { s: self.clone(), i: 0 }
   }
 }
 
@@ -5751,7 +5756,7 @@ macro_rules! test_to_from_vec2 {
     let asVar: Var = fromNum.try_into().unwrap();
     let intoNum: ($type, $type) = <($type, $type)>::try_from(&asVar).unwrap();
     assert_eq!(fromNum, intoNum, $msg);
-  };
+  }; 
 }
 
 macro_rules! test_to_from_vec3 {

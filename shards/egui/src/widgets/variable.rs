@@ -195,8 +195,8 @@ impl Shard for Variable {
         if self.labeled {
           ui.label(label);
         }
-        let varRef = self.variable.get_mut();
-        if varRef
+        let var_ref = self.variable.get_mut();
+        if var_ref
           .render(!self.mutable, self.inner_type.as_ref(), ui)
           .changed()
         {
@@ -204,9 +204,9 @@ impl Shard for Variable {
             triggerVarValueChange(
               context as *const Context as *mut Context,
               self.name.as_ref() as *const Var,
-              varRef as *const Var,
+              var_ref as *const Var,
             );
-            varRef.__bindgen_anon_1.version += 1
+            var_ref.__bindgen_anon_1.version += 1
           };
         }
       });
