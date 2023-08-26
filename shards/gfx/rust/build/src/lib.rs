@@ -1,3 +1,5 @@
+use std::env;
+
 extern crate bindgen;
 
 pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindgen::Builder {
@@ -5,7 +7,7 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
 
   println!("cargo:rerun-if-changed={}/rust_interop.hpp", gfx_path);
 
-  builder
+  let mut builder = builder
     .allowlist_function("gfx::.*")
     .allowlist_function("gfx_.*")
     .allowlist_type("gfx::.*")
@@ -22,7 +24,6 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
     .opaque_type("std::optional.*")
     .opaque_type("std::variant.*")
     .clang_arg("-DRUST_BINDGEN=1")
-    .clang_arg("-DWEBGPU_NATIVE=1")
     .clang_arg(format!("-I{}/..", gfx_path))
     .clang_arg(format!("-I{}", deps_path))
     .clang_arg(format!("-I{}/linalg", deps_path))
@@ -32,5 +33,12 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
     .clang_arg(format!("-I{}/rust/wgpu-native/ffi", gfx_path))
     .clang_arg("-std=c++17")
     .rust_target(bindgen::RustTarget::Nightly) // Required for thiscall on x86 windows
-    .size_t_is_usize(true)
+    .size_t_is_usize(true);
+
+  let target_env = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+  if target_env != "wasm32" {
+    builder = builder.clang_arg(format!("-DWEBGPU_NATIVE=1"));
+  }
+
+  builder
 }
