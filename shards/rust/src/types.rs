@@ -129,6 +129,11 @@ impl ClonedVar {
     cloneVar(&mut self.0, other);
   }
 
+  pub fn set_param(&mut self, other: &Var) -> Result<(), &'static str> {
+    self.assign(other);
+    Ok(())
+  }
+
   pub fn assign_string(&mut self, s: &str) {
     let cstr = CString::new(s).unwrap();
     let tmp = Var::from(&cstr);
@@ -414,7 +419,7 @@ impl ShardRef {
     }
   }
 
-  pub fn cleanup(&self) -> Result<(), &str> {
+  pub fn cleanup(&self) -> Result<(), &'static str> {
     unsafe {
       let result = (*self.0).cleanup.unwrap()(self.0);
       if result.code == 0 {
@@ -429,7 +434,7 @@ impl ShardRef {
     }
   }
 
-  pub fn warmup(&self, context: &Context) -> Result<(), &str> {
+  pub fn warmup(&self, context: &Context) -> Result<(), &'static str> {
     unsafe {
       if (*self.0).warmup.is_some() {
         let result = (*self.0).warmup.unwrap()(self.0, context as *const _ as *mut _);
@@ -455,7 +460,7 @@ impl ShardRef {
     }
   }
 
-  pub fn set_parameter(&self, index: i32, value: Var) -> Result<(), &str> {
+  pub fn set_parameter(&self, index: i32, value: Var) -> Result<(), &'static str> {
     unsafe {
       let mut failed = false;
       (*Core).validateSetParam.unwrap()(
@@ -2838,7 +2843,7 @@ impl Var {
     }
   }
 
-  pub fn as_seq(&self) -> Result<&SeqVar, &str> {
+  pub fn as_seq(&self) -> Result<&SeqVar, &'static str> {
     if self.valueType != SHType_Seq {
       Err("Variable is not a sequence")
     } else {
@@ -2848,7 +2853,7 @@ impl Var {
 
   /// The returned SeqVar needs to be wrapped in ClonedVar or destroyed with destroyVar or ownership should be delegated to another Var
   /// SeqVar WON'T call DROP
-  pub fn as_mut_seq_creating(&mut self) -> Result<&mut SeqVar, &str> {
+  pub fn as_mut_seq_creating(&mut self) -> Result<&mut SeqVar, &'static str> {
     if self.valueType != SHType_Seq {
       if self.valueType == SHType_None {
         let sv = SeqVar::new();
@@ -2862,7 +2867,7 @@ impl Var {
     }
   }
 
-  pub fn as_mut_seq(&mut self) -> Result<&mut SeqVar, &str> {
+  pub fn as_mut_seq(&mut self) -> Result<&mut SeqVar, &'static str> {
     if self.valueType != SHType_Seq {
       Err("Variable is not a sequence")
     } else {
@@ -2870,7 +2875,7 @@ impl Var {
     }
   }
 
-  pub fn as_table(&self) -> Result<&TableVar, &str> {
+  pub fn as_table(&self) -> Result<&TableVar, &'static str> {
     if self.valueType != SHType_Table {
       Err("Variable is not a table")
     } else {
@@ -2880,7 +2885,7 @@ impl Var {
 
   /// The returned TableVar needs to be wrapped in ClonedVar or destroyed with destroyVar or ownership should be delegated to another Var
   /// TableVar WON'T call DROP
-  pub fn as_mut_table_creating(&mut self) -> Result<&mut TableVar, &str> {
+  pub fn as_mut_table_creating(&mut self) -> Result<&mut TableVar, &'static str> {
     if self.valueType != SHType_Table {
       if self.valueType == SHType_None {
         let sv = TableVar::new();
@@ -2894,7 +2899,7 @@ impl Var {
     }
   }
 
-  pub fn as_mut_table(&mut self) -> Result<&mut TableVar, &str> {
+  pub fn as_mut_table(&mut self) -> Result<&mut TableVar, &'static str> {
     if self.valueType != SHType_Table {
       Err("Variable is not a table")
     } else {
@@ -4129,7 +4134,7 @@ impl ShardsVar {
     }
   }
 
-  pub fn warmup(&self, context: &Context) -> Result<(), &str> {
+  pub fn warmup(&self, context: &Context) -> Result<(), &'static str> {
     for shard in self.shards.iter() {
       if let Err(e) = shard.warmup(context) {
         shlog!("Errors during shard warmup: {}", e);
@@ -4270,6 +4275,102 @@ impl ShardsVar {
 impl From<&ShardsVar> for Shards {
   fn from(v: &ShardsVar) -> Self {
     v.native_shards
+  }
+}
+
+impl From<&ShardsVar> for &SHVar {
+  fn from(v: &ShardsVar) -> Self {
+    (&v.param).into()
+  }
+}
+
+impl From<&ShardsVar> for Var {
+  fn from(v: &ShardsVar) -> Self {
+    (&v.param).into()
+  }
+}
+
+impl From<&ClonedVar> for &SHVar {
+  fn from(value: &ClonedVar) -> Self {
+      unsafe { transmute(value) }
+  }
+}
+
+impl From<&ClonedVar> for Var {
+  fn from(value: &ClonedVar) -> Self {
+      let v: &Var = unsafe { transmute(value) };
+      *v
+  }
+}
+
+impl From<&ParamVar> for &SHVar {
+  fn from(value: &ParamVar) -> Self {
+      unsafe { transmute(value) }
+  }
+}
+
+impl From<&ParamVar> for Var {
+  fn from(value: &ParamVar) -> Self {
+    let v: &Var = unsafe { transmute(value) };
+    *v
+  }
+}
+
+pub fn collect_required_variables(
+  shared: &SHExposedTypesInfo,
+  out: &mut ExposedTypes,
+  var: &SHVar,
+) -> Result<(), &'static str> {
+  match var.valueType {
+    SHType_ContextVar => {
+      let var_name: CString = var
+        .try_into()
+        .map_err(|_x| "Invalid context variable name")?;
+      for entry in shared {
+        let cstr = unsafe { CStr::from_ptr(entry.name) };
+        if var_name.as_c_str() == cstr {
+          out.push(ExposedInfo::new(&var_name, entry.exposedType));
+          break;
+        }
+      }
+    }
+    SHType_Seq => {
+      for v in SeqVar(*var) {
+        collect_required_variables(shared, out, &v)?;
+      }
+    }
+    SHType_Table => {
+      for (_k, v) in TableVar(*var) {
+        collect_required_variables(shared, out, &v)?;
+      }
+    }
+    _ => {}
+  }
+  Ok(())
+}
+
+impl IntoIterator for TableVar {
+  type Item = (Var, Var);
+  type IntoIter = TableIterator;
+
+  fn into_iter(self) -> Self::IntoIter {
+    unsafe {
+      let it = TableIterator {
+        table: self.0.payload.__bindgen_anon_1.tableValue,
+        citer: [0; 64],
+      };
+      (*it.table.api).tableGetIterator.unwrap()(it.table, &it.citer as *const _ as *mut _);
+      it
+    }
+  }
+}
+
+impl IntoIterator for SeqVar {
+  type Item = SHVar;
+  type IntoIter = SeqVarIterator;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.iter()
   }
 }
 
