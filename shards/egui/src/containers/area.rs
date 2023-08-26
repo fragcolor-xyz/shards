@@ -143,7 +143,7 @@ impl Shard for Area {
     };
     self.requiring.push(exp_info);
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

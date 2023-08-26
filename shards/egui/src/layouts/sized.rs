@@ -113,7 +113,7 @@ impl Shard for super::Sized {
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
     Some(&self.requiring)
   }
 

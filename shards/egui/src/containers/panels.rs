@@ -157,16 +157,8 @@ macro_rules! impl_panel {
       fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
         self.requiring.clear();
 
-        // Add UI.Contexts to the list of required variables
-        let exp_info = ExposedInfo {
-          exposedType: EGUI_CTX_TYPE,
-          name: self.instance.get_name(),
-          help: cstr!("The exposed UI context.").into(),
-          ..ExposedInfo::default()
-        };
-        self.requiring.push(exp_info);
-        // Add UI.Parents to the list of required variables
-        util::require_parents(&mut self.requiring, &self.parents);
+        util::require_context(&mut self.requiring);
+        util::require_parents(&mut self.requiring);
 
         Some(&self.requiring)
       }

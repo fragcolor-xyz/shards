@@ -1,9 +1,15 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use std::ffi::CStr;
+
+use crate::CONTEXTS_NAME;
+use crate::CONTEXTS_NAME_CSTR;
 use crate::EGUI_CTX_TYPE;
 use crate::EGUI_UI_SEQ_TYPE;
 use crate::EGUI_UI_TYPE;
+use crate::PARENTS_UI_NAME;
+use crate::PARENTS_UI_NAME_CSTR;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -126,11 +132,21 @@ pub fn get_current_parent<'a>(
   }
 }
 
-pub fn require_parents(requiring: &mut ExposedTypes, parents_stack_var: &ParamVar) {
+pub fn require_parents(requiring: &mut ExposedTypes) {
   let exp_info = ExposedInfo {
     exposedType: EGUI_UI_SEQ_TYPE,
-    name: parents_stack_var.get_name(),
+    name: PARENTS_UI_NAME_CSTR.as_ptr(),
     help: cstr!("The parent UI objects.").into(),
+    ..ExposedInfo::default()
+  };
+  requiring.push(exp_info);
+}
+
+pub fn require_context(requiring: &mut ExposedTypes) {
+  let exp_info = ExposedInfo {
+    exposedType: EGUI_CTX_TYPE,
+    name: CONTEXTS_NAME_CSTR.as_ptr(),
+    help: cstr!("The UI context.").into(),
     ..ExposedInfo::default()
   };
   requiring.push(exp_info);

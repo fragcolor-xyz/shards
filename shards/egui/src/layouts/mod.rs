@@ -152,6 +152,7 @@ mod sized;
 mod space;
 mod table;
 mod vertical;
+mod absolute;
 
 pub fn registerShards() {
   registerShard::<CollapsingHeader>();
@@ -169,4 +170,5 @@ pub fn registerShards() {
   registerShard::<Table>();
   registerShard::<Vertical>();
   registerShard::<Sized>();
+  absolute::registerShards();
 }
