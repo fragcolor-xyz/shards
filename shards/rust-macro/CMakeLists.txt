@@ -1,5 +1,4 @@
 add_rust_library(
-  NAME shards
+  NAME shards-macro
   PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
-  DEPENDS ${EXTRA_SOURCES}
 )
