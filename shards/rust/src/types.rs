@@ -4327,39 +4327,6 @@ impl From<&ParamVar> for Var {
   }
 }
 
-pub fn collect_required_variables(
-  shared: &SHExposedTypesInfo,
-  out: &mut ExposedTypes,
-  var: &SHVar,
-) -> Result<(), &'static str> {
-  match var.valueType {
-    SHType_ContextVar => {
-      let var_name: CString = var
-        .try_into()
-        .map_err(|_x| "Invalid context variable name")?;
-      for entry in shared {
-        let cstr = unsafe { CStr::from_ptr(entry.name) };
-        if var_name.as_c_str() == cstr {
-          out.push(ExposedInfo::new(&var_name, entry.exposedType));
-          break;
-        }
-      }
-    }
-    SHType_Seq => {
-      for v in SeqVar(*var) {
-        collect_required_variables(shared, out, &v)?;
-      }
-    }
-    SHType_Table => {
-      for (_k, v) in TableVar(*var) {
-        collect_required_variables(shared, out, &v)?;
-      }
-    }
-    _ => {}
-  }
-  Ok(())
-}
-
 impl IntoIterator for TableVar {
   type Item = (Var, Var);
   type IntoIter = TableIterator;

@@ -19,6 +19,7 @@ use shards::types::ShardsVar;
 use shards::types::Type;
 use shards::types::Var;
 use shards::types::WireState;
+use shards::util;
 
 pub fn update_seq<F>(seq_var: &mut ParamVar, inner: F) -> Result<(), &'static str>
 where
@@ -79,18 +80,7 @@ pub fn activate_ui_contents<'a>(
 }
 
 pub fn expose_contents_variables(exposing: &mut ExposedTypes, contents: &ShardsVar) -> bool {
-  if !contents.is_empty() {
-    if let Some(contents_exposing) = contents.get_exposing() {
-      for exp in contents_exposing {
-        exposing.push(*exp);
-      }
-      true
-    } else {
-      false
-    }
-  } else {
-    false
-  }
+  shards::util::expose_shards_contents(exposing, contents)
 }
 
 pub fn get_current_context_from_var<'a>(

@@ -50,18 +50,14 @@
     | GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
 
     UI(ui-draw-queue {
-        UI.Window(Contents: {
-          UI.Horizontal({
-            "Hello" | UI.Label
-          })
-        })
-
+      UI.Absolute(Contents: {
+        "Hi" | UI.Label
+        "Absolute UI (100x100 units)" | UI.Label
+        UI.Button("Test" { "Hi" Log })
+      } Rect: @f4(100 100 100 100))
     })
 
     GFX.Render(Steps: render-steps View: view)
-
-    @f2(1.0) = s
-    TestMacroShard(Name: "Hello" Size: s Position: @f2(3.0) Test: @f4(4.0))
   })
 
 } Looped: true)
