@@ -1,0 +1,91 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2022 Fragcolor Pte. Ltd.
+
+@define(timestep #(1.0 | Math.Divide(120.0)))
+@define(duration 600)
+
+@define(ground-extent 50)
+@define(ground-thickness 0.5)
+@define(ground-y -4)
+@define(obj-count 100)
+
+@wire(main-wire {
+  Once({
+    ; define shapes
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) = cube
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Plane) = plane
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Sphere) = sphere
+
+    ; ground
+    @ground-extent | Math.Negate = ground-extent-neg
+    @ground-extent + @ground-y >= temp
+    [@f4(@ground-extent 0 0 0)
+     @f4(0 0 ground-extent-neg 0)
+     @f4(0 1 0 0)
+     @f4(0 temp 0 1)] |
+    GFX.Drawable(Mesh: plane
+                 Params: {baseColor: @f4(0.8 0.55 0.95 1)}) >= ground-drawable
+    
+    ; define some physics shapes
+    @ground-extent | Math.Divide(2) > temp
+    Physics.Cuboid(HalfExtents: @f3(0.5)) = cube-pshape
+    Physics.Ball(Radius: 0.5) = sphere-pshape
+    Physics.Cuboid(HalfExtents: @f3(temp) @ground-thickness (temp)) = ground-pshape
+
+    GFX.DrawQueue >= queue
+
+    ; define rendering features
+    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
+    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
+    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+
+    ; define a view
+    {Position: @f3(50 40 50) Target: @f3(0 0 0)} | Math.LookAt = view-transform
+    GFX.View(View: view-transform) = view
+  })
+
+  GFX.MainWindow(
+    Title: "Physics" Width: 1280 Height: 720
+    Contents: {
+      ; physics simulation
+      Physics.Simulation |
+      Physics.KinematicBody(ground-pshape @f3(0 @ground-y 0)) |
+
+      ; initialize transforms and associate a physics body to each shape
+      ForRange(1 @obj-count {
+        Ref(n)
+        ["transform-" n] | String.Join = transform-n
+        @f3(0 n 0) | Math.Translation 
+        >= ContextVar(transform-n)
+
+        Physics.DynamicBody(
+          Position: @f3(0 n 0)
+          Shapes: (n | Math.Mod(2)) | If(Is(0) {cube-pshape} {cube-pshape}) ; TODO: fix this
+          Name: ([n "rb"] | String.Join)
+        ) > ContextVar(transform-n)
+      })
+
+      ; draw everything
+      ground-drawable | GFX.Draw(queue)
+
+      ; cubes and spheres instances
+      ForRange(1 @obj-count {
+        Ref(n)
+        ["transform-" n] | String.Join = transform-n
+        ContextVar(transform-n) |
+        GFX.Drawable(
+          Mesh: (n | Math.Mod(2)) | If(Is(0) {cube} {cube})
+          Params: {baseColor: @f4((n | Math.Divide(@obj-count)) | Math.Multiply(2) (- 1 (n | Math.Divide(@obj-count))) 0 1)} ; TODO: fix this
+        ) >> drawables
+      })
+      drawables | GFX.Draw(queue)
+
+      ; final render
+      GFX.Render(Steps: render-steps View: view)
+    }
+  )
+} Looped: true)
+
+@mesh(root)
+@schedule(root main-wire)
+@run(root FPS: 120 Iterations: 600)
