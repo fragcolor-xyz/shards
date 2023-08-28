@@ -80,6 +80,15 @@ struct Send : Base {
   }
 };
 
+struct Emit : Send {
+  SHTypeInfo compose(const SHInstanceData &data) {
+    Base::compose(data);
+    return data.inputType;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return Send::activate(context, Var(true)); }
+};
+
 struct Receive : Base {
   SeqVar _eventsIn;
   SeqVar _eventsOut;
@@ -151,6 +160,51 @@ struct Receive : Base {
   }
 };
 
+struct Check : Receive {
+  bool _triggered = false;
+
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    Base::compose(data);
+    return CoreInfo::BoolType;
+  }
+
+  void onEvent(OwnedVar &event) { _triggered = true; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &idVar = _id.get();
+    if (!_connection || _prevId != idVar) {
+      assert(_dispatcher);
+
+      entt::id_type id;
+      if (idVar.valueType == SHType::Int) {
+        id = static_cast<entt::id_type>(idVar.payload.intValue);
+      } else {
+        id = findId(context);
+      }
+
+      if (_connection)
+        _connection.release();
+
+      _triggered = false;
+
+      if (id == entt::null)
+        _connection = _dispatcher->get()->sink<OwnedVar>().connect<&Check::onEvent>(this);
+      else
+        _connection = _dispatcher->get()->sink<OwnedVar>(id).connect<&Check::onEvent>(this);
+    }
+
+    if (_triggered) {
+      _triggered = false;
+      return Var(true);
+    } else {
+      return Var(false);
+    }
+  }
+};
+
 struct Update : Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_dispatcher);
@@ -168,6 +222,8 @@ struct Update : Base {
 SHARDS_REGISTER_FN(events) {
   using namespace shards::Events;
   REGISTER_SHARD("Events.Send", Send);
+  REGISTER_SHARD("Events.Emit", Emit);
   REGISTER_SHARD("Events.Receive", Receive);
+  REGISTER_SHARD("Events.Check", Check);
   REGISTER_SHARD("Events.Update", Update);
 }

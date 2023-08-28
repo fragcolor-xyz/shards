@@ -27,3 +27,17 @@
 (schedule main receive2)
 (schedule main updater)
 (if (run main 0.05 100) nil (throw "Root tick failed"))
+
+(defwire quit
+  (Pause 0.0) ; allow signal-receive to run first
+  (Events.Emit "quit"))
+
+(schedule main quit)
+
+(defloop signal-process
+  (Events.Update "quit")
+  (When (-> (Events.Check "quit")) (-> (Msg "QUITTING") (Stop))))
+
+(schedule main signal-process)
+
+(if (run main 0.05 100) nil (throw "Root tick failed"))
