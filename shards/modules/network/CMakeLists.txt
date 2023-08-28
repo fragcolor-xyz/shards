@@ -12,6 +12,10 @@ if(NOT EMSCRIPTEN)
 
   target_include_directories(shards-module-network PRIVATE ../core)
 
+  if(USE_ASAN)
+    target_compile_options(shards-module-network PRIVATE -fno-sanitize=null)
+  endif()
+
   target_link_libraries(shards-network-rust INTERFACE OpenSSL)
   target_link_libraries(shards-module-network OpenSSL kcp-wrapper)
 endif()
