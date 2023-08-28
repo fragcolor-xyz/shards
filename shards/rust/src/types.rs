@@ -2912,7 +2912,6 @@ impl TryFrom<&Var> for SHString {
       && var.valueType != SHType_Path
       && var.valueType != SHType_ContextVar
     {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue) }
@@ -2929,7 +2928,6 @@ impl TryFrom<&Var> for std::string::String {
       && var.valueType != SHType_Path
       && var.valueType != SHType_ContextVar
     {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
       unsafe {
@@ -2949,7 +2947,6 @@ impl TryFrom<&Var> for CString {
       && var.valueType != SHType_Path
       && var.valueType != SHType_ContextVar
     {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
       unsafe {
@@ -2970,7 +2967,6 @@ impl TryFrom<&Var> for &CStr {
       && var.valueType != SHType_Path
       && var.valueType != SHType_ContextVar
     {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
       unsafe {
@@ -2992,7 +2988,6 @@ impl TryFrom<&Var> for Option<CString> {
       && var.valueType != SHType_ContextVar
       && var.valueType != SHType_None
     {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected None, String, Path or ContextVar variable, but casting failed.")
     } else if var.is_none() {
       Ok(None)
@@ -3010,7 +3005,6 @@ impl TryFrom<&Var> for &[u8] {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Bytes {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Bytes, but casting failed.")
     } else {
       unsafe {
@@ -3032,7 +3026,6 @@ impl TryFrom<&Var> for &str {
       && var.valueType != SHType_Path
       && var.valueType != SHType_ContextVar
     {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected String, Path or ContextVar variable, but casting failed.")
     } else {
       std::str::from_utf8(unsafe {
@@ -3052,7 +3045,6 @@ impl<'a> TryFrom<&'a Var> for &'a SHImage {
   #[inline(always)]
   fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Image {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Image variable, but casting failed.")
     } else {
       unsafe { Ok(&var.payload.__bindgen_anon_1.imageValue) }
@@ -3067,7 +3059,6 @@ impl TryFrom<&Var> for i64 {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.intValue) }
@@ -3081,7 +3072,6 @@ impl<'a> TryFrom<&'a mut Var> for &'a mut i64 {
   #[inline(always)]
   fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe { Ok(&mut var.payload.__bindgen_anon_1.intValue) }
@@ -3096,7 +3086,6 @@ impl TryFrom<&Var> for u64 {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe {
@@ -3115,7 +3104,6 @@ impl TryFrom<&Var> for usize {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe {
@@ -3137,7 +3125,6 @@ impl TryFrom<&Var> for f64 {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.floatValue) }
@@ -3151,7 +3138,6 @@ impl<'a> TryFrom<&'a mut Var> for &'a mut f64 {
   #[inline(always)]
   fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe { Ok(&mut var.payload.__bindgen_anon_1.floatValue) }
@@ -3166,7 +3152,6 @@ impl TryFrom<&Var> for (i64, i64) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int2 variable, but casting failed.")
     } else {
       unsafe {
@@ -3185,7 +3170,6 @@ impl<'a> TryFrom<&'a Var> for &'a [i64; 2] {
   #[inline(always)]
   fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int2 variable, but casting failed.")
     } else {
       unsafe { Ok(&var.payload.__bindgen_anon_1.int2Value) }
@@ -3199,7 +3183,6 @@ impl<'a> TryFrom<&'a mut Var> for &'a mut [i64; 2] {
   #[inline(always)]
   fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int2 variable, but casting failed.")
     } else {
       unsafe { Ok(&mut var.payload.__bindgen_anon_1.int2Value) }
@@ -3214,7 +3197,6 @@ impl TryFrom<&Var> for (u64, u64) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int2 variable, but casting failed.")
     } else {
       unsafe {
@@ -3234,7 +3216,6 @@ impl TryFrom<&Var> for (f64, f64) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float2 variable, but casting failed.")
     } else {
       unsafe {
@@ -3253,7 +3234,6 @@ impl<'a> TryFrom<&'a Var> for &'a [f64; 2] {
   #[inline(always)]
   fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float2 variable, but casting failed.")
     } else {
       unsafe { Ok(&var.payload.__bindgen_anon_1.float2Value) }
@@ -3267,7 +3247,6 @@ impl<'a> TryFrom<&'a mut Var> for &'a mut [f64; 2] {
   #[inline(always)]
   fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float2 variable, but casting failed.")
     } else {
       unsafe { Ok(&mut var.payload.__bindgen_anon_1.float2Value) }
@@ -3282,7 +3261,6 @@ impl TryFrom<&Var> for i32 {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.intValue as i32) }
@@ -3297,7 +3275,6 @@ impl TryFrom<&Var> for (i32, i32) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int2 variable, but casting failed.")
     } else {
       unsafe {
@@ -3317,7 +3294,6 @@ impl TryFrom<&Var> for (i32, i32, i32) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int3 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int3 variable, but casting failed.")
     } else {
       unsafe {
@@ -3337,7 +3313,6 @@ impl<'a> TryFrom<&'a Var> for &'a [i32; 3] {
   #[inline(always)]
   fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int3 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int3 variable, but casting failed.")
     } else {
       unsafe {
@@ -3355,7 +3330,6 @@ impl<'a> TryFrom<&'a mut Var> for &'a mut [i32; 3] {
   #[inline(always)]
   fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int3 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int3 variable, but casting failed.")
     } else {
       unsafe {
@@ -3374,7 +3348,6 @@ impl TryFrom<&Var> for (i32, i32, i32, i32) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int4 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int4 variable, but casting failed.")
     } else {
       unsafe {
@@ -3395,7 +3368,6 @@ impl<'a> TryFrom<&'a Var> for &'a [i32; 4] {
   #[inline(always)]
   fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int4 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int4 variable, but casting failed.")
     } else {
       unsafe { Ok(&var.payload.__bindgen_anon_1.int4Value) }
@@ -3409,7 +3381,6 @@ impl<'a> TryFrom<&'a mut Var> for &'a mut [i32; 4] {
   #[inline(always)]
   fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int4 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int4 variable, but casting failed.")
     } else {
       unsafe { Ok(&mut var.payload.__bindgen_anon_1.int4Value) }
@@ -3424,7 +3395,6 @@ impl TryFrom<&Var> for u32 {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.intValue as u32) }
@@ -3439,7 +3409,6 @@ impl TryFrom<&Var> for (u32, u32) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int2 variable, but casting failed.")
     } else {
       unsafe {
@@ -3459,7 +3428,6 @@ impl TryFrom<&Var> for (u32, u32, u32) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int3 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int3 variable, but casting failed.")
     } else {
       unsafe {
@@ -3480,7 +3448,6 @@ impl TryFrom<&Var> for (u32, u32, u32, u32) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int4 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int4 variable, but casting failed.")
     } else {
       unsafe {
@@ -3502,7 +3469,6 @@ impl TryFrom<&Var> for f32 {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.floatValue as f32) }
@@ -3517,7 +3483,6 @@ impl TryFrom<&Var> for (f32, f32) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float2 variable, but casting failed.")
     } else {
       unsafe {
@@ -3537,7 +3502,6 @@ impl TryFrom<&Var> for (f32, f32, f32) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float3 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float3 variable, but casting failed.")
     } else {
       unsafe {
@@ -3557,7 +3521,6 @@ impl<'a> TryFrom<&'a Var> for &'a [f32; 3] {
   #[inline(always)]
   fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float3 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float3 variable, but casting failed.")
     } else {
       unsafe {
@@ -3575,7 +3538,6 @@ impl<'a> TryFrom<&'a mut Var> for &'a mut [f32; 3] {
   #[inline(always)]
   fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float3 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float3 variable, but casting failed.")
     } else {
       unsafe {
@@ -3594,7 +3556,6 @@ impl TryFrom<&Var> for (f32, f32, f32, f32) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float4 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float4 variable, but casting failed.")
     } else {
       unsafe {
@@ -3615,7 +3576,6 @@ impl<'a> TryFrom<&'a Var> for &'a [f32; 4] {
   #[inline(always)]
   fn try_from(var: &'a Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float4 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float4 variable, but casting failed.")
     } else {
       unsafe { Ok(&var.payload.__bindgen_anon_1.float4Value) }
@@ -3629,7 +3589,6 @@ impl<'a> TryFrom<&'a mut Var> for &'a mut [f32; 4] {
   #[inline(always)]
   fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float4 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float4 variable, but casting failed.")
     } else {
       unsafe { Ok(&mut var.payload.__bindgen_anon_1.float4Value) }
@@ -3644,7 +3603,6 @@ impl TryFrom<&Var> for i16 {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.intValue as i16) }
@@ -3659,7 +3617,6 @@ impl TryFrom<&Var> for (i16, i16) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int2 variable, but casting failed.")
     } else {
       unsafe {
@@ -3679,7 +3636,6 @@ impl TryFrom<&Var> for (i16, i16, i16) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int3 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int3 variable, but casting failed.")
     } else {
       unsafe {
@@ -3700,7 +3656,6 @@ impl TryFrom<&Var> for (i16, i16, i16, i16) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int4 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int4 variable, but casting failed.")
     } else {
       unsafe {
@@ -3722,7 +3677,6 @@ impl TryFrom<&Var> for u16 {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.intValue as u16) }
@@ -3737,7 +3691,6 @@ impl TryFrom<&Var> for (u16, u16) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int2 variable, but casting failed.")
     } else {
       unsafe {
@@ -3757,7 +3710,6 @@ impl TryFrom<&Var> for (u16, u16, u16) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int3 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int3 variable, but casting failed.")
     } else {
       unsafe {
@@ -3778,7 +3730,6 @@ impl TryFrom<&Var> for (u16, u16, u16, u16) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Int4 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Int4 variable, but casting failed.")
     } else {
       unsafe {
@@ -3800,7 +3751,6 @@ impl TryFrom<&Var> for half::f16 {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float variable, but casting failed.")
     } else {
       unsafe { Ok(half::f16::from_f64(var.payload.__bindgen_anon_1.floatValue)) }
@@ -3815,7 +3765,6 @@ impl TryFrom<&Var> for (half::f16, half::f16) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float2 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float2 variable, but casting failed.")
     } else {
       unsafe {
@@ -3835,7 +3784,6 @@ impl TryFrom<&Var> for (half::f16, half::f16, half::f16) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float3 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float3 variable, but casting failed.")
     } else {
       unsafe {
@@ -3856,7 +3804,6 @@ impl TryFrom<&Var> for (half::f16, half::f16, half::f16, half::f16) {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Float4 {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Float4 variable, but casting failed.")
     } else {
       unsafe {
@@ -3877,7 +3824,6 @@ impl TryFrom<&Var> for SHColor {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Color {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Color variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.colorValue) }
@@ -3891,7 +3837,6 @@ impl TryFrom<&Var> for bool {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Bool {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Bool variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.boolValue) }
@@ -3905,7 +3850,6 @@ impl<'a> TryFrom<&'a mut Var> for &'a mut bool {
   #[inline(always)]
   fn try_from(var: &'a mut Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Bool {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Bool variable, but casting failed.")
     } else {
       unsafe { Ok(&mut var.payload.__bindgen_anon_1.boolValue) }
@@ -3919,7 +3863,6 @@ impl TryFrom<&Var> for &[Var] {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Seq {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Seq variable, but casting failed.")
     } else {
       unsafe {
@@ -3938,7 +3881,6 @@ impl TryFrom<&Var> for WireRef {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Wire {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Wire variable, but casting failed.")
     } else {
       unsafe { Ok(WireRef(var.payload.__bindgen_anon_1.wireValue)) }
@@ -3965,7 +3907,6 @@ impl TryFrom<&Var> for ShardRef {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_ShardRef {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Shard variable, but casting failed.")
     } else {
       unsafe { Ok(ShardRef(var.payload.__bindgen_anon_1.shardValue)) }
@@ -4213,7 +4154,6 @@ impl ShardsVar {
       // we allow none
       return Ok(());
     } else {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       return Err("Expected sequence or shard variable, but casting failed.");
     }
 
@@ -5160,7 +5100,6 @@ impl TryFrom<&mut Var> for Seq {
     }
 
     if v.valueType != SHType_Seq {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Seq variable, but casting failed.")
     } else {
       unsafe {
@@ -5179,7 +5118,6 @@ impl TryFrom<&Var> for Seq {
   #[inline(always)]
   fn try_from(v: &Var) -> Result<Self, Self::Error> {
     if v.valueType != SHType_Seq {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Seq variable, but casting failed.")
     } else {
       unsafe {
@@ -5543,7 +5481,6 @@ impl TryFrom<&mut Var> for Table {
     }
 
     if var.valueType != SHType_Table {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Table variable, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.tableValue.into()) }
@@ -5557,7 +5494,6 @@ impl TryFrom<&Var> for Table {
   #[inline(always)]
   fn try_from(var: &Var) -> Result<Self, Self::Error> {
     if var.valueType != SHType_Table {
-      shlog_debug!("Var TryFrom casting failed, backtrace:\n{}.", std::backtrace::Backtrace::capture());
       Err("Expected Table, but casting failed.")
     } else {
       unsafe { Ok(var.payload.__bindgen_anon_1.tableValue.into()) }
