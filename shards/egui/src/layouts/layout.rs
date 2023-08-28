@@ -201,6 +201,7 @@ impl Default for LayoutConstructor {
       layout: ParamVar::default(),
       layout_class: None,
       min_size: ParamVar::default(),
+      max_size: ParamVar::default(),
       fill_width: ParamVar::default(),
       fill_height: ParamVar::default(),
       disabled: ParamVar::default(),
@@ -240,11 +241,12 @@ impl Shard for LayoutConstructor {
       0 => Ok(self.parent.set_param(value)),
       1 => Ok(self.layout.set_param(value)),
       2 => Ok(self.min_size.set_param(value)),
-      3 => Ok(self.fill_width.set_param(value)),
-      4 => Ok(self.fill_height.set_param(value)),
-      5 => Ok(self.disabled.set_param(value)),
-      6 => Ok(self.frame.set_param(value)),
-      7 => Ok(self.scroll_area.set_param(value)),
+      3 => Ok(self.max_size.set_param(value)),
+      4 => Ok(self.fill_width.set_param(value)),
+      5 => Ok(self.fill_height.set_param(value)),
+      6 => Ok(self.disabled.set_param(value)),
+      7 => Ok(self.frame.set_param(value)),
+      8 => Ok(self.scroll_area.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -254,11 +256,12 @@ impl Shard for LayoutConstructor {
       0 => self.parent.get_param(),
       1 => self.layout.get_param(),
       2 => self.min_size.get_param(),
-      3 => self.fill_width.get_param(),
-      4 => self.fill_height.get_param(),
-      5 => self.disabled.get_param(),
-      6 => self.frame.get_param(),
-      7 => self.scroll_area.get_param(),
+      3 => self.max_size.get_param(),
+      4 => self.fill_width.get_param(),
+      5 => self.fill_height.get_param(),
+      6 => self.disabled.get_param(),
+      7 => self.frame.get_param(),
+      8 => self.scroll_area.get_param(),
       _ => Var::default(),
     }
   }
@@ -267,6 +270,7 @@ impl Shard for LayoutConstructor {
     self.parent.warmup(ctx);
     self.layout.warmup(ctx);
     self.min_size.warmup(ctx);
+    self.max_size.warmup(ctx);
     self.fill_width.warmup(ctx);
     self.fill_height.warmup(ctx);
     self.disabled.warmup(ctx);
@@ -282,6 +286,7 @@ impl Shard for LayoutConstructor {
     self.disabled.cleanup();
     self.fill_height.cleanup();
     self.fill_width.cleanup();
+    self.max_size.cleanup();
     self.min_size.cleanup();
     self.layout.cleanup();
     self.parent.cleanup();
@@ -409,6 +414,12 @@ impl Shard for LayoutConstructor {
 
     let min_size = if !self.min_size.get().is_none() {
       Some(self.min_size.get().try_into()?)
+    } else {
+      None
+    };
+
+    let max_size = if !self.max_size.get().is_none() {
+      Some(self.max_size.get().try_into()?)
     } else {
       None
     };
@@ -577,6 +588,7 @@ impl Shard for LayoutConstructor {
         parent: parent_layout_class,
         layout,
         min_size,
+        max_size,
         fill_width,
         fill_height,
         disabled,
@@ -588,6 +600,7 @@ impl Shard for LayoutConstructor {
         parent: std::ptr::null(),
         layout,
         min_size,
+        max_size,
         fill_width,
         fill_height,
         disabled,
@@ -611,6 +624,7 @@ impl Default for Layout {
       contents: ShardsVar::default(),
       layout_class: ParamVar::default(),
       min_size: ParamVar::default(),
+      max_size: ParamVar::default(),
       fill_width: ParamVar::default(),
       fill_height: ParamVar::default(),
       exposing: Vec::new(),
@@ -670,8 +684,9 @@ impl Shard for Layout {
       0 => self.contents.set_param(value),
       1 => Ok(self.layout_class.set_param(value)),
       2 => Ok(self.min_size.set_param(value)),
-      3 => Ok(self.fill_width.set_param(value)),
-      4 => Ok(self.fill_height.set_param(value)),
+      3 => Ok(self.max_size.set_param(value)),
+      4 => Ok(self.fill_width.set_param(value)),
+      5 => Ok(self.fill_height.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -681,8 +696,9 @@ impl Shard for Layout {
       0 => self.contents.get_param(),
       1 => self.layout_class.get_param(),
       2 => self.min_size.get_param(),
-      3 => self.fill_width.get_param(),
-      4 => self.fill_height.get_param(),
+      3 => self.max_size.get_param(),
+      4 => self.fill_width.get_param(),
+      5 => self.fill_height.get_param(),
       _ => Var::default(),
     }
   }
@@ -732,6 +748,7 @@ impl Shard for Layout {
     }
     self.layout_class.warmup(ctx);
     self.min_size.warmup(ctx);
+    self.max_size.warmup(ctx);
     self.fill_width.warmup(ctx);
     self.fill_height.warmup(ctx);
 
@@ -741,6 +758,7 @@ impl Shard for Layout {
   fn cleanup(&mut self) -> Result<(), &str> {
     self.fill_height.cleanup();
     self.fill_width.cleanup();
+    self.max_size.cleanup();
     self.min_size.cleanup();
     self.layout_class.cleanup();
     if !self.contents.is_empty() {
@@ -782,6 +800,16 @@ impl Shard for Layout {
         }
       };
 
+      let mut max_size = if !self.max_size.get().is_none() {
+        Some(self.max_size.get().try_into()?)
+      } else {
+        if let Some(max_size) = retrieve_layout_class_attribute!(layout_class, max_size) {
+          Some(max_size)
+        } else {
+          None // default value for max_size (no max size)
+        }
+      };
+
       // shard parameters have higher priority and override layout class
       let fill_width = if !self.fill_width.get().is_none() {
         self.fill_width.get().try_into()?
@@ -817,6 +845,12 @@ impl Shard for Layout {
       if min_size.1 == 0.0 {
         min_size.1 = ui.spacing().interact_size.y;
       }
+
+      let max_size = if let Some(max_size) = max_size {
+        egui::Vec2::new(max_size.0, max_size.1)
+      } else {
+        ui.available_size_before_wrap() // try to take up all available space (no max)
+      };
 
       let disabled =
         if let Some(disabled) = retrieve_layout_class_attribute!(layout_class, disabled) {
@@ -875,7 +909,7 @@ impl Shard for Layout {
                       |parent_stack_var| {
                         // inside of scroll area
                         let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
-                        ui.allocate_ui_with_layout(ui.available_size_before_wrap(), layout, |ui| {
+                        ui.allocate_ui_with_layout(max_size, layout, |ui| {
                           ui.set_min_size(min_size.into()); // set minimum size of entire layout
 
                           util::activate_ui_contents(
@@ -893,7 +927,7 @@ impl Shard for Layout {
                   .inner
               } else {
                 // inside of frame, no scroll area to render, render inner layout
-                ui.allocate_ui_with_layout(ui.available_size_before_wrap(), layout, |ui| {
+                ui.allocate_ui_with_layout(max_size, layout, |ui| {
                   ui.set_min_size(min_size.into()); // set minimum size of entire layout
                   util::activate_ui_contents(
                     context,
@@ -922,7 +956,7 @@ impl Shard for Layout {
                 |parent_stack_var| {
                   // inside of scroll area
                   let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
-                  ui.allocate_ui_with_layout(ui.available_size_before_wrap(), layout, |ui| {
+                  ui.allocate_ui_with_layout(max_size, layout, |ui| {
                     ui.set_min_size(min_size.into()); // set minimum size of entire layout
 
                     util::activate_ui_contents(
@@ -940,7 +974,7 @@ impl Shard for Layout {
             .inner?;
         } else {
           // inside of frame, no scroll area to render, render inner layout
-          ui.allocate_ui_with_layout(ui.available_size_before_wrap(), layout, |ui| {
+          ui.allocate_ui_with_layout(max_size, layout, |ui| {
             ui.set_min_size(min_size.into()); // set minimum size of entire layout
             util::activate_ui_contents(
               context,
