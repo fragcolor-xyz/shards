@@ -12,7 +12,7 @@ if(NOT EMSCRIPTEN)
 
   target_include_directories(shards-module-network PRIVATE ../core)
 
-  if(USE_ASAN)
+  if(USE_UBSAN)
     target_compile_options(shards-module-network PRIVATE -fno-sanitize=null)
   endif()
 
