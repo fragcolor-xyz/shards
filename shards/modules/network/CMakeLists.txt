@@ -13,7 +13,7 @@ if(NOT EMSCRIPTEN)
   target_include_directories(shards-module-network PRIVATE ../core)
 
   if(USE_UBSAN)
-    target_compile_options(shards-module-network PRIVATE -fno-sanitize=null)
+    target_compile_options(kcp PRIVATE -fno-sanitize=null)
   endif()
 
   target_link_libraries(shards-network-rust INTERFACE OpenSSL)
