@@ -85,10 +85,12 @@ struct EguiScrollAreaSettings {
   vertical_scroll_enabled: bool,
   min_width: f32,
   min_height: f32,
-  enable_scrolling: bool,
   max_width: f32,
   max_height: f32,
+  auto_shrink_width: bool,
+  auto_shrink_height: bool,
   scroll_visibility: ScrollVisibility,
+  enable_scrolling: bool,
 }
 
 impl EguiScrollAreaSettings {
@@ -99,6 +101,7 @@ impl EguiScrollAreaSettings {
       .max_height(self.max_height)
       .min_scrolled_width(self.min_width)
       .min_scrolled_height(self.min_height)
+      .auto_shrink([self.auto_shrink_width, self.auto_shrink_height])
       .enable_scrolling(self.enable_scrolling)
   }
 }
