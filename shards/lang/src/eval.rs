@@ -255,6 +255,8 @@ fn extract_make_ints_shard<const WIDTH: usize>(
     let var = match &params[i].value {
       Value::Identifier(_) | Value::Number(_) | Value::Expr(_) | Value::EvalExpr(_) => {
         as_var(&params[i].value, line_info, Some(shard.0), e)
+      }
+      _ => return error_requires_number(line_info),
     }?;
     shard
       .0
@@ -629,6 +631,8 @@ fn extract_make_colors_shard(
     let var = match &params[i].value {
       Value::Identifier(_) | Value::Number(_) | Value::Expr(_) | Value::EvalExpr(_) => {
         as_var(&params[i].value, line_info, Some(shard.0), e)
+      }
+      _ => return error_requires_number(line_info),
     }?;
     shard
       .0
