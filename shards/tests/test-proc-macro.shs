@@ -59,28 +59,24 @@
     UI(ui-draw-queue {
       UI.Property(UIProperty::ScreenSize) = screen-size
       screen-size | Math.Divide(2.0) = center
+      60.0 = radius
 
       @position-circular(center 100.0 0 8) | Log("c0")
       @position-circular(center 100.0 1 8) | Log("c1")
       @position-circular(center 100.0 2 8) | Log("c2")
 
-
       UI.Absolute(Contents: {
-        "Hi" | UI.Label
-        "Absolute UI (centered, anchor top left)" | UI.Label
         UI.Button("Test" { "Hi" Log })
-      } Position: (center | Math.Add(@f2(0 0)))
+      } Position: (@position-circular(center radius 0 8))
         Pivot: Anchor::Center)
       UI.Absolute(Contents: {
-        "Hi" | UI.Label
-        "Absolute UI (offset, anchor top right)" | UI.Label
         UI.Button("Test" { "Hi" Log })
-      } Position: (center | Math.Add(@f2(0 100)))
+      } Position: (@position-circular(center radius 4 8))
         Pivot: Anchor::Center)
-      ; UI.Window(Contents: {
-      ;   "Test window" | UI.Label
-      ;   UI.Button("Test" { "Hi" Log })
-      ; } Title: "Test window")
+      UI.Absolute(Contents: {
+        UI.Button("Test" { "Hi" Log })
+      } Position: (@position-circular(center radius 5 8))
+        Pivot: Anchor::Center)
     })
 
     GFX.Render(Steps: render-steps View: view)
