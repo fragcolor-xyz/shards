@@ -777,9 +777,7 @@ struct Match {
   }
 
   static inline Parameters params{
-      {"Cases",
-       SHCCSTR("Values to match against the input. A `nil` case will match anything."),
-       {CoreInfo::AnySeqType}}, // TODO PROPER TYPE!
+      {"Cases", SHCCSTR("Values to match against the input. A `nil` case will match anything."), {CoreInfo::AnySeqType}},
       {"Passthrough",
        SHCCSTR("Parameter to control the shard's output. `true` allows the `Match` shard's input itself to appear as its output; "
                "`false` allows the matched shard's output to appear as `Match` shard's output."),
@@ -787,11 +785,11 @@ struct Match {
   static SHParametersInfo parameters() { return params; }
 
   VariableResolver resolver;
+  int _ncases = 0;
   std::vector<OwnedVar> _cases;
   std::vector<OwnedVar> _pcases;
   std::vector<ShardsVar> _actions;
   std::vector<SHVar> _full;
-  int _ncases = 0;
   bool _pass = true;
 
   void setParam(int index, const SHVar &value) {
@@ -802,20 +800,26 @@ struct Match {
         throw SHException("Match: first parameter must contain a sequence of pairs [variable "
                           "to compare & action to perform if matches].");
       _ncases = int(counter / 2);
-      _pcases.resize(_ncases);
       _cases.resize(_ncases);
+      _pcases.resize(_ncases);
       _actions.resize(_ncases);
       _full.resize(counter);
       auto idx = 0;
       for (uint32_t i = 0; i < counter; i += 2) {
-        _cases[idx] = value.payload.seqValue.elements[i];
-        _pcases[idx] = value.payload.seqValue.elements[i];
-        if (!(value.valueType == SHType::None || value.valueType == SHType::ShardRef || value.valueType == SHType::Seq)) {
-          throw SHException("Match: action should be either a shard, a sequence of shards or none.");
+        auto matchItem = value.payload.seqValue.elements[i];
+        _cases[idx] = matchItem;
+        _pcases[idx] = matchItem;
+        auto actionItem = value.payload.seqValue.elements[i + 1];
+        TypeInfo actionInfo(actionItem, SHInstanceData{});
+        if (!matchTypes(actionInfo, CoreInfo::NoneType, true, true, true) &&
+            !matchTypes(actionInfo, CoreInfo::ShardRefType, true, true, true) &&
+            !matchTypes(actionInfo, CoreInfo::ShardRefSeqType, true, true, true)) {
+          throw SHException(
+              fmt::format("Match: action at index {} is invalid, it should none, a shard or a sequence of shards.", idx));
         }
-        _actions[idx] = value.payload.seqValue.elements[i + 1];
-        _full[i] = _pcases[idx];
-        _full[i + 1] = _actions[idx];
+        _actions[idx] = actionItem;
+        _full[i] = matchItem;
+        _full[i + 1] = actionItem;
         idx++;
       }
     } break;
