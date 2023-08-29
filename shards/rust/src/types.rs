@@ -593,13 +593,13 @@ SHExposedTypeInfo & co
 */
 
 impl ExposedInfo {
-  pub fn new(name: &CString, ctype: SHTypeInfo) -> Self {
+  pub fn new(name: *const c_char, ctype: SHTypeInfo) -> Self {
     let chelp = core::ptr::null();
     SHExposedTypeInfo {
       exposedType: ctype,
-      name: name.as_ptr(),
+      name: name,
       help: SHOptionalString {
-        string: chelp,
+        string: chelp, // TODO: Pull from parameter into
         crc: 0,
       },
       isMutable: false,
@@ -1689,7 +1689,7 @@ where
     let res = ClonedVar(Var::default());
     unsafe {
       let rv = &res.0 as *const SHVar as *mut SHVar;
-      let sv = &vt as *const SHVar;
+      let sv = &vt as *const SHVar; 
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
@@ -2690,6 +2690,7 @@ impl Var {
       }
     }
   }
+
 
   pub unsafe fn new_object_from_ptr<T>(obj: *const T, info: &Type) -> Var {
     Var {
@@ -4048,7 +4049,7 @@ impl ParamVar {
     self.parameter.0.valueType == SHType_ContextVar
   }
 
-  pub fn set_name(&mut self, name: &str) {
+  pub fn set_name(&mut self, name: &str) { 
     let s = Var::ephemeral_string(name);
     self.parameter = s.into(); // clone it!
     self.parameter.0.valueType = SHType_ContextVar;

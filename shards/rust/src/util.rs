@@ -10,15 +10,18 @@ pub fn collect_required_variables(
   out: &mut ExposedTypes,
   var: &SHVar,
 ) -> Result<(), &'static str> {
-  match var.valueType { 
+  match var.valueType {
     crate::SHType_ContextVar => {
-      let var_name: CString = var
+      let var_name: &str = var
         .try_into()
         .map_err(|_x| "Invalid context variable name")?;
       for entry in shared {
         let cstr = unsafe { CStr::from_ptr(entry.name) };
-        if var_name.as_c_str() == cstr {
-          out.push(ExposedInfo::new(&var_name, entry.exposedType));
+        if var_name == cstr.to_str().map_err(|x| "invalid string")? {
+          out.push(ExposedInfo::new(
+            unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue },
+            entry.exposedType,
+          ));
           break;
         }
       }
