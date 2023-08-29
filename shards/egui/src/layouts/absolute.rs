@@ -101,18 +101,17 @@ shard! {
       let result = frame.show(ui_ctx, |ui| {
         // ui.set_max_size(rect.size());
 
-        let where_to_put_bg = ui.painter().add(Shape::Noop);
-
+        // let where_to_put_bg = ui.painter().add(Shape::Noop);
         match util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents) {
           Ok(result) => {
-            let painter = ui.painter();
-            let bg_shape = Shape::Rect(RectShape{
-              rect: ui.min_rect().expand(5.0),
-              fill: Rgba::from_white_alpha(0.2).into(),
-              rounding: Rounding::none(),
-              stroke: Stroke::new(3.0, Color32::YELLOW),
-            });
-            painter.set(where_to_put_bg, bg_shape);
+            // let painter = ui.painter();
+            // let bg_shape = Shape::Rect(RectShape{
+            //   rect: ui.min_rect().expand(5.0),
+            //   fill: Rgba::from_white_alpha(0.2).into(),
+            //   rounding: Rounding::none(),
+            //   stroke: Stroke::new(3.0, Color32::YELLOW),
+            // });
+            // painter.set(where_to_put_bg, bg_shape);
             Ok(result)
           },
           Err(e) => {
@@ -122,7 +121,6 @@ shard! {
 
       }).inner?;
 
-      println!("Wants pointer: {}", ui_ctx.wants_pointer_input());
       Ok(result)
     }
   }
