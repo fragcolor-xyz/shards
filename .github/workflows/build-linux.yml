@@ -131,16 +131,16 @@ jobs:
           ./shards ../shards/tests/wire-macro.edn
           ./shards new ../shards/tests/const-vars.shs
           ./shards new ../shards/tests/branch.shs
-          ./shards ../shards/tests/time.edn
+          ./shards new ../shards/tests/time.shs
           ./shards new ../shards/tests/eth.shs
-          ./shards ../shards/tests/take.edn
+          ./shards new ../shards/tests/take.shs
           ./shards new ../shards/tests/casting-numbers.shs
           ./shards new ../shards/tests/pure.shs
           # ./shards new ../shards/tests/shell.shs
           ./shards ../shards/tests/infos.clj
           ./shards ../shards/tests/many.edn
           ./shards new ../shards/tests/events.shs
-          ./shards ../shards/tests/tablecase.edn
+          ./shards new ../shards/tests/tablecase.shs
           ./shards ../shards/tests/types.edn
           ./shards new ../shards/tests/complex-deserialize.shs
           ./shards new ../shards/tests/db.shs
