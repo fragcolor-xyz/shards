@@ -1,0 +1,519 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2019 Fragcolor Pte. Ltd.
+
+@mesh(root)
+
+; Notice, if running with valgrind:
+; you need valgrind headers and BOOST_USE_VALGRIND (-DUSE_VALGRIND @ cmake cmdline)
+; To run this properly or valgrind will complain
+
+@wire(one {
+  Msg("one - 1") |
+  Resume(two) |
+  Msg("one - 2") |
+  Msg("one - 3") |
+  Resume(two) |
+  Msg("one - Done") |
+  Resume("two")
+})
+
+@wire(two {
+  Msg("two - 1") |
+  Resume(one) |
+  Msg("two - 2") |
+  Msg("two - 3") |
+  Resume(one) |
+  Msg("two - 4") |
+  Msg("two - Done")
+})
+
+@schedule(root one)
+@run(root 0.1)
+
+@wire(recur {
+  Log("depth") |
+  Math.Add(1) |
+  Cond(
+    [{IsLess(5)} {Do(recur)}]
+  ) |
+  Log("res")
+})
+
+@wire(dologic {
+  IsMore(10) |
+  Or |
+  IsLess(0)
+})
+
+; Broken for now indeed, until we implement jumps
+
+; @wire(recurAnd {
+;   "recurAnd" |
+;   Log("depth") |
+;   Math.Inc |
+;   Push |
+;   IsLess(5) |
+;   And |
+;   Pop |
+;   Do(recurAnd) |
+;   Log("res")
+; })
+
+@wire(doit-1 {
+  0 |
+  Do(recur)
+  ; Do(recurAnd)
+})
+
+@schedule(root doit-1)
+
+; test stack overflow, notice in this case (below) we could have tail call optimized,
+; TODO implement TCO
+
+; @wire(recurCrash {
+;   "recurCrash" |
+;   Log("depth") |
+;   Math.Inc |
+;   Do(recurCrash)
+; })
+
+; @wire(doit-2 {
+;   0 |
+;   Do(recurCrash)
+; })
+
+; @schedule(root doit-2)
+
+@wire(spawner {
+  Spawn(dologic)
+})
+
+@wire(loop {
+  Math.Add(1) |
+  Log |
+  Cond(
+    [{Is(5)} Stop]
+  ) |
+  Restart
+} Looped: true)
+
+@wire(loop-test {
+  0 |
+  Detach(loop) |
+  Wait(loop) |
+  Assert.Is(5 true) |
+  Log
+
+  ; test logic
+  ; ensure a sub inline wire
+  ; using Return mechanics
+  ; is handled by If
+
+  -10 |
+  If(
+    Predicate: Do(dologic)
+    Then: {true}
+    Else: {false}
+  ) |
+  Assert.Is(true true)
+
+  -10 |
+  If(
+    Predicate: Do(dologic)
+    Then: {true}
+    Else: {false}
+  ) |
+  Assert.IsNot(false true)
+
+  11 |
+  If(
+    Predicate: Do(dologic)
+    Then: {true}
+    Else: {false}
+  ) |
+  Assert.Is(true true)
+
+  11 |
+  If(
+    Predicate: Do(dologic)
+    Then: {true}
+    Else: {false}
+  ) |
+  Assert.IsNot(false true)
+
+  0 |
+  If(
+    Predicate: Do(dologic)
+    Then: {true}
+    Else: {false}
+  ) |
+  Assert.Is(false true)
+
+  0 |
+  If(
+    Predicate: Do(dologic)
+    Then: {true}
+    Else: {false}
+  ) |
+  Assert.IsNot(true true)
+
+  "Hello world" = hello-var
+
+  @wire(print-ok {
+    Log | hello-var | Assert.Is("Hello world" true) | Log | "Ok"
+  })
+  Const(["A" "B" "C"]) |
+  TryMany(print-ok) |
+  Assert.Is(["Ok" "Ok" "Ok"] true)
+
+  @wire(print-a {
+    Log | hello-var | Assert.Is("Hello world" true) | Log | "A"
+  })
+  Const(["A" "B" "C"]) |
+  TryMany(print-a Policy: WaitUntil::FirstSuccess) |
+  Assert.Is("A" true)
+
+  Const(["A" "B" "C"]) |
+  TryMany(print-ok Threads: 3) |
+  Assert.Is(["Ok" "Ok" "Ok"] true)
+
+  Const(["A" "B" "C"]) |
+  TryMany(print-a Threads: 3 Policy: WaitUntil::FirstSuccess) |
+  Assert.Is("A" true)
+
+  @wire(keep-state {
+    Once({
+      Input >= starting
+    })
+    starting | Log | Math.Add(my-adder) > starting
+  })
+  3 = my-adder
+  Const([1 22 333]) >= my-result
+  Repeat({
+    my-result |
+    StepMany(keep-state) |
+    ExpectIntSeq ; step many will return intermediate outputs!
+    > my-result
+  } Times: 3)
+  my-result |
+  Assert.Is([10 31 342] true)
+
+  @wire(keep-state2 {
+    Once({
+      Input >= starting
+    })
+    starting | Log | Math.Add(my-adder) > starting
+  } Looped: true)
+  Const([1 22 333]) >= my-result
+  Repeat({
+    ; my-result NO NEED HERE AS WE KEEP STATE BY LOOP
+    StepMany(keep-state2) |
+    ExpectIntSeq ; step many will return intermediate outputs!
+    > my-result
+  } Times: 3)
+  my-result |
+  Assert.Is([10 31 342] true)
+
+  @wire(keep-state3 {
+    Once({
+      Input >= starting
+    })
+    starting | Log | Math.Add(3) > starting
+  } Pure: true)
+  Const([1 22 333]) >= my-result
+  Repeat({
+    my-result |
+    DoMany(keep-state3) 
+    > my-result
+  } Times: 3)
+  my-result |
+  Assert.Is([10 31 342] true)
+
+  @wire(wide-test-1 {
+    Math.Add(1)
+  })
+  Repeat({
+    10 |
+    Expand(10 wide-test-1 Threads: 10) |
+    Assert.Is([11 11 11 11 11 11 11 11 11 11] true) |
+    Log
+  } Times: 10)
+
+  @wire(wide-test-2 {
+    RandomBytes(8) |
+    ToHex
+  })
+  Repeat({
+    10 |
+    Expand(10 wide-test-2 Threads: 10) |
+    Log
+  } Times: 10)
+
+  10 |
+  Expand(10 wide-test-1) |
+  Assert.Is([11 11 11 11 11 11 11 11 11 11] true) |
+  Log
+
+  -10 |
+  If(
+    Predicate: {Do(spawner) >= ccc | Wait ccc | ExpectBool}
+    Then: {true}
+    Else: {false}
+  ) |
+  Assert.IsNot(false true)
+
+  11 |
+  If(
+    Predicate: {Do(spawner) >= ccc | Wait ccc | ExpectBool}
+    Then: {true}
+    Else: {false}
+  ) |
+  Assert.Is(true true)
+
+  Msg("Done")
+})
+
+@schedule(root loop-test)
+@run(root 0.1)
+
+@wire(hashed {
+  10 |
+  Hashed({
+    Math.Add(1)
+    Math.Add(2)
+    Math.Add(3)
+    Math.Add(4)
+    Math.Add(5)
+    Math.Add(6)
+  }) |
+  Log |
+  {Take("Hash") | ToBytes | ToHex | Assert.Is("0x0517ed7b7fbe5dbc1311a60edfc55db278") | Log}
+})
+
+@schedule(root hashed)
+@run(root)
+
+@wire(wire-loop-inline {
+  Once({
+    0 >= count
+})
+  Math.Inc(count)
+  count | Log | When({IsMore(10)} {Return})
+} Looped: true)
+
+@wire(wire-loop-inline-parent {
+  Do(wire-loop-inline) |
+  Msg("Ok done looping...")
+})
+
+@schedule(root wire-loop-inline-parent)
+@run(root)
+
+@wire(depth-wire-indirect {
+  ["This is a " consumed-variable] |
+  String.Join
+})
+
+@wire(depth-wire-1 {
+  Do(depth-wire-indirect) |
+  Log |
+  consumed-variable
+})
+
+@wire(spawned-wire-1 {
+  Do(depth-wire-1) |
+  ToInt |
+  Math.Add(1) |
+  Log("X")
+})
+
+@wire(test-capture-1 {
+  "2" = consumed-variable |
+  ; Spawn should now capture consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  {Spawn(spawned-wire-1) = spawned-wire-10} |
+  {Spawn(spawned-wire-1) = spawned-wire-11} |
+  Wait(spawned-wire-10) |
+  Assert.Is(3 true) |
+  Wait(spawned-wire-11) |
+  Assert.Is(3 true)
+})
+
+@schedule(root test-capture-1)
+@run(root)
+
+@wire(detached-wire {
+  consumed-variable |
+  ToInt |
+  Math.Add(1) |
+  ToString |
+  {Do(depth-wire-1)} |
+  ToInt |
+  Log("X")
+})
+
+@wire(test-capture-2 {
+  "2" = consumed-variable |
+  ; Detach should now capture consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  Detach(detached-wire) |
+  Wait(detached-wire) |
+  Assert.Is(3 true)
+})
+
+@schedule(root test-capture-2)
+@run(root)
+
+@wire(depth-wire-deeper-do {
+  ["This is a " consumed-variable] |
+  String.Join
+})
+
+@wire(depth-wire-deeper {
+  Do(depth-wire-deeper-do) |
+  Log |
+  Resume
+})
+
+@wire(depth-wire-2 {
+  Start(depth-wire-deeper) |
+  Resume
+})
+
+@wire(spawned-wire-2 {
+  Start(depth-wire-2) |
+  consumed-variable |
+  ToInt |
+  Math.Add(1) |
+  Log("X") |
+  Stop(depth-wire-deeper-do) |
+  Stop(depth-wire-deeper) |
+  Stop(depth-wire-2)
+})
+
+@wire(test-capture-3 {
+  "2" = consumed-variable |
+  ; Spawn should now capture consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  {Spawn(spawned-wire-2) = spawned-wire-20} |
+  {Spawn(spawned-wire-2) = spawned-wire-21} |
+  Wait(spawned-wire-20) |
+  Assert.Is(3 true) |
+  Wait(spawned-wire-21) |
+  Assert.Is(3 true)
+})
+
+@schedule(root test-capture-3)
+@run(root)
+
+
+@wire(spawned-wire-3 {
+  Start(depth-wire-2) |
+  consumed-variable |
+  ToInt |
+  Math.Add(1) |
+  Log("X") |
+  Stop(depth-wire-deeper) |
+  Stop(depth-wire-2) |
+  Stop
+})
+
+@wire(test-capture-4 {
+  "2" = consumed-variable |
+  ; Spawn should now capture consumed-variable and copy it to pass it when spawned-wire actually runs on it's own context
+  Msg("<------------SPAWN 1---------------->") |
+  {Spawn(spawned-wire-3) = spawned-wire-30} |
+  Wait(spawned-wire-30) |
+  Assert.Is(3 true) |
+  Msg("<------------SPAWN 2---------------->") |
+  {Spawn(spawned-wire-3) = spawned-wire-31} |
+  Wait(spawned-wire-31) |
+  Assert.Is(3 true)
+})
+
+@schedule(root test-capture-4)
+@run(root)
+
+@wire(inner-loop {
+  root-variable |
+  Log |
+  Pause(2.0)
+} Looped: true)
+
+@wire(fire-starter {
+  Spawn(inner-loop)
+})
+
+@wire(main {
+  Once({
+    "Hello" = root-variable
+  })
+  Branch([fire-starter])
+} Looped: true)
+
+@schedule(root main)
+@run(root 0.1 100)
+
+@wire(test {
+  Msg("Hello")
+})
+
+@wire(a-perfect-circle {
+  Log |
+  When({Is(false)} {Stop}) |
+  false | Spawn(a-perfect-circle) |
+  true ; make compose validation happy!
+} Pure: true)
+
+@wire(a-perfect-starter {
+  true | Spawn(a-perfect-circle) = a-perfect-circle-0 | 
+  Wait(a-perfect-circle-0)
+})
+
+@wire(more-perfect-starter {
+  Spawn(a-perfect-starter) = a-perfect-starter-0 |
+  Wait(a-perfect-starter-0)
+})
+
+@schedule(root more-perfect-starter)
+@run(root 0.1 20)
+
+@wire(peek-test {
+  Detach(more-perfect-starter) |
+  Peek(more-perfect-starter) |
+  Assert.Is(none) |
+  Wait(more-perfect-starter) |
+  Assert.Is(true) |
+  Peek(more-perfect-starter) |
+  Assert.Is(true)
+})
+
+@schedule(root peek-test)
+@run(root 0.1 20)
+
+@wire(long-wire {
+  Await({
+    Msg("long-wire")
+    1.0 | SleepBlocking!
+  })
+  Msg("long-wire done")
+})
+
+@wire(await-test {
+  Do(long-wire)
+} Looped: true)
+
+@wire(await-test-1 {
+  Do(long-wire)
+} Looped: true)
+
+@wire(await-test-2 {
+  Do(long-wire)
+} Looped: true)
+
+@wire(await-test-3 {
+  Do(long-wire)
+} Looped: true)
+
+@schedule(root await-test)
+@schedule(root await-test-1)
+@schedule(root await-test-2)
+@schedule(root await-test-3)
+@run(root 0.1 100)

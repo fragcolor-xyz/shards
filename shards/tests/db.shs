@@ -1,59 +1,58 @@
 @mesh(root)
 
 @wire(db-test-1 {
-    "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
-    [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")
-    [] | DB.Query("SELECT * FROM integers") | Log |
-    Assert.Is({x: [88 100 102], y: [99 101 none]})
-    Msg("Test 1 passed")
+  "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
+  [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")
+  [] | DB.Query("SELECT * FROM integers") | Log |
+  Assert.Is({x: [88 100 102], y: [99 101 none]})
+  Msg("Test 1 passed")
 
-    "test-db-dir" | FS.CreateDirectories
-    [] | DB.Query("CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" "test-db-dir/custom.db")
-    [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" "test-db-dir/custom.db")
-    [] | DB.Query("SELECT * FROM integers" "test-db-dir/custom.db") | Log |
-    Assert.Is({x: [88 100 102], y: [99 101 none]})
-    Msg("Test 2 passed")
+  [] | DB.Query("CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" "custom.db")
+  [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)" "custom.db")
+  [] | DB.Query("SELECT * FROM integers" "custom.db") | Log |
+  Assert.Is({x: [88 100 102], y: [99 101 none]})
+  Msg("Test 2 passed")
 
-    11 >= x
-    22 >= y
+  11 >= x
+  22 >= y
+  DB.Transaction({
+    Repeat({
+      Math.Inc(x)
+      Math.Inc(y)
+      [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
+    } Times: 10)
+  })
+  [] | DB.Query("SELECT * FROM integers") | Log |
+  Assert.Is({x: [88, 100, 102, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], y: [99, 101, none, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]})
+  Msg("Test 3 passed")
+
+  Maybe({
     DB.Transaction({
-        Repeat({
-            Math.Inc(x)
-            Math.Inc(y)
-            [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
-        } Times: 10)
+      Repeat({
+        Math.Inc(x)
+        Math.Inc(y)
+        [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
+      } Times: 10)
+      true | Assert.Is(false) ; fail on purpose, we test rerolling here
     })
-    [] | DB.Query("SELECT * FROM integers") | Log |
-    Assert.Is({x: [88, 100, 102, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], y: [99, 101, none, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]})
-    Msg("Test 3 passed")
+  })
 
-    Maybe({
-        DB.Transaction({
-            Repeat({
-                Math.Inc(x)
-                Math.Inc(y)
-                [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)")
-            } Times: 10)
-            true | Assert.Is(false) ; fail on purpose, we test rerolling here
-        })
-    })
+  [] | DB.Query("SELECT * FROM integers") | Log |
+  Assert.Is({x: [88, 100, 102, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], y: [99, 101, none, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]})
+  Msg("Test 4 passed")
 
-    [] | DB.Query("SELECT * FROM integers") | Log |
-    Assert.Is({x: [88, 100, 102, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21], y: [99, 101, none, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]})
-    Msg("Test 4 passed")
-
-    ; ; test CRDT capabilities
-    ; (DB.LoadExtension "./crsqlite.so")
-    ; [] | DB.Query("create table foo (a primary key, b)")
-    ; [] | DB.Query("create table bar (a primary key, b, c, d)")
-    ; [] | DB.Query("create table baz (a primary key, b, c, d)")
-    ; [] | DB.Query("select crsql_as_crr('foo')")
-    ; [] | DB.Query("select crsql_as_crr('baz')")
-    ; [] | DB.Query("insert into foo (a,b) values (1,2)")
-    ; [] | DB.Query("insert into baz (a,b,c,d) values ('a', 'woo', 'doo', 'daa')")
-    ; [] | DB.Query("select * from foo") | Log
-    ; [] | DB.Query("select * from baz") | Log
-    ; [] | DB.Query("select * from crsql_changes") | Log
+  ; test CRDT capabilities
+  ; (DB.LoadExtension "./crsqlite.so")
+  ; [] | DB.Query("create table foo (a primary key, b)")
+  ; [] | DB.Query("create table bar (a primary key, b, c, d)")
+  ; [] | DB.Query("create table baz (a primary key, b, c, d)")
+  ; [] | DB.Query("select crsql_as_crr('foo')")
+  ; [] | DB.Query("select crsql_as_crr('baz')")
+  ; [] | DB.Query("insert into foo (a,b) values (1,2)")
+  ; [] | DB.Query("insert into baz (a,b,c,d) values ('a', 'woo', 'doo', 'daa')")
+  ; [] | DB.Query("select * from foo") | Log
+  ; [] | DB.Query("select * from baz") | Log
+  ; [] | DB.Query("select * from crsql_changes") | Log
 } StackSize: #(4 | Math.Multiply(1024) | Math.Multiply(1024)))
 
 ; Run cleanup before running tests

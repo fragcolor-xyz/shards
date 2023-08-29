@@ -4,62 +4,62 @@
 @mesh(root)
 
 @wire(bigints {
-    1000 | BigInt | BigInt.Shift(By: 18) >= t1000x1e18 |
-    BigInt.ToString | Log("bigint")
-    t1000x1e18 | BigInt.ToFloat(ShiftedBy: -18) | Log("bigint as shifted float") |
-    Assert.Is(1000.0 true)
-    "2" | BigInt >= t2
-    "500000000000000000000" | BigInt >= t500x1e18 | BigInt.ToFloat(ShiftedBy: -18) |
-    Assert.Is(500.0 true)
-    t1000x1e18 | BigInt.Multiply(t2) | BigInt.ToFloat(ShiftedBy: -18) |
-    Assert.Is(2000.0 true)
-    t1000x1e18 | BigInt.Add(t500x1e18) | BigInt.ToFloat(ShiftedBy: -18) |
-    Assert.Is(1500.0 true)
-    t1000x1e18 | BigInt.Subtract(t500x1e18) | BigInt.ToFloat(ShiftedBy: -18) |
-    Assert.Is(500.0 true)
+  1000 | BigInt | BigInt.Shift(By: 18) >= t1000x1e18 |
+  BigInt.ToString | Log("bigint")
+  t1000x1e18 | BigInt.ToFloat(ShiftedBy: -18) | Log("bigint as shifted float") |
+  Assert.Is(1000.0 true)
+  "2" | BigInt >= t2
+  "500000000000000000000" | BigInt >= t500x1e18 | BigInt.ToFloat(ShiftedBy: -18) |
+  Assert.Is(500.0 true)
+  t1000x1e18 | BigInt.Multiply(t2) | BigInt.ToFloat(ShiftedBy: -18) |
+  Assert.Is(2000.0 true)
+  t1000x1e18 | BigInt.Add(t500x1e18) | BigInt.ToFloat(ShiftedBy: -18) |
+  Assert.Is(1500.0 true)
+  t1000x1e18 | BigInt.Subtract(t500x1e18) | BigInt.ToFloat(ShiftedBy: -18) |
+  Assert.Is(500.0 true)
 
-    t1000x1e18 >> bigseq
-    t1000x1e18 >> bigseq
-    t1000x1e18 >> bigseq
-    bigseq | BigInt.Multiply(t2) | Log |
-    Take(0) |
-    {BigInt.ToHex | Log} |
-    BigInt.ToBytes(Bits: 256) | Log |
-    ToHex | Log |
-    Assert.Is("0x00000000000000000000000000000000000000000000006c6b935b8bbd400000" true)
+  t1000x1e18 >> bigseq
+  t1000x1e18 >> bigseq
+  t1000x1e18 >> bigseq
+  bigseq | BigInt.Multiply(t2) | Log |
+  Take(0) |
+  {BigInt.ToHex | Log} |
+  BigInt.ToBytes(Bits: 256) | Log |
+  ToHex | Log |
+  Assert.Is("0x00000000000000000000000000000000000000000000006c6b935b8bbd400000" true)
 
-    "18446744073709551615" | BigInt | BigInt.ToBytes(64) = max-u64 |
-    BigInt | BigInt.ToString | Assert.Is("18446744073709551615" true) | Log("Returned")
-    max-u64 | Substrate.Decode([Type::Int] ["u64"]) | Log("Decoded")
+  "18446744073709551615" | BigInt | BigInt.ToBytes(64) = max-u64 |
+  BigInt | BigInt.ToString | Assert.Is("18446744073709551615" true) | Log("Returned")
+  max-u64 | Substrate.Decode([Type::Int] ["u64"]) | Log("Decoded")
 
-    "4e2" | HexToBytes | BigInt | BigInt.ToString | Assert.Is("1250" true) | Log("Returned")
+  "4e2" | HexToBytes | BigInt | BigInt.ToString | Assert.Is("1250" true) | Log("Returned")
 
-    ;; Comparisons
-    t500x1e18 | BigInt.Is(t500x1e18) | Assert.Is(true)
-    t1000x1e18 | BigInt.Is(t500x1e18) | Assert.Is(false)
+  ;; Comparisons
+  t500x1e18 | BigInt.Is(t500x1e18) | Assert.Is(true)
+  t1000x1e18 | BigInt.Is(t500x1e18) | Assert.Is(false)
 
-    t500x1e18 | BigInt.IsNot(t500x1e18) | Assert.Is(false)
-    t1000x1e18 | BigInt.IsNot(t500x1e18) | Assert.Is(true)
+  t500x1e18 | BigInt.IsNot(t500x1e18) | Assert.Is(false)
+  t1000x1e18 | BigInt.IsNot(t500x1e18) | Assert.Is(true)
 
-    t1000x1e18 | BigInt.IsMore(t500x1e18) | Assert.Is(true)
-    t500x1e18 | BigInt.IsMore(t1000x1e18) | Assert.Is(false)
-    t500x1e18 | BigInt.IsMore(t500x1e18) | Assert.Is(false)
+  t1000x1e18 | BigInt.IsMore(t500x1e18) | Assert.Is(true)
+  t500x1e18 | BigInt.IsMore(t1000x1e18) | Assert.Is(false)
+  t500x1e18 | BigInt.IsMore(t500x1e18) | Assert.Is(false)
 
-    t1000x1e18 | BigInt.IsLess(t500x1e18) | Assert.Is(false)
-    t500x1e18 | BigInt.IsLess(t1000x1e18) | Assert.Is(true)
-    t500x1e18 | BigInt.IsLess(t500x1e18) | Assert.Is(false)
+  t1000x1e18 | BigInt.IsLess(t500x1e18) | Assert.Is(false)
+  t500x1e18 | BigInt.IsLess(t1000x1e18) | Assert.Is(true)
+  t500x1e18 | BigInt.IsLess(t500x1e18) | Assert.Is(false)
 
-    t1000x1e18 | BigInt.IsMoreEqual(t500x1e18) | Assert.Is(true)
-    t500x1e18 | BigInt.IsMoreEqual(t1000x1e18) | Assert.Is(false)
-    t500x1e18 | BigInt.IsMoreEqual(t500x1e18) | Assert.Is(true)
+  t1000x1e18 | BigInt.IsMoreEqual(t500x1e18) | Assert.Is(true)
+  t500x1e18 | BigInt.IsMoreEqual(t1000x1e18) | Assert.Is(false)
+  t500x1e18 | BigInt.IsMoreEqual(t500x1e18) | Assert.Is(true)
 
-    t1000x1e18 | BigInt.IsLessEqual(t500x1e18) | Assert.Is(false)
-    t500x1e18 | BigInt.IsLessEqual(t1000x1e18) | Assert.Is(true)
-    t500x1e18 | BigInt.IsLessEqual(t500x1e18) | Assert.Is(true)
+  t1000x1e18 | BigInt.IsLessEqual(t500x1e18) | Assert.Is(false)
+  t500x1e18 | BigInt.IsLessEqual(t1000x1e18) | Assert.Is(true)
+  t500x1e18 | BigInt.IsLessEqual(t500x1e18) | Assert.Is(true)
 
-    100 | BigInt | BigInt.Pow(20) | Log("100^20") |
-    {BigInt.ToString | Assert.Is("10000000000000000000000000000000000000000" true) | Log("Result")} |
-    {BigInt.Sqrt | BigInt.ToString | Assert.Is("100000000000000000000" true) | Log("Sqrt")}
+  100 | BigInt | BigInt.Pow(20) | Log("100^20") |
+  {BigInt.ToString | Assert.Is("10000000000000000000000000000000000000000" true) | Log("Result")} |
+  {BigInt.Sqrt | BigInt.ToString | Assert.Is("100000000000000000000" true) | Log("Sqrt")}
 } Looped: true)
 
 @schedule(root bigints)

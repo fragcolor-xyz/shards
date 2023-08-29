@@ -4,41 +4,41 @@
 @mesh(main)
 
 @wire(c1 {
-    msg1 | Log
+  msg1 | Log
 } Looped: true)
 
 @wire(c2 {
-    msg2 | Log
+  msg2 | Log
 } Looped: true)
 
 @wire(c {
-    "Hello" = msg1
-    "World" = msg2
-    Branch([c1 c2])
-    Msg("And Universe")
+  "Hello" = msg1
+  "World" = msg2
+  Branch([c1 c2])
+  Msg("And Universe")
 } Looped: true)
 
 @schedule(main c)
 @run(main 0.2 25)
 
 ; @wire(c3 { ; this wire doesn't require msg1 until it's run
-;     "@wire(c3 {msg1 | Log} Looped:true)" |
-;     EDN.Eval | ExpectWire = c3
-;     WireRunner(c3 Mode: RunWireMode.Async)
-;     Wait(c3)
+;   "@wire(c3 {msg1 | Log} Looped:true)" |
+;   EDN.Eval | ExpectWire = c3
+;   WireRunner(c3 Mode: RunWireMode.Detached)
+;   Wait(c3)
 ; })
 
 ; @mesh(internally-used)
 
 ; @wire(internally-ran {
-;     Msg("Hello?")
+;   Msg("Hello?")
 ; } Looped: true)
 
 ; @schedule(internally-used internally-ran)
 
 ; @wire(c4 {
-;     "Hello" = msg1
-;     Branch([c4] CaptureAll: true Mesh: internally-used)
+;   "Hello" = msg1
+;   Branch([c4] CaptureAll: true Mesh: internally-used)
 ; } Looped: true)
 
 ; @schedule(main c)

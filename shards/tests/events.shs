@@ -1,0 +1,28 @@
+@mesh(main)
+
+@wire(send {
+  RandomInt | Events.Send("RandomInts") | Log("Sent") | Pause(0.1)
+} Looped: true)
+
+@wire(send2 {
+  RandomInt | Events.Send("RandomInts" 28) | Log("Sent 28") | Pause(0.1)
+} Looped: true)
+
+@wire(receive {
+  Events.Receive("RandomInts") | ExpectSeq | ForEach({ExpectInt | Log})
+} Looped: true)
+
+@wire(receive2 {
+  Events.Receive("RandomInts" 28) | ExpectSeq | ForEach({ExpectInt | Log("Recv 28")})
+} Looped: true)
+
+@wire(updater {
+  Events.Update("RandomInts") | Msg("Updated") | Pause(0.2)
+} Looped: true)
+
+@schedule(main send)
+@schedule(main send2)
+@schedule(main receive)
+@schedule(main receive2)
+@schedule(main updater)
+@run(main 0.05 100)
