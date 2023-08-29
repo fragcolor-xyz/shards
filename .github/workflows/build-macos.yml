@@ -133,37 +133,37 @@ jobs:
         run: |
           cd build
           chmod +x shards
-          ./shards ../shards/tests/general.edn
-          ./shards ../shards/tests/table-compose.edn
+          ./shards new ../shards/tests/general.shs
+          ./shards new ../shards/tests/table-compose.shs
           ./shards ../shards/tests/variables.edn
-          ./shards ../shards/tests/subwires.clj
-          ./shards ../shards/tests/linalg.clj
+          ./shards new ../shards/tests/subwires.shs
+          ./shards new ../shards/tests/linalg.shs
           ./shards ../shards/tests/loader.clj
           ./shards new ../shards/tests/network.shs
-          ./shards ../shards/tests/struct.clj
-          ./shards ../shards/tests/flows.edn
+          ./shards new ../shards/tests/struct.shs
+          ./shards new ../shards/tests/flows.shs
           ./shards new ../shards/tests/kdtree.shs
-          ./shards ../shards/tests/channels.edn
-          ./shards ../shards/tests/imaging.clj
-          ./shards ../shards/tests/http.clj
+          ./shards new ../shards/tests/channels.shs
+          ./shards new ../shards/tests/imaging.shs
+          ./shards new ../shards/tests/http.shs
           # ./shards ../shards/tests/ws.edn
           ./shards new ../shards/tests/bigint.shs
           ./shards new ../shards/tests/brotli.shs
-          ./shards ../shards/tests/snappy.clj
-          ./shards ../shards/tests/expect.edn
+          ./shards new ../shards/tests/snappy.shs
+          ./shards new ../shards/tests/expect.shs
           ./shards ../shards/tests/wasm.clj
           ./shards ../shards/tests/infos.clj
           ./shards ../shards/tests/rust.clj
-          ./shards ../shards/tests/crypto.edn
+          ./shards new ../shards/tests/crypto.shs
           ./shards ../shards/tests/wire-macro.edn
           ./shards new ../shards/tests/branch.shs
           ./shards new ../shards/tests/audio.shs test-device:true
           ./shards ../shards/tests/time.edn
-          ./shards ../shards/tests/eth.edn
+          ./shards new ../shards/tests/eth.shs
           ./shards ../shards/tests/many.edn
-          ./shards ../shards/tests/events.edn
-          ./shards ../shards/tests/complex-deserialize.edn
-          ./shards ../shards/tests/db.edn
+          ./shards new ../shards/tests/events.shs
+          ./shards new ../shards/tests/complex-deserialize.shs
+          ./shards new ../shards/tests/db.shs
           ./shards new ../shards/tests/suspend-resume.shs
           ./shards new ../shards/tests/help.shs
       - name: Test doc samples (non-UI)
