@@ -1,5 +1,5 @@
 use crate::{util, EguiId, CONTEXTS_NAME, EGUI_CTX_TYPE, HELP_VALUE_IGNORED, PARENTS_UI_NAME};
-use egui::{LayerId, Pos2, Sense, Vec2};
+use egui::{Align2, LayerId, Pos2, Sense, Vec2};
 use shards::{
   core::registerShard,
   shard::Shard,
@@ -18,7 +18,6 @@ shard! {
     contexts: ParamVar,
     parents: ParamVar,
     inner_exposed: ExposedTypes,
-    exposed: ExposedTypes,
   }
 
   impl Shard for TestMacroShard2 {
@@ -43,6 +42,9 @@ shard! {
       self.parents.cleanup();
       Ok(())
     }
+    fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+      Some(&self.inner_exposed)
+    }
     fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
       self.compose_helper(data)?;
 
@@ -61,14 +63,26 @@ shard! {
       let layer_id = LayerId::new(egui::Order::Foreground, EguiId::new(self, 1).into());
       let rect = egui::Rect::from_min_size(Pos2::new(x,y), Vec2::new(w,h));
 
-      let mut ui = egui::Ui::new(ui_ctx.clone(), layer_id, layer_id.id, rect, ui_ctx.screen_rect());
-      ui.set_enabled(true);
-      
+      let mut frame = egui::Area::new(layer_id.id);
+      frame = frame.fixed_pos(rect.min);
+
+      // let result = frame.show(ui_ctx, |ui| {
+      //   ui.set_max_size(rect.size());
+
+      //   let painter = ui.painter();
+      //   painter.rect_filled(ui.max_rect(), 0.5, egui::Color32::WHITE);
+      //   util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+      // }).inner?;
+
+      // println!("Wants pointer: {}", ui_ctx.wants_pointer_input());
+
       // let state = egui:: State
 
-      // let interact_id = layer_id.id.with("move");
-      // let response = ui.interact(rect,interact_id, Sense::click());
+      let interact_id = layer_id.id.with("move");
+      let mut ui = egui::Ui::new(ui_ctx.clone(), layer_id, layer_id.id, rect, ui_ctx.screen_rect());
+      ui.set_enabled(true);
       let result = util::activate_ui_contents(context, input, &mut ui, &mut self.parents, &mut self.contents)?;
+      let response = ui.interact(rect, interact_id, Sense::click());
       Ok(result)
     }
   }
@@ -83,7 +97,6 @@ impl Default for UIAbsoluteShard {
       required: Vec::new(),
       contents: ShardsVar::default(),
       inner_exposed: ExposedTypes::new(),
-      exposed: ExposedTypes::new(),
     }
   }
 }
