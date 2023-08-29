@@ -818,7 +818,7 @@ struct Match {
               fmt::format("Match: action at index {} is invalid, it should none, a shard or a sequence of shards.", idx));
         }
         _actions[idx] = actionItem;
-        _full[i] = _cases[idx]; // this cannot be matchItem, cos that will be gone after this call!!
+        _full[i] = _pcases[idx]; // this cannot be matchItem, cos that will be gone after this call!!
         _full[i + 1] = _actions[idx]; // this cannot be actionItem, cos that will be gone after this call!!
         idx++;
       }
