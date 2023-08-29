@@ -5,11 +5,20 @@
    (GFX.DrawQueue) >= .ui-draw-queue
    (GFX.UIPass .ui-draw-queue) >> .render-steps
    (UI.LayoutClass
-    :Layout {:main_direction LayoutDirection.BottomUp
-             :main_wrap true
-             :cross_align LayoutAlign.Center
-             :cross_justify true
-             }
+    :Layout {:main_direction LayoutDirection.LeftToRight}
+    :MinSize (Float2 200 200)
+    ;; note that some direction layouts may try to expand to max size and this max size will increase if the contents are too large
+    :MaxSize (Float2 600 600)
+    ;; :FillHeight true
+    ;; :FillWidth true
+    :Disabled false
+    :Frame LayoutFrame.Widgets
+    :ScrollArea {:horizontal_scroll_enabled true
+                 :vertical_scroll_enabled true
+                 :max_width 200.0
+                 :max_height 200.0
+                ;;  :scroll_visibility ScrollVisibility.AlwaysVisible ;; note that VisibleWhenNeeded may have some issues with scroll bar visibility
+                 }
     )
    >= .bottom-up-layout-class
    false >= .checked
@@ -34,4 +43,4 @@
                   :Label "button"
                   :Action (Msg "Clicked")))))))
 
-   (GFX.Render :Steps .render-steps)))
+  (GFX.Render :Steps .render-steps)))

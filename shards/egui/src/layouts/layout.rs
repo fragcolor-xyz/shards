@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use super::EguiScrollAreaSettings;
 use super::Layout;
 use super::LayoutAlign;
 use super::LayoutAlignCC;
@@ -10,7 +11,6 @@ use super::LayoutDirection;
 use super::LayoutDirectionCC;
 use super::LayoutFrame;
 use super::LayoutFrameCC;
-use super::EguiScrollAreaSettings;
 use super::ScrollVisibility;
 use crate::layouts::ScrollVisibilityCC;
 use crate::util;
@@ -144,7 +144,13 @@ lazy_static! {
       .into(),
     (
       cstr!("MinSize"),
-      shccstr!("The minimum size of the space to be reserved by this UI. Can be overidden by FillWidth and FillHeight."),
+      shccstr!("The minimum size of the space to be reserved by this UI. This allows the UI to take up more space than required for its widget contents. Can be overidden by FillWidth and FillHeight."),
+      FLOAT2_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("MaxSize"),
+      shccstr!("The maximum size of the space to be reserved by this UI. Prevents UI from taking as much space as possible. Can be overidden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
@@ -185,6 +191,12 @@ lazy_static! {
     .into(),
     (
       cstr!("MinSize"),
+      shccstr!("The minimum size of the space to be reserved by this UI. Can be overidden by FillWidth and FillHeight."),
+      FLOAT2_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("MaxSize"),
       shccstr!("The minimum size of the space to be reserved by this UI. Can be overidden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
@@ -468,7 +480,12 @@ impl Shard for LayoutConstructor {
         } else {
           if let Some(parent_layout_class) = parent_layout_class {
             // unlike layout, it is possible for this to be none because none of the parents may have had a ScrollArea
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, horizontal_scroll_enabled).unwrap_or(false)
+            retrieve_layout_class_attribute!(
+              parent_layout_class,
+              scroll_area,
+              horizontal_scroll_enabled
+            )
+            .unwrap_or(false)
           } else {
             false // default horizontal_scroll_enabled
           }
@@ -480,7 +497,12 @@ impl Shard for LayoutConstructor {
           enabled
         } else {
           if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, vertical_scroll_enabled).unwrap_or(false)
+            retrieve_layout_class_attribute!(
+              parent_layout_class,
+              scroll_area,
+              vertical_scroll_enabled
+            )
+            .unwrap_or(false)
           } else {
             false // default vertical_scroll_enabled
           }
@@ -495,7 +517,8 @@ impl Shard for LayoutConstructor {
           visibility
         } else {
           if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility).unwrap_or(ScrollVisibility::AlwaysVisible)
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility)
+              .unwrap_or(ScrollVisibility::AlwaysVisible)
           } else {
             ScrollVisibility::AlwaysVisible
           }
@@ -503,29 +526,29 @@ impl Shard for LayoutConstructor {
 
         const MIN_SCROLLING_SIZE: f32 = 64.0; // default value for min_scrolling_width and min_scrolling_height as of egui 0.22.0
 
-        let min_width = if let Some(min_width) =
-          retrieve_parameter!(scroll_area_table, "min_width", f32)
-        {
-          min_width
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_width).unwrap_or(MIN_SCROLLING_SIZE)
+        let min_width =
+          if let Some(min_width) = retrieve_parameter!(scroll_area_table, "min_width", f32) {
+            min_width
           } else {
-            MIN_SCROLLING_SIZE // default min_width
-          }
-        };
+            if let Some(parent_layout_class) = parent_layout_class {
+              retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_width)
+                .unwrap_or(MIN_SCROLLING_SIZE)
+            } else {
+              MIN_SCROLLING_SIZE // default min_width
+            }
+          };
 
-        let min_height = if let Some(min_height) =
-          retrieve_parameter!(scroll_area_table, "min_height", f32)
-        {
-          min_height
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_height).unwrap_or(MIN_SCROLLING_SIZE)
+        let min_height =
+          if let Some(min_height) = retrieve_parameter!(scroll_area_table, "min_height", f32) {
+            min_height
           } else {
-            MIN_SCROLLING_SIZE // default min_height
-          }
-        };
+            if let Some(parent_layout_class) = parent_layout_class {
+              retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_height)
+                .unwrap_or(MIN_SCROLLING_SIZE)
+            } else {
+              MIN_SCROLLING_SIZE // default min_height
+            }
+          };
 
         let enable_scrolling = if let Some(enable_scrolling) =
           retrieve_parameter!(scroll_area_table, "enable_scrolling", bool)
@@ -533,50 +556,49 @@ impl Shard for LayoutConstructor {
           enable_scrolling
         } else {
           if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, enable_scrolling).unwrap_or(true)
+            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, enable_scrolling)
+              .unwrap_or(true)
           } else {
             true // default enable_scrolling
           }
         };
 
-        let max_width = if let Some(max_width) =
-          retrieve_parameter!(scroll_area_table, "max_width", f32)
-        {
-          max_width
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_width).unwrap_or(f32::INFINITY)
+        let max_width =
+          if let Some(max_width) = retrieve_parameter!(scroll_area_table, "max_width", f32) {
+            max_width
           } else {
-            f32::INFINITY // default max_width
-          }
-        };
+            if let Some(parent_layout_class) = parent_layout_class {
+              retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_width)
+                .unwrap_or(f32::INFINITY)
+            } else {
+              f32::INFINITY // default max_width
+            }
+          };
 
-        let max_height = if let Some(max_height) =
-          retrieve_parameter!(scroll_area_table, "max_height", f32)
-        {
-          max_height
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_height).unwrap_or(f32::INFINITY)
+        let max_height =
+          if let Some(max_height) = retrieve_parameter!(scroll_area_table, "max_height", f32) {
+            max_height
           } else {
-            f32::INFINITY // default max_height
-          }
-        };
+            if let Some(parent_layout_class) = parent_layout_class {
+              retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_height)
+                .unwrap_or(f32::INFINITY)
+            } else {
+              f32::INFINITY // default max_height
+            }
+          };
 
-        Some(
-          EguiScrollAreaSettings {
-            horizontal_scroll_enabled,
-            vertical_scroll_enabled,
-            min_width,
-            min_height,
-            enable_scrolling,
-            max_width,
-            max_height,
-            scroll_visibility,
-          }
-        )
+        Some(EguiScrollAreaSettings {
+          horizontal_scroll_enabled,
+          vertical_scroll_enabled,
+          min_width,
+          min_height,
+          enable_scrolling,
+          max_width,
+          max_height,
+          scroll_visibility,
+        })
       } else {
-          return Err("Invalid scroll bar type provided. Expected Table for ScrollArea");
+        return Err("Invalid scroll bar type provided. Expected Table for ScrollArea");
       }
     } else {
       // if has parent, put None and let shard retrieve from parent. else, default is also None
@@ -831,26 +853,30 @@ impl Shard for Layout {
         }
       };
 
-      if fill_width {
-        min_size.0 = ui.available_size_before_wrap().x;
-      }
-      if fill_height {
-        min_size.1 = ui.available_size_before_wrap().y;
-      }
+      let mut min_size: egui::Vec2 = min_size.into();
 
-      // If the size is still 0, use only minimum size for an interactive widget
-      if min_size.0 == 0.0 {
-        min_size.0 = ui.spacing().interact_size.x;
-      }
-      if min_size.1 == 0.0 {
-        min_size.1 = ui.spacing().interact_size.y;
-      }
-
-      let max_size = if let Some(max_size) = max_size {
+      let mut max_size = if let Some(max_size) = max_size {
         egui::Vec2::new(max_size.0, max_size.1)
       } else {
         ui.available_size_before_wrap() // try to take up all available space (no max)
       };
+
+      if fill_width {
+        min_size.x = ui.available_size_before_wrap().x;
+        max_size.x = ui.available_size_before_wrap().x;
+      }
+      if fill_height {
+        min_size.y = ui.available_size_before_wrap().y;
+        max_size.y = ui.available_size_before_wrap().y;
+      }
+
+      // If the size is still 0, use only minimum size for an interactive widget
+      if min_size.x == 0.0 {
+        min_size.x = ui.spacing().interact_size.x;
+      }
+      if min_size.y == 0.0 {
+        min_size.y = ui.spacing().interact_size.y;
+      }
 
       let disabled =
         if let Some(disabled) = retrieve_layout_class_attribute!(layout_class, disabled) {
@@ -886,63 +912,64 @@ impl Shard for Layout {
 
       // if there is a frame, draw it as the outermost ui element
       if let Some(frame) = frame {
-        frame.show(ui, |ui| {
-          // set whether all widgets in the contents are enabled or disabled
-          ui.set_enabled(!disabled);
-          // add the new child_ui created by frame onto the stack of parents
-          util::with_object_stack_var_pass_stack_var(
-            &mut self.parents,
-            ui,
-            &EGUI_UI_TYPE,
-            |parent_stack_var| {
-              // inside of frame
-              let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
-              // render scroll area and inner layout if there is a scroll area
-              if let Some(scroll_area) = scroll_area {
-                scroll_area
-                  .id_source(scroll_area_id)
-                  .show(ui, |ui| {
-                    util::with_object_stack_var_pass_stack_var(
-                      parent_stack_var,
-                      ui,
-                      &EGUI_UI_TYPE,
-                      |parent_stack_var| {
-                        // inside of scroll area
-                        let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
-                        ui.allocate_ui_with_layout(max_size, layout, |ui| {
-                          ui.set_min_size(min_size.into()); // set minimum size of entire layout
+        frame
+          .show(ui, |ui| {
+            // set whether all widgets in the contents are enabled or disabled
+            ui.set_enabled(!disabled);
+            // add the new child_ui created by frame onto the stack of parents
+            util::with_object_stack_var_pass_stack_var(
+              &mut self.parents,
+              ui,
+              &EGUI_UI_TYPE,
+              |parent_stack_var| {
+                // inside of frame
+                let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
+                // render scroll area and inner layout if there is a scroll area
+                if let Some(scroll_area) = scroll_area {
+                  scroll_area
+                    .id_source(scroll_area_id)
+                    .show(ui, |ui| {
+                      util::with_object_stack_var_pass_stack_var(
+                        parent_stack_var,
+                        ui,
+                        &EGUI_UI_TYPE,
+                        |parent_stack_var| {
+                          // inside of scroll area
+                          let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
+                          ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                            ui.set_min_size(min_size.into()); // set minimum size of entire layout
 
-                          util::activate_ui_contents(
-                            context,
-                            input,
-                            ui,
-                            parent_stack_var,
-                            &mut self.contents,
-                          )
-                        })
-                        .inner
-                      })
-                    
+                            util::activate_ui_contents(
+                              context,
+                              input,
+                              ui,
+                              parent_stack_var,
+                              &mut self.contents,
+                            )
+                          })
+                          .inner
+                        },
+                      )
+                    })
+                    .inner
+                } else {
+                  // inside of frame, no scroll area to render, render inner layout
+                  ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                    ui.set_min_size(min_size.into()); // set minimum size of entire layout
+                    util::activate_ui_contents(
+                      context,
+                      input,
+                      ui,
+                      parent_stack_var,
+                      &mut self.contents,
+                    )
                   })
                   .inner
-              } else {
-                // inside of frame, no scroll area to render, render inner layout
-                ui.allocate_ui_with_layout(max_size, layout, |ui| {
-                  ui.set_min_size(min_size.into()); // set minimum size of entire layout
-                  util::activate_ui_contents(
-                    context,
-                    input,
-                    ui,
-                    parent_stack_var,
-                    &mut self.contents,
-                  )
-                })
-                .inner
-              }
-            }
-          )
-        })
-        .inner?;
+                }
+              },
+            )
+          })
+          .inner?;
       } else {
         // no frame to render, render only the scroll area (if applicable) and inner layout
         if let Some(scroll_area) = scroll_area {
@@ -968,21 +995,15 @@ impl Shard for Layout {
                     )
                   })
                   .inner
-                })
-              
+                },
+              )
             })
             .inner?;
         } else {
           // inside of frame, no scroll area to render, render inner layout
           ui.allocate_ui_with_layout(max_size, layout, |ui| {
             ui.set_min_size(min_size.into()); // set minimum size of entire layout
-            util::activate_ui_contents(
-              context,
-              input,
-              ui,
-              &mut self.parents,
-              &mut self.contents,
-            )
+            util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
           })
           .inner?;
         }
