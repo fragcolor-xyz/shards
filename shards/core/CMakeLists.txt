@@ -138,3 +138,11 @@ duplicate_library_target(shards-core SHARED shards-core-shared)
 target_compile_definitions(shards-core-shared
   PUBLIC SHARDS_CORE_DLL=1
   PRIVATE shards_core_EXPORTS=1)
+
+option(USE_UBSAN "Use undefined behaviour sanitizer" OFF)
+
+if(DESKTOP_LINUX OR APPLE AND USE_UBSAN)
+  target_compile_options(shards-core PUBLIC -fsanitize=undefined)
+  target_link_options(shards-core PUBLIC -fsanitize=undefined)
+  add_compile_definitions(SH_USE_UBSAN)
+endif()

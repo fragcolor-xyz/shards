@@ -188,14 +188,6 @@ if(PROFILE_GPROF)
   add_link_options(-pg)
 endif()
 
-option(USE_UBSAN "Use undefined behaviour sanitizer" OFF)
-
-if(DESKTOP_LINUX OR APPLE AND USE_UBSAN)
-  add_compile_options(-fsanitize=undefined)
-  add_link_options(-fsanitize=undefined)
-  add_compile_definitions(SH_USE_UBSAN)
-endif()
-
 option(USE_ASAN "Use address sanitizer" OFF)
 
 if(USE_ASAN)
