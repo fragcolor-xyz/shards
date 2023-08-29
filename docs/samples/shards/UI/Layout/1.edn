@@ -8,8 +8,7 @@
     :Layout {:main_direction LayoutDirection.LeftToRight})
    >= .left-to-right-layout-class
    (UI.LayoutClass
-    :Layout {:main_direction LayoutDirection.TopDown}
-    :FillWidth true)
+    :Layout {:main_direction LayoutDirection.TopDown})
    >= .top-down-layout-class)
   (UI
    .ui-draw-queue
@@ -17,6 +16,7 @@
     (->
      (UI.Layout
       :Class .left-to-right-layout-class
+      :MaxSize (Float2 0 0) ;; use as small area as possible, this vertical separator needs this to act like egui vertical separator
       :Contents (->
                  "Hello" (UI.Label)
                  (UI.Separator)
