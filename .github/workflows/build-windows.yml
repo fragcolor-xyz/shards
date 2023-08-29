@@ -235,31 +235,31 @@ jobs:
           cd build
           ./shards new ../shards/tests/hello.shs
           echo "Running test: general"
-          ./shards ../shards/tests/general.edn
+          ./shards new ../shards/tests/general.shs
           echo "Running test: variables"
           ./shards ../shards/tests/variables.edn
           echo "Running test: linalg"
-          ./shards ../shards/tests/linalg.clj
+          ./shards new ../shards/tests/linalg.shs
           echo "Running test: loader"
           ./shards ../shards/tests/loader.clj
           echo "Running test: network"
           ./shards new ../shards/tests/network.shs
           echo "Running test: struct"
-          ./shards ../shards/tests/struct.clj
+          ./shards new ../shards/tests/struct.shs
           echo "Running test: flows"
-          ./shards ../shards/tests/flows.edn
+          ./shards new ../shards/tests/flows.shs
           echo "Running test: kdtree"
           ./shards new ../shards/tests/kdtree.shs
           echo "Running test: channels"
-          ./shards ../shards/tests/channels.edn
+          ./shards new ../shards/tests/channels.shs
           echo "Running test: http"
-          ./shards ../shards/tests/http.clj
+          ./shards new ../shards/tests/http.shs
           echo "Running test: brotli"
           ./shards new ../shards/tests/brotli.shs
           echo "Running test: snappy"
-          ./shards ../shards/tests/snappy.clj
+          ./shards new ../shards/tests/snappy.shs
           echo "Running test: expect-like"
-          ./shards ../shards/tests/expect.edn
+          ./shards new ../shards/tests/expect.shs
           # echo "Running test: ws"
           # ./shards ../shards/tests/ws.edn
           echo "Running test: bigint"
@@ -267,11 +267,11 @@ jobs:
           echo "Running test: wasm"
           ./shards ../shards/tests/wasm.clj
           echo "Running test: eth"
-          ./shards ../shards/tests/eth.edn
+          ./shards new ../shards/tests/eth.shs
           echo "Running test: crypto"
-          ./shards ../shards/tests/crypto.edn
+          ./shards new ../shards/tests/crypto.shs
           echo "Running test: complex-deserialize"
-          ./shards ../shards/tests/complex-deserialize.edn
+          ./shards new ../shards/tests/complex-deserialize.shs
           echo "Running test: suspend-resume"
           ./shards new ../shards/tests/suspend-resume.shs
       - name: Test doc samples (non-UI)
@@ -310,18 +310,18 @@ jobs:
         run: |
           cd build
           echo "Running test: gfx_window"
-          ./shards ../shards/tests/gfx-window.edn
+          ./shards new ../shards/tests/gfx-window.shs
           echo "Running test: gfx_cube"
-          ./shards ../shards/tests/gfx-cube.edn
+          ./shards new ../shards/tests/gfx-cube.shs
           echo "Running test: gfx_materials"
-          ./shards ../shards/tests/gfx-materials.edn
+          ./shards new ../shards/tests/gfx-materials.shs
           echo "Running test: ui"
           ./shards ../shards/tests/ui-0.edn
           ./shards ../shards/tests/ui-1.edn
           echo "Running test: egui_demo"
-          ./shards ../shards/tests/egui-demo.edn
+          ./shards new ../shards/tests/egui-demo.shs
           echo "Running test: egui-plot"
-          ./shards ../shards/tests/egui-plot.edn
+          ./shards new ../shards/tests/egui-plot.shs
       - name: Physics Test
         env:
           GFX_BACKEND: D3D12
@@ -338,8 +338,8 @@ jobs:
         run: |
           cd build
           echo "Running test: genetic"
-          ./shards ../shards/tests/genetic.clj
+          ./shards new ../shards/tests/genetic.shs
           echo "Running test: time"
           ./shards ../shards/tests/time.edn
           echo "Running test: subwires"
-          ./shards ../shards/tests/subwires.clj
+          ./shards new ../shards/tests/subwires.shs
