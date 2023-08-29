@@ -1001,7 +1001,7 @@ impl Shard for Layout {
         // no frame to render, render only the scroll area (if applicable) and inner layout
         if let Some(scroll_area) = scroll_area {
           scroll_area
-          .id_source(scroll_area_id)
+            .id_source(scroll_area_id)
             .show(ui, |ui| {
               util::with_object_stack_var_pass_stack_var(
                 &mut self.parents,
