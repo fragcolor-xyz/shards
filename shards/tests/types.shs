@@ -1,0 +1,73 @@
+@mesh(root)
+
+; (defwire test1
+;   [2.3 2 "Hello"]
+;   (ForEach
+;    (->
+;     (Log "value")
+;     (Cond [(-> (IsInt)) (-> (ExpectInt) (Log "Int Value"))
+;            (-> (IsFloat)) (-> (ExpectFloat) (Log "Float Value"))
+;            (-> (IsString)) (-> (ExpectString) (Log "String Value"))
+;            (-> true) (-> "should not happen" (Fail))]))))
+
+; (schedule root test1)
+; (if (run root 0.1) nil (throw "Root tick failed"))
+
+; (defwire test2
+;   (type Int) (Log "Integer type")
+;   (var-type Int) (Log "Int var type")
+;   (var-type String) (Log "String var type")
+;   (type Int2) (Log "Int2 type")
+;   (type None) (Log "None type")
+;   (type [Int]) (Log "Int seq type")
+;   (type [(var-type Int)]) (Log "Int seq var type")
+;   (type {:key Int}) (Log "Table type")
+;   (type (GFX.Drawable)) (Log "Drawable object type")
+;   (type (GFX.MainWindow)) (Log "MainWindow object type")
+;   (type WindingOrder) (Log "Enum type (WindingOrder)")
+;   (type [Any]) (Log "Any seq type")
+;   (type [Image]) (Log "Image seq type")
+;   (type [Wire]) (Log "Wire seq type")
+;   (type [Shard]) (Log "Shard seq type")
+;   (type {:key String :object (var-type [(var-type (GFX.Feature))])}) (Log "Complex table type"))
+
+; (schedule root test2)
+; (if (run root 0.1) nil (throw "Root tick failed"))
+
+@wire(test1 {
+  [2.3 2 "Hello"] |
+  ForEach({
+    Log("value") |
+    Cond([
+      {IsInt} {ExpectInt | Log("Int Value")}
+      {IsFloat} {ExpectFloat | Log("Float Value")}
+      {IsString} {ExpectString | Log("String Value")}
+      {true} {"should not happen" | Fail}
+    ])
+  })
+})
+
+@schedule(root test1)
+@run(root FPS: 10)
+
+@wire(test2 {
+  @type(Type::Int) | Log("Integer type")
+  @type(Type::Int Variable: true) | Log("Int var type")
+  @type(Type::String Variable: true) | Log("String var type")
+  @type(Type::Int2) | Log("Int2 type")
+  @type(Type::None) | Log("None type")
+  @type([Type::Int]) | Log("Int seq type")
+  @type([@type(Type::Int Variable: true)]) | Log("Int seq var type")
+  @type({key: Type::Int}) | Log("Table type")
+  @type(GFX.Drawable) | Log("Drawable object type")
+  @type(GFX.MainWindow) | Log("MainWindow object type")
+  ; @type(WindingOrder) | Log("Enum type (WindingOrder)") ; this is not supported now
+  @type([Type::Any]) | Log("Any seq type")
+  @type([Type::Image]) | Log("Image seq type")
+  @type([Type::Wire]) | Log("Wire seq type")
+  @type([Type::Shard]) | Log("Shard seq type")
+  @type({key: Type::String object: @type([@type(GFX.Feature Variable: true)] Variable: true)}) | Log("Complex table type")
+})
+
+@schedule(root test2)
+@run(root FPS: 10)
