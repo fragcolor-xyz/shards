@@ -166,7 +166,8 @@ impl Default for PropertyShard {
     Self {
       contexts: ParamVar::new_named(CONTEXTS_NAME),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
-      ..Default::default()
+      property: ClonedVar::default(),
+      required: Vec::new(),
     }
   }
 }

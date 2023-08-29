@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::Anchor;
 use super::Area;
-use crate::containers::ANCHOR_TYPES;
+use crate::Anchor;
+use crate::ANCHOR_TYPES;
 use crate::util;
 use crate::EguiId;
 use crate::CONTEXTS_NAME;
@@ -244,24 +244,5 @@ impl Shard for Area {
 
     // Always passthrough the input
     Ok(*input)
-  }
-}
-
-impl TryFrom<Anchor> for egui::Align2 {
-  type Error = &'static str;
-
-  fn try_from(value: Anchor) -> Result<Self, Self::Error> {
-    match value {
-      Anchor::TopLeft => Ok(egui::Align2::LEFT_TOP),
-      Anchor::Left => Ok(egui::Align2::LEFT_CENTER),
-      Anchor::BottomLeft => Ok(egui::Align2::LEFT_BOTTOM),
-      Anchor::Top => Ok(egui::Align2::CENTER_TOP),
-      Anchor::Center => Ok(egui::Align2::CENTER_CENTER),
-      Anchor::Bottom => Ok(egui::Align2::CENTER_BOTTOM),
-      Anchor::TopRight => Ok(egui::Align2::RIGHT_TOP),
-      Anchor::Right => Ok(egui::Align2::RIGHT_CENTER),
-      Anchor::BottomRight => Ok(egui::Align2::RIGHT_BOTTOM),
-      _ => Err("Invalid value for Anchor"),
-    }
   }
 }

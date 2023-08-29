@@ -21,41 +21,6 @@ struct Area {
   exposing: ExposedTypes,
 }
 
-shenum! {
-  struct Anchor {
-    [description("Top left corner.")]
-    const TopLeft = 0x00;
-    [description("Middle left.")]
-    const Left = 0x10;
-    [description("Bottom left corner.")]
-    const BottomLeft = 0x20;
-    [description("Top middle.")]
-    const Top = 0x01;
-    [description("Center.")]
-    const Center = 0x11;
-    [description("Bottom middle.")]
-    const Bottom = 0x21;
-    [description("Top right corner.")]
-    const TopRight = 0x02;
-    [description("Middle right.")]
-    const Right = 0x12;
-    [description("Bottom right corner.")]
-    const BottomRight = 0x22;
-  }
-
-  struct AnchorInfo {}
-}
-
-shenum_types! {
-  AnchorInfo,
-  const AnchorCC = fourCharacterCode(*b"egAn");
-  static ref AnchorEnumInfo;
-  static ref ANCHOR_TYPE: Type;
-  static ref ANCHOR_TYPES: Vec<Type>;
-  static ref SEQ_OF_ANCHOR: Type;
-  static ref SEQ_OF_ANCHOR_TYPES: Vec<Type>;
-}
-
 struct DockArea {
   instance: ParamVar,
   requiring: ExposedTypes,
@@ -161,7 +126,6 @@ mod window;
 
 pub fn registerShards() {
   registerShard::<Area>();
-  registerEnumType(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
   docking::registerShards();
   registerShard::<Scope>();
   registerShard::<Window>();
@@ -172,6 +136,5 @@ pub fn registerShards() {
   registerShard::<RightPanel>();
   registerShard::<TopPanel>();
 
-  assert_eq!(AnchorCC, 1701265774);
   assert_eq!(WindowFlagsCC, 1701271366);
 }

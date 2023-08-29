@@ -59,13 +59,13 @@ where
   result
 }
 
-pub fn activate_ui_contents<'a>(
+pub fn activate_ui_contents(
   context: &Context,
   input: &Var,
   ui: &mut egui::Ui,
   parents_stack_var: &mut ParamVar,
   contents: &ShardsVar,
-) -> Result<Var, &'a str> {
+) -> Result<Var, &'static str> {
   let mut output = Var::default();
 
   with_object_stack_var(parents_stack_var, ui, &EGUI_UI_TYPE, || {

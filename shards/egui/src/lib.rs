@@ -5,6 +5,7 @@
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
 use shards::core::cloneVar;
+use shards::core::registerEnumType;
 use shards::core::registerShard;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
@@ -255,11 +256,111 @@ impl<'a> egui::TextBuffer for MutVarTextBuffer<'a> {
   }
 }
 
+shenum! {
+  pub struct Anchor {
+    [description("Top left corner.")]
+    const TopLeft = 0x00;
+    [description("Middle left.")]
+    const Left = 0x10;
+    [description("Bottom left corner.")]
+    const BottomLeft = 0x20;
+    [description("Top middle.")]
+    const Top = 0x01;
+    [description("Center.")]
+    const Center = 0x11;
+    [description("Bottom middle.")]
+    const Bottom = 0x21;
+    [description("Top right corner.")]
+    const TopRight = 0x02;
+    [description("Middle right.")]
+    const Right = 0x12;
+    [description("Bottom right corner.")]
+    const BottomRight = 0x22;
+  }
+
+  struct AnchorInfo {}
+}
+
+shenum_types! {
+  AnchorInfo,
+  const AnchorCC = fourCharacterCode(*b"egAn");
+  static ref AnchorEnumInfo;
+  static ref ANCHOR_TYPE: Type;
+  static ref ANCHOR_TYPES: Vec<Type>;
+  static ref SEQ_OF_ANCHOR: Type;
+  static ref SEQ_OF_ANCHOR_TYPES: Vec<Type>;
+}
+
+impl TryFrom<Anchor> for egui::Align2 {
+  type Error = &'static str;
+
+  fn try_from(value: Anchor) -> Result<Self, Self::Error> {
+    match value {
+      Anchor::TopLeft => Ok(egui::Align2::LEFT_TOP),
+      Anchor::Left => Ok(egui::Align2::LEFT_CENTER),
+      Anchor::BottomLeft => Ok(egui::Align2::LEFT_BOTTOM),
+      Anchor::Top => Ok(egui::Align2::CENTER_TOP),
+      Anchor::Center => Ok(egui::Align2::CENTER_CENTER),
+      Anchor::Bottom => Ok(egui::Align2::CENTER_BOTTOM),
+      Anchor::TopRight => Ok(egui::Align2::RIGHT_TOP),
+      Anchor::Right => Ok(egui::Align2::RIGHT_CENTER),
+      Anchor::BottomRight => Ok(egui::Align2::RIGHT_BOTTOM),
+      _ => Err("Invalid value for Anchor"),
+    }
+  }
+}
+
+shenum! {
+  pub struct UIOrder {
+    [description("Painted behind all floating windows.")]
+    const Background = 0;
+    [description("Special layer between panels and windows.")]
+    const PanelResizeLine = 1;
+    [description("Normal moveable windows that you reorder by click.")]
+    const Middle = 2;
+    [description("Popups, menus etc that should always be painted on top of windows. Foreground objects can also have tooltips.")]
+    const Foreground = 3;
+    [description("Things floating on top of everything else, like tooltips. You cannot interact with these.")]
+    const Tooltip = 4;
+    [description("Debug layer, always painted last / on top.")]
+    const Debug = 5;
+  }
+
+  struct UIOrderInfo {}
+}
+
+shenum_types! {
+  UIOrderInfo,
+  const UIOrderCC = fourCharacterCode(*b"egOr");
+  static ref UIOrderEnumInfo;
+  static ref UIORDER_TYPE: Type;
+  static ref UIORDER_TYPES: Vec<Type>;
+  static ref SEQ_OF_UIORDER: Type;
+  static ref SEQ_OF_UIORDER_TYPES: Vec<Type>;
+}
+
+impl TryFrom<UIOrder> for egui::Order {
+  type Error = &'static str;
+
+  fn try_from(value: UIOrder) -> Result<Self, Self::Error> {
+    match value {
+      UIOrder::Background => Ok(egui::Order::Background),
+      UIOrder::PanelResizeLine => Ok(egui::Order::PanelResizeLine),
+      UIOrder::Middle => Ok(egui::Order::Middle),
+      UIOrder::Foreground => Ok(egui::Order::Foreground),
+      UIOrder::Tooltip => Ok(egui::Order::Tooltip),
+      UIOrder::Debug => Ok(egui::Order::Debug),
+      _ => Err("Invalid value for UIOrder"),
+    }
+  }
+}
+
 pub extern "C" fn register(core: *mut shards::shardsc::SHCore) {
   unsafe {
     shards::core::Core = core;
   }
-
+  registerEnumType(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
+  registerEnumType(FRAG_CC, UIOrderCC, UIOrderEnumInfo.as_ref().into());
   registerShard::<EguiContext>();
   state::registerShards();
   containers::registerShards();
