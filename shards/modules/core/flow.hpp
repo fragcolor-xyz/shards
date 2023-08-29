@@ -819,7 +819,7 @@ struct Match {
         }
         _actions[idx] = actionItem;
         _full[i] = matchItem;
-        _full[i + 1] = actionItem;
+        _full[i + 1] = _actions[idx]; // this cannot be actionItem, cos that will be gone after this call!!
         idx++;
       }
     } break;
