@@ -253,9 +253,8 @@ fn extract_make_ints_shard<const WIDTH: usize>(
 
   for i in 0..len {
     let var = match &params[i].value {
-      Value::Identifier(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
-      Value::Number(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
-      _ => return error_requires_number(line_info),
+      Value::Identifier(_) | Value::Number(_) | Value::Expr(_) | Value::EvalExpr(_) => {
+        as_var(&params[i].value, line_info, Some(shard.0), e)
     }?;
     shard
       .0
@@ -437,10 +436,10 @@ fn process_vector_built_in_floats_block<const WIDTH: usize>(
   let (params, len) = get_vec_params::<WIDTH, 16>(func, line_info)?;
 
   let has_variables = params.iter().any(|x| {
-    if let Value::Identifier(_) = &x.value {
-      true
-    } else {
+    if let Value::Number(_) = &x.value {
       false
+    } else {
+      true
     }
   });
 
@@ -497,8 +496,9 @@ fn extract_make_floats_shard<const WIDTH: usize>(
 
   for i in 0..len {
     let var = match &params[i].value {
-      Value::Identifier(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
-      Value::Number(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
+      Value::Identifier(_) | Value::Number(_) | Value::Expr(_) | Value::EvalExpr(_) => {
+        as_var(&params[i].value, line_info, Some(shard.0), e)
+      }
       _ => return error_requires_number(line_info),
     }?;
     shard
@@ -627,9 +627,8 @@ fn extract_make_colors_shard(
 
   for i in 0..len {
     let var = match &params[i].value {
-      Value::Identifier(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
-      Value::Number(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
-      _ => return error_requires_number(line_info),
+      Value::Identifier(_) | Value::Number(_) | Value::Expr(_) | Value::EvalExpr(_) => {
+        as_var(&params[i].value, line_info, Some(shard.0), e)
     }?;
     shard
       .0
