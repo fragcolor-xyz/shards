@@ -806,10 +806,10 @@ struct Match {
       _full.resize(counter);
       auto idx = 0;
       for (uint32_t i = 0; i < counter; i += 2) {
-        auto matchItem = value.payload.seqValue.elements[i];
+        auto &matchItem = value.payload.seqValue.elements[i];
         _cases[idx] = matchItem;
         _pcases[idx] = matchItem;
-        auto actionItem = value.payload.seqValue.elements[i + 1];
+        auto &actionItem = value.payload.seqValue.elements[i + 1];
         TypeInfo actionInfo(actionItem, SHInstanceData{});
         if (!matchTypes(actionInfo, CoreInfo::NoneType, true, true, true) &&
             !matchTypes(actionInfo, CoreInfo::ShardRefType, true, true, true) &&
@@ -818,7 +818,7 @@ struct Match {
               fmt::format("Match: action at index {} is invalid, it should none, a shard or a sequence of shards.", idx));
         }
         _actions[idx] = actionItem;
-        _full[i] = matchItem;
+        _full[i] = _cases[idx]; // this cannot be matchItem, cos that will be gone after this call!!
         _full[i + 1] = _actions[idx]; // this cannot be actionItem, cos that will be gone after this call!!
         idx++;
       }
