@@ -4,22 +4,22 @@
 @mesh(root)
 
 @wire(producer {
-    Repeat({
-        "A message" |
-        Produce("a") |
-        Log("Produced: ")
-    } 10)
-    Complete("a")
+  Repeat({
+    "A message" |
+    Produce("a") |
+    Log("Produced: ")
+  } 10)
+  Complete("a")
 })
 
 @wire(consumer-1 {
-    Consume("a" @type(Type::String)) |
-    Log("Consumed 1: ")
+  Consume("a" @type(Type::String)) |
+  Log("Consumed 1: ")
 } Looped: true)
 
 @wire(consumer-2 {
-    Consume("a" @type(Type::String) 5) |
-    Log("Consumed 2: ")
+  Consume("a" @type(Type::String) 5) |
+  Log("Consumed 2: ")
 } Looped: true)
 
 @schedule(root producer)
@@ -28,26 +28,26 @@
 @run(root 0.1)
 
 @wire(producer-2 {
-    Repeat({
-        "A message" |
-        Broadcast("b"  NoCopy!!: true) |
-        Log("Broadcasted: ")
-        Pause(0.1)
-    } 10)
-    Complete("b")
+  Repeat({
+    "A message" |
+    Broadcast("b"  NoCopy!!: true) |
+    Log("Broadcasted: ")
+    Pause(0.1)
+  } 10)
+  Complete("b")
 })
 
 @template(consumers [x] {
-    ; TODO construct the name of the wire from the parameter
-    @wire(#(["consumer" x] | String.Join) {
-        Listen("b" @type(Type::String)) |
-        Log(#([x ": "] | String.Join))
-    } Looped: true)
+  ; TODO construct the name of the wire from the parameter
+  @wire(#(["consumer" x] | String.Join) {
+    Listen("b" @type(Type::String)) |
+    Log(#([x ": "] | String.Join))
+  } Looped: true)
 })
 
 @wire(consumer-33 {
-    Listen("b" @type(Type::String) 3) |
-    Log("Consumed 33: ")
+  Listen("b" @type(Type::String) 3) |
+  Log("Consumed 33: ")
 } Looped: true)
 
 @schedule(root producer-2)

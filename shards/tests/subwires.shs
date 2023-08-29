@@ -1,0 +1,213 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2019 Fragcolor Pte. Ltd.
+
+@mesh(root)
+
+@wire(mywire {
+  "Hello wire" |
+  Set(var1 Global: true) |
+  Cond([
+    {true} {1 | Set(var2 Global: true)}
+    {false} {2 | Set(var2 Global: true)}
+  ])
+  Input |
+  Log |
+  Assert.Is("Initial input" true)
+})
+
+@wire(other {
+  99
+})
+
+@wire(otherLooped {
+  10
+} Looped: true)
+
+@wire(func {
+  If({Is(10) | Or | Is(20)} {Log})
+})
+
+@wire(jumphere {
+  Msg("jumped...")
+  Resume(ticked)
+})
+
+@wire(jumphere2 {
+  Msg("jumped...")
+  Resume
+})
+
+@wire(stopping {
+  Msg("resumed stopping")
+  Stop
+})
+
+@wire(ticked {
+  ; check that we can read root variables
+  var-from-root |
+  Assert.Is("Ok!" true)
+
+  Msg("message 1")
+  1 |
+  Pause |
+  Msg("message 2") |
+
+  ; test jumping to another coro
+  Resume(jumphere) |
+  Msg("ticked resumed") |
+  2 |
+  Pause |
+  Msg("message 3") |
+  3 |
+  Pause |
+
+  Msg("message 4") |
+  4 |
+  Pause |
+
+  ; make sure main is not stopped in this case
+  Resume(stopping) |
+  ; the flow stopped via Stop, the input of Stop was 4 from previous Resume
+  Assert.Is(4 true)
+})
+
+@wire(ticked2 {
+  Msg("message 1")
+  1 |
+  Pause |
+  Msg("message 2") |
+
+  ; test jumping to another coro
+  Resume(jumphere2) |
+  Msg("ticked resumed") |
+  2 |
+  Pause |
+  Msg("message 3") |
+  3 |
+  Pause |
+
+  Msg("message 4") |
+  4 |
+  Msg("ticked2 done")
+})
+
+@wire(started {
+  Msg("From top!")
+  Resume(root-wire) |
+  ; root-wire should complete, and so output "done"
+  Assert.Is("done" true)
+})
+
+@wire(root-wire {
+  "Initial input" |
+  Once({Do(mywire)}) |
+  Get(var1) |
+  Log("var1") |
+  Get(var2) |
+  Log("var2") |
+  Detach(other) |
+  Wait(other) |
+  Log("otherWire") |
+  Assert.Is(99 true)
+  10 |
+  Do(func)
+  12 |
+  Do(func)
+  20 |
+  Do(func)
+
+  Detach(otherLooped) |
+  Stop(otherLooped) |
+  Wait(otherLooped)
+
+  "Ok!" = var-from-root
+  ; test a stepped wire that Stops
+  Step(ticked) |
+  Msg("had message 1") |
+  Assert.Is(1 true) ; pause after 1
+
+  Step(ticked) |
+  Msg("had message 2") |
+  Assert.Is(1 true) ; resume pauses jumped
+
+  Step(ticked) |
+  Msg("before ticked resume") |
+  Assert.Is(1 true) ; resumed ticked and resumed ticked again so paused
+
+  Step(ticked) ; pause after 2
+  Assert.Is(2 true)
+
+  Step(ticked) ; resume pauses when going stopping
+  Msg("had message 3") |
+  Assert.Is(3 true) ; pause after 3
+
+  Step(ticked) |
+  Msg("had message 4") |
+  Assert.Is(4 true) ; pause after 4
+
+  Step(ticked) ; will stop the wire
+  Assert.Is(4 true)
+  Step(ticked) ; last result wire is done
+  Assert.Is(4 true)
+  Step(ticked) ; last result wire is done
+  Assert.Is(4 true)
+
+  ; test a stepped wire that never stops and rotates
+  Repeat({
+    Msg("repeating!")
+    Step(ticked2) |
+    Msg("had message 1") |
+    Assert.Is(1 true) ; pause after 1
+
+    Step(ticked2) |
+    Msg("had message 2") |
+    Assert.Is(1 true) ; resume pauses jumped
+
+    Step(ticked2) |
+    Msg("before ticked resume") |
+    Assert.Is(1 true) ; resumed ticked and resumed ticked again so paused
+
+    Step(ticked2) ; pause after 2
+    Assert.Is(2 true)
+
+    Step(ticked2) ; resume pauses when going stopping
+    Msg("had message 3") |
+    Assert.Is(3 true) ; pause after 3
+
+    Step(ticked2) |
+    Msg("had message 4") |
+    Assert.Is(4 true) ; pause after 4
+  } Times: 3)
+
+  Start(started) |
+  Msg("root resumed") |
+  Start(started) |
+  Msg("root resumed")
+
+  "done" |
+  Log
+})
+
+@schedule(root root-wire)
+@run(root)
+
+@wire(save {
+  Const(root-wire) |
+  WriteFile("subwires.wire") |
+  Msg("Serialized!")
+})
+
+@schedule(root save)
+@run(root)
+
+@wire(load {
+  ReadFile("subwires.wire") |
+  ExpectWire >= wire
+  Log("loaded") |
+  ; we must do this here! cos wire will try to resume self
+  WireRunner(wire Mode: RunWireMode::Async) |
+  Wait(wire)
+})
+
+@schedule(root load)
+@run(root)
