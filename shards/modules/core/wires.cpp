@@ -53,9 +53,9 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, IterableExposed
               wire->name, data.inputType);
   // verify input type
   if (!passthrough && data.inputType != wire->inputType && !wire->ignoreInputTypeCheck) {
-    throw ComposeError(fmt::format("Attempted to call an already composed wire with a "
-                                   "different input type! wire: {}, old type: {}, new type: {}",
-                                   wire->name, (SHTypeInfo)wire->inputType, data.inputType));
+    throw ComposeError(fmt::format(
+        "Attempted to call an already composed wire with a different input type! wire: {}, old type: {}, new type: {}",
+        wire->name, (SHTypeInfo)wire->inputType, data.inputType));
   }
 
   // ensure requirements match our input data

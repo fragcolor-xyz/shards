@@ -839,11 +839,17 @@ struct PeerBase {
   }
 
   SHExposedTypesInfo requiredVariables() {
-    // TODO add _peerParam
-    _requiring[0].name = "Network.Peer";
-    _requiring[0].help = SHCCSTR("The required peer.");
-    _requiring[0].exposedType = Client::PeerType;
-    return {_requiring.data(), 1, 0};
+    if (_peerParam.isVariable()) {
+      _requiring[0].name = _peerParam.variableName();
+      _requiring[0].help = SHCCSTR("The required peer.");
+      _requiring[0].exposedType = Client::PeerType;
+      return {_requiring.data(), 1, 0};
+    } else {
+      _requiring[0].name = "Network.Peer";
+      _requiring[0].help = SHCCSTR("The required peer.");
+      _requiring[0].exposedType = Client::PeerType;
+      return {_requiring.data(), 1, 0};
+    }
   }
 };
 
@@ -881,6 +887,16 @@ struct PeerID : public PeerBase {
     return Var(reinterpret_cast<entt::id_type>(peer));
   }
 };
+
+struct GetPeer : public PeerBase {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return Client::PeerType; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto peer = getPeer(context);
+    return Var::Object(peer, CoreCC, PeerCC);
+  }
+};
 }; // namespace Network
 
 }; // namespace shards
@@ -891,4 +907,5 @@ SHARDS_REGISTER_FN(network) {
   REGISTER_SHARD("Network.Client", Client);
   REGISTER_SHARD("Network.Send", Send);
   REGISTER_SHARD("Network.PeerID", PeerID);
+  REGISTER_SHARD("Network.Peer", GetPeer);
 }
