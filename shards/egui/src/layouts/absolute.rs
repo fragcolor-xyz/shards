@@ -78,7 +78,7 @@ shard! {
       let ui_ctx = util::get_current_context(&self.contexts)?;
 
       let mut frame = egui::Area::new(EguiId::new(self, 1));
-      
+
       frame = frame.order(if let Ok(ev) = self.order.get().enum_value() {
         UIOrder{bits: ev}.try_into()?
       } else {
