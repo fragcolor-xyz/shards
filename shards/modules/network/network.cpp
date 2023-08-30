@@ -724,7 +724,7 @@ struct Client : public NetworkBase {
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
     shards::arrayPush(data.shared, endpointInfo);
     _blks.compose(data);
-    return NetworkBase::compose(data);
+    return PeerType;
   }
 
   void cleanup() {
