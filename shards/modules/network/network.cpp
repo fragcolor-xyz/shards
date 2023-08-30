@@ -26,6 +26,7 @@
 namespace shards {
 namespace Network {
 constexpr uint32_t PeerCC = 'netP';
+constexpr uint32_t ServerCC = 'netS';
 
 struct NetworkContext {
   boost::asio::io_context _io_context;
@@ -48,7 +49,7 @@ struct NetworkContext {
   ~NetworkContext() {
     SHLOG_TRACE("NetworkContext dtor");
     _io_context.stop(); // internally it will lock and send stop to all threads
-    if(_io_context_thread.joinable())
+    if (_io_context_thread.joinable())
       _io_context_thread.join();
   }
 };
@@ -169,20 +170,30 @@ struct NetworkBase {
   };
 
   struct Writer {
-    char *buffer;
+    // let's make this growable on demand
+    std::vector<uint8_t> buffer;
     size_t offset;
-    size_t max;
 
-    Writer(char *buf, size_t size) : buffer(buf), offset(0), max(size) {}
+    Writer() {}
 
     void operator()(const uint8_t *buf, size_t size) {
       auto newOffset = offset + size;
-      if (newOffset > max) {
-        throw ActivationError("Overflow requested");
+      // resize buffer if needed but it (*2) so to avoid too many resizes
+      if (newOffset > buffer.size()) {
+        buffer.resize(newOffset * 2);
       }
-      memcpy(buffer + offset, buf, size);
+      memcpy(buffer.data() + offset, buf, size);
       offset = newOffset;
     }
+
+    void reset() {
+      offset = 0;
+      buffer.clear();
+    }
+
+    // expose data and size
+    char *data() { return (char *)buffer.data(); }
+    size_t size() { return offset; }
   };
 
   void setPeer(SHContext *context, NetworkPeer &peer) {
@@ -205,6 +216,8 @@ struct Server : public NetworkBase {
   std::unordered_map<const SHWire *, NetworkPeer *> _wire2Peer;
   std::unique_ptr<WireDoppelgangerPool<NetworkPeer>> _pool;
   OwnedVar _handlerMaster{};
+
+  SHVar *_serverVar{nullptr};
 
   bool _running = false;
 
@@ -303,11 +316,18 @@ struct Server : public NetworkBase {
 
     NetworkBase::warmup(context);
 
+    setServer(context, this);
+
     _running = true;
   }
 
   void cleanup() {
     _running = false;
+
+    if (_serverVar) {
+      releaseVariable(_serverVar);
+      _serverVar = nullptr;
+    }
 
     if (_pool) {
       SHLOG_TRACE("Stopping all wires");
@@ -439,7 +459,7 @@ struct Server : public NetworkBase {
             if (_socket && _running)
               return do_receive();
           } else {
-            if(ec == boost::asio::error::operation_aborted) {
+            if (ec == boost::asio::error::operation_aborted) {
               SHLOG_DEBUG("Operation aborted");
               return;
             }
@@ -465,6 +485,26 @@ struct Server : public NetworkBase {
   ExposedInfo _sharedCopy;
   std::optional<SHContext *> _contextCopy;
   Composer _composer{*this};
+
+  void setServer(SHContext *context, Server *peer) {
+    if (!_serverVar) {
+      _serverVar = referenceVariable(context, "Network.Server");
+    }
+    auto rc = _serverVar->refcount;
+    auto flags = _serverVar->flags;
+    *_serverVar = Var::Object(peer, CoreCC, ServerCC);
+    _serverVar->refcount = rc;
+    _serverVar->flags = flags;
+  }
+
+  SHExposedTypesInfo exposedVariables() {
+    static std::array<SHExposedTypeInfo, 1> exposing;
+    exposing[0].name = "Network.Server";
+    exposing[0].help = SHCCSTR("The exposed server.");
+    exposing[0].exposedType = ServerType;
+    exposing[0].isProtected = true;
+    return {exposing.data(), 1, 0};
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_sharedNetworkContext);
@@ -533,6 +573,59 @@ struct Server : public NetworkBase {
 
     return input;
   }
+
+  static inline Type ServerType{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = ServerCC}}}};
+};
+
+struct Broadcast {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  SHExposedTypesInfo requiredVariables() {
+    static std::array<SHExposedTypeInfo, 1> required;
+    required[0].name = "Network.Server";
+    required[0].help = SHCCSTR("The required server.");
+    required[0].exposedType = Server::ServerType;
+    required[0].isProtected = true;
+    return {required.data(), 1, 0};
+  }
+
+  SHVar *_serverVar = nullptr;
+
+  void warmup(SHContext *context) {
+    if (!_serverVar) {
+      _serverVar = referenceVariable(context, "Network.Server");
+    }
+  }
+
+  void cleanup() {
+    if (_serverVar) {
+      releaseVariable(_serverVar);
+      _serverVar = nullptr;
+    }
+  }
+
+  ThreadShared<NetworkBase::Writer> _sendWriter;
+  Serialization serializer;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto server = reinterpret_cast<Server *>(_serverVar->payload.objectValue);
+
+    _sendWriter().reset();
+    serializer.reset();
+    auto size = serializer.serialize(input, _sendWriter());
+
+    // broadcast
+    for (auto &[end, peer] : server->_end2Peer) {
+      auto err = ikcp_send(peer->kcp, _sendWriter().data(), size);
+      if (err < 0) {
+        SHLOG_ERROR("ikcp_send error: {}", err);
+        throw ActivationError("ikcp_send error");
+      }
+    }
+
+    return input;
+  }
 };
 
 struct Client : public NetworkBase {
@@ -540,8 +633,9 @@ struct Client : public NetworkBase {
 
   SHExposedTypesInfo exposedVariables() {
     _exposing[0].name = "Network.Peer";
-    _exposing[0].help = SHCCSTR("The required peer.");
+    _exposing[0].help = SHCCSTR("The exposed peer.");
     _exposing[0].exposedType = Client::PeerType;
+    _exposing[0].isProtected = true;
     return {_exposing.data(), 1, 0};
   }
 
@@ -757,7 +851,7 @@ struct Send : public PeerBase {
   // Must take an optional seq of SocketData, to be used properly by server
   // This way we get also a easy and nice broadcast
 
-  ThreadShared<std::array<char, 0xFFFF>> _send_buffer;
+  ThreadShared<NetworkBase::Writer> _sendWriter;
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -766,10 +860,10 @@ struct Send : public PeerBase {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto peer = getPeer(context);
-    NetworkBase::Writer w(&_send_buffer().front(), _send_buffer().size());
+    _sendWriter().reset();
     serializer.reset();
-    auto size = serializer.serialize(input, w);
-    auto err = ikcp_send(peer->kcp, (char *)_send_buffer().data(), size);
+    auto size = serializer.serialize(input, _sendWriter());
+    auto err = ikcp_send(peer->kcp, _sendWriter().data(), size);
     if (err < 0) {
       SHLOG_ERROR("ikcp_send error: {}", err);
       throw ActivationError("ikcp_send error");
@@ -793,6 +887,7 @@ struct PeerID : public PeerBase {
 SHARDS_REGISTER_FN(network) {
   using namespace shards::Network;
   REGISTER_SHARD("Network.Server", Server);
+  REGISTER_SHARD("Network.Broadcast", Broadcast);
   REGISTER_SHARD("Network.Client", Client);
   REGISTER_SHARD("Network.Send", Send);
   REGISTER_SHARD("Network.PeerID", PeerID);
