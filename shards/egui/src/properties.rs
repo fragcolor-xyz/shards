@@ -11,6 +11,7 @@ use shards::core::registerShard;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
 use shards::types::common_type;
+use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -46,44 +47,17 @@ shenum_types! {
 }
 
 lazy_static! {
-  static ref PARAMETERS: Parameters = vec![(
-    cstr!("Property"),
-    shccstr!("Which property to read from the UI."),
-    &UIPROPERTY_TYPES[..],
-  )
-    .into(),];
   static ref OUTPUT_TYPES: Types = vec![common_type::float4,];
-}
-
-pub struct PropertyShard {
-  instance: ParamVar,
-  requiring: ExposedTypes,
-  parents: ParamVar,
-  property: Var,
-}
-
-impl Default for PropertyShard {
-  fn default() -> Self {
-    let mut instance = ParamVar::default();
-    instance.set_name(CONTEXTS_NAME);
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
-    Self {
-      instance,
-      requiring: Vec::new(),
-      parents,
-      property: Var::default(),
-    }
-  }
 }
 
 impl PropertyShard {
   fn get_ui_property(&self) -> Result<UIProperty, &str> {
-    match self.property.valueType {
+    match self.property.0.valueType {
       SHType_Enum => Ok(UIProperty {
         bits: unsafe {
           self
             .property
+            .0
             .payload
             .__bindgen_anon_1
             .__bindgen_anon_3
@@ -95,140 +69,105 @@ impl PropertyShard {
   }
 }
 
-impl Shard for PropertyShard {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("UI.Property")
+shard! {
+  struct PropertyShard("UI.Property", "Retrieves values from the current state of the UI.") {
+    contexts: ParamVar,
+    parents: ParamVar,
+    #[Param("Property", "The property to retrieve from the UI context", UIPROPERTY_TYPES)]
+    property: ClonedVar,
   }
 
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("UI.Property-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI.Property"
-  }
-
-  fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "Retrieves values from the current state of the UI."
-    ))
-  }
-
-  fn inputTypes(&mut self) -> &Types {
-    &NONE_TYPES
-  }
-
-  fn inputHelp(&mut self) -> OptionalString {
-    *HELP_VALUE_IGNORED
-  }
-
-  fn outputTypes(&mut self) -> &Types {
-    &OUTPUT_TYPES
-  }
-
-  fn outputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!("The value produced."))
-  }
-
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => Ok(self.property = *value),
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.property,
-      _ => Var::default(),
-    }
-  }
-
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    let (require_ui_parent) = match self.get_ui_property().unwrap() {
-      UIProperty::RemainingSpace => true,
-      _ => false,
-    };
-
-    if require_ui_parent {
-      // Add UI.Parents to the list of required variables
-      util::require_parents(&mut self.requiring, &self.parents);
+  impl Shard for PropertyShard {
+    fn inputTypes(&mut self) -> &Types {
+      &NONE_TYPES
     }
 
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_CTX_TYPE,
-      name: self.instance.get_name(),
-      help: cstr!("The exposed UI context.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
-
-    Some(&self.requiring)
-  }
-
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.instance.warmup(ctx);
-    self.parents.warmup(ctx);
-
-    Ok(())
-  }
-
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.parents.cleanup();
-    self.instance.cleanup();
-
-    Ok(())
-  }
-
-  fn hasCompose() -> bool {
-    true
-  }
-
-  fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
-    let prop = self.get_ui_property()?;
-    match prop {
-      UIProperty::RemainingSpace => Ok(common_type::float4),
-      UIProperty::ScreenSize => Ok(common_type::float2),
-      _ => Err("Unknown property"),
+    fn inputHelp(&mut self) -> OptionalString {
+      *HELP_VALUE_IGNORED
     }
-  }
 
-  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    let ui = util::get_current_parent(self.parents.get()).map_err(|_| "No parent UI");
+    fn outputTypes(&mut self) -> &Types {
+      &OUTPUT_TYPES
+    }
 
-    match self.get_ui_property()? {
-      UIProperty::RemainingSpace => {
-        let ui = ui?.ok_or("No parent UI")?;
-        let target_size = ui.available_size();
-        let target_pos = ui.next_widget_position().to_vec2();
+    fn outputHelp(&mut self) -> OptionalString {
+      OptionalString(shccstr!("The value produced."))
+    }
 
-        let draw_scale = ui.ctx().pixels_per_point();
+    fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+      self.warmup_helper(ctx)?;
+      self.contexts.warmup(ctx);
+      self.parents.warmup(ctx);
 
-        let min = target_pos * draw_scale;
-        let max = (target_pos + target_size) * draw_scale;
+      Ok(())
+    }
 
-        // Float4 rect as (X0, Y0, X1, Y1)
-        let result_rect: Var = (min.x, min.y, max.x, max.y).into();
-        Ok(result_rect)
+    fn cleanup(&mut self) -> Result<(), &str> {
+      self.cleanup_helper()?;
+      self.parents.cleanup();
+      self.contexts.cleanup();
+
+      Ok(())
+    }
+
+    fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+      self.compose_helper(data)?;
+
+      let (require_ui_parent) = match self.get_ui_property().unwrap() {
+        UIProperty::RemainingSpace => true,
+        _ => false,
+      };
+
+      if require_ui_parent {
+        util::require_parents(&mut self.required);
       }
-      UIProperty::ScreenSize => {
-        let ctx = util::get_current_context(&self.instance)?;
-        let size = ctx.screen_rect().size();
-        Ok((size.x, size.y).into())
+
+      util::require_context(&mut self.required);
+
+      let prop = self.get_ui_property()?;
+      match prop {
+        UIProperty::RemainingSpace => Ok(common_type::float4),
+        UIProperty::ScreenSize => Ok(common_type::float2),
+        _ => Err("Unknown property"),
       }
-      _ => Err("Unknown property"),
+    }
+
+    fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+      let ui = util::get_current_parent(self.parents.get()).map_err(|_| "No parent UI");
+
+      match self.get_ui_property()? {
+        UIProperty::RemainingSpace => {
+          let ui = ui?.ok_or("No parent UI")?;
+          let target_size = ui.available_size();
+          let target_pos = ui.next_widget_position().to_vec2();
+
+          let draw_scale = ui.ctx().pixels_per_point();
+
+          let min = target_pos * draw_scale;
+          let max = (target_pos + target_size) * draw_scale;
+
+          // Float4 rect as (X0, Y0, X1, Y1)
+          let result_rect: Var = (min.x, min.y, max.x, max.y).into();
+          Ok(result_rect)
+        }
+        UIProperty::ScreenSize => {
+          let ctx = util::get_current_context(&self.contexts)?;
+          let size = ctx.screen_rect().size();
+          Ok((size.x, size.y).into())
+        }
+        _ => Err("Unknown property"),
+      }
+    }
+  }
+}
+
+impl Default for PropertyShard {
+  fn default() -> Self {
+    Self {
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
+      property: ClonedVar::default(),
+      required: Vec::new(),
     }
   }
 }

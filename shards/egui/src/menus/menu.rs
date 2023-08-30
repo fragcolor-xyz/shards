@@ -102,7 +102,7 @@ impl Shard for CloseMenu {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }
@@ -210,7 +210,7 @@ If called from within a menu this will instead create a button for a sub-menu."
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }
@@ -354,7 +354,7 @@ impl Shard for MenuBar {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

@@ -188,7 +188,7 @@ macro_rules! impl_ui_input {
         self.requiring.clear();
 
         // Add UI.Parents to the list of required variables
-        util::require_parents(&mut self.requiring, &self.parents);
+        util::require_parents(&mut self.requiring);
 
         Some(&self.requiring)
       }
@@ -400,7 +400,7 @@ macro_rules! impl_ui_n_input {
         self.requiring.clear();
 
         // Add UI.Parents to the list of required variables
-        util::require_parents(&mut self.requiring, &self.parents);
+        util::require_parents(&mut self.requiring);
 
         Some(&self.requiring)
       }

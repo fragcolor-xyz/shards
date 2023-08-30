@@ -146,7 +146,7 @@ impl Shard for ListBox {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     if self.index.is_variable() {
       self.should_expose = true; // assume we expose a new variable

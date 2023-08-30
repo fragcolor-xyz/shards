@@ -112,7 +112,7 @@ impl Shard for ProgressBar {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

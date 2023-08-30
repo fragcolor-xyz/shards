@@ -18,6 +18,8 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 use std::ffi::c_void;
+use std::ffi::CStr;
+use std::ffi::CString;
 
 #[macro_use]
 extern crate shards;
@@ -80,6 +82,10 @@ lazy_static! {
 
 const CONTEXTS_NAME: &str = "UI.Contexts";
 const PARENTS_UI_NAME: &str = "UI.Parents";
+lazy_static! {
+  static ref CONTEXTS_NAME_CSTR: CString = CString::new(CONTEXTS_NAME).unwrap();
+  static ref PARENTS_UI_NAME_CSTR: CString = CString::new(PARENTS_UI_NAME).unwrap();
+}
 
 #[derive(Hash)]
 struct EguiId {
