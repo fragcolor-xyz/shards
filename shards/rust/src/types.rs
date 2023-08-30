@@ -4407,7 +4407,7 @@ macro_rules! shenum {
         const $EnumValue:ident = $value:expr;
       )+
     }
-    pub struct $SHEnumInfo:ident { }
+    $vis_2:vis struct $SHEnumInfo:ident { }
 
     $($t:tt)*
   ) => {
@@ -4417,7 +4417,7 @@ macro_rules! shenum {
       pub bits: i32,
     }
 
-    $vis struct $SHEnumInfo {
+    $vis_2 struct $SHEnumInfo {
       name: &'static str,
       labels: shards::types::Strings,
       values: Vec<i32>,
