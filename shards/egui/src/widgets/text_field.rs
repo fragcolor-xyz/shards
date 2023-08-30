@@ -208,7 +208,7 @@ impl LegacyShard for TextField {
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let mut mutable: MutVarTextBuffer;
       let mut immutable: VarTextBuffer;
       let text: &mut dyn egui::TextBuffer = if self.mutable_text {

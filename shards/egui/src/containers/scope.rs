@@ -158,7 +158,7 @@ impl LegacyShard for Scope {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       ui.scope(|ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })

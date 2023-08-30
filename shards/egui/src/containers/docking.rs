@@ -183,7 +183,7 @@ impl LegacyShard for Tab {
       return Ok(false.into());
     }
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)?;
 
       // Always passthrough the input
@@ -419,7 +419,7 @@ impl LegacyShard for DockArea {
     let parents_stack_var = self.parents.get();
     let mut viewer = MyTabViewer::new(context, input);
     viewer.warmup();
-    if let Some(ui) = util::get_current_parent(parents_stack_var)? {
+    if let Some(ui) = util::get_current_parent_opt(parents_stack_var)? {
       dock.show_inside(ui, &mut viewer);
     } else {
       dock.show(gui_ctx, &mut viewer);

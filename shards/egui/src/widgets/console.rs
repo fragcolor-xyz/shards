@@ -135,7 +135,7 @@ impl LegacyShard for Console {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let style = self.style.get();
       let mut theme = LogTheme::default();
       if !style.is_none() {

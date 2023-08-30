@@ -434,7 +434,7 @@ impl LegacyShard for CentralPanel {
 
     let gui_ctx = util::get_current_context(&self.instance)?;
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       egui::CentralPanel::default()
         .show_inside(ui, |ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)

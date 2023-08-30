@@ -189,7 +189,7 @@ impl LegacyShard for Variable {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let label: &str = self.name.as_ref().try_into()?;
       ui.horizontal(|ui| {
         if self.labeled {
@@ -293,7 +293,7 @@ impl LegacyShard for WireVariable {
 
     let varRef = unsafe { &mut *varPtr };
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       ui.horizontal(|ui| {
         ui.label(name);
         if varRef.render(false, None, ui).changed() {

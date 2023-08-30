@@ -202,7 +202,7 @@ impl LegacyShard for CodeEditor {
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let theme = if ui.style().visuals.dark_mode {
         CodeTheme::dark()
       } else {

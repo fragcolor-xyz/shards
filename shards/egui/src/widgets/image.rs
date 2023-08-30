@@ -164,7 +164,7 @@ impl Image {
       shlog_debug!("Image version changed: {}", self.current_version);
     }
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let texture = self
         .cached_ui_image
         .get_egui_texture_from_image(input, ui)?;
@@ -179,7 +179,7 @@ impl Image {
   }
 
   fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
 
       let scale = image_util::get_scale(&self.scale)?;

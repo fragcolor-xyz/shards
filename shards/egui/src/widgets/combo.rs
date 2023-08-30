@@ -244,7 +244,7 @@ impl LegacyShard for Combo {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let label: &str = self.label.get().try_into()?;
       let mut text = egui::RichText::new(label);
 

@@ -141,7 +141,7 @@ pub fn get_current_context<'a>(
   return get_current_context_from_var(context_stack_var.get());
 }
 
-pub fn get_current_parent<'a>(
+pub fn get_current_parent_opt<'a>(
   parents_stack_var: &Var,
 ) -> Result<Option<&'a mut egui::Ui>, &'static str> {
   get_object_from_var_opt(parents_stack_var, &EGUI_UI_TYPE)

@@ -227,7 +227,7 @@ impl LegacyShard for Plot {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let mut plot = egui::plot::Plot::new(EguiId::new(self, 0));
 
       let view_aspect = self.view_aspect.get();
