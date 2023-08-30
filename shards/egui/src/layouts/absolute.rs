@@ -19,111 +19,24 @@ lazy_static! {
   static ref ANCHOR_VAR_TYPE: Type = Type::context_variable(&crate::ANCHOR_TYPES);
 }
 
-shard! {
-  struct UIAbsoluteShard("UI.Absolute", "desc") {
-    #[Param("Contents", "", SHARDS_OR_NONE_TYPES)]
-    pub contents: ShardsVar,
-    #[Param("Position", "The target UI position (X/Y)", [common_type::float2, common_type::float2_var])]
-    pub position: ParamVar,
-    #[Param("Pivot", "The pivot for the inner UI", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
-    pub pivot: ParamVar,
-    #[Param("Anchor", "The anchored position", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
-    pub anchor: ParamVar,
-    #[Param("Order", "The order this UI is drawn in", [*crate::UIORDER_TYPE])]
-    pub order: ParamVar,
-    contexts: ParamVar,
-    parents: ParamVar,
-    inner_exposed: ExposedTypes,
-  }
-
-  impl Shard for TestMacroShard2 {
-    fn inputTypes(&mut self) -> &Types {
-      &NONE_TYPES
-    }
-    fn outputTypes(&mut self) -> &Types {
-      &NONE_TYPES
-    }
-    fn inputHelp(&mut self) -> OptionalString {
-      *HELP_VALUE_IGNORED
-    }
-    fn warmup(&mut self, context: &Context) -> Result<(), &str> {
-      self.warmup_helper(context)?;
-      self.contexts.warmup(context);
-      self.parents.warmup(context);
-      Ok(())
-    }
-    fn cleanup(&mut self) -> Result<(), &str> {
-      self.cleanup_helper()?;
-      self.contexts.cleanup();
-      self.parents.cleanup();
-      Ok(())
-    }
-    fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
-      Some(&self.inner_exposed)
-    }
-    fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-      self.compose_helper(data)?;
-
-      self.inner_exposed.clear();
-      self.contents.compose(data)?;
-      shards::util::expose_shards_contents(&mut self.inner_exposed, &self.contents);
-      shards::util::require_shards_contents(&mut self.required, &self.contents);
-
-
-      Ok(NONE_TYPES[0])
-    }
-    fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-      let (x,y): (f32,f32) = self.position.get().try_into()?;
-
-      let ui_ctx = util::get_current_context(&self.contexts)?;
-
-      let mut frame = egui::Area::new(EguiId::new(self, 1));
-
-      frame = frame.order(if let Ok(ev) = self.order.get().enum_value() {
-        UIOrder{bits: ev}.try_into()?
-      } else {
-        egui::Order::PanelResizeLine
-      });
-
-      frame = frame.pivot(if let Ok(ev) = self.pivot.get().enum_value()  {
-        Anchor{bits: ev}.try_into()?
-      } else {
-        egui::Align2::LEFT_TOP
-      });
-
-      // Either anchor or fix size
-      if let Ok(ev) = self.anchor.get().enum_value() {
-        frame = frame.anchor(Anchor{bits: ev}.try_into()?, Vec2::new(x, y));
-      } else {
-        frame = frame.fixed_pos(Pos2::new(x, y));
-      }
-
-      let result = frame.show(ui_ctx, |ui| {
-        // ui.set_max_size(rect.size());
-
-        // let where_to_put_bg = ui.painter().add(Shape::Noop);
-        match util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents) {
-          Ok(result) => {
-            // let painter = ui.painter();
-            // let bg_shape = Shape::Rect(RectShape{
-            //   rect: ui.min_rect().expand(5.0),
-            //   fill: Rgba::from_white_alpha(0.2).into(),
-            //   rounding: Rounding::none(),
-            //   stroke: Stroke::new(3.0, Color32::YELLOW),
-            // });
-            // painter.set(where_to_put_bg, bg_shape);
-            Ok(result)
-          },
-          Err(e) => {
-            Err(e)
-          }
-        }
-
-      }).inner?;
-
-      Ok(result)
-    }
-  }
+#[derive(shard)]
+#[shard_info("UI.Absolute", "desc")]
+struct UIAbsoluteShard {
+  #[shard_param("Contents", "", SHARDS_OR_NONE_TYPES)]
+  pub contents: ShardsVar,
+  #[shard_param("Position", "The target UI position (X/Y)", [common_type::float2, common_type::float2_var])]
+  pub position: ParamVar,
+  #[shard_param("Pivot", "The pivot for the inner UI", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
+  pub pivot: ParamVar,
+  #[shard_param("Anchor", "The anchored position", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
+  pub anchor: ParamVar,
+  #[shard_param("Order", "The order this UI is drawn in", [*crate::UIORDER_TYPE])]
+  pub order: ParamVar,
+  contexts: ParamVar,
+  parents: ParamVar,
+  inner_exposed: ExposedTypes,
+  #[shard_required]
+  required: ExposedTypes,
 }
 
 impl Default for UIAbsoluteShard {
@@ -139,6 +52,92 @@ impl Default for UIAbsoluteShard {
       contents: ShardsVar::default(),
       inner_exposed: ExposedTypes::new(),
     }
+  }
+}
+
+#[shard_impl]
+impl Shard for UIAbsoluteShard {
+  fn input_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+  fn output_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.warmup_helper(context)?;
+    self.contexts.warmup(context);
+    self.parents.warmup(context);
+    Ok(())
+  }
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.cleanup_helper()?;
+    self.contexts.cleanup();
+    self.parents.cleanup();
+    Ok(())
+  }
+  fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
+    Some(&self.inner_exposed)
+  }
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+
+    self.inner_exposed.clear();
+    self.contents.compose(data)?;
+    shards::util::expose_shards_contents(&mut self.inner_exposed, &self.contents);
+    shards::util::require_shards_contents(&mut self.required, &self.contents);
+
+    Ok(NONE_TYPES[0])
+  }
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    let (x, y): (f32, f32) = self.position.get().try_into()?;
+
+    let ui_ctx = util::get_current_context(&self.contexts)?;
+
+    let mut frame = egui::Area::new(EguiId::new(self, 1));
+
+    frame = frame.order(if let Ok(ev) = self.order.get().enum_value() {
+      UIOrder { bits: ev }.try_into()?
+    } else {
+      egui::Order::PanelResizeLine
+    });
+
+    frame = frame.pivot(if let Ok(ev) = self.pivot.get().enum_value() {
+      Anchor { bits: ev }.try_into()?
+    } else {
+      egui::Align2::LEFT_TOP
+    });
+
+    // Either anchor or fix size
+    if let Ok(ev) = self.anchor.get().enum_value() {
+      frame = frame.anchor(Anchor { bits: ev }.try_into()?, Vec2::new(x, y));
+    } else {
+      frame = frame.fixed_pos(Pos2::new(x, y));
+    }
+
+    let result = frame
+      .show(ui_ctx, |ui| {
+        // ui.set_max_size(rect.size());
+
+        // let where_to_put_bg = ui.painter().add(Shape::Noop);
+        match util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+        {
+          Ok(result) => {
+            // let painter = ui.painter();
+            // let bg_shape = Shape::Rect(RectShape{
+            //   rect: ui.min_rect().expand(5.0),
+            //   fill: Rgba::from_white_alpha(0.2).into(),
+            //   rounding: Rounding::none(),
+            //   stroke: Stroke::new(3.0, Color32::YELLOW),
+            // });
+            // painter.set(where_to_put_bg, bg_shape);
+            Ok(result)
+          }
+          Err(e) => Err(e),
+        }
+      })
+      .inner?;
+
+    Ok(result)
   }
 }
 

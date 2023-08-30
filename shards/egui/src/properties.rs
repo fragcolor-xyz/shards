@@ -112,7 +112,7 @@ impl Shard for PropertyShard {
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    let ui = util::get_current_parent(self.parents.get()).map_err(|_| "No parent UI");
+    let ui = util::get_current_parent_opt(self.parents.get()).map_err(|_| "No parent UI");
 
     match (&self.property.0).try_into()? {
       Property::RemainingSpace => {
