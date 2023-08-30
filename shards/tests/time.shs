@@ -25,7 +25,7 @@
   })
   Time.Pop(sink) |
   Log
-})
+} Looped: true)
 
 @schedule(root producer)
 @schedule(root consumer)
