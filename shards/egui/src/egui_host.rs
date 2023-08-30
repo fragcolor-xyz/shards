@@ -87,17 +87,6 @@ impl EguiHost {
     self.instance.warmup(ctx);
     self.parents.warmup(ctx);
 
-    // Initialize the parents stack in the root UI.
-    // Every other UI elements will reference it and push or pop UIs to it.
-    if !self.parents.get().is_seq() {
-      self.parents.set_fast_unsafe(&Seq::new().as_ref().into());
-    }
-
-    // Context works the same
-    if !self.instance.get().is_seq() {
-      self.instance.set_fast_unsafe(&Seq::new().as_ref().into());
-    }
-
     Ok(())
   }
 
