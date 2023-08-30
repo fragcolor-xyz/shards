@@ -29,6 +29,8 @@ pub mod shardsc;
 #[macro_use]
 pub mod types;
 
+pub mod util;
+
 pub use shards_macro;
 
 use crate::core::log;

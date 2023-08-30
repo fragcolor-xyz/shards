@@ -329,7 +329,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
         fn compose_helper(&mut self, data: &shards::types::InstanceData) -> std::result::Result<(), &'static str> {
           self.required.clear();
           #(
-            shards::types::collect_required_variables(&data.shared, &mut self.required, (&self.#param_idents).into())?;
+            shards::util::collect_required_variables(&data.shared, &mut self.required, (&self.#param_idents).into())?;
           )*
           Ok(())
         }

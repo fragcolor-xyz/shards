@@ -593,13 +593,13 @@ SHExposedTypeInfo & co
 */
 
 impl ExposedInfo {
-  pub fn new(name: &CString, ctype: SHTypeInfo) -> Self {
+  pub fn new(name: *const c_char, ctype: SHTypeInfo) -> Self {
     let chelp = core::ptr::null();
     SHExposedTypeInfo {
       exposedType: ctype,
-      name: name.as_ptr(),
+      name: name,
       help: SHOptionalString {
-        string: chelp,
+        string: chelp, // TODO: Pull from parameter into
         crc: 0,
       },
       isMutable: false,
@@ -1689,7 +1689,7 @@ where
     let res = ClonedVar(Var::default());
     unsafe {
       let rv = &res.0 as *const SHVar as *mut SHVar;
-      let sv = &vt as *const SHVar;
+      let sv = &vt as *const SHVar; 
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
@@ -2690,6 +2690,7 @@ impl Var {
       }
     }
   }
+
 
   pub unsafe fn new_object_from_ptr<T>(obj: *const T, info: &Type) -> Var {
     Var {
@@ -4048,7 +4049,7 @@ impl ParamVar {
     self.parameter.0.valueType == SHType_ContextVar
   }
 
-  pub fn set_name(&mut self, name: &str) {
+  pub fn set_name(&mut self, name: &str) { 
     let s = Var::ephemeral_string(name);
     self.parameter = s.into(); // clone it!
     self.parameter.0.valueType = SHType_ContextVar;
@@ -4325,39 +4326,6 @@ impl From<&ParamVar> for Var {
     let v: &Var = unsafe { transmute(value) };
     *v
   }
-}
-
-pub fn collect_required_variables(
-  shared: &SHExposedTypesInfo,
-  out: &mut ExposedTypes,
-  var: &SHVar,
-) -> Result<(), &'static str> {
-  match var.valueType {
-    SHType_ContextVar => {
-      let var_name: CString = var
-        .try_into()
-        .map_err(|_x| "Invalid context variable name")?;
-      for entry in shared {
-        let cstr = unsafe { CStr::from_ptr(entry.name) };
-        if var_name.as_c_str() == cstr {
-          out.push(ExposedInfo::new(&var_name, entry.exposedType));
-          break;
-        }
-      }
-    }
-    SHType_Seq => {
-      for v in SeqVar(*var) {
-        collect_required_variables(shared, out, &v)?;
-      }
-    }
-    SHType_Table => {
-      for (_k, v) in TableVar(*var) {
-        collect_required_variables(shared, out, &v)?;
-      }
-    }
-    _ => {}
-  }
-  Ok(())
 }
 
 impl IntoIterator for TableVar {
