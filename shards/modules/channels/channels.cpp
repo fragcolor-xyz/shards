@@ -37,8 +37,12 @@ template <typename T> T &getAndInitChannel(std::shared_ptr<Channel> &channel, SH
 struct Base {
   std::string _name;
   bool _noCopy = false;
+  OwnedVar _inType{};
 
   static inline Parameters producerParams{{"Name", SHCCSTR("The name of the channel."), {CoreInfo::StringType}},
+                                          {"Type",
+                                           SHCCSTR("The optional explicit (and unsafe because of that) we produce."),
+                                           {CoreInfo::NoneType, CoreInfo::TypeType}},
                                           {"NoCopy!!",
                                            SHCCSTR("Unsafe flag that will improve performance by not copying "
                                                    "values when sending them thru the channel."),
@@ -50,7 +54,10 @@ struct Base {
       auto sv = SHSTRVIEW(value);
       _name = sv;
     } break;
-    case 1: {
+    case 1:
+      _inType = value;
+      break;
+    case 2: {
       _noCopy = value.payload.boolValue;
     } break;
     default:
@@ -63,6 +70,8 @@ struct Base {
     case 0:
       return Var(_name);
     case 1:
+      return _inType;
+    case 2:
       return Var(_noCopy);
     }
     return SHVar();
@@ -81,7 +90,8 @@ struct Produce : public Base {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _channel = get(_name);
-    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, data.inputType, _noCopy, _name.c_str());
+    auto &receiverType = _inType.valueType == SHType::Type ? *_inType.payload.typeValue : data.inputType;
+    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, receiverType, _noCopy, _name.c_str());
     return data.inputType;
   }
 
@@ -122,7 +132,8 @@ struct Broadcast : public Base {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _channel = get(_name);
-    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, data.inputType, _noCopy, _name.c_str());
+    auto &receiverType = _inType.valueType == SHType::Type ? *_inType.payload.typeValue : data.inputType;
+    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, receiverType, _noCopy, _name.c_str());
     return data.inputType;
   }
 
