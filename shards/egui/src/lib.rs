@@ -267,5 +267,5 @@ pub extern "C" fn register(core: *mut shards::shardsc::SHCore) {
   menus::registerShards();
   misc::registerShards();
   widgets::registerShards();
-  properties::registerShards();
+  properties::register_shards();
 }

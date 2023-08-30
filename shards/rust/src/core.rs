@@ -2,6 +2,7 @@
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 use crate::shard::shard_construct;
 use crate::shard::Shard;
+use crate::shard::shard_construct2;
 use crate::shardsc::*;
 use crate::types::ClonedVar;
 use crate::types::Context;
@@ -306,6 +307,24 @@ pub fn registerShard<T: Default + Shard>() {
       Some(shard_construct::<T>),
     );
   }
+}
+
+#[inline(always)]
+pub fn register_shard<T: Default + crate::shard::ShardDesc + crate::shard::Shard2 + crate::shard::Shard2Generated>() {
+  unsafe {
+    (*Core).registerShard.unwrap()(
+      T::register_name().as_ptr() as *const c_char,
+      Some(shard_construct2::<T>),
+    );
+  }
+}
+
+pub trait EnumRegister {
+  fn register();
+}
+
+pub fn register_enum<T : EnumRegister>() {
+  T::register();
 }
 
 pub fn getShards() -> Vec<&'static CStr> {

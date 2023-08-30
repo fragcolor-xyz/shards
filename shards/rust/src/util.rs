@@ -17,7 +17,7 @@ pub fn collect_required_variables(
         .map_err(|_x| "Invalid context variable name")?;
       for entry in shared {
         let cstr = unsafe { CStr::from_ptr(entry.name) };
-        if var_name == cstr.to_str().map_err(|x| "invalid string")? {
+        if var_name == cstr.to_str().map_err(|_x| "invalid string")? {
           out.push(ExposedInfo::new(
             unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue },
             entry.exposedType,

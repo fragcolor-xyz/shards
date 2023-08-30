@@ -26,6 +26,7 @@ fn generate_shardsc() {
     .clang_arg(format!("-I{}", shards_include_dir))
     .clang_arg(format!("-I{}/shards/core", shards_dir))
     .derive_default(true)
+    .layout_tests(false)
     .use_core()
     .generate()
     .expect("Unable to generate bindings");
