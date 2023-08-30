@@ -571,14 +571,16 @@ macro_rules! impl_override_activate {
 /// After calling compose_helper (since it clears self.required)
 #[macro_export]
 macro_rules! shard {
-  (struct $struct_name: ident ($name_lit: literal, $desc_lit: literal) {
+  ( $( #[$struct_attrs:meta] )* 
+    struct $struct_name: ident ($name_lit: literal, $desc_lit: literal) {
       $($fields:tt)*
     }
 
     impl $shards_type: ident for $struct_name2: ident {
       $($body:tt)*
     }) => {
-      #[derive(shards::shards_macro::Shard, Default)]
+      $($struct_attrs)*
+      #[derive(shards::shards_macro::Shard)]
       struct $struct_name {
         $($fields)*
         pub required: ::shards::types::ExposedTypes,
@@ -591,7 +593,7 @@ macro_rules! shard {
       #[allow(non_snake_case)]
       impl $shards_type for $struct_name {
         $($body)*
-        shards::shards_macro::generate_shard_impl! { $name_lit $desc_lit struct $struct_name { $($fields)* } }
+        shards::shards_macro::generate_shard_impl! { $name_lit $desc_lit struct $struct_name { $($fields)* } {$($body)*} }
 
         fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
           Some(&self.required)

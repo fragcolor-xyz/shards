@@ -3946,6 +3946,12 @@ impl ParamVar {
     }
   }
 
+  pub fn new_named(name: &str) -> ParamVar { 
+    let mut var = ParamVar::default(); 
+    var.set_name(name);
+    var
+  } 
+
   pub fn cleanup(&mut self) {
     unsafe {
       if self.parameter.0.valueType == SHType_ContextVar {

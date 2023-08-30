@@ -3,12 +3,13 @@ use std::boxed;
 
 use itertools::Itertools;
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{
-  Ident,
-  parse::{Parse, ParseStream},
+  braced,
+  parse::{Parse, ParseBuffer, ParseStream},
   punctuated::Punctuated,
-  DeriveInput, Expr,  Field, FieldsNamed,  LitStr, Meta,  LitInt, token::Struct, DataStruct, ExprPath, Path,
+  token::Impl,
+  DeriveInput, Expr, Field, Ident, ImplItem, ImplItemFn, LitInt, LitStr, Meta, TypeImplTrait,
 };
 
 // Placeholder just to allow #[Param] custom attributes
@@ -18,8 +19,10 @@ pub fn derive_shard(_item: TokenStream) -> TokenStream {
 }
 
 struct GenerateShardImplInput {
-  di: DeriveInput,
+  struct_: DeriveInput,
   shard_desc: ShardDesc,
+  impl_items: Vec<ImplItemFn>,
+  has_compose: bool,
 }
 
 impl Parse for GenerateShardImplInput {
@@ -27,12 +30,30 @@ impl Parse for GenerateShardImplInput {
     let name = input.parse::<LitStr>()?;
     let desc = input.parse::<LitStr>()?;
     let di = input.parse()?;
+    let mut has_compose = false;
+
+    // Parse `impl Shard` members
+    // and check for existence of compose function
+    let content: ParseBuffer<'_>;
+    let _brace_token = braced!(content in input);
+    let mut impl_items: Vec<ImplItemFn> = Vec::new();
+    while !content.is_empty() {
+      impl_items.push(content.parse()?);
+      let item = impl_items.last().unwrap();
+      // println!("Impl item {}", item.to_token_stream());
+      if item.sig.ident == "compose" {
+        has_compose = true;
+      }
+    }
+
     Ok(Self {
-      di,
+      struct_: di,
       shard_desc: ShardDesc {
         name: name.value(),
         desc: desc.value(),
       },
+      impl_items,
+      has_compose,
     })
   }
 }
@@ -108,63 +129,89 @@ fn crc32(name: String) -> u32 {
 }
 
 fn generate_shard_impl_functions(
-  parsed: &DeriveInput,
-  shard_desc: ShardDesc,
+  input: &GenerateShardImplInput,
   params: Vec<Param>,
 ) -> Result<TokenStream, Error> {
+  let shard_desc = &input.shard_desc;
+  let struct_ = &input.struct_;
+
   let name_lit = syn::LitStr::new(&shard_desc.name, proc_macro2::Span::call_site());
   let desc_lit = syn::LitStr::new(&shard_desc.desc, proc_macro2::Span::call_site());
 
-  let params_idents: Vec<_> = params.iter().map(|x| Ident::new(&x.var_name, proc_macro2::Span::call_site())).collect();
-  let params_indices: Vec<_> = (0..params.len()).map(|x| LitInt::new(&format!("{}", x) , proc_macro2::Span::call_site())).collect();
+  let params_idents: Vec<_> = params
+    .iter()
+    .map(|x| Ident::new(&x.var_name, proc_macro2::Span::call_site()))
+    .collect();
+  let params_indices: Vec<_> = (0..params.len())
+    .map(|x| LitInt::new(&format!("{}", x), proc_macro2::Span::call_site()))
+    .collect();
 
   let crc = crc32(format!("{}-rust-0x20200101", shard_desc.name));
 
-  let struct_name_upper = parsed.ident.to_string().to_uppercase();
-  let params_static_id: Ident = Ident::new(&format!("{}_PARAMETERS", struct_name_upper), proc_macro2::Span::call_site());
+  let struct_name_upper = struct_.ident.to_string().to_uppercase();
+  let params_static_id: Ident = Ident::new(
+    &format!("{}_PARAMETERS", struct_name_upper),
+    proc_macro2::Span::call_site(),
+  );
 
-  Ok(quote::quote! {
-    fn registerName() -> &'static str {
-      cstr!(#name_lit)
-    }
-
-    fn name(&mut self) -> &str {
-      #name_lit
-    }
-
-    fn hash() -> u32
-    where
-      Self: Sized,
-    {
-      #crc
-    }
-
-    fn help(&mut self) -> OptionalString {
-      OptionalString(shccstr!(#desc_lit))
-    }
-
-    fn parameters(&mut self) -> Option<&Parameters> {
-        Some(&#params_static_id)
-    }
-
-    fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-      match index {
-        #(
-          #params_indices => self.#params_idents.set_param(value),
-        )*
-        _ => Err("Invalid parameter index"),
+  // define `has_compose() -> bool { true }` when compose function exists
+  let has_compose_tokens = if input.has_compose {
+    quote! {
+      fn hasCompose() -> bool {
+        true
       }
     }
+  } else {
+    quote! {}
+  };
 
-    fn getParam(&mut self, index: i32) -> shards::types::Var {
-      match index {
-        #(
-          #params_indices => (&self.#params_idents).into(),
-        )*
-        _ => Var::default(),
+  Ok(
+    quote::quote! {
+      fn registerName() -> &'static str {
+        cstr!(#name_lit)
+      }
+
+      fn name(&mut self) -> &str {
+        #name_lit
+      }
+
+      fn hash() -> u32
+      where
+        Self: Sized,
+      {
+        #crc
+      }
+
+      #has_compose_tokens
+
+      fn help(&mut self) -> OptionalString {
+        OptionalString(shccstr!(#desc_lit))
+      }
+
+      fn parameters(&mut self) -> Option<&Parameters> {
+          Some(&#params_static_id)
+      }
+
+      fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+        match index {
+          #(
+            #params_indices => self.#params_idents.set_param(value),
+          )*
+          _ => Err("Invalid parameter index"),
+        }
+      }
+
+      fn getParam(&mut self, index: i32) -> shards::types::Var {
+        match index {
+          #(
+            #params_indices => (&self.#params_idents).into(),
+          )*
+          _ => Var::default(),
+        }
       }
     }
-  }.into())
+    .into(),
+  )
 }
 
 fn parse_params<'a>(fields: impl IntoIterator<Item = &'a Field>) -> Result<Vec<Param>, Error> {
@@ -187,15 +234,15 @@ fn parse_params<'a>(fields: impl IntoIterator<Item = &'a Field>) -> Result<Vec<P
 }
 
 fn process_shard_impl(parsed: GenerateShardImplInput) -> Result<TokenStream, Error> {
-  let struct_name = get_struct_name(&parsed.di);
+  let struct_name = get_struct_name(&parsed.struct_);
 
-  let params = if let syn::Data::Struct(sd) = &parsed.di.data {
+  let params = if let syn::Data::Struct(sd) = &parsed.struct_.data {
     parse_params(&sd.fields)
   } else {
     Err(format!("Expected a struct for type {}", struct_name).into())
   }?;
 
-  generate_shard_impl_functions(&parsed.di, parsed.shard_desc, params)
+  generate_shard_impl_functions(&parsed, params)
 }
 
 #[proc_macro]
@@ -214,37 +261,55 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
   let struct_name_upper = struct_id.to_string().to_uppercase();
 
   let params = parse_params(&struct_.fields)?;
-  let param_names: Vec<_> = params.iter().map(|x|LitStr::new(&x.name, proc_macro2::Span::call_site())).collect();
-  let param_descs: Vec<_> = params.iter().map(|x|LitStr::new(&x.desc, proc_macro2::Span::call_site())).collect();
+  let param_names: Vec<_> = params
+    .iter()
+    .map(|x| LitStr::new(&x.name, proc_macro2::Span::call_site()))
+    .collect();
+  let param_descs: Vec<_> = params
+    .iter()
+    .map(|x| LitStr::new(&x.desc, proc_macro2::Span::call_site()))
+    .collect();
   let mut array_initializers = Vec::new();
-  let param_types: Vec<_> = params.iter().map(|x| {
-    if let Expr::Array(arr) = &x.types {
-      let tmp_id: Ident = Ident::new(&format!("{}_{}_TYPES", struct_name_upper, x.name.to_uppercase()), proc_macro2::Span::call_site());
-      array_initializers.push(quote!{ static ref #tmp_id: shards::types::Types = vec!#arr; });
-      syn::parse_quote!{ #tmp_id }
-    } else {
-      x.types.clone()
-    }
-  }).collect();
-  let param_idents: Vec<_> = params.iter().map(|x|Ident::new(&x.var_name, proc_macro2::Span::call_site())).collect();
+  let param_types: Vec<_> = params
+    .iter()
+    .map(|x| {
+      if let Expr::Array(arr) = &x.types {
+        let tmp_id: Ident = Ident::new(
+          &format!("{}_{}_TYPES", struct_name_upper, x.name.to_uppercase()),
+          proc_macro2::Span::call_site(),
+        );
+        array_initializers.push(quote! { static ref #tmp_id: shards::types::Types = vec!#arr; });
+        syn::parse_quote! { #tmp_id }
+      } else {
+        x.types.clone()
+      }
+    })
+    .collect();
+  let param_idents: Vec<_> = params
+    .iter()
+    .map(|x| Ident::new(&x.var_name, proc_macro2::Span::call_site()))
+    .collect();
 
-  let params_static_id: Ident = Ident::new(&format!("{}_PARAMETERS", struct_name_upper), proc_macro2::Span::call_site());
+  let params_static_id: Ident = Ident::new(
+    &format!("{}_PARAMETERS", struct_name_upper),
+    proc_macro2::Span::call_site(),
+  );
 
   // Generate warmup/cleanup calls for supported types
   let mut warmups = Vec::new();
   let mut cleanups_rev = Vec::new();
   for x in &params {
-      if let syn::Type::Path(p) = &x.rust_type {
-        let param_id = Ident::new(&x.var_name, proc_macro2::Span::call_site());
-        let last_type_id = &p.path.segments.last().expect("Empty path").ident;
-        if last_type_id == "ParamVar" {
-          warmups.push(quote!{self.#param_id.warmup(context);});
-          cleanups_rev.push(quote!{self.#param_id.cleanup();});
-        } else if last_type_id == "ShardsVar" {
-          warmups.push(quote!{self.#param_id.warmup(context)?;});
-          cleanups_rev.push(quote!{self.#param_id.cleanup();});
-        }
+    if let syn::Type::Path(p) = &x.rust_type {
+      let param_id = Ident::new(&x.var_name, proc_macro2::Span::call_site());
+      let last_type_id = &p.path.segments.last().expect("Empty path").ident;
+      if last_type_id == "ParamVar" {
+        warmups.push(quote! {self.#param_id.warmup(context);});
+        cleanups_rev.push(quote! {self.#param_id.cleanup();});
+      } else if last_type_id == "ShardsVar" {
+        warmups.push(quote! {self.#param_id.warmup(context)?;});
+        cleanups_rev.push(quote! {self.#param_id.cleanup();});
       }
+    }
   }
   let cleanups = cleanups_rev.iter().rev();
 
