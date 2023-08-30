@@ -5,7 +5,6 @@ use super::Console;
 use crate::misc::style_util;
 use crate::util;
 use crate::EguiId;
-use crate::EGUI_UI_SEQ_TYPE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use shards::shard::LegacyShard;
@@ -115,16 +114,7 @@ impl LegacyShard for Console {
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.parents.get_name(),
-      help: cstr!("The parent UI objects.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
-
+    util::require_parents(&mut self.requiring);
     Some(&self.requiring)
   }
 

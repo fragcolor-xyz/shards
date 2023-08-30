@@ -21,7 +21,6 @@ use shards::types::Var;
 use shards::types::FRAG_CC;
 use shards::SHObjectTypeInfo;
 use std::ffi::c_void;
-use std::ffi::CStr;
 use std::ffi::CString;
 
 #[macro_use]
@@ -57,11 +56,9 @@ pub static STRING_OR_SHARDS_OR_NONE_TYPES_SLICE: &[Type] = &[
 
 static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguU"));
 static EGUI_UI_SLICE: &[Type] = &[EGUI_UI_TYPE];
-static EGUI_UI_SEQ_TYPE: Type = Type::seq(EGUI_UI_SLICE);
 
 static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguC"));
 static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
-static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
 lazy_static! {
   static ref LAYOUTCLASS_TYPE: Type = {
