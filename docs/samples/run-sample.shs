@@ -1,0 +1,8 @@
+@mesh(main)
+@wire(run-sample {
+  @file | Shards.Read >= sample
+  #(sample)
+} Looped: true) ; Cannot set option for this, cannot take Boolean variable
+
+@schedule(main run-sample)
+@run(main FPS: 60 Iterations: 1200)
