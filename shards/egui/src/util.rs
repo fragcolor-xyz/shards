@@ -40,10 +40,7 @@ where
   result
 }
 
-pub fn with_none_var<F, R>(
-  var: &mut ParamVar,
-  inner: F,
-) -> Result<R, &'static str>
+pub fn with_none_var<F, R>(var: &mut ParamVar, inner: F) -> Result<R, &'static str>
 where
   F: FnOnce() -> Result<R, &'static str>,
 {
@@ -74,10 +71,7 @@ pub fn get_object_from_var_opt<'a, T>(
   }
 }
 
-pub fn get_object_from_var<'a, T>(
-  var: &Var,
-  obj_type: &Type,
-) -> Result<&'a mut T, &'static str> {
+pub fn get_object_from_var<'a, T>(var: &Var, obj_type: &Type) -> Result<&'a mut T, &'static str> {
   match get_object_from_var_opt(var, obj_type)? {
     Some(obj) => Ok(obj),
     None => Err("Object not set"),
@@ -90,7 +84,6 @@ pub fn get_object_from_param_var<'a, T>(
 ) -> Result<&'a mut T, &'static str> {
   get_object_from_var(var.get(), obj_type)
 }
-
 
 // TODO: Remove
 pub fn with_object_stack_var<'a, T, F, R>(
@@ -147,6 +140,13 @@ pub fn get_current_parent_opt<'a>(
   get_object_from_var_opt(parents_stack_var, &EGUI_UI_TYPE)
 }
 
+pub fn get_parent_ui<'a>(parents_stack_var: &Var) -> Result<&'a mut egui::Ui, &'static str> {
+  match get_object_from_var_opt(parents_stack_var, &EGUI_UI_TYPE)? {
+    Some(ui) => Ok(ui),
+    None => Err("Parent UI missing"),
+  }
+}
+
 pub fn require_parents(requiring: &mut ExposedTypes) {
   let exp_info = ExposedInfo {
     exposedType: EGUI_UI_TYPE,
@@ -165,4 +165,9 @@ pub fn require_context(requiring: &mut ExposedTypes) {
     ..ExposedInfo::default()
   };
   requiring.push(exp_info);
+}
+
+pub fn try_into_color(var: &Var) -> Result<egui::Color32, &'static str> {
+  let color: shards::SHColor = var.try_into()?;
+  Ok(egui::Color32::from_rgba_unmultiplied(color.r, color.g, color.b, color.a))
 }
