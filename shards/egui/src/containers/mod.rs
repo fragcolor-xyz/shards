@@ -64,41 +64,6 @@ struct Area {
   exposing: ExposedTypes,
 }
 
-shenum! {
-  pub struct Anchor {
-    [description("Top left corner.")]
-    const TopLeft = 0x00;
-    [description("Middle left.")]
-    const Left = 0x10;
-    [description("Bottom left corner.")]
-    const BottomLeft = 0x20;
-    [description("Top middle.")]
-    const Top = 0x01;
-    [description("Center.")]
-    const Center = 0x11;
-    [description("Bottom middle.")]
-    const Bottom = 0x21;
-    [description("Top right corner.")]
-    const TopRight = 0x02;
-    [description("Middle right.")]
-    const Right = 0x12;
-    [description("Bottom right corner.")]
-    const BottomRight = 0x22;
-  }
-
-  pub struct AnchorInfo {}
-}
-
-shenum_types! {
-  AnchorInfo,
-  const AnchorCC = fourCharacterCode(*b"egAn");
-  pub static ref AnchorEnumInfo;
-  pub static ref ANCHOR_TYPE: Type;
-  pub static ref ANCHOR_TYPES: Vec<Type>;
-  pub static ref SEQ_OF_ANCHOR: Type;
-  pub static ref SEQ_OF_ANCHOR_TYPES: Vec<Type>;
-}
-
 struct DockArea {
   instance: ParamVar,
   requiring: ExposedTypes,
@@ -204,8 +169,6 @@ mod window;
 
 pub fn register_shards() {
   register_legacy_shard::<Area>();
-  register_legacy_enum(FRAG_CC, OrderCC, OrderEnumInfo.as_ref().into());
-  register_legacy_enum(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
   docking::register_shards();
   register_legacy_shard::<Scope>();
   register_legacy_shard::<Window>();
@@ -216,6 +179,5 @@ pub fn register_shards() {
   register_legacy_shard::<RightPanel>();
   register_legacy_shard::<TopPanel>();
 
-  assert_eq!(AnchorCC, 1701265774);
   assert_eq!(WindowFlagsCC, 1701271366);
 }
