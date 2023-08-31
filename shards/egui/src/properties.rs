@@ -81,16 +81,12 @@ impl Shard2 for PropertyShard {
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
-    self.contexts.warmup(ctx);
-    self.parents.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
     self.cleanup_helper()?;
-    self.parents.cleanup();
-    self.contexts.cleanup();
 
     Ok(())
   }

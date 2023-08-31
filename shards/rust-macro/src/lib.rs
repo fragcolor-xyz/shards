@@ -3,6 +3,7 @@ use std::{boxed, collections::HashSet};
 
 use itertools::Itertools;
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
 use syn::{
   punctuated::Punctuated,
@@ -10,7 +11,46 @@ use syn::{
   Expr, Field, Ident, ImplItem, LitInt, LitStr, Meta, 
 };
 
-type Error = boxed::Box<dyn std::error::Error>;
+// type Error = boxed::Box<dyn std::error::Error>;
+enum Error {
+  CompileError(proc_macro2::TokenStream),
+  Generic(boxed::Box<dyn std::error::Error>),
+}
+
+impl From<&str> for Error {
+  fn from(value: &str) -> Self {
+    Error::Generic(value.into())
+  }
+}
+
+impl From<String> for Error {
+  fn from(value: String) -> Self {
+    Error::Generic(value.into())
+  }
+}
+
+impl From<syn::Error> for Error {
+  fn from(value: syn::Error) -> Self {
+    Error::CompileError(value.into_compile_error())
+  }
+}
+
+impl Error {
+  fn to_compile_error2(self) -> proc_macro2::TokenStream {
+    match self {
+      Error::CompileError(stream) => stream,
+      Error::Generic(err) => syn::Error::new(Span::call_site(), err.to_string()).to_compile_error(),
+    }
+  }
+  fn to_compile_error(self) -> proc_macro::TokenStream {
+    self.to_compile_error2().into()
+  }
+  fn extended(self, e: Error) -> Self {
+    let mut stream = self.to_compile_error2();
+    stream.extend(e.to_compile_error2());
+    Error::CompileError(stream)
+  }
+}
 
 lazy_static::lazy_static! {
   static ref IMPLS_TO_CHECK: Vec<&'static str> = vec![
@@ -278,7 +318,7 @@ pub fn derive_shards_enum(enum_def: TokenStream) -> TokenStream {
       // eprintln!("derive_shards_enum:\n{}", result);
       result
     }
-    Err(err) => panic!("Failed generate shards helper implementation {}", err),
+    Err(err) => err.to_compile_error(),
   }
 }
 
@@ -302,7 +342,7 @@ fn parse_param_field(fld: &syn::Field, attr: &syn::Attribute) -> Result<Param, E
       types,
     })
   } else {
-    Err("Param attribute must have 3 arguments".into())
+    Err(syn::Error::new(attr.bracket_token.span.open(), "Param attribute must have 3 arguments: (Name, Description, [Type1, Type2,...]/Types)").into())
   }
 }
 
@@ -331,7 +371,7 @@ fn parse_shard_fields<'a>(fields: impl IntoIterator<Item = &'a Field>) -> Result
             result.params.push(param);
             result.warmables.push(fld.clone());
           }
-          Err(e) => return Err(format!("Failed to parse param for field {}\n{}", name, e).into()),
+          Err(e) => return Err(e.extended(format!("Failed to parse param for field {}", name).into())),
         }
       } else if attr.path().is_ident("shard_required") {
         result.required = Some(fld.ident.as_ref().expect("Expected field name").clone());
@@ -348,7 +388,7 @@ struct ShardInfoAttr {
   desc: Expr,
 }
 
-fn read_shard_info_attr(attrs: &Vec<syn::Attribute>) -> Result<ShardInfoAttr, Error> {
+fn read_shard_info_attr(err_span: Span, attrs: &Vec<syn::Attribute>) -> Result<ShardInfoAttr, Error> {
   for attr in attrs {
     if attr.path().is_ident("shard_info") {
       let args: Punctuated<Expr, Comma> = attr.parse_args_with(Punctuated::<syn::Expr, Comma>::parse_terminated)?;
@@ -361,14 +401,14 @@ fn read_shard_info_attr(attrs: &Vec<syn::Attribute>) -> Result<ShardInfoAttr, Er
       };
     }
   }
-  Err("Missing shard_info attribute".into())
+  Err(syn::Error::new(err_span, "Missing shard_info attribute").into())
 }
 
 fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Error> {
   let struct_id = struct_.ident;
   let struct_name_upper = struct_id.to_string().to_uppercase();
 
-  let shard_info = read_shard_info_attr(&struct_.attrs)?;
+  let shard_info = read_shard_info_attr(struct_id.span(), &struct_.attrs)?;
 
   let shard_fields = parse_shard_fields(&struct_.fields)?;
   let params = &shard_fields.params;
@@ -539,10 +579,10 @@ pub fn derive_shard(struct_def: TokenStream) -> TokenStream {
 
   match process_shard_helper_impl(struct_) {
     Ok(result) => {
-      // eprintln!("derive_shard:\n{}", result);
+      eprintln!("derive_shard:\n{}", result);
       result
     },
-    Err(err) => panic!("Failed generate shards helper implementation {}", err),
+    Err(err) => err.to_compile_error(),
   }
 }
 
@@ -582,9 +622,9 @@ pub fn shard_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
   let impl_ : syn::ItemImpl = syn::parse_macro_input!(item);
   match generate_impl_wrapper(impl_) {
     Ok(result) => {
-      // eprintln!("shard_impl:\n{}", result);
+      eprintln!("shard_impl:\n{}", result);
       result
     }
-    Err(err) => panic!("Failed generate shards implementation wrapper {}", err),
+    Err(err) => err.to_compile_error(),
   }
 }

@@ -733,34 +733,14 @@ pub fn create2<T: Default + ShardDesc + Shard2 + Shard2Generated>() -> ShardWrap
       name: Some(shard2_name::<T>),
       hash: Some(shard2_hash::<T>),
       help: Some(shard2_help::<T>),
-      inputHelp: if T::has_input_help() {
-        Some(shard2_inputHelp::<T>)
-      } else {
-        None
-      },
-      outputHelp: if T::has_output_help() {
-        Some(shard2_outputHelp::<T>)
-      } else {
-        None
-      },
-      properties: if T::has_properties() {
-        Some(shard2_properties::<T>)
-      } else {
-        None
-      },
+      inputHelp: Some(shard2_inputHelp::<T>),
+      outputHelp: Some(shard2_outputHelp::<T>),
+      properties: Some(shard2_properties::<T>),
       inputTypes: Some(shard2_inputTypes::<T>),
       outputTypes: Some(shard2_outputTypes::<T>),
-      setup: if T::has_setup() {
-        Some(shard2_setup::<T>)
-      } else {
-        None
-      },
+      setup: Some(shard2_setup::<T>),
       destroy: Some(shard2_destroy::<T>),
-      exposedVariables: if T::has_exposed_variables() {
-        Some(shard2_exposedVariables::<T>)
-      } else {
-        None
-      },
+      exposedVariables: Some(shard2_exposedVariables::<T>),
       requiredVariables: Some(shard2_requiredVariables::<T>),
       compose: if T::has_compose() {
         Some(shard2_compose::<T>)

@@ -110,18 +110,6 @@ impl From<EguiId> for egui::Id {
 
 mod egui_host;
 
-struct EguiContext {
-  host: egui_host::EguiHost,
-  requiring: ExposedTypes,
-  queue: ParamVar,
-  contents: ShardsVar,
-  exposing: ExposedTypes,
-  has_graphics_context: bool,
-  graphics_context: ParamVar,
-  input_context: ParamVar,
-  renderer: bindings::Renderer,
-  input_translator: bindings::InputTranslator,
-}
 pub(crate) trait UIRenderer {
   fn render(
     &mut self,
@@ -260,7 +248,7 @@ pub extern "C" fn register(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  registerShard::<EguiContext>();
+  context::register_shards();
   state::registerShards();
   containers::registerShards();
   layouts::registerShards();
