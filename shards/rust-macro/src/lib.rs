@@ -494,7 +494,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
   Ok(quote! {
     lazy_static! {
       #(#array_initializers)*
-      static ref #params_static_id: Parameters = vec![
+      static ref #params_static_id: shards::types::Parameters = vec![
         #((
           cstr!(#param_names),
           shccstr!(#param_descs),
@@ -519,15 +519,15 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
         #crc
       }
 
-      fn help(&mut self) -> OptionalString {
+      fn help(&mut self) -> shards::types::OptionalString {
         OptionalString(shccstr!(#shard_desc_expr))
       }
 
-      fn parameters(&mut self) -> Option<&Parameters> {
+      fn parameters(&mut self) -> Option<&shards::types::Parameters> {
           Some(&#params_static_id)
       }
 
-      fn set_param(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+      fn set_param(&mut self, index: i32, value: &Var) -> std::result::Result<(), &str> {
         match index {
           #(
             #params_indices => self.#params_idents.set_param(value),
@@ -545,7 +545,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
         }
       }
 
-      fn required_variables(&mut self) -> Option<&ExposedTypes> {
+      fn required_variables(&mut self) -> Option<&shards::types::ExposedTypes> {
         #required_variables_opt
       }
     }
