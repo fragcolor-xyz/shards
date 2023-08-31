@@ -12,7 +12,7 @@
       UI.TopPanel(
         Contents: {
           ; input was passed down the UI hierarchy
-          Assert.Is(@input_value Abort: true)
+          Assert.Is(@input_value Break: true)
           "Top Window Panel" | UI.Label
         }
       )
