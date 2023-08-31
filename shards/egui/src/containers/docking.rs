@@ -431,7 +431,7 @@ impl LegacyShard for DockArea {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<DockArea>();
   register_legacy_shard::<Tab>();
 }

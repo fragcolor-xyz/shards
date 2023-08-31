@@ -174,30 +174,30 @@ pub mod scripting {
 //     Core = core;
 //   }
 
-//   shards::casting::registerShards();
-//   shards::hash::registerShards();
-//   shards::ecdsa::registerShards();
-//   shards::physics::simulation::registerShards();
-//   shards::physics::shapes::registerShards();
-//   shards::physics::rigidbody::registerShards();
-//   shards::physics::queries::registerShards();
-//   shards::physics::forces::registerShards();
-//   shards::svg::registerShards();
-//   shards::eth::registerShards();
-//   shards::csv::registerShards();
-//   shards::curve25519::registerShards();
-//   shards::substrate::registerShards();
-//   shards::chachapoly::registerShards();
-//   shards::gui::registerShards();
-//   shards::date::registerShards();
-//   shards::onnx::registerShards();
-//   shards::fs::registerShards();
+//   shards::casting::register_shards();
+//   shards::hash::register_shards();
+//   shards::ecdsa::register_shards();
+//   shards::physics::simulation::register_shards();
+//   shards::physics::shapes::register_shards();
+//   shards::physics::rigidbody::register_shards();
+//   shards::physics::queries::register_shards();
+//   shards::physics::forces::register_shards();
+//   shards::svg::register_shards();
+//   shards::eth::register_shards();
+//   shards::csv::register_shards();
+//   shards::curve25519::register_shards();
+//   shards::substrate::register_shards();
+//   shards::chachapoly::register_shards();
+//   shards::gui::register_shards();
+//   shards::date::register_shards();
+//   shards::onnx::register_shards();
+//   shards::fs::register_shards();
 
 //   #[cfg(not(target_arch = "wasm32"))]
-//   shards::ws::registerShards();
+//   shards::ws::register_shards();
 
 //   #[cfg(not(target_arch = "wasm32"))]
-//   shards::http::registerShards();
+//   shards::http::register_shards();
 // }
 
 // #[cfg(feature = "shards")]

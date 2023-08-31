@@ -414,7 +414,7 @@ impl LegacyShard for DecodeCall {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<EncodeCall>();
   register_legacy_shard::<DecodeCall>();
 }

@@ -362,7 +362,7 @@ impl LegacyShard for ECDSARecover {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<ECDSASign>();
   register_legacy_shard::<ECDSAPubKey>();
   register_legacy_shard::<ECDSAPrivKey>();

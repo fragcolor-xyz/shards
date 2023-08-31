@@ -207,10 +207,10 @@ pub extern "C" fn shardsRegister_physics_physics(core: *mut shards::shardsc::SHC
     shards::core::Core = core;
   }
 
-  simulation::registerShards();
-  shapes::registerShards();
-  rigidbody::registerShards();
-  queries::registerShards();
-  forces::registerShards();
+  simulation::register_shards();
+  shapes::register_shards();
+  rigidbody::register_shards();
+  queries::register_shards();
+  forces::register_shards();
 }
 

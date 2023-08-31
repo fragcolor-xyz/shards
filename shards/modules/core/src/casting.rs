@@ -257,7 +257,7 @@ impl LegacyShard for FromLEB128 {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<ToBase58>();
   register_legacy_shard::<FromBase58>();
   register_legacy_shard::<ToLEB128>();

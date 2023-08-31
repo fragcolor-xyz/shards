@@ -99,7 +99,7 @@ mod plot_bar;
 mod plot_line;
 mod plot_points;
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Plot>();
   register_legacy_shard::<PlotBar>();
   register_legacy_shard::<PlotLine>();

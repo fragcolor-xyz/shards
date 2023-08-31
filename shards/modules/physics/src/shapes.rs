@@ -289,7 +289,7 @@ shape!(
   "Physics.Cuboid-rust-0x20200101"
 );
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<BallShape>();
   register_legacy_shard::<CubeShape>();
 }

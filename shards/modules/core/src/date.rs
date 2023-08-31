@@ -120,6 +120,6 @@ impl LegacyShard for DateFormat {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<DateFormat>();
 }

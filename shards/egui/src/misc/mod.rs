@@ -26,7 +26,7 @@ mod reset;
 mod style;
 pub(crate) mod style_util;
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Reset>();
   register_legacy_shard::<Style>();
   register_legacy_shard::<AddFont>();

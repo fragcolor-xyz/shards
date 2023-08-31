@@ -152,6 +152,6 @@ impl LegacyShard for Impulse {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Impulse>();
 }

@@ -153,7 +153,7 @@ mod space;
 mod table;
 mod vertical;
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<CollapsingHeader>();
   register_legacy_shard::<Columns>();
   register_legacy_shard::<Disable>();

@@ -159,10 +159,10 @@ mod panels;
 mod scope;
 mod window;
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Area>();
   register_legacy_enum(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
-  docking::registerShards();
+  docking::register_shards();
   register_legacy_shard::<Scope>();
   register_legacy_shard::<Window>();
   register_legacy_enum(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());

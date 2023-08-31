@@ -786,7 +786,7 @@ impl LegacyShard for SHDecode {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<AccountId>();
   register_legacy_shard::<SHStorageKey>();
   register_legacy_shard::<SHStorageMap>();

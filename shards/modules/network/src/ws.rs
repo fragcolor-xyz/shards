@@ -313,7 +313,7 @@ impl LegacyShard for WriteString {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Client>();
   register_legacy_shard::<ReadString>();
   register_legacy_shard::<WriteString>();

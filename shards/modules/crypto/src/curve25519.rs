@@ -381,7 +381,7 @@ add_verifier!(
   64
 );
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Sr25519Sign>();
   register_legacy_shard::<Ed25519Sign>();
   register_legacy_shard::<Sr25519PublicKey>();

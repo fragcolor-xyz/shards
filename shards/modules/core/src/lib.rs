@@ -14,7 +14,7 @@ pub extern "C" fn shardsRegister_core_rust(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  date::registerShards();
-  casting::registerShards();
-  uuid::registerShards();
+  date::register_shards();
+  casting::register_shards();
+  uuid::register_shards();
 }

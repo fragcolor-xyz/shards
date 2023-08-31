@@ -225,7 +225,7 @@ impl LegacyShard for Decrypt {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Encrypt>();
   register_legacy_shard::<Decrypt>();
 }

@@ -177,7 +177,7 @@ impl LegacyShard for Restore {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Save>();
   register_legacy_shard::<Restore>();
 }

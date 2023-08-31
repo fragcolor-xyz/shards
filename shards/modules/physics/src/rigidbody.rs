@@ -781,7 +781,7 @@ impl LegacyShard for KinematicRigidBody {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<DynamicRigidBody>();
   register_legacy_shard::<StaticRigidBody>();
   register_legacy_shard::<KinematicRigidBody>();

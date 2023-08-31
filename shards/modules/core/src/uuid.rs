@@ -288,7 +288,7 @@ impl LegacyShard for NanoIDCreate {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<UUIDCreate>();
   register_legacy_shard::<UUIDToString>();
   register_legacy_shard::<UUIDToBytes>();

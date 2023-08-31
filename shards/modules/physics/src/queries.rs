@@ -121,6 +121,6 @@ impl LegacyShard for CastRay {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<CastRay>();
 }

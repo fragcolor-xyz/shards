@@ -300,7 +300,7 @@ mod tooltip;
 mod var_util;
 mod variable;
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Button>();
   register_legacy_shard::<Checkbox>();
   register_legacy_shard::<ColorInput>();
@@ -329,7 +329,7 @@ pub fn registerShards() {
   register_legacy_shard::<Int2Slider>();
   register_legacy_shard::<Int3Slider>();
   register_legacy_shard::<Int4Slider>();
-  plots::registerShards();
+  plots::register_shards();
   register_legacy_shard::<MarkdownViewer>();
   register_legacy_shard::<ProgressBar>();
   register_legacy_shard::<RadioButton>();

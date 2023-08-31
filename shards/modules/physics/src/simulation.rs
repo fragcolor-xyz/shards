@@ -145,6 +145,6 @@ impl LegacyShard for Simulation {
   }
 }
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Simulation>();
 }

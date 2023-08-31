@@ -249,11 +249,11 @@ pub extern "C" fn register(core: *mut shards::shardsc::SHCore) {
   }
 
   context::register_shards();
-  state::registerShards();
-  containers::registerShards();
-  layouts::registerShards();
-  menus::registerShards();
-  misc::registerShards();
-  widgets::registerShards();
+  state::register_shards();
+  containers::register_shards();
+  layouts::register_shards();
+  menus::register_shards();
+  misc::register_shards();
+  widgets::register_shards();
   properties::register_shards();
 }

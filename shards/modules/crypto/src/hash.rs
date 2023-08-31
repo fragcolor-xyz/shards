@@ -297,7 +297,7 @@ add_hasher3!(
   16
 );
 
-pub fn registerShards() {
+pub fn register_shards() {
   register_legacy_shard::<Keccak_256>();
   register_legacy_shard::<Keccak_512>();
   register_legacy_shard::<SHSha3_256>();
