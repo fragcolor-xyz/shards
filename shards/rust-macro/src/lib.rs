@@ -54,12 +54,6 @@ impl Error {
 
 lazy_static::lazy_static! {
   static ref IMPLS_TO_CHECK: Vec<&'static str> = vec![
-    "setup",
-    "destroy",
-    "input_help",
-    "output_help",
-    "properties",
-    "exposed_variables",
     "compose",
     "warmup",
     "cleanup",

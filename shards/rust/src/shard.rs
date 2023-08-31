@@ -55,12 +55,6 @@ pub trait ShardDesc {
 }
 
 pub trait Shard2Generated {
-  fn has_setup() -> bool;
-  fn has_destroy() -> bool;
-  fn has_input_help() -> bool;
-  fn has_output_help() -> bool;
-  fn has_properties() -> bool;
-  fn has_exposed_variables() -> bool;
   fn has_compose() -> bool;
   fn has_warmup() -> bool;
   fn has_cleanup() -> bool;
