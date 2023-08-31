@@ -573,7 +573,7 @@ pub fn derive_shard(struct_def: TokenStream) -> TokenStream {
 
   match process_shard_helper_impl(struct_) {
     Ok(result) => {
-      eprintln!("derive_shard:\n{}", result);
+      // eprintln!("derive_shard:\n{}", result);
       result
     },
     Err(err) => err.to_compile_error(),
@@ -616,7 +616,7 @@ pub fn shard_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
   let impl_ : syn::ItemImpl = syn::parse_macro_input!(item);
   match generate_impl_wrapper(impl_) {
     Ok(result) => {
-      eprintln!("shard_impl:\n{}", result);
+      // eprintln!("shard_impl:\n{}", result);
       result
     }
     Err(err) => err.to_compile_error(),
