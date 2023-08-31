@@ -97,7 +97,7 @@
           @window-with-panels()
         }
       ) 
-      Assert.Is(@input_value Abort: true)
+      Assert.Is(@input_value Break: true)
 
       GFX.Render(Steps: render-steps)
     }
