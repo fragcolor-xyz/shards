@@ -122,7 +122,9 @@
 
 @wire(short-wire {
   Detach(too-long-wire) |
-  Wait(too-long-wire Timeout: 1.0)
+  Maybe({Wait(too-long-wire Timeout: 1.0)}
+        {Stop(too-long-wire)
+         "time out" | Fail})
 } Looped: true)
 
 @schedule(root short-wire)
