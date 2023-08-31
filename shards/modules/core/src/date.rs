@@ -2,7 +2,7 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -53,7 +53,7 @@ impl Default for DateFormat {
   }
 }
 
-impl Shard for DateFormat {
+impl LegacyShard for DateFormat {
   fn registerName() -> &'static str {
     cstr!("Date.Format")
   }

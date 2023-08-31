@@ -9,7 +9,7 @@ use super::SEQ_OF_FLOAT2_TYPES;
 use crate::widgets::plots::MARKER_SHAPE_TYPES;
 use crate::COLOR_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHColor;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -67,7 +67,7 @@ impl Default for PlotPoints {
   }
 }
 
-impl Shard for PlotPoints {
+impl LegacyShard for PlotPoints {
   fn registerName() -> &'static str
   where
     Self: Sized,

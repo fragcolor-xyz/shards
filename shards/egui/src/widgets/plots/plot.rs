@@ -9,7 +9,7 @@ use crate::EguiId;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -75,7 +75,7 @@ impl Default for Plot {
   }
 }
 
-impl Shard for Plot {
+impl LegacyShard for Plot {
   fn registerName() -> &'static str
   where
     Self: Sized,

@@ -7,7 +7,7 @@ use crate::widgets::image_util;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHType_Object;
 use shards::types::Context;
 use shards::types::ExposedTypes;
@@ -41,7 +41,7 @@ impl Default for RenderTarget {
   }
 }
 
-impl Shard for RenderTarget {
+impl LegacyShard for RenderTarget {
   fn registerName() -> &'static str
   where
     Self: Sized,

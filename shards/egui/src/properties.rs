@@ -11,7 +11,7 @@ use shards::core::registerShard;
 use shards::core::register_enum;
 use shards::core::register_shard;
 use shards::fourCharacterCode;
-use shards::shard::Shard2;
+use shards::shard::Shard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -70,7 +70,7 @@ impl Default for PropertyShard {
 }
 
 #[shards::shard_impl] 
-impl Shard2 for PropertyShard {
+impl Shard for PropertyShard {
   fn input_types(&mut self) -> &Types {
     &NONE_TYPES
   }

@@ -35,7 +35,7 @@ use shards::types::ANY_TYPES;
 use shards::types::FLOAT4X4S_TYPE;
 use shards::types::FLOAT4X4_TYPE;
 
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::NONE_TYPES;
 use shards::types::STRING_OR_NONE_SLICE;
 
@@ -366,7 +366,7 @@ impl Default for StaticRigidBody {
   }
 }
 
-impl Shard for StaticRigidBody {
+impl LegacyShard for StaticRigidBody {
   fn registerName() -> &'static str {
     cstr!("Physics.StaticBody")
   }
@@ -490,7 +490,7 @@ impl Default for DynamicRigidBody {
   }
 }
 
-impl Shard for DynamicRigidBody {
+impl LegacyShard for DynamicRigidBody {
   fn registerName() -> &'static str {
     cstr!("Physics.DynamicBody")
   }
@@ -632,7 +632,7 @@ impl Default for KinematicRigidBody {
   }
 }
 
-impl Shard for KinematicRigidBody {
+impl LegacyShard for KinematicRigidBody {
   fn registerName() -> &'static str {
     cstr!("Physics.KinematicBody")
   }

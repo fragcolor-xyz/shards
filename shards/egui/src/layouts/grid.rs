@@ -10,7 +10,7 @@ use crate::FLOAT_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -77,7 +77,7 @@ impl Default for Grid {
   }
 }
 
-impl Shard for Grid {
+impl LegacyShard for Grid {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -259,7 +259,7 @@ impl Default for NextRow {
   }
 }
 
-impl Shard for NextRow {
+impl LegacyShard for NextRow {
   fn registerName() -> &'static str
   where
     Self: Sized,

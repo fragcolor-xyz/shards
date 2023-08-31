@@ -8,7 +8,7 @@ use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedTypes;
@@ -59,7 +59,7 @@ impl Default for CloseMenu {
   }
 }
 
-impl Shard for CloseMenu {
+impl LegacyShard for CloseMenu {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -140,7 +140,7 @@ impl Default for Menu {
   }
 }
 
-impl Shard for Menu {
+impl LegacyShard for Menu {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -289,7 +289,7 @@ impl Default for MenuBar {
   }
 }
 
-impl Shard for MenuBar {
+impl LegacyShard for MenuBar {
   fn registerName() -> &'static str
   where
     Self: Sized,

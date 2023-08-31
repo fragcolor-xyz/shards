@@ -23,7 +23,7 @@ use shards::types::Parameters;
 use shards::types::FLOAT3_TYPES_SLICE;
 use shards::types::FLOAT_TYPES_SLICE;
 use shards::types::NONE_TYPES;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::Types;
 use shards::types::Var;
@@ -53,7 +53,7 @@ lazy_static! {
 
 macro_rules! shape {
   ($shard_name:ident, $name_str:literal, $hash:literal) => {
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }

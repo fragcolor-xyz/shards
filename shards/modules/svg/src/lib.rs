@@ -10,7 +10,7 @@ extern crate compile_time_crc32;
 
 
 use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHImage;
 use shards::shardsc::SHVarPayload;
 use shards::shardsc::SHVarPayload__bindgen_ty_1;
@@ -70,7 +70,7 @@ struct ToImage {
   size: (i64, i64),
 }
 
-impl Shard for ToImage {
+impl LegacyShard for ToImage {
   fn registerName() -> &'static str {
     cstr!("SVG.ToImage")
   }

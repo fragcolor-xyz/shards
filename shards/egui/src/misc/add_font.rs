@@ -5,7 +5,7 @@ use super::AddFont;
 use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -27,7 +27,7 @@ impl Default for AddFont {
   }
 }
 
-impl Shard for AddFont {
+impl LegacyShard for AddFont {
   fn registerName() -> &'static str
   where
     Self: Sized,

@@ -13,7 +13,7 @@ extern crate compile_time_crc32;
 use shards::core::registerShard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 
 use shards::types::Context;
@@ -268,7 +268,7 @@ macro_rules! get_like {
       rb: RequestBase,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -376,7 +376,7 @@ macro_rules! post_like {
       rb: RequestBase,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }

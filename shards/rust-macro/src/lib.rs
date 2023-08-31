@@ -503,7 +503,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
       ];
     }
 
-    impl shards::shard::ShardDesc for #struct_id {
+    impl shards::shard::ShardGenerated for #struct_id {
       fn register_name() -> &'static str {
         cstr!(#shard_name_expr)
       }
@@ -602,7 +602,7 @@ fn generate_impl_wrapper(impl_: syn::ItemImpl) -> Result<TokenStream, Error> {
 
   Ok(quote! {
     #[allow(non_snake_case)]
-    impl shards::shard::Shard2Generated for #struct_ty {
+    impl shards::shard::ShardGeneratedOverloads for #struct_ty {
       #(#impls)*
     }
 

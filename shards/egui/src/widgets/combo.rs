@@ -9,7 +9,7 @@ use crate::ANY_TABLE_SLICE;
 use crate::FLOAT_VAR_SLICE;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::common_type;
 use shards::types::Context;
@@ -71,7 +71,7 @@ impl Default for Combo {
   }
 }
 
-impl Shard for Combo {
+impl LegacyShard for Combo {
   fn registerName() -> &'static str
   where
     Self: Sized,

@@ -11,7 +11,7 @@ extern crate compile_time_crc32;
 
 
 use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -72,7 +72,7 @@ impl Default for CSVRead {
   }
 }
 
-impl Shard for CSVRead {
+impl LegacyShard for CSVRead {
   fn registerName() -> &'static str {
     cstr!("CSV.Read")
   }
@@ -168,7 +168,7 @@ impl Default for CSVWrite {
   }
 }
 
-impl Shard for CSVWrite {
+impl LegacyShard for CSVWrite {
   fn registerName() -> &'static str {
     cstr!("CSV.Write")
   }

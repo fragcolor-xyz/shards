@@ -5,7 +5,7 @@ use super::ListBox;
 use crate::util;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::shardsc::SHType_Bool;
 use shards::types::common_type;
@@ -75,7 +75,7 @@ impl Default for ListBox {
   }
 }
 
-impl Shard for ListBox {
+impl LegacyShard for ListBox {
   fn registerName() -> &'static str
   where
     Self: Sized,

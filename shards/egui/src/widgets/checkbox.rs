@@ -7,7 +7,7 @@ use crate::widgets::text_util;
 use crate::ANY_TABLE_SLICE;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::common_type;
 use shards::types::Context;
@@ -61,7 +61,7 @@ impl Default for Checkbox {
   }
 }
 
-impl Shard for Checkbox {
+impl LegacyShard for Checkbox {
   fn registerName() -> &'static str
   where
     Self: Sized,

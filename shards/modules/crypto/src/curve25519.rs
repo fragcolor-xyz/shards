@@ -3,7 +3,7 @@
 
 use crate::{CRYPTO_KEY_TYPES, PUB_KEY_TYPES};
 use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::common_type;
 use shards::types::ClonedVar;
@@ -76,7 +76,7 @@ macro_rules! add_signer {
       key: ParamVar,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -165,7 +165,7 @@ macro_rules! add_pub_key {
       is_string: bool,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -221,7 +221,7 @@ macro_rules! add_priv_key {
       is_string: bool,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -283,7 +283,7 @@ macro_rules! add_verifier {
       msg: ParamVar,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }

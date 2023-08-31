@@ -10,7 +10,7 @@ use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
 
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::AutoSeqVar;
 use shards::types::AutoShardRef;
@@ -3430,7 +3430,7 @@ pub(crate) struct EvalShard {
   defines: ParamVar,
 }
 
-impl Shard for EvalShard {
+impl LegacyShard for EvalShard {
   fn registerName() -> &'static str
   where
     Self: Sized,

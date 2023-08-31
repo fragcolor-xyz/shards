@@ -13,7 +13,7 @@ use crate::EGUI_CTX_TYPE;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -111,7 +111,7 @@ impl Default for Window {
   }
 }
 
-impl Shard for Window {
+impl LegacyShard for Window {
   fn registerName() -> &'static str
   where
     Self: Sized,

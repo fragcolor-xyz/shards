@@ -5,7 +5,7 @@ use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
 use crate::PARENTS_UI_NAME;
 use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -64,7 +64,7 @@ impl Default for Tab {
   }
 }
 
-impl Shard for Tab {
+impl LegacyShard for Tab {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -213,7 +213,7 @@ impl Default for DockArea {
   }
 }
 
-impl Shard for DockArea {
+impl LegacyShard for DockArea {
   fn registerName() -> &'static str
   where
     Self: Sized,

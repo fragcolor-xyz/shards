@@ -12,7 +12,7 @@ use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -93,7 +93,7 @@ macro_rules! impl_panel {
       }
     }
 
-    impl Shard for $name {
+    impl LegacyShard for $name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -314,7 +314,7 @@ impl Default for CentralPanel {
   }
 }
 
-impl Shard for CentralPanel {
+impl LegacyShard for CentralPanel {
   fn registerName() -> &'static str {
     cstr!("UI.CentralPanel")
   }

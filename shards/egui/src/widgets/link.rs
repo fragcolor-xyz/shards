@@ -6,7 +6,7 @@ use crate::util;
 use crate::widgets::text_util;
 use crate::ANY_TABLE_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedTypes;
@@ -56,7 +56,7 @@ impl Default for Link {
   }
 }
 
-impl Shard for Link {
+impl LegacyShard for Link {
   fn registerName() -> &'static str
   where
     Self: Sized,

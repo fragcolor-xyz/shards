@@ -2,7 +2,7 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -33,7 +33,7 @@ impl Default for ToBase58 {
     ToBase58 { output: ().into() }
   }
 }
-impl Shard for ToBase58 {
+impl LegacyShard for ToBase58 {
   fn registerName() -> &'static str {
     cstr!("ToBase58")
   }
@@ -79,7 +79,7 @@ impl Default for FromBase58 {
     FromBase58 { output: Vec::new() }
   }
 }
-impl Shard for FromBase58 {
+impl LegacyShard for FromBase58 {
   fn registerName() -> &'static str {
     cstr!("FromBase58")
   }
@@ -133,7 +133,7 @@ impl Default for ToLEB128 {
   }
 }
 
-impl Shard for ToLEB128 {
+impl LegacyShard for ToLEB128 {
   fn registerName() -> &'static str {
     cstr!("ToLEB128")
   }
@@ -202,7 +202,7 @@ impl Default for FromLEB128 {
   }
 }
 
-impl Shard for FromLEB128 {
+impl LegacyShard for FromLEB128 {
   fn registerName() -> &'static str {
     cstr!("FromLEB128")
   }

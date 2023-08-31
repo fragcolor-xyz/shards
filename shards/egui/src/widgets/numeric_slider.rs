@@ -15,7 +15,7 @@ use crate::ANY_TABLE_SLICE;
 
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -84,7 +84,7 @@ macro_rules! impl_ui_slider {
       }
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str
       where
         Self: Sized,
@@ -337,7 +337,7 @@ macro_rules! impl_ui_n_slider {
       }
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str
       where
         Self: Sized,

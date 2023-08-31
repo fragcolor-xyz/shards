@@ -18,7 +18,7 @@ use shards::types::ParamVar;
 use shards::types::Seq;
 use shards::types::Type;
 
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::Var;
 
@@ -55,7 +55,7 @@ impl Default for CastRay {
   }
 }
 
-impl Shard for CastRay {
+impl LegacyShard for CastRay {
   fn registerName() -> &'static str {
     cstr!("Physics.CastRay")
   }

@@ -2,7 +2,7 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -136,7 +136,7 @@ struct EncodeCall {
   input: Vec<Token>,
 }
 
-impl Shard for EncodeCall {
+impl LegacyShard for EncodeCall {
   fn registerName() -> &'static str {
     cstr!("Eth.EncodeCall")
   }
@@ -271,7 +271,7 @@ struct DecodeCall {
   is_input: bool,
 }
 
-impl Shard for DecodeCall {
+impl LegacyShard for DecodeCall {
   fn registerName() -> &'static str {
     cstr!("Eth.DecodeCall")
   }

@@ -14,7 +14,7 @@ use shards::types::Parameters;
 
 use shards::types::ANY_TYPES;
 use shards::types::FLOAT_TYPES_SLICE;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::Types;
 use shards::types::Var;
@@ -63,7 +63,7 @@ impl Default for Simulation {
   }
 }
 
-impl Shard for Simulation {
+impl LegacyShard for Simulation {
   fn registerName() -> &'static str {
     cstr!("Physics.Simulation")
   }

@@ -14,7 +14,7 @@ use crate::widgets::drag_value::CustomDragValue;
 
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -77,7 +77,7 @@ macro_rules! impl_ui_input {
       }
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str
       where
         Self: Sized,
@@ -291,7 +291,7 @@ macro_rules! impl_ui_n_input {
       }
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str
       where
         Self: Sized,

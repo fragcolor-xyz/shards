@@ -3,7 +3,7 @@ use shards::{
   types::{
     ClonedVar, Context, ExposedInfo, ExposedTypes, ParamVar, Parameters, Type, Types, Var, FRAG_CC, NONE_TYPES, STRING_TYPES,
   },
-  shard::Shard,
+  shard::LegacyShard,
 };
 use std::net::TcpStream;
 use std::rc::Rc;
@@ -34,7 +34,7 @@ struct Client {
   ws: Rc<Option<WsClient>>,
 }
 
-impl Shard for Client {
+impl LegacyShard for Client {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -148,7 +148,7 @@ struct ReadString {
   text: ClonedVar,
 }
 
-impl Shard for ReadString {
+impl LegacyShard for ReadString {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -246,7 +246,7 @@ struct WriteString {
   client: ClientUser,
 }
 
-impl Shard for WriteString {
+impl LegacyShard for WriteString {
   fn registerName() -> &'static str
   where
     Self: Sized,

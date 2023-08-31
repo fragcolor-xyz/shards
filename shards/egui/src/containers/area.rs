@@ -11,7 +11,7 @@ use crate::EGUI_CTX_TYPE;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -68,7 +68,7 @@ impl Default for Area {
   }
 }
 
-impl Shard for Area {
+impl LegacyShard for Area {
   fn registerName() -> &'static str
   where
     Self: Sized,

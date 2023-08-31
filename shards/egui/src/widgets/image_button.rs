@@ -6,7 +6,7 @@ use super::ImageButton;
 use crate::util;
 use crate::FLOAT2_VAR_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHType_Bool;
 use shards::shardsc::SHType_Image;
 use shards::shardsc::SHType_Object;
@@ -69,7 +69,7 @@ impl Default for ImageButton {
   }
 }
 
-impl Shard for ImageButton {
+impl LegacyShard for ImageButton {
   fn registerName() -> &'static str
   where
     Self: Sized,

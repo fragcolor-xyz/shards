@@ -21,7 +21,7 @@ use shards::types::Parameters;
 
 use shards::types::Type;
 
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::Var;
 
@@ -60,7 +60,7 @@ impl Default for Impulse {
   }
 }
 
-impl Shard for Impulse {
+impl LegacyShard for Impulse {
   fn registerName() -> &'static str {
     cstr!("Physics.Impulse")
   }

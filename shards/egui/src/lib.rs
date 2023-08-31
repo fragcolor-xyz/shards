@@ -7,7 +7,7 @@
 use shards::core::cloneVar;
 use shards::core::registerShard;
 use shards::fourCharacterCode;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::common_type;
 use shards::types::ExposedTypes;
@@ -94,9 +94,9 @@ struct EguiId {
 }
 
 impl EguiId {
-  fn new(shard: &dyn Shard, idx: u8) -> EguiId {
+  fn new(shard: &dyn LegacyShard, idx: u8) -> EguiId {
     EguiId {
-      p: shard as *const dyn Shard as *mut c_void as usize,
+      p: shard as *const dyn LegacyShard as *mut c_void as usize,
       idx,
     }
   }

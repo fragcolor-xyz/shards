@@ -9,7 +9,7 @@ use crate::CONTEXTS_NAME;
 use crate::EGUI_UI_SEQ_TYPE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHColor;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -58,7 +58,7 @@ impl Default for Style {
   }
 }
 
-impl Shard for Style {
+impl LegacyShard for Style {
   fn registerName() -> &'static str
   where
     Self: Sized,

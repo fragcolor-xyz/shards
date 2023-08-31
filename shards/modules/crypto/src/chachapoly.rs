@@ -3,7 +3,7 @@
 
 use crate::CRYPTO_KEY_TYPES;
 use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -34,7 +34,7 @@ struct Encrypt {
   nonce: u64,
 }
 
-impl Shard for Encrypt {
+impl LegacyShard for Encrypt {
   fn registerName() -> &'static str {
     cstr!("ChaChaPoly.Encrypt")
   }
@@ -134,7 +134,7 @@ struct Decrypt {
   nonce: u64,
 }
 
-impl Shard for Decrypt {
+impl LegacyShard for Decrypt {
   fn registerName() -> &'static str {
     cstr!("ChaChaPoly.Decrypt")
   }

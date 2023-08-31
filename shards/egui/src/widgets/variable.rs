@@ -3,7 +3,7 @@ use super::WireVariable;
 use crate::util;
 use crate::UIRenderer;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -76,7 +76,7 @@ impl Default for Variable {
   }
 }
 
-impl Shard for Variable {
+impl LegacyShard for Variable {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -229,7 +229,7 @@ impl Default for WireVariable {
   }
 }
 
-impl Shard for WireVariable {
+impl LegacyShard for WireVariable {
   fn registerName() -> &'static str
   where
     Self: Sized,

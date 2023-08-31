@@ -5,7 +5,7 @@ use super::Frame;
 use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHColor;
 use shards::types::common_type;
 use shards::types::Context;
@@ -94,7 +94,7 @@ impl Default for Frame {
   }
 }
 
-impl Shard for Frame {
+impl LegacyShard for Frame {
   fn registerName() -> &'static str
   where
     Self: Sized,

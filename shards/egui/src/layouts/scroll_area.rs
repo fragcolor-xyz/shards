@@ -6,7 +6,7 @@ use crate::util;
 use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -66,7 +66,7 @@ impl Default for ScrollArea {
   }
 }
 
-impl Shard for ScrollArea {
+impl LegacyShard for ScrollArea {
   fn registerName() -> &'static str
   where
     Self: Sized,

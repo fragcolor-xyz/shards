@@ -7,7 +7,7 @@ use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHType_Int;
 use shards::shardsc::SHType_Seq;
 use shards::shardsc::SHType_ShardRef;
@@ -91,7 +91,7 @@ impl Default for Table {
   }
 }
 
-impl Shard for Table {
+impl LegacyShard for Table {
   fn registerName() -> &'static str
   where
     Self: Sized,

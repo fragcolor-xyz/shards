@@ -15,7 +15,7 @@ use shards::types::{
 };
 use shards::{
   core::registerShard,
-  shard::Shard,
+  shard::LegacyShard,
   types::{common_type, Context, Parameters, Type, Types, Var, FRAG_CC},
 };
 use std::alloc::Global;
@@ -76,7 +76,7 @@ struct Load {
   shape: Seq,
 }
 
-impl Shard for Load {
+impl LegacyShard for Load {
   fn registerName() -> &'static str {
     cstr!("ONNX.Load")
   }
@@ -175,7 +175,7 @@ struct Activate {
   reqs: ExposedTypes,
 }
 
-impl Shard for Activate {
+impl LegacyShard for Activate {
   fn registerName() -> &'static str {
     cstr!("ONNX.Activate")
   }

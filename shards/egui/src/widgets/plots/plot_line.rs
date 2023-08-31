@@ -7,7 +7,7 @@ use super::PLOT_UI_NAME;
 use super::SEQ_OF_FLOAT2_TYPES;
 use crate::COLOR_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHColor;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -50,7 +50,7 @@ impl Default for PlotLine {
   }
 }
 
-impl Shard for PlotLine {
+impl LegacyShard for PlotLine {
   fn registerName() -> &'static str
   where
     Self: Sized,

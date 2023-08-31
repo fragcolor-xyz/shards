@@ -12,7 +12,7 @@ use crate::EGUI_UI_SEQ_TYPE;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::common_type;
 use shards::types::Context;
@@ -67,7 +67,7 @@ impl Default for CodeEditor {
   }
 }
 
-impl Shard for CodeEditor {
+impl LegacyShard for CodeEditor {
   fn registerName() -> &'static str
   where
     Self: Sized,

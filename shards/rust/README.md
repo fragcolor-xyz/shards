@@ -51,7 +51,7 @@ impl Default for MyShard {
 The trait is defined in `rust/src/shard.rs`. Some functions have a default implementation. At minimum the following must be implemented:
 
 ```rust
-impl Shard for MyShard {
+impl LegacyShard for MyShard {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -153,7 +153,7 @@ If the shards has parameters, additional functions should be implemented.
 
 ```rust
 
-impl Shard for MyShard {    
+impl LegacyShard for MyShard {    
   fn parameters(&mut self) -> Option<&Parameters> {
     None
   }
@@ -207,7 +207,7 @@ lazy_static! {
   ];
 }
 
-impl Shard for MyShard {
+impl LegacyShard for MyShard {
   fn parameters(&mut self) -> Option<&Parameters> {
     Some(&MY_PARAMETERS)
   }

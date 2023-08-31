@@ -7,7 +7,7 @@ use crate::FLOAT_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::OptionalString;
@@ -38,7 +38,7 @@ impl Default for Space {
   }
 }
 
-impl Shard for Space {
+impl LegacyShard for Space {
   fn registerName() -> &'static str
   where
     Self: Sized,

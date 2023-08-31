@@ -3,7 +3,7 @@
 
 use shards::core::registerShard;
 use shards::fourCharacterCode;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHObjectTypeInfo;
 use shards::shardsc::SHType_Bool;
 use shards::shardsc::SHType_Bytes;
@@ -134,7 +134,7 @@ impl Default for AccountId {
   }
 }
 
-impl Shard for AccountId {
+impl LegacyShard for AccountId {
   fn registerName() -> &'static str {
     cstr!("Substrate.AccountId")
   }
@@ -215,7 +215,7 @@ struct SHStorageKey {
   v: Vec<u8>,
 }
 
-impl Shard for SHStorageKey {
+impl LegacyShard for SHStorageKey {
   fn registerName() -> &'static str {
     cstr!("Substrate.StorageKey")
   }
@@ -275,7 +275,7 @@ struct SHStorageMap {
   pre_hashed: bool,
 }
 
-impl Shard for SHStorageMap {
+impl LegacyShard for SHStorageMap {
   fn registerName() -> &'static str {
     cstr!("Substrate.StorageMap")
   }
@@ -481,7 +481,7 @@ fn encode_var(value: &Var, hint: &Var, dest: &mut Vec<u8>) -> Result<(), &'stati
   }
 }
 
-impl Shard for SHEncode {
+impl LegacyShard for SHEncode {
   fn registerName() -> &'static str {
     cstr!("Substrate.Encode")
   }
@@ -568,7 +568,7 @@ impl Default for SHDecode {
   }
 }
 
-impl Shard for SHDecode {
+impl LegacyShard for SHDecode {
   fn registerName() -> &'static str {
     cstr!("Substrate.Decode")
   }

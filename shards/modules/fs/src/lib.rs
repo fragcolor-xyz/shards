@@ -12,7 +12,7 @@ use shards::core::registerShard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
 use shards::core::Core;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHCore;
 use shards::types::common_type;
 use shards::types::ClonedVar;
@@ -100,7 +100,7 @@ impl Default for FileDialog {
   }
 }
 
-impl Shard for FileDialog {
+impl LegacyShard for FileDialog {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -275,7 +275,7 @@ impl Default for SaveFileDialog {
   }
 }
 
-impl Shard for SaveFileDialog {
+impl LegacyShard for SaveFileDialog {
   fn registerName() -> &'static str
   where
     Self: Sized,

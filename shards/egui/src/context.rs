@@ -11,8 +11,8 @@ use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INPUT_CONTEXT_TYPE;
 
 use shards::core::register_shard;
+use shards::shard::LegacyShard;
 use shards::shard::Shard;
-use shards::shard::Shard2;
 use shards::shardsc;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -77,7 +77,7 @@ impl Default for EguiContext {
 }
 
 #[shards::shard_impl]
-impl Shard2 for EguiContext {
+impl Shard for EguiContext {
   fn input_types(&mut self) -> &std::vec::Vec<Type> {
     &ANY_TYPES
   }

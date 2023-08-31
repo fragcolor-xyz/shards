@@ -8,7 +8,7 @@ use crate::EguiId;
 use crate::EGUI_UI_SEQ_TYPE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -54,7 +54,7 @@ impl Default for Console {
   }
 }
 
-impl Shard for Console {
+impl LegacyShard for Console {
   fn registerName() -> &'static str
   where
     Self: Sized,

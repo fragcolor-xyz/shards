@@ -8,7 +8,7 @@ use crate::ANY_TABLE_SLICE;
 use crate::ANY_VAR_SLICE;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -68,7 +68,7 @@ impl Default for RadioButton {
   }
 }
 
-impl Shard for RadioButton {
+impl LegacyShard for RadioButton {
   fn registerName() -> &'static str
   where
     Self: Sized,

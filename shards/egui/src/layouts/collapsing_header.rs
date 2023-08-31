@@ -7,7 +7,7 @@ use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_OR_SHARDS_OR_NONE_TYPES_SLICE;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::Context;
 use shards::types::ExposedTypes;
@@ -62,7 +62,7 @@ impl Default for CollapsingHeader {
   }
 }
 
-impl Shard for CollapsingHeader {
+impl LegacyShard for CollapsingHeader {
   fn registerName() -> &'static str
   where
     Self: Sized,
