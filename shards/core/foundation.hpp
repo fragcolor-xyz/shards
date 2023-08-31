@@ -1461,6 +1461,25 @@ inline void collectAllRequiredVariables(const SHExposedTypesInfo &exposed, Expos
   (collectRequiredVariables(exposed, out, std::forward<TArgs>(args)), ...);
 }
 
+struct CoroAwareBarrier {
+  std::atomic_bool running{false};
+
+  bool acquire(SHContext *context) {
+    do {
+      bool expected = false;
+      if (running.compare_exchange_strong(expected, true))
+        break;
+      else if (shards::suspend(context, 0) != SHWireState::Continue)
+        return false; // return as there is some error or so going on
+    } while (running);
+    return true;
+  }
+
+  void release() {
+    running = false;
+  }
+};
+
 }; // namespace shards
 
 #endif // SH_CORE_FOUNDATION

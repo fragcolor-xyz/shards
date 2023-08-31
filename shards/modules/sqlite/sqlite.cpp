@@ -16,6 +16,7 @@ namespace shards {
 namespace DB {
 struct Connection {
   sqlite3 *db;
+  CoroAwareBarrier barrier;
 
   Connection(const char *path) {
     if (sqlite3_open(path, &db) != SQLITE_OK) {
@@ -118,11 +119,18 @@ struct Query : public Base {
   std::vector<SeqVar *> colSeqs;
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ensureDb(context);
+
+    if(!_connection->barrier.acquire(context)) {
+      return input; // this is a cancellation/stop etc
+    }
+    DEFER({
+      _connection->barrier.release();
+    });
+
     return awaitne(
         context,
         [&]() -> SHVar {
-          ensureDb(context);
-
           if (!prepared) {
             prepared.reset(new Statement(_connection->get(), _query.payload.stringValue)); // _query is full terminated cos cloned
           }
@@ -302,11 +310,18 @@ struct LoadExtension : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ensureDb(context);
+
+    if(!_connection->barrier.acquire(context)) {
+      return input; // this is a cancellation/stop etc
+    }
+    DEFER({
+      _connection->barrier.release();
+    });
+
     return awaitne(
         context,
         [&] {
-          ensureDb(context);
-
           std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
           _connection->loadExtension(extPath);
           return input;
@@ -344,11 +359,18 @@ struct RawQuery : public Base {
   std::vector<SeqVar *> colSeqs;
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ensureDb(context);
+
+    if(!_connection->barrier.acquire(context)) {
+      return input; // this is a cancellation/stop etc
+    }
+    DEFER({
+      _connection->barrier.release();
+    });
+
     return awaitne(
         context,
         [&] {
-          ensureDb(context);
-
           char *errMsg = nullptr;
           std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
           int rc = sqlite3_exec(_connection->get(), query.c_str(), nullptr, nullptr, &errMsg);
