@@ -301,7 +301,7 @@ pub fn abortWire(context: &SHContext, message: &str) {
 }
 
 #[inline(always)]
-pub fn registerShard<T: Default + LegacyShard>() {
+pub fn register_legacy_shard<T: Default + LegacyShard>() {
   unsafe {
     (*Core).registerShard.unwrap()(
       T::registerName().as_ptr() as *const c_char,
@@ -442,7 +442,7 @@ pub fn releaseVariable(var: &SHVar) {
   }
 }
 
-pub fn registerEnumType(vendorId: i32, typeId: i32, info: SHEnumInfo) {
+pub fn register_legacy_enum(vendorId: i32, typeId: i32, info: SHEnumInfo) {
   unsafe {
     (*Core).registerEnumType.unwrap()(vendorId, typeId, info);
   }

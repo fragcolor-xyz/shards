@@ -3,7 +3,7 @@
 
 // RigidBody and Collier are unique, Shapes can be shared
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use crate::BaseShape;
 
 
@@ -290,6 +290,6 @@ shape!(
 );
 
 pub fn registerShards() {
-  registerShard::<BallShape>();
-  registerShard::<CubeShape>();
+  register_legacy_shard::<BallShape>();
+  register_legacy_shard::<CubeShape>();
 }

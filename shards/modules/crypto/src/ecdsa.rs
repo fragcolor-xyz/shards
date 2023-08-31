@@ -2,7 +2,7 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use crate::CRYPTO_KEY_TYPES;
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 
 use shards::types::common_type;
@@ -363,8 +363,8 @@ impl LegacyShard for ECDSARecover {
 }
 
 pub fn registerShards() {
-  registerShard::<ECDSASign>();
-  registerShard::<ECDSAPubKey>();
-  registerShard::<ECDSAPrivKey>();
-  registerShard::<ECDSARecover>();
+  register_legacy_shard::<ECDSASign>();
+  register_legacy_shard::<ECDSAPubKey>();
+  register_legacy_shard::<ECDSAPrivKey>();
+  register_legacy_shard::<ECDSARecover>();
 }

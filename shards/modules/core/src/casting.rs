@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
@@ -258,8 +258,8 @@ impl LegacyShard for FromLEB128 {
 }
 
 pub fn registerShards() {
-  registerShard::<ToBase58>();
-  registerShard::<FromBase58>();
-  registerShard::<ToLEB128>();
-  registerShard::<FromLEB128>();
+  register_legacy_shard::<ToBase58>();
+  register_legacy_shard::<FromBase58>();
+  register_legacy_shard::<ToLEB128>();
+  register_legacy_shard::<FromLEB128>();
 }

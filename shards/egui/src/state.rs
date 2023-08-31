@@ -3,7 +3,7 @@ use lazy_static::__Deref;
 use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -178,6 +178,6 @@ impl LegacyShard for Restore {
 }
 
 pub fn registerShards() {
-  registerShard::<Save>();
-  registerShard::<Restore>();
+  register_legacy_shard::<Save>();
+  register_legacy_shard::<Restore>();
 }

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
 use shards::shardsc::SHObjectTypeInfo;
@@ -787,9 +787,9 @@ impl LegacyShard for SHDecode {
 }
 
 pub fn registerShards() {
-  registerShard::<AccountId>();
-  registerShard::<SHStorageKey>();
-  registerShard::<SHStorageMap>();
-  registerShard::<SHEncode>();
-  registerShard::<SHDecode>();
+  register_legacy_shard::<AccountId>();
+  register_legacy_shard::<SHStorageKey>();
+  register_legacy_shard::<SHStorageMap>();
+  register_legacy_shard::<SHEncode>();
+  register_legacy_shard::<SHDecode>();
 }

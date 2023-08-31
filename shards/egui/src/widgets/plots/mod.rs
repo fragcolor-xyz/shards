@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use shards::core::registerEnumType;
-use shards::core::registerShard;
+use shards::core::register_legacy_enum;
+use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
@@ -100,9 +100,9 @@ mod plot_line;
 mod plot_points;
 
 pub fn registerShards() {
-  registerShard::<Plot>();
-  registerShard::<PlotBar>();
-  registerShard::<PlotLine>();
-  registerShard::<PlotPoints>();
-  registerEnumType(FRAG_CC, MarkerShapeCC, MarkerShapeEnumInfo.as_ref().into());
+  register_legacy_shard::<Plot>();
+  register_legacy_shard::<PlotBar>();
+  register_legacy_shard::<PlotLine>();
+  register_legacy_shard::<PlotPoints>();
+  register_legacy_enum(FRAG_CC, MarkerShapeCC, MarkerShapeEnumInfo.as_ref().into());
 }

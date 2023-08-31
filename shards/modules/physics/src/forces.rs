@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::types::Types;
 use crate::RigidBody;
 use crate::Simulation;
@@ -153,5 +153,5 @@ impl LegacyShard for Impulse {
 }
 
 pub fn registerShards() {
-  registerShard::<Impulse>();
+  register_legacy_shard::<Impulse>();
 }

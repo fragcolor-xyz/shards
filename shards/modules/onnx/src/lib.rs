@@ -14,7 +14,7 @@ use shards::types::{
   ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES, STRING_TYPES,
 };
 use shards::{
-  core::registerShard,
+  core::register_legacy_shard,
   shard::LegacyShard,
   types::{common_type, Context, Parameters, Type, Types, Var, FRAG_CC},
 };
@@ -304,6 +304,6 @@ pub extern "C" fn shardsRegister_onnx_rust(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  registerShard::<Load>();
-  registerShard::<Activate>();
+  register_legacy_shard::<Load>();
+  register_legacy_shard::<Activate>();
 }

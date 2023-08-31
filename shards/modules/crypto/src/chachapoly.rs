@@ -2,7 +2,7 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use crate::CRYPTO_KEY_TYPES;
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
@@ -226,6 +226,6 @@ impl LegacyShard for Decrypt {
 }
 
 pub fn registerShards() {
-  registerShard::<Encrypt>();
-  registerShard::<Decrypt>();
+  register_legacy_shard::<Encrypt>();
+  register_legacy_shard::<Decrypt>();
 }

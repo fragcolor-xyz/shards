@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use crate::Simulation;
 use crate::EXPOSED_SIMULATION;
 use crate::SIMULATION_TYPE;
@@ -146,5 +146,5 @@ impl LegacyShard for Simulation {
 }
 
 pub fn registerShards() {
-  registerShard::<Simulation>();
+  register_legacy_shard::<Simulation>();
 }

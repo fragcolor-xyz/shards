@@ -2,7 +2,7 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use crate::{CRYPTO_KEY_TYPES, PUB_KEY_TYPES};
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 
 use shards::types::common_type;
@@ -382,12 +382,12 @@ add_verifier!(
 );
 
 pub fn registerShards() {
-  registerShard::<Sr25519Sign>();
-  registerShard::<Ed25519Sign>();
-  registerShard::<Sr25519PublicKey>();
-  registerShard::<Ed25519PublicKey>();
-  registerShard::<Sr25519Seed>();
-  registerShard::<Ed25519Seed>();
-  registerShard::<Sr25519Verify>();
-  registerShard::<Ed25519Verify>();
+  register_legacy_shard::<Sr25519Sign>();
+  register_legacy_shard::<Ed25519Sign>();
+  register_legacy_shard::<Sr25519PublicKey>();
+  register_legacy_shard::<Ed25519PublicKey>();
+  register_legacy_shard::<Sr25519Seed>();
+  register_legacy_shard::<Ed25519Seed>();
+  register_legacy_shard::<Sr25519Verify>();
+  register_legacy_shard::<Ed25519Verify>();
 }

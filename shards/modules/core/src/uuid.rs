@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 
 use shards::types::ClonedVar;
@@ -289,9 +289,9 @@ impl LegacyShard for NanoIDCreate {
 }
 
 pub fn registerShards() {
-  registerShard::<UUIDCreate>();
-  registerShard::<UUIDToString>();
-  registerShard::<UUIDToBytes>();
-  registerShard::<NanoIDCreate>();
-  registerShard::<UUIDConvert>();
+  register_legacy_shard::<UUIDCreate>();
+  register_legacy_shard::<UUIDToString>();
+  register_legacy_shard::<UUIDToBytes>();
+  register_legacy_shard::<NanoIDCreate>();
+  register_legacy_shard::<UUIDConvert>();
 }

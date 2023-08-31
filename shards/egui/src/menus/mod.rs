@@ -1,4 +1,4 @@
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::ShardsVar;
@@ -24,7 +24,7 @@ struct MenuBar {
 }
 
 pub fn registerShards() {
-  registerShard::<CloseMenu>();
-  registerShard::<Menu>();
-  registerShard::<MenuBar>();
+  register_legacy_shard::<CloseMenu>();
+  register_legacy_shard::<Menu>();
+  register_legacy_shard::<MenuBar>();
 }

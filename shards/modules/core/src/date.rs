@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 
 use shards::types::ClonedVar;
@@ -121,5 +121,5 @@ impl LegacyShard for DateFormat {
 }
 
 pub fn registerShards() {
-  registerShard::<DateFormat>();
+  register_legacy_shard::<DateFormat>();
 }

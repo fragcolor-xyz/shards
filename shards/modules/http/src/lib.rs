@@ -10,7 +10,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
 use shards::shard::LegacyShard;
@@ -511,10 +511,10 @@ pub extern "C" fn shardsRegister_http_rust(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  registerShard::<Get>();
-  registerShard::<Head>();
-  registerShard::<Post>();
-  registerShard::<Put>();
-  registerShard::<Patch>();
-  registerShard::<Delete>();
+  register_legacy_shard::<Get>();
+  register_legacy_shard::<Head>();
+  register_legacy_shard::<Post>();
+  register_legacy_shard::<Put>();
+  register_legacy_shard::<Patch>();
+  register_legacy_shard::<Delete>();
 }

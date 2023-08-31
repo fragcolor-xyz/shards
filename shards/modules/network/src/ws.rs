@@ -1,5 +1,5 @@
 use shards::{
-  core::{registerShard, run_blocking, BlockingShard},
+  core::{register_legacy_shard, run_blocking, BlockingShard},
   types::{
     ClonedVar, Context, ExposedInfo, ExposedTypes, ParamVar, Parameters, Type, Types, Var, FRAG_CC, NONE_TYPES, STRING_TYPES,
   },
@@ -314,7 +314,7 @@ impl LegacyShard for WriteString {
 }
 
 pub fn registerShards() {
-  registerShard::<Client>();
-  registerShard::<ReadString>();
-  registerShard::<WriteString>();
+  register_legacy_shard::<Client>();
+  register_legacy_shard::<ReadString>();
+  register_legacy_shard::<WriteString>();
 }

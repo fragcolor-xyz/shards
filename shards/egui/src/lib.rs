@@ -5,7 +5,7 @@
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
 use shards::core::cloneVar;
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
 use shards::shardsc;

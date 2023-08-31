@@ -4,7 +4,7 @@ use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
 use crate::PARENTS_UI_NAME;
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::Context;
@@ -432,8 +432,8 @@ impl LegacyShard for DockArea {
 }
 
 pub fn registerShards() {
-  registerShard::<DockArea>();
-  registerShard::<Tab>();
+  register_legacy_shard::<DockArea>();
+  register_legacy_shard::<Tab>();
 }
 
 struct MyTabViewer<'a> {

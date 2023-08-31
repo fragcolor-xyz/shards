@@ -8,7 +8,7 @@ extern crate lazy_static;
 
 extern crate compile_time_crc32;
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
 use shards::core::Core;
@@ -382,6 +382,6 @@ pub extern "C" fn shardsRegister_fs_rust(core: *mut SHCore) {
     Core = core;
   }
 
-  registerShard::<FileDialog>();
-  registerShard::<SaveFileDialog>();
+  register_legacy_shard::<FileDialog>();
+  register_legacy_shard::<SaveFileDialog>();
 }

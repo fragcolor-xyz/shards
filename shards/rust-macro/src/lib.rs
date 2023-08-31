@@ -193,7 +193,7 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
       impl shards::core::EnumRegister for #enum_id {
         fn register() {
           let e = unsafe { &#enum_info_instance_id.enum_type.details.enumeration };
-          shards::core::registerEnumType(e.vendorId, e.typeId, (&*#enum_info_instance_id).into());
+          shards::core::register_legacy_enum(e.vendorId, e.typeId, (&*#enum_info_instance_id).into());
         }
       }
 

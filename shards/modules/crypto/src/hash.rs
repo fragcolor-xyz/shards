@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::types::common_type;
 
@@ -298,14 +298,14 @@ add_hasher3!(
 );
 
 pub fn registerShards() {
-  registerShard::<Keccak_256>();
-  registerShard::<Keccak_512>();
-  registerShard::<SHSha3_256>();
-  registerShard::<SHSha3_512>();
-  registerShard::<SHSha2_256>();
-  registerShard::<SHSha2_512>();
-  registerShard::<SHBlake_128>();
-  registerShard::<SHBlake_256>();
-  registerShard::<SHTwoX_64>();
-  registerShard::<SHTwoX_128>();
+  register_legacy_shard::<Keccak_256>();
+  register_legacy_shard::<Keccak_512>();
+  register_legacy_shard::<SHSha3_256>();
+  register_legacy_shard::<SHSha3_512>();
+  register_legacy_shard::<SHSha2_256>();
+  register_legacy_shard::<SHSha2_512>();
+  register_legacy_shard::<SHBlake_128>();
+  register_legacy_shard::<SHBlake_256>();
+  register_legacy_shard::<SHTwoX_64>();
+  register_legacy_shard::<SHTwoX_128>();
 }

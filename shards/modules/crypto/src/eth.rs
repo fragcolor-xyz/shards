@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
@@ -415,6 +415,6 @@ impl LegacyShard for DecodeCall {
 }
 
 pub fn registerShards() {
-  registerShard::<EncodeCall>();
-  registerShard::<DecodeCall>();
+  register_legacy_shard::<EncodeCall>();
+  register_legacy_shard::<DecodeCall>();
 }

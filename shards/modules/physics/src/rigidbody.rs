@@ -3,7 +3,7 @@
 
 use crate::fill_seq_from_mat4;
 use shards::core::deriveType;
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::types::Types;
 
 use crate::BaseShape;
@@ -782,7 +782,7 @@ impl LegacyShard for KinematicRigidBody {
 }
 
 pub fn registerShards() {
-  registerShard::<DynamicRigidBody>();
-  registerShard::<StaticRigidBody>();
-  registerShard::<KinematicRigidBody>();
+  register_legacy_shard::<DynamicRigidBody>();
+  register_legacy_shard::<StaticRigidBody>();
+  register_legacy_shard::<KinematicRigidBody>();
 }

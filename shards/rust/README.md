@@ -402,7 +402,7 @@ Once a shard is ready, it must be registered. Usually it is done in a `registerS
 
 ```rust
 pub fn registerShards() {
-  registerShard::<MyShard>();
+  register_legacy_shard::<MyShard>();
 }
 ```
 

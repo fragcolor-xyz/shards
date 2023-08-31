@@ -10,7 +10,7 @@ extern crate lazy_static;
 extern crate compile_time_crc32;
 
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 
 use shards::types::ClonedVar;
@@ -259,6 +259,6 @@ pub extern "C" fn shardsRegister_csv_rust(core: *mut shards::shardsc::SHCore) {
   unsafe {
     shards::core::Core = core;
   }
-  registerShard::<CSVRead>();
-  registerShard::<CSVWrite>();
+  register_legacy_shard::<CSVRead>();
+  register_legacy_shard::<CSVWrite>();
 }
