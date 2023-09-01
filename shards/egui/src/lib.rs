@@ -94,9 +94,9 @@ struct EguiId {
 }
 
 impl EguiId {
-  fn new(shard: &dyn LegacyShard, idx: u8) -> EguiId {
+  fn new<T>(shard: &T, idx: u8) -> EguiId {
     EguiId {
-      p: shard as *const dyn LegacyShard as *mut c_void as usize,
+      p: shard as *const T as *mut c_void as usize,
       idx,
     }
   }
