@@ -60,8 +60,8 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
     )
     .subcommand(
       Command::new("build")
-        .about("Reads and executes a Shards file.")
-        .arg(arg!(<FILE> "The script to execute"))
+        .about("Reads and builds a binary AST Shards file.")
+        .arg(arg!(<FILE> "The script to evaluate"))
         .arg(
           Arg::new("output")
             .long("output")
@@ -75,6 +75,25 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
             .short('d')
             .help("The depfile to write, in makefile readable format")
             .default_value(""),
+        ),
+    )
+    .subcommand(
+      Command::new("ast")
+        .about("Reads and outputs a JSON AST Shards file.")
+        .arg(arg!(<FILE> "The script to evaluate"))
+        .arg(
+          Arg::new("output")
+            .long("output")
+            .short('o')
+            .help("The output file to write to")
+            .default_value("out.json"),
+        )
+        .arg(
+          Arg::new("depfile")
+            .long("depfile")
+            .short('d')
+            .help("The depfile to write, in makefile readable format")
+            .default_value(None),
         ),
     )
     .subcommand(
@@ -94,7 +113,8 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
 
   match matches.subcommand() {
     Some(("new", matches)) => execute(matches, cancellation_token),
-    Some(("build", matches)) => build(matches),
+    Some(("build", matches)) => build(matches, false),
+    Some(("ast", matches)) => build(matches, true),
     Some(("load", matches)) => load(matches, cancellation_token),
     Some((_external, _matches)) => 99,
     _ => 0,
@@ -194,7 +214,7 @@ fn execute_seq(matches: &ArgMatches, ast: Sequence, cancellation_token: Arc<Atom
   }
 }
 
-fn build(matches: &ArgMatches) -> i32 {
+fn build(matches: &ArgMatches, as_json: bool) -> i32 {
   // we need to do this here or old path will fail
   unsafe {
     shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
@@ -216,12 +236,14 @@ fn build(matches: &ArgMatches) -> i32 {
     let mut env = ReadEnv::new(parent_path);
     let ast = read_with_env(&file_content, &mut env).expect("Failed to parse file");
     (
-      get_dependencies(&env).map(|x| {
-        dunce::canonicalize(x)
-          .expect("Failed to canonicalize path")
-          .to_string_lossy()
-          .to_string()
-      }).collect::<Vec<String>>(),
+      get_dependencies(&env)
+        .map(|x| {
+          dunce::canonicalize(x)
+            .expect("Failed to canonicalize path")
+            .to_string_lossy()
+            .to_string()
+        })
+        .collect::<Vec<String>>(),
       ast,
     )
   };
@@ -231,18 +253,25 @@ fn build(matches: &ArgMatches) -> i32 {
     .expect("An output file to write to");
 
   // write sequence to file
-  let mut file = std::fs::File::create(output).unwrap();
-  let mut writer = std::io::BufWriter::new(&mut file);
+  {
+    let mut file = std::fs::File::create(output).unwrap();
+    let mut writer = std::io::BufWriter::new(&mut file);
 
-  // Serialize using bincode
-  let encoded_bin: Vec<u8> = bincode::serialize(&ast).unwrap();
-  writer
-    .write(fourCharacterCode(*b"SHRD").to_be_bytes().as_ref())
-    .unwrap();
-  writer
-    .write(SHARDS_CURRENT_ABI.to_le_bytes().as_ref())
-    .unwrap();
-  writer.write_all(&encoded_bin).unwrap();
+    if !as_json {
+      // Serialize using bincode
+      let encoded_bin: Vec<u8> = bincode::serialize(&ast).unwrap();
+      writer
+        .write(fourCharacterCode(*b"SHRD").to_be_bytes().as_ref())
+        .unwrap();
+      writer
+        .write(SHARDS_CURRENT_ABI.to_le_bytes().as_ref())
+        .unwrap();
+      writer.write_all(&encoded_bin).unwrap();
+    } else {
+      let encoded_json = serde_json::to_string_pretty(&ast).unwrap();
+      writer.write_all(encoded_json.as_bytes()).unwrap();
+    }
+  }
 
   if let Some(out_dep_file) = matches.get_one::<String>("depfile") {
     let mut file = std::fs::File::create(out_dep_file).unwrap();
