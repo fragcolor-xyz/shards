@@ -99,6 +99,8 @@ template <class T> struct ShardWrapper {
     // destroy
     if constexpr (has_destroy<T>::value) {
       result->destroy = static_cast<SHDestroyProc>([](Shard *b) {
+        ZoneNamed("shards-destroy", true);
+        ZoneName(b->name(b), b->nameLength);
         auto bw = reinterpret_cast<ShardWrapper<T> *>(b);
         bw->shard.destroy();
         bw->ShardWrapper<T>::~ShardWrapper<T>();
@@ -106,6 +108,8 @@ template <class T> struct ShardWrapper {
       });
     } else {
       result->destroy = static_cast<SHDestroyProc>([](Shard *b) {
+        ZoneNamed("shards-destroy", true);
+        ZoneName(b->name(b), b->nameLength);
         auto bw = reinterpret_cast<ShardWrapper<T> *>(b);
         bw->ShardWrapper<T>::~ShardWrapper<T>();
         ::operator delete(bw, std::align_val_t{16});
@@ -177,6 +181,8 @@ template <class T> struct ShardWrapper {
     // compose
     if constexpr (has_compose<T>::value) {
       result->compose = static_cast<SHComposeProc>([](Shard *b, SHInstanceData *data) {
+        ZoneNamed("shards-compose", true);
+        ZoneName(b->name(b), b->nameLength);
         try {
           return SHShardComposeResult{SHError::Success, reinterpret_cast<ShardWrapper<T> *>(b)->shard.compose(*data)};
         } catch (std::exception &e) {
@@ -194,6 +200,8 @@ template <class T> struct ShardWrapper {
     // warmup
     if constexpr (has_warmup<T>::value) {
       result->warmup = static_cast<SHWarmupProc>([](Shard *b, SHContext *ctx) {
+        ZoneNamed("shards-warmup", true);
+        ZoneName(b->name(b), b->nameLength);
         try {
           reinterpret_cast<ShardWrapper<T> *>(b)->shard.warmup(ctx);
           return SHError::Success;
@@ -212,6 +220,8 @@ template <class T> struct ShardWrapper {
     static_assert(has_activate<T>::value, "Shards must have an \"activate\" method.");
     if constexpr (has_activate<T>::value) {
       result->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {
+        ZoneNamed("shards-activate", true);
+        ZoneName(b->name(b), b->nameLength);
         try {
           return reinterpret_cast<ShardWrapper<T> *>(b)->shard.activate(ctx, *v);
         } catch (const std::exception &e) {
@@ -224,6 +234,8 @@ template <class T> struct ShardWrapper {
     // cleanup
     if constexpr (has_cleanup<T>::value) {
       result->cleanup = static_cast<SHCleanupProc>([](Shard *b) {
+        ZoneNamed("shards-cleanup", true);
+        ZoneName(b->name(b), b->nameLength);
         try {
           reinterpret_cast<ShardWrapper<T> *>(b)->shard.cleanup();
           return SHError::Success;

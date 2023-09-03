@@ -71,39 +71,6 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #define TSANCoroExit(wire)
 #endif
 
-#ifdef TRACY_ENABLE
-// profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
-#include <tracy/Tracy.hpp>
-#ifdef TRACY_FIBERS
-#define TracyCoroEnter(wire)             \
-  {                                      \
-    if (!getCoroWireStack().empty()) {   \
-      TracyFiberLeave;                   \
-    }                                    \
-    TracyFiberEnter(wire->name.c_str()); \
-    getCoroWireStack().push_back(wire);  \
-  }
-#define TracyCoroExit(wire)                                     \
-  {                                                             \
-    getCoroWireStack().pop_back();                              \
-    TracyFiberLeave;                                            \
-    if (!getCoroWireStack().empty()) {                          \
-      TracyFiberEnter(getCoroWireStack().back()->name.c_str()); \
-    }                                                           \
-  }
-#else
-#define TracyCoroEnter(wire)
-#define TracyCoroExit(wire)
-#endif
-#else
-#define ZoneScoped
-#define ZoneNamed(X, Y)
-#define ZoneName(X, Y)
-#define FrameMarkNamed(X)
-#define TracyCoroEnter(wire)
-#define TracyCoroExit(wire)
-#endif
-
 #define XXH_INLINE_ALL
 #include <xxhash.h>
 
@@ -252,9 +219,6 @@ template <typename T, typename C> AnyStorage<T> getOrCreateAnyStorage(C *context
 }
 
 FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
-  ZoneScoped;
-  ZoneName(blk->name(blk), blk->nameLength);
-
   SHVar output;
   if (!activateShardInline(blk, context, input, output))
     output = blk->activate(blk, context, &input);

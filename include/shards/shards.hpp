@@ -18,6 +18,39 @@
 #define ENTT_ID_TYPE std::uint64_t
 #include <entt/entt.hpp>
 
+#ifdef TRACY_ENABLE
+// profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
+#include <tracy/Tracy.hpp>
+#ifdef TRACY_FIBERS
+#define TracyCoroEnter(wire)             \
+  {                                      \
+    if (!getCoroWireStack().empty()) {   \
+      TracyFiberLeave;                   \
+    }                                    \
+    TracyFiberEnter(wire->name.c_str()); \
+    getCoroWireStack().push_back(wire);  \
+  }
+#define TracyCoroExit(wire)                                     \
+  {                                                             \
+    getCoroWireStack().pop_back();                              \
+    TracyFiberLeave;                                            \
+    if (!getCoroWireStack().empty()) {                          \
+      TracyFiberEnter(getCoroWireStack().back()->name.c_str()); \
+    }                                                           \
+  }
+#else
+#define TracyCoroEnter(wire)
+#define TracyCoroExit(wire)
+#endif
+#else
+#define ZoneScoped
+#define ZoneNamed(X, Y)
+#define ZoneName(X, Y)
+#define FrameMarkNamed(X)
+#define TracyCoroEnter(wire)
+#define TracyCoroExit(wire)
+#endif
+
 namespace shards {
 constexpr uint32_t CoreCC = 'frag'; // FourCC = 1718772071 = 0x66726167
 
