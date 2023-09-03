@@ -44,6 +44,7 @@
 #endif
 #else
 #define ZoneScoped
+#define ZoneScopedN(X)
 #define ZoneNamed(X, Y)
 #define ZoneName(X, Y)
 #define FrameMarkNamed(X)
