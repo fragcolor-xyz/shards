@@ -8,7 +8,7 @@ use crate::VarTextBuffer;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::common_type;
 use shards::types::Context;
@@ -67,7 +67,7 @@ impl Default for TextField {
   }
 }
 
-impl Shard for TextField {
+impl LegacyShard for TextField {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -112,7 +112,7 @@ impl Shard for TextField {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.variable.set_param(value)),
+      0 => self.variable.set_param(value),
       1 => Ok(self.multiline = value.try_into()?),
       2 => Ok(self.password = value.try_into()?),
       _ => Err("Invalid parameter index"),
@@ -182,7 +182,7 @@ impl Shard for TextField {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

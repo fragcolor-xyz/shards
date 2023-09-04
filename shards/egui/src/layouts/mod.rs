@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::types::ClonedVar;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
@@ -153,20 +153,20 @@ mod space;
 mod table;
 mod vertical;
 
-pub fn registerShards() {
-  registerShard::<CollapsingHeader>();
-  registerShard::<Columns>();
-  registerShard::<Disable>();
-  registerShard::<Frame>();
-  registerShard::<Grid>();
-  registerShard::<Group>();
-  registerShard::<Horizontal>();
-  registerShard::<Indent>();
-  registerShard::<NextRow>();
-  registerShard::<ScrollArea>();
-  registerShard::<Separator>();
-  registerShard::<Space>();
-  registerShard::<Table>();
-  registerShard::<Vertical>();
-  registerShard::<Sized>();
+pub fn register_shards() {
+  register_legacy_shard::<CollapsingHeader>();
+  register_legacy_shard::<Columns>();
+  register_legacy_shard::<Disable>();
+  register_legacy_shard::<Frame>();
+  register_legacy_shard::<Grid>();
+  register_legacy_shard::<Group>();
+  register_legacy_shard::<Horizontal>();
+  register_legacy_shard::<Indent>();
+  register_legacy_shard::<NextRow>();
+  register_legacy_shard::<ScrollArea>();
+  register_legacy_shard::<Separator>();
+  register_legacy_shard::<Space>();
+  register_legacy_shard::<Table>();
+  register_legacy_shard::<Vertical>();
+  register_legacy_shard::<Sized>();
 }

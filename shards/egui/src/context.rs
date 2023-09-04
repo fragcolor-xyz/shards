@@ -4,13 +4,14 @@
 use crate::bindings;
 use crate::egui_host::EguiHost;
 use crate::util;
-use crate::EguiContext;
 
 use crate::GFX_CONTEXT_TYPE;
 use crate::GFX_QUEUE_VAR_TYPES;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INPUT_CONTEXT_TYPE;
 
+use shards::core::register_shard;
+use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::shardsc;
 use shards::types::Context;
@@ -27,21 +28,23 @@ use shards::types::ANY_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
 use std::ffi::CStr;
 
-lazy_static! {
-  static ref CONTEXT_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Queue"),
-      shccstr!("The draw queue."),
-      &GFX_QUEUE_VAR_TYPES[..]
-    )
-      .into(),
-    (
-      cstr!("Contents"),
-      shccstr!("The UI contents."),
-      &SHARDS_OR_NONE_TYPES[..],
-    )
-      .into(),
-  ];
+#[derive(shards::shard)]
+#[shard_info("UI", "Initializes a UI context")]
+struct EguiContext {
+  #[shard_param("Queue", "The draw queue.", GFX_QUEUE_VAR_TYPES)]
+  queue: ParamVar,
+  #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
+  contents: ShardsVar,
+  host: EguiHost,
+  #[shard_required]
+  requiring: ExposedTypes,
+  exposing: ExposedTypes,
+  #[shard_warmup] 
+  input_context: ParamVar,
+  has_graphics_context: bool,
+  graphics_context: ParamVar,
+  renderer: bindings::Renderer,
+  input_translator: bindings::InputTranslator,
 }
 
 impl Default for EguiContext {
@@ -54,16 +57,18 @@ impl Default for EguiContext {
       exposing: Vec::new(),
       has_graphics_context: false,
       graphics_context: unsafe {
-        let mut var = ParamVar::default();
-        let name = bindings::gfx_getGraphicsContextVarName() as shardsc::SHString;
-        var.set_name(CStr::from_ptr(name).to_str().unwrap());
-        var
+        ParamVar::new_named(
+          CStr::from_ptr(bindings::gfx_getGraphicsContextVarName())
+            .to_str()
+            .unwrap(),
+        )
       },
       input_context: unsafe {
-        let mut var = ParamVar::default();
-        let name = bindings::gfx_getInputContextVarName() as shardsc::SHString;
-        var.set_name(CStr::from_ptr(name).to_str().unwrap());
-        var
+        ParamVar::new_named(
+          CStr::from_ptr(bindings::gfx_getInputContextVarName())
+            .to_str()
+            .unwrap(),
+        )
       },
       renderer: bindings::Renderer::new(),
       input_translator: bindings::InputTranslator::new(),
@@ -71,81 +76,32 @@ impl Default for EguiContext {
   }
 }
 
+#[shards::shard_impl]
 impl Shard for EguiContext {
-  fn registerName() -> &'static str {
-    cstr!("UI")
-  }
-
-  fn hash() -> u32 {
-    compile_time_crc32::crc32!("UI-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI"
-  }
-
-  fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Initializes a UI context."))
-  }
-
-  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+  fn input_types(&mut self) -> &std::vec::Vec<Type> {
     &ANY_TYPES
   }
 
-  fn inputHelp(&mut self) -> OptionalString {
+  fn input_help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
       "The value that will be passed to the Contents shards of the UI."
     ))
   }
 
-  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+  fn output_types(&mut self) -> &std::vec::Vec<Type> {
     &ANY_TYPES
   }
 
-  fn outputHelp(&mut self) -> OptionalString {
+  fn output_help(&mut self) -> OptionalString {
     *HELP_OUTPUT_EQUAL_INPUT
   }
 
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&CONTEXT_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => Ok(self.queue.set_param(value)),
-      1 => self.contents.set_param(value),
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.queue.get_param(),
-      1 => self.contents.get_param(),
-      _ => Var::default(),
-    }
-  }
-
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    Some(&self.requiring)
-  }
-
-  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
-    self.exposing.clear();
-
-    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
-      Some(&self.exposing)
-    } else {
-      None
-    }
-  }
-
-  fn hasCompose() -> bool {
-    true
+  fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
+    Some(&self.exposing)
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    self.requiring.clear();
+    self.compose_helper(data)?;
 
     // Add Graphics context to the list of required variables (optional)
     // If this is not provided, the UI will be rendered based on the window surface area
@@ -187,32 +143,33 @@ impl Shard for EguiContext {
     // update shared
     data.shared = (&shared).into();
 
-    if !self.contents.is_empty() {
+    let output_type = if !self.contents.is_empty() {
       let result = self.contents.compose(&data)?;
-      return Ok(result.outputType);
-    }
+      result.outputType
+    } else {
+      data.inputType
+    };
+
+    self.exposing.clear();
+    util::expose_contents_variables(&mut self.exposing, &self.contents);
 
     // Always passthrough the input
-    Ok(data.inputType)
+    Ok(output_type)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.host.warmup(ctx)?;
-    self.queue.warmup(ctx);
-    self.contents.warmup(ctx)?;
+    self.warmup_helper(ctx)?;
     if self.has_graphics_context {
       self.graphics_context.warmup(ctx);
     }
-    self.input_context.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.cleanup_helper()?;
     self.graphics_context.cleanup();
-    self.input_context.cleanup();
-    self.contents.cleanup();
-    self.queue.cleanup();
     self.host.cleanup()?;
     Ok(())
   }
@@ -261,4 +218,8 @@ impl Shard for EguiContext {
 
     Ok(*input)
   }
+}
+
+pub fn register_shards() {
+  register_shard::<EguiContext>();
 }

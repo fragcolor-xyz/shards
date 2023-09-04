@@ -1,9 +1,9 @@
 use shards::{
-  core::{registerShard, run_blocking, BlockingShard},
+  core::{register_legacy_shard, run_blocking, BlockingShard},
   types::{
     ClonedVar, Context, ExposedInfo, ExposedTypes, ParamVar, Parameters, Type, Types, Var, FRAG_CC, NONE_TYPES, STRING_TYPES,
   },
-  shard::Shard,
+  shard::LegacyShard,
 };
 use std::net::TcpStream;
 use std::rc::Rc;
@@ -34,7 +34,7 @@ struct Client {
   ws: Rc<Option<WsClient>>,
 }
 
-impl Shard for Client {
+impl LegacyShard for Client {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -88,7 +88,7 @@ struct ClientUser {
 }
 
 impl ClientUser {
-  fn set_param(&mut self, index: i32, value: &Var) {
+  fn set_param(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.instance.set_param(value),
       _ => panic!("Invalid index {}", index),
@@ -148,7 +148,7 @@ struct ReadString {
   text: ClonedVar,
 }
 
-impl Shard for ReadString {
+impl LegacyShard for ReadString {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -184,8 +184,7 @@ impl Shard for ReadString {
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    self.client.set_param(index, value);
-    Ok(())
+    self.client.set_param(index, value)
   }
 
   fn getParam(&mut self, index: i32) -> Var {
@@ -247,7 +246,7 @@ struct WriteString {
   client: ClientUser,
 }
 
-impl Shard for WriteString {
+impl LegacyShard for WriteString {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -283,8 +282,7 @@ impl Shard for WriteString {
   }
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    self.client.set_param(index, value);
-    Ok(())
+    self.client.set_param(index, value)
   }
 
   fn getParam(&mut self, index: i32) -> Var {
@@ -315,8 +313,8 @@ impl Shard for WriteString {
   }
 }
 
-pub fn registerShards() {
-  registerShard::<Client>();
-  registerShard::<ReadString>();
-  registerShard::<WriteString>();
+pub fn register_shards() {
+  register_legacy_shard::<Client>();
+  register_legacy_shard::<ReadString>();
+  register_legacy_shard::<WriteString>();
 }

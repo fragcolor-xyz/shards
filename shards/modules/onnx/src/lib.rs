@@ -14,8 +14,8 @@ use shards::types::{
   ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES, STRING_TYPES,
 };
 use shards::{
-  core::registerShard,
-  shard::Shard,
+  core::register_legacy_shard,
+  shard::LegacyShard,
   types::{common_type, Context, Parameters, Type, Types, Var, FRAG_CC},
 };
 use std::alloc::Global;
@@ -76,7 +76,7 @@ struct Load {
   shape: Seq,
 }
 
-impl Shard for Load {
+impl LegacyShard for Load {
   fn registerName() -> &'static str {
     cstr!("ONNX.Load")
   }
@@ -175,7 +175,7 @@ struct Activate {
   reqs: ExposedTypes,
 }
 
-impl Shard for Activate {
+impl LegacyShard for Activate {
   fn registerName() -> &'static str {
     cstr!("ONNX.Activate")
   }
@@ -202,7 +202,7 @@ impl Shard for Activate {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.model_var.set_param(value)),
+      0 => self.model_var.set_param(value),
       _ => unreachable!(),
     }
   }
@@ -304,6 +304,6 @@ pub extern "C" fn shardsRegister_onnx_rust(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  registerShard::<Load>();
-  registerShard::<Activate>();
+  register_legacy_shard::<Load>();
+  register_legacy_shard::<Activate>();
 }

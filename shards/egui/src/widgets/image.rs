@@ -8,7 +8,7 @@ use crate::FLOAT2_VAR_SLICE;
 
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHType_Image;
 use shards::shardsc::SHType_Object;
 
@@ -46,7 +46,7 @@ impl Default for Image {
   }
 }
 
-impl Shard for Image {
+impl LegacyShard for Image {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -91,7 +91,7 @@ impl Shard for Image {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.scale.set_param(value)),
+      0 => self.scale.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -107,7 +107,7 @@ impl Shard for Image {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

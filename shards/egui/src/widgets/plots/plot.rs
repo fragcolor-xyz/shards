@@ -9,7 +9,7 @@ use crate::EguiId;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -75,7 +75,7 @@ impl Default for Plot {
   }
 }
 
-impl Shard for Plot {
+impl LegacyShard for Plot {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -123,9 +123,9 @@ impl Shard for Plot {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.view_aspect.set_param(value)),
-      2 => Ok(self.data_aspect.set_param(value)),
-      3 => Ok(self.legend.set_param(value)),
+      1 => self.view_aspect.set_param(value),
+      2 => self.data_aspect.set_param(value),
+      3 => self.legend.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -144,7 +144,7 @@ impl Shard for Plot {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

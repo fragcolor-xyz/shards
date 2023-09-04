@@ -10,7 +10,7 @@ use core::slice;
 use nanoid::nanoid;
 use shards::cstr;
 
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::AutoSeqVar;
 use shards::types::AutoShardRef;
@@ -3430,7 +3430,7 @@ pub(crate) struct EvalShard {
   defines: ParamVar,
 }
 
-impl Shard for EvalShard {
+impl LegacyShard for EvalShard {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -3463,9 +3463,9 @@ impl Shard for EvalShard {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.name.set_param(value)),
-      1 => Ok(self.defines.set_param(value)),
-      2 => Ok(self.namespace.set_param(value)),
+      0 => self.name.set_param(value),
+      1 => self.defines.set_param(value),
+      2 => self.namespace.set_param(value),
       _ => Err("invalid parameter index"),
     }
   }

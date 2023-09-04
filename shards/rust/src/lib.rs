@@ -29,6 +29,12 @@ pub mod shardsc;
 #[macro_use]
 pub mod types;
 
+pub mod util;
+
+pub use shards_macro::shards_enum;
+pub use shards_macro::shard;
+pub use shards_macro::shard_impl;
+
 use crate::core::log;
 use crate::core::Core;
 pub use crate::shardsc::*;
@@ -160,51 +166,3 @@ pub mod scripting {
     assert_eq!(res, "Hello");
   }
 }
-
-// #[cfg(feature = "shards")]
-// #[no_mangle]
-// pub extern "C" fn registerRustShards(core: *mut SHCore) {
-//   unsafe {
-//     Core = core;
-//   }
-
-//   shards::casting::registerShards();
-//   shards::hash::registerShards();
-//   shards::ecdsa::registerShards();
-//   shards::physics::simulation::registerShards();
-//   shards::physics::shapes::registerShards();
-//   shards::physics::rigidbody::registerShards();
-//   shards::physics::queries::registerShards();
-//   shards::physics::forces::registerShards();
-//   shards::svg::registerShards();
-//   shards::eth::registerShards();
-//   shards::csv::registerShards();
-//   shards::curve25519::registerShards();
-//   shards::substrate::registerShards();
-//   shards::chachapoly::registerShards();
-//   shards::gui::registerShards();
-//   shards::date::registerShards();
-//   shards::onnx::registerShards();
-//   shards::fs::registerShards();
-
-//   #[cfg(not(target_arch = "wasm32"))]
-//   shards::ws::registerShards();
-
-//   #[cfg(not(target_arch = "wasm32"))]
-//   shards::http::registerShards();
-// }
-
-// #[cfg(feature = "shards")]
-// #[no_mangle]
-// pub extern "C" fn runRuntimeTests() {
-//   #[cfg(feature = "scripting")]
-//   scripting::test_shl();
-// }
-
-// #[cfg(feature = "core_only")]
-// #[no_mangle]
-// pub extern "C" fn registerRustCore(core: *mut SHCore) {
-//   unsafe {
-//     Core = core;
-//   }
-// }

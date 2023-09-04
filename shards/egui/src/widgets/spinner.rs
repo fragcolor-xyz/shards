@@ -7,7 +7,7 @@ use crate::FLOAT_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::OptionalString;
@@ -40,7 +40,7 @@ impl Default for Spinner {
   }
 }
 
-impl Shard for Spinner {
+impl LegacyShard for Spinner {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -85,7 +85,7 @@ impl Shard for Spinner {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.size.set_param(value)),
+      0 => self.size.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -101,7 +101,7 @@ impl Shard for Spinner {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

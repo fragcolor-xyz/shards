@@ -8,7 +8,7 @@ use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedTypes;
@@ -59,7 +59,7 @@ impl Default for CloseMenu {
   }
 }
 
-impl Shard for CloseMenu {
+impl LegacyShard for CloseMenu {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -102,7 +102,7 @@ impl Shard for CloseMenu {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }
@@ -140,7 +140,7 @@ impl Default for Menu {
   }
 }
 
-impl Shard for Menu {
+impl LegacyShard for Menu {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -192,7 +192,7 @@ If called from within a menu this will instead create a button for a sub-menu."
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.title.set_param(value)),
+      0 => self.title.set_param(value),
       1 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }
@@ -210,7 +210,7 @@ If called from within a menu this will instead create a button for a sub-menu."
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }
@@ -289,7 +289,7 @@ impl Default for MenuBar {
   }
 }
 
-impl Shard for MenuBar {
+impl LegacyShard for MenuBar {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -354,7 +354,7 @@ impl Shard for MenuBar {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

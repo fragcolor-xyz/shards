@@ -2,8 +2,8 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use crate::CRYPTO_KEY_TYPES;
-use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::core::register_legacy_shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -34,7 +34,7 @@ struct Encrypt {
   nonce: u64,
 }
 
-impl Shard for Encrypt {
+impl LegacyShard for Encrypt {
   fn registerName() -> &'static str {
     cstr!("ChaChaPoly.Encrypt")
   }
@@ -61,7 +61,7 @@ impl Shard for Encrypt {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.key.set_param(value)),
+      0 => self.key.set_param(value),
       _ => unreachable!(),
     }
   }
@@ -134,7 +134,7 @@ struct Decrypt {
   nonce: u64,
 }
 
-impl Shard for Decrypt {
+impl LegacyShard for Decrypt {
   fn registerName() -> &'static str {
     cstr!("ChaChaPoly.Decrypt")
   }
@@ -161,7 +161,7 @@ impl Shard for Decrypt {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.key.set_param(value)),
+      0 => self.key.set_param(value),
       _ => unreachable!(),
     }
   }
@@ -225,7 +225,7 @@ impl Shard for Decrypt {
   }
 }
 
-pub fn registerShards() {
-  registerShard::<Encrypt>();
-  registerShard::<Decrypt>();
+pub fn register_shards() {
+  register_legacy_shard::<Encrypt>();
+  register_legacy_shard::<Decrypt>();
 }

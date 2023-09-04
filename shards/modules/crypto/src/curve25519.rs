@@ -2,8 +2,8 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use crate::{CRYPTO_KEY_TYPES, PUB_KEY_TYPES};
-use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::core::register_legacy_shard;
+use shards::shard::LegacyShard;
 
 use shards::types::common_type;
 use shards::types::ClonedVar;
@@ -76,7 +76,7 @@ macro_rules! add_signer {
       key: ParamVar,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -103,7 +103,7 @@ macro_rules! add_signer {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.key.set_param(value)),
+          0 => self.key.set_param(value),
           _ => unreachable!(),
         }
       }
@@ -165,7 +165,7 @@ macro_rules! add_pub_key {
       is_string: bool,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -221,7 +221,7 @@ macro_rules! add_priv_key {
       is_string: bool,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -283,7 +283,7 @@ macro_rules! add_verifier {
       msg: ParamVar,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -310,8 +310,8 @@ macro_rules! add_verifier {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.key.set_param(value)),
-          1 => Ok(self.msg.set_param(value)),
+          0 => self.key.set_param(value),
+          1 => self.msg.set_param(value),
           _ => unreachable!(),
         }
       }
@@ -381,13 +381,13 @@ add_verifier!(
   64
 );
 
-pub fn registerShards() {
-  registerShard::<Sr25519Sign>();
-  registerShard::<Ed25519Sign>();
-  registerShard::<Sr25519PublicKey>();
-  registerShard::<Ed25519PublicKey>();
-  registerShard::<Sr25519Seed>();
-  registerShard::<Ed25519Seed>();
-  registerShard::<Sr25519Verify>();
-  registerShard::<Ed25519Verify>();
+pub fn register_shards() {
+  register_legacy_shard::<Sr25519Sign>();
+  register_legacy_shard::<Ed25519Sign>();
+  register_legacy_shard::<Sr25519PublicKey>();
+  register_legacy_shard::<Ed25519PublicKey>();
+  register_legacy_shard::<Sr25519Seed>();
+  register_legacy_shard::<Ed25519Seed>();
+  register_legacy_shard::<Sr25519Verify>();
+  register_legacy_shard::<Ed25519Verify>();
 }

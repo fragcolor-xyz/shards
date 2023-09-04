@@ -31,10 +31,10 @@ pub extern "C" fn shardsRegister_crypto_crypto(core: *mut shards::shardsc::SHCor
     shards::core::Core = core;
   }
 
-  ecdsa::registerShards();
-  hash::registerShards();
-  eth::registerShards();
-  substrate::registerShards();
-  curve25519::registerShards();
-  chachapoly::registerShards();
+  ecdsa::register_shards();
+  hash::register_shards();
+  eth::register_shards();
+  substrate::register_shards();
+  curve25519::register_shards();
+  chachapoly::register_shards();
 }

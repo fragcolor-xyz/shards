@@ -6,7 +6,7 @@ use super::ImageButton;
 use crate::util;
 use crate::FLOAT2_VAR_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHType_Bool;
 use shards::shardsc::SHType_Image;
 use shards::shardsc::SHType_Object;
@@ -69,7 +69,7 @@ impl Default for ImageButton {
   }
 }
 
-impl Shard for ImageButton {
+impl LegacyShard for ImageButton {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -119,8 +119,8 @@ impl Shard for ImageButton {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.action.set_param(value),
-      1 => Ok(self.scale.set_param(value)),
-      2 => Ok(self.selected.set_param(value)),
+      1 => self.scale.set_param(value),
+      2 => self.selected.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -138,7 +138,7 @@ impl Shard for ImageButton {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

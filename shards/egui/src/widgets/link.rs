@@ -6,7 +6,7 @@ use crate::util;
 use crate::widgets::text_util;
 use crate::ANY_TABLE_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedTypes;
@@ -56,7 +56,7 @@ impl Default for Link {
   }
 }
 
-impl Shard for Link {
+impl LegacyShard for Link {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -105,9 +105,9 @@ impl Shard for Link {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.label.set_param(value)),
+      0 => self.label.set_param(value),
       1 => self.action.set_param(value),
-      2 => Ok(self.style.set_param(value)),
+      2 => self.style.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -125,7 +125,7 @@ impl Shard for Link {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

@@ -4,8 +4,8 @@ use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
 use crate::PARENTS_UI_NAME;
-use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::core::register_legacy_shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -64,7 +64,7 @@ impl Default for Tab {
   }
 }
 
-impl Shard for Tab {
+impl LegacyShard for Tab {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -111,7 +111,7 @@ impl Shard for Tab {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.title.set_param(value)),
+      0 => self.title.set_param(value),
       1 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }
@@ -129,7 +129,7 @@ impl Shard for Tab {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }
@@ -213,7 +213,7 @@ impl Default for DockArea {
   }
 }
 
-impl Shard for DockArea {
+impl LegacyShard for DockArea {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -298,7 +298,7 @@ impl Shard for DockArea {
           _ => return Err("Invalid parameter type"),
         }
 
-        Ok(self.contents.set_param(value))
+        self.contents.set_param(value)
       }
       _ => Err("Invalid parameter index"),
     }
@@ -431,9 +431,9 @@ impl Shard for DockArea {
   }
 }
 
-pub fn registerShards() {
-  registerShard::<DockArea>();
-  registerShard::<Tab>();
+pub fn register_shards() {
+  register_legacy_shard::<DockArea>();
+  register_legacy_shard::<Tab>();
 }
 
 struct MyTabViewer<'a> {

@@ -5,7 +5,7 @@ use super::Vertical;
 use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -51,7 +51,7 @@ impl Default for Vertical {
   }
 }
 
-impl Shard for Vertical {
+impl LegacyShard for Vertical {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -116,7 +116,7 @@ impl Shard for Vertical {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

@@ -8,7 +8,7 @@ use crate::ANY_TABLE_SLICE;
 use crate::ANY_VAR_SLICE;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -68,7 +68,7 @@ impl Default for RadioButton {
   }
 }
 
-impl Shard for RadioButton {
+impl LegacyShard for RadioButton {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -117,10 +117,10 @@ impl Shard for RadioButton {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.label.set_param(value)),
-      1 => Ok(self.variable.set_param(value)),
+      0 => self.label.set_param(value),
+      1 => self.variable.set_param(value),
       2 => Ok(self.value = *value),
-      3 => Ok(self.style.set_param(value)),
+      3 => self.style.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -186,7 +186,7 @@ impl Shard for RadioButton {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

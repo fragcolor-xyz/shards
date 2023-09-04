@@ -11,7 +11,7 @@ use crate::EGUI_CTX_TYPE;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -68,7 +68,7 @@ impl Default for Area {
   }
 }
 
-impl Shard for Area {
+impl LegacyShard for Area {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -115,8 +115,8 @@ impl Shard for Area {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.position.set_param(value)),
-      1 => Ok(self.anchor.set_param(value)),
+      0 => self.position.set_param(value),
+      1 => self.anchor.set_param(value),
       2 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }
@@ -143,7 +143,7 @@ impl Shard for Area {
     };
     self.requiring.push(exp_info);
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

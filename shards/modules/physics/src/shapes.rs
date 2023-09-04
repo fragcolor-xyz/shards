@@ -3,7 +3,7 @@
 
 // RigidBody and Collier are unique, Shapes can be shared
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use crate::BaseShape;
 
 
@@ -23,7 +23,7 @@ use shards::types::Parameters;
 use shards::types::FLOAT3_TYPES_SLICE;
 use shards::types::FLOAT_TYPES_SLICE;
 use shards::types::NONE_TYPES;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::Types;
 use shards::types::Var;
@@ -53,7 +53,7 @@ lazy_static! {
 
 macro_rules! shape {
   ($shard_name:ident, $name_str:literal, $hash:literal) => {
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -80,9 +80,9 @@ macro_rules! shape {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.position.set_param(value)),
-          1 => Ok(self.rotation.set_param(value)),
-          _ => Ok(self._set_param(index, value)),
+          0 => self.position.set_param(value),
+          1 => self.rotation.set_param(value),
+          _ => self._set_param(index, value),
         }
       }
 
@@ -197,7 +197,7 @@ impl BallShape {
     Some(&BALL_PARAMETERS)
   }
 
-  fn _set_param(&mut self, index: i32, value: &Var) {
+  fn _set_param(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       2 => self.radius.set_param(value),
       _ => unreachable!(),
@@ -268,7 +268,7 @@ impl CubeShape {
     Some(&CUBE_PARAMETERS)
   }
 
-  fn _set_param(&mut self, index: i32, value: &Var) {
+  fn _set_param(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       2 => self.half_extents.set_param(value),
       _ => unreachable!(),
@@ -289,7 +289,7 @@ shape!(
   "Physics.Cuboid-rust-0x20200101"
 );
 
-pub fn registerShards() {
-  registerShard::<BallShape>();
-  registerShard::<CubeShape>();
+pub fn register_shards() {
+  register_legacy_shard::<BallShape>();
+  register_legacy_shard::<CubeShape>();
 }

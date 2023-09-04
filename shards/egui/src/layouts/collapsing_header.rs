@@ -7,7 +7,7 @@ use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_OR_SHARDS_OR_NONE_TYPES_SLICE;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::Context;
 use shards::types::ExposedTypes;
@@ -62,7 +62,7 @@ impl Default for CollapsingHeader {
   }
 }
 
-impl Shard for CollapsingHeader {
+impl LegacyShard for CollapsingHeader {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -111,10 +111,10 @@ impl Shard for CollapsingHeader {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 if value.is_none() || value.is_string() => Ok(self.text.set_param(value)),
+      0 if value.is_none() || value.is_string() => self.text.set_param(value),
       0 => self.header.set_param(value),
       1 => self.contents.set_param(value),
-      2 => Ok(self.defaultOpen.set_param(value)),
+      2 => self.defaultOpen.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -133,7 +133,7 @@ impl Shard for CollapsingHeader {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

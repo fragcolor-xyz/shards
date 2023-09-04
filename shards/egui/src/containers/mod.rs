@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use shards::core::registerEnumType;
-use shards::core::registerShard;
+use shards::core::register_legacy_enum;
+use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
@@ -159,18 +159,18 @@ mod panels;
 mod scope;
 mod window;
 
-pub fn registerShards() {
-  registerShard::<Area>();
-  registerEnumType(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
-  docking::registerShards();
-  registerShard::<Scope>();
-  registerShard::<Window>();
-  registerEnumType(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());
-  registerShard::<BottomPanel>();
-  registerShard::<CentralPanel>();
-  registerShard::<LeftPanel>();
-  registerShard::<RightPanel>();
-  registerShard::<TopPanel>();
+pub fn register_shards() {
+  register_legacy_shard::<Area>();
+  register_legacy_enum(FRAG_CC, AnchorCC, AnchorEnumInfo.as_ref().into());
+  docking::register_shards();
+  register_legacy_shard::<Scope>();
+  register_legacy_shard::<Window>();
+  register_legacy_enum(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());
+  register_legacy_shard::<BottomPanel>();
+  register_legacy_shard::<CentralPanel>();
+  register_legacy_shard::<LeftPanel>();
+  register_legacy_shard::<RightPanel>();
+  register_legacy_shard::<TopPanel>();
 
   assert_eq!(AnchorCC, 1701265774);
   assert_eq!(WindowFlagsCC, 1701271366);

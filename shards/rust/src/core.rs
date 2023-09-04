@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 use crate::shard::shard_construct;
-use crate::shard::Shard;
+use crate::shard::legacy_shard_construct;
+use crate::shard::LegacyShard;
+use crate::shard::{Shard, ShardGenerated, ShardGeneratedOverloads};
 use crate::shardsc::*;
 use crate::types::ClonedVar;
 use crate::types::Context;
@@ -299,13 +301,31 @@ pub fn abortWire(context: &SHContext, message: &str) {
 }
 
 #[inline(always)]
-pub fn registerShard<T: Default + Shard>() {
+pub fn register_legacy_shard<T: Default + LegacyShard>() {
   unsafe {
     (*Core).registerShard.unwrap()(
       T::registerName().as_ptr() as *const c_char,
+      Some(legacy_shard_construct::<T>),
+    );
+  }
+}
+
+#[inline(always)]
+pub fn register_shard<T: Default + ShardGenerated + Shard + ShardGeneratedOverloads>() {
+  unsafe {
+    (*Core).registerShard.unwrap()(
+      T::register_name().as_ptr() as *const c_char,
       Some(shard_construct::<T>),
     );
   }
+}
+
+pub trait EnumRegister {
+  fn register();
+}
+
+pub fn register_enum<T: EnumRegister>() {
+  T::register();
 }
 
 pub fn getShards() -> Vec<&'static CStr> {
@@ -422,7 +442,7 @@ pub fn releaseVariable(var: &SHVar) {
   }
 }
 
-pub fn registerEnumType(vendorId: i32, typeId: i32, info: SHEnumInfo) {
+pub fn register_legacy_enum(vendorId: i32, typeId: i32, info: SHEnumInfo) {
   unsafe {
     (*Core).registerEnumType.unwrap()(vendorId, typeId, info);
   }
@@ -554,7 +574,7 @@ unsafe extern "C" fn activate_future_c_call<
       let mut cloned = value.into();
       std::mem::swap(&mut output, &mut cloned.0);
       output
-    },
+    }
     Err(error) => {
       shlog_debug!("activate_future failure detected"); // in case error leads to crash
       shlog_debug!("activate_future failure: {}", error);
@@ -564,14 +584,23 @@ unsafe extern "C" fn activate_future_c_call<
   }
 }
 
-pub fn run_future<'a, F: Future<Output = Result<R, &'static str>> + Send + 'static, R: Into<ClonedVar>,>(
+pub fn run_future<
+  'a,
+  F: Future<Output = Result<R, &'static str>> + Send + 'static,
+  R: Into<ClonedVar>,
+>(
   context: &'a SHContext,
   f: F,
 ) -> ClonedVar {
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
     let data_ptr = &f as *const F as *mut F as *mut c_void;
-    ClonedVar((*Core).asyncActivate.unwrap()(ctx, data_ptr, Some(activate_future_c_call::<F, R>), None))
+    ClonedVar((*Core).asyncActivate.unwrap()(
+      ctx,
+      data_ptr,
+      Some(activate_future_c_call::<F, R>),
+      None,
+    ))
   }
 }
 

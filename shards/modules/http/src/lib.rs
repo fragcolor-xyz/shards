@@ -10,10 +10,10 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 
 use shards::types::Context;
@@ -153,14 +153,14 @@ impl RequestBase {
     Some(&GET_PARAMETERS)
   }
 
-  fn _setParam(&mut self, index: i32, value: &Var) {
+  fn _setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.url.set_param(value),
       1 => self.headers.set_param(value),
-      2 => self.timeout = value.try_into().unwrap(),
-      3 => self.as_bytes = value.try_into().unwrap(),
-      4 => self.full_response = value.try_into().unwrap(),
-      5 => self.invalid_certs = value.try_into().unwrap(),
+      2 => Ok(self.timeout = value.try_into().map_err(|x| "Failed to set timeout")?),
+      3 => Ok(self.as_bytes = value.try_into().map_err(|x| "Failed to set as_bytes")?),
+      4 => Ok(self.full_response = value.try_into().map_err(|x| "Failed to set full_response")?),
+      5 => Ok(self.invalid_certs = value.try_into().map_err(|x| "Failed to set invalid_certs")?),
       _ => unreachable!(),
     }
   }
@@ -268,7 +268,7 @@ macro_rules! get_like {
       rb: RequestBase,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -294,8 +294,7 @@ macro_rules! get_like {
       }
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-        self.rb._setParam(index, value);
-        Ok(())
+        self.rb._setParam(index, value)
       }
 
       fn getParam(&mut self, index: i32) -> Var {
@@ -377,7 +376,7 @@ macro_rules! post_like {
       rb: RequestBase,
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str {
         cstr!($name_str)
       }
@@ -403,8 +402,7 @@ macro_rules! post_like {
       }
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-        self.rb._setParam(index, value);
-        Ok(())
+        self.rb._setParam(index, value)
       }
 
       fn getParam(&mut self, index: i32) -> Var {
@@ -513,10 +511,10 @@ pub extern "C" fn shardsRegister_http_rust(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  registerShard::<Get>();
-  registerShard::<Head>();
-  registerShard::<Post>();
-  registerShard::<Put>();
-  registerShard::<Patch>();
-  registerShard::<Delete>();
+  register_legacy_shard::<Get>();
+  register_legacy_shard::<Head>();
+  register_legacy_shard::<Post>();
+  register_legacy_shard::<Put>();
+  register_legacy_shard::<Patch>();
+  register_legacy_shard::<Delete>();
 }

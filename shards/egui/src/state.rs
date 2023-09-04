@@ -3,8 +3,8 @@ use lazy_static::__Deref;
 use crate::util;
 use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
-use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::core::register_legacy_shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -36,7 +36,7 @@ impl Default for Save {
   }
 }
 
-impl Shard for Save {
+impl LegacyShard for Save {
   fn registerName() -> &'static str {
     cstr!("UI.SaveState")
   }
@@ -112,7 +112,7 @@ impl Default for Restore {
   }
 }
 
-impl Shard for Restore {
+impl LegacyShard for Restore {
   fn registerName() -> &'static str {
     cstr!("UI.RestoreState")
   }
@@ -177,7 +177,7 @@ impl Shard for Restore {
   }
 }
 
-pub fn registerShards() {
-  registerShard::<Save>();
-  registerShard::<Restore>();
+pub fn register_shards() {
+  register_legacy_shard::<Save>();
+  register_legacy_shard::<Restore>();
 }

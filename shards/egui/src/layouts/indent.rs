@@ -6,7 +6,7 @@ use crate::util;
 use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -42,7 +42,7 @@ impl Default for Indent {
   }
 }
 
-impl Shard for Indent {
+impl LegacyShard for Indent {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -107,7 +107,7 @@ impl Shard for Indent {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

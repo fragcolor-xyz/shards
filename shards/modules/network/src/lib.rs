@@ -16,5 +16,5 @@ unsafe {
   shards::core::Core = core;
   }
 
-  ws::registerShards();
+  ws::register_shards();
 }

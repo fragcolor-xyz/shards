@@ -9,7 +9,7 @@ use super::SEQ_OF_FLOAT2_TYPES;
 use crate::widgets::plots::MARKER_SHAPE_TYPES;
 use crate::COLOR_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHColor;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -67,7 +67,7 @@ impl Default for PlotPoints {
   }
 }
 
-impl Shard for PlotPoints {
+impl LegacyShard for PlotPoints {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -112,10 +112,10 @@ impl Shard for PlotPoints {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.name.set_param(value)),
-      1 => Ok(self.color.set_param(value)),
-      2 => Ok(self.shape.set_param(value)),
-      3 => Ok(self.radius.set_param(value)),
+      0 => self.name.set_param(value),
+      1 => self.color.set_param(value),
+      2 => self.shape.set_param(value),
+      3 => self.radius.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

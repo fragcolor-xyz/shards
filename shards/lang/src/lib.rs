@@ -18,7 +18,7 @@ use std::collections::HashMap;
 use eval::merge_env;
 use eval::new_cancellation_token;
 use eval::EvalEnv;
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::shlog_error;
 use shards::types::Var;
 // use print::print_ast;
@@ -487,8 +487,8 @@ pub extern "C" fn shardsRegister_lang_lang(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  registerShard::<read::ReadShard>();
-  registerShard::<eval::EvalShard>();
+  register_legacy_shard::<read::ReadShard>();
+  register_legacy_shard::<eval::EvalShard>();
 }
 
 /// Please note it will consume `from` but not `to`

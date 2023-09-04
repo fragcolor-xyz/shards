@@ -5,7 +5,7 @@ use super::HexViewer;
 use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHType_Bytes;
 use shards::shardsc::SHType_Enum;
 use shards::shardsc::SHType_Float;
@@ -59,7 +59,7 @@ impl Default for HexViewer {
   }
 }
 
-impl Shard for HexViewer {
+impl LegacyShard for HexViewer {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -112,7 +112,7 @@ impl Shard for HexViewer {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

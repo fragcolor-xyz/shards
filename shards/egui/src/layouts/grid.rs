@@ -10,7 +10,7 @@ use crate::FLOAT_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -77,7 +77,7 @@ impl Default for Grid {
   }
 }
 
-impl Shard for Grid {
+impl LegacyShard for Grid {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -125,10 +125,10 @@ impl Shard for Grid {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.striped.set_param(value)),
-      2 => Ok(self.min_width.set_param(value)),
-      3 => Ok(self.max_width.set_param(value)),
-      4 => Ok(self.spacing.set_param(value)),
+      1 => self.striped.set_param(value),
+      2 => self.min_width.set_param(value),
+      3 => self.max_width.set_param(value),
+      4 => self.spacing.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -148,7 +148,7 @@ impl Shard for Grid {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }
@@ -259,7 +259,7 @@ impl Default for NextRow {
   }
 }
 
-impl Shard for NextRow {
+impl LegacyShard for NextRow {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -302,7 +302,7 @@ impl Shard for NextRow {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

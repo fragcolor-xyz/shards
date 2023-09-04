@@ -5,9 +5,9 @@
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
 use shards::core::cloneVar;
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::common_type;
 use shards::types::ExposedTypes;
@@ -18,6 +18,8 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 use std::ffi::c_void;
+use std::ffi::CStr;
+use std::ffi::CString;
 
 #[macro_use]
 extern crate shards;
@@ -80,6 +82,10 @@ lazy_static! {
 
 const CONTEXTS_NAME: &str = "UI.Contexts";
 const PARENTS_UI_NAME: &str = "UI.Parents";
+lazy_static! {
+  static ref CONTEXTS_NAME_CSTR: CString = CString::new(CONTEXTS_NAME).unwrap();
+  static ref PARENTS_UI_NAME_CSTR: CString = CString::new(PARENTS_UI_NAME).unwrap();
+}
 
 #[derive(Hash)]
 struct EguiId {
@@ -88,9 +94,9 @@ struct EguiId {
 }
 
 impl EguiId {
-  fn new(shard: &dyn Shard, idx: u8) -> EguiId {
+  fn new<T>(shard: &T, idx: u8) -> EguiId {
     EguiId {
-      p: shard as *const dyn Shard as *mut c_void as usize,
+      p: shard as *const T as *mut c_void as usize,
       idx,
     }
   }
@@ -104,18 +110,6 @@ impl From<EguiId> for egui::Id {
 
 mod egui_host;
 
-struct EguiContext {
-  host: egui_host::EguiHost,
-  requiring: ExposedTypes,
-  queue: ParamVar,
-  contents: ShardsVar,
-  exposing: ExposedTypes,
-  has_graphics_context: bool,
-  graphics_context: ParamVar,
-  input_context: ParamVar,
-  renderer: bindings::Renderer,
-  input_translator: bindings::InputTranslator,
-}
 pub(crate) trait UIRenderer {
   fn render(
     &mut self,
@@ -254,12 +248,12 @@ pub extern "C" fn register(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  registerShard::<EguiContext>();
-  state::registerShards();
-  containers::registerShards();
-  layouts::registerShards();
-  menus::registerShards();
-  misc::registerShards();
-  widgets::registerShards();
-  properties::registerShards();
+  context::register_shards();
+  state::register_shards();
+  containers::register_shards();
+  layouts::register_shards();
+  menus::register_shards();
+  misc::register_shards();
+  widgets::register_shards();
+  properties::register_shards();
 }

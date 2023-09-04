@@ -5,7 +5,7 @@ use super::ListBox;
 use crate::util;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::shardsc::SHType_Bool;
 use shards::types::common_type;
@@ -75,7 +75,7 @@ impl Default for ListBox {
   }
 }
 
-impl Shard for ListBox {
+impl LegacyShard for ListBox {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -120,7 +120,7 @@ impl Shard for ListBox {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.index.set_param(value)),
+      0 => self.index.set_param(value),
       1 => self.is_selected.set_param(value),
       2 => self.selected.set_param(value),
       3 => self.template.set_param(value),
@@ -146,7 +146,7 @@ impl Shard for ListBox {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     if self.index.is_variable() {
       self.should_expose = true; // assume we expose a new variable

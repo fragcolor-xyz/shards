@@ -5,7 +5,7 @@ use super::Frame;
 use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHColor;
 use shards::types::common_type;
 use shards::types::Context;
@@ -94,7 +94,7 @@ impl Default for Frame {
   }
 }
 
-impl Shard for Frame {
+impl LegacyShard for Frame {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -142,12 +142,12 @@ impl Shard for Frame {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.innerMargin.set_param(value)),
-      2 => Ok(self.outerMargin.set_param(value)),
-      3 => Ok(self.rounding.set_param(value)),
-      4 => Ok(self.fillColor.set_param(value)),
-      5 => Ok(self.strokeColor.set_param(value)),
-      6 => Ok(self.strokeWidth.set_param(value)),
+      1 => self.innerMargin.set_param(value),
+      2 => self.outerMargin.set_param(value),
+      3 => self.rounding.set_param(value),
+      4 => self.fillColor.set_param(value),
+      5 => self.strokeColor.set_param(value),
+      6 => self.strokeWidth.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -169,7 +169,7 @@ impl Shard for Frame {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

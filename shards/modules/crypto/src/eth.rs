@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::core::register_legacy_shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -136,7 +136,7 @@ struct EncodeCall {
   input: Vec<Token>,
 }
 
-impl Shard for EncodeCall {
+impl LegacyShard for EncodeCall {
   fn registerName() -> &'static str {
     cstr!("Eth.EncodeCall")
   }
@@ -163,8 +163,8 @@ impl Shard for EncodeCall {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.abi.set_param(value)),
-      1 => Ok(self.call_name.set_param(value)),
+      0 => self.abi.set_param(value),
+      1 => self.call_name.set_param(value),
       _ => unreachable!(),
     }
   }
@@ -271,7 +271,7 @@ struct DecodeCall {
   is_input: bool,
 }
 
-impl Shard for DecodeCall {
+impl LegacyShard for DecodeCall {
   fn registerName() -> &'static str {
     cstr!("Eth.DecodeCall")
   }
@@ -298,8 +298,8 @@ impl Shard for DecodeCall {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.abi.set_param(value)),
-      1 => Ok(self.call_name.set_param(value)),
+      0 => self.abi.set_param(value),
+      1 => self.call_name.set_param(value),
       2 => Ok(self.is_input = value.try_into()?),
       _ => unreachable!(),
     }
@@ -414,7 +414,7 @@ impl Shard for DecodeCall {
   }
 }
 
-pub fn registerShards() {
-  registerShard::<EncodeCall>();
-  registerShard::<DecodeCall>();
+pub fn register_shards() {
+  register_legacy_shard::<EncodeCall>();
+  register_legacy_shard::<DecodeCall>();
 }

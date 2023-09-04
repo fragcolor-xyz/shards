@@ -5,7 +5,7 @@ use super::Disable;
 use crate::util;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -51,7 +51,7 @@ impl Default for Disable {
   }
 }
 
-impl Shard for Disable {
+impl LegacyShard for Disable {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -99,7 +99,7 @@ impl Shard for Disable {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.disable.set_param(value)),
+      1 => self.disable.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -116,7 +116,7 @@ impl Shard for Disable {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

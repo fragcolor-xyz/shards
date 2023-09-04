@@ -9,7 +9,7 @@ use crate::ANY_TABLE_SLICE;
 use crate::FLOAT_VAR_SLICE;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::common_type;
 use shards::types::Context;
@@ -71,7 +71,7 @@ impl Default for Combo {
   }
 }
 
-impl Shard for Combo {
+impl LegacyShard for Combo {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -116,10 +116,10 @@ impl Shard for Combo {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.label.set_param(value)),
-      1 => Ok(self.index.set_param(value)),
-      2 => Ok(self.width.set_param(value)),
-      3 => Ok(self.style.set_param(value)),
+      0 => self.label.set_param(value),
+      1 => self.index.set_param(value),
+      2 => self.width.set_param(value),
+      3 => self.style.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -212,7 +212,7 @@ impl Shard for Combo {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

@@ -14,7 +14,7 @@ use crate::widgets::drag_value::CustomDragValue;
 
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -77,7 +77,7 @@ macro_rules! impl_ui_input {
       }
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str
       where
         Self: Sized,
@@ -122,8 +122,8 @@ macro_rules! impl_ui_input {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.variable.set_param(value)),
-          1 => Ok(self.prefix.set_param(value)),
+          0 => self.variable.set_param(value),
+          1 => self.prefix.set_param(value),
           _ => Err("Invalid parameter index"),
         }
       }
@@ -188,7 +188,7 @@ macro_rules! impl_ui_input {
         self.requiring.clear();
 
         // Add UI.Parents to the list of required variables
-        util::require_parents(&mut self.requiring, &self.parents);
+        util::require_parents(&mut self.requiring);
 
         Some(&self.requiring)
       }
@@ -291,7 +291,7 @@ macro_rules! impl_ui_n_input {
       }
     }
 
-    impl Shard for $shard_name {
+    impl LegacyShard for $shard_name {
       fn registerName() -> &'static str
       where
         Self: Sized,
@@ -336,7 +336,7 @@ macro_rules! impl_ui_n_input {
 
       fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
         match index {
-          0 => Ok(self.variable.set_param(value)),
+          0 => self.variable.set_param(value),
           _ => Err("Invalid parameter index"),
         }
       }
@@ -400,7 +400,7 @@ macro_rules! impl_ui_n_input {
         self.requiring.clear();
 
         // Add UI.Parents to the list of required variables
-        util::require_parents(&mut self.requiring, &self.parents);
+        util::require_parents(&mut self.requiring);
 
         Some(&self.requiring)
       }

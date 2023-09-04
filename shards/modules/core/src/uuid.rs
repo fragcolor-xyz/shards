@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::core::register_legacy_shard;
+use shards::shard::LegacyShard;
 
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -28,7 +28,7 @@ use std::str::FromStr;
 #[derive(Default)]
 struct UUIDCreate {}
 
-impl Shard for UUIDCreate {
+impl LegacyShard for UUIDCreate {
   fn registerName() -> &'static str {
     cstr!("UUID")
   }
@@ -62,7 +62,7 @@ impl Shard for UUIDCreate {
 #[derive(Default)]
 struct UUIDConvert {}
 
-impl Shard for UUIDConvert {
+impl LegacyShard for UUIDConvert {
   fn registerName() -> &'static str {
     cstr!("UUID.Convert")
   }
@@ -120,7 +120,7 @@ struct UUIDToString {
   hyphenated: bool,
 }
 
-impl Shard for UUIDToString {
+impl LegacyShard for UUIDToString {
   fn registerName() -> &'static str {
     cstr!("UUID.ToString")
   }
@@ -182,7 +182,7 @@ struct UUIDToBytes {
   output: ClonedVar,
 }
 
-impl Shard for UUIDToBytes {
+impl LegacyShard for UUIDToBytes {
   fn registerName() -> &'static str {
     cstr!("UUID.ToBytes")
   }
@@ -237,7 +237,7 @@ impl Default for NanoIDCreate {
   }
 }
 
-impl Shard for NanoIDCreate {
+impl LegacyShard for NanoIDCreate {
   fn registerName() -> &'static str {
     cstr!("NanoID")
   }
@@ -288,10 +288,10 @@ impl Shard for NanoIDCreate {
   }
 }
 
-pub fn registerShards() {
-  registerShard::<UUIDCreate>();
-  registerShard::<UUIDToString>();
-  registerShard::<UUIDToBytes>();
-  registerShard::<NanoIDCreate>();
-  registerShard::<UUIDConvert>();
+pub fn register_shards() {
+  register_legacy_shard::<UUIDCreate>();
+  register_legacy_shard::<UUIDToString>();
+  register_legacy_shard::<UUIDToBytes>();
+  register_legacy_shard::<NanoIDCreate>();
+  register_legacy_shard::<UUIDConvert>();
 }

@@ -3,7 +3,7 @@ use super::WireVariable;
 use crate::util;
 use crate::UIRenderer;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -76,7 +76,7 @@ impl Default for Variable {
   }
 }
 
-impl Shard for Variable {
+impl LegacyShard for Variable {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -109,7 +109,7 @@ impl Shard for Variable {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.variable.set_param(value)),
+      0 => self.variable.set_param(value),
       1 => Ok(self.labeled = value.try_into()?),
       _ => Err("Invalid parameter index"),
     }
@@ -162,7 +162,7 @@ impl Shard for Variable {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }
@@ -195,8 +195,8 @@ impl Shard for Variable {
         if self.labeled {
           ui.label(label);
         }
-        let varRef = self.variable.get_mut();
-        if varRef
+        let var_ref = self.variable.get_mut();
+        if var_ref
           .render(!self.mutable, self.inner_type.as_ref(), ui)
           .changed()
         {
@@ -204,9 +204,9 @@ impl Shard for Variable {
             triggerVarValueChange(
               context as *const Context as *mut Context,
               self.name.as_ref() as *const Var,
-              varRef as *const Var,
+              var_ref as *const Var,
             );
-            varRef.__bindgen_anon_1.version += 1
+            var_ref.__bindgen_anon_1.version += 1
           };
         }
       });
@@ -229,7 +229,7 @@ impl Default for WireVariable {
   }
 }
 
-impl Shard for WireVariable {
+impl LegacyShard for WireVariable {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -260,7 +260,7 @@ impl Shard for WireVariable {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

@@ -7,7 +7,7 @@ use super::PLOT_UI_NAME;
 use super::SEQ_OF_FLOAT2_TYPES;
 use crate::COLOR_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHColor;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -61,7 +61,7 @@ impl Default for PlotBar {
   }
 }
 
-impl Shard for PlotBar {
+impl LegacyShard for PlotBar {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -108,10 +108,10 @@ impl Shard for PlotBar {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.color.set_param(value)),
-      1 => Ok(self.bar_width.set_param(value)),
-      2 => Ok(self.horizontal.set_param(value)),
-      3 => Ok(self.name.set_param(value)),
+      0 => self.color.set_param(value),
+      1 => self.bar_width.set_param(value),
+      2 => self.horizontal.set_param(value),
+      3 => self.name.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }

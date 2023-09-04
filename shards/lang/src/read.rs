@@ -2,7 +2,7 @@ use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
 use pest::iterators::Pair;
 use pest::Parser;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::{
   common_type, ClonedVar, Context, InstanceData, Parameters, Type, Types, Var, BOOL_TYPES_SLICE,
   STRING_TYPES,
@@ -975,7 +975,7 @@ pub(crate) struct ReadShard {
   as_json: bool,
 }
 
-impl Shard for ReadShard {
+impl LegacyShard for ReadShard {
   fn registerName() -> &'static str
   where
     Self: Sized,

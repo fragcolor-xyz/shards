@@ -129,6 +129,11 @@ impl ClonedVar {
     cloneVar(&mut self.0, other);
   }
 
+  pub fn set_param(&mut self, other: &Var) -> Result<(), &'static str> {
+    self.assign(other);
+    Ok(())
+  }
+
   pub fn assign_string(&mut self, s: &str) {
     let cstr = CString::new(s).unwrap();
     let tmp = Var::from(&cstr);
@@ -414,7 +419,7 @@ impl ShardRef {
     }
   }
 
-  pub fn cleanup(&self) -> Result<(), &str> {
+  pub fn cleanup(&self) -> Result<(), &'static str> {
     unsafe {
       let result = (*self.0).cleanup.unwrap()(self.0);
       if result.code == 0 {
@@ -429,7 +434,7 @@ impl ShardRef {
     }
   }
 
-  pub fn warmup(&self, context: &Context) -> Result<(), &str> {
+  pub fn warmup(&self, context: &Context) -> Result<(), &'static str> {
     unsafe {
       if (*self.0).warmup.is_some() {
         let result = (*self.0).warmup.unwrap()(self.0, context as *const _ as *mut _);
@@ -455,7 +460,7 @@ impl ShardRef {
     }
   }
 
-  pub fn set_parameter(&self, index: i32, value: Var) -> Result<(), &str> {
+  pub fn set_parameter(&self, index: i32, value: Var) -> Result<(), &'static str> {
     unsafe {
       let mut failed = false;
       (*Core).validateSetParam.unwrap()(
@@ -588,13 +593,13 @@ SHExposedTypeInfo & co
 */
 
 impl ExposedInfo {
-  pub fn new(name: &CString, ctype: SHTypeInfo) -> Self {
+  pub fn new(name: *const c_char, ctype: SHTypeInfo) -> Self {
     let chelp = core::ptr::null();
     SHExposedTypeInfo {
       exposedType: ctype,
-      name: name.as_ptr(),
+      name: name,
       help: SHOptionalString {
-        string: chelp,
+        string: chelp, // TODO: Pull from parameter into
         crc: 0,
       },
       isMutable: false,
@@ -1684,7 +1689,7 @@ where
     let res = ClonedVar(Var::default());
     unsafe {
       let rv = &res.0 as *const SHVar as *mut SHVar;
-      let sv = &vt as *const SHVar;
+      let sv = &vt as *const SHVar; 
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
@@ -2686,6 +2691,7 @@ impl Var {
     }
   }
 
+
   pub unsafe fn new_object_from_ptr<T>(obj: *const T, info: &Type) -> Var {
     Var {
       valueType: SHType_Object,
@@ -2838,7 +2844,7 @@ impl Var {
     }
   }
 
-  pub fn as_seq(&self) -> Result<&SeqVar, &str> {
+  pub fn as_seq(&self) -> Result<&SeqVar, &'static str> {
     if self.valueType != SHType_Seq {
       Err("Variable is not a sequence")
     } else {
@@ -2848,7 +2854,7 @@ impl Var {
 
   /// The returned SeqVar needs to be wrapped in ClonedVar or destroyed with destroyVar or ownership should be delegated to another Var
   /// SeqVar WON'T call DROP
-  pub fn as_mut_seq_creating(&mut self) -> Result<&mut SeqVar, &str> {
+  pub fn as_mut_seq_creating(&mut self) -> Result<&mut SeqVar, &'static str> {
     if self.valueType != SHType_Seq {
       if self.valueType == SHType_None {
         let sv = SeqVar::new();
@@ -2862,7 +2868,7 @@ impl Var {
     }
   }
 
-  pub fn as_mut_seq(&mut self) -> Result<&mut SeqVar, &str> {
+  pub fn as_mut_seq(&mut self) -> Result<&mut SeqVar, &'static str> {
     if self.valueType != SHType_Seq {
       Err("Variable is not a sequence")
     } else {
@@ -2870,7 +2876,7 @@ impl Var {
     }
   }
 
-  pub fn as_table(&self) -> Result<&TableVar, &str> {
+  pub fn as_table(&self) -> Result<&TableVar, &'static str> {
     if self.valueType != SHType_Table {
       Err("Variable is not a table")
     } else {
@@ -2880,7 +2886,7 @@ impl Var {
 
   /// The returned TableVar needs to be wrapped in ClonedVar or destroyed with destroyVar or ownership should be delegated to another Var
   /// TableVar WON'T call DROP
-  pub fn as_mut_table_creating(&mut self) -> Result<&mut TableVar, &str> {
+  pub fn as_mut_table_creating(&mut self) -> Result<&mut TableVar, &'static str> {
     if self.valueType != SHType_Table {
       if self.valueType == SHType_None {
         let sv = TableVar::new();
@@ -2894,7 +2900,7 @@ impl Var {
     }
   }
 
-  pub fn as_mut_table(&mut self) -> Result<&mut TableVar, &str> {
+  pub fn as_mut_table(&mut self) -> Result<&mut TableVar, &'static str> {
     if self.valueType != SHType_Table {
       Err("Variable is not a table")
     } else {
@@ -3941,6 +3947,12 @@ impl ParamVar {
     }
   }
 
+  pub fn new_named(name: &str) -> ParamVar { 
+    let mut var = ParamVar::default(); 
+    var.set_name(name);
+    var
+  } 
+
   pub fn cleanup(&mut self) {
     unsafe {
       if self.parameter.0.valueType == SHType_ContextVar {
@@ -4020,8 +4032,13 @@ impl ParamVar {
     }
   }
 
-  pub fn set_param(&mut self, value: &Var) {
+  pub fn assign(&mut self, value: &Var) {
     self.parameter = value.into();
+  }
+
+  pub fn set_param(&mut self, value: &Var) -> Result<(), &'static str> {
+    self.assign(value);
+    Ok(())
   }
 
   pub fn get_param(&self) -> Var {
@@ -4032,7 +4049,7 @@ impl ParamVar {
     self.parameter.0.valueType == SHType_ContextVar
   }
 
-  pub fn set_name(&mut self, name: &str) {
+  pub fn set_name(&mut self, name: &str) { 
     let s = Var::ephemeral_string(name);
     self.parameter = s.into(); // clone it!
     self.parameter.0.valueType = SHType_ContextVar;
@@ -4129,7 +4146,7 @@ impl ShardsVar {
     }
   }
 
-  pub fn warmup(&self, context: &Context) -> Result<(), &str> {
+  pub fn warmup(&self, context: &Context) -> Result<(), &'static str> {
     for shard in self.shards.iter() {
       if let Err(e) = shard.warmup(context) {
         shlog!("Errors during shard warmup: {}", e);
@@ -4270,6 +4287,69 @@ impl ShardsVar {
 impl From<&ShardsVar> for Shards {
   fn from(v: &ShardsVar) -> Self {
     v.native_shards
+  }
+}
+
+impl From<&ShardsVar> for &SHVar {
+  fn from(v: &ShardsVar) -> Self {
+    (&v.param).into()
+  }
+}
+
+impl From<&ShardsVar> for Var {
+  fn from(v: &ShardsVar) -> Self {
+    (&v.param).into()
+  }
+}
+
+impl From<&ClonedVar> for &SHVar {
+  fn from(value: &ClonedVar) -> Self {
+      unsafe { transmute(value) }
+  }
+}
+
+impl From<&ClonedVar> for Var {
+  fn from(value: &ClonedVar) -> Self {
+      let v: &Var = unsafe { transmute(value) };
+      *v
+  }
+}
+
+impl From<&ParamVar> for &SHVar {
+  fn from(value: &ParamVar) -> Self {
+      unsafe { transmute(value) }
+  }
+}
+
+impl From<&ParamVar> for Var {
+  fn from(value: &ParamVar) -> Self {
+    let v: &Var = unsafe { transmute(value) };
+    *v
+  }
+}
+
+impl IntoIterator for TableVar {
+  type Item = (Var, Var);
+  type IntoIter = TableIterator;
+
+  fn into_iter(self) -> Self::IntoIter {
+    unsafe {
+      let it = TableIterator {
+        table: self.0.payload.__bindgen_anon_1.tableValue,
+        citer: [0; 64],
+      };
+      (*it.table.api).tableGetIterator.unwrap()(it.table, &it.citer as *const _ as *mut _);
+      it
+    }
+  }
+}
+
+impl IntoIterator for SeqVar {
+  type Item = SHVar;
+  type IntoIter = SeqVarIterator;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.iter()
   }
 }
 
@@ -4654,17 +4734,17 @@ impl AutoTableVar {
   }
 }
 
-pub struct SeqVarIterator<'a> {
-  s: &'a SeqVar,
+pub struct SeqVarIterator {
+  s: SeqVar,
   i: u32,
 }
 
-impl<'a> Iterator for SeqVarIterator<'a> {
+impl Iterator for SeqVarIterator {
   fn next(&mut self) -> Option<Self::Item> {
     unsafe {
       let res = if self.i < self.s.0.payload.__bindgen_anon_1.seqValue.len {
         Some(
-          &*self
+          *self
             .s
             .0
             .payload
@@ -4680,15 +4760,15 @@ impl<'a> Iterator for SeqVarIterator<'a> {
       res
     }
   }
-  type Item = &'a Var;
+  type Item = Var;
 }
 
-impl<'a> DoubleEndedIterator for SeqVarIterator<'a> {
+impl DoubleEndedIterator for SeqVarIterator {
   fn next_back(&mut self) -> Option<Self::Item> {
     unsafe {
       let res = if self.i < self.s.0.payload.__bindgen_anon_1.seqValue.len {
         Some(
-          &*self.s.0.payload.__bindgen_anon_1.seqValue.elements.offset(
+          *self.s.0.payload.__bindgen_anon_1.seqValue.elements.offset(
             (self.s.0.payload.__bindgen_anon_1.seqValue.len - self.i - 1)
               .try_into()
               .unwrap(),
@@ -4875,7 +4955,7 @@ impl SeqVar {
 
   #[inline(always)]
   pub fn iter(&self) -> SeqVarIterator {
-    SeqVarIterator { s: self, i: 0 }
+    SeqVarIterator { s: self.clone(), i: 0 }
   }
 }
 
@@ -5650,7 +5730,7 @@ macro_rules! test_to_from_vec2 {
     let asVar: Var = fromNum.try_into().unwrap();
     let intoNum: ($type, $type) = <($type, $type)>::try_from(&asVar).unwrap();
     assert_eq!(fromNum, intoNum, $msg);
-  };
+  }; 
 }
 
 macro_rules! test_to_from_vec3 {

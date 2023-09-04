@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use crate::Simulation;
 use crate::EXPOSED_SIMULATION;
 use crate::SIMULATION_TYPE;
@@ -14,7 +14,7 @@ use shards::types::Parameters;
 
 use shards::types::ANY_TYPES;
 use shards::types::FLOAT_TYPES_SLICE;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 
 use shards::types::Types;
 use shards::types::Var;
@@ -63,7 +63,7 @@ impl Default for Simulation {
   }
 }
 
-impl Shard for Simulation {
+impl LegacyShard for Simulation {
   fn registerName() -> &'static str {
     cstr!("Physics.Simulation")
   }
@@ -145,6 +145,6 @@ impl Shard for Simulation {
   }
 }
 
-pub fn registerShards() {
-  registerShard::<Simulation>();
+pub fn register_shards() {
+  register_legacy_shard::<Simulation>();
 }

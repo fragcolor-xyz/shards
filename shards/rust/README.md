@@ -51,7 +51,7 @@ impl Default for MyShard {
 The trait is defined in `rust/src/shard.rs`. Some functions have a default implementation. At minimum the following must be implemented:
 
 ```rust
-impl Shard for MyShard {
+impl LegacyShard for MyShard {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -153,7 +153,7 @@ If the shards has parameters, additional functions should be implemented.
 
 ```rust
 
-impl Shard for MyShard {    
+impl LegacyShard for MyShard {    
   fn parameters(&mut self) -> Option<&Parameters> {
     None
   }
@@ -207,7 +207,7 @@ lazy_static! {
   ];
 }
 
-impl Shard for MyShard {
+impl LegacyShard for MyShard {
   fn parameters(&mut self) -> Option<&Parameters> {
     Some(&MY_PARAMETERS)
   }
@@ -221,7 +221,7 @@ Since the shard has parameters, we need to implement their getters and setters. 
 ```rust
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.my_param.set_param(value)),
+      0 => self.my_param.set_param(value),
       1 => self.my_shards.set_param(value),
       2 => Ok(self.my_bool = value.try_into()?),
       _ => Err("Invalid parameter index"),
@@ -402,7 +402,7 @@ Once a shard is ready, it must be registered. Usually it is done in a `registerS
 
 ```rust
 pub fn registerShards() {
-  registerShard::<MyShard>();
+  register_legacy_shard::<MyShard>();
 }
 ```
 

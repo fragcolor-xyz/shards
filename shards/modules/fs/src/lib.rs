@@ -8,11 +8,11 @@ extern crate lazy_static;
 
 extern crate compile_time_crc32;
 
-use shards::core::registerShard;
+use shards::core::register_legacy_shard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
 use shards::core::Core;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHCore;
 use shards::types::common_type;
 use shards::types::ClonedVar;
@@ -100,7 +100,7 @@ impl Default for FileDialog {
   }
 }
 
-impl Shard for FileDialog {
+impl LegacyShard for FileDialog {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -133,10 +133,10 @@ impl Shard for FileDialog {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.filters.set_param(value)),
-      1 => Ok(self.current_dir.set_param(value)),
+      0 => self.filters.set_param(value),
+      1 => self.current_dir.set_param(value),
       2 => Ok(self.multiple = value.try_into()?),
-      3 => Ok(self.folder.set_param(value)),
+      3 => self.folder.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -275,7 +275,7 @@ impl Default for SaveFileDialog {
   }
 }
 
-impl Shard for SaveFileDialog {
+impl LegacyShard for SaveFileDialog {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -308,8 +308,8 @@ impl Shard for SaveFileDialog {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.filters.set_param(value)),
-      1 => Ok(self.current_dir.set_param(value)),
+      0 => self.filters.set_param(value),
+      1 => self.current_dir.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -382,6 +382,6 @@ pub extern "C" fn shardsRegister_fs_rust(core: *mut SHCore) {
     Core = core;
   }
 
-  registerShard::<FileDialog>();
-  registerShard::<SaveFileDialog>();
+  register_legacy_shard::<FileDialog>();
+  register_legacy_shard::<SaveFileDialog>();
 }

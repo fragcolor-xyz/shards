@@ -13,7 +13,7 @@ use crate::EGUI_CTX_TYPE;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -111,7 +111,7 @@ impl Default for Window {
   }
 }
 
-impl Shard for Window {
+impl LegacyShard for Window {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -160,14 +160,14 @@ impl Shard for Window {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.title.set_param(value)),
-      1 => Ok(self.position.set_param(value)),
-      2 => Ok(self.anchor.set_param(value)),
-      3 => Ok(self.width.set_param(value)),
-      4 => Ok(self.height.set_param(value)),
-      5 => Ok(self.flags.set_param(value)),
+      0 => self.title.set_param(value),
+      1 => self.position.set_param(value),
+      2 => self.anchor.set_param(value),
+      3 => self.width.set_param(value),
+      4 => self.height.set_param(value),
+      5 => self.flags.set_param(value),
       6 => self.contents.set_param(value),
-      7 => Ok(self.id.set_param(value)),
+      7 => self.id.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -189,16 +189,8 @@ impl Shard for Window {
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
 
-    // Add UI.Contexts to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_CTX_TYPE,
-      name: self.instance.get_name(),
-      help: cstr!("The exposed UI context.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_context(&mut self.requiring);
+    util::require_parents(&mut self.requiring);
 
     if self.id.is_variable() {
       let id_info = ExposedInfo {

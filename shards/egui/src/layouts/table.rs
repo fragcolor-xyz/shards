@@ -7,7 +7,7 @@ use crate::EguiId;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::shardsc::SHType_Int;
 use shards::shardsc::SHType_Seq;
 use shards::shardsc::SHType_ShardRef;
@@ -91,7 +91,7 @@ impl Default for Table {
   }
 }
 
-impl Shard for Table {
+impl LegacyShard for Table {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -177,9 +177,9 @@ impl Shard for Table {
 
         Ok(self.columns = value.into())
       }
-      2 => Ok(self.striped.set_param(value)),
-      3 => Ok(self.resizable.set_param(value)),
-      4 => Ok(self.row_index.set_param(value)),
+      2 => self.striped.set_param(value),
+      3 => self.resizable.set_param(value),
+      4 => self.row_index.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -199,7 +199,7 @@ impl Shard for Table {
     self.requiring.clear();
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }

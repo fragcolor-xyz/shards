@@ -2,8 +2,8 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use crate::CRYPTO_KEY_TYPES;
-use shards::core::registerShard;
-use shards::shard::Shard;
+use shards::core::register_legacy_shard;
+use shards::shard::LegacyShard;
 
 use shards::types::common_type;
 use shards::types::ClonedVar;
@@ -88,7 +88,7 @@ struct ECDSASign {
   key: ParamVar,
 }
 
-impl Shard for ECDSASign {
+impl LegacyShard for ECDSASign {
   fn registerName() -> &'static str {
     cstr!("ECDSA.Sign")
   }
@@ -115,7 +115,7 @@ impl Shard for ECDSASign {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.key.set_param(value)),
+      0 => self.key.set_param(value),
       _ => unreachable!(),
     }
   }
@@ -163,7 +163,7 @@ struct ECDSAPubKey {
   compressed: bool,
 }
 
-impl Shard for ECDSAPubKey {
+impl LegacyShard for ECDSAPubKey {
   fn registerName() -> &'static str {
     cstr!("ECDSA.PublicKey")
   }
@@ -222,7 +222,7 @@ struct ECDSAPrivKey {
   compressed: bool,
 }
 
-impl Shard for ECDSAPrivKey {
+impl LegacyShard for ECDSAPrivKey {
   fn registerName() -> &'static str {
     cstr!("ECDSA.Seed")
   }
@@ -276,7 +276,7 @@ struct ECDSARecover {
   signature: ParamVar,
 }
 
-impl Shard for ECDSARecover {
+impl LegacyShard for ECDSARecover {
   fn registerName() -> &'static str {
     cstr!("ECDSA.Recover")
   }
@@ -303,7 +303,7 @@ impl Shard for ECDSARecover {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.signature.set_param(value)),
+      0 => self.signature.set_param(value),
       1 => Ok(self.compressed = value.try_into()?),
       _ => unreachable!(),
     }
@@ -362,9 +362,9 @@ impl Shard for ECDSARecover {
   }
 }
 
-pub fn registerShards() {
-  registerShard::<ECDSASign>();
-  registerShard::<ECDSAPubKey>();
-  registerShard::<ECDSAPrivKey>();
-  registerShard::<ECDSARecover>();
+pub fn register_shards() {
+  register_legacy_shard::<ECDSASign>();
+  register_legacy_shard::<ECDSAPubKey>();
+  register_legacy_shard::<ECDSAPrivKey>();
+  register_legacy_shard::<ECDSARecover>();
 }

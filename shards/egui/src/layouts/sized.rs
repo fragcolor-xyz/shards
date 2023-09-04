@@ -11,7 +11,7 @@ use egui::Layout;
 
 use egui::Ui;
 use egui::Vec2;
-use shards::shard::Shard;
+use shards::shard::LegacyShard;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
@@ -60,7 +60,7 @@ impl Default for super::Sized {
   }
 }
 
-impl Shard for super::Sized {
+impl LegacyShard for super::Sized {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -113,7 +113,7 @@ impl Shard for super::Sized {
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
     Some(&self.requiring)
   }
 
