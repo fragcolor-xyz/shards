@@ -41,7 +41,7 @@ add_subdirectory(${SHARDS_DIR}/shards/lang src/lang)
 
 # Rust projects
 add_subdirectory(${SHARDS_DIR}/shards/rust src/rust)
-add_subdirectory(${SHARDS_DIR}/shards/rust-macro src/rust-macro)
+add_subdirectory(${SHARDS_DIR}/shards/rust_macro src/rust_macro)
 
 # Modules
 set(SHARDS_MODULE_ROOT ${SHARDS_DIR}/shards/modules)
