@@ -1,0 +1,580 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2022 Fragcolor Pte. Ltd.
+
+; Notes:
+;   This file contains unit tests for the UI shards.
+;   It is not meant to be realistic. For such samples, look at egui-demo.edn.
+
+@mesh(main)
+@define(timestep #(1.0 | Math.Divide(60.0)))
+@define(duration 60)
+@define(input "**input**")
+
+; context
+@wire(context-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      @input |
+      UI(ui-draw-queue {"hello" = hello}) |
+      ; input passthrough
+      Assert.Is(@input Abort: true)
+      ; exposed variable
+      hello | ExpectString
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main context-test)
+@run(main FPS: 60 Iterations: 60)
+
+; window
+@wire(window-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        @input |
+        UI.Window(
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+          }
+        ) |
+        ; input passthrough
+        Assert.Is(@input Abort: true)
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main window-test)
+@run(main FPS: 60 Iterations: 60)
+
+; scope
+@wire(scope-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.Window(
+          Contents: {
+            @input |
+            UI.Scope(
+              Contents: {
+                ; input pass into
+                Assert.Is(@input Abort: true)
+              }
+            ) |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main scope-test)
+@run(main FPS: 60 Iterations: 60)
+
+; area
+@wire(area-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        @input |
+        UI.Area(
+          Anchor: Anchor::TopLeft
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+            "TopLeft" | UI.Label
+          }
+        ) |
+        UI.Area(
+          Anchor: Anchor::Top
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+            "Top" | UI.Label
+          }
+        ) |
+        UI.Area(
+          Anchor: Anchor::TopRight
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+            "TopRight" | UI.Label(Wrap: false)
+          }
+        ) |
+        UI.Area(
+          Anchor: Anchor::Left
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+            "Left" | UI.Label
+          }
+        ) |
+        UI.Area(
+          Anchor: Anchor::Center
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+            "Center" | UI.Label
+          }
+        ) |
+        UI.Area(
+          Anchor: Anchor::Right
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+            "Right" | UI.Label
+          }
+        ) |
+        UI.Area(
+          Anchor: Anchor::BottomLeft
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+            "BottomLeft" | UI.Label
+          }
+        ) |
+        UI.Area(
+          Anchor: Anchor::Bottom
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+            "Bottom" | UI.Label
+          }
+        ) |
+        UI.Area(
+          Anchor: Anchor::BottomRight
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+            "BottomRight" | UI.Label(Wrap: false)
+          }
+        ) |
+        ; input passthrough
+        Assert.Is(@input Abort: true)
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main area-test)
+@run(main FPS: 60 Iterations: 60)
+
+; panels
+@wire(panels-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        @input |
+        UI.TopPanel(
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+          }
+        ) |
+        UI.LeftPanel(
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+          }
+        ) |
+        UI.RightPanel(
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+          }
+        ) |
+        UI.BottomPanel(
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+          }
+        ) |
+        UI.CentralPanel(
+          Contents: {
+            ; input pass into
+            Assert.Is(@input Abort: true)
+          }
+        ) |
+        ; input passthrough
+        Assert.Is(@input Abort: true)
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main panels-test)
+@run(main FPS: 60 Iterations: 60)
+
+; collapsing header
+@wire(collapsing-header-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            @input |
+            UI.Collapsing(
+              Heading: UI.Button("Heading")
+              DefaultOpen: true
+              Contents: {
+                ; input pass into
+                Assert.Is(@input Abort: true)
+              }
+            ) |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main collapsing-header-test)
+@run(main FPS: 60 Iterations: 60)
+
+; columns
+@wire(columns-header-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            @input |
+            UI.Columns(
+              [{ ; input pass into
+                 Assert.Is(@input Abort: true)
+                 "Left" | UI.Label} 
+               { ; input pass into
+                 Assert.Is(@input Abort: true)
+                 "Right" | UI.Label}]
+            ) |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main columns-header-test)
+@run(main FPS: 60 Iterations: 60)
+
+; disable
+@wire(disable-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            @input |
+            UI.Disable(
+              Disable: true
+              Contents: {
+                ; input pass into
+                Assert.Is(@input Abort: true)
+              }
+            ) |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main disable-test)
+@run(main FPS: 60 Iterations: 60)
+
+; frame
+@wire(frame-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            @input |
+            UI.Frame(
+              InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
+              FillColor: @color(32 32 128 255)
+              StrokeColor: @color(255 64 255 255) StrokeWidth: 8.0
+              Contents: {
+                ; input pass into
+                Assert.Is(@input Abort: true)
+              }
+            ) |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main frame-test)
+@run(main FPS: 60 Iterations: 60)
+
+; group
+@wire(group-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            @input |
+            UI.Group(
+              Contents: {
+                ; input pass into
+                Assert.Is(@input Abort: true)
+              }
+            ) |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main group-test)
+@run(main FPS: 60 Iterations: 60)
+
+; indent
+@wire(indent-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            @input |
+            UI.Indent(
+              Contents: {
+                ; input pass into
+                Assert.Is(@input Abort: true)
+              }
+            ) |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main indent-test)
+@run(main FPS: 60 Iterations: 60)
+
+; horizontal layout
+@wire(horizontal-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            @input |
+            UI.Horizontal(
+              Contents: {
+                ; input pass into
+                Assert.Is(@input Abort: true)
+              }
+            ) |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main horizontal-test)
+@run(main FPS: 60 Iterations: 60)
+
+; scroll area
+@wire(scroll-area-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+        GFX.Render(Steps: render-steps)
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            @input |
+            UI.ScrollArea(
+              Horizontal: true Vertical: true AlwaysShow: true
+              Contents: {
+                ; input pass into
+                Assert.Is(@input Abort: true)
+              }
+            ) |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main scroll-area-test)
+@run(main FPS: 60 Iterations: 60)
+
+; vertical layout
+@wire(vertical-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            @input |
+            UI.Vertical(
+              Contents: {
+                ; input pass into
+                Assert.Is(@input Abort: true)
+              }
+            ) |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+})
+
+@schedule(main vertical-test)
+@run(main FPS: 60 Iterations: 60)
+
+; separator
+@wire(separator-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            @input |
+            UI.Separator |
+            ; input passthrough
+            Assert.Is(@input Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+})
+
+@schedule(main separator-test)
+@run(main FPS: 60 Iterations: 60)
