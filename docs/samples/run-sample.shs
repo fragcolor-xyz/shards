@@ -1,7 +1,7 @@
 @mesh(main)
 @wire(run-sample {
   @file | Shards.Read >= sample
-  #(sample)
+  (sample)
 } Looped: true) ; Cannot set option for this, cannot take Boolean variable
 
 @schedule(main run-sample)

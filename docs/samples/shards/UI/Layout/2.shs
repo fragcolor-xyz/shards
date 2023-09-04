@@ -4,12 +4,10 @@ GFX.MainWindow(
       GFX.DrawQueue >= ui-draw-queue
       GFX.UIPass(ui-draw-queue) >> render-steps
       UI.LayoutClass(
-        Layout: {
-          main_direction: LayoutDirection::BottomUp
-          main_wrap: true
-          cross_align: LayoutAlign::Center
-          cross_justify: true
-        }
+        MainDirection: LayoutDirection::BottomUp
+        MainWrap: true
+        CrossAlign: LayoutAlign::Center
+        CrossJustify: true
       ) >= bottom-up-layout-class
       false >= checked
       1 >= choice
@@ -39,5 +37,5 @@ GFX.MainWindow(
       })
     )
     GFX.Render(Steps: render-steps)
-    }
+  }
 )

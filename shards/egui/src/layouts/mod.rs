@@ -81,8 +81,8 @@ struct Horizontal {
 
 #[derive(Clone)]
 struct EguiScrollAreaSettings {
-  horizontal_scroll_enabled: bool,
-  vertical_scroll_enabled: bool,
+  enable_horizontal_scroll_bar: bool,
+  enable_vertical_scroll_bar: bool,
   min_width: f32,
   min_height: f32,
   max_width: f32,
@@ -95,7 +95,7 @@ struct EguiScrollAreaSettings {
 
 impl EguiScrollAreaSettings {
   pub fn to_egui_scrollarea(&self) -> egui::ScrollArea {
-    egui::ScrollArea::new([self.horizontal_scroll_enabled, self.vertical_scroll_enabled])
+    egui::ScrollArea::new([self.enable_horizontal_scroll_bar, self.enable_vertical_scroll_bar])
       .scroll_bar_visibility(self.scroll_visibility.into())
       .max_width(self.max_width)
       .max_height(self.max_height)
@@ -121,14 +121,29 @@ struct LayoutClass {
 struct LayoutConstructor {
   parent: ParamVar,
   layout_class: Option<Rc<LayoutClass>>,
-  layout: ParamVar,
+  main_direction: ParamVar,
+  main_wrap: ParamVar,
+  main_align: ParamVar,
+  main_justify: ParamVar,
+  cross_align: ParamVar,
+  cross_justify: ParamVar,
   min_size: ParamVar,
   max_size: ParamVar,
   fill_width: ParamVar,
   fill_height: ParamVar,
   disabled: ParamVar,
   frame: ParamVar,
-  scroll_area: ParamVar,
+  enable_horizontal_scroll_bar: ParamVar,
+  enable_vertical_scroll_bar: ParamVar,
+  scroll_visibility: ParamVar,
+  scroll_area_min_width: ParamVar,
+  scroll_area_min_height: ParamVar,
+  scroll_area_max_width: ParamVar,
+  scroll_area_max_height: ParamVar,
+  scroll_area_auto_shrink_width: ParamVar,
+  scroll_area_auto_shrink_height: ParamVar,
+  scroll_area_enable_scrolling: ParamVar,
+
 }
 
 struct Layout {

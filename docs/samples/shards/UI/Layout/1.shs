@@ -4,14 +4,10 @@ GFX.MainWindow(
       GFX.DrawQueue >= ui-draw-queue
       GFX.UIPass(ui-draw-queue) >> render-steps
       UI.LayoutClass(
-        Layout: {
-          main_direction: LayoutDirection::LeftToRight
-        }
+        MainDirection: LayoutDirection::LeftToRight
       ) >= left-to-right-layout-class
       UI.LayoutClass(
-        Layout: {
-          main_direction: LayoutDirection::TopDown
-        }
+        MainDirection: LayoutDirection::TopDown
       ) >= top-down-layout-class
     })
     UI(

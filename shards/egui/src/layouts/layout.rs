@@ -13,11 +13,14 @@ use super::LayoutFrame;
 use super::LayoutFrameCC;
 use super::ScrollVisibility;
 use crate::layouts::ScrollVisibilityCC;
+use crate::layouts::LAYOUT_ALIGN_TYPES;
+use crate::layouts::LAYOUT_DIRECTION_TYPES;
+use crate::layouts::SCROLL_VISIBILITY_TYPES;
 use crate::util;
 use crate::EguiId;
-use crate::ANY_TABLE_SLICE;
 use crate::EGUI_UI_TYPE;
 use crate::FLOAT2_VAR_SLICE;
+use crate::FLOAT_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::LAYOUTCLASS_TYPE;
 use crate::LAYOUTCLASS_TYPE_VEC;
@@ -33,7 +36,6 @@ use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::ShardsVar;
-use shards::types::Table;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
@@ -44,9 +46,9 @@ use shards::types::SHARDS_OR_NONE_TYPES;
 use std::rc::Rc;
 
 macro_rules! retrieve_parameter {
-  ($table:ident, $name:literal, $type:ty) => {
-    if let Some(value) = $table.get_static($name) {
-      let value: $type = value.try_into().map_err(|e| {
+  ($param:ident, $name:literal, $type:ty) => {
+    if !$param.is_none() {
+      let value: $type = $param.try_into().map_err(|e| {
         shlog!("{}: {}", $name, e);
         "Invalid attribute value received"
       })?;
@@ -55,25 +57,18 @@ macro_rules! retrieve_parameter {
       None
     }
   };
-  ($table:ident, $name:literal, $type:ty, $convert:expr) => {
-    if let Some(value) = $table.get_static($name) {
-      let value: $type = value.try_into().map_err(|e| {
-        shlog!("{}: {}", $name, e);
-        "Invalid attribute value received"
-      })?;
-      Some($convert(value)?)
-    } else {
-      None
-    }
-  };
 }
 
 macro_rules! retrieve_enum_parameter {
-  ($table:ident, $name:literal, $type:ident, $typeId:expr) => {
-    if let Some(value) = $table.get_static($name) {
+  ($param:ident, $name:literal, $type:ident, $typeId:expr) => {
+    // Check if parameter has been passed in, and if so retrieve it
+    if !$param.is_none() {
+      let value = $param;
+      // Check for correct enum type
       if value.valueType == crate::shardsc::SHType_Enum
         && unsafe { value.payload.__bindgen_anon_1.__bindgen_anon_3.enumTypeId == $typeId }
       {
+        // Retrieve value
         let bits = unsafe { value.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue };
         let value = $type { bits };
         Some(value)
@@ -84,8 +79,9 @@ macro_rules! retrieve_enum_parameter {
         })?
       }
     } else {
+      // No parameter to retrieve from, caller should retrieve from parent or use default value
       None
-    }
+    };
   };
 }
 
@@ -135,20 +131,50 @@ lazy_static! {
     )
       .into(),
     (
-      cstr!("Layout"),
-      shccstr!("The parameters relating to the layout of the UI element."),
-      ANY_TABLE_SLICE,
+      cstr!("MainDirection"),
+      shccstr!("The main direction of the UI element layout."),
+      &LAYOUT_DIRECTION_TYPES[..],
+    )
+      .into(),
+    (
+      cstr!("MainWrap"),
+      shccstr!("Whether the UI elements in the layout should wrap around when reaching the end of the direction of the cursor."),
+      BOOL_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("MainAlign"),
+      shccstr!("How the UI elements in the layout should be aligned on the main axis."),
+      &LAYOUT_ALIGN_TYPES[..],
+    )
+      .into(),
+    (
+      cstr!("MainJustify"),
+      shccstr!("Whether the UI elements in the layout should be justified along the main axis."),
+      BOOL_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("CrossAlign"),
+      shccstr!("How the UI elements in the layout should be aligned on the cross axis."),
+      &LAYOUT_ALIGN_TYPES[..],
+    )
+      .into(),
+    (
+      cstr!("CrossJustify"),
+      shccstr!("Whether the UI elements in the layout should be justified along the across axis."),
+      BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
       cstr!("MinSize"),
-      shccstr!("The minimum size of the space to be reserved by this UI. This allows the UI to take up more space than required for its widget contents. Can be overidden by FillWidth and FillHeight."),
+      shccstr!("The minimum size of the space to be reserved by this UI for its contents. This allows the UI to take up more space than required for its widget contents. Can be overidden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
     (
       cstr!("MaxSize"),
-      shccstr!("The maximum size of the space to be reserved by this UI. Prevents UI from taking as much space as possible. Can be overidden by FillWidth and FillHeight."),
+      shccstr!("The maximum size of the space to be reserved by this UI for its contents. Prevents UI from taking as much space as possible. Can be overidden by FillWidth and FillHeight."),
       FLOAT2_VAR_SLICE,
     )
       .into(),
@@ -167,9 +193,63 @@ lazy_static! {
     )
       .into(),
     (
-      cstr!("ScrollArea"),
-      shccstr!("The scroll area to be drawn around the layout to provide scroll bars."),
-      ANY_TABLE_SLICE,
+      cstr!("EnableHorizontalScrollBar"),
+      shccstr!("Enable the horizontal scroll bar. If either this or EnableVerticalScrollBar is true, a ScrollArea will be created within the layout."),
+      BOOL_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("EnableVerticalScrollBar"),
+      shccstr!("Enable the vertical scroll bar. If either this or EnableHorizontalScrollBar is true, a ScrollArea will be created within the layout."),
+      BOOL_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("ScrollBarVisibility"),
+      shccstr!("Whether the scroll bars of the scroll area should be AlwaysVisible, VisibleWhenNeeded, or Always Hidden. Default: AlwaysVisible"),
+      &SCROLL_VISIBILITY_TYPES[..],
+    )
+      .into(),
+    (
+      cstr!("ScrollAreaMinWidth"),
+      shccstr!("The minimum width of the scroll area to be drawn. Note: This is not the minimum width of the contents of the scroll area."),
+      FLOAT_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("ScrollAreaMinHeight"),
+      shccstr!("The minimum height of the scroll area to be drawn. Note: This is not the minimum height of the contents of the scroll area."),
+      FLOAT_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("ScrollAreaMaxWidth"),
+      shccstr!("The maximum width of the scroll area to be drawn. Note: This is not the maximum width of the contents of the scroll area."),
+      FLOAT_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("ScrollAreaMaxHeight"),
+      shccstr!("The maximum height of the scroll area to be drawn. Note: This is not the maximum height of the contents of the scroll area."),
+      FLOAT_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("ScrollAreaAutoShrinkWidth"),
+      shccstr!("Whether the scroll area's width should automatically shrink to fit the size of its contents."),
+      BOOL_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("ScrollAreaAutoShrinkHeight"),
+      shccstr!("Whether the scroll area's height should automatically shrink to fit the size of its contents."),
+      BOOL_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("ScrollAreaEnableScrolling"),
+      shccstr!("Whether the scroll area's scrolling should be enabled. This is akin to the disable setting for UI elements."),
+      BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
   ];
@@ -208,15 +288,29 @@ impl Default for LayoutConstructor {
   fn default() -> Self {
     Self {
       parent: ParamVar::default(),
-      layout: ParamVar::default(),
       layout_class: None,
+      main_direction: ParamVar::default(),
+      main_wrap: ParamVar::default(),
+      main_align: ParamVar::default(),
+      main_justify: ParamVar::default(),
+      cross_align: ParamVar::default(),
+      cross_justify: ParamVar::default(),
       min_size: ParamVar::default(),
       max_size: ParamVar::default(),
       fill_width: ParamVar::default(),
       fill_height: ParamVar::default(),
       disabled: ParamVar::default(),
       frame: ParamVar::default(),
-      scroll_area: ParamVar::default(),
+      enable_horizontal_scroll_bar: ParamVar::default(),
+      enable_vertical_scroll_bar: ParamVar::default(),
+      scroll_visibility: ParamVar::default(),
+      scroll_area_min_width: ParamVar::default(),
+      scroll_area_min_height: ParamVar::default(),
+      scroll_area_max_width: ParamVar::default(),
+      scroll_area_max_height: ParamVar::default(),
+      scroll_area_auto_shrink_width: ParamVar::default(),
+      scroll_area_auto_shrink_height: ParamVar::default(),
+      scroll_area_enable_scrolling: ParamVar::default(),
     }
   }
 }
@@ -249,14 +343,28 @@ impl Shard for LayoutConstructor {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.parent.set_param(value)),
-      1 => Ok(self.layout.set_param(value)),
-      2 => Ok(self.min_size.set_param(value)),
-      3 => Ok(self.max_size.set_param(value)),
-      4 => Ok(self.fill_width.set_param(value)),
-      5 => Ok(self.fill_height.set_param(value)),
-      6 => Ok(self.disabled.set_param(value)),
-      7 => Ok(self.frame.set_param(value)),
-      8 => Ok(self.scroll_area.set_param(value)),
+      1 => Ok(self.main_direction.set_param(value)),
+      2 => Ok(self.main_wrap.set_param(value)),
+      3 => Ok(self.main_align.set_param(value)),
+      4 => Ok(self.main_justify.set_param(value)),
+      5 => Ok(self.cross_align.set_param(value)),
+      6 => Ok(self.cross_justify.set_param(value)),
+      7 => Ok(self.min_size.set_param(value)),
+      8 => Ok(self.max_size.set_param(value)),
+      9 => Ok(self.fill_width.set_param(value)),
+      10 => Ok(self.fill_height.set_param(value)),
+      11 => Ok(self.disabled.set_param(value)),
+      12 => Ok(self.frame.set_param(value)),
+      13 => Ok(self.enable_horizontal_scroll_bar.set_param(value)),
+      14 => Ok(self.enable_vertical_scroll_bar.set_param(value)),
+      15 => Ok(self.scroll_visibility.set_param(value)),
+      16 => Ok(self.scroll_area_min_width.set_param(value)),
+      17 => Ok(self.scroll_area_min_height.set_param(value)),
+      18 => Ok(self.scroll_area_max_width.set_param(value)),
+      19 => Ok(self.scroll_area_max_height.set_param(value)),
+      20 => Ok(self.scroll_area_auto_shrink_width.set_param(value)),
+      21 => Ok(self.scroll_area_auto_shrink_height.set_param(value)),
+      22 => Ok(self.scroll_area_enable_scrolling.set_param(value)),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -264,41 +372,83 @@ impl Shard for LayoutConstructor {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.parent.get_param(),
-      1 => self.layout.get_param(),
-      2 => self.min_size.get_param(),
-      3 => self.max_size.get_param(),
-      4 => self.fill_width.get_param(),
-      5 => self.fill_height.get_param(),
-      6 => self.disabled.get_param(),
-      7 => self.frame.get_param(),
-      8 => self.scroll_area.get_param(),
+      1 => self.main_direction.get_param(),
+      2 => self.main_wrap.get_param(),
+      3 => self.main_align.get_param(),
+      4 => self.main_justify.get_param(),
+      5 => self.cross_align.get_param(),
+      6 => self.cross_justify.get_param(),
+      7 => self.min_size.get_param(),
+      8 => self.max_size.get_param(),
+      9 => self.fill_width.get_param(),
+      10 => self.fill_height.get_param(),
+      11 => self.disabled.get_param(),
+      12 => self.frame.get_param(),
+      13 => self.enable_horizontal_scroll_bar.get_param(),
+      14 => self.enable_vertical_scroll_bar.get_param(),
+      15 => self.scroll_visibility.get_param(),
+      16 => self.scroll_area_min_width.get_param(),
+      17 => self.scroll_area_min_height.get_param(),
+      18 => self.scroll_area_max_width.get_param(),
+      19 => self.scroll_area_max_height.get_param(),
+      20 => self.scroll_area_auto_shrink_width.get_param(),
+      21 => self.scroll_area_auto_shrink_height.get_param(),
+      22 => self.scroll_area_enable_scrolling.get_param(),
       _ => Var::default(),
     }
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parent.warmup(ctx);
-    self.layout.warmup(ctx);
+    self.main_direction.warmup(ctx);
+    self.main_wrap.warmup(ctx);
+    self.main_align.warmup(ctx);
+    self.main_justify.warmup(ctx);
+    self.cross_align.warmup(ctx);
+    self.cross_justify.warmup(ctx);
     self.min_size.warmup(ctx);
     self.max_size.warmup(ctx);
     self.fill_width.warmup(ctx);
     self.fill_height.warmup(ctx);
     self.disabled.warmup(ctx);
     self.frame.warmup(ctx);
-    self.scroll_area.warmup(ctx);
+    self.enable_horizontal_scroll_bar.warmup(ctx);
+    self.enable_vertical_scroll_bar.warmup(ctx);
+    self.scroll_visibility.warmup(ctx);
+    self.scroll_area_min_width.warmup(ctx);
+    self.scroll_area_min_height.warmup(ctx);
+    self.scroll_area_max_width.warmup(ctx);
+    self.scroll_area_max_height.warmup(ctx);
+    self.scroll_area_auto_shrink_width.warmup(ctx);
+    self.scroll_area_auto_shrink_height.warmup(ctx);
+    self.scroll_area_enable_scrolling.warmup(ctx);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.scroll_area.cleanup();
+    self.scroll_area_enable_scrolling.cleanup();
+    self.scroll_area_auto_shrink_height.cleanup();
+    self.scroll_area_auto_shrink_width.cleanup();
+    self.scroll_area_max_height.cleanup();
+    self.scroll_area_max_width.cleanup();
+    self.scroll_area_min_height.cleanup();
+    self.scroll_area_min_width.cleanup();
+    self.scroll_visibility.cleanup();
+    self.enable_vertical_scroll_bar.cleanup();
+    self.enable_horizontal_scroll_bar.cleanup();
     self.frame.cleanup();
     self.disabled.cleanup();
     self.fill_height.cleanup();
     self.fill_width.cleanup();
     self.max_size.cleanup();
     self.min_size.cleanup();
-    self.layout.cleanup();
+    self.cross_justify.cleanup();
+    self.cross_align.cleanup();
+    self.main_justify.cleanup();
+    self.main_align.cleanup();
+    self.main_wrap.cleanup();
+    self.main_direction.cleanup();
     self.parent.cleanup();
 
     Ok(())
@@ -324,98 +474,109 @@ impl Shard for LayoutConstructor {
       None
     };
 
-    let layout = if !self.layout.get().is_none() {
-      let layout_table = self.layout.get();
-      if layout_table.valueType == crate::shardsc::SHType_Table {
-        let layout_table: Table = layout_table.try_into()?;
+    // Track if a new layout has to be created. This is in the case that the layout class is new or there has been an overwrite in its values
+    let mut create_new_layout = false;
 
-        let cross_align = if let Some(cross_align) =
-          retrieve_enum_parameter!(layout_table, "cross_align", LayoutAlign, LayoutAlignCC)
-        {
-          cross_align.into()
-        } else {
-          // if there is a parent, retrieve the parent's value over the default
-          if let Some(parent_layout_class) = parent_layout_class {
-            // this is guaranteed to be Some because the parent has already been constructed
-            retrieve_layout_class_attribute!(parent_layout_class, layout, cross_align).unwrap()
-          } else {
-            egui::Align::Min // default cross align
-          }
-        };
-
-        let main_direction = if let Some(main_direction) = retrieve_enum_parameter!(
-          layout_table,
-          "main_direction",
-          LayoutDirection,
-          LayoutDirectionCC
-        ) {
-          main_direction.into()
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, layout, main_dir).unwrap()
-          } else {
-            return Err("Invalid main direction provided. Main direction is a required parameter");
-          }
-        };
-
-        let mut layout = egui::Layout::from_main_dir_and_cross_align(main_direction, cross_align);
-
-        let main_align = if let Some(main_align) =
-          retrieve_enum_parameter!(layout_table, "main_align", LayoutAlign, LayoutAlignCC)
-        {
-          main_align.into()
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, layout, main_align).unwrap()
-          } else {
-            egui::Align::Center // default main align
-          }
-        };
-        layout = layout.with_main_align(main_align);
-
-        let main_wrap =
-          if let Some(main_wrap) = retrieve_parameter!(layout_table, "main_wrap", bool) {
-            main_wrap
-          } else {
-            if let Some(parent_layout_class) = parent_layout_class {
-              retrieve_layout_class_attribute!(parent_layout_class, layout, main_wrap).unwrap()
-            } else {
-              false // default main wrap
-            }
-          };
-        layout = layout.with_main_wrap(main_wrap);
-
-        let main_justify =
-          if let Some(main_justify) = retrieve_parameter!(layout_table, "main_justify", bool) {
-            main_justify
-          } else {
-            if let Some(parent_layout_class) = parent_layout_class {
-              retrieve_layout_class_attribute!(parent_layout_class, layout, main_justify).unwrap()
-            } else {
-              false // default main justify
-            }
-          };
-        layout = layout.with_main_justify(main_justify);
-
-        let cross_justify =
-          if let Some(cross_justify) = retrieve_parameter!(layout_table, "cross_justify", bool) {
-            cross_justify
-          } else {
-            if let Some(parent_layout_class) = parent_layout_class {
-              retrieve_layout_class_attribute!(parent_layout_class, layout, cross_justify).unwrap()
-            } else {
-              false // default cross justify
-            }
-          };
-        layout = layout.with_cross_justify(cross_justify);
-
-        Some(layout)
+    let cross_align = self.cross_align.get();
+    let cross_align = if let Some(cross_align) =
+      retrieve_enum_parameter!(cross_align, "cross_align", LayoutAlign, LayoutAlignCC)
+    {
+      create_new_layout = true;
+      cross_align.into()
+    } else {
+      // if there is a parent, retrieve the parent's value over the default
+      if let Some(parent_layout_class) = parent_layout_class {
+        // this is guaranteed to be Some because the parent has already been constructed
+        retrieve_layout_class_attribute!(parent_layout_class, layout, cross_align).unwrap()
       } else {
-        return Err("Invalid attribute value received. Expected Table for Layout");
+        create_new_layout = true;
+        egui::Align::Min // default cross aligns
       }
+    };
+
+    let main_direction = self.main_direction.get();
+    let main_direction = if let Some(main_direction) = retrieve_enum_parameter!(
+      main_direction,
+      "main_direction",
+      LayoutDirection,
+      LayoutDirectionCC
+    ) {
+      create_new_layout = true;
+      main_direction.into()
+    } else {
+      if let Some(parent_layout_class) = parent_layout_class {
+        retrieve_layout_class_attribute!(parent_layout_class, layout, main_dir).unwrap()
+      } else {
+        return Err("Invalid main direction provided. Main direction is a required parameter");
+      }
+    };
+
+    let main_align = self.main_align.get();
+    let main_align = if let Some(main_align) =
+      retrieve_enum_parameter!(main_align, "main_align", LayoutAlign, LayoutAlignCC)
+    {
+      create_new_layout = true;
+      main_align.into()
+    } else {
+      if let Some(parent_layout_class) = parent_layout_class {
+        retrieve_layout_class_attribute!(parent_layout_class, layout, main_align).unwrap()
+      } else {
+        create_new_layout = true;
+        egui::Align::Center // default main align
+      }
+    };
+
+    let main_wrap = self.main_wrap.get();
+    let main_wrap = if let Some(main_wrap) = retrieve_parameter!(main_wrap, "main_wrap", bool) {
+      create_new_layout = true;
+      main_wrap
+    } else {
+      if let Some(parent_layout_class) = parent_layout_class {
+        retrieve_layout_class_attribute!(parent_layout_class, layout, main_wrap).unwrap()
+      } else {
+        create_new_layout = true;
+        false // default main wrap
+      }
+    };
+
+    let main_justify = self.main_justify.get();
+    let main_justify =
+      if let Some(main_justify) = retrieve_parameter!(main_justify, "main_justify", bool) {
+        create_new_layout = true;
+        main_justify
+      } else {
+        if let Some(parent_layout_class) = parent_layout_class {
+          retrieve_layout_class_attribute!(parent_layout_class, layout, main_justify).unwrap()
+        } else {
+          create_new_layout = true;
+          false // default main justify
+        }
+      };
+
+    let cross_justify = self.cross_justify.get();
+    let cross_justify =
+      if let Some(cross_justify) = retrieve_parameter!(cross_justify, "cross_justify", bool) {
+        create_new_layout = true;
+        cross_justify
+      } else {
+        if let Some(parent_layout_class) = parent_layout_class {
+          retrieve_layout_class_attribute!(parent_layout_class, layout, cross_justify).unwrap()
+        } else {
+          create_new_layout = true;
+          false // default cross justify
+        }
+      };
+
+    let mut layout = if create_new_layout {
+      Some(
+        egui::Layout::from_main_dir_and_cross_align(main_direction, cross_align)
+          .with_main_align(main_align)
+          .with_main_wrap(main_wrap)
+          .with_main_justify(main_justify)
+          .with_cross_justify(cross_justify),
+      )
     } else {
       if has_parent {
-        // if has parent, then leave it empty and use the reference to the parent to grab the value
         None
       } else {
         return Err("Invalid Layout provided. Layout is a required parameter when there is no parent LayoutClass provided");
@@ -466,168 +627,192 @@ impl Shard for LayoutConstructor {
       None
     };
 
-    let scroll_area = if !self.scroll_area.get().is_none() {
-      let scroll_area_table = self.scroll_area.get();
-      if scroll_area_table.valueType == crate::shardsc::SHType_Table {
-        let scroll_area_table: Table = scroll_area_table.try_into()?;
+    let mut create_new_scroll_area = false;
 
-        let horizontal_scroll_enabled = if let Some(enabled) =
-          retrieve_parameter!(scroll_area_table, "horizontal_scroll_enabled", bool)
-        {
-          enabled
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            // unlike layout, it is possible for this to be none because none of the parents may have had a ScrollArea
-            retrieve_layout_class_attribute!(
-              parent_layout_class,
-              scroll_area,
-              horizontal_scroll_enabled
-            )
-            .unwrap_or(false)
-          } else {
-            false // default horizontal_scroll_enabled
-          }
-        };
-
-        let vertical_scroll_enabled = if let Some(enabled) =
-          retrieve_parameter!(scroll_area_table, "vertical_scroll_enabled", bool)
-        {
-          enabled
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(
-              parent_layout_class,
-              scroll_area,
-              vertical_scroll_enabled
-            )
-            .unwrap_or(false)
-          } else {
-            false // default vertical_scroll_enabled
-          }
-        };
-
-        let scroll_visibility = if let Some(visibility) = retrieve_enum_parameter!(
-          scroll_area_table,
-          "scroll_visibility",
-          ScrollVisibility,
-          ScrollVisibilityCC
-        ) {
-          visibility
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility)
-              .unwrap_or(ScrollVisibility::AlwaysVisible)
-          } else {
-            ScrollVisibility::AlwaysVisible
-          }
-        };
-
-        const MIN_SCROLLING_SIZE: f32 = 64.0; // default value for min_scrolling_width and min_scrolling_height as of egui 0.22.0
-
-        let min_width =
-          if let Some(min_width) = retrieve_parameter!(scroll_area_table, "min_width", f32) {
-            min_width
-          } else {
-            if let Some(parent_layout_class) = parent_layout_class {
-              retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_width)
-                .unwrap_or(MIN_SCROLLING_SIZE)
-            } else {
-              MIN_SCROLLING_SIZE // default min_width
-            }
-          };
-
-        let min_height =
-          if let Some(min_height) = retrieve_parameter!(scroll_area_table, "min_height", f32) {
-            min_height
-          } else {
-            if let Some(parent_layout_class) = parent_layout_class {
-              retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_height)
-                .unwrap_or(MIN_SCROLLING_SIZE)
-            } else {
-              MIN_SCROLLING_SIZE // default min_height
-            }
-          };
-
-        let max_width =
-          if let Some(max_width) = retrieve_parameter!(scroll_area_table, "max_width", f32) {
-            max_width
-          } else {
-            if let Some(parent_layout_class) = parent_layout_class {
-              retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_width)
-                .unwrap_or(f32::INFINITY)
-            } else {
-              f32::INFINITY // default max_width
-            }
-          };
-
-        let max_height =
-          if let Some(max_height) = retrieve_parameter!(scroll_area_table, "max_height", f32) {
-            max_height
-          } else {
-            if let Some(parent_layout_class) = parent_layout_class {
-              retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_height)
-                .unwrap_or(f32::INFINITY)
-            } else {
-              f32::INFINITY // default max_height
-            }
-          };
-
-        let auto_shrink_width = if let Some(auto_shrink_width) =
-          retrieve_parameter!(scroll_area_table, "auto_shrink_width", bool)
-        {
-          auto_shrink_width
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, auto_shrink_width)
-              .unwrap_or(true)
-          } else {
-            true // default auto_shrink_width
-          }
-        };
-
-        let auto_shrink_height = if let Some(auto_shrink_height) =
-          retrieve_parameter!(scroll_area_table, "auto_shrink_height", bool)
-        {
-          auto_shrink_height
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, auto_shrink_height)
-              .unwrap_or(true)
-          } else {
-            true // default auto_shrink_height
-          }
-        };
-
-        let enable_scrolling = if let Some(enable_scrolling) =
-          retrieve_parameter!(scroll_area_table, "enable_scrolling", bool)
-        {
-          enable_scrolling
-        } else {
-          if let Some(parent_layout_class) = parent_layout_class {
-            retrieve_layout_class_attribute!(parent_layout_class, scroll_area, enable_scrolling)
-              .unwrap_or(true)
-          } else {
-            true // default enable_scrolling
-          }
-        };
-
-        Some(EguiScrollAreaSettings {
-          horizontal_scroll_enabled,
-          vertical_scroll_enabled,
-          min_width,
-          min_height,
-          max_width,
-          max_height,
-          auto_shrink_width,
-          auto_shrink_height,
-          scroll_visibility,
-          enable_scrolling,
-        })
-      } else {
-        return Err("Invalid scroll bar type provided. Expected Table for ScrollArea");
-      }
+    let enable_horizontal_scroll_bar = self.enable_horizontal_scroll_bar.get();
+    let enable_horizontal_scroll_bar = if let Some(enable_horizontal_scroll_bar) = retrieve_parameter!(
+      enable_horizontal_scroll_bar,
+      "enable_horizontal_scroll_bar",
+      bool
+    ) {
+      create_new_scroll_area = true;
+      enable_horizontal_scroll_bar
     } else {
-      // if has parent, put None and let shard retrieve from parent. else, default is also None
+      if let Some(parent_layout_class) = parent_layout_class {
+        retrieve_layout_class_attribute!(
+          parent_layout_class,
+          scroll_area,
+          enable_horizontal_scroll_bar
+        )
+        .unwrap()
+      } else {
+        create_new_scroll_area = true;
+        false // default enable_horizontal_scroll_bar
+      }
+    };
+
+    let enable_vertical_scroll_bar = self.enable_vertical_scroll_bar.get();
+    let enable_vertical_scroll_bar = if let Some(enable_vertical_scroll_bar) = retrieve_parameter!(
+      enable_vertical_scroll_bar,
+      "enable_vertical_scroll_bar",
+      bool
+    ) {
+      create_new_scroll_area = true;
+      enable_vertical_scroll_bar
+    } else {
+      if let Some(parent_layout_class) = parent_layout_class {
+        retrieve_layout_class_attribute!(
+          parent_layout_class,
+          scroll_area,
+          enable_vertical_scroll_bar
+        )
+        .unwrap()
+      } else {
+        create_new_scroll_area = true;
+        false // default enable_vertical_scroll_bar
+      }
+    };
+
+    let scroll_visibility = self.scroll_visibility.get();
+    let scroll_visibility = if let Some(scroll_visibility) = retrieve_enum_parameter!(
+      scroll_visibility,
+      "scroll_visibility",
+      ScrollVisibility,
+      ScrollVisibilityCC
+    ) {
+      create_new_scroll_area = true;
+      scroll_visibility
+    } else {
+      if let Some(parent_layout_class) = parent_layout_class {
+        retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility)
+          .unwrap()
+      } else {
+        create_new_scroll_area = true;
+        ScrollVisibility::AlwaysVisible // Default should normally be VisibleWhenNeeded, but it is buggy at the moment
+      }
+    };
+
+    const MIN_SCROLLING_SIZE: f32 = 64.0; // default value for min_scrolling_width and min_scrolling_height as of egui 0.22.0
+
+    let min_width = self.scroll_area_min_width.get();
+    let min_width =
+      if let Some(min_width) = retrieve_parameter!(min_width, "scroll_area_min_width", f32) {
+        create_new_scroll_area = true;
+        min_width
+      } else {
+        if let Some(parent_layout_class) = parent_layout_class {
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_width).unwrap()
+        } else {
+          create_new_scroll_area = true;
+          MIN_SCROLLING_SIZE // default min_width
+        }
+      };
+
+    let min_height = self.scroll_area_min_height.get();
+    let min_height =
+      if let Some(min_height) = retrieve_parameter!(min_height, "scroll_area_min_height", f32) {
+        create_new_scroll_area = true;
+        min_height
+      } else {
+        if let Some(parent_layout_class) = parent_layout_class {
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_height).unwrap()
+        } else {
+          create_new_scroll_area = true;
+          MIN_SCROLLING_SIZE // default min_height
+        }
+      };
+
+    let max_width = self.scroll_area_max_width.get();
+    let max_width =
+      if let Some(max_width) = retrieve_parameter!(max_width, "scroll_area_max_width", f32) {
+        create_new_scroll_area = true;
+        max_width
+      } else {
+        if let Some(parent_layout_class) = parent_layout_class {
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_width).unwrap()
+        } else {
+          create_new_scroll_area = true;
+          f32::INFINITY // default max_width
+        }
+      };
+
+    let max_height = self.scroll_area_max_height.get();
+    let max_height =
+      if let Some(max_height) = retrieve_parameter!(max_height, "scroll_area_max_height", f32) {
+        create_new_scroll_area = true;
+        max_height
+      } else {
+        if let Some(parent_layout_class) = parent_layout_class {
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_height).unwrap()
+        } else {
+          create_new_scroll_area = true;
+          f32::INFINITY // default max_height
+        }
+      };
+
+    let auto_shrink_width = self.scroll_area_auto_shrink_width.get();
+    let auto_shrink_width = if let Some(auto_shrink_width) =
+      retrieve_parameter!(auto_shrink_width, "scroll_area_auto_shrink_width", bool)
+    {
+      create_new_scroll_area = true;
+      auto_shrink_width
+    } else {
+      if let Some(parent_layout_class) = parent_layout_class {
+        retrieve_layout_class_attribute!(parent_layout_class, scroll_area, auto_shrink_width)
+          .unwrap()
+      } else {
+        create_new_scroll_area = true;
+        true // default auto_shrink_width
+      }
+    };
+
+    let auto_shrink_height = self.scroll_area_auto_shrink_height.get();
+    let auto_shrink_height = if let Some(auto_shrink_height) =
+      retrieve_parameter!(auto_shrink_height, "scroll_area_auto_shrink_height", bool)
+    {
+      create_new_scroll_area = true;
+      auto_shrink_height
+    } else {
+      if let Some(parent_layout_class) = parent_layout_class {
+        retrieve_layout_class_attribute!(parent_layout_class, scroll_area, auto_shrink_height)
+          .unwrap()
+      } else {
+        create_new_scroll_area = true;
+        true // default auto_shrink_height
+      }
+    };
+
+    let enable_scrolling = self.scroll_area_enable_scrolling.get();
+    let enable_scrolling = if let Some(enable_scrolling) =
+      retrieve_parameter!(enable_scrolling, "scroll_area_enable_scrolling", bool)
+    {
+      create_new_scroll_area = true;
+      enable_scrolling
+    } else {
+      if let Some(parent_layout_class) = parent_layout_class {
+        retrieve_layout_class_attribute!(parent_layout_class, scroll_area, enable_scrolling)
+          .unwrap()
+      } else {
+        create_new_scroll_area = true;
+        true // default enable_scrolling
+      }
+    };
+
+    let mut scroll_area = if create_new_scroll_area {
+      Some(EguiScrollAreaSettings {
+        enable_horizontal_scroll_bar,
+        enable_vertical_scroll_bar,
+        min_width,
+        min_height,
+        max_width,
+        max_height,
+        auto_shrink_width,
+        auto_shrink_height,
+        scroll_visibility,
+        enable_scrolling,
+      })
+    } else {
+      // Whether there is a parent or not, if there is no scroll area override, then there is no need to create a new scroll area object
       None
     };
 

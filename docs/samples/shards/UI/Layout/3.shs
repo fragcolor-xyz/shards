@@ -1,11 +1,10 @@
-;; creates two separate scroll areas with a frame, sharing the same LayoutClass
 GFX.MainWindow(
   Contents: {
     Once({
       GFX.DrawQueue >= ui-draw-queue
       GFX.UIPass(ui-draw-queue) >> render-steps
       UI.LayoutClass(
-        Layout: {main_direction: LayoutDirection::RightToLeft}
+        MainDirection: LayoutDirection::RightToLeft
         MinSize: @f2(200, 200)
         ; note that some direction layouts may try to expand to max size and this max size will increase if the contents are too large
         ; also, without max size, the layout will try to expand to max size of the window, so for shrink to fit, may want to set to (0 0)
@@ -14,16 +13,14 @@ GFX.MainWindow(
         ; FillWidth: true
         Disabled: false
         Frame: LayoutFrame::Widgets
-        ScrollArea: {
-          horizontal_scroll_enabled: true
-          vertical_scroll_enabled: true
-          max_width: 200.0
-          max_height: 200.0
-          ;;  auto_shrink_width: true
-          ;;  auto_shrink_height: true
-          ;;  enable_scrolling: false
-          ;;  scroll_visibility: ScrollVisibility::AlwaysVisible ;; note that VisibleWhenNeeded may have some issues with scroll bar visibility
-        }
+        EnableHorizontalScrollBar: true
+        EnableVerticalScrollBar: true
+        ScrollAreaMinWidth: 200.0
+        ScrollAreaMaxWidth: 200.0
+        ; ScrollAreaAutoShrinkWidth: true ;; this is the default
+        ; ScrollAreaAutoShrinkHeight: true ;; this is the default
+        ; ScrollAreaEnableScrolling: false
+        ; ScrollBarVisibility: ScrollVisibility::AlwaysVisible ;; note that this is the default. VisibleWhenNeeded may have some issues with scroll bar visibility
       ) >= scroll-frame-layout-class
       false >= checked
       1 >= choice
