@@ -71,4 +71,4 @@
 })
 
 @schedule(root kdtree)
-@run(root FPS: 10)
+@run(root)
