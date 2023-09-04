@@ -310,7 +310,7 @@ jobs:
         run: |
           cd build
           echo "Running test: gfx_window"
-          ./shards new ../shards/tests/gfx-window.shs
+          ./shards ../shards/tests/gfx-window.edn
           echo "Running test: gfx_cube"
           ./shards new ../shards/tests/gfx-cube.shs
           echo "Running test: gfx_materials"
