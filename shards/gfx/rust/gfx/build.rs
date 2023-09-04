@@ -5,6 +5,8 @@ use cbindgen::Config;
 fn main() {
   let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 
+  println!("cargo:rerun-if-changed=bindings.hpp");
+
   cbindgen::Builder::new()
     .with_config(Config {
       macro_expansion: cbindgen::MacroExpansionConfig { bitflags: true },

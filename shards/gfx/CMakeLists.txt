@@ -136,6 +136,7 @@ endif()
 if(HAS_WGPU_NATIVE)
   add_subdirectory(rust)
   target_link_libraries(gfx gfx-rust)
+  target_sources(gfx PRIVATE ${GFX_BINDINGS_FILE})
 endif()
 
 add_subdirectory(tests)
