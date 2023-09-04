@@ -81,7 +81,7 @@ macro_rules! retrieve_enum_parameter {
     } else {
       // No parameter to retrieve from, caller should retrieve from parent or use default value
       None
-    };
+    }
   };
 }
 
