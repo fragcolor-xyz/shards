@@ -239,7 +239,7 @@ jobs:
           echo "Running general"
           ./shards new ../shards/tests/general.shs
           echo "Running variables"
-          ./shards ../shards/tests/variables.edn
+          ./shards new ../shards/tests/variables.shs
           echo "Running linalg"
           ./shards new ../shards/tests/linalg.shs
           echo "Running loader"

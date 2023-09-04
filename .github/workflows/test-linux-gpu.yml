@@ -95,12 +95,12 @@ jobs:
           build/shards new shards/tests/input.shs
 
           echo "Running UI"
-          build/shards shards/tests/ui-0.edn
-          build/shards shards/tests/ui-1.edn
-          build/shards shards/tests/ui-2.edn
+          build/shards new shards/tests/ui-0.shs
+          build/shards new shards/tests/ui-1.shs
+          build/shards new shards/tests/ui-2.shs
 
           echo "Running UI (nested)"
-          build/shards shards/tests/ui-nested.edn
+          build/shards new shards/tests/ui-nested.shs
 
           echo "Running egui demo"
           build/shards new shards/tests/egui-demo.shs

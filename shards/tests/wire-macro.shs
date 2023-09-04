@@ -1,0 +1,25 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2021 Fragcolor Pte. Ltd.
+
+@template(shards [a b] {
+  Msg(a)
+  Msg(b)
+})
+
+@wire(x {
+  "Hello world" |
+  Log
+})
+
+@wire(y {
+  "Hello world" |
+  Log |
+  Pause(0.1) |
+  @shards("one" "1") |
+  @shards("two" "2")
+} Looped: true)
+
+@mesh(root)
+@schedule(root x)
+@schedule(root y)
+@run(root FPS: 10 Iterations: 50)

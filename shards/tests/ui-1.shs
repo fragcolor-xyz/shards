@@ -1,0 +1,260 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2022 Fragcolor Pte. Ltd.
+
+; Notes:
+;   This file contains unit tests for the UI shards.
+;   It is not meant to be realistic. For such samples, look at egui-demo.edn.
+
+@mesh(main)
+@define(timestep #(1.0 | Math.Divide(60.0)))
+@define(duration 60)
+@define(input "**input**")
+
+; menu bar
+@wire(menubar-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.TopPanel(
+          Contents: {
+            UI.MenuBar | ExpectBool
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main menubar-test)
+@run(main FPS: 60 Iterations: 60)
+
+; menu
+@wire(menu-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.TopPanel(
+          Contents: {
+            UI.MenuBar({
+              UI.Menu(Title: "Menu" Contents: {none}) | ExpectBool
+            })
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main menu-test)
+@run(main FPS: 60 Iterations: 60)
+
+; button
+@wire(button-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            UI.Button(
+              "Click me!"
+              Action: {
+                Assert.Is(input Abort: true)
+                Msg("Clicked")
+              }
+            ) |
+            ExpectBool
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main button-test)
+@run(main FPS: 60 Iterations: 60)
+
+; checkbox
+@wire(checkbox-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            UI.Checkbox("Checked" checked) |
+            ExpectBool
+            checked | ExpectBool
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main checkbox-test)
+@run(main FPS: 60 Iterations: 60)
+
+; color-input
+@wire(color-input-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            UI.ColorInput(color) | ExpectColor
+            color | ExpectColor
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main color-input-test)
+@run(main FPS: 60 Iterations: 60)
+
+; combo
+@wire(combo-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            ["Hello" "World"] | UI.Combo("Word" index) | ExpectString
+            index | ExpectInt
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main combo-test)
+@run(main FPS: 60 Iterations: 60)
+
+; hyperlink
+@wire(hyperlink-test {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            "https://docs.fragnova.com" | UI.Hyperlink("Fragnova documentation") |
+            Assert.Is("https://docs.fragnova.com" Abort: true)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main hyperlink-test)
+@run(main FPS: 60 Iterations: 60)
+
+; image
+@wire(image-test {
+  GFX.MainWindow(
+    Width: 640 Height: 640
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            Once({
+              LoadImage("../../assets/ShardsLogo.png") = image
+              @f2(0.25 0.25) = scale
+            })
+            image | UI.Image(scale)
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main image-test)
+@run(main FPS: 60 Iterations: 60)
+
+; image button
+@wire(image-button-test {
+  GFX.MainWindow(
+    Width: 640 Height: 640
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      UI(ui-draw-queue {
+        UI.CentralPanel(
+          Contents: {
+            Once({
+              LoadImage("../../assets/ShardsLogo.png") = image
+              @f2(0.25 0.25) = scale
+            })
+            image | UI.ImageButton(Scale: scale Action: {Msg("Clicked")})
+          }
+        )
+      })
+
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@schedule(main image-button-test)
+@run(main FPS: 60 Iterations: 60)

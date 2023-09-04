@@ -107,7 +107,7 @@ jobs:
           ./shards new ../shards/tests/hello.shs
           ./shards new ../shards/tests/general.shs
           ./shards new ../shards/tests/table-compose.shs
-          ./shards ../shards/tests/variables.edn
+          ./shards new ../shards/tests/variables.shs
           ./shards new ../shards/tests/subwires.shs
           ./shards new ../shards/tests/linalg.shs
           ./shards ../shards/tests/loader.clj
@@ -125,10 +125,10 @@ jobs:
           ./shards new ../shards/tests/snappy.shs
           ./shards new ../shards/tests/expect.shs
           ./shards new ../shards/tests/failures.shs
-          ./shards ../shards/tests/wasm.clj
+          ./shards new ../shards/tests/wasm.shs
           ./shards ../shards/tests/rust.clj
           ./shards new ../shards/tests/crypto.shs
-          ./shards ../shards/tests/wire-macro.edn
+          ./shards new ../shards/tests/wire-macro.shs
           ./shards new ../shards/tests/const-vars.shs
           ./shards new ../shards/tests/branch.shs
           ./shards new ../shards/tests/time.shs
