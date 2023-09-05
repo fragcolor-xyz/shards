@@ -33,7 +33,7 @@
 })
 
 @schedule(root-1 test-1)
-@run(root-1 0.1)
+@run(root-1 FPS: 10)
 
 @mesh(root-2)
 
@@ -93,7 +93,7 @@
 })
 
 @schedule(root-2 test-2)
-@run(root-2 0.1)
+@run(root-2 FPS: 10)
 
 @mesh(root-3)
 
@@ -132,4 +132,4 @@
 } Looped: true)
 
 @schedule(root-3 test-3)
-@run(root-3 0.1)
+@run(root-3 FPS: 10)

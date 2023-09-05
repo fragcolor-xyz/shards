@@ -30,4 +30,4 @@
 @mesh(main)
 @schedule(main network-test-server)
 @schedule(main network-test-client)
-@run(main 0.01 100)
+@run(main FPS: 100 Iterations: 100)

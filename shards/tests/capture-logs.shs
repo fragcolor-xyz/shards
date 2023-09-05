@@ -14,7 +14,7 @@
 } Looped: true)
 
 @schedule(root inline-capture)
-@run(root 0.05 1)
+@run(root FPS: 20 Iterations: 1)
 
 @wire(capture {
   CaptureLog(
@@ -35,4 +35,4 @@
 } Looped: true)
 
 @schedule(root detach-capture)
-@run(root 0.1 16)
+@run(root FPS: 10 Iterations: 16)

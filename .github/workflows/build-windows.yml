@@ -314,7 +314,7 @@ jobs:
           echo "Running test: gfx_cube"
           ./shards new ../shards/tests/gfx-cube.shs
           echo "Running test: gfx_materials"
-          ./shards new ../shards/tests/gfx-materials.shs
+          ./shards ../shards/tests/gfx-materials.edn
           echo "Running test: ui"
           ./shards ../shards/tests/ui-0.edn
           ./shards ../shards/tests/ui-1.edn

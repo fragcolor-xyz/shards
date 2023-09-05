@@ -28,7 +28,7 @@
 })
 
 @schedule(root one)
-@run(root 0.1)
+@run(root FPS: 10)
 
 @wire(recur {
   Log("depth") |
@@ -256,7 +256,7 @@
 
   -10 |
   If(
-    Predicate: {Do(spawner) >= ccc | Wait ccc | ExpectBool}
+    Predicate: {Do(spawner) >= ccc | Wait(ccc) | ExpectBool}
     Then: {true}
     Else: {false}
   ) |
@@ -264,7 +264,7 @@
 
   11 |
   If(
-    Predicate: {Do(spawner) >= ccc | Wait ccc | ExpectBool}
+    Predicate: {Do(spawner) >= ccc | Wait(ccc) | ExpectBool}
     Then: {true}
     Else: {false}
   ) |
@@ -274,7 +274,7 @@
 })
 
 @schedule(root loop-test)
-@run(root 0.1)
+@run(root FPS: 10)
 
 @wire(hashed {
   10 |
@@ -449,7 +449,7 @@
 } Looped: true)
 
 @schedule(root main)
-@run(root 0.1 100)
+@run(root FPS: 10 Iterations: 100)
 
 @wire(test {
   Msg("Hello")
@@ -473,7 +473,7 @@
 })
 
 @schedule(root more-perfect-starter)
-@run(root 0.1 20)
+@run(root FPS: 10 Iterations: 20)
 
 @wire(peek-test {
   Detach(more-perfect-starter) |
@@ -486,7 +486,7 @@
 })
 
 @schedule(root peek-test)
-@run(root 0.1 20)
+@run(root FPS: 10 Iterations: 20)
 
 @wire(long-wire {
   Await({
@@ -516,4 +516,4 @@
 @schedule(root await-test-1)
 @schedule(root await-test-2)
 @schedule(root await-test-3)
-@run(root 0.1 100)
+@run(root FPS: 10 Iterations: 100)
