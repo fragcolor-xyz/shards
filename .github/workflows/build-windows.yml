@@ -356,6 +356,6 @@ jobs:
           echo "Running genetic"
           ./shards new ../shards/tests/genetic.shs
           echo "Running time"
-          ./shards ../shards/tests/time.edn
+          ./shards new ../shards/tests/time.shs
           echo "Running subwires"
           ./shards new ../shards/tests/subwires.shs
