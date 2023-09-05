@@ -13,7 +13,7 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.4.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-resvg = { version = "0.23.0" }
-usvg = { version = "0.23.0" }
-# svg crates require 0.6.3 for now
-tiny-skia = { version = "0.6.6" }
+resvg = { version = "0.35.0" }
+usvg = { version = "0.35.0" }
+# svg crates require 0.10.0 for now
+tiny-skia = { version = "0.11.1" }

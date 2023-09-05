@@ -6,9 +6,7 @@ use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use egui::vec2;
 use egui::Align;
-
 use egui::Layout;
-
 use egui::Ui;
 use egui::Vec2;
 use shards::shard::LegacyShard;
@@ -24,7 +22,6 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
 use shards::types::BOOL_TYPES;
-
 use shards::types::FLOAT_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
 

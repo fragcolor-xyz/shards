@@ -1,0 +1,45 @@
+(GFX.MainWindow
+ :Contents
+ (->
+  (Setup
+   (GFX.DrawQueue) >= .ui-draw-queue
+   (GFX.UIPass .ui-draw-queue) >> .render-steps
+   (UI.LayoutClass
+    :Layout {:main_direction LayoutDirection.BottomUp
+             :main_wrap true
+             :cross_align LayoutAlign.Center
+             :cross_justify true
+             }
+    ;; :MinSize (Float2 400 400)
+    ;; :FillHeight true
+    ;; :ScrollArea {:horizontal_scroll_enabled true
+    ;;              :vertical_scroll_enabled true
+    ;;              :max_width 200.0
+    ;;              :max_height 200.0
+    ;;              :scroll_visibility ScrollVisibility.AlwaysVisible
+    ;;              }
+    )
+   >= .bottom-up-layout-class
+   false >= .checked
+   1 >= .choice)
+  (UI
+   .ui-draw-queue
+   (UI.CentralPanel
+    (->
+     (UI.Layout
+      :Class .bottom-up-layout-class
+      :Contents (->
+                 "Wrapping text followed by example widgets:"
+                 (UI.Label)
+                 (UI.Checkbox
+                  :Label "checkbox"
+                  :Variable .checked)
+                 (UI.RadioButton
+                  :Label "radio"
+                  :Variable .choice
+                  :Value 1)
+                 (UI.Button
+                  :Label "button"
+                  :Action (Msg "Clicked")))))))
+
+   (GFX.Render :Steps .render-steps)))

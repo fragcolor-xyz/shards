@@ -4407,14 +4407,14 @@ macro_rules! shenum {
         const $EnumValue:ident = $value:expr;
       )+
     }
-    struct $SHEnumInfo:ident { }
+    pub struct $SHEnumInfo:ident { }
 
     $($t:tt)*
   ) => {
     $(#[$outer])*
     #[derive(Copy, PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
     $vis struct $SHEnum {
-      bits: i32,
+      pub bits: i32,
     }
 
     $vis struct $SHEnumInfo {
@@ -4548,22 +4548,22 @@ macro_rules! shenum_types {
   (
     $SHEnumInfo:ident,
     const $SHEnumCC:ident = $value:expr;
-    static ref $SHEnumEnumInfo:ident;
-    static ref $SHEnum_TYPE:ident: Type;
-    static ref $SHEnum_TYPES:ident: Vec<Type>;
-    static ref $SEQ_OF_SHEnum:ident: Type;
-    static ref $SEQ_OF_SHEnum_TYPES:ident: Vec<Type>;
+    pub static ref $SHEnumEnumInfo:ident;
+    pub static ref $SHEnum_TYPE:ident: Type;
+    pub static ref $SHEnum_TYPES:ident: Vec<Type>;
+    pub static ref $SEQ_OF_SHEnum:ident: Type;
+    pub static ref $SEQ_OF_SHEnum_TYPES:ident: Vec<Type>;
 
     $($t:tt)*
   ) => {
     const $SHEnumCC: i32 = $value;
 
     lazy_static! {
-      static ref $SHEnumEnumInfo: $SHEnumInfo = $SHEnumInfo::new();
-      static ref $SHEnum_TYPE: Type = Type::enumeration(FRAG_CC, $SHEnumCC);
-      static ref $SHEnum_TYPES: Vec<Type> = vec![*$SHEnum_TYPE];
-      static ref $SEQ_OF_SHEnum: Type = Type::seq(&$SHEnum_TYPES);
-      static ref $SEQ_OF_SHEnum_TYPES: Vec<Type> = vec![*$SEQ_OF_SHEnum];
+      pub static ref $SHEnumEnumInfo: $SHEnumInfo = $SHEnumInfo::new();
+      pub static ref $SHEnum_TYPE: Type = Type::enumeration(FRAG_CC, $SHEnumCC);
+      pub static ref $SHEnum_TYPES: Vec<Type> = vec![*$SHEnum_TYPE];
+      pub static ref $SEQ_OF_SHEnum: Type = Type::seq(&$SHEnum_TYPES);
+      pub static ref $SEQ_OF_SHEnum_TYPES: Vec<Type> = vec![*$SEQ_OF_SHEnum];
     }
 
     shenum_types! {

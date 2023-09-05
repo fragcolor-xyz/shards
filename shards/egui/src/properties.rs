@@ -34,7 +34,7 @@ use shards::SHType_Enum;
   "UIProperty",
   "Identifies UI properties to retrieve from the UI context"
 )]
-enum Property {
+pub enum Property {
   #[enum_value("Return the remaining space within an UI widget.")]
   RemainingSpace = 0x0,
   #[enum_value("The screen size of the UI.")]
@@ -69,7 +69,7 @@ impl Default for PropertyShard {
   }
 }
 
-#[shards::shard_impl] 
+#[shards::shard_impl]
 impl Shard for PropertyShard {
   fn input_types(&mut self) -> &Types {
     &NONE_TYPES
