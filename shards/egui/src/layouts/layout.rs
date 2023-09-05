@@ -1003,10 +1003,6 @@ impl Shard for Layout {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if self.contents.is_empty() {
-      return Ok(*input);
-    }
-
     if let Some(ui) = util::get_current_parent(self.parents.get())? {
       let layout_class: Option<Rc<LayoutClass>> = Some(Var::from_object_as_clone(
         self.layout_class.get(),
@@ -1150,7 +1146,10 @@ impl Shard for Layout {
                           let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
                           ui.allocate_ui_with_layout(max_size, layout, |ui| {
                             ui.set_min_size(min_size); // set minimum size of entire layout
-
+                            
+    if self.contents.is_empty() {
+      return Ok(*input);
+    }
                             util::activate_ui_contents(
                               context,
                               input,
@@ -1168,6 +1167,11 @@ impl Shard for Layout {
                   // inside of frame, no scroll area to render, render inner layout
                   ui.allocate_ui_with_layout(max_size, layout, |ui| {
                     ui.set_min_size(min_size); // set minimum size of entire layout
+
+                    if self.contents.is_empty() {
+                      return Ok(*input);
+                    }
+
                     util::activate_ui_contents(
                       context,
                       input,
@@ -1197,6 +1201,10 @@ impl Shard for Layout {
                   let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
                   ui.allocate_ui_with_layout(max_size, layout, |ui| {
                     ui.set_min_size(min_size); // set minimum size of entire layout
+                    
+    if self.contents.is_empty() {
+      return Ok(*input);
+    }
 
                     util::activate_ui_contents(
                       context,
@@ -1215,6 +1223,11 @@ impl Shard for Layout {
           // inside of frame, no scroll area to render, render inner layout
           ui.allocate_ui_with_layout(max_size, layout, |ui| {
             ui.set_min_size(min_size); // set minimum size of entire layout
+
+            if self.contents.is_empty() {
+              return Ok(*input);
+            }
+
             util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
           })
           .inner?;
