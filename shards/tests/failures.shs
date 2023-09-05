@@ -9,7 +9,7 @@
 })
 
 @schedule(root test-1)
-@run(root 0.1) | Assert.Is(false)
+@run(root FPS: 10) | Assert.Is(false)
 
 ; fail during http resolver, uses await(...)
 @wire(test-2 {
@@ -17,7 +17,7 @@
 })
 
 @schedule(root test-2)
-@run(root 0.1) | Assert.Is(false)
+@run(root FPS: 10) | Assert.Is(false)
 
 ; fail during cleanup, we cannot use pauses
 ; NOTE: Does not generate an error in `run`
@@ -26,7 +26,7 @@
 })
 
 @schedule(root test-3)
-@run(root 0.1) | Assert.Is(true)
+@run(root FPS: 10) | Assert.Is(true)
 
 ; out of range
 @wire(test-4 {
@@ -36,7 +36,7 @@
 })
 
 @schedule(root test-4)
-@run(root 0.1) | Assert.Is(false)
+@run(root FPS: 10) | Assert.Is(false)
 
 ; wrong type
 @wire(test-5 {
@@ -47,7 +47,7 @@
 })
 
 @schedule(root test-5)
-@run(root 0.1) | Assert.Is(false)
+@run(root FPS: 10) | Assert.Is(false)
 
 ; wrong type
 @wire(test-6 {
@@ -59,7 +59,7 @@
 })
 
 @schedule(root test-6)
-@run(root 0.1) | Assert.Is(false)
+@run(root FPS: 10) | Assert.Is(false)
 
 ; fail the root wire propagated from Wait
 @wire(test-7 {
@@ -69,7 +69,7 @@
 })
 
 @schedule(root test-7)
-@run(root 0.1) | Assert.Is(false)
+@run(root FPS: 10) | Assert.Is(false)
 
 
 ; fail the root wire propagated from Wait
@@ -80,7 +80,7 @@
 })
 
 @schedule(root test-8)
-@run(root 0.1) | Assert.Is(false)
+@run(root FPS: 10) | Assert.Is(false)
 
 @mesh(main)
 
@@ -104,7 +104,7 @@
 } Looped: true)
 
 @schedule(root c)
-@run(root 0.2 25) | Assert.Is(false)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
 @wire(cc {
   "Hello" = msg1
@@ -114,7 +114,7 @@
 } Looped: true)
 
 @schedule(root cc)
-@run(root 0.2 25) | Assert.Is(true)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(true)
 
 @wire(too-long-wire {
   Pause(120)
@@ -128,7 +128,7 @@
 } Looped: true)
 
 @schedule(root short-wire)
-@run(root 0.2 25) | Assert.Is(false)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
 ; Failure from Do should propagate to main wire
 @wire(do-inner {
@@ -141,4 +141,4 @@
 })
 
 @schedule(root do-outer)
-@run(root 0.2 25) | Assert.Is(false)
+@run(root FPS: 5 Iterations: 25) | Assert.Is(false)

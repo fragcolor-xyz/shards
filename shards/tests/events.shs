@@ -25,4 +25,4 @@
 @schedule(main receive)
 @schedule(main receive2)
 @schedule(main updater)
-@run(main 0.05 100)
+@run(main FPS: 20 Iterations: 100)

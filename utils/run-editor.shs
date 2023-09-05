@@ -14,4 +14,4 @@
 
 @schedule(main editor-wire)
 
-@run(main 0.02)
+@run(main FPS: 50)

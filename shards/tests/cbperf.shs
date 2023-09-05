@@ -17,4 +17,4 @@
 })
 
 @schedule(root analysis)
-@run(root 0.01)
+@run(root FPS: 100)
