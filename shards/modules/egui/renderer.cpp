@@ -207,6 +207,7 @@ struct EguiRendererImpl {
       }
       drawable.parameters.set("flags", flags);
 
+      drawable.clipRect.reset();
       if (clipGeometry) {
         bool isClippingRectInf = prim.clipRect.min.x == -INFINITY && prim.clipRect.min.y == -INFINITY &&
                                  prim.clipRect.max.x == INFINITY && prim.clipRect.max.y == INFINITY;
