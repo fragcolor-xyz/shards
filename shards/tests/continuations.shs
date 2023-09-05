@@ -23,9 +23,9 @@
 } Looped: true)
 
 @wire(root {
-    Msg("Root started")
-    Step(main)
-    Msg("Root returned")
+  Msg("Root started")
+  Step(main)
+  Msg("Root returned")
 } Looped: true)
 
 @schedule(root-mesh root)
