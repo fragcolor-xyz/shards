@@ -22,7 +22,7 @@
       @input |
       UI(ui-draw-queue {"hello" = hello}) |
       ; input passthrough
-      Assert.Is(@input Abort: true)
+      Assert.Is(@input Break: true)
       ; exposed variable
       hello | ExpectString
 
@@ -48,11 +48,11 @@
         UI.Window(
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         ) |
         ; input passthrough
-        Assert.Is(@input Abort: true)
+        Assert.Is(@input Break: true)
       })
 
       GFX.Render(Steps: render-steps)
@@ -79,11 +79,11 @@
             UI.Scope(
               Contents: {
                 ; input pass into
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
               }
             ) |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -111,7 +111,7 @@
           Anchor: Anchor::TopLeft
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
             "TopLeft" | UI.Label
           }
         ) |
@@ -119,7 +119,7 @@
           Anchor: Anchor::Top
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
             "Top" | UI.Label
           }
         ) |
@@ -127,7 +127,7 @@
           Anchor: Anchor::TopRight
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
             "TopRight" | UI.Label(Wrap: false)
           }
         ) |
@@ -135,7 +135,7 @@
           Anchor: Anchor::Left
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
             "Left" | UI.Label
           }
         ) |
@@ -143,7 +143,7 @@
           Anchor: Anchor::Center
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
             "Center" | UI.Label
           }
         ) |
@@ -151,7 +151,7 @@
           Anchor: Anchor::Right
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
             "Right" | UI.Label
           }
         ) |
@@ -159,7 +159,7 @@
           Anchor: Anchor::BottomLeft
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
             "BottomLeft" | UI.Label
           }
         ) |
@@ -167,7 +167,7 @@
           Anchor: Anchor::Bottom
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
             "Bottom" | UI.Label
           }
         ) |
@@ -175,12 +175,12 @@
           Anchor: Anchor::BottomRight
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
             "BottomRight" | UI.Label(Wrap: false)
           }
         ) |
         ; input passthrough
-        Assert.Is(@input Abort: true)
+        Assert.Is(@input Break: true)
       })
 
       GFX.Render(Steps: render-steps)
@@ -205,35 +205,35 @@
         UI.TopPanel(
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         ) |
         UI.LeftPanel(
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         ) |
         UI.RightPanel(
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         ) |
         UI.BottomPanel(
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         ) |
         UI.CentralPanel(
           Contents: {
             ; input pass into
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         ) |
         ; input passthrough
-        Assert.Is(@input Abort: true)
+        Assert.Is(@input Break: true)
       })
 
       GFX.Render(Steps: render-steps)
@@ -262,11 +262,11 @@
               DefaultOpen: true
               Contents: {
                 ; input pass into
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
               }
             ) |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -294,14 +294,14 @@
             @input |
             UI.Columns(
               [{ ; input pass into
-                 Assert.Is(@input Abort: true)
+                 Assert.Is(@input Break: true)
                  "Left" | UI.Label} 
                { ; input pass into
-                 Assert.Is(@input Abort: true)
+                 Assert.Is(@input Break: true)
                  "Right" | UI.Label}]
             ) |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -331,11 +331,11 @@
               Disable: true
               Contents: {
                 ; input pass into
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
               }
             ) |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -367,11 +367,11 @@
               StrokeColor: @color(255 64 255 255) StrokeWidth: 8.0
               Contents: {
                 ; input pass into
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
               }
             ) |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -400,11 +400,11 @@
             UI.Group(
               Contents: {
                 ; input pass into
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
               }
             ) |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -433,11 +433,11 @@
             UI.Indent(
               Contents: {
                 ; input pass into
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
               }
             ) |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -466,11 +466,11 @@
             UI.Horizontal(
               Contents: {
                 ; input pass into
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
               }
             ) |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -501,11 +501,11 @@
               Horizontal: true Vertical: true AlwaysShow: true
               Contents: {
                 ; input pass into
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
               }
             ) |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -534,11 +534,11 @@
             UI.Vertical(
               Contents: {
                 ; input pass into
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
               }
             ) |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -566,7 +566,7 @@
             @input |
             UI.Separator |
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
