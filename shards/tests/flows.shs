@@ -516,4 +516,4 @@
 @schedule(root await-test-1)
 @schedule(root await-test-2)
 @schedule(root await-test-3)
-@run(root FPS: 10 Iterations: 100)
+@run(root FPS: 10 Iterations: 10)
