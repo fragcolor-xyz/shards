@@ -23,7 +23,7 @@
         UI.CentralPanel(
           Contents: {
             "Hello Shards!" | UI.Label |
-            Assert.Is("Hello Shards!" Abort: true)
+            Assert.Is("Hello Shards!" Break: true)
           }
         )
       })
@@ -200,7 +200,7 @@
             @input | 
             UI.Spinner | 
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
@@ -257,17 +257,17 @@
             UI.Tooltip(
               Contents: {
                 ; input passthrough
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
                 "Lorem ipsum" | UI.Label
               }
               OnHover: {
                 ; input pass into
-                Assert.Is(@input Abort: true)
+                Assert.Is(@input Break: true)
                 "Tooltip" | UI.Label
               }
             )
             ; input passthrough
-            Assert.Is(@input Abort: true)
+            Assert.Is(@input Break: true)
           }
         )
       })
