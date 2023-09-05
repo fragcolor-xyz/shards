@@ -121,11 +121,11 @@ impl LegacyShard for Area {
     Some(&AREA_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &'static str> {
     match index {
       0 => self.position.set_param(value),
       1 => self.anchor.set_param(value),
-      2 => Ok(self.order.set_param(value)),
+      2 => self.order.set_param(value),
       3 => self.contents.set_param(value),
       _ => Err("Invalid parameter index"),
     }

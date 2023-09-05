@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use shards::core::registerEnumType;
-use shards::core::registerShard;
 use shards::core::register_legacy_enum;
+use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
 use shards::types::ClonedVar;
 use shards::types::ExposedTypes;
@@ -95,14 +94,17 @@ struct EguiScrollAreaSettings {
 
 impl EguiScrollAreaSettings {
   pub fn to_egui_scrollarea(&self) -> egui::ScrollArea {
-    egui::ScrollArea::new([self.enable_horizontal_scroll_bar, self.enable_vertical_scroll_bar])
-      .scroll_bar_visibility(self.scroll_visibility.into())
-      .max_width(self.max_width)
-      .max_height(self.max_height)
-      .min_scrolled_width(self.min_width)
-      .min_scrolled_height(self.min_height)
-      .auto_shrink([self.auto_shrink_width, self.auto_shrink_height])
-      .enable_scrolling(self.enable_scrolling)
+    egui::ScrollArea::new([
+      self.enable_horizontal_scroll_bar,
+      self.enable_vertical_scroll_bar,
+    ])
+    .scroll_bar_visibility(self.scroll_visibility.into())
+    .max_width(self.max_width)
+    .max_height(self.max_height)
+    .min_scrolled_width(self.min_width)
+    .min_scrolled_height(self.min_height)
+    .auto_shrink([self.auto_shrink_width, self.auto_shrink_height])
+    .enable_scrolling(self.enable_scrolling)
   }
 }
 
@@ -143,7 +145,6 @@ struct LayoutConstructor {
   scroll_area_auto_shrink_width: ParamVar,
   scroll_area_auto_shrink_height: ParamVar,
   scroll_area_enable_scrolling: ParamVar,
-
 }
 
 struct Layout {
@@ -407,8 +408,8 @@ pub fn register_shards() {
     LayoutDirectionCC,
     LayoutDirectionEnumInfo.as_ref().into(),
   );
-  registerEnumType(FRAG_CC, LayoutFrameCC, LayoutFrameEnumInfo.as_ref().into());
-  registerEnumType(FRAG_CC, LayoutAlignCC, LayoutAlignEnumInfo.as_ref().into());
+  register_legacy_enum(FRAG_CC, LayoutFrameCC, LayoutFrameEnumInfo.as_ref().into());
+  register_legacy_enum(FRAG_CC, LayoutAlignCC, LayoutAlignEnumInfo.as_ref().into());
   register_legacy_shard::<Indent>();
   register_legacy_shard::<NextRow>();
   register_legacy_shard::<ScrollArea>();

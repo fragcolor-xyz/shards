@@ -27,6 +27,7 @@ use crate::LAYOUTCLASS_TYPE_VEC;
 use crate::LAYOUTCLASS_TYPE_VEC_VAR;
 use crate::LAYOUT_FRAME_TYPE_VEC;
 use crate::PARENTS_UI_NAME;
+use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -315,7 +316,7 @@ impl Default for LayoutConstructor {
   }
 }
 
-impl Shard for LayoutConstructor {
+impl LegacyShard for LayoutConstructor {
   fn registerName() -> &'static str {
     cstr!("UI.LayoutClass")
   }
@@ -340,31 +341,31 @@ impl Shard for LayoutConstructor {
     Some(&LAYOUT_CONSTRUCTOR_PARAMETERS)
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
+  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &'static str> {
     match index {
-      0 => Ok(self.parent.set_param(value)),
-      1 => Ok(self.main_direction.set_param(value)),
-      2 => Ok(self.main_wrap.set_param(value)),
-      3 => Ok(self.main_align.set_param(value)),
-      4 => Ok(self.main_justify.set_param(value)),
-      5 => Ok(self.cross_align.set_param(value)),
-      6 => Ok(self.cross_justify.set_param(value)),
-      7 => Ok(self.min_size.set_param(value)),
-      8 => Ok(self.max_size.set_param(value)),
-      9 => Ok(self.fill_width.set_param(value)),
-      10 => Ok(self.fill_height.set_param(value)),
-      11 => Ok(self.disabled.set_param(value)),
-      12 => Ok(self.frame.set_param(value)),
-      13 => Ok(self.enable_horizontal_scroll_bar.set_param(value)),
-      14 => Ok(self.enable_vertical_scroll_bar.set_param(value)),
-      15 => Ok(self.scroll_visibility.set_param(value)),
-      16 => Ok(self.scroll_area_min_width.set_param(value)),
-      17 => Ok(self.scroll_area_min_height.set_param(value)),
-      18 => Ok(self.scroll_area_max_width.set_param(value)),
-      19 => Ok(self.scroll_area_max_height.set_param(value)),
-      20 => Ok(self.scroll_area_auto_shrink_width.set_param(value)),
-      21 => Ok(self.scroll_area_auto_shrink_height.set_param(value)),
-      22 => Ok(self.scroll_area_enable_scrolling.set_param(value)),
+      0 => self.parent.set_param(value),
+      1 => self.main_direction.set_param(value),
+      2 => self.main_wrap.set_param(value),
+      3 => self.main_align.set_param(value),
+      4 => self.main_justify.set_param(value),
+      5 => self.cross_align.set_param(value),
+      6 => self.cross_justify.set_param(value),
+      7 => self.min_size.set_param(value),
+      8 => self.max_size.set_param(value),
+      9 => self.fill_width.set_param(value),
+      10 => self.fill_height.set_param(value),
+      11 => self.disabled.set_param(value),
+      12 => self.frame.set_param(value),
+      13 => self.enable_horizontal_scroll_bar.set_param(value),
+      14 => self.enable_vertical_scroll_bar.set_param(value),
+      15 => self.scroll_visibility.set_param(value),
+      16 => self.scroll_area_min_width.set_param(value),
+      17 => self.scroll_area_min_height.set_param(value),
+      18 => self.scroll_area_max_width.set_param(value),
+      19 => self.scroll_area_max_height.set_param(value),
+      20 => self.scroll_area_auto_shrink_width.set_param(value),
+      21 => self.scroll_area_auto_shrink_height.set_param(value),
+      22 => self.scroll_area_enable_scrolling.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -865,7 +866,7 @@ impl Default for Layout {
   }
 }
 
-impl Shard for Layout {
+impl LegacyShard for Layout {
   fn registerName() -> &'static str
   where
     Self: Sized,
@@ -915,11 +916,11 @@ impl Shard for Layout {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.contents.set_param(value),
-      1 => Ok(self.layout_class.set_param(value)),
-      2 => Ok(self.min_size.set_param(value)),
-      3 => Ok(self.max_size.set_param(value)),
-      4 => Ok(self.fill_width.set_param(value)),
-      5 => Ok(self.fill_height.set_param(value)),
+      1 => self.layout_class.set_param(value),
+      2 => self.min_size.set_param(value),
+      3 => self.max_size.set_param(value),
+      4 => self.fill_width.set_param(value),
+      5 => self.fill_height.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -946,7 +947,7 @@ impl Shard for Layout {
     ));
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring, &self.parents);
+    util::require_parents(&mut self.requiring);
 
     Some(&self.requiring)
   }
@@ -1146,7 +1147,7 @@ impl Shard for Layout {
                           let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
                           ui.allocate_ui_with_layout(max_size, layout, |ui| {
                             ui.set_min_size(min_size); // set minimum size of entire layout
-                            
+
     if self.contents.is_empty() {
       return Ok(*input);
     }
@@ -1201,7 +1202,7 @@ impl Shard for Layout {
                   let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
                   ui.allocate_ui_with_layout(max_size, layout, |ui| {
                     ui.set_min_size(min_size); // set minimum size of entire layout
-                    
+
     if self.contents.is_empty() {
       return Ok(*input);
     }
