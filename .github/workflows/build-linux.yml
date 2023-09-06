@@ -114,7 +114,7 @@ jobs:
           ./shards new ../shards/tests/network.shs
           ./shards new ../shards/tests/struct.shs
           ./shards new ../shards/tests/flows.shs
-          ./shards new ../shards/tests/kdtree.shs
+          ./shards ../shards/tests/kdtree.clj
           ./shards new ../shards/tests/channels.shs
           ./shards new ../shards/tests/genetic.shs
           ./shards new ../shards/tests/imaging.shs
