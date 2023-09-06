@@ -809,6 +809,11 @@ struct Start : public Resume {
 };
 
 struct Recur : public WireBase {
+  std::weak_ptr<SHWire> _wwire;
+  SHWire *_wire;
+  std::deque<ParamVar> _vars;
+  std::vector<SHSeq> _storage;
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
@@ -829,12 +834,11 @@ struct Recur : public WireBase {
         p = ctxVar;
       }
     }
-    _len = _vars.size();
     return WireBase::compose(data);
   }
 
   void warmup(SHContext *ctx) {
-    _storage.resize(_len);
+    _storage.resize(_vars.size());
     for (auto &v : _vars) {
       v.warmup(ctx);
     }
@@ -848,7 +852,7 @@ struct Recur : public WireBase {
       v.cleanup();
     }
     // force releasing resources
-    for (size_t i = 0; i < _len; i++) {
+    for (size_t i = 0; i < _storage.size(); i++) {
       // must release on capacity
       for (uint32_t j = 0; j < _storage[i].cap; j++) {
         destroyVar(_storage[i].elements[j]);
@@ -860,7 +864,7 @@ struct Recur : public WireBase {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     // store _vars
-    for (size_t i = 0; i < _len; i++) {
+    for (size_t i = 0; i < _vars.size(); i++) {
       const auto len = _storage[i].len;
       arrayResize(_storage[i], len + 1);
       cloneVar(_storage[i].elements[len], _vars[i].get());
@@ -876,19 +880,13 @@ struct Recur : public WireBase {
     }
 
     // restore _vars
-    for (size_t i = 0; i < _len; i++) {
+    for (size_t i = 0; i < _vars.size(); i++) {
       auto pops = arrayPop<SHSeq, SHVar>(_storage[i]);
       cloneVar(_vars[i].get(), pops);
     }
 
     return runRes.output;
   }
-
-  std::weak_ptr<SHWire> _wwire;
-  SHWire *_wire;
-  std::deque<ParamVar> _vars;
-  size_t _len; // cache it to have nothing on stack from us
-  std::vector<SHSeq> _storage;
 };
 
 struct WireNotFound : public ActivationError {
