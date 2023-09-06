@@ -166,3 +166,10 @@ Do(test-nesting-var-set-1)
 x | Log
 
 [[1 2 3] [2 3 4] [3 4 5]] | Reduce(Math.Add($0)) | Assert.Is([6 9 12]) | Log
+
+@template(table-user [table] {
+  table:key1 | Log
+})
+
+{key1: 10 key2: 20} = table-123
+@table-user(table-123)
