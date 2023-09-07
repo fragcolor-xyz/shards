@@ -35,7 +35,7 @@ Furthermore, each shard was programmed to guarantee the highest standards of per
 To start developing with Shards, you'll need to [set up your environment](https://docs.fragnova.com/contribute/getting-started/) and then [build Shards](https://docs.fragnova.com/contribute/code/build-shards/).
 Shards scripts end with the `.shs` extension and can be directly run from the console using:
 ```
-`./build/debug/shards <filename>.shs`
+./build/debug/shards <filename>.shs
 ```
 
 Shards language features are documented [here](https://docs.fragnova.com/learn/shards/primer/), while the API can be found [here](https://docs.fragnova.com/reference/shards/) and code examples and tutorials [here](https://docs.fragnova.com/learn/shards/tutorials/).
