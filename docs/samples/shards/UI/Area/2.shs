@@ -1,0 +1,71 @@
+@mesh(main)
+@wire(run-sample {
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+      ui-draw-queue
+      {
+        ; The default order for a window is Order::Middle, and depending on focus, this window,
+        ; or the Area with Order::Middle will be drawn on top of the other.
+        UI.Window(
+          Title: "Greetings"
+          Flags: WindowFlags::NoCollapse
+          Contents: {
+            "Hello shards!" | UI.Label
+          }
+        )
+        UI.Area(
+          Anchor: Anchor::TopLeft
+          ; Order: Order::Background ; This is the default for UI.Area
+          Contents: {
+            "Lowest: Background" | UI.Label
+          }
+        )
+        UI.Area(
+          Anchor: Anchor::Left
+          Order: Order::PanelResizeLine
+          Contents: {
+            "2nd Lowest: PanelResizeLine" | UI.Label
+          }
+        )
+        UI.Area(
+          Anchor: Anchor::BottomLeft
+          Order: Order::Middle
+          Contents: {
+            "3rd Lowest: Middle" | UI.Label
+          }
+        )
+        UI.Area(
+          Anchor: Anchor::TopRight
+          Order: Order::Foreground
+          Contents: {
+            "3rd Highest: Foreground" | UI.Label
+          }
+        )
+        UI.Area(
+          Anchor: Anchor::Right
+          Order: Order::Tooltip
+          Contents: {
+            "2nd Highest: Tooltip" | UI.Label
+          }
+        )
+        UI.Area(
+          Anchor: Anchor::BottomRight
+          Order: Order::Debug
+          Contents: {
+            "Highest: Debug" | UI.Label
+          }
+        )
+      }
+    )
+    GFX.Render(Steps: render-steps)
+  }
+)
+} Looped: true) ; Cannot set option for this, cannot take Boolean variable
+
+@schedule(main run-sample)
+@run(main FPS: 60 Iterations: 1200)
