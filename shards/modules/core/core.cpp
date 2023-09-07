@@ -1886,6 +1886,7 @@ struct Once {
     _blks.warmup(ctx);
     _logCounter = 0;
     _didActivateLastTick = true;
+    _next = SHClock::now();
   }
 
   static inline Parameters params{{"Action", SHCCSTR("The shard or sequence of shards to execute."), {CoreInfo::Shards}},
@@ -1989,7 +1990,12 @@ struct Once {
           SHLOG_WARNING("Once shard took too long to execute, skipping next pause time, wire: {}", wire->name);
         }
       } else {
-        _next = _next + dsleep;
+        // Avoid overflow
+        if (_next < now) {
+          _next = now + dsleep;
+        } else {
+          _next = _next + dsleep;
+        }
         ++_logCounter;
       }
     }
