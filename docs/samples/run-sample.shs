@@ -1,6 +1,6 @@
 @mesh(main)
 @wire(run-sample {
-  @file | Shards.Read >= sample
+  @file | FS.Read >= sample
   (sample)
 } Looped: true) ; Cannot set option for this, cannot take Boolean variable
 
