@@ -55,7 +55,7 @@ Using visual development engines like Rare, anyone can build complex application
 
 #### Reach platforms
 
-Shards is available in all major platforms: OS X, Windows, Mac, and browser. (android, iOS)
+Shards is available in all major platforms: OS X, Windows, Mac, browser, Android, and iOS.
 
 #### Reach problems
 
