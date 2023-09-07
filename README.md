@@ -5,9 +5,9 @@
 <div align="center">
 
   <a href="">[![license](https://img.shields.io/github/license/fragcolor-xyz/shards)](./LICENSE)</a>
-  <a href="">![CI](https://github.com/fragcolor-xyz/shards/workflows/CI/badge.svg)</a>
+  <a href="">[![CI](https://github.com/fragcolor-xyz/shards/actions/workflows/main.yml/badge.svg)](https://github.com/fragcolor-xyz/shards/actions/workflows/main.yml)</a>
   <a href="">[![codecov](https://codecov.io/gh/fragcolor-xyz/shards/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/fragcolor-xyz/shards)</a>
-  <a href="">![docs](https://img.shields.io/badge/docs-8A2BE2)</a>
+  <a href="">[![docs](https://img.shields.io/badge/docs-8A2BE2)](https://docs.fragnova.com/)</a>
 
 </div>
 
