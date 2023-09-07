@@ -1,162 +1,162 @@
 # Shards
 
-<p align="center">
-  <img width="450" src="assets/ShardsLogo.png">
-</p>
+> Shards is a high-performance, multi-platform, type-safe programming language designed for visual development.
 
-## Modular, performant scripting for efficient app development.
+<div align="center">
 
-[![license](https://img.shields.io/github/license/fragcolor-xyz/shards)](./LICENSE)
-![CI](https://github.com/fragcolor-xyz/shards/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/fragcolor-xyz/shards/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/fragcolor-xyz/shards)
-[![docs](https://img.shields.io/badge/docs-API-blueviolet)](https://docs.fragnova.com/)
-[![examples](https://img.shields.io/badge/learn-examples-blue)](https://docs.fragnova.com/learn)
+  <a href="">[![license](https://img.shields.io/github/license/fragcolor-xyz/shards)](./LICENSE)</a>
+  <a href="">![CI](https://github.com/fragcolor-xyz/shards/workflows/CI/badge.svg)</a>
+  <a href="">[![codecov](https://codecov.io/gh/fragcolor-xyz/shards/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/fragcolor-xyz/shards)</a>
+  <a href="">![docs](https://img.shields.io/badge/docs-8A2BE2)</a>
 
-## Vision
+</div>
 
-We believe that technology is on the cusp of a major revolution. As virtual and mixed reality continue to evolve, we see a future where traditional interfaces are replaced by more flexible and intuitive virtual interfaces that are seamlessly integrated into the user's VR/MR/AR environment. We are committed to creating programming tools that will enable developers to build this future and shape the way we interact with technology in the years to come.
+<img src="assets/wide-logo.png">
 
-With Shards we aim to create a low-code tool for producing high-performance, multi-platform applications. Our approach is to create a scripting tool that is both visual and textual. This tool will represent the flow of data and logic as it is, in a "what you see is how it works" manner.
+Shards is a dataflow visual programming language that makes app development accessible to all. It uses a straightforward system of connecting visual blocks, called shards, to build full-fledged apps and games without coding. Wires powered by a lightweight cooperative concurrency model, glue sequences of shards together, preventing the complicated spider webs usually associated with visual development. Automatic type checking provides reliability, while optimized shard implementations ensure high performance. The intuitive visual workflow allows beginners to quickly build powerful, multi-platform apps.
 
-## Introduction
+In Shards, the code's syntax and its computational graph of interconnected shards and wires semantically represent the same visual model. This synergy allows for seamless round-trip engineering, with visual development applications capable of visually loading the computational graph from the code and subsequently generating its code representation.
 
-Shards is a concatenative programming language that emphasizes modularity and composition. This is achieved through the use of shards, which represent individual functional units that can easily be connected with other shards to form complex computational workflows. Each shard can have parameters, which function like properties that manipulate how the shard itself works. This means that developers can create a diverse range of workflows that can be easily customized to meet specific requirements, enabling faster and more efficient deployment of applications.
+Shards powers an upcoming AI-powered game creation system where communities can play and collaborate in real time. While Shards is often not explicitly seen there, it is the language behind the AI-assisted visual interactions that will allow users to create games and experiences in a low to no-code environment.
 
-Shards shares some similarities with stack-based languages such as Forth, as both focus on functional composition and modularity. However, Shards has a unique way of executing code that sets it apart from other languages.
+In Shards, every primitive is a shard, flowing from shard to shard, to build a computational graph that represents a visual model. Example:
 
-By using Shards, developers can create a diverse range of computational workflows that can be easily customized to meet specific requirements, enabling faster and more efficient deployment of applications.
+```dart
+[[1 2 3] [2 3 4] [3 4 5]] | Reduce(Math.Add($0)) | Assert.Is([6 9 12]) | Log
+;=> [6 9 12]
+```
 
-*Please note that the textual representation of shards may change, and it adopts a Lisp/Clojure syntax mainly for convenience.*
+Even a literal is a shard. `[[1 2 3] [2 3 4] [3 4 5]]` is internally converted into `Const([[1 2 3] [2 3 4] [3 4 5]])` shard.
 
-The expression `2 (Math.Add 3) (Math.Add 4)` in the Shards language represents the same computation as the Forth expression `2 3 + 4 +`. However, the difference lies in the way that the computation is represented and executed.
+Furthermore, each shard was programmed to guarantee the highest standards of performance, with low level optimizations in C++ and Rust.
 
-In the Shards language, the expression `2 (Math.Add 3) (Math.Add 4)` would be evaluated as follows:
+## Getting started
 
-1. The `Const` shard with an output value of `2` produces its output.
-2. The output of the `Const` shard is connected to the input of the first `Math.Add` shard. This shard has a parameter operand of `3`, which results in an output of `5`.
-3. The output of the first `Math.Add` shard is connected to the input of the second `Math.Add` shard. The second shard has a parameter operand of `4`, which produces an output of `9`.
-4. The output of the second `Math.Add` shard is the final result of the computation, which in this case is `9`.
+To start developing with Shards, you'll need to [set up your environment](https://docs.fragnova.com/contribute/getting-started/) and then [build Shards](https://docs.fragnova.com/contribute/code/build-shards/).
+Shards scripts end with the `.shs` extension and can be directly run from the console using:
+```
+`./build/debug/shards <filename>.shs`
+```
 
-To summarize, Shards use a concatenative syntax where each shard is represented by its name followed by its parameters (if any) without any additional separators. For example, the expression `2 (Math.Add 3) (Math.Add 4)` is evaluated as you described, with the `Const` (inferred in this case) shard producing an output of `2` that is connected to the first `Math.Add` shard, and so on.
+Shards language features are documented [here](https://docs.fragnova.com/learn/shards/primer/), while the API can be found [here](https://docs.fragnova.com/reference/shards/) and code examples and tutorials [here](https://docs.fragnova.com/learn/shards/tutorials/).
 
+> [!NOTE]
+> The code samples in this readme are programmed using the new Shards syntax. The documentation for the new syntax will be released very soon. Stay tuned!
 
 ## Goals
 
-This project has two main goals:
+Shards achieves zero-compromise on four goals: Reach, Correctness, Performance, and Simplicity.
 
-### Unleashing creativity
+### Reach
 
-- Prototype quickly and unleash your imagination
-- Quickly move from pseudo code to a real app
-- Replace pseudo blocks with native blocks in real time, without pausing program execution
-- An easy-to-use universal interface for your mixed/native code
-- Maximum modularity and inter-project code reuse
-- Release a fully bundled executable app or library with just one click
+#### Reach people
 
-### Accessibility
+Using visual development engines like Rare, anyone can build complex applications like games, without prior coding skills.
 
-- Automation scripting for everyone
-- Video game engine scripting, even for non-technical artists
-- Simplified machine learning scripting with just graph building
-- Powerful textual representation (scripting language) for experienced programmers
+#### Reach platforms
 
-## Features
+Shards is available in all major platforms: OS X, Windows, Mac, and browser. (android, iOS)
 
-Shards has numerous features that make it ideal for live on-the-fly game development, using both visual scripting and traditional game scripting.
+#### Reach problems
 
-### Intuitive
+Visual development powered by shards is suitable for solving a wide range of problems, from performance demanding games, to utility shell scripts, with batteries included: 550+ shards for all kinds of purposes.
 
-- Supports **visual editing** without the associated spaghetti and spider webs
-- Offers a versatile textual representation (currently backed by a derived **Clojure/Lisp**). More information on this can be found [here](https://docs.fragnova.com/reference/shards/).
+### Correctness
 
-### Developer-friendly
+Shards automatically infer types and validate the compatibility of these types based on the data flowing in and out from shards. This helps catching type errors and ensures that the data passed between shards is of the correct type.
 
-- Clear data flow
-- Extremely easy to debug and dissect
-- Automatically inferred strong types
-- **SIMD** vectors as first-class types
-- Hot code reloading, without any serialization due to completely decoupled data
+### Performance
 
-### Performant
+#### Zero waste visual development
 
-- Performance-driven and easy to profile
-- Deterministic execution and performance
-- Strong validation, composition, and optimization ahead of run-time
-- Built on top of **co-routines**; extremely easy to unleash parallelism and maintain a low syscall count
-- Fast execution inspired by threaded code interpreters
-- Support for WASM
+Zero waste round-trip code generation during visual development due to direct mapping between generated Shards code and loaded computational graph, both representing a visual model.
 
-### Built for game development
+#### Performant composition
 
-- Batteries included: 600+ shards and functions allowing a high level of abstraction
-- Game loops: Trivially easy implementation and control of game loop code
-- Graphics rendering: A `wgpu` based composable/hackable graphics rendering pipeline implementation
+The straightforward architecture flow of shards allows for fast composition of the computational graph, enabling quick loading of programs.
+
+#### Performant runtime
+
+Inferring and validating types at compile time allows programs to run faster, as we no longer need to worry about types during runtime.
+
+#### Primitive performance
+
+Each primitive (shard) in the computational graph was programmed to the highest standards of performance, using C++ and Rust.
+
+#### Parallel performance
+
+Built on top of co-routines. It’s extremely easy to unleash parallelism while maintaining a low syscall count.
+
+### Simplicity
+
+Shards is just shards flowing into shards, thus:
+supporting visual editing without the associated spaghetti and spider webs.
+Trivial implementation and control of game loop code.
+Extremely easy to debug and dissect due to the straight forward flow of shards.
+Low learning curve to make changes to the code directly.
 
 ## TL;DR
 
-<details><summary>This code</summary>
+<details>
+<summary>This code:</summary>
 
-```clojure
-(defwire action
-  (Pause 2.0)
-  (Msg "This happened 2 seconds later"))
+```dart
+@wire(action {
+  Pause(2)
+  Msg("This happened 2 seconds later")
+})
 
-(defmesh main)
+@wire(main-loop {
+  GFX.MainWindow(
+    Title: "My Window"
+    Width: 400
+    Height: 200
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })      
+      UI(
+        ui-draw-queue
+        UI.Window(
+          Title: "My UI Window"
+          Contents: {
+            "Hello world" | UI.Label
+            "Hello world 2" | UI.Label 
+            "Hello world 3" | UI.Label
+            UI.Button(
+              "Push me!"
+              {
+                Msg("Action!")
+                Detach(action)
+              })
+            UI.Checkbox("" checked)
+            checked
+            When(Is(true) {
+              "Hello optional world" | UI.Label
+            })
+          }
+        )
+      )
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true
+)
 
-(defloop main-loop
-  (GFX.MainWindow
-   :Title "My Window"
-   :Width 400 :Height 200
-   :Contents
-   (->
-    (Setup
-     (GFX.DrawQueue) >= .ui-draw-queue
-     (GFX.UIPass .ui-draw-queue) >> .render-steps)
-    (UI
-     .ui-draw-queue
-     (UI.Window
-      :Title "My UI Window"
-      :Contents
-      (->
-       "Hello world"   (UI.Label)
-       "Hello world 2" (UI.Label)
-       "Hello world 3" (UI.Label)
-       (UI.Button
-        "Push me!"
-        (-> (Msg "Action!")
-            (Detach action)))
-       (UI.Checkbox "" .checked)
-       .checked
-       (When (Is true)
-             (-> "Hello optional world" (UI.Label))))))
-
-    (GFX.Render :Steps .render-steps))))
-
-(schedule main main-loop)
-(run main 0.02)
+@mesh(main)
+@schedule(main main-loop)
+@run(main FPS: 60)
 ```
 </details>
 
-<details><summary>Becomes this app (cross-platform)</summary>
+<details>
+<summary>Becomes this app:</summary>
 
-  ![](assets/simple1.PNG)
+![](assets/simple1.PNG)
 
 </details>
-
-## Installation
-
-To start developing with Shards, you'll need to [set up your environment](https://docs.fragnova.com/contribute/getting-started/) and then [build Shards](https://docs.fragnova.com/contribute/code/build-shards/).
-
-## Usage
-
-Shards files end with extension `.edn` and can be directly run from the console using the following script (from the `/build` folder):
-
-```
-./shards <filename.edn>
-```
-
-Shards language API and features are documented [here](https://docs.fragnova.com/) while example codes and tutorials can be found [here](https://docs.fragnova.com/learn).
 
 ## License
 
-Shards source code is licensed under the [BSD 3-Clause license](./LICENSE).
+Shards source code is licensed under the [BSD 3-Clause license](https://github.com/fragcolor-xyz/shards/blob/devel/LICENSE).
