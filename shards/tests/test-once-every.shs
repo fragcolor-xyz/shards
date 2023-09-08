@@ -81,6 +81,8 @@
     })
   } Every: (1.0 Math.Divide(fps)))
 
+  Once({ "ping" | Log } Every: 2.0)
+
   RandomFloat(chopper) | Math.Add(delay) = f1
   Pause(f1)
 } Looped: true)
