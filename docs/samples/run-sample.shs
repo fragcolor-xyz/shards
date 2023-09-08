@@ -1,8 +1,17 @@
-@mesh(main)
-@wire(run-sample {
-  @file | FS.Read >= sample
-  (sample)
-} Looped: true) ; Cannot set option for this, cannot take Boolean variable
+@wire(sample-launcher {
+  WireRunner(sample-wire)
+  When(Is("END") Stop)
+} Looped: true)
 
-@schedule(main run-sample)
-@run(main FPS: 60 Iterations: 1200)
+@wire(open-sample {
+  #(@file | FS.Read | Shards.Read) | Await(Shards.Distill("sample-wire")) = sample-wire
+  Detach(sample-launcher)
+})
+
+@mesh(main)
+@wire(main-wire {
+  Start(open-sample)
+}) 
+
+@schedule(main main-wire)
+@run(main FPS: 60 Iterations:1200)
