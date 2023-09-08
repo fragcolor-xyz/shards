@@ -1,19 +1,20 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::Button;
 use crate::util;
 use crate::widgets::text_util;
 use crate::ANY_TABLE_SLICE;
 use crate::PARENTS_UI_NAME;
-use shards::shard::LegacyShard;
+use crate::STRING_VAR_SLICE;
+use shards::core::register_shard;
+use shards::shard::Shard;
 use shards::types::common_type;
+use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
-use shards::types::Parameters;
 use shards::types::ShardsVar;
 use shards::types::Type;
 use shards::types::Types;
@@ -23,158 +24,82 @@ use shards::types::ANY_TYPES;
 use shards::types::BOOL_OR_NONE_SLICE;
 use shards::types::BOOL_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
-use shards::types::STRING_TYPES;
 
-lazy_static! {
-  static ref BUTTON_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Label"),
-      shccstr!("The text label of this button."),
-      &STRING_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Action"),
-      shccstr!("The shards to execute when the button is pressed."),
-      &SHARDS_OR_NONE_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Wrap"),
-      shccstr!("Wrap the text depending on the layout."),
-      BOOL_OR_NONE_SLICE,
-    )
-      .into(),
-    (cstr!("Style"), shccstr!("The text style."), ANY_TABLE_SLICE,).into(),
-  ];
+#[derive(shard)]
+#[shard_info("UI.Button", "Clickable button with text.")]
+struct Button {
+  #[shard_warmup]
+  parents: ParamVar,
+  #[shard_required]
+  requiring: ExposedTypes,
+  #[shard_param("Label", "The text label of this button.", STRING_VAR_SLICE)]
+  label: ParamVar,
+  #[shard_param(
+    "Action",
+    "The shards to execute when the button is pressed.",
+    SHARDS_OR_NONE_TYPES
+  )]
+  action: ShardsVar,
+  #[shard_param("Style", "The text style.", ANY_TABLE_SLICE)]
+  style: ClonedVar,
+  #[shard_param("Wrap", "Wrap the text depending on the layout.", BOOL_OR_NONE_SLICE)]
+  wrap: ClonedVar,
 }
 
 impl Default for Button {
   fn default() -> Self {
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
     Self {
-      parents,
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
       requiring: Vec::new(),
       label: ParamVar::default(),
       action: ShardsVar::default(),
-      wrap: ParamVar::default(),
-      style: ParamVar::default(),
+      wrap: ClonedVar::default(),
+      style: ClonedVar::default(),
     }
   }
 }
 
-impl LegacyShard for Button {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("UI.Button")
-  }
-
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("UI.Button-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI.Button"
-  }
-
-  fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Clickable button with text."))
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shard_impl]
+impl Shard for Button {
+  fn input_types(&mut self) -> &Types {
     &ANY_TYPES
   }
 
-  fn inputHelp(&mut self) -> OptionalString {
+  fn input_help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
       "The value that will be passed to the Action shards of the button."
     ))
   }
 
-  fn outputTypes(&mut self) -> &Types {
+  fn output_types(&mut self) -> &Types {
     &BOOL_TYPES
   }
 
-  fn outputHelp(&mut self) -> OptionalString {
+  fn output_help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
       "Indicates whether the button was clicked during this frame."
     ))
   }
 
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&BUTTON_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => self.label.set_param(value),
-      1 => self.action.set_param(value),
-      2 => self.wrap.set_param(value),
-      3 => self.style.set_param(value),
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.label.get_param(),
-      1 => self.action.get_param(),
-      2 => self.wrap.get_param(),
-      3 => self.style.get_param(),
-      _ => Var::default(),
-    }
-  }
-
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
 
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring);
 
-    Some(&self.requiring)
-  }
-
-  fn hasCompose() -> bool {
-    true
-  }
-
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    if !self.action.is_empty() {
-      self.action.compose(data)?;
-    }
+    self.action.compose(data)?;
+    shards::util::require_shards_contents(&mut self.requiring, &self.action);
 
     Ok(common_type::bool)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.parents.warmup(ctx);
-
-    self.label.warmup(ctx);
-    if !self.action.is_empty() {
-      self.action.warmup(ctx)?;
-    }
-    self.wrap.warmup(ctx);
-    self.style.warmup(ctx);
-
+    self.warmup_helper(ctx)?;
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.style.cleanup();
-    self.wrap.cleanup();
-    if !self.action.is_empty() {
-      self.action.cleanup();
-    }
-    self.label.cleanup();
-
-    self.parents.cleanup();
-
+    self.cleanup_helper()?;
     Ok(())
   }
 
@@ -183,14 +108,14 @@ impl LegacyShard for Button {
       let label: &str = self.label.get().try_into()?;
       let mut text = egui::RichText::new(label);
 
-      let style = self.style.get();
+      let style = &self.style.0;
       if !style.is_none() {
         text = text_util::get_styled_text(text, &style.try_into()?)?;
       }
 
       let mut button = egui::Button::new(text);
 
-      let wrap = self.wrap.get();
+      let wrap = &self.wrap.0;
       if !wrap.is_none() {
         let wrap: bool = wrap.try_into()?;
         button = button.wrap(wrap);
@@ -213,4 +138,8 @@ impl LegacyShard for Button {
       Err("No UI parent")
     }
   }
+}
+
+pub fn register_shards() {
+  register_shard::<Button>();
 }

@@ -2061,12 +2061,14 @@ struct DoMany : public TryMany {
   void setup() { _threads = 0; } // we don't use threads
 
   static inline Parameters _params{
-      {"Wire", SHCCSTR("The wire to run many times sequentially."), WireBase::WireTypes},
+      {"Wire", SHCCSTR("The wire to run many times sequentially."), IntoWire::RunnableTypes},
   };
 
   static SHParametersInfo parameters() { return _params; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    wire = IntoWire{}.runnable(wireref);
+
     if (data.inputType.seqTypes.len == 1) {
       // copy single input type
       _inputType = data.inputType.seqTypes.elements[0];

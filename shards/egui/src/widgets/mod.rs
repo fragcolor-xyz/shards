@@ -15,16 +15,6 @@ use std::ops::Range;
 
 pub mod image_util;
 
-/// Clickable button with a text label.
-struct Button {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-  label: ParamVar,
-  style: ParamVar,
-  action: ShardsVar,
-  wrap: ParamVar,
-}
-
 /// Checkbox with a text label.
 struct Checkbox {
   parents: ParamVar,
@@ -281,7 +271,6 @@ pub mod var_util;
 pub mod variable;
 
 pub fn register_shards() {
-  register_legacy_shard::<Button>();
   register_legacy_shard::<Checkbox>();
   register_legacy_shard::<ColorInput>();
   register_legacy_shard::<Combo>();
@@ -307,6 +296,7 @@ pub fn register_shards() {
   register_legacy_shard::<Int2Slider>();
   register_legacy_shard::<Int3Slider>();
   register_legacy_shard::<Int4Slider>();
+  button::register_shards();
   plots::register_shards();
   image::register_shards();
   image_button::register_shards();

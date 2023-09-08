@@ -144,6 +144,7 @@ pub mod properties;
 pub mod state;
 pub mod util;
 pub mod widgets;
+pub mod dnd;
 
 struct VarTextBuffer<'a>(&'a Var);
 struct MutVarTextBuffer<'a>(&'a mut Var);
@@ -340,6 +341,7 @@ pub extern "C" fn register(core: *mut shards::shardsc::SHCore) {
 
   register_enum::<Order>();
   register_enum::<Anchor>();
+  dnd::register_shards();
   context::register_shards();
   state::register_shards();
   containers::register_shards();

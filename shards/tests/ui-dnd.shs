@@ -1,0 +1,53 @@
+@wire(test-wire {
+  Once({
+    [
+      {name: "dqoiwdj"}
+      {name: "nioadn"}
+      {name: "qiwoje"}
+    ] >= items
+
+    GFX.DrawQueue = ui-draw-queue
+    GFX.UIPass(ui-draw-queue) >> render-steps
+  })
+
+  GFX.MainWindow(Title: "Drag and Drop" Width: 1280 Height: 720 Contents: {
+    UI(ui-draw-queue {
+      UI.Property(UIProperty::ScreenSize) = screen-size
+      screen-size | Math.Divide(2.0) = center
+      94.0 = radius
+
+      UI.Absolute(Contents: {
+        items | DoMany({
+          = item
+          UI.DND({
+            "Select " >= label
+            item:name | AppendTo(label)
+            UI.Button(label { "Hi" Log })
+          })
+        })
+      } Position: @f2(50 50))
+
+      UI.Absolute(Contents: {
+        UI.DND({
+          UI.Frame(
+          InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
+          FillColor: @color(50 50 21)
+          StrokeColor: @color(250 250 32) StrokeWidth: 2.0
+          Contents: {
+            "The drop box" | UI.Label
+          })
+        } Drop: {
+          = drop
+          Log("Dropping item")
+          true
+        })
+      } Position: @f2(300 300))
+    })
+
+    GFX.Render(Steps: render-steps)
+  })
+} Looped: true)
+
+@mesh(root)
+@schedule(root test-wire)
+@run(root FPS: 120)
