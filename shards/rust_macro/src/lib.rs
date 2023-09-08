@@ -8,7 +8,7 @@ use quote::quote;
 use syn::{
   punctuated::Punctuated,
   token::Comma,
-  Expr, Field, Ident, ImplItem, LitInt, LitStr, Meta, 
+  Expr, Field, Ident, ImplItem, LitInt, LitStr, Meta,
 };
 
 // type Error = boxed::Box<dyn std::error::Error>;
@@ -56,7 +56,6 @@ lazy_static::lazy_static! {
   static ref IMPLS_TO_CHECK: Vec<&'static str> = vec![
     "compose",
     "warmup",
-    "cleanup",
     "mutate",
     "crossover",
     "get_state",
@@ -237,7 +236,7 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
           }
         }
       }
-      
+
       impl From<#enum_id> for i32 {
         fn from(value: #enum_id) -> Self {
           match value {
@@ -460,7 +459,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
   }
   let cleanups = cleanups_rev.iter().rev();
 
-  
+
   let shard_name_expr = shard_info.name;
   let shard_name = get_expr_str_lit(&shard_name_expr)?;
   let shard_desc_expr = shard_info.desc;
@@ -487,7 +486,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
       }
     })
   } else {
-    (quote!{ None }, 
+    (quote!{ None },
     quote!{})
   };
 
