@@ -20,7 +20,6 @@ use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
-use shards::types::Parameters;
 use shards::types::ShardsVar;
 use shards::types::Type;
 use shards::types::Var;
@@ -30,7 +29,7 @@ use std::ffi::CStr;
 
 #[derive(shards::shard)]
 #[shard_info("UI", "Initializes a UI context")]
-struct EguiContext {
+struct ContextShard {
   #[shard_param("Queue", "The draw queue.", GFX_QUEUE_VAR_TYPES)]
   queue: ParamVar,
   #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
@@ -47,7 +46,7 @@ struct EguiContext {
   input_translator: bindings::InputTranslator,
 }
 
-impl Default for EguiContext {
+impl Default for ContextShard {
   fn default() -> Self {
     Self {
       host: EguiHost::default(),
@@ -77,7 +76,7 @@ impl Default for EguiContext {
 }
 
 #[shards::shard_impl]
-impl Shard for EguiContext {
+impl Shard for ContextShard {
   fn input_types(&mut self) -> &std::vec::Vec<Type> {
     &ANY_TYPES
   }
@@ -221,5 +220,5 @@ impl Shard for EguiContext {
 }
 
 pub fn register_shards() {
-  register_shard::<EguiContext>();
+  register_shard::<ContextShard>();
 }

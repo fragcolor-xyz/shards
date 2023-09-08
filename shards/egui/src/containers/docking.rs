@@ -412,7 +412,7 @@ impl LegacyShard for DockArea {
     }
 
     let gui_ctx = util::get_current_context(&self.instance)?;
-    let style = egui_dock::Style::from_egui(gui_ctx.style().as_ref());
+    let style = egui_dock::Style::from_egui(gui_ctx.egui_ctx.style().as_ref());
 
     let dock = egui_dock::DockArea::new(&mut self.tabs).style(style);
 
@@ -422,7 +422,7 @@ impl LegacyShard for DockArea {
     if let Some(ui) = util::get_current_parent_opt(parents_stack_var)? {
       dock.show_inside(ui, &mut viewer);
     } else {
-      dock.show(gui_ctx, &mut viewer);
+      dock.show(&gui_ctx.egui_ctx, &mut viewer);
     }
     viewer.cleanup();
 

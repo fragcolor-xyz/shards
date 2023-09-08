@@ -4,10 +4,13 @@
       {name: "dqoiwdj"}
       {name: "nioadn"}
       {name: "qiwoje"}
+      {name: "Invalid item" extra-data: 11111}
     ] >= items
 
     GFX.DrawQueue = ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
+
+    UI.LayoutClass(MainDirection: LayoutDirection::LeftToRight) = ui-class
   })
 
   GFX.MainWindow(Title: "Drag and Drop" Width: 1280 Height: 720 Contents: {
@@ -16,32 +19,73 @@
       screen-size | Math.Divide(2.0) = center
       94.0 = radius
 
-      UI.Absolute(Contents: {
-        items | DoMany({
-          = item
+      When({UI.Property(UIProperty::IsAnythingBeingDragged)} {
+        UI.Absolute(Contents: {
           UI.DND({
-            "Select " >= label
-            item:name | AppendTo(label)
-            UI.Button(label { "Hi" Log })
+            UI.Layout(Class: ui-class FillWidth: true FillHeight: true)
+          }
+          Drop: {
+            Log("Global drop")
           })
-        })
-      } Position: @f2(50 50))
+        } Position: @f2(0 0) Order: UIOrder::Background)
+      })
 
+      UI.Absolute(Contents: {
+        Once({ null | Expect(@type(Type::Any)) >= dropped-item })
+        UI.DND({
+          UI.Frame(
+          InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
+          FillColor: @color(40 40 40)
+          StrokeColor: @color(90 90 32) StrokeWidth: 2.0
+          Contents: {
+            "The strict drop box" | UI.Label
+          })
+        } Drop: {
+          = item
+          Log("Dropping item")
+          item > dropped-item
+        } Hover: {
+          Maybe({
+            Expect(@type({name: Type::String}))
+            true
+          } { false } Silent: true)
+        })
+        dropped-item | WhenNot({IsNone} {
+          ToString | UI.Label
+        })
+      } Position: @f2(50 300))
+
+      Once({ null | Expect(@type(Type::Any)) >= dropped-item-2 })
       UI.Absolute(Contents: {
         UI.DND({
           UI.Frame(
           InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
           FillColor: @color(50 50 21)
-          StrokeColor: @color(250 250 32) StrokeWidth: 2.0
+          StrokeColor: @color(100 100 100) StrokeWidth: 2.0
           Contents: {
-            "The drop box" | UI.Label
+            "The anything drop box" | UI.Label
           })
         } Drop: {
-          = drop
+          = item
           Log("Dropping item")
-          true
+          item > dropped-item-2
         })
-      } Position: @f2(300 300))
+        dropped-item-2 | WhenNot({IsNone} {
+          ToString | UI.Label
+        })
+      } Position: @f2(200 300))
+
+      ; The list of items to pick from
+      UI.Absolute(Contents: {
+        items | DoMany({
+          ExpectTable = item
+          UI.DND({
+            "Select " >= label
+            item:name | ExpectString | AppendTo(label)
+            UI.Button(label { "Hi" Log })
+          })
+        })
+      } Position: @f2(50 50))
     })
 
     GFX.Render(Steps: render-steps)

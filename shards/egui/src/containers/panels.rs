@@ -246,9 +246,9 @@ macro_rules! impl_panel {
             })
             .inner?;
         } else {
-          let gui_ctx = util::get_current_context(&self.instance)?;
+          let egui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
           panel
-            .show(gui_ctx, |ui| {
+            .show(egui_ctx, |ui| {
               util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
             })
             .inner?;
@@ -432,7 +432,7 @@ impl LegacyShard for CentralPanel {
       return Ok(*input);
     }
 
-    let gui_ctx = util::get_current_context(&self.instance)?;
+    let ui_ctx = util::get_current_context(&self.instance)?;
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       egui::CentralPanel::default()
@@ -442,7 +442,7 @@ impl LegacyShard for CentralPanel {
         .inner?;
     } else {
       egui::CentralPanel::default()
-        .show(gui_ctx, |ui| {
+        .show(&ui_ctx.egui_ctx, |ui| {
           util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
         })
         .inner?;

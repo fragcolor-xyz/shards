@@ -3,8 +3,6 @@
 
 use super::Window;
 use super::WindowFlags;
-use crate::ANCHOR_TYPES;
-use crate::Anchor;
 use crate::containers::SEQ_OF_WINDOW_FLAGS;
 use crate::containers::WINDOW_FLAGS_TYPE;
 use crate::util;

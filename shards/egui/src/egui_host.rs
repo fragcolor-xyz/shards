@@ -1,29 +1,25 @@
 use super::util;
-
 use super::CONTEXTS_NAME;
 use super::EGUI_CTX_TYPE;
-
 use super::PARENTS_UI_NAME;
-use crate::EGUI_UI_TYPE;
 use crate::bindings::egui_FullOutput;
 use crate::bindings::egui_Input;
 use crate::bindings::make_native_full_output;
 use crate::bindings::NativeFullOutput;
+use crate::Context as UIContext;
+use crate::EGUI_UI_TYPE;
 use shards::core::Core;
-
 use shards::shardsc::Shards;
-use shards::types::Context;
+use shards::types::ClonedVar;
+use shards::types::Context as ShardsContext;
 use shards::types::ExposedInfo;
-
 use shards::types::ParamVar;
-
-use shards::types::Seq;
-
 use shards::types::Var;
 use shards::types::WireState;
+use std::cell::RefCell;
 
 pub struct EguiHost {
-  context: Option<egui::Context>,
+  context: Option<UIContext>,
   full_output: Option<NativeFullOutput>,
   instance: ParamVar,
   parents: ParamVar,
@@ -32,11 +28,8 @@ pub struct EguiHost {
 
 impl Default for EguiHost {
   fn default() -> Self {
-    let mut instance = ParamVar::default();
-    instance.set_name(CONTEXTS_NAME);
-
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
+    let mut instance = ParamVar::new_named(CONTEXTS_NAME);
+    let mut parents = ParamVar::new_named(PARENTS_UI_NAME);
 
     let exposed = vec![
       ExposedInfo {
@@ -74,16 +67,12 @@ impl Default for EguiHost {
 }
 
 impl EguiHost {
-  pub fn get_context(&self) -> &egui::Context {
-    self.context.as_ref().expect("No UI context")
-  }
-
   pub fn get_exposed_info(&self) -> &Vec<ExposedInfo> {
     &self.exposed
   }
 
-  pub fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
-    self.context = Some(egui::Context::default());
+  pub fn warmup(&mut self, ctx: &ShardsContext) -> Result<(), &'static str> {
+    self.context = Some(UIContext::default());
     self.instance.warmup(ctx);
     self.parents.warmup(ctx);
 
@@ -93,22 +82,34 @@ impl EguiHost {
   pub fn cleanup(&mut self) -> Result<(), &'static str> {
     self.parents.cleanup();
     self.instance.cleanup();
+    self.context = None;
     Ok(())
+  }
+
+  fn clear_unused_dnd_state(&mut self) {
+    let ui_ctx = self.context.as_ref().unwrap();
+    let mut dnd_value = ui_ctx.dnd_value.borrow_mut();
+    if !dnd_value.0.is_none() {
+      if !ui_ctx
+        .egui_ctx
+        .memory(|mem| mem.is_anything_being_dragged())
+      {
+        let v_empty = Var::default();
+        dnd_value.assign(&v_empty);
+      }
+    }
   }
 
   pub fn activate(
     &mut self,
     egui_input: &egui_Input,
     contents: &Shards,
-    context: &Context,
+    shards_context: &ShardsContext,
     input: &Var,
   ) -> Result<Var, &'static str> {
-    let gui_ctx = if let Some(gui_ctx) = &self.context {
-      gui_ctx
-    } else {
-      return Err("No UI context");
-    };
+    self.clear_unused_dnd_state();
 
+    let ui_ctx = self.context.as_ref().unwrap();
     let raw_input = crate::bindings::translate_raw_input(egui_input);
     match raw_input {
       Err(_error) => {
@@ -119,16 +120,16 @@ impl EguiHost {
         let draw_scale = raw_input.pixels_per_point.unwrap_or(1.0);
 
         let mut error: Option<&str> = None;
-        let egui_output = gui_ctx.run(raw_input, |ctx| {
+        let egui_output = ui_ctx.egui_ctx.run(raw_input, |ctx| {
           error = (|| -> Result<(), &str> {
             // Push empty parent UI in case this context is nested inside another UI
             let wire_state: WireState = util::with_none_var(&mut self.parents, || {
               let mut _output = Var::default();
-              util::with_object_stack_var(&mut self.instance, ctx, &EGUI_CTX_TYPE, || {
+              util::with_object_stack_var(&mut self.instance, ui_ctx, &EGUI_CTX_TYPE, || {
                 Ok(unsafe {
                   (*Core).runShards.unwrap()(
                     *contents,
-                    context as *const _ as *mut _,
+                    shards_context as *const _ as *mut _,
                     input,
                     &mut _output,
                   )
@@ -150,7 +151,11 @@ impl EguiHost {
           return Err(e);
         }
 
-        self.full_output = Some(make_native_full_output(&gui_ctx, egui_output, draw_scale)?);
+        self.full_output = Some(make_native_full_output(
+          &ui_ctx.egui_ctx,
+          egui_output,
+          draw_scale,
+        )?);
         Ok(*input)
       }
     }

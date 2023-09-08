@@ -1,31 +1,53 @@
 use std::sync::Arc;
 
+use crate::bindings::SHInstanceData;
 use crate::util;
+use crate::Context as UIContext;
 use crate::EguiId;
 use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
 use egui::epaint;
 use egui::InnerResponse;
 use egui::Rect;
+use egui::Rgba;
 use egui::Shape;
+use egui::Stroke;
 use egui::Vec2;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::*;
 
-pub fn drag_source(ui: &mut egui::Ui, id: egui::Id, body: impl FnOnce(&mut egui::Ui)) {
+pub fn drag_source(
+  ui: &mut egui::Ui,
+  ctx: &UIContext,
+  payload: &Var,
+  id: egui::Id,
+  body: impl FnOnce(&mut egui::Ui),
+) {
+  let is_dropped = ui.input(|i| i.pointer.any_released());
   let is_being_dragged = ui.memory(|mem| mem.is_being_dragged(id));
 
-  if !is_being_dragged {
+  let cursor_already_set =
+    is_dropped || ui.output(|x| x.cursor_icon == egui::CursorIcon::NotAllowed);
+
+  let _response = if !is_being_dragged {
     let response = ui.scope(body).response;
 
     // Check for drags:
     let response = ui.interact(response.rect, id, egui::Sense::drag());
-    if response.hovered() {
+    if response.hovered() && !cursor_already_set {
       ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
     }
+
+    // Store the drag payload
+    if response.drag_started() {
+      ctx.dnd_value.borrow_mut().assign(payload);
+    }
+    response
   } else {
-    ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+    if !cursor_already_set {
+      ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+    }
 
     // Paint the body to a new layer:
     let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
@@ -42,7 +64,8 @@ pub fn drag_source(ui: &mut egui::Ui, id: egui::Id, body: impl FnOnce(&mut egui:
       let delta = pointer_pos - response.rect.center();
       ui.ctx().translate_layer(layer_id, delta);
     }
-  }
+    response
+  };
 }
 
 pub fn drop_target<R>(
@@ -68,22 +91,40 @@ pub fn drop_target<R>(
     ui.visuals().widgets.inactive
   };
 
-  let mut fill = style.bg_fill;
-  let mut stroke = style.bg_stroke;
-  if is_being_dragged && !can_accept_what_is_being_dragged {
-    fill = ui.visuals().gray_out(fill);
-    stroke.color = ui.visuals().gray_out(stroke.color);
-  }
+  if is_being_dragged {
+    let style = ui.visuals().widgets.active;
+    let mut fill: Rgba = style.bg_fill.into();
+    let mut stroke_color = style.bg_stroke.color.into();
+    if !can_accept_what_is_being_dragged {
+      fill = ui.visuals().gray_out(fill.into()).into();
+      stroke_color = Rgba::RED;
 
-  ui.painter().set(
-    where_to_put_background,
-    epaint::RectShape {
-      rect,
-      rounding: style.rounding,
-      stroke,
-      fill: fill.into(),
-    },
-  );
+      if response.hovered() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::NotAllowed);
+      }
+    } else {
+      (fill, stroke_color) = if response.hovered() {
+        (fill * 1.5, Rgba::WHITE)
+      } else {
+        (fill, Rgba::from_gray(0.6))
+      };
+    }
+
+    let mut stroke = Stroke {
+      color: stroke_color.into(),
+      ..style.bg_stroke
+    };
+
+    ui.painter().set(
+      where_to_put_background,
+      epaint::RectShape {
+        rect,
+        rounding: style.rounding,
+        stroke,
+        fill: fill.into(),
+      },
+    );
+  }
 
   InnerResponse::new(ret, response)
 }
@@ -157,11 +198,24 @@ impl Shard for DragDrop {
     shards::util::expose_shards_contents(&mut self.inner_exposed, &self.contents);
     shards::util::require_shards_contents(&mut self.required, &self.contents);
 
-    self.drop_callback.compose(data)?;
+    let drop_data = shards::SHInstanceData {
+      inputType: common_type::any,
+      ..*data
+    };
+    self.drop_callback.compose(&drop_data)?;
     shards::util::require_shards_contents(&mut self.required, &self.drop_callback);
 
-    self.hover_callback.compose(data)?;
-    shards::util::require_shards_contents(&mut self.required, &self.hover_callback);
+    if !self.hover_callback.is_empty() {
+      let hover_data = shards::SHInstanceData {
+        inputType: common_type::any,
+        ..*data
+      };
+      let cr = self.hover_callback.compose(&hover_data)?;
+      if cr.outputType != common_type::bool {
+        return Err("Hover should return a boolean");
+      }
+      shards::util::require_shards_contents(&mut self.required, &self.hover_callback);
+    }
 
     Ok(NONE_TYPES[0])
   }
@@ -178,11 +232,56 @@ impl Shard for DragDrop {
   }
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     let ui = util::get_parent_ui(self.parents.get())?;
+    let ui_ctx = util::get_current_context(&self.contexts)?;
 
-    let r = drag_source(ui, EguiId::new(self, 0).into(), |ui| {
-      util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-        .expect("");
-    });
+    if self.is_drop_target() {
+      let accepts_value = if !self.hover_callback.is_empty() {
+        let cb_input: Var = ui_ctx.dnd_value.borrow().0;
+        if cb_input.is_none() {
+          false
+        } else {
+          let mut accept_value_var = Var::default();
+          if self
+            .hover_callback
+            .activate(context, &cb_input, &mut accept_value_var)
+            == WireState::Error
+          {
+            return Err("Hover callback failed");
+          }
+          (&accept_value_var).try_into().unwrap()
+        }
+      } else {
+        true
+      };
+
+      let inner = drop_target(ui, accepts_value, |ui| {
+        util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          .expect("TODO");
+      });
+
+      let is_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
+      if ui.input(|i| i.pointer.any_released()) {
+        // Reset cursor
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Default);
+        if is_being_dragged && accepts_value && inner.response.hovered() {
+          let cb_input = ui_ctx.dnd_value.take();
+          let mut _unused = Var::default();
+          if self
+            .drop_callback
+            .activate(context, &cb_input.0, &mut _unused)
+            == WireState::Error
+          {
+            return Err("Drop callback failed");
+          }
+        }
+      }
+    } else {
+      let id = EguiId::new(self, 0).into();
+      drag_source(ui, ui_ctx, &input, id, |ui| {
+        util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+          .expect("TODO");
+      })
+    }
 
     Ok(Var::default())
   }

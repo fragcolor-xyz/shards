@@ -120,8 +120,8 @@ impl Shard for PropertyShard {
 
     match (&self.property.0).try_into()? {
       Property::PixelsPerPoint => {
-        let ctx = util::get_current_context(&self.contexts)?;
-        Ok(ctx.pixels_per_point().into())
+        let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
+        Ok(egui_ctx.pixels_per_point().into())
       }
       Property::RemainingSpace => {
         let ui = ui?.ok_or("No parent UI")?;
@@ -138,8 +138,8 @@ impl Shard for PropertyShard {
         Ok(result_rect)
       }
       Property::ScreenSize => {
-        let ctx = util::get_current_context(&self.contexts)?;
-        let size = ctx.screen_rect().size();
+        let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
+        let size = egui_ctx.screen_rect().size();
         Ok((size.x, size.y).into())
       }
     }
