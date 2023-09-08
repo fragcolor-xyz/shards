@@ -1,0 +1,22 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+      ui-draw-queue
+      UI.CentralPanel({
+        Once({
+          "Lorem ipsum dolor sit amet" >= text
+        })
+        UI.TextField(
+          Variable: text
+          Multiline: false
+        )
+      })
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)

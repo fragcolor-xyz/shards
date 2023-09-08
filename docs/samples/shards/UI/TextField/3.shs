@@ -1,0 +1,17 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+      ui-draw-queue
+      UI.CentralPanel({
+        ; exposing a new variable
+        UI.TextField(text)
+      })
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)
