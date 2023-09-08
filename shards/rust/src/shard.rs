@@ -57,7 +57,6 @@ pub trait ShardGenerated {
 pub trait ShardGeneratedOverloads {
   fn has_compose() -> bool;
   fn has_warmup() -> bool;
-  fn has_cleanup() -> bool;
   fn has_mutate() -> bool;
   fn has_crossover() -> bool;
   fn has_get_state() -> bool;
@@ -750,11 +749,7 @@ pub fn create2<T: Default + Shard + ShardGenerated  + ShardGeneratedOverloads>()
         None
       },
       activate: Some(shard_activate::<T>),
-      cleanup: if T::has_cleanup() {
-        Some(shard_cleanup::<T>)
-      } else {
-        None
-      },
+      cleanup: Some(shard_cleanup::<T>),
       mutate: if T::has_mutate() {
         Some(shard_mutate::<T>)
       } else {

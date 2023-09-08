@@ -181,3 +181,6 @@ x | Log
 @table-user(table-123 table-1234)
 table-123 | Log
 table-1234 | Log
+
+Random.Name | Log
+Random.Name(10 " ") | Log
