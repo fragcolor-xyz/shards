@@ -167,9 +167,17 @@ x | Log
 
 [[1 2 3] [2 3 4] [3 4 5]] | Reduce(Math.Add($0)) | Assert.Is([6 9 12]) | Log
 
-@template(table-user [table] {
+@template(table-user [table table-1234] {
   table:key1 | Log
+
+  100 | Set(table "key3")
+  100 | Set(table-1234 "key3")
 })
 
-{key1: 10 key2: 20} = table-123
-@table-user(table-123)
+10 | Set(table-123 "key1")
+20 | Set(table-123 "key2")
+30 | Set(table-1234 "key1")
+40 | Set(table-1234 "key2")
+@table-user(table-123 table-1234)
+table-123 | Log
+table-1234 | Log

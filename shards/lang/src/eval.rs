@@ -828,7 +828,7 @@ fn finalize_wire(
   line_info: LineInfo,
   env: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let name = get_full_name(name, env, true);
+  let (name, _) = get_full_name(name, env, true);
 
   shlog_trace!("Finalizing wire {}", name);
 
@@ -1083,12 +1083,12 @@ fn find_replacement<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Valu
     if let Some(replacement) = env.replacements.get(name) {
       let replacement = *replacement;
       let replacement = unsafe { &*replacement };
-      // prevent infinite recursion
-      if let Value::Identifier(inner_name) = &replacement {
-        if name.as_str() == inner_name.name.as_str() {
-          return None;
-        }
-      }
+      // // prevent infinite recursion
+      // if let Value::Identifier(inner_name) = &replacement {
+      //   if name.as_str() == inner_name.name.as_str() {
+      //     return None;
+      //   }
+      // }
       return Some(replacement);
     }
     if let Some(parent) = env.parent {
@@ -1156,19 +1156,15 @@ fn as_var(
       } else if let Some(mesh) = find_mesh(name, e) {
         Ok(SVar::NotCloned(mesh.0 .0))
       } else if let Some(replacement) = find_replacement(name, e) {
+        if let Value::Identifier(current) = replacement {
+          if current.name.as_str() == name.name.as_str() {
+            // prevent infinite recursion
+            return Ok(qualify_variable(name, e));
+          }
+        }
         as_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
       } else {
-        let full_name = get_full_name(name, e, false);
-        if let Some(suffix) = find_suffix(&full_name, e) {
-          let name = format!("{}{}", full_name, suffix);
-          let mut s = Var::ephemeral_string(name.as_str());
-          s.valueType = SHType_ContextVar;
-          Ok(SVar::Cloned(s.into()))
-        } else {
-          let mut s = Var::ephemeral_string(full_name.as_str());
-          s.valueType = SHType_ContextVar;
-          Ok(SVar::NotCloned(s))
-        }
+        Ok(qualify_variable(name, e))
       }
     }
     Value::Enum(prefix, value) => {
@@ -1449,6 +1445,20 @@ fn as_var(
   }
 }
 
+fn qualify_variable(name: &Identifier, e: &mut EvalEnv) -> SVar {
+  let (full_name, _) = get_full_name(name, e, false);
+  if let Some(suffix) = find_suffix(&full_name, e) {
+    let name = format!("{}{}", full_name, suffix);
+    let mut s = Var::ephemeral_string(name.as_str());
+    s.valueType = SHType_ContextVar;
+    SVar::Cloned(s.into())
+  } else {
+    let mut s = Var::ephemeral_string(full_name.as_str());
+    s.valueType = SHType_ContextVar;
+    SVar::NotCloned(s)
+  }
+}
+
 fn process_platform_built_in() -> Var {
   if cfg!(target_os = "android") {
     Var::ephemeral_string("android")
@@ -1467,23 +1477,31 @@ fn process_platform_built_in() -> Var {
   }
 }
 
-fn get_full_name<'a>(name: &'a Identifier, e: &'a mut EvalEnv, should_find_replacement: bool) -> RcStrWrapper {
-  let name = if should_find_replacement {
-    find_replacement_identifier(name, e).unwrap_or(name)
+fn get_full_name<'a>(
+  name: &'a Identifier,
+  e: &'a mut EvalEnv,
+  should_find_replacement: bool,
+) -> (RcStrWrapper, bool) {
+  let (name, is_replacement) = if should_find_replacement {
+    if let Some(replacement) = find_replacement_identifier(name, e) {
+      (replacement, true)
+    } else {
+      (name, false)
+    }
   } else {
-    name
+    (name, false)
   };
   if let Some(full_name) = e.qualified_cache.get(name) {
-    full_name.clone()
+    (full_name.clone(), is_replacement)
   } else if name.namespaces.is_empty() {
     let full_name = combine_namespaces(&name.name, &e.full_namespace);
     let full_name = RcStrWrapper::new(full_name.as_str());
     e.qualified_cache.insert(name.clone(), full_name.clone());
-    full_name
+    (full_name, is_replacement)
   } else {
     let full_name = name.resolve();
     e.qualified_cache.insert(name.clone(), full_name.clone());
-    full_name
+    (full_name, is_replacement)
   }
 }
 
@@ -1891,8 +1909,13 @@ fn set_shard_parameter(
     if var_value.as_ref().valueType != SHType_ContextVar {
       panic!("Expected a context variable") // The actual Shard is violating the standard - panic here
     }
-    let full_name = get_full_name(name, env, true);
-    let suffix = find_current_suffix(env);
+    let (full_name, is_replacement) = get_full_name(name, env, true);
+    let suffix = if !is_replacement {
+      // suffix is only relevant if we are not a replacement
+      find_current_suffix(env)
+    } else {
+      None
+    };
     if let Some(suffix) = suffix {
       // fix up the value to be a suffixed variable if we have a suffix
       let new_name = format!("{}{}", full_name, suffix);
@@ -2083,8 +2106,14 @@ fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
 fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Get", Some(line.into())).unwrap();
   let shard = AutoShardRef(shard);
-  let full_name = get_full_name(name, e, true);
-  if let Some(suffix) = find_suffix(&full_name, e) {
+  let (full_name, is_replacement) = get_full_name(name, e, true);
+  let suffix = if !is_replacement {
+    // suffix is only relevant if we are not a replacement
+    find_suffix(&full_name, e)
+  } else {
+    None
+  };
+  if let Some(suffix) = suffix {
     let name = format!("{}{}", full_name, suffix);
     let name = Var::ephemeral_string(&name);
     shard
@@ -2578,7 +2607,7 @@ fn eval_pipeline(
               }
 
               let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
-              let wire_name = get_full_name(&name, e, true);
+              let (wire_name, _) = get_full_name(&name, e, true);
               shlog_trace!("Adding deferred wire {}", wire_name);
               e.deferred_wires.insert(
                 name,
@@ -3208,16 +3237,21 @@ fn add_assignment_shard(
 ) -> Result<(), ShardsError> {
   let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap();
   let shard = AutoShardRef(shard);
-  let full_name = get_full_name(name, e, true);
-  let suffix = if shard_name != "Update" {
-    find_current_suffix(e) // this case we add the current suffix
+  let (full_name, is_replacement) = get_full_name(name, e, true);
+  let suffix = if !is_replacement {
+    // suffix is only relevant if we are not a replacement
+    if shard_name != "Update" {
+      find_current_suffix(e) // this case we add the current suffix
+    } else {
+      find_suffix(&full_name, e) // this case we want to find a suffix if there is one
+    }
   } else {
-    find_suffix(&full_name, e) // this case we want to find a suffix if there is one
+    None
   };
   let (assigned, suffix) = match (find_replacement(name, e), suffix) {
     (Some(Value::Identifier(name)), _) => {
       let name = name.clone();
-      let full_name = get_full_name(&name, e, true);
+      let (full_name, _) = get_full_name(&name, e, true);
       let name = Var::ephemeral_string(full_name.as_str());
       shard
         .0
