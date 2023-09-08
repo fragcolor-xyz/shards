@@ -1,5 +1,3 @@
-@mesh(main)
-@wire(run-sample {
 GFX.MainWindow(
   Contents: {
     Once({
@@ -43,21 +41,21 @@ GFX.MainWindow(
           Anchor: Anchor::TopRight
           Order: Order::Foreground
           Contents: {
-            "3rd Highest: Foreground" | UI.Label
+            "3rd Highest: Foreground" | UI.Label(Wrap: false)
           }
         )
         UI.Area(
           Anchor: Anchor::Right
           Order: Order::Tooltip
           Contents: {
-            "2nd Highest: Tooltip" | UI.Label
+            "2nd Highest: Tooltip" | UI.Label(Wrap: false)
           }
         )
         UI.Area(
           Anchor: Anchor::BottomRight
           Order: Order::Debug
           Contents: {
-            "Highest: Debug" | UI.Label
+            "Highest: Debug" | UI.Label(Wrap: false)
           }
         )
       }
@@ -65,7 +63,3 @@ GFX.MainWindow(
     GFX.Render(Steps: render-steps)
   }
 )
-} Looped: true) ; Cannot set option for this, cannot take Boolean variable
-
-@schedule(main run-sample)
-@run(main FPS: 60 Iterations: 1200)
