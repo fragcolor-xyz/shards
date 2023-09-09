@@ -2462,9 +2462,9 @@ fn eval_pipeline(
         eval_expr(seq, e, block, start_idx, cancellation_token.clone())?;
         Ok(())
       }
-      BlockContent::Embed(seq) => {
+      BlockContent::Program(p) => {
         // purely include the ast of the sequence
-        for stmt in &seq.statements {
+        for stmt in &p.sequence.statements {
           eval_statement(stmt, e, cancellation_token.clone())?;
         }
         Ok(())
