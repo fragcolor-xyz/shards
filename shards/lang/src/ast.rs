@@ -205,7 +205,7 @@ pub enum BlockContent {
   EvalExpr(Sequence),                       // Rule: EvalExpr
   Expr(Sequence),                           // Rule: Expr
   Func(Function),                           // Rule: BuiltIn
-  Embed(Sequence), // This is a sequence that will include itself when evaluated
+  Program(Program), // @include files, this is a sequence that will include itself when evaluated
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -234,6 +234,17 @@ pub enum Statement {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Metadata {
+  pub name: RcStrWrapper,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sequence {
   pub statements: Vec<Statement>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Program {
+  pub sequence: Sequence,
+  pub metadata: Metadata,
 }

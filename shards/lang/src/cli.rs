@@ -233,7 +233,7 @@ fn build(matches: &ArgMatches, as_json: bool) -> i32 {
     // get absolute parent path of the file
     let parent_path = file_path.parent().unwrap().to_str().unwrap();
 
-    let mut env = ReadEnv::new(parent_path);
+    let mut env = ReadEnv::new(file_path.to_str().unwrap(), parent_path);
     let ast = read_with_env(&file_content, &mut env).expect("Failed to parse file");
     (
       get_dependencies(&env)
@@ -320,8 +320,8 @@ fn execute(matches: &clap::ArgMatches, cancellation_token: Arc<AtomicBool>) -> i
     // set it as root path
     unsafe { (*Core).setRootPath.unwrap()(c_parent_path.as_ptr() as *const c_char) };
 
-    read(&file_content, parent_path).expect("Failed to parse file")
+    read(&file_content, file_path.to_str().unwrap(), parent_path).expect("Failed to parse file")
   };
 
-  execute_seq(matches, ast, cancellation_token)
+  execute_seq(matches, ast.sequence, cancellation_token)
 }

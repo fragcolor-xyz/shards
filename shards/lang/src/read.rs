@@ -12,6 +12,7 @@ use std::collections::HashSet;
 use std::path::Path;
 
 pub struct ReadEnv {
+  name: RcStrWrapper,
   directory: String,
   included: HashSet<RcStrWrapper>,
   dependencies: Vec<String>,
@@ -19,8 +20,9 @@ pub struct ReadEnv {
 }
 
 impl ReadEnv {
-  pub(crate) fn new(directory: &str) -> Self {
+  pub(crate) fn new(name: &str, directory: &str) -> Self {
     Self {
+      name: name.into(),
       directory: directory.to_string(),
       included: HashSet::new(),
       dependencies: Vec::new(),
@@ -265,7 +267,7 @@ fn process_vector(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsEr
 enum FunctionValue {
   Const(Value),
   Function(Function),
-  Sequence(Sequence),
+  Program(Program),
 }
 
 fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue, ShardsError> {
@@ -399,6 +401,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             let successful_parse = ShardsParser::parse(Rule::Program, &code)
               .map_err(|e| (format!("Failed to parse file {:?}: {}", file_path, e), pos).into())?;
             let mut sub_env: ReadEnv = ReadEnv::new(
+              file_path.to_str().unwrap(),
               parent
                 .to_str()
                 .ok_or(
@@ -411,9 +414,10 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
                 .into(),
             );
             sub_env.parent = Some(env);
-            let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut sub_env)?;
+            let program =
+              process_program(successful_parse.into_iter().next().unwrap(), &mut sub_env)?;
 
-            Ok(FunctionValue::Sequence(seq))
+            Ok(FunctionValue::Program(program))
           }
           "read" => {
             let params = params.ok_or(("Expected 2 parameters", pos).into())?;
@@ -598,8 +602,8 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           content: BlockContent::Shard(func),
           line_info: Some(pos.into()),
         }),
-        FunctionValue::Sequence(seq) => blocks.push(Block {
-          content: BlockContent::Expr(seq),
+        FunctionValue::Program(program) => blocks.push(Block {
+          content: BlockContent::Program(program),
           line_info: Some(pos.into()),
         }),
       },
@@ -612,8 +616,8 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           content: BlockContent::Func(func),
           line_info: Some(pos.into()),
         }),
-        FunctionValue::Sequence(seq) => blocks.push(Block {
-          content: BlockContent::Embed(seq),
+        FunctionValue::Program(program) => blocks.push(Block {
+          content: BlockContent::Program(program),
           line_info: Some(pos.into()),
         }),
       },
@@ -676,16 +680,18 @@ pub(crate) fn process_sequence(
   Ok(Sequence { statements })
 }
 
-pub(crate) fn process_program(
-  pair: Pair<Rule>,
-  env: &mut ReadEnv,
-) -> Result<Sequence, ShardsError> {
+pub(crate) fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Program, ShardsError> {
   let pos = pair.as_span().start_pos();
   if pair.as_rule() != Rule::Program {
     return Err(("Expected a Program rule, but found a different rule.", pos).into());
   }
   let pair = pair.into_inner().next().unwrap();
-  process_sequence(pair, env)
+  Ok(Program {
+    sequence: process_sequence(pair, env)?,
+    metadata: Metadata {
+      name: env.name.clone(),
+    },
+  })
 }
 
 fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsError> {
@@ -939,7 +945,7 @@ fn process_params(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Vec<Param>, Sha
   pair.into_inner().map(|x| process_param(x, env)).collect()
 }
 
-pub fn read_with_env(code: &str, env: &mut ReadEnv) -> Result<Sequence, ShardsError> {
+pub fn read_with_env(code: &str, env: &mut ReadEnv) -> Result<Program, ShardsError> {
   let successful_parse: pest::iterators::Pairs<'_, Rule> = {
     ShardsParser::parse(Rule::Program, code).map_err(|e| {
       (
@@ -952,8 +958,8 @@ pub fn read_with_env(code: &str, env: &mut ReadEnv) -> Result<Sequence, ShardsEr
   process_program(successful_parse.into_iter().next().unwrap(), env)
 }
 
-pub fn read(code: &str, path: &str) -> Result<Sequence, ShardsError> {
-  let mut env = ReadEnv::new(path);
+pub fn read(code: &str, name: &str, path: &str) -> Result<Program, ShardsError> {
+  let mut env = ReadEnv::new(name, path);
   read_with_env(&code, &mut env)
 }
 
@@ -1046,11 +1052,14 @@ impl LegacyShard for ReadShard {
       "Failed to parse Shards code"
     })?;
 
-    let seq =
-      process_program(parsed.into_iter().next().unwrap(), &mut ReadEnv::new(".")).map_err(|e| {
-        shlog_error!("Failed to process shards code: {:?}", e);
-        "Failed to tokenize Shards code"
-      })?;
+    let seq = process_program(
+      parsed.into_iter().next().unwrap(),
+      &mut ReadEnv::new("", "."),
+    )
+    .map_err(|e| {
+      shlog_error!("Failed to process shards code: {:?}", e);
+      "Failed to tokenize Shards code"
+    })?;
 
     if self.as_json {
       // Serialize using json
@@ -1082,7 +1091,7 @@ fn test_parsing1() {
   // let code = include_str!("nested.shs");
   let code = include_str!("sample1.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let mut env = ReadEnv::new(".");
+  let mut env = ReadEnv::new("", ".");
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
 
   // Serialize using bincode
@@ -1109,7 +1118,7 @@ fn test_parsing1() {
 fn test_parsing2() {
   let code = include_str!("explained.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let mut env = ReadEnv::new(".");
+  let mut env = ReadEnv::new("", ".");
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
 
   // Serialize using bincode

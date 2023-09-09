@@ -245,12 +245,13 @@ pub extern "C" fn shards_init(core: *mut shards::shardsc::SHCore) {
 }
 
 #[no_mangle]
-pub extern "C" fn shards_read(code: SHStringWithLen) -> SHLAst {
+pub extern "C" fn shards_read(name: SHStringWithLen, code: SHStringWithLen) -> SHLAst {
+  let name: &str = name.into();
   let code = code.into();
-  let result = catch_unwind(|| read::read(code, "."));
+  let result = catch_unwind(|| read::read(code, name, "."));
   match result {
-    Ok(Ok(sequence)) => SHLAst {
-      ast: Box::into_raw(Box::new(sequence)),
+    Ok(Ok(p)) => SHLAst {
+      ast: Box::into_raw(Box::new(p.sequence)),
       error: std::ptr::null_mut(),
     },
     Ok(Err(error)) => {
