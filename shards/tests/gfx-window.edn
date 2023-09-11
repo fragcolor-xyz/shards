@@ -1,9 +1,0 @@
-(def timestep (/ 1.0 120.0))
-(defmesh Root)
-(defloop test-wire
-   :Looped
-   (GFX.MainWindow
-    :Title "SDL Window" :Width 1280 :Height 720 ))
-
-(schedule Root test-wire)
-(if (run Root timestep 100) nil (throw "Root tick failed"))
