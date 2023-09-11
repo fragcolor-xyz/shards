@@ -956,6 +956,21 @@ impl LegacyShard for Layout {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.requiring.clear();
+    
+    if !self.layout_class.is_variable() {
+      return Err("Class parameter is required");
+    }
+
+    self.requiring.push(ExposedInfo::new_with_help_from_ptr(
+      self.layout_class.get_name(),
+      shccstr!("The required layout class."),
+      *LAYOUTCLASS_TYPE,
+    ));
+
+    // Add UI.Parents to the list of required variables
+    util::require_parents(&mut self.requiring);
+
     if !self.contents.is_empty() {
       self.contents.compose(data)?;
     }
