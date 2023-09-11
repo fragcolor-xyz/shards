@@ -119,7 +119,7 @@ jobs:
           ./shards new ../shards/tests/genetic.shs
           ./shards new ../shards/tests/imaging.shs
           ./shards new ../shards/tests/http.shs
-          ./shards ../shards/tests/ws.edn
+          ./shards new ../shards/tests/ws.shs
           ./shards new ../shards/tests/bigint.shs
           ./shards new ../shards/tests/brotli.shs
           ./shards new ../shards/tests/snappy.shs
@@ -141,7 +141,7 @@ jobs:
           ./shards ../shards/tests/many.edn
           ./shards new ../shards/tests/events.shs
           ./shards new ../shards/tests/tablecase.shs
-          ./shards ../shards/tests/types.edn
+          ./shards new ../shards/tests/types.shs
           ./shards new ../shards/tests/complex-deserialize.shs
           ./shards new ../shards/tests/db.shs
           ./shards new ../shards/tests/suspend-resume.shs
