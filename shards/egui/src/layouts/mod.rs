@@ -56,6 +56,7 @@ struct Grid {
   requiring: ExposedTypes,
   contents: ShardsVar,
   striped: ParamVar,
+  num_columns: ParamVar,
   min_width: ParamVar,
   max_width: ParamVar,
   spacing: ParamVar,
