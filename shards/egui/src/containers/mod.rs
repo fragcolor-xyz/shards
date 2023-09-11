@@ -88,6 +88,8 @@ struct Window {
   anchor: ParamVar,
   width: ParamVar,
   height: ParamVar,
+  closable: ParamVar,
+  open: ParamVar,
   flags: ParamVar,
   contents: ShardsVar,
   parents: ParamVar,
