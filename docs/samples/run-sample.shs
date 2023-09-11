@@ -1,7 +1,7 @@
 @wire(sample-launcher {
   WireRunner(sample-wire)
   When(Is("END") Stop)
-} Looped: true)
+} Looped: true StackSize: #(4 | Math.Multiply(1024) | Math.Multiply(1024)))
 
 @wire(open-sample {
   #(@file | FS.Read | Shards.Read) | Await(Shards.Distill("sample-wire")) = sample-wire
