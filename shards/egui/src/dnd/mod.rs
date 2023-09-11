@@ -150,7 +150,7 @@ struct DragDrop {
   hover_callback: ShardsVar,
   #[shard_param(
     "Drop",
-    "Callback function for when something is dropped.",
+    "Callback function for when something is dropped. When set, this element will act as a drop target. When unset, it will act as a drag source.",
     SHARDS_OR_NONE_TYPES
   )]
   drop_callback: ShardsVar,
