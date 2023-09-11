@@ -8,6 +8,7 @@ use crate::Anchor;
 use crate::containers::SEQ_OF_WINDOW_FLAGS;
 use crate::containers::WINDOW_FLAGS_TYPE;
 use crate::util;
+use crate::BOOL_VAR_SLICE;
 use crate::CONTEXTS_NAME;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
@@ -21,6 +22,7 @@ use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::Parameters;
+use shards::types::BOOL_OR_NONE_SLICE;
 
 use shards::types::Seq;
 use shards::types::ShardsVar;
@@ -67,6 +69,18 @@ lazy_static! {
     )
       .into(),
     (
+      cstr!("Closable"),
+      shccstr!("Whether the window will have a close button in its window title bar."),
+      BOOL_OR_NONE_SLICE,
+    )
+      .into(),
+    (
+      cstr!("Open"),
+      shccstr!("Whether the window is open and being shown, or hidden."),
+      BOOL_VAR_SLICE,
+    )
+      .into(),
+    (
       cstr!("Flags"),
       shccstr!("Window flags."),
       &WINDOW_FLAGS_OR_SEQ_TYPES[..],
@@ -101,6 +115,8 @@ impl Default for Window {
       anchor: ParamVar::default(),
       width: ParamVar::default(),
       height: ParamVar::default(),
+      closable: ParamVar::default(),
+      open: ParamVar::default(),
       flags: ParamVar::default(),
       contents: ShardsVar::default(),
       parents,
@@ -164,9 +180,11 @@ impl LegacyShard for Window {
       2 => self.anchor.set_param(value),
       3 => self.width.set_param(value),
       4 => self.height.set_param(value),
-      5 => self.flags.set_param(value),
-      6 => self.contents.set_param(value),
-      7 => self.id.set_param(value),
+      5 => self.closable.set_param(value),
+      6 => self.open.set_param(value),
+      7 => self.flags.set_param(value),
+      8 => self.contents.set_param(value),
+      9 => self.id.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -178,9 +196,11 @@ impl LegacyShard for Window {
       2 => self.anchor.get_param(),
       3 => self.width.get_param(),
       4 => self.height.get_param(),
-      5 => self.flags.get_param(),
-      6 => self.contents.get_param(),
-      7 => self.id.get_param(),
+      5 => self.closable.get_param(),
+      6 => self.open.get_param(),
+      7 => self.flags.get_param(),
+      8 => self.contents.get_param(),
+      9 => self.id.get_param(),
       _ => Var::default(),
     }
   }
@@ -226,6 +246,8 @@ impl LegacyShard for Window {
     self.anchor.warmup(ctx);
     self.width.warmup(ctx);
     self.height.warmup(ctx);
+    self.closable.warmup(ctx);
+    self.open.warmup(ctx);
     self.flags.warmup(ctx);
     if !self.contents.is_empty() {
       self.contents.warmup(ctx)?;
@@ -242,6 +264,8 @@ impl LegacyShard for Window {
       self.contents.cleanup();
     }
     self.flags.cleanup();
+    self.open.cleanup();
+    self.closable.cleanup();
     self.height.cleanup();
     self.width.cleanup();
     self.anchor.cleanup();
@@ -305,6 +329,21 @@ impl LegacyShard for Window {
           .min_height(height as f32)
           .default_height(height as f32)
       }
+
+      let closable = self.closable.get();
+      if !closable.is_none() {
+        let closable: bool = closable.try_into()?;
+
+        if closable {
+          // if close button is enabled, it must be provided with a state variable for tracking whether window is open
+          // this open variable is to provide a way for other Shards to be notified of the window being closed
+          if !self.open.is_variable() {
+            return Err("Window: open variable required when closable is true");
+          } else {
+            window = window.open(self.open.get_mut().try_into()?);
+          }
+        }
+      } // else, if no closable provided, then default to false, which does nothing
 
       for bits in Window::try_get_flags(self.flags.get())? {
         match (WindowFlags { bits }) {
