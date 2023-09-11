@@ -35,17 +35,19 @@ use shards::SHType_Enum;
   "Identifies UI properties to retrieve from the UI context"
 )]
 pub enum Property {
-  #[enum_value("Return the remaining space within an UI widget.")]
+  #[enum_value("Return the remaining space within an UI widget. (float4)")]
   RemainingSpace = 0x0,
-  #[enum_value("The screen size of the UI.")]
+  #[enum_value("The screen size of the UI. (float2)")]
   ScreenSize = 0x1,
-  #[enum_value("The amounts of pixels that correspond to 1 UI point.")]
+  #[enum_value("The amounts of pixels that correspond to 1 UI point. (float)")]
   PixelsPerPoint = 0x2,
+  #[enum_value("Returns true when anything is being dragged. (bool)")]
+  IsAnythingBeingDragged = 0x3,
 }
 
 lazy_static! {
   static ref OUTPUT_TYPES: Types =
-    vec![common_type::float4, common_type::float2, common_type::float];
+    vec![common_type::float4, common_type::float2, common_type::float, common_type::bool];
 }
 
 #[derive(shards::shard)]
@@ -112,6 +114,7 @@ impl Shard for PropertyShard {
       Property::RemainingSpace => Ok(common_type::float4),
       Property::ScreenSize => Ok(common_type::float2),
       Property::PixelsPerPoint => Ok(common_type::float),
+      Property::IsAnythingBeingDragged => Ok(common_type::bool),
     }
   }
 
@@ -141,6 +144,11 @@ impl Shard for PropertyShard {
         let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
         let size = egui_ctx.screen_rect().size();
         Ok((size.x, size.y).into())
+      }
+      Property::IsAnythingBeingDragged => {
+        let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
+        let is_dragging = egui_ctx.memory(|x| x.is_anything_being_dragged());
+        Ok(is_dragging.into())
       }
     }
   }
