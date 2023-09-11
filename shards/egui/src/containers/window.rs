@@ -3,11 +3,11 @@
 
 use super::Window;
 use super::WindowFlags;
-use crate::ANCHOR_TYPES;
-use crate::Anchor;
 use crate::containers::SEQ_OF_WINDOW_FLAGS;
 use crate::containers::WINDOW_FLAGS_TYPE;
 use crate::util;
+use crate::Anchor;
+use crate::ANCHOR_TYPES;
 use crate::BOOL_VAR_SLICE;
 use crate::CONTEXTS_NAME;
 use crate::FLOAT2_VAR_SLICE;
@@ -280,108 +280,109 @@ impl LegacyShard for Window {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let gui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
+    let open: bool = self.open.get().try_into()?;
+    if open {
+      let gui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
 
-    let mut failed = false;
-    if !self.contents.is_empty() {
-      let title: &str = self.title.get().try_into()?;
-      let mut window = egui::Window::new(title);
+      let mut failed = false;
+      if !self.contents.is_empty() {
+        let title: &str = self.title.get().try_into()?;
+        let mut window = egui::Window::new(title);
 
-      if let Ok(id) = <&str>::try_from(self.id.get()) {
-        let id = self.cached_id.get_or_insert_with(|| egui::Id::new(id));
-        window = window.id(*id);
-      }
-
-      window = if self.anchor.get().is_none() {
-        // note: in egui the position is relative to the top-left corner of the whole UI
-        // but a window is constrained by the available rect of the central panel.
-        // Thus, we offset it to make it more intuitive for users.
-        // i.e. the position is now relative to the top-left corner of the central panel.
-        let position = self.position.get();
-        if !position.is_none() {
-          let pos: (f32, f32) = self.position.get().try_into()?;
-          let rect = gui_ctx.available_rect();
-          window.default_pos(egui::Pos2 {
-            x: pos.0 + rect.min.x,
-            y: pos.1 + rect.min.y,
-          })
-        } else {
-          window
+        if let Ok(id) = <&str>::try_from(self.id.get()) {
+          let id = self.cached_id.get_or_insert_with(|| egui::Id::new(id));
+          window = window.id(*id);
         }
-      } else {
-        let offset: (f32, f32) = self.position.get().try_into().unwrap_or_default();
-        let anchor: Anchor = self.anchor.get().try_into()?;
-        window.anchor(anchor.into(),
-          offset,
-        )
-      };
 
-      let width = self.width.get();
-      if !width.is_none() {
-        let width: i64 = width.try_into()?;
-        window = window.min_width(width as f32).default_width(width as f32);
-      }
-
-      let height = self.height.get();
-      if !height.is_none() {
-        let height: i64 = height.try_into()?;
-        window = window
-          .min_height(height as f32)
-          .default_height(height as f32)
-      }
-
-      let closable = self.closable.get();
-      if !closable.is_none() {
-        let closable: bool = closable.try_into()?;
-
-        if closable {
-          // if close button is enabled, it must be provided with a state variable for tracking whether window is open
-          // this open variable is to provide a way for other Shards to be notified of the window being closed
-          if !self.open.is_variable() {
-            return Err("Window: open variable required when closable is true");
+        window = if self.anchor.get().is_none() {
+          // note: in egui the position is relative to the top-left corner of the whole UI
+          // but a window is constrained by the available rect of the central panel.
+          // Thus, we offset it to make it more intuitive for users.
+          // i.e. the position is now relative to the top-left corner of the central panel.
+          let position = self.position.get();
+          if !position.is_none() {
+            let pos: (f32, f32) = self.position.get().try_into()?;
+            let rect = gui_ctx.available_rect();
+            window.default_pos(egui::Pos2 {
+              x: pos.0 + rect.min.x,
+              y: pos.1 + rect.min.y,
+            })
           } else {
-            window = window.open(self.open.get_mut().try_into()?);
+            window
           }
-        }
-      } // else, if no closable provided, then default to false, which does nothing
+        } else {
+          let offset: (f32, f32) = self.position.get().try_into().unwrap_or_default();
+          let anchor: Anchor = self.anchor.get().try_into()?;
+          window.anchor(anchor.into(), offset)
+        };
 
-      for bits in Window::try_get_flags(self.flags.get())? {
-        match (WindowFlags { bits }) {
-          WindowFlags::NoTitleBar => {
-            window = window.title_bar(false);
-          }
-          WindowFlags::NoResize => {
-            window = window.resizable(false);
-          }
-          WindowFlags::Scrollbars => {
-            window = window.scroll2([true, true]);
-          }
-          WindowFlags::NoCollapse => {
-            window = window.collapsible(false);
-          }
-          WindowFlags::Immovable => {
-            window = window.movable(false);
-          }
-          _ => (),
-        }
-      }
-
-      window.show(gui_ctx, |ui| {
+        let width = self.width.get();
         if !width.is_none() {
-          ui.set_width(ui.available_width());
+          let width: i64 = width.try_into()?;
+          window = window.min_width(width as f32).default_width(width as f32);
         }
-        if !height.is_none() {
-          ui.set_height(ui.available_height());
-        }
-        if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-          .is_err()
-        {
-          failed = true;
-        }
-      });
 
-      if failed {
-        return Err("Failed to activate window contents");
+        let height = self.height.get();
+        if !height.is_none() {
+          let height: i64 = height.try_into()?;
+          window = window
+            .min_height(height as f32)
+            .default_height(height as f32)
+        }
+
+        let closable = self.closable.get();
+        if !closable.is_none() {
+          let closable: bool = closable.try_into()?;
+
+          if closable {
+            // if close button is enabled, it must be provided with a state variable for tracking whether window is open
+            // this open variable is to provide a way for other Shards to be notified of the window being closed
+            if !self.open.is_variable() {
+              return Err("Window: open variable required when closable is true");
+            } else {
+              window = window.open(self.open.get_mut().try_into()?);
+            }
+          }
+        } // else, if no closable provided, then default to false, which does nothing
+
+        for bits in Window::try_get_flags(self.flags.get())? {
+          match (WindowFlags { bits }) {
+            WindowFlags::NoTitleBar => {
+              window = window.title_bar(false);
+            }
+            WindowFlags::NoResize => {
+              window = window.resizable(false);
+            }
+            WindowFlags::Scrollbars => {
+              window = window.scroll2([true, true]);
+            }
+            WindowFlags::NoCollapse => {
+              window = window.collapsible(false);
+            }
+            WindowFlags::Immovable => {
+              window = window.movable(false);
+            }
+            _ => (),
+          }
+        }
+
+        window.show(gui_ctx, |ui| {
+          if !width.is_none() {
+            ui.set_width(ui.available_width());
+          }
+          if !height.is_none() {
+            ui.set_height(ui.available_height());
+          }
+          if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+            .is_err()
+          {
+            failed = true;
+          }
+        });
+
+        if failed {
+          return Err("Failed to activate window contents");
+        }
       }
     }
 
