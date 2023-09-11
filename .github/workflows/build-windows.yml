@@ -249,7 +249,7 @@ jobs:
           echo "Running test: flows"
           ./shards new ../shards/tests/flows.shs
           echo "Running test: kdtree"
-          ./shards ../shards/tests/kdtree.clj
+          ./shards new ../shards/tests/kdtree.shs
           echo "Running test: channels"
           ./shards new ../shards/tests/channels.shs
           echo "Running test: http"
