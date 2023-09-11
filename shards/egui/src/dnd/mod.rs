@@ -134,7 +134,7 @@ pub fn drop_target<R>(
 }
 
 #[derive(shards::shard)]
-#[shard_info("UI.DND", "Drag and drop source & target.")]
+#[shard_info("UI.DragAndDrop", "Drag and drop source & target.")]
 struct DragDrop {
   #[shard_param(
     "Contents",

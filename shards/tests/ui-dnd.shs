@@ -21,7 +21,7 @@
 
       When({UI.Property(UIProperty::IsAnythingBeingDragged)} {
         UI.Absolute(Contents: {
-          UI.DND({
+          UI.DragAndDrop({
             UI.Layout(Class: ui-class FillWidth: true FillHeight: true)
           }
           Drop: {
@@ -32,7 +32,7 @@
 
       UI.Absolute(Contents: {
         Once({ null | Expect(@type(Type::Any)) >= dropped-item })
-        UI.DND({
+        UI.DragAndDrop({
           UI.Frame(
           InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
           FillColor: @color(40 40 40)
@@ -57,7 +57,7 @@
 
       Once({ null | Expect(@type(Type::Any)) >= dropped-item-2 })
       UI.Absolute(Contents: {
-        UI.DND({
+        UI.DragAndDrop({
           UI.Frame(
           InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
           FillColor: @color(50 50 21)
@@ -79,7 +79,7 @@
       UI.Absolute(Contents: {
         items | DoMany({
           ExpectTable = item
-          UI.DND({
+          UI.DragAndDrop({
             "Select " >= label
             item:name | ExpectString | AppendTo(label)
             UI.Button(label { "Hi" Log })
