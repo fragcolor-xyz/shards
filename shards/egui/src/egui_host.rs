@@ -120,7 +120,7 @@ impl EguiHost {
         let draw_scale = raw_input.pixels_per_point.unwrap_or(1.0);
 
         let mut error: Option<&str> = None;
-        let egui_output = ui_ctx.egui_ctx.run(raw_input, |ctx| {
+        let egui_output = ui_ctx.egui_ctx.run(raw_input, |_ctx| {
           error = (|| -> Result<(), &str> {
             // Push empty parent UI in case this context is nested inside another UI
             let wire_state: WireState = util::with_none_var(&mut self.parents, || {

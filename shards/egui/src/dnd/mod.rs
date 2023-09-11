@@ -17,21 +17,22 @@ use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::*;
 
-pub fn drag_source(
+pub fn drag_source<R>(
   ui: &mut egui::Ui,
   ctx: &UIContext,
   payload: &Var,
   id: egui::Id,
-  body: impl FnOnce(&mut egui::Ui),
-) {
+  body: impl FnOnce(&mut egui::Ui) -> R,
+) -> InnerResponse<R> {
   let is_dropped = ui.input(|i| i.pointer.any_released());
   let is_being_dragged = ui.memory(|mem| mem.is_being_dragged(id));
 
   let cursor_already_set =
     is_dropped || ui.output(|x| x.cursor_icon == egui::CursorIcon::NotAllowed);
 
-  let _response = if !is_being_dragged {
-    let response = ui.scope(body).response;
+  if !is_being_dragged {
+    let inner = ui.scope(body);
+    let response = &inner.response;
 
     // Check for drags:
     let response = ui.interact(response.rect, id, egui::Sense::drag());
@@ -43,15 +44,17 @@ pub fn drag_source(
     if response.drag_started() {
       ctx.dnd_value.borrow_mut().assign(payload);
     }
-    response
+
+    inner
   } else {
     if !cursor_already_set {
       ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
-    }
+    } 
 
     // Paint the body to a new layer:
     let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
-    let response = ui.with_layer_id(layer_id, body).response;
+    let inner = ui.with_layer_id(layer_id, body);
+    let response = &inner.response;
 
     // Now we move the visuals of the body to where the mouse is.
     // Normally you need to decide a location for a widget first,
@@ -64,8 +67,9 @@ pub fn drag_source(
       let delta = pointer_pos - response.rect.center();
       ui.ctx().translate_layer(layer_id, delta);
     }
-    response
-  };
+
+    inner
+  }
 }
 
 pub fn drop_target<R>(
@@ -188,15 +192,19 @@ impl Shard for DragDrop {
     &ANY_TYPES
   }
   fn output_types(&mut self) -> &Types {
-    &NONE_TYPES
+    &ANY_TYPES
   }
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.inner_exposed.clear();
     self.compose_helper(data)?;
 
-    self.inner_exposed.clear();
-    self.contents.compose(data)?;
-    shards::util::expose_shards_contents(&mut self.inner_exposed, &self.contents);
-    shards::util::require_shards_contents(&mut self.required, &self.contents);
+    if self.contents.is_empty() {
+      return Err("Contents are required");
+    }
+
+    let contents_composed = self.contents.compose(data)?;
+    shards::util::merge_exposed_types(&mut self.inner_exposed, &contents_composed.exposedInfo);
+    shards::util::merge_exposed_types(&mut self.required, &contents_composed.requiredInfo);
 
     let drop_data = shards::SHInstanceData {
       inputType: common_type::any,
@@ -217,7 +225,7 @@ impl Shard for DragDrop {
       shards::util::require_shards_contents(&mut self.required, &self.hover_callback);
     }
 
-    Ok(NONE_TYPES[0])
+    Ok(contents_composed.outputType)
   }
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.warmup_helper(context)?;
@@ -234,7 +242,7 @@ impl Shard for DragDrop {
     let ui = util::get_parent_ui(self.parents.get())?;
     let ui_ctx = util::get_current_context(&self.contexts)?;
 
-    if self.is_drop_target() {
+    Ok(if self.is_drop_target() {
       let accepts_value = if !self.hover_callback.is_empty() {
         let cb_input: Var = ui_ctx.dnd_value.borrow().0;
         if cb_input.is_none() {
@@ -256,7 +264,6 @@ impl Shard for DragDrop {
 
       let inner = drop_target(ui, accepts_value, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-          .expect("TODO");
       });
 
       let is_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
@@ -275,15 +282,16 @@ impl Shard for DragDrop {
           }
         }
       }
+
+      inner.inner?
     } else {
       let id = EguiId::new(self, 0).into();
-      drag_source(ui, ui_ctx, &input, id, |ui| {
+      let inner = drag_source(ui, ui_ctx, &input, id, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-          .expect("TODO");
-      })
-    }
+      });
 
-    Ok(Var::default())
+      inner.inner?
+    })
   }
 }
 

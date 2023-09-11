@@ -4392,7 +4392,7 @@ impl Iterator for ExposedTypesIterator {
   type Item = SHExposedTypeInfo;
 
   fn next(&mut self) -> Option<Self::Item> {
-    if self.index < (self.length - 1) {
+    if self.index < self.length {
       Some({
         let ret_index = self.index;
         self.index += 1;
