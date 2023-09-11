@@ -3,18 +3,6 @@
 
 @mesh(root)
 
-; (schedule
-;  n
-;  (Wire
-;   "n"
-;   "" (Process.Run "echo" ["Hello world"]) (Log)
-;   (Assert.Is "Hello world\n" true)
-;   "" (Process.Run "echo" ["Hello world"]) (Log)
-;   (Assert.Is "Hello world\n" true)
-
-;   ["10"] = .args
-;   (Maybe (-> "" (Process.Run "sleep" .args :Timeout 1) (Log)))))
-
 @wire(n {
   "" | Process.Run("echo" ["Hello world"]) | Log |
   Assert.Is("Hello world\n" true)

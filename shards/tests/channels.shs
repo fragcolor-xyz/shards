@@ -57,4 +57,4 @@
 @schedule(root consumer-33)
 @run(root FPS: 10)
 
-; (prn "Done")
+Msg("Done")
