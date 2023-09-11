@@ -112,7 +112,7 @@ jobs:
           build/shards new shards/tests/ui-drag-and-drop.shs
 
           echo "Running onnx test"
-          build/shards shards/tests/onnx.edn
+          build/shards new shards/tests/onnx.shs
       - name: Test Physics
         env:
           RUST_BACKTRACE: full
