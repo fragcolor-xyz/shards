@@ -1,6 +1,6 @@
 WHITESPACE    = _{ SEPARATOR | "," | "\t" | NEWLINE | COMMENT }
 COMMENT       = _{ ";" ~ (!"\n" ~ ANY)* ~ "\n" }
-Program       =  { SOI ~ Sequence ~ EOI }
+Program       =  { SOI ~ Sequence ~ WHITESPACE* ~ EOI }
 LowIden       = @{ (("_"? ~ ASCII_ALPHA_LOWER) | ("$" ~ ASCII_ALPHANUMERIC)) ~ (ASCII_ALPHANUMERIC | "_" | "-" | ".")* }
 VarName       =  { LowIden ~ ("/" ~ LowIden)* }
 AssignOp      =  { "=" | ">=" | ">>" | ">" }
