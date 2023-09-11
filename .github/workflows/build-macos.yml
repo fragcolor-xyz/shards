@@ -159,7 +159,7 @@ jobs:
           ./shards new ../shards/tests/wire-macro.shs
           ./shards new ../shards/tests/branch.shs
           ./shards new ../shards/tests/audio.shs test-device:true
-          ./shards ../shards/tests/time.edn
+          ./shards new ../shards/tests/time.shs
           ./shards new ../shards/tests/eth.shs
           ./shards ../shards/tests/many.edn
           ./shards new ../shards/tests/events.shs
