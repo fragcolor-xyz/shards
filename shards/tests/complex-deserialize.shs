@@ -1,0 +1,18 @@
+@template(do-things [] {
+@mesh(root)
+
+@wire(main-loop-wire {
+  {Contents: [{Shards: [{0.0 ["a" "b" {"c"}] >= mySeq}]}]} | ToBytes >= bytes
+  bytes | FromBytes | Log("Deserialized")
+  bytes | FromBytes | Log("Deserialized")
+  bytes | FromBytes | Log("Deserialized")
+  bytes | FromBytes | Log("Deserialized")
+  bytes | FromBytes | Log("Deserialized")
+  })
+
+  @schedule(root main-loop-wire)
+  @run(root FPS:120 Iterations: 1)
+  @define(root nil)
+})
+
+@do-things()
