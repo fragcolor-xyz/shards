@@ -1,0 +1,20 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+        ui-draw-queue
+        UI.Window(
+          Title: "Greetings"
+          Flags: WindowFlags::NoCollapse
+          Contents: {
+            "Hello shards!" | UI.Label
+          }
+        )
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)

@@ -3,6 +3,7 @@
 
 use super::Grid;
 use super::NextRow;
+use crate::INT_VAR_OR_NONE_SLICE;
 use crate::util;
 use crate::EguiId;
 use crate::FLOAT2_VAR_SLICE;
@@ -40,6 +41,12 @@ lazy_static! {
     )
       .into(),
     (
+      cstr!("NumColumns"),
+      shccstr!("The number of columns in the grid. Setting this will allow the last column to expand to take up the rest of the space of the parent UI."),
+      INT_VAR_OR_NONE_SLICE,
+    )
+      .into(),
+    (
       cstr!("MinWidth"),
       shccstr!("Minimum column width."),
       FLOAT_VAR_SLICE,
@@ -69,6 +76,7 @@ impl Default for Grid {
       requiring: Vec::new(),
       contents: ShardsVar::default(),
       striped: ParamVar::new(false.into()),
+      num_columns: ParamVar::default(),
       min_width: ParamVar::default(),
       max_width: ParamVar::default(),
       spacing: ParamVar::default(),
@@ -126,9 +134,10 @@ impl LegacyShard for Grid {
     match index {
       0 => self.contents.set_param(value),
       1 => self.striped.set_param(value),
-      2 => self.min_width.set_param(value),
-      3 => self.max_width.set_param(value),
-      4 => self.spacing.set_param(value),
+      2 => self.num_columns.set_param(value),
+      3 => self.min_width.set_param(value),
+      4 => self.max_width.set_param(value),
+      5 => self.spacing.set_param(value),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -137,9 +146,10 @@ impl LegacyShard for Grid {
     match index {
       0 => self.contents.get_param(),
       1 => self.striped.get_param(),
-      2 => self.min_width.get_param(),
-      3 => self.max_width.get_param(),
-      4 => self.spacing.get_param(),
+      2 => self.num_columns.get_param(),
+      3 => self.min_width.get_param(),
+      4 => self.max_width.get_param(),
+      5 => self.spacing.get_param(),
       _ => Var::default(),
     }
   }
@@ -183,6 +193,7 @@ impl LegacyShard for Grid {
       self.contents.warmup(ctx)?;
     }
     self.striped.warmup(ctx);
+    self.num_columns.warmup(ctx);
     self.min_width.warmup(ctx);
     self.max_width.warmup(ctx);
     self.spacing.warmup(ctx);
@@ -194,6 +205,7 @@ impl LegacyShard for Grid {
     self.spacing.cleanup();
     self.max_width.cleanup();
     self.min_width.cleanup();
+    self.num_columns.cleanup();
     self.striped.cleanup();
     if !self.contents.is_empty() {
       self.contents.cleanup();
@@ -222,6 +234,11 @@ impl LegacyShard for Grid {
         let spacing: (f32, f32) = spacing.try_into()?;
         let spacing: egui::Vec2 = spacing.into();
         grid = grid.spacing(spacing)
+      };
+
+      let num_columns = self.num_columns.get();
+      if !num_columns.is_none() {
+        grid = grid.num_columns(num_columns.try_into()?);
       };
 
       let min_width = self.min_width.get();

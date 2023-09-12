@@ -295,6 +295,11 @@ jobs:
             echo "Running sample $i";
             ../../build/shards.exe run-sample.edn --looped true --file "$i";
           done
+          for i in $(find shards -name '*.shs' \( -path '*UI*' -or -path '*GFX*' \));
+          do
+            echo "Running sample $i";
+            ../../build/shards.exe new run-sample.shs file:"$i";
+          done
       - name: Graphics Test
         env:
           GFX_BACKEND: D3D12

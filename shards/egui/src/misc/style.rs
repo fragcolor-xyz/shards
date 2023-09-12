@@ -4,7 +4,6 @@
 use super::Style;
 use crate::misc::style_util;
 use crate::util;
-
 use crate::CONTEXTS_NAME;
 use crate::EGUI_UI_SEQ_TYPE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
@@ -295,20 +294,20 @@ impl LegacyShard for Style {
         Style::apply_widget_visuals(
           &mut style.visuals.widgets.noninteractive,
           &widgets,
-          cstr!("noninteractive"),
+          "noninteractive",
         )?;
         Style::apply_widget_visuals(
           &mut style.visuals.widgets.inactive,
           &widgets,
-          cstr!("inactive"),
+          "inactive",
         )?;
         Style::apply_widget_visuals(
           &mut style.visuals.widgets.hovered,
           &widgets,
-          cstr!("hovered"),
+          "hovered",
         )?;
-        Style::apply_widget_visuals(&mut style.visuals.widgets.active, &widgets, cstr!("active"))?;
-        Style::apply_widget_visuals(&mut style.visuals.widgets.open, &widgets, cstr!("open"))?;
+        Style::apply_widget_visuals(&mut style.visuals.widgets.active, &widgets, "active")?;
+        Style::apply_widget_visuals(&mut style.visuals.widgets.open, &widgets, "open")?;
       }
 
       if let Some(selection) = visuals.get_static("selection") {
@@ -388,6 +387,20 @@ impl LegacyShard for Style {
         Table,
         style.visuals.window_shadow,
         style_util::get_shadow
+      );
+      apply_style!(
+        visuals,
+        "window_fill",
+        SHColor,
+        style.visuals.window_fill,
+        style_util::get_color
+      );
+      apply_style!(
+        visuals,
+        "window_stroke",
+        Table,
+        style.visuals.window_stroke,
+        style_util::get_stroke
       );
       apply_style!(
         visuals,
@@ -480,7 +493,6 @@ impl Style {
   ) -> Result<(), &'static str> {
     if let Some(var) = widgets.get_static(name) {
       let table: Table = var.try_into()?;
-
       apply_style!(
         table,
         "bg_fill",

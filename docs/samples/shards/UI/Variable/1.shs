@@ -1,0 +1,17 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+      @f4(-1 0 0 1) >= my-var
+    })
+    UI(
+      ui-draw-queue
+      UI.CentralPanel(
+        UI.Variable(my-var)
+      )
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)
