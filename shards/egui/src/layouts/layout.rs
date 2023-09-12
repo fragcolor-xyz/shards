@@ -1126,65 +1126,49 @@ impl LegacyShard for Layout {
             // set whether all widgets in the contents are enabled or disabled
             ui.set_enabled(!disabled);
             // add the new child_ui created by frame onto the stack of parents
-            util::with_object_stack_var_pass_stack_var(
-              &mut self.parents,
-              ui,
-              &EGUI_UI_TYPE,
-              |parent_stack_var| {
-                // inside of frame
-                let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
-                // render scroll area and inner layout if there is a scroll area
-                if let Some(scroll_area) = scroll_area {
-                  scroll_area
-                    .id_source(scroll_area_id)
-                    .show(ui, |ui| {
-                      util::with_object_stack_var_pass_stack_var(
-                        parent_stack_var,
-                        ui,
-                        &EGUI_UI_TYPE,
-                        |parent_stack_var| {
-                          // inside of scroll area
-                          let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
-                          ui.allocate_ui_with_layout(max_size, layout, |ui| {
-                            ui.set_min_size(min_size); // set minimum size of entire layout
-
-    if self.contents.is_empty() {
-      return Ok(*input);
-    }
-                            util::activate_ui_contents(
-                              context,
-                              input,
-                              ui,
-                              parent_stack_var,
-                              &mut self.contents,
-                            )
-                          })
-                          .inner
-                        },
-                      )
-                    })
-                    .inner
-                } else {
-                  // inside of frame, no scroll area to render, render inner layout
+            // inside of frame
+            // render scroll area and inner layout if there is a scroll area
+            if let Some(scroll_area) = scroll_area {
+              scroll_area
+                .id_source(scroll_area_id)
+                .show(ui, |ui| {
+                  // inside of scroll area
                   ui.allocate_ui_with_layout(max_size, layout, |ui| {
                     ui.set_min_size(min_size); // set minimum size of entire layout
 
                     if self.contents.is_empty() {
                       return Ok(*input);
                     }
-
                     util::activate_ui_contents(
                       context,
                       input,
                       ui,
-                      parent_stack_var,
+                      &mut self.parents,
                       &mut self.contents,
                     )
                   })
                   .inner
+                })
+                .inner
+            } else {
+              // inside of frame, no scroll area to render, render inner layout
+              ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                ui.set_min_size(min_size); // set minimum size of entire layout
+
+                if self.contents.is_empty() {
+                  return Ok(*input);
                 }
-              },
-            )
+
+                util::activate_ui_contents(
+                  context,
+                  input,
+                  ui,
+                  &mut self.parents,
+                  &mut self.contents,
+                )
+              })
+              .inner
+            }
           })
           .inner?;
       } else {
@@ -1193,31 +1177,17 @@ impl LegacyShard for Layout {
           scroll_area
             .id_source(scroll_area_id)
             .show(ui, |ui| {
-              util::with_object_stack_var_pass_stack_var(
-                &mut self.parents,
-                ui,
-                &EGUI_UI_TYPE,
-                |parent_stack_var| {
-                  // inside of scroll area
-                  let ui = util::get_current_parent(parent_stack_var.get())?.unwrap();
-                  ui.allocate_ui_with_layout(max_size, layout, |ui| {
-                    ui.set_min_size(min_size); // set minimum size of entire layout
+              // inside of scroll area
+              ui.allocate_ui_with_layout(max_size, layout, |ui| {
+                ui.set_min_size(min_size); // set minimum size of entire layout
 
-    if self.contents.is_empty() {
-      return Ok(*input);
-    }
+                if self.contents.is_empty() {
+                  return Ok(*input);
+                }
 
-                    util::activate_ui_contents(
-                      context,
-                      input,
-                      ui,
-                      parent_stack_var,
-                      &mut self.contents,
-                    )
-                  })
-                  .inner
-                },
-              )
+                util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+              })
+              .inner
             })
             .inner?;
         } else {

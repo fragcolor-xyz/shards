@@ -59,40 +59,13 @@ where
   result
 }
 
-pub fn with_object_stack_var_pass_stack_var<'a, T, F, R>(
-  stack_var: &mut ParamVar,
-  object: &mut T,
-  object_type: &Type,
-  inner: F,
-) -> Result<R, &'static str>
-where
-  F: FnOnce(&mut ParamVar) -> Result<R, &'static str>,
-{
-  // push
-  unsafe {
-    let var = Var::new_object_from_ptr(object as *const _, object_type);
-    update_seq(stack_var, |seq| {
-      seq.push(&var);
-    })?;
-  }
-
-  let result = inner(stack_var);
-
-  // pop
-  update_seq(stack_var, |seq| {
-    seq.pop();
-  })?;
-
-  result
-}
-
-pub fn activate_ui_contents<'a>(
+pub fn activate_ui_contents(
   context: &Context,
   input: &Var,
   ui: &mut egui::Ui,
   parents_stack_var: &mut ParamVar,
   contents: &ShardsVar,
-) -> Result<Var, &'a str> {
+) -> Result<Var, &'static str> {
   let mut output = Var::default();
 
   with_object_stack_var(parents_stack_var, ui, &EGUI_UI_TYPE, || {
