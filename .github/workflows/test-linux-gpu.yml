@@ -80,10 +80,10 @@ jobs:
 
           echo "\n"
           echo "Running graphics test scripts"
-          for i in $(find shards/tests -name 'gfx*.edn');
+          for i in $(find shards/tests -name 'gfx*.shs');
           do
             echo "Running $i"
-            build/shards "$i"
+            build/shards new "$i"
           done
           for i in $(find shards/tests -name 'gfx*.shs');
           do
