@@ -681,6 +681,17 @@ struct Var : public SHVar {
     return SHStringWithLen{payload.stringValue, payload.stringLen};
   }
 
+  explicit operator std::string_view() const {
+    if (valueType != SHType::String) {
+      throw InvalidVarTypeError("Invalid variable casting! expected String");
+    }
+    return std::string_view((const char*)payload.stringValue, payload.stringLen);
+  }
+
+  explicit operator std::string() const {
+    return std::string((std::string_view)*this);
+  }
+
   template <typename T> void intoVector(std::vector<T> &outVec) const {
     if (valueType != SHType::Seq) {
       throw InvalidVarTypeError("Invalid variable casting! expected Seq");
