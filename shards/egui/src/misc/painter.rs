@@ -8,7 +8,7 @@ use shards::types::{
 
 use crate::shards::shard;
 use crate::shards::shard::Shard;
-use crate::{EguiId, UIOrder, CONTEXTS_NAME, HELP_VALUE_IGNORED, PARENTS_UI_NAME};
+use crate::{EguiId, Order, CONTEXTS_NAME, HELP_VALUE_IGNORED, PARENTS_UI_NAME};
 use shards::types::COLOR_TYPES;
 use shards::types::FLOAT2_TYPES;
 
@@ -25,7 +25,7 @@ struct CanvasShard {
   pub contents: ShardsVar,
   #[shard_param("Rect", "The target UI position (X/Y/W/H)", [common_type::float4, common_type::float4_var])]
   pub rect: ParamVar,
-  #[shard_param("Order", "The order this UI is drawn in", crate::UIORDER_TYPES)]
+  #[shard_param("Order", "The order this UI is drawn in", crate::ORDER_TYPES)]
   pub order: ParamVar,
   contexts: ParamVar,
   parents: ParamVar,
@@ -87,7 +87,7 @@ impl Shard for CanvasShard {
     let ui_ctx = util::get_current_context(&self.contexts)?;
 
     let order = if let Ok(ev) = self.order.get().enum_value() {
-      UIOrder { bits: ev }.try_into()?
+      Order { bits: ev }.try_into()?
     } else {
       egui::Order::Background
     };

@@ -1,278 +1,123 @@
-/* SPDX-License-Identifier: BSD-3-Clause */
-/* Copyright © 2022 Fragcolor Pte. Ltd. */
-
-use super::Area;
-use super::Order;
-use crate::Anchor;
-use crate::ORDER_TYPES;
-use crate::ANCHOR_TYPES;
-use crate::util;
-use crate::EguiId;
-use crate::CONTEXTS_NAME;
-use crate::EGUI_CTX_TYPE;
-use crate::FLOAT2_VAR_SLICE;
-use crate::HELP_OUTPUT_EQUAL_INPUT;
-use crate::PARENTS_UI_NAME;
-use shards::shard::LegacyShard;
-use shards::types::Context;
-use shards::types::ExposedInfo;
-use shards::types::ExposedTypes;
-use shards::types::InstanceData;
-use shards::types::OptionalString;
-use shards::types::ParamVar;
-use shards::types::Parameters;
-use shards::types::ShardsVar;
-use shards::types::Type;
-use shards::types::Types;
-use shards::types::Var;
-use shards::types::ANY_TYPES;
-use shards::types::SHARDS_OR_NONE_TYPES;
+use crate::{util, Anchor, EguiId, Order, CONTEXTS_NAME, PARENTS_UI_NAME};
+use egui::{Pos2, Vec2};
+use shards::{
+  core::register_shard,
+  shard::Shard,
+  types::{
+    common_type, Context, ExposedTypes, InstanceData, OptionalString, ParamVar, ShardsVar, Type,
+    Types, Var, ANY_TYPES, SHARDS_OR_NONE_TYPES,
+  },
+};
 
 lazy_static! {
-  static ref AREA_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Position"),
-      shccstr!("Absolute position; or when anchor is set, relative offset."),
-      FLOAT2_VAR_SLICE,
-    )
-      .into(),
-    (
-      cstr!("Anchor"),
-      shccstr!("Corner or center of the screen."),
-      &ANCHOR_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Order"),
-      shccstr!("Paint layer to be used for this UI. Default is background"),
-      &ORDER_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Contents"),
-      shccstr!("The UI contents."),
-      &SHARDS_OR_NONE_TYPES[..],
-    )
-      .into(),
-  ];
+  static ref ANCHOR_VAR_TYPE: Type = Type::context_variable(&crate::ANCHOR_TYPES);
 }
 
-impl Default for Area {
+#[derive(shard)]
+#[shard_info("UI.Area", "Places UI element at a specific position.")]
+struct AreaShard {
+  #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
+  pub contents: ShardsVar,
+  #[shard_param("Position", "Absolute UI position; or when anchor is set, relative offset. (X/Y)", [common_type::float2, common_type::float2_var])]
+  pub position: ParamVar,
+  #[shard_param("Pivot", "The pivot for the inner UI", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
+  pub pivot: ParamVar,
+  #[shard_param("Anchor", "Side of the screen to anchor the UI to.", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
+  pub anchor: ParamVar,
+  #[shard_param("Order", "Paint layer to be used for this UI. Default is background", [*crate::ORDER_TYPE])]
+  pub order: ParamVar,
+  contexts: ParamVar,
+  parents: ParamVar,
+  inner_exposed: ExposedTypes,
+  #[shard_required]
+  required: ExposedTypes,
+}
+
+impl Default for AreaShard {
   fn default() -> Self {
-    let mut ctx = ParamVar::default();
-    ctx.set_name(CONTEXTS_NAME);
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
     Self {
-      instance: ctx,
-      requiring: Vec::new(),
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
       position: ParamVar::default(),
+      pivot: ParamVar::default(),
       anchor: ParamVar::default(),
       order: ParamVar::default(),
+      required: Vec::new(),
       contents: ShardsVar::default(),
-      parents,
-      exposing: Vec::new(),
+      inner_exposed: ExposedTypes::new(),
     }
   }
 }
 
-impl LegacyShard for Area {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("UI.Area")
-  }
-
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("UI.Area-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI.Area"
-  }
-
-  fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Places UI element at a specific position."))
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shard_impl]
+impl Shard for AreaShard {
+  fn input_types(&mut self) -> &Types {
     &ANY_TYPES
   }
-
-  fn inputHelp(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "The value that will be passed to the Contents shards of the area."
-    ))
-  }
-
-  fn outputTypes(&mut self) -> &Types {
+  fn output_types(&mut self) -> &Types {
     &ANY_TYPES
   }
-
-  fn outputHelp(&mut self) -> OptionalString {
-    *HELP_OUTPUT_EQUAL_INPUT
-  }
-
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&AREA_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &'static str> {
-    match index {
-      0 => self.position.set_param(value),
-      1 => self.anchor.set_param(value),
-      2 => self.order.set_param(value),
-      3 => self.contents.set_param(value),
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.position.get_param(),
-      1 => self.anchor.get_param(),
-      2 => self.order.get_param(),
-      3 => self.contents.get_param(),
-      _ => Var::default(),
-    }
-  }
-
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add UI.Contexts to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_CTX_TYPE,
-      name: self.instance.get_name(),
-      help: cstr!("The exposed UI context.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring);
-
-    Some(&self.requiring)
-  }
-
-  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
-    self.exposing.clear();
-
-    if util::expose_contents_variables(&mut self.exposing, &self.contents) {
-      Some(&self.exposing)
-    } else {
-      None
-    }
-  }
-
-  fn hasCompose() -> bool {
-    true
-  }
-
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    if !self.contents.is_empty() {
-      self.contents.compose(&data)?;
-    }
-
-    // Always passthrough the input
-    Ok(data.inputType)
-  }
-
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.instance.warmup(ctx);
-    self.position.warmup(ctx);
-    self.anchor.warmup(ctx);
-    self.order.warmup(ctx);
-    self.parents.warmup(ctx);
-
-    if !self.contents.is_empty() {
-      self.contents.warmup(ctx)?;
-    }
-
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.warmup_helper(context)?;
+    self.contexts.warmup(context);
+    self.parents.warmup(context);
     Ok(())
   }
-
   fn cleanup(&mut self) -> Result<(), &str> {
-    if !self.contents.is_empty() {
-      self.contents.cleanup();
-    }
-
+    self.cleanup_helper()?;
+    self.contexts.cleanup();
     self.parents.cleanup();
-    self.order.cleanup();
-    self.anchor.cleanup();
-    self.position.cleanup();
-    self.instance.cleanup();
-
     Ok(())
   }
+  fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
+    Some(&self.inner_exposed)
+  }
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
 
+    self.inner_exposed.clear();
+    let output_type = self.contents.compose(data)?.outputType;
+    shards::util::expose_shards_contents(&mut self.inner_exposed, &self.contents);
+    shards::util::require_shards_contents(&mut self.required, &self.contents);
+
+    Ok(output_type)
+  }
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let gui_ctx = util::get_current_context(&self.instance)?;
+    let (x, y): (f32, f32) = self.position.get().try_into().unwrap_or_default();
 
-    let mut failed = false;
-    if !self.contents.is_empty() {
-      let order = self.order.get();
-      let order =  if !order.is_none() {
-        match order.valueType {
-          crate::shardsc::SHType_Enum => Order {
-            bits: unsafe {
-              order
-                .payload
-                .__bindgen_anon_1
-                .__bindgen_anon_3
-                .enumValue
-            },
-          },
-          _ => return Err("Invalid value for order"),
-        }
-      } else {
-        Order::Background
-      };
+    let ui_ctx = util::get_current_context(&self.contexts)?;
 
-      let area = egui::Area::new(EguiId::new(self, 0)).order(order.into());
-      let area = if self.anchor.get().is_none() {
-        let position = self.position.get();
-        if !position.is_none() {
-          let pos: (f32, f32) = self.position.get().try_into()?;
-          area.fixed_pos(pos)
-        } else {
-          area.movable(false)
-        }
-      } else {
-        let offset: (f32, f32) = self.position.get().try_into().unwrap_or_default();
-        area.anchor(
-          Anchor {
-            bits: unsafe {
-              self
-                .anchor
-                .get()
-                .payload
-                .__bindgen_anon_1
-                .__bindgen_anon_3
-                .enumValue
-            },
-          }
-          .try_into()?,
-          offset,
-        )
-      };
-      area.show(gui_ctx, |ui| {
-        if util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
-          .is_err()
-        {
-          failed = true;
-        }
-      });
+    let mut frame = egui::Area::new(EguiId::new(self, 1));
 
-      if failed {
-        return Err("Failed to activate window contents");
-      }
+    frame = frame.order(if let Ok(ev) = self.order.get().enum_value() {
+      Order { bits: ev }.try_into()?
+    } else {
+      egui::Order::Background
+    });
+
+    frame = frame.pivot(if let Ok(ev) = self.pivot.get().enum_value() {
+      Anchor { bits: ev }.try_into()?
+    } else {
+      egui::Align2::LEFT_TOP
+    });
+
+    // Either anchor or fix size
+    if let Ok(ev) = self.anchor.get().enum_value() {
+      frame = frame.anchor(Anchor { bits: ev }.try_into()?, Vec2::new(x, y));
+    } else {
+      frame = frame.fixed_pos(Pos2::new(x, y));
     }
 
-    // Always passthrough the input
-    Ok(*input)
+    let result = frame
+      .show(ui_ctx, |ui| {
+        util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+      })
+      .inner?;
+
+    Ok(result)
   }
+}
+
+pub fn register_shards() {
+  register_shard::<AreaShard>();
 }

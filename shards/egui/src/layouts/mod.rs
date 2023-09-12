@@ -388,7 +388,6 @@ mod sized;
 mod space;
 mod table;
 mod vertical;
-mod absolute;
 
 pub fn register_shards() {
   register_legacy_shard::<CollapsingHeader>();
@@ -420,5 +419,4 @@ pub fn register_shards() {
   register_legacy_shard::<Table>();
   register_legacy_shard::<Vertical>();
   register_legacy_shard::<Sized>();
-  absolute::register_shards();
 }

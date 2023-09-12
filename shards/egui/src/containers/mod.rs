@@ -53,17 +53,6 @@ impl From<Order> for egui::Order {
   }
 }
 
-struct Area {
-  instance: ParamVar,
-  requiring: ExposedTypes,
-  position: ParamVar,
-  anchor: ParamVar,
-  order: ParamVar,
-  contents: ShardsVar,
-  parents: ParamVar,
-  exposing: ExposedTypes,
-}
-
 struct DockArea {
   instance: ParamVar,
   requiring: ExposedTypes,
@@ -168,7 +157,7 @@ mod scope;
 mod window;
 
 pub fn register_shards() {
-  register_legacy_shard::<Area>();
+  area::register_shards();
   docking::register_shards();
   register_legacy_shard::<Scope>();
   register_legacy_shard::<Window>();
