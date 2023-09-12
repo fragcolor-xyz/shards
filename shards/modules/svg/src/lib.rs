@@ -9,18 +9,23 @@ extern crate lazy_static;
 extern crate compile_time_crc32;
 
 use shards::core::register_legacy_shard;
+use shards::core::register_shard;
 use shards::shard::LegacyShard;
+use shards::shard::Shard;
 use shards::shardsc::SHImage;
 use shards::shardsc::SHVarPayload;
 use shards::shardsc::SHVarPayload__bindgen_ty_1;
 use shards::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use shards::shardsc::{SHType_Bytes, SHType_Image, SHType_String};
+use shards::shard;
+use shards::types::FLOAT2_TYPES;
 use shards::types::common_type;
 use shards::types::ParamVar;
 use shards::types::Context;
 use shards::types::Parameters;
 use shards::types::Type;
 use shards::types::Var;
+use shards::types::ExposedTypes;
 use shards::types::FLOAT2_TYPES_SLICE;
 use shards::types::IMAGE_TYPES;
 use shards::types::INT2_TYPES_SLICE;
@@ -52,71 +57,45 @@ lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
   static ref SIZE_TYPES: Vec<Type> =
     vec![common_type::int2, common_type::int2_var, common_type::none];
-  static ref PARAMETERS: Parameters = vec![
-  (
-    cstr!("Size"),
-    shccstr!(
-      "The desired output size, if (0, 0) will default to the size defined in the svg data."
-    ),
-    &SIZE_TYPES[..]
-  )
-    .into(),
-    (
-    cstr!("Offset"),
-    shccstr!(
-      "A positive x and y value offsets towards the right and the bottom of the screen respectively. (0.0, 0.0) by default. "
-    ),
-    FLOAT2_TYPES_SLICE
-  )
-    .into()];
 }
 
-#[derive(Default)]
+#[derive(shard)]
+#[shard_info("SVG.ToImage", "Converts an SVG string or bytes to an image.")]
 struct ToImage {
   pixmap: Option<Pixmap>,
+  #[shard_param("Size", "The desired output size, if (0, 0) will default to the size defined in the svg data.", SIZE_TYPES)]
   size: ParamVar,
+  #[shard_param("Offset", "A positive x and y value offsets towards the right and the bottom of the screen respectively. (0.0, 0.0) by default.", FLOAT2_TYPES)]
   offset: ParamVar,
+  #[shard_required]
+  required: ExposedTypes,
 }
 
-impl LegacyShard for ToImage {
-  fn registerName() -> &'static str {
-    cstr!("SVG.ToImage")
+impl Default for ToImage {
+  fn default() -> Self {
+    Self {
+      pixmap: None,
+      size: ParamVar::default(),
+      offset: ParamVar::default(),
+      required: ExposedTypes::default(),
+    }
   }
-  fn hash() -> u32 {
-    compile_time_crc32::crc32!("SVG.ToImage-rust-0x20200101")
-  }
-  fn name(&mut self) -> &str {
-    "SVG.ToImage"
-  }
-  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+}
+
+#[shard_impl]
+impl Shard for ToImage {
+  fn input_types(&mut self) -> &std::vec::Vec<Type> {
     &INPUT_TYPES
   }
-  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+  fn output_types(&mut self) -> &std::vec::Vec<Type> {
     &IMAGE_TYPES
   }
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&PARAMETERS)
-  }
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => self.size.set_param(value),
-      1 => self.offset.set_param(value),
-      _ => unreachable!(),
-    }
-  }
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.size.get_param(),
-      1 => self.offset.get_param(),
-      _ => unreachable!(),
-    }
-  }
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
-    self.size.warmup(context);
+    self.warmup_helper(context)?;
     Ok(())
   }
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.size.cleanup();
+    self.cleanup_helper()?;
     Ok(())
   }
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
@@ -184,5 +163,5 @@ pub extern "C" fn shardsRegister_svg_svg(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  register_legacy_shard::<ToImage>();
+  register_shard::<ToImage>();
 }

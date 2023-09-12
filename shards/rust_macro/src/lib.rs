@@ -206,7 +206,7 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
           pub const #value_ids: shards::SHEnum = #enum_id::#value_ids as i32;
         )*
         #(
-          pub const #value_str_ids: &'static str = cstr!(#value_name_lits);
+          pub const #value_str_ids: &'static str = shards::cstr!(#value_name_lits);
         )*
 
         fn new() -> Self {
@@ -217,12 +217,12 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
 
           let mut descriptions = shards::types::OptionalStrings::new();
           #(
-            descriptions.push(shards::types::OptionalString(shccstr!(#value_desc_lits)));
+            descriptions.push(shards::types::OptionalString(shards::shccstr!(#value_desc_lits)));
           )*
 
           Self {
-            name: cstr!(#enum_name_expr),
-            desc: shards::types::OptionalString(shccstr!(#enum_desc_expr)),
+            name: shards::cstr!(#enum_name_expr),
+            desc: shards::types::OptionalString(shards::shccstr!(#enum_desc_expr)),
             enum_type: shards::types::Type::enumeration(shards::types::FRAG_CC, shards::fourCharacterCode(*#enum_id_expr)),
             labels,
             values: vec![#(Self::#value_ids,)*],
@@ -510,8 +510,8 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
       #(#array_initializers)*
       static ref #params_static_id: shards::types::Parameters = vec![
         #((
-          cstr!(#param_names),
-          shccstr!(#param_descs),
+          shards::cstr!(#param_names),
+          shards::shccstr!(#param_descs),
           &#param_types[..]
         ).into()),*
       ];
@@ -519,7 +519,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
 
     impl shards::shard::ShardGenerated for #struct_id {
       fn register_name() -> &'static str {
-        cstr!(#shard_name_expr)
+        shards::cstr!(#shard_name_expr)
       }
 
       fn name(&mut self) -> &str {
@@ -534,7 +534,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
       }
 
       fn help(&mut self) -> shards::types::OptionalString {
-        OptionalString(shccstr!(#shard_desc_expr))
+        shards::types::OptionalString(shards::shccstr!(#shard_desc_expr))
       }
 
       fn parameters(&mut self) -> Option<&shards::types::Parameters> {
