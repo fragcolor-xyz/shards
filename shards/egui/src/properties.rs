@@ -51,7 +51,7 @@ lazy_static! {
 #[derive(shards::shard)]
 #[shard_info("UI.Property", "Retrieves values from the current state of the UI.")]
 struct PropertyShard {
-  #[shard_param("Property", "The property to retrieve from the UI context", [**PROPERTY_TYPE])]
+  #[shard_param("Property", "The property to retrieve from the UI context", [*PROPERTY_TYPE])]
   property: ClonedVar,
   #[shard_warmup]
   contexts: ParamVar,

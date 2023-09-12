@@ -286,19 +286,8 @@ impl LegacyShard for Window {
         }
       } else {
         let offset: (f32, f32) = self.position.get().try_into().unwrap_or_default();
-        window.anchor(
-          Anchor {
-            bits: unsafe {
-              self
-                .anchor
-                .get()
-                .payload
-                .__bindgen_anon_1
-                .__bindgen_anon_3
-                .enumValue
-            },
-          }
-          .try_into()?,
+        let anchor: Anchor = self.anchor.get().try_into()?;
+        window.anchor(anchor.into(),
           offset,
         )
       };

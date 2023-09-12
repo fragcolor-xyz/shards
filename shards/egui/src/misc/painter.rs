@@ -86,12 +86,8 @@ impl Shard for CanvasShard {
 
     let ui_ctx = util::get_current_context(&self.contexts)?;
 
-    let order = if let Ok(ev) = self.order.get().enum_value() {
-      Order { bits: ev }.try_into()?
-    } else {
-      egui::Order::Background
-    };
-    let layer_id = LayerId::new(order, EguiId::new(self, 0).into());
+    let order = self.order.get().try_into().unwrap_or(Order::Background);
+    let layer_id = LayerId::new(order.into(), EguiId::new(self, 0).into());
 
     let mut ui = Ui::new(
       ui_ctx.clone(),

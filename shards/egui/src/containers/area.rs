@@ -89,21 +89,15 @@ impl Shard for AreaShard {
 
     let mut frame = egui::Area::new(EguiId::new(self, 1));
 
-    frame = frame.order(if let Ok(ev) = self.order.get().enum_value() {
-      Order { bits: ev }.try_into()?
-    } else {
-      egui::Order::Background
-    });
+    let order: Option<Order> = self.order.get().try_into().ok();
+    frame = frame.order(order.unwrap_or(Order::Background).into());
 
-    frame = frame.pivot(if let Ok(ev) = self.pivot.get().enum_value() {
-      Anchor { bits: ev }.try_into()?
-    } else {
-      egui::Align2::LEFT_TOP
-    });
+    let pivot: Option<Anchor> = self.pivot.get().try_into().ok();
+    frame = frame.pivot(pivot.unwrap_or(Anchor::Center).into());
 
     // Either anchor or fix size
-    if let Ok(ev) = self.anchor.get().enum_value() {
-      frame = frame.anchor(Anchor { bits: ev }.try_into()?, Vec2::new(x, y));
+    if let Some(anchor) = self.anchor.get().try_into().ok() as Option<Anchor> {
+      frame = frame.anchor(anchor.into(), Vec2::new(x, y));
     } else {
       frame = frame.fixed_pos(Pos2::new(x, y));
     }
