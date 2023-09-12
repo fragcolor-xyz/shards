@@ -519,7 +519,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
 
     impl shards::shard::ShardGenerated for #struct_id {
       fn register_name() -> &'static str {
-        shards::cstr!(#shard_name_expr)
+        shards::cstr!(#shard_name_expr) 
       }
 
       fn name(&mut self) -> &str {

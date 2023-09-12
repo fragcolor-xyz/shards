@@ -405,7 +405,7 @@ pub fn deriveType(var: &Var, data: &InstanceData) -> DerivedType {
 macro_rules! shccstr {
   ($string:literal) => {
     if cfg!(debug_assertions) {
-      shards::core::writeCachedString1(compile_time_crc32::crc32!($string), cstr!($string))
+      shards::core::writeCachedString1(compile_time_crc32::crc32!($string), shards::cstr!($string))
     } else {
       shards::core::readCachedString1(compile_time_crc32::crc32!($string))
     }
