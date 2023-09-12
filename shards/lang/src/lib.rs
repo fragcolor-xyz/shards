@@ -34,7 +34,6 @@ use std::rc::Rc;
 
 use std::ffi::CString;
 use std::os::raw::c_char;
-use std::panic::catch_unwind;
 
 #[derive(Debug, Clone)]
 pub struct RcBytesWrapper(Rc<[u8]>);
@@ -248,13 +247,13 @@ pub extern "C" fn shards_init(core: *mut shards::shardsc::SHCore) {
 pub extern "C" fn shards_read(name: SHStringWithLen, code: SHStringWithLen) -> SHLAst {
   let name: &str = name.into();
   let code = code.into();
-  let result = catch_unwind(|| read::read(code, name, "."));
+  let result = read::read(code, name, ".");
   match result {
-    Ok(Ok(p)) => SHLAst {
+    Ok(p) => SHLAst {
       ast: Box::into_raw(Box::new(p.sequence)),
       error: std::ptr::null_mut(),
     },
-    Ok(Err(error)) => {
+    Err(error) => {
       shlog_error!("{}:{}: {}", error.loc.line, error.loc.column, error.message);
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
@@ -267,10 +266,6 @@ pub extern "C" fn shards_read(name: SHStringWithLen, code: SHStringWithLen) -> S
         error: Box::into_raw(Box::new(shards_error)),
       }
     }
-    Err(_) => SHLAst {
-      ast: std::ptr::null_mut(),
-      error: std::ptr::null_mut(),
-    },
   }
 }
 
@@ -425,13 +420,13 @@ pub extern "C" fn shards_eval(sequence: *mut Sequence, name: SHStringWithLen) ->
   let name = name.into();
   // we just want a reference to the sequence, not ownership
   let seq = unsafe { &*sequence };
-  let result = catch_unwind(|| eval::eval(seq, name, HashMap::new(), new_cancellation_token()));
+  let result = eval::eval(seq, name, HashMap::new(), new_cancellation_token());
   match result {
-    Ok(Ok(wire)) => SHLWire {
+    Ok(wire) => SHLWire {
       wire: Box::into_raw(Box::new(wire)),
       error: std::ptr::null_mut(),
     },
-    Ok(Err(error)) => {
+    Err(error) => {
       let error_message = CString::new(error.message).unwrap();
       let shards_error = SHLError {
         message: error_message.into_raw(),
@@ -443,10 +438,6 @@ pub extern "C" fn shards_eval(sequence: *mut Sequence, name: SHStringWithLen) ->
         error: Box::into_raw(Box::new(shards_error)),
       }
     }
-    Err(_) => SHLWire {
-      wire: std::ptr::null_mut(),
-      error: std::ptr::null_mut(),
-    },
   }
 }
 

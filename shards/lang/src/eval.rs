@@ -248,7 +248,7 @@ fn extract_make_ints_shard<const WIDTH: usize>(
       )
     }
   }
-  .unwrap();
+  .unwrap(); // qed, those shards must exist!
   let shard = AutoShardRef(shard);
 
   for i in 0..len {
@@ -493,7 +493,7 @@ fn extract_make_floats_shard<const WIDTH: usize>(
       )
     }
   }
-  .unwrap();
+  .unwrap(); // qed, those shards must exist!
   let shard = AutoShardRef(shard);
 
   for i in 0..len {
@@ -625,7 +625,7 @@ fn extract_make_colors_shard(
     )
   }
 
-  let shard = AutoShardRef(ShardRef::create("MakeColor", Some(line_info.into())).unwrap());
+  let shard = AutoShardRef(ShardRef::create("MakeColor", Some(line_info.into())).unwrap()); // qed, this shard must exist!
 
   for i in 0..len {
     let var = match &params[i].value {
@@ -961,7 +961,7 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
           info.failureMessage.len,
         )
       })
-      .unwrap();
+      .unwrap(); // should be valid utf8
       Err(
         (
           msg,
@@ -1177,10 +1177,12 @@ fn as_var(
         // consider this is how id is composed: int64_t id = (int64_t)vendorId << 32 | typeId;
         let vendor_id = (id >> 32) as i32;
         let type_id = id as i32;
-        let info = findEnumInfo(vendor_id, type_id).unwrap();
+        let info = findEnumInfo(vendor_id, type_id)
+          .ok_or((format!("Enum {} not found", prefix), line_info).into())?; // should be valid enum
         for i in 0..info.labels.len {
           let c_str = unsafe { CStr::from_ptr(*info.labels.elements.offset(i as isize)) };
           if value == c_str.to_str().unwrap() {
+            // should be valid utf8
             // we found the enum value
             let mut enum_var = Var::default();
             enum_var.valueType = SHType_Enum;
@@ -1429,7 +1431,12 @@ fn as_var(
           TMP_VALUE.with(|f| {
             let mut v = f.borrow_mut();
             *v = Some(decoded_json.clone());
-            as_var(v.as_ref().unwrap(), line_info, shard, e)
+            as_var(
+              v.as_ref().unwrap(), // should be valid
+              line_info,
+              shard,
+              e,
+            )
           })
         } else if let Some(extension) = find_extension(&func.name, e) {
           let v = extension.process_to_var(func, line_info)?;
@@ -1511,13 +1518,24 @@ fn get_full_name<'a>(
 fn process_ast(func: &Function, line_info: LineInfo, e: &mut EvalEnv) -> Result<SVar, ShardsError> {
   // ast to json
   //serde_json::to_str(func.params[0].v)
-  let first_param = func.params.as_ref().unwrap().get(0).ok_or(
-    (
-      "ast built-in function requires at least one parameter",
-      line_info,
-    )
-      .into(),
-  )?;
+  let first_param = func
+    .params
+    .as_ref()
+    .ok_or(
+      (
+        "ast built-in function requires at least one parameter",
+        line_info,
+      )
+        .into(),
+    )?
+    .get(0)
+    .ok_or(
+      (
+        "ast built-in function requires at least one parameter",
+        line_info,
+      )
+        .into(),
+    )?;
 
   // if param is an identifier, we need to resolve it
   let first_param = match &first_param.value {
@@ -1862,7 +1880,7 @@ fn create_shard(
         as_idx = false;
         let mut found = false;
         for (i, info) in info.iter().enumerate() {
-          let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() };
+          let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
           if param_name == name.as_str() {
             set_shard_parameter(info, e, &param.value, &s, i, line_info)?;
             found = true;
@@ -1975,7 +1993,7 @@ fn set_shard_parameter(
 }
 
 fn add_const_shard2(value: Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Const", Some(line_info.into())).unwrap();
+  let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
   let shard = AutoShardRef(shard);
   shard
     .0
@@ -2013,7 +2031,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           | Value::TakeSeq(_, _)
           | Value::Func(_)
           | Value::Table(_) => {
-            let shard = ShardRef::create("Const", Some(line_info.into())).unwrap();
+            let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
             let shard = AutoShardRef(shard);
             let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
             shard
@@ -2023,7 +2041,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
             Some(shard)
           }
           Value::Identifier(_) => {
-            let shard = ShardRef::create("Get", Some(line_info.into())).unwrap();
+            let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
             let shard = AutoShardRef(shard);
             // todo - avoid clone
             let value = as_var(&replacement.clone(), line_info, Some(shard.0), e)?;
@@ -2048,7 +2066,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
           }
         }
       } else {
-        let shard = ShardRef::create("Get", Some(line_info.into())).unwrap();
+        let shard = ShardRef::create("Get", Some(line_info.into())).unwrap(); // qed, Get must exist
         let shard = AutoShardRef(shard);
         let value = as_var(value, line_info, Some(shard.0), e)?;
         shard
@@ -2059,7 +2077,7 @@ fn add_const_shard(value: &Value, line_info: LineInfo, e: &mut EvalEnv) -> Resul
       }
     }
     _ => {
-      let shard = ShardRef::create("Const", Some(line_info.into())).unwrap();
+      let shard = ShardRef::create("Const", Some(line_info.into())).unwrap(); // qed, Const must exist
       let shard = AutoShardRef(shard);
       let value = as_var(value, line_info, Some(shard.0), e)?;
       shard
@@ -2079,7 +2097,7 @@ fn make_sub_shard(
   shards: Vec<AutoShardRef>,
   line_info: LineInfo,
 ) -> Result<AutoShardRef, ShardsError> {
-  let shard = ShardRef::create("Sub", Some(line_info.into())).unwrap();
+  let shard = ShardRef::create("Sub", Some(line_info.into())).unwrap(); // qed, Sub must exist
   let shard = AutoShardRef(shard);
   let mut seq = AutoSeqVar::new();
   for shard in shards {
@@ -2096,7 +2114,7 @@ fn make_sub_shard(
 }
 
 fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Take", Some(line_info.into())).unwrap();
+  let shard = ShardRef::create("Take", Some(line_info.into())).unwrap(); // qed, Take must exist
   let shard = AutoShardRef(shard);
   shard
     .0
@@ -2107,7 +2125,7 @@ fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
 }
 
 fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Get", Some(line.into())).unwrap();
+  let shard = ShardRef::create("Get", Some(line.into())).unwrap(); // qed, Get must exist
   let shard = AutoShardRef(shard);
   let (full_name, is_replacement) = get_full_name(name, e, true);
   let suffix = if !is_replacement {
@@ -2135,7 +2153,7 @@ fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(
 }
 
 fn add_get_shard_no_suffix(name: &str, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
-  let shard = ShardRef::create("Get", Some(line.into())).unwrap();
+  let shard = ShardRef::create("Get", Some(line.into())).unwrap(); // qed, Get must exist
   let shard = AutoShardRef(shard);
   let name = Var::ephemeral_string(name);
   shard
@@ -2228,7 +2246,19 @@ fn process_macro(
     let args = unsafe { &*group.args };
     let shards = unsafe { &*group.shards };
 
-    if args.len() != func.params.as_ref().unwrap().len() {
+    if args.len()
+      != func
+        .params
+        .as_ref()
+        .ok_or(
+          (
+            format!("Macro {} requires {} parameters", unknown.name, args.len()),
+            line_info,
+          )
+            .into(),
+        )?
+        .len()
+    {
       return Err(
         (
           format!("Macro {} requires {} parameters", unknown.name, args.len()),
@@ -2276,7 +2306,15 @@ fn process_macro(
           );
         }
       };
-      let param = &func.params.as_ref().unwrap()[i];
+
+      let param = &func.params.as_ref().ok_or(
+        (
+          format!("Macro {} requires {} parameters", unknown.name, args.len()),
+          line_info,
+        )
+          .into(),
+      )?[i];
+
       if param.name.is_some() {
         return Err(
           (
@@ -2378,7 +2416,19 @@ fn process_shards(
           );
         }
       };
-      let param = &func.params.as_ref().unwrap()[i];
+
+      let param = &func.params.as_ref().ok_or(
+        (
+          format!(
+            "Shards template {} requires {} parameters",
+            unknown,
+            args.len()
+          ),
+          block.line_info.unwrap_or_default(),
+        )
+          .into(),
+      )?[i];
+
       if param.name.is_some() {
         return Err(
           (
@@ -2609,7 +2659,13 @@ fn eval_pipeline(
                 );
               }
 
-              let params_ptr = func.params.as_ref().unwrap() as *const Vec<Param>;
+              let params_ptr = func.params.as_ref().ok_or(
+                (
+                  "wire built-in function requires a Params parameter",
+                  block.line_info.unwrap_or_default(),
+                )
+                  .into(),
+              )? as *const Vec<Param>;
               let (wire_name, _) = get_full_name(&name, e, true);
               shlog_trace!("Adding deferred wire {}", wire_name);
               e.deferred_wires.insert(
@@ -2793,7 +2849,7 @@ fn eval_pipeline(
               }?;
 
               let mesh = get_mesh(&mesh_id, find_mesh, e, block)?;
-              let wire = wire.as_ref().try_into().unwrap();
+              let wire = wire.as_ref().try_into().unwrap(); // qed, we know it's a wire
 
               if !mesh.compose(wire) {
                 return Err(
@@ -3238,7 +3294,7 @@ fn add_assignment_shard(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap();
+  let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap(); // qed shard_name shard should exist
   let shard = AutoShardRef(shard);
   let (full_name, is_replacement) = get_full_name(name, e, true);
   let suffix = if !is_replacement {
@@ -3251,6 +3307,7 @@ fn add_assignment_shard(
   } else {
     None
   };
+
   let (assigned, suffix) = match (find_replacement(name, e), suffix) {
     (Some(Value::Identifier(name)), _) => {
       let name = name.clone();
@@ -3282,7 +3339,7 @@ fn add_assignment_shard(
   };
 
   if let Some(name) = assigned {
-    e.suffix_assigned.insert(name, suffix.unwrap());
+    e.suffix_assigned.insert(name, suffix.unwrap()); // we know suffix is not none here
   }
 
   e.shards.push(shard);
@@ -3296,7 +3353,7 @@ fn add_assignment_shard_no_suffix(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap();
+  let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap(); // qed shard_name shard should exist
   let shard = AutoShardRef(shard);
   let name = Var::ephemeral_string(name);
   shard
@@ -3319,7 +3376,7 @@ fn eval_assignment(
     Assignment::AssignPush(pipe, name) => (pipe, "Push", name),
   };
   eval_pipeline(pipe, e, cancellation_token)?;
-  // should always have first and always have line info here!
+  // should always have first and always have line info here! (We put Empty type if nothing is there)
   let line_info = pipe.blocks.first().unwrap().line_info.unwrap();
   add_assignment_shard(op, &name, line_info, e)
     .map_err(|e| (format!("{:?}", e), line_info).into())?;
@@ -3574,7 +3631,7 @@ impl LegacyShard for EvalShard {
     let defines = self.defines.get();
     let mut defines_storage = Vec::new(); // need to keep this alive until end of activation
     if defines.is_table() {
-      let defines = defines.as_table().unwrap();
+      let defines = defines.as_table().unwrap(); // qed
       for (ref k, v) in defines.iter() {
         let k: &str = k.try_into()?;
         let v: Value = v.try_into()?;

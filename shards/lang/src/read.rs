@@ -401,7 +401,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             let successful_parse = ShardsParser::parse(Rule::Program, &code)
               .map_err(|e| (format!("Failed to parse file {:?}: {}", file_path, e), pos).into())?;
             let mut sub_env: ReadEnv = ReadEnv::new(
-              file_path.to_str().unwrap(),
+              file_path.to_str().unwrap(), // should be qed...
               parent
                 .to_str()
                 .ok_or(
@@ -414,8 +414,10 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
                 .into(),
             );
             sub_env.parent = Some(env);
-            let program =
-              process_program(successful_parse.into_iter().next().unwrap(), &mut sub_env)?;
+            let program = process_program(
+              successful_parse.into_iter().next().unwrap(), // should be qed because of success parse
+              &mut sub_env,
+            )?;
 
             Ok(FunctionValue::Program(program))
           }
@@ -685,7 +687,7 @@ pub(crate) fn process_program(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pro
   if pair.as_rule() != Rule::Program {
     return Err(("Expected a Program rule, but found a different rule.", pos).into());
   }
-  let pair = pair.into_inner().next().unwrap();
+  let pair = pair.into_inner().next().unwrap(); // parsed qed
   Ok(Program {
     sequence: process_sequence(pair, env)?,
     metadata: Metadata {
@@ -699,7 +701,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
   match pair.as_rule() {
     Rule::ConstValue => {
       // unwrap the inner rule
-      let pair = pair.into_inner().next().unwrap();
+      let pair = pair.into_inner().next().unwrap(); // parsed qed
       process_value(pair, env)
     }
     Rule::None => Ok(Value::None),
@@ -735,7 +737,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
     )
     .map(Value::Number),
     Rule::String => {
-      let inner = pair.into_inner().next().unwrap();
+      let inner = pair.into_inner().next().unwrap(); // parsed qed
       match inner.as_rule() {
         Rule::SimpleString => Ok(Value::String({
           let full_str = inner.as_str();
@@ -807,7 +809,10 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           let key = match key.as_rule() {
             Rule::None => Value::None,
             Rule::Iden => Value::String(key.as_str().into()),
-            Rule::Value => process_value(key.into_inner().next().unwrap(), env)?,
+            Rule::Value => process_value(
+              key.into_inner().next().unwrap(), // parsed qed
+              env,
+            )?,
             _ => unreachable!(),
           };
 
@@ -955,7 +960,10 @@ pub fn read_with_env(code: &str, env: &mut ReadEnv) -> Result<Program, ShardsErr
         .into()
     })?
   };
-  process_program(successful_parse.into_iter().next().unwrap(), env)
+  process_program(
+    successful_parse.into_iter().next().unwrap(), // parsed qed
+    env,
+  )
 }
 
 pub fn read(code: &str, name: &str, path: &str) -> Result<Program, ShardsError> {
@@ -1053,7 +1061,7 @@ impl LegacyShard for ReadShard {
     })?;
 
     let seq = process_program(
-      parsed.into_iter().next().unwrap(),
+      parsed.into_iter().next().unwrap(), // parsed qed
       &mut ReadEnv::new("", "."),
     )
     .map_err(|e| {
