@@ -126,7 +126,7 @@ jobs:
           ./shards new ../shards/tests/expect.shs
           ./shards new ../shards/tests/failures.shs
           ./shards new ../shards/tests/wasm.shs
-          ./shards ../shards/tests/rust.clj
+          ./shards new ../shards/tests/rust.shs
           ./shards new ../shards/tests/crypto.shs
           ./shards new ../shards/tests/wire-macro.shs
           ./shards new ../shards/tests/const-vars.shs
