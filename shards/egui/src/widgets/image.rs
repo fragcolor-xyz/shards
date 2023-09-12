@@ -2,130 +2,89 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::image_util;
-use super::Image;
 use crate::util;
 use crate::FLOAT2_VAR_SLICE;
-
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
-use shards::shard::LegacyShard;
+use egui::Vec2;
+use shards::core::register_shard;
+use shards::shard::Shard;
 use shards::shardsc::SHType_Image;
 use shards::shardsc::SHType_Object;
-
+use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::Context;
-
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
-use shards::types::Parameters;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
 
-lazy_static! {
-  static ref IMAGE_PARAMETERS: Parameters = vec![(
-    cstr!("Scale"),
-    shccstr!("Scaling to apply to the source image."),
-    FLOAT2_VAR_SLICE,
-  )
-    .into(),];
+#[derive(shard)]
+#[shard_info("UI.Image", "Display an image in the UI.")]
+struct Image {
+  #[shard_warmup]
+  parents: ParamVar,
+  #[shard_param("Scale", "Scaling to apply to the source image.", FLOAT2_VAR_SLICE)]
+  scale: ParamVar,
+  // This will be in UI points (ScalingAware: false) or in pixels (ScalingAware: true)
+  #[shard_param("Size", "The size to render the image at.", FLOAT2_VAR_SLICE)]
+  size: ParamVar,
+  // Defaults to false
+  #[shard_param("ScalingAware", "When set to true, this image's pixels will be rendered 1:1 regardless of UI context point size.", BOOL_VAR_OR_NONE_SLICE)]
+  scaling_aware: ParamVar,
+  #[shard_required]
+  requiring: ExposedTypes,
+  cached_ui_image: image_util::CachedUIImage,
+  current_version: u64,
 }
 
 impl Default for Image {
   fn default() -> Self {
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
     Self {
-      parents,
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
       requiring: Vec::new(),
       scale: ParamVar::new((1.0, 1.0).into()),
+      size: ParamVar::default(),
+      scaling_aware: ParamVar::default(),
       cached_ui_image: Default::default(),
       current_version: 0,
     }
   }
 }
 
-impl LegacyShard for Image {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("UI.Image")
-  }
-
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("UI.Image-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI.Image"
-  }
-
-  fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Display an image in the UI."))
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shard_impl]
+impl Shard for Image {
+  fn input_types(&mut self) -> &Types {
     &image_util::TEXTURE_OR_IMAGE_TYPES
   }
 
-  fn inputHelp(&mut self) -> OptionalString {
+  fn input_help(&mut self) -> OptionalString {
     OptionalString(shccstr!("The image to display."))
   }
 
-  fn outputTypes(&mut self) -> &Types {
+  fn output_types(&mut self) -> &Types {
     &image_util::TEXTURE_OR_IMAGE_TYPES
   }
 
-  fn outputHelp(&mut self) -> OptionalString {
+  fn output_help(&mut self) -> OptionalString {
     *HELP_OUTPUT_EQUAL_INPUT
   }
 
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&IMAGE_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => self.scale.set_param(value),
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.scale.get_param(),
-      _ => Var::default(),
-    }
-  }
-
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
     util::require_parents(&mut self.requiring);
 
-    Some(&self.requiring)
-  }
-
-  fn hasCompose() -> bool {
-    true
-  }
-
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     match data.inputType.basicType {
       SHType_Image => decl_override_activate! {
-        data.activate = Image::image_activate;
+        data.activate = Image::activate_image_override;
       },
       SHType_Object
         if unsafe { data.inputType.details.object.typeId } == image_util::TEXTURE_CC =>
       {
         decl_override_activate! {
-          data.activate = Image::texture_activate;
+          data.activate = Image::activate_texture_override;
         }
       }
       _ => (),
@@ -135,8 +94,7 @@ impl LegacyShard for Image {
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
-    self.parents.warmup(context);
-    self.scale.warmup(context);
+    self.warmup_helper(context)?;
 
     self.current_version = 0;
 
@@ -144,9 +102,7 @@ impl LegacyShard for Image {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.scale.cleanup();
-    self.parents.cleanup();
-
+    self.cleanup_helper()?;
     Ok(())
   }
 
@@ -156,7 +112,7 @@ impl LegacyShard for Image {
 }
 
 impl Image {
-  fn activateImage(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_image(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     let version = unsafe { input.__bindgen_anon_1.version };
     if self.current_version != version {
       self.cached_ui_image.invalidate();
@@ -169,8 +125,16 @@ impl Image {
         .cached_ui_image
         .get_egui_texture_from_image(input, ui)?;
 
-      let scale = image_util::get_scale(&self.scale)?;
-      ui.image(texture, texture.size_vec2() * scale);
+      ui.image(
+        texture,
+        image_util::resolve_image_size(
+          ui,
+          &self.size,
+          &self.scale,
+          &self.scaling_aware,
+          texture.size_vec2(),
+        ),
+      );
 
       Ok(*input)
     } else {
@@ -178,12 +142,13 @@ impl Image {
     }
   }
 
-  fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_texture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
 
-      let scale = image_util::get_scale(&self.scale)?;
-      ui.image(texture_id, texture_size * scale);
+      let scale = image_util::into_vec2(&self.scale)?;
+      let global_scale = 1.0 / ui.ctx().pixels_per_point();
+      ui.image(texture_id, texture_size * scale * global_scale);
 
       Ok(*input)
     } else {
@@ -192,14 +157,18 @@ impl Image {
   }
 
   impl_override_activate! {
-    extern "C" fn image_activate() -> Var {
-      Image::activateImage()
+    extern "C" fn activate_image_override() -> Var {
+      Image::activate_image()
     }
   }
 
   impl_override_activate! {
-    extern "C" fn texture_activate() -> Var {
-      Image::activateTexture()
+    extern "C" fn activate_texture_override() -> Var {
+      Image::activate_texture()
     }
   }
+}
+
+pub fn register_shards() {
+  register_shard::<Image>();
 }

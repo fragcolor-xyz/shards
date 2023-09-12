@@ -2,11 +2,12 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::image_util;
-use super::ImageButton;
 use crate::util;
 use crate::FLOAT2_VAR_SLICE;
 use crate::PARENTS_UI_NAME;
+use shards::core::register_shard;
 use shards::shard::LegacyShard;
+use shards::shard::Shard;
 use shards::shardsc::SHType_Bool;
 use shards::shardsc::SHType_Image;
 use shards::shardsc::SHType_Object;
@@ -29,38 +30,45 @@ use shards::types::SHARDS_OR_NONE_TYPES;
 use std::cmp::Ordering;
 use std::ffi::CStr;
 
-lazy_static! {
-  static ref IMAGEBUTTON_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Action"),
-      shccstr!("The shards to execute when the button is pressed."),
-      &SHARDS_OR_NONE_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Scale"),
-      shccstr!("Scaling to apply to the source image."),
-      FLOAT2_VAR_SLICE,
-    )
-      .into(),
-    (
-      cstr!("Selected"),
-      shccstr!("Indicates whether the button is selected."),
-      BOOL_VAR_OR_NONE_SLICE,
-    )
-      .into(),
-  ];
+#[derive(shard)]
+#[shard_info("UI.ImageButton", "Clickable button with image.")]
+struct ImageButton {
+  #[shard_warmup]
+  parents: ParamVar,
+  #[shard_required]
+  requiring: ExposedTypes,
+  #[shard_param(
+    "Action",
+    "The shards to execute when the button is pressed.",
+    SHARDS_OR_NONE_TYPES
+  )]
+  action: ShardsVar,
+  #[shard_param("Scale", "Scaling to apply to the source image.", FLOAT2_VAR_SLICE)]
+  scale: ParamVar,
+  #[shard_param("Size", "The size to render the image at.", FLOAT2_VAR_SLICE)]
+  size: ParamVar,
+  #[shard_param("ScalingAware", "When set to true, this image's pixels will be rendered 1:1 regardless of UI context point size.", BOOL_VAR_OR_NONE_SLICE)]
+  scaling_aware: ParamVar,
+  #[shard_param(
+    "Selected",
+    "Indicates whether the button is selected.",
+    BOOL_VAR_OR_NONE_SLICE
+  )]
+  selected: ParamVar,
+  exposing: ExposedTypes,
+  should_expose: bool,
+  cached_ui_image: image_util::CachedUIImage,
 }
 
 impl Default for ImageButton {
   fn default() -> Self {
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
     Self {
-      parents,
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
       requiring: Vec::new(),
       action: ShardsVar::default(),
       scale: ParamVar::new((1.0, 1.0).into()),
+      size: ParamVar::default(),
+      scaling_aware: ParamVar::default(),
       selected: ParamVar::default(),
       exposing: Vec::new(),
       should_expose: false,
@@ -69,81 +77,29 @@ impl Default for ImageButton {
   }
 }
 
-impl LegacyShard for ImageButton {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("UI.ImageButton")
-  }
-
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("UI.ImageButton-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI.ImageButton"
-  }
-
-  fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!("Clickable button with image."))
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shard_impl]
+impl Shard for ImageButton {
+  fn input_types(&mut self) -> &Types {
     &image_util::TEXTURE_OR_IMAGE_TYPES
   }
 
-  fn inputHelp(&mut self) -> OptionalString {
+  fn input_help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
       "The value that will be passed to the Action shards of the button."
     ))
   }
 
-  fn outputTypes(&mut self) -> &Types {
+  fn output_types(&mut self) -> &Types {
     &BOOL_TYPES
   }
 
-  fn outputHelp(&mut self) -> OptionalString {
+  fn output_help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
       "Indicates whether the button was clicked during this frame."
     ))
   }
 
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&IMAGEBUTTON_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => self.action.set_param(value),
-      1 => self.scale.set_param(value),
-      2 => self.selected.set_param(value),
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.action.get_param(),
-      1 => self.scale.get_param(),
-      2 => self.selected.get_param(),
-      _ => Var::default(),
-    }
-  }
-
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring);
-
-    Some(&self.requiring)
-  }
-
-  fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
+  fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
     if self.selected.is_variable() && self.should_expose {
       self.exposing.clear();
 
@@ -161,11 +117,10 @@ impl LegacyShard for ImageButton {
     }
   }
 
-  fn hasCompose() -> bool {
-    true
-  }
-
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    util::require_parents(&mut self.requiring);
+
     if self.selected.is_variable() {
       self.should_expose = true; // assume we expose a new variable
 
@@ -208,13 +163,7 @@ impl LegacyShard for ImageButton {
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.parents.warmup(ctx);
-
-    if !self.action.is_empty() {
-      self.action.warmup(ctx)?;
-    }
-    self.scale.warmup(ctx);
-    self.selected.warmup(ctx);
+    self.warmup_helper(ctx)?;
 
     if self.should_expose {
       self.selected.get_mut().valueType = common_type::bool.basicType;
@@ -224,14 +173,7 @@ impl LegacyShard for ImageButton {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.selected.cleanup();
-    self.scale.cleanup();
-    if !self.action.is_empty() {
-      self.action.cleanup();
-    }
-
-    self.parents.cleanup();
-
+    self.cleanup_helper()?;
     Ok(())
   }
 
@@ -241,34 +183,52 @@ impl LegacyShard for ImageButton {
 }
 
 impl ImageButton {
-  fn activateImage(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_image(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let (texture_id, texture_size) = {
         let texture = self
           .cached_ui_image
           .get_egui_texture_from_image(input, ui)?;
-        let scale = image_util::get_scale(&self.scale)?;
-        (texture.into(), texture.size_vec2() * scale)
+        (
+          texture.into(),
+          image_util::resolve_image_size(
+            ui,
+            &self.size,
+            &self.scale,
+            &self.scaling_aware,
+            texture.size_vec2(),
+          ),
+        )
       };
 
-      self.activateCommon(context, input, ui, texture_id, texture_size)
+      self.activate_common(context, input, ui, texture_id, texture_size)
     } else {
       Err("No UI parent")
     }
   }
 
-  fn activateTexture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate_texture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
-      let scale = image_util::get_scale(&self.scale)?;
-
-      self.activateCommon(context, input, ui, texture_id, texture_size * scale)
+      self.activate_common(
+        context,
+        input,
+        ui,
+        texture_id,
+        image_util::resolve_image_size(
+          ui,
+          &self.size,
+          &self.scale,
+          &self.scaling_aware,
+          texture_size,
+        ),
+      )
     } else {
       Err("No UI parent")
     }
   }
 
-  fn activateCommon(
+  fn activate_common(
     &mut self,
     context: &Context,
     input: &Var,
@@ -304,13 +264,17 @@ impl ImageButton {
 
   impl_override_activate! {
     extern "C" fn image_activate() -> Var {
-      ImageButton::activateImage()
+      ImageButton::activate_image()
     }
   }
 
   impl_override_activate! {
     extern "C" fn texture_activate() -> Var {
-      ImageButton::activateTexture()
+      ImageButton::activate_texture()
     }
   }
+}
+
+pub fn register_shards() {
+  register_shard::<ImageButton>();
 }

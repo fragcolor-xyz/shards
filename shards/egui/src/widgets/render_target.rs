@@ -151,7 +151,7 @@ impl RenderTarget {
   fn activateTexture(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
-      let scale = image_util::get_scale(&self.scale)? / ui.ctx().pixels_per_point();
+      let scale = image_util::into_vec2(&self.scale)? / ui.ctx().pixels_per_point();
 
       // Manually allocate region to consume input events
       let (rect, _response) =
@@ -167,7 +167,7 @@ impl RenderTarget {
     }
   }
 
-  impl_override_activate! {
+  impl_legacy_override_activate! {
     extern "C" fn texture_activate() -> Var {
       RenderTarget::activateTexture()
     }

@@ -88,30 +88,10 @@ struct Hyperlink {
   style: ParamVar,
 }
 
-struct Image {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-  scale: ParamVar,
-  cached_ui_image: image_util::CachedUIImage,
-  current_version: u64,
-}
-
 struct RenderTarget {
   parents: ParamVar,
   requiring: ExposedTypes,
   scale: ParamVar,
-}
-
-/// Clickable button with an image.
-struct ImageButton {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-  action: ShardsVar,
-  scale: ParamVar,
-  selected: ParamVar,
-  exposing: ExposedTypes,
-  should_expose: bool,
-  cached_ui_image: image_util::CachedUIImage,
 }
 
 /// Displays text.
@@ -307,8 +287,6 @@ pub fn register_shards() {
   register_legacy_shard::<Combo>();
   register_legacy_shard::<Console>();
   register_legacy_shard::<Hyperlink>();
-  register_legacy_shard::<Image>();
-  register_legacy_shard::<ImageButton>();
   register_legacy_shard::<RenderTarget>();
   register_legacy_shard::<Label>();
   register_legacy_shard::<Link>();
@@ -330,6 +308,8 @@ pub fn register_shards() {
   register_legacy_shard::<Int3Slider>();
   register_legacy_shard::<Int4Slider>();
   plots::register_shards();
+  image::register_shards();
+  image_button::register_shards();
   register_legacy_shard::<MarkdownViewer>();
   register_legacy_shard::<ProgressBar>();
   register_legacy_shard::<RadioButton>();
