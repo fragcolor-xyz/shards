@@ -8,8 +8,10 @@ extern crate lazy_static;
 
 extern crate compile_time_crc32;
 
+use resvg::tiny_skia::Pixmap;
 use shards::core::register_legacy_shard;
 use shards::core::register_shard;
+use shards::shard;
 use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::shardsc::SHImage;
@@ -17,20 +19,19 @@ use shards::shardsc::SHVarPayload;
 use shards::shardsc::SHVarPayload__bindgen_ty_1;
 use shards::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use shards::shardsc::{SHType_Bytes, SHType_Image, SHType_String};
-use shards::shard;
-use shards::types::FLOAT2_TYPES;
 use shards::types::common_type;
-use shards::types::ParamVar;
 use shards::types::Context;
+use shards::types::ExposedTypes;
+use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::Type;
 use shards::types::Var;
-use shards::types::ExposedTypes;
+use shards::types::FLOAT2_TYPES;
 use shards::types::FLOAT2_TYPES_SLICE;
 use shards::types::IMAGE_TYPES;
+use shards::types::INT2_TYPES;
 use shards::types::INT2_TYPES_SLICE;
 use std::convert::TryInto;
-use resvg::tiny_skia::Pixmap;
 use usvg::tiny_skia_path::IntSize;
 use usvg::Transform;
 use usvg::TreeParsing;
@@ -63,10 +64,16 @@ lazy_static! {
 #[shard_info("SVG.ToImage", "Converts an SVG string or bytes to an image.")]
 struct ToImage {
   pixmap: Option<Pixmap>,
-  #[shard_param("Size", "The desired output size, if (0, 0) will default to the size defined in the svg data.", SIZE_TYPES)]
+  #[shard_param(
+    "Size",
+    "The desired output size, if (0, 0) will default to the size defined in the svg data.",
+    SIZE_TYPES
+  )]
   size: ParamVar,
   #[shard_param("Offset", "A positive x and y value offsets towards the right and the bottom of the screen respectively. (0.0, 0.0) by default.", FLOAT2_TYPES)]
   offset: ParamVar,
+  #[shard_param("Padding", "Pixels of padding to add", INT2_TYPES)]
+  padding: ParamVar,
   #[shard_required]
   required: ExposedTypes,
 }
@@ -77,6 +84,7 @@ impl Default for ToImage {
       pixmap: None,
       size: ParamVar::default(),
       offset: ParamVar::default(),
+      padding: ParamVar::default(),
       required: ExposedTypes::default(),
     }
   }
@@ -125,6 +133,11 @@ impl Shard for ToImage {
 
     let (offset_x, offset_y): (f32, f32) = self.offset.get().try_into().unwrap_or_default();
 
+    let (pad_x, pad_y) = {
+      let (x, y): (i32, i32) = self.padding.get().try_into().unwrap_or_default();
+      (x as u32, y as u32)
+    };
+
     let pixmap_size = if w == 0 && h == 0 {
       Ok(ntree.size.to_int_size())
     } else {
@@ -146,10 +159,16 @@ impl Shard for ToImage {
     }
 
     let mut rtree = resvg::Tree::from_usvg(&ntree);
-    rtree.size = pixmap_size.to_size();
+
+    let padded_size = IntSize::from_wh(
+      pixmap_size.width() - pad_x * 2,
+      pixmap_size.height() - pad_y * 2,
+    )
+    .ok_or("Invalid padding")?;
+    rtree.size = padded_size.to_size();
 
     rtree.render(
-      Transform::from_translate(offset_x, offset_y),
+      Transform::from_translate(offset_x + pad_x as f32, offset_y + pad_y as f32),
       &mut self.pixmap.as_mut().unwrap().as_mut(),
     );
 

@@ -3,6 +3,7 @@
 
 use crate::bindings::gfx_TexturePtr;
 use crate::bindings::gfx_TexturePtr_getResolution_ext;
+use egui::vec2;
 use shards::fourCharacterCode;
 use shards::shardsc::SHImage;
 use shards::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
@@ -40,7 +41,7 @@ pub fn resolve_image_size(
     in_size
   };
 
-  let scale = into_vec2(scale_var).unwrap();
+  let scale = into_vec2(scale_var).unwrap_or(vec2(1.0, 1.0));
   pt_size = pt_size * scale;
   let scaling_aware: bool = (aware_var.get().try_into()).unwrap_or(false);
   if scaling_aware {

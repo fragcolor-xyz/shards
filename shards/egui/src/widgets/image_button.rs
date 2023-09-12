@@ -184,48 +184,42 @@ impl Shard for ImageButton {
 
 impl ImageButton {
   fn activate_image(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let (texture_id, texture_size) = {
-        let texture = self
-          .cached_ui_image
-          .get_egui_texture_from_image(input, ui)?;
-        (
-          texture.into(),
-          image_util::resolve_image_size(
-            ui,
-            &self.size,
-            &self.scale,
-            &self.scaling_aware,
-            texture.size_vec2(),
-          ),
-        )
-      };
-
-      self.activate_common(context, input, ui, texture_id, texture_size)
-    } else {
-      Err("No UI parent")
-    }
-  }
-
-  fn activate_texture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
-      self.activate_common(
-        context,
-        input,
-        ui,
-        texture_id,
+    let ui = util::get_parent_ui(self.parents.get())?;
+    let (texture_id, texture_size) = {
+      let texture = self
+        .cached_ui_image
+        .get_egui_texture_from_image(input, ui)?;
+      (
+        texture.into(),
         image_util::resolve_image_size(
           ui,
           &self.size,
           &self.scale,
           &self.scaling_aware,
-          texture_size,
+          texture.size_vec2(),
         ),
       )
-    } else {
-      Err("No UI parent")
-    }
+    };
+
+    self.activate_common(context, input, ui, texture_id, texture_size)
+  }
+
+  fn activate_texture(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    let ui = util::get_parent_ui(self.parents.get())?;
+    let (texture_id, texture_size) = image_util::get_egui_texture_from_gfx(input)?;
+    self.activate_common(
+      context,
+      input,
+      ui,
+      texture_id,
+      image_util::resolve_image_size(
+        ui,
+        &self.size,
+        &self.scale,
+        &self.scaling_aware,
+        texture_size,
+      ),
+    )
   }
 
   fn activate_common(
