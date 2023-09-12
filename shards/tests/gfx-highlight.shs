@@ -41,7 +41,7 @@
       drawable-0 | GFX.Draw(queue)
 
       Gizmos.Context(Queue: editor-queue View: view
-                     Content: {drawable-0 | Gizmos.Highlight})
+                     Contents: {drawable-0 | Gizmos.Highlight})
 
       GFX.Render(Steps: render-steps View: view)}
   )

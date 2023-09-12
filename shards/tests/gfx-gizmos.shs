@@ -47,7 +47,7 @@
       ; Draw helpers (using scene depth)
       ; Provides a context for rendering gizmos
       Gizmos.Context(Queue: editor-queue View: view
-                     Content: {
+                     Contents: {
                        ; Highlights the object (drawable) attached to gizmo, show wireframe
                        drawable-0 | Gizmos.Highlight
                        @f3(0 0 0) >= a
@@ -72,7 +72,7 @@
                      })
       ; Draw on top of everthing (ignore depth)
       Gizmos.Context(Queue: editor-queue-np-depth View: view
-                     Content: {
+                     Contents: {
                        transform-0 | Gizmos.Translation > transform-0
                      })
       GFX.Render(Steps: render-steps View: view)
