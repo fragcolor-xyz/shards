@@ -85,7 +85,7 @@ void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits);
 // When copying textures into buffers the bytesPerRow should be aligned to this number
 inline constexpr size_t WGPU_COPY_BYTES_PER_ROW_ALIGNMENT = 256;
 
-#if WEBGPU_NATIVE
+#if WEBGPU_NATIVE && !RUST_BINDGEN
 #include "rust/gfx/bindings.hpp"
 #endif
 
