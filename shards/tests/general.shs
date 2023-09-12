@@ -482,9 +482,9 @@
     Log
   } Times: 6)
 
-  {"a" 10
-   "b" 22
-   "d" 50} |
+  {"a": 10
+   "b": 22
+   "d": 50} |
   Flatten |
   ; the following can be out of order, todo
   ; Assert.Is(["a" 10 "b" 22 "d" 50] true)
