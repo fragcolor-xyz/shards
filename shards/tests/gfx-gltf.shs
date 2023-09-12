@@ -93,7 +93,7 @@
       ; Rotate camera
       time | Math.Add(@timestep) > time
       time | Do(get-view-transform) > view-transform
-      time | get-xy-wave-transform(0.0) > t2
+      @get-xy-wave-transform(0.0 time) > t2
 
       t1 | GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> drawables
       t2 | GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb") >> drawables
