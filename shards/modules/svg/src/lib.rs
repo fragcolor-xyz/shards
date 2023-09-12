@@ -8,7 +8,6 @@ extern crate lazy_static;
 
 extern crate compile_time_crc32;
 
-
 use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 use shards::shardsc::SHImage;
@@ -17,7 +16,7 @@ use shards::shardsc::SHVarPayload__bindgen_ty_1;
 use shards::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use shards::shardsc::{SHType_Bytes, SHType_Image, SHType_String};
 use shards::types::common_type;
-
+use shards::types::ParamVar;
 use shards::types::Context;
 use shards::types::Parameters;
 use shards::types::Type;
@@ -51,13 +50,15 @@ pub fn pixmap_to_var(pmap: &mut Pixmap) -> Var {
 
 lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
+  static ref SIZE_TYPES: Vec<Type> =
+    vec![common_type::int2, common_type::int2_var, common_type::none];
   static ref PARAMETERS: Parameters = vec![
   (
     cstr!("Size"),
     shccstr!(
       "The desired output size, if (0, 0) will default to the size defined in the svg data."
     ),
-    INT2_TYPES_SLICE
+    &SIZE_TYPES[..]
   )
     .into(),
     (
@@ -73,8 +74,8 @@ lazy_static! {
 #[derive(Default)]
 struct ToImage {
   pixmap: Option<Pixmap>,
-  size: (i64, i64),
-  offset: (f32, f32),
+  size: ParamVar,
+  offset: ParamVar,
 }
 
 impl LegacyShard for ToImage {
@@ -98,17 +99,25 @@ impl LegacyShard for ToImage {
   }
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.size = value.try_into()?),
-      1 => Ok(self.offset = value.try_into()?),
+      0 => self.size.set_param(value),
+      1 => self.offset.set_param(value),
       _ => unreachable!(),
     }
   }
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.size.into(),
-      1 => self.offset.into(),
+      0 => self.size.get_param(),
+      1 => self.offset.get_param(),
       _ => unreachable!(),
     }
+  }
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.size.warmup(context);
+    Ok(())
+  }
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.size.cleanup();
+    Ok(())
   }
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let mut opt = usvg::Options::default();
@@ -129,27 +138,13 @@ impl LegacyShard for ToImage {
       _ => Err("Invalid input type"),
     }?;
 
-    let (w, h): (u32, u32) = (
-      self.size.0.try_into().map_err(|e| {
-        shlog!("{}", e);
-        "Invalid width"
-      })?,
-      self.size.1.try_into().map_err(|e| {
-        shlog!("{}", e);
-        "Invalid height"
-      })?,
-    );
+    let (sx, sy): (i32, i32) = self.size.get().try_into().unwrap_or_default();
+    if sx < 0 || sy < 0 {
+      return Err("Invalid size");
+    }
+    let (w, h) = (sx as u32, sy as u32);
 
-    let (offset_x, offset_y): (f32, f32) = (
-      self.offset.0.try_into().map_err(|e| {
-        shlog!("{}", e);
-        "Invalid x offset"
-      })?,
-      self.offset.1.try_into().map_err(|e| {
-        shlog!("{}", e);
-        "Invalid y offset"
-      })?,
-    );
+    let (offset_x, offset_y): (f32, f32) = self.offset.get().try_into().unwrap_or_default();
 
     let pixmap_size = if w == 0 && h == 0 {
       Ok(ntree.size.to_int_size())
