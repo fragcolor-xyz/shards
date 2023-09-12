@@ -26,3 +26,19 @@
 @schedule(main receive2)
 @schedule(main updater)
 @run(main FPS: 20 Iterations: 100)
+
+@wire(quit {
+  Pause(0.0) | ; allow signal-receive to run first
+  Events.Emit("quit")
+})
+
+@schedule(main quit)
+
+@wire(signal-process {
+  Events.Update("quit") |
+  When({Events.Check("quit")} {Msg("QUITTING") | Stop})
+} Looped: true)
+
+@schedule(main signal-process)
+
+@run(main FPS: 20 Iterations: 100)
