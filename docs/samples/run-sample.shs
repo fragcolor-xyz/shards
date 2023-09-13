@@ -10,7 +10,7 @@
 
 @mesh(main)
 @wire(main-wire {
-  Start(open-sample true)
+  SwitchTo(open-sample Restart: true)
 })
 
 @schedule(main main-wire)
