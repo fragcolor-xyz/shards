@@ -15,12 +15,6 @@ struct AddFont {
   requiring: ExposedTypes,
 }
 
-struct Style {
-  instance: ParamVar,
-  parents: ParamVar,
-  requiring: ExposedTypes,
-}
-
 mod add_font;
 mod reset;
 mod style;
@@ -29,7 +23,7 @@ pub(crate) mod style_util;
 
 pub fn register_shards() {
   register_legacy_shard::<Reset>();
-  register_legacy_shard::<Style>();
   register_legacy_shard::<AddFont>();
+  style::register_shards();
   painter::register_shards();
 }

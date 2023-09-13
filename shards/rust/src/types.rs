@@ -3893,6 +3893,32 @@ impl TryFrom<&Var> for WireRef {
   }
 }
 
+impl TryFrom<&Var> for TableVar {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Table {
+      Err("Expected Table variable, but casting failed.")
+    } else {
+      Ok(TableVar(*var))
+    }
+  }
+}
+
+impl TryFrom<&Var> for SeqVar {
+  type Error = &'static str;
+
+  #[inline(always)]
+  fn try_from(var: &Var) -> Result<Self, Self::Error> {
+    if var.valueType != SHType_Table {
+      Err("Expected Seq variable, but casting failed.")
+    } else {
+      Ok(SeqVar(*var))
+    }
+  }
+}
+
 impl From<WireRef> for Var {
   #[inline(always)]
   fn from(wire: WireRef) -> Self {
