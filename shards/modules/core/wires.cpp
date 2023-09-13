@@ -525,7 +525,7 @@ struct StopWire : public WireBase {
 
   SHExposedTypesInfo requiredVariables() {
     if (wireref.isVariable()) {
-      _requiredWire = SHExposedTypeInfo{wireref.variableName(), SHCCSTR("The wire to run."), CoreInfo::WireType};
+      _requiredWire = SHExposedTypeInfo{wireref.variableName(), SHCCSTR("The wire to stop."), CoreInfo::WireType};
       return {&_requiredWire, 1, 0};
     } else {
       return {};
@@ -560,6 +560,144 @@ struct StopWire : public WireBase {
         return _output;
       }
     }
+  }
+};
+
+struct SuspendWire : public WireBase {
+  SHOptionalString help() { return SHCCSTR("Pauses another wire. If no wire is given, pauses the current wire."); }
+
+  void setup() { passthrough = true; }
+
+  SHExposedTypeInfo _requiredWire{};
+
+  void cleanup() {
+    if (wireref.isVariable())
+      wire = nullptr;
+    WireBase::cleanup();
+  }
+
+  static inline Parameters params{{"Wire", SHCCSTR("The wire to suspend."), {WireVarTypes}}};
+
+  static SHParametersInfo parameters() { return params; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      wireref = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return wireref;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    if (wireref.isVariable()) {
+      _requiredWire = SHExposedTypeInfo{wireref.variableName(), SHCCSTR("The wire to suspend."), CoreInfo::WireType};
+      return {&_requiredWire, 1, 0};
+    } else {
+      return {};
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (unlikely(!wire && wireref.isVariable())) {
+      auto vwire = wireref.get();
+      if (vwire.valueType == SHType::Wire) {
+        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
+      } else if (vwire.valueType == SHType::String) {
+        auto sv = SHSTRVIEW(vwire);
+        std::string s(sv);
+        SHLOG_DEBUG("Suspend: Resolving wire {}", sv);
+        wire = GetGlobals().GlobalWires[s];
+      } else {
+        wire = nullptr;
+      }
+    }
+
+    if (unlikely(!wire)) {
+      // in this case we pause the current flow
+      context->flow->paused = true;
+    } else {
+      // pause the wire's flow
+      wire->context->flow->paused = true;
+    }
+
+    return input;
+  }
+};
+
+struct ResumeWire : public WireBase {
+  SHOptionalString help() { return SHCCSTR("Resumes another wire (previously suspending using Suspend)."); }
+
+  void setup() { passthrough = true; }
+
+  SHExposedTypeInfo _requiredWire{};
+
+  void cleanup() {
+    if (wireref.isVariable())
+      wire = nullptr;
+    WireBase::cleanup();
+  }
+
+  static inline Parameters params{{"Wire", SHCCSTR("The wire to resume."), {WireVarTypes}}};
+
+  static SHParametersInfo parameters() { return params; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      wireref = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return wireref;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    if (wireref.isVariable()) {
+      _requiredWire = SHExposedTypeInfo{wireref.variableName(), SHCCSTR("The wire to resume."), CoreInfo::WireType};
+      return {&_requiredWire, 1, 0};
+    } else {
+      return {};
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (unlikely(!wire && wireref.isVariable())) {
+      auto vwire = wireref.get();
+      if (vwire.valueType == SHType::Wire) {
+        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
+      } else if (vwire.valueType == SHType::String) {
+        auto sv = SHSTRVIEW(vwire);
+        std::string s(sv);
+        SHLOG_DEBUG("Suspend: Resolving wire {}", sv);
+        wire = GetGlobals().GlobalWires[s];
+      } else {
+        throw ActivationError("Resume: no wire found.");
+      }
+    }
+
+    wire->context->flow->paused = false;
+
+    return input;
   }
 };
 
@@ -1832,8 +1970,7 @@ struct StepMany : public TryMany {
 
       // Tick the wire on the flow that this wire created
       SHDuration now = SHClock::now().time_since_epoch();
-      if (cref->wire->context->flow->wire)
-        shards::tick(cref->wire->context->flow->wire, now);
+      shards::tick(cref->wire->context->flow->wire, now);
 
       // this can be anything really...
       cloneVar(_outputs[i], cref->wire->previousOutput);
@@ -2042,5 +2179,7 @@ SHARDS_REGISTER_FN(wires) {
   REGISTER_SHARD("StepMany", StepMany);
   REGISTER_SHARD("DoMany", DoMany);
   REGISTER_SHARD("Peek", Peek);
+  REGISTER_SHARD("Suspend", SuspendWire);
+  REGISTER_SHARD("Resume", ResumeWire);
 }
 }; // namespace shards

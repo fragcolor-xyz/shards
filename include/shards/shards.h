@@ -481,6 +481,7 @@ struct SHExposedTypeInfo {
 
 struct SHFlow {
   struct SHWire *wire;
+  SHBool paused;
 };
 
 // # Of SHVars and memory
