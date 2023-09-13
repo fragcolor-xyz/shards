@@ -29,13 +29,13 @@
   (Wire
    "jumphere!"
    (Msg "jumped...")
-   (Resume "ticked")))
+   (SwitchTo "ticked")))
 
 (def jumpWire2
   (Wire
    "jumphere2!"
    (Msg "jumped...")
-   (Resume)))
+   (SwitchTo)))
 
 (def stopWire
   (Wire
@@ -55,7 +55,7 @@
    (Pause)
    (Msg "message 2")
                                         ; test jumping to another coro
-   (Resume "jumphere!")
+   (SwitchTo "jumphere!")
    (Msg "ticked resumed")
    2
    (Pause)
@@ -67,8 +67,8 @@
    4
    (Pause)
                                ; make sure main is not stopped in this case
-   (Resume "stopping")
-   ;; the flow stopped via Stop, the input of Stop was 4 from previous Resume
+   (SwitchTo "stopping")
+   ;; the flow stopped via Stop, the input of Stop was 4 from previous SwitchTo
    (Assert.Is 4 true)))
 
 (def tickedWire2
@@ -79,7 +79,7 @@
    (Pause)
    (Msg "message 2")
                                         ; test jumping to another coro
-   (Start "jumphere2!")
+   (SwitchTo "jumphere2!" true)
    (Msg "ticked resumed")
    2
    (Pause)
@@ -96,7 +96,7 @@
   (Wire
    "started"
    (Msg "From top!")
-   (Resume "root-wire")
+   (SwitchTo "root-wire")
    ; root-wire should complete, and so output "done"
    (Assert.Is "done" true)))
 
@@ -184,9 +184,9 @@
      (Assert.Is 4 true) ; pause after 4
      ):Times 3)
 
-   (Start startButNotResumed)
+   (SwitchTo startButNotResumed true)
    (Msg "root resumed")
-   (Start startButNotResumed)
+   (SwitchTo startButNotResumed true)
    (Msg "root resumed")
 
    "done"

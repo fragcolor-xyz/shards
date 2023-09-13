@@ -1,6 +1,6 @@
 (defwire hello
   (Msg "Hello")
-  (Resume))
+  (SwitchTo))
 
-(Start hello)
+(SwitchTo hello)
 (Msg "World")

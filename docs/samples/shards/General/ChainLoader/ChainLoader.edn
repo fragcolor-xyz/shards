@@ -9,4 +9,4 @@
    ;:Mode
    RunWireMode.Inline))
 
-(Start loader)
+(SwitchTo loader)
