@@ -197,7 +197,7 @@ impl LegacyShard for CollapsingHeader {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let default_open: bool = self.defaultOpen.get().try_into()?;
 
       if let Some(ret) = if self.header.is_empty() {

@@ -2,9 +2,9 @@ use super::util;
 
 use super::CONTEXTS_NAME;
 use super::EGUI_CTX_TYPE;
-use super::EGUI_UI_SEQ_TYPE;
 
 use super::PARENTS_UI_NAME;
+use crate::EGUI_UI_TYPE;
 use crate::bindings::egui_FullOutput;
 use crate::bindings::egui_Input;
 use crate::bindings::make_native_full_output;
@@ -51,7 +51,7 @@ impl Default for EguiHost {
         exposed: false,
       },
       ExposedInfo {
-        exposedType: EGUI_UI_SEQ_TYPE,
+        exposedType: EGUI_UI_TYPE,
         name: parents.get_name(),
         help: cstr!("The parent UI objects.").into(),
         isMutable: false,
@@ -86,17 +86,6 @@ impl EguiHost {
     self.context = Some(egui::Context::default());
     self.instance.warmup(ctx);
     self.parents.warmup(ctx);
-
-    // Initialize the parents stack in the root UI.
-    // Every other UI elements will reference it and push or pop UIs to it.
-    if !self.parents.get().is_seq() {
-      self.parents.set_fast_unsafe(&Seq::new().as_ref().into());
-    }
-
-    // Context works the same
-    if !self.instance.get().is_seq() {
-      self.instance.set_fast_unsafe(&Seq::new().as_ref().into());
-    }
 
     Ok(())
   }
@@ -133,12 +122,8 @@ impl EguiHost {
         let egui_output = gui_ctx.run(raw_input, |ctx| {
           error = (|| -> Result<(), &str> {
             // Push empty parent UI in case this context is nested inside another UI
-            util::update_seq(&mut self.parents, |seq| {
-              seq.push(&Var::default());
-            })?;
-
-            let mut _output = Var::default();
-            let wire_state: WireState =
+            let wire_state: WireState = util::with_none_var(&mut self.parents, || {
+              let mut _output = Var::default();
               util::with_object_stack_var(&mut self.instance, ctx, &EGUI_CTX_TYPE, || {
                 Ok(unsafe {
                   (*Core).runShards.unwrap()(
@@ -149,16 +134,12 @@ impl EguiHost {
                   )
                   .into()
                 })
-              })?;
+              })
+            })?;
 
             if wire_state == WireState::Error {
               return Err("Failed to activate UI contents");
             }
-
-            // Pop empty parent UI
-            util::update_seq(&mut self.parents, |seq| {
-              seq.pop();
-            })?;
 
             Ok(())
           })()

@@ -136,7 +136,7 @@ impl LegacyShard for ProgressBar {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let progress = input.try_into()?;
       let mut progressBar = egui::ProgressBar::new(progress);
 

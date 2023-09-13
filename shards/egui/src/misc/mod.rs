@@ -24,10 +24,12 @@ struct Style {
 mod add_font;
 mod reset;
 mod style;
+mod painter;
 pub(crate) mod style_util;
 
 pub fn register_shards() {
   register_legacy_shard::<Reset>();
   register_legacy_shard::<Style>();
   register_legacy_shard::<AddFont>();
+  painter::register_shards();
 }

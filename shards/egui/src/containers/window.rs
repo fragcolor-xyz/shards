@@ -1,15 +1,14 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::Anchor;
 use super::Window;
 use super::WindowFlags;
-use crate::containers::ANCHOR_TYPES;
+use crate::ANCHOR_TYPES;
+use crate::Anchor;
 use crate::containers::SEQ_OF_WINDOW_FLAGS;
 use crate::containers::WINDOW_FLAGS_TYPE;
 use crate::util;
 use crate::CONTEXTS_NAME;
-use crate::EGUI_CTX_TYPE;
 use crate::FLOAT2_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
@@ -287,19 +286,8 @@ impl LegacyShard for Window {
         }
       } else {
         let offset: (f32, f32) = self.position.get().try_into().unwrap_or_default();
-        window.anchor(
-          Anchor {
-            bits: unsafe {
-              self
-                .anchor
-                .get()
-                .payload
-                .__bindgen_anon_1
-                .__bindgen_anon_3
-                .enumValue
-            },
-          }
-          .try_into()?,
+        let anchor: Anchor = self.anchor.get().try_into()?;
+        window.anchor(anchor.into(),
           offset,
         )
       };

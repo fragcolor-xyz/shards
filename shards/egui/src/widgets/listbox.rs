@@ -278,7 +278,7 @@ impl LegacyShard for ListBox {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(parent) = util::get_current_parent(self.parents.get())? {
+    if let Some(parent) = util::get_current_parent_opt(self.parents.get())? {
       let current_index = if self.index.is_variable() {
         self.index.get().try_into()?
       } else {

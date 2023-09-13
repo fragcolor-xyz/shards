@@ -8,25 +8,30 @@ extern crate lazy_static;
 
 extern crate compile_time_crc32;
 
-
+use resvg::tiny_skia::Pixmap;
 use shards::core::register_legacy_shard;
+use shards::core::register_shard;
+use shards::shard;
 use shards::shard::LegacyShard;
+use shards::shard::Shard;
 use shards::shardsc::SHImage;
 use shards::shardsc::SHVarPayload;
 use shards::shardsc::SHVarPayload__bindgen_ty_1;
 use shards::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
 use shards::shardsc::{SHType_Bytes, SHType_Image, SHType_String};
 use shards::types::common_type;
-
 use shards::types::Context;
+use shards::types::ExposedTypes;
+use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::Type;
 use shards::types::Var;
+use shards::types::FLOAT2_TYPES;
 use shards::types::FLOAT2_TYPES_SLICE;
 use shards::types::IMAGE_TYPES;
+use shards::types::INT2_TYPES;
 use shards::types::INT2_TYPES_SLICE;
 use std::convert::TryInto;
-use resvg::tiny_skia::Pixmap;
 use usvg::tiny_skia_path::IntSize;
 use usvg::Transform;
 use usvg::TreeParsing;
@@ -51,64 +56,55 @@ pub fn pixmap_to_var(pmap: &mut Pixmap) -> Var {
 
 lazy_static! {
   static ref INPUT_TYPES: Vec<Type> = vec![common_type::string, common_type::bytes];
-  static ref PARAMETERS: Parameters = vec![
-  (
-    cstr!("Size"),
-    shccstr!(
-      "The desired output size, if (0, 0) will default to the size defined in the svg data."
-    ),
-    INT2_TYPES_SLICE
-  )
-    .into(),
-    (
-    cstr!("Offset"),
-    shccstr!(
-      "A positive x and y value offsets towards the right and the bottom of the screen respectively. (0.0, 0.0) by default. "
-    ),
-    FLOAT2_TYPES_SLICE
-  )
-    .into()];
+  static ref SIZE_TYPES: Vec<Type> =
+    vec![common_type::int2, common_type::int2_var, common_type::none];
 }
 
-#[derive(Default)]
+#[derive(shard)]
+#[shard_info("SVG.ToImage", "Converts an SVG string or bytes to an image.")]
 struct ToImage {
   pixmap: Option<Pixmap>,
-  size: (i64, i64),
-  offset: (f32, f32),
+  #[shard_param(
+    "Size",
+    "The desired output size, if (0, 0) will default to the size defined in the svg data.",
+    SIZE_TYPES
+  )]
+  size: ParamVar,
+  #[shard_param("Offset", "A positive x and y value offsets towards the right and the bottom of the screen respectively. (0.0, 0.0) by default.", FLOAT2_TYPES)]
+  offset: ParamVar,
+  #[shard_param("Padding", "Pixels of padding to add", INT2_TYPES)]
+  padding: ParamVar,
+  #[shard_required]
+  required: ExposedTypes,
 }
 
-impl LegacyShard for ToImage {
-  fn registerName() -> &'static str {
-    cstr!("SVG.ToImage")
+impl Default for ToImage {
+  fn default() -> Self {
+    Self {
+      pixmap: None,
+      size: ParamVar::default(),
+      offset: ParamVar::default(),
+      padding: ParamVar::default(),
+      required: ExposedTypes::default(),
+    }
   }
-  fn hash() -> u32 {
-    compile_time_crc32::crc32!("SVG.ToImage-rust-0x20200101")
-  }
-  fn name(&mut self) -> &str {
-    "SVG.ToImage"
-  }
-  fn inputTypes(&mut self) -> &std::vec::Vec<Type> {
+}
+
+#[shard_impl]
+impl Shard for ToImage {
+  fn input_types(&mut self) -> &std::vec::Vec<Type> {
     &INPUT_TYPES
   }
-  fn outputTypes(&mut self) -> &std::vec::Vec<Type> {
+  fn output_types(&mut self) -> &std::vec::Vec<Type> {
     &IMAGE_TYPES
   }
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&PARAMETERS)
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.warmup_helper(context)?;
+    Ok(())
   }
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => Ok(self.size = value.try_into()?),
-      1 => Ok(self.offset = value.try_into()?),
-      _ => unreachable!(),
-    }
-  }
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.size.into(),
-      1 => self.offset.into(),
-      _ => unreachable!(),
-    }
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.cleanup_helper()?;
+    Ok(())
   }
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let mut opt = usvg::Options::default();
@@ -129,27 +125,18 @@ impl LegacyShard for ToImage {
       _ => Err("Invalid input type"),
     }?;
 
-    let (w, h): (u32, u32) = (
-      self.size.0.try_into().map_err(|e| {
-        shlog!("{}", e);
-        "Invalid width"
-      })?,
-      self.size.1.try_into().map_err(|e| {
-        shlog!("{}", e);
-        "Invalid height"
-      })?,
-    );
+    let (sx, sy): (i32, i32) = self.size.get().try_into().unwrap_or_default();
+    if sx < 0 || sy < 0 {
+      return Err("Invalid size");
+    }
+    let (w, h) = (sx as u32, sy as u32);
 
-    let (offset_x, offset_y): (f32, f32) = (
-      self.offset.0.try_into().map_err(|e| {
-        shlog!("{}", e);
-        "Invalid x offset"
-      })?,
-      self.offset.1.try_into().map_err(|e| {
-        shlog!("{}", e);
-        "Invalid y offset"
-      })?,
-    );
+    let (offset_x, offset_y): (f32, f32) = self.offset.get().try_into().unwrap_or_default();
+
+    let (pad_x, pad_y) = {
+      let (x, y): (i32, i32) = self.padding.get().try_into().unwrap_or_default();
+      (x as u32, y as u32)
+    };
 
     let pixmap_size = if w == 0 && h == 0 {
       Ok(ntree.size.to_int_size())
@@ -172,10 +159,16 @@ impl LegacyShard for ToImage {
     }
 
     let mut rtree = resvg::Tree::from_usvg(&ntree);
-    rtree.size = pixmap_size.to_size();
+
+    let padded_size = IntSize::from_wh(
+      pixmap_size.width() - pad_x * 2,
+      pixmap_size.height() - pad_y * 2,
+    )
+    .ok_or("Invalid padding")?;
+    rtree.size = padded_size.to_size();
 
     rtree.render(
-      Transform::from_translate(offset_x, offset_y),
+      Transform::from_translate(offset_x + pad_x as f32, offset_y + pad_y as f32),
       &mut self.pixmap.as_mut().unwrap().as_mut(),
     );
 
@@ -189,5 +182,5 @@ pub extern "C" fn shardsRegister_svg_svg(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  register_legacy_shard::<ToImage>();
+  register_shard::<ToImage>();
 }

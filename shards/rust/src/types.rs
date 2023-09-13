@@ -1689,7 +1689,7 @@ where
     let res = ClonedVar(Var::default());
     unsafe {
       let rv = &res.0 as *const SHVar as *mut SHVar;
-      let sv = &vt as *const SHVar; 
+      let sv = &vt as *const SHVar;
       (*Core).cloneVar.unwrap()(rv, sv);
     }
     res
@@ -2691,7 +2691,6 @@ impl Var {
     }
   }
 
-
   pub unsafe fn new_object_from_ptr<T>(obj: *const T, info: &Type) -> Var {
     Var {
       valueType: SHType_Object,
@@ -2724,7 +2723,7 @@ impl Var {
     }
   }
 
-  pub fn from_object_as_clone<'a, T>(var: &Var, info: &'a Type) -> Result<Rc<T>, &'a str> {
+  pub fn from_object_as_clone<T>(var: &Var, info: &Type) -> Result<Rc<T>, &'static str> {
     // use this to store the smart pointer in order to keep it alive
     // this will not allow mutable references btw
     unsafe {
@@ -2743,14 +2742,14 @@ impl Var {
   }
 
   // This pattern is often used in shards storing Rcs of Vars
-  pub fn get_mut_from_clone<'a, T>(c: &Option<Rc<Option<T>>>) -> Result<&'a mut T, &'a str> {
+  pub fn get_mut_from_clone<'a, T>(c: &Option<Rc<Option<T>>>) -> Result<&'a mut T, &'static str> {
     let c = c.as_ref().ok_or("No Var reference found")?;
     let c = Rc::as_ptr(c) as *mut Option<T>;
     let c = unsafe { (*c).as_mut().ok_or("Failed to unwrap Rc-ed reference")? };
     Ok(c)
   }
 
-  pub fn from_object_mut_ref<'a, T>(var: &Var, info: &'a Type) -> Result<&'a mut T, &'a str> {
+  pub fn from_object_mut_ref<'a, T>(var: &Var, info: &Type) -> Result<&'a mut T, &'static str> {
     // used to use the object once, when it comes from a simple pointer
     unsafe {
       if var.valueType != SHType_Object
@@ -2768,7 +2767,7 @@ impl Var {
     }
   }
 
-  pub fn from_object_ptr_mut_ref<'a, T>(var: &Var, info: &'a Type) -> Result<&'a mut T, &'a str> {
+  pub fn from_object_ptr_mut_ref<'a, T>(var: &Var, info: &Type) -> Result<&'a mut T, &'static str> {
     // used to use the object once, when it comes from a Rc
     unsafe {
       if var.valueType != SHType_Object
@@ -2784,7 +2783,7 @@ impl Var {
     }
   }
 
-  pub fn from_object_ptr_ref<'a, T>(var: &Var, info: &'a Type) -> Result<&'a T, &'a str> {
+  pub fn from_object_ptr_ref<'a, T>(var: &Var, info: &Type) -> Result<&'a T, &'static str> {
     // used to use the object once, when it comes from a Rc
     unsafe {
       if var.valueType != SHType_Object
@@ -3947,11 +3946,11 @@ impl ParamVar {
     }
   }
 
-  pub fn new_named(name: &str) -> ParamVar { 
-    let mut var = ParamVar::default(); 
+  pub fn new_named(name: &str) -> ParamVar {
+    let mut var = ParamVar::default();
     var.set_name(name);
     var
-  } 
+  }
 
   pub fn cleanup(&mut self) {
     unsafe {
@@ -4049,7 +4048,7 @@ impl ParamVar {
     self.parameter.0.valueType == SHType_ContextVar
   }
 
-  pub fn set_name(&mut self, name: &str) { 
+  pub fn set_name(&mut self, name: &str) {
     let s = Var::ephemeral_string(name);
     self.parameter = s.into(); // clone it!
     self.parameter.0.valueType = SHType_ContextVar;
@@ -4304,20 +4303,20 @@ impl From<&ShardsVar> for Var {
 
 impl From<&ClonedVar> for &SHVar {
   fn from(value: &ClonedVar) -> Self {
-      unsafe { transmute(value) }
+    unsafe { transmute(value) }
   }
 }
 
 impl From<&ClonedVar> for Var {
   fn from(value: &ClonedVar) -> Self {
-      let v: &Var = unsafe { transmute(value) };
-      *v
+    let v: &Var = unsafe { transmute(value) };
+    *v
   }
 }
 
 impl From<&ParamVar> for &SHVar {
   fn from(value: &ParamVar) -> Self {
-      unsafe { transmute(value) }
+    unsafe { transmute(value) }
   }
 }
 
@@ -4955,7 +4954,10 @@ impl SeqVar {
 
   #[inline(always)]
   pub fn iter(&self) -> SeqVarIterator {
-    SeqVarIterator { s: self.clone(), i: 0 }
+    SeqVarIterator {
+      s: self.clone(),
+      i: 0,
+    }
   }
 }
 
@@ -5730,7 +5732,7 @@ macro_rules! test_to_from_vec2 {
     let asVar: Var = fromNum.try_into().unwrap();
     let intoNum: ($type, $type) = <($type, $type)>::try_from(&asVar).unwrap();
     assert_eq!(fromNum, intoNum, $msg);
-  }; 
+  };
 }
 
 macro_rules! test_to_from_vec3 {

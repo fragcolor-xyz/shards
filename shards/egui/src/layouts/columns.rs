@@ -173,7 +173,7 @@ impl LegacyShard for Columns {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       ui.columns(len, |columns| {
         for (i, item) in columns.iter_mut().enumerate() {
           util::activate_ui_contents(context, input, item, &mut self.parents, &mut self.shards[i])?;

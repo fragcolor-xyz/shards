@@ -3,6 +3,7 @@
 
 use crate::bindings::gfx_TexturePtr;
 use crate::bindings::gfx_TexturePtr_getResolution_ext;
+use egui::vec2;
 use shards::fourCharacterCode;
 use shards::shardsc::SHImage;
 use shards::shardsc::SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA;
@@ -20,9 +21,35 @@ lazy_static! {
   pub static ref TEXTURE_OR_IMAGE_TYPES: Vec<Type> = vec![common_type::image, *TEXTURE_TYPE];
 }
 
-pub fn get_scale(scale_var: &ParamVar) -> Result<egui::Vec2, &'static str> {
+pub fn into_vec2(scale_var: &ParamVar) -> Result<egui::Vec2, &'static str> {
   let scale: (f32, f32) = scale_var.get().try_into()?;
   Ok(egui::vec2(scale.0, scale.1))
+}
+
+
+// Resolve image point size based on parameters
+pub fn resolve_image_size(
+  ui: &egui::Ui,
+  size_var: &ParamVar,
+  scale_var: &ParamVar,
+  aware_var: &ParamVar,
+  in_size: egui::Vec2,
+) -> egui::Vec2 {
+  let mut pt_size = if let Ok(explicit_size) = into_vec2(size_var) {
+    explicit_size
+  } else {
+    in_size
+  };
+
+  let scale = into_vec2(scale_var).unwrap_or(vec2(1.0, 1.0));
+  pt_size = pt_size * scale;
+  let scaling_aware: bool = (aware_var.get().try_into()).unwrap_or(false);
+  if scaling_aware {
+    // Undo UI scaling so the image point size will render it at 1:1 pixel to point ratio
+    pt_size / ui.ctx().pixels_per_point()
+  } else {
+    pt_size
+  }
 }
 
 pub struct CachedUIImage {

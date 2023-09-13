@@ -6,9 +6,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-  punctuated::Punctuated,
-  token::Comma,
-  Expr, Field, Ident, ImplItem, LitInt, LitStr, Meta,
+  punctuated::Punctuated, token::Comma, Expr, Field, Ident, ImplItem, LitInt, LitStr, Meta,
 };
 
 // type Error = boxed::Box<dyn std::error::Error>;
@@ -169,6 +167,11 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
     proc_macro2::Span::call_site(),
   );
 
+  let typedef_vec_id = Ident::new(
+    &format!("{}_TYPES", enum_name_upper),
+    proc_macro2::Span::call_site(),
+  );
+
   let enum_id_expr = shards_enum_attr.id;
   let enum_name_expr = shards_enum_attr.name;
   let enum_desc_expr = shards_enum_attr.desc;
@@ -186,7 +189,8 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
 
       lazy_static! {
         static ref #enum_info_instance_id: #enum_info_id = #enum_info_id::new();
-        static ref #typedef_id: &'static shards::types::Type = &#enum_info_instance_id.enum_type;
+        static ref #typedef_id: shards::types::Type = #enum_info_instance_id.enum_type;
+        static ref #typedef_vec_id: shards::types::Types = vec![*#typedef_id];
       }
 
       impl shards::core::EnumRegister for #enum_id {
@@ -202,7 +206,7 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
           pub const #value_ids: shards::SHEnum = #enum_id::#value_ids as i32;
         )*
         #(
-          pub const #value_str_ids: &str = cstr!(#value_name_lits);
+          pub const #value_str_ids: &'static str = shards::cstr!(#value_name_lits);
         )*
 
         fn new() -> Self {
@@ -213,12 +217,12 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
 
           let mut descriptions = shards::types::OptionalStrings::new();
           #(
-            descriptions.push(shards::types::OptionalString(shccstr!(#value_desc_lits)));
+            descriptions.push(shards::types::OptionalString(shards::shccstr!(#value_desc_lits)));
           )*
 
           Self {
-            name: cstr!(#enum_name_expr),
-            desc: shards::types::OptionalString(shccstr!(#enum_desc_expr)),
+            name: shards::cstr!(#enum_name_expr),
+            desc: shards::types::OptionalString(shards::shccstr!(#enum_desc_expr)),
             enum_type: shards::types::Type::enumeration(shards::types::FRAG_CC, shards::fourCharacterCode(*#enum_id_expr)),
             labels,
             values: vec![#(Self::#value_ids,)*],
@@ -315,7 +319,6 @@ pub fn derive_shards_enum(enum_def: TokenStream) -> TokenStream {
   }
 }
 
-
 fn parse_param_field(fld: &syn::Field, attr: &syn::Attribute) -> Result<Param, Error> {
   let Meta::List(list) = &attr.meta else {
     panic!("Param attribute must be a list");
@@ -335,7 +338,13 @@ fn parse_param_field(fld: &syn::Field, attr: &syn::Attribute) -> Result<Param, E
       types,
     })
   } else {
-    Err(syn::Error::new(attr.bracket_token.span.open(), "Param attribute must have 3 arguments: (Name, Description, [Type1, Type2,...]/Types)").into())
+    Err(
+      syn::Error::new(
+        attr.bracket_token.span.open(),
+        "Param attribute must have 3 arguments: (Name, Description, [Type1, Type2,...]/Types)",
+      )
+      .into(),
+    )
   }
 }
 
@@ -352,7 +361,9 @@ struct ShardFields {
   warmables: Vec<syn::Field>,
 }
 
-fn parse_shard_fields<'a>(fields: impl IntoIterator<Item = &'a Field>) -> Result<ShardFields, Error> {
+fn parse_shard_fields<'a>(
+  fields: impl IntoIterator<Item = &'a Field>,
+) -> Result<ShardFields, Error> {
   let mut result = ShardFields::default();
   for fld in fields {
     let name: String = get_field_name(&fld);
@@ -364,7 +375,9 @@ fn parse_shard_fields<'a>(fields: impl IntoIterator<Item = &'a Field>) -> Result
             result.params.push(param);
             result.warmables.push(fld.clone());
           }
-          Err(e) => return Err(e.extended(format!("Failed to parse param for field {}", name).into())),
+          Err(e) => {
+            return Err(e.extended(format!("Failed to parse param for field {}", name).into()))
+          }
         }
       } else if attr.path().is_ident("shard_required") {
         result.required = Some(fld.ident.as_ref().expect("Expected field name").clone());
@@ -381,13 +394,15 @@ struct ShardInfoAttr {
   desc: Expr,
 }
 
-fn read_shard_info_attr(err_span: Span, attrs: &Vec<syn::Attribute>) -> Result<ShardInfoAttr, Error> {
+fn read_shard_info_attr(
+  err_span: Span,
+  attrs: &Vec<syn::Attribute>,
+) -> Result<ShardInfoAttr, Error> {
   for attr in attrs {
     if attr.path().is_ident("shard_info") {
-      let args: Punctuated<Expr, Comma> = attr.parse_args_with(Punctuated::<syn::Expr, Comma>::parse_terminated)?;
-      return if let Some((name, desc)) =
-        args.into_pairs().map(|x| x.into_value()).collect_tuple()
-      {
+      let args: Punctuated<Expr, Comma> =
+        attr.parse_args_with(Punctuated::<syn::Expr, Comma>::parse_terminated)?;
+      return if let Some((name, desc)) = args.into_pairs().map(|x| x.into_value()).collect_tuple() {
         Ok(ShardInfoAttr { name, desc })
       } else {
         Err("shard_info attribute must have 2 arguments: (Name, Description)".into())
@@ -459,7 +474,6 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
   }
   let cleanups = cleanups_rev.iter().rev();
 
-
   let shard_name_expr = shard_info.name;
   let shard_name = get_expr_str_lit(&shard_name_expr)?;
   let shard_desc_expr = shard_info.desc;
@@ -475,19 +489,20 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
   let crc = crc32(format!("{}-rust-0x20200101", shard_name));
 
   let (required_variables_opt, compose_helper) = if let Some(required) = &shard_fields.required {
-    (quote!{ Some(&self.#required) },
-    quote!{
-      fn compose_helper(&mut self, data: &shards::types::InstanceData) -> std::result::Result<(), &'static str> {
-        self.#required.clear();
-        #(
-          shards::util::collect_required_variables(&data.shared, &mut self.#required, (&self.#param_idents).into())?;
-        )*
-        Ok(())
-      }
-    })
+    (
+      quote! { Some(&self.#required) },
+      quote! {
+        fn compose_helper(&mut self, data: &shards::types::InstanceData) -> std::result::Result<(), &'static str> {
+          self.#required.clear();
+          #(
+            shards::util::collect_required_variables(&data.shared, &mut self.#required, (&self.#param_idents).into())?;
+          )*
+          Ok(())
+        }
+      },
+    )
   } else {
-    (quote!{ None },
-    quote!{})
+    (quote! { None }, quote! {})
   };
 
   Ok(quote! {
@@ -495,8 +510,8 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
       #(#array_initializers)*
       static ref #params_static_id: shards::types::Parameters = vec![
         #((
-          cstr!(#param_names),
-          shccstr!(#param_descs),
+          shards::cstr!(#param_names),
+          shards::shccstr!(#param_descs),
           &#param_types[..]
         ).into()),*
       ];
@@ -504,7 +519,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
 
     impl shards::shard::ShardGenerated for #struct_id {
       fn register_name() -> &'static str {
-        cstr!(#shard_name_expr)
+        shards::cstr!(#shard_name_expr) 
       }
 
       fn name(&mut self) -> &str {
@@ -519,7 +534,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
       }
 
       fn help(&mut self) -> shards::types::OptionalString {
-        OptionalString(shccstr!(#shard_desc_expr))
+        shards::types::OptionalString(shards::shccstr!(#shard_desc_expr))
       }
 
       fn parameters(&mut self) -> Option<&shards::types::Parameters> {
@@ -566,7 +581,10 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
   }.into())
 }
 
-#[proc_macro_derive(shard, attributes(shard_info, shard_param, shard_required, shard_warmup))]
+#[proc_macro_derive(
+  shard,
+  attributes(shard_info, shard_param, shard_required, shard_warmup)
+)]
 pub fn derive_shard(struct_def: TokenStream) -> TokenStream {
   let struct_: syn::ItemStruct = syn::parse_macro_input!(struct_def as syn::ItemStruct);
 
@@ -574,7 +592,7 @@ pub fn derive_shard(struct_def: TokenStream) -> TokenStream {
     Ok(result) => {
       // eprintln!("derive_shard:\n{}", result);
       result
-    },
+    }
     Err(err) => err.to_compile_error(),
   }
 }
@@ -594,25 +612,28 @@ fn generate_impl_wrapper(impl_: syn::ItemImpl) -> Result<TokenStream, Error> {
 
   // Generate hasXXX() -> bool functions for all optional functions
   let impls = IMPLS_TO_CHECK.iter().map(|x| {
-      let has_fn_id = Ident::new(&format!("has_{}", x), proc_macro2::Span::call_site());
-      let have_function = syn::LitBool::new(have_impls.contains(*x), proc_macro2::Span::call_site());
-      quote! { fn #has_fn_id() -> bool { #have_function } }
+    let has_fn_id = Ident::new(&format!("has_{}", x), proc_macro2::Span::call_site());
+    let have_function = syn::LitBool::new(have_impls.contains(*x), proc_macro2::Span::call_site());
+    quote! { fn #has_fn_id() -> bool { #have_function } }
   });
 
-  Ok(quote! {
-    #[allow(non_snake_case)]
-    impl shards::shard::ShardGeneratedOverloads for #struct_ty {
-      #(#impls)*
-    }
+  Ok(
+    quote! {
+      #[allow(non_snake_case)]
+      impl shards::shard::ShardGeneratedOverloads for #struct_ty {
+        #(#impls)*
+      }
 
-    #[allow(non_snake_case)]
-    #impl_
-  }.into())
+      #[allow(non_snake_case)]
+      #impl_
+    }
+    .into(),
+  )
 }
 
 #[proc_macro_attribute]
 pub fn shard_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
-  let impl_ : syn::ItemImpl = syn::parse_macro_input!(item);
+  let impl_: syn::ItemImpl = syn::parse_macro_input!(item);
   match generate_impl_wrapper(impl_) {
     Ok(result) => {
       // eprintln!("shard_impl:\n{}", result);

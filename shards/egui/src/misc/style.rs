@@ -2,10 +2,10 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::Style;
+use crate::EGUI_UI_TYPE;
 use crate::misc::style_util;
 use crate::util;
 use crate::CONTEXTS_NAME;
-use crate::EGUI_UI_SEQ_TYPE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use shards::shard::LegacyShard;
@@ -98,16 +98,7 @@ impl LegacyShard for Style {
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.parents.get_name(),
-      help: cstr!("The parent UI objects.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
-
+    util::require_parents(&mut self.requiring);
     Some(&self.requiring)
   }
 
@@ -126,7 +117,7 @@ impl LegacyShard for Style {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let mut style = if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    let mut style = if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       (**ui.style()).clone()
     } else {
       let gui_ctx = util::get_current_context(&self.instance)?;
@@ -474,7 +465,7 @@ impl LegacyShard for Style {
       style.explanation_tooltips
     );
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       ui.set_style(style);
     } else {
       let gui_ctx = util::get_current_context(&self.instance)?;

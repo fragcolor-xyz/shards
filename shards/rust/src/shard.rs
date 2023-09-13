@@ -801,7 +801,7 @@ pub fn create2<T: Default + Shard + ShardGenerated  + ShardGeneratedOverloads>()
 /// }
 /// ```
 ///
-/// See also: [`impl_override_activate!`]
+/// See also: [`impl_legacy_override_activate!`]
 #[macro_export]
 macro_rules! decl_override_activate {
   (
@@ -825,7 +825,7 @@ macro_rules! decl_override_activate {
 ///     todo!()
 ///   }
 ///
-///   impl_override_activate! {
+///   impl_legacy_override_activate! {
 ///     extern "C" fn my_activate_override() -> Var {
 ///       MyShard::activateOverride()
 ///     }
@@ -835,7 +835,7 @@ macro_rules! decl_override_activate {
 ///
 /// See also: [`decl_override_activate!`]
 #[macro_export]
-macro_rules! impl_override_activate {
+macro_rules! impl_legacy_override_activate {
   (
     $(#[$meta:meta])*
     extern "C" fn $override_name:ident() -> Var {
@@ -849,6 +849,32 @@ macro_rules! impl_override_activate {
       arg3: *const Var,
     ) -> Var {
       let blk = arg1 as *mut $crate::shard::LegacyShardWrapper<$legacy_shard_name>;
+      match (*blk).shard.$override_impl(&(*arg2), &(*arg3)) {
+        Ok(value) => value,
+        Err(error) => {
+          $crate::core::abortWire(&(*arg2), error);
+          Var::default()
+        }
+      }
+    }
+  };
+}
+
+#[macro_export]
+macro_rules! impl_override_activate {
+  (
+    $(#[$meta:meta])*
+    extern "C" fn $override_name:ident() -> Var {
+      $shard_name:ident::$override_impl:ident()
+    }
+  ) => {
+    $(#[$meta])*
+    unsafe extern "C" fn $override_name(
+      arg1: *mut $crate::shardsc::Shard,
+      arg2: *mut Context,
+      arg3: *const Var,
+    ) -> Var {
+      let blk = arg1 as *mut $crate::shard::ShardWrapper<$shard_name>;
       match (*blk).shard.$override_impl(&(*arg2), &(*arg3)) {
         Ok(value) => value,
         Err(error) => {

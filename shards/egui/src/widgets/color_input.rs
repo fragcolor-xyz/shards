@@ -182,7 +182,7 @@ impl LegacyShard for ColorInput {
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let color: shardsc::SHColor = if self.variable.is_variable() {
         unsafe { self.variable.get().payload.__bindgen_anon_1.colorValue }
       } else {

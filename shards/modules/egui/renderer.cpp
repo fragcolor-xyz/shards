@@ -21,6 +21,7 @@
 #include <map>
 #include <vector>
 #include <memory>
+#include <cmath>
 
 namespace gfx {
 
@@ -129,11 +130,13 @@ struct TextureManager {
       imageCopy(fmt.pixelFormat, srcFormat, imageData.data(), set.pixels, size.x * size.y);
     }
 
-    texture->init(TextureDesc{
-        .format = fmt,
-        .resolution = size,
-        .data = std::move(imageData),
-    }).initWithSamplerState(sampler);
+    texture
+        ->init(TextureDesc{
+            .format = fmt,
+            .resolution = size,
+            .data = std::move(imageData),
+        })
+        .initWithSamplerState(sampler);
   }
 
   void free(egui::TextureId id) { textures.erase(id.id); }
@@ -204,8 +207,14 @@ struct EguiRendererImpl {
       }
       drawable.parameters.set("flags", flags);
 
-      if (clipGeometry)
-        drawable.clipRect = int4(prim.clipRect.min.x, prim.clipRect.min.y, prim.clipRect.max.x, prim.clipRect.max.y);
+      drawable.clipRect.reset();
+      if (clipGeometry) {
+        bool isClippingRectInf = prim.clipRect.min.x == -INFINITY && prim.clipRect.min.y == -INFINITY &&
+                                 prim.clipRect.max.x == INFINITY && prim.clipRect.max.y == INFINITY;
+        if (!isClippingRectInf) {
+          drawable.clipRect = int4(prim.clipRect.min.x, prim.clipRect.min.y, prim.clipRect.max.x, prim.clipRect.max.y);
+        }
+      }
 
       drawQueue->add(drawable);
     }

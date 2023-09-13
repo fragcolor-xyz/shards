@@ -6,9 +6,9 @@ use crate::CONTEXTS_NAME;
 use crate::EGUI_CTX_TYPE;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
+use shards::core::register_enum;
 use shards::core::register_legacy_enum;
 use shards::core::register_legacy_shard;
-use shards::core::register_enum;
 use shards::core::register_shard;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
@@ -39,16 +39,19 @@ pub enum Property {
   RemainingSpace = 0x0,
   #[enum_value("The screen size of the UI.")]
   ScreenSize = 0x1,
+  #[enum_value("The amounts of pixels that correspond to 1 UI point.")]
+  PixelsPerPoint = 0x2,
 }
 
 lazy_static! {
-  static ref OUTPUT_TYPES: Types = vec![common_type::float4, common_type::float2];
+  static ref OUTPUT_TYPES: Types =
+    vec![common_type::float4, common_type::float2, common_type::float];
 }
 
 #[derive(shards::shard)]
 #[shard_info("UI.Property", "Retrieves values from the current state of the UI.")]
 struct PropertyShard {
-  #[shard_param("Property", "The property to retrieve from the UI context", [**PROPERTY_TYPE])]
+  #[shard_param("Property", "The property to retrieve from the UI context", [*PROPERTY_TYPE])]
   property: ClonedVar,
   #[shard_warmup]
   contexts: ParamVar,
@@ -108,13 +111,18 @@ impl Shard for PropertyShard {
     match (&self.property.0).try_into()? {
       Property::RemainingSpace => Ok(common_type::float4),
       Property::ScreenSize => Ok(common_type::float2),
+      Property::PixelsPerPoint => Ok(common_type::float),
     }
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    let ui = util::get_current_parent(self.parents.get()).map_err(|_| "No parent UI");
+    let ui = util::get_current_parent_opt(self.parents.get()).map_err(|_| "No parent UI");
 
     match (&self.property.0).try_into()? {
+      Property::PixelsPerPoint => {
+        let ctx = util::get_current_context(&self.contexts)?;
+        Ok(ctx.pixels_per_point().into())
+      }
       Property::RemainingSpace => {
         let ui = ui?.ok_or("No parent UI")?;
         let target_size = ui.available_size();

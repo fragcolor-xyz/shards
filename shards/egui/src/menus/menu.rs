@@ -118,7 +118,7 @@ impl LegacyShard for CloseMenu {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       ui.close_menu();
       Ok(*input)
     } else {
@@ -253,7 +253,7 @@ If called from within a menu this will instead create a button for a sub-menu."
       return Ok(false.into());
     }
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let title: &str = self.title.get().try_into()?;
       if let Some(result) = ui
         .menu_button(title, |ui| {
@@ -395,7 +395,7 @@ impl LegacyShard for MenuBar {
       return Ok(false.into());
     }
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       match egui::menu::bar(ui, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       })

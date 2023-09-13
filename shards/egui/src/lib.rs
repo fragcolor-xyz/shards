@@ -6,6 +6,8 @@
 
 use crate::layouts::LAYOUT_FRAME_TYPE;
 use shards::core::cloneVar;
+use shards::core::register_enum;
+use shards::core::register_legacy_enum;
 use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
@@ -20,7 +22,6 @@ use shards::types::Var;
 use shards::types::FRAG_CC;
 use shards::SHObjectTypeInfo;
 use std::ffi::c_void;
-use std::ffi::CStr;
 use std::ffi::CString;
 
 #[macro_use]
@@ -56,11 +57,9 @@ pub static STRING_OR_SHARDS_OR_NONE_TYPES_SLICE: &[Type] = &[
 
 static EGUI_UI_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguU"));
 static EGUI_UI_SLICE: &[Type] = &[EGUI_UI_TYPE];
-static EGUI_UI_SEQ_TYPE: Type = Type::seq(EGUI_UI_SLICE);
 
 static EGUI_CTX_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"eguC"));
 static EGUI_CTX_SLICE: &[Type] = &[EGUI_CTX_TYPE];
-static EGUI_CTX_SEQ_TYPE: Type = Type::seq(EGUI_CTX_SLICE);
 
 lazy_static! {
   static ref LAYOUTCLASS_TYPE: Type = {
@@ -259,11 +258,88 @@ impl<'a> egui::TextBuffer for MutVarTextBuffer<'a> {
   }
 }
 
+#[derive(shards::shards_enum)]
+#[enum_info(b"egAn", "Anchor", "Identifies the anchor point of a UI element.")]
+pub enum Anchor {
+  #[enum_value("Top left corner.")]
+  TopLeft = 0x00,
+  #[enum_value("Middle left.")]
+  Left = 0x10,
+  #[enum_value("Bottom left corner.")]
+  BottomLeft = 0x20,
+  #[enum_value("Top middle.")]
+  Top = 0x01,
+  #[enum_value("Center.")]
+  Center = 0x11,
+  #[enum_value("Bottom middle.")]
+  Bottom = 0x21,
+  #[enum_value("Top right corner.")]
+  TopRight = 0x02,
+  #[enum_value("Middle right.")]
+  Right = 0x12,
+  #[enum_value("Bottom right corner.")]
+  BottomRight = 0x22,
+}
+
+impl From<Anchor> for egui::Align2 {
+  fn from(value: Anchor) -> Self {
+    match value {
+      Anchor::TopLeft => egui::Align2::LEFT_TOP,
+      Anchor::Left => egui::Align2::LEFT_CENTER,
+      Anchor::BottomLeft => egui::Align2::LEFT_BOTTOM,
+      Anchor::Top => egui::Align2::CENTER_TOP,
+      Anchor::Center => egui::Align2::CENTER_CENTER,
+      Anchor::Bottom => egui::Align2::CENTER_BOTTOM,
+      Anchor::TopRight => egui::Align2::RIGHT_TOP,
+      Anchor::Right => egui::Align2::RIGHT_CENTER,
+      Anchor::BottomRight => egui::Align2::RIGHT_BOTTOM,
+    }
+  }
+}
+
+#[derive(shards::shards_enum)]
+#[enum_info(
+  b"egOr",
+  "Order",
+  "Identifies the order in which UI elements are painted."
+)]
+pub enum Order {
+  #[enum_value("Painted behind all floating windows.")]
+  Background = 0,
+  #[enum_value("Special layer between panels and windows.")]
+  PanelResizeLine = 1,
+  #[enum_value("Normal moveable windows that you reorder by click.")]
+  Middle = 2,
+  #[enum_value("Popups, menus etc that should always be painted on top of windows. Foreground objects can also have tooltips.")]
+  Foreground = 3,
+  #[enum_value(
+    "Things floating on top of everything else, like tooltips. You cannot interact with these."
+  )]
+  Tooltip = 4,
+  #[enum_value("Debug layer, always painted last / on top.")]
+  Debug = 5,
+}
+
+impl From<Order> for egui::Order {
+  fn from(value: Order) -> Self {
+    match value {
+      Order::Background => egui::Order::Background,
+      Order::PanelResizeLine => egui::Order::PanelResizeLine,
+      Order::Middle => egui::Order::Middle,
+      Order::Foreground => egui::Order::Foreground,
+      Order::Tooltip => egui::Order::Tooltip,
+      Order::Debug => egui::Order::Debug,
+    }
+  }
+}
+
 pub extern "C" fn register(core: *mut shards::shardsc::SHCore) {
   unsafe {
     shards::core::Core = core;
   }
 
+  register_enum::<Order>();
+  register_enum::<Anchor>();
   context::register_shards();
   state::register_shards();
   containers::register_shards();

@@ -8,7 +8,6 @@ use crate::util;
 use crate::EguiId;
 use crate::MutVarTextBuffer;
 use crate::VarTextBuffer;
-use crate::EGUI_UI_SEQ_TYPE;
 use crate::HELP_VALUE_IGNORED;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
@@ -178,16 +177,7 @@ impl LegacyShard for CodeEditor {
 
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     self.requiring.clear();
-
-    // Add UI.Parents to the list of required variables
-    let exp_info = ExposedInfo {
-      exposedType: EGUI_UI_SEQ_TYPE,
-      name: self.parents.get_name(),
-      help: cstr!("The parent UI objects.").into(),
-      ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
-
+    util::require_parents(&mut self.requiring);
     Some(&self.requiring)
   }
 
@@ -212,7 +202,7 @@ impl LegacyShard for CodeEditor {
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let theme = if ui.style().visuals.dark_mode {
         CodeTheme::dark()
       } else {

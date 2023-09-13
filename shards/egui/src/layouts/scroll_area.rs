@@ -194,7 +194,7 @@ impl LegacyShard for ScrollArea {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let visibility = if self.alwaysShow.get().try_into()? {
         egui::scroll_area::ScrollBarVisibility::AlwaysVisible
       } else {

@@ -176,7 +176,7 @@ impl LegacyShard for Horizontal {
       return Ok(*input);
     }
 
-    if let Some(ui) = util::get_current_parent(self.parents.get())? {
+    if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       if self.centered {
         ui.centered_and_justified(|ui| {
           if self.wrap {
