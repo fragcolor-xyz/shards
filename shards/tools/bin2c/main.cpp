@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <bin2c/abi.hpp>
 #include <fstream>
 #include <spdlog/spdlog.h>
@@ -14,21 +13,21 @@ typedef unsigned char stb_uchar;
 stb_uint stb_compress(stb_uchar *out, stb_uchar *in, stb_uint len);
 
 struct Options {
-  const char *inPath;
-  const char *outPath;
-  const char *varName;
+  std::string inPath;
+  std::string outPath;
+  std::string varName;
 };
 
 static int run_bin2c(const Options &options) {
-  if (!options.inPath) {
+  if (options.inPath.empty()) {
     spdlog::error("No input file specified");
     return 1;
   }
-  if (!options.outPath) {
+  if (options.outPath.empty()) {
     spdlog::error("No output file specified");
     return 1;
   }
-  if (!options.varName) {
+  if (options.varName.empty()) {
     spdlog::error("No variable name specified");
     return 1;
   }
@@ -109,7 +108,29 @@ static int run_bin2c(const Options &options) {
   return 0;
 }
 
+#ifdef _WIN32
+#include <Windows.h>
+#include <list>
+#include <vector>
+void argFilter(int &argc, char **&argv) {
+  WCHAR **argvw = CommandLineToArgvW(GetCommandLineW(), &argc);
+  static std::list<std::string> args;
+  static std::vector<const char *> argPtrs;
+  for (size_t i = 0; i < argc; i++) {
+    auto &arg = args.emplace_back();
+    arg.resize(WideCharToMultiByte(CP_UTF8, 0, argvw[i], -1, nullptr, 0, "?", nullptr));
+    arg.resize(WideCharToMultiByte(CP_UTF8, 0, argvw[i], -1, arg.data(), arg.size(), "?", nullptr));
+    argPtrs.push_back(arg.c_str());
+  }
+  argv = const_cast<char **>(argPtrs.data());
+}
+#else
+void argFilter(int &argc, char **&argv) {}
+#endif
+
 int main(int argc, char **argv) {
+  argFilter(argc, argv);
+
   if (argc < 3) {
     spdlog::warn("Syntax: {} -in <inputfile> -out <outputfile> -varName <symbolname>", argv[0]);
     return 0;
