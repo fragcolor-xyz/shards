@@ -563,12 +563,13 @@ struct StopWire : public WireBase {
   }
 };
 
-struct Resume : public WireBase {
+struct SwitchTo : public WireBase {
   std::deque<ParamVar> _vars;
+  bool fromStart{false};
 
   static SHOptionalString help() {
-    return SHCCSTR("Resumes a given wire and suspends the current one. In "
-                   "other words, switches flow execution to another wire.");
+    return SHCCSTR("Switches to a given wire and suspends the current one. In other words, switches flow execution to another "
+                   "wire, useful to create state machines.");
   }
 
   void setup() {
@@ -578,7 +579,11 @@ struct Resume : public WireBase {
     capturing = true;
   }
 
-  static inline Parameters params{{"Wire", SHCCSTR("The name of the wire to switch to."), {WireTypes}}};
+  static inline Parameters params{
+      {"Wire", SHCCSTR("The name of the wire to switch to, or none to switch to the previous state."), {WireTypes}},
+      {"Restart",
+       SHCCSTR("If the wire should always (re)start from the beginning instead of resuming to whatever state was left."),
+       {CoreInfo::BoolType}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -626,9 +631,29 @@ struct Resume : public WireBase {
     return CoreInfo::AnyType; // can be anything
   }
 
-  void setParam(int index, const SHVar &value) { wireref = value; }
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      wireref = value;
+      break;
+    case 1:
+      fromStart = value.payload.boolValue;
+      break;
+    default:
+      break;
+    }
+  }
 
-  SHVar getParam(int index) { return wireref; }
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return wireref;
+    case 1:
+      return Var(fromStart);
+    default:
+      return Var::Empty;
+    }
+  }
 
   // NO cleanup, other wires reference this wire but should not stop it
   // An arbitrary wire should be able to resume it!
@@ -671,8 +696,8 @@ struct Resume : public WireBase {
     // assign the new wire as current wire on the flow
     context->flow->wire = pWire;
 
-    // Allow to re run wires
-    if (shards::hasEnded(pWire)) {
+    // Allow to re run wires, or simply restart
+    if (fromStart || shards::hasEnded(pWire)) {
       shards::stop(pWire);
     }
 
@@ -708,84 +733,6 @@ struct Resume : public WireBase {
     if (!shards::isRunning(pWire)) {
       shards::start(pWire, input);
     }
-
-    // And normally we just delegate the Mesh + SHFlow
-    // the following will suspend this current wire
-    // and in mesh tick when re-evaluated tick will
-    // resume with the wire we just set above!
-    shards::suspend(context, 0);
-
-    // We will end here when we get resumed!
-    // When we are here, pWire is suspended, (could be in the middle of a loop, anywhere!)
-
-    // reset resumer
-    pWire->resumer = nullptr;
-
-    // return the last or final output of pWire
-    if (pWire->state > SHWire::State::IterationEnded) { // failed or ended
-      return pWire->finishedOutput;
-    } else {
-      return pWire->previousOutput;
-    }
-  }
-};
-
-struct Start : public Resume {
-  static SHOptionalString help() {
-    return SHCCSTR("Starts a given wire and suspends the current one. In "
-                   "other words, switches flow execution to another wire.");
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    auto current = context->wireStack.back();
-
-    auto pWire = [&] {
-      if (!wire) {
-        if (current->resumer) {
-          SHLOG_TRACE("Start, wire not found, using resumer: {}", current->resumer->name);
-          return current->resumer;
-        } else {
-          throw ActivationError("Start, wire not found.");
-        }
-      } else {
-        return wire.get();
-      }
-    }();
-
-    // assign the new wire as current wire on the flow
-    context->flow->wire = pWire;
-
-    // ensure wire is not running, we start from top
-    shards::stop(pWire);
-
-    // capture variables
-    for (auto &v : _vars) {
-      auto &var = v.get();
-      auto &v_ref = pWire->variables[v.variableName()];
-      cloneVar(v_ref, var);
-    }
-
-    // Prepare
-    pWire->mesh = context->main->mesh;
-    shards::prepare(pWire, context->flow);
-
-    // handle early failure
-    if (pWire->state == SHWire::State::Failed) {
-      // destroy fresh cloned variables
-      for (auto &v : _vars) {
-        destroyVar(pWire->variables[v.variableName()]);
-      }
-      SHLOG_ERROR("Wire {} failed to start.", pWire->name);
-      throw ActivationError("Wire failed to start.");
-    }
-
-    // we should be valid as this shard should be dependent on current
-    // do this here as stop/prepare might overwrite
-    if (pWire->resumer == nullptr)
-      pWire->resumer = current;
-
-    // Start
-    shards::start(pWire, input);
 
     // And normally we just delegate the Mesh + SHFlow
     // the following will suspend this current wire
@@ -1885,7 +1832,8 @@ struct StepMany : public TryMany {
 
       // Tick the wire on the flow that this wire created
       SHDuration now = SHClock::now().time_since_epoch();
-      shards::tick(cref->wire->context->flow->wire, now);
+      if (cref->wire->context->flow->wire)
+        shards::tick(cref->wire->context->flow->wire, now);
 
       // this can be anything really...
       cloneVar(_outputs[i], cref->wire->previousOutput);
@@ -2078,8 +2026,7 @@ SHARDS_REGISTER_FN(wires) {
   using RunWireDo = RunWire<false, RunWireMode::Inline>;
   using RunWireDetach = RunWire<true, RunWireMode::Async>;
   using RunWireStep = RunWire<false, RunWireMode::Stepped>;
-  REGISTER_SHARD("Resume", Resume);
-  REGISTER_SHARD("Start", Start);
+  REGISTER_SHARD("SwitchTo", SwitchTo);
   REGISTER_SHARD("Wait", Wait);
   REGISTER_SHARD("Stop", StopWire);
   REGISTER_SHARD("Do", RunWireDo);

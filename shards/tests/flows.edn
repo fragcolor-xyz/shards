@@ -11,21 +11,21 @@
   (Wire
    "one"
    (Msg "one - 1")
-   (Resume "two")
+   (SwitchTo "two")
    (Msg "one - 2")
    (Msg "one - 3")
-   (Resume "two")
+   (SwitchTo "two")
    (Msg "one - Done")
-   (Resume "two")))
+   (SwitchTo "two")))
 
 (def wire2
   (Wire
    "two"
    (Msg "two - 1")
-   (Resume "one")
+   (SwitchTo "one")
    (Msg "two - 2")
    (Msg "two - 3")
-   (Resume "one")
+   (SwitchTo "one")
    (Msg "two - 4")
    (Msg "two - Done")))
 
@@ -330,14 +330,14 @@
 (defwire depth-wire-deeper
   (Do "depth-wire-deeper-do")
   (Log)
-  (Resume))
+  (SwitchTo))
 
 (defwire depth-wire
-  (Start "depth-wire-deeper")
-  (Resume))
+  (SwitchTo "depth-wire-deeper" true)
+  (SwitchTo))
 
 (defwire spawned-wire
-  (Start "depth-wire")
+  (SwitchTo "depth-wire" true)
   .consumed-variable
   (ToInt)
   (Math.Add 1)
@@ -366,14 +366,14 @@
 (defwire depth-wire-deeper
   (Do "depth-wire-deeper-do")
   (Log)
-  (Resume))
+  (SwitchTo))
 
 (defwire depth-wire
-  (Start "depth-wire-deeper")
-  (Resume))
+  (SwitchTo "depth-wire-deeper" true)
+  (SwitchTo))
 
 (defwire spawned-wire
-  (Start "depth-wire")
+  (SwitchTo "depth-wire" true)
   .consumed-variable
   (ToInt)
   (Math.Add 1)

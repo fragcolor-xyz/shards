@@ -565,8 +565,13 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       SHDuration now = SHClock::now().time_since_epoch();
       for (auto it = _flowPool.begin(); it != _flowPool.end();) {
         auto &flow = *it;
+        if(!flow.wire) // a pause flow is just a null wire
+          continue;
+
         observer.before_tick(flow.wire);
+
         shards::tick(flow.wire, now);
+
         if (unlikely(!shards::isRunning(flow.wire))) {
           if (flow.wire->finishedError.size() > 0) {
             _errors.emplace_back(flow.wire->finishedError);
