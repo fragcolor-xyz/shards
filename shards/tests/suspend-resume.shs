@@ -1,0 +1,20 @@
+@wire(spammer {
+  Msg("Hi!")
+  Pause(0.1)
+} Looped: true)
+
+@wire(runner {
+  Msg("Detaching...")
+  Detach(spammer)
+  Pause(1.0)
+  Msg("Suspending...")
+  Suspend(spammer)
+  Pause(1.0)
+  Msg("Resuming...")
+  Resume(spammer)
+  Pause(1.0)
+  Msg("Stopping...")
+  Stop(spammer)
+})
+
+Do(runner)
