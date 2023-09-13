@@ -7,9 +7,9 @@
   (Wire
    "d1" :Looped
    (Msg "D1 started")
-   (Resume "d2")
+   (SwitchTo "d2")
    (Msg "D1 returned")
-   (Resume "main")
+   (SwitchTo "main")
    ))
 
 (def depth2Wire
@@ -17,7 +17,7 @@
    "d2" :Looped
    (Msg "D2 started")
                                         ; go back
-   (Resume "d1")
+   (SwitchTo "d1")
    (Msg "D2 returned")
    ))
 
@@ -25,7 +25,7 @@
   (Wire
    "main" :Looped
    (Msg "Main started")
-   (Resume "d1")
+   (SwitchTo "d1")
    (Msg "Main returned")
    ))
 

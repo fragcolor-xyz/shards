@@ -59,15 +59,15 @@
   (Wire
    "s1"
    (Msg "into state 1")
-   (Start "s2")
+   (SwitchTo "s2" true)
    (Msg "back to state 1")
-   (Resume "stepped")))
+   (SwitchTo "stepped")))
 
 (def state2
   (Wire
    "s2"
    (Msg "into state 2")
-   (Resume "s1")))
+   (SwitchTo "s1")))
 
 (def evolveme
   (Wire
@@ -83,7 +83,7 @@
        (Math.Inc .niters)
        .niters
        (When (IsMore 10) (Stop))
-       (Step (Wire "stepped" (Start state1)))
+       (Step (Wire "stepped" (SwitchTo state1 true)))
        (Mutant (Const 10) [0])
        (Mutant (Math.Multiply 2) [0] [(->
                                        (RandomInt 10)
