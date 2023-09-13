@@ -356,10 +356,6 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               })
               .unwrap_or(Ok(false))?;
 
-            if once && check_included(file_name, env) {
-              return Err((format!("File {:?} already included", file_name), pos).into());
-            }
-
             let parent = Path::new(&env.directory);
             let file_path = parent.join(&file_name.as_str());
             let file_path = std::fs::canonicalize(&file_path).map_err(|e| {
@@ -369,8 +365,6 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               )
                 .into()
             })?;
-
-            shlog!("Including file {:?}", file_path);
 
             let rc_path = file_path
               .to_str()
@@ -384,9 +378,10 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               .into();
 
             if once && check_included(&rc_path, env) {
-              // we already included this file
               return Ok(FunctionValue::Const(Value::None));
             }
+
+            shlog!("Including file {:?}", file_path);
 
             env.dependencies.push(rc_path.to_string());
             env.included.insert(rc_path);
