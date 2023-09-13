@@ -1,20 +1,20 @@
 set(SHARDS_TOOLS_PATH ${SHARDS_DIR}/shards/tools/build/bin)
 find_program(BIN2C_EXE NAMES "bin2c" PATHS ${SHARDS_TOOLS_PATH} REQUIRED NO_DEFAULT_PATH NO_SYSTEM_ENVIRONMENT_PATH)
 
-
 # Used to add files
 # This functions strips all the folder names and genrates include paths as follows:
-# file.ext => <PREFIX>file.ext.h
-# subdir/file2.ext => <PREFIX>subdir/file2.ext.h
+#  file.ext => <PREFIX>file.ext.h
+#  subdir/file2.ext => <PREFIX>subdir/file2.ext.h
 #
 # when RELATIVE_TO is set to 'subdir' for example, the following include paths are generated:
-# subdir/file.ext => <PREFIX>file.ext.h
-# subdir/a/file.ext => <PREFIX>a/file.ext.h
+#  subdir/file.ext => <PREFIX>file.ext.h
+#  subdir/a/file.ext => <PREFIX>a/file.ext.h
 #
-# The file is accessed through a variable based on the following pattern:
-# bundled_<name>
-# file.ext => bundled_file_ext
-# a/b/file.ext => a$b$bundled_file_ext
+# The file is accessed through a variable based on the following pattern: bundled_<name>
+# (although you should avoid loading files directly and instead use the bundle manifest)
+#  file.ext => bundled_fileΘext
+#  file-name.ext => bundled_fileΔnameΘext
+#  a/b/file.ext => bundled_aΓbΓfileΘext
 function(target_bundle_files BUNDLED_TARGET)
   set(OPTS)
   set(ARGS
@@ -48,6 +48,7 @@ function(target_bundle_files BUNDLED_TARGET)
 
   foreach(IN_PATH ${BUNDLED_FILES})
     message(DEBUG "bundle in: ${IN_PATH}")
+
     if(DEFINED BUNDLED_RELATIVE_TO)
       file(RELATIVE_PATH IN_PATH_REL ${BUNDLED_RELATIVE_TO} ${IN_PATH})
       message(DEBUG " make rel: ${IN_PATH} => ${IN_PATH_REL}")
@@ -56,9 +57,9 @@ function(target_bundle_files BUNDLED_TARGET)
       message(DEBUG " strip path: ${IN_PATH} => ${IN_PATH_REL}")
     endif()
 
-    string(REPLACE "." "_" GENERATED_NAME ${IN_PATH_REL})
-    string(REPLACE "-" "_" GENERATED_NAME ${GENERATED_NAME})
-    string(REPLACE "/" "$" GENERATED_NAME ${GENERATED_NAME})
+    string(REPLACE "." "Θ" GENERATED_NAME ${IN_PATH_REL})
+    string(REPLACE "-" "Δ" GENERATED_NAME ${GENERATED_NAME})
+    string(REPLACE "/" "Γ" GENERATED_NAME ${GENERATED_NAME})
     set(GENERATED_NAME "bundled_${GENERATED_NAME}")
     set(OUT_PATH "${GENERATED_HEADER_DIR}/${IN_PATH_REL}.h")
 
@@ -97,13 +98,12 @@ function(target_bundle_files BUNDLED_TARGET)
     set_source_files_properties(${GENERATED_C_FILE_PATH} PROPERTIES GENERATED TRUE)
 
     # Need to escape $ characters in command argument
-    string(REPLACE "$" "$$" VAR_NAME_ESCAPED ${VAR_NAME})
-
+    # string(REPLACE "$" "$$" VAR_NAME_ESCAPED ${VAR_NAME})
     message(DEBUG "bundle ${IN_ABS_PATH} => ${OUT_ABS_PATH} as ${VAR_NAME}")
     add_custom_command(OUTPUT ${OUT_PATH} ${GENERATED_C_FILE_PATH}
       MAIN_DEPENDENCY ${IN_ABS_PATH}
       COMMENT "Bundling binary file ${IN_PATH} => ${OUT_PATH}"
-      COMMAND ${BIN2C_EXE} -in ${IN_ABS_PATH} -out ${OUT_ABS_PATH} -varName "${VAR_NAME_ESCAPED}"
+      COMMAND ${BIN2C_EXE} -in ${IN_ABS_PATH} -out ${OUT_ABS_PATH} -varName "${VAR_NAME}"
       USES_TERMINAL
     )
 
@@ -121,7 +121,6 @@ endfunction()
 # function(target_bundle_files TARGET VISIBILITY NAMESPACE)
 
 # endfunction()
-
 function(target_generate_bundle_manifest TARGET HEADER_NAME MANIFEST_VAR_NAME)
   set(GENERATED_HEADER_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
   set(GENERATED_C_FILE_PATH "${GENERATED_HEADER_ROOT_DIR}/${HEADER_NAME}.h")
@@ -134,6 +133,7 @@ function(target_generate_bundle_manifest TARGET HEADER_NAME MANIFEST_VAR_NAME)
   get_target_property(BUNDLED_FILE_MAPPED_NAMES ${TARGET} "BUNDLED_FILE_MAPPED_NAMES")
 
   file(APPEND ${GENERATED_C_FILE_PATH} "#include <unordered_map>\n")
+
   foreach(FILE_NAME ${BUNDLED_FILE_NAMES})
     file(APPEND ${GENERATED_C_FILE_PATH} "#include <${FILE_NAME}>\n")
   endforeach()

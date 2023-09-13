@@ -275,16 +275,16 @@ struct Consume : public Consumers {
   MPMCChannel *_mpChannel{};
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &outType = *_outType.payload.typeValue;
-    if (outType.basicType == SHType::None) {
+    auto outTypePtr = _outType.payload.typeValue;
+    if (_outType->isNone() || outTypePtr->basicType == SHType::None) {
       throw std::logic_error("Consume: Type parameter is required.");
     }
 
     _channel = get(_name);
-    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, outType, _noCopy, _name.c_str());
+    _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, *outTypePtr, _noCopy, _name.c_str());
 
     if (_bufferSize == 1) {
-      return outType;
+      return *outTypePtr;
     } else {
       _seqType.basicType = SHType::Seq;
       _seqType.seqTypes.elements = _outType.payload.typeValue;
@@ -350,17 +350,17 @@ struct Listen : public Consumers {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    auto &outType = *_outType.payload.typeValue;
-    if (outType.basicType == SHType::None) {
+    auto outTypePtr = _outType.payload.typeValue;
+    if (_outType->isNone() || outTypePtr->basicType == SHType::None) {
       throw std::logic_error("Listen: Type parameter is required.");
     }
 
     _channel = get(_name);
-    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, outType, _noCopy, _name.c_str());
+    _bChannel = &getAndInitChannel<BroadcastChannel>(_channel, *outTypePtr, _noCopy, _name.c_str());
     _subscriptionChannel = &_bChannel->subscribe();
 
     if (_bufferSize == 1) {
-      return outType;
+      return *outTypePtr;
     } else {
       _seqType.basicType = SHType::Seq;
       _seqType.seqTypes.elements = _outType.payload.typeValue;
