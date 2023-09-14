@@ -1,0 +1,20 @@
+@wire(main {
+  Once({
+    GFX.DrawQueue = ui-draw-queue
+    GFX.UIPass(ui-draw-queue) >> render-steps
+  })
+  GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {
+    UI(ui-draw-queue {
+      UI.Window(Contents: {
+        UI.
+          "Label" | UI.Label
+          UI.Button("Button")
+      })
+    })
+    GFX.Render(Steps: render-steps)
+  })
+} Looped: true)
+
+@mesh(root)
+@schedule(root main)
+@run(root)
