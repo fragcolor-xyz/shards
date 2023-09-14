@@ -1925,7 +1925,7 @@ fn set_shard_parameter(
       panic!("Expected a context variable") // The actual Shard is violating the standard - panic here
     }
     let (full_name, is_replacement) = get_full_name(name, env, name.namespaces.is_empty());
-    let suffix = if !is_replacement {
+    let suffix = if !is_replacement && name.namespaces.is_empty() {
       // suffix is only relevant if we are not a replacement
       find_current_suffix(env)
     } else {
@@ -3293,7 +3293,7 @@ fn add_assignment_shard(
   let (full_name, is_replacement) = get_full_name(name, e, name.namespaces.is_empty());
   let suffix = if !is_replacement {
     // suffix is only relevant if we are not a replacement
-    if shard_name != "Update" {
+    if shard_name != "Update"  && name.namespaces.is_empty() {
       find_current_suffix(e) // this case we add the current suffix
     } else {
       find_suffix(&full_name, e) // this case we want to find a suffix if there is one
