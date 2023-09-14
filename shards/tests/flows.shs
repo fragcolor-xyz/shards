@@ -9,20 +9,20 @@
 
 @wire(one {
   Msg("one - 1") |
-  Resume(two) |
+  SwitchTo(two) |
   Msg("one - 2") |
   Msg("one - 3") |
-  Resume(two) |
+  SwitchTo(two) |
   Msg("one - Done") |
-  Resume("two")
+  SwitchTo("two")
 })
 
 @wire(two {
   Msg("two - 1") |
-  Resume(one) |
+  SwitchTo(one) |
   Msg("two - 2") |
   Msg("two - 3") |
-  Resume(one) |
+  SwitchTo(one) |
   Msg("two - 4") |
   Msg("two - Done")
 })
@@ -374,12 +374,12 @@
 })
 
 @wire(depth-wire-2 {
-  Start(depth-wire-deeper) |
+  SwitchTo(depth-wire-deeper Restart: true) |
   Resume
 })
 
 @wire(spawned-wire-2 {
-  Start(depth-wire-2) |
+  SwitchTo(depth-wire-2 Restart: true) |
   consumed-variable |
   ToInt |
   Math.Add(1) |
@@ -405,7 +405,7 @@
 
 
 @wire(spawned-wire-3 {
-  Start(depth-wire-2) |
+  SwitchTo(depth-wire-2 Restart: true) |
   consumed-variable |
   ToInt |
   Math.Add(1) |
