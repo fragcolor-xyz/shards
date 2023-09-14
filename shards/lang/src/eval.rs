@@ -831,7 +831,7 @@ fn finalize_wire(
   line_info: LineInfo,
   env: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let (name, _) = get_full_name(name, env, true);
+  let (name, _) = get_full_name(name, env, name.namespaces.is_empty());
 
   shlog_trace!("Finalizing wire {}", name);
 
@@ -1086,12 +1086,6 @@ fn find_replacement<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Valu
     if let Some(replacement) = env.replacements.get(name) {
       let replacement = *replacement;
       let replacement = unsafe { &*replacement };
-      // // prevent infinite recursion
-      // if let Value::Identifier(inner_name) = &replacement {
-      //   if name.as_str() == inner_name.name.as_str() {
-      //     return None;
-      //   }
-      // }
       return Some(replacement);
     }
     if let Some(parent) = env.parent {
@@ -1930,7 +1924,7 @@ fn set_shard_parameter(
     if var_value.as_ref().valueType != SHType_ContextVar {
       panic!("Expected a context variable") // The actual Shard is violating the standard - panic here
     }
-    let (full_name, is_replacement) = get_full_name(name, env, true);
+    let (full_name, is_replacement) = get_full_name(name, env, name.namespaces.is_empty());
     let suffix = if !is_replacement {
       // suffix is only relevant if we are not a replacement
       find_current_suffix(env)
@@ -2127,7 +2121,7 @@ fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
 fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Get", Some(line.into())).unwrap(); // qed, Get must exist
   let shard = AutoShardRef(shard);
-  let (full_name, is_replacement) = get_full_name(name, e, true);
+  let (full_name, is_replacement) = get_full_name(name, e, name.namespaces.is_empty());
   let suffix = if !is_replacement {
     // suffix is only relevant if we are not a replacement
     find_suffix(&full_name, e)
@@ -2666,7 +2660,7 @@ fn eval_pipeline(
                 )
                   .into(),
               )? as *const Vec<Param>;
-              let (wire_name, _) = get_full_name(&name, e, true);
+              let (wire_name, _) = get_full_name(&name, e, name.namespaces.is_empty());
               shlog_trace!("Adding deferred wire {}", wire_name);
               e.deferred_wires.insert(
                 name,
@@ -3296,7 +3290,7 @@ fn add_assignment_shard(
 ) -> Result<(), ShardsError> {
   let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap(); // qed shard_name shard should exist
   let shard = AutoShardRef(shard);
-  let (full_name, is_replacement) = get_full_name(name, e, true);
+  let (full_name, is_replacement) = get_full_name(name, e, name.namespaces.is_empty());
   let suffix = if !is_replacement {
     // suffix is only relevant if we are not a replacement
     if shard_name != "Update" {
@@ -3311,7 +3305,7 @@ fn add_assignment_shard(
   let (assigned, suffix) = match (find_replacement(name, e), suffix) {
     (Some(Value::Identifier(name)), _) => {
       let name = name.clone();
-      let (full_name, _) = get_full_name(&name, e, true);
+      let (full_name, _) = get_full_name(&name, e, name.namespaces.is_empty());
       let name = Var::ephemeral_string(full_name.as_str());
       shard
         .0
