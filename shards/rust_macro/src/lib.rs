@@ -187,7 +187,7 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
         descriptions: shards::types::OptionalStrings,
       }
 
-      lazy_static! {
+      lazy_static::lazy_static! {
         static ref #enum_info_instance_id: #enum_info_id = #enum_info_id::new();
         static ref #typedef_id: shards::types::Type = #enum_info_instance_id.enum_type;
         static ref #typedef_vec_id: shards::types::Types = vec![*#typedef_id];
@@ -506,7 +506,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
   };
 
   Ok(quote! {
-    lazy_static! {
+    lazy_static::lazy_static! {
       #(#array_initializers)*
       static ref #params_static_id: shards::types::Parameters = vec![
         #((
