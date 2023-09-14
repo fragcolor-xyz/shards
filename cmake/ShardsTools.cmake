@@ -9,7 +9,7 @@ if(CMAKE_CROSSCOMPILING OR EXTERNAL_SHARDS_COMMAND)
     find_program(SHARDS_COMMAND REQUIRED
       NAMES shards
       DOC "The shards interpreter/compiler"
-      PATHS 
+      PATHS
         ${EXTERNAL_SHARDS_COMMAND}
         ${SHARDS_DIR}/build
     )

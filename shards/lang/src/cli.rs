@@ -235,17 +235,22 @@ fn build(matches: &ArgMatches, as_json: bool) -> i32 {
 
     let mut env = ReadEnv::new(file_path.to_str().unwrap(), parent_path);
     let ast = read_with_env(&file_content, &mut env).expect("Failed to parse file");
-    (
-      get_dependencies(&env)
-        .map(|x| {
-          dunce::canonicalize(x)
-            .expect("Failed to canonicalize path")
-            .to_string_lossy()
-            .to_string()
-        })
-        .collect::<Vec<String>>(),
-      ast,
-    )
+    let mut deps = get_dependencies(&env)
+      .map(|x| {
+        dunce::canonicalize(x)
+          .expect("Failed to canonicalize path")
+          .to_string_lossy()
+          .to_string()
+      })
+      .collect::<Vec<String>>();
+    // Add the main file as well
+    deps.push({
+      dunce::canonicalize(file_path)
+        .expect("Failed to canonicalize path")
+        .to_string_lossy()
+        .to_string()
+    });
+    (deps, ast)
   };
 
   let output = matches
