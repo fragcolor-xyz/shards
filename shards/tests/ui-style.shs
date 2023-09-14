@@ -6,9 +6,11 @@
   GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {
     UI(ui-draw-queue {
       UI.Window(Contents: {
-        UI.
-          "Label" | UI.Label
-          UI.Button("Button")
+        UI.VisualsStyle(
+          OverrideTextColor: @color(255 100 100)
+        )
+        "Label" | UI.Label
+        UI.Button("Button")
       })
     })
     GFX.Render(Steps: render-steps)

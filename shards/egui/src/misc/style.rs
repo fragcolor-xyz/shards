@@ -593,8 +593,8 @@ pub fn into_font_family(v: &Var) -> Result<egui::FontFamily, &'static str> {
 
 pub fn into_font_id(v: &Var) -> Result<egui::FontId, &'static str> {
   let tbl: TableVar = v.try_into()?;
-  let size: f32 = tbl.get_static("size").ok_or("Missing size")?.try_into()?;
-  let family = into_font_family(tbl.get_static("family").ok_or("Missing family")?)?;
+  let size: f32 = tbl.get_static("Size").ok_or("Missing Size")?.try_into()?;
+  let family = into_font_family(tbl.get_static("Family").ok_or("Missing Family")?)?;
   Ok(egui::FontId { size, family })
 }
 
@@ -976,94 +976,6 @@ impl Shard for SpacingStyleShard {
   }
 }
 
-/* /// If true, the visuals are overall dark with light text.
-/// If false, the visuals are overall light with dark text.
-///
-/// NOTE: setting this does very little by itself,
-/// this is more to provide a convenient summary of the rest of the settings.
-pub dark_mode: bool,
-
-/// Override default text color for all text.
-///
-/// This is great for setting the color of text for any widget.
-///
-/// If `text_color` is `None` (default), then the text color will be the same as the
-/// foreground stroke color (`WidgetVisuals::fg_stroke`)
-/// and will depend on whether or not the widget is being interacted with.
-///
-/// In the future we may instead modulate
-/// the `text_color` based on whether or not it is interacted with
-/// so that `visuals.text_color` is always used,
-/// but its alpha may be different based on whether or not
-/// it is disabled, non-interactive, hovered etc.
-pub override_text_color: Option<Color32>,
-
-/// Visual styles of widgets
-pub widgets: Widgets,
-
-pub selection: Selection,
-
-/// The color used for [`Hyperlink`],
-pub hyperlink_color: Color32,
-
-/// Something just barely different from the background color.
-/// Used for [`crate::Grid::striped`].
-pub faint_bg_color: Color32,
-
-/// Very dark or light color (for corresponding theme).
-/// Used as the background of text edits, scroll bars and others things
-/// that needs to look different from other interactive stuff.
-pub extreme_bg_color: Color32,
-
-/// Background color behind code-styled monospaced labels.
-pub code_bg_color: Color32,
-
-/// A good color for warning text (e.g. orange).
-pub warn_fg_color: Color32,
-
-/// A good color for error text (e.g. red).
-pub error_fg_color: Color32,
-
-pub window_rounding: Rounding,
-pub window_shadow: Shadow,
-pub window_fill: Color32,
-pub window_stroke: Stroke,
-
-pub menu_rounding: Rounding,
-
-/// Panel background color
-pub panel_fill: Color32,
-
-pub popup_shadow: Shadow,
-
-pub resize_corner_size: f32,
-
-pub text_cursor_width: f32,
-
-/// show where the text cursor would be if you clicked
-pub text_cursor_preview: bool,
-
-/// Allow child widgets to be just on the border and still have a stroke with some thickness
-pub clip_rect_margin: f32,
-
-/// Show a background behind buttons.
-pub button_frame: bool,
-
-/// Show a background behind collapsing headers.
-pub collapsing_header_frame: bool,
-
-/// Draw a vertical lien left of indented region, in e.g. [`crate::CollapsingHeader`].
-pub indent_has_left_vline: bool,
-
-/// Whether or not Grids and Tables should be striped by default
-/// (have alternating rows differently colored).
-pub striped: bool,
-
-/// Show trailing color behind the circle of a [`Slider`]. Default is OFF.
-///
-/// Enabling this will affect ALL sliders, and can be enabled/disabled per slider with [`Slider::trailing_fill`].
-pub slider_trailing_fill: bool, */
-
 #[derive(shards::shard)]
 #[shard_info("UI.VisualsStyle", "")]
 struct VisualsStyleShard {
@@ -1301,8 +1213,8 @@ impl Shard for VisualsStyleShard {
 
     when_set(&self.selection, |v| {
       let tbl: TableVar = v.try_into()?;
-      let bg_fill = into_color(tbl.get_static("bg_fill").ok_or("bg_fill missing")?)?;
-      let stroke = into_stroke(tbl.get_static("stroke").ok_or("stroke missing")?)?;
+      let bg_fill = into_color(tbl.get_static("BGFill").ok_or("bg_fill missing")?)?;
+      let stroke = into_stroke(tbl.get_static("Stroke").ok_or("stroke missing")?)?;
       visuals.selection = egui::style::Selection { bg_fill, stroke };
       Ok(())
     })?;

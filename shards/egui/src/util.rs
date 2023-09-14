@@ -208,10 +208,10 @@ pub fn into_rounding(v: &Var) -> Result<egui::Rounding, &'static str> {
 pub fn into_shadow(v: &Var) -> Result<egui::epaint::Shadow, &'static str> {
   let tbl: TableVar = v.try_into()?;
   let extrusion: f32 = tbl
-    .get_static("extrusion")
-    .ok_or("extrusion missing")?
+    .get_static("Extrusion")
+    .ok_or("Extrusion missing")?
     .try_into()?;
-  let color: egui::Color32 = into_color(tbl.get_static("color").ok_or("color missing")?)?;
+  let color: egui::Color32 = into_color(tbl.get_static("Color").ok_or("Color missing")?)?;
   Ok(egui::epaint::Shadow {
     extrusion,
     color,
@@ -221,10 +221,10 @@ pub fn into_shadow(v: &Var) -> Result<egui::epaint::Shadow, &'static str> {
 pub fn into_stroke(v: &Var) -> Result<egui::Stroke, &'static str> {
   let tbl: TableVar = v.try_into()?;
   let width: f32 = tbl
-    .get_static("width")
-    .ok_or("width missing")?
+    .get_static("Width")
+    .ok_or("Width missing")?
     .try_into()?;
-  let color: egui::Color32 = into_color(tbl.get_static("color").ok_or("color missing")?)?;
+  let color: egui::Color32 = into_color(tbl.get_static("Color").ok_or("Color missing")?)?;
   Ok(egui::Stroke {
     width,
     color,
