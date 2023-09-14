@@ -1,3 +1,9 @@
+# Silence DOWNLOAD_EXTRACT_TIMESTAMP warning
+# because of FetchContent_Declare usage
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+  cmake_policy(SET CMP0135 NEW)
+endif()
+
 get_filename_component(SHARDS_DIR ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
 message(STATUS "SHARDS_DIR = ${SHARDS_DIR}")
 
