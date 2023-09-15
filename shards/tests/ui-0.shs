@@ -115,6 +115,7 @@
             "TopLeft" | UI.Label
           }
         ) |
+        @input |
         UI.Area(
           Anchor: Anchor::Top
           Contents: {
@@ -123,6 +124,7 @@
             "Top" | UI.Label
           }
         ) |
+        @input |
         UI.Area(
           Anchor: Anchor::TopRight
           Contents: {
@@ -131,6 +133,7 @@
             "TopRight" | UI.Label(Wrap: false)
           }
         ) |
+        @input |
         UI.Area(
           Anchor: Anchor::Left
           Contents: {
@@ -139,6 +142,7 @@
             "Left" | UI.Label
           }
         ) |
+        @input |
         UI.Area(
           Anchor: Anchor::Center
           Contents: {
@@ -147,6 +151,7 @@
             "Center" | UI.Label
           }
         ) |
+        @input |
         UI.Area(
           Anchor: Anchor::Right
           Contents: {
@@ -155,6 +160,7 @@
             "Right" | UI.Label
           }
         ) |
+        @input |
         UI.Area(
           Anchor: Anchor::BottomLeft
           Contents: {
@@ -163,6 +169,7 @@
             "BottomLeft" | UI.Label
           }
         ) |
+        @input |
         UI.Area(
           Anchor: Anchor::Bottom
           Contents: {
@@ -171,6 +178,7 @@
             "Bottom" | UI.Label
           }
         ) |
+        @input |
         UI.Area(
           Anchor: Anchor::BottomRight
           Contents: {
@@ -179,8 +187,8 @@
             "BottomRight" | UI.Label(Wrap: false)
           }
         ) |
-        ; input passthrough
-        Assert.Is(@input Break: true)
+        ; content passthrough
+        Assert.Is("BottomRight" Break: true)
       })
 
       GFX.Render(Steps: render-steps)
