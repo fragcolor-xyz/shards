@@ -5,7 +5,7 @@
 #include <magic_enum.hpp>
 #include <boost/filesystem.hpp>
 #include <spdlog/sinks/dist_sink.h>
-#include <spdlog/sinks/rotating_file_sink.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #ifdef __ANDROID__
 #include <spdlog/sinks/android_sink.h>
@@ -60,7 +60,7 @@ static void setupDefaultLogger() {
   // Setup log file
 #ifdef SHARDS_LOG_FILE
   std::string logFilePath = boost::filesystem::absolute("shards.log").string();
-  auto sink2 = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logFilePath.c_str(), 1048576, 3, false);
+  auto sink2 = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath.c_str(), true);
   dist_sink->add_sink(sink2);
 #endif
 

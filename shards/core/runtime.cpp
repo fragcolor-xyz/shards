@@ -252,7 +252,7 @@ inline void setupRegisterLogging() {
 }
 
 void registerShard(std::string_view name, SHShardConstructor constructor, std::string_view fullTypeName) {
-  setupRegisterLogging();
+  // setupRegisterLogging();
   // SHLOG_TRACE("registerBlock({})", name);
 
   auto findIt = GetGlobals().ShardsRegister.find(name);
@@ -274,7 +274,7 @@ void registerShard(std::string_view name, SHShardConstructor constructor, std::s
 }
 
 void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
-  setupRegisterLogging();
+  // setupRegisterLogging();
   // SHLOG_TRACE("registerObjectType({})", info.name);
 
   int64_t id = (int64_t)vendorId << 32 | typeId;
@@ -305,7 +305,7 @@ void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
 }
 
 void registerEnumType(int32_t vendorId, int32_t typeId, SHEnumInfo info) {
-  setupRegisterLogging();
+  // setupRegisterLogging();
   // SHLOG_TRACE("registerEnumType({})", info.name);
 
   int64_t id = (int64_t)vendorId << 32 | typeId;
@@ -1656,7 +1656,7 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
 void error_handler(int err_sig) {
   std::signal(err_sig, SIG_DFL);
 
-  auto printTrace = false;
+  auto crashed = false;
 
   switch (err_sig) {
   case SIGINT:
@@ -1665,31 +1665,53 @@ void error_handler(int err_sig) {
     shards::GetGlobals().SigIntTerm++;
     if (shards::GetGlobals().SigIntTerm > 5)
       std::exit(-1);
-    spdlog::shutdown();
     break;
   case SIGFPE:
     SHLOG_ERROR("Fatal SIGFPE");
-    printTrace = true;
+    crashed = true;
     break;
   case SIGILL:
     SHLOG_ERROR("Fatal SIGILL");
-    printTrace = true;
+    crashed = true;
     break;
   case SIGABRT:
     SHLOG_ERROR("Fatal SIGABRT");
-    printTrace = true;
+    crashed = true;
     break;
   case SIGSEGV:
     SHLOG_ERROR("Fatal SIGSEGV");
-    printTrace = true;
+    crashed = true;
+    break;
+  case SIGBUS:
+    SHLOG_ERROR("Fatal SIGBUS");
+    crashed = true;
+    break;
+  case SIGSYS:
+    SHLOG_ERROR("Fatal SIGSYS");
+    crashed = true;
+    break;
+  case SIGPIPE:
+    SHLOG_ERROR("Fatal SIGPIPE");
+    crashed = true;
+    break;
+  case SIGTRAP:
+    SHLOG_ERROR("Fatal SIGTRAP");
+    crashed = true;
     break;
   }
 
-  if (printTrace) {
+  if (crashed) {
 #ifndef __EMSCRIPTEN__
     SHLOG_ERROR(boost::stacktrace::stacktrace());
 #endif
+
+    auto handler = GetGlobals().CrashHandler;
+    if (handler)
+      handler->crash();
   }
+
+  spdlog::default_logger()->flush();
+  spdlog::shutdown();
 
   std::raise(err_sig);
 }
@@ -1703,12 +1725,17 @@ constexpr bool isDebuggerPresent() { return false; }
 
 void installSignalHandlers() {
   if (!isDebuggerPresent()) {
+    SHLOG_TRACE("Installing signal handlers");
     std::signal(SIGINT, &error_handler);
     std::signal(SIGTERM, &error_handler);
     std::signal(SIGFPE, &error_handler);
     std::signal(SIGILL, &error_handler);
     std::signal(SIGABRT, &error_handler);
     std::signal(SIGSEGV, &error_handler);
+    std::signal(SIGBUS, &error_handler);
+    std::signal(SIGSYS, &error_handler);
+    std::signal(SIGPIPE, &error_handler);
+    std::signal(SIGTRAP, &error_handler);
   }
 }
 

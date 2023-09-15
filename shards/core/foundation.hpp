@@ -460,11 +460,17 @@ struct EventDispatcher {
   entt::dispatcher *operator->() { return &dispatcher; }
 };
 
+struct CrashHandler {
+  virtual void crash() {}
+};
+
 struct Globals {
 public:
   // sporadically used, don't abuse. And don't use in real time code.
   std::mutex GlobalMutex;
   UntrackedUnorderedMap<std::string, OwnedVar> Settings;
+
+  CrashHandler *CrashHandler{nullptr};
 
   int SigIntTerm{0};
   UntrackedUnorderedMap<std::string_view, SHShardConstructor> ShardsRegister;
@@ -1475,9 +1481,7 @@ struct CoroAwareBarrier {
     return true;
   }
 
-  void release() {
-    running = false;
-  }
+  void release() { running = false; }
 };
 
 }; // namespace shards
