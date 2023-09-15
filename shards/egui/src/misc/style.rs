@@ -519,7 +519,9 @@
 //   }
 // }
 
-use crate::util::{into_color, into_margin, into_rounding, into_shadow, into_vec2, into_stroke};
+use crate::util::{
+  apply_widget_visuals, into_color, into_margin, into_rounding, into_shadow, into_stroke, into_vec2,
+};
 use crate::PARENTS_UI_NAME;
 use shards::core::{register_enum, register_shard};
 use shards::shard::Shard;
@@ -616,11 +618,6 @@ lazy_static! {
 
   // { Size: Type::Float FontFamily: FontFamily }
   static ref FONT_ID_TYPES: Types = vec![common_type::none, common_type::any_table];
-
-  // static ref SPACING_TYPES: Types = vec![common_type::none, common_type::any_table];
-  // static ref INTERACTION_TYPES: Types = vec![common_type::none, common_type::any_table];
-  // static ref VISUALS_TYPES: Types = vec![common_type::none, common_type::any_table];
-  // static ref DEBUG_TYPES: Types = vec![common_type::none, common_type::any_table];
 }
 
 #[derive(shards::shard)]
@@ -630,34 +627,41 @@ struct StyleShard {
   required: ExposedTypes,
   #[shard_warmup]
   parents: ParamVar,
+
   #[shard_param(
     "TextStyle",
     "If set this will change the default TextStyle for all widgets.",
     TEXT_STYLE_TYPES
   )]
   text_style: ParamVar,
+
   #[shard_param(
     "FontId",
     "If set this will change the font family and size for all widgets.",
     FONT_ID_TYPES
   )]
   font_id: ParamVar,
+
   #[shard_param(
     "TextStyles",
     "The FontFamily and size you want to use for a specific TextStyle.",
     TEXT_STYLE_TYPES
   )]
   text_styles: ParamVar,
+
   #[shard_param(
     "DragValueTextStyle",
     "The style to use for DragValue text.",
     TEXT_STYLE_TYPES
   )]
   drag_value_text_style: ParamVar,
+
   #[shard_param("Wrap", "If set, labels buttons wtc will use this to determine whether or not to wrap the text at the right edge of the Ui they are in.", [common_type::none, common_type::bool])]
   wrap: ParamVar,
+
   #[shard_param("AnimationTime", "How many seconds a typical animation should last.", [common_type::none, common_type::float, common_type::float_var])]
   animation_time: ParamVar,
+
   #[shard_param("ExplanationTooltips", "Show tooltips explaining DragValues etc when hovered.", [common_type::none, common_type::bool])]
   explanation_tooltips: ParamVar,
 
@@ -844,7 +848,7 @@ impl Default for SpacingStyleShard {
   fn default() -> Self {
     Self {
       required: ExposedTypes::new(),
-      parents: ParamVar::default(),
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
       item_spacing: ParamVar::default(),
       window_margin: ParamVar::default(),
       button_padding: ParamVar::default(),
@@ -1064,7 +1068,7 @@ impl Default for VisualsStyleShard {
   fn default() -> Self {
     Self {
       required: ExposedTypes::new(),
-      parents: ParamVar::default(),
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
       dark_mode: ParamVar::default(),
       override_text_color: ParamVar::default(),
       hyperlink_color: ParamVar::default(),
@@ -1096,7 +1100,7 @@ impl Default for VisualsStyleShard {
 
 #[shards::shard_impl]
 impl Shard for VisualsStyleShard {
-  fn input_types(&mut self) -> &Types {
+  fn input_types(&mut self) -> &Types { 
     &NONE_TYPES
   }
 
@@ -1231,8 +1235,103 @@ impl Shard for VisualsStyleShard {
   }
 }
 
+#[derive(shards::shard)]
+#[shard_info("UI.WidgetStyle", "")]
+struct WidgetStyleShard {
+  #[shard_required]
+  required: ExposedTypes,
+  #[shard_warmup]
+  parents: ParamVar,
+
+  #[shard_param("NonInteractive", "The style of a widget that you cannot interact with.", [common_type::none, common_type::any_table, common_type::any_table_var])]
+  non_interactive: ParamVar,
+
+  #[shard_param("Inactive", "The style of an interactive widget, such as a button, at rest.", [common_type::none, common_type::any_table, common_type::any_table_var])]
+  inactive: ParamVar,
+
+  #[shard_param("Hovered", "The style of an interactive widget while you hover it, or when it is highlighted.", [common_type::none, common_type::any_table, common_type::any_table_var])]
+  hovered: ParamVar,
+
+  #[shard_param("Active", "The style of an interactive widget as you are clicking or dragging it.", [common_type::none, common_type::any_table, common_type::any_table_var])]
+  active: ParamVar,
+
+  #[shard_param("Open", "The style of a button that has an open menu beneath it (e.g. a combo-box)", [common_type::none, common_type::any_table, common_type::any_table_var])]
+  open: ParamVar,
+}
+
+impl Default for WidgetStyleShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
+      non_interactive: ParamVar::default(),
+      inactive: ParamVar::default(),
+      hovered: ParamVar::default(),
+      active: ParamVar::default(),
+      open: ParamVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for WidgetStyleShard {
+  fn input_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+
+    Ok(())
+  }
+
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.cleanup_helper()?;
+
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    crate::util::require_parents(&mut self.required);
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    let ui: &mut egui::Ui = crate::util::get_parent_ui(self.parents.get())?;
+    let visuals = &mut ui.style_mut().visuals;
+
+    when_set(&self.non_interactive, |v| {
+      apply_widget_visuals(&mut visuals.widgets.noninteractive, v)
+    })?;
+
+    when_set(&self.inactive, |v| {
+      apply_widget_visuals(&mut visuals.widgets.inactive, v)
+    })?;
+
+    when_set(&self.hovered, |v| {
+      apply_widget_visuals(&mut visuals.widgets.hovered, v)
+    })?;
+
+    when_set(&self.active, |v| {
+      apply_widget_visuals(&mut visuals.widgets.active, v)
+    })?;
+
+    when_set(&self.open, |v| {
+      apply_widget_visuals(&mut visuals.widgets.open, v)
+    })?;
+
+    Ok(Var::default())
+  }
+}
+
 pub fn register_shards() {
   register_shard::<StyleShard>();
   register_shard::<SpacingStyleShard>();
   register_shard::<VisualsStyleShard>();
+  register_shard::<WidgetStyleShard>();
 }

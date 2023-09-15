@@ -5,6 +5,7 @@ use crate::CONTEXTS_NAME_CSTR;
 use crate::EGUI_CTX_TYPE;
 use crate::EGUI_UI_TYPE;
 use crate::PARENTS_UI_NAME_CSTR;
+use egui::style::WidgetVisuals;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -212,21 +213,59 @@ pub fn into_shadow(v: &Var) -> Result<egui::epaint::Shadow, &'static str> {
     .ok_or("Extrusion missing")?
     .try_into()?;
   let color: egui::Color32 = into_color(tbl.get_static("Color").ok_or("Color missing")?)?;
-  Ok(egui::epaint::Shadow {
-    extrusion,
-    color,
-  })
+  Ok(egui::epaint::Shadow { extrusion, color })
 }
 
 pub fn into_stroke(v: &Var) -> Result<egui::Stroke, &'static str> {
   let tbl: TableVar = v.try_into()?;
-  let width: f32 = tbl
-    .get_static("Width")
-    .ok_or("Width missing")?
-    .try_into()?;
+  let width: f32 = tbl.get_static("Width").ok_or("Width missing")?.try_into()?;
   let color: egui::Color32 = into_color(tbl.get_static("Color").ok_or("Color missing")?)?;
-  Ok(egui::Stroke {
-    width,
-    color,
-  })
+  Ok(egui::Stroke { width, color })
+}
+/*
+/// Background color of widgets that must have a background fill,
+/// such as the slider background, a checkbox background, or a radio button background.
+///
+/// Must never be [`Color32::TRANSPARENT`].
+pub bg_fill: Color32,
+
+/// Background color of widgets that can _optionally_ have a background fill, such as buttons.
+///
+/// May be [`Color32::TRANSPARENT`].
+pub weak_bg_fill: Color32,
+
+/// For surrounding rectangle of things that need it,
+/// like buttons, the box of the checkbox, etc.
+/// Should maybe be called `frame_stroke`.
+pub bg_stroke: Stroke,
+
+/// Button frames etc.
+pub rounding: Rounding,
+
+/// Stroke and text color of the interactive part of a component (button text, slider grab, check-mark, …).
+pub fg_stroke: Stroke,
+
+/// Make the frame this much larger.
+pub expansion: f32, */
+pub fn apply_widget_visuals(visuals: &mut WidgetVisuals, v: &Var) -> Result<(), &'static str> {
+  let tbl: TableVar = v.try_into()?;
+  if let Some(v) = tbl.get_static("BGFill") {
+    visuals.bg_fill = into_color(v)?;
+  }
+  if let Some(v) = tbl.get_static("WeakBGFill") {
+    visuals.weak_bg_fill = into_color(v)?;
+  }
+  if let Some(v) = tbl.get_static("BGStroke") {
+    visuals.bg_stroke = into_stroke(v)?;
+  }
+  if let Some(v) = tbl.get_static("Rounding") {
+    visuals.rounding = into_rounding(v)?;
+  }
+  if let Some(v) = tbl.get_static("FGStroke") {
+    visuals.fg_stroke = into_stroke(v)?;
+  }
+  if let Some(v) = tbl.get_static("Expansion") {
+    visuals.expansion = v.try_into()?;
+  }
+  Ok(())
 }

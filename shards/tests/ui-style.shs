@@ -1,3 +1,6 @@
+@define(no-stroke { Color: @color(0 0 0 0) Width: 0.0 })
+@define(stroke-2 { Color: @color(255 255 255) Width: 2.0 })
+
 @wire(main {
   Once({
     GFX.DrawQueue = ui-draw-queue
@@ -6,11 +9,42 @@
   GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {
     UI(ui-draw-queue {
       UI.Window(Contents: {
-        UI.VisualsStyle(
+        UI.Style(AnimationTime: 0.5)
+        UI.VisualsStyle( 
           OverrideTextColor: @color(255 100 100)
+          Selection: {
+              BGFill: @color(0 255 205 255)
+              Stroke: @stroke-2
+          }
         )
+        ; UI.WidgetStyle(
+        ;   Inactive: {
+        ;     BGFill: @color(0 0 127)
+        ;     WeakBGFill: @color(0 0 20)
+        ;     BGStroke: @stroke-2
+        ;     Rounding: @f4(1.0)
+        ;     ; Stroke: @no-stroke
+        ;   }
+        ; ;   NonInteractive: {
+        ; ;     BGFill: @color(127 127 127 255)
+        ; ;     Stroke: @no-stroke
+        ; ;   }
+        ; ;   Hovered: {
+        ; ;     BGFill: @color(190 190 190 255)
+        ; ;     Stroke: @white-stroke
+        ; ;   }
+        ; ;   Active: {
+        ; ;     BGFill: @color(0 255 205 255)
+        ; ;     Stroke: @white-stroke
+        ; ;   }
+        ; ;   Open: {
+        ; ;     BGFill: @color(255 255 255 255)
+        ; ;     Stroke: @no-stroke
+        ;   ; }
+        ; )
         "Label" | UI.Label
         UI.Button("Button")
+        UI.TextField(text)
       })
     })
     GFX.Render(Steps: render-steps)
@@ -19,4 +53,4 @@
 
 @mesh(root)
 @schedule(root main)
-@run(root)
+@run(root FPS: 60)
