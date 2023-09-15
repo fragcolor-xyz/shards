@@ -34,7 +34,7 @@
 
 @wire(jumphere2 {
   Msg("jumped...")
-  Resume
+  SwitchTo
 })
 
 @wire(stopping {
@@ -67,7 +67,7 @@
 
   ; make sure main is not stopped in this case
   SwitchTo(stopping) |
-  ; the flow stopped via Stop, the input of Stop was 4 from previous Resume
+  ; the flow stopped via Stop, the input of Stop was 4 from previous SwitchTo
   Assert.Is(4 true)
 })
 
@@ -78,7 +78,7 @@
   Msg("message 2") |
 
   ; test jumping to another coro
-  SwitchTo(jumphere2) |
+  SwitchTo(jumphere2 true) |
   Msg("ticked resumed") |
   2 |
   Pause |
@@ -179,9 +179,9 @@
     Assert.Is(4 true) ; pause after 4
   } Times: 3)
 
-  SwitchTo(started Restart: true) |
+  SwitchTo(started true) |
   Msg("root resumed") |
-  SwitchTo(started Restart: true) |
+  SwitchTo(started true) |
   Msg("root resumed")
 
   "done" |
