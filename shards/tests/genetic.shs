@@ -47,7 +47,7 @@
 
 @wire(state-1 {
   Msg("into state 1") |
-  SwitchTo(state-2 Restart: true) |
+  SwitchTo(state-2 true) |
   Msg("back to state 1") |
   SwitchTo(stepped)
 })
@@ -58,7 +58,7 @@
 })
 
 @wire(stepped {
-  SwitchTo(state-1 Restart: true)
+  SwitchTo(state-1 true)
 })
 
 @wire(evolveme-2 {

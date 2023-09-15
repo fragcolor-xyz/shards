@@ -370,16 +370,16 @@
 @wire(depth-wire-deeper {
   Do(depth-wire-deeper-do) |
   Log |
-  Resume
+  SwitchTo
 })
 
 @wire(depth-wire-2 {
-  SwitchTo(depth-wire-deeper Restart: true) |
-  Resume
+  SwitchTo(depth-wire-deeper true) |
+  SwitchTo
 })
 
 @wire(spawned-wire-2 {
-  SwitchTo(depth-wire-2 Restart: true) |
+  SwitchTo(depth-wire-2 true) |
   consumed-variable |
   ToInt |
   Math.Add(1) |
@@ -405,7 +405,7 @@
 
 
 @wire(spawned-wire-3 {
-  SwitchTo(depth-wire-2 Restart: true) |
+  SwitchTo(depth-wire-2 true) |
   consumed-variable |
   ToInt |
   Math.Add(1) |
