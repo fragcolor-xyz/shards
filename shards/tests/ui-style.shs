@@ -1,5 +1,6 @@
 @define(no-stroke { Color: @color(0 0 0 0) Width: 0.0 })
 @define(stroke-2 { Color: @color(255 255 255) Width: 2.0 })
+@define(stroke-4 { Color: @color(255 200 255) Width: 4.0 })
 
 @wire(main {
   Once({
@@ -32,8 +33,8 @@
           }
           Hovered: {
             BGFill: @color(190 190 190 255)
-            Stroke: @stroke-2
-            BGStroke: @stroke-2
+            Stroke: @stroke-4
+            BGStroke: @stroke-4
           }
           Active: {
             BGFill: @color(0 255 205 255)
