@@ -1,0 +1,33 @@
+@define(style {
+  override_text_style: "MyStyle"
+  text_styles: [
+    {
+      name: "MyStyle"
+      size: 36.0
+      family: "Monospace"
+    }
+  ]
+  visuals: {
+    override_text_color: @color(64 250 0)
+  }
+})
+
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+        ui-draw-queue
+        UI.CentralPanel(
+          Contents: {
+            @style | UI.Style
+            "Hello Shards!" | UI.Label
+          }
+        )
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)

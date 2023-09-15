@@ -10,4 +10,5 @@
     :Contents
     (->
      (UI.Property UIProperty.RemainingSpace)
-     (Once (Log)))))))
+     (Once (Log)))))
+  (GFX.Render :Steps .render-steps)))
