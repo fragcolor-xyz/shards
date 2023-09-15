@@ -460,7 +460,7 @@ struct EventDispatcher {
   entt::dispatcher *operator->() { return &dispatcher; }
 };
 
-struct CrashHandler {
+struct CrashHandlerBase {
   virtual void crash() {}
 };
 
@@ -470,7 +470,7 @@ public:
   std::mutex GlobalMutex;
   UntrackedUnorderedMap<std::string, OwnedVar> Settings;
 
-  CrashHandler *CrashHandler{nullptr};
+  CrashHandlerBase *CrashHandler{nullptr};
 
   int SigIntTerm{0};
   UntrackedUnorderedMap<std::string_view, SHShardConstructor> ShardsRegister;
