@@ -1,0 +1,4 @@
+Shards.Enumerate | Map({
+  Log("Shard")
+  Shards.Help | Log
+})

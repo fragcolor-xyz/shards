@@ -145,6 +145,7 @@ jobs:
           ./shards ../shards/tests/complex-deserialize.edn
           ./shards ../shards/tests/db.edn
           ./shards new ../shards/tests/suspend-resume.shs
+          ./shards new ../shards/tests/help.shs
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
