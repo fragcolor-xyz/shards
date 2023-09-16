@@ -274,6 +274,8 @@ jobs:
           ./shards ../shards/tests/complex-deserialize.edn
           echo "Running test: suspend-resume"
           ./shards new ../shards/tests/suspend-resume.shs
+          echo "Running test: help"
+          ./shards new ../shards/tests/help.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

@@ -1355,6 +1355,93 @@ struct UnsafeActivate {
   SHVar activate(SHContext *context, const SHVar &input) { return _func(context, &input); }
 };
 
+struct GetShards {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
+
+  SeqVar _output{};
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
+    for (auto [name, _] : shards::GetGlobals().ShardsRegister) {
+      _output.emplace_back(Var(name));
+    }
+    return _output;
+  }
+};
+
+struct GetShardHelp {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+
+  TableVar _output{};
+
+  static Var ostr(SHOptionalString &str) { return Var(str.string ? str.string : getString(str.crc)); }
+
+  static SeqVar richTypeInfo(const SHTypesInfo &types, bool ignoreNone = true) {
+    SeqVar s{};
+    for (uint32_t j = 0; j < types.len; j++) {
+      auto &type = types.elements[j];
+      if (ignoreNone && type.basicType == SHType::None)
+        continue;
+      TableVar t{};
+      std::stringstream ss;
+      ss << type;
+      auto name = ss.str();
+      t["name"] = Var(name);
+      t["type"] = Var(int64_t(type.basicType));
+      s.emplace_back(std::move(t));
+    }
+    return s;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto blkname = SHSTRVIEW(input);
+    auto shard = createShard(blkname);
+    if (!shard) {
+      throw ActivationError(fmt::format("Shard {} creation failed, likely does not exist", blkname));
+    }
+    DEFER(shard->destroy(shard));
+
+    auto help = shard->help(shard);
+    _output.insert(Var("help"), ostr(help));
+
+    auto inputTypes = shard->inputTypes(shard);
+    _output.insert(Var("inputTypes"), richTypeInfo(inputTypes, false));
+    auto inputHelp = shard->inputHelp(shard);
+    _output.insert(Var("inputHelp"), ostr(inputHelp));
+
+    auto outputTypes = shard->outputTypes(shard);
+    _output.insert(Var("outputTypes"), richTypeInfo(outputTypes, false));
+    auto outputHelp = shard->outputHelp(shard);
+    _output.insert(Var("outputHelp"), ostr(outputHelp));
+
+    auto params = shard->parameters(shard);
+    if (params.len > 0) {
+      SeqVar paramsSeq{};
+      for (uint32_t i = 0; i < params.len; i++) {
+        auto &param = params.elements[i];
+        TableVar paramTable{};
+        paramTable.insert(Var("name"), Var(param.name));
+        paramTable.insert(Var("help"), ostr(param.help));
+        paramTable.insert(Var("types"), richTypeInfo(param.valueTypes, false));
+        paramTable.insert(Var("default"), shard->getParam(shard, i));
+        paramsSeq.emplace_back(std::move(paramTable));
+      }
+      _output.insert(Var("parameters"), std::move(paramsSeq));
+    }
+
+    auto properties = shard->properties(shard);
+    if (properties) {
+      TableVar propertiesTable{};
+      ForEach(*properties, [&](auto &key, auto &val) { propertiesTable[key] = val; });
+      _output.insert(Var("properties"), std::move(propertiesTable));
+    }
+
+    return _output;
+  }
+};
+
 // Register And
 RUNTIME_CORE_SHARD_FACTORY(And);
 RUNTIME_SHARD_help(And);
@@ -2109,5 +2196,7 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Reverse", Reverse);
   REGISTER_SHARD("OnCleanup", OnCleanup);
   REGISTER_SHARD("UnsafeActivate!", UnsafeActivate);
+  REGISTER_SHARD("Shards.Enumerate", GetShards);
+  REGISTER_SHARD("Shards.Help", GetShardHelp);
 }
 }; // namespace shards
