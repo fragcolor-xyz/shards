@@ -25,10 +25,13 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
   #[cfg(not(target_arch = "wasm32"))]
   {
     let cancellation_token_1 = cancellation_token.clone();
-    ctrlc::set_handler(move || {
+    let r = ctrlc::set_handler(move || {
       cancellation_token_1.store(true, atomic::Ordering::Relaxed);
-    })
-    .expect("Error setting Ctrl-C handler");
+    });
+    if r.is_err() {
+      shlog!("Failed to set ctrl-c handler");
+      return 1;
+    }
   }
 
   let args: Vec<String> = unsafe {
@@ -111,17 +114,24 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
     // Add your arguments here
     .get_matches_from(args);
 
-  match matches.subcommand() {
+  let res = match matches.subcommand() {
     Some(("new", matches)) => execute(matches, cancellation_token),
     Some(("build", matches)) => build(matches, false),
     Some(("ast", matches)) => build(matches, true),
     Some(("load", matches)) => load(matches, cancellation_token),
-    Some((_external, _matches)) => 99,
-    _ => 0,
+    Some((_external, _matches)) => Err("Unknown command"),
+    _ => Ok(()),
+  };
+
+  if let Err(e) = res {
+    shlog!("Error: {}", e);
+    1
+  } else {
+    0
   }
 }
 
-fn load(matches: &ArgMatches, cancellation_token: Arc<AtomicBool>) -> i32 {
+fn load(matches: &ArgMatches, cancellation_token: Arc<AtomicBool>) -> Result<(), &'static str> {
   // we need to do this here or old path will fail
   unsafe {
     shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
@@ -130,12 +140,12 @@ fn load(matches: &ArgMatches, cancellation_token: Arc<AtomicBool>) -> i32 {
   shlog!("Loading file");
   let file = matches
     .get_one::<String>("FILE")
-    .expect("A binary Shards file to parse");
+    .ok_or("A binary Shards file to parse")?;
   shlog!("Parsing binary file: {}", file);
 
   let ast = {
     // deserialize from bincode, skipping the first 8 bytes
-    let mut file_content = std::fs::read(file).expect("File not found");
+    let mut file_content = std::fs::read(file).map_err(|_| "File not found")?;
     let magic: i32 = i32::from_be_bytes([
       file_content[0],
       file_content[1],
@@ -157,7 +167,11 @@ fn load(matches: &ArgMatches, cancellation_token: Arc<AtomicBool>) -> i32 {
   execute_seq(matches, ast, cancellation_token)
 }
 
-fn execute_seq(matches: &ArgMatches, ast: Sequence, cancellation_token: Arc<AtomicBool>) -> i32 {
+fn execute_seq(
+  matches: &ArgMatches,
+  ast: Sequence,
+  cancellation_token: Arc<AtomicBool>,
+) -> Result<(), &'static str> {
   let mut defines = HashMap::new();
   let args = matches.get_many::<String>("args");
   if let Some(args) = args {
@@ -176,15 +190,16 @@ fn execute_seq(matches: &ArgMatches, ast: Sequence, cancellation_token: Arc<Atom
     }
   }
 
-  let wire =
-    { eval(&ast, "root", defines, cancellation_token.clone()).expect("Failed to evaluate file") };
+  let wire = {
+    eval(&ast, "root", defines, cancellation_token.clone())
+      .map_err(|_| "Failed to evaluate file")?
+  };
   // enlarge stack
   wire.set_stack_size(eval::EVAL_STACK_SIZE);
 
   let mut mesh = Mesh::default();
   if !mesh.compose(wire.0) {
-    shlog!("Failed to compose mesh");
-    return -1;
+    return Err("Failed to compose mesh");
   }
   mesh.schedule(wire.0, false);
 
@@ -208,25 +223,25 @@ fn execute_seq(matches: &ArgMatches, ast: Sequence, cancellation_token: Arc<Atom
     })
     .unwrap();
     shlog!("Failed: {}", msg);
-    -1
+    Err("Failed to execute file")
   } else {
-    0
+    Ok(())
   }
 }
 
-fn build(matches: &ArgMatches, as_json: bool) -> i32 {
+fn build(matches: &ArgMatches, as_json: bool) -> Result<(), &'static str> {
   // we need to do this here or old path will fail
   unsafe {
     shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
   }
 
-  let file = matches.get_one::<String>("FILE").expect("A file to parse");
+  let file = matches.get_one::<String>("FILE").ok_or("A file to parse")?;
   shlog!("Parsing file: {}", file);
 
   let (deps, ast) = {
     let file_path = Path::new(&file);
     let file_path = std::fs::canonicalize(file_path).unwrap();
-    let mut file_content = std::fs::read_to_string(file).expect("File not found");
+    let mut file_content = std::fs::read_to_string(file).map_err(|_| "File not found")?;
     // add new line at the end of the file to be able to parse it correctly
     file_content.push('\n');
 
@@ -234,28 +249,26 @@ fn build(matches: &ArgMatches, as_json: bool) -> i32 {
     let parent_path = file_path.parent().unwrap().to_str().unwrap();
 
     let mut env = ReadEnv::new(file_path.to_str().unwrap(), parent_path);
-    let ast = read_with_env(&file_content, &mut env).expect("Failed to parse file");
+    let ast = read_with_env(&file_content, &mut env).map_err(|_| "Failed to parse file")?;
     let mut deps = get_dependencies(&env)
       .map(|x| {
         dunce::canonicalize(x)
-          .expect("Failed to canonicalize path")
-          .to_string_lossy()
-          .to_string()
+          .map_err(|_| "Failed to canonicalize path")
+          .map(|x| x.to_string_lossy().to_string())
       })
-      .collect::<Vec<String>>();
+      .collect::<Result<Vec<String>, _>>()?;
     // Add the main file as well
-    deps.push({
-      dunce::canonicalize(file_path)
-        .expect("Failed to canonicalize path")
-        .to_string_lossy()
-        .to_string()
-    });
+    let p = dunce::canonicalize(file_path)
+      .map_err(|_| "Failed to canonicalize path")?
+      .to_string_lossy()
+      .to_string();
+    deps.push(p);
     (deps, ast)
   };
 
   let output = matches
     .get_one::<String>("output")
-    .expect("An output file to write to");
+    .ok_or("An output file to write to")?;
 
   // write sequence to file
   {
@@ -289,11 +302,13 @@ fn build(matches: &ArgMatches, as_json: bool) -> i32 {
       writer.write_all(b" ").unwrap();
     }
   }
-
-  0
+  Ok(())
 }
 
-fn execute(matches: &clap::ArgMatches, cancellation_token: Arc<AtomicBool>) -> i32 {
+fn execute(
+  matches: &clap::ArgMatches,
+  cancellation_token: Arc<AtomicBool>,
+) -> Result<(), &'static str> {
   // we need to do this here or old path will fail
   unsafe {
     shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
@@ -309,13 +324,13 @@ fn execute(matches: &clap::ArgMatches, cancellation_token: Arc<AtomicBool>) -> i
 
   let file = matches
     .get_one::<String>("FILE")
-    .expect("A file to evaluate");
+    .ok_or("A file to evaluate")?;
   shlog!("Evaluating file: {}", file);
 
   let ast = {
     let file_path = Path::new(&file);
     let file_path = std::fs::canonicalize(file_path).unwrap();
-    let mut file_content = std::fs::read_to_string(file).expect("File not found");
+    let mut file_content = std::fs::read_to_string(file).map_err(|_| "File not found")?;
     // add new line at the end of the file to be able to parse it correctly
     file_content.push('\n');
 
@@ -325,8 +340,9 @@ fn execute(matches: &clap::ArgMatches, cancellation_token: Arc<AtomicBool>) -> i
     // set it as root path
     unsafe { (*Core).setRootPath.unwrap()(c_parent_path.as_ptr() as *const c_char) };
 
-    read(&file_content, file_path.to_str().unwrap(), parent_path).expect("Failed to parse file")
+    read(&file_content, file_path.to_str().unwrap(), parent_path)
+      .map_err(|_| "Failed to parse file")?
   };
 
-  execute_seq(matches, ast.sequence, cancellation_token)
+  Ok(execute_seq(matches, ast.sequence, cancellation_token)?)
 }
