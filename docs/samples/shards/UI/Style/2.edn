@@ -20,14 +20,11 @@
 
      (UI.Scope
       (->
-       {:override_text_style "MyStyle"
-        :text_styles
-        [{:name "MyStyle"
-          :size .size
-          :family "Monospace"}]
-        :visuals
-        {:override_text_color .color}}
-       (UI.Style)
+       (UI.Style
+        :OverrideTextStyle "MyStyle"
+        :TextStyles {:MyStyle {:Size .size
+                               :Family FontFamily.Monospace}}
+        :OverrideTextColor .color)
        (UI.IntSlider
         :Variable .hue
         :Min 0 :Max 255)

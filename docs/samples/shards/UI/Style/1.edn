@@ -1,12 +1,3 @@
-(def style
-  {:override_text_style "MyStyle"
-   :text_styles
-   [{:name "MyStyle"
-     :size (float 36)
-     :family "Monospace"}]
-   :visuals
-   {:override_text_color (color 64 250 0)}})
-
 (GFX.MainWindow
  :Contents
  (->
@@ -18,7 +9,21 @@
    (UI.CentralPanel
     :Contents
     (->
-     style (UI.Style)
-     "Hello Shards!" (UI.Label))))
+     (UI.Style
+      :OverrideTextStyle "MyStyle"
+      :TextStyles {:MyStyle {:Size 36.0
+                             :Family FontFamily.Monospace}})
+     "Hello Shards!" (UI.Label)
+
+     (UI.Style :TextStyles {:MyStyle {:Size 16.0 :Family FontFamily.Monospace}})
+     "Hello Shards!" (UI.Label)
+
+     (UI.Style :TextStyles {:MyStyle {:Size 20.0 :Family FontFamily.Proportional}})
+     "Hello Shards!" (UI.Label)
+
+    ;;  (UI.Style :TextStyles {:MyStyle {:Size 24.0 :Family FontFamily.Monospace}})
+    ;;  (UI.Button "Button")
+     ;
+     )))
 
   (GFX.Render :Steps .render-steps)))

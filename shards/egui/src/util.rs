@@ -15,6 +15,7 @@ use shards::types::TableVar;
 use shards::types::Type;
 use shards::types::Var;
 use shards::types::WireState;
+use shards::util::get_or_var;
 use shards::SHType_Object;
 
 pub fn with_object_var<T, F, R>(
@@ -206,48 +207,25 @@ pub fn into_rounding(v: &Var) -> Result<egui::Rounding, &'static str> {
   })
 }
 
-pub fn into_shadow(v: &Var) -> Result<egui::epaint::Shadow, &'static str> {
+pub fn into_shadow(v: &Var, ctx: &Context) -> Result<egui::epaint::Shadow, &'static str> {
   let tbl: TableVar = v.try_into()?;
-  let extrusion: f32 = tbl
-    .get_static("Extrusion")
-    .ok_or("Extrusion missing")?
-    .try_into()?;
-  let color: egui::Color32 = into_color(tbl.get_static("Color").ok_or("Color missing")?)?;
+  let extrusion: f32 =
+    get_or_var(tbl.get_static("Extrusion").ok_or("Extrusion missing")?, ctx).try_into()?;
+  let color: egui::Color32 = into_color(get_or_var(
+    tbl.get_static("Color").ok_or("Color missing")?,
+    ctx,
+  ))?;
   Ok(egui::epaint::Shadow { extrusion, color })
 }
 
-pub fn into_stroke(v: &Var) -> Result<egui::Stroke, &'static str> {
+pub fn into_stroke(v: &Var, ctx: &Context) -> Result<egui::Stroke, &'static str> {
   let tbl: TableVar = v.try_into()?;
-  let width: f32 = tbl.get_static("Width").ok_or("Width missing")?.try_into()?;
-  let color: egui::Color32 = into_color(tbl.get_static("Color").ok_or("Color missing")?)?;
+  let width: f32 = get_or_var(tbl.get_static("Width").ok_or("Width missing")?, ctx).try_into()?;
+  let color: egui::Color32 = into_color(get_or_var(tbl.get_static("Color").ok_or("Color missing")?, ctx))?;
   Ok(egui::Stroke { width, color })
 }
-/*
-/// Background color of widgets that must have a background fill,
-/// such as the slider background, a checkbox background, or a radio button background.
-///
-/// Must never be [`Color32::TRANSPARENT`].
-pub bg_fill: Color32,
 
-/// Background color of widgets that can _optionally_ have a background fill, such as buttons.
-///
-/// May be [`Color32::TRANSPARENT`].
-pub weak_bg_fill: Color32,
-
-/// For surrounding rectangle of things that need it,
-/// like buttons, the box of the checkbox, etc.
-/// Should maybe be called `frame_stroke`.
-pub bg_stroke: Stroke,
-
-/// Button frames etc.
-pub rounding: Rounding,
-
-/// Stroke and text color of the interactive part of a component (button text, slider grab, check-mark, …).
-pub fg_stroke: Stroke,
-
-/// Make the frame this much larger.
-pub expansion: f32, */
-pub fn apply_widget_visuals(visuals: &mut WidgetVisuals, v: &Var) -> Result<(), &'static str> {
+pub fn apply_widget_visuals(visuals: &mut WidgetVisuals, v: &Var, ctx: &Context) -> Result<(), &'static str> {
   let tbl: TableVar = v.try_into()?;
   if let Some(v) = tbl.get_static("BGFill") {
     visuals.bg_fill = into_color(v)?;
@@ -256,13 +234,13 @@ pub fn apply_widget_visuals(visuals: &mut WidgetVisuals, v: &Var) -> Result<(), 
     visuals.weak_bg_fill = into_color(v)?;
   }
   if let Some(v) = tbl.get_static("BGStroke") {
-    visuals.bg_stroke = into_stroke(v)?;
+    visuals.bg_stroke = into_stroke(v, ctx)?;
   }
   if let Some(v) = tbl.get_static("Rounding") {
     visuals.rounding = into_rounding(v)?;
   }
   if let Some(v) = tbl.get_static("FGStroke") {
-    visuals.fg_stroke = into_stroke(v)?;
+    visuals.fg_stroke = into_stroke(v, ctx)?;
   }
   if let Some(v) = tbl.get_static("Expansion") {
     visuals.expansion = v.try_into()?;

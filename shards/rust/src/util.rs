@@ -1,8 +1,8 @@
 use std::ffi::{CStr, CString};
 
 use crate::{
-  types::{ExposedInfo, ExposedTypes, SeqVar, ShardsVar, TableVar},
-  SHExposedTypesInfo, SHVar,
+  types::{Context, ExposedInfo, ExposedTypes, ParamVar, SeqVar, ShardsVar, TableVar, Var},
+  SHExposedTypesInfo, SHString, SHVar,
 };
 
 pub fn collect_required_variables(
@@ -70,5 +70,16 @@ pub fn expose_shards_contents(exposed: &mut ExposedTypes, contents: &ShardsVar) 
     }
   } else {
     false
+  }
+}
+
+/// Use to resolve variables for ContextVars nested inside parameters
+pub fn get_or_var<'a, 'b>(v: &'a Var, ctx: &'b Context) -> &'a Var {
+  if v.is_context_var() {
+    let mut v = ParamVar::new(*v);
+    v.warmup(ctx);
+    v.get()
+  } else {
+    &v
   }
 }
