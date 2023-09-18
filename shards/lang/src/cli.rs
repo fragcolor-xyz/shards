@@ -119,7 +119,7 @@ pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> 
     Some(("build", matches)) => build(matches, false),
     Some(("ast", matches)) => build(matches, true),
     Some(("load", matches)) => load(matches, cancellation_token),
-    Some((_external, _matches)) => Err("Unknown command"),
+    Some((_external, _matches)) => return 99,
     _ => Ok(()),
   };
 
