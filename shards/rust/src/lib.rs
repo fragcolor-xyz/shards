@@ -19,6 +19,7 @@ extern crate lazy_static;
 
 #[macro_use]
 extern crate compile_time_crc32;
+pub use compile_time_crc32::crc32;
 
 #[macro_use]
 pub mod core;

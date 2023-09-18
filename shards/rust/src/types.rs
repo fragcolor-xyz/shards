@@ -4048,6 +4048,10 @@ impl ParamVar {
     self.parameter.0.valueType == SHType_ContextVar
   }
 
+  pub fn is_none(&self) -> bool {
+    self.parameter.0.valueType == SHType_None
+  }
+
   pub fn set_name(&mut self, name: &str) {
     let s = Var::ephemeral_string(name);
     self.parameter = s.into(); // clone it!
