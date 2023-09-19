@@ -10,7 +10,6 @@ use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
 use shards::shard::LegacyShard;
 use shards::shardsc;
-use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -24,6 +23,7 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANYS_TYPES;
 use shards::types::BOOL_TYPES_SLICE;
+use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::NONE_TYPES;
 use shards::types::STRING_TYPES;
 use std::cmp::Ordering;
@@ -236,11 +236,12 @@ impl LegacyShard for TextField {
       } else {
         egui::TextEdit::singleline(text).password(self.password)
       };
-      let text_edit = if !self.justify_width.get().is_none() && self.justify_width.get().try_into()? {
-        text_edit.desired_width(f32::INFINITY)
-      } else {
-        text_edit
-      };
+      let text_edit =
+        if !self.justify_width.get().is_none() && self.justify_width.get().try_into()? {
+          text_edit.desired_width(f32::INFINITY)
+        } else {
+          text_edit
+        };
 
       let response = ui.add(text_edit);
 
