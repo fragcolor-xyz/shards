@@ -280,7 +280,11 @@ impl LegacyShard for Window {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let open: bool = self.open.get().try_into()?;
+    let open: bool = if !self.open.is_none() {
+      self.open.get().try_into()?
+    } else {
+      true
+    };
     if open {
       let gui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
 
