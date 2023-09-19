@@ -659,6 +659,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
 
+  mutable entt::dispatcher dispatcher{};
+
 private:
   SHMesh() = default;
 
