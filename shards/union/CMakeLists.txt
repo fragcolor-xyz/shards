@@ -4,8 +4,8 @@ shards_generate_rust_union(shards-rust-union
 )
 
 add_library(shards-union INTERFACE)
+
 # Insert dependency that fixes some C++ that call exposed rust functions
 target_link_libraries(shards-union INTERFACE shards-cpp-union shards-rust-union)
-# set_property(TARGET shards-union APPEND PROPERTY INTERFACE_LINK_LIBRARIES shards-rust-union)
 
 rust_copy_cargo_lock(shards-rust-union Cargo.lock)
