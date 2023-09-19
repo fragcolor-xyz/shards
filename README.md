@@ -19,14 +19,22 @@ In Shards, the code's syntax and its computational graph of interconnected shard
 
 Shards powers an upcoming AI-powered game creation system where communities can play and collaborate in real time. While Shards is often not explicitly seen there, it is the language behind the AI-assisted visual interactions that will allow users to create games and experiences in a low to no-code environment.
 
-In Shards, every primitive is a shard, flowing from shard to shard, to build a computational graph that represents a visual model. Example:
+In Shards, every primitive is a shard, flowing from shard to shard, to build a computational graph that represents a visual model.
+
+As an example of a Shards script, here 3 instances of `bullseye` run in parallel, each repeatedly and randomly trying to hit the bulls-eye value provided in the input. The output of `TryMany` is the number of used tries for each input, or none if not hit under the set limit:
 
 ```dart
-[[1 2 3] [2 3 4] [3 4 5]] | Reduce(Math.Add($0)) | Assert.Is([6 9 12]) | Log
-;=> [6 9 12]
-```
+@wire(bullseye {
+  >= mark, 0 >= tries, 10000000 = limit, 10000000 = times
+  Repeat({ Math.Inc(tries) }
+    Times: times
+    Until: { RandomInt(limit) | Is(mark) })
+  If({ tries | IsLess(times) } { tries } { "Missed the mark" | Fail })
+})
 
-Even a literal is a shard. `[[1 2 3] [2 3 4] [3 4 5]]` is internally converted into `Const([[1 2 3] [2 3 4] [3 4 5]])` shard.
+[10 20 30] | TryMany(bullseye WaitUntil::SomeSuccess) | Log
+```
+Even a literal like like `10000000` is a shard. `10000000` is internally converted into the `Const(10000000)` shard.
 
 Furthermore, each shard was programmed to guarantee the highest standards of performance, with low level optimizations in C++ and Rust.
 
@@ -35,7 +43,7 @@ Furthermore, each shard was programmed to guarantee the highest standards of per
 To start developing with Shards, you'll need to [set up your environment](https://docs.fragnova.com/contribute/getting-started/) and then [build Shards](https://docs.fragnova.com/contribute/code/build-shards/).
 Shards scripts end with the `.shs` extension and can be directly run from the console using:
 ```
-./build/debug/shards <filename>.shs
+./build/debug/shards new <filename>.shs
 ```
 
 Shards language features are documented [here](https://docs.fragnova.com/learn/shards/primer/), while the API can be found [here](https://docs.fragnova.com/reference/shards/) and code examples and tutorials [here](https://docs.fragnova.com/learn/shards/tutorials/).
@@ -90,10 +98,11 @@ Built on top of co-routines. It’s extremely easy to unleash parallelism while 
 ### Simplicity
 
 Shards is just shards flowing into shards, thus:
-supporting visual editing without the associated spaghetti and spider webs.
-Trivial implementation and control of game loop code.
-Extremely easy to debug and dissect due to the straight forward flow of shards.
-Low learning curve to make changes to the code directly.
+
+- supporting visual editing without the associated spaghetti and spider webs.
+- Trivial implementation and control of game loop code.
+- Extremely easy to debug and dissect due to the straight forward flow of shards.
+- Low learning curve to make changes to the code directly.
 
 ## TL;DR
 
