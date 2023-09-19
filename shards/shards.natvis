@@ -28,4 +28,42 @@
 			<ExpandedItem Condition="valueType == SHType::Table">payload.tableValue.opaque->m_flat_tree.m_data.m_seq</ExpandedItem>
 		</Expand>
 	</Type>
+	<Type Name="SHTypeInfo">
+		<DisplayString Condition="basicType == SHType::None">None</DisplayString>
+		<DisplayString Condition="basicType == SHType::String">String</DisplayString>
+		<DisplayString Condition="basicType == SHType::Path">Path</DisplayString>
+		<DisplayString Condition="basicType == SHType::Int">Int</DisplayString>
+		<DisplayString Condition="basicType == SHType::Int2">Int2</DisplayString>
+		<DisplayString Condition="basicType == SHType::Int3">Int3</DisplayString>
+		<DisplayString Condition="basicType == SHType::Int4">Int4</DisplayString>
+		<DisplayString Condition="basicType == SHType::Int8">Int8</DisplayString>
+		<DisplayString Condition="basicType == SHType::Int16">Int16</DisplayString>
+		<DisplayString Condition="basicType == SHType::Float">Float</DisplayString>
+		<DisplayString Condition="basicType == SHType::Float2">Float2</DisplayString>
+		<DisplayString Condition="basicType == SHType::Float3">Float3</DisplayString>
+		<DisplayString Condition="basicType == SHType::Float4">Float4</DisplayString>
+		<DisplayString Condition="basicType == SHType::Object">Object</DisplayString>
+		<DisplayString Condition="basicType == SHType::Enum">Enum</DisplayString>
+		<DisplayString Condition="basicType == SHType::Seq">[...]</DisplayString>
+		<DisplayString Condition="basicType == SHType::Table">{{...}}</DisplayString>
+		<Expand>
+			<ArrayItems Condition="basicType == SHType::Seq">
+				<Direction>Forward</Direction>
+				<Rank>1</Rank>
+				<Size>seqTypes.len</Size>
+				<ValuePointer>seqTypes.elements</ValuePointer>
+			</ArrayItems>
+			<CustomListItems Condition="basicType == SHType::Table">
+				<Variable Name="i" InitialValue="0" />
+				<Size>table.types.len</Size>
+				<Loop>
+					<Break Condition="i > table.types.len" />
+					<Item Name="{table.keys.elements[i]}">
+						table.types.elements[i]
+					</Item>
+					<Exec>i++</Exec>
+				</Loop>
+			</CustomListItems>
+		</Expand>
+	</Type>
 </AutoVisualizer>
