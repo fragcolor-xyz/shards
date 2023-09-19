@@ -1656,6 +1656,12 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value, SHValidationC
 void error_handler(int err_sig) {
   std::signal(err_sig, SIG_DFL);
 
+  // using an atomic static bool here we prevent multiple signals to be handled
+  // at the same time
+  static std::atomic<bool> handling{false};
+  if (handling.exchange(true))
+    return;
+
   auto crashed = false;
 
   switch (err_sig) {
@@ -1714,6 +1720,9 @@ void error_handler(int err_sig) {
 
   spdlog::default_logger()->flush();
   spdlog::shutdown();
+
+  // reset handling flag
+  handling.store(false);
 
   std::raise(err_sig);
 }
