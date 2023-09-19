@@ -7,7 +7,7 @@
 #include <shards/core/shared.hpp>
 #include <shards/core/async.hpp>
 #include <atomic>
-
+ 
 namespace shards {
 static inline Type condShardSeqs = Type::SeqOf(CoreInfo::ShardsOrNone);
 static inline ParamsInfo condParamsInfo =
@@ -263,8 +263,12 @@ struct Cond {
         }
       }
 
-      if (idx > 0 && !_passthrough && !validation.flowStopper && validation.outputType != previousType)
-        throw SHException("Cond: output types between actions mismatch.");
+      if (idx > 0 && !_passthrough && !validation.flowStopper) {
+        if (validation.outputType.basicType != SHType::Any && validation.outputType != previousType) {
+          validation.outputType = CoreInfo::AnyType;
+          SHLOG_WARNING("Cond: Branches return different types, setting output type to Any!");
+        }
+      }
 
       idx++;
       previousType = validation.outputType;
@@ -720,13 +724,14 @@ struct IfBlock {
     const auto nextIsNone =
         data.outputTypes.len == 0 || (data.outputTypes.len == 1 && data.outputTypes.elements[0].basicType == SHType::None);
 
+    SHTypeInfo outputType = tres.outputType;
     if (!nextIsNone && !tres.flowStopper && !eres.flowStopper && !_passth) {
       if (tres.outputType != eres.outputType) {
-        throw ComposeError("If - Passthrough is false but action output types "
-                           "do not match.");
+        outputType = CoreInfo::AnyType;
+        SHLOG_WARNING("If: Branches return different types, setting output type to Any!");
       }
     }
-    return _passth ? data.inputType : tres.outputType;
+    return _passth ? data.inputType : outputType;
   }
 
   void cleanup() {
@@ -818,7 +823,7 @@ struct Match {
               fmt::format("Match: action at index {} is invalid, it should none, a shard or a sequence of shards.", idx));
         }
         _actions[idx] = actionItem;
-        _full[i] = _pcases[idx]; // this cannot be matchItem, cos that will be gone after this call!!
+        _full[i] = _pcases[idx];      // this cannot be matchItem, cos that will be gone after this call!!
         _full[i + 1] = _actions[idx]; // this cannot be actionItem, cos that will be gone after this call!!
         idx++;
       }
@@ -843,7 +848,7 @@ struct Match {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    SHTypeInfo firstOutput{};
+    SHTypeInfo outputType{};
     bool first = true;
     for (auto &action : _actions) {
       const auto cres = action.compose(data);
@@ -851,21 +856,20 @@ struct Match {
         // must evaluate output types and enforce they match between each case,
         // unless flow stopper
         if (first) {
-          firstOutput = cres.outputType;
+          outputType = cres.outputType;
           first = false;
         } else {
           if (!cres.flowStopper) {
-            if (cres.outputType != firstOutput) {
-              SHLOG_ERROR("Match - case output types do not match: {} != {}", cres.outputType, firstOutput);
-              throw ComposeError("Match: when not Passthrough output types "
-                                 "must match between cases.");
+            if (outputType.basicType != SHType::Any && cres.outputType != outputType) {
+              outputType = CoreInfo::AnyType;
+              SHLOG_WARNING("Match: Branches return different types, setting output type to Any!");
             }
           }
         }
       }
     }
 
-    return _pass ? data.inputType : firstOutput;
+    return _pass ? data.inputType : outputType;
   }
 
   void warmup(SHContext *context) {
@@ -988,8 +992,8 @@ struct HashedShards {
 
   SHVar getParam(int index) { return _shards; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    _composition = _shards.compose(data);
+  SHTypeInfo compose(const SHInstanceData &data) { 
+    _composition = _shards.compose(data); 
     _outputTableTypes._types[0] = _composition.outputType;
     return _outputTableType;
   }
