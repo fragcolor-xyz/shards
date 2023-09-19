@@ -5,14 +5,17 @@ use crate::CONTEXTS_NAME_CSTR;
 use crate::EGUI_CTX_TYPE;
 use crate::EGUI_UI_TYPE;
 use crate::PARENTS_UI_NAME_CSTR;
+use egui::style::WidgetVisuals;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::ShardsVar;
+use shards::types::TableVar;
 use shards::types::Type;
 use shards::types::Var;
 use shards::types::WireState;
+use shards::util::get_or_var;
 use shards::SHType_Object;
 
 pub fn with_object_var<T, F, R>(
@@ -169,5 +172,78 @@ pub fn require_context(requiring: &mut ExposedTypes) {
 
 pub fn try_into_color(var: &Var) -> Result<egui::Color32, &'static str> {
   let color: shards::SHColor = var.try_into()?;
-  Ok(egui::Color32::from_rgba_unmultiplied(color.r, color.g, color.b, color.a))
+  Ok(egui::Color32::from_rgba_unmultiplied(
+    color.r, color.g, color.b, color.a,
+  ))
+}
+
+pub fn into_vec2(v: &Var) -> Result<egui::Vec2, &'static str> {
+  let v: (f32, f32) = v.try_into()?;
+  Ok(egui::vec2(v.0, v.1))
+}
+
+pub fn into_margin(v: &Var) -> Result<egui::Margin, &'static str> {
+  let v: (f32, f32, f32, f32) = v.try_into()?;
+  Ok(egui::Margin {
+    left: v.0,
+    right: v.1,
+    top: v.2,
+    bottom: v.3,
+  })
+}
+
+pub fn into_color(v: &Var) -> Result<egui::Color32, &'static str> {
+  let v: shards::SHColor = v.try_into()?;
+  Ok(egui::Color32::from_rgba_premultiplied(v.r, v.g, v.b, v.a))
+}
+
+pub fn into_rounding(v: &Var) -> Result<egui::Rounding, &'static str> {
+  let v: (f32, f32, f32, f32) = v.try_into()?;
+  Ok(egui::Rounding {
+    nw: v.0,
+    ne: v.1,
+    sw: v.2,
+    se: v.3,
+  })
+}
+
+pub fn into_shadow(v: &Var, ctx: &Context) -> Result<egui::epaint::Shadow, &'static str> {
+  let tbl: TableVar = v.try_into()?;
+  let extrusion: f32 =
+    get_or_var(tbl.get_static("Extrusion").ok_or("Extrusion missing")?, ctx).try_into()?;
+  let color: egui::Color32 = into_color(get_or_var(
+    tbl.get_static("Color").ok_or("Color missing")?,
+    ctx,
+  ))?;
+  Ok(egui::epaint::Shadow { extrusion, color })
+}
+
+pub fn into_stroke(v: &Var, ctx: &Context) -> Result<egui::Stroke, &'static str> {
+  let tbl: TableVar = v.try_into()?;
+  let width: f32 = get_or_var(tbl.get_static("Width").ok_or("Width missing")?, ctx).try_into()?;
+  let color: egui::Color32 = into_color(get_or_var(tbl.get_static("Color").ok_or("Color missing")?, ctx))?;
+  Ok(egui::Stroke { width, color })
+}
+
+pub fn apply_widget_visuals(visuals: &mut WidgetVisuals, v: &Var, ctx: &Context) -> Result<(), &'static str> {
+  let tbl: TableVar = v.try_into()?;
+  if let Some(v) = tbl.get_static("BGFill") {
+    visuals.bg_fill = into_color(v)?;
+  }
+  if let Some(v) = tbl.get_static("WeakBGFill") {
+    visuals.weak_bg_fill = into_color(v)?;
+  }
+  if let Some(v) = tbl.get_static("BGStroke") {
+    visuals.bg_stroke = into_stroke(v, ctx)?;
+  }
+  if let Some(v) = tbl.get_static("Rounding") {
+    visuals.rounding = into_rounding(v)?;
+  }
+  if let Some(v) = tbl.get_static("FGStroke") {
+    visuals.fg_stroke = into_stroke(v, ctx)?;
+  }
+  if let Some(v) = tbl.get_static("Expansion") {
+    visuals.expansion = v.try_into()?;
+  }
+  Ok(())
 }
