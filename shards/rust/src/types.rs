@@ -4038,18 +4038,18 @@ impl ParamVar {
     // notice we don't need to fix up ref-counting because cloning does not touch that
   }
 
-  pub fn get(&self) -> &'static Var {
+  pub fn get(&self) -> &Var {
     assert_ne!(self.pointee, std::ptr::null_mut());
     unsafe { &*self.pointee }
   }
 
   // Users should never fully overwrite or flags will be lost, unless taken care of
-  pub fn get_mut(&mut self) -> &'static mut Var {
+  pub fn get_mut(&mut self) -> &mut Var {
     assert_ne!(self.pointee, std::ptr::null_mut());
     unsafe { &mut *self.pointee }
   }
 
-  pub fn try_get(&self) -> Option<&'static Var> {
+  pub fn try_get(&self) -> Option<&Var> {
     if self.pointee.is_null() {
       None
     } else {

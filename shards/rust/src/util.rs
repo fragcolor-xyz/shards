@@ -1,6 +1,7 @@
 use std::ffi::{CStr, CString};
 
 use crate::{
+  core::{referenceVariable, releaseVariable},
   types::{Context, ExposedInfo, ExposedTypes, ParamVar, SeqVar, ShardsVar, TableVar, Var},
   SHExposedTypesInfo, SHString, SHVar,
 };
@@ -74,11 +75,20 @@ pub fn expose_shards_contents(exposed: &mut ExposedTypes, contents: &ShardsVar) 
 }
 
 /// Use to resolve variables for ContextVars nested inside parameters
-pub fn get_or_var<'a, 'b>(v: &'a Var, ctx: &'b Context) -> &'a Var {
+pub fn get_or_var<'a: 'c, 'b: 'c, 'c>(v: &'a Var, ctx: &'b Context) -> &'c Var {
   if v.is_context_var() {
-    let mut v = ParamVar::new(*v);
-    v.warmup(ctx);
-    v.get()
+    unsafe {
+      let str = v.payload.__bindgen_anon_1.__bindgen_anon_2;
+      let result = referenceVariable(
+        ctx,
+        crate::SHStringWithLen {
+          string: str.stringValue,
+          len: str.stringLen as usize,
+        },
+      );
+      releaseVariable(result);
+      result
+    }
   } else {
     &v
   }
