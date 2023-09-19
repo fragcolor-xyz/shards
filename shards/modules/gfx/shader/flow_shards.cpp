@@ -33,8 +33,12 @@ struct IfTranslator {
     std::string ifResultVarName;
     FieldType outputType;
     if (!shard->_passth) {
-      SHTypeInfo outputShardsType = shard->_then.composeResult().outputType;
-      outputType = shardsTypeToFieldType(outputShardsType);
+      SHTypeInfo ta = shard->_then.composeResult().outputType;
+      SHTypeInfo tb = shard->_else.composeResult().outputType;
+      if (ta != tb)
+        throw std::runtime_error(
+            fmt::format("If block with different output types is not supported in shaders, got {} and {}", ta, tb));
+      outputType = shardsTypeToFieldType(ta);
       ifResultVarName = context.getUniqueVariableName("if");
       context.addNew(
           blocks::makeCompoundBlock(fmt::format("var {}: {}", ifResultVarName, getFieldWGSLTypeName(outputType)), ";\n"));
@@ -74,7 +78,9 @@ struct IfTranslator {
 };
 
 template <typename TShard> struct ExtractTemplateBool {};
-template <template <bool B> class C, bool B> struct ExtractTemplateBool<C<B>> { static constexpr bool Cond = B; };
+template <template <bool B> class C, bool B> struct ExtractTemplateBool<C<B>> {
+  static constexpr bool Cond = B;
+};
 
 template <typename TShard> struct WhenTranslator {
   static void translate(TShard *shard, TranslationContext &context) {
