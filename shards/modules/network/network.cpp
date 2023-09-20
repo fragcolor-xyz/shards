@@ -559,7 +559,8 @@ struct Server : public NetworkBase {
 
           // Run within the root flow
           auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
-          if (unlikely(runRes.state == SHRunWireOutputState::Failed) || unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
+          if (unlikely(runRes.state == SHRunWireOutputState::Failed) ||
+              unlikely(runRes.state == SHRunWireOutputState::Stopped || runRes.state == SHRunWireOutputState::Returned)) {
             stop(peer->wire.get());
             // Always continue, on stop event will cleanup
             context->continueFlow();

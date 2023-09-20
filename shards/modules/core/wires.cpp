@@ -547,7 +547,7 @@ struct StopWire : public WireBase {
       }
     }
 
-    if (unlikely(!wire)) {
+    if (unlikely(!wire || context == wire->context)) {
       // in this case we stop the current wire
       context->stopFlow(input);
       return input;
@@ -2048,7 +2048,7 @@ struct DoMany : public TryMany {
         return cref->wire->previousOutput; // doesn't matter actually
       } else {
         // we don't want to propagate a (Return)
-        if (unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
+        if (unlikely(runRes.state == SHRunWireOutputState::Returned)) {
           context->continueFlow();
         }
       }
