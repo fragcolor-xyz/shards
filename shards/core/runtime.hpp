@@ -293,7 +293,8 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
     return true;
   }
 
-  SHLOG_TRACE("stopping wire: {}", wire->name);
+  SHLOG_TRACE("stopping wire: {}, has-coro: {}, state: {}", wire->name, bool(wire->coro),
+              magic_enum::enum_name<SHWire::State>(wire->state));
 
   if (wire->coro) {
     // Run until exit if alive, need to propagate to all suspended shards!
