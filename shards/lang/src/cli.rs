@@ -191,8 +191,10 @@ fn execute_seq(
   }
 
   let wire = {
-    eval(&ast, "root", defines, cancellation_token.clone())
-      .map_err(|_| "Failed to evaluate file")?
+    eval(&ast, "root", defines, cancellation_token.clone()).map_err(|e| {
+      shlog!("Error: {:?}", e);
+      "Failed to evaluate file"
+    })?
   };
   // enlarge stack
   wire.set_stack_size(eval::EVAL_STACK_SIZE);
@@ -249,7 +251,10 @@ fn build(matches: &ArgMatches, as_json: bool) -> Result<(), &'static str> {
     let parent_path = file_path.parent().unwrap().to_str().unwrap();
 
     let mut env = ReadEnv::new(file_path.to_str().unwrap(), parent_path);
-    let ast = read_with_env(&file_content, &mut env).map_err(|_| "Failed to parse file")?;
+    let ast = read_with_env(&file_content, &mut env).map_err(|e| {
+      shlog!("Error: {:?}", e);
+      "Failed to parse file"
+    })?;
     let mut deps = get_dependencies(&env)
       .map(|x| {
         dunce::canonicalize(x)
@@ -340,8 +345,10 @@ fn execute(
     // set it as root path
     unsafe { (*Core).setRootPath.unwrap()(c_parent_path.as_ptr() as *const c_char) };
 
-    read(&file_content, file_path.to_str().unwrap(), parent_path)
-      .map_err(|_| "Failed to parse file")?
+    read(&file_content, file_path.to_str().unwrap(), parent_path).map_err(|e| {
+      shlog!("Error: {:?}", e);
+      "Failed to parse file"
+    })?
   };
 
   Ok(execute_seq(matches, ast.sequence, cancellation_token)?)
