@@ -373,6 +373,7 @@ struct Sized {
   fill_height: ClonedVar,
 }
 
+mod auto_grid;
 mod collapsing_header;
 mod columns;
 mod disable;
@@ -390,6 +391,7 @@ mod table;
 mod vertical;
 
 pub fn register_shards() {
+  auto_grid::register_shards();
   register_legacy_shard::<CollapsingHeader>();
   register_legacy_shard::<Columns>();
   register_legacy_shard::<Disable>();

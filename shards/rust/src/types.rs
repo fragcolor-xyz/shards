@@ -5679,6 +5679,9 @@ lazy_static! {
   pub static ref ANYS_TYPES: Vec<Type> = vec![common_type::anys];
   pub static ref ANY_TABLE_VAR_TYPES: Vec<Type> =
     vec![common_type::any_table, common_type::any_table_var];
+  pub static ref ANY_TABLE_TYPES: Vec<Type> = vec![common_type::any_table];
+  pub static ref SEQ_OF_ANY_TABLE: Type = Type::seq(&ANY_TABLE_TYPES);
+  pub static ref SEQ_OF_ANY_TABLE_TYPES: Vec<Type> = vec![*SEQ_OF_ANY_TABLE, common_type::none];
   pub static ref NONE_TYPES: Vec<Type> = vec![common_type::none];
   pub static ref STRING_TYPES: Vec<Type> = vec![common_type::string];
   pub static ref STRINGS_TYPES: Vec<Type> = vec![common_type::strings];

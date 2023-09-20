@@ -12,6 +12,7 @@ use shards::shardsc::SHType_Int;
 use shards::shardsc::SHType_Seq;
 use shards::shardsc::SHType_ShardRef;
 use shards::shardsc::SHType_String;
+use shards::types::SEQ_OF_ANY_TABLE_TYPES;
 use shards::types::common_type;
 use shards::types::ClonedVar;
 use shards::types::Context;
@@ -33,9 +34,6 @@ use std::cmp::Ordering;
 use std::ffi::CStr;
 
 lazy_static! {
-  static ref ANY_TABLE_TYPES: Vec<Type> = vec![common_type::any_table];
-  static ref SEQ_OF_ANY_TABLE: Type = Type::seq(&ANY_TABLE_TYPES);
-  static ref SEQ_OF_ANY_TABLE_TYPES: Vec<Type> = vec![*SEQ_OF_ANY_TABLE, common_type::none];
   static ref TABLE_PARAMETERS: Parameters = vec![
     (
       cstr!("Builder"),
