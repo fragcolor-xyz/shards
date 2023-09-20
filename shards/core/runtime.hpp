@@ -305,6 +305,8 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
       // BIG Warning: wire->context existed in the coro stack!!!
       // after this resume wire->context is trash!
 
+      // Another issue, if we resume from current context to current context we dead lock here!!
+
       TracyCoroEnter(wire);
 
       wire->coro->resume();

@@ -326,7 +326,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         goto run_wire_loop;
       } else {
         // we don't want to propagate a (Return)
-        if (unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
+        if (unlikely(runRes.state == SHRunWireOutputState::Returned)) {
           context->continueFlow();
         }
 
@@ -360,7 +360,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
         return runRes.output;
       } else {
         // we don't want to propagate a (Return)
-        if (unlikely(runRes.state == SHRunWireOutputState::Stopped)) {
+        if (unlikely(runRes.state == SHRunWireOutputState::Returned)) {
           context->continueFlow();
         }
 

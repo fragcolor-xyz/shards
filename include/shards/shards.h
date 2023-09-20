@@ -611,7 +611,7 @@ struct SHVar {
   uint32_t refcount;
 } __attribute__((aligned(16)));
 
-enum SH_ENUM_CLASS SHRunWireOutputState { Running, Restarted, Stopped, Failed };
+enum SH_ENUM_CLASS SHRunWireOutputState { Running, Restarted, Returned, Stopped, Failed };
 
 struct SHRunWireOutput {
   struct SHVar output;
