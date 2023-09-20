@@ -7,6 +7,7 @@
 #include "runtime.hpp"
 #include <boost/lockfree/queue.hpp>
 #include <boost/thread.hpp>
+#include <type_traits>
 
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
 #define HAS_ASYNC_SUPPORT 0
@@ -95,9 +96,24 @@ struct TidePool {
     _controller.wait();
   }
 
+  // WARNING: Ownership of work is controlled by the called
+  // if you need to free the memory, you must do so yourself from call
   void schedule(Work *work) {
     _scheduledCounter++;
     _queue.push(work);
+  }
+
+  template <typename T, typename Q = std::enable_if_t<std::is_invocable_v<T>>>
+  void schedule(T &&cb) {
+    struct LambdaWork final : Work {
+      LambdaWork(T &&cb) : cb(std::move(cb)) {}
+      T cb;
+      virtual void call() override {
+        cb();
+        delete this;
+      }
+    };
+    schedule(new LambdaWork(std::move(cb)));
   }
 
   void controllerWorker() {
@@ -126,6 +142,39 @@ struct TidePool {
       worker._running = false;
       if (worker._thread.joinable())
         worker._thread.join();
+    }
+  }
+};
+
+// A thread-safe scheduler meant for deferring certain operation to hapen later in a specific context
+//  that will poll the scheduler for work
+struct DeferredWorkScheduler {
+  struct Work {
+    virtual void call() = 0;
+  };
+  boost::lockfree::queue<Work *> queue{16};
+
+  // WARNING: Ownership of work is controlled by the called
+  // if you need to free the memory, you must do so yourself from call
+  void schedule(Work *work) { queue.push(work); }
+
+  template <typename T, typename Q = std::enable_if_t<std::is_invocable_v<T>>>
+  void schedule(T &&cb) {
+    struct LambdaWork final : Work {
+      LambdaWork(T &&cb) : cb(std::move(cb)) {}
+      T cb;
+      virtual void call() override {
+        cb();
+        delete this;
+      }
+    };
+    queue.push(new LambdaWork(std::move(cb)));
+  }
+
+  void poll() {
+    Work *work{};
+    while (queue.pop(work)) {
+      work->call();
     }
   }
 };
