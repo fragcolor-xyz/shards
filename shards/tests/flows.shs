@@ -28,7 +28,7 @@
 })
 
 @schedule(root one)
-@run(root FPS: 10)
+@run(root 0.1) | Assert.Is(true)
 
 @wire(recur {
   Log("depth") |
@@ -274,7 +274,7 @@
 })
 
 @schedule(root loop-test)
-@run(root FPS: 10)
+@run(root 0.1) | Assert.Is(true)
 
 @wire(hashed {
   10 |
@@ -291,7 +291,7 @@
 })
 
 @schedule(root hashed)
-@run(root)
+@run(root) | Assert.Is(true)
 
 @wire(wire-loop-inline {
   Once({
@@ -307,7 +307,7 @@
 })
 
 @schedule(root wire-loop-inline-parent)
-@run(root)
+@run(root) | Assert.Is(true)
 
 @wire(depth-wire-indirect {
   ["This is a " consumed-variable] |
@@ -339,7 +339,7 @@
 })
 
 @schedule(root test-capture-1)
-@run(root)
+@run(root) | Assert.Is(true)
 
 @wire(detached-wire {
   consumed-variable |
@@ -360,7 +360,7 @@
 })
 
 @schedule(root test-capture-2)
-@run(root)
+@run(root) | Assert.Is(true)
 
 @wire(depth-wire-deeper-do {
   ["This is a " consumed-variable] |
@@ -401,7 +401,7 @@
 })
 
 @schedule(root test-capture-3)
-@run(root)
+@run(root) | Assert.Is(true)
 
 
 @wire(spawned-wire-3 {
@@ -429,7 +429,7 @@
 })
 
 @schedule(root test-capture-4)
-@run(root)
+@run(root) | Assert.Is(true)
 
 @wire(inner-loop {
   root-variable |
@@ -449,7 +449,7 @@
 } Looped: true)
 
 @schedule(root main)
-@run(root FPS: 10 Iterations: 100)
+@run(root 0.1 100) | Assert.Is(true)
 
 @wire(test {
   Msg("Hello")
@@ -473,7 +473,7 @@
 })
 
 @schedule(root more-perfect-starter)
-@run(root FPS: 10 Iterations: 20)
+@run(root 0.1 20) | Assert.Is(true)
 
 @wire(peek-test {
   Detach(more-perfect-starter)
@@ -487,7 +487,7 @@
 })
 
 @schedule(root peek-test)
-@run(root FPS: 10 Iterations: 20) | Assert.Is(true)
+@run(root 0.1 20) | Assert.Is(true)
 
 @wire(long-wire {
   Await({

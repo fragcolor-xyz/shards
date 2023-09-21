@@ -34,7 +34,7 @@
 } Looped: true)
 
 @schedule(main label-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; listbox
 @wire(listbox-test {
@@ -60,7 +60,7 @@
 } Looped: true)
 
 @schedule(main listbox-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; numeric input
 @wire(numeric-input-test {
@@ -92,7 +92,7 @@
 } Looped: true)
 
 @schedule(main numeric-input-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; numeric slider
 @wire(numeric-slider-test {
@@ -124,7 +124,7 @@
 } Looped: true)
 
 @schedule(main numeric-slider-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; progress bar
 @wire(progress-bar-test {
@@ -155,7 +155,7 @@
 } Looped: true)
 
 @schedule(main progress-bar-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; radio button
 @wire(radio-button-test {
@@ -183,7 +183,7 @@
 } Looped: true)
 
 @schedule(main radio-button-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; spinner
 @wire(spinner-test {
@@ -211,7 +211,7 @@
 } Looped: true)
 
 @schedule(main spinner-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; text input
 @wire(text-input-test {
@@ -240,7 +240,7 @@
 } Looped: true)
 
 @schedule(main text-input-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; tooltip
 @wire(tooltip-test {
@@ -278,4 +278,4 @@
 } Looped: true)
 
 @schedule(main tooltip-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)

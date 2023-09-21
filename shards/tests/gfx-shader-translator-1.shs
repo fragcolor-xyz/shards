@@ -54,4 +54,4 @@
 
 @mesh(root)
 @schedule(root main-loop-wire)
-@run(root FPS: 120 Iterations: 100)
+@run(root FPS: 120 Iterations: 100) | Assert.Is(true)

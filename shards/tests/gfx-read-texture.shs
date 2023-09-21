@@ -95,7 +95,7 @@
 } Looped: true)
 
 @schedule(root test-copy-async)
-@run(root FPS: 120 Iterations: 32)
+@run(root FPS: 120 Iterations: 32) | Assert.Is(true)
 
 @schedule(root test-copy-sync)
-@run(root FPS: 120 Iterations: 32)
+@run(root FPS: 120 Iterations: 32) | Assert.Is(true)

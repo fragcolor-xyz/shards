@@ -23,4 +23,4 @@
 })
 
 @schedule(root brotli-test)
-@run(root)
+@run(root) | Assert.Is(true)

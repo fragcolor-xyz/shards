@@ -22,4 +22,4 @@
 @mesh(root)
 @schedule(root x)
 @schedule(root y)
-@run(root FPS: 10 Iterations: 50)
+@run(root FPS: 10 Iterations: 50) | Assert.Is(true)

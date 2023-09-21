@@ -61,4 +61,4 @@
 
 ; @schedule(root cleanup)
 @schedule(root db-test-1)
-@run(root)
+@run(root) | Assert.Is(true)

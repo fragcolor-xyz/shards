@@ -63,4 +63,4 @@
 } Looped: true)
 
 @schedule(root bigints)
-@run(root FPS: 10 Iterations: 10)
+@run(root 0.1 10) | Assert.Is(true)

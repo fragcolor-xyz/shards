@@ -51,7 +51,7 @@
 } Looped: true)
 
 @schedule(root test-path-static)
-@run(root FPS:120 Iterations: 100)
+@run(root FPS:120 Iterations: 100) | Assert.Is(true)
 
 @wire(test-path-dynamic {
   Once({
@@ -64,7 +64,7 @@
 } Looped: true)
 
 @schedule(root test-path-dynamic)
-@run(root FPS:120 Iterations: 100)
+@run(root FPS:120 Iterations: 100) | Assert.Is(true)
 
 @wire(test-binary {
   Once({
@@ -77,7 +77,7 @@
 } Looped: true)
 
 @schedule(root test-binary)
-@run(root FPS:120 Iterations: 100)
+@run(root FPS:120 Iterations: 100) | Assert.Is(true)
 
 @wire(test-transforms {
   Once({
@@ -105,7 +105,7 @@
 } Looped: true)
 
 @schedule(root test-transforms)
-@run(root FPS:120 Iterations: 100)
+@run(root FPS:120 Iterations: 100) | Assert.Is(true)
 
 @wire(test-copy {
   Once({
@@ -121,4 +121,4 @@
 })
 
 @schedule(root test-copy)
-@run(root FPS:120 Iterations: 100)
+@run(root FPS:120 Iterations: 100) | Assert.Is(true)

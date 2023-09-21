@@ -240,7 +240,7 @@
 } Looped: true)
 
 @schedule(mesh variables)
-@run(mesh Iterations: 4)
+@run(mesh Iterations: 4) | Assert.Is(true)
 
 @mesh(mesh2)
 
@@ -256,4 +256,4 @@
 })
 
 @schedule(mesh2 ownership-test)
-@run(mesh2)
+@run(mesh2) | Assert.Is(true)

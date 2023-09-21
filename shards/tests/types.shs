@@ -48,7 +48,7 @@
 })
 
 @schedule(root test1)
-@run(root FPS: 10)
+@run(root FPS: 10) | Assert.Is(true)
 
 @wire(test2 {
   @type(Type::Int) | Log("Integer type")
@@ -70,4 +70,4 @@
 })
 
 @schedule(root test2)
-@run(root FPS: 10)
+@run(root FPS: 10) | Assert.Is(true)
