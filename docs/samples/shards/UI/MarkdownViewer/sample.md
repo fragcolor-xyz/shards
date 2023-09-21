@@ -8,27 +8,33 @@
 **Code**
 
 ```clj
-(defloop main-wire
-  (GFX.MainWindow
-   :Contents
-   (->
-    (Setup
-     (GFX.DrawQueue) >= .ui-draw-queue
-     (GFX.UIPass .ui-draw-queue) >> .render-steps)
-    (UI
-     .ui-draw-queue
-     (UI.TopPanel
-      :Contents
-      (->
-       "# Title
+@wire(main-wire {
+  GFX.MainWindow(
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+      UI(
+        ui-draw-queue
+        UI.TopPanel(
+          Contents: {
+            "# Title
 
 ## Sub-title
 **list:**
 - item 1
-- item 2" (UI.MarkdownViewer))))
+- item 2" | UI.MarkdownViewer
+          }
+        )
+      )
 
-    (GFX.Render :Steps .render-steps))))
-(defmesh root)
-(schedule root main-wire)
-(run root 0.1 10)
+      GFX.Render(Steps: render-steps)
+    }
+  )
+} Looped: true)
+
+@mesh(root)
+@schedule(root main-wire)
+@run(root 0.1 10)
 ```

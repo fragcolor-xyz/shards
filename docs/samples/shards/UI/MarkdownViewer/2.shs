@@ -1,0 +1,26 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+      ui-draw-queue
+      UI.CentralPanel(
+        Contents: {
+          Once({
+            "shards/UI/MarkdownViewer/sample.md" | FS.Read = text
+          })
+
+          UI.ScrollArea(
+            Contents: {
+              text | UI.MarkdownViewer
+            }
+          )
+        }
+      )
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)
