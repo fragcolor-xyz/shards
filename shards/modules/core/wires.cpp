@@ -398,7 +398,7 @@ struct IsRunning : public WireBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     resolveWire();
-    return CoreInfo::AnyType;
+    return CoreInfo::BoolType;
   }
 
   void warmup(SHContext *ctx) { WireBase::warmup(ctx); }

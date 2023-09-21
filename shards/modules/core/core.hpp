@@ -3504,8 +3504,7 @@ struct Repeat {
       }
 
       SHVar repeatOutput{};
-      SHVar blks = _blks;
-      auto state = activateShards2(blks.payload.seqValue, context, input, repeatOutput);
+      auto state = _blks.activate<true>(context, input, repeatOutput);
       if (state != SHWireState::Continue)
         break;
 
