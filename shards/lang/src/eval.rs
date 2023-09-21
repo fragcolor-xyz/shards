@@ -2972,15 +2972,19 @@ fn eval_pipeline(
               let mut now = Instant::now();
               let mut next = now + Duration::from_secs_f64(tick.unwrap_or(0.0));
               let mut iteration = 0u64;
-              let mut succeeded = true;
+              let mut no_errors = true;
 
               loop {
                 if let Some(tick) = tick {
-                  succeeded = mesh.tick();
+                  if !mesh.tick() {
+                    no_errors = false;
+                  }
                   now = Instant::now();
                   sleep_and_update(&mut next, now, tick);
                 } else {
-                  succeeded = mesh.tick();
+                  if !mesh.tick() {
+                    no_errors = false;
+                  }
                 }
 
                 iteration += 1;
@@ -3005,12 +3009,12 @@ fn eval_pipeline(
                 }
               }
 
-              shlog_trace!("Mesh is done, terminating, succeeded: {}", succeeded);
+              shlog_trace!("Mesh is done, terminating, without errors: {}", no_errors);
               mesh.terminate();
 
               // a @run(...) should transform into a boolean const shard so to be used for error handling
-              let succeeded = succeeded.into();
-              add_const_shard2(succeeded, block.line_info.unwrap_or_default(), e)?;
+              let no_errors = no_errors.into();
+              add_const_shard2(no_errors, block.line_info.unwrap_or_default(), e)?;
 
               Ok(())
             } else {
@@ -3293,7 +3297,7 @@ fn add_assignment_shard(
   let (full_name, is_replacement) = get_full_name(name, e, name.namespaces.is_empty());
   let suffix = if !is_replacement {
     // suffix is only relevant if we are not a replacement
-    if shard_name != "Update"  && name.namespaces.is_empty() {
+    if shard_name != "Update" && name.namespaces.is_empty() {
       find_current_suffix(e) // this case we add the current suffix
     } else {
       find_suffix(&full_name, e) // this case we want to find a suffix if there is one

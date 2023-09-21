@@ -223,7 +223,7 @@
   Const([1 22 333]) >= my-result
   Repeat({
     my-result |
-    DoMany(keep-state3) 
+    DoMany(keep-state3)
     > my-result
   } Times: 3)
   my-result |
@@ -463,7 +463,7 @@
 } Pure: true)
 
 @wire(a-perfect-starter {
-  true | Spawn(a-perfect-circle) = a-perfect-circle-0 | 
+  true | Spawn(a-perfect-circle) = a-perfect-circle-0 |
   Wait(a-perfect-circle-0)
 })
 
@@ -476,17 +476,18 @@
 @run(root FPS: 10 Iterations: 20)
 
 @wire(peek-test {
-  Detach(more-perfect-starter) |
-  Peek(more-perfect-starter) |
-  Assert.Is(none) |
-  Wait(more-perfect-starter) |
-  Assert.Is(true) |
-  Peek(more-perfect-starter) |
-  Assert.Is(true)
+  Detach(more-perfect-starter)
+
+  Peek(more-perfect-starter) | Assert.Is(none)
+  IsRunning(more-perfect-starter) | Assert.Is(true)
+
+  Wait(more-perfect-starter) | Assert.Is(true)
+  Peek(more-perfect-starter) | Assert.Is(true)
+  IsRunning(more-perfect-starter) | Assert.Is(false)
 })
 
 @schedule(root peek-test)
-@run(root FPS: 10 Iterations: 20)
+@run(root FPS: 10 Iterations: 20) | Assert.Is(true)
 
 @wire(long-wire {
   Await({
@@ -516,4 +517,4 @@
 @schedule(root await-test-1)
 @schedule(root await-test-2)
 @schedule(root await-test-3)
-@run(root FPS: 10 Iterations: 10)
+@run(root FPS: 10 Iterations: 10) | Assert.Is(true)

@@ -353,6 +353,86 @@ struct Wait : public WireBase {
   }
 };
 
+struct IsRunning : public WireBase {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  void setup() {
+    activating = false;  // this is needed to pass validation in compose
+    passthrough = false; // also need this to have proper compose output type
+  }
+
+  SHOptionalString help() { return SHCCSTR("Checks if a wire is running and outputs true if that is the case, false if not."); }
+
+  SHExposedTypeInfo _requiredWire{};
+
+  static SHParametersInfo parameters() { return runWireParamsInfo; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      wireref = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return wireref;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    if (wireref.isVariable()) {
+      _requiredWire = SHExposedTypeInfo{wireref.variableName(), SHCCSTR("The wire to check."), CoreInfo::WireType};
+      return {&_requiredWire, 1, 0};
+    } else {
+      return {};
+    }
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    WireBase::compose(data);
+    return CoreInfo::AnyType;
+  }
+
+  void warmup(SHContext *ctx) { WireBase::warmup(ctx); }
+
+  void cleanup() {
+    if (wireref.isVariable())
+      wire = nullptr;
+    WireBase::cleanup();
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (unlikely(!wire && wireref.isVariable())) {
+      auto vwire = wireref.get();
+      if (vwire.valueType == SHType::Wire) {
+        wire = SHWire::sharedFromRef(vwire.payload.wireValue);
+      } else if (vwire.valueType == SHType::String) {
+        auto sv = SHSTRVIEW(vwire);
+        std::string s(sv);
+        SHLOG_DEBUG("Wait: Resolving wire {}", sv);
+        wire = GetGlobals().GlobalWires[s];
+      } else {
+        wire = nullptr;
+      }
+    }
+
+    if (unlikely(!wire)) {
+      return Var::False;
+    } else {
+      // Make sure to actually wait only if the wire is running on another context.
+      return Var(isRunning(wire.get()));
+    }
+  }
+};
+
 struct Peek : public WireBase {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
 
@@ -2176,6 +2256,7 @@ SHARDS_REGISTER_FN(wires) {
   REGISTER_SHARD("StepMany", StepMany);
   REGISTER_SHARD("DoMany", DoMany);
   REGISTER_SHARD("Peek", Peek);
+  REGISTER_SHARD("IsRunning", IsRunning);
   REGISTER_SHARD("Suspend", SuspendWire);
   REGISTER_SHARD("Resume", ResumeWire);
 }
