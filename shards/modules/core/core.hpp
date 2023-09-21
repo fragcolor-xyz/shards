@@ -1303,14 +1303,18 @@ struct Update : public SetUpdateBase {
     SetBase::warmup(context);
 
     if (_isExposed) {
-      assert(_target->flags & SHVAR_FLAGS_EXPOSED && "exposed flag not set");
+      if (!(_target->flags & SHVAR_FLAGS_EXPOSED)) {
+        throw WarmupError("Update: error, variable is not exposed.");
+      }
 
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
 
       auto &dispatcher = _isGlobal ? context->main->mesh.lock()->dispatcher : context->main->dispatcher;
       dispatcherPtr = &dispatcher;
     } else {
-      assert(!(_target->flags & SHVAR_FLAGS_EXPOSED) && "exposed flag still set");
+      if (_target->flags & SHVAR_FLAGS_EXPOSED) {
+        throw WarmupError("Update: error, variable is exposed.");
+      }
 
       // restore any possible deferred change here
       if (_isTable)
