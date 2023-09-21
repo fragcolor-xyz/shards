@@ -36,4 +36,4 @@
 
 @schedule(root main0)
 @schedule(root main1)
-@run(root FPS: 10)
+@run(root FPS: 10) | Assert.Is(true)

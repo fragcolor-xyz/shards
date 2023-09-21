@@ -9,4 +9,4 @@
 } Looped: true)
 
 @schedule(root detect)
-@run(root FPS: 10)
+@run(root FPS: 10) | Assert.Is(true)

@@ -25,7 +25,7 @@
 @schedule(root producer)
 @schedule(root consumer-1)
 @schedule(root consumer-2)
-@run(root FPS: 100)
+@run(root FPS: 100) | Assert.Is(true)
 
 @wire(producer-2 {
   Repeat({
@@ -55,6 +55,6 @@
 ; @schedule(root @consumers(1))
 ; @schedule(root @consumers(2))
 @schedule(root consumer-33)
-@run(root FPS: 10)
+@run(root FPS: 10) | Assert.Is(true)
 
 Msg("Done")

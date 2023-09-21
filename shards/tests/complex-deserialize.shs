@@ -11,7 +11,7 @@
   })
 
   @schedule(root main-loop-wire)
-  @run(root FPS:120 Iterations: 1)
+  @run(root FPS:120 Iterations: 1) | Assert.Is(true)
   @define(root nil)
 })
 

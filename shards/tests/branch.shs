@@ -19,7 +19,7 @@
 } Looped: true)
 
 @schedule(main c)
-@run(main FPS: 5 Iterations: 25)
+@run(main 0.2 25) | Assert.Is(true)
 
 ; @wire(c3 { ; this wire doesn't require msg1 until it's run
 ;   "@wire(c3 {msg1 | Log} Looped:true)" |
@@ -42,4 +42,4 @@
 ; } Looped: true)
 
 ; @schedule(main c)
-; @run(main FPS: 5 Iterations: 25)
+; @run(main 0.2 25) | Assert.Is(true)

@@ -32,7 +32,7 @@
 } Looped: true)
 
 @schedule(main context-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; window
 @wire(window-test {
@@ -61,7 +61,7 @@
 } Looped: true)
 
 @schedule(main window-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; scope
 @wire(scope-test {
@@ -94,7 +94,7 @@
 } Looped: true)
 
 @schedule(main scope-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; area
 @wire(area-test {
@@ -197,7 +197,7 @@
 } Looped: true)
 
 @schedule(main area-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; panels
 @wire(panels-test {
@@ -250,7 +250,7 @@
 } Looped: true)
 
 @schedule(main panels-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; collapsing header
 @wire(collapsing-header-test {
@@ -285,7 +285,7 @@
 } Looped: true)
 
 @schedule(main collapsing-header-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; columns
 @wire(columns-header-test {
@@ -320,7 +320,7 @@
 } Looped: true)
 
 @schedule(main columns-header-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; disable
 @wire(disable-test {
@@ -354,7 +354,7 @@
 } Looped: true)
 
 @schedule(main disable-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; frame
 @wire(frame-test {
@@ -390,7 +390,7 @@
 } Looped: true)
 
 @schedule(main frame-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; group
 @wire(group-test {
@@ -423,7 +423,7 @@
 } Looped: true)
 
 @schedule(main group-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; indent
 @wire(indent-test {
@@ -456,7 +456,7 @@
 } Looped: true)
 
 @schedule(main indent-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; horizontal layout
 @wire(horizontal-test {
@@ -489,7 +489,7 @@
 } Looped: true)
 
 @schedule(main horizontal-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; scroll area
 @wire(scroll-area-test {
@@ -524,7 +524,7 @@
 } Looped: true)
 
 @schedule(main scroll-area-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; vertical layout
 @wire(vertical-test {
@@ -557,7 +557,7 @@
 })
 
 @schedule(main vertical-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
 ; separator
 @wire(separator-test {
@@ -585,4 +585,4 @@
 })
 
 @schedule(main separator-test)
-@run(main FPS: 60 Iterations: 60)
+@run(main FPS: 60 Iterations: 60) | Assert.Is(true)

@@ -42,11 +42,11 @@
 } Looped: true)
 
 @schedule(root test)
-@run(root FPS: 10 Iterations: 50)
+@run(root FPS: 10 Iterations: 50) | Assert.Is(true)
 
 ; test reusing sockets/streams
 @schedule(root test)
-@run(root FPS: 10 Iterations: 50)
+@run(root FPS: 10 Iterations: 50) | Assert.Is(true)
 
 @wire(download {
   none |
@@ -55,7 +55,7 @@
 })
 
 @schedule(root download)
-@run(root FPS: 10)
+@run(root FPS: 10) | Assert.Is(true)
 
 ; @wire(server-handler {
 ;   Msg("handled") |
@@ -72,4 +72,4 @@
 ; } Looped: true)
 
 ; @schedule(root test-server)
-; @run(root FPS: 10)
+; @run(root FPS: 10) | Assert.Is(true)

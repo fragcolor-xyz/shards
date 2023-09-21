@@ -29,4 +29,4 @@
 
 @schedule(root producer)
 @schedule(root consumer)
-@run(root FPS: 10 Iterations: 100)
+@run(root FPS: 10 Iterations: 100) | Assert.Is(true)

@@ -36,4 +36,4 @@
 })
 
 @schedule(root test)
-@run(root FPS: 10)
+@run(root FPS: 10) | Assert.Is(true)

@@ -17,4 +17,4 @@
 })
 
 @schedule(root analysis)
-@run(root FPS: 100)
+@run(root 0.01) | Assert.Is(true)

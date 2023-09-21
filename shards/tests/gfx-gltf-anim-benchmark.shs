@@ -105,4 +105,4 @@
 } Looped: true)
 
 @schedule(root test-basic-anim)
-@run(root FPS: 120.0 Iterations: 100)
+@run(root FPS: 120.0 Iterations: 100) | Assert.Is(true)

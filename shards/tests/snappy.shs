@@ -44,4 +44,4 @@
 })
 
 @schedule(root snappy-test)
-@run(root)
+@run(root) | Assert.Is(true)

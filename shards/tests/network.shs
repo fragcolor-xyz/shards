@@ -38,4 +38,4 @@
 @mesh(main)
 @schedule(main network-test-server)
 @schedule(main network-test-client)
-@run(main FPS: 100 Iterations: 1000)
+@run(main 0.01 100) | Assert.Is(true)

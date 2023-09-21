@@ -8,4 +8,4 @@
 })
 
 @schedule(main onnx-test)
-@run(main)
+@run(main) | Assert.Is(true)

@@ -61,4 +61,4 @@
 
 @mesh(root)
 @schedule(root main-window)
-@run(root FPS: 120 Iterations: 100)
+@run(root FPS: 120 Iterations: 100) | Assert.Is(true)

@@ -61,4 +61,4 @@
 })
 
 @schedule(root run)
-@run(root)
+@run(root) | Assert.Is(true)

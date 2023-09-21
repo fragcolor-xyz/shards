@@ -17,10 +17,10 @@
 })
 
 @schedule(root ws-test)
-@run(root)
+@run(root) | Assert.Is(true)
 
 @schedule(root ws-test)
-@run(root)
+@run(root) | Assert.Is(true)
 
 @wire(wss-test {
   Once({
@@ -36,7 +36,7 @@
 })
 
 @schedule(root wss-test)
-@run(root)
+@run(root) | Assert.Is(true)
 
 @schedule(root wss-test)
-@run(root)
+@run(root) | Assert.Is(true)

@@ -1208,7 +1208,7 @@
 })
 
 @schedule(root saveBinary)
-@run(root FPS: 10)
+@run(root 0.1) | Assert.Is(true)
 
 ; for now Mesh holds ref...
 ; (def Root (Mesh))
@@ -1245,7 +1245,7 @@
 })
 
 @schedule(root loadBinary)
-@run(root FPS: 10)
+@run(root 0.1) | Assert.Is(true)
 
 ; for now Mesh holds ref...
 ; (def Root (Mesh))
@@ -1302,6 +1302,6 @@
 })
 
 @schedule(root readFile)
-@run(root FPS: 10)
+@run(root 0.1) | Assert.Is(true)
 
 ; (prn "Done")

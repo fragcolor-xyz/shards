@@ -88,4 +88,4 @@
 })
 
 @schedule(main test)
-@run(main)
+@run(main) | Assert.Is(true)

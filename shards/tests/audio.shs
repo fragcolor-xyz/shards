@@ -10,9 +10,9 @@
 } Looped: true)
 
 @schedule(main play-files)
-@run(main)
+@run(main) | Assert.Is(true)
 @schedule(main play-files)
-@run(main)
+@run(main) | Assert.Is(true)
 
 @wire(play-file-fft {
   Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) |
@@ -27,7 +27,7 @@
 } Looped: true)
 
 @schedule(main play-file-fft)
-@run(main)
+@run(main) | Assert.Is(true)
 
 ; @wire(play-file-dwt {
 ;   Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) |
@@ -37,7 +37,7 @@
 ; } Looped: true)
 
 ; @schedule(main play-file-dwt)
-; @run(main)
+; @run(main) | Assert.Is(true)
 
 @if(@test-device {
   @wire(device-test-1 {
@@ -46,7 +46,7 @@
   } Looped: true)
 
   @schedule(main device-test-1)
-  @run(main FPS: 10 Iterations: 25)
+  @run(main 0.1 25) | Assert.Is(true)
 
   @wire(device-test-2 {
     Audio.Device |
@@ -56,7 +56,7 @@
   } Looped: true)
 
   @schedule(main device-test-2)
-  @run(main)
+  @run(main) | Assert.Is(true)
 
   @wire(device-test-3 {
     Audio.Device |
@@ -66,7 +66,7 @@
   } Looped: true)
 
   @schedule(main device-test-3)
-  @run(main FPS: 10 Iterations: 25)
+  @run(main 0.1 25) | Assert.Is(true)
 
   @wire(device-test-4 {
     Audio.Device |
@@ -76,7 +76,7 @@
   } Looped: true)
 
   @schedule(main device-test-4)
-  @run(main FPS: 10 Iterations: 25)
+  @run(main 0.1 25) | Assert.Is(true)
 
   @wire(device-test-5 {
     Audio.Device |
@@ -86,7 +86,7 @@
   } Looped: true)
 
   @schedule(main device-test-5)
-  @run(main FPS: 10 Iterations: 25)
+  @run(main 0.1 25) | Assert.Is(true)
 
   @wire(device-test-6 {
     Audio.Device |
@@ -96,7 +96,7 @@
   } Looped: true)
 
   @schedule(main device-test-6)
-  @run(main FPS: 10 Iterations: 25)
+  @run(main 0.1 25) | Assert.Is(true)
 
   none
 } Pass)

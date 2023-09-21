@@ -156,4 +156,4 @@
 })
 
 @schedule(root tests)
-@run(root)
+@run(root) | Assert.Is(true)

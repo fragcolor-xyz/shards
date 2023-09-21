@@ -8,4 +8,4 @@
 })
 
 @schedule(root crash)
-@run(root)
+@run(root) | Assert.Is(false)

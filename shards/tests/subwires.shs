@@ -189,7 +189,7 @@
 })
 
 @schedule(root root-wire)
-@run(root)
+@run(root) | Assert.Is(true)
 
 @wire(save {
   Const(root-wire) |
@@ -198,7 +198,7 @@
 })
 
 @schedule(root save)
-@run(root)
+@run(root) | Assert.Is(true)
 
 @wire(load {
   ReadFile("subwires.wire") |
@@ -210,4 +210,4 @@
 })
 
 @schedule(root load)
-@run(root)
+@run(root) | Assert.Is(true)

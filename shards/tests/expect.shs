@@ -29,7 +29,7 @@
 })
 
 @schedule(root test-expect-like)
-@run(root)
+@run(root) | Assert.Is(true)
 
 ; Variation using Expect(@type(...))
 @wire(test-expect {
@@ -60,4 +60,4 @@
 })
 
 @schedule(root test-expect)
-@run(root)
+@run(root) | Assert.Is(true)

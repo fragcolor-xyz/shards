@@ -13,4 +13,4 @@
 
 @mesh(root)
 @schedule(root main-wire)
-@run(root)
+@run(root) | Assert.Is(true)
