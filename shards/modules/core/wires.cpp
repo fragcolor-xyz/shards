@@ -397,7 +397,7 @@ struct IsRunning : public WireBase {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    WireBase::compose(data);
+    resolveWire();
     return CoreInfo::AnyType;
   }
 
