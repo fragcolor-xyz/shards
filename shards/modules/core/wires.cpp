@@ -1532,7 +1532,6 @@ struct ParallelBase : public CapturingSpawners {
     tf::Taskflow flow;
 
     std::atomic_bool anySuccess = false;
-    std::mutex poolLock;
 
     flow.for_each_index(size_t(0), len, size_t(1), [&](auto &idx) {
       if (_policy == WaitUntil::FirstSuccess && anySuccess) {
@@ -1544,7 +1543,6 @@ struct ParallelBase : public CapturingSpawners {
 
       ManyWire *cref = nullptr;
       try {
-        std::lock_guard<std::mutex> lock(poolLock);
         cref = _pool->acquire(_composer, context);
       } catch (std::exception &e) {
         SHLOG_ERROR("Failed to acquire wire: {}", e.what());
@@ -1552,7 +1550,6 @@ struct ParallelBase : public CapturingSpawners {
       }
       DEFER({
         SHLOG_DEBUG("ParallelBase: releasing wire {}", idx);
-        std::lock_guard<std::mutex> lock(poolLock);
         _pool->release(cref);
       });
 

@@ -1529,20 +1529,31 @@ template <typename T> struct WireDoppelgangerPool {
       serializer.deserialize(r, vwire);
       auto wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       destroyVar(vwire);
+
+      std::unique_lock<std::mutex> _l(_poolMutex);
+
       auto &fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->wire = wire;
       composer.compose(wire.get(), anything, false);
       fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, _pool.size());
+
       return fresh.get();
     } else {
+      std::unique_lock<std::mutex> _l(_poolMutex);
+
       auto res = _avail.extract(_avail.begin());
       auto &value = res.value();
       composer.compose(value->wire.get(), anything, true);
+
       return value;
     }
   }
 
-  void release(T *wire) { _avail.emplace(wire); }
+  void release(T *wire) {
+    std::unique_lock<std::mutex> _l(_poolMutex);
+
+    _avail.emplace(wire);
+  }
 
   size_t available() const { return _avail.size(); }
 
@@ -1564,6 +1575,7 @@ private:
   // keep our pool in a deque in order to keep them alive
   // so users don't have to worry about lifetime
   // just release when possible
+  std::mutex _poolMutex;
   std::deque<std::shared_ptr<T>> _pool;
   std::unordered_set<T *> _avail;
   std::string _wireStr;
