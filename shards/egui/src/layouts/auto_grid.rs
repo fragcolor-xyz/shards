@@ -57,9 +57,11 @@ impl Shard for AutoGridShard {
   fn input_types(&mut self) -> &Types {
     &ANYS_TYPES
   }
+  
   fn output_types(&mut self) -> &Types {
     &ANYS_TYPES
   }
+
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.warmup_helper(context)?;
     self.contexts.warmup(context);
@@ -70,6 +72,7 @@ impl Shard for AutoGridShard {
     self.spacing.warmup(context);
     Ok(())
   }
+
   fn cleanup(&mut self) -> Result<(), &str> {
     self.cleanup_helper()?;
     self.contexts.cleanup();
@@ -79,9 +82,11 @@ impl Shard for AutoGridShard {
     self.spacing.cleanup();
     Ok(())
   }
+
   fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
     Some(&self.inner_exposed)
   }
+  
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
     util::require_parents(&mut self.required);
@@ -110,6 +115,7 @@ impl Shard for AutoGridShard {
     // Always passthrough the input
     Ok(input_type)
   }
+  
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if self.contents.is_empty() {
       return Ok(*input);
