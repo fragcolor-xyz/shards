@@ -91,13 +91,9 @@ impl Shard for AutoGridShard {
       let ptr = input_type.details.seqTypes.elements;
       std::slice::from_raw_parts(ptr, input_type.details.seqTypes.len as usize)
     };
-    let element_type = if !slice.is_empty() {
-      // if there are more than 1 types, then take any
-      if unsafe { input_type.details.seqTypes.len > 1 } {
-        common_type::any
-      } else {
-        slice[0]
-      }
+
+    let element_type = if unsafe { input_type.details.seqTypes.len == 1 } {
+      slice[0]
     } else {
       common_type::any
     };
@@ -153,6 +149,8 @@ impl Shard for AutoGridShard {
         ui.available_width()
       };
 
+      // let other_contents = self.contents;
+
       grid
         .show(ui, |ui| {
           let mut current_width: f32 = 0.0;
@@ -165,13 +163,17 @@ impl Shard for AutoGridShard {
             }
 
             let input_elem = &seq[i];
-            util::activate_ui_contents(
-              context,
-              input_elem,
-              ui,
-              &mut self.parents,
-              &mut self.contents,
-            )?;
+
+            ui.push_id(i, |ui| {
+              util::activate_ui_contents(
+                context,
+                input_elem,
+                ui,
+                &mut self.parents,
+                &mut self.contents,
+              )
+            })
+            .inner?;
 
             current_width += item_width;
           }
