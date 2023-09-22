@@ -161,8 +161,8 @@ mod window;
 pub fn register_shards() {
   area::register_shards();
   docking::register_shards();
+  window::register_shards();
   register_legacy_shard::<Scope>();
-  register_legacy_shard::<Window>();
   register_legacy_enum(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());
   register_legacy_shard::<BottomPanel>();
   register_legacy_shard::<CentralPanel>();
