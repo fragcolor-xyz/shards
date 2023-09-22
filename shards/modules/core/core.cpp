@@ -1396,6 +1396,14 @@ struct GetShardHelp {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+#ifdef SH_COMPRESSED_STRINGS
+    static bool decompressed = false;
+    if (!decompressed) {
+      shards::decompressStrings();
+      decompressed = true;
+    }
+#endif
+
     auto blkname = SHSTRVIEW(input);
     auto shard = createShard(blkname);
     if (!shard) {
