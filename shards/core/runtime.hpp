@@ -182,6 +182,10 @@ void triggerVarValueChange(SHWire *wire, const SHVar *name, const SHVar *var);
 
 void installSignalHandlers();
 
+#ifdef SH_COMPRESSED_STRINGS
+void decompressStrings();
+#endif
+
 template <typename T> struct AnyStorage {
 private:
   std::shared_ptr<entt::any> _anyStorage;
