@@ -1397,6 +1397,7 @@ struct GetShardHelp {
 
   SHVar activate(SHContext *context, const SHVar &input) {
 #ifdef SH_COMPRESSED_STRINGS
+    extern void decompressStrings();
     static bool decompressed = false;
     if (!decompressed) {
       shards::decompressStrings();
