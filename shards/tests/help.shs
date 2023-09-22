@@ -1,4 +1,89 @@
+"""
+-- HelpTable
+CREATE TABLE ShardsTable (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    help TEXT,
+    inputHelp TEXT,
+    outputHelp TEXT
+);
+
+-- InputTypesTable
+CREATE TABLE InputTypesTable (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    help_id INTEGER,
+    name TEXT,
+    type INTEGER,
+    FOREIGN KEY(help_id) REFERENCES HelpTable(id)
+);
+
+-- OutputTypesTable
+CREATE TABLE OutputTypesTable (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    help_id INTEGER,
+    name TEXT,
+    type INTEGER,
+    FOREIGN KEY(help_id) REFERENCES HelpTable(id)
+);
+
+-- ParametersTable with added 'parameter_index' column for sorting
+CREATE TABLE ParametersTable (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    help_id INTEGER,
+    parameter_index INTEGER,
+    default_value TEXT,
+    help TEXT,
+    name TEXT,
+    FOREIGN KEY(help_id) REFERENCES HelpTable(id)
+);
+
+-- ParamTypesTable
+CREATE TABLE ParamTypesTable (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parameter_id INTEGER,
+    name TEXT,
+    type INTEGER,
+    FOREIGN KEY(parameter_id) REFERENCES ParametersTable(id)
+);
+""" | DB.RawQuery
+
 Shards.Enumerate | Map({
-  Log("Shard")
-  Shards.Help | Log
+  = shard-name
+  Shards.Help
+  | {Take("help") = help-text}
+
+  | {Take("inputHelp") = input-help-text}
+  | {Take("outputHelp") = output-help-text}
+
+  | {Take("inputTypes") | ExpectSeq = input-types}
+  | {Take("outputTypes") | ExpectSeq = output-types}
+
+  | {Take("parameters") | ExpectSeq = parameters}
+
+  DB.Transaction({
+    [shard-name help-text input-help-text output-help-text] | DB.Query("INSERT INTO ShardsTable (name, help, inputHelp, outputHelp) VALUES (?, ?, ?, ?)")
+    [] | DB.Query("SELECT last_insert_rowid() as id") | Take("id") | ExpectSeq | Take(0) | ExpectInt = help-id
+
+    input-types | ForEach({
+      ExpectTable | {Take("name") = name} | {Take("type") = type}
+      [help-id name type] | DB.Query("INSERT INTO InputTypesTable (help_id, name, type) VALUES (?, ?, ?)")
+    })
+
+    output-types | ForEach({
+      ExpectTable | {Take("name") = name} | {Take("type") = type}
+      [help-id name type] | DB.Query("INSERT INTO OutputTypesTable (help_id, name, type) VALUES (?, ?, ?)")
+    })
+
+    0 >= idx
+    parameters | ForEach({
+      ExpectTable | {Take("default") | ToString = default} | {Take("help") = help} | {Take("name") = name} | {Take("types") = types}
+      [help-id default help name idx] | DB.Query("INSERT INTO ParametersTable (help_id, default_value, help, name, parameter_index) VALUES (?, ?, ?, ?, ?)")
+      [] | DB.Query("SELECT last_insert_rowid() as id") | Take("id") | ExpectSeq | Take(0) | ExpectInt = parameter-id
+      types | When(IsNotNone {ExpectSeq | ForEach({
+        ExpectTable | {Take("name") = type-name} | {Take("type") = type}
+        [parameter-id type-name type] | DB.Query("INSERT INTO ParamTypesTable (parameter_id, name, type) VALUES (?, ?, ?)")
+      })})
+      Math.Inc(idx)
+    })
+  })
 })
