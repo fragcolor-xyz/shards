@@ -6,9 +6,9 @@ use shards::{
   },
 };
 
+use crate::shards::shard;
 use crate::shards::shard::Shard;
 use crate::util::{self};
-use crate::{shards::shard};
 
 use crate::{EguiId, CONTEXTS_NAME, FLOAT2_VAR_SLICE, FLOAT_VAR_SLICE, PARENTS_UI_NAME};
 
@@ -85,7 +85,7 @@ impl Shard for AutoGridShard {
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
     util::require_parents(&mut self.required);
-    
+
     let input_type = data.inputType;
     let slice = unsafe {
       let ptr = input_type.details.seqTypes.elements;
@@ -153,30 +153,31 @@ impl Shard for AutoGridShard {
         ui.available_width()
       };
 
-      grid.show(ui, |ui| {
-        let mut current_width: f32 = 0.0;
-        // Pass each element in the given sequence to the shards in the contents and render
-        for i in 0..seq.len() {
-          // Check if contents will exceed max grid width if added onto current row
-          if (current_width + item_width > max_grid_width) {
-            ui.end_row();
-            current_width = 0.0;
+      grid
+        .show(ui, |ui| {
+          let mut current_width: f32 = 0.0;
+          // Pass each element in the given sequence to the shards in the contents and render
+          for i in 0..seq.len() {
+            // Check if contents will exceed max grid width if added onto current row
+            if (current_width + item_width > max_grid_width) {
+              ui.end_row();
+              current_width = 0.0;
+            }
+
+            let input_elem = &seq[i];
+            util::activate_ui_contents(
+              context,
+              input_elem,
+              ui,
+              &mut self.parents,
+              &mut self.contents,
+            )?;
+
+            current_width += item_width;
           }
-
-          let input_elem = &seq[i];
-          util::activate_ui_contents(
-            context,
-            input_elem,
-            ui,
-            &mut self.parents,
-            &mut self.contents,
-          )?;
-
-          current_width += item_width;
-        }
-        Ok::<(), &'static str>(())
-      })
-      .inner?;
+          Ok::<(), &'static str>(())
+        })
+        .inner?;
 
       // Always passthrough the input
       Ok(*input)
