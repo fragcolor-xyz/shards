@@ -121,12 +121,10 @@ struct Query : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
 
-    if(!_connection->barrier.acquire(context)) {
+    if (!_connection->barrier.acquire(context)) {
       return input; // this is a cancellation/stop etc
     }
-    DEFER({
-      _connection->barrier.release();
-    });
+    DEFER({ _connection->barrier.release(); });
 
     return awaitne(
         context,
@@ -263,27 +261,49 @@ struct Transaction : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
 
-    auto rc = sqlite3_exec(_connection->get(), "BEGIN TRANSACTION;", nullptr, nullptr, nullptr);
-    if (rc != SQLITE_OK) {
-      throw ActivationError(sqlite3_errmsg(_connection->get()));
+    {
+      if (!_connection->barrier.acquire(context)) {
+        return input; // this is a cancellation/stop etc
+      }
+      DEFER({ _connection->barrier.release(); });
+
+      await(
+          context,
+          [&] {
+            auto rc = sqlite3_exec(_connection->get(), "BEGIN;", nullptr, nullptr, nullptr);
+            if (rc != SQLITE_OK) {
+              throw ActivationError(sqlite3_errmsg(_connection->get()));
+            }
+          },
+          []() {});
     }
 
     SHVar output{};
     auto state = _queries.activate(context, input, output);
 
-    if (state != SHWireState::Continue) {
-      // likely something went wrong! lets rollback.
-      auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
-      if (rc != SQLITE_OK) {
-        throw ActivationError(sqlite3_errmsg(_connection->get()));
-      }
-    } else {
-      // commit
-      auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
-      if (rc != SQLITE_OK) {
-        throw ActivationError(sqlite3_errmsg(_connection->get()));
-      }
+    if (!_connection->barrier.acquire(context)) {
+      return input; // this is a cancellation/stop etc
     }
+    DEFER({ _connection->barrier.release(); });
+
+    await(
+        context,
+        [&] {
+          if (state != SHWireState::Continue) {
+            // likely something went wrong! lets rollback.
+            auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
+            if (rc != SQLITE_OK) {
+              throw ActivationError(sqlite3_errmsg(_connection->get()));
+            }
+          } else {
+            // commit
+            auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
+            if (rc != SQLITE_OK) {
+              throw ActivationError(sqlite3_errmsg(_connection->get()));
+            }
+          }
+        },
+        []() {});
 
     return input;
   }
@@ -312,12 +332,10 @@ struct LoadExtension : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
 
-    if(!_connection->barrier.acquire(context)) {
+    if (!_connection->barrier.acquire(context)) {
       return input; // this is a cancellation/stop etc
     }
-    DEFER({
-      _connection->barrier.release();
-    });
+    DEFER({ _connection->barrier.release(); });
 
     return awaitne(
         context,
@@ -361,12 +379,10 @@ struct RawQuery : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
 
-    if(!_connection->barrier.acquire(context)) {
+    if (!_connection->barrier.acquire(context)) {
       return input; // this is a cancellation/stop etc
     }
-    DEFER({
-      _connection->barrier.release();
-    });
+    DEFER({ _connection->barrier.release(); });
 
     return awaitne(
         context,

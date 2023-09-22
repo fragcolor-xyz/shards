@@ -1184,7 +1184,9 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
         info = &ctx.wire->typesCache.at(hash);
       }
 
-      ctx.inherited[key] = SHExposedTypeInfo{key.c_str(), {}, *info, true /* mutable */};
+      SHExposedTypeInfo expInfo{key.c_str(), {}, *info, true /* mutable */};
+      expInfo.exposed = var.flags & SHVAR_FLAGS_EXPOSED;
+      ctx.inherited[key] = expInfo;
     }
   }
 
