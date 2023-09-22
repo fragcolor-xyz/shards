@@ -21,6 +21,7 @@ use shards::types::Parameters;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
+use shards::types::ANYS_TYPES;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::NONE_TYPES;
 use shards::types::STRING_TYPES;
@@ -99,7 +100,7 @@ impl LegacyShard for TextField {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &STRING_TYPES
+    &ANYS_TYPES
   }
 
   fn outputHelp(&mut self) -> OptionalString {
@@ -157,7 +158,7 @@ impl LegacyShard for TextField {
       self.mutable_text = false;
     }
 
-    Ok(common_type::string)
+    Ok(common_type::any)
   }
 
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
