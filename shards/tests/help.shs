@@ -47,7 +47,7 @@ CREATE TABLE ParamTypesTable (
 );
 """ | DB.RawQuery
 
-Shards.Enumerate | Map({
+Shards.Enumerate | ForEach({
   = shard-name
   Shards.Help
   | {Take("help") = help-text}

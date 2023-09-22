@@ -1437,6 +1437,8 @@ struct GetShardHelp {
         paramsSeq.emplace_back(std::move(paramTable));
       }
       _output.insert(Var("parameters"), std::move(paramsSeq));
+    } else {
+      _output.insert(Var("parameters"), SeqVar{});
     }
 
     auto properties = shard->properties(shard);
