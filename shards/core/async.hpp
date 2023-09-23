@@ -122,9 +122,6 @@ struct TidePool {
         _workers.emplace_back(_queue, _scheduledCounter);
         // SHLOG_DEBUG("TidePool: worker added, count: {}", _workers.size());
       }
-
-      TracyPlot("TidePool Workers", int64_t(_workers.size()));
-
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
@@ -141,8 +138,6 @@ TidePool &getTidePool();
 
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
-  ZoneScoped;
-
   static_assert(std::is_same_v<decltype(func()), SHVar> || std::is_same_v<decltype(func()), Var>,
                 "func must return SHVar or Var");
 
@@ -197,8 +192,6 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 }
 
 template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
-  ZoneScoped;
-
 #if !HAS_ASYNC_SUPPORT
   func();
 #else

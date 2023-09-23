@@ -18,9 +18,9 @@
 #define ENTT_ID_TYPE std::uint64_t
 #include <entt/entt.hpp>
 
+#ifdef TRACY_ENABLE
 // profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
 #include <tracy/Tracy.hpp>
-
 #ifdef TRACY_FIBERS
 #define TracyCoroEnter(wire)             \
   {                                      \
@@ -39,6 +39,15 @@
     }                                                           \
   }
 #else
+#define TracyCoroEnter(wire)
+#define TracyCoroExit(wire)
+#endif
+#else
+#define ZoneScoped
+#define ZoneScopedN(X)
+#define ZoneNamed(X, Y)
+#define ZoneName(X, Y)
+#define FrameMarkNamed(X)
 #define TracyCoroEnter(wire)
 #define TracyCoroExit(wire)
 #endif
