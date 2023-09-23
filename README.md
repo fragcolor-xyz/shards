@@ -21,22 +21,22 @@ Shards powers an upcoming AI-powered game creation system where communities can 
 
 In Shards, every primitive is a shard, flowing from shard to shard, to build a computational graph that represents a visual model.
 
-As an example of a Shards script, here 3 instances of `bullseye` run in parallel, each repeatedly and randomly trying to hit the bulls-eye value provided in the input. The output of `TryMany` is the number of used tries for each input, or none if not hit under the set limit:
+## For example
 
 ```dart
-@wire(bullseye {
-  >= mark, 0 >= tries, 10000000 = limit, 10000000 = times
-  Repeat({ Math.Inc(tries) }
-    Times: times
-    Until: { RandomInt(limit) | Is(mark) })
-  If({ tries | IsLess(times) } { tries } { "Missed the mark" | Fail })
-})
-
-[10 20 30] | TryMany(bullseye WaitUntil::SomeSuccess) | Log
+["Hello " @name] | String.Join | Log >= message
+"!" | AppendTo(message)
+message | Log("new message")
 ```
-Even a literal like like `10000000` is a shard. `10000000` is internally converted into the `Const(10000000)` shard.
 
-Furthermore, each shard was programmed to guarantee the highest standards of performance, with low level optimizations in C++ and Rust.
+Run with: `./shards new hello.shs name:Astarion`
+
+Will print:
+
+```
+[info] [2023-09-23 22:21:34.528] [T-28912] [logging.cpp::68] [root] Hello Astarion
+[info] [2023-09-23 22:21:34.532] [T-28912] [logging.cpp::62] [root] new message: Hello Astarion!
+```
 
 ## Getting started
 
@@ -124,14 +124,14 @@ Shards is just shards flowing into shards, thus:
       Once({
         GFX.DrawQueue >= ui-draw-queue
         GFX.UIPass(ui-draw-queue) >> render-steps
-      })      
+      })
       UI(
         ui-draw-queue
         UI.Window(
           Title: "My UI Window"
           Contents: {
             "Hello world" | UI.Label
-            "Hello world 2" | UI.Label 
+            "Hello world 2" | UI.Label
             "Hello world 3" | UI.Label
             UI.Button(
               "Push me!"
