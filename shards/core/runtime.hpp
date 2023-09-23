@@ -246,7 +246,19 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro);
 #endif
 
 #ifdef TRACY_ENABLE
-void tracyInit();
+// Defined in the gfx rust crate
+//   used to initialize tracy on the rust side, since it required special intialization (C++ doesn't)
+//   but since we link to the dll, we can use it from C++ too
+extern "C" void gfxTracyInit();
+
+struct GlobalTracy {
+  GlobalTracy() { gfxTracyInit(); }
+
+  // just need to fool the compiler
+  constexpr bool isInitialized() const { return true; }
+};
+
+extern GlobalTracy &GetTracy();
 #endif
 
 #ifdef TRACY_FIBERS
