@@ -6,11 +6,6 @@
 
 // must go first
 #include <shards/shards.h>
-
-#include <tracy/Tracy.hpp>
-
-#include "async.hpp"
-
 #if _WIN32
 #include <winsock2.h>
 #endif
