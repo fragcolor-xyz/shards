@@ -162,6 +162,8 @@ Shards is just shards flowing into shards, thus:
 <details>
 <summary>Becomes this app:</summary>
 
+**Notice that in the meantime shards GUI framework changed to use egui instead of ImGui**
+
 ![](assets/simple1.PNG)
 
 </details>
