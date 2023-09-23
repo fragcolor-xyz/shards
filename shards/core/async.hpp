@@ -3,8 +3,11 @@
 
 #include <chrono>
 #include <thread>
-#include "foundation.hpp"
+
+#include <shards/shards.hpp>
+
 #include "runtime.hpp"
+
 #include <boost/lockfree/queue.hpp>
 #include <boost/thread.hpp>
 
@@ -100,34 +103,7 @@ struct TidePool {
     _queue.push(work);
   }
 
-  void controllerWorker() {
-    // spawn workers first
-    for (size_t i = 0; i < NumWorkers; ++i) {
-      _workers.emplace_back(_queue, _scheduledCounter);
-    }
-
-    while (_running) {
-      assert(_workers.size() >= NumWorkers);
-
-      if (_scheduledCounter < LowWater && _workers.size() > NumWorkers) {
-        // we have less than LowWater scheduled and we have more than NumWorkers workers
-        _workers.back()._running = false;
-        _workers.pop_back();
-        // SHLOG_DEBUG("TidePool: worker removed, count: {}", _workers.size());
-      } else if (_scheduledCounter > _workers.size() && _workers.size() < MaxWorkers) {
-        // we have more scheduled than workers
-        _workers.emplace_back(_queue, _scheduledCounter);
-        // SHLOG_DEBUG("TidePool: worker added, count: {}", _workers.size());
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-
-    for (auto &worker : _workers) {
-      worker._running = false;
-      if (worker._thread.joinable())
-        worker._thread.join();
-    }
-  }
+  void controllerWorker();
 };
 
 TidePool &getTidePool();
@@ -135,6 +111,8 @@ TidePool &getTidePool();
 
 template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
+  ZoneScoped;
+
   static_assert(std::is_same_v<decltype(func()), SHVar> || std::is_same_v<decltype(func()), Var>,
                 "func must return SHVar or Var");
 
@@ -189,6 +167,8 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 }
 
 template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
+  ZoneScoped;
+
 #if !HAS_ASYNC_SUPPORT
   func();
 #else
