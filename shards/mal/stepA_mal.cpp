@@ -53,10 +53,6 @@ malValuePtr maleval(const char *str, malEnvPtr env) {
 extern malEnvPtr malenv() { return currentEnv; }
 
 int malmain(int argc, const char *argv[]) {
-#ifdef TRACY_ENABLE
-  shards::tracyInit();
-#endif
-
   malEnvPtr replEnv(new malEnv());
 
   // do the following before malinit

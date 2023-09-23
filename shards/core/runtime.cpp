@@ -160,15 +160,10 @@ void loadExternalShards(std::string from) {
 }
 
 #ifdef TRACY_ENABLE
-// Defined in the gfx rust crate
-//   used to initialize tracy on the rust side, since it required special intialization (C++ doesn't)
-//   but since we link to the dll, we can use it from C++ too
-extern "C" void gfxTracyInit();
-static bool tracyInitialized{};
 
-void tracyInit() {
-  gfxTracyInit();
-  tracyInitialized = true;
+GlobalTracy &GetTracy() {
+  static GlobalTracy tracy;
+  return tracy;
 }
 
 #ifdef TRACY_FIBERS
@@ -232,6 +227,9 @@ void registerShards() {
 }
 
 Shard *createShard(std::string_view name) {
+  ZoneScoped;
+  ZoneName(name.data(), name.size());
+
   auto it = GetGlobals().ShardsRegister.find(name);
   if (it == GetGlobals().ShardsRegister.end()) {
     return nullptr;
@@ -2876,10 +2874,6 @@ void shInit() {
     return;
   globalInitDone = true;
 
-#ifdef TRACY_ENABLE
-  tracyInit();
-#endif
-
   logging::setupDefaultLoggerConditional();
 
   if (GetGlobals().RootPath.size() > 0) {
@@ -3475,14 +3469,14 @@ void incRef(ShardPtr shard) {
 #ifdef TRACY_ENABLE
 void *operator new(std::size_t count) {
   void *ptr = std::malloc(count);
-  if (shards::tracyInitialized)
+  if (GetTracy().isInitialized())
     TracyAlloc(ptr, count);
   return ptr;
 }
 
 void *operator new[](std::size_t count) {
   void *ptr = std::malloc(count);
-  if (shards::tracyInitialized)
+  if (GetTracy().isInitialized())
     TracyAlloc(ptr, count);
   return ptr;
 }
@@ -3495,7 +3489,7 @@ void *operator new(std::size_t count, std::align_val_t alignment) {
 #else
   void *ptr = std::aligned_alloc(align_value, aligned_count);
 #endif
-  if (shards::tracyInitialized)
+  if (GetTracy().isInitialized())
     TracyAlloc(ptr, count);
   return ptr;
 }
@@ -3508,25 +3502,25 @@ void *operator new[](std::size_t count, std::align_val_t alignment) {
 #else
   void *ptr = std::aligned_alloc(align_value, aligned_count);
 #endif
-  if (shards::tracyInitialized)
+  if (GetTracy().isInitialized())
     TracyAlloc(ptr, count);
   return ptr;
 }
 
 void operator delete(void *ptr) noexcept {
-  if (shards::tracyInitialized)
+  if (GetTracy().isInitialized())
     TracyFree(ptr);
   std::free(ptr);
 }
 
 void operator delete[](void *ptr) noexcept {
-  if (shards::tracyInitialized)
+  if (GetTracy().isInitialized())
     TracyFree(ptr);
   std::free(ptr);
 }
 
 void operator delete(void *ptr, std::align_val_t alignment) noexcept {
-  if (shards::tracyInitialized)
+  if (GetTracy().isInitialized())
     TracyFree(ptr);
 #ifdef WIN32
   _aligned_free(ptr);
@@ -3536,7 +3530,7 @@ void operator delete(void *ptr, std::align_val_t alignment) noexcept {
 }
 
 void operator delete[](void *ptr, std::align_val_t alignment) noexcept {
-  if (shards::tracyInitialized)
+  if (GetTracy().isInitialized())
     TracyFree(ptr);
 #ifdef WIN32
   _aligned_free(ptr);
@@ -3546,13 +3540,13 @@ void operator delete[](void *ptr, std::align_val_t alignment) noexcept {
 }
 
 void operator delete(void *ptr, std::size_t count) noexcept {
-  if (shards::tracyInitialized)
+  if (GetTracy().isInitialized())
     TracyFree(ptr);
   std::free(ptr);
 }
 
 void operator delete[](void *ptr, std::size_t count) noexcept {
-  if (shards::tracyInitialized)
+  if (GetTracy().isInitialized())
     TracyFree(ptr);
   std::free(ptr);
 }
