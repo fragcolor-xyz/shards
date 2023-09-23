@@ -14,6 +14,8 @@ if(TRACY_ENABLE AND TRACY_CALLSTACK_SIZE AND (TRACY_CALLSTACK_SIZE GREATER_EQUAL
     # The default call stack size
     TRACY_CALLSTACK=${TRACY_CALLSTACK_SIZE}
   )
+  # target_compile_definitions(shards-core PUBLIC TRACY_ENABLE=1) # well this should be uncommented.. but for some reasons it still works partially...
+  target_include_directories(shards-core PUBLIC ${SHARDS_DIR}/deps/tracy/public)
 endif()
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)

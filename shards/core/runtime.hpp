@@ -6,6 +6,8 @@
 
 // must go first
 #include <shards/shards.h>
+#include <tracy/Tracy.hpp>
+
 #if _WIN32
 #include <winsock2.h>
 #endif
@@ -223,6 +225,9 @@ template <typename T, typename C> AnyStorage<T> getOrCreateAnyStorage(C *context
 }
 
 FLATTEN ALWAYS_INLINE inline SHVar activateShard(Shard *blk, SHContext *context, const SHVar &input) {
+  ZoneScoped;
+  ZoneName(blk->name(blk), blk->nameLength);
+
   SHVar output;
   if (!activateShardInline(blk, context, input, output))
     output = blk->activate(blk, context, &input);

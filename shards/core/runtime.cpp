@@ -160,7 +160,6 @@ void loadExternalShards(std::string from) {
 }
 
 #ifdef TRACY_ENABLE
-
 GlobalTracy &GetTracy() {
   static GlobalTracy tracy;
   return tracy;
