@@ -164,6 +164,8 @@ Shards is just shards flowing into shards, thus:
 
 ![](assets/simple1.PNG)
 
+**Notice that in the meantime shards GUI framework changed to use egui instead of ImGui**
+
 </details>
 
 ## License
