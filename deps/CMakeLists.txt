@@ -249,7 +249,7 @@ add_library(pdqsort INTERFACE)
 target_include_directories(pdqsort INTERFACE pdqsort)
 
 add_library(entt INTERFACE)
-target_include_directories(entt INTERFACE entt/single_include)
+target_include_directories(entt INTERFACE entt/src)
 
 # Tracy profiler, default off
 option(TRACY_ENABLE "Enable profiling" OFF)
