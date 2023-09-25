@@ -294,43 +294,33 @@ struct SHStackAllocator {
 #endif
 
 struct SHWire : public std::enable_shared_from_this<SHWire> {
-  static std::shared_ptr<SHWire> make(std::string_view wire_name) { return std::shared_ptr<SHWire>(new SHWire(wire_name)); }
-
-  static std::shared_ptr<SHWire> *makePtr(std::string_view wire_name) {
-    return new std::shared_ptr<SHWire>(new SHWire(wire_name));
-  }
-
   enum State { Stopped, Prepared, Starting, Iterating, IterationEnded, Failed, Ended };
 
-  ~SHWire() {
-    destroy();
+  struct OnComposedEvent {
+    const SHWire *wire;
+  };
 
-    SHLOG_TRACE("Destroying wire {}", name);
-  }
+  struct OnStartEvent {
+    const SHWire *wire;
+  };
 
-  void warmup(SHContext *context);
+  struct OnUpdateEvent {
+    const SHWire *wire;
+  };
 
-  void cleanup(bool force = false);
+  struct OnCleanupEvent {
+    const SHWire *wire;
+  };
 
-  // Also the wire takes ownership of the shard!
-  void addShard(Shard *blk) {
-    assert(!blk->owned);
-    blk->owned = true;
-    shards::incRef(blk);
-    shards.push_back(blk);
-  }
+  struct OnStopEvent {
+    const SHWire *wire;
+  };
 
-  // Also removes ownership of the shard
-  void removeShard(Shard *blk) {
-    auto findIt = std::find(shards.begin(), shards.end(), blk);
-    if (findIt != shards.end()) {
-      shards.erase(findIt);
-      blk->owned = false;
-      shards::decRef(blk);
-    } else {
-      throw shards::SHException("removeShard: shard not found!");
-    }
-  }
+  // Triggered whenever a new wire is detached from this wire
+  struct OnWireDetached {
+    const SHWire *wire;
+    const SHWire *childWire;
+  };
 
   // Attributes
   bool looped{false};
@@ -373,6 +363,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   SHContext *context{nullptr};
   SHWire *resumer{nullptr}; // used in Resume/Start shards
 
+  mutable entt::dispatcher dispatcher{};
+
   std::weak_ptr<SHMesh> mesh;
 
   std::vector<Shard *> shards;
@@ -388,6 +380,38 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   uint8_t *stackMem{nullptr};
   size_t stackSize{SH_BASE_STACK_SIZE};
 
+  ~SHWire() {
+    destroy();
+
+    SHLOG_TRACE("Destroying wire {}", name);
+  }
+
+  void warmup(SHContext *context);
+
+  void cleanup(bool force = false);
+
+  // Also the wire takes ownership of the shard!
+  void addShard(Shard *blk) {
+    assert(!blk->owned);
+    blk->owned = true;
+    shards::incRef(blk);
+    shards.push_back(blk);
+  }
+
+  // Also removes ownership of the shard
+  void removeShard(Shard *blk) {
+    auto findIt = std::find(shards.begin(), shards.end(), blk);
+    if (findIt != shards.end()) {
+      shards.erase(findIt);
+      blk->owned = false;
+      shards::decRef(blk);
+    } else {
+      throw shards::SHException("removeShard: shard not found!");
+    }
+  }
+
+  SHWireRef newRef() { return reinterpret_cast<SHWireRef>(new std::shared_ptr<SHWire>(shared_from_this())); }
+
   static std::shared_ptr<SHWire> &sharedFromRef(SHWireRef ref) {
     assert(ref && "sharedFromRef - ref was nullptr");
     return *reinterpret_cast<std::shared_ptr<SHWire> *>(ref);
@@ -401,8 +425,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     delete pref;
   }
 
-  SHWireRef newRef() { return reinterpret_cast<SHWireRef>(new std::shared_ptr<SHWire>(shared_from_this())); }
-
+  // WARNING: This creates a reference to the current shared_ptr in memory
   static SHWireRef weakRef(const std::shared_ptr<SHWire> &shared) {
     return reinterpret_cast<SHWireRef>(&const_cast<std::shared_ptr<SHWire> &>(shared));
   }
@@ -416,27 +439,11 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     return reinterpret_cast<SHWireRef>(res);
   }
 
-  struct OnComposedEvent {
-    const SHWire *wire;
-  };
+  static std::shared_ptr<SHWire> make(std::string_view wire_name) { return std::shared_ptr<SHWire>(new SHWire(wire_name)); }
 
-  struct OnStartEvent {
-    const SHWire *wire;
-  };
-
-  struct OnUpdateEvent {
-    const SHWire *wire;
-  };
-
-  struct OnCleanupEvent {
-    const SHWire *wire;
-  };
-
-  struct OnStopEvent {
-    const SHWire *wire;
-  };
-
-  mutable entt::dispatcher dispatcher{};
+  static std::shared_ptr<SHWire> *makePtr(std::string_view wire_name) {
+    return new std::shared_ptr<SHWire>(new SHWire(wire_name));
+  }
 
 private:
   SHWire(std::string_view wire_name) : name(wire_name) { SHLOG_TRACE("Creating wire: {}", name); }

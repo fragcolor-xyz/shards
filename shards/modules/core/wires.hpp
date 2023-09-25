@@ -213,8 +213,15 @@ struct BaseRunner : public WireBase {
 
       // validated during infer not here! (false)
       auto mesh = context->main->mesh.lock();
-      if (mesh)
+      if (mesh) {
         mesh->schedule(wire, input, false);
+
+        SHWire *rootWire = context->rootWire();
+        rootWire->dispatcher.trigger(SHWire::OnWireDetached{
+            .wire = rootWire,
+            .childWire = wire.get(),
+        });
+      }
       // also mark this wire as fully detached if needed
       // this means stopping this Shard will not stop the wire
       if (detached)
