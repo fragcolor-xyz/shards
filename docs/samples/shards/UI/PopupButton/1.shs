@@ -1,0 +1,26 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+      ui-draw-queue
+      UI.CentralPanel({
+        UI.PopupButton(
+          Label: "Click me!"
+          Contents: {
+            UI.Button(
+              Label: "Send message"
+              Action: {
+                "Message sent!" | Log
+              }
+            )
+          }
+        )}
+      )
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)
