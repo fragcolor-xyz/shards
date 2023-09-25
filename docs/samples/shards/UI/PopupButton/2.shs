@@ -22,6 +22,7 @@ GFX.MainWindow(
         
         UI.PopupButton(
           Label: "Click me!"
+          AboveOrBelow: PopupLocation::Above
           MinWidth: 200.0 ; Changes the minimum width of the popup to be 200.0 instead of the width of the button
           Contents: {
             UI.Button(
