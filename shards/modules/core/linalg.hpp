@@ -2,9 +2,9 @@
 
 #include <shards/common_types.hpp>
 #include <shards/core/foundation.hpp>
-#include "linalg.h"
 #include <shards/shards.h>
 #include <shards/core/shared.hpp>
+#include <gfx/linalg.hpp>
 #include "math.hpp"
 #include "core.hpp"
 #include <shards/core/params.hpp>
@@ -395,16 +395,9 @@ struct LookAt {
     assert(position.valueType == SHType::Float3 && target.valueType == SHType::Float3);
 
     using namespace linalg::aliases;
-    auto eye = reinterpret_cast<const float3 *>(&position);
-    auto center = reinterpret_cast<const float3 *>(&target);
-    float3 up = float3(0.0, 1.0, 0.0);
-    float3 delta = linalg::normalize(*eye - *center);
-    float adot = std::abs(linalg::dot(up, delta));
-    const float threshold = 0.01f;
-    if (adot > (1.0f - threshold)) {
-      up = float3(delta.x, delta.z, -delta.y);
-    }
-    _output = linalg::lookat_matrix(*eye, *center, up);
+    auto eye_ = reinterpret_cast<const float3 *>(&position);
+    auto target_ = reinterpret_cast<const float3 *>(&target);
+    _output = gfx::safeLookat(*eye_, *target_);
     return _output;
   }
 
