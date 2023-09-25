@@ -155,7 +155,7 @@ impl Shard for FormabbleWindowShard {
     }
 
     if !self.contents.is_empty() {
-      self.contents.compose(&data)?;
+      self.contents.compose(data)?;
     }
 
     // Always passthrough the input

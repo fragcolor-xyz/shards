@@ -79,24 +79,6 @@ struct Tab {
   exposing: ExposedTypes,
 }
 
-/// Standalone window.
-struct Window {
-  instance: ParamVar,
-  requiring: ExposedTypes,
-  title: ParamVar,
-  position: ParamVar,
-  anchor: ParamVar,
-  width: ParamVar,
-  height: ParamVar,
-  closable: ParamVar,
-  open: ParamVar,
-  flags: ParamVar,
-  contents: ShardsVar,
-  parents: ParamVar,
-  id: ParamVar,
-  cached_id: Option<egui::Id>,
-}
-
 shenum! {
   pub struct WindowFlags {
     [description("Do not display the title bar.")]
@@ -157,11 +139,13 @@ mod docking;
 mod panels;
 mod scope;
 mod window;
+mod popup;
 
 pub fn register_shards() {
   area::register_shards();
   docking::register_shards();
   window::register_shards();
+  popup::register_shards();
   register_legacy_shard::<Scope>();
   register_legacy_enum(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());
   register_legacy_shard::<BottomPanel>();
