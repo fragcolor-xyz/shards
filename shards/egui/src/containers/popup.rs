@@ -1,15 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use crate::containers::WindowFlags;
-use crate::containers::SEQ_OF_WINDOW_FLAGS;
-use crate::containers::WINDOW_FLAGS_TYPE;
 use crate::util;
 use crate::widgets::text_util;
-use crate::Anchor;
-use crate::ANCHOR_TYPES;
-use crate::BOOL_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
+use super::PopupLocation;
+use super::POPUPLOCATION_TYPES;
 use shards::cstr;
 use shards::shard;
 use shards::shard::Shard;
@@ -18,15 +14,17 @@ use shards::types::FLOAT_OR_NONE_TYPES_SLICE;
 use shards::types::OptionalString;
 use shards::types::ANY_TYPES;
 use shards::types::{
-  common_type, Context, ExposedInfo, ExposedTypes, InstanceData, ParamVar, Seq, ShardsVar, Type,
+  common_type, Context, ExposedInfo, ExposedTypes, InstanceData, ParamVar, ShardsVar, Type,
   Types, Var, ANYS_TYPES, SHARDS_OR_NONE_TYPES, STRING_TYPES,
 };
 
-use crate::{CONTEXTS_NAME, FLOAT2_VAR_SLICE, PARENTS_UI_NAME};
+use crate::{CONTEXTS_NAME, PARENTS_UI_NAME};
 use shards::{
   core::register_shard,
-  types::{BOOL_OR_NONE_SLICE, INT_OR_NONE_TYPES_SLICE, STRING_VAR_OR_NONE_SLICE},
+  types::{BOOL_OR_NONE_SLICE, STRING_VAR_OR_NONE_SLICE},
 };
+
+
 
 #[derive(shard)]
 #[shard_info(
@@ -42,6 +40,8 @@ struct PopupButtonShard {
   pub style: ParamVar,
   #[shard_param("MinWidth", "The minimum width of the popup that should appear below or above the button. By default, it is always at least as wide as the button.", FLOAT_OR_NONE_TYPES_SLICE)]
   pub min_width: ParamVar,
+  #[shard_param("AboveOrBelow", "Whether the location of the popup should be above or below the button.", POPUPLOCATION_TYPES)]
+  pub above_or_below: ParamVar,
   #[shard_param("ID", "An optional ID value to make the popup unique if the label text collides.", STRING_VAR_OR_NONE_SLICE)]
   pub id: ParamVar,
   pub cached_id: Option<egui::Id>,
@@ -67,6 +67,7 @@ impl Default for PopupButtonShard {
       label: ParamVar::default(),
       wrap: ParamVar::default(),
       style: ParamVar::default(),
+      above_or_below: ParamVar::default(),
       min_width: ParamVar::default(),
       id: ParamVar::default(),
       cached_id: None,
@@ -160,9 +161,16 @@ impl Shard for PopupButtonShard {
       if response.clicked() {
         ui.memory_mut(|mem| mem.toggle_popup(*popup_id));
       }
-      let below = egui::AboveOrBelow::Below;
+
+      let above_or_below = if self.above_or_below.get().is_none() {
+        egui::AboveOrBelow::Below
+      } else {
+        let above_or_below: PopupLocation = self.above_or_below.get().try_into()?;
+        above_or_below.into()
+      };
+      
       if !self.contents.is_empty() {
-        if let Some(inner) = egui::popup::popup_above_or_below_widget(ui, *popup_id, &response, below, |ui| {
+        if let Some(inner) = egui::popup::popup_above_or_below_widget(ui, *popup_id, &response, above_or_below, |ui| {
           if !self.min_width.get().is_none() {
             ui.set_min_width(self.min_width.get().try_into()?);
           }
