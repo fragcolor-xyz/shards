@@ -1354,7 +1354,75 @@ struct ShardInfo {
   const SHWire *wire;
 };
 
+struct WireNode {
+  WireNode(const SHWire *wire, const SHWire *previous) : wire(wire), previous(previous) {}
+
+  const SHWire *wire;
+  const SHWire *previous;
+
+  std::vector<SHVar> eventsSent;
+  std::vector<SHVar> eventsReceived;
+
+  std::vector<SHVar> channelsProduced;
+  std::vector<SHVar> channelsConsumed;
+
+  std::vector<SHVar> channelsBroadcasted;
+  std::vector<SHVar> channelsListened;
+};
+
 void gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out);
+
+void gatherWires(const ShardsCollection &coll, std::vector<WireNode> &out);
+
+inline void printWireGraph(const SHWire *wire) {
+  std::vector<shards::WireNode> nodes;
+  shards::gatherWires(wire, nodes);
+  for (auto &node : nodes) {
+    SHLOG_DEBUG("Wire: {}, parent: {}", node.wire->name, node.previous ? node.previous->name : "none");
+    // eventsSent
+    if (!node.eventsSent.empty()) {
+      SHLOG_DEBUG("  Events Sent: ");
+      for (auto &event : node.eventsSent) {
+        SHLOG_DEBUG("    {}", event);
+      }
+    }
+    // eventsReceived
+    if (!node.eventsReceived.empty()) {
+      SHLOG_DEBUG("  Events Received: ");
+      for (auto &event : node.eventsReceived) {
+        SHLOG_DEBUG("    {}", event);
+      }
+    }
+    // Channels Produced
+    if (!node.channelsProduced.empty()) {
+      SHLOG_DEBUG("  Channels Produced: ");
+      for (auto &channel : node.channelsProduced) {
+        SHLOG_DEBUG("    {}", channel);
+      }
+    }
+    // Channels Consumed
+    if (!node.channelsConsumed.empty()) {
+      SHLOG_DEBUG("  Channels Consumed: ");
+      for (auto &channel : node.channelsConsumed) {
+        SHLOG_DEBUG("    {}", channel);
+      }
+    }
+    // Channels Broadcasted
+    if (!node.channelsBroadcasted.empty()) {
+      SHLOG_DEBUG("  Channels Broadcasted: ");
+      for (auto &channel : node.channelsBroadcasted) {
+        SHLOG_DEBUG("    {}", channel);
+      }
+    }
+    // Channels Listened
+    if (!node.channelsListened.empty()) {
+      SHLOG_DEBUG("  Channels Listened: ");
+      for (auto &channel : node.channelsListened) {
+        SHLOG_DEBUG("    {}", channel);
+      }
+    }
+  }
+}
 
 struct VariableResolver {
   // this an utility to resolve nested variables, like we do in Const, Match etc

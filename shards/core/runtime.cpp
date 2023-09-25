@@ -2478,6 +2478,94 @@ void gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out) {
   _gatherShards(coll, out, coll.index() == 0 ? std::get<const SHWire *>(coll) : nullptr);
 }
 
+void _gatherWires(const ShardsCollection &coll, std::vector<WireNode> &out, const SHWire *wire) {
+  switch (coll.index()) {
+  case 0: {
+    // wire
+    auto currentWire = std::get<const SHWire *>(coll);
+    if (!gatheringWires().count(currentWire)) {
+      out.emplace_back(currentWire, wire); // current, previous
+      gatheringWires().insert(currentWire);
+      for (auto blk : currentWire->shards) {
+        _gatherWires(blk, out, currentWire);
+      }
+    }
+  } break;
+  case 1: {
+    // Single shard
+    auto blk = std::get<ShardPtr>(coll);
+    std::string_view name(blk->name(blk));
+
+    if (name == "Events.Send") {
+      out.back().eventsSent.push_back(blk->getParam(blk, 0));
+    } else if (name == "Events.Receive") {
+      out.back().eventsReceived.push_back(blk->getParam(blk, 0));
+    } else if (name == "Produce") {
+      out.back().channelsProduced.push_back(blk->getParam(blk, 0));
+    } else if (name == "Consume") {
+      out.back().channelsConsumed.push_back(blk->getParam(blk, 0));
+    } else if (name == "Broadcast") {
+      out.back().channelsBroadcasted.push_back(blk->getParam(blk, 0));
+    } else if (name == "Listen") {
+      out.back().channelsListened.push_back(blk->getParam(blk, 0));
+    }
+
+    // Also find nested shards
+    const auto params = blk->parameters(blk);
+    for (uint32_t i = 0; i < params.len; i++) {
+      const auto &param = params.elements[i];
+      const auto &types = param.valueTypes;
+      bool potential = false;
+      for (uint32_t j = 0; j < types.len; j++) {
+        const auto &type = types.elements[j];
+        if (type.basicType == SHType::ShardRef || type.basicType == SHType::Wire) {
+          potential = true;
+        } else if (type.basicType == SHType::Seq) {
+          const auto &stypes = type.seqTypes;
+          for (uint32_t k = 0; k < stypes.len; k++) {
+            if (stypes.elements[k].basicType == SHType::ShardRef) {
+              potential = true;
+            }
+          }
+        }
+      }
+      if (potential)
+        _gatherWires(blk->getParam(blk, i), out, wire);
+    }
+  } break;
+  case 2: {
+    // Shards seq
+    auto bs = std::get<Shards>(coll);
+    for (uint32_t i = 0; i < bs.len; i++) {
+      _gatherWires(bs.elements[i], out, wire);
+    }
+  } break;
+  case 3: {
+    // Var
+    auto var = std::get<SHVar>(coll);
+    if (var.valueType == SHType::ShardRef) {
+      _gatherWires(var.payload.shardValue, out, wire);
+    } else if (var.valueType == SHType::Wire) {
+      auto &nextWire = SHWire::sharedFromRef(var.payload.wireValue);
+      _gatherWires(nextWire.get(), out, wire);
+    } else if (var.valueType == SHType::Seq) {
+      auto bs = var.payload.seqValue;
+      for (uint32_t i = 0; i < bs.len; i++) {
+        _gatherWires(bs.elements[i], out, wire);
+      }
+    }
+  } break;
+  default:
+    SHLOG_FATAL("invalid state");
+  }
+}
+
+void gatherWires(const ShardsCollection &coll, std::vector<WireNode> &out) {
+  gatheringWiresPush();
+  DEFER(gatheringWiresPop());
+  _gatherWires(coll, out, nullptr);
+}
+
 SHVar hash(const SHVar &var) {
   hashingWiresPush();
   DEFER(hashingWiresPop());

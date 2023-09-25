@@ -1655,7 +1655,10 @@ TEST_CASE("shards-lang") {
     REQUIRE(wire.wire);
     DEFER(shards_free_wire(wire.wire));
     auto mesh = SHMesh::make();
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
+    auto pWire = SHWire::sharedFromRef(*(wire.wire));
+    mesh->schedule(pWire);
+    // cover getherWires
+    shards::printWireGraph(pWire.get());
     mesh->tick();
   }
 

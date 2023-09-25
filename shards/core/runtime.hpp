@@ -686,7 +686,11 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 private:
   SHMesh() = default;
 
+  // given that we often insert and especially remove from the middle of the list
+  // and that the underlying data is just a pointer to a wire basically ( so cache locality is not a problem )
+  // we use a list instead of a vector
   std::list<SHFlow> _flowPool;
+
   std::vector<std::string> _errors;
   std::vector<SHWire *> _failedWires;
 };
