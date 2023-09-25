@@ -29,7 +29,7 @@ struct GizmosContextShard {
         {CoreInfo::ShardsOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content));
 
-  input::RequiredInputContext _inputContext;
+  input::OptionalInputContext _inputContext;
 
   GizmoContext _gizmoContext{};
   SHVar *_contextVarRef{};
@@ -62,7 +62,9 @@ struct GizmosContextShard {
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
-    _requiredVariables.push_back(RequiredInputContext::getExposedTypeInfo());
+    if (auto exposed = findExposedVariable(data.shared, OptionalInputContext::variableName())) {
+      _requiredVariables.push_back(exposed.value());
+    }
 
     if (!_queue.isVariable())
       throw ComposeError("Queue not set");
@@ -91,12 +93,13 @@ struct GizmosContextShard {
 
     gfx::gizmos::Context &gfxGizmoContext = _gizmoContext.gfxGizmoContext;
 
-    auto &region = _inputContext->getState().region;
-
     gfx::gizmos::InputState gizmoInput;
-    gizmoInput.cursorPosition = _inputContext->getState().cursorPosition;
-    gizmoInput.pressed = _inputContext->getState().isMouseButtonHeld(SDL_BUTTON_LEFT);
-    gizmoInput.viewSize = float2(region.size);
+    if (_inputContext) {
+      auto &region = _inputContext->getState().region;
+      gizmoInput.cursorPosition = _inputContext->getState().cursorPosition;
+      gizmoInput.pressed = _inputContext->getState().isMouseButtonHeld(SDL_BUTTON_LEFT);
+      gizmoInput.viewSize = float2(region.size);
+    }
 
     SHVar _shardsOutput{};
     withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] {
@@ -105,10 +108,12 @@ struct GizmosContextShard {
       gfxGizmoContext.end(_gizmoContext.queue);
     });
 
-    auto &consumeFlags = _inputContext->getConsumeFlags();
-    consumeFlags.requestFocus = _gizmoContext.gfxGizmoContext.input.held;
-    consumeFlags.wantsPointerInput = _gizmoContext.gfxGizmoContext.input.held || _gizmoContext.gfxGizmoContext.input.hovering;
-    consumeFlags.wantsKeyboardInput = consumeFlags.wantsPointerInput;
+    if (_inputContext) {
+      auto &consumeFlags = _inputContext->getConsumeFlags();
+      consumeFlags.requestFocus = _gizmoContext.gfxGizmoContext.input.held;
+      consumeFlags.wantsPointerInput = _gizmoContext.gfxGizmoContext.input.held || _gizmoContext.gfxGizmoContext.input.hovering;
+      consumeFlags.wantsKeyboardInput = consumeFlags.wantsPointerInput;
+    }
 
     return _shardsOutput;
   }

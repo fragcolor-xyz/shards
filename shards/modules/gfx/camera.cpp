@@ -203,7 +203,7 @@ struct FreeCameraShard {
   SHVar activate(SHContext *context, const SHVar &input) {
     updateInputState(_inputState, _inputContext);
     bool anyButtonHeld = _inputState.pointer.secondaryButton || _inputState.pointer.tertiaryButton;
-    auto& consumeFlags = _inputContext->getConsumeFlags();
+    auto &consumeFlags = _inputContext->getConsumeFlags();
     if (anyButtonHeld) {
       consumeFlags.requestFocus = true;
       consumeFlags.wantsPointerInput = true;
@@ -239,154 +239,263 @@ struct FreeCameraShard {
   }
 };
 
-// struct PivotCameraShard {
-//   static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
-//   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
-//   static SHOptionalString help() { return SHCCSTR("Provides editor free camera controls"); }
+struct TargetCameraState {
+  float3 pivot{};
+  float distance{};
+  float2 rotation{};
 
-//   PARAM_PARAMVAR(_flySpeed, "FlySpeed", "Controls fly speed with the keyboard",
-//                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-//   PARAM_PARAMVAR(_scrollSpeed, "ScrollSpeed", "Controls middle mouse movement speed",
-//                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-//   PARAM_PARAMVAR(_panSpeed, "PanSpeed", "Controls middle mouse pan speed",
-//                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-//   PARAM_PARAMVAR(_lookSpeed, "LookSpeed", "Controls right mouse look speed",
-//                  {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-//   PARAM_IMPL(PARAM_IMPL_FOR(_flySpeed), PARAM_IMPL_FOR(_scrollSpeed), PARAM_IMPL_FOR(_panSpeed), PARAM_IMPL_FOR(_lookSpeed));
+  static TargetCameraState deriveFrom(float4x4 invViewMat, float pivotDistance) {
+    float3 translation;
+    float3 scale;
+    float3x3 rotationMatrix;
+    decomposeTRS(invViewMat, translation, scale, rotationMatrix);
+    float4 rotation = linalg::rotation_quat(rotationMatrix);
 
-//   RequiredGraphicsContext _graphicsContext;
-//   RequiredWindowContext _windowContext;
+    // float4 r2 = linalg::normalize(float4(0, rotation.y, 0, rotation.w));
+    float yaw = std::atan2(rotation.y, rotation.w) * 2.0f;
+    float pitch = std::asin(-2.0 * (rotation.x * rotation.z - rotation.w * rotation.y));
 
-//   Mat4 _result;
-//   InputState _inputState;
+    TargetCameraState result;
+    result.rotation = float2(pitch, yaw);
+    result.pivot = translation + -linalg::qzdir(rotation) * pivotDistance;
+    result.distance = pivotDistance;
+    return result;
+  }
 
-//   float3 _pivot{};
-//   float _distance{};
+  static TargetCameraState fromTable(TableVar &inputTable) {
+    return TargetCameraState{
+        .pivot = toFloat3(inputTable.get<Var>("pivot")),
+        .distance = (float)(inputTable.get<Var>("distance")),
+        .rotation = toFloat2(inputTable.get<Var>("rotation")),
+    };
+  }
+};
 
-//   // Generates CameraInputs from an input state
-//   CameraInputs getCameraInputs(const InputState &inputState) {
-//     CameraInputs inputs;
+struct TargetCameraStateTable : public TableVar {
+  static inline std::array<SHVar, 3> _keys{
+      Var("pivot"),
+      Var("distance"),
+      Var("rotation"),
+  };
+  static inline shards::Types _types{{
+      CoreInfo::Float3Type,
+      CoreInfo::FloatType,
+      CoreInfo::Float2Type,
+  }};
+  static inline shards::Type Type = shards::Type::TableOf(_types, _keys);
 
-//     const float mouseBaseFactor = 2000.0f;
+  TargetCameraStateTable()
+      : TableVar(),                     //
+        pivot(get<Var>("pivot")),       //
+        distance(get<Var>("distance")), //
+        rotation(get<Var>("rotation")) {}
 
-//     float lookSpeed = getParamVarOrDefault(_lookSpeed, 1.0f) / mouseBaseFactor * 0.7f * gfx::pi2;
-//     float panSpeed = getParamVarOrDefault(_panSpeed, 1.0f) / mouseBaseFactor * 2.0f;
-//     float scrollSpeed = getParamVarOrDefault(_scrollSpeed, 1.0f);
+  const TargetCameraStateTable &operator=(const TargetCameraState &state) {
+    distance = Var(state.distance);
+    pivot = toVar(state.pivot);
+    rotation = toVar(state.rotation);
+    return *this;
+  }
 
-//     float2 pointerDelta = inputState.pointer.position - inputState.pointer.prevPosition;
+  Var &pivot;
+  Var &distance;
+  Var &rotation;
+};
 
-//     if (inputState.pointer.secondaryButton) {
-//       // Apply look rotation
-//       inputs.lookRotation.y = -pointerDelta.x * lookSpeed;
-//       inputs.lookRotation.x = -pointerDelta.y * lookSpeed;
+struct TargetCameraUpdate {
+  static SHTypesInfo inputTypes() { return TargetCameraStateTable::Type; }
+  static SHTypesInfo outputTypes() { return TargetCameraStateTable::Type; }
+  static SHOptionalString help() { return SHCCSTR("Provides editor free camera controls"); }
 
-//       // Fly keys
-//       inputs.velocity.x += inputState.keyboardXAxis.getValue();
-//       inputs.velocity.z += inputState.keyboardZAxis.getValue();
-//     }
+  PARAM_PARAMVAR(_flySpeed, "FlySpeed", "Controls fly speed with the keyboard",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_scrollSpeed, "ScrollSpeed", "Controls middle mouse movement speed",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_panSpeed, "PanSpeed", "Controls middle mouse pan speed",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_lookSpeed, "LookSpeed", "Controls right mouse look speed",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_pivotDistance, "PivotDistance", "Controls distance to the point being looked at",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_flySpeed), PARAM_IMPL_FOR(_scrollSpeed), PARAM_IMPL_FOR(_panSpeed), PARAM_IMPL_FOR(_lookSpeed),
+             PARAM_IMPL_FOR(_pivotDistance));
 
-//     if (inputState.pointer.tertiaryButton) {
-//       inputs.translation.x += -pointerDelta.x * panSpeed;
-//       inputs.translation.y += pointerDelta.y * panSpeed;
-//     }
+  RequiredInputContext _inputContext;
 
-//     if (_inputState.mouseWheel != 0.0f) {
-//       inputs.translation.z += -_inputState.mouseWheel * scrollSpeed;
-//     }
+  InputState _inputState;
 
-//     return inputs;
-//   }
+  TargetCameraStateTable _output;
 
-//   // Applies camera inputs to a view matrix
-//   float4x4 applyCameraInputsToView(const CameraInputs &inputs, const float4x4 &viewMatrix, float deltaTime) {
-//     float flySpeed = getParamVarOrDefault(_flySpeed, 1.0f) * 1.0f;
+  // Generates CameraInputs from an input state
+  CameraInputs getCameraInputs(const InputState &inputState) {
+    CameraInputs inputs;
 
-//     float4x4 invViewMatrix = linalg::inverse(viewMatrix);
+    const float mouseBaseFactor = 2000.0f;
 
-//     float3 cameraTranslation;
-//     float3 cameraScale;
-//     float3x3 cameraRotationMatrix;
-//     gfx::decomposeTRS(invViewMatrix, cameraTranslation, cameraScale, cameraRotationMatrix);
-//     float4 cameraRotation = linalg::rotation_quat(cameraRotationMatrix);
+    float lookSpeed = getParamVarOrDefault(_lookSpeed, 1.0f) / mouseBaseFactor * 0.7f * gfx::pi2;
+    float panSpeed = getParamVarOrDefault(_panSpeed, 1.0f) / mouseBaseFactor * 2.0f;
+    float scrollSpeed = getParamVarOrDefault(_scrollSpeed, 1.0f);
 
-//     float3 cameraX = linalg::qxdir(cameraRotation);
-//     float3 cameraY = linalg::qydir(cameraRotation);
-//     float3 cameraZ = linalg::qzdir(cameraRotation);
+    float2 pointerDelta = inputState.pointer.position - inputState.pointer.prevPosition;
 
-//     // Apply look rotation
-//     float4 rotX = linalg::rotation_quat(cameraX, inputs.lookRotation.x);
-//     float4 rotY = linalg::rotation_quat(cameraY, inputs.lookRotation.y);
-//     float4 rotZ = linalg::rotation_quat(cameraZ, inputs.lookRotation.z);
-//     cameraRotation = linalg::qmul(rotZ, cameraRotation);
-//     cameraRotation = linalg::qmul(rotX, cameraRotation);
-//     cameraRotation = linalg::qmul(rotY, cameraRotation);
+    if (inputState.pointer.secondaryButton) {
+      // Apply look rotation
+      inputs.lookRotation.y = -pointerDelta.x * lookSpeed;
+      inputs.lookRotation.x = -pointerDelta.y * lookSpeed;
 
-//     cameraTranslation +=
-//         (cameraX * inputs.velocity.x + cameraY * inputs.velocity.y + cameraZ * inputs.velocity.z) * flySpeed * deltaTime;
-//     cameraTranslation += (cameraX * inputs.translation.x + cameraY * inputs.translation.y + cameraZ * inputs.translation.z);
+      // Fly keys
+      inputs.velocity.x += inputState.keyboardXAxis.getValue();
+      inputs.velocity.z += inputState.keyboardZAxis.getValue();
+    }
 
-//     // Reconstruct view matrix using the inverse rotation/translation of the camera
-//     float4x4 newViewMatrix = linalg::identity;
-//     newViewMatrix = linalg::mul(linalg::translation_matrix(-cameraTranslation), newViewMatrix);
-//     newViewMatrix = linalg::mul(linalg::rotation_matrix(linalg::qconj(cameraRotation)), newViewMatrix);
+    if (inputState.pointer.tertiaryButton) {
+      inputs.translation.x += -pointerDelta.x * panSpeed;
+      inputs.translation.y += pointerDelta.y * panSpeed;
+    }
 
-//     return newViewMatrix;
-//   }
+    if (_inputState.mouseWheel != 0.0f) {
+      inputs.translation.z += -_inputState.mouseWheel * scrollSpeed;
+    }
 
-//   void setInitialPivot(const float4x4 &initViewMatrix) {
-//     float4x4 invViewMatrix = linalg::inverse(initViewMatrix);
+    return inputs;
+  }
 
-//     float3 cameraTranslation;
-//     float3 cameraScale;
-//     float3x3 cameraRotationMatrix;
-//     gfx::decomposeTRS(invViewMatrix, cameraTranslation, cameraScale, cameraRotationMatrix);
-//     float4 cameraRotation = linalg::rotation_quat(cameraRotationMatrix);
+  // Applies camera inputs to a view matrix
+  void updateState(TargetCameraState &state, const CameraInputs &inputs, float deltaTime) {
+    float flySpeed = getParamVarOrDefault(_flySpeed, 1.0f) * 100.0f;
 
-//     float3 zDir = linalg::qzdir(cameraRotation);
-//     _distance = 10.0f; // Default distance
-//     _pivot = cameraTranslation + zDir * _distance;
-//   }
+    float4 rotPitch = linalg::rotation_quat(float3(1.0f, 0.0, 0.0f), state.rotation.x);
+    float4 rotYaw = linalg::rotation_quat(float3(0.0f, 1.0f, 0.0f), state.rotation.y);
+    float4 cameraRotation = linalg::qmul(rotYaw, rotPitch);
 
-//   SHVar activate(SHContext *context, const SHVar &input) {
-//     float4x4 viewMatrix = (Mat4)input;
+    float3 cameraX = linalg::qxdir(cameraRotation);
+    float3 cameraY = linalg::qydir(cameraRotation);
+    float3 cameraZ = linalg::qzdir(cameraRotation);
 
-//     if (_distance <= 0.0f)
-//       setInitialPivot(viewMatrix);
+    float distanceSpeedScale = linalg::clamp(state.distance, 1.0f, 100.0f);
 
-//     updateInputState(_inputState, _windowContext, _graphicsContext);
+    state.rotation.x += inputs.lookRotation.x;
+    state.rotation.y += inputs.lookRotation.y;
 
-//     CameraInputs cameraInputs = getCameraInputs(_inputState);
+    state.pivot += (inputs.velocity.x * cameraX +  //
+                    inputs.velocity.y * cameraY +  //
+                    inputs.velocity.z * cameraZ) * //
+                   (deltaTime * flySpeed * distanceSpeedScale);
 
-//     _result = applyCameraInputsToView(cameraInputs, viewMatrix, _inputState.deltaTime);
+    state.pivot -= (inputs.translation.x * cameraX + //
+                    inputs.translation.y * cameraY) *
+                   distanceSpeedScale; //
 
-//     return _result;
-//   }
+    state.distance = linalg::clamp(state.distance + inputs.translation.z, 0.2f, 100.0f);
+  }
 
-//   void cleanup() {
-//     PARAM_CLEANUP();
-//     _graphicsContext.cleanup();
-//     _windowContext.cleanup();
-//   }
-//   void warmup(SHContext *context) {
-//     PARAM_WARMUP(context);
-//     _graphicsContext.warmup(context);
-//     _windowContext.warmup(context);
-//   }
+  SHVar activate(SHContext *context, const SHVar &input) {
+    TargetCameraState state = TargetCameraState::fromTable((TableVar &)input);
 
-//   SHTypeInfo compose(SHInstanceData &data) {
-//     composeCheckGfxThread(data);
-//     return outputTypes().elements[0];
-//   }
+    updateInputState(_inputState, _inputContext);
+    CameraInputs cameraInputs = getCameraInputs(_inputState);
+    updateState(state, cameraInputs, _inputState.deltaTime);
 
-//   SHExposedTypesInfo requiredVariables() {
-//     static auto e = exposedTypesOf(RequiredGraphicsContext::getExposedTypeInfo(), RequiredWindowContext::getExposedTypeInfo());
-//     return e;
-//   }
-// };
+    return (_output = state);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    _inputContext.cleanup();
+  }
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _inputContext.warmup(context);
+  }
+
+  SHTypeInfo compose(SHInstanceData &data) { return outputTypes().elements[0]; }
+
+  SHExposedTypesInfo requiredVariables() {
+    static auto e = exposedTypesOf(decltype(_inputContext)::getExposedTypeInfo());
+    return e;
+  }
+};
+
+struct TargetCameraFromLookAt {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return TargetCameraStateTable::Type; }
+  static SHOptionalString help() { return SHCCSTR("Provides editor free camera controls"); }
+
+  PARAM_PARAMVAR(_target, "Target", "", {CoreInfo::NoneType, CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_position, "Position", "", {CoreInfo::NoneType, CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_target), PARAM_IMPL_FOR(_position));
+
+  TargetCameraStateTable _result;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    float3 pos = toFloat3(_position.get());
+    float3 target = toFloat3(_target.get());
+    float4x4 lookAt = gfx::safeLookat(pos, target);
+    float distance = linalg::length(target - pos);
+
+    auto state = TargetCameraState::deriveFrom(lookAt, distance);
+    _result.distance = Var(state.distance);
+    _result.pivot = toVar(state.pivot);
+    _result.rotation = toVar(state.rotation);
+    return _result;
+  }
+
+  void cleanup() { PARAM_CLEANUP(); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+};
+
+struct TargetCameraMatrix {
+  static SHTypesInfo inputTypes() { return TargetCameraStateTable::Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString help() { return SHCCSTR("Turns the target camera state into a view matrix"); }
+
+  PARAM_IMPL();
+
+  Mat4 _result;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    TableVar &inputTable = (TableVar &)input;
+    TargetCameraState state{
+        .pivot = toFloat3(inputTable.get<Var>("pivot")),
+        .distance = (float)(inputTable.get<Var>("distance")),
+        .rotation = toFloat2(inputTable.get<Var>("rotation")),
+    };
+
+    float4 rotPitch = linalg::rotation_quat(float3(1.0f, 0.0, 0.0f), state.rotation.x);
+    float4 rotYaw = linalg::rotation_quat(float3(0.0f, 1.0f, 0.0f), state.rotation.y);
+    float4 cameraRotation = linalg::qmul(rotYaw, rotPitch);
+
+    float3 lookDirection = -linalg::qzdir(cameraRotation);
+
+    // Reconstruct view matrix using the inverse rotation/translation of the camera
+    auto &newViewMatrix = (float4x4 &)_result;
+    newViewMatrix = linalg::identity;
+    newViewMatrix = linalg::mul(linalg::translation_matrix(state.pivot + lookDirection * state.distance), newViewMatrix);
+    newViewMatrix = linalg::mul(linalg::rotation_matrix(linalg::qconj(cameraRotation)), newViewMatrix);
+    return _result;
+  }
+
+  void cleanup() { PARAM_CLEANUP(); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+};
 
 void registerCameraShards() {
   REGISTER_SHARD("FreeCamera", FreeCameraShard);
-  // REGISTER_SHARD("PivotCamera", PivotCameraShard);
+  REGISTER_SHARD("TargetCamera", TargetCameraUpdate);
+  REGISTER_SHARD("TargetCamera.FromLookAt", TargetCameraFromLookAt);
+  REGISTER_SHARD("TargetCamera.Matrix", TargetCameraMatrix);
 }
 
 } // namespace gfx
