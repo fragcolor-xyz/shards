@@ -373,14 +373,15 @@ struct GridShard : public Base {
   static SHOptionalString help() { return SHCCSTR("Draws a grid"); }
 
   PARAM_PARAMVAR(_center, "Center", "Center of the disc", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_xBase, "XBase", "X direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType})
+  PARAM_PARAMVAR(_xBase, "XBase", "X direction of the grid", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the grid", {CoreInfo::Float3Type, CoreInfo::Float3VarType})
   PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space", {CoreInfo::NoneType, CoreInfo::IntType});
   PARAM_PARAMVAR(_stepSize, "StepSize", "Step size of the grid lines", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_size, "Size", "Number of grid lines", {CoreInfo::IntType, CoreInfo::IntVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the grid lines",
                  {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_thickness),
-             PARAM_IMPL_FOR(_stepSize), PARAM_IMPL_FOR(_color));
+             PARAM_IMPL_FOR(_stepSize), PARAM_IMPL_FOR(_size), PARAM_IMPL_FOR(_color));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
@@ -406,19 +407,23 @@ struct GridShard : public Base {
 
     float4 color = colorOrDefault(_color.get());
 
-    const int xl = 3;
-    const int yl = 3;
+    Var &sizeVar = (Var &)_size.get();
+    gfx::int2 gridSize{sizeVar.isNone() ? 8 : int(sizeVar)};
 
-    for (int y = -yl; y <= yl; y++) {
-      float3 yOffs = toFloat3(_yBase.get()) * float(y) * stepSize;
-      shapeRenderer.addLine(toFloat3(_center.get()) + toFloat3(_xBase.get()) * float(xl) * stepSize + yOffs,
-                            toFloat3(_center.get()) - toFloat3(_xBase.get()) * float(xl) * stepSize + yOffs, color, thickness);
+    if(gridSize.x < 0 || gridSize.y < 0) {
+      throw ActivationError("Grid size must be positive");
     }
 
-    for (int x = -xl; x <= xl; x++) {
+    for (int y = -gridSize.y; y <= gridSize.y; y++) {
+      float3 yOffs = toFloat3(_yBase.get()) * float(y) * stepSize;
+      shapeRenderer.addLine(toFloat3(_center.get()) + toFloat3(_xBase.get()) * float(gridSize.x) * stepSize + yOffs,
+                            toFloat3(_center.get()) - toFloat3(_xBase.get()) * float(gridSize.x) * stepSize + yOffs, color, thickness);
+    }
+
+    for (int x = -gridSize.x; x <= gridSize.x; x++) {
       float3 xOffs = toFloat3(_xBase.get()) * float(x) * stepSize;
-      shapeRenderer.addLine(toFloat3(_center.get()) + toFloat3(_yBase.get()) * float(yl) * stepSize + xOffs,
-                            toFloat3(_center.get()) - toFloat3(_yBase.get()) * float(yl) * stepSize + xOffs, color, thickness);
+      shapeRenderer.addLine(toFloat3(_center.get()) + toFloat3(_yBase.get()) * float(gridSize.y) * stepSize + xOffs,
+                            toFloat3(_center.get()) - toFloat3(_yBase.get()) * float(gridSize.y) * stepSize + xOffs, color, thickness);
     }
 
     return SHVar{};
