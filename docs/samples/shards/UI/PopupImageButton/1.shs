@@ -1,0 +1,30 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+      ui-draw-queue
+      UI.CentralPanel({
+        Once({
+          LoadImage("../../assets/ShardsLogo.png") = image
+        })
+        image | UI.PopupImageButton(
+          ID: "Send message"
+          Scale: @f2(0.1)
+          Contents: {
+            UI.Button(
+              Label: "Send message"
+              Action: {
+                "Message sent!" | Log
+              }
+            )
+          }
+        )
+      })
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)
