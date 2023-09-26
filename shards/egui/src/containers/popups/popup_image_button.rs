@@ -6,6 +6,7 @@ use std::ffi::CStr;
 
 use super::PopupLocation;
 use super::POPUPLOCATION_TYPES;
+use crate::EguiId;
 use crate::util;
 use crate::widgets::image_util;
 use crate::FLOAT2_VAR_SLICE;
@@ -270,12 +271,20 @@ impl PopupImageButton {
       }
 
       let response = ui.add(button);
-      let popup_id = if let Ok(id) = <&str>::try_from(self.id.get()) {
+      let mut custom_popup_id = if !self.id.get().is_none() {
+        let id: &str = self.id.get().try_into()?;
+        Some(ui.make_persistent_id(id)) // If given a custom id, do not cache or reusing the shard with different IDs will result in ID conflict
+      } else {
+        None
+      };
+
+      let popup_id = if !self.id.get().is_none() {
+        custom_popup_id.as_mut().unwrap()
+      } else {
+        let id = EguiId::new(self, 0);
         self
           .cached_id
           .get_or_insert_with(|| ui.make_persistent_id(id))
-      } else {
-        return Err("A PopupImageButton must be provided with a valid ID string.");
       };
 
       if response.clicked() {
