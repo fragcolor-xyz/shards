@@ -17,7 +17,7 @@ use shards::types::OptionalString;
 use shards::types::ANY_TYPES;
 use shards::types::{
   common_type, Context, ExposedInfo, ExposedTypes, InstanceData, ParamVar, Seq, ShardsVar, Type,
-  Types, Var, ANYS_TYPES, SHARDS_OR_NONE_TYPES, STRING_TYPES,
+  Types, Var, SHARDS_OR_NONE_TYPES, STRING_TYPES,
 };
 
 use crate::{CONTEXTS_NAME, FLOAT2_VAR_SLICE, PARENTS_UI_NAME};
