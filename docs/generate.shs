@@ -1,0 +1,225 @@
+;; path definitions
+@define(basePath "./")
+@define(shardsPath "docs/reference/shards/shards/") 
+@define(enumsPath "docs/reference/shards/enums/")
+@define(shardsDetailsPath "details/shards/")
+@define(shardsSamplePath "samples/shards/")
+
+;; computes the filename from the shard name
+@template(getFilename [path extension fallback-general] {
+  Maybe({
+    Regex.Match("""(\w+)\.(.*)""")
+    { Take(1) = first }
+    { Take(2) = second }
+    path >= f |
+    first | AppendTo(f)
+    "/" | AppendTo(f) 
+    second | AppendTo(f)
+    extension | AppendTo(f)
+    f | ToString
+    { fallback-general | If(Is(true) { "General/" } { "" }) } = fbg
+    [path fbg] | String.Join("/") | PrependTo(f)
+    extension | AppendTo(f)
+    f | ToString
+    true
+  })
+})
+
+@template(print-type-info [buffer input-types] {
+  input-types | ForEach({
+    Log("input-type")
+    ExpectTable = foo
+    { foo | Take("name") | ExpectString >= p-type-name }
+    { foo | Take("type") | ExpectInt >= p-type-type }
+    "[`" >> buffer, p-type-name >> buffer, "`](" >> buffer
+    p-type-name | Log("p-type-name")
+    p-type-type | Log("p-type-type")
+    Match([
+      2 { "../../../enums/" >> buffer, p-type-name >> buffer } ; Enum
+      15 { "../../types/#shard" >> buffer } ; ShardRef
+      54 { "../../types/#contextvar" >> buffer } ; ContextVar
+      56 { "../../types/#seq" >> buffer } ; Seq
+      57 { "../../types/#table" >> buffer } ; Table
+      59 { "../../types/#object" >> buffer } ; Object
+      61 { "../../types/#set" >> buffer } ; Set
+      none { "../../types/#" >> buffer, p-type-name | String.ToLower >> buffer }
+    ])
+    ")" >> buffer
+  })
+})
+
+;; dumps the generated content to the final file
+@template(dump-shard [name record] {
+  record
+  { Take("help") | ExpectString = help }
+  { Take("parameters") | ExpectSeq = parameters }
+  { Take("inputHelp") | ExpectString = input-help }
+  { Take("outputHelp") | ExpectString = output-help }
+  { Take("inputTypes") | ExpectSeq = input-types }
+  { Take(["outputHelp" "outputTypes"]) = output-types }
+  Get(record "properties" Default: {}) = properties
+  [@basePath @shardsPath] | String.Join = shards-full-path
+  name | @getFilename(shards-full-path ".md" true) = filename
+
+  [""] >= o
+
+  ; metadata (front matter)
+  "---\r\n" >> o
+  "authors: Fragcolor & contributors\r\n" >> o
+  "license: CC-BY-SA-4.0\r\n" >> o
+  "---\r\n" >> o
+  "\r\n\r\n" >> o
+
+  ; title
+  "# " >> o, name >> o, "\r\n\r\n" >> o
+
+  ;  ;; Combined table showing the input/outpus and parameters
+  "<div class=\"sh-parameters\" markdown=\"1\">\r\n" >> o
+  "| Name | - {: #sh-flags-row} | Description | Default | Type |\r\n" >> o
+  "|------|---------------------|-------------|---------|------|\r\n" >> o
+  
+  "| `<input>` ||" >> o
+  input-help >> o " | " >> o "| " >> o
+  @print-type-info(o input-types)
+  " |\r\n" >> o
+
+  "| `<output>` ||" >> o
+  output-help >> o " | " >> o "| " >> o
+  @print-type-info(o output-types)
+  " |\r\n" >> o
+
+  When({ Count(parameters) | IsMore(0) } {
+    parameters | ForEach({
+      ExpectTable
+      { Take("name") >= p-name }
+      { Take("types") | ExpectSeq >= p-types }
+      { Take("help") | ExpectString >= p-help }
+      { Take("default") >= p-default }
+      { Take("optional") | ExpectBool >= p-optional }
+      "| " >> o, p-name >> o
+      p-optional
+      If(Is(true) {
+        " | :fontawesome-solid-circle-plus:{title=\" Optional\"} " >> o
+      } {
+        "` | " >> o
+      }
+      " | " >> o p-help >> o
+      " | `" >> o, p-default >> o
+      "` | " >> o
+      @print-type-info(o p-types)
+      " |\r\n" >> o})})
+
+  "\r\n</div>\r\n" >> o
+  "\r\n" >> o
+
+  ;; deprecated warning
+  When({ Get(properties "deprecated" Default: false) }
+    { "--8<-- \"includes/deprecated.md\"\r\n\r\n" >> o })
+  
+  ;; experimental warning
+  When({ Get(properties "experimental" Default: false) }
+    { "--8<-- \"includes/experimental.md\"\r\n\r\n" >> o })
+  
+  ; Help text
+  help >> o, "\r\n\r\n" >> o
+  
+  ; details (optional)
+  When({ [@basePath @shardsDetailsPath] | String.Join = details-path, name | @getFilename(details-path ".md" true) | FS.IsFile } {
+    "## Details\r\n\r\n" >> o
+    "--8<-- " >> o
+    name | @getFilename(@shardsDetailsPath ".md" true) >> o
+    "\r\n" >> o
+    "\r\n\r\n" >> o
+  })
+  
+  ; examples (optional)
+  When({ [@basePath @shardsSamplePath] | String.Join = sample-path, name | @getFilename(sample-path "" true) | FS.IsDirectory } {
+    "## Examples\r\n\r\n" >> o
+    [@basePath @shardsSamplePath] | String.Join = sample-path
+    name | @getFilename(sample-path "" true)
+    FS.Iterate
+    ForEach({
+      When({ FS.Extension | Is(".edn") } {
+        = sample-script
+        {
+          FS.Filename(NoExtension: true)
+        }
+        = sample-filename
+        [name "/" sample-filename ".edn"] | String.Join = sample-script-fn
+        [name "/" sample-filename ".edn.log"] | String.Join = sample-log-fn
+        [name "/" sample-filename ".out.md"] | String.Join = sample-out-md-fn
+        sample-out-md-fn | @getFilename(sample-path "" true)
+        FS.IsFile = sample-have-out-md
+        "=== \"Code\"\r\n\r\n" >> o
+        "    ```clj linenums=\"1\"\r\n" >> o
+        "    --8<-- \"" >> o
+        sample-script-fn | @getFilename(@shardsSamplePath "" true) >> o "\"\r\n" >> o
+        "    ```\r\n\r\n" >> o
+
+        "=== \"Output\"\r\n\r\n" >> o
+        ; Optionally include the .out.md file next to the sample log  
+        sample-have-out-md
+        When({ Is(true) } { 
+          "    --8<-- \"" >> o |
+          sample-out-md-fn | @getFilename(@shardsSamplePath "" true) >> o
+          "\"\r\n\r\n" >> o
+        })
+
+        "    ```\r\n" >> o
+        "    --8<-- \"" >> o
+        sample-log-fn | @getFilename(@shardsSamplePath "" true) >> o
+        "\"\r\n" >> o
+        "    ```\r\n" >> o
+
+        "&nbsp;\r\n" >> o
+      })})})
+
+  "--8<-- \"includes/license.md\"\r\n" >> o
+
+  filename | FS.Write(content Overwrite: true)
+  Msg("done.")})
+
+@template(dump-enum [name] {
+  Wire(
+    ["dump-enum-" name] | String.Join
+    Once(
+     enum-info(name) = record
+     name (getFilename (str @basePath enumsPath) ".md" false) = filename
+     (Get record "values") = values
+     [""] >= o)
+
+   ; metadata (front matter)
+   "---\r\n" >> o
+   "authors: Fragcolor & contributors\r\n" >> o
+   "license: CC-BY-SA-4.0\r\n" >> o
+   "---\r\n" >> o
+   "\r\n\r\n" >> o
+
+   ; title
+   "# " >> o, name >> o, "\r\n\r\n" >> o
+
+;   ;; Table showing the valid enum values
+;   "<div class=\"sh-parameters\" markdown=\"1\">\r\n" >> o
+;   "| Value  | Description |\r\n" >> o
+;   "|------|---------------------|\r\n" >> o
+
+   When({ Count(values) | IsMore(0) } {
+     values
+     ForEach({
+       ExpectTable
+       Take("label") >= label
+       Take("description") >= description
+       "| `" >> o label >> o
+       "` | " >> o description >> o
+       " |\r\n" >> o
+   })})
+
+   "\r\n</div>\r\n" >> o
+   "\r\n" >> o
+
+   "--8<-- \"includes/license.md\"\r\n" >> o
+
+   filename | FS.Write(content Overwrite: true)
+   Msg("done."))})
+
+Shards.Enumerate | Map({ = shard-name | Shards.Help = shard-help @dump-shard(shard-name shard-help) })
