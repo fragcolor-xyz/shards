@@ -250,7 +250,7 @@ fn build(matches: &ArgMatches, as_json: bool) -> Result<(), &'static str> {
     // get absolute parent path of the file
     let parent_path = file_path.parent().unwrap().to_str().unwrap();
 
-    let mut env = ReadEnv::new(file_path.to_str().unwrap(), parent_path);
+    let mut env = ReadEnv::new(file_path.to_str().unwrap(), parent_path, parent_path);
     let ast = read_with_env(&file_content, &mut env).map_err(|e| {
       shlog!("Error: {:?}", e);
       "Failed to parse file"
