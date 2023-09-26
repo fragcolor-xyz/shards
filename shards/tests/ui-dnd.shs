@@ -20,26 +20,26 @@
       94.0 = radius
 
       When({UI.Property(UIProperty::IsAnythingBeingDragged)} {
-        UI.Absolute(Contents: {
+        UI.Area(Contents: {
           UI.DragAndDrop({
             UI.Layout(Class: ui-class FillWidth: true FillHeight: true)
           }
           Drop: {
             Log("Global drop")
           })
-        } Position: @f2(0 0) Order: UIOrder::Background)
+        } Position: @f2(0 0) Order: Order::Background)
       })
 
-      UI.Absolute(Contents: {
+      UI.Area(Contents: {
         Once({ null | Expect(@type(Type::Any)) >= dropped-item })
         UI.DragAndDrop({
           UI.Frame(
-          InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
-          FillColor: @color(40 40 40)
-          StrokeColor: @color(90 90 32) StrokeWidth: 2.0
-          Contents: {
-            "The strict drop box" | UI.Label
-          })
+            InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
+            FillColor: @color(40 40 40)
+            StrokeColor: @color(90 90 32) StrokeWidth: 2.0
+            Contents: {
+              "The strict drop box" | UI.Label
+            })
         } Drop: {
           = item
           Log("Dropping item")
@@ -53,18 +53,18 @@
         dropped-item | WhenNot({IsNone} {
           ToString | UI.Label
         })
-      } Position: @f2(50 300))
+      } Position: @f2(50 300) Order: Order::Middle)
 
       Once({ null | Expect(@type(Type::Any)) >= dropped-item-2 })
-      UI.Absolute(Contents: {
+      UI.Area(Contents: {
         UI.DragAndDrop({
           UI.Frame(
-          InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
-          FillColor: @color(50 50 21)
-          StrokeColor: @color(100 100 100) StrokeWidth: 2.0
-          Contents: {
-            "The anything drop box" | UI.Label
-          })
+            InnerMargin: @f4(10) OuterMargin: @f4(0) Rounding: @f4(5)
+            FillColor: @color(50 50 21)
+            StrokeColor: @color(100 100 100) StrokeWidth: 2.0
+            Contents: {
+              "The anything drop box" | UI.Label
+            })
         } Drop: {
           = item
           Log("Dropping item")
@@ -73,10 +73,10 @@
         dropped-item-2 | WhenNot({IsNone} {
           ToString | UI.Label
         })
-      } Position: @f2(200 300))
+      } Position: @f2(200 300) Order: Order::Middle)
 
       ; The list of items to pick from
-      UI.Absolute(Contents: {
+      UI.Area(Contents: {
         items | DoMany({
           ExpectTable = item
           UI.DragAndDrop({
@@ -85,7 +85,7 @@
             UI.Button(label { "Hi" Log })
           })
         })
-      } Position: @f2(50 50))
+      } Position: @f2(50 50) Order: Order::Middle)
     })
 
     GFX.Render(Steps: render-steps)

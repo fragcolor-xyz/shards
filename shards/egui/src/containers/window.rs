@@ -3,6 +3,8 @@
 
 use super::Window;
 use super::WindowFlags;
+use crate::ANCHOR_TYPES;
+use crate::Anchor;
 use crate::containers::SEQ_OF_WINDOW_FLAGS;
 use crate::containers::WINDOW_FLAGS_TYPE;
 use crate::util;
@@ -254,7 +256,7 @@ impl LegacyShard for Window {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let gui_ctx = util::get_current_context(&self.instance)?;
+    let gui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
 
     let mut failed = false;
     if !self.contents.is_empty() {
