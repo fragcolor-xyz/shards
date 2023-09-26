@@ -62,9 +62,7 @@ struct GizmosContextShard {
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
-    if (auto exposed = findExposedVariable(data.shared, OptionalInputContext::variableName())) {
-      _requiredVariables.push_back(exposed.value());
-    }
+    _inputContext.compose(data, _requiredVariables);
 
     if (!_queue.isVariable())
       throw ComposeError("Queue not set");

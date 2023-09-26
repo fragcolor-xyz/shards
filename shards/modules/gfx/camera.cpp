@@ -62,6 +62,17 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
   inputState.pointer.position = inputContext.getState().cursorPosition;
   inputState.mouseWheel = 0;
 
+  auto &consumeFlags = inputContext.getConsumeFlags();
+  if (inputContext.getState().mouseButtonState != 0) {
+    consumeFlags.wantsKeyboardInput = true;
+    consumeFlags.wantsPointerInput = true;
+    consumeFlags.requestFocus = true;
+  } else {
+    consumeFlags.wantsKeyboardInput = false;
+    consumeFlags.wantsPointerInput = false;
+    consumeFlags.requestFocus = false;
+  }
+
   for (auto &event : inputContext.getEvents()) {
     std::visit(
         [&](auto &&event) {
@@ -244,21 +255,18 @@ struct TargetCameraState {
   float distance{};
   float2 rotation{};
 
-  static TargetCameraState deriveFrom(float4x4 invViewMat, float pivotDistance) {
-    float3 translation;
-    float3 scale;
-    float3x3 rotationMatrix;
-    decomposeTRS(invViewMat, translation, scale, rotationMatrix);
-    float4 rotation = linalg::rotation_quat(rotationMatrix);
+  static TargetCameraState fromLookAt(float3 pos, float3 target) {
+    float distance = linalg::length(target - pos);
 
-    // float4 r2 = linalg::normalize(float4(0, rotation.y, 0, rotation.w));
-    float yaw = std::atan2(rotation.y, rotation.w) * 2.0f;
-    float pitch = std::asin(-2.0 * (rotation.x * rotation.z - rotation.w * rotation.y));
+    float3 dir = (target - pos) / distance;
+    // float zl = std::sqrt(dir.z * dir.z + dir.x * dir.x);
+    float yaw = std::atan2( -dir.x, -dir.z);
+    float pitch = std::asin(dir.y);
 
     TargetCameraState result;
     result.rotation = float2(pitch, yaw);
-    result.pivot = translation + -linalg::qzdir(rotation) * pivotDistance;
-    result.distance = pivotDistance;
+    result.pivot = target;
+    result.distance = distance;
     return result;
   }
 
@@ -430,10 +438,8 @@ struct TargetCameraFromLookAt {
   SHVar activate(SHContext *context, const SHVar &input) {
     float3 pos = toFloat3(_position.get());
     float3 target = toFloat3(_target.get());
-    float4x4 lookAt = gfx::safeLookat(pos, target);
-    float distance = linalg::length(target - pos);
 
-    auto state = TargetCameraState::deriveFrom(lookAt, distance);
+    auto state = TargetCameraState::fromLookAt(pos, target);
     _result.distance = Var(state.distance);
     _result.pivot = toVar(state.pivot);
     _result.rotation = toVar(state.rotation);
