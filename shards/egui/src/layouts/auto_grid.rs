@@ -27,9 +27,13 @@ struct AutoGridShard {
   pub max_grid_width: ParamVar,
   #[shard_param("ItemWidth", "The width of each item.", FLOAT_VAR_SLICE)]
   pub item_width: ParamVar,
-  #[shard_param("Spacing", "Spacing between columns/rows.", FLOAT2_VAR_SLICE)]
-  pub spacing: ParamVar,
+  #[shard_param("ColumnSpacing", "Spacing between columns.", FLOAT_VAR_SLICE)]
+  pub column_spacing: ParamVar,
+  #[shard_param("RowSpacing", "Spacing between rows.", FLOAT_VAR_SLICE)]
+  pub row_spacing: ParamVar,
+  #[shard_warmup]
   contexts: ParamVar,
+  #[shard_warmup]
   parents: ParamVar,
   inner_exposed: ExposedTypes,
   #[shard_required]
@@ -44,7 +48,8 @@ impl Default for AutoGridShard {
       striped: ParamVar::new(false.into()),
       max_grid_width: ParamVar::default(),
       item_width: ParamVar::default(),
-      spacing: ParamVar::default(),
+      column_spacing: ParamVar::default(),
+      row_spacing: ParamVar::default(),
       required: Vec::new(),
       contents: ShardsVar::default(),
       inner_exposed: ExposedTypes::new(),
@@ -57,36 +62,27 @@ impl Shard for AutoGridShard {
   fn input_types(&mut self) -> &Types {
     &ANYS_TYPES
   }
-  
+
   fn output_types(&mut self) -> &Types {
     &ANYS_TYPES
   }
 
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {
     self.warmup_helper(context)?;
-    self.contexts.warmup(context);
-    self.parents.warmup(context);
-    self.striped.warmup(context);
-    self.max_grid_width.warmup(context);
-    self.item_width.warmup(context);
-    self.spacing.warmup(context);
+
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
     self.cleanup_helper()?;
-    self.contexts.cleanup();
-    self.parents.cleanup();
-    self.striped.cleanup();
-    self.max_grid_width.cleanup();
-    self.spacing.cleanup();
+
     Ok(())
   }
 
   fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
     Some(&self.inner_exposed)
   }
-  
+
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
     util::require_parents(&mut self.required);
@@ -115,7 +111,7 @@ impl Shard for AutoGridShard {
     // Always passthrough the input
     Ok(input_type)
   }
-  
+
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if self.contents.is_empty() {
       return Ok(*input);
@@ -132,12 +128,21 @@ impl Shard for AutoGridShard {
         grid = grid.striped(striped.try_into()?);
       }
 
-      let spacing = self.spacing.get();
-      if !spacing.is_none() {
-        let spacing: (f32, f32) = spacing.try_into()?;
-        let spacing: egui::Vec2 = spacing.into();
-        grid = grid.spacing(spacing)
+      let column_spacing = self.column_spacing.get();
+      let column_spacing: f32 = if !column_spacing.is_none() {
+        column_spacing.try_into()?
+      } else {
+        ui.style().spacing.item_spacing.x
       };
+
+      let row_spacing = self.row_spacing.get();
+      let row_spacing: f32 = if !row_spacing.is_none() {
+        row_spacing.try_into()?
+      } else {
+        ui.style().spacing.item_spacing.y
+      };
+
+      grid = grid.spacing(egui::Vec2::new(column_spacing, row_spacing));
 
       let item_width = self.item_width.get();
       let item_width: f32 = if !item_width.is_none() {
