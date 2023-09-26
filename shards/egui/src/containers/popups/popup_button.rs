@@ -31,7 +31,7 @@ use shards::{
   "UI.PopupButton",
   "Wraps a button with a popup that can act as a drop-down menu or suggestion menu."
 )]
-struct PopupButtonShard {
+struct PopupButton {
   #[shard_param("Label", "The text label of the button.", STRING_TYPES)]
   pub label: ParamVar,
   #[shard_param("Wrap", "Wrap the text depending on the layout.", BOOL_OR_NONE_SLICE)]
@@ -59,7 +59,7 @@ struct PopupButtonShard {
   required: ExposedTypes,
 }
 
-impl Default for PopupButtonShard {
+impl Default for PopupButton {
   fn default() -> Self {
     Self {
       contexts: ParamVar::new_named(CONTEXTS_NAME),
@@ -78,14 +78,14 @@ impl Default for PopupButtonShard {
 }
 
 #[shard_impl]
-impl Shard for PopupButtonShard {
+impl Shard for PopupButton {
   fn input_types(&mut self) -> &Types {
     &ANY_TYPES
   }
 
   fn input_help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
-      "The value that will be passed to the Contents shards of the rendered window."
+      "The value that will be passed to the Contents shards of the popup button."
     ))
   }
 
@@ -190,5 +190,5 @@ impl Shard for PopupButtonShard {
 }
 
 pub fn register_shards() {
-  register_shard::<PopupButtonShard>();
+  register_shard::<PopupButton>();
 }
