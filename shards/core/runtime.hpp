@@ -1545,7 +1545,10 @@ template <typename T> struct WireDoppelgangerPool {
   template <class Composer, typename Anything> T *acquire(Composer &composer, Anything *anything) {
     ZoneScoped;
 
+    std::unique_lock<std::mutex> lock(_poolMutex);
     if (_avail.size() == 0) {
+      lock.unlock();
+
       Serialization serializer;
       std::stringstream stream(_wireStr);
       Reader r(stream);
@@ -1554,8 +1557,7 @@ template <typename T> struct WireDoppelgangerPool {
       auto wire = SHWire::sharedFromRef(vwire.payload.wireValue);
       destroyVar(vwire);
 
-      std::unique_lock<std::mutex> _l(_poolMutex);
-
+      lock.lock();
       auto &fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->wire = wire;
       composer.compose(wire.get(), anything, false);
@@ -1563,9 +1565,9 @@ template <typename T> struct WireDoppelgangerPool {
 
       return fresh.get();
     } else {
-      std::unique_lock<std::mutex> _l(_poolMutex);
-
       auto res = _avail.extract(_avail.begin());
+      lock.unlock();
+
       auto &value = res.value();
       composer.compose(value->wire.get(), anything, true);
 
