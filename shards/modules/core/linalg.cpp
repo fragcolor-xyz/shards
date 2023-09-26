@@ -389,48 +389,6 @@ struct Decompose {
   }
 };
 
-// struct Deproject {
-//   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
-//   static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
-
-//   PARAM_PARAMVAR(_mtx, "Matrix", "The combined view-projection matrix to use",
-//                  {CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
-//   PARAM_PARAMVAR(_screenSize, "ScreenSize", "The combined view-projection matrix to use",
-//                  {CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
-//   PARAM_PARAMVAR(_flipY, "FlipY", "Flip Y coordinate (on by default)",
-//                  {CoreInfo::BoolType, Type::VariableOf(CoreInfo::BoolVarType)});
-//   PARAM_IMPL(PARAM_IMPL_FOR(_mtx), PARAM_IMPL_FOR(_screenSize), PARAM_IMPL_FOR(_flipY));
-
-//   PARAM_REQUIRED_VARIABLES();
-//   SHTypeInfo compose(SHInstanceData &data) {
-//     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-//     return outputTypes().elements[0];
-//   }
-
-//   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-//   void cleanup() { PARAM_CLEANUP(); }
-
-//   SHVar activate(SHContext *context, const SHVar &input) {
-//     using namespace linalg::aliases;
-
-//     float4x4 mat = linalg::inverse(toFloat4x4(_mtx.get()));
-//     auto transformed = linalg::mul(mat, float4(toVec<float3>(input), 1.0f));
-
-//     float2 screenSize = toVec<float2>(_screenSize.get());
-//     float3 deprojected = (transformed.xyz() / transformed.w);
-
-//     auto &flipY = (Var &)_flipY.get();
-//     if (flipY.isNone() || (bool)flipY) {
-//       deprojected.y = -deprojected.y;
-//     }
-
-//     deprojected = deprojected * float3(2.0f, 2.0f, 1.0f) - float3(1.0f, 1.0f, 0.0f);
-//     deprojected *= float3(screenSize.x, screenSize.y, 0.0f);
-
-//     return Vec3(deprojected);
-//   }
-// };
-
 struct Project {
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
@@ -466,10 +424,72 @@ struct Project {
       projected.y = -projected.y;
     }
 
-    projected = (projected + float3(1.0f, 1.0f, 0.0f)) / float3(2.0f, 2.0f, 1.0f) ;
+    projected = (projected + float3(1.0f, 1.0f, 0.0f)) / float3(2.0f, 2.0f, 1.0f);
     projected *= float3(screenSize.x, screenSize.y, 0.0f);
 
     return Vec3(projected);
+  }
+};
+
+struct QuaternionMultiply {
+  Vec4 _output{};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::Float4Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
+  static SHOptionalString help() { return SHCCSTR("Rotate a quaternion by another quaternion"); }
+
+  PARAM_PARAMVAR(_operand, "Operand", "", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_operand));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup() { PARAM_CLEANUP(); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (_operand.isNone()) {
+      throw ActivationError("Expected an operand");
+    }
+
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output = linalg::qmul(toFloat4(input), toFloat4(_operand.get()));
+    return _output;
+  }
+};
+
+struct QuaternionRotate {
+  Vec3 _output{};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
+  static SHOptionalString help() { return SHCCSTR("Rotate a vector by a quaternion"); }
+
+  PARAM_PARAMVAR(_operand, "Operand", "", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_operand));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup() { PARAM_CLEANUP(); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (_operand.isNone()) {
+      throw ActivationError("Expected an operand");
+    }
+
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output = linalg::qrot(toFloat4(_operand.get()), toFloat3(input));
+    return _output;
   }
 };
 
@@ -500,5 +520,6 @@ SHARDS_REGISTER_FN(linalg) {
   REGISTER_SHARD("Math.MatIdentity", MatIdentity);
   REGISTER_SHARD("Math.Decompose", Decompose);
   REGISTER_SHARD("Math.Project", Project);
-  // REGISTER_SHARD("Math.Deproject", Deproject);
+  REGISTER_SHARD("Math.QuatMultiply", QuaternionMultiply);
+  REGISTER_SHARD("Math.QuatRotate", QuaternionRotate);
 }

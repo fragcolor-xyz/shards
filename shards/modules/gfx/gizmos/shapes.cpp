@@ -2,6 +2,7 @@
 #include <shards/linalg_shim.hpp>
 #include <shards/core/params.hpp>
 #include <gfx/gizmos/shapes.hpp>
+#include <cmath>
 
 namespace shards {
 namespace Gizmos {
@@ -286,7 +287,7 @@ struct SolidRectShard : public Base {
     float2 size = sizeVar.isNone() ? float2(1.0f, 1.0f) : toFloat2(sizeVar);
     Var cullingVar(_culling.get());
     bool culling = cullingVar.isNone() ? true : bool(cullingVar);
-    
+
     shapeRenderer.addSolidRect(toFloat3(_center.get()), toFloat3(_xBase.get()), toFloat3(_yBase.get()), size,
                                colorOrDefault(_color.get()), culling);
 
@@ -317,8 +318,8 @@ struct DiscShard : public Base {
                  {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the disc", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_PARAMVAR(_culling, "Culling", "Back-face culling of the disc", {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), 
-             PARAM_IMPL_FOR(_outerRadius), PARAM_IMPL_FOR(_innerRadius), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
+  PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_outerRadius),
+             PARAM_IMPL_FOR(_innerRadius), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
   SHTypeInfo compose(SHInstanceData &data) {
     gfx::composeCheckGfxThread(data);
@@ -366,6 +367,165 @@ struct DiscShard : public Base {
   }
 };
 
+struct GridShard : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Draws a grid"); }
+
+  PARAM_PARAMVAR(_center, "Center", "Center of the disc", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_xBase, "XBase", "X direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType})
+  PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space", {CoreInfo::NoneType, CoreInfo::IntType});
+  PARAM_PARAMVAR(_stepSize, "StepSize", "Step size of the grid lines", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_color, "Color", "Linear color of the grid lines",
+                 {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_thickness),
+             PARAM_IMPL_FOR(_stepSize), PARAM_IMPL_FOR(_color));
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    gfx::composeCheckGfxThread(data);
+
+    if (_center->valueType == SHType::None)
+      throw ComposeError("Center is required");
+    if (_xBase->valueType == SHType::None)
+      throw ComposeError("XBase is required");
+    if (_yBase->valueType == SHType::None)
+      throw ComposeError("YBase is required");
+
+    return shards::CoreInfo::NoneType;
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
+    auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
+
+    int thickness = _thickness->isNone() ? 1 : int32_t(*_thickness);
+
+    Var &stepSizeVar = (Var &)_stepSize.get();
+    float stepSize = stepSizeVar.isNone() ? 1.0f : float(stepSizeVar);
+
+    float4 color = colorOrDefault(_color.get());
+
+    const int xl = 3;
+    const int yl = 3;
+
+    for (int y = -yl; y <= yl; y++) {
+      float3 yOffs = toFloat3(_yBase.get()) * float(y) * stepSize;
+      shapeRenderer.addLine(toFloat3(_center.get()) + toFloat3(_xBase.get()) * float(xl) * stepSize + yOffs,
+                            toFloat3(_center.get()) - toFloat3(_xBase.get()) * float(xl) * stepSize + yOffs, color, thickness);
+    }
+
+    for (int x = -xl; x <= xl; x++) {
+      float3 xOffs = toFloat3(_xBase.get()) * float(x) * stepSize;
+      shapeRenderer.addLine(toFloat3(_center.get()) + toFloat3(_yBase.get()) * float(yl) * stepSize + xOffs,
+                            toFloat3(_center.get()) - toFloat3(_yBase.get()) * float(yl) * stepSize + xOffs, color, thickness);
+    }
+
+    return SHVar{};
+  }
+
+  void warmup(SHContext *context) {
+    baseWarmup(context);
+    PARAM_WARMUP(context);
+  }
+  void cleanup() {
+    baseCleanup();
+    PARAM_CLEANUP();
+  }
+};
+
+struct RefSpaceGridOverlayShard : public Base {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHOptionalString help() { return SHCCSTR("Draws a grid"); }
+
+  PARAM_PARAMVAR(_center, "Center", "Center of the disc", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_xBase, "XBase", "X direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space", {CoreInfo::NoneType, CoreInfo::IntType});
+  PARAM_PARAMVAR(_stepSize, "StepSize", "Step size of the grid lines", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_color, "Color", "Linear color of the grid lines",
+                 {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_thickness),
+             PARAM_IMPL_FOR(_stepSize), PARAM_IMPL_FOR(_color));
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    gfx::composeCheckGfxThread(data);
+
+    if (_center->valueType == SHType::None)
+      throw ComposeError("Center is required");
+    if (_xBase->valueType == SHType::None)
+      throw ComposeError("XBase is required");
+    if (_yBase->valueType == SHType::None)
+      throw ComposeError("YBase is required");
+
+    return shards::CoreInfo::NoneType;
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
+    auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
+
+    int thickness = _thickness->isNone() ? 1 : int32_t(*_thickness);
+
+    Var &stepSizeVar = (Var &)_stepSize.get();
+    float stepSize = stepSizeVar.isNone() ? 1.0f : float(stepSizeVar);
+
+    float4 baseColor = colorOrDefault(_color.get());
+
+    const int xl = 3;
+    const int yl = 3;
+
+    float3 axes[] = {
+        float3(1, 0, 0),
+        float3(0, 1, 0),
+        float3(0, 0, 1),
+    };
+
+    float3 gridX = toFloat3(_xBase.get());
+    float3 gridY = toFloat3(_yBase.get());
+    int axisMap[2];
+    float signMap[2];
+
+    auto mapAxis = [](float3 v, float &outSign) {
+      int r = 0;
+      float m = std::abs(v.x);
+      if (std::abs(v.y) > m) {
+        r = 1;
+        m = std::abs(v.y);
+      }
+      if (std::abs(v.z) > m) {
+        r = 2;
+      }
+
+      outSign = std::signbit(v[r]) ? -1.0f : 1.0f;
+      return r;
+    };
+
+    axisMap[0] = mapAxis(gridX, signMap[0]);
+    axisMap[1] = mapAxis(gridY, signMap[1]);
+
+    for (int a = 0; a < 2; a++) {
+      float3 axis = axes[axisMap[a]];
+      float3 otherAxis = axes[axisMap[(a + 1) % 2]];
+      float3 oaOffset = otherAxis * 0.01f;
+      shapeRenderer.addLine(toFloat3(_center.get()) + axis * float(xl) * stepSize + oaOffset, toFloat3(_center.get()) + oaOffset,
+                            float4(axis, 1.f) * baseColor, thickness);
+    }
+
+    return SHVar{};
+  }
+
+  void warmup(SHContext *context) {
+    baseWarmup(context);
+    PARAM_WARMUP(context);
+  }
+  void cleanup() {
+    baseCleanup();
+    PARAM_CLEANUP();
+  }
+};
+
 void registerShapeShards() {
   REGISTER_SHARD("Gizmos.Line", LineShard);
   REGISTER_SHARD("Gizmos.Circle", CircleShard);
@@ -374,6 +534,8 @@ void registerShapeShards() {
   REGISTER_SHARD("Gizmos.Point", PointShard);
   REGISTER_SHARD("Gizmos.SolidRect", SolidRectShard);
   REGISTER_SHARD("Gizmos.Disc", DiscShard);
+  REGISTER_SHARD("Gizmos.Grid", GridShard);
+  REGISTER_SHARD("Gizmos.RefspaceGridOverlay", RefSpaceGridOverlayShard);
 }
 } // namespace Gizmos
 } // namespace shards

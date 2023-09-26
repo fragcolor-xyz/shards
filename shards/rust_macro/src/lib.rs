@@ -122,6 +122,7 @@ fn read_enum_value_attr(attrs: &Vec<syn::Attribute>) -> Result<Option<LitStr>, E
 }
 
 fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
+  let vis = enum_.vis;
   let enum_id = enum_.ident;
   let enum_name = enum_id.to_string();
 
@@ -178,7 +179,7 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
 
   Ok(
     quote! {
-      struct #enum_info_id {
+      #vis struct #enum_info_id {
         name: &'static str,
         desc: shards::types::OptionalString,
         enum_type: shards::types::Type,
@@ -188,9 +189,9 @@ fn generate_enum_wrapper(enum_: syn::ItemEnum) -> Result<TokenStream, Error> {
       }
 
       lazy_static::lazy_static! {
-        static ref #enum_info_instance_id: #enum_info_id = #enum_info_id::new();
-        static ref #typedef_id: shards::types::Type = #enum_info_instance_id.enum_type;
-        static ref #typedef_vec_id: shards::types::Types = vec![*#typedef_id];
+        #vis static ref #enum_info_instance_id: #enum_info_id = #enum_info_id::new();
+        #vis static ref #typedef_id: shards::types::Type = #enum_info_instance_id.enum_type;
+        #vis static ref #typedef_vec_id: shards::types::Types = vec![*#typedef_id];
       }
 
       impl shards::core::EnumRegister for #enum_id {
@@ -519,7 +520,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
 
     impl shards::shard::ShardGenerated for #struct_id {
       fn register_name() -> &'static str {
-        shards::cstr!(#shard_name_expr) 
+        shards::cstr!(#shard_name_expr)
       }
 
       fn name(&mut self) -> &str {

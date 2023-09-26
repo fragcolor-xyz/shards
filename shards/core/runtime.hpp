@@ -119,6 +119,7 @@ struct SHContext {
 #endif
   SHDuration next{};
 
+  SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
 
   constexpr void stopFlow(const SHVar &lastValue) {

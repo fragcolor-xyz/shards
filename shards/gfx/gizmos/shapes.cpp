@@ -160,8 +160,11 @@ void ShapeRenderer::addLine(float3 a, float3 b, float3 dirA, float3 dirB, float4
 }
 
 void ShapeRenderer::addLine(float3 a, float3 b, float4 color, uint32_t thickness) {
-  float3 direction = linalg::normalize(b - a);
-  addLine(a, b, direction, direction, color, thickness);
+  float len = linalg::length(b - a);
+  if (len > 0) {
+    float3 direction = (b - a) / len;
+    addLine(a, b, direction, direction, color, thickness);
+  }
 }
 
 void ShapeRenderer::addCircle(float3 center, float3 xBase, float3 yBase, float radius, float4 color, uint32_t thickness,

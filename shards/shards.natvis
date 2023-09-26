@@ -15,6 +15,7 @@
 		<DisplayString Condition="valueType == SHType::Float3">{payload.float3Value}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Float4">{payload.float4Value}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Object">{payload.objectValue}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Bool">{payload.boolValue}</DisplayString>
 		<DisplayString Condition="valueType == SHType::Enum">{payload.enumValue} (Enum)</DisplayString>
 		<DisplayString Condition="valueType == SHType::Seq">[...]</DisplayString>
 		<DisplayString Condition="valueType == SHType::Table">{{...}}</DisplayString>
@@ -43,6 +44,7 @@
 		<DisplayString Condition="basicType == SHType::Float3">Float3</DisplayString>
 		<DisplayString Condition="basicType == SHType::Float4">Float4</DisplayString>
 		<DisplayString Condition="basicType == SHType::Object">Object</DisplayString>
+		<DisplayString Condition="basicType == SHType::Bool">Bool</DisplayString>
 		<DisplayString Condition="basicType == SHType::Enum">Enum</DisplayString>
 		<DisplayString Condition="basicType == SHType::Seq">[...]</DisplayString>
 		<DisplayString Condition="basicType == SHType::Table">{{...}}</DisplayString>

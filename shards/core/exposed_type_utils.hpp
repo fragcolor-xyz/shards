@@ -89,6 +89,8 @@ public:
   T *operator->() const { return get(); }
   operator T &() const { return *get(); }
 
+  static constexpr const char *variableName() { return VariableName; }
+
   static constexpr SHExposedTypeInfo getExposedTypeInfo() {
     SHExposedTypeInfo typeInfo{
         .name = VariableName,
