@@ -160,10 +160,10 @@ impl Shard for CircleShard {
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
     util::require_parents(&mut self.required);
-    if !self.center.is_variable() {
+    if self.center.is_none() {
       return Err("Center is required");
     }
-    if !self.radius.is_variable() {
+    if self.radius.is_none() {
       return Err("Radius is required");
     }
     Ok(NONE_TYPES[0])
