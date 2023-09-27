@@ -206,17 +206,24 @@ impl LegacyShard for Checkbox {
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let label: &str = self.label.get().try_into()?;
-      let mut text = egui::RichText::new(label);
+      let make_checkbox = |checked| -> Result<egui::Checkbox, &'static str> {
+        Ok(if !self.label.is_none() {
+          let label: &str = self.label.get().try_into()?;
+          let mut text = egui::RichText::new(label);
 
-      let style = self.style.get();
-      if !style.is_none() {
-        text = text_util::get_styled_text(text, &style.try_into()?)?;
-      }
+          let style = self.style.get();
+          if !style.is_none() {
+            text = text_util::get_styled_text(text, &style.try_into()?)?;
+          }
+          egui::Checkbox::new(checked, text)
+        } else {
+          egui::Checkbox::without_text(checked)
+        })
+      };
 
       if self.variable.is_variable() {
         let checked: &mut bool = self.variable.get_mut().try_into()?;
-        let checkbox = egui::Checkbox::new(checked, text);
+        let checkbox = make_checkbox(checked)?;
 
         let response = ui.add(checkbox);
         Ok(response.changed().into())
@@ -227,7 +234,7 @@ impl LegacyShard for Checkbox {
         } else {
           variable.try_into()?
         };
-        let checkbox = egui::Checkbox::new(&mut checked, text);
+        let checkbox = make_checkbox(&mut checked)?;
 
         let response = ui.add(checkbox);
         Ok(response.changed().into())
