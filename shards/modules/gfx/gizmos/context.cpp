@@ -109,7 +109,7 @@ struct GizmosContextShard {
     if (_inputContext) {
       _inputContext->getConsumeFlags().mergeWith(ConsumeFlags{
           .wantsPointerInput = _gizmoContext.gfxGizmoContext.input.held || _gizmoContext.gfxGizmoContext.input.hovering,
-          .wantsKeyboardInput = _gizmoContext.gfxGizmoContext.input.held || _gizmoContext.gfxGizmoContext.input.hovering,
+          .wantsKeyboardInput = false,
           .requestFocus = _gizmoContext.gfxGizmoContext.input.held != nullptr,
       });
     }
