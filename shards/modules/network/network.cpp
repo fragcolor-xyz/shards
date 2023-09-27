@@ -58,13 +58,16 @@ struct NetworkPeer {
   NetworkPeer() {}
 
   ~NetworkPeer() {
-    if (kcp)
+    if (kcp) {
       ikcp_release(kcp);
+      kcp = nullptr;
+    }
   }
 
   void maybeUpdate() {
     auto now = SHClock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
+
     if (ikcp_check(kcp, ms) <= ms) {
       ikcp_update(kcp, ms);
     }
@@ -73,7 +76,9 @@ struct NetworkPeer {
   void reset() {
     if (kcp)
       ikcp_release(kcp);
+
     kcp = ikcp_create('shrd', this);
+
     // set "turbo" mode
     ikcp_nodelay(kcp, 1, 10, 2, 1);
     _start = SHClock::now();
@@ -93,6 +98,9 @@ struct NetworkPeer {
   // used only when Server
   std::shared_ptr<SHWire> wire;
   std::optional<entt::connection> onStopConnection;
+
+  // this is not great but well ok for now
+  std::mutex peerMutex;
 };
 
 struct NetworkBase {
@@ -301,7 +309,7 @@ struct Server : public NetworkBase {
         }
 
         SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
-        std::unique_lock<std::shared_mutex> lock2(peersMutex);
+        std::scoped_lock<std::shared_mutex> lock2(peersMutex);
         _end2Peer.erase(*container->endpoint);
       }
     }
@@ -407,7 +415,7 @@ struct Server : public NetworkBase {
               lock.unlock();
 
               // we write so hard lock this
-              std::unique_lock<std::shared_mutex> lock(peersMutex);
+              std::scoped_lock<std::shared_mutex> lock(peersMutex);
 
               // new peer
               try {
@@ -447,13 +455,17 @@ struct Server : public NetworkBase {
               lock.unlock();
             }
 
-            auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
-            if (err < 0) {
-              SHLOG_ERROR("Error ikcp_input: {}, peer: {} port: {}", err, _sender.address().to_string(), _sender.port());
-              _stopWireQueue.push(currentPeer->wire.get());
-            }
+            {
+              std::scoped_lock pLock(currentPeer->peerMutex);
 
-            currentPeer->_lastContact = SHClock::now();
+              auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
+              if (err < 0) {
+                SHLOG_ERROR("Error ikcp_input: {}, peer: {} port: {}", err, _sender.address().to_string(), _sender.port());
+                _stopWireQueue.push(currentPeer->wire.get());
+              }
+
+              currentPeer->_lastContact = SHClock::now();
+            }
 
             // keep receiving
             if (_socket && _running)
@@ -532,8 +544,6 @@ struct Server : public NetworkBase {
           continue;
         }
 
-        peer->maybeUpdate();
-
         setPeer(context, *peer);
 
         if (!peer->wire->warmedUp) {
@@ -546,11 +556,22 @@ struct Server : public NetworkBase {
           context->main->dispatcher.trigger(std::move(event));
         }
 
+        std::unique_lock peerLock(peer->peerMutex);
+
+        peer->maybeUpdate();
+
         auto nextSize = ikcp_peeksize(peer->kcp);
         while (nextSize > 0) {
           _buffer.resize(nextSize);
+
+          // lock again if we need to
+          assert(peerLock.owns_lock() && "Must own lock");
+
           auto size = ikcp_recv(peer->kcp, (char *)_buffer.data(), nextSize);
           assert(size == nextSize);
+
+          // do the rest outside the lock
+          peerLock.unlock();
 
           // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
           Reader r((char *)_buffer.data(), nextSize);
@@ -566,6 +587,7 @@ struct Server : public NetworkBase {
             context->continueFlow();
             nextSize = 0; // exit this peer
           } else {
+            peerLock.lock(); // lock again
             nextSize = ikcp_peeksize(peer->kcp);
           }
         }
@@ -618,6 +640,7 @@ struct Broadcast {
 
     // broadcast
     for (auto &[end, peer] : server->_end2Peer) {
+      std::scoped_lock lock(peer->peerMutex);
       auto err = ikcp_send(peer->kcp, _sendWriter().data(), size);
       if (err < 0) {
         SHLOG_ERROR("ikcp_send error: {}", err);
@@ -707,6 +730,8 @@ struct Client : public NetworkBase {
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _server,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
                                   if (!ec && bytes_recvd > 0) {
+                                    std::scoped_lock lock(_peer.peerMutex);
+
                                     auto err = ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
                                     if (err < 0) {
                                       SHLOG_ERROR("Error ikcp_input: {}");
@@ -759,13 +784,19 @@ struct Client : public NetworkBase {
 
     setPeer(context, _peer);
 
+    std::unique_lock lock(_peer.peerMutex);
+
     _peer.maybeUpdate();
 
     auto nextSize = ikcp_peeksize(_peer.kcp);
-    if (nextSize > 0) {
+    while (nextSize > 0) {
+      assert(lock.owns_lock() && "Must own lock");
+
       _buffer.resize(nextSize);
       auto size = ikcp_recv(_peer.kcp, (char *)_buffer.data(), nextSize);
       assert(size == nextSize);
+
+      lock.unlock();
 
       // deserialize from buffer
       Reader r((char *)_buffer.data(), nextSize);
@@ -773,7 +804,14 @@ struct Client : public NetworkBase {
       _peer.des.deserialize(r, _peer.payload);
 
       SHVar output{};
-      activateShards(SHVar(_blks).payload.seqValue, context, _peer.payload, output);
+      auto state = activateShards(SHVar(_blks).payload.seqValue, context, _peer.payload, output);
+      if (unlikely(state != SHWireState::Continue)) {
+        // return anyway, it will likely stop this wire and cleanup
+        return Var::Object(&_peer, CoreCC, PeerCC);
+      } else {
+        lock.lock(); // lock again
+        nextSize = ikcp_peeksize(_peer.kcp);
+      }
     }
 
     return Var::Object(&_peer, CoreCC, PeerCC);
@@ -870,6 +908,7 @@ struct Send : public PeerBase {
     _sendWriter().reset();
     serializer.reset();
     auto size = serializer.serialize(input, _sendWriter());
+    std::scoped_lock lock(peer->peerMutex);
     auto err = ikcp_send(peer->kcp, _sendWriter().data(), size);
     if (err < 0) {
       SHLOG_ERROR("ikcp_send error: {}", err);
