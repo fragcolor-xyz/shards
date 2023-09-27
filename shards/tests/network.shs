@@ -17,6 +17,10 @@
   99.9 | Network.Send
   @f4(3 2 1 0) | Network.Send
   [1 2 3 4 5] | Network.Send
+
+  RandomBytes(0xFFFF) | Network.Send | Log("Big load")
+  RandomBytes(0xFFFFFF) | Network.Send | Log("Even bigger load")
+
   "The End" | Network.Send(peer)
 })
 
@@ -30,4 +34,4 @@
 @mesh(main)
 @schedule(main network-test-server)
 @schedule(main network-test-client)
-@run(main FPS: 100 Iterations: 100)
+@run(main FPS: 100 Iterations: 1000)
