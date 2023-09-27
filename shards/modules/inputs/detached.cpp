@@ -362,6 +362,7 @@ struct Detached {
         double deltaTime = _deltaTimer.update();
         _inputContext.deltaTime = deltaTime;
         _inputContext.time += deltaTime;
+        _inputContext.consumeFlags = ConsumeFlags{};
 
         // Push root input region
         auto &inputStack = _inputContext.inputStack;

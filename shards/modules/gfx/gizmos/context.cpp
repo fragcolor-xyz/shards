@@ -107,10 +107,11 @@ struct GizmosContextShard {
     });
 
     if (_inputContext) {
-      auto &consumeFlags = _inputContext->getConsumeFlags();
-      consumeFlags.requestFocus = _gizmoContext.gfxGizmoContext.input.held;
-      consumeFlags.wantsPointerInput = _gizmoContext.gfxGizmoContext.input.held || _gizmoContext.gfxGizmoContext.input.hovering;
-      consumeFlags.wantsKeyboardInput = consumeFlags.wantsPointerInput;
+      _inputContext->getConsumeFlags().mergeWith(ConsumeFlags{
+          .wantsPointerInput = _gizmoContext.gfxGizmoContext.input.held || _gizmoContext.gfxGizmoContext.input.hovering,
+          .wantsKeyboardInput = _gizmoContext.gfxGizmoContext.input.held || _gizmoContext.gfxGizmoContext.input.hovering,
+          .requestFocus = _gizmoContext.gfxGizmoContext.input.held != nullptr,
+      });
     }
 
     return _shardsOutput;
