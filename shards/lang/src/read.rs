@@ -2,32 +2,55 @@ use crate::{ast::*, RcStrWrapper};
 use core::convert::TryInto;
 use pest::iterators::Pair;
 use pest::Parser;
-use shards::shard::LegacyShard;
+use shards::shard;
+use shards::shard::Shard;
 use shards::types::{
-  common_type, ClonedVar, Context, InstanceData, Parameters, Type, Types, Var, BOOL_TYPES_SLICE,
-  STRING_TYPES,
+  common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Parameters, Type, Types,
+  Var, BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
-use shards::{cstr, shccstr, shlog, shlog_error};
+use shards::{cstr, shard_impl, shccstr, shlog, shlog_error};
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub struct ReadEnv {
   name: RcStrWrapper,
-  directory: String,
+  root_directory: String,
+  script_directory: String,
   included: HashSet<RcStrWrapper>,
   dependencies: Vec<String>,
   parent: Option<*const ReadEnv>,
 }
 
 impl ReadEnv {
-  pub(crate) fn new(name: &str, directory: &str) -> Self {
+  pub(crate) fn new(name: &str, root_directory: &str, script_directory: &str) -> Self {
     Self {
       name: name.into(),
-      directory: directory.to_string(),
+      root_directory: root_directory.to_string(),
+      script_directory: script_directory.to_string(),
       included: HashSet::new(),
       dependencies: Vec::new(),
       parent: None,
     }
+  }
+
+  pub fn resolve_file(&self, name: &str) -> Result<PathBuf, String> {
+    let script_dir = Path::new(&self.script_directory);
+    let file_path = script_dir.join(name);
+    shlog!("Trying include {:?}", file_path);
+    let mut file_path_r = std::fs::canonicalize(&file_path);
+
+    // Try from root
+    if file_path_r.is_err() {
+      let root_dir = Path::new(&self.root_directory);
+      let file_path = root_dir.join(name);
+      shlog!("Trying include {:?}", file_path);
+      file_path_r = std::fs::canonicalize(&file_path);
+    }
+
+    Ok(
+      file_path_r
+        .map_err(|e| return format!("Failed to canonicalize file {:?}: {}", name, e).to_string())?,
+    )
   }
 }
 
@@ -356,26 +379,12 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               })
               .unwrap_or(Ok(false))?;
 
-            let parent = Path::new(&env.directory);
-            let file_path = parent.join(&file_name.as_str());
-            let file_path = std::fs::canonicalize(&file_path).map_err(|e| {
-              (
-                format!("Failed to canonicalize file {:?}: {}", file_name, e),
-                pos,
-              )
-                .into()
-            })?;
-
-            let rc_path = file_path
+            let file_path = env.resolve_file(file_name).map_err(|x| (x, pos).into())?;
+            let file_path_str = file_path
               .to_str()
-              .ok_or(
-                (
-                  format!("Failed to convert file path {:?} to string", file_path),
-                  pos,
-                )
-                  .into(),
-              )?
-              .into();
+              .ok_or(("Failed to convert file path to string", pos).into())?;
+
+            let rc_path = file_path_str.into();
 
             if once && check_included(&rc_path, env) {
               return Ok(FunctionValue::Const(Value::None));
@@ -397,6 +406,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               .map_err(|e| (format!("Failed to parse file {:?}: {}", file_path, e), pos).into())?;
             let mut sub_env: ReadEnv = ReadEnv::new(
               file_path.to_str().unwrap(), // should be qed...
+              &env.root_directory,
               parent
                 .to_str()
                 .ok_or(
@@ -448,8 +458,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               })
               .unwrap_or(Ok(false))?;
 
-            let parent = Path::new(&env.directory);
-            let file_path = parent.join(&file_name.as_str());
+            let file_path = env.resolve_file(file_name).map_err(|x| (x, pos).into())?;
 
             env
               .dependencies
@@ -949,7 +958,7 @@ pub fn read_with_env(code: &str, env: &mut ReadEnv) -> Result<Program, ShardsErr
   let successful_parse: pest::iterators::Pairs<'_, Rule> = {
     ShardsParser::parse(Rule::Program, code).map_err(|e| {
       (
-        format!("Failed to parse file {:?}: {}", env.directory, e),
+        format!("Failed to parse file {:?}: {}", env.script_directory, e),
         LineInfo { line: 0, column: 0 },
       )
         .into()
@@ -962,7 +971,7 @@ pub fn read_with_env(code: &str, env: &mut ReadEnv) -> Result<Program, ShardsErr
 }
 
 pub fn read(code: &str, name: &str, path: &str) -> Result<Program, ShardsError> {
-  let mut env = ReadEnv::new(name, path);
+  let mut env = ReadEnv::new(name, "", path);
   read_with_env(&code, &mut env)
 }
 
@@ -978,72 +987,66 @@ lazy_static! {
     .into()];
 }
 
-#[derive(Default)]
+#[derive(shard, Default)]
+#[shard_info(
+  "Shards.Read",
+  "Reads a Shards program and outputs a binary or json AST."
+)]
 pub(crate) struct ReadShard {
   output: ClonedVar,
-  as_json: bool,
+  #[shard_param(
+    "Json",
+    "If the output should be a json AST string instead of binary.",
+    BOOL_TYPES_SLICE
+  )]
+  as_json: ClonedVar,
+  #[shard_param(
+    "BasePath",
+    "The base path to use when interpreting file references.",
+    STRING_VAR_OR_NONE_SLICE
+  )]
+  base_path: ParamVar,
+  #[shard_required]
+  required_variables: ExposedTypes,
 }
 
-impl LegacyShard for ReadShard {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("Shards.Read")
+impl ReadShard {
+  fn get_as_json(&self) -> bool {
+    if self.as_json.0.is_bool() {
+      (&self.as_json.0).try_into().unwrap()
+    } else {
+      false
+    }
   }
+}
 
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("Shards.Read-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "Shards.Read"
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shard_impl]
+impl Shard for ReadShard {
+  fn input_types(&mut self) -> &Types {
     &STRING_TYPES
   }
 
-  fn outputTypes(&mut self) -> &Types {
+  fn output_types(&mut self) -> &Types {
     &READ_OUTPUT_TYPES
   }
 
-  fn hasCompose() -> bool
-  where
-    Self: Sized,
-  {
-    true
+  fn warmup(&mut self, _context: &Context) -> Result<(), &str> {
+    self.warmup_helper(_context)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.cleanup_helper()?;
+    Ok(())
   }
 
   fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
-    if self.as_json {
+    self.compose_helper(_data)?;
+
+    if self.get_as_json() {
       Ok(common_type::string)
     } else {
       Ok(common_type::bytes)
-    }
-  }
-
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&READ_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => {
-        self.as_json = value.try_into()?;
-        Ok(())
-      }
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.as_json.into(),
-      _ => Var::default(),
     }
   }
 
@@ -1055,16 +1058,23 @@ impl LegacyShard for ReadShard {
       "Failed to parse Shards code"
     })?;
 
+    let bp_var = self.base_path.get();
+    let base_path = if bp_var.is_none() {
+      "."
+    } else {
+      bp_var.try_into()?
+    };
+
     let seq = process_program(
       parsed.into_iter().next().unwrap(), // parsed qed
-      &mut ReadEnv::new("", "."),
+      &mut ReadEnv::new("", "", base_path),
     )
     .map_err(|e| {
       shlog_error!("Failed to process shards code: {:?}", e);
       "Failed to tokenize Shards code"
     })?;
 
-    if self.as_json {
+    if self.get_as_json() {
       // Serialize using json
       let encoded_json = serde_json::to_string(&seq).map_err(|e| {
         shlog_error!("Failed to serialize shards code: {}", e);
@@ -1094,7 +1104,7 @@ fn test_parsing1() {
   // let code = include_str!("nested.shs");
   let code = include_str!("sample1.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let mut env = ReadEnv::new("", ".");
+  let mut env = ReadEnv::new("", ".", ".");
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
 
   // Serialize using bincode
@@ -1121,7 +1131,7 @@ fn test_parsing1() {
 fn test_parsing2() {
   let code = include_str!("explained.shs");
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
-  let mut env = ReadEnv::new("", ".");
+  let mut env = ReadEnv::new("", ".", ".");
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
 
   // Serialize using bincode

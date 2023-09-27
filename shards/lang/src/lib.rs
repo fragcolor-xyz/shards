@@ -8,7 +8,7 @@ mod ast;
 mod cli;
 mod eval;
 // mod print;
-mod read; 
+mod read;
 
 use crate::ast::*;
 
@@ -19,8 +19,10 @@ use eval::merge_env;
 use eval::new_cancellation_token;
 use eval::EvalEnv;
 use shards::core::register_legacy_shard;
+use shards::core::register_shard;
 use shards::shlog_error;
 use shards::types::Var;
+use shards::SHString;
 // use print::print_ast;
 
 use std::ops::Deref;
@@ -244,10 +246,16 @@ pub extern "C" fn shards_init(core: *mut shards::shardsc::SHCore) {
 }
 
 #[no_mangle]
-pub extern "C" fn shards_read(name: SHStringWithLen, code: SHStringWithLen) -> SHLAst {
+pub extern "C" fn shards_read(
+  name: SHStringWithLen,
+  code: SHStringWithLen,
+  base_path: SHStringWithLen,
+) -> SHLAst {
   let name: &str = name.into();
   let code = code.into();
-  let result = read::read(code, name, ".");
+  let base_path: &str = base_path.into();
+  let result = read::read(code, name, base_path);
+
   match result {
     Ok(p) => SHLAst {
       ast: Box::into_raw(Box::new(p.sequence)),
@@ -479,7 +487,7 @@ pub extern "C" fn shardsRegister_lang_lang(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
-  register_legacy_shard::<read::ReadShard>();
+  register_shard::<read::ReadShard>();
   register_legacy_shard::<eval::EvalShard>();
 }
 
