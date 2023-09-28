@@ -56,57 +56,7 @@ struct NetworkContext {
   }
 };
 
-struct NetworkPeer {
-  NetworkPeer() {}
-
-  ~NetworkPeer() {
-    if (kcp) {
-      ikcp_release(kcp);
-      kcp = nullptr;
-    }
-  }
-
-  void maybeUpdate() {
-    auto now = SHClock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
-
-    if (ikcp_check(kcp, ms) <= ms) {
-      ikcp_update(kcp, ms);
-    }
-  }
-
-  void reset() {
-    if (kcp)
-      ikcp_release(kcp);
-
-    kcp = ikcp_create('shrd', this);
-
-    // set "turbo" mode
-    ikcp_nodelay(kcp, 1, 10, 2, 1);
-    _start = SHClock::now();
-    _lastContact = SHClock::now();
-  }
-
-  std::optional<udp::endpoint> endpoint{};
-  ikcpcb *kcp = nullptr;
-  Serialization des{};
-  OwnedVar payload{};
-
-  SHTime _start = SHClock::now();
-  SHTime _lastContact = SHClock::now();
-
-  void *user = nullptr;
-
-  // used only when Server
-  std::shared_ptr<SHWire> wire;
-  std::optional<entt::connection> onStopConnection;
-
-  // this is not great but well ok for now
-  std::mutex peerMutex;
-
-  std::vector<uint8_t> recvBuffer;
-  uint32_t expectedSize = 0;
-};
+struct NetworkPeer;
 
 struct NetworkBase {
   static inline Type PeerInfo{{SHType::Object, {.object = {.vendorId = CoreCC, .typeId = PeerCC}}}};
@@ -224,6 +174,151 @@ struct NetworkBase {
     _peerVar->refcount = rc;
     _peerVar->flags = flags;
   }
+};
+
+struct NetworkPeer {
+  NetworkPeer() {}
+
+  ~NetworkPeer() {
+    if (kcp) {
+      ikcp_release(kcp);
+      kcp = nullptr;
+    }
+  }
+
+  void maybeUpdate() {
+    auto now = SHClock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
+
+    if (ikcp_check(kcp, ms) <= ms) {
+      ikcp_update(kcp, ms);
+    }
+  }
+
+  bool maybeReceive() {
+    bool isMessageReady = false;
+
+    {
+      std::scoped_lock peerLock(peerMutex);
+
+      maybeUpdate();
+
+      // Initialize variables for buffer management.
+      size_t offset = recvBuffer.size();
+      auto nextChunkSize = ikcp_peeksize(kcp);
+
+      // Loop to receive all available chunks.
+      while (nextChunkSize > 0) {
+        // SHLOG_TRACE("Received chunk of size: {}, offset: {}", nextChunkSize, offset);
+
+        // Resize the buffer to hold the incoming chunk.
+        recvBuffer.resize(nextChunkSize + offset);
+
+        // Receive the chunk.
+        auto receivedSize = ikcp_recv(kcp, (char *)recvBuffer.data() + offset, nextChunkSize);
+        assert(receivedSize == nextChunkSize);
+
+        // If this is the first chunk, read the expected total size from its prefix.
+        if (offset == 0) {
+          expectedSize = *(uint32_t *)recvBuffer.data();
+          // if (peer->expectedSize > 25000) {
+          //   SHLOG_TRACE("Receiving big message: {}", peer->expectedSize);
+          // }
+        }
+
+        // Check if the current buffer size minus the size prefix matches the expected size.
+        if (recvBuffer.size() == expectedSize) {
+          isMessageReady = true;
+          // if (peer->expectedSize > 25000) {
+          //   SHLOG_TRACE("Received big message: {}", peer->expectedSize);
+          // }
+          break;
+        } else {
+          // We expect another chunk; update the offset.
+          offset = recvBuffer.size();
+          nextChunkSize = ikcp_peeksize(kcp);
+          // SHLOG_TRACE("Next chunk size: {}, offset: {}", nextChunkSize, offset);
+        }
+      }
+    }
+
+    return isMessageReady;
+  }
+
+  ThreadShared<NetworkBase::Writer> _sendWriter;
+
+  Serialization serializer;
+
+  void sendVar(const SHVar &input) {
+    _sendWriter().reset();
+    serializer.reset();
+    serializer.serialize(input, _sendWriter());
+    _sendWriter().finalize();
+    auto size = _sendWriter().size();
+
+    std::scoped_lock lock(peerMutex);
+
+    if (size > IKCP_MAX_PKT_SIZE) {
+      // send in chunks
+      size_t chunks = size / IKCP_MAX_PKT_SIZE;
+      size_t remaining = size % IKCP_MAX_PKT_SIZE;
+      auto ptr = _sendWriter().data();
+      for (size_t i = 0; i < chunks; ++i) {
+        auto err = ikcp_send(kcp, ptr, IKCP_MAX_PKT_SIZE);
+        if (err < 0) {
+          SHLOG_ERROR("ikcp_send error: {}", err);
+          throw ActivationError("ikcp_send error");
+        }
+        ptr += IKCP_MAX_PKT_SIZE;
+      }
+      if (remaining > 0) {
+        auto err = ikcp_send(kcp, ptr, remaining);
+        if (err < 0) {
+          SHLOG_ERROR("ikcp_send error: {}", err);
+          throw ActivationError("ikcp_send error");
+        }
+      }
+    } else {
+      // directly send as it's small enough
+      auto err = ikcp_send(kcp, _sendWriter().data(), _sendWriter().size());
+      if (err < 0) {
+        SHLOG_ERROR("ikcp_send error: {}", err);
+        throw ActivationError("ikcp_send error");
+      }
+    }
+  }
+
+  void reset() {
+    if (kcp)
+      ikcp_release(kcp);
+
+    kcp = ikcp_create('shrd', this);
+
+    // set "turbo" mode
+    ikcp_nodelay(kcp, 1, 10, 2, 1);
+    _start = SHClock::now();
+    _lastContact = SHClock::now();
+  }
+
+  std::optional<udp::endpoint> endpoint{};
+  ikcpcb *kcp = nullptr;
+  Serialization des{};
+  OwnedVar payload{};
+
+  SHTime _start = SHClock::now();
+  SHTime _lastContact = SHClock::now();
+
+  void *user = nullptr;
+
+  // used only when Server
+  std::shared_ptr<SHWire> wire;
+  std::optional<entt::connection> onStopConnection;
+
+  // this is not great but well ok for now
+  std::mutex peerMutex;
+
+  std::vector<uint8_t> recvBuffer;
+  uint32_t expectedSize = 0;
 };
 
 struct Server : public NetworkBase {
@@ -564,53 +659,7 @@ struct Server : public NetworkBase {
           context->main->dispatcher.trigger(std::move(event));
         }
 
-        bool isMessageReady = false;
-
-        {
-          std::scoped_lock peerLock(peer->peerMutex);
-
-          peer->maybeUpdate();
-
-          // Initialize variables for buffer management.
-          size_t offset = peer->recvBuffer.size();
-          auto nextChunkSize = ikcp_peeksize(peer->kcp);
-
-          // Loop to receive all available chunks.
-          while (nextChunkSize > 0) {
-            // SHLOG_TRACE("Received chunk of size: {}, offset: {}", nextChunkSize, offset);
-
-            // Resize the buffer to hold the incoming chunk.
-            peer->recvBuffer.resize(nextChunkSize + offset);
-
-            // Receive the chunk.
-            auto receivedSize = ikcp_recv(peer->kcp, (char *)peer->recvBuffer.data() + offset, nextChunkSize);
-            assert(receivedSize == nextChunkSize);
-
-            // If this is the first chunk, read the expected total size from its prefix.
-            if (offset == 0) {
-              peer->expectedSize = *(uint32_t *)peer->recvBuffer.data();
-              // if (peer->expectedSize > 25000) {
-              //   SHLOG_TRACE("Receiving big message: {}", peer->expectedSize);
-              // }
-            }
-
-            // Check if the current buffer size minus the size prefix matches the expected size.
-            if (peer->recvBuffer.size() == peer->expectedSize) {
-              isMessageReady = true;
-              // if (peer->expectedSize > 25000) {
-              //   SHLOG_TRACE("Received big message: {}", peer->expectedSize);
-              // }
-              break;
-            } else {
-              // We expect another chunk; update the offset.
-              offset = peer->recvBuffer.size();
-              nextChunkSize = ikcp_peeksize(peer->kcp);
-              // SHLOG_TRACE("Next chunk size: {}, offset: {}", nextChunkSize, offset);
-            }
-          }
-        }
-
-        if (isMessageReady) {
+        if (peer->maybeReceive()) {
           // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
           Reader r((char *)peer->recvBuffer.data() + 4, peer->recvBuffer.size() - 4);
           peer->des.reset();
@@ -846,44 +895,7 @@ struct Client : public NetworkBase {
 
     setPeer(context, _peer);
 
-    bool isMessageReady = false;
-
-    {
-      std::scoped_lock peerLock(_peer.peerMutex);
-
-      _peer.maybeUpdate();
-
-      // Initialize variables for buffer management.
-      size_t offset = _peer.recvBuffer.size();
-      auto nextChunkSize = ikcp_peeksize(_peer.kcp);
-
-      // Loop to receive all available chunks.
-      while (nextChunkSize > 0) {
-        // Resize the buffer to hold the incoming chunk.
-        _peer.recvBuffer.resize(nextChunkSize + offset);
-
-        // Receive the chunk.
-        auto receivedSize = ikcp_recv(_peer.kcp, (char *)_peer.recvBuffer.data() + offset, nextChunkSize);
-        assert(receivedSize == nextChunkSize);
-
-        // If this is the first chunk, read the expected total size from its prefix.
-        if (offset == 0) {
-          _peer.expectedSize = *(uint32_t *)_peer.recvBuffer.data();
-        }
-
-        // Check if the current buffer size minus the size prefix matches the expected size.
-        if (_peer.recvBuffer.size() == _peer.expectedSize) {
-          isMessageReady = true;
-          break;
-        }
-
-        // We expect another chunk; update the offset.
-        offset = _peer.recvBuffer.size();
-        nextChunkSize = ikcp_peeksize(_peer.kcp);
-      }
-    }
-
-    if (isMessageReady) {
+    if (_peer.maybeReceive()) {
       Reader r((char *)_peer.recvBuffer.data() + 4, _peer.recvBuffer.size() - 4);
       _peer.des.reset();
       _peer.des.deserialize(r, _peer.payload);
@@ -973,55 +985,13 @@ struct PeerBase {
 };
 
 struct Send : public PeerBase {
-  // Must take an optional seq of SocketData, to be used properly by server
-  // This way we get also a easy and nice broadcast
-
-  ThreadShared<NetworkBase::Writer> _sendWriter;
-
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  Serialization serializer;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto peer = getPeer(context);
 
-    _sendWriter().reset();
-    serializer.reset();
-    serializer.serialize(input, _sendWriter());
-    _sendWriter().finalize();
-    auto size = _sendWriter().size();
-
-    std::scoped_lock lock(peer->peerMutex);
-
-    if (size > IKCP_MAX_PKT_SIZE) {
-      // send in chunks
-      size_t chunks = size / IKCP_MAX_PKT_SIZE;
-      size_t remaining = size % IKCP_MAX_PKT_SIZE;
-      auto ptr = _sendWriter().data();
-      for (size_t i = 0; i < chunks; ++i) {
-        auto err = ikcp_send(peer->kcp, ptr, IKCP_MAX_PKT_SIZE);
-        if (err < 0) {
-          SHLOG_ERROR("ikcp_send error: {}", err);
-          throw ActivationError("ikcp_send error");
-        }
-        ptr += IKCP_MAX_PKT_SIZE;
-      }
-      if (remaining > 0) {
-        auto err = ikcp_send(peer->kcp, ptr, remaining);
-        if (err < 0) {
-          SHLOG_ERROR("ikcp_send error: {}", err);
-          throw ActivationError("ikcp_send error");
-        }
-      }
-    } else {
-      // directly send as it's small enough
-      auto err = ikcp_send(peer->kcp, _sendWriter().data(), _sendWriter().size());
-      if (err < 0) {
-        SHLOG_ERROR("ikcp_send error: {}", err);
-        throw ActivationError("ikcp_send error");
-      }
-    }
+    peer->sendVar(input);
 
     return input;
   }
