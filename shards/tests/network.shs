@@ -1,14 +1,18 @@
 ; ; SPDX-License-Identifier: BSD-3-Clause
 ; ; Copyright © 2023 Fragcolor
 
+@define(random1 #(RandomBytes(0xFFFF)))
+@define(random2 #(RandomBytes(0xFFFFFF)))
+
 @wire(handler {
   Log("Server's Peer Received")
   | When(Is("The End") {"" Stop})
-  "Ok" Network.Send
+  "Ok" | Network.Send
 } Looped: true)
 
 @wire(network-test-server {
   Network.Server("127.0.0.1" 9191 handler)
+  Once({@random1 | Network.Broadcast} Every: 0.5)
 } Looped: true)
 
 @wire(client-init {
@@ -18,8 +22,8 @@
   @f4(3 2 1 0) | Network.Send
   [1 2 3 4 5] | Network.Send
 
-  RandomBytes(0xFFFF) | Network.Send | Log("Big load")
-  RandomBytes(0xFFFFFF) | Network.Send | Log("Even bigger load")
+  @random1 | Network.Send | Log("Big load")
+  @random2 | Network.Send | Log("Even bigger load")
 
   "The End" | Network.Send(peer)
 })
