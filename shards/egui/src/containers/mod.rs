@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use shards::core::register_enum;
 use shards::core::register_legacy_enum;
 use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
@@ -62,6 +63,29 @@ struct DockArea {
   headers: Vec<ParamVar>,
   shards: Vec<ShardsVar>,
   tabs: egui_dock::Tree<(ParamVar, ShardsVar)>,
+}
+
+#[derive(shards::shards_enum)]
+#[enum_info(
+  b"egPL",
+  "PopupLocation",
+  "Determines the location of the popup relative to the widget that it is attached to."
+)]
+pub enum PopupLocation {
+  #[enum_value("Below.")]
+  Below = 0,
+  #[enum_value("Above.")]
+  Above = 1,
+}
+
+impl From<PopupLocation> for egui::AboveOrBelow {
+  fn from(popup_location: PopupLocation) -> Self {
+    match popup_location {
+      PopupLocation::Above => egui::AboveOrBelow::Above,
+      PopupLocation::Below => egui::AboveOrBelow::Below,
+      _ => unreachable!(),
+    }
+  }
 }
 
 struct Scope {
@@ -139,13 +163,14 @@ mod docking;
 mod panels;
 mod scope;
 mod window;
-mod popups;
+mod popup_wrapper;
 
 pub fn register_shards() {
   area::register_shards();
   docking::register_shards();
   window::register_shards();
-  popups::register_shards();
+  popup_wrapper::register_shards();
+  register_enum::<PopupLocation>();
   register_legacy_shard::<Scope>();
   register_legacy_enum(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());
   register_legacy_shard::<BottomPanel>();

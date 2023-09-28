@@ -2,6 +2,7 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::image_util;
+use crate::CONTEXTS_NAME;
 use crate::util;
 use crate::FLOAT2_VAR_SLICE;
 use crate::PARENTS_UI_NAME;
@@ -33,10 +34,6 @@ use std::ffi::CStr;
 #[derive(shard)]
 #[shard_info("UI.ImageButton", "Clickable button with image.")]
 struct ImageButton {
-  #[shard_warmup]
-  parents: ParamVar,
-  #[shard_required]
-  requiring: ExposedTypes,
   #[shard_param(
     "Action",
     "The shards to execute when the button is pressed.",
@@ -58,13 +55,20 @@ struct ImageButton {
   exposing: ExposedTypes,
   should_expose: bool,
   cached_ui_image: image_util::CachedUIImage,
+  #[shard_warmup]
+  contexts: ParamVar,
+  #[shard_warmup]
+  parents: ParamVar,
+  #[shard_required]
+  required: ExposedTypes,
 }
 
 impl Default for ImageButton {
   fn default() -> Self {
     Self {
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
-      requiring: Vec::new(),
+      required: Vec::new(),
       action: ShardsVar::default(),
       scale: ParamVar::new((1.0, 1.0).into()),
       size: ParamVar::default(),
@@ -119,7 +123,9 @@ impl Shard for ImageButton {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
-    util::require_parents(&mut self.requiring);
+
+    util::require_context(&mut self.required);
+    util::require_parents(&mut self.required);
 
     if self.selected.is_variable() {
       self.should_expose = true; // assume we expose a new variable
@@ -248,10 +254,18 @@ impl ImageButton {
         return Err("Failed to activate button");
       }
 
+      // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
+      let ctx = util::get_current_context(&self.contexts)?;
+      ctx.prev_response = Some(response);
+
       // button clicked during this frame
       return Ok(true.into());
     }
 
+    // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
+    let ctx = util::get_current_context(&self.contexts)?;
+    ctx.prev_response = Some(response);
+    
     // button not clicked during this frame
     Ok(false.into())
   }
