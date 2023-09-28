@@ -29,12 +29,12 @@ public:
   ~Brancher() { cleanup(); }
 
   // Adds a single wire or sequence of shards as a looped wire
-  void addRunnable(const SHVar &var) { wires.push_back(IntoWire{}.runnable(var)); }
+  void addRunnable(const SHVar &var) { wires.push_back(IntoWire{}.var(var)); }
 
   // Sets the runnables (wires or shards)
   void setRunnables(const SHVar &var) {
     wires.clear();
-    IntoWires{wires}.runnables(var);
+    IntoWires{wires}.var(var);
   }
 
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_mergedRequirements; }

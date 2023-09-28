@@ -10,19 +10,35 @@ namespace shards {
 struct IntoWire {
   static inline shards::Types RunnableTypes{CoreInfo::NoneType, CoreInfo::WireType, CoreInfo::ShardRefSeqType};
 
+private:
   std::shared_ptr<SHWire> result;
+  bool defaultLooped_ = true;
+  const char *defaultWireName_ = "inline-wire";
 
+public:
   // Adds a single wire or sequence of shards as a looped wire
-  IntoWire &runnable(const SHVar &var) {
+  IntoWire &var(const SHVar &var) {
     if (var.valueType != SHType::None) {
       if (var.valueType == SHType::Wire) {
         wire(var);
       } else {
-        loopedShards(var);
+        shards(var);
       }
     } else {
       result.reset();
     }
+    return *this;
+  }
+
+  // To make inline shards a looped or non-looped wire
+  IntoWire &defaultLooped(bool looped) {
+    defaultLooped_ = looped;
+    return *this;
+  }
+
+  // The wire name to give inline shards
+  IntoWire &defaultWireName(const char *name) {
+    defaultWireName_ = name;
     return *this;
   }
 
@@ -31,13 +47,13 @@ struct IntoWire {
 private:
   friend struct IntoWires;
 
-  // Add a sequence of shards as a looped wire
-  IntoWire &loopedShards(const SHVar &var) {
+  // Add a sequence of shards as a wire
+  IntoWire &shards(const SHVar &var) {
     assert(var.valueType == SHType::Seq);
     const SHSeq &seq = var.payload.seqValue;
     assert(seq.len == 0 || seq.elements[0].valueType == SHType::ShardRef);
-    auto wire = result = SHWire::make("looped-shards");
-    wire->looped = true;
+    auto wire = result = SHWire::make(defaultWireName_);
+    wire->looped = defaultLooped_;
     ForEach(seq, [&](SHVar &v) {
       assert(v.valueType == SHType::ShardRef);
       wire->addShard(v.payload.shardValue);
@@ -62,28 +78,29 @@ struct IntoWires {
   IntoWires(std::vector<std::shared_ptr<SHWire>> &results) : results(results) {}
 
   // Sets the runnables (wires or shards)
-  void runnables(const SHVar &var) {
+  IntoWires &var(const SHVar &var, IntoWire intoWire = IntoWire()) {
     if (var.valueType != SHType::None) {
       if (var.valueType == SHType::Wire) {
-        results.push_back(IntoWire{}.wire(var));
+        results.push_back(intoWire.wire(var));
       } else {
         assert(var.valueType == SHType::Seq);
         auto &seq = var.payload.seqValue;
         if (seq.len == 0)
-          return;
+          return *this;
 
         if (seq.elements[0].valueType == SHType::ShardRef) {
           // Single sequence of shards
-          results.push_back(IntoWire{}.loopedShards(var));
+          results.push_back(intoWire.shards(var));
         } else {
           // Multiple wires or sequences of shards
           for (uint32_t i = 0; i < seq.len; i++) {
             SHVar &v = seq.elements[i];
-            results.push_back(IntoWire{}.runnable(v));
+            results.push_back(intoWire.var(v));
           }
         }
       }
     }
+    return *this;
   }
 };
 } // namespace shards

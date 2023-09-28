@@ -537,10 +537,11 @@ struct StopWire : public WireBase {
 
   SHTypeInfo _inputType{};
 
+  std::weak_ptr<SHWire> _wire;
   entt::connection _onComposedConn;
 
   void destroy() {
-    if (_onComposedConn)
+    if (_onComposedConn && _wire.lock())
       _onComposedConn.release();
   }
 
@@ -551,6 +552,7 @@ struct StopWire : public WireBase {
       _inputType = data.inputType;
       if (_onComposedConn)
         _onComposedConn.release();
+      _wire = data.wire->weak_from_this();
       _onComposedConn = data.wire->dispatcher.sink<SHWire::OnComposedEvent>().connect<&StopWire::composed>(this);
     } else {
       resolveWire();
@@ -1450,7 +1452,7 @@ struct ParallelBase : public CapturingSpawners {
   DECL_ENUM_INFO(WaitUntil, WaitUntil, 'tryM');
 
   static inline Parameters _params{
-      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireTypes},
+      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), IntoWire::RunnableTypes},
       {"Policy", SHCCSTR("The execution policy in terms of wires success."), {WaitUntilEnumInfo::Type}},
       {"Threads", SHCCSTR("The number of cpu threads to use."), {CoreInfo::IntType}}};
 
@@ -1486,6 +1488,13 @@ struct ParallelBase : public CapturingSpawners {
   }
 
   void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
+    if (!wire) {
+      wire = IntoWire{} //
+                 .defaultWireName("parallel-inline-shards")
+                 .defaultLooped(false)
+                 .var(wireref);
+    }
+
     if (_threads > 0) {
       mode = RunWireMode::Async;
       capturing = true;
@@ -1985,12 +1994,17 @@ struct Spawn : public CapturingSpawners {
 
 struct StepMany : public TryMany {
   static inline Parameters _params{
-      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireTypes},
+      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), IntoWires::RunnableTypes},
   };
 
   static SHParametersInfo parameters() { return _params; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
+    wire = IntoWire{} //
+               .defaultWireName("step-many-inline-shards")
+               .defaultLooped(true)
+               .var(wireref);
+
     TryMany::compose(data);
     return CoreInfo::AnySeqType; // we don't know the output type as we return output every step
   }
@@ -2067,7 +2081,10 @@ struct DoMany : public TryMany {
   static SHParametersInfo parameters() { return _params; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    wire = IntoWire{}.runnable(wireref);
+    wire = IntoWire{} //
+               .defaultWireName("do-many-inline-shards")
+               .defaultLooped(true)
+               .var(wireref);
 
     if (data.inputType.seqTypes.len == 1) {
       // copy single input type
