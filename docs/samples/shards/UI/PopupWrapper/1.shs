@@ -1,3 +1,4 @@
+; Single PopupWrapper with Button widget and contents
 GFX.MainWindow(
   Contents: {
     Once({
@@ -7,26 +8,15 @@ GFX.MainWindow(
     UI(
       ui-draw-queue
       UI.CentralPanel({
-        Once({
-          LoadImage("../../assets/ShardsLogo.png") = image
-        })
-        image | UI.PopupImageButton(
-          ID: "Send message"
-          Scale: @f2(0.1)
-          Contents: {
-            UI.Button(
+        UI.PopupWrapper(
+          Widget: {
+             UI.Button(
               Label: "Send message"
               Action: {
                 "Message sent!" | Log
               }
             )
           }
-        )
-        image | UI.PopupImageButton(
-          ID: "Receive message"
-          Size: @f2(150.0)
-          AboveOrBelow: PopupLocation::Above
-          MinWidth: 300.0
           Contents: {
             UI.Button(
               Label: "Receive message"
@@ -35,8 +25,8 @@ GFX.MainWindow(
               }
             )
           }
-        )
-      })
+        )}
+      )
     )
 
     GFX.Render(Steps: render-steps)

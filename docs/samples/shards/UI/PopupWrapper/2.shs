@@ -1,3 +1,4 @@
+; Single PopupWrapper with ImageButton widget and contents
 GFX.MainWindow(
   Contents: {
     Once({
@@ -10,18 +11,26 @@ GFX.MainWindow(
         Once({
           LoadImage("../../assets/ShardsLogo.png") = image
         })
-        image | UI.PopupImageButton(
-          ID: "Send message"
-          Scale: @f2(0.1)
-          Contents: {
-            UI.Button(
-              Label: "Send message"
+        UI.PopupWrapper(
+          Widget: {
+            image | UI.ImageButton(
+              Scale: @f2(0.1)
               Action: {
                 "Message sent!" | Log
               }
             )
           }
+          Contents: {
+            image | UI.ImageButton(
+              Scale: @f2(0.1)
+              Action: {
+                "Message received!" | Log
+              }
+            )
+          }
         )
+
+        
       })
     )
 
