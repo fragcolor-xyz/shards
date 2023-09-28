@@ -14,5 +14,8 @@ lazy_static = "1.4.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
 
-[target.'cfg(any(target_os="windows", target_os="macos", target_os="linux"))'.dependencies]
+[target.'cfg(any(target_os="windows", target_os="macos"))'.dependencies]
 rfd = { version = "0.11", git = "https://github.com/shards-lang/rfd.git", tag = 'shards-1', default-features = false, features = ["xdg-portal"] }
+
+[target.'cfg(any(target_os="linux"))'.dependencies]
+rfd = { version = "0.11", git = "https://github.com/shards-lang/rfd.git", tag = 'shards-1', default-features = false, features = ["gtk3"] }

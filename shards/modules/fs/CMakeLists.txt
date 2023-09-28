@@ -10,3 +10,8 @@ add_shards_module(fs SOURCES ${SOURCES}
   RUST_TARGETS shards-fs-rust)
 
 target_link_libraries(shards-module-fs Boost::filesystem)
+
+if(LINUX)
+  # add gtk3 libraries
+  target_link_libraries(shards-module-fs gtk-3 gobject-2.0)
+endif()
