@@ -195,7 +195,7 @@ struct NetworkPeer {
     }
   }
 
-  bool maybeReceive() {
+  bool tryReceive() {
     bool isMessageReady = false;
 
     {
@@ -209,8 +209,6 @@ struct NetworkPeer {
 
       // Loop to receive all available chunks.
       while (nextChunkSize > 0) {
-        // SHLOG_TRACE("Received chunk of size: {}, offset: {}", nextChunkSize, offset);
-
         // Resize the buffer to hold the incoming chunk.
         recvBuffer.resize(nextChunkSize + offset);
 
@@ -221,28 +219,27 @@ struct NetworkPeer {
         // If this is the first chunk, read the expected total size from its prefix.
         if (offset == 0) {
           expectedSize = *(uint32_t *)recvBuffer.data();
-          // if (peer->expectedSize > 25000) {
-          //   SHLOG_TRACE("Receiving big message: {}", peer->expectedSize);
-          // }
         }
 
-        // Check if the current buffer size minus the size prefix matches the expected size.
+        // Check if the current buffer matches the expected size.
         if (recvBuffer.size() == expectedSize) {
           isMessageReady = true;
-          // if (peer->expectedSize > 25000) {
-          //   SHLOG_TRACE("Received big message: {}", peer->expectedSize);
-          // }
           break;
         } else {
           // We expect another chunk; update the offset.
           offset = recvBuffer.size();
           nextChunkSize = ikcp_peeksize(kcp);
-          // SHLOG_TRACE("Next chunk size: {}, offset: {}", nextChunkSize, offset);
         }
       }
     }
 
     return isMessageReady;
+  }
+
+  void endReceive() {
+    // Reset the buffer.
+    recvBuffer.clear();
+    expectedSize = 0;
   }
 
   ThreadShared<NetworkBase::Writer> _sendWriter;
@@ -659,12 +656,14 @@ struct Server : public NetworkBase {
           context->main->dispatcher.trigger(std::move(event));
         }
 
-        if (peer->maybeReceive()) {
+        if (peer->tryReceive()) {
           // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
           Reader r((char *)peer->recvBuffer.data() + 4, peer->recvBuffer.size() - 4);
           peer->des.reset();
           peer->des.deserialize(r, peer->payload);
-          peer->recvBuffer.clear(); // finally clear the buffer
+
+          // at this point we can already cleanup the buffer
+          peer->endReceive();
 
           // Run within the root flow
           auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
@@ -895,11 +894,13 @@ struct Client : public NetworkBase {
 
     setPeer(context, _peer);
 
-    if (_peer.maybeReceive()) {
+    if (_peer.tryReceive()) {
       Reader r((char *)_peer.recvBuffer.data() + 4, _peer.recvBuffer.size() - 4);
       _peer.des.reset();
       _peer.des.deserialize(r, _peer.payload);
-      _peer.recvBuffer.clear(); // finally clear the buffer
+
+      // at this point we can already cleanup the buffer
+      _peer.endReceive();
 
       SHVar output{};
       activateShards(SHVar(_blks).payload.seqValue, context, _peer.payload, output);
@@ -1017,7 +1018,6 @@ struct GetPeer : public PeerBase {
   }
 };
 }; // namespace Network
-
 }; // namespace shards
 SHARDS_REGISTER_FN(network) {
   using namespace shards::Network;
