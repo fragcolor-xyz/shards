@@ -18,6 +18,13 @@ struct ConsumeFlags {
   bool wantsPointerInput{};
   bool wantsKeyboardInput{};
   bool requestFocus{};
+
+  ConsumeFlags& mergeWith(const ConsumeFlags &other) {
+    wantsPointerInput = wantsPointerInput || other.wantsPointerInput;
+    wantsKeyboardInput = wantsKeyboardInput || other.wantsKeyboardInput;
+    requestFocus = requestFocus || other.requestFocus;
+    return *this;
+  }
 };
 
 struct IInputContext {
@@ -31,7 +38,7 @@ struct IInputContext {
 
   virtual shards::input::InputMaster *getMaster() const = 0;
 
-  virtual shards::input::InputStack& getInputStack() = 0;
+  virtual shards::input::InputStack &getInputStack() = 0;
 
   virtual void postMessage(const Message &message) = 0;
   virtual const InputState &getState() const = 0;
@@ -45,7 +52,8 @@ struct IInputContext {
 };
 
 using RequiredInputContext = shards::RequiredContextVariable<IInputContext, IInputContext::Type, IInputContext::VariableName>;
-using OptionalInputContext = shards::RequiredContextVariable<IInputContext, IInputContext::Type, IInputContext::VariableName, false>;
+using OptionalInputContext =
+    shards::RequiredContextVariable<IInputContext, IInputContext::Type, IInputContext::VariableName, false>;
 
 } // namespace shards::input
 

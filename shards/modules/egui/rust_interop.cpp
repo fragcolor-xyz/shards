@@ -124,7 +124,7 @@ void gfx_applyEguiOutputs(gfx::EguiInputTranslator *translator, const egui::Full
   consumeFlags.wantsKeyboardInput = output.wantsKeyboardInput;
 
   // Request focus during drag operations
-  if (inputContext.getState().mouseButtonState != 0) {
+  if (output.wantsPointerInput && inputContext.getState().mouseButtonState != 0) {
     consumeFlags.requestFocus = true;
   } else {
     consumeFlags.requestFocus = false;

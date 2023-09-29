@@ -40,6 +40,7 @@ struct AxisInputState {
 // Tracked cursor & button states
 struct InputState {
   AxisInputState keyboardXAxis;
+  AxisInputState keyboardYAxis;
   AxisInputState keyboardZAxis;
   PointerInputState pointer;
   float mouseWheel{};
@@ -64,13 +65,11 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
 
   auto &consumeFlags = inputContext.getConsumeFlags();
   if (inputContext.getState().mouseButtonState != 0) {
-    consumeFlags.wantsKeyboardInput = true;
-    consumeFlags.wantsPointerInput = true;
-    consumeFlags.requestFocus = true;
-  } else {
-    consumeFlags.wantsKeyboardInput = false;
-    consumeFlags.wantsPointerInput = false;
-    consumeFlags.requestFocus = false;
+    consumeFlags.mergeWith(ConsumeFlags{
+        .wantsPointerInput = true,
+        .wantsKeyboardInput = true,
+        .requestFocus = true,
+    });
   }
 
   for (auto &event : inputContext.getEvents()) {
@@ -80,16 +79,22 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
           if constexpr (std::is_same_v<T, KeyEvent>) {
             switch (event.key) {
             case SDL_KeyCode::SDLK_w:
-              inputState.keyboardZAxis.neg = event.pressed;
+              inputState.keyboardZAxis.pos = event.pressed;
               break;
             case SDL_KeyCode::SDLK_s:
-              inputState.keyboardZAxis.pos = event.pressed;
+              inputState.keyboardZAxis.neg = event.pressed;
               break;
             case SDL_KeyCode::SDLK_a:
               inputState.keyboardXAxis.neg = event.pressed;
               break;
             case SDL_KeyCode::SDLK_d:
               inputState.keyboardXAxis.pos = event.pressed;
+              break;
+            case SDL_KeyCode::SDLK_e:
+              inputState.keyboardYAxis.pos = event.pressed;
+              break;
+            case SDL_KeyCode::SDLK_q:
+              inputState.keyboardYAxis.neg = event.pressed;
               break;
             }
           } else if constexpr (std::is_same_v<T, PointerButtonEvent>) {
@@ -120,6 +125,42 @@ template <typename T> inline T getParamVarOrDefault(ParamVar &paramVar, const T 
   return var.isNone() ? _default : (T)var;
 }
 
+// Generates CameraInputs from an input state
+inline CameraInputs getCameraInputs(const InputState &inputState, ParamVar &lookSpeedParam, ParamVar &panSpeedParam,
+                                    ParamVar &scrollSpeedParam) {
+  CameraInputs inputs;
+
+  const float mouseBaseFactor = 2000.0f;
+
+  float lookSpeed = getParamVarOrDefault(lookSpeedParam, 1.0f) / mouseBaseFactor * 0.7f * gfx::pi2;
+  float panSpeed = getParamVarOrDefault(panSpeedParam, 1.0f) / mouseBaseFactor * 2.0f;
+  float scrollSpeed = getParamVarOrDefault(scrollSpeedParam, 1.0f) * 0.4f;
+
+  float2 pointerDelta = inputState.pointer.position - inputState.pointer.prevPosition;
+
+  if (inputState.pointer.secondaryButton) {
+    // Apply look rotation
+    inputs.lookRotation.y = -pointerDelta.x * lookSpeed;
+    inputs.lookRotation.x = -pointerDelta.y * lookSpeed;
+
+    // Fly keys
+    inputs.velocity.x += inputState.keyboardXAxis.getValue();
+    inputs.velocity.y += inputState.keyboardYAxis.getValue();
+    inputs.velocity.z += inputState.keyboardZAxis.getValue();
+  }
+
+  if (inputState.pointer.tertiaryButton) {
+    inputs.translation.x += pointerDelta.x * panSpeed;
+    inputs.translation.y += -pointerDelta.y * panSpeed;
+  }
+
+  if (inputState.mouseWheel != 0.0f) {
+    inputs.translation.z += -inputState.mouseWheel * scrollSpeed;
+  }
+
+  return inputs;
+}
+
 struct FreeCameraShard {
   static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
@@ -139,40 +180,6 @@ struct FreeCameraShard {
 
   Mat4 _result;
   InputState _inputState;
-
-  // Generates CameraInputs from an input state
-  CameraInputs getCameraInputs(const InputState &inputState) {
-    CameraInputs inputs;
-
-    const float mouseBaseFactor = 2000.0f;
-
-    float lookSpeed = getParamVarOrDefault(_lookSpeed, 1.0f) / mouseBaseFactor * 0.7f * gfx::pi2;
-    float panSpeed = getParamVarOrDefault(_panSpeed, 1.0f) / mouseBaseFactor * 2.0f;
-    float scrollSpeed = getParamVarOrDefault(_scrollSpeed, 1.0f);
-
-    float2 pointerDelta = inputState.pointer.position - inputState.pointer.prevPosition;
-
-    if (inputState.pointer.secondaryButton) {
-      // Apply look rotation
-      inputs.lookRotation.y = -pointerDelta.x * lookSpeed;
-      inputs.lookRotation.x = -pointerDelta.y * lookSpeed;
-
-      // Fly keys
-      inputs.velocity.x += inputState.keyboardXAxis.getValue();
-      inputs.velocity.z += inputState.keyboardZAxis.getValue();
-    }
-
-    if (inputState.pointer.tertiaryButton) {
-      inputs.translation.x += -pointerDelta.x * panSpeed;
-      inputs.translation.y += pointerDelta.y * panSpeed;
-    }
-
-    if (_inputState.mouseWheel != 0.0f) {
-      inputs.translation.z += -_inputState.mouseWheel * scrollSpeed;
-    }
-
-    return inputs;
-  }
 
   // Applies camera inputs to a view matrix
   float4x4 applyCameraInputsToView(const CameraInputs &inputs, const float4x4 &inputMatrix, float deltaTime) {
@@ -213,19 +220,8 @@ struct FreeCameraShard {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     updateInputState(_inputState, _inputContext);
-    bool anyButtonHeld = _inputState.pointer.secondaryButton || _inputState.pointer.tertiaryButton;
-    auto &consumeFlags = _inputContext->getConsumeFlags();
-    if (anyButtonHeld) {
-      consumeFlags.requestFocus = true;
-      consumeFlags.wantsPointerInput = true;
-      consumeFlags.wantsKeyboardInput = true;
-    } else {
-      consumeFlags.requestFocus = false;
-      consumeFlags.wantsPointerInput = true;
-      consumeFlags.wantsKeyboardInput = false;
-    }
 
-    CameraInputs cameraInputs = getCameraInputs(_inputState);
+    CameraInputs cameraInputs = getCameraInputs(_inputState, _lookSpeed, _panSpeed, _scrollSpeed);
 
     float4x4 viewMatrix = (Mat4)input;
     _result = applyCameraInputsToView(cameraInputs, viewMatrix, _inputState.deltaTime);
@@ -260,7 +256,7 @@ struct TargetCameraState {
 
     float3 dir = (target - pos) / distance;
     // float zl = std::sqrt(dir.z * dir.z + dir.x * dir.x);
-    float yaw = std::atan2( -dir.x, -dir.z);
+    float yaw = std::atan2(-dir.x, -dir.z);
     float pitch = std::asin(dir.y);
 
     TargetCameraState result;
@@ -334,43 +330,9 @@ struct TargetCameraUpdate {
 
   TargetCameraStateTable _output;
 
-  // Generates CameraInputs from an input state
-  CameraInputs getCameraInputs(const InputState &inputState) {
-    CameraInputs inputs;
-
-    const float mouseBaseFactor = 2000.0f;
-
-    float lookSpeed = getParamVarOrDefault(_lookSpeed, 1.0f) / mouseBaseFactor * 0.7f * gfx::pi2;
-    float panSpeed = getParamVarOrDefault(_panSpeed, 1.0f) / mouseBaseFactor * 2.0f;
-    float scrollSpeed = getParamVarOrDefault(_scrollSpeed, 1.0f);
-
-    float2 pointerDelta = inputState.pointer.position - inputState.pointer.prevPosition;
-
-    if (inputState.pointer.secondaryButton) {
-      // Apply look rotation
-      inputs.lookRotation.y = -pointerDelta.x * lookSpeed;
-      inputs.lookRotation.x = -pointerDelta.y * lookSpeed;
-
-      // Fly keys
-      inputs.velocity.x += inputState.keyboardXAxis.getValue();
-      inputs.velocity.z += inputState.keyboardZAxis.getValue();
-    }
-
-    if (inputState.pointer.tertiaryButton) {
-      inputs.translation.x += -pointerDelta.x * panSpeed;
-      inputs.translation.y += pointerDelta.y * panSpeed;
-    }
-
-    if (_inputState.mouseWheel != 0.0f) {
-      inputs.translation.z += -_inputState.mouseWheel * scrollSpeed;
-    }
-
-    return inputs;
-  }
-
   // Applies camera inputs to a view matrix
   void updateState(TargetCameraState &state, const CameraInputs &inputs, float deltaTime) {
-    float flySpeed = getParamVarOrDefault(_flySpeed, 1.0f) * 100.0f;
+    float flySpeed = getParamVarOrDefault(_flySpeed, 1.0f) * 0.8f;
 
     float4 rotPitch = linalg::rotation_quat(float3(1.0f, 0.0, 0.0f), state.rotation.x);
     float4 rotYaw = linalg::rotation_quat(float3(0.0f, 1.0f, 0.0f), state.rotation.y);
@@ -378,9 +340,9 @@ struct TargetCameraUpdate {
 
     float3 cameraX = linalg::qxdir(cameraRotation);
     float3 cameraY = linalg::qydir(cameraRotation);
-    float3 cameraZ = linalg::qzdir(cameraRotation);
+    float3 cameraZ = -linalg::qzdir(cameraRotation);
 
-    float distanceSpeedScale = linalg::clamp(state.distance, 1.0f, 100.0f);
+    float distanceSpeedScale = (1.0f + (linalg::clamp(state.distance, 1.0f, 100.0f) - 1.0f) * 0.4f);
 
     state.rotation.x += inputs.lookRotation.x;
     state.rotation.y += inputs.lookRotation.y;
@@ -394,14 +356,22 @@ struct TargetCameraUpdate {
                     inputs.translation.y * cameraY) *
                    distanceSpeedScale; //
 
-    state.distance = linalg::clamp(state.distance + inputs.translation.z, 0.2f, 100.0f);
+    if ((inputs.translation.z < 0 && state.distance <= MinDistance) ||
+        (inputs.translation.z > 0 && state.distance >= MaxDistance)) {
+      state.pivot -= inputs.translation.z * cameraZ;
+    } else {
+      state.distance = linalg::clamp(state.distance + inputs.translation.z, MinDistance, MaxDistance);
+    }
   }
+
+  const float MinDistance = 0.2f;
+  const float MaxDistance = 100.0f;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     TargetCameraState state = TargetCameraState::fromTable((TableVar &)input);
 
     updateInputState(_inputState, _inputContext);
-    CameraInputs cameraInputs = getCameraInputs(_inputState);
+    CameraInputs cameraInputs = getCameraInputs(_inputState, _lookSpeed, _panSpeed, _scrollSpeed);
     updateState(state, cameraInputs, _inputState.deltaTime);
 
     return (_output = state);
@@ -482,7 +452,7 @@ struct TargetCameraMatrix {
     // Reconstruct view matrix using the inverse rotation/translation of the camera
     auto &newViewMatrix = (float4x4 &)_result;
     newViewMatrix = linalg::identity;
-    newViewMatrix = linalg::mul(linalg::translation_matrix(state.pivot + lookDirection * state.distance), newViewMatrix);
+    newViewMatrix = linalg::mul(linalg::translation_matrix(-(state.pivot - lookDirection * state.distance)), newViewMatrix);
     newViewMatrix = linalg::mul(linalg::rotation_matrix(linalg::qconj(cameraRotation)), newViewMatrix);
     return _result;
   }

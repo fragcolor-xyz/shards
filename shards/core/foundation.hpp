@@ -317,7 +317,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   };
 
   // Triggered whenever a new wire is detached from this wire
-  struct OnWireDetached {
+  struct OnWireDetachedEvent {
     const SHWire *wire;
     const SHWire *childWire;
   };

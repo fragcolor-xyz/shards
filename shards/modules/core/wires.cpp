@@ -1976,6 +1976,12 @@ struct Spawn : public CapturingSpawners {
 
     mesh->schedule(c->wire, input, false);
 
+    SHWire *rootWire = context->rootWire();
+    rootWire->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+        .wire = rootWire,
+        .childWire = c->wire.get(),
+    });
+
     return Var(c->wire); // notice this is "weak"
   }
 
