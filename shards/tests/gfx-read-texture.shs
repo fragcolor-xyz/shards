@@ -46,6 +46,8 @@
       @f3(1.0 0.0 0.0) | Math.Translation |
       GFX.Drawable(Mesh: mesh Params: {index: 0xffff}) | GFX.Draw(queue)
 
+      GFX.Render(Steps: render-steps View: view)
+
       ; This end frame is required when using `Wait: true` with the ReadTexture shard,
       ; since rendering command buffers are queued in EndFrame
       ; and texture copy needs to happen afterwards

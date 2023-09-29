@@ -712,12 +712,12 @@
        })
 
   "a/b/c/d" | FS.RelativeTo("a") | 
-  Regex.Replace("""\\" "/""") |
+  Regex.Replace("""\\""" "/") |
   Log("Relative path") | 
   Assert.Is("b/c/d")
 
-  ["." "a"] | FS.Join | Regex.Replace("""\\" "/""") | Log("Joined Path") | Assert.Is("./a")
-  ["a/b" "c"] | FS.Join | Regex.Replace("""\\" "/""") | Log("Joined Path") | Assert.Is("a/b/c")
+  ["." "a"] | FS.Join | Regex.Replace("""\\""" "/") | Log("Joined Path") | Assert.Is("./a")
+  ["a/b" "c"] | FS.Join | Regex.Replace("""\\""" "/") | Log("Joined Path") | Assert.Is("a/b/c")
 
   "The result is: " | Set(text1)
   "Hello world, " | AppendTo(text1)
