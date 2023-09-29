@@ -2,7 +2,7 @@
 #include "context.hpp"
 #include "error_utils.hpp"
 #include "gfx_wgpu.hpp"
-#include <tracy/Tracy.hpp>
+#include <tracy/Wrapper.hpp>
 #include <magic_enum.hpp>
 #include <map>
 

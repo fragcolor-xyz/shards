@@ -16,7 +16,7 @@
 #include <gfx/drawables/mesh_tree_drawable.hpp>
 #include <gfx/gltf/gltf.hpp>
 #include <gfx/paths.hpp>
-#include <tracy/Tracy.hpp>
+#include <tracy/Wrapper.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/core/runtime.hpp>
 #include <spdlog/spdlog.h>

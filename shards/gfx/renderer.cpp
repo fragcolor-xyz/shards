@@ -41,7 +41,7 @@
 #include <stdexcept>
 #include <taskflow/taskflow.hpp>
 #include <taskflow/algorithm/reduce.hpp>
-#include <tracy/Tracy.hpp>
+#include <tracy/Wrapper.hpp>
 #include <thread>
 #include <algorithm>
 #include <magic_enum.hpp>

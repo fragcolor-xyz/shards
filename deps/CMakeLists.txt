@@ -256,8 +256,13 @@ option(TRACY_ENABLE "Enable profiling" OFF)
 
 # Enable fibers support by default
 option(TRACY_FIBERS "Enable fibers support" ON)
+option(TRACY_CALLSTACK_SIZE "Tracy callstack size" 8)
 
 # These settings are required to make tracy from C++ work together with rust's tracy-client
 set(TRACY_MANUAL_LIFETIME ON CACHE BOOL "" FORCE)
 set(TRACY_DELAYED_INIT ON CACHE BOOL "" FORCE)
 add_subdirectory(tracy)
+
+# Add the wrapper include path that contains tracy/Wrapper.hpp that defines the correct TRACY_CALLSTACK based on the stack size configuration
+target_include_directories(TracyClient PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/tracy_wrapper>)
+target_compile_definitions(TracyClient PUBLIC TRACY_CALLSTACK_SIZE=${TRACY_CALLSTACK_SIZE})

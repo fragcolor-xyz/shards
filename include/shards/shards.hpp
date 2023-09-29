@@ -20,7 +20,7 @@
 
 #ifdef TRACY_ENABLE
 // profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
-#include <tracy/Tracy.hpp>
+#include <tracy/Wrapper.hpp>
 #ifdef TRACY_FIBERS
 #define TracyCoroEnter(wire)             \
   {                                      \
