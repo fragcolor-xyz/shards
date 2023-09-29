@@ -4,6 +4,7 @@
 #include "foundation.hpp"
 #include <shards/common_types.hpp>
 #include "runtime.hpp"
+#include "into_wire.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
 
@@ -14,9 +15,6 @@ DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure, 'brcB');
 
 // Runs wires in a separate mesh while capturing variables
 struct Brancher {
-  static inline shards::Types RunnableTypes{CoreInfo::NoneType, CoreInfo::WireType, Type::SeqOf(CoreInfo::WireType),
-                                            CoreInfo::ShardRefSeqType, Type::SeqOf(CoreInfo::ShardRefSeqType)};
-
   std::shared_ptr<SHMesh> mesh = SHMesh::make();
   std::vector<std::shared_ptr<SHWire>> wires;
   bool captureAll = false;
@@ -30,58 +28,13 @@ private:
 public:
   ~Brancher() { cleanup(); }
 
-  // Add a sequence of shards as a looped wire
-  void addLoopedShards(const SHVar &var) {
-    assert(var.valueType == SHType::Seq);
-    const SHSeq &seq = var.payload.seqValue;
-    assert(seq.len == 0 || seq.elements[0].valueType == SHType::ShardRef);
-    auto wire = wires.emplace_back(SHWire::make("brancher-looped-shards"));
-    wire->looped = true;
-    ForEach(seq, [&](SHVar &v) {
-      assert(v.valueType == SHType::ShardRef);
-      wire->addShard(v.payload.shardValue);
-    });
-  }
-
-  // Adds a wire
-  void addWire(const SHVar &var) {
-    assert(var.valueType == SHType::Wire);
-    wires.emplace_back(*(std::shared_ptr<SHWire> *)var.payload.wireValue);
-  }
-
   // Adds a single wire or sequence of shards as a looped wire
-  void addRunnable(const SHVar &var) {
-    if (var.valueType == SHType::Wire) {
-      addWire(var);
-    } else {
-      addLoopedShards(var);
-    }
-  }
+  void addRunnable(const SHVar &var) { wires.push_back(IntoWire{}.var(var)); }
 
   // Sets the runnables (wires or shards)
   void setRunnables(const SHVar &var) {
     wires.clear();
-    if (var.valueType != SHType::None) {
-      if (var.valueType == SHType::Wire) {
-        addRunnable(var);
-      } else {
-        assert(var.valueType == SHType::Seq);
-        auto &seq = var.payload.seqValue;
-        if (seq.len == 0)
-          return;
-
-        if (seq.elements[0].valueType == SHType::ShardRef) {
-          // Single sequence of shards
-          addLoopedShards(var);
-        } else {
-          // Multiple wires or sequences of shards
-          for (uint32_t i = 0; i < seq.len; i++) {
-            SHVar &v = seq.elements[i];
-            addRunnable(v);
-          }
-        }
-      }
-    }
+    IntoWires{wires}.var(var);
   }
 
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_mergedRequirements; }

@@ -3,6 +3,7 @@
 
 #include <SDL_mouse.h>
 #include <unordered_map>
+#include <magic_enum.hpp>
 
 namespace shards::input {
 struct SDLCursor {
@@ -30,14 +31,11 @@ struct CursorMap {
   std::unordered_map<SDL_SystemCursor, SDLCursor> cursorMap{};
 
   CursorMap() {
-    cursorMap.insert_or_assign(SDL_SYSTEM_CURSOR_IBEAM, SDLCursor(SDL_SYSTEM_CURSOR_IBEAM));
-    cursorMap.insert_or_assign(SDL_SYSTEM_CURSOR_HAND, SDLCursor(SDL_SYSTEM_CURSOR_HAND));
-    cursorMap.insert_or_assign(SDL_SYSTEM_CURSOR_CROSSHAIR, SDLCursor(SDL_SYSTEM_CURSOR_CROSSHAIR));
-    cursorMap.insert_or_assign(SDL_SYSTEM_CURSOR_SIZENESW, SDLCursor(SDL_SYSTEM_CURSOR_SIZENESW));
-    cursorMap.insert_or_assign(SDL_SYSTEM_CURSOR_SIZENWSE, SDLCursor(SDL_SYSTEM_CURSOR_SIZENWSE));
-    cursorMap.insert_or_assign(SDL_SYSTEM_CURSOR_ARROW, SDLCursor(SDL_SYSTEM_CURSOR_ARROW));
-    cursorMap.insert_or_assign(SDL_SYSTEM_CURSOR_SIZENS, SDLCursor(SDL_SYSTEM_CURSOR_SIZENS));
-    cursorMap.insert_or_assign(SDL_SYSTEM_CURSOR_SIZEWE, SDLCursor(SDL_SYSTEM_CURSOR_SIZEWE));
+    magic_enum::enum_for_each<SDL_SystemCursor>([&](auto x) {
+      if (x == SDL_NUM_SYSTEM_CURSORS)
+        return;
+      cursorMap.insert_or_assign(x, SDLCursor(x));
+    });
   }
 
   SDL_Cursor *getCursor(SDL_SystemCursor cursor) {

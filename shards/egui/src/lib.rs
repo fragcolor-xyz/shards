@@ -7,11 +7,10 @@
 use crate::layouts::LAYOUT_FRAME_TYPE;
 use shards::core::cloneVar;
 use shards::core::register_enum;
-use shards::core::register_legacy_enum;
-use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
 use shards::shardsc;
+use shards::types::ClonedVar;
 use shards::types::common_type;
 use shards::types::ExposedTypes;
 use shards::types::OptionalString;
@@ -21,6 +20,7 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
 use shards::SHObjectTypeInfo;
+use std::cell::RefCell;
 use std::ffi::c_void;
 use std::ffi::CString;
 
@@ -123,6 +123,13 @@ impl From<EguiId> for egui::Id {
   }
 }
 
+#[derive(Default)]
+pub struct Context {
+  pub egui_ctx: egui::Context,
+  // Drag and drop value container
+  pub dnd_value: RefCell<ClonedVar>,
+}
+
 mod egui_host;
 
 pub(crate) trait UIRenderer {
@@ -137,6 +144,7 @@ pub(crate) trait UIRenderer {
 pub mod bindings;
 pub mod containers;
 pub mod context;
+pub mod dnd;
 pub mod layouts;
 pub mod menus;
 pub mod misc;
@@ -340,6 +348,7 @@ pub extern "C" fn register(core: *mut shards::shardsc::SHCore) {
 
   register_enum::<Order>();
   register_enum::<Anchor>();
+  dnd::register_shards();
   context::register_shards();
   state::register_shards();
   containers::register_shards();

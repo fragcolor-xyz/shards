@@ -307,7 +307,9 @@ struct BitSwap64 {
 // Matches input against expected type and throws if it doesn't match
 // unsafe only matches basic type
 static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash, const SHTypeInfo &expectedType, bool unsafe) {
-  if (input.valueType != expectedType.basicType) {
+  if(expectedType.basicType == SHType::Any) {
+    return;
+  } else  if (input.valueType != expectedType.basicType) {
     throw ActivationError(fmt::format("Unexpected input type, value: {} expected type: {}", input, expectedType));
   } else if (input.valueType == SHType::Seq && input.payload.seqValue.len == 0) {
     // early out if seq is empty

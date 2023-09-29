@@ -70,7 +70,7 @@ struct ToImage {
     SIZE_TYPES
   )]
   size: ParamVar,
-  #[shard_param("Offset", "A positive x and y value offsets towards the right and the bottom of the screen respectively. (0.0, 0.0) by default.", FLOAT2_TYPES)]
+  #[shard_param("Offset", "A positive x and y value offsets towards the right and the bottom of the screen respectively. (0.0, 0.0) by default.", [common_type::none, common_type::float2, common_type::float2_var])]
   offset: ParamVar,
   #[shard_param("Padding", "Pixels of padding to add", INT2_TYPES)]
   padding: ParamVar,

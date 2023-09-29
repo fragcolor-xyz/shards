@@ -103,6 +103,9 @@ jobs:
           echo "Running egui plot"
           build/shards new shards/tests/egui-plot.shs
 
+          echo "Running ui-drag-and-drop"
+          build/shards new shards/tests/ui-drag-and-drop.shs
+
           echo "Running onnx test"
           build/shards shards/tests/onnx.edn
       - name: Test Physics

@@ -45,6 +45,10 @@ struct CursorMap {
   CursorMap() {
     cursorMap.insert_or_assign(egui::CursorIcon::Text, SDL_SystemCursor::SDL_SYSTEM_CURSOR_IBEAM);
     cursorMap.insert_or_assign(egui::CursorIcon::PointingHand, SDL_SystemCursor::SDL_SYSTEM_CURSOR_HAND);
+    cursorMap.insert_or_assign(egui::CursorIcon::Grab, SDL_SystemCursor::SDL_SYSTEM_CURSOR_HAND);
+    cursorMap.insert_or_assign(egui::CursorIcon::Grabbing, SDL_SystemCursor::SDL_SYSTEM_CURSOR_HAND);
+    cursorMap.insert_or_assign(egui::CursorIcon::NoDrop, SDL_SystemCursor::SDL_SYSTEM_CURSOR_NO);
+    cursorMap.insert_or_assign(egui::CursorIcon::NotAllowed, SDL_SystemCursor::SDL_SYSTEM_CURSOR_NO);
     cursorMap.insert_or_assign(egui::CursorIcon::Crosshair, SDL_SystemCursor::SDL_SYSTEM_CURSOR_CROSSHAIR);
     cursorMap.insert_or_assign(egui::CursorIcon::ResizeNeSw, SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENESW);
     cursorMap.insert_or_assign(egui::CursorIcon::ResizeNwSe, SDL_SystemCursor::SDL_SYSTEM_CURSOR_SIZENWSE);

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+use crate::Context as UIContext;
 use crate::CONTEXTS_NAME_CSTR;
 use crate::EGUI_CTX_TYPE;
 use crate::EGUI_UI_TYPE;
@@ -63,7 +64,7 @@ where
   result
 }
 
-pub fn get_object_from_var_opt<'a, T>(
+pub unsafe fn get_object_from_var_opt<'a, T>(
   var: &Var,
   obj_type: &Type,
 ) -> Result<Option<&'a mut T>, &'static str> {
@@ -74,14 +75,17 @@ pub fn get_object_from_var_opt<'a, T>(
   }
 }
 
-pub fn get_object_from_var<'a, T>(var: &Var, obj_type: &Type) -> Result<&'a mut T, &'static str> {
+pub unsafe fn get_object_from_var<'a, T>(
+  var: &Var,
+  obj_type: &Type,
+) -> Result<&'a mut T, &'static str> {
   match get_object_from_var_opt(var, obj_type)? {
     Some(obj) => Ok(obj),
     None => Err("Object not set"),
   }
 }
 
-pub fn get_object_from_param_var<'a, T>(
+pub unsafe fn get_object_from_param_var<'a, T>(
   var: &ParamVar,
   obj_type: &Type,
 ) -> Result<&'a mut T, &'static str> {
@@ -127,27 +131,29 @@ pub fn expose_contents_variables(exposing: &mut ExposedTypes, contents: &ShardsV
 
 pub fn get_current_context_from_var<'a>(
   context_stack_var: &Var,
-) -> Result<&'a mut egui::Context, &'a str> {
-  get_object_from_var(&context_stack_var, &EGUI_CTX_TYPE)
+) -> Result<&'a UIContext, &'static str> {
+  Ok(unsafe { get_object_from_var(&context_stack_var, &EGUI_CTX_TYPE)? })
 }
 
 pub fn get_current_context<'a>(
   context_stack_var: &ParamVar,
-) -> Result<&'a mut egui::Context, &'a str> {
+) -> Result<&'a UIContext, &'static str> {
   return get_current_context_from_var(context_stack_var.get());
 }
 
 pub fn get_current_parent_opt<'a>(
   parents_stack_var: &Var,
 ) -> Result<Option<&'a mut egui::Ui>, &'static str> {
-  get_object_from_var_opt(parents_stack_var, &EGUI_UI_TYPE)
+  Ok(unsafe { get_object_from_var_opt(parents_stack_var, &EGUI_UI_TYPE)? })
 }
 
 pub fn get_parent_ui<'a>(parents_stack_var: &Var) -> Result<&'a mut egui::Ui, &'static str> {
-  match get_object_from_var_opt(parents_stack_var, &EGUI_UI_TYPE)? {
-    Some(ui) => Ok(ui),
-    None => Err("Parent UI missing"),
-  }
+  Ok(unsafe {
+    match get_object_from_var_opt(parents_stack_var, &EGUI_UI_TYPE)? {
+      Some(ui) => Ok(ui),
+      None => Err("Parent UI missing"),
+    }
+  }?)
 }
 
 pub fn require_parents(requiring: &mut ExposedTypes) {

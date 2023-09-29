@@ -88,9 +88,8 @@ impl LegacyShard for Save {
     _context: &shards::types::Context,
     _input: &shards::types::Var,
   ) -> Result<shards::types::Var, &str> {
-    let ctx = util::get_current_context(&self.instance)?;
-
-    self.data = ctx.memory_mut(|mem| {
+    let egui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
+    self.data = egui_ctx.memory_mut(|mem| {
       Ok::<_, &str>(Some(
         rmp_serde::to_vec(mem.deref()).map_err(|_| "Failed to serialize UI state")?,
       ))
@@ -164,10 +163,9 @@ impl LegacyShard for Restore {
     _context: &shards::types::Context,
     input: &shards::types::Var,
   ) -> Result<shards::types::Var, &str> {
-    let gui_ctx = util::get_current_context(&self.instance)?;
-
+    let egui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
     let bytes: &[u8] = input.try_into()?;
-    gui_ctx.memory_mut(|mem| {
+    egui_ctx.memory_mut(|mem| {
       Ok::<_, &str>(
         *mem = rmp_serde::from_slice(bytes).map_err(|_| "Failed to deserialize UI state")?,
       )

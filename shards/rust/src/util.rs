@@ -93,3 +93,9 @@ pub fn get_or_var<'a: 'c, 'b: 'c, 'c>(v: &'a Var, ctx: &'b Context) -> &'c Var {
     &v
   }
 }
+
+pub fn merge_exposed_types(exposed: &mut ExposedTypes, types: &SHExposedTypesInfo) {
+  for t in types {
+    exposed.push(t);
+  }
+}

@@ -84,13 +84,13 @@ impl Shard for CanvasShard {
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     let (x, y, w, h): (f32, f32, f32, f32) = self.rect.get().try_into()?;
 
-    let ui_ctx = util::get_current_context(&self.contexts)?;
+    let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
 
     let order = self.order.get().try_into().unwrap_or(Order::Background);
     let layer_id = LayerId::new(order.into(), EguiId::new(self, 0).into());
 
     let mut ui = Ui::new(
-      ui_ctx.clone(),
+      egui_ctx.clone(),
       layer_id,
       layer_id.id,
       egui::Rect::from_min_size(Pos2::new(x, y), Vec2::new(w, h)),
@@ -160,10 +160,10 @@ impl Shard for CircleShard {
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
     util::require_parents(&mut self.required);
-    if !self.center.is_variable() {
+    if self.center.is_none() {
       return Err("Center is required");
     }
-    if !self.radius.is_variable() {
+    if self.radius.is_none() {
       return Err("Radius is required");
     }
     Ok(NONE_TYPES[0])

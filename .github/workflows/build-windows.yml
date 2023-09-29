@@ -234,47 +234,47 @@ jobs:
         run: |
           cd build
           ./shards new ../shards/tests/hello.shs
-          echo "Running test: general"
+          echo "Running general"
           ./shards new ../shards/tests/general.shs
-          echo "Running test: variables"
+          echo "Running variables"
           ./shards ../shards/tests/variables.edn
-          echo "Running test: linalg"
+          echo "Running linalg"
           ./shards new ../shards/tests/linalg.shs
-          echo "Running test: loader"
+          echo "Running loader"
           ./shards ../shards/tests/loader.clj
-          echo "Running test: network"
+          echo "Running network"
           ./shards new ../shards/tests/network.shs
-          echo "Running test: struct"
+          echo "Running struct"
           ./shards new ../shards/tests/struct.shs
-          echo "Running test: flows"
+          echo "Running flows"
           ./shards new ../shards/tests/flows.shs
-          echo "Running test: kdtree"
+          echo "Running kdtree"
           ./shards new ../shards/tests/kdtree.shs
-          echo "Running test: channels"
+          echo "Running channels"
           ./shards new ../shards/tests/channels.shs
-          echo "Running test: http"
+          echo "Running http"
           ./shards new ../shards/tests/http.shs
-          echo "Running test: brotli"
+          echo "Running brotli"
           ./shards new ../shards/tests/brotli.shs
-          echo "Running test: snappy"
+          echo "Running snappy"
           ./shards new ../shards/tests/snappy.shs
-          echo "Running test: expect-like"
+          echo "Running expect-like"
           ./shards new ../shards/tests/expect.shs
-          # echo "Running test: ws"
+          # echo "Running ws"
           # ./shards ../shards/tests/ws.edn
-          echo "Running test: bigint"
+          echo "Running bigint"
           ./shards new ../shards/tests/bigint.shs
-          echo "Running test: wasm"
+          echo "Running wasm"
           ./shards ../shards/tests/wasm.clj
-          echo "Running test: eth"
+          echo "Running eth"
           ./shards new ../shards/tests/eth.shs
-          echo "Running test: crypto"
+          echo "Running crypto"
           ./shards new ../shards/tests/crypto.shs
-          echo "Running test: complex-deserialize"
+          echo "Running complex-deserialize"
           ./shards new ../shards/tests/complex-deserialize.shs
-          echo "Running test: suspend-resume"
+          echo "Running suspend-resume"
           ./shards new ../shards/tests/suspend-resume.shs
-          echo "Running test: help"
+          echo "Running help"
           ./shards new ../shards/tests/help.shs
       - name: Test doc samples (non-UI)
         env:
@@ -311,19 +311,21 @@ jobs:
         shell: bash
         run: |
           cd build
-          echo "Running test: gfx_window"
+          echo "Running gfx_window"
           ./shards ../shards/tests/gfx-window.edn
-          echo "Running test: gfx_cube"
+          echo "Running gfx_cube"
           ./shards new ../shards/tests/gfx-cube.shs
-          echo "Running test: gfx_materials"
+          echo "Running gfx_materials"
           ./shards ../shards/tests/gfx-materials.edn
-          echo "Running test: ui"
+          echo "Running ui"
           ./shards ../shards/tests/ui-0.edn
           ./shards ../shards/tests/ui-1.edn
-          echo "Running test: egui_demo"
+          echo "Running egui_demo"
           ./shards new ../shards/tests/egui-demo.shs
-          echo "Running test: egui-plot"
+          echo "Running egui-plot"
           ./shards new ../shards/tests/egui-plot.shs
+          echo "Running ui-drag-and-drop"
+          ./shards new ../shards/tests/ui-drag-and-drop.shs
       - name: Physics Test
         env:
           GFX_BACKEND: D3D12
@@ -331,7 +333,7 @@ jobs:
         shell: bash
         run: |
           cd build
-          echo "Running test: physics"
+          echo "Running physics"
           ./shards ../shards/tests/physics.edn
       - name: Test
         env:
@@ -339,9 +341,9 @@ jobs:
         shell: bash
         run: |
           cd build
-          echo "Running test: genetic"
+          echo "Running genetic"
           ./shards new ../shards/tests/genetic.shs
-          echo "Running test: time"
+          echo "Running time"
           ./shards ../shards/tests/time.edn
-          echo "Running test: subwires"
+          echo "Running subwires"
           ./shards new ../shards/tests/subwires.shs

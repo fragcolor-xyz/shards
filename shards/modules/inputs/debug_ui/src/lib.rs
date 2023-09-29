@@ -21,9 +21,10 @@ pub unsafe extern "C" fn shards_input_showDebugUI(
 ) {
   let layers = std::slice::from_raw_parts(layers_ptr, num_layers);
 
-  let gui_ctx =
-    util::get_current_context_from_var(context_var).expect("Failed to get the UI context");
-  Window::new("Input").show(gui_ctx, |ui| {
+  let egui_ctx = &util::get_current_context_from_var(context_var)
+    .expect("Failed to get the UI context")
+    .egui_ctx;
+  Window::new("Input").show(egui_ctx, |ui| {
     for (i, layer) in layers.iter().enumerate() {
       ui.push_id(i, |ui| {
         ui.horizontal(|ui| {

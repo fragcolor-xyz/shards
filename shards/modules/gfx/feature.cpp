@@ -160,13 +160,13 @@ struct FeatureShard {
   // The output should be a single parameter table
   PARAM_VAR(_viewGenerators, "ViewGenerators",
             "A collection of callbacks that will be run to generate per-view shader parameters during rendering",
-            {Brancher::RunnableTypes});
+            {IntoWires::RunnableTypes});
   // [(-> ...)]/(-> ...)/[<wire>]/<wire>
   // Any variables used in the callback will be copied during this shard's activation
   // The output should be a sequence of parameter tables (each with the same type)
   PARAM_VAR(_drawableGenerators, "DrawableGenerators",
             "A collection of callbacks that will be run to generate per-drawable shader parameters during rendering",
-            {Brancher::RunnableTypes});
+            {IntoWires::RunnableTypes});
   // Table of shader parameters, can be defined using any of the formats below:
   //   :<name> {:Type <ShaderFieldBaseType> :Dimension <number>}
   //   :<name> {:Default <default>}   (type will be derived from value)

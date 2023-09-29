@@ -518,3 +518,40 @@
 @schedule(root await-test-2)
 @schedule(root await-test-3)
 @run(root FPS: 10 Iterations: 10) | Assert.Is(true)
+
+@wire(test-inline-wires {
+  4 | Expand(Wire: {
+    Math.Multiply(2)
+  } Size: 8) | Log("Expanded")
+
+  [1 2 3 4] | TryMany(Wire: {
+    = i
+    ToFloat = f | Math.Multiply(0.25) = pause-duration
+    f | Math.Multiply(2.0) = f-2
+    Pause(pause-duration)
+    f-2
+  } Threads: 8 Policy: WaitUntil::AllSuccess) | Log("TryMany'd")
+
+  ["John" "Fred" "Eddie"] | DoMany({
+    >= str
+    "Hello, " PrependTo(str)      
+    "!" AppendTo(str)
+    str
+  }) | Log("DoMany'd")
+
+  Repeat({
+    [1 2 3] | StepMany({
+      = i
+      Once({1 >= i-2})
+      i | Math.Multiply(i-2)
+      {
+        Math.Inc(i-2)
+        i-2 | When(IsMore(3) {0 | Stop})
+      }
+    }) | Log("StepMany'd")
+    
+  } Times: 6)
+})
+
+@schedule(root test-inline-wires)
+@run(root)

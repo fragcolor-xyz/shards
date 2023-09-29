@@ -83,9 +83,9 @@ impl Shard for AreaShard {
     Ok(output_type)
   }
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let (x, y): (f32, f32) = self.position.get().try_into().unwrap_or_default();
+    let (x, y): (f32, f32) = self.position.get().try_into().unwrap_or_default(); 
 
-    let ui_ctx = util::get_current_context(&self.contexts)?;
+    let ui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
 
     let mut frame = egui::Area::new(EguiId::new(self, 1));
 
@@ -93,7 +93,7 @@ impl Shard for AreaShard {
     frame = frame.order(order.unwrap_or(Order::Background).into());
 
     let pivot: Option<Anchor> = self.pivot.get().try_into().ok();
-    frame = frame.pivot(pivot.unwrap_or(Anchor::Center).into());
+    frame = frame.pivot(pivot.unwrap_or(Anchor::TopLeft).into());
 
     // Either anchor or fix size
     if let Some(anchor) = self.anchor.get().try_into().ok() as Option<Anchor> {
