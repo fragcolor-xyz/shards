@@ -179,11 +179,18 @@ impl LegacyShard for FileDialog {
     Ok(())
   }
 
+  #[cfg(feature = "rfd-enabled")]
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     Ok(run_blocking(self, context, input))
   }
+
+  #[cfg(not(feature = "rfd-enabled"))]
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    Err("FileDialog is not supported on this platform")
+  }
 }
 
+#[cfg(feature = "rfd-enabled")]
 impl BlockingShard for FileDialog {
   #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
@@ -210,14 +217,9 @@ impl BlockingShard for FileDialog {
       self.pick_single(dialog, folder)
     }
   }
-
-  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    Err("Not supported")
-  }
 }
 
-#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+#[cfg(feature = "rfd-enabled")]
 impl FileDialog {
   fn pick_single(&mut self, dialog: rfd::FileDialog, folder: bool) -> Result<Var, &str> {
     let path = if folder {
@@ -336,13 +338,19 @@ impl LegacyShard for SaveFileDialog {
     Ok(())
   }
 
+  #[cfg(feature = "rfd-enabled")]
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     Ok(run_blocking(self, context, input))
   }
+
+  #[cfg(not(feature = "rfd-enabled"))]
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
+    Err("SaveFileDialog is not supported on this platform")
+  }
 }
 
+#[cfg(feature = "rfd-enabled")]
 impl BlockingShard for SaveFileDialog {
-  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     let mut dialog = rfd::FileDialog::new();
     let filters = self.filters.get();
@@ -368,11 +376,6 @@ impl BlockingShard for SaveFileDialog {
     } else {
       Err("Operation was cancelled")
     }
-  }
-
-  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-  fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    Err("Not supported")
   }
 }
 
