@@ -6,7 +6,7 @@
 #include "window.hpp"
 #include "log.hpp"
 #include <SDL_video.h>
-#include <tracy/Tracy.hpp>
+#include <tracy/Wrapper.hpp>
 #include <magic_enum.hpp>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>

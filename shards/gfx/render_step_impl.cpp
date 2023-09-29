@@ -10,7 +10,7 @@
 #include "pmr/unordered_map.hpp"
 #include "pmr/vector.hpp"
 #include "renderer_storage.hpp"
-#include <tracy/Tracy.hpp>
+#include <tracy/Wrapper.hpp>
 #include <taskflow/taskflow.hpp>
 
 namespace gfx::detail {

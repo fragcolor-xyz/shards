@@ -20,7 +20,7 @@
 #include "../shader/uniforms.hpp"
 #include <spdlog/spdlog.h>
 #include <functional>
-#include <tracy/Tracy.hpp>
+#include <tracy/Wrapper.hpp>
 
 namespace gfx::detail {
 
@@ -119,7 +119,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
     WgpuHandle<WGPUBindGroup> viewBindGroup;
 
-    PrepareData(allocator_type allocator) : referencedContextData(allocator), globalBuffers(allocator) {}
+    PrepareData(allocator_type allocator) : referencedContextData(allocator), drawableData(allocator), globalBuffers(allocator) {}
   };
 
   SharedBufferPool uniformBufferPool;
