@@ -5,6 +5,10 @@ use crate::fill_seq_from_mat4;
 use shards::core::deriveType;
 use shards::core::register_legacy_shard;
 use shards::types::Types;
+use shards::util;
+use shards::SHType;
+use shards::SHType_None;
+use shards::SHType_Seq;
 
 use crate::BaseShape;
 use crate::RigidBody;
@@ -120,13 +124,27 @@ impl RigidBody {
   fn _compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     // we need to derive the position parameter type, because if it's a sequence we should create multiple RigidBodies
     // TODO we should also use input type to determine the output if dynamic
-    let pvt = deriveType(&self.position.get_param(), data);
-    if pvt.0 == common_type::float3 {
+
+    let pvt = util::get_param_var_type(&data, &self.position)?;
+    let pos_type: &Type = (&pvt).into();
+
+    let pvt = util::get_param_var_type(&data, &self.rotation)?;
+    let rot_type: &Type = (&pvt).into();
+
+    let pos_is_seq = pos_type.basicType == SHType_Seq;
+    let rot_is_seq = rot_type.basicType == SHType_Seq;
+    if rot_type.basicType != SHType_None {
+      if pos_is_seq != rot_is_seq {
+        return Err("Physics.RigidBody: Invalid position or rotation parameter type, if one is a sequence the other must also be a sequence");
+      }
+    }
+
+    if *pos_type == common_type::float3 {
       Ok(*FLOAT4X4_TYPE)
-    } else if pvt.0 == common_type::float3s {
+    } else if *pos_type == common_type::float3s {
       Ok(*FLOAT4X4S_TYPE)
     } else {
-      Err("Physics.RigidBody: Invalid position or rotation parameter type, if one is a sequence the other must also be a sequence")
+      Err("Physics.RigidBody: Invalid position parameter type")
     }
   }
 
