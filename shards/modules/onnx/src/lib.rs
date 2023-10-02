@@ -11,12 +11,13 @@ extern crate compile_time_crc32;
 
 use shards::shardsc::SHObjectTypeInfo;
 use shards::types::{
-  ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES, STRING_TYPES,
+  ExposedInfo, ExposedTypes, ParamVar, Seq, NONE_TYPES, SEQ_OF_FLOAT_TYPES, SEQ_OF_INT_TYPES,
+  STRING_TYPES,
 };
 use shards::{
   core::register_legacy_shard,
   shard::LegacyShard,
-  types::{common_type, Context, Parameters, Type, Types, Var, FRAG_CC},
+  types::{common_type, ClonedVar, Context, Parameters, Type, Types, Var, FRAG_CC},
 };
 use std::alloc::Global;
 use std::ffi::CString;
@@ -72,8 +73,8 @@ struct ModelWrapper {
 #[derive(Default)]
 struct Load {
   model: Option<Rc<ModelWrapper>>,
-  path: CString,
-  shape: Seq,
+  path: ClonedVar,
+  shape: ClonedVar,
 }
 
 impl LegacyShard for Load {
@@ -103,22 +104,22 @@ impl LegacyShard for Load {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.path = value.try_into()?),
-      1 => Ok(self.shape = value.try_into()?),
+      0 => Ok(self.path = value.into()),
+      1 => Ok(self.shape = value.into()),
       _ => unreachable!(),
     }
   }
 
   fn getParam(&mut self, index: i32) -> Var {
     match index {
-      0 => self.path.as_ref().into(),
-      1 => self.shape.as_ref().into(),
+      0 => self.path.0,
+      1 => self.shape.0,
       _ => unreachable!(),
     }
   }
 
   fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
-    let path = self.path.to_str().map_err(|_| "Invalid path utf8 string")?;
+    let path: &str = self.path.0.as_ref().try_into()?;
     let mut model = tract_onnx::onnx()
       // load the model
       .model_for_path(path)
@@ -128,8 +129,8 @@ impl LegacyShard for Load {
       })?;
 
     // specify input type and shape
-    let shape: Vec<usize> = self
-      .shape
+    let shape = self.shape.0.as_seq()?;
+    let shape: Vec<usize> = shape
       .iter()
       .map(|v| {
         v.as_ref()
