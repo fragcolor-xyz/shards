@@ -124,7 +124,11 @@ struct TidePool {
 
       if (_scheduledCounter < LowWater && _workers.size() > NumWorkers) {
         // we have less than LowWater scheduled and we have more than NumWorkers workers
-        _workers.back()._running = false;
+        auto &superfluousWorker = _workers.back();
+        superfluousWorker._running = false;
+        _cond.notify_all(); // we don't know which worker in _cond, so we notify all
+        if (superfluousWorker._thread.joinable())
+          superfluousWorker._thread.join();
         _workers.pop_back();
         // SHLOG_DEBUG("TidePool: worker removed, count: {}", _workers.size());
       } else if (_scheduledCounter > _workers.size() && _workers.size() < MaxWorkers) {
