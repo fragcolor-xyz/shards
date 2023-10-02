@@ -184,3 +184,10 @@ table-1234 | Log
 
 Random.Name | Log
 Random.Name(10 " ") | Log
+
+@template(foo-predicate [val] {val | IsMore(2) | Or | val | IsLess(-2)})
+
+When(@foo-predicate(3) {Msg("More than 2")})
+WhenNot(@foo-predicate(1) {Msg("Less than 2")})
+When(@foo-predicate(-3) {Msg("Less than -2")})
+WhenNot(@foo-predicate(-1) {Msg("More than -2")})
