@@ -54,7 +54,9 @@ struct TidePool {
   };
 
   struct Worker {
-    Worker(boost::lockfree::queue<Work *> &queue, std::atomic_size_t &counter) : _queue(queue), _counter(counter) {
+    Worker(boost::lockfree::queue<Work *> &queue, std::atomic_size_t &counter, std::mutex &condMutex,
+           std::condition_variable &cond)
+        : _queue(queue), _counter(counter), _condMutex(condMutex), _cond(cond) {
       _running = true;
       boost::thread::attributes attrs;
       attrs.set_stack_size(SH_STACK_SIZE);
@@ -65,8 +67,11 @@ struct TidePool {
             // SHLOG_DEBUG("TidePool: calling {}", (void*)work);
             work->call();
             _counter--;
-          } else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          }
+          // wait if the queue is empty
+          if (_queue.empty()) {
+            std::unique_lock<std::mutex> lock(_condMutex);
+            _cond.wait(lock, [this]() { return !_queue.empty() || !_running; });
           }
         }
       });
@@ -76,6 +81,8 @@ struct TidePool {
     std::atomic_bool _running;
     boost::lockfree::queue<Work *> &_queue;
     std::atomic_size_t &_counter;
+    std::mutex &_condMutex;
+    std::condition_variable &_cond;
   };
 
   static constexpr size_t LowWater = 4;
@@ -87,6 +94,8 @@ struct TidePool {
   std::future<void> _controller;
   boost::lockfree::queue<Work *> _queue{NumWorkers};
   std::deque<Worker> _workers;
+  std::mutex _condMutex;
+  std::condition_variable _cond;
 
   TidePool() {
     _running = true;
@@ -101,12 +110,13 @@ struct TidePool {
   void schedule(Work *work) {
     _scheduledCounter++;
     _queue.push(work);
+    _cond.notify_one();
   }
 
   void controllerWorker() {
     // spawn workers first
     for (size_t i = 0; i < NumWorkers; ++i) {
-      _workers.emplace_back(_queue, _scheduledCounter);
+      _workers.emplace_back(_queue, _scheduledCounter, _condMutex, _cond);
     }
 
     while (_running) {
@@ -119,14 +129,21 @@ struct TidePool {
         // SHLOG_DEBUG("TidePool: worker removed, count: {}", _workers.size());
       } else if (_scheduledCounter > _workers.size() && _workers.size() < MaxWorkers) {
         // we have more scheduled than workers
-        _workers.emplace_back(_queue, _scheduledCounter);
+        _workers.emplace_back(_queue, _scheduledCounter, _condMutex, _cond);
         // SHLOG_DEBUG("TidePool: worker added, count: {}", _workers.size());
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
+    // stop all workers, we need to go thru them twice to notify them all
+
     for (auto &worker : _workers) {
       worker._running = false;
+    }
+
+    _cond.notify_all();
+
+    for (auto &worker : _workers) {
       if (worker._thread.joinable())
         worker._thread.join();
     }
