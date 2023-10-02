@@ -267,7 +267,7 @@ jobs:
           echo "Running bigint"
           ./shards new ../shards/tests/bigint.shs
           echo "Running wasm"
-          ./shards ../shards/tests/wasm.clj
+          ./shards new ../shards/tests/wasm.shs
           echo "Running eth"
           ./shards new ../shards/tests/eth.shs
           echo "Running crypto"
