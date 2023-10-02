@@ -13,4 +13,4 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.4.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-tungstenite = { version = "0.18.0", features = ["native-tls"] }
+tungstenite = { version = "0.20.1", features = ["native-tls"] }
