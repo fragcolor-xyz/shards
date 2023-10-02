@@ -1397,7 +1397,38 @@ fn as_var(
         if let Some(defined_value) = find_defined(&func.name, e) {
           let replacement = unsafe { &*defined_value };
           as_var(replacement, line_info, shard, e)
-        } else if let Some(ast_json) = process_macro(func, &func.name, line_info, e)? {
+        } else if let Some(mut shards_env) = process_template(func, line_info, e)? {
+          // @template
+          finalize_env(&mut shards_env)?; // finalize the env
+
+          let mut seq = AutoSeqVar::new();
+
+          // shards
+          for shard in shards_env.shards.drain(..) {
+            let s: Var = shard.0 .0.into();
+            seq.0.push(&s);
+          }
+
+          // also move possible other possible things we defined!
+          for (name, value) in shards_env.definitions.drain() {
+            e.definitions.insert(name, value);
+          }
+          assert_eq!(shards_env.deferred_wires.len(), 0);
+          for (name, value) in shards_env.finalized_wires.drain() {
+            e.finalized_wires.insert(name, value);
+          }
+          for (name, value) in shards_env.shards_groups.drain() {
+            e.shards_groups.insert(name, value);
+          }
+          for (name, value) in shards_env.macro_groups.drain() {
+            e.macro_groups.insert(name, value);
+          }
+          for (id, mesh) in shards_env.meshes.drain() {
+            e.meshes.insert(id, mesh);
+          }
+
+          Ok(SVar::Cloned(ClonedVar(seq.leak())))
+        } else if let Some(ast_json) = process_macro(func, line_info, e)? {
           let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
             (
               "macro built-in function Shards should output a Json string",
@@ -2232,7 +2263,6 @@ fn get_mesh<'a>(
 
 fn process_macro(
   func: &Function,
-  unknown: &Identifier,
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<Option<ClonedVar>, ShardsError> {
@@ -2246,7 +2276,11 @@ fn process_macro(
         .as_ref()
         .ok_or(
           (
-            format!("Macro {} requires {} parameters", unknown.name, args.len()),
+            format!(
+              "Macro {} requires {} parameters",
+              func.name.name,
+              args.len()
+            ),
             line_info,
           )
             .into(),
@@ -2255,7 +2289,11 @@ fn process_macro(
     {
       return Err(
         (
-          format!("Macro {} requires {} parameters", unknown.name, args.len()),
+          format!(
+            "Macro {} requires {} parameters",
+            func.name.name,
+            args.len()
+          ),
           line_info,
         )
           .into(),
@@ -2279,7 +2317,7 @@ fn process_macro(
               (
                 format!(
                   "Shards macro {} identifier parameters should not be namespaced",
-                  unknown.name
+                  func.name.name
                 ),
                 line_info,
               )
@@ -2292,7 +2330,7 @@ fn process_macro(
             (
               format!(
                 "Shards macro {} parameters should be identifiers",
-                unknown.name
+                func.name.name
               ),
               line_info,
             )
@@ -2303,7 +2341,11 @@ fn process_macro(
 
       let param = &func.params.as_ref().ok_or(
         (
-          format!("Macro {} requires {} parameters", unknown.name, args.len()),
+          format!(
+            "Macro {} requires {} parameters",
+            func.name.name,
+            args.len()
+          ),
           line_info,
         )
           .into(),
@@ -2314,7 +2356,7 @@ fn process_macro(
           (
             format!(
               "Shards macro {} does not accept named parameters",
-              unknown.name
+              func.name.name
             ),
             line_info,
           )
@@ -2348,10 +2390,9 @@ fn process_macro(
   }
 }
 
-fn process_shards(
+fn process_template(
   func: &Function,
-  unknown: &str,
-  block: &Block,
+  line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<Option<EvalEnv>, ShardsError> {
   if let Some(group) = find_shards_group(&func.name, e) {
@@ -2363,10 +2404,10 @@ fn process_shards(
         (
           format!(
             "Shards template {} requires {} parameters",
-            unknown,
+            func.name.name,
             args.len()
           ),
-          block.line_info.unwrap_or_default(),
+          line_info,
         )
           .into(),
       );
@@ -2389,9 +2430,9 @@ fn process_shards(
               (
                 format!(
                   "Shards template {} identifier parameters should not be namespaced",
-                  unknown
+                  func.name.name
                 ),
-                block.line_info.unwrap_or_default(),
+                line_info,
               )
                 .into(),
             );
@@ -2402,9 +2443,9 @@ fn process_shards(
             (
               format!(
                 "Shards template {} parameters should be identifiers",
-                unknown,
+                func.name.name,
               ),
-              block.line_info.unwrap_or_default(),
+              line_info,
             )
               .into(),
           );
@@ -2415,10 +2456,10 @@ fn process_shards(
         (
           format!(
             "Shards template {} requires {} parameters",
-            unknown,
+            func.name.name,
             args.len()
           ),
-          block.line_info.unwrap_or_default(),
+          line_info,
         )
           .into(),
       )?[i];
@@ -2428,9 +2469,9 @@ fn process_shards(
           (
             format!(
               "Shards template {} does not accept named parameters",
-              unknown
+              func.name.name
             ),
-            block.line_info.unwrap_or_default(),
+            line_info,
           )
             .into(),
         );
@@ -3125,12 +3166,12 @@ fn eval_pipeline(
             let info = process_ast(func, block.line_info.unwrap_or_default(), e)?;
             add_const_shard2(*info.as_ref(), block.line_info.unwrap_or_default(), e)
           }
-          unknown => {
+          _ => {
             match (
               // Notice, By precedence!
               find_defined(&func.name, e),
-              process_shards(func, unknown.0, block, e)?,
-              process_macro(func, &func.name, block.line_info.unwrap_or_default(), e)?,
+              process_template(func, block.line_info.unwrap_or_default(), e)?,
+              process_macro(func, block.line_info.unwrap_or_default(), e)?,
               find_extension(&func.name, e),
             ) {
               (None, None, None, Some(extension)) => {
