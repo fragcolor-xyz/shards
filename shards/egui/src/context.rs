@@ -25,6 +25,7 @@ use shards::types::Type;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
+use shards::types::common_type;
 use std::ffi::CStr;
 
 #[derive(shards::shard)]
@@ -34,6 +35,8 @@ struct ContextShard {
   queue: ParamVar,
   #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
   contents: ShardsVar,
+  #[shard_param("Scale", "The UI scale", [common_type::none, common_type::float, common_type::float_var])]
+  scale: ParamVar,
   host: EguiHost,
   #[shard_required]
   requiring: ExposedTypes,
@@ -53,6 +56,7 @@ impl Default for ContextShard {
       requiring: Vec::new(),
       queue: ParamVar::default(),
       contents: ShardsVar::default(),
+      scale: ParamVar::default(),
       exposing: Vec::new(),
       has_graphics_context: false,
       graphics_context: unsafe {
@@ -185,11 +189,13 @@ impl Shard for ContextShard {
         std::ptr::null()
       };
 
+      let scale: Option<f32> = self.scale.get().try_into().ok();
+
       &*(bindings::gfx_getEguiWindowInputs(
         self.input_translator.as_mut_ptr() as *mut bindings::gfx_EguiInputTranslator,
         gfx_context as *const _ as *const bindings::SHVar,
         self.input_context.get() as *const _ as *const bindings::SHVar,
-        1.0,
+        scale.unwrap_or(1.0),
       ) as *const bindings::egui_Input)
     };
 

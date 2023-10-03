@@ -3,16 +3,23 @@
 #include "gfx/drawables/mesh_tree_drawable.hpp"
 #include <shards/linalg_shim.hpp>
 #include <shards/core/params.hpp>
+#include <stdexcept>
+#include <type_traits>
+
+#define GIZMO_DEBUG 0
 #include <gfx/gizmos/translation_gizmo.hpp>
 #include <gfx/gizmos/rotation_gizmo.hpp>
 #include <gfx/gizmos/scaling_gizmo.hpp>
-#include <stdexcept>
-#include <type_traits>
 
 namespace shards {
 namespace Gizmos {
 using linalg::aliases::float3;
 using linalg::aliases::float4x4;
+
+inline float getScreenSize(ParamVar &v) {
+  auto &screenSizeVar = (Var &)v.get();
+  return !screenSizeVar.isNone() ? float(screenSizeVar) : 60.0f;
+}
 
 struct TranslationGizmo : public Base {
   static SHTypesInfo inputTypes() {
@@ -22,8 +29,9 @@ struct TranslationGizmo : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
   static SHOptionalString help() { return SHCCSTR("Shows a translation gizmo"); }
 
-  PARAM_VAR(_scale, "Scale", "Gizmo scale", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_scale));
+  PARAM_PARAMVAR(_screenSize, "ScreenSize", "Size of the gizmo on screen (UI size)",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_screenSize));
 
   gfx::gizmos::TranslationGizmo _gizmo{};
 
@@ -60,7 +68,7 @@ struct TranslationGizmo : public Base {
 
     // Scale based on screen distance
     float3 gizmoLocation = gfx::extractTranslation(_gizmo.transform);
-    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getSize(gizmoLocation) * 0.3f;
+    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize(gizmoLocation, getScreenSize(_screenSize));
 
     _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
 
@@ -80,8 +88,9 @@ struct TranslationGizmo : public Base {
     baseCleanup();
   }
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     return outputTypes().elements[0];
   }
 };
@@ -95,8 +104,9 @@ struct RotationGizmo : public Base {
   static SHOptionalString help() { return SHCCSTR("Shows a rotation gizmo"); }
 
   // declare parameter named scale
-  PARAM_VAR(_scale, "Scale", "Gizmo scale", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_scale));
+  PARAM_PARAMVAR(_screenSize, "ScreenSize", "Size of the gizmo on screen (UI size)",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_screenSize));
 
   // gizmo from translation_gizmo.hpp, not this file
   gfx::gizmos::RotationGizmo _gizmo{};
@@ -139,7 +149,7 @@ struct RotationGizmo : public Base {
 
     // Scale based on screen distance
     float3 gizmoLocation = gfx::extractTranslation(_gizmo.transform);
-    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getSize(gizmoLocation) * 0.3f;
+    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize(gizmoLocation, getScreenSize(_screenSize));
 
     _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
 
@@ -160,8 +170,9 @@ struct RotationGizmo : public Base {
     baseCleanup();
   }
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     return outputTypes().elements[0];
   }
 };
@@ -174,8 +185,9 @@ struct ScalingGizmo : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
   static SHOptionalString help() { return SHCCSTR("Shows a scaling gizmo"); }
 
-  PARAM_VAR(_scale, "Scale", "Gizmo scale", {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_scale));
+  PARAM_PARAMVAR(_screenSize, "ScreenSize", "Size of the gizmo on screen (UI size)",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_screenSize));
 
   gfx::gizmos::ScalingGizmo _gizmo{};
 
@@ -217,7 +229,7 @@ struct ScalingGizmo : public Base {
 
     // Scale based on screen distance
     float3 gizmoLocation = gfx::extractTranslation(_gizmo.transform);
-    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getSize(gizmoLocation) * 0.3f;
+    _gizmo.scale = _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize(gizmoLocation, getScreenSize(_screenSize));
 
     _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
 
@@ -238,8 +250,9 @@ struct ScalingGizmo : public Base {
     baseCleanup();
   }
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     return outputTypes().elements[0];
   }
 };

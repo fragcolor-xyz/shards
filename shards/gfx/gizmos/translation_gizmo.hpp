@@ -6,6 +6,28 @@
 
 namespace gfx {
 namespace gizmos {
+
+// For two axis composite movements
+struct CombinedAxes {
+  float3 x{};
+  float3 y{};
+  float3 z{};
+  int xi;
+  int yi;
+  int zi;
+
+  static CombinedAxes get(int baseIndex) {
+    CombinedAxes r;
+    r.xi = (baseIndex + 1) % 3;
+    r.yi = (baseIndex + 2) % 3;
+    r.zi = (baseIndex + 0) % 3;
+    r.x[r.xi] = 1.0f;
+    r.y[r.yi] = 1.0f;
+    r.z[r.zi] = 1.0f;
+    return r;
+  }
+};
+
 // Note: If multiple gizmos are to be active at any time, ensure that they are created in the same Gizmos.Context
 //       This is to prevent multiple handles from different gizmos being selected at the same time,
 //       resulting in unexpected behaviour.
@@ -19,8 +41,11 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   float3 dragStartPoint;
 
   float scale = 1.0f;
-  const float axisRadius = 0.05f;
-  const float axisLength = 0.55f;
+  const float axisRadius = 0.2f;
+  const float axisLength = 1.0f;
+
+  // How far the combined planes extend from the gizmo center (relative to handle length)
+  const float combinedAxisSizeRatio = 0.5f;
 
   float getGlobalAxisRadius() const { return axisRadius * scale; }
   float getGlobalAxisLength() const { return axisLength * scale; }
@@ -51,40 +76,28 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float angleFactor = std::max(0.0f, (linalg::abs(linalg::dot(localRayDir, fwd)) - dotThreshold) / (1.0f - dotThreshold));
 
       // Make hitboxes slightly bigger than the actual visuals
-      const float2 hitboxScale = linalg::lerp(float2(2.2f, 1.2f), float2(0.8f, 1.0f), angleFactor);
+      const float2 hitboxScale = linalg::lerp(float2(1.1f, 1.1f), float2(0.5f, 1.0f), angleFactor);
 
       auto &min = selectionBox.min;
       auto &max = selectionBox.max;
+      int layer = 0;
       if (i < 3) {
-        // The size of the selection box for the axis handles is reduced to avoid overlapping with the hitboxes of the plane
-        // handles
-        min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x +
-              fwd * getGlobalAxisLength() * hitboxScale.y * linalg::lerp(0.3f, 0.7f, angleFactor);
+        min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x;
         max = (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x +
-              fwd * getGlobalAxisLength() * hitboxScale.y * 0.8f;
+              fwd * getGlobalAxisLength() * hitboxScale.y * 1.0f;
       } else {
-        float hitboxSize = getGlobalAxisLength() * 0.3f;
-        float hitboxThickness = getGlobalAxisLength() * 0.1f;
-        switch (i) {
-        case 3:
-          min = float3(0, 0, hitboxThickness);
-          max = float3(hitboxSize, hitboxSize, -hitboxThickness);
-          break;
-        case 4:
-          min = float3(-hitboxThickness, 0, hitboxSize);
-          max = float3(hitboxThickness, hitboxSize, 0);
-          break;
-        case 5:
-          min = float3(0, -hitboxThickness, hitboxSize);
-          max = float3(hitboxSize, hitboxThickness, 0);
-          break;
-        }
+        float thickness = getGlobalAxisRadius() * 0.3f;
+        CombinedAxes ca = CombinedAxes::get(i - 3);
+        float3 xy = ca.x + ca.y;
+        min = float3() - ca.z * thickness + xy * getGlobalAxisLength() * 0.2f;
+        max = float3() + ca.z * thickness + xy * getGlobalAxisLength() * combinedAxisSizeRatio;
+        layer = -1;
       }
 
       selectionBox.transform = transform;
 
-      inputContext.updateHandle(handle,
-                                intersectBox(inputContext.eyeLocation, inputContext.rayDirection, handleSelectionBoxes[i]));
+      inputContext.updateHandle(
+          handle, GizmoHit(intersectBox(inputContext.eyeLocation, inputContext.rayDirection, handleSelectionBoxes[i]), layer));
     }
   }
 
@@ -106,23 +119,10 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
                                   getAxisDirection(index, dragStartTransform));
     } else {
-      switch (index) {
-      case 3:
-        // Intersects a view ray with the xy-plane
-        dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                               getAxisDirection(2, dragStartTransform));
-        break;
-      case 4:
-        // Intersects a view ray with the yz-plane
-        dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                               getAxisDirection(0, dragStartTransform));
-        break;
-      case 5:
-        // Intersects a view ray with the xz-plane
-        dragStartPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                               getAxisDirection(1, dragStartTransform));
-        break;
-      }
+      CombinedAxes ca = CombinedAxes::get(index - 3);
+      float3 axis = linalg::normalize(linalg::mul(transform, float4(ca.z, 0.0f)).xyz());
+      dragStartPoint =
+          hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), axis);
     }
   }
 
@@ -142,37 +142,28 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       delta = linalg::dot(delta, fwd) * fwd;
       transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
     } else {
-      float3 hitPoint;
-      switch (index) {
-      case 3:
-        // Intersects a view ray with the xy-plane
-        hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                         getAxisDirection(2, dragStartTransform));
-        break;
-      case 4:
-        // Intersects a view ray with the yz-plane
-        hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                         getAxisDirection(0, dragStartTransform));
-        break;
-      case 5:
-        // Intersects a view ray with the xz-plane
-        hitPoint = hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                         getAxisDirection(1, dragStartTransform));
-        break;
-      }
+      CombinedAxes ca = CombinedAxes::get(index - 3);
+      float3 axis = linalg::normalize(linalg::mul(transform, float4(ca.z, 0.0f)).xyz());
+
+      float3 hitPoint =
+          hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), axis);
+
       float3 delta = hitPoint - dragStartPoint;
       transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
     }
   }
 
   void render(InputContext &inputContext, GizmoRenderer &renderer) {
+    // float3 globalX = getAxisDirection(0, transform);
+    // float3 globalY = getAxisDirection(1, transform);
+
     for (size_t i = 0; i < 6; i++) {
       auto &handle = handles[i];
       auto &selectionBox = handleSelectionBoxes[i];
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
-    #if 0
+#if GIZMO_DEBUG
       // Debug draw
       float4 color = float4(.7, .7, .7, 1.);
       uint32_t thickness = 1;
@@ -187,46 +178,28 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       float3 size = max - min;
 
       renderer.getShapeRenderer().addBox(selectionBox.transform, center, size, color, thickness);
-    #endif
+#endif
 
       float3 loc = extractTranslation(selectionBox.transform);
       float3 dir = getAxisDirection(i, selectionBox.transform);
       if (i < 3) {
         float4 axisColor = axisColors[i];
-        axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
+        axisColor = float4(axisColor.xyz() * (hovering ? 1.2f : 0.9f), 1.0f);
         renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
                            axisColor);
       } else {
-        float3 center;
-        float3 xBase;
-        float3 yBase;
-        float2 size = float2(getGlobalAxisLength() * 0.3f, getGlobalAxisLength() * 0.3f);
-        float4 color;
-        switch (i) {
-        case 3:
-          // handle on the xy-plane
-          xBase = float3(1.0f, 0.0f, 0.0f);
-          yBase = float3(0.0f, 1.0f, 0.0f);
-          center = loc + float3(size.x / 2, size.y / 2, 0.0f);
-          color = float4(axisColors[2].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
-          break;
-        case 4:
-          // handle on the yz-plane
-          xBase = float3(0.0f, 1.0f, 0.0f);
-          yBase = float3(0.0f, 0.0f, 1.0f);
-          center = loc + float3(0.0f, size.x / 2, size.y / 2);
-          color = float4(axisColors[0].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
-          break;
-        case 5:
-          // handle on the xz-plane
-          xBase = float3(0.0f, 0.0f, 1.0f);
-          yBase = float3(1.0f, 0.0f, 0.0f);
-          center = loc + float3(size.y / 2, 0.0f, size.x / 2);
-          color = float4(axisColors[1].xyz() * (hovering ? 1.1f : 0.9f), 0.8f);
-          break;
-        }
-        uint32_t thickness = 1;
-        renderer.getShapeRenderer().addSolidRect(center, xBase, yBase, size, color, thickness);
+        CombinedAxes ca = CombinedAxes::get(i - 3);
+        float3 x = linalg::normalize(linalg::mul(transform, float4(ca.x, 0.0f)).xyz());
+        float3 y = linalg::normalize(linalg::mul(transform, float4(ca.y, 0.0f)).xyz());
+        float maxf = getGlobalAxisLength() * combinedAxisSizeRatio;
+        // float3 min = linalg::mul(transform, float4(loc, 1.0f)).xyz();
+        float3 center = loc + maxf * 0.5f * (x + y);
+
+        float brightness = hovering ? 0.98f : 0.68f;
+        float a = hovering ? 0.8f : 0.5f;
+        float4 color = float4(brightness, brightness, brightness, a);
+
+        renderer.getShapeRenderer().addSolidRect(center, x, y, float2(maxf), color, false);
       }
     }
   }

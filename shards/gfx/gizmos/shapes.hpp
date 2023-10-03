@@ -96,10 +96,14 @@ private:
   FeaturePtr gizmoLightingFeature = GizmoLightingFeature::create();
 
 public:
+  float scalingFactor = 1.0f;
+
+public:
   GizmoRenderer();
 
   // Factor to scale by for constant screen-space size
-  float getSize(float3 position) const;
+  // float getSize(float3 position) const;
+  float getConstantScreenSize(float3 position, float size) const;
 
   enum class CapType { Cube, Arrow, Sphere };
 

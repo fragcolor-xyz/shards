@@ -83,7 +83,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       selectionDisc.center = extractTranslation(transform);
 
       float hitDistance = intersectDisc(inputContext.eyeLocation, inputContext.rayDirection, selectionDisc);
-      inputContext.updateHandle(handle, hitDistance);
+      inputContext.updateHandle(handle, GizmoHit(hitDistance));
     }
   }
 

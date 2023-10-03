@@ -66,7 +66,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       // The selection box of the axis handle remains unchanged during object scaling.
       selectionBox.transform = linalg::identity;
 
-      inputContext.updateHandle(handle, intersectBox(inputContext.eyeLocation, inputContext.rayDirection, selectionBox));
+      inputContext.updateHandle(handle, GizmoHit(intersectBox(inputContext.eyeLocation, inputContext.rayDirection, selectionBox)));
     }
 
     // The center cube
@@ -79,7 +79,7 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       selectionBox.max = float3(hitbox_size, hitbox_size, hitbox_size);
       selectionBox.transform = linalg::identity;
 
-      inputContext.updateHandle(handle, intersectBox(inputContext.eyeLocation, inputContext.rayDirection, selectionBox));
+      inputContext.updateHandle(handle, GizmoHit(intersectBox(inputContext.eyeLocation, inputContext.rayDirection, selectionBox)));
     }
   }
 
@@ -173,21 +173,21 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
-#if 0
-      // Debug draw
-      float4 color = float4(.7, .7, .7, 1.);
-      uint32_t thickness = 1;
-      if (hovering) {
-        color = float4(.5, 1., .5, 1.);
-        thickness = 2;
-      }
+#if GIZMO_DEBUG
+      // // Debug draw
+      // float4 color = float4(.7, .7, .7, 1.);
+      // uint32_t thickness = 1;
+      // if (hovering) {
+      //   color = float4(.5, 1., .5, 1.);
+      //   thickness = 2;
+      // }
 
-      auto &min = handle.selectionBox.min;
-      auto &max = handle.selectionBox.max;
-      float3 center = (max + min) / 2.0f;
-      float3 size = max - min;
+      // auto &min = handle.selectionBox.min;
+      // auto &max = handle.selectionBox.max;
+      // float3 center = (max + min) / 2.0f;
+      // float3 size = max - min;
 
-      renderer.getShapeRenderer().addBox(handle.selectionBoxTransform, center, size, color, thickness);
+      // renderer.getShapeRenderer().addBox(handle.selectionBoxTransform, center, size, color, thickness);
 #endif
 
       float3 loc = extractTranslation(selectionBox.transform);

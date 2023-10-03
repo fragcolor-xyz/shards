@@ -373,16 +373,20 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
 
 GizmoRenderer::GizmoRenderer() { loadGeometry(); }
 
-float GizmoRenderer::getSize(float3 position) const {
+float GizmoRenderer::getConstantScreenSize(float3 position, float size) const {
   float4 projected = linalg::mul(view->view, float4(position, 1.0f));
   projected /= projected.w;
+
   float4x4 projMatrix = view->getProjectionMatrix(viewportSize);
+  float minPerspective = projMatrix[1][1];
 
-  float minPerspective = std::min(projMatrix[0][0], projMatrix[1][1]);
-
+  // Scaling factor to make object 100% vertical size on screen
   float distanceFromCamera = std::abs(projected.z);
-  float scalingFactor = distanceFromCamera / minPerspective;
-  return scalingFactor;
+  float scalingFactor1 = distanceFromCamera / minPerspective;
+
+  // Adjust for desired size
+  float yRatio = (size * this->scalingFactor)  / viewportSize.y;
+  return scalingFactor1 * yRatio * 2.0f;
 }
 
 void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, float length, float4 bodyColor, CapType capType,
@@ -393,7 +397,7 @@ void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, flo
   bool extendBodyToCapCenter = false;
   switch (capType) {
   case CapType::Arrow:
-    capRatio = 2.2f;
+    capRatio = 1.7f;
     capPreTransform = cylinderAdjustment;
     capMesh = arrowMesh;
     break;

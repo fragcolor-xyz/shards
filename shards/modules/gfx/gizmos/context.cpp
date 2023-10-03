@@ -23,11 +23,13 @@ struct GizmosContextShard {
                  "When drawing over a scene, the view should be the same.",
                  {Type::VariableOf(gfx::Types::View)});
   PARAM_PARAMVAR(_queue, "Queue", "The queue to draw into.", {Type::VariableOf(gfx::Types::DrawQueue)});
+  PARAM_PARAMVAR(_scaling, "Scaling", "The scaling factor for gizmo elements.",
+                 {CoreInfo::NoneType, CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM(ShardsVar, _content, "Contents",
         "Actual logic to draw the actual gizmos, the input of this flow will be a boolean that will be true if the gizmo is "
         "being pressed and so edited.",
         {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content));
+  PARAM_IMPL(PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content), PARAM_IMPL_FOR(_scaling));
 
   input::OptionalInputContext _inputContext;
 
@@ -82,6 +84,7 @@ struct GizmosContextShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     Var queueVar(_queue.get());
     Var viewVar(_view.get());
+    Var scalingVar(_scaling.get());
 
     ViewPtr view = static_cast<SHView *>(viewVar.payload.objectValue)->view;
 
@@ -90,6 +93,7 @@ struct GizmosContextShard {
     assert(_gizmoContext.queue);
 
     gfx::gizmos::Context &gfxGizmoContext = _gizmoContext.gfxGizmoContext;
+    gfxGizmoContext.renderer.scalingFactor = !scalingVar.isNone() ? float(scalingVar) : 1.0f;
 
     gfx::gizmos::InputState gizmoInput;
     if (_inputContext) {

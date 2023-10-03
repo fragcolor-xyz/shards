@@ -67,6 +67,7 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
   int4 mappedWindowRegion{};
 
   InputRegion region = inputContext.getState().region;
+  region.uiScalingFactor *= scalingFactor;
 
   // if (graphicsContextVar) {
   //   GraphicsContext &graphicsContext = varAsObjectChecked<GraphicsContext>(*graphicsContextVar, GraphicsContext::Type);

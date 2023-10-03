@@ -379,7 +379,7 @@ struct MoveWindow {
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     _requiredWindowContext.compose(data, _requiredVariables, &_window);
-    return data.inputType;
+    return outputTypes().elements[0];
   }
 
   void warmup(SHContext *context) {
@@ -398,11 +398,47 @@ struct MoveWindow {
   }
 };
 
+
+struct OsUiScaleFactor {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+  static SHOptionalString help() { return SHCCSTR("Outputs the scaling factor for UI as determined by the operating system."); }
+
+  PARAM_PARAMVAR(_window, "Window", "The window to get the scaling factor of.",
+                 {CoreInfo::NoneType, Type::VariableOf(WindowContext::Type)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_window));
+
+  RequiredWindowContext _requiredWindowContext;
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _requiredWindowContext.compose(data, _requiredVariables, &_window);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _requiredWindowContext.warmup(context, &_window);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    _requiredWindowContext.cleanup();
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto& window = _requiredWindowContext->window;
+    return Var(window->getUIScale());
+  }
+};
+
 void registerMainWindowShards() {
   REGISTER_SHARD("GFX.MainWindow", MainWindow);
   REGISTER_SHARD("GFX.WindowSize", WindowSize);
   REGISTER_SHARD("GFX.ResizeWindow", ResizeWindow);
   REGISTER_SHARD("GFX.WindowPosition", WindowPosition);
+  REGISTER_SHARD("GFX.UIScaleFactor", OsUiScaleFactor);
   REGISTER_SHARD("GFX.MoveWindow", MoveWindow);
 }
 

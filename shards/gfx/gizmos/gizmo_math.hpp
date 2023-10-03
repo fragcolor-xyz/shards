@@ -10,6 +10,14 @@ struct Box {
   float3 min{};
   float3 max{};
   float4x4 transform{};
+
+  void fix() {
+    auto newMin = linalg::min(min, max);
+    max = linalg::max(min, max);
+    min = newMin;
+  }
+  float3 getCenter() const { return (min + max) / 2.0f; }
+  float3 getSize() const { return max - min; }
 };
 
 struct Disc {
