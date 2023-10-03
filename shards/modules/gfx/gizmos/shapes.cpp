@@ -16,9 +16,13 @@ float4 colorOrDefault(const SHVar &var) {
   return var.valueType == SHType::None ? defaultColor : toFloat4(var);
 }
 
-uint32_t thicknessOrDefault(const SHVar &var) {
-  static const uint32_t defaultThickness = 2;
-  return var.valueType == SHType::None ? defaultThickness : std::max<uint32_t>(1, var.payload.intValue);
+float thicknessOrDefault(const SHVar &var) {
+  static const float defaultThickness = 2.0;
+  if (var.valueType == SHType::Float) {
+    return float(var.payload.floatValue);
+  } else {
+    return var.valueType == SHType::None ? defaultThickness : std::max<uint32_t>(1, var.payload.intValue);
+  }
 }
 
 struct LineShard : public Base {
@@ -29,7 +33,7 @@ struct LineShard : public Base {
   PARAM_PARAMVAR(_a, "A", "Starting position of the line", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_b, "B", "Ending position of the line", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the line", {CoreInfo::Float4Type, Type::VariableOf(CoreInfo::Float4Type)});
-  PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space", {CoreInfo::IntType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space", {CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_thickness), PARAM_IMPL_FOR(_a), PARAM_IMPL_FOR(_b), PARAM_IMPL_FOR(_color));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -72,7 +76,7 @@ struct CircleShard : public Base {
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the circle is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_radius, "Radius", "Radius", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the circle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_VAR(_thickness, "Thickness", "Width of the circle in screen space", {CoreInfo::IntType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the circle in screen space", {CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_radius),
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
@@ -124,7 +128,7 @@ struct RectShard : public Base {
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
   PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_VAR(_thickness, "Thickness", "Width of the rectangle in screen space", {CoreInfo::IntType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the rectangle in screen space", {CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
@@ -174,7 +178,7 @@ struct BoxShard : public Base {
   PARAM_PARAMVAR(_transform, "Transform", "Transform applied to the box",
                  {CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
   PARAM_PARAMVAR(_color, "Color", "Boxar color of the box", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_VAR(_thickness, "Thickness", "Width of the box in screen space", {CoreInfo::IntType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the box in screen space", {CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_size), PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_color),
              PARAM_IMPL_FOR(_thickness));
 
@@ -219,7 +223,7 @@ struct PointShard : public Base {
 
   PARAM_PARAMVAR(_center, "Center", "Center of the point", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_color, "Color", "Pointar color of the point", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_VAR(_thickness, "Thickness", "Size of the point in screen space", {CoreInfo::IntType});
+  PARAM_VAR(_thickness, "Thickness", "Size of the point in screen space", {CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
@@ -410,20 +414,22 @@ struct GridShard : public Base {
     Var &sizeVar = (Var &)_size.get();
     gfx::int2 gridSize{sizeVar.isNone() ? 8 : int(sizeVar)};
 
-    if(gridSize.x < 0 || gridSize.y < 0) {
+    if (gridSize.x < 0 || gridSize.y < 0) {
       throw ActivationError("Grid size must be positive");
     }
 
     for (int y = -gridSize.y; y <= gridSize.y; y++) {
       float3 yOffs = toFloat3(_yBase.get()) * float(y) * stepSize;
       shapeRenderer.addLine(toFloat3(_center.get()) + toFloat3(_xBase.get()) * float(gridSize.x) * stepSize + yOffs,
-                            toFloat3(_center.get()) - toFloat3(_xBase.get()) * float(gridSize.x) * stepSize + yOffs, color, thickness);
+                            toFloat3(_center.get()) - toFloat3(_xBase.get()) * float(gridSize.x) * stepSize + yOffs, color,
+                            thickness);
     }
 
     for (int x = -gridSize.x; x <= gridSize.x; x++) {
       float3 xOffs = toFloat3(_xBase.get()) * float(x) * stepSize;
       shapeRenderer.addLine(toFloat3(_center.get()) + toFloat3(_yBase.get()) * float(gridSize.y) * stepSize + xOffs,
-                            toFloat3(_center.get()) - toFloat3(_yBase.get()) * float(gridSize.y) * stepSize + xOffs, color, thickness);
+                            toFloat3(_center.get()) - toFloat3(_yBase.get()) * float(gridSize.y) * stepSize + xOffs, color,
+                            thickness);
     }
 
     return SHVar{};

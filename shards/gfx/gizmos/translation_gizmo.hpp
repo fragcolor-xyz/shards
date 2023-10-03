@@ -38,9 +38,11 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   Box handleSelectionBoxes[6];
 
   float4x4 dragStartTransform;
+  float4x4 transformNoScale;
   float3 dragStartPoint;
 
   float scale = 1.0f;
+
   const float axisRadius = 0.2f;
   const float visualAxisRadius = 0.1f;
   const float axisLength = 1.0f;
@@ -60,9 +62,9 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
   }
 
   void update(InputContext &inputContext) {
-    float4x4 transform = this->transform; // Cache old since it might be updated during moving
-    float3x3 invTransform = linalg::inverse(extractRotationMatrix(transform));
-    float3 localRayDir = linalg::mul(invTransform, inputContext.rayDirection);
+    // TODO: local space mode
+    transformNoScale = linalg::translation_matrix(extractTranslation(transform));
+    float3 localRayDir = transformNormal(linalg::inverse(transformNoScale), inputContext.rayDirection);
 
     for (size_t i = 0; i < 6; i++) {
       auto &handle = handles[i];
@@ -86,8 +88,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       int layer = 0;
       if (i < 3) {
         min = (-t1 * getAxisRadius() - t2 * getAxisRadius()) * hitboxScale.x;
-        max = (t1 * getAxisRadius() + t2 * getAxisRadius()) * hitboxScale.x +
-              fwd * getAxisLength() * hitboxScale.y * 1.0f;
+        max = (t1 * getAxisRadius() + t2 * getAxisRadius()) * hitboxScale.x + fwd * getAxisLength() * hitboxScale.y * 1.0f;
       } else {
         float thickness = getAxisRadius() * 0.3f;
         CombinedAxes ca = CombinedAxes::get(i - 3);
@@ -97,7 +98,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
         layer = -1;
       }
 
-      selectionBox.transform = transform;
+      selectionBox.transform = transformNoScale;
 
       inputContext.updateHandle(
           handle, GizmoHit(intersectBox(inputContext.eyeLocation, inputContext.rayDirection, handleSelectionBoxes[i]), layer));
@@ -120,10 +121,10 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
     if (index < 3) {
       dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                  getAxisDirection(index, dragStartTransform));
+                                  getAxisDirection(index, transformNoScale));
     } else {
       CombinedAxes ca = CombinedAxes::get(index - 3);
-      float3 axis = linalg::normalize(linalg::mul(transform, float4(ca.z, 0.0f)).xyz());
+      float3 axis = linalg::normalize(linalg::mul(transformNoScale, float4(ca.z, 0.0f)).xyz());
       dragStartPoint =
           hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), axis);
     }
@@ -136,7 +137,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
 
   virtual void move(InputContext &context, Handle &inHandle) {
     size_t index = getHandleIndex(inHandle);
-    float3 fwd = getAxisDirection(getHandleIndex(inHandle), dragStartTransform);
+    float3 fwd = getAxisDirection(getHandleIndex(inHandle), transformNoScale);
 
     if (index < 3) {
       float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
@@ -146,7 +147,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       transform = linalg::mul(linalg::translation_matrix(delta), dragStartTransform);
     } else {
       CombinedAxes ca = CombinedAxes::get(index - 3);
-      float3 axis = linalg::normalize(linalg::mul(transform, float4(ca.z, 0.0f)).xyz());
+      float3 axis = linalg::normalize(linalg::mul(transformNoScale, float4(ca.z, 0.0f)).xyz());
 
       float3 hitPoint =
           hitOnPlaneUnprojected(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform), axis);
@@ -161,29 +162,28 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
       auto &handle = handles[i];
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
       float3 loc = extractTranslation(transform);
-      float3 dir = getAxisDirection(i, transform);
+      float3 dir = getAxisDirection(i, transformNoScale);
       if (i < 3) {
         float4 axisColor = axisColors[i];
-        axisColor = float4(axisColor.xyz() * (hovering ? 1.2f : 0.9f), 1.0f);
-        renderer.addHandle(loc, dir, getVisualAxisRadius(), getAxisLength(), axisColor, GizmoRenderer::CapType::Arrow,
-                           axisColor);
+        axisColor = float4(axisColor.xyz() * (hovering ? 1.5f : 0.7f), 1.0f);
+        renderer.addHandle(loc, dir, getVisualAxisRadius(), getAxisLength(), axisColor, GizmoRenderer::CapType::Arrow, axisColor);
       } else {
         CombinedAxes ca = CombinedAxes::get(i - 3);
-        float3 x = linalg::normalize(linalg::mul(transform, float4(ca.x, 0.0f)).xyz());
-        float3 y = linalg::normalize(linalg::mul(transform, float4(ca.y, 0.0f)).xyz());
+        float3 x = linalg::normalize(linalg::mul(transformNoScale, float4(ca.x, 0.0f)).xyz());
+        float3 y = linalg::normalize(linalg::mul(transformNoScale, float4(ca.y, 0.0f)).xyz());
         float maxf = getAxisLength() * combinedAxisSizeRatio;
         float size = maxf * 0.5f;
         float3 center = loc + (maxf - size * 0.5f) * (x + y);
 
         float brightness = hovering ? 0.98f : 0.68f;
-        float3 base = axisColors[ca.zi].xyz();
+        float3 baseColor = axisColors[ca.zi].xyz();
         float a = hovering ? 0.8f : 0.5f;
-        float4 color = float4(linalg::lerp(base, float3(brightness), hovering ? 0.2f : 0.7f), a);
+        float4 color = float4(linalg::lerp(baseColor, float3(brightness), hovering ? 0.2f : 0.7f), a);
 
-        renderer.getShapeRenderer().addRect(center, x, y, float2(size), float4(base, 1.0f), 1);
-        if (hovering) {
-          renderer.getShapeRenderer().addSolidRect(center, x, y, float2(size), color, false);
-        }
+        renderer.getShapeRenderer().addRect(center, x, y, float2(size), float4(baseColor, 1.0f), 2.5f);
+
+        float4 comboFillColor = float4(baseColor * (hovering ? 1.1f : 0.2f), hovering ? 1.0f : 0.2f);
+        renderer.getShapeRenderer().addSolidRect(center, x, y, float2(size), comboFillColor, false);
       }
 
 #if GIZMO_DEBUG
@@ -195,6 +195,7 @@ struct TranslationGizmo : public IGizmo, public IGizmoCallbacks {
         thickness = 2;
       }
 
+      auto &selectionBox = handleSelectionBoxes[i];
       auto &min = selectionBox.min;
       auto &max = selectionBox.max;
       float3 center = (max + min) / 2.0f;

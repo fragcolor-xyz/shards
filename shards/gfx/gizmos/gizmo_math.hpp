@@ -36,6 +36,16 @@ struct Torus {
   float outerRadius{};
 };
 
+inline float4x4 removeTransformScale(float4x4 mat) {
+  const float3 x = mat.x.xyz();
+  const float3 y = mat.y.xyz();
+  const float3 z = mat.z.xyz();
+  mat.x.xyz() = x / linalg::length(x);
+  mat.y.xyz() = y / linalg::length(y);
+  mat.z.xyz() = z / linalg::length(z);
+  return mat;
+}
+
 // Projects a point onto a 3D line by projecting it
 inline float3 projectOntoAxis(float3 point, float3 axisPoint, float3 axisForward) {
   float3 T0 = generateTangent(axisForward);
@@ -126,20 +136,25 @@ inline float intersectTorus(const float3 &eyeLocation, const float3 &rayDirectio
   }
 }
 
+// static inline int iterationCount = 0;
 template <typename F, typename J = std::is_invocable_r<float, F, float3>::type>
 inline float intersectImplicitSurface(const float3 &eyeLocation, const float3 &rayDirection, F f, size_t numIterations = 64,
                                       float epsilon = 0.001f) {
-  float3 p = eyeLocation;
+  const float maxStepIncreaseEarlyOut = 1.0f;
+  const float maxDistanceEarlyOut = 100.0f;
+  float t = 0.0f;
   float d = FLT_MAX;
   for (size_t i = 0; i < numIterations; i++) {
+    float3 p = eyeLocation + rayDirection * t;
     float d2 = f(p);
-    if (d2 > d && (d2 - d) > 0.15f)
+    if (d2 > d && ((t > maxDistanceEarlyOut) || (d2 - d) > maxStepIncreaseEarlyOut))
       break; // Passed surface, early-out
     d = d2;
     if (d < epsilon) {
       return linalg::length(p - eyeLocation);
     }
-    p += d * 0.85f * rayDirection;
+    t += d * 0.85f;
+    // iterationCount++;
   }
   return std::numeric_limits<float>::infinity();
 }

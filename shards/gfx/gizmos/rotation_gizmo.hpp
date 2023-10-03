@@ -25,6 +25,7 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   Handle handles[4];
   SelectionDisc handleSelectionDiscs[4];
   float4x4 dragStartTransform;
+  float4x4 transformNoScale;
   float3 dragStartPoint;
   float3 dragTangentDir;
   float3 dragNormalDir;
@@ -50,12 +51,15 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   // update from IGizmo, seems to update gizmo based on inputcontext
   // updates mainly the hitbox for the handle and calls updateHandle to check if the handle is selected (via raycasting)
   virtual void update(InputContext &inputContext) {
+
     // Rotate the 3 discs for x/y/z-axis according to the current transform of the object
-    float3x3 rotationMat = extractRotationMatrix(transform);
+    // TODO: Currently identity matrix
+    //   Make this work correctly in local-transform mode
+    transformNoScale = linalg::translation_matrix(extractTranslation(transform));
     for (int i = 0; i < 3; ++i) {
-      handleSelectionDiscs[i].torus.normal = rotationMat[i];
-      handleSelectionDiscs[i].baseX = rotationMat[(i + 1) % 3];
-      handleSelectionDiscs[i].baseY = rotationMat[(i + 2) % 3];
+      handleSelectionDiscs[i].torus.normal = transformNoScale[i].xyz();
+      handleSelectionDiscs[i].baseX = transformNoScale[(i + 1) % 3].xyz();
+      handleSelectionDiscs[i].baseY = transformNoScale[(i + 2) % 3].xyz();
       handleSelectionDiscs[i].torus.outerRadius = getOuterRadius();
       handleSelectionDiscs[i].torus.innerRadius = getInnerRadius();
     }
@@ -73,16 +77,16 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       auto &handle = handles[i];
       auto &selectionDisc = handleSelectionDiscs[i];
 
-      selectionDisc.torus.center = extractTranslation(transform);
+      selectionDisc.torus.center = extractTranslation(transformNoScale);
 
       // Torus transform
       float4x4 torusRotM = rotationFromZDirection(selectionDisc.torus.normal);
-      float4x4 torusTransform = linalg::mul(transform, torusRotM);
+      float4x4 torusTransform = linalg::mul(transformNoScale, torusRotM);
       float torusR = (selectionDisc.torus.innerRadius + selectionDisc.torus.outerRadius) / 2.0f;
       float torusW = (selectionDisc.torus.outerRadius - selectionDisc.torus.innerRadius) / 2.0f;
 
       // Make hitbox slightly larger
-      torusW *= 1.1f;
+      torusW *= 1.5f;
       float hitDistance = intersectImplicitSurfaceTransformed(
           inputContext.eyeLocation, inputContext.rayDirection, torusTransform,
           [&](float3 p) -> float { return linalg::length(float2(linalg::length(float2(p.x, p.y)) - torusR, p.z)) - torusW; });
@@ -163,8 +167,11 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
         break;
       }
 
-      rotationMat = linalg::rotation_matrix(linalg::rotation_quat(axis, delta));
-      transform = linalg::mul(dragStartTransform, rotationMat);
+      float4 qRotation = linalg::rotation_quat(axis, delta);
+      float3 t, s;
+      float3x3 r;
+      decomposeTRS(dragStartTransform, t, s, r);
+      transform = composeTRS(t, s, linalg::mul(rotationMatrix3(qRotation), r));
     }
   }
 
@@ -178,12 +185,10 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
       float4 axisColor = axisColors[i];
-      float4 color = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
+      float4 fillColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.2f), hovering ? 1.0f : 0.2f);
       // Render without culling so it can be seen from either sides
-      if (hovering) {
-        renderer.getShapeRenderer().addDisc(selectionDisc.torus.center, selectionDisc.baseX, selectionDisc.baseY,
-                                            selectionDisc.torus.outerRadius, selectionDisc.torus.innerRadius, color, false);
-      }
+      renderer.getShapeRenderer().addDisc(selectionDisc.torus.center, selectionDisc.baseX, selectionDisc.baseY,
+                                          selectionDisc.torus.outerRadius, selectionDisc.torus.innerRadius, fillColor, false);
 
       renderer.getShapeRenderer().addCircle(selectionDisc.torus.center, selectionDisc.baseX, selectionDisc.baseY,
                                             selectionDisc.torus.innerRadius, axisColor, 2, 64);

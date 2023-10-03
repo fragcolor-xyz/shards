@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <type_traits>
 
-#define GIZMO_DEBUG 0
+#define GIZMO_DEBUG 1
 #include <gfx/gizmos/translation_gizmo.hpp>
 #include <gfx/gizmos/rotation_gizmo.hpp>
 #include <gfx/gizmos/scaling_gizmo.hpp>
