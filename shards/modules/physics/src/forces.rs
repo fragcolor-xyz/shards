@@ -50,7 +50,7 @@ where
 }
 
 #[derive(shards::shard)]
-#[shard_info("Phyiscs.Impulse", "Adds an impulse to a rigid body")]
+#[shard_info("Physics.Impulse", "Adds an impulse to a rigid body")]
 struct Impulse {
   #[shard_required]
   required: ExposedTypes,
@@ -118,7 +118,7 @@ impl Shard for Impulse {
 }
 
 #[derive(shards::shard)]
-#[shard_info("Phyiscs.Force", "Adds a force to a rigid body")]
+#[shard_info("Physics.Force", "Adds a force to a rigid body")]
 struct Force {
   #[shard_required]
   required: ExposedTypes,
@@ -186,7 +186,7 @@ impl Shard for Force {
 }
 
 #[derive(shards::shard)]
-#[shard_info("Phyiscs.AngularImpulse", "Adds an angular impulse to a rigid body")]
+#[shard_info("Physics.AngularImpulse", "Adds an angular impulse to a rigid body")]
 struct AngularImpulse {
   #[shard_required]
   required: ExposedTypes,
@@ -254,7 +254,7 @@ impl Shard for AngularImpulse {
 }
 
 #[derive(shards::shard)]
-#[shard_info("Phyiscs.Torque", "Adds a torque to a rigid body")]
+#[shard_info("Physics.Torque", "Adds a torque to a rigid body")]
 struct Torque {
   #[shard_required]
   required: ExposedTypes,
