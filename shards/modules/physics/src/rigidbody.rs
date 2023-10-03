@@ -2,6 +2,7 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use crate::fill_seq_from_mat4;
+use rapier3d::prelude::MassProperties;
 use shards::core::deriveType;
 use shards::core::register_legacy_shard;
 use shards::types::Types;
@@ -58,6 +59,7 @@ use std::rc::Rc;
 // TODO Major refactor to remove copy-pasta, man in C++ this would have been so easy for me... but.
 
 lazy_static! {
+  static ref VAR_TYPES: Types = vec![common_type::any_var];
   static ref PARAMETERS: Parameters = vec![
     (
       cstr!("Shapes"),
@@ -80,7 +82,7 @@ lazy_static! {
     (
       cstr!("Name"),
       shccstr!("The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body."),
-      STRING_OR_NONE_SLICE
+      &VAR_TYPES[..]
     )
       .into()
   ];
@@ -229,12 +231,16 @@ impl RigidBody {
     shape: &Var,
     rigid_body: RigidBodyHandle,
   ) -> Result<ColliderHandle, &'a str> {
-    let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(&shape, &SHAPE_TYPE)?;
-    let shape = shapeInfo.shape.as_ref().unwrap().clone();
-    let mut collider = ColliderBuilder::new(shape)
-      .position(shapeInfo.position.unwrap())
-      .build();
+    let shape_info = Var::from_object_ptr_mut_ref::<BaseShape>(&shape, &SHAPE_TYPE)?;
+    let shape = shape_info.shape.as_ref().unwrap().clone();
+
+    let mut builder = ColliderBuilder::new(shape).position(shape_info.position.unwrap());
+    if let Some(mass) = shape_info.mass {
+      builder = builder.mass(mass);
+    }
+    let mut collider = builder.build();
     collider.user_data = user_data;
+
     Ok(
       simulation
         .colliders
