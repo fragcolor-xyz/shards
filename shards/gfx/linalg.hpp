@@ -94,6 +94,13 @@ inline float4x4 rotationFromXDirection(const float3 &direction) {
   return float4x4(float4(right, 0), float4(up, 0), float4(fwd, 0), float4(0, 0, 0, 1));
 }
 
+inline float4x4 rotationFromZDirection(const float3 &direction) {
+  const float3 fwd = direction;
+  const float3 right = generateTangent(fwd);
+  const float3 up = linalg::normalize(linalg::cross(fwd, right));
+  return float4x4(float4(right, 0), float4(up, 0), float4(fwd, 0), float4(0, 0, 0, 1));
+}
+
 inline float4x4 safeLookat(const float3 &position, const float3 &target) {
   auto eye = reinterpret_cast<const float3 *>(&position);
   auto center = reinterpret_cast<const float3 *>(&target);

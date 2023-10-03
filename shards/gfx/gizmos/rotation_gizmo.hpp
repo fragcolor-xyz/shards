@@ -6,6 +6,13 @@
 
 namespace gfx {
 namespace gizmos {
+
+struct SelectionDisc {
+  Torus torus;
+  float3 baseX;
+  float3 baseY;
+};
+
 // A gizmo that allows the rotation of an object about the 3 axes. The gizmo is composed of 3
 // handles, each of which allows rotation about a single axis.
 //
@@ -16,44 +23,28 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity;
 
   Handle handles[4];
-  Disc handleSelectionDiscs[4];
+  SelectionDisc handleSelectionDiscs[4];
   float4x4 dragStartTransform;
   float3 dragStartPoint;
   float3 dragTangentDir;
   float3 dragNormalDir;
 
   float scale = 1.0f;
-  const float axisRadius = 0.05f;
-  const float axisLength = 0.55f;
-  const float initialOuterRadius = 1.0f;
-  const float initialInnerRadius = 0.9f;
 
-  float getGlobalAxisRadius() const { return axisRadius * scale; }
-  float getGlobalAxisLength() const { return axisLength * scale; }
+  const float outerRadius = 1.0f;
+  const float innerRadius = 0.9f;
+  float getInnerRadius() const { return innerRadius * scale; }
+  float getOuterRadius() const { return outerRadius * scale; }
 
   RotationGizmo() {
-    float3x3 axisDirs{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
     for (int i = 0; i < 3; ++i) {
       handles[i].userData = reinterpret_cast<void *>(i);
       handles[i].callbacks = this;
-      // Can possibly allow adjustment of radii in the future
-      handleSelectionDiscs[i].outerRadius = initialOuterRadius;
-      handleSelectionDiscs[i].innerRadius = initialInnerRadius;
-
-      handleSelectionDiscs[i].normal = axisDirs[i];
-      handleSelectionDiscs[i].xBase = axisDirs[(i + 1) % 3];
-      handleSelectionDiscs[i].yBase = axisDirs[(i + 2) % 3];
     }
 
     // special values for 4th handle
     handles[3].userData = reinterpret_cast<void *>(3);
     handles[3].callbacks = this;
-    handleSelectionDiscs[3].outerRadius = initialOuterRadius * 1.1;
-    handleSelectionDiscs[3].innerRadius = initialInnerRadius * 1.1;
-
-    handleSelectionDiscs[3].normal = {1.0, 0.0, 1.0};
-    handleSelectionDiscs[3].xBase = {1.0, 0.0, -1.0};
-    handleSelectionDiscs[3].yBase = {0.0, 1.0, 0.0};
   }
 
   // update from IGizmo, seems to update gizmo based on inputcontext
@@ -61,35 +52,48 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   virtual void update(InputContext &inputContext) {
     // Rotate the 3 discs for x/y/z-axis according to the current transform of the object
     float3x3 rotationMat = extractRotationMatrix(transform);
-    float3x3 axisDirs{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
-    axisDirs = linalg::mul(axisDirs, rotationMat);
     for (int i = 0; i < 3; ++i) {
-      handleSelectionDiscs[i].normal = axisDirs[i];
-      handleSelectionDiscs[i].xBase = axisDirs[(i + 1) % 3];
-      handleSelectionDiscs[i].yBase = axisDirs[(i + 2) % 3];
+      handleSelectionDiscs[i].torus.normal = rotationMat[i];
+      handleSelectionDiscs[i].baseX = rotationMat[(i + 1) % 3];
+      handleSelectionDiscs[i].baseY = rotationMat[(i + 2) % 3];
+      handleSelectionDiscs[i].torus.outerRadius = getOuterRadius();
+      handleSelectionDiscs[i].torus.innerRadius = getInnerRadius();
     }
 
     // Update 4th handle's rotation based on any changes to camera transform
     float3x3 screenSpaceBaseVec = inputContext.getScreenSpacePlaneAxes();
-    handleSelectionDiscs[3].xBase = screenSpaceBaseVec[0];
-    handleSelectionDiscs[3].yBase = screenSpaceBaseVec[1];
-    handleSelectionDiscs[3].normal = screenSpaceBaseVec[2];
+    handleSelectionDiscs[3].baseX = screenSpaceBaseVec[0];
+    handleSelectionDiscs[3].baseY = screenSpaceBaseVec[1];
+    handleSelectionDiscs[3].torus.normal = screenSpaceBaseVec[2];
+    handleSelectionDiscs[3].torus.outerRadius = getOuterRadius() * 1.1;
+    handleSelectionDiscs[3].torus.innerRadius = getInnerRadius() * 1.1;
 
     // Update the center of all 4 handles, check for intersection with ray and update handle
-    for (size_t i = 0; i < 4; i++) {
+    for (size_t i = 0; i < 3; i++) {
       auto &handle = handles[i];
       auto &selectionDisc = handleSelectionDiscs[i];
 
-      selectionDisc.center = extractTranslation(transform);
+      selectionDisc.torus.center = extractTranslation(transform);
 
-      float hitDistance = intersectDisc(inputContext.eyeLocation, inputContext.rayDirection, selectionDisc);
+      // Torus transform
+      float4x4 torusRotM = rotationFromZDirection(selectionDisc.torus.normal);
+      float4x4 torusTransform = linalg::mul(transform, torusRotM);
+      float torusR = (selectionDisc.torus.innerRadius + selectionDisc.torus.outerRadius) / 2.0f;
+      float torusW = (selectionDisc.torus.outerRadius - selectionDisc.torus.innerRadius) / 2.0f;
+
+      // Make hitbox slightly larger
+      torusW *= 1.1f;
+      float hitDistance = intersectImplicitSurfaceTransformed(
+          inputContext.eyeLocation, inputContext.rayDirection, torusTransform,
+          [&](float3 p) -> float { return linalg::length(float2(linalg::length(float2(p.x, p.y)) - torusR, p.z)) - torusW; });
+
       inputContext.updateHandle(handle, GizmoHit(hitDistance));
     }
   }
 
   size_t getHandleIndex(Handle &inHandle) { return size_t(inHandle.userData); }
 
-  float3 getAxisDirection(size_t index, float4x4 transform) { return handleSelectionDiscs[index].normal; }
+  float3 getAxisDirection(size_t index, float4x4 transform) { return handleSelectionDiscs[index].torus.normal; }
 
   // Called when handle grabbed from IGizmoCallbacks
   virtual void grabbed(InputContext &context, Handle &handle) {
@@ -102,14 +106,14 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     float d;
     // Check if ray intersects with plane of the disc (either side)
     // TODO: Check if there is a way to do it without checking both sides of the plane
-    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, selectionDisc.normal, d) ||
-        intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, -selectionDisc.normal, d)) {
+    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.torus.center, selectionDisc.torus.normal, d) ||
+        intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.torus.center, -selectionDisc.torus.normal, d)) {
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
-      float3 radiusVec = hitPoint - selectionDisc.center;
+      float3 radiusVec = hitPoint - selectionDisc.torus.center;
 
       // Construct a plane that is parallel to the camera view projeciton and project the tangent onto this plane
       dragStartPoint = hitPoint;
-      dragTangentDir = linalg::normalize(linalg::cross(selectionDisc.normal, radiusVec));
+      dragTangentDir = linalg::normalize(linalg::cross(selectionDisc.torus.normal, radiusVec));
 
       // we could possibly make this more efficient by projecting the tangent onto the 2d screen space and then
       // calculating delta for rotation using the amount moved by the mouse cursor along the tangent in screen space
@@ -135,8 +139,8 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
     auto &selectionDisc = handleSelectionDiscs[handleIndex];
 
     float d;
-    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, dragNormalDir, d) ||
-        intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.center, -dragNormalDir, d)) {
+    if (intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.torus.center, dragNormalDir, d) ||
+        intersectPlane(context.eyeLocation, context.rayDirection, selectionDisc.torus.center, -dragNormalDir, d)) {
       float3 hitPoint = context.eyeLocation + d * context.rayDirection;
       float3 deltaVec = dragStartPoint - hitPoint;
 
@@ -168,16 +172,23 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
   virtual void render(InputContext &inputContext, GizmoRenderer &renderer) {
 
     // render all 4 selection discs
-    for (size_t i = 0; i < 4; i++) {
+    for (size_t i = 0; i < 3; i++) {
       auto &handle = handles[i];
       auto &selectionDisc = handleSelectionDiscs[i];
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
 
       float4 axisColor = axisColors[i];
-      axisColor = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
+      float4 color = float4(axisColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
       // Render without culling so it can be seen from either sides
-      renderer.getShapeRenderer().addDisc(selectionDisc.center, selectionDisc.xBase, selectionDisc.yBase,
-                                          selectionDisc.outerRadius, selectionDisc.innerRadius, axisColor, false);
+      if (hovering) {
+        renderer.getShapeRenderer().addDisc(selectionDisc.torus.center, selectionDisc.baseX, selectionDisc.baseY,
+                                            selectionDisc.torus.outerRadius, selectionDisc.torus.innerRadius, color, false);
+      }
+
+      renderer.getShapeRenderer().addCircle(selectionDisc.torus.center, selectionDisc.baseX, selectionDisc.baseY,
+                                            selectionDisc.torus.innerRadius, axisColor, 2, 64);
+      renderer.getShapeRenderer().addCircle(selectionDisc.torus.center, selectionDisc.baseX, selectionDisc.baseY,
+                                            selectionDisc.torus.outerRadius, axisColor, 2, 64);
     }
   }
 };

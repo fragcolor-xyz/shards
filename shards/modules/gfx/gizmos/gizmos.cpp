@@ -153,7 +153,6 @@ struct RotationGizmo : public Base {
 
     _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
 
-    // if valid applyOutputMat function, apply the new transform calculated by _gizmo to the drawable
     if (applyOutputMat)
       applyOutputMat(_gizmo.transform);
 
@@ -233,7 +232,6 @@ struct ScalingGizmo : public Base {
 
     _gizmoContext->gfxGizmoContext.updateGizmo(_gizmo);
 
-    // if valid applyOutputMat function, apply the new transform calculated by _gizmo to the drawable
     if (applyOutputMat)
       applyOutputMat(_gizmo.transform);
 
