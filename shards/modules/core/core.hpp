@@ -1258,7 +1258,9 @@ struct Update : public SetUpdateBase {
         }
       }
 
-      assert(originalTableType);
+      if (!originalTableType) {
+        throw ComposeError("Update: error, original table type not found.");
+      }
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateTable;
     } else {
