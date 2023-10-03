@@ -77,7 +77,7 @@ fn setup_base_shape(
 }
 
 #[derive(shards::shard)]
-#[shard_info("Shape", "Physics shape")]
+#[shard_info("Physics.Ball", "Physics shape")]
 struct BallShape {
   #[shard_param("Position", "The position of the shape.", POSITION_TYPES_SLICE)]
   position: ParamVar,
@@ -147,8 +147,8 @@ impl Shard for BallShape {
 }
 
 #[derive(shards::shard)]
-#[shard_info("CubeShape1", "Physics shape")]
-struct CubeShape {
+#[shard_info("Physics.Cuboid", "Physics shape")]
+struct CuboidShape {
   #[shard_param("Position", "The position of the shape.", POSITION_TYPES_SLICE)]
   position: ParamVar,
   #[shard_param("Rotation", "The rotation of the shape.", ROTATION_TYPES_SLICE)]
@@ -166,7 +166,7 @@ struct CubeShape {
   required: ExposedTypes,
 }
 
-impl Default for CubeShape {
+impl Default for CuboidShape {
   fn default() -> Self {
     Self {
       required: ExposedTypes::new(),
@@ -179,7 +179,7 @@ impl Default for CubeShape {
   }
 }
 
-impl CubeShape {
+impl CuboidShape {
   fn make(&mut self) -> SharedShape {
     let (x, y, z) = self.half_extents.get().try_into().unwrap();
     SharedShape::cuboid(x, y, z)
@@ -187,7 +187,7 @@ impl CubeShape {
 }
 
 #[shards::shard_impl]
-impl Shard for CubeShape {
+impl Shard for CuboidShape {
   fn input_types(&mut self) -> &Types {
     &NONE_TYPES
   }
@@ -222,5 +222,5 @@ impl Shard for CubeShape {
 
 pub fn register_shards() {
   register_shard::<BallShape>();
-  register_shard::<CubeShape>();
+  register_shard::<CuboidShape>();
 }
