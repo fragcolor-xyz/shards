@@ -137,8 +137,6 @@ jobs:
           ./shards new ../shards/tests/casting-numbers.shs
           ./shards new ../shards/tests/pure.shs
           # ./shards new ../shards/tests/shell.shs
-          ./shards ../shards/tests/infos.clj
-          ./shards ../shards/tests/many.edn
           ./shards new ../shards/tests/events.shs
           ./shards new ../shards/tests/tablecase.shs
           ./shards new ../shards/tests/types.shs

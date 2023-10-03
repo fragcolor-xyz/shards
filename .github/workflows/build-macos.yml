@@ -153,7 +153,6 @@ jobs:
           ./shards new ../shards/tests/snappy.shs
           ./shards new ../shards/tests/expect.shs
           ./shards new ../shards/tests/wasm.shs
-          ./shards ../shards/tests/infos.clj
           ./shards new ../shards/tests/rust.shs
           ./shards new ../shards/tests/crypto.shs
           ./shards new ../shards/tests/wire-macro.shs
@@ -161,7 +160,6 @@ jobs:
           ./shards new ../shards/tests/audio.shs test-device:true
           ./shards new ../shards/tests/time.shs
           ./shards new ../shards/tests/eth.shs
-          ./shards ../shards/tests/many.edn
           ./shards new ../shards/tests/events.shs
           ./shards new ../shards/tests/complex-deserialize.shs
           ./shards new ../shards/tests/db.shs

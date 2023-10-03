@@ -1,6 +1,0 @@
-(defmesh root-mesh)
-(defloop main
-  (Msg "Tick")
-  (Pause 1.0))
-(schedule root-mesh main)
-(if (run root-mesh (/ 1.0 120)) nil (throw "Root tick failed"))
