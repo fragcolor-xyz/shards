@@ -2,8 +2,8 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use super::image_util;
-use crate::CONTEXTS_NAME;
 use crate::util;
+use crate::CONTEXTS_NAME;
 use crate::FLOAT2_VAR_SLICE;
 use crate::PARENTS_UI_NAME;
 use shards::core::register_shard;
@@ -243,6 +243,8 @@ impl ImageButton {
       button = button.selected(selected.try_into()?);
     }
 
+    let mut button_clicked = false;
+
     let response = ui.add(button);
     if response.clicked() {
       if self.selected.is_variable() {
@@ -254,20 +256,16 @@ impl ImageButton {
         return Err("Failed to activate button");
       }
 
-      // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
-      let ctx = util::get_current_context(&self.contexts)?;
-      ctx.prev_response = Some(response);
-
       // button clicked during this frame
-      return Ok(true.into());
+      button_clicked = true;
     }
 
     // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
     let ctx = util::get_current_context(&self.contexts)?;
     ctx.prev_response = Some(response);
-    
+
     // button not clicked during this frame
-    Ok(false.into())
+    Ok(button_clicked.into())
   }
 
   impl_override_activate! {

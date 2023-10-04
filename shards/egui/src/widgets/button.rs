@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use crate::CONTEXTS_NAME;
 use crate::util;
 use crate::widgets::text_util;
 use crate::ANY_TABLE_SLICE;
+use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
 use shards::core::register_shard;
@@ -126,28 +126,25 @@ impl Shard for Button {
         button = button.wrap(wrap);
       }
 
-      let response = ui.add(button);
+      let mut button_clicked = false;
 
+      let response = ui.add(button);
       if response.clicked() {
         let mut output = Var::default();
         if self.action.activate(context, input, &mut output) == WireState::Error {
           return Err("Failed to activate button");
         }
 
-        // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
-        let ctx = util::get_current_context(&self.contexts)?;
-        ctx.prev_response = Some(response);
-
         // button clicked during this frame
-        return Ok(true.into());
+        button_clicked = true;
       }
-      
+
       // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
       let ctx = util::get_current_context(&self.contexts)?;
       ctx.prev_response = Some(response);
 
       // button not clicked during this frame
-      Ok(false.into())
+      Ok(button_clicked.into())
     } else {
       Err("No UI parent")
     }
