@@ -3,9 +3,9 @@ GFX.MainWindow(
     Once({
       GFX.DrawQueue >= ui-draw-queue
       GFX.UIPass(ui-draw-queue) >> render-steps
-      32.0 >= n | Log
-      n | Math.Negate >= negated-n | Log
-      n | Math.Divide(3.1415926535) >= n-divided-by-pi | Log
+      32 >= n
+      n | Math.Negate >= negated-n
+      n | ToFloat | Math.Divide(3.1415926535) >= n-divided-by-pi
     })
     UI(
         ui-draw-queue
@@ -17,7 +17,6 @@ GFX.MainWindow(
               ForRange(
                 negated-n n
                 {
-                  ; | Log
                   | ToFloat | Math.Divide(n-divided-by-pi) >= x
                   x | Math.Sin >= y
                   [x y] | ToFloat2 >> sin
