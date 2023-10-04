@@ -1,30 +1,25 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use crate::EguiId;
-use crate::util;
-use crate::HELP_OUTPUT_EQUAL_INPUT;
 use super::PopupLocation;
 use super::POPUPLOCATION_TYPES;
+use crate::util;
+use crate::EguiId;
+use crate::HELP_OUTPUT_EQUAL_INPUT;
 use shards::cstr;
 use shards::shard;
 use shards::shard::Shard;
 use shards::shard_impl;
-use shards::types::FLOAT_OR_NONE_TYPES_SLICE;
 use shards::types::OptionalString;
 use shards::types::ANY_TYPES;
+use shards::types::FLOAT_OR_NONE_TYPES_SLICE;
 use shards::types::{
-  common_type, Context, ExposedInfo, ExposedTypes, InstanceData, ParamVar, ShardsVar, Type,
-  Types, Var, SHARDS_OR_NONE_TYPES,
+  common_type, Context, ExposedInfo, ExposedTypes, InstanceData, ParamVar, ShardsVar, Type, Types,
+  Var, SHARDS_OR_NONE_TYPES,
 };
 
 use crate::{CONTEXTS_NAME, PARENTS_UI_NAME};
-use shards::{
-  core::register_shard,
-  types::{STRING_VAR_OR_NONE_SLICE},
-};
-
-
+use shards::{core::register_shard, types::STRING_VAR_OR_NONE_SLICE};
 
 #[derive(shard)]
 #[shard_info(
@@ -34,9 +29,17 @@ use shards::{
 struct PopupWrapper {
   #[shard_param("MinWidth", "The minimum width of the popup that should appear below or above the button. By default, it is always at least as wide as the button.", FLOAT_OR_NONE_TYPES_SLICE)]
   pub min_width: ParamVar,
-  #[shard_param("AboveOrBelow", "Whether the location of the popup should be above or below the button.", POPUPLOCATION_TYPES)]
+  #[shard_param(
+    "AboveOrBelow",
+    "Whether the location of the popup should be above or below the button.",
+    POPUPLOCATION_TYPES
+  )]
   pub above_or_below: ParamVar,
-  #[shard_param("ID", "An optional ID value to make the popup unique if the label text collides.", STRING_VAR_OR_NONE_SLICE)]
+  #[shard_param(
+    "ID",
+    "An optional ID value to make the popup unique if the label text collides.",
+    STRING_VAR_OR_NONE_SLICE
+  )]
   pub id: ParamVar,
   pub cached_id: Option<egui::Id>,
   #[shard_param(
@@ -147,7 +150,6 @@ impl Shard for PopupWrapper {
       };
 
       if !self.contents.is_empty() {
-
         // Retrieve previous response from context (that should be added by ui contents like buttons)
         let ctx = util::get_current_context(&self.contexts)?;
         let response = if let Some(response) = ctx.prev_response.take() {
@@ -157,10 +159,18 @@ impl Shard for PopupWrapper {
           return Ok(*input);
         };
 
-        // Create the popup and activate its contents
-        let popup_id = if let Ok(id) = <&str>::try_from(self.id.get()) {
-          self.cached_id.get_or_insert_with(|| ui.make_persistent_id(id))
+        // If provided a custom id, we do not cache it because a new id may be provided to the same shard multiple times lest ID conflicts
+        let mut custom_popup_id = if !self.id.get().is_none() {
+          let id: &str = self.id.get().try_into()?;
+          Some(ui.make_persistent_id(id))
         } else {
+          None
+        };
+  
+        let popup_id = if !self.id.get().is_none() {
+          custom_popup_id.as_mut().unwrap()
+        } else {
+          // If no custom id provided, then cache the shard as the id
           let id = EguiId::new(self, 0);
           self
             .cached_id
@@ -183,7 +193,13 @@ impl Shard for PopupWrapper {
               ui.set_min_width(self.min_width.get().try_into()?);
             }
             // Activate the contents of the popup with the output of self.widget
-            util::activate_ui_contents(context, &widget_result, ui, &mut self.parents, &mut self.contents)
+            util::activate_ui_contents(
+              context,
+              &widget_result,
+              ui,
+              &mut self.parents,
+              &mut self.contents,
+            )
           })
         {
           // Only if popup is open will there be an inner result. In such a case, verify that nothing went wrong.
