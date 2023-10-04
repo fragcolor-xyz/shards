@@ -610,7 +610,7 @@ struct Var : public SHVar {
     return *this;
   }
 
-  bool isNone() const { return valueType == SHType::None; }
+  constexpr bool isNone() const { return valueType == SHType::None; }
 
   explicit operator bool() const {
     if (valueType != SHType::Bool) {

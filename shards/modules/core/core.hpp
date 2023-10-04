@@ -3289,14 +3289,40 @@ struct ForRangeShard {
       {"From", SHCCSTR("The initial iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
       {"To", SHCCSTR("The final iteration value (inclusive)."), {CoreInfo::IntType, CoreInfo::IntVarType}},
       {"Action",
-       SHCCSTR("The action to perform at each iteration. The current iteration "
-               "value will be passed as input."),
+       SHCCSTR("The action to perform at each iteration. The current iteration value will be passed as input."),
        {CoreInfo::ShardsOrNone}}};
+
   static SHParametersInfo parameters() { return _params; }
 
   ParamVar _from{Var(0)};
   ParamVar _to{Var(1)};
   ShardsVar _shards{};
+
+  std::array<SHExposedTypeInfo, 2> _requiring;
+
+  SHExposedTypesInfo requiredVariables() {
+    uint32_t vars = 0;
+
+    if (_from.isVariable()) {
+      _requiring[vars].name = _from.variableName();
+      _requiring[vars].help = SHCCSTR("The required variable index.");
+      _requiring[vars].exposedType = CoreInfo::IntType;
+      vars++;
+    }
+
+    if (_to.isVariable()) {
+      _requiring[vars].name = _to.variableName();
+      _requiring[vars].help = SHCCSTR("The required variable index.");
+      _requiring[vars].exposedType = CoreInfo::IntType;
+      vars++;
+    }
+
+    if (vars > 0) {
+      return {_requiring.data(), vars, 0};
+    } else {
+      return {};
+    }
+  }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
