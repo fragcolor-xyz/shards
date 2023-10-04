@@ -30,14 +30,33 @@ struct IGizmoCallbacks {
 struct Handle {
   IGizmoCallbacks *callbacks{};
   void *userData{};
-  bool grabbed{};
-  float grabOffset{};
 };
 
 struct InputState {
   float2 cursorPosition{};
   float2 viewSize{};
   bool pressed{};
+};
+
+// Information about handle that was hit by cursor ray
+struct GizmoHit {
+  float distance;
+  int layer;
+
+  GizmoHit() = default;
+  // Either distance or layer less than will be a more important hit
+  GizmoHit(float distance, int layer = 0) : distance(distance), layer(layer) {}
+
+  // Represents no hit, everything will be less
+  static GizmoHit none() {
+    return GizmoHit{
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<int>::max(),
+    };
+  }
+
+  auto compareTie() const { return std::tie(layer, distance); }
+  bool operator<(const GizmoHit &other) const { return compareTie() < other.compareTie(); }
 };
 
 // Input tracking for gizmo handles
@@ -60,9 +79,8 @@ public:
   // will be locked to the held handle while the interaction button is pressed
   Handle *hovering{};
 
-  // Information about handle that was hit by cursor ray
+  GizmoHit hit;
   float3 hitLocation;
-  float hitDistance;
 
   // Last input state
   InputState inputState;
@@ -77,7 +95,7 @@ public:
   // Call this within the update for each handle in view
   //  when a handle is grabbed, this is allowed to run the move callback directly
   //  since no raycast needs to be performed on the entire set of handles
-  void updateHandle(Handle &handle, float hitDistance);
+  void updateHandle(Handle &handle, GizmoHit hit);
   // Call to end input update and run input callbacks
   void end();
 

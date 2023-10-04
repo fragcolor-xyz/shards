@@ -26,12 +26,13 @@ public:
   struct LineVertex {
     float position[3];
     float color[4] = {1, 1, 1, 1};
-    float direction[3] = {};
+    float direction[4] = {};
     float offsetSS[2] = {};
 
     void setPosition(const float3 &position) { memcpy(this->position, &position.x, sizeof(float) * 3); }
     void setColor(const float4 &color) { memcpy(this->color, &color.x, sizeof(float) * 4); }
     void setNormal(const float3 &direction) { memcpy(this->direction, &direction.x, sizeof(float) * 3); }
+    void setLength(float len) { this->direction[3] = len; }
     void setScreenSpaceOffset(float2 offsetSS) { memcpy(this->offsetSS, &offsetSS.x, sizeof(float) * 2); }
 
     static const std::vector<MeshVertexAttribute> &getAttributes();
@@ -59,13 +60,13 @@ private:
   MeshPtr unculledSolidMesh;
 
 public:
-  void addLine(float3 a, float3 b, float3 dirA, float3 dirB, float4 color, uint32_t thickness);
-  void addLine(float3 a, float3 b, float4 color, uint32_t thickness);
-  void addCircle(float3 center, float3 xBase, float3 yBase, float radius, float4 color, uint32_t thickness, uint32_t resolution);
-  void addRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness);
-  void addBox(float3 center, float3 xBase, float3 yBase, float3 zBase, float3 size, float4 color, uint32_t thickness);
-  void addBox(float4x4 transform, float3 center, float3 size, float4 color, uint32_t thickness);
-  void addPoint(float3 center, float4 color, uint32_t thickness);
+  void addLine(float3 a, float3 b, float3 dirA, float3 dirB, float4 color, float thickness);
+  void addLine(float3 a, float3 b, float4 color, float thickness);
+  void addCircle(float3 center, float3 xBase, float3 yBase, float radius, float4 color, float thickness, uint32_t resolution);
+  void addRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, float thickness);
+  void addBox(float3 center, float3 xBase, float3 yBase, float3 zBase, float3 size, float4 color, float thickness);
+  void addBox(float4x4 transform, float3 center, float3 size, float4 color, float thickness);
+  void addPoint(float3 center, float4 color, float thickness);
 
   void addSolidRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, bool culling = true);
   void addSolidQuad(float3 a, float3 b, float3 c, float3 d, float4 color, bool culling = true);
@@ -96,10 +97,14 @@ private:
   FeaturePtr gizmoLightingFeature = GizmoLightingFeature::create();
 
 public:
+  float scalingFactor = 1.0f;
+
+public:
   GizmoRenderer();
 
   // Factor to scale by for constant screen-space size
-  float getSize(float3 position) const;
+  // float getSize(float3 position) const;
+  float getConstantScreenSize(float3 position, float size) const;
 
   enum class CapType { Cube, Arrow, Sphere };
 

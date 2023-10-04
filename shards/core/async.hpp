@@ -11,6 +11,8 @@
 #include <boost/lockfree/queue.hpp>
 #include <boost/thread.hpp>
 
+#include <tracy/Wrapper.hpp>
+
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
 #define HAS_ASYNC_SUPPORT 0
 #else
@@ -162,6 +164,8 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   static_assert(std::is_same_v<decltype(func()), SHVar> || std::is_same_v<decltype(func()), Var>,
                 "func must return SHVar or Var");
 
+  ZoneScopedN("awaitne");
+
 #if !HAS_ASYNC_SUPPORT
   return func();
 #else
@@ -175,6 +179,8 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
     std::atomic_bool complete;
 
     virtual void call() {
+      ZoneScopedNC("awaitne-work", 0xFF00FF00);
+
       try {
         res = func();
       } catch (...) {
@@ -213,6 +219,8 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 }
 
 template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
+  ZoneScopedN("await");
+
 #if !HAS_ASYNC_SUPPORT
   func();
 #else
@@ -225,6 +233,7 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
     std::atomic_bool complete;
 
     virtual void call() {
+      ZoneScopedNC("await-work", 0xFF00FF00);
       try {
         func();
       } catch (...) {

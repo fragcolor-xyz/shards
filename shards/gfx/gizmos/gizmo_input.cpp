@@ -11,7 +11,7 @@ void InputContext::begin(const InputState &inputState, ViewPtr view) {
   updateView(view);
 
   // Reset hover state
-  hitDistance = std::numeric_limits<float>::infinity();
+  hit = GizmoHit::none();
   hovering = nullptr;
 
   // Reset tracker for held handle
@@ -19,12 +19,14 @@ void InputContext::begin(const InputState &inputState, ViewPtr view) {
 }
 
 // Call with hit distance from raycast
-void InputContext::updateHandle(Handle &handle, float hitDistance) {
+void InputContext::updateHandle(Handle &handle, GizmoHit hit) {
   bool isHeld = &handle == held;
 
-  if (hitDistance < this->hitDistance) {
-    this->hitDistance = hitDistance;
-    this->hovering = &handle;
+  if (hit.distance != std::numeric_limits<float>::infinity()) {
+    if (hit < this->hit) {
+      this->hit = hit;
+      this->hovering = &handle;
+    }
   }
 
   // Movement callback for held handle
@@ -50,7 +52,7 @@ void InputContext::updateHeldHandle() {
 void InputContext::updateHitLocation() {
   // Hit location from raycast results
   if (hovering)
-    hitLocation = eyeLocation + rayDirection * hitDistance;
+    hitLocation = eyeLocation + rayDirection * hit.distance;
   else
     hitLocation = float3(0, 0, 0);
 }

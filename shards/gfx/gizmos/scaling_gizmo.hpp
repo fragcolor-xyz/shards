@@ -6,11 +6,16 @@
 
 namespace gfx {
 namespace gizmos {
+
 struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
   float4x4 transform = linalg::identity; // load identity matrix
 
   Handle handles[4];
   Box handleSelectionBoxes[4];
+
+  struct HandleState {
+    float grabOffset;
+  } handleStates[3];
 
   // The sensitivities of the axes and the centered cube vary due to different methods of calculating delta.
   // The axes utilize the delta of the ray intersection with the axis plane, whereas the centered cube relies on the delta of the
@@ -18,16 +23,20 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
   const float axisSensitivity = 1.5f;
   const float centeredCubeSensitivity = 0.003f;
   const float4 centeredCubeColor = float4(0.3f, 0.3f, 0.3f, 1.0f);
+  float4x4 transformNoScale;
   float4x4 dragStartTransform;
   float3 dragStartPoint;
   float2 dragStartCursor;
 
   float scale = 1.0f;
-  const float axisRadius = 0.05f;
-  const float axisLength = 0.55f;
 
-  float getGlobalAxisRadius() const { return axisRadius * scale; }
-  float getGlobalAxisLength() const { return axisLength * scale; }
+  const float axisRadius = 0.2f;
+  const float visualAxisRadius = 0.1f;
+  const float axisLength = 1.0f;
+
+  float getVisualAxisRadius() const { return visualAxisRadius * scale; }
+  float getAxisRadius() const { return axisRadius * scale; }
+  float getAxisLength() const { return axisLength * scale; }
 
   ScalingGizmo() {
     for (size_t i = 0; i < 4; i++) {
@@ -37,8 +46,9 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
   }
 
   void update(InputContext &inputContext) {
-    float3x3 invTransform = linalg::inverse(extractRotationMatrix(transform));
-    float3 localRayDir = linalg::mul(invTransform, inputContext.rayDirection);
+    // NOTE: The scale gizmo always works in local mode to avoid confusion with skewed matrices
+    transformNoScale = removeTransformScale(transform);
+    float3 localRayDir = transformNormal(linalg::inverse(transformNoScale), inputContext.rayDirection);
 
     for (size_t i = 0; i < 3; i++) {
       auto &handle = handles[i];
@@ -58,15 +68,15 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       const float2 hitboxScale = linalg::lerp(float2(2.2f, 1.2f), float2(0.8f, 1.0f), angleFactor);
 
       // The size of the selection box for the axis handles is reduced to avoid overlapping with the hitbox of the centered cube.
-      selectionBox.min = (-t1 * getGlobalAxisRadius() - t2 * getGlobalAxisRadius()) * hitboxScale.x +
-                         fwd * getGlobalAxisLength() * hitboxScale.y * (angleFactor + 0.18f);
-      selectionBox.max =
-          (t1 * getGlobalAxisRadius() + t2 * getGlobalAxisRadius()) * hitboxScale.x + fwd * getGlobalAxisLength() * hitboxScale.y;
+      selectionBox.min = (-t1 * getAxisRadius() - t2 * getAxisRadius()) * hitboxScale.x +
+                         fwd * getAxisLength() * hitboxScale.y * (angleFactor + 0.18f);
+      selectionBox.max = (t1 * getAxisRadius() + t2 * getAxisRadius()) * hitboxScale.x + fwd * getAxisLength() * hitboxScale.y;
 
       // The selection box of the axis handle remains unchanged during object scaling.
-      selectionBox.transform = linalg::identity;
+      selectionBox.transform = transformNoScale;
 
-      inputContext.updateHandle(handle, intersectBox(inputContext.eyeLocation, inputContext.rayDirection, selectionBox));
+      inputContext.updateHandle(handle,
+                                GizmoHit(intersectBox(inputContext.eyeLocation, inputContext.rayDirection, selectionBox)));
     }
 
     // The center cube
@@ -74,12 +84,13 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       auto &handle = handles[3];
       auto &selectionBox = handleSelectionBoxes[3];
 
-      float hitbox_size = getGlobalAxisLength() * 0.2f;
+      float hitbox_size = getAxisLength() * 0.2f;
       selectionBox.min = float3(-hitbox_size, -hitbox_size, -hitbox_size);
       selectionBox.max = float3(hitbox_size, hitbox_size, hitbox_size);
-      selectionBox.transform = linalg::identity;
+      selectionBox.transform = transformNoScale;
 
-      inputContext.updateHandle(handle, intersectBox(inputContext.eyeLocation, inputContext.rayDirection, selectionBox));
+      inputContext.updateHandle(handle,
+                                GizmoHit(intersectBox(inputContext.eyeLocation, inputContext.rayDirection, selectionBox), -1));
     }
   }
 
@@ -107,17 +118,16 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
     position changes.
   */
   virtual void grabbed(InputContext &context, Handle &handle) {
-    handle.grabbed = true;
     dragStartTransform = transform;
 
     size_t index = getHandleIndex(handle);
-    SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, dragStartTransform));
+    SPDLOG_DEBUG("Handle {} ({}) grabbed", index, getAxisDirection(index, transformNoScale));
 
     if (index == 3) {
       dragStartCursor = context.inputState.cursorPosition;
     } else {
       dragStartPoint = hitOnPlane(context.eyeLocation, context.rayDirection, extractTranslation(dragStartTransform),
-                                  getAxisDirection(index, dragStartTransform));
+                                  getAxisDirection(index, transformNoScale));
     }
   }
 
@@ -125,28 +135,24 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
     size_t index = getHandleIndex(handle);
     if (index == 3) {
       for (size_t i = 0; i < 3; i++) {
-        handles[i].grabbed = false;
-        handles[i].grabOffset = 0.0f;
+        handleStates[i].grabOffset = 0.0f;
       }
     } else {
-      handle.grabbed = false;
-      handle.grabOffset = 0.0f;
+      handleStates[index].grabOffset = 0.0f;
     }
     SPDLOG_DEBUG("Handle {} ({}) released", index, getAxisDirection(index, dragStartTransform));
   }
 
   virtual void move(InputContext &context, Handle &inHandle) {
     size_t index = getHandleIndex(inHandle);
-    float3 fwd = getAxisDirection(index, dragStartTransform);
+    float3 fwd = getAxisDirection(index, transformNoScale);
 
-    float3 delta;
     float3 scaling;
     if (index == 3) {
       float2 hitPoint = context.inputState.cursorPosition;
-      delta = float3((hitPoint - dragStartCursor), 0);
+      float3 delta = float3((hitPoint - dragStartCursor), 0);
       for (size_t i = 0; i < 3; i++) {
-        handles[i].grabbed = true;
-        handles[i].grabOffset = centeredCubeSensitivity * delta.x;
+        handleStates[i].grabOffset = centeredCubeSensitivity * delta.x;
       }
       // Dragging the centered cube to the right increases the object's scale, while dragging it to the left decreases the
       // object's scale.
@@ -158,37 +164,26 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       }
     } else {
       float3 hitPoint = hitOnPlane(context.eyeLocation, context.rayDirection, dragStartPoint, fwd);
-      delta = hitPoint - dragStartPoint;
-      handles[index].grabOffset = delta[index];
+      float3 delta = hitPoint - dragStartPoint;
+      handleStates[index].grabOffset = delta[index];
       scaling = float3(1.0f);
       scaling[index] = 1 + delta[index] * axisSensitivity;
     }
-    transform = linalg::mul(linalg::scaling_matrix(scaling), dragStartTransform);
+
+    float3 t, s;
+    float3x3 r;
+    decomposeTRS(dragStartTransform, t, s, r);
+    s *= scaling;
+    transform = composeTRS(t, s, r);
   }
 
   void render(InputContext &inputContext, GizmoRenderer &renderer) {
+    bool allHeld = inputContext.held == &handles[3];
     for (size_t i = 0; i < 3; i++) {
       auto &handle = handles[i];
       auto &selectionBox = handleSelectionBoxes[i];
 
       bool hovering = inputContext.hovering && inputContext.hovering == &handle;
-
-#if 0
-      // Debug draw
-      float4 color = float4(.7, .7, .7, 1.);
-      uint32_t thickness = 1;
-      if (hovering) {
-        color = float4(.5, 1., .5, 1.);
-        thickness = 2;
-      }
-
-      auto &min = handle.selectionBox.min;
-      auto &max = handle.selectionBox.max;
-      float3 center = (max + min) / 2.0f;
-      float3 size = max - min;
-
-      renderer.getShapeRenderer().addBox(handle.selectionBoxTransform, center, size, color, thickness);
-#endif
 
       float3 loc = extractTranslation(selectionBox.transform);
       float3 dir = getAxisDirection(i, selectionBox.transform);
@@ -196,18 +191,17 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       float4 cubeColor = axisColors[i];
       cubeColor = float4(cubeColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
 
-      if (handles[i].grabbed) {
-        float modifiedLength = getGlobalAxisLength() + handles[i].grabOffset * 0.5f;
+      if (allHeld || inputContext.held == &handles[i]) {
+        float modifiedLength = getAxisLength() + handleStates[i].grabOffset * 0.5f;
 
         if (modifiedLength < 0.0f) {
-          renderer.addHandle(loc, -dir, getGlobalAxisRadius(), -modifiedLength, cubeColor, GizmoRenderer::CapType::Cube,
+          renderer.addHandle(loc, -dir, getVisualAxisRadius(), -modifiedLength, cubeColor, GizmoRenderer::CapType::Cube,
                              cubeColor);
         } else {
-          renderer.addHandle(loc, dir, getGlobalAxisRadius(), modifiedLength, cubeColor, GizmoRenderer::CapType::Cube, cubeColor);
+          renderer.addHandle(loc, dir, getVisualAxisRadius(), modifiedLength, cubeColor, GizmoRenderer::CapType::Cube, cubeColor);
         }
       } else {
-        renderer.addHandle(loc, dir, getGlobalAxisRadius(), getGlobalAxisLength(), cubeColor, GizmoRenderer::CapType::Cube,
-                           cubeColor);
+        renderer.addHandle(loc, dir, getVisualAxisRadius(), getAxisLength(), cubeColor, GizmoRenderer::CapType::Cube, cubeColor);
       }
     }
 
@@ -221,8 +215,31 @@ struct ScalingGizmo : public IGizmo, public IGizmoCallbacks {
       float3 loc = extractTranslation(selectionBox.transform);
       float4 cubeColor = float4(centeredCubeColor.xyz() * (hovering ? 1.1f : 0.9f), 1.0f);
 
-      renderer.addCubeHandle(loc, getGlobalAxisLength() * 0.15f, cubeColor);
+      renderer.addCubeHandle(loc, getAxisLength() * 0.15f, cubeColor);
     }
+
+#if GIZMO_DEBUG
+    for (size_t i = 0; i < std::size(handleSelectionBoxes); i++) {
+      auto &selectionBox = handleSelectionBoxes[i];
+
+      bool hovering = inputContext.hovering == &handles[i];
+
+      // Debug draw
+      float4 color = float4(.7, .7, .7, 1.);
+      uint32_t thickness = 1;
+      if (hovering) {
+        color = float4(.5, 1., .5, 1.);
+        thickness = 2;
+      }
+
+      auto &min = selectionBox.min;
+      auto &max = selectionBox.max;
+      float3 center = (max + min) / 2.0f;
+      float3 size = max - min;
+
+      renderer.getShapeRenderer().addBox(selectionBox.transform, center, size, color, thickness);
+    }
+#endif
   }
 };
 } // namespace gizmos

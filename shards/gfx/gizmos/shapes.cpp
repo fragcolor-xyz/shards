@@ -12,7 +12,7 @@ const std::vector<MeshVertexAttribute> &ShapeRenderer::LineVertex::getAttributes
     std::vector<MeshVertexAttribute> attribs;
     attribs.emplace_back("position", 3, StorageType::Float32);
     attribs.emplace_back("color", 4, StorageType::Float32);
-    attribs.emplace_back("direction", 3, StorageType::Float32);
+    attribs.emplace_back("directionLen", 4, StorageType::Float32);
     attribs.emplace_back("offsetSS", 2, StorageType::Float32);
     return attribs;
   }();
@@ -47,7 +47,8 @@ FeaturePtr ScreenSpaceSizeFeature::create() {
   using namespace gfx::shader;
   std::unique_ptr<Compound> code = makeCompoundBlock();
   code->appendLine("var offsetSS =", ReadInput("offsetSS"));
-  code->appendLine("var dir = ", ReadInput("direction"));
+  code->appendLine("var dir = ", ReadInput("directionLen"), ".xyz");
+  code->appendLine("var length = ", ReadInput("directionLen"), ".w");
   code->appendLine("var color = ", ReadInput("color"));
   code->appendLine("var posWS = ", ReadInput("position"));
   code->appendLine("var world = ", ReadBuffer("world", FieldTypes::Float4x4));
@@ -56,7 +57,7 @@ FeaturePtr ScreenSpaceSizeFeature::create() {
   code->appendLine("var proj = ", ReadBuffer("proj", FieldTypes::Float4x4, "view"));
   code->appendLine("var viewport = ", ReadBuffer("viewport", FieldTypes::Float4, "view"));
   code->appendLine("var cameraPosition = invView[3].xyz");
-  code->appendLine("var nextWS = posWS+", ReadInput("direction"));
+  code->appendLine("var nextWS = posWS + dir * length");
   code->appendLine("var nextProj = proj* view * world * vec4<f32>(nextWS, 1.0)");
   code->appendLine("var nextNDC = nextProj.xyz / nextProj.w");
   code->appendLine("var posProj = proj* view * world * vec4<f32>(posWS, 1.0)");
@@ -113,53 +114,54 @@ FeaturePtr GizmoLightingFeature::create() {
 }
 
 #define UNPACK3(_x) \
-  { _x.x, _x.y, _x.z }
+  { (_x).x, (_x).y, (_x).z }
 #define UNPACK4(_x) \
-  { _x.x, _x.y, _x.z, _x.w }
+  { (_x).x, (_x).y, (_x).z, (_x).w }
 
-void ShapeRenderer::addLine(float3 a, float3 b, float3 dirA, float3 dirB, float4 color, uint32_t thickness) {
+void ShapeRenderer::addLine(float3 a, float3 b, float3 dirA, float3 dirB, float4 color, float thickness) {
+  float length = linalg::length(b - a);
   float xOffset = 0.5f * thickness;
   float yOffset = 1.0f * thickness;
   lineVertices.push_back(LineVertex{
       .position = UNPACK3(a),
       .color = UNPACK4(color),
-      .direction = UNPACK3(dirA),
+      .direction = {dirA.x, dirA.y, dirA.z, length},
       .offsetSS = {-xOffset, yOffset},
   });
   lineVertices.push_back(LineVertex{
       .position = UNPACK3(b),
       .color = UNPACK4(color),
-      .direction = UNPACK3(dirB),
+      .direction = {dirB.x, dirB.y, dirB.z, length},
       .offsetSS = {xOffset, yOffset},
   });
   lineVertices.push_back(LineVertex{
       .position = UNPACK3(b),
       .color = UNPACK4(color),
-      .direction = UNPACK3(dirB),
+      .direction = {dirB.x, dirB.y, dirB.z, length},
       .offsetSS = {xOffset, -yOffset},
   });
 
   lineVertices.push_back(LineVertex{
       .position = UNPACK3(a),
       .color = UNPACK4(color),
-      .direction = UNPACK3(dirA),
+      .direction = {dirA.x, dirA.y, dirA.z, length},
       .offsetSS = {-xOffset, -yOffset},
   });
   lineVertices.push_back(LineVertex{
       .position = UNPACK3(a),
       .color = UNPACK4(color),
-      .direction = UNPACK3(dirA),
+      .direction = {dirA.x, dirA.y, dirA.z, length},
       .offsetSS = {-xOffset, yOffset},
   });
   lineVertices.push_back(LineVertex{
       .position = UNPACK3(b),
       .color = UNPACK4(color),
-      .direction = UNPACK3(dirB),
+      .direction = {dirB.x, dirB.y, dirB.z, length},
       .offsetSS = {xOffset, -yOffset},
   });
 }
 
-void ShapeRenderer::addLine(float3 a, float3 b, float4 color, uint32_t thickness) {
+void ShapeRenderer::addLine(float3 a, float3 b, float4 color, float thickness) {
   float len = linalg::length(b - a);
   if (len > 0) {
     float3 direction = (b - a) / len;
@@ -167,7 +169,7 @@ void ShapeRenderer::addLine(float3 a, float3 b, float4 color, uint32_t thickness
   }
 }
 
-void ShapeRenderer::addCircle(float3 center, float3 xBase, float3 yBase, float radius, float4 color, uint32_t thickness,
+void ShapeRenderer::addCircle(float3 center, float3 xBase, float3 yBase, float radius, float4 color, float thickness,
                               uint32_t resolution) {
   float3 prevPos;
   float3 prevDelta;
@@ -178,14 +180,14 @@ void ShapeRenderer::addCircle(float3 center, float3 xBase, float3 yBase, float r
     float3 pos = center + tCos * xBase * radius + tSin * yBase * radius;
     float3 delta = center + -tSin * xBase + tCos * yBase;
     if (i > 0) {
-      addLine(prevPos, pos, prevDelta, delta, color, thickness);
+      addLine(prevPos, pos, color, thickness);
     }
     prevPos = pos;
     prevDelta = delta;
   }
 }
 
-void ShapeRenderer::addRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, uint32_t thickness) {
+void ShapeRenderer::addRect(float3 center, float3 xBase, float3 yBase, float2 size, float4 color, float thickness) {
   float2 halfSize = size / 2.0f;
   float3 verts[] = {
       center - halfSize.x * xBase - halfSize.y * yBase,
@@ -195,14 +197,14 @@ void ShapeRenderer::addRect(float3 center, float3 xBase, float3 yBase, float2 si
   };
 
   for (size_t i = 0; i < 4; i++) {
-    float3 a = verts[i];
+    float3 a = verts[i]; 
     float3 b = verts[(i + 1) % 4];
     addLine(a, b, color, thickness);
   }
 }
 
 void ShapeRenderer::addBox(float3 center, float3 xBase, float3 yBase, float3 zBase, float3 size, float4 color,
-                           uint32_t thickness) {
+                           float thickness) {
   float3 halfSize = size / 2.0f;
   float3 verts[] = {
       center - halfSize.x * xBase - halfSize.y * yBase - halfSize.z * zBase,
@@ -232,7 +234,7 @@ void ShapeRenderer::addBox(float3 center, float3 xBase, float3 yBase, float3 zBa
   }
 }
 
-void ShapeRenderer::addBox(float4x4 transform, float3 center, float3 size, float4 color, uint32_t thickness) {
+void ShapeRenderer::addBox(float4x4 transform, float3 center, float3 size, float4 color, float thickness) {
   float4 x(1, 0, 0, 0);
   float4 y(0, 1, 0, 0);
   float4 z(0, 0, 1, 0);
@@ -243,7 +245,7 @@ void ShapeRenderer::addBox(float4x4 transform, float3 center, float3 size, float
   addBox(center, x.xyz(), y.xyz(), z.xyz(), size, color, thickness);
 }
 
-void ShapeRenderer::addPoint(float3 center, float4 color, uint32_t thickness) {
+void ShapeRenderer::addPoint(float3 center, float4 color, float thickness) {
   float3 dir = float3(1, 0, 0);
   float2 prevPos;
   uint32_t resolution = 6 + std::max<int32_t>(0, int32_t(thickness) - 4);
@@ -373,16 +375,20 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
 
 GizmoRenderer::GizmoRenderer() { loadGeometry(); }
 
-float GizmoRenderer::getSize(float3 position) const {
+float GizmoRenderer::getConstantScreenSize(float3 position, float size) const {
   float4 projected = linalg::mul(view->view, float4(position, 1.0f));
   projected /= projected.w;
+
   float4x4 projMatrix = view->getProjectionMatrix(viewportSize);
+  float minPerspective = projMatrix[1][1];
 
-  float minPerspective = std::min(projMatrix[0][0], projMatrix[1][1]);
-
+  // Scaling factor to make object 100% vertical size on screen
   float distanceFromCamera = std::abs(projected.z);
-  float scalingFactor = distanceFromCamera / minPerspective;
-  return scalingFactor;
+  float scalingFactor1 = distanceFromCamera / minPerspective;
+
+  // Adjust for desired size
+  float yRatio = (size * this->scalingFactor) / viewportSize.y;
+  return scalingFactor1 * yRatio * 2.0f;
 }
 
 void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, float length, float4 bodyColor, CapType capType,
@@ -393,7 +399,7 @@ void GizmoRenderer::addHandle(float3 origin, float3 direction, float radius, flo
   bool extendBodyToCapCenter = false;
   switch (capType) {
   case CapType::Arrow:
-    capRatio = 2.2f;
+    capRatio = 1.7f;
     capPreTransform = cylinderAdjustment;
     capMesh = arrowMesh;
     break;

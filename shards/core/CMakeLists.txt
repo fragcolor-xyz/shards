@@ -9,10 +9,8 @@ add_library(shards-core STATIC ${core_SOURCES})
 target_include_directories(shards-core PUBLIC ${SHARDS_DIR}/include)
 target_include_directories(shards-core PUBLIC ${SHARDS_DIR})
 
-if(TRACY_ENABLE)
-  # Expose tracy client so all dependencies get the TRACY_ENABLE define
-  target_link_libraries(shards-core Tracy::TracyClient)
-endif()
+# Expose tracy client so all dependencies get the TRACY_ENABLE define
+target_link_libraries(shards-core Tracy::TracyClient)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   set(SHARDS_INLINE_EVERYTHING_DEFAULT OFF)

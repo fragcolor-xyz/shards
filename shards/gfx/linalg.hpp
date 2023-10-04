@@ -35,12 +35,13 @@ inline float2 intersectAABB(const float3 &rayOrigin, const float3 &rayDir, const
 
 // Compute intersection of a ray with a plane
 // Returns distance between rayOrigin and the intersection along rayDir in outDistance
-inline bool intersectPlane(const float3 &rayOrigin, const float3 &rayDir, const float3 &pointOnPlane, const float3 &planeNormal,
+inline bool intersectPlane(const float3 &rayOrigin, const float3 &rayDir, const float3 &pointOnPlane, const float3 &planeNormal_,
                            float &outDistance) {
   // https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-plane-and-ray-disk-intersection
+  float3 planeNormal = planeNormal_;
   const float epsilon = 1e-6;
   float denom = linalg::dot(-planeNormal, rayDir);
-  if (denom > epsilon) {
+  if (!isRoughlyEqual(denom, 0.0f, epsilon)) {
     float3 toPlane = pointOnPlane - rayOrigin;
     outDistance = linalg::dot(toPlane, -planeNormal) / denom;
     return (outDistance >= 0);
@@ -75,6 +76,17 @@ inline void decomposeTRS(const float4x4 &transform, float3 &translation, float3 
   rotationMatrix = float3x3(x / scale.x, y / scale.y, z / scale.z);
 }
 
+inline float4x4 mat3To4(const float3x3 &mat, float3 translation = float3(0.0f)) {
+  return float4x4(float4(mat.x, 0), float4(mat.y, 0), float4(mat.z, 0), float4(translation, 1));
+}
+
+inline float4x4 composeTRS(const float3 &translation, const float3 &scale, const float3x3 &rotationMatrix) {
+  float3x3 m = linalg::mul(rotationMatrix, float3x3(float3(scale.x, 0, 0), float3(0, scale.y, 0), float3(0, 0, scale.z)));
+  return mat3To4(m, translation);
+}
+
+inline float3x3 rotationMatrix3(float4 q) { return {{linalg::qxdir(q)}, {linalg::qydir(q)}, {linalg::qzdir(q)}}; }
+
 inline float3 generateTangent(const float3 &direction) {
   const float tolerance = 0.05f;
   float3 tangent;
@@ -88,7 +100,15 @@ inline float3 generateTangent(const float3 &direction) {
 
 inline float4x4 rotationFromXDirection(const float3 &direction) {
   const float3 right = direction;
-  const float3 fwd = generateTangent(right);
+  float3 fwd = generateTangent(right);
+  const float3 up = linalg::normalize(linalg::cross(fwd, right));
+  fwd = linalg::cross(right, up);
+  return float4x4(float4(right, 0), float4(up, 0), float4(fwd, 0), float4(0, 0, 0, 1));
+}
+
+inline float4x4 rotationFromZDirection(const float3 &direction) {
+  const float3 fwd = direction;
+  const float3 right = generateTangent(fwd);
   const float3 up = linalg::normalize(linalg::cross(fwd, right));
   return float4x4(float4(right, 0), float4(up, 0), float4(fwd, 0), float4(0, 0, 0, 1));
 }
