@@ -122,7 +122,7 @@ inline float intersectImplicitSurface(const float3 &eyeLocation, const float3 &r
   const float maxStepIncreaseEarlyOut = 1.0f;
   const float maxDistanceEarlyOut = 100.0f;
   float t = 0.0f;
-  float d = FLT_MAX;
+  float d = std::numeric_limits<float>::max();
   for (size_t i = 0; i < numIterations; i++) {
     float3 p = eyeLocation + rayDirection * t;
     float d2 = f(p);

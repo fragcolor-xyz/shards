@@ -50,8 +50,8 @@ struct GizmoHit {
   // Represents no hit, everything will be less
   static GizmoHit none() {
     return GizmoHit{
-        FLT_MAX,
-        INT_MAX,
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<int>::max(),
     };
   }
 
