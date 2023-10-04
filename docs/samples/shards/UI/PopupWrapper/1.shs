@@ -25,8 +25,26 @@ GFX.MainWindow(
               }
             )
           }
-        )}
-      )
+        )
+        UI.PopupWrapper(
+          Widget: {
+             UI.Button(
+              Label: "Send message"
+              Action: {
+                "Message sent!" | Log
+              }
+            )
+          }
+          Contents: {
+            UI.Button(
+              Label: "Receive message"
+              Action: {
+                "Message received!" | Log
+              }
+            )
+          }
+        )
+      })
     )
 
     GFX.Render(Steps: render-steps)
