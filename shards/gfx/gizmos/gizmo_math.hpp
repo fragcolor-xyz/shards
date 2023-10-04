@@ -2,6 +2,7 @@
 #define B78C3249_E9BB_4F1D_B18E_01BD247682B8
 
 #include "../linalg.hpp"
+#include "../math.hpp"
 
 namespace gfx {
 namespace gizmos {
@@ -159,6 +160,17 @@ inline float intersectImplicitSurface(const float3 &eyeLocation, const float3 &r
   return std::numeric_limits<float>::infinity();
 }
 
+inline float3 transformPosition(float4x4 m, float3 pos) {
+  float4 p = linalg::mul(m, float4(pos, 1.0f));
+  return p.xyz() / p.w;
+}
+
+inline float3 transformNormal(float4x4 m, float3 pos) {
+  // auto mit = linalg::transpose(linalg::inverse(m));
+  float4 p = linalg::mul(m, float4(pos, 0.0f));
+  return linalg::normalize(p.xyz());
+}
+
 template <typename F, typename J = std::is_invocable_r<float, F, float3>::type>
 inline float intersectImplicitSurfaceTransformed(float3 eyeLocation, float3 rayDirection, const float4x4 &transform, F f,
                                                  size_t numIterations = 64, float epsilon = 0.001f) {
@@ -177,17 +189,6 @@ inline float3 hitOnPlaneUnprojected(float3 eyeLocation, float3 rayDirection, flo
   }
 
   return planePoint;
-}
-
-inline float3 transformPosition(float4x4 m, float3 pos) {
-  float4 p = linalg::mul(m, float4(pos, 1.0f));
-  return p.xyz() / p.w;
-}
-
-inline float3 transformNormal(float4x4 m, float3 pos) {
-  // auto mit = linalg::transpose(linalg::inverse(m));
-  float4 p = linalg::mul(m, float4(pos, 0.0f));
-  return linalg::normalize(p.xyz());
 }
 
 } // namespace gizmos
