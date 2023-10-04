@@ -56,7 +56,7 @@ struct FormabbleWindowShard {
   pub height: ParamVar,
   #[shard_param(
     "Closable",
-    "Whether the window will have a close button in its window title bar.",
+    "Whether the window will have a close button in its window title bar. If this is enabled, an open variable must be provided.",
     BOOL_OR_NONE_SLICE
   )]
   pub closable: ParamVar,
@@ -233,7 +233,8 @@ impl Shard for FormabbleWindowShard {
               window = window.open(self.open.get_mut().try_into()?);
             }
           }
-        } // else, if no closable provided, then default to false, which does nothing
+        } 
+        // else, if no closable provided, then default to false, which does nothing
 
         for bits in FormabbleWindowShard::try_get_flags(self.flags.get())? {
           match (WindowFlags { bits }) {
