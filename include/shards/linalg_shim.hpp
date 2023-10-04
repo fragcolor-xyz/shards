@@ -108,9 +108,18 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
 };
 
 struct alignas(16) Vec2 : public linalg::aliases::float2 {
-  using linalg::aliases::float2::vec;
+  Vec2() = default;
 
-  Vec2 &operator=(const SHVar &var);
+  constexpr Vec2(const Vec2 &other) {
+    x = other.x;
+    y = other.y;
+  }
+
+  Vec2 &operator=(const Vec2 &other) {
+    x = other.x;
+    y = other.y;
+    return *this;
+  }
 
   template <typename XY_TYPE> Vec2(const XY_TYPE &vec) {
     x = float(vec.x);
@@ -130,9 +139,20 @@ struct alignas(16) Vec2 : public linalg::aliases::float2 {
 };
 
 struct alignas(16) Vec3 : public linalg::aliases::float3 {
-  using linalg::aliases::float3::vec;
+  Vec3() = default;
 
-  Vec3 &operator=(const SHVar &var);
+  constexpr Vec3(const Vec3 &other) {
+    x = other.x;
+    y = other.y;
+    z = other.z;
+  }
+
+  Vec3 &operator=(const Vec3 &other) {
+    x = other.x;
+    y = other.y;
+    z = other.z;
+    return *this;
+  }
 
   template <typename XYZ_TYPE> Vec3(const XYZ_TYPE &vec) {
     x = float(vec.x);
@@ -179,7 +199,22 @@ struct alignas(16) Vec3 : public linalg::aliases::float3 {
 };
 
 struct alignas(16) Vec4 : public linalg::aliases::float4 {
-  using linalg::aliases::float4::vec;
+  Vec4() = default;
+
+  constexpr Vec4(const Vec4 &other) {
+    x = other.x;
+    y = other.y;
+    z = other.z;
+    w = other.w;
+  }
+
+  Vec4 &operator=(const Vec4 &other) {
+    x = other.x;
+    y = other.y;
+    z = other.z;
+    w = other.w;
+    return *this;
+  }
 
   template <typename XYZW_TYPE> Vec4(const XYZW_TYPE &vec) {
     x = float(vec.x);
@@ -194,8 +229,6 @@ struct alignas(16) Vec4 : public linalg::aliases::float4 {
     z = float(z_);
     w = float(w_);
   }
-
-  Vec4 &operator=(const SHVar &var);
 
   constexpr static Vec4 Quaternion() {
     Vec4 q;
