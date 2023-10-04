@@ -109,7 +109,6 @@ struct alignas(16) Mat4 : public linalg::aliases::float4x4 {
 
 struct alignas(16) Vec2 : public linalg::aliases::float2 {
   using linalg::aliases::float2::vec;
-  using linalg::aliases::float2::operator=;
 
   Vec2 &operator=(const SHVar &var);
 
@@ -122,11 +121,16 @@ struct alignas(16) Vec2 : public linalg::aliases::float2 {
     x = float(x_);
     y = float(y_);
   }
+
+  Vec2 &operator=(const linalg::aliases::float2 &vec) {
+    x = vec.x;
+    y = vec.y;
+    return *this;
+  }
 };
 
 struct alignas(16) Vec3 : public linalg::aliases::float3 {
   using linalg::aliases::float3::vec;
-  using linalg::aliases::float3::operator=;
 
   Vec3 &operator=(const SHVar &var);
 
@@ -160,6 +164,13 @@ struct alignas(16) Vec3 : public linalg::aliases::float3 {
     return *this;
   }
 
+  Vec3 &operator=(const linalg::aliases::float3 &vec) {
+    x = vec.x;
+    y = vec.y;
+    z = vec.z;
+    return *this;
+  }
+
   operator SHVar() const {
     auto v = reinterpret_cast<SHVar *>(const_cast<shards::Vec3 *>(this));
     v->valueType = SHType::Float3;
@@ -169,7 +180,6 @@ struct alignas(16) Vec3 : public linalg::aliases::float3 {
 
 struct alignas(16) Vec4 : public linalg::aliases::float4 {
   using linalg::aliases::float4::vec;
-  using linalg::aliases::float4::operator=;
 
   template <typename XYZW_TYPE> Vec4(const XYZW_TYPE &vec) {
     x = float(vec.x);
