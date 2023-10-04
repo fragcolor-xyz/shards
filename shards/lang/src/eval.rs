@@ -831,7 +831,7 @@ fn finalize_wire(
   line_info: LineInfo,
   env: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let (name, _) = get_full_name(name, env, name.namespaces.is_empty());
+  let (name, _) = get_full_name(name, env, line_info, name.namespaces.is_empty())?;
 
   shlog_trace!("Finalizing wire {}", name);
 
@@ -1098,15 +1098,16 @@ fn find_replacement<'a>(name: &'a Identifier, e: &'a EvalEnv) -> Option<&'a Valu
 
 fn find_replacement_identifier<'a>(
   name: &'a Identifier,
+  line_info: LineInfo,
   env: &'a EvalEnv,
-) -> Option<&'a Identifier> {
+) -> Result<Option<&'a Identifier>, ShardsError> {
   if let Some(replacement) = find_replacement(name, env) {
     match replacement {
-      Value::Identifier(name) => Some(name),
-      _ => panic!("Replacement should be an identifier"),
+      Value::Identifier(name) => Ok(Some(name)),
+      _ => Err(("Replacement must be an identifier", line_info).into()),
     }
   } else {
-    None
+    Ok(None)
   }
 }
 
@@ -1156,12 +1157,12 @@ fn as_var(
         if let Value::Identifier(current) = replacement {
           if current.name.as_str() == name.name.as_str() {
             // prevent infinite recursion
-            return Ok(qualify_variable(name, e));
+            return qualify_variable(name, line_info, e);
           }
         }
         as_var(&replacement.clone(), line_info, shard, e) // cloned to make borrow checker happy...
       } else {
-        Ok(qualify_variable(name, e))
+        qualify_variable(name, line_info, e)
       }
     }
     Value::Enum(prefix, value) => {
@@ -1480,17 +1481,21 @@ fn as_var(
   }
 }
 
-fn qualify_variable(name: &Identifier, e: &mut EvalEnv) -> SVar {
-  let (full_name, _) = get_full_name(name, e, false);
+fn qualify_variable(
+  name: &Identifier,
+  line_info: LineInfo,
+  e: &mut EvalEnv,
+) -> Result<SVar, ShardsError> {
+  let (full_name, _) = get_full_name(name, e, line_info, false)?;
   if let Some(suffix) = find_suffix(&full_name, e) {
     let name = format!("{}{}", full_name, suffix);
     let mut s = Var::ephemeral_string(name.as_str());
     s.valueType = SHType_ContextVar;
-    SVar::Cloned(s.into())
+    Ok(SVar::Cloned(s.into()))
   } else {
     let mut s = Var::ephemeral_string(full_name.as_str());
     s.valueType = SHType_ContextVar;
-    SVar::NotCloned(s)
+    Ok(SVar::NotCloned(s))
   }
 }
 
@@ -1515,10 +1520,11 @@ fn process_platform_built_in() -> Var {
 fn get_full_name<'a>(
   name: &'a Identifier,
   e: &'a mut EvalEnv,
+  line_info: LineInfo,
   should_find_replacement: bool,
-) -> (RcStrWrapper, bool) {
+) -> Result<(RcStrWrapper, bool), ShardsError> {
   let (name, is_replacement) = if should_find_replacement {
-    if let Some(replacement) = find_replacement_identifier(name, e) {
+    if let Some(replacement) = find_replacement_identifier(name, line_info, e)? {
       (replacement, true)
     } else {
       (name, false)
@@ -1527,16 +1533,16 @@ fn get_full_name<'a>(
     (name, false)
   };
   if let Some(full_name) = e.qualified_cache.get(name) {
-    (full_name.clone(), is_replacement)
+    Ok((full_name.clone(), is_replacement))
   } else if name.namespaces.is_empty() {
     let full_name = combine_namespaces(&name.name, &e.full_namespace);
     let full_name = RcStrWrapper::new(full_name.as_str());
     e.qualified_cache.insert(name.clone(), full_name.clone());
-    (full_name, is_replacement)
+    Ok((full_name, is_replacement))
   } else {
     let full_name = name.resolve();
     e.qualified_cache.insert(name.clone(), full_name.clone());
-    (full_name, is_replacement)
+    Ok((full_name, is_replacement))
   }
 }
 
@@ -1955,7 +1961,8 @@ fn set_shard_parameter(
     if var_value.as_ref().valueType != SHType_ContextVar {
       panic!("Expected a context variable") // The actual Shard is violating the standard - panic here
     }
-    let (full_name, is_replacement) = get_full_name(name, env, name.namespaces.is_empty());
+    let (full_name, is_replacement) =
+      get_full_name(name, env, line_info, name.namespaces.is_empty())?;
     let suffix = if !is_replacement && name.namespaces.is_empty() {
       // suffix is only relevant if we are not a replacement
       find_current_suffix(env)
@@ -2152,7 +2159,7 @@ fn add_take_shard(target: &Var, line_info: LineInfo, e: &mut EvalEnv) -> Result<
 fn add_get_shard(name: &Identifier, line: LineInfo, e: &mut EvalEnv) -> Result<(), ShardsError> {
   let shard = ShardRef::create("Get", Some(line.into())).unwrap(); // qed, Get must exist
   let shard = AutoShardRef(shard);
-  let (full_name, is_replacement) = get_full_name(name, e, name.namespaces.is_empty());
+  let (full_name, is_replacement) = get_full_name(name, e, line, name.namespaces.is_empty())?;
   let suffix = if !is_replacement {
     // suffix is only relevant if we are not a replacement
     find_suffix(&full_name, e)
@@ -2701,7 +2708,12 @@ fn eval_pipeline(
                 )
                   .into(),
               )? as *const Vec<Param>;
-              let (wire_name, _) = get_full_name(&name, e, name.namespaces.is_empty());
+              let (wire_name, _) = get_full_name(
+                &name,
+                e,
+                block.line_info.unwrap_or_default(),
+                name.namespaces.is_empty(),
+              )?;
               shlog_trace!("Adding deferred wire {}", wire_name);
               e.deferred_wires.insert(
                 name,
@@ -3335,7 +3347,7 @@ fn add_assignment_shard(
 ) -> Result<(), ShardsError> {
   let shard = ShardRef::create(shard_name, Some(line_info.into())).unwrap(); // qed shard_name shard should exist
   let shard = AutoShardRef(shard);
-  let (full_name, is_replacement) = get_full_name(name, e, name.namespaces.is_empty());
+  let (full_name, is_replacement) = get_full_name(name, e, line_info, name.namespaces.is_empty())?;
   let suffix = if !is_replacement {
     // suffix is only relevant if we are not a replacement
     if shard_name != "Update" && name.namespaces.is_empty() {
@@ -3350,7 +3362,7 @@ fn add_assignment_shard(
   let (assigned, suffix) = match (find_replacement(name, e), suffix) {
     (Some(Value::Identifier(name)), _) => {
       let name = name.clone();
-      let (full_name, _) = get_full_name(&name, e, name.namespaces.is_empty());
+      let (full_name, _) = get_full_name(&name, e, line_info, name.namespaces.is_empty())?;
       let name = Var::ephemeral_string(full_name.as_str());
       shard
         .0
