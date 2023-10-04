@@ -105,40 +105,18 @@ inline float intersectDisc(const float3 &eyeLocation, const float3 &rayDirection
   return std::numeric_limits<float>::infinity();
 }
 
-// Returns the straight-line distance from the eye to the intersection point of the disc's plane.
-// Returns infinity if the ray does not intersect the plane.
-inline float intersectTorus(const float3 &eyeLocation, const float3 &rayDirection, const Torus &torus) {
-  float3 oc = eyeLocation - torus.center;
-  float a = linalg::dot(rayDirection, rayDirection);
-  float b = 2.0f * linalg::dot(oc, rayDirection);
-  float c = linalg::dot(oc, oc) - torus.outerRadius * torus.outerRadius - torus.innerRadius * torus.innerRadius;
-  float discriminant = b * b - 4 * a * c;
-
-  if (discriminant < 0) {
-    return std::numeric_limits<float>::infinity(); // No intersection
-  } else {
-    float t1 = (-b + sqrt(discriminant)) / (2.0f * a);
-    float t2 = (-b - sqrt(discriminant)) / (2.0f * a);
-
-    // Check if t1 and t2 are within the bounds of the torus
-    float3 intersection1 = eyeLocation + t1 * rayDirection;
-    float3 intersection2 = eyeLocation + t2 * rayDirection;
-
-    float distance1 = linalg::length(intersection1 - torus.center);
-    float distance2 = linalg::length(intersection2 - torus.center);
-
-    if (distance1 >= torus.innerRadius && distance1 <= torus.outerRadius) {
-      return t1; // Intersection at t1
-    } else if (distance2 >= torus.innerRadius && distance2 <= torus.outerRadius) {
-      return t2; // Intersection at t2
-    } else {
-      return std::numeric_limits<float>::infinity(); // No intersection within torus bounds
-    }
-  }
+inline float3 transformPosition(float4x4 m, float3 pos) {
+  float4 p = linalg::mul(m, float4(pos, 1.0f));
+  return p.xyz() / p.w;
 }
 
-// static inline int iterationCount = 0;
-template <typename F, typename J = std::is_invocable_r<float, F, float3>::type>
+inline float3 transformNormal(float4x4 m, float3 pos) {
+  // auto mit = linalg::transpose(linalg::inverse(m));
+  float4 p = linalg::mul(m, float4(pos, 0.0f));
+  return linalg::normalize(p.xyz());
+}
+
+template <typename F, typename J = std::enable_if_t<std::is_invocable_r<float, F, float3>::value>>
 inline float intersectImplicitSurface(const float3 &eyeLocation, const float3 &rayDirection, F f, size_t numIterations = 64,
                                       float epsilon = 0.001f) {
   const float maxStepIncreaseEarlyOut = 1.0f;
@@ -155,23 +133,11 @@ inline float intersectImplicitSurface(const float3 &eyeLocation, const float3 &r
       return linalg::length(p - eyeLocation);
     }
     t += d * 0.85f;
-    // iterationCount++;
   }
   return std::numeric_limits<float>::infinity();
 }
 
-inline float3 transformPosition(float4x4 m, float3 pos) {
-  float4 p = linalg::mul(m, float4(pos, 1.0f));
-  return p.xyz() / p.w;
-}
-
-inline float3 transformNormal(float4x4 m, float3 pos) {
-  // auto mit = linalg::transpose(linalg::inverse(m));
-  float4 p = linalg::mul(m, float4(pos, 0.0f));
-  return linalg::normalize(p.xyz());
-}
-
-template <typename F, typename J = std::is_invocable_r<float, F, float3>::type>
+template <typename F, typename J = std::enable_if_t<std::is_invocable_r<float, F, float3>::value>>
 inline float intersectImplicitSurfaceTransformed(float3 eyeLocation, float3 rayDirection, const float4x4 &transform, F f,
                                                  size_t numIterations = 64, float epsilon = 0.001f) {
   float4x4 invTransform = linalg::inverse(transform);
