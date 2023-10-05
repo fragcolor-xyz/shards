@@ -58,7 +58,7 @@
            (Physics.DynamicBody
             :Position (float3 0 n 0)
             :Shapes (if (= (% n 2) 0) .cube-pshape .cube-pshape)
-            :Name (str "rb" n)) > (ContextVar (str "transform-" n))))
+            :Name (ContextVar (str "rb" n))) > (ContextVar (str "transform-" n))))
      (range 1 obj-count))
 
     ; draw everything
