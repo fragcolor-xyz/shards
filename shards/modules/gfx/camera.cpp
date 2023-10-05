@@ -1,11 +1,9 @@
-#include <shards/core/foundation.hpp>
-#include <shards/core/params.hpp>
+#include "camera.hpp"
 #include <shards/linalg_shim.hpp>
 #include <gfx/math.hpp>
 #include <gfx/window.hpp>
 #include <gfx/fmt.hpp>
 #include <shards/modules/inputs/inputs.hpp>
-#include <linalg/linalg.h>
 #include "window.hpp"
 #include "gfx.hpp"
 
@@ -246,65 +244,7 @@ struct FreeCameraShard {
   }
 };
 
-struct TargetCameraState {
-  float3 pivot{};
-  float distance{};
-  float2 rotation{};
 
-  static TargetCameraState fromLookAt(float3 pos, float3 target) {
-    float distance = linalg::length(target - pos);
-
-    float3 dir = (target - pos) / distance;
-    // float zl = std::sqrt(dir.z * dir.z + dir.x * dir.x);
-    float yaw = std::atan2(-dir.x, -dir.z);
-    float pitch = std::asin(dir.y);
-
-    TargetCameraState result;
-    result.rotation = float2(pitch, yaw);
-    result.pivot = target;
-    result.distance = distance;
-    return result;
-  }
-
-  static TargetCameraState fromTable(TableVar &inputTable) {
-    return TargetCameraState{
-        .pivot = toFloat3(inputTable.get<Var>("pivot")),
-        .distance = (float)(inputTable.get<Var>("distance")),
-        .rotation = toFloat2(inputTable.get<Var>("rotation")),
-    };
-  }
-};
-
-struct TargetCameraStateTable : public TableVar {
-  static inline std::array<SHVar, 3> _keys{
-      Var("pivot"),
-      Var("distance"),
-      Var("rotation"),
-  };
-  static inline shards::Types _types{{
-      CoreInfo::Float3Type,
-      CoreInfo::FloatType,
-      CoreInfo::Float2Type,
-  }};
-  static inline shards::Type Type = shards::Type::TableOf(_types, _keys);
-
-  TargetCameraStateTable()
-      : TableVar(),                     //
-        pivot(get<Var>("pivot")),       //
-        distance(get<Var>("distance")), //
-        rotation(get<Var>("rotation")) {}
-
-  const TargetCameraStateTable &operator=(const TargetCameraState &state) {
-    distance = Var(state.distance);
-    pivot = toVar(state.pivot);
-    rotation = toVar(state.rotation);
-    return *this;
-  }
-
-  Var &pivot;
-  Var &distance;
-  Var &rotation;
-};
 
 struct TargetCameraUpdate {
   static SHTypesInfo inputTypes() { return TargetCameraStateTable::Type; }
