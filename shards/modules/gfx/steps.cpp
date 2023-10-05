@@ -208,8 +208,8 @@ struct DrawablePassShard {
             "Ignore any features on drawables and only use the features specified in this pass",
             {CoreInfo::NoneType, CoreInfo::BoolType});
 
-  PARAM_IMPL(PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_outputs),
-             PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_sort), PARAM_IMPL_FOR(_ignoreDrawableFeatures));
+  PARAM_IMPL(PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale),
+             PARAM_IMPL_FOR(_sort), PARAM_IMPL_FOR(_ignoreDrawableFeatures));
 
   PipelineStepPtr *_step{};
   HashState _hashState;
@@ -364,10 +364,10 @@ struct EffectPassShard {
     if (wrapperFeature->shaderEntryPoints.empty()) {
       _generatedFeatures.clear();
 
-      if (!_entryPoint.isNone()) {
-        // Add default base transform
-        _generatedFeatures.push_back(features::Transform::create(false, false));
+      // Add default base transform
+      _generatedFeatures.push_back(features::Transform::create(false, false));
 
+      if (!_entryPoint.isNone()) {
         shader::EntryPoint entryPoint;
         entryPoint.stage = ProgrammableGraphicsStage::Fragment;
         shader::applyShaderEntryPoint(context, entryPoint, _entryPoint.get(), _composedWith);

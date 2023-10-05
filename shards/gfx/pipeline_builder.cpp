@@ -431,7 +431,15 @@ void PipelineBuilder::finalize(WGPUDevice device) {
     return;
   }
 
-  output.shaderModule = compileShaderFromWgsl(device, generatorOutput.wgslSource.c_str());
+  try {
+    output.shaderModule = compileShaderFromWgsl(device, generatorOutput.wgslSource.c_str());
+  } catch (const std::runtime_error& ex) {
+    SPDLOG_LOGGER_ERROR(logger, "Failed to compile shader code:");
+    SPDLOG_LOGGER_ERROR(logger, "{}\n------------------", generatorOutput.wgslSource);
+    SPDLOG_LOGGER_ERROR(logger, "{}", ex.what());
+    output.compilationError.emplace(ex.what());
+    return;
+  }
 
   WGPURenderPipelineDescriptor desc = {};
   desc.layout = output.pipelineLayout;
