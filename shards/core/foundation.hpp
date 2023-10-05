@@ -622,6 +622,7 @@ public:
   };
 };
 
+void parseArguments(int argc, const char** argv);
 Globals &GetGlobals();
 EventDispatcher &getEventDispatcher(const std::string &name);
 

@@ -2046,6 +2046,14 @@ endOfWire:
   SHLOG_FATAL("Wire {} resumed after ending", wire->name);
 }
 
+void parseArguments(int argc, const char** argv) {
+  namespace fs = boost::filesystem;
+  
+  auto& globals = GetGlobals();
+  auto absExePath = fs::weakly_canonical(argv[0]);
+  globals.ExePath = absExePath.string();
+}
+
 Globals &GetGlobals() {
   static Globals globals;
   return globals;

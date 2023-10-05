@@ -32,7 +32,8 @@ set_target_properties(crsqlite-extension PROPERTIES PREFIX "")
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
-add_custom_command(TARGET crsqlite-extension POST_BUILD
+add_custom_command(TARGET crsqlite-extension
+  POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy
   "$<TARGET_FILE:crsqlite-extension>"
   "${CMAKE_BINARY_DIR}/$<TARGET_FILE_NAME:crsqlite-extension>")
