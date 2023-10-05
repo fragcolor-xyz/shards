@@ -1956,10 +1956,18 @@ fn set_shard_parameter(
   if info.variableSetter {
     let name = match value {
       Value::Identifier(name) => name,
-      _ => panic!("Expected an identifier"), // The actual Shard is violating the standard - panic here
+      _ => {
+        return Err(
+          (
+            format!("Expected a variable identifier, found {:?}", value),
+            line_info,
+          )
+            .into(),
+        )
+      }
     };
     if var_value.as_ref().valueType != SHType_ContextVar {
-      panic!("Expected a context variable") // The actual Shard is violating the standard - panic here
+      return Err((format!("Expected a variable, found {:?}", value), line_info).into());
     }
     let (full_name, is_replacement) =
       get_full_name(name, env, line_info, name.namespaces.is_empty())?;
