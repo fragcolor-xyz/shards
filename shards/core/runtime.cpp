@@ -1240,9 +1240,14 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
 
   if (wire.size() > 0) {
     auto &last = wire.back();
-    if (strcmp(last->name(last), "Restart") == 0 || strcmp(last->name(last), "Stop") == 0 ||
-        strcmp(last->name(last), "Return") == 0 || strcmp(last->name(last), "Fail") == 0) {
+    if (strcmp(last->name(last), "Restart") == 0 || strcmp(last->name(last), "Return") == 0 ||
+        strcmp(last->name(last), "Fail") == 0) {
       result.flowStopper = true;
+    } else if (strcmp(last->name(last), "Stop") == 0) {
+      // need to check if first param is none
+      auto fp = last->getParam(last, 0);
+      if (fp.valueType == SHType::None)
+        result.flowStopper = true;
     }
   }
 
