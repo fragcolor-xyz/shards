@@ -4,6 +4,8 @@
 extern crate crossbeam;
 extern crate rapier3d;
 
+use std::ffi::CString;
+
 use shards::fourCharacterCode;
 use shards::shardsc::SHObjectTypeInfo;
 use shards::shardsc::SHType_Float4;
@@ -38,6 +40,11 @@ extern crate lazy_static;
 #[macro_use]
 extern crate compile_time_crc32;
 
+const SIMULATION_NAME: &str = "Physics.Simulation";
+lazy_static! {
+  pub static ref SIMULATION_NAME_CSTR: CString = CString::new(SIMULATION_NAME).unwrap();
+}
+
 lazy_static! {
   static ref SIMULATION_TYPE: Type = {
     let mut t = common_type::object;
@@ -48,7 +55,7 @@ lazy_static! {
     t
   };
   static ref EXPOSED_SIMULATION: Vec<ExposedInfo> = vec![ExposedInfo::new_static_with_help(
-    cstr!("Physics.Simulation"),
+    SIMULATION_NAME_CSTR.to_str().unwrap(),
     shccstr!("The physics simulation subsystem."),
     *SIMULATION_TYPE
   )];
@@ -125,9 +132,11 @@ struct RigidBody {
   user_data: u128,
 }
 
+#[derive(Default)]
 struct BaseShape {
   shape: Option<SharedShape>,
   position: Option<Isometry3<f32>>,
+  mass: Option<f32>,
 }
 
 fn fill_seq_from_mat4(var: &mut Seq, mat: &Matrix4<f32>) {

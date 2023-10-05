@@ -2,9 +2,14 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use crate::fill_seq_from_mat4;
+use rapier3d::prelude::MassProperties;
 use shards::core::deriveType;
 use shards::core::register_legacy_shard;
 use shards::types::Types;
+use shards::util;
+use shards::SHType;
+use shards::SHType_None;
+use shards::SHType_Seq;
 
 use crate::BaseShape;
 use crate::RigidBody;
@@ -54,6 +59,7 @@ use std::rc::Rc;
 // TODO Major refactor to remove copy-pasta, man in C++ this would have been so easy for me... but.
 
 lazy_static! {
+  static ref VAR_TYPES: Types = vec![common_type::any_var];
   static ref PARAMETERS: Parameters = vec![
     (
       cstr!("Shapes"),
@@ -76,7 +82,7 @@ lazy_static! {
     (
       cstr!("Name"),
       shccstr!("The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body."),
-      STRING_OR_NONE_SLICE
+      &VAR_TYPES[..]
     )
       .into()
   ];
@@ -120,13 +126,27 @@ impl RigidBody {
   fn _compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     // we need to derive the position parameter type, because if it's a sequence we should create multiple RigidBodies
     // TODO we should also use input type to determine the output if dynamic
-    let pvt = deriveType(&self.position.get_param(), data);
-    if pvt.0 == common_type::float3 {
+
+    let pvt = util::get_param_var_type(&data, &self.position)?;
+    let pos_type: &Type = (&pvt).into();
+
+    let pvt = util::get_param_var_type(&data, &self.rotation)?;
+    let rot_type: &Type = (&pvt).into();
+
+    let pos_is_seq = pos_type.basicType == SHType_Seq;
+    let rot_is_seq = rot_type.basicType == SHType_Seq;
+    if rot_type.basicType != SHType_None {
+      if pos_is_seq != rot_is_seq {
+        return Err("Physics.RigidBody: Invalid position or rotation parameter type, if one is a sequence the other must also be a sequence");
+      }
+    }
+
+    if *pos_type == common_type::float3 {
       Ok(*FLOAT4X4_TYPE)
-    } else if pvt.0 == common_type::float3s {
+    } else if *pos_type == common_type::float3s {
       Ok(*FLOAT4X4S_TYPE)
     } else {
-      Err("Physics.RigidBody: Invalid position or rotation parameter type, if one is a sequence the other must also be a sequence")
+      Err("Physics.RigidBody: Invalid position parameter type")
     }
   }
 
@@ -211,12 +231,16 @@ impl RigidBody {
     shape: &Var,
     rigid_body: RigidBodyHandle,
   ) -> Result<ColliderHandle, &'a str> {
-    let shapeInfo = Var::from_object_ptr_mut_ref::<BaseShape>(&shape, &SHAPE_TYPE)?;
-    let shape = shapeInfo.shape.as_ref().unwrap().clone();
-    let mut collider = ColliderBuilder::new(shape)
-      .position(shapeInfo.position.unwrap())
-      .build();
+    let shape_info = Var::from_object_ptr_mut_ref::<BaseShape>(&shape, &SHAPE_TYPE)?;
+    let shape = shape_info.shape.as_ref().unwrap().clone();
+
+    let mut builder = ColliderBuilder::new(shape).position(shape_info.position.unwrap());
+    if let Some(mass) = shape_info.mass {
+      builder = builder.mass(mass);
+    }
+    let mut collider = builder.build();
     collider.user_data = user_data;
+
     Ok(
       simulation
         .colliders

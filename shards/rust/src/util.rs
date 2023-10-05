@@ -1,10 +1,56 @@
 use std::ffi::{CStr, CString};
 
 use crate::{
-  core::{referenceVariable, releaseVariable},
-  types::{Context, ExposedInfo, ExposedTypes, ParamVar, SeqVar, ShardsVar, TableVar, Var},
-  SHExposedTypesInfo, SHString, SHVar,
+  core::{referenceVariable, releaseVariable, deriveType},
+  types::{Type, Context, ExposedInfo, ExposedTypes, ParamVar, SeqVar, ShardsVar, TableVar, Var, DerivedType},
+  SHExposedTypeInfo, SHExposedTypesInfo, SHString, SHVar, SHInstanceData,
 };
+
+pub enum TypeOrDerived {
+  Derived(DerivedType),
+  Static(Type),
+}
+
+impl<'a> From<&'a TypeOrDerived> for &'a Type {
+  fn from(value: &'a TypeOrDerived) -> &'a Type {
+    match value {
+      TypeOrDerived::Derived(t) => &t.0,
+      TypeOrDerived::Static(t) => &t,
+    }
+  }
+}
+
+pub fn get_param_var_type(
+  instance_data: &SHInstanceData,
+  var: &ParamVar,
+) -> Result<TypeOrDerived, &'static str> {
+  if var.is_variable() {
+    let exp_type = find_exposed_variable(&instance_data.shared, &var.get_param())?
+      .ok_or("Could not find exposed variable for parameter")?;
+    Ok(TypeOrDerived::Static(exp_type.exposedType))
+  } else {
+    Ok(TypeOrDerived::Derived(deriveType(&var.get_param(), instance_data)))
+  }
+}
+
+pub fn find_exposed_variable(
+  shared: &SHExposedTypesInfo,
+  var: &SHVar,
+) -> Result<Option<SHExposedTypeInfo>, &'static str> {
+  let var_name: &str = var
+    .try_into()
+    .map_err(|_x| "Invalid context variable name")?;
+  for entry in shared {
+    let cstr = unsafe { CStr::from_ptr(entry.name) };
+    if var_name == cstr.to_str().map_err(|_x| "invalid string")? {
+      return Ok(Some(ExposedInfo::new(
+        unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue },
+        entry.exposedType,
+      )));
+    }
+  }
+  return Ok(None);
+}
 
 pub fn collect_required_variables(
   shared: &SHExposedTypesInfo,
@@ -13,18 +59,8 @@ pub fn collect_required_variables(
 ) -> Result<(), &'static str> {
   match var.valueType {
     crate::SHType_ContextVar => {
-      let var_name: &str = var
-        .try_into()
-        .map_err(|_x| "Invalid context variable name")?;
-      for entry in shared {
-        let cstr = unsafe { CStr::from_ptr(entry.name) };
-        if var_name == cstr.to_str().map_err(|_x| "invalid string")? {
-          out.push(ExposedInfo::new(
-            unsafe { var.payload.__bindgen_anon_1.__bindgen_anon_2.stringValue },
-            entry.exposedType,
-          ));
-          break;
-        }
+      if let Some(exposed_var) = find_exposed_variable(shared, var)? {
+        out.push(exposed_var);
       }
     }
     crate::SHType_Seq => {
