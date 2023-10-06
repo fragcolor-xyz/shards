@@ -37,7 +37,8 @@ struct LineShard : public Base {
   PARAM_IMPL(PARAM_IMPL_FOR(_a), PARAM_IMPL_FOR(_b), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_a->valueType == SHType::None)
       throw ComposeError("A is required");
@@ -81,7 +82,8 @@ struct CircleShard : public Base {
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -133,7 +135,8 @@ struct RectShard : public Base {
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -183,7 +186,8 @@ struct BoxShard : public Base {
              PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("A is required");
@@ -227,7 +231,8 @@ struct PointShard : public Base {
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -271,7 +276,8 @@ struct SolidRectShard : public Base {
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -326,7 +332,8 @@ struct DiscShard : public Base {
              PARAM_IMPL_FOR(_innerRadius), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -388,7 +395,8 @@ struct GridShard : public Base {
              PARAM_IMPL_FOR(_stepSize), PARAM_IMPL_FOR(_size), PARAM_IMPL_FOR(_color));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -461,7 +469,8 @@ struct RefSpaceGridOverlayShard : public Base {
              PARAM_IMPL_FOR(_stepSize), PARAM_IMPL_FOR(_color));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -537,7 +546,82 @@ struct RefSpaceGridOverlayShard : public Base {
   }
 };
 
+struct ScreenXY : public Base {
+  static inline Type OutputType = Type::SeqOf(CoreInfo::Float3Type);
+
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return OutputType; }
+  static SHOptionalString help() { return SHCCSTR("Outputs an X and Y direction that are aligned with the current view"); }
+
+  PARAM_IMPL();
+
+  SeqVar _output;
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    baseWarmup(context);
+
+    _output.resize(2);
+    _output[0].valueType = SHType::Float3;
+    _output[1].valueType = SHType::Float3;
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    baseCleanup();
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto axes = _gizmoContext->gfxGizmoContext.input.getScreenSpacePlaneAxes();
+    reinterpret_cast<Vec3 &>(_output[0]) = axes[0];
+    reinterpret_cast<Vec3 &>(_output[1]) = axes[1];
+    return _output;
+  }
+};
+
+struct ScreenScale : public Base {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::FloatType; }
+  static SHOptionalString help() { return SHCCSTR("Outputs a scaling factor to give an object a uniform size on the screen"); }
+
+  PARAM_PARAMVAR(_position, "Position", "The point in space at which the object is rendered",
+                 {CoreInfo::Float3Type, CoreInfo::Float3VarType})
+  PARAM_IMPL(PARAM_IMPL_FOR(_position));
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    baseWarmup(context);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    baseCleanup();
+  }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
+    if (_position.isNone())
+      throw ComposeError("Position is required");
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    float scale = _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize((Vec3 &)_position.get(), (float)(Var &)input);
+    return Var(scale);
+  }
+};
+
 void registerShapeShards() {
+  REGISTER_SHARD("Gizmos.ScreenScale", ScreenScale);
+  REGISTER_SHARD("Gizmos.ScreenXY", ScreenXY);
   REGISTER_SHARD("Gizmos.Line", LineShard);
   REGISTER_SHARD("Gizmos.Circle", CircleShard);
   REGISTER_SHARD("Gizmos.Rect", RectShard);

@@ -12,6 +12,7 @@ namespace gfx {
 struct glTF {
   MeshTreeDrawable::Ptr root;
   std::unordered_map<std::string, Animation> animations;
+  std::unordered_map<std::string, MaterialPtr> materials;
 
   glTF() = default;
 

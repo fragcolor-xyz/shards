@@ -148,6 +148,7 @@ struct Loader {
   std::vector<MeshTreeDrawable::Ptr> nodeMap;
   std::vector<MeshTreeDrawable::Ptr> sceneMap;
   std::unordered_map<std::string, gfx::Animation> animations;
+  std::unordered_map<std::string, MaterialPtr> materials;
   std::vector<std::shared_ptr<gfx::Skin>> skins;
 
   Loader(tinygltf::Model &model) : model(model) {}
@@ -431,6 +432,7 @@ struct Loader {
       material = std::make_shared<Material>();
 
       const tinygltf::Material &gltfMaterial = model.materials[i];
+      materials[gltfMaterial.name] = material;
 
       auto convertTextureParam = [&](const char *name, const auto &textureInfo, bool asSrgb) {
         if (textureInfo.index >= 0) {
@@ -652,6 +654,7 @@ template <typename T> glTF load(T loader) {
   glTF result;
   result.root = std::move(gfxLoader.sceneMap[model.defaultScene]);
   result.animations = std::move(gfxLoader.animations);
+  result.materials = std::move(gfxLoader.materials);
   return result;
 }
 

@@ -5,6 +5,7 @@
 #include <shards/core/params.hpp>
 #include <shards/core/module.hpp>
 #include <shards/modules/inputs/inputs.hpp>
+#include <shards/modules/gfx/gfx.hpp>
 #include "../shards_types.hpp"
 #include "../window.hpp"
 
@@ -32,6 +33,7 @@ struct GizmosContextShard {
   PARAM_IMPL(PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_content), PARAM_IMPL_FOR(_scaling));
 
   input::OptionalInputContext _inputContext;
+  gfx::OptionalGraphicsRendererContext _gfxContext;
 
   GizmoContext _gizmoContext{};
   SHVar *_contextVarRef{};
@@ -43,6 +45,7 @@ struct GizmosContextShard {
 
   void warmup(SHContext *context) {
     _inputContext.warmup(context);
+    _gfxContext.warmup(context);
 
     // Reference context variable
     _contextVarRef = referenceVariable(context, GizmoContext::VariableName);
@@ -58,6 +61,7 @@ struct GizmosContextShard {
     }
 
     _inputContext.cleanup();
+    _gfxContext.cleanup();
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -65,6 +69,7 @@ struct GizmosContextShard {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     _inputContext.compose(data, _requiredVariables);
+    _gfxContext.compose(data, _requiredVariables);
 
     if (!_queue.isVariable())
       throw ComposeError("Queue not set");
@@ -101,6 +106,11 @@ struct GizmosContextShard {
       gizmoInput.cursorPosition = _inputContext->getState().cursorPosition;
       gizmoInput.pressed = _inputContext->getState().isMouseButtonHeld(SDL_BUTTON_LEFT);
       gizmoInput.viewSize = float2(region.size);
+    } else {
+      if (_gfxContext) {
+        auto& vs = _gfxContext->renderer->getViewStack();
+        gizmoInput.viewSize = float2(vs.getOutput().referenceSize);
+      }
     }
 
     SHVar _shardsOutput{};
