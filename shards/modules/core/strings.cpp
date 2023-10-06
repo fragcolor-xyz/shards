@@ -318,6 +318,26 @@ struct Contains {
   }
 };
 
+struct StartsWith : Contains {
+  static inline Parameters params{{{"With",
+                                    SHCCSTR("The string that needs to start at the beginning of the input string to output true."),
+                                    {CoreInfo::StringType, CoreInfo::StringVarType}}}};
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto sv = SHSTRVIEW(input);
+    auto check = _check.get();
+    auto checkSv = SHSTRVIEW(check);
+
+    if (sv.size() >= checkSv.size() && sv.substr(0, checkSv.size()).compare(checkSv) == 0) {
+      return Var(true);
+    } else {
+      return Var(false);
+    }
+  }
+};
+
 struct Parser {
   std::string _cache;
 };
@@ -453,4 +473,5 @@ SHARDS_REGISTER_FN(strings) {
   REGISTER_SHARD("String.Trim", Trim);
   REGISTER_SHARD("String.Contains", Contains);
   REGISTER_SHARD("String.Split", Split);
+  REGISTER_SHARD("String.Starts", StartsWith);
 }

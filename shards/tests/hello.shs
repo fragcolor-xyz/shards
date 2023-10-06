@@ -191,3 +191,8 @@ When(@foo-predicate(3) {Msg("More than 2")})
 WhenNot(@foo-predicate(1) {Msg("Less than 2")})
 When(@foo-predicate(-3) {Msg("Less than -2")})
 WhenNot(@foo-predicate(-1) {Msg("More than -2")})
+
+; test String.Starts(With: ...)
+"Hello World!" | String.Starts(With: "Hello") | Assert.Is(true) | Log
+; also test that doesn't start with
+"Hello World!" | String.Starts(With: "World") | Assert.Is(false) | Log
