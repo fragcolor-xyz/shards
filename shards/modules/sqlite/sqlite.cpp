@@ -7,6 +7,8 @@
 #include <functional>
 #include <optional>
 #include <shards/core/async.hpp>
+#include <boost/filesystem.hpp>
+using namespace boost::filesystem;
 
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include "sqlite3.h"
@@ -40,14 +42,19 @@ struct Connection {
 
   sqlite3 *get() { return db; }
 
-  void loadExtension(const std::string &path) {
+  void loadExtension(const std::string &path_) {
     char *errorMsg = nullptr;
     DEFER({
       if (errorMsg)
         sqlite3_free(errorMsg);
     });
-    if (sqlite3_load_extension(db, path.c_str(), nullptr, &errorMsg) != SQLITE_OK) {
-      throw ActivationError(errorMsg);
+    if (sqlite3_load_extension(db, path_.c_str(), nullptr, &errorMsg) != SQLITE_OK) {
+      auto exeDirPath = path(GetGlobals().ExePath.c_str()).parent_path();
+      auto relPath = exeDirPath / path_;
+      auto str = relPath.string();
+      if(sqlite3_load_extension(db, str.c_str(), nullptr, &errorMsg) != SQLITE_OK) {
+        throw ActivationError(errorMsg);
+      }
     }
   }
 };

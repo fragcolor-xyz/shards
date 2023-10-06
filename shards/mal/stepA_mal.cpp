@@ -5,6 +5,7 @@
 #include "MAL.h"
 
 #include "Environment.h"
+#include "core/foundation.hpp"
 #ifndef NO_MAL_MAIN
 #include "ReadLine.h"
 #endif
@@ -107,6 +108,8 @@ int malmain(int argc, const char *argv[]) {
 #ifndef NO_MAL_MAIN
 
 int main(int argc, const char *argv[]) {
+  shards::parseArguments(argc, argv);
+
   auto result = shards_process_args(argc, const_cast<char **>(argv));
   if (result != 99) // 99 triggers our old main
     return result;

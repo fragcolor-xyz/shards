@@ -57,7 +57,8 @@ pub unsafe extern "C" fn gfxDeviceCreateShaderModule(
         wgc::pipeline::ShaderModuleSource::Wgsl(cstr.to_string_lossy()), ()));
 
   if let Some(error) = error {
-    let err_str = CString::new(error.to_string()).expect("Invalid error string");
+    let err_str = format!("{}\n{:?}", error, error);
+    let err_str = CString::new(err_str).expect("Invalid error string");
     let result = GFXShaderModuleResult {
       module: id.into_handle_with_context(context),
       error: err_str.as_ptr(),
