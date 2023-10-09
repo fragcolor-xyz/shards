@@ -161,5 +161,13 @@ float Window::getUIScale() const {
   return std::max<float>(scale.x, scale.y);
 }
 
+bool Window::isWindowSizeInPixels() {
+#if GFX_APPLE
+  return false;
+#else
+  return true;
+#endif
+}
+
 Window::~Window() { cleanup(); }
 } // namespace gfx
