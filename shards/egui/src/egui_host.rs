@@ -109,7 +109,9 @@ impl EguiHost {
   ) -> Result<Var, &'static str> {
     self.clear_unused_dnd_state();
 
-    let ui_ctx = self.context.as_ref().unwrap();
+    let ui_ctx = self.context.as_mut().unwrap();
+    ui_ctx.prev_response = None;
+
     let raw_input = crate::bindings::translate_raw_input(egui_input);
     match raw_input {
       Err(_error) => {
