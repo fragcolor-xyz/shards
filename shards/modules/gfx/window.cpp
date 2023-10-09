@@ -164,7 +164,7 @@ struct MainWindow final {
     _windowContext->window->init(windowOptions);
 
     // Adjust window size so they're specified in virtual points
-    float scaling = *_useDisplayScaling ? _windowContext->window->getUIScale() : 1.0f;
+    float scaling = (*_useDisplayScaling && Window::isWindowSizeInPixels()) ? _windowContext->window->getUIScale() : 1.0f;
     _windowContext->window->resize((int2)(float2(int2((int)*_width, (int)*_height)) * scaling));
 
 #if GFX_APPLE
@@ -398,7 +398,6 @@ struct MoveWindow {
   }
 };
 
-
 struct OsUiScaleFactor {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
@@ -428,7 +427,7 @@ struct OsUiScaleFactor {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    auto& window = _requiredWindowContext->window;
+    auto &window = _requiredWindowContext->window;
     return Var(window->getUIScale());
   }
 };

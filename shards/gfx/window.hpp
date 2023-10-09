@@ -65,6 +65,9 @@ struct Window {
   // OS UI scaling factor for the display the window is on
   float getUIScale() const;
 
+  // Returns true when the window sizes are specified in pixels (on windows for example)
+  static bool isWindowSizeInPixels();
+
   ~Window();
 };
 }; // namespace gfx
