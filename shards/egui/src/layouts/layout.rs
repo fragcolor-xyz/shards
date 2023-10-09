@@ -628,15 +628,12 @@ impl LegacyShard for LayoutConstructor {
       None
     };
 
-    let mut create_new_scroll_area = false;
-
     let enable_horizontal_scroll_bar = self.enable_horizontal_scroll_bar.get();
     let enable_horizontal_scroll_bar = if let Some(enable_horizontal_scroll_bar) = retrieve_parameter!(
       enable_horizontal_scroll_bar,
       "enable_horizontal_scroll_bar",
       bool
     ) {
-      create_new_scroll_area = true;
       enable_horizontal_scroll_bar
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
@@ -647,7 +644,6 @@ impl LegacyShard for LayoutConstructor {
         )
         .unwrap()
       } else {
-        create_new_scroll_area = true;
         false // default enable_horizontal_scroll_bar
       }
     };
@@ -658,7 +654,6 @@ impl LegacyShard for LayoutConstructor {
       "enable_vertical_scroll_bar",
       bool
     ) {
-      create_new_scroll_area = true;
       enable_vertical_scroll_bar
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
@@ -669,10 +664,11 @@ impl LegacyShard for LayoutConstructor {
         )
         .unwrap()
       } else {
-        create_new_scroll_area = true;
         false // default enable_vertical_scroll_bar
       }
     };
+
+    let create_new_scroll_area = enable_horizontal_scroll_bar || enable_vertical_scroll_bar;
 
     let scroll_visibility = self.scroll_visibility.get();
     let scroll_visibility = if let Some(scroll_visibility) = retrieve_enum_parameter!(
@@ -681,14 +677,12 @@ impl LegacyShard for LayoutConstructor {
       ScrollVisibility,
       ScrollVisibilityCC
     ) {
-      create_new_scroll_area = true;
       scroll_visibility
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
         retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility)
           .unwrap()
       } else {
-        create_new_scroll_area = true;
         ScrollVisibility::AlwaysVisible // Default should normally be VisibleWhenNeeded, but it is buggy at the moment
       }
     };
@@ -698,13 +692,11 @@ impl LegacyShard for LayoutConstructor {
     let min_width = self.scroll_area_min_width.get();
     let min_width =
       if let Some(min_width) = retrieve_parameter!(min_width, "scroll_area_min_width", f32) {
-        create_new_scroll_area = true;
         min_width
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
           retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_width).unwrap()
         } else {
-          create_new_scroll_area = true;
           MIN_SCROLLING_SIZE // default min_width
         }
       };
@@ -712,13 +704,11 @@ impl LegacyShard for LayoutConstructor {
     let min_height = self.scroll_area_min_height.get();
     let min_height =
       if let Some(min_height) = retrieve_parameter!(min_height, "scroll_area_min_height", f32) {
-        create_new_scroll_area = true;
         min_height
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
           retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_height).unwrap()
         } else {
-          create_new_scroll_area = true;
           MIN_SCROLLING_SIZE // default min_height
         }
       };
@@ -726,13 +716,11 @@ impl LegacyShard for LayoutConstructor {
     let max_width = self.scroll_area_max_width.get();
     let max_width =
       if let Some(max_width) = retrieve_parameter!(max_width, "scroll_area_max_width", f32) {
-        create_new_scroll_area = true;
         max_width
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
           retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_width).unwrap()
         } else {
-          create_new_scroll_area = true;
           f32::INFINITY // default max_width
         }
       };
@@ -740,13 +728,11 @@ impl LegacyShard for LayoutConstructor {
     let max_height = self.scroll_area_max_height.get();
     let max_height =
       if let Some(max_height) = retrieve_parameter!(max_height, "scroll_area_max_height", f32) {
-        create_new_scroll_area = true;
         max_height
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
           retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_height).unwrap()
         } else {
-          create_new_scroll_area = true;
           f32::INFINITY // default max_height
         }
       };
@@ -755,14 +741,12 @@ impl LegacyShard for LayoutConstructor {
     let auto_shrink_width = if let Some(auto_shrink_width) =
       retrieve_parameter!(auto_shrink_width, "scroll_area_auto_shrink_width", bool)
     {
-      create_new_scroll_area = true;
       auto_shrink_width
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
         retrieve_layout_class_attribute!(parent_layout_class, scroll_area, auto_shrink_width)
           .unwrap()
       } else {
-        create_new_scroll_area = true;
         true // default auto_shrink_width
       }
     };
@@ -771,14 +755,12 @@ impl LegacyShard for LayoutConstructor {
     let auto_shrink_height = if let Some(auto_shrink_height) =
       retrieve_parameter!(auto_shrink_height, "scroll_area_auto_shrink_height", bool)
     {
-      create_new_scroll_area = true;
       auto_shrink_height
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
         retrieve_layout_class_attribute!(parent_layout_class, scroll_area, auto_shrink_height)
           .unwrap()
       } else {
-        create_new_scroll_area = true;
         true // default auto_shrink_height
       }
     };
@@ -787,14 +769,12 @@ impl LegacyShard for LayoutConstructor {
     let enable_scrolling = if let Some(enable_scrolling) =
       retrieve_parameter!(enable_scrolling, "scroll_area_enable_scrolling", bool)
     {
-      create_new_scroll_area = true;
       enable_scrolling
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
         retrieve_layout_class_attribute!(parent_layout_class, scroll_area, enable_scrolling)
           .unwrap()
       } else {
-        create_new_scroll_area = true;
         true // default enable_scrolling
       }
     };
