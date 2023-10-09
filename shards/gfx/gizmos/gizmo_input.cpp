@@ -78,12 +78,12 @@ void InputContext::end() {
 }
 
 void InputContext::updateView(ViewPtr view) {
-  float2 ndc2 = float2(inputState.cursorPosition) / float2(inputState.viewSize);
+  float2 ndc2 = float2(inputState.cursorPosition) / float2(inputState.inputSize);
   ndc2 = ndc2 * 2.0f - 1.0f;
   ndc2.y = -ndc2.y;
   float4 ndc = float4(ndc2, 0.1f, 1.0f);
 
-  cachedViewProj = linalg::mul(view->getProjectionMatrix(inputState.viewSize), view->view);
+  cachedViewProj = linalg::mul(view->getProjectionMatrix(inputState.viewportSize), view->view);
   cachedViewProjInv = linalg::inverse(cachedViewProj);
   float4x4 viewInv = linalg::inverse(view->view);
 

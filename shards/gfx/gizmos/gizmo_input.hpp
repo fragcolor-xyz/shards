@@ -34,7 +34,10 @@ struct Handle {
 
 struct InputState {
   float2 cursorPosition{};
-  float2 viewSize{};
+  // Size of the input surface
+  float2 inputSize{};
+  // Size of the output surface in pixels
+  float2 viewportSize{};
   bool pressed{};
 };
 

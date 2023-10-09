@@ -101,16 +101,18 @@ struct GizmosContextShard {
     gfxGizmoContext.renderer.scalingFactor = !scalingVar.isNone() ? float(scalingVar) : 1.0f;
 
     gfx::gizmos::InputState gizmoInput;
+
+    if (_gfxContext) {
+      auto &vs = _gfxContext->renderer->getViewStack();
+      gizmoInput.viewportSize = float2(vs.getOutput().referenceSize);
+    }
+
     if (_inputContext) {
       auto &region = _inputContext->getState().region;
       gizmoInput.cursorPosition = _inputContext->getState().cursorPosition;
       gizmoInput.pressed = _inputContext->getState().isMouseButtonHeld(SDL_BUTTON_LEFT);
-      gizmoInput.viewSize = float2(region.size);
-    } else {
-      if (_gfxContext) {
-        auto& vs = _gfxContext->renderer->getViewStack();
-        gizmoInput.viewSize = float2(vs.getOutput().referenceSize);
-      }
+      gizmoInput.inputSize = float2(region.size);
+      gizmoInput.viewportSize = float2(region.pixelSize);
     }
 
     SHVar _shardsOutput{};
