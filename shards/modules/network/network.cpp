@@ -201,6 +201,12 @@ struct NetworkPeer {
     {
       std::scoped_lock peerLock(peerMutex);
 
+      if (networkError) {
+        decltype(networkError) e;
+        std::swap(e, networkError);
+        throw std::runtime_error(fmt::format("Failed to receive: {}", e->message()));
+      }
+
       maybeUpdate();
 
       // Initialize variables for buffer management.
@@ -316,6 +322,8 @@ struct NetworkPeer {
 
   std::vector<uint8_t> recvBuffer;
   uint32_t expectedSize = 0;
+
+  std::optional<boost::system::error_code> networkError;
 };
 
 struct Server : public NetworkBase {
@@ -782,6 +790,7 @@ struct Client : public NetworkBase {
 
   NetworkPeer _peer;
   ShardsVar _blks{};
+  udp::endpoint _server;
 
   static inline Parameters params{
       {"Address", SHCCSTR("The local bind address or the remote address."), {CoreInfo::StringOrStringVar}},
@@ -841,14 +850,17 @@ struct Client : public NetworkBase {
     thread_local std::vector<uint8_t> recv_buffer(0xFFFF);
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _server,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-                                  if (!ec && bytes_recvd > 0) {
-                                    std::scoped_lock lock(_peer.peerMutex);
+                                  if (ec) {
+                                    _peer.networkError = ec;
+                                  } else {
+                                    if (bytes_recvd > 0) {
+                                      std::scoped_lock lock(_peer.peerMutex);
 
-                                    auto err = ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
-                                    if (err < 0) {
-                                      SHLOG_ERROR("Error ikcp_input: {}");
+                                      auto err = ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
+                                      if (err < 0) {
+                                        SHLOG_ERROR("Error ikcp_input: {}");
+                                      }
                                     }
-
                                     // keep receiving
                                     do_receive();
                                   }
@@ -909,8 +921,6 @@ struct Client : public NetworkBase {
 
     return Var::Object(&_peer, CoreCC, PeerCC);
   }
-
-  udp::endpoint _server;
 };
 
 struct PeerBase {
