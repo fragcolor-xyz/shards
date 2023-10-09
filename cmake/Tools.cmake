@@ -60,6 +60,7 @@ function(target_bundle_files BUNDLED_TARGET)
     string(REPLACE "." "Θ" GENERATED_NAME ${IN_PATH_REL})
     string(REPLACE "-" "Δ" GENERATED_NAME ${GENERATED_NAME})
     string(REPLACE "/" "Γ" GENERATED_NAME ${GENERATED_NAME})
+    string(REPLACE " " "_" GENERATED_NAME ${GENERATED_NAME})
     set(GENERATED_NAME "bundled_${GENERATED_NAME}")
     set(OUT_PATH "${GENERATED_HEADER_DIR}/${IN_PATH_REL}.h")
 
