@@ -1637,7 +1637,7 @@ fn process_type(
             if native_type.basicType != SHType_Object {
               return Err(
                 (
-                  "type built-in function, when Type.Object, requires both ObjectVendor and ObjectTypeId parameters",
+                  "type built-in function, when Type::Object, requires both ObjectVendor and ObjectTypeId parameters",
                   line_info,
                 )
                   .into(),
@@ -1654,23 +1654,25 @@ fn process_type(
                       Number::Integer(v) => i32::try_from(*v).map_err(|_| {
                           (format!("{} failed to parse parameter as integer", err_msg), *line_info).into()
                       }),
-                      Number::Hexadecimal(v) => i32::from_str_radix(v.as_str(), 16).map_err(|_| {
+                      Number::Hexadecimal(v) => {
+                        let v = &v[2..];
+                        i32::from_str_radix(v, 16).map_err(|_| {
                           (format!("{} failed to parse parameter as hexadecimal", err_msg), *line_info).into()
-                      }),
+                      })},
                       _ => Err((
                           format!("{} requires both parameters as integer or hexadecimal", err_msg),
                           *line_info,
                       ).into())
                   },
                   _ => Err((
-                      format!("{} requires both parameters", err_msg),
+                      format!("{} failed to parse number", err_msg),
                       *line_info,
                   ).into())
               }
           }
 
-          let vendor_id = parse_vendor_or_object_id(&vendor_id.value, "type built-in function, when Type.Object", &line_info)?;
-          let object_id = parse_vendor_or_object_id(&object_id.value, "type built-in function, when Type.Object", &line_info)?;
+          let vendor_id = parse_vendor_or_object_id(&vendor_id.value, "type built-in function, when Type::Object", &line_info)?;
+          let object_id = parse_vendor_or_object_id(&object_id.value, "type built-in function, when Type::Object", &line_info)?;
 
           native_type.details.object.vendorId = vendor_id;
           native_type.details.object.typeId = object_id;
@@ -1679,7 +1681,7 @@ fn process_type(
         _ => {
           return Err(
             (
-              "type built-in function, when Type.Object, requires both ObjectVendor and ObjectTypeId parameters",
+              "type built-in function, when Type::Object, requires both ObjectVendor and ObjectTypeId parameters",
               line_info,
             )
               .into(),

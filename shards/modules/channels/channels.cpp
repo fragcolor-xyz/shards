@@ -12,7 +12,8 @@ namespace channels {
 
 template <typename T> void verifyChannelType(T &channel, SHTypeInfo type, const char *name) {
   if (!matchTypes(type, channel.type, false, true, true)) {
-    throw SHException(fmt::format("Attempted to change channel type: {}", name));
+    throw SHException(
+        fmt::format("Attempted to change channel type: {}, desired type: {}, actual channel type: {}", name, type, channel.type));
   }
 }
 
