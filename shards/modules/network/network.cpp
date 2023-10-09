@@ -831,9 +831,10 @@ struct Client : public NetworkBase {
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     Client *c = (Client *)user;
     c->_socket->async_send_to(boost::asio::buffer(buf, len), c->_server,
-                              [](boost::system::error_code ec, std::size_t bytes_sent) {
+                              [c](boost::system::error_code ec, std::size_t bytes_sent) {
                                 if (ec) {
                                   std::cout << "Error sending: " << ec.message() << std::endl;
+                                  c->_peer.networkError = ec;
                                 }
                               });
     return 0;
