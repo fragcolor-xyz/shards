@@ -19,6 +19,7 @@
 		<DisplayString Condition="valueType == SHType::Enum">{payload.enumValue} (Enum)</DisplayString>
 		<DisplayString Condition="valueType == SHType::Seq">[...]</DisplayString>
 		<DisplayString Condition="valueType == SHType::Table">{{...}}</DisplayString>
+		<DisplayString Condition="valueType == SHType::Any">Any</DisplayString>
 		<Expand>
 			<ArrayItems Condition="valueType == SHType::Seq">
 				<Direction>Forward</Direction>
@@ -48,6 +49,7 @@
 		<DisplayString Condition="basicType == SHType::Enum">Enum</DisplayString>
 		<DisplayString Condition="basicType == SHType::Seq">[...]</DisplayString>
 		<DisplayString Condition="basicType == SHType::Table">{{...}}</DisplayString>
+		<DisplayString Condition="basicType == SHType::Any">Any</DisplayString>
 		<Expand>
 			<ArrayItems Condition="basicType == SHType::Seq">
 				<Direction>Forward</Direction>
