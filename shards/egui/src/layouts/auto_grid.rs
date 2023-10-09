@@ -10,7 +10,7 @@ use crate::shards::shard;
 use crate::shards::shard::Shard;
 use crate::util::{self};
 
-use crate::{EguiId, CONTEXTS_NAME, FLOAT2_VAR_SLICE, FLOAT_VAR_SLICE, PARENTS_UI_NAME};
+use crate::{EguiId, CONTEXTS_NAME, FLOAT_VAR_SLICE, PARENTS_UI_NAME};
 
 #[derive(shard)]
 #[shard_info("UI.AutoGrid", "Works like UI.Grid, but given a Sequence, it will, it each object in the Sequence, execute the Shard provided in its Contents and automatically wrap the generated contents when it exceeds the grid's width.")]
@@ -27,6 +27,8 @@ struct AutoGridShard {
   pub max_grid_width: ParamVar,
   #[shard_param("ItemWidth", "The width of each item.", FLOAT_VAR_SLICE)]
   pub item_width: ParamVar,
+  #[shard_param("ItemHeight", "The height of each item.", FLOAT_VAR_SLICE)]
+  pub item_height: ParamVar,
   #[shard_param("ColumnSpacing", "Spacing between columns.", FLOAT_VAR_SLICE)]
   pub column_spacing: ParamVar,
   #[shard_param("RowSpacing", "Spacing between rows.", FLOAT_VAR_SLICE)]
@@ -35,7 +37,6 @@ struct AutoGridShard {
   contexts: ParamVar,
   #[shard_warmup]
   parents: ParamVar,
-  inner_exposed: ExposedTypes,
   #[shard_required]
   required: ExposedTypes,
 }
@@ -48,11 +49,11 @@ impl Default for AutoGridShard {
       striped: ParamVar::new(false.into()),
       max_grid_width: ParamVar::default(),
       item_width: ParamVar::default(),
+      item_height: ParamVar::default(),
       column_spacing: ParamVar::default(),
       row_spacing: ParamVar::default(),
       required: Vec::new(),
       contents: ShardsVar::default(),
-      inner_exposed: ExposedTypes::new(),
     }
   }
 }
@@ -79,10 +80,6 @@ impl Shard for AutoGridShard {
     Ok(())
   }
 
-  fn exposed_variables(&mut self) -> Option<&ExposedTypes> {
-    Some(&self.inner_exposed)
-  }
-
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
     util::require_parents(&mut self.required);
@@ -99,13 +96,14 @@ impl Shard for AutoGridShard {
       common_type::any
     };
 
-    self.inner_exposed.clear();
-
     let mut data = *data;
     data.inputType = element_type;
     self.contents.compose(&data)?;
 
-    shards::util::expose_shards_contents(&mut self.inner_exposed, &self.contents);
+    if self.item_width.is_none() {
+      return Err("Item width is required");
+    }
+
     shards::util::require_shards_contents(&mut self.required, &self.contents);
 
     // Always passthrough the input
@@ -116,8 +114,6 @@ impl Shard for AutoGridShard {
     if self.contents.is_empty() {
       return Ok(*input);
     }
-
-    let ui_ctx = util::get_current_context(&self.contexts)?;
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let mut grid = egui::Grid::new(EguiId::new(self, 0));
@@ -144,14 +140,15 @@ impl Shard for AutoGridShard {
 
       grid = grid.spacing(egui::Vec2::new(column_spacing, row_spacing));
 
-      let item_width = self.item_width.get();
-      let item_width: f32 = if !item_width.is_none() {
-        item_width.try_into()?
-      } else {
-        return Err("Item width is required");
-      };
+      let item_width_var = self.item_width.get();
+      let item_width: f32 = item_width_var.try_into().unwrap();
 
       grid = grid.min_col_width(item_width);
+
+      let item_height_var = self.item_height.get();
+      if let Some(item_height) = TryInto::<f32>::try_into(item_height_var).ok() {
+        grid = grid.min_row_height(item_height);
+      }
 
       let max_grid_width = self.max_grid_width.get();
       let max_grid_width = if !max_grid_width.is_none() {
@@ -159,8 +156,6 @@ impl Shard for AutoGridShard {
       } else {
         ui.available_width()
       };
-
-      // let other_contents = self.contents;
 
       grid
         .show(ui, |ui| {
@@ -176,13 +171,17 @@ impl Shard for AutoGridShard {
             let input_elem = &seq[i];
 
             ui.push_id(i, |ui| {
-              util::activate_ui_contents(
+              ui.set_min_width(item_width);
+              ui.set_max_width(item_width);
+              let response = util::activate_ui_contents(
                 context,
                 input_elem,
                 ui,
                 &mut self.parents,
                 &mut self.contents,
-              )
+              );
+              ui.allocate_space(ui.available_size());
+              response
             })
             .inner?;
 
