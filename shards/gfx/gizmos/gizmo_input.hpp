@@ -92,6 +92,7 @@ public:
 private:
   float4x4 cachedViewProj;
   float4x4 cachedViewProjInv;
+  float4x4 cachedViewInv;
 
 public:
   void begin(const InputState &inputState, ViewPtr view);

@@ -85,28 +85,22 @@ void InputContext::updateView(ViewPtr view) {
 
   cachedViewProj = linalg::mul(view->getProjectionMatrix(inputState.viewportSize), view->view);
   cachedViewProjInv = linalg::inverse(cachedViewProj);
-  float4x4 viewInv = linalg::inverse(view->view);
+  cachedViewInv = linalg::inverse(view->view);
 
   float4 unprojected = linalg::mul(cachedViewProjInv, ndc);
   unprojected /= unprojected.w;
 
-  eyeLocation = viewInv.w.xyz();
+  eyeLocation = extractTranslation(cachedViewInv);
   rayDirection = linalg::normalize(unprojected.xyz() - eyeLocation);
 }
 
-float3x3 InputContext::getScreenSpacePlaneAxes() const {
-  float3 yBase = getUpVector();
-  float3 normal = getForwardVector();
-  float3 xBase = linalg::normalize(linalg::cross(yBase, normal));
+float3x3 InputContext::getScreenSpacePlaneAxes() const { return {getRightVector(), getUpVector(), getForwardVector()}; }
 
-  return {xBase, yBase, normal};
-}
+float3 InputContext::getRightVector() const { return cachedViewInv.x.xyz(); }
 
-float3 InputContext::getRightVector() const { return linalg::normalize(cachedViewProjInv[0].xyz() / cachedViewProjInv[3].w); }
+float3 InputContext::getUpVector() const { return cachedViewInv.y.xyz(); }
 
-float3 InputContext::getUpVector() const { return linalg::normalize(cachedViewProjInv[1].xyz() / cachedViewProjInv[3].w); }
-
-float3 InputContext::getForwardVector() const { return linalg::normalize(cachedViewProjInv[2].xyz() / cachedViewProjInv[3].w); }
+float3 InputContext::getForwardVector() const { return -cachedViewInv.z.xyz(); }
 
 } // namespace gizmos
 } // namespace gfx
