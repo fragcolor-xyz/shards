@@ -310,31 +310,41 @@ jobs:
           RUST_BACKTRACE: full
         shell: bash
         run: |
-          cd build
           echo "Running gfx_window"
-          ./shards ../shards/tests/gfx-window.edn
+          build/shards shards/tests/gfx-window.edn
           echo "Running gfx_cube"
-          ./shards new ../shards/tests/gfx-cube.shs
+          build/shards new shards/tests/gfx-cube.shs
           echo "Running gfx_materials"
-          ./shards ../shards/tests/gfx-materials.edn
+          build/shards shards/tests/gfx-materials.edn
+
+
+          echo "Running input test"
+          build/shards new shards/tests/input.shs
+
           echo "Running ui"
-          ./shards ../shards/tests/ui-0.edn
-          ./shards ../shards/tests/ui-1.edn
+          build/shards shards/tests/ui-0.edn
+          build/shards shards/tests/ui-1.edn
+          build/shards shards/tests/ui-2.edn
+
+          echo "Running UI (nested)"
+          build/shards shards/tests/ui-nested.edn
+
           echo "Running egui_demo"
-          ./shards new ../shards/tests/egui-demo.shs
+          build/shards new shards/tests/egui-demo.shs
+
           echo "Running egui-plot"
-          ./shards new ../shards/tests/egui-plot.shs
+          build/shards new shards/tests/egui-plot.shs
+
           echo "Running ui-drag-and-drop"
-          ./shards new ../shards/tests/ui-drag-and-drop.shs
+          build/shards new shards/tests/ui-drag-and-drop.shs
       - name: Physics Test
         env:
           GFX_BACKEND: D3D12
           RUST_BACKTRACE: full
         shell: bash
         run: |
-          cd build
           echo "Running physics"
-          ./shards ../shards/tests/physics.edn
+          build/shards shards/tests/physics.edn
       - name: Test
         env:
           RUST_BACKTRACE: full

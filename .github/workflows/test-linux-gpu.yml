@@ -85,6 +85,11 @@ jobs:
             echo "Running $i"
             build/shards "$i"
           done
+          for i in $(find shards/tests -name 'gfx*.shs');
+          do
+            echo "Running $i"
+            build/shards new "$i"
+          done
 
           echo "Running input test"
           build/shards new shards/tests/input.shs
