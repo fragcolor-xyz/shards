@@ -37,7 +37,7 @@ lazy_static! {
   "Creates a floating window which can be dragged, closed, collapsed, and resized."
 )]
 struct WindowShard {
-  #[shard_param("Title", "The window title displayed on the titlebar.", STRING_TYPES)]
+  #[shard_param("Title", "The window title displayed on the titlebar.", STRING_VAR_OR_NONE_SLICE)]
   pub title: ParamVar,
   #[shard_param(
     "Position",
