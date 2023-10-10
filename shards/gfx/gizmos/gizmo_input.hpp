@@ -38,7 +38,10 @@ struct InputState {
   float2 inputSize{};
   // Size of the output surface in pixels
   float2 viewportSize{};
+  // When the button was pressed this frame, implies held
   bool pressed{};
+  // When the button is being held
+  bool held{};
 };
 
 // Information about handle that was hit by cursor ray

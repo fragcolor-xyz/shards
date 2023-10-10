@@ -64,12 +64,12 @@ void InputContext::end() {
   if (held && !heldHandleUpdated)
     held = nullptr;
 
-  if (held && !inputState.pressed) {
+  if (held && !inputState.held) {
     Handle &handle = *held;
     assert(handle.callbacks);
     handle.callbacks->released(*this, handle);
     held = nullptr;
-  } else if (!held && hovering && !prevInputState.pressed && inputState.pressed) {
+  } else if (!held && hovering && inputState.pressed) {
     held = hovering;
     Handle &handle = *hovering;
     assert(handle.callbacks);
