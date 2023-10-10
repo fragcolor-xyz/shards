@@ -416,6 +416,34 @@ struct GLTFShard {
           throw std::runtime_error(fmt::format("Node data for key {} should be a table, was: {}", k, v));
         auto &valueTable = (TableVar &)v;
 
+        auto &translation = valueTable["translation"];
+        if (!translation->isNone()) {
+          if (translation.valueType != SHType::Float3)
+            throw std::runtime_error(fmt::format("translation for key {} should be a float3", k));
+          node->trs.translation = toFloat3(translation);
+        }
+
+        auto &rotation = valueTable["rotation"];
+        if (!rotation->isNone()) {
+          if (rotation.valueType != SHType::Float4)
+            throw std::runtime_error(fmt::format("rotation for key {} should be a float3", k));
+          node->trs.rotation = toFloat4(rotation);
+        }
+
+        auto &scale = valueTable["scale"];
+        if (!scale->isNone()) {
+          if (scale.valueType != SHType::Float4)
+            throw std::runtime_error(fmt::format("scale for key {} should be a float3", k));
+          node->trs.scale = toFloat3(scale);
+        }
+
+        auto &transform = valueTable["transform"];
+        if (!transform->isNone()) {
+          if (transform.valueType != SHType::Seq)
+            throw std::runtime_error(fmt::format("transform for key {} should be a float4x4", k));
+          node->trs = toFloat4x4(transform);
+        }
+
         auto &drawableParams = valueTable["params"];
         if (!drawableParams->isNone()) {
           if (drawableParams.valueType != SHType::Table)
