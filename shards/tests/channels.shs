@@ -37,13 +37,20 @@
   Complete("b")
 })
 
-@template(consumers [x] {
-  ; TODO construct the name of the wire from the parameter
-  @wire(#(["consumer" x] | String.Join) {
-    Listen("b" @type(Type::String)) |
-    Log(#([x ": "] | String.Join))
-  } Looped: true)
-})
+@wire(consumer-listen-0 {
+  Listen("b" @type(Type::String)) |
+  Log(#(["0" ": "] | String.Join))
+} Looped: true)
+
+@wire(consumer-listen-1 {
+  Listen("b" @type(Type::String)) |
+  Log(#(["1" ": "] | String.Join))
+} Looped: true)
+
+@wire(consumer-listen-2 {
+  Listen("b" @type(Type::String)) |
+  Log(#(["2" ": "] | String.Join))
+} Looped: true)
 
 @wire(consumer-33 {
   Listen("b" @type(Type::String) 3) |
@@ -51,9 +58,9 @@
 } Looped: true)
 
 @schedule(root producer-2)
-; @schedule(root @consumers(0))
-; @schedule(root @consumers(1))
-; @schedule(root @consumers(2))
+@schedule(root consumer-listen-0)
+@schedule(root consumer-listen-1)
+@schedule(root consumer-listen-2)
 @schedule(root consumer-33)
 @run(root FPS: 10) | Assert.Is(true)
 
