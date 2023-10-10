@@ -929,7 +929,7 @@ struct Erase : SeqUser {
     if (isTable) {
       valid = true;
     } else if (_indices->valueType == SHType::Seq) {
-      if (_indices->payload.seqValue.len == 1 && _indices->payload.seqValue.elements[0].valueType == SHType::Int) {
+      if (_indices->payload.seqValue.len > 0 && _indices->payload.seqValue.elements[0].valueType == SHType::Int) {
         valid = true;
       }
     } else if (_indices->valueType == SHType::Int) {
