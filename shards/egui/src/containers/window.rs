@@ -168,7 +168,7 @@ impl Shard for WindowShard {
     let mut open = true;
     let mut failed = false;
     if !self.contents.is_empty() {
-      let title: &str = self.title.get().try_into()?;
+      let title: &str = self.title.get().try_into().unwrap_or_default();
       let mut window = egui::Window::new(title);
 
       if let Ok(id) = <&str>::try_from(self.id.get()) {

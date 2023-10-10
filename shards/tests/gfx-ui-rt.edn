@@ -94,6 +94,7 @@
                       (UI .ui-draw-queue
                           (-> ; UI Content
                            (UI.Window
+                            :Title "First Window"
                             :Contents
                             (->
                              (UI.Property UIProperty.RemainingSpace) >= .rt-region
