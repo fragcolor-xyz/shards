@@ -85,6 +85,12 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
   if (_suspend_state != SHWireState::Continue)                \
   return shards::Var::Empty
 
+struct SHStateSnapshot {
+  SHWireState state;
+  SHVar flowStorage;
+  std::string errorMessage;
+};
+
 struct SHContext {
   SHContext(
 #ifndef __EMSCRIPTEN__
@@ -140,6 +146,20 @@ struct SHContext {
   void cancelFlow(std::string_view message) {
     state = SHWireState::Error;
     errorMessage = message;
+  }
+
+  SHStateSnapshot takeStateSnapshot() {
+    return SHStateSnapshot {
+      state,
+      std::move(flowStorage),
+      std::move(errorMessage),
+    };
+  }
+
+  void restoreStateSnapshot(SHStateSnapshot&& snapshot) {
+    errorMessage = std::move(snapshot.errorMessage);
+    state = std::move(snapshot.state);
+    flowStorage = std::move(snapshot.flowStorage);
   }
 
   constexpr void rebaseFlow() { state = SHWireState::Rebase; }

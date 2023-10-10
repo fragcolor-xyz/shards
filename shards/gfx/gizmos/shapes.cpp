@@ -172,18 +172,15 @@ void ShapeRenderer::addLine(float3 a, float3 b, float4 color, float thickness) {
 void ShapeRenderer::addCircle(float3 center, float3 xBase, float3 yBase, float radius, float4 color, float thickness,
                               uint32_t resolution) {
   float3 prevPos;
-  float3 prevDelta;
   for (size_t i = 0; i < resolution; i++) {
     float t = i / float(resolution - 1) * pi2;
     float tCos = std::cos(t);
     float tSin = std::sin(t);
     float3 pos = center + tCos * xBase * radius + tSin * yBase * radius;
-    float3 delta = center + -tSin * xBase + tCos * yBase;
     if (i > 0) {
       addLine(prevPos, pos, color, thickness);
     }
     prevPos = pos;
-    prevDelta = delta;
   }
 }
 
@@ -197,14 +194,13 @@ void ShapeRenderer::addRect(float3 center, float3 xBase, float3 yBase, float2 si
   };
 
   for (size_t i = 0; i < 4; i++) {
-    float3 a = verts[i]; 
+    float3 a = verts[i];
     float3 b = verts[(i + 1) % 4];
     addLine(a, b, color, thickness);
   }
 }
 
-void ShapeRenderer::addBox(float3 center, float3 xBase, float3 yBase, float3 zBase, float3 size, float4 color,
-                           float thickness) {
+void ShapeRenderer::addBox(float3 center, float3 xBase, float3 yBase, float3 zBase, float3 size, float4 color, float thickness) {
   float3 halfSize = size / 2.0f;
   float3 verts[] = {
       center - halfSize.x * xBase - halfSize.y * yBase - halfSize.z * zBase,
