@@ -9,15 +9,6 @@
 
 namespace gfx {
 
-// Defines the primary command key
-//   on apple this is the cmd key
-//   otherwise the ctrl key
-#if GFX_APPLE
-#define KMOD_PRIMARY KMOD_GUI
-#else
-#define KMOD_PRIMARY KMOD_CTRL
-#endif
-
 struct SDLCursor {
   SDL_Cursor *cursor{};
   SDLCursor(SDL_SystemCursor id) { cursor = SDL_CreateSystemCursor(id); }

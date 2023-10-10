@@ -6,7 +6,19 @@
 #include <compare>
 #include <linalg.h>
 #include <variant>
+#include <gfx/platform.hpp>
 #include <boost/container/string.hpp>
+
+// Defines the primary command key
+//   on apple this is the cmd key
+//   otherwise the ctrl key
+#if GFX_APPLE
+#define KMOD_PRIMARY KMOD_GUI
+#define KMOD_SECONDARY KMOD_CTRL
+#else
+#define KMOD_PRIMARY KMOD_CTRL
+#define KMOD_SECONDARY KMOD_GUI
+#endif
 
 namespace shards::input {
 using namespace linalg::aliases;
