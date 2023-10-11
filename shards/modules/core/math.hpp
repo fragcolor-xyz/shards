@@ -707,7 +707,7 @@ struct Lerp final {
   static SHParametersInfo parameters() {
     static Parameters params{
         {"First", SHCCSTR("The first value"), BinaryBase::MathTypesOrVar},
-        {"Second", SHCCSTR("The first value"), BinaryBase::MathTypesOrVar},
+        {"Second", SHCCSTR("The second value"), BinaryBase::MathTypesOrVar},
     };
     return params;
   }
