@@ -63,10 +63,15 @@ template <typename TFrame = Frame<Event>, size_t HistoryLength = 1024, size_t De
   // (or) Points to one past the last written item.
   std::atomic<size_t> head{};
 
-  size_t getFrameIndex(size_t offset) const { return size_t((int(head % HistoryLength) + int(offset)) % HistoryLength); }
+  size_t getFrameIndex(int offset) const { return size_t((int(head) + int(offset)) % HistoryLength); }
 
-  TFrame &getFrame(size_t offset) { return frames[getFrameIndex(offset)]; }
-  const TFrame &getFrame(size_t offset) const { return frames[getFrameIndex(offset)]; }
+  TFrame &getFrame(int offset) { return frames[getFrameIndex(offset)]; }
+  const TFrame &getFrame(int offset) const { return frames[getFrameIndex(offset)]; }
+
+  const TFrame &getLastFrame() {
+    assert(!empty());
+    return getFrame(-1);
+  }
 
   TFrame &getNextFrame() { return getFrame(0); }
 
@@ -78,6 +83,8 @@ template <typename TFrame = Frame<Event>, size_t HistoryLength = 1024, size_t De
     getFrame(1).clear();
     ++head;
   }
+
+  bool empty() const { return head == tail; }
 
   FrameIterator getIterator(size_t generation) {
     size_t tail = this->tail;

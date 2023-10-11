@@ -87,13 +87,12 @@ TEST_CASE("DetachedInput state") {
     detached.update(state);
     CHECK(detached.virtualInputEvents.size() == 0);
 
+    detached.beginUpdate();
     sdlEvt.wheel.preciseY = 0.2f;
     detached.apply(sdlEvt);
-
     sdlEvt.wheel.preciseY = -0.7f;
     detached.apply(sdlEvt);
-
-    detached.update(state);
+    detached.endUpdate(state);
     {
       CHECK(detached.virtualInputEvents.size() == 1);
       auto *evt = std::get_if<ScrollEvent>(&detached.virtualInputEvents[0]);
@@ -103,7 +102,7 @@ TEST_CASE("DetachedInput state") {
   }
 
   SECTION("Pointer Move") {
-    state.cursorPosition = int2{20, 1};
+    state.cursorPosition = float2{20, 1};
     detached.update(state);
     {
       CHECK(detached.virtualInputEvents.size() == 1);
@@ -116,13 +115,13 @@ TEST_CASE("DetachedInput state") {
     detached.update(state);
     CHECK(detached.virtualInputEvents.size() == 0);
 
-    state.cursorPosition = int2{21, 3};
+    state.cursorPosition = float2{21, 3};
     detached.update(state);
     {
       CHECK(detached.virtualInputEvents.size() == 1);
       auto *evt = std::get_if<PointerMoveEvent>(&detached.virtualInputEvents[0]);
       CHECK(evt);
-      CHECK(evt->delta == int2{1, 2});
+      CHECK(evt->delta == float2{1, 2});
       CHECK(evt->pos == state.cursorPosition);
     }
 
@@ -138,7 +137,7 @@ Event produceDummyEvent(size_t index) {
   case 0:
     return PointerButtonEvent{.index = SDL_BUTTON_LEFT, .pressed = true};
   case 1:
-    return PointerMoveEvent{.pos = int2{1 + float(index % 10), 2 + float(index % 2)}, .delta = int2{3, 4}};
+    return PointerMoveEvent{.pos = float2{1 + float(index % 10), 2 + float(index % 2)}, .delta = float2{3, 4}};
   case 2:
     return KeyEvent{.key = SDL_Keycode(SDLK_a + (index % 20)), .pressed = true};
   }

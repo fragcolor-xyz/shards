@@ -10,8 +10,8 @@ use shards::core::cloneVar;
 use shards::core::register_enum;
 use shards::fourCharacterCode;
 use shards::shardsc;
-use shards::types::ClonedVar;
 use shards::types::common_type;
+use shards::types::ClonedVar;
 use shards::types::OptionalString;
 use shards::types::Type;
 use shards::types::Var;
@@ -64,7 +64,7 @@ lazy_static! {
     let mut t = common_type::object;
     t.details.object = SHObjectTypeInfo {
       vendorId: FRAG_CC, // 'frag'
-      typeId: 0x6C61796F, // 'layo'
+      typeId: fourCharacterCode(*b"layo")
     };
     t
   };
@@ -74,11 +74,6 @@ lazy_static! {
     unsafe { *(bindings::gfx_getWindowContextType() as *mut shardsc::SHTypeInfo) };
   static ref INPUT_CONTEXT_TYPE: Type =
     unsafe { *(bindings::gfx_getInputContextType() as *mut shardsc::SHTypeInfo) };
-  static ref GFX_QUEUE_TYPE: Type =
-    unsafe { *(bindings::gfx_getQueueType() as *mut shardsc::SHTypeInfo) };
-  static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
-  static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
-  static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
   static ref LAYOUTCLASS_TYPE_VEC: Vec<Type> = vec![*LAYOUTCLASS_TYPE];
   static ref LAYOUTCLASS_VAR_TYPE: Type = Type::context_variable(&LAYOUTCLASS_TYPE_VEC);
   static ref LAYOUTCLASS_TYPE_VEC_VAR: Vec<Type> = vec![*LAYOUTCLASS_VAR_TYPE];

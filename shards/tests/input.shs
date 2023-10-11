@@ -1,24 +1,21 @@
-@define(timestep #(1.0 | Math.Divide(120.0)))
-@mesh(root)
-
-@template(spin-transform [t location] {
-  t |
-  {Math.Multiply(0.2) | Math.AxisAngleX | Math.Rotation >= rotX} |
-  {Math.Multiply(0.7) | Math.AxisAngleY | Math.Rotation >= rotY} |
-  {Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation >= rotZ}
-  location | Math.Translation | Math.MatMul(rotX) | Math.MatMul(rotY) | Math.MatMul(rotZ)
+@template(clamp [var min max] {
+  var | When(IsLess(min) { min > var })
+  var | When(IsMore(max) { max > var })
 })
 
-@template(compute-rt-region-16-9 [] {
-  {Take([0 1]) >= min} |
-  {Take([0]) >= min-x} |
-  {Take([1]) >= min-y} |
-  {Take([2 3]) | Math.Subtract(min) >= size}
-  size | Take([0]) >= size-x | Math.Multiply((9.0 | Math.Divide(16.0))) >= size-y
-
-  size-x | Math.Add(min-x) >= max-x
-  size-y | Math.Add(min-y) >= max-y
-  [min-x min-y max-x max-y] | ToFloat4
+@wire(settings-menu-ui {
+   UI.Window(
+    Title: "Settings"
+    Contents: {
+      UI.Grid(NumColumns: 2 Contents: {
+        "UI Scale" | UI.Label
+        UI.Variable(
+          Variable: ui-scale-factor
+        )
+        @clamp(ui-scale-factor 0.5 3.0)
+        UI.NextRow
+      })
+    })
 })
 
 @wire(test-wire {
@@ -34,9 +31,8 @@
     GFX.DrawQueue >= ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
 
-    ; Create view
+    ; Initial view
     {Position: @f3(0 0 20) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
-    GFX.View(View: view-transform) >= view
   })
 
   ; Poll inputs
@@ -45,39 +41,91 @@
     DetachRenderer: true
   ) = window-ctx
 
+  Inputs.Detached(window-ctx {
+    Once({ TargetCamera.FromLookAt >= camera-state })
+    camera-state | TargetCamera > camera-state
+  } {
+    RTake(0) | TargetCamera.Matrix > view-transform
+  } Name: "Camera" Priority: 0) = camera-state
+
+  Once({ Math.MatIdentity >= obj-transform })
+  Inputs.Detached(window-ctx {
+    GFX.View(View: view-transform) = view
+    GFX.DrawQueue(Threaded: true) = queue
+    Gizmos.Context(Queue: queue View: view Contents: {
+      Gizmos.RefspaceGridOverlay(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 3.0)
+      obj-transform | Gizmos.Rotation(ScreenSize: 300.0) >= out-transform
+    })
+    {obj-transform: out-transform queue: queue}
+  } {
+    RTake(0)
+    { Take("queue") | GFX.QueueDrawables | GFX.Draw(queue) }
+    { Take("obj-transform") 
+    ; | Log("New transform") 
+      > obj-transform }
+  } Name: "Gizmos" Priority: 1)
+
   ; Input test code
-  Inputs.Detached(
-    window-ctx Name: "Camera" Priority: 1
-    Contents: {
-      Inputs.KeyDown("W" Action: {
-        Log("W Key down")
-      })
-    }
-  )
+  Inputs.Detached(window-ctx {
+    false >= down
+    Inputs.KeyDown("W" Action: {
+      true > down
+      Log("W Key down")
+    })
+    down
+  } {
+    RTake(0) | When(Is(true) {
+      Log("W Key down main thread")
+    })
+  } Name: "test" Priority: 2)
+  ForEach({
+    When(Is(true) {
+      Log("W Key down main thread, outside of scope")
+    })
+  })
 
-  ; Debug UI & Graphics
-  GFX.Renderer(
-    Window: window-ctx
-    Contents: {
-      Animation.Timer >= time
+  "test-capture" >= test-capture
 
-      @f4(0 1 0 1) >= color
-      @spin-transform(time @f3(0 0 0))
-      GFX.Drawable(Mesh: cube-mesh Params: {baseColor: color}) | GFX.Draw(queue)
+  Once({
+    GFX.View(View: view-transform) >= view
 
-      Inputs.Detached(
-        window-ctx Name: "UI" Priority: 10
-        Contents: {
-          UI(ui-draw-queue {
-            Inputs.DebugUI
-          })
-        }
-      )
+    Inputs.Detached(window-ctx {
+      Once({ 1.0 Set(ui-scale-factor Global: true) })
+      Once({ "input.shs" | FS.Read >= code })
 
-      GFX.Render(View: view Steps: render-steps)
-    }
-  )
+      UI({
+        Inputs.DebugUI
+        Do(settings-menu-ui)
+
+        UI.Window(Title: "Code" Contents: {
+          UI.CodeEditor(code "Shards")
+        })
+
+        UI.TopPanel(Contents: {
+          test-capture | UI.Label
+        })
+      } Scale: ui-scale-factor)
+    } Name: "UI" Priority: 10)
+
+    ; Output of this is the output of UI but as a sequence of all input frames that happened until now
+    ; Log("UI data this frame")
+    UI.Render(ui-draw-queue)
+
+    ; Debug UI & Graphics
+    GFX.Renderer(
+      Window: window-ctx
+      Contents: {
+        Animation.Timer >= time
+
+        @f4(0 1 0 1) >= color
+        obj-transform | GFX.Drawable(Mesh: cube-mesh Params: {baseColor: color}) | GFX.Draw(queue)
+
+        GFX.Render(View: view Steps: render-steps)
+      }
+    )
+  } Every: (1.0 Math.Divide(40.0)))
 } Looped: true)
 
+@mesh(root)
 @schedule(root test-wire)
-@run(root FPS: 120 Iterations: 100) | Assert.Is(true)
+@run(root FPS: 400 Iterations: 800) | Assert.Is(true)

@@ -2,18 +2,20 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 use crate::bindings;
+use crate::bindings::make_native_io_output;
+use crate::bindings::make_texture_updates;
 use crate::egui_host::EguiHost;
 use crate::util;
 
-use crate::GFX_CONTEXT_TYPE;
-use crate::GFX_QUEUE_VAR_TYPES;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INPUT_CONTEXT_TYPE;
 
 use shards::core::register_shard;
-use shards::shard::LegacyShard;
+use shards::fourCharacterCode;
 use shards::shard::Shard;
 use shards::shardsc;
+use shards::types::ClonedVar;
+use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -22,31 +24,52 @@ use shards::types::OptionalString;
 use shards::types::ParamVar;
 use shards::types::ShardsVar;
 use shards::types::Type;
+use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
+use shards::types::FRAG_CC;
+use shards::types::NONE_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
-use shards::types::common_type;
+use std::f32::consts::E;
 use std::ffi::CStr;
+use std::rc::Rc;
+
+struct UIOutput {
+  full_output: egui::FullOutput,
+  ctx: egui::Context,
+}
+
+static UI_OUTPUT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"uiui"));
+
+lazy_static! {
+  static ref GFX_QUEUE_TYPE: Type =
+    unsafe { *(bindings::gfx_getQueueType() as *mut shardsc::SHTypeInfo) };
+  static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
+  static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
+  static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
+  static ref GFX_QUEUE_VAR_OR_NONE_TYPES: Vec<Type> = vec![common_type::none, *GFX_QUEUE_VAR];
+  static ref UI_OUTPUT_TYPES: Vec<Type> = vec![UI_OUTPUT_TYPE];
+  static ref UI_OUTPUT_SEQ_TYPE: Type = Type::seq(&UI_OUTPUT_TYPES);
+  static ref UI_OUTPUT_SEQ_TYPES: Vec<Type> = vec![*UI_OUTPUT_SEQ_TYPE];
+}
 
 #[derive(shards::shard)]
 #[shard_info("UI", "Initializes a UI context")]
 struct ContextShard {
-  #[shard_param("Queue", "The draw queue.", GFX_QUEUE_VAR_TYPES)]
-  queue: ParamVar,
   #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
   contents: ShardsVar,
   #[shard_param("Scale", "The UI scale", [common_type::none, common_type::float, common_type::float_var])]
   scale: ParamVar,
+  #[shard_param("Queue", "The draw queue.", GFX_QUEUE_VAR_OR_NONE_TYPES)]
+  queue: ParamVar,
   host: EguiHost,
   #[shard_required]
   requiring: ExposedTypes,
   exposing: ExposedTypes,
-  #[shard_warmup] 
+  #[shard_warmup]
   input_context: ParamVar,
-  has_graphics_context: bool,
-  graphics_context: ParamVar,
-  renderer: bindings::Renderer,
   input_translator: bindings::InputTranslator,
+  last_output: ClonedVar,
 }
 
 impl Default for ContextShard {
@@ -58,14 +81,6 @@ impl Default for ContextShard {
       contents: ShardsVar::default(),
       scale: ParamVar::default(),
       exposing: Vec::new(),
-      has_graphics_context: false,
-      graphics_context: unsafe {
-        ParamVar::new_named(
-          CStr::from_ptr(bindings::gfx_getGraphicsContextVarName())
-            .to_str()
-            .unwrap(),
-        )
-      },
       input_context: unsafe {
         ParamVar::new_named(
           CStr::from_ptr(bindings::gfx_getInputContextVarName())
@@ -73,8 +88,8 @@ impl Default for ContextShard {
             .unwrap(),
         )
       },
-      renderer: bindings::Renderer::new(),
       input_translator: bindings::InputTranslator::new(),
+      last_output: ClonedVar::default(),
     }
   }
 }
@@ -92,7 +107,7 @@ impl Shard for ContextShard {
   }
 
   fn output_types(&mut self) -> &std::vec::Vec<Type> {
-    &ANY_TYPES
+    &UI_OUTPUT_TYPES
   }
 
   fn output_help(&mut self) -> OptionalString {
@@ -105,24 +120,6 @@ impl Shard for ContextShard {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
-
-    // Add Graphics context to the list of required variables (optional)
-    // If this is not provided, the UI will be rendered based on the window surface area
-    self.has_graphics_context = (&data.shared)
-      .iter()
-      .find(|x| unsafe {
-        CStr::from_ptr(x.name) == CStr::from_ptr(self.graphics_context.get_name())
-      })
-      .is_some();
-    if self.has_graphics_context {
-      let exp_info = ExposedInfo {
-        exposedType: *GFX_CONTEXT_TYPE,
-        name: self.graphics_context.get_name(),
-        help: cstr!("The graphics context.").into(),
-        ..ExposedInfo::default()
-      };
-      self.requiring.push(exp_info);
-    }
 
     // Add Input context to the list of required variables
     let exp_info = ExposedInfo {
@@ -146,33 +143,22 @@ impl Shard for ContextShard {
     // update shared
     data.shared = (&shared).into();
 
-    let output_type = if !self.contents.is_empty() {
-      let result = self.contents.compose(&data)?;
-      result.outputType
-    } else {
-      data.inputType
-    };
+    let _result = self.contents.compose(&data)?;
 
     self.exposing.clear();
     util::expose_contents_variables(&mut self.exposing, &self.contents);
 
-    // Always passthrough the input
-    Ok(output_type)
+    Ok(UI_OUTPUT_TYPE)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.host.warmup(ctx)?;
     self.warmup_helper(ctx)?;
-    if self.has_graphics_context {
-      self.graphics_context.warmup(ctx);
-    }
-
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.cleanup_helper(ctx)?;
-    self.graphics_context.cleanup(ctx);
     self.host.cleanup(ctx)?;
     Ok(())
   }
@@ -183,41 +169,117 @@ impl Shard for ContextShard {
     }
 
     let egui_input = unsafe {
-      let gfx_context = if self.has_graphics_context {
-        self.graphics_context.get()
-      } else {
-        std::ptr::null()
-      };
-
       let scale: Option<f32> = self.scale.get().try_into().ok();
 
       &*(bindings::gfx_getEguiWindowInputs(
         self.input_translator.as_mut_ptr() as *mut bindings::gfx_EguiInputTranslator,
-        gfx_context as *const _ as *const bindings::SHVar,
         self.input_context.get() as *const _ as *const bindings::SHVar,
         scale.unwrap_or(1.0),
       ) as *const bindings::egui_Input)
     };
 
-    if egui_input.pixelsPerPoint > 0.0 {
+    let full_output = if egui_input.pixelsPerPoint > 0.0 {
       self
         .host
         .activate(&egui_input, &(&self.contents).into(), context, input)?;
-      let egui_output = self.host.get_egui_output();
+      self.host.take_egui_output()
+    } else {
+      egui::FullOutput::default()
+    };
 
-      let queue_var = self.queue.get();
-      unsafe {
-        bindings::gfx_applyEguiOutputs(
-          self.input_translator.as_mut_ptr() as *mut bindings::gfx_EguiInputTranslator,
-          egui_output as *const _,
-          self.input_context.get() as *const _ as *const bindings::SHVar,
-        );
+    let ctx = &self.host.get_context().egui_ctx;
+    unsafe {
+      let io_output = make_native_io_output(ctx, &full_output)?;
+      let c_output = io_output.get_c_output();
+      bindings::gfx_applyEguiIOOutput(
+        self.input_translator.as_mut_ptr() as *mut bindings::gfx_EguiInputTranslator,
+        &c_output,
+        self.input_context.get() as *const _ as *const bindings::SHVar,
+      );
+    }
 
-        let queue =
-          bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar);
+    self.last_output.assign(&Var::new_ref_counted(
+      UIOutput {
+        full_output,
+        ctx: self.host.get_context().egui_ctx.clone(),
+      },
+      &UI_OUTPUT_TYPE,
+    ));
+
+    Ok(self.last_output.0)
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info("UI.Render", "Render given UI")]
+struct RenderShard {
+  #[shard_required]
+  required: ExposedTypes,
+  #[shard_param("Queue", "The draw queue.", GFX_QUEUE_VAR_TYPES)]
+  queue: ParamVar,
+  renderer: bindings::Renderer,
+}
+
+impl Default for RenderShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      queue: ParamVar::default(),
+      renderer: bindings::Renderer::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for RenderShard {
+  fn input_types(&mut self) -> &Types {
+    &UI_OUTPUT_SEQ_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &UI_OUTPUT_SEQ_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+
+    Ok(())
+  }
+
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.cleanup_helper()?;
+
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+    let queue_var = self.queue.get();
+    let seq = input.as_seq()?;
+    let num_ui_outputs = seq.len();
+    for (idx, var) in seq.iter().enumerate() {
+      let ui_output =
+        unsafe { &*Var::from_ref_counted_object::<UIOutput>(&var, &UI_OUTPUT_TYPE).unwrap() };
+
+      // Only render the most recent output
+      if idx == (num_ui_outputs - 1) {
+        let draw_scale = ui_output.ctx.pixels_per_point();
+        let queue = unsafe {
+          bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar)
+            as *const bindings::gfx_DrawQueuePtr
+        };
         self
           .renderer
-          .render_with_native_output(egui_output, queue as *const bindings::gfx_DrawQueuePtr);
+          .render(&ui_output.ctx, &ui_output.full_output, queue, draw_scale)?;
+      } else {
+        // Apply texture updates only, skip rendering
+        self
+          .renderer
+          .apply_texture_updates_only(&ui_output.full_output)?;
       }
     }
 
@@ -227,4 +289,5 @@ impl Shard for ContextShard {
 
 pub fn register_shards() {
   register_shard::<ContextShard>();
+  register_shard::<RenderShard>();
 }

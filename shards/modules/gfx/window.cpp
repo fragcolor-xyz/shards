@@ -34,26 +34,42 @@ struct MainWindowQuitException : public std::runtime_error {
 
 struct InlineInputContext : public IInputContext {
   InputMaster *master{};
-  ConsumeFlags dummyConsumeFlags{};
 
   float time{};
   float deltaTime{};
 
   InputStack inputStack;
 
-  virtual InputStack &getInputStack() override { return inputStack; }
+  InputStack &getInputStack() override { return inputStack; }
 
-  virtual shards::input::InputMaster *getMaster() const override { return master; }
+  shards::input::InputMaster &getMaster() const override { return *master; }
+  const std::weak_ptr<IInputHandler> &getHandler() const override {
+    static std::weak_ptr<IInputHandler> none;
+    return none;
+  }
 
-  virtual void postMessage(const Message &message) override { master->postMessage(message); }
-  virtual const InputState &getState() const override { return master->getState(); }
-  virtual const std::vector<Event> &getEvents() const override { return master->getEvents(); }
+  void postMessage(const Message &message) override { master->postMessage(message); }
+  const InputState &getState() const override { return master->getState(); }
+  std::vector<ConsumableEvent> &getEvents() override { return master->getEvents(); }
 
-  // Writable, controls how events are consumed
-  virtual ConsumeFlags &getConsumeFlags() override { return dummyConsumeFlags; }
+  float getTime() const override { return time; }
+  float getDeltaTime() const override { return deltaTime; }
 
-  virtual float getTime() const override { return time; }
-  virtual float getDeltaTime() const override { return deltaTime; }
+  bool requestFocus() override {
+    if (auto ptr = getHandler().lock()) {
+      auto &focusTracker = getMaster().getFocusTracker();
+      return focusTracker.requestFocus(ptr.get());
+    }
+    return false;
+  }
+
+  bool canReceiveInput() const override {
+    if (auto ptr = getHandler().lock()) {
+      auto &focusTracker = getMaster().getFocusTracker();
+      return focusTracker.canReceiveInput(ptr.get());
+    }
+    return false;
+  }
 };
 
 struct MainWindow final {
@@ -245,7 +261,7 @@ struct MainWindow final {
       callOnMeshThread(shContext, [&]() { _windowContext->inputMaster.update(*window.get()); });
 
       for (auto &event : _windowContext->inputMaster.getEvents()) {
-        if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event)) {
+        if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event.event)) {
           bool handleClose = _handleCloseEvent->isNone() || (bool)*_handleCloseEvent;
           if (handleClose) {
             throw MainWindowQuitException();

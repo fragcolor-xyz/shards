@@ -81,7 +81,8 @@ public:
   //     apply(event, true /* hasFocus */);
   //   }
   //  });
-  template <typename T> void update(T callback) {
+  using UpdateApplyFn = decltype([](const ConsumableEvent &consumableEvent, bool hasFocus){});
+  template <typename T> std::enable_if_t<std::is_invocable_v<T, UpdateApplyFn>> update(T callback) {
     swapBuffers();
 
     virtualInputEvents.clear();
@@ -99,6 +100,11 @@ public:
     synthesizeMouseEvents(newState);
 
     state = newState;
+  }
+
+  void update(InputState& state) {
+    beginUpdate();
+    endUpdate(state);
   }
 
   // called before endUpdate, apply() can be called with SDL_Events after this
@@ -122,7 +128,7 @@ private:
   // any non-consumed event will be handled normally
   // consumed events will only contribute to loss-of-focus & button/key release events
   void apply(const ConsumableEvent &consumableEvent, bool hasFocus, InputState &newState) {
-    bool consumed = consumableEvent.consumed;
+    bool consumed = consumableEvent.isConsumed();
     auto &buffer = buffers[getBufferIndex(1)];
     std::visit(
         [&](auto &&arg) {

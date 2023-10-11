@@ -234,4 +234,3 @@ pub extern "C" fn shardsRegister_physics_physics(core: *mut shards::shardsc::SHC
   queries::register_shards();
   forces::register_shards();
 }
-
