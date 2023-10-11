@@ -604,8 +604,13 @@ public:
 template <class SH_CORE> struct TOwnedVar : public SHVar {
   TOwnedVar() : SHVar() {}
   TOwnedVar(TOwnedVar &&other) : SHVar() {
-    std::swap<SHVar>(*this, other);
-    SH_CORE::destroyVar(other);
+    // if the variable has foreign flag we don't want to destroy it and we want to clone it!
+    if (other.flags & SHVAR_FLAGS_FOREIGN) {
+      SH_CORE::cloneVar(*this, other);
+    } else {
+      std::swap<SHVar>(*this, other);
+      SH_CORE::destroyVar(other);
+    }
   }
   TOwnedVar(const TOwnedVar &other) : SHVar() { SH_CORE::cloneVar(*this, other); }
   TOwnedVar(const SHVar &source) : SHVar() { SH_CORE::cloneVar(*this, source); }
@@ -618,8 +623,13 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
     return *this;
   }
   TOwnedVar &operator=(TOwnedVar &&other) {
-    std::swap<SHVar>(*this, other);
-    SH_CORE::destroyVar(other);
+    // if the variable has foreign flag we don't want to destroy it and we want to clone it!
+    if (other.flags & SHVAR_FLAGS_FOREIGN) {
+      SH_CORE::cloneVar(*this, other);
+    } else {
+      std::swap<SHVar>(*this, other);
+      SH_CORE::destroyVar(other);
+    }
     return *this;
   }
   ~TOwnedVar() { reset(); }
@@ -635,6 +645,14 @@ template <class SH_CORE> struct TOwnedVar : public SHVar {
     }
     // use default SHVar comparison
     return static_cast<const SHVar &>(*this) < static_cast<const SHVar &>(other);
+  }
+
+  template <typename T> static TOwnedVar Foreign(const T &source) {
+    Var s(source);
+    TOwnedVar res{};
+    std::swap<SHVar>(res, s);
+    res.flags |= SHVAR_FLAGS_FOREIGN;
+    return res;
   }
 };
 
