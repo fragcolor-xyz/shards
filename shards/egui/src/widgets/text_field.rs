@@ -23,6 +23,7 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANYS_TYPES;
 use shards::types::BOOL_TYPES_SLICE;
+use shards::types::BOOL_VAR_OR_NONE_SLICE;
 use shards::types::NONE_TYPES;
 use shards::types::STRING_TYPES;
 use std::cmp::Ordering;
@@ -34,6 +35,12 @@ lazy_static! {
       cstr!("Variable"),
       shccstr!("The variable that holds the input value."),
       STRING_VAR_SLICE,
+    )
+      .into(),
+    (
+      cstr!("JustifyWidth"),
+      shccstr!("Whether to take up the all available space for its desired width."),
+      BOOL_VAR_OR_NONE_SLICE,
     )
       .into(),
     (
@@ -59,6 +66,7 @@ impl Default for TextField {
       parents,
       requiring: Vec::new(),
       variable: ParamVar::default(),
+      justify_width: ParamVar::default(),
       multiline: false,
       exposing: Vec::new(),
       should_expose: false,
@@ -114,8 +122,9 @@ impl LegacyShard for TextField {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => self.variable.set_param(value),
-      1 => Ok(self.multiline = value.try_into()?),
-      2 => Ok(self.password = value.try_into()?),
+      1 => self.justify_width.set_param(value),
+      2 => Ok(self.multiline = value.try_into()?),
+      3 => Ok(self.password = value.try_into()?),
       _ => Err("Invalid parameter index"),
     }
   }
@@ -123,8 +132,9 @@ impl LegacyShard for TextField {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.variable.get_param(),
-      1 => self.multiline.into(),
-      2 => self.password.into(),
+      1 => self.justify_width.get_param(),
+      2 => self.multiline.into(),
+      3 => self.password.into(),
       _ => Var::default(),
     }
   }
@@ -191,6 +201,7 @@ impl LegacyShard for TextField {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.parents.warmup(ctx);
     self.variable.warmup(ctx);
+    self.justify_width.warmup(ctx);
 
     if self.should_expose {
       // new string
@@ -202,6 +213,7 @@ impl LegacyShard for TextField {
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
+    self.justify_width.cleanup();
     self.variable.cleanup();
     self.parents.cleanup();
 
@@ -224,6 +236,13 @@ impl LegacyShard for TextField {
       } else {
         egui::TextEdit::singleline(text).password(self.password)
       };
+      let text_edit =
+        if !self.justify_width.get().is_none() && self.justify_width.get().try_into()? {
+          text_edit.desired_width(f32::INFINITY)
+        } else {
+          text_edit
+        };
+
       let response = ui.add(text_edit);
 
       if response.changed() || response.lost_focus() {

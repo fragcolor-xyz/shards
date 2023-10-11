@@ -131,13 +131,13 @@ pub fn expose_contents_variables(exposing: &mut ExposedTypes, contents: &ShardsV
 
 pub fn get_current_context_from_var<'a>(
   context_stack_var: &Var,
-) -> Result<&'a UIContext, &'static str> {
+) -> Result<&'a mut UIContext, &'static str> {
   Ok(unsafe { get_object_from_var(&context_stack_var, &EGUI_CTX_TYPE)? })
 }
 
 pub fn get_current_context<'a>(
   context_stack_var: &ParamVar,
-) -> Result<&'a UIContext, &'static str> {
+) -> Result<&'a mut UIContext, &'static str> {
   return get_current_context_from_var(context_stack_var.get());
 }
 

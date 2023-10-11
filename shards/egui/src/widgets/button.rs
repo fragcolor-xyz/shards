@@ -4,6 +4,7 @@
 use crate::util;
 use crate::widgets::text_util;
 use crate::ANY_TABLE_SLICE;
+use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
 use shards::core::register_shard;
@@ -28,10 +29,6 @@ use shards::types::SHARDS_OR_NONE_TYPES;
 #[derive(shard)]
 #[shard_info("UI.Button", "Clickable button with text.")]
 struct Button {
-  #[shard_warmup]
-  parents: ParamVar,
-  #[shard_required]
-  requiring: ExposedTypes,
   #[shard_param("Label", "The text label of this button.", STRING_VAR_SLICE)]
   label: ParamVar,
   #[shard_param(
@@ -44,17 +41,24 @@ struct Button {
   style: ClonedVar,
   #[shard_param("Wrap", "Wrap the text depending on the layout.", BOOL_OR_NONE_SLICE)]
   wrap: ClonedVar,
+  #[shard_warmup]
+  contexts: ParamVar,
+  #[shard_warmup]
+  parents: ParamVar,
+  #[shard_required]
+  required: ExposedTypes,
 }
 
 impl Default for Button {
   fn default() -> Self {
     Self {
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
-      requiring: Vec::new(),
       label: ParamVar::default(),
       action: ShardsVar::default(),
       wrap: ClonedVar::default(),
       style: ClonedVar::default(),
+      required: Vec::new(),
     }
   }
 }
@@ -85,10 +89,11 @@ impl Shard for Button {
     self.compose_helper(data)?;
 
     // Add UI.Parents to the list of required variables
-    util::require_parents(&mut self.requiring);
+    util::require_context(&mut self.required);
+    util::require_parents(&mut self.required);
 
     self.action.compose(data)?;
-    shards::util::require_shards_contents(&mut self.requiring, &self.action);
+    shards::util::require_shards_contents(&mut self.required, &self.action);
 
     Ok(common_type::bool)
   }
@@ -121,6 +126,8 @@ impl Shard for Button {
         button = button.wrap(wrap);
       }
 
+      let mut button_clicked = false;
+
       let response = ui.add(button);
       if response.clicked() {
         let mut output = Var::default();
@@ -129,11 +136,15 @@ impl Shard for Button {
         }
 
         // button clicked during this frame
-        return Ok(true.into());
+        button_clicked = true;
       }
 
+      // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
+      let ctx = util::get_current_context(&self.contexts)?;
+      ctx.prev_response = Some(response);
+
       // button not clicked during this frame
-      Ok(false.into())
+      Ok(button_clicked.into())
     } else {
       Err("No UI parent")
     }

@@ -707,20 +707,16 @@ struct WritePNG : public FileBase {
     // demultiply alpha if needed, limited to 4 channels
     if (c == 4 && (input.payload.imageValue.flags & SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) == SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA) {
       _scratch.resize(w * h * 4 * pixsize);
-      for (int ih = 0; ih < h; ih++) {
-        for (int iw = 0; iw < w; iw++) {
-          switch (pixsize) {
-          case 1:
-            Imaging::demultiplyAlpha<uint8_t>(input, _scratch, w, h);
-            break;
-          case 2:
-            Imaging::demultiplyAlpha<uint16_t>(input, _scratch, w, h);
-            break;
-          case 4:
-            Imaging::demultiplyAlpha<float>(input, _scratch, w, h);
-            break;
-          }
-        }
+      switch (pixsize) {
+      case 1:
+        Imaging::demultiplyAlpha<uint8_t>(input, _scratch, w, h);
+        break;
+      case 2:
+        Imaging::demultiplyAlpha<uint16_t>(input, _scratch, w, h);
+        break;
+      case 4:
+        Imaging::demultiplyAlpha<float>(input, _scratch, w, h);
+        break;
       }
 
       // all done, write the file or buffer

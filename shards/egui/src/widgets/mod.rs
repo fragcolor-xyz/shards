@@ -147,6 +147,7 @@ struct TextField {
   parents: ParamVar,
   requiring: ExposedTypes,
   variable: ParamVar,
+  justify_width: ParamVar,
   multiline: bool,
   exposing: ExposedTypes,
   should_expose: bool,

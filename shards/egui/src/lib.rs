@@ -5,17 +5,14 @@
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
 use crate::layouts::LAYOUT_FRAME_TYPE;
+use egui::Response;
 use shards::core::cloneVar;
 use shards::core::register_enum;
 use shards::fourCharacterCode;
-use shards::shard::LegacyShard;
 use shards::shardsc;
 use shards::types::ClonedVar;
 use shards::types::common_type;
-use shards::types::ExposedTypes;
 use shards::types::OptionalString;
-use shards::types::ParamVar;
-use shards::types::ShardsVar;
 use shards::types::Type;
 use shards::types::Var;
 use shards::types::FRAG_CC;
@@ -32,6 +29,7 @@ extern crate lazy_static;
 
 pub static ANY_TABLE_SLICE: &[Type] = &[common_type::any_table, common_type::any_table_var];
 pub static ANY_VAR_SLICE: &[Type] = &[common_type::any, common_type::any_var];
+pub static BOOL_VAR_SLICE: &[Type] = &[common_type::bool, common_type::bool_var];
 pub static COLOR_VAR_OR_NONE_SLICE: &[Type] = &[
   common_type::color,
   common_type::color_var,
@@ -128,6 +126,7 @@ pub struct Context {
   pub egui_ctx: egui::Context,
   // Drag and drop value container
   pub dnd_value: RefCell<ClonedVar>,
+  pub prev_response: Option<Response>,
 }
 
 mod egui_host;

@@ -1,195 +1,144 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
-use super::Window;
-use super::WindowFlags;
-use crate::ANCHOR_TYPES;
-use crate::Anchor;
+use crate::containers::WindowFlags;
 use crate::containers::SEQ_OF_WINDOW_FLAGS;
 use crate::containers::WINDOW_FLAGS_TYPE;
 use crate::util;
-use crate::CONTEXTS_NAME;
-use crate::FLOAT2_VAR_SLICE;
+use crate::Anchor;
+use crate::ANCHOR_TYPES;
+use crate::BOOL_VAR_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use crate::PARENTS_UI_NAME;
-use shards::shard::LegacyShard;
-use shards::types::common_type;
-use shards::types::Context;
-use shards::types::ExposedInfo;
-use shards::types::ExposedTypes;
-use shards::types::InstanceData;
+use shards::cstr;
+use shards::shard;
+use shards::shard::Shard;
+use shards::shard_impl;
 use shards::types::OptionalString;
-use shards::types::ParamVar;
-use shards::types::Parameters;
-
-use shards::types::Seq;
-use shards::types::ShardsVar;
-use shards::types::Type;
-use shards::types::Types;
-use shards::types::Var;
 use shards::types::ANY_TYPES;
-use shards::types::INT_OR_NONE_TYPES_SLICE;
-use shards::types::SHARDS_OR_NONE_TYPES;
-use shards::types::STRING_TYPES;
-use shards::types::STRING_VAR_OR_NONE_SLICE;
+use shards::types::WireState;
+use shards::types::{
+  common_type, Context, ExposedInfo, ExposedTypes, InstanceData, ParamVar, Seq, ShardsVar, Type,
+  Types, Var, SHARDS_OR_NONE_TYPES, STRING_TYPES,
+};
+
+use crate::{CONTEXTS_NAME, FLOAT2_VAR_SLICE, PARENTS_UI_NAME};
+use shards::{
+  core::register_shard,
+  types::{BOOL_OR_NONE_SLICE, INT_OR_NONE_TYPES_SLICE, STRING_VAR_OR_NONE_SLICE},
+};
 
 lazy_static! {
   static ref WINDOW_FLAGS_OR_SEQ_TYPES: Vec<Type> = vec![*WINDOW_FLAGS_TYPE, *SEQ_OF_WINDOW_FLAGS];
-  static ref WINDOW_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Title"),
-      shccstr!("The window title displayed on the titlebar."),
-      &STRING_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Position"),
-      shccstr!("Absolute position; or when anchor is set, relative offset."),
-      FLOAT2_VAR_SLICE,
-    )
-      .into(),
-    (
-      cstr!("Anchor"),
-      shccstr!("Corner or center of the screen."),
-      &ANCHOR_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Width"),
-      shccstr!("The width of the rendered window."),
-      INT_OR_NONE_TYPES_SLICE,
-    )
-      .into(),
-    (
-      cstr!("Height"),
-      shccstr!("The height of the rendered window."),
-      INT_OR_NONE_TYPES_SLICE,
-    )
-      .into(),
-    (
-      cstr!("Flags"),
-      shccstr!("Window flags."),
-      &WINDOW_FLAGS_OR_SEQ_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("Contents"),
-      shccstr!("The UI contents."),
-      &SHARDS_OR_NONE_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("ID"),
-      shccstr!("An optional ID value to make the window unique if the title name collides."),
-      &STRING_VAR_OR_NONE_SLICE[..],
-    )
-      .into(),
-  ];
 }
 
-impl Default for Window {
+#[derive(shard)]
+#[shard_info(
+  "UI.Window",
+  "Creates a floating window which can be dragged, closed, collapsed, and resized."
+)]
+struct WindowShard {
+  #[shard_param("Title", "The window title displayed on the titlebar.", STRING_VAR_OR_NONE_SLICE)]
+  pub title: ParamVar,
+  #[shard_param(
+    "Position",
+    "Absolute position; or when anchor is set, relative offset.",
+    FLOAT2_VAR_SLICE
+  )]
+  pub position: ParamVar,
+  #[shard_param("Anchor", "Corner or center of the screen.", ANCHOR_TYPES)]
+  pub anchor: ParamVar,
+  #[shard_param("Width", "The width of the rendered window.", INT_OR_NONE_TYPES_SLICE)]
+  pub width: ParamVar,
+  #[shard_param(
+    "Height",
+    "The height of the rendered window.",
+    INT_OR_NONE_TYPES_SLICE
+  )]
+  pub height: ParamVar,
+  #[shard_param(
+    "Closed",
+    "When provided with a callback, this window will have a close button and call this when pressed.",
+    SHARDS_OR_NONE_TYPES,
+  )]
+  pub closed: ShardsVar,
+  #[shard_param("Flags", "Window flags.", WINDOW_FLAGS_OR_SEQ_TYPES)]
+  pub flags: ParamVar,
+  #[shard_param(
+    "ID",
+    "An optional ID value to make the window unique if the title name collides.",
+    STRING_VAR_OR_NONE_SLICE
+  )]
+  pub id: ParamVar,
+  pub cached_id: Option<egui::Id>,
+  #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
+  pub contents: ShardsVar,
+  #[shard_warmup]
+  contexts: ParamVar,
+  #[shard_warmup]
+  parents: ParamVar,
+  #[shard_required]
+  required: ExposedTypes,
+  has_close_button: bool,
+}
+
+impl Default for WindowShard {
   fn default() -> Self {
-    let mut ctx = ParamVar::default();
-    ctx.set_name(CONTEXTS_NAME);
-    let mut parents = ParamVar::default();
-    parents.set_name(PARENTS_UI_NAME);
     Self {
-      instance: ctx,
-      requiring: Vec::new(),
-      title: ParamVar::new(Var::ephemeral_string("My Window")),
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
+      parents: ParamVar::new_named(PARENTS_UI_NAME),
+      title: ParamVar::default(),
       position: ParamVar::default(),
       anchor: ParamVar::default(),
       width: ParamVar::default(),
       height: ParamVar::default(),
+      closed: ShardsVar::default(),
       flags: ParamVar::default(),
-      contents: ShardsVar::default(),
-      parents,
       id: ParamVar::default(),
       cached_id: None,
+      contents: ShardsVar::default(),
+      required: Vec::new(),
+      has_close_button: false,
     }
   }
 }
 
-impl LegacyShard for Window {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("UI.Window")
-  }
-
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("UI.Window-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "UI.Window"
-  }
-
-  fn help(&mut self) -> OptionalString {
-    OptionalString(shccstr!(
-      "Creates a floating window which can be dragged, closed, collapsed, and resized."
-    ))
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shard_impl]
+impl Shard for WindowShard {
+  fn input_types(&mut self) -> &Types {
     &ANY_TYPES
   }
 
-  fn inputHelp(&mut self) -> OptionalString {
+  fn input_help(&mut self) -> OptionalString {
     OptionalString(shccstr!(
       "The value that will be passed to the Contents shards of the rendered window."
     ))
   }
 
-  fn outputTypes(&mut self) -> &Types {
+  fn output_types(&mut self) -> &Types {
     &ANY_TYPES
   }
 
-  fn outputHelp(&mut self) -> OptionalString {
+  fn output_help(&mut self) -> OptionalString {
     *HELP_OUTPUT_EQUAL_INPUT
   }
 
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&WINDOW_PARAMETERS)
+  fn warmup(&mut self, context: &Context) -> Result<(), &str> {
+    self.warmup_helper(context)?;
+
+    Ok(())
   }
 
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => self.title.set_param(value),
-      1 => self.position.set_param(value),
-      2 => self.anchor.set_param(value),
-      3 => self.width.set_param(value),
-      4 => self.height.set_param(value),
-      5 => self.flags.set_param(value),
-      6 => self.contents.set_param(value),
-      7 => self.id.set_param(value),
-      _ => Err("Invalid parameter index"),
-    }
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.cleanup_helper()?;
+
+    Ok(())
   }
 
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.title.get_param(),
-      1 => self.position.get_param(),
-      2 => self.anchor.get_param(),
-      3 => self.width.get_param(),
-      4 => self.height.get_param(),
-      5 => self.flags.get_param(),
-      6 => self.contents.get_param(),
-      7 => self.id.get_param(),
-      _ => Var::default(),
-    }
-  }
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
 
-  fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
-
-    util::require_context(&mut self.requiring);
-    util::require_parents(&mut self.requiring);
+    util::require_context(&mut self.required);
+    util::require_parents(&mut self.required);
 
     if self.id.is_variable() {
       let id_info = ExposedInfo {
@@ -198,69 +147,28 @@ impl LegacyShard for Window {
         help: cstr!("The ID variable.").into(),
         ..ExposedInfo::default()
       };
-      self.requiring.push(id_info);
+      self.required.push(id_info);
     }
 
-    Some(&self.requiring)
-  }
+    self.contents.compose(data)?;
 
-  fn hasCompose() -> bool {
-    true
-  }
-
-  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    if !self.contents.is_empty() {
-      self.contents.compose(&data)?;
+    self.has_close_button = !self.closed.is_empty();
+    if self.has_close_button {
+      self.closed.compose(data)?;
     }
 
     // Always passthrough the input
     Ok(data.inputType)
   }
 
-  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.instance.warmup(ctx);
-    self.parents.warmup(ctx);
-
-    self.title.warmup(ctx);
-    self.position.warmup(ctx);
-    self.anchor.warmup(ctx);
-    self.width.warmup(ctx);
-    self.height.warmup(ctx);
-    self.flags.warmup(ctx);
-    if !self.contents.is_empty() {
-      self.contents.warmup(ctx)?;
-    }
-    self.id.warmup(ctx);
-
-    self.cached_id = None;
-
-    Ok(())
-  }
-
-  fn cleanup(&mut self) -> Result<(), &str> {
-    if !self.contents.is_empty() {
-      self.contents.cleanup();
-    }
-    self.flags.cleanup();
-    self.height.cleanup();
-    self.width.cleanup();
-    self.anchor.cleanup();
-    self.position.cleanup();
-    self.title.cleanup();
-
-    self.parents.cleanup();
-    self.instance.cleanup();
-    self.id.cleanup();
-
-    Ok(())
-  }
-
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
-    let gui_ctx = &util::get_current_context(&self.instance)?.egui_ctx;
+    // If the window should be drawn this frame
+    let gui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
 
+    let mut open = true;
     let mut failed = false;
     if !self.contents.is_empty() {
-      let title: &str = self.title.get().try_into()?;
+      let title: &str = self.title.get().try_into().unwrap_or_default();
       let mut window = egui::Window::new(title);
 
       if let Ok(id) = <&str>::try_from(self.id.get()) {
@@ -287,9 +195,7 @@ impl LegacyShard for Window {
       } else {
         let offset: (f32, f32) = self.position.get().try_into().unwrap_or_default();
         let anchor: Anchor = self.anchor.get().try_into()?;
-        window.anchor(anchor.into(),
-          offset,
-        )
+        window.anchor(anchor.into(), offset)
       };
 
       let width = self.width.get();
@@ -306,7 +212,14 @@ impl LegacyShard for Window {
           .default_height(height as f32)
       }
 
-      for bits in Window::try_get_flags(self.flags.get())? {
+      if self.has_close_button {
+        // if close button is enabled, it must be provided with a state variable for tracking whether window is open
+        // this open variable is to provide a way for other Shards to be notified of the window being closed
+        window = window.open(&mut open);
+      }
+      // else, if no closable provided, then default to false, which does nothing
+
+      for bits in WindowShard::try_get_flags(self.flags.get())? {
         match (WindowFlags { bits }) {
           WindowFlags::NoTitleBar => {
             window = window.title_bar(false);
@@ -344,6 +257,13 @@ impl LegacyShard for Window {
       if failed {
         return Err("Failed to activate window contents");
       }
+
+      if !open {
+        let mut tmp = Var::default();
+        if self.closed.activate(context, input, &mut tmp) == WireState::Error {
+          return Err("Failed to activate close callback");
+        }
+      }
     }
 
     // Always passthrough the input
@@ -351,21 +271,25 @@ impl LegacyShard for Window {
   }
 }
 
-impl Window {
+impl WindowShard {
   fn try_get_flags(var: &Var) -> Result<Vec<i32>, &str> {
     match var.valueType {
-      crate::shardsc::SHType_Enum => Ok(vec![unsafe {
+      shards::SHType_Enum => Ok(vec![unsafe {
         var.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue
       }]),
-      crate::shardsc::SHType_Seq => {
+      shards::SHType_Seq => {
         let seq: Seq = var.try_into()?;
         seq
           .iter()
           .map(|v| Ok(unsafe { v.payload.__bindgen_anon_1.__bindgen_anon_3.enumValue }))
           .collect()
       }
-      crate::shardsc::SHType_None => Ok(Vec::new()),
+      shards::SHType_None => Ok(Vec::new()),
       _ => Err("Invalid type"),
     }
   }
+}
+
+pub fn register_shards() {
+  register_shard::<WindowShard>();
 }

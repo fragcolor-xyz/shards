@@ -3,10 +3,10 @@
 
 use super::image_util;
 use crate::util;
+use crate::CONTEXTS_NAME;
 use crate::FLOAT2_VAR_SLICE;
 use crate::PARENTS_UI_NAME;
 use shards::core::register_shard;
-use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::shardsc::SHType_Bool;
 use shards::shardsc::SHType_Image;
@@ -18,7 +18,6 @@ use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::ParamVar;
-use shards::types::Parameters;
 use shards::types::ShardsVar;
 use shards::types::Type;
 use shards::types::Types;
@@ -33,10 +32,6 @@ use std::ffi::CStr;
 #[derive(shard)]
 #[shard_info("UI.ImageButton", "Clickable button with image.")]
 struct ImageButton {
-  #[shard_warmup]
-  parents: ParamVar,
-  #[shard_required]
-  requiring: ExposedTypes,
   #[shard_param(
     "Action",
     "The shards to execute when the button is pressed.",
@@ -58,13 +53,20 @@ struct ImageButton {
   exposing: ExposedTypes,
   should_expose: bool,
   cached_ui_image: image_util::CachedUIImage,
+  #[shard_warmup]
+  contexts: ParamVar,
+  #[shard_warmup]
+  parents: ParamVar,
+  #[shard_required]
+  required: ExposedTypes,
 }
 
 impl Default for ImageButton {
   fn default() -> Self {
     Self {
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
-      requiring: Vec::new(),
+      required: Vec::new(),
       action: ShardsVar::default(),
       scale: ParamVar::new((1.0, 1.0).into()),
       size: ParamVar::default(),
@@ -119,7 +121,9 @@ impl Shard for ImageButton {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
-    util::require_parents(&mut self.requiring);
+
+    util::require_context(&mut self.required);
+    util::require_parents(&mut self.required);
 
     if self.selected.is_variable() {
       self.should_expose = true; // assume we expose a new variable
@@ -237,6 +241,8 @@ impl ImageButton {
       button = button.selected(selected.try_into()?);
     }
 
+    let mut button_clicked = false;
+
     let response = ui.add(button);
     if response.clicked() {
       if self.selected.is_variable() {
@@ -249,11 +255,15 @@ impl ImageButton {
       }
 
       // button clicked during this frame
-      return Ok(true.into());
+      button_clicked = true;
     }
 
+    // Store response in context to support shards like PopupWrapper, which uses a stored response in order to wrap behavior around it
+    let ctx = util::get_current_context(&self.contexts)?;
+    ctx.prev_response = Some(response);
+
     // button not clicked during this frame
-    Ok(false.into())
+    Ok(button_clicked.into())
   }
 
   impl_override_activate! {
