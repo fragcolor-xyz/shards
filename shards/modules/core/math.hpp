@@ -516,6 +516,21 @@ MATH_BINARY_INT_OPERATION(Mod, %);
 MATH_BINARY_INT_OPERATION(LShift, <<);
 MATH_BINARY_INT_OPERATION(RShift, >>);
 
+#define MATH_UNARY_OPERATION(NAME, FUNCI, FUNCF)                                              \
+  struct NAME##Op final {                                                                     \
+    template <typename T> T apply(const T &lhs) {                                             \
+      if constexpr (std::is_unsigned_v<T>) {                                                  \
+        return lhs;                                                                           \
+      } else if constexpr (std::is_integral_v<T>) {                                           \
+        return FUNCI(lhs);                                                                    \
+      } else {                                                                                \
+        return FUNCF(lhs);                                                                    \
+      }                                                                                       \
+    }                                                                                         \
+  };                                                                                          \
+  using NAME = UnaryOperation<BasicUnaryOperation<NAME##Op, DispatchType::NumberTypes>>; \
+  RUNTIME_SHARD_TYPE(Math, NAME);
+
 #define MATH_UNARY_FLOAT_OPERATION(NAME, FUNC, FUNCF)                                        \
   struct NAME##Op final {                                                                    \
     template <typename T> T apply(const T &lhs) { return FUNC(lhs); }                        \
@@ -523,7 +538,7 @@ MATH_BINARY_INT_OPERATION(RShift, >>);
   using NAME = UnaryFloatOperation<BasicUnaryOperation<NAME##Op, DispatchType::FloatTypes>>; \
   RUNTIME_SHARD_TYPE(Math, NAME);
 
-MATH_UNARY_FLOAT_OPERATION(Abs, __builtin_fabs, __builtin_fabsf);
+MATH_UNARY_OPERATION(Abs, __builtin_llabs, __builtin_fabs);
 MATH_UNARY_FLOAT_OPERATION(Exp, __builtin_exp, __builtin_expf);
 MATH_UNARY_FLOAT_OPERATION(Exp2, __builtin_exp2, __builtin_exp2f);
 MATH_UNARY_FLOAT_OPERATION(Expm1, __builtin_expm1, __builtin_expm1f);

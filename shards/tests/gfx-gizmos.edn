@@ -67,12 +67,27 @@
                                   (Gizmos.Box :Center (Float3 1 1 1) :Size (Float3 0.5 0.2 0.3) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 4)
 
                                   (Gizmos.Point :Center (Float3 1.4 1.4 1) :Color (Float4 0.4 0.4 1.0 1.0) :Thickness 16)
-                                  (Gizmos.Point :Center (Float3 -2 -0.2 1)  :Color (Float4 1.0 0.2 1.0 1.0) :Thickness 4)))
+                                  (Gizmos.Point :Center (Float3 -2 -0.2 1)  :Color (Float4 1.0 0.2 1.0 1.0) :Thickness 4)
+
+                                  (Gizmos.ScreenXY) 
+                                  (| (Take 0) = .screen-x (Once (Log "Screen X")))
+                                  (| (Take 1) = .screen-y (Once (Log "Screen Y")))
+
+
+                                  200.0 (Gizmos.ScreenScale (Float3 0 0 0)) = .gizmo-scale (Once (Log "Gizmo size"))
+                                  .gizmo-scale (Math.Multiply 100.0) = .r0
+                                  .gizmo-scale (Math.Multiply 120.0) = .r1
+                                  (Gizmos.Disc :Center (Float3 0.0) :XBase .screen-x :YBase .screen-y :InnerRadius .r0 :OuterRadius .r1
+                                    :Color (Float4 1.0 0.0 1.0 1.0) :Culling false)
+
+                                  (Gizmos.Grid (Float3 0.0) :XBase (Float3 1 0 0) :YBase (Float3 0 0 1) :Thickness 1.5)
+                                  (Gizmos.RefspaceGridOverlay (Float3 0.0) :XBase (Float3 1 0 0) :YBase (Float3 0 0 1) :Thickness 3.0)
+                                  ))
 
     ; Draw on top of everything (ignore depth)
     (Gizmos.Context :Queue .editor-queue-no-depth :View .view
                     :Contents (->
-                              .transform-0 (Gizmos.Translation) > .transform-0))
+                              .transform-0 (Gizmos.Translation 200.0) > .transform-0))
 
     (GFX.Render :Steps .render-steps :View .view))))
 

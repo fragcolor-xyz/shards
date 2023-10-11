@@ -96,7 +96,13 @@ struct GLTFShard {
   static inline Type TransformVarType = Type::VariableOf(CoreInfo::Float4x4Type);
   static inline Type AnimationTable = Type::TableOf(Animations::Types::Animation);
 
-  static SHTypesInfo inputTypes() { return CoreInfo::Float4x4Type; }
+  static inline shards::Types InputTableTypes{CoreInfo::Float4x4Type, CoreInfo::AnyType};
+  static inline std::array<SHVar, 2> InputTableKeys{Var("transform"), Var()};
+  static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
+
+  static inline shards::Types InputTypes{CoreInfo::Float4x4Type, InputTable};
+
+  static SHTypesInfo inputTypes() { return InputTypes; }
   static SHTypesInfo outputTypes() { return Types::Drawable; }
 
   PARAM_PARAMVAR(_path, "Path", "The path to load the model from",
@@ -126,6 +132,8 @@ struct GLTFShard {
   bool _dynamicsApplied{};
   TableVar _animations;
 
+  bool _hasInputTable{};
+
   MeshTreeDrawable::Ptr &getMeshTreeDrawable() { return std::get<MeshTreeDrawable::Ptr>(_drawable->drawable); }
 
   bool hasAnimationController() const { return _animController.shards().len > 0; }
@@ -134,6 +142,7 @@ struct GLTFShard {
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
+    _hasInputTable = data.inputType.basicType == SHType::Table;
     bool havePath = !_path.isNone();
     bool haveBytes = !_bytes.isNone();
     bool haveCopy = !_copy.isNone();
@@ -346,6 +355,107 @@ struct GLTFShard {
     }
   }
 
+  bool isFloat4x4(const SHVar &var) {
+    return var.valueType == SHType::Seq && var.innerType == SHType::Float4 && var.payload.seqValue.len == 4;
+  }
+  bool isValidPath(const SHVar &var) {
+    for (auto &elem : var.payload.seqValue) {
+      if (elem.valueType != SHType::String)
+        return false;
+    }
+    return true;
+  }
+
+  void applyInputTable(SHContext *context, const TableVar &table) {
+    auto &transformVar = table["transform"];
+    if (!transformVar->isNone()) {
+      getMeshTreeDrawable()->trs = toFloat4x4(transformVar);
+    }
+
+    auto &materialsTable = (TableVar &)table["materials"];
+    if (materialsTable.valueType != SHType::None) {
+      if (materialsTable.valueType != SHType::Table)
+        throw std::runtime_error("materials should be a table");
+      for (auto &[k, v] : materialsTable.payload.tableValue) {
+        if (k.valueType != SHType::String)
+          throw std::runtime_error(fmt::format("material key should be a string ({})", k));
+        if (v.valueType != SHType::Table)
+          throw std::runtime_error(fmt::format("material value for {} should be a table ({})", k, v));
+
+        auto material = _model->materials[k.payload.stringValue];
+        if (!material) {
+          SHLOG_WARNING("Material not found {}", k);
+          continue;
+        }
+
+        auto &table = (TableVar &)v;
+
+        auto &drawableParams = table["params"];
+        if (!drawableParams->isNone()) {
+          if (drawableParams.valueType != SHType::Table)
+            throw std::runtime_error(fmt::format("params for key {} should be a table (v)", k, v));
+          initShaderParams(context, drawableParams.payload.tableValue, material->parameters);
+        }
+      }
+    }
+
+    for (auto &[k, v] : table) {
+      if (k.valueType == SHType::Seq) {
+        if (!isValidPath(k)) {
+          throw std::runtime_error(fmt::format("Invalid path {}", k));
+        }
+
+        Animations::Path path(k);
+        auto node = findNode(path);
+        if (!node) {
+          SHLOG_WARNING("glTF Node not found {}", k);
+          continue;
+        }
+
+        if (v.valueType != SHType::Table)
+          throw std::runtime_error(fmt::format("Node data for key {} should be a table, was: {}", k, v));
+        auto &valueTable = (TableVar &)v;
+
+        auto &translation = valueTable["translation"];
+        if (!translation->isNone()) {
+          if (translation.valueType != SHType::Float3)
+            throw std::runtime_error(fmt::format("translation for key {} should be a float3", k));
+          node->trs.translation = toFloat3(translation);
+        }
+
+        auto &rotation = valueTable["rotation"];
+        if (!rotation->isNone()) {
+          if (rotation.valueType != SHType::Float4)
+            throw std::runtime_error(fmt::format("rotation for key {} should be a float3", k));
+          node->trs.rotation = toFloat4(rotation);
+        }
+
+        auto &scale = valueTable["scale"];
+        if (!scale->isNone()) {
+          if (scale.valueType != SHType::Float3)
+            throw std::runtime_error(fmt::format("scale for key {} should be a float3", k));
+          node->trs.scale = toFloat3(scale);
+        }
+
+        auto &transform = valueTable["transform"];
+        if (!transform->isNone()) {
+          if (transform.valueType != SHType::Seq)
+            throw std::runtime_error(fmt::format("transform for key {} should be a float4x4", k));
+          node->trs = toFloat4x4(transform);
+        }
+
+        auto &drawableParams = valueTable["params"];
+        if (!drawableParams->isNone()) {
+          if (drawableParams.valueType != SHType::Table)
+            throw std::runtime_error(fmt::format("params for key {} should be a table", k));
+          for (auto &d : node->drawables) {
+            initShaderParams(context, drawableParams.payload.tableValue, d->parameters);
+          }
+        }
+      }
+    }
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &drawable = getMeshTreeDrawable();
     if (!drawable) {
@@ -392,7 +502,11 @@ struct GLTFShard {
       applyAnimationData((SeqVar &)animationData);
     }
 
-    drawable->trs = toFloat4x4(input);
+    if (_hasInputTable) {
+      applyInputTable(context, (TableVar &)input);
+    } else {
+      drawable->trs = toFloat4x4(input);
+    }
 
     // Only apply recursive parameters once
     if (!_dynamicsApplied) {

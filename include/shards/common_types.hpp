@@ -110,8 +110,7 @@ struct CoreInfo {
 
   static inline Types IntsVar{{IntType, IntSeqType, IntVarType, IntVarSeqType}};
 
-  static inline Types TakeTypes{
-      {IntType, IntSeqType, IntVarType, IntVarSeqType, StringType, StringSeqType, StringVarType, StringVarSeqType}};
+  static inline Types TakeTypes{AnyType, AnyVarType};
 
   static inline Types RTakeTypes{{IntType, IntSeqType, IntVarType, IntVarSeqType}};
 

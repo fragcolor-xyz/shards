@@ -5,7 +5,7 @@ namespace gfx {
 namespace gizmos {
 void Context::begin(const InputState &inputState, ViewPtr view) {
   input.begin(inputState, view);
-  renderer.begin(view, inputState.viewSize);
+  renderer.begin(view, inputState.viewportSize);
 }
 void Context::updateGizmo(IGizmo &gizmo) {
   gizmo.update(input);

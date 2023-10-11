@@ -926,34 +926,25 @@ struct Erase : SeqUser {
     auto isTable = info->exposedType.basicType == SHType::Table;
 
     // Figure if we output a sequence or not
-    if (_indices->valueType == SHType::Seq) {
-      if (_indices->payload.seqValue.len > 0) {
-        if ((_indices->payload.seqValue.elements[0].valueType == SHType::Int && !isTable) ||
-            (_indices->payload.seqValue.elements[0].valueType == SHType::String && isTable)) {
-          valid = true;
-        }
-      }
-    } else if ((!isTable && _indices->valueType == SHType::Int) || (isTable && _indices->valueType == SHType::String)) {
+    if (isTable) {
       valid = true;
-    } else { // SHType::ContextVar
-      for (auto &info : data.shared) {
-        if (info.name == SHSTRVIEW((*_indices))) {
-          if (info.exposedType.basicType == SHType::Seq && info.exposedType.seqTypes.len == 1 &&
-              ((info.exposedType.seqTypes.elements[0].basicType == SHType::Int && !isTable) ||
-               (info.exposedType.seqTypes.elements[0].basicType == SHType::String && isTable))) {
-            valid = true;
-            break;
-          } else if (info.exposedType.basicType == SHType::Int && !isTable) {
-            valid = true;
-            break;
-          } else if (info.exposedType.basicType == SHType::String && isTable) {
-            valid = true;
-            break;
-          } else {
-            auto msg =
-                "Take indices variable " + std::string(info.name) + " expected to be either SHType::Seq, SHType::Int or String";
-            throw SHException(msg);
-          }
+    } else if (_indices->valueType == SHType::Seq) {
+      if (_indices->payload.seqValue.len > 0 && _indices->payload.seqValue.elements[0].valueType == SHType::Int) {
+        valid = true;
+      }
+    } else if (_indices->valueType == SHType::Int) {
+      valid = true;
+    } else { // SHType::ContextVar && !isTable
+      auto info = findExposedVariable(data.shared, SHSTRVIEW((*_indices)));
+      if (info) {
+        if (info->exposedType.basicType == SHType::Seq && info->exposedType.seqTypes.len == 1 &&
+            info->exposedType.seqTypes.elements[0].basicType == SHType::Int) {
+          valid = true;
+        } else if (info->exposedType.basicType == SHType::Int) {
+          valid = true;
+        } else {
+          auto msg = "Take indices variable " + std::string(info->name) + " expected to be either SHType::Seq, SHType::Int";
+          throw SHException(msg);
         }
       }
     }
@@ -1000,9 +991,9 @@ private:
       {"Indices", SHCCSTR("One or multiple indices to filter from a sequence."), CoreInfo::TakeTypes},
       {"Name", SHCCSTR("The name of the variable."), CoreInfo::StringOrAnyVar},
       {"Key",
-       SHCCSTR("The key of the value to read/write from/in the table (this "
+       SHCCSTR("The key of the value to erase from the table (this "
                "variable will become a table)."),
-       {CoreInfo::StringType}},
+       {CoreInfo::AnyType}},
       {"Global",
        SHCCSTR("If the variable is or should be available to all of the wires "
                "in the same mesh."),
@@ -1018,7 +1009,7 @@ struct Assoc : public VariableBase {
       {"Key",
        SHCCSTR("Table key for the value that is to be updated. Parameter "
                "applicable if target is table."),
-       {CoreInfo::StringStringVarOrNone}},
+       {CoreInfo::AnyType}},
       {"Global",
        SHCCSTR("If the variable is or should be available to all the wires in "
                "the same mesh. The default value (false) makes the variable "
@@ -1094,9 +1085,6 @@ struct Assoc : public VariableBase {
         auto &t = _cell->payload.tableValue;
         for (uint32_t i = 0; i < n; i++) {
           auto &k = input.payload.seqValue.elements[(i * 2) + 0];
-          if (k.valueType != SHType::String) {
-            throw ActivationError("Expected a SHType::String for key.");
-          }
           auto &v = input.payload.seqValue.elements[(i * 2) + 1];
           SHVar *record = t.api->tableAt(t, k);
           cloneVar(*record, v);

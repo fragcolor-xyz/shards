@@ -21,6 +21,17 @@ using namespace linalg::aliases;
 namespace shards {
 namespace input {
 
+enum ModifierKey {
+  None,
+  Shift,
+  Alt,
+  // Usually the control or cmd key on apple
+  Primary,
+  // Usually the windows key or control key on appl
+  Secondary
+};
+DECL_ENUM_INFO(ModifierKey, ModifierKey, 'mdIf');
+
 struct Base {
   RequiredInputContext _inputContext;
 
@@ -43,9 +54,7 @@ struct MousePixelPos : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    return CoreInfo::Int2Type;
-  }
+  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::Int2Type; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &state = _inputContext->getState();
@@ -378,6 +387,9 @@ template <bool Pressed> struct KeyUpDown : public Base {
     case 2:
       _repeat = value.payload.boolValue;
       break;
+    case 3:
+      _modifiers = value;
+      break;
     default:
       break;
     }
@@ -391,9 +403,57 @@ template <bool Pressed> struct KeyUpDown : public Base {
       return _shards;
     case 2:
       return Var(_repeat);
+    case 3:
+      return _modifiers;
     default:
       throw InvalidParameterIndex();
     }
+  }
+
+  SDL_Keymod convertModifierKeys(const SHVar &input) {
+    SDL_Keymod result = KMOD_NONE;
+    if (!_modifiers->isNone()) {
+      auto &seq = (SeqVar &)*_modifiers;
+      for (auto &mod_ : seq) {
+        auto &mod = (ModifierKey &)mod_.payload.enumValue;
+        switch (mod) {
+        case ModifierKey::Shift:
+          (uint16_t &)result |= KMOD_SHIFT;
+          break;
+        case ModifierKey::Alt:
+          (uint16_t &)result |= KMOD_ALT;
+          break;
+        case ModifierKey::Primary:
+          (uint16_t &)result |= KMOD_PRIMARY;
+          break;
+        case ModifierKey::Secondary:
+          (uint16_t &)result |= KMOD_SECONDARY;
+          break;
+        default:
+          break;
+        }
+      }
+    }
+    return result;
+  }
+
+  bool matchModifiers(SDL_Keymod a, SDL_Keymod mask) {
+    auto check = [&](SDL_Keymod mod) {
+      if ((mask & mod) == mod) {
+        if ((a & mod) == 0)
+          return false;
+      }
+      return true;
+    };
+    if (!check(KMOD_CTRL))
+      return false;
+    if (!check(KMOD_ALT))
+      return false;
+    if (!check(KMOD_GUI))
+      return false;
+    if (!check(KMOD_SHIFT))
+      return false;
+    return true;
   }
 
   void cleanup() {
@@ -404,6 +464,7 @@ template <bool Pressed> struct KeyUpDown : public Base {
   void warmup(SHContext *context) {
     _shards.warmup(context);
     baseWarmup(context);
+    _modifierMask = convertModifierKeys(_modifiers);
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -415,8 +476,7 @@ template <bool Pressed> struct KeyUpDown : public Base {
     auto &events = _inputContext->getEvents();
     for (auto &event : events) {
       if (const KeyEvent *ke = std::get_if<KeyEvent>(&event)) {
-        if (ke->pressed == Pressed && ke->key == _keyCode) {
-
+        if (ke->pressed == Pressed && ke->key == _keyCode && matchModifiers(ke->modifiers, _modifierMask)) {
           if (_repeat || ke->repeat == 0) {
             SHVar output{};
             _shards.activate(context, input, output);
@@ -429,12 +489,17 @@ template <bool Pressed> struct KeyUpDown : public Base {
   }
 
 private:
+  static inline Type ModifierKeysType = Type::SeqOf(ModifierKeyEnumInfo::Type);
+
   static inline Parameters _params = {
       {"Key", SHCCSTR("TODO!"), {{CoreInfo::StringType}}},
       {"Action", SHCCSTR("TODO!"), {CoreInfo::ShardsOrNone}},
       {"Repeat", SHCCSTR("TODO!"), {{CoreInfo::BoolType}}},
+      {"Modifiers", SHCCSTR("Modifier keys to check."), {{CoreInfo::NoneType, ModifierKeysType}}},
   };
 
+  OwnedVar _modifiers;
+  SDL_Keymod _modifierMask;
   ShardsVar _shards{};
   std::string _key;
   SDL_Keycode _keyCode;
@@ -537,6 +602,9 @@ struct HandleURL : public Base {
 
 SHARDS_REGISTER_FN(inputs) {
   using namespace shards::input;
+
+  REGISTER_ENUM(ModifierKeyEnumInfo);
+
   REGISTER_SHARD("Inputs.Size", InputRegionSize);
   REGISTER_SHARD("Inputs.MousePixelPos", MousePixelPos);
   REGISTER_SHARD("Inputs.MousePos", MousePos);

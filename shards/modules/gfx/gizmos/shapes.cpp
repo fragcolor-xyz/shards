@@ -33,11 +33,13 @@ struct LineShard : public Base {
   PARAM_PARAMVAR(_a, "A", "Starting position of the line", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_b, "B", "Ending position of the line", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the line", {CoreInfo::Float4Type, Type::VariableOf(CoreInfo::Float4Type)});
-  PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space", {CoreInfo::IntType, CoreInfo::FloatType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space",
+            {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_a), PARAM_IMPL_FOR(_b), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_a->valueType == SHType::None)
       throw ComposeError("A is required");
@@ -76,12 +78,14 @@ struct CircleShard : public Base {
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the circle is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_radius, "Radius", "Radius", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the circle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_VAR(_thickness, "Thickness", "Width of the circle in screen space", {CoreInfo::IntType, CoreInfo::FloatType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the circle in screen space",
+            {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_radius),
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -128,12 +132,14 @@ struct RectShard : public Base {
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_size, "Size", "Size of the rectange", {CoreInfo::Float2Type, CoreInfo::Float2VarType});
   PARAM_PARAMVAR(_color, "Color", "Rectanglear color of the rectangle", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_VAR(_thickness, "Thickness", "Width of the rectangle in screen space", {CoreInfo::IntType, CoreInfo::FloatType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the rectangle in screen space",
+            {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_xBase), PARAM_IMPL_FOR(_yBase), PARAM_IMPL_FOR(_size),
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -178,12 +184,14 @@ struct BoxShard : public Base {
   PARAM_PARAMVAR(_transform, "Transform", "Transform applied to the box",
                  {CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
   PARAM_PARAMVAR(_color, "Color", "Boxar color of the box", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_VAR(_thickness, "Thickness", "Width of the box in screen space", {CoreInfo::IntType, CoreInfo::FloatType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the box in screen space",
+            {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_size), PARAM_IMPL_FOR(_transform), PARAM_IMPL_FOR(_color),
              PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("A is required");
@@ -223,11 +231,13 @@ struct PointShard : public Base {
 
   PARAM_PARAMVAR(_center, "Center", "Center of the point", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_color, "Color", "Pointar color of the point", {CoreInfo::Float4Type, CoreInfo::Float4VarType});
-  PARAM_VAR(_thickness, "Thickness", "Size of the point in screen space", {CoreInfo::IntType, CoreInfo::FloatType});
+  PARAM_VAR(_thickness, "Thickness", "Size of the point in screen space",
+            {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_center), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_thickness));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -271,7 +281,8 @@ struct SolidRectShard : public Base {
              PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -326,7 +337,8 @@ struct DiscShard : public Base {
              PARAM_IMPL_FOR(_innerRadius), PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_culling));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -379,7 +391,8 @@ struct GridShard : public Base {
   PARAM_PARAMVAR(_center, "Center", "Center of the disc", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_xBase, "XBase", "X direction of the grid", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the grid", {CoreInfo::Float3Type, CoreInfo::Float3VarType})
-  PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space", {CoreInfo::NoneType, CoreInfo::IntType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space",
+            {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_PARAMVAR(_stepSize, "StepSize", "Step size of the grid lines", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_size, "Size", "Number of grid lines", {CoreInfo::IntType, CoreInfo::IntVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the grid lines",
@@ -388,7 +401,8 @@ struct GridShard : public Base {
              PARAM_IMPL_FOR(_stepSize), PARAM_IMPL_FOR(_size), PARAM_IMPL_FOR(_color));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -404,7 +418,7 @@ struct GridShard : public Base {
     auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
 
-    int thickness = _thickness->isNone() ? 1 : int32_t(*_thickness);
+    float thickness = thicknessOrDefault(_thickness);
 
     Var &stepSizeVar = (Var &)_stepSize.get();
     float stepSize = stepSizeVar.isNone() ? 1.0f : float(stepSizeVar);
@@ -453,7 +467,8 @@ struct RefSpaceGridOverlayShard : public Base {
   PARAM_PARAMVAR(_center, "Center", "Center of the disc", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_xBase, "XBase", "X direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_yBase, "YBase", "Y direction of the plane the disc is on", {CoreInfo::Float3Type, CoreInfo::Float3VarType});
-  PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space", {CoreInfo::NoneType, CoreInfo::IntType});
+  PARAM_VAR(_thickness, "Thickness", "Width of the line in screen space",
+            {CoreInfo::NoneType, CoreInfo::IntType, CoreInfo::FloatType});
   PARAM_PARAMVAR(_stepSize, "StepSize", "Step size of the grid lines", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_color, "Color", "Linear color of the grid lines",
                  {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
@@ -461,7 +476,8 @@ struct RefSpaceGridOverlayShard : public Base {
              PARAM_IMPL_FOR(_stepSize), PARAM_IMPL_FOR(_color));
 
   SHTypeInfo compose(SHInstanceData &data) {
-    gfx::composeCheckGfxThread(data);
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
 
     if (_center->valueType == SHType::None)
       throw ComposeError("Center is required");
@@ -477,7 +493,7 @@ struct RefSpaceGridOverlayShard : public Base {
     auto &gizmoRenderer = _gizmoContext->gfxGizmoContext.renderer;
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
 
-    int thickness = _thickness->isNone() ? 1 : int32_t(*_thickness);
+    float thickness = thicknessOrDefault(_thickness);
 
     Var &stepSizeVar = (Var &)_stepSize.get();
     float stepSize = stepSizeVar.isNone() ? 1.0f : float(stepSizeVar);
@@ -537,7 +553,82 @@ struct RefSpaceGridOverlayShard : public Base {
   }
 };
 
+struct ScreenXY : public Base {
+  static inline Type OutputType = Type::SeqOf(CoreInfo::Float3Type);
+
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return OutputType; }
+  static SHOptionalString help() { return SHCCSTR("Outputs an X and Y direction that are aligned with the current view"); }
+
+  PARAM_IMPL();
+
+  SeqVar _output;
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    baseWarmup(context);
+
+    _output.resize(2);
+    _output[0].valueType = SHType::Float3;
+    _output[1].valueType = SHType::Float3;
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    baseCleanup();
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto axes = _gizmoContext->gfxGizmoContext.input.getScreenSpacePlaneAxes();
+    reinterpret_cast<Vec3 &>(_output[0]) = axes[0];
+    reinterpret_cast<Vec3 &>(_output[1]) = axes[1];
+    return _output;
+  }
+};
+
+struct ScreenScale : public Base {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::FloatType; }
+  static SHOptionalString help() { return SHCCSTR("Outputs a scaling factor to give an object a uniform size on the screen"); }
+
+  PARAM_PARAMVAR(_position, "Position", "The point in space at which the object is rendered",
+                 {CoreInfo::Float3Type, CoreInfo::Float3VarType})
+  PARAM_IMPL(PARAM_IMPL_FOR(_position));
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    baseWarmup(context);
+  }
+
+  void cleanup() {
+    PARAM_CLEANUP();
+    baseCleanup();
+  }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose();
+    if (_position.isNone())
+      throw ComposeError("Position is required");
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    float scale = _gizmoContext->gfxGizmoContext.renderer.getConstantScreenSize((Vec3 &)_position.get(), (float)(Var &)input);
+    return Var(scale);
+  }
+};
+
 void registerShapeShards() {
+  REGISTER_SHARD("Gizmos.ScreenScale", ScreenScale);
+  REGISTER_SHARD("Gizmos.ScreenXY", ScreenXY);
   REGISTER_SHARD("Gizmos.Line", LineShard);
   REGISTER_SHARD("Gizmos.Circle", CircleShard);
   REGISTER_SHARD("Gizmos.Rect", RectShard);

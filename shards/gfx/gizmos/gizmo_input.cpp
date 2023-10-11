@@ -64,12 +64,12 @@ void InputContext::end() {
   if (held && !heldHandleUpdated)
     held = nullptr;
 
-  if (held && !inputState.pressed) {
+  if (held && !inputState.held) {
     Handle &handle = *held;
     assert(handle.callbacks);
     handle.callbacks->released(*this, handle);
     held = nullptr;
-  } else if (!held && hovering && !prevInputState.pressed && inputState.pressed) {
+  } else if (!held && hovering && inputState.pressed) {
     held = hovering;
     Handle &handle = *hovering;
     assert(handle.callbacks);
@@ -78,35 +78,29 @@ void InputContext::end() {
 }
 
 void InputContext::updateView(ViewPtr view) {
-  float2 ndc2 = float2(inputState.cursorPosition) / float2(inputState.viewSize);
+  float2 ndc2 = float2(inputState.cursorPosition) / float2(inputState.inputSize);
   ndc2 = ndc2 * 2.0f - 1.0f;
   ndc2.y = -ndc2.y;
   float4 ndc = float4(ndc2, 0.1f, 1.0f);
 
-  cachedViewProj = linalg::mul(view->getProjectionMatrix(inputState.viewSize), view->view);
+  cachedViewProj = linalg::mul(view->getProjectionMatrix(inputState.viewportSize), view->view);
   cachedViewProjInv = linalg::inverse(cachedViewProj);
-  float4x4 viewInv = linalg::inverse(view->view);
+  cachedViewInv = linalg::inverse(view->view);
 
   float4 unprojected = linalg::mul(cachedViewProjInv, ndc);
   unprojected /= unprojected.w;
 
-  eyeLocation = viewInv.w.xyz();
+  eyeLocation = extractTranslation(cachedViewInv);
   rayDirection = linalg::normalize(unprojected.xyz() - eyeLocation);
 }
 
-float3x3 InputContext::getScreenSpacePlaneAxes() const {
-  float3 yBase = getUpVector();
-  float3 normal = getForwardVector();
-  float3 xBase = linalg::normalize(linalg::cross(yBase, normal));
+float3x3 InputContext::getScreenSpacePlaneAxes() const { return {getRightVector(), getUpVector(), getForwardVector()}; }
 
-  return {xBase, yBase, normal};
-}
+float3 InputContext::getRightVector() const { return cachedViewInv.x.xyz(); }
 
-float3 InputContext::getRightVector() const { return linalg::normalize(cachedViewProjInv[0].xyz() / cachedViewProjInv[3].w); }
+float3 InputContext::getUpVector() const { return cachedViewInv.y.xyz(); }
 
-float3 InputContext::getUpVector() const { return linalg::normalize(cachedViewProjInv[1].xyz() / cachedViewProjInv[3].w); }
-
-float3 InputContext::getForwardVector() const { return linalg::normalize(cachedViewProjInv[2].xyz() / cachedViewProjInv[3].w); }
+float3 InputContext::getForwardVector() const { return -cachedViewInv.z.xyz(); }
 
 } // namespace gizmos
 } // namespace gfx

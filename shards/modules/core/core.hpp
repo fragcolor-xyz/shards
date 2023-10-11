@@ -392,21 +392,16 @@ struct OnCleanup {
     if (_context) {
       // cleanup might be called multiple times
       SHVar output{};
-      std::string error;
-      if (_context->failed()) {
-        error = _context->getErrorMessage();
-      }
+
+      auto snapshot = _context->takeStateSnapshot();
+
       // we need to reset the state or only the first shard will run
       _context->continueFlow();
       _context->onCleanup = true; // this is kind of a hack
-      _shards.activate(_context, shards::Var(error), output);
-      // restore the terminal state
-      if (error.size() > 0) {
-        _context->cancelFlow(error);
-      } else {
-        // var should not matter at this point
-        _context->stopFlow(shards::Var::Empty);
-      }
+      _shards.activate(_context, shards::Var(snapshot.errorMessage), output);
+
+      _context->restoreStateSnapshot(std::move(snapshot));
+
       _context = nullptr;
     }
     // and cleanup after

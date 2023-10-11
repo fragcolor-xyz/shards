@@ -12,7 +12,6 @@
 #include <vector>
 #include <shards/shards.hpp>
 
-
 namespace gfx {
 struct Window;
 struct Renderer;
@@ -58,6 +57,9 @@ struct GraphicsRendererContext {
 typedef shards::RequiredContextVariable<GraphicsRendererContext, GraphicsRendererContext::Type,
                                         GraphicsRendererContext::VariableName>
     RequiredGraphicsRendererContext;
+typedef shards::RequiredContextVariable<GraphicsRendererContext, GraphicsRendererContext::Type,
+                                        GraphicsRendererContext::VariableName, false>
+    OptionalGraphicsRendererContext;
 
 inline void composeCheckGfxThread(const SHInstanceData &data) {
   if (data.onWorkerThread) {

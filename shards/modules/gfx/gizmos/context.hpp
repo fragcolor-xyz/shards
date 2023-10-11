@@ -4,6 +4,7 @@
 #include "../gfx.hpp"
 #include <shards/common_types.hpp>
 #include <shards/core/foundation.hpp>
+#include <shards/core/params.hpp>
 #include <gfx/fwd.hpp>
 #include <gfx/gizmos/gizmos.hpp>
 #include <gfx/gizmos/wireframe.hpp>
@@ -32,14 +33,14 @@ struct Base {
 
   void baseWarmup(SHContext *context) { _gizmoContext.warmup(context); }
   void baseCleanup() { _gizmoContext.cleanup(); }
-  SHExposedTypesInfo baseRequiredVariables() {
-    static auto e = exposedTypesOf(RequiredGizmoContext::getExposedTypeInfo());
-    return e;
+  void baseCompose() {
+    _requiredVariables.push_back(RequiredGizmoContext::getExposedTypeInfo());
   }
 
   void warmup(SHContext *context) { baseWarmup(context); }
   void cleanup() { baseCleanup(); }
-  SHExposedTypesInfo requiredVariables() { return baseRequiredVariables(); }
+
+  PARAM_REQUIRED_VARIABLES();
 };
 
 } // namespace Gizmos
