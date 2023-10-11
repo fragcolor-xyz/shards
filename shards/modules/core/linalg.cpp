@@ -462,6 +462,45 @@ struct QuaternionMultiply {
   }
 };
 
+struct QuaternionSlerp {
+  Vec4 _output{};
+
+  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
+  static SHOptionalString help() { return SHCCSTR("Rotate a quaternion by another quaternion"); }
+
+  PARAM_PARAMVAR(_a, "First", "The first value", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
+  PARAM_PARAMVAR(_b, "Second", "The second value", {shards::CoreInfo::Float4Type, shards::CoreInfo::Float4VarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_a), PARAM_IMPL_FOR(_b));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup() { PARAM_CLEANUP(); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (_a.isNone()) {
+      throw ActivationError("Expected a value");
+    }
+
+    if (_b.isNone()) {
+      throw ActivationError("Expected a value");
+    }
+
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    float factor = input.payload.floatValue;
+    auto a = *reinterpret_cast<Vec4 *>(&_a.get());
+    auto b = *reinterpret_cast<Vec4 *>(&_b.get());
+    _output = linalg::slerp(a, b, factor);
+    return _output;
+  }
+};
+
 struct QuaternionRotate {
   Vec3 _output{};
 
@@ -522,4 +561,5 @@ SHARDS_REGISTER_FN(linalg) {
   REGISTER_SHARD("Math.Project", Project);
   REGISTER_SHARD("Math.QuatMultiply", QuaternionMultiply);
   REGISTER_SHARD("Math.QuatRotate", QuaternionRotate);
+  REGISTER_SHARD("Math.Slerp", QuaternionSlerp);
 }
