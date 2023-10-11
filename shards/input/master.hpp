@@ -48,10 +48,12 @@ struct FocusTracker {
   }
 };
 
+struct InputMaster;
+
 struct IInputHandler {
   virtual ~IInputHandler() = default;
   virtual int getPriority() const { return 0; }
-  virtual void handle(const InputState &state, std::vector<ConsumableEvent> &events, FocusTracker &focusTracker) = 0;
+  virtual void handle(InputMaster& master) = 0;
 };
 
 struct InputMaster {
@@ -60,7 +62,9 @@ private:
   std::vector<std::shared_ptr<IInputHandler>> handlersLocked;
   std::shared_mutex mutex;
 
-  EventBuffer<Frame<ConsumableEvent>> eventBuffer;
+  // EventBuffer<Frame<ConsumableEvent>> eventBuffer;
+
+  std::vector<ConsumableEvent> events;
 
   boost::lockfree::spsc_queue<Message> messageQueue;
 
@@ -71,13 +75,15 @@ private:
 
   bool terminateRequested{};
 
+  std::thread::id thisThreadId{};
+
 public:
   InputMaster();
   ~InputMaster();
 
   bool isTerminateRequested() const { return terminateRequested; }
 
-  void postMessage(const Message &message) { messageQueue.push(message); }
+  void postMessage(const Message &message);
 
   void addHandler(std::shared_ptr<IInputHandler> ptr) {
     std::unique_lock<decltype(mutex)> l(mutex);
@@ -94,9 +100,11 @@ public:
   }
 
   const InputState &getState() const { return state; }
-  const std::vector<Event> &getEvents() const { return input.virtualInputEvents; }
+  std::vector<ConsumableEvent> &getEvents() { return events; }
+  FocusTracker& getFocusTracker() { return focusTracker; }
 
 private:
+  void handleMessage(const Message &message);
   void updateAndSortHandlers();
 
   // Assumes already locked

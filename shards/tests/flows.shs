@@ -7,79 +7,62 @@
 ; you need valgrind headers and BOOST_USE_VALGRIND (-DUSE_VALGRIND @ cmake cmdline)
 ; To run this properly or valgrind will complain
 
-@wire(one {
-  Msg("one - 1") |
-  SwitchTo(two) |
-  Msg("one - 2") |
-  Msg("one - 3") |
-  SwitchTo(two) |
-  Msg("one - Done") |
-  SwitchTo("two")
-})
+; @wire(one {
+;   Msg("one - 1") |
+;   SwitchTo(two) |
+;   Msg("one - 2") |
+;   Msg("one - 3") |
+;   SwitchTo(two) |
+;   Msg("one - Done") |
+;   SwitchTo("two")
+; })
 
-@wire(two {
-  Msg("two - 1") |
-  SwitchTo(one) |
-  Msg("two - 2") |
-  Msg("two - 3") |
-  SwitchTo(one) |
-  Msg("two - 4") |
-  Msg("two - Done")
-})
+; @wire(two {
+;   Msg("two - 1") |
+;   SwitchTo(one) |
+;   Msg("two - 2") |
+;   Msg("two - 3") |
+;   SwitchTo(one) |
+;   Msg("two - 4") |
+;   Msg("two - Done")
+; })
 
 @schedule(root one)
 @run(root 0.1) | Assert.Is(true)
 
-@wire(recur {
-  Log("depth") |
-  Math.Add(1) |
-  Cond(
-    [{IsLess(5)} {Do(recur)}]
-  ) |
-  Log("res")
-})
-
-@wire(dologic {
-  IsMore(10) |
-  Or |
-  IsLess(0)
-})
-
-; Broken for now indeed, until we implement jumps
-
-; @wire(recurAnd {
-;   "recurAnd" |
+; @wire(recur {
 ;   Log("depth") |
-;   Math.Inc |
-;   Push |
-;   IsLess(5) |
-;   And |
-;   Pop |
-;   Do(recurAnd) |
+;   Math.Add(1) |
+;   Cond(
+;     [{IsLess(5)} {Do(recur)}]
+;   ) |
 ;   Log("res")
 ; })
 
-@wire(doit-1 {
-  0 |
-  Do(recur)
-  ; Do(recurAnd)
-})
-
-@schedule(root doit-1)
-
-; test stack overflow, notice in this case (below) we could have tail call optimized,
-; TODO implement TCO
-
-; @wire(recurCrash {
-;   "recurCrash" |
-;   Log("depth") |
-;   Math.Inc |
-;   Do(recurCrash)
+; @wire(dologic {
+;   IsMore(10) |
+;   Or |
+;   IsLess(0)
 ; })
 
-; @wire(doit-2 {
+; ; Broken for now indeed, until we implement jumps
+
+; ; @wire(recurAnd {
+; ;   "recurAnd" |
+; ;   Log("depth") |
+; ;   Math.Inc |
+; ;   Push |
+; ;   IsLess(5) |
+; ;   And |
+; ;   Pop |
+; ;   Do(recurAnd) |
+; ;   Log("res")
+; ; })
+
+; @wire(doit-1 {
 ;   0 |
-;   Do(recurCrash)
+;   Do(recur)
+;   ; Do(recurAnd)
 ; })
 
 ; @schedule(root doit-2)

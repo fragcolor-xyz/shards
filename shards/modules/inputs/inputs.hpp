@@ -19,7 +19,7 @@ struct ConsumeFlags {
   bool wantsKeyboardInput{};
   bool requestFocus{};
 
-  ConsumeFlags& mergeWith(const ConsumeFlags &other) {
+  ConsumeFlags &mergeWith(const ConsumeFlags &other) {
     wantsPointerInput = wantsPointerInput || other.wantsPointerInput;
     wantsKeyboardInput = wantsKeyboardInput || other.wantsKeyboardInput;
     requestFocus = requestFocus || other.requestFocus;
@@ -42,7 +42,7 @@ struct IInputContext {
 
   virtual void postMessage(const Message &message) = 0;
   virtual const InputState &getState() const = 0;
-  virtual const std::vector<Event> &getEvents() const = 0;
+  virtual std::vector<ConsumableEvent> &getEvents() = 0;
 
   // Writable, controls how events are consumed
   virtual ConsumeFlags &getConsumeFlags() = 0;

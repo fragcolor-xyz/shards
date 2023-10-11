@@ -73,7 +73,7 @@ struct MouseDelta : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     float2 delta{};
     for (auto &event : _inputContext->getEvents()) {
-      if (const PointerMoveEvent *pme = std::get_if<PointerMoveEvent>(&event)) {
+      if (const PointerMoveEvent *pme = std::get_if<PointerMoveEvent>(&event.event)) {
         delta += pme->delta;
       }
     }
@@ -277,7 +277,7 @@ template <bool Pressed> struct MouseUpDown : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     // TODO: Input
     for (auto &event : _inputContext->getEvents()) {
-      if (const PointerButtonEvent *pbe = std::get_if<PointerButtonEvent>(&event)) {
+      if (const PointerButtonEvent *pbe = std::get_if<PointerButtonEvent>(&event.event)) {
         if (pbe->pressed == Pressed) {
           SHVar output{};
           if (pbe->index == SDL_BUTTON_LEFT) {
@@ -475,7 +475,7 @@ template <bool Pressed> struct KeyUpDown : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &events = _inputContext->getEvents();
     for (auto &event : events) {
-      if (const KeyEvent *ke = std::get_if<KeyEvent>(&event)) {
+      if (const KeyEvent *ke = std::get_if<KeyEvent>(&event.event)) {
         if (ke->pressed == Pressed && ke->key == _keyCode && matchModifiers(ke->modifiers, _modifierMask)) {
           if (_repeat || ke->repeat == 0) {
             SHVar output{};

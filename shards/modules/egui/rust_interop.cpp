@@ -62,8 +62,8 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
                                            const SHVar &inputContextVar, float scalingFactor) {
   IInputContext &inputContext = varAsObjectChecked<IInputContext>(inputContextVar, IInputContext::Type);
 
-  static std::vector<Event> noEvents{};
-  const std::vector<Event> *eventsPtr = &noEvents;
+  static std::vector<ConsumableEvent> noEvents{};
+  const std::vector<ConsumableEvent> *eventsPtr = &noEvents;
   int4 mappedWindowRegion{};
 
   InputRegion region = inputContext.getState().region;

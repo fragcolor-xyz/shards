@@ -119,7 +119,7 @@ egui::PointerButton translateMouseButton(uint32_t button) {
   }
 }
 
-bool EguiInputTranslator::translateEvent(const shards::input::Event &event) {
+bool EguiInputTranslator::translateEvent(const shards::input::ConsumableEvent &event) {
   using egui::InputEvent;
   using egui::InputEventType;
 
@@ -193,7 +193,7 @@ bool EguiInputTranslator::translateEvent(const shards::input::Event &event) {
           imeComposing = false;
         }
       },
-      event);
+      event.event);
   return handled;
 }
 

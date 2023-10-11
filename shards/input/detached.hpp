@@ -36,7 +36,7 @@ public:
   void apply(const SDL_Event &event) {
     auto &buffer = buffers[getBufferIndex(1)];
     if (event.type == SDL_MOUSEWHEEL) {
-      buffer.scrollDelta = event.wheel.preciseY;
+      buffer.scrollDelta += event.wheel.preciseY;
     } else if (event.type == SDL_TEXTEDITING) {
       auto &ievent = event.edit;
 
@@ -81,7 +81,8 @@ public:
   //     apply(event, true /* hasFocus */);
   //   }
   //  });
-  template <typename T> void update(T callback) {
+  using UpdateApplyFn = decltype([](const ConsumableEvent &consumableEvent, bool hasFocus){});
+  template <typename T> std::enable_if_t<std::is_invocable_v<T, UpdateApplyFn>> update(T callback) {
     swapBuffers();
 
     virtualInputEvents.clear();
@@ -99,6 +100,11 @@ public:
     synthesizeMouseEvents(newState);
 
     state = newState;
+  }
+
+  void update(InputState& state) {
+    beginUpdate();
+    endUpdate(state);
   }
 
   // called before endUpdate, apply() can be called with SDL_Events after this

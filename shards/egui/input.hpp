@@ -16,7 +16,7 @@ struct EguiInputTranslatorPrivate;
 
 #ifndef RUST_BINDGEN
 struct EguiInputTranslatorArgs {
-  const std::vector<shards::input::Event> &events;
+  const std::vector<shards::input::ConsumableEvent> &events;
   double time;
   float deltaTime;
   // The sizes of the input surface
@@ -54,7 +54,7 @@ public:
   // Resets the conversion output
   void begin(double time, float deltaTime);
   // Takes the SDL event and return true when it was converted into an egui event
-  bool translateEvent(const shards::input::Event &event);
+  bool translateEvent(const shards::input::ConsumableEvent &event);
   // Finalizes the egui::Input result
   void end();
 

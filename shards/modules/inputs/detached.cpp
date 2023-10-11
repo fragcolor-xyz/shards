@@ -1,7 +1,8 @@
 #include <shards/modules/gfx/gfx.hpp>
 #include <shards/modules/gfx/window.hpp>
 #include <shards/core/params.hpp>
-#include <shards/core/brancher.hpp>
+#include <shards/core/capturing_brancher.hpp>
+#include <shards/iterator.hpp>
 #include <shards/core/object_var_util.hpp>
 #include <shards/iterator.hpp>
 #include <shards/modules/core/time.hpp>
@@ -10,15 +11,12 @@
 #include <shards/input/state.hpp>
 #include <shards/input/detached.hpp>
 #include <shards/core/module.hpp>
-#include <shards/registry.hpp>
 #include <input/events.hpp>
 #include <input/input.hpp>
 #include <input/input_stack.hpp>
 #include <input/log.hpp>
 #include "inputs.hpp"
 #include "debug_ui.hpp"
-#include "modules/inputs/debug_ui.hpp"
-#include "modules/inputs/inputs.hpp"
 #include <boost/lockfree/spsc_queue.hpp>
 #include <stdexcept>
 
@@ -29,12 +27,15 @@ static auto logger = getLogger();
 
 using VarQueue = boost::lockfree::spsc_queue<OwnedVar>;
 
-struct CapturedVariables {
-  std::unordered_map<std::string, OwnedVar> variables;
+using CapturedVariables = CapturingBrancher::CapturedVariables;
+struct InputThreadInput {
+  CapturedVariables variables;
+  InputStack inputStack;
 };
-using CapturedVariablesQueue = boost::lockfree::spsc_queue<CapturedVariables>;
+using InputThreadInputQueue = boost::lockfree::spsc_queue<InputThreadInput>;
 
 static inline Type WindowContextType = WindowContext::Type;
+static inline CapturingBrancher::IgnoredVariables IgnoredVariables{IInputContext::VariableName};
 
 struct GetWindowContext {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -52,26 +53,23 @@ struct GetWindowContext {
   SHVar activate(SHContext *shContext, const SHVar &input) { return _context.asVar(); }
 };
 
-using VariableRefs = std::unordered_map<std::string, SHVar *>;
+using VariableRefs = CapturingBrancher::VariableRefs;
 
 struct DetachedInputContext : public IInputContext {
   std::shared_ptr<gfx::Window> window;
   input::InputMaster *master{};
-  input::DetachedInput detached;
 
   ConsumeFlags consumeFlags{};
-
   double time{};
   float deltaTime{};
-
   InputStack inputStack;
 
   virtual InputStack &getInputStack() override { return inputStack; }
 
   virtual shards::input::InputMaster *getMaster() const override { return master; }
 
-  const input::InputState &getState() const override { return detached.state; }
-  const std::vector<input::Event> &getEvents() const override { return detached.virtualInputEvents; }
+  const input::InputState &getState() const override { return master->getState(); }
+  std::vector<ConsumableEvent> &getEvents() override { return master->getEvents(); }
 
   // Writable, controls how events are consumed
   ConsumeFlags &getConsumeFlags() override { return consumeFlags; }
@@ -82,262 +80,244 @@ struct DetachedInputContext : public IInputContext {
   void postMessage(const input::Message &message) override { master->postMessage(message); }
 };
 
+struct OutputFrame {
+  OwnedVar data;
+  void clear() { data = Var{}; }
+};
+using OutputBuffer = input::EventBuffer<OutputFrame>;
+
+struct InputThreadHandler : public IInputHandler, public debug::IDebug {
+  CapturingBrancher brancher;
+  InputThreadInputQueue inputQueue{32};
+  CapturedVariables variableState;
+
+  SHVar inputContextVar;
+  DetachedInputContext inputContext;
+
+  std::string name;
+
+  OutputBuffer &outputBuffer;
+
+  bool canReceiveInput{};
+  int priority{};
+  int4 mappedRegion;
+  shards::Time::DeltaTimer deltaTimer;
+
+  InputThreadHandler(OutputBuffer &outputBuffer, int priority) : outputBuffer(outputBuffer), priority(priority) {}
+
+  const std::vector<input::ConsumableEvent> *getDebugFrame(size_t frameIndex) override { return nullptr; }
+  size_t getLastFrameIndex() const override {
+    return 0;
+    // return inputBuffer.head > 0 ? inputBuffer.head - 1 : 0;
+  }
+  const char *getDebugName() override { return name.c_str(); }
+  debug::ConsumeFlags getDebugConsumeFlags() const override { return debug::ConsumeFlags{}; }
+
+  int getPriority() const override { return priority; }
+
+  // Run on main thread activation
+  void pushInputs(const VariableRefs &variableRefs, InputStack &&inputStack) {
+    CapturedVariables newVariables;
+    for (auto &vr : variableRefs) {
+      newVariables[vr.first] = *vr.second;
+    }
+    inputQueue.push(InputThreadInput{newVariables, inputStack});
+  }
+
+  void warmup(const VariableRefs &initialVariableRefs, InputStack &&inputStack) {
+    brancher.mesh()->refs[RequiredInputContext::variableName()] = &inputContextVar;
+    inputContextVar = Var::Object(&inputContext, IInputContext::Type);
+
+    pushInputs(initialVariableRefs, std::move(inputStack));
+    applyCapturedVariables();
+    brancher.warmup();
+  }
+
+  bool wantToConsumeEvent(const Event &event) {
+    // if (wantsPointerInput) {
+    //   if (std::get_if<PointerMoveEvent>(&event) || std::get_if<PointerButtonEvent>(&event) ||
+    //       std::get_if<ScrollEvent>(&event)) {
+    //     return true;
+    //   }
+    // }
+    // if (wantsKeyboardInput) {
+    //   if (std::get_if<KeyEvent>(&event) || std::get_if<TextEvent>(&event) || std::get_if<TextCompositionEvent>(&event) ||
+    //       std::get_if<TextCompositionEndEvent>(&event)) {
+    //     return true;
+    //   }
+    // }
+    return false;
+  }
+
+  bool isCursorWithinRegion{};
+
+  // Runs on input thread callback
+  void handle(InputMaster &master) override {
+    auto &inputStack = inputContext.inputStack;
+    auto baseRegion = getWindowInputRegion(*inputContext.window.get());
+    mappedRegion = int4(0, 0, baseRegion.pixelSize.x, baseRegion.pixelSize.y);
+    if (inputStack.getTop().windowMapping) {
+      auto &windowRegion = inputStack.getTop().windowMapping.value();
+      std::visit(
+          [&](const auto &arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, input::WindowSubRegion>) {
+              mappedRegion = arg.region;
+            } else {
+              throw std::logic_error("Unsupported window region");
+            }
+          },
+          windowRegion);
+    }
+
+    double deltaTime = deltaTimer.update();
+    inputContext.deltaTime = deltaTime;
+    inputContext.time += deltaTime;
+
+    auto &state = master.getState();
+
+    float2 pixelCursorPos = state.cursorPosition * (float2(state.region.pixelSize) / state.region.size);
+    isCursorWithinRegion = pixelCursorPos.x >= mappedRegion.x && pixelCursorPos.x <= mappedRegion[2] &&
+                           pixelCursorPos.y >= mappedRegion.y && pixelCursorPos.y <= mappedRegion[3];
+
+    // Only request focus if cursor is within region or we already have focus
+    // if (/* requestFocus && */ (isCursorWithinRegion || focusTracker.hasFocus(this))) {
+    //   canReceiveInput = focusTracker.requestFocus(this);
+    // } else if (isCursorWithinRegion) {
+    //   canReceiveInput = focusTracker.canReceiveInput(this);
+    // } else {
+    //   canReceiveInput = false;
+    // }
+
+    // Update captured variable references
+    applyCapturedVariables();
+    brancher.activate();
+
+    auto &mainWire = brancher.wires().back();
+
+    auto &frame = outputBuffer.getNextFrame();
+    frame.data = mainWire->previousOutput;
+    outputBuffer.nextFrame();
+  }
+
+private:
+  void applyCapturedVariables() {
+    inputQueue.consume_all([this](InputThreadInput &input) {
+      variableState = std::move(input.variables);
+      brancher.applyCapturedVariables(variableState);
+      inputContext.inputStack = std::move(input.inputStack);
+    });
+  }
+};
+
 struct Detached {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("Runs the contents on the input thread, and it's continuation on the current thread with the last data from "
+                   "the input thread");
+  }
+
   PARAM_PARAMVAR(_context, "Context", "The window context to attach to", {Type::VariableOf(WindowContextType)});
-  PARAM(OwnedVar, _inputShards, "HandleInputs", "Runs on input thread to determine what inputs are consumed",
+  PARAM_VAR(_inputShards, "Input", "Runs detached on the input loop", IntoWire::RunnableTypes);
+  PARAM(ShardsVar, _mainShards, "Then", "Runs inline after data has been output from the Input callback",
         {CoreInfo::ShardsOrNone});
-  PARAM(ShardsVar, _mainShards, "Contents", "Runs on input thread to determine what inputs are consumed",
-        {CoreInfo::ShardsOrNone});
+  PARAM_VAR(
+      _useOutput, "UseOutput",
+      "Use output from input call as shard output. WARNING: this will block until the next input loop runs for the first time",
+      {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_VAR(_priority, "Priority", "The order in which this input handler is run", {CoreInfo::IntType});
   PARAM_VAR(_name, "Name", "Name used for logging/debugging purposes", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_context), PARAM_IMPL_FOR(_inputShards), PARAM_IMPL_FOR(_mainShards), PARAM_IMPL_FOR(_priority),
              PARAM_IMPL_FOR(_name));
 
-  struct Frame {
-    std::vector<input::ConsumableEvent> events;
-    bool canReceiveInput{};
-    bool isCursorWithinRegion{};
-    InputRegion region;
-
-    void clear() {
-      canReceiveInput = false;
-      events.clear();
-    }
-  };
-  using EventBuffer = input::EventBuffer<Frame>;
-
-  struct InputThreadHandler : public IInputHandler, public debug::IDebug {
-    Brancher brancher;
-    CapturedVariablesQueue variables{32};
-    CapturedVariables variableState;
-
-    std::string name;
-
-    // This is the main thread's event buffer
-    EventBuffer &eventBuffer;
-
-    std::atomic<bool> requestFocus{};
-    std::atomic<bool> wantsPointerInput{};
-    std::atomic<bool> wantsKeyboardInput{};
-
-    bool canReceiveInput{};
-
-    int priority{};
-
-    int4 mappedRegion;
-
-    InputThreadHandler(EventBuffer &eventBuffer, int priority) : eventBuffer(eventBuffer), priority(priority) {}
-
-    const std::vector<input::ConsumableEvent> *getDebugFrame(size_t frameIndex) override {
-      for (auto &[gen, frame] : eventBuffer.getEvents(frameIndex, frameIndex + 1)) {
-        return &frame.events;
-      }
-      return nullptr;
-    }
-    size_t getLastFrameIndex() const override { return eventBuffer.head > 0 ? eventBuffer.head - 1 : 0; }
-    const char *getDebugName() override { return name.c_str(); }
-    debug::ConsumeFlags getDebugConsumeFlags() const override {
-      return debug::ConsumeFlags{
-          .canReceiveInput = canReceiveInput,
-          .requestFocus = requestFocus,
-          .wantsPointerInput = wantsPointerInput,
-          .wantsKeyboardInput = wantsKeyboardInput,
-      };
-    }
-
-    int getPriority() const override { return priority; }
-
-    // Run on main thread activation
-    void pushCapturedVariables(const VariableRefs &variableRefs) {
-      CapturedVariables newVariables;
-      for (auto &vr : variableRefs) {
-        newVariables.variables[vr.first] = *vr.second;
-      }
-      variables.push(newVariables);
-    }
-
-    void warmup(const VariableRefs &initialVariableRefs) {
-      pushCapturedVariables(initialVariableRefs);
-      applyCapturedVariables();
-      brancher.schedule();
-    }
-
-    bool wantToConsumeEvent(const Event &event) {
-      if (wantsPointerInput) {
-        if (std::get_if<PointerMoveEvent>(&event) || std::get_if<PointerButtonEvent>(&event) ||
-            std::get_if<ScrollEvent>(&event)) {
-          return true;
-        }
-      }
-      if (wantsKeyboardInput) {
-        if (std::get_if<KeyEvent>(&event) || std::get_if<TextEvent>(&event) || std::get_if<TextCompositionEvent>(&event) ||
-            std::get_if<TextCompositionEndEvent>(&event)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    bool isCursorWithinRegion{};
-
-    // Runs on input thread callback
-    void handle(const InputState &state, std::vector<ConsumableEvent> &events, FocusTracker &focusTracker) override {
-
-      float2 pixelCursorPos = state.cursorPosition * (float2(state.region.pixelSize) / state.region.size);
-      isCursorWithinRegion = pixelCursorPos.x >= mappedRegion.x && pixelCursorPos.x <= mappedRegion[2] &&
-                             pixelCursorPos.y >= mappedRegion.y && pixelCursorPos.y <= mappedRegion[3];
-
-      // Only request focus if cursor is within region or we already have focus
-      if (requestFocus && (isCursorWithinRegion || focusTracker.hasFocus(this))) {
-        canReceiveInput = focusTracker.requestFocus(this);
-      } else if (isCursorWithinRegion) {
-        canReceiveInput = focusTracker.canReceiveInput(this);
-      } else {
-        canReceiveInput = false;
-      }
-
-      auto &frame = eventBuffer.getNextFrame();
-      frame.region = state.region;
-      frame.canReceiveInput = canReceiveInput;
-      frame.isCursorWithinRegion = isCursorWithinRegion;
-      for (auto &event : events) {
-        frame.events.push_back(event);
-
-        if (wantToConsumeEvent(event.event) && canReceiveInput) {
-          frame.canReceiveInput = true;
-          event.consumed = true;
-        }
-      }
-
-      eventBuffer.nextFrame();
-
-      if (!brancher.wires.empty()) {
-        // Update captured variable references
-        applyCapturedVariables();
-
-        brancher.activate();
-      }
-    }
-
-  private:
-    void applyCapturedVariables() {
-      variables.consume_all([this](CapturedVariables &vars) {
-        variableState = vars;
-        for (auto &vr : variableState.variables) {
-          brancher.mesh->addRef(ToSWL(vr.first), &vr.second);
-        }
-      });
-    }
-  };
-
   std::shared_ptr<InputThreadHandler> _handler;
   VariableRefs _capturedVariables;
-  SHVar *_contextVarRef{};
-  DetachedInputContext _inputContext{};
+
+  OptionalInputContext _inputContext{};
 
   // The channel that receives input events from the input thread
-  EventBuffer _eventBuffer;
+  OutputBuffer _outputBuffer;
   size_t _lastReceivedEventBufferFrame{};
 
   // Separate timer for this input context
-  shards::Time::DeltaTimer _deltaTimer;
+  OwnedVar _lastOutput;
 
-  bool _hasParentInputContext{};
+  bool _initialized{};
 
-  Detached() { _priority = Var(0); }
-
-  bool hasInputThreadCallback() const { return _inputShards.valueType != SHType::None; }
+  Detached() {
+    _priority = Var(0);
+    _useOutput = Var(false);
+  }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
-    _handler = std::make_shared<InputThreadHandler>(_eventBuffer, (int)*_priority);
-    if (hasInputThreadCallback()) {
-      _handler->brancher.addRunnable(_inputShards);
-      _handler->brancher.compose(data);
+    _handler = std::make_shared<InputThreadHandler>(_outputBuffer, (int)*_priority);
+    _handler->brancher.addRunnable(_inputShards);
+    if (_handler->brancher.wires().empty()) {
+      throw ComposeError(fmt::format("Detached input must an Input runnable"));
     }
 
-    SHTypeInfo outputType{};
-    if (_mainShards) {
-      SHInstanceData innerData = data;
+    ExposedInfo branchShared{data.shared};
+    branchShared.push_back(RequiredInputContext::getExposedTypeInfo());
+    auto branchInstanceData = data;
+    branchInstanceData.shared = (SHExposedTypesInfo)branchShared;
+    _handler->brancher.compose(branchInstanceData, IgnoredVariables);
 
-      ExposedInfo innerExposedInfo{data.shared};
-      innerExposedInfo.push_back(IInputContext::VariableInfo);
-      innerData.shared = (SHExposedTypesInfo)innerExposedInfo;
+    for (auto req : _handler->brancher.requiredVariables()) {
+      _requiredVariables.push_back(req);
+    }
 
-      auto result = _mainShards.compose(innerData);
-      outputType = result.outputType;
+    auto &inputWire = _handler->brancher.wires().back();
+    if (!inputWire->composeResult)
+      throw ComposeError(fmt::format("Failed to compose input wire"));
+    if (inputWire->composeResult->failed)
+      throw ComposeError(fmt::format("Failed to compose input wire: {}", inputWire->composeResult->failureMessage));
+
+    auto mainInstanceData = data;
+    mainInstanceData.inputType = inputWire->outputType;
+    auto mainCr = _mainShards.compose(mainInstanceData);
+    for (auto req : mainCr.requiredInfo) {
+      _requiredVariables.push_back(req);
+    }
+
+    if ((bool)*_useOutput) {
+      return inputWire->outputType;
     } else {
-      outputType = data.inputType;
+      return data.inputType;
     }
-
-    if (findExposedVariable(data.shared, decltype(_inputContext)::VariableName)) {
-      _hasParentInputContext = true;
-    }
-
-    return outputType;
   }
 
   void warmup(SHContext *context) {
-    _contextVarRef = referenceVariable(context, IInputContext::VariableName);
-
-    withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_WARMUP(context); });
-
-    _deltaTimer.reset();
-    _inputContext.time = 0.0f;
-    _lastReceivedEventBufferFrame = 0;
+    PARAM_WARMUP(context);
+    _inputContext.warmup(context);
   }
 
   void cleanup() {
-    if (_contextVarRef)
-      withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_CLEANUP(); });
-
+    PARAM_CLEANUP();
+    _inputContext.cleanup();
+    _handler.reset();
     cleanupCaptures();
-
-    if (_contextVarRef) {
-      releaseVariable(_contextVarRef);
-      _contextVarRef = nullptr;
-    }
   }
 
   auto &getWindowContext() { return varAsObjectChecked<WindowContext>(_context.get(), WindowContextType); }
 
-  void init(SHContext *context) {
-    assert(_handler && "Handler not initialized");
-
+  void init(SHContext *context, InputStack &&inputStack) {
     auto &windowCtx = getWindowContext();
-    _inputContext.window = windowCtx.window;
-    _inputContext.master = &windowCtx.inputMaster;
 
-    // Initial window size
-    _inputContext.detached.state.region = getWindowInputRegion(*_inputContext.window.get());
-
-    if (hasInputThreadCallback()) {
-      // Setup input thread callback
-      intializeCaptures(context);
-
-      _handler->warmup(_capturedVariables);
-    }
-
+    // Setup input thread callback
+    _handler->brancher.intializeCaptures(_capturedVariables, context, IgnoredVariables);
+    _handler->warmup(_capturedVariables, std::move(inputStack));
     _handler->name = !_name->isNone() ? SHSTRVIEW(*_name) : "";
+    _handler->inputContext.window = windowCtx.window;
+    _handler->inputContext.master = &windowCtx.inputMaster;
 
     windowCtx.inputMaster.addHandler(_handler);
-  }
 
-  void intializeCaptures(SHContext *context) {
-    assert(_handler && "Handler not initialized");
-
-    auto &brancher = _handler->brancher;
-    for (const auto &req : brancher.getMergedRequirements()._innerInfo) {
-      if (!_capturedVariables.contains(req.name)) {
-        SHVar *vp = referenceVariable(context, req.name);
-        _capturedVariables.insert_or_assign(req.name, vp);
-      }
-    }
+    _initialized = true;
   }
 
   void cleanupCaptures() {
@@ -348,210 +328,60 @@ struct Detached {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_handler && "Handler not initialized");
-
     IInputContext *parentContext{};
-    if (_hasParentInputContext) {
-      parentContext = &varAsObjectChecked<IInputContext>(*_contextVarRef, IInputContext::Type);
+    if (_inputContext) {
+      parentContext = _inputContext.get();
     }
 
-    if (!_inputContext.window) {
-      init(context);
+    // Push root input region
+    InputStack inputStack;
+    if (parentContext) {
+      // Inherit parent context's input stack
+      inputStack.push(InputStack::Item(parentContext->getInputStack().getTop()));
+    } else {
+      inputStack.push(input::InputStack::Item{
+          .windowMapping = input::WindowSubRegion::fromEntireWindow(*getWindowContext().window.get()),
+      });
+    }
+
+    if (!_initialized) {
+      init(context, std::move(inputStack));
     } else {
       // Update variables used by input thread callback
-      _handler->pushCapturedVariables(_capturedVariables);
+      _handler->pushInputs(_capturedVariables, std::move(inputStack));
     }
 
-    SHVar output{};
-    if (_mainShards) {
-      withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] {
-        double deltaTime = _deltaTimer.update();
-        _inputContext.deltaTime = deltaTime;
-        _inputContext.time += deltaTime;
-        _inputContext.consumeFlags = ConsumeFlags{};
+    auto handlerInputContext = _handler->inputContext;
 
-        // Push root input region
-        auto &inputStack = _inputContext.inputStack;
-        inputStack.reset();
-        if (parentContext) {
-          // Inherit parent context's input stack
-          inputStack.push(InputStack::Item(parentContext->getInputStack().getTop()));
-        } else {
-          inputStack.push(input::InputStack::Item{
-              .windowMapping = input::WindowSubRegion::fromEntireWindow(*_inputContext.window.get()),
-          });
-        }
-
-        if (inputStack.getTop().windowMapping) {
-          auto &windowRegion = inputStack.getTop().windowMapping.value();
-          std::visit(
-              [&](const auto &arg) {
-                using T = std::decay_t<decltype(arg)>;
-                if constexpr (std::is_same_v<T, input::WindowSubRegion>) {
-                  _handler->mappedRegion = arg.region;
-                } else {
-                  throw std::logic_error("Unsupported window region");
-                }
-              },
-              windowRegion);
-        }
-
-        Frame *mostRecentFrame{};
-        _inputContext.detached.update([&](auto &apply) {
-          bool logStarted{};
-          auto eventUpdate = _eventBuffer.getEvents(_lastReceivedEventBufferFrame);
-          for (auto &[gen, frame] : eventUpdate.frames) {
-            for (ConsumableEvent &event : frame.events) {
-              if (!logStarted) {
-                SPDLOG_LOGGER_DEBUG(logger, "== Detached input begin {} == ", _handler->name);
-                logStarted = true;
-              }
-              SPDLOG_LOGGER_DEBUG(logger, "Detached event IN: {}, gen: {}, consumed: {}, focus: {}", debugFormat(event.event),
-                                  gen, event.consumed, frame.canReceiveInput);
-              apply(event, frame.canReceiveInput);
-            }
-
-            mostRecentFrame = &frame;
-          }
-          _lastReceivedEventBufferFrame = eventUpdate.lastGeneration;
-        });
-
-        // Update input region
-        if (mostRecentFrame) {
-          _inputContext.detached.state.region = mostRecentFrame->region;
-        }
-
-        for (auto &evt : _inputContext.detached.virtualInputEvents) {
-          if (!std::get_if<PointerMoveEvent>(&evt))
-            SPDLOG_LOGGER_DEBUG(logger, "Detached event OUT: {}", debugFormat(evt));
-        }
-
-        _mainShards.activate(context, input, output); //
-
-        inputStack.pop();
-
-        // Update consume callbacks
-        _handler->wantsKeyboardInput = _inputContext.consumeFlags.wantsKeyboardInput;
-        _handler->wantsPointerInput = _inputContext.consumeFlags.wantsPointerInput;
-        _handler->requestFocus = _inputContext.consumeFlags.requestFocus;
-      });
-    } else {
-      output = input;
-    }
-
-    return output;
-  }
-};
-
-#if SHARDS_WITH_EGUI
-#define HAS_INPUT_DEBUG_UI 1
-struct DebugUI {
-  RequiredInputContext _context;
-  ExposedInfo _required;
-  SHVar *_uiContext{};
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR("Shows the input system debug UI"); }
-
-  SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_required); }
-
-  static inline Type EguiUiType = Type::Object(CoreCC, 'eguU');
-  static inline Type EguiContextType = Type::Object(CoreCC, 'eguC');
-  static inline char EguiContextName[] = "UI.Contexts";
-
-  static void mergeRequiredUITypes(ExposedInfo &out) {
-    out.push_back(SHExposedTypeInfo{
-        .name = EguiContextName,
-        .exposedType = EguiContextType,
-    });
-  }
-
-  SHTypeInfo compose(SHInstanceData &data) {
-    _required.clear();
-    _required.push_back(_context.getExposedTypeInfo());
-    mergeRequiredUITypes(_required);
-
-    return CoreInfo::NoneType;
-  }
-
-  void warmup(SHContext *context) {
-    _context.warmup(context);
-    _uiContext = referenceVariable(context, EguiContextName);
-  }
-  void cleanup() {
-    _context.cleanup();
-
-    releaseVariable(_uiContext);
-    _uiContext = nullptr;
-  }
-
-  std::vector<debug::Layer> _layers;
-  std::list<std::string> _strings;
-  std::list<std::vector<const input::ConsumableEvent *>> _eventVectors;
-  std::vector<std::shared_ptr<IInputHandler>> _handlers;
-
-  SHVar activate(SHContext *shContext, const SHVar &input) {
-    _layers.clear();
-    _strings.clear();
-    _eventVectors.clear();
-
-    _context->getMaster()->getHandlers(_handlers);
-    for (auto &handler : _handlers) {
-      auto &layer = _layers.emplace_back();
-      layer.priority = handler->getPriority();
-
-      if (debug::IDebug *debug = dynamic_cast<debug::IDebug *>(handler.get())) {
-        auto &str = _strings.emplace_back(debug->getDebugName());
-        layer.name = str.c_str();
-
-        auto &vec = _eventVectors.emplace_back();
-        size_t head = debug->getLastFrameIndex();
-        const size_t historyLength = 32;
-        size_t tail = head > historyLength ? (head - historyLength) : 0;
-        for (size_t i = tail; i <= head; i++) {
-          if (auto frame = debug->getDebugFrame(i)) {
-            for (auto &evt : *frame) {
-              vec.push_back(&evt);
-            }
-          }
-        }
-
-        layer.debugEvents = (debug::OpaqueEvent *)vec.data();
-        layer.numDebugEvents = vec.size();
-
-        layer.consumeFlags = debug->getDebugConsumeFlags();
+    bool useOutput = (bool)*_useOutput;
+    if (useOutput) {
+      while (_outputBuffer.empty()) {
+        suspend(context, 0.0f);
       }
     }
 
-    shards_input_showDebugUI(_uiContext, _layers.data(), _layers.size());
-    return SHVar{};
+    bool runMainShards = _mainShards && !_outputBuffer.empty();
+    if (runMainShards || useOutput) {
+      _lastOutput = _outputBuffer.getFrame(-1).data;
+    }
+
+    if (runMainShards) {
+      SHVar _unused{};
+      _mainShards.activate(context, _lastOutput, _unused);
+    }
+
+    if (useOutput) {
+      return _lastOutput;
+    } else {
+      return input;
+    }
   }
 };
-#endif
 } // namespace input
 } // namespace shards
 
-extern "C" {
-const char *shards_input_eventToString(shards::input::debug::OpaqueEvent opaque) {
-  auto &evt = *(shards::input::ConsumableEvent *)opaque;
-  auto str = shards::input::debugFormat(evt.event);
-  auto result = strdup(str.c_str());
-  return result;
-}
-void shards_input_freeString(const char *str) { free((void *)str); }
-bool shards_input_eventIsConsumed(shards::input::debug::OpaqueEvent opaque) {
-  auto &evt = *(shards::input::ConsumableEvent *)opaque;
-  return evt.consumed;
-}
-}
-
-SHARDS_REGISTER_FN(inputs1) {
+SHARDS_REGISTER_FN(inputs_detached) {
   using namespace shards::input;
   REGISTER_SHARD("Inputs.GetContext", GetWindowContext);
   REGISTER_SHARD("Inputs.Detached", Detached);
-
-#if HAS_INPUT_DEBUG_UI
-  REGISTER_SHARD("Inputs.DebugUI", DebugUI);
-#endif
 }

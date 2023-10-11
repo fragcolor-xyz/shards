@@ -47,7 +47,7 @@ struct InlineInputContext : public IInputContext {
 
   virtual void postMessage(const Message &message) override { master->postMessage(message); }
   virtual const InputState &getState() const override { return master->getState(); }
-  virtual const std::vector<Event> &getEvents() const override { return master->getEvents(); }
+  std::vector<ConsumableEvent> &getEvents() override { return master->getEvents(); }
 
   // Writable, controls how events are consumed
   virtual ConsumeFlags &getConsumeFlags() override { return dummyConsumeFlags; }
@@ -243,7 +243,7 @@ struct MainWindow final {
       callOnMainThread([&]() { _windowContext->inputMaster.update(*window.get()); });
 
       for (auto &event : _windowContext->inputMaster.getEvents()) {
-        if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event)) {
+        if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event.event)) {
           bool handleClose = _handleCloseEvent->isNone() || (bool)*_handleCloseEvent;
           if (handleClose) {
             throw MainWindowQuitException();

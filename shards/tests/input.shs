@@ -9,18 +9,6 @@
   location | Math.Translation | Math.MatMul(rotX) | Math.MatMul(rotY) | Math.MatMul(rotZ)
 })
 
-@template(compute-rt-region-16-9 [] {
-  {Take([0 1]) >= min} |
-  {Take([0]) >= min-x} |
-  {Take([1]) >= min-y} |
-  {Take([2 3]) | Math.Subtract(min) >= size}
-  size | Take([0]) >= size-x | Math.Multiply((9.0 | Math.Divide(16.0))) >= size-y
-
-  size-x | Math.Add(min-x) >= max-x
-  size-y | Math.Add(min-y) >= max-y
-  [min-x min-y max-x max-y] | ToFloat4
-})
-
 @wire(test-wire {
   Once({
     GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) >= cube-mesh
@@ -46,14 +34,18 @@
   ) = window-ctx
 
   ; Input test code
-  Inputs.Detached(
-    window-ctx Name: "Camera" Priority: 1
-    Contents: {
-      Inputs.KeyDown("W" Action: {
-        Log("W Key down")
-      })
-    }
-  )
+  Inputs.Detached(window-ctx {
+    false >= down
+    Inputs.KeyDown("W" Action: {
+      true > down
+      Log("W Key down")
+    })
+    down
+  } {
+    When(Is(true) {
+      Log("W Key down main thread")
+    })
+  } Name: "Camera" Priority: 1)
 
   ; Debug UI & Graphics
   GFX.Renderer(
@@ -65,14 +57,14 @@
       @spin-transform(time @f3(0 0 0))
       GFX.Drawable(Mesh: cube-mesh Params: {baseColor: color}) | GFX.Draw(queue)
 
-      Inputs.Detached(
-        window-ctx Name: "UI" Priority: 10
-        Contents: {
-          UI(ui-draw-queue {
-            Inputs.DebugUI
-          })
-        }
-      )
+      ; Inputs.Detached(
+      ;   window-ctx Name: "UI" Priority: 10
+      ;   Contents: {
+      ;     UI(ui-draw-queue {
+      ;       Inputs.DebugUI
+      ;     })
+      ;   }
+      ; )
 
       GFX.Render(View: view Steps: render-steps)
     }

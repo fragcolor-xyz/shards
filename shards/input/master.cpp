@@ -29,6 +29,7 @@ InputMaster::~InputMaster() {
 }
 
 void InputMaster::update(gfx::Window &window) {
+  thisThreadId = std::this_thread::get_id();
   updateAndSortHandlers();
 
   input.beginUpdate();
@@ -40,55 +41,57 @@ void InputMaster::update(gfx::Window &window) {
     else
       break;
   } while (true);
-
   state.update();
   state.region = getWindowInputRegion(window);
-
   input.endUpdate(state);
 
   // Convert events to ConsumableEvents
-  auto &evtFrame = eventBuffer.getNextFrame();
-  evtFrame.state = state;
-
+  events.clear();
   for (auto &evt : input.virtualInputEvents) {
     if (!std::get_if<PointerMoveEvent>(&evt))
       SPDLOG_LOGGER_DEBUG(logger, "Generated event: {}", debugFormat(evt));
-    evtFrame.events.emplace_back(evt);
+    events.emplace_back(evt);
   }
 
   // Call handlers in order of priority
   focusTracker.swap();
   for (auto &handler : handlersLocked) {
-    handler->handle(state, evtFrame.events, focusTracker);
+    handler->handle(*this);
   }
 
-  // Mark new frame as available in the event buffer
-  eventBuffer.nextFrame();
-
   // Handle posted messages
-  messageQueue.consume_all([&](const Message &message) {
-    SPDLOG_LOGGER_DEBUG(logger, "Handling message: {}", debugFormat(message));
-    std::visit(
-        [&](auto &&arg) {
-          using T = std::decay_t<decltype(arg)>;
-          if constexpr (std::is_same_v<T, BeginTextInputMessage>) {
-            SDL_StartTextInput();
-          } else if constexpr (std::is_same_v<T, EndTextInputMessage>) {
-            SDL_StopTextInput();
-          } else if constexpr (std::is_same_v<T, SetCursorMessage>) {
-            if (!arg.visible) {
-              SDL_ShowCursor(SDL_DISABLE);
-            } else {
-              auto &cursorMap = CursorMap::getInstance();
-              SDL_ShowCursor(SDL_ENABLE);
-              SDL_SetCursor(cursorMap.getCursor(arg.cursor));
-            }
-          } else if constexpr (std::is_same_v<T, TerminateMessage>) {
-            terminateRequested = true;
+  messageQueue.consume_all([&](const Message &message) {});
+}
+
+void InputMaster::postMessage(const Message &message) {
+  if (std::this_thread::get_id() == thisThreadId)
+    handleMessage(message);
+  else
+    messageQueue.push(message);
+}
+
+void InputMaster::handleMessage(const Message &message) {
+  SPDLOG_LOGGER_DEBUG(logger, "Handling message: {}", debugFormat(message));
+  std::visit(
+      [&](auto &&arg) {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, BeginTextInputMessage>) {
+          SDL_StartTextInput();
+        } else if constexpr (std::is_same_v<T, EndTextInputMessage>) {
+          SDL_StopTextInput();
+        } else if constexpr (std::is_same_v<T, SetCursorMessage>) {
+          if (!arg.visible) {
+            SDL_ShowCursor(SDL_DISABLE);
+          } else {
+            auto &cursorMap = CursorMap::getInstance();
+            SDL_ShowCursor(SDL_ENABLE);
+            SDL_SetCursor(cursorMap.getCursor(arg.cursor));
           }
-        },
-        message);
-  });
+        } else if constexpr (std::is_same_v<T, TerminateMessage>) {
+          terminateRequested = true;
+        }
+      },
+      message);
 }
 
 void InputMaster::updateAndSortHandlers() {

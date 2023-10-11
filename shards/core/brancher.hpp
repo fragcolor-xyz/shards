@@ -7,6 +7,7 @@
 #include "into_wire.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
+#include <unordered_set>
 
 namespace shards {
 
@@ -15,6 +16,9 @@ DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure, 'brcB');
 
 // Runs wires in a separate mesh while capturing variables
 struct Brancher {
+public:
+  using IgnoredVariables = std::unordered_set<std::string_view>;
+
   std::shared_ptr<SHMesh> mesh = SHMesh::make();
   std::vector<std::shared_ptr<SHWire>> wires;
   bool captureAll = false;
@@ -41,7 +45,7 @@ public:
 
   const shards::ExposedInfo &getMergedRequirements() const { return _mergedRequirements; }
 
-  void compose(const SHInstanceData &data) {
+  void compose(const SHInstanceData &data, const IgnoredVariables &ignored = {}) {
     _collectedRequirements.clear();
 
     for (auto &wire : wires) {
@@ -49,15 +53,18 @@ public:
     }
 
     // Merge requirements from compose result
-    for (auto &wire : wires) {
-      for (auto &req : wire->composeResult->requiredInfo) {
-        _mergedRequirements.push_back(req);
-      }
-    }
+    // TODO: Remove since this is already checked by _collectedRequirements below
+    // for (auto &wire : wires) {
+    //   for (auto &req : wire->composeResult->requiredInfo) {
+    //     _mergedRequirements.push_back(req);
+    //   }
+    // }
 
     if (captureAll) {
       // Merge deep requirements
       for (auto &avail : data.shared) {
+        if (ignored.find(avail.name) != ignored.end())
+          continue;
         SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
         _mergedRequirements.push_back(avail);
       }
@@ -65,6 +72,8 @@ public:
       for (auto &avail : data.shared) {
         auto it = _collectedRequirements.find(avail.name);
         if (it != _collectedRequirements.end()) {
+          if (ignored.find(avail.name) != ignored.end())
+            continue;
           SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
           _mergedRequirements.push_back(it->second);
         }
@@ -72,7 +81,7 @@ public:
     }
 
     // Copy shared
-    _shared = ExposedInfo(data.shared);
+    _shared = ExposedInfo(_mergedRequirements);
     mesh->instanceData.shared = (SHExposedTypesInfo)_shared;
 
     mesh->instanceData.shared = (SHExposedTypesInfo)_mergedRequirements;

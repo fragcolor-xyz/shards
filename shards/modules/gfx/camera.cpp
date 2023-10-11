@@ -112,7 +112,7 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
             inputState.mouseWheel += float(event.delta);
           }
         },
-        event);
+        event.event);
   }
 
   inputState.deltaTime = inputContext.getDeltaTime();
