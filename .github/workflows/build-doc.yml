@@ -49,6 +49,7 @@ jobs:
           name: samples-logs
           path: docs/samples/**/*.log
           if-no-files-found: error
+          retention-days: 1
 
   #
   # Generate shards documentation (markdown)
@@ -83,6 +84,7 @@ jobs:
             !docs/docs/reference/shards/shards/index.md
             !docs/docs/reference/shards/shards/types.md
           if-no-files-found: error
+          retention-days: 1
 
   #
   # Build documentation website
@@ -181,3 +183,4 @@ jobs:
           name: docs-website
           path: shards/docs/site/
           if-no-files-found: error
+          retention-days: 1

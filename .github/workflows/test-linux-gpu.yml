@@ -161,6 +161,7 @@ jobs:
           path: |
             coverage/coverage.linux-gpu.info
           if-no-files-found: error
+          retention-days: 1
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
@@ -169,3 +170,4 @@ jobs:
             test-gfx.xml
             shards/gfx/tests/data/default/rejected
           if-no-files-found: ignore
+          retention-days: 1

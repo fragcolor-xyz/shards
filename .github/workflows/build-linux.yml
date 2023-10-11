@@ -194,6 +194,7 @@ jobs:
           name: shards-linux ${{ steps.setup.outputs.build-type }}
           path: build/shards
           if-no-files-found: error
+          retention-days: 1
       - name: Upload coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         uses: actions/upload-artifact@v3
@@ -201,3 +202,4 @@ jobs:
           name: shards-linux-coverage
           path: coverage/coverage.linux.info
           if-no-files-found: error
+          retention-days: 1

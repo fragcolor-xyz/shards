@@ -191,12 +191,14 @@ jobs:
           name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
           path: ${{ steps.setup.outputs.artifact-path }}
           if-no-files-found: error
+          retention-days: 1
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: ${{ steps.setup.outputs.artifact }} rejected test data
           path: shards/gfx/tests/data/default/rejected
           if-no-files-found: ignore
+          retention-days: 1
 
   #
   # Test shards for Windows

@@ -83,6 +83,7 @@ jobs:
         with:
           name: shccstrings
           path: shards/core/shccstrings.hpp
+          retention-days: 1
       - name: Create a PR
         uses: peter-evans/create-pull-request@v4
         with:

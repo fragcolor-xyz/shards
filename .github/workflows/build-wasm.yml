@@ -121,6 +121,7 @@ jobs:
           path: |
             build/shards/
           if-no-files-found: error
+          retention-days: 1
       # - name: Upload shards to IPFS
       #   uses: shards-lang/ipfs-action@master
       #   if: ${{ github.event_name == 'push' }}

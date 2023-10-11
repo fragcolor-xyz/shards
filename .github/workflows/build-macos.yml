@@ -102,6 +102,7 @@ jobs:
           name: shards-macos ${{ steps.setup.outputs.build-type }}
           path: build/shards
           if-no-files-found: error
+          retention-days: 1
 
   #
   # Test shards on macOS
