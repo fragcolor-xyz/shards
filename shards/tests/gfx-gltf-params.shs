@@ -53,8 +53,8 @@
 
   @default-window(@f3(0.2 0.2 0.2) @f3(0 0.025 0))
 } Looped: true)
-; @schedule(root test-params)
-; @run(root FPS: 60 Iterations: 100)
+@schedule(root test-params)
+@run(root FPS: 60 Iterations: 100)
 
 @wire(test-transform-override {
   Once({
