@@ -432,7 +432,7 @@ struct GLTFShard {
 
         auto &scale = valueTable["scale"];
         if (!scale->isNone()) {
-          if (scale.valueType != SHType::Float4)
+          if (scale.valueType != SHType::Float3)
             throw std::runtime_error(fmt::format("scale for key {} should be a float3", k));
           node->trs.scale = toFloat3(scale);
         }

@@ -53,8 +53,8 @@
 
   @default-window(@f3(0.2 0.2 0.2) @f3(0 0.025 0))
 } Looped: true)
-@schedule(root test-params)
-@run(root FPS: 60 Iterations: 100)
+; @schedule(root test-params)
+; @run(root FPS: 60 Iterations: 100)
 
 @wire(test-transform-override {
   Once({
@@ -66,6 +66,8 @@
     {
       ["Armature" "Bone" "Bone.001"]: {
         rotation: rx
+        scale: @f3(1.3 1.3 0.8)
+        translation: @f3(0 0 4) 
       }
       materials: {
         "Material_001-effect": {
@@ -74,8 +76,20 @@
           }
         }
       }
-    } GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >= mdl
-    mdl >> drawables
+    } GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >> drawables
+
+    @f3(1 0 0) Math.Translation >= t2
+    {
+      transform: t2
+      ["Armature" "Bone" "Bone.001"]: {
+        transform: tzero 
+      }
+      ["Armature" "Cylinder"]: {
+        params: {
+          baseColor: @f4(1.0 0.0 1.0 1.0)
+        }
+      }
+    } GFX.glTF(Path: "../../external/glTF-Sample-Models/2.0/RiggedSimple/glTF-Draco/RiggedSimple.gltf") >> drawables
   })
 
   @default-window(@f3(20.0 3.0 0.0) @f3(0 0 0))
