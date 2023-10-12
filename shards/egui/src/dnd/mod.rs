@@ -154,6 +154,12 @@ struct DragDrop {
     SHARDS_OR_NONE_TYPES
   )]
   drop_callback: ShardsVar,
+  #[shard_param(
+    "ID",
+    "An optional ID value in case of ID conflicts.",
+    STRING_VAR_OR_NONE_SLICE
+  )]
+  id: ParamVar,
   #[shard_warmup]
   contexts: ParamVar,
   #[shard_warmup]
@@ -171,6 +177,7 @@ impl Default for DragDrop {
       contents: ShardsVar::default(),
       hover_callback: ShardsVar::default(),
       drop_callback: ShardsVar::default(),
+      id: ParamVar::default(),
       contexts: ParamVar::new_named(CONTEXTS_NAME),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       required: ExposedTypes::new(),
@@ -197,6 +204,16 @@ impl Shard for DragDrop {
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.inner_exposed.clear();
     self.compose_helper(data)?;
+
+    if self.id.is_variable() {
+      let id_info = ExposedInfo {
+        exposedType: common_type::string,
+        name: self.id.get_name(),
+        help: cstr!("The ID variable.").into(),
+        ..ExposedInfo::default()
+      };
+      self.required.push(id_info);
+    }
 
     if self.contents.is_empty() {
       return Err("Contents are required");
@@ -285,7 +302,11 @@ impl Shard for DragDrop {
 
       inner.inner?
     } else {
-      let id = EguiId::new(self, 0).into();
+      let id = if let Ok(id) = <&str>::try_from(self.id.get()) {
+        egui::Id::new(id)
+      } else {
+        EguiId::new(self, 0).into()
+      };
       let inner = drag_source(ui, ui_ctx, &input, id, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       });
