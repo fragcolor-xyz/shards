@@ -1,0 +1,31 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+      ui-draw-queue
+      {
+        Once({
+          "" >= code
+        })
+        UI.TopPanel(
+          Contents: {
+            UI.MenuBar({
+              UI.Menu("Edit" UI.Button("Clear" {
+                "" > code
+                UI.CloseMenu
+              }))
+            })
+          }
+        )
+        UI.CentralPanel({
+          UI.CodeEditor(code "Rust")
+        })
+      }
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)
