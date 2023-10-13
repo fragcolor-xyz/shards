@@ -22,6 +22,7 @@ use crate::shardsc::Shard as CShard;
 use crate::shardsc::ShardPtr;
 use crate::types::ComposeResult;
 use crate::types::Context;
+use crate::types::ExposedInfo;
 use crate::types::ExposedTypes;
 use crate::types::InstanceData;
 use crate::types::OptionalString;
@@ -38,6 +39,16 @@ use core::slice;
 use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
+
+pub trait ParameterSet {
+  fn parameters() -> &'static Parameters;
+  fn num_params() -> usize;
+  fn set_param(&mut self, index: i32, value: &Var) -> Result<(), &'static str>;
+  fn get_param(&mut self, index: i32) -> Var;
+  fn warmup_helper(&mut self, context: &Context) -> Result<(), &'static str>;
+  fn cleanup_helper(&mut self) -> Result<(), &'static str>;
+  fn compose_helper(&mut self, out_required: &mut ExposedTypes, data: &InstanceData) -> Result<(), &'static str>;
+}
 
 pub trait ShardGenerated {
   fn register_name() -> &'static str

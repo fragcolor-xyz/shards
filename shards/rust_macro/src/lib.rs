@@ -1,12 +1,13 @@
 extern crate proc_macro;
 use std::{boxed, collections::HashSet};
 
+use convert_case::Casing;
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
 use syn::{
-  punctuated::Punctuated, token::Comma, Expr, Field, Ident, ImplItem, LitInt, LitStr, Meta,
+  punctuated::Punctuated, token::Comma, Expr, Field, Ident, ImplItem, Lit, LitInt, LitStr, Meta,
 };
 
 // type Error = boxed::Box<dyn std::error::Error>;
@@ -63,11 +64,22 @@ lazy_static::lazy_static! {
   static ref IMPLS_TO_CHECK_SET : HashSet<&'static str> = HashSet::from_iter(IMPLS_TO_CHECK.iter().cloned());
 }
 
-struct Param {
+struct ParamSingle {
   name: String,
-  var_name: String,
+  var_name: syn::Ident,
   desc: String,
   types: syn::Expr,
+}
+
+struct ParamSet {
+  type_name: syn::Type,
+  var_name: syn::Ident,
+  has_custom_interface: bool,
+}
+
+enum Param {
+  Single(ParamSingle),
+  Set(ParamSet),
 }
 
 fn get_field_name(fld: &Field) -> String {
@@ -87,6 +99,18 @@ fn get_expr_str_lit(expr: &Expr) -> Result<String, Error> {
     }
   } else {
     Err("Value must be a string literal".into())
+  }
+}
+
+fn get_expr_bool_lit(expr: &Expr) -> Result<bool, Error> {
+  if let syn::Expr::Lit(lit) = expr {
+    if let syn::Lit::Bool(str) = &lit.lit {
+      Ok(str.value())
+    } else {
+      Err("Value must be a bool literal".into())
+    }
+  } else {
+    Err("Value must be a bool literal".into())
   }
 }
 
@@ -320,7 +344,7 @@ pub fn derive_shards_enum(enum_def: TokenStream) -> TokenStream {
   }
 }
 
-fn parse_param_field(fld: &syn::Field, attr: &syn::Attribute) -> Result<Param, Error> {
+fn parse_param_single(fld: &syn::Field, attr: &syn::Attribute) -> Result<ParamSingle, Error> {
   let Meta::List(list) = &attr.meta else {
     panic!("Param attribute must be a list");
   };
@@ -331,10 +355,9 @@ fn parse_param_field(fld: &syn::Field, attr: &syn::Attribute) -> Result<Param, E
   if let Some((name, desc, types)) = args.into_pairs().map(|x| x.into_value()).collect_tuple() {
     let name = get_expr_str_lit(&name)?;
     let desc = get_expr_str_lit(&desc)?;
-    let var_name = get_field_name(&fld);
-    Ok(Param {
+    Ok(ParamSingle {
       name,
-      var_name,
+      var_name: fld.ident.clone().expect("Expected field name"),
       desc,
       types,
     })
@@ -355,11 +378,71 @@ fn crc32(name: String) -> u32 {
   checksum
 }
 
+struct Warmable {
+  warmup: proc_macro2::TokenStream,
+  cleanup: proc_macro2::TokenStream,
+}
+
+fn default_warmable(fld: &Field) -> Warmable {
+  let ident: &Ident = fld.ident.as_ref().expect("Expected field name");
+  Warmable {
+    warmup: quote! {self.#ident.warmup(context)?;},
+    cleanup: quote! {self.#ident.cleanup();},
+  }
+}
+
+fn to_warmable(
+  fld: &Field,
+  is_param_set: bool,
+  param_set_has_custom_interface: bool,
+) -> Option<Warmable> {
+  let rust_type = &fld.ty;
+  let ident: &Ident = fld.ident.as_ref().expect("Expected field name");
+  if let syn::Type::Path(p) = &rust_type {
+    let last_type_id = &p.path.segments.last().expect("Empty path").ident;
+    if last_type_id == "ParamVar" {
+      return Some(Warmable {
+        warmup: quote! {self.#ident.warmup(context);},
+        cleanup: quote! {self.#ident.cleanup();},
+      });
+    } else if is_param_set {
+      if param_set_has_custom_interface {
+        return Some(default_warmable(fld));
+      } else {
+        return Some(Warmable {
+          warmup: quote! {self.#ident.warmup_helper(context)?;},
+          cleanup: quote! {self.#ident.cleanup_helper();},
+        });
+      }
+    } else if last_type_id == "ShardsVar" {
+      return Some(default_warmable(fld));
+    }
+  }
+  return None;
+}
+
 #[derive(Default)]
 struct ShardFields {
   params: Vec<Param>,
   required: Option<syn::Ident>,
-  warmables: Vec<syn::Field>,
+  warmables: Vec<Warmable>,
+}
+
+fn parse_param_set_has_custom_interface(attr: &syn::Attribute) -> Result<bool, Error> {
+  let Meta::List(list) = &attr.meta else {
+    return Ok(false);
+  };
+
+  let args = list
+    .parse_args_with(Punctuated::<syn::Expr, syn::Token![,]>::parse_terminated)
+    .expect("Expected parsing");
+
+  if let Some((b,)) = args.into_pairs().map(|x| x.into_value()).collect_tuple() {
+    let b = get_expr_bool_lit(&b)?;
+    return Ok(b);
+  }
+
+  Ok(false)
 }
 
 fn parse_shard_fields<'a>(
@@ -371,19 +454,35 @@ fn parse_shard_fields<'a>(
 
     for attr in &fld.attrs {
       if attr.path().is_ident("shard_param") {
-        match parse_param_field(&fld, &attr) {
+        match parse_param_single(&fld, &attr) {
           Ok(param) => {
-            result.params.push(param);
-            result.warmables.push(fld.clone());
+            result.params.push(Param::Single(param));
+            if let Some(warmable) = to_warmable(&fld, false, false) {
+              result.warmables.push(warmable);
+            }
           }
           Err(e) => {
             return Err(e.extended(format!("Failed to parse param for field {}", name).into()))
           }
         }
+      } else if attr.path().is_ident("shard_param_set") {
+        let has_custom_interface = parse_param_set_has_custom_interface(&attr)?;
+
+        let param_set_ty = fld.ty.clone();
+        result.params.push(Param::Set(ParamSet {
+          type_name: param_set_ty,
+          var_name: fld.ident.clone().expect("Expected field name"),
+          has_custom_interface,
+        }));
+        result
+          .warmables
+          .push(to_warmable(fld, true, has_custom_interface).unwrap());
       } else if attr.path().is_ident("shard_required") {
         result.required = Some(fld.ident.as_ref().expect("Expected field name").clone());
       } else if attr.path().is_ident("shard_warmup") {
-        result.warmables.push(fld.clone());
+        if let Some(warmable) = to_warmable(&fld, false, false) {
+          result.warmables.push(warmable);
+        }
       }
     }
   }
@@ -413,25 +512,158 @@ fn read_shard_info_attr(
   Err(syn::Error::new(err_span, "Missing shard_info attribute").into())
 }
 
-fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Error> {
-  let struct_id = struct_.ident;
-  let struct_name_upper = struct_id.to_string().to_uppercase();
+struct ParameterAccessor {
+  get: proc_macro2::TokenStream,
+  set: proc_macro2::TokenStream,
+}
 
-  let shard_info = read_shard_info_attr(struct_id.span(), &struct_.attrs)?;
+fn generate_parameter_accessor(
+  offset_id: Ident,
+  in_id: Ident,
+  p: &Param,
+) -> Result<ParameterAccessor, Error> {
+  match p {
+    Param::Single(single) => {
+      let var_name = &single.var_name;
+      Ok(ParameterAccessor {
+        get: quote! {
+          if #in_id == #offset_id {
+            return (&self.#var_name).into();
+          }
+          #offset_id += 1;
+        },
+        set: quote! {
+          if(#in_id == #offset_id) {
+            return self.#var_name.set_param(value);
+          }
+          #offset_id += 1;
+        },
+      })
+    }
+    Param::Set(set) => {
+      let var_name = &set.var_name;
+      let set_type = &set.type_name;
+      Ok(ParameterAccessor {
+        get: quote! {
+          let local_id = #in_id - #offset_id;
+          if local_id > 0 && local_id < (#set_type::num_params() as i32) {
+              return (&mut self.#var_name).get_param(local_id);
+          }
+          #offset_id += #set_type::num_params() as i32;
+        },
+        set: quote! {
+          let local_id = #in_id - #offset_id;
+          if local_id > 0 && local_id < (#set_type::num_params() as i32) {
+              return (&mut self.#var_name).set_param(local_id, value);
+          }
+          #offset_id += #set_type::num_params() as i32;
+        },
+      })
+    }
+  }
+}
+
+fn generate_parameter_accessors(params: &Vec<Param>) -> Result<proc_macro2::TokenStream, Error> {
+  let static_params = params
+    .iter()
+    .filter_map(|p| match p {
+      Param::Single(single) => Some(single),
+      Param::Set(_) => None,
+    })
+    .collect::<Vec<_>>();
+  let is_complex = static_params.len() != params.len();
+
+  Ok(if is_complex {
+    let offset_id = Ident::new("offset", proc_macro2::Span::call_site());
+    let in_id = Ident::new("index", proc_macro2::Span::call_site());
+    let accessors = params
+      .iter()
+      .map(|p| generate_parameter_accessor(offset_id.clone(), in_id.clone(), p))
+      .collect::<Result<Vec<_>, _>>()?;
+    let getters = accessors.iter().map(|x| &x.get);
+    let setters = accessors.iter().map(|x| &x.set);
+
+    quote! {
+      fn set_param(&mut self, #in_id: i32, value: &shards::types::Var) -> std::result::Result<(), &'static str> {
+        let mut #offset_id: i32 = 0;
+        #(#setters)*
+        Err("Invalid parameter index")
+      }
+
+      fn get_param(&mut self, #in_id: i32) -> shards::types::Var {
+        let mut #offset_id: i32 = 0;
+        #(#getters)*
+        shards::types::Var::default()
+      }
+    }
+  } else {
+    let params_idents: Vec<_> = static_params.iter().map(|x| &x.var_name).collect();
+    let params_indices: Vec<_> = (0..static_params.len())
+      .map(|x| LitInt::new(&format!("{}", x), proc_macro2::Span::call_site()))
+      .collect();
+
+    quote! {
+      fn set_param(&mut self, index: i32, value: &shards::types::Var) -> std::result::Result<(), &'static str> {
+        match index {
+          #(
+            #params_indices => self.#params_idents.set_param(value),
+          )*
+          _ => Err("Invalid parameter index"),
+        }
+      }
+
+      fn get_param(&mut self, index: i32) -> shards::types::Var {
+        match index {
+          #(
+            #params_indices => (&self.#params_idents).into(),
+          )*
+          _ => shards::types::Var::default(),
+        }
+      }
+    }
+  })
+}
+
+struct ParamWrapperCode {
+  prelude: proc_macro2::TokenStream,
+  // warmup bodies
+  warmups: Vec<proc_macro2::TokenStream>,
+  // cleanup bodies, note that you should reverse these before using them
+  cleanups_rev: Vec<proc_macro2::TokenStream>,
+  // get_param & set_param
+  accessors: proc_macro2::TokenStream,
+  // Id for static parameters
+  params_static_id: Ident,
+  composes: Vec<proc_macro2::TokenStream>,
+  shard_fields: ShardFields,
+}
+
+fn generate_param_wrapper_code(struct_: &syn::ItemStruct) -> Result<ParamWrapperCode, Error> {
+  let struct_id = &struct_.ident;
+  let struct_name_upper = struct_id.to_string().to_uppercase();
+  let struct_name_lower = struct_id.to_string().to_case(convert_case::Case::Snake);
 
   let shard_fields = parse_shard_fields(&struct_.fields)?;
   let params = &shard_fields.params;
 
-  let param_names: Vec<_> = params
+  let static_params = params
+    .iter()
+    .filter_map(|p| match p {
+      Param::Single(single) => Some(single),
+      Param::Set(_) => None,
+    })
+    .collect::<Vec<_>>();
+
+  let mut array_initializers = Vec::new();
+  let param_names: Vec<_> = static_params
     .iter()
     .map(|x| LitStr::new(&x.name, proc_macro2::Span::call_site()))
     .collect();
-  let param_descs: Vec<_> = params
+  let param_descs: Vec<_> = static_params
     .iter()
     .map(|x| LitStr::new(&x.desc, proc_macro2::Span::call_site()))
     .collect();
-  let mut array_initializers = Vec::new();
-  let param_types: Vec<_> = params
+  let param_types: Vec<_> = static_params
     .iter()
     .map(|x| {
       if let Expr::Array(arr) = &x.types {
@@ -446,10 +678,6 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
       }
     })
     .collect();
-  let param_idents: Vec<_> = params
-    .iter()
-    .map(|x| Ident::new(&x.var_name, proc_macro2::Span::call_site()))
-    .collect();
 
   let params_static_id: Ident = Ident::new(
     &format!("{}_PARAMETERS", struct_name_upper),
@@ -460,32 +688,145 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
   let mut warmups = Vec::new();
   let mut cleanups_rev = Vec::new();
   for x in &shard_fields.warmables {
-    let rust_type = &x.ty;
-    let ident = x.ident.as_ref().expect("Expected field name");
-    if let syn::Type::Path(p) = &rust_type {
-      let last_type_id = &p.path.segments.last().expect("Empty path").ident;
-      if last_type_id == "ParamVar" {
-        warmups.push(quote! {self.#ident.warmup(context);});
-        cleanups_rev.push(quote! {self.#ident.cleanup();});
-      } else if last_type_id == "ShardsVar" {
-        warmups.push(quote! {self.#ident.warmup(context)?;});
-        cleanups_rev.push(quote! {self.#ident.cleanup();});
+    warmups.push(x.warmup.clone());
+    cleanups_rev.push(x.cleanup.clone());
+  }
+
+  let mut composes = Vec::new();
+  for param in params {
+    match param {
+      Param::Single(single) => {
+        let var_name = &single.var_name;
+        composes.push(quote! {
+          shards::util::collect_required_variables(&data.shared, out_required, (&self.#var_name).into())?;
+        });
+      }
+      Param::Set(set) => {
+        let var_name = &set.var_name;
+        composes.push(quote! {
+          (&mut self.#var_name).compose_helper(out_required, data)?;
+        });
       }
     }
   }
+
+  let build_params_id = Ident::new(
+    &format!("build_params_{}", struct_name_lower),
+    proc_macro2::Span::call_site(),
+  );
+
+  let accessors = generate_parameter_accessors(params)?;
+  let append_params = params.iter().map(|p| match p {
+    Param::Single(_) => {
+      quote! {
+        params.push(static_params[static_idx].clone());
+        static_idx += 1;
+      }
+    }
+    Param::Set(set) => {
+      let set_type = &set.type_name;
+      quote! {
+        for param in #set_type::parameters() {
+          params.push(param.clone());
+        }
+      }
+    }
+  });
+
+  let prelude = quote! {
+    fn #build_params_id() -> Vec<shards::types::ParameterInfo> {
+      let static_params : Vec<shards::types::ParameterInfo> = vec![
+        #((
+          shards::cstr!(#param_names),
+          shards::shccstr!(#param_descs),
+          &#param_types[..]
+        ).into()),*
+      ];
+      let mut params = Vec::new();
+      let mut static_idx: usize = 0;
+      #(#append_params)*
+      params
+    }
+
+    lazy_static::lazy_static! {
+      #(#array_initializers)*
+      static ref #params_static_id: shards::types::Parameters = #build_params_id();
+    }
+  };
+
+  Ok(ParamWrapperCode {
+    prelude,
+    warmups,
+    params_static_id: params_static_id,
+    cleanups_rev,
+    accessors,
+    composes,
+    shard_fields,
+  })
+}
+
+fn process_param_set_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Error> {
+  let struct_id = &struct_.ident;
+  let ParamWrapperCode {
+    prelude,
+    warmups,
+    cleanups_rev,
+    accessors,
+    params_static_id,
+    composes,
+    ..
+  } = generate_param_wrapper_code(&struct_)?;
+  let cleanups = cleanups_rev.iter().rev();
+
+  Ok(quote! {
+    #prelude
+
+    impl shards::shard::ParameterSet for #struct_id {
+      fn parameters() -> &'static shards::types::Parameters {
+          &#params_static_id
+      }
+
+      fn num_params() -> usize { #params_static_id.len() }
+
+      #accessors
+
+      fn warmup_helper(&mut self, context: &shards::types::Context) -> std::result::Result<(), &'static str> {
+        #( #warmups )*
+        Ok(())
+      }
+
+      fn cleanup_helper(&mut self) -> std::result::Result<(), &'static str> {
+        #( #cleanups )*
+        Ok(())
+      }
+
+      fn compose_helper(&mut self, out_required: &mut shards::types::ExposedTypes, data: &shards::types::InstanceData) -> std::result::Result<(), &'static str> {
+        #( #composes )*
+        Ok(())
+      }
+    }
+  }.into())
+}
+
+fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Error> {
+  let struct_id = &struct_.ident;
+
+  let shard_info = read_shard_info_attr(struct_id.span(), &struct_.attrs)?;
+
+  let ParamWrapperCode {
+    prelude,
+    warmups,
+    cleanups_rev,
+    accessors,
+    params_static_id,
+    composes,
+    shard_fields,
+  } = generate_param_wrapper_code(&struct_)?;
   let cleanups = cleanups_rev.iter().rev();
 
   let shard_name_expr = shard_info.name;
   let shard_name = get_expr_str_lit(&shard_name_expr)?;
   let shard_desc_expr = shard_info.desc;
-
-  let params_idents: Vec<_> = params
-    .iter()
-    .map(|x| Ident::new(&x.var_name, proc_macro2::Span::call_site()))
-    .collect();
-  let params_indices: Vec<_> = (0..params.len())
-    .map(|x| LitInt::new(&format!("{}", x), proc_macro2::Span::call_site()))
-    .collect();
 
   let crc = crc32(format!("{}-rust-0x20200101", shard_name));
 
@@ -495,9 +836,8 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
       quote! {
         fn compose_helper(&mut self, data: &shards::types::InstanceData) -> std::result::Result<(), &'static str> {
           self.#required.clear();
-          #(
-            shards::util::collect_required_variables(&data.shared, &mut self.#required, (&self.#param_idents).into())?;
-          )*
+          let out_required = &mut self.#required;
+          #(#composes)*
           Ok(())
         }
       },
@@ -507,16 +847,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
   };
 
   Ok(quote! {
-    lazy_static::lazy_static! {
-      #(#array_initializers)*
-      static ref #params_static_id: shards::types::Parameters = vec![
-        #((
-          shards::cstr!(#param_names),
-          shards::shccstr!(#param_descs),
-          &#param_types[..]
-        ).into()),*
-      ];
-    }
+    #prelude
 
     impl shards::shard::ShardGenerated for #struct_id {
       fn register_name() -> &'static str {
@@ -542,23 +873,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
           Some(&#params_static_id)
       }
 
-      fn set_param(&mut self, index: i32, value: &Var) -> std::result::Result<(), &str> {
-        match index {
-          #(
-            #params_indices => self.#params_idents.set_param(value),
-          )*
-          _ => Err("Invalid parameter index"),
-        }
-      }
-
-      fn get_param(&mut self, index: i32) -> shards::types::Var {
-        match index {
-          #(
-            #params_indices => (&self.#params_idents).into(),
-          )*
-          _ => Var::default(),
-        }
-      }
+      #accessors
 
       fn required_variables(&mut self) -> Option<&shards::types::ExposedTypes> {
         #required_variables_opt
@@ -584,7 +899,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
 
 #[proc_macro_derive(
   shard,
-  attributes(shard_info, shard_param, shard_required, shard_warmup)
+  attributes(shard_info, shard_param, shard_param_set, shard_required, shard_warmup)
 )]
 pub fn derive_shard(struct_def: TokenStream) -> TokenStream {
   let struct_: syn::ItemStruct = syn::parse_macro_input!(struct_def as syn::ItemStruct);
@@ -592,6 +907,19 @@ pub fn derive_shard(struct_def: TokenStream) -> TokenStream {
   match process_shard_helper_impl(struct_) {
     Ok(result) => {
       // eprintln!("derive_shard:\n{}", result);
+      result
+    }
+    Err(err) => err.to_compile_error(),
+  }
+}
+
+#[proc_macro_derive(param_set, attributes(shard_param, shard_param_set, shard_warmup))]
+pub fn derive_param_set(struct_def: TokenStream) -> TokenStream {
+  let struct_: syn::ItemStruct = syn::parse_macro_input!(struct_def as syn::ItemStruct);
+
+  match process_param_set_impl(struct_) {
+    Ok(result) => {
+      // eprintln!("derive_param_set:\n{}", result);
       result
     }
     Err(err) => err.to_compile_error(),
