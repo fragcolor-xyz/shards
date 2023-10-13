@@ -149,14 +149,14 @@ struct SHContext {
   }
 
   SHStateSnapshot takeStateSnapshot() {
-    return SHStateSnapshot {
-      state,
-      std::move(flowStorage),
-      std::move(errorMessage),
+    return SHStateSnapshot{
+        state,
+        std::move(flowStorage),
+        std::move(errorMessage),
     };
   }
 
-  void restoreStateSnapshot(SHStateSnapshot&& snapshot) {
+  void restoreStateSnapshot(SHStateSnapshot &&snapshot) {
     errorMessage = std::move(snapshot.errorMessage);
     state = std::move(snapshot.state);
     flowStorage = std::move(snapshot.flowStorage);
@@ -535,7 +535,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     SHLOG_TRACE("Scheduling wire {}", wire->name);
 
-    if (wire->warmedUp) {
+    if (wire->warmedUp || scheduled.count(wire) > 0) {
       SHLOG_ERROR("Attempted to schedule a wire multiple times, wire: {}", wire->name);
       throw shards::SHException("Multiple wire schedule");
     }
@@ -632,7 +632,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
             noErrors = false;
           }
 
+          scheduled.erase(flow.wire->shared_from_this());
+
           flow.wire->mesh.reset();
+
           it = _flowPool.erase(it);
         } else {
           ++it;
