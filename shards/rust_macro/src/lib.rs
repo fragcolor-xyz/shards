@@ -546,14 +546,14 @@ fn generate_parameter_accessor(
       Ok(ParameterAccessor {
         get: quote! {
           let local_id = #in_id - #offset_id;
-          if local_id > 0 && local_id < (#set_type::num_params() as i32) {
+          if local_id >= 0 && local_id < (#set_type::num_params() as i32) {
               return (&mut self.#var_name).get_param(local_id);
           }
           #offset_id += #set_type::num_params() as i32;
         },
         set: quote! {
           let local_id = #in_id - #offset_id;
-          if local_id > 0 && local_id < (#set_type::num_params() as i32) {
+          if local_id >= 0 && local_id < (#set_type::num_params() as i32) {
               return (&mut self.#var_name).set_param(local_id, value);
           }
           #offset_id += #set_type::num_params() as i32;
