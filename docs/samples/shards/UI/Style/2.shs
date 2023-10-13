@@ -19,19 +19,17 @@ GFX.MainWindow(
         [r g 0 255] | ToColor > color
 
         UI.Scope({
-          {
-            override_text_style: "MyStyle"
-            text_styles: [
-              {
-                name: "MyStyle"
-                size: size
-                family: "Monospace"
+          UI.Style(
+            OverrideTextStyle: "MyStyle"
+            TextStyles: {
+              MyStyle: {
+                Size: size
+                Family: FontFamily::Monospace
               }
-            ]
-            visuals: { 
-              override_text_color: color
             }
-          } | UI.Style
+            OverrideTextColor: color
+          )
+
           UI.IntSlider(Variable: hue Min: 0 Max: 255)
           UI.FloatSlider(Variable: size Min: 8.0 Max: 96.0)
           "Hello Shards!" | UI.Label
