@@ -608,7 +608,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       SHDuration now = SHClock::now().time_since_epoch();
       for (auto it = _flowPool.begin(); it != _flowPool.end();) {
         auto &flow = *it;
-        if (flow.paused) {
+        if (flow.state == SHFlowState::Paused) {
           ++it;
           continue; // simply skip
         }
@@ -617,7 +617,11 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
         shards::tick(flow.wire, now);
 
-        if (unlikely(!shards::isRunning(flow.wire))) {
+        // we here awake from a coroutine suspension
+        // this flow might be terminated as well
+        if (flow.state == SHFlowState::Terminated) {
+          it = _flowPool.erase(it);
+        } else if (unlikely(!shards::isRunning(flow.wire))) {
           if (flow.wire->finishedError.size() > 0) {
             _errors.emplace_back(flow.wire->finishedError);
           }
@@ -678,9 +682,15 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   void remove(const std::shared_ptr<SHWire> &wire) {
+    assert(wire->context && wire->context->flow && "Wire must have a context and flow");
+
+    // stop the wire and cleanup everything related to it
     shards::stop(wire.get());
-    _flowPool.remove_if([wire](auto &flow) { return flow.wire == wire.get(); });
-    wire->mesh.reset();
+
+    // also basically terminate the flow this will remove from _flowPool on next tick
+    wire->context->flow->state = SHFlowState::Terminated;
+
+    // cleanup local collections
     visitedWires.erase(wire.get());
     scheduled.erase(wire);
   }

@@ -2048,7 +2048,7 @@ endOfWire:
 
 void parseArguments(int argc, const char** argv) {
   namespace fs = boost::filesystem;
-  
+
   auto& globals = GetGlobals();
   auto absExePath = fs::weakly_canonical(argv[0]);
   globals.ExePath = absExePath.string();
@@ -2956,9 +2956,9 @@ void SHWire::cleanup(bool force) {
     variables.clear();
 
     // finally reset the mesh
-    auto n = mesh.lock();
-    if (n) {
-      n->visitedWires.erase(this);
+    auto m = mesh.lock();
+    if (m) {
+      m->remove(shared_from_this());
     }
     mesh.reset();
 
