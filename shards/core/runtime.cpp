@@ -2865,10 +2865,6 @@ void SHWire::destroy() {
   }
 
   // finally reset the mesh
-  auto m = mesh.lock();
-  if (m) {
-    m->remove(shared_from_this());
-  }
   mesh.reset();
 
   if (stackMem) {
@@ -2967,6 +2963,7 @@ void SHWire::cleanup(bool force) {
     mesh.reset();
 
     resumer = nullptr;
+    context = nullptr;
 
     SHLOG_TRACE("Ran cleanup on wire: {}", name);
   }
