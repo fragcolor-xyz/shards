@@ -479,11 +479,9 @@ struct SHExposedTypeInfo {
   SHBool exposed;
 };
 
-enum SH_ENUM_CLASS SHFlowState { Flowing, Paused, Terminated };
-
 struct SHFlow {
   struct SHWire *wire;
-  SH_ENUM_DECL SHFlowState state;
+  SHBool paused;
 };
 
 // # Of SHVars and memory

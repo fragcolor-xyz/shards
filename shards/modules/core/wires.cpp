@@ -707,10 +707,10 @@ struct SuspendWire : public WireBase {
 
     if (unlikely(!wire)) {
       // in this case we pause the current flow
-      context->flow->state = SHFlowState::Paused;
+      context->flow->paused = true;
     } else {
       // pause the wire's flow
-      wire->context->flow->state = SHFlowState::Paused;
+      wire->context->flow->paused = true;
     }
 
     return input;
@@ -777,8 +777,7 @@ struct ResumeWire : public WireBase {
       }
     }
 
-    assert(wire && wire->context && wire->context->flow && "Resume: wire or wire context is null.");
-    wire->context->flow->state = SHFlowState::Flowing;
+    wire->context->flow->paused = false;
 
     return input;
   }
@@ -914,13 +913,13 @@ struct SwitchTo : public WireBase {
       }
     }();
 
-    // assign the new wire as current wire on the flow
-    context->flow->wire = pWire;
-
     // Allow to re run wires, or simply restart
     if (fromStart || shards::hasEnded(pWire)) {
       shards::stop(pWire);
     }
+
+    // assign the new wire as current wire on the flow
+    context->flow->wire = pWire;
 
     // capture variables
     for (auto &v : _vars) {

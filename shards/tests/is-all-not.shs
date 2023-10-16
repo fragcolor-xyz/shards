@@ -1,0 +1,13 @@
+[0 1 2] | IsAllNot([0 1 2]) | Log ; false
+@i(0 1 2) | IsAllNot(@i(0 1 2)) | Log ; false
+[0 1 2] | IsAllNot(@i(0 1 2)) | Log ; true
+@i(0 1 2) | IsAllNot([0 1 2]) | Log ; true
+
+[0 1 2] | IsAllNot([4 1 2]) | Log ; false
+[4 1 2] | IsAllNot([0 1 2]) | Log ; false
+@i(0 1 2) | IsAllNot(@i(4 1 2)) | Log ; true
+@i(4 1 2) | IsAllNot(@i(0 1 2)) | Log ; true
+@i(0 1 2) | IsAllNot([4 1 2]) | Log ; true
+@i(4 1 2) | IsAllNot([0 1 2]) | Log ; true
+[0 1 2] | IsAllNot(@i(4 1 2)) | Log ; true
+[4 1 2] | IsAllNot(@i(0 1 2)) | Log ; true

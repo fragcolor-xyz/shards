@@ -25,6 +25,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <boost/container/small_vector.hpp>
+
 using SHClock = std::chrono::high_resolution_clock;
 using SHTime = decltype(SHClock::now());
 using SHDuration = std::chrono::duration<double>;
@@ -607,7 +609,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       SHDuration now = SHClock::now().time_since_epoch();
       for (auto it = _flowPool.begin(); it != _flowPool.end();) {
         auto &flow = *it;
-        if (flow.state == SHFlowState::Paused) {
+        if (flow.paused) {
           ++it;
           continue; // simply skip
         }
@@ -616,8 +618,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
         shards::tick(flow.wire, now);
 
-        // we here awake from a coroutine suspension
-        // this flow might be terminated as well
         if (unlikely(!shards::isRunning(flow.wire))) {
           if (flow.wire->finishedError.size() > 0) {
             _errors.emplace_back(flow.wire->finishedError);
@@ -633,8 +633,11 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
             noErrors = false;
           }
 
-          it = _flowPool.erase(it);
-        } else if (flow.state == SHFlowState::Terminated) {
+          // stop should have done the following:
+          assert(visitedWires.count(flow.wire) == 0 && "Wire still in visitedWires!");
+          assert(scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!");
+          assert(flow.wire->mesh.expired() && "Wire still has a mesh!");
+
           it = _flowPool.erase(it);
         } else {
           ++it;
@@ -651,16 +654,23 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   void terminate() {
-    std::vector<std::shared_ptr<SHWire>> toStop(this->scheduled.begin(), this->scheduled.end());
+    boost::container::small_vector<std::shared_ptr<SHWire>, 16> toStop;
+    for (auto wire : scheduled) {
+      toStop.emplace_back(wire);
+    }
+
     for (auto wire : toStop) {
-      shards::stop(wire.get()); // this will call remove
+      shards::stop(wire.get());
+      // stop should have done the following:
+      assert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
+      assert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
+      assert(wire->mesh.expired() && "Wire still has a mesh!");
     }
 
     _flowPool.clear();
 
     // release all wires
-    assert(scheduled.empty() && "All wires should be stopped before terminating the mesh!");
-    // scheduled.clear();
+    scheduled.clear();
 
     // find dangling variables and notice
     for (auto var : variables) {
@@ -678,16 +688,13 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   void remove(const std::shared_ptr<SHWire> &wire) {
-    // notice we don't stop the wire here
+    shards::stop(wire.get());
+    // stop should have done the following:
+    assert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
+    assert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
+    assert(wire->mesh.expired() && "Wire still has a mesh!");
 
-    if (wire->context && wire->context->flow) {
-      // also basically terminate the flow this will remove from _flowPool on next tick
-      wire->context->flow->state = SHFlowState::Terminated;
-    }
-
-    // cleanup local collections
-    visitedWires.erase(wire.get());
-    scheduled.erase(wire);
+    _flowPool.remove_if([wire](auto &flow) { return flow.wire == wire.get(); });
   }
 
   bool empty() { return _flowPool.empty(); }

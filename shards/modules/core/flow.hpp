@@ -7,7 +7,7 @@
 #include <shards/core/shared.hpp>
 #include <shards/core/async.hpp>
 #include <atomic>
- 
+
 namespace shards {
 static inline Type condShardSeqs = Type::SeqOf(CoreInfo::ShardsOrNone);
 static inline ParamsInfo condParamsInfo =
@@ -68,14 +68,14 @@ struct Cond {
 
   void cleanup() {
     for (auto it = _conditions.rbegin(); it != _conditions.rend(); ++it) {
-      auto shards = *it;
+      auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
         shard->cleanup(shard);
       }
     }
     for (auto it = _actions.rbegin(); it != _actions.rend(); ++it) {
-      auto shards = *it;
+      auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
         shard->cleanup(shard);
@@ -85,14 +85,14 @@ struct Cond {
 
   void destroy() {
     for (auto it = _conditions.rbegin(); it != _conditions.rend(); ++it) {
-      auto shards = *it;
+      auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
         shard->cleanup(shard);
       }
     }
     for (auto it = _actions.rbegin(); it != _actions.rend(); ++it) {
-      auto shards = *it;
+      auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
         shard->cleanup(shard);
@@ -992,8 +992,8 @@ struct HashedShards {
 
   SHVar getParam(int index) { return _shards; }
 
-  SHTypeInfo compose(const SHInstanceData &data) { 
-    _composition = _shards.compose(data); 
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _composition = _shards.compose(data);
     _outputTableTypes._types[0] = _composition.outputType;
     return _outputTableType;
   }
