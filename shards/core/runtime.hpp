@@ -290,8 +290,7 @@ UntrackedVector<SHWire *> &getCoroWireStack();
 #endif
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
-  if (wire->coro)
-    return;
+  assert(!wire->coro && "Wire already prepared!");
 
   TracyCoroEnter(wire);
 
@@ -619,9 +618,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
         // we here awake from a coroutine suspension
         // this flow might be terminated as well
-        if (flow.state == SHFlowState::Terminated) {
-          it = _flowPool.erase(it);
-        } else if (unlikely(!shards::isRunning(flow.wire))) {
+        if (unlikely(!shards::isRunning(flow.wire))) {
           if (flow.wire->finishedError.size() > 0) {
             _errors.emplace_back(flow.wire->finishedError);
           }
@@ -636,10 +633,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
             noErrors = false;
           }
 
-          scheduled.erase(flow.wire->shared_from_this());
-
-          flow.wire->mesh.reset();
-
+          it = _flowPool.erase(it);
+        } else if (flow.state == SHFlowState::Terminated) {
           it = _flowPool.erase(it);
         } else {
           ++it;
@@ -656,15 +651,18 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   void terminate() {
-    for (auto wire : scheduled) {
-      shards::stop(wire.get());
-      wire->mesh.reset();
+    {
+      std::vector<std::shared_ptr<SHWire>> toStop(this->scheduled.begin(), this->scheduled.end());
+      for (auto wire : toStop) {
+        shards::stop(wire.get()); // this will call remove
+      }
     }
 
     _flowPool.clear();
 
     // release all wires
-    scheduled.clear();
+    assert(scheduled.empty() && "All wires should be stopped before terminating the mesh!");
+    // scheduled.clear();
 
     // find dangling variables and notice
     for (auto var : variables) {
@@ -682,8 +680,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   void remove(const std::shared_ptr<SHWire> &wire) {
-    // stop the wire and cleanup everything related to it
-    shards::stop(wire.get());
+    // notice we don't stop the wire here
 
     if (wire->context && wire->context->flow) {
       // also basically terminate the flow this will remove from _flowPool on next tick
