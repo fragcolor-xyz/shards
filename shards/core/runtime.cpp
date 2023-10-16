@@ -2047,10 +2047,10 @@ endOfWire:
   SHLOG_FATAL("Wire {} resumed after ending", wire->name);
 }
 
-void parseArguments(int argc, const char** argv) {
+void parseArguments(int argc, const char **argv) {
   namespace fs = boost::filesystem;
 
-  auto& globals = GetGlobals();
+  auto &globals = GetGlobals();
   auto absExePath = fs::weakly_canonical(argv[0]);
   globals.ExePath = absExePath.string();
 }
@@ -2864,10 +2864,12 @@ void SHWire::destroy() {
     shards::arrayFree(composeResult->exposedInfo);
   }
 
-  auto n = mesh.lock();
-  if (n) {
-    n->visitedWires.erase(this);
+  // finally reset the mesh
+  auto m = mesh.lock();
+  if (m) {
+    m->remove(shared_from_this());
   }
+  mesh.reset();
 
   if (stackMem) {
     ::operator delete[](stackMem, std::align_val_t{16});
