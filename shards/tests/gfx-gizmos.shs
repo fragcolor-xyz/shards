@@ -48,32 +48,45 @@
       ; Provides a context for rendering gizmos
       Gizmos.Context(Queue: editor-queue View: view
                      Contents: {
-                       ; Highlights the object (drawable) attached to gizmo, show wireframe
-                       drawable-0 | Gizmos.Highlight
-                       @f3(0 0 0) >= a
-                       @f3(0 0 2) >= z-2
-                       ; Draws the 3 axes
-                       Gizmos.Line(A: @f3(0 0 0) B: @f3(2 0 0) Color: @f4(1 0 0 1) Thickness: 8)
-                       Gizmos.Line(A: a B: @f3(0 2 0) Color: @f4(0 1 0 1))
-                       Gizmos.Line(A: a B: z-2 Color: @f4(0 0 1 1) Thickness: 4)
+                        ; Highlights the object (drawable) attached to gizmo, show wireframe
+                        drawable-0 | Gizmos.Highlight
+                        @f3(0 0 0) >= a
+                        @f3(0 0 2) >= z-2
+                        ; Draws the 3 axes
+                        Gizmos.Line(A: @f3(0 0 0) B: @f3(2 0 0) Color: @f4(1 0 0 1) Thickness: 8)
+                        Gizmos.Line(A: a B: @f3(0 2 0) Color: @f4(0 1 0 1))
+                        Gizmos.Line(A: a B: z-2 Color: @f4(0 0 1 1) Thickness: 4)
 
-                       @f3(1 0 0) >= xbase
-                       @f3(0 1 0) >= ybase
-                       @f3(0 0 1) >= zbase
-                       Gizmos.Circle(Center: @f3(1 1 1) XBase: xbase YBase: ybase)
-                       Gizmos.Circle(Center: @f3(1 1 1) XBase: xbase YBase: zbase Color: @f4(0.2 1.0 0.2 1.0) Thickness: 4)
+                        @f3(1 0 0) >= xbase
+                        @f3(0 1 0) >= ybase
+                        @f3(0 0 1) >= zbase
+                        Gizmos.Circle(Center: @f3(1 1 1) XBase: xbase YBase: ybase)
+                        Gizmos.Circle(Center: @f3(1 1 1) XBase: xbase YBase: zbase Color: @f4(0.2 1.0 0.2 1.0) Thickness: 4)
 
-                       Gizmos.Rect(Center: @f3(1 1 1.2) XBase: xbase YBase: ybase Color: @f4(0.2 1.0 0.2 1.0) Thickness: 4)
+                        Gizmos.Rect(Center: @f3(1 1 1.2) XBase: xbase YBase: ybase Color: @f4(0.2 1.0 0.2 1.0) Thickness: 4)
 
-                       Gizmos.Box(Center: @f3(1 1 1) Size: @f3(0.5 0.2 0.3) Color: @f4(0.4 0.4 1.0 1.0) Thickness: 4)
+                        Gizmos.Box(Center: @f3(1 1 1) Size: @f3(0.5 0.2 0.3) Color: @f4(0.4 0.4 1.0 1.0) Thickness: 4)
 
-                       Gizmos.Point(Center: @f3(1.4 1.4 1) Color: @f4(0.4 0.4 1.0 1.0) Thickness: 16)
-                       Gizmos.Point(Center: @f3(-2 -0.2 1) Color: @f4(1.0 0.2 1.0 1.0) Thickness: 4)
+                        Gizmos.Point(Center: @f3(1.4 1.4 1) Color: @f4(0.4 0.4 1.0 1.0) Thickness: 16)
+                        Gizmos.Point(Center: @f3(-2 -0.2 1) Color: @f4(1.0 0.2 1.0 1.0) Thickness: 4)
+
+                        Gizmos.ScreenXY |
+                        {Take(0) = screen-x | Once({Log("Screen X")})} |
+                        {Take(1) = screen-y | Once({Log("Screen Y")})}
+
+                        200.0 | Gizmos.ScreenScale(@f3(0 0 0)) = gizmo-scale | Once({Log("Gizmo size")})
+                        gizmo-scale | Math.Multiply(100.0) = r0
+                        gizmo-scale | Math.Multiply(120.0) = r1
+                        Gizmos.Disc(Center: @f3(0.0) XBase: screen-x YBase: screen-y InnerRadius: r0 OuterRadius: r1
+                                    Color: @f4(1.0 0.0 1.0 1.0) Culling: false)
+
+                        Gizmos.Grid(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 1.5)
+                        Gizmos.RefspaceGridOverlay(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 3.0)
                      })
       ; Draw on top of everthing (ignore depth)
       Gizmos.Context(Queue: editor-queue-np-depth View: view
                      Contents: {
-                       transform-0 | Gizmos.Translation > transform-0
+                       transform-0 | Gizmos.Translation(200.0) > transform-0
                      })
       GFX.Render(Steps: render-steps View: view)
     }
