@@ -172,6 +172,17 @@ jobs:
           cd build
           ninja test-runtime
           ./test-runtime
+      # Minimize disk usage to prevent the next steps getting stuck due to no disk space
+      - name: Minimize disk usage
+        env:
+          RUST_BACKTRACE: full
+        shell: bash
+        run: |
+          rm -rf build/target
+          rm -rf build/lib
+          rm -rf build/deps
+          rm -rf build/_deps
+          rm -rf build/.cache
       - name: Collect coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
         run: |
