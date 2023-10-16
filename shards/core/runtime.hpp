@@ -682,13 +682,13 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   void remove(const std::shared_ptr<SHWire> &wire) {
-    assert(wire->context && wire->context->flow && "Wire must have a context and flow");
-
     // stop the wire and cleanup everything related to it
     shards::stop(wire.get());
 
-    // also basically terminate the flow this will remove from _flowPool on next tick
-    wire->context->flow->state = SHFlowState::Terminated;
+    if (wire->context && wire->context->flow) {
+      // also basically terminate the flow this will remove from _flowPool on next tick
+      wire->context->flow->state = SHFlowState::Terminated;
+    }
 
     // cleanup local collections
     visitedWires.erase(wire.get());
