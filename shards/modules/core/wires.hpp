@@ -229,13 +229,6 @@ struct BaseRunner : public WireBase {
         wire->detached = true;
     } else if (_restart) {
       stop(wire.get());
-
-      // also we need to wait for the wire to stop
-      // before we can restart it
-      auto suspend_state = shards::suspend(context, 0);
-      if (suspend_state != SHWireState::Continue)
-        return;
-
       // simply tail call activate again
       activateDetached(context, input);
     }

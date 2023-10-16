@@ -707,10 +707,10 @@ struct SuspendWire : public WireBase {
 
     if (unlikely(!wire)) {
       // in this case we pause the current flow
-      context->flow->paused = true;
+      context->flow->state = SHFlowState::Paused;
     } else {
       // pause the wire's flow
-      wire->context->flow->paused = true;
+      wire->context->flow->state = SHFlowState::Paused;
     }
 
     return input;
@@ -777,7 +777,7 @@ struct ResumeWire : public WireBase {
       }
     }
 
-    wire->context->flow->paused = false;
+    wire->context->flow->state = SHFlowState::Running;
 
     return input;
   }
