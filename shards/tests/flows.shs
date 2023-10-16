@@ -534,7 +534,7 @@
 
   ["John" "Fred" "Eddie"] | DoMany({
     >= str
-    "Hello, " PrependTo(str)      
+    "Hello, " PrependTo(str)
     "!" AppendTo(str)
     str
   }) | Log("DoMany'd")
@@ -549,9 +549,25 @@
         i-2 | When(IsMore(3) {0 | Stop})
       }
     }) | Log("StepMany'd")
-    
+
   } Times: 6)
 })
 
 @schedule(root test-inline-wires)
-@run(root)
+@run(root) | Assert.Is(true)
+
+@wire(detach-restart-worker {
+  Msg("detach-restart-worker")
+  Pause(10.0)
+})
+
+@wire(detach-restart {
+  Detach(detach-restart-worker)
+  Pause(0.0)
+  Detach(detach-restart-worker Restart: true)
+  Pause(0.0)
+  Stop(detach-restart-worker)
+})
+
+@schedule(root detach-restart)
+@run(root) | Assert.Is(true)

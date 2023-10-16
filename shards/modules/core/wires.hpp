@@ -199,6 +199,7 @@ struct BaseRunner : public WireBase {
     }
   }
 
+  bool _restart{false};
   void activateDetached(SHContext *context, const SHVar &input) {
     if (!shards::isRunning(wire.get())) {
       // stop in case we need to clean up
@@ -226,6 +227,17 @@ struct BaseRunner : public WireBase {
       // this means stopping this Shard will not stop the wire
       if (detached)
         wire->detached = true;
+    } else if (_restart) {
+      stop(wire.get());
+
+      // also we need to wait for the wire to stop
+      // before we can restart it
+      auto suspend_state = shards::suspend(context, 0);
+      if (suspend_state != SHWireState::Continue)
+        return;
+
+      // simply tail call activate again
+      activateDetached(context, input);
     }
   }
 
@@ -271,13 +283,30 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     detached = WIRE_MODE == RunWireMode::Async;  // in RunWire we always detach
   }
 
-  static SHParametersInfo parameters() { return runWireParamsInfo; }
+  static inline Parameters DetachParamsInfo{
+      {"Wire", SHCCSTR("The wire to run."), {WireTypes}},
+      {"Restart",
+       SHCCSTR("If on activation the wire should be restarted from scratch even if it was still running."),
+       {CoreInfo::BoolType}}};
+
+  static SHParametersInfo parameters() {
+    if constexpr (WIRE_MODE == RunWireMode::Async) {
+      return DetachParamsInfo;
+    } else {
+      return runWireParamsInfo;
+    }
+  }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       wireref = value;
       break;
+    case 1:
+      if constexpr (WIRE_MODE == RunWireMode::Async) {
+        _restart = value.payload.boolValue;
+        break;
+      }
     default:
       break;
     }
@@ -287,6 +316,11 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     switch (index) {
     case 0:
       return wireref;
+    case 1: {
+      if constexpr (WIRE_MODE == RunWireMode::Async) {
+        return Var(_restart);
+      }
+    }
     default:
       break;
     }
