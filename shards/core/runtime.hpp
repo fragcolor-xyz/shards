@@ -651,11 +651,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   void terminate() {
-    {
-      std::vector<std::shared_ptr<SHWire>> toStop(this->scheduled.begin(), this->scheduled.end());
-      for (auto wire : toStop) {
-        shards::stop(wire.get()); // this will call remove
-      }
+    std::vector<std::shared_ptr<SHWire>> toStop(this->scheduled.begin(), this->scheduled.end());
+    for (auto wire : toStop) {
+      shards::stop(wire.get()); // this will call remove
     }
 
     _flowPool.clear();
