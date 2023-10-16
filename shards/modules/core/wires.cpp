@@ -1957,7 +1957,7 @@ struct Spawn : public CapturingSpawners {
   std::unordered_map<const SHWire *, ManyWire *> _wireContainers;
 
   void wireOnCleanup(const SHWire::OnCleanupEvent &e) {
-    SHLOG_TRACE("Spawn::wireOnStop {}", e.wire->name);
+    SHLOG_TRACE("Spawn::wireOnCleanup {}", e.wire->name);
 
     auto container = _wireContainers[e.wire];
     for (auto &var : container->injectedVariables) {
@@ -1974,7 +1974,7 @@ struct Spawn : public CapturingSpawners {
 
     // Assume that we recycle containers so the connection might already exist!
     if (!c->onCleanupConnection) {
-      SHLOG_TRACE("Spawn::activate: connecting wireOnStop to {}", c->wire->name);
+      SHLOG_TRACE("Spawn::activate: connecting wireOnCleanup to {}", c->wire->name);
       _wireContainers[c->wire.get()] = c;
       c->onCleanupConnection = c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
     }

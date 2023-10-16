@@ -1874,6 +1874,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   }
 #ifndef __EMSCRIPTEN__
   catch (boost::context::detail::forced_unwind const &e) {
+    SHLOG_WARNING("Wire {} forced unwind", wire->name);
     throw; // required for Boost Coroutine!
   }
 #endif
@@ -2937,6 +2938,7 @@ void SHWire::cleanup(bool force) {
       }
 #ifndef __EMSCRIPTEN__
       catch (boost::context::detail::forced_unwind const &e) {
+        SHLOG_WARNING("Shard cleanup boost forced unwind, failed shard: {}", blk->name(blk));
         throw; // required for Boost Coroutine!
       }
 #endif
@@ -3032,7 +3034,6 @@ void shInit() {
   shInterface.set("createMesh", emscripten::val(reinterpret_cast<uintptr_t>(iface->createMesh)));
   shInterface.set("destroyMesh", emscripten::val(reinterpret_cast<uintptr_t>(iface->destroyMesh)));
   shInterface.set("schedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->schedule)));
-  shInterface.set("unschedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->unschedule)));
   shInterface.set("tick", emscripten::val(reinterpret_cast<uintptr_t>(iface->tick)));
   shInterface.set("sleep", emscripten::val(reinterpret_cast<uintptr_t>(iface->sleep)));
   shInterface.set("getGlobalWire", emscripten::val(reinterpret_cast<uintptr_t>(iface->getGlobalWire)));
@@ -3457,11 +3458,6 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     } catch (...) {
       SHLOG_ERROR("Errors while scheduling");
     }
-  };
-
-  result->unschedule = [](SHMeshRef mesh, SHWireRef wire) noexcept {
-    auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
-    (*smesh)->remove(SHWire::sharedFromRef(wire));
   };
 
   result->tick = [](SHMeshRef mesh) noexcept {
