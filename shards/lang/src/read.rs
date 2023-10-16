@@ -158,147 +158,6 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
   }
 }
 
-fn process_vector(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsError> {
-  assert_eq!(pair.as_rule(), Rule::Vector);
-  let pos = pair.as_span().start_pos();
-  let inner = pair.into_inner();
-  let mut values = Vec::new();
-  for pair in inner {
-    let pos = pair.as_span().start_pos();
-    match pair.as_rule() {
-      Rule::Number => values.push(process_number(
-        pair
-          .into_inner()
-          .next()
-          .ok_or(("Expected a number", pos).into())?,
-        env,
-      )?),
-      _ => return Err(("Unexpected rule in Vector.", pos).into()),
-    }
-  }
-  // now check that all the values are the same type
-  // and if so, return a Const with a vector value
-  // now, vectors are always 2+ values, so we can safely check first
-  let first = values.first().unwrap(); // qed
-  let is_int = match first {
-    Number::Float(_) => false,
-    _ => true,
-  };
-  if is_int {
-    match values.len() {
-      2 => {
-        let mut vec = Vec::new();
-        for value in values {
-          match value {
-            Number::Integer(i) => vec.push(i),
-            _ => unreachable!(),
-          }
-        }
-        Ok(Value::Int2(vec.try_into().unwrap())) // qed
-      }
-      3 => {
-        let mut vec: Vec<i32> = Vec::new();
-        for value in values {
-          match value {
-            Number::Integer(i) => vec.push(i.try_into().map_err(|_| {
-              (
-                "Expected a signed integer that fits in 32 bits, but found one that doesn't.",
-                pos,
-              )
-                .into()
-            })?),
-            _ => unreachable!(),
-          }
-        }
-        Ok(Value::Int3(vec.try_into().unwrap())) // qed
-      }
-      4 => {
-        let mut vec: Vec<i32> = Vec::new();
-        for value in values {
-          match value {
-            Number::Integer(i) => vec.push(i.try_into().map_err(|_| {
-              (
-                "Expected a signed integer that fits in 32 bits, but found one that doesn't.",
-                pos,
-              )
-                .into()
-            })?),
-            _ => unreachable!(),
-          }
-        }
-        Ok(Value::Int4(vec.try_into().unwrap())) // qed
-      }
-      8 => {
-        let mut vec: Vec<i16> = Vec::new();
-        for value in values {
-          match value {
-            Number::Integer(i) => vec.push(i.try_into().map_err(|_| {
-              (
-                "Expected a signed integer that fits in 16 bits, but found one that doesn't.",
-                pos,
-              )
-                .into()
-            })?),
-            _ => unreachable!(),
-          }
-        }
-        Ok(Value::Int8(vec.try_into().unwrap())) // qed
-      }
-      16 => {
-        let mut vec: Vec<i8> = Vec::new();
-        for value in values {
-          match value {
-            Number::Integer(i) => vec.push(i.try_into().map_err(|_| {
-              (
-                "Expected a signed integer that fits in 8 bits, but found one that doesn't.",
-                pos,
-              )
-                .into()
-            })?),
-            _ => unreachable!(),
-          }
-        }
-        Ok(Value::Int16(vec.try_into().unwrap())) // qed
-      }
-      _ => Err(("Expected an int vector of 2, 3, 4, 8, or 16 numbers.", pos).into()),
-    }
-  } else {
-    match values.len() {
-      2 => {
-        let mut vec = Vec::new();
-        for value in values {
-          match value {
-            Number::Float(f) => vec.push(f),
-            _ => unreachable!(),
-          }
-        }
-        Ok(Value::Float2(vec.try_into().unwrap())) // qed
-      }
-      3 => {
-        let mut vec: Vec<f32> = Vec::new();
-        for value in values {
-          match value {
-            Number::Float(f) => vec.push(f as f32),
-            _ => unreachable!(),
-          }
-        }
-        Ok(Value::Float3(vec.try_into().unwrap())) // qed
-      }
-      4 => {
-        let mut vec: Vec<f32> = Vec::new();
-        for value in values {
-          match value {
-            Number::Float(f) => vec.push(f as f32),
-            _ => unreachable!(),
-          }
-        }
-        Ok(Value::Float4(vec.try_into().unwrap())) // qed
-      }
-      _ => Err(("Expected a float vector of 2, 3, 4 numbers.", pos).into()),
-    }
-  }
-}
-
 enum FunctionValue {
   Const(Value),
   Function(Function),
@@ -587,14 +446,6 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
     let pos = pair.as_span().start_pos();
     let rule = pair.as_rule();
     match rule {
-      Rule::Vector => {
-        // in this case we want a Const with a vector value
-        let value = process_vector(pair, env)?;
-        blocks.push(Block {
-          content: BlockContent::Const(value),
-          line_info: Some(pos.into()),
-        });
-      }
       Rule::EvalExpr => blocks.push(Block {
         content: BlockContent::EvalExpr(process_sequence(
           pair
@@ -747,7 +598,6 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
       let variant_name = splits[1];
       Ok(Value::Enum(enum_name.into(), variant_name.into()))
     }
-    Rule::Vector => process_vector(pair, env),
     Rule::Number => process_number(
       pair
         .into_inner()
@@ -1122,6 +972,7 @@ fn test_parsing1() {
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
   let mut env = ReadEnv::new("", ".", ".");
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+  let seq = seq.sequence;
 
   // Serialize using bincode
   let encoded_bin: Vec<u8> = bincode::serialize(&seq).unwrap();
@@ -1149,6 +1000,7 @@ fn test_parsing2() {
   let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
   let mut env = ReadEnv::new("", ".", ".");
   let seq = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+  let seq = seq.sequence;
 
   // Serialize using bincode
   let encoded_bin: Vec<u8> = bincode::serialize(&seq).unwrap();
