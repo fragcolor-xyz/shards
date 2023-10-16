@@ -5,13 +5,19 @@ use crate::fill_seq_from_mat4;
 use crate::RigidBody;
 use crate::SIMULATION_NAME;
 use crate::SIMULATION_NAME_CSTR;
+use rapier3d::prelude::ActiveEvents;
+use rapier3d::prelude::Group;
+use rapier3d::prelude::InteractionGroups;
 use rapier3d::prelude::MassProperties;
 use shards::core::deriveType;
 use shards::core::register_legacy_shard;
 use shards::core::register_shard;
 use shards::shard::ParameterSet;
 use shards::shard::Shard;
+use shards::types::ShardsVar;
 use shards::types::Types;
+use shards::types::WireState;
+use shards::types::SHARDS_OR_NONE_TYPES;
 use shards::util;
 use shards::SHType;
 use shards::SHType_None;
@@ -65,6 +71,8 @@ use std::rc::Rc;
 
 lazy_static! {
   static ref VAR_TYPES: Types = vec![common_type::any_var];
+  static ref INT_VAR_OR_NONE: Types =
+    vec![common_type::int2, common_type::int2_var, common_type::none];
 }
 
 #[derive(param_set)]
@@ -81,14 +89,39 @@ pub struct RigidBodyBase {
   position: ParamVar,
   #[shard_param("Rotation", "The initial rotation of this rigid body. Either axis angles in radians Float3 or a quaternion Float4. Can be updated in the case of a kinematic rigid body.", ROTATIONS_TYPES_SLICE)]
   rotation: ParamVar,
-  // #[shard_param("Data", "Data attached to this collider", [common_type::any_table, common_type::any_table_var])]
-  // user_data: ParamVar,
+  #[shard_param(
+    "Collision",
+    "Handle collisions with this object.",
+    SHARDS_OR_NONE_TYPES
+  )]
+  collision: ShardsVar,
+  /// From rapier docs:
+  /// An interaction is allowed between two filters `a` and `b` when two conditions
+  /// are met simultaneously:
+  /// - The groups membership of `a` has at least one bit set to `1` in common with the groups filter of `b`.
+  /// - The groups membership of `b` has at least one bit set to `1` in common with the groups filter of `a`.
+  #[shard_param(
+    "SolverGroup",
+    "Solver group (Membership, Filter) pair for contact forces.",
+    INT_VAR_OR_NONE
+  )]
+  solver_group: ParamVar,
+  #[shard_param(
+    "CollisionGroup",
+    "Collision group (Membership, Filter) pair for collision events.",
+    INT_VAR_OR_NONE
+  )]
+  collision_group: ParamVar,
+  #[shard_param("Tag", "Tag attached to this collider", [common_type::any])]
+  user_data: ParamVar,
 }
 
 impl RigidBody {
-  fn warmup(&mut self, user_data: u128) {
-    self.user_data = user_data;
+  fn warmup(&mut self, user_data: &Var, rapier_user_data: u128) {
+    self.user_data.assign(user_data);
+    self.rapier_user_data = rapier_user_data;
   }
+
   fn cleanup(&mut self, sim: &ParamVar) {
     if let Some(simulation) = sim.try_get() {
       let simulation =
@@ -113,20 +146,23 @@ impl RigidBody {
 
   // make and populate in the self.rigid_bodies list a new RigidBody
   // this is called every frame so it must check if empty, if not empty just passthrough
-  fn populate_single(
+  fn activate_single(
     &mut self,
-    sim: &ParamVar,
+    base: &RigidBodyBase,
     type_: RigidBodyType,
-    shape: &ParamVar,
     p: &Var,
     r: &Var,
-  ) -> Result<(&[RigidBodyHandle], Var, Var), &str> {
+  ) -> Result<(&[RigidBodyHandle], Var, Var), &'static str> {
+    let sim = &base.simulation;
+    let shape = &base.shape;
+
     if self.rigid_bodies.is_empty() {
+      // Mut borrow - this is repeated a lot sadly - TODO figure out
+      let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim.get(), &SIMULATION_TYPE)?;
+
       // init if array is empty
       let rigid_body = {
-        // Mut borrow - this is repeated a lot sadly - TODO figure out
-        let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim.get(), &SIMULATION_TYPE)?;
-        let rigid_body = Self::make_rigid_body(simulation, self.user_data, type_, p, r)?;
+        let rigid_body = Self::make_rigid_body(simulation, self.rapier_user_data, type_, p, r)?;
         self.rigid_bodies.push(rigid_body);
         rigid_body
       };
@@ -135,21 +171,19 @@ impl RigidBody {
       if shape_var.is_seq() {
         let shapes: Seq = shape_var.try_into().unwrap();
         for shape in shapes.iter() {
-          // Mut borrow - this is repeated a lot sadly - TODO figure out
-          let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim.get(), &SIMULATION_TYPE)?;
           self.colliders.push(Self::make_collider(
             simulation,
-            self.user_data,
+            base,
+            self.rapier_user_data,
             shape,
             rigid_body,
           )?);
         }
       } else {
-        // Mut borrow - this is repeated a lot sadly - TODO figure out
-        let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim.get(), &SIMULATION_TYPE)?;
         self.colliders.push(Self::make_collider(
           simulation,
-          self.user_data,
+          base,
+          self.rapier_user_data,
           shape_var,
           rigid_body,
         )?);
@@ -160,28 +194,33 @@ impl RigidBody {
 
   // make and populate in the self.rigid_bodies list multiple RigidBodies
   // this is called every frame so it must check if empty, if not empty just passthrough
-  fn populate_multi(
+  fn activate_multi(
     &mut self,
-    sim: &ParamVar,
+    base: &RigidBodyBase,
     type_: RigidBodyType,
-    shape: &ParamVar,
     p: &Var,
     r: &Var,
-  ) -> Result<(&[RigidBodyHandle], Var, Var), &str> {
+  ) -> Result<(&[RigidBodyHandle], Var, Var), &'static str> {
+    let sim = &base.simulation;
+    let shape = &base.shape;
+
     if self.rigid_bodies.is_empty() {
+      // Mut borrow - this is repeated a lot sadly - TODO figure out
+      let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim.get(), &SIMULATION_TYPE)?;
+
       let p: Seq = p.try_into()?;
       for (idx, p) in p.iter().enumerate() {
         // init if array is empty
         let rigid_body = {
-          // Mut borrow - this is repeated a lot sadly - TODO figure out
-          let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim.get(), &SIMULATION_TYPE)?;
           if r.is_seq() {
             let r: Seq = r.try_into()?;
-            let rigid_body = Self::make_rigid_body(simulation, self.user_data, type_, &p, &r[idx])?;
+            let rigid_body =
+              Self::make_rigid_body(simulation, self.rapier_user_data, type_, &p, &r[idx])?;
             self.rigid_bodies.push(rigid_body);
             rigid_body
           } else {
-            let rigid_body = Self::make_rigid_body(simulation, self.user_data, type_, &p, r)?;
+            let rigid_body =
+              Self::make_rigid_body(simulation, self.rapier_user_data, type_, &p, r)?;
             self.rigid_bodies.push(rigid_body);
             rigid_body
           }
@@ -191,12 +230,10 @@ impl RigidBody {
         if shape.is_seq() {
           let shapes: Seq = shape.try_into().unwrap();
           for shape in shapes.iter() {
-            // Mut borrow - this is repeated a lot sadly - TODO figure out
-            let simulation =
-              Var::from_object_ptr_mut_ref::<Simulation>(sim.get(), &SIMULATION_TYPE)?;
             self.colliders.push(Self::make_collider(
               simulation,
-              self.user_data,
+              base,
+              self.rapier_user_data,
               shape,
               rigid_body,
             )?);
@@ -206,7 +243,8 @@ impl RigidBody {
           let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim.get(), &SIMULATION_TYPE)?;
           self.colliders.push(Self::make_collider(
             simulation,
-            self.user_data,
+            base,
+            self.rapier_user_data,
             shape,
             rigid_body,
           )?);
@@ -216,31 +254,45 @@ impl RigidBody {
     Ok((self.rigid_bodies.as_slice(), *p, *r))
   }
 
-  fn populate(
+  fn activate(
     &mut self,
-    sim: &ParamVar,
+    context: &Context,
+    base: &RigidBodyBase,
     type_: RigidBodyType,
-    shape: &ParamVar,
-    position: &ParamVar,
-    rotation: &ParamVar,
-  ) -> Result<(&[RigidBodyHandle], Var, Var), &str> {
-    let p = *position.get();
-    let r = *rotation.get();
+  ) -> Result<(&[RigidBodyHandle], Var, Var), &'static str> {
+    let p = *base.position.get();
+    let r: shards::SHVar = *base.rotation.get();
+
+    {
+      self.want_collision_events = base.has_collision_callback();
+      let mut events = self.collision_events.borrow_mut();
+      for evt in events.iter() {
+        let mut output = Var::default();
+        let state = base
+          .collision
+          .activate(context, &evt.other.user_data.0, &mut output);
+        if state == WireState::Error {
+          return Err("Physics.RigidBody: Error in collision callback");
+        }
+      }
+      events.clear();
+    }
+
     if p.is_seq() {
-      self.populate_multi(sim, type_, shape, &p, &r)
+      self.activate_multi(base, type_, &p, &r)
     } else {
-      self.populate_single(sim, type_, shape, &p, &r)
+      self.activate_single(base, type_, &p, &r)
     }
   }
 
   // Utility - makes a single RigidBody
-  fn make_rigid_body<'a>(
+  fn make_rigid_body(
     simulation: &mut Simulation,
     user_data: u128,
     type_: RigidBodyType,
     p: &Var,
     r: &Var,
-  ) -> Result<RigidBodyHandle, &'a str> {
+  ) -> Result<RigidBodyHandle, &'static str> {
     let pos = {
       if p.is_none() {
         Vector3::new(0.0, 0.0, 0.0)
@@ -272,28 +324,48 @@ impl RigidBody {
     Ok(simulation.bodies.insert(rigid_body))
   }
 
+  fn make_interaction_groups(bits: (u32, u32)) -> InteractionGroups {
+    InteractionGroups::new(
+      Group::from_bits_truncate(bits.0),
+      Group::from_bits_truncate(bits.1),
+    )
+  }
+
   // Utility - makes a collider or a compound from preset variables shapes
-  fn make_collider<'a>(
-    simulation: &'a mut Simulation,
+  fn make_collider(
+    simulation: &mut Simulation,
+    base: &RigidBodyBase,
     user_data: u128,
     shape: &Var,
     rigid_body: RigidBodyHandle,
-  ) -> Result<ColliderHandle, &'a str> {
+  ) -> Result<ColliderHandle, &'static str> {
     let shape_info = Var::from_object_ptr_mut_ref::<BaseShape>(&shape, &SHAPE_TYPE)?;
     let shape = shape_info.shape.as_ref().unwrap().clone();
 
     let mut builder = ColliderBuilder::new(shape).position(shape_info.position.unwrap());
+    if base.has_collision_callback() {
+      builder = builder.active_events(ActiveEvents::COLLISION_EVENTS);
+    }
+
+    if let Ok(bits) = TryInto::<(u32, u32)>::try_into(base.solver_group.get()) {
+      builder = builder.solver_groups(Self::make_interaction_groups(bits));
+    }
+    if let Ok(bits) = TryInto::<(u32, u32)>::try_into(base.collision_group.get()) {
+      builder = builder.collision_groups(Self::make_interaction_groups(bits));
+    }
+    
     if let Some(mass) = shape_info.mass {
       builder = builder.mass(mass);
     }
     let mut collider = builder.build();
     collider.user_data = user_data;
 
-    Ok(
+    let collider_handle =
       simulation
         .colliders
-        .insert_with_parent(collider, rigid_body, &mut simulation.bodies),
-    )
+        .insert_with_parent(collider, rigid_body, &mut simulation.bodies);
+
+    Ok(collider_handle)
   }
 }
 
@@ -304,15 +376,28 @@ impl Default for RigidBodyBase {
       shape: ParamVar::default(),
       position: ParamVar::new((0.0, 0.0, 0.0).into()),
       rotation: ParamVar::new((0.0, 0.0, 0.0, 1.0).into()),
-      // user_data: ParamVar::default(),
+      collision: ShardsVar::default(),
+      user_data: ParamVar::default(),
+      solver_group: ParamVar::default(),
+      collision_group: ParamVar::default(),
     }
   }
 }
 
 impl RigidBodyBase {
+  fn has_collision_callback(&self) -> bool {
+    return !self.collision.is_empty();
+  }
+
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     // we need to derive the position parameter type, because if it's a sequence we should create multiple RigidBodies
     // TODO we should also use input type to determine the output if dynamic
+
+    {
+      let mut data_copy = *data;
+      data_copy.inputType = common_type::any;
+      let cr = self.collision.compose(&data_copy)?;
+    }
 
     let pvt = util::get_param_var_type(&data, &self.position)?;
     let pos_type: &Type = (&pvt).into();
@@ -385,7 +470,9 @@ impl Shard for StaticRigidBodyShard {
     if self.self_obj.is_variable() {
       self.self_obj.set_cloning(&obj);
     }
-    Rc::get_mut(&mut self.rb).unwrap().warmup(user_data);
+    Rc::get_mut(&mut self.rb)
+      .unwrap()
+      .warmup(self.base.user_data.get(), user_data);
 
     Ok(())
   }
@@ -401,15 +488,11 @@ impl Shard for StaticRigidBodyShard {
     self.base.compose(data)
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     // just hit populate, it will be a noop if already populated, nothing else to do here
-    Rc::get_mut(&mut self.rb).unwrap().populate(
-      &self.base.simulation,
-      RigidBodyType::Fixed,
-      &self.base.shape,
-      &self.base.position,
-      &self.base.rotation,
-    )?;
+    Rc::get_mut(&mut self.rb)
+      .unwrap()
+      .activate(context, &self.base, RigidBodyType::Fixed)?;
     Ok(*input)
   }
 
@@ -439,8 +522,6 @@ struct DynamicRigidBodyShard {
   base: RigidBodyBase,
   #[shard_param("Name", "The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body.", VAR_TYPES)]
   self_obj: ParamVar,
-  // #[shard_warmup]
-  // name: ParamVar,
   rb: Rc<RigidBody>,
   output: Seq,
   exposing: ExposedTypes,
@@ -453,7 +534,6 @@ impl Default for DynamicRigidBodyShard {
     Self {
       required: ExposedTypes::new(),
       base: RigidBodyBase::default(),
-      // name: ParamVar::default(),
       self_obj: ParamVar::default(),
       rb: Rc::new(RigidBody::default()),
       output,
@@ -481,7 +561,9 @@ impl Shard for DynamicRigidBodyShard {
     if self.self_obj.is_variable() {
       self.self_obj.set_cloning(&obj);
     }
-    Rc::get_mut(&mut self.rb).unwrap().warmup(user_data);
+    Rc::get_mut(&mut self.rb)
+      .unwrap()
+      .warmup(self.base.user_data.get(), user_data);
 
     Ok(())
   }
@@ -497,19 +579,13 @@ impl Shard for DynamicRigidBodyShard {
     self.base.compose(data)
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     // dynamic will use parameter position and rotation only the first time
     // after that will be driven by the physics engine so what we do is get the new matrix and output it
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = self.base.simulation.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
-    let (rbs, _, _) = rbData.populate(
-      &self.base.simulation,
-      RigidBodyType::Dynamic,
-      &self.base.shape,
-      &self.base.position,
-      &self.base.rotation,
-    )?;
+    let (rbs, _, _) = rbData.activate(context, &self.base, RigidBodyType::Dynamic)?;
     if rbs.len() == 1 {
       let rb = simulation.bodies.get(rbs[0]).unwrap();
       let mat: Matrix4<f32> = rb.position().to_matrix();
@@ -547,8 +623,6 @@ struct KinematicRigidBodyShard {
   base: RigidBodyBase,
   #[shard_param("Name", "The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body.", VAR_TYPES)]
   self_obj: ParamVar,
-  // #[shard_warmup]
-  // name: ParamVar,
   rb: Rc<RigidBody>,
   output: Seq,
   exposing: ExposedTypes,
@@ -589,7 +663,9 @@ impl Shard for KinematicRigidBodyShard {
     if self.self_obj.is_variable() {
       self.self_obj.set_cloning(&obj);
     }
-    Rc::get_mut(&mut self.rb).unwrap().warmup(user_data);
+    Rc::get_mut(&mut self.rb)
+      .unwrap()
+      .warmup(self.base.user_data.get(), user_data);
 
     Ok(())
   }
@@ -605,19 +681,15 @@ impl Shard for KinematicRigidBodyShard {
     self.base.compose(data)
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     // kinematic pos/rot will be updated every frame by reading the parameters which should be variables
     // it will also output a properly interpolated matrix
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = self.base.simulation.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
-    let (rbs, p, r) = rbData.populate(
-      &self.base.simulation,
-      RigidBodyType::KinematicPositionBased,
-      &self.base.shape,
-      &self.base.position,
-      &self.base.rotation,
-    )?; // TODO KinematicVelocityBased as well
+    // TODO KinematicVelocityBased as well
+    let (rbs, p, r) =
+      rbData.activate(context, &self.base, RigidBodyType::KinematicPositionBased)?;
     if rbs.len() == 1 {
       let rb = simulation.bodies.get_mut(rbs[0]).unwrap();
       // this guy will read constantly pos and rotations from variable values

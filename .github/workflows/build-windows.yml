@@ -346,7 +346,7 @@ jobs:
         shell: bash
         run: |
           echo "Running physics"
-          build/shards shards/tests/physics.edn
+          build/shards new shards/tests/physics.shs
       - name: Test
         env:
           RUST_BACKTRACE: full

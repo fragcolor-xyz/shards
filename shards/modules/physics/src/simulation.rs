@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
-use shards::core::register_legacy_shard;
 use crate::Simulation;
 use crate::EXPOSED_SIMULATION;
 use crate::SIMULATION_TYPE;
+use shards::core::register_legacy_shard;
 
 use shards::types::Context;
 
@@ -12,12 +12,10 @@ use shards::types::ExposedTypes;
 use shards::types::ParamVar;
 use shards::types::Parameters;
 
+use shards::shard::LegacyShard;
 use shards::types::ANY_TYPES;
 use shards::types::FLOAT_TYPES_SLICE;
-use shards::shard::LegacyShard;
 
-use shards::types::Types;
-use shards::types::Var;
 use rapier3d::dynamics::{
   CCDSolver, ImpulseJointSet, IntegrationParameters, MultibodyJointSet, RigidBodySet,
 };
@@ -25,7 +23,10 @@ use rapier3d::geometry::{BroadPhase, ColliderSet, NarrowPhase};
 use rapier3d::na::Vector3;
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
 use rapier3d::prelude::IslandManager;
+use shards::types::Types;
+use shards::types::Var;
 use std::convert::TryInto;
+use std::rc::Rc;
 
 lazy_static! {
   static ref SIMULATION_PARAMETERS: Parameters = vec![(
@@ -57,6 +58,7 @@ impl Default for Simulation {
       contact_force_channel: contact_force_recv,
       event_handler: ChannelEventCollector::new(collision_send, contact_force_send),
       self_obj: ParamVar::new(().into()),
+      collider_data: std::collections::HashMap::new(),
     };
     res.self_obj.set_name("Physics.Simulation");
     res
@@ -141,6 +143,39 @@ impl LegacyShard for Simulation {
       &(),
       &self.event_handler,
     );
+
+    self.contact_force_channel.try_iter().for_each(|f| {
+      // f.max_force_direction
+    });
+
+    self.collisions_channel.try_iter().for_each(|f| {
+      let c1 = self.colliders.get(f.collider1()).unwrap();
+      let c2 = self.colliders.get(f.collider2()).unwrap();
+      // let r1 = self.bodies.get(c1.parent().unwrap()).unwrap();
+      // let r2 = self.bodies.get(c1.parent().unwrap()).unwrap();
+
+      unsafe {
+        let ptr1 = &mut *(c1.user_data as *mut Rc<crate::RigidBody>);
+        let ptr2 = &mut *(c2.user_data as *mut Rc<crate::RigidBody>);
+        if f.started() {
+          if ptr1.want_collision_events {
+            let mut vec = ptr1.collision_events.borrow_mut();
+            vec.push(crate::CollisionEvent {
+              other: ptr2.clone(),
+            })
+          }
+          if ptr2.want_collision_events {
+            let mut vec = ptr2.collision_events.borrow_mut();
+            vec.push(crate::CollisionEvent {
+              other: ptr1.clone(),
+            })
+          }
+        }
+        // (*ptr1).handle_collision_event(&mut *ptr2, &f);
+        // (*ptr2).handle_collision_event(&mut *ptr1, &f);
+      }
+    });
+
     Ok(*input)
   }
 }

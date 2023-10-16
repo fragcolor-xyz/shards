@@ -130,7 +130,7 @@ jobs:
           Xvfb "$DISPLAY" &
 
           echo "Running physics"
-          build/shards shards/tests/physics.edn
+          build/shards new shards/tests/physics.shs
       - name: Test doc samples (GFX)
         env:
           RUST_BACKTRACE: full

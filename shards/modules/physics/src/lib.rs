@@ -4,12 +4,16 @@
 extern crate crossbeam;
 extern crate rapier3d;
 
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::ffi::CString;
+use std::rc::Rc;
 
 use shards::fourCharacterCode;
 use shards::shardsc::SHObjectTypeInfo;
 use shards::shardsc::SHType_Float4;
 
+use shards::types::ClonedVar;
 use shards::types::common_type;
 
 use shards::types::ExposedInfo;
@@ -25,9 +29,11 @@ use rapier3d::dynamics::{
   RigidBodyHandle, RigidBodySet,
 };
 use rapier3d::geometry::{
-  BroadPhase, ColliderHandle, ColliderSet, CollisionEvent, ContactForceEvent, NarrowPhase,
+  BroadPhase, ColliderHandle, ColliderSet, ContactForceEvent, NarrowPhase,
   SharedShape,
 };
+
+use rapier3d::geometry::CollisionEvent as RapierCollisionEvent;
 use rapier3d::na::{Isometry3, Matrix3, Matrix4, Vector3};
 use rapier3d::pipeline::{ChannelEventCollector, PhysicsPipeline, QueryPipeline};
 
@@ -103,6 +109,8 @@ static ROTATIONS_TYPES_SLICE: &[Type] = &[
 static POSITION_TYPES_SLICE: &[Type] = &[common_type::float3, common_type::float3_var];
 static ROTATION_TYPES_SLICE: &[Type] = &[common_type::float4, common_type::float4_var];
 
+pub type ColliderData = shards::types::Var;
+
 struct Simulation {
   pipeline: PhysicsPipeline,
   islands_manager: IslandManager,
@@ -116,17 +124,26 @@ struct Simulation {
   impulse_joints: ImpulseJointSet,
   multibody_joints: MultibodyJointSet,
   ccd_solver: CCDSolver,
-  collisions_channel: crossbeam::channel::Receiver<CollisionEvent>,
+  collisions_channel: crossbeam::channel::Receiver<RapierCollisionEvent>,
   contact_force_channel: crossbeam::channel::Receiver<ContactForceEvent>,
   event_handler: ChannelEventCollector,
   self_obj: ParamVar,
+  collider_data: HashMap<ColliderHandle, ColliderData>,
+}
+
+struct CollisionEvent {
+  other: Rc<RigidBody>,
+  // coll
 }
 
 #[derive(Default)]
 struct RigidBody {
   rigid_bodies: Vec<RigidBodyHandle>,
   colliders: Vec<ColliderHandle>,
-  user_data: u128,
+  user_data: ClonedVar,
+  rapier_user_data: u128,
+  want_collision_events: bool,
+  collision_events: RefCell<Vec<CollisionEvent>>,
 }
 
 #[derive(Default)]
