@@ -777,6 +777,7 @@ struct ResumeWire : public WireBase {
       }
     }
 
+    assert(wire && wire->context && wire->context->flow && "Resume: wire or wire context is null.");
     wire->context->flow->state = SHFlowState::Flowing;
 
     return input;
