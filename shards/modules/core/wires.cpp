@@ -777,7 +777,7 @@ struct ResumeWire : public WireBase {
       }
     }
 
-    wire->context->flow->state = SHFlowState::Running;
+    wire->context->flow->state = SHFlowState::Flowing;
 
     return input;
   }
