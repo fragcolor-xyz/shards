@@ -7,7 +7,9 @@
 #include <windows.h>
 #include <processthreadsapi.h>
 #elif SH_LINUX || SH_APPLE
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <pthread.h>
 #endif
 
@@ -34,9 +36,12 @@ inline void setThreadName(std::string_view name_sv) {
 #if SH_WINDOWS
   std::wstring name = toWindowsWString(name_sv);
   SetThreadDescription(GetCurrentThread(), name.c_str());
-#elif SH_LINUX || SH_APPLE
+#elif SH_LINUX
   std::string name {name_sv};
   pthread_setname_np(pthread_self(), name.c_str());
+#elif SH_APPLE
+  std::string name {name_sv};
+  pthread_setname_np(name.c_str());
 #endif
 }
 
