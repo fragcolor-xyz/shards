@@ -3,7 +3,7 @@
 
 #include "platform.hpp"
 
-#ifdef SH_WINDOWS
+#if SH_WINDOWS
 #include <windows.h>
 #include <processthreadsapi.h>
 #elif SH_LINUX || SH_APPLE
@@ -21,7 +21,7 @@
 
 namespace shards {
 
-#ifdef SH_WINDOWS
+#if SH_WINDOWS
 inline std::wstring toWindowsWString(std::string_view utf8) {
   std::wstring result;
   result.resize(MultiByteToWideChar(CP_UTF8, 0, utf8.data(), utf8.size(), nullptr, 0));
@@ -31,7 +31,7 @@ inline std::wstring toWindowsWString(std::string_view utf8) {
 #endif
 
 inline void setThreadName(std::string_view name_sv) {
-#ifdef SH_WINDOWS
+#if SH_WINDOWS
   std::wstring name = toWindowsWString(name_sv);
   SetThreadDescription(GetCurrentThread(), name.c_str());
 #elif SH_LINUX || SH_APPLE
