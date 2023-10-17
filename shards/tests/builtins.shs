@@ -1,0 +1,38 @@
+@define(str "string")
+none Log(@str)
+
+@define(str-eval #("Hello" >= str | " world!" | AppendTo(str) | str))
+none Log(@str-eval)
+
+@define(one 1.0)
+@define(two #(@one Math.Add(@one)))
+Assert.IsStatic(@one) | Log("@one")
+Assert.IsStatic(@two) | Log("@two")
+
+@define(f2vec @f2(@one #(@two | Math.Add(@two))))
+Assert.IsStatic(@f2vec) | Log("@f2vec")
+
+@define(f2vec-eval #(@f2vec | Math.Add(@one)))
+Assert.IsStatic(@f2vec-eval) | Log("@f2vec")
+
+Assert.IsStatic(@f2(0)) | Log("float vec inline")
+Assert.IsStatic(@i2(9)) | Log("int vec")
+
+@define(ione 1)
+Assert.IsStatic(@i3(0 0 @ione)) | Log("int vec")
+
+; This should generate a variable for the parameter
+1 = ix
+Assert.IsVariable(@i3(0 0 ix)) | Log("int vec")
+
+; MakeX requires exact typing
+3.14 = pi
+Assert.IsVariable(@f3(0.0 1.0 pi)) | Log("f3 vec")
+
+Assert.IsStatic(@color(0xff00ff)) | Log("const @color(hex)")
+Assert.IsStatic(@color(255 0 255)) | Log("const @color(r g b)")
+
+; Mixed
+127 = a
+Assert.IsVariable(@color(255 0 255 a)) | Log("variable @color(r g b <var>)")
+

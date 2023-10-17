@@ -158,6 +158,7 @@ impl EvalEnv {
   }
 }
 
+#[derive(Clone)]
 enum SVar {
   Cloned(ClonedVar),
   NotCloned(Var),
@@ -180,6 +181,24 @@ impl AsMut<Var> for SVar {
     }
   }
 }
+fn error_invalid_hex(line_info: LineInfo) -> ShardsError {
+  ("Invalid hexadecimal parameter", line_info).into()
+}
+
+fn is_compile_time_constant(v: &Value, e: &EvalEnv) -> bool {
+  match v {
+    Value::Func(f) => {
+      if let Some(defined) = find_defined(&f.name, e) {
+        return is_compile_time_constant(unsafe { &*defined }, e);
+      } else {
+        false
+      }
+    }
+    Value::Expr(_) | Value::Identifier(_) | Value::Shard(_) | Value::Shards(_) => false,
+    Value::TakeTable(_, _) | Value::TakeSeq(_, _) => false,
+    _ => true,
+  }
+}
 
 fn process_vector_built_in_ints_block<const WIDTH: usize>(
   func: &Function,
@@ -191,15 +210,11 @@ fn process_vector_built_in_ints_block<const WIDTH: usize>(
   let (params, len) = get_vec_params::<WIDTH, 16>(func, line_info)?;
 
   let has_variables = params.iter().any(|x| {
-    if let Value::Identifier(_) = &x.value {
-      true
-    } else {
-      false
-    }
+    return !is_compile_time_constant(&x.value, e);
   });
 
   if !has_variables {
-    let value = extract_ints_vector_var::<WIDTH>(len, params, line_info)?;
+    let value = extract_ints_vector_var::<WIDTH>(len, params, line_info, e)?;
     add_const_shard2(value, line_info, e)
   } else {
     let shard = extract_make_ints_shard::<WIDTH>(len, params, line_info, e)?;
@@ -211,9 +226,10 @@ fn process_vector_built_in_ints_block<const WIDTH: usize>(
 fn handle_vector_built_in_ints<const WIDTH: usize>(
   func: &Function,
   line_info: LineInfo,
+  e: &mut EvalEnv,
 ) -> Result<Var, ShardsError> {
   let (params, len) = get_vec_params::<WIDTH, 16>(func, line_info)?;
-  extract_ints_vector_var::<WIDTH>(len, params, line_info)
+  extract_ints_vector_var::<WIDTH>(len, params, line_info, e)
 }
 
 fn extract_make_ints_shard<const WIDTH: usize>(
@@ -253,9 +269,11 @@ fn extract_make_ints_shard<const WIDTH: usize>(
 
   for i in 0..len {
     let var = match &params[i].value {
-      Value::Identifier(_) | Value::Number(_) | Value::Expr(_) | Value::EvalExpr(_) => {
-        as_var(&params[i].value, line_info, Some(shard.0), e)
-      }
+      Value::Identifier(_)
+      | Value::Number(_)
+      | Value::Expr(_)
+      | Value::EvalExpr(_)
+      | Value::Func(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
       _ => return error_requires_number(line_info),
     }?;
     shard
@@ -279,84 +297,56 @@ fn extract_ints_vector_var<const WIDTH: usize>(
   len: usize,
   params: &Vec<Param>,
   line_info: LineInfo,
+  e: &mut EvalEnv,
 ) -> Result<shards::SHVar, ShardsError> {
-  let mut vector_values: [i64; WIDTH] = [0; WIDTH];
-
-  fn error_requires_number(line_info: LineInfo) -> Result<Var, ShardsError> {
-    Err(
-      (
-        "vector built-in function requires an integer number parameter",
-        line_info,
-      )
-        .into(),
-    )
-  }
+  let mut vector_values: [SVar; WIDTH] = std::array::from_fn(|_| SVar::NotCloned(Var::default()));
 
   for i in 0..len {
-    vector_values[i] = match &params[i].value {
-      Value::Number(n) => match n {
-        Number::Integer(n) => *n,
-        _ => return error_requires_number(line_info),
-      },
-      _ => return error_requires_number(line_info),
-    };
+    vector_values[i] = as_var(&params[i].value, line_info, None, e)?;
   }
 
   if len == 1 {
     // fill with first value
     for i in 1..WIDTH {
-      vector_values[i] = vector_values[0];
+      vector_values[i] = vector_values[0].clone();
+    }
+  }
+
+  fn to_int(v: &SVar, line_info: LineInfo) -> Result<i32, ShardsError> {
+    match TryInto::<i32>::try_into(v.as_ref()) {
+      Ok(v) => Ok(v),
+      Err(_) => Err(("Argument not an integer", line_info).into()),
     }
   }
 
   match WIDTH {
-    2 => Ok((vector_values[0], vector_values[1]).into()),
+    2 => {
+      let x: i32 = to_int(&vector_values[0], line_info)?;
+      let y: i32 = to_int(&vector_values[1], line_info)?;
+      Ok((x, y).into())
+    }
     3 => {
-      let (x_result, y_result, z_result) = (
-        i32::try_from(vector_values[0]),
-        i32::try_from(vector_values[1]),
-        i32::try_from(vector_values[2]),
-      );
-
-      match (x_result, y_result, z_result) {
-        (Ok(x), Ok(y), Ok(z)) => Ok((x, y, z).into()),
-        _ => Err(
-          (
-            "vector built-in function requires 3 integer parameters",
-            line_info,
-          )
-            .into(),
-        ),
-      }
+      let x: i32 = to_int(&vector_values[0], line_info)?;
+      let y: i32 = to_int(&vector_values[1], line_info)?;
+      let z: i32 = to_int(&vector_values[2], line_info)?;
+      Ok((x, y, z).into())
     }
     4 => {
-      let (x_result, y_result, z_result, w_result) = (
-        i32::try_from(vector_values[0]),
-        i32::try_from(vector_values[1]),
-        i32::try_from(vector_values[2]),
-        i32::try_from(vector_values[3]),
-      );
-
-      match (x_result, y_result, z_result, w_result) {
-        (Ok(x), Ok(y), Ok(z), Ok(w)) => Ok((x, y, z, w).into()),
-        _ => Err(
-          (
-            "vector built-in function requires 4 integer parameters",
-            line_info,
-          )
-            .into(),
-        ),
-      }
+      let x: i32 = to_int(&vector_values[0], line_info)?;
+      let y: i32 = to_int(&vector_values[1], line_info)?;
+      let z: i32 = to_int(&vector_values[2], line_info)?;
+      let w: i32 = to_int(&vector_values[3], line_info)?;
+      Ok((x, y, z, w).into())
     }
     8 => {
       let mut result: [i16; 8] = [0; 8];
       for (i, value) in vector_values.iter().enumerate() {
-        match i16::try_from(*value as i64) {
+        match i16::try_from(to_int(value, line_info)?) {
           Ok(int_value) => result[i] = int_value,
           Err(_) => {
             return Err(
               (
-                "vector built-in function requires parameters that can be converted to i32",
+                "vector built-in function requires parameters that can be converted to i16",
                 line_info,
               )
                 .into(),
@@ -370,12 +360,12 @@ fn extract_ints_vector_var<const WIDTH: usize>(
     16 => {
       let mut result: [i8; 16] = [0; 16];
       for (i, value) in vector_values.iter().enumerate() {
-        match i8::try_from(*value as i64) {
+        match i8::try_from(to_int(value, line_info)?) {
           Ok(int_value) => result[i] = int_value,
           Err(_) => {
             return Err(
               (
-                "vector built-in function requires parameters that can be converted to i32",
+                "vector built-in function requires parameters that can be converted to i8",
                 line_info,
               )
                 .into(),
@@ -438,15 +428,11 @@ fn process_vector_built_in_floats_block<const WIDTH: usize>(
   let (params, len) = get_vec_params::<WIDTH, 16>(func, line_info)?;
 
   let has_variables = params.iter().any(|x| {
-    if let Value::Number(_) = &x.value {
-      false
-    } else {
-      true
-    }
+    return !is_compile_time_constant(&x.value, e);
   });
 
   if !has_variables {
-    let value = extract_floats_vector_var::<WIDTH>(len, params, line_info)?;
+    let value = extract_floats_vector_var::<WIDTH>(len, params, line_info, e)?;
     add_const_shard2(value, line_info, e)
   } else {
     let shard = extract_make_floats_shard::<WIDTH>(len, params, line_info, e)?;
@@ -458,9 +444,10 @@ fn process_vector_built_in_floats_block<const WIDTH: usize>(
 fn handle_vector_built_in_floats<const WIDTH: usize>(
   func: &Function,
   line_info: LineInfo,
+  e: &mut EvalEnv,
 ) -> Result<Var, ShardsError> {
   let (params, len) = get_vec_params::<WIDTH, 4>(func, line_info)?;
-  extract_floats_vector_var::<WIDTH>(len, params, line_info)
+  extract_floats_vector_var::<WIDTH>(len, params, line_info, e)
 }
 
 fn extract_make_floats_shard<const WIDTH: usize>(
@@ -498,9 +485,11 @@ fn extract_make_floats_shard<const WIDTH: usize>(
 
   for i in 0..len {
     let var = match &params[i].value {
-      Value::Identifier(_) | Value::Number(_) | Value::Expr(_) | Value::EvalExpr(_) => {
-        as_var(&params[i].value, line_info, Some(shard.0), e)
-      }
+      Value::Identifier(_)
+      | Value::Number(_)
+      | Value::Expr(_)
+      | Value::EvalExpr(_)
+      | Value::Func(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
       _ => return error_requires_number(line_info),
     }?;
     shard
@@ -524,8 +513,9 @@ fn extract_floats_vector_var<const WIDTH: usize>(
   len: usize,
   params: &Vec<Param>,
   line_info: LineInfo,
+  e: &mut EvalEnv,
 ) -> Result<shards::SHVar, ShardsError> {
-  let mut vector_values: [f64; WIDTH] = [0.0; WIDTH];
+  let mut vector_values: [SVar; WIDTH] = std::array::from_fn(|_| SVar::NotCloned(Var::default()));
 
   fn error_requires_number(line_info: LineInfo) -> Result<Var, ShardsError> {
     Err(
@@ -538,42 +528,45 @@ fn extract_floats_vector_var<const WIDTH: usize>(
   }
 
   for i in 0..len {
-    vector_values[i] = match &params[i].value {
-      Value::Number(n) => match n {
-        Number::Integer(n) => *n as f64,
-        Number::Float(n) => *n,
-        _ => return error_requires_number(line_info),
-      },
-      _ => return error_requires_number(line_info),
-    };
+    vector_values[i] = as_var(&params[i].value, line_info, None, e)?;
   }
 
   if len == 1 {
     // fill with first value
     for i in 1..WIDTH {
-      vector_values[i] = vector_values[0];
+      vector_values[i] = vector_values[0].clone();
+    }
+  }
+
+  fn to_float(v: &SVar, line_info: LineInfo) -> Result<f64, ShardsError> {
+    match TryInto::<f64>::try_into(v.as_ref()) {
+      Ok(v) => Ok(v),
+      Err(_) => match TryInto::<i64>::try_into(v.as_ref()) {
+        Ok(v) => Ok(v as f64),
+        Err(_) => Err(("Argument not a number", line_info).into()),
+      },
     }
   }
 
   match WIDTH {
-    2 => Ok((vector_values[0], vector_values[1]).into()),
-    3 => Ok(
-      (
-        vector_values[0] as f32,
-        vector_values[1] as f32,
-        vector_values[2] as f32,
-      )
-        .into(),
-    ),
-    4 => Ok(
-      (
-        vector_values[0] as f32,
-        vector_values[1] as f32,
-        vector_values[2] as f32,
-        vector_values[3] as f32,
-      )
-        .into(),
-    ),
+    2 => {
+      let x: f64 = to_float(&vector_values[0], line_info)?;
+      let y: f64 = to_float(&vector_values[1], line_info)?;
+      Ok((x, y).into())
+    }
+    3 => {
+      let x: f32 = to_float(&vector_values[0], line_info)? as f32;
+      let y: f32 = to_float(&vector_values[1], line_info)? as f32;
+      let z: f32 = to_float(&vector_values[2], line_info)? as f32;
+      Ok((x, y, z).into())
+    }
+    4 => {
+      let x: f32 = to_float(&vector_values[0], line_info)? as f32;
+      let y: f32 = to_float(&vector_values[1], line_info)? as f32;
+      let z: f32 = to_float(&vector_values[2], line_info)? as f32;
+      let w: f32 = to_float(&vector_values[3], line_info)? as f32;
+      Ok((x, y, z, w).into())
+    }
     _ => Err(
       (
         "float vector built-in function requires 2, 3, or 4 parameters",
@@ -592,11 +585,7 @@ fn process_color_built_in_function(
   let (params, len) = get_vec_params::<4, 4>(func, line_info)?;
 
   let has_variables = params.iter().any(|x| {
-    if let Value::Identifier(_) = &x.value {
-      true
-    } else {
-      false
-    }
+    return !is_compile_time_constant(&x.value, e);
   });
 
   if !has_variables {
@@ -629,9 +618,11 @@ fn extract_make_colors_shard(
 
   for i in 0..len {
     let var = match &params[i].value {
-      Value::Identifier(_) | Value::Number(_) | Value::Expr(_) | Value::EvalExpr(_) => {
-        as_var(&params[i].value, line_info, Some(shard.0), e)
-      }
+      Value::Identifier(_)
+      | Value::Number(_)
+      | Value::Expr(_)
+      | Value::EvalExpr(_)
+      | Value::Func(_) => as_var(&params[i].value, line_info, Some(shard.0), e),
       _ => return error_requires_number(line_info),
     }?;
     shard
@@ -705,16 +696,6 @@ fn handle_color_built_in(func: &Function, line_info: LineInfo) -> Result<Var, Sh
 
   let mut colors = [255; 4];
 
-  fn error_invalid_hex(line_info: LineInfo) -> Result<Var, ShardsError> {
-    Err(
-      (
-        "color built-in function has an invalid hexadecimal parameter",
-        line_info,
-      )
-        .into(),
-    )
-  }
-
   fn error_requires_number(line_info: LineInfo) -> Result<Var, ShardsError> {
     Err(
       (
@@ -762,12 +743,12 @@ fn handle_color_built_in(func: &Function, line_info: LineInfo) -> Result<Var, Sh
           let n = &n.as_str()[2..];
           let s_len = n.len();
           if s_len > 8 {
-            return error_invalid_hex(line_info);
+            return Err(error_invalid_hex(line_info));
           }
           if let Ok(n) = u32::from_str_radix(n, 16) {
             assign_colors(n, s_len / 2, &mut colors);
           } else {
-            return error_invalid_hex(line_info);
+            return Err(error_invalid_hex(line_info));
           }
         }
       },
@@ -779,7 +760,7 @@ fn handle_color_built_in(func: &Function, line_info: LineInfo) -> Result<Var, Sh
         Value::Number(n) => match n {
           Number::Integer(n) => color_int(*n)?,
           Number::Float(n) => color_float(*n)?,
-          Number::Hexadecimal(_) => return error_invalid_hex(line_info),
+          Number::Hexadecimal(_) => return Err(error_invalid_hex(line_info)),
         },
         _ => return error_requires_number(line_info),
       };
@@ -987,15 +968,24 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
   }
 }
 
+pub(crate) fn eval_sequence_inline(
+  seq: &Sequence,
+  env: &mut EvalEnv,
+  cancellation_token: Arc<AtomicBool>,
+) -> Result<(), ShardsError> {
+  for stmt in &seq.statements {
+    eval_statement(stmt, env, cancellation_token.clone())?;
+  }
+  Ok(())
+}
+
 pub(crate) fn eval_sequence(
   seq: &Sequence,
   parent: Option<&mut EvalEnv>,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<EvalEnv, ShardsError> {
   let mut sub_env = EvalEnv::new(None, parent.map(|p| p as *const EvalEnv));
-  for stmt in &seq.statements {
-    eval_statement(stmt, &mut sub_env, cancellation_token.clone())?;
-  }
+  eval_sequence_inline(seq, &mut sub_env, cancellation_token)?;
   Ok(sub_env)
 }
 
@@ -1365,119 +1355,218 @@ fn as_var(
         panic!("TakeTable should always return a shard")
       }
     }
-    Value::Func(func) => match (func.name.name.as_str(), func.name.namespaces.is_empty()) {
-      ("color", true) => Ok(SVar::NotCloned(handle_color_built_in(func, line_info)?)),
-      ("i2", true) => Ok(SVar::NotCloned(handle_vector_built_in_ints::<2>(
-        func, line_info,
-      )?)),
-      ("i3", true) => Ok(SVar::NotCloned(handle_vector_built_in_ints::<3>(
-        func, line_info,
-      )?)),
-      ("i4", true) => Ok(SVar::NotCloned(handle_vector_built_in_ints::<4>(
-        func, line_info,
-      )?)),
-      ("i8", true) => Ok(SVar::NotCloned(handle_vector_built_in_ints::<8>(
-        func, line_info,
-      )?)),
-      ("i16", true) => Ok(SVar::NotCloned(handle_vector_built_in_ints::<16>(
-        func, line_info,
-      )?)),
-      ("f2", true) => Ok(SVar::NotCloned(handle_vector_built_in_floats::<2>(
-        func, line_info,
-      )?)),
-      ("f3", true) => Ok(SVar::NotCloned(handle_vector_built_in_floats::<3>(
-        func, line_info,
-      )?)),
-      ("f4", true) => Ok(SVar::NotCloned(handle_vector_built_in_floats::<4>(
-        func, line_info,
-      )?)),
-      ("platform", true) => Ok(SVar::NotCloned(process_platform_built_in())),
-      ("type", true) => process_type(func, line_info, e),
-      ("ast", true) => process_ast(func, line_info, e),
-      _ => {
-        if let Some(defined_value) = find_defined(&func.name, e) {
-          let replacement = unsafe { &*defined_value };
-          as_var(replacement, line_info, shard, e)
-        } else if let Some(mut shards_env) = process_template(func, line_info, e)? {
-          // @template
-          finalize_env(&mut shards_env)?; // finalize the env
-
-          let mut seq = AutoSeqVar::new();
-
-          // shards
-          for shard in shards_env.shards.drain(..) {
-            let s: Var = shard.0 .0.into();
-            seq.0.push(&s);
-          }
-
-          // also move possible other possible things we defined!
-          for (name, value) in shards_env.definitions.drain() {
-            e.definitions.insert(name, value);
-          }
-          assert_eq!(shards_env.deferred_wires.len(), 0);
-          for (name, value) in shards_env.finalized_wires.drain() {
-            e.finalized_wires.insert(name, value);
-          }
-          for (name, value) in shards_env.shards_groups.drain() {
-            e.shards_groups.insert(name, value);
-          }
-          for (name, value) in shards_env.macro_groups.drain() {
-            e.macro_groups.insert(name, value);
-          }
-          for (id, mesh) in shards_env.meshes.drain() {
-            e.meshes.insert(id, mesh);
-          }
-
-          Ok(SVar::Cloned(ClonedVar(seq.leak())))
-        } else if let Some(ast_json) = process_macro(func, line_info, e)? {
-          let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
-            (
-              "macro built-in function Shards should output a Json string",
-              line_info,
-            )
-              .into()
-          })?;
-
-          thread_local! {
-            pub static TMP_VALUE: RefCell<Option<Value>> = RefCell::new(None);
-          }
-
-          // in this case we expect the ast to be a value
-          let decoded_json: Value = serde_json::from_str(ast_json).map_err(|e| {
-            (
-              format!(
-                "macro built-in function Shards should return a valid Json string: {}",
-                e
-              ),
-              line_info,
-            )
-              .into()
-          })?;
-
-          TMP_VALUE.with(|f| {
-            let mut v = f.borrow_mut();
-            *v = Some(decoded_json.clone());
-            as_var(
-              v.as_ref().unwrap(), // should be valid
-              line_info,
-              shard,
-              e,
-            )
+    Value::Func(func) => {
+      // Either evaluates the builtin directly or as an expression whenever it contains expressions
+      fn eval_as_const_or_expr<F>(
+        f: &Function,
+        f_const: F,
+        line_info: LineInfo,
+        e: &mut EvalEnv,
+      ) -> Result<SVar, ShardsError>
+      where
+        F: FnOnce(&mut EvalEnv) -> Result<SVar, ShardsError>,
+      {
+        let has_variables = if let Some(params) = &f.params {
+          params.iter().any(|x| {
+            return !is_compile_time_constant(&x.value, e);
           })
-        } else if let Some(extension) = find_extension(&func.name, e) {
-          let v = extension.process_to_var(func, line_info)?;
-          Ok(SVar::Cloned(v))
         } else {
-          Err(
-            (
-              format!("Undefined function or definition {:?}", func.name),
-              line_info,
-            )
-              .into(),
-          )
+          false
+        };
+        if has_variables {
+          let value2 = Value::Expr {
+            0: Sequence {
+              statements: vec![Statement::Pipeline {
+                0: Pipeline {
+                  blocks: vec![Block {
+                    content: BlockContent::Func(f.clone()),
+                    line_info: Some(line_info),
+                  }],
+                },
+              }],
+            },
+          };
+          as_var(&value2, line_info, None, e)
+        } else {
+          f_const(e)
         }
       }
-    },
+
+      match (func.name.name.as_str(), func.name.namespaces.is_empty()) {
+        ("color", true) => eval_as_const_or_expr(
+          func,
+          |_e| Ok(SVar::NotCloned(handle_color_built_in(func, line_info)?)),
+          line_info,
+          e,
+        ),
+        ("i2", true) => eval_as_const_or_expr(
+          func,
+          |e| {
+            Ok(SVar::NotCloned(handle_vector_built_in_ints::<2>(
+              func, line_info, e,
+            )?))
+          },
+          line_info,
+          e,
+        ),
+        ("i3", true) => eval_as_const_or_expr(
+          func,
+          |e| {
+            Ok(SVar::NotCloned(handle_vector_built_in_ints::<3>(
+              func, line_info, e,
+            )?))
+          },
+          line_info,
+          e,
+        ),
+        ("i4", true) => eval_as_const_or_expr(
+          func,
+          |e| {
+            Ok(SVar::NotCloned(handle_vector_built_in_ints::<4>(
+              func, line_info, e,
+            )?))
+          },
+          line_info,
+          e,
+        ),
+        ("i8", true) => eval_as_const_or_expr(
+          func,
+          |e| {
+            Ok(SVar::NotCloned(handle_vector_built_in_ints::<8>(
+              func, line_info, e,
+            )?))
+          },
+          line_info,
+          e,
+        ),
+        ("i16", true) => eval_as_const_or_expr(
+          func,
+          |e| {
+            Ok(SVar::NotCloned(handle_vector_built_in_ints::<16>(
+              func, line_info, e,
+            )?))
+          },
+          line_info,
+          e,
+        ),
+        ("f2", true) => eval_as_const_or_expr(
+          func,
+          |e| {
+            Ok(SVar::NotCloned(handle_vector_built_in_floats::<2>(
+              func, line_info, e,
+            )?))
+          },
+          line_info,
+          e,
+        ),
+        ("f3", true) => eval_as_const_or_expr(
+          func,
+          |e| {
+            Ok(SVar::NotCloned(handle_vector_built_in_floats::<3>(
+              func, line_info, e,
+            )?))
+          },
+          line_info,
+          e,
+        ),
+        ("f4", true) => eval_as_const_or_expr(
+          func,
+          |e| {
+            Ok(SVar::NotCloned(handle_vector_built_in_floats::<4>(
+              func, line_info, e,
+            )?))
+          },
+          line_info,
+          e,
+        ),
+        ("platform", true) => Ok(SVar::NotCloned(process_platform_built_in())),
+        ("type", true) => process_type(func, line_info, e),
+        ("ast", true) => process_ast(func, line_info, e),
+        _ => {
+          if let Some(defined_value) = find_defined(&func.name, e) {
+            let replacement = unsafe { &*defined_value };
+            as_var(replacement, line_info, shard, e)
+          } else if let Some(mut shards_env) = process_template(func, line_info, e)? {
+            // @template
+            finalize_env(&mut shards_env)?; // finalize the env
+
+            let mut seq = AutoSeqVar::new();
+
+            // shards
+            for shard in shards_env.shards.drain(..) {
+              let s: Var = shard.0 .0.into();
+              seq.0.push(&s);
+            }
+
+            // also move possible other possible things we defined!
+            for (name, value) in shards_env.definitions.drain() {
+              e.definitions.insert(name, value);
+            }
+            assert_eq!(shards_env.deferred_wires.len(), 0);
+            for (name, value) in shards_env.finalized_wires.drain() {
+              e.finalized_wires.insert(name, value);
+            }
+            for (name, value) in shards_env.shards_groups.drain() {
+              e.shards_groups.insert(name, value);
+            }
+            for (name, value) in shards_env.macro_groups.drain() {
+              e.macro_groups.insert(name, value);
+            }
+            for (id, mesh) in shards_env.meshes.drain() {
+              e.meshes.insert(id, mesh);
+            }
+
+            Ok(SVar::Cloned(ClonedVar(seq.leak())))
+          } else if let Some(ast_json) = process_macro(func, line_info, e)? {
+            let ast_json: &str = ast_json.as_ref().try_into().map_err(|_| {
+              (
+                "macro built-in function Shards should output a Json string",
+                line_info,
+              )
+                .into()
+            })?;
+
+            thread_local! {
+              pub static TMP_VALUE: RefCell<Option<Value>> = RefCell::new(None);
+            }
+
+            // in this case we expect the ast to be a value
+            let decoded_json: Value = serde_json::from_str(ast_json).map_err(|e| {
+              (
+                format!(
+                  "macro built-in function Shards should return a valid Json string: {}",
+                  e
+                ),
+                line_info,
+              )
+                .into()
+            })?;
+
+            TMP_VALUE.with(|f| {
+              let mut v = f.borrow_mut();
+              *v = Some(decoded_json.clone());
+              as_var(
+                v.as_ref().unwrap(), // should be valid
+                line_info,
+                shard,
+                e,
+              )
+            })
+          } else if let Some(extension) = find_extension(&func.name, e) {
+            let v = extension.process_to_var(func, line_info)?;
+            Ok(SVar::Cloned(v))
+          } else {
+            Err(
+              (
+                format!("Undefined function or definition {:?}", func.name),
+                line_info,
+              )
+                .into(),
+            )
+          }
+        }
+      }
+    }
   }
 }
 
@@ -1929,7 +2018,13 @@ fn create_shard(
           return Err(("Unnamed parameter after named parameter", line_info).into());
         }
         if idx >= info.len() as i32 {
-          return Err((format!("Too many parameters for shard {}", shard.name.name).to_string(), line_info).into());
+          return Err(
+            (
+              format!("Too many parameters for shard {}", shard.name.name).to_string(),
+              line_info,
+            )
+              .into(),
+          );
         }
         set_shard_parameter(
           &info[idx as usize],

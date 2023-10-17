@@ -256,6 +256,7 @@ fn build(matches: &ArgMatches, as_json: bool) -> Result<(), &'static str> {
       "Failed to parse file"
     })?;
     let mut deps = get_dependencies(&env)
+      .iter()
       .map(|x| {
         dunce::canonicalize(x)
           .map_err(|_| "Failed to canonicalize path")
