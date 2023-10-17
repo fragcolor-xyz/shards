@@ -18,117 +18,121 @@
 @define(group-obj-2 @i2(@flags-obj-2 #(@flags-obj-2 | Math.Or(@flags-floor))))
 @define(group-none @i2(0 0))
 
-; @template(indices-range [how-many] {
-;   Sequence(indices Type: @type([Type::Int]))
-;   ForRange(0 how-many {
-;     >> indices
-;   })
-; })
-
 ; Random signed float [-scale, scale]
 @template(randf [scale] {
   RandomFloat | Math.Multiply(2.0) | Math.Subtract(1.0) 
   Math.Multiply(scale)
 })
 
-@wire(main-wire {
-  Once({
-    #(
-      Sequence(transforms Type: @type([[Type::Float4]]))
-      ForRange(0 @obj-count {
-        Math.MatIdentity >> transforms
-      }) transforms
-    ) >= obj-transforms
+@template(def-test [name allow-tsl allow-rot] {
+  @wire(name {
+    Once({
+      #(
+        Sequence(transforms Type: @type([[Type::Float4]]))
+        ForRange(0 @obj-count {
+          Math.MatIdentity >> transforms
+        }) transforms
+      ) >= obj-transforms
 
-    ; define shapes
-    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) = cube
-    GFX.BuiltinMesh(Type: BuiltinMeshType::Plane) = plane
-    GFX.BuiltinMesh(Type: BuiltinMeshType::Sphere) = sphere
+      ; define shapes
+      GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) = cube
+      GFX.BuiltinMesh(Type: BuiltinMeshType::Plane) = plane
+      GFX.BuiltinMesh(Type: BuiltinMeshType::Sphere) = sphere
 
-    ; ground
-    @ground-extent | Math.Negate = ground-extent-neg
-    [
-      (@f4(@ground-extent 0.0 0.0 0.0))
-      (@f4(0.0 0.0 ground-extent-neg 0.0))
-      @f4(0.0 1.0 0.0 0.0)
-      (@f4(0.0 @ground-y 0.0 1.0))
-    ] Log("Ground") GFX.Drawable(Mesh: plane Params: {baseColor: @f4(0.8 0.55 0.95 1.0)}) = ground-drawable
-    
-    ; define some physics shapes
-    Physics.Cuboid(HalfExtents: @f3(0.5)) = cube-pshape
-    Physics.Ball(Radius: 0.5) = sphere-pshape
-    Physics.Cuboid(HalfExtents: #(
-      @ground-extent | Math.Divide(2.0) = temp
-      @f3(temp @ground-thickness temp)
-    )) = ground-pshape
+      ; ground
+      @ground-extent | Math.Negate = ground-extent-neg
+      [
+        (@f4(@ground-extent 0.0 0.0 0.0))
+        (@f4(0.0 0.0 ground-extent-neg 0.0))
+        @f4(0.0 1.0 0.0 0.0)
+        (@f4(0.0 @ground-y 0.0 1.0))
+      ] Log("Ground") GFX.Drawable(Mesh: plane Params: {baseColor: @f4(0.8 0.55 0.95 1.0)}) = ground-drawable
+      
+      ; define some physics shapes
+      Physics.Cuboid(HalfExtents: @f3(0.5)) = cube-pshape
+      Physics.Ball(Radius: 0.5) = sphere-pshape
+      Physics.Cuboid(HalfExtents: #(
+        @ground-extent | Math.Divide(2.0) = temp
+        @f3(temp @ground-thickness temp)
+      )) = ground-pshape
 
-    GFX.DrawQueue >= queue
+      GFX.DrawQueue >= queue
 
-    ; define rendering features
-    GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
-    GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
-    GFX.DrawablePass(Features: features Queue: queue) >> render-steps
+      ; define rendering features
+      GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
+      GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
+      GFX.DrawablePass(Features: features Queue: queue) >> render-steps
 
-    ; define a view
-    {Position: @f3(50 40 50) Target: @f3(0 0 0)} | Math.LookAt = view-transform
-    GFX.View(View: view-transform) = view
-  })
+      ; define a view
+      {Position: @f3(50 40 50) Target: @f3(0 0 0)} | Math.LookAt = view-transform
+      GFX.View(View: view-transform) = view
+    })
 
-  GFX.MainWindow(
-    Title: "Physics" Width: 1280 Height: 720
-    Contents: {
-      ; physics simulation
-      Physics.Simulation
-      Physics.KinematicBody(
-        Shapes: ground-pshape
-        Position: (@f3(0.0 @ground-y 0.0))
-        Collision: {
-          Log("Collision with ground")
-        }
-        SolverGroup: @group-floor
-      )
-
-      ; initialize transforms and associate a physics body to each shape
-      0 >= index
-      obj-transforms | DoMany({
-        Once({
-          @f3((@randf(0.3)) (index | ToFloat) (@randf(0.3))) = position
-          @obj-count | ToFloat = f
-          index | ToFloat | Math.Divide(f) = r
-          1.0 | Math.Subtract((index | ToFloat | Math.Divide(f))) | Math.Multiply(2.0) = g
-          @f4(r g 0.0 1.0) = base-color
-          index | Math.Mod(2) | If(Is(0) {cube} {sphere}) = mesh
-          index | Math.Mod(2) | If(Is(0) {@group-obj-1} {@group-obj-2}) = solver-group
-          index | Math.Mod(2) | If(Is(0) {@group-none} {@group-obj-2}) = collision-group
-        }) 
-
-        Physics.DynamicBody(
-          Position: position
-          Shapes: (index | Math.Mod(2) | If(Is(0) {cube-pshape} {sphere-pshape}))
-          Name: body
-          Tag: index
-          ; SolverGroup: collision-group
-          CollisionGroup: solver-group
+    GFX.MainWindow(
+      Title: "Physics" Width: 1280 Height: 720
+      Contents: {
+        ; physics simulation
+        Physics.Simulation
+        Physics.KinematicBody(
+          Shapes: ground-pshape
+          Position: (@f3(0.0 @ground-y 0.0))
+          Collision: {
+            Log("Collision with ground")
+          }
+          SolverGroup: @group-floor
         )
-        { = transform | [index transform] | Assoc(obj-transforms) }
-        GFX.Drawable(
-          Mesh: mesh
-          Params: {baseColor: base-color}
-        ) | GFX.Draw(queue)
 
-        Math.Inc(index)
-        body
-      }) = bodies
+        ; initialize transforms and associate a physics body to each shape
+        0 >= index
+        obj-transforms | DoMany({
+          Once({
+            @f3((@randf(0.3)) (index | ToFloat) (@randf(0.3))) = position
+            @obj-count | ToFloat = f
+            index | ToFloat | Math.Divide(f) = r
+            1.0 | Math.Subtract((index | ToFloat | Math.Divide(f))) | Math.Multiply(2.0) = g
+            @f4(r g 0.0 1.0) = base-color
+            index | Math.Mod(2) | If(Is(0) {cube} {sphere}) = mesh
+            index | Math.Mod(2) | If(Is(0) {@group-obj-1} {@group-obj-2}) = solver-group
+            index | Math.Mod(2) | If(Is(0) {@group-none} {@group-obj-2}) = collision-group
+          })
 
-      ; draw everything
-      ground-drawable | GFX.Draw(queue)
+          Physics.DynamicBody(
+            Position: position
+            Shapes: (index | Math.Mod(2) | If(Is(0) {cube-pshape} {sphere-pshape}))
+            Name: body
+            Tag: index
+            CollisionGroup: solver-group
+            AllowTranslation: allow-tsl
+            AllowRotation: allow-rot
+          )
+          { = transform | [index transform] | Assoc(obj-transforms) }
+          GFX.Drawable(
+            Mesh: mesh
+            Params: {baseColor: base-color}
+          ) | GFX.Draw(queue)
 
-      ; final render
-      GFX.Render(Steps: render-steps View: view)
-    }
-  )
-} Looped: true)
+          Math.Inc(index)
+          body
+        }) = bodies
+
+        ground-drawable | GFX.Draw(queue)
+
+        GFX.Render(Steps: render-steps View: view)
+      }
+    )
+  } Looped: true)
+})
 
 @mesh(root)
-@schedule(root main-wire)
+
+@def-test(test-main none none)
+@schedule(root test-main)
+@run(root FPS: 120 Iterations: 600) | Assert.Is(true)
+
+@def-test(test-2d [true true false] none)
+@schedule(root test-2d)
+@run(root FPS: 120 Iterations: 600) | Assert.Is(true)
+
+@def-test(test-no-rot none [true false false])
+@schedule(root test-no-rot)
 @run(root FPS: 120 Iterations: 600) | Assert.Is(true)

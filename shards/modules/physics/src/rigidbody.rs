@@ -2,68 +2,50 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use crate::fill_seq_from_mat4;
-use crate::RigidBody;
-use crate::SIMULATION_NAME;
-use crate::SIMULATION_NAME_CSTR;
-use rapier3d::prelude::ActiveEvents;
-use rapier3d::prelude::Group;
-use rapier3d::prelude::InteractionGroups;
-use rapier3d::prelude::MassProperties;
-use shards::core::deriveType;
-use shards::core::register_legacy_shard;
-use shards::core::register_shard;
-use shards::shard::ParameterSet;
-use shards::shard::Shard;
-use shards::types::ShardsVar;
-use shards::types::Types;
-use shards::types::WireState;
-use shards::types::SHARDS_OR_NONE_TYPES;
-use shards::util;
-use shards::SHType;
-use shards::SHType_None;
-use shards::SHType_Seq;
-
 use crate::BaseShape;
+use crate::RigidBody;
 use crate::Simulation;
-use crate::EXPOSED_SIMULATION;
 use crate::POSITIONS_TYPES_SLICE;
 use crate::RIGIDBODY_TYPE;
 use crate::ROTATIONS_TYPES_SLICE;
-
 use crate::SHAPES_TYPES_SLICE;
-
 use crate::SHAPE_TYPE;
-
+use crate::SIMULATION_NAME;
 use crate::SIMULATION_TYPE;
+use rapier3d::dynamics::RigidBodyBuilder;
+use rapier3d::dynamics::{RigidBodyHandle, RigidBodyType};
+use rapier3d::geometry::{ColliderBuilder, ColliderHandle};
+use rapier3d::na::Isometry3;
+use rapier3d::na::{Matrix4, Quaternion, Translation, UnitQuaternion, Vector3};
+use rapier3d::prelude::ActiveEvents;
+use rapier3d::prelude::Group;
+use rapier3d::prelude::InteractionGroups;
+use shards::core::register_shard;
+use shards::shard::ParameterSet;
+use shards::shard::Shard;
 use shards::types::common_type;
-
+use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
 use shards::types::FLOAT4X4orS_TYPES;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
-use shards::types::Parameters;
 use shards::types::Seq;
+use shards::types::SeqVar;
+use shards::types::ShardsVar;
 use shards::types::Type;
+use shards::types::Types;
+use shards::types::Var;
+use shards::types::WireState;
 use shards::types::ANY_TYPES;
-
 use shards::types::FLOAT4X4S_TYPE;
 use shards::types::FLOAT4X4_TYPE;
-
-use shards::shard::LegacyShard;
 use shards::types::NONE_TYPES;
-use shards::types::STRING_OR_NONE_SLICE;
-
-use rapier3d::dynamics::RigidBodyBuilder;
-use rapier3d::dynamics::{RigidBodyHandle, RigidBodyType};
-use rapier3d::geometry::{ColliderBuilder, ColliderHandle};
-use shards::types::Var;
-
-use rapier3d::na::Isometry3;
-
-use rapier3d::na::{Matrix4, Quaternion, Translation, UnitQuaternion, Vector3};
-
+use shards::types::SHARDS_OR_NONE_TYPES;
+use shards::util;
+use shards::SHType_None;
+use shards::SHType_Seq;
 use std::convert::TryInto;
 use std::rc::Rc;
 
@@ -73,6 +55,8 @@ lazy_static! {
   static ref VAR_TYPES: Types = vec![common_type::any_var];
   static ref INT_VAR_OR_NONE: Types =
     vec![common_type::int2, common_type::int2_var, common_type::none];
+  static ref BOOL_TYPES: Vec<Type> = vec![common_type::bool];
+  static ref CONSTRAINT_TYPE: Type = Type::seq(&BOOL_TYPES);
 }
 
 #[derive(param_set)]
@@ -116,6 +100,11 @@ pub struct RigidBodyBase {
   user_data: ParamVar,
 }
 
+struct RigidBodyParams<'a> {
+  allow_tsl: &'a ClonedVar,
+  allow_rot: &'a ClonedVar,
+}
+
 impl RigidBody {
   fn warmup(&mut self, user_data: &Var, rapier_user_data: u128) {
     self.user_data.assign(user_data);
@@ -149,6 +138,7 @@ impl RigidBody {
   fn activate_single(
     &mut self,
     base: &RigidBodyBase,
+    rb_params: Option<RigidBodyParams>,
     type_: RigidBodyType,
     p: &Var,
     r: &Var,
@@ -162,7 +152,8 @@ impl RigidBody {
 
       // init if array is empty
       let rigid_body = {
-        let rigid_body = Self::make_rigid_body(simulation, self.rapier_user_data, type_, p, r)?;
+        let rigid_body =
+          Self::make_rigid_body(simulation, &rb_params, self.rapier_user_data, type_, p, r)?;
         self.rigid_bodies.push(rigid_body);
         rigid_body
       };
@@ -197,6 +188,7 @@ impl RigidBody {
   fn activate_multi(
     &mut self,
     base: &RigidBodyBase,
+    rb_params: Option<RigidBodyParams>,
     type_: RigidBodyType,
     p: &Var,
     r: &Var,
@@ -214,13 +206,19 @@ impl RigidBody {
         let rigid_body = {
           if r.is_seq() {
             let r: Seq = r.try_into()?;
-            let rigid_body =
-              Self::make_rigid_body(simulation, self.rapier_user_data, type_, &p, &r[idx])?;
+            let rigid_body = Self::make_rigid_body(
+              simulation,
+              &rb_params,
+              self.rapier_user_data,
+              type_,
+              &p,
+              &r[idx],
+            )?;
             self.rigid_bodies.push(rigid_body);
             rigid_body
           } else {
             let rigid_body =
-              Self::make_rigid_body(simulation, self.rapier_user_data, type_, &p, r)?;
+              Self::make_rigid_body(simulation, &rb_params, self.rapier_user_data, type_, &p, r)?;
             self.rigid_bodies.push(rigid_body);
             rigid_body
           }
@@ -258,6 +256,7 @@ impl RigidBody {
     &mut self,
     context: &Context,
     base: &RigidBodyBase,
+    rb_params: Option<RigidBodyParams>,
     type_: RigidBodyType,
   ) -> Result<(&[RigidBodyHandle], Var, Var), &'static str> {
     let p = *base.position.get();
@@ -279,15 +278,16 @@ impl RigidBody {
     }
 
     if p.is_seq() {
-      self.activate_multi(base, type_, &p, &r)
+      self.activate_multi(base, rb_params, type_, &p, &r)
     } else {
-      self.activate_single(base, type_, &p, &r)
+      self.activate_single(base, rb_params, type_, &p, &r)
     }
   }
 
   // Utility - makes a single RigidBody
   fn make_rigid_body(
     simulation: &mut Simulation,
+    rb_params: &Option<RigidBodyParams>,
     user_data: u128,
     type_: RigidBodyType,
     p: &Var,
@@ -319,7 +319,33 @@ impl RigidBody {
       }
     };
 
-    let mut rigid_body = RigidBodyBuilder::new(type_).position(iso).build();
+    let mut builder = RigidBodyBuilder::new(type_).position(iso);
+
+    if let Some(rb_params) = rb_params {
+      if let Ok(seq) = rb_params.allow_tsl.0.as_seq() {
+        if seq.len() != 3 {
+          return Err("Translation Lock requires 3 boolean values");
+        }
+        builder = builder.enabled_translations(
+          (&seq[0]).try_into()?,
+          (&seq[1]).try_into()?,
+          (&seq[2]).try_into()?,
+        );
+      }
+
+      if let Ok(seq) = rb_params.allow_rot.0.as_seq() {
+        if seq.len() != 3 {
+          return Err("Rotation Lock requires 3 boolean values");
+        }
+        builder = builder.enabled_rotations(
+          (&seq[0]).try_into()?,
+          (&seq[1]).try_into()?,
+          (&seq[2]).try_into()?,
+        );
+      }
+    }
+
+    let mut rigid_body = builder.build();
     rigid_body.user_data = user_data;
     Ok(simulation.bodies.insert(rigid_body))
   }
@@ -353,7 +379,7 @@ impl RigidBody {
     if let Ok(bits) = TryInto::<(u32, u32)>::try_into(base.collision_group.get()) {
       builder = builder.collision_groups(Self::make_interaction_groups(bits));
     }
-    
+
     if let Some(mass) = shape_info.mass {
       builder = builder.mass(mass);
     }
@@ -492,7 +518,7 @@ impl Shard for StaticRigidBodyShard {
     // just hit populate, it will be a noop if already populated, nothing else to do here
     Rc::get_mut(&mut self.rb)
       .unwrap()
-      .activate(context, &self.base, RigidBodyType::Fixed)?;
+      .activate(context, &self.base, None, RigidBodyType::Fixed)?;
     Ok(*input)
   }
 
@@ -522,6 +548,18 @@ struct DynamicRigidBodyShard {
   base: RigidBodyBase,
   #[shard_param("Name", "The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body.", VAR_TYPES)]
   self_obj: ParamVar,
+  #[shard_param(
+    "AllowTranslation",
+    "Translation contraints for this object [x y z].",
+    [common_type::none, *CONSTRAINT_TYPE]
+  )]
+  allow_tsl: ClonedVar,
+  #[shard_param(
+    "AllowRotation",
+    "Rotation contraints for this object [x y z].",
+    [common_type::none, *CONSTRAINT_TYPE]
+  )]
+  allow_rot: ClonedVar,
   rb: Rc<RigidBody>,
   output: Seq,
   exposing: ExposedTypes,
@@ -534,6 +572,8 @@ impl Default for DynamicRigidBodyShard {
     Self {
       required: ExposedTypes::new(),
       base: RigidBodyBase::default(),
+      allow_tsl: ClonedVar::default(),
+      allow_rot: ClonedVar::default(),
       self_obj: ParamVar::default(),
       rb: Rc::new(RigidBody::default()),
       output,
@@ -585,7 +625,15 @@ impl Shard for DynamicRigidBodyShard {
     let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = self.base.simulation.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
-    let (rbs, _, _) = rbData.activate(context, &self.base, RigidBodyType::Dynamic)?;
+    let (rbs, _, _) = rbData.activate(
+      context,
+      &self.base,
+      Some(RigidBodyParams {
+        allow_tsl: &self.allow_tsl,
+        allow_rot: &self.allow_rot,
+      }),
+      RigidBodyType::Dynamic,
+    )?;
     if rbs.len() == 1 {
       let rb = simulation.bodies.get(rbs[0]).unwrap();
       let mat: Matrix4<f32> = rb.position().to_matrix();
@@ -688,8 +736,12 @@ impl Shard for KinematicRigidBodyShard {
     let sim_var = self.base.simulation.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
     // TODO KinematicVelocityBased as well
-    let (rbs, p, r) =
-      rbData.activate(context, &self.base, RigidBodyType::KinematicPositionBased)?;
+    let (rbs, p, r) = rbData.activate(
+      context,
+      &self.base,
+      None,
+      RigidBodyType::KinematicPositionBased,
+    )?;
     if rbs.len() == 1 {
       let rb = simulation.bodies.get_mut(rbs[0]).unwrap();
       // this guy will read constantly pos and rotations from variable values
