@@ -124,7 +124,6 @@ struct Fiber {
 
 namespace shards {
 using Coroutine = std::optional<Fiber>;
-inline void coroutineSuspend(Coroutine &c) { c->suspend(); }
 inline void coroutineResume(Coroutine &c) { c->resume(); }
 inline bool coroutineValid(const Coroutine &c) { return c && *c; }
 } // namespace shards
