@@ -1,7 +1,7 @@
 #include "context.hpp"
 #include "context_data.hpp"
 #include "error_utils.hpp"
-#include <shards/core/platform.hpp>
+#include "../core/platform.hpp"
 #include "platform_surface.hpp"
 #include "window.hpp"
 #include "log.hpp"

@@ -2,7 +2,7 @@
 #define AEC3EB9B_7819_42B0_BB31_40818880ECE2
 
 #include "linalg.hpp"
-#include <shards/core/platform.hpp>
+#include "../core/platform.hpp"
 #include <SDL_events.h>
 #include <string>
 #include <vector>

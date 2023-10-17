@@ -11,4 +11,4 @@
 #include <stdlib.h>
 
 #include "gfx_wgpu.hpp"
-#include <shards/core/platform.hpp>
+#include "../core/platform.hpp"
