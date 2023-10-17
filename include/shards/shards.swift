@@ -1034,6 +1034,14 @@ class MeshController {
         G.Core.pointee.schedule(nativeRef, wire.nativeRef, true)
     }
 
+    func unschedule(wire: WireController) {
+        G.Core.pointee.unschedule(nativeRef, wire.nativeRef)
+        let idx = wires.firstIndex {
+            $0.nativeRef == wire.nativeRef
+        }
+        wires.remove(at: idx!)
+    }
+
     func tick() -> Bool {
         G.Core.pointee.tick(nativeRef)
     }

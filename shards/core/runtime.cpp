@@ -3033,6 +3033,7 @@ void shInit() {
   shInterface.set("createMesh", emscripten::val(reinterpret_cast<uintptr_t>(iface->createMesh)));
   shInterface.set("destroyMesh", emscripten::val(reinterpret_cast<uintptr_t>(iface->destroyMesh)));
   shInterface.set("schedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->schedule)));
+  shInterface.set("unschedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->unschedule)));
   shInterface.set("tick", emscripten::val(reinterpret_cast<uintptr_t>(iface->tick)));
   shInterface.set("sleep", emscripten::val(reinterpret_cast<uintptr_t>(iface->sleep)));
   shInterface.set("getGlobalWire", emscripten::val(reinterpret_cast<uintptr_t>(iface->getGlobalWire)));
@@ -3457,6 +3458,11 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     } catch (...) {
       SHLOG_ERROR("Errors while scheduling");
     }
+  };
+
+  result->unschedule = [](SHMeshRef mesh, SHWireRef wire) noexcept {
+    auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+    (*smesh)->remove(SHWire::sharedFromRef(wire));
   };
 
   result->tick = [](SHMeshRef mesh) noexcept {
