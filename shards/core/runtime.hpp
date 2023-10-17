@@ -6,6 +6,7 @@
 
 // must go first
 #include <shards/shards.h>
+
 #if _WIN32
 #include <winsock2.h>
 #endif
@@ -15,6 +16,7 @@
 #include "shards_macros.hpp"
 #include "foundation.hpp"
 #include "inline.hpp"
+#include "utils.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -94,20 +96,7 @@ struct SHStateSnapshot {
 };
 
 struct SHContext {
-  SHContext(
-#ifndef __EMSCRIPTEN__
-      SHCoro &&sink,
-#else
-      SHCoro *coro,
-#endif
-      const SHWire *starter, SHFlow *flow)
-      : main(starter), flow(flow),
-#ifndef __EMSCRIPTEN__
-        continuation(std::move(sink))
-#else
-        continuation(coro)
-#endif
-  {
+  SHContext(shards::Coroutine *coro, const SHWire *starter, SHFlow *flow) : main(starter), flow(flow), continuation(coro) {
     wireStack.push_back(const_cast<SHWire *>(starter));
   }
 
@@ -119,12 +108,8 @@ struct SHContext {
 
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
 
-// Used within the coro& stack! (suspend, etc)
-#ifndef __EMSCRIPTEN__
-  SHCoro &&continuation;
-#else
-  SHCoro *continuation{nullptr};
-#endif
+  // Used within the coro& stack! (suspend, etc)
+  shards::Coroutine *continuation{nullptr};
   SHDuration next{};
 
   SHWire *rootWire() const { return wireStack.front(); }
@@ -265,11 +250,7 @@ inline SHRunWireOutput runSubWire(SHWire *wire, SHContext *context, const SHVar 
   return runRes;
 }
 
-#ifndef __EMSCRIPTEN__
-boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::continuation &&sink);
-#else
-void run(SHWire *wire, SHFlow *flow, SHCoro *coro);
-#endif
+void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro);
 
 #ifdef TRACY_ENABLE
 // Defined in the gfx rust crate
@@ -291,25 +272,56 @@ extern GlobalTracy &GetTracy();
 UntrackedVector<SHWire *> &getCoroWireStack();
 #endif
 
+#if SH_DEBUG_THREAD_NAMES
+#define SH_CORO_RESUMED(_wire) \
+  { pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); }
+#define SH_CORO_SUSPENDED(_wire) \
+  { popThreadName(); }
+#define SH_CORO_EXT_RESUME(_wire)                                         \
+  {                                                                       \
+    pushThreadName(fmt::format("<resuming wire> \"{}\"", (_wire)->name)); \
+    TracyCoroEnter(wire);                                                 \
+  }
+#define SH_CORO_EXT_SUSPEND(_wire) \
+  {                                \
+    popThreadName();               \
+    TracyCoroExit(_wire);          \
+  }
+#else
+#define SH_CORO_RESUMED(_)
+#define SH_CORO_SUSPENDED(_)
+#define SH_CORO_EXT_RESUME(_) \
+  { TracyCoroEnter(wire); }
+#define SH_CORO_EXT_SUSPEND(_) \
+  { TracyCoroExit(_wire); }
+#endif
+
 inline void prepare(SHWire *wire, SHFlow *flow) {
   assert(!wire->coro && "Wire already prepared!");
+  if (coroutineValid(wire->coro))
+    return;
 
-  TracyCoroEnter(wire);
+  SH_CORO_EXT_RESUME(wire);
 
-#ifndef __EMSCRIPTEN__
+  auto runner = [wire, flow]() {
+#if SH_USE_THREAD_FIBER
+    pushThreadName(fmt::format("<suspended wire> \"{}\"", wire->name));
+#endif
+    run(wire, flow, &wire->coro);
+  };
+
+#if SH_CORO_NEED_STACK_MEM
   if (!wire->stackMem) {
     wire->stackMem = new (std::align_val_t{16}) uint8_t[wire->stackSize];
   }
-  wire->coro =
-      boost::context::callcc(std::allocator_arg, SHStackAllocator{wire->stackSize, wire->stackMem},
-                             [wire, flow](boost::context::continuation &&sink) { return run(wire, flow, std::move(sink)); });
+  wire->coro.emplace(SHStackAllocator{wire->stackSize, wire->stackMem});
 #else
-  wire->coro.emplace(wire->stackSize);
-  wire->coro->init([=]() { run(wire, flow, &(*wire->coro)); });
-  wire->coro->resume();
+  wire->coro.emplace();
 #endif
 
-  TracyCoroExit(wire);
+  wire->coro->init(runner);
+
+  SH_CORO_EXT_SUSPEND(wire);
 }
 
 inline void start(SHWire *wire, SHVar input = {}) {
@@ -318,7 +330,7 @@ inline void start(SHWire *wire, SHVar input = {}) {
     return;
   }
 
-  if (!wire->coro || !(*wire->coro))
+  if (!coroutineValid(wire->coro))
     return; // check if not null and bool operator also to see if alive!
 
   wire->currentInput = input;
@@ -337,9 +349,9 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
   SHLOG_TRACE("stopping wire: {}, has-coro: {}, state: {}", wire->name, bool(wire->coro),
               magic_enum::enum_name<SHWire::State>(wire->state));
 
-  if (wire->coro) {
+  if (coroutineValid(wire->coro)) {
     // Run until exit if alive, need to propagate to all suspended shards!
-    if ((*wire->coro) && wire->state > SHWire::State::Stopped && wire->state < SHWire::State::Failed) {
+    if (coroutineValid(wire->coro) && wire->state > SHWire::State::Stopped && wire->state < SHWire::State::Failed) {
       // set abortion flag, we always have a context in this case
       wire->context->stopFlow(shards::Var::Empty);
       wire->context->onLastResume = true;
@@ -349,11 +361,11 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
 
       // Another issue, if we resume from current context to current context we dead lock here!!
 
-      TracyCoroEnter(wire);
+      SH_CORO_EXT_RESUME(wire);
 
-      wire->coro->resume();
+      coroutineResume(wire->coro);
 
-      TracyCoroExit(wire);
+      SH_CORO_EXT_SUSPEND(wire);
     }
 
     // delete also the coro ptr
@@ -388,19 +400,13 @@ inline bool tick(SHWire *wire, SHDuration now) {
   ZoneScoped;
   ZoneName(wire->name.c_str(), wire->name.size());
 
-  if (!wire->context || !wire->coro || !(*wire->coro) || !(isRunning(wire)))
+  if (!wire->context || !coroutineValid(wire->coro) || !(isRunning(wire)))
     return false; // check if not null and bool operator also to see if alive!
 
   if (now >= wire->context->next) {
-    TracyCoroEnter(wire);
-
-#ifndef __EMSCRIPTEN__
-    *wire->coro = wire->coro->resume();
-#else
-    wire->coro->resume();
-#endif
-
-    TracyCoroExit(wire);
+    SH_CORO_EXT_RESUME(wire);
+    coroutineResume(wire->coro);
+    SH_CORO_EXT_SUSPEND(wire);
   }
   return true;
 }

@@ -28,6 +28,7 @@
 #include <shared_mutex>
 #include <boost/atomic/atomic_ref.hpp>
 #include <boost/container/small_vector.hpp>
+#include "utils.hpp"
 
 namespace fs = boost::filesystem;
 
@@ -571,13 +572,9 @@ SHWireState suspend(SHContext *context, double seconds) {
     context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
   }
 
-#ifndef __EMSCRIPTEN__
-  context->continuation = context->continuation.resume();
-#else
-  context->continuation->yield();
-#endif
-
-  // RESUMING
+  SH_CORO_SUSPENDED(context->currentWire());
+  coroutineResume(*context->continuation);
+  SH_CORO_RESUMED(context->currentWire());
 
   return context->getState();
 }
@@ -1797,7 +1794,9 @@ Wire &Wire::unsafe(bool unsafe) {
 }
 
 Wire &Wire::stackSize(size_t stackSize) {
+#if SH_CORO_NEED_STACK_MEM
   _wire->stackSize = stackSize;
+#endif
   return *this;
 }
 
@@ -1872,7 +1871,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
       break;
     }
   }
-#ifndef __EMSCRIPTEN__
+#if SH_BOOST_COROUTINE
   catch (boost::context::detail::forced_unwind const &e) {
     SHLOG_WARNING("Wire {} forced unwind", wire->name);
     throw; // required for Boost Coroutine!
@@ -1886,14 +1885,10 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   return {wire->previousOutput, SHRunWireOutputState::Running};
 }
 
-#ifndef __EMSCRIPTEN__
-boost::context::continuation run(SHWire *wire, SHFlow *flow, boost::context::continuation &&sink)
-#else
-void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
-#endif
-{
+void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
+  SH_CORO_RESUMED(wire);
+  
   SHLOG_DEBUG("Wire {} rolling", wire->name);
-
   auto running = true;
 
   // we need this cos by the end of this call we might get suspended/resumed and state changes! this wont
@@ -1906,11 +1901,7 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
 
   // Create a new context and copy the sink in
   SHFlow anonFlow{wire};
-#ifndef __EMSCRIPTEN__
-  SHContext context(std::move(sink), wire, flow ? flow : &anonFlow);
-#else
   SHContext context(coro, wire, flow ? flow : &anonFlow);
-#endif
 
   // if the wire had a context (Stepped wires in wires.cpp)
   // copy some stuff from it
@@ -1935,14 +1926,10 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
     goto endOfWire;
   }
 
-// yield after warming up
-#ifndef __EMSCRIPTEN__
-  context.continuation = context.continuation.resume();
-#else
-  context.continuation->yield();
-#endif
-
-  // RESUMING
+  // yield after warming up
+  SH_CORO_SUSPENDED(wire);
+  coroutineResume(*context.continuation);
+  SH_CORO_RESUMED(wire);
 
   SHLOG_DEBUG("Wire {} starting", wire->name);
 
@@ -1984,13 +1971,10 @@ void run(SHWire *wire, SHFlow *flow, SHCoro *coro)
     if (!wire->unsafe && running) {
       // Ensure no while(true), yield anyway every run
       context.next = SHDuration(0);
-#ifndef __EMSCRIPTEN__
-      context.continuation = context.continuation.resume();
-#else
-      context.continuation->yield();
-#endif
 
-      // RESUMING
+      SH_CORO_SUSPENDED(wire);
+      coroutineResume(*context.continuation);
+      SH_CORO_RESUMED(wire);
 
       // This is delayed upon continuation!!
       if (context.shouldStop()) {
@@ -2037,14 +2021,9 @@ endOfWire:
 
   wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
 
-#ifndef __EMSCRIPTEN__
-  return std::move(context.continuation);
-#else
-  context.continuation->yield();
-#endif
-
-  // we should never resume here!
-  SHLOG_FATAL("Wire {} resumed after ending", wire->name);
+  wire->context = nullptr;
+  
+  SH_CORO_SUSPENDED(wire)
 }
 
 void parseArguments(int argc, const char **argv) {
@@ -2603,7 +2582,6 @@ void hash_update(const SHVar &var, void *state) {
   switch (var.valueType) {
   case SHType::Type: {
     updateTypeHash(*var.payload.typeValue, hashState);
-
   } break;
   case SHType::Bytes: {
     error = XXH3_128bits_update(hashState, var.payload.bytesValue, size_t(var.payload.bytesSize));
@@ -2867,9 +2845,11 @@ void SHWire::destroy() {
   // finally reset the mesh
   mesh.reset();
 
+#if SH_CORO_NEED_STACK_MEM
   if (stackMem) {
     ::operator delete[](stackMem, std::align_val_t{16});
   }
+#endif
 }
 
 void SHWire::warmup(SHContext *context) {
@@ -2934,7 +2914,7 @@ void SHWire::cleanup(bool force) {
       try {
         blk->cleanup(blk);
       }
-#ifndef __EMSCRIPTEN__
+#if SH_BOOST_COROUTINE
       catch (boost::context::detail::forced_unwind const &e) {
         SHLOG_WARNING("Shard cleanup boost forced unwind, failed shard: {}", blk->name(blk));
         throw; // required for Boost Coroutine!
@@ -3368,7 +3348,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->setWireStackSize = [](SHWireRef wireref, size_t size) noexcept {
     auto &sc = SHWire::sharedFromRef(wireref);
+#if SH_CORO_NEED_STACK_MEM
     sc->stackSize = size;
+#endif
   };
 
   result->addShard = [](SHWireRef wireref, ShardPtr blk) noexcept {
