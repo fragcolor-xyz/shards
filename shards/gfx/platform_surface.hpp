@@ -3,10 +3,10 @@
 
 #include "SDL_metal.h"
 #include "gfx_wgpu.hpp"
-#include "platform.hpp"
+#include <shards/core/platform.hpp>
 #include "sdl_native_window.hpp"
 
-#if GFX_WINDOWS
+#if SH_WINDOWS
 #include <windows.h>
 #endif
 
@@ -28,7 +28,7 @@ struct MetalViewContainer {
 struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
   union {
     WGPUChainedStruct chain;
-#if GFX_EMSCRIPTEN
+#if SH_EMSCRIPTEN
     WGPUSurfaceDescriptorFromCanvasHTMLSelector html;
 #else
     WGPUSurfaceDescriptorFromXlibWindow x11;
@@ -45,21 +45,21 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
 
     memset(this, 0, sizeof(WGPUPlatformSurfaceDescriptor));
 
-#if GFX_WINDOWS
+#if SH_WINDOWS
     platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromWindowsHWND;
     platformDesc.win.hinstance = GetModuleHandle(nullptr);
     platformDesc.win.hwnd = (HWND)nativeSurfaceHandle;
-#elif GFX_LINUX
+#elif SH_LINUX
     platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromXlibWindow;
     platformDesc.x11.window = uint32_t(size_t(nativeSurfaceHandle));
     platformDesc.x11.display = SDL_GetNativeDisplayPtr(sdlWindow);
-#elif GFX_ANDROID
+#elif SH_ANDROID
     platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromAndroidNativeWindow;
     platformDesc.android.window = nativeSurfaceHandle;
-#elif GFX_APPLE
+#elif SH_APPLE
     platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromMetalLayer;
     platformDesc.mtl.layer = nativeSurfaceHandle;
-#elif GFX_EMSCRIPTEN
+#elif SH_EMSCRIPTEN
     platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector;
     if (nativeSurfaceHandle)
       platformDesc.html.selector = (const char *)nativeSurfaceHandle;

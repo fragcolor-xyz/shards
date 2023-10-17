@@ -1,6 +1,6 @@
 #include "input.hpp"
 #include <gfx/linalg.hpp>
-#include <gfx/platform.hpp>
+#include <shards/core/platform.hpp>>
 #include <SDL.h>
 #include <SDL_keycode.h>
 #include <gfx/window.hpp>

@@ -1,7 +1,7 @@
 #include "context.hpp"
 #include "context_data.hpp"
 #include "error_utils.hpp"
-#include "platform.hpp"
+#include <shards/core/platform.hpp>
 #include "platform_surface.hpp"
 #include "window.hpp"
 #include "log.hpp"
@@ -13,7 +13,7 @@
 #include <stdexcept>
 #include <SDL_stdinc.h>
 
-#if GFX_EMSCRIPTEN
+#if SH_EMSCRIPTEN
 #include <emscripten/html5.h>
 #endif
 
@@ -22,7 +22,7 @@ static auto logger = getLogger();
 static auto wgpuLogger = getWgpuLogger();
 
 static WGPUTextureFormat getDefaultSrgbBackbufferFormat() {
-#if GFX_ANDROID
+#if SH_ANDROID
   return WGPUTextureFormat_RGBA8UnormSrgb;
 #else
   return WGPUTextureFormat_BGRA8UnormSrgb;
@@ -31,16 +31,16 @@ static WGPUTextureFormat getDefaultSrgbBackbufferFormat() {
 
 #ifdef WEBGPU_NATIVE
 static WGPUBackendType getDefaultWgpuBackendType() {
-#if GFX_WINDOWS
+#if SH_WINDOWS
   // Vulkan is more performant on windows for now, see:
   // https://github.com/gfx-rs/wgpu/issues/2719 - Make DX12 the Default API on Windows
   // https://github.com/gfx-rs/wgpu/issues/2720 - Suballocate Buffers in DX12
   return WGPUBackendType_Vulkan;
-#elif GFX_APPLE
+#elif SH_APPLE
   return WGPUBackendType_Metal;
-#elif GFX_LINUX || GFX_ANDROID
+#elif SH_LINUX || SH_ANDROID
   return WGPUBackendType_Vulkan;
-#elif GFX_EMSCRIPTEN
+#elif SH_EMSCRIPTEN
   return WGPUBackendType_WebGPU;
 #else
 #error "No graphics backend defined for platform"
@@ -118,7 +118,7 @@ struct ContextMainOutput {
     if (!wgpuWindowSurface) {
       void *surfaceHandle = overrideNativeWindowHandle;
 
-#if GFX_APPLE
+#if SH_APPLE
       if (!surfaceHandle) {
         surfaceHandle = window->metalView->layer;
       }
@@ -192,12 +192,12 @@ struct ContextMainOutput {
 
     // Canvas size should't be set when configuring, instead resize the element
     // https://github.com/emscripten-core/emscripten/issues/17416
-#if !GFX_EMSCRIPTEN
+#if !SH_EMSCRIPTEN
     swapchainDesc.width = newSize.x;
     swapchainDesc.height = newSize.y;
 #endif
 
-#if GFX_WINDOWS || GFX_OSX || GFX_LINUX
+#if SH_WINDOWS || SH_OSX || SH_LINUX
     swapchainDesc.presentMode = WGPUPresentMode_Immediate;
 #else
     swapchainDesc.presentMode = WGPUPresentMode_Fifo;
@@ -373,13 +373,13 @@ void Context::poll(bool wait) {
 }
 
 void Context::suspend() {
-#if GFX_ANDROID
+#if SH_ANDROID
   // Also release the surface on suspend
   deviceLost();
 
   if (mainOutput)
     mainOutput->releaseSurface();
-#elif GFX_APPLE
+#elif SH_APPLE
   deviceLost();
 #endif
 

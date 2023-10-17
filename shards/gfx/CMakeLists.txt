@@ -1,4 +1,4 @@
-option(GFX_DEBUG "Enable context debug mode by default" OFF)
+option(SH_DEBUG "Enable context debug mode by default" OFF)
 
 add_library(gfx
   context.cpp
@@ -56,7 +56,9 @@ set_source_files_properties(
 target_compile_features(gfx PUBLIC cxx_std_20)
 
 target_include_directories(gfx
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..
+  PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(gfx
@@ -92,10 +94,6 @@ if(NOT EMSCRIPTEN AND (CMAKE_BUILD_TYPE MATCHES Debug))
 endif()
 if(GFX_CAN_USE_DATA_PATH AND GFX_USE_DATA_PATH)
   target_compile_definitions(gfx PUBLIC GFX_DATA_PATH=\"${SHARDS_DIR}\")
-endif()
-
-if(GFX_DEBUG)
-	target_compile_definitions(gfx PUBLIC GFX_DEBUG=1)
 endif()
 
 if(EMSCRIPTEN)

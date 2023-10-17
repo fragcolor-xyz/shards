@@ -2,13 +2,13 @@
 #define AEC3EB9B_7819_42B0_BB31_40818880ECE2
 
 #include "linalg.hpp"
-#include "platform.hpp"
+#include <shards/core/platform.hpp>
 #include <SDL_events.h>
 #include <string>
 #include <vector>
 #include <optional>
 
-#if GFX_APPLE
+#if SH_APPLE
 #include "platform_surface.hpp"
 #endif
 
@@ -25,7 +25,7 @@ struct WindowCreationOptions {
 struct Window {
   SDL_Window *window = nullptr;
 
-#if GFX_APPLE
+#if SH_APPLE
   std::optional<MetalViewContainer> metalView;
 #endif
 

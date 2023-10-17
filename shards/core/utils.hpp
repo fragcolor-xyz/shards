@@ -1,24 +1,27 @@
 #ifndef F676CA55_B5BE_4F37_8AF8_84A2AD0989F5
 #define F676CA55_B5BE_4F37_8AF8_84A2AD0989F5
 
+#include "platform.hpp"
+
+#ifdef SH_WINDOWS
+#include <windows.h>
+#include <processthreadsapi.h>
+#elif SH_LINUX || SH_APPLE
+#define _GNU_SOURCE
+#include <pthread.h>
+#endif
+
 #include <string>
 #include <string_view>
 #include <list>
 #include <cassert>
 #include <spdlog/fmt/fmt.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#include <processthreadsapi.h>
-#else
-#include <pthread.h>
-#endif
-
 #define SH_DEBUG_THREAD_NAMES 1
 
 namespace shards {
 
-#ifdef _WIN32
+#ifdef SH_WINDOWS
 inline std::wstring toWindowsWString(std::string_view utf8) {
   std::wstring result;
   result.resize(MultiByteToWideChar(CP_UTF8, 0, utf8.data(), utf8.size(), nullptr, 0));
@@ -28,9 +31,12 @@ inline std::wstring toWindowsWString(std::string_view utf8) {
 #endif
 
 inline void setThreadName(std::string_view name_sv) {
-#ifdef _WIN32
+#ifdef SH_WINDOWS
   std::wstring name = toWindowsWString(name_sv);
   SetThreadDescription(GetCurrentThread(), name.c_str());
+#elif SH_LINUX || SH_APPLE
+  std::string name {name_sv};
+  pthread_setname_np(pthread_self(), name.c_str());
 #endif
 }
 
@@ -45,7 +51,6 @@ inline void pushThreadName(std::string_view name) {
 inline void popThreadName() {
   auto &stack = getThreadNameStack();
   assert(stack.size() > 0);
-  // if (stack.size() > 0)
   stack.pop_back();
   setThreadName(stack.size() > 0 ? stack.back() : "Unnamed thread");
 }
