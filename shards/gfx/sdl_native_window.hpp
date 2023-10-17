@@ -8,7 +8,7 @@
 #include <SDL_syswm.h>
 
 #include "error_utils.hpp"
-#include <shards/core/platform.hpp>
+#include "../core/platform.hpp"
 #include <stdexcept>
 
 inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {

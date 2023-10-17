@@ -7,7 +7,7 @@
 #include "sampler_cache.hpp"
 #include "view.hpp"
 #include "gfx_wgpu.hpp"
-#include <shards/core/platform.hpp>
+#include "../core/platform.hpp"
 #include "unique_id.hpp"
 #include <variant>
 

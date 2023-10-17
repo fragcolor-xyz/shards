@@ -1,6 +1,6 @@
 #include "window.hpp"
 #include "error_utils.hpp"
-#include <shards/core/platform.hpp>
+#include "../core/platform.hpp"
 #include "sdl_native_window.hpp"
 #include <SDL.h>
 #include <SDL_video.h>
