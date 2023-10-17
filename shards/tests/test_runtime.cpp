@@ -1149,11 +1149,7 @@ TEST_CASE("HashedActivations") {
   // we need to hack this in as we run out of context
   shards::Coroutine foo{};
   SHFlow flow{};
-#ifndef __EMSCRIPTEN__
-  SHContext ctx(std::move(foo), nullptr, &flow);
-#else
   SHContext ctx(&foo, nullptr, &flow);
-#endif
   auto input = Var(11);
   SHVar hash{};
   Shards shards{};
