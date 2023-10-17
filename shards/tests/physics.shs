@@ -4,9 +4,10 @@
 @define(timestep #(1.0 | Math.Divide(120.0)))
 @define(duration 600)
 
-@define(ground-extent 50.0)
+@define(ground-extent 25.0)
 @define(ground-thickness 0.5)
 @define(ground-y -4.0)
+@define(trigger-y -10.0)
 @define(obj-count 64)
 
 @define(flags-floor 0x1)
@@ -56,6 +57,8 @@
         @f3(temp @ground-thickness temp)
       )) = ground-pshape
 
+      Physics.Cuboid(HalfExtents: @f3(1000 @ground-thickness 1000)) = trigger-pshape
+
       GFX.DrawQueue >= queue
 
       ; define rendering features
@@ -73,6 +76,7 @@
       Contents: {
         ; physics simulation
         Physics.Simulation
+
         Physics.KinematicBody(
           Shapes: ground-pshape
           Position: (@f3(0.0 @ground-y 0.0))
@@ -80,6 +84,16 @@
             Log("Collision with ground")
           }
           SolverGroup: @group-floor
+        )
+
+        Physics.StaticBody(
+          Shapes: trigger-pshape
+          Position: (@f3(0.0 @trigger-y 0.0))
+          Collision: {
+            Log("Collision with trigger")
+          }
+          CollisionGroup: @group-floor
+          SolverGroup: @group-none
         )
 
         ; initialize transforms and associate a physics body to each shape
