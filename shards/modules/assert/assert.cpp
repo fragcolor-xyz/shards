@@ -70,6 +70,58 @@ struct Is : public Base {
   }
 };
 
+struct IsStatic {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR("Asserts that a value is static at run-time"); }
+
+  PARAM_PARAMVAR(_value, "Value", "Any value to check for being static (non-var)", {shards::CoreInfo::AnyType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_value));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup() { PARAM_CLEANUP(); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    if (_value.isVariable()) {
+      throw ActivationError("Assert failed - IsStatic");
+    }
+    return _value;
+  }
+};
+
+struct IsVariable {
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR("Asserts that a value is a variable at run-time"); }
+
+  PARAM_PARAMVAR(_value, "Value", "Any value to check for being a variable", {shards::CoreInfo::AnyType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_value));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup() { PARAM_CLEANUP(); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    if (!_value.isVariable()) {
+      throw ActivationError("Assert failed - IsVariable");
+    }
+    return _value.get();
+  }
+};
+
 struct IsNot : public Base {
   SHOptionalString help() {
     return SHCCSTR("This assertion is used to check whether the input is "
@@ -219,6 +271,8 @@ struct Break {
 SHARDS_REGISTER_FN(assert) {
   using namespace shards::Assert;
   REGISTER_SHARD("Assert.Is", Is);
+  REGISTER_SHARD("Assert.IsStatic", IsStatic);
+  REGISTER_SHARD("Assert.IsVariable", IsVariable);
   REGISTER_SHARD("Assert.IsNot", IsNot);
   REGISTER_SHARD("Assert.IsAlmost", IsAlmost);
   REGISTER_SHARD("Assert.Break", Break);

@@ -9,15 +9,17 @@ use shards::types::{
   Var, BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
 use shards::{cstr, shard_impl, shccstr, shlog, shlog_error};
+use std::cell::{Cell, Ref, RefCell};
 use std::collections::HashSet;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 pub struct ReadEnv {
   name: RcStrWrapper,
   root_directory: String,
   script_directory: String,
-  included: HashSet<RcStrWrapper>,
-  dependencies: Vec<String>,
+  included: RefCell<HashSet<RcStrWrapper>>,
+  dependencies: RefCell<Vec<String>>,
   parent: Option<*const ReadEnv>,
 }
 
@@ -27,8 +29,8 @@ impl ReadEnv {
       name: name.into(),
       root_directory: root_directory.to_string(),
       script_directory: script_directory.to_string(),
-      included: HashSet::new(),
-      dependencies: Vec::new(),
+      included: RefCell::new(HashSet::new()),
+      dependencies: RefCell::new(Vec::new()),
       parent: None,
     }
   }
@@ -54,12 +56,22 @@ impl ReadEnv {
   }
 }
 
-pub fn get_dependencies<'a>(env: &'a ReadEnv) -> core::slice::Iter<'a, String> {
-  env.dependencies.iter()
+pub fn get_dependencies<'a>(env: &'a ReadEnv) -> Ref<'_, Vec<String>> {
+  env.dependencies.borrow()
+}
+
+pub fn get_root_env<'a>(env: &'a ReadEnv) -> &'a ReadEnv {
+  let mut node: *const ReadEnv = env;
+  unsafe {
+    while (*node).parent.is_some() {
+      node = (*node).parent.unwrap();
+    }
+    &*node
+  }
 }
 
 fn check_included<'a>(name: &'a RcStrWrapper, env: &'a ReadEnv) -> bool {
-  if env.included.contains(name) {
+  if env.included.borrow().contains(name) {
     true
   } else if let Some(parent) = env.parent {
     check_included(name, unsafe { &*parent })
@@ -391,9 +403,12 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             }
 
             shlog!("Including file {:?}", file_path);
-
-            env.dependencies.push(rc_path.to_string());
-            env.included.insert(rc_path);
+            {
+              // Insert this into the root map so it gets tracked globally
+              let root_env = get_root_env(env);
+              root_env.dependencies.borrow_mut().push(rc_path.to_string());
+              root_env.included.borrow_mut().insert(rc_path);
+            }
 
             // read string from file
             let mut code = std::fs::read_to_string(&file_path)
@@ -462,6 +477,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
 
             env
               .dependencies
+              .borrow_mut()
               .push(file_path.to_string_lossy().to_string());
 
             if as_bytes {
