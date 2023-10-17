@@ -890,6 +890,7 @@ typedef SHMeshRef(__cdecl *SHCreateMesh)();
 typedef void(__cdecl *SHDestroyMesh)(SHMeshRef mesh);
 typedef struct SHVar(__cdecl *SHCreateMeshVar)();
 typedef SHBool(__cdecl *SHCompose)(SHMeshRef mesh, SHWireRef wire);
+typedef void(__cdecl *SHUnSchedule)(SHMeshRef mesh, SHWireRef wire);
 typedef void(__cdecl *SHSchedule)(SHMeshRef mesh, SHWireRef wire, SHBool compose);
 typedef SHBool(__cdecl *SHTick)(SHMeshRef mesh);
 typedef void(__cdecl *SHTerminate)(SHMeshRef mesh);
@@ -1027,6 +1028,7 @@ typedef struct _SHCore {
   SHCreateMeshVar createMeshVar;
   SHCompose compose;
   SHSchedule schedule;
+  SHUnSchedule unschedule;
   SHTick tick; // returns false if we had a failure
   SHTick isEmpty; // returns true if we have no wires to tick
   SHTerminate terminate;
