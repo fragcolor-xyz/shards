@@ -1147,7 +1147,7 @@ TEST_CASE("TableVar") {
 
 TEST_CASE("HashedActivations") {
   // we need to hack this in as we run out of context
-  SHCoro foo{};
+  shards::Coroutine foo{};
   SHFlow flow{};
 #ifndef __EMSCRIPTEN__
   SHContext ctx(std::move(foo), nullptr, &flow);
