@@ -1,6 +1,6 @@
 #include "window.hpp"
 #include "error_utils.hpp"
-#include "platform.hpp"
+#include <shards/core/platform.hpp>
 #include "sdl_native_window.hpp"
 #include <SDL.h>
 #include <SDL_video.h>
@@ -8,13 +8,13 @@
 #include <spdlog/spdlog.h>
 #include "fmt.hpp"
 
-#if GFX_WINDOWS
+#if SH_WINDOWS
 #include <Windows.h>
-#elif GFX_APPLE
+#elif SH_APPLE
 #include <SDL_metal.h>
-#elif GFX_EMSCRIPTEN
+#elif SH_EMSCRIPTEN
 #include <emscripten/html5.h>
-#elif GFX_ANDROID
+#elif SH_ANDROID
 #include <android/native_window.h>
 #endif
 
@@ -37,7 +37,7 @@ void Window::init(const WindowCreationOptions &options) {
   int width{options.width}, height{options.height};
 
 // Base OS flags
-#if GFX_IOS || GFX_ANDROID
+#if SH_IOS || SH_ANDROID
   flags |= SDL_WINDOW_FULLSCREEN;
 #else
   flags |= (options.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
@@ -48,10 +48,10 @@ void Window::init(const WindowCreationOptions &options) {
     height = 0;
   }
 
-#if !GFX_EMSCRIPTEN
+#if !SH_EMSCRIPTEN
   flags |= SDL_WINDOW_ALLOW_HIGHDPI;
 #endif
-#if GFX_APPLE
+#if SH_APPLE
   flags |= SDL_WINDOW_METAL;
 #endif
 
@@ -63,14 +63,14 @@ void Window::init(const WindowCreationOptions &options) {
     throw formatException("SDL_CreateWindow failed: {}", SDL_GetError());
   }
 
-#if GFX_APPLE
+#if SH_APPLE
   metalView.emplace(window);
 #endif
 }
 
 void Window::cleanup() {
   if (window) {
-#if GFX_APPLE
+#if SH_APPLE
     metalView.reset();
 #endif
 
@@ -91,9 +91,9 @@ void Window::pollEvents(std::vector<SDL_Event> &events) {
 bool Window::pollEvent(SDL_Event &outEvent) { return SDL_PollEvent(&outEvent); }
 
 void *Window::getNativeWindowHandle() {
-#if GFX_APPLE
+#if SH_APPLE
   return nullptr;
-#elif GFX_EMSCRIPTEN
+#elif SH_EMSCRIPTEN
   return (void *)("#canvas");
 #else
   return (void *)SDL_GetNativeWindowPtr(window);
@@ -102,9 +102,9 @@ void *Window::getNativeWindowHandle() {
 
 int2 Window::getDrawableSize() const {
   int2 r;
-#if GFX_APPLE
+#if SH_APPLE
   SDL_Metal_GetDrawableSize(window, &r.x, &r.y);
-#elif GFX_ANDROID
+#elif SH_ANDROID
   ANativeWindow *nativeWindow = (ANativeWindow *)SDL_GetNativeWindowPtr(window);
   r.x = ANativeWindow_getWidth(nativeWindow);
   r.y = ANativeWindow_getHeight(nativeWindow);
@@ -140,7 +140,7 @@ static float2 getUIScaleFromDisplayDPI(int displayIndex) {
     return float2(1.0f);
   }
 
-#if GFX_WINDOWS
+#if SH_WINDOWS
   // DPI for 100% on windows
   return dpi / 96;
 #else
@@ -152,7 +152,7 @@ static float2 getUIScaleFromDisplayDPI(int displayIndex) {
 
 float Window::getUIScale() const {
   float2 scale{};
-#if GFX_APPLE
+#if SH_APPLE
   // On apple, derive display scale from drawable size / window size
   scale = float2(getDrawableSize()) / float2(getSize());
 #else
@@ -162,7 +162,7 @@ float Window::getUIScale() const {
 }
 
 bool Window::isWindowSizeInPixels() {
-#if GFX_APPLE
+#if SH_APPLE
   return false;
 #else
   return true;

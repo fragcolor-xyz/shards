@@ -6,13 +6,13 @@
 #include <compare>
 #include <linalg.h>
 #include <variant>
-#include <gfx/platform.hpp>
+#include <shards/core/platform.hpp>>
 #include <boost/container/string.hpp>
 
 // Defines the primary command key
 //   on apple this is the cmd key
 //   otherwise the ctrl key
-#if GFX_APPLE
+#if SH_APPLE
 #define KMOD_PRIMARY KMOD_GUI
 #define KMOD_SECONDARY KMOD_CTRL
 #else
