@@ -6,7 +6,7 @@
 #include <compare>
 #include <linalg.h>
 #include <variant>
-#include "../../core/platform.hpp"
+#include "../core/platform.hpp"
 #include <boost/container/string.hpp>
 
 // Defines the primary command key
