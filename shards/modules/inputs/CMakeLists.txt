@@ -3,11 +3,15 @@ set(SOURCES
   detached.cpp
 )
 
-add_rust_library(NAME shards-inputs-debug-ui 
-  PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}/debug_ui
-  DEPENDS debug_ui.hpp)
+if(SHARDS_WITH_EGUI) 
+  add_rust_library(NAME shards-inputs-debug-ui 
+    PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}/debug_ui
+    DEPENDS debug_ui.hpp)
+  set(INPUT_RUST_TARGETS shards-inputs-debug-ui-rust)
+endif()
 
 add_shards_module(inputs SOURCES ${SOURCES}
   REGISTER_SHARDS inputs inputs1
-  RUST_TARGETS shards-inputs-debug-ui-rust)
+  RUST_TARGETS ${INPUT_RUST_TARGETS})
 target_link_libraries(shards-module-inputs gfx input)
+

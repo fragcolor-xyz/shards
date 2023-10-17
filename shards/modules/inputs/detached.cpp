@@ -10,6 +10,7 @@
 #include <shards/input/state.hpp>
 #include <shards/input/detached.hpp>
 #include <shards/core/module.hpp>
+#include <shards/registry.hpp>
 #include <input/events.hpp>
 #include <input/input.hpp>
 #include <input/input_stack.hpp>
@@ -292,7 +293,7 @@ struct Detached {
   }
 
   void cleanup() {
-    if(_contextVarRef)
+    if (_contextVarRef)
       withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_CLEANUP(); });
 
     _handler.reset();
@@ -400,8 +401,8 @@ struct Detached {
                 SPDLOG_LOGGER_DEBUG(logger, "== Detached input begin {} == ", _handler->name);
                 logStarted = true;
               }
-              SPDLOG_LOGGER_DEBUG(logger, "Detached event IN: {}, gen: {}, consumed: {}, focus: {}", debugFormat(event.event), gen,
-                          event.consumed, frame.canReceiveInput);
+              SPDLOG_LOGGER_DEBUG(logger, "Detached event IN: {}, gen: {}, consumed: {}, focus: {}", debugFormat(event.event),
+                                  gen, event.consumed, frame.canReceiveInput);
               apply(event, frame.canReceiveInput);
             }
 
@@ -437,6 +438,8 @@ struct Detached {
   }
 };
 
+#if SHARDS_WITH_EGUI
+#define HAS_INPUT_DEBUG_UI 1
 struct DebugUI {
   RequiredInputContext _context;
   ExposedInfo _required;
@@ -520,6 +523,7 @@ struct DebugUI {
     return SHVar{};
   }
 };
+#endif
 } // namespace input
 } // namespace shards
 
@@ -541,5 +545,8 @@ SHARDS_REGISTER_FN(inputs1) {
   using namespace shards::input;
   REGISTER_SHARD("Inputs.GetContext", GetWindowContext);
   REGISTER_SHARD("Inputs.Detached", Detached);
+
+#if HAS_INPUT_DEBUG_UI
   REGISTER_SHARD("Inputs.DebugUI", DebugUI);
+#endif
 }
