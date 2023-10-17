@@ -622,7 +622,7 @@ public:
   };
 };
 
-void parseArguments(int argc, const char** argv);
+void parseArguments(int argc, const char **argv);
 Globals &GetGlobals();
 EventDispatcher &getEventDispatcher(const std::string &name);
 
@@ -1544,20 +1544,19 @@ inline void collectAllRequiredVariables(const SHExposedTypesInfo &exposed, Expos
 }
 
 struct CoroAwareBarrier {
-  std::atomic_bool running{false};
+  std::mutex mutex;
 
   bool acquire(SHContext *context) {
-    do {
-      bool expected = false;
-      if (running.compare_exchange_strong(expected, true))
-        break;
-      else if (shards::suspend(context, 0) != SHWireState::Continue)
-        return false; // return as there is some error or so going on
-    } while (running);
+    while (!mutex.try_lock()) {
+      auto res = shards::suspend(context, 0);
+      if (res != SHWireState::Continue) {
+        return false;
+      }
+    }
     return true;
   }
 
-  void release() { running = false; }
+  void release() { mutex.unlock(); }
 };
 
 }; // namespace shards
