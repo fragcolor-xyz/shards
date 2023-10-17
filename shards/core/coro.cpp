@@ -99,30 +99,30 @@ Fiber::operator bool() const { return continuation.has_value() && (bool)continua
 
 thread_local emscripten_fiber_t *em_local_coro{nullptr};
 thread_local emscripten_fiber_t em_main_coro{};
-thread_local uint8_t em_asyncify_main_stack[shards::Coroutine::as_stack_size];
+thread_local uint8_t em_asyncify_main_stack[Fiber::as_stack_size];
 
 [[noreturn]] static void action(void *p) {
   SHLOG_TRACE("EM FIBER ACTION RUN");
-  auto coro = reinterpret_cast<shards::Coroutine *>(p);
+  auto coro = reinterpret_cast<Fiber *>(p);
   coro->func();
   // If entry_func returns, the entire program will end, as if main had
   // returned.
   abort();
 }
 
-void shards::Coroutine::init(const std::function<void()> &func) {
+void Fiber::init(const std::function<void()> &func) {
   SHLOG_TRACE("EM FIBER INIT");
   this->func = func;
   c_stack = new (std::align_val_t{16}) uint8_t[stack_size];
   emscripten_fiber_init(&em_fiber, action, this, c_stack, stack_size, asyncify_stack, as_stack_size);
 }
 
-NO_INLINE void shards::Coroutine::resume() {
+NO_INLINE void Fiber::resume() {
   SHLOG_TRACE("EM FIBER SWAP RESUME {}", reinterpret_cast<uintptr_t>(&em_fiber));
   // ensure local thread is setup
   if (!em_main_coro.stack_ptr) {
-    SHLOG_DEBUG("shards::Coroutine - initialization of new thread");
-    emscripten_fiber_init_from_current_context(&em_main_coro, em_asyncify_main_stack, shards::Coroutine::as_stack_size);
+    SHLOG_DEBUG("Fiber - initialization of new thread");
+    emscripten_fiber_init_from_current_context(&em_main_coro, em_asyncify_main_stack, Fiber::as_stack_size);
   }
   // ensure we have a local coro
   if (!em_local_coro) {
@@ -134,7 +134,7 @@ NO_INLINE void shards::Coroutine::resume() {
   emscripten_fiber_swap(em_parent_fiber, &em_fiber);
 }
 
-NO_INLINE void shards::Coroutine::yield() {
+NO_INLINE void Fiber::yield() {
   SHLOG_TRACE("EM FIBER SWAP YIELD {}", reinterpret_cast<uintptr_t>(&em_fiber));
   // always yields to main
   assert(em_parent_fiber);
