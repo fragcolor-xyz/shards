@@ -64,7 +64,7 @@ struct TidePool {
       boost::thread::attributes attrs;
       attrs.set_stack_size(SH_STACK_SIZE);
       _thread = boost::thread(attrs, [this]() {
-        pushThreadName("TidePool workder");
+        pushThreadName("TidePool worker");
         while (_running) {
           Work *work{};
           if (_queue.pop(work)) {
