@@ -75,6 +75,7 @@ pub fn drag_source<R>(
 
 pub fn drop_target<R>(
   ui: &mut egui::Ui,
+  ctx: &UIContext,
   can_accept_what_is_being_dragged: bool,
   body: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
@@ -96,7 +97,7 @@ pub fn drop_target<R>(
     ui.visuals().widgets.inactive
   };
 
-  if is_being_dragged {
+  if is_being_dragged && !ctx.dnd_value.borrow().0.is_none() {
     let style = ui.visuals().widgets.active;
     let mut fill: Rgba = style.bg_fill.into();
     let mut stroke_color = style.bg_stroke.color.into();
@@ -280,7 +281,7 @@ impl Shard for DragDrop {
         true
       };
 
-      let inner = drop_target(ui, accepts_value, |ui| {
+      let inner = drop_target(ui, ui_ctx, accepts_value, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       });
 
