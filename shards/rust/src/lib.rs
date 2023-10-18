@@ -35,6 +35,7 @@ pub mod util;
 pub use shards_macro::shards_enum;
 pub use shards_macro::shard;
 pub use shards_macro::shard_impl;
+pub use shards_macro::param_set;
 
 use crate::core::log;
 use crate::core::Core;
