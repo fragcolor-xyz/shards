@@ -15,7 +15,7 @@ struct CapturingBrancher {
   using CapturedVariables = std::unordered_map<std::string, OwnedVar>;
 
   Brancher brancher;
-  VariableRefs capturedVariables;
+  std::unordered_map<std::string, SHVar> variableStorage;
 
 private:
   bool _variablesApplied{};
@@ -44,11 +44,22 @@ public:
     }
   }
 
+  // WARNING: Need to keep variables alive during the liftime of this brancher
   void applyCapturedVariables(CapturedVariables &variables) {
-    for (auto &vr : variables) {
-      brancher.mesh->refs[vr.first] = &vr.second;
+    if (!_variablesApplied) {
+      // Initialize references here
+      for (auto &vr : variables) {
+        SHVar &var = variableStorage[vr.first];
+        brancher.mesh->refs[vr.first] = &var;
+      }
+      _variablesApplied = true;
     }
-    _variablesApplied = true;
+
+    for (auto &vr : variables) {
+      auto it = brancher.mesh->refs.find(vr.first);
+      assert(it != brancher.mesh->refs.end());
+      *it->second = vr.second;
+    }
   }
 
   void warmup(const SHVar &input = Var::Empty) {
@@ -60,6 +71,7 @@ public:
   void cleanup() {
     brancher.mesh->refs.clear();
     brancher.mesh->terminate();
+    variableStorage.clear();
   }
 
   void activate() { brancher.activate(); }

@@ -58,8 +58,8 @@ gfx::int4 gfx_getViewport(const SHVar &graphicsContextVar) {
   return int4(viewportRect.x, viewportRect.y, viewportRect.getX1(), viewportRect.getY1());
 }
 
-const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar *graphicsContextVar,
-                                           const SHVar &inputContextVar, float scalingFactor) {
+const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &inputContextVar,
+                                           float scalingFactor) {
   IInputContext &inputContext = varAsObjectChecked<IInputContext>(inputContextVar, IInputContext::Type);
 
   static std::vector<ConsumableEvent> noEvents{};
@@ -106,7 +106,7 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
   });
 }
 
-void gfx_applyEguiOutputs(gfx::EguiInputTranslator *translator, const egui::FullOutput &output, const SHVar &inputContextVar) {
+void gfx_applyEguiIOOutput(gfx::EguiInputTranslator *translator, const egui::IOOutput &output, const SHVar &inputContextVar) {
   IInputContext &inputContext = varAsObjectChecked<IInputContext>(inputContextVar, IInputContext::Type);
 
   translator->applyOutput(output);

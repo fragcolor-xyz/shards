@@ -223,11 +223,7 @@ egui::Pos2 EguiInputTranslator::translatePointerPos(const egui::Pos2 &pos) {
   };
 }
 
-void EguiInputTranslator::applyOutput(const egui::FullOutput &output) {
-  // TODO
-  // if (window)
-  //   updateTextCursorPosition(*window, output.textCursorPosition);
-  // updateTextCursorPosition(
+void EguiInputTranslator::applyOutput(const egui::IOOutput &output) {
   updateTextCursorPosition(output.textCursorPosition);
 
   if (output.copiedText)

@@ -15,7 +15,6 @@ void egui_hostWarmup(EguiHost, SHContext *shContext);
 void egui_hostCleanup(EguiHost);
 const char *egui_hostActivate(EguiHost, const egui::Input &eguiInput, const Shards &shards, SHContext *shContext,
                               const SHVar &input, SHVar &output);
-const egui::FullOutput *egui_hostGetOutput(const EguiHost);
 }
 
 #endif /* ED3C732D_AC03_4B15_8EC8_BB15262E26DA */

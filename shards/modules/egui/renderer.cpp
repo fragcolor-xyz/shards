@@ -171,9 +171,7 @@ struct EguiRendererImpl {
     pendingTextureFrees.clear();
   }
 
-  void render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue,
-              bool clipGeometry) {
-    meshPool.reset();
+  void applyTextureUpdatesPreRender(const egui::RenderOutput &output) {
     processPendingTextureFrees();
 
     // Update textures before render
@@ -183,6 +181,23 @@ struct EguiRendererImpl {
       SPDLOG_LOGGER_INFO(logger, "textureSet {}", (uint64_t)textureSet.id);
       textures.set(textureSet);
     }
+  }
+
+  void applyTextureUpdatesPostRender(const egui::RenderOutput &output) {
+    // Store texture id's to free
+    // these are executed at the start the next time render() is called
+    auto &textureUpdates = output.textureUpdates;
+    for (size_t i = 0; i < textureUpdates.numFrees; i++) {
+      auto &id = textureUpdates.frees[i];
+      addPendingTextureFree(id);
+    }
+  }
+
+  void render(const egui::RenderOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue,
+              bool clipGeometry) {
+    meshPool.reset();
+
+    applyTextureUpdatesPreRender(output);
 
     // Update meshes & generate drawables
     drawables.resize(output.numPrimitives);
@@ -219,23 +234,24 @@ struct EguiRendererImpl {
       drawQueue->add(drawable);
     }
 
-    // Store texture id's to free
-    // these are executed at the start the next time render() is called
-    for (size_t i = 0; i < textureUpdates.numFrees; i++) {
-      auto &id = textureUpdates.frees[i];
-      addPendingTextureFree(id);
-    }
+    applyTextureUpdatesPostRender(output);
   }
 };
 
 EguiRenderer::EguiRenderer() { impl = std::make_shared<EguiRendererImpl>(); }
 
-void EguiRenderer::render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue,
+
+void EguiRenderer::applyTextureUpdatesOnly(const egui::RenderOutput &output) {
+  impl->applyTextureUpdatesPreRender(output);
+  impl->applyTextureUpdatesPostRender(output);
+}
+
+void EguiRenderer::render(const egui::RenderOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue,
                           bool clipGeometry) {
   impl->render(output, rootTransform, drawQueue, clipGeometry);
 }
 
-void EguiRenderer::renderNoTransform(const egui::FullOutput &output, const gfx::DrawQueuePtr &drawQueue) {
+void EguiRenderer::renderNoTransform(const egui::RenderOutput &output, const gfx::DrawQueuePtr &drawQueue) {
   render(output, linalg::identity, drawQueue);
 }
 

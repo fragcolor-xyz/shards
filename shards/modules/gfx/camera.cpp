@@ -345,6 +345,11 @@ struct TargetCameraFromLookAt {
 
   TargetCameraStateTable _result;
 
+  TargetCameraFromLookAt() {
+    _target = toVar(float3());
+    _position = toVar(float3(2.5f, 2.5f, 5.0f));
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     float3 pos = toFloat3(_position.get());
     float3 target = toFloat3(_target.get());

@@ -43,7 +43,7 @@ public:
 
   void compose(const SHInstanceData &data, ExposedInfo &outRequired, ParamVar *paramOverride = nullptr) {
     std::optional<SHExposedTypeInfo> exposed;
-    if (paramOverride) {
+    if (paramOverride && paramOverride->isVariable()) {
       exposed = findExposedVariable(data.shared, *paramOverride);
     }
 
@@ -95,6 +95,7 @@ public:
     SHExposedTypeInfo typeInfo{
         .name = VariableName,
         .exposedType = VariableType,
+        .isProtected = true,
         .global = true,
     };
     return typeInfo;

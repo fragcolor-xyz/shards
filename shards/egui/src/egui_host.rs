@@ -2,25 +2,20 @@ use super::util;
 use super::CONTEXTS_NAME;
 use super::EGUI_CTX_TYPE;
 use super::PARENTS_UI_NAME;
-use crate::bindings::egui_FullOutput;
 use crate::bindings::egui_Input;
-use crate::bindings::make_native_full_output;
-use crate::bindings::NativeFullOutput;
 use crate::Context as UIContext;
 use crate::EGUI_UI_TYPE;
 use shards::core::Core;
 use shards::shardsc::Shards;
-use shards::types::ClonedVar;
 use shards::types::Context as ShardsContext;
 use shards::types::ExposedInfo;
 use shards::types::ParamVar;
 use shards::types::Var;
 use shards::types::WireState;
-use std::cell::RefCell;
 
 pub struct EguiHost {
   context: Option<UIContext>,
-  full_output: Option<NativeFullOutput>,
+  full_output: Option<egui::FullOutput>,
   instance: ParamVar,
   parents: ParamVar,
   exposed: Vec<ExposedInfo>,
@@ -86,6 +81,10 @@ impl EguiHost {
     Ok(())
   }
 
+  pub fn get_context(&self) -> &UIContext {
+    self.context.as_ref().expect("UI context not initialized")
+  }
+
   fn clear_unused_dnd_state(&mut self) {
     let ui_ctx = self.context.as_ref().unwrap();
     let mut dnd_value = ui_ctx.dnd_value.borrow_mut();
@@ -119,8 +118,6 @@ impl EguiHost {
         Err("Input translation error")
       }
       Ok(raw_input) => {
-        let draw_scale = raw_input.pixels_per_point.unwrap_or(1.0);
-
         let mut error: Option<&str> = None;
         let egui_output = ui_ctx.egui_ctx.run(raw_input, |_ctx| {
           error = (|| -> Result<(), &str> {
@@ -153,23 +150,28 @@ impl EguiHost {
           return Err(e);
         }
 
-        self.full_output = Some(make_native_full_output(
-          &ui_ctx.egui_ctx,
-          egui_output,
-          draw_scale,
-        )?);
+        self.full_output = Some(egui_output);
+        // self.full_output = Some(make_native_full_output(
+        //   &ui_ctx.egui_ctx,
+        //   egui_output,
+        //   draw_scale,
+        // )?);
         Ok(*input)
       }
     }
   }
 
-  pub fn get_egui_output(&self) -> *const egui_FullOutput {
-    return &self.full_output.as_ref().unwrap().full_output;
+  // pub fn get_egui_output(&self) -> *const egui_FullOutput {
+  //   return &self.full_output.as_ref().unwrap().full_output;
+  // }
+
+  pub fn take_egui_output(&mut self) -> egui::FullOutput {
+    self.full_output.take().unwrap()
   }
 }
 
 mod native {
-  use crate::bindings::{egui_FullOutput, egui_Input};
+  use crate::bindings::{egui_Input};
 
   use super::EguiHost;
   use shards::{
@@ -221,14 +223,5 @@ mod native {
       }
       Err(str) => str.as_ptr(),
     }
-  }
-
-  #[no_mangle]
-  unsafe extern "C" fn egui_hostGetOutput(ptr: *const EguiHost) -> *const egui_FullOutput {
-    &(*ptr)
-      .full_output
-      .as_ref()
-      .expect("Expected egui output")
-      .full_output
   }
 }

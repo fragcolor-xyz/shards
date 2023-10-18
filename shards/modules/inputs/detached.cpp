@@ -91,7 +91,6 @@ struct InputThreadHandler : public IInputHandler, public debug::IDebug {
   InputThreadInputQueue inputQueue{32};
   CapturedVariables variableState;
 
-  SHVar inputContextVar;
   DetachedInputContext inputContext;
 
   std::string name;
@@ -125,8 +124,8 @@ struct InputThreadHandler : public IInputHandler, public debug::IDebug {
   }
 
   void warmup(const VariableRefs &initialVariableRefs, InputStack &&inputStack) {
-    brancher.mesh()->refs[RequiredInputContext::variableName()] = &inputContextVar;
-    inputContextVar = Var::Object(&inputContext, IInputContext::Type);
+    Var inputContextVar = Var::Object(&inputContext, IInputContext::Type);
+    brancher.mesh()->variables.emplace(RequiredInputContext::variableName(), inputContextVar);
 
     pushInputs(initialVariableRefs, std::move(inputStack));
     applyCapturedVariables();
@@ -223,10 +222,6 @@ struct Detached {
   PARAM_VAR(_inputShards, "Input", "Runs detached on the input loop", IntoWire::RunnableTypes);
   PARAM(ShardsVar, _mainShards, "Then", "Runs inline after data has been output from the Input callback",
         {CoreInfo::ShardsOrNone});
-  PARAM_VAR(
-      _useOutput, "UseOutput",
-      "Use output from input call as shard output. WARNING: this will block until the next input loop runs for the first time",
-      {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_VAR(_priority, "Priority", "The order in which this input handler is run", {CoreInfo::IntType});
   PARAM_VAR(_name, "Name", "Name used for logging/debugging purposes", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_context), PARAM_IMPL_FOR(_inputShards), PARAM_IMPL_FOR(_mainShards), PARAM_IMPL_FOR(_priority),
@@ -241,15 +236,13 @@ struct Detached {
   OutputBuffer _outputBuffer;
   size_t _lastReceivedEventBufferFrame{};
 
-  // Separate timer for this input context
-  OwnedVar _lastOutput;
+  Types _mainDataSeqTypes;
+  SeqVar _mainDataSeq;
+  size_t _lastGeneration;
 
   bool _initialized{};
 
-  Detached() {
-    _priority = Var(0);
-    _useOutput = Var(false);
-  }
+  Detached() { _priority = Var(0); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -277,18 +270,17 @@ struct Detached {
     if (inputWire->composeResult->failed)
       throw ComposeError(fmt::format("Failed to compose input wire: {}", inputWire->composeResult->failureMessage));
 
+    _mainDataSeqTypes = Types{inputWire->outputType};
+    auto mainDataSeqType = Type::SeqOf(_mainDataSeqTypes);
+
     auto mainInstanceData = data;
-    mainInstanceData.inputType = inputWire->outputType;
+    mainInstanceData.inputType = mainDataSeqType;
     auto mainCr = _mainShards.compose(mainInstanceData);
     for (auto req : mainCr.requiredInfo) {
       _requiredVariables.push_back(req);
     }
 
-    if ((bool)*_useOutput) {
-      return inputWire->outputType;
-    } else {
-      return data.inputType;
-    }
+    return mainDataSeqType;
   }
 
   void warmup(SHContext *context) {
@@ -353,28 +345,26 @@ struct Detached {
 
     auto handlerInputContext = _handler->inputContext;
 
-    bool useOutput = (bool)*_useOutput;
-    if (useOutput) {
-      while (_outputBuffer.empty()) {
-        suspend(context, 0.0f);
+    if (!_outputBuffer.empty()) {
+      _mainDataSeq.clear();
+      auto result = _outputBuffer.getEvents(_lastGeneration);
+      for (auto &[idx, frame] : result.frames) {
+        _mainDataSeq.push_back(frame.data);
+      }
+      _lastGeneration = result.lastGeneration;
+
+      // When empty, recycle last output
+      if (_mainDataSeq.empty()) {
+        _mainDataSeq.push_back(_outputBuffer.getFrame(_lastGeneration).data);
       }
     }
 
-    bool runMainShards = _mainShards && !_outputBuffer.empty();
-    if (runMainShards || useOutput) {
-      _lastOutput = _outputBuffer.getFrame(-1).data;
-    }
-
-    if (runMainShards) {
+    if (_mainShards && !_mainDataSeq.empty()) {
       SHVar _unused{};
-      _mainShards.activate(context, _lastOutput, _unused);
+      _mainShards.activate(context, _mainDataSeq, _unused);
     }
 
-    if (useOutput) {
-      return _lastOutput;
-    } else {
-      return input;
-    }
+    return _mainDataSeq;
   }
 };
 } // namespace input

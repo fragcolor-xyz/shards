@@ -75,7 +75,7 @@ public:
   egui::Pos2 translatePointerPos(const egui::Pos2 &pos);
 
   // Applies egui output to update cursor pos, clipboard, etc.
-  void applyOutput(const egui::FullOutput &output);
+  void applyOutput(const egui::IOOutput &output);
 
   // Set or clear the position for the text cursor
   void updateTextCursorPosition(const egui::Pos2 *pos);

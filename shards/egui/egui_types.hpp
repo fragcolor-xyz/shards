@@ -251,10 +251,13 @@ struct ClippedPrimitive {
   TextureId textureId;
 };
 
-struct FullOutput {
+struct RenderOutput {
   TextureUpdates textureUpdates;
   const ClippedPrimitive *primitives;
   size_t numPrimitives;
+};
+
+struct IOOutput {
   egui::CursorIcon cursorIcon;
   const char *openUrl;
   const char *copiedText;

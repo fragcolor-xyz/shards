@@ -3,6 +3,7 @@ use egui::epaint;
 use egui::ClippedPrimitive;
 use egui::Context;
 use std::ffi::CString;
+use std::marker::PhantomData;
 use std::ptr;
 
 pub struct Renderer {
@@ -12,22 +13,63 @@ pub struct Renderer {
 unsafe impl Send for Renderer {}
 unsafe impl Sync for Renderer {}
 
+pub struct NativeIOOutput {
+  pub open_url: Option<CString>,
+  pub copied_text: Option<CString>,
+  pub text_cursor_position: Option<Box<egui_Pos2>>,
+  pub cursor_icon: egui_CursorIcon,
+  pub mutable_text_under_cursor: bool,
+  pub wants_pointer_input: bool,
+  pub wants_keyboard_input: bool,
+}
+
+impl NativeIOOutput {
+  pub fn get_c_output(&self) -> egui_IOOutput {
+    egui_IOOutput {
+      openUrl: self.open_url.as_ref().map_or(ptr::null(), |x| x.as_ptr()),
+      copiedText: self
+        .copied_text
+        .as_ref()
+        .map_or(ptr::null(), |x| x.as_ptr()),
+      textCursorPosition: self
+        .text_cursor_position
+        .as_ref()
+        .map_or(ptr::null(), |x| x.as_ref()),
+      cursorIcon: self.cursor_icon,
+      mutableTextUnderCursor: self.mutable_text_under_cursor,
+      wantsPointerInput: self.wants_pointer_input,
+      wantsKeyboardInput: self.wants_keyboard_input,
+    }
+  }
+}
+
 pub enum PixelData {
   Color(Vec<egui::Color32>),
   Font(Vec<f32>),
 }
 
-pub struct NativeFullOutput {
+pub struct NativeRenderOutput<'a> {
+  marker: PhantomData<&'a i32>,
   pub texture_sets: Vec<egui_TextureSet>,
   pub texture_frees: Vec<egui_TextureId>,
   pub clipped_primitives: Vec<egui_ClippedPrimitive>,
   pub vertex_mem: Vec<egui_Vertex>,
   pub index_mem: Vec<u32>,
-  pub image_mem: Vec<PixelData>,
-  pub open_url: Option<CString>,
-  pub copied_text: Option<CString>,
-  pub text_cursor_position: Option<Box<egui_Pos2>>,
-  pub full_output: egui_FullOutput,
+}
+
+impl<'a> NativeRenderOutput<'a> {
+  pub fn get_c_output(&self) -> egui_RenderOutput {
+    egui_RenderOutput {
+      numPrimitives: self.clipped_primitives.len(),
+      primitives: self.clipped_primitives.as_ptr(),
+      textureUpdates: egui_TextureUpdates {
+        sets: self.texture_sets.as_ptr(),
+        numSets: self.texture_sets.len(),
+        frees: self.texture_frees.as_ptr(),
+        numFrees: self.texture_frees.len(),
+      },
+    }
+  }
 }
 
 fn convert_primitive(
@@ -87,33 +129,20 @@ fn convert_primitive(
 
 fn convert_texture_set(
   id: epaint::TextureId,
-  delta: epaint::ImageDelta,
-  image_data: &mut Vec<PixelData>,
+  delta: &epaint::ImageDelta,
 ) -> Result<egui_TextureSet, &'static str> {
-  let (format, ptr, size, pixels) = match delta.image {
+  let (format, ptr, size) = match &delta.image {
     epaint::ImageData::Color(color) => {
       let ptr = color.pixels.as_ptr();
       let size = color.size;
-      (
-        egui_TextureFormat_RGBA8,
-        ptr as *const u8,
-        size,
-        PixelData::Color(color.pixels),
-      )
+      (egui_TextureFormat_RGBA8, ptr as *const u8, size)
     }
     epaint::ImageData::Font(font) => {
       let ptr = font.pixels.as_ptr();
       let size = font.size;
-      (
-        egui_TextureFormat_R32F,
-        ptr as *const u8,
-        size,
-        PixelData::Font(font.pixels),
-      )
+      (egui_TextureFormat_R32F, ptr as *const u8, size)
     }
   };
-
-  image_data.push(pixels);
 
   let (offset, sub_region) = if let Some(pos) = delta.pos {
     (pos, true)
@@ -131,12 +160,27 @@ fn convert_texture_set(
   })
 }
 
-pub fn make_native_full_output(
+pub fn make_texture_updates(
+  td: &egui::TexturesDelta,
+) -> Result<(Vec<egui_TextureSet>, Vec<egui_TextureId>), &'static str> {
+  let texture_sets: Vec<_> = td
+    .set
+    .iter()
+    .map(|pair| convert_texture_set(pair.0, &pair.1))
+    .collect::<Result<Vec<_>, _>>()?;
+
+  let texture_frees: Vec<egui_TextureId> = td.free.iter().map(|id| (*id).into()).collect();
+
+  Ok((texture_sets, texture_frees))
+}
+
+pub fn make_native_render_output<'a>(
   ctx: &Context,
-  input: egui::FullOutput,
+  input: &'a egui::FullOutput,
   draw_scale: f32,
-) -> Result<NativeFullOutput, &'static str> {
-  let primitives = ctx.tessellate(input.shapes);
+) -> Result<NativeRenderOutput<'a>, &'static str> {
+  // Sad clone here, might be able to remove upstream
+  let primitives: Vec<ClippedPrimitive> = ctx.tessellate(input.shapes.clone());
   let mut numVerts = 0;
   let mut numIndices = 0;
   for prim in primitives.iter() {
@@ -155,21 +199,22 @@ pub fn make_native_full_output(
     .map(|prim| convert_primitive(prim, &mut vertex_mem, &mut index_mem, draw_scale))
     .collect::<Result<Vec<_>, _>>()?;
 
-  let mut image_mem: Vec<PixelData> = Vec::new();
-  let texture_sets: Vec<_> = input
-    .textures_delta
-    .set
-    .into_iter()
-    .map(|pair| convert_texture_set(pair.0, pair.1, &mut image_mem))
-    .collect::<Result<Vec<_>, _>>()?;
+  let (texture_sets, texture_frees) = make_texture_updates(&input.textures_delta)?;
 
-  let texture_frees: Vec<egui_TextureId> = input
-    .textures_delta
-    .free
-    .into_iter()
-    .map(|id| id.into())
-    .collect();
+  Ok(NativeRenderOutput {
+    marker: PhantomData,
+    clipped_primitives,
+    texture_sets,
+    texture_frees,
+    vertex_mem,
+    index_mem,
+  })
+}
 
+pub fn make_native_io_output(
+  ctx: &Context,
+  input: &egui::FullOutput,
+) -> Result<NativeIOOutput, &'static str> {
   let platform_output = &input.platform_output;
   let open_url = match &platform_output.open_url {
     Some(url) => Some(CString::new(url.url.as_str()).unwrap()),
@@ -187,37 +232,14 @@ pub fn make_native_full_output(
     None => None,
   };
 
-  let full_output = egui_FullOutput {
-    numPrimitives: clipped_primitives.len(),
-    primitives: clipped_primitives.as_ptr(),
-    textureUpdates: egui_TextureUpdates {
-      sets: texture_sets.as_ptr(),
-      numSets: texture_sets.len(),
-      frees: texture_frees.as_ptr(),
-      numFrees: texture_frees.len(),
-    },
-    openUrl: open_url.as_ref().map_or(ptr::null(), |x| x.as_ptr()),
-    copiedText: copied_text.as_ref().map_or(ptr::null(), |x| x.as_ptr()),
-    textCursorPosition: text_cursor_position
-      .as_ref()
-      .map_or(ptr::null(), |x| x.as_ref()),
-    cursorIcon: to_egui_cursor_icon(platform_output.cursor_icon),
-    mutableTextUnderCursor: platform_output.mutable_text_under_cursor,
-    wantsPointerInput: ctx.wants_pointer_input(),
-    wantsKeyboardInput: ctx.wants_keyboard_input(),
-  };
-
-  Ok(NativeFullOutput {
-    clipped_primitives,
-    texture_sets,
-    texture_frees,
-    vertex_mem,
-    index_mem,
-    image_mem,
+  Ok(NativeIOOutput {
     open_url,
     copied_text,
     text_cursor_position,
-    full_output,
+    cursor_icon: to_egui_cursor_icon(platform_output.cursor_icon),
+    wants_keyboard_input: ctx.wants_keyboard_input(),
+    wants_pointer_input: ctx.wants_pointer_input(),
+    mutable_text_under_cursor: platform_output.mutable_text_under_cursor,
   })
 }
 
@@ -244,21 +266,42 @@ impl Renderer {
     }
   }
 
-  pub fn render(
+  pub fn apply_texture_updates_only(
     &self,
-    ctx: &egui::Context,
-    egui_output: egui::FullOutput,
-    queue: *const gfx_DrawQueuePtr,
-    draw_scale: f32,
-  ) -> Result<(), &str> {
-    let native_egui_output = make_native_full_output(ctx, egui_output, draw_scale)?;
-    self.render_with_native_output(&native_egui_output.full_output, queue);
+    egui_output: &egui::FullOutput,
+  ) -> Result<(), &'static str> {
+    let (texture_sets, texture_frees) = make_texture_updates(&egui_output.textures_delta)?;
+    let render_output = NativeRenderOutput {
+      marker: PhantomData,
+      texture_sets,
+      texture_frees,
+      clipped_primitives: Vec::new(),
+      vertex_mem: Vec::new(),
+      index_mem: Vec::new(),
+    };
+    let c_output = render_output.get_c_output();
+    unsafe {
+      gfx_EguiRenderer_applyTextureUpdatesOnly(self.egui_renderer, &c_output);
+    }
     Ok(())
   }
 
-  pub fn render_with_native_output(
+  pub fn render(
     &self,
-    egui_output: *const egui_FullOutput,
+    ctx: &egui::Context,
+    egui_output: &egui::FullOutput,
+    queue: *const gfx_DrawQueuePtr,
+    draw_scale: f32,
+  ) -> Result<(), &'static str> {
+    let render_output = make_native_render_output(ctx, egui_output, draw_scale)?;
+    let c_output = render_output.get_c_output();
+    self.render_with_native_render_output(&c_output, queue);
+    Ok(())
+  }
+
+  pub fn render_with_native_render_output(
+    &self,
+    egui_output: *const egui_RenderOutput,
     queue: *const gfx_DrawQueuePtr,
   ) {
     unsafe {

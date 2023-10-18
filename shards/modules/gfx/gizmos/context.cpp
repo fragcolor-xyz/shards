@@ -121,7 +121,7 @@ struct GizmosContextShard {
       if (isInteractive) {
         gizmoInput.held = _inputContext->getState().isMouseButtonHeld(SDL_BUTTON_LEFT);
         for (auto &evt : _inputContext->getEvents()) {
-          if (const PointerButtonEvent *bev = std::get_if<PointerButtonEvent>(&evt)) {
+          if (const PointerButtonEvent *bev = std::get_if<PointerButtonEvent>(&evt.event)) {
             if (bev->index == SDL_BUTTON_LEFT && bev->pressed) {
               gizmoInput.pressed = true;
             }

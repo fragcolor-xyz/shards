@@ -60,7 +60,9 @@ void InputMaster::update(gfx::Window &window) {
   }
 
   // Handle posted messages
-  messageQueue.consume_all([&](const Message &message) {});
+  messageQueue.consume_all([&](const Message &message) {
+    handleMessage(message);
+  });
 }
 
 void InputMaster::postMessage(const Message &message) {
