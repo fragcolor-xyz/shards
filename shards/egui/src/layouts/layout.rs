@@ -641,8 +641,7 @@ impl LegacyShard for LayoutConstructor {
           parent_layout_class,
           scroll_area,
           enable_horizontal_scroll_bar
-        )
-        .unwrap()
+        ).unwrap_or_default()
       } else {
         false // default enable_horizontal_scroll_bar
       }
@@ -661,8 +660,7 @@ impl LegacyShard for LayoutConstructor {
           parent_layout_class,
           scroll_area,
           enable_vertical_scroll_bar
-        )
-        .unwrap()
+        ).unwrap_or_default()
       } else {
         false // default enable_vertical_scroll_bar
       }
@@ -680,8 +678,7 @@ impl LegacyShard for LayoutConstructor {
       scroll_visibility
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
-        retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility)
-          .unwrap()
+        retrieve_layout_class_attribute!(parent_layout_class, scroll_area, scroll_visibility).unwrap_or(ScrollVisibility::AlwaysVisible)
       } else {
         ScrollVisibility::AlwaysVisible // Default should normally be VisibleWhenNeeded, but it is buggy at the moment
       }
@@ -695,7 +692,7 @@ impl LegacyShard for LayoutConstructor {
         min_width
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
-          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_width).unwrap()
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_width).unwrap_or(MIN_SCROLLING_SIZE)
         } else {
           MIN_SCROLLING_SIZE // default min_width
         }
@@ -707,7 +704,7 @@ impl LegacyShard for LayoutConstructor {
         min_height
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
-          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_height).unwrap()
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, min_height).unwrap_or(MIN_SCROLLING_SIZE)
         } else {
           MIN_SCROLLING_SIZE // default min_height
         }
@@ -719,7 +716,7 @@ impl LegacyShard for LayoutConstructor {
         max_width
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
-          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_width).unwrap()
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_width).unwrap_or(f32::INFINITY)
         } else {
           f32::INFINITY // default max_width
         }
@@ -731,7 +728,7 @@ impl LegacyShard for LayoutConstructor {
         max_height
       } else {
         if let Some(parent_layout_class) = parent_layout_class {
-          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_height).unwrap()
+          retrieve_layout_class_attribute!(parent_layout_class, scroll_area, max_height).unwrap_or(f32::INFINITY)
         } else {
           f32::INFINITY // default max_height
         }
@@ -745,7 +742,7 @@ impl LegacyShard for LayoutConstructor {
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
         retrieve_layout_class_attribute!(parent_layout_class, scroll_area, auto_shrink_width)
-          .unwrap()
+          .unwrap_or(true)
       } else {
         true // default auto_shrink_width
       }
@@ -759,7 +756,7 @@ impl LegacyShard for LayoutConstructor {
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
         retrieve_layout_class_attribute!(parent_layout_class, scroll_area, auto_shrink_height)
-          .unwrap()
+          .unwrap_or(true)
       } else {
         true // default auto_shrink_height
       }
@@ -773,7 +770,7 @@ impl LegacyShard for LayoutConstructor {
     } else {
       if let Some(parent_layout_class) = parent_layout_class {
         retrieve_layout_class_attribute!(parent_layout_class, scroll_area, enable_scrolling)
-          .unwrap()
+          .unwrap_or(true)
       } else {
         true // default enable_scrolling
       }
