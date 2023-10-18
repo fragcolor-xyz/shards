@@ -1,0 +1,7 @@
+@wire(watch {
+  "." | FS.Watch | Log
+} Looped: true)
+
+@mesh(root)
+@schedule(root watch)
+@run(root FPS: 10)

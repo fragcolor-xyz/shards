@@ -14,6 +14,7 @@ lazy_static = "1.4.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
 rfd = { version = "0.11", git = "https://github.com/shards-lang/rfd.git", tag = 'shards-1', default-features = false, optional = true}
+notify = { version = "6.1.1" }
 
 [features]
 default = []
