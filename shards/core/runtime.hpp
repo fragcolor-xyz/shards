@@ -6,6 +6,7 @@
 
 // must go first
 #include <shards/shards.h>
+#include <type_traits>
 
 #if _WIN32
 #include <winsock2.h>
@@ -111,6 +112,7 @@ struct SHContext {
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};
   SHDuration next{};
+  entt::delegate<void()> mainThreadTask;
 
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
@@ -296,6 +298,32 @@ UntrackedVector<SHWire *> &getCoroWireStack();
   { TracyCoroExit(_wire); }
 #endif
 
+template <typename DELEGATE>
+auto callOnMainThread(SHContext *context, DELEGATE &func) -> decltype(func.action(), void()) {
+  if (unlikely(!context->shouldContinue() || context->onCleanup)) {
+    throw ActivationError("Trying to suspend a terminated context!");
+  } else if (unlikely(!context->continuation)) {
+    throw ActivationError("Trying to suspend a context without coroutine!");
+  }
+
+  assert(!context->mainThreadTask);
+  context->mainThreadTask.connect<&DELEGATE::action>(func);
+
+  SH_CORO_SUSPENDED(context->currentWire());
+  coroutineSuspend(*context->continuation);
+  SH_CORO_RESUMED(context->currentWire());
+
+  context->mainThreadTask.reset();
+}
+
+template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMainThread(SHContext *context, L&& func) {
+  struct Action {
+    L &lambda;
+    void action() { lambda(); }
+  } l{func};
+  callOnMainThread(context, l);
+}
+
 inline void prepare(SHWire *wire, SHFlow *flow) {
   assert(!coroutineValid(wire->coro) && "Wire already prepared!");
 
@@ -403,6 +431,13 @@ inline bool tick(SHWire *wire, SHDuration now) {
     SH_CORO_EXT_RESUME(wire);
     coroutineResume(wire->coro);
     SH_CORO_EXT_SUSPEND(wire);
+
+    if (unlikely(wire->context && (bool)wire->context->mainThreadTask)) {
+      // if we have a task to run, run it and resume coro asap
+      wire->context->mainThreadTask();
+      wire->context->mainThreadTask.reset();
+      // and continue in order to resume the coro
+    }
   }
   return true;
 }

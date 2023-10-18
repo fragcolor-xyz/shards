@@ -224,7 +224,7 @@ struct MainWindow final {
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (!_windowContext->window) {
-      initWindow(shContext);
+      callOnMainThread(shContext, [&]() { initWindow(shContext); });
     }
 
     auto &window = _windowContext->window;
@@ -237,7 +237,7 @@ struct MainWindow final {
 
     if (shouldRun) {
       // Poll & distribute input events
-      _windowContext->inputMaster.update(*window.get());
+      callOnMainThread(shContext, [&]() { _windowContext->inputMaster.update(*window.get()); });
 
       for (auto &event : _windowContext->inputMaster.getEvents()) {
         if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event)) {
