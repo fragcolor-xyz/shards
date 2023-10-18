@@ -19,6 +19,8 @@
 #include <unordered_map>
 #include <utility>
 
+#include "core/async.hpp"
+
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #include <ikcp.h>
 #pragma clang attribute pop
@@ -195,46 +197,56 @@ struct NetworkPeer {
     }
   }
 
-  bool tryReceive() {
+  bool tryReceive(SHContext *context) {
     bool isMessageReady = false;
 
-    {
-      std::scoped_lock peerLock(peerMutex);
+    std::unique_lock peerLock(recvMutex);
 
-      if (networkError) {
-        decltype(networkError) e;
-        std::swap(e, networkError);
-        throw std::runtime_error(fmt::format("Failed to receive: {}", e->message()));
+    if (networkError) {
+      decltype(networkError) e;
+      std::swap(e, networkError);
+      throw std::runtime_error(fmt::format("Failed to receive: {}", e->message()));
+    }
+
+    maybeUpdate();
+
+    // Initialize variables for buffer management.
+    size_t offset = recvBuffer.size();
+    auto nextChunkSize = ikcp_peeksize(kcp);
+
+    // Loop to receive all available chunks.
+    while (nextChunkSize > 0) {
+      // Resize the buffer to hold the incoming chunk.
+      recvBuffer.resize(nextChunkSize + offset);
+
+      // Receive the chunk.
+      auto receivedSize = ikcp_recv(kcp, (char *)recvBuffer.data() + offset, nextChunkSize);
+      assert(receivedSize == nextChunkSize);
+
+      // If this is the first chunk, read the expected total size from its prefix.
+      if (offset == 0) {
+        expectedSize = *(uint32_t *)recvBuffer.data();
+        // reserve in advance as well or we will have to resize MANY TIMES later, which is slow
+        recvBuffer.reserve(expectedSize);
       }
 
-      maybeUpdate();
+      // Check if the current buffer matches the expected size.
+      if (recvBuffer.size() == expectedSize) {
+        isMessageReady = true;
+        break;
+      } else {
+        // We expect another chunk; update the offset.
+        offset = recvBuffer.size();
+        nextChunkSize = ikcp_peeksize(kcp);
 
-      // Initialize variables for buffer management.
-      size_t offset = recvBuffer.size();
-      auto nextChunkSize = ikcp_peeksize(kcp);
-
-      // Loop to receive all available chunks.
-      while (nextChunkSize > 0) {
-        // Resize the buffer to hold the incoming chunk.
-        recvBuffer.resize(nextChunkSize + offset);
-
-        // Receive the chunk.
-        auto receivedSize = ikcp_recv(kcp, (char *)recvBuffer.data() + offset, nextChunkSize);
-        assert(receivedSize == nextChunkSize);
-
-        // If this is the first chunk, read the expected total size from its prefix.
-        if (offset == 0) {
-          expectedSize = *(uint32_t *)recvBuffer.data();
-        }
-
-        // Check if the current buffer matches the expected size.
-        if (recvBuffer.size() == expectedSize) {
-          isMessageReady = true;
-          break;
-        } else {
-          // We expect another chunk; update the offset.
-          offset = recvBuffer.size();
-          nextChunkSize = ikcp_peeksize(kcp);
+        // suspend if we are going to receive more chunks right now
+        if (nextChunkSize > 0) {
+          recvMutex.unlock(); // allow to receive more, risky but we have to do it to unlock all other peers...
+          if (shards::suspend(context, 0.0) != SHWireState::Continue) {
+            SHLOG_TRACE("sendVar: cancelled");
+            return false;
+          }
+          recvMutex.lock(); // re-lock
         }
       }
     }
@@ -259,7 +271,7 @@ struct NetworkPeer {
     _sendWriter().finalize();
     auto size = _sendWriter().size();
 
-    std::scoped_lock lock(peerMutex);
+    std::scoped_lock lock(sendMutex); // prevent concurrent sends
 
     if (size > IKCP_MAX_PKT_SIZE) {
       // send in chunks
@@ -318,7 +330,8 @@ struct NetworkPeer {
   std::optional<entt::connection> onStopConnection;
 
   // this is not great but well ok for now
-  std::mutex peerMutex;
+  std::mutex recvMutex;
+  std::mutex sendMutex;
 
   std::vector<uint8_t> recvBuffer;
   uint32_t expectedSize = 0;
@@ -566,7 +579,7 @@ struct Server : public NetworkBase {
             }
 
             {
-              std::scoped_lock pLock(currentPeer->peerMutex);
+              std::scoped_lock pLock(currentPeer->recvMutex);
 
               auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
               if (err < 0) {
@@ -664,11 +677,28 @@ struct Server : public NetworkBase {
           context->main->dispatcher.trigger(std::move(event));
         }
 
-        if (peer->tryReceive()) {
-          // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
-          Reader r((char *)peer->recvBuffer.data() + 4, peer->recvBuffer.size() - 4);
-          peer->des.reset();
-          peer->des.deserialize(r, peer->payload);
+        if (peer->tryReceive(context)) {
+          if (!context->shouldContinue())
+            return input;
+
+          auto &peer_ = peer; // avoid c++20 ext warning
+          if (peer_->recvBuffer.size() > IKCP_MAX_PKT_SIZE) {
+            // do this async as it's a big buffer
+            await(
+                context,
+                [peer_]() {
+                  // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
+                  Reader r((char *)peer_->recvBuffer.data() + 4, peer_->recvBuffer.size() - 4);
+                  peer_->des.reset();
+                  peer_->des.deserialize(r, peer_->payload);
+                },
+                [] {});
+          } else {
+            // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
+            Reader r((char *)peer_->recvBuffer.data() + 4, peer_->recvBuffer.size() - 4);
+            peer_->des.reset();
+            peer_->des.deserialize(r, peer_->payload);
+          }
 
           // at this point we can already cleanup the buffer
           peer->endReceive();
@@ -747,7 +777,7 @@ struct Broadcast {
       }
 
       for (auto &[end, peer] : server->_end2Peer) {
-        std::scoped_lock lock(peer->peerMutex);
+        std::scoped_lock lock(peer->sendMutex);
         for (auto &[chunk, chunkSize] : chunks) {
           auto err = ikcp_send(peer->kcp, chunk, chunkSize);
           if (err < 0) {
@@ -759,7 +789,7 @@ struct Broadcast {
     } else {
       // broadcast
       for (auto &[end, peer] : server->_end2Peer) {
-        std::scoped_lock lock(peer->peerMutex);
+        std::scoped_lock lock(peer->sendMutex);
         auto err = ikcp_send(peer->kcp, _sendWriter().data(), _sendWriter->size());
         if (err < 0) {
           SHLOG_ERROR("ikcp_send error: {}", err);
@@ -855,7 +885,7 @@ struct Client : public NetworkBase {
                                     _peer.networkError = ec;
                                   } else {
                                     if (bytes_recvd > 0) {
-                                      std::scoped_lock lock(_peer.peerMutex);
+                                      std::scoped_lock lock(_peer.recvMutex);
 
                                       auto err = ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
                                       if (err < 0) {
@@ -907,10 +937,27 @@ struct Client : public NetworkBase {
 
     setPeer(context, _peer);
 
-    if (_peer.tryReceive()) {
-      Reader r((char *)_peer.recvBuffer.data() + 4, _peer.recvBuffer.size() - 4);
-      _peer.des.reset();
-      _peer.des.deserialize(r, _peer.payload);
+    if (_peer.tryReceive(context)) {
+      if (!context->shouldContinue())
+        return Var::Empty;
+
+      if (_peer.recvBuffer.size() > IKCP_MAX_PKT_SIZE) {
+        // do this async as it's a big buffer
+        await(
+            context,
+            [&]() {
+              // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
+              Reader r((char *)_peer.recvBuffer.data() + 4, _peer.recvBuffer.size() - 4);
+              _peer.des.reset();
+              _peer.des.deserialize(r, _peer.payload);
+            },
+            [] {});
+      } else {
+        // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
+        Reader r((char *)_peer.recvBuffer.data() + 4, _peer.recvBuffer.size() - 4);
+        _peer.des.reset();
+        _peer.des.deserialize(r, _peer.payload);
+      }
 
       // at this point we can already cleanup the buffer
       _peer.endReceive();
