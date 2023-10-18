@@ -4906,6 +4906,17 @@ impl SeqVar {
   }
 
   #[inline(always)]
+  pub fn emplace(&mut self, value: ClonedVar) {
+    // we need to clone to own the memory shards side
+    let idx = self.len();
+    self.set_len(idx + 1);
+    let v = &mut self[idx];
+    *v = value.0;
+    // now make sure value is not dropped
+    std::mem::forget(value);
+  }
+
+  #[inline(always)]
   pub fn insert(&mut self, index: usize, value: &Var) {
     // we need to clone to own the memory shards side
     let mut tmp = SHVar::default();

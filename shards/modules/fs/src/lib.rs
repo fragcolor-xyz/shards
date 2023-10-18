@@ -8,16 +8,26 @@ extern crate lazy_static;
 
 extern crate compile_time_crc32;
 
+use std::fs;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
+
+use notify::Config;
 use shards::core::register_legacy_shard;
+use shards::core::register_shard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
 use shards::core::Core;
 use shards::shard::LegacyShard;
 use shards::shardsc::SHCore;
 use shards::types::common_type;
+use shards::types::AutoSeqVar;
 use shards::types::ClonedVar;
 use shards::types::Context;
+use shards::types::ANYS_TYPES;
 
+use shards::shard::Shard;
+use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
 use shards::types::Parameters;
@@ -379,6 +389,121 @@ impl BlockingShard for SaveFileDialog {
   }
 }
 
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+
+#[derive(shards::shard)]
+#[shard_info("FS.Watch", "A directory watcher")]
+struct NotifyShard {
+  #[shard_required]
+  required: ExposedTypes,
+  current_path: ClonedVar,
+  rx: Option<Receiver<Result<notify::Event, notify::Error>>>,
+  watcher: Option<RecommendedWatcher>,
+  output: AutoSeqVar,
+}
+
+impl Default for NotifyShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      current_path: ClonedVar::default(),
+      rx: None,
+      watcher: None,
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for NotifyShard {
+  fn input_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self) -> Result<(), &str> {
+    self.cleanup_helper()?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &'static str> {
+    if self.current_path.0.as_ref() != input {
+      self.current_path.assign(input);
+      self.watcher = Some(self.reset()?);
+    }
+
+    self.output.0.clear();
+
+    if let Some(rx) = &self.rx {
+      let something = rx.try_recv();
+      match something {
+        Ok(event) => {
+          if let Ok(event) = event {
+            for path in event.paths {
+              if let Some(path) = path.to_str() {
+                let p = Var::ephemeral_string(path);
+                self.output.0.push(&p);
+              }
+            }
+          } else if let Err(e) = event {
+            shlog_error!("Error: {:?}", e);
+            return Err("Error");
+          }
+        }
+        Err(e) => match e {
+          std::sync::mpsc::TryRecvError::Empty => {}
+          std::sync::mpsc::TryRecvError::Disconnected => return Err("Disconnected"),
+        },
+      }
+    }
+
+    Ok(self.output.0 .0)
+  }
+}
+
+impl NotifyShard {
+  fn reset(&mut self) -> Result<RecommendedWatcher, &'static str> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    self.rx = Some(rx);
+
+    let mut watcher = RecommendedWatcher::new(tx, Config::default()).map_err(|e| {
+      shlog_error!("Failed to create watcher: {}", e);
+      "Failed to create watcher"
+    })?;
+
+    let path: &str = self.current_path.0.as_ref().try_into()?;
+    let path = std::path::PathBuf::from(path);
+    let path = fs::canonicalize(&path).map_err(|e| {
+      shlog_error!("Failed to canonicalize path: {}", e);
+      "Failed to canonicalize path"
+    })?;
+
+    shlog_debug!("Watching path: {:?}", path);
+
+    watcher
+      .watch(&path, RecursiveMode::Recursive)
+      .map_err(|e| {
+        shlog_error!("Failed to watch path: {}", e);
+        "Failed to watch path"
+      })?;
+
+    Ok(watcher)
+  }
+}
+
 #[no_mangle]
 pub extern "C" fn shardsRegister_fs_rust(core: *mut SHCore) {
   unsafe {
@@ -387,4 +512,5 @@ pub extern "C" fn shardsRegister_fs_rust(core: *mut SHCore) {
 
   register_legacy_shard::<FileDialog>();
   register_legacy_shard::<SaveFileDialog>();
+  register_shard::<NotifyShard>();
 }
