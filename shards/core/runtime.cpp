@@ -573,7 +573,7 @@ SHWireState suspend(SHContext *context, double seconds) {
   }
 
   SH_CORO_SUSPENDED(context->currentWire());
-  coroutineResume(*context->continuation);
+  coroutineSuspend(*context->continuation);
   SH_CORO_RESUMED(context->currentWire());
 
   return context->getState();
@@ -1928,7 +1928,7 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
 
   // yield after warming up
   SH_CORO_SUSPENDED(wire);
-  coroutineResume(*context.continuation);
+  coroutineSuspend(*context.continuation);
   SH_CORO_RESUMED(wire);
 
   SHLOG_DEBUG("Wire {} starting", wire->name);
@@ -1973,7 +1973,7 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
       context.next = SHDuration(0);
 
       SH_CORO_SUSPENDED(wire);
-      coroutineResume(*context.continuation);
+      coroutineSuspend(*context.continuation);
       SH_CORO_RESUMED(wire);
 
       // This is delayed upon continuation!!
