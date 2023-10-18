@@ -31,11 +31,10 @@ pub fn drag_source<R>(
     is_dropped || ui.output(|x| x.cursor_icon == egui::CursorIcon::NotAllowed);
 
   if !is_being_dragged {
-    let inner = ui.scope(body);
-    let response = &inner.response;
+    let rect = ui.available_rect_before_wrap();
 
     // Check for drags:
-    let response = ui.interact(response.rect, id, egui::Sense::drag());
+    let response = ui.interact(rect, id, egui::Sense::drag());
     if response.hovered() && !cursor_already_set {
       ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
     }
@@ -45,11 +44,13 @@ pub fn drag_source<R>(
       ctx.dnd_value.borrow_mut().assign(payload);
     }
 
+    let inner = ui.scope(body);
+
     inner
   } else {
     if !cursor_already_set {
       ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
-    } 
+    }
 
     // Paint the body to a new layer:
     let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
