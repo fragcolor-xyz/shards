@@ -107,7 +107,7 @@ struct Fiber {
   }
   void init(const std::function<void()> &func);
   NO_INLINE void resume();
-  NO_INLINE void yield();
+  NO_INLINE void suspend();
 
   // compatibility with boost
   operator bool() const { return true; }
@@ -125,6 +125,7 @@ struct Fiber {
 namespace shards {
 using Coroutine = std::optional<Fiber>;
 inline void coroutineResume(Coroutine &c) { c->resume(); }
+inline void coroutineSuspend(Coroutine &c) { c->suspend(); }
 inline bool coroutineValid(const Coroutine &c) { return c && *c; }
 } // namespace shards
 

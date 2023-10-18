@@ -49,6 +49,7 @@ void ThreadFiber::resume() {
 
 void ThreadFiber::suspend() {
   // SPDLOG_TRACE("RUNNER< {}", thread->get_id());
+  assert(isRunning);
   switchToCaller();
   // SPDLOG_TRACE("RUNNER> {}", thread->get_id());
 }
@@ -134,8 +135,8 @@ NO_INLINE void Fiber::resume() {
   emscripten_fiber_swap(em_parent_fiber, &em_fiber);
 }
 
-NO_INLINE void Fiber::yield() {
-  SHLOG_TRACE("EM FIBER SWAP YIELD {}", reinterpret_cast<uintptr_t>(&em_fiber));
+NO_INLINE void Fiber::suspend() {
+  SHLOG_TRACE("EM FIBER SWAP SUSPEND {}", reinterpret_cast<uintptr_t>(&em_fiber));
   // always yields to main
   assert(em_parent_fiber);
   em_local_coro = em_parent_fiber;
