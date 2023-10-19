@@ -58,7 +58,6 @@ impl Default for Simulation {
       contact_force_channel: contact_force_recv,
       event_handler: ChannelEventCollector::new(collision_send, contact_force_send),
       self_obj: ParamVar::new(().into()),
-      collider_data: std::collections::HashMap::new(),
     };
     res.self_obj.set_name("Physics.Simulation");
     res
@@ -154,19 +153,19 @@ impl LegacyShard for Simulation {
         self.colliders.get(f.collider2()),
       ) {
         (Some(c1), Some(c2)) => unsafe {
-          let ptr1 = &mut *(c1.user_data as *mut Rc<crate::RigidBody>);
-          let ptr2 = &mut *(c2.user_data as *mut Rc<crate::RigidBody>);
+          let ptr1 = &mut *(c1.user_data as *mut crate::RigidBody);
+          let ptr2 = &mut *(c2.user_data as *mut crate::RigidBody);
           if f.started() {
             if ptr1.want_collision_events {
               let mut vec = ptr1.collision_events.borrow_mut();
               vec.push(crate::CollisionEvent {
-                other: ptr2.clone(),
+                tag: ptr2.user_data.clone(),
               })
             }
             if ptr2.want_collision_events {
               let mut vec = ptr2.collision_events.borrow_mut();
               vec.push(crate::CollisionEvent {
-                other: ptr1.clone(),
+                tag: ptr1.user_data.clone(),
               })
             }
           }

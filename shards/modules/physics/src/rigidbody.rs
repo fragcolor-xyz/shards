@@ -268,7 +268,7 @@ impl RigidBody {
         let mut output = Var::default();
         let state = base
           .collision
-          .activate(context, &evt.other.user_data.0, &mut output);
+          .activate(context, &evt.tag.0, &mut output);
         if state == WireState::Error {
           return Err("Physics.RigidBody: Error in collision callback");
         }
@@ -460,7 +460,7 @@ struct StaticRigidBodyShard {
   base: RigidBodyBase,
   #[shard_param("Name", "The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body.", VAR_TYPES)]
   self_obj: ParamVar,
-  rb: Rc<RigidBody>,
+  rb: RigidBody,
   exposing: ExposedTypes,
 }
 
@@ -471,7 +471,7 @@ impl Default for StaticRigidBodyShard {
       base: RigidBodyBase::default(),
       self_obj: ParamVar::default(),
       // self_obj: ParamVar::default(),
-      rb: Rc::new(RigidBody::default()),
+      rb: RigidBody::default(),
       exposing: Vec::new(),
     }
   }
@@ -490,21 +490,19 @@ impl Shard for StaticRigidBodyShard {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
 
-    let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
+    let obj = unsafe { Var::new_object_from_ptr(&self.rb, &RIGIDBODY_TYPE) };
     let user_data: u128 =
       { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
     if self.self_obj.is_variable() {
       self.self_obj.set_cloning(&obj);
     }
-    Rc::get_mut(&mut self.rb)
-      .unwrap()
-      .warmup(user_data);
+    self.rb.warmup(user_data);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    Rc::get_mut(&mut self.rb).map(|x| x.cleanup(&self.base.simulation));
+    self.rb.cleanup(&self.base.simulation);
     self.cleanup_helper()?;
     Ok(())
   }
@@ -516,8 +514,8 @@ impl Shard for StaticRigidBodyShard {
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     // just hit populate, it will be a noop if already populated, nothing else to do here
-    Rc::get_mut(&mut self.rb)
-      .unwrap()
+    self
+      .rb
       .activate(context, &self.base, None, RigidBodyType::Fixed)?;
     Ok(*input)
   }
@@ -560,7 +558,7 @@ struct DynamicRigidBodyShard {
     [common_type::none, *CONSTRAINT_TYPE]
   )]
   allow_rot: ClonedVar,
-  rb: Rc<RigidBody>,
+  rb: RigidBody,
   output: Seq,
   exposing: ExposedTypes,
 }
@@ -575,7 +573,7 @@ impl Default for DynamicRigidBodyShard {
       allow_tsl: ClonedVar::default(),
       allow_rot: ClonedVar::default(),
       self_obj: ParamVar::default(),
-      rb: Rc::new(RigidBody::default()),
+      rb: RigidBody::default(),
       output,
       exposing: Vec::new(),
     }
@@ -595,21 +593,19 @@ impl Shard for DynamicRigidBodyShard {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
 
-    let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
+    let obj = unsafe { Var::new_object_from_ptr(&self.rb as *const _, &RIGIDBODY_TYPE) };
     let user_data: u128 =
       { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
     if self.self_obj.is_variable() {
       self.self_obj.set_cloning(&obj);
     }
-    Rc::get_mut(&mut self.rb)
-      .unwrap()
-      .warmup( user_data);
+    self.rb.warmup(user_data);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    Rc::get_mut(&mut self.rb).map(|x| x.cleanup(&self.base.simulation));
+    self.rb.cleanup(&self.base.simulation);
     self.cleanup_helper()?;
     Ok(())
   }
@@ -622,10 +618,9 @@ impl Shard for DynamicRigidBodyShard {
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     // dynamic will use parameter position and rotation only the first time
     // after that will be driven by the physics engine so what we do is get the new matrix and output it
-    let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = self.base.simulation.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
-    let (rbs, _, _) = rbData.activate(
+    let (rbs, _, _) = self.rb.activate(
       context,
       &self.base,
       Some(RigidBodyParams {
@@ -671,7 +666,7 @@ struct KinematicRigidBodyShard {
   base: RigidBodyBase,
   #[shard_param("Name", "The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body.", VAR_TYPES)]
   self_obj: ParamVar,
-  rb: Rc<RigidBody>,
+  rb: RigidBody,
   output: Seq,
   exposing: ExposedTypes,
 }
@@ -683,9 +678,8 @@ impl Default for KinematicRigidBodyShard {
     Self {
       required: ExposedTypes::new(),
       base: RigidBodyBase::default(),
-      // name: ParamVar::default(),
       self_obj: ParamVar::default(),
-      rb: Rc::new(RigidBody::default()),
+      rb: RigidBody::default(),
       output,
       exposing: Vec::new(),
     }
@@ -705,21 +699,19 @@ impl Shard for KinematicRigidBodyShard {
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
     self.warmup_helper(ctx)?;
 
-    let obj = Var::new_object(&self.rb, &RIGIDBODY_TYPE);
+    let obj = unsafe { Var::new_object_from_ptr(&self.rb, &RIGIDBODY_TYPE) };
     let user_data: u128 =
       { unsafe { obj.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as u128 } };
     if self.self_obj.is_variable() {
       self.self_obj.set_cloning(&obj);
     }
-    Rc::get_mut(&mut self.rb)
-      .unwrap()
-      .warmup(user_data);
+    self.rb.warmup(user_data);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    Rc::get_mut(&mut self.rb).map(|x| x.cleanup(&self.base.simulation));
+    self.rb.cleanup(&self.base.simulation);
     self.cleanup_helper()?;
     Ok(())
   }
@@ -732,11 +724,10 @@ impl Shard for KinematicRigidBodyShard {
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     // kinematic pos/rot will be updated every frame by reading the parameters which should be variables
     // it will also output a properly interpolated matrix
-    let rbData = Rc::get_mut(&mut self.rb).unwrap();
     let sim_var = self.base.simulation.get();
     let simulation = Var::from_object_ptr_mut_ref::<Simulation>(sim_var, &SIMULATION_TYPE)?;
     // TODO KinematicVelocityBased as well
-    let (rbs, p, r) = rbData.activate(
+    let (rbs, p, r) = self.rb.activate(
       context,
       &self.base,
       None,
