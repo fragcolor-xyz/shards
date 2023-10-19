@@ -145,34 +145,33 @@ impl LegacyShard for Simulation {
     );
 
     self.contact_force_channel.try_iter().for_each(|f| {
-      // f.max_force_direction
+      // TODO: Contact events
     });
 
     self.collisions_channel.try_iter().for_each(|f| {
-      let c1 = self.colliders.get(f.collider1()).unwrap();
-      let c2 = self.colliders.get(f.collider2()).unwrap();
-      // let r1 = self.bodies.get(c1.parent().unwrap()).unwrap();
-      // let r2 = self.bodies.get(c1.parent().unwrap()).unwrap();
-
-      unsafe {
-        let ptr1 = &mut *(c1.user_data as *mut Rc<crate::RigidBody>);
-        let ptr2 = &mut *(c2.user_data as *mut Rc<crate::RigidBody>);
-        if f.started() {
-          if ptr1.want_collision_events {
-            let mut vec = ptr1.collision_events.borrow_mut();
-            vec.push(crate::CollisionEvent {
-              other: ptr2.clone(),
-            })
+      match (
+        self.colliders.get(f.collider1()),
+        self.colliders.get(f.collider2()),
+      ) {
+        (Some(c1), Some(c2)) => unsafe {
+          let ptr1 = &mut *(c1.user_data as *mut Rc<crate::RigidBody>);
+          let ptr2 = &mut *(c2.user_data as *mut Rc<crate::RigidBody>);
+          if f.started() {
+            if ptr1.want_collision_events {
+              let mut vec = ptr1.collision_events.borrow_mut();
+              vec.push(crate::CollisionEvent {
+                other: ptr2.clone(),
+              })
+            }
+            if ptr2.want_collision_events {
+              let mut vec = ptr2.collision_events.borrow_mut();
+              vec.push(crate::CollisionEvent {
+                other: ptr1.clone(),
+              })
+            }
           }
-          if ptr2.want_collision_events {
-            let mut vec = ptr2.collision_events.borrow_mut();
-            vec.push(crate::CollisionEvent {
-              other: ptr1.clone(),
-            })
-          }
-        }
-        // (*ptr1).handle_collision_event(&mut *ptr2, &f);
-        // (*ptr2).handle_collision_event(&mut *ptr1, &f);
+        },
+        _ => {} // Ignore if colliders are missing
       }
     });
 

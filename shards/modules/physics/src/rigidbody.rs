@@ -106,8 +106,7 @@ struct RigidBodyParams<'a> {
 }
 
 impl RigidBody {
-  fn warmup(&mut self, user_data: &Var, rapier_user_data: u128) {
-    self.user_data.assign(user_data);
+  fn warmup(&mut self, rapier_user_data: u128) {
     self.rapier_user_data = rapier_user_data;
   }
 
@@ -275,6 +274,9 @@ impl RigidBody {
         }
       }
       events.clear();
+
+      // Update user data attached to the rigid body
+      self.user_data.assign(base.user_data.get());
     }
 
     if p.is_seq() {
@@ -458,8 +460,6 @@ struct StaticRigidBodyShard {
   base: RigidBodyBase,
   #[shard_param("Name", "The optional name of the variable that will be exposed to identify, apply forces (if dynamic) and control this rigid body.", VAR_TYPES)]
   self_obj: ParamVar,
-  // #[shard_warmup]
-  // self_obj: ParamVar,
   rb: Rc<RigidBody>,
   exposing: ExposedTypes,
 }
@@ -498,14 +498,14 @@ impl Shard for StaticRigidBodyShard {
     }
     Rc::get_mut(&mut self.rb)
       .unwrap()
-      .warmup(self.base.user_data.get(), user_data);
+      .warmup(user_data);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
     Rc::get_mut(&mut self.rb).map(|x| x.cleanup(&self.base.simulation));
+    self.cleanup_helper()?;
     Ok(())
   }
 
@@ -603,14 +603,14 @@ impl Shard for DynamicRigidBodyShard {
     }
     Rc::get_mut(&mut self.rb)
       .unwrap()
-      .warmup(self.base.user_data.get(), user_data);
+      .warmup( user_data);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
     Rc::get_mut(&mut self.rb).map(|x| x.cleanup(&self.base.simulation));
+    self.cleanup_helper()?;
     Ok(())
   }
 
@@ -713,14 +713,14 @@ impl Shard for KinematicRigidBodyShard {
     }
     Rc::get_mut(&mut self.rb)
       .unwrap()
-      .warmup(self.base.user_data.get(), user_data);
+      .warmup(user_data);
 
     Ok(())
   }
 
   fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
     Rc::get_mut(&mut self.rb).map(|x| x.cleanup(&self.base.simulation));
+    self.cleanup_helper()?;
     Ok(())
   }
 
