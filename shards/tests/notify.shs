@@ -1,5 +1,6 @@
 @wire(watch {
   "." | FS.Watch | Log
+  Pause(1.0)
 } Looped: true)
 
 @mesh(root)

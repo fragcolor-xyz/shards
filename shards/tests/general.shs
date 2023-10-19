@@ -269,12 +269,12 @@
     10 | Push(list1)
     20 | Push(list1)
     30 | Push(list1)
-    Get(list1) | 
+    Get(list1) |
     Log |
     Take(0) |
     Assert.Is(10 true)
-    Get(list1) | 
-    Take(1) | 
+    Get(list1) |
+    Take(1) |
     Assert.Is(20 true)
     Get(list1) |
     Take(2) |
@@ -306,8 +306,8 @@
 
   "Value1" | Set(tab11 "v1")
   "Value2" | Set(tab11 "v2")
-  Get(tab11 "v1") | 
-  Assert.Is("Value1" true) | 
+  Get(tab11 "v1") |
+  Assert.Is("Value1" true) |
   Log
   Get(tab11 "v2") |
   Assert.IsNot("Value1" true) |
@@ -386,7 +386,7 @@
   Log |
   Assert.Is([2.0 2.0 3.0 8.0] true)
 
-  5 | ToFloat | Math.Divide(10.0) | 
+  5 | ToFloat | Math.Divide(10.0) |
   Assert.Is(0.5 true)
 
   {"key1": 10 "key2": 20} >= ; tests varify
@@ -596,7 +596,7 @@
   2.0 | Push(meanTest)
   0.0 | Push(meanTest)
   3.0 | Push(meanTest)
-  Get(meanTest) | Math.Mean(Kind: Mean::Arithmetic) | Log | 
+  Get(meanTest) | Math.Mean(Kind: Mean::Arithmetic) | Log |
   Assert.Is(1.5 true)
 
   1.0 | Push(meanTest2)
@@ -698,7 +698,7 @@
   Assert.Is([0 1 2 3 4 5] true) |
   Log
 
-  "." | FS.Iterate(Recursive: false) | Log | 
+  "." | FS.Iterate(Recursive: false) | Log |
   Take(4) | FS.Extension | Log
 
   "." | FS.Iterate(Recursive: false) | Log |
@@ -711,9 +711,9 @@
          Take(4) | FS.Extension | Log
        })
 
-  "a/b/c/d" | FS.RelativeTo("a") | 
+  "a/b/c/d" | FS.RelativeTo("a") |
   Regex.Replace("""\\""" "/") |
-  Log("Relative path") | 
+  Log("Relative path") |
   Assert.Is("b/c/d")
 
   ["." "a"] | FS.Join | Regex.Replace("""\\""" "/") | Log("Joined Path") | Assert.Is("./a")
@@ -748,8 +748,8 @@
   FS.Read |
   Assert.Is("## The result is: Hello world, this is a string again" true) |
   Log
-  "text.txt" | 
-  FS.IsFile | 
+  "text.txt" |
+  FS.IsFile |
   Assert.Is(true true)
   "text.txt" |
   FS.IsDirectory |
@@ -902,7 +902,7 @@
   5 >= five
   Math.Dec(five)
   five | Assert.Is(4 true) |
-  
+
   ; test stack ops
   Push |
   Pop |
@@ -1006,7 +1006,7 @@
       Math.Add($0) |
       Log
     })
-  }) | 
+  }) |
   Log |
   Assert.Is(634 true)
 
@@ -1028,7 +1028,7 @@
   Log |
   Assert.Is([[2 6 12] [4 9 16] [6 12 20]] true)
 
-  nestedSeq >> adder-args  
+  nestedSeq >> adder-args
   nestedSeq >> adder-args
   adder-args | Do(adderSeq) |
   Log |
@@ -1036,7 +1036,7 @@
 
   Clear(adder-args)
 
-  Const([2 3 4]) >> adder-args-1 
+  Const([2 3 4]) >> adder-args-1
   Const([2 3 4]) >> adder-args-1
   adder-args-1 | Do(adderSeq2) |
   Log |
@@ -1143,7 +1143,7 @@
   Hash | Log("[2 3 4 5 5] hash")
 
   true | Hash | Log >= thash
-  false | Hash | Log | Is(thash) | 
+  false | Hash | Log | Is(thash) |
   Assert.IsNot(true true)
 
   [5 4 3 2 1] |
@@ -1166,7 +1166,7 @@
    "b": 20
    "c": 30} |
   ForEach({
-    Take(1) | ExpectInt | 
+    Take(1) | ExpectInt |
     Math.Add(table-foreach-res) > table-foreach-res
   })
   table-foreach-res |

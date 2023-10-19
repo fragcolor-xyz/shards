@@ -5000,6 +5000,13 @@ impl SeqVar {
       i: 0,
     }
   }
+
+  #[inline(always)]
+  pub fn next_mut(&mut self) -> &mut Var {
+    let idx = self.len();
+    self.set_len(idx + 1);
+    &mut self[idx]
+  }
 }
 
 // Seq / SHSeq
