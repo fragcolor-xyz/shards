@@ -297,11 +297,7 @@ UntrackedVector<SHWire *> &getCoroWireStack();
 #endif
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
-  assert(!wire->coro && "Wire already prepared!");
-  if (coroutineValid(wire->coro))
-    return;
-
-  SH_CORO_EXT_RESUME(wire);
+  assert(!coroutineValid(wire->coro) && "Wire already prepared!");
 
   auto runner = [wire, flow]() {
 #if SH_USE_THREAD_FIBER
@@ -319,8 +315,8 @@ inline void prepare(SHWire *wire, SHFlow *flow) {
   wire->coro.emplace();
 #endif
 
+  SH_CORO_EXT_RESUME(wire);
   wire->coro->init(runner);
-
   SH_CORO_EXT_SUSPEND(wire);
 }
 
