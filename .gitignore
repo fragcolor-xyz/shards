@@ -65,3 +65,5 @@ shards/tests/crsqlite.so
 shards/lang/Cargo.lock
 shards/rust/Cargo.lock
 shards/tests/subwires.wire
+
+.clangd
