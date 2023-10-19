@@ -268,7 +268,7 @@ impl RigidBody {
         let mut output = Var::default();
         let state = base
           .collision
-          .activate(context, &evt.other.user_data.0, &mut output);
+          .activate(context, &evt.tag.0, &mut output);
         if state == WireState::Error {
           return Err("Physics.RigidBody: Error in collision callback");
         }

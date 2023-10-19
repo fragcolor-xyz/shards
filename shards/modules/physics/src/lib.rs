@@ -128,12 +128,10 @@ struct Simulation {
   contact_force_channel: crossbeam::channel::Receiver<ContactForceEvent>,
   event_handler: ChannelEventCollector,
   self_obj: ParamVar,
-  collider_data: HashMap<ColliderHandle, ColliderData>,
 }
 
 struct CollisionEvent {
-  other: Rc<RigidBody>,
-  // coll
+  tag: ClonedVar,
 }
 
 #[derive(Default)]
