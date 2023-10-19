@@ -1,16 +1,8 @@
 use crate::util;
-use crate::Context as UIContext;
-use crate::EguiId;
 use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
-use egui::epaint;
 use egui::Frame;
-use egui::InnerResponse;
-use egui::Rect;
 use egui::Rgba;
-use egui::Shape;
-use egui::Stroke;
-use egui::Vec2;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::BOOL_TYPES;
@@ -143,10 +135,7 @@ impl Shard for Selectable {
     let response = inner_response.response;
 
     // Resolve Clicked
-    if ui.input(|i| {
-      i.pointer.primary_clicked()
-    }) && response.hovered() 
-    {
+    if ui.input(|i| i.pointer.primary_clicked()) && response.hovered() {
       let mut _unused = Var::default();
       if self
         .clicked_callback
