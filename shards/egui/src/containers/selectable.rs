@@ -3,6 +3,7 @@ use crate::CONTEXTS_NAME;
 use crate::PARENTS_UI_NAME;
 use egui::Frame;
 use egui::Rgba;
+use egui::Stroke;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::BOOL_TYPES;
@@ -119,15 +120,22 @@ impl Shard for Selectable {
     }
     let is_selected: bool = (&is_selected_var).try_into().unwrap();
 
+    let style = ui.visuals().widgets.active;
     // Draw frame as either white or gray, depending on whether the contents are selected
-    let fill = if is_selected {
-      Rgba::WHITE
+    let stroke = if is_selected {
+      Stroke {
+        color: Rgba::WHITE.into(),
+        ..style.bg_stroke
+      }
     } else {
-      Rgba::from_gray(0.2)
+      Stroke {
+        color: Rgba::from_gray(0.2).into(),
+        ..style.bg_stroke
+      }
     };
 
     // Draw frame and contents
-    let inner_response = Frame::group(ui.style()).fill(fill.into()).show(ui, |ui| {
+    let inner_response = Frame::group(ui.style()).stroke(stroke).show(ui, |ui| {
       util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
     });
     // Check for errors
