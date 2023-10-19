@@ -448,25 +448,39 @@ impl Shard for NotifyShard {
     self.output.0.clear();
 
     if let Some(rx) = &self.rx {
-      let something = rx.try_recv();
-      match something {
-        Ok(event) => {
-          if let Ok(event) = event {
-            for path in event.paths {
-              if let Some(path) = path.to_str() {
-                let p = Var::ephemeral_string(path);
-                self.output.0.push(&p);
+      loop {
+        let something = rx.try_recv();
+        match something {
+          Ok(event) => {
+            if let Ok(event) = event {
+              // for now we only send events if content has changed or all/any
+              let k = match event.kind {
+                notify::EventKind::Access(_) => Var::ephemeral_string("Access"),
+                notify::EventKind::Create(_) => Var::ephemeral_string("Create"),
+                notify::EventKind::Modify(_) => Var::ephemeral_string("Modify"),
+                notify::EventKind::Remove(_) => Var::ephemeral_string("Remove"),
+                notify::EventKind::Any | notify::EventKind::Other => {
+                  Var::ephemeral_string("Unknown")
+                }
+              };
+              for path in event.paths {
+                if let Some(path) = path.to_str() {
+                  let p = Var::ephemeral_string(path);
+                  let t = self.output.0.next_mut();
+                  let t = t.as_mut_table_creating().unwrap();
+                  t.insert(p, &k);
+                }
               }
+            } else if let Err(e) = event {
+              shlog_error!("Error: {:?}", e);
+              return Err("Error");
             }
-          } else if let Err(e) = event {
-            shlog_error!("Error: {:?}", e);
-            return Err("Error");
           }
+          Err(e) => match e {
+            std::sync::mpsc::TryRecvError::Empty => break,
+            std::sync::mpsc::TryRecvError::Disconnected => return Err("Disconnected"),
+          },
         }
-        Err(e) => match e {
-          std::sync::mpsc::TryRecvError::Empty => {}
-          std::sync::mpsc::TryRecvError::Disconnected => return Err("Disconnected"),
-        },
       }
     }
 
