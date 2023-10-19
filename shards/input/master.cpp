@@ -3,6 +3,7 @@
 #include "debug.hpp"
 #include "window_input.hpp"
 #include "log.hpp"
+#include <thread>
 #include <spdlog/spdlog.h>
 #include <gfx/window.hpp>
 #include <SDL_keyboard.h>

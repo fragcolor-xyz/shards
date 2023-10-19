@@ -44,8 +44,7 @@ struct IInputContext {
   virtual const InputState &getState() const = 0;
   virtual std::vector<ConsumableEvent> &getEvents() = 0;
 
-  // Writable, controls how events are consumed
-  virtual ConsumeFlags &getConsumeFlags() = 0;
+  virtual const std::weak_ptr<IInputHandler>& getHandler() const = 0;
 
   virtual float getTime() const = 0;
   virtual float getDeltaTime() const = 0;

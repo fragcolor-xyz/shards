@@ -5,6 +5,7 @@
 #include <SDL_keycode.h>
 #include <compare>
 #include <linalg.h>
+#include <optional>
 #include <variant>
 #include "../core/platform.hpp"
 #include <boost/container/string.hpp>
@@ -108,11 +109,19 @@ inline std::partial_ordering operator<=>(const Event &a, const Event &b) {
 }
 inline bool operator==(const Event &a, const Event &b) { return a <=> b == std::partial_ordering::equivalent; }
 
+struct IInputHandler;
+struct ConsumedTag {
+  std::weak_ptr<IInputHandler> handler;
+  ConsumedTag(std::weak_ptr<IInputHandler> handler) : handler(handler) {}
+};
+
 struct ConsumableEvent {
   Event event;
-  bool consumed = false;
+  std::optional<ConsumedTag> consumed;
 
   ConsumableEvent(const Event &event) : event(event) {}
+  bool isConsumed() const { return consumed.has_value(); }
+  void consume(std::weak_ptr<IInputHandler> by) { consumed.emplace(by); }
 };
 
 } // namespace shards::input

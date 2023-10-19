@@ -70,11 +70,15 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
     });
   }
 
-  for (auto &event : inputContext.getEvents()) {
+  for (auto &ce : inputContext.getEvents()) {
     std::visit(
         [&](auto &&event) {
           using T = std::decay_t<decltype(event)>;
           if constexpr (std::is_same_v<T, KeyEvent>) {
+            if (ce.isConsumed() && event.pressed)
+              return;
+
+            bool passthrough = false;
             switch (event.key) {
             case SDL_KeyCode::SDLK_w:
               inputState.keyboardZAxis.pos = event.pressed;
@@ -94,8 +98,16 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
             case SDL_KeyCode::SDLK_q:
               inputState.keyboardYAxis.neg = event.pressed;
               break;
+            default:
+              passthrough = true;
+              break;
             }
+            if (!passthrough && event.pressed)
+              ce.consume(inputContext.getHandler());
           } else if constexpr (std::is_same_v<T, PointerButtonEvent>) {
+            if (ce.isConsumed() && event.pressed)
+              return;
+
             inputState.pointer.position = float2(event.pos.x, event.pos.y);
             switch (event.index) {
             case SDL_BUTTON_LEFT:
@@ -108,11 +120,13 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
               inputState.pointer.tertiaryButton = event.pressed;
               break;
             }
+            if (event.pressed)
+              ce.consume(inputContext.getHandler());
           } else if constexpr (std::is_same_v<T, ScrollEvent>) {
             inputState.mouseWheel += float(event.delta);
           }
         },
-        event.event);
+        ce.event);
   }
 
   inputState.deltaTime = inputContext.getDeltaTime();
@@ -243,8 +257,6 @@ struct FreeCameraShard {
     return e;
   }
 };
-
-
 
 struct TargetCameraUpdate {
   static SHTypesInfo inputTypes() { return TargetCameraStateTable::Type; }

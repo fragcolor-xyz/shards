@@ -58,6 +58,7 @@ using VariableRefs = CapturingBrancher::VariableRefs;
 struct DetachedInputContext : public IInputContext {
   std::shared_ptr<gfx::Window> window;
   input::InputMaster *master{};
+  std::weak_ptr<IInputHandler> handler;
 
   ConsumeFlags consumeFlags{};
   double time{};
@@ -71,11 +72,10 @@ struct DetachedInputContext : public IInputContext {
   const input::InputState &getState() const override { return master->getState(); }
   std::vector<ConsumableEvent> &getEvents() override { return master->getEvents(); }
 
-  // Writable, controls how events are consumed
-  ConsumeFlags &getConsumeFlags() override { return consumeFlags; }
-
   float getTime() const override { return time; }
   float getDeltaTime() const override { return deltaTime; }
+
+  const std::weak_ptr<IInputHandler> &getHandler() override { return handler; }
 
   void postMessage(const input::Message &message) override { master->postMessage(message); }
 };
@@ -86,7 +86,7 @@ struct OutputFrame {
 };
 using OutputBuffer = input::EventBuffer<OutputFrame>;
 
-struct InputThreadHandler : public IInputHandler, public debug::IDebug {
+struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandler>, public IInputHandler, public debug::IDebug {
   CapturingBrancher brancher;
   InputThreadInputQueue inputQueue{32};
   CapturedVariables variableState;
@@ -126,6 +126,8 @@ struct InputThreadHandler : public IInputHandler, public debug::IDebug {
   void warmup(const VariableRefs &initialVariableRefs, InputStack &&inputStack) {
     Var inputContextVar = Var::Object(&inputContext, IInputContext::Type);
     brancher.mesh()->variables.emplace(RequiredInputContext::variableName(), inputContextVar);
+
+    inputContext.handler = this->weak_from_this();
 
     pushInputs(initialVariableRefs, std::move(inputStack));
     applyCapturedVariables();
