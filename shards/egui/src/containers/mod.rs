@@ -161,15 +161,17 @@ struct CentralPanel {
 mod area;
 mod docking;
 mod panels;
-mod scope;
-mod window;
 mod popup_wrapper;
+mod scope;
+mod selectable;
+mod window;
 
 pub fn register_shards() {
   area::register_shards();
   docking::register_shards();
   window::register_shards();
   popup_wrapper::register_shards();
+  selectable::register_shards();
   register_enum::<PopupLocation>();
   register_legacy_shard::<Scope>();
   register_legacy_enum(FRAG_CC, WindowFlagsCC, WindowFlagsEnumInfo.as_ref().into());
