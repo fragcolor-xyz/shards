@@ -116,6 +116,9 @@ void Fiber::init(const std::function<void()> &func) {
   this->func = func;
   c_stack = new (std::align_val_t{16}) uint8_t[stack_size];
   emscripten_fiber_init(&em_fiber, action, this, c_stack, stack_size, asyncify_stack, as_stack_size);
+
+  // Initial resume to match functionality of other Fiber implementations
+  resume();
 }
 
 NO_INLINE void Fiber::resume() {
