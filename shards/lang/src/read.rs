@@ -318,8 +318,7 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               _ => Err(("Expected a string value", pos).into()),
             }?;
 
-            let value = std::env::var(name.as_str())
-              .map_err(|e| (format!("Failed to read environment variable {:?}: {}", name, e), pos).into())?;
+            let value = std::env::var(name.as_str()).unwrap_or("".to_string());
 
             Ok(FunctionValue::Const(Value::String(value.into())))
           }
