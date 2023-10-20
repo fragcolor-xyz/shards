@@ -21,6 +21,8 @@ struct EguiInputTranslatorArgs {
   float deltaTime;
   // The sizes of the input surface
   shards::input::InputRegion region;
+  // Have focus or no focus active
+  bool canReceiveInput;
   // The sub-section of the physical size that is mapped to this UI
   int4 mappedWindowRegion;
 };
@@ -53,8 +55,8 @@ public:
 
   // Resets the conversion output
   void begin(double time, float deltaTime);
-  // Takes the SDL event and return true when it was converted into an egui event
-  bool translateEvent(const shards::input::ConsumableEvent &event);
+  // Takes the input event and return true when it was converted into an egui event
+  bool translateEvent(const EguiInputTranslatorArgs &args, const shards::input::ConsumableEvent &event);
   // Finalizes the egui::Input result
   void end();
 

@@ -128,7 +128,7 @@ private:
   // any non-consumed event will be handled normally
   // consumed events will only contribute to loss-of-focus & button/key release events
   void apply(const ConsumableEvent &consumableEvent, bool hasFocus, InputState &newState) {
-    bool consumed = consumableEvent.consumed;
+    bool consumed = consumableEvent.isConsumed();
     auto &buffer = buffers[getBufferIndex(1)];
     std::visit(
         [&](auto &&arg) {

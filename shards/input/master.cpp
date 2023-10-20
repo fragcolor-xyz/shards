@@ -64,6 +64,11 @@ void InputMaster::update(gfx::Window &window) {
   messageQueue.consume_all([&](const Message &message) {
     handleMessage(message);
   });
+
+  for(auto& cb : postInputCallbacks) {
+    cb(*this);
+  }
+  postInputCallbacks.clear();
 }
 
 void InputMaster::postMessage(const Message &message) {

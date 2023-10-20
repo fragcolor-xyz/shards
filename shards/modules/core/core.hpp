@@ -1222,7 +1222,7 @@ struct Ref : public SetBase {
   ALWAYS_INLINE SHVar activateRegular(SHContext *context, const SHVar &input) {
     // must keep flags!
     const auto rc = _target->refcount;
-    const auto flags = _target->flags;
+    const auto flags = (_target->flags & ~SHVAR_FLAGS_COPY_MASK) | (input.flags & SHVAR_FLAGS_COPY_MASK);
     memcpy(_target, &input, sizeof(SHVar));
     _target->refcount = rc;
     _target->flags = flags;

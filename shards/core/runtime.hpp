@@ -85,6 +85,8 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #define CUSTOM_XXH3_kSecret XXH3_kSecret
 #endif
 
+#define SHVAR_FLAGS_COPY_MASK (SHVAR_FLAGS_USES_OBJINFO)
+
 #define SH_SUSPEND(_ctx_, _secs_)                             \
   const auto _suspend_state = shards::suspend(_ctx_, _secs_); \
   if (_suspend_state != SHWireState::Continue)                \

@@ -42,6 +42,12 @@ struct ViewShard {
 
   SHView *_view;
 
+  void warmup(SHContext *context) {
+    _view = Types::ViewObjectVar.New();
+
+    PARAM_WARMUP(context);
+  }
+
   void cleanup() {
     PARAM_CLEANUP();
 
@@ -51,10 +57,10 @@ struct ViewShard {
     }
   }
 
-  void warmup(SHContext *context) {
-    _view = Types::ViewObjectVar.New();
-
-    PARAM_WARMUP(context);
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {

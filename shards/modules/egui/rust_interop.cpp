@@ -69,19 +69,7 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
   InputRegion region = inputContext.getState().region;
   region.uiScalingFactor *= scalingFactor;
 
-  // if (graphicsContextVar) {
-  //   GraphicsContext &graphicsContext = varAsObjectChecked<GraphicsContext>(*graphicsContextVar, GraphicsContext::Type);
-
-  //   auto &viewStack = graphicsContext.renderer->getViewStack();
-  //   auto viewStackOutput = viewStack.getOutput();
-
-  //   // Get viewport size from view stack
-  //   region.pixelSize = (int2)viewStackOutput.viewport.getSize();
-  //   region.size = (float2)viewStackOutput.viewport.getSize();
-  // }
-
   // Get events based on input stack
-  // TODO: Input
   auto &inputStack = inputContext.getInputStack();
   InputStack::Item inputStackOutput = inputStack.getTop();
   if (inputStackOutput.windowMapping) {
@@ -102,6 +90,7 @@ const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator,
       .time = inputContext.getTime(),
       .deltaTime = inputContext.getDeltaTime(),
       .region = region,
+      .canReceiveInput = inputContext.canReceiveInput(),
       .mappedWindowRegion = mappedWindowRegion,
   });
 }
@@ -114,20 +103,22 @@ void gfx_applyEguiIOOutput(gfx::EguiInputTranslator *translator, const egui::IOO
     inputContext.postMessage(msg);
   }
 
-  // Update these
-  auto &consumeFlags = inputContext.getConsumeFlags();
-  // if (consumeFlags.wantsPointerInput != output.wantsPointerInput)
-  //   SPDLOG_INFO("EGUI: wantsPointerInput = {}", output.wantsPointerInput);
-  consumeFlags.wantsPointerInput = output.wantsPointerInput;
-
-  // if (consumeFlags.wantsKeyboardInput != output.wantsKeyboardInput)
-  //   SPDLOG_INFO("EGUI: wantsKeyboardInput = {}", output.wantsKeyboardInput);
-  consumeFlags.wantsKeyboardInput = output.wantsKeyboardInput;
+  auto consume = inputContext.getEventConsumer();
+  for (auto &evt : inputContext.getEvents()) {
+    if (output.wantsPointerInput) {
+      if (isPointerEvent(evt.event)) {
+        consume(evt);
+      }
+    }
+    if (output.wantsKeyboardInput) {
+      if (isKeyEvent(evt.event)) {
+        consume(evt);
+      }
+    }
+  }
 
   // Request focus during drag operations
   if (output.wantsPointerInput && inputContext.getState().mouseButtonState != 0) {
-    consumeFlags.requestFocus = true;
-  } else {
-    consumeFlags.requestFocus = false;
+    inputContext.requestFocus();
   }
 }

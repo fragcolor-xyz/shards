@@ -180,7 +180,11 @@ pub fn make_native_render_output<'a>(
   draw_scale: f32,
 ) -> Result<NativeRenderOutput<'a>, &'static str> {
   // Sad clone here, might be able to remove upstream
-  let primitives: Vec<ClippedPrimitive> = ctx.tessellate(input.shapes.clone());
+  let primitives: Vec<ClippedPrimitive> = if input.shapes.len() > 0 {
+    ctx.tessellate(input.shapes.clone())
+  } else {
+    Vec::new()
+  };
   let mut numVerts = 0;
   let mut numIndices = 0;
   for prim in primitives.iter() {

@@ -60,22 +60,14 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
   inputState.pointer.prevPosition = inputState.pointer.position;
   inputState.pointer.position = inputContext.getState().cursorPosition;
   inputState.mouseWheel = 0;
-
-  auto &consumeFlags = inputContext.getConsumeFlags();
-  if (inputContext.getState().mouseButtonState != 0) {
-    consumeFlags.mergeWith(ConsumeFlags{
-        .wantsPointerInput = true,
-        .wantsKeyboardInput = true,
-        .requestFocus = true,
-    });
-  }
+  bool canReceiveInput = inputContext.canReceiveInput();
 
   for (auto &ce : inputContext.getEvents()) {
     std::visit(
         [&](auto &&event) {
           using T = std::decay_t<decltype(event)>;
           if constexpr (std::is_same_v<T, KeyEvent>) {
-            if (ce.isConsumed() && event.pressed)
+            if ((!canReceiveInput || ce.isConsumed()) && event.pressed)
               return;
 
             bool passthrough = false;
@@ -102,10 +94,10 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
               passthrough = true;
               break;
             }
-            if (!passthrough && event.pressed)
+            if (!passthrough)
               ce.consume(inputContext.getHandler());
           } else if constexpr (std::is_same_v<T, PointerButtonEvent>) {
-            if (ce.isConsumed() && event.pressed)
+            if ((!canReceiveInput || ce.isConsumed()) && event.pressed)
               return;
 
             inputState.pointer.position = float2(event.pos.x, event.pos.y);
@@ -120,14 +112,18 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
               inputState.pointer.tertiaryButton = event.pressed;
               break;
             }
-            if (event.pressed)
-              ce.consume(inputContext.getHandler());
+            ce.consume(inputContext.getHandler());
           } else if constexpr (std::is_same_v<T, ScrollEvent>) {
+            if (!canReceiveInput || ce.isConsumed())
+              return;
             inputState.mouseWheel += float(event.delta);
           }
         },
         ce.event);
   }
+
+  if (inputState.pointer.primaryButton | inputState.pointer.secondaryButton | inputState.pointer.tertiaryButton)
+    inputContext.requestFocus();
 
   inputState.deltaTime = inputContext.getDeltaTime();
 }

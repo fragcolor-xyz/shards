@@ -326,6 +326,11 @@ public:
     }
   }
 
+  uint32_t GetRefCount(E *obj) {
+    auto r = reinterpret_cast<ObjectRef *>(obj);
+    return r->refcount;
+  }
+
   SHVar Get(E *obj) {
     SHVar res;
     res.valueType = SHType::Object;

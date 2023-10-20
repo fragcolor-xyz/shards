@@ -9,6 +9,7 @@
 #include <shared_mutex>
 #include <mutex>
 #include <atomic>
+#include <core/function.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 
 namespace gfx {
@@ -53,7 +54,7 @@ struct InputMaster;
 struct IInputHandler {
   virtual ~IInputHandler() = default;
   virtual int getPriority() const { return 0; }
-  virtual void handle(InputMaster& master) = 0;
+  virtual void handle(InputMaster &master) = 0;
 };
 
 struct InputMaster {
@@ -61,6 +62,7 @@ private:
   std::vector<std::weak_ptr<IInputHandler>> handlers;
   std::vector<std::shared_ptr<IInputHandler>> handlersLocked;
   std::shared_mutex mutex;
+  std::vector<shards::Function<void(InputMaster &)>> postInputCallbacks;
 
   // EventBuffer<Frame<ConsumableEvent>> eventBuffer;
 
@@ -93,6 +95,11 @@ public:
   void update(gfx::Window &window);
   void reset() {}
 
+  // Only used for debug UI
+  void addPostInputCallback(shards::Function<void(InputMaster &)> callback) {
+    postInputCallbacks.emplace_back(std::move(callback));
+  }
+
   // Only use from main thread
   void getHandlers(std::vector<std::shared_ptr<IInputHandler>> &outVec) {
     std::unique_lock<decltype(mutex)> l(mutex);
@@ -101,7 +108,7 @@ public:
 
   const InputState &getState() const { return state; }
   std::vector<ConsumableEvent> &getEvents() { return events; }
-  FocusTracker& getFocusTracker() { return focusTracker; }
+  FocusTracker &getFocusTracker() { return focusTracker; }
 
 private:
   void handleMessage(const Message &message);

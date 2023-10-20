@@ -15,15 +15,38 @@ const char *shards_input_eventToString(shards::input::debug::OpaqueEvent opaque)
 void shards_input_freeString(const char *str) { free((void *)str); }
 bool shards_input_eventIsConsumed(shards::input::debug::OpaqueEvent opaque) {
   auto &evt = *(shards::input::ConsumableEvent *)opaque;
-  return evt.consumed;
+  return (bool)evt.consumed;
+}
+shards::input::debug::OpaqueLayer shards_input_eventConsumedBy(shards::input::debug::OpaqueEvent opaque) {
+  auto &evt = *(shards::input::ConsumableEvent *)opaque;
+  if (evt.consumed) {
+    auto tag = evt.consumed.value();
+    if (auto handler = tag.handler.lock())
+      return handler.get();
+  }
+  return nullptr;
+}
+const char *shards_input_layerName(shards::input::debug::OpaqueLayer opaque) {
+  auto layer = dynamic_cast<shards::input::debug::IDebug *>((shards::input::IInputHandler *)opaque);
+  if (layer) {
+    return strdup(layer->getDebugName());
+  } else {
+    return strdup("unknown");
+  }
 }
 }
 
 namespace shards::input {
 struct DebugUI {
-  RequiredInputContext _context;
+  RequiredInputContext _inputContext;
   ExposedInfo _required;
   SHVar *_uiContext{};
+
+  debug::DebugUIOpts _opts{
+      .showKeyboardEvents = true,
+      .showPointerEvents = true,
+      .showPointerMoveEvents = false,
+  };
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -44,34 +67,64 @@ struct DebugUI {
 
   SHTypeInfo compose(SHInstanceData &data) {
     _required.clear();
-    _required.push_back(_context.getExposedTypeInfo());
+    _required.push_back(_inputContext.getExposedTypeInfo());
     mergeRequiredUITypes(_required);
 
     return CoreInfo::NoneType;
   }
 
   void warmup(SHContext *context) {
-    _context.warmup(context);
+    _inputContext.warmup(context);
     _uiContext = referenceVariable(context, EguiContextName);
   }
   void cleanup() {
-    _context.cleanup();
+    _inputContext.cleanup();
 
     releaseVariable(_uiContext);
     _uiContext = nullptr;
   }
 
-  std::vector<debug::Layer> _layers;
+  size_t frameIndex{};
+  struct InternalTaggedEvent {
+    size_t frameIndex;
+    ConsumableEvent evt;
+  };
+  std::shared_ptr<std::list<InternalTaggedEvent>> _taggedEvents = std::make_shared<std::list<InternalTaggedEvent>>();
+
+  // Tempt storage
   std::list<std::string> _strings;
-  std::list<std::vector<const input::ConsumableEvent *>> _eventVectors;
   std::vector<std::shared_ptr<IInputHandler>> _handlers;
+  std::vector<debug::TaggedEvent> _events;
+  std::vector<debug::Layer> _layers;
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    _layers.clear();
-    _strings.clear();
-    _eventVectors.clear();
+    auto &master = _inputContext->getMaster();
 
-    _context->getMaster()->getHandlers(_handlers);
+    _strings.clear();
+
+    // Add new events
+    // This needs to happen after all handlers to get the correct consume state
+    // which is done using the addPostInputCallback
+    master.addPostInputCallback([taggedEvents = _taggedEvents, frameIndex=frameIndex](InputMaster &master) {
+      for (auto &evt : master.getEvents()) {
+        taggedEvents->emplace_back(InternalTaggedEvent{frameIndex, evt});
+      }
+    });
+
+    // Structure event list
+    _events.clear();
+    for (auto &evt : *_taggedEvents) {
+      if (isPointerEvent(evt.evt.event) && !_opts.showPointerEvents)
+        continue;
+      if (std::get_if<PointerMoveEvent>(&evt.evt.event) && !_opts.showPointerMoveEvents)
+        continue;
+      if (isKeyEvent(evt.evt.event) && !_opts.showKeyboardEvents)
+        continue;
+      _events.push_back(debug::TaggedEvent{evt.frameIndex, &evt.evt});
+    }
+
+    _layers.clear();
+    master.getHandlers(_handlers);
     for (auto &handler : _handlers) {
       auto &layer = _layers.emplace_back();
       layer.priority = handler->getPriority();
@@ -79,27 +132,26 @@ struct DebugUI {
       if (debug::IDebug *debug = dynamic_cast<debug::IDebug *>(handler.get())) {
         auto &str = _strings.emplace_back(debug->getDebugName());
         layer.name = str.c_str();
-
-        auto &vec = _eventVectors.emplace_back();
-        size_t head = debug->getLastFrameIndex();
-        const size_t historyLength = 32;
-        size_t tail = head > historyLength ? (head - historyLength) : 0;
-        for (size_t i = tail; i <= head; i++) {
-          if (auto frame = debug->getDebugFrame(i)) {
-            for (auto &evt : *frame) {
-              vec.push_back(&evt);
-            }
-          }
-        }
-
-        layer.debugEvents = (debug::OpaqueEvent *)vec.data();
-        layer.numDebugEvents = vec.size();
-
-        layer.consumeFlags = debug->getDebugConsumeFlags();
+        layer.hasFocus = master.getFocusTracker().hasFocus(handler.get());
       }
     }
 
-    shards_input_showDebugUI(_uiContext, _layers.data(), _layers.size());
+    debug::DebugUIParams params{
+        .opts = _opts,
+        .layers = _layers.data(),
+        .numLayers = _layers.size(),
+        .events = _events.data(),
+        .numEvents = _events.size(),
+        .currentFrame = frameIndex,
+    };
+    shards_input_showDebugUI(_uiContext, params);
+
+    if (params.clearEvents) {
+      _taggedEvents->clear();
+      frameIndex = 0;
+    } else {
+      ++frameIndex;
+    }
     return SHVar{};
   }
 };

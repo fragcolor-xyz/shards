@@ -116,14 +116,25 @@ struct GizmosContextShard {
     }
 
     if (_inputContext) {
+      bool canReceiveInput = _inputContext->canReceiveInput();
+      auto consume = _inputContext->getEventConsumer();
+
       auto &region = _inputContext->getState().region;
       gizmoInput.cursorPosition = _inputContext->getState().cursorPosition;
       if (isInteractive) {
-        gizmoInput.held = _inputContext->getState().isMouseButtonHeld(SDL_BUTTON_LEFT);
-        for (auto &evt : _inputContext->getEvents()) {
-          if (const PointerButtonEvent *bev = std::get_if<PointerButtonEvent>(&evt.event)) {
-            if (bev->index == SDL_BUTTON_LEFT && bev->pressed) {
-              gizmoInput.pressed = true;
+        gizmoInput.held = canReceiveInput && _inputContext->getState().isMouseButtonHeld(SDL_BUTTON_LEFT);
+        if(gizmoInput.held) {
+          canReceiveInput = _inputContext->requestFocus();
+        }
+
+        for (auto &event : _inputContext->getEvents()) {
+          if (const PointerButtonEvent *pbEvent = std::get_if<PointerButtonEvent>(&event.event)) {
+            if ((!canReceiveInput || event.isConsumed()) && pbEvent->pressed)
+              continue;
+
+            if (pbEvent->index == SDL_BUTTON_LEFT) {
+              gizmoInput.pressed = pbEvent->pressed;
+              consume(event);
             }
           }
         }
@@ -138,14 +149,6 @@ struct GizmosContextShard {
       _content.activate(shContext, Var(gfxGizmoContext.input.held != nullptr), _shardsOutput);
       gfxGizmoContext.end(_gizmoContext.queue);
     });
-
-    if (_inputContext) {
-      _inputContext->getConsumeFlags().mergeWith(ConsumeFlags{
-          .wantsPointerInput = _gizmoContext.gfxGizmoContext.input.held || _gizmoContext.gfxGizmoContext.input.hovering,
-          .wantsKeyboardInput = false,
-          .requestFocus = _gizmoContext.gfxGizmoContext.input.held != nullptr,
-      });
-    }
 
     return _shardsOutput;
   }

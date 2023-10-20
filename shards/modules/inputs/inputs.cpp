@@ -27,7 +27,7 @@ enum ModifierKey {
   Alt,
   // Usually the control or cmd key on apple
   Primary,
-  // Usually the windows key or control key on appl
+  // Usually the windows key or control key on apple
   Secondary
 };
 DECL_ENUM_INFO(ModifierKey, ModifierKey, 'mdIf');
@@ -206,86 +206,59 @@ struct Mouse : public Base {
 };
 
 template <bool Pressed> struct MouseUpDown : public Base {
-  static inline Parameters params{
-      {"Left", SHCCSTR("The action to perform when the left mouse button is pressed down."), {CoreInfo::ShardsOrNone}},
-      {"Right",
-       SHCCSTR("The action to perform when the right mouse button is pressed "
-               "down."),
-       {CoreInfo::ShardsOrNone}},
-      {"Middle",
-       SHCCSTR("The action to perform when the middle mouse button is pressed "
-               "down."),
-       {CoreInfo::ShardsOrNone}}};
+  static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR(""); }
 
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _leftButton = value;
-      break;
-    case 1:
-      _rightButton = value;
-      break;
-    case 2:
-      _middleButton = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _leftButton;
-    case 1:
-      return _rightButton;
-    case 2:
-      return _middleButton;
-    default:
-      throw InvalidParameterIndex();
-    }
-  }
-
-  ShardsVar _leftButton{};
-  ShardsVar _rightButton{};
-  ShardsVar _middleButton{};
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    _leftButton.compose(data);
-    _rightButton.compose(data);
-    _middleButton.compose(data);
-
-    return data.inputType;
-  }
-
-  void cleanup() {
-    _leftButton.cleanup();
-    _rightButton.cleanup();
-    _middleButton.cleanup();
-    baseCleanup();
-  }
+  PARAM(ShardsVar, _leftButton, "Left", "The action to perform when the left mouse button is pressed down.",
+        {CoreInfo::ShardsOrNone});
+  PARAM(ShardsVar, _rightButton, "Right", "The action to perform when the right mouse button is pressed down.",
+        {CoreInfo::ShardsOrNone});
+  PARAM(ShardsVar, _middleButton, "Middle", "The action to perform when the middle mouse button is pressed down.",
+        {CoreInfo::ShardsOrNone});
+  PARAM(ShardsVar, _consume, "Consume", "Consume events.", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_leftButton), PARAM_IMPL_FOR(_rightButton), PARAM_IMPL_FOR(_middleButton), PARAM_IMPL_FOR(_consume));
 
   void warmup(SHContext *context) {
-    _leftButton.warmup(context);
-    _rightButton.warmup(context);
-    _middleButton.warmup(context);
+    PARAM_WARMUP(context);
     baseWarmup(context);
   }
 
+  void cleanup() {
+    PARAM_CLEANUP();
+    baseCleanup();
+  }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    for (auto &req : baseRequiredVariables())
+      _requiredVariables.push_back(req);
+    return data.inputType;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
-    // TODO: Input
+    auto consume = _inputContext->getEventConsumer();
+
+    if (!_inputContext->canReceiveInput())
+      return input;
+
     for (auto &event : _inputContext->getEvents()) {
+      if (event.isConsumed())
+        continue;
+
       if (const PointerButtonEvent *pbe = std::get_if<PointerButtonEvent>(&event.event)) {
         if (pbe->pressed == Pressed) {
           SHVar output{};
           if (pbe->index == SDL_BUTTON_LEFT) {
             _leftButton.activate(context, input, output);
+            consume(event);
           } else if (pbe->index == SDL_BUTTON_RIGHT) {
             _rightButton.activate(context, input, output);
+            consume(event);
           } else if (pbe->index == SDL_BUTTON_MIDDLE) {
             _middleButton.activate(context, input, output);
+            consume(event);
           }
         }
       }
@@ -369,46 +342,19 @@ inline SDL_Keycode keyStringToKeyCode(const std::string &str) {
 }
 
 template <bool Pressed> struct KeyUpDown : public Base {
-  static SHParametersInfo parameters() { return _params; }
+  static inline Type ModifierKeysType = Type::SeqOf(ModifierKeyEnumInfo::Type);
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0: {
-      if (value.valueType == SHType::None) {
-        _key.clear();
-      } else {
-        _key = SHSTRVIEW(value);
-      }
-      _keyCode = keyStringToKeyCode(_key);
-    } break;
-    case 1:
-      _shards = value;
-      break;
-    case 2:
-      _repeat = value.payload.boolValue;
-      break;
-    case 3:
-      _modifiers = value;
-      break;
-    default:
-      break;
-    }
-  }
+  PARAM_VAR(_key, "Key", "The key to check.", {{CoreInfo::StringType}});
+  PARAM(ShardsVar, _shards, "Action", "The Shards to run if a key event happened.", {CoreInfo::ShardsOrNone});
+  PARAM_VAR(_repeat, "Repeat", "If the key event should be repeated.", {{CoreInfo::NoneType, CoreInfo::BoolType}});
+  PARAM_VAR(_modifiers, "Modifiers", "Modifier keys to check.", {CoreInfo::NoneType, ModifierKeysType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_key), PARAM_IMPL_FOR(_shards), PARAM_IMPL_FOR(_repeat), PARAM_IMPL_FOR(_modifiers));
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(_key);
-    case 1:
-      return _shards;
-    case 2:
-      return Var(_repeat);
-    case 3:
-      return _modifiers;
-    default:
-      throw InvalidParameterIndex();
-    }
-  }
+  SDL_Keymod _modifierMask;
+  SDL_Keycode _keyCode;
+
+public:
+  KeyUpDown() { _repeat = Var(false); }
 
   SDL_Keymod convertModifierKeys(const SHVar &input) {
     SDL_Keymod result = KMOD_NONE;
@@ -465,6 +411,7 @@ template <bool Pressed> struct KeyUpDown : public Base {
     _shards.warmup(context);
     baseWarmup(context);
     _modifierMask = convertModifierKeys(_modifiers);
+    _keyCode = keyStringToKeyCode(std::string(SHSTRVIEW(_key)));
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -473,13 +420,20 @@ template <bool Pressed> struct KeyUpDown : public Base {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    if (!_inputContext->canReceiveInput())
+      return input;
+
     auto &events = _inputContext->getEvents();
+    auto consume = _inputContext->getEventConsumer();
     for (auto &event : events) {
+      if (event.isConsumed())
+        continue;
       if (const KeyEvent *ke = std::get_if<KeyEvent>(&event.event)) {
         if (ke->pressed == Pressed && ke->key == _keyCode && matchModifiers(ke->modifiers, _modifierMask)) {
-          if (_repeat || ke->repeat == 0) {
+          if (*_repeat || ke->repeat == 0) {
             SHVar output{};
             _shards.activate(context, input, output);
+            consume(event);
           }
         }
       }
@@ -487,23 +441,6 @@ template <bool Pressed> struct KeyUpDown : public Base {
 
     return input;
   }
-
-private:
-  static inline Type ModifierKeysType = Type::SeqOf(ModifierKeyEnumInfo::Type);
-
-  static inline Parameters _params = {
-      {"Key", SHCCSTR("TODO!"), {{CoreInfo::StringType}}},
-      {"Action", SHCCSTR("TODO!"), {CoreInfo::ShardsOrNone}},
-      {"Repeat", SHCCSTR("TODO!"), {{CoreInfo::BoolType}}},
-      {"Modifiers", SHCCSTR("Modifier keys to check."), {{CoreInfo::NoneType, ModifierKeysType}}},
-  };
-
-  OwnedVar _modifiers;
-  SDL_Keymod _modifierMask;
-  ShardsVar _shards{};
-  std::string _key;
-  SDL_Keycode _keyCode;
-  bool _repeat{false};
 };
 
 struct IsKeyDown : public Base {

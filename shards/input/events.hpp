@@ -109,6 +109,15 @@ inline std::partial_ordering operator<=>(const Event &a, const Event &b) {
 }
 inline bool operator==(const Event &a, const Event &b) { return a <=> b == std::partial_ordering::equivalent; }
 
+inline bool isPointerEvent(const Event &event) {
+  return std::get_if<PointerMoveEvent>(&event) || std::get_if<PointerButtonEvent>(&event) || std::get_if<ScrollEvent>(&event);
+}
+
+inline bool isKeyEvent(const Event &event) {
+  return std::get_if<KeyEvent>(&event) || std::get_if<TextEvent>(&event) ||
+          std::get_if<TextCompositionEvent>(&event) || std::get_if<TextCompositionEndEvent>(&event);
+}
+
 struct IInputHandler;
 struct ConsumedTag {
   std::weak_ptr<IInputHandler> handler;
@@ -121,7 +130,11 @@ struct ConsumableEvent {
 
   ConsumableEvent(const Event &event) : event(event) {}
   bool isConsumed() const { return consumed.has_value(); }
-  void consume(std::weak_ptr<IInputHandler> by) { consumed.emplace(by); }
+  void consume(std::weak_ptr<IInputHandler> by) {
+    if (isConsumed())
+      return;
+    consumed.emplace(by);
+  }
 };
 
 } // namespace shards::input

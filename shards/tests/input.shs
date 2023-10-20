@@ -48,6 +48,23 @@
     RTake(0) | TargetCamera.Matrix > view-transform
   } Name: "Camera" Priority: 0) = camera-state
 
+  Once({ Math.MatIdentity >= obj-transform })
+  Inputs.Detached(window-ctx {
+    GFX.View(View: view-transform) = view
+    GFX.DrawQueue(Threaded: true) = queue
+    Gizmos.Context(Queue: queue View: view Contents: {
+      Gizmos.RefspaceGridOverlay(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 3.0)
+      obj-transform | Gizmos.Rotation(ScreenSize: 300.0) > obj-transform
+    })
+    {obj-transform: obj-transform queue: queue}
+  } {
+    RTake(0)
+    { Take("queue") | GFX.QueueDrawables | GFX.Draw(queue) }
+    { Take("obj-transform") 
+    ; | Log("New transform") 
+      > obj-transform }
+  } Name: "Gizmos" Priority: 1)
+
   ; Input test code
   Inputs.Detached(window-ctx {
     false >= down
@@ -60,7 +77,7 @@
     RTake(0) | When(Is(true) {
       Log("W Key down main thread")
     })
-  } Name: "test" Priority: 1)
+  } Name: "test" Priority: 2)
   ForEach({
     When(Is(true) {
       Log("W Key down main thread, outside of scope")
@@ -101,13 +118,12 @@
         Animation.Timer >= time
 
         @f4(0 1 0 1) >= color
-        Math.MatIdentity | 
-        GFX.Drawable(Mesh: cube-mesh Params: {baseColor: color}) | GFX.Draw(queue)
+        obj-transform | GFX.Drawable(Mesh: cube-mesh Params: {baseColor: color}) | GFX.Draw(queue)
 
         GFX.Render(View: view Steps: render-steps)
       }
     )
-  } Every: (1.0 Math.Divide(60.0)))
+  } Every: (1.0 Math.Divide(40.0)))
 } Looped: true)
 
 @mesh(root)

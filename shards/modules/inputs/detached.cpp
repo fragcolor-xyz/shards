@@ -59,25 +59,43 @@ struct DetachedInputContext : public IInputContext {
   std::shared_ptr<gfx::Window> window;
   input::InputMaster *master{};
   std::weak_ptr<IInputHandler> handler;
+  DetachedInput detachedState;
 
-  ConsumeFlags consumeFlags{};
   double time{};
   float deltaTime{};
   InputStack inputStack;
 
-  virtual InputStack &getInputStack() override { return inputStack; }
+  InputStack &getInputStack() override { return inputStack; }
+  shards::input::InputMaster &getMaster() const override {
+    assert(master);
+    return *master;
+  }
 
-  virtual shards::input::InputMaster *getMaster() const override { return master; }
+  const std::weak_ptr<IInputHandler> &getHandler() const override { return handler; }
 
-  const input::InputState &getState() const override { return master->getState(); }
+  const input::InputState &getState() const override { return detachedState.state; }
   std::vector<ConsumableEvent> &getEvents() override { return master->getEvents(); }
 
   float getTime() const override { return time; }
   float getDeltaTime() const override { return deltaTime; }
 
-  const std::weak_ptr<IInputHandler> &getHandler() override { return handler; }
-
   void postMessage(const input::Message &message) override { master->postMessage(message); }
+
+  bool requestFocus() override {
+    if (auto ptr = getHandler().lock()) {
+      auto &focusTracker = getMaster().getFocusTracker();
+      return focusTracker.requestFocus(ptr.get());
+    }
+    return false;
+  }
+
+  bool canReceiveInput() const override {
+    if (auto ptr = getHandler().lock()) {
+      auto &focusTracker = getMaster().getFocusTracker();
+      return focusTracker.canReceiveInput(ptr.get());
+    }
+    return false;
+  }
 };
 
 struct OutputFrame {
@@ -104,13 +122,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
   InputThreadHandler(OutputBuffer &outputBuffer, int priority) : outputBuffer(outputBuffer), priority(priority) {}
 
-  const std::vector<input::ConsumableEvent> *getDebugFrame(size_t frameIndex) override { return nullptr; }
-  size_t getLastFrameIndex() const override {
-    return 0;
-    // return inputBuffer.head > 0 ? inputBuffer.head - 1 : 0;
-  }
   const char *getDebugName() override { return name.c_str(); }
-  debug::ConsumeFlags getDebugConsumeFlags() const override { return debug::ConsumeFlags{}; }
 
   int getPriority() const override { return priority; }
 
@@ -134,22 +146,6 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
     brancher.warmup();
   }
 
-  bool wantToConsumeEvent(const Event &event) {
-    // if (wantsPointerInput) {
-    //   if (std::get_if<PointerMoveEvent>(&event) || std::get_if<PointerButtonEvent>(&event) ||
-    //       std::get_if<ScrollEvent>(&event)) {
-    //     return true;
-    //   }
-    // }
-    // if (wantsKeyboardInput) {
-    //   if (std::get_if<KeyEvent>(&event) || std::get_if<TextEvent>(&event) || std::get_if<TextCompositionEvent>(&event) ||
-    //       std::get_if<TextCompositionEndEvent>(&event)) {
-    //     return true;
-    //   }
-    // }
-    return false;
-  }
-
   bool isCursorWithinRegion{};
 
   // Runs on input thread callback
@@ -170,6 +166,15 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
           },
           windowRegion);
     }
+
+    auto canReceiveInput = inputContext.canReceiveInput();
+
+    inputContext.detachedState.update([&](auto apply) {
+      for (auto &evt : master.getEvents()) {
+        apply(evt, canReceiveInput);
+      }
+    });
+    inputContext.detachedState.state.region = master.getState().region;
 
     double deltaTime = deltaTimer.update();
     inputContext.deltaTime = deltaTime;
