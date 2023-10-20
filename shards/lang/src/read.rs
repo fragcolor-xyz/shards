@@ -300,6 +300,29 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
 
             Ok(FunctionValue::Program(program))
           }
+          "env" => {
+            // read from environment variable
+            let params = params.ok_or(("Expected 1 parameter", pos).into())?;
+            let n_params = params.len();
+
+            let name = if n_params > 0 && params[0].name.is_none() {
+              Some(&params[0])
+            } else {
+              params
+                .iter()
+                .find(|param| param.name.as_deref() == Some("Name"))
+            };
+            let name = name.ok_or(("Expected an environment variable name", pos).into())?;
+            let name = match &name.value {
+              Value::String(s) => Ok(s),
+              _ => Err(("Expected a string value", pos).into()),
+            }?;
+
+            let value = std::env::var(name.as_str())
+              .map_err(|e| (format!("Failed to read environment variable {:?}: {}", name, e), pos).into())?;
+
+            Ok(FunctionValue::Const(Value::String(value.into())))
+          }
           "read" => {
             let params = params.ok_or(("Expected 2 parameters", pos).into())?;
             let n_params = params.len();
