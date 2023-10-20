@@ -180,8 +180,11 @@ private:
 };
 
 struct PremultiplyAlpha {
+  static SHOptionalString help() { return SHCCSTR(R"(Applies the premultiplication of alpha channels of an image to its RGB channels. Does nothing if the image has already been premultiplied in Shards. This mainly applies to PNG images.)"); }
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The image to apply the premultiplication of alpha channels to."); }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The image as a result of the application of the premultiplication of alpha channels."); }
 
   template <typename T> void process(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
     premultiplyAlpha<T>(input, output, w, h);
@@ -224,8 +227,11 @@ private:
 };
 
 struct DemultiplyAlpha {
+  static SHOptionalString help() { return SHCCSTR(R"(Applies the demultiplication of alpha channels of an image to its RGB channels. Does nothing if the image has already been demultiplied or never been premultiplied in Shards. This mainly applies to PNG images.)"); }
   static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The image to apply the demultiplication of alpha channels to."); }
   static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("The image as a result of the application of the demultiplication of alpha channels."); }
 
   template <typename T> void process(const SHVar &input, SHVar &output, int32_t w, int32_t h) {
     demultiplyAlpha<T>(input, output, w, h);
