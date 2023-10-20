@@ -2776,7 +2776,7 @@ impl Var {
         != info.details.object.vendorId
       || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
     {
-      Err("Failed to cast Var into custom Rc<T> object")
+      Err("Failed to cast Var into custom ref counted object")
     } else {
       let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut RefCounted<T>;
       Ok(&mut (*aptr).value)

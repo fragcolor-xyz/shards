@@ -256,7 +256,8 @@ struct Detached {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     _handler = std::make_shared<InputThreadHandler>(_outputBuffer, (int)*_priority);
-    _handler->brancher.addRunnable(_inputShards);
+    auto name = fmt::format("detached {}", SHSTRVIEW(_name));
+    _handler->brancher.addRunnable(_inputShards, name.c_str());
     if (_handler->brancher.wires().empty()) {
       throw ComposeError(fmt::format("Detached input must an Input runnable"));
     }

@@ -33,7 +33,7 @@ public:
   ~Brancher() { cleanup(); }
 
   // Adds a single wire or sequence of shards as a looped wire
-  void addRunnable(const SHVar &var) { wires.push_back(IntoWire{}.var(var)); }
+  void addRunnable(const SHVar &var, const char* defaultWireName = "inline-wire") { wires.push_back(IntoWire{}.defaultWireName(defaultWireName).var(var)); }
 
   // Sets the runnables (wires or shards)
   void setRunnables(const SHVar &var) {

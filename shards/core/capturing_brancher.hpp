@@ -24,7 +24,7 @@ public:
   auto &mesh() { return brancher.mesh; }
   auto &wires() { return brancher.wires; }
 
-  void addRunnable(auto &v) { brancher.addRunnable(v); }
+  void addRunnable(auto &v, const char* name = "inline-wire") { brancher.addRunnable(v, name); }
 
   auto requiredVariables() { return brancher.requiredVariables(); }
 
