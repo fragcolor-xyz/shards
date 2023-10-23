@@ -174,6 +174,8 @@ struct BaseRunner : public WireBase {
     }
   }
 
+  std::shared_ptr<SHMesh> _mesh;
+
   void warmup(SHContext *ctx) {
     if (capturing) {
       assert(wire && "wire should be set at this point");
@@ -190,6 +192,7 @@ struct BaseRunner : public WireBase {
 
       onStopConnection = wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&BaseRunner::wireOnStop>(this);
     }
+    _mesh = ctx->main->mesh.lock();
   }
 
   void doWarmup(SHContext *context) {
@@ -201,6 +204,8 @@ struct BaseRunner : public WireBase {
 
   bool _restart{false};
   void activateDetached(SHContext *context, const SHVar &input) {
+    assert(_mesh);
+
     if (!shards::isRunning(wire.get())) {
       // stop in case we need to clean up
       stop(wire.get());
@@ -213,22 +218,19 @@ struct BaseRunner : public WireBase {
       }
 
       // validated during infer not here! (false)
-      auto mesh = context->main->mesh.lock();
-      if (mesh) {
-        mesh->schedule(wire, input, false);
+      _mesh->schedule(wire, input, false);
 
-        SHWire *rootWire = context->rootWire();
-        rootWire->dispatcher.trigger(SHWire::OnWireDetachedEvent{
-            .wire = rootWire,
-            .childWire = wire.get(),
-        });
-      }
+      SHWire *rootWire = context->rootWire();
+      rootWire->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+          .wire = rootWire,
+          .childWire = wire.get(),
+      });
       // also mark this wire as fully detached if needed
       // this means stopping this Shard will not stop the wire
       if (detached)
         wire->detached = true;
     } else if (_restart) {
-      stop(wire.get());
+      _mesh->remove(wire);
       // simply tail call activate again
       activateDetached(context, input);
     }
