@@ -1861,6 +1861,53 @@ SHVar blockingSleepActivation(const SHVar &input) {
   return input;
 }
 
+struct LowestHighestShard {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    // compose, if input is a single type sequence we can know output type!
+    assert(data.inputType.basicType == SHType::Seq);
+    if (data.inputType.seqTypes.len == 1) {
+      return data.inputType.seqTypes.elements[0];
+    } else {
+      throw ComposeError("Expected a single type sequence");
+    }
+  }
+};
+
+struct LowestShard : LowestHighestShard {
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &seq = input.payload.seqValue;
+    if (seq.len == 0) {
+      throw ActivationError("Cannot find lowest value in an empty sequence");
+    }
+    auto lowest = seq.elements[0];
+    for (uint32_t i = 1; i < seq.len; i++) {
+      if (lowest > seq.elements[i]) {
+        lowest = seq.elements[i];
+      }
+    }
+    return lowest;
+  }
+};
+
+struct HighestShard : LowestHighestShard {
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &seq = input.payload.seqValue;
+    if (seq.len == 0) {
+      throw ActivationError("Cannot find highest value in an empty sequence");
+    }
+    auto highest = seq.elements[0];
+    for (uint32_t i = 1; i < seq.len; i++) {
+      if (highest < seq.elements[i]) {
+        highest = seq.elements[i];
+      }
+    }
+    return highest;
+  }
+};
+
 #ifdef __EMSCRIPTEN__
 extern "C" {
 char *emEval(const char *code);
@@ -2171,6 +2218,9 @@ SHARDS_REGISTER_FN(core) {
 
   using BlockingSleepShard = LambdaShard<blockingSleepActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
   REGISTER_SHARD("SleepBlocking!", BlockingSleepShard);
+
+  REGISTER_SHARD("Lowest", LowestShard);
+  REGISTER_SHARD("Highest", HighestShard);
 
 #ifdef __EMSCRIPTEN__
   using EmscriptenEvalShard = LambdaShard<emscriptenEvalActivation, CoreInfo::StringType, CoreInfo::StringType>;

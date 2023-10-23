@@ -385,6 +385,8 @@
   Math.Multiply([2.0 1.0 1.0 2.0]) |
   Log |
   Assert.Is([2.0 2.0 3.0 8.0] true)
+  {Lowest | Assert.Is(2.0 true)}
+  {Highest | Assert.Is(8.0 true)}
 
   5 | ToFloat | Math.Divide(10.0) |
   Assert.Is(0.5 true)
