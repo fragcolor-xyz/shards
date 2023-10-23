@@ -504,7 +504,12 @@ struct HandleURL : public Base {
     PARAM_WARMUP(context);
   }
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    for (auto &req : baseRequiredVariables())
+      _requiredVariables.push_back(req);
+
     auto dataCopy = data;
     dataCopy.inputType = CoreInfo::StringType;
     _action.compose(data);

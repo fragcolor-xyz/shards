@@ -24,13 +24,13 @@ public:
   auto &mesh() { return brancher.mesh; }
   auto &wires() { return brancher.wires; }
 
-  void addRunnable(auto &v, const char* name = "inline-wire") { brancher.addRunnable(v, name); }
+  void addRunnable(auto &v, const char *name = "inline-wire") { brancher.addRunnable(v, name); }
 
   auto requiredVariables() { return brancher.requiredVariables(); }
 
-  void compose(const SHInstanceData &data, const IgnoredVariables &ignored = {}) {
+  void compose(const SHInstanceData &data, const ExposedInfo& shared = ExposedInfo{}, const IgnoredVariables &ignored = {}) {
     _variablesApplied = false;
-    brancher.compose(data, ignored);
+    brancher.compose(data, shared, ignored, false);
   }
 
   // context: The context to capture from
@@ -38,6 +38,12 @@ public:
   void intializeCaptures(VariableRefs &outRefs, SHContext *context, const IgnoredVariables &ignored = {}) {
     for (const auto &req : brancher.requiredVariables()) {
       if (!outRefs.contains(req.name)) {
+        if (req.exposedType.basicType == SHType::Object) {
+          auto *objType = findObjectInfo(req.exposedType.object.vendorId, req.exposedType.object.typeId);
+          if (!objType || !objType->isThreadSafe)
+            throw ComposeError(fmt::format("Unable to capture object variable {}", req.name));
+        }
+
         SHVar *vp = referenceVariable(context, req.name);
         outRefs.insert_or_assign(req.name, vp);
       }

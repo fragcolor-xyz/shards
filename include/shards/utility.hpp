@@ -248,8 +248,26 @@ struct EnumRegisterImpl {
   }
 };
 
+template <bool Atomic> struct RefCount {
+  uint32_t count;
+
+  void reference() { ++count; }
+  bool release() {
+    --count;
+    return count == 0;
+  }
+};
+
+template <> struct RefCount<true> {
+  std::atomic<uint32_t> count;
+
+  void reference() { ++count; }
+  bool release() { return count.fetch_sub(1) == 1; }
+};
+
 template <class SH_CORE, typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
-          E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr>
+          E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr,
+          bool IsThreadSafe = false>
 class TObjectVar {
 private:
   SHObjectInfo info;
@@ -258,21 +276,21 @@ private:
 
   struct ObjectRef {
     E shared;
-    uint32_t refcount;
+    RefCount<IsThreadSafe> refcount;
   };
 
 public:
   TObjectVar(const char *name, int32_t vendorId, int32_t typeId) : vendorId(vendorId), typeId(typeId) {
     info = {};
     info.name = name;
+    info.isThreadSafe = IsThreadSafe;
     info.reference = [](SHPointer ptr) {
       auto p = reinterpret_cast<ObjectRef *>(ptr);
-      p->refcount++;
+      p->refcount.reference();
     };
     info.release = [](SHPointer ptr) {
       auto p = reinterpret_cast<ObjectRef *>(ptr);
-      p->refcount--;
-      if (p->refcount == 0) {
+      if (p->refcount.release()) {
         delete p;
       }
     };
@@ -306,7 +324,7 @@ public:
 
   E *New() {
     auto r = new ObjectRef();
-    r->refcount = 1;
+    r->refcount.count = 1;
     return &r->shared;
   }
 
@@ -317,8 +335,7 @@ public:
 
   void Release(E *obj) {
     auto r = reinterpret_cast<ObjectRef *>(obj);
-    r->refcount--;
-    if (r->refcount == 0) {
+    if (r->refcount.release()) {
       if constexpr (BeforeDelete != nullptr) {
         BeforeDelete(*obj);
       }
@@ -328,7 +345,7 @@ public:
 
   uint32_t GetRefCount(E *obj) {
     auto r = reinterpret_cast<ObjectRef *>(obj);
-    return r->refcount;
+    return r->refcount.count;
   }
 
   SHVar Get(E *obj) {

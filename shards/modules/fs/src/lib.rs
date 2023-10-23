@@ -13,6 +13,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 
 use notify::Config;
+use shards::SHInt;
 use shards::core::register_legacy_shard;
 use shards::core::register_shard;
 use shards::core::run_blocking;
@@ -20,6 +21,7 @@ use shards::core::BlockingShard;
 use shards::core::Core;
 use shards::shard::LegacyShard;
 use shards::shardsc::SHCore;
+use shards::types::INT_TYPES;
 use shards::types::common_type;
 use shards::types::AutoSeqVar;
 use shards::types::ClonedVar;

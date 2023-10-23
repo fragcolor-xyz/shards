@@ -3,6 +3,7 @@
 
 #include "foundation.hpp"
 #include <shards/common_types.hpp>
+#include <shards/core/exposed_type_utils.hpp>
 #include "runtime.hpp"
 #include "into_wire.hpp"
 #include <shards/shards.h>
@@ -33,7 +34,9 @@ public:
   ~Brancher() { cleanup(); }
 
   // Adds a single wire or sequence of shards as a looped wire
-  void addRunnable(const SHVar &var, const char* defaultWireName = "inline-wire") { wires.push_back(IntoWire{}.defaultWireName(defaultWireName).var(var)); }
+  void addRunnable(const SHVar &var, const char *defaultWireName = "inline-wire") {
+    wires.push_back(IntoWire{}.defaultWireName(defaultWireName).var(var));
+  }
 
   // Sets the runnables (wires or shards)
   void setRunnables(const SHVar &var) {
@@ -45,26 +48,28 @@ public:
 
   const shards::ExposedInfo &getMergedRequirements() const { return _mergedRequirements; }
 
-  void compose(const SHInstanceData &data, const IgnoredVariables &ignored = {}) {
+  void compose(const SHInstanceData &data, const ExposedInfo &shared_ = ExposedInfo{}, const IgnoredVariables &ignored = {},
+               bool shareObjectVariables = true) {
     _collectedRequirements.clear();
 
-    for (auto &wire : wires) {
-      composeSubWire(data, wire);
+    SHInstanceData tmpData = data;
+    ExposedInfo shared{shared_};
+    for (auto &type : data.shared) {
+      if (containsObjectTypes(type.exposedType) && !shareObjectVariables)
+        continue;
+      if (ignored.find(type.name) != ignored.end())
+        continue;
+      shared.push_back(type);
     }
+    tmpData.shared = SHExposedTypesInfo(shared);
 
-    // Merge requirements from compose result
-    // TODO: Remove since this is already checked by _collectedRequirements below
-    // for (auto &wire : wires) {
-    //   for (auto &req : wire->composeResult->requiredInfo) {
-    //     _mergedRequirements.push_back(req);
-    //   }
-    // }
+    for (auto &wire : wires) {
+      composeSubWire(tmpData, wire);
+    }
 
     if (captureAll) {
       // Merge deep requirements
       for (auto &avail : data.shared) {
-        if (ignored.find(avail.name) != ignored.end())
-          continue;
         SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
         _mergedRequirements.push_back(avail);
       }
@@ -72,12 +77,15 @@ public:
       for (auto &avail : data.shared) {
         auto it = _collectedRequirements.find(avail.name);
         if (it != _collectedRequirements.end()) {
-          if (ignored.find(avail.name) != ignored.end())
-            continue;
           SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
           _mergedRequirements.push_back(it->second);
         }
       }
+    }
+
+    // Clear exposed flags, since these are copies
+    for (auto &req : _mergedRequirements._innerInfo) {
+      req.exposed = false;
     }
 
     // Copy shared

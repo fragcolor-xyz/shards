@@ -262,11 +262,8 @@ struct Detached {
       throw ComposeError(fmt::format("Detached input must an Input runnable"));
     }
 
-    ExposedInfo branchShared{data.shared};
-    branchShared.push_back(RequiredInputContext::getExposedTypeInfo());
-    auto branchInstanceData = data;
-    branchInstanceData.shared = (SHExposedTypesInfo)branchShared;
-    _handler->brancher.compose(branchInstanceData, IgnoredVariables);
+    ExposedInfo branchShared{RequiredInputContext::getExposedTypeInfo()};
+    _handler->brancher.compose(data, branchShared, IgnoredVariables);
 
     for (auto req : _handler->brancher.requiredVariables()) {
       _requiredVariables.push_back(req);

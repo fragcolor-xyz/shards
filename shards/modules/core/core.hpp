@@ -1323,7 +1323,7 @@ struct Update : public SetUpdateBase {
 
     if (_isExposed) {
       if (!(_target->flags & SHVAR_FLAGS_EXPOSED)) {
-        throw WarmupError("Update: error, variable is not exposed.");
+        throw WarmupError(fmt::format("Update: error, variable {} is not exposed.", _name));
       }
 
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
