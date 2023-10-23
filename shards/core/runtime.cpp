@@ -2026,10 +2026,10 @@ endOfWire:
 
   SH_CORO_SUSPENDED(wire)
 
-  // Thread needs to return, fiber can just suspend and never continue
-#if SH_USE_THREAD_FIBER
+#if SH_USE_THREAD_FIBER || !defined(__EMSCRIPTEN__)
   return;
 #else
+  // Emscripten needs to suspend and never continue
   coroutineSuspend(*context.continuation);
 
   // we should never resume here!
