@@ -1887,7 +1887,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
 
 void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
   SH_CORO_RESUMED(wire);
-  
+
   SHLOG_DEBUG("Wire {} rolling", wire->name);
   auto running = true;
 
@@ -2021,9 +2021,20 @@ endOfWire:
 
   wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
 
+  // Make sure to clear context at the end so it doesn't point to invalid stack memory
   wire->context = nullptr;
-  
+
   SH_CORO_SUSPENDED(wire)
+
+  // Thread needs to return, fiber can just suspend and never continue
+#if SH_USE_THREAD_FIBER
+  return;
+#else
+  coroutineSuspend(*context.continuation);
+
+  // we should never resume here!
+  SHLOG_FATAL("Wire {} resumed after ending", wire->name);
+#endif
 }
 
 void parseArguments(int argc, const char **argv) {
