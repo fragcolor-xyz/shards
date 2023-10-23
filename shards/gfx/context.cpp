@@ -458,11 +458,6 @@ void Context::deviceObtained() {
     getOrCreateSurface();
     mainOutput->initSwapchain(wgpuDevice, wgpuAdapter);
   }
-
-  WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
-    SPDLOG_LOGGER_WARN(logger, "Device lost: {} ()", message, magic_enum::enum_name(reason));
-  };
-  wgpuDeviceSetDeviceLostCallback(wgpuDevice, deviceLostCallback, this);
 }
 
 void Context::requestDevice() {
@@ -496,6 +491,12 @@ void Context::requestDevice() {
   };
   requiredLimits.nextInChain = &extraLimits.chain;
 #endif
+
+  WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
+    SPDLOG_LOGGER_WARN(logger, "Device lost: {} ()", message, magic_enum::enum_name(reason));
+  };
+  deviceDesc.deviceLostCallback = deviceLostCallback;
+  deviceDesc.deviceLostUserdata = this;
 
   SPDLOG_LOGGER_DEBUG(logger, "Requesting wgpu device");
   deviceRequest = DeviceRequest::create(wgpuAdapter, deviceDesc);

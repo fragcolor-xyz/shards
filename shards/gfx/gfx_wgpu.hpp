@@ -34,10 +34,7 @@ extern "C" {
 #endif
 
 #ifndef WEBGPU_NATIVE
-#define WGPUMipmapFilterMode_Nearest WGPUFilterMode_Nearest
-#define WGPUMipmapFilterMode_Linear WGPUFilterMode_Linear
-#define WGPUMipmapFilterMode WGPUFilterMode
-
+//
 #else // WEBGPU_NATIVE
 // Alias Undefined to Clear so wgpu is satisfied
 #define WGPULoadOp_Undefined WGPULoadOp_Clear
@@ -67,15 +64,7 @@ WGPUDevice wgpuAdapterRequestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDes
     _fn(_x);                       \
     _x = nullptr;                  \
   }
-
-inline void wgpuShaderModuleWGSLDescriptorSetCode(WGPUShaderModuleWGSLDescriptor &desc, const char *code) {
-#ifdef WEBGPU_NATIVE
-  desc.code = code;
-#else
-  desc.source = code;
-#endif
-}
-
+  
 // Default limits as described by the spec (https://www.w3.org/TR/webgpu/#limits)
 WGPULimits wgpuGetDefaultLimits();
 
