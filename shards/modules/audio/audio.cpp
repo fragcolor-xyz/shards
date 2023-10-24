@@ -358,7 +358,7 @@ struct Channel {
     std::array<SHVar, 2> stereo;
     stereo[0] = Var(0);
     stereo[1] = Var(1);
-    _inChannels = Var(stereo);
+    _inChannels = Var();
     _outChannels = Var(stereo);
   }
 
