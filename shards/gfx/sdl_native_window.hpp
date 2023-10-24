@@ -3,12 +3,12 @@
 
 #include <SDL.h>
 
-#define NEED_SYSWM (GFX_WINDOWS || GFX_ANDROID || GFX_LINUX)
+#define NEED_SYSWM (SH_WINDOWS || SH_ANDROID || SH_LINUX)
 
 #include <SDL_syswm.h>
 
 #include "error_utils.hpp"
-#include "platform.hpp"
+#include "../core/platform.hpp"
 #include <stdexcept>
 
 inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {
@@ -22,11 +22,11 @@ inline void *SDL_GetNativeWindowPtr(SDL_Window *window) {
   }
 #endif
 
-#if GFX_WINDOWS
+#if SH_WINDOWS
   return winInfo.info.win.window;
-#elif GFX_ANDROID
+#elif SH_ANDROID
   return winInfo.info.android.window;
-#elif GFX_LINUX
+#elif SH_LINUX
   return (void *)winInfo.info.x11.window;
 #else
   return nullptr;
@@ -44,7 +44,7 @@ inline void *SDL_GetNativeDisplayPtr(SDL_Window *window) {
   }
 #endif
 
-#if GFX_LINUX
+#if SH_LINUX
   return (void *)winInfo.info.x11.display;
 #else
   return nullptr;

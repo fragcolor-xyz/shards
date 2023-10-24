@@ -7,6 +7,7 @@
 #include <deque>
 
 #include <shards/shards.h>
+#include "utils.hpp"
 
 #include <boost/lockfree/queue.hpp>
 #include <boost/thread.hpp>
@@ -63,6 +64,7 @@ struct TidePool {
       boost::thread::attributes attrs;
       attrs.set_stack_size(SH_STACK_SIZE);
       _thread = boost::thread(attrs, [this]() {
+        pushThreadName("TidePool worker");
         while (_running) {
           Work *work{};
           if (_queue.pop(work)) {
@@ -116,6 +118,8 @@ struct TidePool {
   }
 
   void controllerWorker() {
+    pushThreadName("TidePool controller");
+    
     // spawn workers first
     for (size_t i = 0; i < NumWorkers; ++i) {
       _workers.emplace_back(_queue, _scheduledCounter, _condMutex, _cond);
