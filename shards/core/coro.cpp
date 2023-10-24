@@ -1,24 +1,23 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
 
-#include "boost/context/continuation_fcontext.hpp"
 #include "foundation.hpp"
 #include "coro.hpp"
 #include "utils.hpp"
 #include <memory>
-#include <mutex>
-#include <thread>
 
 namespace shards {
 #if SH_USE_THREAD_FIBER
-
+#define SH_DEBUG_THREAD_STACK_SIZE 2 * 1024 * 1024
 ThreadFiber::~ThreadFiber() {}
 
 void ThreadFiber::init(std::function<void()> fn) {
   isRunning = true;
 
   // Initial suspend
-  thread.emplace([=]() {
+  boost::thread::attributes attrs;
+  attrs.set_stack_size(SH_DEBUG_THREAD_STACK_SIZE);
+  thread.emplace(attrs, [=]() {
     fn();
 
     // Final suspend
