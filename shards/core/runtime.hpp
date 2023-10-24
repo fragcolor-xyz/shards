@@ -323,7 +323,7 @@ template <typename DELEGATE> auto callOnMainThread(DELEGATE &func) -> decltype(f
 
     context->mainThreadTask.reset();
   } else {
-    func();
+    func.action();
   }
 }
 
@@ -392,15 +392,20 @@ template <bool IsCleanupContext = false> inline bool tick(SHWire *wire, SHDurati
   }
 
   if (canRun) {
-    SH_CORO_EXT_RESUME(wire);
-    coroutineResume(wire->coro);
-    SH_CORO_EXT_SUSPEND(wire);
+    while (true) {
+      SH_CORO_EXT_RESUME(wire);
+      coroutineResume(wire->coro);
+      SH_CORO_EXT_SUSPEND(wire);
 
-    if (unlikely(wire->context && (bool)wire->context->mainThreadTask)) {
-      // if we have a task to run, run it and resume coro asap
-      wire->context->mainThreadTask();
-      wire->context->mainThreadTask.reset();
-      // and continue in order to resume the coro
+      // if we have a task to run, run it and resume coro without yielding to caller
+      if (unlikely(wire->context && (bool)wire->context->mainThreadTask)) {
+        wire->context->mainThreadTask();
+        wire->context->mainThreadTask.reset();
+        // and continue in order to resume the coro
+      } else {
+        // Yield to caller if no main thread task
+        break;
+      }
     }
   }
   return true;

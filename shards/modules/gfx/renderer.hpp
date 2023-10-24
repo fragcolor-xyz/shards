@@ -89,7 +89,7 @@ struct ShardsRenderer {
     _graphicsRendererContext = GraphicsRendererContext{};
   }
 
-  bool begin(SHContext *shContext, shards::WindowContext &windowContext) {
+  bool begin(shards::WindowContext &windowContext) {
     // Need to lazily init since we depend on renderer
     if (!_graphicsContext.context) {
       shards::callOnMainThread([&] { initRenderer(windowContext.window); });
