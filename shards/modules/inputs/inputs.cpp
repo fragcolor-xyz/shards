@@ -216,7 +216,7 @@ template <bool Pressed> struct MouseUpDown : public Base {
         {CoreInfo::ShardsOrNone});
   PARAM(ShardsVar, _middleButton, "Middle", "The action to perform when the middle mouse button is pressed down.",
         {CoreInfo::ShardsOrNone});
-  PARAM(ShardsVar, _consume, "Consume", "Consume events.", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_VAR(_consume, "Consume", "Consume events.", {CoreInfo::NoneType, CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_leftButton), PARAM_IMPL_FOR(_rightButton), PARAM_IMPL_FOR(_middleButton), PARAM_IMPL_FOR(_consume));
 
   void warmup(SHContext *context) {
@@ -229,11 +229,16 @@ template <bool Pressed> struct MouseUpDown : public Base {
     baseCleanup();
   }
 
+  bool shouldConsume() const { return _consume->isNone() || *_consume; }
+
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     for (auto &req : baseRequiredVariables())
       _requiredVariables.push_back(req);
+    _leftButton.compose(data);
+    _rightButton.compose(data);
+    _middleButton.compose(data);
     return data.inputType;
   }
 
@@ -251,14 +256,23 @@ template <bool Pressed> struct MouseUpDown : public Base {
         if (pbe->pressed == Pressed) {
           SHVar output{};
           if (pbe->index == SDL_BUTTON_LEFT) {
-            _leftButton.activate(context, input, output);
-            consume(event);
+            if (_leftButton) {
+              _leftButton.activate(context, input, output);
+              if (shouldConsume())
+                consume(event);
+            }
           } else if (pbe->index == SDL_BUTTON_RIGHT) {
-            _rightButton.activate(context, input, output);
-            consume(event);
+            if (_rightButton) {
+              _rightButton.activate(context, input, output);
+              if (shouldConsume())
+                consume(event);
+            }
           } else if (pbe->index == SDL_BUTTON_MIDDLE) {
-            _middleButton.activate(context, input, output);
-            consume(event);
+            if (_middleButton) {
+              _middleButton.activate(context, input, output);
+              if (shouldConsume())
+                consume(event);
+            }
           }
         }
       }
