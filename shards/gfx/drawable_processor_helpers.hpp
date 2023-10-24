@@ -7,7 +7,7 @@
 #include "sampler_cache.hpp"
 #include "view.hpp"
 #include "gfx_wgpu.hpp"
-#include "platform.hpp"
+#include "../core/platform.hpp"
 #include "unique_id.hpp"
 #include <variant>
 
@@ -138,7 +138,7 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
                          const ParameterStorage &parameterStorage) {
   size_t layoutIndex = 0;
   for (const std::string &fieldName : layout.fieldNames) {
-#if GFX_ANDROID
+#if SH_ANDROID
     auto drawDataIt = parameterStorage.basic.find(fieldName.c_str());
 #else
     auto drawDataIt = parameterStorage.basic.find<std::string>(fieldName);

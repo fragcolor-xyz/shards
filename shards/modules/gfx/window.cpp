@@ -167,7 +167,7 @@ struct MainWindow final {
     float scaling = (*_useDisplayScaling && Window::isWindowSizeInPixels()) ? _windowContext->window->getUIScale() : 1.0f;
     _windowContext->window->resize((int2)(float2(int2((int)*_width, (int)*_height)) * scaling));
 
-#if GFX_APPLE
+#if SH_APPLE
     gfx::MetalViewContainer &metalView = _windowContext->window->metalView.value();
     auto &dispatcher = shContext->main->dispatcher;
     dispatcher.trigger(std::ref(metalView));

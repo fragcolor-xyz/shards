@@ -204,8 +204,10 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   // write output type
   SHTypeInfo wireOutput = wire->outputType;
 
+#if SH_CORO_NEED_STACK_MEM
   // Propagate stack size
   data.wire->stackSize = std::max<size_t>(data.wire->stackSize, wire->stackSize);
+#endif
 
   auto outputType = data.inputType;
 
@@ -929,7 +931,7 @@ struct SwitchTo : public WireBase {
     }
 
     // Prepare if no callc was called
-    if (!pWire->coro) {
+    if (!coroutineValid(pWire->coro)) {
       pWire->mesh = context->main->mesh;
       shards::prepare(pWire, context->flow);
 
@@ -1509,6 +1511,14 @@ struct ParallelBase : public CapturingSpawners {
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
   }
 
+  struct TaskFlowDebugInterface : tf::WorkerInterface {
+    std::string debugName;
+
+    TaskFlowDebugInterface(std::string debugName) : debugName(debugName) {}
+    void scheduler_prologue(tf::Worker &worker) { pushThreadName(fmt::format("<idle> tf::Executor ({})", debugName)); }
+    virtual void scheduler_epilogue(tf::Worker &worker, std::exception_ptr ptr) {}
+  };
+
   struct Composer {
     ParallelBase &server;
     SHContext *context;
@@ -1554,7 +1564,8 @@ struct ParallelBase : public CapturingSpawners {
     if (_threads > 0) {
       const auto threads = std::min(_threads, int64_t(std::thread::hardware_concurrency()));
       if (!_exec || _exec->num_workers() != (size_t(threads))) {
-        _exec = std::make_unique<tf::Executor>(size_t(threads));
+        _exec = std::make_unique<tf::Executor>(size_t(threads),
+                                               std::make_shared<TaskFlowDebugInterface>(fmt::format("{}", wire->name)));
       }
     }
 #endif
@@ -1641,6 +1652,11 @@ struct ParallelBase : public CapturingSpawners {
         SHLOG_DEBUG("ParallelBase: releasing wire {}", idx);
         _pool->release(cref);
       });
+
+#if SH_DEBUG_THREAD_NAMES
+      pushThreadName(fmt::format("tf::Executor \"{}\" ({} idx: {})", cref->wire->name, context->currentWire()->name, idx));
+      DEFER({ popThreadName(); });
+#endif
 
       if (!cref->mesh) {
         cref->mesh = SHMesh::make();
@@ -2043,7 +2059,7 @@ struct StepMany : public TryMany {
       }
 
       // Prepare and start if no callc was called
-      if (!cref->wire->coro) {
+      if (!coroutineValid(cref->wire->coro)) {
         cref->wire->mesh = context->main->mesh;
 
         // pre-set wire context with our context

@@ -3,7 +3,7 @@
 
 #include "enums.hpp"
 #include "gfx_wgpu.hpp"
-#include "platform.hpp"
+#include "../core/platform.hpp"
 #include "types.hpp"
 #include "user_data.hpp"
 #include <cassert>

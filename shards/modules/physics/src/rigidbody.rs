@@ -47,7 +47,6 @@ use shards::util;
 use shards::SHType_None;
 use shards::SHType_Seq;
 use std::convert::TryInto;
-use std::rc::Rc;
 
 // TODO Major refactor to remove copy-pasta, man in C++ this would have been so easy for me... but.
 

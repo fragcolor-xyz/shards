@@ -2,6 +2,8 @@ set(core_SOURCES
   async.cpp
   ops_internal.cpp
   number_types.cpp
+  utils.cpp
+  coro.cpp
 )
 
 add_library(shards-core STATIC ${core_SOURCES})
@@ -22,8 +24,12 @@ if(NOT DEFINED SHARDS_INLINE_EVERYTHING)
 endif()
 
 if(SHARDS_INLINE_EVERYTHING)
-  # Add define to check
   target_compile_definitions(shards-core PUBLIC SHARDS_INLINE_EVERYTHING=1)
+endif()
+
+set(SHARDS_THREAD_FIBER OFF CACHE BOOL "When enabled, coroutines are evaluated using a single thread (for debugging purposes)")
+if(SHARDS_THREAD_FIBER)
+  target_compile_definitions(shards-core PUBLIC SH_USE_THREAD_FIBER=1)
 endif()
 
 if(WIN32)
@@ -89,10 +95,6 @@ target_link_libraries(shards-core
 
 if(DESKTOP)
   target_compile_definitions(shards-core PUBLIC SHARDS_DESKTOP=1)
-endif()
-
-if(EMSCRIPTEN)
-  target_sources(shards-core PRIVATE coro.cpp) # emscripten coroutines
 endif()
 
 if(WIN32)
