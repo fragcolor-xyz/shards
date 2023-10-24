@@ -1,3 +1,4 @@
+#include "core/runtime.hpp"
 #include "gfx.hpp"
 #include "window.hpp"
 #include "renderer.hpp"
@@ -193,19 +194,21 @@ struct MainWindow final {
   void cleanup() {
     PARAM_CLEANUP();
 
-    if (_renderer) {
-      _renderer->cleanup();
-      _renderer.reset();
-    }
-
-    if (_windowContext) {
-      if (_windowContext->window) {
-        SHLOG_DEBUG("Destroying window");
-        _windowContext->window->cleanup();
+    callOnMainThread([&] {
+      if (_renderer) {
+        _renderer->cleanup();
+        _renderer.reset();
       }
 
-      _windowContext.reset();
-    }
+      if (_windowContext) {
+        if (_windowContext->window) {
+          SHLOG_DEBUG("Destroying window");
+          _windowContext->window->cleanup();
+        }
+
+        _windowContext.reset();
+      }
+    });
 
     if (_windowContextVar) {
       if (_windowContextVar->refcount > 1) {
@@ -224,20 +227,20 @@ struct MainWindow final {
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (!_windowContext->window) {
-      callOnMainThread(shContext, [&]() { initWindow(shContext); });
+      callOnMainThread([&]() { initWindow(shContext); });
     }
 
     auto &window = _windowContext->window;
 
     bool shouldRun = true;
     if (_renderer) {
-      if (!_renderer->begin(shContext, _windowContext.value()))
+      if (!_renderer->begin(_windowContext.value()))
         shouldRun = false;
     }
 
     if (shouldRun) {
       // Poll & distribute input events
-      callOnMainThread(shContext, [&]() { _windowContext->inputMaster.update(*window.get()); });
+      callOnMainThread([&]() { _windowContext->inputMaster.update(*window.get()); });
 
       for (auto &event : _windowContext->inputMaster.getEvents()) {
         if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event)) {
