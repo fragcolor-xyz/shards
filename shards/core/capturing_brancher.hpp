@@ -64,7 +64,7 @@ public:
     }
 
     for (auto &vr : variables) {
-      auto ref = brancher.mesh->getRefIfExists(toSWL(vr.first));
+      auto ref = brancher.mesh->getRefIfExists(ToSWL(vr.first));
       assert(ref != nullptr);
       assignVariableValue(*ref, vr.second);
     }
