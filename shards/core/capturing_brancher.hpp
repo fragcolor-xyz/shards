@@ -56,6 +56,8 @@ public:
       // Initialize references here
       for (auto &vr : variables) {
         SHVar &var = variableStorage[vr.first];
+        var.flags = SHVAR_FLAGS_REF_COUNTED;
+        var.refcount = 1; 
         brancher.mesh->refs[vr.first] = &var;
       }
       _variablesApplied = true;
@@ -64,7 +66,7 @@ public:
     for (auto &vr : variables) {
       auto it = brancher.mesh->refs.find(vr.first);
       assert(it != brancher.mesh->refs.end());
-      *it->second = vr.second;
+      assignVariableValue(*it->second, vr.second);
     }
   }
 
