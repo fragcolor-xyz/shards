@@ -481,4 +481,4 @@ SHARDS_REGISTER_FN(struct) {
   REGISTER_CORE_SHARD(Pack);
   REGISTER_CORE_SHARD(Unpack);
 }
-}; // namespace shards
+} // namespace shards
