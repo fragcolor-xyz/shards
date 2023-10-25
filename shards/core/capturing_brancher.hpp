@@ -58,15 +58,15 @@ public:
         SHVar &var = variableStorage[vr.first];
         var.flags = SHVAR_FLAGS_REF_COUNTED;
         var.refcount = 1; 
-        brancher.mesh->refs[vr.first] = &var;
+        brancher.mesh->addRef(ToSWL(vr.first), &var);
       }
       _variablesApplied = true;
     }
 
     for (auto &vr : variables) {
-      auto it = brancher.mesh->refs.find(vr.first);
-      assert(it != brancher.mesh->refs.end());
-      assignVariableValue(*it->second, vr.second);
+      auto ref = brancher.mesh->getRefIfExists(toSWL(vr.first));
+      assert(ref != nullptr);
+      assignVariableValue(*ref, vr.second);
     }
   }
 
@@ -77,7 +77,6 @@ public:
   }
 
   void cleanup() {
-    brancher.mesh->refs.clear();
     brancher.mesh->terminate();
     variableStorage.clear();
   }
