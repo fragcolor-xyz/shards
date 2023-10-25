@@ -1172,19 +1172,12 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
     auto mesh = ctx.wire->mesh.lock();
     if (mesh) {
       for (auto &v : mesh->getVariables()) {
-        auto hash = deriveTypeHash(v.second);
-        TypeInfo *info = nullptr;
-        if (ctx.wire->typesCache.find(hash) == ctx.wire->typesCache.end()) {
-          info = &ctx.wire->typesCache.emplace(hash, TypeInfo(v.second, data)).first->second;
-        } else {
-          info = &ctx.wire->typesCache.at(hash);
+        // only add variables with metadata basically
+        auto metadata = mesh->getMetadata(&v.second);
+        if (metadata) {
+          std::string_view sName(v.first.payload.stringValue, v.first.payload.stringLen);
+          ctx.inherited[sName] = *metadata;
         }
-
-        /// actually we don't know if mutable or not, for now assume mutable
-        SHExposedTypeInfo expInfo{v.first.payload.stringValue, {}, *info, true /* mutable */};
-        expInfo.exposed = v.second.flags & SHVAR_FLAGS_EXPOSED;
-        std::string_view sName(v.first.payload.stringValue, v.first.payload.stringLen);
-        ctx.inherited[sName] = expInfo;
       }
     }
   }

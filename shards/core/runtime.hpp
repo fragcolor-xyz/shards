@@ -720,7 +720,17 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     return variables[key];
   }
 
-  void setMetadata(SHVar *var, SHExposedTypeInfo info) { variablesMetadata[var] = info; }
+  constexpr auto &getVariables() { return variables; }
+
+  void setMetadata(SHVar *var, SHExposedTypeInfo info) {
+    auto it = variablesMetadata.find(var);
+    if (it != variablesMetadata.end()) {
+      if (info != it->second) {
+        SHLOG_WARNING("Metadata for global variable {} already exists and is different!", info.name);
+      }
+    }
+    variablesMetadata[var] = info;
+  }
 
   void releaseMetadata(SHVar *var) {
     if (var->refcount == 0) {
