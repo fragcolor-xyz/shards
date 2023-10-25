@@ -31,7 +31,6 @@ InputMaster::~InputMaster() {
 
 void InputMaster::update(gfx::Window &window) {
   thisThreadId = std::this_thread::get_id();
-  updateAndSortHandlers();
 
   input.beginUpdate();
   do {
@@ -56,9 +55,11 @@ void InputMaster::update(gfx::Window &window) {
 
   // Call handlers in order of priority
   focusTracker.swap();
+  updateAndSortHandlers();
   for (auto &handler : handlersLocked) {
     handler->handle(*this);
   }
+  handlersLocked.clear();
 
   // Handle posted messages
   messageQueue.consume_all([&](const Message &message) {

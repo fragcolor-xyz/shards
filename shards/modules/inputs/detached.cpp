@@ -292,14 +292,14 @@ struct Detached {
     _inputContext.warmup(context);
   }
 
+  auto &getWindowContext() { return varAsObjectChecked<WindowContext>(_context.get(), WindowContextType); }
+
   void cleanup() {
+    _handler.reset();
     PARAM_CLEANUP();
     _inputContext.cleanup();
-    _handler.reset();
     cleanupCaptures();
   }
-
-  auto &getWindowContext() { return varAsObjectChecked<WindowContext>(_context.get(), WindowContextType); }
 
   void init(SHContext *context, InputStack &&inputStack) {
     auto &windowCtx = getWindowContext();
@@ -352,7 +352,7 @@ struct Detached {
     if (_outputBuffer.read_available() > 0) {
       _mainDataSeq.clear();
       _outputBuffer.consume_all([&](OutputFrame frame) { _mainDataSeq.push_back(frame.data); });
-    } else if(_mainDataSeq.size() > 1) {
+    } else if (_mainDataSeq.size() > 1) {
       auto lastOutput = std::move(_mainDataSeq.back());
       _mainDataSeq.resize(1);
       _mainDataSeq[0] = std::move(lastOutput);

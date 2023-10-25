@@ -105,7 +105,7 @@ struct DebugUI {
     // Add new events
     // This needs to happen after all handlers to get the correct consume state
     // which is done using the addPostInputCallback
-    master.addPostInputCallback([taggedEvents = _taggedEvents, frameIndex=frameIndex](InputMaster &master) {
+    master.addPostInputCallback([taggedEvents = _taggedEvents, frameIndex = frameIndex](InputMaster &master) {
       for (auto &evt : master.getEvents()) {
         taggedEvents->emplace_back(InternalTaggedEvent{frameIndex, evt});
       }
@@ -135,6 +135,8 @@ struct DebugUI {
         layer.hasFocus = master.getFocusTracker().hasFocus(handler.get());
       }
     }
+    // NOTE: Very important to not cache this as it prevents destruction for the handler in detached input shard
+    _handlers.clear();
 
     debug::DebugUIParams params{
         .opts = _opts,
