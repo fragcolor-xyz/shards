@@ -70,6 +70,22 @@ template <auto V> struct constant {
 inline SHOptionalString operator"" _optional(const char *s, size_t) { return SHOptionalString{s}; }
 inline SHStringWithLen operator"" _swl(const char *s, size_t l) { return SHStringWithLen{s, l}; }
 
+constexpr std::size_t StrLen(const char* str) {
+    std::size_t len = 0;
+    while (str[len] != '\0') {
+        ++len;
+    }
+    return len;
+}
+
+constexpr SHStringWithLen ToSWL(const char* str) {
+    return SHStringWithLen{str, StrLen(str)};
+}
+
+constexpr SHStringWithLen ToSWL(std::string_view str) {
+    return SHStringWithLen{str.data(), str.size()};
+}
+
 // SFINAE tests
 #define SH_HAS_MEMBER_TEST(_name_)                               \
   template <typename T> class has_##_name_ {                     \
@@ -907,5 +923,14 @@ inline void assignVariableValue(SHVar &v, const SHVar &other) {
 }
 
 }; // namespace shards
+
+// specialize hash for TOwnedVar
+namespace std {
+template <typename T> struct hash<shards::TOwnedVar<T>> {
+  size_t operator()(const shards::TOwnedVar<T> &v) const {
+    return std::hash<SHVar>()(v);
+  }
+};
+} // namespace std
 
 #endif

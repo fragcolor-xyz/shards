@@ -429,12 +429,7 @@ entt::id_type findId(SHContext *ctx) noexcept {
 }
 
 SHVar *referenceWireVariable(SHWire *wire, std::string_view name) {
-  // let's avoid creating a string every time
-  static thread_local std::string nameStr;
-  nameStr.clear();
-  nameStr.append(name.data(), name.size());
-
-  SHVar &v = wire->variables[nameStr];
+  SHVar &v = wire->getVariable(ToSWL(name));
   v.refcount++;
   v.flags |= SHVAR_FLAGS_REF_COUNTED;
   return &v;
@@ -446,15 +441,10 @@ SHVar *referenceWireVariable(SHWireRef wire, std::string_view name) {
 }
 
 SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name) {
-  // let's avoid creating a string every time
-  static thread_local std::string nameStr;
-  nameStr.clear();
-  nameStr.append(name.data(), name.size());
-
   auto mesh = ctx->main->mesh.lock();
   assert(mesh);
 
-  SHVar &v = mesh->variables[nameStr];
+  SHVar &v = mesh->getVariable(ToSWL(name));
   v.refcount++;
   if (v.refcount == 1) {
     SHLOG_TRACE("Creating a global variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
@@ -464,11 +454,6 @@ SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name) {
 }
 
 SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
-  // let's avoid creating a string every time
-  static thread_local std::string nameStr;
-  nameStr.clear();
-  nameStr.append(name.data(), name.size());
-
   // try find a wire variable
   // from top to bottom of wire stack
   {
@@ -476,19 +461,19 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
     for (; rit != ctx->wireStack.rend(); ++rit) {
       // prioritize local variables
       auto wire = *rit;
-      auto it = wire->variables.find(nameStr);
-      if (it != wire->variables.end()) {
+      auto ov = wire->getVariableIfExists(ToSWL(name));
+      if (ov) {
         // found, lets get out here
-        SHVar &cv = it->second;
+        SHVar &cv = (*ov).get();
         cv.refcount++;
         cv.flags |= SHVAR_FLAGS_REF_COUNTED;
         return &cv;
       }
       // try external variables
-      auto pit = wire->externalVariables.find(nameStr);
-      if (pit != wire->externalVariables.end()) {
+      auto ev = wire->getExternalVariableIfExists(ToSWL(name));
+      if (ev) {
         // found, lets get out here
-        SHVar &cv = *pit->second;
+        SHVar &cv = *ev;
         assert((cv.flags & SHVAR_FLAGS_EXTERNAL) != 0);
         return &cv;
       }
@@ -506,10 +491,10 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
 
     // Was not in wires.. find in mesh
     {
-      auto it = mesh->variables.find(nameStr);
-      if (it != mesh->variables.end()) {
+      auto ov = mesh->getVariableIfExists(ToSWL(name));
+      if (ov) {
         // found, lets get out here
-        SHVar &cv = it->second;
+        SHVar &cv = (*ov).get();
         cv.refcount++;
         cv.flags |= SHVAR_FLAGS_REF_COUNTED;
         return &cv;
@@ -518,14 +503,13 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
 
     // Was not in mesh directly.. try find in meshs refs
     {
-      auto it = mesh->refs.find(nameStr);
-      if (it != mesh->refs.end()) {
+      auto rv = mesh->getRefIfExists(ToSWL(name));
+      if (rv) {
         SHLOG_TRACE("Referencing a parent node variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
         // found, lets get out here
-        SHVar *cv = it->second;
-        cv->refcount++;
-        cv->flags |= SHVAR_FLAGS_REF_COUNTED;
-        return cv;
+        rv->refcount++;
+        rv->flags |= SHVAR_FLAGS_REF_COUNTED;
+        return rv;
       }
     }
   }
@@ -533,7 +517,7 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
 create:
   // worst case create in current top wire!
   SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
-  SHVar &cv = ctx->wireStack.back()->variables[nameStr];
+  SHVar &cv = ctx->wireStack.back()->getVariable(ToSWL(name));
   assert(cv.refcount == 0);
   cv.refcount++;
   // can safely set this here, as we are creating a new variable
@@ -1166,7 +1150,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
 
   // add externally added variables
   if (ctx.wire) {
-    for (const auto &[key, pVar] : ctx.wire->externalVariables) {
+    for (const auto &[key, pVar] : ctx.wire->getExternalVariables()) {
       SHVar &var = *pVar;
       assert((var.flags & SHVAR_FLAGS_EXTERNAL) != 0);
 
@@ -1178,9 +1162,10 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
         info = &ctx.wire->typesCache.at(hash);
       }
 
-      SHExposedTypeInfo expInfo{key.c_str(), {}, *info, true /* mutable */};
+      SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *info, true /* mutable */};
       expInfo.exposed = var.flags & SHVAR_FLAGS_EXPOSED;
-      ctx.inherited[key] = expInfo;
+      std::string_view sName(key.payload.stringValue, key.payload.stringLen);
+      ctx.inherited[sName] = expInfo;
     }
   }
 
@@ -2714,8 +2699,8 @@ void hash_update(const SHVar &var, void *state) {
         hash_update(tmp, state);
       }
 
-      for (auto &wireVar : wire->variables) {
-        error = XXH3_128bits_update(hashState, wireVar.first.c_str(), wireVar.first.length());
+      for (auto &wireVar : wire->getVariables()) {
+        error = XXH3_128bits_update(hashState, wireVar.first.payload.stringValue, wireVar.first.payload.stringLen);
         assert(error == XXH_OK);
         hash_update(wireVar.second, state);
       }
@@ -3047,13 +3032,14 @@ SHCore sh_current_interface{};
 extern "C" {
 SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   auto &wire = SHWire::sharedFromRef(wireRef);
-  std::string nameView{name, nameLen};
-  auto it = wire->externalVariables.find(nameView);
-  if (it != wire->externalVariables.end()) {
+  std::string_view nameView{name, nameLen};
+  auto vName = shards::OwnedVar::Foreign(nameView);
+  auto it = wire->getExternalVariables().find(vName);
+  if (it != wire->getExternalVariables().end()) {
     return it->second;
   } else {
-    auto it2 = wire->variables.find(nameView);
-    if (it2 != wire->variables.end()) {
+    auto it2 = wire->getVariables().find(vName);
+    if (it2 != wire->getVariables().end()) {
       return &it2->second;
     }
   }
@@ -3143,33 +3129,33 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->releaseVariable = [](SHVar *variable) noexcept { return shards::releaseVariable(variable); };
 
   result->setExternalVariable = [](SHWireRef wire, SHStringWithLen name, SHVar *pVar) noexcept {
-    std::string nameView{name.string, name.len};
     auto &sc = SHWire::sharedFromRef(wire);
-    sc->externalVariables[nameView] = pVar;
+    auto vName = shards::OwnedVar::Foreign(name);
+    sc->getExternalVariables()[vName] = pVar;
   };
 
   result->removeExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
-    std::string nameView{name.string, name.len};
     auto &sc = SHWire::sharedFromRef(wire);
-    sc->externalVariables.erase(nameView);
+    auto vName = shards::OwnedVar::Foreign(name);
+    sc->getExternalVariables().erase(vName);
   };
 
   result->allocExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
-    std::string nameView{name.string, name.len};
     auto &sc = SHWire::sharedFromRef(wire);
+    auto vName = shards::OwnedVar::Foreign(name);
     auto res = new (std::align_val_t{16}) SHVar();
-    sc->externalVariables[nameView] = res;
+    sc->getExternalVariables()[vName] = res;
     return res;
   };
 
   result->freeExternalVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
-    std::string nameView{name.string, name.len};
     auto &sc = SHWire::sharedFromRef(wire);
-    auto var = sc->externalVariables[nameView];
+    auto vName = shards::OwnedVar::Foreign(name);
+    auto var = sc->getExternalVariables()[vName];
     if (var) {
       ::operator delete(var, std::align_val_t{16});
     }
-    sc->externalVariables.erase(nameView);
+    sc->getExternalVariables().erase(vName);
   };
 
   result->suspend = [](SHContext *context, double seconds) noexcept {

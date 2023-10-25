@@ -85,10 +85,11 @@ public:
   // This grabs all the variables that are needed and references them
   void initVariableReferences(SHContext *context) {
     for (const auto &req : _mergedRequirements._innerInfo) {
-      if (mesh->refs.count(req.name) == 0) {
-        SHLOG_TRACE("Branch: referencing required variable: {}", req.name);
-        auto vp = referenceVariable(context, req.name);
-        mesh->refs[req.name] = vp;
+      std::string_view name = req.name; // calls strlen :(
+      if (!mesh->hasRef(ToSWL(name))) {
+        SHLOG_TRACE("Branch: referencing required variable: {}", name);
+        auto vp = referenceVariable(context, name);
+        mesh->addRef(ToSWL(name), vp);
       }
     }
   }
@@ -101,10 +102,7 @@ public:
   }
 
   void cleanup() {
-    for (auto &[_, vp] : mesh->refs) {
-      releaseVariable(vp);
-    }
-
+    mesh->releaseAllRefs();
     mesh->terminate();
   }
 

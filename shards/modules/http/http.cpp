@@ -459,7 +459,7 @@ struct Server {
     switch (idx) {
     case 0:
       _handlerMaster = val;
-     break;
+      break;
     case 1:
       _endpoint = SHSTRVIEW(val);
       break;
@@ -486,7 +486,7 @@ struct Server {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (_handlerMaster.valueType == SHType::Wire)
-        _pool.reset(new WireDoppelgangerPool<Peer>(_handlerMaster.payload.wireValue));
+      _pool.reset(new WireDoppelgangerPool<Peer>(_handlerMaster.payload.wireValue));
 
     const IterableExposedInfo shared(data.shared);
     // copy shared
@@ -518,7 +518,7 @@ struct Server {
       if (!ec) {
         auto mesh = context->main->mesh.lock();
         if (mesh) {
-          peer->wire->variables["Http.Server.Socket"] = Var::Object(peer, CoreCC, Peer::PeerCC);
+          peer->wire->getVariable("Http.Server.Socket"_swl) = Var::Object(peer, CoreCC, Peer::PeerCC);
           mesh->schedule(peer->wire, Var::Empty, false);
         } else {
           _pool->release(peer);
