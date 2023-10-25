@@ -916,7 +916,7 @@ void validateConnection(ValidationContext &ctx) {
 
   if (!inputMatches) {
     const auto msg =
-        fmt::format("Could not find a matching input type, shard: {} (line: {}, column: {}) expected: {} found instead: {}",
+        fmt::format("Could not find a matching input type, shard: {} (line: {}, column: {}) expected: {}. Found instead: {}",
                     ctx.bottom->name(ctx.bottom), ctx.bottom->line, ctx.bottom->column, inputInfos, ctx.previousOutputType);
     ctx.cb(ctx.bottom, SHStringWithLen{msg.data(), msg.size()}, false, ctx.userData);
   }
