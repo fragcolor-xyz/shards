@@ -705,12 +705,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   const std::vector<SHWire *> &failedWires() { return _failedWires; }
 
-  std::unordered_map<std::string, SHVar, std::hash<std::string>, std::equal_to<std::string>,
-                     boost::alignment::aligned_allocator<std::pair<const std::string, SHVar>, 16>>
-      variables;
-
-  std::unordered_map<std::string, SHVar *> refs;
-
   std::unordered_map<SHWire *, SHTypeInfo> visitedWires;
 
   std::unordered_set<std::shared_ptr<SHWire>> scheduled;
@@ -721,8 +715,58 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   mutable entt::dispatcher dispatcher{};
 
+  SHVar &getVariable(const SHStringWithLen name) {
+    auto key = shards::OwnedVar::Foreign(name); // copy on write
+    return variables[key];
+  }
+
+  void addRef(const SHStringWithLen name, SHVar *var) {
+    auto key = shards::OwnedVar::Foreign(name); // copy on write
+    refs[key] = var;
+  }
+
+  std::optional<std::reference_wrapper<SHVar>> getVariableIfExists(const SHStringWithLen name) {
+    auto key = shards::OwnedVar::Foreign(name);
+    auto it = variables.find(key);
+    if (it != variables.end()) {
+      return it->second;
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  SHVar *getRefIfExists(const SHStringWithLen name) {
+    auto key = shards::OwnedVar::Foreign(name);
+    auto it = refs.find(key);
+    if (it != refs.end()) {
+      return it->second;
+    } else {
+      return nullptr;
+    }
+  }
+
+  void releaseAllRefs() {
+    for (auto ref : refs) {
+      shards::releaseVariable(ref.second);
+    }
+  }
+
+  bool hasRef(const SHStringWithLen name) {
+    auto key = shards::OwnedVar::Foreign(name);
+    return refs.count(key) > 0;
+  }
+
 private:
   SHMesh() = default;
+
+  std::unordered_map<shards::OwnedVar, SHVar, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
+                     boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar>, 16>>
+      variables;
+
+  // variables with lifetime managed externally
+  std::unordered_map<shards::OwnedVar, SHVar *, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
+                     boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar *>, 16>>
+      refs;
 
   // given that we often insert and especially remove from the middle of the list
   // and that the underlying data is just a pointer to a wire basically ( so cache locality is not a problem )

@@ -11,6 +11,7 @@
 #include <shards/core/shared.hpp>
 #include <shards/shards.h>
 #include <shards/shards.hpp>
+#include <shards/utility.hpp>
 #include <shards/core/brancher.hpp>
 #include <shards/iterator.hpp>
 #include "shader/translator.hpp"
@@ -684,8 +685,9 @@ public:
         .renderer = &ctx.renderer,
         .render = [&ctx = ctx](ViewPtr view, const PipelineSteps &pipelineSteps) { ctx.render(view, pipelineSteps); },
     };
-    mesh->variables.emplace(GraphicsRendererContext::VariableName,
-                            Var::Object(&graphicsRendererContext, GraphicsRendererContext::Type));
+
+    auto &grc = mesh->getVariable(ToSWL(GraphicsRendererContext::VariableName));
+    grc = Var::Object(&graphicsRendererContext, GraphicsRendererContext::Type);
 
     // Setup input table
     SHDrawQueue queue{ctx.queue};

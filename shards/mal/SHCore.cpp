@@ -1848,7 +1848,8 @@ BUILTIN("set-var") {
   auto var = varify(last);
   auto clonedVar = malSHVar::newCloned(var->value());
   clonedVar->value().flags |= SHVAR_FLAGS_EXTERNAL;
-  wire->externalVariables[varName->ref()] = &clonedVar->value();
+  auto vName = shards::OwnedVar::Foreign(varName);
+  wire->getExternalVariables()[vName] = &clonedVar->value();
   wirevar->reference(clonedVar); // keep alive until wire is destroyed
   return malValuePtr(clonedVar);
 }
@@ -2682,7 +2683,7 @@ static SHTypeInfo deriveSeqType(const malSequence &seq) {
   type.basicType = SHType::Seq;
   SHTypesInfo seqTypes{};
   try {
-    for (size_t i = 0; i < seq.count(); i++) {
+    for (int i = 0; i < seq.count(); i++) {
       auto item = seq.item(i);
       arrayPush(seqTypes, deriveTypeInfoFromMal(item));
     }

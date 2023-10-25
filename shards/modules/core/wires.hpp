@@ -170,7 +170,8 @@ struct BaseRunner : public WireBase {
 
     for (auto &v : _vars) {
       // notice, this should be already destroyed by the wire releaseVariable
-      destroyVar(wire->variables[v.variableName()]);
+      std::string_view name = v.variableName(); // notice this calls a strlen!
+      destroyVar(wire->getVariable(ToSWL(name)));
     }
   }
 
@@ -213,7 +214,8 @@ struct BaseRunner : public WireBase {
       if (capturing) {
         for (auto &v : _vars) {
           auto &var = v.get();
-          cloneVar(wire->variables[v.variableName()], var);
+          std::string_view name = v.variableName(); // notice this calls a strlen!
+          cloneVar(wire->getVariable(ToSWL(name)), var);
         }
       }
 

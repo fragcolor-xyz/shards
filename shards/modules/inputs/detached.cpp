@@ -227,7 +227,7 @@ struct Detached {
       variables.consume_all([this](CapturedVariables &vars) {
         variableState = vars;
         for (auto &vr : variableState.variables) {
-          brancher.mesh->refs[vr.first] = &vr.second;
+          brancher.mesh->addRef(ToSWL(vr.first), &vr.second);
         }
       });
     }

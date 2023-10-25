@@ -311,10 +311,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::vector<Shard *> shards;
 
-  SHAlignedMap<std::string, SHVar> variables;
-
-  // variables with lifetime managed externally
-  std::unordered_map<std::string, SHVar *> externalVariables;
   // used only in the case of external variables
   std::unordered_map<uint64_t, shards::TypeInfo> typesCache;
 
@@ -389,8 +385,51 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     return new std::shared_ptr<SHWire>(new SHWire(wire_name));
   }
 
+  SHVar &getVariable(const SHStringWithLen name) {
+    auto key = shards::OwnedVar::Foreign(name); // copy on write
+    return variables[key];
+  }
+
+  constexpr auto &getVariables() { return variables; }
+
+  SHVar *getExternalVariable(const SHStringWithLen name) {
+    auto key = shards::OwnedVar::Foreign(name); // copy on write
+    return externalVariables[key];
+  }
+
+  constexpr auto &getExternalVariables() { return externalVariables; }
+
+  std::optional<std::reference_wrapper<SHVar>> getVariableIfExists(const SHStringWithLen name) {
+    auto key = shards::OwnedVar::Foreign(name);
+    auto it = variables.find(key);
+    if (it != variables.end()) {
+      return it->second;
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  SHVar *getExternalVariableIfExists(const SHStringWithLen name) {
+    auto key = shards::OwnedVar::Foreign(name);
+    auto it = externalVariables.find(key);
+    if (it != externalVariables.end()) {
+      return it->second;
+    } else {
+      return nullptr;
+    }
+  }
+
 private:
   SHWire(std::string_view wire_name) : name(wire_name) { SHLOG_TRACE("Creating wire: {}", name); }
+
+  std::unordered_map<shards::OwnedVar, SHVar, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
+                     boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar>, 16>>
+      variables;
+
+  // variables with lifetime managed externally
+  std::unordered_map<shards::OwnedVar, SHVar *, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
+                     boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar *>, 16>>
+      externalVariables;
 
 private:
   void destroy();
