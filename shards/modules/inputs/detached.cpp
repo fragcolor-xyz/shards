@@ -100,9 +100,8 @@ struct DetachedInputContext : public IInputContext {
 
 struct OutputFrame {
   OwnedVar data;
-  void clear() { data = Var{}; }
 };
-using OutputBuffer = input::EventBuffer<OutputFrame>;
+using OutputBuffer = boost::lockfree::spsc_queue<OutputFrame>;
 
 struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandler>, public IInputHandler, public debug::IDebug {
   CapturingBrancher brancher;
@@ -120,6 +119,8 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   int4 mappedRegion;
   shards::Time::DeltaTimer deltaTimer;
 
+  OwnedVar inputContextVar;
+
   InputThreadHandler(OutputBuffer &outputBuffer, int priority) : outputBuffer(outputBuffer), priority(priority) {}
 
   const char *getDebugName() override { return name.c_str(); }
@@ -136,8 +137,10 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   }
 
   void warmup(const VariableRefs &initialVariableRefs, InputStack &&inputStack) {
-    Var inputContextVar = Var::Object(&inputContext, IInputContext::Type);
-    brancher.mesh()->variables.emplace(RequiredInputContext::variableName(), inputContextVar);
+    inputContextVar = Var::Object(&inputContext, IInputContext::Type);
+    inputContextVar.flags = SHVAR_FLAGS_REF_COUNTED;
+    inputContextVar.refcount = 1;
+    brancher.mesh()->refs.emplace(RequiredInputContext::variableName(), &inputContextVar);
 
     inputContext.handler = this->weak_from_this();
 
@@ -201,9 +204,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
     auto &mainWire = brancher.wires().back();
 
-    auto &frame = outputBuffer.getNextFrame();
-    frame.data = mainWire->previousOutput;
-    outputBuffer.nextFrame();
+    outputBuffer.push(OutputFrame{mainWire->previousOutput});
   }
 
 private:
@@ -240,12 +241,10 @@ struct Detached {
   OptionalInputContext _inputContext{};
 
   // The channel that receives input events from the input thread
-  OutputBuffer _outputBuffer;
-  size_t _lastReceivedEventBufferFrame{};
+  boost::lockfree::spsc_queue<OutputFrame> _outputBuffer{256};
 
   Types _mainDataSeqTypes;
   SeqVar _mainDataSeq;
-  size_t _lastGeneration;
 
   bool _initialized{};
 
@@ -350,18 +349,13 @@ struct Detached {
 
     auto handlerInputContext = _handler->inputContext;
 
-    if (!_outputBuffer.empty()) {
+    if (_outputBuffer.read_available() > 0) {
       _mainDataSeq.clear();
-      auto result = _outputBuffer.getEvents(_lastGeneration);
-      for (auto &[idx, frame] : result.frames) {
-        _mainDataSeq.push_back(frame.data);
-      }
-      _lastGeneration = result.lastGeneration;
-
-      // When empty, recycle last output
-      if (_mainDataSeq.empty()) {
-        _mainDataSeq.push_back(_outputBuffer.getFrame(_lastGeneration).data);
-      }
+      _outputBuffer.consume_all([&](OutputFrame frame) { _mainDataSeq.push_back(frame.data); });
+    } else if(_mainDataSeq.size() > 1) {
+      auto lastOutput = std::move(_mainDataSeq.back());
+      _mainDataSeq.resize(1);
+      _mainDataSeq[0] = std::move(lastOutput);
     }
 
     if (_mainShards && !_mainDataSeq.empty()) {
