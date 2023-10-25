@@ -651,6 +651,8 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   void remove(std::string_view key) { remove(Var(key)); }
 
+  void clear() { payload.tableValue.api->tableClear(payload.tableValue); }
+
   size_t size() const { return payload.tableValue.api->tableSize(payload.tableValue); }
 
   TableIterator begin() const { return ::begin(payload.tableValue); }
