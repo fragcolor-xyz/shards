@@ -720,6 +720,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     return variables[key];
   }
 
+  constexpr auto &getVariables() {
+    return variables;
+  }
+
   void addRef(const SHStringWithLen name, SHVar *var) {
     auto key = shards::OwnedVar::Foreign(name); // copy on write
     refs[key] = var;
