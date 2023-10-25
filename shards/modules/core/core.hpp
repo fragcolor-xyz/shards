@@ -1066,6 +1066,9 @@ struct Set : public SetUpdateBase {
 
   void cleanup() {
     if (mesh) {
+      // this is not perfect because will run only during Set,
+      // but for now it's not an issue as we go thru all variables when composing
+      // and then check if metadata is there or not
       mesh->releaseMetadata(_target);
       mesh.reset();
     }
