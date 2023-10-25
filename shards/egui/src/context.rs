@@ -257,7 +257,7 @@ impl Shard for RenderShard {
     let seq = input.as_seq()?;
     let num_ui_outputs = seq.len();
     for (idx, var) in seq.iter().enumerate() {
-      let ui_output = unsafe { &*Var::from_ref_counted_object::<UIOutput>(&var, &UI_OUTPUT_TYPE)? };
+      let ui_output = unsafe { &*Var::from_ref_counted_object::<UIOutput>(&var, &UI_OUTPUT_TYPE).unwrap() };
 
       // Only render the most recent output
       if idx == (num_ui_outputs - 1) {
