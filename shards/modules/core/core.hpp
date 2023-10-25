@@ -1049,9 +1049,30 @@ struct Set : public SetUpdateBase {
       else
         const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
     }
+
+    if (_global) {
+      // need to add metadata to the global variable in the mesh
+      mesh = context->main->mesh.lock();
+      if (!mesh) {
+        SHLOG_ERROR("Cannot add metadata to global variable {} because mesh is not available", _name);
+        throw WarmupError("Cannot add metadata to global variable because mesh is not available");
+      } else {
+        mesh->setMetadata(_target, SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
+      }
+    }
   }
 
+  std::shared_ptr<SHMesh> mesh;
+
   void cleanup() {
+    if (mesh) {
+      // this is not perfect because will run only during Set,
+      // but for now it's not an issue as we go thru all variables when composing
+      // and then check if metadata is there or not
+      mesh->releaseMetadata(_target);
+      mesh.reset();
+    }
+
     SetBase::cleanup();
 
     if (_onStartConnection) {
