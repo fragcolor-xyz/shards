@@ -720,6 +720,23 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     return variables[key];
   }
 
+  void setMetadata(SHVar *var, SHExposedTypeInfo info) { variablesMetadata[var] = info; }
+
+  void releaseMetadata(SHVar *var) {
+    if (var->refcount == 0) {
+      variablesMetadata.erase(var);
+    }
+  }
+
+  std::optional<SHExposedTypeInfo> getMetadata(SHVar *var) {
+    auto it = variablesMetadata.find(var);
+    if (it != variablesMetadata.end()) {
+      return it->second;
+    } else {
+      return std::nullopt;
+    }
+  }
+
   void addRef(const SHStringWithLen name, SHVar *var) {
     auto key = shards::OwnedVar::Foreign(name); // copy on write
     refs[key] = var;
@@ -762,6 +779,8 @@ private:
   std::unordered_map<shards::OwnedVar, SHVar, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
                      boost::alignment::aligned_allocator<std::pair<const shards::OwnedVar, SHVar>, 16>>
       variables;
+
+  std::unordered_map<SHVar *, SHExposedTypeInfo> variablesMetadata;
 
   // variables with lifetime managed externally
   std::unordered_map<shards::OwnedVar, SHVar *, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
