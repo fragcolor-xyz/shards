@@ -47,7 +47,12 @@ inline bool isRoughlyEqual(T val, T target, T tolerance = T(0.05)) {
   return delta > -tolerance && delta < tolerance;
 }
 
-template <typename T> inline T mod(T a, T b) { return a - (b * (T)std::floor(double(a) / double(b))); }
+// Modulo implemented using floored division
+// results in all positive numbers for positive divisor
+// e.g. mod(-1, 3) = 2
+// https://en.wikipedia.org/wiki/Modulo#/media/File:Divmod_floored.svg (https://en.wikipedia.org/wiki/Modulo)
+template <typename T> inline constexpr T mod(T a, T b) { return a - (b * (T)std::floor(a / b)); }
+
 
 } // namespace gfx
 
