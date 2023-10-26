@@ -275,6 +275,7 @@ typedef SHBool(__cdecl *SHTableNext)(struct SHTable table, SHTableIterator *inIt
 typedef size_t(__cdecl *SHTableSize)(struct SHTable table);
 typedef SHBool(__cdecl *SHTableContains)(struct SHTable table, struct SHVar key);
 typedef struct SHVar *(__cdecl *SHTableAt)(struct SHTable table, struct SHVar key);
+typedef struct SHVar *(__cdecl *SHTableGet)(struct SHTable table, struct SHVar key);
 typedef void(__cdecl *SHTableRemove)(struct SHTable table, struct SHVar key);
 typedef void(__cdecl *SHTableClear)(struct SHTable table);
 typedef void(__cdecl *SHTableFree)(struct SHTable table);
@@ -285,6 +286,7 @@ struct SHTableInterface {
   SHTableSize tableSize;
   SHTableContains tableContains;
   SHTableAt tableAt;
+  SHTableGet tableGet;
   SHTableRemove tableRemove;
   SHTableClear tableClear;
   SHTableFree tableFree;

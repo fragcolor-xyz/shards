@@ -1248,10 +1248,11 @@ struct Update : public SetUpdateBase {
 
     // make sure we update to the same type
     if (_isTable) {
+      // we are a table!
+      _tableContentInfo = data.inputType;
       for (uint32_t i = 0; data.shared.len > i; i++) {
         auto &name = data.shared.elements[i].name;
         if (name == _name && data.shared.elements[i].exposedType.basicType == SHType::Table) {
-
           originalTableType = &data.shared.elements[i].exposedType;
 
           if (data.shared.elements[i].isPushTable) {
@@ -1412,12 +1413,29 @@ struct Get : public VariableBase {
           auto &tableTypes = data.shared.elements[i].exposedType.table.types;
           if (tableKeys.len == tableTypes.len) {
             // if we have a name use it
+            bool hasMagicNone = false; // we use none for any key such as @type({none: Type::String})
+            std::optional<SHTypeInfo> magicNoneType;
             for (uint32_t y = 0; y < tableKeys.len; y++) {
               // if keys are populated they are not variables;
               auto &key = tableKeys.elements[y];
               if (key == _key) {
                 return tableTypes.elements[y];
+              } else if (key.valueType == SHType::None) {
+                hasMagicNone = true;
+                // only add once, if we got more types reset to Any
+                if (!magicNoneType) {
+                  magicNoneType = tableTypes.elements[y];
+                } else {
+                  if (*magicNoneType != tableTypes.elements[y])
+                    magicNoneType = CoreInfo::AnyType;
+                }
               }
+            }
+
+            if (hasMagicNone && _key.isVariable()) {
+              // we got a variable key and we got a magic none
+              // we can return the magic none type
+              return *magicNoneType;
             }
           } else {
             // we got no key names
@@ -1563,19 +1581,18 @@ struct Get : public VariableBase {
       if (_isTable) {
         if (_target->valueType == SHType::Table) {
           auto &kv = _key.get();
-          if (_target->payload.tableValue.api->tableContains(_target->payload.tableValue, kv)) {
+          auto maybeValue = _target->payload.tableValue.api->tableGet(_target->payload.tableValue, kv);
+          if (maybeValue) {
             // Has it
-            SHVar *vptr = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
-
-            if (unlikely(_defaultValue.valueType != SHType::None && !defaultTypeCheck(*vptr))) {
+            if (unlikely(_defaultValue.valueType != SHType::None && !defaultTypeCheck(*maybeValue))) {
               return _defaultValue;
             } else {
               // Pin fast cell
               // skip if variable
               if (!_key.isVariable()) {
-                _cell = vptr;
+                _cell = maybeValue;
               }
-              return *vptr;
+              return *maybeValue;
             }
           } else {
             // No record
@@ -2830,20 +2847,26 @@ struct Take {
   ACTIVATE_INDEXABLE(activateBytes, input.payload.bytesSize, shards::Var(input.payload.bytesValue[index]))
 
   SHVar activateTable(SHContext *context, const SHVar &input) {
-    // TODO, if the strings are static at compose time, make sure to cache the
-    // return value
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
     if (!_seqOutput) {
       const auto key = indices;
-      const auto val = input.payload.tableValue.api->tableAt(input.payload.tableValue, key);
-      return *val;
+      const auto val = input.payload.tableValue.api->tableGet(input.payload.tableValue, key);
+      if (!val) {
+        return Var::Empty;
+      } else {
+        return *val;
+      }
     } else {
       const uint32_t nkeys = indices.payload.seqValue.len;
       shards::arrayResize(_cachedSeq, nkeys);
       for (uint32_t i = 0; nkeys > i; i++) {
         const auto key = indices.payload.seqValue.elements[i];
-        const auto val = input.payload.tableValue.api->tableAt(input.payload.tableValue, key);
-        _cachedSeq.elements[i] = *val;
+        const auto val = input.payload.tableValue.api->tableGet(input.payload.tableValue, key);
+        if (!val) {
+          _cachedSeq.elements[i] = Var::Empty;
+        } else {
+          _cachedSeq.elements[i] = *val;
+        }
       }
       return Var(_cachedSeq);
     }

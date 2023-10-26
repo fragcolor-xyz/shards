@@ -529,6 +529,18 @@ public:
             SHVar &vRef = (*map)[*k];
             return &vRef;
           },
+      .tableGet =
+          [](SHTable table, SHVar key) {
+            shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
+            // the following is safe cos []] takes a const ref
+            auto k = reinterpret_cast<shards::OwnedVar *>(&key);
+            auto it = (*map).find(*k);
+            if (it != (*map).end()) {
+              return (SHVar *)&it->second;
+            } else {
+              return (SHVar *)nullptr;
+            }
+          },
       .tableRemove =
           [](SHTable table, SHVar key) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
