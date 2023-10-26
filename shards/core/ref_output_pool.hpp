@@ -6,9 +6,9 @@
 namespace shards {
 
 template <typename T> struct RefOutputPoolItemTraits {
-  T newItem() { static_assert(false, "not implemented"); }
+  T newItem() { static_assert(!std::is_same_v<T, T>, "not implemented"); }
   void release(T &) {}
-  size_t getRefCount(T &v) { static_assert(false, "not implemented"); }
+  size_t getRefCount(T &v) { static_assert(!std::is_same_v<T, T>, "not implemented"); }
 };
 
 // Keeps a pool of output objects
