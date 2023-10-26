@@ -864,7 +864,7 @@ private:
 
 struct Erase : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR("Deletes identified element(s) from a sequence or key-value pair(s) from a table.");
+    return SHCCSTR("Deletes an index or indices from a sequence or a key or keys from a table.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
