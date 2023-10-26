@@ -290,7 +290,7 @@ public:
         delete p;
       }
     };
-    if constexpr (Serializer != nullptr && Deserializer != nullptr) {
+    if (Serializer != nullptr && Deserializer != nullptr) {
       info.serialize = [](SHPointer obj, uint8_t **outData, size_t *outLen, SHPointer *customHandle) {
         auto tobj = reinterpret_cast<E *>(obj);
         auto holder = new std::vector<uint8_t>();

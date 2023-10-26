@@ -2,13 +2,14 @@
 #define EF63CEF1_3538_4C10_B6F5_75FE1E4D2F44
 
 #include <list>
+#include <cassert>
 
 namespace shards {
 
 template <typename T> struct RefOutputPoolItemTraits {
-  T newItem() { static_assert(!std::is_same_v<T, T>, "not implemented"); }
-  void release(T &) {}
-  size_t getRefCount(T &v) { static_assert(!std::is_same_v<T, T>, "not implemented"); }
+  T newItem() { assert("not implemented"); }
+  void release(T &) { assert("not implemented"); }
+  size_t getRefCount(T &v) { assert("not implemented"); }
 };
 
 // Keeps a pool of output objects

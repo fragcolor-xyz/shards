@@ -154,7 +154,8 @@ struct DrawShard {
 
 } // namespace gfx
 
-template <> struct ::shards::RefOutputPoolItemTraits<gfx::SHDrawQueue *> {
+namespace shards {
+template <> struct RefOutputPoolItemTraits<gfx::SHDrawQueue *> {
   gfx::SHDrawQueue *newItem() {
     auto queue = gfx::detail::Container::DrawQueueObjectVar.New();
     queue->queue = std::make_shared<gfx::DrawQueue>();
@@ -163,6 +164,7 @@ template <> struct ::shards::RefOutputPoolItemTraits<gfx::SHDrawQueue *> {
   void release(gfx::SHDrawQueue *&v) { gfx::Types::DrawQueueObjectVar.Release(v); }
   size_t getRefCount(gfx::SHDrawQueue *&v) { return gfx::Types::DrawQueueObjectVar.GetRefCount(v); }
 };
+} // namespace shards
 
 namespace gfx {
 struct DrawQueueShard {
