@@ -1446,16 +1446,16 @@ struct Get : public VariableBase {
         return _defaultType;
       } else {
         if (_key.isVariable()) {
-          throw ComposeError("Get (" + _name + "/" + std::string(_key.variableName()) +
+          throw ComposeError("Get (" + _name + ":" + std::string(_key.variableName()) +
                              "[variable]): Could not infer an output type, key not found "
                              "and no Default value provided.");
         } else {
           if (_key->valueType == SHType::String) {
-            throw ComposeError("Get (" + _name + "/" + std::string(SHSTRVIEW((*_key))) +
+            throw ComposeError("Get (" + _name + ":" + std::string(SHSTRVIEW((*_key))) +
                                "): Could not infer an output type, key not found "
                                "and no Default value provided.");
           } else {
-            throw ComposeError("Get (" + _name + "/(complex type)" + // TODO improve
+            throw ComposeError("Get (" + _name + ":(complex type)" + // TODO improve
                                "): Could not infer an output type, key not found "
                                "and no Default value provided.");
           }
