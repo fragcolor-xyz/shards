@@ -40,6 +40,9 @@ struct SHView {
   shards::ParamVar *viewTransformVar{};
 
   void updateVariables();
+
+  static std::vector<uint8_t> serialize(const SHView&);
+  static SHView deserialize(const std::string_view&);
 };
 
 struct SHMaterial {
@@ -64,10 +67,10 @@ namespace detail {
 using namespace shards;
 // NOTE: This needs to be a struct ensure correct initialization order under clang
 struct Container {
-#define OBJECT(_id, _displayName, _definedAs, _type)                                                                            \
+#define OBJECT(_id, _displayName, _definedAs, _type, ...)                                                                            \
   static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);                                                      \
   static inline Type _definedAs{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
-  static inline ObjectVar<_type> SH_CONCAT(_definedAs, ObjectVar){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
+  static inline ObjectVar<_type, __VA_ARGS__> SH_CONCAT(_definedAs, ObjectVar){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
 
   OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
@@ -285,7 +288,7 @@ struct Container {
   OBJECT('pips', "GFX.PipelineStep", PipelineStep, PipelineStepPtr)
   static inline Type PipelineStepSeq = Type::SeqOf(PipelineStep);
 
-  OBJECT('view', "GFX.View", View, SHView)
+  OBJECT('view', "GFX.View", View, SHView, &SHView::serialize, &SHView::deserialize);
   static inline Type ViewSeq = Type::SeqOf(View);
 
   OBJECT('mat_', "GFX.Material", Material, SHMaterial)

@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "file_base.hpp"
+#include "serialization.hpp"
 #include <fstream>
 #include <future>
 #include <string>
@@ -142,14 +143,8 @@ struct ToBytes {
 
   void cleanup() { _buffer.clear(); }
 
-  struct Writer {
-    std::vector<uint8_t> &_buffer;
-    Writer(std::vector<uint8_t> &stream) : _buffer(stream) {}
-    void operator()(const uint8_t *buf, size_t size) { _buffer.insert(_buffer.end(), buf, buf + size); }
-  };
-
   SHVar activate(SHContext *context, const SHVar &input) {
-    Writer s(_buffer);
+    BufferRefWriter s(_buffer);
     _buffer.clear();
     serial.reset();
     serial.serialize(input, s);
@@ -166,22 +161,8 @@ struct FromBytes {
 
   void destroy() { destroyVar(_output); }
 
-  struct Reader {
-    const SHVar &_bytesVar;
-    size_t _offset;
-    Reader(const SHVar &var) : _bytesVar(var), _offset(0) {}
-    void operator()(uint8_t *buf, size_t size) {
-      if (_bytesVar.payload.bytesSize < _offset + size) {
-        throw ActivationError("FromBytes buffer underrun");
-      }
-
-      memcpy(buf, _bytesVar.payload.bytesValue + _offset, size);
-      _offset += size;
-    }
-  };
-
   SHVar activate(SHContext *context, const SHVar &input) {
-    Reader r(input);
+    VarReader r(input);
     serial.reset();
     serial.deserialize(r, _output);
     return _output;
