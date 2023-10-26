@@ -39,11 +39,6 @@ template <typename T> void serde(T &stream, gfx::ViewOrthographicProjection &v) 
 } // namespace shards
 
 namespace gfx {
-void SHView::updateVariables() {
-  if (viewTransformVar && viewTransformVar->isVariable()) {
-    view->view = shards::Mat4(viewTransformVar->get());
-  }
-}
 
 std::vector<uint8_t> SHView::serialize(const SHView &view_) {
   BufferWriter writer;
@@ -63,7 +58,7 @@ SHView SHView::deserialize(const std::string_view& data) {
   ViewPtr newView = std::make_shared<gfx::View>();
   serde(reader, newView->view);
   uint8_t index{};
-  serdeConst(reader, index);
+  serde(reader, index);
   switch (index) {
   case 1:
     serde(reader, newView->proj.emplace<ViewPerspectiveProjection>());
@@ -134,8 +129,6 @@ struct ViewShard {
     Var fovVar = (Var &)_fov.get();
     if (!fovVar.isNone())
       std::get<ViewPerspectiveProjection>(view->proj).fov = float(fovVar);
-
-    _view->viewTransformVar = &_viewTransform;
 
     return Types::ViewObjectVar.Get(_view);
   }
@@ -364,7 +357,8 @@ struct ViewProjectionMatrixShard {
   void cleanup() { PARAM_CLEANUP(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ViewPtr view = varAsObjectChecked<ViewPtr>(input, Types::View);
+    SHView& shView = varAsObjectChecked<SHView>(input, Types::View);
+    auto& view = shView.view;
     auto projMatrix = view->getProjectionMatrix(toVec<float2>(_viewSize.get()));
     _result = linalg::mul(projMatrix, view->view);
     return _result;

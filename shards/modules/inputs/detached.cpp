@@ -30,7 +30,12 @@ using VarQueue = boost::lockfree::spsc_queue<OwnedVar>;
 using CapturedVariables = CapturingBrancher::CapturedVariables;
 struct InputThreadInput {
   CapturedVariables variables;
-  InputStack inputStack;
+  InputStack::Item inputStackState;
+
+  InputThreadInput(CapturedVariables &&variables, const InputStack::Item &inputStackState)
+      : variables(std::move(variables)), inputStackState(inputStackState) {}
+  InputThreadInput(InputThreadInput &&) = default;
+  InputThreadInput(const InputThreadInput &) = default;
 };
 using InputThreadInputQueue = boost::lockfree::spsc_queue<InputThreadInput>;
 
@@ -109,6 +114,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   CapturedVariables variableState;
 
   DetachedInputContext inputContext;
+  InputStack::Item lastInputStackState;
 
   std::string name;
 
@@ -130,15 +136,15 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   int getPriority() const override { return priority; }
 
   // Run on main thread activation
-  void pushInputs(const VariableRefs &variableRefs, InputStack &&inputStack) {
+  void pushInputs(const VariableRefs &variableRefs, const InputStack::Item &inputStackState) {
     CapturedVariables newVariables;
     for (auto &vr : variableRefs) {
       vr.second.cloneInto(newVariables[vr.first], brancherCloningContext);
     }
-    inputQueue.push(InputThreadInput{newVariables, inputStack});
+    inputQueue.push(InputThreadInput(std::move(newVariables), inputStackState));
   }
 
-  void warmup(const VariableRefs &initialVariableRefs, InputStack &&inputStack) {
+  void warmup(const VariableRefs &initialVariableRefs, const InputStack::Item &inputStackState) {
     inputContextVar = Var::Object(&inputContext, IInputContext::Type);
     inputContextVar.flags = SHVAR_FLAGS_REF_COUNTED;
     inputContextVar.refcount = 1;
@@ -146,7 +152,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
     inputContext.handler = this->weak_from_this();
 
-    pushInputs(initialVariableRefs, std::move(inputStack));
+    pushInputs(initialVariableRefs, inputStackState);
     applyCapturedVariables();
     brancher.warmup();
   }
@@ -155,7 +161,12 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
   // Runs on input thread callback
   void handle(InputMaster &master) override {
+    // Update captured variable references
+    applyCapturedVariables();
+
     auto &inputStack = inputContext.inputStack;
+    inputStack.push(InputStack::Item(lastInputStackState));
+
     auto baseRegion = getWindowInputRegion(*inputContext.window.get());
     mappedRegion = int4(0, 0, baseRegion.pixelSize.x, baseRegion.pixelSize.y);
     if (inputStack.getTop().windowMapping) {
@@ -200,22 +211,36 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
     //   canReceiveInput = false;
     // }
 
-    // Update captured variable references
-    applyCapturedVariables();
     brancher.activate();
+
+    inputStack.pop();
 
     auto &mainWire = brancher.wires().back();
 
-    outputBuffer.push(OutputFrame{mainWire->previousOutput});
+    {
+      ZoneScopedN("CopyOutputs");
+      outputBuffer.push(OutputFrame{mainWire->previousOutput});
+    }
   }
 
 private:
   void applyCapturedVariables() {
-    inputQueue.consume_all([this](InputThreadInput &input) {
-      variableState = std::move(input.variables);
-      brancher.applyCapturedVariables(variableState);
-      inputContext.inputStack = std::move(input.inputStack);
-    });
+    {
+      ZoneScopedN("ApplyVariables");
+      int avail = inputQueue.read_available();
+      if (avail > 0) {
+        // Discard extra elements
+        for (int i = 0; i < (avail - 1); i++)
+          inputQueue.consume_one([&](auto &input) {});
+
+        // Consume last item
+        inputQueue.consume_one([&](InputThreadInput &input) {
+          variableState = std::move(input.variables);
+          brancher.applyCapturedVariables(variableState);
+          lastInputStackState = input.inputStackState;
+        });
+      }
+    }
   }
 };
 
@@ -303,12 +328,12 @@ struct Detached {
     cleanupCaptures();
   }
 
-  void init(SHContext *context, InputStack &&inputStack) {
+  void init(SHContext *context, InputStack::Item inputStackState) {
     auto &windowCtx = getWindowContext();
 
     // Setup input thread callback
     _handler->brancher.intializeCaptures(_capturedVariables, context, IgnoredVariables);
-    _handler->warmup(_capturedVariables, std::move(inputStack));
+    _handler->warmup(_capturedVariables, inputStackState);
     _handler->name = !_name->isNone() ? SHSTRVIEW(*_name) : "";
     _handler->inputContext.window = windowCtx.window;
     _handler->inputContext.master = &windowCtx.inputMaster;
@@ -318,43 +343,54 @@ struct Detached {
     _initialized = true;
   }
 
-  void cleanupCaptures() {
-    _capturedVariables.clear();
-  }
+  void cleanupCaptures() { _capturedVariables.clear(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    ZoneScoped;
+#if TRACY_ENABLE
+    auto name = fmt::format("Detached {}", SHSTRVIEW(_name));
+    ZoneName(name.data(), name.size());
+#endif
+
     IInputContext *parentContext{};
     if (_inputContext) {
       parentContext = _inputContext.get();
     }
 
-    // Push root input region
-    InputStack inputStack;
-    if (parentContext) {
-      // Inherit parent context's input stack
-      inputStack.push(InputStack::Item(parentContext->getInputStack().getTop()));
-    } else {
-      inputStack.push(input::InputStack::Item{
-          .windowMapping = input::WindowSubRegion::fromEntireWindow(*getWindowContext().window.get()),
-      });
-    }
+    {
+      ZoneScopedN("CopyInputs");
 
-    if (!_initialized) {
-      init(context, std::move(inputStack));
-    } else {
-      // Update variables used by input thread callback
-      _handler->pushInputs(_capturedVariables, std::move(inputStack));
+      // Push root input region
+      InputStack::Item inputStackState;
+      if (parentContext) {
+        // Inherit parent context's input stack
+        inputStackState = parentContext->getInputStack().getTop();
+      } else {
+        inputStackState = input::InputStack::Item{
+            .windowMapping = input::WindowSubRegion::fromEntireWindow(*getWindowContext().window.get()),
+        };
+      }
+
+      if (!_initialized) {
+        init(context, inputStackState);
+      } else {
+        // Update variables used by input thread callback
+        _handler->pushInputs(_capturedVariables, inputStackState);
+      }
     }
 
     auto handlerInputContext = _handler->inputContext;
 
-    if (_outputBuffer.read_available() > 0) {
-      _mainDataSeq.clear();
-      _outputBuffer.consume_all([&](OutputFrame frame) { _mainDataSeq.push_back(frame.data); });
-    } else if (_mainDataSeq.size() > 1) {
-      auto lastOutput = std::move(_mainDataSeq.back());
-      _mainDataSeq.resize(1);
-      _mainDataSeq[0] = std::move(lastOutput);
+    {
+      ZoneScopedN("CopyOutputs");
+      if (_outputBuffer.read_available() > 0) {
+        _mainDataSeq.clear();
+        _outputBuffer.consume_all([&](OutputFrame frame) { _mainDataSeq.push_back(frame.data); });
+      } else if (_mainDataSeq.size() > 1) {
+        auto lastOutput = std::move(_mainDataSeq.back());
+        _mainDataSeq.resize(1);
+        _mainDataSeq[0] = std::move(lastOutput);
+      }
     }
 
     if (_mainShards && !_mainDataSeq.empty()) {

@@ -115,15 +115,15 @@ struct GizmosContextShard {
       gizmoInput.viewportSize = float2(vs.getOutput().referenceSize);
     }
 
+    // Read input
     if (_inputContext) {
       bool canReceiveInput = _inputContext->canReceiveInput();
-      auto consume = _inputContext->getEventConsumer();
 
       auto &region = _inputContext->getState().region;
       gizmoInput.cursorPosition = _inputContext->getState().cursorPosition;
       if (isInteractive) {
         gizmoInput.held = canReceiveInput && _inputContext->getState().isMouseButtonHeld(SDL_BUTTON_LEFT);
-        if(gizmoInput.held) {
+        if (gfxGizmoContext.input.held != nullptr) {
           canReceiveInput = _inputContext->requestFocus();
         }
 
@@ -134,7 +134,6 @@ struct GizmosContextShard {
 
             if (pbEvent->index == SDL_BUTTON_LEFT) {
               gizmoInput.pressed = pbEvent->pressed;
-              consume(event);
             }
           }
         }
@@ -149,6 +148,17 @@ struct GizmosContextShard {
       _content.activate(shContext, Var(gfxGizmoContext.input.held != nullptr), _shardsOutput);
       gfxGizmoContext.end(_gizmoContext.queue);
     });
+
+    // Consume inputs
+    if (_inputContext && (gfxGizmoContext.input.hovering != nullptr || gfxGizmoContext.input.held != nullptr)) {
+      auto consume = _inputContext->getEventConsumer();
+
+      for (auto &event : _inputContext->getEvents()) {
+        if (isPointerEvent(event.event)) {
+          consume(event);
+        }
+      }
+    }
 
     return _shardsOutput;
   }

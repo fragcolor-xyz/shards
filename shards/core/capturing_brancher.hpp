@@ -29,6 +29,7 @@ struct CapturingBrancher {
     VariableRef &operator=(const VariableRef &) = delete;
     void cloneInto(OwnedVar &target, CloningContext &ctx) const {
       if (_copyBySerialize) {
+        ZoneScopedN("Serialize variable");
         ctx.buffer.clear();
         BufferRefWriter w(ctx.buffer);
         ctx.s.serialize(*_var, w);
@@ -37,6 +38,7 @@ struct CapturingBrancher {
         ctx.s.deserialize(r, _new);
         target = std::move(_new);
       } else {
+        ZoneScopedN("Copy variable");
         target = *_var;
       }
     }

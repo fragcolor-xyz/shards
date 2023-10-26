@@ -69,11 +69,10 @@ struct RenderShard {
     return _defaultView;
   }
 
-  const ViewPtr &getAndUpdateView() {
+  const ViewPtr &getView() {
     Var &viewVar = (Var &)_view.get();
     if (!viewVar.isNone()) {
       SHView &shView = varAsObjectChecked<SHView>(viewVar, Types::View);
-      shView.updateVariables();
       return shView.view;
     } else {
       return getDefaultView();
@@ -109,9 +108,9 @@ struct RenderShard {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (_graphicsRendererContext->render) {
-      _graphicsRendererContext->render(getAndUpdateView(), collectPipelineSteps());
+      _graphicsRendererContext->render(getView(), collectPipelineSteps());
     } else {
-      _graphicsRendererContext->renderer->render(getAndUpdateView(), collectPipelineSteps());
+      _graphicsRendererContext->renderer->render(getView(), collectPipelineSteps());
     }
     return SHVar{};
   }
