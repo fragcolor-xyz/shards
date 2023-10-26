@@ -9,6 +9,7 @@
 #include <shared_mutex>
 #include <mutex>
 #include <atomic>
+#include <thread>
 #include <core/function.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 
