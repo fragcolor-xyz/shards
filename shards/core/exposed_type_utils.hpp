@@ -158,24 +158,22 @@ inline void mergeIntoExposedInfo(ExposedInfo &outInfo, const SHExposedTypesInfo 
     outInfo.push_back(otherTypes.elements[i]);
 }
 
-inline bool containsObjectTypes(const SHTypeInfo &type) {
+inline void getObjectTypes(std::vector<SHTypeInfo> &out, const SHTypeInfo &type) {
   switch (type.basicType) {
   case SHType::Object:
-    return true;
+    out.push_back(type);
+    break;
   case SHType::Seq:
     for (auto &t : type.seqTypes)
-      if (containsObjectTypes(t))
-        return true;
+      getObjectTypes(out, t);
     break;
   case SHType::Table:
     for (auto &t : type.table.types)
-      if (containsObjectTypes(t))
-        return true;
+      getObjectTypes(out, t);
     break;
   default:
     break;
   }
-  return false;
 }
 
 } // namespace shards

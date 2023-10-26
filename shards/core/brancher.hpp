@@ -27,8 +27,10 @@ public:
 
 private:
   std::unordered_map<std::string_view, SHExposedTypeInfo> _collectedRequirements;
+  std::unordered_set<std::string_view> _copyBySerialize;
   ExposedInfo _mergedRequirements;
   ExposedInfo _shared;
+  mutable std::vector<SHTypeInfo> _cachedObjectTypes;
 
 public:
   ~Brancher() { cleanup(); }
@@ -47,18 +49,46 @@ public:
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_mergedRequirements; }
 
   const shards::ExposedInfo &getMergedRequirements() const { return _mergedRequirements; }
+  const std::unordered_set<std::string_view> &getCopyBySerialize() const { return _copyBySerialize; }
+
+  struct ShareableObjectFlags {
+    bool sharable{};
+    bool copyBySerialize{};
+  };
+  ShareableObjectFlags getSharableObjectFlags(const SHTypeInfo &type, bool shareObjectVariables) const {
+    _cachedObjectTypes.clear();
+    getObjectTypes(_cachedObjectTypes, type);
+
+    bool copyBySerialize = false;
+    for (auto &objType : _cachedObjectTypes) {
+      auto *ti = findObjectInfo(objType.object.vendorId, objType.object.typeId);
+      if (ti && ti->deserialize && ti->serialize) {
+        copyBySerialize = true;
+      } else if (!ti || !ti->isThreadSafe) {
+        return ShareableObjectFlags{false, false};
+      }
+    }
+
+    return ShareableObjectFlags{true, copyBySerialize};
+  }
 
   void compose(const SHInstanceData &data, const ExposedInfo &shared_ = ExposedInfo{}, const IgnoredVariables &ignored = {},
                bool shareObjectVariables = true) {
     _collectedRequirements.clear();
+    _copyBySerialize.clear();
 
     SHInstanceData tmpData = data;
     ExposedInfo shared{shared_};
     for (auto &type : data.shared) {
-      if (containsObjectTypes(type.exposedType) && !shareObjectVariables)
-        continue;
       if (ignored.find(type.name) != ignored.end())
         continue;
+      if (!shareObjectVariables) {
+        ShareableObjectFlags flags = getSharableObjectFlags(type.exposedType, shareObjectVariables);
+        if (!flags.sharable)
+          continue;
+        if (flags.copyBySerialize)
+          _copyBySerialize.insert(type.name);
+      }
       shared.push_back(type);
     }
     tmpData.shared = SHExposedTypesInfo(shared);

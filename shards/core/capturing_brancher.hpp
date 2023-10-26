@@ -2,6 +2,7 @@
 #define C33BD856_265F_46BD_9B9C_EF38EBF8E36B
 
 #include "brancher.hpp"
+#include <shards/modules/core/serialization.hpp>
 #include <string_view>
 #include <unordered_map>
 
@@ -10,8 +11,39 @@ namespace shards {
 // Variant of brancher that captures variables
 // example usage could be a wire running on a different thread
 struct CapturingBrancher {
+  struct CloningContext {
+    shards::Serialization s;
+    std::vector<uint8_t> buffer;
+  };
+
+  struct VariableRef {
+    SHVar *_var;
+    bool _copyBySerialize;
+
+  public:
+    ~VariableRef() { releaseVariable(_var); }
+    VariableRef(SHVar *_var, bool _copyBySerialize) : _var(_var), _copyBySerialize(_copyBySerialize) {}
+    VariableRef(VariableRef &&) = default;
+    VariableRef &operator=(VariableRef &&) = default;
+    VariableRef(const VariableRef &) = delete;
+    VariableRef &operator=(const VariableRef &) = delete;
+    void cloneInto(OwnedVar &target, CloningContext &ctx) const {
+      if (_copyBySerialize) {
+        ctx.buffer.clear();
+        BufferRefWriter w(ctx.buffer);
+        ctx.s.serialize(*_var, w);
+        BufferRefReader r(ctx.buffer);
+        OwnedVar _new;
+        ctx.s.deserialize(r, _new);
+        target = std::move(_new);
+      } else {
+        target = *_var;
+      }
+    }
+  };
+
   using IgnoredVariables = Brancher::IgnoredVariables;
-  using VariableRefs = std::unordered_map<std::string, SHVar *>;
+  using VariableRefs = std::unordered_map<std::string, VariableRef>;
   using CapturedVariables = std::unordered_map<std::string, OwnedVar>;
 
   Brancher brancher;
@@ -28,7 +60,7 @@ public:
 
   auto requiredVariables() { return brancher.requiredVariables(); }
 
-  void compose(const SHInstanceData &data, const ExposedInfo& shared = ExposedInfo{}, const IgnoredVariables &ignored = {}) {
+  void compose(const SHInstanceData &data, const ExposedInfo &shared = ExposedInfo{}, const IgnoredVariables &ignored = {}) {
     _variablesApplied = false;
     brancher.compose(data, shared, ignored, false);
   }
@@ -38,14 +70,9 @@ public:
   void intializeCaptures(VariableRefs &outRefs, SHContext *context, const IgnoredVariables &ignored = {}) {
     for (const auto &req : brancher.requiredVariables()) {
       if (!outRefs.contains(req.name)) {
-        if (req.exposedType.basicType == SHType::Object) {
-          auto *objType = findObjectInfo(req.exposedType.object.vendorId, req.exposedType.object.typeId);
-          if (!objType || !objType->isThreadSafe)
-            throw ComposeError(fmt::format("Unable to capture object variable {}", req.name));
-        }
-
+        bool copyBySerialize = brancher.getCopyBySerialize().contains(req.name);
         SHVar *vp = referenceVariable(context, req.name);
-        outRefs.insert_or_assign(req.name, vp);
+        outRefs.insert_or_assign(req.name, VariableRef(vp, copyBySerialize));
       }
     }
   }
@@ -57,7 +84,7 @@ public:
       for (auto &vr : variables) {
         SHVar &var = variableStorage[vr.first];
         var.flags = SHVAR_FLAGS_REF_COUNTED;
-        var.refcount = 1; 
+        var.refcount = 1;
         brancher.mesh->addRef(ToSWL(vr.first), &var);
       }
       _variablesApplied = true;

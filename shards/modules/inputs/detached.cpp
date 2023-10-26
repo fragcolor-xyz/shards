@@ -121,6 +121,8 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
   OwnedVar inputContextVar;
 
+  CapturingBrancher::CloningContext brancherCloningContext;
+
   InputThreadHandler(OutputBuffer &outputBuffer, int priority) : outputBuffer(outputBuffer), priority(priority) {}
 
   const char *getDebugName() override { return name.c_str(); }
@@ -131,7 +133,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   void pushInputs(const VariableRefs &variableRefs, InputStack &&inputStack) {
     CapturedVariables newVariables;
     for (auto &vr : variableRefs) {
-      newVariables[vr.first] = *vr.second;
+      vr.second.cloneInto(newVariables[vr.first], brancherCloningContext);
     }
     inputQueue.push(InputThreadInput{newVariables, inputStack});
   }
@@ -317,9 +319,6 @@ struct Detached {
   }
 
   void cleanupCaptures() {
-    for (auto &[key, value] : _capturedVariables) {
-      releaseVariable(value);
-    }
     _capturedVariables.clear();
   }
 
