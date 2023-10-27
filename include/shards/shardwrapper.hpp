@@ -335,12 +335,12 @@ private:
   std::array<TParamVar<SHCORE>, NPARAMS> params;
 };
 
-typedef SHVar (*LambdaActivate)(SHContext *context, const SHVar &input);
+typedef SHVar (*LambdaActivate)(const SHVar &input);
 template <LambdaActivate F, Type &InputType, Type &OutputType> struct LambdaShard {
   static SHTypesInfo inputTypes() { return InputType; }
   static SHTypesInfo outputTypes() { return OutputType; }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return F(context, input); }
+  SHVar activate(SHContext *context, const SHVar &input) { return F(input); }
 };
 }; // namespace shards
 

@@ -1844,13 +1844,13 @@ LOGIC_OP_DESC(IsAllMoreEqual);
 LOGIC_OP_DESC(IsAnyLessEqual);
 LOGIC_OP_DESC(IsAllLessEqual);
 
-SHVar unreachableActivation(SHContext *context, const SHVar &input) { throw; }
+SHVar unreachableActivation(const SHVar &input) { throw; }
 
-SHVar exitProgramActivation(SHContext *context, const SHVar &input) { exit(input.payload.intValue); }
+SHVar exitProgramActivation(const SHVar &input) { exit(input.payload.intValue); }
 
-SHVar hashActivation(SHContext *context, const SHVar &input) { return shards::hash(input); }
+SHVar hashActivation(const SHVar &input) { return shards::hash(input); }
 
-SHVar blockingSleepActivation(SHContext *context, const SHVar &input) {
+SHVar blockingSleepActivation(const SHVar &input) {
   if (input.valueType == SHType::Int) {
     sleep(double(input.payload.intValue) / 1000.0, false);
   } else if (input.valueType == SHType::Float) {
