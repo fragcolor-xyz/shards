@@ -93,6 +93,12 @@ public:
     handlers.emplace_back(ptr);
   }
 
+  void removeHandler(std::shared_ptr<IInputHandler> ptr) {
+    std::unique_lock<decltype(mutex)> l(mutex);
+    auto pred = [&](const auto &weak) { return weak.expired() || weak.lock() == ptr; };
+    handlers.erase(std::remove_if(handlers.begin(), handlers.end(), pred), handlers.end());
+  }
+
   void update(gfx::Window &window);
   void reset() {}
 
