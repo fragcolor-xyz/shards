@@ -191,7 +191,7 @@
     0.1 >> sf
     sf >> sff
   } Times: 3)
-  
+
   sf | Assert.Is([0.1 0.1 0.1] true) | Log
   sff | Assert.Is([[0.1] [0.1 0.1] [0.1 0.1 0.1]] true) | Log
 
@@ -208,17 +208,25 @@
   true | When(Is(true) {11.0 | Set(table-decl-1 "A")})
   Get(table-decl-1 "A") | Math.Add(2.0) | Assert.Is(13.0 true)
   Get(table-decl-1 "B" Default: 10.0) | Assert.Is(10.0 true)
+  Get(table-decl-1 "wut?" Default: 10.0) | Assert.Is(10.0 true)
+  "no key" = mykey
+  Get(table-decl-1 mykey Default: 10.0) | Assert.Is(10.0 true)
 
   ; without Table shard the rest would not work cos Table won't be exposed by When
   Table(table-decl-2)
   true | When(Is(true) {11.0 | Set(table-decl-2 "A")})
   Get(table-decl-2 "A") | ExpectFloat | Math.Add(2.0) | Assert.Is(13.0 true)
 
+  Table(table-decl-3 Type: @type({none: Type::Float}))
+  Get(table-decl-3 "none" Default: 10.0) | Assert.Is(10.0 true)
+  "none var" = mykey2
+  Get(table-decl-3 mykey2 Default: 10.0) | Assert.Is(10.0 true)
+
   [1 2 3] >= assoc-test-seq
   [1 22] | Assoc(assoc-test-seq)
   assoc-test-seq | Assert.Is([1 22 3] true)
 
-  assoc-test-seq | Reverse | Assert.Is([3 22 1] true) | 
+  assoc-test-seq | Reverse | Assert.Is([3 22 1] true) |
   Log("Reversed")
   "Hello World" | Reverse | Assert.Is("dlroW olleH" true) |
   Log("Reversed")
