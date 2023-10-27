@@ -1395,6 +1395,7 @@ struct Get : public VariableBase {
   }
 
   void destroy() { freeDerivedInfo(_defaultType); }
+
   static SHOptionalString help() { return SHCCSTR("Reads the value of the variable passed to it."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -1405,6 +1406,12 @@ struct Get : public VariableBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _shard = const_cast<Shard *>(data.shard);
+
+    if (_defaultValue.valueType != SHType::None) {
+      freeDerivedInfo(_defaultType);
+      _defaultType = deriveTypeInfo(_defaultValue, data);
+    }
+
     if (_isTable) {
       for (uint32_t i = 0; data.shared.len > i; i++) {
         auto &name = data.shared.elements[i].name;
@@ -1435,13 +1442,15 @@ struct Get : public VariableBase {
             if (hasMagicNone && _key.isVariable()) {
               // we got a variable key and we got a magic none
               // we can return the magic none type
-              return *magicNoneType;
+              if (_defaultValue.valueType != SHType::None) {
+                return _defaultType;
+              } else {
+                return *magicNoneType;
+              }
             }
           } else {
             // we got no key names
             if (_defaultValue.valueType != SHType::None) {
-              freeDerivedInfo(_defaultType);
-              _defaultType = deriveTypeInfo(_defaultValue, data);
               return _defaultType;
             } else if (tableTypes.len == 1) {
               // 1 type only so we assume we return that type
@@ -1458,9 +1467,8 @@ struct Get : public VariableBase {
           }
         }
       }
+
       if (_defaultValue.valueType != SHType::None) {
-        freeDerivedInfo(_defaultType);
-        _defaultType = deriveTypeInfo(_defaultValue, data);
         return _defaultType;
       } else {
         if (_key.isVariable()) {
@@ -1512,8 +1520,6 @@ struct Get : public VariableBase {
     }
 
     if (_defaultValue.valueType != SHType::None) {
-      freeDerivedInfo(_defaultType);
-      _defaultType = deriveTypeInfo(_defaultValue, data);
       return _defaultType;
     } else {
       throw ComposeError("Get (" + _name + "): Could not infer an output type and no Default value provided.");

@@ -296,7 +296,6 @@ struct Detached {
     if (_contextVarRef)
       withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_CLEANUP(); });
 
-    _handler.reset();
     cleanupCaptures();
 
     if (_contextVarRef) {
@@ -308,6 +307,8 @@ struct Detached {
   auto &getWindowContext() { return varAsObjectChecked<WindowContext>(_context.get(), WindowContextType); }
 
   void init(SHContext *context) {
+    assert(_handler && "Handler not initialized");
+
     auto &windowCtx = getWindowContext();
     _inputContext.window = windowCtx.window;
     _inputContext.master = &windowCtx.inputMaster;
@@ -328,6 +329,8 @@ struct Detached {
   }
 
   void intializeCaptures(SHContext *context) {
+    assert(_handler && "Handler not initialized");
+
     auto &brancher = _handler->brancher;
     for (const auto &req : brancher.getMergedRequirements()._innerInfo) {
       if (!_capturedVariables.contains(req.name)) {
@@ -345,6 +348,8 @@ struct Detached {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    assert(_handler && "Handler not initialized");
+
     IInputContext *parentContext{};
     if (_hasParentInputContext) {
       parentContext = &varAsObjectChecked<IInputContext>(*_contextVarRef, IInputContext::Type);
