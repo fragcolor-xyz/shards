@@ -296,7 +296,6 @@ struct Detached {
     if (_contextVarRef)
       withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_CLEANUP(); });
 
-    _handler.reset();
     cleanupCaptures();
 
     if (_contextVarRef) {
