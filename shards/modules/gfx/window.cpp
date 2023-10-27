@@ -334,7 +334,7 @@ struct ResizeWindow {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    _requiredWindowContext->window->resize(toInt2(input));
+    callOnMainThread([&]() { _requiredWindowContext->window->resize(toInt2(input)); });
     return input;
   }
 };
@@ -396,7 +396,7 @@ struct MoveWindow {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    _requiredWindowContext->window->move(toInt2(input));
+    callOnMainThread([&]() { _requiredWindowContext->window->move(toInt2(input)); });
     return input;
   }
 };
