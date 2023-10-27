@@ -260,16 +260,16 @@ struct NetworkPeer {
     expectedSize = 0;
   }
 
-  ThreadShared<NetworkBase::Writer> _sendWriter;
+  static inline thread_local NetworkBase::Writer _sendWriter;
 
   Serialization serializer;
 
   void sendVar(const SHVar &input) {
-    _sendWriter().reset();
+    _sendWriter.reset();
     serializer.reset();
-    serializer.serialize(input, _sendWriter());
-    _sendWriter().finalize();
-    auto size = _sendWriter().size();
+    serializer.serialize(input, _sendWriter);
+    _sendWriter.finalize();
+    auto size = _sendWriter.size();
 
     std::scoped_lock lock(sendMutex); // prevent concurrent sends
 
@@ -277,7 +277,7 @@ struct NetworkPeer {
       // send in chunks
       size_t chunks = size / IKCP_MAX_PKT_SIZE;
       size_t remaining = size % IKCP_MAX_PKT_SIZE;
-      auto ptr = _sendWriter().data();
+      auto ptr = _sendWriter.data();
       for (size_t i = 0; i < chunks; ++i) {
         auto err = ikcp_send(kcp, ptr, IKCP_MAX_PKT_SIZE);
         if (err < 0) {
@@ -295,7 +295,7 @@ struct NetworkPeer {
       }
     } else {
       // directly send as it's small enough
-      auto err = ikcp_send(kcp, _sendWriter().data(), _sendWriter().size());
+      auto err = ikcp_send(kcp, _sendWriter.data(), _sendWriter.size());
       if (err < 0) {
         SHLOG_ERROR("ikcp_send error: {}", err);
         throw ActivationError("ikcp_send error");
@@ -749,7 +749,7 @@ struct Broadcast {
     }
   }
 
-  ThreadShared<NetworkBase::Writer> _sendWriter;
+  static inline thread_local NetworkBase::Writer _sendWriter;
   Serialization serializer;
 
   std::vector<std::pair<char *, size_t>> chunks;
@@ -757,11 +757,11 @@ struct Broadcast {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto server = reinterpret_cast<Server *>(_serverVar->payload.objectValue);
 
-    _sendWriter().reset();
+    _sendWriter.reset();
     serializer.reset();
-    serializer.serialize(input, _sendWriter());
-    _sendWriter().finalize();
-    auto size = _sendWriter->size();
+    serializer.serialize(input, _sendWriter);
+    _sendWriter.finalize();
+    auto size = _sendWriter.size();
 
     if (size > IKCP_MAX_PKT_SIZE) {
       // pre build a sequence of chunks of the big buffer (pointers), then go thru all peers and send
@@ -772,7 +772,7 @@ struct Broadcast {
         if (offset + chunkSize > size) {
           chunkSize = size - offset;
         }
-        chunks.emplace_back(_sendWriter().data() + offset, chunkSize);
+        chunks.emplace_back(_sendWriter.data() + offset, chunkSize);
         offset += chunkSize;
       }
 
@@ -790,7 +790,7 @@ struct Broadcast {
       // broadcast
       for (auto &[end, peer] : server->_end2Peer) {
         std::scoped_lock lock(peer->sendMutex);
-        auto err = ikcp_send(peer->kcp, _sendWriter().data(), _sendWriter->size());
+        auto err = ikcp_send(peer->kcp, _sendWriter.data(), _sendWriter.size());
         if (err < 0) {
           SHLOG_ERROR("ikcp_send error: {}", err);
           throw ActivationError("ikcp_send error");

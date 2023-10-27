@@ -482,7 +482,7 @@ struct XPendBase {
 };
 
 struct XpendTo : public XPendBase {
-  ThreadShared<std::string> _scratchStr;
+  static inline thread_local std::string _scratchStr;
 
   ParamVar _collection{};
 
@@ -565,20 +565,20 @@ struct AppendTo : public XpendTo {
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
-      _scratchStr().clear();
-      _scratchStr().append(collection.payload.stringValue, SHSTRLEN(collection));
-      _scratchStr().append(input.payload.stringValue, SHSTRLEN(input));
-      Var tmp(_scratchStr());
+      _scratchStr.clear();
+      _scratchStr.append(collection.payload.stringValue, SHSTRLEN(collection));
+      _scratchStr.append(input.payload.stringValue, SHSTRLEN(input));
+      Var tmp(_scratchStr);
       cloneVar(collection, tmp);
       break;
     }
     case SHType::Bytes: {
       // we know it's a mutable variable so must be compatible with our
       // arrayPush and such routines just do like string for now basically
-      _scratchStr().clear();
-      _scratchStr().append((char *)collection.payload.bytesValue, collection.payload.bytesSize);
-      _scratchStr().append((char *)input.payload.bytesValue, input.payload.bytesSize);
-      Var tmp((uint8_t *)_scratchStr().data(), _scratchStr().size());
+      _scratchStr.clear();
+      _scratchStr.append((char *)collection.payload.bytesValue, collection.payload.bytesSize);
+      _scratchStr.append((char *)input.payload.bytesValue, input.payload.bytesSize);
+      Var tmp((uint8_t *)_scratchStr.data(), _scratchStr.size());
       cloneVar(collection, tmp);
     } break;
     default:
@@ -609,20 +609,20 @@ struct PrependTo : public XpendTo {
       // variable is mutable, so we are sure we manage the memory
       // specifically in Set, cloneVar is used, which uses `new` to allocate
       // all we have to do use to clone our scratch on top of it
-      _scratchStr().clear();
-      _scratchStr().append(input.payload.stringValue, SHSTRLEN(input));
-      _scratchStr().append(collection.payload.stringValue, SHSTRLEN(collection));
-      Var tmp(_scratchStr());
+      _scratchStr.clear();
+      _scratchStr.append(input.payload.stringValue, SHSTRLEN(input));
+      _scratchStr.append(collection.payload.stringValue, SHSTRLEN(collection));
+      Var tmp(_scratchStr);
       cloneVar(collection, tmp);
       break;
     }
     case SHType::Bytes: {
       // we know it's a mutable variable so must be compatible with our
       // arrayPush and such routines just do like string for now basically
-      _scratchStr().clear();
-      _scratchStr().append((char *)input.payload.bytesValue, input.payload.bytesSize);
-      _scratchStr().append((char *)collection.payload.bytesValue, collection.payload.bytesSize);
-      Var tmp((uint8_t *)_scratchStr().data(), _scratchStr().size());
+      _scratchStr.clear();
+      _scratchStr.append((char *)input.payload.bytesValue, input.payload.bytesSize);
+      _scratchStr.append((char *)collection.payload.bytesValue, collection.payload.bytesSize);
+      Var tmp((uint8_t *)_scratchStr.data(), _scratchStr.size());
       cloneVar(collection, tmp);
     } break;
     default:
