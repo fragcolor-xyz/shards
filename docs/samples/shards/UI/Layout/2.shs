@@ -13,7 +13,6 @@ GFX.MainWindow(
       1 >= choice
     })
     UI(
-      ui-draw-queue
       UI.CentralPanel({
         UI.Layout(
           Class: bottom-up-layout-class
@@ -35,7 +34,7 @@ GFX.MainWindow(
           }
         )
       })
-    )
+    ) | UI.Render(ui-draw-queue)
     GFX.Render(Steps: render-steps)
   }
 )

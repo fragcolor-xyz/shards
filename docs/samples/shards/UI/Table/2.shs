@@ -5,7 +5,6 @@ GFX.MainWindow(
       GFX.UIPass(ui-draw-queue) >> render-steps
     })
     UI(
-      ui-draw-queue
       UI.CentralPanel(
         Contents: {
           [ 
@@ -28,7 +27,7 @@ GFX.MainWindow(
           )
         }
       )
-    )
+    ) | UI.Render(ui-draw-queue)
 
     GFX.Render(Steps: render-steps)
   }

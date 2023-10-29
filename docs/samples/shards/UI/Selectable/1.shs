@@ -15,7 +15,6 @@ GFX.MainWindow(
       "" >= currently-selected-str
     })
     UI(
-      ui-draw-queue
       UI.CentralPanel(
         Contents: {
           UI.Selectable(
@@ -39,7 +38,7 @@ GFX.MainWindow(
           ] | String.Join | UI.Label
         }
       )
-    )
+    ) | UI.Render(ui-draw-queue)
 
     GFX.Render(Steps: render-steps)
   }
