@@ -5,7 +5,6 @@ GFX.MainWindow(
       GFX.UIPass(ui-draw-queue) >> render-steps
     })
     UI(
-        ui-draw-queue
         UI.Window(
           Title: "Greetings"
           Flags: WindowFlags::NoCollapse
@@ -13,7 +12,7 @@ GFX.MainWindow(
             "Hello shards!" | UI.Label
           }
         )
-    )
+    ) | UI.Render(ui-draw-queue)
 
     GFX.Render(Steps: render-steps)
   }

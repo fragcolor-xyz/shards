@@ -5,7 +5,6 @@ GFX.MainWindow(
       GFX.UIPass(ui-draw-queue) >> render-steps
     })
     UI(
-      ui-draw-queue
       {
         ; The default order for a window is Order::Middle, and depending on focus, this window,
         ; or the Area with Order::Middle will be drawn on top of the other.
@@ -59,7 +58,7 @@ GFX.MainWindow(
           }
         )
       }
-    )
+    ) | UI.Render(ui-draw-queue)
     GFX.Render(Steps: render-steps)
   }
 )

@@ -5,13 +5,12 @@ GFX.MainWindow(
       GFX.UIPass(ui-draw-queue) >> render-steps
     })
     UI(
-      ui-draw-queue
       UI.TopPanel(
         Contents: {
           "Top Panel" | UI.Label
         }
       )
-    )
+    ) | UI.Render(ui-draw-queue)
 
     GFX.Render(Steps: render-steps)
   }
