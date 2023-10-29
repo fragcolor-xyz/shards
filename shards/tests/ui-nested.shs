@@ -10,22 +10,22 @@
       ui-draw-queue-1 | GFX.ClearQueue
       ui-draw-queue-2 | GFX.ClearQueue
 
-      UI(ui-draw-queue-1 {
+      UI({
         UI.CentralPanel({
           "This is UI 1 " | UI.Label
           UI.Window(Title: "Window" Contents: {
             "This is UI 1" | UI.Label
-            UI(ui-draw-queue-2 {
+            UI({
               UI.CentralPanel({
                 "This is UI 2 (nested)" | UI.Label
                 UI.Window(Title: "Window" Contents: {
                   "This is UI 2 (nested)" | UI.Label
                 })
               })
-            })
+            }) | UI.Render(ui-draw-queue-2)
           })
         })
-      })
+      }) | UI.Render(ui-draw-queue-1)
 
       GFX.Render(Steps: render-steps)
     }
