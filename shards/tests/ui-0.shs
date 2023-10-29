@@ -20,7 +20,7 @@
       })
 
       @input |
-      UI(ui-draw-queue {"hello" = hello}) |
+      UI({"hello" = hello}) | UI.Render(ui-draw-queue) |
       ; input passthrough
       Assert.Is(@input Break: true)
       ; exposed variable
@@ -43,7 +43,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         @input |
         UI.Window(
           Contents: {
@@ -53,7 +53,7 @@
         ) |
         ; input passthrough
         Assert.Is(@input Break: true)
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -72,7 +72,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.Window(
           Contents: {
             @input |
@@ -86,7 +86,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -105,7 +105,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         @input |
         UI.Area(
           Anchor: Anchor::TopLeft
@@ -189,7 +189,7 @@
         ) |
         ; content passthrough
         Assert.Is("BottomRight" Break: true)
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -208,7 +208,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         @input |
         UI.TopPanel(
           Contents: {
@@ -242,7 +242,7 @@
         ) |
         ; input passthrough
         Assert.Is(@input Break: true)
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -261,7 +261,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input |
@@ -277,7 +277,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -296,7 +296,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input |
@@ -312,7 +312,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -331,7 +331,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input |
@@ -346,7 +346,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -365,7 +365,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input |
@@ -382,7 +382,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -401,7 +401,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input |
@@ -415,7 +415,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -434,7 +434,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input |
@@ -448,7 +448,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -467,7 +467,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input |
@@ -481,7 +481,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -501,7 +501,7 @@
         GFX.Render(Steps: render-steps)
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input |
@@ -516,7 +516,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -535,7 +535,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input |
@@ -549,7 +549,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -568,7 +568,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input |
@@ -577,7 +577,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }

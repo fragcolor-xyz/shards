@@ -205,7 +205,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
       UI(
-        ui-draw-queue {
+        {
           UI.CentralPanel({
             UI.Horizontal({
               UI.Button(Label: "Reset")
@@ -248,7 +248,7 @@
             ])
           })
         }
-      )
+      ) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }

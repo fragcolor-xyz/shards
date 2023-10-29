@@ -19,14 +19,14 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             "Hello Shards!" | UI.Label |
             Assert.Is("Hello Shards!" Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -45,14 +45,14 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             ["Hello" "World"] | UI.ListBox(index) | ExpectString
             index | ExpectInt
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -71,7 +71,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             UI.IntInput | ExpectInt
@@ -84,7 +84,7 @@
             UI.Float4Input | ExpectFloat4
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -103,7 +103,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             UI.IntSlider(Min: 1 Max: 100) | ExpectInt
@@ -116,7 +116,7 @@
             UI.Float4Slider(Min: @f4(0) Max: @f4(1)) | ExpectFloat4
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -135,7 +135,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             Once({
@@ -147,7 +147,7 @@
             Math.Add(0.01) > progress
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -166,7 +166,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             UI.RadioButton("Choice 1" choice 1) | ExpectBool
@@ -175,7 +175,7 @@
             choice | ExpectInt
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -194,7 +194,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             @input | 
@@ -203,7 +203,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -222,7 +222,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             Once({
@@ -232,7 +232,7 @@
             UI.TextField(text) | Maybe(ExpectNone Else: ExpectString)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -251,7 +251,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
       @input | 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             UI.Tooltip(
@@ -270,7 +270,7 @@
             Assert.Is(@input Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }

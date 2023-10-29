@@ -8,7 +8,7 @@
     GFX.UIPass(ui-draw-queue) >> render-steps
   })
   GFX.MainWindow(Title: "SDL Window" Width: 1280 Height: 720 Contents: {
-    UI(ui-draw-queue {
+    UI({
       UI.Window(Contents: {
         UI.Style(AnimationTime: 0.5)
         UI.VisualsStyle( 
@@ -51,7 +51,7 @@
         UI.Button("Button")
         UI.TextField(text)
       })
-    })
+    }) | UI.Render(ui-draw-queue)
     GFX.Render(Steps: render-steps)
   })
 } Looped: true)
