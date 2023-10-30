@@ -86,13 +86,22 @@ endif()
 # Currently required for --crate-type argument
 list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zunstable-options)
 
-set(RUST_TOOLCHAIN_DEFAULT "+nightly")
+file(READ ${SHARDS_DIR}/rust.version RUST_TOOLCHAIN_DEFAULT)
 
-if(NOT DEFINED ENV{RUSTUP_TOOLCHAIN})
+set(RUST_TOOLCHAIN "" CACHE STRING "Override the rust toolchain to use")
+
+if(NOT(RUST_TOOLCHAIN STREQUAL ""))
+  # Use cmake option if set
+  set(RUST_TOOLCHAIN_OVERRIDE "+${RUST_TOOLCHAIN}")
+elseif(NOT(RUST_TOOLCHAIN_DEFAULT STREQUAL ""))
   # Use environment variable if set
-  set(RUST_TOOLCHAIN_OVERRIDE ${RUST_TOOLCHAIN_DEFAULT})
+  set(RUST_TOOLCHAIN_OVERRIDE "+${RUST_TOOLCHAIN_DEFAULT}")
 else()
   unset(RUST_TOOLCHAIN_OVERRIDE)
+endif()
+
+if(RUST_TOOLCHAIN_OVERRIDE)
+  message(STATUS "Using rust toolchain: ${RUST_TOOLCHAIN_OVERRIDE}")
 endif()
 
 macro(ADD_RUST_FEATURE VAR FEATURE)
@@ -262,6 +271,7 @@ function(add_rust_library)
     file(REAL_PATH ${SRC_DEP} SRC_DEP_ABS)
     list(APPEND RUST_SOURCES_ABS ${SRC_DEP_ABS})
   endforeach()
+
   message(VERBOSE "  deps: ${RUST_SOURCES_ABS}")
 
   set_property(TARGET ${RUST_TARGET_NAME} PROPERTY RUST_DEPENDS ${RUST_SOURCES_ABS})
@@ -277,6 +287,7 @@ function(rust_copy_cargo_lock TARGET FILE)
 
   if(EXISTS ${FILE_ABS})
     get_property(RUST_PROJECT_PATH TARGET "${TARGET}-rust" PROPERTY RUST_PROJECT_PATH)
+
     if(NOT EXISTS ${RUST_PROJECT_PATH})
       message(FATAL_ERROR "Invalid rust project ${TARGET}")
     endif()
