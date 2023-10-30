@@ -38,8 +38,6 @@ struct SHDrawable {
 struct SHView {
   ViewPtr view;
 
-  ~SHView() { SHLOG_DEBUG("Destroying SHView"); }
-
   static std::vector<uint8_t> serialize(const SHView &);
   static SHView deserialize(const std::string_view &);
 };
