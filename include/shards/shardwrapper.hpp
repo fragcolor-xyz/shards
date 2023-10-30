@@ -212,12 +212,15 @@ template <class T> struct ShardWrapper {
     static_assert(has_activate<T>::value, "Shards must have an \"activate\" method.");
     if constexpr (has_activate<T>::value) {
       result->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) {
-        try {
-          return reinterpret_cast<ShardWrapper<T> *>(b)->shard.activate(ctx, *v);
-        } catch (const std::exception &e) {
-          shards::abortWire(ctx, e.what());
-          return SHVar{};
+        return [&]() __attribute__((no_sanitize_address)) {
+          try {
+            return reinterpret_cast<ShardWrapper<T> *>(b)->shard.activate(ctx, *v);
+          } catch (const std::exception &e) {
+            shards::abortWire(ctx, e.what());
+            return SHVar{};
+          }
         }
+        ();
       });
     }
 

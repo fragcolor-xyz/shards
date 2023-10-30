@@ -119,7 +119,7 @@ struct TidePool {
 
   void controllerWorker() {
     pushThreadName("TidePool controller");
-    
+
     // spawn workers first
     for (size_t i = 0; i < NumWorkers; ++i) {
       _workers.emplace_back(_queue, _scheduledCounter, _condMutex, _cond);
@@ -209,15 +209,16 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   }
 
   if (call.exp) {
-    try {
-      std::rethrow_exception(call.exp);
+    [&]() __attribute__((no_sanitize_address)) {
+      try {
+        std::rethrow_exception(call.exp);
+      } catch (std::exception e) {
+        context->cancelFlow(e.what());
+      } catch (...) {
+        context->cancelFlow("foreign exception failure");
+      }
     }
-    //  catch (std::exception e) {
-    //   context->cancelFlow(e.what());
-    // } 
-    catch (...) {
-      context->cancelFlow("foreign exception failure");
-    }
+    ();
   }
 
   return call.res;

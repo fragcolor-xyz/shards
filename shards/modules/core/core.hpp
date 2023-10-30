@@ -1121,7 +1121,7 @@ struct Ref : public SetBase {
 
   static SHParametersInfo parameters() { return getParamsInfo; }
 
-  void setParam(int index, const SHVar &value) {
+  void setParam(int index, const SHVar &value) { 
     if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
     else if (index == variableParamsInfoLen + 0) {

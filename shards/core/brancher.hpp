@@ -135,6 +135,9 @@ public:
   void initVariableReferences(SHContext *context) {
     for (const auto &req : _mergedRequirements._innerInfo) {
       std::string_view name = req.name; // calls strlen :(
+      if (name == "fbl/picking-img") {
+        int j = 0;
+      }
       if (!mesh->hasRef(ToSWL(name))) {
         SHLOG_TRACE("Branch: referencing required variable: {}", name);
         auto vp = referenceVariable(context, name);
@@ -150,10 +153,7 @@ public:
     }
   }
 
-  void cleanup() {
-    mesh->releaseAllRefs();
-    mesh->terminate();
-  }
+  void cleanup() { mesh->terminate(); }
 
   // Update the that the branched wires read
   void updateInputs(const SHVar &input = Var::Empty) {

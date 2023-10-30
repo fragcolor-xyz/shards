@@ -112,7 +112,6 @@ public:
   }
 
   void cleanup() {
-    brancher.mesh->releaseAllRefs();
     brancher.mesh->terminate();
     variableStorage.clear();
     variableState.clear();

@@ -101,7 +101,7 @@ endif()
 option(USE_ASAN "Use address sanitizer" OFF)
 
 if(USE_ASAN)
-  set(ASAN_FLAGS -DBOOST_USE_ASAN -fsanitize=address -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-omit-frame-pointer -g -O1)
+  set(ASAN_FLAGS -DBOOST_USE_ASAN -fsanitize=address -fno-optimize-sibling-calls -fsanitize-address-use-after-scope -fno-omit-frame-pointer -g -O0)
   list(APPEND EXTERNAL_CMAKE_CXX_FLAGS ${ASAN_FLAGS})
   list(APPEND EXTERNAL_CMAKE_C_FLAGS ${ASAN_FLAGS})
 endif()

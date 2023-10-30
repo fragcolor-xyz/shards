@@ -735,6 +735,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     }
     variables.clear();
 
+    for (auto ref : refs) {
+      shards::releaseVariable(ref.second);
+    }
+
     // whichever shard uses refs must clean them
     refs.clear();
 
@@ -825,13 +829,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     } else {
       return nullptr;
     }
-  }
-
-  void releaseAllRefs() {
-    for (auto ref : refs) {
-      shards::releaseVariable(ref.second);
-    }
-    refs.clear();
   }
 
   bool hasRef(const SHStringWithLen name) {
