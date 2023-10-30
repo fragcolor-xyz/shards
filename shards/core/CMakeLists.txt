@@ -8,6 +8,12 @@ set(core_SOURCES
 
 add_library(shards-core STATIC ${core_SOURCES})
 
+if(USE_ASAN)
+  target_compile_options(shards-core PUBLIC ${ASAN_FLAGS})
+  target_link_options(shards-core PUBLIC ${ASAN_FLAGS})
+  target_compile_definitions(shards-core PUBLIC SH_USE_ASAN)
+endif()
+
 target_include_directories(shards-core PUBLIC ${SHARDS_DIR}/include)
 target_include_directories(shards-core PUBLIC ${SHARDS_DIR})
 

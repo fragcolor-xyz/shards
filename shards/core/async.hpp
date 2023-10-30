@@ -211,9 +211,11 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   if (call.exp) {
     try {
       std::rethrow_exception(call.exp);
-    } catch (const std::exception &e) {
-      context->cancelFlow(e.what());
-    } catch (...) {
+    }
+    //  catch (std::exception e) {
+    //   context->cancelFlow(e.what());
+    // } 
+    catch (...) {
       context->cancelFlow("foreign exception failure");
     }
   }
