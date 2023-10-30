@@ -19,10 +19,10 @@ add_library(crsqlite-extension SHARED
   cr-sqlite/core/src/sqlite/sqlite3.c
   cr-sqlite/core/src/crsqlite.c
   cr-sqlite/core/src/util.c
-	cr-sqlite/core/src/tableinfo.c
-	cr-sqlite/core/src/changes-vtab.c
-	cr-sqlite/core/src/ext-data.c
-	cr-sqlite/core/src/get-table.c)
+  cr-sqlite/core/src/tableinfo.c
+  cr-sqlite/core/src/changes-vtab.c
+  cr-sqlite/core/src/ext-data.c
+  cr-sqlite/core/src/get-table.c)
 target_link_libraries(crsqlite-extension PUBLIC crsql_bundle-rust)
 target_compile_definitions(crsqlite-extension PUBLIC ${SQLITE_DEFINES})
 target_include_directories(crsqlite-extension PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
@@ -31,6 +31,16 @@ set_target_properties(crsqlite-extension PROPERTIES OUTPUT_NAME "crsqlite")
 set_target_properties(crsqlite-extension PROPERTIES PREFIX "")
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+
+if(IOS)
+  set_target_properties(crsqlite-extension PROPERTIES
+    FRAMEWORK TRUE
+    FRAMEWORK_VERSION C
+    MACOSX_FRAMEWORK_IDENTIFIER com.formabble.crsqlite
+    VERSION 1.0.0
+    SOVERSION 1.0.0
+  )
+endif()
 
 add_custom_command(TARGET crsqlite-extension
   POST_BUILD
