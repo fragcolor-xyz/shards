@@ -89,7 +89,7 @@ struct RendererShard {
 
     SHVar tmpOutput{};
 
-    if (renderer.begin(shContext, windowContext)) {
+    if (renderer.begin(windowContext)) {
       _contents.activate(shContext, input, tmpOutput);
       renderer.end();
     }

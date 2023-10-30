@@ -6,6 +6,7 @@
 
 // must go first
 #include <shards/shards.h>
+#include <type_traits>
 
 #if _WIN32
 #include <winsock2.h>
@@ -111,6 +112,7 @@ struct SHContext {
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};
   SHDuration next{};
+  entt::delegate<void()> mainThreadTask;
 
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
@@ -272,29 +274,66 @@ extern GlobalTracy &GetTracy();
 UntrackedVector<SHWire *> &getCoroWireStack();
 #endif
 
+void setCurrentContext(SHContext *ctx);
+SHContext *getCurrentContext();
+
 #if SH_DEBUG_THREAD_NAMES
-#define SH_CORO_RESUMED(_wire) \
-  { pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); }
-#define SH_CORO_SUSPENDED(_wire) \
-  { popThreadName(); }
-#define SH_CORO_EXT_RESUME(_wire)                                         \
-  {                                                                       \
-    pushThreadName(fmt::format("<resuming wire> \"{}\"", (_wire)->name)); \
-    TracyCoroEnter(wire);                                                 \
+#define SH_CORO_RESUMED(_wire)                                         \
+  {                                                                    \
+    shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); \
+    shards::setCurrentContext(_wire->context);                         \
+  }
+#define SH_CORO_SUSPENDED(_wire)        \
+  {                                     \
+    shards::popThreadName();            \
+    shards::setCurrentContext(nullptr); \
+  }
+#define SH_CORO_EXT_RESUME(_wire)                                                 \
+  {                                                                               \
+    shards::pushThreadName(fmt::format("<resuming wire> \"{}\"", (_wire)->name)); \
+    TracyCoroEnter(wire);                                                         \
   }
 #define SH_CORO_EXT_SUSPEND(_wire) \
   {                                \
-    popThreadName();               \
+    shards::popThreadName();       \
     TracyCoroExit(_wire);          \
   }
 #else
-#define SH_CORO_RESUMED(_)
-#define SH_CORO_SUSPENDED(_)
+#define SH_CORO_RESUMED(_wire) shards::setCurrentContext(_wire->context);
+#define SH_CORO_SUSPENDED(_) shards::setCurrentContext(nullptr);
 #define SH_CORO_EXT_RESUME(_) \
   { TracyCoroEnter(wire); }
 #define SH_CORO_EXT_SUSPEND(_) \
   { TracyCoroExit(_wire); }
 #endif
+
+template <typename DELEGATE> auto callOnMainThread(DELEGATE &func) -> decltype(func.action(), void()) {
+  SHContext *context = getCurrentContext();
+  if (context) {
+    if (unlikely(!context->continuation)) {
+      throw ActivationError("Trying to suspend a context without coroutine!");
+    }
+
+    assert(!context->mainThreadTask);
+    context->mainThreadTask.connect<&DELEGATE::action>(func);
+
+    SH_CORO_SUSPENDED(context->currentWire());
+    coroutineSuspend(*context->continuation);
+    SH_CORO_RESUMED(context->currentWire());
+
+    context->mainThreadTask.reset();
+  } else {
+    func.action();
+  }
+}
+
+template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMainThread(L &&func) {
+  struct Action {
+    L &lambda;
+    void action() { lambda(); }
+  } l{func};
+  callOnMainThread(l);
+}
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
   assert(!coroutineValid(wire->coro) && "Wire already prepared!");
@@ -333,6 +372,45 @@ inline void start(SHWire *wire, SHVar input = {}) {
   wire->state = SHWire::State::Starting;
 }
 
+inline bool isRunning(SHWire *wire) {
+  const auto state = wire->state.load(); // atomic
+  return state >= SHWire::State::Starting && state <= SHWire::State::IterationEnded;
+}
+
+template <bool IsCleanupContext = false> inline bool tick(SHWire *wire, SHDuration now) {
+  ZoneScoped;
+  ZoneName(wire->name.c_str(), wire->name.size());
+
+  bool canRun = false;
+  if constexpr (IsCleanupContext) {
+    assert(coroutineValid(wire->coro));
+    canRun = true;
+  } else {
+    if (!wire->context || !coroutineValid(wire->coro) || !(isRunning(wire)))
+      return false; // check if not null and bool operator also to see if alive!
+    canRun = now >= wire->context->next;
+  }
+
+  if (canRun) {
+    while (true) {
+      SH_CORO_EXT_RESUME(wire);
+      coroutineResume(wire->coro);
+      SH_CORO_EXT_SUSPEND(wire);
+
+      // if we have a task to run, run it and resume coro without yielding to caller
+      if (unlikely(wire->context && (bool)wire->context->mainThreadTask)) {
+        wire->context->mainThreadTask();
+        wire->context->mainThreadTask.reset();
+        // and continue in order to resume the coro
+      } else {
+        // Yield to caller if no main thread task
+        break;
+      }
+    }
+  }
+  return true;
+}
+
 inline bool stop(SHWire *wire, SHVar *result = nullptr) {
   if (wire->state == SHWire::State::Stopped) {
     // Clone the results if we need them
@@ -356,12 +434,7 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
       // after this resume wire->context is trash!
 
       // Another issue, if we resume from current context to current context we dead lock here!!
-
-      SH_CORO_EXT_RESUME(wire);
-
-      coroutineResume(wire->coro);
-
-      SH_CORO_EXT_SUSPEND(wire);
+      shards::tick<true>(wire, SHDuration{});
     }
 
     // delete also the coro ptr
@@ -385,26 +458,6 @@ inline bool stop(SHWire *wire, SHVar *result = nullptr) {
     cloneVar(*result, wire->finishedOutput);
 
   return res;
-}
-
-inline bool isRunning(SHWire *wire) {
-  const auto state = wire->state.load(); // atomic
-  return state >= SHWire::State::Starting && state <= SHWire::State::IterationEnded;
-}
-
-inline bool tick(SHWire *wire, SHDuration now) {
-  ZoneScoped;
-  ZoneName(wire->name.c_str(), wire->name.size());
-
-  if (!wire->context || !coroutineValid(wire->coro) || !(isRunning(wire)))
-    return false; // check if not null and bool operator also to see if alive!
-
-  if (now >= wire->context->next) {
-    SH_CORO_EXT_RESUME(wire);
-    coroutineResume(wire->coro);
-    SH_CORO_EXT_SUSPEND(wire);
-  }
-  return true;
 }
 
 inline bool hasEnded(SHWire *wire) { return wire->state > SHWire::State::IterationEnded; }

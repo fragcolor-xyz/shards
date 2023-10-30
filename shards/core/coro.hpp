@@ -1,14 +1,7 @@
 #ifndef D2E9D440_0C35_4166_9CF4_0902B462A99C
 #define D2E9D440_0C35_4166_9CF4_0902B462A99C
-
-#include <mutex>
-#include <shared_mutex>
 #include <optional>
-#include <thread>
 #include <cassert>
-#include <atomic>
-#include <condition_variable>
-#include <semaphore>
 #include <variant>
 #include <functional>
 
@@ -22,6 +15,13 @@
 // Defining SH_USE_THREAD_FIBER uses threads as fibers to aid in debugging
 // Set SHARDS_THREAD_FIBER=ON in cmake to enable
 #if SH_USE_THREAD_FIBER
+#include <boost/context/continuation_fcontext.hpp>
+#include <boost/thread.hpp>
+#include <mutex>
+#include <shared_mutex>
+#include <condition_variable>
+#include <semaphore>
+#include <atomic>
 namespace shards {
 // Dedicated-thread coroutine
 struct ThreadFiber {
@@ -32,7 +32,7 @@ private:
   std::atomic_bool finished;
   std::atomic_bool isRunning;
 
-  std::optional<std::thread> thread;
+  std::optional<boost::thread> thread;
 
 public:
   ThreadFiber() = default;
