@@ -7,7 +7,7 @@ use shards::core::register_legacy_shard;
 use shards::fourCharacterCode;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
-use shards::types::ShardsVar;
+use shards::types::{ShardsVar, Table, Var};
 use shards::types::Type;
 use shards::types::FRAG_CC;
 
@@ -182,4 +182,15 @@ pub fn register_shards() {
   register_legacy_shard::<TopPanel>();
 
   assert_eq!(WindowFlagsCC, 1701271366);
+}
+
+// lazy static table with experimental true set
+lazy_static! {
+  static ref EXPERIMENTAL_TRUE: Table = {
+    let mut table = Table::new();
+    let key = Var::ephemeral_string("experimental");
+    let value: Var = true.into();
+    table.insert(key, &value);
+    table
+  };
 }

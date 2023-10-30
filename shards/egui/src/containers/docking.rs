@@ -1,4 +1,5 @@
 use super::DockArea;
+use super::EXPERIMENTAL_TRUE;
 use super::Tab;
 use crate::util;
 use crate::CONTEXTS_NAME;
@@ -17,6 +18,7 @@ use shards::types::Parameters;
 use shards::types::Seq;
 use shards::types::ShardRef;
 use shards::types::ShardsVar;
+use shards::types::Table;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
@@ -65,6 +67,10 @@ impl Default for Tab {
 }
 
 impl LegacyShard for Tab {
+  fn properties(&mut self) -> Option<&Table> {
+      Some(&EXPERIMENTAL_TRUE)
+  }
+
   fn registerName() -> &'static str
   where
     Self: Sized,

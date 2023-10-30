@@ -5406,6 +5406,13 @@ impl TableVar {
       it
     }
   }
+
+  pub fn as_table(&self) -> &Table {
+    unsafe {
+      let tab_ptr = self.0.payload.__bindgen_anon_1.tableValue.opaque as *const Table;
+      &*tab_ptr
+    }
+  }
 }
 
 // Table / SHTable

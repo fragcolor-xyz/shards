@@ -240,6 +240,18 @@ Shard *createShard(std::string_view name) {
   shards::setInlineShardId(shard, name);
   shard->nameLength = uint32_t(name.length());
 
+#ifndef NDEBUG
+  auto props = shard->properties(shard);
+  if (props) {
+    assert(props->opaque && props->api && "Shard properties are not initialized!");
+    auto experimental = props->api->tableGet(*props, Var("experimental"));
+    if (experimental) {
+      assert(experimental->valueType == SHType::Bool);
+      SHLOG_WARNING("Experimental shard used: {}", name);
+    }
+  }
+#endif
+
   return shard;
 }
 
