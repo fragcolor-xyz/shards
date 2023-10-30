@@ -1537,22 +1537,6 @@ inline void collectAllRequiredVariables(const SHExposedTypesInfo &exposed, Expos
   (collectRequiredVariables(exposed, out, std::forward<TArgs>(args)), ...);
 }
 
-struct CoroAwareBarrier {
-  std::mutex mutex;
-
-  bool acquire(SHContext *context) {
-    while (!mutex.try_lock()) {
-      auto res = shards::suspend(context, 0);
-      if (res != SHWireState::Continue) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  void release() { mutex.unlock(); }
-};
-
 }; // namespace shards
 
 #endif // SH_CORE_FOUNDATION
