@@ -111,7 +111,6 @@ using OutputBuffer = boost::lockfree::spsc_queue<OutputFrame>;
 struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandler>, public IInputHandler, public debug::IDebug {
   CapturingBrancher brancher;
   InputThreadInputQueue inputQueue{32};
-  CapturedVariables variableState;
 
   DetachedInputContext inputContext;
   InputStack::Item lastInputStackState;
@@ -130,6 +129,9 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   CapturingBrancher::CloningContext brancherCloningContext;
 
   InputThreadHandler(OutputBuffer &outputBuffer, int priority) : outputBuffer(outputBuffer), priority(priority) {}
+  ~InputThreadHandler() {
+    brancher.cleanup();
+  }
 
   const char *getDebugName() override { return name.c_str(); }
 
@@ -146,7 +148,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
   void warmup(const VariableRefs &initialVariableRefs, const InputStack::Item &inputStackState) {
     inputContextVar = Var::Object(&inputContext, IInputContext::Type);
-    inputContextVar.flags = SHVAR_FLAGS_REF_COUNTED;
+    inputContextVar.flags = SHVAR_FLAGS_FOREIGN | SHVAR_FLAGS_REF_COUNTED;
     inputContextVar.refcount = 1;
     brancher.mesh()->addRef(ToSWL(RequiredInputContext::variableName()), &inputContextVar);
 
@@ -235,8 +237,7 @@ private:
 
         // Consume last item
         inputQueue.consume_one([&](InputThreadInput &input) {
-          variableState = std::move(input.variables);
-          brancher.applyCapturedVariables(variableState);
+          brancher.applyCapturedVariables(std::move(input.variables));
           lastInputStackState = input.inputStackState;
         });
       }

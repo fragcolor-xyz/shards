@@ -14,6 +14,7 @@ use shards::core::register_shard;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
 use shards::shardsc;
+use shards::types::ClonedVar;
 use shards::types::common_type;
 use shards::types::Context;
 use shards::types::ExposedInfo;
@@ -68,6 +69,7 @@ struct ContextShard {
   #[shard_warmup]
   input_context: ParamVar,
   input_translator: bindings::InputTranslator,
+  last_output: ClonedVar,
 }
 
 impl Default for ContextShard {
@@ -87,6 +89,7 @@ impl Default for ContextShard {
         )
       },
       input_translator: bindings::InputTranslator::new(),
+      last_output: ClonedVar::default(),
     }
   }
 }
@@ -195,13 +198,15 @@ impl Shard for ContextShard {
       );
     }
 
-    Ok(Var::new_ref_counted(
+    self.last_output.assign(&Var::new_ref_counted(
       UIOutput {
         full_output,
         ctx: self.host.get_context().egui_ctx.clone(),
       },
       &UI_OUTPUT_TYPE,
-    ))
+    ));
+
+    Ok(self.last_output.0)
   }
 }
 
@@ -257,7 +262,8 @@ impl Shard for RenderShard {
     let seq = input.as_seq()?;
     let num_ui_outputs = seq.len();
     for (idx, var) in seq.iter().enumerate() {
-      let ui_output = unsafe { &*Var::from_ref_counted_object::<UIOutput>(&var, &UI_OUTPUT_TYPE).unwrap() };
+      let ui_output =
+        unsafe { &*Var::from_ref_counted_object::<UIOutput>(&var, &UI_OUTPUT_TYPE).unwrap() };
 
       // Only render the most recent output
       if idx == (num_ui_outputs - 1) {

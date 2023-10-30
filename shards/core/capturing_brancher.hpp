@@ -2,6 +2,7 @@
 #define C33BD856_265F_46BD_9B9C_EF38EBF8E36B
 
 #include "brancher.hpp"
+#include "shards/shards.h"
 #include <shards/modules/core/serialization.hpp>
 #include <string_view>
 #include <unordered_map>
@@ -50,11 +51,14 @@ struct CapturingBrancher {
 
   Brancher brancher;
   std::unordered_map<std::string, SHVar> variableStorage;
+  CapturedVariables variableState;
 
 private:
   bool _variablesApplied{};
 
 public:
+  ~CapturingBrancher() { cleanup(); }
+
   auto &mesh() { return brancher.mesh; }
   auto &wires() { return brancher.wires; }
 
@@ -80,19 +84,21 @@ public:
   }
 
   // WARNING: Need to keep variables alive during the liftime of this brancher
-  void applyCapturedVariables(CapturedVariables &variables) {
+  void applyCapturedVariables(CapturedVariables&& _variables) {
+    variableState = std::move(_variables);
+
     if (!_variablesApplied) {
       // Initialize references here
-      for (auto &vr : variables) {
+      for (auto &vr : variableState) {
         SHVar &var = variableStorage[vr.first];
-        var.flags = SHVAR_FLAGS_REF_COUNTED;
+        var.flags = SHVAR_FLAGS_FOREIGN | SHVAR_FLAGS_REF_COUNTED;
         var.refcount = 1;
         brancher.mesh->addRef(ToSWL(vr.first), &var);
       }
       _variablesApplied = true;
     }
 
-    for (auto &vr : variables) {
+    for (auto &vr : variableState) {
       auto ref = brancher.mesh->getRefIfExists(ToSWL(vr.first));
       assert(ref != nullptr);
       assignVariableValue(*ref, vr.second);
@@ -106,8 +112,10 @@ public:
   }
 
   void cleanup() {
+    brancher.mesh->releaseAllRefs();
     brancher.mesh->terminate();
     variableStorage.clear();
+    variableState.clear();
   }
 
   void activate() { brancher.activate(); }
