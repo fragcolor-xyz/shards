@@ -65,7 +65,7 @@ public:
 
   const std::vector<shards::input::Message> &getOutputMessages() const { return outputMessages; }
 #endif
-
+    
   const std::vector<egui::InputEvent> &getTranslatedEvents() const { return events; }
 
   // Manualy push an event into the result

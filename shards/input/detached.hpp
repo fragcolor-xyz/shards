@@ -48,10 +48,8 @@ public:
         virtualInputEvents.push_back(TextCompositionEvent{.text = ievent.text});
       }
     } else if (event.type == SDL_KEYDOWN) {
-      if (event.key.repeat > 0 && state.isKeyHeld(event.key.keysym.sym)) {
-        virtualInputEvents.push_back(
-            KeyEvent{.key = event.key.keysym.sym, .pressed = true, .modifiers = state.modifiers, .repeat = event.key.repeat});
-      }
+      virtualInputEvents.push_back(
+          KeyEvent{.key = event.key.keysym.sym, .pressed = true, .modifiers = state.modifiers, .repeat = event.key.repeat});
     } else if (event.type == SDL_TEXTINPUT) {
       auto &ievent = event.text;
       if (imeComposing) {
@@ -81,7 +79,7 @@ public:
   //     apply(event, true /* hasFocus */);
   //   }
   //  });
-  using UpdateApplyFn = decltype([](const ConsumableEvent &consumableEvent, bool hasFocus){});
+  using UpdateApplyFn = decltype([](const ConsumableEvent &consumableEvent, bool hasFocus) {});
   template <typename T> std::enable_if_t<std::is_invocable_v<T, UpdateApplyFn>> update(T callback) {
     swapBuffers();
 
@@ -102,7 +100,7 @@ public:
     state = newState;
   }
 
-  void update(InputState& state) {
+  void update(InputState &state) {
     beginUpdate();
     endUpdate(state);
   }
@@ -116,7 +114,7 @@ public:
     swapBuffers();
 
     synthesizeKeyUpEvents(inputState);
-    synthesizeKeyDownEvents(inputState);
+    // synthesizeKeyDownEvents(inputState);
     synthesizeMouseButtonEvents(inputState);
     synthesizeMouseEvents(inputState);
 
