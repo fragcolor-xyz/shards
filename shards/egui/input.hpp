@@ -40,6 +40,8 @@ private:
   float2 windowToEguiScale;
   float4 mappedWindowRegion;
 
+  bool pointerButtonState{};
+
 #ifndef RUST_BINDGEN
   std::vector<shards::input::Message> outputMessages;
 #endif
@@ -51,7 +53,7 @@ public:
 
 #ifndef RUST_BINDGEN
   // Setup input mapping from a window to a specific subregion
-  void setupInputRegion(const shards::input::InputRegion &region, const int4& mappedWindowRegion);
+  void setupInputRegion(const shards::input::InputRegion &region, const int4 &mappedWindowRegion);
 
   // Resets the conversion output
   void begin(double time, float deltaTime);
@@ -65,7 +67,7 @@ public:
 
   const std::vector<shards::input::Message> &getOutputMessages() const { return outputMessages; }
 #endif
-    
+
   const std::vector<egui::InputEvent> &getTranslatedEvents() const { return events; }
 
   // Manualy push an event into the result

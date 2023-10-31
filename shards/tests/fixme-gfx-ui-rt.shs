@@ -29,30 +29,26 @@
     GFX.View(View: view-transform) >= view
   })
 
-  Inputs.Detached(
-    window-ctx Name: "Camera" Priority: 1
-    Contents: {
-      view-transform | FreeCamera > view-transform
-    }
-  )
+  Inputs.Detached(window-ctx {
+    view-transform | FreeCamera
+  } Then: {
+    RTake(0) > view-transform
+  } Name: "Camera" Priority: 1)
 
   time | Math.Add(@timestep) > time
 
   @spin-transform(time @f3(-0.6 0 0))
   GFX.Drawable(Mesh: mesh Params: {baseColor: @f4(1 0 1 1)}) | GFX.Draw(queue)
 
-  Inputs.Detached(
-    window-ctx Name: "Child UI" Priority: 2
-    Contents: {
-      UI({
-        ; UI Content
-        UI.Window(Contents: {
-          "This is UI inside a render target" | UI.Label
-          UI.TextField(Variable: text1 Multiline: true)
-        })
-      }) | UI.Render(ui-queue)
-    }
-  )
+  Inputs.Detached(window-ctx {
+    UI({
+      ; UI Content
+      UI.Window(Contents: {
+        "This is UI inside a render target" | UI.Label
+        UI.TextField(Variable: text1 Multiline: true)
+      })
+    })
+  } Then: { UI.Render(ui-queue) } Name: "Child UI" Priority: 2)
 
   ; This renders to the render target that was pushed in the outer wire
   GFX.Render(Steps: render-steps1 View: view)
@@ -78,30 +74,26 @@
     GFX.View(View: view-transform) >= view
   })
 
-  Inputs.Detached(
-    window-ctx Name: "Camera" Priority: 1
-    Contents: {
-      view-transform | FreeCamera > view-transform
-    }
-  )
+  Inputs.Detached(window-ctx {
+    view-transform | FreeCamera
+  } Then: {
+    RTake(0) > view-transform
+  } Name: "Camera" Priority: 1)
 
   time | Math.Add(@timestep) > time
 
   @spin-transform(time @f3(-0.6 0 0))
   GFX.Drawable(Mesh: mesh Params: {baseColor: @f4(0 1 0 1)}) | GFX.Draw(queue)
 
-  Inputs.Detached(
-    window-ctx Name: "Child UI" Priority: 2
-    Contents: {
-      UI({
-        ; UI Content
-        UI.Window(Contents: {
-          "This is UI inside a render target" | UI.Label
-          UI.TextField(Variable: text1 Multiline: true)
-        })
-      }) | UI.Render(ui-queue)
-    }
-  )
+  Inputs.Detached(window-ctx {
+    UI({
+      ; UI Content
+      UI.Window(Contents: {
+        "This is UI inside a render target" | UI.Label
+        UI.TextField(Variable: text1 Multiline: true)
+      })
+    })
+  } Then: { UI.Render(ui-queue) } Name: "Child UI" Priority: 2)
 
   ; This renders to the render target that was pushed in the outer wire
   GFX.Render(Steps: render-steps1 View: view)
@@ -120,60 +112,61 @@
 })
 
 @wire(test-wire {
-  Once({
-    ; UI Setup
-    GFX.DrawQueue >= ui-draw-queue
-    GFX.UIPass(ui-draw-queue) >> render-steps
-
-    "Something" >= text
-  })
+  ; UI Setup
+  GFX.DrawQueue >= ui-draw-queue
+  GFX.UIPass(ui-draw-queue) >> render-steps
 
   GFX.MainWindow(
     Title: "SDL Window" Width: 1280 Height: 720
     DetachRenderer: true) >= window-ctx
 
-  GFX.Renderer(
-    window-ctx {
-      GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb) >= rt-0
-      GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb) >= rt-1
+  GFX.Renderer(window-ctx {
+    GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb) >= rt-0
+    GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb) >= rt-1
 
-      Inputs.Detached(
-        window-ctx Name: "Main" Priority: 0
-        Contents: {
-          UI({
-            ; UI Content
-            UI.Window(Contents: {
-              UI.Property(UIProperty::RemainingSpace) >= rt-region
-              @compute-rt-region-16-9() > rt-region
+    ; {Position: @f3(0 0 20) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
+    ; GFX.View(view-transform) = view
 
-              GFX.RenderInto(Textures: {color: rt-0} WindowRegion: rt-region Contents: {Step(inner-0)})
-              rt-0 | UI.RenderTarget
+    Inputs.Detached(window-ctx {
+      UI({
+        ; UI Content
+        UI.Window(Contents: {
+          UI.Property(UIProperty::RemainingSpace) >= rt-region
+          @compute-rt-region-16-9() > rt-region
 
-              UI.Separator
-              UI.TextField(Variable: text Multiline: true)
-            })
+          ; GFX.RenderInto(Textures: {color: rt-0} WindowRegion: rt-region Contents: {Step(inner-0)})
+          ; rt-0 | UI.RenderTarget
+          "Hello" | UI.Label
 
-            UI.Window(Title: "Second Window" Contents: {
-              "Header" | UI.Label | UI.Separator
+          UI.Separator
+          UI.TextField(Variable: text Multiline: true)
+        })
 
-              UI.Property(UIProperty::RemainingSpace) >= rt-region
-              @compute-rt-region-16-9() > rt-region
+        UI.Window(Title: "Second Window" Contents: {
+          "Header" | UI.Label | UI.Separator
 
-              GFX.RenderInto(Textures: {color: rt-1} WindowRegion: rt-region Contents: {Step(inner-1)})
-              rt-1 | UI.RenderTarget
+          UI.Property(UIProperty::RemainingSpace) >= rt-region
+          @compute-rt-region-16-9() > rt-region
 
-              UI.Separator | "Footer" | UI.Label
-            })
+          "Hello" | UI.Label
+          "Hello" | UI.Label
+          "Hello" | UI.Label
 
-            Inputs.DebugUI
-          }) | UI.Render(ui-draw-queue)
-        }
-      )
+          ; GFX.RenderInto(Textures: {color: rt-1} WindowRegion: rt-region Contents: {Step(inner-1)})
+          ; rt-1 | UI.RenderTarget
 
-      GFX.Render(Steps: render-steps)
-    }
-  )
+          UI.Separator | "Footer" | UI.Label
+        })
+
+        Inputs.DebugUI
+      })
+    } Then: {
+      UI.Render(ui-draw-queue)
+    } Name: "Main" Priority: 0)
+
+    GFX.Render(Steps: render-steps)
+  })
 } Looped: true)
 
 @schedule(root test-wire)
-@run(root FPS: 120 Iterations: 100) | Assert.Is(true)
+@run(root FPS: 120) | Assert.Is(true)

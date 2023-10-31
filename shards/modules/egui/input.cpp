@@ -1,9 +1,12 @@
 #include "../../core/platform.hpp"
+#include "egui_types.hpp"
 #include "input.hpp"
 #include <gfx/linalg.hpp>
 #include <SDL.h>
 #include <SDL_keycode.h>
 #include <gfx/window.hpp>
+#include "input/events.hpp"
+#include "input/state.hpp"
 #include "renderer.hpp"
 #include <map>
 
@@ -140,7 +143,25 @@ bool EguiInputTranslator::translateEvent(const EguiInputTranslatorArgs &args, co
   std::visit(
       [&](auto &arg) {
         using T = std::decay_t<decltype(arg)>;
-        if constexpr (std::is_same_v<T, PointerMoveEvent>) {
+        if constexpr (std::is_same_v<T, PointerTouchEvent>) {
+          // if (arg.pressed && (!args.canReceiveInput || event.isConsumed()))
+          //   return;
+          // auto &oevent = newEvent(InputEventType::Touch).touch;
+          // oevent.pos = egui::Pos2{arg.pos.x, arg.pos.y};
+          // oevent.deviceId = egui::TouchDeviceId{1};
+          // oevent.id = egui::TouchId{uint64_t(arg.index)};
+          // oevent.phase = arg.pressed ? egui::TouchPhase::Start : egui::TouchPhase::End;
+          // oevent.force = arg.pressure;
+        } else if constexpr (std::is_same_v<T, PointerTouchMoveEvent>) {
+          // if (!args.canReceiveInput || event.isConsumed())
+          //   return;
+          // auto &oevent = newEvent(InputEventType::Touch).touch;
+          // oevent.pos = egui::Pos2{arg.pos.x, arg.pos.y};
+          // oevent.deviceId = egui::TouchDeviceId{1};
+          // oevent.id = egui::TouchId{uint64_t(arg.index)};
+          // oevent.phase = egui::TouchPhase::Move;
+          // oevent.force = arg.pressure;
+        } else if constexpr (std::is_same_v<T, PointerMoveEvent>) {
           if (!args.canReceiveInput || event.isConsumed())
             return;
           auto &oevent = newEvent(InputEventType::PointerMoved).pointerMoved;
@@ -152,6 +173,11 @@ bool EguiInputTranslator::translateEvent(const EguiInputTranslatorArgs &args, co
             oevent.button = translateMouseButton(arg.index);
             oevent.pressed = arg.pressed;
             oevent.modifiers = translateModifierKeys(arg.modifiers);
+          }
+          if constexpr (!shards::input::Pointer::HasPersistentPointer) {
+            if (!arg.pressed) {
+              (void)newEvent(InputEventType::PointerGone).pointerGone;
+            }
           }
         } else if constexpr (std::is_same_v<T, ScrollEvent>) {
           if (!args.canReceiveInput || event.isConsumed())
