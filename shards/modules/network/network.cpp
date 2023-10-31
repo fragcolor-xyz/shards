@@ -1074,6 +1074,11 @@ struct PeerID : public PeerBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
+  static inline Parameters params{
+      {"Peer", SHCCSTR("The optional explicit peer to identify."), {CoreInfo::NoneType, Client::PeerObjectType}}};
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto peer = getPeer(context);
     return Var(reinterpret_cast<entt::id_type>(peer));
@@ -1083,6 +1088,11 @@ struct PeerID : public PeerBase {
 struct GetPeer : public PeerBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Client::PeerType; }
+
+  // override parent
+  static SHParametersInfo parameters() { return SHParametersInfo{}; }
+  void setParam(int index, const SHVar &value) {}
+  SHVar getParam(int index) { return Var::Empty; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto peer = getPeer(context);
