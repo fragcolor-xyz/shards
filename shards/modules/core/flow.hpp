@@ -505,18 +505,21 @@ struct Await : public BaseSubFlow {
     return BaseSubFlow::compose(dataCopy);
   }
 
-  std::atomic_bool running{false};
+  std::mutex mutex;
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    bool locked = false;
+    DEFER({
+      if (locked)
+        mutex.unlock();
+    });
     do {
-      bool expected = false;
-      if (running.compare_exchange_strong(expected, true))
+      locked = mutex.try_lock();
+      if (locked)
         break;
       else if (shards::suspend(context, 0) != SHWireState::Continue)
         return Var::Empty; // return as there is some error or so going on
-      // SHLOG_TRACE("Await: waiting for the previous await to finish");
-    } while (running);
-    DEFER(running = false);
+    } while (true);
     return awaitne(
         context,
         [&] {
