@@ -18,7 +18,7 @@ namespace shards {
 namespace DB {
 struct Connection {
   sqlite3 *db;
-  CoroAwareBarrier barrier;
+  std::mutex mutex;
 
   Connection(const char *path) {
     if (sqlite3_open(path, &db) != SQLITE_OK) {
@@ -52,7 +52,7 @@ struct Connection {
       auto exeDirPath = path(GetGlobals().ExePath.c_str()).parent_path();
       auto relPath = exeDirPath / path_;
       auto str = relPath.string();
-      if(sqlite3_load_extension(db, str.c_str(), nullptr, &errorMsg) != SQLITE_OK) {
+      if (sqlite3_load_extension(db, str.c_str(), nullptr, &errorMsg) != SQLITE_OK) {
         throw ActivationError(errorMsg);
       }
     }
@@ -106,7 +106,12 @@ struct Query : public Base {
   void cleanup() {
     PARAM_CLEANUP();
 
-    prepared.reset();
+    if (_connection) {
+      std::scoped_lock<std::mutex> l(_connection->mutex);
+      prepared.reset();
+    } else {
+      assert(!prepared && "prepared should be null if _connection is null");
+    }
   }
 
   std::unique_ptr<Statement> prepared;
@@ -128,14 +133,11 @@ struct Query : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
 
-    if (!_connection->barrier.acquire(context)) {
-      return input; // this is a cancellation/stop etc
-    }
-    DEFER({ _connection->barrier.release(); });
-
     return awaitne(
         context,
         [&]() -> SHVar {
+          std::scoped_lock<std::mutex> l(_connection->mutex);
+
           if (!prepared) {
             prepared.reset(new Statement(_connection->get(), _query.payload.stringValue)); // _query is full terminated cos cloned
           }
@@ -268,34 +270,26 @@ struct Transaction : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
 
-    {
-      if (!_connection->barrier.acquire(context)) {
-        return input; // this is a cancellation/stop etc
-      }
-      DEFER({ _connection->barrier.release(); });
+    await(
+        context,
+        [&] {
+          std::scoped_lock<std::mutex> l(_connection->mutex);
 
-      await(
-          context,
-          [&] {
-            auto rc = sqlite3_exec(_connection->get(), "BEGIN;", nullptr, nullptr, nullptr);
-            if (rc != SQLITE_OK) {
-              throw ActivationError(sqlite3_errmsg(_connection->get()));
-            }
-          },
-          []() {});
-    }
+          auto rc = sqlite3_exec(_connection->get(), "BEGIN;", nullptr, nullptr, nullptr);
+          if (rc != SQLITE_OK) {
+            throw ActivationError(sqlite3_errmsg(_connection->get()));
+          }
+        },
+        []() {});
 
     SHVar output{};
     auto state = _queries.activate(context, input, output);
 
-    if (!_connection->barrier.acquire(context)) {
-      return input; // this is a cancellation/stop etc
-    }
-    DEFER({ _connection->barrier.release(); });
-
     await(
         context,
         [&] {
+          std::scoped_lock<std::mutex> l(_connection->mutex);
+
           if (state != SHWireState::Continue) {
             // likely something went wrong! lets rollback.
             auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
@@ -339,14 +333,11 @@ struct LoadExtension : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
 
-    if (!_connection->barrier.acquire(context)) {
-      return input; // this is a cancellation/stop etc
-    }
-    DEFER({ _connection->barrier.release(); });
-
     return awaitne(
         context,
         [&] {
+          std::scoped_lock<std::mutex> l(_connection->mutex);
+
           std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
           _connection->loadExtension(extPath);
           return input;
@@ -362,13 +353,7 @@ struct RawQuery : public Base {
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dbName));
 
-  void cleanup() {
-    PARAM_CLEANUP();
-
-    prepared.reset();
-  }
-
-  std::unique_ptr<Statement> prepared;
+  void cleanup() { PARAM_CLEANUP(); }
 
   void warmup(SHContext *context) {
     if (_dbName.valueType != SHType::None) {
@@ -386,14 +371,11 @@ struct RawQuery : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
 
-    if (!_connection->barrier.acquire(context)) {
-      return input; // this is a cancellation/stop etc
-    }
-    DEFER({ _connection->barrier.release(); });
-
     return awaitne(
         context,
         [&] {
+          std::scoped_lock<std::mutex> l(_connection->mutex);
+
           char *errMsg = nullptr;
           std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
           int rc = sqlite3_exec(_connection->get(), query.c_str(), nullptr, nullptr, &errMsg);

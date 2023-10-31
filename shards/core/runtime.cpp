@@ -74,9 +74,14 @@ SHOptionalString getCompiledCompressedString(uint32_t id) {
   static std::remove_pointer_t<decltype(Globals::CompressedStrings)> CompiledCompressedStrings;
   if (GetGlobals().CompressedStrings == nullptr)
     GetGlobals().CompressedStrings = &CompiledCompressedStrings;
-  auto &val = CompiledCompressedStrings[id];
-  val.crc = id; // make sure we return with crc to allow later lookups!
-  return val;
+  auto it = CompiledCompressedStrings.find(id);
+  if(it != CompiledCompressedStrings.end()) {
+    auto val = it->second;
+    val.crc = id; // make sure we return with crc to allow later lookups!
+    return val;
+  } else {
+    return SHOptionalString{nullptr, 0};
+  }
 }
 
 #include <shards/core/shccstrings.hpp>
