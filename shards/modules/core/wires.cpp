@@ -2186,6 +2186,8 @@ struct DoMany : public TryMany {
 struct Branch {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static inline Types VarSeqTypes{CoreInfo::AnyVarType, CoreInfo::StringType};
+  static inline Type VarSeqType = Type::SeqOf(VarSeqTypes);
 
   static SHParametersInfo parameters() {
     static Parameters params{
@@ -2200,13 +2202,15 @@ struct Branch {
          {CoreInfo::BoolType}},
         {"Mesh",
          SHCCSTR("Optional external mesh to use for this branch. If not provided, a new one will be created."),
-         {CoreInfo::NoneType, SHMesh::MeshType}}};
+         {CoreInfo::NoneType, SHMesh::MeshType}},
+    };
     return params;
   }
 
 private:
   OwnedVar _wires{Var::Empty};
   Brancher _brancher;
+  OwnedVar _capture;
 
 public:
   void setParam(int index, const SHVar &value) {

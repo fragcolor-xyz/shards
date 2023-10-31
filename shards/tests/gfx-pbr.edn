@@ -84,4 +84,4 @@
               (GFX.Render .steps .view))))
 
 (schedule Root test-wire)
-(if (run Root timestep 200) nil (throw "Root tick failed"))
+(if (run Root timestep 300) nil (throw "Root tick failed"))

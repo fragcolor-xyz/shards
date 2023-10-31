@@ -55,8 +55,8 @@ public:
       }
     }
 
-    // Merge deep requirements
     if (captureAll) {
+      // Merge deep requirements
       for (auto &avail : data.shared) {
         SHLOG_TRACE("Branch: adding variable to requirements: {}", avail.name);
         _mergedRequirements.push_back(avail);
@@ -74,6 +74,8 @@ public:
     // Copy shared
     _shared = ExposedInfo(data.shared);
     mesh->instanceData.shared = (SHExposedTypesInfo)_shared;
+
+    mesh->instanceData.shared = (SHExposedTypesInfo)_mergedRequirements;
   }
 
   // Calls initVariableReferences, then schedule (in that order)

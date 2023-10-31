@@ -70,4 +70,21 @@
 			</CustomListItems>
 		</Expand>
 	</Type>
+	<Type Name="SHExposedTypesInfo">
+		<DisplayString>{len} exposed types</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Direction>Forward</Direction>
+				<Rank>1</Rank>
+				<Size>len</Size>
+				<ValuePointer>elements</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	<Type Name="shards::RequiredContextVariable&lt;*&gt;">
+		<DisplayString>{($T1*)(*variable).payload.objectValue}</DisplayString>
+		 <Expand>
+        <ExpandedItem>($T1*)(*variable).payload.objectValue</ExpandedItem>
+    </Expand>
+	</Type>
 </AutoVisualizer>

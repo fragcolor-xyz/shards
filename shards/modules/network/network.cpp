@@ -70,6 +70,7 @@ struct NetworkBase {
   AnyStorage<NetworkContext> _sharedNetworkContext;
 
   std::optional<udp::socket> _socket;
+  std::mutex _socketMutex;
 
   ExposedInfo _required;
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -477,6 +478,9 @@ struct Server : public NetworkBase {
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     NetworkPeer *p = (NetworkPeer *)user;
     Server *s = (Server *)p->user;
+
+    std::scoped_lock<std::mutex> l(s->_socketMutex); // not ideal but for now we gotta do it
+
     s->_socket->async_send_to(boost::asio::buffer(buf, len), *p->endpoint,
                               [](boost::system::error_code ec, std::size_t bytes_sent) {
                                 if (ec) {
@@ -524,6 +528,9 @@ struct Server : public NetworkBase {
 
   void do_receive() {
     thread_local std::vector<uint8_t> recv_buffer(0xFFFF);
+
+    std::scoped_lock<std::mutex> l(_socketMutex); // not ideal but for now we gotta do it
+
     _socket->async_receive_from(
         boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
         [this](boost::system::error_code ec, std::size_t bytes_recvd) {
@@ -860,6 +867,9 @@ struct Client : public NetworkBase {
 
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
     Client *c = (Client *)user;
+
+    std::scoped_lock<std::mutex> l(c->_socketMutex); // not ideal but for now we gotta do it
+
     c->_socket->async_send_to(boost::asio::buffer(buf, len), c->_server,
                               [c](boost::system::error_code ec, std::size_t bytes_sent) {
                                 if (ec) {
@@ -867,6 +877,7 @@ struct Client : public NetworkBase {
                                   c->_peer.networkError = ec;
                                 }
                               });
+
     return 0;
   }
 
@@ -879,6 +890,9 @@ struct Client : public NetworkBase {
 
   void do_receive() {
     thread_local std::vector<uint8_t> recv_buffer(0xFFFF);
+
+    std::scoped_lock<std::mutex> l(_socketMutex); // not ideal but for now we gotta do it
+
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _server,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
                                   if (ec) {
@@ -1060,6 +1074,11 @@ struct PeerID : public PeerBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
+  static inline Parameters params{
+      {"Peer", SHCCSTR("The optional explicit peer to identify."), {CoreInfo::NoneType, Client::PeerObjectType}}};
+
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto peer = getPeer(context);
     return Var(reinterpret_cast<entt::id_type>(peer));
@@ -1069,6 +1088,11 @@ struct PeerID : public PeerBase {
 struct GetPeer : public PeerBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Client::PeerType; }
+
+  // override parent
+  static SHParametersInfo parameters() { return SHParametersInfo{}; }
+  void setParam(int index, const SHVar &value) {}
+  SHVar getParam(int index) { return Var::Empty; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto peer = getPeer(context);

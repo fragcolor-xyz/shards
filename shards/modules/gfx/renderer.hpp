@@ -1,6 +1,7 @@
 #ifndef BED776D7_7318_4FA7_92C1_CC63BC286F1A
 #define BED776D7_7318_4FA7_92C1_CC63BC286F1A
 
+#include "core/runtime.hpp"
 #include "gfx.hpp"
 #include "shards/shards.h"
 #include "window.hpp"
@@ -88,10 +89,10 @@ struct ShardsRenderer {
     _graphicsRendererContext = GraphicsRendererContext{};
   }
 
-  bool begin(SHContext *shContext, shards::WindowContext &windowContext) {
+  bool begin(shards::WindowContext &windowContext) {
     // Need to lazily init since we depend on renderer
     if (!_graphicsContext.context) {
-      initRenderer(windowContext.window);
+      shards::callOnMainThread([&] { initRenderer(windowContext.window); });
     }
 
     auto &window = _graphicsContext.window;
@@ -105,7 +106,7 @@ struct ShardsRenderer {
 
     gfx::int2 windowSize = window->getDrawableSize();
     try {
-      context->resizeMainOutputConditional(windowSize);
+      shards::callOnMainThread([&] { context->resizeMainOutputConditional(windowSize); });
     } catch (std::exception &err) {
       SHLOG_WARNING("Swapchain creation failed: {}. Frame skipped.", err.what());
       return false;
