@@ -586,6 +586,8 @@ struct Server : public NetworkBase {
             }
 
             {
+              auto now = SHClock::now();
+
               std::scoped_lock pLock(currentPeer->recvMutex);
 
               auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
@@ -594,7 +596,12 @@ struct Server : public NetworkBase {
                 _stopWireQueue.push(currentPeer->wire.get());
               }
 
-              currentPeer->_lastContact = SHClock::now();
+              if (now > (currentPeer->_lastContact + SHDuration(_timeoutSecs))) {
+                SHLOG_DEBUG("Peer {}:{} timed out", _sender.address().to_string(), _sender.port());
+                _stopWireQueue.push(currentPeer->wire.get());
+              }
+
+              currentPeer->_lastContact = now;
             }
 
             // keep receiving
@@ -661,17 +668,9 @@ struct Server : public NetworkBase {
     gcWires();
 
     {
-      auto now = SHClock::now();
-
       std::shared_lock<std::shared_mutex> lock(peersMutex);
 
       for (auto &[end, peer] : _end2Peer) {
-        if (now > (peer->_lastContact + SHDuration(_timeoutSecs))) {
-          SHLOG_DEBUG("Peer {} timed out", end.address().to_string());
-          _stopWireQueue.push(peer->wire.get());
-          continue;
-        }
-
         setPeer(context, *peer);
 
         if (!peer->wire->warmedUp) {

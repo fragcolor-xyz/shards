@@ -4,7 +4,7 @@
 use crate::util::{
   apply_widget_visuals, into_color, into_margin, into_rounding, into_shadow, into_stroke, into_vec2,
 };
-use crate::PARENTS_UI_NAME;
+use crate::{CONTEXTS_NAME, PARENTS_UI_NAME};
 use shards::core::{register_enum, register_shard};
 use shards::shard::Shard;
 use shards::types::{common_type, TableVar};
@@ -111,8 +111,12 @@ lazy_static! {
 struct StyleShard {
   #[shard_required]
   required: ExposedTypes,
+
   #[shard_warmup]
   parents: ParamVar,
+
+  #[shard_warmup]
+  contexts: ParamVar,
 
   #[shard_param(
     "OverrideTextStyle",
@@ -300,6 +304,7 @@ impl Default for StyleShard {
     Self {
       required: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
       override_text_style: ParamVar::default(),
       font_id: ParamVar::default(),
       text_styles: ParamVar::default(),
@@ -386,13 +391,24 @@ impl Shard for StyleShard {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
+    crate::util::require_context(&mut self.required);
     crate::util::require_parents(&mut self.required);
     Ok(self.output_types()[0])
   }
 
   fn activate(&mut self, ctx: &Context, _input: &Var) -> Result<Var, &str> {
-    let ui = crate::util::get_parent_ui(self.parents.get())?;
-    let style: &mut egui::Style = ui.style_mut();
+    let mut global_style = None;
+    let style = if let Ok(ui) = crate::util::get_parent_ui(self.parents.get()) {
+      ui.style_mut()
+    } else {
+      global_style = Some(
+        (*crate::util::get_current_context(&self.contexts)?
+          .egui_ctx
+          .style())
+        .clone(),
+      );
+      global_style.as_mut().unwrap()
+    };
 
     when_set(&self.animation_time, |v| {
       Ok(style.animation_time = v.try_into()?)
@@ -443,7 +459,7 @@ impl Shard for StyleShard {
     })?;
 
     // Spacing stuff
-    let spacing = &mut ui.style_mut().spacing;
+    let spacing = &mut style.spacing;
 
     when_set(&self.item_spacing, |v| {
       Ok(spacing.item_spacing = into_vec2(v)?)
@@ -518,7 +534,7 @@ impl Shard for StyleShard {
     })?;
 
     // Visuals stuff
-    let visuals = &mut ui.style_mut().visuals;
+    let visuals = &mut style.visuals;
 
     when_set(&self.dark_mode, |v| Ok(visuals.dark_mode = v.try_into()?))?;
 
@@ -627,6 +643,12 @@ impl Shard for StyleShard {
       Ok(visuals.popup_shadow = into_shadow(v, ctx)?)
     })?;
 
+    if let Some(global_style) = global_style.take() {
+      crate::util::get_current_context(&self.contexts)?
+        .egui_ctx
+        .set_style(global_style);
+    }
+
     Ok(Var::default())
   }
 }
@@ -636,8 +658,12 @@ impl Shard for StyleShard {
 struct WidgetStyleShard {
   #[shard_required]
   required: ExposedTypes,
+
   #[shard_warmup]
   parents: ParamVar,
+
+  #[shard_warmup]
+  contexts: ParamVar,
 
   #[shard_param("NonInteractive", "The style of a widget that you cannot interact with.", [common_type::none, common_type::any_table, common_type::any_table_var])]
   non_interactive: ParamVar,
@@ -660,6 +686,7 @@ impl Default for WidgetStyleShard {
     Self {
       required: ExposedTypes::new(),
       parents: ParamVar::new_named(PARENTS_UI_NAME),
+      contexts: ParamVar::new_named(CONTEXTS_NAME),
       non_interactive: ParamVar::default(),
       inactive: ParamVar::default(),
       hovered: ParamVar::default(),
@@ -693,13 +720,26 @@ impl Shard for WidgetStyleShard {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
+    crate::util::require_context(&mut self.required);
     crate::util::require_parents(&mut self.required);
     Ok(self.output_types()[0])
   }
 
   fn activate(&mut self, ctx: &Context, _input: &Var) -> Result<Var, &str> {
-    let ui: &mut egui::Ui = crate::util::get_parent_ui(self.parents.get())?;
-    let visuals = &mut ui.style_mut().visuals;
+    let mut global_style = None;
+    let style = if let Ok(ui) = crate::util::get_parent_ui(self.parents.get()) {
+      ui.style_mut()
+    } else {
+      global_style = Some(
+        (*crate::util::get_current_context(&self.contexts)?
+          .egui_ctx
+          .style())
+        .clone(),
+      );
+      global_style.as_mut().unwrap()
+    };
+
+    let visuals = &mut style.visuals;
 
     when_set(&self.non_interactive, |v| {
       apply_widget_visuals(&mut visuals.widgets.noninteractive, v, ctx)
@@ -720,6 +760,12 @@ impl Shard for WidgetStyleShard {
     when_set(&self.open, |v| {
       apply_widget_visuals(&mut visuals.widgets.open, v, ctx)
     })?;
+
+    if let Some(global_style) = global_style.take() {
+      crate::util::get_current_context(&self.contexts)?
+        .egui_ctx
+        .set_style(global_style);
+    }
 
     Ok(Var::default())
   }
