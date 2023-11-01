@@ -14,7 +14,6 @@ The UI context object passes its input to the inner UI.
 ```clj
 ;; any input here
 (UI
- .ui-draw-queue
  (-> ;; same input here
      (UI.Window)))
 ```
@@ -29,7 +28,6 @@ E.g. `(UI.Window)`, `(UI.BottomPanel)`, `(UI.CentralPanel)`, `(UI.LeftPanel)`, `
 ```clj
 ;; any input here
 (UI
- .ui-draw-queue
  (-> ;; same input here
      (UI.Window
       (-> ;; same input here

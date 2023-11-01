@@ -5,7 +5,6 @@
    (GFX.DrawQueue) >= .ui-draw-queue
    (GFX.UIPass .ui-draw-queue) >> .render-steps)
   (UI
-   .ui-draw-queue
    (UI.CentralPanel
     (UI.Frame
      :InnerMargin (float4 10) :OuterMargin (float4 0) :Rounding (float4 5)

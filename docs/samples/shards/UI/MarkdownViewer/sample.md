@@ -16,7 +16,6 @@
      (GFX.DrawQueue) >= .ui-draw-queue
      (GFX.UIPass .ui-draw-queue) >> .render-steps)
     (UI
-     .ui-draw-queue
      (UI.TopPanel
       :Contents
       (->

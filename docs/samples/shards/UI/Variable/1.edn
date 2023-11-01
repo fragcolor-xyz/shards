@@ -7,7 +7,6 @@
   (Setup
    (float4 -1 0 0 1) >= .my-var)
   (UI
-   .ui-draw-queue
    (UI.CentralPanel
     (UI.Variable .my-var)))
 
