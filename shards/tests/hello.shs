@@ -195,4 +195,4 @@ WhenNot(@foo-predicate(-1) {Msg("More than -2")})
 ; test String.Starts(With: ...)
 "Hello World!" | String.Starts(With: "Hello") | Assert.Is(true) | Log
 ; also test that doesn't start with
-"Hello World!" | String.Starts(With: "World") | Assert.Is(false) | Log
+"Hello World!" | LogType("Type logging test") | String.Starts(With: "World") | Assert.Is(false) | Log

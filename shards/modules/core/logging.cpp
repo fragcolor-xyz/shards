@@ -71,12 +71,36 @@ struct Log : public LoggingBase {
     return input;
   }
 
-private:
   static inline Parameters _params = {{"Prefix", SHCCSTR("The message to prefix to the logged output."), {CoreInfo::StringType}},
                                       {"Level", SHCCSTR("The level of logging."), {Enums::LogLevelEnumInfo::Type}}};
 
   std::string _prefix;
   Enums::LogLevel _level{Enums::LogLevel::Info};
+};
+
+struct LogType : public Log {
+  static SHOptionalString help() {
+    return SHCCSTR("Logs the type of the passed variable to the console (along with an optional prefix string).");
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto current = context->wireStack.back();
+    auto id = findId(context);
+    if (_prefix.size() > 0) {
+      if (id != entt::null) {
+        SHLOG_LEVEL((int)_level, "[{} {}] {}: {}", current->name, id, _prefix, type2Name(input.valueType));
+      } else {
+        SHLOG_LEVEL((int)_level, "[{}] {}: {}", current->name, _prefix, type2Name(input.valueType));
+      }
+    } else {
+      if (id != entt::null) {
+        SHLOG_LEVEL((int)_level, "[{} {}] {}", current->name, id, type2Name(input.valueType));
+      } else {
+        SHLOG_LEVEL((int)_level, "[{}] {}", current->name, type2Name(input.valueType));
+      }
+    }
+    return input;
+  }
 };
 
 struct Msg : public LoggingBase {
@@ -305,6 +329,7 @@ private:
 
 SHARDS_REGISTER_FN(logging) {
   REGISTER_SHARD("Log", Log);
+  REGISTER_SHARD("LogType", LogType);
   REGISTER_SHARD("Msg", Msg);
   REGISTER_SHARD("CaptureLog", CaptureLog);
 }
