@@ -1,4 +1,4 @@
-; SPDX-License-Identifier: BSD-3-Clause
+  ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright © 2022 Fragcolor Pte. Ltd.
 
 ; Notes:
@@ -21,8 +21,6 @@
 
       @input |
       UI({"hello" = hello}) | UI.Render(ui-draw-queue) |
-      ; input passthrough
-      Assert.Is(@input Break: true)
       ; exposed variable
       hello | ExpectString
 

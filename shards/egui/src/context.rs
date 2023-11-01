@@ -14,8 +14,8 @@ use shards::core::register_shard;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
 use shards::shardsc;
-use shards::types::ClonedVar;
 use shards::types::common_type;
+use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
@@ -51,6 +51,7 @@ lazy_static! {
   static ref UI_OUTPUT_TYPES: Vec<Type> = vec![UI_OUTPUT_TYPE];
   static ref UI_OUTPUT_SEQ_TYPE: Type = Type::seq(&UI_OUTPUT_TYPES);
   static ref UI_OUTPUT_SEQ_TYPES: Vec<Type> = vec![*UI_OUTPUT_SEQ_TYPE];
+  static ref UI_RENDER_INPUT_TYPES: Vec<Type> = vec![*UI_OUTPUT_SEQ_TYPE, UI_OUTPUT_TYPE];
 }
 
 #[derive(shards::shard)]
@@ -233,11 +234,11 @@ impl Default for RenderShard {
 #[shards::shard_impl]
 impl Shard for RenderShard {
   fn input_types(&mut self) -> &Types {
-    &UI_OUTPUT_SEQ_TYPES
+    &UI_RENDER_INPUT_TYPES
   }
 
   fn output_types(&mut self) -> &Types {
-    &UI_OUTPUT_SEQ_TYPES
+    &UI_RENDER_INPUT_TYPES
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -254,36 +255,52 @@ impl Shard for RenderShard {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
-    Ok(self.output_types()[0])
+    Ok(data.inputType)
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {
-    let queue_var = self.queue.get();
-    let seq = input.as_seq()?;
-    let num_ui_outputs = seq.len();
-    for (idx, var) in seq.iter().enumerate() {
-      let ui_output =
-        unsafe { &*Var::from_ref_counted_object::<UIOutput>(&var, &UI_OUTPUT_TYPE).unwrap() };
-
-      // Only render the most recent output
-      if idx == (num_ui_outputs - 1) {
-        let draw_scale = ui_output.ctx.pixels_per_point();
-        let queue = unsafe {
-          bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar)
-            as *const bindings::gfx_DrawQueuePtr
-        };
-        self
-          .renderer
-          .render(&ui_output.ctx, &ui_output.full_output, queue, draw_scale)?;
-      } else {
-        // Apply texture updates only, skip rendering
-        self
-          .renderer
-          .apply_texture_updates_only(&ui_output.full_output)?;
+    if input.is_seq() {
+      let input_seq = input.as_seq()?;
+      let num_ui_outputs = input_seq.len();
+      for (idx, var) in input_seq.iter().enumerate() {
+        self.render_output_var(idx == (num_ui_outputs - 1), &var)?
       }
+    } else {
+      self.render_output_var(true,  input)?
     }
 
     Ok(*input)
+  }
+}
+
+impl RenderShard {
+  fn render_output_var(
+    &mut self,
+    full_render: bool,
+    input: &Var,
+  ) -> Result<(), &'static str> {
+    let queue_var = self.queue.get();
+
+    let ui_output =
+      unsafe { &*Var::from_ref_counted_object::<UIOutput>(&input, &UI_OUTPUT_TYPE).unwrap() };
+
+    // Only render the most recent output
+    if full_render {
+      let draw_scale = ui_output.ctx.pixels_per_point();
+      let queue = unsafe {
+        bindings::gfx_getDrawQueueFromVar(queue_var as *const _ as *const bindings::SHVar)
+          as *const bindings::gfx_DrawQueuePtr
+      };
+      self
+        .renderer
+        .render(&ui_output.ctx, &ui_output.full_output, queue, draw_scale)?;
+    } else {
+      // Apply texture updates only, skip rendering
+      self
+        .renderer
+        .apply_texture_updates_only(&ui_output.full_output)?;
+    }
+    Ok(())
   }
 }
 
