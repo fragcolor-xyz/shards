@@ -19,11 +19,15 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern "C" fn shards_process_args(argc: i32, argv: *const *const c_char) -> i32 {
+pub extern "C" fn shards_process_args(
+  argc: i32,
+  argv: *const *const c_char,
+  no_cancellation: bool,
+) -> i32 {
   let cancellation_token = new_cancellation_token();
 
   #[cfg(not(target_arch = "wasm32"))]
-  {
+  if !no_cancellation {
     let cancellation_token_1 = cancellation_token.clone();
     let r = ctrlc::set_handler(move || {
       cancellation_token_1.store(true, atomic::Ordering::Relaxed);

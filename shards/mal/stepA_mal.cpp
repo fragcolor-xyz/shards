@@ -112,7 +112,7 @@ int main(int argc, const char *argv[]) {
 
   shards::pushThreadName("Main Thread");
 
-  auto result = shards_process_args(argc, const_cast<char **>(argv));
+  auto result = shards_process_args(argc, const_cast<char **>(argv), false);
   if (result != 99) // 99 triggers our old main
     return result;
 
