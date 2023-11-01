@@ -8,6 +8,8 @@
 #include <shards/modules/gfx/gfx.hpp>
 #include "../shards_types.hpp"
 #include "../window.hpp"
+#include "core/foundation.hpp"
+#include "shards/shards.h"
 
 using namespace shards::input;
 
@@ -44,7 +46,12 @@ struct GizmosContextShard {
   int2 _cursorPosition{};
   bool _mouseButtonState{};
 
+  ExposedInfo _innerExposedInfo;
   ExposedInfo _exposedInfo;
+
+  SHExposedTypesInfo exposedVariables() {
+    return SHExposedTypesInfo(_exposedInfo);
+  }
 
   void warmup(SHContext *context) {
     _inputContext.warmup(context);
@@ -80,13 +87,21 @@ struct GizmosContextShard {
     if (!_view.isVariable())
       throw ComposeError("View not set");
 
-    _exposedInfo = ExposedInfo(data.shared);
-    _exposedInfo.push_back(GizmoContext::VariableInfo);
+    _innerExposedInfo = ExposedInfo(data.shared);
+    _innerExposedInfo.push_back(GizmoContext::VariableInfo);
 
     SHInstanceData contentInstanceData = data;
     contentInstanceData.inputType = CoreInfo::BoolType; // pressed or not
-    contentInstanceData.shared = SHExposedTypesInfo(_exposedInfo);
-    return _content.compose(contentInstanceData).outputType;
+    contentInstanceData.shared = SHExposedTypesInfo(_innerExposedInfo);
+
+    auto cr = _content.compose(contentInstanceData);
+
+    _exposedInfo.clear();
+    for (auto &exposed : cr.exposedInfo) {
+      _exposedInfo.push_back(exposed);
+    }
+
+    return cr.outputType;
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
