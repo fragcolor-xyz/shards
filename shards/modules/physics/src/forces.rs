@@ -90,8 +90,8 @@ impl Shard for Impulse {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
 
     Ok(())
   }
@@ -158,8 +158,8 @@ impl Shard for Force {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
 
     Ok(())
   }
@@ -226,8 +226,8 @@ impl Shard for AngularImpulse {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
 
     Ok(())
   }
@@ -294,8 +294,8 @@ impl Shard for Torque {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
 
     Ok(())
   }

@@ -126,11 +126,11 @@ impl LegacyShard for ProgressBar {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.desired_width.cleanup();
-    self.overlay.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.desired_width.cleanup(ctx);
+    self.overlay.cleanup(ctx);
 
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

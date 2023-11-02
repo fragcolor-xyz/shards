@@ -119,10 +119,10 @@ impl LegacyShard for Hyperlink {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.style.cleanup();
-    self.label.cleanup();
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.style.cleanup(ctx);
+    self.label.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

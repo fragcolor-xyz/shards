@@ -78,8 +78,8 @@ impl LegacyShard for Save {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.instance.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.instance.cleanup(ctx);
     Ok(())
   }
 
@@ -153,8 +153,8 @@ impl LegacyShard for Restore {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.instance.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.instance.cleanup(ctx);
     Ok(())
   }
 

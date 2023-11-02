@@ -113,9 +113,9 @@ impl LegacyShard for Space {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.amount.cleanup();
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.amount.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

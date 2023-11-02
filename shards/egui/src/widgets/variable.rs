@@ -181,9 +181,9 @@ impl LegacyShard for Variable {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.variable.cleanup();
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.variable.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }
@@ -270,8 +270,8 @@ impl LegacyShard for WireVariable {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.parents.cleanup(ctx);
     Ok(())
   }
 

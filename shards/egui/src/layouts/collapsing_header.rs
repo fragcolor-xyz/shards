@@ -182,16 +182,16 @@ impl LegacyShard for CollapsingHeader {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.defaultOpen.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.defaultOpen.cleanup(ctx);
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
     if !self.header.is_empty() {
-      self.header.cleanup();
+      self.header.cleanup(ctx);
     }
-    self.text.cleanup();
-    self.parents.cleanup();
+    self.text.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

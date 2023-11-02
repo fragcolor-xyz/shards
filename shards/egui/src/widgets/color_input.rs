@@ -173,10 +173,10 @@ impl LegacyShard for ColorInput {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.variable.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.variable.cleanup(ctx);
 
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

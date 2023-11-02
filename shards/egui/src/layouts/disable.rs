@@ -155,13 +155,13 @@ impl LegacyShard for Disable {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.disable.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.disable.cleanup(ctx);
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
 
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

@@ -114,10 +114,10 @@ impl LegacyShard for Spinner {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.size.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.size.cleanup(ctx);
 
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

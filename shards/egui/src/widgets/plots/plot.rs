@@ -208,16 +208,16 @@ impl LegacyShard for Plot {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.legend.cleanup();
-    self.data_aspect.cleanup();
-    self.view_aspect.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.legend.cleanup(ctx);
+    self.data_aspect.cleanup(ctx);
+    self.view_aspect.cleanup(ctx);
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
 
-    self.plot_context.cleanup();
-    self.parents.cleanup();
+    self.plot_context.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

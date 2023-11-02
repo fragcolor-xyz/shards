@@ -120,8 +120,8 @@ macro_rules! add_signer {
         Ok(())
       }
 
-      fn cleanup(&mut self) -> Result<(), &str> {
-        self.key.cleanup();
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.key.cleanup(ctx);
         Ok(())
       }
 
@@ -330,9 +330,9 @@ macro_rules! add_verifier {
         Ok(())
       }
 
-      fn cleanup(&mut self) -> Result<(), &str> {
-        self.key.cleanup();
-        self.msg.cleanup();
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.key.cleanup(ctx);
+        self.msg.cleanup(ctx);
         Ok(())
       }
 

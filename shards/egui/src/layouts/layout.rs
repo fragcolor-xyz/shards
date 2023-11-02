@@ -427,30 +427,30 @@ impl LegacyShard for LayoutConstructor {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.scroll_area_enable_scrolling.cleanup();
-    self.scroll_area_auto_shrink_height.cleanup();
-    self.scroll_area_auto_shrink_width.cleanup();
-    self.scroll_area_max_height.cleanup();
-    self.scroll_area_max_width.cleanup();
-    self.scroll_area_min_height.cleanup();
-    self.scroll_area_min_width.cleanup();
-    self.scroll_visibility.cleanup();
-    self.enable_vertical_scroll_bar.cleanup();
-    self.enable_horizontal_scroll_bar.cleanup();
-    self.frame.cleanup();
-    self.disabled.cleanup();
-    self.fill_height.cleanup();
-    self.fill_width.cleanup();
-    self.max_size.cleanup();
-    self.min_size.cleanup();
-    self.cross_justify.cleanup();
-    self.cross_align.cleanup();
-    self.main_justify.cleanup();
-    self.main_align.cleanup();
-    self.main_wrap.cleanup();
-    self.main_direction.cleanup();
-    self.parent.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.scroll_area_enable_scrolling.cleanup(ctx);
+    self.scroll_area_auto_shrink_height.cleanup(ctx);
+    self.scroll_area_auto_shrink_width.cleanup(ctx);
+    self.scroll_area_max_height.cleanup(ctx);
+    self.scroll_area_max_width.cleanup(ctx);
+    self.scroll_area_min_height.cleanup(ctx);
+    self.scroll_area_min_width.cleanup(ctx);
+    self.scroll_visibility.cleanup(ctx);
+    self.enable_vertical_scroll_bar.cleanup(ctx);
+    self.enable_horizontal_scroll_bar.cleanup(ctx);
+    self.frame.cleanup(ctx);
+    self.disabled.cleanup(ctx);
+    self.fill_height.cleanup(ctx);
+    self.fill_width.cleanup(ctx);
+    self.max_size.cleanup(ctx);
+    self.min_size.cleanup(ctx);
+    self.cross_justify.cleanup(ctx);
+    self.cross_align.cleanup(ctx);
+    self.main_justify.cleanup(ctx);
+    self.main_align.cleanup(ctx);
+    self.main_wrap.cleanup(ctx);
+    self.main_direction.cleanup(ctx);
+    self.parent.cleanup(ctx);
 
     Ok(())
   }
@@ -981,16 +981,16 @@ impl LegacyShard for Layout {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.fill_height.cleanup();
-    self.fill_width.cleanup();
-    self.max_size.cleanup();
-    self.min_size.cleanup();
-    self.layout_class.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.fill_height.cleanup(ctx);
+    self.fill_width.cleanup(ctx);
+    self.max_size.cleanup(ctx);
+    self.min_size.cleanup(ctx);
+    self.layout_class.cleanup(ctx);
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

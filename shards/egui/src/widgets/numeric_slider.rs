@@ -221,13 +221,13 @@ macro_rules! impl_ui_slider {
         Ok(())
       }
 
-      fn cleanup(&mut self) -> Result<(), &str> {
-        self.max.cleanup();
-        self.min.cleanup();
-        self.variable.cleanup();
-        self.style.cleanup();
-        self.label.cleanup();
-        self.parents.cleanup();
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.max.cleanup(ctx);
+        self.min.cleanup(ctx);
+        self.variable.cleanup(ctx);
+        self.style.cleanup(ctx);
+        self.label.cleanup(ctx);
+        self.parents.cleanup(ctx);
 
         Ok(())
       }
@@ -474,13 +474,13 @@ macro_rules! impl_ui_n_slider {
         Ok(())
       }
 
-      fn cleanup(&mut self) -> Result<(), &str> {
-        self.max.cleanup();
-        self.min.cleanup();
-        self.variable.cleanup();
-        self.style.cleanup();
-        self.label.cleanup();
-        self.parents.cleanup();
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.max.cleanup(ctx);
+        self.min.cleanup(ctx);
+        self.variable.cleanup(ctx);
+        self.style.cleanup(ctx);
+        self.label.cleanup(ctx);
+        self.parents.cleanup(ctx);
 
         Ok(())
       }

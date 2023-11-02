@@ -156,12 +156,12 @@ impl LegacyShard for Columns {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     for s in &mut self.shards {
-      s.cleanup();
+      s.cleanup(ctx);
     }
-    self.contents.cleanup();
-    self.parents.cleanup();
+    self.contents.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

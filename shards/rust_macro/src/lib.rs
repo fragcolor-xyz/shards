@@ -387,7 +387,7 @@ fn default_warmable(fld: &Field) -> Warmable {
   let ident: &Ident = fld.ident.as_ref().expect("Expected field name");
   Warmable {
     warmup: quote! {self.#ident.warmup(context)?;},
-    cleanup: quote! {self.#ident.cleanup();},
+    cleanup: quote! {self.#ident.cleanup(context);},
   }
 }
 
@@ -403,7 +403,7 @@ fn to_warmable(
     if last_type_id == "ParamVar" {
       return Some(Warmable {
         warmup: quote! {self.#ident.warmup(context);},
-        cleanup: quote! {self.#ident.cleanup();},
+        cleanup: quote! {self.#ident.cleanup(context);},
       });
     } else if is_param_set {
       if param_set_has_custom_interface {
@@ -411,7 +411,7 @@ fn to_warmable(
       } else {
         return Some(Warmable {
           warmup: quote! {self.#ident.warmup_helper(context)?;},
-          cleanup: quote! {self.#ident.cleanup_helper();},
+          cleanup: quote! {self.#ident.cleanup_helper(context);},
         });
       }
     } else if last_type_id == "ShardsVar" {
@@ -795,7 +795,7 @@ fn process_param_set_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Error
         Ok(())
       }
 
-      fn cleanup_helper(&mut self) -> std::result::Result<(), &'static str> {
+      fn cleanup_helper(&mut self, context: std::option::Option<&shards::types::Context>) -> std::result::Result<(), &'static str> {
         #( #cleanups )*
         Ok(())
       }
@@ -889,7 +889,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
       }
 
 
-      fn cleanup_helper(&mut self) -> std::result::Result<(), &'static str> {
+      fn cleanup_helper(&mut self, context: std::option::Option<&shards::types::Context>) -> std::result::Result<(), &'static str> {
         #( #cleanups )*
         Ok(())
       }

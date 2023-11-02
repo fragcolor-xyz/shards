@@ -102,8 +102,8 @@ impl Shard for ToImage {
     self.warmup_helper(context)?;
     Ok(())
   }
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
     Ok(())
   }
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {

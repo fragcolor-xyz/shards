@@ -205,12 +205,12 @@ impl LegacyShard for RadioButton {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.style.cleanup();
-    self.variable.cleanup();
-    self.label.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.style.cleanup(ctx);
+    self.variable.cleanup(ctx);
+    self.label.cleanup(ctx);
 
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

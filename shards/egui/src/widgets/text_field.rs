@@ -212,10 +212,10 @@ impl LegacyShard for TextField {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.justify_width.cleanup();
-    self.variable.cleanup();
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.justify_width.cleanup(ctx);
+    self.variable.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

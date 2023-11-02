@@ -201,17 +201,17 @@ macro_rules! impl_panel {
         Ok(())
       }
 
-      fn cleanup(&mut self) -> Result<(), &str> {
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
         if !self.contents.is_empty() {
-          self.contents.cleanup();
+          self.contents.cleanup(ctx);
         }
-        self.$max_size.cleanup();
-        self.$min_size.cleanup();
-        self.$default_size.cleanup();
-        self.resizable.cleanup();
+        self.$max_size.cleanup(ctx);
+        self.$min_size.cleanup(ctx);
+        self.$default_size.cleanup(ctx);
+        self.resizable.cleanup(ctx);
 
-        self.parents.cleanup();
-        self.instance.cleanup();
+        self.parents.cleanup(ctx);
+        self.instance.cleanup(ctx);
 
         Ok(())
       }
@@ -416,13 +416,13 @@ impl LegacyShard for CentralPanel {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
 
-    self.parents.cleanup();
-    self.instance.cleanup();
+    self.parents.cleanup(ctx);
+    self.instance.cleanup(ctx);
 
     Ok(())
   }

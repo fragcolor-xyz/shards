@@ -74,8 +74,8 @@ impl Shard for AutoGridShard {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
 
     Ok(())
   }

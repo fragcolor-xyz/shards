@@ -193,10 +193,10 @@ impl LegacyShard for CodeEditor {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.language.cleanup();
-    self.variable.cleanup();
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.language.cleanup(ctx);
+    self.variable.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

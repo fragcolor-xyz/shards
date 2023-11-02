@@ -192,9 +192,9 @@ impl RequestBase {
     Ok(())
   }
 
-  fn _cleanup(&mut self) {
-    self.url.cleanup();
-    self.headers.cleanup();
+  fn _cleanup(&mut self, ctx: Option<&Context>) {
+    self.url.cleanup(ctx);
+    self.headers.cleanup(ctx);
     self.client = None;
   }
 
@@ -305,8 +305,8 @@ macro_rules! get_like {
         self.rb._warmup(context)
       }
 
-      fn cleanup(&mut self) -> Result<(), &str> {
-        self.rb._cleanup();
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.rb._cleanup(ctx);
         Ok(())
       }
 
@@ -413,8 +413,8 @@ macro_rules! post_like {
         self.rb._warmup(context)
       }
 
-      fn cleanup(&mut self) -> Result<(), &str> {
-        self.rb._cleanup();
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.rb._cleanup(ctx);
         Ok(())
       }
 

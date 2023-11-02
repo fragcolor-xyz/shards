@@ -120,11 +120,11 @@ impl LegacyShard for Label {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.parents.cleanup(ctx);
 
-    self.style.cleanup();
-    self.wrap.cleanup();
+    self.style.cleanup(ctx);
+    self.wrap.cleanup(ctx);
 
     Ok(())
   }
