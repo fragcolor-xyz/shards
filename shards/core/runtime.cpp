@@ -1275,6 +1275,16 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
 }
 
 SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
+  // compare exchange and then assert we were not composing
+  bool expected = false;
+  auto composeState = const_cast<SHWire*>(wire)->composing.compare_exchange_strong(expected, true);
+  if (!composeState) {
+    SHLOG_ERROR("Wire {} is already being composed", wire->name);
+    throw ComposeError("Wire is already being composed");
+  }
+  // defer reset compose state
+  DEFER(const_cast<SHWire*>(wire)->composing.store(false));
+
   // settle input type of wire before compose
   if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
     // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
