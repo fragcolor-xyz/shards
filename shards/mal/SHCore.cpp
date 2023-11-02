@@ -163,10 +163,7 @@ public:
     SHLOG_TRACE("Created a SHWire - {}", name);
     auto wire = SHWire::make(name);
     m_wire = wire->newRef();
-    {
-      std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
-      shards::GetGlobals().GlobalWires[name] = wire;
-    }
+    { shards::GetGlobals().GlobalWires[name] = wire; }
   }
 
   malSHWire(const std::shared_ptr<SHWire> &wire) : m_wire(wire->newRef()) { SHLOG_TRACE("Loaded a SHWire - {}", wire->name); }
@@ -180,7 +177,6 @@ public:
     // remove from globals
     auto cp = SHWire::sharedFromRef(m_wire);
     {
-      std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
       auto it = shards::GetGlobals().GlobalWires.find(cp.get()->name);
       if (it != shards::GetGlobals().GlobalWires.end() && it->second == cp) {
         shards::GetGlobals().GlobalWires.erase(it);
@@ -387,8 +383,6 @@ void installSHCore(const malEnvPtr &env, const char *exePath, const char *script
 
   std::shared_ptr<Observer> obs;
   setupObserver(obs, env);
-
-  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
 
   static bool initDoneOnce = false;
   if (!initDoneOnce) {
@@ -1811,7 +1805,6 @@ BUILTIN("set-global-wire") {
   auto first = *argsBegin;
   if (const malSHWire *v = DYNAMIC_CAST(malSHWire, first)) {
     auto wire = SHWire::sharedFromRef(v->value());
-    std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
     shards::GetGlobals().GlobalWires[wire->name] = wire;
     return mal::trueValue();
   }
@@ -1823,7 +1816,6 @@ BUILTIN("unset-global-wire") {
   auto first = *argsBegin;
   if (const malSHWire *v = DYNAMIC_CAST(malSHWire, first)) {
     auto wire = SHWire::sharedFromRef(v->value());
-    std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
     auto it = shards::GetGlobals().GlobalWires.find(wire->name);
     if (it != shards::GetGlobals().GlobalWires.end()) {
       shards::GetGlobals().GlobalWires.erase(it);
@@ -2059,7 +2051,6 @@ BUILTIN("override-root-path") {
   CHECK_ARGS_IS(1);
   ARG(malString, value);
 
-  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
   shards::GetGlobals().RootPath = value->ref();
   fs::current_path(value->ref());
   return mal::nilValue();
@@ -2383,7 +2374,6 @@ BUILTIN("setenv") {
 }
 
 BUILTIN("settings-try-set-min") {
-  std::scoped_lock lock(GetGlobals().GlobalMutex);
   CHECK_ARGS_IS(2);
   ARG(malString, key);
   ARG(malSHVar, value);
@@ -2402,7 +2392,6 @@ BUILTIN("settings-try-set-min") {
 }
 
 BUILTIN("settings-try-set-max") {
-  std::scoped_lock lock(GetGlobals().GlobalMutex);
   CHECK_ARGS_IS(2);
   ARG(malString, key);
   ARG(malSHVar, value);
@@ -2431,7 +2420,6 @@ BUILTIN("hasShard?") {
 }
 
 BUILTIN("shards") {
-  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
   malValueVec v;
   for (auto [name, _] : shards::GetGlobals().ShardsRegister) {
     v.emplace_back(mal::string(std::string(name)));
@@ -2441,7 +2429,6 @@ BUILTIN("shards") {
 }
 
 BUILTIN("enums") {
-  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
   malValueVec v;
   for (auto [_, ti] : shards::GetGlobals().EnumTypesRegister) {
     v.emplace_back(mal::string(std::string(ti.name)));
@@ -2582,7 +2569,6 @@ BUILTIN("enum-info") {
 #ifndef SH_COMPRESSED_STRINGS
 BUILTIN("export-strings") {
   assert(shards::GetGlobals().CompressedStrings);
-  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
   malValueVec strs;
   for (auto &[crc, str] : *shards::GetGlobals().CompressedStrings) {
     if (crc != 0) {
@@ -2600,7 +2586,6 @@ static std::unordered_map<uint32_t, std::string> strings_storage;
 
 BUILTIN("decompress-strings") {
 #ifdef SH_COMPRESSED_STRINGS
-  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
   if (!shards::GetGlobals().CompressedStrings) {
     throw shards::SHException("String storage was null");
   }
@@ -2895,10 +2880,7 @@ SHLISP_API __cdecl SHBool shLispAddToEnv(void *env, const char *str, SHVar input
 void setupObserver(std::shared_ptr<Observer> &obs, const malEnvPtr &env) {
   obs = std::make_shared<Observer>();
   obs->_env = env;
-  {
-    std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
-    shards::GetGlobals().Observers.emplace_back(obs);
-  }
+  { shards::GetGlobals().Observers.emplace_back(obs); }
   {
     std::scoped_lock obsLock(observersMutex);
     observers[env.ptr()] = obs;

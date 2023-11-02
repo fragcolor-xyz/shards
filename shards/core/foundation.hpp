@@ -455,9 +455,7 @@ struct CrashHandlerBase {
 };
 
 struct Globals {
-public:
-  // sporadically used, don't abuse. And don't use in real time code.
-  std::mutex GlobalMutex;
+public:;
   UntrackedUnorderedMap<std::string, OwnedVar> Settings;
 
   CrashHandlerBase *CrashHandler{nullptr};
