@@ -330,7 +330,7 @@ struct Detached {
 
     PARAM_CLEANUP(context);
     _inputContext.cleanup(context);
-    cleanupCaptures(context);
+    cleanupCaptures();
   }
 
   void init(SHContext *context, InputStack::Item inputStackState) {
