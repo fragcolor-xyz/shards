@@ -350,7 +350,7 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHTypesInfo 
 }
 
 std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHStringWithLen &s) {
-  std::string_view sv(s.string, s.len);
+  std::string_view sv(s.string, size_t(s.len));
   os << sv;
   return os;
 }

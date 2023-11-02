@@ -997,7 +997,7 @@ struct InternalCore {
   static void expTypesFree(SHExposedTypesInfo &arr) { arrayFree(arr); }
 
   static void log(SHStringWithLen msg) {
-    std::string_view msgView(msg.string, msg.len);
+    std::string_view msgView(msg.string, size_t(msg.len));
     SHLOG_INFO(msgView);
   }
 

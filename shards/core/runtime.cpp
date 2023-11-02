@@ -974,7 +974,7 @@ void validateConnection(ValidationContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      std::string_view msg(composeResult.error.message.string, composeResult.error.message.len);
+      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
       SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
       throw ComposeError(msg);
     }
@@ -2916,7 +2916,7 @@ void SHWire::warmup(SHContext *context) {
         if (blk->warmup) {
           auto status = blk->warmup(blk, context);
           if (status.code != SH_ERROR_NONE) {
-            std::string_view msg(status.message.string, status.message.len);
+            std::string_view msg(status.message.string, size_t(status.message.len));
             SHLOG_ERROR("Warmup failed on wire: {}, shard: {} (line: {}, column: {})", name, blk->name(blk), blk->line,
                         blk->column);
             throw shards::WarmupError(msg);
@@ -3223,7 +3223,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->getState = [](SHContext *context) noexcept { return context->getState(); };
 
   result->abortWire = [](SHContext *context, SHStringWithLen message) noexcept {
-    std::string_view messageView{message.string, message.len};
+    std::string_view messageView{message.string, size_t(message.len)};
     context->cancelFlow(messageView);
   };
 
@@ -3353,12 +3353,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->log = [](SHStringWithLen msg) noexcept {
-    std::string_view sv(msg.string, msg.len);
+    std::string_view sv(msg.string, size_t(msg.len));
     SHLOG_INFO(sv);
   };
 
   result->logLevel = [](int level, SHStringWithLen msg) noexcept {
-    std::string_view sv(msg.string, msg.len);
+    std::string_view sv(msg.string, size_t(msg.len));
     spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, (spdlog::level::level_enum)level,
                                       sv);
   };
