@@ -241,7 +241,7 @@ struct Literal {
   }
 
   void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
@@ -566,7 +566,7 @@ struct SampleTexture {
   SHVar getParam(int index) { return _name; }
 
   void warmup(SHContext *shContext) {}
-  void cleanup() {}
+  void cleanup(SHContext* context) {}
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
@@ -728,7 +728,7 @@ struct LinearizeDepth {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   void warmup(SHContext *shContext) {}
-  void cleanup() {}
+  void cleanup(SHContext* context) {}
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
@@ -763,7 +763,7 @@ struct WithInput {
   }
 
   void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 
@@ -802,7 +802,7 @@ struct WithTexture {
   }
 
   void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return SHVar{}; }
 

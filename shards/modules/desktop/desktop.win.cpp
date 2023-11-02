@@ -333,7 +333,7 @@ struct PixelBase {
   ExposedInfo exposedInfo;
   SHVar *windowVar = nullptr;
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (windowVar) {
       releaseVariable(windowVar);
       windowVar = nullptr;
@@ -562,7 +562,7 @@ struct WaitKeyEvent : public WaitKeyEventBase {
 
   void keyboardEvent(int state, int vkCode) { events.push_back(Var(state, vkCode)); }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (attached && hookState) {
       auto selfIt = std::find(hookState->receivers.begin(), hookState->receivers.end(), this);
       hookState->receivers.erase(selfIt);
@@ -624,7 +624,7 @@ struct WaitKeyEvent : public WaitKeyEventBase {
 struct SendKeyEvent : public SendKeyEventBase {
   SHVar *_window = nullptr;
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_window) {
       releaseVariable(_window);
       _window = nullptr;
@@ -979,7 +979,7 @@ struct SetTimerResolution {
   static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     ULONG tmp;
     NtSetTimerResolution(0, FALSE, &tmp);
   }

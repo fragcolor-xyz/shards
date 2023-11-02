@@ -56,9 +56,9 @@ struct GizmosContextShard {
     withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] { PARAM_WARMUP(context); });
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_contextVarRef) {
-      withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] { PARAM_CLEANUP(); });
+      withObjectVariable(*_contextVarRef, &_gizmoContext, GizmoContext::Type, [&] { PARAM_CLEANUP(context); });
       releaseVariable(_contextVarRef);
       _contextVarRef = nullptr;
     }

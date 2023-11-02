@@ -257,8 +257,8 @@ struct GLTFShard {
     _dynamicsApplied = false;
   }
 
-  void cleanup() {
-    PARAM_CLEANUP()
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context)
 
     if (_drawable) {
       Types::DrawableObjectVar.Release(_drawable);

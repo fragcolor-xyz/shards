@@ -2863,9 +2863,10 @@ void triggerVarValueChange(SHWire *w, const SHVar *name, const SHVar *var) {
   w->dispatcher.trigger(ev);
 }
 
-thread_local SHContext *currentContext{};
-void setCurrentContext(SHContext *ctx) { currentContext = ctx; }
-SHContext *getCurrentContext() { return currentContext; }
+SHContext *&getCurrentContextPtr() { 
+  static thread_local SHContext *currentContext{};
+  return currentContext; 
+}
 
 }; // namespace shards
 
@@ -2873,7 +2874,7 @@ SHContext *getCurrentContext() { return currentContext; }
 
 void SHWire::destroy() {
   for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
-    (*it)->cleanup(*it);
+    (*it)->cleanup(*it, nullptr);
   }
   for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
     decRef(*it);
@@ -2961,7 +2962,7 @@ void SHWire::cleanup(bool force) {
     for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
       auto blk = *it;
       try {
-        blk->cleanup(blk);
+        blk->cleanup(blk, context);
       }
 #if SH_BOOST_COROUTINE
       catch (boost::context::detail::forced_unwind const &e) {

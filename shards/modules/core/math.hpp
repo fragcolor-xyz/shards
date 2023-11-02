@@ -93,7 +93,7 @@ struct BinaryBase : public Base {
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
 
-  void cleanup() { _operand.cleanup(); }
+  void cleanup(SHContext* context) { _operand.cleanup(); }
 
   void warmup(SHContext *context) { _operand.warmup(context); }
 
@@ -489,7 +489,7 @@ template <class TOp> struct UnaryVarOperation final : public UnaryOperation<TOp>
 
   void warmup(SHContext *context) { _value.warmup(context); }
 
-  void cleanup() { _value.cleanup(); }
+  void cleanup(SHContext* context) { _value.cleanup(); }
 
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
     this->operate(_value.get(), _value.get());
@@ -745,7 +745,7 @@ struct Lerp final {
     _second.warmup(context);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _first.cleanup();
     _second.cleanup();
   }

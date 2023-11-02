@@ -29,7 +29,7 @@ struct IterableParam {
   SHVar (*getParam)(void *varPtr){};
   void (*collectRequirements)(const SHExposedTypesInfo &exposed, ExposedInfo &out, void *varPtr){};
   void (*warmup)(void *varPtr, SHContext *ctx){};
-  void (*cleanup)(void *varPtr){};
+  void (*cleanup)(void *varPtr, SHContext *ctx){};
 
   template <typename T> T &get(void *obj) const { return *(T *)resolveParamInShard(obj); }
 
@@ -53,9 +53,9 @@ struct IterableParam {
     }
 
     if constexpr (has_warmup<T>::value) {
-      result.cleanup = [](void *varPtr) { ((T *)varPtr)->cleanup(); };
+      result.cleanup = [](void *varPtr, SHContext *ctx) { ((T *)varPtr)->cleanup(ctx); };
     } else {
-      result.cleanup = [](void *) {};
+      result.cleanup = [](void *, SHContext *ctx) {};
     }
 
     return result;
@@ -70,7 +70,7 @@ struct IterableParam {
 // Side effects:
 //  - typedefs Self to the current class
 //  - creates a static member named iterableParams
-#define PARAM_IMPL(...)                                                  \
+#define PARAM_IMPL(...)                                                         \
   SELF_MACRO_DEFINE_SELF(Self, public)                                          \
   static const shards::IterableParam *getIterableParams(size_t &outNumParams) { \
     static shards::IterableParam result[] = {__VA_ARGS__};                      \
@@ -153,14 +153,14 @@ struct IterableParam {
 
 // implements cleanup() for parameters
 // call from cleanup manually
-#define PARAM_CLEANUP()                                                 \
-  {                                                                     \
-    size_t numParams;                                                   \
-    const shards::IterableParam *params = getIterableParams(numParams); \
-    for (size_t i = 0; i < numParams; i++) {                            \
-      size_t iRev = (numParams - 1) - i;                                \
-      params[iRev].cleanup(params[iRev].resolveParamInShard(this));     \
-    }                                                                   \
+#define PARAM_CLEANUP(_ctx)                                               \
+  {                                                                       \
+    size_t numParams;                                                     \
+    const shards::IterableParam *params = getIterableParams(numParams);   \
+    for (size_t i = 0; i < numParams; i++) {                              \
+      size_t iRev = (numParams - 1) - i;                                  \
+      params[iRev].cleanup(params[iRev].resolveParamInShard(this), _ctx); \
+    }                                                                     \
   }
 
 } // namespace shards

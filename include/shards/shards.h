@@ -686,7 +686,8 @@ typedef struct SHShardComposeResult(__cdecl *SHComposeProc)(struct Shard *, stru
 typedef struct SHVar(__cdecl *SHActivateProc)(struct Shard *, struct SHContext *, const struct SHVar *);
 
 // Generally when stop() is called
-typedef struct SHError(__cdecl *SHCleanupProc)(struct Shard *);
+// Note that context may be null in some cases
+typedef struct SHError(__cdecl *SHCleanupProc)(struct Shard *, struct SHContext *);
 
 typedef struct SHError(__cdecl *SHWarmupProc)(struct Shard *, struct SHContext *);
 

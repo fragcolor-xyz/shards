@@ -125,7 +125,7 @@ struct Pop {
 
   void warmup(SHContext *context) { _pseq.warmup(context); }
 
-  void cleanup() { _pseq.cleanup(); }
+  void cleanup(SHContext* context) { _pseq.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     using namespace std::chrono;

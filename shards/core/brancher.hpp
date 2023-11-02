@@ -26,7 +26,7 @@ private:
   ExposedInfo _shared;
 
 public:
-  ~Brancher() { cleanup(); }
+  ~Brancher() { cleanup(nullptr); }
 
   // Adds a single wire or sequence of shards as a looped wire
   void addRunnable(const SHVar &var) { wires.push_back(IntoWire{}.var(var)); }
@@ -103,7 +103,7 @@ public:
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context = nullptr) {
     mesh->releaseAllRefs();
     mesh->terminate();
   }

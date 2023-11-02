@@ -274,19 +274,16 @@ extern GlobalTracy &GetTracy();
 UntrackedVector<SHWire *> &getCoroWireStack();
 #endif
 
-void setCurrentContext(SHContext *ctx);
-SHContext *getCurrentContext();
+SHContext *&getCurrentContextPtr();
 
 #if SH_DEBUG_THREAD_NAMES
-#define SH_CORO_RESUMED(_wire)                                         \
-  {                                                                    \
-    shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); \
-    shards::setCurrentContext(_wire->context);                         \
+#define SH_CORO_RESUMED(_wire)                                           \
+  {                                                                      \
+    shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name));   \
   }
-#define SH_CORO_SUSPENDED(_wire)        \
-  {                                     \
-    shards::popThreadName();            \
-    shards::setCurrentContext(nullptr); \
+#define SH_CORO_SUSPENDED(_wire)              \
+  {                                           \
+    shards::popThreadName();                  \
   }
 #define SH_CORO_EXT_RESUME(_wire)                                                 \
   {                                                                               \
@@ -299,16 +296,15 @@ SHContext *getCurrentContext();
     TracyCoroExit(_wire);          \
   }
 #else
-#define SH_CORO_RESUMED(_wire) shards::setCurrentContext(_wire->context);
-#define SH_CORO_SUSPENDED(_) shards::setCurrentContext(nullptr);
+#define SH_CORO_RESUMED(_wire) \
+#define SH_CORO_SUSPENDED(_) \
 #define SH_CORO_EXT_RESUME(_) \
   { TracyCoroEnter(wire); }
 #define SH_CORO_EXT_SUSPEND(_) \
   { TracyCoroExit(_wire); }
 #endif
 
-template <typename DELEGATE> auto callOnMainThread(DELEGATE &func) -> decltype(func.action(), void()) {
-  SHContext *context = getCurrentContext();
+template <typename DELEGATE> auto callOnMainThread(SHContext* context, DELEGATE &func) -> decltype(func.action(), void()) {
   if (context) {
     if (unlikely(!context->continuation)) {
       throw ActivationError("Trying to suspend a context without coroutine!");
@@ -323,16 +319,17 @@ template <typename DELEGATE> auto callOnMainThread(DELEGATE &func) -> decltype(f
 
     context->mainThreadTask.reset();
   } else {
+    SPDLOG_WARN("NO Context, not running on main thread");
     func.action();
   }
 }
 
-template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMainThread(L &&func) {
+template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMainThread(SHContext* context, L &&func) {
   struct Action {
     L &lambda;
     void action() { lambda(); }
   } l{func};
-  callOnMainThread(l);
+  callOnMainThread(context, l);
 }
 
 inline void prepare(SHWire *wire, SHFlow *flow) {

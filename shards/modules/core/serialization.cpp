@@ -46,12 +46,12 @@ struct WriteFile : public FileBase {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_fileStream.good()) {
       _fileStream.flush();
     }
     _fileStream = {};
-    FileBase::cleanup();
+    FileBase::cleanup(context);
   }
 
   struct Writer {
@@ -99,10 +99,10 @@ struct ReadFile : public FileBase {
   std::ifstream _fileStream;
   SHVar _output{};
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     destroyVar(_output);
     _fileStream = {};
-    FileBase::cleanup();
+    FileBase::cleanup(context);
   }
 
   struct Reader {
@@ -140,7 +140,7 @@ struct ToBytes {
   Serialization serial;
   std::vector<uint8_t> _buffer;
 
-  void cleanup() { _buffer.clear(); }
+  void cleanup(SHContext* context) { _buffer.clear(); }
 
   struct Writer {
     std::vector<uint8_t> &_buffer;

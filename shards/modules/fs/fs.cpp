@@ -224,7 +224,7 @@ struct RelativeTo {
     return outputTypes().elements[0];
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _output.clear();
@@ -367,7 +367,7 @@ struct Write {
     return outputTypes().elements[0];
   }
 
-  void cleanup() { _contents.cleanup(); }
+  void cleanup(SHContext* context) { _contents.cleanup(); }
   void warmup(SHContext *context) { _contents.warmup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -439,7 +439,7 @@ struct Copy {
     }
   }
 
-  void cleanup() { _destination.cleanup(); }
+  void cleanup(SHContext* context) { _destination.cleanup(); }
   void warmup(SHContext *context) { _destination.warmup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -521,7 +521,7 @@ struct SetWriteTime {
     return data.inputType;
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));

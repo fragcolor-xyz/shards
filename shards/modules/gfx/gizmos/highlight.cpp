@@ -44,7 +44,7 @@ struct HighlightShard : public Base {
 
   SHVar activate(SHContext *shContext, const SHVar &input) { throw ActivationError("Unsupported input type"); }
   void warmup(SHContext *shContext) { baseWarmup(shContext); }
-  void cleanup() { baseCleanup(); }
+  void cleanup(SHContext* context) { baseCleanup(context); }
 };
 
 void registerHighlightShards() { REGISTER_SHARD("Gizmos.Highlight", HighlightShard); }

@@ -66,7 +66,7 @@ struct ShardsRenderer {
                         shards::Var::Object(&_graphicsRendererContext, GraphicsRendererContext::Type));
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_graphicsContextVar) {
       if (_graphicsContextVar->refcount > 1) {
         SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _graphicsContextVar->refcount - 1,
@@ -89,10 +89,10 @@ struct ShardsRenderer {
     _graphicsRendererContext = GraphicsRendererContext{};
   }
 
-  bool begin(shards::WindowContext &windowContext) {
+  bool begin(SHContext* shContext, shards::WindowContext &windowContext) {
     // Need to lazily init since we depend on renderer
     if (!_graphicsContext.context) {
-      shards::callOnMainThread([&] { initRenderer(windowContext.window); });
+      shards::callOnMainThread(shContext, [&] { initRenderer(windowContext.window); });
     }
 
     auto &window = _graphicsContext.window;
@@ -106,7 +106,7 @@ struct ShardsRenderer {
 
     gfx::int2 windowSize = window->getDrawableSize();
     try {
-      shards::callOnMainThread([&] { context->resizeMainOutputConditional(windowSize); });
+      shards::callOnMainThread(shContext, [&] { context->resizeMainOutputConditional(windowSize); });
     } catch (std::exception &err) {
       SHLOG_WARNING("Swapchain creation failed: {}. Frame skipped.", err.what());
       return false;

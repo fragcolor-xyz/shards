@@ -408,7 +408,7 @@ struct Project {
   }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     using namespace linalg::aliases;
@@ -443,7 +443,7 @@ struct QuaternionMultiply {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -475,7 +475,7 @@ struct QuaternionSlerp {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -513,7 +513,7 @@ struct QuaternionRotate {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {

@@ -60,8 +60,8 @@ struct SpatialUIContextShard {
 
   void warmup(SHContext *context);
 
-  void cleanup() {
-    PARAM_CLEANUP()
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context)
 
     _contents.cleanup();
     _graphicsContext.cleanup();
@@ -168,8 +168,8 @@ struct SpatialPanelShard {
     _context->context.panels.emplace_back(_panel);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     _context.cleanup();
 
     if (_eguiHost) {

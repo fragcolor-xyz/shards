@@ -73,7 +73,7 @@ struct Const {
 
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo{_dependencies.data(), uint32_t(_dependencies.size())}; }
 
-  void cleanup() { resolver.cleanup(); }
+  void cleanup(SHContext* context) { resolver.cleanup(context); }
 
   void warmup(SHContext *context) {
     if (_clone != shards::Var::Empty)
@@ -126,7 +126,7 @@ struct BaseOpsBin {
   }
 
   void warmup(SHContext *context) { _operand.warmup(context); }
-  void cleanup() { _operand.cleanup(); }
+  void cleanup(SHContext* context) { _operand.cleanup(); }
 };
 
 #define LOGIC_OP(NAME, OP)                                                         \
@@ -294,7 +294,7 @@ struct Pause {
 
   void warmup(SHContext *context) { time.warmup(context); }
 
-  void cleanup() { time.cleanup(); }
+  void cleanup(SHContext* context) { time.cleanup(); }
 
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(reqs); }
 
@@ -387,7 +387,7 @@ struct OnCleanup {
     _shards.warmup(ctx);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     // also run the shards here!
     if (_context) {
       // cleanup might be called multiple times
@@ -405,7 +405,7 @@ struct OnCleanup {
       _context = nullptr;
     }
     // and cleanup after
-    _shards.cleanup();
+    _shards.cleanup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -688,7 +688,7 @@ struct VariableBase {
 
   static SHParametersInfo parameters() { return getterParams; }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_target) {
       releaseVariable(_target);
     }
@@ -1064,7 +1064,7 @@ struct Set : public SetUpdateBase {
 
   std::shared_ptr<SHMesh> mesh;
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (mesh) {
       // this is not perfect because will run only during Set,
       // but for now it's not an issue as we go thru all variables when composing
@@ -1073,7 +1073,7 @@ struct Set : public SetUpdateBase {
       mesh.reset();
     }
 
-    SetBase::cleanup();
+    SetBase::cleanup(context);
 
     if (_onStartConnection) {
       _onStartConnection.release();
@@ -1168,7 +1168,7 @@ struct Ref : public SetBase {
 
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_target) {
       // this is a special case
       // Ref will reference previous shard result..
@@ -1343,7 +1343,7 @@ struct Update : public SetUpdateBase {
     }
   }
 
-  void cleanup() { SetBase::cleanup(); }
+  void cleanup(SHContext* context) { SetBase::cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_isExposed && "This shard should not be activated if variable not exposed");
@@ -1566,12 +1566,12 @@ struct Get : public VariableBase {
     _key.warmup(context);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     // reset shard id
     if (_shard) {
       _shard->inlineShardId = InlineShard::NotInline;
     }
-    VariableBase::cleanup();
+    VariableBase::cleanup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1642,7 +1642,7 @@ struct Swap {
   SHVar *_targetB{};
   ExposedInfo _exposedInfo;
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_targetA) {
       releaseVariable(_targetA);
       releaseVariable(_targetB);
@@ -2593,7 +2593,7 @@ struct Take {
     destroyVar(_output);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_indicesVar) {
       releaseVariable(_indicesVar);
       _indicesVar = nullptr;
@@ -2795,7 +2795,7 @@ struct Take {
     switch (index) {
     case 0:
       cloneVar(_indices, value);
-      cleanup();
+      cleanup(nullptr);
       break;
     default:
       break;
@@ -2997,7 +2997,7 @@ struct Slice {
     destroyVar(_to);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_fromVar) {
       releaseVariable(_fromVar);
       _fromVar = nullptr;
@@ -3095,11 +3095,11 @@ struct Slice {
     switch (index) {
     case 0:
       cloneVar(_from, value);
-      cleanup();
+      cleanup(nullptr);
       break;
     case 1:
       cloneVar(_to, value);
-      cleanup();
+      cleanup(nullptr);
       break;
     case 2:
       _step = value.payload.intValue;
@@ -3398,10 +3398,10 @@ struct ForRangeShard {
     }
   }
 
-  void cleanup() {
-    _from.cleanup();
-    _to.cleanup();
-    _shards.cleanup();
+  void cleanup(SHContext* context) {
+    _from.cleanup(context);
+    _to.cleanup(context);
+    _shards.cleanup(context);
   }
 
   void warmup(SHContext *context) {
@@ -3455,12 +3455,12 @@ struct Repeat {
   bool _forever = false;
   ExposedInfo _requiredInfo{};
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_ctxTimes) {
       releaseVariable(_ctxTimes);
     }
-    _blks.cleanup();
-    _pred.cleanup();
+    _blks.cleanup(context);
+    _pred.cleanup(context);
     _ctxTimes = nullptr;
     _repeats = nullptr;
   }

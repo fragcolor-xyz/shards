@@ -170,7 +170,7 @@ struct Evolve {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_population.size() > 0) {
       tf::Taskflow cleanupFlow;
       cleanupFlow.for_each(_population.begin(), _population.end(), [&](Individual &i) {
@@ -655,16 +655,16 @@ struct Mutant {
     }
   }
 
-  void cleanupMutations() const {
+  void cleanupMutations(SHContext* context) const {
     if (_mutations.valueType == SHType::Seq) {
       for (auto &mut : _mutations) {
         if (mut.valueType == SHType::ShardRef) {
           auto blk = mut.payload.shardValue;
-          blk->cleanup(blk);
+          blk->cleanup(blk, context);
         } else if (mut.valueType == SHType::Seq) {
           for (auto &bv : mut) {
             auto blk = bv.payload.shardValue;
-            blk->cleanup(blk);
+            blk->cleanup(blk, context);
           }
         }
       }
@@ -689,9 +689,9 @@ struct Mutant {
     }
   }
 
-  void cleanup() {
-    _shard.cleanup();
-    cleanupMutations();
+  void cleanup(SHContext* context) {
+    _shard.cleanup(context);
+    cleanupMutations(context);
   }
 
   void destroy() {}
@@ -948,7 +948,7 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
             // Was likely None, so use default op
             mutateVar(current);
           }
-          mutator.cleanupMutations();
+          mutator.cleanupMutations(nullptr);
         } else {
           mutateVar(current);
         }
@@ -1099,9 +1099,9 @@ struct DShard {
       _wrapped->warmup(_wrapped, context);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_wrapped)
-      _wrapped->cleanup(_wrapped);
+      _wrapped->cleanup(_wrapped, context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {

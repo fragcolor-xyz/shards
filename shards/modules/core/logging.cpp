@@ -258,7 +258,7 @@ struct CaptureLog {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     auto logger = spdlog::default_logger();
     assert(logger);
     auto sink = logger->sinks().at(0);

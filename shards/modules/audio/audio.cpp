@@ -297,7 +297,7 @@ struct Device {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     stop();
 
     if (_deviceVar) {
@@ -462,7 +462,7 @@ struct Channel {
     _data.volume.warmup(context);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (d) {
       // every device user needs to try and stop it!
       // else we risk to mess with the audio thread
@@ -475,8 +475,8 @@ struct Channel {
       _device = nullptr;
     }
 
-    _data.shards.cleanup();
-    _data.volume.cleanup();
+    _data.shards.cleanup(context);
+    _data.volume.cleanup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { return input; }
@@ -599,7 +599,7 @@ struct Oscillator {
     _buffer.resize(_channels * _nsamples);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _amplitude.cleanup();
 
     if (_device) {
@@ -753,7 +753,7 @@ struct ReadFile {
     _progress = 0;
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _fromSample.cleanup();
     _toSample.cleanup();
     _filename.cleanup();
@@ -902,7 +902,7 @@ struct WriteFile {
     _progress = 0;
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _filename.cleanup();
 
     if (_initialized) {

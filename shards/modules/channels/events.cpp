@@ -35,7 +35,7 @@ struct Base {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 };
 
 struct Send : Base {
@@ -122,8 +122,8 @@ struct Receive : Base {
 
   void warmup(SHContext *context) { Base::warmup(context); }
 
-  void cleanup() {
-    Base::cleanup();
+  void cleanup(SHContext* context) {
+    Base::cleanup(context);
 
     if (_connection)
       _connection.release();

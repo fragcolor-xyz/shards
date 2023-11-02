@@ -79,9 +79,9 @@ struct RendererShard {
     PARAM_WARMUP(context);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
-    renderer.cleanup();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
+    renderer.cleanup(context);
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
@@ -89,7 +89,7 @@ struct RendererShard {
 
     SHVar tmpOutput{};
 
-    if (renderer.begin(windowContext)) {
+    if (renderer.begin(shContext, windowContext)) {
       _contents.activate(shContext, input, tmpOutput);
       renderer.end();
     }
@@ -122,8 +122,8 @@ struct EndFrame {
     _requiredGraphicsContext.warmup(context);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     _requiredGraphicsContext.cleanup();
   }
 

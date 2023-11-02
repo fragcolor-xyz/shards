@@ -41,11 +41,11 @@ struct RenderShard {
 
   PARAM_REQUIRED_VARIABLES();
 
-  void cleanup() {
-    _graphicsRendererContext.cleanup();
-    _graphicsContext.cleanup();
+  void cleanup(SHContext* context) {
+    _graphicsRendererContext.cleanup(context);
+    _graphicsContext.cleanup(context);
     _defaultView.reset();
-    PARAM_CLEANUP();
+    PARAM_CLEANUP(context);
   }
 
   void warmup(SHContext *context) {

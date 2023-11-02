@@ -66,38 +66,25 @@ struct Cond {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     for (auto it = _conditions.rbegin(); it != _conditions.rend(); ++it) {
       auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
-        shard->cleanup(shard);
+        shard->cleanup(shard, context);
       }
     }
     for (auto it = _actions.rbegin(); it != _actions.rend(); ++it) {
       auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
-        shard->cleanup(shard);
+        shard->cleanup(shard, context);
       }
     }
   }
 
   void destroy() {
-    for (auto it = _conditions.rbegin(); it != _conditions.rend(); ++it) {
-      auto &shards = *it;
-      for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
-        auto shard = *jt;
-        shard->cleanup(shard);
-      }
-    }
-    for (auto it = _actions.rbegin(); it != _actions.rend(); ++it) {
-      auto &shards = *it;
-      for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
-        auto shard = *jt;
-        shard->cleanup(shard);
-      }
-    }
+    cleanup(nullptr);
     destroyVar(_wires);
     shards::arrayFree(_wireValidation.exposedInfo);
     shards::arrayFree(_wireValidation.requiredInfo);
@@ -335,9 +322,9 @@ struct BaseSubFlow {
 
   SHVar getParam(int index) { return _shards; }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_shards)
-      _shards.cleanup();
+      _shards.cleanup(context);
   }
 
   void warmup(SHContext *ctx) {
@@ -426,11 +413,11 @@ struct Maybe : public BaseSubFlow {
     return !_elseBlks ? data.inputType : _composition.outputType;
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_elseBlks)
-      _elseBlks.cleanup();
+      _elseBlks.cleanup(context);
 
-    BaseSubFlow::cleanup();
+    BaseSubFlow::cleanup(context);
   }
 
   void warmup(SHContext *ctx) {
@@ -638,9 +625,9 @@ template <bool COND> struct When {
     return data.inputType;
   }
 
-  void cleanup() {
-    _cond.cleanup();
-    _action.cleanup();
+  void cleanup(SHContext* context) {
+    _cond.cleanup(context);
+    _action.cleanup(context);
   }
 
   void warmup(SHContext *ctx) {
@@ -737,10 +724,10 @@ struct IfBlock {
     return _passth ? data.inputType : outputType;
   }
 
-  void cleanup() {
-    _cond.cleanup();
-    _then.cleanup();
-    _else.cleanup();
+  void cleanup(SHContext* context) {
+    _cond.cleanup(context);
+    _then.cleanup(context);
+    _else.cleanup(context);
   }
 
   void warmup(SHContext *ctx) {
@@ -886,12 +873,12 @@ struct Match {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     for (auto &action : _actions) {
-      action.cleanup();
+      action.cleanup(context);
     }
 
-    resolver.cleanup();
+    resolver.cleanup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -959,7 +946,7 @@ struct Sub {
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
-  void cleanup() { _shards.cleanup(); }
+  void cleanup(SHContext* ctx) { _shards.cleanup(ctx); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output{};
@@ -1005,7 +992,7 @@ struct HashedShards {
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
-  void cleanup() { _shards.cleanup(); }
+  void cleanup(SHContext* context) { _shards.cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output{};

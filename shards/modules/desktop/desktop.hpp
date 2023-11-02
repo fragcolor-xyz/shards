@@ -18,7 +18,7 @@ struct Globals {
 
 template <typename T> class WindowBase {
 public:
-  void cleanup() {
+  void cleanup(SHContext* context) {
     // reset to default
     // force finding it again next run
     _window = WindowDefault();
@@ -260,7 +260,7 @@ struct MousePosBase {
 
   SHVar getParam(int index) { return _window; }
 
-  void cleanup() { _window.cleanup(); }
+  void cleanup(SHContext* context) { _window.cleanup(); }
   void warmup(SHContext *context) { _window.warmup(context); }
 };
 

@@ -25,12 +25,12 @@ struct UIPassShard {
     return std::get<RenderDrawablesStep>(*_stepPtr->get());
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_stepPtr) {
       Types::PipelineStepObjectVar.Release(_stepPtr);
       _stepPtr = nullptr;
     }
-    PARAM_CLEANUP();
+    PARAM_CLEANUP(context);
   }
 
   void warmup(SHContext *context) {

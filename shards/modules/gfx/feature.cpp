@@ -90,7 +90,7 @@ struct BuiltinFeatureShard {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_feature) {
       Types::FeatureObjectVar.Release(_feature);
       _feature = nullptr;
@@ -203,11 +203,11 @@ private:
   gfx::shader::VariableMap _composedWith;
 
 public:
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
 
-    _viewGeneratorBranch.cleanup();
-    _drawableGeneratorBranch.cleanup();
+    _viewGeneratorBranch.cleanup(context);
+    _drawableGeneratorBranch.cleanup(context);
     _branchesWarmedUp = false;
 
     if (_featurePtr) {

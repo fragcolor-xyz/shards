@@ -60,7 +60,7 @@ struct WireBase {
 
   SHTypeInfo compose(const SHInstanceData &data);
 
-  void cleanup() { wireref.cleanup(); }
+  void cleanup(SHContext* context) { wireref.cleanup(); }
 
   void warmup(SHContext *ctx) { wireref.warmup(ctx); }
 
@@ -136,7 +136,7 @@ struct BaseRunner : public WireBase {
 
   std::optional<entt::connection> onStopConnection;
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (capturing) {
       for (auto &v : _vars) {
         v.cleanup();
@@ -160,7 +160,7 @@ struct BaseRunner : public WireBase {
       onStopConnection.reset();
     }
 
-    WireBase::cleanup();
+    WireBase::cleanup(context);
   }
 
   void wireOnStop(const SHWire::OnStopEvent &e) {

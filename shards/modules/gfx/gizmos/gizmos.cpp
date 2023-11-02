@@ -83,9 +83,9 @@ struct TranslationGizmo : public Base {
     baseWarmup(context);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
-    baseCleanup();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
+    baseCleanup(context);
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -164,9 +164,9 @@ struct RotationGizmo : public Base {
     baseWarmup(context);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
-    baseCleanup();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
+    baseCleanup(context);
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -243,9 +243,9 @@ struct ScalingGizmo : public Base {
     baseWarmup(context);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
-    baseCleanup();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
+    baseCleanup(context);
   }
 
   PARAM_REQUIRED_VARIABLES();

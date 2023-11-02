@@ -136,7 +136,7 @@ struct Replace : public Common {
 
   void warmup(SHContext *context) { _replacement.warmup(context); }
 
-  void cleanup() { _replacement.cleanup(); }
+  void cleanup(SHContext* context) { _replacement.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _subject.assign(input.payload.stringValue, SHSTRLEN(input));
@@ -304,7 +304,7 @@ struct Contains {
   }
 
   void warmup(SHContext *context) { _check.warmup(context); }
-  void cleanup() { _check.cleanup(); }
+  void cleanup(SHContext* context) { _check.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto sv = SHSTRVIEW(input);

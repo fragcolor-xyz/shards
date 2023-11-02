@@ -37,7 +37,7 @@ struct JointOp {
       break;
     case 1:
       cloneVar(_columns, value);
-      cleanup();
+      cleanup(nullptr);
       break;
     default:
       break;
@@ -56,7 +56,7 @@ struct JointOp {
     throw SHException("Parameter out of range.");
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     for (auto ref : _multiSortColumns) {
       releaseVariable(ref);
     }
@@ -117,9 +117,9 @@ struct JointOp {
 
 struct ActionJointOp : public JointOp {
   ShardsVar _blks{};
-  void cleanup() {
-    _blks.cleanup();
-    JointOp::cleanup();
+  void cleanup(SHContext* context) {
+    _blks.cleanup(context);
+    JointOp::cleanup(context);
   }
 
   void warmup(SHContext *ctx) {
@@ -429,7 +429,7 @@ struct Profile {
 
   static SHParametersInfo parameters() { return _params; }
 
-  void cleanup() { _shards.cleanup(); }
+  void cleanup(SHContext* context) { _shards.cleanup(context); }
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
@@ -542,7 +542,7 @@ struct XpendTo : public XPendBase {
     throw SHException("Parameter out of range.");
   }
 
-  void cleanup() { _collection.cleanup(); }
+  void cleanup(SHContext* context) { _collection.cleanup(); }
   void warmup(SHContext *context) { _collection.warmup(context); }
 };
 
@@ -682,7 +682,7 @@ struct ForEachShard {
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
-  void cleanup() { _shards.cleanup(); }
+  void cleanup(SHContext* context) { _shards.cleanup(context); }
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
     SHVar output{};
@@ -758,7 +758,7 @@ struct Map {
     _shards.warmup(ctx);
   }
 
-  void cleanup() { _shards.cleanup(); }
+  void cleanup(SHContext* context) { _shards.cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output{};
@@ -828,8 +828,8 @@ struct Reduce {
     _shards.warmup(ctx);
   }
 
-  void cleanup() {
-    _shards.cleanup();
+  void cleanup(SHContext* context) {
+    _shards.cleanup(context);
     releaseVariable(_tmp);
     _tmp = nullptr;
   }
@@ -880,9 +880,9 @@ struct Erase : SeqUser {
     _indices.warmup(ctx);
   }
 
-  void cleanup() {
-    _indices.cleanup();
-    SeqUser::cleanup();
+  void cleanup(SHContext* context) {
+    _indices.cleanup(context);
+    SeqUser::cleanup(context);
   }
 
   void setParam(int index, const SHVar &value) {
@@ -1193,7 +1193,7 @@ struct Replace {
     _replacements.warmup(context);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _patterns.cleanup();
     _replacements.cleanup();
   }
@@ -2004,9 +2004,9 @@ struct Once {
   SHTimeDiff _lastActivation;
   gfx::MovingAverage<double> _averageSleepTime{20};
 
-  void cleanup() {
-    _repeat.cleanup();
-    _blks.cleanup();
+  void cleanup(SHContext* context) {
+    _repeat.cleanup(context);
+    _blks.cleanup(context);
     if (self)
       self->inlineShardId = InlineShard::CoreOnce;
     _next = {};

@@ -82,7 +82,7 @@ struct NetworkBase {
 
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_required); }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_sharedNetworkContext) {
       auto &io_context = _sharedNetworkContext->_io_context;
 
@@ -453,7 +453,7 @@ struct Server : public NetworkBase {
     _running = true;
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _running = false;
 
     if (_serverVar) {
@@ -470,7 +470,7 @@ struct Server : public NetworkBase {
 
     _contextCopy.reset();
 
-    NetworkBase::cleanup();
+    NetworkBase::cleanup(context);
 
     gcWires();
   }
@@ -748,7 +748,7 @@ struct Broadcast {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_serverVar) {
       releaseVariable(_serverVar);
       _serverVar = nullptr;
@@ -919,9 +919,9 @@ struct Client : public NetworkBase {
     return PeerType;
   }
 
-  void cleanup() {
-    NetworkBase::cleanup();
-    _blks.cleanup();
+  void cleanup(SHContext* context) {
+    NetworkBase::cleanup(context);
+    _blks.cleanup(context);
   }
 
   void warmup(SHContext *context) {
@@ -989,7 +989,7 @@ struct PeerBase {
   SHVar *_peerVar = nullptr;
   ParamVar _peerParam;
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     // clean context vars
     if (_peerVar) {
       releaseVariable(_peerVar);

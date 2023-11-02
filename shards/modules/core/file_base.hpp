@@ -16,7 +16,7 @@ struct FileBase {
   ParamVar _filename{};
   OwnedVar _currentFileName{};
 
-  void cleanup() { _filename.cleanup(); }
+  void cleanup(SHContext* context) { _filename.cleanup(); }
   void warmup(SHContext *context) { _filename.warmup(context); }
 
   static SHParametersInfo parameters() { return params; }
@@ -25,7 +25,7 @@ struct FileBase {
     switch (index) {
     case 0:
       _filename = value;
-      cleanup();
+      cleanup(nullptr);
       break;
     default:
       break;
