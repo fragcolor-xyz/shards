@@ -3144,14 +3144,14 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->findObjectTypeId = [](SHStringWithLen name) noexcept {
-    return shards::findObjectTypeId(std::string_view{name.string, uint64_t(name.len)});
+    return shards::findObjectTypeId(std::string_view{name.string, size_t(name.len)});
   };
 
   result->registerEnumType = [](int32_t vendorId, int32_t typeId, SHEnumInfo info) noexcept {
     API_TRY_CALL(registerEnumType, shards::registerEnumType(vendorId, typeId, info);)
   };
 
-  result->findEnumId = [](SHStringWithLen name) noexcept { return shards::findEnumId(std::string_view{name.string, uint64_t(name.len)}); };
+  result->findEnumId = [](SHStringWithLen name) noexcept { return shards::findEnumId(std::string_view{name.string, size_t(name.len)}); };
 
   result->registerRunLoopCallback = [](const char *eventName, SHCallback callback) noexcept {
     API_TRY_CALL(registerRunLoopCallback, shards::registerRunLoopCallback(eventName, callback);)
@@ -3170,12 +3170,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->referenceVariable = [](SHContext *context, SHStringWithLen name) noexcept {
-    std::string_view nameView{name.string, uint64_t(name.len)};
+    std::string_view nameView{name.string, size_t(name.len)};
     return shards::referenceVariable(context, nameView);
   };
 
   result->referenceWireVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
-    std::string_view nameView{name.string, uint64_t(name.len)};
+    std::string_view nameView{name.string, size_t(name.len)};
     return shards::referenceWireVariable(wire, nameView);
   };
 
@@ -3364,7 +3364,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->createShard = [](SHStringWithLen name) noexcept {
-    std::string_view sv(name.string, uint64_t(name.len));
+    std::string_view sv(name.string, size_t(name.len));
     auto shard = shards::createShard(sv);
     if (shard) {
       assert(shard->refCount == 0 && "shard should have zero refcount");
@@ -3376,7 +3376,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->releaseShard = [](struct Shard *shard) noexcept { decRef(shard); };
 
   result->createWire = [](SHStringWithLen name) noexcept {
-    std::string_view sv(name.string, uint64_t(name.len));
+    std::string_view sv(name.string, size_t(name.len));
     auto wire = SHWire::make(sv);
     return wire->newRef();
   };
@@ -3427,7 +3427,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->destroyWire = [](SHWireRef wire) noexcept { SHWire::deleteRef(wire); };
 
   result->getGlobalWire = [](SHStringWithLen name) noexcept {
-    std::string sv(name.string, uint64_t(name.len));
+    std::string sv(name.string, size_t(name.len));
     auto it = shards::GetGlobals().GlobalWires.find(std::move(sv));
     if (it != shards::GetGlobals().GlobalWires.end()) {
       return SHWire::weakRef(it->second);
@@ -3437,12 +3437,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->setGlobalWire = [](SHStringWithLen name, SHWireRef wire) noexcept {
-    std::string sv(name.string, uint64_t(name.len));
+    std::string sv(name.string, size_t(name.len));
     shards::GetGlobals().GlobalWires[std::move(sv)] = SHWire::sharedFromRef(wire);
   };
 
   result->unsetGlobalWire = [](SHStringWithLen name) noexcept {
-    std::string sv(name.string, uint64_t(name.len));
+    std::string sv(name.string, size_t(name.len));
     auto it = shards::GetGlobals().GlobalWires.find(std::move(sv));
     if (it != shards::GetGlobals().GlobalWires.end()) {
       shards::GetGlobals().GlobalWires.erase(it);
