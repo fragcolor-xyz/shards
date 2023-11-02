@@ -99,12 +99,12 @@ struct Produce : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_mpChannel);
 
-    SHVar tmp{};
-
+    SHVar tmp;
     // try to get from recycle bin
     // this might fail but we don't care
     // if it fails will just initialize a new variable
-    _mpChannel->recycle.pop(tmp);
+    if(!_mpChannel->recycle.pop(tmp)) // might modify tmp if fails
+      tmp = SHVar();
 
     if (_noCopy) {
       tmp = input;
@@ -158,12 +158,12 @@ struct Broadcast : public Base {
       if (it->closed) {
         it = _bChannel->subscribers.erase(it);
       } else {
-        SHVar tmp{};
-
+        SHVar tmp;
         // try to get from recycle bin
         // this might fail but we don't care//
         // if it fails will just allocate a brand new
-        it->recycle.pop(tmp);
+        if(!it->recycle.pop(tmp)) // might modify tmp if fails
+          tmp = SHVar();
 
         if (_noCopy) {
           tmp = input;
