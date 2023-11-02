@@ -19,7 +19,7 @@ void initLogFormat(Logger logger);
 void redirectAll(const std::vector<spdlog::sink_ptr> &sinks);
 
 // Setup the default logger if it's not setup already
-void setupDefaultLoggerConditional();
+void setupDefaultLoggerConditional(std::string fileName = "shards.log");
 } // namespace shards::logging
 
 #endif /* E8296F1D_E25F_4AC4_AA7C_D680CA0D7ABF */
