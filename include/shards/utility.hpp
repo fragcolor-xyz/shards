@@ -387,7 +387,7 @@ public:
       if (blk->warmup) {
         auto errors = blk->warmup(blk, context);
         if (errors.code != SH_ERROR_NONE) {
-          std::string_view msg(errors.message.string, errors.message.len);
+          std::string_view msg(errors.message.string, size_t(errors.message.len));
           throw WarmupError(msg);
         }
       }
@@ -433,7 +433,7 @@ public:
     _wireValidation = SH_CORE::composeShards(
         _shards,
         [](const Shard *errorShard, SHStringWithLen errorTxt, bool nonfatalWarning, void *userData) {
-          std::string_view msg(errorTxt.string, errorTxt.len);
+          std::string_view msg(errorTxt.string, size_t(errorTxt.len));
           if (!nonfatalWarning) {
             auto fullMsg = fmt::format("Error during inner wire validation: {}, shard: {}, line: {}, column: {}", msg,
                                        errorShard->name(const_cast<Shard *>(errorShard)), errorShard->line, errorShard->column);

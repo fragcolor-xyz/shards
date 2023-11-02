@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2020 Fragcolor Pte. Ltd. */
-use crate::shard::shard_construct;
 use crate::shard::legacy_shard_construct;
+use crate::shard::shard_construct;
 use crate::shard::LegacyShard;
 use crate::shard::{Shard, ShardGenerated, ShardGeneratedOverloads};
 use crate::shardsc::*;
@@ -150,7 +150,7 @@ pub fn log(s: &str) {
   unsafe {
     let msg = SHStringWithLen {
       string: s.as_ptr() as *const c_char,
-      len: s.len(),
+      len: s.len() as u64,
     };
     (*Core).log.unwrap()(msg);
   }
@@ -161,7 +161,7 @@ pub fn logLevel(level: i32, s: &str) {
   unsafe {
     let msg = SHStringWithLen {
       string: s.as_ptr() as *const c_char,
-      len: s.len(),
+      len: s.len() as u64,
     };
     (*Core).logLevel.unwrap()(level, msg);
   }
@@ -292,7 +292,7 @@ pub fn getState(context: &SHContext) -> WireState {
 pub fn abortWire(context: &SHContext, message: &str) {
   let msg = SHStringWithLen {
     string: message.as_ptr() as *const c_char,
-    len: message.len(),
+    len: message.len() as u64,
   };
   unsafe {
     let ctx = context as *const SHContext as *mut SHContext;
@@ -355,7 +355,7 @@ pub fn getRootPath() -> &'static str {
 pub fn createShardPtr(name: &str) -> ShardPtr {
   let name = SHStringWithLen {
     string: name.as_ptr() as *const c_char,
-    len: name.len(),
+    len: name.len() as u64,
   };
   unsafe { (*Core).createShard.unwrap()(name) }
 }
@@ -460,7 +460,7 @@ pub fn findEnumInfo(vendorId: i32, typeId: i32) -> Option<SHEnumInfo> {
 pub fn findEnumId(name: &str) -> Option<i64> {
   let s = SHStringWithLen {
     string: name.as_ptr() as *const c_char,
-    len: name.len(),
+    len: name.len() as u64,
   };
   let info = unsafe { (*Core).findEnumId.unwrap()(s) };
   if info == 0 {
@@ -482,7 +482,7 @@ impl WireRef {
   pub fn set_external(&self, name: &str, var: &mut ExternalVar) {
     let name = SHStringWithLen {
       string: name.as_ptr() as *const c_char,
-      len: name.len(),
+      len: name.len() as u64,
     };
     unsafe {
       (*Core).setExternalVariable.unwrap()(self.0, name, &var.0 as *const _ as *mut _);
@@ -492,7 +492,7 @@ impl WireRef {
   pub fn remove_external(&self, name: &str) {
     let name = SHStringWithLen {
       string: name.as_ptr() as *const c_char,
-      len: name.len(),
+      len: name.len() as u64,
     };
     unsafe {
       (*Core).removeExternalVariable.unwrap()(self.0, name);
@@ -507,7 +507,7 @@ impl WireRef {
         let slice = unsafe {
           slice::from_raw_parts(
             info.failureMessage.string as *const u8,
-            info.failureMessage.len,
+            info.failureMessage.len as usize,
           )
         };
         let msg = std::str::from_utf8(slice).unwrap();

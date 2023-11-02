@@ -1525,7 +1525,7 @@ struct Serialization {
       total += sizeof(int64_t);
       if ((input.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && input.objectInfo &&
           input.objectInfo->serialize) {
-        size_t len = 0;
+        uint64_t len = 0;
         uint8_t *data = nullptr;
         SHPointer handle = nullptr;
         if (!input.objectInfo->serialize(input.payload.objectValue, &data, &len, &handle)) {
@@ -1723,8 +1723,8 @@ template <typename T> struct WireDoppelgangerPool {
       lock.lock();
       auto &fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->wire = wire;
-      composer.compose(wire.get(), anything, false);
       fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, _pool.size());
+      composer.compose(wire.get(), anything, false);
 
       return fresh.get();
     } else {

@@ -309,7 +309,7 @@ unsafe extern "C" fn legacy_shard_warmup<T: LegacyShard>(arg1: *mut CShard, arg2
     Err(error) => SHError {
       message: SHStringWithLen {
         string: error.as_ptr() as *const c_char,
-        len: error.len(),
+        len: error.len() as u64,
       },
       code: 1,
     },
@@ -343,7 +343,7 @@ unsafe extern "C" fn legacy_shard_cleanup<T: LegacyShard>(arg1: *mut CShard) -> 
     Err(error) => SHError {
       message: SHStringWithLen {
         string: error.as_ptr() as *const c_char,
-        len: error.len(),
+        len: error.len() as u64,
       },
       code: 1,
     },
@@ -382,7 +382,7 @@ unsafe extern "C" fn legacy_shard_compose<T: LegacyShard>(
       error: SHError {
         message: SHStringWithLen {
           string: error.as_ptr() as *const c_char,
-          len: error.len(),
+          len: error.len() as u64,
         },
         code: 1,
       },
@@ -419,7 +419,7 @@ unsafe extern "C" fn legacy_shard_setParam<T: LegacyShard>(
     Err(error) => SHError {
       message: SHStringWithLen {
         string: error.as_ptr() as *const c_char,
-        len: error.len(),
+        len: error.len() as u64,
       },
       code: 1,
     },
@@ -576,7 +576,7 @@ unsafe extern "C" fn shard_setParam<T: Shard + ShardGenerated  + ShardGeneratedO
     Err(error) => SHError {
       message: SHStringWithLen {
         string: error.as_ptr() as *const c_char,
-        len: error.len(),
+        len: error.len() as u64,
       },
       code: 1,
     },
@@ -632,7 +632,7 @@ unsafe extern "C" fn shard_warmup<T: Shard + ShardGenerated  + ShardGeneratedOve
     Err(error) => SHError {
       message: SHStringWithLen {
         string: error.as_ptr() as *const c_char,
-        len: error.len(),
+        len: error.len() as u64,
       },
       code: 1,
     },
@@ -666,7 +666,7 @@ unsafe extern "C" fn shard_cleanup<T: Shard + ShardGenerated  + ShardGeneratedOv
     Err(error) => SHError {
       message: SHStringWithLen {
         string: error.as_ptr() as *const c_char,
-        len: error.len(),
+        len: error.len() as u64,
       },
       code: 1,
     },
@@ -696,7 +696,7 @@ unsafe extern "C" fn shard_compose<T: Shard + ShardGenerated  + ShardGeneratedOv
       error: SHError {
         message: SHStringWithLen {
           string: error.as_ptr() as *const c_char,
-          len: error.len(),
+          len: error.len() as u64,
         },
         code: 1,
       },

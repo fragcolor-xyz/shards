@@ -119,7 +119,7 @@ pub fn get_or_var<'a: 'c, 'b: 'c, 'c>(v: &'a Var, ctx: &'b Context) -> &'c Var {
         ctx,
         crate::SHStringWithLen {
           string: str.stringValue,
-          len: str.stringLen as usize,
+          len: str.stringLen as u64,
         },
       );
       releaseVariable(result);

@@ -252,7 +252,7 @@ void to_json(json &j, const SHVar &var) {
   case SHType::Object: {
     j = json{{"type", valType}, {"vendorId", var.payload.objectVendorId}, {"typeId", var.payload.objectTypeId}};
     if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && var.objectInfo && var.objectInfo->serialize) {
-      size_t len = 0;
+      uint64_t len = 0;
       uint8_t *data = nullptr;
       SHPointer handle = nullptr;
       if (!var.objectInfo->serialize(var.payload.objectValue, &data, &len, &handle)) {

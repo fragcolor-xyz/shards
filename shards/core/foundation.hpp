@@ -275,6 +275,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   shards::Coroutine coro;
 
   std::atomic<State> state{Stopped};
+  std::atomic_bool composing{false};
 
   shards::OwnedVar currentInput{};
   SHVar previousOutput{};
@@ -455,9 +456,7 @@ struct CrashHandlerBase {
 };
 
 struct Globals {
-public:
-  // sporadically used, don't abuse. And don't use in real time code.
-  std::mutex GlobalMutex;
+public:;
   UntrackedUnorderedMap<std::string, OwnedVar> Settings;
 
   CrashHandlerBase *CrashHandler{nullptr};
@@ -512,7 +511,7 @@ public:
       .tableSize =
           [](SHTable table) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            return map->size();
+            return uint64_t(map->size());
           },
       .tableContains =
           [](SHTable table, SHVar key) {
@@ -586,7 +585,7 @@ public:
       .setSize =
           [](SHSet shset) {
             shards::SHHashSet *set = reinterpret_cast<shards::SHHashSet *>(shset.opaque);
-            return set->size();
+            return uint64_t(set->size());
           },
       .setContains =
           [](SHSet shset, SHVar value) {
@@ -998,7 +997,7 @@ struct InternalCore {
   static void expTypesFree(SHExposedTypesInfo &arr) { arrayFree(arr); }
 
   static void log(SHStringWithLen msg) {
-    std::string_view msgView(msg.string, msg.len);
+    std::string_view msgView(msg.string, size_t(msg.len));
     SHLOG_INFO(msgView);
   }
 

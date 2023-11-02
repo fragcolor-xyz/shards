@@ -224,7 +224,7 @@ fn execute_seq(
     let msg = std::str::from_utf8(unsafe {
       std::slice::from_raw_parts(
         info.failureMessage.string as *const u8,
-        info.failureMessage.len,
+        info.failureMessage.len as usize,
       )
     })
     .unwrap();

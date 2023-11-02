@@ -74,8 +74,10 @@ SHOptionalString getCompiledCompressedString(uint32_t id) {
   static std::remove_pointer_t<decltype(Globals::CompressedStrings)> CompiledCompressedStrings;
   if (GetGlobals().CompressedStrings == nullptr)
     GetGlobals().CompressedStrings = &CompiledCompressedStrings;
+
+  // we only read so should be thread safe!
   auto it = CompiledCompressedStrings.find(id);
-  if(it != CompiledCompressedStrings.end()) {
+  if (it != CompiledCompressedStrings.end()) {
     auto val = it->second;
     val.crc = id; // make sure we return with crc to allow later lookups!
     return val;
@@ -89,7 +91,9 @@ SHOptionalString getCompiledCompressedString(uint32_t id) {
 static std::unordered_map<uint32_t, std::string> strings_storage;
 
 void decompressStrings() {
-  std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
+  static std::mutex decompressMutex;
+  std::scoped_lock _lock(decompressMutex);
+
   if (!shards::GetGlobals().CompressedStrings) {
     throw shards::SHException("String storage was null");
   }
@@ -122,9 +126,13 @@ void decompressStrings() {
 }
 #else
 SHOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
+  static std::mutex decompressMutex;
+  std::scoped_lock _lock(decompressMutex); // this is not great but happens only in DEBUG so it's fine
+
   static std::remove_pointer_t<decltype(Globals::CompressedStrings)> CompiledCompressedStrings;
   if (GetGlobals().CompressedStrings == nullptr)
     GetGlobals().CompressedStrings = &CompiledCompressedStrings;
+
   SHOptionalString ls{str, id};
   CompiledCompressedStrings[id] = ls;
   return ls;
@@ -966,7 +974,7 @@ void validateConnection(ValidationContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      std::string_view msg(composeResult.error.message.string, composeResult.error.message.len);
+      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
       SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
       throw ComposeError(msg);
     }
@@ -1267,6 +1275,16 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
 }
 
 SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
+  // compare exchange and then assert we were not composing
+  bool expected = false;
+  auto composeState = const_cast<SHWire*>(wire)->composing.compare_exchange_strong(expected, true);
+  if (!composeState) {
+    SHLOG_ERROR("Wire {} is already being composed", wire->name);
+    throw ComposeError("Wire is already being composed");
+  }
+  // defer reset compose state
+  DEFER(const_cast<SHWire*>(wire)->composing.store(false));
+
   // settle input type of wire before compose
   if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
     // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
@@ -2898,7 +2916,7 @@ void SHWire::warmup(SHContext *context) {
         if (blk->warmup) {
           auto status = blk->warmup(blk, context);
           if (status.code != SH_ERROR_NONE) {
-            std::string_view msg(status.message.string, status.message.len);
+            std::string_view msg(status.message.string, size_t(status.message.len));
             SHLOG_ERROR("Warmup failed on wire: {}, shard: {} (line: {}, column: {})", name, blk->name(blk), blk->line,
                         blk->column);
             throw shards::WarmupError(msg);
@@ -3110,12 +3128,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   sh_current_interface_loaded = true;
 
   result->alloc = [](uint32_t size) -> void * {
-    auto mem = ::operator new (size, std::align_val_t{16});
+    auto mem = ::operator new(size, std::align_val_t{16});
     memset(mem, 0, size);
     return mem;
   };
 
-  result->free = [](void *ptr) { ::operator delete (ptr, std::align_val_t{16}); };
+  result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
 
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)
@@ -3126,14 +3144,14 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->findObjectTypeId = [](SHStringWithLen name) noexcept {
-    return shards::findObjectTypeId(std::string_view{name.string, name.len});
+    return shards::findObjectTypeId(std::string_view{name.string, size_t(name.len)});
   };
 
   result->registerEnumType = [](int32_t vendorId, int32_t typeId, SHEnumInfo info) noexcept {
     API_TRY_CALL(registerEnumType, shards::registerEnumType(vendorId, typeId, info);)
   };
 
-  result->findEnumId = [](SHStringWithLen name) noexcept { return shards::findEnumId(std::string_view{name.string, name.len}); };
+  result->findEnumId = [](SHStringWithLen name) noexcept { return shards::findEnumId(std::string_view{name.string, size_t(name.len)}); };
 
   result->registerRunLoopCallback = [](const char *eventName, SHCallback callback) noexcept {
     API_TRY_CALL(registerRunLoopCallback, shards::registerRunLoopCallback(eventName, callback);)
@@ -3152,12 +3170,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->referenceVariable = [](SHContext *context, SHStringWithLen name) noexcept {
-    std::string_view nameView{name.string, name.len};
+    std::string_view nameView{name.string, size_t(name.len)};
     return shards::referenceVariable(context, nameView);
   };
 
   result->referenceWireVariable = [](SHWireRef wire, SHStringWithLen name) noexcept {
-    std::string_view nameView{name.string, name.len};
+    std::string_view nameView{name.string, size_t(name.len)};
     return shards::referenceWireVariable(wire, nameView);
   };
 
@@ -3188,7 +3206,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto vName = shards::OwnedVar::Foreign(name);
     auto var = sc->getExternalVariables()[vName];
     if (var) {
-      ::operator delete (var, std::align_val_t{16});
+      ::operator delete(var, std::align_val_t{16});
     }
     sc->getExternalVariables().erase(vName);
   };
@@ -3205,7 +3223,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->getState = [](SHContext *context) noexcept { return context->getState(); };
 
   result->abortWire = [](SHContext *context, SHStringWithLen message) noexcept {
-    std::string_view messageView{message.string, message.len};
+    std::string_view messageView{message.string, size_t(message.len)};
     context->cancelFlow(messageView);
   };
 
@@ -3335,18 +3353,18 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->log = [](SHStringWithLen msg) noexcept {
-    std::string_view sv(msg.string, msg.len);
+    std::string_view sv(msg.string, size_t(msg.len));
     SHLOG_INFO(sv);
   };
 
   result->logLevel = [](int level, SHStringWithLen msg) noexcept {
-    std::string_view sv(msg.string, msg.len);
+    std::string_view sv(msg.string, size_t(msg.len));
     spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, (spdlog::level::level_enum)level,
                                       sv);
   };
 
   result->createShard = [](SHStringWithLen name) noexcept {
-    std::string_view sv(name.string, name.len);
+    std::string_view sv(name.string, size_t(name.len));
     auto shard = shards::createShard(sv);
     if (shard) {
       assert(shard->refCount == 0 && "shard should have zero refcount");
@@ -3358,7 +3376,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->releaseShard = [](struct Shard *shard) noexcept { decRef(shard); };
 
   result->createWire = [](SHStringWithLen name) noexcept {
-    std::string_view sv(name.string, name.len);
+    std::string_view sv(name.string, size_t(name.len));
     auto wire = SHWire::make(sv);
     return wire->newRef();
   };
@@ -3378,7 +3396,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     sc->pure = pure;
   };
 
-  result->setWireStackSize = [](SHWireRef wireref, size_t size) noexcept {
+  result->setWireStackSize = [](SHWireRef wireref, uint64_t size) noexcept {
     auto &sc = SHWire::sharedFromRef(wireref);
 #if SH_CORO_NEED_STACK_MEM
     sc->stackSize = size;
@@ -3409,7 +3427,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->destroyWire = [](SHWireRef wire) noexcept { SHWire::deleteRef(wire); };
 
   result->getGlobalWire = [](SHStringWithLen name) noexcept {
-    std::string sv(name.string, name.len);
+    std::string sv(name.string, size_t(name.len));
     auto it = shards::GetGlobals().GlobalWires.find(std::move(sv));
     if (it != shards::GetGlobals().GlobalWires.end()) {
       return SHWire::weakRef(it->second);
@@ -3419,12 +3437,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->setGlobalWire = [](SHStringWithLen name, SHWireRef wire) noexcept {
-    std::string sv(name.string, name.len);
+    std::string sv(name.string, size_t(name.len));
     shards::GetGlobals().GlobalWires[std::move(sv)] = SHWire::sharedFromRef(wire);
   };
 
   result->unsetGlobalWire = [](SHStringWithLen name) noexcept {
-    std::string sv(name.string, name.len);
+    std::string sv(name.string, size_t(name.len));
     auto it = shards::GetGlobals().GlobalWires.find(std::move(sv));
     if (it != shards::GetGlobals().GlobalWires.end()) {
       shards::GetGlobals().GlobalWires.erase(it);

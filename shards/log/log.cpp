@@ -51,7 +51,7 @@ void redirectAll(const std::vector<spdlog::sink_ptr> &sinks) {
   spdlog::apply_all([&](Logger logger) { logger->sinks() = sinks; });
 }
 
-static void setupDefaultLogger() {
+static void setupDefaultLogger(const std::string &fileName = "shards.log") {
   auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
 
   auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -59,7 +59,7 @@ static void setupDefaultLogger() {
 
   // Setup log file
 #ifdef SHARDS_LOG_FILE
-  std::string logFilePath = boost::filesystem::absolute("shards.log").string();
+  std::string logFilePath = boost::filesystem::absolute(fileName).string();
   auto sink2 = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath.c_str(), true);
   dist_sink->add_sink(sink2);
 #endif
@@ -93,11 +93,11 @@ static void setupDefaultLogger() {
   redirectAll(logger->sinks());
 }
 
-void setupDefaultLoggerConditional() {
+void setupDefaultLoggerConditional(std::string fileName) {
   static bool initialized = false;
   if (!initialized) {
     initialized = true;
-    setupDefaultLogger();
+    setupDefaultLogger(fileName);
   }
 }
 } // namespace shards::logging

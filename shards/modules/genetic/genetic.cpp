@@ -715,7 +715,7 @@ struct Mutant {
           if (blk->compose) {
             auto res0 = blk->compose(blk, &dataCopy);
             if (res0.error.code != SH_ERROR_NONE) {
-              std::string_view err(res0.error.message.string, res0.error.message.len);
+              std::string_view err(res0.error.message.string, size_t(res0.error.message.len));
               throw ComposeError(err);
             }
             auto res = res0.result;

@@ -1350,7 +1350,6 @@ struct GetShards {
   SeqVar _output{};
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    std::scoped_lock lock(shards::GetGlobals().GlobalMutex);
     for (auto [name, _] : shards::GetGlobals().ShardsRegister) {
       _output.emplace_back(Var(name));
     }

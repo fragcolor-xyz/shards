@@ -163,7 +163,7 @@ impl Shard for AutoGridShard {
           // Pass each element in the given sequence to the shards in the contents and render
           for i in 0..seq.len() {
             // Check if contents will exceed max grid width if added onto current row
-            if (current_width + item_width > max_grid_width) {
+            if current_width + item_width > max_grid_width {
               ui.end_row();
               current_width = 0.0;
             }

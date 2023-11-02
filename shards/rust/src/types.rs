@@ -314,7 +314,7 @@ impl Wire {
   pub fn new(name: &str) -> Self {
     let name = SHStringWithLen {
       string: name.as_ptr() as *const c_char,
-      len: name.len(),
+      len: name.len() as u64,
     };
     Wire(WireRef(unsafe { (*Core).createWire.unwrap()(name) }))
   }
@@ -336,7 +336,7 @@ impl Wire {
   }
 
   pub fn set_stack_size(&self, stack_size: usize) {
-    unsafe { (*Core).setWireStackSize.unwrap()(self.0 .0, stack_size) }
+    unsafe { (*Core).setWireStackSize.unwrap()(self.0 .0, stack_size as u64) }
   }
 
   pub fn stop(&self) -> ClonedVar {
@@ -356,7 +356,7 @@ unsafe extern "C" fn error_cb(
 ) {
   let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
   let msg = std::str::from_utf8(unsafe {
-    slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len)
+    slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len as usize)
   })
   .unwrap();
   if !nonfatalWarning {
@@ -391,7 +391,7 @@ impl ShardRef {
     unsafe {
       let ptr = (*Core).createShard.unwrap()(SHStringWithLen {
         string: name.as_ptr() as *const c_char,
-        len: name.len(),
+        len: name.len() as u64,
       });
       if ptr.is_null() {
         None
@@ -427,7 +427,7 @@ impl ShardRef {
       } else {
         let cstr = std::str::from_utf8(slice::from_raw_parts(
           result.message.string as *const u8,
-          result.message.len,
+          result.message.len as usize,
         ));
         Err(cstr.unwrap())
       }
@@ -443,7 +443,7 @@ impl ShardRef {
         } else {
           let cstr = std::str::from_utf8(slice::from_raw_parts(
             result.message.string as *const u8,
-            result.message.len,
+            result.message.len as usize,
           ));
           Err(cstr.unwrap())
         }
@@ -812,7 +812,7 @@ impl From<SHTypeInfo> for ClonedVar {
 impl From<SHStringWithLen> for &str {
   fn from(s: SHStringWithLen) -> Self {
     unsafe {
-      let slice = slice::from_raw_parts(s.string as *const u8, s.len);
+      let slice = slice::from_raw_parts(s.string as *const u8, s.len as usize);
       std::str::from_utf8(slice).unwrap()
     }
   }
@@ -822,7 +822,7 @@ impl From<&str> for SHStringWithLen {
   fn from(s: &str) -> Self {
     SHStringWithLen {
       string: s.as_ptr() as *const c_char,
-      len: s.len(),
+      len: s.len() as u64,
     }
   }
 }
@@ -4008,7 +4008,7 @@ impl ParamVar {
               .payload
               .__bindgen_anon_1
               .__bindgen_anon_2
-              .stringLen as usize,
+              .stringLen as u64,
           },
         );
       }
@@ -4131,7 +4131,7 @@ unsafe extern "C" fn shardsvar_compose_cb(
 ) {
   let shard_name = CStr::from_ptr((*errorShard).name.unwrap()(errorShard as *mut _));
   let msg = std::str::from_utf8(unsafe {
-    slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len)
+    slice::from_raw_parts(errorTxt.string as *const u8, errorTxt.len as usize)
   })
   .unwrap();
   if !nonfatalWarning {
@@ -5390,7 +5390,7 @@ impl TableVar {
   pub fn len(&self) -> usize {
     unsafe {
       let t = self.0.payload.__bindgen_anon_1.tableValue;
-      (*t.api).tableSize.unwrap()(t)
+      (*t.api).tableSize.unwrap()(t) as usize
     }
   }
 
@@ -5547,7 +5547,7 @@ impl Table {
   }
 
   pub fn len(&self) -> usize {
-    unsafe { (*self.t.api).tableSize.unwrap()(self.t) }
+    unsafe { (*self.t.api).tableSize.unwrap()(self.t) as usize }
   }
 
   pub fn iter(&self) -> TableIterator {
