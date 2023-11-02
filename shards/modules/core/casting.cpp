@@ -389,7 +389,7 @@ struct Expect {
   Expect() { _unsafe = Var(false); }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (_type->valueType != SHType::Type) {
@@ -442,7 +442,7 @@ struct ExpectLike {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHTypeInfo compose(const SHInstanceData &data) {
     bool haveOutputOf = _outputOf.shards().len > 0;

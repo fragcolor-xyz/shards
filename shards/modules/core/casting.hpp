@@ -303,7 +303,7 @@ template <SHType ToType> struct MakeVector {
       param.warmup(context);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     for (auto &param : params)
       param.cleanup();
   }

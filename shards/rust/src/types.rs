@@ -421,7 +421,8 @@ impl ShardRef {
 
   pub fn cleanup(&self) -> Result<(), &'static str> {
     unsafe {
-      let result = (*self.0).cleanup.unwrap()(self.0);
+      // TODO: Cleanup
+      let result = (*self.0).cleanup.unwrap()(self.0, std::ptr::null_mut());
       if result.code == 0 {
         Ok(())
       } else {

@@ -36,7 +36,7 @@
     result->inputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                        \
     result->outputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                       \
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
-    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
+    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard, SHContext *) { return SHError::Success; });
 
 #define RUNTIME_CORE_SHARD(_name_)                                                                                       \
   struct _name_##Runtime {                                                                                               \
@@ -67,7 +67,7 @@
     result->inputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                        \
     result->outputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                       \
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
-    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
+    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard, SHContext *) { return SHError::Success; });
 
 #define RUNTIME_SHARD_TYPE(_namespace_, _name_) \
   struct _name_##Runtime {                      \
@@ -100,7 +100,7 @@
     result->inputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                        \
     result->outputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                       \
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
-    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
+    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard, SHContext *) { return SHError::Success; });
 
 #define RUNTIME_CORE_SHARD_TYPE(_name_) \
   struct _name_##Runtime {              \
@@ -132,7 +132,7 @@
     result->inputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                        \
     result->outputHelp = static_cast<SHHelpProc>([](Shard *shard) { return SHOptionalString(); });                       \
     result->properties = static_cast<SHPropertiesProc>([](Shard *shard) -> const SHTable * { return nullptr; });         \
-    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) { return SHError::Success; });
+    result->cleanup = static_cast<SHCleanupProc>([](Shard *shard, SHContext *) { return SHError::Success; });
 
 // Those get nicely inlined fully so only 1 indirection will happen at the root
 // of the call if the shard is all inline
@@ -224,9 +224,9 @@
   });
 
 #define RUNTIME_SHARD_cleanup(_name_)                                                                   \
-  result->cleanup = static_cast<SHCleanupProc>([](Shard *shard) {                                       \
+  result->cleanup = static_cast<SHCleanupProc>([](Shard *shard, SHContext *context) {                   \
     try {                                                                                               \
-      reinterpret_cast<_name_##Runtime *>(shard)->core.cleanup();                                       \
+      reinterpret_cast<_name_##Runtime *>(shard)->core.cleanup(context);                                \
       return SHError::Success;                                                                          \
     } catch (std::exception & ex) {                                                                     \
       reinterpret_cast<_name_##Runtime *>(shard)->lastError.assign(ex.what());                          \

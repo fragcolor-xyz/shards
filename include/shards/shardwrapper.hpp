@@ -223,9 +223,13 @@ template <class T> struct ShardWrapper {
 
     // cleanup
     if constexpr (has_cleanup<T>::value) {
-      result->cleanup = static_cast<SHCleanupProc>([](Shard *b) {
+      result->cleanup = static_cast<SHCleanupProc>([](Shard *b, SHContext* context) {
         try {
-          reinterpret_cast<ShardWrapper<T> *>(b)->shard.cleanup();
+          if constexpr(std::is_invocable_v<decltype(&T::cleanup), T&, SHContext*>) {
+            reinterpret_cast<ShardWrapper<T> *>(b)->shard.cleanup(context);
+          } else {
+            reinterpret_cast<ShardWrapper<T> *>(b)->shard.cleanup();
+          }
           return SHError::Success;
         } catch (const std::exception &e) {
           reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
@@ -234,7 +238,7 @@ template <class T> struct ShardWrapper {
         }
       });
     } else {
-      result->cleanup = static_cast<SHCleanupProc>([](Shard *b) { return SHError::Success; });
+      result->cleanup = static_cast<SHCleanupProc>([](Shard *b, SHContext*) { return SHError::Success; });
     }
 
     // mutate
@@ -313,7 +317,7 @@ template <typename SHCORE, Parameters &Params, size_t NPARAMS, Type &InputType, 
 
   SHVar getParam(int index) { return params[index]; }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     for (auto &param : params) {
       params.cleanup();
     }

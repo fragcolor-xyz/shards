@@ -75,7 +75,7 @@ SHOptionalString getCompiledCompressedString(uint32_t id) {
   if (GetGlobals().CompressedStrings == nullptr)
     GetGlobals().CompressedStrings = &CompiledCompressedStrings;
   auto it = CompiledCompressedStrings.find(id);
-  if(it != CompiledCompressedStrings.end()) {
+  if (it != CompiledCompressedStrings.end()) {
     auto val = it->second;
     val.crc = id; // make sure we return with crc to allow later lookups!
     return val;
@@ -2845,9 +2845,10 @@ void triggerVarValueChange(SHWire *w, const SHVar *name, const SHVar *var) {
   w->dispatcher.trigger(ev);
 }
 
-thread_local SHContext *currentContext{};
-void setCurrentContext(SHContext *ctx) { currentContext = ctx; }
-SHContext *getCurrentContext() { return currentContext; }
+SHContext *&getCurrentContextPtr() { 
+  static thread_local SHContext *currentContext{};
+  return currentContext; 
+}
 
 }; // namespace shards
 
@@ -2855,7 +2856,7 @@ SHContext *getCurrentContext() { return currentContext; }
 
 void SHWire::destroy() {
   for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
-    (*it)->cleanup(*it);
+    (*it)->cleanup(*it, nullptr);
   }
   for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
     decRef(*it);
@@ -2943,7 +2944,7 @@ void SHWire::cleanup(bool force) {
     for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
       auto blk = *it;
       try {
-        blk->cleanup(blk);
+        blk->cleanup(blk, context);
       }
 #if SH_BOOST_COROUTINE
       catch (boost::context::detail::forced_unwind const &e) {
@@ -3110,12 +3111,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   sh_current_interface_loaded = true;
 
   result->alloc = [](uint32_t size) -> void * {
-    auto mem = ::operator new (size, std::align_val_t{16});
+    auto mem = ::operator new(size, std::align_val_t{16});
     memset(mem, 0, size);
     return mem;
   };
 
-  result->free = [](void *ptr) { ::operator delete (ptr, std::align_val_t{16}); };
+  result->free = [](void *ptr) { ::operator delete(ptr, std::align_val_t{16}); };
 
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)
@@ -3188,7 +3189,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     auto vName = shards::OwnedVar::Foreign(name);
     auto var = sc->getExternalVariables()[vName];
     if (var) {
-      ::operator delete (var, std::align_val_t{16});
+      ::operator delete(var, std::align_val_t{16});
     }
     sc->getExternalVariables().erase(vName);
   };

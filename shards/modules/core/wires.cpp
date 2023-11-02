@@ -291,11 +291,11 @@ struct Wait : public WireBase {
     _timeout.warmup(ctx);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _timeout.cleanup();
     if (wireref.isVariable())
       wire = nullptr;
-    WireBase::cleanup();
+    WireBase::cleanup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -405,10 +405,10 @@ struct IsRunning : public WireBase {
 
   void warmup(SHContext *ctx) { WireBase::warmup(ctx); }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (wireref.isVariable())
       wire = nullptr;
-    WireBase::cleanup();
+    WireBase::cleanup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -487,10 +487,10 @@ struct Peek : public WireBase {
 
   void warmup(SHContext *ctx) { WireBase::warmup(ctx); }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (wireref.isVariable())
       wire = nullptr;
-    WireBase::cleanup();
+    WireBase::cleanup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -575,10 +575,10 @@ struct StopWire : public WireBase {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (wireref.isVariable())
       wire = nullptr;
-    WireBase::cleanup();
+    WireBase::cleanup(context);
   }
 
   static SHParametersInfo parameters() { return stopWireParamsInfo; }
@@ -654,10 +654,10 @@ struct SuspendWire : public WireBase {
 
   SHExposedTypeInfo _requiredWire{};
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (wireref.isVariable())
       wire = nullptr;
-    WireBase::cleanup();
+    WireBase::cleanup(context);
   }
 
   static inline Parameters params{{"Wire", SHCCSTR("The wire to suspend."), {WireVarTypes}}};
@@ -726,10 +726,10 @@ struct ResumeWire : public WireBase {
 
   SHExposedTypeInfo _requiredWire{};
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (wireref.isVariable())
       wire = nullptr;
-    WireBase::cleanup();
+    WireBase::cleanup(context);
   }
 
   static inline Parameters params{{"Wire", SHCCSTR("The wire to resume."), {WireVarTypes}}};
@@ -891,12 +891,12 @@ struct SwitchTo : public WireBase {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     for (auto &v : _vars) {
       v.cleanup();
     }
 
-    WireBase::cleanup();
+    WireBase::cleanup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1018,7 +1018,7 @@ struct Recur : public WireBase {
     _wire = swire.get();
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     for (auto &v : _vars) {
       v.cleanup();
     }
@@ -1111,7 +1111,7 @@ template <class T> struct BaseLoader : public BaseRunner {
     return Var::Empty;
   }
 
-  void cleanup() { BaseRunner::cleanup(); }
+  void cleanup(SHContext* context) { BaseRunner::cleanup(context); }
 
   SHVar activateWire(SHContext *context, const SHVar &input) {
     if (unlikely(!wire))
@@ -1164,7 +1164,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
-      cleanup(); // stop current
+      cleanup(nullptr); // stop current
       if (value.valueType == SHType::Object) {
         _provider = (SHWireProvider *)value.payload.objectValue;
       } else {
@@ -1213,10 +1213,10 @@ struct WireLoader : public BaseLoader<WireLoader> {
     return BaseLoader<WireLoader>::compose(data);
   }
 
-  void cleanup() {
-    BaseLoader<WireLoader>::cleanup();
-    _onReloadShards.cleanup();
-    _onErrorShards.cleanup();
+  void cleanup(SHContext* context) {
+    BaseLoader<WireLoader>::cleanup(context);
+    _onReloadShards.cleanup(context);
+    _onErrorShards.cleanup(context);
     if (_provider)
       _provider->reset(_provider);
   }
@@ -1305,8 +1305,8 @@ struct WireRunner : public BaseLoader<WireRunner> {
     }
   }
 
-  void cleanup() {
-    BaseLoader<WireRunner>::cleanup();
+  void cleanup(SHContext* context) {
+    BaseLoader<WireRunner>::cleanup(context);
     _wire.cleanup();
     _wirePtr = nullptr;
   }
@@ -1574,7 +1574,7 @@ struct ParallelBase : public CapturingSpawners {
     _composer.context = context;
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (capturing) {
       for (auto &v : _vars) {
         v.cleanup();
@@ -1963,14 +1963,14 @@ struct Spawn : public CapturingSpawners {
     SHLOG_TRACE("Spawn: warmed up {} variables", _vars.size());
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     for (auto &v : _vars) {
       v.cleanup();
     }
 
     _composer.context = nullptr;
 
-    WireBase::cleanup();
+    WireBase::cleanup(context);
   }
 
   std::unordered_map<const SHWire *, ManyWire *> _wireContainers;
@@ -2273,7 +2273,7 @@ public:
 
   void warmup(SHContext *context) { _brancher.warmup(context); }
 
-  void cleanup() { _brancher.cleanup(); }
+  void cleanup(SHContext* context) { _brancher.cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _brancher.activate();

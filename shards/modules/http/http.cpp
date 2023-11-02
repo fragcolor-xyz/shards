@@ -161,7 +161,7 @@ struct Base {
     headers.warmup(context);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     url.cleanup();
     headers.cleanup();
   }
@@ -544,7 +544,7 @@ struct Server {
     accept_once(context);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_pool)
       _pool->stopAll();
   }
@@ -612,7 +612,7 @@ struct Read {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     releaseVariable(_peerVar);
     _peerVar = nullptr;
   }
@@ -714,7 +714,7 @@ struct Response {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _headers.cleanup();
     releaseVariable(_peerVar);
     _peerVar = nullptr;
@@ -792,7 +792,7 @@ struct SendFile {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _headers.cleanup();
     releaseVariable(_peerVar);
     _peerVar = nullptr;

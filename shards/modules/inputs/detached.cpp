@@ -47,7 +47,7 @@ struct GetWindowContext {
 
   void warmup(SHContext *context) { _context.warmup(context); }
 
-  void cleanup() { _context.cleanup(); }
+  void cleanup(SHContext* context) { _context.cleanup(); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) { return _context.asVar(); }
 };
@@ -292,9 +292,9 @@ struct Detached {
     _lastReceivedEventBufferFrame = 0;
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_contextVarRef)
-      withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_CLEANUP(); });
+      withObjectVariable(*_contextVarRef, &_inputContext, IInputContext::Type, [&] { PARAM_CLEANUP(context); });
 
     cleanupCaptures();
 
@@ -479,7 +479,7 @@ struct DebugUI {
     _context.warmup(context);
     _uiContext = referenceVariable(context, EguiContextName);
   }
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _context.cleanup();
 
     releaseVariable(_uiContext);

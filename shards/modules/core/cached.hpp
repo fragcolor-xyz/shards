@@ -18,7 +18,7 @@ struct Cached {
   SHVar _lastOutput{};
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHTypeInfo compose(SHInstanceData &data) {
     SHComposeResult res = _evaluate.compose(data);

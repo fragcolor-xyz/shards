@@ -46,8 +46,8 @@ struct DrawableShard {
     _drawable->drawable = std::make_shared<MeshDrawable>();
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
 
     if (_drawable) {
       Types::DrawableObjectVar.Release(_drawable);
@@ -105,7 +105,7 @@ struct DrawShard {
 
   void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -172,8 +172,8 @@ struct DrawQueueShard {
     _queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     if (_queue) {
       Types::DrawQueueObjectVar.Release(_queue);
       _queue = nullptr;
@@ -202,7 +202,7 @@ struct ClearQueueShard {
   SHVar getParam(int index) { return Var::Empty; }
 
   void warmup(SHContext *context) {}
-  void cleanup() {}
+  void cleanup(SHContext* context) {}
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SHDrawQueue *shQueue = reinterpret_cast<SHDrawQueue *>(input.payload.objectValue);
@@ -229,7 +229,7 @@ struct GetQueueDrawablesShard {
   SHVar getParam(int index) { return Var::Empty; }
 
   void warmup(SHContext *context) {}
-  void cleanup() {}
+  void cleanup(SHContext* context) {}
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SHDrawQueue *shQueue = reinterpret_cast<SHDrawQueue *>(input.payload.objectValue);

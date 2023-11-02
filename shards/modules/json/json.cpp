@@ -706,7 +706,7 @@ struct FromJson {
 
   SHVar getParam(int index) { return Var(_pure); }
 
-  void cleanup() { _releaseMemory(_output); }
+  void cleanup(SHContext* context) { _releaseMemory(_output); }
 
   void anyParse(json &j, SHVar &storage) {
     if (j.is_array()) {

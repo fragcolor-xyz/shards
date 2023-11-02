@@ -15,7 +15,7 @@ struct Message {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {

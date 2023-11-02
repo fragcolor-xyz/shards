@@ -227,8 +227,8 @@ struct FreeCameraShard {
     return _result;
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     _inputContext.cleanup();
   }
   void warmup(SHContext *context) {
@@ -317,8 +317,8 @@ struct TargetCameraUpdate {
     return (_output = state);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     _inputContext.cleanup();
   }
   void warmup(SHContext *context) {
@@ -356,7 +356,7 @@ struct TargetCameraFromLookAt {
     return _result;
   }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   PARAM_REQUIRED_VARIABLES()
@@ -397,7 +397,7 @@ struct TargetCameraMatrix {
     return _result;
   }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   PARAM_REQUIRED_VARIABLES()

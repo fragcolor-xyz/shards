@@ -29,8 +29,8 @@ struct MeshShard {
 
   MeshPtr *_mesh = {};
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     if (_mesh) {
       Types::MeshObjectVar.Release(_mesh);
       _mesh = nullptr;
@@ -122,7 +122,7 @@ struct BuiltinMeshShard {
   BuiltinMeshShard() { _type = Var::Enum(Type::Cube, BuiltinMeshTypeEnumInfo::VendorId, BuiltinMeshTypeEnumInfo::TypeId); }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     MeshPtr *meshVar = Types::MeshObjectVar.New();

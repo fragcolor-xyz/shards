@@ -311,7 +311,7 @@ struct RenderXR : public BGFX::BaseConsumer {
 #endif
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _shards.cleanup();
 
 #ifdef __EMSCRIPTEN__
@@ -555,7 +555,7 @@ struct Controller : public Consumer {
     assert(_xrContext->valueType == SHType::Object);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_xrContext) {
       releaseVariable(_xrContext);
       _xrContext = nullptr;

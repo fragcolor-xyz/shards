@@ -39,7 +39,7 @@ struct Base {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void baseWarmup(SHContext *context) { _inputContext.warmup(context); }
-  void baseCleanup() { _inputContext.cleanup(); }
+  void baseCleanup(SHContext* context) { _inputContext.cleanup(); }
   SHExposedTypesInfo baseRequiredVariables() {
     static auto e = exposedTypesOf(decltype(_inputContext)::getExposedTypeInfo());
     return e;
@@ -47,7 +47,7 @@ struct Base {
 
   SHExposedTypesInfo requiredVariables() { return baseRequiredVariables(); }
   void warmup(SHContext *context) { baseWarmup(context); }
-  void cleanup() { baseCleanup(); }
+  void cleanup(SHContext* context) { baseCleanup(context); }
 };
 
 struct MousePixelPos : public Base {
@@ -162,7 +162,7 @@ struct Mouse : public Base {
     baseWarmup(context);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _hidden.cleanup();
     _captured.cleanup();
     _relative.cleanup();
@@ -260,11 +260,11 @@ template <bool Pressed> struct MouseUpDown : public Base {
     return data.inputType;
   }
 
-  void cleanup() {
-    _leftButton.cleanup();
-    _rightButton.cleanup();
-    _middleButton.cleanup();
-    baseCleanup();
+  void cleanup(SHContext* context) {
+    _leftButton.cleanup(context);
+    _rightButton.cleanup(context);
+    _middleButton.cleanup(context);
+    baseCleanup(context);
   }
 
   void warmup(SHContext *context) {
@@ -456,9 +456,9 @@ template <bool Pressed> struct KeyUpDown : public Base {
     return true;
   }
 
-  void cleanup() {
-    _shards.cleanup();
-    baseCleanup();
+  void cleanup(SHContext* context) {
+    _shards.cleanup(context);
+    baseCleanup(context);
   }
 
   void warmup(SHContext *context) {
@@ -543,7 +543,7 @@ struct IsKeyDown : public Base {
     }
   }
 
-  void cleanup() { baseCleanup(); }
+  void cleanup(SHContext* context) { baseCleanup(context); }
   void warmup(SHContext *context) { baseWarmup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) { return Var(_inputContext->getState().isKeyHeld(_keyCode)); }
@@ -555,10 +555,10 @@ struct HandleURL : public Base {
   PARAM(ShardsVar, _action, "Action", "The Shards to run if a text/file drop event happened.", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_action));
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
 
-    Base::cleanup();
+    Base::cleanup(context);
   }
 
   void warmup(SHContext *context) {

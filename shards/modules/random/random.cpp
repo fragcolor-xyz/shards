@@ -23,7 +23,7 @@ template <Type &OUTTYPE, SHType SHTYPE> struct Rand : public RandBase {
 
   SHVar getParam(int index) { return _max; }
 
-  void cleanup() { _max.cleanup(); }
+  void cleanup(SHContext* context) { _max.cleanup(); }
 
   void warmup(SHContext *context) { _max.warmup(context); }
 

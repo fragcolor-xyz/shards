@@ -1199,7 +1199,7 @@ struct Run {
 
   void warmup(SHContext *context) { _arguments.warmup(context); }
 
-  void cleanup() { _arguments.cleanup(); }
+  void cleanup(SHContext* context) { _arguments.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     return awaitne(

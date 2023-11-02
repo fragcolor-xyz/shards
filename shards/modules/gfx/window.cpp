@@ -191,12 +191,12 @@ struct MainWindow final {
     PARAM_WARMUP(context);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
 
-    callOnMainThread([&] {
+    callOnMainThread(context, [&] {
       if (_renderer) {
-        _renderer->cleanup();
+        _renderer->cleanup(context);
         _renderer.reset();
       }
 
@@ -227,20 +227,20 @@ struct MainWindow final {
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (!_windowContext->window) {
-      callOnMainThread([&]() { initWindow(shContext); });
+      callOnMainThread(shContext, [&]() { initWindow(shContext); });
     }
 
     auto &window = _windowContext->window;
 
     bool shouldRun = true;
     if (_renderer) {
-      if (!_renderer->begin(_windowContext.value()))
+      if (!_renderer->begin(shContext, _windowContext.value()))
         shouldRun = false;
     }
 
     if (shouldRun) {
       // Poll & distribute input events
-      callOnMainThread([&]() { _windowContext->inputMaster.update(*window.get()); });
+      callOnMainThread(shContext, [&]() { _windowContext->inputMaster.update(*window.get()); });
 
       for (auto &event : _windowContext->inputMaster.getEvents()) {
         if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event)) {
@@ -299,8 +299,8 @@ struct WindowSize {
     _requiredWindowContext.warmup(context, &_window);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
 
@@ -328,13 +328,13 @@ struct ResizeWindow {
     _requiredWindowContext.warmup(context, &_window);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    callOnMainThread([&]() { _requiredWindowContext->window->resize(toInt2(input)); });
+    callOnMainThread(shContext, [&]() { _requiredWindowContext->window->resize(toInt2(input)); });
     return input;
   }
 };
@@ -360,8 +360,8 @@ struct WindowPosition {
     PARAM_WARMUP(context);
     _requiredWindowContext.warmup(context, &_window);
   }
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
 
@@ -390,13 +390,13 @@ struct MoveWindow {
     _requiredWindowContext.warmup(context, &_window);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    callOnMainThread([&]() { _requiredWindowContext->window->move(toInt2(input)); });
+    callOnMainThread(shContext, [&]() { _requiredWindowContext->window->move(toInt2(input)); });
     return input;
   }
 };
@@ -424,8 +424,8 @@ struct OsUiScaleFactor {
     _requiredWindowContext.warmup(context, &_window);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
 

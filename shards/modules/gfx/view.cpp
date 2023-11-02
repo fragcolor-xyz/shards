@@ -42,8 +42,8 @@ struct ViewShard {
 
   SHView *_view;
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
 
     if (_view) {
       Types::ViewObjectVar.Release(_view);
@@ -123,10 +123,10 @@ struct RenderIntoShard {
     PARAM_WARMUP(context);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
-    _graphicsRendererContext.cleanup();
-    _inputContext.cleanup();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
+    _graphicsRendererContext.cleanup(context);
+    _inputContext.cleanup(context);
     _renderTarget.reset();
   }
 
@@ -299,7 +299,7 @@ struct ViewProjectionMatrixShard {
   }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     ViewPtr view = varAsObjectChecked<ViewPtr>(input, Types::View);

@@ -61,7 +61,7 @@ struct Convolve {
     _bytes.reserve(_kernel * _kernel * 4); // assume max 4 channels
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _xindex = 0;
     _yindex = 0;
   }
@@ -357,7 +357,7 @@ struct Resize {
     _height.warmup(context);
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     _width.cleanup();
     _height.cleanup();
   }
@@ -449,7 +449,7 @@ struct ImageGetPixel {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   auto static constexpr Conv_UIntToFloat4 = [](const SHImage &image, auto *pixel) {
     constexpr float max = float(std::numeric_limits<std::remove_pointer_t<decltype(pixel)>>::max());
@@ -563,13 +563,13 @@ struct LoadImage : public FileBase {
   BPP _bpp{BPP::u8};
   bool _premultiplyAlpha{};
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_output.valueType == SHType::Image && _output.payload.imageValue.data) {
       stbi_image_free(_output.payload.imageValue.data);
       _output = Var::Empty;
     }
 
-    FileBase::cleanup();
+    FileBase::cleanup(context);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {

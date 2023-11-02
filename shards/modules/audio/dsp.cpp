@@ -26,7 +26,7 @@ struct FFTBase {
 
   static inline Types FloatTypes{{CoreInfo::FloatSeqType, CoreInfo::Float2SeqType, CoreInfo::AudioType}};
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_state) {
       kiss_fft_free(_state);
       _state = nullptr;
@@ -84,7 +84,7 @@ struct FFT : public FFTBase {
     }
 
     if (unlikely(_currentWindow != len)) {
-      cleanup();
+      cleanup(context);
 
       if constexpr (ITYPE == SHType::Float2) {
         _state = kiss_fft_alloc(len, 0, 0, 0);
@@ -193,7 +193,7 @@ struct IFFT : public FFTBase {
     const int olen = len * 2 - 2;
 
     if (unlikely(_currentWindow != len)) {
-      cleanup();
+      cleanup(context);
 
       _currentWindow = len;
       _cscratch.resize(len);

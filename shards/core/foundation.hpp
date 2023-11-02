@@ -1452,7 +1452,7 @@ struct VariableResolver {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     if (_refs.size() > 0) {
       for (auto val : _vals) {
         // we do this to avoid double freeing, we don't really own this value

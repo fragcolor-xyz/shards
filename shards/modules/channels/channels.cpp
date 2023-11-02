@@ -266,7 +266,7 @@ struct Consumers : public Base {
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context) {
     // reset buffer counter
     _current = _bufferSize;
   }
@@ -327,8 +327,8 @@ struct Consume : public Consumers {
     return _storage;
   }
 
-  void cleanup() {
-    Consumers::cleanup();
+  void cleanup(SHContext* context) {
+    Consumers::cleanup(context);
 
     // cleanup storage
     if (_mpChannel)
@@ -340,8 +340,8 @@ struct Listen : public Consumers {
   BroadcastChannel *_bChannel;
   MPMCChannel *_subscriptionChannel;
 
-  void cleanup() {
-    Consumers::cleanup();
+  void cleanup(SHContext* context) {
+    Consumers::cleanup(context);
 
     // cleanup storage
     if (_subscriptionChannel) {

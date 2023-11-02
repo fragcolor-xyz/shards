@@ -137,7 +137,7 @@ struct EdnEval {
 
   void warmup(SHContext *context) { prefix.warmup(context); }
 
-  void cleanup() { prefix.cleanup(); }
+  void cleanup(SHContext* context) { prefix.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input);
 

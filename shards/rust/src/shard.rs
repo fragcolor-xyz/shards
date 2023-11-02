@@ -336,7 +336,7 @@ unsafe extern "C" fn legacy_shard_mutate<T: LegacyShard>(arg1: *mut CShard, arg2
   (*blk).shard.mutate(arg2.into());
 }
 
-unsafe extern "C" fn legacy_shard_cleanup<T: LegacyShard>(arg1: *mut CShard) -> SHError {
+unsafe extern "C" fn legacy_shard_cleanup<T: LegacyShard>(arg1: *mut CShard, arg2: *mut SHContext) -> SHError {
   let blk = arg1 as *mut LegacyShardWrapper<T>;
   match (*blk).shard.cleanup() {
     Ok(_) => SHError::default(),
@@ -659,7 +659,7 @@ unsafe extern "C" fn shard_mutate<T: Shard + ShardGenerated  + ShardGeneratedOve
   (*blk).shard.mutate(arg2.into());
 }
 
-unsafe extern "C" fn shard_cleanup<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> SHError {
+unsafe extern "C" fn shard_cleanup<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard, arg2: *mut SHContext) -> SHError {
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.cleanup() {
     Ok(_) => SHError::default(),

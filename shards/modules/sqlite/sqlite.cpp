@@ -103,8 +103,8 @@ struct Query : public Base {
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName));
 
-  void cleanup() {
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
 
     if (_connection) {
       std::scoped_lock<std::mutex> l(_connection->mutex);
@@ -255,7 +255,7 @@ struct Transaction : public Base {
     return data.inputType;
   }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   void warmup(SHContext *context) {
     if (_dbName.valueType != SHType::None) {
@@ -318,7 +318,7 @@ struct LoadExtension : public Base {
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName));
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   void warmup(SHContext *context) {
     if (_dbName.valueType != SHType::None) {
@@ -353,7 +353,7 @@ struct RawQuery : public Base {
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dbName));
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   void warmup(SHContext *context) {
     if (_dbName.valueType != SHType::None) {

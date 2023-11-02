@@ -62,9 +62,9 @@ struct LineShard : public Base {
     baseWarmup(context);
     PARAM_WARMUP(context);
   }
-  void cleanup() {
-    baseCleanup();
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    baseCleanup(context);
+    PARAM_CLEANUP(context);
   }
 };
 
@@ -114,9 +114,9 @@ struct CircleShard : public Base {
     baseWarmup(context);
     PARAM_WARMUP(context);
   }
-  void cleanup() {
-    baseCleanup();
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    baseCleanup(context);
+    PARAM_CLEANUP(context);
   }
 };
 
@@ -168,9 +168,9 @@ struct RectShard : public Base {
     baseWarmup(context);
     PARAM_WARMUP(context);
   }
-  void cleanup() {
-    baseCleanup();
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    baseCleanup(context);
+    PARAM_CLEANUP(context);
   }
 };
 
@@ -218,9 +218,9 @@ struct BoxShard : public Base {
     baseWarmup(context);
     PARAM_WARMUP(context);
   }
-  void cleanup() {
-    baseCleanup();
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    baseCleanup(context);
+    PARAM_CLEANUP(context);
   }
 };
 
@@ -258,9 +258,9 @@ struct PointShard : public Base {
     baseWarmup(context);
     PARAM_WARMUP(context);
   }
-  void cleanup() {
-    baseCleanup();
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    baseCleanup(context);
+    PARAM_CLEANUP(context);
   }
 };
 
@@ -313,9 +313,9 @@ struct SolidRectShard : public Base {
     baseWarmup(context);
     PARAM_WARMUP(context);
   }
-  void cleanup() {
-    baseCleanup();
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    baseCleanup(context);
+    PARAM_CLEANUP(context);
   }
 };
 
@@ -377,9 +377,9 @@ struct DiscShard : public Base {
     baseWarmup(context);
     PARAM_WARMUP(context);
   }
-  void cleanup() {
-    baseCleanup();
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    baseCleanup(context);
+    PARAM_CLEANUP(context);
   }
 };
 
@@ -453,9 +453,9 @@ struct GridShard : public Base {
     baseWarmup(context);
     PARAM_WARMUP(context);
   }
-  void cleanup() {
-    baseCleanup();
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    baseCleanup(context);
+    PARAM_CLEANUP(context);
   }
 };
 
@@ -547,9 +547,9 @@ struct RefSpaceGridOverlayShard : public Base {
     baseWarmup(context);
     PARAM_WARMUP(context);
   }
-  void cleanup() {
-    baseCleanup();
-    PARAM_CLEANUP();
+  void cleanup(SHContext* context) {
+    baseCleanup(context);
+    PARAM_CLEANUP(context);
   }
 };
 
@@ -573,9 +573,9 @@ struct ScreenXY : public Base {
     _output[1].valueType = SHType::Float3;
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
-    baseCleanup();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
+    baseCleanup(context);
   }
 
   PARAM_REQUIRED_VARIABLES();
@@ -607,9 +607,9 @@ struct ScreenScale : public Base {
     baseWarmup(context);
   }
 
-  void cleanup() {
-    PARAM_CLEANUP();
-    baseCleanup();
+  void cleanup(SHContext* context) {
+    PARAM_CLEANUP(context);
+    baseCleanup(context);
   }
 
   SHTypeInfo compose(SHInstanceData &data) {

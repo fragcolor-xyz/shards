@@ -208,7 +208,7 @@ struct IndexOf {
     }
   }
 
-  void cleanup() { _item.cleanup(); }
+  void cleanup(SHContext* context) { _item.cleanup(); }
   void warmup(SHContext *context) { _item.warmup(context); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
@@ -333,7 +333,7 @@ struct Merge {
                    "different sources while keeping the priority of certain values.");
   }
 
-  void cleanup() { PARAM_CLEANUP(); }
+  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 

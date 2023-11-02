@@ -68,7 +68,7 @@ public:
     }
   }
 
-  void cleanup() {
+  void cleanup(SHContext* context = nullptr) {
     if (variable) {
       shards::releaseVariable(variable);
       variable = nullptr;
@@ -104,7 +104,7 @@ private:
   void warmupCommon() {
     if constexpr (!Required) {
       if (variable->valueType == SHType::None) {
-        cleanup();
+        cleanup(nullptr);
       }
     }
   }
