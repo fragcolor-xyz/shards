@@ -1162,7 +1162,7 @@ TEST_CASE("HashedActivations") {
   shards.elements = &b1;
   b1->warmup(b1, &ctx);
   activateShards2(shards, &ctx, input, output, hash);
-  b1->cleanup(b1);
+  b1->cleanup(b1, &ctx);
   SHLOG_INFO("hash: {} - output: {}", hash, output);
   REQUIRE(hash.payload.int2Value[0] == -4968190569658619693ll);
   REQUIRE(hash.payload.int2Value[1] == 243653811690449199ll);
@@ -1177,7 +1177,7 @@ TEST_CASE("HashedActivations") {
     activateShards2(shards, &ctx, input, output, hash);
   } catch (...) {
   }
-  b1->cleanup(b1);
+  b1->cleanup(b1, &ctx);
   SHLOG_INFO("hash: {} - output: {}", hash, output);
   REQUIRE(hash.payload.int2Value[0] == -4909704308314863430ll);
   REQUIRE(hash.payload.int2Value[1] == -189837931601462934ll);
