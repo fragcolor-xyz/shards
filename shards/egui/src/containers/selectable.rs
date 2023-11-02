@@ -98,8 +98,8 @@ impl Shard for Selectable {
     self.warmup_helper(context)?;
     Ok(())
   }
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
     Ok(())
   }
   fn exposed_variables(&mut self) -> Option<&ExposedTypes> {

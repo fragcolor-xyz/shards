@@ -230,8 +230,8 @@ impl LegacyShard for Activate {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.model_var.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.model_var.cleanup(ctx);
     Ok(())
   }
 

@@ -110,8 +110,8 @@ impl LegacyShard for Simulation {
     Some(&EXPOSED_SIMULATION)
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.self_obj.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.self_obj.cleanup(ctx);
     Ok(())
   }
 

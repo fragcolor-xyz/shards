@@ -46,8 +46,12 @@ pub trait ParameterSet {
   fn set_param(&mut self, index: i32, value: &Var) -> Result<(), &'static str>;
   fn get_param(&mut self, index: i32) -> Var;
   fn warmup_helper(&mut self, context: &Context) -> Result<(), &'static str>;
-  fn cleanup_helper(&mut self) -> Result<(), &'static str>;
-  fn compose_helper(&mut self, out_required: &mut ExposedTypes, data: &InstanceData) -> Result<(), &'static str>;
+  fn cleanup_helper(&mut self, context: Option<&Context>) -> Result<(), &'static str>;
+  fn compose_helper(
+    &mut self,
+    out_required: &mut ExposedTypes,
+    data: &InstanceData,
+  ) -> Result<(), &'static str>;
 }
 
 pub trait ShardGenerated {
@@ -103,7 +107,7 @@ pub trait Shard {
   fn warmup(&mut self, _context: &Context) -> Result<(), &str> {
     Ok(())
   }
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     Ok(())
   }
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
@@ -180,7 +184,7 @@ pub trait LegacyShard {
     Ok(())
   }
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str>;
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     Ok(())
   }
 
@@ -223,7 +227,7 @@ pub struct LegacyShardWrapper<T: LegacyShard> {
 }
 
 #[repr(C, align(16))] // ensure alignment is 16 bytes
-pub struct ShardWrapper<T: Shard + ShardGenerated  + ShardGeneratedOverloads> {
+pub struct ShardWrapper<T: Shard + ShardGenerated + ShardGeneratedOverloads> {
   header: CShard,
   pub shard: T,
   name: Option<CString>,
@@ -240,7 +244,9 @@ pub unsafe extern "C" fn legacy_shard_construct<T: Default + LegacyShard>() -> *
   wptr as *mut CShard
 }
 
-unsafe extern "C" fn legacy_shard_name<T: LegacyShard>(arg1: *mut CShard) -> *const ::std::os::raw::c_char {
+unsafe extern "C" fn legacy_shard_name<T: LegacyShard>(
+  arg1: *mut CShard,
+) -> *const ::std::os::raw::c_char {
   let blk = arg1 as *mut LegacyShardWrapper<T>;
   if (*blk).name.is_some() {
     return (*blk).name.as_ref().unwrap().as_ptr();
@@ -265,7 +271,9 @@ unsafe extern "C" fn legacy_shard_inputHelp<T: LegacyShard>(arg1: *mut CShard) -
   (*blk).shard.inputHelp().0
 }
 
-unsafe extern "C" fn legacy_shard_outputHelp<T: LegacyShard>(arg1: *mut CShard) -> SHOptionalString {
+unsafe extern "C" fn legacy_shard_outputHelp<T: LegacyShard>(
+  arg1: *mut CShard,
+) -> SHOptionalString {
   let blk = arg1 as *mut LegacyShardWrapper<T>;
   (*blk).shard.outputHelp().0
 }
@@ -302,7 +310,10 @@ unsafe extern "C" fn legacy_shard_destroy<T: LegacyShard>(arg1: *mut CShard) {
   drop(Box::from_raw(blk)); // this will deallocate the Box
 }
 
-unsafe extern "C" fn legacy_shard_warmup<T: LegacyShard>(arg1: *mut CShard, arg2: *mut SHContext) -> SHError {
+unsafe extern "C" fn legacy_shard_warmup<T: LegacyShard>(
+  arg1: *mut CShard,
+  arg2: *mut SHContext,
+) -> SHError {
   let blk = arg1 as *mut LegacyShardWrapper<T>;
   match (*blk).shard.warmup(&(*arg2)) {
     Ok(_) => SHError::default(),
@@ -336,9 +347,15 @@ unsafe extern "C" fn legacy_shard_mutate<T: LegacyShard>(arg1: *mut CShard, arg2
   (*blk).shard.mutate(arg2.into());
 }
 
-unsafe extern "C" fn legacy_shard_cleanup<T: LegacyShard>(arg1: *mut CShard, arg2: *mut SHContext) -> SHError {
+unsafe extern "C" fn legacy_shard_cleanup<T: LegacyShard>(
+  arg1: *mut CShard,
+  arg2: *mut SHContext,
+) -> SHError {
   let blk = arg1 as *mut LegacyShardWrapper<T>;
-  match (*blk).shard.cleanup() {
+  match (*blk)
+    .shard
+    .cleanup(if arg2.is_null() { None } else { Some(&*arg2) })
+  {
     Ok(_) => SHError::default(),
     Err(error) => SHError {
       message: SHStringWithLen {
@@ -350,7 +367,9 @@ unsafe extern "C" fn legacy_shard_cleanup<T: LegacyShard>(arg1: *mut CShard, arg
   }
 }
 
-unsafe extern "C" fn legacy_shard_exposedVariables<T: LegacyShard>(arg1: *mut CShard) -> SHExposedTypesInfo {
+unsafe extern "C" fn legacy_shard_exposedVariables<T: LegacyShard>(
+  arg1: *mut CShard,
+) -> SHExposedTypesInfo {
   let blk = arg1 as *mut LegacyShardWrapper<T>;
   if let Some(exposed) = (*blk).shard.exposedVariables() {
     SHExposedTypesInfo::from(exposed)
@@ -359,7 +378,9 @@ unsafe extern "C" fn legacy_shard_exposedVariables<T: LegacyShard>(arg1: *mut CS
   }
 }
 
-unsafe extern "C" fn legacy_shard_requiredVariables<T: LegacyShard>(arg1: *mut CShard) -> SHExposedTypesInfo {
+unsafe extern "C" fn legacy_shard_requiredVariables<T: LegacyShard>(
+  arg1: *mut CShard,
+) -> SHExposedTypesInfo {
   let blk = arg1 as *mut LegacyShardWrapper<T>;
   if let Some(required) = (*blk).shard.requiredVariables() {
     SHExposedTypesInfo::from(required)
@@ -391,7 +412,9 @@ unsafe extern "C" fn legacy_shard_compose<T: LegacyShard>(
   }
 }
 
-unsafe extern "C" fn legacy_shard_parameters<T: LegacyShard>(arg1: *mut CShard) -> SHParametersInfo {
+unsafe extern "C" fn legacy_shard_parameters<T: LegacyShard>(
+  arg1: *mut CShard,
+) -> SHParametersInfo {
   let blk = arg1 as *mut LegacyShardWrapper<T>;
   if let Some(params) = (*blk).shard.parameters() {
     SHParametersInfo::from(params)
@@ -426,7 +449,11 @@ unsafe extern "C" fn legacy_shard_setParam<T: LegacyShard>(
   }
 }
 
-unsafe extern "C" fn legacy_shard_crossover<T: LegacyShard>(arg1: *mut CShard, s0: *const Var, s1: *const Var) {
+unsafe extern "C" fn legacy_shard_crossover<T: LegacyShard>(
+  arg1: *mut CShard,
+  s0: *const Var,
+  s1: *const Var,
+) {
   let blk = arg1 as *mut LegacyShardWrapper<T>;
   (*blk).shard.crossover(&*s0, &*s1);
 }
@@ -513,13 +540,17 @@ pub fn create<T: Default + LegacyShard>() -> LegacyShardWrapper<T> {
   return shard;
 }
 
-pub unsafe extern "C" fn shard_construct<T: Default + Shard + ShardGenerated  + ShardGeneratedOverloads>() -> *mut CShard {
+pub unsafe extern "C" fn shard_construct<
+  T: Default + Shard + ShardGenerated + ShardGeneratedOverloads,
+>() -> *mut CShard {
   let wrapper: Box<ShardWrapper<T>> = Box::new(create2());
   let wptr = Box::into_raw(wrapper);
   wptr as *mut CShard
 }
 
-unsafe extern "C" fn shard_name<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> *const ::std::os::raw::c_char {
+unsafe extern "C" fn shard_name<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> *const ::std::os::raw::c_char {
   let blk = arg1 as *mut ShardWrapper<T>;
   if (*blk).name.is_some() {
     return (*blk).name.as_ref().unwrap().as_ptr();
@@ -530,16 +561,24 @@ unsafe extern "C" fn shard_name<T: Shard + ShardGenerated  + ShardGeneratedOverl
   }
 }
 
-unsafe extern "C" fn shard_hash<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(_arg1: *mut CShard) -> u32 {
+unsafe extern "C" fn shard_hash<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  _arg1: *mut CShard,
+) -> u32 {
   T::hash()
 }
 
-unsafe extern "C" fn shard_help<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> SHOptionalString {
+unsafe extern "C" fn shard_help<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> SHOptionalString {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.help().0
 }
 
-unsafe extern "C" fn shard_requiredVariables<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> SHExposedTypesInfo {
+unsafe extern "C" fn shard_requiredVariables<
+  T: Shard + ShardGenerated + ShardGeneratedOverloads,
+>(
+  arg1: *mut CShard,
+) -> SHExposedTypesInfo {
   let blk = arg1 as *mut ShardWrapper<T>;
   if let Some(required) = (*blk).shard.required_variables() {
     SHExposedTypesInfo::from(required)
@@ -548,7 +587,9 @@ unsafe extern "C" fn shard_requiredVariables<T: Shard + ShardGenerated  + ShardG
   }
 }
 
-unsafe extern "C" fn shard_parameters<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> SHParametersInfo {
+unsafe extern "C" fn shard_parameters<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> SHParametersInfo {
   let blk = arg1 as *mut ShardWrapper<T>;
   if let Some(params) = (*blk).shard.parameters() {
     SHParametersInfo::from(params)
@@ -557,7 +598,7 @@ unsafe extern "C" fn shard_parameters<T: Shard + ShardGenerated  + ShardGenerate
   }
 }
 
-unsafe extern "C" fn shard_getParam<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(
+unsafe extern "C" fn shard_getParam<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
   arg1: *mut CShard,
   arg2: ::std::os::raw::c_int,
 ) -> SHVar {
@@ -565,7 +606,7 @@ unsafe extern "C" fn shard_getParam<T: Shard + ShardGenerated  + ShardGeneratedO
   (*blk).shard.get_param(arg2)
 }
 
-unsafe extern "C" fn shard_setParam<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(
+unsafe extern "C" fn shard_setParam<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
   arg1: *mut CShard,
   arg2: ::std::os::raw::c_int,
   arg3: *const SHVar,
@@ -583,17 +624,23 @@ unsafe extern "C" fn shard_setParam<T: Shard + ShardGenerated  + ShardGeneratedO
   }
 }
 
-unsafe extern "C" fn shard_inputHelp<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> SHOptionalString {
+unsafe extern "C" fn shard_inputHelp<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> SHOptionalString {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.input_help().0
 }
 
-unsafe extern "C" fn shard_outputHelp<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> SHOptionalString {
+unsafe extern "C" fn shard_outputHelp<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> SHOptionalString {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.output_help().0
 }
 
-unsafe extern "C" fn shard_properties<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> *const SHTable {
+unsafe extern "C" fn shard_properties<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> *const SHTable {
   let blk = arg1 as *mut ShardWrapper<T>;
   if let Some(properties) = (*blk).shard.properties() {
     &properties.t as *const SHTable
@@ -602,30 +649,41 @@ unsafe extern "C" fn shard_properties<T: Shard + ShardGenerated  + ShardGenerate
   }
 }
 
-unsafe extern "C" fn shard_inputTypes<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> SHTypesInfo {
+unsafe extern "C" fn shard_inputTypes<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> SHTypesInfo {
   let blk = arg1 as *mut ShardWrapper<T>;
   let t = (*blk).shard.input_types();
   SHTypesInfo::from(t)
 }
 
-unsafe extern "C" fn shard_outputTypes<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> SHTypesInfo {
+unsafe extern "C" fn shard_outputTypes<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> SHTypesInfo {
   let blk = arg1 as *mut ShardWrapper<T>;
   let t = (*blk).shard.output_types();
   SHTypesInfo::from(t)
 }
 
-unsafe extern "C" fn shard_setup<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) {
+unsafe extern "C" fn shard_setup<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.setup();
 }
 
-unsafe extern "C" fn shard_destroy<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) {
+unsafe extern "C" fn shard_destroy<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.destroy();
   drop(Box::from_raw(blk)); // this will deallocate the Box
 }
 
-unsafe extern "C" fn shard_warmup<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard, arg2: *mut SHContext) -> SHError {
+unsafe extern "C" fn shard_warmup<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+  arg2: *mut SHContext,
+) -> SHError {
   let blk = arg1 as *mut ShardWrapper<T>;
   match (*blk).shard.warmup(&(*arg2)) {
     Ok(_) => SHError::default(),
@@ -639,7 +697,7 @@ unsafe extern "C" fn shard_warmup<T: Shard + ShardGenerated  + ShardGeneratedOve
   }
 }
 
-unsafe extern "C" fn shard_activate<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(
+unsafe extern "C" fn shard_activate<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
   arg1: *mut CShard,
   arg2: *mut SHContext,
   arg3: *const SHVar,
@@ -654,14 +712,23 @@ unsafe extern "C" fn shard_activate<T: Shard + ShardGenerated  + ShardGeneratedO
   }
 }
 
-unsafe extern "C" fn shard_mutate<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard, arg2: SHTable) {
+unsafe extern "C" fn shard_mutate<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+  arg2: SHTable,
+) {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.mutate(arg2.into());
 }
 
-unsafe extern "C" fn shard_cleanup<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard, arg2: *mut SHContext) -> SHError {
+unsafe extern "C" fn shard_cleanup<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+  arg2: *mut SHContext,
+) -> SHError {
   let blk = arg1 as *mut ShardWrapper<T>;
-  match (*blk).shard.cleanup() {
+  match (*blk)
+    .shard
+    .cleanup(if arg2.is_null() { None } else { Some(&*arg2) })
+  {
     Ok(_) => SHError::default(),
     Err(error) => SHError {
       message: SHStringWithLen {
@@ -673,7 +740,9 @@ unsafe extern "C" fn shard_cleanup<T: Shard + ShardGenerated  + ShardGeneratedOv
   }
 }
 
-unsafe extern "C" fn shard_exposedVariables<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> SHExposedTypesInfo {
+unsafe extern "C" fn shard_exposedVariables<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> SHExposedTypesInfo {
   let blk = arg1 as *mut ShardWrapper<T>;
   if let Some(exposed) = (*blk).shard.exposed_variables() {
     SHExposedTypesInfo::from(exposed)
@@ -682,7 +751,7 @@ unsafe extern "C" fn shard_exposedVariables<T: Shard + ShardGenerated  + ShardGe
   }
 }
 
-unsafe extern "C" fn shard_compose<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(
+unsafe extern "C" fn shard_compose<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
   arg1: *mut CShard,
   data: *mut SHInstanceData,
 ) -> SHShardComposeResult {
@@ -705,27 +774,38 @@ unsafe extern "C" fn shard_compose<T: Shard + ShardGenerated  + ShardGeneratedOv
   }
 }
 
-unsafe extern "C" fn shard_crossover<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard, s0: *const Var, s1: *const Var) {
+unsafe extern "C" fn shard_crossover<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+  s0: *const Var,
+  s1: *const Var,
+) {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.crossover(&*s0, &*s1);
 }
 
-unsafe extern "C" fn shard_getState<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) -> Var {
+unsafe extern "C" fn shard_getState<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) -> Var {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.get_state()
 }
 
-unsafe extern "C" fn shard_setState<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard, state: *const Var) {
+unsafe extern "C" fn shard_setState<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+  state: *const Var,
+) {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.set_state(&*state);
 }
 
-unsafe extern "C" fn shard_resetState<T: Shard + ShardGenerated  + ShardGeneratedOverloads>(arg1: *mut CShard) {
+unsafe extern "C" fn shard_resetState<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
+  arg1: *mut CShard,
+) {
   let blk = arg1 as *mut ShardWrapper<T>;
   (*blk).shard.reset_state();
 }
 
-pub fn create2<T: Default + Shard + ShardGenerated  + ShardGeneratedOverloads>() -> ShardWrapper<T> {
+pub fn create2<T: Default + Shard + ShardGenerated + ShardGeneratedOverloads>() -> ShardWrapper<T> {
   let mut shard = ShardWrapper::<T> {
     header: CShard {
       inlineShardId: 0,

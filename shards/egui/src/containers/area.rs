@@ -63,10 +63,10 @@ impl Shard for AreaShard {
     self.parents.warmup(context);
     Ok(())
   }
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
-    self.contexts.cleanup();
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.contexts.cleanup(ctx);
+    self.parents.cleanup(ctx);
     Ok(())
   }
   fn exposed_variables(&mut self) -> Option<&ExposedTypes> {

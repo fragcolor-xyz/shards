@@ -173,12 +173,12 @@ impl LegacyShard for Tab {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
-    self.title.cleanup();
-    self.parents.cleanup();
+    self.title.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }
@@ -385,7 +385,7 @@ impl LegacyShard for DockArea {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self
       .tabs
       .iter_mut()
@@ -401,13 +401,13 @@ impl LegacyShard for DockArea {
       })
       .flatten()
       .for_each(|(title, contents)| {
-        title.cleanup();
-        contents.cleanup();
+        title.cleanup(ctx);
+        contents.cleanup(ctx);
       });
 
-    self.contents.cleanup();
-    self.parents.cleanup();
-    self.instance.cleanup();
+    self.contents.cleanup(ctx);
+    self.parents.cleanup(ctx);
+    self.instance.cleanup(ctx);
 
     Ok(())
   }
@@ -464,7 +464,7 @@ impl<'a> MyTabViewer<'a> {
   }
 
   pub fn cleanup(&mut self) {
-    self.parents.cleanup();
+    self.parents.cleanup(Some(self.context));
   }
 }
 

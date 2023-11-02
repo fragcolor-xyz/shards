@@ -74,8 +74,8 @@ impl LegacyShard for CastRay {
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
     Some(&EXPOSED_SIMULATION)
   }
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.simulation_var.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.simulation_var.cleanup(ctx);
     Ok(())
   }
   fn warmup(&mut self, context: &Context) -> Result<(), &str> {

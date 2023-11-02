@@ -156,13 +156,13 @@ impl LegacyShard for PlotPoints {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.radius.cleanup();
-    self.shape.cleanup();
-    self.color.cleanup();
-    self.name.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.radius.cleanup(ctx);
+    self.shape.cleanup(ctx);
+    self.color.cleanup(ctx);
+    self.name.cleanup(ctx);
 
-    self.plot_ui.cleanup();
+    self.plot_ui.cleanup(ctx);
 
     Ok(())
   }

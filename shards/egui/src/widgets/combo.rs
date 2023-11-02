@@ -232,13 +232,13 @@ impl LegacyShard for Combo {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.style.cleanup();
-    self.width.cleanup();
-    self.index.cleanup();
-    self.label.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.style.cleanup(ctx);
+    self.width.cleanup(ctx);
+    self.index.cleanup(ctx);
+    self.label.cleanup(ctx);
 
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

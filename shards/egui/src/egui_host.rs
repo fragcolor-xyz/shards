@@ -79,9 +79,9 @@ impl EguiHost {
     Ok(())
   }
 
-  pub fn cleanup(&mut self) -> Result<(), &'static str> {
-    self.parents.cleanup();
-    self.instance.cleanup();
+  pub fn cleanup(&mut self, ctx: Option<&ShardsContext>) -> Result<(), &'static str> {
+    self.parents.cleanup(ctx);
+    self.instance.cleanup(ctx);
     self.context = None;
     Ok(())
   }
@@ -201,8 +201,8 @@ mod native {
   }
 
   #[no_mangle]
-  unsafe extern "C" fn egui_hostCleanup(ptr: *mut EguiHost) {
-    (*ptr).cleanup().unwrap();
+  unsafe extern "C" fn egui_hostCleanup(ptr: *mut EguiHost, ctx: Option<&Context>) {
+    (*ptr).cleanup(ctx).unwrap();
   }
 
   #[no_mangle]

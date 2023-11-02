@@ -153,13 +153,13 @@ impl LegacyShard for Link {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.style.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.style.cleanup(ctx);
     if !self.action.is_empty() {
-      self.action.cleanup();
+      self.action.cleanup(ctx);
     }
-    self.label.cleanup();
-    self.parents.cleanup();
+    self.label.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

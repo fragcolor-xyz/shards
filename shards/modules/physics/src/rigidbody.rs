@@ -500,9 +500,9 @@ impl Shard for StaticRigidBodyShard {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.rb.cleanup(&self.base.simulation);
-    self.cleanup_helper()?;
+    self.cleanup_helper(ctx)?;
     Ok(())
   }
 
@@ -603,9 +603,9 @@ impl Shard for DynamicRigidBodyShard {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.rb.cleanup(&self.base.simulation);
-    self.cleanup_helper()?;
+    self.cleanup_helper(ctx)?;
     Ok(())
   }
 
@@ -709,9 +709,9 @@ impl Shard for KinematicRigidBodyShard {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     self.rb.cleanup(&self.base.simulation);
-    self.cleanup_helper()?;
+    self.cleanup_helper(ctx)?;
     Ok(())
   }
 

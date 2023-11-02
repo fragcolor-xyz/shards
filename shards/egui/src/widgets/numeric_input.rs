@@ -205,10 +205,10 @@ macro_rules! impl_ui_input {
         Ok(())
       }
 
-      fn cleanup(&mut self) -> Result<(), &str> {
-        self.prefix.cleanup();
-        self.variable.cleanup();
-        self.parents.cleanup();
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.prefix.cleanup(ctx);
+        self.variable.cleanup(ctx);
+        self.parents.cleanup(ctx);
 
         Ok(())
       }
@@ -416,9 +416,9 @@ macro_rules! impl_ui_n_input {
         Ok(())
       }
 
-      fn cleanup(&mut self) -> Result<(), &str> {
-        self.variable.cleanup();
-        self.parents.cleanup();
+      fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.variable.cleanup(ctx);
+        self.parents.cleanup(ctx);
 
         Ok(())
       }

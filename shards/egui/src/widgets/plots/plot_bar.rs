@@ -151,12 +151,12 @@ impl LegacyShard for PlotBar {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.name.cleanup();
-    self.horizontal.cleanup();
-    self.bar_width.cleanup();
-    self.color.cleanup();
-    self.plot_ui.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.name.cleanup(ctx);
+    self.horizontal.cleanup(ctx);
+    self.bar_width.cleanup(ctx);
+    self.color.cleanup(ctx);
+    self.plot_ui.cleanup(ctx);
 
     Ok(())
   }

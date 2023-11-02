@@ -419,10 +419,17 @@ impl ShardRef {
     }
   }
 
-  pub fn cleanup(&self) -> Result<(), &'static str> {
+  pub fn cleanup(&self, context: Option<&Context>) -> Result<(), &'static str> {
     unsafe {
       // TODO: Cleanup
-      let result = (*self.0).cleanup.unwrap()(self.0, std::ptr::null_mut());
+      let result = (*self.0).cleanup.unwrap()(
+        self.0,
+        if let Some(_ref) = context {
+          &_ref as *const _ as *mut _
+        } else {
+          std::ptr::null_mut()
+        },
+      );
       if result.code == 0 {
         Ok(())
       } else {
@@ -3979,7 +3986,7 @@ impl ParamVar {
     var
   }
 
-  pub fn cleanup(&mut self) {
+  pub fn cleanup(&mut self, ctx: Option<&Context>) {
     unsafe {
       if self.parameter.0.valueType == SHType_ContextVar {
         (*Core).releaseVariable.unwrap()(self.pointee);
@@ -4104,7 +4111,7 @@ impl Default for ParamVar {
 
 impl Drop for ParamVar {
   fn drop(&mut self) {
-    self.cleanup();
+    self.cleanup(None);
   }
 }
 
@@ -4151,7 +4158,7 @@ unsafe extern "C" fn shardsvar_compose_cb(
 impl ShardsVar {
   fn destroy(&mut self) {
     for shard in &self.shards {
-      if let Err(e) = shard.cleanup() {
+      if let Err(e) = shard.cleanup(None) {
         shlog!("Errors during shard cleanup: {}", e);
       }
     }
@@ -4168,9 +4175,9 @@ impl ShardsVar {
     }
   }
 
-  pub fn cleanup(&self) {
+  pub fn cleanup(&mut self, ctx: Option<&Context>) {
     for shard in self.shards.iter().rev() {
-      if let Err(e) = shard.cleanup() {
+      if let Err(e) = shard.cleanup(ctx) {
         shlog!("Errors during shard cleanup: {}", e);
       }
     }

@@ -78,8 +78,8 @@ impl LegacyShard for Encrypt {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.key.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.key.cleanup(ctx);
     Ok(())
   }
 
@@ -178,8 +178,8 @@ impl LegacyShard for Decrypt {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.key.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.key.cleanup(ctx);
     Ok(())
   }
 

@@ -81,8 +81,8 @@ impl LegacyShard for MarkdownViewer {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

@@ -267,12 +267,12 @@ impl LegacyShard for ListBox {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.template.cleanup();
-    self.index.cleanup();
-    self.parents.cleanup();
-    self.selected.cleanup();
-    self.is_selected.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.template.cleanup(ctx);
+    self.index.cleanup(ctx);
+    self.parents.cleanup(ctx);
+    self.selected.cleanup(ctx);
+    self.is_selected.cleanup(ctx);
 
     Ok(())
   }

@@ -126,10 +126,10 @@ impl LegacyShard for Console {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.style.cleanup();
-    self.show_filters.cleanup();
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.style.cleanup(ctx);
+    self.show_filters.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

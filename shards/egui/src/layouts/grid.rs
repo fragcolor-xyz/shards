@@ -201,17 +201,17 @@ impl LegacyShard for Grid {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.spacing.cleanup();
-    self.max_width.cleanup();
-    self.min_width.cleanup();
-    self.num_columns.cleanup();
-    self.striped.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.spacing.cleanup(ctx);
+    self.max_width.cleanup(ctx);
+    self.min_width.cleanup(ctx);
+    self.num_columns.cleanup(ctx);
+    self.striped.cleanup(ctx);
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
 
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }
@@ -330,8 +330,8 @@ impl LegacyShard for NextRow {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

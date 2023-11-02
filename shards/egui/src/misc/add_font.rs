@@ -81,8 +81,8 @@ impl LegacyShard for AddFont {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.instance.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.instance.cleanup(ctx);
 
     Ok(())
   }

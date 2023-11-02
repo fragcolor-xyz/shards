@@ -212,17 +212,17 @@ impl LegacyShard for Frame {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.strokeWidth.cleanup();
-    self.strokeColor.cleanup();
-    self.fillColor.cleanup();
-    self.rounding.cleanup();
-    self.outerMargin.cleanup();
-    self.innerMargin.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.strokeWidth.cleanup(ctx);
+    self.strokeColor.cleanup(ctx);
+    self.fillColor.cleanup(ctx);
+    self.rounding.cleanup(ctx);
+    self.outerMargin.cleanup(ctx);
+    self.innerMargin.cleanup(ctx);
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

@@ -326,21 +326,21 @@ impl LegacyShard for Table {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     for s in &mut self.header_shards {
       if let Some(s) = s {
-        s.cleanup();
+        s.cleanup(ctx);
       }
     }
     for s in &mut self.shards {
-      s.cleanup();
+      s.cleanup(ctx);
     }
 
-    self.row_index.cleanup();
-    self.resizable.cleanup();
-    self.striped.cleanup();
+    self.row_index.cleanup(ctx);
+    self.resizable.cleanup(ctx);
+    self.striped.cleanup(ctx);
 
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
     Ok(())
   }
 

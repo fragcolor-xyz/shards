@@ -167,16 +167,16 @@ impl LegacyShard for Tooltip {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     if !self.onhover.is_empty() {
-      self.onhover.cleanup();
+      self.onhover.cleanup(ctx);
     }
-    self.text.cleanup();
+    self.text.cleanup(ctx);
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
 
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

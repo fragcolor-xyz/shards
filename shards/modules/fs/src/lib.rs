@@ -181,10 +181,10 @@ impl LegacyShard for FileDialog {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.folder.cleanup();
-    self.current_dir.cleanup();
-    self.filters.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.folder.cleanup(ctx);
+    self.current_dir.cleanup(ctx);
+    self.filters.cleanup(ctx);
 
     Ok(())
   }
@@ -341,9 +341,9 @@ impl LegacyShard for SaveFileDialog {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.current_dir.cleanup();
-    self.filters.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.current_dir.cleanup(ctx);
+    self.filters.cleanup(ctx);
 
     Ok(())
   }
@@ -429,8 +429,8 @@ impl Shard for NotifyShard {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
     Ok(())
   }
 

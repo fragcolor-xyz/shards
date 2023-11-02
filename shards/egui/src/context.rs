@@ -170,10 +170,10 @@ impl Shard for ContextShard {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.cleanup_helper()?;
-    self.graphics_context.cleanup();
-    self.host.cleanup()?;
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.graphics_context.cleanup(ctx);
+    self.host.cleanup(ctx)?;
     Ok(())
   }
 

@@ -121,8 +121,8 @@ impl ClientUser {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.instance.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.instance.cleanup(ctx);
     Ok(())
   }
 
@@ -195,8 +195,8 @@ impl LegacyShard for ReadString {
     self.client.warmup(context)
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.client.cleanup()
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.client.cleanup(ctx)
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
@@ -293,8 +293,8 @@ impl LegacyShard for WriteString {
     self.client.warmup(context)
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.client.cleanup()
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.client.cleanup(ctx)
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Var, &str> {

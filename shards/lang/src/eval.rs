@@ -3748,10 +3748,10 @@ impl LegacyShard for EvalShard {
     }
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.namespace.cleanup();
-    self.name.cleanup();
-    self.defines.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.namespace.cleanup(ctx);
+    self.name.cleanup(ctx);
+    self.defines.cleanup(ctx);
     Ok(())
   }
 

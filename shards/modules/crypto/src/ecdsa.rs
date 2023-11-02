@@ -132,8 +132,8 @@ impl LegacyShard for ECDSASign {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.key.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.key.cleanup(ctx);
     Ok(())
   }
 
@@ -322,8 +322,8 @@ impl LegacyShard for ECDSARecover {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.signature.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.signature.cleanup(ctx);
     Ok(())
   }
 

@@ -112,8 +112,8 @@ impl LegacyShard for CloseMenu {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.parents.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.parents.cleanup(ctx);
     Ok(())
   }
 
@@ -237,12 +237,12 @@ If called from within a menu this will instead create a button for a sub-menu."
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
-    self.title.cleanup();
-    self.parents.cleanup();
+    self.title.cleanup(ctx);
+    self.parents.cleanup(ctx);
 
     Ok(())
   }
@@ -380,11 +380,11 @@ impl LegacyShard for MenuBar {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
     if !self.contents.is_empty() {
-      self.contents.cleanup();
+      self.contents.cleanup(ctx);
     }
-    self.parents.cleanup();
+    self.parents.cleanup(ctx);
 
     Ok(())
   }

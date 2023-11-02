@@ -183,9 +183,9 @@ impl LegacyShard for EncodeCall {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.abi.cleanup();
-    self.call_name.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.abi.cleanup(ctx);
+    self.call_name.cleanup(ctx);
     Ok(())
   }
 
@@ -320,9 +320,9 @@ impl LegacyShard for DecodeCall {
     Ok(())
   }
 
-  fn cleanup(&mut self) -> Result<(), &str> {
-    self.abi.cleanup();
-    self.call_name.cleanup();
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.abi.cleanup(ctx);
+    self.call_name.cleanup(ctx);
     Ok(())
   }
 
