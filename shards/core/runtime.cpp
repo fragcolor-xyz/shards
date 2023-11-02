@@ -3378,7 +3378,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     sc->pure = pure;
   };
 
-  result->setWireStackSize = [](SHWireRef wireref, size_t size) noexcept {
+  result->setWireStackSize = [](SHWireRef wireref, uint64_t size) noexcept {
     auto &sc = SHWire::sharedFromRef(wireref);
 #if SH_CORO_NEED_STACK_MEM
     sc->stackSize = size;

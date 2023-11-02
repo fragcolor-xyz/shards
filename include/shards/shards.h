@@ -4,9 +4,8 @@
 #ifndef SH_SHARDS_H
 #define SH_SHARDS_H
 
-#include <stdbool.h> // bool
-#include <stddef.h>  // size_t
-#include <stdint.h>  // ints
+#include <stdbool.h>
+#include <stdint.h>
 
 #if defined(__cplusplus) && !defined(RUST_BINDGEN)
 #define SH_ENUM_CLASS class
@@ -162,7 +161,7 @@ SH_ARRAY_DECL(SHOptionalStrings, SHOptionalString);
 // used in hot paths to avoid extra strlen calls
 typedef struct SHStringWithLen {
   SHString string;
-  size_t len;
+  uint64_t len;
 } SHStringWithLen;
 
 #if defined(__clang__) || defined(__GNUC__)
@@ -272,7 +271,7 @@ constexpr const SHError SHError::Success = {SH_ERROR_NONE, {nullptr, 0}};
 // table interface
 typedef void(__cdecl *SHTableGetIterator)(struct SHTable table, SHTableIterator *outIter);
 typedef SHBool(__cdecl *SHTableNext)(struct SHTable table, SHTableIterator *inIter, struct SHVar *outKey, struct SHVar *outValue);
-typedef size_t(__cdecl *SHTableSize)(struct SHTable table);
+typedef uint64_t(__cdecl *SHTableSize)(struct SHTable table);
 typedef SHBool(__cdecl *SHTableContains)(struct SHTable table, struct SHVar key);
 typedef struct SHVar *(__cdecl *SHTableAt)(struct SHTable table, struct SHVar key);
 typedef struct SHVar *(__cdecl *SHTableGet)(struct SHTable table, struct SHVar key);
@@ -295,7 +294,7 @@ struct SHTableInterface {
 // set interface
 typedef void(__cdecl *SHSetGetIterator)(struct SHSet set, SHSetIterator *outIter);
 typedef SHBool(__cdecl *SHSetNext)(struct SHSet set, SHSetIterator *inIter, struct SHVar *outValue);
-typedef size_t(__cdecl *SHSetSize)(struct SHSet table);
+typedef uint64_t(__cdecl *SHSetSize)(struct SHSet table);
 typedef SHBool(__cdecl *SHSetContains)(struct SHSet table, struct SHVar value);
 typedef SHBool(__cdecl *SHSetInclude)(struct SHSet table, struct SHVar value);
 typedef SHBool(__cdecl *SHSetExclude)(struct SHSet table, struct SHVar value);
@@ -414,9 +413,9 @@ struct SHShardComposeResult {
 
 // if outData is NULL will just give you a valid outLen
 // still must check result is true!
-typedef SHBool(__cdecl *SHObjectSerializer)(SHPointer, uint8_t **outData, size_t *outLen, SHPointer *customHandle);
+typedef SHBool(__cdecl *SHObjectSerializer)(SHPointer, uint8_t **outData, uint64_t *outLen, SHPointer *customHandle);
 typedef void(__cdecl *SHObjectSerializerFree)(SHPointer customHandle);
-typedef SHPointer(__cdecl *SHObjectDeserializer)(uint8_t *data, size_t len);
+typedef SHPointer(__cdecl *SHObjectDeserializer)(uint8_t *data, uint64_t len);
 typedef void(__cdecl *SHObjectReference)(SHPointer);
 typedef void(__cdecl *SHObjectRelease)(SHPointer);
 typedef uint64_t(__cdecl *SHObjectHash)(SHPointer);
@@ -876,7 +875,7 @@ typedef SHWireRef(__cdecl *SHCreateWire)(struct SHStringWithLen name);
 typedef void(__cdecl *SHSetWireLooped)(SHWireRef wire, SHBool looped);
 typedef void(__cdecl *SHSetWireUnsafe)(SHWireRef wire, SHBool unsafe);
 typedef void(__cdecl *SHSetWirePure)(SHWireRef wire, SHBool pure);
-typedef void(__cdecl *SHSetWireStackSize)(SHWireRef wire, size_t stackSize);
+typedef void(__cdecl *SHSetWireStackSize)(SHWireRef wire, uint64_t stackSize);
 typedef void(__cdecl *SHAddShard)(SHWireRef wire, ShardPtr shard);
 typedef void(__cdecl *SHRemShard)(SHWireRef wire, ShardPtr shard);
 typedef void(__cdecl *SHDestroyWire)(SHWireRef wire);

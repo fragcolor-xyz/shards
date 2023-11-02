@@ -283,32 +283,32 @@ impl LegacyShard for WireVariable {
     let wire_var = input.get_fast_static("Wire");
     let wire: WireRef = wire_var.try_into()?;
 
-    let varPtr = unsafe {
+    let var_ptr = unsafe {
       getWireVariable(wire, name.as_ptr() as *const c_char, name.len() as u32) as *mut Var
     };
 
-    if varPtr == std::ptr::null_mut() {
+    if var_ptr == std::ptr::null_mut() {
       return Err("Variable not found");
     }
 
-    let varRef = unsafe { &mut *varPtr };
+    let var_ref = unsafe { &mut *var_ptr };
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       ui.horizontal(|ui| {
         ui.label(name);
-        if varRef.render(false, None, ui).changed() {
+        if var_ref.render(false, None, ui).changed() {
           unsafe {
             triggerVarValueChange(
               getWireContext(wire),
               name_var as *const Var,
-              varRef as *const Var,
+              var_ref as *const Var,
             );
-            varRef.__bindgen_anon_1.version += 1
+            var_ref.__bindgen_anon_1.version += 1
           };
         }
       });
 
-      Ok(*varRef)
+      Ok(*var_ref)
     } else {
       Err("No UI parent")
     }

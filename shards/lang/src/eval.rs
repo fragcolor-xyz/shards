@@ -939,7 +939,7 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
       let msg = std::str::from_utf8(unsafe {
         slice::from_raw_parts(
           info.failureMessage.string as *const u8,
-          info.failureMessage.len,
+          info.failureMessage.len as usize,
         )
       })
       .unwrap(); // should be valid utf8

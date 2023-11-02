@@ -1525,7 +1525,7 @@ struct Serialization {
       total += sizeof(int64_t);
       if ((input.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && input.objectInfo &&
           input.objectInfo->serialize) {
-        size_t len = 0;
+        uint64_t len = 0;
         uint8_t *data = nullptr;
         SHPointer handle = nullptr;
         if (!input.objectInfo->serialize(input.payload.objectValue, &data, &len, &handle)) {

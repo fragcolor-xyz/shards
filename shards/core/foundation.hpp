@@ -512,7 +512,7 @@ public:
       .tableSize =
           [](SHTable table) {
             shards::SHMap *map = reinterpret_cast<shards::SHMap *>(table.opaque);
-            return map->size();
+            return uint64_t(map->size());
           },
       .tableContains =
           [](SHTable table, SHVar key) {
@@ -586,7 +586,7 @@ public:
       .setSize =
           [](SHSet shset) {
             shards::SHHashSet *set = reinterpret_cast<shards::SHHashSet *>(shset.opaque);
-            return set->size();
+            return uint64_t(set->size());
           },
       .setContains =
           [](SHSet shset, SHVar value) {

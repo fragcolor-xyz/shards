@@ -46,8 +46,12 @@ pub enum Property {
 }
 
 lazy_static! {
-  static ref OUTPUT_TYPES: Types =
-    vec![common_type::float4, common_type::float2, common_type::float, common_type::bool];
+  static ref OUTPUT_TYPES: Types = vec![
+    common_type::float4,
+    common_type::float2,
+    common_type::float,
+    common_type::bool
+  ];
 }
 
 #[derive(shards::shard)]
@@ -99,7 +103,7 @@ impl Shard for PropertyShard {
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
 
-    let (require_ui_parent) = match (&self.property.0).try_into()? {
+    let require_ui_parent = match (&self.property.0).try_into()? {
       Property::RemainingSpace => true,
       _ => false,
     };
