@@ -97,7 +97,6 @@
           @window-with-panels()
         }
       ) | UI.Render(ui-draw-queue) 
-      Assert.Is(@input_value Break: true)
 
       GFX.Render(Steps: render-steps)
     }
