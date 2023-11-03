@@ -277,10 +277,14 @@ UntrackedVector<SHWire *> &getCoroWireStack();
 SHContext *&getCurrentContextPtr();
 
 #if SH_DEBUG_THREAD_NAMES
-#define SH_CORO_RESUMED(_wire) \
-  { shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); }
-#define SH_CORO_SUSPENDED(_wire) \
-  { shards::popThreadName(); }
+#define SH_CORO_RESUMED(_wire)                                           \
+  {                                                                      \
+    shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name));   \
+  }
+#define SH_CORO_SUSPENDED(_wire)              \
+  {                                           \
+    shards::popThreadName();                  \
+  }
 #define SH_CORO_EXT_RESUME(_wire)                                                 \
   {                                                                               \
     shards::pushThreadName(fmt::format("<resuming wire> \"{}\"", (_wire)->name)); \
@@ -293,12 +297,14 @@ SHContext *&getCurrentContextPtr();
   }
 #else
 #define SH_CORO_RESUMED(_wire) \
-  #define SH_CORO_SUSPENDED(_) #define SH_CORO_EXT_RESUME(_) { TracyCoroEnter(wire); }
+#define SH_CORO_SUSPENDED(_) \
+#define SH_CORO_EXT_RESUME(_) \
+  { TracyCoroEnter(wire); }
 #define SH_CORO_EXT_SUSPEND(_) \
   { TracyCoroExit(_wire); }
 #endif
 
-template <typename DELEGATE> auto callOnMainThread(SHContext *context, DELEGATE &func) -> decltype(func.action(), void()) {
+template <typename DELEGATE> auto callOnMainThread(SHContext* context, DELEGATE &func) -> decltype(func.action(), void()) {
   if (context) {
     if (unlikely(!context->continuation)) {
       throw ActivationError("Trying to suspend a context without coroutine!");
@@ -318,7 +324,7 @@ template <typename DELEGATE> auto callOnMainThread(SHContext *context, DELEGATE 
   }
 }
 
-template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMainThread(SHContext *context, L &&func) {
+template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMainThread(SHContext* context, L &&func) {
   struct Action {
     L &lambda;
     void action() { lambda(); }
@@ -1687,11 +1693,19 @@ template <typename T> struct WireDoppelgangerPool {
     _wireStr = stream.str();
   }
 
-  template <class Composer, typename Anything> std::shared_ptr<T> acquire(Composer &composer, Anything *anything) {
+  // notice users should stop wires themselves, we might want wires to persist
+  // after this object lifetime
+  void stopAll() {
+    for (auto &item : _pool) {
+      stop(item->wire.get());
+      _avail.emplace(item.get());
+    }
+  }
+
+  template <class Composer, typename Anything> T *acquire(Composer &composer, Anything *anything) {
     ZoneScoped;
 
     std::unique_lock<std::mutex> lock(_poolMutex);
-
     if (_avail.size() == 0) {
       lock.unlock();
 
@@ -1704,27 +1718,27 @@ template <typename T> struct WireDoppelgangerPool {
       destroyVar(vwire);
 
       lock.lock();
-      auto fresh = std::make_shared<T>();
+      auto &fresh = _pool.emplace_back(std::make_shared<T>());
       fresh->wire = wire;
-      fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, ++_counter);
+      fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, _pool.size());
       composer.compose(wire.get(), anything, false);
 
-      return fresh;
+      return fresh.get();
     } else {
-      auto res = _avail.back();
-      _avail.pop_back();
+      auto res = _avail.extract(_avail.begin());
       lock.unlock();
 
-      composer.compose(res->wire.get(), anything, true);
+      auto &value = res.value();
+      composer.compose(value->wire.get(), anything, true);
 
-      return res;
+      return value;
     }
   }
 
-  void recycle(std::shared_ptr<T> &&data) {
-    std::scoped_lock<std::mutex> _l(_poolMutex);
-    assert(data.use_count() == 1 && "Recycling a shared_ptr with multiple references is not allowed!");
-    _avail.emplace_back(std::move(data));
+  void release(T *wire) {
+    std::unique_lock<std::mutex> _l(_poolMutex);
+
+    _avail.emplace(wire);
   }
 
   size_t available() const { return _avail.size(); }
@@ -1748,8 +1762,8 @@ private:
   // so users don't have to worry about lifetime
   // just release when possible
   std::mutex _poolMutex;
-  uint64_t _counter = 0;
-  std::vector<std::shared_ptr<T>> _avail;
+  std::deque<std::shared_ptr<T>> _pool;
+  std::unordered_set<T *> _avail;
   std::string _wireStr;
 };
 

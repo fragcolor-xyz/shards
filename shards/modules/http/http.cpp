@@ -161,7 +161,7 @@ struct Base {
     headers.warmup(context);
   }
 
-  void cleanup(SHContext *context) {
+  void cleanup(SHContext* context) {
     url.cleanup();
     headers.cleanup();
   }
@@ -494,19 +494,13 @@ struct Server {
     return data.inputType;
   }
 
-  std::unordered_map<const SHWire *, std::shared_ptr<Peer>> _wireContainers;
-
-  void releasePeer(const SHWire *wire) {
-    auto it = _wireContainers.find(wire);
-    assert(it != _wireContainers.end() && "Wire container not found!");
-    _pool->recycle(std::move(it->second));
-    _wireContainers.erase(it);
-  }
+  std::unordered_map<const SHWire *, Peer *> _wireContainers;
 
   void wireOnStop(const SHWire::OnStopEvent &e) {
     SHLOG_TRACE("Wire {} stopped", e.wire->name);
 
-    releasePeer(e.wire);
+    auto container = _wireContainers[e.wire];
+    _pool->release(container);
   }
 
   // "Loop" forever accepting new connections.
@@ -524,13 +518,13 @@ struct Server {
       if (!ec) {
         auto mesh = context->main->mesh.lock();
         if (mesh) {
-          peer->wire->getVariable("Http.Server.Socket"_swl) = Var::Object(peer->wire.get(), CoreCC, Peer::PeerCC);
+          peer->wire->getVariable("Http.Server.Socket"_swl) = Var::Object(peer, CoreCC, Peer::PeerCC);
           mesh->schedule(peer->wire, Var::Empty, false);
         } else {
-          releasePeer(peer->wire.get());
+          _pool->release(peer);
         }
       } else {
-        releasePeer(peer->wire.get());
+        _pool->release(peer);
       }
       // continue accepting the next
       accept_once(context);
@@ -548,6 +542,11 @@ struct Server {
     _composer.context = context;
     // start accepting
     accept_once(context);
+  }
+
+  void cleanup(SHContext* context) {
+    if (_pool)
+      _pool->stopAll();
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -613,7 +612,7 @@ struct Read {
     }
   }
 
-  void cleanup(SHContext *context) {
+  void cleanup(SHContext* context) {
     releaseVariable(_peerVar);
     _peerVar = nullptr;
   }
@@ -715,7 +714,7 @@ struct Response {
     }
   }
 
-  void cleanup(SHContext *context) {
+  void cleanup(SHContext* context) {
     _headers.cleanup();
     releaseVariable(_peerVar);
     _peerVar = nullptr;
@@ -793,7 +792,7 @@ struct SendFile {
     }
   }
 
-  void cleanup(SHContext *context) {
+  void cleanup(SHContext* context) {
     _headers.cleanup();
     releaseVariable(_peerVar);
     _peerVar = nullptr;

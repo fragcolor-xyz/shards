@@ -344,8 +344,8 @@ struct Server : public NetworkBase {
   std::shared_mutex peersMutex;
   udp::endpoint _sender;
 
-  std::unordered_map<udp::endpoint, std::shared_ptr<NetworkPeer>> _end2Peer;
-  std::unordered_map<const SHWire *, std::shared_ptr<NetworkPeer>> _wire2Peer;
+  std::unordered_map<udp::endpoint, NetworkPeer *> _end2Peer;
+  std::unordered_map<const SHWire *, NetworkPeer *> _wire2Peer;
   std::unique_ptr<WireDoppelgangerPool<NetworkPeer>> _pool;
   OwnedVar _handlerMaster{};
 
@@ -412,7 +412,7 @@ struct Server : public NetworkBase {
     return NetworkBase::compose(data);
   }
 
-  void gcWires(SHContext *context) {
+  void gcWires() {
     if (!_stopWireQueue.empty()) {
       SHWire *toStop{};
       while (_stopWireQueue.pop(toStop)) {
@@ -420,25 +420,21 @@ struct Server : public NetworkBase {
         const_cast<SHWire *>(toStop)->cleanup();
 
         std::shared_lock<std::shared_mutex> lock(peersMutex);
-        auto it = _wire2Peer.find(toStop);
-        assert(it != _wire2Peer.end() && "Wire not found in map");
-        auto endpoint = it->second->endpoint.value();
-        auto wire = it->second->wire;
-        _wire2Peer.erase(it);
-        _pool->recycle(std::move(it->second));
+        auto container = _wire2Peer[toStop];
+        _pool->release(container);
         lock.unlock();
 
-        if (context) {
+        if (_contextCopy) {
           OnPeerDisconnected event{
-              .endpoint = endpoint,
-              .wire = wire,
+              .endpoint = *container->endpoint,
+              .wire = container->wire,
           };
-          context->main->dispatcher.trigger(std::move(event));
+          (*_contextCopy)->main->dispatcher.trigger(std::move(event));
         }
 
-        SHLOG_TRACE("Clearing endpoint {}", endpoint.address().to_string());
+        SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
         std::scoped_lock<std::shared_mutex> lock2(peersMutex);
-        _end2Peer.erase(endpoint);
+        _end2Peer.erase(*container->endpoint);
       }
     }
   }
@@ -447,6 +443,8 @@ struct Server : public NetworkBase {
     if (!_pool) {
       throw ComposeError("Peer wires pool not valid!");
     }
+
+    _contextCopy = context;
 
     NetworkBase::warmup(context);
 
@@ -463,11 +461,18 @@ struct Server : public NetworkBase {
       _serverVar = nullptr;
     }
 
+    if (_pool) {
+      SHLOG_TRACE("Stopping all wires");
+      _pool->stopAll();
+    } else {
+      SHLOG_TRACE("No pool to stop");
+    }
+
     _contextCopy.reset();
 
     NetworkBase::cleanup(context);
 
-    gcWires(context);
+    gcWires();
   }
 
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
@@ -555,7 +560,7 @@ struct Server : public NetworkBase {
                 _end2Peer[_sender] = peer;
                 peer->endpoint = _sender;
                 peer->user = this;
-                peer->kcp->user = peer.get();
+                peer->kcp->user = peer;
                 peer->kcp->output = &Server::udp_output;
                 SHLOG_DEBUG("Added new peer: {} port: {}", peer->endpoint->address().to_string(), peer->endpoint->port());
 
@@ -567,9 +572,9 @@ struct Server : public NetworkBase {
 
                 // set wire ID, in order for Events to be properly routed
                 // for now we just use ptr as ID, until it causes problems
-                peer->wire->id = reinterpret_cast<entt::id_type>(peer.get());
+                peer->wire->id = reinterpret_cast<entt::id_type>(peer);
 
-                currentPeer = peer.get();
+                currentPeer = peer;
               } catch (std::exception &e) {
                 SHLOG_ERROR("Error acquiring peer: {}", e.what());
 
@@ -581,7 +586,7 @@ struct Server : public NetworkBase {
               // SHLOG_TRACE("Received packet from known peer: {} port: {}", _sender.address().to_string(), _sender.port());
 
               // existing peer
-              currentPeer = it->second.get();
+              currentPeer = it->second;
 
               lock.unlock();
             }
@@ -675,7 +680,7 @@ struct Server : public NetworkBase {
       boost::asio::post(io_context, [this]() { do_receive(); });
     }
 
-    gcWires(context);
+    gcWires();
 
     {
       std::shared_lock<std::shared_mutex> lock(peersMutex);
