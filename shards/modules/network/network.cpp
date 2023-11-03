@@ -82,7 +82,7 @@ struct NetworkBase {
 
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(_required); }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_sharedNetworkContext) {
       auto &io_context = _sharedNetworkContext->_io_context;
 
@@ -453,7 +453,7 @@ struct Server : public NetworkBase {
     _running = true;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _running = false;
 
     if (_serverVar) {
@@ -484,7 +484,13 @@ struct Server : public NetworkBase {
     s->_socket->async_send_to(boost::asio::buffer(buf, len), *p->endpoint,
                               [](boost::system::error_code ec, std::size_t bytes_sent) {
                                 if (ec) {
-                                  std::cout << "Error sending: " << ec.message() << std::endl;
+                                  // ignore flow-control No buffer space available
+                                  if (ec != boost::asio::error::no_buffer_space && ec != boost::asio::error::would_block &&
+                                      ec != boost::asio::error::try_again) {
+                                    SHLOG_ERROR("Error sending: {}", ec.message());
+                                  } else {
+                                    SHLOG_DEBUG("Error sending (ignored): {}", ec.message());
+                                  }
                                 }
                               });
     return 0;
@@ -609,9 +615,12 @@ struct Server : public NetworkBase {
               return do_receive();
           } else {
             if (ec == boost::asio::error::operation_aborted) {
+              // we likely have invalid data under the hood, let's just ignore it
               SHLOG_DEBUG("Operation aborted");
               return;
-            } else if (ec == boost::asio::error::no_buffer_space) {
+            } else if (ec == boost::asio::error::no_buffer_space || ec == boost::asio::error::would_block ||
+                       ec == boost::asio::error::try_again) {
+              SHLOG_DEBUG("Ignored error while receiving: {}", ec.message());
               return do_receive();
             }
 
@@ -662,6 +671,10 @@ struct Server : public NetworkBase {
     if (!_socket) {
       // first activation, let's init
       _socket.emplace(io_context, udp::endpoint(udp::v4(), _port.get().payload.intValue));
+      boost::asio::socket_base::send_buffer_size option_send(65536);
+      boost::asio::socket_base::receive_buffer_size option_recv(65536);
+      _socket->set_option(option_send);
+      _socket->set_option(option_recv);
 
       // start receiving
       boost::asio::post(io_context, [this]() { do_receive(); });
@@ -750,7 +763,7 @@ struct Broadcast {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_serverVar) {
       releaseVariable(_serverVar);
       _serverVar = nullptr;
@@ -874,8 +887,14 @@ struct Client : public NetworkBase {
     c->_socket->async_send_to(boost::asio::buffer(buf, len), c->_server,
                               [c](boost::system::error_code ec, std::size_t bytes_sent) {
                                 if (ec) {
-                                  std::cout << "Error sending: " << ec.message() << std::endl;
-                                  c->_peer.networkError = ec;
+                                  // ignore flow-control No buffer space available
+                                  if (ec != boost::asio::error::no_buffer_space && ec != boost::asio::error::would_block &&
+                                      ec != boost::asio::error::try_again) {
+                                    SHLOG_ERROR("Error sending: {}", ec.message());
+                                    c->_peer.networkError = ec;
+                                  } else {
+                                    SHLOG_DEBUG("Error sending (ignored): {}", ec.message());
+                                  }
                                 }
                               });
 
@@ -897,9 +916,15 @@ struct Client : public NetworkBase {
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _server,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
                                   if (ec) {
-                                    // ignore flow-control No buffer space available
-                                    if (ec == boost::asio::error::no_buffer_space) {
+                                    // certain errors are expected, ignore them
+                                    if (ec == boost::asio::error::no_buffer_space || ec == boost::asio::error::would_block ||
+                                        ec == boost::asio::error::try_again) {
+                                      SHLOG_DEBUG("Ignored error while receiving: {}", ec.message());
                                       return do_receive();
+                                    } else if (ec == boost::asio::error::operation_aborted) {
+                                      SHLOG_ERROR("Error receiving: {}", ec.message());
+                                      // we likely have invalid data under the hood, let's just ignore it
+                                      return;
                                     } else {
                                       SHLOG_ERROR("Error receiving: {}", ec.message());
                                       _peer.networkError = ec;
@@ -927,7 +952,7 @@ struct Client : public NetworkBase {
     return PeerType;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     NetworkBase::cleanup(context);
     _blks.cleanup(context);
   }
@@ -944,6 +969,10 @@ struct Client : public NetworkBase {
     if (!_socket) {
       // first activation, let's init
       _socket.emplace(io_context, udp::endpoint(udp::v4(), 0));
+      boost::asio::socket_base::send_buffer_size option_send(65536);
+      boost::asio::socket_base::receive_buffer_size option_recv(65536);
+      _socket->set_option(option_send);
+      _socket->set_option(option_recv);
 
       boost::asio::io_service io_service;
       udp::resolver resolver(io_service);
@@ -997,7 +1026,7 @@ struct PeerBase {
   SHVar *_peerVar = nullptr;
   ParamVar _peerParam;
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     // clean context vars
     if (_peerVar) {
       releaseVariable(_peerVar);
