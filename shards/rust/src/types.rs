@@ -82,8 +82,10 @@ use crate::shardsc::SHVAR_FLAGS_REF_COUNTED;
 use crate::SHObjectInfo;
 use crate::SHStringWithLen;
 use crate::SHType_Type;
+use crate::SHVar__bindgen_ty_1;
 use crate::SHWireState_Error;
 use crate::SHVAR_FLAGS_EXTERNAL;
+use crate::SHVAR_FLAGS_USES_OBJINFO;
 use core::convert::TryFrom;
 use core::convert::TryInto;
 use core::fmt::{Debug, Formatter};
@@ -102,7 +104,9 @@ use std::ffi::CStr;
 use std::ffi::CString;
 use std::i32::MAX;
 use std::os::raw::c_char;
+use std::pin::Pin;
 use std::rc::Rc;
+use std::sync::RwLock;
 
 #[macro_export]
 macro_rules! cstr {
@@ -558,10 +562,12 @@ unsafe impl Sync for ExternalVar {}
 /*
 SHTypeInfo & co
 */
+unsafe impl Send for SHObjectInfo {}
 unsafe impl Sync for SHTypeInfo {}
 unsafe impl Sync for SHExposedTypeInfo {}
 unsafe impl Sync for SHParameterInfo {}
 unsafe impl Sync for SHStrings {}
+unsafe impl Sync for SHObjectInfo {}
 
 // Todo SHTypeInfo proper wrapper Type with helpers
 
@@ -2604,6 +2610,74 @@ impl From<&[u8]> for Var {
   }
 }
 
+struct RefCounted<T> {
+  rc: i32,
+  value: T,
+}
+
+impl<T> RefCounted<T> {
+  fn inc_ref(&mut self) {
+    self.rc += 1;
+  }
+
+  fn dec_ref(&mut self) -> i32 {
+    self.rc -= 1;
+    self.rc
+  }
+}
+
+fn refcount_object_info<T: 'static>() -> *mut SHObjectInfo
+where
+{
+  use std::marker::PhantomData;
+  use std::sync::Mutex;
+  use typemap::{ShareMap, TypeMap};
+
+  struct Key<T>(PhantomData<T>);
+
+  struct Inner {
+    name: CString,
+    obj_info: SHObjectInfo,
+  };
+
+  impl<T: 'static> typemap::Key for Key<T> {
+    type Value = Box<Inner>;
+  }
+
+  lazy_static! {
+    static ref INIT: RwLock<ShareMap> = RwLock::new(TypeMap::custom());
+  }
+
+  if let Some(obj) = INIT.read().unwrap().get::<Key<T>>() {
+    return &obj.as_ref().obj_info as *const _ as *mut _;
+  }
+
+  unsafe extern "C" fn reference<T>(arg1: *mut c_void) {
+    let rc = arg1 as *mut RefCounted<T>;
+    (*rc).inc_ref();
+  }
+  unsafe extern "C" fn release<T>(arg1: *mut c_void) {
+    let rc = arg1 as *mut RefCounted<T>;
+    if (*rc).dec_ref() == 0 {
+      drop(Box::from_raw(rc));
+    }
+  }
+
+  let mut lock = INIT.write().unwrap();
+  let entry = lock.entry::<Key<T>>();
+  let pb = entry.or_insert(Box::new(Inner {
+    name: CString::new(std::any::type_name::<T>()).unwrap(),
+    obj_info: SHObjectInfo {
+      reference: Some(reference::<T>),
+      release: Some(release::<T>),
+      ..Default::default()
+    },
+  }));
+  pb.obj_info.name = pb.name.as_ptr();
+
+  return &mut pb.as_mut().obj_info;
+}
+
 impl Var {
   pub fn color_u8s(r: u8, g: u8, b: u8, a: u8) -> Var {
     SHVar {
@@ -2678,6 +2752,42 @@ impl Var {
         },
       },
       ..Default::default()
+    }
+  }
+
+  pub fn new_ref_counted<T: 'static>(obj: T, info: &Type) -> Var {
+    let rc = Box::new(RefCounted::<T> { rc: 0, value: obj });
+    unsafe {
+      Var {
+        valueType: SHType_Object,
+        flags: SHVAR_FLAGS_USES_OBJINFO as u16,
+        __bindgen_anon_1: SHVar__bindgen_ty_1 {
+          objectInfo: refcount_object_info::<T>(),
+        },
+        payload: SHVarPayload {
+          __bindgen_anon_1: SHVarPayload__bindgen_ty_1 {
+            __bindgen_anon_1: SHVarPayload__bindgen_ty_1__bindgen_ty_1 {
+              objectValue: Box::into_raw(rc) as *mut _,
+              objectVendorId: info.details.object.vendorId,
+              objectTypeId: info.details.object.typeId,
+            },
+          },
+        },
+        ..Default::default()
+      }
+    }
+  }
+
+  pub unsafe fn from_ref_counted_object<T>(var: &Var, info: &Type) -> Result<*mut T, &'static str> {
+    if var.valueType != SHType_Object
+      || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectVendorId
+        != info.details.object.vendorId
+      || var.payload.__bindgen_anon_1.__bindgen_anon_1.objectTypeId != info.details.object.typeId
+    {
+      Err("Failed to cast Var into custom ref counted object")
+    } else {
+      let aptr = var.payload.__bindgen_anon_1.__bindgen_anon_1.objectValue as *mut RefCounted<T>;
+      Ok(&mut (*aptr).value)
     }
   }
 
