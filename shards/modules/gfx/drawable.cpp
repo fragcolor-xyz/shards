@@ -11,6 +11,7 @@
 #include <magic_enum.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/core/params.hpp>
+#include <shards/core/ref_output_pool.hpp>
 #include <type_traits>
 #include <variant>
 
@@ -151,6 +152,21 @@ struct DrawShard {
   SHVar activate(SHContext *shContext, const SHVar &input) { throw ActivationError("Unsupported input type"); }
 };
 
+} // namespace gfx
+
+namespace shards {
+template <> struct RefOutputPoolItemTraits<gfx::SHDrawQueue *> {
+  gfx::SHDrawQueue *newItem() {
+    auto queue = gfx::detail::Container::DrawQueueObjectVar.New();
+    queue->queue = std::make_shared<gfx::DrawQueue>();
+    return queue;
+  }
+  void release(gfx::SHDrawQueue *&v) { gfx::Types::DrawQueueObjectVar.Release(v); }
+  size_t getRefCount(gfx::SHDrawQueue *&v) { return gfx::Types::DrawQueueObjectVar.GetRefCount(v); }
+};
+} // namespace shards
+
+namespace gfx {
 struct DrawQueueShard {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return Types::DrawQueue; }
@@ -158,33 +174,56 @@ struct DrawQueueShard {
 
   PARAM_VAR(_autoClear, "AutoClear", "When enabled, automatically clears the queue after items have been rendered",
             {CoreInfo::NoneType, CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_autoClear));
+  PARAM_VAR(_threaded, "Threaded", "When enabled, output uniuqe queue references to be able to use them with channels",
+            {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_autoClear), PARAM_IMPL_FOR(_threaded));
 
-  SHDrawQueue *_queue{};
+  std::variant<SHDrawQueue *, RefOutputPool<SHDrawQueue *>> _output;
 
-  DrawQueueShard() { _autoClear = Var(true); }
+  DrawQueueShard() {
+    _autoClear = Var(true);
+    _threaded = Var(false);
+  }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if ((bool)*_threaded) {
+      _output.emplace<RefOutputPool<SHDrawQueue *>>();
+    } else {
+      _output.emplace<SHDrawQueue *>();
+    }
+    return Types::DrawQueue;
+  }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
-    assert(!_queue);
-    _queue = Types::DrawQueueObjectVar.New();
-    _queue->queue = std::make_shared<DrawQueue>();
-    _queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear);
-  }
 
-  void cleanup(SHContext* context) {
-    PARAM_CLEANUP(context);
-    if (_queue) {
-      Types::DrawQueueObjectVar.Release(_queue);
-      _queue = nullptr;
+    if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
+      auto &queue = *_queue;
+      assert(!queue);
+      queue = Types::DrawQueueObjectVar.New();
+      queue->queue = std::make_shared<DrawQueue>();
+      queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear);
     }
   }
 
-  SHTypeInfo compose(SHInstanceData &data) { return Types::DrawQueue; }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    _queue->queue->clear();
-    return Types::DrawQueueObjectVar.Get(_queue);
+    if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
+      if ((bool)*_autoClear)
+        (*_queue)->queue->clear();
+      return Types::DrawQueueObjectVar.Get((*_queue));
+    } else {
+      auto &pool = std::get<RefOutputPool<SHDrawQueue *>>(_output);
+      pool.recycle();
+      auto queue = pool.newValue(
+          [&](SHDrawQueue *&_queue) { _queue->queue->setAutoClear(_autoClear->isNone() ? true : (bool)*_autoClear); });
+      queue->queue->clear();
+      return Types::DrawQueueObjectVar.Get(queue);
+    }
   }
 };
 
@@ -234,6 +273,8 @@ struct GetQueueDrawablesShard {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SHDrawQueue *shQueue = reinterpret_cast<SHDrawQueue *>(input.payload.objectValue);
     auto &drawables = shQueue->queue->getDrawables();
+    _objects.clear();
+    _outputSeq.clear();
     _objects.reserve(drawables.size());
     for (auto &drawable : drawables) {
       SHDrawable *ptr = _objects.emplace_back(Types::DrawableObjectVar.New());
@@ -250,5 +291,6 @@ void registerDrawableShards() {
   REGISTER_SHARD("GFX.Draw", DrawShard);
   REGISTER_SHARD("GFX.DrawQueue", DrawQueueShard);
   REGISTER_SHARD("GFX.ClearQueue", ClearQueueShard);
+  REGISTER_SHARD("GFX.QueueDrawables", GetQueueDrawablesShard);
 }
 } // namespace gfx

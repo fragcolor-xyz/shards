@@ -43,7 +43,7 @@ public:
 
   void compose(const SHInstanceData &data, ExposedInfo &outRequired, ParamVar *paramOverride = nullptr) {
     std::optional<SHExposedTypeInfo> exposed;
-    if (paramOverride) {
+    if (paramOverride && paramOverride->isVariable()) {
       exposed = findExposedVariable(data.shared, *paramOverride);
     }
 
@@ -95,6 +95,7 @@ public:
     SHExposedTypeInfo typeInfo{
         .name = VariableName,
         .exposedType = VariableType,
+        .isProtected = true,
         .global = true,
     };
     return typeInfo;
@@ -155,6 +156,24 @@ inline void mergeIntoExposedInfo(ExposedInfo &outInfo, const ShardsVar &shardsVa
 inline void mergeIntoExposedInfo(ExposedInfo &outInfo, const SHExposedTypesInfo &otherTypes) {
   for (size_t i = 0; i < otherTypes.len; i++)
     outInfo.push_back(otherTypes.elements[i]);
+}
+
+inline void getObjectTypes(std::vector<SHTypeInfo> &out, const SHTypeInfo &type) {
+  switch (type.basicType) {
+  case SHType::Object:
+    out.push_back(type);
+    break;
+  case SHType::Seq:
+    for (auto &t : type.seqTypes)
+      getObjectTypes(out, t);
+    break;
+  case SHType::Table:
+    for (auto &t : type.table.types)
+      getObjectTypes(out, t);
+    break;
+  default:
+    break;
+  }
 }
 
 } // namespace shards

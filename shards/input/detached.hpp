@@ -36,7 +36,7 @@ public:
   void apply(const SDL_Event &event) {
     auto &buffer = buffers[getBufferIndex(1)];
     if (event.type == SDL_MOUSEWHEEL) {
-      buffer.scrollDelta = event.wheel.preciseY;
+      buffer.scrollDelta += event.wheel.preciseY;
     } else if (event.type == SDL_TEXTEDITING) {
       auto &ievent = event.edit;
 

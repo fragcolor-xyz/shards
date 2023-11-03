@@ -18,6 +18,8 @@
 #define ENTT_ID_TYPE std::uint64_t
 #include <entt/entt.hpp>
 
+#define SHVAR_FLAGS_COPY_MASK (SHVAR_FLAGS_USES_OBJINFO)
+
 #ifdef TRACY_ENABLE
 // profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
 #include <tracy/Wrapper.hpp>
@@ -685,12 +687,10 @@ struct Var : public SHVar {
     if (valueType != SHType::String) {
       throw InvalidVarTypeError("Invalid variable casting! expected String");
     }
-    return std::string_view((const char*)payload.stringValue, payload.stringLen);
+    return std::string_view((const char *)payload.stringValue, payload.stringLen);
   }
 
-  explicit operator std::string() const {
-    return std::string((std::string_view)*this);
-  }
+  explicit operator std::string() const { return std::string((std::string_view) * this); }
 
   explicit operator SHStringWithLen() {
     if (valueType != SHType::String) {
@@ -937,34 +937,30 @@ struct Var : public SHVar {
     payload.intValue = src;
   }
 
-  explicit Var(const char *src, size_t len = 0) : SHVar() {
+  explicit Var(const std::string &src) : Var(std::string_view(src)) {}
+  explicit Var(const char *src) : Var(std::string_view(src)) {}
+  explicit Var(const char *src, size_t len) : SHVar() {
     valueType = SHType::String;
     payload.stringValue = src;
     payload.stringLen = uint32_t(len == 0 && src != nullptr ? strlen(src) : len);
   }
-
-  explicit Var(const std::string &src) : SHVar() {
-    valueType = SHType::String;
-    payload.stringValue = src.c_str();
-    payload.stringLen = uint32_t(src.length());
-  }
-
   explicit Var(const std::string_view &src) : SHVar() {
     valueType = SHType::String;
     payload.stringValue = src.data();
     payload.stringLen = uint32_t(src.size());
   }
-
   explicit Var(const SHStringWithLen &src) : SHVar() {
     valueType = SHType::String;
     payload.stringValue = src.string;
     payload.stringLen = src.len;
   }
 
-  static Var ContextVar(const std::string &src) {
+  static Var ContextVar(const std::string &src) { return ContextVar(std::string_view(src)); }
+  static Var ContextVar(const char *src) { return ContextVar(std::string_view(src)); }
+  static Var ContextVar(std::string_view src) {
     Var res{};
     res.valueType = SHType::ContextVar;
-    res.payload.stringValue = src.c_str();
+    res.payload.stringValue = src.data();
     res.payload.stringLen = uint32_t(src.length());
     return res;
   }

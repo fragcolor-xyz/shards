@@ -429,6 +429,8 @@ struct SHObjectInfo {
   SHObjectRelease release;
 
   SHObjectHash hash;
+
+  bool isThreadSafe;
 };
 
 struct SHEnumInfo {

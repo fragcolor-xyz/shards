@@ -16,15 +16,66 @@
 #include "shards_utils.hpp"
 #include "drawable_utils.hpp"
 #include <shards/modules/inputs/inputs.hpp>
+#include <shards/modules/core/serialization.hpp>
 #include "window.hpp"
 
 using namespace shards;
 
+namespace shards {
+template <typename T> void serde(T &stream, gfx::FovDirection &v) { serdeAs<T, uint8_t>(stream, v); }
+template <typename T> void serde(T &stream, gfx::OrthographicSizeType &v) { serdeAs<T, uint8_t>(stream, v); }
+template <typename T> void serde(T &stream, gfx::ViewPerspectiveProjection &v) {
+  serde(stream, v.far);
+  serde(stream, v.near);
+  serde(stream, v.fov);
+  serde(stream, v.fovType);
+}
+template <typename T> void serde(T &stream, gfx::ViewOrthographicProjection &v) {
+  serde(stream, v.far);
+  serde(stream, v.near);
+  serde(stream, v.size);
+  serde(stream, v.sizeType);
+}
+} // namespace shards
+
 namespace gfx {
-void SHView::updateVariables() {
-  if (viewTransformVar && viewTransformVar->isVariable()) {
-    view->view = shards::Mat4(viewTransformVar->get());
+
+std::vector<uint8_t> SHView::serialize(const SHView &view_) {
+  BufferWriter writer;
+
+  auto &view = view_.view;
+  serde(writer, view->view);
+  uint8_t index = view->proj.index();
+  serde(writer, index);
+  std::visit([&](auto &arg) { serde(writer, arg); }, view->proj);
+
+  return std::move(writer._buffer);
+}
+
+SHView SHView::deserialize(const std::string_view& data) {
+  BytesReader reader(data);
+
+  ViewPtr newView = std::make_shared<gfx::View>();
+  serde(reader, newView->view);
+  uint8_t index{};
+  serde(reader, index);
+  switch (index) {
+  case 1:
+    serde(reader, newView->proj.emplace<ViewPerspectiveProjection>());
+    break;
+  case 2:
+    serde(reader, newView->proj.emplace<ViewOrthographicProjection>());
+    break;
+  case 3:
+    serde(reader, newView->proj.emplace<float4x4>());
+    break;
+  default:
+    break;
   }
+
+  return SHView{
+      .view = newView,
+  };
 }
 
 struct ViewShard {
@@ -42,7 +93,13 @@ struct ViewShard {
 
   SHView *_view;
 
-  void cleanup(SHContext* context) {
+  void warmup(SHContext *context) {
+    _view = Types::ViewObjectVar.New();
+
+    PARAM_WARMUP(context);
+  }
+
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
 
     if (_view) {
@@ -51,10 +108,10 @@ struct ViewShard {
     }
   }
 
-  void warmup(SHContext *context) {
-    _view = Types::ViewObjectVar.New();
-
-    PARAM_WARMUP(context);
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -72,8 +129,6 @@ struct ViewShard {
     Var fovVar = (Var &)_fov.get();
     if (!fovVar.isNone())
       std::get<ViewPerspectiveProjection>(view->proj).fov = float(fovVar);
-
-    _view->viewTransformVar = &_viewTransform;
 
     return Types::ViewObjectVar.Get(_view);
   }
@@ -302,7 +357,8 @@ struct ViewProjectionMatrixShard {
   void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ViewPtr view = varAsObjectChecked<ViewPtr>(input, Types::View);
+    SHView& shView = varAsObjectChecked<SHView>(input, Types::View);
+    auto& view = shView.view;
     auto projMatrix = view->getProjectionMatrix(toVec<float2>(_viewSize.get()));
     _result = linalg::mul(projMatrix, view->view);
     return _result;
