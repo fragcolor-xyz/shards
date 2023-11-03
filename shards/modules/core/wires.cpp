@@ -1585,7 +1585,7 @@ struct ParallelBase : public CapturingSpawners {
     _outputs.clear();
 
     // iterate backwards _wires and pop as we move to recycle them
-    for(auto it = _wires.rbegin(); it != _wires.rend(); ++it) {
+    for (auto it = _wires.rbegin(); it != _wires.rend(); ++it) {
       std::shared_ptr<ManyWire> cref = std::move(*it);
       if (cref) {
         if (cref->mesh) {
@@ -1631,7 +1631,6 @@ struct ParallelBase : public CapturingSpawners {
     std::fill(_successes.begin(), _successes.end(), false);
 
     _meshes.resize(len);
-    std::fill(_meshes.begin(), _meshes.end(), SHMesh::make());
 
     _outputs.resize(len);
 
@@ -1649,6 +1648,9 @@ struct ParallelBase : public CapturingSpawners {
       SHLOG_DEBUG("ParallelBase: activating wire {}", idx);
 
       auto &mesh = _meshes[idx];
+      if (!mesh) {
+        mesh = SHMesh::make();
+      }
 
       std::shared_ptr<ManyWire> cref;
       try {
