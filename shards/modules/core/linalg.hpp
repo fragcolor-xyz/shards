@@ -448,6 +448,7 @@ struct MatIdentity {
   static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
 
   static inline Mat4 Float4x4Identity = linalg::identity;
+  static inline SHVar Float4x4IdentityVar = SHVar(Float4x4Identity);
 
   MatIdentity() { _type = Var::Enum(BasicTypes::Float4, CoreInfo2::TypeEnumInfo::Type); }
 
@@ -464,7 +465,7 @@ struct MatIdentity {
   SHVar activate(SHContext *context, const SHVar &input) {
     switch (BasicTypes(_type.payload.enumValue)) {
     case shards::BasicTypes::Float4:
-      return Float4x4Identity;
+      return Float4x4IdentityVar;
     default:
       return SHVar{};
     }
