@@ -611,6 +611,8 @@ struct Server : public NetworkBase {
             if (ec == boost::asio::error::operation_aborted) {
               SHLOG_DEBUG("Operation aborted");
               return;
+            } else if (ec == boost::asio::error::no_buffer_space) {
+              return do_receive();
             }
 
             SHLOG_DEBUG("Error receiving: {}, peer: {} port: {}", ec.message(), _sender.address().to_string(), _sender.port());
@@ -895,7 +897,13 @@ struct Client : public NetworkBase {
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _server,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
                                   if (ec) {
-                                    _peer.networkError = ec;
+                                    // ignore flow-control No buffer space available
+                                    if (ec == boost::asio::error::no_buffer_space) {
+                                      return do_receive();
+                                    } else {
+                                      SHLOG_ERROR("Error receiving: {}", ec.message());
+                                      _peer.networkError = ec;
+                                    }
                                   } else {
                                     if (bytes_recvd > 0) {
                                       std::scoped_lock lock(_peer.recvMutex);

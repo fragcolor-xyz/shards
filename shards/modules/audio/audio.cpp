@@ -5,6 +5,8 @@
 #include <shards/core/runtime.hpp>
 #include <boost/lockfree/queue.hpp>
 
+#include <shards/core/params.hpp>
+
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
 #define STB_VORBIS_HEADER_ONLY
 #include "extras/stb_vorbis.c" // Enables Vorbis decoding.
@@ -67,6 +69,29 @@ struct Device {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  PARAM_VAR(_inChannels, "InputChannels", "The number of input channels.", {CoreInfo::IntType});
+  PARAM_VAR(_outChannels, "OutputChannels", "The number of output channels.", {CoreInfo::IntType});
+  PARAM_VAR(_sampleRate, "SampleRate", "The sample rate of the device.", {CoreInfo::IntType});
+  // we don't want to use this inside our operation callback
+  // miniaudio does not follow the same value on certain platforms
+  // it's basically a max
+  PARAM_VAR(_bufferSize, "BufferSize", "The buffer size of the device.", {CoreInfo::IntType});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_inChannels), PARAM_IMPL_FOR(_outChannels), PARAM_IMPL_FOR(_sampleRate), PARAM_IMPL_FOR(_bufferSize));
+
+  void setup() {
+    _inChannels = Var(2);
+    _outChannels = Var(2);
+    _sampleRate = Var(44100);
+    _bufferSize = Var(1024);
+  }
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
   static const SHTable *properties() { return &experimental.payload.tableValue; }
 
   mutable ma_device _device;
@@ -82,14 +107,7 @@ struct Device {
 
   mutable boost::lockfree::queue<ChannelDesc> newChannels{16};
 
-  // we don't want to use this inside our operation callback
-  // miniaudio does not follow the same value on certain platforms
-  // it's basically a max
-  ma_uint32 bufferSize{1024};
   ma_uint32 actualBufferSize{1024};
-  ma_uint32 sampleRate{44100};
-  ma_uint32 inChannels{2};
-  ma_uint32 outChannels{2};
   std::vector<float> inputScratch;
   uint64_t inputHash;
   uint64_t outputHash;
@@ -146,20 +164,20 @@ struct Device {
           continue;
 
         // build the buffer with whatever we need as input
-        const auto nchannels = channels[0]->inChannels.size();
+        const auto nChannels = channels[0]->inChannels.size();
 
-        device->inputScratch.resize(frameCount * nchannels);
+        device->inputScratch.resize(frameCount * nChannels);
 
         if (nbus == 0) {
           if (kind == device->inputHash) {
             // this is the full device input, just copy it
-            memcpy(device->inputScratch.data(), pInput, sizeof(float) * nchannels * frameCount);
+            memcpy(device->inputScratch.data(), pInput, sizeof(float) * nChannels * frameCount);
           } else {
             auto *finput = reinterpret_cast<const float *>(pInput);
             // need to properly compose the input
-            for (uint32_t c = 0; c < nchannels; c++) {
+            for (uint32_t c = 0; c < nChannels; c++) {
               for (ma_uint32 i = 0; i < frameCount; i++) {
-                device->inputScratch[(i * nchannels) + c] = finput[(i * nchannels) + channels[0]->inChannels[c]];
+                device->inputScratch[(i * nChannels) + c] = finput[(i * nChannels) + channels[0]->inChannels[c]];
               }
             }
           }
@@ -172,9 +190,9 @@ struct Device {
           }
         }
 
-        SHAudio inputPacket{uint32_t(device->sampleRate), //
-                            uint16_t(frameCount),         //
-                            uint16_t(nchannels),          //
+        SHAudio inputPacket{uint32_t(device->_sampleRate.payload.intValue), //
+                            uint16_t(frameCount),                           //
+                            uint16_t(nChannels),                            //
                             device->inputScratch.data()};
         Var inputVar(inputPacket);
 
@@ -210,10 +228,10 @@ struct Device {
     // finally bake the device buffer
     auto &output = device->outputBuffers[0][device->outputHash];
     if (output.size() > 0) {
-      memcpy(pOutput, output.data(), frameCount * sizeof(float) * device->outChannels);
+      memcpy(pOutput, output.data(), frameCount * sizeof(float) * device->_outChannels.payload.intValue);
     } else {
       // always cleanup or we risk to break someone's ears
-      memset(pOutput, 0x0, frameCount * sizeof(float) * device->outChannels);
+      memset(pOutput, 0x0, frameCount * sizeof(float) * device->_outChannels.payload.intValue);
     }
   }
 
@@ -233,16 +251,19 @@ struct Device {
     _deviceVarDsp->payload.objectValue = this;
 
     ma_device_config deviceConfig{};
-    deviceConfig = ma_device_config_init(ma_device_type_duplex);
+    deviceConfig = ma_device_config_init(_inChannels.payload.intValue > 0 ? ma_device_type_duplex : ma_device_type_playback);
+
     deviceConfig.playback.pDeviceID = NULL;
     deviceConfig.playback.format = ma_format_f32;
-    deviceConfig.playback.channels = outChannels;
+    deviceConfig.playback.channels = decltype(deviceConfig.playback.channels)(_outChannels.payload.intValue);
+
     deviceConfig.capture.pDeviceID = NULL;
     deviceConfig.capture.format = ma_format_f32;
-    deviceConfig.capture.channels = inChannels;
+    deviceConfig.capture.channels = decltype(deviceConfig.capture.channels)(_inChannels.payload.intValue);
     deviceConfig.capture.shareMode = ma_share_mode_shared;
-    deviceConfig.sampleRate = sampleRate;
-    deviceConfig.periodSizeInFrames = bufferSize;
+
+    deviceConfig.sampleRate = decltype(deviceConfig.sampleRate)(_sampleRate.payload.intValue);
+    deviceConfig.periodSizeInFrames = decltype(deviceConfig.periodSizeInFrames)(_bufferSize.payload.intValue);
     deviceConfig.periods = 1;
     deviceConfig.performanceProfile = ma_performance_profile_low_latency;
     deviceConfig.noPreSilencedOutputBuffer = 1; // we do that only if needed
@@ -256,16 +277,16 @@ struct Device {
       throw WarmupError("Failed to open default audio device");
     }
 
-    inputScratch.resize(bufferSize * deviceConfig.capture.channels);
+    inputScratch.resize(deviceConfig.periodSizeInFrames * deviceConfig.capture.channels);
 
     {
-      uint64_t inChannels = uint64_t(deviceConfig.capture.channels);
+      SHInt inChannels = SHInt(deviceConfig.capture.channels);
       uint32_t bus{0};
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
       XXH3_64bits_update(&hashState, &bus, sizeof(uint32_t));
-      for (SHInt i = 0; i < SHInt(inChannels); i++) {
+      for (SHInt i = 0; i < inChannels; i++) {
         XXH3_64bits_update(&hashState, &i, sizeof(SHInt));
       }
 
@@ -273,13 +294,13 @@ struct Device {
     }
 
     {
-      uint64_t outChannels = uint64_t(deviceConfig.playback.channels);
+      SHInt outChannels = SHInt(deviceConfig.playback.channels);
       uint32_t bus{0};
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
       XXH3_64bits_update(&hashState, &bus, sizeof(uint32_t));
-      for (SHInt i = 0; i < SHInt(outChannels); i++) {
+      for (SHInt i = 0; i < outChannels; i++) {
         XXH3_64bits_update(&hashState, &i, sizeof(SHInt));
       }
 
@@ -297,7 +318,7 @@ struct Device {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     stop();
 
     if (_deviceVar) {
@@ -462,7 +483,7 @@ struct Channel {
     _data.volume.warmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (d) {
       // every device user needs to try and stop it!
       // else we risk to mess with the audio thread
@@ -591,15 +612,15 @@ struct Oscillator {
     if (_device->valueType == SHType::Object) {
       d = reinterpret_cast<Device *>(_device->payload.objectValue);
       // we have a device! override SR and BS
-      _sampleRate = d->sampleRate;
-      _nsamples = d->bufferSize; // this might be less
+      _sampleRate = d->_sampleRate.payload.intValue;
+      _nsamples = d->_bufferSize.payload.intValue; // this might be less
     }
 
     initWave();
     _buffer.resize(_channels * _nsamples);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _amplitude.cleanup();
 
     if (_device) {
@@ -734,8 +755,8 @@ struct ReadFile {
     if (_device->valueType == SHType::Object) {
       d = reinterpret_cast<Device *>(_device->payload.objectValue);
       // we have a device! override SR and BS
-      _sampleRate = d->sampleRate;
-      _nsamples = d->bufferSize; // this might be less
+      _sampleRate = d->_sampleRate.payload.intValue;
+      _nsamples = d->_bufferSize.payload.intValue; // this might be less
     }
 
     _fromSample.warmup(context);
@@ -753,7 +774,7 @@ struct ReadFile {
     _progress = 0;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _fromSample.cleanup();
     _toSample.cleanup();
     _filename.cleanup();
@@ -813,7 +834,7 @@ struct ReadFile {
     // read pcm data every iteration
     ma_uint64 framesRead;
     ma_result res = ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading, &framesRead);
-    if(res != MA_SUCCESS) {
+    if (res != MA_SUCCESS) {
       throw ActivationError("Failed to read");
     }
     _progress += framesRead;
@@ -902,7 +923,7 @@ struct WriteFile {
     _progress = 0;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _filename.cleanup();
 
     if (_initialized) {
