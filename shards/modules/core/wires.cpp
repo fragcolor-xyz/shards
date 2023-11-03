@@ -291,7 +291,7 @@ struct Wait : public WireBase {
     _timeout.warmup(ctx);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _timeout.cleanup();
     if (wireref.isVariable())
       wire = nullptr;
@@ -405,7 +405,7 @@ struct IsRunning : public WireBase {
 
   void warmup(SHContext *ctx) { WireBase::warmup(ctx); }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (wireref.isVariable())
       wire = nullptr;
     WireBase::cleanup(context);
@@ -487,7 +487,7 @@ struct Peek : public WireBase {
 
   void warmup(SHContext *ctx) { WireBase::warmup(ctx); }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (wireref.isVariable())
       wire = nullptr;
     WireBase::cleanup(context);
@@ -575,7 +575,7 @@ struct StopWire : public WireBase {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (wireref.isVariable())
       wire = nullptr;
     WireBase::cleanup(context);
@@ -654,7 +654,7 @@ struct SuspendWire : public WireBase {
 
   SHExposedTypeInfo _requiredWire{};
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (wireref.isVariable())
       wire = nullptr;
     WireBase::cleanup(context);
@@ -726,7 +726,7 @@ struct ResumeWire : public WireBase {
 
   SHExposedTypeInfo _requiredWire{};
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (wireref.isVariable())
       wire = nullptr;
     WireBase::cleanup(context);
@@ -891,7 +891,7 @@ struct SwitchTo : public WireBase {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     for (auto &v : _vars) {
       v.cleanup();
     }
@@ -1018,7 +1018,7 @@ struct Recur : public WireBase {
     _wire = swire.get();
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     for (auto &v : _vars) {
       v.cleanup();
     }
@@ -1111,7 +1111,7 @@ template <class T> struct BaseLoader : public BaseRunner {
     return Var::Empty;
   }
 
-  void cleanup(SHContext* context) { BaseRunner::cleanup(context); }
+  void cleanup(SHContext *context) { BaseRunner::cleanup(context); }
 
   SHVar activateWire(SHContext *context, const SHVar &input) {
     if (unlikely(!wire))
@@ -1213,7 +1213,7 @@ struct WireLoader : public BaseLoader<WireLoader> {
     return BaseLoader<WireLoader>::compose(data);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     BaseLoader<WireLoader>::cleanup(context);
     _onReloadShards.cleanup(context);
     _onErrorShards.cleanup(context);
@@ -1305,7 +1305,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     BaseLoader<WireRunner>::cleanup(context);
     _wire.cleanup();
     _wirePtr = nullptr;
@@ -1523,9 +1523,8 @@ struct ParallelBase : public CapturingSpawners {
 
   struct Composer {
     ParallelBase &server;
-    SHContext *context;
 
-    void compose(SHWire *wire, SHContext *context, bool recycling) {
+    void compose(SHWire *wire, SHMesh *mesh, bool recycling) {
       if (recycling)
         return;
 
@@ -1535,7 +1534,7 @@ struct ParallelBase : public CapturingSpawners {
         data.shared = server._sharedCopy;
       }
       data.wire = wire;
-      wire->mesh = context->main->mesh;
+      wire->mesh = mesh->shared_from_this();
       auto res = composeWire(
           wire,
           [](const struct Shard *errorShard, SHStringWithLen errorTxt, SHBool nonfatalWarning, void *userData) {
@@ -1571,10 +1570,9 @@ struct ParallelBase : public CapturingSpawners {
       }
     }
 #endif
-    _composer.context = context;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (capturing) {
       for (auto &v : _vars) {
         v.cleanup();
@@ -1586,7 +1584,9 @@ struct ParallelBase : public CapturingSpawners {
     }
     _outputs.clear();
 
-    for (auto &cref : _wires) {
+    // iterate backwards _wires and pop as we move to recycle them
+    for(auto it = _wires.rbegin(); it != _wires.rend(); ++it) {
+      std::shared_ptr<ManyWire> cref = std::move(*it);
       if (cref) {
         if (cref->mesh) {
           cref->mesh->terminate();
@@ -1602,7 +1602,7 @@ struct ParallelBase : public CapturingSpawners {
           }
         }
 
-        _pool->release(cref);
+        _pool->recycle(std::move(cref));
       }
     }
     _wires.clear();
@@ -1629,6 +1629,10 @@ struct ParallelBase : public CapturingSpawners {
 
     _successes.resize(len);
     std::fill(_successes.begin(), _successes.end(), false);
+
+    _meshes.resize(len);
+    std::fill(_meshes.begin(), _meshes.end(), SHMesh::make());
+
     _outputs.resize(len);
 
     // multithreaded
@@ -1644,32 +1648,26 @@ struct ParallelBase : public CapturingSpawners {
 
       SHLOG_DEBUG("ParallelBase: activating wire {}", idx);
 
-      ManyWire *cref = nullptr;
+      auto &mesh = _meshes[idx];
+
+      std::shared_ptr<ManyWire> cref;
       try {
-        cref = _pool->acquire(_composer, context);
+        cref = _pool->acquire(_composer, mesh.get());
       } catch (std::exception &e) {
         SHLOG_ERROR("Failed to acquire wire: {}", e.what());
         return;
       }
-      DEFER({
-        SHLOG_DEBUG("ParallelBase: releasing wire {}", idx);
-        _pool->release(cref);
-      });
+
+      cref->mesh = mesh;
 
 #if SH_DEBUG_THREAD_NAMES
       pushThreadName(fmt::format("tf::Executor \"{}\" ({} idx: {})", cref->wire->name, context->currentWire()->name, idx));
       DEFER({ popThreadName(); });
 #endif
 
-      if (!cref->mesh) {
-        cref->mesh = SHMesh::make();
-      }
-      cref->wire->mesh = cref->mesh;  // swap the mesh
-      DEFER(cref->mesh->terminate()); // ensure it's terminated
-
       struct Observer {
         ParallelBase *server;
-        ManyWire *cref;
+        std::shared_ptr<ManyWire> &cref;
 
         void before_compose(SHWire *wire) {}
         void before_tick(SHWire *wire) {}
@@ -1689,6 +1687,7 @@ struct ParallelBase : public CapturingSpawners {
 
       bool success = true;
       cref->mesh->schedule(obs, cref->wire, getInput(input, idx), false); // don't compose
+      assert(cref->wire->mesh.lock() == cref->mesh && "Mesh should be set by schedule");
       while (!cref->mesh->empty()) {
         if (!cref->mesh->tick() || (_policy == WaitUntil::FirstSuccess && anySuccess)) {
           success = false;
@@ -1708,6 +1707,10 @@ struct ParallelBase : public CapturingSpawners {
         // ensure it's stopped anyway
         stop(cref->wire.get());
       }
+
+      // if we throw we are screwed but thread should panic and terminate anyways
+      mesh->terminate();
+      _pool->recycle(std::move(cref));
     });
 
     auto future = _exec->run(std::move(flow));
@@ -1772,7 +1775,8 @@ protected:
   std::vector<OwnedVar> _outputs;
   std::vector<char>
       _successes; // don't use bool cos std lib uses bit vectors behind the scenes and won't work with multiple threads
-  std::vector<ManyWire *> _wires;
+  std::vector<std::shared_ptr<SHMesh>> _meshes;
+  std::vector<std::shared_ptr<ManyWire>> _wires;
   int64_t _threads{0};
   std::unique_ptr<tf::Executor> _exec;
 };
@@ -1963,7 +1967,7 @@ struct Spawn : public CapturingSpawners {
     SHLOG_TRACE("Spawn: warmed up {} variables", _vars.size());
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     for (auto &v : _vars) {
       v.cleanup();
     }
@@ -1973,18 +1977,26 @@ struct Spawn : public CapturingSpawners {
     WireBase::cleanup(context);
   }
 
-  std::unordered_map<const SHWire *, ManyWire *> _wireContainers;
+  std::unordered_map<const SHWire *, std::shared_ptr<ManyWire>> _wireContainers;
 
   void wireOnCleanup(const SHWire::OnCleanupEvent &e) {
     SHLOG_TRACE("Spawn::wireOnCleanup {}", e.wire->name);
 
-    auto container = _wireContainers[e.wire];
+    auto it = _wireContainers.find(e.wire);
+    if (it == _wireContainers.end()) {
+      SHLOG_ERROR("Spawn::wireOnCleanup: wire {} not found in map", e.wire->name);
+      return;
+    }
+
+    auto container = std::move(it->second);
+    _wireContainers.erase(it);
+
     for (auto &var : container->injectedVariables) {
       releaseVariable(var);
     }
     container->injectedVariables.clear();
 
-    _pool->release(container);
+    _pool->recycle(std::move(container));
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -2035,6 +2047,17 @@ struct StepMany : public TryMany {
     return CoreInfo::AnySeqType; // we don't know the output type as we return output every step
   }
 
+  void warmup(SHContext *context) {
+    TryMany::warmup(context);
+    _meshes.clear();
+    _meshes.push_back(context->main->mesh.lock());
+  }
+
+  void cleanup(SHContext *context) {
+    TryMany::cleanup(context);
+    _meshes.clear();
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto len = getLength(input);
 
@@ -2050,7 +2073,7 @@ struct StepMany : public TryMany {
     for (uint32_t i = 0; i < len; i++) {
       auto &cref = _wires[i];
       if (!cref) {
-        cref = _pool->acquire(_composer, context);
+        cref = _pool->acquire(_composer, _meshes[0].get());
         cref->done = false;
       }
 
@@ -2139,6 +2162,17 @@ struct DoMany : public TryMany {
     }
   }
 
+  void warmup(SHContext *context) {
+    TryMany::warmup(context);
+    _meshes.clear();
+    _meshes.push_back(context->main->mesh.lock());
+  }
+
+  void cleanup(SHContext *context) {
+    TryMany::cleanup(context);
+    _meshes.clear();
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto len = getLength(input);
 
@@ -2154,7 +2188,7 @@ struct DoMany : public TryMany {
     for (uint32_t i = 0; i < len; i++) {
       auto &cref = _wires[i];
       if (!cref) {
-        cref = _pool->acquire(_composer, context);
+        cref = _pool->acquire(_composer, _meshes[0].get());
         cref->wire->warmup(context);
         cref->done = false;
       }
@@ -2273,7 +2307,7 @@ public:
 
   void warmup(SHContext *context) { _brancher.warmup(context); }
 
-  void cleanup(SHContext* context) { _brancher.cleanup(context); }
+  void cleanup(SHContext *context) { _brancher.cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _brancher.activate();
