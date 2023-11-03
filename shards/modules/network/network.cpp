@@ -916,6 +916,10 @@ struct Client : public NetworkBase {
                                         ec == boost::asio::error::try_again) {
                                       SHLOG_DEBUG("Ignored error while receiving: {}", ec.message());
                                       return do_receive();
+                                    } else if (ec == boost::asio::error::operation_aborted) {
+                                      SHLOG_ERROR("Error receiving: {}", ec.message());
+                                      // we likely have invalid data under the hood, let's just ignore it
+                                      return;
                                     } else {
                                       SHLOG_ERROR("Error receiving: {}", ec.message());
                                       _peer.networkError = ec;
