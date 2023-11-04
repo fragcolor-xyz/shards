@@ -92,7 +92,7 @@ struct ShardsRenderer {
   bool begin(SHContext* shContext, shards::WindowContext &windowContext) {
     // Need to lazily init since we depend on renderer
     if (!_graphicsContext.context) {
-      shards::callOnMainThread(shContext, [&] { initRenderer(windowContext.window); });
+      shards::callOnMeshThread(shContext, [&] { initRenderer(windowContext.window); });
     }
 
     auto &window = _graphicsContext.window;
@@ -106,7 +106,7 @@ struct ShardsRenderer {
 
     gfx::int2 windowSize = window->getDrawableSize();
     try {
-      shards::callOnMainThread(shContext, [&] { context->resizeMainOutputConditional(windowSize); });
+      shards::callOnMeshThread(shContext, [&] { context->resizeMainOutputConditional(windowSize); });
     } catch (std::exception &err) {
       SHLOG_WARNING("Swapchain creation failed: {}. Frame skipped.", err.what());
       return false;

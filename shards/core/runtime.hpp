@@ -117,7 +117,7 @@ struct SHContext {
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};
   SHDuration next{};
-  entt::delegate<void()> mainThreadTask;
+  entt::delegate<void()> meshThreadTasks;
 
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
@@ -309,32 +309,32 @@ SHContext *&getCurrentContextPtr();
   { TracyCoroExit(_wire); }
 #endif
 
-template <typename DELEGATE> auto callOnMainThread(SHContext* context, DELEGATE &func) -> decltype(func.action(), void()) {
+template <typename DELEGATE> auto callOnMeshThread(SHContext* context, DELEGATE &func) -> decltype(func.action(), void()) {
   if (context) {
     if (unlikely(!context->continuation)) {
       throw ActivationError("Trying to suspend a context without coroutine!");
     }
 
-    assert(!context->mainThreadTask);
-    context->mainThreadTask.connect<&DELEGATE::action>(func);
+    assert(!context->meshThreadTasks);
+    context->meshThreadTasks.connect<&DELEGATE::action>(func);
 
     SH_CORO_SUSPENDED(context->currentWire());
     coroutineSuspend(*context->continuation);
     SH_CORO_RESUMED(context->currentWire());
 
-    context->mainThreadTask.reset();
+    context->meshThreadTasks.reset();
   } else {
     SPDLOG_WARN("NO Context, not running on main thread");
     func.action();
   }
 }
 
-template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMainThread(SHContext* context, L &&func) {
+template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMeshThread(SHContext* context, L &&func) {
   struct Action {
     L &lambda;
     void action() { lambda(); }
   } l{func};
-  callOnMainThread(context, l);
+  callOnMeshThread(context, l);
 }
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
@@ -383,9 +383,11 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
   ZoneScoped;
   ZoneName(wire->name.c_str(), wire->name.size());
 
+  if(!isRunning(wire))
+    return;
+
   assert(wire->context && "Wire has no context!");
   assert(coroutineValid(wire->coro) && "Wire has no coroutine!");
-  assert(isRunning(wire) && "Wire is not running!");
 
   bool canRun = false;
   if constexpr (IsCleanupContext) {
@@ -401,9 +403,9 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
       SH_CORO_EXT_SUSPEND(wire);
 
       // if we have a task to run, run it and resume coro without yielding to caller
-      if (unlikely(wire->context && (bool)wire->context->mainThreadTask)) {
-        wire->context->mainThreadTask();
-        wire->context->mainThreadTask.reset();
+      if (unlikely(wire->context && (bool)wire->context->meshThreadTasks)) {
+        wire->context->meshThreadTasks();
+        wire->context->meshThreadTasks.reset();
         // and continue in order to resume the coro
       } else {
         // Yield to caller if no main thread task

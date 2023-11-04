@@ -194,7 +194,7 @@ struct MainWindow final {
   void cleanup(SHContext* context) {
     PARAM_CLEANUP(context);
 
-    callOnMainThread(context, [&] {
+    callOnMeshThread(context, [&] {
       if (_renderer) {
         _renderer->cleanup(context);
         _renderer.reset();
@@ -227,7 +227,7 @@ struct MainWindow final {
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (!_windowContext->window) {
-      callOnMainThread(shContext, [&]() { initWindow(shContext); });
+      callOnMeshThread(shContext, [&]() { initWindow(shContext); });
     }
 
     auto &window = _windowContext->window;
@@ -240,7 +240,7 @@ struct MainWindow final {
 
     if (shouldRun) {
       // Poll & distribute input events
-      callOnMainThread(shContext, [&]() { _windowContext->inputMaster.update(*window.get()); });
+      callOnMeshThread(shContext, [&]() { _windowContext->inputMaster.update(*window.get()); });
 
       for (auto &event : _windowContext->inputMaster.getEvents()) {
         if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event)) {
@@ -334,7 +334,7 @@ struct ResizeWindow {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    callOnMainThread(shContext, [&]() { _requiredWindowContext->window->resize(toInt2(input)); });
+    callOnMeshThread(shContext, [&]() { _requiredWindowContext->window->resize(toInt2(input)); });
     return input;
   }
 };
@@ -396,7 +396,7 @@ struct MoveWindow {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    callOnMainThread(shContext, [&]() { _requiredWindowContext->window->move(toInt2(input)); });
+    callOnMeshThread(shContext, [&]() { _requiredWindowContext->window->move(toInt2(input)); });
     return input;
   }
 };
