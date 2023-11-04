@@ -379,17 +379,18 @@ inline bool isRunning(SHWire *wire) {
   return state >= SHWire::State::Starting && state <= SHWire::State::IterationEnded;
 }
 
-template <bool IsCleanupContext = false> inline bool tick(SHWire *wire, SHDuration now) {
+template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDuration now) {
   ZoneScoped;
   ZoneName(wire->name.c_str(), wire->name.size());
 
+  assert(wire->context && "Wire has no context!");
+  assert(coroutineValid(wire->coro) && "Wire has no coroutine!");
+  assert(isRunning(wire) && "Wire is not running!");
+
   bool canRun = false;
   if constexpr (IsCleanupContext) {
-    assert(coroutineValid(wire->coro));
     canRun = true;
   } else {
-    if (!wire->context || !coroutineValid(wire->coro) || !(isRunning(wire)))
-      return false; // check if not null and bool operator also to see if alive!
     canRun = now >= wire->context->next;
   }
 
@@ -410,7 +411,6 @@ template <bool IsCleanupContext = false> inline bool tick(SHWire *wire, SHDurati
       }
     }
   }
-  return true;
 }
 
 inline bool stop(SHWire *wire, SHVar *result = nullptr) {
