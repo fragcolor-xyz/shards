@@ -175,8 +175,6 @@ struct MainWindow final {
 #endif
   }
 
-  std::shared_ptr<SHMesh> _mesh;
-
   void warmup(SHContext *context) {
     _windowContextVar = referenceVariable(context, WindowContext::VariableName);
     assignVariableValue(*_windowContextVar, Var::Object(&_windowContext.value(), WindowContext::Type));
@@ -191,32 +189,26 @@ struct MainWindow final {
     }
 
     PARAM_WARMUP(context);
-
-    _mesh = context->main->mesh.lock();
   }
 
-  void cleanup(SHContext *context) {
+  void cleanup(SHContext* context) {
     PARAM_CLEANUP(context);
 
-    if (_mesh) {
-      _mesh->threadCall(context, [&] {
-        if (_renderer) {
-          _renderer->cleanup(context);
-          _renderer.reset();
+    callOnMainThread(context, [&] {
+      if (_renderer) {
+        _renderer->cleanup(context);
+        _renderer.reset();
+      }
+
+      if (_windowContext) {
+        if (_windowContext->window) {
+          SHLOG_DEBUG("Destroying window");
+          _windowContext->window->cleanup();
         }
 
-        if (_windowContext) {
-          if (_windowContext->window) {
-            SHLOG_DEBUG("Destroying window");
-            _windowContext->window->cleanup();
-          }
-
-          _windowContext.reset();
-        }
-      });
-
-      _mesh.reset();
-    }
+        _windowContext.reset();
+      }
+    });
 
     if (_windowContextVar) {
       if (_windowContextVar->refcount > 1) {
@@ -235,7 +227,7 @@ struct MainWindow final {
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (!_windowContext->window) {
-      _mesh->threadCall(shContext, [&]() { initWindow(shContext); });
+      callOnMainThread(shContext, [&]() { initWindow(shContext); });
     }
 
     auto &window = _windowContext->window;
@@ -248,7 +240,7 @@ struct MainWindow final {
 
     if (shouldRun) {
       // Poll & distribute input events
-      _mesh->threadCall(shContext, [&]() { _windowContext->inputMaster.update(*window.get()); });
+      callOnMainThread(shContext, [&]() { _windowContext->inputMaster.update(*window.get()); });
 
       for (auto &event : _windowContext->inputMaster.getEvents()) {
         if (const RequestCloseEvent *evt = std::get_if<RequestCloseEvent>(&event)) {
@@ -307,7 +299,7 @@ struct WindowSize {
     _requiredWindowContext.warmup(context, &_window);
   }
 
-  void cleanup(SHContext *context) {
+  void cleanup(SHContext* context) {
     PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
@@ -331,24 +323,18 @@ struct ResizeWindow {
     return data.inputType;
   }
 
-  std::shared_ptr<SHMesh> _mesh;
-
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     _requiredWindowContext.warmup(context, &_window);
-
-    _mesh = context->main->mesh.lock();
   }
 
-  void cleanup(SHContext *context) {
-    _mesh.reset();
-
+  void cleanup(SHContext* context) {
     PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    _mesh->threadCall(shContext, [&]() { _requiredWindowContext->window->resize(toInt2(input)); });
+    callOnMainThread(shContext, [&]() { _requiredWindowContext->window->resize(toInt2(input)); });
     return input;
   }
 };
@@ -374,7 +360,7 @@ struct WindowPosition {
     PARAM_WARMUP(context);
     _requiredWindowContext.warmup(context, &_window);
   }
-  void cleanup(SHContext *context) {
+  void cleanup(SHContext* context) {
     PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
@@ -399,24 +385,18 @@ struct MoveWindow {
     return outputTypes().elements[0];
   }
 
-  std::shared_ptr<SHMesh> _mesh;
-
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     _requiredWindowContext.warmup(context, &_window);
-
-    _mesh = context->main->mesh.lock();
   }
 
-  void cleanup(SHContext *context) {
-    _mesh.reset();
-
+  void cleanup(SHContext* context) {
     PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    _mesh->threadCall(shContext, [&]() { _requiredWindowContext->window->move(toInt2(input)); });
+    callOnMainThread(shContext, [&]() { _requiredWindowContext->window->move(toInt2(input)); });
     return input;
   }
 };
@@ -444,7 +424,7 @@ struct OsUiScaleFactor {
     _requiredWindowContext.warmup(context, &_window);
   }
 
-  void cleanup(SHContext *context) {
+  void cleanup(SHContext* context) {
     PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
