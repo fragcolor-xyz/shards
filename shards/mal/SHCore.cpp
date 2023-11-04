@@ -137,7 +137,7 @@ struct EdnEval {
 
   void warmup(SHContext *context) { prefix.warmup(context); }
 
-  void cleanup(SHContext* context) { prefix.cleanup(); }
+  void cleanup(SHContext *context) { prefix.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input);
 
@@ -1865,8 +1865,8 @@ BUILTIN("tick") {
   if (const malSHWire *v = DYNAMIC_CAST(malSHWire, first)) {
     auto wire = SHWire::sharedFromRef(v->value());
     SHDuration now = SHClock::now().time_since_epoch();
-    auto ticked = shards::tick(wire.get(), now);
-    return mal::boolean(ticked);
+    shards::tick(wire.get(), now);
+    return mal::boolean(true);
   } else if (const malSHMesh *v = DYNAMIC_CAST(malSHMesh, first)) {
     auto noErrors = v->value()->tick();
     return mal::boolean(noErrors);
@@ -1934,7 +1934,8 @@ bool run(SHMesh *mesh, SHWire *wire, double sleepTime, int times, bool dec) {
     }
   } else {
     SHDuration now = SHClock::now().time_since_epoch();
-    while (!shards::tick(wire, now)) {
+    do {
+      shards::tick(wire, now);
       if (dec) {
         times--;
         if (times == 0) {
@@ -1944,7 +1945,7 @@ bool run(SHMesh *mesh, SHWire *wire, double sleepTime, int times, bool dec) {
       }
       shards::sleep(sleepTime);
       now = SHClock::now().time_since_epoch();
-    }
+    } while (shards::isRunning(wire));
   }
 
   return true;
@@ -2159,30 +2160,14 @@ BUILTIN("context-var") {
 }
 
 template <SHType T> struct GetComponentType {};
-template <> struct GetComponentType<SHType::Float2> {
-  typedef double Type;
-};
-template <> struct GetComponentType<SHType::Float3> {
-  typedef float Type;
-};
-template <> struct GetComponentType<SHType::Float4> {
-  typedef float Type;
-};
-template <> struct GetComponentType<SHType::Int2> {
-  typedef int64_t Type;
-};
-template <> struct GetComponentType<SHType::Int3> {
-  typedef int32_t Type;
-};
-template <> struct GetComponentType<SHType::Int4> {
-  typedef int32_t Type;
-};
-template <> struct GetComponentType<SHType::Int8> {
-  typedef int16_t Type;
-};
-template <> struct GetComponentType<SHType::Int16> {
-  typedef int8_t Type;
-};
+template <> struct GetComponentType<SHType::Float2> { typedef double Type; };
+template <> struct GetComponentType<SHType::Float3> { typedef float Type; };
+template <> struct GetComponentType<SHType::Float4> { typedef float Type; };
+template <> struct GetComponentType<SHType::Int2> { typedef int64_t Type; };
+template <> struct GetComponentType<SHType::Int3> { typedef int32_t Type; };
+template <> struct GetComponentType<SHType::Int4> { typedef int32_t Type; };
+template <> struct GetComponentType<SHType::Int8> { typedef int16_t Type; };
+template <> struct GetComponentType<SHType::Int16> { typedef int8_t Type; };
 template <> struct GetComponentType<SHType::Color> {
   typedef uint8_t Type;
   static constexpr uint8_t getDefaultValue(size_t index) { return index == 3 ? 255 : 0; }

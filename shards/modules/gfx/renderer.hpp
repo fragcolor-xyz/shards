@@ -57,6 +57,8 @@ struct ShardsRenderer {
     _graphicsRendererContext.renderer = _graphicsContext.renderer.get();
   }
 
+  std::shared_ptr<SHMesh> _mesh;
+
   void warmup(SHContext *context) {
     _graphicsContextVar = shards::referenceVariable(context, GraphicsContext::VariableName);
     assignVariableValue(*_graphicsContextVar, shards::Var::Object(&_graphicsContext, GraphicsContext::Type));
@@ -64,9 +66,13 @@ struct ShardsRenderer {
     _graphicsRendererContextVar = shards::referenceVariable(context, GraphicsRendererContext::VariableName);
     assignVariableValue(*_graphicsRendererContextVar,
                         shards::Var::Object(&_graphicsRendererContext, GraphicsRendererContext::Type));
+
+    _mesh = context->main->mesh.lock();
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
+    _mesh.reset();
+
     if (_graphicsContextVar) {
       if (_graphicsContextVar->refcount > 1) {
         SHLOG_ERROR("MainWindow: Found {} dangling reference(s) to {}", _graphicsContextVar->refcount - 1,
@@ -89,10 +95,10 @@ struct ShardsRenderer {
     _graphicsRendererContext = GraphicsRendererContext{};
   }
 
-  bool begin(SHContext* shContext, shards::WindowContext &windowContext) {
+  bool begin(SHContext *shContext, shards::WindowContext &windowContext) {
     // Need to lazily init since we depend on renderer
     if (!_graphicsContext.context) {
-      shards::callOnMainThread(shContext, [&] { initRenderer(windowContext.window); });
+      _mesh->threadCall(shContext, [&] { initRenderer(windowContext.window); });
     }
 
     auto &window = _graphicsContext.window;
@@ -106,7 +112,7 @@ struct ShardsRenderer {
 
     gfx::int2 windowSize = window->getDrawableSize();
     try {
-      shards::callOnMainThread(shContext, [&] { context->resizeMainOutputConditional(windowSize); });
+      _mesh->threadCall(shContext, [&] { context->resizeMainOutputConditional(windowSize); });
     } catch (std::exception &err) {
       SHLOG_WARNING("Swapchain creation failed: {}. Frame skipped.", err.what());
       return false;
