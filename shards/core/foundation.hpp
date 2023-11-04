@@ -11,6 +11,17 @@
 #endif
 
 #include <shards/shards.h>
+
+#ifdef SH_RELWITHDEBINFO
+#undef shassert
+#define shassert(_expr_)                                                                                               \
+  {                                                                                                                    \
+    if (!(_expr_)) {                                                                                                   \
+      SHLOG_FATAL("Assertion failed: {}", #_expr_);                                                                    \                                                                                              \
+    }                                                                                                                  \
+  }
+#endif
+
 #include <shards/shards.hpp>
 #include "ops_internal.hpp"
 
@@ -333,7 +344,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   // Also the wire takes ownership of the shard!
   void addShard(Shard *blk) {
-    assert(!blk->owned);
+    shassert(!blk->owned);
     blk->owned = true;
     shards::incRef(blk);
     shards.push_back(blk);
@@ -354,7 +365,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   SHWireRef newRef() { return reinterpret_cast<SHWireRef>(new std::shared_ptr<SHWire>(shared_from_this())); }
 
   static std::shared_ptr<SHWire> &sharedFromRef(SHWireRef ref) {
-    assert(ref && "sharedFromRef - ref was nullptr");
+    shassert(ref && "sharedFromRef - ref was nullptr");
     return *reinterpret_cast<std::shared_ptr<SHWire> *>(ref);
   }
 
@@ -622,7 +633,7 @@ EventDispatcher &getEventDispatcher(const std::string &name);
 
 template <typename T> inline void arrayGrow(T &arr, size_t addlen, size_t min_cap = 4) {
   // safety check to make sure this is not a borrowed foreign array!
-  assert((arr.cap == 0 && arr.elements == nullptr) || (arr.cap > 0 && arr.elements != nullptr));
+  shassert((arr.cap == 0 && arr.elements == nullptr) || (arr.cap > 0 && arr.elements != nullptr));
 
   size_t min_len = arr.len + addlen;
 
@@ -660,7 +671,7 @@ template <typename T, typename V> inline void arrayPush(T &arr, const V &val) {
   if ((arr.len + 1) > arr.cap) {
     shards::arrayGrow(arr, 1);
   }
-  assert(arr.elements && "array elements cannot be null");
+  shassert(arr.elements && "array elements cannot be null");
   arr.elements[arr.len++] = val;
 }
 
@@ -681,13 +692,13 @@ template <typename T, typename V> inline void arrayInsert(T &arr, uint32_t index
 }
 
 template <typename T, typename V> inline V arrayPop(T &arr) {
-  assert(arr.len > 0);
+  shassert(arr.len > 0);
   arr.len--;
   return arr.elements[arr.len];
 }
 
 template <typename T> inline void arrayDelFast(T &arr, uint32_t index) {
-  assert(arr.len > 0);
+  shassert(arr.len > 0);
   arr.len--;
   // this allows eventual destroyVar/cloneVar magic
   // avoiding allocations even in nested seqs
@@ -695,7 +706,7 @@ template <typename T> inline void arrayDelFast(T &arr, uint32_t index) {
 }
 
 template <typename T> inline void arrayDel(T &arr, uint32_t index) {
-  assert(arr.len > 0);
+  shassert(arr.len > 0);
   // this allows eventual destroyVar/cloneVar magic
   // avoiding allocations even in nested seqs
   arr.len--;
@@ -784,7 +795,7 @@ public:
   IterableArray(const seq_type &seq) : _seq(seq), _owned(false) {}
 
   // implicit converter
-  IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == SHType::Seq); }
+  IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { shassert(v.valueType == SHType::Seq); }
 
   IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(_seq, s); }
 
@@ -820,7 +831,7 @@ public:
   }
 
   IterableArray &operator=(SHVar &var) {
-    assert(var.valueType == SHType::Seq);
+    shassert(var.valueType == SHType::Seq);
     _seq = var.payload.seqValue;
     _owned = false;
     return *this;
@@ -1067,7 +1078,7 @@ template <typename E> static E getFlags(SHVar var) {
     flags = E(var.payload.enumValue);
     break;
   case SHType::Seq: {
-    assert(var.payload.seqValue.len == 0 || var.payload.seqValue.elements[0].valueType == SHType::Enum);
+    shassert(var.payload.seqValue.len == 0 || var.payload.seqValue.elements[0].valueType == SHType::Enum);
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
       // note: can't use namespace magic_enum::bitwise_operators because of
       // potential conflicts with other implementations
@@ -1095,22 +1106,22 @@ typedef TTableVar<InternalCore> TableVar;
 typedef TSeqVar<InternalCore> SeqVar;
 
 inline TableVar &asTable(SHVar &var) {
-  assert(var.valueType == SHType::Table);
+  shassert(var.valueType == SHType::Table);
   return *reinterpret_cast<TableVar *>(&var);
 }
 
 inline const TableVar &asTable(const SHVar &var) {
-  assert(var.valueType == SHType::Table);
+  shassert(var.valueType == SHType::Table);
   return *reinterpret_cast<const TableVar *>(&var);
 }
 
 inline SeqVar &asSeq(SHVar &var) {
-  assert(var.valueType == SHType::Seq);
+  shassert(var.valueType == SHType::Seq);
   return *reinterpret_cast<SeqVar *>(&var);
 }
 
 inline const SeqVar &asSeq(const SHVar &var) {
-  assert(var.valueType == SHType::Seq);
+  shassert(var.valueType == SHType::Seq);
   return *reinterpret_cast<const SeqVar *>(&var);
 }
 
@@ -1499,7 +1510,7 @@ inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypes
 }
 
 inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypesInfo &exposed, const SHVar &var) {
-  assert(var.valueType == SHType::ContextVar);
+  shassert(var.valueType == SHType::ContextVar);
   return findExposedVariable(exposed, SHSTRVIEW(var));
 }
 
@@ -1510,7 +1521,7 @@ inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
   case SHType::ContextVar: {
     auto sv = SHSTRVIEW(var);
     for (const auto &entry : exposed) {
-      assert(var.payload.stringValue && entry.name && "Invalid exposed variable name (nullptr)");
+      shassert(var.payload.stringValue && entry.name && "Invalid exposed variable name (nullptr)");
       if (sv == entry.name) {
         out.push_back(SHExposedTypeInfo{
             .name = var.payload.stringValue,

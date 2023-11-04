@@ -76,12 +76,12 @@ public:
   }
 
   T *get() const {
-    assert(variable);
+    shassert(variable);
     return &varAsObjectChecked<T>(*variable, VariableType);
   }
 
   const SHVar &asVar() {
-    assert(variable);
+    shassert(variable);
     return *variable;
   }
 

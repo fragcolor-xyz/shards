@@ -119,14 +119,14 @@ struct TidePool {
 
   void controllerWorker() {
     pushThreadName("TidePool controller");
-    
+
     // spawn workers first
     for (size_t i = 0; i < NumWorkers; ++i) {
       _workers.emplace_back(_queue, _scheduledCounter, _condMutex, _cond);
     }
 
     while (_running) {
-      assert(_workers.size() >= NumWorkers);
+      shassert(_workers.size() >= NumWorkers);
 
       if (_scheduledCounter < LowWater && _workers.size() > NumWorkers) {
         // we have less than LowWater scheduled and we have more than NumWorkers workers

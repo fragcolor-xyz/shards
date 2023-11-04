@@ -256,10 +256,10 @@ Shard *createShard(std::string_view name) {
 #ifndef NDEBUG
   auto props = shard->properties(shard);
   if (props) {
-    assert(props->opaque && props->api && "Shard properties are not initialized!");
+    shassert(props->opaque && props->api && "Shard properties are not initialized!");
     auto experimental = props->api->tableGet(*props, Var("experimental"));
     if (experimental) {
-      assert(experimental->valueType == SHType::Bool);
+      shassert(experimental->valueType == SHType::Bool);
       SHLOG_WARNING("Experimental shard used: {}", name);
     }
   }
@@ -467,7 +467,7 @@ SHVar *referenceWireVariable(SHWireRef wire, std::string_view name) {
 
 SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name) {
   auto mesh = ctx->main->mesh.lock();
-  assert(mesh);
+  shassert(mesh);
 
   SHVar &v = mesh->getVariable(ToSWL(name));
   v.refcount++;
@@ -499,7 +499,7 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
       if (ev) {
         // found, lets get out here
         SHVar &cv = *ev;
-        assert((cv.flags & SHVAR_FLAGS_EXTERNAL) != 0);
+        shassert((cv.flags & SHVAR_FLAGS_EXTERNAL) != 0);
         return &cv;
       }
       // if this wire is pure we break here and do not look further
@@ -512,7 +512,7 @@ SHVar *referenceVariable(SHContext *ctx, std::string_view name) {
   // try using mesh
   {
     auto mesh = ctx->main->mesh.lock();
-    assert(mesh);
+    shassert(mesh);
 
     // Was not in wires.. find in mesh
     {
@@ -543,7 +543,7 @@ create:
   // worst case create in current top wire!
   SHLOG_TRACE("Creating a variable, wire: {} name: {}", ctx->wireStack.back()->name, name);
   SHVar &cv = ctx->wireStack.back()->getVariable(ToSWL(name));
-  assert(cv.refcount == 0);
+  shassert(cv.refcount == 0);
   cv.refcount++;
   // can safely set this here, as we are creating a new variable
   cv.flags = SHVAR_FLAGS_REF_COUNTED;
@@ -558,8 +558,8 @@ void releaseVariable(SHVar *variable) {
     return;
   }
 
-  assert((variable->flags & SHVAR_FLAGS_REF_COUNTED) == SHVAR_FLAGS_REF_COUNTED);
-  assert(variable->refcount > 0);
+  shassert((variable->flags & SHVAR_FLAGS_REF_COUNTED) == SHVAR_FLAGS_REF_COUNTED);
+  shassert(variable->refcount > 0);
 
   variable->refcount--;
   if (variable->refcount == 0) {
@@ -601,7 +601,7 @@ void hash_update(const SHVar &var, void *state);
   }                                                                                            \
   std::unordered_set<const SHWire *> &prefix##Wires() {                                        \
     auto wiresPtr = *prefix##WiresStorage();                                                   \
-    assert(wiresPtr);                                                                          \
+    shassert(wiresPtr);                                                                          \
     return *wiresPtr;                                                                          \
   }                                                                                            \
   void prefix##WiresPush() { prefix##WiresStorage() = &prefix##WiresStack().emplace_front(); } \
@@ -622,7 +622,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
                                            SHVar *outHash = nullptr) noexcept {
   XXH3_state_s hashState; // optimized out in release if not HASHED
   if constexpr (HASHED) {
-    assert(outHash);
+    shassert(outHash);
     XXH3_INITSTATE(&hashState);
     XXH3_128bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
   }
@@ -1177,7 +1177,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
   if (ctx.wire) {
     for (const auto &[key, pVar] : ctx.wire->getExternalVariables()) {
       SHVar &var = *pVar;
-      assert((var.flags & SHVAR_FLAGS_EXTERNAL) != 0);
+      shassert((var.flags & SHVAR_FLAGS_EXTERNAL) != 0);
 
       auto hash = deriveTypeHash(var);
       TypeInfo *info = nullptr;
@@ -1275,7 +1275,7 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
 }
 
 SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
-  // compare exchange and then assert we were not composing
+  // compare exchange and then shassert we were not composing
   bool expected = false;
   auto composeState = const_cast<SHWire*>(wire)->composing.compare_exchange_strong(expected, true);
   if (!composeState) {
@@ -1308,7 +1308,7 @@ SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, v
     wire->ignoreInputTypeCheck = false;
   }
 
-  assert(wire == data.wire); // caller must pass the same wire as data.wire
+  shassert(wire == data.wire); // caller must pass the same wire as data.wire
 
   auto res = composeWire(wire->shards, callback, userData, data);
 
@@ -1892,10 +1892,10 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
       return {context->getFlowStorage(), SHRunWireOutputState::Restarted};
     case SHWireState::Error:
       // shardsActivation handles error logging and such
-      assert(context->failed());
+      shassert(context->failed());
       return {wire->previousOutput, SHRunWireOutputState::Failed};
     case SHWireState::Stop:
-      assert(!context->failed());
+      shassert(!context->failed());
       return {context->getFlowStorage(), SHRunWireOutputState::Stopped};
     case SHWireState::Rebase:
       // Handled inside shardsActivation
@@ -2106,12 +2106,12 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
   case SHType::Path:
   case SHType::ContextVar:
 #if 0
-    assert(var.payload.stringCapacity >= 7 && "string capacity is too small, it should be at least 7");
+    shassert(var.payload.stringCapacity >= 7 && "string capacity is too small, it should be at least 7");
     if (var.payload.stringCapacity > 7) {
       delete[] var.payload.stringValue;
     } else {
       memset(var.shortString, 0, 7);
-      assert(var.shortString[7] == 0 && "0 terminator should be 0 always");
+      shassert(var.shortString[7] == 0 && "0 terminator should be 0 always");
     }
 #else
     delete[] var.payload.stringValue;
@@ -2119,7 +2119,7 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     break;
   case SHType::Bytes:
 #if 0
-    assert(var.payload.bytesCapacity >= 8 && "bytes capacity is too small, it should be at least 8");
+    shassert(var.payload.bytesCapacity >= 8 && "bytes capacity is too small, it should be at least 8");
     if (var.payload.bytesCapacity > 8) {
       delete[] var.payload.bytesValue;
     } else {
@@ -2137,15 +2137,15 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
     shards::arrayFree(var.payload.seqValue);
   } break;
   case SHType::Table: {
-    assert(var.payload.tableValue.api == &GetGlobals().TableInterface);
-    assert(var.payload.tableValue.opaque);
+    shassert(var.payload.tableValue.api == &GetGlobals().TableInterface);
+    shassert(var.payload.tableValue.opaque);
     auto map = (SHMap *)var.payload.tableValue.opaque;
     delete map;
     var.version = 0;
   } break;
   case SHType::Set: {
-    assert(var.payload.setValue.api == &GetGlobals().SetInterface);
-    assert(var.payload.setValue.opaque);
+    shassert(var.payload.setValue.api == &GetGlobals().SetInterface);
+    shassert(var.payload.setValue.opaque);
     auto set = (SHHashSet *)var.payload.setValue.opaque;
     delete set;
   } break;
@@ -2162,7 +2162,7 @@ NO_INLINE void _destroyVarSlow(SHVar &var) {
 }
 
 NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
-  assert((dst.flags & SHVAR_FLAGS_FOREIGN) != SHVAR_FLAGS_FOREIGN && "cannot clone into a foreign var");
+  shassert((dst.flags & SHVAR_FLAGS_FOREIGN) != SHVAR_FLAGS_FOREIGN && "cannot clone into a foreign var");
   switch (src.valueType) {
   case SHType::Seq: {
     uint32_t srcLen = src.payload.seqValue.len;
@@ -2210,11 +2210,11 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     }
 
     if (srcSize > 0) {
-      assert(src.payload.stringValue != nullptr && "string value is null but length is not 0");
+      shassert(src.payload.stringValue != nullptr && "string value is null but length is not 0");
       memcpy((void *)dst.payload.stringValue, (void *)src.payload.stringValue, srcSize);
     }
 
-    assert(dst.payload.stringValue && "destination stringValue cannot be null");
+    shassert(dst.payload.stringValue && "destination stringValue cannot be null");
 
     // make sure to 0 terminate
     ((char *)dst.payload.stringValue)[srcSize] = 0;
@@ -2281,7 +2281,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
         return;
 
       // also we assume mutable tables are of our internal type!!
-      assert(dst.payload.tableValue.api == &GetGlobals().TableInterface);
+      shassert(dst.payload.tableValue.api == &GetGlobals().TableInterface);
 
       map = (SHMap *)dst.payload.tableValue.opaque;
 
@@ -2334,7 +2334,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     if (dst.valueType == SHType::Set) {
       if (src.payload.setValue.opaque == dst.payload.setValue.opaque)
         return;
-      assert(dst.payload.setValue.api == &GetGlobals().SetInterface);
+      shassert(dst.payload.setValue.api == &GetGlobals().SetInterface);
       set = (SHHashSet *)dst.payload.setValue.opaque;
       set->clear();
     } else {
@@ -2621,7 +2621,7 @@ void hash_update(const SHVar &var, void *state) {
   auto hashState = reinterpret_cast<XXH3_state_s *>(state);
 
   auto error = XXH3_128bits_update(hashState, &var.valueType, sizeof(var.valueType));
-  assert(error == XXH_OK);
+  shassert(error == XXH_OK);
 
   switch (var.valueType) {
   case SHType::Type: {
@@ -2629,7 +2629,7 @@ void hash_update(const SHVar &var, void *state) {
   } break;
   case SHType::Bytes: {
     error = XXH3_128bits_update(hashState, var.payload.bytesValue, size_t(var.payload.bytesSize));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
   } break;
   case SHType::Path:
   case SHType::ContextVar:
@@ -2638,27 +2638,27 @@ void hash_update(const SHVar &var, void *state) {
                                 size_t(var.payload.stringLen > 0 || var.payload.stringValue == nullptr
                                            ? var.payload.stringLen
                                            : strlen(var.payload.stringValue)));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
   } break;
   case SHType::Image: {
     SHImage i = var.payload.imageValue;
     i.data = nullptr;
     error = XXH3_128bits_update(hashState, &i, sizeof(SHImage));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     auto pixsize = getPixelSize(var);
     error = XXH3_128bits_update(
         hashState, var.payload.imageValue.data,
         size_t(var.payload.imageValue.channels * var.payload.imageValue.width * var.payload.imageValue.height * pixsize));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
   } break;
   case SHType::Audio: {
     SHAudio a = var.payload.audioValue;
     a.samples = nullptr;
     error = XXH3_128bits_update(hashState, &a, sizeof(SHAudio));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     error = XXH3_128bits_update(hashState, var.payload.audioValue.samples,
                                 size_t(var.payload.audioValue.channels * var.payload.audioValue.nsamples * sizeof(float)));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
   } break;
   case SHType::Seq: {
     for (uint32_t i = 0; i < var.payload.seqValue.len; i++) {
@@ -2710,7 +2710,7 @@ void hash_update(const SHVar &var, void *state) {
     auto blk = var.payload.shardValue;
     auto name = blk->name(blk);
     auto error = XXH3_128bits_update(hashState, name, strlen(name));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
 
     auto params = blk->parameters(blk);
     for (uint32_t i = 0; i < params.len; i++) {
@@ -2729,16 +2729,16 @@ void hash_update(const SHVar &var, void *state) {
       hashingWires().insert(wire.get());
 
       error = XXH3_128bits_update(hashState, wire->name.c_str(), wire->name.length());
-      assert(error == XXH_OK);
+      shassert(error == XXH_OK);
 
       error = XXH3_128bits_update(hashState, &wire->looped, sizeof(wire->looped));
-      assert(error == XXH_OK);
+      shassert(error == XXH_OK);
 
       error = XXH3_128bits_update(hashState, &wire->unsafe, sizeof(wire->unsafe));
-      assert(error == XXH_OK);
+      shassert(error == XXH_OK);
 
       error = XXH3_128bits_update(hashState, &wire->pure, sizeof(wire->pure));
-      assert(error == XXH_OK);
+      shassert(error == XXH_OK);
 
       for (auto &blk : wire->shards) {
         SHVar tmp{};
@@ -2749,26 +2749,26 @@ void hash_update(const SHVar &var, void *state) {
 
       for (auto &wireVar : wire->getVariables()) {
         error = XXH3_128bits_update(hashState, wireVar.first.payload.stringValue, wireVar.first.payload.stringLen);
-        assert(error == XXH_OK);
+        shassert(error == XXH_OK);
         hash_update(wireVar.second, state);
       }
     }
   } break;
   case SHType::Object: {
     error = XXH3_128bits_update(hashState, &var.payload.objectVendorId, sizeof(var.payload.objectVendorId));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     error = XXH3_128bits_update(hashState, &var.payload.objectTypeId, sizeof(var.payload.objectTypeId));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     if ((var.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO && var.objectInfo && var.objectInfo->hash) {
       // hash of the hash...
       auto objHash = var.objectInfo->hash(var.payload.objectValue);
       error = XXH3_128bits_update(hashState, &objHash, sizeof(uint64_t));
-      assert(error == XXH_OK);
+      shassert(error == XXH_OK);
     } else {
       // this will be valid only within this process memory space
       // better then nothing
       error = XXH3_128bits_update(hashState, &var.payload.objectValue, sizeof(var.payload.objectValue));
-      assert(error == XXH_OK);
+      shassert(error == XXH_OK);
     }
   } break;
   case SHType::None:
@@ -2777,67 +2777,67 @@ void hash_update(const SHVar &var, void *state) {
     break;
   case SHType::Enum:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHEnum));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Bool:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHBool));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Int:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Int2:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt2));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Int3:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt3));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Int4:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt4));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Int8:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt8));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Int16:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHInt16));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Color:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHColor));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Float:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Float2:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat2));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Float3:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat3));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   case SHType::Float4:
     error = XXH3_128bits_update(hashState, &var.payload, sizeof(SHFloat4));
-    assert(error == XXH_OK);
+    shassert(error == XXH_OK);
     break;
   }
 }
 
 SHString getString(uint32_t crc) {
-  assert(shards::GetGlobals().CompressedStrings);
+  shassert(shards::GetGlobals().CompressedStrings);
   auto s = (*shards::GetGlobals().CompressedStrings)[crc].string;
   return s != nullptr ? s : "";
 }
 
 void setString(uint32_t crc, SHString str) {
-  assert(shards::GetGlobals().CompressedStrings);
+  shassert(shards::GetGlobals().CompressedStrings);
   (*shards::GetGlobals().CompressedStrings)[crc].string = str;
   (*shards::GetGlobals().CompressedStrings)[crc].crc = crc;
 }
@@ -2863,9 +2863,9 @@ void triggerVarValueChange(SHWire *w, const SHVar *name, const SHVar *var) {
   w->dispatcher.trigger(ev);
 }
 
-SHContext *&getCurrentContextPtr() { 
+SHContext *&getCurrentContextPtr() {
   static thread_local SHContext *currentContext{};
-  return currentContext; 
+  return currentContext;
 }
 
 }; // namespace shards
@@ -3368,7 +3368,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     std::string_view sv(name.string, size_t(name.len));
     auto shard = shards::createShard(sv);
     if (shard) {
-      assert(shard->refCount == 0 && "shard should have zero refcount");
+      shassert(shard->refCount == 0 && "shard should have zero refcount");
       incRef(shard);
     }
     return shard;
@@ -3585,7 +3585,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 namespace shards {
 void decRef(ShardPtr shard) {
   auto atomicRefCount = boost::atomics::make_atomic_ref(shard->refCount);
-  assert(atomicRefCount > 0);
+  shassert(atomicRefCount > 0);
   if (atomicRefCount.fetch_sub(1) == 1) {
     // SHLOG_TRACE("DecRef 0 shard {:x} {}", (size_t)shard, shard->name(shard));
     shard->destroy(shard);

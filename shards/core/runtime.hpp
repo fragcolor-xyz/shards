@@ -315,7 +315,7 @@ template <typename DELEGATE> auto callOnMeshThread(SHContext* context, DELEGATE 
       throw ActivationError("Trying to suspend a context without coroutine!");
     }
 
-    assert(!context->meshThreadTasks);
+    shassert(!context->meshThreadTasks);
     context->meshThreadTasks.connect<&DELEGATE::action>(func);
 
     SH_CORO_SUSPENDED(context->currentWire());
@@ -338,7 +338,7 @@ template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> voi
 }
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
-  assert(!coroutineValid(wire->coro) && "Wire already prepared!");
+  shassert(!coroutineValid(wire->coro) && "Wire already prepared!");
 
   auto runner = [wire, flow]() {
 #if SH_USE_THREAD_FIBER
@@ -386,8 +386,8 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
   if(!isRunning(wire))
     return;
 
-  assert(wire->context && "Wire has no context!");
-  assert(coroutineValid(wire->coro) && "Wire has no coroutine!");
+  shassert(wire->context && "Wire has no context!");
+  shassert(coroutineValid(wire->coro) && "Wire has no coroutine!");
 
   bool canRun = false;
   if constexpr (IsCleanupContext) {
@@ -693,9 +693,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
           }
 
           // stop should have done the following:
-          assert(visitedWires.count(flow.wire) == 0 && "Wire still in visitedWires!");
-          assert(scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!");
-          assert(flow.wire->mesh.expired() && "Wire still has a mesh!");
+          shassert(visitedWires.count(flow.wire) == 0 && "Wire still in visitedWires!");
+          shassert(scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!");
+          shassert(flow.wire->mesh.expired() && "Wire still has a mesh!");
 
           it = _flowPool.erase(it);
         } else {
@@ -721,9 +721,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     for (auto wire : toStop) {
       shards::stop(wire.get());
       // stop should have done the following:
-      assert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
-      assert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
-      assert(wire->mesh.expired() && "Wire still has a mesh!");
+      shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
+      shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
+      shassert(wire->mesh.expired() && "Wire still has a mesh!");
     }
 
     _flowPool.clear();
@@ -749,9 +749,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void remove(const std::shared_ptr<SHWire> &wire) {
     shards::stop(wire.get());
     // stop should have done the following:
-    assert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
-    assert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
-    assert(wire->mesh.expired() && "Wire still has a mesh!");
+    shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
+    shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
+    shassert(wire->mesh.expired() && "Wire still has a mesh!");
 
     _flowPool.remove_if([wire](auto &flow) { return flow.wire == wire.get(); });
   }
@@ -1211,7 +1211,7 @@ struct Serialization {
         SHVar shardVar{};
         deserialize(read, shardVar);
         ShardPtr shard = shardVar.payload.shardValue;
-        assert(shardVar.valueType == SHType::ShardRef);
+        shassert(shardVar.valueType == SHType::ShardRef);
         wire->addShard(shardVar.payload.shardValue);
         // shard's owner is now the wire, remove original reference from deserialize
         decRef(shard);

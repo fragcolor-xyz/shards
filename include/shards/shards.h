@@ -1153,15 +1153,14 @@ SHARDS_API SHCore *__cdecl shardsInterface(uint32_t abi_version);
 };
 #endif
 
-// For future proper use
-// Basically we want during development of wires to have those on
-// When baking exe/lib/release we turn them off
 #define shassert assert
+
 #ifndef NDEBUG
 #define SH_DEBUG_MODE 1
 #else
 #define SH_DEBUG_MODE 0
 #endif
+
 #define sh_debug_only(__CODE__) \
   if (SH_DEBUG_MODE) {          \
     __CODE__;                   \

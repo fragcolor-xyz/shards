@@ -55,7 +55,7 @@ inline void pushThreadName(std::string_view name) {
 
 inline void popThreadName() {
   auto &stack = getThreadNameStack();
-  assert(stack.size() > 0);
+  shassert(stack.size() > 0);
   stack.pop_back();
   setThreadName(stack.size() > 0 ? stack.back() : "Unnamed thread");
 }

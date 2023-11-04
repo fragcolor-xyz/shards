@@ -49,13 +49,13 @@ private:
 
   // Add a sequence of shards as a wire
   IntoWire &shards(const SHVar &var) {
-    assert(var.valueType == SHType::Seq);
+    shassert(var.valueType == SHType::Seq);
     const SHSeq &seq = var.payload.seqValue;
-    assert(seq.len == 0 || seq.elements[0].valueType == SHType::ShardRef);
+    shassert(seq.len == 0 || seq.elements[0].valueType == SHType::ShardRef);
     auto wire = result = SHWire::make(defaultWireName_);
     wire->looped = defaultLooped_;
     ForEach(seq, [&](SHVar &v) {
-      assert(v.valueType == SHType::ShardRef);
+      shassert(v.valueType == SHType::ShardRef);
       wire->addShard(v.payload.shardValue);
     });
     return *this;
@@ -63,7 +63,7 @@ private:
 
   // Adds a wire
   IntoWire &wire(const SHVar &var) {
-    assert(var.valueType == SHType::Wire);
+    shassert(var.valueType == SHType::Wire);
     result = *(std::shared_ptr<SHWire> *)var.payload.wireValue;
     return *this;
   }
@@ -83,7 +83,7 @@ struct IntoWires {
       if (var.valueType == SHType::Wire) {
         results.push_back(intoWire.wire(var));
       } else {
-        assert(var.valueType == SHType::Seq);
+        shassert(var.valueType == SHType::Seq);
         auto &seq = var.payload.seqValue;
         if (seq.len == 0)
           return *this;
