@@ -617,13 +617,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     } else {
       // trigger all enqueue tasks on mesh thread
       dispatcher.update();
-
       // also triggers oll calls enqueued by threadCall
-      if (mainMeshTask) {
-        mainMeshTask();
-        mainMeshTask.reset();
-      }
-
+      mainMeshTask();
+      mainMeshTask.reset();
       // Now resume all wires that need to be resumed
       SHDuration now = SHClock::now().time_since_epoch();
       for (auto it = _flowPool.begin(); it != _flowPool.end();) {
