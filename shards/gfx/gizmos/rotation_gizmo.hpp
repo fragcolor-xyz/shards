@@ -153,7 +153,6 @@ struct RotationGizmo : public IGizmo, public IGizmoCallbacks {
       // SPDLOG_DEBUG("dragTangentDir {} {} {}", dragTangentDir.x, dragTangentDir.y, dragTangentDir.z);
       // SPDLOG_DEBUG("Delta: {}", delta);
 
-      float4x4 rotationMat;
       float3 axis{};
       switch (handleIndex) {
       case 0:
