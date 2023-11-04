@@ -2,6 +2,9 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "logging.hpp"
+#include "shards/shardwrapper.hpp"
+#include "shards/utility.hpp"
+#include "spdlog/spdlog.h"
 #include <atomic>
 #include <numeric>
 #include <string>
@@ -258,7 +261,7 @@ struct CaptureLog {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     auto logger = spdlog::default_logger();
     assert(logger);
     auto sink = logger->sinks().at(0);
@@ -327,10 +330,27 @@ private:
   bool _suspend{false};
 };
 
+SHVar logsFlushActivation(const SHVar &input) {
+  spdlog::default_logger()->flush();
+  return input;
+}
+
+SHVar logsChangeLevelActivation(const SHVar &input) {
+  auto level = SHSTRING_PREFER_SHSTRVIEW(input);
+  spdlog::set_level(spdlog::level::from_str(level));
+  return input;
+}
+
 SHARDS_REGISTER_FN(logging) {
   REGISTER_SHARD("Log", Log);
   REGISTER_SHARD("LogType", LogType);
   REGISTER_SHARD("Msg", Msg);
   REGISTER_SHARD("CaptureLog", CaptureLog);
+
+  using FlushShard = LambdaShard<logsFlushActivation, CoreInfo::AnyType, CoreInfo::AnyType>;
+  REGISTER_SHARD("FlushLog", FlushShard);
+
+  using ChangeLevelShard = LambdaShard<logsChangeLevelActivation, CoreInfo::StringType, CoreInfo::AnyType>;
+  REGISTER_SHARD("SetLogLevel", ChangeLevelShard);
 }
 }; // namespace shards
