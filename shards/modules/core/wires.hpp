@@ -137,6 +137,8 @@ struct BaseRunner : public WireBase {
   std::optional<entt::connection> onStopConnection;
 
   void cleanup(SHContext* context) {
+    _mesh.reset();
+
     if (capturing) {
       for (auto &v : _vars) {
         v.cleanup();
@@ -193,6 +195,7 @@ struct BaseRunner : public WireBase {
 
       onStopConnection = wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&BaseRunner::wireOnStop>(this);
     }
+
     _mesh = ctx->main->mesh.lock();
   }
 

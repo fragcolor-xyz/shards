@@ -125,8 +125,6 @@ struct SHMesh;
 struct SHMeshRefOpaque;
 typedef struct SHMeshRefOpaque *SHMeshRef;
 
-struct SHFlow;
-
 struct Shard;
 typedef struct Shard *ShardPtr;
 SH_ARRAY_DECL(Shards, ShardPtr);
@@ -478,11 +476,6 @@ struct SHExposedTypeInfo {
 
   // If the variable is market as exposed, apps building on top will can use this feature
   SHBool exposed;
-};
-
-struct SHFlow {
-  struct SHWire *wire;
-  SHBool paused;
 };
 
 // # Of SHVars and memory

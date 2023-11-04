@@ -90,6 +90,11 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
   if (_suspend_state != SHWireState::Continue)                \
   return shards::Var::Empty
 
+struct SHFlow {
+  struct SHWire *wire;
+  SHBool paused;
+};
+
 struct SHStateSnapshot {
   SHWireState state;
   SHVar flowStorage;
