@@ -14,12 +14,7 @@
 
 #ifdef SH_RELWITHDEBINFO
 #undef shassert
-#define shassert(_expr_)                                                                                               \
-  {                                                                                                                    \
-    if (!(_expr_)) {                                                                                                   \
-      SHLOG_FATAL("Assertion failed: {}", #_expr_);                                                                    \                                                                                              \
-    }                                                                                                                  \
-  }
+#define shassert(_expr_) if (!(_expr_)) { SHLOG_FATAL("Assertion failed: {}", #_expr_) }
 #endif
 
 #include <shards/shards.hpp>
