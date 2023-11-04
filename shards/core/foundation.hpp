@@ -12,15 +12,9 @@
 
 #include <shards/shards.h>
 
-#ifdef SH_RELWITHDEBINFO
-#undef shassert
-#define shassert(_expr_) if (!(_expr_)) { SHLOG_FATAL("Assertion failed: {}", #_expr_) }
-#endif
-
 #include <shards/shards.hpp>
 #include "ops_internal.hpp"
 
-// Included 3rdparty
 #include "spdlog/spdlog.h"
 
 #include <algorithm>
@@ -76,6 +70,11 @@
     SPDLOG_CRITICAL(__VA_ARGS__); \
     std::abort();                 \
   }
+
+#ifdef SH_RELWITHDEBINFO
+#undef shassert
+#define shassert(_expr_) if (!(_expr_)) { SHLOG_FATAL("Assertion failed: {}", #_expr_); }
+#endif
 
 namespace shards {
 #ifdef SH_COMPRESSED_STRINGS
