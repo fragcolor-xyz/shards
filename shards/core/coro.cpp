@@ -48,7 +48,7 @@ void ThreadFiber::resume() {
 
 void ThreadFiber::suspend() {
   // SPDLOG_TRACE("RUNNER< {}", thread->get_id());
-  shassert(isRunning);
+  shassert(isRunning && "Cannot suspend an already suspended fiber");
   switchToCaller();
   // SPDLOG_TRACE("RUNNER> {}", thread->get_id());
 }

@@ -581,9 +581,11 @@ SHWireState suspend(SHContext *context, double seconds) {
     context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
   }
 
-  SH_CORO_SUSPENDED(context->currentWire());
+  auto currentWire = context->currentWire();
+  SH_CORO_SUSPENDED(currentWire);
   coroutineSuspend(*context->continuation);
-  SH_CORO_RESUMED(context->currentWire());
+  shassert(context->currentWire() == currentWire);
+  SH_CORO_RESUMED(currentWire);
 
   return context->getState();
 }
@@ -601,7 +603,7 @@ void hash_update(const SHVar &var, void *state);
   }                                                                                            \
   std::unordered_set<const SHWire *> &prefix##Wires() {                                        \
     auto wiresPtr = *prefix##WiresStorage();                                                   \
-    shassert(wiresPtr);                                                                          \
+    shassert(wiresPtr);                                                                        \
     return *wiresPtr;                                                                          \
   }                                                                                            \
   void prefix##WiresPush() { prefix##WiresStorage() = &prefix##WiresStack().emplace_front(); } \
@@ -1277,13 +1279,13 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHValidationCallba
 SHComposeResult composeWire(const SHWire *wire, SHValidationCallback callback, void *userData, SHInstanceData data) {
   // compare exchange and then shassert we were not composing
   bool expected = false;
-  auto composeState = const_cast<SHWire*>(wire)->composing.compare_exchange_strong(expected, true);
+  auto composeState = const_cast<SHWire *>(wire)->composing.compare_exchange_strong(expected, true);
   if (!composeState) {
     SHLOG_ERROR("Wire {} is already being composed", wire->name);
     throw ComposeError("Wire is already being composed");
   }
   // defer reset compose state
-  DEFER(const_cast<SHWire*>(wire)->composing.store(false));
+  DEFER(const_cast<SHWire *>(wire)->composing.store(false));
 
   // settle input type of wire before compose
   if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
@@ -2862,12 +2864,6 @@ void triggerVarValueChange(SHWire *w, const SHVar *name, const SHVar *var) {
   OnExposedVarSet ev{w->id, nameStr, *var, w};
   w->dispatcher.trigger(ev);
 }
-
-SHContext *&getCurrentContextPtr() {
-  static thread_local SHContext *currentContext{};
-  return currentContext;
-}
-
 }; // namespace shards
 
 // NO NAMESPACE here!
@@ -3152,7 +3148,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     API_TRY_CALL(registerEnumType, shards::registerEnumType(vendorId, typeId, info);)
   };
 
-  result->findEnumId = [](SHStringWithLen name) noexcept { return shards::findEnumId(std::string_view{name.string, size_t(name.len)}); };
+  result->findEnumId = [](SHStringWithLen name) noexcept {
+    return shards::findEnumId(std::string_view{name.string, size_t(name.len)});
+  };
 
   result->registerRunLoopCallback = [](const char *eventName, SHCallback callback) noexcept {
     API_TRY_CALL(registerRunLoopCallback, shards::registerRunLoopCallback(eventName, callback);)

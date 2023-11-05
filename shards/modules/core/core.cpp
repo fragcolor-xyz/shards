@@ -56,7 +56,7 @@ struct JointOp {
     throw SHException("Parameter out of range.");
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     for (auto ref : _multiSortColumns) {
       releaseVariable(ref);
     }
@@ -117,7 +117,7 @@ struct JointOp {
 
 struct ActionJointOp : public JointOp {
   ShardsVar _blks{};
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _blks.cleanup(context);
     JointOp::cleanup(context);
   }
@@ -429,7 +429,7 @@ struct Profile {
 
   static SHParametersInfo parameters() { return _params; }
 
-  void cleanup(SHContext* context) { _shards.cleanup(context); }
+  void cleanup(SHContext *context) { _shards.cleanup(context); }
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
@@ -542,7 +542,7 @@ struct XpendTo : public XPendBase {
     throw SHException("Parameter out of range.");
   }
 
-  void cleanup(SHContext* context) { _collection.cleanup(); }
+  void cleanup(SHContext *context) { _collection.cleanup(); }
   void warmup(SHContext *context) { _collection.warmup(context); }
 };
 
@@ -682,7 +682,7 @@ struct ForEachShard {
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
-  void cleanup(SHContext* context) { _shards.cleanup(context); }
+  void cleanup(SHContext *context) { _shards.cleanup(context); }
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
     SHVar output{};
@@ -758,7 +758,7 @@ struct Map {
     _shards.warmup(ctx);
   }
 
-  void cleanup(SHContext* context) { _shards.cleanup(context); }
+  void cleanup(SHContext *context) { _shards.cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output{};
@@ -828,7 +828,7 @@ struct Reduce {
     _shards.warmup(ctx);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _shards.cleanup(context);
     releaseVariable(_tmp);
     _tmp = nullptr;
@@ -863,9 +863,7 @@ private:
 };
 
 struct Erase : SeqUser {
-  static SHOptionalString help() {
-    return SHCCSTR("Deletes an index or indices from a sequence or a key or keys from a table.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Deletes an index or indices from a sequence or a key or keys from a table."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
@@ -880,7 +878,7 @@ struct Erase : SeqUser {
     _indices.warmup(ctx);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _indices.cleanup(context);
     SeqUser::cleanup(context);
   }
@@ -1193,7 +1191,7 @@ struct Replace {
     _replacements.warmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _patterns.cleanup();
     _replacements.cleanup();
   }
@@ -1311,20 +1309,29 @@ struct Reverse {
 
 struct UnsafeActivate {
   static inline Parameters params{
-      {"Pointer", SHCCSTR("The function address, must be of type SHVar f(Context*, SHVar*)."), {CoreInfo::IntType}}};
+      {"Activate",
+       SHCCSTR("The function address, must be of type std::function<SHVar(SHContext *, const SHVar &)>."),
+       {CoreInfo::IntType}},
+      {"Cleanup", SHCCSTR("The function address, must be of type std::function<void(SHContext *)>."), {CoreInfo::IntType}}};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static SHParametersInfo parameters() { return params; }
 
-  typedef SHVar (*ActivationFunc)(SHContext *, const SHVar *);
-  ActivationFunc _func{nullptr};
+  using ActivationFunc = std::function<SHVar(SHContext *, const SHVar &)>;
+  ActivationFunc *_func{nullptr};
+
+  using CleanupFunc = std::function<void(SHContext *)>;
+  CleanupFunc *_cleanup{nullptr};
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _func = reinterpret_cast<ActivationFunc>(value.payload.intValue);
+      _func = reinterpret_cast<ActivationFunc *>(value.payload.intValue);
+      break;
+    case 1:
+      _cleanup = reinterpret_cast<CleanupFunc *>(value.payload.intValue);
       break;
     default:
       break;
@@ -1335,12 +1342,20 @@ struct UnsafeActivate {
     switch (index) {
     case 0:
       return Var(reinterpret_cast<uint64_t>(_func));
+    case 1:
+      return Var(reinterpret_cast<uint64_t>(_cleanup));
     default:
       return Var::Empty;
     }
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) { return _func(context, &input); }
+  void cleanup(SHContext *context) {
+    if (_cleanup) {
+      (*_cleanup)(context);
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return (*_func)(context, input); }
 };
 
 struct GetShards {
@@ -2004,7 +2019,7 @@ struct Once {
   SHTimeDiff _lastActivation;
   gfx::MovingAverage<double> _averageSleepTime{20};
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _repeat.cleanup(context);
     _blks.cleanup(context);
     if (self)

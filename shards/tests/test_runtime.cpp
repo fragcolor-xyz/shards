@@ -1300,9 +1300,8 @@ TEST_CASE("Vector types") {
 }
 
 TEST_CASE("UnsafeActivate-shard") {
-  typedef SHVar (*Func)(SHContext *, const SHVar *);
-  Func f = [](SHContext *ctx, const SHVar *input) -> SHVar { return Var(77); };
-  auto fVar = Var(reinterpret_cast<uint64_t>(f));
+  std::function<SHVar(SHContext *, const SHVar &)> f = [](SHContext *ctx, const SHVar &input) -> SHVar { return Var(77); };
+  auto fVar = Var(reinterpret_cast<uint64_t>(&f));
   auto b1 = createShard("UnsafeActivate!");
   DEFER(b1->destroy(b1));
   b1->setParam(b1, 0, &fVar);
@@ -1449,30 +1448,30 @@ TEST_CASE("Function") {
   CHECK(!f4);
 }
 
-#define TEST_SUCCESS_CASE(testName, code)                                           \
-  SECTION(testName) {                                                               \
+#define TEST_SUCCESS_CASE(testName, code)                                                              \
+  SECTION(testName) {                                                                                  \
     auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); \
-    REQUIRE(seq.ast);                                                               \
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});      \
-    shards_free_sequence(seq.ast);                                                  \
-    REQUIRE(wire.wire);                                                             \
-    auto mesh = SHMesh::make();                                                     \
-    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));                            \
-    mesh->tick();                                                                   \
-    shards_free_wire(wire.wire);                                                    \
+    REQUIRE(seq.ast);                                                                                  \
+    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});                         \
+    shards_free_sequence(seq.ast);                                                                     \
+    REQUIRE(wire.wire);                                                                                \
+    auto mesh = SHMesh::make();                                                                        \
+    mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));                                               \
+    mesh->tick();                                                                                      \
+    shards_free_wire(wire.wire);                                                                       \
   }
 
-#define TEST_EVAL_ERROR_CASE(testName, code, expectedErrorMessage)                  \
-  SECTION(testName) {                                                               \
+#define TEST_EVAL_ERROR_CASE(testName, code, expectedErrorMessage)                                     \
+  SECTION(testName) {                                                                                  \
     auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); \
-    REQUIRE(seq.ast);                                                               \
-    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});      \
-    shards_free_sequence(seq.ast);                                                  \
-    REQUIRE(wire.error);                                                            \
-    std::string a(wire.error->message);                                             \
-    std::string b(expectedErrorMessage);                                            \
-    REQUIRE(a == b);                                                                \
-    shards_free_error(wire.error);                                                  \
+    REQUIRE(seq.ast);                                                                                  \
+    auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});                         \
+    shards_free_sequence(seq.ast);                                                                     \
+    REQUIRE(wire.error);                                                                               \
+    std::string a(wire.error->message);                                                                \
+    std::string b(expectedErrorMessage);                                                               \
+    REQUIRE(a == b);                                                                                   \
+    shards_free_error(wire.error);                                                                     \
   }
 
 TEST_CASE("shards-lang") {
@@ -1644,7 +1643,8 @@ TEST_CASE("shards-lang") {
       })
       2 | Do(wire1) | Assert.Is(3)
     )";
-    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
+    auto seq =
+        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
     REQUIRE(seq.ast);
     DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
@@ -1665,7 +1665,8 @@ TEST_CASE("shards-lang") {
       "World" | AppendTo(s)
       s | Log
     )";
-    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
+    auto seq =
+        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
     REQUIRE(seq.ast);
     DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
@@ -1685,7 +1686,8 @@ TEST_CASE("shards-lang") {
       2 | @group1(1) | Assert.Is(3)
       3 | @group1(2) | Assert.Is(5)
     )";
-    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
+    auto seq =
+        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
     REQUIRE(seq.ast);
     DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
@@ -1709,7 +1711,8 @@ TEST_CASE("shards-lang") {
       })
       #(@range(0 5)) | Log
     )";
-    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
+    auto seq =
+        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
     REQUIRE(seq.ast);
     DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
@@ -1736,7 +1739,8 @@ TEST_CASE("shards-lang") {
       @schedule(main wire1)
       @run(main 1.0 5)
     )";
-    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
+    auto seq =
+        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
     REQUIRE(seq.ast);
     DEFER(shards_free_sequence(seq.ast));
     auto wire = shards_eval(seq.ast, SHStringWithLen{"root", strlen("root")});
@@ -1771,7 +1775,8 @@ TEST_CASE("shards-lang") {
 
       Do(w)
     )";
-    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
+    auto seq =
+        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
     REQUIRE(seq.ast);
     DEFER(shards_free_sequence(seq.ast));
 
@@ -1808,7 +1813,8 @@ TEST_CASE("shards-lang") {
       Do(w1)
       Do(w2)
     )";
-    auto seq = shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
+    auto seq =
+        shards_read(SHStringWithLen{}, SHStringWithLen{code, strlen(code)}, SHStringWithLen{}); // Enums can't be used like this
     REQUIRE(seq.ast);
     DEFER(shards_free_sequence(seq.ast));
 
@@ -1830,4 +1836,114 @@ TEST_CASE("shards-lang") {
     mesh->schedule(SHWire::sharedFromRef(*(wire.wire)));
     mesh->tick();
   }
+}
+
+TEST_CASE("meshThreadTask") {
+  shards::pushThreadName("Main Thread");
+  auto mesh = SHMesh::make();
+
+  auto currentThreadId = std::this_thread::get_id();
+
+  int called1 = 0;
+  int called1bis = 0;
+  int called2 = 0;
+  int called3 = 0;
+
+  auto testWire = SHWire::make("test-wire");
+  auto testWire2 = SHWire::make("test-wire2");
+  auto steppedWire = SHWire::make("stepped-wire");
+
+  std::function<SHVar(SHContext *, const SHVar &)> f1 = [&](SHContext *context, const SHVar &input) {
+    shards::callOnMeshThread(context, [&]() {
+      // required called on mesh thread
+      REQUIRE(currentThreadId == std::this_thread::get_id());
+      called1++;
+    });
+    return input;
+  };
+
+  std::function<SHVar(SHContext *, const SHVar &)> f1bis = [&](SHContext *context, const SHVar &input) {
+    shards::callOnMeshThread(context, [&]() {
+      // required called on mesh thread
+      REQUIRE(currentThreadId == std::this_thread::get_id());
+      called1bis++;
+    });
+    return input;
+  };
+
+  // actually this will never happen cos we just schedule the call on main thread but then we stop the wire
+  std::function<SHVar(SHContext *, const SHVar &)> f2 = [&](SHContext *context, const SHVar &input) {
+    shards::callOnMeshThread(context, [&]() {
+      // required called on mesh thread
+      REQUIRE(currentThreadId == std::this_thread::get_id());
+      called2++;
+    });
+    return input;
+  };
+
+  // also test cleanup trigger of onMeshThreadTask
+  std::function<void(SHContext *)> f3 = [&](SHContext *context) {
+    shards::callOnMeshThread(context, [&]() {
+      // required called on mesh thread
+      REQUIRE(currentThreadId == std::this_thread::get_id());
+      called3++;
+    });
+  };
+
+  auto unsafeActivate1 = createShard("UnsafeActivate!");
+  auto vf1 = Var(reinterpret_cast<uint64_t>(&f1));
+  unsafeActivate1->setParam(unsafeActivate1, 0, &vf1);
+  testWire->addShard(unsafeActivate1);
+
+  auto unsafeActivate1bis = createShard("UnsafeActivate!");
+  auto vf1bis = Var(reinterpret_cast<uint64_t>(&f1bis));
+  unsafeActivate1bis->setParam(unsafeActivate1bis, 0, &vf1bis);
+  testWire2->addShard(unsafeActivate1bis);
+
+  auto unsafeActivate2 = createShard("UnsafeActivate!");
+  auto vf2 = Var(reinterpret_cast<uint64_t>(&f2));
+  unsafeActivate2->setParam(unsafeActivate2, 0, &vf2);
+  // auto vf3 = Var(reinterpret_cast<uint64_t>(&f3));
+  // unsafeActivate2->setParam(unsafeActivate2, 1, &vf3);
+  steppedWire->addShard(unsafeActivate2);
+
+  auto stepShard = createShard("Step");
+  stepShard->setup(stepShard);
+  auto steppedWireVar = Var(steppedWire);
+  stepShard->setParam(stepShard, 0, &steppedWireVar);
+  testWire2->addShard(stepShard);
+
+  mesh->schedule(testWire);
+  mesh->schedule(testWire2);
+
+  mesh->tick(); // will just queue the calls
+  REQUIRE(called1 == 0);
+
+  mesh->tick(); // will activate f1 and f1bis
+  REQUIRE(called1 == 1);
+  REQUIRE(called1bis == 1);
+  REQUIRE(called2 == 0);
+
+  mesh->tick(); // will activate f2
+  REQUIRE(called1 == 1);
+  REQUIRE(called1bis == 1);
+  REQUIRE(called2 == 1);
+
+  mesh->tick(); // will trigger the meshThreadTask calls
+  REQUIRE(called1 == 1);
+  REQUIRE(called1bis == 1);
+  REQUIRE(called2 == 1);
+  // REQUIRE(called3 == 1);
+
+  mesh->tick(); // just to be sure nothing asserts or so as well
+  REQUIRE(called1 == 1);
+  REQUIRE(called1bis == 1);
+  REQUIRE(called2 == 1);
+  // REQUIRE(called3 == 1);
+
+  mesh->tick(); // just to be sure nothing asserts or so as well
+  REQUIRE(called1 == 1);
+  REQUIRE(called1bis == 1);
+  REQUIRE(called2 == 1);
+  // REQUIRE(called3 == 1);
 }

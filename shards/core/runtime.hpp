@@ -111,13 +111,13 @@ struct SHContext {
   std::vector<SHWire *> wireStack;
   bool onCleanup{false};
   bool onLastResume{false};
+  bool onWorkerThread{false};
 
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
 
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};
   SHDuration next{};
-  entt::delegate<void()> meshThreadTasks;
 
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
@@ -279,17 +279,11 @@ extern GlobalTracy &GetTracy();
 UntrackedVector<SHWire *> &getCoroWireStack();
 #endif
 
-SHContext *&getCurrentContextPtr();
-
 #if SH_DEBUG_THREAD_NAMES
-#define SH_CORO_RESUMED(_wire)                                           \
-  {                                                                      \
-    shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name));   \
-  }
-#define SH_CORO_SUSPENDED(_wire)              \
-  {                                           \
-    shards::popThreadName();                  \
-  }
+#define SH_CORO_RESUMED(_wire) \
+  { shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); }
+#define SH_CORO_SUSPENDED(_wire) \
+  { shards::popThreadName(); }
 #define SH_CORO_EXT_RESUME(_wire)                                                 \
   {                                                                               \
     shards::pushThreadName(fmt::format("<resuming wire> \"{}\"", (_wire)->name)); \
@@ -302,40 +296,10 @@ SHContext *&getCurrentContextPtr();
   }
 #else
 #define SH_CORO_RESUMED(_wire) \
-#define SH_CORO_SUSPENDED(_) \
-#define SH_CORO_EXT_RESUME(_) \
-  { TracyCoroEnter(wire); }
+  #define SH_CORO_SUSPENDED(_) #define SH_CORO_EXT_RESUME(_) { TracyCoroEnter(wire); }
 #define SH_CORO_EXT_SUSPEND(_) \
   { TracyCoroExit(_wire); }
 #endif
-
-template <typename DELEGATE> auto callOnMeshThread(SHContext* context, DELEGATE &func) -> decltype(func.action(), void()) {
-  if (context) {
-    if (unlikely(!context->continuation)) {
-      throw ActivationError("Trying to suspend a context without coroutine!");
-    }
-
-    shassert(!context->meshThreadTasks);
-    context->meshThreadTasks.connect<&DELEGATE::action>(func);
-
-    SH_CORO_SUSPENDED(context->currentWire());
-    coroutineSuspend(*context->continuation);
-    SH_CORO_RESUMED(context->currentWire());
-
-    context->meshThreadTasks.reset();
-  } else {
-    SPDLOG_WARN("NO Context, not running on main thread");
-    func.action();
-  }
-}
-
-template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMeshThread(SHContext* context, L &&func) {
-  struct Action {
-    L &lambda;
-    void action() { lambda(); }
-  } l{func};
-  callOnMeshThread(context, l);
-}
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
   shassert(!coroutineValid(wire->coro) && "Wire already prepared!");
@@ -383,7 +347,7 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
   ZoneScoped;
   ZoneName(wire->name.c_str(), wire->name.size());
 
-  if(!isRunning(wire))
+  if (!isRunning(wire))
     return;
 
   shassert(wire->context && "Wire has no context!");
@@ -397,21 +361,9 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
   }
 
   if (canRun) {
-    while (true) {
-      SH_CORO_EXT_RESUME(wire);
-      coroutineResume(wire->coro);
-      SH_CORO_EXT_SUSPEND(wire);
-
-      // if we have a task to run, run it and resume coro without yielding to caller
-      if (unlikely(wire->context && (bool)wire->context->meshThreadTasks)) {
-        wire->context->meshThreadTasks();
-        wire->context->meshThreadTasks.reset();
-        // and continue in order to resume the coro
-      } else {
-        // Yield to caller if no main thread task
-        break;
-      }
-    }
+    SH_CORO_EXT_RESUME(wire);
+    coroutineResume(wire->coro);
+    SH_CORO_EXT_SUSPEND(wire);
   }
 }
 
@@ -665,6 +617,13 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     if (shards::GetGlobals().SigIntTerm > 0) {
       terminate();
     } else {
+      // call queued tasks on mesh
+      for (auto &task : meshThreadTasks) {
+        shassert(task && "Task is null!");
+        task();
+      }
+      meshThreadTasks.clear();
+
       SHDuration now = SHClock::now().time_since_epoch();
       for (auto it = _flowPool.begin(); it != _flowPool.end();) {
         auto &flow = *it;
@@ -770,7 +729,10 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
 
+  // up to the users to call .update on this, we internally use just "trigger", which is instant
   mutable entt::dispatcher dispatcher{};
+
+  mutable std::deque<entt::delegate<void()>> meshThreadTasks;
 
   SHVar &getVariable(const SHStringWithLen name) {
     auto key = shards::OwnedVar::Foreign(name); // copy on write
@@ -864,6 +826,40 @@ private:
 };
 
 namespace shards {
+template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE &func) -> decltype(func.action(), void()) {
+  if (context) {
+    if (unlikely(context->onWorkerThread)) {
+      throw ActivationError("Trying to callOnMeshThread from a worker thread!");
+    }
+
+    shassert(!context->onLastResume && "Trying to callOnMeshThread from a wire that is about to stop!");
+    shassert(context->continuation && "Context has no continuation!");
+    shassert(context->currentWire() && "Context has no current wire!");
+
+    auto mesh = context->main->mesh.lock();
+    shassert(mesh && "Context has no mesh!");
+    mesh->meshThreadTasks.emplace_back().connect<&DELEGATE::action>(func);
+
+    // after suspend context might be invalid!
+    auto currentWire = context->currentWire();
+    SH_CORO_SUSPENDED(currentWire);
+    coroutineSuspend(*context->continuation);
+    shassert(context->currentWire() == currentWire && "Context changed wire during callOnMeshThread!");
+    SH_CORO_RESUMED(currentWire);
+  } else {
+    SPDLOG_WARN("NO Context, not running on mesh thread");
+    func.action();
+  }
+}
+
+template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMeshThread(SHContext *context, L &&func) {
+  struct Action {
+    L &lambda;
+    void action() { lambda(); }
+  } l{func};
+  callOnMeshThread(context, l);
+}
+
 struct Serialization {
   std::unordered_map<SHVar, SHWireRef> wires;
   std::unordered_map<std::string, std::shared_ptr<Shard>> defaultShards;
