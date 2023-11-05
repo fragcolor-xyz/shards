@@ -1847,7 +1847,6 @@ TEST_CASE("meshThreadTask") {
   int called1 = 0;
   int called1bis = 0;
   int called2 = 0;
-  int called3 = 0;
 
   auto testWire = SHWire::make("test-wire");
   auto testWire2 = SHWire::make("test-wire2");
@@ -1871,7 +1870,6 @@ TEST_CASE("meshThreadTask") {
     return input;
   };
 
-  // actually this will never happen cos we just schedule the call on main thread but then we stop the wire
   std::function<SHVar(SHContext *, const SHVar &)> f2 = [&](SHContext *context, const SHVar &input) {
     shards::callOnMeshThread(context, [&]() {
       // required called on mesh thread
@@ -1879,15 +1877,6 @@ TEST_CASE("meshThreadTask") {
       called2++;
     });
     return input;
-  };
-
-  // also test cleanup trigger of onMeshThreadTask
-  std::function<void(SHContext *)> f3 = [&](SHContext *context) {
-    shards::callOnMeshThread(context, [&]() {
-      // required called on mesh thread
-      REQUIRE(currentThreadId == std::this_thread::get_id());
-      called3++;
-    });
   };
 
   auto unsafeActivate1 = createShard("UnsafeActivate!");
@@ -1903,8 +1892,6 @@ TEST_CASE("meshThreadTask") {
   auto unsafeActivate2 = createShard("UnsafeActivate!");
   auto vf2 = Var(reinterpret_cast<uint64_t>(&f2));
   unsafeActivate2->setParam(unsafeActivate2, 0, &vf2);
-  // auto vf3 = Var(reinterpret_cast<uint64_t>(&f3));
-  // unsafeActivate2->setParam(unsafeActivate2, 1, &vf3);
   steppedWire->addShard(unsafeActivate2);
 
   auto stepShard = createShard("Step");
@@ -1913,37 +1900,39 @@ TEST_CASE("meshThreadTask") {
   stepShard->setParam(stepShard, 0, &steppedWireVar);
   testWire2->addShard(stepShard);
 
+  auto pauseShard = createShard("Pause");
+  testWire2->addShard(pauseShard);
+
   mesh->schedule(testWire);
   mesh->schedule(testWire2);
 
-  mesh->tick(); // will just queue the calls
-  REQUIRE(called1 == 0);
-
-  mesh->tick(); // will activate f1 and f1bis
+  mesh->tick();
   REQUIRE(called1 == 1);
   REQUIRE(called1bis == 1);
   REQUIRE(called2 == 0);
 
-  mesh->tick(); // will activate f2
+  mesh->tick();
   REQUIRE(called1 == 1);
   REQUIRE(called1bis == 1);
   REQUIRE(called2 == 1);
 
-  mesh->tick(); // will trigger the meshThreadTask calls
+  mesh->tick();
   REQUIRE(called1 == 1);
   REQUIRE(called1bis == 1);
   REQUIRE(called2 == 1);
-  // REQUIRE(called3 == 1);
 
-  mesh->tick(); // just to be sure nothing asserts or so as well
+  mesh->tick();
   REQUIRE(called1 == 1);
   REQUIRE(called1bis == 1);
   REQUIRE(called2 == 1);
-  // REQUIRE(called3 == 1);
 
-  mesh->tick(); // just to be sure nothing asserts or so as well
+  mesh->tick();
   REQUIRE(called1 == 1);
   REQUIRE(called1bis == 1);
   REQUIRE(called2 == 1);
-  // REQUIRE(called3 == 1);
+
+  mesh->tick();
+  REQUIRE(called1 == 1);
+  REQUIRE(called1bis == 1);
+  REQUIRE(called2 == 1);
 }

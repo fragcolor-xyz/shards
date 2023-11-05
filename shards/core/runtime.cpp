@@ -1944,6 +1944,8 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
     context.wireStack = wire->context->wireStack;
     // need to add back ourself
     context.wireStack.push_back(wire);
+    // also set parent
+    context.parent = wire->context;
   }
 
   // also populate context in wire

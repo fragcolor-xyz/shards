@@ -108,6 +108,7 @@ struct SHContext {
 
   const SHWire *main;
   SHFlow *flow;
+  SHContext *parent{nullptr};
   std::vector<SHWire *> wireStack;
   bool onCleanup{false};
   bool onLastResume{false};
@@ -118,6 +119,8 @@ struct SHContext {
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};
   SHDuration next{};
+
+  entt::delegate<void()> meshThreadTask;
 
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
@@ -364,6 +367,13 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
     SH_CORO_EXT_RESUME(wire);
     coroutineResume(wire->coro);
     SH_CORO_EXT_SUSPEND(wire);
+
+    // if we have a task to run, run it now
+    if (unlikely(wire->context && (bool)wire->context->meshThreadTask)) {
+      shassert(wire->context->parent == nullptr && "Mesh thread task should only be called on root context!");
+      wire->context->meshThreadTask();
+      wire->context->meshThreadTask.reset();
+    }
   }
 }
 
@@ -617,13 +627,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     if (shards::GetGlobals().SigIntTerm > 0) {
       terminate();
     } else {
-      // call queued tasks on mesh
-      for (auto &task : meshThreadTasks) {
-        shassert(task && "Task is null!");
-        task();
-      }
-      meshThreadTasks.clear();
-
       SHDuration now = SHClock::now().time_since_epoch();
       for (auto it = _flowPool.begin(); it != _flowPool.end();) {
         auto &flow = *it;
@@ -732,8 +735,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   // up to the users to call .update on this, we internally use just "trigger", which is instant
   mutable entt::dispatcher dispatcher{};
 
-  mutable std::deque<entt::delegate<void()>> meshThreadTasks;
-
   SHVar &getVariable(const SHStringWithLen name) {
     auto key = shards::OwnedVar::Foreign(name); // copy on write
     return variables[key];
@@ -826,6 +827,13 @@ private:
 };
 
 namespace shards {
+inline SHContext *getRootContext(SHContext *current) {
+  while (current->parent) {
+    current = current->parent;
+  }
+  return current;
+}
+
 template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE &func) -> decltype(func.action(), void()) {
   if (context) {
     if (unlikely(context->onWorkerThread)) {
@@ -835,10 +843,9 @@ template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE 
     shassert(!context->onLastResume && "Trying to callOnMeshThread from a wire that is about to stop!");
     shassert(context->continuation && "Context has no continuation!");
     shassert(context->currentWire() && "Context has no current wire!");
+    shassert(!context->meshThreadTask && "Context already has a mesh thread task!");
 
-    auto mesh = context->main->mesh.lock();
-    shassert(mesh && "Context has no mesh!");
-    mesh->meshThreadTasks.emplace_back().connect<&DELEGATE::action>(func);
+    getRootContext(context)->meshThreadTask.connect<&DELEGATE::action>(func);
 
     // after suspend context might be invalid!
     auto currentWire = context->currentWire();
