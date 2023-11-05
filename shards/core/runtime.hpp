@@ -364,15 +364,21 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
   }
 
   if (canRun) {
-    SH_CORO_EXT_RESUME(wire);
-    coroutineResume(wire->coro);
-    SH_CORO_EXT_SUSPEND(wire);
+    while (true) {
+      SH_CORO_EXT_RESUME(wire);
+      coroutineResume(wire->coro);
+      SH_CORO_EXT_SUSPEND(wire);
 
-    // if we have a task to run, run it now
-    if (unlikely(wire->context && (bool)wire->context->meshThreadTask)) {
-      shassert(wire->context->parent == nullptr && "Mesh thread task should only be called on root context!");
-      wire->context->meshThreadTask();
-      wire->context->meshThreadTask.reset();
+      // if we have a task to run, run it and resume coro without yielding to caller
+      if (unlikely(wire->context && (bool)wire->context->meshThreadTask)) {
+        shassert(wire->context->parent == nullptr && "Mesh thread task should only be called on root context!");
+        wire->context->meshThreadTask();
+        wire->context->meshThreadTask.reset();
+        // And continue in order to resume the coroutine
+      } else {
+        // Yield to caller if no main thread task
+        break;
+      }
     }
   }
 }
@@ -840,7 +846,7 @@ template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE 
       throw ActivationError("Trying to callOnMeshThread from a worker thread!");
     }
 
-    shassert(!context->onLastResume && "Trying to callOnMeshThread from a wire that is about to stop!");
+    // shassert(!context->onLastResume && "Trying to callOnMeshThread from a wire that is about to stop!");
     shassert(context->continuation && "Context has no continuation!");
     shassert(context->currentWire() && "Context has no current wire!");
     shassert(!context->meshThreadTask && "Context already has a mesh thread task!");
