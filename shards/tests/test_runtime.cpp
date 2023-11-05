@@ -1909,7 +1909,7 @@ TEST_CASE("meshThreadTask") {
   mesh->tick();
   REQUIRE(called1 == 1);
   REQUIRE(called1bis == 1);
-  REQUIRE(called2 == 0);
+  REQUIRE(called2 == 1);
 
   mesh->tick();
   REQUIRE(called1 == 1);
