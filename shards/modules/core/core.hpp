@@ -3142,32 +3142,39 @@ struct Slice {
     const auto inputLen = input.payload.bytesSize;
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
-    auto from = vfrom.payload.intValue;
-    if (from < 0) {
-      from = inputLen + from;
-    }
-    auto to = vto.valueType == SHType::None ? inputLen : vto.payload.intValue;
-    if (to < 0) {
-      to = inputLen + to;
-    }
+    SHInt from = vfrom.payload.intValue;
+    SHInt to = vto.valueType == SHType::None ? SHInt(inputLen) : vto.payload.intValue;
 
-    if (from > to || to < 0 || to > inputLen) {
+    // Convert negative indices to positive
+    from = from < 0 ? SHInt(inputLen) + from : from;
+    to = to < 0 ? SHInt(inputLen) + to : to;
+
+    // Bounds checking
+    if (from < 0 || to < 0 || uint32_t(from) > inputLen || uint32_t(to) > inputLen) {
       throw OutOfRangeEx(inputLen, from, to);
     }
 
-    const auto len = to - from;
-    if (_step > 0) {
-      const auto actualLen = len / _step + (len % _step != 0);
-      _cachedBytes.resize(actualLen);
-      auto idx = 0;
-      for (auto i = from; i < to; i += _step) {
-        _cachedBytes[idx] = input.payload.bytesValue[i];
-        idx++;
-      }
-      return shards::Var(&_cachedBytes.front(), uint32_t(actualLen));
-    } else {
-      throw ActivationError("Slice's Step must be greater then 0");
+    // Ensure from is less than to
+    if (from > to) {
+      throw ActivationError("From index must be less than To index.");
     }
+
+    uint32_t len = uint32_t(to - from);
+    if (_step <= 0) {
+      throw ActivationError("Slice's Step must be greater than 0");
+    }
+
+    uint32_t actualLen = len / _step + (len % _step != 0 ? 1 : 0);
+    _cachedBytes.resize(actualLen); // Allocate sufficient space
+
+    uint32_t idx = 0;
+    for (int i = from; i < to && idx < actualLen; i += _step) {
+      if (uint32_t(i) >= inputLen) {
+        throw OutOfRangeEx(inputLen, i, i);
+      }
+      _cachedBytes[idx++] = input.payload.bytesValue[i];
+    }
+    return shards::Var(&_cachedBytes.front(), uint32_t(actualLen));
   }
 
   SHVar activateString(SHContext *context, const SHVar &input) {
@@ -3178,38 +3185,48 @@ struct Slice {
       _toVar = referenceVariable(context, SHSTRVIEW(_to));
     }
 
-    const auto inputLen = input.payload.stringLen > 0 || input.payload.stringValue == nullptr
-                              ? input.payload.stringLen
-                              : uint32_t(strlen(input.payload.stringValue));
-    const auto &vfrom = _fromVar ? *_fromVar : _from;
-    const auto &vto = _toVar ? *_toVar : _to;
-    auto from = vfrom.payload.intValue;
-    if (from < 0) {
-      from = inputLen + from;
-    }
-    auto to = vto.valueType == SHType::None ? inputLen : vto.payload.intValue;
-    if (to < 0) {
-      to = inputLen + to;
+    if (input.payload.stringValue == nullptr) {
+      throw ActivationError("Input string is null.");
     }
 
-    if (from > to || to < 0 || to > inputLen) {
+    uint32_t inputLen = input.payload.stringLen > 0 ? input.payload.stringLen : uint32_t(strlen(input.payload.stringValue));
+
+    const auto &vfrom = _fromVar ? *_fromVar : _from;
+    const auto &vto = _toVar ? *_toVar : _to;
+    SHInt from = vfrom.payload.intValue;
+    SHInt to = vto.valueType == SHType::None ? int(inputLen) : vto.payload.intValue;
+
+    // Convert negative indices to positive
+    from = from < 0 ? SHInt(inputLen) + from : from;
+    to = to < 0 ? SHInt(inputLen) + to : to;
+
+    // Bounds checking
+    if (from < 0 || to < 0 || uint32_t(from) > inputLen || uint32_t(to) > inputLen) {
       throw OutOfRangeEx(inputLen, from, to);
     }
 
-    const auto len = to - from;
-    if (_step > 0) {
-      const auto actualLen = len / _step + (len % _step != 0);
-      _cachedBytes.resize(actualLen + 1);
-      auto idx = 0;
-      for (auto i = from; i < to; i += _step) {
-        _cachedBytes[idx] = input.payload.stringValue[i];
-        idx++;
-      }
-      _cachedBytes[idx] = '\0';
-      return shards::Var((const char *)_cachedBytes.data(), uint32_t(actualLen));
-    } else {
-      throw ActivationError("Slice's Step must be greater then 0");
+    // Ensure from is less than to
+    if (from > to) {
+      throw ActivationError("From index must be less than To index.");
     }
+
+    uint32_t len = uint32_t(to - from);
+    if (_step <= 0) {
+      throw ActivationError("Slice's Step must be greater than 0");
+    }
+
+    uint32_t actualLen = len / _step + (len % _step != 0 ? 1 : 0);
+    _cachedBytes.resize(actualLen + 1); // +1 for the null terminator
+
+    uint32_t idx = 0;
+    for (int i = from; i < to && idx < actualLen; i += _step) {
+      if (uint32_t(i) >= inputLen) {
+        throw OutOfRangeEx(inputLen, i, i);
+      }
+      _cachedBytes[idx++] = input.payload.stringValue[i];
+    }
+    _cachedBytes[idx] = '\0'; // Ensure null termination
+    return shards::Var((const char *)_cachedBytes.data(), actualLen);
   }
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
@@ -3223,38 +3240,48 @@ struct Slice {
     const auto inputLen = input.payload.seqValue.len;
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
-    auto from = vfrom.payload.intValue;
-    if (from < 0) {
-      from = inputLen + from;
-    }
-    auto to = vto.valueType == SHType::None ? inputLen : vto.payload.intValue;
-    if (to < 0) {
-      to = inputLen + to;
-    }
+    SHInt from = vfrom.payload.intValue;
+    SHInt to = vto.valueType == SHType::None ? SHInt(inputLen) : vto.payload.intValue;
 
-    if (from > to || to < 0 || to > inputLen) {
+    // Convert negative indices to positive
+    from = from < 0 ? SHInt(inputLen) + from : from;
+    to = to < 0 ? SHInt(inputLen) + to : to;
+
+    // Bounds checking
+    if (from < 0 || to < 0 || uint32_t(from) > inputLen || uint32_t(to) > inputLen) {
       throw OutOfRangeEx(inputLen, from, to);
     }
 
+    // Ensure from is less than to
+    if (from > to) {
+      throw ActivationError("From index must be less than To index.");
+    }
+
     const auto len = to - from;
+    if (_step <= 0) {
+      throw ActivationError("Slice's Step must be greater than 0");
+    }
+
     if (_step == 1) {
-      // we don't need to copy anything in this case
+      // Optimization for step of 1
       SHVar output{};
       output.valueType = SHType::Seq;
       output.payload.seqValue.elements = &input.payload.seqValue.elements[from];
       output.payload.seqValue.len = uint32_t(len);
       return output;
-    } else if (_step > 1) {
-      const auto actualLen = len / _step + (len % _step != 0);
+    } else {
+      // General case for step greater than 1
+      const auto actualLen = len / _step + (len % _step != 0 ? 1 : 0);
       shards::arrayResize(_cachedSeq, uint32_t(actualLen));
       auto idx = 0;
-      for (auto i = from; i < to; i += _step) {
+      for (int i = from; i < to && idx < actualLen; i += _step) {
+        if (uint32_t(i) >= inputLen) {
+          throw OutOfRangeEx(inputLen, i, i);
+        }
         cloneVar(_cachedSeq.elements[idx], input.payload.seqValue.elements[i]);
         idx++;
       }
       return shards::Var(_cachedSeq);
-    } else {
-      throw ActivationError("Slice's Step must be greater then 0");
     }
   }
 
