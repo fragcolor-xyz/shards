@@ -2054,12 +2054,12 @@ endOfWire:
   if (wire->state != SHWire::State::Failed)
     wire->state = SHWire::State::Ended;
 
-  SHLOG_DEBUG("Wire {} ended", wire->name);
-
   wire->dispatcher.trigger(SHWire::OnStopEvent{wire});
 
   // Make sure to clear context at the end so it doesn't point to invalid stack memory
   wire->context = nullptr;
+
+  SHLOG_DEBUG("Wire {} ended", wire->name);
 
   SH_CORO_SUSPENDED(wire)
 
