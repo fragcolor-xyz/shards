@@ -47,7 +47,7 @@ bool updateReqs(bool &outRequirementsMet, const Pointers &pointers, size_t numRe
   } else {
     if (ignoreExtraFingers) {
       if (pointers.size() < numRequiredFingers)
-          outRequirementsMet = false;
+        outRequirementsMet = false;
     } else {
       if (pointers.size() != numRequiredFingers)
         outRequirementsMet = false;

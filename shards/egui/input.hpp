@@ -40,8 +40,6 @@ private:
   float2 windowToEguiScale;
   float4 mappedWindowRegion;
 
-  bool pointerButtonState{};
-
 #ifndef RUST_BINDGEN
   std::vector<shards::input::Message> outputMessages;
 #endif
