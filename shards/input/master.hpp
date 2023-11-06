@@ -8,8 +8,6 @@
 #include "messages.hpp"
 #include <shared_mutex>
 #include <mutex>
-#include <atomic>
-#include <thread>
 #include <core/function.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 
@@ -90,8 +88,6 @@ private:
   DetachedInput input;
 
   bool terminateRequested{};
-
-  std::thread::id thisThreadId{};
 
 public:
   InputMaster();

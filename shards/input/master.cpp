@@ -3,7 +3,6 @@
 #include "debug.hpp"
 #include "window_input.hpp"
 #include "log.hpp"
-#include <thread>
 #include <spdlog/spdlog.h>
 #include <gfx/window.hpp>
 #include <SDL_keyboard.h>
@@ -30,8 +29,6 @@ InputMaster::~InputMaster() {
 }
 
 void InputMaster::update(gfx::Window &window) {
-  thisThreadId = std::this_thread::get_id();
-
   input.state.region = getWindowInputRegion(window);
   input.updateSDL([&](auto apply) {
     do {
