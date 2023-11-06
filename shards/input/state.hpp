@@ -100,7 +100,7 @@ struct InputState {
     if constexpr (Pointer::HasPersistentPointer) {
       return (SDL_BUTTON(buttonIndex) & mouseButtonState) != 0;
     } else {
-      if (buttonIndex == 0) {
+      if (buttonIndex == SDL_BUTTON_LEFT) {
         return pointers.any();
       }
       return false;
