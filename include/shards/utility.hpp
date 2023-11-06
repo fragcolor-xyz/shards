@@ -790,7 +790,7 @@ template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(co
 }
 
 // Assigns only the variable value, not it's flags and internal properties
-inline void assignVariableValue(SHVar &v, const SHVar &other) {
+ALWAYS_INLINE inline void assignVariableValue(SHVar &v, const SHVar &other) {
   v.valueType = other.valueType;
   v.innerType = other.innerType;
   v.payload = other.payload;
