@@ -298,10 +298,10 @@ UntrackedVector<SHWire *> &getCoroWireStack();
     TracyCoroExit(_wire);          \
   }
 #else
-#define SH_CORO_RESUMED(_wire) \
-  #define SH_CORO_SUSPENDED(_) #define SH_CORO_EXT_RESUME(_) { TracyCoroEnter(wire); }
-#define SH_CORO_EXT_SUSPEND(_) \
-  { TracyCoroExit(_wire); }
+#define SH_CORO_RESUMED(_wire) 
+#define SH_CORO_SUSPENDED(_)
+#define SH_CORO_EXT_RESUME(_) { TracyCoroEnter(wire); }
+#define SH_CORO_EXT_SUSPEND(_) { TracyCoroExit(_wire); }
 #endif
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
