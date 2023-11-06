@@ -73,10 +73,7 @@ void InputMaster::update(gfx::Window &window) {
 }
 
 void InputMaster::postMessage(const Message &message) {
-  if (std::this_thread::get_id() == thisThreadId)
-    handleMessage(message);
-  else
-    messageQueue.push(message);
+  messageQueue.push(message);
 }
 
 void InputMaster::handleMessage(const Message &message) {

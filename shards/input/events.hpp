@@ -107,7 +107,11 @@ inline std::partial_ordering operator<=>(const Event &a, const Event &b) {
       },
       a);
 }
+
+#if !SH_ANDROID
+// Some platforms need these, on android 33 they don't compile
 inline bool operator==(const Event &a, const Event &b) { return a <=> b == std::partial_ordering::equivalent; }
+#endif
 
 inline bool isPointerEvent(const Event &event) {
   return std::get_if<PointerMoveEvent>(&event) || std::get_if<PointerButtonEvent>(&event) || std::get_if<ScrollEvent>(&event);
