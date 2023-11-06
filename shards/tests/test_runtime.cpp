@@ -2010,4 +2010,7 @@ TEST_CASE("meshThreadTask-looped") {
     REQUIRE(called1bis == i);
     REQUIRE(called2 == i);
   }
+
+  mesh->terminate();
+  mesh.reset();
 }
