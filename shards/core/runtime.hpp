@@ -90,6 +90,11 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
   if (_suspend_state != SHWireState::Continue)                \
   return shards::Var::Empty
 
+struct SHFlow {
+  struct SHWire *wire;
+  SHBool paused;
+};
+
 struct SHStateSnapshot {
   SHWireState state;
   SHVar flowStorage;
@@ -103,16 +108,19 @@ struct SHContext {
 
   const SHWire *main;
   SHFlow *flow;
+  SHContext *parent{nullptr};
   std::vector<SHWire *> wireStack;
   bool onCleanup{false};
   bool onLastResume{false};
+  bool onWorkerThread{false};
 
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
 
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};
   SHDuration next{};
-  entt::delegate<void()> mainThreadTask;
+
+  entt::delegate<void()> meshThreadTask;
 
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
@@ -274,17 +282,11 @@ extern GlobalTracy &GetTracy();
 UntrackedVector<SHWire *> &getCoroWireStack();
 #endif
 
-SHContext *&getCurrentContextPtr();
-
 #if SH_DEBUG_THREAD_NAMES
-#define SH_CORO_RESUMED(_wire)                                           \
-  {                                                                      \
-    shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name));   \
-  }
-#define SH_CORO_SUSPENDED(_wire)              \
-  {                                           \
-    shards::popThreadName();                  \
-  }
+#define SH_CORO_RESUMED(_wire) \
+  { shards::pushThreadName(fmt::format("Wire \"{}\"", (_wire)->name)); }
+#define SH_CORO_SUSPENDED(_wire) \
+  { shards::popThreadName(); }
 #define SH_CORO_EXT_RESUME(_wire)                                                 \
   {                                                                               \
     shards::pushThreadName(fmt::format("<resuming wire> \"{}\"", (_wire)->name)); \
@@ -297,43 +299,13 @@ SHContext *&getCurrentContextPtr();
   }
 #else
 #define SH_CORO_RESUMED(_wire) \
-#define SH_CORO_SUSPENDED(_) \
-#define SH_CORO_EXT_RESUME(_) \
-  { TracyCoroEnter(wire); }
+  #define SH_CORO_SUSPENDED(_) #define SH_CORO_EXT_RESUME(_) { TracyCoroEnter(wire); }
 #define SH_CORO_EXT_SUSPEND(_) \
   { TracyCoroExit(_wire); }
 #endif
 
-template <typename DELEGATE> auto callOnMainThread(SHContext* context, DELEGATE &func) -> decltype(func.action(), void()) {
-  if (context) {
-    if (unlikely(!context->continuation)) {
-      throw ActivationError("Trying to suspend a context without coroutine!");
-    }
-
-    assert(!context->mainThreadTask);
-    context->mainThreadTask.connect<&DELEGATE::action>(func);
-
-    SH_CORO_SUSPENDED(context->currentWire());
-    coroutineSuspend(*context->continuation);
-    SH_CORO_RESUMED(context->currentWire());
-
-    context->mainThreadTask.reset();
-  } else {
-    SPDLOG_WARN("NO Context, not running on main thread");
-    func.action();
-  }
-}
-
-template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMainThread(SHContext* context, L &&func) {
-  struct Action {
-    L &lambda;
-    void action() { lambda(); }
-  } l{func};
-  callOnMainThread(context, l);
-}
-
 inline void prepare(SHWire *wire, SHFlow *flow) {
-  assert(!coroutineValid(wire->coro) && "Wire already prepared!");
+  shassert(!coroutineValid(wire->coro) && "Wire already prepared!");
 
   auto runner = [wire, flow]() {
 #if SH_USE_THREAD_FIBER
@@ -374,38 +346,41 @@ inline bool isRunning(SHWire *wire) {
   return state >= SHWire::State::Starting && state <= SHWire::State::IterationEnded;
 }
 
-template <bool IsCleanupContext = false> inline bool tick(SHWire *wire, SHDuration now) {
+template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDuration now) {
   ZoneScoped;
   ZoneName(wire->name.c_str(), wire->name.size());
 
-  bool canRun = false;
-  if constexpr (IsCleanupContext) {
-    assert(coroutineValid(wire->coro));
-    canRun = true;
-  } else {
-    if (!wire->context || !coroutineValid(wire->coro) || !(isRunning(wire)))
-      return false; // check if not null and bool operator also to see if alive!
-    canRun = now >= wire->context->next;
-  }
+  while (true) {
+    bool canRun = false;
+    if constexpr (IsCleanupContext) {
+      canRun = true;
+    } else {
+      canRun = isRunning(wire) && now >= wire->context->next;
+    }
 
-  if (canRun) {
-    while (true) {
+    if (canRun) {
+      shassert(wire->context && "Wire has no context!");
+      shassert(coroutineValid(wire->coro) && "Wire has no coroutine!");
+
       SH_CORO_EXT_RESUME(wire);
       coroutineResume(wire->coro);
       SH_CORO_EXT_SUSPEND(wire);
 
       // if we have a task to run, run it and resume coro without yielding to caller
-      if (unlikely(wire->context && (bool)wire->context->mainThreadTask)) {
-        wire->context->mainThreadTask();
-        wire->context->mainThreadTask.reset();
-        // and continue in order to resume the coro
+      if (unlikely(wire->context && (bool)wire->context->meshThreadTask)) {
+        shassert(wire->context->parent == nullptr && "Mesh thread task should only be called on root context!");
+        wire->context->meshThreadTask();
+        wire->context->meshThreadTask.reset();
+        // And continue in order to resume the coroutine
       } else {
         // Yield to caller if no main thread task
-        break;
+        return;
       }
+    } else {
+      // We can't run, so we yield to caller
+      return;
     }
   }
-  return true;
 }
 
 inline bool stop(SHWire *wire, SHVar *result = nullptr) {
@@ -686,9 +661,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
           }
 
           // stop should have done the following:
-          assert(visitedWires.count(flow.wire) == 0 && "Wire still in visitedWires!");
-          assert(scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!");
-          assert(flow.wire->mesh.expired() && "Wire still has a mesh!");
+          shassert(visitedWires.count(flow.wire) == 0 && "Wire still in visitedWires!");
+          shassert(scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!");
+          shassert(flow.wire->mesh.expired() && "Wire still has a mesh!");
 
           it = _flowPool.erase(it);
         } else {
@@ -714,9 +689,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     for (auto wire : toStop) {
       shards::stop(wire.get());
       // stop should have done the following:
-      assert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
-      assert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
-      assert(wire->mesh.expired() && "Wire still has a mesh!");
+      shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
+      shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
+      shassert(wire->mesh.expired() && "Wire still has a mesh!");
     }
 
     _flowPool.clear();
@@ -742,9 +717,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   void remove(const std::shared_ptr<SHWire> &wire) {
     shards::stop(wire.get());
     // stop should have done the following:
-    assert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
-    assert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
-    assert(wire->mesh.expired() && "Wire still has a mesh!");
+    shassert(visitedWires.count(wire.get()) == 0 && "Wire still in visitedWires!");
+    shassert(scheduled.count(wire) == 0 && "Wire still in scheduled!");
+    shassert(wire->mesh.expired() && "Wire still has a mesh!");
 
     _flowPool.remove_if([wire](auto &flow) { return flow.wire == wire.get(); });
   }
@@ -763,6 +738,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   std::unordered_map<std::string, std::shared_ptr<entt::any>> anyStorage;
 
+  // up to the users to call .update on this, we internally use just "trigger", which is instant
   mutable entt::dispatcher dispatcher{};
 
   SHVar &getVariable(const SHStringWithLen name) {
@@ -857,6 +833,52 @@ private:
 };
 
 namespace shards {
+inline SHContext *getRootContext(SHContext *current) {
+  while (current->parent) {
+    current = current->parent;
+  }
+  return current;
+}
+
+template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE &func) -> decltype(func.action(), void()) {
+  if (context) {
+    if (unlikely(context->onWorkerThread)) {
+      throw ActivationError("Trying to callOnMeshThread from a worker thread!");
+    }
+
+    // shassert(!context->onLastResume && "Trying to callOnMeshThread from a wire that is about to stop!");
+    shassert(context->continuation && "Context has no continuation!");
+    shassert(context->currentWire() && "Context has no current wire!");
+    shassert(!context->meshThreadTask && "Context already has a mesh thread task!");
+
+    // ok this is the key, we want to go back to the root context and execute there to ensure we are calling from mesh thread
+    // indeed and not from any nested coroutine (Step etc)
+    auto rootContext = getRootContext(context);
+
+    rootContext->meshThreadTask.connect<&DELEGATE::action>(func);
+
+    // after suspend context might be invalid!
+    auto currentWire = context->currentWire();
+    SH_CORO_SUSPENDED(currentWire);
+    coroutineResume(*rootContext->continuation); // on root context!
+    SH_CORO_RESUMED(currentWire);
+
+    shassert(context->currentWire() == currentWire && "Context changed wire during callOnMeshThread!");
+    shassert(!rootContext->meshThreadTask && "Context still has a mesh thread task!");
+  } else {
+    SHLOG_WARNING("NO Context, not running on mesh thread");
+    func.action();
+  }
+}
+
+template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> void callOnMeshThread(SHContext *context, L &&func) {
+  struct Action {
+    L &lambda;
+    void action() { lambda(); }
+  } l{func};
+  callOnMeshThread(context, l);
+}
+
 struct Serialization {
   std::unordered_map<SHVar, SHWireRef> wires;
   std::unordered_map<std::string, std::shared_ptr<Shard>> defaultShards;
@@ -1204,7 +1226,7 @@ struct Serialization {
         SHVar shardVar{};
         deserialize(read, shardVar);
         ShardPtr shard = shardVar.payload.shardValue;
-        assert(shardVar.valueType == SHType::ShardRef);
+        shassert(shardVar.valueType == SHType::ShardRef);
         wire->addShard(shardVar.payload.shardValue);
         // shard's owner is now the wire, remove original reference from deserialize
         decRef(shard);

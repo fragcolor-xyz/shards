@@ -66,7 +66,7 @@ struct Cond {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     for (auto it = _conditions.rbegin(); it != _conditions.rend(); ++it) {
       auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
@@ -322,7 +322,7 @@ struct BaseSubFlow {
 
   SHVar getParam(int index) { return _shards; }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_shards)
       _shards.cleanup(context);
   }
@@ -413,7 +413,7 @@ struct Maybe : public BaseSubFlow {
     return !_elseBlks ? data.inputType : _composition.outputType;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_elseBlks)
       _elseBlks.cleanup(context);
 
@@ -507,6 +507,10 @@ struct Await : public BaseSubFlow {
       else if (shards::suspend(context, 0) != SHWireState::Continue)
         return Var::Empty; // return as there is some error or so going on
     } while (true);
+
+    context->onWorkerThread = true;
+    DEFER({ context->onWorkerThread = false; });
+
     return awaitne(
         context,
         [&] {
@@ -625,7 +629,7 @@ template <bool COND> struct When {
     return data.inputType;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _cond.cleanup(context);
     _action.cleanup(context);
   }
@@ -724,7 +728,7 @@ struct IfBlock {
     return _passth ? data.inputType : outputType;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _cond.cleanup(context);
     _then.cleanup(context);
     _else.cleanup(context);
@@ -873,7 +877,7 @@ struct Match {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     for (auto &action : _actions) {
       action.cleanup(context);
     }
@@ -946,7 +950,7 @@ struct Sub {
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
-  void cleanup(SHContext* ctx) { _shards.cleanup(ctx); }
+  void cleanup(SHContext *ctx) { _shards.cleanup(ctx); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output{};
@@ -992,7 +996,7 @@ struct HashedShards {
 
   void warmup(SHContext *ctx) { _shards.warmup(ctx); }
 
-  void cleanup(SHContext* context) { _shards.cleanup(context); }
+  void cleanup(SHContext *context) { _shards.cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     SHVar output{};

@@ -48,7 +48,7 @@ void ThreadFiber::resume() {
 
 void ThreadFiber::suspend() {
   // SPDLOG_TRACE("RUNNER< {}", thread->get_id());
-  assert(isRunning);
+  shassert(isRunning && "Cannot suspend an already suspended fiber");
   switchToCaller();
   // SPDLOG_TRACE("RUNNER> {}", thread->get_id());
 }
@@ -86,11 +86,11 @@ void Fiber::init(std::function<void()> fn) {
   }));
 }
 void Fiber::resume() {
-  assert(continuation);
+  shassert(continuation);
   continuation = continuation->resume();
 }
 void Fiber::suspend() {
-  assert(continuation);
+  shassert(continuation);
   continuation = continuation->resume();
 }
 Fiber::operator bool() const { return continuation.has_value() && (bool)continuation.value(); }
@@ -140,7 +140,7 @@ NO_INLINE void Fiber::resume() {
 NO_INLINE void Fiber::suspend() {
   SHLOG_TRACE("EM FIBER SWAP SUSPEND {}", reinterpret_cast<uintptr_t>(&em_fiber));
   // always yields to main
-  assert(em_parent_fiber);
+  shassert(em_parent_fiber);
   em_local_coro = em_parent_fiber;
   emscripten_fiber_swap(&em_fiber, em_parent_fiber);
 }

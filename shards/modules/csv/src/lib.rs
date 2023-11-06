@@ -9,7 +9,6 @@ extern crate lazy_static;
 
 extern crate compile_time_crc32;
 
-
 use shards::core::register_legacy_shard;
 use shards::shard::LegacyShard;
 
@@ -59,7 +58,7 @@ lazy_static! {
 struct CSVRead {
   output: Seq,
   no_header: bool,
-  separator: CString,
+  separator: ClonedVar,
 }
 
 impl Default for CSVRead {
@@ -67,7 +66,10 @@ impl Default for CSVRead {
     CSVRead {
       output: Seq::new(),
       no_header: false,
-      separator: CString::new(",").unwrap(),
+      separator: {
+        let sep = Var::ephemeral_string(",");
+        sep.into()
+      },
     }
   }
 }
@@ -114,7 +116,7 @@ impl LegacyShard for CSVRead {
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
       0 => Ok(self.no_header = value.try_into()?),
-      1 => Ok(self.separator = value.try_into()?),
+      1 => Ok(self.separator = value.into()),
       _ => unreachable!(),
     }
   }
@@ -122,16 +124,17 @@ impl LegacyShard for CSVRead {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.no_header.into(),
-      1 => self.separator.as_ref().into(),
+      1 => self.separator.0,
       _ => unreachable!(),
     }
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
     let text: &str = input.try_into()?;
+    let sep: &str = self.separator.as_ref().try_into()?;
     let mut reader = ReaderBuilder::new()
       .has_headers(!self.no_header)
-      .delimiter(self.separator.as_bytes()[0] as u8)
+      .delimiter(sep.as_bytes()[0] as u8)
       .from_reader(text.as_bytes());
     for row in reader.records() {
       let record = row.map_err(|e| {
@@ -140,11 +143,8 @@ impl LegacyShard for CSVRead {
       })?;
       let mut output = Seq::new();
       for field in record.iter() {
-        let field = CString::new(field).map_err(|e| {
-          shlog!("{}", e);
-          "Failed to parse CSV record string"
-        })?;
-        output.push(&field.as_ref().into());
+        let field = Var::ephemeral_string(field);
+        output.push(&field);
       }
       self.output.push(&output.as_ref().into());
     }
@@ -155,7 +155,7 @@ impl LegacyShard for CSVRead {
 struct CSVWrite {
   output: ClonedVar,
   no_header: bool,
-  separator: CString,
+  separator: ClonedVar,
 }
 
 impl Default for CSVWrite {
@@ -163,7 +163,10 @@ impl Default for CSVWrite {
     CSVWrite {
       output: ().into(),
       no_header: false,
-      separator: CString::new(",").unwrap(),
+      separator: {
+        let sep = Var::ephemeral_string(",");
+        sep.into()
+      },
     }
   }
 }
@@ -209,8 +212,8 @@ impl LegacyShard for CSVWrite {
 
   fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
     match index {
-      0 => Ok(self.no_header = value.try_into().unwrap()),
-      1 => Ok(self.separator = value.try_into().unwrap()),
+      0 => Ok(self.no_header = value.try_into()?),
+      1 => Ok(self.separator = value.into()),
       _ => unreachable!(),
     }
   }
@@ -218,15 +221,16 @@ impl LegacyShard for CSVWrite {
   fn getParam(&mut self, index: i32) -> Var {
     match index {
       0 => self.no_header.into(),
-      1 => self.separator.as_ref().into(),
+      1 => self.separator.0,
       _ => unreachable!(),
     }
   }
 
   fn activate(&mut self, _: &Context, input: &Var) -> Result<Var, &str> {
+    let sep: &str = self.separator.as_ref().try_into()?;
     let mut writer = WriterBuilder::new()
       .has_headers(!self.no_header)
-      .delimiter(self.separator.as_bytes()[0] as u8)
+      .delimiter(sep.as_bytes()[0] as u8)
       .from_writer(Vec::new());
     let input: Seq = input.try_into()?;
     for row in input.iter() {
@@ -254,6 +258,7 @@ impl LegacyShard for CSVWrite {
     Ok(self.output.0)
   }
 }
+
 #[no_mangle]
 pub extern "C" fn shardsRegister_csv_rust(core: *mut shards::shardsc::SHCore) {
   unsafe {

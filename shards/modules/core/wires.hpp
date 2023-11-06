@@ -60,7 +60,7 @@ struct WireBase {
 
   SHTypeInfo compose(const SHInstanceData &data);
 
-  void cleanup(SHContext* context) { wireref.cleanup(); }
+  void cleanup(SHContext *context) { wireref.cleanup(); }
 
   void warmup(SHContext *ctx) { wireref.warmup(ctx); }
 
@@ -136,7 +136,9 @@ struct BaseRunner : public WireBase {
 
   std::optional<entt::connection> onStopConnection;
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
+    _mesh.reset();
+
     if (capturing) {
       for (auto &v : _vars) {
         v.cleanup();
@@ -193,6 +195,7 @@ struct BaseRunner : public WireBase {
 
       onStopConnection = wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&BaseRunner::wireOnStop>(this);
     }
+
     _mesh = ctx->main->mesh.lock();
   }
 
@@ -258,6 +261,8 @@ struct BaseRunner : public WireBase {
       shards::prepare(wire.get(), nullptr);
     }
 
+    shassert(wire->context && "wire context should be valid at this point");
+
     // Starting
     if (!shards::isRunning(wire.get())) {
       shards::start(wire.get(), input);
@@ -266,7 +271,7 @@ struct BaseRunner : public WireBase {
       wire->currentInput = input;
     }
 
-    // Tick the wire on the flow that this Step wire created
+    // Tick the wire on the flow that this Step wire created in prepare
     SHDuration now = SHClock::now().time_since_epoch();
     shards::tick(wire->context->flow->wire, now);
   }

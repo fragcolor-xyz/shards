@@ -13,7 +13,7 @@ inline void withObjectVariable(SHVar &var, void *objectValue, const SHTypeInfo &
   void *previousObjectValue = var.payload.objectValue;
 
   // Set object
-  assert(typeInfo.basicType == SHType::Object);
+  shassert(typeInfo.basicType == SHType::Object);
   var.payload.objectValue = objectValue;
   var.payload.objectTypeId = typeInfo.object.typeId;
   var.payload.objectVendorId = typeInfo.object.vendorId;

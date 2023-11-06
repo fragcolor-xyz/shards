@@ -501,7 +501,6 @@ struct RefSpaceGridOverlayShard : public Base {
     float4 baseColor = colorOrDefault(_color.get());
 
     const int xl = 3;
-    const int yl = 3;
 
     float3 axes[] = {
         float3(1, 0, 0),

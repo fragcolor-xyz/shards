@@ -610,7 +610,7 @@ bool operator==(const SHTypeInfo &a, const SHTypeInfo &b) {
       for (uint32_t j = 0; j < btypes; j++) {
         if (a.table.types.elements[i] == b.table.types.elements[j]) {
           if (a.table.keys.elements) { // this is enough to know they exist
-            assert(i < akeys);
+            shassert(i < akeys);
             if (a.table.keys.elements[i] == b.table.keys.elements[j]) {
               goto matched_table;
             }
