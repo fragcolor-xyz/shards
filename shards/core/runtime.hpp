@@ -851,16 +851,22 @@ template <typename DELEGATE> auto callOnMeshThread(SHContext *context, DELEGATE 
     shassert(context->currentWire() && "Context has no current wire!");
     shassert(!context->meshThreadTask && "Context already has a mesh thread task!");
 
-    getRootContext(context)->meshThreadTask.connect<&DELEGATE::action>(func);
+    // ok this is the key, we want to go back to the root context and execute there to ensure we are calling from mesh thread
+    // indeed and not from any nested coroutine (Step etc)
+    auto rootContext = getRootContext(context);
+
+    rootContext->meshThreadTask.connect<&DELEGATE::action>(func);
 
     // after suspend context might be invalid!
     auto currentWire = context->currentWire();
     SH_CORO_SUSPENDED(currentWire);
-    coroutineSuspend(*context->continuation);
-    shassert(context->currentWire() == currentWire && "Context changed wire during callOnMeshThread!");
+    coroutineResume(*rootContext->continuation); // on root context!
     SH_CORO_RESUMED(currentWire);
+
+    shassert(context->currentWire() == currentWire && "Context changed wire during callOnMeshThread!");
+    shassert(!rootContext->meshThreadTask && "Context still has a mesh thread task!");
   } else {
-    SPDLOG_WARN("NO Context, not running on mesh thread");
+    SHLOG_WARNING("NO Context, not running on mesh thread");
     func.action();
   }
 }
