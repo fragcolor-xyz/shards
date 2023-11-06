@@ -234,7 +234,9 @@ function(add_rust_library)
   endif()
 
   if(ANDROID_TOOLCHAIN_ROOT)
-    list(APPEND RUST_ENVIRONMENT "AR=${ANDROID_TOOLCHAIN_ROOT}/bin/llvm-ar")
+    list(APPEND RUST_ENVIRONMENT
+        "AR=${ANDROID_TOOLCHAIN_ROOT}/bin/llvm-ar"
+        "TARGET_CC=${CMAKE_CXX_COMPILER}")
   endif()
 
   list(APPEND RUST_ENVIRONMENT RUSTFLAGS="${RUST_FLAGS}")
