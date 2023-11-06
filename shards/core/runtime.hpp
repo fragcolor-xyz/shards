@@ -350,21 +350,18 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
   ZoneScoped;
   ZoneName(wire->name.c_str(), wire->name.size());
 
-  if (!isRunning(wire))
-    return;
-
   shassert(wire->context && "Wire has no context!");
   shassert(coroutineValid(wire->coro) && "Wire has no coroutine!");
 
-  bool canRun = false;
-  if constexpr (IsCleanupContext) {
-    canRun = true;
-  } else {
-    canRun = now >= wire->context->next;
-  }
+  while (true) {
+    bool canRun = false;
+    if constexpr (IsCleanupContext) {
+      canRun = true;
+    } else {
+      canRun = isRunning(wire) && now >= wire->context->next;
+    }
 
-  if (canRun) {
-    while (true) {
+    if (canRun) {
       SH_CORO_EXT_RESUME(wire);
       coroutineResume(wire->coro);
       SH_CORO_EXT_SUSPEND(wire);
@@ -379,6 +376,9 @@ template <bool IsCleanupContext = false> inline void tick(SHWire *wire, SHDurati
         // Yield to caller if no main thread task
         break;
       }
+    } else {
+      // We can't run, so we yield to caller
+      break;
     }
   }
 }
