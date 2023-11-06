@@ -1,10 +1,19 @@
 @define(timestep #(1.0 | Math.Divide(120.0)))
 @mesh(root)
-@wire(test-wire {
+@wire(third-wire {
   GFX.MainWindow(
     Title: "SDL Window" Width: 1280 Height: 720
   )
+  Log("Step 3")
+} Looped: true)
+@wire(second-wire {
+  Step(third-wire)
+  Log("Step 2")
+} Looped: true)
+@wire(test-wire {
+  Step(second-wire)
+  Log("Step 1")
 } Looped: true)
 
 @schedule(root test-wire)
-@run(root FPS: 120 Iterations: 100) | Assert.Is(true)
+@run(root FPS: 120 Iterations: 1) | Assert.Is(true)

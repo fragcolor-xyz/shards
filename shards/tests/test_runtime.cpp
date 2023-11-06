@@ -1845,8 +1845,11 @@ TEST_CASE("meshThreadTask") {
   auto currentThreadId = std::this_thread::get_id();
 
   int called1 = 0;
+  int called1Activate = 0;
   int called1bis = 0;
+  int called1bisActivate = 0;
   int called2 = 0;
+  int called2Activate = 0;
 
   auto testWire = SHWire::make("test-wire");
   auto testWire2 = SHWire::make("test-wire2");
@@ -1858,6 +1861,7 @@ TEST_CASE("meshThreadTask") {
       REQUIRE(currentThreadId == std::this_thread::get_id());
       called1++;
     });
+    called1Activate++;
     return input;
   };
 
@@ -1867,6 +1871,7 @@ TEST_CASE("meshThreadTask") {
       REQUIRE(currentThreadId == std::this_thread::get_id());
       called1bis++;
     });
+    called1bisActivate++;
     return input;
   };
 
@@ -1876,6 +1881,99 @@ TEST_CASE("meshThreadTask") {
       REQUIRE(currentThreadId == std::this_thread::get_id());
       called2++;
     });
+    called2Activate++;
+    return input;
+  };
+
+  { // run 2 wires with 2 onMeshThread calls
+    auto unsafeActivate1 = createShard("UnsafeActivate!");
+    auto vf1 = Var(reinterpret_cast<uint64_t>(&f1));
+    unsafeActivate1->setParam(unsafeActivate1, 0, &vf1);
+    testWire->addShard(unsafeActivate1);
+
+    auto unsafeActivate1bis = createShard("UnsafeActivate!");
+    auto vf1bis = Var(reinterpret_cast<uint64_t>(&f1bis));
+    unsafeActivate1bis->setParam(unsafeActivate1bis, 0, &vf1bis);
+    testWire2->addShard(unsafeActivate1bis);
+  }
+
+  // adds a onMeshThread call inside the following Step
+  auto unsafeActivate2 = createShard("UnsafeActivate!");
+  auto vf2 = Var(reinterpret_cast<uint64_t>(&f2));
+  unsafeActivate2->setParam(unsafeActivate2, 0, &vf2);
+  steppedWire->addShard(unsafeActivate2);
+
+  // Step and adds it to the second wire
+  auto stepShard = createShard("Step");
+  stepShard->setup(stepShard);
+  auto steppedWireVar = Var(steppedWire);
+  stepShard->setParam(stepShard, 0, &steppedWireVar);
+  testWire2->addShard(stepShard);
+
+  auto pauseShard = createShard("Pause");
+  testWire2->addShard(pauseShard);
+
+  mesh->schedule(testWire);
+  mesh->schedule(testWire2);
+
+  for (int i = 0; i < 10; i++) {
+    mesh->tick();
+    REQUIRE(called1Activate == 1);
+    REQUIRE(called1bisActivate == 1);
+    REQUIRE(called2Activate == 1);
+    REQUIRE(called1 == 1);
+    REQUIRE(called1bis == 1);
+    REQUIRE(called2 == 1);
+  }
+}
+
+TEST_CASE("meshThreadTask-looped") {
+  shards::pushThreadName("Main Thread");
+  auto mesh = SHMesh::make();
+
+  auto currentThreadId = std::this_thread::get_id();
+
+  int called1 = 0;
+  int called1Activate = 0;
+  int called1bis = 0;
+  int called1bisActivate = 0;
+  int called2 = 0;
+  int called2Activate = 0;
+
+  auto testWire = SHWire::make("test-wire");
+  testWire->looped = true;
+  auto testWire2 = SHWire::make("test-wire2");
+  testWire2->looped = true;
+  auto steppedWire = SHWire::make("stepped-wire");
+  steppedWire->looped = true;
+
+  std::function<SHVar(SHContext *, const SHVar &)> f1 = [&](SHContext *context, const SHVar &input) {
+    shards::callOnMeshThread(context, [&]() {
+      // required called on mesh thread
+      REQUIRE(currentThreadId == std::this_thread::get_id());
+      called1++;
+    });
+    called1Activate++;
+    return input;
+  };
+
+  std::function<SHVar(SHContext *, const SHVar &)> f1bis = [&](SHContext *context, const SHVar &input) {
+    shards::callOnMeshThread(context, [&]() {
+      // required called on mesh thread
+      REQUIRE(currentThreadId == std::this_thread::get_id());
+      called1bis++;
+    });
+    called1bisActivate++;
+    return input;
+  };
+
+  std::function<SHVar(SHContext *, const SHVar &)> f2 = [&](SHContext *context, const SHVar &input) {
+    shards::callOnMeshThread(context, [&]() {
+      // required called on mesh thread
+      REQUIRE(currentThreadId == std::this_thread::get_id());
+      called2++;
+    });
+    called2Activate++;
     return input;
   };
 
@@ -1900,39 +1998,16 @@ TEST_CASE("meshThreadTask") {
   stepShard->setParam(stepShard, 0, &steppedWireVar);
   testWire2->addShard(stepShard);
 
-  auto pauseShard = createShard("Pause");
-  testWire2->addShard(pauseShard);
-
   mesh->schedule(testWire);
   mesh->schedule(testWire2);
 
-  mesh->tick();
-  REQUIRE(called1 == 1);
-  REQUIRE(called1bis == 1);
-  REQUIRE(called2 == 1);
-
-  mesh->tick();
-  REQUIRE(called1 == 1);
-  REQUIRE(called1bis == 1);
-  REQUIRE(called2 == 1);
-
-  mesh->tick();
-  REQUIRE(called1 == 1);
-  REQUIRE(called1bis == 1);
-  REQUIRE(called2 == 1);
-
-  mesh->tick();
-  REQUIRE(called1 == 1);
-  REQUIRE(called1bis == 1);
-  REQUIRE(called2 == 1);
-
-  mesh->tick();
-  REQUIRE(called1 == 1);
-  REQUIRE(called1bis == 1);
-  REQUIRE(called2 == 1);
-
-  mesh->tick();
-  REQUIRE(called1 == 1);
-  REQUIRE(called1bis == 1);
-  REQUIRE(called2 == 1);
+  for (int i = 1; i < 10; i++) {
+    mesh->tick();
+    REQUIRE(called1Activate == i);
+    REQUIRE(called1bisActivate == i);
+    REQUIRE(called2Activate == i);
+    REQUIRE(called1 == i);
+    REQUIRE(called1bis == i);
+    REQUIRE(called2 == i);
+  }
 }
