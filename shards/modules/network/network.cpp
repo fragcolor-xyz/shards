@@ -322,7 +322,7 @@ struct NetworkPeer {
   OwnedVar payload{};
 
   SHTime _start = SHClock::now();
-  SHTime _lastContact = SHClock::now();
+  std::atomic<SHTime> _lastContact = SHClock::now();
 
   void *user = nullptr;
 
@@ -592,8 +592,6 @@ struct Server : public NetworkBase {
             }
 
             {
-              auto now = SHClock::now();
-
               std::scoped_lock pLock(currentPeer->recvMutex);
 
               auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
@@ -602,12 +600,7 @@ struct Server : public NetworkBase {
                 _stopWireQueue.push(currentPeer->wire.get());
               }
 
-              if (now > (currentPeer->_lastContact + SHDuration(_timeoutSecs))) {
-                SHLOG_DEBUG("Peer {}:{} timed out", _sender.address().to_string(), _sender.port());
-                _stopWireQueue.push(currentPeer->wire.get());
-              }
-
-              currentPeer->_lastContact = now;
+              currentPeer->_lastContact = SHClock::now();
             }
 
             // keep receiving
@@ -685,7 +678,15 @@ struct Server : public NetworkBase {
     {
       std::shared_lock<std::shared_mutex> lock(peersMutex);
 
+      auto now = SHClock::now();
+
       for (auto &[end, peer] : _end2Peer) {
+        if (now > (peer->_lastContact.load() + SHDuration(_timeoutSecs))) {
+          SHLOG_DEBUG("Peer {}:{} timed out", peer->endpoint->address().to_string(), peer->endpoint->port());
+          _stopWireQueue.push(peer->wire.get());
+          continue;
+        }
+
         setPeer(context, *peer);
 
         if (!peer->wire->warmedUp) {
