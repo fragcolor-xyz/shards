@@ -191,24 +191,26 @@ struct MainWindow final {
     PARAM_WARMUP(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
 
-    callOnMeshThread(context, [&] {
-      if (_renderer) {
-        _renderer->cleanup(context);
-        _renderer.reset();
-      }
-
-      if (_windowContext) {
-        if (_windowContext->window) {
-          SHLOG_DEBUG("Destroying window");
-          _windowContext->window->cleanup();
+    if (_renderer || _windowContext) {
+      callOnMeshThread(context, [&] {
+        if (_renderer) {
+          _renderer->cleanup(context);
+          _renderer.reset();
         }
 
-        _windowContext.reset();
-      }
-    });
+        if (_windowContext) {
+          if (_windowContext->window) {
+            SHLOG_DEBUG("Destroying window");
+            _windowContext->window->cleanup();
+          }
+
+          _windowContext.reset();
+        }
+      });
+    }
 
     if (_windowContextVar) {
       if (_windowContextVar->refcount > 1) {
@@ -299,7 +301,7 @@ struct WindowSize {
     _requiredWindowContext.warmup(context, &_window);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
@@ -328,7 +330,7 @@ struct ResizeWindow {
     _requiredWindowContext.warmup(context, &_window);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
@@ -360,7 +362,7 @@ struct WindowPosition {
     PARAM_WARMUP(context);
     _requiredWindowContext.warmup(context, &_window);
   }
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
@@ -390,7 +392,7 @@ struct MoveWindow {
     _requiredWindowContext.warmup(context, &_window);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
@@ -424,7 +426,7 @@ struct OsUiScaleFactor {
     _requiredWindowContext.warmup(context, &_window);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _requiredWindowContext.cleanup();
   }
