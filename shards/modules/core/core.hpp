@@ -73,7 +73,7 @@ struct Const {
 
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo{_dependencies.data(), uint32_t(_dependencies.size())}; }
 
-  void cleanup(SHContext* context) { resolver.cleanup(context); }
+  void cleanup(SHContext *context) { resolver.cleanup(context); }
 
   void warmup(SHContext *context) {
     if (_clone != shards::Var::Empty)
@@ -126,7 +126,7 @@ struct BaseOpsBin {
   }
 
   void warmup(SHContext *context) { _operand.warmup(context); }
-  void cleanup(SHContext* context) { _operand.cleanup(); }
+  void cleanup(SHContext *context) { _operand.cleanup(); }
 };
 
 #define LOGIC_OP(NAME, OP)                                                         \
@@ -294,7 +294,7 @@ struct Pause {
 
   void warmup(SHContext *context) { time.warmup(context); }
 
-  void cleanup(SHContext* context) { time.cleanup(); }
+  void cleanup(SHContext *context) { time.cleanup(); }
 
   SHExposedTypesInfo requiredVariables() { return SHExposedTypesInfo(reqs); }
 
@@ -387,7 +387,7 @@ struct OnCleanup {
     _shards.warmup(ctx);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     // also run the shards here!
     if (_context) {
       // cleanup might be called multiple times
@@ -396,9 +396,12 @@ struct OnCleanup {
       auto snapshot = _context->takeStateSnapshot();
 
       // we need to reset the state or only the first shard will run
-      _context->continueFlow();
-      _context->onCleanup = true; // this is kind of a hack
-      _shards.activate(_context, shards::Var(snapshot.errorMessage), output);
+      {
+        _context->continueFlow();
+        _context->onCleanup = true; // this is kind of a hack
+        DEFER(_context->onCleanup = false);
+        _shards.activate(_context, shards::Var(snapshot.errorMessage), output);
+      }
 
       _context->restoreStateSnapshot(std::move(snapshot));
 
@@ -688,7 +691,7 @@ struct VariableBase {
 
   static SHParametersInfo parameters() { return getterParams; }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_target) {
       releaseVariable(_target);
     }
@@ -1064,7 +1067,7 @@ struct Set : public SetUpdateBase {
 
   std::shared_ptr<SHMesh> mesh;
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (mesh) {
       // this is not perfect because will run only during Set,
       // but for now it's not an issue as we go thru all variables when composing
@@ -1168,7 +1171,7 @@ struct Ref : public SetBase {
 
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_target) {
       // this is a special case
       // Ref will reference previous shard result..
@@ -1343,7 +1346,7 @@ struct Update : public SetUpdateBase {
     }
   }
 
-  void cleanup(SHContext* context) { SetBase::cleanup(context); }
+  void cleanup(SHContext *context) { SetBase::cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     assert(_isExposed && "This shard should not be activated if variable not exposed");
@@ -1566,7 +1569,7 @@ struct Get : public VariableBase {
     _key.warmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     // reset shard id
     if (_shard) {
       _shard->inlineShardId = InlineShard::NotInline;
@@ -1642,7 +1645,7 @@ struct Swap {
   SHVar *_targetB{};
   ExposedInfo _exposedInfo;
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_targetA) {
       releaseVariable(_targetA);
       releaseVariable(_targetB);
@@ -2593,7 +2596,7 @@ struct Take {
     destroyVar(_output);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_indicesVar) {
       releaseVariable(_indicesVar);
       _indicesVar = nullptr;
@@ -2997,7 +3000,7 @@ struct Slice {
     destroyVar(_to);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_fromVar) {
       releaseVariable(_fromVar);
       _fromVar = nullptr;
@@ -3139,32 +3142,39 @@ struct Slice {
     const auto inputLen = input.payload.bytesSize;
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
-    auto from = vfrom.payload.intValue;
-    if (from < 0) {
-      from = inputLen + from;
-    }
-    auto to = vto.valueType == SHType::None ? inputLen : vto.payload.intValue;
-    if (to < 0) {
-      to = inputLen + to;
-    }
+    SHInt from = vfrom.payload.intValue;
+    SHInt to = vto.valueType == SHType::None ? SHInt(inputLen) : vto.payload.intValue;
 
-    if (from > to || to < 0 || to > inputLen) {
+    // Convert negative indices to positive
+    from = from < 0 ? SHInt(inputLen) + from : from;
+    to = to < 0 ? SHInt(inputLen) + to : to;
+
+    // Bounds checking
+    if (from < 0 || to < 0 || uint32_t(from) > inputLen || uint32_t(to) > inputLen) {
       throw OutOfRangeEx(inputLen, from, to);
     }
 
-    const auto len = to - from;
-    if (_step > 0) {
-      const auto actualLen = len / _step + (len % _step != 0);
-      _cachedBytes.resize(actualLen);
-      auto idx = 0;
-      for (auto i = from; i < to; i += _step) {
-        _cachedBytes[idx] = input.payload.bytesValue[i];
-        idx++;
-      }
-      return shards::Var(&_cachedBytes.front(), uint32_t(actualLen));
-    } else {
-      throw ActivationError("Slice's Step must be greater then 0");
+    // Ensure from is less than to
+    if (from > to) {
+      throw ActivationError("From index must be less than To index.");
     }
+
+    uint32_t len = uint32_t(to - from);
+    if (_step <= 0) {
+      throw ActivationError("Slice's Step must be greater than 0");
+    }
+
+    uint32_t actualLen = len / _step + (len % _step != 0 ? 1 : 0);
+    _cachedBytes.resize(actualLen); // Allocate sufficient space
+
+    uint32_t idx = 0;
+    for (int i = from; i < to && idx < actualLen; i += _step) {
+      if (uint32_t(i) >= inputLen) {
+        throw OutOfRangeEx(inputLen, i, i);
+      }
+      _cachedBytes[idx++] = input.payload.bytesValue[i];
+    }
+    return shards::Var(&_cachedBytes.front(), uint32_t(actualLen));
   }
 
   SHVar activateString(SHContext *context, const SHVar &input) {
@@ -3175,38 +3185,48 @@ struct Slice {
       _toVar = referenceVariable(context, SHSTRVIEW(_to));
     }
 
-    const auto inputLen = input.payload.stringLen > 0 || input.payload.stringValue == nullptr
-                              ? input.payload.stringLen
-                              : uint32_t(strlen(input.payload.stringValue));
-    const auto &vfrom = _fromVar ? *_fromVar : _from;
-    const auto &vto = _toVar ? *_toVar : _to;
-    auto from = vfrom.payload.intValue;
-    if (from < 0) {
-      from = inputLen + from;
-    }
-    auto to = vto.valueType == SHType::None ? inputLen : vto.payload.intValue;
-    if (to < 0) {
-      to = inputLen + to;
+    if (input.payload.stringValue == nullptr) {
+      throw ActivationError("Input string is null.");
     }
 
-    if (from > to || to < 0 || to > inputLen) {
+    uint32_t inputLen = input.payload.stringLen > 0 ? input.payload.stringLen : uint32_t(strlen(input.payload.stringValue));
+
+    const auto &vfrom = _fromVar ? *_fromVar : _from;
+    const auto &vto = _toVar ? *_toVar : _to;
+    SHInt from = vfrom.payload.intValue;
+    SHInt to = vto.valueType == SHType::None ? int(inputLen) : vto.payload.intValue;
+
+    // Convert negative indices to positive
+    from = from < 0 ? SHInt(inputLen) + from : from;
+    to = to < 0 ? SHInt(inputLen) + to : to;
+
+    // Bounds checking
+    if (from < 0 || to < 0 || uint32_t(from) > inputLen || uint32_t(to) > inputLen) {
       throw OutOfRangeEx(inputLen, from, to);
     }
 
-    const auto len = to - from;
-    if (_step > 0) {
-      const auto actualLen = len / _step + (len % _step != 0);
-      _cachedBytes.resize(actualLen + 1);
-      auto idx = 0;
-      for (auto i = from; i < to; i += _step) {
-        _cachedBytes[idx] = input.payload.stringValue[i];
-        idx++;
-      }
-      _cachedBytes[idx] = '\0';
-      return shards::Var((const char *)_cachedBytes.data(), uint32_t(actualLen));
-    } else {
-      throw ActivationError("Slice's Step must be greater then 0");
+    // Ensure from is less than to
+    if (from > to) {
+      throw ActivationError("From index must be less than To index.");
     }
+
+    uint32_t len = uint32_t(to - from);
+    if (_step <= 0) {
+      throw ActivationError("Slice's Step must be greater than 0");
+    }
+
+    uint32_t actualLen = len / _step + (len % _step != 0 ? 1 : 0);
+    _cachedBytes.resize(actualLen + 1); // +1 for the null terminator
+
+    uint32_t idx = 0;
+    for (int i = from; i < to && idx < actualLen; i += _step) {
+      if (uint32_t(i) >= inputLen) {
+        throw OutOfRangeEx(inputLen, i, i);
+      }
+      _cachedBytes[idx++] = input.payload.stringValue[i];
+    }
+    _cachedBytes[idx] = '\0'; // Ensure null termination
+    return shards::Var((const char *)_cachedBytes.data(), actualLen);
   }
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
@@ -3220,38 +3240,48 @@ struct Slice {
     const auto inputLen = input.payload.seqValue.len;
     const auto &vfrom = _fromVar ? *_fromVar : _from;
     const auto &vto = _toVar ? *_toVar : _to;
-    auto from = vfrom.payload.intValue;
-    if (from < 0) {
-      from = inputLen + from;
-    }
-    auto to = vto.valueType == SHType::None ? inputLen : vto.payload.intValue;
-    if (to < 0) {
-      to = inputLen + to;
-    }
+    SHInt from = vfrom.payload.intValue;
+    SHInt to = vto.valueType == SHType::None ? SHInt(inputLen) : vto.payload.intValue;
 
-    if (from > to || to < 0 || to > inputLen) {
+    // Convert negative indices to positive
+    from = from < 0 ? SHInt(inputLen) + from : from;
+    to = to < 0 ? SHInt(inputLen) + to : to;
+
+    // Bounds checking
+    if (from < 0 || to < 0 || uint32_t(from) > inputLen || uint32_t(to) > inputLen) {
       throw OutOfRangeEx(inputLen, from, to);
     }
 
+    // Ensure from is less than to
+    if (from > to) {
+      throw ActivationError("From index must be less than To index.");
+    }
+
     const auto len = to - from;
+    if (_step <= 0) {
+      throw ActivationError("Slice's Step must be greater than 0");
+    }
+
     if (_step == 1) {
-      // we don't need to copy anything in this case
+      // Optimization for step of 1
       SHVar output{};
       output.valueType = SHType::Seq;
       output.payload.seqValue.elements = &input.payload.seqValue.elements[from];
       output.payload.seqValue.len = uint32_t(len);
       return output;
-    } else if (_step > 1) {
-      const auto actualLen = len / _step + (len % _step != 0);
+    } else {
+      // General case for step greater than 1
+      const auto actualLen = len / _step + (len % _step != 0 ? 1 : 0);
       shards::arrayResize(_cachedSeq, uint32_t(actualLen));
       auto idx = 0;
-      for (auto i = from; i < to; i += _step) {
+      for (int i = from; i < to && idx < actualLen; i += _step) {
+        if (uint32_t(i) >= inputLen) {
+          throw OutOfRangeEx(inputLen, i, i);
+        }
         cloneVar(_cachedSeq.elements[idx], input.payload.seqValue.elements[i]);
         idx++;
       }
       return shards::Var(_cachedSeq);
-    } else {
-      throw ActivationError("Slice's Step must be greater then 0");
     }
   }
 
@@ -3398,7 +3428,7 @@ struct ForRangeShard {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _from.cleanup(context);
     _to.cleanup(context);
     _shards.cleanup(context);
@@ -3455,7 +3485,7 @@ struct Repeat {
   bool _forever = false;
   ExposedInfo _requiredInfo{};
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_ctxTimes) {
       releaseVariable(_ctxTimes);
     }
