@@ -1,636 +1,491 @@
-use std::{fmt::Display, fs};
-
-use pest::{iterators::Pair, RuleType};
+use ast_visitor::{process, Env, Visitor};
+use pest::iterators::Pair;
 use shards_lang_core::{
-  ast::{Identifier, Number, Rule, Value},
+  ast::{Identifier, Number, Value},
   RcStrWrapper,
 };
+use std::{fmt::Display, fs, io::Write};
 
-type Error = Box<dyn std::error::Error>;
+mod ast_visitor;
+mod error;
+mod span;
+use error::*;
 
-fn fmt_err<M: Display>(msg: M, r: &pest::Span) -> Error {
-  format!("{}: {}", r.as_str(), msg).to_string().into()
+pub type Rule = shards_lang_core::ast::Rule;
+
+// Identifies the last written value type
+#[derive(PartialEq, Debug)]
+enum FormatterTop {
+  None,
+  Atom,
+  Comment,
+  LineFunc,
 }
 
-fn fmt_errp<'i, M: Display, R: RuleType>(msg: M, pair: &pest::iterators::Pair<'i, R>) -> Error {
-  fmt_err(msg, &pair.as_span())
+#[derive(PartialEq, Clone, Copy, Debug)]
+enum Context {
+  Unknown,
+  Pipeline,
+  Seq,
+  Table,
 }
 
-struct Span {
-  start: usize,
-  end: usize,
+struct FormatterVisitor {
+  file: fs::File,
+  top: FormatterTop, // stream: fs::Writer
+  line_length: usize,
+  line_counter: usize,
+  depth: usize,
+  line_func_depth: usize,
+  last_char: Option<usize>,
+  context_stack: Vec<Context>,
+  input: String,
+}
+
+fn strip_whitespace(s: &str) -> String {
+  s.replace(&[' ', '\r', '\n'][..], "")
+}
+
+enum UserLine {
+  Newline,
+  Comment(String),
 }
 
 #[derive(Default)]
-struct Env {
-  matches: Vec<Span>,
+struct UserStyling {
+  lines: Vec<UserLine>,
 }
 
-fn extract_identifier(pair: Pair<Rule>) -> Result<Identifier, Error> {
-  // so this can be either a simple identifier or a complex identifier
-  // complex identifiers are separated by '/'
-  // we want to return a vector of identifiers
-  let mut identifiers = Vec::new();
-  for pair in pair.into_inner() {
-    let rule = pair.as_rule();
-    match rule {
-      Rule::LowIden => identifiers.push(pair.as_str().into()),
-      _ => return Err(fmt_errp("Unexpected rule in Identifier.", &pair)),
+impl FormatterVisitor {
+  fn new(output_file: fs::File, input: &str) -> Self {
+    Self {
+      file: output_file,
+      top: FormatterTop::None,
+      line_length: 0,
+      line_counter: 0,
+      depth: 0,
+      line_func_depth: 0,
+      input: input.into(),
+      last_char: None,
+      context_stack: vec![Context::Unknown],
     }
   }
-  Ok(Identifier {
-    name: identifiers.pop().unwrap(), // qed
-    namespaces: identifiers,
-  })
-}
 
-fn process_take_seq(pair: Pair<Rule>) -> Result<(Identifier, Vec<u32>), Error> {
-  // first is the identifier which has to be VarName
-  // followed by N Integer which are the indices
-  let span = pair.as_span();
-  let mut inner = pair.into_inner();
-  let identity = inner
-    .next()
-    .ok_or(fmt_err("Expected an identifier in TakeSeq", &span))?;
+  fn get_context(&self) -> Context {
+    *self.context_stack.last().unwrap()
+  }
 
-  let identifier = extract_identifier(identity)?;
+  fn with_context<F: FnOnce(&mut Self)>(&mut self, ctx: Context, inner: F) {
+    self.context_stack.push(ctx);
+    inner(self);
+    self.context_stack.pop();
+  }
 
-  let mut indices = Vec::new();
-  for pair in inner {
-    match pair.as_rule() {
-      Rule::Integer => {
-        let value = pair
-          .as_str()
-          .parse()
-          .map_err(|_| fmt_errp("Failed to parse Integer", &pair))?;
-        indices.push(value);
+  fn set_last_char(&mut self, ptr: usize) {
+    self.last_char = Some(ptr);
+  }
+
+  fn extract_styling(&self, until: usize) -> Option<UserStyling> {
+    if let Some(from) = self.last_char {
+      if until <= from {
+        return None;
       }
-      _ => return Err(fmt_errp("Expected an integer in TakeSeq", &pair)),
-    }
-  }
 
-  Ok((identifier, indices))
-}
-
-fn process_param(pair: Pair<Rule>, e: &mut Env) -> Result<(), Error> {
-  let span = pair.as_span();
-  if pair.as_rule() != Rule::Param {
-    return Err(fmt_errp("Expected a Param rule", &pair));
-  }
-
-  let mut inner = pair.into_inner();
-  let first = inner
-    .next()
-    .ok_or(fmt_err("Expected a ParamName or Value in Param", &span))?;
-  let pos = first.as_span().start_pos();
-  let (param_name, param_value) = if first.as_rule() == Rule::ParamName {
-    let name = first.as_str();
-    let name: String = name[0..name.len() - 1].into();
-    let value = process_value(
-      inner
-        .next()
-        .ok_or(fmt_err("Expected a Value in Param", &span))?
-        .into_inner()
-        .next()
-        .ok_or(fmt_err("Expected a Value in Param", &span))?,
-      e,
-    )?;
-    (Some(name), value)
-  } else {
-    (
-      None,
-      process_value(
-        first
-          .into_inner()
-          .next()
-          .ok_or(fmt_err("Expected a Value in Param", &span))?,
-        e,
-      )?,
-    )
-  };
-
-  Ok(())
-}
-
-fn process_params(pair: Pair<Rule>, e: &mut Env) -> Result<Vec<()>, Error> {
-  pair.into_inner().map(|x| process_param(x, e)).collect()
-}
-
-fn process_function(pair: Pair<Rule>, e: &mut Env) -> Result<(), Error> {
-  let span = pair.as_span();
-
-  let mut inner = pair.into_inner();
-  let exp = inner
-    .next()
-    .ok_or(fmt_err("Expected a Name or Const in Shard", &span))?;
-
-  match exp.as_rule() {
-    Rule::UppIden => {
-      // Definitely a Shard!
-      let identifier = Identifier {
-        name: exp.as_str().into(),
-        namespaces: Vec::new(),
-      };
-      let next = inner.next();
-
-      let params = match next {
-        Some(pair) => {
-          if pair.as_rule() == Rule::Params {
-            Some(process_params(pair, e)?)
+      let mut us: UserStyling = UserStyling::default();
+      let mut comment_start: Option<usize> = None;
+      let interpolated = &self.input[from..until];
+      for (i, c) in interpolated.chars().enumerate() {
+        if c == ';' {
+          comment_start = Some(i + from + 1);
+        } else if c == '\n' {
+          if let Some(start) = comment_start {
+            let comment = &self.input[start..i + from];
+            let comment_str = comment.trim_start().to_string();
+            us.lines.push(UserLine::Comment(comment_str));
+            comment_start = None;
           } else {
-            return Err(fmt_errp("Expected Params in Shard", &pair));
+            us.lines.push(UserLine::Newline);
           }
         }
-        None => None,
-      };
-
-      // identifier.
-
-      Ok(())
+      }
+      if let Some(start) = comment_start {
+        let comment = &self.input[start..until];
+        us.lines.push(UserLine::Comment(comment.into()));
+      }
+      if !us.lines.is_empty() {
+        // println!("Int7e> ({} lines) {}", us.lines.len(), interpolated);
+        return Some(us);
+      }
     }
-    Rule::VarName => {
-      // Many other things...!
-      let identifier = extract_identifier(exp)?;
-      let next = inner.next();
+    None
+  }
 
-      let params = match next {
-        Some(pair) => {
-          if pair.as_rule() == Rule::Params {
-            Some(process_params(pair, e)?)
-          } else {
-            return Err(fmt_errp("Expected Params in Shard", &pair));
+  fn interpolate(&mut self, new_pair: &Pair<Rule>) {
+    self.interpolate_at_pos(new_pair.as_span().start());
+  }
+
+  // Will interpolate any user-defined comments and newline styling
+  // up until the given position
+  fn interpolate_at_pos(&mut self, ptr: usize) {
+    self.interpolate_at_pos_ext(ptr, false);
+  }
+
+  fn interpolate_at_pos_ext(&mut self, ptr: usize, strip_final_newline: bool) {
+    if let Some(us) = self.extract_styling(ptr) {
+      for (i, line) in us.lines.iter().enumerate() {
+        match line {
+          UserLine::Newline => {
+            if i == us.lines.len() - 1 && strip_final_newline {
+              continue;
+            }
+            // println!("NL>");
+            self.newline();
           }
-        }
-        None => None,
-      };
-
-      if identifier.namespaces.is_empty() {
-        let name = identifier.name.as_str();
-        match name {
-          _ => {}
-        }
-      }
-      Ok(())
-    }
-    _ => Err(fmt_err(
-      format!("Unexpected rule {:?} in Function.", exp.as_rule()),
-      &span,
-    )),
-  }
-}
-
-fn process_number(pair: Pair<Rule>) -> Result<Number, Error> {
-  let pos = pair.as_span().start_pos();
-  match pair.as_rule() {
-    Rule::Integer => Ok(Number::Integer(
-      pair
-        .as_str()
-        .parse()
-        .map_err(|_| fmt_errp("Failed to parse Integer", &pair))?,
-    )),
-    Rule::Float => Ok(Number::Float(
-      pair
-        .as_str()
-        .parse()
-        .map_err(|_| fmt_errp("Failed to parse Float", &pair))?,
-    )),
-    Rule::Hexadecimal => Ok(Number::Hexadecimal(pair.as_str().into())),
-    _ => Err(fmt_errp("Unexpected rule in Number", &pair)),
-  }
-}
-
-fn process_sequence(pair: Pair<Rule>, e: &mut Env) -> Result<(), Error> {
-  for stmt in pair.into_inner() {
-    println!("Seq> {}", stmt.as_span().as_str());
-    process_statement(stmt, e)?;
-  }
-  // let statements = pair
-  //   .into_inner()
-  //   .map(|x| )
-  //   .collect::<Result<Vec<_>, _>>()?;
-  Ok(())
-}
-
-fn process_value(pair: Pair<Rule>, e: &mut Env) -> Result<Value, Error> {
-  let span = pair.as_span();
-  match pair.as_rule() {
-    Rule::ConstValue => {
-      // unwrap the inner rule
-      let pair = pair.into_inner().next().unwrap(); // parsed qed
-      process_value(pair, e)
-    }
-    Rule::None => Ok(Value::None),
-    Rule::Boolean => {
-      // check if string content is true or false
-      let bool_str = pair.as_str();
-      if bool_str == "true" {
-        Ok(Value::Boolean(true))
-      } else if bool_str == "false" {
-        Ok(Value::Boolean(false))
-      } else {
-        Err(fmt_err("Expected a boolean value", &span))
-      }
-    }
-    Rule::VarName => Ok(Value::Identifier(extract_identifier(pair)?)),
-    Rule::Enum => {
-      let text = pair.as_str();
-      let splits: Vec<_> = text.split("::").collect();
-      if splits.len() != 2 {
-        return Err(fmt_err("Expected an enum value", &span));
-      }
-      let enum_name = splits[0];
-      let variant_name = splits[1];
-      Ok(Value::Enum(enum_name.into(), variant_name.into()))
-    }
-    Rule::Number => process_number(
-      pair
-        .into_inner()
-        .next()
-        .ok_or(fmt_err("Expected a Number value", &span))?,
-    )
-    .map(Value::Number),
-    Rule::String => {
-      let inner = pair.into_inner().next().unwrap(); // parsed qed
-      match inner.as_rule() {
-        Rule::SimpleString => Ok(Value::String({
-          let full_str = inner.as_str();
-          // remove quotes AND
-          // with this case we need to transform escaped characters
-          // so we need to iterate over the string
-          let mut chars = full_str[1..full_str.len() - 1].chars();
-          let mut new_str = String::new();
-          while let Some(c) = chars.next() {
-            if c == '\\' {
-              // we need to check the next character
-              let c = chars
-                .next()
-                .ok_or(fmt_err("Unexpected end of string", &span))?;
-              match c {
-                'n' => new_str.push('\n'),
-                'r' => new_str.push('\r'),
-                't' => new_str.push('\t'),
-                '\\' => new_str.push('\\'),
-                '"' => new_str.push('"'),
-                '\'' => new_str.push('\''),
-                _ => {
-                  return Err(fmt_err(
-                    format!("Unexpected escaped character {:?}", c),
-                    &span,
-                  ))
-                }
-              }
-            } else {
-              new_str.push(c);
+          UserLine::Comment(line) => {
+            // println!("CMNT> {}", line);
+            self.write(&format!("; {}", line), FormatterTop::Comment);
+            if i < us.lines.len() - 1 {
+              self.newline();
             }
           }
-          new_str.into()
-        })),
-        Rule::ComplexString => Ok(Value::String({
-          let full_str = inner.as_str();
-          // remove triple quotes
-          full_str[3..full_str.len() - 3].into()
-        })),
-        _ => unreachable!(),
+        }
       }
     }
-    Rule::Seq => {
-      let values = pair
-        .into_inner()
-        .map(|value| {
-          let pos = value.as_span().start_pos();
-          process_value(
-            value
-              .into_inner()
-              .next()
-              .ok_or(fmt_err("Expected a Value in the sequence", &span))?,
-            e,
-          )
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-      Ok(Value::Seq(values))
-    }
-    Rule::Table => {
-      let pairs = pair
-        .into_inner()
-        .map(|pair| {
-          assert_eq!(pair.as_rule(), Rule::TableEntry);
+    self.set_last_char(ptr);
+  }
 
-          let mut inner = pair.into_inner();
+  fn write_raw(&mut self, s: &str) {
+    for c in s.chars() {
+      if c == '\n' {
+        self.line_length = 0;
+      } else {
+        self.line_length += 1;
+      }
+    }
+    self.file.write_all(s.as_bytes()).unwrap();
+  }
 
-          let key = inner.next().unwrap(); // should not fail
-          assert_eq!(key.as_rule(), Rule::TableKey);
-          let pos = key.as_span().start_pos();
-          let key = key
-            .into_inner()
-            .next()
-            .ok_or(fmt_err("Expected a Table key", &span))?;
-          let key = match key.as_rule() {
-            Rule::None => Value::None,
-            Rule::Iden => Value::String(key.as_str().into()),
-            Rule::Value => process_value(
-              key.into_inner().next().unwrap(), // parsed qed
-              e,
-            )?,
-            _ => unreachable!(),
-          };
+  fn write(&mut self, s: &str, top: FormatterTop) {
+    self.write_pre_space();
+    self.write_raw(s);
+    self.top = top;
+  }
 
-          let value = inner
-            .next()
-            .ok_or(fmt_err("Expected a value in TableEntry", &span))?;
-          let pos = value.as_span().start_pos();
-          let value = process_value(
-            value
-              .into_inner()
-              .next()
-              .ok_or(fmt_err("Expected a value in TableEntry", &span))?,
-            e,
-          )?;
-          Ok((key, value))
-        })
-        .collect::<Result<Vec<_>, Error>>()?;
-      Ok(Value::Table(pairs))
-      // Ok(Value::None{})
+  fn newline_w_offset(&mut self, offset: i32) {
+    self.write_raw("\n");
+    self.line_length = 0;
+    self.line_counter += 1;
+    let d = usize::max(self.depth, self.line_func_depth) as i32 + offset;
+    if d > 0 {
+      for _ in 0..d {
+        self.write_raw("  ");
+      }
     }
-    Rule::Shards => {
-      process_sequence(
-        pair
-          .into_inner()
-          .next()
-          .ok_or(fmt_err("Expected a Sequence in Value", &span))?,
-        e,
-      )?;
-      Ok(Value::None {})
-    }
-    Rule::Shard => {
-      let _f = process_function(pair, e)?;
-      //   match process_function(pair)? {
-      //   FunctionValue::Function(func) => Ok(Value::Shard(func)),
-      //   _ => Err(fmt_err("Invalid Shard in value", &pair)),
-      // }
-      Ok(Value::None {})
-    }
-    Rule::EvalExpr => {
-      process_sequence(
-        pair
-          .into_inner()
-          .next()
-          .ok_or(fmt_err("Expected a Sequence in Value", &span))?,
-        e,
-      )?;
-      // .map(Value::EvalExpr)
+    self.top = FormatterTop::None;
+  }
 
-      Ok(Value::None {})
+  fn newline(&mut self) {
+    self.newline_w_offset(0);
+  }
+
+  fn write_pre_space(&mut self) {
+    match self.top {
+      FormatterTop::None => {}
+      FormatterTop::Atom => {
+        self.write_raw(" ");
+      }
+      FormatterTop::Comment => {
+        self.newline();
+      }
+      FormatterTop::LineFunc => {
+        self.newline();
+      }
     }
-    Rule::Expr => {
-      process_sequence(
-        pair
-          .into_inner()
-          .next()
-          .ok_or(fmt_err("Expected a Sequence in Value", &span))?,
-        e,
-      )?;
-      Ok(Value::None {})
-      // .map(Value::Expr)
+    self.top = FormatterTop::None;
+  }
+
+  // Write while spacing between previous atoms
+  fn write_atom(&mut self, s: &str) {
+    self.write(s, FormatterTop::Atom);
+  }
+
+  // Write without spacing between atomics (for symbols and such)
+  fn write_joined(&mut self, s: &str) {
+    match self.top {
+      FormatterTop::Atom | FormatterTop::None => {
+        self.write_raw(s);
+      }
+      FormatterTop::Comment | FormatterTop::LineFunc => {
+        self.newline();
+        self.write_raw(s);
+      }
     }
-    Rule::TakeTable => {
-      let pair = process_take_table(pair)?;
-      Ok(Value::TakeTable(pair.0, pair.1))
+    self.top = FormatterTop::Atom;
+  }
+
+  fn filter<'a>(&mut self, v: &'a str) -> String {
+    let mut result = String::new();
+    let mut comment = false;
+    for c in v.chars() {
+      if c == ';' {
+        comment = true;
+      }
+      if c == '\n' || c == '\r' {
+        comment = false;
+        continue;
+      }
+      if c == ' ' || c == '\t' {
+        continue; // Ignore whitespace
+      }
+      if !comment {
+        result.push(c);
+      }
     }
-    Rule::TakeSeq => {
-      let pair = process_take_seq(pair)?;
-      Ok(Value::TakeSeq(pair.0, pair.1))
-    }
-    Rule::Func => {
-      let _f = process_function(pair, e)?;
-      // match process_function(pair)? {
-      //   FunctionValue::Const(val) => return Ok(val),
-      //   FunctionValue::Function(func) => Ok(Value::Func(func)),
-      //   _ => Err(fmt_errp("Function cannot be used as value", &pair)),
-      // }
-      Ok(Value::None {})
-    }
-    _ => Err(fmt_err(
-      format!("Unexpected rule ({:?}) in Value", pair.as_rule()),
-      &span,
-    )),
+    result
   }
 }
 
-fn process_take_table(pair: Pair<Rule>) -> Result<(Identifier, Vec<RcStrWrapper>), Error> {
-  // first is the identifier which has to be VarName
-  // followed by N Iden which are the keys
-  let span = pair.as_span();
-  let mut inner = pair.into_inner();
-  let identity = inner
-    .next()
-    .ok_or(fmt_err("Expected an identifier in TakeTable", &span))?;
-
-  let identifier = extract_identifier(identity)?;
-
-  let mut keys = Vec::new();
-  for pair in inner {
-    let pos = pair.as_span().start_pos();
-    match pair.as_rule() {
-      Rule::Iden => keys.push(pair.as_str().into()),
-      _ => return Err(fmt_err("Expected an identifier in TakeTable", &span)),
-    }
-  }
-
-  // wrap the shards into an Expr Sequence
-  Ok((identifier, keys))
-}
-
-fn process_pipeline(pair: Pair<Rule>, e: &mut Env) -> Result<(), Error> {
-  if pair.as_rule() != Rule::Pipeline {
-    return Err(fmt_errp(
-      "Expected a Pipeline rule, but found a different rule.",
-      &pair,
-    ));
-  }
-
-  // let mut blocks = Vec::new();
-
-  let span = pair.as_span();
-  for pair in pair.into_inner() {
-    let rule = pair.as_rule();
-    match rule {
-      Rule::EvalExpr => {
-        process_sequence(
-          pair.into_inner().next().ok_or(fmt_err(
-            "Expected an eval time expression, but found none.",
-            &span,
-          ))?,
-          e,
-        )?;
-        // blocks.push(Block {
-        // content: BlockContent::EvalExpr(),
-        // line_info: Some(pos.into()),
-      }
-      Rule::Expr => {
-        process_sequence(
-          pair
-            .into_inner()
-            .next()
-            .ok_or(fmt_err("Expected an expression, but found none.", &span))?,
-          e,
-        )?;
-        // blocks.push(Block {
-        // content: BlockContent::Expr(),
-        // line_info: Some(pos.into()),
-      }
-      Rule::Shard => match process_function(pair, e)? {
-        _ => {}
-        // FunctionValue::Const(value) => blocks.push(Block {
-        //   content: BlockContent::Const(value),
-        //   line_info: Some(pos.into()),
-        // }),
-        // FunctionValue::Function(func) => blocks.push(Block {
-        //   content: BlockContent::Shard(func),
-        //   line_info: Some(pos.into()),
-        // }),
-        // FunctionValue::Program(program) => blocks.push(Block {
-        //   content: BlockContent::Program(program),
-        //   line_info: Some(pos.into()),
-        // }),
-      },
-      Rule::Func => match process_function(pair, e)? {
-        _ => {}
-        // FunctionValue::Const(value) => blocks.push(Block {
-        //   content: BlockContent::Const(value),
-        //   line_info: Some(pos.into()),
-        // }),
-        // FunctionValue::Function(func) => blocks.push(Block {
-        //   content: BlockContent::Func(func),
-        //   line_info: Some(pos.into()),
-        // }),
-        // FunctionValue::Program(program) => blocks.push(Block {
-        //   content: BlockContent::Program(program),
-        //   line_info: Some(pos.into()),
-        // }),
-      },
-      Rule::TakeTable => {
-        let _tt = process_take_table(pair)?;
-      }
-      Rule::TakeSeq => {
-        let _pair = process_take_seq(pair)?;
-      }
-      Rule::ConstValue => {
-        let _v = process_value(pair, e)?;
-      }
-      Rule::Enum => {
-        let _v = process_value(pair, e)?;
-      }
-      Rule::Shards => {
-        let _inner = process_sequence(
-          pair
-            .into_inner()
-            .next()
-            .ok_or(fmt_err("Expected an expression, but found none.", &span))?,
-          e,
-        )?;
-      }
-      _ => {
-        return Err(fmt_err(
-          format!("Unexpected rule ({:?}) in Pipeline.", rule),
-          &span,
-        ))
-      }
-    }
-  }
-  Ok(())
-}
-
-fn process_assignment(pair: Pair<Rule>, e: &mut Env) -> Result<(), Error> {
-  if pair.as_rule() != Rule::Assignment {
-    return Err(fmt_errp(
-      "Expected an Assignment rule, but found a different rule.",
-      &pair,
-    ));
-  }
-
-  let span = pair.as_span();
-  let mut inner = pair.into_inner();
-
-  let pipeline = if let Some(next) = inner.peek() {
-    if next.as_rule() == Rule::Pipeline {
-      process_pipeline(
-        inner.next().ok_or(fmt_err(
-          "Expected a Pipeline in Assignment, but found none.",
-          &span,
-        ))?,
-        e,
-      )?
-    } else {
-      // Pipeline {
-      //   blocks: vec![Block {
-      //     content: BlockContent::Empty,
-      //     line_info: Some(pos.into()),
-      //   }],
-      // }
+fn omit_shard_params(func: Pair<Rule>) -> bool {
+  let mut inner = func.clone().into_inner();
+  let _name = inner.next().unwrap();
+  if let Some(params) = inner.next() {
+    let params: pest::iterators::Pairs<'_, shards_lang_core::ast::Rule> = params.into_inner();
+    let num_params = params.len();
+    if num_params == 0 {
+      return true;
     }
   } else {
-    unreachable!("Assignment should have at least one inner rule.")
-  };
-
-  let assignment_op = inner
-    .next()
-    .ok_or(fmt_err(
-      "Expected an AssignmentOp in Assignment, but found none.",
-      &span,
-    ))?
-    .as_str();
-
-  let iden = inner.next().ok_or(fmt_err(
-    "Expected an Identifier in Assignment, but found none.",
-    &span,
-  ))?;
-
-  let identifier = extract_identifier(iden)?;
-
-  // match assignment_op {
-  //   "=" => Ok(Assignment::AssignRef(pipeline, identifier)),
-  //   ">=" => Ok(Assignment::AssignSet(pipeline, identifier)),
-  //   ">" => Ok(Assignment::AssignUpd(pipeline, identifier)),
-  //   ">>" => Ok(Assignment::AssignPush(pipeline, identifier)),
-  //   _ => Err(("Unexpected assignment operator.", &pair)),
-  // }
-  Ok(())
+    return true;
+  }
+  return false;
 }
 
-fn process_statement(pair: Pair<Rule>, e: &mut Env) -> Result<(), Error> {
-  // let pos = pair.as_span().start_pos();
-  match pair.as_rule() {
-    Rule::Assignment => process_assignment(pair, e),
-    Rule::Pipeline => process_pipeline(pair, e),
-    _ => Err(fmt_errp(
-      format!(
-        "Expected an Assignment or a Pipeline, was {:?}",
-        pair.as_rule()
-      ),
-      &pair,
-    )),
+fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
+  let mut inner = func.clone().into_inner();
+  let _name = inner.next().unwrap();
+  if let Some(params) = inner.next() {
+    let mut params = params.into_inner();
+    // println!("Params> {}", params);
+    let num_params = params.len();
+    if num_params == 1 {
+      let mut param_inner = params.next().unwrap().into_inner();
+      let v = if param_inner.len() == 2 {
+        param_inner.next();
+        param_inner.next()
+      } else {
+        param_inner.next()
+      }
+      .unwrap()
+      .into_inner()
+      .next()
+      .unwrap();
+      // println!("l {}", v);
+      // let k = param_inner.next();
+      // let v = param_inner.next().unwrap();
+
+      // println!("first> {}", v);
+      // println!("first> {}", v.as_str());
+      if let Rule::Shards = v.as_rule() {
+        return true;
+      }
+    }
   }
+  return false;
 }
 
-fn process(code: &str, e: &mut Env) -> Result<(), Error> {
-  let successful_parse = shards_lang_core::read::parse(code).map_err(|x| x.message)?;
-  let root = successful_parse.into_iter().next().unwrap();
-  let pos = root.as_span().start_pos();
-  if root.as_rule() != Rule::Program {
-    return Err("Expected a Program rule, but found a different rule.".into());
+impl Visitor for FormatterVisitor {
+  fn v_pipeline<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+    self.with_context(Context::Pipeline, |s| {
+      s.interpolate(&pair);
+      inner(s);
+    });
   }
+  fn v_stmt<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+    self.interpolate(&pair);
+    // println!("Stmt> {}", pair.as_str());
+    inner(self);
+  }
+  fn v_value<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+    self.interpolate(&pair);
+    // println!("Value> {}", pair.as_str());
+    let val = self.filter(pair.as_str());
+    self.write_atom(&format!("{}", val));
+    inner(self);
+  }
+  fn v_assign<T: FnOnce(&mut Self)>(
+    &mut self,
+    pair: Pair<Rule>,
+    op: Pair<Rule>,
+    to: Pair<Rule>,
+    inner: T,
+  ) {
+    self.interpolate(&pair);
+    // println!("Assign> {}", pair.as_str());
+    inner(self);
+    let op = self.filter(op.as_str());
+    let to = self.filter(to.as_str());
+    self.write_atom(&format!("{} {}", op, to));
+  }
+  fn v_func<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, name: Pair<Rule>, inner: T) {
+    let ctx = self.get_context();
+    self.with_context(Context::Unknown, |_self| {
+      _self.interpolate_at_pos(pair.as_span().start());
 
-  let inner = root.into_inner().next().unwrap();
-  process_sequence(inner, e)?;
+      let name_str = _self.filter(name.as_str());
+      // println!("Func> {}, {}", name, pair.as_str());
 
-  // for stmt in inner.into_inner() {}
+      if _self.top == FormatterTop::Atom {
+        // println!("Ctx> {:?}", ctx);
+        if ctx == Context::Pipeline {
+          _self.write_atom("|");
+        }
+      }
 
-  Ok(())
+      match pair.as_rule() {
+        Rule::Func => {
+          _self.write(&format!("@{}(", name_str), FormatterTop::None);
+          _self.interpolate_at_pos(name.as_span().end());
+          let prev_d = _self.line_func_depth;
+          _self.line_func_depth = _self.depth + 1;
+          inner(_self);
+          _self.line_func_depth = prev_d;
+          _self.write_joined(")");
+          _self.top = FormatterTop::Atom;
+          if name_str == "wire"
+            || name_str == "define"
+            || name_str == "template"
+            || name_str == "mesh"
+            || name_str == "schedule"
+            || name_str == "run"
+          {
+            _self.top = FormatterTop::LineFunc;
+          }
+        }
+        _ => {
+          if omit_shard_params(pair.clone()) {
+            _self.write_atom(&format!("{}", name_str));
+          } else {
+            _self.write(&format!("{}(", name_str), FormatterTop::None);
+            let start_line = _self.line_counter;
+            let omit_indent = omit_shard_param_indent(pair.clone());
+            if omit_indent {
+              inner(_self);
+            } else {
+              _self.depth += 1;
+              inner(_self);
+              _self.depth -= 1;
+            }
+
+            if !omit_indent && start_line != _self.line_counter {
+              _self.newline();
+            }
+            _self.write_joined(")");
+          }
+        }
+      }
+      _self.set_last_char(pair.as_span().end());
+    });
+  }
+  fn v_param<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, kw: Option<Pair<Rule>>, inner: T) {
+    self.with_context(Context::Unknown, |_self| {
+      _self.interpolate(&pair);
+      // println!(
+      //   "Param> {}, {:?}",
+      //   kw.map_or("<none>", |f| f.as_str()),
+      //   pair.as_str()
+      // );
+      if let Some(kw) = kw {
+        let kw_str = _self.filter(kw.as_str());
+        _self.write_atom(&format!("{}", kw_str));
+        _self.interpolate_at_pos(kw.as_span().end());
+      }
+      inner(_self);
+    });
+  }
+  fn v_seq<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+    self.with_context(Context::Seq, |_self| {
+      _self.interpolate(&pair);
+      // println!("Seq> {}", pair.as_str());
+      _self.write("[", FormatterTop::None);
+      _self.depth += 1;
+      inner(_self);
+      _self.depth -= 1;
+      _self.write_joined("]");
+    });
+  }
+  fn v_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+    self.interpolate(&pair);
+    self.write("(", FormatterTop::None);
+    self.depth += 1;
+    inner(self);
+    self.depth -= 1;
+    self.write_joined(")");
+  }
+  fn v_eval_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+    self.interpolate(&pair);
+    self.write("#(", FormatterTop::None);
+    self.depth += 1;
+    inner(self);
+    self.depth -= 1;
+    self.write_joined(")");
+  }
+  fn v_shards<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+    self.with_context(Context::Pipeline, |_self| {
+      let start = pair.as_span().start();
+      // println!("Shards> {}", pair.as_str());
+      _self.interpolate_at_pos(start);
+      _self.write("{", FormatterTop::None);
+      let starting_line = _self.line_counter;
+
+      _self.depth += 1;
+      inner(_self);
+      let end = pair.as_span().end();
+      _self.interpolate_at_pos_ext(end, true);
+      _self.depth -= 1;
+
+      if _self.line_counter != starting_line {
+        if _self.line_func_depth == (_self.depth + 1) {
+          // Remove indent before }) closing of @template, etc.
+          _self.newline_w_offset(-1);
+        } else {
+          _self.newline();
+        }
+      }
+      _self.write_joined("}");
+    });
+  }
+  fn v_table<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+    self.interpolate(&pair);
+    self.write("{", FormatterTop::None);
+    self.depth += 1;
+    inner(self);
+    self.depth -= 1;
+    self.write_joined("}");
+  }
+  fn v_table_val<TK: FnOnce(&mut Self), TV: FnOnce(&mut Self)>(
+    &mut self,
+    pair: Pair<Rule>,
+    key: Pair<Rule>,
+    inner_key: TK,
+    inner_val: TV,
+  ) {
+    self.with_context(Context::Table, |_self| {
+      _self.interpolate(&pair);
+      inner_key(_self);
+      _self.write_joined(":");
+      inner_val(_self);
+    });
+  }
 }
 
 fn main() {
-  let str = fs::read_to_string("C:/Projects/shards/docs/samples/shards/UI/Area/1.shs").unwrap();
+  let str = fs::read_to_string("C:/Projects/shards/shards/tests/gfx-effect.shs").unwrap();
   // println!("{}", &str);
   let mut env = Env::default();
-  process(&str, &mut env).unwrap();
+
+  let file = fs::File::create("out.shs").unwrap();
+  let mut v = FormatterVisitor::new(file, &str);
+  process(&str, &mut v, &mut env).unwrap();
+
+  // process(&str, &mut env).unwrap();
 }

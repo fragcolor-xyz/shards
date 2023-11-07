@@ -8,3 +8,7 @@ edition = "2021"
 [dependencies]
 pest = "2.7.1"
 shards-lang-core = { path = "../../lang_core" }
+
+[dependencies.xxhash-rust]
+version = "0.8.5"
+features = ["xxh3"]
