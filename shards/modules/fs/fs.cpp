@@ -166,6 +166,20 @@ struct Remove {
   }
 };
 
+
+struct RemoveAll {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  SHVar activate(SHContext *context, const SHVar &input) {
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+    if (fs::exists(p)) {
+      return Var(SHInt(fs::remove_all(p)));
+    } else {
+      return Var(0);
+    }
+  }
+};
+
 struct Filename {
   std::string _output;
   bool _noExt = false;
@@ -566,6 +580,7 @@ SHARDS_REGISTER_FN(fs) {
   REGISTER_SHARD("FS.IsDirectory", FS::IsDirectory);
   REGISTER_SHARD("FS.Copy", FS::Copy);
   REGISTER_SHARD("FS.Remove", FS::Remove);
+  REGISTER_SHARD("FS.RemoveAll", FS::RemoveAll);
   REGISTER_SHARD("FS.LastWriteTime", FS::LastWriteTime);
   REGISTER_SHARD("FS.SetWriteTime", FS::SetWriteTime);
   REGISTER_SHARD("FS.CreateDirectories", FS::CreateDirectories);
