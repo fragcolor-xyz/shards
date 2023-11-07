@@ -544,8 +544,12 @@ unsafe extern "C" fn activate_blocking_c_call<T: BlockingShard>(
     Err(error) => {
       shlog_debug!("activate_blocking failure detected"); // in case error leads to crash
       shlog_debug!("activate_blocking failure: {}", error);
-      abortWire(&(*context), error);
-      Var::default()
+      // we fail on another thread so we cannot call abortWire directly as it would race
+      let error = Var::ephemeral_string(error);
+      let mut strongClone = Var::default();
+      cloneVar(&mut strongClone, &error);
+      strongClone.flags = SHVAR_FLAGS_ABORT as u16;
+      strongClone
     }
   }
 }
@@ -578,8 +582,12 @@ unsafe extern "C" fn activate_future_c_call<
     Err(error) => {
       shlog_debug!("activate_future failure detected"); // in case error leads to crash
       shlog_debug!("activate_future failure: {}", error);
-      abortWire(&(*context), error);
-      Var::default()
+      // we fail on another thread so we cannot call abortWire directly as it would race
+      let error = Var::ephemeral_string(error);
+      let mut strongClone = Var::default();
+      cloneVar(&mut strongClone, &error);
+      strongClone.flags = SHVAR_FLAGS_ABORT as u16;
+      strongClone
     }
   }
 }

@@ -167,8 +167,9 @@ template <typename FUNC, typename CANCELLATION>
 inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noexcept {
   static_assert(std::is_same_v<decltype(func()), SHVar> || std::is_same_v<decltype(func()), Var>,
                 "func must return SHVar or Var");
-
   ZoneScopedN("awaitne");
+
+  shassert(!context->onWorkerThread && "awaitne called recursively");
 
 #if !HAS_ASYNC_SUPPORT
   return func();
@@ -194,12 +195,17 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
     }
   } call{std::forward<FUNC>(func)};
 
+  context->onWorkerThread = true;
+  DEFER(shassert(!context->onWorkerThread && "context still flagged on worker thread"));
+
   getTidePool().schedule(&call);
 
   while (!call.complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
   }
+
+  context->onWorkerThread = false;
 
   if (unlikely(!call.complete)) {
     cancel();
@@ -216,6 +222,10 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
     } catch (...) {
       context->cancelFlow("foreign exception failure");
     }
+  } else if (call.res.flags == SHVAR_FLAGS_ABORT) { // not a bit check we don't expect any other flags
+    auto msg = SHSTRVIEW(call.res);
+    context->cancelFlow(msg);
+    destroyVar(call.res);
   }
 
   return call.res;
@@ -224,6 +234,8 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
 
 template <typename FUNC, typename CANCELLATION> inline void await(SHContext *context, FUNC &&func, CANCELLATION &&cancel) {
   ZoneScopedN("await");
+
+  shassert(!context->onWorkerThread && "await called recursively");
 
 #if !HAS_ASYNC_SUPPORT
   func();
@@ -247,12 +259,17 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
     }
   } call{std::forward<FUNC>(func)};
 
+  context->onWorkerThread = true;
+  DEFER(shassert(!context->onWorkerThread && "context still flagged on worker thread"));
+
   getTidePool().schedule(&call);
 
   while (!call.complete && context->shouldContinue()) {
     if (shards::suspend(context, 0) != SHWireState::Continue)
       break;
   }
+
+  context->onWorkerThread = false;
 
   if (unlikely(!call.complete)) {
     cancel();

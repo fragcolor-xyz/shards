@@ -178,7 +178,7 @@ struct SHContext {
   constexpr SHVar getFlowStorage() const { return flowStorage; }
 
 private:
-  SHWireState state = SHWireState::Continue;
+  SHWireState state = SHWireState::Continue; // don't make this atomic! it's used a lot!
   // Used when flow is stopped/restart/return
   // to store the previous result
   SHVar flowStorage{};

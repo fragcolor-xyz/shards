@@ -585,6 +585,9 @@ struct SHVarPayload {
 // this marks the variable as a foreign variable, to prevent destruction
 // when used inside seq and table
 #define SHVAR_FLAGS_FOREIGN (1 << 4)
+// used internally to cancel and abort a wire flow, must be String type and receiver must abort and destroy the var
+// used only in async.hpp and rust side async activation so far
+#define SHVAR_FLAGS_ABORT (1 << 5)
 
 struct SHVar {
   struct SHVarPayload payload;
@@ -1024,7 +1027,7 @@ typedef struct _SHCore {
   SHCompose compose;
   SHSchedule schedule;
   SHUnSchedule unschedule;
-  SHTick tick; // returns false if we had a failure
+  SHTick tick;    // returns false if we had a failure
   SHTick isEmpty; // returns true if we have no wires to tick
   SHTerminate terminate;
   SHSleep sleep;
