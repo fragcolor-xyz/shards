@@ -107,6 +107,7 @@ struct DetachedInputContext : public IInputContext {
 
 struct OutputFrame {
   OwnedVar data;
+  std::optional<std::string> exceptionString;
 };
 using OutputBuffer = boost::lockfree::spsc_queue<OutputFrame>;
 
@@ -168,6 +169,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
     auto &inputStack = inputContext.inputStack;
     inputStack.push(InputStack::Item(lastInputStackState));
+    DEFER({ inputStack.pop(); });
 
     auto baseRegion = getWindowInputRegion(*inputContext.window.get());
     mappedRegion = int4(0, 0, baseRegion.pixelSize.x, baseRegion.pixelSize.y);
@@ -213,14 +215,15 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
     //   canReceiveInput = false;
     // }
 
-    brancher.activate();
-
-    inputStack.pop();
-
-    auto &mainWire = brancher.wires().back();
+    try {
+      brancher.activate();
+    } catch (std::exception &ex) {
+      outputBuffer.push(OutputFrame{.exceptionString = ex.what()});
+    }
 
     {
       ZoneScopedN("CopyOutputs");
+      auto &mainWire = brancher.wires().back();
       outputBuffer.push(OutputFrame{mainWire->previousOutput});
     }
   }
@@ -388,7 +391,12 @@ struct Detached {
       ZoneScopedN("CopyOutputs");
       if (_outputBuffer.read_available() > 0) {
         _mainDataSeq.clear();
-        _outputBuffer.consume_all([&](OutputFrame frame) { _mainDataSeq.push_back(frame.data); });
+        _outputBuffer.consume_all([&](OutputFrame frame) {
+          if (frame.exceptionString) {
+            throw ActivationError(fmt::format("Input branch had errors: {}", frame.exceptionString.value()));
+          }
+          _mainDataSeq.push_back(frame.data);
+        });
       } else if (_mainDataSeq.size() > 1) {
         auto lastOutput = std::move(_mainDataSeq.back());
         _mainDataSeq.resize(1);
