@@ -508,9 +508,6 @@ struct Await : public BaseSubFlow {
         return Var::Empty; // return as there is some error or so going on
     } while (true);
 
-    context->onWorkerThread = true;
-    DEFER({ context->onWorkerThread = false; });
-
     return awaitne(
         context,
         [&] {
