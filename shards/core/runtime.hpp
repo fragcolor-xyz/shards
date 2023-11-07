@@ -298,10 +298,10 @@ UntrackedVector<SHWire *> &getCoroWireStack();
     TracyCoroExit(_wire);          \
   }
 #else
-#define SH_CORO_RESUMED(_wire) \
-  #define SH_CORO_SUSPENDED(_) #define SH_CORO_EXT_RESUME(_) { TracyCoroEnter(wire); }
-#define SH_CORO_EXT_SUSPEND(_) \
-  { TracyCoroExit(_wire); }
+#define SH_CORO_RESUMED(_wire) 
+#define SH_CORO_SUSPENDED(_)
+#define SH_CORO_EXT_RESUME(_) { TracyCoroEnter(wire); }
+#define SH_CORO_EXT_SUSPEND(_) { TracyCoroExit(_wire); }
 #endif
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
@@ -774,6 +774,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   void addRef(const SHStringWithLen name, SHVar *var) {
+    shassert((var->flags & SHVAR_FLAGS_REF_COUNTED) == SHVAR_FLAGS_REF_COUNTED);
+    shassert(var->refcount > 0);
     auto key = shards::OwnedVar::Foreign(name); // copy on write
     refs[key] = var;
   }
@@ -802,6 +804,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     for (auto ref : refs) {
       shards::releaseVariable(ref.second);
     }
+    refs.clear();
   }
 
   bool hasRef(const SHStringWithLen name) {

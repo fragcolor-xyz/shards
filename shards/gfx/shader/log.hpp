@@ -3,7 +3,6 @@
 
 #include <log/log.hpp>
 namespace gfx::shader {
-
 inline shards::logging::Logger getLogger() {
   auto logger = spdlog::get("shader");
   if (!logger) {

@@ -1224,11 +1224,7 @@ struct Ref : public SetBase {
 
   ALWAYS_INLINE SHVar activateRegular(SHContext *context, const SHVar &input) {
     // must keep flags!
-    const auto rc = _target->refcount;
-    const auto flags = _target->flags;
-    memcpy(_target, &input, sizeof(SHVar));
-    _target->refcount = rc;
-    _target->flags = flags;
+    assignVariableValue(*_target, input);
     return input;
   }
 };
@@ -1326,7 +1322,7 @@ struct Update : public SetUpdateBase {
 
     if (_isExposed) {
       if (!(_target->flags & SHVAR_FLAGS_EXPOSED)) {
-        throw WarmupError("Update: error, variable is not exposed.");
+        throw WarmupError(fmt::format("Update: error, variable {} is not exposed.", _name));
       }
 
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;

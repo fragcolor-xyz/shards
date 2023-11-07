@@ -2014,3 +2014,64 @@ TEST_CASE("meshThreadTask-looped") {
   mesh->terminate();
   mesh.reset();
 }
+
+#include <shards/core/ref_output_pool.hpp>
+
+struct TestRefPoolItem {
+  size_t refCount{};
+  std::string tag;
+
+  void inc() { refCount++; }
+  void dec() {
+    if (--refCount == 0) {
+      delete this;
+    }
+  }
+};
+
+namespace shards {
+template <> struct RefOutputPoolItemTraits<TestRefPoolItem *> {
+  TestRefPoolItem *newItem() { return new TestRefPoolItem{.refCount = 1}; }
+  void release(TestRefPoolItem *&ptr) { ptr->dec(); }
+  size_t getRefCount(TestRefPoolItem *&v) { return v->refCount; }
+};
+} // namespace shards
+
+TEST_CASE("RefOutputPool") {
+  TestRefPoolItem* t3{};
+  {
+    RefOutputPool<TestRefPoolItem *> pool;
+    pool.recycle();
+    auto t0 = pool.newValue([&](TestRefPoolItem *item) { item->tag = "item1"; });
+    t0->inc();
+    pool.recycle();
+    auto t1 = pool.newValue([&](TestRefPoolItem *item) { item->tag = "item2"; });
+    t1->inc();
+    pool.recycle();
+    CHECK(t0->tag == "item1");
+    CHECK(t1->tag == "item2");
+
+    t0->dec();
+
+    pool.recycle();
+    auto t2 = pool.newValue([&](TestRefPoolItem *item) {});
+    t2->inc();
+    CHECK(t2->tag == "item1"); // Check that this has been reused
+
+    pool.recycle();
+    t3 = pool.newValue([&](TestRefPoolItem *item) {});
+    t3->inc();
+    CHECK(t3->tag.empty()); // Check that this is a new item
+
+    t1->dec();
+    t2->dec();
+    pool.recycle();
+
+    CHECK(pool.freeList.size() == 2);
+    CHECK(pool.inUseList.size() == 1); // Only t3 should be left
+  }
+
+  // Test this to be the last item, and that the pool has released it's reference
+  CHECK(t3->refCount == 1);
+  t3->dec();
+}

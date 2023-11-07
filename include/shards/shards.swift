@@ -387,7 +387,7 @@ public protocol IShard : AnyObject {
     func compose(data: SHInstanceData) -> Result<SHTypeInfo, ShardError>
 
     func warmup(context: Context) -> Result<Void, ShardError>
-    func cleanup() -> Result<Void, ShardError>
+    func cleanup(context: Context) -> Result<Void, ShardError>
 
     func activate(context: Context, input: SHVar) -> Result<SHVar, ShardError>
 
@@ -449,7 +449,7 @@ public extension IShard {
         error.message.string = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
-        error.message.len = b.errorCache.count
+        error.message.len = UInt64(b.errorCache.count)
         return error;
     }
 }
@@ -521,7 +521,7 @@ public extension IShard {
         error.message.string = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
-        error.message.len = b.errorCache.count
+        error.message.len = UInt64(b.errorCache.count)
         value.error = error
         return value;
     }
@@ -543,17 +543,17 @@ public extension IShard {
         error.message.string = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
-        error.message.len = b.errorCache.count
+        error.message.len = UInt64(b.errorCache.count)
         return error;
     }
 }
 
-@inlinable public func bridgeCleanup<T: IShard>(_: T.Type, shard: ShardPtr) -> SHError {
+@inlinable public func bridgeCleanup<T: IShard>(_: T.Type, shard: ShardPtr, ctx: OpaquePointer?) -> SHError {
     let b = shard!.withMemoryRebound(to: SwiftShard.self, capacity: 1) {
         Unmanaged<T>.fromOpaque($0.pointee.swiftClass).takeUnretainedValue()
     }
     var error = SHError()
-    let result = b.cleanup()
+    let result = b.cleanup(context: Context(context: ctx))
     switch result {
     case .success():
         return error
@@ -563,7 +563,7 @@ public extension IShard {
         error.message.string = b.errorCache.withUnsafeBufferPointer{
             $0.baseAddress
         }
-        error.message.len = b.errorCache.count
+        error.message.len = UInt64(b.errorCache.count)
         return error;
     }
 }
@@ -582,7 +582,7 @@ public extension IShard {
         errorMsg.string = error.withUnsafeBufferPointer{
             $0.baseAddress
         }
-        errorMsg.len = error.count
+        errorMsg.len = UInt64(error.count)
         G.Core.pointee.abortWire(ctx, errorMsg)
         return SHVar()
     }
@@ -676,7 +676,7 @@ final class BaseShard : IShard {
         .success(())
     }
 
-    func cleanup() -> Result<Void, ShardError> {
+    func cleanup(context: Context) -> Result<Void, ShardError> {
         .success(())
     }
 
@@ -697,7 +697,7 @@ final class BaseShard : IShard {
     static var requiredVariablesCFunc: SHRequiredVariablesProc {{ bridgeRequiredVariables(ShardType.self, shard: $0) }}
     static var composeCFunc: SHComposeProc {{ bridgeCompose(ShardType.self, shard: $0, data: $1) }}
     static var warmupCFunc: SHWarmupProc {{ bridgeWarmup(ShardType.self, shard: $0, ctx: $1) }}
-    static var cleanupCFunc: SHCleanupProc {{ bridgeCleanup(ShardType.self, shard: $0) }}
+    static var cleanupCFunc: SHCleanupProc {{ bridgeCleanup(ShardType.self, shard: $0, ctx: $1) }}
     static var activateCFunc: SHActivateProc {{ bridgeActivate(ShardType.self, shard: $0, ctx: $1, input: $2) }}
     var errorCache: ContiguousArray<CChar> = []
 }
@@ -755,7 +755,7 @@ class ShardController : Equatable, Identifiable {
         cname.string = n.withUnsafeBufferPointer{
             $0.baseAddress
         }
-        cname.len = n.count
+        cname.len = UInt64(n.count)
         self.init(native: G.Core.pointee.createShard(cname)!)
     }
 
@@ -1008,7 +1008,7 @@ class WireController {
             cname.string = n.withUnsafeBufferPointer{
                 $0.baseAddress
             }
-            cname.len = n.count
+            cname.len = UInt64(n.count)
             let r = G.Core.pointee.referenceWireVariable(nativeRef, cname)!
             refs[name] = r
             return r

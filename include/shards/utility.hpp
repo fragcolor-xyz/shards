@@ -70,21 +70,17 @@ template <auto V> struct constant {
 inline SHOptionalString operator"" _optional(const char *s, size_t) { return SHOptionalString{s}; }
 inline SHStringWithLen operator"" _swl(const char *s, size_t l) { return SHStringWithLen{s, l}; }
 
-constexpr std::size_t StrLen(const char* str) {
-    std::size_t len = 0;
-    while (str[len] != '\0') {
-        ++len;
-    }
-    return len;
+constexpr std::size_t StrLen(const char *str) {
+  std::size_t len = 0;
+  while (str[len] != '\0') {
+    ++len;
+  }
+  return len;
 }
 
-constexpr SHStringWithLen ToSWL(const char* str) {
-    return SHStringWithLen{str, StrLen(str)};
-}
+constexpr SHStringWithLen ToSWL(const char *str) { return SHStringWithLen{str, StrLen(str)}; }
 
-constexpr SHStringWithLen ToSWL(std::string_view str) {
-    return SHStringWithLen{str.data(), str.size()};
-}
+constexpr SHStringWithLen ToSWL(std::string_view str) { return SHStringWithLen{str.data(), str.size()}; }
 
 // SFINAE tests
 #define SH_HAS_MEMBER_TEST(_name_)                               \
@@ -248,8 +244,26 @@ struct EnumRegisterImpl {
   }
 };
 
+template <bool Atomic> struct RefCount {
+  uint32_t count;
+
+  void reference() { ++count; }
+  bool release() {
+    --count;
+    return count == 0;
+  }
+};
+
+template <> struct RefCount<true> {
+  std::atomic<uint32_t> count;
+
+  void reference() { ++count; }
+  bool release() { return count.fetch_sub(1) == 1; }
+};
+
 template <class SH_CORE, typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
-          E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr>
+          E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr,
+          bool IsThreadSafe = false>
 class TObjectVar {
 private:
   SHObjectInfo info;
@@ -258,26 +272,26 @@ private:
 
   struct ObjectRef {
     E shared;
-    uint32_t refcount;
+    RefCount<IsThreadSafe> refcount;
   };
 
 public:
   TObjectVar(const char *name, int32_t vendorId, int32_t typeId) : vendorId(vendorId), typeId(typeId) {
     info = {};
     info.name = name;
+    info.isThreadSafe = IsThreadSafe;
     info.reference = [](SHPointer ptr) {
       auto p = reinterpret_cast<ObjectRef *>(ptr);
-      p->refcount++;
+      p->refcount.reference();
     };
     info.release = [](SHPointer ptr) {
       auto p = reinterpret_cast<ObjectRef *>(ptr);
-      p->refcount--;
-      if (p->refcount == 0) {
+      if (p->refcount.release()) {
         delete p;
       }
     };
-    if constexpr (Serializer != nullptr && Deserializer != nullptr) {
-      info.serialize = [](SHPointer obj, uint8_t **outData, size_t *outLen, SHPointer *customHandle) {
+    if (Serializer != nullptr && Deserializer != nullptr) {
+      info.serialize = [](SHPointer obj, uint8_t **outData, uint64_t *outLen, SHPointer *customHandle) {
         auto tobj = reinterpret_cast<E *>(obj);
         auto holder = new std::vector<uint8_t>();
         *holder = Serializer(*tobj);
@@ -290,7 +304,7 @@ public:
         auto holder = reinterpret_cast<std::vector<uint8_t> *>(handle);
         delete holder;
       };
-      info.deserialize = [](uint8_t *data, size_t len) {
+      info.deserialize = [](uint8_t *data, uint64_t len) {
         auto r = new ObjectRef();
         r->shared = Deserializer(std::string_view((char *)data, len));
         // don't bump ref count, deserializer is supposed to do that
@@ -306,24 +320,28 @@ public:
 
   E *New() {
     auto r = new ObjectRef();
-    r->refcount = 1;
+    r->refcount.count = 1;
     return &r->shared;
   }
 
   template <typename ST> E *Emplace(std::shared_ptr<ST> &&obj) {
-    auto r = new ObjectRef{.shared = E(std::move(obj)), .refcount = 1};
+    auto r = new ObjectRef{.shared = E(std::move(obj)), .refcount = RefCount<IsThreadSafe>{.count = 1}};
     return &r->shared;
   }
 
   void Release(E *obj) {
     auto r = reinterpret_cast<ObjectRef *>(obj);
-    r->refcount--;
-    if (r->refcount == 0) {
+    if (r->refcount.release()) {
       if constexpr (BeforeDelete != nullptr) {
         BeforeDelete(*obj);
       }
       delete r;
     }
+  }
+
+  uint32_t GetRefCount(E *obj) {
+    auto r = reinterpret_cast<ObjectRef *>(obj);
+    return r->refcount.count;
   }
 
   SHVar Get(E *obj) {
@@ -629,6 +647,8 @@ template <class SH_CORE> struct TTableVar : public SHVar {
 
   void remove(std::string_view key) { remove(Var(key)); }
 
+  void clear() { payload.tableValue.api->tableClear(payload.tableValue); }
+
   size_t size() const { return payload.tableValue.api->tableSize(payload.tableValue); }
 
   TableIterator begin() const { return ::begin(payload.tableValue); }
@@ -770,10 +790,14 @@ template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(co
 }
 
 // Assigns only the variable value, not it's flags and internal properties
-inline void assignVariableValue(SHVar &v, const SHVar &other) {
+ALWAYS_INLINE inline void assignVariableValue(SHVar &v, const SHVar &other) {
   v.valueType = other.valueType;
   v.innerType = other.innerType;
   v.payload = other.payload;
+  v.flags = (v.flags & ~SHVAR_FLAGS_COPY_MASK) | (other.flags & SHVAR_FLAGS_COPY_MASK);
+  if ((other.flags & SHVAR_FLAGS_USES_OBJINFO) == SHVAR_FLAGS_USES_OBJINFO) {
+    v.objectInfo = other.objectInfo;
+  }
 }
 
 }; // namespace shards
@@ -781,9 +805,7 @@ inline void assignVariableValue(SHVar &v, const SHVar &other) {
 // specialize hash for TOwnedVar
 namespace std {
 template <typename T> struct hash<shards::TOwnedVar<T>> {
-  size_t operator()(const shards::TOwnedVar<T> &v) const {
-    return std::hash<SHVar>()(v);
-  }
+  size_t operator()(const shards::TOwnedVar<T> &v) const { return std::hash<SHVar>()(v); }
 };
 } // namespace std
 

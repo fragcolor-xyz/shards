@@ -411,7 +411,7 @@ fn to_warmable(
       } else {
         return Some(Warmable {
           warmup: quote! {self.#ident.warmup_helper(context)?;},
-          cleanup: quote! {self.#ident.cleanup_helper(context);},
+          cleanup: quote! {self.#ident.cleanup_helper(context)?;},
         });
       }
     } else if last_type_id == "ShardsVar" {

@@ -2,9 +2,10 @@
 
 if(CMAKE_CROSSCOMPILING OR EXTERNAL_SHARDS_COMMAND)
   if(DEFINED ENV{SHARDS_COMMAND})
+    message(STATUS "FROM ENV")
     file(REAL_PATH $ENV{SHARDS_COMMAND} SHARDS_COMMAND_ABS)
     set(SHARDS_COMMAND ${SHARDS_COMMAND_ABS} CACHE STRING "The shards interpreter/compiler" FORCE)
-  elseif(SHARDS_COMMAND STREQUAL "")
+  elseif(NOT SHARDS_COMMAND)
     # Find shards when cross compiling since it's needed to precompile scripts
     find_program(SHARDS_COMMAND REQUIRED
       NAMES shards
