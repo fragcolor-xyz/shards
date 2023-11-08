@@ -22,11 +22,10 @@ enum Context {
 
 pub struct FormatterVisitor<'a> {
   out: &'a mut dyn std::io::Write,
-  top: FormatterTop, // stream: fs::Writer
+  top: FormatterTop,
   line_length: usize,
   line_counter: usize,
   depth: usize,
-  line_func_depth: usize,
   last_char: Option<usize>,
   context_stack: Vec<Context>,
   input: String,
@@ -55,7 +54,6 @@ impl<'a> FormatterVisitor<'a> {
       line_length: 0,
       line_counter: 0,
       depth: 0,
-      line_func_depth: 0,
       input: input.into(),
       last_char: None,
       context_stack: vec![Context::Unknown],
@@ -104,7 +102,6 @@ impl<'a> FormatterVisitor<'a> {
         us.lines.push(UserLine::Comment(comment.into()));
       }
       if !us.lines.is_empty() {
-        // println!("Int7e> ({} lines) {}", us.lines.len(), interpolated);
         return Some(us);
       }
     }
@@ -129,11 +126,9 @@ impl<'a> FormatterVisitor<'a> {
             if i == us.lines.len() - 1 && strip_final_newline {
               continue;
             }
-            // println!("NL>");
             self.newline();
           }
           UserLine::Comment(line) => {
-            // println!("CMNT> {}", line);
             self.write(&format!("; {}", line), FormatterTop::Comment);
             if i < us.lines.len() - 1 {
               self.newline();
@@ -166,7 +161,7 @@ impl<'a> FormatterVisitor<'a> {
     self.write_raw("\n");
     self.line_length = 0;
     self.line_counter += 1;
-    let d = usize::max(self.depth, self.line_func_depth) as i32 + offset;
+    let d = self.depth as i32 + offset;
     if d > 0 {
       for _ in 0..d {
         self.write_raw("  ");
@@ -274,6 +269,23 @@ impl<'a> FormatterVisitor<'a> {
     }
     result
   }
+
+  fn write_func_after_open<F: FnOnce(&mut Self)>(&mut self, pair: &Pair<Rule>, inner: F) {
+    let start_line = self.line_counter;
+    let omit_indent = omit_shard_param_indent(pair.clone());
+    if omit_indent {
+      inner(self);
+    } else {
+      self.depth += 1;
+      inner(self);
+      self.depth -= 1;
+    }
+
+    if !omit_indent && start_line != self.line_counter {
+      self.newline();
+    }
+    self.write_joined(")");
+  }
 }
 
 // Checks if this is a function without any parameters
@@ -301,6 +313,11 @@ fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
   let start_line = _name.line_col().0;
   if let Some(params) = inner.next() {
     let params = params.into_inner();
+    let end_line = params
+      .clone()
+      .last()
+      .map(|x| x.as_span().end_pos().line_col().0)
+      .unwrap_or(start_line);
     for param in params {
       let mut param_inner = param.into_inner();
       let v = if param_inner.len() == 2 {
@@ -314,7 +331,8 @@ fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
       .next()
       .unwrap();
 
-      if v.line_col().0 != start_line {
+      let col = v.line_col().0;
+      if col != start_line && col != end_line {
         return false;
       }
     }
@@ -331,7 +349,6 @@ impl<'a> Visitor for FormatterVisitor<'a> {
   }
   fn v_stmt<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
     self.interpolate(&pair);
-    // println!("Stmt> {}", pair.as_str());
     inner(self);
   }
   fn v_value(&mut self, pair: Pair<Rule>) {
@@ -339,7 +356,6 @@ impl<'a> Visitor for FormatterVisitor<'a> {
 
     let ctx = self.get_context();
     if self.top == FormatterTop::Atom {
-      // println!("Ctx> {:?}", ctx);
       if ctx == Context::Pipeline {
         self.write_atom("|");
       }
@@ -351,7 +367,6 @@ impl<'a> Visitor for FormatterVisitor<'a> {
       self.write_atom(last.as_str());
       self.set_last_char(last.as_span().end());
     } else {
-      // println!("last> {}", pair.as_str());
       self.write_atom(pair.as_str());
       self.set_last_char(pair.as_span().end());
     }
@@ -364,7 +379,6 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     inner: T,
   ) {
     self.interpolate(&pair);
-    // println!("Assign> {}", pair.as_str());
     inner(self);
     let op = self.filter(op.as_str());
     let to = self.filter(to.as_str());
@@ -375,32 +389,22 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     self.with_context(Context::Unknown, |_self| {
       _self.interpolate_at_pos(pair.as_span().start());
 
-      let name_str = _self.filter(name.as_str());
-      // println!("Func> {}, {}", name, pair.as_str());
-
       if _self.top == FormatterTop::Atom {
-        // println!("Ctx> {:?}", ctx);
         if ctx == Context::Pipeline {
           _self.write_atom("|");
         }
       }
-
+      
+      let name_str = _self.filter(name.as_str());
       match pair.as_rule() {
         Rule::Func => {
           _self.write(&format!("@{}(", name_str), FormatterTop::None);
-          _self.interpolate_at_pos(name.as_span().end());
-          let prev_d = _self.line_func_depth;
-          _self.line_func_depth = _self.depth + 1;
-          inner(_self);
-          _self.line_func_depth = prev_d;
-          _self.write_joined(")");
-          _self.top = FormatterTop::Atom;
+          _self.write_func_after_open(&pair, inner);
           if name_str == "wire"
             || name_str == "define"
             || name_str == "template"
             || name_str == "mesh"
             || name_str == "schedule"
-            || name_str == "run"
           {
             _self.top = FormatterTop::LineFunc;
           }
@@ -410,20 +414,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
             _self.write_atom(&format!("{}", name_str));
           } else {
             _self.write(&format!("{}(", name_str), FormatterTop::None);
-            let start_line = _self.line_counter;
-            let omit_indent = omit_shard_param_indent(pair.clone());
-            if omit_indent {
-              inner(_self);
-            } else {
-              _self.depth += 1;
-              inner(_self);
-              _self.depth -= 1;
-            }
-
-            if !omit_indent && start_line != _self.line_counter {
-              _self.newline();
-            }
-            _self.write_joined(")");
+            _self.write_func_after_open(&pair, inner);
           }
         }
       }
@@ -436,11 +427,6 @@ impl<'a> Visitor for FormatterVisitor<'a> {
   fn v_param<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, kw: Option<Pair<Rule>>, inner: T) {
     self.with_context(Context::Unknown, |_self| {
       _self.interpolate(&pair);
-      // println!(
-      //   "Param> {}, {:?}",
-      //   kw.map_or("<none>", |f| f.as_str()),
-      //   pair.as_str()
-      // );
       if let Some(kw) = kw {
         let kw_str = _self.filter(kw.as_str());
         _self.write_atom(&format!("{}", kw_str));
@@ -452,7 +438,6 @@ impl<'a> Visitor for FormatterVisitor<'a> {
   fn v_seq<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
     self.with_context(Context::Seq, |_self| {
       _self.interpolate(&pair);
-      // println!("Seq> {}", pair.as_str());
       _self.write("[", FormatterTop::None);
       _self.depth += 1;
       inner(_self);
@@ -479,7 +464,6 @@ impl<'a> Visitor for FormatterVisitor<'a> {
   fn v_shards<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
     self.with_context(Context::Pipeline, |_self| {
       let start = pair.as_span().start();
-      // println!("Shards> {}", pair.as_str());
       _self.interpolate_at_pos(start);
       _self.write("{", FormatterTop::None);
       let starting_line = _self.line_counter;
@@ -491,12 +475,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
       _self.depth -= 1;
 
       if _self.line_counter != starting_line {
-        if _self.line_func_depth == (_self.depth + 1) {
-          // Remove indent before }) closing of @template, etc.
-          _self.newline_w_offset(-1);
-        } else {
-          _self.newline();
-        }
+        _self.newline();
       }
       _self.write_joined("}");
     });
