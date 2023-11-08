@@ -533,4 +533,12 @@ impl<'a> Visitor for FormatterVisitor<'a> {
       inner_val(_self);
     });
   }
+  fn v_take_seq(&mut self, pair: Pair<Rule>) {
+    let str = self.filter(pair.as_str());
+    self.write_atom(&str);
+  }
+  fn v_take_table(&mut self, pair: Pair<Rule>) {
+    let str = self.filter(pair.as_str());
+    self.write_atom(&str);
+  }
 }

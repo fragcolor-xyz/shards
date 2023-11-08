@@ -1,13 +1,7 @@
 use std::cell::RefCell;
-
 type Rule = shards_lang_core::ast::Rule;
-use pest::iterators::Pair;
-
 use crate::error::*;
-use shards_lang_core::{
-  ast::{Identifier, Number, Value},
-  RcStrWrapper,
-};
+use pest::iterators::Pair;
 
 pub trait Visitor {
   fn v_pipeline<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
@@ -34,57 +28,16 @@ pub trait Visitor {
   fn v_eval_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
   fn v_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
   fn v_shards<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
+  fn v_take_table(&mut self, pair: Pair<Rule>);
+  fn v_take_seq(&mut self, pair: Pair<Rule>);
 }
 
 #[derive(Default)]
-pub struct Env {
-  // matches: Vec<crate::span::Span>,
-}
+pub struct Env {}
 
-fn extract_identifier(pair: Pair<Rule>) -> Result<Identifier, Error> {
-  // so this can be either a simple identifier or a complex identifier
-  // complex identifiers are separated by '/'
-  // we want to return a vector of identifiers
-  let mut identifiers = Vec::new();
-  for pair in pair.into_inner() {
-    let rule = pair.as_rule();
-    match rule {
-      Rule::LowIden => identifiers.push(pair.as_str().into()),
-      _ => return Err(fmt_errp("Unexpected rule in Identifier.", &pair)),
-    }
-  }
-  Ok(Identifier {
-    name: identifiers.pop().unwrap(), // qed
-    namespaces: identifiers,
-  })
-}
-
-fn process_take_seq(pair: Pair<Rule>) -> Result<(Identifier, Vec<u32>), Error> {
-  // first is the identifier which has to be VarName
-  // followed by N Integer which are the indices
-  let span = pair.as_span();
-  let mut inner = pair.into_inner();
-  let identity = inner
-    .next()
-    .ok_or(fmt_err("Expected an identifier in TakeSeq", &span))?;
-
-  let identifier = extract_identifier(identity)?;
-
-  let mut indices = Vec::new();
-  for pair in inner {
-    match pair.as_rule() {
-      Rule::Integer => {
-        let value = pair
-          .as_str()
-          .parse()
-          .map_err(|_| fmt_errp("Failed to parse Integer", &pair))?;
-        indices.push(value);
-      }
-      _ => return Err(fmt_errp("Expected an integer in TakeSeq", &pair)),
-    }
-  }
-
-  Ok((identifier, indices))
+fn process_take_seq<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
+  v.v_take_seq(pair);
+  Ok(())
 }
 
 fn process_param<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
@@ -97,15 +50,12 @@ fn process_param<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
   let first = inner
     .next()
     .ok_or(fmt_err("Expected a ParamName or Value in Param", &span))?;
-  let pos = first.as_span().start_pos();
 
   let mut result: Option<Result<(), Error>> = None;
   if first.clone().as_rule() == Rule::ParamName {
-    // let name = first.as_str();
-    // let name: String = name[0..name.len() - 1].into();
     v.v_param(pair, Some(first), |v| {
       result = Some((|| {
-        let value = process_value(
+        process_value(
           inner
             .next()
             .ok_or(fmt_err("Expected a Value in Param", &span))?
@@ -134,34 +84,6 @@ fn process_param<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
     });
   }
   result.expect("Visitor didn't call v_param inner")
-
-  // let (param_name, param_value) = if first.as_rule() == Rule::ParamName {
-  //   let name = first.as_str();
-  //   let name: String = name[0..name.len() - 1].into();
-  //   let value = process_value(
-  //     inner
-  //       .next()
-  //       .ok_or(fmt_err("Expected a Value in Param", &span))?
-  //       .into_inner()
-  //       .next()
-  //       .ok_or(fmt_err("Expected a Value in Param", &span))?,
-  //     v,
-  //     e,
-  //   )?;
-  //   (Some(name), value)
-  // } else {
-  //   (
-  //     None,
-  //     process_value(
-  //       first
-  //         .into_inner()
-  //         .next()
-  //         .ok_or(fmt_err("Expected a Value in Param", &span))?,
-  //       v,
-  //       e,
-  //     )?,
-  //   )
-  // };
 }
 
 fn process_params<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<Vec<()>, Error> {
@@ -182,13 +104,8 @@ fn process_function<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
       match exp.as_rule() {
         Rule::UppIden => {
           // Definitely a Shard!
-          let identifier = Identifier {
-            name: exp.as_str().into(),
-            namespaces: Vec::new(),
-          };
           let next = inner.next();
-
-          let params = match next {
+          match next {
             Some(pair) => {
               if pair.as_rule() == Rule::Params {
                 Some(process_params(pair, v, e)?)
@@ -198,17 +115,11 @@ fn process_function<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
             }
             None => None,
           };
-
-          // identifier.
-
           Ok(())
         }
         Rule::VarName => {
-          // Many other things...!
-          let identifier = extract_identifier(exp)?;
           let next = inner.next();
-
-          let params = match next {
+          match next {
             Some(pair) => {
               if pair.as_rule() == Rule::Params {
                 Some(process_params(pair, v, e)?)
@@ -219,12 +130,6 @@ fn process_function<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
             None => None,
           };
 
-          if identifier.namespaces.is_empty() {
-            let name = identifier.name.as_str();
-            match name {
-              _ => {}
-            }
-          }
           Ok(())
         }
         _ => Err(fmt_err(
@@ -237,36 +142,15 @@ fn process_function<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
   result
 }
 
-fn process_number(pair: Pair<Rule>) -> Result<Number, Error> {
-  let pos = pair.as_span().start_pos();
-  match pair.as_rule() {
-    Rule::Integer => Ok(Number::Integer(
-      pair
-        .as_str()
-        .parse()
-        .map_err(|_| fmt_errp("Failed to parse Integer", &pair))?,
-    )),
-    Rule::Float => Ok(Number::Float(
-      pair
-        .as_str()
-        .parse()
-        .map_err(|_| fmt_errp("Failed to parse Float", &pair))?,
-    )),
-    Rule::Hexadecimal => Ok(Number::Hexadecimal(pair.as_str().into())),
-    _ => Err(fmt_errp("Unexpected rule in Number", &pair)),
-  }
-}
-
 fn process_sequence<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
   let mut result: Option<Result<(), Error>> = None;
 
   let span = pair.as_span();
   v.v_seq(pair.clone(), |v| {
     result = Some((|| {
-      let values = pair
+      pair
         .into_inner()
         .map(|value| {
-          let pos = value.as_span().start_pos();
           process_value(
             value
               .into_inner()
@@ -388,11 +272,11 @@ fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
         Ok(true)
       }
       Rule::TakeTable => {
-        let pair = process_take_table(pair)?;
+        let pair = process_take_table(pair, v)?;
         Ok(true)
       }
       Rule::TakeSeq => {
-        let pair = process_take_seq(pair)?;
+        let pair = process_take_seq(pair, v)?;
         Ok(true)
       }
       Rule::Func => {
@@ -500,28 +384,25 @@ fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
   result.expect("Visitor didn't call v_table inner")
 }
 
-fn process_take_table(pair: Pair<Rule>) -> Result<(Identifier, Vec<RcStrWrapper>), Error> {
+fn process_take_table<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   // first is the identifier which has to be VarName
   // followed by N Iden which are the keys
-  let span = pair.as_span();
-  let mut inner = pair.into_inner();
-  let identity = inner
-    .next()
-    .ok_or(fmt_err("Expected an identifier in TakeTable", &span))?;
+  // let span = pair.as_span();
+  // let mut inner = pair.into_inner();
+  // let identity = inner
+  //   .next()
+  //   .ok_or(fmt_err("Expected an identifier in TakeTable", &span))?;
 
-  let identifier = extract_identifier(identity)?;
+  // let identifier = extract_identifier(identity)?;
 
-  let mut keys = Vec::new();
-  for pair in inner {
-    let pos = pair.as_span().start_pos();
-    match pair.as_rule() {
-      Rule::Iden => keys.push(pair.as_str().into()),
-      _ => return Err(fmt_err("Expected an identifier in TakeTable", &span)),
-    }
-  }
+  // // let mut keys = Vec::new();
+  // for pair in inner {
+  // }
+
+  v.v_take_table(pair);
 
   // wrap the shards into an Expr Sequence
-  Ok((identifier, keys))
+  Ok(())
 }
 
 fn process_pipeline<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
@@ -548,9 +429,6 @@ fn process_pipeline<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
               v,
               e,
             )?;
-            // blocks.push(Block {
-            // content: BlockContent::EvalExpr(),
-            // line_info: Some(pos.into()),
           }
           Rule::Expr => {
             process_expr(
@@ -561,45 +439,12 @@ fn process_pipeline<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
               v,
               e,
             )?;
-            // blocks.push(Block {
-            // content: BlockContent::Expr(),
-            // line_info: Some(pos.into()),
           }
-          Rule::Shard => match process_function(pair, v,e)? {
-          _ => {}
-          // FunctionValue::Const(value) => blocks.push(Block {
-          //   content: BlockContent::Const(value),
-          //   line_info: Some(pos.into()),
-          // }),
-          // FunctionValue::Function(func) => blocks.push(Block {
-          //   content: BlockContent::Shard(func),
-          //   line_info: Some(pos.into()),
-          // }),
-          // FunctionValue::Program(program) => blocks.push(Block {
-          //   content: BlockContent::Program(program),
-          //   line_info: Some(pos.into()),
-          // }),
-        },
-          Rule::Func => match process_function(pair, v,e)? {
-          _ => {}
-          // FunctionValue::Const(value) => blocks.push(Block {
-          //   content: BlockContent::Const(value),
-          //   line_info: Some(pos.into()),
-          // }),
-          // FunctionValue::Function(func) => blocks.push(Block {
-          //   content: BlockContent::Func(func),
-          //   line_info: Some(pos.into()),
-          // }),
-          // FunctionValue::Program(program) => blocks.push(Block {
-          //   content: BlockContent::Program(program),
-          //   line_info: Some(pos.into()),
-          // }),
-        },
-          Rule::TakeTable => {
-            let _tt = process_take_table(pair)?;
-          }
+          Rule::Shard => process_function(pair, v, e)?,
+          Rule::Func => process_function(pair, v, e)?,
+          Rule::TakeTable => process_take_table(pair, v)?,
           Rule::TakeSeq => {
-            let _pair = process_take_seq(pair)?;
+            let _pair = process_take_seq(pair, v)?;
           }
           Rule::ConstValue => {
             let _v = process_value(pair, v, e)?;
@@ -676,7 +521,6 @@ fn process_statement<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Re
   let mut result: Result<(), Error> = Ok(());
   v.v_stmt(pair.clone(), |v| {
     result = (|| {
-      // let span = pair.as_span();
       let rule = pair.as_rule();
       match rule {
         Rule::Assignment => process_assignment(pair, v, e)?,
@@ -692,7 +536,6 @@ fn process_statement<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Re
 pub fn process<V: Visitor>(code: &str, v: &mut V, e: &mut Env) -> Result<(), Error> {
   let successful_parse = shards_lang_core::read::parse(code).map_err(|x| x.message)?;
   let root = successful_parse.into_iter().next().unwrap();
-  let pos = root.as_span().start_pos();
   if root.as_rule() != Rule::Program {
     return Err("Expected a Program rule, but found a different rule.".into());
   }
