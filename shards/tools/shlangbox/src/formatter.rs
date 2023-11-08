@@ -327,7 +327,7 @@ fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
       .last()
       .map(|x| x.as_span().end_pos().line_col().0)
       .unwrap_or(start_line);
-    let num_params = params.len();
+    // let num_params = params.len();
     let mut have_param_on_start_line = false;
     for param in params {
       let mut param_inner = param.into_inner();
@@ -343,15 +343,15 @@ fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
       .unwrap();
 
       let col = v.line_col().0;
-      if col == start_line {
-        have_param_on_start_line = true;
-      }
+      // if col == start_line {
+      //   have_param_on_start_line = true;
+      // }
       if col != start_line && col != end_line {
         return false;
       }
-      if !have_param_on_start_line && col != end_line {
-        return false;
-      }
+      // if !have_param_on_start_line && col != end_line {
+      //   return false;
+      // }
     }
   }
   return true;
@@ -463,19 +463,6 @@ impl<'a> Visitor for FormatterVisitor<'a> {
       inner(_self);
     });
   }
-  fn v_seq<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
-    self.with_context(Context::Seq, |_self| {
-      _self.interpolate(&pair);
-      _self.write("[", FormatterTop::None);
-      _self.depth += 1;
-      {
-        inner(_self);
-        _self.interpolate_at_pos(pair.as_span().end());
-      }
-      _self.depth -= 1;
-      _self.write_joined("]");
-    });
-  }
   fn v_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner_pair: Pair<Rule>, inner: T) {
     self.interpolate(&pair);
     self.write("(", FormatterTop::None);
@@ -483,7 +470,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     self.depth += 1;
     {
       inner(self);
-      self.interpolate_at_pos(inner_pair.as_span().end());
+      self.interpolate_at_pos_ext(inner_pair.as_span().end(), true);
     }
     self.depth -= 1;
     if self.line_counter != starting_line {
@@ -503,7 +490,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     self.depth += 1;
     {
       inner(self);
-      self.interpolate_at_pos(inner_pair.as_span().end());
+      self.interpolate_at_pos_ext(inner_pair.as_span().end(), true);
     }
     self.depth -= 1;
     if self.line_counter != starting_line {
@@ -537,13 +524,29 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     let start_line = self.line_counter;
     self.depth += 1;
     inner(self);
-    self.interpolate_at_pos(pair.as_span().end());
+    self.interpolate_at_pos_ext(pair.as_span().end(), true);
     self.depth -= 1;
     if self.line_counter != start_line {
       self.newline();
     }
     self.write_joined("}");
-    self.set_last_char(pair.as_span().end());
+  }
+  fn v_seq<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+    self.with_context(Context::Seq, |_self| {
+      _self.interpolate(&pair);
+      _self.write("[", FormatterTop::None);
+      let start_line = _self.line_counter;
+      _self.depth += 1;
+      {
+        inner(_self);
+        _self.interpolate_at_pos_ext(pair.as_span().end(), true);
+      }
+      _self.depth -= 1;
+      if _self.line_counter != start_line {
+        _self.newline();
+      }
+      _self.write_joined("]");
+    });
   }
   fn v_table_val<TK: FnOnce(&mut Self), TV: FnOnce(&mut Self)>(
     &mut self,
@@ -553,9 +556,10 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     inner_val: TV,
   ) {
     self.with_context(Context::Table, |_self| {
-      _self.interpolate(&pair);
+      _self.interpolate(&_key);
       inner_key(_self);
       _self.write_joined(":");
+      _self.interpolate(&pair);
       inner_val(_self);
     });
   }
