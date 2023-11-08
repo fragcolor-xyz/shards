@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use crate::Rule;
+type Rule = shards_lang_core::ast::Rule;
 use pest::iterators::Pair;
 
 use crate::error::*;
@@ -12,7 +12,7 @@ use shards_lang_core::{
 pub trait Visitor {
   fn v_pipeline<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
   fn v_stmt<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
-  fn v_value<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
+  fn v_value(&mut self, pair: Pair<Rule>);
   fn v_assign<T: FnOnce(&mut Self)>(
     &mut self,
     pair: Pair<Rule>,
@@ -311,7 +311,8 @@ fn process_shards<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Resul
   let mut result: Option<Result<(), Error>> = None;
 
   let span = pair.as_span();
-  let contents = pair.clone()
+  let contents = pair
+    .clone()
     .into_inner()
     .next()
     .ok_or(fmt_err("Expected an expression, but found none.", &span))?;
@@ -405,28 +406,25 @@ fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
     return Ok(());
   }
 
-  // This is an atomic value (single token)
-  let mut result: Option<Result<(), Error>> = None;
-  v.v_value(pair.clone(), |v| {
-    result = Some((|| {
-      let span = pair.as_span();
-      match pair.as_rule() {
-        Rule::None => Ok(()),
-        Rule::Boolean => Ok(()),
-        Rule::VarName => Ok(()),
-        Rule::Enum => Ok(()),
-        Rule::Number => Ok(()),
-        Rule::String => Ok(()),
-        Rule::Iden => Ok(()),
-        _ => Err(fmt_err(
-          format!("Unexpected rule ({:?}) in Value", pair.as_rule()),
-          &span,
-        )),
-      }
-    })());
-  });
+  let span = pair.as_span();
+  match pair.as_rule() {
+    Rule::None => Ok(()),
+    Rule::Boolean => Ok(()),
+    Rule::VarName => Ok(()),
+    Rule::Enum => Ok(()),
+    Rule::Number => Ok(()),
+    Rule::String => Ok(()),
+    Rule::Iden => Ok(()),
+    _ => Err(fmt_err(
+      format!("Unexpected rule ({:?}) in Value", pair.as_rule()),
+      &span,
+    )),
+  };
 
-  result.expect("Visitor didn't call v_value inner")
+  // This is an atomic value (single token)
+  v.v_value(pair.clone());
+
+  Ok(())
 }
 
 fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
@@ -654,7 +652,7 @@ fn process_assignment<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> R
   ))?;
 
   let mut result: Result<(), Error> = Ok(());
-  v.v_assign(pair.clone(), assignment_op, iden, |v| {
+  v.v_assign(pair.clone(), assignment_op, iden, |v: &mut V| {
     result = (|| {
       if pipeline.as_rule() == Rule::Pipeline {
         process_pipeline(pipeline, v, e)?
@@ -701,8 +699,6 @@ pub fn process<V: Visitor>(code: &str, v: &mut V, e: &mut Env) -> Result<(), Err
 
   let inner = root.into_inner().next().unwrap();
   process_sequence_no_visit(inner, v, e)?;
-
-  // for stmt in inner.into_inner() {}
 
   Ok(())
 }
