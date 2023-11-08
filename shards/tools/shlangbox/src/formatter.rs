@@ -442,6 +442,12 @@ impl<'a> Visitor for FormatterVisitor<'a> {
       }
 
       let last = pair.clone().into_inner().last().unwrap();
+      let last = if last.as_rule() == Rule::VarName {
+        // In case this is an argumentless builtin '@something', expand the identifier to get the last token before whitespace
+        last.into_inner().last().unwrap()
+      } else {
+        last
+      };
       _self.set_last_char(last.as_span().end());
     });
   }
