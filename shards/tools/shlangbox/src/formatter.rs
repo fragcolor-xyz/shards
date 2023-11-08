@@ -276,6 +276,7 @@ impl<'a> FormatterVisitor<'a> {
   }
 }
 
+// Checks if this is a function without any parameters
 fn omit_shard_params(func: Pair<Rule>) -> bool {
   let mut inner = func.clone().into_inner();
   let _name = inner.next().unwrap();
@@ -291,13 +292,15 @@ fn omit_shard_params(func: Pair<Rule>) -> bool {
   return false;
 }
 
+// Checks if all param starting points are on the same line as the function name
+// Examples are:
+// Once({... , If(Something {..., etc.
 fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
   let mut inner = func.clone().into_inner();
   let _name = inner.next().unwrap();
   let start_line = _name.line_col().0;
   if let Some(params) = inner.next() {
-    let mut params = params.into_inner();
-    // println!("Params> {}", params);
+    let params = params.into_inner();
     for param in params {
       let mut param_inner = param.into_inner();
       let v = if param_inner.len() == 2 {
@@ -310,18 +313,10 @@ fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
       .into_inner()
       .next()
       .unwrap();
-      // println!("l {}", v);
-      // let k = param_inner.next();
-      // let v = param_inner.next().unwrap();
 
-      // println!("first> {}", v);
-      // println!("first> {}", v.as_str());
       if v.line_col().0 != start_line {
         return false;
       }
-      // if let Rule::Shards = v.as_rule() {
-      //   return true;
-      // }
     }
   }
   return true;
@@ -522,7 +517,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
   fn v_table_val<TK: FnOnce(&mut Self), TV: FnOnce(&mut Self)>(
     &mut self,
     pair: Pair<Rule>,
-    key: Pair<Rule>,
+    _key: Pair<Rule>,
     inner_key: TK,
     inner_val: TV,
   ) {

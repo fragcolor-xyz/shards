@@ -272,15 +272,15 @@ fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
         Ok(true)
       }
       Rule::TakeTable => {
-        let pair = process_take_table(pair, v)?;
+        process_take_table(pair, v)?;
         Ok(true)
       }
       Rule::TakeSeq => {
-        let pair = process_take_seq(pair, v)?;
+        process_take_seq(pair, v)?;
         Ok(true)
       }
       Rule::Func => {
-        let _f = process_function(pair, v, e)?;
+        process_function(pair, v, e)?;
         Ok(true)
       }
       _ => Ok(false),
@@ -303,7 +303,7 @@ fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
       format!("Unexpected rule ({:?}) in Value", pair.as_rule()),
       &span,
     )),
-  };
+  }?;
 
   // This is an atomic value (single token)
   v.v_value(pair.clone());
@@ -318,7 +318,7 @@ fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
   let rc_e = RefCell::new(e);
   v.v_table(pair.clone(), |v| {
     result = Some((|| {
-      let pairs = pair
+      pair
         .into_inner()
         .map(|pair| {
           assert_eq!(pair.as_rule(), Rule::TableEntry);
@@ -359,8 +359,7 @@ fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
             |v| {
               let mut e = rc_e.borrow_mut();
               val_result = Some((|| {
-                let pos = value.as_span().start_pos();
-                let value = process_value(
+                process_value(
                   value
                     .into_inner()
                     .next()
@@ -385,23 +384,7 @@ fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
 }
 
 fn process_take_table<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
-  // first is the identifier which has to be VarName
-  // followed by N Iden which are the keys
-  // let span = pair.as_span();
-  // let mut inner = pair.into_inner();
-  // let identity = inner
-  //   .next()
-  //   .ok_or(fmt_err("Expected an identifier in TakeTable", &span))?;
-
-  // let identifier = extract_identifier(identity)?;
-
-  // // let mut keys = Vec::new();
-  // for pair in inner {
-  // }
-
   v.v_take_table(pair);
-
-  // wrap the shards into an Expr Sequence
   Ok(())
 }
 
@@ -504,13 +487,6 @@ fn process_assignment<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> R
       } else {
         v.v_pipeline(pipeline, |v| {});
       }
-      // match assignment_op {
-      //   "=" => Ok(Assignment::AssignRef(pipeline, identifier)),
-      //   ">=" => Ok(Assignment::AssignSet(pipeline, identifier)),
-      //   ">" => Ok(Assignment::AssignUpd(pipeline, identifier)),
-      //   ">>" => Ok(Assignment::AssignPush(pipeline, identifier)),
-      //   _ => Err(("Unexpected assignment operator.", &pair)),
-      // }
       Ok(())
     })();
   });
