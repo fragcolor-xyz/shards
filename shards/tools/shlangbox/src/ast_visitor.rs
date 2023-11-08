@@ -463,10 +463,14 @@ fn process_assignment<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> R
   let span = pair.as_span();
   let mut inner = pair.clone().into_inner();
 
-  let pipeline = if let Some(next) = inner.next() {
-    next
+  let pipeline = if let Some(next) = inner.peek() {
+    if next.as_rule() == Rule::Pipeline {
+      inner.next()
+    } else {
+      None
+    }
   } else {
-    unreachable!("Assignment should have at least one inner rule.")
+    None
   };
 
   let assignment_op = inner.next().ok_or(fmt_err(
@@ -482,10 +486,11 @@ fn process_assignment<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> R
   let mut result: Result<(), Error> = Ok(());
   v.v_assign(pair.clone(), assignment_op, iden, |v: &mut V| {
     result = (|| {
-      if pipeline.as_rule() == Rule::Pipeline {
+      if let Some(pipeline) = pipeline {
         process_pipeline(pipeline, v, e)?
-      } else {
-        v.v_pipeline(pipeline, |v| {});
+        // } else {
+        //   v.v_pipeline(pipeline, |v| {});
+        // }
       }
       Ok(())
     })();

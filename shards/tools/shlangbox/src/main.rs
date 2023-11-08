@@ -1,6 +1,6 @@
 use ast_visitor::{process, Env};
 use clap::Parser;
-use std::fs;
+use std::{fs, io::Write, path::Path};
 
 mod ast_visitor;
 mod error;
@@ -41,23 +41,33 @@ fn main() {
         panic!("Cannot use both -i and -o");
       }
 
-      let mut out_stream: Box<dyn std::io::Write> = if let Some(out) = output {
-        Box::new(fs::File::create(out).unwrap())
-      } else if !inline {
-        Box::new(std::io::stdout())
-      } else {
-        Box::new(fs::File::create(file.clone()).unwrap())
-      };
-
       let in_str = if file == "-" {
         std::io::read_to_string(std::io::stdin()).unwrap()
       } else {
-        fs::read_to_string(file).unwrap()
+        fs::read_to_string(file.clone()).unwrap()
       };
-      let mut v = formatter::FormatterVisitor::new(out_stream.as_mut(), &in_str);
 
-      let mut env = Env::default();
-      process(&in_str, &mut v, &mut env).unwrap();
+      if inline {
+        let mut buf = std::io::BufWriter::new(Vec::new());
+        let mut v = formatter::FormatterVisitor::new(&mut buf, &in_str);
+
+        let mut env = Env::default();
+        process(&in_str, &mut v, &mut env).unwrap();
+
+        // let mut file = fs::File::create(file.clone()).unwrap();
+        fs::write(file, &buf.into_inner().unwrap()[..]).unwrap();
+      } else {
+        let mut out_stream: Box<dyn std::io::Write> = if let Some(out) = output {
+          Box::new(fs::File::create(out).unwrap())
+        } else {
+          Box::new(std::io::stdout())
+        };
+
+        let mut v = formatter::FormatterVisitor::new(out_stream.as_mut(), &in_str);
+
+        let mut env = Env::default();
+        process(&in_str, &mut v, &mut env).unwrap();
+      }
     }
   }
 

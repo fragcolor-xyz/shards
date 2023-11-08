@@ -84,7 +84,7 @@ impl<'a> FormatterVisitor<'a> {
       let mut comment_start: Option<usize> = None;
       let interpolated = &self.input[from..until];
       for (i, c) in interpolated.chars().enumerate() {
-        if c == ';' {
+        if c == ';' && comment_start.is_none() {
           comment_start = Some(i + from + 1);
         } else if c == '\n' {
           if let Some(start) = comment_start {
@@ -304,6 +304,15 @@ fn omit_shard_params(func: Pair<Rule>) -> bool {
   return false;
 }
 
+fn omit_builtin_params(func: Pair<Rule>) -> bool {
+  let mut inner = func.clone().into_inner();
+  let _name = inner.next().unwrap();
+  if let Some(_) = inner.next() {
+    return false;
+  }
+  return true;
+}
+
 // Checks if all param starting points are on the same line as the function name
 // Examples are:
 // Once({... , If(Something {..., etc.
@@ -394,19 +403,24 @@ impl<'a> Visitor for FormatterVisitor<'a> {
           _self.write_atom("|");
         }
       }
-      
+
       let name_str = _self.filter(name.as_str());
       match pair.as_rule() {
         Rule::Func => {
-          _self.write(&format!("@{}(", name_str), FormatterTop::None);
-          _self.write_func_after_open(&pair, inner);
-          if name_str == "wire"
-            || name_str == "define"
-            || name_str == "template"
-            || name_str == "mesh"
-            || name_str == "schedule"
-          {
-            _self.top = FormatterTop::LineFunc;
+          if omit_builtin_params(pair.clone()) {
+            // This is most likely a @define
+            _self.write_atom(&format!("@{}", name_str));
+          } else {
+            _self.write(&format!("@{}(", name_str), FormatterTop::None);
+            _self.write_func_after_open(&pair, inner);
+            if name_str == "wire"
+              || name_str == "define"
+              || name_str == "template"
+              || name_str == "mesh"
+              || name_str == "schedule"
+            {
+              _self.top = FormatterTop::LineFunc;
+            }
           }
         }
         _ => {
