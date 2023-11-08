@@ -327,6 +327,8 @@ fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
       .last()
       .map(|x| x.as_span().end_pos().line_col().0)
       .unwrap_or(start_line);
+    let num_params = params.len();
+    let mut have_param_on_start_line = false;
     for param in params {
       let mut param_inner = param.into_inner();
       let v = if param_inner.len() == 2 {
@@ -341,7 +343,13 @@ fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
       .unwrap();
 
       let col = v.line_col().0;
+      if col == start_line {
+        have_param_on_start_line = true;
+      }
       if col != start_line && col != end_line {
+        return false;
+      }
+      if !have_param_on_start_line && col != end_line {
         return false;
       }
     }
@@ -454,28 +462,47 @@ impl<'a> Visitor for FormatterVisitor<'a> {
       _self.interpolate(&pair);
       _self.write("[", FormatterTop::None);
       _self.depth += 1;
-      inner(_self);
-      _self.interpolate_at_pos(pair.as_span().end());
+      {
+        inner(_self);
+        _self.interpolate_at_pos(pair.as_span().end());
+      }
       _self.depth -= 1;
       _self.write_joined("]");
     });
   }
-  fn v_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+  fn v_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner_pair: Pair<Rule>, inner: T) {
     self.interpolate(&pair);
     self.write("(", FormatterTop::None);
+    let starting_line = self.line_counter;
     self.depth += 1;
-    inner(self);
-    self.interpolate_at_pos(pair.as_span().end());
+    {
+      inner(self);
+      self.interpolate_at_pos(inner_pair.as_span().end());
+    }
     self.depth -= 1;
+    if self.line_counter != starting_line {
+      self.newline();
+    }
     self.write_joined(")");
   }
-  fn v_eval_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
+  fn v_eval_expr<T: FnOnce(&mut Self)>(
+    &mut self,
+    pair: Pair<Rule>,
+    inner_pair: Pair<Rule>,
+    inner: T,
+  ) {
     self.interpolate(&pair);
     self.write("#(", FormatterTop::None);
+    let starting_line = self.line_counter;
     self.depth += 1;
-    inner(self);
-    self.interpolate_at_pos(pair.as_span().end());
+    {
+      inner(self);
+      self.interpolate_at_pos(inner_pair.as_span().end());
+    }
     self.depth -= 1;
+    if self.line_counter != starting_line {
+      self.newline();
+    }
     self.write_joined(")");
   }
   fn v_shards<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
@@ -486,11 +513,12 @@ impl<'a> Visitor for FormatterVisitor<'a> {
       let starting_line = _self.line_counter;
 
       _self.depth += 1;
-      inner(_self);
-      let end = pair.as_span().end();
-      _self.interpolate_at_pos_ext(end, true);
+      {
+        inner(_self);
+        let end = pair.as_span().end();
+        _self.interpolate_at_pos_ext(end, true);
+      }
       _self.depth -= 1;
-
       if _self.line_counter != starting_line {
         _self.newline();
       }

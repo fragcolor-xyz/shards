@@ -25,8 +25,13 @@ pub trait Visitor {
     inner_key: TK,
     inner_val: TV,
   );
-  fn v_eval_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
-  fn v_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
+  fn v_eval_expr<T: FnOnce(&mut Self)>(
+    &mut self,
+    pair: Pair<Rule>,
+    inner_pair: Pair<Rule>,
+    inner: T,
+  );
+  fn v_expr<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner_pair: Pair<Rule>, inner: T);
   fn v_shards<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T);
   fn v_take_table(&mut self, pair: Pair<Rule>);
   fn v_take_seq(&mut self, pair: Pair<Rule>);
@@ -170,9 +175,16 @@ fn process_sequence<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
 fn process_eval_expr<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
   let mut result: Option<Result<(), Error>> = None;
 
-  v.v_eval_expr(pair.clone(), |v| {
+  let span = pair.as_span();
+  let inner = pair
+    .clone()
+    .into_inner()
+    .next()
+    .ok_or(fmt_err("Expected a Sequence in Value", &span))?;
+
+  v.v_eval_expr(pair, inner.clone(), |v| {
     result = Some((|| {
-      process_sequence_no_visit(pair, v, e)?;
+      process_sequence_no_visit(inner, v, e)?;
       Ok(())
     })());
   });
@@ -182,9 +194,16 @@ fn process_eval_expr<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Re
 fn process_expr<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
   let mut result: Option<Result<(), Error>> = None;
 
-  v.v_expr(pair.clone(), |v| {
+  let span = pair.as_span();
+  let inner = pair
+    .clone()
+    .into_inner()
+    .next()
+    .ok_or(fmt_err("Expected a Sequence in Value", &span))?;
+
+  v.v_expr(pair, inner.clone(), |v| {
     result = Some((|| {
-      process_sequence_no_visit(pair, v, e)?;
+      process_sequence_no_visit(inner, v, e)?;
       Ok(())
     })());
   });
@@ -250,25 +269,11 @@ fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
         Ok(true)
       }
       Rule::EvalExpr => {
-        process_eval_expr(
-          pair
-            .into_inner()
-            .next()
-            .ok_or(fmt_err("Expected a Sequence in Value", &span))?,
-          v,
-          e,
-        )?;
+        process_eval_expr(pair, v, e)?;
         Ok(true)
       }
       Rule::Expr => {
-        process_expr(
-          pair
-            .into_inner()
-            .next()
-            .ok_or(fmt_err("Expected a Sequence in Value", &span))?,
-          v,
-          e,
-        )?;
+        process_expr(pair, v, e)?;
         Ok(true)
       }
       Rule::TakeTable => {
@@ -404,24 +409,10 @@ fn process_pipeline<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
         let rule = pair.as_rule();
         match rule {
           Rule::EvalExpr => {
-            process_eval_expr(
-              pair.into_inner().next().ok_or(fmt_err(
-                "Expected an eval time expression, but found none.",
-                &span,
-              ))?,
-              v,
-              e,
-            )?;
+            process_eval_expr(pair, v, e)?;
           }
           Rule::Expr => {
-            process_expr(
-              pair
-                .into_inner()
-                .next()
-                .ok_or(fmt_err("Expected an expression, but found none.", &span))?,
-              v,
-              e,
-            )?;
+            process_expr(pair, v, e)?;
           }
           Rule::Shard => process_function(pair, v, e)?,
           Rule::Func => process_function(pair, v, e)?,
