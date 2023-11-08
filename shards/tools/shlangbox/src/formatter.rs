@@ -455,6 +455,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
       _self.write("[", FormatterTop::None);
       _self.depth += 1;
       inner(_self);
+      _self.interpolate_at_pos(pair.as_span().end());
       _self.depth -= 1;
       _self.write_joined("]");
     });
@@ -464,6 +465,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     self.write("(", FormatterTop::None);
     self.depth += 1;
     inner(self);
+    self.interpolate_at_pos(pair.as_span().end());
     self.depth -= 1;
     self.write_joined(")");
   }
@@ -472,6 +474,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     self.write("#(", FormatterTop::None);
     self.depth += 1;
     inner(self);
+    self.interpolate_at_pos(pair.as_span().end());
     self.depth -= 1;
     self.write_joined(")");
   }
@@ -500,6 +503,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     let start_line = self.line_counter;
     self.depth += 1;
     inner(self);
+    self.interpolate_at_pos(pair.as_span().end());
     self.depth -= 1;
     if self.line_counter != start_line {
       self.newline();
