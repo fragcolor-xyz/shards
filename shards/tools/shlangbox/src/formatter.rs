@@ -372,8 +372,8 @@ impl<'a> Visitor for FormatterVisitor<'a> {
 
     let inner = pair.clone().into_inner();
     if inner.len() > 0 {
+      self.write_atom(inner.as_str());
       let last = inner.last().unwrap();
-      self.write_atom(last.as_str());
       self.set_last_char(last.as_span().end());
     } else {
       self.write_atom(pair.as_str());
