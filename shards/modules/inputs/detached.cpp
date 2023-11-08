@@ -384,8 +384,6 @@ struct Detached {
       }
     }
 
-    auto handlerInputContext = _handler->inputContext;
-
     {
       ZoneScopedN("CopyOutputs");
       if (_outputBuffer.read_available() > 0) {
