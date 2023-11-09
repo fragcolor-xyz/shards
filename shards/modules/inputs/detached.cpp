@@ -17,6 +17,8 @@
 #include <input/log.hpp>
 #include "inputs.hpp"
 #include "debug_ui.hpp"
+#include "shards/shards.h"
+#include "spdlog/spdlog.h"
 #include <boost/lockfree/spsc_queue.hpp>
 #include <stdexcept>
 
@@ -129,9 +131,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   CapturingBrancher::CloningContext brancherCloningContext;
 
   InputThreadHandler(OutputBuffer &outputBuffer, int priority) : outputBuffer(outputBuffer), priority(priority) {}
-  ~InputThreadHandler() {
-    brancher.cleanup();
-  }
+  ~InputThreadHandler() { brancher.cleanup(); }
 
   const char *getDebugName() override { return name.c_str(); }
 

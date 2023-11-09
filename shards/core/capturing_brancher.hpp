@@ -32,10 +32,12 @@ struct CapturingBrancher {
     VariableRef(SHVar *_var, bool _copyBySerialize) : _var(_var), _copyBySerialize(_copyBySerialize) {}
     VariableRef(VariableRef &&other) {
       _var = other._var;
+      _copyBySerialize = other._copyBySerialize;
       other._var = nullptr;
     }
     VariableRef &operator=(VariableRef &&other) {
       _var = other._var;
+      _copyBySerialize = other._copyBySerialize;
       other._var = nullptr;
       return *this;
     }
