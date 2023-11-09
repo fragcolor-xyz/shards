@@ -322,7 +322,7 @@ struct Detached {
 
   auto &getWindowContext() { return varAsObjectChecked<WindowContext>(_context.get(), WindowContextType); }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_inputContext) {
       auto &master = _inputContext->getMaster();
       master.removeHandler(_handler);

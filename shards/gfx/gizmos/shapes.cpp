@@ -321,9 +321,12 @@ void ShapeRenderer::begin() {
 }
 
 void ShapeRenderer::end(DrawQueuePtr queue) {
+  lineMeshPool.recycle();
+  unculledSolidMeshPool.recycle();
+  solidMeshPool.recycle();
+
   if (lineVertices.size() > 0) {
-    if (!lineMesh)
-      lineMesh = std::make_shared<Mesh>();
+    auto lineMesh = lineMeshPool.newValue();
 
     MeshFormat fmt = {
         .primitiveType = PrimitiveType::TriangleList,
@@ -338,8 +341,7 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
   }
 
   if (solidVertices.size() > 0) {
-    if (!solidMesh)
-      solidMesh = std::make_shared<Mesh>();
+    auto solidMesh = solidMeshPool.newValue();
 
     MeshFormat fmt = {
         .primitiveType = PrimitiveType::TriangleList,
@@ -353,8 +355,7 @@ void ShapeRenderer::end(DrawQueuePtr queue) {
   }
 
   if (unculledSolidVertices.size() > 0) {
-    if (!unculledSolidMesh)
-      unculledSolidMesh = std::make_shared<Mesh>();
+    auto unculledSolidMesh = unculledSolidMeshPool.newValue();
 
     MeshFormat fmt = {
         .primitiveType = PrimitiveType::TriangleList,

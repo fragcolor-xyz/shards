@@ -47,7 +47,7 @@ struct DrawableShard {
     _drawable->drawable = std::make_shared<MeshDrawable>();
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
 
     if (_drawable) {
@@ -106,7 +106,7 @@ struct DrawShard {
 
   void warmup(SHContext *shContext) { PARAM_WARMUP(shContext); }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -163,6 +163,7 @@ template <> struct RefOutputPoolItemTraits<gfx::SHDrawQueue *> {
   }
   void release(gfx::SHDrawQueue *&v) { gfx::Types::DrawQueueObjectVar.Release(v); }
   size_t getRefCount(gfx::SHDrawQueue *&v) { return gfx::Types::DrawQueueObjectVar.GetRefCount(v); }
+  void recycled(gfx::SHDrawQueue *&v) { v->queue->clear(); }
 };
 } // namespace shards
 
@@ -241,7 +242,7 @@ struct ClearQueueShard {
   SHVar getParam(int index) { return Var::Empty; }
 
   void warmup(SHContext *context) {}
-  void cleanup(SHContext* context) {}
+  void cleanup(SHContext *context) {}
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SHDrawQueue *shQueue = reinterpret_cast<SHDrawQueue *>(input.payload.objectValue);
