@@ -1,0 +1,20 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+      ui-draw-queue
+      UI.CentralPanel({
+        UI.Int3Slider(
+          Variable: int3
+          Min: @i3(1)
+          Max: @i3(100)
+        ) | ExpectInt3
+      })
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)

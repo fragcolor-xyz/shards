@@ -1,0 +1,20 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+        ui-draw-queue
+        UI.CentralPanel({
+          Once({
+            0.0 >= progress
+          })
+          progress | UI.ProgressBar(Overlay: "Progress")
+          | Math.Add(0.01) > progress
+        })
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)

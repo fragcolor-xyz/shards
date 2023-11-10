@@ -1,0 +1,52 @@
+@wire(capture {
+  CaptureLog(
+    Size: 24
+    MinLevel: "info"
+    Pattern: "%^[%l]%$ [%Y-%m-%d %T.%e] %v"
+    Suspend: true
+  )
+  | String.Join > logs
+  Math.Inc(generation)
+  none
+} Looped: true)
+
+Once({
+  "" | Set(logs Global: true)
+  0 | Set(generation Global: true)
+  Detach(capture)
+})
+
+Maybe(GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+      ui-draw-queue
+      {
+        UI.BottomPanel(
+          Contents: {
+            Get(generation Global: true)
+            | ToString | UI.Label
+          }
+        )
+        UI.CentralPanel(
+          Contents: {
+            UI.Button("Say Hello" Msg("Hello!"))
+            Get(logs Global: true) |
+            UI.Console(ShowFilters: true)
+          }
+        )
+      }
+    )
+    GFX.Render(Steps: render-steps)
+  }
+) {
+  ; on window close
+  none | Stop(capture)
+  none | Stop ; stop self
+})
+
+; Ensure output of wire is the same as input of Stop self
+none

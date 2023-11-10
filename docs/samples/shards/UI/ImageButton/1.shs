@@ -1,0 +1,21 @@
+GFX.MainWindow(
+  Contents: {
+    Once({
+      GFX.DrawQueue >= ui-draw-queue
+      GFX.UIPass(ui-draw-queue) >> render-steps
+    })
+    UI(
+      ui-draw-queue
+      UI.CentralPanel({
+        Once({
+          LoadImage("../../assets/ShardsLogo.png") = image
+        })
+        image | UI.ImageButton(Scale: @f2(0.1) Action: {
+          Msg("Clicked")
+        })
+      })
+    )
+
+    GFX.Render(Steps: render-steps)
+  }
+)
