@@ -51,12 +51,12 @@
   Once({ Math.MatIdentity >= obj-transform })
   Inputs.Detached(window-ctx {
     GFX.View(View: view-transform) = view
-    GFX.DrawQueue(Threaded: true) = queue
-    Gizmos.Context(Queue: queue View: view Contents: {
+    GFX.DrawQueue(Threaded: true) = queue-1
+    Gizmos.Context(Queue: queue-1 View: view Contents: {
       Gizmos.RefspaceGridOverlay(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 3.0)
       obj-transform | Gizmos.Rotation(ScreenSize: 300.0) >= out-transform
     })
-    {obj-transform: out-transform queue: queue}
+    {obj-transform: out-transform queue: queue-1}
   } {
     RTake(0)
     { Take("queue") | GFX.QueueDrawables | GFX.Draw(queue) }
