@@ -1,3 +1,0 @@
-@define(client-viz-colors [
-  @color(0x9a9a9a) ; Grey
-])

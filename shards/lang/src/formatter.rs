@@ -1,7 +1,7 @@
 use crate::ast_visitor::Visitor;
 use pest::iterators::Pair;
 
-pub type Rule = shards_lang_core::ast::Rule;
+pub type Rule = crate::ast::Rule;
 
 // Identifies the last written value type
 #[derive(PartialEq, Debug)]
@@ -293,7 +293,7 @@ fn omit_shard_params(func: Pair<Rule>) -> bool {
   let mut inner = func.clone().into_inner();
   let _name = inner.next().unwrap();
   if let Some(params) = inner.next() {
-    let params: pest::iterators::Pairs<'_, shards_lang_core::ast::Rule> = params.into_inner();
+    let params: pest::iterators::Pairs<'_, Rule> = params.into_inner();
     let num_params = params.len();
     if num_params == 0 {
       return true;

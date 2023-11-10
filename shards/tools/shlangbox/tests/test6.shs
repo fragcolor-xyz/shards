@@ -1,7 +1,0 @@
-@define(assets-categories [
-  @category-shards-script
-  @category-textures
-  @category-meshes
-  @category-audio
-  ; @category-shaders
-])

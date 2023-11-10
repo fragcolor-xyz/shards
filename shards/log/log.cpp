@@ -54,7 +54,7 @@ void redirectAll(const std::vector<spdlog::sink_ptr> &sinks) {
 static void setupDefaultLogger(const std::string &fileName = "shards.log") {
   auto dist_sink = std::make_shared<spdlog::sinks::dist_sink_mt>();
 
-  auto sink1 = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+  auto sink1 = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
   dist_sink->add_sink(sink1);
 
   // Setup log file

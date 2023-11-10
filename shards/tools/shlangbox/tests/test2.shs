@@ -1,6 +1,0 @@
-{
-  ; wires
-  ; magically scheduled in fbl.cpp
-  ; seek for auto wire = getScriptWire(key);
-  main: start
-}

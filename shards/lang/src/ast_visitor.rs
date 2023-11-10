@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-type Rule = shards_lang_core::ast::Rule;
+type Rule = crate::ast::Rule;
 use crate::error::*;
 use pest::iterators::Pair;
 
@@ -99,7 +99,7 @@ fn process_function<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
   let span = pair.as_span();
 
   let mut inner = pair.clone().into_inner();
-  let exp: Pair<'_, shards_lang_core::ast::Rule> = inner
+  let exp: Pair<'_, Rule> = inner
     .next()
     .ok_or(fmt_err("Expected a Name or Const in Shard", &span))?;
 
@@ -330,7 +330,7 @@ fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
 
           let mut inner = pair.into_inner();
 
-          let key: Pair<'_, shards_lang_core::ast::Rule> = inner.next().unwrap(); // should not fail
+          let key: Pair<'_, Rule> = inner.next().unwrap(); // should not fail
           assert_eq!(key.as_rule(), Rule::TableKey);
           let key = key
             .into_inner()
@@ -506,7 +506,7 @@ fn process_statement<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Re
 }
 
 pub fn process<V: Visitor>(code: &str, v: &mut V, e: &mut Env) -> Result<(), Error> {
-  let successful_parse = shards_lang_core::read::parse(code).map_err(|x| x.message)?;
+  let successful_parse = crate::read::parse(code).map_err(|x| x.message)?;
   let root = successful_parse.into_iter().next().unwrap();
   if root.as_rule() != Rule::Program {
     return Err("Expected a Program rule, but found a different rule.".into());
