@@ -2015,6 +2015,7 @@ template <> struct RefOutputPoolItemTraits<TestRefPoolItem *> {
   TestRefPoolItem *newItem() { return new TestRefPoolItem{.refCount = 1}; }
   void release(TestRefPoolItem *&ptr) { ptr->dec(); }
   size_t getRefCount(TestRefPoolItem *&v) { return v->refCount; }
+  void recycled(TestRefPoolItem *&v) {}
 };
 } // namespace shards
 
