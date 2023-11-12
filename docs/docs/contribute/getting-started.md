@@ -63,42 +63,53 @@ sudo apt install build-essential cmake ninja-build clang xorg-dev libdbus-1-dev 
 
 Install Rust from [Rust Installation](https://www.rust-lang.org/tools/install).
 
-### Common Instructions for Windows and Linux
+### Common Instructions for Windows, Linux, and macOS
 
-1. Verify Rust installation with `cargo --version`.
-2. Install the nightly version of Rust:
+1. Verify the Rust installation with `cargo --version`.
+2. Install the nightly version of Rust if required by your project:
     ```bash
     rustup toolchain install nightly
-    rustup +nightly target add x86_64-<target-architecture>
-    rustup default nightly-x86_64-<target-architecture>
+    rustup +nightly target add <target-architecture>
     ```
-    Replace `<target-architecture>` with `pc-windows-msvc` for Windows and `unknown-linux-gnu` for Linux.
+    Replace `<target-architecture>` with your system's architecture (e.g., `x86_64-pc-windows-msvc` for Windows, `x86_64-unknown-linux-gnu` for Linux).
 3. For web browser support, run:
     ```bash
     rustup +nightly target add wasm32-unknown-unknown
     ```
 4. Regularly update Rust using `rustup update`.
 
+### Using a specific nightly version if needed
+
+Before building the project, ensure that you are using the correct version of the Rust toolchain as specified in the project's `rust.version` file. This file is located in the root directory of the project if a specific version is required.
+
+1. Navigate to the project's root directory.
+2. Install the specific Rust toolchain version required by the project:
+    ```bash
+    cat rust.version | xargs rustup toolchain install
+    ```
+3. Set the installed toolchain as the default for the current project:
+    ```bash
+    cat rust.version | xargs rustup override set
+    ```
+
+Now, proceed with the project-specific build instructions.
+
 ## Git & GitHub
 
 Git is a distributed version control system essential for managing project codebases.
 
-### Common Instructions for Windows and Linux
+### macOS
 
-1. Install Git from [Git Download](https://git-scm.com/download).
-2. Consider using a Git GUI Client for easier version control. [List of Git GUI Clients](https://git-scm.com/downloads/guis).
-
-We recommend Visual Studio Code (VS Code) for this tutorial.
-
-1. Download and install VS Code from [VS Code Download](https://code.visualstudio.com/download).
-2. On Windows, use Chocolatey with `choco install -y vscode`. On Linux, use `sudo snap install --classic code`. On macOS, use Homebrew with `brew install --cask visual-studio-code`.
+If not already installed with Xcode, install Git using Homebrew:
+```bash
+brew install git
+```
 
 ### Windows
 
 Use Chocolatey for installation:
 ```cmd
 choco install -y git
-choco install -y github-desktop  # For GitHub Desktop
 ```
 
 ### Linux
@@ -112,19 +123,7 @@ sudo apt install git
 
 We recommend Visual Studio Code (VS Code) for this tutorial.
 
-### Windows
-
-Download and install from [VS Code Download](https://code.visualstudio.com/download), or use Chocolatey:
-```cmd
-choco install -y vscode
-```
-
-### Linux
-
-Install VS Code as a snap package:
-```bash
-sudo snap install --classic code
-```
+Download and install VS Code from [VS Code Download](https://code.visualstudio.com/download)
 
 ### VS Code Extensions
 
