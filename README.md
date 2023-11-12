@@ -46,7 +46,7 @@ Shards scripts end with the `.shs` extension and can be directly run from the co
 ./build/debug/shards new <filename>.shs
 ```
 
-Shards language features are documented [here](https://docs.fragcolor.com/learn/shards/primer/), while the API can be found [here](https://docs.fragcolor.com/reference/shards/) and code examples and tutorials [here](https://docs.fragcolor.com/learn/shards/tutorials/).
+Shards language features are documented [here](https://docs.fragcolor.com/learn/shards/primer/), while the API can be found [here](https://docs.fragcolor.com/reference/shards/).
 
 > [!NOTE]
 > The code samples in this readme are programmed using the new Shards syntax. The documentation for the new syntax will be released very soon. Stay tuned!
