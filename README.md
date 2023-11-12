@@ -7,7 +7,7 @@
   <a href="">[![license](https://img.shields.io/github/license/fragcolor-xyz/shards)](./LICENSE)</a>
   <a href="">[![CI](https://github.com/fragcolor-xyz/shards/actions/workflows/main.yml/badge.svg)](https://github.com/fragcolor-xyz/shards/actions/workflows/main.yml)</a>
   <a href="">[![codecov](https://codecov.io/gh/fragcolor-xyz/shards/branch/devel/graph/badge.svg?token=4PMT2FQFDS)](https://codecov.io/gh/fragcolor-xyz/shards)</a>
-  <a href="">[![docs](https://img.shields.io/badge/docs-8A2BE2)](https://docs.fragnova.com/)</a>
+  <a href="">[![docs](https://img.shields.io/badge/docs-8A2BE2)](https://docs.fragcolor.com/)</a>
 
 </div>
 
@@ -40,13 +40,13 @@ Will print:
 
 ## Getting started
 
-To start developing with Shards, you'll need to [set up your environment](https://docs.fragnova.com/contribute/getting-started/) and then [build Shards](https://docs.fragnova.com/contribute/code/build-shards/).
+To start developing with Shards, you'll need to [set up your environment](https://docs.fragcolor.com/contribute/getting-started/) and then [build Shards](https://docs.fragcolor.com/contribute/code/build-shards/).
 Shards scripts end with the `.shs` extension and can be directly run from the console using:
 ```
 ./build/debug/shards new <filename>.shs
 ```
 
-Shards language features are documented [here](https://docs.fragnova.com/learn/shards/primer/), while the API can be found [here](https://docs.fragnova.com/reference/shards/) and code examples and tutorials [here](https://docs.fragnova.com/learn/shards/tutorials/).
+Shards language features are documented [here](https://docs.fragcolor.com/learn/shards/primer/), while the API can be found [here](https://docs.fragcolor.com/reference/shards/) and code examples and tutorials [here](https://docs.fragcolor.com/learn/shards/tutorials/).
 
 > [!NOTE]
 > The code samples in this readme are programmed using the new Shards syntax. The documentation for the new syntax will be released very soon. Stay tuned!

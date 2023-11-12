@@ -185,8 +185,8 @@
       UI(ui-draw-queue {
         UI.CentralPanel(
           Contents: {
-            "https://docs.fragnova.com" | UI.Hyperlink("Fragnova documentation") |
-            Assert.Is("https://docs.fragnova.com" Break: true)
+            "https://docs.fragcolor.com" | UI.Hyperlink("Fragcolor documentation") |
+            Assert.Is("https://docs.fragcolor.com" Break: true)
           }
         )
       })

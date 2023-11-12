@@ -11,11 +11,9 @@ Ready to learn more about our organization's various projects and initiatives? C
 
 Our primers are comprehensive guides that provide a detailed introduction to our projects. They cover everything you need to know to get started and are a great way to get up to speed quickly.
 
-Our tutorials, on the other hand, are more focused on practical application and techniques. If you're more interested in getting your hands dirty and learning practical skills, then our tutorials are what you need. They take you step-by-step through specific tasks or projects, with easy-to-follow instructions and examples. 
+Our tutorials, on the other hand, are more focused on practical application and techniques. If you're more interested in getting your hands dirty and learning practical skills, then our tutorials are what you need. They take you step-by-step through specific tasks or projects, with easy-to-follow instructions and examples.
 
 Begin by navigating to the project you wish to learn more about:
-
-- [The Fragnova Network](./fragnova-network/)
 
 - [Shards](./shards/)
 

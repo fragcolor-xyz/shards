@@ -8,9 +8,9 @@
    .ui-draw-queue
    (UI.CentralPanel
     (->
-     "https://docs.fragnova.com"
+     "https://docs.fragcolor.com"
      (UI.Hyperlink
-      :Label "Fragnova documentation"
+      :Label "Fragcolor documentation"
       :Style {:italics true}))))
 
   (GFX.Render :Steps .render-steps)))
