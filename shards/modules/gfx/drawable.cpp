@@ -281,6 +281,7 @@ struct GetQueueDrawablesShard {
       SHDrawable *ptr = _objects.emplace_back(Types::DrawableObjectVar.New());
       ptr->assign(drawable->clone());
       _outputSeq.push_back(Types::DrawableObjectVar.Get(ptr));
+      Types::DrawableObjectVar.Release(ptr);
     }
 
     return _outputSeq;
