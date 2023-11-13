@@ -19,13 +19,13 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.TopPanel(
           Contents: {
             UI.MenuBar | ExpectBool
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -44,7 +44,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.TopPanel(
           Contents: {
             UI.MenuBar({
@@ -52,7 +52,7 @@
             })
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -71,7 +71,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             UI.Button(
@@ -84,7 +84,7 @@
             ExpectBool
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -103,7 +103,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             UI.Checkbox("Checked" checked) |
@@ -111,7 +111,7 @@
             checked | ExpectBool
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -130,14 +130,14 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             UI.ColorInput(color) | ExpectColor
             color | ExpectColor
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -156,14 +156,14 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             ["Hello" "World"] | UI.Combo("Word" index) | ExpectString
             index | ExpectInt
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -182,14 +182,14 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             "https://docs.fragcolor.com" | UI.Hyperlink("Fragcolor documentation") |
             Assert.Is("https://docs.fragcolor.com" Break: true)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -209,7 +209,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             Once({
@@ -219,7 +219,7 @@
             image | UI.Image(scale)
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }
@@ -239,7 +239,7 @@
         GFX.UIPass(ui-draw-queue) >> render-steps
       })
 
-      UI(ui-draw-queue {
+      UI({
         UI.CentralPanel(
           Contents: {
             Once({
@@ -249,7 +249,7 @@
             image | UI.ImageButton(Scale: scale Action: {Msg("Clicked")})
           }
         )
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps)
     }

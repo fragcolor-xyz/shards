@@ -7,7 +7,6 @@
   .ui-draw-queue (GFX.ClearQueue)
 
   (UI
-   .ui-draw-queue
    (UI.CentralPanel
     (UI.Vertical
      :Centered true

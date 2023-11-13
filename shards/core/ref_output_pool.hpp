@@ -10,6 +10,7 @@ template <typename T> struct RefOutputPoolItemTraits {
   T newItem() { assert("not implemented"); }
   void release(T &) { assert("not implemented"); }
   size_t getRefCount(T &v) { assert("not implemented"); }
+  void recycled(T &v) { assert("not implemented"); }
 };
 
 // Keeps a pool of output objects
@@ -26,7 +27,7 @@ template <typename T> struct RefOutputPool {
       itemTraits.release(v);
   }
 
-  T newValue(auto init = [](T &v) {}) {
+  T newValue(auto init) {
     if (freeList.empty()) {
       auto &result = inUseList.emplace_back(itemTraits.newItem());
       init(std::ref(result));
@@ -37,6 +38,10 @@ template <typename T> struct RefOutputPool {
       return *it;
     }
   }
+  
+  T newValue() {
+    return newValue([](T &v) {});
+  }
 
   // Check returned items and return them to the pool once they are no longer referenced
   void recycle() {
@@ -44,6 +49,7 @@ template <typename T> struct RefOutputPool {
     while (it != inUseList.end()) {
       if (itemTraits.getRefCount(*it) == 1) {
         auto nextIt = std::next(it);
+        itemTraits.recycled(*it);
         freeList.splice(freeList.end(), inUseList, it);
         it = nextIt;
       } else {

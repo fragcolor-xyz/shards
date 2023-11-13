@@ -60,21 +60,17 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
   inputState.pointer.prevPosition = inputState.pointer.position;
   inputState.pointer.position = inputContext.getState().cursorPosition;
   inputState.mouseWheel = 0;
+  bool canReceiveInput = inputContext.canReceiveInput();
 
-  auto &consumeFlags = inputContext.getConsumeFlags();
-  if (inputContext.getState().mouseButtonState != 0) {
-    consumeFlags.mergeWith(ConsumeFlags{
-        .wantsPointerInput = true,
-        .wantsKeyboardInput = true,
-        .requestFocus = true,
-    });
-  }
-
-  for (auto &event : inputContext.getEvents()) {
+  for (auto &ce : inputContext.getEvents()) {
     std::visit(
         [&](auto &&event) {
           using T = std::decay_t<decltype(event)>;
           if constexpr (std::is_same_v<T, KeyEvent>) {
+            if ((!canReceiveInput || ce.isConsumed()) && event.pressed)
+              return;
+
+            bool passthrough = false;
             switch (event.key) {
             case SDL_KeyCode::SDLK_w:
               inputState.keyboardZAxis.pos = event.pressed;
@@ -94,8 +90,16 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
             case SDL_KeyCode::SDLK_q:
               inputState.keyboardYAxis.neg = event.pressed;
               break;
+            default:
+              passthrough = true;
+              break;
             }
+            if (!passthrough)
+              ce.consume(inputContext.getHandler());
           } else if constexpr (std::is_same_v<T, PointerButtonEvent>) {
+            if ((!canReceiveInput || ce.isConsumed()) && event.pressed)
+              return;
+
             inputState.pointer.position = float2(event.pos.x, event.pos.y);
             switch (event.index) {
             case SDL_BUTTON_LEFT:
@@ -108,12 +112,18 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
               inputState.pointer.tertiaryButton = event.pressed;
               break;
             }
+            ce.consume(inputContext.getHandler());
           } else if constexpr (std::is_same_v<T, ScrollEvent>) {
+            if (!canReceiveInput || ce.isConsumed())
+              return;
             inputState.mouseWheel += float(event.delta);
           }
         },
-        event);
+        ce.event);
   }
+
+  if (inputState.pointer.primaryButton | inputState.pointer.secondaryButton | inputState.pointer.tertiaryButton)
+    inputContext.requestFocus();
 
   inputState.deltaTime = inputContext.getDeltaTime();
 }
@@ -244,8 +254,6 @@ struct FreeCameraShard {
   }
 };
 
-
-
 struct TargetCameraUpdate {
   static SHTypesInfo inputTypes() { return TargetCameraStateTable::Type; }
   static SHTypesInfo outputTypes() { return TargetCameraStateTable::Type; }
@@ -344,6 +352,11 @@ struct TargetCameraFromLookAt {
   PARAM_IMPL(PARAM_IMPL_FOR(_target), PARAM_IMPL_FOR(_position));
 
   TargetCameraStateTable _result;
+
+  TargetCameraFromLookAt() {
+    _target = toVar(float3());
+    _position = toVar(float3(2.5f, 2.5f, 5.0f));
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     float3 pos = toFloat3(_position.get());

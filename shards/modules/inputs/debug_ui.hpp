@@ -6,6 +6,7 @@
 
 namespace shards::input::debug {
 using OpaqueEvent = void *;
+using OpaqueLayer = void*;
 
 struct ConsumeFlags {
   bool canReceiveInput;
@@ -15,14 +16,34 @@ struct ConsumeFlags {
 };
 
 struct Layer {
-  bool focused;
   int priority;
   const char *name;
+  bool hasFocus{};
+};
 
-  OpaqueEvent *debugEvents;
-  size_t numDebugEvents;
+struct TaggedEvent {
+  size_t frameIndex;
+  OpaqueEvent evt;
+};
 
-  ConsumeFlags consumeFlags;
+// Persistent
+struct DebugUIOpts {
+  bool showKeyboardEvents;
+  bool showPointerEvents;
+  bool showPointerMoveEvents;
+};
+
+struct DebugUIParams {
+  DebugUIOpts &opts;
+  // A list of all registered input handlers/layers
+  const Layer *layers;
+  size_t numLayers;
+  // The list of events
+  TaggedEvent *events;
+  size_t numEvents;
+  // Set this to clear events
+  bool clearEvents;
+  size_t currentFrame;
 };
 
 } // namespace shards::input::debug
@@ -33,14 +54,11 @@ namespace shards::input::debug {
 
 struct IDebug {
   virtual const char *getDebugName() = 0;
-  virtual const std::vector<input::ConsumableEvent> *getDebugFrame(size_t frameIndex) = 0;
-  virtual size_t getLastFrameIndex() const = 0;
-  virtual ConsumeFlags getDebugConsumeFlags() const = 0;
 };
 } // namespace shards::input::debug
 extern "C" {
 struct SHVar;
-void shards_input_showDebugUI(SHVar *context, shards::input::debug::Layer *layers, size_t layerCount);
+void shards_input_showDebugUI(SHVar *context, shards::input::debug::DebugUIParams &params);
 }
 #else
 extern "C" {
@@ -48,6 +66,9 @@ struct SHVar;
 const char *shards_input_eventToString(shards::input::debug::OpaqueEvent);
 void shards_input_freeString(const char *str);
 bool shards_input_eventIsConsumed(shards::input::debug::OpaqueEvent);
+void* shards_input_eventConsumedBy(shards::input::debug::OpaqueEvent);
+shards::input::debug::OpaqueLayer shards_input_eventConsumedBy(shards::input::debug::OpaqueEvent);
+const char* shards_input_layerName(shards::input::debug::OpaqueLayer);
 }
 #endif
 #endif /* D9559C5B_F728_4B73_B3D2_372D625A794D */

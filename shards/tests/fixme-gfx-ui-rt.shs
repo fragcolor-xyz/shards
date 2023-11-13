@@ -44,13 +44,13 @@
   Inputs.Detached(
     window-ctx Name: "Child UI" Priority: 2
     Contents: {
-      UI(ui-queue {
+      UI({
         ; UI Content
         UI.Window(Contents: {
           "This is UI inside a render target" | UI.Label
           UI.TextField(Variable: text1 Multiline: true)
         })
-      })
+      }) | UI.Render(ui-queue)
     }
   )
 
@@ -93,13 +93,13 @@
   Inputs.Detached(
     window-ctx Name: "Child UI" Priority: 2
     Contents: {
-      UI(ui-queue {
+      UI({
         ; UI Content
         UI.Window(Contents: {
           "This is UI inside a render target" | UI.Label
           UI.TextField(Variable: text1 Multiline: true)
         })
-      })
+      }) | UI.Render(ui-queue)
     }
   )
 
@@ -140,7 +140,7 @@
       Inputs.Detached(
         window-ctx Name: "Main" Priority: 0
         Contents: {
-          UI(ui-draw-queue {
+          UI({
             ; UI Content
             UI.Window(Contents: {
               UI.Property(UIProperty::RemainingSpace) >= rt-region
@@ -166,7 +166,7 @@
             })
 
             Inputs.DebugUI
-          })
+          }) | UI.Render(ui-draw-queue)
         }
       )
 

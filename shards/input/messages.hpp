@@ -51,7 +51,11 @@ inline std::partial_ordering operator<=>(const Message &a, const Message &b) {
       },
       a);
 }
+
+#if !SH_ANDROID
+// Some platforms need these, on android 33 they don't compile
 inline bool operator==(const Message &a, const Message &b) { return a <=> b == std::partial_ordering::equivalent; }
+#endif
 
 } // namespace shards::input
 #endif /* D10804BA_9B46_4108_A3F4_80EC952E3E2B */

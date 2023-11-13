@@ -3,10 +3,12 @@
 
 #include "foundation.hpp"
 #include <shards/common_types.hpp>
+#include <shards/core/exposed_type_utils.hpp>
 #include "runtime.hpp"
 #include "into_wire.hpp"
 #include <shards/shards.h>
 #include <shards/shards.hpp>
+#include <unordered_set>
 
 namespace shards {
 
@@ -15,6 +17,9 @@ DECL_ENUM_INFO(BranchFailureBehavior, BranchFailure, 'brcB');
 
 // Runs wires in a separate mesh while capturing variables
 struct Brancher {
+public:
+  using IgnoredVariables = std::unordered_set<std::string_view>;
+
   std::shared_ptr<SHMesh> mesh = SHMesh::make();
   std::vector<std::shared_ptr<SHWire>> wires;
   bool captureAll = false;
@@ -22,14 +27,18 @@ struct Brancher {
 
 private:
   std::unordered_map<std::string_view, SHExposedTypeInfo> _collectedRequirements;
+  std::unordered_set<std::string_view> _copyBySerialize;
   ExposedInfo _mergedRequirements;
   ExposedInfo _shared;
+  mutable std::vector<SHTypeInfo> _cachedObjectTypes;
 
 public:
   ~Brancher() { cleanup(nullptr); }
 
   // Adds a single wire or sequence of shards as a looped wire
-  void addRunnable(const SHVar &var) { wires.push_back(IntoWire{}.var(var)); }
+  void addRunnable(const SHVar &var, const char *defaultWireName = "inline-wire") {
+    wires.push_back(IntoWire{}.defaultWireName(defaultWireName).var(var));
+  }
 
   // Sets the runnables (wires or shards)
   void setRunnables(const SHVar &var) {
@@ -40,19 +49,52 @@ public:
   SHExposedTypesInfo requiredVariables() { return (SHExposedTypesInfo)_mergedRequirements; }
 
   const shards::ExposedInfo &getMergedRequirements() const { return _mergedRequirements; }
+  const std::unordered_set<std::string_view> &getCopyBySerialize() const { return _copyBySerialize; }
 
-  void compose(const SHInstanceData &data) {
-    _collectedRequirements.clear();
+  struct ShareableObjectFlags {
+    bool sharable{};
+    bool copyBySerialize{};
+  };
+  ShareableObjectFlags getSharableObjectFlags(const SHTypeInfo &type, bool shareObjectVariables) const {
+    _cachedObjectTypes.clear();
+    getObjectTypes(_cachedObjectTypes, type);
 
-    for (auto &wire : wires) {
-      composeSubWire(data, wire);
+    bool copyBySerialize = false;
+    for (auto &objType : _cachedObjectTypes) {
+      auto *ti = findObjectInfo(objType.object.vendorId, objType.object.typeId);
+      if (ti && ti->deserialize && ti->serialize) {
+        copyBySerialize = true;
+      } else if (!ti || !ti->isThreadSafe) {
+        return ShareableObjectFlags{false, false};
+      }
     }
 
-    // Merge requirements from compose result
-    for (auto &wire : wires) {
-      for (auto &req : wire->composeResult->requiredInfo) {
-        _mergedRequirements.push_back(req);
+    return ShareableObjectFlags{true, copyBySerialize};
+  }
+
+  void compose(const SHInstanceData &data, const ExposedInfo &shared_ = ExposedInfo{}, const IgnoredVariables &ignored = {},
+               bool shareObjectVariables = true) {
+    _collectedRequirements.clear();
+    _copyBySerialize.clear();
+
+    SHInstanceData tmpData = data;
+    ExposedInfo shared{shared_};
+    for (auto &type : data.shared) {
+      if (ignored.find(type.name) != ignored.end())
+        continue;
+      if (!shareObjectVariables) {
+        ShareableObjectFlags flags = getSharableObjectFlags(type.exposedType, shareObjectVariables);
+        if (!flags.sharable)
+          continue;
+        if (flags.copyBySerialize)
+          _copyBySerialize.insert(type.name);
       }
+      shared.push_back(type);
+    }
+    tmpData.shared = SHExposedTypesInfo(shared);
+
+    for (auto &wire : wires) {
+      composeSubWire(tmpData, wire);
     }
 
     if (captureAll) {
@@ -71,8 +113,13 @@ public:
       }
     }
 
+    // Clear exposed flags, since these are copies
+    for (auto &req : _mergedRequirements._innerInfo) {
+      req.exposed = false;
+    }
+
     // Copy shared
-    _shared = ExposedInfo(data.shared);
+    _shared = ExposedInfo(_mergedRequirements);
     mesh->instanceData.shared = (SHExposedTypesInfo)_shared;
 
     mesh->instanceData.shared = (SHExposedTypesInfo)_mergedRequirements;
