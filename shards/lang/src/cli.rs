@@ -201,6 +201,8 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
     crate::ast_visitor::process(&in_str, &mut v)?;
   }
 
+  std::io::stdout().flush()?; 
+
   Ok(())
 }
 
