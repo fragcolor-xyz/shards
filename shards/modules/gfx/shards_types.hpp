@@ -71,7 +71,7 @@ struct Container {
 
   OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
-  OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue)
+  OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
   OBJECT('tex_', "GFX.Texture2D", Texture, TexturePtr)
   OBJECT('texc', "GFX.TextureCube", TextureCube, TexturePtr)
   OBJECT('smpl', "GFX.Sampler", Sampler, SHSampler)
@@ -285,7 +285,7 @@ struct Container {
   OBJECT('pips', "GFX.PipelineStep", PipelineStep, PipelineStepPtr)
   static inline Type PipelineStepSeq = Type::SeqOf(PipelineStep);
 
-  OBJECT('view', "GFX.View", View, SHView, &SHView::serialize, &SHView::deserialize);
+  OBJECT('view', "GFX.View", View, SHView, &SHView::serialize, &SHView::deserialize, nullptr);
   static inline Type ViewSeq = Type::SeqOf(View);
 
   OBJECT('mat_', "GFX.Material", Material, SHMaterial)

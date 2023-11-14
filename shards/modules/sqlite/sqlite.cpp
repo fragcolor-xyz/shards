@@ -1,3 +1,5 @@
+#include "shards/shards.h"
+#include "shards/shards.hpp"
 #include <cstdint>
 #include <shards/core/module.hpp>
 #include <shards/core/foundation.hpp>
@@ -85,6 +87,11 @@ struct Base {
   std::string_view _dbName{"shards.db"};
   bool ready = false; // mesh is the owner so we don't need cleanup
 
+  void compose(SHInstanceData &data) {
+    if (data.onWorkerThread)
+      throw ComposeError("Can not run on worker thread");
+  }
+
   void ensureDb(SHContext *context) {
     if (!ready) {
       auto storageKey = fmt::format("DB.Connection_{}", _dbName);
@@ -103,7 +110,18 @@ struct Query : public Base {
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_query), PARAM_IMPL_FOR(_dbName));
 
-  void cleanup(SHContext* context) {
+  std::unique_ptr<Statement> prepared;
+
+  TableVar output;
+  TableVar emptyOutput; // this is a trick to avoid clearing the output on every activation if empty
+  std::vector<SeqVar *> colSeqs;
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    Base::compose(data);
+    return outputTypes().elements[0];
+  }
+
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
 
     if (_connection) {
@@ -114,8 +132,6 @@ struct Query : public Base {
     }
   }
 
-  std::unique_ptr<Statement> prepared;
-
   void warmup(SHContext *context) {
     if (_dbName.valueType != SHType::None) {
       Base::_dbName = SHSTRVIEW(_dbName);
@@ -125,10 +141,6 @@ struct Query : public Base {
 
     PARAM_WARMUP(context);
   }
-
-  TableVar output;
-  TableVar emptyOutput; // this is a trick to avoid clearing the output on every activation if empty
-  std::vector<SeqVar *> colSeqs;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
@@ -251,11 +263,12 @@ struct Transaction : public Base {
   PARAM_IMPL(PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName));
 
   SHTypeInfo compose(SHInstanceData &data) {
+    Base::compose(data);
     _queries.compose(data);
     return data.inputType;
   }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   void warmup(SHContext *context) {
     if (_dbName.valueType != SHType::None) {
@@ -318,7 +331,12 @@ struct LoadExtension : public Base {
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_extPath), PARAM_IMPL_FOR(_dbName));
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  SHTypeInfo compose(SHInstanceData &data) {
+    Base::compose(data);
+    return data.inputType;
+  }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   void warmup(SHContext *context) {
     if (_dbName.valueType != SHType::None) {
@@ -353,7 +371,15 @@ struct RawQuery : public Base {
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dbName));
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  TableVar output;
+  std::vector<SeqVar *> colSeqs;
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    Base::compose(data);
+    return outputTypes().elements[0];
+  }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   void warmup(SHContext *context) {
     if (_dbName.valueType != SHType::None) {
@@ -364,9 +390,6 @@ struct RawQuery : public Base {
 
     PARAM_WARMUP(context);
   }
-
-  TableVar output;
-  std::vector<SeqVar *> colSeqs;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);

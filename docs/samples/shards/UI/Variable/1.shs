@@ -6,11 +6,10 @@ GFX.MainWindow(
       @f4(-1 0 0 1) >= my-var
     })
     UI(
-      ui-draw-queue
       UI.CentralPanel(
         UI.Variable(my-var)
       )
-    )
+    ) | UI.Render(ui-draw-queue)
 
     GFX.Render(Steps: render-steps)
   }

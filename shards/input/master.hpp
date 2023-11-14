@@ -9,6 +9,8 @@
 #include <shared_mutex>
 #include <mutex>
 #include <atomic>
+#include <thread>
+#include <core/function.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 
 namespace gfx {
@@ -48,10 +50,12 @@ struct FocusTracker {
   }
 };
 
+struct InputMaster;
+
 struct IInputHandler {
   virtual ~IInputHandler() = default;
   virtual int getPriority() const { return 0; }
-  virtual void handle(const InputState &state, std::vector<ConsumableEvent> &events, FocusTracker &focusTracker) = 0;
+  virtual void handle(InputMaster &master) = 0;
 };
 
 struct InputMaster {
@@ -59,8 +63,11 @@ private:
   std::vector<std::weak_ptr<IInputHandler>> handlers;
   std::vector<std::shared_ptr<IInputHandler>> handlersLocked;
   std::shared_mutex mutex;
+  std::vector<shards::Function<void(InputMaster &)>> postInputCallbacks;
 
-  EventBuffer<Frame<ConsumableEvent>> eventBuffer;
+  // EventBuffer<Frame<ConsumableEvent>> eventBuffer;
+
+  std::vector<ConsumableEvent> events;
 
   boost::lockfree::spsc_queue<Message> messageQueue;
 
@@ -71,21 +78,34 @@ private:
 
   bool terminateRequested{};
 
+  std::thread::id thisThreadId{};
+
 public:
   InputMaster();
   ~InputMaster();
 
   bool isTerminateRequested() const { return terminateRequested; }
 
-  void postMessage(const Message &message) { messageQueue.push(message); }
+  void postMessage(const Message &message);
 
   void addHandler(std::shared_ptr<IInputHandler> ptr) {
     std::unique_lock<decltype(mutex)> l(mutex);
     handlers.emplace_back(ptr);
   }
 
+  void removeHandler(std::shared_ptr<IInputHandler> ptr) {
+    std::unique_lock<decltype(mutex)> l(mutex);
+    auto pred = [&](const auto &weak) { return weak.expired() || weak.lock() == ptr; };
+    handlers.erase(std::remove_if(handlers.begin(), handlers.end(), pred), handlers.end());
+  }
+
   void update(gfx::Window &window);
   void reset() {}
+
+  // Only used for debug UI
+  void addPostInputCallback(shards::Function<void(InputMaster &)> callback) {
+    postInputCallbacks.emplace_back(std::move(callback));
+  }
 
   // Only use from main thread
   void getHandlers(std::vector<std::shared_ptr<IInputHandler>> &outVec) {
@@ -94,9 +114,11 @@ public:
   }
 
   const InputState &getState() const { return state; }
-  const std::vector<Event> &getEvents() const { return input.virtualInputEvents; }
+  std::vector<ConsumableEvent> &getEvents() { return events; }
+  FocusTracker &getFocusTracker() { return focusTracker; }
 
 private:
+  void handleMessage(const Message &message);
   void updateAndSortHandlers();
 
   // Assumes already locked

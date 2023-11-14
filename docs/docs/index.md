@@ -3,11 +3,11 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![Fragnova Logo](assets/Fragnova-Logomark-01.png){ width=300 }
+![Fragcolor Logo](assets/Fragcolor-Logomark-01.png){ width=300 }
 
-# Welcome to Fragnova documentation!
+# Welcome to Fragcolor documentation!
 
-Here at Fragnova, we're passionate about the potential of technology to change the way we interact with the world around us. 
+Here at Fragcolor, we're passionate about the potential of technology to change the way we interact with the world around us.
 
 We believe that we're on the brink of a major revolution, where traditional interfaces will be replaced by more flexible and intuitive virtual interfaces that can be seamlessly integrated into the user's environment.
 
@@ -16,7 +16,7 @@ To make this vision a reality, we're dedicated to creating programming tools tha
 
 <br>
 
-<span style="font-weight:200;font-size:30px"> Ready to step into the world of Fragnova? </span>
+<span style="font-weight:200;font-size:30px"> Ready to step into the world of Fragcolor? </span>
 
 [Download](./download/){ .md-button .md-button--primary }
 

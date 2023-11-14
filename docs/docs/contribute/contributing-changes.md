@@ -5,9 +5,9 @@ license: CC-BY-SA-4.0
 
 # Contributing changes
 
-Fragnova documentation exists under the [/docs](https://github.com/fragcolor-xyz/shards/tree/devel/docs) folder of the Shards repository.
+Fragcolor documentation exists under the [/docs](https://github.com/fragcolor-xyz/shards/tree/devel/docs) folder of the Shards repository.
 
-This guide will get you started with contributing documentation changes to Fragnova projects. We'll use the GitHub Desktop (GD) to deal with git as GD is easier to use than the git command line.
+This guide will get you started with contributing documentation changes to Fragcolor projects. We'll use the GitHub Desktop (GD) to deal with git as GD is easier to use than the git command line.
 
 Also, all these steps are valid for code contributions too.
 
@@ -106,7 +106,7 @@ Navigate to this path in your local browser to access the served site.
 
 Now we're ready to make some changes!
 
-As an exercise, let's change the case of the header's title text. Change 'Fragnova documentation' (sentence case) to 'Fragnova Documentation' (title case). Save the edit.
+As an exercise, let's change the case of the header's title text. Change 'Fragcolor documentation' (sentence case) to 'Fragcolor Documentation' (title case). Save the edit.
 
 Before the change:
 ![Edit the source file](assets/changes_change.png)

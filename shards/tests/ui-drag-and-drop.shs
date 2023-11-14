@@ -14,7 +14,7 @@
   })
 
   GFX.MainWindow(Title: "Drag and Drop" Width: 1280 Height: 720 Contents: {
-    UI(ui-draw-queue {
+    UI({
       UI.Property(UIProperty::ScreenSize) = screen-size
       screen-size | Math.Divide(2.0) = center
       94.0 = radius
@@ -86,7 +86,7 @@
           })
         })
       } Position: @f2(50 50) Order: Order::Middle)
-    })
+    }) | UI.Render(ui-draw-queue)
 
     GFX.Render(Steps: render-steps)
   })

@@ -16,5 +16,4 @@ inline shards::logging::Logger getLogger() {
 }
 }
 
-
 #endif /* C2052FE4_794D_41AC_8A5F_DE82A84C764C */

@@ -3,35 +3,37 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-<!-- TODO: Complete guides for Mac and Linux. -->
-
 # Getting Started
 
 !!! note
-    This guide is for new users unfamiliar with the installation process. 
+    This guide assists in setting up the development environment for our projects.
 
-    Click [here](#overview) to skip the tutorial and jump to the overview.
-
-Learn how to set up the development environment to start working with our projects!
-
+    For an overview, click [here](#overview).
 
 ## Setting up the C/C++ Compiler
 
-A compiler translates human-readable code into machine code. We will be setting up the C/C++ compiler so that our code written in the human-readable C++ language can be understood by the computers!
+### macOS
 
-=== "Windows"
+1. Install Xcode from the Mac App Store. This includes the Xcode IDE, Git, and necessary compilers.
+2. Open Terminal and install the necessary command line tools with:
+    ```bash
+    xcode-select --install
+    ```
+3. Install Homebrew, a package manager for macOS, with the following command:
+    ```bash
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    ```
+4. Use Homebrew to install additional tools:
+    ```bash
+    brew install cmake ninja llvm
+    ```
+5. Verify the installation of each tool by running `cmake --version`, `ninja --version`, and `llvm-config --version`.
 
-    Open up the Command Prompt.
+### Windows
 
-    ??? Tip
-        You can use the Windows Search Bar to find the Command Prompt application.
-        ![Search for the Command Prompt in the Window’s search bar.](assets/search-command-prompt.png)
-
-    Use the Command Prompt to install Chocolatey by following the instructions [here](https://docs.chocolatey.org/en-us/choco/setup#installing-chocolatey). Chocolatey is a package manager that simplifies the installation of the tools we will need.
-
-    We will now install the compiler and other build tools using Chocolatey.
-    In the Command Prompt, enter the following commands:
-
+1. Open Command Prompt.
+2. Install Chocolatey by following the instructions at [Chocolatey Installation](https://docs.chocolatey.org/en-us/choco/setup#installing-chocolatey).
+3. Install the compiler and build tools:
     ```cmd
     choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
     choco install -y ninja
@@ -39,283 +41,134 @@ A compiler translates human-readable code into machine code. We will be setting 
     refreshenv
     ```
 
-    !!! note
-        The above command will make `cmake` available to all users on the Windows machine. To only set it for the current user, replace `System` with `User`.
+    To install `cmake` for the current user only, replace `System` with `User`.
 
-    Next, we want to check that the tools were properly installed. Enter the following commands:
-
-    === "CMD"
+4. Verify the installation:
+    - For `cmake`, `ninja`, and `clang`, run:
         ```cmd
         cmake --version
         ninja --version
         clang --version
         ```
-    === "Output"
-        ```
-        cmake version 3.25.2
-        1.11.1
-        clang version 15.0.7
-        ```
-    
-    ??? help
-        If any of the above commands returned an error, it is possible that the `PATH` environment variable is not properly set.
-        Search for “Edit the system environment variables” in the Window’s search bar and select the option that appears.
+    - If any command returns an error, check the `PATH` environment variable.
 
-        !!! tip
-            You can also access the Environment Variables window from "Control Panel → System and Security → System → Advanced system settings".
+### Linux
 
-        Double-click on “Path” under “System variables”.
-
-        ![Double-click on “Path” under “System variables”](assets/system-environment-variables-path.png)
-
-        In the “Edit environment variable” window, check that paths to the installed tools are set as in the picture below.
-            
-        ![“Edit environment variable” window](assets/edit-environment-variable-path.png)
-        
-        If not, click on “New” to add the missing values.
-
-        !!! note
-            `ninja` is installed under `C:\ProgramData\chocolatey\bin`
-
-=== "Linux"
-
-    Install `cmake`, `ninja`, `clang` and other development dependencies using the package manager of your favorite distribution.
-
-    For example on Ubuntu, you can use the following commands:
-
-    ```bash
-    sudo apt install build-essential cmake ninja-build clang xorg-dev libdbus-1-dev libssl-dev mesa-utils
-    ```
-
+Install `cmake`, `ninja`, `clang`, and other development dependencies using your distribution's package manager. For Ubuntu:
+```bash
+sudo apt install build-essential cmake ninja-build clang xorg-dev libdbus-1-dev libssl-dev mesa-utils
+```
 
 ## Rust
 
-Rust is another programming language that we will be using. Install it from [here](https://www.rust-lang.org/tools/install). 
+Install Rust from [Rust Installation](https://www.rust-lang.org/tools/install).
 
-=== "Windows"
+### Common Instructions for Windows, Linux, and macOS
 
-    Open up the Command Prompt.
-
-    ??? Tip
-        You can use the Windows Search Bar to find the Command Prompt application.
-        ![Search for the Command Prompt in the Window’s search bar.](assets/search-command-prompt.png)
-
-    ??? help
-        You can check if Rust is properly installed by using `cargo --version` in the Command Prompt. 
-
-        If a version number is printed, your installation was successful!
-            ```
-            cargo --version
-            ```
-
-    We will be using the nightly version of Rust which is updated more frequently compared to the stable and beta versions. Install it with the following commands:
-        ```cmd
-        rustup toolchain install nightly
-        rustup +nightly target add x86_64-pc-windows-msvc
-        rustup default nightly-x86_64-pc-windows-msvc
-        ```
-
-=== "Linux"
-
-    !!! help
-        You can check if Rust is properly installed by using `cargo --version` in the Command Prompt. 
-
-        If a version number is printed, your installation was successful!
-            ```
-            cargo --version
-            ```
-
-    We will be using the nightly version of Rust which is updated more frequently compared to the stable and beta versions. Install it with the following commands:
-        ```bash
-        rustup toolchain install nightly
-        rustup +nightly target add x86_64-unknown-linux-gnu
-        rustup default nightly-x86_64-unknown-linux-gnu
-        ```
-
-To add support for building to web browsers, input the following command:
+1. Verify the Rust installation with `cargo --version`.
+2. Install the nightly version of Rust if required by your project:
+    ```bash
+    rustup toolchain install nightly
+    rustup +nightly target add <target-architecture>
     ```
+    Replace `<target-architecture>` with your system's architecture (e.g., `x86_64-pc-windows-msvc` for Windows, `x86_64-unknown-linux-gnu` for Linux).
+3. For web browser support, run:
+    ```bash
     rustup +nightly target add wasm32-unknown-unknown
     ```
+4. Regularly update Rust using `rustup update`.
 
-Use the `rustup update` command to update your installation. Since we are using the nightly release, you are encouraged to update often.
-    ```
-    rustup update
-    ```
+### Using a specific nightly version if needed
 
+Before building the project, ensure that you are using the correct version of the Rust toolchain as specified in the project's `rust.version` file. This file is located in the root directory of the project if a specific version is required.
 
-##  Git & GitHub
-
-Git is a system used for managing and tracking changes in your code. It is also known as a Version Control System (VCS). It makes it easier for collaborators to work together, and allows you to access our projects too!
-
-=== "Windows"
-
-    Install Git [here](https://git-scm.com/download). The installation settings can be left unchanged.
-
-    Alternatively, you can also use chocolatey:
-    ```cmd
-    choco install -y git
-    ```
-
-=== "Linux"
-
-    Install git with the following command:
+1. Navigate to the project's root directory.
+2. Install the specific Rust toolchain version required by the project:
     ```bash
-    sudo apt install git
+    cat rust.version | xargs rustup toolchain install
+    ```
+3. Set the installed toolchain as the default for the current project:
+    ```bash
+    cat rust.version | xargs rustup override set
     ```
 
-Although Git is powerful, it can be daunting to use on its own. Instead, we use GitHub, a service which employs Git’s version control with its own to make project collaboration much easier. 
+Now, proceed with the project-specific build instructions.
 
-We recommend that you use a [Git GUI Client](https://git-scm.com/downloads/guis) to facilitate your work by pruning off the manual input of code and making the version control process more visual.
+## Git & GitHub
 
-=== "Windows"
+Git is a distributed version control system essential for managing project codebases.
 
-    We will be using [GitHub Desktop](https://desktop.github.com/) for the tutorials. You can install it with the default settings, and create a GitHub account when prompted if you do not have one.
-    
-    Alternatively, you can also use chocolatey:
-    ```cmd
-    choco install -y github-desktop
-    ```
+### macOS
 
-    !!! note
-        Even though we recommend GitHub Desktop, feel free to use any GUI client of your choice!
+If not already installed with Xcode, install Git using Homebrew:
+```bash
+brew install git
+```
 
+### Windows
+
+Use Chocolatey for installation:
+```cmd
+choco install -y git
+```
+
+### Linux
+
+Install Git using:
+```bash
+sudo apt install git
+```
 
 ## Code Editor
 
-A code editor allows you to work with code more easily. We will be using Visual Studio Code (VS Code) for this tutorial.
+We recommend Visual Studio Code (VS Code) for this tutorial.
 
-=== "Windows"
-
-    You can download it [here](https://code.visualstudio.com/download), and install it with the default settings.
-
-    Alternatively, you can also use chocolatey:
-    ```cmd
-    choco install -y vscode
-    ```
-
-=== "Linux"
-
-    VS Code is available as a snap package, which can be installed with the following command:
-    ```bash
-    sudo snap install --classic code
-    ```
-
-    !!! note
-        Follow the [installation](https://code.visualstudio.com/docs/setup/linux#_installation) page for more details, and for other installation alternatives.
-
-!!! note
-    You are free to use any code editor of your choice, although you will have to complete steps of this tutorial through alternate means.
-
+Download and install VS Code from [VS Code Download](https://code.visualstudio.com/download)
 
 ### VS Code Extensions
 
-Launch Visual Studio Code and open the Extensions view (Ctrl+Shift+X). We will be installing a few extensions to facilitate our VS Code experience.
-
-![Installing the C/C++ extension from the Extensions Market](assets/install-c-cpp-extension.png)
-
-Search for and install the following extensions:
+Install the following extensions to enhance your development experience:
 
 1. C/C++
-
 2. rust-analyzer
-
-3. CodeLLDB 
-
+3. CodeLLDB
 4. Better TOML
-
-5. Calva
-
 6. CMake Tools
-
 7. YAML
-
+8. [Fragcolor Shards](https://marketplace.visualstudio.com/items?itemName=fragcolor.shards) - Direct link to the Fragcolor Shards extension on the VS Code Marketplace.
 
 ## Overview
 
-=== "Windows"
+Here is a quick overview of the setup process for Windows and Linux. Refer to the respective sections above for detailed instructions.
 
-    1. Install [Chocolatey](https://docs.chocolatey.org/en-us/choco/setup#installing-chocolatey).
+### macOS
 
-    2. Install `cmake`, `ninja` and `llvm` using Chocolatey.
-    ```cmd
-    choco install -y cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
-    choco install -y ninja
-    choco install -y llvm
-    refreshenv
-    ```
+1. Install Xcode and command line tools.
+2. Install Homebrew.
+3. Install `cmake`, `ninja`, and `llvm` using Homebrew.
+4. Install Rust and set up the nightly build.
+5. Install the Rust Web Assembly toolchain.
+6. Regularly update Rust.
+7. Install Git using Homebrew.
+8. Install VS Code and the recommended extensions.
 
-    3. Install [Rust](https://www.rust-lang.org/tools/install).
+### Windows
 
-    4. Install and set up the Rust nightly build.
-    ```cmd
-    rustup toolchain install nightly
-    rustup +nightly target add x86_64-pc-windows-msvc
-    rustup default nightly-x86_64-pc-windows-msvc
-    ```
+1. Install Chocolatey.
+2. Install `cmake`, `ninja`, and `llvm` with Chocolatey.
+3. Install Rust and set up the nightly build.
+4. Install the Rust Web Assembly toolchain.
+5. Regularly update Rust.
+6. Install Git and a Git GUI Client.
+7. Install VS Code and the recommended extensions.
 
-    5. Install the Rust Web Assembly toolchain.
-    ```cmd
-    rustup +nightly target add wasm32-unknown-unknown
-    ```
+### Linux
 
-    6. Update Rust.
-    ```cmd
-    rustup update
-    ```
-
-    7. Install [Git](https://git-scm.com/download).
-    ```cmd
-    choco install -y git
-    ```
-
-    8. Install [GitHub for Desktop](https://desktop.github.com/) or any other [Git GUI Client](https://git-scm.com/downloads/guis).
-    ```cmd
-    choco install -y github-desktop
-    ```
-
-    9. Install the [VS Code Editor](https://code.visualstudio.com/download).
-    ```cmd
-    choco install -y vscode
-    ```
-
-    10. Install [Extensions for Visual Studio Code](#vs-code-extensions).
-
-=== "Linux"
-
-    1. Install `cmake`, `ninja`, `clang` and other development dependencies.
-    ```bash
-    sudo apt install build-essential cmake ninja-build clang xorg-dev libdbus-1-dev libssl-dev mesa-utils
-    ```
-
-    2. Install [Rust](https://www.rust-lang.org/tools/install).
-
-    3. Install and set up the Rust nightly build.
-    ```bash
-    rustup toolchain install nightly
-    rustup +nightly target add x86_64-unknown-linux-gnu
-    rustup default nightly-x86_64-unknown-linux-gnu
-    ```
-
-    4. Install the Rust Web Assembly toolchain.
-    ```bash
-    rustup +nightly target add wasm32-unknown-unknown
-    ```
-
-    5. Update Rust.
-    ```bash
-    rustup update
-    ```
-
-    6. Install [Git](https://git-scm.com/download).
-    ```bash
-    sudo apt install git
-    ```
-
-    7. Install the [VS Code Editor](https://code.visualstudio.com/download).
-    ```bash
-    sudo snap install --classic code
-    ```
-
-    8. Install [Extensions for Visual Studio Code](#vs-code-extensions).
+1. Install development dependencies including `cmake`, `ninja`, and `clang`.
+2. Install Rust and set up the nightly build.
+3. Install the Rust Web Assembly toolchain.
+4. Regularly update Rust.
+5. Install Git.
+6. Install VS Code and the recommended extensions.
 
 --8<-- "includes/license.md"

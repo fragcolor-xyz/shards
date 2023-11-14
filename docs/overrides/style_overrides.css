@@ -18,7 +18,7 @@
 .md-typeset__table {
     min-width: 100%;
  }
- 
+
  .md-typeset table:not([class]) {
      display: table;
  }
@@ -47,7 +47,7 @@ article h2 {
 }
 
 /* custom light theme */
-[data-md-color-scheme="fragnova-light"] {
+[data-md-color-scheme="fragcolor-light"] {
     --md-primary-fg-color: #5A82E1;
     --md-typeset-a-color: #5A82E1;
     --md-accent-fg-color: #5FE5EB;

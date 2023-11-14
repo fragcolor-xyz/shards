@@ -481,6 +481,9 @@ struct Await : public BaseSubFlow {
 
   static SHParametersInfo parameters() { return _params; }
 
+  OwnedVar _output;
+  std::mutex mutex;
+
   void setParam(int index, const SHVar &value) { _shards = value; }
 
   SHVar getParam(int index) { return _shards; }
@@ -491,8 +494,6 @@ struct Await : public BaseSubFlow {
     dataCopy.onWorkerThread = true;
     return BaseSubFlow::compose(dataCopy);
   }
-
-  std::mutex mutex;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     bool locked = false;
@@ -508,14 +509,16 @@ struct Await : public BaseSubFlow {
         return Var::Empty; // return as there is some error or so going on
     } while (true);
 
-    return awaitne(
+    OwnedVar inputCopy = input;
+    _output = awaitne(
         context,
         [&] {
           SHVar output{};
-          _shards.activate(context, input, output);
+          _shards.activate(context, inputCopy, output);
           return output;
         },
         [] {});
+    return _output;
   }
 };
 

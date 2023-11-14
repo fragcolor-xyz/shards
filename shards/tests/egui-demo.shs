@@ -55,7 +55,7 @@
       {ui-draw-queue | GFX.ClearQueue}
 
       UI(
-        ui-draw-queue {
+        {
           UI.TopPanel(
             Contents: {
               "Top Panel" | UI.Label
@@ -96,8 +96,7 @@
 
           @window-with-panels()
         }
-      ) 
-      Assert.Is(@input_value Break: true)
+      ) | UI.Render(ui-draw-queue) 
 
       GFX.Render(Steps: render-steps)
     }

@@ -6,7 +6,6 @@
    (GFX.UIPass .ui-draw-queue) >> .render-steps)
 
   (UI
-   .ui-draw-queue
    (UI.CentralPanel
     (->
 

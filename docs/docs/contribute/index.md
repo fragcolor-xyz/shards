@@ -7,7 +7,7 @@ license: CC-BY-SA-4.0
 
 # Contribute
 
-Fragnova is a community-driven organization that thrives on collaboration and innovation. We have a bunch of exciting [projects](https://github.com/fragcolor-xyz) that are open to community contributions, and we would love for you to get involved!
+Fragcolor is a community-driven organization that thrives on collaboration and innovation. We have a bunch of exciting [projects](https://github.com/fragcolor-xyz) that are open to community contributions, and we would love for you to get involved!
 
 If you're interested in contributing to our projects, we've put together a guide that will help you get started. The guide will walk you through the process of setting up your development environment, which is the software and tools you'll need to work on our projects.
 

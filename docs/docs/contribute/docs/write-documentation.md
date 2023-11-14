@@ -9,7 +9,7 @@ license: CC-BY-SA-4.0
 
     Our documentation follows the [Microsoft Style Guide](https://docs.microsoft.com/en-us/style-guide/welcome/). Do refer to it if you are unsure of the documentation style!
 
-In this chapter, you will be learning how to write documentation for Fragnova.
+In this chapter, you will be learning how to write documentation for Fragcolor.
 
 Pre-requisites:
 
@@ -200,7 +200,7 @@ In this segment, we will learn how to edit the following:
 
 Editing these description texts will require looking at the source .cpp and .hpp files.
 
-#### Basic Description 
+#### Basic Description
 
 Firstly, locate the struct of the shard you wish to amend. For this tutorial, we will be using the `String.Join` shard as an example.
 
@@ -217,29 +217,29 @@ Firstly, locate the struct of the shard you wish to amend. For this tutorial, we
 
 3. Navigate to the struct in the same file to access the `help()` function. The basic description of the shard is located in the return statement and can be edited from there.
 
-    ![The basic description of the shard is located in the `help()` function.](assets/editing-re) 
+    ![The basic description of the shard is located in the `help()` function.](assets/editing-re)
 
 #### Input and Output
 
 Within the same struct, you can find the description text for the input and output within the `inputHelp()` and `outputHelp()` functions.
 
-![The descriptions of the input and output are located in the `inputHelp()` and `outputHelp()` functions.](assets/editing-ref-cpp-struct-input-output.png) 
+![The descriptions of the input and output are located in the `inputHelp()` and `outputHelp()` functions.](assets/editing-ref-cpp-struct-input-output.png)
 
 #### Parameters
 
 For the description of the parameters, look for the `parameters()` function within the struct.
 
 You will see either:
-    
+
 - The parameter description within the function,
 
-- OR a variable being returned. 
-    
+- OR a variable being returned.
+
 In the case of `String.Join`, a variable `params` is returned. Search for the variable used to find the description text of the parameters.
 
-![The descriptions of the parameters are placed within a params variable.](assets/editing-ref-cpp-struct-parameters.png) 
+![The descriptions of the parameters are placed within a params variable.](assets/editing-ref-cpp-struct-parameters.png)
 
-![The descriptions of the parameters are found within the params variable.](assets//editing-ref-cpp-struct-params.png) 
+![The descriptions of the parameters are found within the params variable.](assets//editing-ref-cpp-struct-params.png)
 
 ## Formatting the Docs
 

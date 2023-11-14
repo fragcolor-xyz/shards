@@ -6,7 +6,7 @@ license: CC-BY-SA-4.0
 # Start Documenting
 
 !!! note
-    This guide is for new users unfamiliar with the installation process. 
+    This guide is for new users unfamiliar with the installation process.
 
     Click [here](#overview) to skip the tutorial and jump to the overview.
 
@@ -37,7 +37,7 @@ By adding Python to PATH, it allows your terminals to be able to find and use Py
 
 ## MkDocs
 
-MkDocs is a static site generator that allows you to write documentation in markdown. 
+MkDocs is a static site generator that allows you to write documentation in markdown.
 
 ??? help "What is Markdown?"
     It is a formatting language used to stylize plain text. Take a look at how this segment is written in markdown!
@@ -85,7 +85,7 @@ Finally, install the following by running the given commands:
     pip install mkdocs-macros-plugin
     ```
 
-You are now ready to start writing documentation! We will learn how Fragnova's documentation is written in the next chapter.
+You are now ready to start writing documentation! We will learn how Fragcolor's documentation is written in the next chapter.
 
 ## Overview ##
 

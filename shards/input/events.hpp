@@ -5,6 +5,7 @@
 #include <SDL_keycode.h>
 #include <compare>
 #include <linalg.h>
+#include <optional>
 #include <variant>
 #include "../core/platform.hpp"
 #include <boost/container/string.hpp>
@@ -106,13 +107,38 @@ inline std::partial_ordering operator<=>(const Event &a, const Event &b) {
       },
       a);
 }
+
+#if !SH_ANDROID
+// Some platforms need these, on android 33 they don't compile
 inline bool operator==(const Event &a, const Event &b) { return a <=> b == std::partial_ordering::equivalent; }
+#endif
+
+inline bool isPointerEvent(const Event &event) {
+  return std::get_if<PointerMoveEvent>(&event) || std::get_if<PointerButtonEvent>(&event) || std::get_if<ScrollEvent>(&event);
+}
+
+inline bool isKeyEvent(const Event &event) {
+  return std::get_if<KeyEvent>(&event) || std::get_if<TextEvent>(&event) ||
+          std::get_if<TextCompositionEvent>(&event) || std::get_if<TextCompositionEndEvent>(&event);
+}
+
+struct IInputHandler;
+struct ConsumedTag {
+  std::weak_ptr<IInputHandler> handler;
+  ConsumedTag(std::weak_ptr<IInputHandler> handler) : handler(handler) {}
+};
 
 struct ConsumableEvent {
   Event event;
-  bool consumed = false;
+  std::optional<ConsumedTag> consumed;
 
   ConsumableEvent(const Event &event) : event(event) {}
+  bool isConsumed() const { return consumed.has_value(); }
+  void consume(std::weak_ptr<IInputHandler> by) {
+    if (isConsumed())
+      return;
+    consumed.emplace(by);
+  }
 };
 
 } // namespace shards::input

@@ -16,11 +16,13 @@ struct EguiInputTranslatorPrivate;
 
 #ifndef RUST_BINDGEN
 struct EguiInputTranslatorArgs {
-  const std::vector<shards::input::Event> &events;
+  const std::vector<shards::input::ConsumableEvent> &events;
   double time;
   float deltaTime;
   // The sizes of the input surface
   shards::input::InputRegion region;
+  // Have focus or no focus active
+  bool canReceiveInput;
   // The sub-section of the physical size that is mapped to this UI
   int4 mappedWindowRegion;
 };
@@ -53,8 +55,8 @@ public:
 
   // Resets the conversion output
   void begin(double time, float deltaTime);
-  // Takes the SDL event and return true when it was converted into an egui event
-  bool translateEvent(const shards::input::Event &event);
+  // Takes the input event and return true when it was converted into an egui event
+  bool translateEvent(const EguiInputTranslatorArgs &args, const shards::input::ConsumableEvent &event);
   // Finalizes the egui::Input result
   void end();
 
@@ -75,7 +77,7 @@ public:
   egui::Pos2 translatePointerPos(const egui::Pos2 &pos);
 
   // Applies egui output to update cursor pos, clipboard, etc.
-  void applyOutput(const egui::FullOutput &output);
+  void applyOutput(const egui::IOOutput &output);
 
   // Set or clear the position for the text cursor
   void updateTextCursorPosition(const egui::Pos2 *pos);

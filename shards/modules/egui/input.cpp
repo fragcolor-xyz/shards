@@ -119,7 +119,7 @@ egui::PointerButton translateMouseButton(uint32_t button) {
   }
 }
 
-bool EguiInputTranslator::translateEvent(const shards::input::Event &event) {
+bool EguiInputTranslator::translateEvent(const EguiInputTranslatorArgs &args, const shards::input::ConsumableEvent &event) {
   using egui::InputEvent;
   using egui::InputEventType;
 
@@ -141,44 +141,56 @@ bool EguiInputTranslator::translateEvent(const shards::input::Event &event) {
       [&](auto &arg) {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, PointerMoveEvent>) {
+          if (!args.canReceiveInput || event.isConsumed())
+            return;
           auto &oevent = newEvent(InputEventType::PointerMoved).pointerMoved;
           oevent.pos = translatePointerPos(updateCursorPosition(arg.pos.x, arg.pos.y));
         } else if constexpr (std::is_same_v<T, PointerButtonEvent>) {
-          auto &oevent = newEvent(InputEventType::PointerButton).pointerButton;
-          oevent.pos = translatePointerPos(updateCursorPosition(arg.pos.x, arg.pos.y));
-          oevent.button = translateMouseButton(arg.index);
-          oevent.pressed = arg.pressed;
-          oevent.modifiers = translateModifierKeys(arg.modifiers);
+          if ((args.canReceiveInput && !event.isConsumed()) || !arg.pressed) {
+            auto &oevent = newEvent(InputEventType::PointerButton).pointerButton;
+            oevent.pos = translatePointerPos(updateCursorPosition(arg.pos.x, arg.pos.y));
+            oevent.button = translateMouseButton(arg.index);
+            oevent.pressed = arg.pressed;
+            oevent.modifiers = translateModifierKeys(arg.modifiers);
+          }
         } else if constexpr (std::is_same_v<T, ScrollEvent>) {
+          if (!args.canReceiveInput || event.isConsumed())
+            return;
           auto &oevent = newEvent(InputEventType::Scroll).scroll;
           oevent.delta = egui::Pos2{0.0f, arg.delta};
         } else if constexpr (std::is_same_v<T, KeyEvent>) {
-          auto &oevent = newEvent(InputEventType::Key).key;
-          oevent.key = SDL_KeyCode(arg.key);
-          oevent.pressed = arg.pressed;
-          oevent.modifiers = translateModifierKeys(arg.modifiers);
-          oevent.repeat = arg.repeat > 0;
-          if (arg.repeat) {
-            oevent.repeat = true;
-          }
+          if ((args.canReceiveInput && !event.isConsumed()) || !arg.pressed) {
+            auto &oevent = newEvent(InputEventType::Key).key;
+            oevent.key = SDL_KeyCode(arg.key);
+            oevent.pressed = arg.pressed;
+            oevent.modifiers = translateModifierKeys(arg.modifiers);
+            oevent.repeat = arg.repeat > 0;
+            if (arg.repeat) {
+              oevent.repeat = true;
+            }
 
-          if (arg.pressed) {
-            if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_c) {
-              newEvent(InputEventType::Copy);
-            } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_v) {
-              auto &evt = newEvent(InputEventType::Paste);
-              evt.paste.str = strings.emplace_back(SDL_GetClipboardText()).c_str();
-            } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_x) {
-              newEvent(InputEventType::Cut);
+            if (arg.pressed) {
+              if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_c) {
+                newEvent(InputEventType::Copy);
+              } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_v) {
+                auto &evt = newEvent(InputEventType::Paste);
+                evt.paste.str = strings.emplace_back(SDL_GetClipboardText()).c_str();
+              } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_x) {
+                newEvent(InputEventType::Cut);
+              }
             }
           }
         } else if constexpr (std::is_same_v<T, TextEvent>) {
+          if (!args.canReceiveInput || event.isConsumed())
+            return;
           if (imeComposing) {
             imeComposing = false;
           }
           auto &oevent = newEvent(InputEventType::Text).text;
           oevent.text = arg.text.c_str();
         } else if constexpr (std::is_same_v<T, TextCompositionEvent>) {
+          if (!args.canReceiveInput || event.isConsumed())
+            return;
           if (!imeComposing) {
             (void)newEvent(InputEventType::CompositionStart).compositionStart;
             imeComposing = true;
@@ -188,12 +200,15 @@ bool EguiInputTranslator::translateEvent(const shards::input::Event &event) {
             oevent.text = arg.text.c_str();
           }
         } else if constexpr (std::is_same_v<T, TextCompositionEndEvent>) {
+          // Check if it's safe to ignore checks here
+          // if (!args.canReceiveInput || event.isConsumed())
+          //   return;
           auto &oevent = newEvent(InputEventType::CompositionEnd).text;
           oevent.text = arg.text.c_str();
           imeComposing = false;
         }
       },
-      event);
+      event.event);
   return handled;
 }
 
@@ -209,7 +224,7 @@ const egui::Input *EguiInputTranslator::translateFromInputEvents(const EguiInput
   begin(args.time, args.deltaTime);
   setupInputRegion(args.region, args.mappedWindowRegion);
   for (const auto &event : args.events)
-    translateEvent(event);
+    translateEvent(args, event);
   end();
   return getOutput();
 }
@@ -223,11 +238,7 @@ egui::Pos2 EguiInputTranslator::translatePointerPos(const egui::Pos2 &pos) {
   };
 }
 
-void EguiInputTranslator::applyOutput(const egui::FullOutput &output) {
-  // TODO
-  // if (window)
-  //   updateTextCursorPosition(*window, output.textCursorPosition);
-  // updateTextCursorPosition(
+void EguiInputTranslator::applyOutput(const egui::IOOutput &output) {
   updateTextCursorPosition(output.textCursorPosition);
 
   if (output.copiedText)

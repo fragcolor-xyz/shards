@@ -16,10 +16,12 @@ struct EguiRenderer {
 
   EguiRenderer();
 
+  void applyTextureUpdatesOnly(const egui::RenderOutput &output);
+
   // clipGeometry controls settings of screen space clip rectangles based on egui
-  void render(const egui::FullOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue,
+  void render(const egui::RenderOutput &output, const float4x4 &rootTransform, const gfx::DrawQueuePtr &drawQueue,
               bool clipGeometry = true);
-  void renderNoTransform(const egui::FullOutput &output, const gfx::DrawQueuePtr &drawQueue);
+  void renderNoTransform(const egui::RenderOutput &output, const gfx::DrawQueuePtr &drawQueue);
 
   static EguiRenderer *create();
   static void destroy(EguiRenderer *renderer);

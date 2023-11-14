@@ -58,7 +58,7 @@
       | Math.MatMul((time | Math.Multiply(0.9) | Math.AxisAngleZ | Math.Rotation)) ; Rotation Z
       | GFX.Drawable(Mesh: mesh) | GFX.Draw(queue)
 
-      UI(ui-draw-queue {
+      UI({
           UI.Window(Contents: {
             UI.Horizontal({
               "FPS:" | UI.Label | UI.FloatSlider(Variable: fps Min: 5.0 Max: 240.0)
@@ -75,7 +75,7 @@
             })
             
           })
-      })
+      }) | UI.Render(ui-draw-queue)
 
       GFX.Render(Steps: render-steps View: view)
     })
