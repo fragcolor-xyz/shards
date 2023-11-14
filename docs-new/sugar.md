@@ -121,7 +121,7 @@ Const(1) | Math.Add(x) | Assert.Is(3)
 
 **Fully Explicit Shard:**
 ```shards
-Const(1) | Math.Add(1) | Assert.Is(3)
+Const(1) | Math.Add(2) | Assert.Is(3)
 ```
 
 **Syntax Sugar Equivalent:**
