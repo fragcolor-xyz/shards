@@ -15,7 +15,7 @@ egui = { version = "0.22.0", features = ["persistence"] }
 egui_commonmark = { version = "0.7.3" }
 egui_dock = { version = "0.6.1" }
 egui_extras = { version = "0.22.0" }
-egui_memory_editor = { version = "0.2.4" }
+egui_memory_editor = { version = "=0.2.5" }
 syntect = { version = "5.0.0", default-features = false, features = [
     "default-fancy",
 ] }
