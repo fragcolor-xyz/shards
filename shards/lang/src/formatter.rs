@@ -1,3 +1,9 @@
+use std::{
+  fs::{self, File},
+  io::Read,
+  path::{Path, PathBuf},
+};
+
 use crate::ast_visitor::Visitor;
 use pest::iterators::Pair;
 
@@ -30,6 +36,8 @@ pub struct FormatterVisitor<'a> {
   context_stack: Vec<Context>,
   input: String,
 }
+
+struct TableFormat {}
 
 enum UserLine {
   Newline,
@@ -570,5 +578,74 @@ impl<'a> Visitor for FormatterVisitor<'a> {
   fn v_take_table(&mut self, pair: Pair<Rule>) {
     let str = self.filter(pair.as_str());
     self.write_atom(&str);
+  }
+}
+
+pub fn format_str(input: &str) -> Result<String, crate::error::Error> {
+  let mut buf = std::io::BufWriter::new(Vec::new());
+  let mut v = FormatterVisitor::new(&mut buf, &input);
+
+  crate::ast_visitor::process(&input, &mut v)?;
+
+  Ok(String::from_utf8(buf.into_inner()?)?)
+}
+
+fn format_file_validate(input_path: &Path) -> Result<(), crate::error::Error> {
+  let input_str = fs::read_to_string(input_path)?;
+  let expected = input_path.with_extension("expected.shs");
+
+  if let Ok(f) = File::open(expected.clone()) {
+    eprintln!("Validating test {:?} against {:?}", input_path, expected);
+
+    let mut f = f;
+    let mut expected_str = String::new();
+    f.read_to_string(&mut expected_str)?;
+
+    let formatted = format_str(&input_str)?;
+    if formatted != expected_str {
+      return Err(format!("Test output does not match, was: {}", formatted).into());
+    }
+
+    let reformatted = format_str(&formatted)?;
+    if reformatted != formatted {
+      return Err(
+        format!(
+          "Formatted output changes after formatting twice: {}",
+          reformatted
+        )
+        .into(),
+      );
+    }
+  } else {
+    eprintln!("Generating expected result for test {:?}", input_path);
+    let formatted = format_str(&input_str)?;
+    fs::write(expected, formatted)?;
+  }
+
+  Ok(())
+}
+
+pub fn run_tests() -> Result<(), crate::error::Error> {
+  let mut any_failure = false;
+  let test_files = fs::read_dir(".")?;
+  for file in test_files {
+    let p = &file?.path();
+    if !p
+      .extension()
+      .is_some_and(|x| x.to_ascii_lowercase() == "shs") && !p.ends_with(".expected.shs")
+    {
+      continue;
+    }
+
+    if let Err(e) = format_file_validate(p) {
+      eprintln!("Test {:?} failed: {}", p, e);
+      any_failure = true
+    }
+  }
+
+  if any_failure {
+    Err("Test failures".into())
+  } else {
+    Ok(())
   }
 }

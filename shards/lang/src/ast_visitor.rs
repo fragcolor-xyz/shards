@@ -37,15 +37,12 @@ pub trait Visitor {
   fn v_take_seq(&mut self, pair: Pair<Rule>);
 }
 
-#[derive(Default)]
-pub struct Env {}
-
 fn process_take_seq<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   v.v_take_seq(pair);
   Ok(())
 }
 
-fn process_param<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_param<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   let span = pair.as_span();
   if pair.as_rule() != Rule::Param {
     return Err(fmt_errp("Expected a Param rule", &pair));
@@ -68,7 +65,6 @@ fn process_param<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
             .next()
             .ok_or(fmt_err("Expected a Value in Param", &span))?,
           v,
-          e,
         )?;
         Ok(())
       })());
@@ -82,7 +78,6 @@ fn process_param<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
             .next()
             .ok_or(fmt_err("Expected a Value in Param", &span))?,
           v,
-          e,
         )?;
         Ok(())
       })());
@@ -91,11 +86,11 @@ fn process_param<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
   result.expect("Visitor didn't call v_param inner")
 }
 
-fn process_params<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<Vec<()>, Error> {
-  pair.into_inner().map(|x| process_param(x, v, e)).collect()
+fn process_params<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<Vec<()>, Error> {
+  pair.into_inner().map(|x| process_param(x, v)).collect()
 }
 
-fn process_function<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_function<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   let span = pair.as_span();
 
   let mut inner = pair.clone().into_inner();
@@ -113,7 +108,7 @@ fn process_function<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
           match next {
             Some(pair) => {
               if pair.as_rule() == Rule::Params {
-                Some(process_params(pair, v, e)?)
+                Some(process_params(pair, v)?)
               } else {
                 return Err(fmt_errp("Expected Params in Shard", &pair));
               }
@@ -127,7 +122,7 @@ fn process_function<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
           match next {
             Some(pair) => {
               if pair.as_rule() == Rule::Params {
-                Some(process_params(pair, v, e)?)
+                Some(process_params(pair, v)?)
               } else {
                 return Err(fmt_errp("Expected Params in Shard", &pair));
               }
@@ -147,7 +142,7 @@ fn process_function<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
   result
 }
 
-fn process_sequence<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_sequence<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   let mut result: Option<Result<(), Error>> = None;
 
   let span = pair.as_span();
@@ -162,7 +157,6 @@ fn process_sequence<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
               .next()
               .ok_or(fmt_err("Expected a Value in the sequence", &span))?,
             v,
-            e,
           )
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -172,7 +166,7 @@ fn process_sequence<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
   result.expect("Visitor didn't call v_seq inner")
 }
 
-fn process_eval_expr<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_eval_expr<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   let mut result: Option<Result<(), Error>> = None;
 
   let span = pair.as_span();
@@ -184,14 +178,14 @@ fn process_eval_expr<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Re
 
   v.v_eval_expr(pair, inner.clone(), |v| {
     result = Some((|| {
-      process_sequence_no_visit(inner, v, e)?;
+      process_sequence_no_visit(inner, v)?;
       Ok(())
     })());
   });
   result.expect("Visitor didn't call v_eval_expr inner")
 }
 
-fn process_expr<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_expr<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   let mut result: Option<Result<(), Error>> = None;
 
   let span = pair.as_span();
@@ -203,14 +197,14 @@ fn process_expr<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<
 
   v.v_expr(pair, inner.clone(), |v| {
     result = Some((|| {
-      process_sequence_no_visit(inner, v, e)?;
+      process_sequence_no_visit(inner, v)?;
       Ok(())
     })());
   });
   result.expect("Visitor didn't call v_expr inner")
 }
 
-fn process_shards<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_shards<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   let mut result: Option<Result<(), Error>> = None;
 
   let span = pair.as_span();
@@ -222,7 +216,7 @@ fn process_shards<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Resul
 
   v.v_shards(pair.clone(), |v| {
     result = Some((|| {
-      process_sequence_no_visit(contents, v, e)?;
+      process_sequence_no_visit(contents, v)?;
       Ok(())
     })());
   });
@@ -232,15 +226,14 @@ fn process_shards<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Resul
 fn process_sequence_no_visit<V: Visitor>(
   pair: Pair<Rule>,
   v: &mut V,
-  e: &mut Env,
 ) -> Result<(), Error> {
   for stmt in pair.into_inner() {
-    process_statement(stmt, v, e)?;
+    process_statement(stmt, v)?;
   }
   Ok(())
 }
 
-fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   let span = pair.as_span();
 
   let matched: Result<bool, Error> = {
@@ -249,31 +242,31 @@ fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
       Rule::ConstValue => {
         // unwrap the inner rule
         let pair = pair.into_inner().next().unwrap(); // parsed qed
-        process_value(pair, v, e)?;
+        process_value(pair, v)?;
         Ok(true)
       }
       Rule::Seq => {
-        process_sequence(pair, v, e)?;
+        process_sequence(pair, v)?;
         Ok(true)
       }
       Rule::Table => {
-        process_table(pair, v, e)?;
+        process_table(pair, v)?;
         Ok(true)
       }
       Rule::Shards => {
-        process_shards(pair, v, e)?;
+        process_shards(pair, v)?;
         Ok(true)
       }
       Rule::Shard => {
-        let _f = process_function(pair, v, e)?;
+        let _f = process_function(pair, v)?;
         Ok(true)
       }
       Rule::EvalExpr => {
-        process_eval_expr(pair, v, e)?;
+        process_eval_expr(pair, v)?;
         Ok(true)
       }
       Rule::Expr => {
-        process_expr(pair, v, e)?;
+        process_expr(pair, v)?;
         Ok(true)
       }
       Rule::TakeTable => {
@@ -285,7 +278,7 @@ fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
         Ok(true)
       }
       Rule::Func => {
-        process_function(pair, v, e)?;
+        process_function(pair, v)?;
         Ok(true)
       }
       _ => Ok(false),
@@ -316,11 +309,10 @@ fn process_value<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
   Ok(())
 }
 
-fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   let mut result: Option<Result<(), Error>> = None;
   let span = pair.as_span();
 
-  let rc_e = RefCell::new(e);
   v.v_table(pair.clone(), |v| {
     result = Some((|| {
       pair
@@ -347,14 +339,12 @@ fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
             value.clone(),
             key.clone(),
             |v| {
-              let mut e = rc_e.borrow_mut();
               key_result = Some((|| {
                 match key.as_rule() {
-                  Rule::Iden | Rule::None => process_value(key, v, *e)?,
+                  Rule::Iden | Rule::None => process_value(key, v)?,
                   Rule::Value => process_value(
                     key.into_inner().next().unwrap(), // parsed qed
                     v,
-                    *e,
                   )?,
                   _ => unreachable!(),
                 };
@@ -362,7 +352,6 @@ fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
               })());
             },
             |v| {
-              let mut e = rc_e.borrow_mut();
               val_result = Some((|| {
                 process_value(
                   value
@@ -370,7 +359,6 @@ fn process_table<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result
                     .next()
                     .ok_or(fmt_err("Expected a value in TableEntry", &span))?,
                   v,
-                  *e,
                 )?;
                 Ok(())
               })());
@@ -393,7 +381,7 @@ fn process_take_table<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Err
   Ok(())
 }
 
-fn process_pipeline<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_pipeline<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   if pair.as_rule() != Rule::Pipeline {
     return Err(fmt_errp(
       "Expected a Pipeline rule, but found a different rule.",
@@ -409,25 +397,25 @@ fn process_pipeline<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
         let rule = pair.as_rule();
         match rule {
           Rule::EvalExpr => {
-            process_eval_expr(pair, v, e)?;
+            process_eval_expr(pair, v)?;
           }
           Rule::Expr => {
-            process_expr(pair, v, e)?;
+            process_expr(pair, v)?;
           }
-          Rule::Shard => process_function(pair, v, e)?,
-          Rule::Func => process_function(pair, v, e)?,
+          Rule::Shard => process_function(pair, v)?,
+          Rule::Func => process_function(pair, v)?,
           Rule::TakeTable => process_take_table(pair, v)?,
           Rule::TakeSeq => {
             let _pair = process_take_seq(pair, v)?;
           }
           Rule::ConstValue => {
-            let _v = process_value(pair, v, e)?;
+            let _v = process_value(pair, v)?;
           }
           Rule::Enum => {
-            let _v = process_value(pair, v, e)?;
+            let _v = process_value(pair, v)?;
           }
           Rule::Shards => {
-            let _inner = process_shards(pair, v, e)?;
+            let _inner = process_shards(pair, v)?;
           }
           _ => {
             return Err(fmt_err(
@@ -443,7 +431,7 @@ fn process_pipeline<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Res
   result
 }
 
-fn process_assignment<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_assignment<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   if pair.as_rule() != Rule::Assignment {
     return Err(fmt_errp(
       "Expected an Assignment rule, but found a different rule.",
@@ -478,7 +466,7 @@ fn process_assignment<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> R
   v.v_assign(pair.clone(), assignment_op, iden, |v: &mut V| {
     result = (|| {
       if let Some(pipeline) = pipeline {
-        process_pipeline(pipeline, v, e)?
+        process_pipeline(pipeline, v)?
         // } else {
         //   v.v_pipeline(pipeline, |v| {});
         // }
@@ -489,14 +477,14 @@ fn process_assignment<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> R
   result
 }
 
-fn process_statement<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Result<(), Error> {
+fn process_statement<V: Visitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   let mut result: Result<(), Error> = Ok(());
   v.v_stmt(pair.clone(), |v| {
     result = (|| {
       let rule = pair.as_rule();
       match rule {
-        Rule::Assignment => process_assignment(pair, v, e)?,
-        Rule::Pipeline => process_pipeline(pair, v, e)?,
+        Rule::Assignment => process_assignment(pair, v)?,
+        Rule::Pipeline => process_pipeline(pair, v)?,
         _ => return Err(fmt_errp("Unexpected rule in Statement.", &pair)),
       }
       Ok(())
@@ -505,7 +493,7 @@ fn process_statement<V: Visitor>(pair: Pair<Rule>, v: &mut V, e: &mut Env) -> Re
   result
 }
 
-pub fn process<V: Visitor>(code: &str, v: &mut V, e: &mut Env) -> Result<(), Error> {
+pub fn process<V: Visitor>(code: &str, v: &mut V) -> Result<(), Error> {
   let successful_parse = crate::read::parse(code).map_err(|x| x.message)?;
   let root = successful_parse.into_iter().next().unwrap();
   if root.as_rule() != Rule::Program {
@@ -513,7 +501,7 @@ pub fn process<V: Visitor>(code: &str, v: &mut V, e: &mut Env) -> Result<(), Err
   }
 
   let inner = root.into_inner().next().unwrap();
-  process_sequence_no_visit(inner, v, e)?;
+  process_sequence_no_visit(inner, v)?;
 
   Ok(())
 }

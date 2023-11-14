@@ -35,6 +35,8 @@ enum Commands {
     #[arg(long, short = 'o')]
     output: Option<String>,
   },
+  /// Run formatter tests
+  Test {},
   /// Reads and executes a Shards file
   New {
     /// The script to execute
@@ -143,7 +145,8 @@ pub extern "C" fn shards_process_args(
       output,
       inline,
     } => format(file, output, *inline),
-    Commands::External(args) => {
+    Commands::Test {} => formatter::run_tests(),
+    Commands::External(_args) => {
       return 99;
     }
   };
@@ -180,12 +183,11 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
   // add new line at the end of the file to be able to parse it correctly
   in_str.push('\n');
 
-  let mut env = crate::ast_visitor::Env::default();
   if inline {
     let mut buf = std::io::BufWriter::new(Vec::new());
     let mut v = formatter::FormatterVisitor::new(&mut buf, &in_str);
 
-    crate::ast_visitor::process(&in_str, &mut v, &mut env)?;
+    crate::ast_visitor::process(&in_str, &mut v)?;
 
     fs::write(file, &buf.into_inner()?[..])?;
   } else {
@@ -196,7 +198,7 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
     };
 
     let mut v = formatter::FormatterVisitor::new(out_stream.as_mut(), &in_str);
-    crate::ast_visitor::process(&in_str, &mut v, &mut env)?;
+    crate::ast_visitor::process(&in_str, &mut v)?;
   }
 
   Ok(())
@@ -297,12 +299,7 @@ fn execute_seq(
   }
 }
 
-fn build(
-  file: &str,
-  output: &str,
-  depfile: Option<&str>,
-  as_json: bool,
-) -> Result<(), Error> {
+fn build(file: &str, output: &str, depfile: Option<&str>, as_json: bool) -> Result<(), Error> {
   shlog!("Parsing file: {}", file);
 
   let (deps, ast) = {
