@@ -151,19 +151,10 @@ impl EguiHost {
         }
 
         self.full_output = Some(egui_output);
-        // self.full_output = Some(make_native_full_output(
-        //   &ui_ctx.egui_ctx,
-        //   egui_output,
-        //   draw_scale,
-        // )?);
         Ok(*input)
       }
     }
   }
-
-  // pub fn get_egui_output(&self) -> *const egui_FullOutput {
-  //   return &self.full_output.as_ref().unwrap().full_output;
-  // }
 
   pub fn take_egui_output(&mut self) -> egui::FullOutput {
     self.full_output.take().unwrap()

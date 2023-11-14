@@ -55,6 +55,11 @@ public:
     bool sharable{};
     bool copyBySerialize{};
   };
+
+  // Provides information about this type:
+  // - if it doesn't contain objects it can be shared between threads by cloning (sharable = true)
+  // - if it contains objects but they can be serialized and deserialized, 
+  //   it can be shared by serializing, then deserializing (copyBySerialize = true, sharable = true)
   ShareableObjectFlags getSharableObjectFlags(const SHTypeInfo &type, bool shareObjectVariables) const {
     _cachedObjectTypes.clear();
     getObjectTypes(_cachedObjectTypes, type);

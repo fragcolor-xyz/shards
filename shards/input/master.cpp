@@ -3,7 +3,6 @@
 #include "debug.hpp"
 #include "window_input.hpp"
 #include "log.hpp"
-#include <thread>
 #include <spdlog/spdlog.h>
 #include <gfx/window.hpp>
 #include <SDL_keyboard.h>
@@ -30,20 +29,17 @@ InputMaster::~InputMaster() {
 }
 
 void InputMaster::update(gfx::Window &window) {
-  thisThreadId = std::this_thread::get_id();
-
-  input.beginUpdate();
-  do {
-    SDL_Event event{};
-    bool hasEvent = SDL_PollEvent(&event) > 0;
-    if (hasEvent)
-      input.apply(event);
-    else
-      break;
-  } while (true);
-  state.update();
-  state.region = getWindowInputRegion(window);
-  input.endUpdate(state);
+  input.state.region = getWindowInputRegion(window);
+  input.updateSDL([&](auto apply) {
+    do {
+      SDL_Event event{};
+      bool hasEvent = SDL_PollEvent(&event) > 0;
+      if (hasEvent)
+        apply(event);
+      else
+        break;
+    } while (true);
+  });
 
   // Convert events to ConsumableEvents
   events.clear();
