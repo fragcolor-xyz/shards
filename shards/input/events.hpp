@@ -24,6 +24,25 @@
 namespace shards::input {
 using namespace linalg::aliases;
 
+struct PointerTouchMoveEvent {
+  float2 pos;
+  float2 delta;
+  SDL_FingerID index;
+  float pressure;
+
+  std::partial_ordering operator<=>(const PointerTouchMoveEvent &other) const = default;
+};
+
+struct PointerTouchEvent {
+  float2 pos;
+  float2 delta;
+  SDL_FingerID index;
+  float pressure;
+  bool pressed;
+
+  std::partial_ordering operator<=>(const PointerTouchEvent &other) const = default;
+};
+
 struct PointerMoveEvent {
   float2 pos;
   float2 delta;
@@ -92,8 +111,13 @@ struct RequestCloseEvent {
   std::partial_ordering operator<=>(const RequestCloseEvent &other) const = default;
 };
 
-using Event = std::variant<PointerMoveEvent, PointerButtonEvent, ScrollEvent, KeyEvent, SupendEvent, ResumeEvent,
-                           InputRegionEvent, TextEvent, TextCompositionEvent, TextCompositionEndEvent, RequestCloseEvent>;
+using Event = std::variant<
+    // Pointer events
+    PointerTouchMoveEvent, PointerTouchEvent, PointerMoveEvent, PointerButtonEvent, ScrollEvent,
+    // Text events
+    KeyEvent, TextEvent, TextCompositionEvent, TextCompositionEndEvent,
+    // Other events
+    SupendEvent, ResumeEvent, InputRegionEvent, RequestCloseEvent>;
 
 inline std::partial_ordering operator<=>(const Event &a, const Event &b) {
   auto ci = a.index() <=> b.index();
@@ -113,13 +137,29 @@ inline std::partial_ordering operator<=>(const Event &a, const Event &b) {
 inline bool operator==(const Event &a, const Event &b) { return a <=> b == std::partial_ordering::equivalent; }
 #endif
 
+template <typename T, typename... Ts> constexpr size_t get_variant_index(std::variant<Ts...> const &) {
+  size_t r = 0;
+  auto test = [&](bool b) {
+    if (!b)
+      ++r;
+    return b;
+  };
+  (test(std::is_same_v<T, Ts>) || ...);
+  return r;
+}
+
 inline bool isPointerEvent(const Event &event) {
-  return std::get_if<PointerMoveEvent>(&event) || std::get_if<PointerButtonEvent>(&event) || std::get_if<ScrollEvent>(&event);
+  return event.index() >= get_variant_index<PointerTouchMoveEvent>(event) && event.index() <= get_variant_index<ScrollEvent>(event);
+  // return std::get_if<PointerMoveEvent>(&event) || std::get_if<PointerButtonEvent>(&event) || std::get_if<ScrollEvent>(&event)
+  // || std::get_if<PointerTouchEvent>(&event) || std::get_if<PointerTouchMoveEvent>(&event);
 }
 
 inline bool isKeyEvent(const Event &event) {
-  return std::get_if<KeyEvent>(&event) || std::get_if<TextEvent>(&event) ||
-          std::get_if<TextCompositionEvent>(&event) || std::get_if<TextCompositionEndEvent>(&event);
+
+  return event.index() >= get_variant_index<KeyEvent>(event) &&
+         event.index() <= get_variant_index<TextCompositionEndEvent>(event);
+  // return std::get_if<KeyEvent>(&event) || std::get_if<TextEvent>(&event) || std::get_if<TextCompositionEvent>(&event) ||
+  // std::get_if<TextCompositionEndEvent>(&event);
 }
 
 struct IInputHandler;

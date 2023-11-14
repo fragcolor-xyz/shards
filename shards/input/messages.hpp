@@ -2,6 +2,7 @@
 #define D10804BA_9B46_4108_A3F4_80EC952E3E2B
 
 #include <variant>
+#include <compare>
 #include <boost/container/string.hpp>
 
 namespace shards::input {
@@ -10,7 +11,7 @@ struct BeginTextInputMessage {
   SDL_Rect inputRect{};
 
   std::partial_ordering operator<=>(const BeginTextInputMessage &other) const {
-    if (inputRect.x != other.inputRect.x)
+    if (inputRect.x != other.inputRect.x) 
       return inputRect.x <=> other.inputRect.x;
     if (inputRect.y != other.inputRect.y)
       return inputRect.y <=> other.inputRect.y;

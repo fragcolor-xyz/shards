@@ -31,6 +31,8 @@ struct DebugUIOpts {
   bool showKeyboardEvents;
   bool showPointerEvents;
   bool showPointerMoveEvents;
+  bool showTouchEvents;
+  bool freeze;
 };
 
 struct DebugUIParams {
@@ -67,6 +69,7 @@ const char *shards_input_eventToString(shards::input::debug::OpaqueEvent);
 void shards_input_freeString(const char *str);
 bool shards_input_eventIsConsumed(shards::input::debug::OpaqueEvent);
 void* shards_input_eventConsumedBy(shards::input::debug::OpaqueEvent);
+size_t shards_input_eventType(shards::input::debug::OpaqueEvent);
 shards::input::debug::OpaqueLayer shards_input_eventConsumedBy(shards::input::debug::OpaqueEvent);
 const char* shards_input_layerName(shards::input::debug::OpaqueLayer);
 }

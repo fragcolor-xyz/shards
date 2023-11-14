@@ -10,7 +10,7 @@
 
 namespace shards {
 
-// Variant of brancher that captures variables
+// Variant of brancher that captures variables by copying
 // example usage could be a wire running on a different thread
 struct CapturingBrancher {
   struct CloningContext {

@@ -80,7 +80,7 @@ struct DetachedInputContext : public IInputContext {
 
   const std::weak_ptr<IInputHandler> &getHandler() const override { return handler; }
 
-  const input::InputState &getState() const override { return detachedState.state; }
+  const input::InputState &getState() const override { return master->getState(); }
   std::vector<ConsumableEvent> &getEvents() override { return master->getEvents(); }
 
   float getTime() const override { return time; }
@@ -189,12 +189,12 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
 
     auto canReceiveInput = inputContext.canReceiveInput();
 
-    inputContext.detachedState.update([&](auto apply) {
-      for (auto &evt : master.getEvents()) {
-        apply(evt, canReceiveInput);
-      }
-    });
-    inputContext.detachedState.state.region = master.getState().region;
+    // inputContext.detachedState.update([&](auto apply) {
+    //   for (auto &evt : master.getEvents()) {
+    //     apply(evt, canReceiveInput);
+    //   }
+    // });
+    // inputContext.detachedState.state.region = master.getState().region;
 
     double deltaTime = deltaTimer.update();
     inputContext.deltaTime = deltaTime;
@@ -386,7 +386,6 @@ struct Detached {
         _handler->pushInputs(_capturedVariables, inputStackState);
       }
     }
-
     {
       ZoneScopedN("CopyOutputs");
       if (_outputBuffer.read_available() > 0) {
