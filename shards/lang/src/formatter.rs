@@ -18,26 +18,47 @@ enum FormatterTop {
   LineFunc,
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(Clone, Copy, Default, Debug)]
+struct CollectionStyling {
+  start_line: usize,
+  // The indent for the first item of this collections, subsequent items will use the same indent
+  indent: Option<usize>,
+  // Joined collection, where braces are connected to the items e.g.:
+  // {a:1
+  //  b:2}
+  is_joined: Option<bool>,
+}
+
+#[derive(Clone, Copy, Debug)]
 enum Context {
   Unknown,
   Pipeline,
-  Seq,
-  Table,
+  Seq(CollectionStyling),
+  Table(CollectionStyling),
+}
+
+pub struct Options {
+  pub indent: usize,
+}
+
+impl Default for Options {
+  fn default() -> Self {
+    Self { indent: 2 }
+  }
 }
 
 pub struct FormatterVisitor<'a> {
   out: &'a mut dyn std::io::Write,
+  options: Options,
   top: FormatterTop,
   line_length: usize,
   line_counter: usize,
   depth: usize,
-  last_char: Option<usize>,
+  last_char: usize,
   context_stack: Vec<Context>,
+
   input: String,
 }
-
-struct TableFormat {}
 
 enum UserLine {
   Newline,
@@ -58,12 +79,13 @@ impl<'a> FormatterVisitor<'a> {
   pub fn new(out: &'a mut dyn std::io::Write, input: &str) -> Self {
     Self {
       out,
+      options: Options::default(),
       top: FormatterTop::None,
       line_length: 0,
       line_counter: 0,
       depth: 0,
       input: input.into(),
-      last_char: None,
+      last_char: 0,
       context_stack: vec![Context::Unknown],
     }
   }
@@ -72,46 +94,80 @@ impl<'a> FormatterVisitor<'a> {
     *self.context_stack.last().unwrap()
   }
 
-  fn with_context<F: FnOnce(&mut Self)>(&mut self, ctx: Context, inner: F) {
+  fn get_context_mut(&mut self) -> &mut Context {
+    self.context_stack.last_mut().unwrap()
+  }
+
+  fn determine_collection_styling(&self, pair: &Pair<Rule>) -> CollectionStyling {
+    let mut styling = CollectionStyling::default();
+    // let (start_line, _start_col) = pair.line_col();
+    styling.start_line = self.line_counter;
+    // let mut inner: pest::iterators::Pairs<'_, crate::ast::Rule> = pair.clone().into_inner();
+    // if inner.len() > 0 {
+    //   // let item = inner.next().unwrap();
+    //   // let (item_line, item_col) = item.line_col();
+    //   // if item_line == start_line {
+    //   // let spacing = i32::max(0, item_col as i32 - start_col as i32) as usize;
+    //   // let base_indent = self.get_indent_opts();
+    //   // styling.indent = Some(base_indent + spacing);
+    //   // }
+    // }
+    styling
+  }
+
+  fn get_indent_opts(&self) -> usize {
+    let ctx = self.get_context();
+    match ctx {
+      Context::Pipeline | Context::Unknown => self.depth * self.options.indent,
+      Context::Seq(s) | Context::Table(s) => {
+        if let Some(i) = s.indent {
+          i
+        } else {
+          self.depth * self.options.indent
+        }
+      }
+    }
+  }
+
+  fn with_context<F: FnOnce(&mut Self)>(&mut self, ctx: Context, inner: F) -> Context {
     self.context_stack.push(ctx);
     inner(self);
-    self.context_stack.pop();
+    self.context_stack.pop().unwrap()
   }
 
   fn set_last_char(&mut self, ptr: usize) {
-    self.last_char = Some(ptr);
+    self.last_char = ptr;
   }
 
   fn extract_styling(&self, until: usize) -> Option<UserStyling> {
-    if let Some(from) = self.last_char {
-      if until <= from {
-        return None;
-      }
+    let from = self.last_char;
+    if until <= from {
+      return None;
+    }
 
-      let mut us: UserStyling = UserStyling::default();
-      let mut comment_start: Option<usize> = None;
-      let interpolated = &self.input[from..until];
-      for (i, c) in interpolated.chars().enumerate() {
-        if c == ';' && comment_start.is_none() {
-          comment_start = Some(i + from + 1);
-        } else if c == '\n' {
-          if let Some(start) = comment_start {
-            let comment = &self.input[start..i + from];
-            let comment_str = comment.trim_start().to_string();
-            us.lines.push(UserLine::Comment(comment_str));
-            comment_start = None;
-          } else {
-            us.lines.push(UserLine::Newline);
-          }
+    let mut us: UserStyling = UserStyling::default();
+    let mut comment_start: Option<usize> = None;
+    let interpolated = &self.input[from..until];
+    for (i, c) in interpolated.chars().enumerate() {
+      if c == ';' && comment_start.is_none() {
+        comment_start = Some(i + from + 1);
+      } else if c == '\n' {
+        if let Some(start) = comment_start {
+          let comment = &self.input[start..i + from];
+          let comment_str = comment.trim_start().to_string();
+          us.lines.push(UserLine::Comment(comment_str));
+          comment_start = None;
+        } else {
+          us.lines.push(UserLine::Newline);
         }
       }
-      if let Some(start) = comment_start {
-        let comment = &self.input[start..until];
-        us.lines.push(UserLine::Comment(comment.into()));
-      }
-      if !us.lines.is_empty() {
-        return Some(us);
-      }
+    }
+    if let Some(start) = comment_start {
+      let comment = &self.input[start..until];
+      us.lines.push(UserLine::Comment(comment.into()));
+    }
+    if !us.lines.is_empty() {
+      return Some(us);
     }
     None
   }
@@ -165,21 +221,41 @@ impl<'a> FormatterVisitor<'a> {
     self.top = top;
   }
 
-  fn newline_w_offset(&mut self, offset: i32) {
+  fn newline(&mut self) {
     self.write_raw("\n");
     self.line_length = 0;
     self.line_counter += 1;
-    let d = self.depth as i32 + offset;
-    if d > 0 {
-      for _ in 0..d {
-        self.write_raw("  ");
-      }
+    for _ in 0..self.get_indent_opts() {
+      self.write_raw(" ");
     }
     self.top = FormatterTop::None;
   }
 
-  fn newline(&mut self) {
-    self.newline_w_offset(0);
+  // Insert a newline before any closing bracket for tables/seq/pipelines/etc.
+  // if the opening bracket is on the same line as an item, the closing bracked will also be on the same line as the last item
+  fn opt_pre_closing_newline(&mut self, ctx: Context) {
+    match ctx {
+      Context::Seq(s) | Context::Table(s) => {
+        if s.is_joined.is_none() {
+          // Empty collection, no newline
+          return;
+        }
+        if s.is_joined.is_some_and(|x| x) {
+          // no newline
+          return;
+        }
+      }
+      _ => {}
+    }
+    self.newline();
+  }
+
+  fn get_next_atom_col(&self) -> usize {
+    match self.top {
+      FormatterTop::Comment => self.get_indent_opts(),
+      FormatterTop::Atom => self.line_length + 1,
+      _ => self.line_length,
+    }
   }
 
   fn write_pre_space(&mut self) {
@@ -294,6 +370,20 @@ impl<'a> FormatterVisitor<'a> {
     }
     self.write_joined(")");
   }
+
+  fn update_collection_first_item(&mut self) {
+    let ll = self.get_next_atom_col();
+    let lc = self.line_counter;
+    match self.get_context_mut() {
+      Context::Seq(s) | Context::Table(s) => {
+        if s.indent.is_none() {
+          s.indent = Some(ll);
+          s.is_joined = Some(lc == s.start_line);
+        }
+      }
+      _ => {}
+    }
+  }
 }
 
 // Checks if this is a function without any parameters
@@ -335,8 +425,6 @@ fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
       .last()
       .map(|x| x.as_span().end_pos().line_col().0)
       .unwrap_or(start_line);
-    // let num_params = params.len();
-    let mut have_param_on_start_line = false;
     for param in params {
       let mut param_inner = param.into_inner();
       let v = if param_inner.len() == 2 {
@@ -351,15 +439,9 @@ fn omit_shard_param_indent(func: Pair<Rule>) -> bool {
       .unwrap();
 
       let col = v.line_col().0;
-      // if col == start_line {
-      //   have_param_on_start_line = true;
-      // }
       if col != start_line && col != end_line {
         return false;
       }
-      // if !have_param_on_start_line && col != end_line {
-      //   return false;
-      // }
     }
   }
   return true;
@@ -378,10 +460,11 @@ impl<'a> Visitor for FormatterVisitor<'a> {
   }
   fn v_value(&mut self, pair: Pair<Rule>) {
     self.interpolate(&pair);
+    self.update_collection_first_item();
 
     let ctx = self.get_context();
     if self.top == FormatterTop::Atom {
-      if ctx == Context::Pipeline {
+      if let Context::Pipeline = ctx {
         self.write_atom("|");
       }
     }
@@ -415,7 +498,7 @@ impl<'a> Visitor for FormatterVisitor<'a> {
       _self.interpolate_at_pos(pair.as_span().start());
 
       if _self.top == FormatterTop::Atom {
-        if ctx == Context::Pipeline {
+        if let Context::Pipeline = ctx {
           _self.write_atom("|");
         }
       }
@@ -529,32 +612,29 @@ impl<'a> Visitor for FormatterVisitor<'a> {
   fn v_table<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
     self.interpolate(&pair);
     self.write("{", FormatterTop::None);
-    let start_line = self.line_counter;
-    self.depth += 1;
-    inner(self);
-    self.interpolate_at_pos_ext(pair.as_span().end(), true);
-    self.depth -= 1;
-    if self.line_counter != start_line {
-      self.newline();
-    }
+    let ctx = Context::Table(self.determine_collection_styling(&pair));
+    let ctx = self.with_context(ctx, |_self| {
+      _self.depth += 1;
+      inner(_self);
+      _self.interpolate_at_pos_ext(pair.as_span().end(), true);
+      _self.depth -= 1;
+    });
+    self.opt_pre_closing_newline(ctx);
     self.write_joined("}");
   }
   fn v_seq<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
-    self.with_context(Context::Seq, |_self| {
-      _self.interpolate(&pair);
-      _self.write("[", FormatterTop::None);
-      let start_line = _self.line_counter;
+    self.interpolate(&pair);
+    self.write("[", FormatterTop::None);
+
+    let ctx = Context::Seq(self.determine_collection_styling(&pair));
+    let ctx = self.with_context(ctx, |_self| {
       _self.depth += 1;
-      {
-        inner(_self);
-        _self.interpolate_at_pos_ext(pair.as_span().end(), true);
-      }
+      inner(_self);
+      _self.interpolate_at_pos_ext(pair.as_span().end(), true);
       _self.depth -= 1;
-      if _self.line_counter != start_line {
-        _self.newline();
-      }
-      _self.write_joined("]");
     });
+    self.opt_pre_closing_newline(ctx);
+    self.write_joined("]");
   }
   fn v_table_val<TK: FnOnce(&mut Self), TV: FnOnce(&mut Self)>(
     &mut self,
@@ -563,13 +643,11 @@ impl<'a> Visitor for FormatterVisitor<'a> {
     inner_key: TK,
     inner_val: TV,
   ) {
-    self.with_context(Context::Table, |_self| {
-      _self.interpolate(&_key);
-      inner_key(_self);
-      _self.write_joined(":");
-      _self.interpolate(&pair);
-      inner_val(_self);
-    });
+    self.interpolate(&_key);
+    inner_key(self);
+    self.write_joined(":");
+    self.interpolate(&pair);
+    inner_val(self);
   }
   fn v_take_seq(&mut self, pair: Pair<Rule>) {
     let str = self.filter(pair.as_str());
@@ -590,6 +668,12 @@ pub fn format_str(input: &str) -> Result<String, crate::error::Error> {
   Ok(String::from_utf8(buf.into_inner()?)?)
 }
 
+fn strequal_ignore_line_endings(a: &str, b: &str) -> bool {
+  let a = a.replace("\r\n", "\n");
+  let b = b.replace("\r\n", "\n");
+  a == b
+}
+
 fn format_file_validate(input_path: &Path) -> Result<(), crate::error::Error> {
   let input_str = fs::read_to_string(input_path)?;
   let expected = input_path.with_extension("expected.shs");
@@ -602,12 +686,12 @@ fn format_file_validate(input_path: &Path) -> Result<(), crate::error::Error> {
     f.read_to_string(&mut expected_str)?;
 
     let formatted = format_str(&input_str)?;
-    if formatted != expected_str {
+    if !strequal_ignore_line_endings(&formatted, &expected_str) {
       return Err(format!("Test output does not match, was: {}", formatted).into());
     }
 
     let reformatted = format_str(&formatted)?;
-    if reformatted != formatted {
+    if !strequal_ignore_line_endings(&reformatted, &formatted) {
       return Err(
         format!(
           "Formatted output changes after formatting twice: {}",
@@ -630,9 +714,16 @@ pub fn run_tests() -> Result<(), crate::error::Error> {
   let test_files = fs::read_dir(".")?;
   for file in test_files {
     let p = &file?.path();
+    if p
+      .file_name()
+      .is_some_and(|x| x.to_str().unwrap().ends_with(".expected.shs"))
+    {
+      continue;
+    }
+
     if !p
       .extension()
-      .is_some_and(|x| x.to_ascii_lowercase() == "shs") && !p.ends_with(".expected.shs")
+      .is_some_and(|x| x.to_ascii_lowercase() == "shs")
     {
       continue;
     }

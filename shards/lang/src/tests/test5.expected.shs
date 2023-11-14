@@ -1,0 +1,6 @@
+@template(get-client-viz-color [username] {
+  @client-viz-colors = colors
+  colors | Take((
+    username | Hash | Take(0) | Math.Abs | Math.Mod((Count(colors)))
+  ))
+})
