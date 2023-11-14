@@ -96,10 +96,6 @@ pub extern "C" fn shards_process_args(
 ) -> i32 {
   let cancellation_token = new_cancellation_token();
 
-  unsafe {
-    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
-  }
-
   #[cfg(not(target_arch = "wasm32"))]
   if !no_cancellation {
     let cancellation_token_1 = cancellation_token.clone();
@@ -123,6 +119,15 @@ pub extern "C" fn shards_process_args(
   };
 
   let cli = Cli::parse_from(args);
+
+  // Init Core interface when not running external commands
+  match &cli.command {
+    Commands::External(_) => {}
+    _ => unsafe {
+      shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+    },
+  };
+
   let res: Result<_, Error> = match &cli.command {
     Commands::Build {
       file,
@@ -157,16 +162,6 @@ pub extern "C" fn shards_process_args(
   } else {
     0
   }
-  //   // Add your arguments here
-  //   .get_matches_from(args);
-  //  = match matches.subcommand() {
-  //   Some(("new", matches)) => execute(matches, cancellation_token),
-  //   Some(("build", matches)) => build(matches, false),
-  //   Some(("ast", matches)) => build(matches, true),
-  //   Some(("load", matches)) => load(matches, cancellation_token),
-  //   Some((_external, _matches)) => return 99,
-  //   _ => Ok(()),
-  // };
 }
 
 fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error> {
@@ -201,7 +196,7 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
     crate::ast_visitor::process(&in_str, &mut v)?;
   }
 
-  std::io::stdout().flush()?; 
+  std::io::stdout().flush()?;
 
   Ok(())
 }
