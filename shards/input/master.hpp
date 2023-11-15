@@ -8,8 +8,6 @@
 #include "messages.hpp"
 #include <shared_mutex>
 #include <mutex>
-#include <atomic>
-#include <thread>
 #include <core/function.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 
@@ -58,6 +56,20 @@ struct IInputHandler {
   virtual void handle(InputMaster &master) = 0;
 };
 
+struct EventConsumer {
+private:
+  std::weak_ptr<IInputHandler> handler;
+
+public:
+  EventConsumer(std::weak_ptr<IInputHandler> handler) : handler(handler) {}
+  inline EventConsumer &consume(ConsumableEvent &evt) {
+    evt.consume(handler);
+    return *this;
+  }
+  inline EventConsumer &operator()(ConsumableEvent &evt) { return consume(evt); }
+  inline bool operator==(const std::weak_ptr<IInputHandler> &other) const { return handler.lock() == other.lock(); }
+};
+
 struct InputMaster {
 private:
   std::vector<std::weak_ptr<IInputHandler>> handlers;
@@ -74,11 +86,8 @@ private:
   FocusTracker focusTracker;
 
   DetachedInput input;
-  InputState state;
 
   bool terminateRequested{};
-
-  std::thread::id thisThreadId{};
 
 public:
   InputMaster();
@@ -113,7 +122,7 @@ public:
     updateAndSortHandlersLocked(outVec);
   }
 
-  const InputState &getState() const { return state; }
+  const InputState &getState() const { return input.state; }
   std::vector<ConsumableEvent> &getEvents() { return events; }
   FocusTracker &getFocusTracker() { return focusTracker; }
 

@@ -2,6 +2,8 @@ use super::*;
 use egui::CursorIcon;
 use egui::Event;
 use egui::Modifiers;
+use egui::TouchDeviceId;
+use egui::TouchId;
 use std::ffi::CStr;
 use std::slice::from_raw_parts;
 
@@ -12,6 +14,16 @@ fn to_egui_pointer_button(btn: egui_PointerButton) -> egui::PointerButton {
     egui_PointerButton_Primary => egui::PointerButton::Primary,
     egui_PointerButton_Secondary => egui::PointerButton::Secondary,
     egui_PointerButton_Middle => egui::PointerButton::Middle,
+    _ => panic!("Invalid enum value"),
+  }
+}
+
+fn to_egui_touch_phase(btn: egui_TouchPhase) -> egui::TouchPhase {
+  match btn {
+    egui_TouchPhase_Cancel => egui::TouchPhase::Cancel,
+    egui_TouchPhase_End => egui::TouchPhase::End,
+    egui_TouchPhase_Move => egui::TouchPhase::Move,
+    egui_TouchPhase_Start => egui::TouchPhase::Start,
     _ => panic!("Invalid enum value"),
   }
 }
@@ -217,6 +229,16 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
           Some(Event::Paste(str))
         }
         egui_InputEventType_PointerGone => Some(Event::PointerGone),
+        egui_InputEventType_Touch => {
+          let event = &in_event.touch;
+          Some(Event::Touch {
+            device_id: TouchDeviceId(event.deviceId.id),
+            id: TouchId(event.id.id),
+            phase: to_egui_touch_phase(event.phase),
+            pos: event.pos.into(),
+            force: event.force,
+          })
+        }
         _ => {
           panic!("Invalid input event type")
         }

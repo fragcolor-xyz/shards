@@ -6,7 +6,10 @@
 #include "events.hpp"
 #include <SDL_events.h>
 #include <SDL_keycode.h>
+#include <SDL_mouse.h>
 #include <boost/container/string.hpp>
+#include <boost/container/flat_map.hpp>
+#include <type_traits>
 
 namespace shards::input {
 // Keeps track of all input state separately and synthesizes it's own events by
@@ -32,46 +35,6 @@ struct DetachedInput {
 public:
   float getScrollDelta() const { return buffers[currentBufferIndex].scrollDelta; }
 
-  // Apply an event to the new state (after update())
-  void apply(const SDL_Event &event) {
-    auto &buffer = buffers[getBufferIndex(1)];
-    if (event.type == SDL_MOUSEWHEEL) {
-      buffer.scrollDelta += event.wheel.preciseY;
-    } else if (event.type == SDL_TEXTEDITING) {
-      auto &ievent = event.edit;
-
-      if (strlen(ievent.text) > 0) {
-        if (!imeComposing) {
-          imeComposing = true;
-        }
-
-        virtualInputEvents.push_back(TextCompositionEvent{.text = ievent.text});
-      }
-    } else if (event.type == SDL_KEYDOWN) {
-      if (event.key.repeat > 0 && state.isKeyHeld(event.key.keysym.sym)) {
-        virtualInputEvents.push_back(
-            KeyEvent{.key = event.key.keysym.sym, .pressed = true, .modifiers = state.modifiers, .repeat = event.key.repeat});
-      }
-    } else if (event.type == SDL_TEXTINPUT) {
-      auto &ievent = event.text;
-      if (imeComposing) {
-        virtualInputEvents.push_back(TextCompositionEndEvent{.text = ievent.text});
-        imeComposing = false;
-      } else {
-        virtualInputEvents.push_back(TextEvent{.text = ievent.text});
-      }
-    } else if (event.type == SDL_WINDOWEVENT) {
-      if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-        virtualInputEvents.push_back(RequestCloseEvent{});
-      } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-      }
-    } else if (event.type == SDL_APP_DIDENTERBACKGROUND) {
-      virtualInputEvents.push_back(SupendEvent{});
-    } else if (event.type == SDL_APP_DIDENTERFOREGROUND) {
-      virtualInputEvents.push_back(ResumeEvent{});
-    }
-  }
-
   // Given a callback function that receives an apply function, update the state and synthesize events
   // the apply function receives a consumable event that is applied to the input state
   //
@@ -81,7 +44,7 @@ public:
   //     apply(event, true /* hasFocus */);
   //   }
   //  });
-  using UpdateApplyFn = decltype([](const ConsumableEvent &consumableEvent, bool hasFocus){});
+  using UpdateApplyFn = decltype([](const ConsumableEvent &consumableEvent, bool hasFocus) {});
   template <typename T> std::enable_if_t<std::is_invocable_v<T, UpdateApplyFn>> update(T callback) {
     swapBuffers();
 
@@ -102,11 +65,29 @@ public:
     state = newState;
   }
 
-  void update(InputState& state) {
+  // Apply SDL events to the new state
+  using UpdateApplyFn2 = decltype([](const SDL_Event &evt) {});
+  template <typename T> std::enable_if_t<std::is_invocable_v<T, UpdateApplyFn2>> updateSDL(T callback) {
+    swapBuffers();
+
+    virtualInputEvents.clear();
+
+    InputState newState = state;
+    newState.update();
+    auto applyFn = [&](const SDL_Event &event) {
+      apply(event, newState); //
+    };
+    callback(applyFn);
+
+    endUpdate(newState);
+  }
+
+  void update(InputState &state) {
     beginUpdate();
     endUpdate(state);
   }
 
+private:
   // called before endUpdate, apply() can be called with SDL_Events after this
   void beginUpdate() { virtualInputEvents.clear(); }
 
@@ -116,14 +97,84 @@ public:
     swapBuffers();
 
     synthesizeKeyUpEvents(inputState);
-    synthesizeKeyDownEvents(inputState);
-    synthesizeMouseButtonEvents(inputState);
-    synthesizeMouseEvents(inputState);
+
+    synthesizeTouchUpEvents(inputState);
+
+    if constexpr (Pointer::HasPersistentPointer) {
+      synthesizeMouseButtonEvents(inputState);
+      synthesizeMouseEvents(inputState);
+    } else {
+      synthesizeMouseFromTouchEvents(inputState);
+    }
 
     state = inputState;
+
+    if constexpr (!Pointer::HasPersistentPointer) {
+      updateCursorPositionFromPointerState(state);
+    }
   }
 
-private:
+  // Apply an event to the new state, during update
+  void apply(const SDL_Event &event, InputState &newState) {
+    auto &buffer = buffers[getBufferIndex(1)];
+    if (event.type == SDL_MOUSEWHEEL) {
+      buffer.scrollDelta += event.wheel.preciseY;
+    } else if (event.type == SDL_TEXTEDITING) {
+      auto &ievent = event.edit;
+
+      if (strlen(ievent.text) > 0) {
+        if (!imeComposing) {
+          imeComposing = true;
+        }
+
+        virtualInputEvents.push_back(TextCompositionEvent{.text = ievent.text});
+      }
+    } else if (event.type == SDL_KEYDOWN) {
+      virtualInputEvents.push_back(
+          KeyEvent{.key = event.key.keysym.sym, .pressed = true, .modifiers = state.modifiers, .repeat = event.key.repeat});
+    } else if (event.type == SDL_TEXTINPUT) {
+      auto &ievent = event.text;
+      if (imeComposing) {
+        virtualInputEvents.push_back(TextCompositionEndEvent{.text = ievent.text});
+        imeComposing = false;
+      } else {
+        virtualInputEvents.push_back(TextEvent{.text = ievent.text});
+      }
+    } else if (event.type == SDL_WINDOWEVENT) {
+      if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
+        virtualInputEvents.push_back(RequestCloseEvent{});
+      } else if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+      }
+    } else if (event.type == SDL_APP_DIDENTERBACKGROUND) {
+      virtualInputEvents.push_back(SupendEvent{});
+    } else if (event.type == SDL_APP_DIDENTERFOREGROUND) {
+      virtualInputEvents.push_back(ResumeEvent{});
+    } else if (event.type == SDL_FINGERMOTION) {
+      auto &ievent = event.tfinger;
+      virtualInputEvents.push_back(PointerTouchMoveEvent{
+          .pos = float2(ievent.x, ievent.y) * state.region.size,
+          .delta = float2(event.tfinger.dx, event.tfinger.dy) * state.region.size,
+          .index = ievent.fingerId,
+          .pressure = ievent.pressure,
+      });
+    } else if (event.type == SDL_FINGERDOWN) {
+      auto &ievent = event.tfinger;
+
+      auto &pointer = newState.pointers.getOrInsert(ievent.fingerId);
+      pointer.position = float2(ievent.x, ievent.y) * state.region.size;
+      pointer.pressure = ievent.pressure;
+      pointer.touchId = ievent.touchId;
+
+      virtualInputEvents.push_back(PointerTouchEvent{
+          .pos = float2(ievent.x, ievent.y) * state.region.size,
+          .delta = float2(event.tfinger.dx, event.tfinger.dy) * state.region.size,
+          .index = ievent.fingerId,
+          .pressure = ievent.pressure,
+          .pressed = true,
+      });
+    }
+  }
+
   // Apply a consumable event to this detached input state
   // any non-consumed event will be handled normally
   // consumed events will only contribute to loss-of-focus & button/key release events
@@ -153,6 +204,31 @@ private:
                   .index = arg.index,
                   .pressed = false,
                   .modifiers = arg.modifiers,
+              });
+            }
+          } else if constexpr (std::is_same_v<T, PointerTouchMoveEvent>) {
+              if (!consumed) {
+                  if(auto ptr = newState.pointers.get(arg.index)) {
+                      ptr->get().position = arg.pos;
+                  }
+              }
+          } else if constexpr (std::is_same_v<T, PointerTouchEvent>) {
+            if (!consumed && hasFocus && arg.pressed && !newState.pointers.get(arg.index)) {
+              auto &pointer = newState.pointers.getOrInsert(arg.index);
+              pointer.position = arg.pos;
+              pointer.pressure = arg.pressure;
+              virtualInputEvents.push_back(PointerTouchEvent{
+                  .pos = pointer.position,
+                  .index = arg.index,
+                  .pressed = true,
+              });
+            }
+            if (!arg.pressed && newState.pointers.get(arg.index)) {
+              newState.pointers.erase(arg.index);
+              virtualInputEvents.push_back(PointerTouchEvent{
+                  .pos = arg.pos,
+                  .index = arg.index,
+                  .pressed = false,
               });
             }
           } else if constexpr (std::is_same_v<T, KeyEvent>) {
@@ -266,6 +342,46 @@ private:
     if (getScrollDelta() != 0.0f) {
       virtualInputEvents.push_back(ScrollEvent{.delta = getScrollDelta()});
     }
+  }
+
+  void synthesizeTouchUpEvents(const InputState &inputState) {
+    for (auto &[k, v] : state.pointers.pointers) {
+      if (!inputState.pointers.get(k)) {
+        virtualInputEvents.push_back(PointerTouchEvent{
+            .pos = v.position,
+            .index = k,
+            .pressed = false,
+        });
+      }
+    }
+  }
+
+  void synthesizeMouseFromTouchEvents(const InputState &inputState) {
+    auto &oldState = state.pointers;
+    auto &newState = inputState.pointers;
+    if (oldState.any() != newState.any()) {
+      bool pressed = newState.any();
+      virtualInputEvents.push_back(PointerButtonEvent{
+          .pos = pressed ? newState.centroid() : oldState.centroid(),
+          .index = SDL_BUTTON_LEFT,
+          .pressed = pressed,
+          .modifiers = inputState.modifiers,
+      });
+    }
+
+    if (oldState.any() && newState.any()) {
+      float2 oldPos = oldState.centroid();
+      float2 newPos = newState.centroid();
+      if (oldPos != newPos) {
+        float2 delta = newPos - oldPos;
+        virtualInputEvents.push_back(PointerMoveEvent{.pos = newPos, .delta = delta});
+      }
+    }
+  }
+
+  void updateCursorPositionFromPointerState(InputState &inputState) {
+    if (inputState.pointers.any())
+      inputState.cursorPosition = inputState.pointers.centroid();
   }
 };
 } // namespace shards::input

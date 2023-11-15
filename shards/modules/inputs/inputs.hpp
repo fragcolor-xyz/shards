@@ -5,6 +5,7 @@
 #include <input/messages.hpp>
 #include <input/state.hpp>
 #include <input/events.hpp>
+#include <input/master.hpp>
 #include <input/input_stack.hpp>
 #include <shards/linalg_shim.hpp>
 #include <shards/core/foundation.hpp>
@@ -13,18 +14,6 @@
 
 namespace shards::input {
 struct InputMaster;
-struct EventConsumer {
-private:
-  std::weak_ptr<IInputHandler> handler;
-
-public:
-  EventConsumer(std::weak_ptr<IInputHandler> handler) : handler(handler) {}
-  inline EventConsumer &consume(ConsumableEvent &evt) {
-    evt.consume(handler);
-    return *this;
-  }
-  inline EventConsumer &operator()(ConsumableEvent &evt) { return consume(evt); }
-};
 
 struct IInputContext {
   static constexpr uint32_t TypeId = 'ictx';

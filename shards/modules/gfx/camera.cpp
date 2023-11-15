@@ -4,11 +4,13 @@
 #include <gfx/window.hpp>
 #include <gfx/fmt.hpp>
 #include <shards/modules/inputs/inputs.hpp>
+#include "input/gestures.hpp"
 #include "window.hpp"
 #include "gfx.hpp"
 
 using namespace shards;
 using namespace shards::input;
+using namespace shards::input::gestures;
 
 namespace gfx {
 
@@ -16,9 +18,6 @@ namespace gfx {
 struct PointerInputState {
   float2 position{};
   float2 prevPosition{};
-  bool primaryButton{};
-  bool secondaryButton{};
-  bool tertiaryButton{};
 };
 
 // Input state for a button axis
@@ -37,11 +36,28 @@ struct AxisInputState {
 
 // Tracked cursor & button states
 struct InputState {
+  input::GestureRecognizer gestures;
+  std::shared_ptr<Pinch> pinchGesture = std::make_shared<Pinch>();
+  std::shared_ptr<MultiSlide> slideGesture = std::make_shared<MultiSlide>();
+  std::shared_ptr<MultiSlide> rotateGesture = std::make_shared<MultiSlide>();
+
+  InputState() {
+    pinchGesture->threshold = 0.03f;
+    slideGesture->threshold = 0.02f;
+    rotateGesture->threshold = 0.02f;
+    gestures.gestures.push_back(pinchGesture);
+    gestures.gestures.push_back(slideGesture);
+    gestures.gestures.push_back(rotateGesture);
+    rotateGesture->numFingers = 1;
+  }
+
+  PointerInputState pointer;
   AxisInputState keyboardXAxis;
   AxisInputState keyboardYAxis;
   AxisInputState keyboardZAxis;
-  PointerInputState pointer;
-  float mouseWheel{};
+  bool lookInteraction{};
+  bool panInteraction{};
+  float zoom{};
   float deltaTime;
 };
 
@@ -59,7 +75,7 @@ struct CameraInputs {
 inline void updateInputState(InputState &inputState, IInputContext &inputContext) {
   inputState.pointer.prevPosition = inputState.pointer.position;
   inputState.pointer.position = inputContext.getState().cursorPosition;
-  inputState.mouseWheel = 0;
+  inputState.zoom = 0;
   bool canReceiveInput = inputContext.canReceiveInput();
 
   for (auto &ce : inputContext.getEvents()) {
@@ -102,28 +118,40 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
 
             inputState.pointer.position = float2(event.pos.x, event.pos.y);
             switch (event.index) {
-            case SDL_BUTTON_LEFT:
-              inputState.pointer.primaryButton = event.pressed;
-              break;
             case SDL_BUTTON_RIGHT:
-              inputState.pointer.secondaryButton = event.pressed;
+              inputState.lookInteraction = event.pressed;
+              ce.consume(inputContext.getHandler());
               break;
             case SDL_BUTTON_MIDDLE:
-              inputState.pointer.tertiaryButton = event.pressed;
+              inputState.panInteraction = event.pressed;
+              ce.consume(inputContext.getHandler());
               break;
             }
-            ce.consume(inputContext.getHandler());
           } else if constexpr (std::is_same_v<T, ScrollEvent>) {
             if (!canReceiveInput || ce.isConsumed())
               return;
-            inputState.mouseWheel += float(event.delta);
+            inputState.zoom += float(event.delta);
           }
         },
         ce.event);
   }
 
-  if (inputState.pointer.primaryButton | inputState.pointer.secondaryButton | inputState.pointer.tertiaryButton)
-    inputContext.requestFocus();
+  auto &ctxState = inputContext.getState();
+
+  if (!Pointer::HasPersistentPointer) {
+    inputState.lookInteraction = false;
+
+    auto consume = inputContext.getEventConsumer();
+    inputState.gestures.update(inputContext.canReceiveInput(), consume, ctxState, inputContext.getEvents());
+    if (inputState.gestures.activeGesture == inputState.pinchGesture.get()) {
+      inputState.zoom += inputState.pinchGesture->delta / inputContext.getState().region.size.y * 50.0f;
+      SPDLOG_INFO("Pinching {}", inputState.zoom);
+    }
+  } else {
+    if (inputState.lookInteraction | inputState.panInteraction) {
+      inputContext.requestFocus();
+    }
+  }
 
   inputState.deltaTime = inputContext.getDeltaTime();
 }
@@ -146,7 +174,7 @@ inline CameraInputs getCameraInputs(const InputState &inputState, ParamVar &look
 
   float2 pointerDelta = inputState.pointer.position - inputState.pointer.prevPosition;
 
-  if (inputState.pointer.secondaryButton) {
+  if (inputState.lookInteraction) {
     // Apply look rotation
     inputs.lookRotation.y = -pointerDelta.x * lookSpeed;
     inputs.lookRotation.x = -pointerDelta.y * lookSpeed;
@@ -157,13 +185,25 @@ inline CameraInputs getCameraInputs(const InputState &inputState, ParamVar &look
     inputs.velocity.z += inputState.keyboardZAxis.getValue();
   }
 
-  if (inputState.pointer.tertiaryButton) {
+  if (inputState.panInteraction) {
     inputs.translation.x += pointerDelta.x * panSpeed;
     inputs.translation.y += -pointerDelta.y * panSpeed;
   }
 
-  if (inputState.mouseWheel != 0.0f) {
-    inputs.translation.z += -inputState.mouseWheel * scrollSpeed;
+  if (inputState.gestures.activeGesture == inputState.slideGesture.get()) {
+    float2 slideDelta = inputState.slideGesture->delta;
+    inputs.translation.x += slideDelta.x * panSpeed * 2.0f;
+    inputs.translation.y += -slideDelta.y * panSpeed * 2.0f;
+    SPDLOG_INFO("Sliding {} ({})", slideDelta, inputState.slideGesture->slideOffset);
+  } else if (inputState.gestures.activeGesture == inputState.rotateGesture.get()) {
+    float2 rotateDelta = inputState.rotateGesture->delta;
+    inputs.lookRotation.y -= rotateDelta.x * lookSpeed * 2.0f;
+    inputs.lookRotation.x -= rotateDelta.y * lookSpeed * 2.0f;
+    SPDLOG_INFO("Rotating {} ({})", rotateDelta, inputState.rotateGesture->slideOffset);
+  }
+
+  if (inputState.zoom != 0.0f) {
+    inputs.translation.z += -inputState.zoom * scrollSpeed;
   }
 
   return inputs;
@@ -237,7 +277,7 @@ struct FreeCameraShard {
     return _result;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _inputContext.cleanup();
   }
@@ -325,7 +365,7 @@ struct TargetCameraUpdate {
     return (_output = state);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _inputContext.cleanup();
   }
@@ -369,7 +409,7 @@ struct TargetCameraFromLookAt {
     return _result;
   }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   PARAM_REQUIRED_VARIABLES()
@@ -410,7 +450,7 @@ struct TargetCameraMatrix {
     return _result;
   }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   PARAM_REQUIRED_VARIABLES()

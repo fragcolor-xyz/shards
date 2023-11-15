@@ -1,5 +1,7 @@
 #include "debug_ui.hpp"
+#include "input/events.hpp"
 #include "inputs.hpp"
+#include <optional>
 #include <shards/input/debug.hpp>
 #include <shards/input/master.hpp>
 #include <shards/common_types.hpp>
@@ -26,6 +28,10 @@ shards::input::debug::OpaqueLayer shards_input_eventConsumedBy(shards::input::de
   }
   return nullptr;
 }
+size_t shards_input_eventType(shards::input::debug::OpaqueEvent opaque) {
+  auto &evt = *(shards::input::ConsumableEvent *)opaque;
+  return evt.event.index();
+}
 const char *shards_input_layerName(shards::input::debug::OpaqueLayer opaque) {
   auto layer = dynamic_cast<shards::input::debug::IDebug *>((shards::input::IInputHandler *)opaque);
   if (layer) {
@@ -41,11 +47,14 @@ struct DebugUI {
   RequiredInputContext _inputContext;
   ExposedInfo _required;
   SHVar *_uiContext{};
+  std::optional<uint64_t> freezeFrame;
 
   debug::DebugUIOpts _opts{
       .showKeyboardEvents = true,
       .showPointerEvents = true,
-      .showPointerMoveEvents = false,
+      .showPointerMoveEvents = true,
+      .showTouchEvents = false,
+      .freeze = false,
   };
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
@@ -114,9 +123,15 @@ struct DebugUI {
     // Structure event list
     _events.clear();
     for (auto &evt : *_taggedEvents) {
+      if (freezeFrame && evt.frameIndex > freezeFrame.value())
+        continue;
       if (isPointerEvent(evt.evt.event) && !_opts.showPointerEvents)
         continue;
-      if (std::get_if<PointerMoveEvent>(&evt.evt.event) && !_opts.showPointerMoveEvents)
+      if ((std::get_if<PointerMoveEvent>(&evt.evt.event) || std::get_if<PointerTouchMoveEvent>(&evt.evt.event)) &&
+          !_opts.showPointerMoveEvents)
+        continue;
+      if ((std::get_if<PointerTouchEvent>(&evt.evt.event) || std::get_if<PointerTouchMoveEvent>(&evt.evt.event)) &&
+          !_opts.showTouchEvents)
         continue;
       if (isKeyEvent(evt.evt.event) && !_opts.showKeyboardEvents)
         continue;
@@ -147,6 +162,12 @@ struct DebugUI {
         .currentFrame = frameIndex,
     };
     shards_input_showDebugUI(_uiContext, params);
+
+    if (_opts.freeze && !freezeFrame) {
+      freezeFrame.emplace(frameIndex);
+    } else if (!_opts.freeze && freezeFrame) {
+      freezeFrame.reset();
+    }
 
     if (params.clearEvents) {
       _taggedEvents->clear();

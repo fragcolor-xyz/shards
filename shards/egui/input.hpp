@@ -51,7 +51,7 @@ public:
 
 #ifndef RUST_BINDGEN
   // Setup input mapping from a window to a specific subregion
-  void setupInputRegion(const shards::input::InputRegion &region, const int4& mappedWindowRegion);
+  void setupInputRegion(const shards::input::InputRegion &region, const int4 &mappedWindowRegion);
 
   // Resets the conversion output
   void begin(double time, float deltaTime);

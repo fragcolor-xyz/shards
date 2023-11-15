@@ -32,6 +32,7 @@ pub unsafe extern "C" fn shards_input_showDebugUI(
     .egui_ctx;
   Window::new("Input")
     .resizable(true)
+    .min_width(400.0)
     .min_height(300.0)
     .show(egui_ctx, |ui| {
       // Show layers
@@ -69,10 +70,12 @@ pub unsafe extern "C" fn shards_input_showDebugUI(
         ui.add_enabled_ui(opts.showPointerEvents, |ui| {
           ui.checkbox(&mut opts.showPointerMoveEvents, "Pointer (move)");
         });
+        ui.checkbox(&mut opts.showTouchEvents, "Touch");
         ui.checkbox(&mut opts.showKeyboardEvents, "Keyboard");
         if ui.button("Clear").clicked() {
           params.clearEvents = true;
         }
+        ui.checkbox(&mut opts.freeze, "Freeze");
       });
 
       ui.allocate_ui(
@@ -86,10 +89,18 @@ pub unsafe extern "C" fn shards_input_showDebugUI(
                 ui.horizontal(|ui| {
                   let event = &events[row];
                   let consumed_by = native::shards_input_eventConsumedBy(event.evt);
-                  let c = if native::shards_input_eventIsConsumed(event.evt) {
-                    epaint::Color32::WHITE
-                  } else {
-                    epaint::Color32::LIGHT_GRAY
+                  // let c = if native::shards_input_eventIsConsumed(event.evt) {
+                  //   epaint::Color32::WHITE
+                  // } else {
+                  //   epaint::Color32::LIGHT_GRAY
+                  // };
+
+                  let _type = native::shards_input_eventType(event.evt);
+                  let ecolor = match _type {
+                    1 | 3 => epaint::Color32::LIGHT_BLUE,
+                    5 => epaint::Color32::LIGHT_GREEN,
+                    6 => epaint::Color32::from_rgb(0xb0, 0x5a, 0x24),
+                    _ => epaint::Color32::GRAY,
                   };
                   // TODO: Bring back type colors
                   //   ui.colored_label(epaint::Color32::LIGHT_YELLOW, "[Pointer] ");
@@ -97,7 +108,7 @@ pub unsafe extern "C" fn shards_input_showDebugUI(
 
                   let cstr = native::shards_input_eventToString(event.evt);
                   let str = std::ffi::CStr::from_ptr(cstr).to_string_lossy();
-                  ui.colored_label(c, format!("{}: {}", event.frameIndex, str));
+                  ui.colored_label(ecolor, format!("{}: {}", event.frameIndex, str));
                   native::shards_input_freeString(cstr);
 
                   if consumed_by != std::ptr::null_mut() {
