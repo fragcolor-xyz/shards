@@ -60,11 +60,16 @@ struct Iterate {
     shards::arrayResize(_storage, 0);
     _strings.clear();
 
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+
+    if (!fs::exists(p)) {
+      throw ActivationError(fmt::format("FS.Iterate, path {} does not exist.", p));
+    }
+
     if (_recursive) {
-      fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
-      auto diterator = fs::recursive_directory_iterator(p);
-      for (auto &subp : diterator) {
-        auto &path = subp.path();
+      auto dIterator = fs::recursive_directory_iterator(p);
+      for (auto &subP : dIterator) {
+        auto &path = subP.path();
         auto str = path.string();
 #ifdef _WIN32
         boost::replace_all(str, "\\", "/");
@@ -72,10 +77,9 @@ struct Iterate {
         _strings.push_back(str);
       }
     } else {
-      fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
-      auto diterator = fs::directory_iterator(p);
-      for (auto &subp : diterator) {
-        auto &path = subp.path();
+      auto dIterator = fs::directory_iterator(p);
+      for (auto &subP : dIterator) {
+        auto &path = subP.path();
         auto str = path.string();
 #ifdef _WIN32
         boost::replace_all(str, "\\", "/");
@@ -85,8 +89,8 @@ struct Iterate {
     }
 
     shards::arrayResize(_storage, 0);
-    for (auto &sref : _strings) {
-      shards::arrayPush(_storage, Var(sref.c_str()));
+    for (auto &sRef : _strings) {
+      shards::arrayPush(_storage, Var(sRef.c_str()));
     }
 
     return Var(_storage);
@@ -166,7 +170,6 @@ struct Remove {
   }
 };
 
-
 struct RemoveAll {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
@@ -238,7 +241,7 @@ struct RelativeTo {
     return outputTypes().elements[0];
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _output.clear();
@@ -381,7 +384,7 @@ struct Write {
     return outputTypes().elements[0];
   }
 
-  void cleanup(SHContext* context) { _contents.cleanup(); }
+  void cleanup(SHContext *context) { _contents.cleanup(); }
   void warmup(SHContext *context) { _contents.warmup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -453,7 +456,7 @@ struct Copy {
     }
   }
 
-  void cleanup(SHContext* context) { _destination.cleanup(); }
+  void cleanup(SHContext *context) { _destination.cleanup(); }
   void warmup(SHContext *context) { _destination.warmup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -535,7 +538,7 @@ struct SetWriteTime {
     return data.inputType;
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
