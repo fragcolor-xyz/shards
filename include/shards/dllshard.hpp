@@ -54,7 +54,7 @@ struct CoreLoader {
     assert(ifaceproc);
     _core = ifaceproc(SHARDS_CURRENT_ABI);
     assert(_core);
-    _core->log("loading external shards...");
+    _core->log("loading external shards..."_swl);
     registerShards();
   }
 };
@@ -85,7 +85,7 @@ public:
 
   static void unregisterExitCallback(const char *eventName) { sCore._core->unregisterExitCallback(eventName); }
 
-  static SHVar *referenceVariable(SHContext *context, const char *name) { return sCore._core->referenceVariable(context, name); }
+  static SHVar *referenceVariable(SHContext *context, struct SHStringWithLen name) { return sCore._core->referenceVariable(context, name); }
 
   static void releaseVariable(SHVar *variable) { return sCore._core->releaseVariable(variable); }
 
@@ -139,9 +139,9 @@ public:
     return sCore._core->runShards2(shards, context, &input, &output);
   }
 
-  static void log(const char *msg) { sCore._core->log(msg); }
+  static void log(struct SHStringWithLen msg) { sCore._core->log(msg); }
 
-  static void abortWire(SHContext *context, const char *msg) { sCore._core->abortWire(context, msg); }
+  static void abortWire(SHContext *context, struct SHStringWithLen msg) { sCore._core->abortWire(context, msg); }
 
   static const char *rootPath() { return sCore._core->getRootPath(); }
 
@@ -346,8 +346,8 @@ inline void registerShard(const char *fullName, SHShardConstructor constructor, 
   Core::registerShard(fullName, constructor);
 }
 
-void abortWire(SHContext *ctx, const char *msg) { Core::abortWire(ctx, msg); }
-void abortWire(SHContext *ctx, std::string_view msg) { Core::abortWire(ctx, msg.data()); }
+void abortWire(SHContext *ctx, struct SHStringWithLen msg) { Core::abortWire(ctx, msg); }
+void abortWire(SHContext *ctx, std::string_view msg) { Core::abortWire(ctx, ToSWL(msg)); }
 }; // namespace shards
 
 #endif
