@@ -1373,7 +1373,7 @@ struct GetShards {
 };
 
 struct GetShardHelp {
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
 
   TableVar _output{};
