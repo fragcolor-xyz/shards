@@ -2080,7 +2080,7 @@ struct WhenDone : CapturingSpawners {
     }
     _injectedVariables.clear();
 
-    SHLOG_TRACE("WhenDone::onStopStop, released mesh and variables");
+    SHLOG_TRACE("WhenDone::onStopCleanup, released mesh and variables");
   }
 
   void onStop(SHWire::OnStopEvent &e) {

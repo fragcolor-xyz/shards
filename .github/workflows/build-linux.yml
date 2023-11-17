@@ -145,6 +145,7 @@ jobs:
           ./shards new ../shards/tests/db.shs
           ./shards new ../shards/tests/suspend-resume.shs
           ./shards new ../shards/tests/help.shs
+          ./shards new ../shards/tests/whendone.shs
       - name: Test (Debug)
         # Test that only works in Debug build go there
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}

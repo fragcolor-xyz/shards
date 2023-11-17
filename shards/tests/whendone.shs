@@ -1,0 +1,9 @@
+@wire(something {
+  ["Hello" "World"] = capture
+  WhenDone({
+    capture | Log("Should do this")
+  })
+})
+@mesh(root)
+@schedule(root something)
+@run(root)
