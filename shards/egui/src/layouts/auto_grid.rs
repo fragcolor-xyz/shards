@@ -1,3 +1,4 @@
+use egui::{Layout, Pos2, Rect, Vec2, Ui};
 use shards::{
   core::register_shard,
   types::{
@@ -11,6 +12,136 @@ use crate::shards::shard::Shard;
 use crate::util::{self};
 
 use crate::{EguiId, CONTEXTS_NAME, FLOAT_VAR_SLICE, PARENTS_UI_NAME};
+
+pub struct AutoGrid {
+  pub max_grid_width: Option<f32>,
+  pub item_width: f32,
+  pub item_height: Option<f32>,
+  pub column_spacing: Option<f32>,
+  pub row_spacing: Option<f32>,
+  pub center: bool,
+}
+
+impl Default for AutoGrid {
+  fn default() -> Self {
+    Self {
+      max_grid_width: None,
+      item_width: 100.0,
+      item_height: None,
+      column_spacing: None,
+      row_spacing: None,
+      center: true,
+    }
+  }
+}
+
+impl AutoGrid {
+  pub fn new() -> Self {
+    Self::default()
+  }
+  pub fn show<F: FnMut(&mut Ui, usize)>(
+    self,
+    ui: &mut egui::Ui,
+    num_children: usize,
+    add_child: F,
+  ) -> egui::Response {
+    let mut add_child = add_child;
+    let column_spacing: f32 = if let Some(s) = self.column_spacing {
+      s
+    } else {
+      ui.style().spacing.item_spacing.x
+    };
+
+    let row_spacing: f32 = if let Some(s) = self.row_spacing {
+      s
+    } else {
+      ui.style().spacing.item_spacing.y
+    };
+
+    let item_width: f32 = self.item_width;
+
+    let max_available_width = {
+      if let Some(f) = self.max_grid_width {
+        f
+      } else {
+        ui.available_size_before_wrap().x
+      }
+    };
+
+    let f = max_available_width / (item_width + column_spacing);
+    let max_num_cols = i32::max(0, f32::floor(f) as i32);
+    let max_num_cols = if max_num_cols >= 1 {
+      // Check if one more column fits since we need to account for spacing being uneven between columns
+      let w2 = item_width * (max_num_cols + 1) as f32 + column_spacing * (max_num_cols) as f32;
+      if w2 <= max_available_width {
+        max_num_cols + 1
+      } else {
+        max_num_cols
+      }
+    } else {
+      max_num_cols
+    };
+
+    let items_width =
+      (item_width * max_num_cols as f32) + (column_spacing * (max_num_cols - 1) as f32);
+
+    let avail_x = ui.available_size_before_wrap().x;
+    let remaining_x_space = avail_x - items_width;
+
+    let initial_cursor_0 = ui.cursor().min;
+
+    let initial_cursor_1 = if self.center {
+      (initial_cursor_0.to_vec2() + Vec2::new(remaining_x_space / 2.0, 0.0)).to_pos2()
+    } else {
+      initial_cursor_0
+    };
+
+    let mut cursor = initial_cursor_1;
+    let mut col_idx: i32 = 0;
+    let mut max_y = initial_cursor_1.y;
+    let mut max_item_height = 0.0;
+
+    // Pass each element in the given sequence to the shards in the contents and render
+    for i in 0..num_children {
+      // Check if contents will exceed max grid width if added onto current row
+      if col_idx >= max_num_cols {
+        cursor.x = initial_cursor_1.x;
+        cursor.y += max_item_height + row_spacing;
+        max_item_height = 0.0;
+        col_idx = 0;
+      }
+
+      let widget_pos = cursor;
+      let item_max_rect = Rect::from_min_max(
+        widget_pos,
+        Pos2::new(widget_pos.x + item_width, ui.max_rect().bottom()),
+      );
+
+      let child_layout = Layout::top_down(egui::Align::Center);
+      let mut child_ui = ui.child_ui_with_id_source(item_max_rect, child_layout, i);
+
+      add_child(&mut child_ui, i);
+
+      let child_ui_rect = child_ui.min_rect();
+      let item_size = child_ui_rect.size();
+
+      max_y = f32::max(max_y, cursor.y + item_size.y);
+      cursor.x += item_width + column_spacing;
+      max_item_height = f32::max(max_item_height, item_size.y);
+
+      col_idx += 1;
+    }
+
+    let used_rect = Rect::from_min_max(
+      initial_cursor_0,
+      Pos2 {
+        x: initial_cursor_0.x + avail_x,
+        y: max_y,
+      },
+    );
+    return ui.allocate_rect(used_rect, egui::Sense::hover());
+  }
+}
 
 #[derive(shard)]
 #[shard_info("UI.AutoGrid", "Works like UI.Grid, but given a Sequence, it will, it each object in the Sequence, execute the Shard provided in its Contents and automatically wrap the generated contents when it exceeds the grid's width.")]
@@ -27,8 +158,8 @@ struct AutoGridShard {
   pub max_grid_width: ParamVar,
   #[shard_param("ItemWidth", "The width of each item.", FLOAT_VAR_SLICE)]
   pub item_width: ParamVar,
-  #[shard_param("ItemHeight", "The height of each item.", FLOAT_VAR_SLICE)]
-  pub item_height: ParamVar,
+  // #[shard_param("ItemHeight", "The height of each item.", FLOAT_VAR_SLICE)]
+  // pub item_height: ParamVar,
   #[shard_param("ColumnSpacing", "Spacing between columns.", FLOAT_VAR_SLICE)]
   pub column_spacing: ParamVar,
   #[shard_param("RowSpacing", "Spacing between rows.", FLOAT_VAR_SLICE)]
@@ -49,7 +180,7 @@ impl Default for AutoGridShard {
       striped: ParamVar::new(false.into()),
       max_grid_width: ParamVar::default(),
       item_width: ParamVar::default(),
-      item_height: ParamVar::default(),
+      // item_height: ParamVar::default(),
       column_spacing: ParamVar::default(),
       row_spacing: ParamVar::default(),
       required: Vec::new(),
@@ -116,83 +247,42 @@ impl Shard for AutoGridShard {
     }
 
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
-      let mut grid = egui::Grid::new(EguiId::new(self, 0));
       let seq = Seq::try_from(input)?;
 
-      let striped = self.striped.get();
-      if !striped.is_none() {
-        grid = grid.striped(striped.try_into()?);
+      let mut grid = AutoGrid::new();
+
+      if let Ok(column_spacing) = TryInto::<f32>::try_into(self.column_spacing.get()) {
+        grid.column_spacing = Some(column_spacing);
       }
 
-      let column_spacing = self.column_spacing.get();
-      let column_spacing: f32 = if !column_spacing.is_none() {
-        column_spacing.try_into()?
-      } else {
-        ui.style().spacing.item_spacing.x
-      };
-
-      let row_spacing = self.row_spacing.get();
-      let row_spacing: f32 = if !row_spacing.is_none() {
-        row_spacing.try_into()?
-      } else {
-        ui.style().spacing.item_spacing.y
-      };
-
-      grid = grid.spacing(egui::Vec2::new(column_spacing, row_spacing));
+      if let Ok(row_spacing) = TryInto::<f32>::try_into(self.row_spacing.get()) {
+        grid.row_spacing = Some(row_spacing);
+      }
 
       let item_width_var = self.item_width.get();
-      let item_width: f32 = item_width_var.try_into().unwrap();
+      grid.item_width = item_width_var.try_into().unwrap();
 
-      grid = grid.min_col_width(item_width);
+      let mut failure: Option<&'static str> = None;
+      grid.show(ui, seq.len(), |ui, idx| {
+        if failure.is_some() {
+          return;
+        }
+        let input_elem = &seq[idx];
+        if let Err(e) = util::activate_ui_contents(
+          context,
+          input_elem,
+          ui,
+          &mut self.parents,
+          &mut self.contents,
+        ) {
+          failure.replace(e);
+        }
+      });
 
-      let item_height_var = self.item_height.get();
-      if let Some(item_height) = TryInto::<f32>::try_into(item_height_var).ok() {
-        grid = grid.min_row_height(item_height);
+      match failure {
+        Some(e) => Err(e),
+        None => Ok(*input),
       }
-
-      let max_grid_width = self.max_grid_width.get();
-      let max_grid_width = if !max_grid_width.is_none() {
-        max_grid_width.try_into()?
-      } else {
-        ui.available_width()
-      };
-
-      grid
-        .show(ui, |ui| {
-          let mut current_width: f32 = 0.0;
-          // Pass each element in the given sequence to the shards in the contents and render
-          for i in 0..seq.len() {
-            // Check if contents will exceed max grid width if added onto current row
-            if current_width + item_width > max_grid_width {
-              ui.end_row();
-              current_width = 0.0;
-            }
-
-            let input_elem = &seq[i];
-
-            ui.push_id(i, |ui| {
-              ui.set_min_width(item_width);
-              ui.set_max_width(item_width);
-              let response = util::activate_ui_contents(
-                context,
-                input_elem,
-                ui,
-                &mut self.parents,
-                &mut self.contents,
-              );
-              ui.allocate_space(ui.available_size());
-              response
-            })
-            .inner?;
-
-            current_width += item_width;
-          }
-          Ok::<(), &'static str>(())
-        })
-        .inner?;
-
-      // Always passthrough the input
-      Ok(*input)
     } else {
       Err("No UI parent")
     }

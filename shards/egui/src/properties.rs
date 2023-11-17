@@ -43,6 +43,8 @@ pub enum Property {
   PixelsPerPoint = 0x2,
   #[enum_value("Returns true when anything is being dragged. (bool)")]
   IsAnythingBeingDragged = 0x3,
+  #[enum_value("The position of the UI cursor")]
+  CursorPosition = 0x4,
 }
 
 lazy_static! {
@@ -119,6 +121,7 @@ impl Shard for PropertyShard {
       Property::ScreenSize => Ok(common_type::float2),
       Property::PixelsPerPoint => Ok(common_type::float),
       Property::IsAnythingBeingDragged => Ok(common_type::bool),
+      Property::CursorPosition => Ok(common_type::float2),
     }
   }
 
@@ -153,6 +156,13 @@ impl Shard for PropertyShard {
         let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
         let is_dragging = egui_ctx.memory(|x| x.is_anything_being_dragged());
         Ok(is_dragging.into())
+      }
+      Property::CursorPosition => {
+        let egui_ctx: &egui::Context = &util::get_current_context(&self.contexts)?.egui_ctx;
+        let pos = egui_ctx.input(|i| {
+          i.pointer.interact_pos().unwrap_or_default()
+        });
+        Ok((pos.x, pos.y).into())
       }
     }
   }
