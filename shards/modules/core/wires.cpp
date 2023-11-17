@@ -2067,7 +2067,7 @@ struct WhenDone : CapturingSpawners {
   entt::connection _connection2;
   bool _scheduled = false;
 
-  void onStopCleanup(SHWire::OnCleanupEvent &e) {
+  void onCleanupCleanup(SHWire::OnCleanupEvent &e) {
     // release mesh and reset variables here!
     // as well as connection
 
@@ -2080,17 +2080,17 @@ struct WhenDone : CapturingSpawners {
     }
     _injectedVariables.clear();
 
-    SHLOG_TRACE("WhenDone::onStopCleanup, released mesh and variables");
+    SHLOG_TRACE("WhenDone::onCleanupCleanup, released mesh and variables");
   }
 
-  void onStop(SHWire::OnStopEvent &e) {
+  void onCleanup(SHWire::OnCleanupEvent &e) {
     // this might trigger multiple times btw!
     if (_scheduled) {
       return;
     }
 
     if (wire) {
-      _connection2 = wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onStopCleanup>(this);
+      _connection2 = wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanupCleanup>(this);
 
       _mesh->schedule(wire, Var::Empty, false);
 
@@ -2101,11 +2101,10 @@ struct WhenDone : CapturingSpawners {
 
       _scheduled = true;
 
-      SHLOG_TRACE("WhenDone::onStop, scheduled wire {}", wire->name);
+      SHLOG_TRACE("WhenDone::onCleanup, scheduled wire {}", wire->name);
     } else {
-      SHLOG_TRACE("WhenDone::onStop, wire is null");
-      SHWire::OnCleanupEvent ce{e.wire};
-      onStopCleanup(ce);
+      SHLOG_TRACE("WhenDone::onCleanup, wire is null");
+      onCleanupCleanup(e);
     }
   }
 
@@ -2118,7 +2117,7 @@ struct WhenDone : CapturingSpawners {
     _rootWire = context->rootWire();
 
     if (wire) {
-      _connection = context->currentWire()->dispatcher.sink<SHWire::OnStopEvent>().connect<&WhenDone::onStop>(this);
+      _connection = context->currentWire()->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanup>(this);
     }
 
     _mesh = context->main->mesh.lock();
