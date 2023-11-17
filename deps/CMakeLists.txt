@@ -21,6 +21,13 @@ add_subdirectory(replxx)
 add_subdirectory(spdlog)
 add_subdirectory(sqlite)
 
+if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
+  set(CMAKE_POSITION_INDEPENDENT_CODE OFF CACHE BOOL "" FORCE)
+endif()
+set(TBB_STRICT OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+add_subdirectory(oneTBB)
+
 if(NOT EMSCRIPTEN)
   if(DESKTOP_LINUX)
     if(GNU_STATIC_BUILD)

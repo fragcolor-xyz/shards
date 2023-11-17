@@ -93,3 +93,6 @@
 	path = deps/sqlite/cr-sqlite
 	url = https://github.com/shards-lang/cr-sqlite.git
 	branch = shards
+[submodule "deps/oneTBB"]
+	path = deps/oneTBB
+	url = https://github.com/shards-lang/oneTBB.git
