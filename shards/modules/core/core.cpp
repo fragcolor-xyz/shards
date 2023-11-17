@@ -2256,7 +2256,6 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Comment", Comment);
   REGISTER_SHARD("Replace", Replace);
   REGISTER_SHARD("Reverse", Reverse);
-  REGISTER_SHARD("OnCleanup", OnCleanup);
   REGISTER_SHARD("UnsafeActivate!", UnsafeActivate);
   REGISTER_SHARD("Shards.Enumerate", GetShards);
   REGISTER_SHARD("Shards.Help", GetShardHelp);

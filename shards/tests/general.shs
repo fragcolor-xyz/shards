@@ -29,10 +29,6 @@
 
 @wire(test-wire {
   Msg("Running tests!")
-  OnCleanup({
-    Comment("ensure multiple shards can run")
-    Msg("Finished running tests!")
-  })
 
   Get(var-with-default Default: 10) | ; will either be var-with-default value if existed or 10
   Assert.Is(10 true)
@@ -210,6 +206,10 @@
   2.0 | Math.Multiply(v-3) |
   Assert.Is(@f3(8 2 4) true) |
   Log("Float3 broadcast")
+
+  WhenDone({
+    v-3 | Log("OnStop Copy")
+  })
 
   @f2(10.3 2.1) |
   Math.Multiply(2.0) |

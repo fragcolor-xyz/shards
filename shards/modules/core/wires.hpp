@@ -226,10 +226,11 @@ struct BaseRunner : public WireBase {
       _mesh->schedule(wire, input, false);
 
       SHWire *rootWire = context->rootWire();
-      rootWire->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+      _mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
           .wire = rootWire,
           .childWire = wire.get(),
       });
+
       // also mark this wire as fully detached if needed
       // this means stopping this Shard will not stop the wire
       if (detached)

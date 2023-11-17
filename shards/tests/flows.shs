@@ -85,7 +85,11 @@
 ; @schedule(root doit-2)
 
 @wire(spawner {
-  Spawn(dologic)
+  Spawn({
+    IsMore(10) |
+    Or |
+    IsLess(0)
+  })
 })
 
 @wire(loop {
@@ -252,7 +256,11 @@
   10 |
   Expand(10 wide-test-1) |
   Assert.Is([11 11 11 11 11 11 11 11 11 11] true) |
-  Log
+  Log = expanded
+
+  WhenDone({
+    expanded | Log("Expanded after stop!")
+  })
 
   -10 |
   If(
