@@ -21,6 +21,10 @@ add_subdirectory(replxx)
 add_subdirectory(spdlog)
 add_subdirectory(sqlite)
 
+set(TBB_STRICT OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+add_subdirectory(oneTBB)
+
 if(NOT EMSCRIPTEN)
   if(DESKTOP_LINUX)
     if(GNU_STATIC_BUILD)
