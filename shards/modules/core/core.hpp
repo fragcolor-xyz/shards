@@ -358,66 +358,6 @@ struct Comment {
   }
 };
 
-struct OnCleanup {
-  ShardsVar _shards{};
-  SHContext *_context{nullptr};
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-
-  static inline Parameters params{{"Shards",
-                                   SHCCSTR("The shards to execute on wire's cleanup. Notice that shards "
-                                           "that suspend execution are not allowed."),
-                                   {CoreInfo::ShardsOrNone}}};
-
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) { _shards = value; }
-
-  SHVar getParam(int index) { return _shards; }
-
-  SHTypeInfo compose(const SHInstanceData &data) {
-    _shards.compose(data);
-    return data.inputType;
-  }
-
-  void warmup(SHContext *ctx) {
-    _context = ctx;
-    _shards.warmup(ctx);
-  }
-
-  void cleanup(SHContext *context) {
-    // also run the shards here!
-    if (_context) {
-      // cleanup might be called multiple times
-      SHVar output{};
-
-      auto snapshot = _context->takeStateSnapshot();
-
-      // we need to reset the state or only the first shard will run
-      {
-        _context->continueFlow();
-        _context->onCleanup = true; // this is kind of a hack
-        DEFER(_context->onCleanup = false);
-        _shards.activate(_context, shards::Var(snapshot.errorMessage), output);
-      }
-
-      _context->restoreStateSnapshot(std::move(snapshot));
-
-      _context = nullptr;
-    }
-    // and cleanup after
-    _shards.cleanup(context);
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    // We are a NOOP shard
-    SHLOG_FATAL("invalid state");
-    return input;
-  }
-};
-
 struct And {
   static SHOptionalString help() {
     return SHCCSTR("Computes the logical AND between the input of this shard and the output of the next shard.");

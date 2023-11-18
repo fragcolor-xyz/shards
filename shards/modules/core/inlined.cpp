@@ -17,8 +17,6 @@ ALWAYS_INLINE bool SHARDS_MODULE_FN(setInlineShardId)(Shard *shard, std::string_
     shard->inlineShardId = InlineShard::CoreConst;
   } else if (name == "Pass") {
     shard->inlineShardId = InlineShard::NoopShard;
-  } else if (name == "OnCleanup") {
-    shard->inlineShardId = InlineShard::NoopShard;
   } else if (name == "Comment") {
     shard->inlineShardId = InlineShard::NoopShard;
   } else if (name == "Input") {

@@ -19,15 +19,6 @@
 @schedule(root test-2)
 @run(root FPS: 10) | Assert.Is(false)
 
-; fail during cleanup, we cannot use pauses
-; NOTE: Does not generate an error in `run`
-@wire(test-3 {
-  OnCleanup({Pause(10.0)})
-})
-
-@schedule(root test-3)
-@run(root FPS: 10) | Assert.Is(true)
-
 ; out of range
 @wire(test-4 {
   [10 20 1000 40 50] |

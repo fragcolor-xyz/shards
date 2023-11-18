@@ -21,8 +21,10 @@ public:
     if (var.valueType != SHType::None) {
       if (var.valueType == SHType::Wire) {
         wire(var);
-      } else {
+      } else if (var.valueType == SHType::Seq) {
         shards(var);
+      } else {
+        result.reset();
       }
     } else {
       result.reset();
@@ -49,13 +51,12 @@ private:
 
   // Add a sequence of shards as a wire
   IntoWire &shards(const SHVar &var) {
-    shassert(var.valueType == SHType::Seq);
+    shassert(var.valueType == SHType::Seq && "Expected a sequence of shards");
     const SHSeq &seq = var.payload.seqValue;
-    shassert(seq.len == 0 || seq.elements[0].valueType == SHType::ShardRef);
     auto wire = result = SHWire::make(defaultWireName_);
     wire->looped = defaultLooped_;
     ForEach(seq, [&](SHVar &v) {
-      shassert(v.valueType == SHType::ShardRef);
+      shassert(v.valueType == SHType::ShardRef && "Expected a sequence of shards");
       wire->addShard(v.payload.shardValue);
     });
     return *this;

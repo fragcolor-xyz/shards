@@ -16,6 +16,7 @@
 #include <memory>
 #include <set>
 #include <unordered_map>
+#include <shards/inlined.hpp>
 
 #if !defined(__EMSCRIPTEN__) || defined(__EMSCRIPTEN_PTHREADS__)
 // Remove define from winspool.h
@@ -85,8 +86,10 @@ void WireBase::resolveWire() {
       SHLOG_DEBUG("WireBase: Resolving wire {}", sv);
       wire = GetGlobals().GlobalWires[s];
     } else {
-      wire = nullptr;
-      SHLOG_DEBUG("WireBase::compose on a null wire");
+      wire = IntoWire{} //
+                 .defaultWireName("inline-shards")
+                 .defaultLooped(false)
+                 .var(wireref);
     }
   }
 }
@@ -1392,6 +1395,7 @@ struct CapturingSpawners : public WireBase {
 
   void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
     resolveWire();
+
     if (!wire) {
       throw ComposeError("CapturingSpawners: wire not found");
     }
@@ -1492,12 +1496,7 @@ struct ParallelBase : public CapturingSpawners {
   }
 
   void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
-    if (!wire) {
-      wire = IntoWire{} //
-                 .defaultWireName("parallel-inline-shards")
-                 .defaultLooped(false)
-                 .var(wireref);
-    }
+    WireBase::resolveWire();
 
     if (_threads > 0) {
       mode = RunWireMode::Async;
@@ -1883,7 +1882,7 @@ struct Spawn : public CapturingSpawners {
   static SHTypesInfo outputTypes() { return CoreInfo::WireType; }
 
   static inline Parameters _params{
-      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), WireBase::WireTypes}};
+      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), IntoWire::RunnableTypes}};
 
   static SHParametersInfo parameters() { return _params; }
 
@@ -1909,7 +1908,9 @@ struct Spawn : public CapturingSpawners {
   SHTypeInfo compose(const SHInstanceData &data) {
     WireBase::resolveWire();
 
-    assert(wire);
+    if (!wire) {
+      throw ComposeError("Spawn: wire not found");
+    }
 
     CapturingSpawners::compose(data, data.inputType);
 
@@ -2009,7 +2010,7 @@ struct Spawn : public CapturingSpawners {
     mesh->schedule(c->wire, input, false);
 
     SHWire *rootWire = context->rootWire();
-    rootWire->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+    mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
         .wire = rootWire,
         .childWire = c->wire.get(),
     });
@@ -2021,6 +2022,140 @@ struct Spawn : public CapturingSpawners {
   SHTypeInfo _inputType{};
 };
 
+struct WhenDone : CapturingSpawners {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  static inline Parameters _params{
+      {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), IntoWire::RunnableTypes}};
+
+  static SHParametersInfo parameters() { return _params; }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      wireref = value;
+      break;
+    default:
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return wireref;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    CapturingSpawners::compose(data, data.inputType);
+
+    if (!wire) {
+      throw ComposeError("WhenDone: wire not found");
+    }
+
+    return data.inputType;
+  }
+
+  std::shared_ptr<SHMesh> _mesh;
+  SHWire *_rootWire = nullptr;
+  std::deque<SHVar *> _injectedVariables;
+  entt::connection _connection;
+  entt::connection _connection2;
+  bool _scheduled = false;
+
+  void onCleanupCleanup(SHWire::OnCleanupEvent &e) {
+    // release mesh and reset variables here!
+    // as well as connection
+
+    _connection.release();
+
+    _mesh.reset();
+
+    for (auto &v : _injectedVariables) {
+      releaseVariable(v);
+    }
+    _injectedVariables.clear();
+
+    SHLOG_TRACE("WhenDone::onCleanupCleanup, released mesh and variables");
+  }
+
+  void onCleanup(SHWire::OnCleanupEvent &e) {
+    // this might trigger multiple times btw!
+    if (_scheduled) {
+      return;
+    }
+
+    if (wire) {
+      _connection2 = wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanupCleanup>(this);
+
+      _mesh->schedule(wire, Var::Empty, false);
+
+      _mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+          .wire = _rootWire,
+          .childWire = wire.get(),
+      });
+
+      _scheduled = true;
+
+      SHLOG_TRACE("WhenDone::onCleanup, scheduled wire {}", wire->name);
+    } else {
+      SHLOG_TRACE("WhenDone::onCleanup, wire is null");
+      onCleanupCleanup(e);
+    }
+  }
+
+  void warmup(SHContext *context) {
+    WireBase::warmup(context);
+
+    _connection2.release();
+    _scheduled = false;
+
+    _rootWire = context->rootWire();
+
+    if (wire) {
+      _connection = context->currentWire()->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanup>(this);
+    }
+
+    _mesh = context->main->mesh.lock();
+
+    for (auto &v : _vars) {
+      SHLOG_TRACE("WhenDone: warming up variable: {}", v.variableName());
+      v.warmup(context);
+      _injectedVariables.emplace_back(referenceWireVariable(wire.get(), v.variableName()));
+    }
+  }
+
+  void cleanup(SHContext *context) {
+    // Don't disconnect, release variables or mesh here! On purpose!
+
+    if (wire) {
+      SHLOG_TRACE("WhenDone::cleanup, will schedule wire {}", wire->name);
+    }
+
+    for (auto &v : _vars) {
+      v.cleanup();
+    }
+
+    WireBase::cleanup(context);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    // keep copy/clone into our wire!
+
+    auto varsIdx = 0;
+    for (auto &v : _vars) {
+      SHVar *refVar = _injectedVariables[varsIdx++];
+      cloneVar(*refVar, v.get());
+    }
+
+    return input;
+  }
+};
+
 struct StepMany : public TryMany {
   static inline Parameters _params{
       {"Wire", SHCCSTR("The wire to spawn and try to run many times concurrently."), IntoWires::RunnableTypes},
@@ -2029,10 +2164,7 @@ struct StepMany : public TryMany {
   static SHParametersInfo parameters() { return _params; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    wire = IntoWire{} //
-               .defaultWireName("step-many-inline-shards")
-               .defaultLooped(true)
-               .var(wireref);
+    WireBase::resolveWire();
 
     TryMany::compose(data);
     return CoreInfo::AnySeqType; // we don't know the output type as we return output every step
@@ -2121,10 +2253,7 @@ struct DoMany : public TryMany {
   static SHParametersInfo parameters() { return _params; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    wire = IntoWire{} //
-               .defaultWireName("do-many-inline-shards")
-               .defaultLooped(true)
-               .var(wireref);
+    WireBase::resolveWire();
 
     if (data.inputType.seqTypes.len == 1) {
       // copy single input type
@@ -2333,5 +2462,6 @@ SHARDS_REGISTER_FN(wires) {
   REGISTER_SHARD("IsRunning", IsRunning);
   REGISTER_SHARD("Suspend", SuspendWire);
   REGISTER_SHARD("Resume", ResumeWire);
+  REGISTER_SHARD("WhenDone", WhenDone);
 }
 }; // namespace shards

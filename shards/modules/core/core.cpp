@@ -960,6 +960,9 @@ struct Erase : SeqUser {
         const auto key = indices;
         _target->payload.tableValue.api->tableRemove(_target->payload.tableValue, key);
       } else {
+        if (indices.valueType != SHType::Seq)
+          throw ActivationError("Erase: Expected a sequence of keys to remove from table.");
+
         // multiple keys
         const uint32_t nkeys = indices.payload.seqValue.len;
         for (uint32_t i = 0; nkeys > i; i++) {
@@ -972,6 +975,9 @@ struct Erase : SeqUser {
         const auto index = indices.payload.intValue;
         arrayDel(_target->payload.seqValue, index);
       } else {
+        if (indices.valueType != SHType::Seq)
+          throw ActivationError("Erase: Expected a sequence of indices to remove from sequence.");
+
         _sorter.insertSort(indices.payload.seqValue.elements, indices.payload.seqValue.len, _sorter.sortDesc, _sorter.noopKeyFn);
         for (auto &idx : indices) {
           const auto index = idx.payload.intValue;
@@ -2256,7 +2262,6 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Comment", Comment);
   REGISTER_SHARD("Replace", Replace);
   REGISTER_SHARD("Reverse", Reverse);
-  REGISTER_SHARD("OnCleanup", OnCleanup);
   REGISTER_SHARD("UnsafeActivate!", UnsafeActivate);
   REGISTER_SHARD("Shards.Enumerate", GetShards);
   REGISTER_SHARD("Shards.Help", GetShardHelp);
