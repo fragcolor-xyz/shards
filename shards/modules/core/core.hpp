@@ -2572,7 +2572,15 @@ struct Take {
         _seqOutput = true;
       } else {
         // allow only integers
-        if (_indices.payload.seqValue.len == 1 && _indices.payload.seqValue.elements[0].valueType == SHType::Int) {
+        bool onlyInts = true; // empty is fine to be true
+        for (auto &index : _indices) {
+          if (index.valueType != SHType::Int) {
+            onlyInts = false;
+            break;
+          }
+        }
+
+        if (onlyInts) {
           valid = true;
           _seqOutput = true;
         } else {
