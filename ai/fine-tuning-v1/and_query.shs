@@ -1,0 +1,26 @@
+{
+  prompt: """
+    How do I check more than one condition?
+  """
+
+  solution: {
+    variable
+    When({Is(condition1) | And | variable2 | Is(condition2)} {
+      ;; DoSomething
+    })
+  }
+
+  explicit: {
+    variable
+    When(Predicate: {Is(condition1) | And | variable2 | Is(condition2)} Action: {
+      ;; DoSomething
+    })
+  }
+
+  explaination: """
+    We use When or If shards to create a conditional statement and do an action when the Predicate returns true. 
+    To add more conditions to the Predicate we use the And shard.
+  """
+
+  tag: "General"
+}

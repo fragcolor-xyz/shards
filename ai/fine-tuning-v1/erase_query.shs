@@ -1,0 +1,20 @@
+{
+  prompt: """
+    How do I delete an element in a sequence. 
+  """
+
+  solution: [{
+   Erase ([indexToDelete] sequenceToDeleteFrom)
+  }]
+
+  explicit: [{
+    Erase (Indices:[indexToDelete] Name:sequenceToDeleteFrom)
+  }]
+
+  explaination: """
+    Erase deletes single or multiple elements (from sequences) and key-value pairs (from tables).
+    For a sequence, this shard expects the index (or a sequence of indices in descending order) of the element(s) to be erased, followed by the name of the sequence variable in the :Name parameter.
+  """
+
+  tag: "General"
+}

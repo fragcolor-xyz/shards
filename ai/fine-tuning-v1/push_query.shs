@@ -1,0 +1,23 @@
+{
+  prompt: """
+    How to add a new element to an existing Shards sequence?
+  """
+
+  solutions: [{
+    element >> sequence
+  } {
+    element | AppendTo(sequence)
+  }]
+
+  explicits: [{
+    Get(element) | Push(sequence)
+  } {
+    element | AppendTo(Collection: sequence)
+  }]
+
+  explaination: """
+    The Push method is used to add a new element to the end of a sequence.
+    The Get method is used to get an element from a sequence.
+    Remember, there might be type issues during composition if a sequence is bound to a certain type.
+  """
+}

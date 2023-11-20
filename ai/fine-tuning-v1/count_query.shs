@@ -1,0 +1,20 @@
+{
+  prompt: """
+    How do I get the total number of elements in a sequence?
+  """
+
+  solution: [{
+   Count(sequenceToCount)
+  }]
+
+  explicit: [{
+    Count(Name: sequenceToCount)
+  }]
+
+  explaination: """
+    Count parses the value passed to it in the :Name parameter, and returns the count of characters, elements, or key-value pairs depending on whether the data type passed to it was a string, a sequence, or a table.
+    This shard works on both sequences and tables. Parameter :Key applies only to tables.
+  """
+
+  tag: "General"
+}

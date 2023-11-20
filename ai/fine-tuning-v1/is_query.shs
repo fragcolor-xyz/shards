@@ -1,0 +1,22 @@
+{
+  prompt: """
+    How do I check if something equals something else.
+  """
+
+  solution: [{
+   variable1
+   When(Is(variable2) {variable1 | Math.Add(1)})
+  }]
+
+  explicit: [{
+    variable1
+    When(Predicate:Is(Value: variable2) Action:{variable1 | Math.Add(1)})
+  }]
+
+  explaination: """
+    The Is Shard when used in the Predicate parameter of a conditional Shard, like When, will check if the input of the conditional shard matches with what is
+    stated in the Value parameter of the Is shard. In this case, if variable 1 matches variable2, the When Shard will return true.
+  """
+
+  tag: "General"
+}

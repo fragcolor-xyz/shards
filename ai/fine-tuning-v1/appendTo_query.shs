@@ -1,0 +1,20 @@
+{
+  prompt: """
+    How to add a new element to the end of an existing Shards sequence?
+  """
+
+  solution: {
+    element | AppendTo(sequence)
+  }
+
+  explicit: {
+    element | AppendTo(Collection: sequence)
+  }
+
+  explaination: """
+    The AppendTo Shard adds an element to the end of a sequence. 
+    This shard works on both string and sequence variables.
+  """
+
+  tag: "General"
+}
