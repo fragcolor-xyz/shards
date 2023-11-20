@@ -13,17 +13,17 @@ struct DebugNoop {
   PARAM_IMPL(PARAM_IMPL_FOR(_tag), PARAM_IMPL_FOR(_inspect));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return outputTypes().elements[0];
+    return data.inputType;
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    SHWire* wire = shContext->currentWire();
-    SHMesh *mesh = shContext->currentWire()->mesh.lock().get();
+    volatile SHWire *__wire = shContext->currentWire();
+    volatile SHMesh *__mesh = shContext->currentWire()->mesh.lock().get();
     if (!_tag.isNone()) {
       SHVar &tagValue = _tag.get();
       SHLOG_TRACE("Triggered debug noop ({})", tagValue);

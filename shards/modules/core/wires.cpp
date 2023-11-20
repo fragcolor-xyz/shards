@@ -2089,6 +2089,11 @@ struct WhenDone : CapturingSpawners {
       return;
     }
 
+    if (!_mesh) {
+      SHLOG_TRACE("WhenDone::onCleanup, mesh is null");
+      return;
+    }
+
     if (wire) {
       _connection2 = wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanupCleanup>(this);
 

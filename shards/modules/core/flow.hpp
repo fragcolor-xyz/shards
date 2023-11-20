@@ -509,6 +509,7 @@ struct Await : public BaseSubFlow {
         return Var::Empty; // return as there is some error or so going on
     } while (true);
 
+    // copy around to avoid race conditions
     OwnedVar inputCopy = input;
     _output = awaitne(
         context,

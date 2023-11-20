@@ -673,11 +673,14 @@ struct VariableBase {
   }
 
   ALWAYS_INLINE void checkIfTableChanged() {
+    auto tablePtr = _tablePtr;
+    auto tableVersion = _tableVersion;
     if (_tablePtr != _target->payload.tableValue.opaque || _tableVersion != _target->version) {
       _tablePtr = _target->payload.tableValue.opaque;
       _cell = nullptr;
       _tableVersion = _target->version;
-      SHLOG_TRACE("Table {} changed, clearing cell pointer", _name);
+      SHLOG_TRACE("Table {} changed, clearing cell pointer, previous ptr: {} - now {}, previous version: {} - now {}", _name,
+                  tablePtr, _tablePtr, tableVersion, _tableVersion);
     }
   }
 };
@@ -1950,6 +1953,10 @@ struct Sequence : public SeqBase {
       updateTableInfo();
     }
 
+    if (_weakType.basicType != SHType::Seq) {
+      throw ComposeError("Sequence - Type must be a sequence.");
+    }
+
     return data.inputType;
   }
 
@@ -2130,6 +2137,10 @@ struct TableDecl : public VariableBase {
       }
     } else {
       updateTableInfo();
+    }
+
+    if (_weakType.basicType != SHType::Table) {
+      throw ComposeError("Table - Type must be a table.");
     }
 
     return data.inputType;
@@ -2557,39 +2568,61 @@ struct Take {
     bool isTable = data.inputType.basicType == SHType::Table;
     // Figure if we output a sequence or not
     if (_indices.valueType == SHType::Seq) {
-      if (_indices.payload.seqValue.len > 0) {
-        if ((_indices.payload.seqValue.elements[0].valueType == SHType::Int && !isTable) ||
-            (_indices.payload.seqValue.elements[0].valueType == SHType::String && isTable)) {
-          _seqOutput = true;
+      if (isTable) {
+        // allow any key type
+        valid = true;
+        // just differentiate if we have multiple, a seq, of keys vs one key
+        _seqOutput = true;
+      } else {
+        // allow only integers
+        bool onlyInts = true; // empty is fine to be true
+        for (auto &index : _indices) {
+          if (index.valueType != SHType::Int) {
+            onlyInts = false;
+            break;
+          }
+        }
+
+        if (onlyInts) {
           valid = true;
+          _seqOutput = true;
+        } else {
+          throw ComposeError(
+              fmt::format("Take with input as sequence expected an integer or a sequence of integers, but got: {}", _indices));
         }
       }
-    } else if ((!isTable && _indices.valueType == SHType::Int) || (isTable && _indices.valueType == SHType::String)) {
+    } else if (!isTable && _indices.valueType == SHType::Int) {
       _seqOutput = false;
       valid = true;
     } else if (_indices.valueType == SHType::ContextVar) { // SHType::ContextVar
       for (auto &info : data.shared) {
         if (info.name == SHSTRVIEW(_indices)) {
-          if (info.exposedType.basicType == SHType::Seq && info.exposedType.seqTypes.len == 1 &&
-              ((info.exposedType.seqTypes.elements[0].basicType == SHType::Int && !isTable) ||
-               (info.exposedType.seqTypes.elements[0].basicType == SHType::String && isTable))) {
-            _seqOutput = true;
+          if (isTable) {
+            // allow any key type
             valid = true;
-            break;
-          } else if (info.exposedType.basicType == SHType::Int && !isTable) {
-            _seqOutput = false;
-            valid = true;
-            break;
-          } else if (info.exposedType.basicType == SHType::String && isTable) {
-            _seqOutput = false;
-            valid = true;
-            break;
+            // just differentiate if we have multiple, a seq, of keys vs one key
+            _seqOutput = info.exposedType.basicType == SHType::Seq;
           } else {
-            auto msg = "Take indices variable " + std::string(info.name) + " expected to be either Seq, Int or String";
-            throw SHException(msg);
+            // allow only integers
+            if (info.exposedType.basicType == SHType::Seq && info.exposedType.seqTypes.len == 1 &&
+                info.exposedType.seqTypes.elements[0].basicType == SHType::Int) {
+              _seqOutput = true;
+              valid = true;
+              break;
+            } else if (info.exposedType.basicType == SHType::Int) {
+              _seqOutput = false;
+              valid = true;
+              break;
+            } else {
+              throw ComposeError(fmt::format(
+                  "Take with input as sequence expected an integer or a sequence of integers, but got: {}", info.exposedType));
+            }
           }
         }
       }
+    } else if (isTable) {
+      valid = true;
+      _seqOutput = false;
     } else {
       throw ComposeError("Take: Expected indices to be either Seq, Int or String");
     }
@@ -2660,7 +2693,7 @@ struct Take {
         }
       } else if (data.inputType.basicType == SHType::Table) {
         OVERRIDE_ACTIVATE(data, activateTable);
-        if (data.inputType.table.keys.len > 0 && (_indices.valueType == SHType::String || _indices.valueType == SHType::Seq)) {
+        if (data.inputType.table.keys.len > 0 && _indices.valueType != SHType::ContextVar) {
           // we can fully reconstruct a type in this case
           if (data.inputType.table.keys.len != data.inputType.table.types.len) {
             SHLOG_ERROR("Table input type: {}", data.inputType);
@@ -2672,10 +2705,6 @@ struct Take {
             _seqOutputTypes.clear();
             for (uint32_t j = 0; j < _indices.payload.seqValue.len; j++) {
               auto &record = _indices.payload.seqValue.elements[j];
-              if (record.valueType != SHType::String) {
-                SHLOG_ERROR("Expected a sequence of strings, but found: {}", _indices);
-                throw ComposeError("Take: Expected a sequence of strings as keys.");
-              }
               for (uint32_t i = 0; i < data.inputType.table.keys.len; i++) {
                 if (record == data.inputType.table.keys.elements[i]) {
                   _seqOutputTypes.emplace_back(data.inputType.table.types.elements[i]);
@@ -2763,28 +2792,30 @@ struct Take {
     }
   }
 
-#define ACTIVATE_INDEXABLE(__name__, __len__, __val__)                            \
-  ALWAYS_INLINE SHVar __name__(SHContext *context, const SHVar &input) {          \
-    const auto inputLen = size_t(__len__);                                        \
-    const auto &indices = _indicesVar ? *_indicesVar : _indices;                  \
-    if (likely(!_seqOutput)) {                                                    \
-      const auto index = indices.payload.intValue;                                \
-      if (index < 0 || size_t(index) >= inputLen) {                               \
-        throw OutOfRangeEx(inputLen, index);                                      \
-      }                                                                           \
-      return __val__;                                                             \
-    } else {                                                                      \
-      const uint32_t nindices = indices.payload.seqValue.len;                     \
-      shards::arrayResize(_cachedSeq, nindices);                                  \
-      for (uint32_t i = 0; nindices > i; i++) {                                   \
-        const auto index = indices.payload.seqValue.elements[i].payload.intValue; \
-        if (index < 0 || size_t(index) >= inputLen) {                             \
-          throw OutOfRangeEx(inputLen, index);                                    \
-        }                                                                         \
-        _cachedSeq.elements[i] = __val__;                                         \
-      }                                                                           \
-      return shards::Var(_cachedSeq);                                             \
-    }                                                                             \
+#define ACTIVATE_INDEXABLE(__name__, __len__, __val__)                                               \
+  ALWAYS_INLINE SHVar __name__(SHContext *context, const SHVar &input) {                             \
+    shassert(input.valueType == SHType::Seq || input.valueType == SHType::String ||                  \
+             input.valueType == SHType::Bytes && "Take: Expected seq, string or bytes input type."); \
+    const auto inputLen = size_t(__len__);                                                           \
+    const auto &indices = _indicesVar ? *_indicesVar : _indices;                                     \
+    if (likely(!_seqOutput)) {                                                                       \
+      const auto index = indices.payload.intValue;                                                   \
+      if (index < 0 || size_t(index) >= inputLen) {                                                  \
+        throw OutOfRangeEx(inputLen, index);                                                         \
+      }                                                                                              \
+      return __val__;                                                                                \
+    } else {                                                                                         \
+      const uint32_t nindices = indices.payload.seqValue.len;                                        \
+      shards::arrayResize(_cachedSeq, nindices);                                                     \
+      for (uint32_t i = 0; nindices > i; i++) {                                                      \
+        const auto index = indices.payload.seqValue.elements[i].payload.intValue;                    \
+        if (index < 0 || size_t(index) >= inputLen) {                                                \
+          throw OutOfRangeEx(inputLen, index);                                                       \
+        }                                                                                            \
+        _cachedSeq.elements[i] = __val__;                                                            \
+      }                                                                                              \
+      return shards::Var(_cachedSeq);                                                                \
+    }                                                                                                \
   }
 
   ACTIVATE_INDEXABLE(activateSeq, input.payload.seqValue.len, input.payload.seqValue.elements[index])
@@ -2792,6 +2823,8 @@ struct Take {
   ACTIVATE_INDEXABLE(activateBytes, input.payload.bytesSize, shards::Var(input.payload.bytesValue[index]))
 
   SHVar activateTable(SHContext *context, const SHVar &input) {
+    shassert(input.valueType == SHType::Table && "Take: Expected table input type.");
+
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
     if (!_seqOutput) {
       const auto key = indices;

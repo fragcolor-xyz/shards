@@ -112,7 +112,8 @@ struct Query : public Base {
 
   std::unique_ptr<Statement> prepared;
 
-  TableVar output;
+  TableVar _output[2]; // dual buffered due to awaiting
+  size_t _outputCount;
   TableVar emptyOutput; // this is a trick to avoid clearing the output on every activation if empty
   std::vector<SeqVar *> colSeqs;
 
@@ -144,6 +145,9 @@ struct Query : public Base {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
+
+    // prevent data race on output, as await code might run in parallel with regular mesh!
+    TableVar &output = _output[_outputCount++ % 2];
 
     return awaitne(
         context,
@@ -370,9 +374,6 @@ struct RawQuery : public Base {
 
   PARAM_VAR(_dbName, "Database", "The optional sqlite database filename.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_dbName));
-
-  TableVar output;
-  std::vector<SeqVar *> colSeqs;
 
   SHTypeInfo compose(SHInstanceData &data) {
     Base::compose(data);
