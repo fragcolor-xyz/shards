@@ -63,6 +63,14 @@ enum Commands {
     #[arg(long, short = 'd')]
     depfile: Option<String>,
   },
+  AST {
+    /// The script to evaluate
+    #[arg(value_hint = clap::ValueHint::FilePath)]
+    file: String,
+    /// The output file to write to
+    #[arg(long, short = 'o', default_value = "out.sho")]
+    output: String,
+  },
   /// Loads and executes a binary Shards file
   Load {
     /// The binary Shards file to execute
@@ -135,6 +143,7 @@ pub extern "C" fn shards_process_args(
       depfile,
       json,
     } => build(file, &output, depfile.as_deref(), *json),
+    Commands::AST { file, output } => build(file, &output, None, true),
     Commands::Load {
       file,
       decompress_strings,
