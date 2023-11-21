@@ -192,9 +192,9 @@ struct Run {
           }
         },
         [&] {
-          SHLOG_DEBUG("Process terminated");
           if (pCmd) {
             (*pCmd)->terminate();
+            SHLOG_DEBUG("Process terminated");
           }
         });
     return _outputBuf;
