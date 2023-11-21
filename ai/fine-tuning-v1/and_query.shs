@@ -6,18 +6,18 @@
   solution: {
     variable
     When({Is(condition1) | And | variable2 | Is(condition2)} {
-      ;; DoSomething
+      Pass ; Do Something
     })
   }
 
   explicit: {
-    variable
-    When(Predicate: {Is(condition1) | And | variable2 | Is(condition2)} Action: {
-      ;; DoSomething
+    Get(variable)
+    When(Predicate: {Is(condition1) | And | Get(variable2) | Is(condition2)} Action: {
+      Pass ; Do Something
     })
   }
 
-  explaination: """
+  explanation: """
     We use When or If shards to create a conditional statement and do an action when the Predicate returns true. 
     To add more conditions to the Predicate we use the And shard.
   """

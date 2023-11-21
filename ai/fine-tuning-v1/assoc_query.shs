@@ -11,7 +11,7 @@
     [index0 variable1 index1 variable2] | Assoc(Name: sequence)
   }
 
-  explaination: """
+  explanation: """
     Here we are replacing element with index 0 in sequence into variable1 and element with index of 1 in sequence to variable2.
     The input sequence for Assoc must always contain an even number of elements. 
     The elements of the input sequence are parsed in pairs. 

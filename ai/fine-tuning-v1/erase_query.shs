@@ -4,14 +4,14 @@
   """
 
   solution: [{
-   Erase ([indexToDelete] sequenceToDeleteFrom)
+   Erase([index-to-delete] sequence-to-delete-from)
   }]
 
   explicit: [{
-    Erase (Indices:[indexToDelete] Name:sequenceToDeleteFrom)
+    Erase(Indices:[index-to-delete] Name:sequence-to-delete-from)
   }]
 
-  explaination: """
+  explanation: """
     Erase deletes single or multiple elements (from sequences) and key-value pairs (from tables).
     For a sequence, this shard expects the index (or a sequence of indices in descending order) of the element(s) to be erased, followed by the name of the sequence variable in the :Name parameter.
   """
