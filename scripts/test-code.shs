@@ -1,0 +1,13 @@
+
+
+@wire(main-wire{
+  Once({
+    [1 2 3 4 5] = seq
+    Drop(seq)
+    Log("result")
+  })
+}Looped: true)
+
+@mesh(main)
+@schedule(main main-wire)
+@run(main)

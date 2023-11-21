@@ -8,10 +8,10 @@
   }
 
   explicit: {
-    element | AppendTo(Collection: sequence)
+    Get(element) | AppendTo(Collection: sequence)
   }
 
-  explaination: """
+  explanation: """
     The AppendTo Shard adds an element to the end of a sequence. 
     This shard works on both string and sequence variables.
   """

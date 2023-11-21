@@ -4,17 +4,18 @@
   """
 
   solution: {
-   Const(value)
+   Const(5) ;;Change the value accordingly
   }
 
   explicit: {
-    Const(Value: value)
+    Const(Value: 5) ;;Change the value accordingly
   }
 
-  explaination: """
+  explanation: """
     Const declares a constant value (of any data type) by passing it into the parameter :Value. 
     Such a value is usually declared for use as input in other shards.
     A constant value declared with Const is un-named i.e., it is not assigned to any variable or allocated any alias.
+    In this scenario a constant value of  5 is declared and can be used as an input for other shards.
   """
 
   tag: "General"

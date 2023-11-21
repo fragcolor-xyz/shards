@@ -1,0 +1,3 @@
+@wire(main-wire{
+  Msg("Hello World")
+} Looped:true)
