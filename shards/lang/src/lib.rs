@@ -7,8 +7,10 @@ extern crate clap;
 mod ast;
 mod cli;
 mod eval;
-// mod print;
 mod read;
+mod error;
+mod ast_visitor;
+mod formatter;
 
 use crate::ast::*;
 
@@ -23,7 +25,6 @@ use shards::core::register_shard;
 use shards::shlog_error;
 use shards::types::Var;
 use shards::SHString;
-// use print::print_ast;
 
 use std::ops::Deref;
 

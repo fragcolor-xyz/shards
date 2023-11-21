@@ -1,13 +1,15 @@
 use crate::ast::Sequence;
-use crate::eval;
+use crate::error::Error;
 use crate::read::{get_dependencies, read_with_env, ReadEnv};
+use crate::{eval, formatter};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
-use clap::{arg, Arg, ArgMatches, Command};
+use clap::{arg, Arg, ArgMatches, Command, Parser};
 use shards::core::Core;
 use shards::types::Mesh;
-use shards::{fourCharacterCode, shlog, SHCore, SHARDS_CURRENT_ABI};
+use shards::{fourCharacterCode, shlog, shlog_error, SHCore, SHARDS_CURRENT_ABI};
 use std::collections::HashMap;
 use std::ffi::CStr;
+use std::fs;
 use std::io::Write;
 use std::os::raw::c_char;
 use std::path::Path;
@@ -16,6 +18,82 @@ use std::sync::{atomic, Arc};
 
 extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
+}
+
+#[derive(Debug, clap::Subcommand)]
+enum Commands {
+  /// Formats a shards file
+  Format {
+    /// The file to format
+    #[arg(value_hint = clap::ValueHint::FilePath)]
+    file: String,
+    /// Run the formatter on the file directly
+    /// by default the output will go to stdout
+    #[arg(long, short = 'i', action)]
+    inline: bool,
+    /// Optinally an output file name
+    #[arg(long, short = 'o')]
+    output: Option<String>,
+  },
+  /// Run formatter tests
+  Test {},
+  /// Reads and executes a Shards file
+  New {
+    /// The script to execute
+    #[arg(value_hint = clap::ValueHint::FilePath)]
+    file: String,
+    /// Decompress help strings before running the script
+    #[arg(long, short = 'd', default_value = "false", action)]
+    decompress_strings: bool,
+    #[arg(num_args = 0..)]
+    args: Vec<String>,
+  },
+  /// Reads and builds a binary AST Shards file
+  Build {
+    /// The script to evaluate
+    #[arg(value_hint = clap::ValueHint::FilePath)]
+    file: String,
+    /// The output file to write to
+    #[arg(long, short = 'o', default_value = "out.sho")]
+    output: String,
+    /// Output as JSON ast
+    #[arg(long, short = 'j', action)]
+    json: bool,
+    /// The depfile to write, in makefile readable format
+    #[arg(long, short = 'd')]
+    depfile: Option<String>,
+  },
+  AST {
+    /// The script to evaluate
+    #[arg(value_hint = clap::ValueHint::FilePath)]
+    file: String,
+    /// The output file to write to
+    #[arg(long, short = 'o', default_value = "out.sho")]
+    output: String,
+  },
+  /// Loads and executes a binary Shards file
+  Load {
+    /// The binary Shards file to execute
+    #[arg(value_hint = clap::ValueHint::FilePath)]
+    file: String,
+    /// Decompress help strings before running the script
+    #[arg(long, short = 'd', default_value = "false", action)]
+    decompress_strings: bool,
+    #[arg(num_args = 0..)]
+    args: Vec<String>,
+  },
+
+  #[command(external_subcommand)]
+  External(Vec<String>),
+}
+
+#[derive(Debug, clap::Parser)]
+#[command(name = "Shards", version = "0.1")]
+#[command(about = "Shards command line tools and executor.")]
+#[command(author = "Fragcolor Team")]
+struct Cli {
+  #[command(subcommand)]
+  command: Commands,
 }
 
 #[no_mangle]
@@ -48,103 +126,97 @@ pub extern "C" fn shards_process_args(
       .collect()
   };
 
-  let matches = Command::new("Shards")
-    .version("0.1")
-    .about("Shards command line tools and executor.")
-    .author("Fragcolor Team")
-    .allow_external_subcommands(true)
-    .subcommand(
-      Command::new("new")
-        .about("Reads and executes a Shards file.")
-        .arg(arg!(<FILE> "The script to execute"))
-        .arg(
-          Arg::new("decompress-strings")
-            .long("decompress-strings")
-            .help("Decompress help strings before running the script")
-            .default_value("false"),
-        )
-        .arg(Arg::new("args").num_args(0..)),
-    )
-    .subcommand(
-      Command::new("build")
-        .about("Reads and builds a binary AST Shards file.")
-        .arg(arg!(<FILE> "The script to evaluate"))
-        .arg(
-          Arg::new("output")
-            .long("output")
-            .short('o')
-            .help("The output file to write to")
-            .default_value("out.sho"),
-        )
-        .arg(
-          Arg::new("depfile")
-            .long("depfile")
-            .short('d')
-            .help("The depfile to write, in makefile readable format")
-            .default_value(""),
-        ),
-    )
-    .subcommand(
-      Command::new("ast")
-        .about("Reads and outputs a JSON AST Shards file.")
-        .arg(arg!(<FILE> "The script to evaluate"))
-        .arg(
-          Arg::new("output")
-            .long("output")
-            .short('o')
-            .help("The output file to write to")
-            .default_value("out.json"),
-        )
-        .arg(
-          Arg::new("depfile")
-            .long("depfile")
-            .short('d')
-            .help("The depfile to write, in makefile readable format")
-            .default_value(None),
-        ),
-    )
-    .subcommand(
-      Command::new("load")
-        .about("Loads and executes a binary Shards file.")
-        .arg(arg!(<FILE> "The binary Shards file to execute"))
-        .arg(
-          Arg::new("decompress-strings")
-            .long("decompress-strings")
-            .help("Decompress help strings before running the script")
-            .default_value("false"),
-        )
-        .arg(Arg::new("args").num_args(0..)),
-    )
-    // Add your arguments here
-    .get_matches_from(args);
+  let cli = Cli::parse_from(args);
 
-  let res = match matches.subcommand() {
-    Some(("new", matches)) => execute(matches, cancellation_token),
-    Some(("build", matches)) => build(matches, false),
-    Some(("ast", matches)) => build(matches, true),
-    Some(("load", matches)) => load(matches, cancellation_token),
-    Some((_external, _matches)) => return 99,
-    _ => Ok(()),
+  // Init Core interface when not running external commands
+  match &cli.command {
+    Commands::External(_) => {}
+    _ => unsafe {
+      shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+    },
+  };
+
+  let res: Result<_, Error> = match &cli.command {
+    Commands::Build {
+      file,
+      output,
+      depfile,
+      json,
+    } => build(file, &output, depfile.as_deref(), *json),
+    Commands::AST { file, output } => build(file, &output, None, true),
+    Commands::Load {
+      file,
+      decompress_strings,
+      args,
+    } => load(file, args, *decompress_strings, cancellation_token),
+    Commands::New {
+      file,
+      decompress_strings,
+      args,
+    } => execute(file, *decompress_strings, args, cancellation_token),
+    Commands::Format {
+      file,
+      output,
+      inline,
+    } => format(file, output, *inline),
+    Commands::Test {} => formatter::run_tests(),
+    Commands::External(_args) => {
+      return 99;
+    }
   };
 
   if let Err(e) = res {
-    shlog!("Error: {}", e);
+    shlog_error!("Error: {}", e);
     1
   } else {
     0
   }
 }
 
-fn load(matches: &ArgMatches, cancellation_token: Arc<AtomicBool>) -> Result<(), &'static str> {
-  // we need to do this here or old path will fail
-  unsafe {
-    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error> {
+  if output.is_some() && inline {
+    return Err("Cannot use both -i and -o".into());
   }
 
+  let mut in_str = if file == "-" {
+    std::io::read_to_string(std::io::stdin()).unwrap()
+  } else {
+    fs::read_to_string(file.clone())?
+  };
+
+  // add new line at the end of the file to be able to parse it correctly
+  in_str.push('\n');
+
+  if inline {
+    let mut buf = std::io::BufWriter::new(Vec::new());
+    let mut v = formatter::FormatterVisitor::new(&mut buf, &in_str);
+
+    crate::ast_visitor::process(&in_str, &mut v)?;
+
+    fs::write(file, &buf.into_inner()?[..])?;
+  } else {
+    let mut out_stream: Box<dyn std::io::Write> = if let Some(out) = output {
+      Box::new(fs::File::create(out)?)
+    } else {
+      Box::new(std::io::stdout())
+    };
+
+    let mut v = formatter::FormatterVisitor::new(out_stream.as_mut(), &in_str);
+    crate::ast_visitor::process(&in_str, &mut v)?;
+  }
+
+  std::io::stdout().flush()?;
+
+  Ok(())
+}
+
+fn load(
+  file: &str,
+  args: &Vec<String>,
+  decompress_strings: bool,
+  cancellation_token: Arc<AtomicBool>,
+) -> Result<(), Error> {
   shlog!("Loading file");
-  let file = matches
-    .get_one::<String>("FILE")
-    .ok_or("A binary Shards file to parse")?;
   shlog!("Parsing binary file: {}", file);
 
   let ast = {
@@ -168,30 +240,28 @@ fn load(matches: &ArgMatches, cancellation_token: Arc<AtomicBool>) -> Result<(),
     bincode::deserialize(&file_content).unwrap()
   };
 
-  execute_seq(matches, ast, cancellation_token)
+  Ok(execute_seq(&args, ast, cancellation_token)?)
 }
 
 fn execute_seq(
-  matches: &ArgMatches,
+  args: &Vec<String>,
   ast: Sequence,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), &'static str> {
   let mut defines = HashMap::new();
-  let args = matches.get_many::<String>("args");
-  if let Some(args) = args {
-    for arg in args {
-      shlog!("arg: {}", arg);
-      // find the first column and split it, the rest is the value
-      let mut split = arg.split(':');
-      let key = split.next().unwrap();
-      // value should be all the rest, could contain ':' even
-      let value = split.collect::<Vec<&str>>().join(":");
-      // finally unescape the value if needed
-      let value = value.replace("\\:", ":");
-      // and remove quotes if quoted
-      let value = value.trim_matches('"');
-      defines.insert(key.to_owned(), value.to_owned());
-    }
+
+  for arg in args {
+    shlog!("arg: {}", arg);
+    // find the first column and split it, the rest is the value
+    let mut split = arg.split(':');
+    let key = split.next().unwrap();
+    // value should be all the rest, could contain ':' even
+    let value = split.collect::<Vec<&str>>().join(":");
+    // finally unescape the value if needed
+    let value = value.replace("\\:", ":");
+    // and remove quotes if quoted
+    let value = value.trim_matches('"');
+    defines.insert(key.to_owned(), value.to_owned());
   }
 
   let wire = {
@@ -235,13 +305,7 @@ fn execute_seq(
   }
 }
 
-fn build(matches: &ArgMatches, as_json: bool) -> Result<(), &'static str> {
-  // we need to do this here or old path will fail
-  unsafe {
-    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
-  }
-
-  let file = matches.get_one::<String>("FILE").ok_or("A file to parse")?;
+fn build(file: &str, output: &str, depfile: Option<&str>, as_json: bool) -> Result<(), Error> {
   shlog!("Parsing file: {}", file);
 
   let (deps, ast) = {
@@ -276,10 +340,6 @@ fn build(matches: &ArgMatches, as_json: bool) -> Result<(), &'static str> {
     (deps, ast)
   };
 
-  let output = matches
-    .get_one::<String>("output")
-    .ok_or("An output file to write to")?;
-
   // write sequence to file
   {
     let mut file = std::fs::File::create(output).unwrap();
@@ -301,7 +361,7 @@ fn build(matches: &ArgMatches, as_json: bool) -> Result<(), &'static str> {
     }
   }
 
-  if let Some(out_dep_file) = matches.get_one::<String>("depfile") {
+  if let Some(out_dep_file) = depfile {
     let mut file = std::fs::File::create(out_dep_file).unwrap();
     let mut writer = std::io::BufWriter::new(&mut file);
 
@@ -316,25 +376,11 @@ fn build(matches: &ArgMatches, as_json: bool) -> Result<(), &'static str> {
 }
 
 fn execute(
-  matches: &clap::ArgMatches,
+  file: &str,
+  decompress_strings: bool,
+  args: &Vec<String>,
   cancellation_token: Arc<AtomicBool>,
-) -> Result<(), &'static str> {
-  // we need to do this here or old path will fail
-  unsafe {
-    shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
-  }
-
-  let decompress = matches.get_one::<String>("decompress-strings").unwrap();
-  if decompress == "true" {
-    shlog!("Decompressing strings");
-    unsafe {
-      (*Core).decompressStrings.unwrap()();
-    }
-  }
-
-  let file = matches
-    .get_one::<String>("FILE")
-    .ok_or("A file to evaluate")?;
+) -> Result<(), Error> {
   shlog!("Evaluating file: {}", file);
 
   let ast = {
@@ -356,5 +402,5 @@ fn execute(
     })?
   };
 
-  Ok(execute_seq(matches, ast.sequence, cancellation_token)?)
+  Ok(execute_seq(args, ast.sequence, cancellation_token)?)
 }

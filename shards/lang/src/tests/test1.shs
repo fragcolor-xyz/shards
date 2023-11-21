@@ -1,0 +1,7 @@
+[ 1 2 3] =seq
+
+seq: 0 something Log("First")
+seq: 2 Log("Last")
+
+{a:1 b:2}=table
+table:a Log("Table a")

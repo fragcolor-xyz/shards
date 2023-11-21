@@ -842,6 +842,16 @@ fn process_params(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Vec<Param>, Sha
   pair.into_inner().map(|x| process_param(x, env)).collect()
 }
 
+pub fn parse(code: &str) -> Result<pest::iterators::Pairs<'_, Rule>, ShardsError> {
+  ShardsParser::parse(Rule::Program, code).map_err(|e| {
+    (
+      format!("Failed to parse file: {}", e),
+      LineInfo { line: 0, column: 0 },
+    )
+      .into()
+  })
+}
+
 pub fn read_with_env(code: &str, env: &mut ReadEnv) -> Result<Program, ShardsError> {
   let successful_parse: pest::iterators::Pairs<'_, Rule> = {
     ShardsParser::parse(Rule::Program, code).map_err(|e| {

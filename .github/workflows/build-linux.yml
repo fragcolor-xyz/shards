@@ -172,6 +172,16 @@ jobs:
           cd build
           ninja test-runtime
           ./test-runtime
+      - name: Test Tools
+        env:
+          RUST_BACKTRACE: full
+        run: |
+          cmake --build build --target shards
+          SH=`pwd`/build/shards
+          
+          echo "Running language formatter tests"
+          cd shards/lang/src/tests
+          $SH test
       # Minimize disk usage to prevent the next steps getting stuck due to no disk space
       - name: Minimize disk usage
         env:

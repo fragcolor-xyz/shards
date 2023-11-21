@@ -1,0 +1,6 @@
+; Leading comment
+
+{j: [1 2
+     3]
+ v: 200
+ k: 2}
