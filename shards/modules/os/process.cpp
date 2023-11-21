@@ -31,8 +31,11 @@ struct Run {
   std::string _moduleName;
   ParamVar _arguments{};
   std::array<SHExposedTypeInfo, 1> _requiring;
-  std::string _outBuf;
-  std::string _errBuf;
+  OwnedVar _input;
+  std::string _innerBuf;
+  OwnedVar _outputBuf;
+  std::string _innerErrorBuf;
+  std::string _errorBuf;
   int64_t _timeout{30};
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
@@ -87,11 +90,12 @@ struct Run {
 
   void warmup(SHContext *context) { _arguments.warmup(context); }
 
-  void cleanup(SHContext* context) { _arguments.cleanup(); }
+  void cleanup(SHContext *context) { _arguments.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     std::optional<boost::process::child *> pCmd;
-    return awaitne(
+    _input = input;
+    _outputBuf = awaitne(
         context,
         [&]() {
           // add any arguments we have
@@ -142,7 +146,7 @@ struct Run {
             throw ActivationError("Failed to open streams for child process");
           }
 
-          ipipe << SHSTRVIEW(input) << std::endl;
+          ipipe << SHSTRVIEW(_input) << std::endl;
           ipipe.pipe().close(); // send EOF
 
           SHLOG_TRACE("Process started");
@@ -167,22 +171,24 @@ struct Run {
           }
 
           // we still need to wait termination
-          _outBuf = ostr.get();
-          _errBuf = estr.get();
+          _innerBuf = ostr.get();
+          _innerErrorBuf = estr.get();
 
           if (cmd.exit_code() != 0) {
-            SHLOG_INFO(_outBuf);
-            SHLOG_ERROR(_errBuf);
+            if (!_innerBuf.empty())
+              SHLOG_INFO(_innerBuf);
+            if (!_innerErrorBuf.empty())
+              SHLOG_ERROR(_innerErrorBuf);
             std::string err("The process exited with a non-zero exit code: ");
             err += std::to_string(cmd.exit_code());
             throw ActivationError(err);
           } else {
-            if (_errBuf.size() > 0) {
+            if (_innerErrorBuf.size() > 0) {
               // print anyway this stream too
-              SHLOG_INFO("(stderr) {}", _errBuf);
+              SHLOG_INFO("(stderr) {}", _innerErrorBuf);
             }
             SHLOG_TRACE("Process finished successfully");
-            return Var(_outBuf);
+            return Var(_innerBuf);
           }
         },
         [&] {
@@ -191,6 +197,7 @@ struct Run {
             (*pCmd)->terminate();
           }
         });
+    return _outputBuf;
   }
 };
 
