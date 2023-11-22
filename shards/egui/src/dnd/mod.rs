@@ -21,6 +21,7 @@ pub fn drag_source<R>(
   ui: &mut egui::Ui,
   ctx: &UIContext,
   payload: &Var,
+  drag_size: Vec2,
   id: egui::Id,
   body: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
@@ -31,7 +32,7 @@ pub fn drag_source<R>(
     is_dropped || ui.output(|x| x.cursor_icon == egui::CursorIcon::NotAllowed);
 
   if !is_being_dragged {
-    let rect = ui.available_rect_before_wrap();
+    let rect = Rect::from_min_size(ui.cursor().min, drag_size);
 
     // Check for drags:
     let response = ui.interact(rect, id, egui::Sense::drag());
@@ -171,6 +172,7 @@ struct DragDrop {
   inner_exposed: ExposedTypes,
   // A copy of the value being dragged
   payload: Option<Arc<ClonedVar>>,
+  prev_size: Vec2,
 }
 
 impl Default for DragDrop {
@@ -185,6 +187,7 @@ impl Default for DragDrop {
       required: ExposedTypes::new(),
       inner_exposed: ExposedTypes::new(),
       payload: None,
+      prev_size: Vec2::ZERO,
     }
   }
 }
@@ -304,13 +307,11 @@ impl Shard for DragDrop {
 
       inner.inner?
     } else {
-      let id = if let Ok(id) = <&str>::try_from(self.id.get()) {
-        egui::Id::new(id)
-      } else {
-        EguiId::new(self, 0).into()
-      };
-      let inner = drag_source(ui, ui_ctx, &input, id, |ui| {
-        util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
+      let id = ui.id().with("dragdrop");
+      let inner = drag_source(ui, ui_ctx,&input, self.prev_size, id, |ui| {
+        let r = util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents);
+        self.prev_size = ui.min_size();
+        r
       });
 
       inner.inner?

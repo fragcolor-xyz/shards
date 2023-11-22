@@ -4500,6 +4500,15 @@ impl IntoIterator for SeqVar {
   }
 }
 
+impl IntoIterator for &SeqVar {
+  type Item = SHVar;
+  type IntoIter = SeqVarIterator;
+
+  fn into_iter(self) -> Self::IntoIter {
+    self.iter()
+  }
+}
+
 pub struct ExposedTypesIterator {
   elements: *mut SHExposedTypeInfo,
   length: usize,

@@ -1,4 +1,4 @@
-use egui::{Layout, Pos2, Rect, Vec2, Ui};
+use egui::{Layout, Pos2, Rect, Ui, Vec2, Id};
 use shards::{
   core::register_shard,
   types::{
@@ -101,6 +101,8 @@ impl AutoGrid {
     let mut max_y = initial_cursor_1.y;
     let mut max_item_height = 0.0;
 
+    let id_src = Id::new("AutoGrid").with(ui.id());
+
     // Pass each element in the given sequence to the shards in the contents and render
     for i in 0..num_children {
       // Check if contents will exceed max grid width if added onto current row
@@ -118,7 +120,7 @@ impl AutoGrid {
       );
 
       let child_layout = Layout::top_down(egui::Align::Center);
-      let mut child_ui = ui.child_ui_with_id_source(item_max_rect, child_layout, i);
+      let mut child_ui = ui.child_ui_with_id_source(item_max_rect, child_layout, id_src.with(i));
 
       add_child(&mut child_ui, i);
 
