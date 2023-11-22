@@ -3,6 +3,7 @@
 
 use egui_memory_editor::MemoryEditor;
 use shards::core::register_legacy_shard;
+use shards::core::register_shard;
 use shards::shardsc;
 
 use shards::types::ClonedVar;
@@ -141,18 +142,6 @@ struct Spinner {
   parents: ParamVar,
   requiring: ExposedTypes,
   size: ParamVar,
-}
-
-struct TextField {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-  variable: ParamVar,
-  justify_width: ParamVar,
-  multiline: bool,
-  exposing: ExposedTypes,
-  should_expose: bool,
-  mutable_text: bool,
-  password: bool,
 }
 
 struct Tooltip {
@@ -305,7 +294,7 @@ pub fn register_shards() {
   register_legacy_shard::<ProgressBar>();
   register_legacy_shard::<RadioButton>();
   register_legacy_shard::<Spinner>();
-  register_legacy_shard::<TextField>();
+  register_shard::<text_field::TextField>();
   register_legacy_shard::<Tooltip>();
   register_legacy_shard::<Variable>();
   register_legacy_shard::<WireVariable>();
