@@ -138,7 +138,7 @@ public:
     assert(_cp);
   }
 
-  void cleanup(SHContext* context = nullptr) {
+  void cleanup(SHContext *context = nullptr) {
     if (_cp) {
       if (_v.valueType == SHType::ContextVar) {
         SH_CORE::releaseVariable(_cp);
@@ -387,7 +387,7 @@ public:
     SH_CORE::destroyVar(_wireValidation.failureMessage);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
 
@@ -626,6 +626,10 @@ template <class SH_CORE> struct TTableVar : public SHVar {
   }
 
   TOwnedVar<SH_CORE> &insert(std::string_view key, const SHVar &val) { return insert(Var(key), val); }
+
+  template <typename AS_VAR> TOwnedVar<SH_CORE> *find(AS_VAR key) const {
+    return (TOwnedVar<SH_CORE> *)payload.tableValue.api->tableGet(payload.tableValue, Var(key));
+  }
 
   template <typename T> T &get(const SHVar &key) {
     static_assert(sizeof(T) == sizeof(SHVar), "Invalid T size, should be sizeof(SHVar)");
