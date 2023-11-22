@@ -78,6 +78,7 @@ pub fn drop_target<R>(
   ui: &mut egui::Ui,
   ctx: &UIContext,
   can_accept_what_is_being_dragged: bool,
+  visualize: bool,
   body: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
   let is_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
@@ -86,7 +87,7 @@ pub fn drop_target<R>(
 
   let outer_rect_bounds = ui.available_rect_before_wrap();
   let inner_rect = outer_rect_bounds.shrink2(margin);
-  // let where_to_put_background = ui.painter().add(Shape::Noop);
+  let where_to_put_background = ui.painter().add(Shape::Noop);
   let mut content_ui = ui.child_ui(inner_rect, *ui.layout());
   let ret = body(&mut content_ui);
   let outer_rect = Rect::from_min_max(outer_rect_bounds.min, content_ui.min_rect().max + margin);
@@ -117,20 +118,22 @@ pub fn drop_target<R>(
       };
     }
 
-    // let mut stroke = Stroke {
-    //   color: stroke_color.into(),
-    //   ..style.bg_stroke
-    // };
+    if visualize {
+      let mut stroke = Stroke {
+        color: stroke_color.into(),
+        ..style.bg_stroke
+      };
 
-    // ui.painter().set(
-    //   where_to_put_background,
-    //   epaint::RectShape {
-    //     rect,
-    //     rounding: style.rounding,
-    //     stroke,
-    //     fill: fill.into(),
-    //   },
-    // );
+      ui.painter().set(
+        where_to_put_background,
+        epaint::RectShape {
+          rect,
+          rounding: style.rounding,
+          stroke,
+          fill: fill.into(),
+        },
+      );
+    }
   }
 
   InnerResponse::new(ret, response)
@@ -163,6 +166,8 @@ struct DragDrop {
     STRING_VAR_OR_NONE_SLICE
   )]
   id: ParamVar,
+  #[shard_param("Visualize", "Visualize valid drop targets", BOOL_OR_NONE_SLICE)]
+  visualize: ClonedVar,
   #[shard_warmup]
   contexts: ParamVar,
   #[shard_warmup]
@@ -186,6 +191,7 @@ impl Default for DragDrop {
       parents: ParamVar::new_named(PARENTS_UI_NAME),
       required: ExposedTypes::new(),
       inner_exposed: ExposedTypes::new(),
+      visualize: ClonedVar::default(),
       payload: None,
       prev_size: Vec2::ZERO,
     }
@@ -284,7 +290,9 @@ impl Shard for DragDrop {
         true
       };
 
-      let inner = drop_target(ui, ui_ctx, accepts_value, |ui| {
+      let visualize = TryInto::<bool>::try_into(&self.visualize.0).unwrap_or(true);
+
+      let inner = drop_target(ui, ui_ctx, accepts_value, visualize, |ui| {
         util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents)
       });
 
@@ -308,8 +316,9 @@ impl Shard for DragDrop {
       inner.inner?
     } else {
       let id = ui.id().with("dragdrop");
-      let inner = drag_source(ui, ui_ctx,&input, self.prev_size, id, |ui| {
-        let r = util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents);
+      let inner = drag_source(ui, ui_ctx, &input, self.prev_size, id, |ui| {
+        let r =
+          util::activate_ui_contents(context, input, ui, &mut self.parents, &mut self.contents);
         self.prev_size = ui.min_size();
         r
       });
