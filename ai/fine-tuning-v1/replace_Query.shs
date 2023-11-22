@@ -1,0 +1,34 @@
+{
+  prompt: """
+    How do I replace a recurring element in a sequence.
+  """
+
+  solution: [{
+    [ 0 1 2 3 4 5] >= sequence
+
+    sequence
+    Replace(
+      [1]
+      [2]
+    )
+    Log("result")
+  }]
+
+  explicit: [{
+    [ 0 1 2 3 4 5] >= sequence
+
+    Get(sequence)
+    Replace(
+      Patterns: [1]
+      Replacements: [2]
+    )
+    Log(Prefix:"result")
+  }]
+
+  explanation: """
+    The Replace Shard will take a sequence as input and replace all elements that match with with is specified in the Patterns parameter with what is specififed in
+    the Replacements parameter. The Replace shard outputs the resulting modified sequence.
+  """
+
+  tag: "General"
+}

@@ -2,8 +2,13 @@
 
 @wire(main-wire{
   Once({
-    [1 2 3 4 5] = seq
-    Drop(seq)
+    [ 0 1 2 3 4 5] >= sequence
+
+    sequence
+    Replace(
+      Patterns: [1]
+      Replacements: [2]
+    )
     Log("result")
   })
 }Looped: true)
