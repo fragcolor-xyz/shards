@@ -69,11 +69,11 @@ struct Container {
   static inline Type _definedAs{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
   static inline ObjectVar<__VA_ARGS__> SH_CONCAT(_definedAs, ObjectVar){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
 
-  OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable)
+  OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
   OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
   OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
-  OBJECT('tex_', "GFX.Texture2D", Texture, TexturePtr)
-  OBJECT('texc', "GFX.TextureCube", TextureCube, TexturePtr)
+  OBJECT('tex_', "GFX.Texture2D", Texture, TexturePtr, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
+  OBJECT('texc', "GFX.TextureCube", TextureCube, TexturePtr, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
   OBJECT('smpl', "GFX.Sampler", Sampler, SHSampler)
   OBJECT('__RT', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
 

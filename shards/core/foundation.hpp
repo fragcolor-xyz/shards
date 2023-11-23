@@ -73,7 +73,10 @@
 
 #ifdef SH_RELWITHDEBINFO
 #undef shassert
-#define shassert(_expr_) if (!(_expr_)) { SHLOG_FATAL("Assertion failed: {}", #_expr_); }
+#define shassert(_expr_)                          \
+  if (!(_expr_)) {                                \
+    SHLOG_FATAL("Assertion failed: {}", #_expr_); \
+  }
 #endif
 
 namespace shards {
@@ -461,7 +464,8 @@ struct CrashHandlerBase {
 };
 
 struct Globals {
-public:;
+public:
+  ;
   UntrackedUnorderedMap<std::string, OwnedVar> Settings;
 
   CrashHandlerBase *CrashHandler{nullptr};
@@ -1087,7 +1091,8 @@ template <typename E> static E getFlags(SHVar var) {
 };
 
 template <typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
-          E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr, bool ThreadSafe = false>
+          E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr,
+          bool ThreadSafe = false>
 class ObjectVar : public TObjectVar<InternalCore, E, Serializer, Deserializer, BeforeDelete, ThreadSafe> {
 public:
   ObjectVar(const char *name, int32_t vendorId, int32_t objectId)
@@ -1456,7 +1461,7 @@ struct VariableResolver {
     }
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_refs.size() > 0) {
       for (auto val : _vals) {
         // we do this to avoid double freeing, we don't really own this value
