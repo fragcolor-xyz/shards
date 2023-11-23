@@ -582,7 +582,7 @@ struct AppendTo : public XpendTo {
       cloneVar(collection, tmp);
     } break;
     default:
-      throw ActivationError("AppendTo, case not implemented");
+      throw ActivationError(fmt::format("AppendTo, case not implemented for type {}", collection.valueType));
     }
     return input;
   }

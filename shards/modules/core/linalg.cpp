@@ -9,6 +9,14 @@
 #include <linalg.h>
 #include <gfx/linalg.hpp>
 
+// Ok...
+#ifdef near
+#undef near
+#endif
+#ifdef far
+#undef far
+#endif
+
 namespace shards {
 namespace Math {
 namespace LinAlg {
@@ -408,7 +416,7 @@ struct Project {
   }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     using namespace linalg::aliases;
@@ -431,6 +439,62 @@ struct Project {
   }
 };
 
+struct Unproject {
+  static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float3Type; }
+
+  PARAM_PARAMVAR(_mtx, "Matrix", "The combined view-projection matrix to use",
+                 {CoreInfo::Float4x4Type, Type::VariableOf(CoreInfo::Float4x4Type)});
+  PARAM_PARAMVAR(_screenSize, "ScreenSize", "The combined view-projection matrix to use",
+                 {CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
+  PARAM_PARAMVAR(_depthRange, "DepthRange", "The combined view-projection matrix to use",
+                 {CoreInfo::NoneType, CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
+  PARAM_PARAMVAR(_flipY, "FlipY", "Flip Y coordinate (on by default)",
+                 {CoreInfo::BoolType, Type::VariableOf(CoreInfo::BoolVarType)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_mtx), PARAM_IMPL_FOR(_screenSize), PARAM_IMPL_FOR(_depthRange), PARAM_IMPL_FOR(_flipY));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    using namespace linalg::aliases;
+
+    float2 depthRange(0.0f, 1.0f);
+    if (!_depthRange.isNone()) {
+      depthRange = toFloat2(_depthRange.get());
+    }
+
+    float a = -depthRange.y / (depthRange.y - depthRange.x);
+    float b = -depthRange.x * depthRange.y / (depthRange.y - depthRange.x);
+
+    float4 screenSpace = float4(toVec<float3>(input), 1.0f);
+    float2 screenSize = toVec<float2>(_screenSize.get());
+
+    float ndcDepth = (b / screenSpace.z) - a;
+
+    float4 ndc =
+        float4((screenSpace.x / screenSize.x) * 2.0f - 1.0f, (screenSpace.y / screenSize.y) * 2.0f - 1.0f, ndcDepth, 1.0f);
+
+    auto &flipY = (Var &)_flipY.get();
+    if (flipY.isNone() || (bool)flipY) {
+      ndc.y = -ndc.y;
+    }
+
+    float4x4 mat = toFloat4x4(_mtx.get());
+    float4x4 invMat = linalg::inverse(mat);
+    auto transformed = linalg::mul(invMat, ndc);
+    float3 unprojected = (transformed.xyz() / transformed.w);
+
+    return Vec3(unprojected);
+  }
+};
+
 struct QuaternionMultiply {
   Vec4 _output{};
 
@@ -443,7 +507,7 @@ struct QuaternionMultiply {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -475,7 +539,7 @@ struct QuaternionSlerp {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -513,7 +577,7 @@ struct QuaternionRotate {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -559,6 +623,7 @@ SHARDS_REGISTER_FN(linalg) {
   REGISTER_SHARD("Math.MatIdentity", MatIdentity);
   REGISTER_SHARD("Math.Decompose", Decompose);
   REGISTER_SHARD("Math.Project", Project);
+  REGISTER_SHARD("Math.Unproject", Unproject);
   REGISTER_SHARD("Math.QuatMultiply", QuaternionMultiply);
   REGISTER_SHARD("Math.QuatRotate", QuaternionRotate);
   REGISTER_SHARD("Math.Slerp", QuaternionSlerp);

@@ -52,7 +52,7 @@ std::vector<uint8_t> SHView::serialize(const SHView &view_) {
   return std::move(writer._buffer);
 }
 
-SHView SHView::deserialize(const std::string_view& data) {
+SHView SHView::deserialize(const std::string_view &data) {
   BytesReader reader(data);
 
   ViewPtr newView = std::make_shared<gfx::View>();
@@ -178,7 +178,7 @@ struct RenderIntoShard {
     PARAM_WARMUP(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _graphicsRendererContext.cleanup(context);
     _inputContext.cleanup(context);
@@ -354,14 +354,66 @@ struct ViewProjectionMatrixShard {
   }
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext* context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    SHView& shView = varAsObjectChecked<SHView>(input, Types::View);
-    auto& view = shView.view;
+    SHView &shView = varAsObjectChecked<SHView>(input, Types::View);
+    auto &view = shView.view;
     auto projMatrix = view->getProjectionMatrix(toVec<float2>(_viewSize.get()));
     _result = linalg::mul(projMatrix, view->view);
     return _result;
+  }
+};
+
+struct ViewMatrixShard {
+  static SHTypesInfo inputTypes() { return Types::View; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float4x4Type; }
+  static SHOptionalString help() { return SHCCSTR("Returns the view matrix of the view"); }
+
+  PARAM_IMPL();
+
+  Mat4 _result;
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::Float4x4Type;
+  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    SHView &shView = varAsObjectChecked<SHView>(input, Types::View);
+    auto &view = shView.view;
+    _result = view->view;
+    return _result;
+  }
+};
+
+struct ViewRangeShard {
+  static SHTypesInfo inputTypes() { return Types::View; }
+  static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
+  static SHOptionalString help() { return SHCCSTR("Returns the view near/far range"); }
+
+  PARAM_IMPL();
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::Float4x4Type;
+  }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    SHView &shView = varAsObjectChecked<SHView>(input, Types::View);
+    auto &view = shView.view;
+    float4x4 mat = view->getProjectionMatrix(float2(1.0f, 1.0f));
+    float a = mat[2][2];
+    float b = mat[3][2];
+    float near = b / a;
+    float far = b / (a + 1.0f);
+    return toVar(float2(near, far));
   }
 };
 
@@ -369,5 +421,7 @@ void registerViewShards() {
   REGISTER_SHARD("GFX.View", ViewShard);
   REGISTER_SHARD("GFX.RenderInto", RenderIntoShard);
   REGISTER_SHARD("GFX.ViewProjectionMatrix", ViewProjectionMatrixShard);
+  REGISTER_SHARD("GFX.ViewMatrix", ViewMatrixShard);
+  REGISTER_SHARD("GFX.ViewRange", ViewRangeShard);
 }
 } // namespace gfx

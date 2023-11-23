@@ -4,6 +4,7 @@
 use shards::core::register_enum;
 use shards::core::register_legacy_enum;
 use shards::core::register_legacy_shard;
+use shards::core::register_shard;
 use shards::fourCharacterCode;
 use shards::types::ExposedTypes;
 use shards::types::ParamVar;
@@ -165,6 +166,7 @@ mod popup_wrapper;
 mod scope;
 mod selectable;
 mod window;
+mod overlay;
 
 pub fn register_shards() {
   area::register_shards();
@@ -180,6 +182,7 @@ pub fn register_shards() {
   register_legacy_shard::<LeftPanel>();
   register_legacy_shard::<RightPanel>();
   register_legacy_shard::<TopPanel>();
+  register_shard::<overlay::OverlayShard>();
 
   assert_eq!(WindowFlagsCC, 1701271366);
 }
