@@ -1551,7 +1551,7 @@ inline bool collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
   std::vector<SHExposedTypeInfo> expInfo;
   TypeInfo ti(var, data, &expInfo, false);
   for (auto &type : validTypes) {
-    if (TypeMatcher{.isParameter = true, .checkVarTypes = true}.match(ti, type)) {
+    if (TypeMatcher{.isParameter = true, .relaxEmptySeqCheck = expInfo.empty(), .checkVarTypes = true}.match(ti, type)) {
       for (auto &it : expInfo) {
         out.push_back(it);
       }

@@ -220,7 +220,7 @@ struct DrawablePassShard {
     return outputTypes().elements[0];
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_step) {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
@@ -302,7 +302,7 @@ struct EffectPassShard {
     return outputTypes().elements[0];
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_step) {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
