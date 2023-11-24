@@ -216,9 +216,9 @@ struct Types {
     return *this;
   }
 
-  operator SHTypesInfo() {
+  operator SHTypesInfo() const {
     if (_types.size() > 0) {
-      return SHTypesInfo{&_types[0], (uint32_t)_types.size(), 0};
+      return SHTypesInfo{&const_cast<Types*>(this)->_types[0], (uint32_t)_types.size(), 0};
     } else {
       return SHTypesInfo{nullptr, 0, 0};
     }

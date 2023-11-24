@@ -68,7 +68,7 @@ public:
     }
   }
 
-  void cleanup(SHContext* context = nullptr) {
+  void cleanup(SHContext *context = nullptr) {
     if (variable) {
       shards::releaseVariable(variable);
       variable = nullptr;
@@ -174,6 +174,26 @@ inline void getObjectTypes(std::vector<SHTypeInfo> &out, const SHTypeInfo &type)
   default:
     break;
   }
+}
+
+inline bool hasContextVariables(const SHTypeInfo &type) {
+  switch (type.basicType) {
+  case SHType::ContextVar:
+    return true;
+  case SHType::Seq:
+    for (auto &t : type.seqTypes)
+      if (hasContextVariables(t))
+        return true;
+    break;
+  case SHType::Table:
+    for (auto &t : type.table.types)
+      if (hasContextVariables(t))
+        return true;
+    break;
+  default:
+    break;
+  }
+  return false;
 }
 
 } // namespace shards

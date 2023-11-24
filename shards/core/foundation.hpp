@@ -16,6 +16,7 @@
 #include "ops_internal.hpp"
 
 #include "spdlog/spdlog.h"
+#include "type_matcher.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -182,7 +183,8 @@ template <typename T, typename Resource = bumping_memory_resource<sizeof(T) * 32
 };
 
 void freeDerivedInfo(SHTypeInfo info);
-SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr);
+SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr,
+                          bool resolveContextVariables = true);
 SHTypeInfo cloneTypeInfo(const SHTypeInfo &other);
 
 uint64_t deriveTypeHash(const SHVar &value);
@@ -191,8 +193,9 @@ uint64_t deriveTypeHash(const SHTypeInfo &value);
 struct TypeInfo {
   TypeInfo() {}
 
-  TypeInfo(const SHVar &var, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr) {
-    _info = deriveTypeInfo(var, data, expInfo);
+  TypeInfo(const SHVar &var, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo = nullptr,
+           bool resolveContextVariables = true) {
+    _info = deriveTypeInfo(var, data, expInfo, resolveContextVariables);
   }
 
   TypeInfo(const SHTypeInfo &info) { _info = cloneTypeInfo(info); }
@@ -1516,6 +1519,7 @@ inline std::optional<SHExposedTypeInfo> findExposedVariable(const SHExposedTypes
 // Collects all ContextVar references
 inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedInfo &out, const SHVar &var) {
   using namespace std::literals;
+
   switch (var.valueType) {
   case SHType::ContextVar: {
     auto sv = SHSTRVIEW(var);
@@ -1539,6 +1543,25 @@ inline void collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedI
   default:
     break;
   }
+}
+
+inline bool collectRequiredVariables(const SHExposedTypesInfo &exposed, ExposedInfo &out, const SHVar &var,
+                                     SHTypesInfo validTypes, const char *debugTag) {
+  SHInstanceData data{.shared = exposed};
+  std::vector<SHExposedTypeInfo> expInfo;
+  TypeInfo ti(var, data, &expInfo, false);
+  for (auto &type : validTypes) {
+    if (TypeMatcher{.isParameter = true, .checkVarTypes = true}.match(ti, type)) {
+      for (auto &it : expInfo) {
+        out.push_back(it);
+      }
+      return true;
+    }
+  }
+  auto msg = fmt::format("No matching variable found for parameter {}, was: {}, expected any of {}", debugTag, (SHTypeInfo &)ti,
+                         validTypes);
+  SHLOG_ERROR("{}", msg);
+  throw ComposeError(msg);
 }
 
 template <typename... TArgs>

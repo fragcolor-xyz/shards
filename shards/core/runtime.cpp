@@ -2,6 +2,7 @@
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
 #include "runtime.hpp"
+#include "type_matcher.hpp"
 #include <shards/common_types.hpp>
 #include "core/foundation.hpp"
 #include "foundation.hpp"
@@ -742,162 +743,8 @@ SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wire
 
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
                 bool relaxEmptySeqCheck) {
-  if (receiverType.basicType == SHType::Any)
-    return true;
-
-  if (inputType.basicType != receiverType.basicType) {
-    // Fail if basic type differs
-    return false;
-  }
-
-  switch (inputType.basicType) {
-  case SHType::Object: {
-    if (inputType.object.vendorId != receiverType.object.vendorId || inputType.object.typeId != receiverType.object.typeId) {
-      return false;
-    }
-    break;
-  }
-  case SHType::Enum: {
-    // special case: any enum
-    if (receiverType.enumeration.vendorId == 0 && receiverType.enumeration.typeId == 0)
-      return true;
-    // otherwise, exact match
-    if (inputType.enumeration.vendorId != receiverType.enumeration.vendorId ||
-        inputType.enumeration.typeId != receiverType.enumeration.typeId) {
-      return false;
-    }
-    break;
-  }
-  case SHType::Seq: {
-    if (strict) {
-      if (inputType.seqTypes.len > 0 && receiverType.seqTypes.len > 0) {
-        // all input types must be in receiver, receiver can have more ofc
-        for (uint32_t i = 0; i < inputType.seqTypes.len; i++) {
-          for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {
-            if (receiverType.seqTypes.elements[j].basicType == SHType::Any ||
-                matchTypes(inputType.seqTypes.elements[i], receiverType.seqTypes.elements[j], isParameter, strict,
-                           relaxEmptySeqCheck))
-              goto matched;
-          }
-          return false;
-        matched:
-          continue;
-        }
-      } else if (inputType.seqTypes.len == 0 && receiverType.seqTypes.len > 0 && !relaxEmptySeqCheck) {
-        // Empty input sequence type indicates [ Any ], receiver type needs to explicitly contain Any to match
-        // but if input is a parameter such as `[]` we can let it pass, this is also used in channels!
-        for (uint32_t j = 0; j < receiverType.seqTypes.len; j++) {
-          if (receiverType.seqTypes.elements[j].basicType == SHType::Any)
-            return true;
-        }
-        return false;
-      } else if ((!relaxEmptySeqCheck && inputType.seqTypes.len == 0) || receiverType.seqTypes.len == 0) {
-        return false;
-      }
-      // if a fixed size is requested make sure it fits at least enough elements
-      if (receiverType.fixedSize != 0 && receiverType.fixedSize > inputType.fixedSize) {
-        return false;
-      }
-    }
-    break;
-  }
-  case SHType::Table: {
-    if (strict) {
-      // Table is a complicated one
-      // We use it as many things.. one of it as structured data
-      // So we have many possible cases:
-      // 1. a receiver table with just type info is flexible, accepts only those
-      // types but the keys are open to anything, if no types are available, it
-      // accepts any type
-      // 2. a receiver table with type info and key info is strict, means that
-      // input has to match 1:1, an exception is done if the last key is empty
-      // as in
-      // "" on the receiver side, in such case any input is allowed (types are
-      // still checked)
-      const auto numInputTypes = inputType.table.types.len;
-      const auto numReceiverTypes = receiverType.table.types.len;
-      const auto numInputKeys = inputType.table.keys.len;
-      const auto numReceiverKeys = receiverType.table.keys.len;
-      if (numReceiverKeys == 0) {
-        // case 1, consumer is not strict, match types if avail
-        // ignore input keys information
-        if (numInputTypes == 0) {
-          // assume this as an Any
-          if (numReceiverTypes == 0)
-            return true; // both Any
-          auto matched = false;
-          SHTypeInfo anyType{SHType::Any};
-          for (uint32_t y = 0; y < numReceiverTypes; y++) {
-            auto btype = receiverType.table.types.elements[y];
-            if (matchTypes(anyType, btype, isParameter, strict, relaxEmptySeqCheck)) {
-              matched = true;
-              break;
-            }
-          }
-          if (!matched) {
-            return false;
-          }
-        } else {
-          if (isParameter || numReceiverTypes != 0) {
-            // receiver doesn't accept anything, match further
-            for (uint32_t i = 0; i < numInputTypes; i++) {
-              // Go thru all exposed types and make sure we get a positive match
-              // with the consumer
-              auto atype = inputType.table.types.elements[i];
-              auto matched = false;
-              for (uint32_t y = 0; y < numReceiverTypes; y++) {
-                auto btype = receiverType.table.types.elements[y];
-                if (matchTypes(atype, btype, isParameter, strict, relaxEmptySeqCheck)) {
-                  matched = true;
-                  break;
-                }
-              }
-              if (!matched) {
-                return false;
-              }
-            }
-          }
-        }
-      } else {
-        if (!isParameter && numInputKeys == 0 && numInputTypes == 0)
-          return true; // update case {} >= .edit-me {"x" 10} > .edit-me
-
-        // Last element being empty ("") indicates that keys not in the type can match
-        // in that case they will be matched against the last type element at the same position
-        const auto lastElementEmpty = receiverType.table.keys.elements[numReceiverKeys - 1].valueType == SHType::None;
-        if (!lastElementEmpty && (numInputKeys != numReceiverKeys || numInputKeys != numInputTypes)) {
-          // we need a 1:1 match in this case, fail early
-          return false;
-        }
-
-        auto missingMatches = numInputKeys;
-        for (uint32_t i = 0; i < numInputKeys; i++) {
-          auto inputEntryType = inputType.table.types.elements[i];
-          auto inputEntryKey = inputType.table.keys.elements[i];
-          for (uint32_t y = 0; y < numReceiverKeys; y++) {
-            auto receiverEntryType = receiverType.table.types.elements[y];
-            auto receiverEntryKey = receiverType.table.keys.elements[y];
-            // Either match the expected key's type or compare against the last type (if it's key is "")
-            if (inputEntryKey == receiverEntryKey || (lastElementEmpty && y == (numReceiverKeys - 1))) {
-              if (matchTypes(inputEntryType, receiverEntryType, isParameter, strict, relaxEmptySeqCheck)) {
-                missingMatches--;
-                y = numReceiverKeys; // break
-              } else
-                return false; // fail quick in this case
-            }
-          }
-        }
-
-        if (missingMatches)
-          return false;
-      }
-    }
-    break;
-  }
-  default:
-    return true;
-  }
-  return true;
+  return TypeMatcher{.isParameter = isParameter, .strict = strict, .relaxEmptySeqCheck = relaxEmptySeqCheck}.match(inputType,
+                                                                                                            receiverType);
 }
 
 struct ValidationContext {
@@ -1367,7 +1214,8 @@ void freeDerivedInfo(SHTypeInfo info) {
   };
 }
 
-SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo) {
+SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::vector<SHExposedTypeInfo> *expInfo,
+                          bool resolveContextVariables) {
   // We need to guess a valid SHTypeInfo for this var in order to validate
   // Build a SHTypeInfo for the var
   // this is not complete at all, missing Array and SHType::ContextVar for example
@@ -1388,7 +1236,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
   case SHType::Seq: {
     std::unordered_set<SHTypeInfo> types;
     for (uint32_t i = 0; i < value.payload.seqValue.len; i++) {
-      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i], data, expInfo);
+      auto derived = deriveTypeInfo(value.payload.seqValue.elements[i], data, expInfo, resolveContextVariables);
       if (!types.count(derived)) {
         shards::arrayPush(varType.seqTypes, derived);
         types.insert(derived);
@@ -1404,7 +1252,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
     SHVar k;
     SHVar v;
     while (t.api->tableNext(t, &tit, &k, &v)) {
-      auto derived = deriveTypeInfo(v, data, expInfo);
+      auto derived = deriveTypeInfo(v, data, expInfo, resolveContextVariables);
       shards::arrayPush(varType.table.types, derived);
       auto idx = varType.table.keys.len;
       shards::arrayResize(varType.table.keys, idx + 1);
@@ -1417,7 +1265,7 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
     s.api->setGetIterator(s, &sit);
     SHVar v;
     while (s.api->setNext(s, &sit, &v)) {
-      auto derived = deriveTypeInfo(v, data, expInfo);
+      auto derived = deriveTypeInfo(v, data, expInfo, resolveContextVariables);
       shards::arrayPush(varType.setTypes, derived);
     }
   } break;
@@ -1429,7 +1277,12 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
         std::string_view name(info.name);
         if (name == sv) {
           expInfo->push_back(SHExposedTypeInfo{.name = info.name, .exposedType = info.exposedType});
-          return cloneTypeInfo(info.exposedType);
+          if (resolveContextVariables) {
+            return cloneTypeInfo(info.exposedType);
+          } else {
+            shards::arrayPush(varType.contextVarTypes, cloneTypeInfo(info.exposedType));
+            return varType;
+          }
         }
       }
       SHLOG_ERROR("Could not find variable {} when deriving type info", varName);
