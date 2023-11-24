@@ -22,7 +22,14 @@ struct Connection {
   sqlite3 *db;
   std::mutex mutex;
 
+  // the following is ugly but will likely happen just a few times in any serious application
+  static inline std::mutex DBOpeningGlobalMutex;
+
   Connection(const char *path) {
+    std::scoped_lock<std::mutex> l(DBOpeningGlobalMutex);
+
+    SHLOG_INFO("Opening sqlite db (stopping the world!): %s", path); // log it @ info to remark it's a lock!
+
     if (sqlite3_open(path, &db) != SQLITE_OK) {
       throw ActivationError(sqlite3_errmsg(db));
     }
