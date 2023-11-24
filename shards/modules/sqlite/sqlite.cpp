@@ -83,6 +83,8 @@ struct Statement {
 };
 
 struct Base {
+  std::mutex mutex;
+
   AnyStorage<Connection> _connection;
   std::string_view _dbName{"shards.db"};
   bool ready = false; // mesh is the owner so we don't need cleanup
@@ -94,6 +96,7 @@ struct Base {
 
   void ensureDb(SHContext *context) {
     if (!ready) {
+      std::scoped_lock<std::mutex> l(mutex);
       auto storageKey = fmt::format("DB.Connection_{}", _dbName);
       auto mesh = context->main->mesh.lock();
       _connection = getOrCreateAnyStorage(mesh.get(), storageKey, [&]() { return Connection(_dbName.data()); });
