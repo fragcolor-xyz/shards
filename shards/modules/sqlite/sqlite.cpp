@@ -10,6 +10,7 @@
 #include <optional>
 #include <shards/core/async.hpp>
 #include <boost/filesystem.hpp>
+#include <shared_mutex>
 using namespace boost::filesystem;
 
 #pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
@@ -21,8 +22,11 @@ namespace DB {
 struct Connection {
   sqlite3 *db;
   std::mutex mutex;
+  static inline std::shared_mutex globalMutex;
 
   Connection(const char *path) {
+    std::unique_lock<std::shared_mutex> l(globalMutex); // WRITE LOCK this
+
     if (sqlite3_open(path, &db) != SQLITE_OK) {
       throw ActivationError(sqlite3_errmsg(db));
     }
@@ -152,7 +156,8 @@ struct Query : public Base {
     return awaitne(
         context,
         [&]() -> SHVar {
-          std::scoped_lock<std::mutex> l(_connection->mutex);
+          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+          std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           if (!prepared) {
             prepared.reset(new Statement(_connection->get(), _query.payload.stringValue)); // _query is full terminated cos cloned
@@ -290,7 +295,8 @@ struct Transaction : public Base {
     await(
         context,
         [&] {
-          std::scoped_lock<std::mutex> l(_connection->mutex);
+          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+          std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           auto rc = sqlite3_exec(_connection->get(), "BEGIN;", nullptr, nullptr, nullptr);
           if (rc != SQLITE_OK) {
@@ -305,7 +311,8 @@ struct Transaction : public Base {
     await(
         context,
         [&] {
-          std::scoped_lock<std::mutex> l(_connection->mutex);
+          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+          std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           if (state != SHWireState::Continue) {
             // likely something went wrong! lets rollback.
@@ -358,7 +365,8 @@ struct LoadExtension : public Base {
     return awaitne(
         context,
         [&] {
-          std::scoped_lock<std::mutex> l(_connection->mutex);
+          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+          std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           std::string extPath(_extPath.payload.stringValue, _extPath.payload.stringLen);
           _connection->loadExtension(extPath);
@@ -398,7 +406,8 @@ struct RawQuery : public Base {
     return awaitne(
         context,
         [&] {
-          std::scoped_lock<std::mutex> l(_connection->mutex);
+          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+          std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           char *errMsg = nullptr;
           std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
