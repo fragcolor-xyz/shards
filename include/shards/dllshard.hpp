@@ -24,7 +24,7 @@ At runtime just dlopen the dll, that's it!
 
 namespace shards {
 // this must be defined in the external
-extern void registerShards();
+extern void registerExternalShards();
 
 struct CoreLoader {
   SHCore *_core{nullptr};
@@ -55,7 +55,7 @@ struct CoreLoader {
     _core = ifaceproc(SHARDS_CURRENT_ABI);
     assert(_core);
     _core->log("loading external shards..."_swl);
-    registerShards();
+    registerExternalShards();
   }
 };
 
