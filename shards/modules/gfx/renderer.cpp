@@ -22,10 +22,10 @@ struct RendererShard {
         {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_window), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_ignoreCompilationErrors));
 
-  static inline Type OutputType = Type(WindowContext::Type);
+  static inline Type OutputType = Type(GraphicsContext::Type);
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return OutputType; }
 
   RendererShard() { _ignoreCompilationErrors = Var(false); }
 

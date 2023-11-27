@@ -25,8 +25,18 @@ set(SOURCES
   gizmos/shapes.cpp
 )
 
+if(SHARDS_WITH_EGUI)
+  add_rust_library(NAME shards-gfx-debug-ui
+    PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}/debug_ui
+    DEPENDS debug_ui.hpp)
+  set(GFX_RUST_TARGETS shards-gfx-debug-ui-rust)
+  set(GFX_RUST_REGISTER debug)
+  list(APPEND SOURCES debug_ui.cpp)
+endif()
+
 add_shards_module(gfx SOURCES ${SOURCES}
-  REGISTER_SHARDS gfx gizmos)
+  REGISTER_SHARDS gfx gizmos ${GFX_RUST_REGISTER}
+  RUST_TARGETS ${GFX_RUST_TARGETS})
 
 target_link_libraries(shards-module-gfx
   stb gfx gfx-gltf)

@@ -212,7 +212,6 @@ struct DrawQueueShard {
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
-
     if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
       auto &queue = *_queue;
       if (queue) {
