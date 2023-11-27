@@ -52,6 +52,7 @@
 #define GFX_RENDERER_MAX_BUFFERED_FRAMES (2)
 
 using namespace gfx::detail;
+using gfx::debug::Debugger;
 
 namespace gfx {
 
@@ -168,6 +169,13 @@ struct RendererImpl final : public ContextData {
       auto &frameQueue = frameQueues.emplace_back();
       frameQueue.emplace(viewStackOutput.renderTarget, storage, getWorkerMemoryForCurrentFrame());
       frameQueue->fallbackClearColor.emplace(float4(1, 1, 1, 1));
+      if (storage.debugger) {
+        storage.debugger->frameQueuePush(debug::FQDesc{
+            .viewport = viewStackOutput.viewport,
+            .renderTarget = viewStackOutput.renderTarget,
+            .referenceSize = viewStackOutput.referenceSize,
+        });
+      }
     } else {
       // Can render to the exisiting queue
       frameQueues.push_back(std::nullopt);
@@ -180,6 +188,9 @@ struct RendererImpl final : public ContextData {
     // Evaluate the queue for the popped view
     if (frameQueue.has_value()) {
       frameQueue->evaluate(outer);
+      if (storage.debugger) {
+        storage.debugger->frameQueuePop();
+      }
     }
 
     frameQueues.pop_back();
@@ -334,7 +345,7 @@ struct RendererImpl final : public ContextData {
     for (auto it = deferredTextureReadCommands.begin(); it != deferredTextureReadCommands.end();) {
       if (!it->isQueued()) {
         if (queueTextureReadCommand(encoder, *it)) {
-        buffersToMap.push_back(&*it);
+          buffersToMap.push_back(&*it);
         } else {
           // Invalid texture, remove from queue
           it = deferredTextureReadCommands.erase(it);
@@ -370,6 +381,10 @@ struct RendererImpl final : public ContextData {
   }
 
   void beginFrame() {
+    if (storage.debugger) {
+      storage.debugger->frameBegin(storage);
+    }
+
     // This registers ContextData so that releaseContextData is called when GPU resources are invalidated
     if (!isBoundToContext())
       initializeContextData();
@@ -421,6 +436,13 @@ struct RendererImpl final : public ContextData {
     TracyPlotConfig("GFX WorkerMemory", tracy::PlotFormatType::Memory, true, true, 0);
     TracyPlot("GFX WorkerMemory", int64_t(storage.workerMemory.getMemoryResource().totalRequestedBytes));
 #endif
+
+    if (storage.debugger) {
+      storage.debugger->frameEnd(storage, debug::OutputDesc{
+                                              .mainOutput = mainOutput.texture,
+                                              .mainOutputRT = mainOutputRenderTarget,
+                                          });
+    }
   }
 
   void clearOldCacheItems() {
@@ -449,6 +471,8 @@ Renderer::Renderer(Context &context) {
 }
 
 Context &Renderer::getContext() { return impl->context; }
+
+void Renderer::setDebugger(std::shared_ptr<Debugger> debugger) { impl->storage.debugger = std::move(debugger); }
 
 void Renderer::render(ViewPtr view, const PipelineSteps &pipelineSteps) { impl->render(view, pipelineSteps); }
 

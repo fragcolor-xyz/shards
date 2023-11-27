@@ -130,7 +130,12 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   RendererStorage &storage = evaluator.getStorage();
   WorkerMemory &workerMemory = storage.workerMemory;
 
-  tf::Taskflow flow;
+  auto &debugger = storage.debugger;
+  if (debugger) {
+    for (auto &drawable : queue->getSharedDrawables()) {
+      debugger->referenceDrawable(drawable);
+    }
+  }
 
   HasherXXH128<PipelineHashVisitor> sharedHasher;
   sharedHasher(rtl);
@@ -318,6 +323,14 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
                                      (float)viewport.height, 0.0f, 1.0f);
 
     for (auto &it : pipelineGroups) {
+      if (debugger) {
+        debug::PipelineGroupDesc desc{.pipeline = it.second.pipeline};
+        for (auto &drawable : it.second.drawables) {
+          desc.drawables.push_back(drawable->getId());
+        }
+        debugger->pipelineGroupBegin(desc);
+      }
+
       PipelineGroup &group = it.second;
       if (group.pipeline->compilationError.has_value())
         continue;

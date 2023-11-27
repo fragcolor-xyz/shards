@@ -74,8 +74,9 @@ struct RendererShard {
   }
 
   void warmup(SHContext *context) {
-    renderer.warmup(context);
     renderer._ignoreCompilationErrors = (bool)*_ignoreCompilationErrors;
+    renderer._enableDebugger = true;
+    renderer.warmup(context);
     PARAM_WARMUP(context);
   }
 

@@ -7,6 +7,7 @@
 #include "pipeline_step.hpp"
 #include "view_stack.hpp"
 #include "gpu_read_buffer.hpp"
+#include "debug/debugger.hpp"
 #include <functional>
 #include <memory>
 #include <span>
@@ -30,6 +31,8 @@ public:
   Renderer(Context &context);
 
   Context &getContext();
+
+  void setDebugger(std::shared_ptr<gfx::debug::Debugger> debugger);
 
   /// <div rustbindgen hide></div>
   void render(ViewPtr view, const PipelineSteps &pipelineSteps);

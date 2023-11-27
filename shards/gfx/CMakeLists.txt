@@ -1,5 +1,3 @@
-option(SH_DEBUG "Enable context debug mode by default" OFF)
-
 add_library(gfx
   context.cpp
   context_data.cpp
@@ -135,6 +133,12 @@ if(HAS_WGPU_NATIVE)
   add_subdirectory(rust)
   target_link_libraries(gfx gfx-rust)
   target_sources(gfx PRIVATE ${GFX_BINDINGS_FILE})
+endif()
+
+option(GFX_DEBUG "Graphics debugging" ON)
+if(GFX_DEBUG)
+  target_compile_definitions(gfx PUBLIC GFX_DEBUG=1)
+  target_sources(gfx PRIVATE debug/debugger.cpp)
 endif()
 
 add_subdirectory(tests)

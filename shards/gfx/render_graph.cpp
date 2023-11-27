@@ -498,7 +498,12 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
   WGPUCommandEncoderDescriptor desc = {};
   WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
 
+  auto &debugger = storage.debugger;
+  size_t nodeIdx = 0;
   for (const auto &node : graph.nodes) {
+    if (debugger)
+      debugger->frameQueueRenderGraphNodeBegin(nodeIdx);
+
     const ViewData &viewData = evaluationData.getViewData(node.queueDataIndex);
 
     WGPURenderPassDescriptor renderPassDesc = createRenderPassDescriptor(graph, context, node);
@@ -515,6 +520,10 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
     if (node.encode)
       node.encode(ctx);
     wgpuRenderPassEncoderEnd(renderPassEncoder);
+
+    if (debugger)
+      debugger->frameQueueRenderGraphNodeEnd();
+    ++nodeIdx;
   }
 
   WGPUCommandBufferDescriptor cmdBufDesc{};

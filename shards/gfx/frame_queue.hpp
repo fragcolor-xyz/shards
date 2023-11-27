@@ -180,6 +180,9 @@ public:
   void evaluate(Renderer &renderer) {
     const RenderGraph &rg = getOrCreateRenderGraph();
     RenderGraphEvaluator evaluator(storage.workerMemory, renderer, storage);
+    if (storage.debugger) {
+      storage.debugger->frameQueueRenderGraphBegin(rg);
+    }
 
     shards::pmr::vector<TextureSubResource> renderGraphOutputs(storage.workerMemory);
     for (auto &attachment : mainOutput->attachments) {

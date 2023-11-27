@@ -15,6 +15,9 @@
 namespace gfx {
 struct Window;
 struct Renderer;
+namespace debug {
+struct Debugger;
+}
 
 struct GraphicsContext {
   static constexpr uint32_t TypeId = 'mwnd';
@@ -26,6 +29,7 @@ struct GraphicsContext {
   std::shared_ptr<Context> context;
   std::shared_ptr<Window> window;
   std::shared_ptr<Renderer> renderer;
+  std::shared_ptr<debug::Debugger> debugger;
 
   double time{};
   float deltaTime{};

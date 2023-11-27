@@ -32,6 +32,7 @@ struct ShardsRenderer {
   gfx::Loop _loop;
 
   bool _ignoreCompilationErrors{};
+  bool _enableDebugger = false;
 
   void compose(SHInstanceData &data) {
 #if SH_CORO_NEED_STACK_MEM
@@ -55,6 +56,11 @@ struct ShardsRenderer {
     _graphicsContext.renderer = std::make_shared<Renderer>(*_graphicsContext.context.get());
     _graphicsContext.renderer->setIgnoreCompilationErrors(_ignoreCompilationErrors);
     _graphicsRendererContext.renderer = _graphicsContext.renderer.get();
+    if(_enableDebugger) {
+      _graphicsContext.debugger = std::make_shared<gfx::debug::Debugger>();
+      _graphicsContext.renderer->setDebugger(_graphicsContext.debugger);
+
+    }
   }
 
   void warmup(SHContext *context) {

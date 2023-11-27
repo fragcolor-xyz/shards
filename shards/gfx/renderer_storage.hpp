@@ -4,6 +4,7 @@
 #include "fwd.hpp"
 #include "worker_memory.hpp"
 #include "render_graph.hpp"
+#include "debug/debugger.hpp"
 #include "texture_view_cache.hpp"
 #include "drawable_processor.hpp"
 
@@ -26,6 +27,7 @@ struct RendererStorage {
   PipelineCache pipelineCache;
   RenderTextureCache renderTextureCache;
   TextureViewCache textureViewCache;
+  std::shared_ptr<debug::Debugger> debugger;
 
   FrameStats frameStats;
 
