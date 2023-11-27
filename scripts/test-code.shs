@@ -1,17 +1,14 @@
 
-
 @wire(main-wire{
   Once({
-    [ 0 1 2 3 4 5] >= sequence
-
-    sequence
-    Replace(
-      Patterns: [1]
-      Replacements: [2]
-    )
+    
+    [72 101 108 108 111]
+    ;ToBytes -- serializes
+    IntsToBytes
+    BytesToString
     Log("result")
   })
-}Looped: true)
+}Looped: false)
 
 @mesh(main)
 @schedule(main main-wire)

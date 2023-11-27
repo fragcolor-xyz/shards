@@ -1,6 +1,6 @@
 {
   prompt: """
-    How do I count the total number of key and value pairs that a table has ?
+    How do I count the total number of elements  in a sequence of a key from a table
   """
 
   solution: [{

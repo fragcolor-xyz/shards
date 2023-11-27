@@ -1,0 +1,22 @@
+{
+  prompt: """
+    How do I display a message on the console
+  """
+
+  solution: {
+    Msg("Type your message here")
+  }
+
+  explicit: {
+    Msg(Message:"Type your message here")
+  }
+
+  explanation: """
+    This shard is used for displaying messages to the user on the standard output (which is usually the console).
+    The message to display can be passed to this shard either as a string or as a string variable holding a value. 
+    In case a variable is passed the shard displays the variable's value.
+    Unlike Log, Msg does not take an input.
+  """
+
+  tag: "General"
+}
