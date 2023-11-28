@@ -2097,16 +2097,21 @@ struct WhenDone : CapturingSpawners {
     if (wire) {
       _connection2 = wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanupCleanup>(this);
 
-      _mesh->schedule(wire, Var::Empty, false);
+      try {
+        _mesh->schedule(wire, Var::Empty, false);
 
-      _mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
-          .wire = _rootWire,
-          .childWire = wire.get(),
-      });
+        _mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+            .wire = _rootWire,
+            .childWire = wire.get(),
+        });
 
-      _scheduled = true;
-
-      SHLOG_TRACE("WhenDone::onCleanup, scheduled wire {}", wire->name);
+        _scheduled = true;
+        SHLOG_TRACE("WhenDone::onCleanup, scheduled wire {}", wire->name);
+      } catch (std::exception &ex) {
+        // we already cleaned up on prepare failure here! _mesh will also be invalid etc
+        shassert(!_mesh && "WhenDone::onCleanup, mesh should be invalid here");
+        SHLOG_ERROR("WhenDone::onCleanup, failed to schedule wire: {}", ex.what());
+      }
     } else {
       SHLOG_TRACE("WhenDone::onCleanup, wire is null");
       onCleanupCleanup(e);

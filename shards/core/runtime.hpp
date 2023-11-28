@@ -300,8 +300,10 @@ UntrackedVector<SHWire *> &getCoroWireStack();
 #else
 #define SH_CORO_RESUMED(_wire)
 #define SH_CORO_SUSPENDED(_)
-#define SH_CORO_EXT_RESUME(_) { TracyCoroEnter(wire); }
-#define SH_CORO_EXT_SUSPEND(_) { TracyCoroExit(_wire); }
+#define SH_CORO_EXT_RESUME(_) \
+  { TracyCoroEnter(wire); }
+#define SH_CORO_EXT_SUSPEND(_) \
+  { TracyCoroExit(_wire); }
 #endif
 
 inline void prepare(SHWire *wire, SHFlow *flow) {
@@ -612,8 +614,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
     // wire might fail on warmup during prepare
     if (wire->state == SHWire::State::Failed) {
-      SHLOG_WARNING("Wire {} failed to warmup, not scheduling!", wire->name);
-      return;
+      throw shards::SHException(fmt::format("Wire {} failed during prepare", wire->name));
     }
 
     observer.before_start(wire.get());

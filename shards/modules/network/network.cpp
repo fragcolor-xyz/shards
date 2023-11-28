@@ -416,8 +416,16 @@ struct Server : public NetworkBase {
     if (!_stopWireQueue.empty()) {
       SHWire *toStop{};
       while (_stopWireQueue.pop(toStop)) {
+        SHLOG_TRACE("GC-ing wire {}", toStop->name);
+        DEFER({ SHLOG_TRACE("GC-ed wire {}", toStop->name); });
+
         // ensure cleanup is called
-        const_cast<SHWire *>(toStop)->cleanup();
+        auto wireState = toStop->state.load();
+        if (wireState != SHWire::State::Failed && wireState != SHWire::State::Stopped) {
+          const_cast<SHWire *>(toStop)->cleanup();
+        } else {
+          SHLOG_TRACE("Wire {} already stopped, state: {}", toStop->name, wireState);
+        }
 
         // read lock this
         std::shared_lock<std::shared_mutex> lock(peersMutex);
