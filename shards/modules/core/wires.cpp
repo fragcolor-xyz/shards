@@ -2135,7 +2135,10 @@ struct WhenDone : CapturingSpawners {
     for (auto &v : _vars) {
       SHLOG_TRACE("WhenDone: warming up variable: {}", v.variableName());
       v.warmup(context);
-      _injectedVariables.emplace_back(referenceWireVariable(wire.get(), v.variableName()));
+      auto &var = _injectedVariables.emplace_back(referenceWireVariable(wire.get(), v.variableName()));
+      // also do a copy here, some variables might be in context, especially protected one!
+      // we might cleanup before any activation happens!
+      cloneVar(*var, v.get());
     }
   }
 
