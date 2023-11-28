@@ -70,7 +70,7 @@ struct RendererShard {
       _requiredVariables.push_back(required);
     }
 
-    return _contents.composeResult().outputType;
+    return outputTypes().elements[0];
   }
 
   void warmup(SHContext *context) {
@@ -80,7 +80,7 @@ struct RendererShard {
     PARAM_WARMUP(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     renderer.cleanup(context);
   }
@@ -94,7 +94,8 @@ struct RendererShard {
       _contents.activate(shContext, input, tmpOutput);
       renderer.end();
     }
-    return SHVar{};
+
+    return *renderer._graphicsContextVar;
   }
 };
 
@@ -123,7 +124,7 @@ struct EndFrame {
     _requiredGraphicsContext.warmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _requiredGraphicsContext.cleanup();
   }

@@ -40,7 +40,7 @@ using shader::UniformBufferLayout;
 using shader::UniformLayout;
 
 inline auto getLogger() {
-  static auto logger = gfx::getLogger();
+  static auto logger = ::gfx::getLogger();
   return logger;
 }
 

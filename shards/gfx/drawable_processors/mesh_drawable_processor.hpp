@@ -715,6 +715,10 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       context.outHashes[i] = pipelineHashCollector.getDigest();
     }
   }
+
+  const char* name() override {
+    return "MeshDrawableProcessor";
+  }
 };
 } // namespace gfx::detail
 

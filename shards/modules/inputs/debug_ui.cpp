@@ -86,7 +86,8 @@ struct DebugUI {
     _inputContext.warmup(context);
     _uiContext = referenceVariable(context, EguiContextName);
   }
-  void cleanup() {
+  
+  void cleanup(SHContext *context) {
     _inputContext.cleanup();
 
     releaseVariable(_uiContext);

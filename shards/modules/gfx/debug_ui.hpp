@@ -4,29 +4,66 @@
 #include <stdint.h>
 #include <stddef.h>
 
-namespace shards::gfx::debug {
-struct FrameQueue {
-  int priority;
+namespace shards::gfx::debug_ui {
+
+struct Int2 {
+  int64_t x;
+  int64_t y;
+};
+
+struct Target {
   const char *name;
-  bool hasFocus{};
+};
+typedef uint64_t FrameIndex;
+struct Frame {
+  const char *name;
+  Int2 size;
+  int32_t format;
+  bool isOutput;
+};
+struct Output {};
+struct Drawable {
+  uint64_t id;
+};
+struct PipelineGroup {
+  Drawable *drawables;
+  size_t numDrawables;
+};
+struct Node {
+  Target *targets;
+  size_t numTargets;
+  PipelineGroup *pipelineGroups;
+  size_t numPipelineGroups;
+};
+struct FrameQueue {
+  Frame *frames;
+  size_t numFrames;
+  Output *outputs;
+  size_t numOutputs;
+  Node *nodes;
+  size_t numNodes;
 };
 
 // Persistent
-struct DebugUIOpts {};
+struct UIOpts {};
 
-struct DebugUIParams {
-  DebugUIOpts &opts;
+struct UIParams {
+  void *state;
+  UIOpts &opts;
+  bool debuggerEnabled;
   // A list of all render calls in the current frame
-  const FrameQueue *frameQueues;
+  FrameQueue *frameQueues;
   size_t numFrameQueues;
   size_t currentFrame;
 };
-} // namespace shards::gfx::debug
+} // namespace shards::gfx::debug_ui
 
 #ifndef RUST_BINDGEN
 extern "C" {
 struct SHVar;
-void shards_gfx_showDebugUI(SHVar *context, shards::gfx::debug::DebugUIParams &params);
+void *shards_gfx_newDebugUI();
+void shards_gfx_freeDebugUI(void *);
+void shards_gfx_showDebugUI(SHVar *context, shards::gfx::debug_ui::UIParams &params);
 }
 #else
 extern "C" {

@@ -15,13 +15,35 @@ pub mod native {
   include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
+#[derive(Default)]
+struct State {
+  selected_frame_queue: Option<usize>,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn shards_gfx_newDebugUI() -> *mut std::ffi::c_void {
+  Box::into_raw(Box::new(State::default())) as *mut std::ffi::c_void
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn shards_gfx_freeDebugUI(state: *mut std::ffi::c_void) {
+  drop(Box::from_raw(state as *mut State));
+}
+
+fn default_frame() -> egui::Frame {
+  egui::Frame::default()
+    .rounding(Rounding::same(1.0))
+    .fill(Color32::BLACK)
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn shards_gfx_showDebugUI(
   context_var: &Var,
-  params: *mut native::shards_gfx_debug_DebugUIParams,
+  params: *mut native::shards_gfx_debug_ui_UIParams,
   num_layers: usize,
 ) {
   let params = &mut (*params);
+  let state = &mut *(params.state as *mut State);
   let opts = &mut *params.opts;
   // let events = std::slice::from_raw_parts(params.events, params.numEvents);
 
@@ -29,11 +51,100 @@ pub unsafe extern "C" fn shards_gfx_showDebugUI(
     .expect("Failed to get the UI context")
     .egui_ctx;
 
+  let frame_queues = std::slice::from_raw_parts(params.frameQueues, params.numFrameQueues);
+
   Window::new("GFX")
     .resizable(true)
     .min_width(400.0)
     .min_height(300.0)
     .show(egui_ctx, |ui| {
+      ui.horizontal(|ui| {
+        // Frame queues list
+        ui.with_layout(Layout::default().with_cross_justify(true), |ui| {
+          ui.set_width(200.0);
+          ui.set_height(120.0);
+          default_frame().show(ui, |ui| {
+            ui.label(RichText::new("Render calls:").strong().color(Color32::GRAY));
+            ScrollArea::both().show(ui, |ui| {
+              for (idx, frame) in frame_queues.iter().enumerate() {
+                let selected = if let Some(selected) = state.selected_frame_queue {
+                  idx == selected
+                } else {
+                  false
+                };
+
+                let mut label = format!("Call {}", idx);
+                let mut color = Color32::WHITE;
+                if frame.numNodes == 0 {
+                  label += " (empty)";
+                  color = Color32::GRAY;
+                }
+
+                let resp =
+                  egui::SelectableLabel::new(selected, RichText::new(label).color(color)).ui(ui);
+                if resp.clicked() {
+                  state.selected_frame_queue = Some(idx);
+                }
+              }
+            });
+          });
+        });
+
+        // Frames list
+        ui.with_layout(Layout::default().with_cross_justify(true), |ui| {
+          ui.set_width(200.0);
+          ui.set_height(120.0);
+          default_frame().show(ui, |ui| {
+            if let Some(selected) = state.selected_frame_queue {
+              if selected < frame_queues.len() {
+                let fq = &frame_queues[selected];
+
+                // Show frames
+                egui::Frame::default().show(ui, |ui| {
+                  ui.label(
+                    RichText::new(format!("Frames:"))
+                      .strong()
+                      .color(Color32::GRAY),
+                  );
+                  ScrollArea::both().show(ui, |ui| {
+                    let frames = std::slice::from_raw_parts(fq.frames, fq.numFrames);
+                    for (idx, frame) in frames.iter().enumerate() {
+                      let name = CStr::from_ptr(frame.name);
+                      let mut title =
+                        format!("Frame {}/{}:", idx, name.to_str().unwrap()).to_string();
+                      if frame.isOutput {
+                        title += " (output)";
+                      }
+                      ui.label(RichText::new(title).strong());
+                      ui.indent(0, |ui| {
+                        ui.label(
+                          RichText::new(format!("{}x{}", frame.size.x, frame.size.y))
+                            .color(Color32::GRAY),
+                        );
+                        ui.label(
+                          RichText::new(format!("Format {}", frame.format)).color(Color32::GRAY),
+                        );
+                      });
+                    }
+                  });
+                });
+              }
+            }
+          });
+        });
+      });
+
+      // for (idx, layer) in frameQueues[state.selected_frame_queue]..iter().enumerate() {
+      //   let resp = egui::SelectableLabel::new(
+      //     idx == state.selected_frame_queue,
+      //     format!("Layer {}", idx),
+      //   )
+      //   .ui(ui);
+      //   if resp.clicked() {
+      //     state.selected_frame_queue = idx;
+      //   }
+      // }
+      // state.
       // Show layers
       // ui.label("Layers:");
       // for (i, layer) in layers.iter().enumerate() {
@@ -123,5 +234,7 @@ pub unsafe extern "C" fn shards_gfx_showDebugUI(
       //       });
       //   },
       // );
+
+      ui.allocate_rect(ui.available_rect_before_wrap(), Sense::hover())
     });
 }

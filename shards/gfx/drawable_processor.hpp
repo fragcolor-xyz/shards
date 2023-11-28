@@ -5,7 +5,6 @@
 #include "pipeline_builder.hpp"
 #include "renderer_types.hpp"
 #include "transient_ptr.hpp"
-#include <taskflow/taskflow.hpp>
 #include "pmr/wrapper.hpp"
 #include "pmr/vector.hpp"
 #include <memory>
@@ -51,7 +50,7 @@ struct DrawableEncodeContext {
 };
 
 struct DrawablePreprocessContext {
-  const shards::pmr::vector<const IDrawable *>& drawables;
+  const shards::pmr::vector<const IDrawable *> &drawables;
   const shards::pmr::vector<Feature *> &features;
   const BuildPipelineOptions &buildPipelineOptions;
   RendererStorage &storage;
@@ -79,6 +78,9 @@ struct IDrawableProcessor : public IPipelineModifier {
   // Precompute and hashing step
   // The returned hash identifies the pipeline permutation
   virtual void preprocess(const DrawablePreprocessContext &context) = 0;
+
+  // Debug name
+  virtual const char *name() = 0;
 };
 
 } // namespace gfx::detail
