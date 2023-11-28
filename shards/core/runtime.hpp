@@ -520,7 +520,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       throw shards::SHException("Multiple wire Pre-composing");
     }
 
-    shassert(wire->mesh.expired() && "Wire already has a mesh!");
     wire->mesh = shared_from_this();
 
     // this is to avoid recursion during compose
@@ -572,7 +571,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       throw shards::SHException("Multiple wire schedule");
     }
 
-    shassert(wire->mesh.expired() && "Wire already has a mesh!");
     wire->mesh = shared_from_this();
 
     observer.before_compose(wire.get());
