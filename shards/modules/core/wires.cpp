@@ -117,14 +117,17 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
   wire->mesh = data.wire->mesh;
 
-  // TODO FIXME, wireloader/wire runner might access this from threads
-  if (mesh->visitedWires.count(wire.get())) {
-    // but visited does not mean composed...
-    if (wire->composeResult && activating) {
-      IterableExposedInfo shared(data.shared);
-      verifyAlreadyComposed(data, shared);
+  {
+    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
+    auto visitedIt = mesh->visitedWires.find(wire.get()); // should be race free
+    if (visitedIt != mesh->visitedWires.end()) {
+      // but visited does not mean composed...
+      if (wire->composeResult && activating) {
+        IterableExposedInfo shared(data.shared);
+        verifyAlreadyComposed(data, shared);
+      }
+      return visitedIt->second;
     }
-    return mesh->visitedWires[wire.get()];
   }
 
   // avoid stack-overflow
@@ -138,11 +141,13 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   // we can add early in this case!
   // useful for Resume/Start
   if (passthrough) {
+    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
     auto [_, done] = mesh->visitedWires.emplace(wire.get(), data.inputType);
     if (done) {
       SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
     }
   } else if (mode == Stepped) {
+    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
     auto [_, done] = mesh->visitedWires.emplace(wire.get(), CoreInfo::AnyType);
     if (done) {
       SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
@@ -224,6 +229,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   }
 
   if (!passthrough && mode != Stepped) {
+    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
     auto [_, done] = mesh->visitedWires.emplace(wire.get(), outputType);
     if (done) {
       SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(),
@@ -2097,16 +2103,21 @@ struct WhenDone : CapturingSpawners {
     if (wire) {
       _connection2 = wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanupCleanup>(this);
 
-      _mesh->schedule(wire, Var::Empty, false);
+      try {
+        _mesh->schedule(wire, Var::Empty, false);
 
-      _mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
-          .wire = _rootWire,
-          .childWire = wire.get(),
-      });
+        _mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+            .wire = _rootWire,
+            .childWire = wire.get(),
+        });
 
-      _scheduled = true;
-
-      SHLOG_TRACE("WhenDone::onCleanup, scheduled wire {}", wire->name);
+        _scheduled = true;
+        SHLOG_TRACE("WhenDone::onCleanup, scheduled wire {}", wire->name);
+      } catch (std::exception &ex) {
+        // we already cleaned up on prepare failure here! _mesh will also be invalid etc
+        shassert(!_mesh && "WhenDone::onCleanup, mesh should be invalid here");
+        SHLOG_ERROR("WhenDone::onCleanup, failed to schedule wire: {}", ex.what());
+      }
     } else {
       SHLOG_TRACE("WhenDone::onCleanup, wire is null");
       onCleanupCleanup(e);
@@ -2130,7 +2141,10 @@ struct WhenDone : CapturingSpawners {
     for (auto &v : _vars) {
       SHLOG_TRACE("WhenDone: warming up variable: {}", v.variableName());
       v.warmup(context);
-      _injectedVariables.emplace_back(referenceWireVariable(wire.get(), v.variableName()));
+      auto &var = _injectedVariables.emplace_back(referenceWireVariable(wire.get(), v.variableName()));
+      // also do a copy here, some variables might be in context, especially protected one!
+      // we might cleanup before any activation happens!
+      cloneVar(*var, v.get());
     }
   }
 
