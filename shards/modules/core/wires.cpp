@@ -117,14 +117,14 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
   wire->mesh = data.wire->mesh;
 
-  // TODO FIXME, wireloader/wire runner might access this from threads
-  if (mesh->visitedWires.count(wire.get())) {
+  auto visitedIt = mesh->visitedWires.find(wire.get()); // should be race free
+  if (visitedIt != mesh->visitedWires.end()) {
     // but visited does not mean composed...
     if (wire->composeResult && activating) {
       IterableExposedInfo shared(data.shared);
       verifyAlreadyComposed(data, shared);
     }
-    return mesh->visitedWires[wire.get()];
+    return visitedIt->second;
   }
 
   // avoid stack-overflow
@@ -138,11 +138,13 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   // we can add early in this case!
   // useful for Resume/Start
   if (passthrough) {
+    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
     auto [_, done] = mesh->visitedWires.emplace(wire.get(), data.inputType);
     if (done) {
       SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
     }
   } else if (mode == Stepped) {
+    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
     auto [_, done] = mesh->visitedWires.emplace(wire.get(), CoreInfo::AnyType);
     if (done) {
       SHLOG_TRACE("Pre-Marking as composed: {} ptr: {}", wire->name, (void *)wire.get());
@@ -224,6 +226,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   }
 
   if (!passthrough && mode != Stepped) {
+    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
     auto [_, done] = mesh->visitedWires.emplace(wire.get(), outputType);
     if (done) {
       SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(),
