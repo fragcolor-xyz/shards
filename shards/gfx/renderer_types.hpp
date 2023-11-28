@@ -45,11 +45,13 @@ inline auto getLogger() {
 }
 
 // Wraps an object that is swapped per frame for double+ buffered rendering
-template <typename TInner, size_t MaxSize> struct Swappable {
+template <typename TInner, size_t MaxSize_> struct Swappable {
 private:
   std::optional<TInner> elems[MaxSize];
 
 public:
+  static constexpr size_t MaxSize = MaxSize_;
+
   template <typename... TArgs> Swappable(TArgs... args) {
     for (size_t i = 0; i < MaxSize; i++) {
       elems.emplace(std::forward<TArgs>(args)...);
@@ -232,7 +234,7 @@ struct CachedPipeline {
   const BufferBinding *findDrawBufferBinding(std::string_view name) const { return findBufferBinding(drawBufferBindings, name); }
   const BufferBinding *findViewBufferBinding(std::string_view name) const { return findBufferBinding(viewBuffersBindings, name); }
 
-  const BufferBinding& resolveBufferBindingRef(BufferBindingRef ref) const;
+  const BufferBinding &resolveBufferBindingRef(BufferBindingRef ref) const;
 };
 typedef std::shared_ptr<CachedPipeline> CachedPipelinePtr;
 

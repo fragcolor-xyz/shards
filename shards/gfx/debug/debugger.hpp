@@ -44,6 +44,7 @@ struct Debugger {
   void frameQueuePop();
   void pipelineGroupBegin(PipelineGroupDesc desc);
   void referenceDrawable(std::shared_ptr<IDrawable> drawable);
+  TexturePtr getDebugTexture();
 };
 } // namespace debug
 } // namespace gfx

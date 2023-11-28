@@ -6,7 +6,7 @@
 namespace gfx::detail {
 
 template <typename T> struct SizedItemOps {
-  size_t getCapacity(T &item) const { return item.getCapacity(); }
+  size_t getCapacity(T &item) const { return 0; }
   void init(T &item, size_t size) {}
 };
 

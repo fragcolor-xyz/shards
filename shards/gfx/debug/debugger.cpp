@@ -50,4 +50,6 @@ void Debugger::referenceDrawable(std::shared_ptr<IDrawable> drawable) {
   auto &log = _impl->writeLog;
   log->drawables.emplace(id, drawable);
 }
+TexturePtr Debugger::getDebugTexture() {
+}
 } // namespace gfx::debug
