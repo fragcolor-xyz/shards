@@ -569,8 +569,8 @@ void releaseVariable(SHVar *variable) {
 }
 
 SHWireState suspend(SHContext *context, double seconds) {
-  if (unlikely(!context->shouldContinue() || context->onCleanup)) {
-    throw ActivationError("Trying to suspend a terminated context!");
+  if (unlikely(!context->shouldContinue())) {
+    throw ActivationError(fmt::format("Trying to suspend a context that is not running! - state: {}", context->getState()));
   } else if (unlikely(!context->continuation)) {
     throw ActivationError("Trying to suspend a context without coroutine!");
   }

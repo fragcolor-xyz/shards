@@ -110,7 +110,6 @@ struct SHContext {
   SHFlow *flow;
   SHContext *parent{nullptr};
   std::vector<SHWire *> wireStack;
-  bool onCleanup{false};
   bool onLastResume{false};
   bool onWorkerThread{false};
 
