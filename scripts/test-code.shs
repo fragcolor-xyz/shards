@@ -1,13 +1,12 @@
 
 @wire(main-wire{
-  Once({
-    
-    [72 101 108 108 111]
-    ;ToBytes -- serializes
-    IntsToBytes
-    BytesToString
-    Log("result")
-  })
+
+
+
+4.0
+Math.Sqrt
+Log("result")
+  
 }Looped: false)
 
 @mesh(main)
