@@ -117,14 +117,17 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
   wire->mesh = data.wire->mesh;
 
-  auto visitedIt = mesh->visitedWires.find(wire.get()); // should be race free
-  if (visitedIt != mesh->visitedWires.end()) {
-    // but visited does not mean composed...
-    if (wire->composeResult && activating) {
-      IterableExposedInfo shared(data.shared);
-      verifyAlreadyComposed(data, shared);
+  {
+    std::scoped_lock<std::mutex> l(mesh->visitedWiresMutex);
+    auto visitedIt = mesh->visitedWires.find(wire.get()); // should be race free
+    if (visitedIt != mesh->visitedWires.end()) {
+      // but visited does not mean composed...
+      if (wire->composeResult && activating) {
+        IterableExposedInfo shared(data.shared);
+        verifyAlreadyComposed(data, shared);
+      }
+      return visitedIt->second;
     }
-    return visitedIt->second;
   }
 
   // avoid stack-overflow
