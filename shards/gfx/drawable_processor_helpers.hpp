@@ -157,13 +157,13 @@ inline void packDrawData(uint8_t *outData, size_t outSize, const UniformBufferLa
   }
 }
 
-inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &viewData) {
+inline void setViewParameters(ParameterStorage &outDrawData, const ViewData &viewData, const Rect& viewport) {
   outDrawData.setParam("view", viewData.view->view);
   outDrawData.setParam("invView", viewData.cachedView.invViewTransform);
   outDrawData.setParam("proj", viewData.cachedView.projectionTransform);
   outDrawData.setParam("invProj", viewData.cachedView.invProjectionTransform);
-  outDrawData.setParam("viewport", float4(float(viewData.viewport.x), float(viewData.viewport.y), float(viewData.viewport.width),
-                                          float(viewData.viewport.height)));
+  outDrawData.setParam("viewport", float4(float(viewport.x), float(viewport.y), float(viewport.width),
+                                          float(viewport.height)));
 }
 
 struct TextureData {

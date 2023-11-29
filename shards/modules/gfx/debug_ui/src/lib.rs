@@ -4,7 +4,10 @@ use std::ffi::CStr;
 
 use egui::{self, *};
 use shards::types::Var;
-use shards_egui::util;
+use shards_egui::{
+  bindings::{gfx_TexturePtr, gfx_TexturePtr_getResolution_ext},
+  util,
+};
 
 pub mod native {
   #![allow(non_upper_case_globals)]
@@ -34,6 +37,53 @@ fn default_frame() -> egui::Frame {
   egui::Frame::default()
     .rounding(Rounding::same(1.0))
     .fill(Color32::BLACK)
+}
+
+unsafe fn visualize_frame_queue(ui: &mut Ui, fq: &native::shards_gfx_debug_ui_FrameQueue) {
+  let nodes = std::slice::from_raw_parts(fq.nodes, fq.numNodes);
+  for (node_idx, node) in nodes.iter().enumerate() {
+    // node.
+    ui.label(RichText::new(format!("Node {}", node_idx)).strong());
+
+    ui.indent(ui.id().with(node_idx), |ui| {
+      let targets = std::slice::from_raw_parts(node.targets, node.numTargets);
+      for (target_idx, target) in targets.iter().enumerate() {
+        ui.indent(ui.id().with(target_idx), |ui| {
+          let name = CStr::from_ptr(target.name);
+          ui.label(format!("Target {}", name.to_str().unwrap()));
+
+          if let Ok(img) = get_egui_texture_from_gfx(target.previewTexture) {
+            Image::new(img.0, img.1).ui(ui);
+          } else {
+            ui.label(
+              RichText::new("Failed to get image")
+                .color(Color32::RED)
+                .strong(),
+            );
+          }
+        });
+      }
+    });
+  }
+}
+
+unsafe fn get_egui_texture_from_gfx(
+  input_opaque: usize,
+) -> Result<(egui::TextureId, egui::Vec2), &'static str> {
+  let texture_ptr: *mut gfx_TexturePtr = input_opaque as *mut gfx_TexturePtr;
+  if texture_ptr.is_null() {
+    return Err("Texture pointer is null");
+  }
+  
+  let texture_size = {
+    let texture_res = unsafe { gfx_TexturePtr_getResolution_ext(texture_ptr) };
+    egui::vec2(texture_res.x as f32, texture_res.y as f32)
+  };
+
+  Ok((
+    egui::epaint::TextureId::User(texture_ptr as u64),
+    texture_size,
+  ))
 }
 
 #[no_mangle]
@@ -132,6 +182,26 @@ pub unsafe extern "C" fn shards_gfx_showDebugUI(
             }
           });
         });
+      });
+
+      ui.add_sized(vec2(400.0, 400.0), |ui: &mut _| {
+        default_frame()
+          .show(ui, |ui| {
+            ScrollArea::both()
+              .show(ui, |ui| {
+                if let Some(selected) = state.selected_frame_queue {
+                  if selected < frame_queues.len() {
+                    let fq = &frame_queues[selected];
+                    visualize_frame_queue(ui, fq);
+                  }
+                }
+
+                let resp = ui.allocate_rect(ui.available_rect_before_wrap(), Sense::hover());
+                resp
+              })
+              .inner
+          })
+          .response
       });
 
       // for (idx, layer) in frameQueues[state.selected_frame_queue]..iter().enumerate() {

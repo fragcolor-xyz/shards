@@ -4,17 +4,10 @@
 namespace gfx::debug {
 Debugger::Debugger() { _impl = std::make_shared<DebuggerImpl>(); }
 void Debugger::frameBegin(detail::RendererStorage &storage) {
-  assert(!_impl->writeLog);
-  _impl->writeLog = std::make_shared<Log>();
-  _impl->writeLog->frameCounter = storage.frameCounter;
+  _impl->beginFrame(storage);
 }
 void Debugger::frameEnd(detail::RendererStorage &storage, const OutputDesc &outputDesc) {
-  assert(_impl->writeLog);
-
-  // Finalize & swap
-  std::unique_lock<std::shared_mutex> l(_impl->mutex);
-  std::swap(_impl->log, _impl->writeLog);
-  _impl->writeLog.reset();
+  _impl->endFrame();
 }
 void Debugger::frameQueuePush(FQDesc desc) { _impl->writeLog->frameQueues.emplace_back(); }
 void Debugger::frameQueuePop() { _impl->writeLog->frameQueues.emplace_back(); }
@@ -35,7 +28,8 @@ void Debugger::frameQueueRenderGraphNodeBegin(size_t index) {
   // auto &fq = _impl->writeLog->frameQueues.back();
   // auto& node = fq.nodes.emplace_back();
 }
-void Debugger::frameQueueRenderGraphNodeEnd() {
+void Debugger::frameQueueRenderGraphNodeEnd(detail::RenderGraphEvaluator& evaluator) {
+  _impl->copyNodeTextures(evaluator);
   // auto &fq = _impl->writeLog->frameQueues.back();
 }
 void Debugger::pipelineGroupBegin(PipelineGroupDesc desc) {
@@ -50,6 +44,7 @@ void Debugger::referenceDrawable(std::shared_ptr<IDrawable> drawable) {
   auto &log = _impl->writeLog;
   log->drawables.emplace(id, drawable);
 }
-TexturePtr Debugger::getDebugTexture() {
+TexturePtr Debugger::getDebugTexture(int2 referenceSize) {
+  return _impl->getDebugTexture(referenceSize);
 }
 } // namespace gfx::debug

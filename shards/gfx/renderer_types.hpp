@@ -47,14 +47,14 @@ inline auto getLogger() {
 // Wraps an object that is swapped per frame for double+ buffered rendering
 template <typename TInner, size_t MaxSize_> struct Swappable {
 private:
-  std::optional<TInner> elems[MaxSize];
+  std::optional<TInner> elems[MaxSize_];
 
 public:
   static constexpr size_t MaxSize = MaxSize_;
 
   template <typename... TArgs> Swappable(TArgs... args) {
-    for (size_t i = 0; i < MaxSize; i++) {
-      elems.emplace(std::forward<TArgs>(args)...);
+    for (size_t i = 0; i < MaxSize_; i++) {
+      elems[i].emplace(std::forward<TArgs>(args)...);
     }
   }
 
@@ -284,7 +284,7 @@ typedef std::shared_ptr<CachedView> CachedViewDataPtr;
 struct ViewData {
   ViewPtr view;
   CachedView &cachedView;
-  Rect viewport;
+  std::optional<Rect> viewport;
   RenderTargetPtr renderTarget;
   int2 referenceOutputSize;
 };

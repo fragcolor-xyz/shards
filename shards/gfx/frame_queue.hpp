@@ -12,7 +12,7 @@
 #include "renderer_types.hpp"
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
-#include <hasherxxh128.hpp>
+#include "hasherxxh128.hpp"
 #include <initializer_list>
 
 namespace gfx::detail {
@@ -75,9 +75,11 @@ public:
       auto &viewData = entry.viewData;
       hasher(viewData.cachedView.isFlipped);
       hasher(viewData.referenceOutputSize);
-      for (auto &attachment : mainOutput->attachments) {
-        hasher(attachment.first);
-        hasher(attachment.second.texture->getFormat().pixelFormat);
+      if (mainOutput) {
+        for (auto &attachment : mainOutput->attachments) {
+          hasher(attachment.first);
+          hasher(attachment.second.texture->getFormat().pixelFormat);
+        }
       }
     }
 
@@ -126,17 +128,19 @@ public:
   }
 
   RenderGraph buildRenderGraph(shards::pmr::vector<Entry> &entries, CachedRenderGraph &out) {
-    static auto logger = gfx::getLogger();
+    static auto logger = ::gfx::getLogger();
 
     SPDLOG_LOGGER_DEBUG(logger, "Building frame queue render graph");
 
     RenderGraphBuilder builder;
-    builder.referenceOutputSize = float2(mainOutput->getSize());
-    for (auto &attachment : mainOutput->attachments) {
-      builder.outputs.push_back(RenderGraphBuilder::Output{
-          .name = attachment.first,
-          .format = attachment.second.texture->getFormat().pixelFormat,
-      });
+    if (mainOutput) {
+      builder.referenceOutputSize = float2(mainOutput->getSize());
+      for (auto &attachment : mainOutput->attachments) {
+        builder.outputs.push_back(RenderGraphBuilder::Output{
+            .name = attachment.first,
+            .format = attachment.second.texture->getFormat().pixelFormat,
+        });
+      }
     }
 
     size_t queueDataIndex{};
@@ -148,7 +152,7 @@ public:
     }
 
     // Ensure cleared outputs
-    if (fallbackClearColor) {
+    if (fallbackClearColor && mainOutput) {
       for (auto &output : mainOutput->attachments) {
         if (!builder.isWrittenTo(output.first)) {
           auto format = output.second.texture->getFormat().pixelFormat;
@@ -177,16 +181,21 @@ public:
   }
 
   // Renderer is passed for generator callbacks
-  void evaluate(Renderer &renderer) {
+  void evaluate(Renderer &renderer, bool ignoreInDebugger = false) {
     const RenderGraph &rg = getOrCreateRenderGraph();
+
     RenderGraphEvaluator evaluator(storage.workerMemory, renderer, storage);
-    if (storage.debugger) {
+    evaluator.ignoreInDebugger = ignoreInDebugger;
+
+    if (!ignoreInDebugger && storage.debugger) {
       storage.debugger->frameQueueRenderGraphBegin(rg);
     }
 
     shards::pmr::vector<TextureSubResource> renderGraphOutputs(storage.workerMemory);
-    for (auto &attachment : mainOutput->attachments) {
-      renderGraphOutputs.push_back(attachment.second);
+    if (mainOutput) {
+      for (auto &attachment : mainOutput->attachments) {
+        renderGraphOutputs.push_back(attachment.second);
+      }
     }
 
     evaluator.evaluate(rg, *this, renderGraphOutputs);

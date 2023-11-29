@@ -13,6 +13,7 @@ struct Int2 {
 
 struct Target {
   const char *name;
+  size_t previewTexture;
 };
 typedef uint64_t FrameIndex;
 struct Frame {

@@ -45,7 +45,7 @@ struct RendererStorage {
     if (textureData.externalView)
       return textureData.externalView;
 
-    assert(textureData.texture);
+    assert(textureData.texture && "Invalid texture");
     TextureViewDesc desc{
         .format = textureData.format.pixelFormat,
         .dimension = WGPUTextureViewDimension_2D,

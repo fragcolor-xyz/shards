@@ -130,7 +130,9 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   RendererStorage &storage = evaluator.getStorage();
   WorkerMemory &workerMemory = storage.workerMemory;
 
-  auto &debugger = storage.debugger;
+  static std::shared_ptr<debug::Debugger> NoDebugger;
+  auto &debugger = evaluateContext.ignoreInDebugger ? NoDebugger : storage.debugger;
+
   if (debugger) {
     for (auto &drawable : queue->getSharedDrawables()) {
       debugger->referenceDrawable(drawable);
@@ -147,6 +149,10 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
 
   auto &pipelineGroups = *workerMemory->new_object<shards::pmr::unordered_map<Hash128, PipelineGroup>>();
   auto &context = evaluator.getRenderer().getContext();
+
+  auto &nodeOutputSize = evaluateContext.node.outputSize;
+  auto &viewport = evaluateContext.viewData.viewport ? evaluateContext.viewData.viewport.value()
+                                                     : Rect::fromCorners(0, 0, nodeOutputSize.x, nodeOutputSize.y);
 
   // Compute drawable hashes
   {
@@ -278,6 +284,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
         .storage = storage,
         .cachedPipeline = cachedPipeline,
         .viewData = evaluateContext.viewData,
+        .viewport = viewport,
         .drawables = group.drawables,
         .generatorData = *group.generatorData,
         .sortMode = sortMode,
@@ -318,7 +325,6 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
   {
     ZoneScopedN("encodeRenderCommands");
 
-    auto &viewport = evaluateContext.viewData.viewport;
     wgpuRenderPassEncoderSetViewport(evaluateContext.encoder, (float)viewport.x, (float)viewport.y, (float)viewport.width,
                                      (float)viewport.height, 0.0f, 1.0f);
 
@@ -340,6 +346,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
           .encoder = evaluateContext.encoder,
           .cachedPipeline = *group.pipeline.get(),
           .viewData = evaluateContext.viewData,
+          .viewport = viewport,
           .preparedData = group.prepareData,
       };
       encodeCtx.cachedPipeline.drawableProcessor->encode(encodeCtx);
@@ -445,6 +452,20 @@ void setupRenderGraphNode(RenderGraphNode &node, RenderGraphBuilder::NodeBuildDa
       auto &texture = ctx.evaluator.getTexture(frameIndex);
       auto &frame = ctx.graph.frames[frameIndex];
       data->drawable->parameters.set(frame.name, texture);
+    }
+
+    if (step.output) {
+      auto &attachments = step.output->attachments;
+      for (size_t i = 0; i < attachments.size(); i++) {
+        auto &stepAttachment = attachments[i];
+        if (auto texture = std::get_if<RenderStepOutput::Texture>(&stepAttachment)) {
+          auto &attachment = ctx.node.writesTo[i];
+          // attachment.frameIndex
+          // auto &frame = ctx.graph.frames[attachment.subResource.frameIndex];
+          // auto &texture = ctx.evaluator.getTexture(attachment.subResource.frameIndex);
+          // data->drawable->parameters.set(frame.name, texture);
+        }
+      }
     }
 
     renderDrawables(ctx, data->queue, data->features, SortMode::Queue, BuildPipelineOptions{});

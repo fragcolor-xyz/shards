@@ -135,6 +135,7 @@ struct RenderGraphEncodeContext {
   RenderGraphEvaluator &evaluator;
   const RenderGraph &graph;
   const RenderGraphNode &node;
+  bool ignoreInDebugger;
 };
 
 typedef size_t FrameIndex;
@@ -154,8 +155,13 @@ struct RenderGraphNode {
   std::vector<Attachment> writesTo;
   std::vector<FrameIndex> readsFrom;
 
+  int2 outputSize;
+
   // This points to which data slot to use when resolving view data
   size_t queueDataIndex;
+
+  // Allow updating of node outputs
+  // shards::Function<void(RenderGraphNode &)> updateOutputs;
 
   // Sets up the render pass
   shards::Function<void(WGPURenderPassDescriptor &)> setupPass;
@@ -206,6 +212,7 @@ struct RenderGraphBuilder {
     WGPUTextureFormat format;
     TextureSubResource textureOverride;
     std::optional<size_t> outputIndex;
+    std::optional<size_t> inputIndex;
   };
 
   struct NodeBuildData {
@@ -221,6 +228,8 @@ struct RenderGraphBuilder {
     std::vector<FrameBuildData *> readsFrom;
     std::vector<Attachment> attachments;
     bool forceOverwrite{};
+
+    std::optional<int2> outputSize;
 
     NodeBuildData(const ViewData &viewData, PipelineStepPtr step, size_t queueDataIndex)
         : viewData(viewData), step(step), queueDataIndex(queueDataIndex) {}
@@ -247,7 +256,7 @@ private:
   bool needPrepare = true;
 
 public:
-  float2 referenceOutputSize;
+  float2 referenceOutputSize{};
   std::vector<Output> outputs;
 
   // Adds a node to the render graph
@@ -255,7 +264,7 @@ public:
   // Allocate outputs for a render graph node
   void allocateOutputs(NodeBuildData &buildData, const RenderStepOutput &output, bool forceOverwrite = false);
   // Allocate outputs for a render graph node
-  void allocateInputs(NodeBuildData &buildData, const std::vector<std::string> &inputs);
+  void allocateInputs(NodeBuildData &buildData, const RenderStepInput& input);
 
   // Get or allocate a frame based on it's description
   FrameBuildData *assignFrame(const RenderStepOutput::OutputVariant &output, int2 targetSize);
@@ -335,6 +344,9 @@ private:
 
   Renderer &renderer;
   RendererStorage &storage;
+
+public:
+  bool ignoreInDebugger{};
 
 public:
   RenderGraphEvaluator(allocator_type allocator, Renderer &renderer, RendererStorage &storage);

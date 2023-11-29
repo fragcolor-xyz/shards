@@ -11,6 +11,7 @@ namespace detail {
 struct RendererStorage;
 struct RenderGraph;
 struct CachedPipeline;
+struct RenderGraphEvaluator;
 } // namespace detail
 
 namespace debug {
@@ -40,11 +41,11 @@ struct Debugger {
   void frameQueuePush(FQDesc desc);
   void frameQueueRenderGraphBegin(const detail::RenderGraph &renderGraph);
   void frameQueueRenderGraphNodeBegin(size_t index);
-  void frameQueueRenderGraphNodeEnd();
+  void frameQueueRenderGraphNodeEnd(detail::RenderGraphEvaluator& evaluator);
   void frameQueuePop();
   void pipelineGroupBegin(PipelineGroupDesc desc);
   void referenceDrawable(std::shared_ptr<IDrawable> drawable);
-  TexturePtr getDebugTexture();
+  TexturePtr getDebugTexture(int2 referenceSize);
 };
 } // namespace debug
 } // namespace gfx

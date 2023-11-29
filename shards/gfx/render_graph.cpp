@@ -153,11 +153,32 @@ void RenderGraphBuilder::attachOutputs() {
 }
 
 // Call before allocating a node's outputs
-void RenderGraphBuilder::allocateInputs(NodeBuildData &buildData, const std::vector<std::string> &inputs) {
-  for (auto &inputName : inputs) {
-    if (FrameBuildData *frame = findFrameByName(inputName)) {
-      buildData.readsFrom.push_back(frame);
-    }
+void RenderGraphBuilder::allocateInputs(NodeBuildData &buildData, const RenderStepInput &input_) {
+  size_t inputIndex{};
+  for (auto &input : input_.attachments) {
+    std::visit(
+        [&](auto &&arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, RenderStepInput::Named>) {
+            if (FrameBuildData *frame = findFrameByName(arg.name)) {
+              buildData.readsFrom.push_back(frame);
+            }
+          } else if constexpr (std::is_same_v<T, RenderStepInput::Texture>) {
+            // Allocate a new frame based on this input and assign it
+            auto frame = assignFrame(
+                RenderStepOutput::Texture{
+                    .name = arg.name,
+                    .subResource = arg.subResource,
+                },
+                arg.subResource.texture->getResolution());
+            frame->inputIndex = inputIndex;
+            buildData.readsFrom.push_back(frame);
+          } else {
+            throw std::logic_error("");
+          }
+        },
+        input);
+    ++inputIndex;
   }
 }
 
@@ -165,6 +186,7 @@ void RenderGraphBuilder::finalizeNodeConnections() {
   for (auto it = buildingNodes.begin(); it != buildingNodes.end(); ++it) {
     NodeBuildData &nodeBuildData = *it;
 
+    nodeBuildData.outputSize.reset();
     for (auto &attachment : nodeBuildData.attachments) {
       auto frame = attachment.frame;
 
@@ -183,6 +205,14 @@ void RenderGraphBuilder::finalizeNodeConnections() {
             }
           },
           attachment.output);
+
+      if (nodeBuildData.outputSize) {
+        if (attachment.targetSize != *nodeBuildData.outputSize)
+          throw std::runtime_error(fmt::format("Output size of attachment {} ({}) does not match previous attachments of size {}",
+                                               frame->name, frame->size, *nodeBuildData.outputSize));
+      } else {
+        nodeBuildData.outputSize = attachment.targetSize;
+      }
 
       bool sizeMismatch = frame->size != attachment.targetSize;
       bool formatMismatch = frame->format != targetFormat;
@@ -305,6 +335,11 @@ RenderGraph RenderGraphBuilder::build() {
 
     outputNode.queueDataIndex = buildingNode.queueDataIndex;
 
+    if (!buildingNode.outputSize) {
+      throw std::runtime_error("Node does not have any outputs");
+    }
+    outputNode.outputSize = buildingNode.outputSize.value();
+
     for (auto &attachment : buildingNode.attachments) {
       auto &frame = attachment.frame;
       auto frameIndex = usedFrameLookup[frame];
@@ -351,13 +386,32 @@ bool RenderGraphBuilder::isWrittenTo(const FrameBuildData &targetFrame,
 //     }
 //   }
 
-//   // When setting forceOverwrite, ignores clear value, marks this attachment as being completely overwritten
-//   // e.g. fullscreen effect passes
+// When setting forceOverwrite, ignores clear value, marks this attachment as being completely overwritten
+// e.g. fullscreen effect passes
 void RenderGraphBuilder::allocateOutputs(NodeBuildData &nodeBuildData, const RenderStepOutput &output, bool forceOverwrite) {
   nodeBuildData.forceOverwrite = forceOverwrite;
 
   for (auto &attachment : output.attachments) {
-    int2 targetSize = int2(linalg::floor(referenceOutputSize * output.sizeScale.value_or(float2(1.0f))));
+    int2 targetSize{};
+    if (output.sizeScale.has_value()) {
+      targetSize = int2(linalg::floor(referenceOutputSize * *output.sizeScale));
+    } else {
+      targetSize = std::visit(
+          [&](auto &&arg) -> int2 {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
+              assert(arg.subResource);
+              return arg.subResource.texture->getResolution();
+            } else if constexpr (std::is_same_v<T, RenderStepOutput::Named>) {
+              return int2(referenceOutputSize);
+            } else {
+              throw std::logic_error("invalid index");
+            }
+          },
+          attachment);
+    }
+    if (targetSize.x <= 0 || targetSize.y <= 0)
+      throw std::logic_error("Invalid output size");
 
     FrameBuildData *outputFrame = assignFrame(attachment, targetSize);
 
@@ -492,13 +546,20 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
 
   auto &context = renderer.getContext();
 
+  // for (const auto &node : graph.nodes) {
+  //   if (node.updateOutputs)
+  //     node.updateOutputs(const_cast<RenderGraphNode&>(node));
+  // }
+
   // Allocate frame textures
   getFrameTextures(frameTextures, outputs, graph, context);
 
   WGPUCommandEncoderDescriptor desc = {};
   WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(context.wgpuDevice, &desc);
 
-  auto &debugger = storage.debugger;
+  static std::shared_ptr<debug::Debugger> NoDebugger;
+  auto &debugger = ignoreInDebugger ? NoDebugger : storage.debugger;
+
   size_t nodeIdx = 0;
   for (const auto &node : graph.nodes) {
     if (debugger)
@@ -516,13 +577,14 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
         .evaluator = *this,
         .graph = graph,
         .node = node,
+        .ignoreInDebugger = ignoreInDebugger,
     };
     if (node.encode)
       node.encode(ctx);
     wgpuRenderPassEncoderEnd(renderPassEncoder);
 
     if (debugger)
-      debugger->frameQueueRenderGraphNodeEnd();
+      debugger->frameQueueRenderGraphNodeEnd(*this);
     ++nodeIdx;
   }
 

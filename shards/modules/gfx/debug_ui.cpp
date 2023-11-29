@@ -192,8 +192,15 @@ struct DebugUI {
           outNode.pipelineGroups =
               sliceBuffer(pipelineGroups, outNode.numPipelineGroups, c.numPipelineGroups, node.pipelineGroups.size());
           for (size_t targetIdx = 0; targetIdx < node.renderTargetLayout.targets.size(); targetIdx++) {
+            auto &outTarget = outNode.targets[targetIdx];
             auto &target = node.renderTargetLayout.targets[targetIdx];
-            outNode.targets[targetIdx].name = storeString(target.name);
+            outTarget.name = storeString(target.name);
+            const ::gfx::TexturePtr &previewTexture = node.previewTextures[targetIdx];
+            if (previewTexture) {
+              outTarget.previewTexture = size_t(previewTexture.get());
+            } else {
+              outTarget.previewTexture = 0;
+            }
           }
           for (size_t pgIdx = 0; pgIdx < node.pipelineGroups.size(); pgIdx++) {
             auto &pg = node.pipelineGroups[pgIdx];

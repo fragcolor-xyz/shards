@@ -75,7 +75,7 @@ struct RenderStepOutput {
 
   std::vector<OutputVariant> attachments;
 
-  // When set, will automatically scale outputes relative to main output
+  // When set, will automatically scale outputs relative to main output
   // Reused buffers loaded from previous steps are upscaled/downscaled
   // Example:
   //  (0.5, 0.5) would render at half the output resolution
@@ -116,7 +116,22 @@ struct RenderDrawablesStep {
   UniqueId getId() const { return id; }
 };
 
-typedef std::vector<std::string> RenderStepInputs;
+struct RenderStepInput {
+  // A managed named render frame
+  struct Named {
+    std::string name;
+  };
+
+  // A preallocated texture to input
+  struct Texture {
+    std::string name;
+    TextureSubResource subResource;
+  };
+
+  typedef std::variant<Named, Texture> InputVariant;
+
+  std::vector<InputVariant> attachments;
+};
 
 // Renders a single item to the entire output region, used for post processing steps
 struct RenderFullscreenStep {
@@ -126,7 +141,7 @@ struct RenderFullscreenStep {
   std::vector<FeaturePtr> features;
   MaterialParameters parameters;
 
-  RenderStepInputs inputs;
+  RenderStepInput input;
   std::optional<RenderStepOutput> output;
 
   // used to indicate this pass does not cover the entire output
