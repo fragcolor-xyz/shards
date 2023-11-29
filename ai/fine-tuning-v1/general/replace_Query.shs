@@ -1,6 +1,6 @@
 {
   prompt: """
-    How do I replace a recurring element in a sequence.
+    How do I replace a elements in a sequence.
   """
 
   solution: [{
@@ -19,15 +19,16 @@
 
     Get(sequence)
     Replace(
-      Patterns: [1]
-      Replacements: [2]
+      Patterns: [1 4]
+      Replacements: [2 2]
     )
-    Log(Prefix:"result")
+    Log(Prefix:"result") ;; Result will be
   }]
 
   explanation: """
-    The Replace Shard will take a sequence as input and replace all elements that match with with is specified in the Patterns parameter with what is specififed in
-    the Replacements parameter. The Replace shard outputs the resulting modified sequence.
+    The Replace Shard will take a sequence as input and replace all elements with indeces specified in the Patterns parameter, with the corresponding
+    element in the sequence in the Replacements parameter. The Patterns seqeuence and the Replacements sequence need to be of the same length.
+    The Replace shard outputs the resulting modified sequence.
   """
 
   tag: "General"

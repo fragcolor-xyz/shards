@@ -14,7 +14,7 @@
   }]
 
   explanation: """
-    The ToHex shard takes in either an integer, bytes or a string and converts it into a hexidecimal value
+    The ToHex Shard takes in either an integer, bytes or a string and converts it into a hexidecimal value
   """
 
   tag: "General"

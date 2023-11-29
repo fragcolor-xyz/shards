@@ -14,7 +14,7 @@
   }]
 
   explanation: """
-    This shard is used for printing information to the console for debugging purposes. 
+    This Shard is used for printing information to the console for debugging purposes. 
     It can also prefix a message string to the logged output while displaying it in the console.
   """
 

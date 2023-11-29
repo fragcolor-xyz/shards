@@ -25,7 +25,7 @@
     The IsAnyNot is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.
     It will parse through a sequence and check if any of the elements in the sequence is not of equal value to the value provided in
     the Value parameter. If at least one element is not of equal value, the Shard will return true, otherwise, it will return false. 
-    The data typeprovided as input and provided in the Value Parameter must be of the same type.
+    The data type provided as input and provided in the Value Parameter must be of the same type.
   """
 
   tag: "General"

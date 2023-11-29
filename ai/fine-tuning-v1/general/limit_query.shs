@@ -24,8 +24,8 @@
   }]
 
   explanation: """
-    The Limit Shard takes a sequence as an input and outputs cut sequence whose length is what is stated in the Max parameter. In the scenario provided under solution,
-    the Limit Shard will output [1 2 3] and the ForEach shard will only process these 3 elements.
+    The Limit Shard takes a sequence as an input and outputs a cut sequence whose length is what is stated in the Max parameter. In the scenario provided under solution,
+    the Limit Shard will output [1 2 3] and the ForEach Shard will only process these 3 elements.
   """
 
   tag: "General"

@@ -16,7 +16,7 @@
   }]
 
   explanation: """
-    ToBase58 is a shard that takes in bytes as input and outputs a base58 format string.
+    ToBase58 is a Shard that takes in bytes as input and outputs a base58 format string.
   """
 
   tag: "General"

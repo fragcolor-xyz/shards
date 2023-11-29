@@ -16,7 +16,7 @@
   }]
 
   explanation: """
-    Restart is a shard that will resume a previously suspended wire from the start of said wire.
+    Restart is a Shard that will resume a previously suspended wire from the start of said wire.
   """
 
   tag: "General"

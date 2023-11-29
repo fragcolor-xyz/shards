@@ -1,6 +1,6 @@
 {
   prompt: """
-    How do I execute a combination of shards without consuming the input.
+    How do I execute a combination of Shards without consuming the input.
   """
 
   solution: [{
@@ -24,8 +24,8 @@
   }]
 
   explanation: """
-    Sub is a Shard that activates a shard or a sequence of shards independently, without consuming the input. 
-    I.e. the input of the Sub flow will also be its output regardless of the shards activated in this Sub flow.
+    Sub is a Shard that activates a Shard or a sequence of Shards independently, without consuming the input. 
+    I.e. the input of the Sub flow will also be its output regardless of the Shards activated in this Sub flow.
     
   """
 

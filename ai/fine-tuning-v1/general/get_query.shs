@@ -13,8 +13,8 @@
   explicit: {
     "value" = variable
 
-    Get(variable)
-    Log("Variable read")
+    Get(Name: variable)
+    Log(Prefix: "Variable read")
   }
 
   explanation: """

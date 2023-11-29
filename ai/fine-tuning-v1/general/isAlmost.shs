@@ -26,7 +26,7 @@
   }]
 
   explanation: """
-    The IsAlmost shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.
+    The IsAlmost Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.
     It will check if the input is near to the value stated in the Value parameter besed on the Treshold parameter. If the input
     value is nearing the value provided in the Value parameter, the Shard will return true, otherwise, it will return false.
     The input can be of any number type or a sequence of such types. If the Shard is comparing between two numeric sequences, it will compare the elements

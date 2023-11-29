@@ -18,7 +18,7 @@
   }]
 
   explanation: """
-    StepMany is a shard that will generate and execute multiple wires inline to the parent wire. As opposed to Step which will only generate
+    StepMany is a Shard that will generate and execute multiple wires inline to the parent wire. As opposed to Step which will only generate
     one wire that is reused, StepMany will generate a number of wires depending on the number of elements in the sequence passed in as input.
     StepMany will also continue the state of the wires generated whenever called, unlike DoMany and Do which will execute from the beginning of
     the wire.

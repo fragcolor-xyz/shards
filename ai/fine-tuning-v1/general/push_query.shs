@@ -12,8 +12,7 @@
   }]
 
   explanation: """
-    The Push method is used to add a new element to the end of a sequence.
-    The Get method is used to get an element from a sequence.
-    Remember, there might be type issues during composition if a sequence is bound to a certain type.
+    The Push method is used to add a new element to the end of a sequence. The type of element being pushed must be pushed into a sequence of the same
+    types of elements.
   """
 }

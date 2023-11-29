@@ -22,7 +22,7 @@
   }]
 
   explanation: """
-    The IsAll shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When. It will parse through
+    The IsAll Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When. It will parse through
     a sequence and check if every element matches the value stated in the Value parameter. If all elements matches, it will return true,
     otherwise, it will return false.
   """

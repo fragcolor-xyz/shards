@@ -1,10 +1,8 @@
 
 @wire(main-wire{
 
-
-
-4.0
-Math.Sqrt
+"5"
+ToColor
 Log("result")
   
 }Looped: false)

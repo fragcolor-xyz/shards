@@ -18,7 +18,7 @@
   }]
 
   explanation: """
-    Take will get and return the specific element from specified key from the table passed in as input. Take can also be used to return a specific element from
+    Take will get and return the specific element from the specified key from the table passed in as input. Take can also be used to return a specific element from
     a sequence or return an array of elements from a sequence.
   """
 

@@ -16,7 +16,7 @@
   }]
 
   explanation: """
-    ToBase64 is a shard that takes in bytes as input and outputs a base64 format string.
+    ToBase64 is a Shard that takes in bytes as input and outputs a base64 format string.
   """
 
   tag: "General"

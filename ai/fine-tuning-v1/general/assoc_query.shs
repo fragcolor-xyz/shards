@@ -8,11 +8,15 @@
   }
 
   explicit: {
-    [index0 variable1 index1 variable2] | Assoc(Name: sequence)
+    [index0 variable1 index1 variable2] 
+    | Assoc(
+      Name: sequence
+      ;;Key: key
+    )
   }
 
   explanation: """
-    Here we are replacing element with index 0 in sequence into variable1 and element with index of 1 in sequence to variable2.
+    The Assoc Shard is replacing element of index 0 in sequence with variable1 and element with index of 1 in sequence to variable2.
     The input sequence for Assoc must always contain an even number of elements. 
     The elements of the input sequence are parsed in pairs. 
     The 1st element of each pair gives the index of the target element to update, and the 2nd element of that pair gives the new value for the target element.

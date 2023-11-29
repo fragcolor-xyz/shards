@@ -14,7 +14,7 @@
   }]
 
   explanation: """
-    ToBytes is a shard that converts what is fed into input into bytes.
+    ToBytes is a Shard that converts what is fed into input into bytes in its serialized form.
   """
 
   tag: "General"

@@ -18,8 +18,8 @@
   }]
 
   explanation: """
-    For each, processes every element or key-value pair of a sequence/table with a given shard or sequence of shards. In the example provided in the solution,
-    we will add 1 to element1 then element2 and element3. The ForEach shard will return its input as its output.
+    For each, processes every element or key-value pair of a sequence/table with a given Shard or sequence of Shards. In the example provided in the solution,
+    we will add 1 to element1 then element2 and element3. The ForEach Shard will return its input as its output.
   """
 
   tag: "General"

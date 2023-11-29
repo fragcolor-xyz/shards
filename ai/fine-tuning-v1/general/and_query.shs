@@ -18,8 +18,9 @@
   }
 
   explanation: """
-    We use When or If shards to create a conditional statement and do an action when the Predicate returns true. 
-    To add more conditions to the Predicate we use the And shard.
+    We use When or If Shards to create a conditional statement and do an action when the Predicate parameter returns true. 
+    To chain more conditions to the Predicate we use the And Shard. With conditions chained by the And Shard, the Predicate parameter will only
+    return true when all conditions are met.
   """
 
   tag: "General"

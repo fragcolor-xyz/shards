@@ -14,8 +14,8 @@
   }]
 
   explanation: """
-    Pop removes the last element of the sequence variable that has been passed to in the :Name parameter. Unlike the Drop Shard, Pop will return the popped element
-    as output.
+    Pop removes the last element of the sequence variable that has been passed to in the :Name parameter. Unlike the Drop Shard, which will return 
+    the  modified sequence, Pop will return the popped element as output.
   """
 
   tag: "General"

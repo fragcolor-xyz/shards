@@ -16,7 +16,7 @@
   }]
 
   explanation: """
-    ToString convertsany data type and outputs a string. 
+    ToString converts any data type and outputs a string. 
   """
 
   tag: "General"

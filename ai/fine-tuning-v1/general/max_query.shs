@@ -24,7 +24,7 @@
   }
 
   explanation: """
-    This shard compares the input to its Operand parameter and outputs the greater of the two values.
+    This Shard compares the input to its Operand parameter and outputs the greater of the two values.
 
     If the input is a sequence and the Operand parameter a single number, each input element is compared with the Operand parameter and the greater value from each comparison is collected and output as a sequence.
 
@@ -32,7 +32,7 @@
 
     If the input sequence is smaller in size than the Operand parameter sequence the comparison stops with the last element of the input sequence. If the Operand parameter sequence is smaller the remaining input sequence elements loop over the Operand parameter sequence till all input sequence elements have been compared.
 
-    This shard works only on numbers (integers, floats) and on sequences of such numbers. The data types of the input and the Operand parameters must match.
+    This Shard works only on numbers (integers, floats) and on sequences of such numbers. The data types of the input and the Operand parameters must match.
   """
 
   tag: "General"

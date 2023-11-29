@@ -14,8 +14,8 @@
   }]
 
   explanation: """
-    Drop removes the last element of the sequence variable that has been passed to in the :Name parameter. Unlike the Pop Shard, Drop will return the remaining
-    sequence as output.
+    Drop removes the last element of the sequence variable that has been passed to in the :Name parameter. Unlike the Pop Shard which will return 
+    the popped element, Drop will return the remaining sequence as output.
   """
 
   tag: "General"

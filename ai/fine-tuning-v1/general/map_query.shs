@@ -30,7 +30,7 @@
   }]
 
   explanation: """
-    Map, processes every element of a sequence with a given shard or sequence of shards. Unlike the ForEach Shard, Map will output the resulting modified sequence.
+    Map, processes every element of a sequence with a given Shard or sequence of Shards. Unlike the ForEach Shard, Map will output the resulting modified sequence.
   """
 
   tag: "General"

@@ -18,7 +18,7 @@
   }]
 
   explanation: """
-    The WhenNot shard is a shard to create a conditional statement. If the conditions stated in the Predicate parameter are not met, it will execute what is stated
+    The WhenNot Shard is a Shard to create a conditional statement. If the conditions stated in the Predicate parameter are not met, it will execute what is stated
     in the Action parameter.
   """
 

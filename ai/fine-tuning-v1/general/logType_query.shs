@@ -14,7 +14,7 @@
   }]
 
   explanation: """
-    Logs the type of the passed variable to the console. 
+    Prints the type of the passed variable to the console. 
     It can also prefix a message string to the logged output while displaying it in the console.
   """
 

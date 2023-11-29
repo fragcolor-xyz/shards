@@ -14,7 +14,7 @@
   }]
 
   explanation: """
-    Exit is a shard that will automatically close the program. It takes in a integer as input. 
+    Exit is a Shard that will automatically close the program. It takes in a integer as input. 
     This integer is usually to denote the error code.
     If there is no error code to be used as input use 0.
   """

@@ -25,7 +25,7 @@
   }]
 
   explanation: """
-    Slice is a Shard that will get a segment from a sequence. It takes from the element indicited in the From parameter to the element
+    Slice is a Shard that will get a segment from a sequence. It takes from the element indicated in the From parameter to the element
     indicated in the To parameter and every X element in between. Where X is specified in the Step parameter.
   """
 

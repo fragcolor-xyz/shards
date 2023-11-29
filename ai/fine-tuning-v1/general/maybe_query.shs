@@ -28,8 +28,8 @@
   }
 
   explanation: """
-    The Maybe Shard attempts to activate a shard or a sequence of shards. Upon failure, it will activate another shard or sequence of shards specified in the Else parameter.
-    If set to true, the Silent parameter will disable logging while running the shard and no warning message should be printed on failure.
+    The Maybe Shard attempts to activate a Shard or a sequence of Shards. Upon failure, it will activate another Shard or sequence of Shards specified in the Else parameter.
+    If set to true, the Silent parameter will disable logging while running the Shard and no warning message should be printed on failure.
   """
 
   tag: "General"

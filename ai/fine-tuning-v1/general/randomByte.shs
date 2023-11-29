@@ -12,7 +12,7 @@
   }]
 
   explanation: """
-    The RandomBytes Shard will return bytes, of the size specified in the Size parameter.
+    The RandomBytes Shard will return  randomized bytes, of the size specified in the Size parameter.
   """
 
   tag: "General"

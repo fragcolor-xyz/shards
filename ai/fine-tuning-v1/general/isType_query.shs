@@ -4,7 +4,7 @@
   """
 
   solution: [{
-   variable-to-check ;; use any of the shards below to check the required type
+   variable-to-check ;; use any of the Shards below to check the required type
    IsAudio
    IsBool
    IsBytes
@@ -25,7 +25,7 @@
   }]
 
   explicit: [{
-   Get(variable-to-check) ;; use any of the shards below to check the required type
+   Get(variable-to-check) ;; use any of the Shards below to check the required type
    IsAudio
    IsBool
    IsBytes
@@ -46,7 +46,8 @@
   }]
 
   explanation: """
-    The shards listed above all take in an input and check if they are the corresponding type. They then return true or false accordingly.
+    The Shards listed above all take in an input and check if they are the corresponding type. They then return true or false accordingly.
+    They can also be used in the Predicate parameter of conditional Shards like If and When.
   """
 
   tag: "General"

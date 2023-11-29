@@ -18,8 +18,8 @@
   }]
 
   explanation: """
-    The IsMoreEqual Shard when used in the Predicate parameter of a conditional Shard, like When, will check if the input of the conditional shard is greater than what is
-    stated in the Value parameter of the Is shard. In this case, if variable 1 is greater than variable2, the When Shard's Predicate will return true and do what is stated
+    The IsMoreEqual Shard when used in the Predicate parameter of a conditional Shard, like When, will check if the input of the conditional Shard is greater than what is
+    stated in the Value parameter of the Is Shard. In this case, if variable 1 is greater than or equal to variable2, the When Shard's Predicate will return true and do what is stated
     in Action.
   """
 
