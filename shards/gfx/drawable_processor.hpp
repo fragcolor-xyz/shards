@@ -29,6 +29,8 @@ struct DrawablePrepareContext {
   // View data
   const ViewData &viewData;
 
+  Rect viewport;
+
   // The drawables
   const shards::pmr::vector<const IDrawable *> &drawables;
 
@@ -45,6 +47,8 @@ struct DrawableEncodeContext {
   WGPURenderPassEncoder encoder;
   const CachedPipeline &cachedPipeline;
   const ViewData &viewData;
+
+  Rect viewport;
 
   // Data that was returned by prepare
   TransientPtr preparedData;

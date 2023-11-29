@@ -13,27 +13,30 @@ using namespace shader::blocks;
 using shader::FieldTypes;
 
 struct Effect {
-  static PipelineStepPtr create(std::vector<std::string> &&inputs, RenderStepOutput &&output, BlockPtr &&shader) {
+  static PipelineStepPtr create(RenderStepInput &&input, RenderStepOutput &&output, BlockPtr &&shader) {
     FeaturePtr feature = std::make_shared<Feature>();
     feature->shaderEntryPoints.emplace_back("effect_main", ProgrammableGraphicsStage::Fragment, std::move(shader));
 
     return makePipelineStep(RenderFullscreenStep{
         .features = withDefaultFullscreenFeatures(feature),
-        .inputs = std::move(inputs),
+        .input = std::move(input),
         .output = std::move(output),
     });
   }
 };
 
 struct Copy {
-  static PipelineStepPtr create(const std::string &fieldName, WGPUTextureFormat dstFormat) {
-    auto step = Effect::create(std::vector<std::string>{fieldName},
-                               makeRenderStepOutput(RenderStepOutput::Named{
-                                   .name = fieldName,
-                                   .format = dstFormat,
-                               }),
-                               makeCompoundBlock(WriteOutput(fieldName, FieldTypes::Float4, SampleTexture(fieldName))));
-    return step;
+  static PipelineStepPtr create(RenderStepInput input, RenderStepOutput output) {
+    auto blk = makeCompoundBlock();
+    for (auto &attachment : output.attachments) {
+      std::visit(
+          [&](auto &attachment) {
+            blk->appendLine(WriteOutput(attachment.name, FieldTypes::Float4, SampleTexture(attachment.name)));
+          },
+          attachment);
+    }
+
+    return Effect::create(std::move(input), std::move(output), std::move(blk));
   }
 };
 } // namespace gfx::steps

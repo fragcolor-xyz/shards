@@ -36,7 +36,7 @@ TEST_CASE("Unique Ids", "[Caching]") {
     auto texture = make_shared<Texture>();
     auto step0 = make_shared<RenderDrawablesStep>();
     auto step1 = make_shared<RenderFullscreenStep>();
-    auto step2 = make_shared<ClearStep>();
+    auto step2 = make_shared<NoopStep>();
 
     std::vector<UniqueId> ids = {
         drawables[0]->getId(), drawables[1]->getId(), meshes[0]->getId(), meshes[1]->getId(), feature->getId(),

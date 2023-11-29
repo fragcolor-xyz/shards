@@ -464,7 +464,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
         viewParameters.setParam(param.first.c_str(), param.second);
 
       // Set builtin view paramters (transforms)
-      setViewParameters(viewParameters, context.viewData);
+      setViewParameters(viewParameters, context.viewData, context.viewport);
 
       // Merge generator parameters
       auto baseViewData = context.generatorData.viewParameters;
@@ -590,7 +590,6 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   void encode(DrawableEncodeContext &context) override {
     const PrepareData &prepareData = context.preparedData.get<PrepareData>();
-    const ViewData &viewData = context.viewData;
     const CachedPipeline &cachedPipeline = context.cachedPipeline;
     auto encoder = context.encoder;
     auto &allocator = context.storage.workerMemory;
@@ -607,8 +606,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
       if (firstDrawable.clipRect) {
         auto clipRect = firstDrawable.clipRect.value();
 
-        int2 viewportMin = int2(viewData.viewport.x, viewData.viewport.y);
-        int2 viewportMax = int2(viewData.viewport.getX1(), viewData.viewport.getY1());
+        int2 viewportMin = int2(context.viewport.x, context.viewport.y);
+        int2 viewportMax = int2(context.viewport.getX1(), context.viewport.getY1());
 
         // Clamp to viewport
         clipRect.x = linalg::clamp(clipRect.x, viewportMin.x, viewportMax.x);
@@ -621,8 +620,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
           continue; // Discard draw call instead, wgpu doesn't allow w/h == 0
         wgpuRenderPassEncoderSetScissorRect(encoder, clipRect.x, clipRect.y, w, h);
       } else {
-        wgpuRenderPassEncoderSetScissorRect(encoder, viewData.viewport.x, viewData.viewport.y, viewData.viewport.width,
-                                            viewData.viewport.height);
+        wgpuRenderPassEncoderSetScissorRect(encoder, context.viewport.x, context.viewport.y, context.viewport.width,
+                                            context.viewport.height);
       }
 
       uint32_t *dynamicOffsets = allocator->new_objects<uint32_t>(cachedPipeline.dynamicBufferRefs.size());
