@@ -1,4 +1,5 @@
-@define(prompt-type @type({"system": Type::String "user": Type::String "assistant": Type::String}))
+@define(prompt-type @type({"user": Type::String "assistant": Type::String}))
+@define(system-prompt "placeholder")
 
 @wire(prepare-jsonl {
   "" >= jsonl
@@ -8,7 +9,7 @@
     Expect(@prompt-type) = chat
     {
       "messages": [
-        {"role": "system" "content": chat:system}
+        {"role": "system" "content": @system-prompt}
         {"role": "user" "content": chat:user}
         {"role": "assistant" "content": chat:assistant}]
     } | ToJson | AppendTo(jsonl)
