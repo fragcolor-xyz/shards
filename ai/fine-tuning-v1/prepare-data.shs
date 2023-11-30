@@ -1,0 +1,20 @@
+@define(prompt-type @type({"system": Type::String "user": Type::String "assistant": Type::String}))
+
+@wire(prepare-jsonl {
+  "" >= jsonl
+
+  ; TODO
+  ForEach({
+    Expect(@prompt-type) = chat
+    {
+      "messages": [
+        {"role": "system" "content": chat:system}
+        {"role": "user" "content": chat:user}
+        {"role": "assistant" "content": chat:assistant}]
+    } | ToJson | AppendTo(jsonl)
+    ; add new line
+    "\n" | AppendTo(jsonl)
+  })
+
+  "training-set.jsonl" | FS.Write(jsonl)
+})
