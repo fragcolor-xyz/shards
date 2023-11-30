@@ -1769,6 +1769,8 @@ template <typename T> struct WireDoppelgangerPool {
   }
 
   void release(T *wire) {
+    shassert(wire != nullptr && "Releasing a null wire?");
+
     std::unique_lock<std::mutex> _l(_poolMutex);
 
     _avail.emplace(wire);
