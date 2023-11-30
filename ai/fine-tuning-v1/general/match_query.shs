@@ -3,7 +3,7 @@
     How do I compare an input with multiple cases an execute ones that are true.
   """
 
-  solution: [{
+  solution: """
     1 = value
     
     value
@@ -21,9 +21,9 @@
       }
     ]
     false)
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    1 = value
     
     value
@@ -41,7 +41,7 @@
       }
     ]
     Passthrough: false)
-  }]
+  """
 
   explanation: """
     The Match Shard Compares the input with the declared cases (in order of the declaration) and activates the shard of the first matched case. If there are no matched

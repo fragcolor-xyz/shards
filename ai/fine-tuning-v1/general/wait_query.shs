@@ -3,7 +3,7 @@
     How do I wait for another wire to finish executing before resuming the current wire?
   """
 
-  solution: [{
+  solution: """
    Detach(myWire)
    Wait(
     ;Wire:
@@ -12,16 +12,16 @@
     false
     ;Timeout:
     )
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     Detach(myWire)
     Wait(
       Wire: "myWire"
       Passthrough: false
       ;Timeout:
       )
-  }]
+  """
 
   explanation: """
     The Wait Shard waits for another wire to complete before resuming execution of the current wire. The Passthrough parameter ensures whether the input of the Shard is passed

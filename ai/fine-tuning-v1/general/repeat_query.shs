@@ -3,17 +3,17 @@
     How do I repeat something multiple times.
   """
 
-  solution: [{
+  solution: """
    Repeat({
     Pass ;; Action to repeat
    } 5)
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    Repeat(Action:{
     Pass ;; Action to repeat
    } Times: 5)
-  }]
+  """
 
   explanation: """
     Repeat will execute whatever is specified in the Action parameter X number of times, where X is the amount specified in the Times parameter.

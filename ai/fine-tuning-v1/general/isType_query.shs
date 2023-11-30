@@ -3,7 +3,7 @@
     How do I check if a variable is a certain type?
   """
 
-  solution: [{
+  solution: """
    variable-to-check ;; use any of the Shards below to check the required type
    IsAudio
    IsBool
@@ -22,9 +22,9 @@
    IsString
    IsTable
    IsWire
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    Get(variable-to-check) ;; use any of the Shards below to check the required type
    IsAudio
    IsBool
@@ -43,7 +43,7 @@
    IsString
    IsTable
    IsWire
-  }]
+  """
 
   explanation: """
     The Shards listed above all take in an input and check if they are the corresponding type. They then return true or false accordingly.

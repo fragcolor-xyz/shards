@@ -3,16 +3,16 @@
     How do I get the total number of elements in a sequence?
   """
 
-  solution: [{
+  solution: """
    Count(sequence-to-count)
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     Count(
       Name: sequence-to-Count
       ;; Key: key
       )
-  }]
+  """
 
   explanation: """
     Count parses the variable passed to it in the Name parameter, and returns the count of characters, elements, or key-value pairs depending on 

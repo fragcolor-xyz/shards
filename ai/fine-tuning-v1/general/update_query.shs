@@ -3,13 +3,13 @@
     How do I update a variable?
   """
 
-  solution: [{
+  solution: """
    5 > variable-to-update
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     5 | Update(Name:variable-to-update)
-  }]
+  """
 
   explanation: """
     Update modifies the value of an existing mutable variable. Do note that update cannot be used to modify the value of a single element in a sequence, it can

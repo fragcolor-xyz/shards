@@ -3,7 +3,7 @@
     How do  I decrease the value of a mutable variable?
   """
 
-  solution: [{
+  solution: """
     10 >= mutable-var
 
     1
@@ -11,9 +11,9 @@
 
     mutable-var
     Log("result")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     10 | Set(Name: mutable-var) 
 
     1
@@ -21,7 +21,7 @@
 
     Get(mutable-var)
     Log("result")
-  }]
+  """
 
   explanation: """
     Math.Dec is a Maths Shard that will take a in inputs with numeric value and decrease the mutable variable passed into Value parameter by said amount.

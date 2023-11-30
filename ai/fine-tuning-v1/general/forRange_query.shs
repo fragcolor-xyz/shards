@@ -3,7 +3,7 @@
     How do I do something cumalatively for a specififed range. 
   """
 
-  solution: [{
+  solution: """
    0 >= forRange-each-cycle-value
     
     ForRange
@@ -20,9 +20,9 @@
         Log("added-value")
       }
     )
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    0 >= forRange-each-cycle-value
     
     ForRange
@@ -39,7 +39,7 @@
         Log("added-value")
       }
     )
-  }]
+  """
 
   explanation: """
     The ForRange Shard iterates over a range of numbers, feeding each number into the Action parameter and executes the process stated in the Action parameter.

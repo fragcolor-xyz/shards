@@ -3,17 +3,17 @@
     How do I calculate the magnitude or length of a vector?
   """
 
-  solution: [{
+  solution: """
     @f2(2.0 3.0)
     Math.Length
     Log("result") ;; result will be 3.60555
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     @f2(2.0 3.0)
     Math.Length
     Log(PRefix: "result") ;; result will be 3.60555
-  }]
+  """
 
   explanation: """
     The Math.Length Shard is a Maths Shard that takes a vector as input and returns the vector's magnitude/length calculated using Pythagorean theorem.

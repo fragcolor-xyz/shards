@@ -3,13 +3,13 @@
     How do I do matrix multiplication.
   """
 
-  solution: [{
+  solution: """
     tsl-mat | Math.MatMul(rot-mat) | Math.MatMul(scl-mat) = transform-matrix
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     tsl-mat | Math.MatMul(Operand:rot-mat) | Math.MatMul(Operand:scl-mat) = transform-matrix
-  }]
+  """
 
   explanation: """
     Math.Rotation is a Maths Shard that does matrix multiplication on the input matrix and the matrix provided in the operand parameter. It can be used

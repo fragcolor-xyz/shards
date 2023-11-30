@@ -3,15 +3,15 @@
     How do i convert and int to Leb128 format?
   """
 
-  solution: [{
+  solution: """
    5 ; int to convert
    ToLEB128(Signed:false)
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    5 ; int to convert
    ToLEB128(Signed:false)
-  }]
+  """
 
   explanation: """
     ToLEB128 will convert an int to  a LEB128 format. The Signed parameter is for if the integer to encode/decode is signed and can be negative.

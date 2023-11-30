@@ -3,15 +3,15 @@
     How  do I exit the program through code?
   """
 
-  solution: [{
+  solution: """
    0;; Error Code
    Exit
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     0;; Error Code
     Exit
-  }]
+  """
 
   explanation: """
     Exit is a Shard that will automatically close the program. It takes in a integer as input. 

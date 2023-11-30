@@ -3,15 +3,15 @@
     How do I convert bytes to String?
   """
 
-  solution: [{
+  solution: """
    bytes
    BytesToString
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     bytes
     BytesToString
-  }]
+  """
 
   explanation: """
     BytesToString is a Shard that takes in an input of type Bytes and converts it to type String.

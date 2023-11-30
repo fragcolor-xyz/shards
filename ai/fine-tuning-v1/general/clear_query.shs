@@ -3,13 +3,11 @@
     How do i delete all the elements in a sequence.
   """
 
-  solution: {
-    Clear(sequence)
-  }
+  solution:
+    """Clear(sequence)"""
 
-  explicit: {
-    Clear(Name: sequence)
-  }
+  explicit:
+    """Clear(Name: sequence)"""
 
   explanation: """
     Clear removes all the elements of the sequence that has been passed to it in the Name: parameter.

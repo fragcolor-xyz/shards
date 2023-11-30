@@ -3,15 +3,15 @@
     How do I convert a integer to a RGBA color value
   """
 
-  solution: [{
+  solution: """
    5 ; integer to convert
    ToColor
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    5 ; integer to convert
    ToColor
-  }]
+  """
 
   explanation: """
     The ToColor Shard converts an input with numeric value into 4-dimensional color vector represented as four integers.

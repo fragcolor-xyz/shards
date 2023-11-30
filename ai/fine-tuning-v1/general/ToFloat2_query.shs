@@ -3,15 +3,15 @@
     How do I convert an integer to a float2?
   """
 
-  solution: [{
+  solution: """
    5 ; integer to convert
    ToFloat2
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    5 ; integer to convert
    ToFloat2
-  }]
+  """
 
   explanation: """
     The ToFloat2 Shard converts an input with numeric value into 2-dimensional vector represented as two floating point numbers. If the input is one dimensional, 

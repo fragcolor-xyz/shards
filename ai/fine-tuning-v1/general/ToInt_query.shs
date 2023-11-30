@@ -3,15 +3,15 @@
     How do I convert a float to an integer?
   """
 
-  solution: [{
+  solution: """
    5.0 ; integer to convert
    ToInt
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    5.0 ; integer to convert
    ToInt
-  }]
+  """
 
   explanation: """
     The ToInt Shard takes in a float or a string with numeric value and converts it into a integer. The value will always be rounded down to the nearest integer. If the

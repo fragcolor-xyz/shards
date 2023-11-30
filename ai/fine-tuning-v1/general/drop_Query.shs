@@ -3,15 +3,15 @@
     How do I remove the last element in the sequence and return the remaining sequence?
   """
 
-  solution: [{
+  solution: """
    Drop(sequence-to-drop)
    Log("Remaining Sequence")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     Drop(Name: sequence-to-drop)
     Log(Prefix: "Remaining Sequence")
-  }]
+  """
 
   explanation: """
     Drop removes the last element of the sequence variable that has been passed to in the :Name parameter. Unlike the Pop Shard which will return 

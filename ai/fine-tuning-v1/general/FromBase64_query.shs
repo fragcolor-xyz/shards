@@ -3,15 +3,15 @@
     How  do I convert Base64 to bytes?
   """
 
-  solution: [{
+  solution: """
    bytes
    FromBase64
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    bytes
    FromBase64
-  }]
+  """
 
   explanation: """
     FromBase64 is a Shard that takes in a base64 string as input and outputs the corresponding bytes.

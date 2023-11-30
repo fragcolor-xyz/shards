@@ -3,14 +3,14 @@
     How  do I check if every value in a sequence equals something.
   """
 
-  solution: [{
+  solution: """
    [2 2 2 2 2 2 2] = sequence
 
    sequence
    If(IsAll(2) {Msg("all matches")} {Msg("not all matches")})
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    [2 2 2 2 2 2 2] = sequence
 
    sequence
@@ -19,7 +19,7 @@
     } Else: {
       Msg("not all matches")}
    )
-  }]
+  """
 
   explanation: """
     The IsAll Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When. It will parse through

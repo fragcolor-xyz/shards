@@ -3,7 +3,7 @@
     How do I linearly interpolate between two values.
   """
 
-  solution: [{
+  solution: """
     0 = x
     
     0.01 ;; interpolation factor
@@ -12,9 +12,9 @@
 
     x
     Log("value")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     0 = x
     
     0.01 ;; interpolation factor
@@ -23,7 +23,7 @@
 
     x
     Log(Prefix:"value")
-  }]
+  """
 
   explanation: """
     Math.Lerp is a Maths Shard which takes the interpolation factor as input and will lineraly interpolate between the the value in the First parameter to

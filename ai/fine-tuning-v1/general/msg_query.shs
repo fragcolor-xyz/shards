@@ -3,13 +3,11 @@
     How do I display a message on the console
   """
 
-  solution: {
-    Msg("Type your message here")
-  }
+  solution:
+    """Msg("Type your message here")"""
 
-  explicit: {
-    Msg(Message:"Type your message here")
-  }
+  explicit:
+    """Msg(Message:"Type your message here")"""
 
   explanation: """
     This Shard is used for displaying messages to the user on the standard output (which is usually the console).

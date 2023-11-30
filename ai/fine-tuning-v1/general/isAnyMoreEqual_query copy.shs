@@ -3,14 +3,14 @@
     How  do I check if any value in a sequence is of higher value or equal to something.
   """
 
-  solution: [{
+  solution: """
    [1 1 1 1 2] = sequence
 
    sequence
    If(IsAnyMoreEqual(2) {Msg("one match")} {Msg("none match")})
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    [1 1 1 1 2] = sequence
 
    sequence
@@ -19,7 +19,7 @@
     } Else: {
       Msg("none match")}
    )
-  }]
+  """
 
   explanation: """
     The IsAnyMoreEqual is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.

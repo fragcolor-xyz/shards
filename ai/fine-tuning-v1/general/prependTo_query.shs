@@ -3,21 +3,20 @@
     How do add something to thhe front of a sequence.
   """
 
-  solution: {
+  """solution:
     [1 2 3 4 5] >= sequence
     0 | PrependTo(sequence)
     
     sequence
     Log("result")
-  }
+  """
 
-  explicit: {
-    [1 2 3 4 5] >= sequence
+  explicit:
+    """[1 2 3 4 5] >= sequence
     0 | PrependTo(Collection: sequence)
     
     sequence
-    Log(Prefix: "result")
-  }
+    Log(Prefix: "result")"""
 
   explanation: """
     PrependTo will add what is inputed to the sequence stated in the Collection parameter. The PrependTo shard will not output the resulting sequence but still modify it.

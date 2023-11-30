@@ -3,12 +3,11 @@
     How do I read a value of a key from a table.
   """
 
-  solution: {
-    {k1: 1 k2: 2 k3: 3} = table
+  solution:
+    """{k1: 1 k2: 2 k3: 3} = table
 
     Get(table k1 0)
-    Log("Key read")
-  }
+    Log("Key read")"""
 
   explicit: {
     {k1: 1 k2: 2 k3: 3} = table

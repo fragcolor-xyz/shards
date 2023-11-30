@@ -3,15 +3,15 @@
     How do I convert a string to an int8?
   """
 
-  solution: [{
+  solution: """
    "5" ; string to convert
    ToInt
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    "5" ; string to convert
    ToInt
-  }]
+  """
 
   explanation: """
     The ToInt8 Shard converts an input with numeric value into 8-dimensional vector represented as eight integers. The value will always be rounded down to the nearest integer. If 

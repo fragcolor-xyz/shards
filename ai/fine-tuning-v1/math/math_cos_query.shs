@@ -3,17 +3,17 @@
     How do I apply the cosine trigonometric function to a value
   """
 
-  solution: [{
+  solution: """
     3.1415927
     Math.Cos
     Log("result")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     3.1415927
     Math.Cos
     Log(Prefix:"result")
-  }]
+  """
 
   explanation: """
     Math.Cos is a Maths Shard that will apply the cosine trigonometric function to the float value passed in as input.

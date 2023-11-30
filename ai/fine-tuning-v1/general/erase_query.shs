@@ -3,13 +3,13 @@
     How do I delete an element in a sequence. 
   """
 
-  solution: [{
+  solution: """
    Erase([index-to-delete] sequence-to-delete-from)
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     Erase(Indices:[index-to-delete] Name:sequence-to-delete-from)
-  }]
+  """
 
   explanation: """
     Erase deletes single or multiple elements (from sequences) and key-value pairs (from tables).

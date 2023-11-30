@@ -3,17 +3,15 @@
     How do I replace an element of an existing sequence?
   """
 
-  solution: {
-    [index0 variable1 index1 variable2] | Assoc(sequence)
-  }
+  solution:
+    """[index0 variable1 index1 variable2] | Assoc(sequence)"""
 
-  explicit: {
-    [index0 variable1 index1 variable2] 
+  explicit:
+    """[index0 variable1 index1 variable2] 
     | Assoc(
       Name: sequence
       ;;Key: key
-    )
-  }
+    )"""
 
   explanation: """
     The Assoc Shard is replacing element of index 0 in sequence with variable1 and element with index of 1 in sequence to variable2.

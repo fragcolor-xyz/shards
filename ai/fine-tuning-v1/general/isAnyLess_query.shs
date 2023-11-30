@@ -3,14 +3,14 @@
     How  do I check if any value in a sequence is of lower value than something.
   """
 
-  solution: [{
+  solution: """
    [3 3 3 3 1] = sequence
 
    sequence
    If(IsAnyLess(2) {Msg("one match")} {Msg("none match")})
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    [3 3 3 3 1] = sequence
 
    sequence
@@ -19,7 +19,7 @@
     } Else: {
       Msg("none match")}
    )
-  }]
+  """
 
   explanation: """
     The IsAnyLess Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.

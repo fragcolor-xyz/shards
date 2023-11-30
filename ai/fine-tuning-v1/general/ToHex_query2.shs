@@ -3,15 +3,15 @@
     How do I convert a byte to an hexidecimal value?
   """
 
-  solution: [{
+  solution: """
    5 ; byte to convert
    ToHex
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    5 ; byte to convert
    ToHex
-  }]
+  """
 
   explanation: """
     The ToHex Shard takes in either an integer, bytes or a string and converts it into a hexidecimal value

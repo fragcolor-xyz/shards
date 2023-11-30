@@ -3,13 +3,13 @@
     How do I get a random float
   """
 
-  solution: [{
+  solution: """
    RandomFloat(50.0) ;; Replace with desired Max, non-inlcusive
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    RandomFloat(Max: 50.0) ;; Replace with desired Max, non-inlcusive
-  }]
+  """
 
   explanation: """
     The RandomInt Shard will return a random integer between the values 0 and the value specified in the Max parameter (non-inclusive).

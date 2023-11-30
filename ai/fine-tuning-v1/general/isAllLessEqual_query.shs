@@ -3,14 +3,14 @@
     How  do I check if every value in a sequence is less or equal to a certain value.
   """
 
-  solution: [{
+  solution: """
    [1 2 3 4 5 6 7] = sequence
 
    sequence
    If(IsAllLessEqual(7) {Msg("all matches")} {Msg("not all matches")})
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    [1 2 3 4 5 6 7] = sequence
 
    sequence
@@ -19,7 +19,7 @@
     } Else: {
       Msg("not all matches")}
    )
-  }]
+  """
 
   explanation: """
     The IsAllLessEqual Shard is a Shard that can be used in the Predicate parameter of conditional Shards such as If and When. It will parse through

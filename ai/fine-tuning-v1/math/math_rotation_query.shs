@@ -3,17 +3,17 @@
     How do I create a rotation matrix
   """
 
-  solution: [{
+  solution: """
     @f4(1.0 1.0 1.0 0.0)
     Math.Rotation
     Log("result")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     @f4(1.0 1.0 1.0 0.0)
     Math.Rotation
     Log("result")
-  }]
+  """
 
   explanation: """
     Math.Rotation is a Maths Shard that takes a float4  input which represents the object's quaternion rotation and converts it into

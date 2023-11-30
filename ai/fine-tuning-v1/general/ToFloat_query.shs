@@ -3,15 +3,15 @@
     How do I convert an integer to a float?
   """
 
-  solution: [{
+  solution: """
    5 ; integer to convert
    ToFloat
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    5 ; integer to convert
    ToFloat
-  }]
+  """
 
   explanation: """
     The ToFloat Shard takes in a integer or a string with numeric value and converts it into a float. If the

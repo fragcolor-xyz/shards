@@ -3,17 +3,17 @@
     How do I convert something to a string
   """
 
-  solution: [{
+  solution: """
    5 ; string to convert
    ToString
    ;;Will output "5"
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    5 ; string to convert
    ToString
    ;;Will output "5"
-  }]
+  """
 
   explanation: """
     ToString converts any data type and outputs a string. 

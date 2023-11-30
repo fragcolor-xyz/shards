@@ -3,17 +3,17 @@
     How do I multiply two values together?
   """
 
-  solution: [{
+  solution: """
    @wire(wire{
     3 | Math.Multiply(2)
     Log("Result") ;; the result will be 6
    })
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     3 | Math.Multiply(Operand:2)
     Log(Prefix:"Result") ;; the result will be 6
-  }]
+  """
 
   explanation: """
     Math.Multiply is a Maths Shard which will take a numeric value as input and a value specified on in the Operand paramater and perform the multiply

@@ -3,7 +3,7 @@
     How do I replace a elements in a sequence.
   """
 
-  solution: [{
+  solution: """
     [ 0 1 2 3 4 5] >= sequence
 
     sequence
@@ -12,9 +12,9 @@
       [2]
     )
     Log("result")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     [ 0 1 2 3 4 5] >= sequence
 
     Get(sequence)
@@ -23,7 +23,7 @@
       Replacements: [2 2]
     )
     Log(Prefix:"result") ;; Result will be
-  }]
+  """
 
   explanation: """
     The Replace Shard will take a sequence as input and replace all elements with indeces specified in the Patterns parameter, with the corresponding

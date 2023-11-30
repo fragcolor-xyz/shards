@@ -3,15 +3,15 @@
     How do I add two values together?
   """
 
-  solution: [{
+  solution: """
     3 | Math.Add(2)
     Log("Result") ;; the result will be 5
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     3 | Math.Add(Operand:2)
     Log(Prefix:"Result") ;; the result will be 5
-  }]
+  """
 
   explanation: """
     Math.Add is a Maths Shard which will take a numeric value as input and a value specified on in the Operand paramater and perform the addition 

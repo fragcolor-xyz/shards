@@ -3,7 +3,7 @@
     How do  I increase the value of a mutable variable?
   """
 
-  solution: [{
+  solution: """
     0 >= mutable-var
 
     1
@@ -11,9 +11,9 @@
 
     mutable-var
     Log("result")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     0 | Set(Name: mutable-var) 
 
     1
@@ -21,7 +21,7 @@
 
     Get(mutable-var)
     Log("result")
-  }]
+  """
 
   explanation: """
     Math.Inc is a Maths Shard that will take a in inputs with numeric value and increase the mutable variable passed into Value parameter by said amount.

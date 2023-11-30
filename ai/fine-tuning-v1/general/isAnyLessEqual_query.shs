@@ -3,14 +3,14 @@
     How  do I check if any value in a sequence is of lower value or equal to something.
   """
 
-  solution: [{
+  solution: """
    [3 3 3 3 2] = sequence
 
    sequence
    If(IsAnyLessEqual(2) {Msg("one match")} {Msg("none match")})
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    [3 3 3 3 2] = sequence
 
    sequence
@@ -19,7 +19,7 @@
     } Else: {
       Msg("none match")}
    )
-  }]
+  """
 
   explanation: """
     The IsAnyLessEqual is a Shard that can be used in the Predicate parameter of conditional Shards like If and When. 

@@ -3,15 +3,15 @@
     How do I remove the first element in the sequence and return the remaining sequence?
   """
 
-  solution: [{
+  solution: """
    DropFront(sequence-to-drop)
    Log("Remaining Sequence")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     DropFront(Name: sequence-to-drop)
     Log(Prefix: "Remaining Sequence")
-  }]
+  """
 
   explanation: """
     DropFront removes the first element of the sequence variable that has been passed to in the Name parameter. Unlike the PopFront Shard, DropFront will return the remaining

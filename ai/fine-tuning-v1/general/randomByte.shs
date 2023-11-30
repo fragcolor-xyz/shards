@@ -3,13 +3,13 @@
     How do I get a random integer.
   """
 
-  solution: [{
+  solution: """
    RandomInt(50) ;; Replace with desired size
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    RandomInt(Size: 50) ;; Replace with desired size
-  }]
+  """
 
   explanation: """
     The RandomBytes Shard will return  randomized bytes, of the size specified in the Size parameter.

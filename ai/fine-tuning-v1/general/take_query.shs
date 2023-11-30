@@ -3,20 +3,20 @@
     How do I get an element of a specific index in a sequence?
   """
 
-  solution: [{
+  solution: """
    [0 1 2 3 4] = sequence
 
    sequence
    Take() ;; Replace 0 accordingly with the desired index
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    [0 1 2 3 4] = sequence
 
 
    Get(sequence)
    Take([0]) ;; Replace 0 accordingly with the desired index
-  }]
+  """
 
   explanation: """
     Take will get and return the specific element from the sequence passed in as input. The element it gets is of the index specified in its parameter. A

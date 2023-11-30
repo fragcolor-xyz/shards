@@ -3,15 +3,15 @@
     How do i check if a wire is running.
   """
 
-  solution: [{
+  solution: """
    IsRunning(wire-to-check)
    Log("Is wire running")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     IsRunning(Wire: wire-to-check)
     Log(Prefix: "Is wire running")
-  }]
+  """
 
   explanation: """
     The IsRunning shard will check if the wire stated in the Wire parameter is running. If it is running, it will return true, and false otherwise. In the solution

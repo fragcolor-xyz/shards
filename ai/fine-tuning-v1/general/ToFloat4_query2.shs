@@ -3,15 +3,15 @@
     How do I convert a float to a float4?
   """
 
-  solution: [{
+  solution: """
    5.0 ; float to convert
    ToFloat4
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    5.0 ; float to convert
    ToFloat4
-  }]
+  """
 
   explanation: """
     The ToFloat4 Shard converts an input with numeric value into 4-dimensional vector represented as four floating point numbers. If the input is one dimensional, 

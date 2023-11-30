@@ -3,8 +3,8 @@
     How do I attempt to execute an action but do another action if I  fail
   """
 
-  solution: {
-    [1 2 3] =  sequence
+  solution:
+    """[1 2 3] =  sequence
 
     sequence
     Maybe(
@@ -12,11 +12,10 @@
       Else: Take(0)
       Silent: false
     )
-    Log("result")
-  }
+    Log("result")"""
 
-  explicit: {
-    [1 2 3] =  sequence
+  explicit:
+    """[1 2 3] =  sequence
 
     sequence
     Maybe(
@@ -24,8 +23,7 @@
       Else: Take(0)
       Silent: false
     )
-    Log("result")
-  }
+    Log("result")"""
 
   explanation: """
     The Maybe Shard attempts to activate a Shard or a sequence of Shards. Upon failure, it will activate another Shard or sequence of Shards specified in the Else parameter.

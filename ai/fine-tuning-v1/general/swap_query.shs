@@ -3,7 +3,7 @@
     How do I swap the values of two variables.
   """
 
-  solution: [{
+  solution: """
     2 >= variableA
     4 >= variableB
 
@@ -11,9 +11,9 @@
       variableA
       variableB
     )
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     2 | Set(Name:variableA)
     4 | Set(Name:variableB)
 
@@ -21,7 +21,7 @@
       NameA:variableA
       NameB:variableB
     )
-  }]
+  """
 
   explanation: """
     The Swap Shard swaps the values of the two variables passed to it via :NameA and :NameB parameters. This Shard can only swap the values

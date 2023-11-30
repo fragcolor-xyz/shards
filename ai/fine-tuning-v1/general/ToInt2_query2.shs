@@ -3,15 +3,15 @@
     How do I convert a string to an int2?
   """
 
-  solution: [{
+  solution: """
    "5.0" ; string to convert
    ToInt
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    "5.0" ; string to convert
    ToInt
-  }]
+  """
 
   explanation: """
     The ToInt2 Shard converts an input with numeric value into 2-dimensional vector represented as two integers. The value will always be rounded down to the nearest integer. If 

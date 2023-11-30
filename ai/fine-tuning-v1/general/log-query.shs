@@ -3,15 +3,15 @@
     How do I log the type of something in the console
   """
 
-  solution: [{
+  solution: """
    variable-to-log
    Log("Is wire running")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     Get(variable-to-log)
     Log(Prefix: "Is wire running")
-  }]
+  """
 
   explanation: """
     This Shard is used for printing information to the console for debugging purposes. 

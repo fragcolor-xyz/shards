@@ -3,7 +3,7 @@
     How do I ensure that the output of a Shard is a specific type?
   """
 
-  solution: [{
+  solution: """
    output-to-check ;; use any of the Shards below to check the required type
    Expect(@type (Type::None))
    Expect(@type(Type::Any))
@@ -25,9 +25,9 @@
    Expect(@type(Type::String))
    Expect(@type(Type::Image))
    Expect(@type(Type::Audio))
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    output-to-check ;; use any of the Shards below to check the required type
    Expect(Type:@type(Type::None))
    Expect(Type:@type(Type::Any))
@@ -49,7 +49,7 @@
    Expect(Type:@type(Type::String))
    Expect(Type:@type(Type::Image))
    Expect(Type:@type(Type::Audio))
-  }]
+  """
 
   explanation: """
     The expect Shard will take an input and check if it is the stipulated type in the Type  parameter.If it is, it will return the input as the stipulated type.

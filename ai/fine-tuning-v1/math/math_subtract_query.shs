@@ -3,15 +3,15 @@
     How do I subtract two values together?
   """
 
-  solution: [{
+  solution: """
     3 | Math.Subtract(2)
     Log("Result") ;; the result will be 1
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     3 | Math.Subtract(Operand:2)
     Log(Prefix:"Result") ;; the result will be 1
-  }]
+  """
 
   explanation: """
     Math.Subtract is a Maths Shard which will take a numeric value as input and a value specified on in the Operand paramater and perform the subtract

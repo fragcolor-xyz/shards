@@ -3,15 +3,15 @@
     How do I convert something to JSON format
   """
 
-  solution: [{
+  solution: """
    table-of-values
    ToJSON
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    table-of-values
    ToJSON(Pure: true Indent:0)
-  }]
+  """
 
   explanation: """
     ToJSON is a shard that will convert any data type and output a string in the JSON format. The Pure parameter  is set true or false,

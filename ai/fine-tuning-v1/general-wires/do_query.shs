@@ -3,17 +3,17 @@
     How do I execute a wire from the main wire and continue the main wire after complete execution of the executed wire.
   """
 
-  solution: [{
+  solution: """
    @wire(main-wire{
     Do(other-wire)
    })
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    @wire(main-wire{
     Do(Wire:other-wire)
    })
-  }]
+  """
 
   explanation: """
     The Do Shard is a wire executor.  When called, it will run the wire specified in the Wire parameter inline within the current wire.

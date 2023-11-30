@@ -3,13 +3,13 @@
     How do I delete keys from a table
   """
 
-  solution: [{
+  solution: """
    Erase(["key1" "key2"] sequence-to-delete-from)
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     Erase(Indices:["key1" "key2"] Name:sequence-to-delete-from)
-  }]
+  """
 
   explanation: """
     Erase deletes single or multiple elements (from sequences) and key-value pairs (from tables).

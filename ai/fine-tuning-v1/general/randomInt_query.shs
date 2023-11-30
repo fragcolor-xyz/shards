@@ -3,13 +3,13 @@
     How do I get a random integer.
   """
 
-  solution: [{
+  solution: """
    RandomInt(50) ;; Replace with desired Max, non-inlcusive
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    RandomInt(Max: 50) ;; Replace with desired Max, non-inlcusive
-  }]
+  """
 
   explanation: """
     The RandomInt Shard will return a random integer between the values 0 and the value specified in the Max parameter (non-inclusive). Use  Math.Add  or Math.Subtract

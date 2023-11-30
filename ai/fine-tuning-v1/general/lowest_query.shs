@@ -3,17 +3,15 @@
     How do i get the lowest value from a table ?
   """
 
-  solution: {
-    [1 2 3 4 5] = seq
+  solution:
+    """[1 2 3 4 5] = seq
     Lowest
-    Log("resulting")
-  }
+    Log("resulting")"""
 
-  explicit: {
-    [1 2 3 4 5] = seq
+  explicit:
+    """[1 2 3 4 5] = seq
     Lowest
-    Log(Prefix:"resulting")
-  }
+    Log(Prefix:"resulting")"""
 
   explanation: """
     The Lowest Shard will parse a sequence and return the element with the lowest "value". If it is a sequence of integers or floats it will return the element with

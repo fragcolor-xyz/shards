@@ -3,17 +3,17 @@
     How do I divide two values together?
   """
 
-  solution: [{
+  solution: """
    @wire(wire{
     6.0 | Math.Divide(2.0)
     Log("Result") ;; the result will be 3.0
    })
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     6.0 | Math.Divide(Operand:2.0)
     Log(Prefix:"Result") ;; the result will be 3.0
-  }]
+  """
 
   explanation: """
     Math.Divide is a Maths Shard which will take a numeric value as input and a value specified on in the Operand paramater and perform the division

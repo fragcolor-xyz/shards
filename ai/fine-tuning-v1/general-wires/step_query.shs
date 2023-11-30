@@ -3,17 +3,17 @@
     How do I execute a wire that continues its state whenever it is called.
   """
 
-  solution: [{
+  solution: """
    @wire(main-wire{
     Step(other-wire-that-continues)
    })
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    @wire(main-wire{
     Step(Wire:other-wire-that-continues)
    })
-  }]
+  """
 
   explanation: """
     The Step Shard is a wire executor. When called, it will execute the wire specified in the Wire parameter.

@@ -3,17 +3,17 @@
     How do I round down a float to the lowest integer.
   """
 
-  solution: [{
+  solution: """
     2.7
     Math.Floor
     Log("result") ;; result will be 2
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     2.7
     Math.Floor
     Log("result") ;; result will be 2
-  }]
+  """
 
   explanation: """
     Math.Floor is a Maths Shard that takes a float or  a sequence of floats and rounds it down to the nearest integer. Unlike Math.Round which will

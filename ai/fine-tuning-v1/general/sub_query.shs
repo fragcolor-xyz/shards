@@ -3,7 +3,7 @@
     How do I execute a combination of Shards without consuming the input.
   """
 
-  solution: [{
+  solution: """
     2 >= values
 
     Sub({
@@ -11,9 +11,9 @@
       Log("result1:")
     })
     Log("result2:")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     2 | Set(Name:values)
 
     Sub(Shards:{
@@ -21,7 +21,7 @@
       Log(Prefix:"result1:")
     })
     Log(Prefix:"result2:")
-  }]
+  """
 
   explanation: """
     Sub is a Shard that activates a Shard or a sequence of Shards independently, without consuming the input. 

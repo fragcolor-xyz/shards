@@ -3,15 +3,15 @@
     How do I get a segment from a sequence.
   """
 
-  solution: [{
+  solution: """
     [ 0 1 2 3 4 5] >= sequence
 
     sequence
     Slice(0 3 1)
     Log("result")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     [ 0 1 2 3 4 5] >= sequence
 
     Get(sequence)
@@ -22,7 +22,7 @@
     )
     Log(Prefix:"result")
     ;; Result will be a seuence [0 1 2]
-  }]
+  """
 
   explanation: """
     Slice is a Shard that will get a segment from a sequence. It takes from the element indicated in the From parameter to the element

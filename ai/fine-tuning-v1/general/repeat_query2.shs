@@ -3,7 +3,7 @@
     How do I repeat something multiple times until a certain condition is false.
   """
 
-  solution: [{
+  solution: """
    
    0 >= n
    
@@ -12,9 +12,9 @@
    }
    true
   {n | IsMore(3)})
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    0 | Set(Name:n)
    
    Repeat( Action:{
@@ -22,7 +22,7 @@
    }
    Forever: true
    Until: n | IsMore(3))
-  }]
+  """
 
   explanation: """
     Repeat will execute whatever is specified in the Action parameter forever until the condition specified in the Until parameter is met.

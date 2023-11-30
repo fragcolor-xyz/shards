@@ -3,17 +3,17 @@
     How do I create an empty Table?
   """
 
-  solution: [{
+  solution: """
    Table(table-created)
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    Table(
     Name:  table-created
     ;;Global:
     ;;Type:
     )
-  }]
+  """
 
   explanation: """
     Table creates an empty table with or without a specified key (via the :Key parameter). 

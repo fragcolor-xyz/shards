@@ -3,7 +3,7 @@
     How do I do an action for each element in a sequence and get the modified sequence?
   """
 
-  solution: [{
+  solution: """
    [1 2 3 4 5] = sequence
 
     sequence
@@ -14,9 +14,9 @@
       }
     )
     Log("result-map-modified-sequence")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    [1 2 3 4 5] = sequence
 
     Get(Name:sequence)
@@ -27,7 +27,7 @@
       }
     )
     Log(Prefix:"result-map-modified-sequence")
-  }]
+  """
 
   explanation: """
     Map, processes every element of a sequence with a given Shard or sequence of Shards. Unlike the ForEach Shard, Map will output the resulting modified sequence.

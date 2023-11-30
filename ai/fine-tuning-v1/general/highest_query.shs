@@ -3,17 +3,15 @@
   Howdo i get the highest value from a sequence
   """
 
-  solution: {
-    [1 2 3 4 5] = seq
+  solution:
+    """[1 2 3 4 5] = seq
     Highest
-    Log("resulting")
-  }
+    Log("resulting")"""
 
-  explicit: {
-    [1 2 3 4 5] = seq
+  explicit:
+    """[1 2 3 4 5] = seq
     Highest
-    Log(Prefix:"resulting")
-  }
+    Log(Prefix:"resulting")"""
 
   explanation: """
     The Highest shard will parse a sequence and return the element with the highest "value". If it is a sequence of integers or floats it will return the element with

@@ -3,16 +3,16 @@
     How do I check if something is Almost a certain value 
   """
 
-  solution: [{
+  solution: """
    0 >= value
 
    value | Math.Add(1) > value
 
    value
    If(IsAlmost(10 1) {Msg("almost  10!")} {Msg("not there yet!")})
-  }]
+  """
 
-  explicit: [{
+  explicit: """
    0 >= value
 
    value | Math.Add(1) > value
@@ -23,7 +23,7 @@
     } Else: {
       Msg("not all matches")}
    )
-  }]
+  """
 
   explanation: """
     The IsAlmost Shard is a Shard that can be used in the Predicate parameter of conditional Shards like If and When.

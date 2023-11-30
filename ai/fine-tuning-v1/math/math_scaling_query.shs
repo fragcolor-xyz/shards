@@ -3,17 +3,17 @@
     How do I create a scale matrix
   """
 
-  solution: [{
+  solution: """
     @f3(1.0 1.0 1.0)
     Math.Scaling
     Log("result")
-  }]
+  """
 
-  explicit: [{
+  explicit: """
     @f3(1.0 1.0 1.0)
     Math.Scaling
     Log("result")
-  }]
+  """
 
   explanation: """
     Math.Scaling is a Maths Shard that takes a float3 as input and converts it into a scale matrix. 
