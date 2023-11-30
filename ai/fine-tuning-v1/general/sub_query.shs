@@ -1,0 +1,31 @@
+{
+  prompt: """How do I execute a combination of Shards without consuming the input."""
+
+  solution: """
+    2 >= values
+
+    Sub({
+      Math.Multiply(2)
+      Log("result1:")
+    })
+    Log("result2:")
+  """
+
+  explicit: """
+    2 | Set(Name:values)
+
+    Sub(Shards:{
+      Math.Multiply(Operand:2)
+      Log(Prefix:"result1:")
+    })
+    Log(Prefix:"result2:")
+  """
+
+  explanation: """
+    Sub is a Shard that activates a Shard or a sequence of Shards independently, without consuming the input. 
+    I.e. the input of the Sub flow will also be its output regardless of the Shards activated in this Sub flow.
+    
+  """
+
+  tag: "  #General"
+}

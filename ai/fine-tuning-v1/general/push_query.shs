@@ -1,0 +1,18 @@
+{
+  prompt: """How to add a new element to an existing Shards sequence?"""
+
+  solution: """
+    element >> sequence
+  """
+
+  explicit: """
+    Get(element) | Push(sequence)
+  """
+
+  explanation: """
+    The Push method is used to add a new element to the end of a sequence. The type of element being pushed must be pushed into a sequence of the same
+    types of elements.
+  """
+
+  tag: "  #General"
+}

@@ -1,0 +1,23 @@
+{
+  prompt: """How do I stop a wire?"""
+
+  solution: """
+   @wire(main-wire{
+    Stop(wire-to-stop)
+   })
+  """
+
+  explicit: """
+   @wire(main-wire{
+    Stop(Wire:wire-to-stop)
+   })
+  """
+
+  explanation: """
+    Stop is a Shard that will stop a wire from executing. The wire can be executed again but it will be executed from the start, unlike
+    Suspend which can be re-executed from the point of suspension. If no wire is fed into the Wire parameter, it will Stop the current wire.
+    
+  """
+
+  tag: "  #General-Wire"
+}

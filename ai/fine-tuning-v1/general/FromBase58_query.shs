@@ -1,0 +1,19 @@
+{
+  prompt: """How do I convert Base58 to bytes?"""
+
+  solution: """
+   bytes
+   FromBase58
+  """
+
+  explicit: """
+   bytes
+   FromBase58
+  """
+
+  explanation: """
+    FromBase58 is a Shard that takes in a base58 string as input and outputs the corresponding bytes.
+  """
+
+  tag: "  #General"
+}

@@ -1,0 +1,21 @@
+{
+  prompt: """How do I apply the tangent trigonometric function to a value"""
+
+  solution: """
+    0.785398
+    Math.Tan
+    Log("result")
+  """
+
+  explicit: """
+    0.785398
+    Math.Tan
+    Log(Prefix:"result")
+  """
+
+  explanation: """
+    Math.Tan is a Maths Shard that will apply the tanget trigonometric function to the float value passed in as input.
+  """
+
+  tag: "  #Maths"
+}
