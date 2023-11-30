@@ -222,7 +222,7 @@ struct NetworkPeer {
 
       // Receive the chunk.
       auto receivedSize = ikcp_recv(kcp, (char *)recvBuffer.data() + offset, nextChunkSize);
-      assert(receivedSize == nextChunkSize);
+      shassert(receivedSize == nextChunkSize && "ikcp_recv returned unexpected size");
 
       // If this is the first chunk, read the expected total size from its prefix.
       if (offset == 0) {
@@ -239,15 +239,8 @@ struct NetworkPeer {
         // We expect another chunk; update the offset.
         offset = recvBuffer.size();
         nextChunkSize = ikcp_peeksize(kcp);
-
-        // suspend if we are going to receive more chunks right now
-        if (nextChunkSize > 0) {
-          recvMutex.unlock(); // allow to receive more, risky but we have to do it to unlock all other peers...
-          if (shards::suspend(context, 0.0) != SHWireState::Continue) {
-            SHLOG_TRACE("sendVar: cancelled");
-            return false;
-          }
-          recvMutex.lock(); // re-lock
+        if(nextChunkSize > 0) {
+          SHLOG_TRACE("Next large-packet chunk size: {}", nextChunkSize);
         }
       }
     }
