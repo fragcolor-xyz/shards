@@ -2142,7 +2142,7 @@ struct WhenDone : CapturingSpawners {
     _mesh = context->main->mesh.lock();
 
     for (auto &v : _vars) {
-      SHLOG_TRACE("WhenDone: warming up variable: {}", v.variableName());
+      SHLOG_DEBUG("WhenDone: warming up variable: {}", v.variableName());
       v.warmup(context);
       auto &var = _injectedVariables.emplace_back(referenceWireVariable(wire.get(), v.variableName()));
       // also do a copy here, some variables might be in context, especially protected one!
