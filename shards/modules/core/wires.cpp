@@ -2032,39 +2032,41 @@ struct WhenDone : Spawn {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   SeqVar _cache;
-  ManyWire *_container = nullptr;
+  bool _scheduled{false};
 
   void warmup(SHContext *context) {
-    shassert(!_container || _container->wire->state == SHWire::State::Stopped && "WhenDone: container not done!");
-    _container = nullptr;
+    _scheduled = false;
     Spawn::warmup(context);
   }
 
   void cleanup(SHContext *context) {
-    if (context && !_container && wire) {
+    if (context && wire && !_scheduled) {
+      _scheduled = true;
+
       auto mesh = context->main->mesh.lock();
-      _container = _pool->acquire(_composer, context);
+
+      auto c = _pool->acquire(_composer, context);
 
       // Assume that we recycle containers so the connection might already exist!
-      if (!_container->onCleanupConnection) {
-        SHLOG_TRACE("Spawn::activate: connecting wireOnCleanup to {}", _container->wire->name);
-        _wireContainers[_container->wire.get()] = _container;
-        _container->onCleanupConnection =
-            _container->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
+      if (!c->onCleanupConnection) {
+        SHLOG_TRACE("Spawn::activate: connecting wireOnCleanup to {}", c->wire->name);
+        _wireContainers[c->wire.get()] = c;
+        c->onCleanupConnection =
+            c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
       }
 
       for (auto &v : _vars) {
         SHVar *refVar =
-            _container->injectedVariables.emplace_back(referenceWireVariable(_container->wire.get(), v.variableName()));
+            c->injectedVariables.emplace_back(referenceWireVariable(c->wire.get(), v.variableName()));
         cloneVar(*refVar, v.get());
       }
 
-      mesh->schedule(_container->wire, Var::Empty, false);
+      mesh->schedule(c->wire, Var::Empty, false);
 
       SHWire *rootWire = context->rootWire();
       mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
           .wire = rootWire,
-          .childWire = _container->wire.get(),
+          .childWire = c->wire.get(),
       });
     }
 
