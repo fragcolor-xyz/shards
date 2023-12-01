@@ -2082,18 +2082,17 @@ struct WhenDone : CapturingSpawners {
     }
     _injectedVariables.clear();
 
-    SHLOG_TRACE("WhenDone::onCleanupCleanup, released mesh and variables");
+    _scheduled = false;
+
+    SHLOG_TRACE("WhenDone::onCleanup, released variables and connection");
   }
 
   void warmup(SHContext *context) {
     WireBase::warmup(context);
 
-    if (_connection)
-      _connection.release();
-
-    _scheduled = false;
-
-    shassert(_injectedVariables.empty() && "WhenDone::warmup, injected variables should be empty here");
+    // just in case we are re-warming up, which might only happen in remote cases such as mesh aborted?
+    SHWire::OnCleanupEvent previousRunCleanup{wire.get()};
+    onCleanup(previousRunCleanup);
 
     for (auto &v : _vars) {
       SHLOG_TRACE("WhenDone: warming up variable: {}", v.variableName());
