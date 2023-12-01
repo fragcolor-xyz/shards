@@ -39,22 +39,23 @@ struct Base {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   void baseWarmup(SHContext *context) { _inputContext.warmup(context); }
-  void baseCleanup(SHContext* context) { _inputContext.cleanup(); }
-  SHExposedTypesInfo baseRequiredVariables() {
-    static auto e = exposedTypesOf(decltype(_inputContext)::getExposedTypeInfo());
-    return e;
-  }
+  void baseCleanup(SHContext *context) { _inputContext.cleanup(); }
+  void baseCompose(const SHInstanceData &data, ExposedInfo &requiredVariables) { _inputContext.compose(data, requiredVariables); }
 
-  SHExposedTypesInfo requiredVariables() { return baseRequiredVariables(); }
   void warmup(SHContext *context) { baseWarmup(context); }
-  void cleanup(SHContext* context) { baseCleanup(context); }
+  void cleanup(SHContext *context) { baseCleanup(context); }
 };
 
 struct MousePixelPos : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::Int2Type; }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredVariables.clear();
+    baseCompose(data, _requiredVariables);
+    return CoreInfo::Int2Type;
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &state = _inputContext->getState();
@@ -68,7 +69,12 @@ struct MouseDelta : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::Float2Type; }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredVariables.clear();
+    baseCompose(data, _requiredVariables);
+    return CoreInfo::Float2Type;
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     float2 delta{};
@@ -88,7 +94,12 @@ struct MousePos : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Float2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::Float2Type; }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredVariables.clear();
+    baseCompose(data, _requiredVariables);
+    return CoreInfo::Float2Type;
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     float2 cursorPosition = _inputContext->getState().cursorPosition;
@@ -100,7 +111,12 @@ struct InputRegionSize : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::Float2Type; }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredVariables.clear();
+    baseCompose(data, _requiredVariables);
+    return CoreInfo::Float2Type;
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     int2 size = (int2)_inputContext->getState().region.size;
@@ -153,7 +169,12 @@ struct Mouse : public Base {
     }
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) { return data.inputType; }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredVariables.clear();
+    baseCompose(data, _requiredVariables);
+    return data.inputType;
+  }
 
   void warmup(SHContext *context) {
     _hidden.warmup(context);
@@ -162,7 +183,7 @@ struct Mouse : public Base {
     baseWarmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _hidden.cleanup();
     _captured.cleanup();
     _relative.cleanup();
@@ -224,7 +245,7 @@ template <bool Pressed> struct MouseUpDown : public Base {
     baseWarmup(context);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     baseCleanup(context);
   }
@@ -234,8 +255,7 @@ template <bool Pressed> struct MouseUpDown : public Base {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    for (auto &req : baseRequiredVariables())
-      _requiredVariables.push_back(req);
+    baseCompose(data, _requiredVariables);
     _leftButton.compose(data);
     _rightButton.compose(data);
     _middleButton.compose(data);
@@ -416,7 +436,7 @@ public:
     return true;
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     _shards.cleanup(context);
     baseCleanup(context);
   }
@@ -428,7 +448,10 @@ public:
     _keyCode = keyStringToKeyCode(std::string(SHSTRVIEW(_key)));
   }
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    baseCompose(data, _requiredVariables);
     _shards.compose(data);
     return data.inputType;
   }
@@ -494,7 +517,14 @@ struct IsKeyDown : public Base {
     }
   }
 
-  void cleanup(SHContext* context) { baseCleanup(context); }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    _requiredVariables.clear();
+    baseCompose(data, _requiredVariables);
+    return outputTypes().elements[0];
+  }
+
+  void cleanup(SHContext *context) { baseCleanup(context); }
   void warmup(SHContext *context) { baseWarmup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) { return Var(_inputContext->getState().isKeyHeld(_keyCode)); }
@@ -506,7 +536,7 @@ struct HandleURL : public Base {
   PARAM(ShardsVar, _action, "Action", "The Shards to run if a text/file drop event happened.", {CoreInfo::ShardsOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_action));
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
 
     Base::cleanup(context);
@@ -521,8 +551,7 @@ struct HandleURL : public Base {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    for (auto &req : baseRequiredVariables())
-      _requiredVariables.push_back(req);
+    baseCompose(data, _requiredVariables);
 
     auto dataCopy = data;
     dataCopy.inputType = CoreInfo::StringType;
