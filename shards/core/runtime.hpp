@@ -1752,8 +1752,11 @@ template <typename T> struct WireDoppelgangerPool {
 
       lock.lock();
       auto &fresh = _pool.emplace_back(std::make_shared<T>());
+      auto index = _pool.size();
+      lock.unlock();
+
       fresh->wire = wire;
-      fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, _pool.size());
+      fresh->wire->name = fmt::format("{}-{}", fresh->wire->name, index);
       composer.compose(wire.get(), anything, false);
 
       return fresh.get();

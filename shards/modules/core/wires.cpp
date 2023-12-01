@@ -1648,7 +1648,7 @@ struct ParallelBase : public CapturingSpawners {
         return;
       }
 
-      SHLOG_DEBUG("ParallelBase: activating wire {}", idx);
+      SHLOG_TRACE("ParallelBase: activating wire {}", idx);
 
       auto &mesh = _meshes[idx];
       if (!mesh) {
@@ -1702,11 +1702,11 @@ struct ParallelBase : public CapturingSpawners {
       _successes[idx] = success;
 
       if (success) {
-        SHLOG_DEBUG("ParallelBase: wire {} succeeded", idx);
+        SHLOG_TRACE("ParallelBase: wire {} succeeded", idx);
         anySuccess = true;
         stop(cref->wire.get(), &_outputs[idx]);
       } else {
-        SHLOG_DEBUG("ParallelBase: wire {} failed", idx);
+        SHLOG_TRACE("ParallelBase: wire {} failed", idx);
         _outputs[idx] = Var::Empty; // flag as empty to signal failure
         // ensure it's stopped anyway
         stop(cref->wire.get());
@@ -1740,11 +1740,11 @@ struct ParallelBase : public CapturingSpawners {
         if (_policy == WaitUntil::FirstSuccess) {
           return _outputs[i]; // return the first success
         } else {
-          SHLOG_DEBUG("ParallelBase, reading succeeded wire {}", i);
+          SHLOG_TRACE("ParallelBase, reading succeeded wire {}", i);
           succeeded++;
         }
       } else {
-        SHLOG_DEBUG("ParallelBase, reading failed wire {}", i);
+        SHLOG_TRACE("ParallelBase, reading failed wire {}", i);
         failed++;
       }
     }
@@ -2161,6 +2161,7 @@ struct WhenDone : CapturingSpawners {
     for (auto &v : _vars) {
       v.cleanup();
     }
+    _vars.clear();
 
     WireBase::cleanup(context);
   }
