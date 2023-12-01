@@ -2088,6 +2088,11 @@ struct WhenDone : CapturingSpawners {
     }
     _injectedVariables.clear();
 
+    for (auto &v : _vars) {
+      v.cleanup();
+    }
+    _vars.clear();
+
     SHLOG_TRACE("WhenDone::onCleanupCleanup, released mesh and variables");
   }
 
@@ -2156,10 +2161,6 @@ struct WhenDone : CapturingSpawners {
 
     if (wire) {
       SHLOG_TRACE("WhenDone::cleanup, will schedule wire {}", wire->name);
-    }
-
-    for (auto &v : _vars) {
-      v.cleanup();
     }
 
     WireBase::cleanup(context);
