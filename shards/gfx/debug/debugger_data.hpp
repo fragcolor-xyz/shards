@@ -89,26 +89,26 @@ inline PipelineStepPtr copyTextureHelper(detail::SizedItemPool<PooledCopyTexture
                                         {"mult", mult},
                                         {"offset", offset},
                                     }};
-  s.input = RenderStepInput{
-      .attachments =
-          {
-              RenderStepInput::Texture{
-                  .name = "copyInput",
-                  .subResource = TextureSubResource(inputTexture),
-              },
-          },
-  };
-  s.output = RenderStepOutput{
-      .attachments =
-          {
-              RenderStepOutput::Texture{
-                  .name = "copyOutput",
-                  .subResource = TextureSubResource(outTexture),
-                  .clearValues = ClearValues::getDefaultColor(),
-              },
-          },
-      .sizeScale = std::nullopt,
-  };
+  // s.input = RenderStepInput{
+  //     .attachments =
+  //         {
+  //             RenderStepInput::Texture{
+  //                 .name = "copyInput",
+  //                 .subResource = TextureSubResource(inputTexture),
+  //             },
+  //         },
+  // };
+  // s.output = RenderStepOutput{
+  //     .attachments =
+  //         {
+  //             RenderStepOutput::Texture{
+  //                 .name = "copyOutput",
+  //                 .subResource = TextureSubResource(outTexture),
+  //                 .clearValues = ClearValues::getDefaultColor(),
+  //             },
+  //         },
+  //     .sizeScale = std::nullopt,
+  // };
 
   return pooled.step;
 }
@@ -222,7 +222,7 @@ struct DebuggerImpl {
       }
       if (!textureFormatFlagsContains(texture->getFormat().flags, TextureFormatFlags::NoTextureBinding)) {
         TexturePtr previewTexture = getDebugTexture(texture->getResolution());
-        debugSteps.emplace_back(copyTextureHelper(textureCopyPool, texture, previewTexture));
+        // debugSteps.emplace_back(copyTextureHelper(textureCopyPool, texture, previewTexture));
       }
     }
 

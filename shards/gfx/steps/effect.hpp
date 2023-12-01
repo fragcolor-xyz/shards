@@ -13,13 +13,13 @@ using namespace shader::blocks;
 using shader::FieldTypes;
 
 struct Effect {
-  static PipelineStepPtr create(std::vector<std::string> &&inputs, RenderStepOutput &&output, BlockPtr &&shader) {
+  static PipelineStepPtr create(RenderStepInput &&input, RenderStepOutput &&output, BlockPtr &&shader) {
     FeaturePtr feature = std::make_shared<Feature>();
     feature->shaderEntryPoints.emplace_back("effect_main", ProgrammableGraphicsStage::Fragment, std::move(shader));
 
     return makePipelineStep(RenderFullscreenStep{
         .features = withDefaultFullscreenFeatures(feature),
-        .inputs = std::move(inputs),
+        .input = std::move(input),
         .output = std::move(output),
     });
   }
@@ -27,7 +27,11 @@ struct Effect {
 
 struct Copy {
   static PipelineStepPtr create(const std::string &fieldName, WGPUTextureFormat dstFormat) {
-    auto step = Effect::create(std::vector<std::string>{fieldName},
+    RenderStepInput in;
+    in.attachments.push_back(RenderStepInput::Named{
+        .name = fieldName,
+    });
+    auto step = Effect::create(std::move(in),
                                makeRenderStepOutput(RenderStepOutput::Named{
                                    .name = fieldName,
                                    .format = dstFormat,

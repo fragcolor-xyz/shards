@@ -381,7 +381,7 @@ void evaluateDrawableStep(RenderGraphEncodeContext &evaluateContext, const Rende
 using Data = RenderGraphBuilder::NodeBuildData;
 
 void allocateNodeEdges(detail::RenderGraphBuilder &builder, Data &data, const RenderFullscreenStep &step) {
-  builder.allocateInputs(data, step.inputs);
+  builder.allocateInputs(data, step.input);
 
   bool overwriteTargets = step.overlay ? false : true;
   builder.allocateOutputs(data, step.output ? step.output.value() : defaultFullscreenOutput, overwriteTargets);

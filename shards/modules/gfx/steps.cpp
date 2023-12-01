@@ -323,11 +323,11 @@ struct EffectPassShard {
   void applyInputs(SHContext *context, RenderFullscreenStep &step, const SHVar &input) {
     checkType(input.valueType, SHType::Seq, ":Inputs");
 
-    step.inputs.clear();
+    step.input.attachments.clear();
     for (size_t i = 0; i < input.payload.seqValue.len; i++) {
       auto &elem = input.payload.seqValue.elements[i];
       checkType(elem.valueType, SHType::String, "Input");
-      step.inputs.emplace_back(SHSTRVIEW(elem));
+      step.input.attachments.emplace_back(RenderStepInput::Named{.name = std::string(SHSTRVIEW(elem))});
     }
   }
 
@@ -353,7 +353,8 @@ struct EffectPassShard {
     if (!_inputs.isNone()) {
       applyInputs(context, step, _inputs.get());
     } else {
-      step.inputs = RenderStepInputs{"color"};
+      step.input.attachments.clear();
+      step.input.attachments.push_back(RenderStepInput::Named{"color"});
     }
 
     if (!_params.isNone()) {

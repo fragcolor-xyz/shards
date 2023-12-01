@@ -176,12 +176,23 @@ struct RenderGraphNode {
 
 // Keeps a list of nodes that contain GPU commands
 struct RenderGraph {
+  // References the original texture inside of the render step description
+  struct TextureOverrideRef {
+    size_t stepIndex;
+    enum Binding {
+      Input,
+      Output,
+    } bindingType;
+    size_t bindingIndex;
+  };
+  using OutputIndex = size_t;
+  using FrameBinding = std::variant<std::monostate, OutputIndex, TextureOverrideRef>;
+
   struct Frame {
     std::string name;
-    int2 size;
     WGPUTextureFormat format;
-    std::optional<size_t> outputIndex;
-    TextureSubResource textureOverride;
+    // Bind this frame texture to an output or texture specified in the graph
+    FrameBinding binding;
   };
 
   struct Output {
@@ -197,26 +208,53 @@ struct RenderGraph {
 
 struct RenderGraphBuilder {
   struct FrameBuildData;
+  struct NodeBuildData;
+
+  struct AttachmentRef {
+    NodeBuildData *node;
+    FrameBuildData *attachment;
+  };
+
+  struct TextureOverrideRef {
+    size_t stepIndex;
+    enum Binding {
+      Input,
+      Output,
+    } bindingType;
+    size_t bindingIndex;
+  };
 
   // Temporary data about nodes
   struct Attachment {
     RenderStepOutput::OutputVariant output;
     FrameBuildData *frame;
-    int2 targetSize;
     std::optional<ClearValues> clearValues;
   };
 
   struct FrameBuildData {
     std::string name;
-    int2 size;
+    // int2 size;
+    // int2 inputSize;
+    std::optional<size_t> sizeId;
     WGPUTextureFormat format;
-    TextureSubResource textureOverride;
-    std::optional<size_t> outputIndex;
-    std::optional<size_t> inputIndex;
+    // TextureSubResource textureOverride;
+    std::optional<TextureOverrideRef> textureOverride;
+    std::optional<float2> sizeScale;
+    // std::optional<AttachmentRef> binding;
+  };
+
+  // Check that a size matches during graph execution
+  struct SizeConstraintBuildData {
+    size_t a, b;
+    SizeConstraintBuildData(size_t a, size_t b) : a(a), b(b) {}
+    bool operator==(const SizeConstraintBuildData &other) const {
+      return (a == other.a && b == other.b) || (a == other.b && b == other.a);
+    }
   };
 
   struct NodeBuildData {
     ViewData viewData;
+    size_t stepIndex;
     PipelineStepPtr step;
 
     // This points to which data slot to use when resolving view data
@@ -229,13 +267,17 @@ struct RenderGraphBuilder {
     std::vector<Attachment> attachments;
     bool forceOverwrite{};
 
-    std::optional<int2> outputSize;
+    std::vector<SizeConstraintBuildData> sizeConstraints;
+    // std::optional<int2> outputSize;
 
-    NodeBuildData(const ViewData &viewData, PipelineStepPtr step, size_t queueDataIndex)
-        : viewData(viewData), step(step), queueDataIndex(queueDataIndex) {}
+    NodeBuildData(const ViewData &viewData, size_t stepIndex, PipelineStepPtr step, size_t queueDataIndex)
+        : viewData(viewData), stepIndex(stepIndex), step(step), queueDataIndex(queueDataIndex) {}
   };
 
   struct OutputBuildData {
+    FrameBuildData *frame{};
+  };
+  struct InputBuildData {
     FrameBuildData *frame{};
   };
 
@@ -244,14 +286,32 @@ struct RenderGraphBuilder {
     WGPUTextureFormat format;
   };
 
+  struct SizeBuildData {
+    FrameBuildData *originalFrame;
+    size_t originalSizeId;
+    std::optional<float2> sizeScale;
+    bool isDynamic{};
+
+    bool operator==(const SizeBuildData &other) const {
+      return (originalSizeId == other.originalSizeId) && (sizeScale == other.sizeScale);
+    }
+  };
+
+  // struct FormatConstraintBuildData {
+  //   FrameBuildData* frame;
+  // };
+
 private:
   template <typename T> using VectorType = boost::container::stable_vector<T>;
   VectorType<NodeBuildData> buildingNodes;
   VectorType<FrameBuildData> buildingFrames;
-  VectorType<OutputBuildData> buildingOutputs;
+  VectorType<AttachmentRef> buildingOutputs;
+  VectorType<AttachmentRef> buildingInputs;
+  VectorType<SizeBuildData> buildingSizeDefinitions;
 
   std::map<std::string, FrameBuildData *> nameLookup;
   std::map<TextureSubResource, FrameBuildData *> handleLookup;
+  // std::vector<FormatConstraintBuildData> formatConstraints;
 
   bool needPrepare = true;
 
@@ -264,10 +324,11 @@ public:
   // Allocate outputs for a render graph node
   void allocateOutputs(NodeBuildData &buildData, const RenderStepOutput &output, bool forceOverwrite = false);
   // Allocate outputs for a render graph node
-  void allocateInputs(NodeBuildData &buildData, const RenderStepInput& input);
+  void allocateInputs(NodeBuildData &buildData, const RenderStepInput &input);
 
   // Get or allocate a frame based on it's description
-  FrameBuildData *assignFrame(const RenderStepOutput::OutputVariant &output, int2 targetSize);
+  FrameBuildData *assignFrame(const RenderStepOutput::OutputVariant &output, size_t stepIndex,
+                              TextureOverrideRef::Binding bindingType, size_t bindingIndex);
 
   // Find the index of a frame
   FrameBuildData *findFrameByName(const std::string &name);
@@ -282,6 +343,12 @@ private:
   // after this additional modification can be made such as inserting clear steps/resizing
   void prepare();
 
+  // Assign input to be allowed any size
+  size_t assignOutputRefSize(FrameBuildData &frame, FrameBuildData &referenceFrame, float2 scale);
+  size_t assignInputAnySize(FrameBuildData &frame);
+  size_t assignOutputFixedSize(FrameBuildData &frame);
+
+  void attachInputs();
   void attachOutputs();
   void finalizeNodeConnections();
   RenderTargetLayout getLayout(const NodeBuildData &node) const;

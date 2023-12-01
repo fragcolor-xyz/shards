@@ -81,6 +81,35 @@ struct RenderStepOutput {
   //  (0.5, 0.5) would render at half the output resolution
   //  (2.0, 2.0) would render at double the output resolution
   std::optional<float2> sizeScale = float2(1, 1);
+
+  RenderStepOutput() = default;
+  RenderStepOutput(const RenderStepOutput &) = default;
+  RenderStepOutput(RenderStepOutput &&) = default;
+  RenderStepOutput &operator=(const RenderStepOutput &) = default;
+  RenderStepOutput &operator=(RenderStepOutput &&) = default;
+};
+
+struct RenderStepInput {
+  // A managed named render frame
+  struct Named {
+    std::string name;
+  };
+
+  // A preallocated texture to input
+  struct Texture {
+    std::string name;
+    TextureSubResource subResource;
+  };
+
+  typedef std::variant<Named, Texture> InputVariant;
+
+  std::vector<InputVariant> attachments;
+
+  RenderStepInput() = default;
+  RenderStepInput(const RenderStepInput &) = default;
+  RenderStepInput(RenderStepInput &&) = default;
+  RenderStepInput &operator=(const RenderStepInput &) = default;
+  RenderStepInput &operator=(RenderStepInput &&) = default;
 };
 
 extern UniqueIdGenerator renderStepIdGenerator;
@@ -114,23 +143,6 @@ struct RenderDrawablesStep {
 
   std::shared_ptr<RenderDrawablesStep> clone() { return cloneSelfWithId(this, renderStepIdGenerator.getNext()); };
   UniqueId getId() const { return id; }
-};
-
-struct RenderStepInput {
-  // A managed named render frame
-  struct Named {
-    std::string name;
-  };
-
-  // A preallocated texture to input
-  struct Texture {
-    std::string name;
-    TextureSubResource subResource;
-  };
-
-  typedef std::variant<Named, Texture> InputVariant;
-
-  std::vector<InputVariant> attachments;
 };
 
 // Renders a single item to the entire output region, used for post processing steps

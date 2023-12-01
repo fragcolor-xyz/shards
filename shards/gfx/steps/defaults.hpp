@@ -32,19 +32,16 @@ inline RenderStepOutput::Named getDefaultDepthOutput(bool clearDepth = false) {
 
 // Default output color+depth with optional clear
 inline RenderStepOutput getDefaultRenderStepOutput(bool clearDepth = false, std::optional<float4> clearColor = std::nullopt) {
-  return RenderStepOutput{
-      .attachments =
-          {
-              getDefaultColorOutput(clearColor),
-              getDefaultDepthOutput(clearDepth),
-          },
-  };
+  RenderStepOutput out;
+  out.attachments.push_back(getDefaultColorOutput(clearColor));
+  out.attachments.push_back(getDefaultDepthOutput(clearDepth));
+  return out;
 }
 
 template <typename... TArgs> inline RenderStepOutput makeRenderStepOutput(TArgs... args) {
-  return RenderStepOutput{
-      .attachments = {args...},
-  };
+  RenderStepOutput out;
+  out.attachments.push_back(args...);
+  return out;
 }
 } // namespace gfx::steps
 
