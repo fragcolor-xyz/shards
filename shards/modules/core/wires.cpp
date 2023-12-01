@@ -2107,10 +2107,8 @@ struct WhenDone : CapturingSpawners {
 
   void cleanup(SHContext *context) {
     // this might trigger multiple times btw!
-    if (!_scheduled) {
+    if (wire && !_scheduled) {
       _scheduled = true;
-
-      shassert(wire && "WhenDone, wire is null");
 
       auto mesh = context->main->mesh.lock();
       shassert(mesh && "WhenDone, mesh is null");
