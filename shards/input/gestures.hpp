@@ -26,7 +26,7 @@ struct IGesture {
   virtual void update(const GestureInputs &in, GestureOutputs &out) = 0;
 };
 
-struct Pinch : public IGesture {
+struct Pinch final : public IGesture {
   float threshold = 0.08f;
   float zoomScale{};
   float delta{};
@@ -37,7 +37,7 @@ struct Pinch : public IGesture {
   void update(const GestureInputs &in, GestureOutputs &out) override;
 };
 
-struct Rotate : public IGesture {
+struct Rotate final : public IGesture {
   float threshold = 0.1f;
   float rotation{};
   Pointers pointers;
@@ -46,7 +46,7 @@ struct Rotate : public IGesture {
   void update(const GestureInputs &in, GestureOutputs &out) override;
 };
 
-struct MultiSlide : public IGesture {
+struct MultiSlide final : public IGesture {
   float threshold = 0.1f;
   size_t numFingers = 2;
   bool ignoreExtraFingers = false;
