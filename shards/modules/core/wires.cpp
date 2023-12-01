@@ -1740,11 +1740,11 @@ struct ParallelBase : public CapturingSpawners {
         if (_policy == WaitUntil::FirstSuccess) {
           return _outputs[i]; // return the first success
         } else {
-          SHLOG_DEBUG("ParallelBase, reading succeeded wire {}", i);
+          SHLOG_TRACE("ParallelBase, reading succeeded wire {}", i);
           succeeded++;
         }
       } else {
-        SHLOG_DEBUG("ParallelBase, reading failed wire {}", i);
+        SHLOG_TRACE("ParallelBase, reading failed wire {}", i);
         failed++;
       }
     }
