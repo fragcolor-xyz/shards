@@ -210,7 +210,17 @@ struct DrawQueueShard {
     }
   }
 
-  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+
+    if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
+      auto &queue = *_queue;
+      if (queue) {
+        Types::DrawQueueObjectVar.Release(queue);
+        queue = nullptr;
+      }
+    }
+  }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     if (SHDrawQueue **_queue = std::get_if<SHDrawQueue *>(&_output)) {
@@ -269,7 +279,7 @@ struct GetQueueDrawablesShard {
   SHVar getParam(int index) { return Var::Empty; }
 
   void warmup(SHContext *context) {}
-  void cleanup(SHContext* context) {}
+  void cleanup(SHContext *context) {}
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     SHDrawQueue *shQueue = reinterpret_cast<SHDrawQueue *>(input.payload.objectValue);
