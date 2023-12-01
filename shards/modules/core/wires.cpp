@@ -2077,9 +2077,11 @@ struct WhenDone : CapturingSpawners {
     // release mesh and reset variables here!
     // as well as connection
 
-    _connection.release();
+    if (_connection)
+      _connection.release();
 
-    _mesh.reset();
+    if (_mesh)
+      _mesh.reset();
 
     for (auto &v : _injectedVariables) {
       releaseVariable(v);
@@ -2112,6 +2114,7 @@ struct WhenDone : CapturingSpawners {
         });
 
         _scheduled = true;
+
         SHLOG_TRACE("WhenDone::onCleanup, scheduled wire {}", wire->name);
       } catch (std::exception &ex) {
         // we already cleaned up on prepare failure here! _mesh will also be invalid etc
