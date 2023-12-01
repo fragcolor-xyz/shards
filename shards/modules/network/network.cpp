@@ -415,6 +415,7 @@ struct Server : public NetworkBase {
         // ensure cleanup is called
         auto wireState = toStop->state.load();
         if (wireState != SHWire::State::Failed && wireState != SHWire::State::Stopped) {
+          // in the above cases cleanup already happened
           const_cast<SHWire *>(toStop)->cleanup();
         } else {
           SHLOG_TRACE("Wire {} already stopped, state: {}", toStop->name, wireState);
