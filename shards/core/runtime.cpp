@@ -1923,7 +1923,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
 void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
   SH_CORO_RESUMED(wire);
 
-  SHLOG_DEBUG("Wire {} rolling", wire->name);
+  SHLOG_TRACE("Wire {} rolling", wire->name);
   auto running = true;
 
   // we need this cos by the end of this call we might get suspended/resumed and state changes! this wont
@@ -1968,7 +1968,7 @@ void run(SHWire *wire, SHFlow *flow, shards::Coroutine *coro) {
   coroutineSuspend(*context.continuation);
   SH_CORO_RESUMED(wire);
 
-  SHLOG_DEBUG("Wire {} starting", wire->name);
+  SHLOG_TRACE("Wire {} starting", wire->name);
 
   if (context.shouldStop()) {
     // We might have stopped before even starting!
