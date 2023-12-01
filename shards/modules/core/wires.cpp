@@ -2066,22 +2066,16 @@ struct WhenDone : CapturingSpawners {
     return data.inputType;
   }
 
-  std::shared_ptr<SHMesh> _mesh;
-  SHWire *_rootWire = nullptr;
   std::deque<SHVar *> _injectedVariables;
   entt::connection _connection;
-  entt::connection _connection2;
   bool _scheduled = false;
 
-  void onCleanupCleanup(SHWire::OnCleanupEvent &e) {
+  void onCleanup(SHWire::OnCleanupEvent &e) {
     // release mesh and reset variables here!
     // as well as connection
 
     if (_connection)
       _connection.release();
-
-    if (_mesh)
-      _mesh.reset();
 
     for (auto &v : _injectedVariables) {
       releaseVariable(v);
@@ -2091,55 +2085,15 @@ struct WhenDone : CapturingSpawners {
     SHLOG_TRACE("WhenDone::onCleanupCleanup, released mesh and variables");
   }
 
-  void onCleanup(SHWire::OnCleanupEvent &e) {
-    // this might trigger multiple times btw!
-    if (_scheduled) {
-      return;
-    }
-
-    if (!_mesh) {
-      SHLOG_TRACE("WhenDone::onCleanup, mesh is null");
-      return;
-    }
-
-    if (wire) {
-      _connection2 = wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanupCleanup>(this);
-
-      try {
-        _mesh->schedule(wire, Var::Empty, false);
-
-        _mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
-            .wire = _rootWire,
-            .childWire = wire.get(),
-        });
-
-        _scheduled = true;
-
-        SHLOG_TRACE("WhenDone::onCleanup, scheduled wire {}", wire->name);
-      } catch (std::exception &ex) {
-        // we already cleaned up on prepare failure here! _mesh will also be invalid etc
-        shassert(!_mesh && "WhenDone::onCleanup, mesh should be invalid here");
-        SHLOG_ERROR("WhenDone::onCleanup, failed to schedule wire: {}", ex.what());
-      }
-    } else {
-      SHLOG_TRACE("WhenDone::onCleanup, wire is null");
-      onCleanupCleanup(e);
-    }
-  }
-
   void warmup(SHContext *context) {
     WireBase::warmup(context);
 
-    _connection2.release();
+    if (_connection)
+      _connection.release();
+
     _scheduled = false;
 
-    _rootWire = context->rootWire();
-
-    if (wire) {
-      _connection = context->currentWire()->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanup>(this);
-    }
-
-    _mesh = context->main->mesh.lock();
+    shassert(_injectedVariables.empty() && "WhenDone::warmup, injected variables should be empty here");
 
     for (auto &v : _vars) {
       SHLOG_TRACE("WhenDone: warming up variable: {}", v.variableName());
@@ -2152,10 +2106,30 @@ struct WhenDone : CapturingSpawners {
   }
 
   void cleanup(SHContext *context) {
-    // Don't disconnect, release variables or mesh here! On purpose!
+    // this might trigger multiple times btw!
+    if (!_scheduled) {
+      _scheduled = true;
 
-    if (wire) {
-      SHLOG_TRACE("WhenDone::cleanup, will schedule wire {}", wire->name);
+      shassert(wire && "WhenDone, wire is null");
+
+      auto mesh = context->main->mesh.lock();
+      shassert(mesh && "WhenDone, mesh is null");
+
+      _connection = wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&WhenDone::onCleanup>(this);
+
+      try {
+        mesh->schedule(wire, Var::Empty, false);
+
+        mesh->dispatcher.trigger(SHWire::OnWireDetachedEvent{
+            .wire = context->rootWire(),
+            .childWire = wire.get(),
+        });
+
+        SHLOG_TRACE("WhenDone::onCleanup, scheduled wire {}", wire->name);
+      } catch (std::exception &ex) {
+        // we already cleaned up on prepare failure here! _mesh will also be invalid etc
+        SHLOG_ERROR("WhenDone, failed to schedule cleanup wire: {}", ex.what());
+      }
     }
 
     for (auto &v : _vars) {
