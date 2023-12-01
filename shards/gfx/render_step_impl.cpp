@@ -16,12 +16,11 @@
 namespace gfx::detail {
 
 static auto defaultRenderStepOutput = steps::getDefaultRenderStepOutput();
-static auto defaultFullscreenOutput = RenderStepOutput{
-    .attachments =
-        {
-            steps::getDefaultColorOutput(),
-        },
-};
+static auto defaultFullscreenOutput = []() {
+  RenderStepOutput output;
+  output.attachments.push_back(steps::getDefaultColorOutput());
+  return output;
+}();
 
 static MeshPtr fullscreenQuad = []() {
   geom::QuadGenerator quadGen;

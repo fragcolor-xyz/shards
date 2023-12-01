@@ -37,7 +37,7 @@ bool RenderGraphBuilder::isWrittenTo(const std::string &name) {
 }
 
 RenderGraphBuilder::FrameBuildData *RenderGraphBuilder::assignFrame(const RenderStepOutput::OutputVariant &output,
-                                                                    size_t stepIndex, TextureOverrideRef::Binding bindingType,
+                                                                    PipelineStepPtr step, TextureOverrideRef::Binding bindingType,
                                                                     size_t bindingIndex) {
   // Try to find existing frame that matches output
   FrameBuildData *frame = std::visit(
@@ -71,7 +71,8 @@ RenderGraphBuilder::FrameBuildData *RenderGraphBuilder::assignFrame(const Render
             assert(arg.subResource);
             frame->format = arg.subResource.texture->getFormat().pixelFormat;
             frame->textureOverride = TextureOverrideRef{
-                .stepIndex = stepIndex,
+                // .stepIndex = stepIndex,
+                step = 
                 .bindingType = bindingType,
                 .bindingIndex = bindingIndex,
             };
@@ -391,11 +392,79 @@ RenderGraph RenderGraphBuilder::build() {
     // frame.textureOverride = usedFrame->textureOverride;
   }
 
+  // Add size constraints
+  auto &sizeConstraints = outputGraph.sizeConstraints;
+  std::unordered_map<size_t, size_t> frameToSizeGroupMap;
+  std::unordered_map<size_t, size_t> sizeRemapping;
+  for (auto &frame : usedFrames) {
+    size_t frameIndex = usedFrameLookup[frame];
+    auto it = sizeRemapping.find(frame->sizeId.value());
+    if (it == sizeRemapping.end()) {
+      auto &newSize = sizeConstraints.emplace_back();
+
+      newSize.frames.push_back(frameIndex);
+      auto &sizeDef = buildingSizeDefinitions[frame->sizeId.value()];
+      if (sizeDef.originalFrame) {
+        size_t parentFrameIndex = usedFrameLookup[sizeDef.originalFrame];
+        auto originalSize = frameToSizeGroupMap[parentFrameIndex];
+        auto &parent = newSize.parent.emplace();
+        parent.sizeScale = sizeDef.sizeScale.value();
+        parent.parentSize = originalSize;
+      }
+
+      it = sizeRemapping.emplace(frame->sizeId.value(), sizeConstraints.size() - 1).first;
+    }
+    frameToSizeGroupMap[frameIndex] = it->second;
+  }
+
+  for (auto &node : buildingNodes) {
+    for (auto &sc : node.sizeConstraints) {
+      auto idxA = usedFrameLookup[&buildingFrames[sc.a]];
+      auto idxB = usedFrameLookup[&buildingFrames[sc.b]];
+      auto itA = frameToSizeGroupMap.find(idxA);
+      auto itB = frameToSizeGroupMap.find(idxB);
+      if (itA != frameToSizeGroupMap.end() && itB != frameToSizeGroupMap.end()) {
+        // Merge groups
+        size_t sizeGroupId = std::min(itA->second, itB->second);
+        frameToSizeGroupMap[idxA] = sizeGroupId;
+        frameToSizeGroupMap[idxB] = sizeGroupId;
+      } else {
+        if (itB != frameToSizeGroupMap.end()) {
+          std::swap(itA, itB);
+        }
+        if (itA == frameToSizeGroupMap.end()) {
+          itA = frameToSizeGroupMap.emplace(idxA, frameToSizeGroupMap.size()).first;
+        }
+        frameToSizeGroupMap[idxB] = itA->second;
+      }
+    }
+  }
+
+  for (auto &[frameIndex, sizeGroupIndex] : frameToSizeGroupMap) {
+    sizeConstraints.resize(std::max(sizeConstraints.size(), sizeGroupIndex + 1));
+    sizeConstraints[sizeGroupIndex].frames.push_back(frameIndex);
+  }
+
+  // Check for any frame that doesn't have a size constraint
+
+  // for (auto [frame, idx] : usedFrameLookup) {
+  //   auto it = sizeGroupMap.find(*frame->sizeId);
+  //   if (it == sizeGroupMap.end()) {
+  //     // size_t sizeGroupId = outputGraph.sizeGroups.size();
+  //     sizeGroupMap[frame->sizeId] = sizeGroupId;
+  //     auto &sizeGroup = outputGraph.sizeGroups.emplace_back();
+  //     sizeGroup.frames.push_back(idx);
+  //   } else {
+  //     auto &sizeGroup = outputGraph.sizeGroups[it->second];
+  //     sizeGroup.frames.push_back(idx);
+  //   }
+  // }
+
   // Add outputs to graph
   assert(buildingOutputs.size() == outputs.size());
   for (size_t i = 0; i < buildingOutputs.size(); i++) {
     auto &output = outputGraph.outputs.emplace_back();
-    output.frameIndex = usedFrameLookup[buildingOutputs[i].frame];
+    output.frameIndex = usedFrameLookup[buildingOutputs[i].attachment];
     output.name = outputs[i].name;
   }
 
@@ -406,10 +475,10 @@ RenderGraph RenderGraphBuilder::build() {
 
     outputNode.queueDataIndex = buildingNode.queueDataIndex;
 
-    if (!buildingNode.outputSize) {
-      throw std::runtime_error("Node does not have any outputs");
-    }
-    outputNode.outputSize = buildingNode.outputSize.value();
+    // if (!buildingNode.outputSize) {
+    //   throw std::runtime_error("Node does not have any outputs");
+    // }
+    // outputNode.outputSize = buildingNode.outputSize.value();
 
     for (auto &attachment : buildingNode.attachments) {
       auto &frame = attachment.frame;
@@ -475,7 +544,7 @@ void RenderGraphBuilder::allocateInputs(NodeBuildData &buildData, const RenderSt
                     .name = arg.name,
                     .subResource = arg.subResource,
                 },
-                buildData.stepIndex, TextureOverrideRef::Binding::Input, inputIndex);
+                buildData.step, TextureOverrideRef::Binding::Input, inputIndex);
             assignInputAnySize(*frame);
             buildData.readsFrom.push_back(frame);
           } else {
@@ -566,24 +635,33 @@ void RenderGraphEvaluator::getFrameTextures(shards::pmr::vector<ResolvedFrameTex
   };
 
   for (auto &frame : graph.frames) {
-    if (frame.outputIndex.has_value()) {
-      size_t outputIndex = frame.outputIndex.value();
-      if (outputIndex >= outputs.size())
-        throw std::logic_error("Missing output");
+    std::visit(
+        [](auto &binding) {
+          using T = std::decay_t<decltype(binding)>;
+          if constexpr (std::is_same_v<T, RenderGraph::OutputIndex>) {
+          } else if constexpr (std::is_same_v<T, RenderGraph::TextureOverrideRef>) {
+            // auto& step = this-> binding.stepIndex
+          }
+        },
+        frame.binding);
+    // if (frame.outputIndex.has_value()) {
+    //   size_t outputIndex = frame.outputIndex.value();
+    //   if (outputIndex >= outputs.size())
+    //     throw std::logic_error("Missing output");
 
-      outFrameTextures.push_back(resolveSubResourceView(outputs[outputIndex]));
-    } else if (frame.textureOverride) {
-      // Update the texture size/format
-      auto desc = frame.textureOverride.texture->getDesc();
-      desc.resolution = frame.size;
-      desc.format.pixelFormat = frame.format;
-      frame.textureOverride.texture->init(desc);
-      outFrameTextures.push_back(resolveSubResourceView(frame.textureOverride));
-    } else {
-      TexturePtr texture = storage.renderTextureCache.allocate(RenderTargetFormat{.format = frame.format, .size = frame.size},
-                                                               storage.frameCounter);
-      outFrameTextures.push_back(resolve(texture));
-    }
+    //   outFrameTextures.push_back(resolveSubResourceView(outputs[outputIndex]));
+    // } else if (frame.textureOverride) {
+    //   // Update the texture size/format
+    //   auto desc = frame.textureOverride.texture->getDesc();
+    //   desc.resolution = frame.size;
+    //   desc.format.pixelFormat = frame.format;
+    //   frame.textureOverride.texture->init(desc);
+    //   outFrameTextures.push_back(resolveSubResourceView(frame.textureOverride));
+    // } else {
+    //   TexturePtr texture = storage.renderTextureCache.allocate(RenderTargetFormat{.format = frame.format, .size = frame.size},
+    //                                                            storage.frameCounter);
+    //   outFrameTextures.push_back(resolve(texture));
+    // }
   }
 }
 

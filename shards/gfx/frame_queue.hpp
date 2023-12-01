@@ -51,6 +51,7 @@ struct FrameQueue final : public IRenderGraphEvaluationData {
 
 private:
   shards::pmr::vector<Entry> queue;
+  shards::pmr::vector<PipelineStepPtr> steps;
   RenderTargetPtr mainOutput;
   RendererStorage &storage;
 
@@ -61,7 +62,7 @@ public:
 
 public:
   FrameQueue(RenderTargetPtr mainOutput, RendererStorage &storage, allocator_type allocator)
-      : queue(allocator), mainOutput(mainOutput), storage(storage) {}
+      : queue(allocator), steps(allocator), mainOutput(mainOutput), storage(storage) {}
 
   void enqueue(const ViewData &viewData, const PipelineSteps &steps) { queue.emplace_back(viewData, steps); }
 
@@ -100,14 +101,14 @@ public:
     SPDLOG_LOGGER_DEBUG(logger, "Frames:");
     for (auto &frame : graph.frames) {
       std::string outSuffix;
-      if (frame.outputIndex.has_value())
-        outSuffix += fmt::format("out: {}", frame.outputIndex.value());
-      if (frame.textureOverride.texture)
-        outSuffix += fmt::format("overriden: {}, \"{}\"", (void *)frame.textureOverride.texture.get(),
-                                 frame.textureOverride.texture->getLabel());
-      if (!outSuffix.empty())
-        outSuffix = fmt::format(", {}", outSuffix);
-      SPDLOG_LOGGER_DEBUG(logger, " - {} fmt: {}, size: {}{}", frame.name, frame.format, frame.size, outSuffix);
+      // if (frame.outputIndex.has_value())
+      //   outSuffix += fmt::format("out: {}", frame.outputIndex.value());
+      // if (frame.textureOverride.texture)
+      //   outSuffix += fmt::format("overriden: {}, \"{}\"", (void *)frame.textureOverride.texture.get(),
+      //                            frame.textureOverride.texture->getLabel());
+      // if (!outSuffix.empty())
+      //   outSuffix = fmt::format(", {}", outSuffix);
+      // SPDLOG_LOGGER_DEBUG(logger, " - {} fmt: {}, size: {}{}", frame.name, frame.format, frame.size, outSuffix);
     }
     SPDLOG_LOGGER_DEBUG(logger, "Nodes:");
     for (auto &node : graph.nodes) {

@@ -154,6 +154,7 @@ struct RenderGraphNode {
   RenderTargetLayout renderTargetLayout;
   std::vector<Attachment> writesTo;
   std::vector<FrameIndex> readsFrom;
+  PipelineStepPtr originalStep;
 
   int2 outputSize;
 
@@ -178,7 +179,8 @@ struct RenderGraphNode {
 struct RenderGraph {
   // References the original texture inside of the render step description
   struct TextureOverrideRef {
-    size_t stepIndex;
+    // size_t stepIndex;
+    PipelineStepPtr step;
     enum Binding {
       Input,
       Output,
@@ -200,6 +202,19 @@ struct RenderGraph {
     FrameIndex frameIndex;
   };
 
+  struct SizeParent {
+    size_t parentSize;
+    float2 sizeScale;
+  };
+
+  struct SizeConstraint {
+    // All frames listed must have the same size
+    std::vector<FrameIndex> frames;
+    // Parent size
+    std::optional<SizeParent> parent;
+  };
+
+  std::vector<SizeConstraint> sizeConstraints;
   std::vector<RenderGraphNode> nodes;
   std::vector<Frame> frames;
   std::vector<Output> outputs;
@@ -216,7 +231,8 @@ struct RenderGraphBuilder {
   };
 
   struct TextureOverrideRef {
-    size_t stepIndex;
+    // size_t stepIndex;
+    PipelineStepPtr step;
     enum Binding {
       Input,
       Output,
@@ -266,6 +282,8 @@ struct RenderGraphBuilder {
     std::vector<FrameBuildData *> readsFrom;
     std::vector<Attachment> attachments;
     bool forceOverwrite{};
+
+    PipelineStepPtr originalStep;
 
     std::vector<SizeConstraintBuildData> sizeConstraints;
     // std::optional<int2> outputSize;
@@ -327,7 +345,7 @@ public:
   void allocateInputs(NodeBuildData &buildData, const RenderStepInput &input);
 
   // Get or allocate a frame based on it's description
-  FrameBuildData *assignFrame(const RenderStepOutput::OutputVariant &output, size_t stepIndex,
+  FrameBuildData *assignFrame(const RenderStepOutput::OutputVariant &output, PipelineStepPtr step,
                               TextureOverrideRef::Binding bindingType, size_t bindingIndex);
 
   // Find the index of a frame
