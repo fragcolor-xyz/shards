@@ -8,10 +8,9 @@ use shards::types::{
   common_type, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar, Parameters, Type, Types,
   Var, BOOL_TYPES_SLICE, STRING_TYPES, STRING_VAR_OR_NONE_SLICE,
 };
-use shards::{cstr, shard_impl, shccstr, shlog, shlog_error};
-use std::cell::{Cell, Ref, RefCell};
+use shards::{cstr, shard_impl, shccstr, shlog, shlog_debug, shlog_error};
+use std::cell::{Ref, RefCell};
 use std::collections::HashSet;
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 pub struct ReadEnv {
@@ -38,14 +37,14 @@ impl ReadEnv {
   pub fn resolve_file(&self, name: &str) -> Result<PathBuf, String> {
     let script_dir = Path::new(&self.script_directory);
     let file_path = script_dir.join(name);
-    shlog!("Trying include {:?}", file_path);
+    shlog_debug!("Trying include {:?}", file_path);
     let mut file_path_r = std::fs::canonicalize(&file_path);
 
     // Try from root
     if file_path_r.is_err() {
       let root_dir = Path::new(&self.root_directory);
       let file_path = root_dir.join(name);
-      shlog!("Trying include {:?}", file_path);
+      shlog_debug!("Trying include {:?}", file_path);
       file_path_r = std::fs::canonicalize(&file_path);
     }
 
