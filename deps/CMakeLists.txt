@@ -59,7 +59,8 @@ if(NOT EMSCRIPTEN)
       message(STATUS "Fetching libressl")
       FetchContent_Declare(
         libressl
-        URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
+        URL      https://develop.fragcolor.com/libressl-3.4.1.tar.gz
+        # URL      https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
         # URL      https://cloudflare.cdn.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.4.1.tar.gz
         URL_HASH SHA256=107ceae6ca800e81cb563584c16afa36d6c7138fade94a2b3e9da65456f7c61c
         ${LIBRESSL_PATCH_COMMAND}
@@ -90,7 +91,8 @@ else()
   message(STATUS "Fetching boost")
   FetchContent_Declare(
     boost
-    URL      https://github.com/shards-lang/boost/releases/download/boost-1.81.0-shards-5/output.7z
+    URL      https://develop.fragcolor.com/boost-1.81.0-shards-5.7z
+    # URL      https://github.com/shards-lang/boost/releases/download/boost-1.81.0-shards-5/output.7z
     URL_HASH SHA256=a890f672200cf9f018cbd75a433a4dd7837e09a97b0b9287861a497a4a744626
   )
   FetchContent_MakeAvailable(boost)
