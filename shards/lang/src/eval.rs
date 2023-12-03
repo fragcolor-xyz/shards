@@ -2626,7 +2626,6 @@ fn eval_pipeline(
   for block in &pipeline.blocks {
     let _ = match &block.content {
       BlockContent::Empty => Ok(()),
-      BlockContent::Comment(_) => Ok(()),
       BlockContent::Shard(shard) => add_shard(shard, block.line_info.unwrap_or_default(), e),
       BlockContent::Shards(seq) => {
         let mut sub_env = eval_sequence(&seq, Some(e), cancellation_token.clone())?;

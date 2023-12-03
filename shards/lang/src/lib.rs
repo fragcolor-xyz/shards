@@ -11,6 +11,7 @@ mod read;
 mod error;
 mod ast_visitor;
 mod formatter;
+mod print;
 
 use crate::ast::*;
 
@@ -24,7 +25,6 @@ use shards::core::register_legacy_shard;
 use shards::core::register_shard;
 use shards::shlog_error;
 use shards::types::Var;
-use shards::SHString;
 
 use std::ops::Deref;
 
