@@ -211,7 +211,7 @@ impl BlockContent {
       BlockContent::EvalExpr(seq) => format!("#({})", seq.to_string(context)),
       BlockContent::Expr(seq) => format!("({})", seq.to_string(context)),
       BlockContent::Empty => "".to_string(),
-      BlockContent::Program(_) => todo!(),
+      BlockContent::Program(p) => p.sequence.to_string(context),
     }
   }
 }
