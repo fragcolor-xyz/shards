@@ -160,6 +160,8 @@
   uuid | UUID.ToString(true) | Log
   uuid | UUID.ToBytes | ToHex | Log
   NanoID | Log
+
+  Snowflake(31 31) | Log("snowflake")
 })
 
 @schedule(root main)
