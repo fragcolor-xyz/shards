@@ -315,7 +315,7 @@ static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash
     // early out if seq is empty
     return;
   } else if (!unsafe) {
-    static thread_local UntrackedUnorderedMap<uint64_t, TypeInfo> typeCache;
+    static thread_local std::unordered_map<uint64_t, TypeInfo> typeCache;
     auto inputTypeHash = deriveTypeHash(input);
     if (inputTypeHash != expectedTypeHash) {
       // Do an even deeper type check
