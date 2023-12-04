@@ -1,0 +1,109 @@
+[debug] [2023-12-04 16:59:04.346] [T-25428] [runtime.cpp::2884] Adding dll path: A:\Projects\shards2\build\clang-x86_64-pc-windows-msvc\Debug\shards.exe\shards
+[debug] [2023-12-04 16:59:04.347] [T-25428] [runtime.cpp::2890] Adding dll path: A:\Projects\shards2\shards
+[debug] [2023-12-04 16:59:04.347] [T-25428] [runtime.cpp::2895] Hardware concurrency: 12
+[debug] [2023-12-04 16:59:04.347] [T-25428] [runtime.cpp::204] Registering shards
+[info] [2023-12-04 16:59:04.349] [T-25428] [runtime.cpp::3211] Evaluating file: shards/tests/idle.shs
+[trace] [2023-12-04 16:59:04.350] [T-25428] [runtime.cpp::3216] Adding deferred wire detect
+[trace] [2023-12-04 16:59:04.350] [T-25428] [foundation.hpp::435] Creating wire: detect
+[trace] [2023-12-04 16:59:04.350] [T-25428] [foundation.hpp::389] detect wire addRef - use_count: 2
+[trace] [2023-12-04 16:59:04.359] [T-25428] [runtime.cpp::3216] Finalizing wire detect
+[trace] [2023-12-04 16:59:04.359] [T-25428] [foundation.hpp::376] detect wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:59:04.359] [T-25428] [runtime.hpp::514] Pre-composing wire detect
+[trace] [2023-12-04 16:59:04.359] [T-25428] [runtime.hpp::549] Wire detect Pre-composing
+[trace] [2023-12-04 16:59:04.359] [T-25428] [runtime.hpp::564] Scheduling wire detect
+[trace] [2023-12-04 16:59:04.359] [T-25428] [runtime.hpp::604] Wire detect skipped compose
+[debug] [2023-12-04 16:59:04.359] [T-25428] [runtime.cpp::1779] Wire detect rolling
+[trace] [2023-12-04 16:59:04.359] [T-25428] [runtime.cpp::2758] Running warmup on wire: detect
+[trace] [2023-12-04 16:59:04.359] [T-25428] [runtime.cpp::2797] Ran warmup on wire: detect
+[trace] [2023-12-04 16:59:04.359] [T-25428] [runtime.hpp::624] Wire detect scheduled
+[debug] [2023-12-04 16:59:04.359] [T-25428] [runtime.cpp::1824] Wire detect starting
+[info] [2023-12-04 16:59:04.360] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:04.463] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:04.571] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:04.664] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:04.759] [T-25428] [logging.cpp::71] [detect] 0.063
+[info] [2023-12-04 16:59:04.870] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:04.962] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:05.071] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:05.165] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:05.274] [T-25428] [logging.cpp::71] [detect] 0.015
+[info] [2023-12-04 16:59:05.367] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:05.462] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:05.572] [T-25428] [logging.cpp::71] [detect] 0.047
+[info] [2023-12-04 16:59:05.666] [T-25428] [logging.cpp::71] [detect] 0.031
+[info] [2023-12-04 16:59:05.762] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:05.872] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:05.967] [T-25428] [logging.cpp::71] [detect] 0.032
+[info] [2023-12-04 16:59:06.060] [T-25428] [logging.cpp::71] [detect] 0.031
+[info] [2023-12-04 16:59:06.171] [T-25428] [logging.cpp::71] [detect] 0.032
+[info] [2023-12-04 16:59:06.264] [T-25428] [logging.cpp::71] [detect] 0.015
+[info] [2023-12-04 16:59:06.359] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:06.470] [T-25428] [logging.cpp::71] [detect] 0.047
+[info] [2023-12-04 16:59:06.565] [T-25428] [logging.cpp::71] [detect] 0.14
+[info] [2023-12-04 16:59:06.675] [T-25428] [logging.cpp::71] [detect] 0.25
+[info] [2023-12-04 16:59:06.771] [T-25428] [logging.cpp::71] [detect] 0.046
+[info] [2023-12-04 16:59:06.867] [T-25428] [logging.cpp::71] [detect] 0.094
+[info] [2023-12-04 16:59:06.961] [T-25428] [logging.cpp::71] [detect] 0.188
+[info] [2023-12-04 16:59:07.070] [T-25428] [logging.cpp::71] [detect] 0.297
+[info] [2023-12-04 16:59:07.163] [T-25428] [logging.cpp::71] [detect] 0.391
+[info] [2023-12-04 16:59:07.274] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:07.366] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:07.460] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:07.569] [T-25428] [logging.cpp::71] [detect] 0.062
+[info] [2023-12-04 16:59:07.662] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:07.772] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:07.866] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:07.960] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:08.068] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:08.164] [T-25428] [logging.cpp::71] [detect] 0.062
+[info] [2023-12-04 16:59:08.275] [T-25428] [logging.cpp::71] [detect] 0.078
+[info] [2023-12-04 16:59:08.368] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:08.463] [T-25428] [logging.cpp::71] [detect] 0.031
+[info] [2023-12-04 16:59:08.572] [T-25428] [logging.cpp::71] [detect] 0.062
+[info] [2023-12-04 16:59:08.666] [T-25428] [logging.cpp::71] [detect] 0.062
+[info] [2023-12-04 16:59:08.761] [T-25428] [logging.cpp::71] [detect] 0.156
+[info] [2023-12-04 16:59:08.870] [T-25428] [logging.cpp::71] [detect] 0.265
+[info] [2023-12-04 16:59:08.964] [T-25428] [logging.cpp::71] [detect] 0.359
+[info] [2023-12-04 16:59:09.073] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:09.167] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:09.262] [T-25428] [logging.cpp::71] [detect] 0.094
+[info] [2023-12-04 16:59:09.372] [T-25428] [logging.cpp::71] [detect] 0.203
+[info] [2023-12-04 16:59:09.467] [T-25428] [logging.cpp::71] [detect] 0.313
+[info] [2023-12-04 16:59:09.562] [T-25428] [logging.cpp::71] [detect] 0.015
+[info] [2023-12-04 16:59:09.671] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:09.766] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:09.862] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:09.972] [T-25428] [logging.cpp::71] [detect] 0.11
+[info] [2023-12-04 16:59:10.066] [T-25428] [logging.cpp::71] [detect] 0.203
+[info] [2023-12-04 16:59:10.160] [T-25428] [logging.cpp::71] [detect] 0.297
+[info] [2023-12-04 16:59:10.268] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:10.361] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:10.472] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:10.565] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:10.674] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:10.768] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:10.862] [T-25428] [logging.cpp::71] [detect] 0.015
+[info] [2023-12-04 16:59:10.974] [T-25428] [logging.cpp::71] [detect] 0.094
+[info] [2023-12-04 16:59:11.069] [T-25428] [logging.cpp::71] [detect] 0.187
+[info] [2023-12-04 16:59:11.165] [T-25428] [logging.cpp::71] [detect] 0.281
+[info] [2023-12-04 16:59:11.274] [T-25428] [logging.cpp::71] [detect] 0.39
+[info] [2023-12-04 16:59:11.369] [T-25428] [logging.cpp::71] [detect] 0.484
+[info] [2023-12-04 16:59:11.464] [T-25428] [logging.cpp::71] [detect] 0.578
+[info] [2023-12-04 16:59:11.574] [T-25428] [logging.cpp::71] [detect] 0.687
+[info] [2023-12-04 16:59:11.670] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:11.765] [T-25428] [logging.cpp::71] [detect] 0
+[info] [2023-12-04 16:59:11.874] [T-25428] [logging.cpp::71] [detect] 0.11
+[info] [2023-12-04 16:59:11.968] [T-25428] [logging.cpp::71] [detect] 0.204
+[info] [2023-12-04 16:59:12.061] [T-25428] [logging.cpp::71] [detect] 0.015
+[info] [2023-12-04 16:59:12.172] [T-25428] [logging.cpp::71] [detect] 0.032
+[info] [2023-12-04 16:59:12.265] [T-25428] [logging.cpp::71] [detect] 0.125
+[info] [2023-12-04 16:59:12.360] [T-25428] [logging.cpp::71] [detect] 0.047
+[trace] [2023-12-04 16:59:12.469] [T-25428] [runtime.hpp::396] stopping wire: detect, has-coro: true, state: IterationEnded
+[debug] [2023-12-04 16:59:12.469] [T-25428] [runtime.cpp::1871] Wire detect aborted on resume
+[trace] [2023-12-04 16:59:12.470] [T-25428] [runtime.cpp::2805] Running cleanup on wire: detect users count: 0
+[trace] [2023-12-04 16:59:12.470] [T-25428] [runtime.cpp::2849] Ran cleanup on wire: detect
+[debug] [2023-12-04 16:59:12.470] [T-25428] [runtime.cpp::1915] Wire detect ended
+[trace] [2023-12-04 16:59:12.470] [T-25428] [foundation.hpp::376] detect wire deleteRef - use_count: 1
+[trace] [2023-12-04 16:59:12.470] [T-25428] [foundation.hpp::338] Destroying wire detect
+[info] [2023-12-04 16:59:12.470] [T-25428] [runtime.cpp::3211] Error: ShardsError { message: "Operation cancelled", loc: LineInfo { line: 0, column: 0 } }
+[error] [2023-12-04 16:59:12.470] [T-25428] [runtime.cpp::3216] Error: Failed to evaluate file

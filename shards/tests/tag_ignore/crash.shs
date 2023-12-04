@@ -1,0 +1,20 @@
+[debug] [2023-12-04 16:56:40.270] [T-820] [runtime.cpp::2884] Adding dll path: A:\Projects\shards2\build\clang-x86_64-pc-windows-msvc\Debug\shards.exe\shards
+[debug] [2023-12-04 16:56:40.270] [T-820] [runtime.cpp::2890] Adding dll path: A:\Projects\shards2\shards
+[debug] [2023-12-04 16:56:40.270] [T-820] [runtime.cpp::2895] Hardware concurrency: 12
+[debug] [2023-12-04 16:56:40.270] [T-820] [runtime.cpp::204] Registering shards
+[info] [2023-12-04 16:56:40.272] [T-820] [runtime.cpp::3211] Evaluating file: shards/tests/crash.shs
+[trace] [2023-12-04 16:56:40.273] [T-820] [runtime.cpp::3216] Adding deferred wire crash
+[trace] [2023-12-04 16:56:40.273] [T-820] [foundation.hpp::435] Creating wire: crash
+[trace] [2023-12-04 16:56:40.273] [T-820] [foundation.hpp::389] crash wire addRef - use_count: 2
+[trace] [2023-12-04 16:56:40.273] [T-820] [runtime.cpp::3216] Finalizing wire crash
+[trace] [2023-12-04 16:56:40.274] [T-820] [foundation.hpp::376] crash wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:56:40.274] [T-820] [runtime.hpp::514] Pre-composing wire crash
+[trace] [2023-12-04 16:56:40.274] [T-820] [runtime.hpp::549] Wire crash Pre-composing
+[trace] [2023-12-04 16:56:40.274] [T-820] [runtime.hpp::564] Scheduling wire crash
+[trace] [2023-12-04 16:56:40.274] [T-820] [runtime.hpp::604] Wire crash skipped compose
+[debug] [2023-12-04 16:56:40.274] [T-820] [runtime.cpp::1779] Wire crash rolling
+[trace] [2023-12-04 16:56:40.274] [T-820] [runtime.cpp::2758] Running warmup on wire: crash
+[trace] [2023-12-04 16:56:40.274] [T-820] [runtime.cpp::2797] Ran warmup on wire: crash
+[trace] [2023-12-04 16:56:40.274] [T-820] [runtime.hpp::624] Wire crash scheduled
+[debug] [2023-12-04 16:56:40.274] [T-820] [runtime.cpp::1824] Wire crash starting
+[error] [2023-12-04 16:56:40.274] [T-820] [assert.cpp::62] Failed assertion Is, input: 10 expected: 1

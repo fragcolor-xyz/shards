@@ -1,0 +1,222 @@
+[debug] [2023-12-04 16:52:31.563] [T-24100] [runtime.cpp::2884] Adding dll path: A:\Projects\shards2\build\clang-x86_64-pc-windows-msvc\Debug\shards.exe\shards
+[debug] [2023-12-04 16:52:31.563] [T-24100] [runtime.cpp::2890] Adding dll path: A:\Projects\shards2\shards
+[debug] [2023-12-04 16:52:31.563] [T-24100] [runtime.cpp::2895] Hardware concurrency: 12
+[debug] [2023-12-04 16:52:31.563] [T-24100] [runtime.cpp::204] Registering shards
+[info] [2023-12-04 16:52:31.566] [T-24100] [runtime.cpp::3211] Evaluating file: shards/tests/audio.shs
+[info] [2023-12-04 16:52:31.576] [T-24100] [runtime.cpp::3211] Trying include "\\\\?\\A:\\Projects\\shards2\\shards\\tests\\hello2.shs"
+[info] [2023-12-04 16:52:31.576] [T-24100] [runtime.cpp::3211] Including file "\\\\?\\A:\\Projects\\shards2\\shards\\tests\\hello2.shs"
+[trace] [2023-12-04 16:52:31.598] [T-24100] [runtime.cpp::3216] Adding deferred wire play-files
+[trace] [2023-12-04 16:52:31.598] [T-24100] [foundation.hpp::435] Creating wire: play-files
+[trace] [2023-12-04 16:52:31.598] [T-24100] [foundation.hpp::389] play-files wire addRef - use_count: 2
+[trace] [2023-12-04 16:52:31.598] [T-24100] [runtime.cpp::3216] Finalizing wire play-files
+[warning] [2023-12-04 16:52:31.598] [T-24100] [runtime.cpp::264] Experimental shard used: Audio.ReadFile
+[trace] [2023-12-04 16:52:31.598] [T-24100] [foundation.hpp::376] play-files wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:52:31.598] [T-24100] [runtime.hpp::514] Pre-composing wire play-files
+[trace] [2023-12-04 16:52:31.598] [T-24100] [runtime.hpp::549] Wire play-files Pre-composing
+[trace] [2023-12-04 16:52:31.598] [T-24100] [runtime.hpp::564] Scheduling wire play-files
+[trace] [2023-12-04 16:52:31.598] [T-24100] [runtime.hpp::604] Wire play-files skipped compose
+[debug] [2023-12-04 16:52:31.599] [T-24100] [runtime.cpp::1779] Wire play-files rolling
+[trace] [2023-12-04 16:52:31.599] [T-24100] [runtime.cpp::2758] Running warmup on wire: play-files
+[trace] [2023-12-04 16:52:31.599] [T-24100] [runtime.cpp::545] Creating a variable, wire: play-files name: Audio.Device
+[trace] [2023-12-04 16:52:31.602] [T-24100] [runtime.cpp::2797] Ran warmup on wire: play-files
+[trace] [2023-12-04 16:52:31.602] [T-24100] [runtime.hpp::624] Wire play-files scheduled
+[debug] [2023-12-04 16:52:31.602] [T-24100] [runtime.cpp::1824] Wire play-files starting
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.603] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.604] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.605] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.605] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.605] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.605] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.605] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.605] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.605] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.605] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.605] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.605] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[debug] [2023-12-04 16:52:31.605] [T-24100] [runtime.cpp::1848] Wire play-files stopped
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.cpp::2805] Running cleanup on wire: play-files users count: 0
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.cpp::567] Destroying a variable (0 ref count), type: None
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.cpp::2849] Ran cleanup on wire: play-files
+[debug] [2023-12-04 16:52:31.605] [T-24100] [runtime.cpp::1915] Wire play-files ended
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.hpp::396] stopping wire: play-files, has-coro: true, state: Ended
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.cpp::3216] Mesh is empty, exiting
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.cpp::3216] Mesh is done, terminating, without errors: true
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.hpp::514] Pre-composing wire play-files
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.hpp::549] Wire play-files Pre-composing
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.hpp::564] Scheduling wire play-files
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.hpp::604] Wire play-files skipped compose
+[debug] [2023-12-04 16:52:31.605] [T-24100] [runtime.cpp::1779] Wire play-files rolling
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.cpp::2758] Running warmup on wire: play-files
+[trace] [2023-12-04 16:52:31.605] [T-24100] [runtime.cpp::545] Creating a variable, wire: play-files name: Audio.Device
+[trace] [2023-12-04 16:52:31.607] [T-24100] [runtime.cpp::2797] Ran warmup on wire: play-files
+[trace] [2023-12-04 16:52:31.607] [T-24100] [runtime.hpp::624] Wire play-files scheduled
+[debug] [2023-12-04 16:52:31.607] [T-24100] [runtime.cpp::1824] Wire play-files starting
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.608] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.609] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.610] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.610] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.610] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.610] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.610] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.610] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.610] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.610] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[info] [2023-12-04 16:52:31.610] [T-24100] [logging.cpp::71] [play-files] Audio SampleRate: 44100 Samples: 1024 Channels: 2
+[debug] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::1848] Wire play-files stopped
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::2805] Running cleanup on wire: play-files users count: 0
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::567] Destroying a variable (0 ref count), type: None
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::2849] Ran cleanup on wire: play-files
+[debug] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::1915] Wire play-files ended
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.hpp::396] stopping wire: play-files, has-coro: true, state: Ended
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::3216] Mesh is empty, exiting
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::3216] Mesh is done, terminating, without errors: true
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::3216] Adding deferred wire play-file-fft
+[trace] [2023-12-04 16:52:31.610] [T-24100] [foundation.hpp::435] Creating wire: play-file-fft
+[trace] [2023-12-04 16:52:31.610] [T-24100] [foundation.hpp::389] play-file-fft wire addRef - use_count: 2
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::3216] Finalizing wire play-file-fft
+[warning] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::264] Experimental shard used: Audio.ReadFile
+[warning] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::264] Experimental shard used: DSP.FFT
+[warning] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::264] Experimental shard used: DSP.IFFT
+[warning] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::264] Experimental shard used: Audio.WriteFile
+[warning] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::264] Experimental shard used: DSP.IFFT
+[warning] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::264] Experimental shard used: DSP.FFT
+[warning] [2023-12-04 16:52:31.610] [T-24100] [runtime.cpp::264] Experimental shard used: DSP.IFFT
+[trace] [2023-12-04 16:52:31.610] [T-24100] [foundation.hpp::376] play-file-fft wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.hpp::514] Pre-composing wire play-file-fft
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.hpp::549] Wire play-file-fft Pre-composing
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.hpp::564] Scheduling wire play-file-fft
+[trace] [2023-12-04 16:52:31.610] [T-24100] [runtime.hpp::604] Wire play-file-fft skipped compose
+[debug] [2023-12-04 16:52:31.611] [T-24100] [runtime.cpp::1779] Wire play-file-fft rolling
+[trace] [2023-12-04 16:52:31.611] [T-24100] [runtime.cpp::2758] Running warmup on wire: play-file-fft
+[trace] [2023-12-04 16:52:31.611] [T-24100] [runtime.cpp::545] Creating a variable, wire: play-file-fft name: Audio.Device
+[trace] [2023-12-04 16:52:31.612] [T-24100] [runtime.cpp::545] Creating a variable, wire: play-file-fft name: freq-domain
+[trace] [2023-12-04 16:52:31.613] [T-24100] [runtime.cpp::2797] Ran warmup on wire: play-file-fft
+[trace] [2023-12-04 16:52:31.613] [T-24100] [runtime.hpp::624] Wire play-file-fft scheduled
+[debug] [2023-12-04 16:52:31.613] [T-24100] [runtime.cpp::1824] Wire play-file-fft starting
+[trace] [2023-12-04 16:52:31.616] [T-24100] [dsp.cpp::210] IFFT alloc window 1024
+[trace] [2023-12-04 16:52:31.616] [T-24100] [dsp.cpp::213] IFFT alloc window 513
+[trace] [2023-12-04 16:52:31.617] [T-24100] [dsp.cpp::210] IFFT alloc window 1024
+[info] [2023-12-04 16:52:31.617] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.621] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.624] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.627] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.630] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.632] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.635] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.638] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.641] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.644] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.649] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.652] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.653] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.653] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.654] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.657] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.660] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.663] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.666] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.669] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.673] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.676] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.677] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.680] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.683] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.684] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.686] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.690] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.693] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.696] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.699] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.700] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.700] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.704] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.707] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.708] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.711] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.712] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.712] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.715] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.718] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.719] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.722] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[info] [2023-12-04 16:52:31.725] [T-24100] [logging.cpp::71] [play-file-fft] Image Width: 32 Height: 32 Channels: 1
+[debug] [2023-12-04 16:52:31.725] [T-24100] [runtime.cpp::1848] Wire play-file-fft stopped
+[trace] [2023-12-04 16:52:31.725] [T-24100] [runtime.cpp::2805] Running cleanup on wire: play-file-fft users count: 0
+[trace] [2023-12-04 16:52:31.725] [T-24100] [runtime.cpp::567] Destroying a variable (0 ref count), type: None
+[trace] [2023-12-04 16:52:31.725] [T-24100] [runtime.cpp::567] Destroying a variable (0 ref count), type: None
+[trace] [2023-12-04 16:52:31.725] [T-24100] [runtime.cpp::2849] Ran cleanup on wire: play-file-fft
+[debug] [2023-12-04 16:52:31.725] [T-24100] [runtime.cpp::1915] Wire play-file-fft ended
+[trace] [2023-12-04 16:52:31.725] [T-24100] [runtime.hpp::396] stopping wire: play-file-fft, has-coro: true, state: Ended
+[trace] [2023-12-04 16:52:31.725] [T-24100] [runtime.cpp::3216] Mesh is empty, exiting
+[trace] [2023-12-04 16:52:31.725] [T-24100] [runtime.cpp::3216] Mesh is done, terminating, without errors: true
+[trace] [2023-12-04 16:52:31.725] [T-24100] [foundation.hpp::376] play-file-fft wire deleteRef - use_count: 1
+[trace] [2023-12-04 16:52:31.726] [T-24100] [foundation.hpp::338] Destroying wire play-file-fft
+[trace] [2023-12-04 16:52:31.726] [T-24100] [foundation.hpp::376] play-files wire deleteRef - use_count: 1
+[trace] [2023-12-04 16:52:31.726] [T-24100] [foundation.hpp::338] Destroying wire play-files
+[info] [2023-12-04 16:52:31.727] [T-24100] [runtime.cpp::3211] Error: ShardsError { message: "Undefined function or definition Identifier { name: RcStrWrapper(\"test-device\"), namespaces: [] }", loc: LineInfo { line: 31, column: 3 } }
+[error] [2023-12-04 16:52:31.727] [T-24100] [runtime.cpp::3216] Error: Failed to evaluate file

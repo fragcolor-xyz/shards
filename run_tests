@@ -1,0 +1,26 @@
+SHARDS=build/clang-x86_64-pc-windows-msvc/Debug/shards.exe
+OK_TAG_DIR=shards/tests/tag_ok
+ERR_TAG_DIR=shards/tests/tag_err
+IGNORE_TAG_DIR=shards/tests/tag_ignore
+mkdir -p $OK_TAG_DIR
+mkdir -p $ERR_TAG_DIR
+find shards/tests -maxdepth 1 -name "*.shs" | while read -r test; do
+  # base=`basename "$test"`
+  OK_TAG=$OK_TAG_DIR/${test##*/}
+  ERR_TAG=$ERR_TAG_DIR/${test##*/}
+  IGNORE_TAG=$IGNORE_TAG_DIR/${test##*/}
+  if [[ -f $OK_TAG || -f $IGNORE_TAG ]]; then
+    continue
+  fi
+  echo "Running $test"
+  "$SHARDS" new "$test" 2> $ERR_TAG
+  RESULT=$?
+  if [[ $RESULT -eq 0 ]]; then
+    rm -f $OK_TAG
+    mv $ERR_TAG $OK_TAG
+  else
+    echo "!Test failed"
+  fi
+done
+
+echo "Done"

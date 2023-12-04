@@ -1,0 +1,451 @@
+[debug] [2023-12-04 16:44:13.447] [T-176] [runtime.cpp::2884] Adding dll path: A:\Projects\shards2\build\clang-x86_64-pc-windows-msvc\Debug\shards.exe\shards
+[debug] [2023-12-04 16:44:13.448] [T-176] [runtime.cpp::2890] Adding dll path: A:\Projects\shards2\shards
+[debug] [2023-12-04 16:44:13.448] [T-176] [runtime.cpp::2895] Hardware concurrency: 12
+[debug] [2023-12-04 16:44:13.448] [T-176] [runtime.cpp::204] Registering shards
+[info] [2023-12-04 16:44:13.450] [T-176] [runtime.cpp::3211] Evaluating file: shards/tests/continuations.shs
+[trace] [2023-12-04 16:44:13.454] [T-176] [runtime.cpp::3216] Adding deferred wire d1
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::435] Creating wire: d1
+[trace] [2023-12-04 16:44:13.454] [T-176] [runtime.cpp::3216] Adding deferred wire d2
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::435] Creating wire: d2
+[trace] [2023-12-04 16:44:13.454] [T-176] [runtime.cpp::3216] Adding deferred wire main
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::435] Creating wire: main
+[trace] [2023-12-04 16:44:13.454] [T-176] [runtime.cpp::3216] Adding deferred wire root
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::435] Creating wire: root
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] main wire addRef - use_count: 2
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] d2 wire addRef - use_count: 2
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] root wire addRef - use_count: 2
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] d1 wire addRef - use_count: 2
+[trace] [2023-12-04 16:44:13.454] [T-176] [runtime.cpp::3216] Finalizing wire main
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] d1 wire addRef - use_count: 3
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] d1 wire addRef - use_count: 4
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::376] d1 wire deleteRef - use_count: 4
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::376] main wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:44:13.454] [T-176] [runtime.cpp::3216] Finalizing wire d2
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] d1 wire addRef - use_count: 4
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] d1 wire addRef - use_count: 5
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::376] d1 wire deleteRef - use_count: 5
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::376] d2 wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:44:13.454] [T-176] [runtime.cpp::3216] Finalizing wire root
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] main wire addRef - use_count: 2
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] main wire addRef - use_count: 3
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::376] main wire deleteRef - use_count: 3
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::376] root wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:44:13.454] [T-176] [runtime.cpp::3216] Finalizing wire d1
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] d2 wire addRef - use_count: 2
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] d2 wire addRef - use_count: 3
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::376] d2 wire deleteRef - use_count: 3
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] main wire addRef - use_count: 3
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::389] main wire addRef - use_count: 4
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::376] main wire deleteRef - use_count: 4
+[trace] [2023-12-04 16:44:13.454] [T-176] [foundation.hpp::376] d1 wire deleteRef - use_count: 4
+[trace] [2023-12-04 16:44:13.454] [T-176] [runtime.hpp::514] Pre-composing wire root
+[trace] [2023-12-04 16:44:13.454] [T-176] [wires.cpp::136] WireBase::compose, source: root composing: main inputType: None
+[trace] [2023-12-04 16:44:13.454] [T-176] [wires.cpp::148] Pre-Marking as composed: main ptr: 0x2673c486900
+[trace] [2023-12-04 16:44:13.455] [T-176] [wires.cpp::175] Running main compose, pure: false
+[trace] [2023-12-04 16:44:13.455] [T-176] [wires.cpp::136] WireBase::compose, source: main composing: d1 inputType: None
+[trace] [2023-12-04 16:44:13.455] [T-176] [wires.cpp::143] Pre-Marking as composed: d1 ptr: 0x2673c484f90
+[trace] [2023-12-04 16:44:13.455] [T-176] [wires.cpp::175] Running d1 compose, pure: false
+[trace] [2023-12-04 16:44:13.455] [T-176] [wires.cpp::136] WireBase::compose, source: d1 composing: d2 inputType: None
+[trace] [2023-12-04 16:44:13.455] [T-176] [wires.cpp::143] Pre-Marking as composed: d2 ptr: 0x2673c485440
+[trace] [2023-12-04 16:44:13.455] [T-176] [wires.cpp::175] Running d2 compose, pure: false
+[trace] [2023-12-04 16:44:13.455] [T-176] [wires.cpp::200] Wire d2 composed
+[trace] [2023-12-04 16:44:13.455] [T-176] [wires.cpp::200] Wire d1 composed
+[trace] [2023-12-04 16:44:13.455] [T-176] [wires.cpp::200] Wire main composed
+[trace] [2023-12-04 16:44:13.455] [T-176] [runtime.hpp::549] Wire root Pre-composing
+[trace] [2023-12-04 16:44:13.455] [T-176] [runtime.hpp::564] Scheduling wire root
+[trace] [2023-12-04 16:44:13.455] [T-176] [runtime.hpp::604] Wire root skipped compose
+[debug] [2023-12-04 16:44:13.456] [T-176] [runtime.cpp::1779] Wire root rolling
+[trace] [2023-12-04 16:44:13.456] [T-176] [runtime.cpp::2758] Running warmup on wire: root
+[trace] [2023-12-04 16:44:13.456] [T-176] [runtime.cpp::2797] Ran warmup on wire: root
+[trace] [2023-12-04 16:44:13.456] [T-176] [runtime.hpp::624] Wire root scheduled
+[debug] [2023-12-04 16:44:13.456] [T-176] [runtime.cpp::1824] Wire root starting
+[info] [2023-12-04 16:44:13.456] [T-176] [logging.cpp::147] [root] Root started
+[debug] [2023-12-04 16:44:13.456] [T-176] [runtime.cpp::1779] Wire main rolling
+[trace] [2023-12-04 16:44:13.456] [T-176] [runtime.cpp::2758] Running warmup on wire: main
+[trace] [2023-12-04 16:44:13.456] [T-176] [runtime.cpp::2797] Ran warmup on wire: main
+[debug] [2023-12-04 16:44:13.456] [T-176] [runtime.cpp::1824] Wire main starting
+[info] [2023-12-04 16:44:13.456] [T-176] [logging.cpp::147] [main] Main started
+[debug] [2023-12-04 16:44:13.457] [T-176] [runtime.cpp::1779] Wire d1 rolling
+[trace] [2023-12-04 16:44:13.457] [T-176] [runtime.cpp::2758] Running warmup on wire: d1
+[trace] [2023-12-04 16:44:13.457] [T-176] [runtime.cpp::2797] Ran warmup on wire: d1
+[info] [2023-12-04 16:44:13.457] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:13.559] [T-176] [logging.cpp::147] [root] Root started
+[debug] [2023-12-04 16:44:13.559] [T-176] [runtime.cpp::1824] Wire d1 starting
+[info] [2023-12-04 16:44:13.559] [T-176] [logging.cpp::147] [d1] D1 started
+[debug] [2023-12-04 16:44:13.560] [T-176] [runtime.cpp::1779] Wire d2 rolling
+[trace] [2023-12-04 16:44:13.560] [T-176] [runtime.cpp::2758] Running warmup on wire: d2
+[trace] [2023-12-04 16:44:13.560] [T-176] [runtime.cpp::2797] Ran warmup on wire: d2
+[info] [2023-12-04 16:44:13.560] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:13.670] [T-176] [logging.cpp::147] [root] Root started
+[debug] [2023-12-04 16:44:13.670] [T-176] [runtime.cpp::1824] Wire d2 starting
+[info] [2023-12-04 16:44:13.670] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:13.670] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:13.765] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:13.765] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:13.765] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:13.858] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:13.858] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:13.858] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:13.968] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:13.968] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:13.968] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:14.061] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:14.061] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:14.171] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:14.171] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:14.171] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:14.266] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:14.266] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:14.266] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:14.360] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:14.360] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:14.360] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:14.470] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:14.470] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:14.470] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:14.565] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:14.565] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:14.565] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:14.659] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:14.659] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:14.659] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:14.769] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:14.769] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:14.864] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:14.864] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:14.864] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:14.956] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:14.957] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:14.957] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:15.066] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:15.066] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:15.066] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:15.161] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:15.161] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:15.161] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:15.269] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:15.269] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:15.269] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:15.364] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:15.364] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:15.364] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:15.458] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:15.458] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:15.568] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:15.568] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:15.568] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:15.661] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:15.661] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:15.661] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:15.771] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:15.771] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:15.771] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:15.867] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:15.867] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:15.867] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:15.960] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:15.960] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:15.960] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:16.068] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:16.068] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:16.068] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:16.162] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:16.162] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:16.271] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:16.271] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:16.271] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:16.364] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:16.364] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:16.364] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:16.457] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:16.457] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:16.457] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:16.566] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:16.566] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:16.566] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:16.661] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:16.661] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:16.661] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:16.770] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:16.770] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:16.770] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:16.864] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:16.864] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:16.956] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:16.956] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:16.956] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:17.066] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:17.066] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:17.066] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:17.159] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:17.159] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:17.159] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:17.270] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:17.270] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:17.270] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:17.362] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:17.362] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:17.362] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:17.456] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:17.456] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:17.456] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:17.566] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:17.566] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:17.659] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:17.659] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:17.659] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:17.768] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:17.768] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:17.768] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:17.861] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:17.861] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:17.861] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:17.971] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:17.971] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:17.971] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:18.064] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:18.064] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:18.064] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:18.158] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:18.158] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:18.158] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:18.266] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:18.266] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:18.360] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:18.360] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:18.360] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:18.470] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:18.470] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:18.471] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:18.563] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:18.563] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:18.563] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:18.657] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:18.657] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:18.657] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:18.767] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:18.767] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:18.767] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:18.861] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:18.862] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:18.862] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:18.970] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:18.970] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:19.062] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:19.062] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:19.062] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:19.157] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:19.157] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:19.157] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:19.266] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:19.266] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:19.266] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:19.359] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:19.359] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:19.359] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:19.468] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:19.468] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:19.468] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:19.560] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:19.560] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:19.560] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:19.669] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:19.669] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:19.764] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:19.764] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:19.764] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:19.858] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:19.858] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:19.858] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:19.968] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:19.968] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:19.968] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:20.062] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:20.062] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:20.062] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:20.159] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:20.159] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:20.159] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:20.268] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:20.268] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:20.268] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:20.361] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:20.361] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:20.457] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:20.457] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:20.457] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:20.566] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:20.566] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:20.566] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:20.659] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:20.659] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:20.659] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:20.767] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:20.768] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:20.768] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:20.862] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:20.862] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:20.862] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:20.970] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:20.970] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:20.970] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:21.064] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:21.064] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:21.158] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:21.158] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:21.158] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:21.269] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:21.269] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:21.269] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:21.362] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:21.362] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:21.362] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:21.456] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:21.456] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:21.456] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:21.565] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:21.565] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:21.565] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:21.659] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:21.659] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:21.659] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:21.767] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:21.767] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:21.867] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:21.868] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:21.868] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:21.957] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:21.957] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:21.957] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:22.067] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:22.067] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:22.067] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:22.161] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:22.161] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:22.161] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:22.257] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:22.257] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:22.257] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:22.367] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:22.367] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:22.367] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:22.463] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:22.463] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:22.556] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:22.556] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:22.556] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:22.667] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:22.667] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:22.667] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:22.759] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:22.760] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:22.760] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:22.868] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:22.877] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:22.877] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:22.962] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:22.962] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:22.962] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:23.071] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:23.071] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:23.071] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:23.166] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:23.166] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:23.259] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:23.259] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:23.259] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:23.369] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:23.369] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:23.369] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:23.462] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:23.462] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:23.462] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:23.570] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:23.570] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:23.570] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:23.664] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:23.664] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:23.664] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:23.758] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:23.758] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:23.758] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:23.867] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:23.868] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:23.962] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:23.963] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:23.963] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:24.057] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:24.057] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:24.057] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:24.168] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:24.168] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:24.168] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:24.262] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:24.262] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:24.262] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:24.370] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:24.370] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:24.370] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:24.466] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:24.466] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:24.466] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:24.558] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:24.558] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:24.667] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:24.667] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:24.667] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:24.760] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:24.760] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:24.760] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:24.870] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:24.870] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:24.870] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:24.964] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:24.964] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:24.964] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:25.057] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:25.057] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:25.057] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:25.167] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:25.167] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:25.167] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:25.260] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:25.260] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:25.370] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:25.370] [T-176] [logging.cpp::147] [d1] D1 started
+[info] [2023-12-04 16:44:25.370] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:25.464] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:25.464] [T-176] [logging.cpp::147] [d2] D2 returned
+[info] [2023-12-04 16:44:25.464] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:25.557] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:25.557] [T-176] [logging.cpp::147] [d2] D2 started
+[info] [2023-12-04 16:44:25.557] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:25.666] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:25.666] [T-176] [logging.cpp::147] [d1] D1 returned
+[info] [2023-12-04 16:44:25.666] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:25.759] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:25.759] [T-176] [logging.cpp::147] [main] Main returned
+[info] [2023-12-04 16:44:25.759] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:25.867] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:25.867] [T-176] [logging.cpp::147] [main] Main started
+[info] [2023-12-04 16:44:25.867] [T-176] [logging.cpp::147] [root] Root returned
+[info] [2023-12-04 16:44:25.960] [T-176] [logging.cpp::147] [root] Root started
+[info] [2023-12-04 16:44:25.961] [T-176] [logging.cpp::147] [root] Root returned
+[trace] [2023-12-04 16:44:26.069] [T-176] [runtime.hpp::396] stopping wire: root, has-coro: true, state: IterationEnded
+[debug] [2023-12-04 16:44:26.069] [T-176] [runtime.cpp::1871] Wire root aborted on resume
+[trace] [2023-12-04 16:44:26.069] [T-176] [runtime.cpp::2805] Running cleanup on wire: root users count: 0
+[trace] [2023-12-04 16:44:26.069] [T-176] [runtime.hpp::396] stopping wire: main, has-coro: true, state: Iterating
+[debug] [2023-12-04 16:44:26.069] [T-176] [runtime.cpp::1848] Wire main stopped
+[trace] [2023-12-04 16:44:26.069] [T-176] [runtime.cpp::2805] Running cleanup on wire: main users count: 0
+[trace] [2023-12-04 16:44:26.069] [T-176] [runtime.cpp::2849] Ran cleanup on wire: main
+[debug] [2023-12-04 16:44:26.069] [T-176] [runtime.cpp::1915] Wire main ended
+[trace] [2023-12-04 16:44:26.069] [T-176] [runtime.cpp::2849] Ran cleanup on wire: root
+[debug] [2023-12-04 16:44:26.069] [T-176] [runtime.cpp::1915] Wire root ended
+[trace] [2023-12-04 16:44:26.069] [T-176] [foundation.hpp::376] main wire deleteRef - use_count: 5
+[trace] [2023-12-04 16:44:26.070] [T-176] [foundation.hpp::376] d2 wire deleteRef - use_count: 3
+[trace] [2023-12-04 16:44:26.070] [T-176] [foundation.hpp::376] root wire deleteRef - use_count: 1
+[trace] [2023-12-04 16:44:26.070] [T-176] [foundation.hpp::376] main wire deleteRef - use_count: 3
+[trace] [2023-12-04 16:44:26.070] [T-176] [foundation.hpp::338] Destroying wire root
+[trace] [2023-12-04 16:44:26.070] [T-176] [foundation.hpp::376] d1 wire deleteRef - use_count: 5
+[info] [2023-12-04 16:44:26.070] [T-176] [runtime.cpp::3211] Error: ShardsError { message: "Operation cancelled", loc: LineInfo { line: 0, column: 0 } }
+[error] [2023-12-04 16:44:26.070] [T-176] [runtime.cpp::3216] Error: Failed to evaluate file
