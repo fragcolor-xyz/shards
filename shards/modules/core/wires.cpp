@@ -2007,6 +2007,7 @@ struct Spawn : public CapturingSpawners {
       c->onCleanupConnection = c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
     }
 
+    shassert(c->injectedVariables.empty() && "Spawn: injected variables should be empty");
     for (auto &v : _vars) {
       SHVar *refVar = c->injectedVariables.emplace_back(referenceWireVariable(c->wire.get(), v.variableName()));
       cloneVar(*refVar, v.get());
@@ -2033,17 +2034,20 @@ struct WhenDone : Spawn {
 
   SeqVar _cache;
   bool _scheduled{false};
+  bool _activated{false};
 
   void warmup(SHContext *context) {
     _scheduled = false;
+    _activated = false;
     Spawn::warmup(context);
   }
 
   void cleanup(SHContext *context) {
-    if (context && wire && !_scheduled) {
+    if (context && wire && !_scheduled && _activated) {
       _scheduled = true;
 
       auto mesh = context->main->mesh.lock();
+      shassert(mesh && "Mesh is null");
 
       auto c = _pool->acquire(_composer, context);
 
@@ -2051,13 +2055,11 @@ struct WhenDone : Spawn {
       if (!c->onCleanupConnection) {
         SHLOG_TRACE("Spawn::activate: connecting wireOnCleanup to {}", c->wire->name);
         _wireContainers[c->wire.get()] = c;
-        c->onCleanupConnection =
-            c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
+        c->onCleanupConnection = c->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Spawn::wireOnCleanup>(this);
       }
 
       for (auto &v : _vars) {
-        SHVar *refVar =
-            c->injectedVariables.emplace_back(referenceWireVariable(c->wire.get(), v.variableName()));
+        SHVar *refVar = c->injectedVariables.emplace_back(referenceWireVariable(c->wire.get(), v.variableName()));
         cloneVar(*refVar, v.get());
       }
 
@@ -2080,6 +2082,8 @@ struct WhenDone : Spawn {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    _activated = true;
+
     // keep variables captured up to date
     _cache.clear();
     for (auto &v : _vars) {

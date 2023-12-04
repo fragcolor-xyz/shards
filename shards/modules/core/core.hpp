@@ -2749,10 +2749,10 @@ struct Take {
       // the following stringValue are cloned so null terminated safe
       if (_seqOutput)
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_indices.payload.stringValue, SHCCSTR("The required variables."),
-                                                         _tableOutput ? CoreInfo::StringSeqType : CoreInfo::IntSeqType));
+                                                         _tableOutput ? CoreInfo::AnySeqType : CoreInfo::IntSeqType));
       else
         _exposedInfo = ExposedInfo(ExposedInfo::Variable(_indices.payload.stringValue, SHCCSTR("The required variable."),
-                                                         _tableOutput ? CoreInfo::StringType : CoreInfo::IntType));
+                                                         _tableOutput ? CoreInfo::AnyType : CoreInfo::IntType));
       return SHExposedTypesInfo(_exposedInfo);
     } else {
       return {};
