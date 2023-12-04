@@ -13,7 +13,6 @@ use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 
 use notify::Config;
-use shards::SHInt;
 use shards::core::register_legacy_shard;
 use shards::core::register_shard;
 use shards::core::run_blocking;
@@ -21,12 +20,13 @@ use shards::core::BlockingShard;
 use shards::core::Core;
 use shards::shard::LegacyShard;
 use shards::shardsc::SHCore;
-use shards::types::INT_TYPES;
 use shards::types::common_type;
 use shards::types::AutoSeqVar;
 use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::ANYS_TYPES;
+use shards::types::INT_TYPES;
+use shards::SHInt;
 
 use shards::shard::Shard;
 use shards::types::ExposedTypes;
@@ -211,10 +211,17 @@ impl BlockingShard for FileDialog {
     let filters = self.filters.get();
     if !folder && !filters.is_none() {
       let filters: Seq = filters.try_into()?;
-      for filter in filters.iter() {
-        let filter: &str = filter.try_into()?;
-        dialog = dialog.add_filter(filter, &[filter]);
-      }
+      let extensions = filters
+        .iter()
+        .map(|filter| TryInto::<&str>::try_into(filter))
+        .collect::<Result<Vec<&str>, &str>>()?;
+      dialog = dialog
+        .add_filter("", &extensions)
+        .add_filter("All Files", &["*"]);
+      // for filter in filters.iter() {
+      // let filter: &str = filter.try_into()?;
+      // dialog = dialog.add_filter(filter, &[filter]);
+      // }
     }
     let current_dir = self.current_dir.get();
     if !current_dir.is_none() {
