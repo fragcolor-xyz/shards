@@ -11,7 +11,7 @@
 } Looped: true)
 
 @wire(network-test-server {
-  Network.Server("127.0.0.1" 9191 handler)
+  Network.Server("127.0.0.1" 9191 handler OnDisconnect: Pass)
   Once({@random1 | Network.Broadcast} Every: 0.5)
 } Looped: true)
 
