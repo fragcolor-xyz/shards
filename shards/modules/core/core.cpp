@@ -1347,9 +1347,9 @@ struct UnsafeActivate {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(reinterpret_cast<uint64_t>(_func));
+      return Var(reinterpret_cast<int64_t>(_func));
     case 1:
-      return Var(reinterpret_cast<uint64_t>(_cleanup));
+      return Var(reinterpret_cast<int64_t>(_cleanup));
     default:
       return Var::Empty;
     }

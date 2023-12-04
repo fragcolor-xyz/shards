@@ -239,7 +239,7 @@ struct NetworkPeer {
         // We expect another chunk; update the offset.
         offset = recvBuffer.size();
         nextChunkSize = ikcp_peeksize(kcp);
-        if(nextChunkSize > 0) {
+        if (nextChunkSize > 0) {
           SHLOG_TRACE("Next large-packet chunk size: {}", nextChunkSize);
         }
       }
@@ -348,6 +348,8 @@ struct Server : public NetworkBase {
 
   float _timeoutSecs = 30.0f;
 
+  ShardsVar _disconnectionHandler{};
+
   static inline Parameters params{
       {"Address", SHCCSTR("The local bind address or the remote address."), {CoreInfo::StringOrStringVar}},
       {"Port", SHCCSTR("The port to bind if server or to connect to if client."), {CoreInfo::IntOrIntVar}},
@@ -356,7 +358,10 @@ struct Server : public NetworkBase {
        {CoreInfo::WireOrNone}},
       {"Timeout",
        SHCCSTR("The timeout in seconds after which a peer will be disconnected if there is no network activity."),
-       {CoreInfo::FloatType}}};
+       {CoreInfo::FloatType}},
+      {"OnDisconnect",
+       SHCCSTR("The flow to execute when a peer disconnects, The Peer ID will be the input."),
+       {CoreInfo::ShardsOrNone}}};
 
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
@@ -374,6 +379,8 @@ struct Server : public NetworkBase {
     case 3:
       _timeoutSecs = value.payload.floatValue;
       break;
+    case 4:
+      _disconnectionHandler = value;
     default:
       break;
     }
@@ -389,28 +396,44 @@ struct Server : public NetworkBase {
       return _handlerMaster;
     case 3:
       return Var(_timeoutSecs);
+    case 4:
+      return _disconnectionHandler;
     default:
       return Var::Empty;
     }
   }
 
-  SHTypeInfo compose(SHInstanceData &data) {
+  SHTypeInfo compose(const SHInstanceData &data) {
     if (_handlerMaster.valueType == SHType::Wire)
       _pool.reset(new WireDoppelgangerPool<NetworkPeer>(_handlerMaster.payload.wireValue));
+
+    // compose first with data the _disconnectionHandler if any
+    if (_disconnectionHandler) {
+      SHInstanceData dataCopy = data;
+      dataCopy.inputType = CoreInfo::IntType;
+      _disconnectionHandler.compose(dataCopy);
+    }
 
     // inject our special context vars
     _sharedCopy = ExposedInfo(data.shared);
     auto endpointInfo = ExposedInfo::Variable("Network.Peer", SHCCSTR("The active peer."), SHTypeInfo(PeerInfo));
     _sharedCopy.push_back(endpointInfo);
+
     return NetworkBase::compose(data);
   }
 
-  void gcWires() {
+  void gcWires(SHContext *context) {
     if (!_stopWireQueue.empty()) {
       SHWire *toStop{};
       while (_stopWireQueue.pop(toStop)) {
         SHLOG_TRACE("GC-ing wire {}", toStop->name);
         DEFER({ SHLOG_TRACE("GC-ed wire {}", toStop->name); });
+
+        if (_disconnectionHandler) {
+          Var peerId(*reinterpret_cast<int64_t *>(&toStop->id));
+          SHVar output{};
+          _disconnectionHandler.activate(context, peerId, output);
+        }
 
         // ensure cleanup is called
         auto wireState = toStop->state.load();
@@ -449,6 +472,9 @@ struct Server : public NetworkBase {
       throw ComposeError("Peer wires pool not valid!");
     }
 
+    if (_disconnectionHandler)
+      _disconnectionHandler.warmup(context);
+
     _contextCopy = context;
 
     NetworkBase::warmup(context);
@@ -477,7 +503,10 @@ struct Server : public NetworkBase {
 
     NetworkBase::cleanup(context);
 
-    gcWires();
+    gcWires(context);
+
+    if (_disconnectionHandler)
+      _disconnectionHandler.cleanup(context);
   }
 
   static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
@@ -678,7 +707,7 @@ struct Server : public NetworkBase {
       boost::asio::post(io_context, [this]() { do_receive(); });
     }
 
-    gcWires();
+    gcWires(context);
 
     {
       std::shared_lock<std::shared_mutex> lock(peersMutex);
@@ -1123,7 +1152,7 @@ struct PeerID : public PeerBase {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto peer = getPeer(context);
-    return Var(reinterpret_cast<entt::id_type>(peer));
+    return Var(reinterpret_cast<int64_t>(peer));
   }
 };
 
