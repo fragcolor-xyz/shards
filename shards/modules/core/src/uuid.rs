@@ -2,24 +2,32 @@
 /* Copyright © 2021 Fragcolor Pte. Ltd. */
 
 use shards::core::register_legacy_shard;
+use shards::core::register_shard;
 use shards::shard::LegacyShard;
+use shards::shard::Shard;
 
 use shards::types::ClonedVar;
 use shards::types::Context;
+use shards::types::ExposedTypes;
+use shards::types::InstanceData;
 use shards::types::OptionalString;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::BYTES_OR_STRING_TYPES;
 use shards::types::BYTES_TYPES;
 use shards::types::INT16_TYPES;
+use shards::types::INT_TYPES;
 use shards::types::INT_TYPES_SLICE;
 use shards::types::NONE_TYPES;
 
+use shards::types::ParamVar;
 use shards::types::Parameters;
 
 use shards::types::Type;
 
 use shards::types::STRING_TYPES;
 
+use shards::types::common_type;
+use shards::types::Types;
 use shards::types::Var;
 
 use core::convert::TryInto;
@@ -288,10 +296,80 @@ impl LegacyShard for NanoIDCreate {
   }
 }
 
+#[derive(shards::shard)]
+#[shard_info("Snowflake", "Creates a Snowflake ID.")]
+struct SnowflakeShard {
+  #[shard_required]
+  required: ExposedTypes,
+  #[shard_param("MachineId", "The machine ID, must be less than 32", [common_type::int])]
+  machine_id: ClonedVar,
+  #[shard_param("NodeId", "The node ID, must be less than 32", [common_type::int])]
+  node_id: ClonedVar,
+  generator: Option<snowflake::SnowflakeIdGenerator>,
+}
+
+impl Default for SnowflakeShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      machine_id: 0.into(),
+      node_id: 0.into(),
+      generator: None,
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for SnowflakeShard {
+  fn input_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &INT_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
+    self.warmup_helper(ctx)?;
+
+    let machine_id: i32 = self.machine_id.0.as_ref().try_into()?;
+    let node_id: i32 = self.node_id.0.as_ref().try_into()?;
+
+    if machine_id > 31 {
+      return Err("Machine ID must be less than 32.");
+    }
+
+    if node_id > 31 {
+      return Err("Node ID must be less than 32.");
+    }
+
+    self.generator = Some(snowflake::SnowflakeIdGenerator::new(machine_id, node_id));
+
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
+    let id = self.generator.as_mut().unwrap().real_time_generate();
+    Ok(id.into())
+  }
+}
+
 pub fn register_shards() {
   register_legacy_shard::<UUIDCreate>();
   register_legacy_shard::<UUIDToString>();
   register_legacy_shard::<UUIDToBytes>();
   register_legacy_shard::<NanoIDCreate>();
   register_legacy_shard::<UUIDConvert>();
+  register_shard::<SnowflakeShard>();
 }
