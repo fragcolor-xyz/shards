@@ -180,20 +180,20 @@ GlobalTracy &GetTracy() {
 }
 
 #ifdef TRACY_FIBERS
-UntrackedVector<SHWire *> &getCoroWireStack() {
+std::vector<SHWire *> &getCoroWireStack() {
   // Here is the thing, this currently works.. but only because we don't move coroutines between threads
   // When we will do if we do this will break...
-  static thread_local UntrackedVector<SHWire *> wireStack;
+  static thread_local std::vector<SHWire *> wireStack;
   return wireStack;
 }
 #endif
 #endif
 
 #ifdef SH_USE_TSAN
-UntrackedVector<SHWire *> &getCoroWireStack2() {
+std::vector<SHWire *> &getCoroWireStack2() {
   // Here is the thing, this currently works.. but only because we don't move coroutines between threads
   // When we will do if we do this will break...
-  static thread_local UntrackedVector<SHWire *> wireStack;
+  static thread_local std::vector<SHWire *> wireStack;
   return wireStack;
 }
 #endif
@@ -2087,7 +2087,7 @@ Globals &GetGlobals() {
   return globals;
 }
 
-static UntrackedUnorderedMap<std::string, EventDispatcher> dispatchers;
+static std::unordered_map<std::string, EventDispatcher> dispatchers;
 static std::shared_mutex mutex;
 EventDispatcher &getEventDispatcher(const std::string &name) {
 

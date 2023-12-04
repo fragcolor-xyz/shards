@@ -278,7 +278,7 @@ extern GlobalTracy &GetTracy();
 #endif
 
 #ifdef TRACY_FIBERS
-UntrackedVector<SHWire *> &getCoroWireStack();
+std::vector<SHWire *> &getCoroWireStack();
 #endif
 
 #if SH_DEBUG_THREAD_NAMES
