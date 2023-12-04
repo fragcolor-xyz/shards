@@ -927,11 +927,6 @@ struct Var : public SHVar {
     payload.imageValue = img;
   }
 
-  explicit Var(uint64_t src) : SHVar() {
-    valueType = SHType::Int;
-    payload.intValue = src;
-  }
-
   explicit Var(int64_t src) : SHVar() {
     valueType = SHType::Int;
     payload.intValue = src;
