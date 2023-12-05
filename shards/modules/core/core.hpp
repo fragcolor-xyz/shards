@@ -673,14 +673,10 @@ struct VariableBase {
   }
 
   ALWAYS_INLINE void checkIfTableChanged() {
-    auto tablePtr = _tablePtr;
-    auto tableVersion = _tableVersion;
     if (_tablePtr != _target->payload.tableValue.opaque || _tableVersion != _target->version) {
       _tablePtr = _target->payload.tableValue.opaque;
       _cell = nullptr;
       _tableVersion = _target->version;
-      SHLOG_TRACE("Table {} changed, clearing cell pointer, previous ptr: {} - now {}, previous version: {} - now {}", _name,
-                  tablePtr, _tablePtr, tableVersion, _tableVersion);
     }
   }
 };
