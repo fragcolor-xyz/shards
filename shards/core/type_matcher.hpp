@@ -7,6 +7,7 @@ namespace shards {
 struct TypeMatcher {
   bool isParameter = true;
   bool strict = true;
+  bool relaxEmptyTableCheck = true;
   bool relaxEmptySeqCheck = false;
   bool checkVarTypes = false;
 
@@ -86,7 +87,12 @@ struct TypeMatcher {
         const auto numReceiverTypes = receiverType.table.types.len;
         const auto numInputKeys = inputType.table.keys.len;
         const auto numReceiverKeys = receiverType.table.keys.len;
-        if (numReceiverKeys == 0) {
+
+        // When the input is and empty table {}, and the received has no key constraints
+        // pass
+        if (numReceiverKeys == 0 && numInputKeys == 0 && relaxEmptyTableCheck) {
+          return true;
+        } else if (numReceiverKeys == 0) {
           // case 1, consumer is not strict, match types if avail
           // ignore input keys information
           if (numInputTypes == 0) {
