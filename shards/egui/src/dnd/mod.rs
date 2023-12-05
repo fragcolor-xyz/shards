@@ -17,6 +17,8 @@ use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::*;
 
+const DRAG_THRESHOLD: f32 = 15.0;
+
 pub fn drag_source<R>(
   ui: &mut egui::Ui,
   ctx: &UIContext,
@@ -26,7 +28,8 @@ pub fn drag_source<R>(
   body: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
   let is_dropped = ui.input(|i| i.pointer.any_released());
-  let is_being_dragged = ui.memory(|mem| mem.is_being_dragged(id));
+  let is_dragging_something = !ctx.dnd_value.borrow().0.is_none();
+  let is_being_dragged = is_dragging_something && ui.memory(|mem| mem.is_being_dragged(id));
 
   let cursor_already_set =
     is_dropped || ui.output(|x| x.cursor_icon == egui::CursorIcon::NotAllowed);
@@ -41,8 +44,20 @@ pub fn drag_source<R>(
     }
 
     // Store the drag payload
-    if response.drag_started() {
-      ctx.dnd_value.borrow_mut().assign(payload);
+    if response.dragged() {
+      let delta = ui.input(|i| {
+        if let Some(origin) = i.pointer.press_origin() {
+          let b= i.pointer.interact_pos().unwrap_or_default();
+          Some(b - origin)
+        } else {
+          None
+        }
+      });
+      if let Some(delta) = delta {
+        if delta.length() > DRAG_THRESHOLD {
+          ctx.dnd_value.borrow_mut().assign(payload);
+        }
+      }
     }
 
     let inner = ui.scope(body);
@@ -65,9 +80,11 @@ pub fn drag_source<R>(
     // (anything with `Order::Tooltip` always gets an empty [`Response`])
     // So this is fine!
 
-    if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
-      let delta = pointer_pos - response.rect.center();
-      ui.ctx().translate_layer(layer_id, delta);
+    if is_dragging_something {
+      if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
+        let delta = pointer_pos - response.rect.center();
+        ui.ctx().translate_layer(layer_id, delta);
+      }
     }
 
     inner

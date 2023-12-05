@@ -55,6 +55,8 @@ void Window::init(const WindowCreationOptions &options) {
   flags |= SDL_WINDOW_METAL;
 #endif
 
+  SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
   SDL_SetHint(SDL_HINT_VIDEO_EXTERNAL_CONTEXT, "1");
   window = SDL_CreateWindow(options.title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, flags);

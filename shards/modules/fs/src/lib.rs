@@ -8,38 +8,32 @@ extern crate lazy_static;
 
 extern crate compile_time_crc32;
 
+use shards::core::{register_enum, register_shard};
+use shards::shard::Shard;
+use shards::types::{common_type, NONE_TYPES};
+use shards::types::{Context, ExposedTypes, InstanceData, ParamVar, Type, Types, Var};
+
 use std::fs;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 
 use notify::Config;
-use shards::SHInt;
 use shards::core::register_legacy_shard;
-use shards::core::register_shard;
 use shards::core::run_blocking;
 use shards::core::BlockingShard;
 use shards::core::Core;
 use shards::shard::LegacyShard;
 use shards::shardsc::SHCore;
-use shards::types::INT_TYPES;
-use shards::types::common_type;
 use shards::types::AutoSeqVar;
 use shards::types::ClonedVar;
-use shards::types::Context;
 use shards::types::ANYS_TYPES;
+use shards::types::INT_TYPES;
+use shards::SHInt;
 
-use shards::shard::Shard;
-use shards::types::ExposedTypes;
-use shards::types::InstanceData;
-use shards::types::ParamVar;
 use shards::types::Parameters;
 use shards::types::Seq;
-use shards::types::Type;
-use shards::types::Types;
-use shards::types::Var;
 use shards::types::BOOL_TYPES_SLICE;
 use shards::types::BOOL_VAR_OR_NONE_SLICE;
-use shards::types::NONE_TYPES;
 use shards::types::STRING_TYPES;
 use shards::types::STRING_VAR_OR_NONE_SLICE;
 
@@ -50,32 +44,8 @@ lazy_static! {
     common_type::none
   ];
   pub static ref STRING_OR_STRINGS_TYPES: Types = vec![common_type::string, common_type::strings];
-  static ref FILEDIALOG_PARAMETERS: Parameters = vec![
-    (
-      cstr!("Filters"),
-      shccstr!("To filter files based on extensions."),
-      &STRINGS_VAR_OR_NONE_TYPES[..],
-    )
-      .into(),
-    (
-      cstr!("CurrentDir"),
-      shccstr!("Set the current directory"),
-      STRING_VAR_OR_NONE_SLICE,
-    )
-      .into(),
-    (
-      cstr!("Multiple"),
-      shccstr!("To select multiple files instead of just one."),
-      BOOL_TYPES_SLICE,
-    )
-      .into(),
-    (
-      cstr!("Folder"),
-      shccstr!("To select a folder instead of a file."),
-      BOOL_VAR_OR_NONE_SLICE,
-    )
-      .into(),
-  ];
+  pub static ref SEQ_OF_STRINGS_TYPE: Type = Type::seq(&*STRING_TYPES);
+  pub static ref SEQ_OF_STRINGS_TYPES: Types = vec![*SEQ_OF_STRINGS_TYPE];
   static ref SAVEFILEDIALOG_PARAMETERS: Parameters = vec![
     (
       cstr!("Filters"),
@@ -92,83 +62,61 @@ lazy_static! {
   ];
 }
 
+#[derive(shards::shard)]
+#[shard_info("FS.FileDialog", "AddDescriptionHere")]
 struct FileDialog {
+  #[shard_param("Filters", "To filter files based on extensions.", [common_type::none, *SEQ_OF_STRINGS_TYPE, Type::context_variable(&*SEQ_OF_STRINGS_TYPES)])]
   filters: ParamVar,
+  #[shard_param("FilterNames", "For each filter, gives the name to show of the filter.", [common_type::none, common_type::strings, common_type::strings_var])]
+  filter_names: ParamVar,
+  #[shard_param("CurrentDir", "Set the current directory", STRING_VAR_OR_NONE_SLICE)]
   current_dir: ParamVar,
-  multiple: bool,
+  #[shard_param(
+    "Multiple",
+    "To select multiple files instead of just one.",
+    BOOL_TYPES_SLICE
+  )]
+  multiple: ClonedVar,
+  #[shard_param(
+    "Folder",
+    "To select a folder instead of a file.",
+    BOOL_VAR_OR_NONE_SLICE
+  )]
   folder: ParamVar,
   output: ClonedVar,
+  #[shard_required]
+  required: ExposedTypes,
 }
 
 impl Default for FileDialog {
   fn default() -> Self {
     Self {
       filters: ParamVar::default(),
+      filter_names: ParamVar::default(),
       current_dir: ParamVar::default(),
-      multiple: false,
+      multiple: ClonedVar(Var::from(false)),
       folder: ParamVar::new(false.into()),
       output: ClonedVar::default(),
+      required: ExposedTypes::new(),
     }
   }
 }
 
-impl LegacyShard for FileDialog {
-  fn registerName() -> &'static str
-  where
-    Self: Sized,
-  {
-    cstr!("FS.FileDialog")
-  }
-
-  fn hash() -> u32
-  where
-    Self: Sized,
-  {
-    compile_time_crc32::crc32!("FS.FileDialog-rust-0x20200101")
-  }
-
-  fn name(&mut self) -> &str {
-    "FS.FileDialog"
-  }
-
-  fn inputTypes(&mut self) -> &Types {
+#[shards::shard_impl]
+impl Shard for FileDialog {
+  fn input_types(&mut self) -> &Types {
     &NONE_TYPES
   }
 
-  fn outputTypes(&mut self) -> &Types {
+  fn output_types(&mut self) -> &Types {
     &STRING_OR_STRINGS_TYPES
   }
 
-  fn parameters(&mut self) -> Option<&Parameters> {
-    Some(&FILEDIALOG_PARAMETERS)
-  }
-
-  fn setParam(&mut self, index: i32, value: &Var) -> Result<(), &str> {
-    match index {
-      0 => self.filters.set_param(value),
-      1 => self.current_dir.set_param(value),
-      2 => Ok(self.multiple = value.try_into()?),
-      3 => self.folder.set_param(value),
-      _ => Err("Invalid parameter index"),
-    }
-  }
-
-  fn getParam(&mut self, index: i32) -> Var {
-    match index {
-      0 => self.filters.get_param(),
-      1 => self.current_dir.get_param(),
-      2 => self.multiple.into(),
-      3 => self.folder.get_param(),
-      _ => Var::default(),
-    }
-  }
-
-  fn hasCompose() -> bool {
-    true
-  }
-
   fn compose(&mut self, _data: &InstanceData) -> Result<Type, &str> {
-    if self.multiple {
+    self.compose_helper(_data)?;
+
+    let multiple: bool = (&self.multiple.0).try_into().unwrap_or(false);
+    if multiple {
       Ok(common_type::strings)
     } else {
       Ok(common_type::string)
@@ -176,18 +124,13 @@ impl LegacyShard for FileDialog {
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.filters.warmup(ctx);
-    self.current_dir.warmup(ctx);
-    self.folder.warmup(ctx);
+    self.warmup_helper(ctx)?;
 
     Ok(())
   }
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-    self.folder.cleanup(ctx);
-    self.current_dir.cleanup(ctx);
-    self.filters.cleanup(ctx);
-
+    self.cleanup_helper(ctx)?;
     Ok(())
   }
 
@@ -207,13 +150,35 @@ impl BlockingShard for FileDialog {
   #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &str> {
     let mut dialog = rfd::FileDialog::new();
-    let folder: bool = self.folder.get().try_into()?;
+    let folder: bool = self.folder.get().try_into().unwrap_or_default();
     let filters = self.filters.get();
+    let filter_names = self.filter_names.get();
     if !folder && !filters.is_none() {
       let filters: Seq = filters.try_into()?;
-      for filter in filters.iter() {
-        let filter: &str = filter.try_into()?;
-        dialog = dialog.add_filter(filter, &[filter]);
+      let filter_names: Result<Seq, _> = filter_names.try_into();
+      if let Ok(filter_names) = &filter_names {
+        if filters.len() != filter_names.len() {
+          return Err("FilterNames must be the same length as Filters");
+        }
+        for (filter, filter_name) in filters.iter().zip(filter_names.iter()) {
+          let filter: Seq = filter.try_into()?;
+          let filter_name: &str = filter_name.try_into()?;
+          let filter = filter
+            .iter()
+            .map(|f| f.try_into())
+            .collect::<Result<Vec<&str>, _>>()?;
+          dialog = dialog.add_filter(filter_name, &filter);
+        }
+      } else {
+        for filter in filters.iter() {
+          let filter: Seq = filter.try_into()?;
+          let filter = filter
+            .iter()
+            .map(|f| f.try_into())
+            .collect::<Result<Vec<&str>, _>>()?;
+          let filter_name = filter.join(", ");
+          dialog = dialog.add_filter(&filter_name, &filter);
+        }
       }
     }
     let current_dir = self.current_dir.get();
@@ -223,7 +188,9 @@ impl BlockingShard for FileDialog {
         dialog = dialog.set_directory(start_path);
       }
     }
-    if self.multiple {
+
+    let multiple: bool = (&self.multiple.0).try_into().unwrap_or(false);
+    if multiple {
       self.pick_multiple(dialog, folder)
     } else {
       self.pick_single(dialog, folder)
@@ -526,7 +493,7 @@ pub extern "C" fn shardsRegister_fs_rust(core: *mut SHCore) {
     Core = core;
   }
 
-  register_legacy_shard::<FileDialog>();
+  register_shard::<FileDialog>();
   register_legacy_shard::<SaveFileDialog>();
   register_shard::<NotifyShard>();
 }
