@@ -159,8 +159,16 @@ impl RequestBase {
       1 => self.headers.set_param(value),
       2 => Ok(self.timeout = value.try_into().map_err(|x| "Failed to set timeout")?),
       3 => Ok(self.as_bytes = value.try_into().map_err(|x| "Failed to set as_bytes")?),
-      4 => Ok(self.full_response = value.try_into().map_err(|x| "Failed to set full_response")?),
-      5 => Ok(self.invalid_certs = value.try_into().map_err(|x| "Failed to set invalid_certs")?),
+      4 => Ok(
+        self.full_response = value
+          .try_into()
+          .map_err(|x| "Failed to set full_response")?,
+      ),
+      5 => Ok(
+        self.invalid_certs = value
+          .try_into()
+          .map_err(|x| "Failed to set invalid_certs")?,
+      ),
       _ => unreachable!(),
     }
   }
@@ -454,7 +462,23 @@ macro_rules! post_like {
             let input_string: Result<&str, &str> = input.try_into();
             if let Ok(input_string) = input_string {
               // default to this in this case but users can edit under
-              request = request.header("content-type", "application/json");
+              let has_content_type = if !headers.is_none() {
+                let headers_table = headers.as_table()?;
+                let content_type_str = Var::ephemeral_string("content-type");
+                let content_type = headers_table.get(content_type_str);
+                if content_type.is_some() {
+                  true
+                } else {
+                  let content_type_str = Var::ephemeral_string("content-type");
+                  let content_type = headers_table.get(content_type_str);
+                  content_type.is_some()
+                }
+              } else {
+                false
+              };
+              if !has_content_type {
+                request = request.header("content-type", "application/json");
+              }
               request = request.body(input_string);
             } else {
               // .body ( bytes )
