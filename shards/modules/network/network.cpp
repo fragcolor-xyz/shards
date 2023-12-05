@@ -305,8 +305,14 @@ struct NetworkPeer {
 
     // set "turbo" mode
     ikcp_nodelay(kcp, 1, 10, 2, 1);
+
     _start = SHClock::now();
     _lastContact = SHClock::now();
+    disconnected = false;
+    networkError.reset();
+    recvBuffer.clear();
+    _start = SHClock::now();
+    expectedSize = 0;
   }
 
   std::optional<udp::endpoint> endpoint{};
@@ -331,6 +337,8 @@ struct NetworkPeer {
   uint32_t expectedSize = 0;
 
   std::optional<boost::system::error_code> networkError;
+
+  std::atomic_bool disconnected = false;
 };
 
 struct Server : public NetworkBase {
@@ -429,6 +437,23 @@ struct Server : public NetworkBase {
         SHLOG_TRACE("GC-ing wire {}", toStop->name);
         DEFER({ SHLOG_TRACE("GC-ed wire {}", toStop->name); });
 
+        // read lock this
+        std::shared_lock<std::shared_mutex> lock(peersMutex);
+        auto container = _wire2Peer[toStop];
+        lock.unlock();
+
+        SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
+
+        container->disconnected = true;
+
+        if (_contextCopy) {
+          OnPeerDisconnected event{
+              .endpoint = *container->endpoint,
+              .wire = container->wire,
+          };
+          (*_contextCopy)->main->dispatcher.trigger(std::move(event));
+        }
+
         if (_disconnectionHandler) {
           Var peerId(*reinterpret_cast<int64_t *>(&toStop->id));
           SHVar output{};
@@ -443,21 +468,6 @@ struct Server : public NetworkBase {
         } else {
           SHLOG_TRACE("Wire {} already stopped, state: {}", toStop->name, wireState);
         }
-
-        // read lock this
-        std::shared_lock<std::shared_mutex> lock(peersMutex);
-        auto container = _wire2Peer[toStop];
-        lock.unlock();
-
-        if (_contextCopy) {
-          OnPeerDisconnected event{
-              .endpoint = *container->endpoint,
-              .wire = container->wire,
-          };
-          (*_contextCopy)->main->dispatcher.trigger(std::move(event));
-        }
-
-        SHLOG_TRACE("Clearing endpoint {}", container->endpoint->address().to_string());
 
         // write lock it now
         std::scoped_lock<std::shared_mutex> lock2(peersMutex);
@@ -1075,18 +1085,24 @@ struct PeerBase {
 
   NetworkPeer *getPeer(SHContext *context) {
     auto &fixedPeer = _peerParam.get();
+    NetworkPeer *peer = nullptr;
     if (fixedPeer.valueType == SHType::Object) {
       assert(fixedPeer.payload.objectVendorId == CoreCC);
       assert(fixedPeer.payload.objectTypeId == PeerCC);
-      return reinterpret_cast<NetworkPeer *>(fixedPeer.payload.objectValue);
+      peer = reinterpret_cast<NetworkPeer *>(fixedPeer.payload.objectValue);
     } else {
       if (!_peerVar) {
         _peerVar = referenceVariable(context, "Network.Peer");
       }
       assert(_peerVar->payload.objectVendorId == CoreCC);
       assert(_peerVar->payload.objectTypeId == PeerCC);
-      return reinterpret_cast<NetworkPeer *>(_peerVar->payload.objectValue);
+      peer = reinterpret_cast<NetworkPeer *>(_peerVar->payload.objectValue);
     }
+
+    if (peer->disconnected)
+      throw ActivationError("Peer is disconnected");
+
+    return peer;
   }
 
   static inline Parameters params{
