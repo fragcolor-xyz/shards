@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How to add a new element to the end of an existing Shards sequence?
-  """
+  prompt: """How to add a new element to the end of an existing Shards sequence?"""
 
   solution: 
     """element | 
@@ -19,5 +17,5 @@
     The type  of element being appended needs to be of the same type as the sequence.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

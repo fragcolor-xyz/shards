@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I convert a float to a float2?
-  """
+  prompt: """How do I convert a float to a float2?"""
 
   solution: """
    5.0 ; float to convert
@@ -19,5 +17,5 @@
     dimensional, it will assign the floating point numbers accordingly. If the input has more than 2 dimensions, the Shard will only use the first 2 values provided.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

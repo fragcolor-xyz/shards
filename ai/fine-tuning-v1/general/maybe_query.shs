@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I attempt to execute an action but do another action if I  fail
-  """
+  prompt: """How do I attempt to execute an action but do another action if I  fail"""
 
   solution:
     """[1 2 3] =  sequence
@@ -30,5 +28,5 @@
     If set to true, the Silent parameter will disable logging while running the Shard and no warning message should be printed on failure.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

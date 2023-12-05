@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I delete multiple elements in a sequence.
-  """
+  prompt: """How do I delete multiple elements in a sequence."""
 
   solution: """
    Erase([index-to-delete1 index-to-delete2 index-to-delete3] sequence-to-delete-from)
@@ -17,5 +15,5 @@
     To delete more elements, add the more Indeces to the sequence in the Indeces parameter.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

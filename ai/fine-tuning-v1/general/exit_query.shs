@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How  do I exit the program through code?
-  """
+  prompt: """How do I exit the program through code?"""
 
   solution: """
    0;; Error Code
@@ -19,5 +17,5 @@
     If there is no error code to be used as input use 0.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

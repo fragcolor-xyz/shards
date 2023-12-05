@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I repeat something multiple times.
-  """
+  prompt: """How do I repeat something multiple times."""
 
   solution: """
    Repeat({
@@ -19,5 +17,5 @@
     Repeat will execute whatever is specified in the Action parameter X number of times, where X is the amount specified in the Times parameter.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

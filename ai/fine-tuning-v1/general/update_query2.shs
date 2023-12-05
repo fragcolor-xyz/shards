@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I update a key in a table
-  """
+  prompt: """How do I update a key in a table"""
 
   solution: """
    5 | Update(variable-to-update "key1")
@@ -16,5 +14,5 @@
     It cannot add new key-value pairs to the table (do that with Set). To update existing key-values in a table you need to pass the key in the :Key parameter.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

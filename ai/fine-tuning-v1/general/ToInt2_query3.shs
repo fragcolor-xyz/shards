@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I convert an integer to an int2?
-  """
+  prompt: """How do I convert an integer to an int2?"""
 
   solution: """
    5 ; integer to convert
@@ -19,5 +17,5 @@
     dimensional, it will assign the integers accordingly. If the value has more than 2 dimensions, only the first two values will be used.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

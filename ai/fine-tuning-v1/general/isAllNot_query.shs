@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How  do I check if every value in a sequence does not equal somthing
-  """
+  prompt: """How do I check if every value in a sequence does not equal somthing"""
 
   solution: """
    [2 2 2 2 2 2 2] = sequence
@@ -27,5 +25,5 @@
     otherwise, it will return false.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

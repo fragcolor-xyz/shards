@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I load an image.
-  """
+  prompt: """How do I load an image."""
 
   solution:
     """LoadImage(File:filename.png PremultiplyAlpha: true) | GFX.Texture"""
@@ -15,5 +13,5 @@
     LoadImage Shard into GFX.Texture for the image to be used as a texture.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

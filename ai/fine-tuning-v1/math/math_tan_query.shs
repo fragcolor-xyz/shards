@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I apply the tangent trigonometric function to a value
-  """
+  prompt: """How do I apply the tangent trigonometric function to a value"""
 
   solution: """
     0.785398
@@ -19,5 +17,5 @@
     Math.Tan is a Maths Shard that will apply the tanget trigonometric function to the float value passed in as input.
   """
 
-  tag: "General"
+  tag: "  #Maths"
 }

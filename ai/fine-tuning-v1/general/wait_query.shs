@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I wait for another wire to finish executing before resuming the current wire?
-  """
+  prompt: """How do I wait for another wire to finish executing before resuming the current wire?"""
 
   solution: """
    Detach(myWire)
@@ -29,5 +27,5 @@
     the flow will fail with a timeout error.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

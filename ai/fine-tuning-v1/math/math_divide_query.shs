@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I divide two values together?
-  """
+  prompt: """How do I divide two values together?"""
 
   solution: """
    @wire(wire{
@@ -21,5 +19,5 @@
     it will divide  the values of each corresponding index and return a sequence.  Both the input and the operand needs to be of the same type for the Shard to function.
   """
 
-  tag: "General"
+  tag: "  #Maths"
 }

@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I execute one wire that will run asynchornously to the main wire.
-  """
+  prompt: """How do I execute one wire that will run asynchornously to the main wire."""
 
   solution: """
    @wire(wire{
@@ -20,5 +18,5 @@
     can be detached at any point in time. Subsequent detaches of the same wire, will be ignored. 
   """
 
-  tag: "General"
+  tag: "  #General-Wire"
 }

@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I sort all the values of a sequence in ascending order?
-  """
+  prompt: """How do I sort all the values of a sequence in ascending order?"""
 
   solution: """
     [0 1 2 3 4 5] >= sequence
@@ -31,5 +29,5 @@
 
   """
 
-  tag: "General"
+  tag: "  #General"
 }

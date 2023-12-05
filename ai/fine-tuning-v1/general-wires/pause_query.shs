@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I stop a wire from executing momentarily for a period of time
-  """
+  prompt: """How do I stop a wire from executing momentarily for a period of time"""
 
   solution: """
    @wire(wire{
@@ -20,5 +18,5 @@
     Executor Shard within the time frame specified in the Time parameter, it will be ignored.
   """
 
-  tag: "General"
+  tag: "  #General-Wire"
 }

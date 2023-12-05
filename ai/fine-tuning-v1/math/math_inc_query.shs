@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do  I increase the value of a mutable variable?
-  """
+  prompt: """How do I increase the value of a mutable variable?"""
 
   solution: """
     0 >= mutable-var
@@ -28,5 +26,5 @@
     Unlike Math.Add which is a binary operation, Math. Inc is a unary operation.
   """
 
-  tag: "General"
+  tag: "  #Maths"
 }

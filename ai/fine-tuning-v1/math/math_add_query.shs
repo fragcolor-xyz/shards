@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I add two values together?
-  """
+  prompt: """How do I add two values together?"""
 
   solution: """
     3 | Math.Add(2)
@@ -20,5 +18,5 @@
     Unlike Math.Inc which is a unary operation,  Math.Add is a binary operation.
   """
 
-  tag: "General"
+  tag: "  #Maths"
 }

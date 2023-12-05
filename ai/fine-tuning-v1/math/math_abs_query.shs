@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How to I get the absolute value of a signed variable?
-  """
+  prompt: """How do I get the absolute value of a signed variable?"""
 
   solution: """
     -3
@@ -20,5 +18,5 @@
     Math.Abs will parse through the sequence and  return a sequence of absolute values.
   """
 
-  tag: "General"
+  tag: "  #Maths"
 }

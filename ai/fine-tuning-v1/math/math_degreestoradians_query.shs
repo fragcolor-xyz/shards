@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How to I convert degrees to radians?
-  """
+  prompt: """How do I convert degrees to radians?"""
 
   solution: """
     90.0
@@ -19,5 +17,5 @@
     Math.DegreesToRadians takes in an angle as degrees and converts it into radians.
   """
 
-  tag: "General"
+  tag: "  #Maths"
 }

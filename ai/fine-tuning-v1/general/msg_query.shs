@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I display a message on the console
-  """
+  prompt: """How do I display a message on the console"""
 
   solution:
     """Msg("Type your message here")"""
@@ -16,5 +14,5 @@
     Unlike Log, Msg does not print its input.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

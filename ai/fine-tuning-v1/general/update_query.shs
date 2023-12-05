@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I update a variable?
-  """
+  prompt: """How do I update a variable?"""
 
   solution: """
    5 > variable-to-update
@@ -16,5 +14,5 @@
     only be used to replace the whole sequence. To update a single element in a sequence, use Assoc instead.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

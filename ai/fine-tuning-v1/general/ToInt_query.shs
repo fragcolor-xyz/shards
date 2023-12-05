@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I convert a float to an integer?
-  """
+  prompt: """How do I convert a float to an integer?"""
 
   solution: """
    5.0 ; integer to convert
@@ -18,5 +16,5 @@
     value has more than one dimension, only the first value will be used.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

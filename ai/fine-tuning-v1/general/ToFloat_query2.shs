@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I convert a string to a float?
-  """
+  prompt: """How do I convert a string to a float?"""
 
   solution: """
    "5" ; string to convert
@@ -18,5 +16,5 @@
     or "hello" is passed in, the Shard will return 0.0. If the value has more than one dimension, only the first value will be used.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

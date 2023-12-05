@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I convert a string to an int16?
-  """
+  prompt: """How do I convert a string to an int16?"""
 
   solution: """
    "5" ; string to convert
@@ -20,5 +18,5 @@
     only the first 16 values will be used. If a string that has no numeric value, like "Three", "Five" or "hello" is passed in, the Shard will return (0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0). 
   """
 
-  tag: "General"
+  tag: "  #General"
 }

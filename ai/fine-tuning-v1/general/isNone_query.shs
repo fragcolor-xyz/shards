@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I check if something is none.
-  """
+  prompt: """How do I check if something is none."""
 
   solution: """
    variable1
@@ -22,5 +20,5 @@
     In the solution above, if variable1 is none, the When Shard's Predicate will return true and do what is stated in Action.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

@@ -1,9 +1,8 @@
 {
-  prompt: """
-    How do add something to thhe front of a sequence.
-  """
+  prompt: """How do add something to thhe front of a sequence."""
 
-  """solution:
+  solution:
+  """
     [1 2 3 4 5] >= sequence
     0 | PrependTo(sequence)
     
@@ -23,5 +22,5 @@
     Ensure that the input type matches the sequence type.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

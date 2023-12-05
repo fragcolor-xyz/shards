@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I ensure that the output of a Shard is a specific type?
-  """
+  prompt: """How do I ensure that the output of a Shard is a specific type?"""
 
   solution: """
    output-to-check ;; use any of the Shards below to check the required type
@@ -56,5 +54,5 @@
     Otherwise, the program will fail.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

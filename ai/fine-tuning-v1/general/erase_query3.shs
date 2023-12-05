@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I delete keys from a table
-  """
+  prompt: """How do I delete keys from a table"""
 
   solution: """
    Erase(["key1" "key2"] sequence-to-delete-from)
@@ -17,5 +15,5 @@
     To delete more keys, add the more keys to the sequence in the Keys parameter.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

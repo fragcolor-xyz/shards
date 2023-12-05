@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I replace an element of an existing sequence?
-  """
+  prompt: """How do I replace an element of an existing sequence?"""
 
   solution:
     """[index0 variable1 index1 variable2] | Assoc(sequence)"""
@@ -21,5 +19,5 @@
     Assoc can also be used to update a specific key in a table.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

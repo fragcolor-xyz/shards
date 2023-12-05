@@ -1,16 +1,15 @@
 {
-  prompt: """
-    How do I have an action that does nothing.
-  """
+  prompt: """How do I have an action that does nothing."""
 
-  """solution: {
+  solution:
+  """
     2 = variable
     
     variable
     When({Is(2)} {
       Pass
     })
-  }"""
+  """
 
   explicit:
     """2 = variable
@@ -24,5 +23,5 @@
     The Pass Shard makes an action parameter do nothing and return back its input.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

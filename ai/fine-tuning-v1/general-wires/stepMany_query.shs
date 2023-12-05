@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I execute and generate multiple wires that will execute inline to the parent wire and continue their state whenever called.
-  """
+  prompt: """How do I execute and generate multiple wires that will execute inline to the parent wire and continue their state whenever called."""
 
   solution: """
    @wire(main-wire{
@@ -25,5 +23,5 @@
     
   """
 
-  tag: "General"
+  tag: "  #General-Wire"
 }

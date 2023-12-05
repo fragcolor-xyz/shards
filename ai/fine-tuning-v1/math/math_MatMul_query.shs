@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I do matrix multiplication.
-  """
+  prompt: """How do I do matrix multiplication."""
 
   solution: """
     tsl-mat | Math.MatMul(rot-mat) | Math.MatMul(scl-mat) = transform-matrix
@@ -16,5 +14,5 @@
     for example to generate the transformation matrix of an object from its translation, rotation and scale matrices.
   """
 
-  tag: "General"
+  tag: "  #Maths"
 }

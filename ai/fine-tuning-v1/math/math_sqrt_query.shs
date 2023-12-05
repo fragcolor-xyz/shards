@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I get the square root of a number
-  """
+  prompt: """How do I get the square root of a number"""
 
   solution: """
     4.0
@@ -19,5 +17,5 @@
     The Math.Sqrt Shard is a Maths Shard that takes a floating point value or a sequence of floating point values and returns theri square root.
   """
 
-  tag: "General"
+  tag: "  #Maths"
 }

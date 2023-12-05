@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I create a conditional to do soomething when the condition is not met.
-  """
+  prompt: """How do I create a conditional to do soomething when the condition is not met."""
 
   solution: """
    variable1
@@ -22,5 +20,5 @@
     in the Action parameter.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

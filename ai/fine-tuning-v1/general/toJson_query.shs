@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I convert something to JSON format
-  """
+  prompt: """How do I convert something to JSON format"""
 
   solution: """
    table-of-values
@@ -19,5 +17,5 @@
     dictates how many spaces to use as json prettify indent.
   """
 
-  tag: "General"
+  tag: "  #General"
 }

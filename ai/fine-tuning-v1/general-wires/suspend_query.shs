@@ -1,7 +1,5 @@
 {
-  prompt: """
-    How do I pause a wire until it is specifically resumed. 
-  """
+  prompt: """How do I pause a wire until it is specifically resumed. """
 
   solution: """
    @wire(wire{
@@ -20,5 +18,5 @@
     shards are used to revive the wire. If no wire is fed into the Wire parameter, it will suspend the current wire.
   """
 
-  tag: "General"
+  tag: "  #General-Wire"
 }
