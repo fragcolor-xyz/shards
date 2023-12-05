@@ -189,19 +189,10 @@ struct NetworkPeer {
     }
   }
 
-  void maybeUpdate() {
-    auto now = SHClock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
-
-    if (ikcp_check(kcp, ms) <= ms) {
-      ikcp_update(kcp, ms);
-    }
-  }
-
   bool tryReceive(SHContext *context) {
     bool isMessageReady = false;
 
-    std::scoped_lock peerLock(recvMutex);
+    std::scoped_lock peerLock(mutex);
 
     if (networkError) {
       decltype(networkError) e;
@@ -209,7 +200,10 @@ struct NetworkPeer {
       throw std::runtime_error(fmt::format("Failed to receive: {}", e->message()));
     }
 
-    maybeUpdate();
+    auto now = SHClock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
+
+    ikcp_update(kcp, ms);
 
     // Initialize variables for buffer management.
     size_t offset = recvBuffer.size();
@@ -239,9 +233,6 @@ struct NetworkPeer {
         // We expect another chunk; update the offset.
         offset = recvBuffer.size();
         nextChunkSize = ikcp_peeksize(kcp);
-        if (nextChunkSize > 0) {
-          SHLOG_TRACE("Next large-packet chunk size: {}", nextChunkSize);
-        }
       }
     }
 
@@ -265,7 +256,7 @@ struct NetworkPeer {
     _sendWriter.finalize();
     auto size = _sendWriter.size();
 
-    std::scoped_lock lock(sendMutex); // prevent concurrent sends
+    std::scoped_lock lock(mutex); // prevent concurrent sends
 
     if (size > IKCP_MAX_PKT_SIZE) {
       // send in chunks
@@ -311,7 +302,6 @@ struct NetworkPeer {
     disconnected = false;
     networkError.reset();
     recvBuffer.clear();
-    _start = SHClock::now();
     expectedSize = 0;
   }
 
@@ -329,9 +319,7 @@ struct NetworkPeer {
   std::shared_ptr<SHWire> wire;
   std::optional<entt::connection> onStopConnection;
 
-  // this is not great but well ok for now
-  std::mutex recvMutex;
-  std::mutex sendMutex;
+  std::mutex mutex;
 
   std::vector<uint8_t> recvBuffer;
   uint32_t expectedSize = 0;
@@ -636,7 +624,7 @@ struct Server : public NetworkBase {
             }
 
             {
-              std::scoped_lock pLock(currentPeer->recvMutex);
+              std::scoped_lock pLock(currentPeer->mutex);
 
               auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
               if (err < 0) {
@@ -849,7 +837,7 @@ struct Broadcast {
       }
 
       for (auto &[end, peer] : server->_end2Peer) {
-        std::scoped_lock lock(peer->sendMutex);
+        std::scoped_lock lock(peer->mutex);
         for (auto &[chunk, chunkSize] : chunks) {
           auto err = ikcp_send(peer->kcp, chunk, chunkSize);
           if (err < 0) {
@@ -861,7 +849,7 @@ struct Broadcast {
     } else {
       // broadcast
       for (auto &[end, peer] : server->_end2Peer) {
-        std::scoped_lock lock(peer->sendMutex);
+        std::scoped_lock lock(peer->mutex);
         auto err = ikcp_send(peer->kcp, _sendWriter.data(), _sendWriter.size());
         if (err < 0) {
           SHLOG_ERROR("ikcp_send error: {}", err);
@@ -971,18 +959,17 @@ struct Client : public NetworkBase {
                                     if (ec == boost::asio::error::no_buffer_space || ec == boost::asio::error::would_block ||
                                         ec == boost::asio::error::try_again) {
                                       SHLOG_DEBUG("Ignored error while receiving: {}", ec.message());
-                                      return do_receive();
+                                      return do_receive(); // continue receiving
                                     } else if (ec == boost::asio::error::operation_aborted) {
-                                      SHLOG_ERROR("Error receiving: {}", ec.message());
-                                      // we likely have invalid data under the hood, let's just ignore it
-                                      return;
+                                      SHLOG_ERROR("Socket aborted receiving: {}", ec.message());
+                                      // _peer might be invalid at this point!
                                     } else {
                                       SHLOG_ERROR("Error receiving: {}", ec.message());
                                       _peer.networkError = ec;
                                     }
                                   } else {
                                     if (bytes_recvd > 0) {
-                                      std::scoped_lock lock(_peer.recvMutex);
+                                      std::scoped_lock lock(_peer.mutex);
 
                                       auto err = ikcp_input(_peer.kcp, (char *)recv_buffer.data(), bytes_recvd);
                                       if (err < 0) {
