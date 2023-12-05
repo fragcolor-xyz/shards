@@ -201,7 +201,7 @@ struct NetworkPeer {
   bool tryReceive(SHContext *context) {
     bool isMessageReady = false;
 
-    std::unique_lock peerLock(recvMutex);
+    std::scoped_lock peerLock(recvMutex);
 
     if (networkError) {
       decltype(networkError) e;
@@ -648,8 +648,11 @@ struct Server : public NetworkBase {
             }
 
             // keep receiving
-            if (_socket && _running)
+            if (_socket && _running) {
               return do_receive();
+            } else {
+              SHLOG_DEBUG("Socket closed, stopping receive loop");
+            }
           } else {
             if (ec == boost::asio::error::operation_aborted) {
               // we likely have invalid data under the hood, let's just ignore it
@@ -671,8 +674,11 @@ struct Server : public NetworkBase {
             }
 
             // keep receiving
-            if (_socket && _running)
+            if (_socket && _running) {
               return do_receive();
+            } else {
+              SHLOG_DEBUG("Socket closed, stopping receive loop");
+            }
           }
         });
   }
@@ -771,8 +777,8 @@ struct Server : public NetworkBase {
 
           // Run within the root flow
           auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
-          if (unlikely(runRes.state == SHRunWireOutputState::Failed) ||
-              unlikely(runRes.state == SHRunWireOutputState::Stopped || runRes.state == SHRunWireOutputState::Returned)) {
+          if (unlikely(runRes.state == SHRunWireOutputState::Failed || runRes.state == SHRunWireOutputState::Stopped ||
+                       runRes.state == SHRunWireOutputState::Returned)) {
             stop(peer->wire.get());
             // Always continue, on stop event will cleanup
             context->continueFlow();
