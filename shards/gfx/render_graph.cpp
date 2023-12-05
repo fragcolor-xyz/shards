@@ -72,7 +72,7 @@ RenderGraphBuilder::FrameBuildData *RenderGraphBuilder::assignFrame(const Render
             frame->format = arg.subResource.texture->getFormat().pixelFormat;
             frame->textureOverride = TextureOverrideRef{
                 // .stepIndex = stepIndex,
-                step = 
+                .step = step,
                 .bindingType = bindingType,
                 .bindingIndex = bindingIndex,
             };
@@ -177,7 +177,7 @@ void RenderGraphBuilder::finalizeNodeConnections() {
     nodeBuildData.sizeConstraints.clear();
 
     // Assign all input sizes (if not done already), pick the first one as reference size
-    std::optional<size_t> mainInputSizeId;
+    std::optional<SizeIndex> mainInputSizeId;
     for (auto &inputFrame : nodeBuildData.readsFrom) {
       assignInputAnySize(*inputFrame);
       if (!mainInputSizeId.has_value()) {
@@ -203,7 +203,7 @@ void RenderGraphBuilder::finalizeNodeConnections() {
     }
 
     // Check written attachments
-    std::optional<size_t> outputSizeId;
+    std::optional<SizeIndex> outputSizeId;
     // for (auto &attachment : nodeBuildData.attachments) {
     for (size_t attachmentIdx = 0; attachmentIdx < nodeBuildData.attachments.size(); attachmentIdx++) {
       auto &attachment = nodeBuildData.attachments[attachmentIdx];
@@ -333,7 +333,7 @@ void RenderGraphBuilder::prepare() {
   needPrepare = false;
 }
 
-size_t RenderGraphBuilder::assignOutputRefSize(FrameBuildData &frame, FrameBuildData &referenceFrame, float2 sizeScale) {
+SizeIndex RenderGraphBuilder::assignOutputRefSize(FrameBuildData &frame, FrameBuildData &referenceFrame, float2 sizeScale) {
   assert(referenceFrame.sizeId);
   if (!frame.sizeId) {
     auto sbd =
@@ -349,9 +349,9 @@ size_t RenderGraphBuilder::assignOutputRefSize(FrameBuildData &frame, FrameBuild
   return *frame.sizeId;
 }
 
-size_t RenderGraphBuilder::assignInputAnySize(FrameBuildData &frame) { return assignOutputFixedSize(frame); }
+SizeIndex RenderGraphBuilder::assignInputAnySize(FrameBuildData &frame) { return assignOutputDynamicSize(frame); }
 
-size_t RenderGraphBuilder::assignOutputFixedSize(FrameBuildData &frame) {
+SizeIndex RenderGraphBuilder::assignOutputDynamicSize(FrameBuildData &frame) {
   if (!frame.sizeId) {
     frame.sizeId = buildingSizeDefinitions.size();
     buildingSizeDefinitions.push_back(SizeBuildData{.originalFrame = &frame, .isDynamic = true});
@@ -392,58 +392,124 @@ RenderGraph RenderGraphBuilder::build() {
     // frame.textureOverride = usedFrame->textureOverride;
   }
 
-  // Add size constraints
-  auto &sizeConstraints = outputGraph.sizeConstraints;
-  std::unordered_map<size_t, size_t> frameToSizeGroupMap;
-  std::unordered_map<size_t, size_t> sizeRemapping;
-  for (auto &frame : usedFrames) {
-    size_t frameIndex = usedFrameLookup[frame];
-    auto it = sizeRemapping.find(frame->sizeId.value());
-    if (it == sizeRemapping.end()) {
-      auto &newSize = sizeConstraints.emplace_back();
+  size_t globalReferenceSize = ~0;
+  std::unordered_map<SizeIndex, SizeIndex> sizeRemapping;
 
-      newSize.frames.push_back(frameIndex);
-      auto &sizeDef = buildingSizeDefinitions[frame->sizeId.value()];
-      if (sizeDef.originalFrame) {
-        size_t parentFrameIndex = usedFrameLookup[sizeDef.originalFrame];
-        auto originalSize = frameToSizeGroupMap[parentFrameIndex];
-        auto &parent = newSize.parent.emplace();
-        parent.sizeScale = sizeDef.sizeScale.value();
-        parent.parentSize = originalSize;
-      }
+  // Simplifies a given size index to the lowest size index that is an alias for the same size
+  auto simplifySize = [&](SizeIndex sizeId) {
+    SizeIndex remapped = sizeId;
+    SizeIndex remappedMin = sizeId;
+    do {
+      auto it = sizeRemapping.find(sizeId);
+      if (it == sizeRemapping.end())
+        break;
+      remapped = it->second;
+      remappedMin = std::min(remapped, remappedMin);
+    } while (remapped != sizeId); // Break on recursion
+    return remappedMin;
+  };
 
-      it = sizeRemapping.emplace(frame->sizeId.value(), sizeConstraints.size() - 1).first;
-    }
-    frameToSizeGroupMap[frameIndex] = it->second;
-  }
+  // Remap sizes
+  struct Constraint {
+    SizeIndex parent;
+    std::optional<float2> scale;
 
+    Constraint(SizeIndex parent) : parent(parent) {}
+    Constraint(SizeIndex parent, float2 scale) : parent(parent), scale(scale) {}
+  };
+  std::unordered_map<SizeIndex, boost::container::small_vector<Constraint, 8>> sizeConstraints;
   for (auto &node : buildingNodes) {
-    for (auto &sc : node.sizeConstraints) {
-      auto idxA = usedFrameLookup[&buildingFrames[sc.a]];
-      auto idxB = usedFrameLookup[&buildingFrames[sc.b]];
-      auto itA = frameToSizeGroupMap.find(idxA);
-      auto itB = frameToSizeGroupMap.find(idxB);
-      if (itA != frameToSizeGroupMap.end() && itB != frameToSizeGroupMap.end()) {
-        // Merge groups
-        size_t sizeGroupId = std::min(itA->second, itB->second);
-        frameToSizeGroupMap[idxA] = sizeGroupId;
-        frameToSizeGroupMap[idxB] = sizeGroupId;
+    std::optional<size_t> refSize;
+    // Try to derive size from dynamic output
+    for (auto &attachment : node.attachments) {
+      auto &frame = *attachment.frame;
+      if (frame.sizeId) {
+        refSize = frame.sizeId;
+      }
+    }
+    // Try to derive size from inputs
+    if (!refSize) {
+      for (auto &input : node.readsFrom) {
+        refSize = *input->sizeId;
+      }
+    }
+    // Fallback to using the global reference size
+    if (!refSize)
+      refSize = globalReferenceSize;
+
+    for (auto &output : node.attachments) {
+      auto &frame = output.frame;
+      assert(frame->sizeId);
+      if (frame->sizeScale) {
+        sizeConstraints[*frame->sizeId].emplace_back(*refSize, *frame->sizeScale);
       } else {
-        if (itB != frameToSizeGroupMap.end()) {
-          std::swap(itA, itB);
-        }
-        if (itA == frameToSizeGroupMap.end()) {
-          itA = frameToSizeGroupMap.emplace(idxA, frameToSizeGroupMap.size()).first;
-        }
-        frameToSizeGroupMap[idxB] = itA->second;
+        sizeConstraints[*frame->sizeId].emplace_back(*refSize);
       }
     }
   }
 
-  for (auto &[frameIndex, sizeGroupIndex] : frameToSizeGroupMap) {
-    sizeConstraints.resize(std::max(sizeConstraints.size(), sizeGroupIndex + 1));
-    sizeConstraints[sizeGroupIndex].frames.push_back(frameIndex);
+  for (auto &[size, constraints] : sizeConstraints) {
+    SPDLOG_LOGGER_DEBUG(getLogger(), "Size {} has {} constraints: ", size, constraints.size());
+    for (auto &c : constraints) {
+      if (c.scale) {
+        SPDLOG_LOGGER_DEBUG(getLogger(), "  - parent: {} x {}", c.parent, c.scale.value());
+      } else {
+        SPDLOG_LOGGER_DEBUG(getLogger(), "  - parent: {}", c.parent);
+      }
+    }
   }
+
+  // Add size constraints
+  // auto &sizeConstraints = outputGraph.sizeConstraints;
+  // std::unordered_map<size_t, size_t> frameToSizeGroupMap;
+  // for (auto &frame : usedFrames) {
+  //   size_t frameIndex = usedFrameLookup[frame];
+  //   auto it = sizeRemapping.find(frame->sizeId.value());
+  //   if (it == sizeRemapping.end()) {
+  //     auto &newSize = sizeConstraints.emplace_back();
+
+  //     newSize.frames.push_back(frameIndex);
+  //     auto &sizeDef = buildingSizeDefinitions[frame->sizeId.value()];
+  //     if (sizeDef.originalFrame) {
+  //       size_t parentFrameIndex = usedFrameLookup[sizeDef.originalFrame];
+  //       auto originalSize = frameToSizeGroupMap[parentFrameIndex];
+  //       auto &parent = newSize.parent.emplace();
+  //       parent.sizeScale = sizeDef.sizeScale.value();
+  //       parent.parentSize = originalSize;
+  //     }
+
+  //     it = sizeRemapping.emplace(frame->sizeId.value(), sizeConstraints.size() - 1).first;
+  //   }
+  //   frameToSizeGroupMap[frameIndex] = it->second;
+  // }
+
+  // for (auto &node : buildingNodes) {
+  //   for (auto &sc : node.sizeConstraints) {
+  //     auto idxA = usedFrameLookup[&buildingFrames[sc.a]];
+  //     auto idxB = usedFrameLookup[&buildingFrames[sc.b]];
+  //     auto itA = frameToSizeGroupMap.find(idxA);
+  //     auto itB = frameToSizeGroupMap.find(idxB);
+  //     if (itA != frameToSizeGroupMap.end() && itB != frameToSizeGroupMap.end()) {
+  //       // Merge groups
+  //       size_t sizeGroupId = std::min(itA->second, itB->second);
+  //       frameToSizeGroupMap[idxA] = sizeGroupId;
+  //       frameToSizeGroupMap[idxB] = sizeGroupId;
+  //     } else {
+  //       if (itB != frameToSizeGroupMap.end()) {
+  //         std::swap(itA, itB);
+  //       }
+  //       if (itA == frameToSizeGroupMap.end()) {
+  //         itA = frameToSizeGroupMap.emplace(idxA, frameToSizeGroupMap.size()).first;
+  //       }
+  //       frameToSizeGroupMap[idxB] = itA->second;
+  //     }
+  //   }
+  // }
+
+  // for (auto &[frameIndex, sizeGroupIndex] : frameToSizeGroupMap) {
+  //   sizeConstraints.resize(std::max(sizeConstraints.size(), sizeGroupIndex + 1));
+  //   sizeConstraints[sizeGroupIndex].frames.push_back(frameIndex);
+  // }
 
   // Check for any frame that doesn't have a size constraint
 
@@ -579,12 +645,12 @@ void RenderGraphBuilder::allocateOutputs(NodeBuildData &nodeBuildData, const Ren
     //   throw std::logic_error("Invalid output size");
 
     FrameBuildData *outputFrame =
-        assignFrame(attachment, nodeBuildData.stepIndex, TextureOverrideRef::Binding::Output, outputIndex);
+        assignFrame(attachment, nodeBuildData.step, TextureOverrideRef::Binding::Output, outputIndex);
 
     // Assign this frame a fixed size if it doesn't have a relative scale
     // Relative scale is assigned later during node connection validation
     if (!output.sizeScale) {
-      assignOutputFixedSize(*outputFrame);
+      assignOutputDynamicSize(*outputFrame);
     } else {
       outputFrame->sizeScale = output.sizeScale;
     }

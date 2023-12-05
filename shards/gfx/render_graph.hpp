@@ -139,6 +139,7 @@ struct RenderGraphEncodeContext {
 };
 
 typedef size_t FrameIndex;
+typedef size_t SizeIndex;
 
 struct RenderGraphNode {
   struct Attachment {
@@ -203,7 +204,7 @@ struct RenderGraph {
   };
 
   struct SizeParent {
-    size_t parentSize;
+    SizeIndex parentSize;
     float2 sizeScale;
   };
 
@@ -251,7 +252,7 @@ struct RenderGraphBuilder {
     std::string name;
     // int2 size;
     // int2 inputSize;
-    std::optional<size_t> sizeId;
+    std::optional<SizeIndex> sizeId;
     WGPUTextureFormat format;
     // TextureSubResource textureOverride;
     std::optional<TextureOverrideRef> textureOverride;
@@ -362,9 +363,9 @@ private:
   void prepare();
 
   // Assign input to be allowed any size
-  size_t assignOutputRefSize(FrameBuildData &frame, FrameBuildData &referenceFrame, float2 scale);
-  size_t assignInputAnySize(FrameBuildData &frame);
-  size_t assignOutputFixedSize(FrameBuildData &frame);
+  SizeIndex assignOutputRefSize(FrameBuildData &frame, FrameBuildData &referenceFrame, float2 scale);
+  SizeIndex assignInputAnySize(FrameBuildData &frame);
+  SizeIndex assignOutputDynamicSize(FrameBuildData &frame);
 
   void attachInputs();
   void attachOutputs();
