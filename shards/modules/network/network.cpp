@@ -25,7 +25,7 @@
 #include <ikcp.h>
 #pragma clang attribute pop
 
-#define IKCP_MAX_PKT_SIZE 0xC350 // 50000
+#define IKCP_MAX_PKT_SIZE 10000
 
 namespace shards {
 namespace Network {
