@@ -4,6 +4,7 @@
 #include "input/events.hpp"
 #include "state.hpp"
 #include "events.hpp"
+#include "log.hpp"
 #include <SDL_events.h>
 #include <SDL_keycode.h>
 #include <SDL_mouse.h>
@@ -172,6 +173,11 @@ private:
           .pressure = ievent.pressure,
           .pressed = true,
       });
+    } else if (event.type == SDL_DROPFILE) {
+      virtualInputEvents.push_back(DropFileEvent{.path = event.drop.file});
+      SPDLOG_LOGGER_DEBUG(getLogger(), "Window dropped file: {}", event.drop.file);
+      if (event.drop.file)
+        SDL_free(event.drop.file);
     }
   }
 
@@ -207,11 +213,11 @@ private:
               });
             }
           } else if constexpr (std::is_same_v<T, PointerTouchMoveEvent>) {
-              if (!consumed) {
-                  if(auto ptr = newState.pointers.get(arg.index)) {
-                      ptr->get().position = arg.pos;
-                  }
+            if (!consumed) {
+              if (auto ptr = newState.pointers.get(arg.index)) {
+                ptr->get().position = arg.pos;
               }
+            }
           } else if constexpr (std::is_same_v<T, PointerTouchEvent>) {
             if (!consumed && hasFocus && arg.pressed && !newState.pointers.get(arg.index)) {
               auto &pointer = newState.pointers.getOrInsert(arg.index);

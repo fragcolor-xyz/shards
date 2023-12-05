@@ -69,7 +69,10 @@ inline std::string debugFormat(const Event &event) {
           return fmt::format("TextCompositionEvent {{ text: {} }}", arg.text);
         } else if constexpr (std::is_same_v<T, TextCompositionEndEvent>) {
           return fmt::format("TextCompositionEndEvent {{ text: {} }}", arg.text);
-        } else {
+        }  else if constexpr (std::is_same_v<T, DropFileEvent>) { 
+          return fmt::format("DropFileEvent {{ {} }}", arg.path);
+        }
+        else {
           return fmt::format("UnknownEvent {{}}");
         }
       },

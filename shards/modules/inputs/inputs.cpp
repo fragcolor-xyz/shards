@@ -555,7 +555,7 @@ struct HandleURL : public Base {
 
     auto dataCopy = data;
     dataCopy.inputType = CoreInfo::StringType;
-    _action.compose(data);
+    _action.compose(dataCopy);
     return data.inputType;
   }
 
@@ -563,20 +563,15 @@ struct HandleURL : public Base {
   static SHTypeInfo outputType() { return CoreInfo::AnyType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    // TODO: Input
-    // for (auto &ev : _windowContext->events) {
-    //   if (ev.type == SDL_DROPFILE || ev.type == SDL_DROPTEXT) {
-    //     _url.clear();
-    //     auto url = ev.drop.file;
-    //     _url.append(url);
-    //     SDL_free(url);
-
-    //     SHVar output{};
-    //     _action.activate(context, Var(_url), output);
-
-    //     break;
-    //   }
-    // }
+    for (auto &evt : _inputContext->getEvents()) {
+      if (const DropFileEvent *de = std::get_if<DropFileEvent>(&evt.event)) {
+        SHVar dummy{};
+        SHWireState res = _action.activate(context, Var(de->path.c_str()), dummy);
+        if (res == SHWireState::Error) {
+          throw ActivationError("Inner activation failed");
+        }
+      }
+    }
 
     return input;
   }

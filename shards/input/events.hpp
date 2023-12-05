@@ -111,13 +111,20 @@ struct RequestCloseEvent {
   std::partial_ordering operator<=>(const RequestCloseEvent &other) const = default;
 };
 
+// Posted when a file is dropped on the window
+struct DropFileEvent {
+  boost::container::string path;
+
+  std::partial_ordering operator<=>(const DropFileEvent &other) const = default;
+};
+
 using Event = std::variant<
     // Pointer events
     PointerTouchMoveEvent, PointerTouchEvent, PointerMoveEvent, PointerButtonEvent, ScrollEvent,
     // Text events
     KeyEvent, TextEvent, TextCompositionEvent, TextCompositionEndEvent,
     // Other events
-    SupendEvent, ResumeEvent, InputRegionEvent, RequestCloseEvent>;
+    SupendEvent, ResumeEvent, InputRegionEvent, RequestCloseEvent, DropFileEvent>;
 
 inline std::partial_ordering operator<=>(const Event &a, const Event &b) {
   auto ci = a.index() <=> b.index();
@@ -149,7 +156,8 @@ template <typename T, typename... Ts> constexpr size_t get_variant_index(std::va
 }
 
 inline bool isPointerEvent(const Event &event) {
-  return event.index() >= get_variant_index<PointerTouchMoveEvent>(event) && event.index() <= get_variant_index<ScrollEvent>(event);
+  return event.index() >= get_variant_index<PointerTouchMoveEvent>(event) &&
+         event.index() <= get_variant_index<ScrollEvent>(event);
   // return std::get_if<PointerMoveEvent>(&event) || std::get_if<PointerButtonEvent>(&event) || std::get_if<ScrollEvent>(&event)
   // || std::get_if<PointerTouchEvent>(&event) || std::get_if<PointerTouchMoveEvent>(&event);
 }
