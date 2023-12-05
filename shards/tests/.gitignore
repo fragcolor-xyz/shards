@@ -1,0 +1,7 @@
+tag_ignore/
+tag_ok/
+tag_err/
+*.png
+*.wav
+*.db
+*.txt

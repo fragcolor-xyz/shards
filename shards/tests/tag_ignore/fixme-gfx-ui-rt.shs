@@ -1,0 +1,119 @@
+[debug] [2023-12-04 16:44:51.656] [T-6860] [runtime.cpp::2884] Adding dll path: A:\Projects\shards2\build\clang-x86_64-pc-windows-msvc\Debug\shards.exe\shards
+[debug] [2023-12-04 16:44:51.657] [T-6860] [runtime.cpp::2890] Adding dll path: A:\Projects\shards2\shards
+[debug] [2023-12-04 16:44:51.657] [T-6860] [runtime.cpp::2895] Hardware concurrency: 12
+[debug] [2023-12-04 16:44:51.657] [T-6860] [runtime.cpp::204] Registering shards
+[info] [2023-12-04 16:44:51.659] [T-6860] [runtime.cpp::3211] Evaluating file: shards/tests/fixme-gfx-ui-rt.shs
+[trace] [2023-12-04 16:44:51.743] [T-6860] [runtime.cpp::3216] Adding deferred wire inner-0
+[trace] [2023-12-04 16:44:51.743] [T-6860] [foundation.hpp::435] Creating wire: inner-0
+[trace] [2023-12-04 16:44:51.744] [T-6860] [runtime.cpp::3216] Adding deferred wire inner-1
+[trace] [2023-12-04 16:44:51.744] [T-6860] [foundation.hpp::435] Creating wire: inner-1
+[trace] [2023-12-04 16:44:51.744] [T-6860] [runtime.cpp::3216] Adding deferred wire test-wire
+[trace] [2023-12-04 16:44:51.744] [T-6860] [foundation.hpp::435] Creating wire: test-wire
+[trace] [2023-12-04 16:44:51.744] [T-6860] [foundation.hpp::389] test-wire wire addRef - use_count: 2
+[trace] [2023-12-04 16:44:51.744] [T-6860] [foundation.hpp::389] inner-0 wire addRef - use_count: 2
+[trace] [2023-12-04 16:44:51.744] [T-6860] [foundation.hpp::389] inner-1 wire addRef - use_count: 2
+[trace] [2023-12-04 16:44:51.744] [T-6860] [runtime.cpp::3216] Finalizing wire test-wire
+[trace] [2023-12-04 16:44:51.745] [T-6860] [foundation.hpp::376] test-wire wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:44:51.745] [T-6860] [runtime.cpp::3216] Finalizing wire inner-0
+[trace] [2023-12-04 16:44:51.745] [T-6860] [foundation.hpp::435] Creating wire: eval-ephemeral
+[trace] [2023-12-04 16:44:51.745] [T-6860] [runtime.cpp::3308] createMesh 0x2bf03ac78d0
+[trace] [2023-12-04 16:44:51.745] [T-6860] [runtime.hpp::514] Pre-composing wire eval-ephemeral
+[trace] [2023-12-04 16:44:51.745] [T-6860] [runtime.hpp::549] Wire eval-ephemeral Pre-composing
+[trace] [2023-12-04 16:44:51.745] [T-6860] [runtime.hpp::564] Scheduling wire eval-ephemeral
+[trace] [2023-12-04 16:44:51.745] [T-6860] [runtime.hpp::604] Wire eval-ephemeral skipped compose
+[debug] [2023-12-04 16:44:51.746] [T-6860] [runtime.cpp::1779] Wire eval-ephemeral rolling
+[trace] [2023-12-04 16:44:51.746] [T-6860] [runtime.cpp::2758] Running warmup on wire: eval-ephemeral
+[trace] [2023-12-04 16:44:51.746] [T-6860] [runtime.cpp::2797] Ran warmup on wire: eval-ephemeral
+[trace] [2023-12-04 16:44:51.746] [T-6860] [runtime.hpp::624] Wire eval-ephemeral scheduled
+[debug] [2023-12-04 16:44:51.746] [T-6860] [runtime.cpp::1824] Wire eval-ephemeral starting
+[trace] [2023-12-04 16:44:51.746] [T-6860] [runtime.cpp::2805] Running cleanup on wire: eval-ephemeral users count: 0
+[trace] [2023-12-04 16:44:51.746] [T-6860] [runtime.cpp::2849] Ran cleanup on wire: eval-ephemeral
+[debug] [2023-12-04 16:44:51.746] [T-6860] [runtime.cpp::1915] Wire eval-ephemeral ended
+[trace] [2023-12-04 16:44:51.746] [T-6860] [runtime.hpp::396] stopping wire: eval-ephemeral, has-coro: true, state: Ended
+[trace] [2023-12-04 16:44:51.746] [T-6860] [runtime.cpp::3320] destroyMesh 0x2bf03ac78d0
+[trace] [2023-12-04 16:44:51.746] [T-6860] [foundation.hpp::376] eval-ephemeral wire deleteRef - use_count: 1
+[trace] [2023-12-04 16:44:51.746] [T-6860] [foundation.hpp::338] Destroying wire eval-ephemeral
+[trace] [2023-12-04 16:44:51.746] [T-6860] [foundation.hpp::376] inner-0 wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:44:51.746] [T-6860] [runtime.cpp::3216] Finalizing wire inner-1
+[trace] [2023-12-04 16:44:51.747] [T-6860] [foundation.hpp::435] Creating wire: eval-ephemeral
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.cpp::3308] createMesh 0x2bf03ae1590
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.hpp::514] Pre-composing wire eval-ephemeral
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.hpp::549] Wire eval-ephemeral Pre-composing
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.hpp::564] Scheduling wire eval-ephemeral
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.hpp::604] Wire eval-ephemeral skipped compose
+[debug] [2023-12-04 16:44:51.747] [T-6860] [runtime.cpp::1779] Wire eval-ephemeral rolling
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.cpp::2758] Running warmup on wire: eval-ephemeral
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.cpp::2797] Ran warmup on wire: eval-ephemeral
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.hpp::624] Wire eval-ephemeral scheduled
+[debug] [2023-12-04 16:44:51.747] [T-6860] [runtime.cpp::1824] Wire eval-ephemeral starting
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.cpp::2805] Running cleanup on wire: eval-ephemeral users count: 0
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.cpp::2849] Ran cleanup on wire: eval-ephemeral
+[debug] [2023-12-04 16:44:51.747] [T-6860] [runtime.cpp::1915] Wire eval-ephemeral ended
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.hpp::396] stopping wire: eval-ephemeral, has-coro: true, state: Ended
+[trace] [2023-12-04 16:44:51.747] [T-6860] [runtime.cpp::3320] destroyMesh 0x2bf03ae1590
+[trace] [2023-12-04 16:44:51.747] [T-6860] [foundation.hpp::376] eval-ephemeral wire deleteRef - use_count: 1
+[trace] [2023-12-04 16:44:51.747] [T-6860] [foundation.hpp::338] Destroying wire eval-ephemeral
+[trace] [2023-12-04 16:44:51.748] [T-6860] [foundation.hpp::376] inner-1 wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:44:51.748] [T-6860] [runtime.hpp::514] Pre-composing wire test-wire
+[trace] [2023-12-04 16:44:51.748] [T-6860] [foundation.hpp::435] Creating wire: detached Main
+[trace] [2023-12-04 16:44:51.749] [T-6860] [runtime.hpp::549] Wire test-wire Pre-composing
+[trace] [2023-12-04 16:44:51.749] [T-6860] [runtime.hpp::564] Scheduling wire test-wire
+[trace] [2023-12-04 16:44:51.749] [T-6860] [runtime.hpp::604] Wire test-wire skipped compose
+[debug] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::1779] Wire test-wire rolling
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::2758] Running warmup on wire: test-wire
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::545] Creating a variable, wire: test-wire name: ui-draw-queue
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::545] Creating a variable, wire: test-wire name: render-steps
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::545] Creating a variable, wire: test-wire name: GFX.Window
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::545] Creating a variable, wire: test-wire name: window-ctx
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::545] Creating a variable, wire: test-wire name: GFX.Context
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::545] Creating a variable, wire: test-wire name: GFX.RendererContext
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::545] Creating a variable, wire: test-wire name: rt-0
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::545] Creating a variable, wire: test-wire name: rt-1
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::2797] Ran warmup on wire: test-wire
+[trace] [2023-12-04 16:44:51.750] [T-6860] [runtime.hpp::624] Wire test-wire scheduled
+[debug] [2023-12-04 16:44:51.750] [T-6860] [runtime.cpp::1824] Wire test-wire starting
+[debug] [2023-12-04 16:44:51.750] [T-6860] [window.cpp::174] Creating window
+[trace] [2023-12-04 16:44:51.986] [T-6860] [runtime.hpp::564] Scheduling wire detached Main
+[trace] [2023-12-04 16:44:51.986] [T-6860] [runtime.hpp::604] Wire detached Main skipped compose
+[debug] [2023-12-04 16:44:51.986] [T-6860] [runtime.cpp::1779] Wire detached Main rolling
+[trace] [2023-12-04 16:44:51.986] [T-6860] [runtime.cpp::2758] Running warmup on wire: detached Main
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: UI.Contexts
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: UI.Parents
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: rt-region
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: minzohzJR1Yri1XITrO
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: min-xzohzJR1Yri1XITrO
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: min-yzohzJR1Yri1XITrO
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: sizezohzJR1Yri1XITrO
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: size-xzohzJR1Yri1XITrO
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: tbEj4dabkqQ9pvkl4
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: size-yzohzJR1Yri1XITrO
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: max-xzohzJR1Yri1XITrO
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: max-yzohzJR1Yri1XITrO
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: text
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: mini9GRjV1N03bjPE6l
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: min-xi9GRjV1N03bjPE6l
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: min-yi9GRjV1N03bjPE6l
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: sizei9GRjV1N03bjPE6l
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: size-xi9GRjV1N03bjPE6l
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: tYDLauE2DANEWa_f8
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: size-yi9GRjV1N03bjPE6l
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: max-xi9GRjV1N03bjPE6l
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::545] Creating a variable, wire: detached Main name: max-yi9GRjV1N03bjPE6l
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::534] Referencing a parent node variable, wire: detached Main name: Shards.InputContext
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::534] Referencing a parent node variable, wire: detached Main name: Shards.InputContext
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.cpp::2797] Ran warmup on wire: detached Main
+[trace] [2023-12-04 16:44:51.987] [T-6860] [runtime.hpp::624] Wire detached Main scheduled
+[debug] [2023-12-04 16:44:51.991] [T-6860] [runtime.cpp::1824] Wire detached Main starting
+[error] [2023-12-04 16:45:18.165] [T-6860] [runtime.cpp::699] Shard activation error, failed shard: GFX.MainWindow, error: MainWindow Quit Requested, line: 119, column: 3
+[debug] [2023-12-04 16:45:18.165] [T-6860] [runtime.cpp::1842] Wire test-wire failed
+[debug] [2023-12-04 16:45:18.165] [T-6860] [runtime.cpp::1885] Wire test-wire failed with error MainWindow Quit Requested
+[trace] [2023-12-04 16:45:18.165] [T-6860] [runtime.cpp::2805] Running cleanup on wire: test-wire users count: 0
+[trace] [2023-12-04 16:45:18.165] [T-6860] [runtime.cpp::567] Destroying a variable (0 ref count), type: Object
+[trace] [2023-12-04 16:45:18.165] [T-6860] [runtime.cpp::567] Destroying a variable (0 ref count), type: Object
+[trace] [2023-12-04 16:45:18.165] [T-6860] [runtime.cpp::567] Destroying a variable (0 ref count), type: Object
+[trace] [2023-12-04 16:45:18.165] [T-6860] [runtime.cpp::567] Destroying a variable (0 ref count), type: Object
+[trace] [2023-12-04 16:45:18.168] [T-6860] [runtime.cpp::567] Destroying a variable (0 ref count), type: Object
+[debug] [2023-12-04 16:45:18.168] [T-6860] [window.cpp::222] Destroying window
+[trace] [2023-12-04 16:45:18.178] [T-6860] [runtime.hpp::396] stopping wire: test-wire, has-coro: true, state: Failed
+[warning] [2023-12-04 16:45:18.179] [T-6860] [runtime.cpp::2820] Shard cleanup boost forced unwind, failed shard: GFX.MainWindow
+Assertion failed: scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!", file A:\Projects\shards2\shards\gfx\..\core/./runtime.hpp, line 671

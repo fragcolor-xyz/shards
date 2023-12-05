@@ -1,0 +1,40 @@
+[debug] [2023-12-04 16:59:19.004] [T-26220] [runtime.cpp::2884] Adding dll path: A:\Projects\shards2\build\clang-x86_64-pc-windows-msvc\Debug\shards.exe\shards
+[debug] [2023-12-04 16:59:19.004] [T-26220] [runtime.cpp::2890] Adding dll path: A:\Projects\shards2\shards
+[debug] [2023-12-04 16:59:19.004] [T-26220] [runtime.cpp::2895] Hardware concurrency: 12
+[debug] [2023-12-04 16:59:19.004] [T-26220] [runtime.cpp::204] Registering shards
+[info] [2023-12-04 16:59:19.006] [T-26220] [runtime.cpp::3211] Evaluating file: shards/tests/http.shs
+[trace] [2023-12-04 16:59:19.014] [T-26220] [runtime.cpp::3216] Adding deferred wire test
+[trace] [2023-12-04 16:59:19.014] [T-26220] [foundation.hpp::435] Creating wire: test
+[trace] [2023-12-04 16:59:19.014] [T-26220] [foundation.hpp::389] test wire addRef - use_count: 2
+[trace] [2023-12-04 16:59:19.014] [T-26220] [runtime.cpp::3216] Finalizing wire test
+[trace] [2023-12-04 16:59:19.014] [T-26220] [foundation.hpp::376] test wire deleteRef - use_count: 2
+[trace] [2023-12-04 16:59:19.014] [T-26220] [runtime.hpp::514] Pre-composing wire test
+[trace] [2023-12-04 16:59:19.015] [T-26220] [runtime.hpp::549] Wire test Pre-composing
+[trace] [2023-12-04 16:59:19.015] [T-26220] [runtime.hpp::564] Scheduling wire test
+[trace] [2023-12-04 16:59:19.015] [T-26220] [runtime.hpp::604] Wire test skipped compose
+[debug] [2023-12-04 16:59:19.015] [T-26220] [runtime.cpp::1779] Wire test rolling
+[trace] [2023-12-04 16:59:19.015] [T-26220] [runtime.cpp::2758] Running warmup on wire: test
+[trace] [2023-12-04 16:59:19.015] [T-26220] [runtime.cpp::545] Creating a variable, wire: test name: params
+[trace] [2023-12-04 16:59:19.016] [T-26220] [runtime.cpp::545] Creating a variable, wire: test name: json
+[trace] [2023-12-04 16:59:19.016] [T-26220] [runtime.cpp::2797] Ran warmup on wire: test
+[trace] [2023-12-04 16:59:19.016] [T-26220] [runtime.hpp::624] Wire test scheduled
+[debug] [2023-12-04 16:59:19.016] [T-26220] [runtime.cpp::1824] Wire test starting
+[info] [2023-12-04 16:59:19.016] [T-26220] [logging.cpp::71] [test] Hello%20world%2C%20this%20is%20an%20escaping%20test%20%2F%2F%2F%2F
+[info] [2023-12-04 16:59:19.016] [T-26220] [logging.cpp::71] [test] Hello world, this is an escaping test ////
+[info] [2023-12-04 16:59:19.130] [T-26220] [logging.cpp::71] [test] Fragcolor and contributors
+[info] [2023-12-04 16:59:20.141] [T-9064] [runtime.cpp::3211] Failure details: error sending request for url (https://httpstat.us/200?sleep=5000): operation timed out
+[debug] [2023-12-04 16:59:20.141] [T-9064] [runtime.cpp::3216] activate_blocking failure detected
+[debug] [2023-12-04 16:59:20.141] [T-9064] [runtime.cpp::3216] activate_blocking failure: Failed to send the request
+[error] [2023-12-04 16:59:20.219] [T-26220] [runtime.cpp::699] Shard activation error, failed shard: Http.Get, error: Failed to send the request, line: 27, column: 5
+[warning] [2023-12-04 16:59:20.219] [T-26220] [flow.hpp::443] Maybe shard Ignored an error: Failed to send the request
+[trace] [2023-12-04 16:59:23.116] [T-26220] [runtime.hpp::396] stopping wire: test, has-coro: true, state: Iterating
+[debug] [2023-12-04 16:59:25.659] [T-26220] [runtime.cpp::1848] Wire test stopped
+[trace] [2023-12-04 16:59:25.659] [T-26220] [runtime.cpp::2805] Running cleanup on wire: test users count: 0
+[trace] [2023-12-04 16:59:25.660] [T-26220] [runtime.cpp::567] Destroying a variable (0 ref count), type: None
+[trace] [2023-12-04 16:59:25.660] [T-26220] [runtime.cpp::567] Destroying a variable (0 ref count), type: Table
+[trace] [2023-12-04 16:59:25.660] [T-26220] [runtime.cpp::2849] Ran cleanup on wire: test
+[debug] [2023-12-04 16:59:25.661] [T-26220] [runtime.cpp::1915] Wire test ended
+[trace] [2023-12-04 16:59:25.661] [T-26220] [foundation.hpp::376] test wire deleteRef - use_count: 1
+[trace] [2023-12-04 16:59:25.661] [T-26220] [foundation.hpp::338] Destroying wire test
+[info] [2023-12-04 16:59:25.661] [T-26220] [runtime.cpp::3211] Error: ShardsError { message: "Operation cancelled", loc: LineInfo { line: 0, column: 0 } }
+[error] [2023-12-04 16:59:25.661] [T-26220] [runtime.cpp::3216] Error: Failed to evaluate file

@@ -158,10 +158,11 @@ struct RenderIntoShard {
   PARAM(OwnedVar, _textures, "Textures", "The textures to render into to create.", {AttachmentTable});
   PARAM(ShardsVar, _contents, "Contents", "The shards that will render into the given textures.", {CoreInfo::Shards});
   PARAM_PARAMVAR(_referenceSize, "Size", "The reference size. This will control the size of the render targets.",
-                 {CoreInfo::Int2Type, CoreInfo::Int2VarType});
+                 {CoreInfo::NoneType, CoreInfo::Int2Type, CoreInfo::Int2VarType});
   PARAM_VAR(_matchOutputSize, "MatchOutputSize",
-            "When true, the texture rendered into is automatically resized to match the output size.", {CoreInfo::BoolType});
-  PARAM_PARAMVAR(_viewport, "Viewport", "The viewport.", {CoreInfo::Int4Type, CoreInfo::Int4VarType});
+            "When true, the texture rendered into is automatically resized to match the output size.",
+            {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_PARAMVAR(_viewport, "Viewport", "The viewport.", {CoreInfo::NoneType, CoreInfo::Int4Type, CoreInfo::Int4VarType});
   PARAM_PARAMVAR(_windowRegion, "WindowRegion", "Sets the window region for input handling.",
                  {CoreInfo::NoneType, CoreInfo::Float4Type, CoreInfo::Float4VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_textures), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_referenceSize),
@@ -400,7 +401,7 @@ struct ViewRangeShard {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return CoreInfo::Float4x4Type;
+    return outputTypes().elements[0];
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }

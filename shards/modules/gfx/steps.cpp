@@ -220,7 +220,7 @@ struct DrawablePassShard {
     return outputTypes().elements[0];
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_step) {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;
@@ -281,12 +281,12 @@ struct EffectPassShard {
 
   PARAM_EXT(ParamVar, _outputs, Types::OutputsParameterInfo);
   PARAM_EXT(ParamVar, _outputScale, Types::OutputScaleParameterInfo);
-  PARAM_PARAMVAR(_inputs, "Inputs", "", {CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
-  PARAM_PARAMVAR(_entryPoint, "EntryPoint", "", {CoreInfo::ShardRefSeqType, CoreInfo::ShardRefVarSeqType});
+  PARAM_PARAMVAR(_inputs, "Inputs", "", {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
+  PARAM_PARAMVAR(_entryPoint, "EntryPoint", "", {CoreInfo::NoneType, CoreInfo::ShardRefSeqType, CoreInfo::ShardRefVarSeqType});
   PARAM_EXT(ParamVar, _params, Types::ParamsParameterInfo);
   PARAM_EXT(ParamVar, _features, Types::FeaturesParameterInfo);
   PARAM_PARAMVAR(_composeWith, "ComposeWith", "Any table of values that need to be injected into this feature's shaders",
-                 {CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
+                 {CoreInfo::NoneType, CoreInfo::AnyTableType, CoreInfo::AnyVarTableType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_inputs), PARAM_IMPL_FOR(_entryPoint),
              PARAM_IMPL_FOR(_params), PARAM_IMPL_FOR(_features), PARAM_IMPL_FOR(_composeWith));
@@ -302,7 +302,7 @@ struct EffectPassShard {
     return outputTypes().elements[0];
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     if (_step) {
       Types::PipelineStepObjectVar.Release(_step);
       _step = nullptr;

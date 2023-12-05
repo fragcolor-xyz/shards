@@ -406,7 +406,7 @@ struct Project {
   PARAM_PARAMVAR(_screenSize, "ScreenSize", "The combined view-projection matrix to use",
                  {CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
   PARAM_PARAMVAR(_flipY, "FlipY", "Flip Y coordinate (on by default)",
-                 {CoreInfo::BoolType, Type::VariableOf(CoreInfo::BoolVarType)});
+                 {CoreInfo::NoneType, CoreInfo::BoolType, Type::VariableOf(CoreInfo::BoolVarType)});
   PARAM_IMPL(PARAM_IMPL_FOR(_mtx), PARAM_IMPL_FOR(_screenSize), PARAM_IMPL_FOR(_flipY));
 
   PARAM_REQUIRED_VARIABLES();
@@ -450,7 +450,7 @@ struct Unproject {
   PARAM_PARAMVAR(_depthRange, "DepthRange", "The combined view-projection matrix to use",
                  {CoreInfo::NoneType, CoreInfo::Float2Type, Type::VariableOf(CoreInfo::Float2Type)});
   PARAM_PARAMVAR(_flipY, "FlipY", "Flip Y coordinate (on by default)",
-                 {CoreInfo::BoolType, Type::VariableOf(CoreInfo::BoolVarType)});
+                 {CoreInfo::NoneType, CoreInfo::BoolType, Type::VariableOf(CoreInfo::BoolVarType)});
   PARAM_IMPL(PARAM_IMPL_FOR(_mtx), PARAM_IMPL_FOR(_screenSize), PARAM_IMPL_FOR(_depthRange), PARAM_IMPL_FOR(_flipY));
 
   PARAM_REQUIRED_VARIABLES();
