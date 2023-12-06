@@ -190,8 +190,6 @@ struct NetworkPeer {
   }
 
   bool tryReceive(SHContext *context) {
-    bool isMessageReady = false;
-
     std::scoped_lock peerLock(mutex);
 
     if (networkError) {
@@ -202,18 +200,19 @@ struct NetworkPeer {
 
     auto now = SHClock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
-
     ikcp_update(kcp, ms);
 
     // Initialize variables for buffer management.
     size_t offset = recvBuffer.size();
     auto nextChunkSize = ikcp_peeksize(kcp);
-    SHLOG_TRACE("nextChunkSize: {}, endpoint: {} port: {}", nextChunkSize, endpoint->address().to_string(), endpoint->port());
+    if (nextChunkSize != -1)
+      SHLOG_TRACE("nextChunkSize: {}, endpoint: {} port: {}, offset: {}", nextChunkSize, endpoint->address().to_string(),
+                  endpoint->port(), offset);
 
     // Loop to receive all available chunks.
     while (nextChunkSize > 0) {
       // Resize the buffer to hold the incoming chunk.
-      recvBuffer.resize(nextChunkSize + offset);
+      recvBuffer.resize(offset + nextChunkSize);
 
       // Receive the chunk.
       auto receivedSize = ikcp_recv(kcp, (char *)recvBuffer.data() + offset, nextChunkSize);
@@ -228,17 +227,17 @@ struct NetworkPeer {
 
       // Check if the current buffer matches the expected size.
       if (recvBuffer.size() == expectedSize) {
-        isMessageReady = true;
-        break;
+        return true;
       } else {
         // We expect another chunk; update the offset.
         offset = recvBuffer.size();
         nextChunkSize = ikcp_peeksize(kcp);
-        SHLOG_TRACE("nextChunkSize (2): {}, endpoint: {} port: {}", nextChunkSize, endpoint->address().to_string(), endpoint->port());
+        SHLOG_TRACE("nextChunkSize (2): {}, endpoint: {} port: {}, offset: {}, expected: {}", nextChunkSize,
+                    endpoint->address().to_string(), endpoint->port(), offset, expectedSize);
       }
     }
 
-    return isMessageReady;
+    return false;
   }
 
   void endReceive() {
