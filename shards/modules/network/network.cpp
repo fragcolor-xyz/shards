@@ -741,35 +741,41 @@ struct Server : public NetworkBase {
           if (!context->shouldContinue())
             return input;
 
-          auto &peer_ = peer; // avoid c++20 ext warning
-          if (peer_->recvBuffer.size() > IKCP_MAX_PKT_SIZE) {
-            // do this async as it's a big buffer
-            await(
-                context,
-                [peer_]() {
-                  // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
-                  Reader r((char *)peer_->recvBuffer.data() + 4, peer_->recvBuffer.size() - 4);
-                  peer_->des.reset();
-                  peer_->des.deserialize(r, peer_->payload);
-                },
-                [] {});
-          } else {
-            // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
-            Reader r((char *)peer_->recvBuffer.data() + 4, peer_->recvBuffer.size() - 4);
-            peer_->des.reset();
-            peer_->des.deserialize(r, peer_->payload);
-          }
+          try {
+            auto &peer_ = peer; // avoid c++20 ext warning
+            if (peer_->recvBuffer.size() > IKCP_MAX_PKT_SIZE) {
+              // do this async as it's a big buffer
+              await(
+                  context,
+                  [peer_]() {
+                    // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
+                    Reader r((char *)peer_->recvBuffer.data() + 4, peer_->recvBuffer.size() - 4);
+                    peer_->des.reset();
+                    peer_->des.deserialize(r, peer_->payload);
+                  },
+                  [] {});
+            } else {
+              // deserialize from buffer on top of the vector of payloads, wires might consume them out of band
+              Reader r((char *)peer_->recvBuffer.data() + 4, peer_->recvBuffer.size() - 4);
+              peer_->des.reset();
+              peer_->des.deserialize(r, peer_->payload);
+            }
 
-          // at this point we can already cleanup the buffer
-          peer->endReceive();
+            // at this point we can already cleanup the buffer
+            peer->endReceive();
 
-          // Run within the root flow
-          auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
-          if (unlikely(runRes.state == SHRunWireOutputState::Failed || runRes.state == SHRunWireOutputState::Stopped ||
-                       runRes.state == SHRunWireOutputState::Returned)) {
-            stop(peer->wire.get());
-            // Always continue, on stop event will cleanup
-            context->continueFlow();
+            // Run within the root flow
+            auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
+            if (unlikely(runRes.state == SHRunWireOutputState::Failed || runRes.state == SHRunWireOutputState::Stopped ||
+                         runRes.state == SHRunWireOutputState::Returned)) {
+              stop(peer->wire.get());
+              // Always continue, on stop event will cleanup
+              context->continueFlow();
+            }
+          } catch (std::exception &e) {
+            SHLOG_ERROR("Critical errors processing peer {}: {}, disconnecting it", peer->endpoint->address().to_string(),
+                        e.what());
+            _stopWireQueue.push(peer->wire.get());
           }
         }
       }
