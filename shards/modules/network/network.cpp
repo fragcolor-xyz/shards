@@ -227,6 +227,8 @@ struct NetworkPeer {
 
       // Check if the current buffer matches the expected size.
       if (recvBuffer.size() == expectedSize) {
+        SHLOG_TRACE("Received full packet, endpoint: {} port: {}, size: {}", endpoint->address().to_string(), endpoint->port(),
+                    expectedSize);
         return true;
       } else {
         // We expect another chunk; update the offset.
