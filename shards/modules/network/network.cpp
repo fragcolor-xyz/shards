@@ -208,6 +208,7 @@ struct NetworkPeer {
     // Initialize variables for buffer management.
     size_t offset = recvBuffer.size();
     auto nextChunkSize = ikcp_peeksize(kcp);
+    SHLOG_TRACE("nextChunkSize: {}, endpoint: {} port: {}", nextChunkSize, endpoint->address().to_string(), endpoint->port());
 
     // Loop to receive all available chunks.
     while (nextChunkSize > 0) {
@@ -233,6 +234,7 @@ struct NetworkPeer {
         // We expect another chunk; update the offset.
         offset = recvBuffer.size();
         nextChunkSize = ikcp_peeksize(kcp);
+        SHLOG_TRACE("nextChunkSize (2): {}, endpoint: {} port: {}", nextChunkSize, endpoint->address().to_string(), endpoint->port());
       }
     }
 
@@ -627,6 +629,8 @@ struct Server : public NetworkBase {
               std::scoped_lock pLock(currentPeer->mutex);
 
               auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
+              SHLOG_TRACE("ikcp_input: {}, peer: {} port: {}, size: {}", err, _sender.address().to_string(), _sender.port(),
+                          bytes_recvd);
               if (err < 0) {
                 SHLOG_ERROR("Error ikcp_input: {}, peer: {} port: {}", err, _sender.address().to_string(), _sender.port());
                 _stopWireQueue.push(currentPeer->wire.get());
