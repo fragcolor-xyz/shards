@@ -1237,7 +1237,8 @@ struct Serialization {
         SHVar shardVar{};
         deserialize(read, shardVar);
         ShardPtr shard = shardVar.payload.shardValue;
-        shassert(shardVar.valueType == SHType::ShardRef);
+        if (shardVar.valueType != SHType::ShardRef)
+          throw shards::SHException("Expected a shard ref!");
         wire->addShard(shardVar.payload.shardValue);
         // shard's owner is now the wire, remove original reference from deserialize
         decRef(shard);
@@ -1282,7 +1283,7 @@ struct Serialization {
       deserialize(read, *output.payload.typeValue);
       break;
     default:
-      SHLOG_FATAL("Unknown SHType during deserialization.");
+      throw shards::SHException("Unknown type during deserialization!");
     }
   }
 
@@ -1474,7 +1475,7 @@ struct Serialization {
           defaultShards.emplace(name, std::shared_ptr<Shard>(createShard(name), [](Shard *shard) { shard->destroy(shard); }))
               .first->second.get();
       if (!model) {
-        SHLOG_FATAL("Could not create shard: {}.", name);
+        throw shards::SHException(fmt::format("Could not create shard: {}.", name));
       }
       auto params = blk->parameters(blk);
       for (uint32_t i = 0; i < params.len; i++) {
@@ -1578,7 +1579,7 @@ struct Serialization {
       total += serialize(*input.payload.typeValue, write);
       break;
     default:
-      SHLOG_FATAL("Unknown SHType during serialization");
+      throw shards::SHException("Unknown type during serialization!");
     }
     return total;
   }
@@ -1645,7 +1646,7 @@ struct Serialization {
       read((uint8_t *)&output.enumeration, sizeof(output.enumeration));
       break;
     default:
-      throw std::logic_error("Invalid type to deserialize");
+      throw shards::SHException("Invalid type to deserialize");
     }
   }
 
@@ -1709,7 +1710,7 @@ struct Serialization {
       total += sizeof(input.enumeration);
       break;
     default:
-      throw std::logic_error("Invalid type to serialize");
+      throw shards::SHException("Invalid type to serialize");
     }
     return total;
   }
