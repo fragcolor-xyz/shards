@@ -777,17 +777,13 @@ struct Server : public NetworkBase {
                          runRes.state == SHRunWireOutputState::Returned)) {
               stop(peer->wire.get());
             }
-
-            // Always adjust the context back to continue, peer wire might have changed it
-            context->continueFlow();
           } catch (std::exception &e) {
             SHLOG_ERROR("Critical errors processing peer {}: {}, disconnecting it", peer->endpoint->address().to_string(),
                         e.what());
             stop(peer->wire.get());
-
-            // Always adjust the context back to continue, peer wire might have changed it
-            context->continueFlow();
           }
+          // Always adjust the context back to continue, peer wire might have changed it
+          context->continueFlow();
         }
       }
     }
