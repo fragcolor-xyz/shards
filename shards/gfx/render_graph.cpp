@@ -38,27 +38,29 @@ bool RenderGraphBuilder::isWrittenTo(const std::string &name) {
 
 RenderGraphBuilder::FrameBuildData *RenderGraphBuilder::assignFrame(const RenderStepOutput::OutputVariant &output,
                                                                     PipelineStepPtr step, TextureOverrideRef::Binding bindingType,
-                                                                    size_t bindingIndex) {
+                                                                    size_t bindingIndex, bool forceNew) {
   // Try to find existing frame that matches output
-  FrameBuildData *frame = std::visit(
-      [&](auto &&arg) -> FrameBuildData * {
-        using T = std::decay_t<decltype(arg)>;
+  FrameBuildData *frame = //
+      forceNew ? nullptr
+               : std::visit(
+                     [&](auto &&arg) -> FrameBuildData * {
+                       using T = std::decay_t<decltype(arg)>;
 
-        if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
-          auto it0 = handleLookup.find(arg.subResource);
-          if (it0 != handleLookup.end()) {
-            return it0->second;
-          }
-        }
+                       if constexpr (std::is_same_v<T, RenderStepOutput::Texture>) {
+                         auto it0 = handleLookup.find(arg.subResource);
+                         if (it0 != handleLookup.end()) {
+                           return it0->second;
+                         }
+                       }
 
-        auto it1 = nameLookup.find(arg.name);
-        if (it1 != nameLookup.end()) {
-          return it1->second;
-        }
+                       auto it1 = nameLookup.find(arg.name);
+                       if (it1 != nameLookup.end()) {
+                         return it1->second;
+                       }
 
-        return nullptr;
-      },
-      output);
+                       return nullptr;
+                     },
+                     output);
 
   // Create a new frame
   if (!frame) {
@@ -644,16 +646,35 @@ void RenderGraphBuilder::allocateOutputs(NodeBuildData &nodeBuildData, const Ren
     // if (targetSize.x <= 0 || targetSize.y <= 0)
     //   throw std::logic_error("Invalid output size");
 
-    FrameBuildData *outputFrame =
-        assignFrame(attachment, nodeBuildData.step, TextureOverrideRef::Binding::Output, outputIndex);
+    FrameBuildData *outputFrame = assignFrame(attachment, nodeBuildData.step, TextureOverrideRef::Binding::Output, outputIndex);
+    // if(outputFrame
 
     // Assign this frame a fixed size if it doesn't have a relative scale
     // Relative scale is assigned later during node connection validation
-    if (!output.sizeScale) {
-      assignOutputDynamicSize(*outputFrame);
-    } else {
-      outputFrame->sizeScale = output.sizeScale;
-    }
+    OutputSizing expectedSizing;
+    std::visit(
+        [&](auto &arg) {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (std::is_same_v<T, RenderStepOutput::RelativeToMainSize>) {
+          } else if (std::is_same_v<T, RenderStepOutput::RelativeToInputSize>) {
+            // Defer
+          } else if (std::is_same_v<T, RenderStepOutput::ManualSize>) {
+            expectedSizing = ManualSize{};
+          }
+
+          if (!outputFrame->sizing) {
+            outputFrame->sizing = expectedSizing;
+          } else if (expectedSizing != *outputFrame->sizing) {
+            SPDLOG_LOGGER_DEBUG(getLogger(), "Frame size missmatch, creating new frame");
+            outputFrame = assignFrame(attachment, nodeBuildData.step, TextureOverrideRef::Binding::Output, outputIndex, true);
+          }
+        },
+        output.outputSizing);
+    // if (!output.outputSizing) {
+    //   assignOutputDynamicSize(*outputFrame);
+    // } else {
+    //   outputFrame->sizeScale = output.sizeScale;
+    // }
 
     nodeBuildData.attachments.push_back(RenderGraphBuilder::Attachment{attachment, outputFrame});
     ++outputIndex;

@@ -248,6 +248,22 @@ struct RenderGraphBuilder {
     std::optional<ClearValues> clearValues;
   };
 
+  struct RelativeToMainSize {
+    std::optional<float2> scale;
+    std::strong_ordering operator<=>(const RelativeToMainSize &other) const = default;
+  };
+  struct RelativeToFrameSize {
+    FrameBuildData *frame;
+    std::optional<float2> scale;
+    std::strong_ordering operator<=>(const RelativeToFrameSize &other) const = default;
+  };
+  struct ManualSize {
+    std::strong_ordering operator<=>(const RelativeToFrameSize &other) const {
+      return std::strong_ordering::equal;
+    }
+  };
+  using OutputSizing = std::variant<RelativeToMainSize, RelativeToFrameSize, ManualSize>;
+
   struct FrameBuildData {
     std::string name;
     // int2 size;
@@ -256,7 +272,7 @@ struct RenderGraphBuilder {
     WGPUTextureFormat format;
     // TextureSubResource textureOverride;
     std::optional<TextureOverrideRef> textureOverride;
-    std::optional<float2> sizeScale;
+    OutputSizing sizing;
     // std::optional<AttachmentRef> binding;
   };
 
@@ -347,7 +363,7 @@ public:
 
   // Get or allocate a frame based on it's description
   FrameBuildData *assignFrame(const RenderStepOutput::OutputVariant &output, PipelineStepPtr step,
-                              TextureOverrideRef::Binding bindingType, size_t bindingIndex);
+                              TextureOverrideRef::Binding bindingType, size_t bindingIndex, bool forceNew = false);
 
   // Find the index of a frame
   FrameBuildData *findFrameByName(const std::string &name);

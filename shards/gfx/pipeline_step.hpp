@@ -50,6 +50,22 @@ union ClearValues {
 
 // Describes texture/render target connections between render steps
 struct RenderStepOutput {
+  // Relative to main output reference size
+  struct RelativeToMainSize {
+    // The scale, (1.0, 1.0) means same size
+    std::optional<float2> scale;
+  };
+  // Relative to the first input to this pass
+  struct RelativeToInputSize {
+    // The input name, if unset, the first input is used as reference
+    std::optional<std::string> name;
+    // The scale, (1.0, 1.0) means same size
+    std::optional<float2> scale;
+  };
+  // Not sized automatically, must be sized manually
+  struct ManualSize {};
+  using OutputSizing = std::variant<RelativeToMainSize, RelativeToInputSize, ManualSize>;
+
   // A managed named render frame
   struct Named {
     std::string name;
@@ -80,7 +96,7 @@ struct RenderStepOutput {
   // Example:
   //  (0.5, 0.5) would render at half the output resolution
   //  (2.0, 2.0) would render at double the output resolution
-  std::optional<float2> sizeScale = float2(1, 1);
+  OutputSizing outputSizing;
 
   RenderStepOutput() = default;
   RenderStepOutput(const RenderStepOutput &) = default;

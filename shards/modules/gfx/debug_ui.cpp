@@ -219,9 +219,9 @@ struct DebugUI {
           auto &frame = fq.frames[frameIdx];
           auto &outFrame = outFq.frames[frameIdx];
           outFrame.name = storeString(frame.name);
-          outFrame.size = Int2{frame.size.x, frame.size.y};
+          // outFrame.size = Int2{frame.size.x, frame.size.y};
           outFrame.format = int32_t(frame.format);
-          outFrame.isOutput = frame.outputIndex.has_value();
+          // outFrame.isOutput = frame.outputIndex.has_value();
         }
       }
 
