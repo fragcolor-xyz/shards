@@ -668,6 +668,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
           }
 
           // stop should have done the following:
+          SHLOG_TRACE("Wire {} ended while ticking", flow.wire->name);
           shassert(visitedWires.count(flow.wire) == 0 && "Wire still in visitedWires!");
           shassert(scheduled.count(flow.wire->shared_from_this()) == 0 && "Wire still in scheduled!");
           shassert(flow.wire->mesh.expired() && "Wire still has a mesh!");
