@@ -21,6 +21,10 @@
 
 #include "core/async.hpp"
 
+#pragma clang attribute push(__attribute__((no_sanitize("undefined"))), apply_to = function)
+#include <ikcp.h>
+#pragma clang attribute pop
+
 #define MAX_PKT_SIZE 10000
 
 namespace shards {
@@ -65,7 +69,7 @@ struct NetworkBase {
 
   AnyStorage<NetworkContext> _sharedNetworkContext;
 
-  std::optional<tcp::socket> _socket;
+  std::optional<udp::socket> _socket;
   std::mutex _socketMutex;
 
   ExposedInfo _required;
@@ -178,7 +182,12 @@ struct NetworkBase {
 struct NetworkPeer {
   NetworkPeer() {}
 
-  ~NetworkPeer() {}
+  ~NetworkPeer() {
+    if (kcp) {
+      ikcp_release(kcp);
+      kcp = nullptr;
+    }
+  }
 
   bool tryReceive(SHContext *context) {
     bool isMessageReady = false;
@@ -191,9 +200,14 @@ struct NetworkPeer {
       throw std::runtime_error(fmt::format("Failed to receive: {}", e->message()));
     }
 
+    auto now = SHClock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
+
+    ikcp_update(kcp, ms);
+
     // Initialize variables for buffer management.
     size_t offset = recvBuffer.size();
-    auto nextChunkSize = socket->message_peek();
+    auto nextChunkSize = ikcp_peeksize(kcp);
     SHLOG_TRACE("nextChunkSize: {}, endpoint: {} port: {}", nextChunkSize, endpoint->address().to_string(), endpoint->port());
 
     // Loop to receive all available chunks.
@@ -220,8 +234,7 @@ struct NetworkPeer {
         // We expect another chunk; update the offset.
         offset = recvBuffer.size();
         nextChunkSize = ikcp_peeksize(kcp);
-        SHLOG_TRACE("nextChunkSize (2): {}, endpoint: {} port: {}", nextChunkSize, endpoint->address().to_string(),
-                    endpoint->port());
+        SHLOG_TRACE("nextChunkSize (2): {}, endpoint: {} port: {}", nextChunkSize, endpoint->address().to_string(), endpoint->port());
       }
     }
 
@@ -278,7 +291,14 @@ struct NetworkPeer {
   }
 
   void reset() {
-    socket.reset();
+    if (kcp)
+      ikcp_release(kcp);
+
+    kcp = ikcp_create('shrd', this);
+
+    // set "turbo" mode
+    ikcp_nodelay(kcp, 1, 10, 2, 1);
+
     _start = SHClock::now();
     _lastContact = SHClock::now();
     disconnected = false;
@@ -287,7 +307,8 @@ struct NetworkPeer {
     expectedSize = 0;
   }
 
-  std::optional<tcp::endpoint> endpoint{};
+  std::optional<udp::endpoint> endpoint{};
+  ikcpcb *kcp = nullptr;
   Serialization des{};
   OwnedVar payload{};
 
@@ -308,14 +329,13 @@ struct NetworkPeer {
   std::optional<boost::system::error_code> networkError;
 
   std::atomic_bool disconnected = false;
-
-  std::optional<tcp::socket> socket;
 };
 
 struct Server : public NetworkBase {
   std::shared_mutex peersMutex;
-  tcp::endpoint _sender;
+  udp::endpoint _sender;
 
+  std::unordered_map<udp::endpoint, NetworkPeer *> _end2Peer;
   std::unordered_map<const SHWire *, NetworkPeer *> _wire2Peer;
   std::unique_ptr<WireDoppelgangerPool<NetworkPeer>> _pool;
   OwnedVar _handlerMaster{};
@@ -441,6 +461,7 @@ struct Server : public NetworkBase {
 
         // write lock it now
         std::scoped_lock<std::shared_mutex> lock2(peersMutex);
+        _end2Peer.erase(*container->endpoint);
         _pool->release(container);
       }
     }
@@ -488,26 +509,26 @@ struct Server : public NetworkBase {
       _disconnectionHandler.cleanup(context);
   }
 
-  // static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
-  //   NetworkPeer *p = (NetworkPeer *)user;
-  //   Server *s = (Server *)p->user;
+  static int udp_output(const char *buf, int len, ikcpcb *kcp, void *user) {
+    NetworkPeer *p = (NetworkPeer *)user;
+    Server *s = (Server *)p->user;
 
-  //   std::scoped_lock<std::mutex> l(s->_socketMutex); // not ideal but for now we gotta do it
+    std::scoped_lock<std::mutex> l(s->_socketMutex); // not ideal but for now we gotta do it
 
-  //   s->_socket->async_send_to(boost::asio::buffer(buf, len), *p->endpoint,
-  //                             [](boost::system::error_code ec, std::size_t bytes_sent) {
-  //                               if (ec) {
-  //                                 // ignore flow-control No buffer space available
-  //                                 if (ec != boost::asio::error::no_buffer_space && ec != boost::asio::error::would_block &&
-  //                                     ec != boost::asio::error::try_again) {
-  //                                   SHLOG_ERROR("Error sending: {}", ec.message());
-  //                                 } else {
-  //                                   SHLOG_DEBUG("Error sending (ignored): {}", ec.message());
-  //                                 }
-  //                               }
-  //                             });
-  //   return 0;
-  // }
+    s->_socket->async_send_to(boost::asio::buffer(buf, len), *p->endpoint,
+                              [](boost::system::error_code ec, std::size_t bytes_sent) {
+                                if (ec) {
+                                  // ignore flow-control No buffer space available
+                                  if (ec != boost::asio::error::no_buffer_space && ec != boost::asio::error::would_block &&
+                                      ec != boost::asio::error::try_again) {
+                                    SHLOG_ERROR("Error sending: {}", ec.message());
+                                  } else {
+                                    SHLOG_DEBUG("Error sending (ignored): {}", ec.message());
+                                  }
+                                }
+                              });
+    return 0;
+  }
 
   struct Composer {
     Server &server;
@@ -545,162 +566,114 @@ struct Server : public NetworkBase {
     _stopWireQueue.push(e.wire);
   }
 
-  tcp::acceptor acceptor_;
+  void do_receive() {
+    thread_local std::vector<uint8_t> recv_buffer(0xFFFF);
 
-  std::list<NetworkPeer *> _peers;
+    std::scoped_lock<std::mutex> l(_socketMutex); // not ideal but for now we gotta do it
 
-  void do_accept() {
-    acceptor_.async_accept([this](boost::system::error_code ec, tcp::socket socket) {
-      if (!ec) {
-        try {
-          auto peer = _pool->acquire(_composer, (void *)0);
-          peer->reset();
+    _socket->async_receive_from(
+        boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
+        [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+          if (!ec && bytes_recvd > 0) {
+            NetworkPeer *currentPeer = nullptr;
+            std::shared_lock<std::shared_mutex> lock(peersMutex);
+            auto it = _end2Peer.find(_sender);
+            if (it == _end2Peer.end()) {
+              SHLOG_TRACE("Received packet from unknown peer: {} port: {}", _sender.address().to_string(), _sender.port());
 
-          SHLOG_DEBUG("Adding new peer: {} port: {}", peer->endpoint->address().to_string(), peer->endpoint->port());
+              // new peer
+              lock.unlock();
 
-          // Assume that we recycle containers so the connection might already exist!
-          if (!peer->onStopConnection) {
-            _wire2Peer[peer->wire.get()] = peer;
-            peer->onStopConnection = peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
-          }
+              // we write so hard lock this
+              std::scoped_lock<std::shared_mutex> lock(peersMutex);
 
-          // set wire ID, in order for Events to be properly routed
-          // for now we just use ptr as ID, until it causes problems
-          peer->wire->id = reinterpret_cast<entt::id_type>(peer);
+              // new peer
+              try {
+                auto peer = _pool->acquire(_composer, (void *)0);
+                peer->reset();
+                _end2Peer[_sender] = peer;
+                peer->endpoint = _sender;
+                peer->user = this;
+                peer->kcp->user = peer;
+                peer->kcp->output = &Server::udp_output;
+                SHLOG_DEBUG("Added new peer: {} port: {}", peer->endpoint->address().to_string(), peer->endpoint->port());
 
-          // finally set the socket
-          peer->socket = std::move(socket);
+                // Assume that we recycle containers so the connection might already exist!
+                if (!peer->onStopConnection) {
+                  _wire2Peer[peer->wire.get()] = peer;
+                  peer->onStopConnection = peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
+                }
 
-          std::scoped_lock<std::shared_mutex> lock(peersMutex);
-          _peers.push_back(peer);
-        } catch (std::exception &e) {
-          SHLOG_ERROR("Error acquiring peer: {}", e.what());
+                // set wire ID, in order for Events to be properly routed
+                // for now we just use ptr as ID, until it causes problems
+                peer->wire->id = reinterpret_cast<entt::id_type>(peer);
 
-          // keep receiving
-          if (_socket && _running) {
-            return do_accept();
+                currentPeer = peer;
+              } catch (std::exception &e) {
+                SHLOG_ERROR("Error acquiring peer: {}", e.what());
+
+                // keep receiving
+                if (_socket && _running)
+                  return do_receive();
+              }
+            } else {
+              // SHLOG_TRACE("Received packet from known peer: {} port: {}", _sender.address().to_string(), _sender.port());
+
+              // existing peer
+              currentPeer = it->second;
+
+              lock.unlock();
+            }
+
+            {
+              std::scoped_lock pLock(currentPeer->mutex);
+
+              auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
+              SHLOG_TRACE("ikcp_input: {}, peer: {} port: {}, size: {}", err, _sender.address().to_string(), _sender.port(),
+                          bytes_recvd);
+              if (err < 0) {
+                SHLOG_ERROR("Error ikcp_input: {}, peer: {} port: {}", err, _sender.address().to_string(), _sender.port());
+                _stopWireQueue.push(currentPeer->wire.get());
+              }
+
+              currentPeer->_lastContact = SHClock::now();
+            }
+
+            // keep receiving
+            if (_socket && _running) {
+              return do_receive();
+            } else {
+              SHLOG_DEBUG("Socket closed, stopping receive loop");
+            }
           } else {
-            SHLOG_DEBUG("Socket closed, stopping accept loop");
-            return;
+            if (ec == boost::asio::error::operation_aborted) {
+              // we likely have invalid data under the hood, let's just ignore it
+              SHLOG_DEBUG("Operation aborted");
+              return;
+            } else if (ec == boost::asio::error::no_buffer_space || ec == boost::asio::error::would_block ||
+                       ec == boost::asio::error::try_again) {
+              SHLOG_DEBUG("Ignored error while receiving: {}", ec.message());
+              return do_receive();
+            }
+
+            SHLOG_DEBUG("Error receiving: {}, peer: {} port: {}", ec.message(), _sender.address().to_string(), _sender.port());
+
+            std::shared_lock<std::shared_mutex> lock(peersMutex);
+            auto it = _end2Peer.find(_sender);
+            if (it != _end2Peer.end()) {
+              SHLOG_TRACE("Removing peer: {} port: {}", _sender.address().to_string(), _sender.port());
+              _stopWireQueue.push(it->second->wire.get());
+            }
+
+            // keep receiving
+            if (_socket && _running) {
+              return do_receive();
+            } else {
+              SHLOG_DEBUG("Socket closed, stopping receive loop");
+            }
           }
-        }
-      } else {
-        SHLOG_WARNING("Error while accepting: {}", ec.message());
-      }
-
-      do_accept();
-    });
+        });
   }
-
-  // void do_receive() {
-  //   thread_local std::vector<uint8_t> recv_buffer(0xFFFF);
-
-  //   std::scoped_lock<std::mutex> l(_socketMutex); // not ideal but for now we gotta do it
-
-  //   _socket->async_receive_from(
-  //       boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
-  //       [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-  //         if (!ec && bytes_recvd > 0) {
-  //           NetworkPeer *currentPeer = nullptr;
-  //           std::shared_lock<std::shared_mutex> lock(peersMutex);
-  //           auto it = _end2Peer.find(_sender);
-  //           if (it == _end2Peer.end()) {
-  //             SHLOG_TRACE("Received packet from unknown peer: {} port: {}", _sender.address().to_string(), _sender.port());
-
-  //             // new peer
-  //             lock.unlock();
-
-  //             // we write so hard lock this
-  //             std::scoped_lock<std::shared_mutex> lock(peersMutex);
-
-  //             // new peer
-  //             try {
-  //               auto peer = _pool->acquire(_composer, (void *)0);
-  //               peer->reset();
-  //               _end2Peer[_sender] = peer;
-  //               peer->endpoint = _sender;
-  //               peer->user = this;
-  //               peer->kcp->user = peer;
-  //               peer->kcp->output = &Server::udp_output;
-  //               SHLOG_DEBUG("Added new peer: {} port: {}", peer->endpoint->address().to_string(), peer->endpoint->port());
-
-  //               // Assume that we recycle containers so the connection might already exist!
-  //               if (!peer->onStopConnection) {
-  //                 _wire2Peer[peer->wire.get()] = peer;
-  //                 peer->onStopConnection =
-  //                 peer->wire->dispatcher.sink<SHWire::OnStopEvent>().connect<&Server::wireOnStop>(this);
-  //               }
-
-  //               // set wire ID, in order for Events to be properly routed
-  //               // for now we just use ptr as ID, until it causes problems
-  //               peer->wire->id = reinterpret_cast<entt::id_type>(peer);
-
-  //               currentPeer = peer;
-  //             } catch (std::exception &e) {
-  //               SHLOG_ERROR("Error acquiring peer: {}", e.what());
-
-  //               // keep receiving
-  //               if (_socket && _running)
-  //                 return do_receive();
-  //             }
-  //           } else {
-  //             // SHLOG_TRACE("Received packet from known peer: {} port: {}", _sender.address().to_string(), _sender.port());
-
-  //             // existing peer
-  //             currentPeer = it->second;
-
-  //             lock.unlock();
-  //           }
-
-  //           {
-  //             std::scoped_lock pLock(currentPeer->mutex);
-
-  //             auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
-  //             SHLOG_TRACE("ikcp_input: {}, peer: {} port: {}, size: {}", err, _sender.address().to_string(), _sender.port(),
-  //                         bytes_recvd);
-  //             if (err < 0) {
-  //               SHLOG_ERROR("Error ikcp_input: {}, peer: {} port: {}", err, _sender.address().to_string(), _sender.port());
-  //               _stopWireQueue.push(currentPeer->wire.get());
-  //             }
-
-  //             currentPeer->_lastContact = SHClock::now();
-  //           }
-
-  //           // keep receiving
-  //           if (_socket && _running) {
-  //             return do_receive();
-  //           } else {
-  //             SHLOG_DEBUG("Socket closed, stopping receive loop");
-  //           }
-  //         } else {
-  //           if (ec == boost::asio::error::operation_aborted) {
-  //             // we likely have invalid data under the hood, let's just ignore it
-  //             SHLOG_DEBUG("Operation aborted");
-  //             return;
-  //           } else if (ec == boost::asio::error::no_buffer_space || ec == boost::asio::error::would_block ||
-  //                      ec == boost::asio::error::try_again) {
-  //             SHLOG_DEBUG("Ignored error while receiving: {}", ec.message());
-  //             return do_receive();
-  //           }
-
-  //           SHLOG_DEBUG("Error receiving: {}, peer: {} port: {}", ec.message(), _sender.address().to_string(), _sender.port());
-
-  //           std::shared_lock<std::shared_mutex> lock(peersMutex);
-  //           auto it = _end2Peer.find(_sender);
-  //           if (it != _end2Peer.end()) {
-  //             SHLOG_TRACE("Removing peer: {} port: {}", _sender.address().to_string(), _sender.port());
-  //             _stopWireQueue.push(it->second->wire.get());
-  //           }
-
-  //           // keep receiving
-  //           if (_socket && _running) {
-  //             return do_receive();
-  //           } else {
-  //             SHLOG_DEBUG("Socket closed, stopping receive loop");
-  //           }
-  //         }
-  //       });
-  // }
 
   ExposedInfo _sharedCopy;
   std::optional<SHContext *> _contextCopy;
@@ -732,11 +705,14 @@ struct Server : public NetworkBase {
 
     if (!_socket) {
       // first activation, let's init
-      _socket.emplace(io_context, tcp::endpoint(tcp::v4(), _port.get().payload.intValue));
-      _socket->set_option(boost::asio::ip::tcp::no_delay(true));
+      _socket.emplace(io_context, udp::endpoint(udp::v4(), _port.get().payload.intValue));
+      boost::asio::socket_base::send_buffer_size option_send(65536);
+      boost::asio::socket_base::receive_buffer_size option_recv(65536);
+      _socket->set_option(option_send);
+      _socket->set_option(option_recv);
 
-      // start accepting
-      boost::asio::post(io_context, [this]() { do_accept(); });
+      // start receiving
+      boost::asio::post(io_context, [this]() { do_receive(); });
     }
 
     gcWires(context);
@@ -746,7 +722,7 @@ struct Server : public NetworkBase {
 
       auto now = SHClock::now();
 
-      for (auto &peer : _peers) {
+      for (auto &[end, peer] : _end2Peer) {
         if (now > (peer->_lastContact.load() + SHDuration(_timeoutSecs))) {
           SHLOG_DEBUG("Peer {}:{} timed out", peer->endpoint->address().to_string(), peer->endpoint->port());
           _stopWireQueue.push(peer->wire.get());

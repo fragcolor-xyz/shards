@@ -10,18 +10,18 @@
 
 #include <shards/shards.h>
 
-using boost::asio::ip::tcp;
+using boost::asio::ip::udp;
 
 namespace shards {
 namespace Network {
 
 struct OnPeerConnected {
-  tcp::endpoint endpoint;
+  udp::endpoint endpoint;
   std::weak_ptr<SHWire> wire;
 };
 
 struct OnPeerDisconnected {
-  tcp::endpoint endpoint;
+  udp::endpoint endpoint;
   std::weak_ptr<SHWire> wire;
 };
 
