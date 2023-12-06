@@ -743,11 +743,16 @@ struct Server : public NetworkBase {
         }
 
         if (peer->tryReceive(context)) {
+          auto &peer_ = peer; // avoid c++20 ext warning
+          DEFER({
+            // we need to ensure this gets called at all times
+            peer_->endReceive();
+          });
+
           if (!context->shouldContinue())
             return input;
 
           try {
-            auto &peer_ = peer; // avoid c++20 ext warning
             if (peer_->recvBuffer.size() > IKCP_MAX_PKT_SIZE) {
               // do this async as it's a big buffer
               await(
@@ -766,21 +771,22 @@ struct Server : public NetworkBase {
               peer_->des.deserialize(r, peer_->payload);
             }
 
-            // at this point we can already cleanup the buffer
-            peer->endReceive();
-
             // Run within the root flow
             auto runRes = runSubWire(peer->wire.get(), context, peer->payload);
             if (unlikely(runRes.state == SHRunWireOutputState::Failed || runRes.state == SHRunWireOutputState::Stopped ||
                          runRes.state == SHRunWireOutputState::Returned)) {
               stop(peer->wire.get());
-              // Always continue, on stop event will cleanup
-              context->continueFlow();
             }
+
+            // Always adjust the context back to continue, peer wire might have changed it
+            context->continueFlow();
           } catch (std::exception &e) {
             SHLOG_ERROR("Critical errors processing peer {}: {}, disconnecting it", peer->endpoint->address().to_string(),
                         e.what());
-            _stopWireQueue.push(peer->wire.get());
+            stop(peer->wire.get());
+
+            // Always adjust the context back to continue, peer wire might have changed it
+            context->continueFlow();
           }
         }
       }
