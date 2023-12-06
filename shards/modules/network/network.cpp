@@ -205,9 +205,9 @@ struct NetworkPeer {
     // Initialize variables for buffer management.
     size_t offset = recvBuffer.size();
     auto nextChunkSize = ikcp_peeksize(kcp);
-    if (nextChunkSize != -1)
-      SHLOG_TRACE("nextChunkSize: {}, endpoint: {} port: {}, offset: {}", nextChunkSize, endpoint->address().to_string(),
-                  endpoint->port(), offset);
+    // if (nextChunkSize != -1)
+    //   SHLOG_TRACE("nextChunkSize: {}, endpoint: {} port: {}, offset: {}", nextChunkSize, endpoint->address().to_string(),
+    //               endpoint->port(), offset);
 
     // Loop to receive all available chunks.
     while (nextChunkSize > 0) {
@@ -227,15 +227,15 @@ struct NetworkPeer {
 
       // Check if the current buffer matches the expected size.
       if (recvBuffer.size() == expectedSize) {
-        SHLOG_TRACE("Received full packet, endpoint: {} port: {}, size: {}", endpoint->address().to_string(), endpoint->port(),
-                    expectedSize);
+        // SHLOG_TRACE("Received full packet, endpoint: {} port: {}, size: {}", endpoint->address().to_string(), endpoint->port(),
+        //             expectedSize);
         return true;
       } else {
         // We expect another chunk; update the offset.
         offset = recvBuffer.size();
         nextChunkSize = ikcp_peeksize(kcp);
-        SHLOG_TRACE("nextChunkSize (2): {}, endpoint: {} port: {}, offset: {}, expected: {}", nextChunkSize,
-                    endpoint->address().to_string(), endpoint->port(), offset, expectedSize);
+        // SHLOG_TRACE("nextChunkSize (2): {}, endpoint: {} port: {}, offset: {}, expected: {}", nextChunkSize,
+        //             endpoint->address().to_string(), endpoint->port(), offset, expectedSize);
       }
     }
 
@@ -630,8 +630,8 @@ struct Server : public NetworkBase {
               std::scoped_lock pLock(currentPeer->mutex);
 
               auto err = ikcp_input(currentPeer->kcp, (char *)recv_buffer.data(), bytes_recvd);
-              SHLOG_TRACE("ikcp_input: {}, peer: {} port: {}, size: {}", err, _sender.address().to_string(), _sender.port(),
-                          bytes_recvd);
+              // SHLOG_TRACE("ikcp_input: {}, peer: {} port: {}, size: {}", err, _sender.address().to_string(), _sender.port(),
+              //             bytes_recvd);
               if (err < 0) {
                 SHLOG_ERROR("Error ikcp_input: {}, peer: {} port: {}", err, _sender.address().to_string(), _sender.port());
                 _stopWireQueue.push(currentPeer->wire.get());
