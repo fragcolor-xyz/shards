@@ -22,6 +22,7 @@ namespace DB {
 struct Connection {
   sqlite3 *db;
   std::mutex mutex;
+  std::mutex transactionMutex;
   static inline std::shared_mutex globalMutex;
 
   Connection(const char *path) {
@@ -291,6 +292,13 @@ struct Transaction : public Base {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     ensureDb(context);
+
+    // avoid transaction nesting
+    std::unique_lock<std::mutex> lock(_connection->transactionMutex, std::defer_lock);
+    // try to lock, if we can't we suspend
+    while (!lock.try_lock()) {
+      SH_SUSPEND(context, 0);
+    }
 
     await(
         context,
