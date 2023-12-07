@@ -30,7 +30,13 @@ ctor = "0.1.26"
 bindgen = { version = "0.64.0" }
 
 [features]
+release_with_debug = []
 dllshard = ["dlopen"]
 
 [profile.release]
+debug = false # default, no debug symbols
 panic = "abort"
+
+[profile.release.package.'*']
+features = ["release_with_debug"]
+debug = true # include debug symbols when the feature is enabled

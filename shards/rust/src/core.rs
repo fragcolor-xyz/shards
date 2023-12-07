@@ -168,7 +168,7 @@ pub fn logLevel(level: i32, s: &str) {
 }
 
 #[macro_export]
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, feature = "release_with_debug"))]
 macro_rules! shlog_trace {
   ($text:expr, $($arg:expr),*) => {
     {
@@ -185,7 +185,7 @@ macro_rules! shlog_trace {
 }
 
 #[macro_export]
-#[cfg(not(debug_assertions))]
+#[cfg(not(any(debug_assertions, feature = "release_with_debug")))]
 macro_rules! shlog_trace {
   ($text:expr, $($arg:expr),*) => {};
 
@@ -193,7 +193,7 @@ macro_rules! shlog_trace {
 }
 
 #[macro_export]
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, feature = "release_with_debug"))]
 macro_rules! shlog_debug {
   ($text:expr, $($arg:expr),*) => {
     {
@@ -210,7 +210,7 @@ macro_rules! shlog_debug {
 }
 
 #[macro_export]
-#[cfg(not(debug_assertions))]
+#[cfg(not(any(debug_assertions, feature = "release_with_debug")))]
 macro_rules! shlog_debug {
   ($text:expr, $($arg:expr),*) => {};
 
